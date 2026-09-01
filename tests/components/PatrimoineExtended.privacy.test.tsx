@@ -185,10 +185,19 @@ describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] garde de source : tout champ « (doll
         .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
         .replace(/^\s*\/\/.*$/gm, '');
 
-    /** Chaque contrôle, avec l'`aria-label` qu'il porte. */
+    /**
+     * Chaque contrôle, avec l'`aria-label` qu'il porte.
+     *
+     * ⚠️ `select` a été ajouté par `[A11Y-LABELS-RESTE-DU-DEPOT]` (lot 51), qui a nommé le choix du
+     * type d'assurance — et la garde de l'angle mort ci-dessous l'a dénoncé le jour même. Elle avait
+     * raison : un `<select>` est un champ de SAISIE, pas une action, donc il doit passer par les
+     * règles « (dollars) » comme les autres. Il les passe : son libellé n'est pas un montant, donc
+     * il n'a rien à masquer. C'est l'ENSEMBLE des balises porteuses qui devait grandir, pas
+     * l'exclusion — exclure le champ aurait rendu la garde aveugle à un futur `<select>` monétaire.
+     */
     const controles = () => {
         const out: Array<{ balise: string; libelle: string }> = [];
-        const re = /<(input|PrivateNumberInput)\s+aria-label="([^"]*)"/g;
+        const re = /<(input|select|textarea|PrivateNumberInput)\s+aria-label="([^"]*)"/g;
         for (const m of propre.matchAll(re)) out.push({ balise: m[1], libelle: m[2] });
         return out;
     };

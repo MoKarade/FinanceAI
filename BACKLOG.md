@@ -2085,25 +2085,18 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
   dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
   « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
-- [ ] **`[A11Y-LABELS-RESTE-DU-DEPOT]`** (M, ÉLEVÉ — **RECENSÉ** 2026-08-29 en livrant
-  `[A11Y-LABELS-PARAMS-AVANCES]`) — le même défaut vit dans **16 autres fichiers, 59 labels** sans
-  `htmlFor` NI enveloppement : leur champ n'a aucun nom accessible (WCAG 4.1.2). Le ticket précédent
-  soupçonnait le trou (« le même trou existe probablement dans les autres panneaux ») ; il est
-  maintenant compté, fichier par fichier :
-  `ProjectionControls` 13 · `PropertyConfigurator` 12 · `ChildPlanning` 6 · `AddStockForm` 5 ·
-  `LifeEvents` 4 · `RealEstateWorkspace` 3 · `TaxCenter` 3 · `Travel` 3 · `AuditLogViewer` 2 ·
-  `ErrorLogViewer` 2 · puis 1 chacun dans `Budget`, `BudgetGroupTable`, `BackupPanel`,
-  `GoalSeekerCard`, `DebtManager`, `ImportBrokerPositions`.
-  ⚠️ **Le recenseur est à RE-DÉRIVER — le lot 50 n'en a committé aucun** (son script était jetable,
-  et la garde livrée est un test de RENDU, pas un scan de source). Sa règle, elle, est acquise : un
-  `<label>` sans `htmlFor` qui ENVELOPPE son champ est parfaitement valide, donc un comptage brut
-  `grep -c '<label'` vs `grep -c htmlFor` donne 40 vs 14 sur `AdvancedProjectionParams` là où le vrai
-  chiffre est 26. Les 59 ci-dessus sortent du recenseur corrigé, relu à la main.
-  ⚠️ **Et vérifier l'UNICITÉ des `id` posés** : au lot 50, deux champs de rendement ont d'abord reçu
-  le même `app-returnRates` (la clé venait de `projection.returnRates`, commune aux deux) — les deux
-  labels pointaient alors le même contrôle, et un scan d'orphelins n'y voyait rien puisque chaque
-  label avait bien son `htmlFor`. Un attribut présent ne prouve pas qu'il désigne la bonne chose.
-  Le geste reste mécanique ; c'est le volume et ces deux pièges qui font le lot. [MESURÉ]
+- [ ] **`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`** (S, FAIBLE — **découvert en livrant
+  `[A11Y-LABELS-RESTE-DU-DEPOT]`** le 2026-08-30) — il reste dans `components/` des `<label>` qui
+  n'ont ni `htmlFor` ni enveloppement alors que leur contrôle porte déjà un `aria-label`. **Ce n'est
+  PAS un défaut WCAG** : le champ est nommé, la garde `controlAccessibleNameGuard` est verte, et
+  c'est bien pour ça que le lot ne les a pas touchés. Les 13 sliders de `ProjectionControls` en sont
+  le gros du contingent. Deux inconvénients réels, mais mineurs :
+  le libellé visible n'est **pas cliquable** (il n'agrandit pas la cible du curseur), et le texte
+  existe **en double** (`<span>Inflation</span>` d'un côté, `aria-label="Inflation"` de l'autre) —
+  deux écritures qui peuvent diverger en silence, exactement la famille `DOC-METRIQUE-RECOPIEE`.
+  ⚠️ Le correctif n'est pas mécanique : poser `htmlFor` **et retirer** l'`aria-label` devenu
+  redondant, sinon `aria-label` gagne et le `<label>` reste décoratif. À faire seulement si un
+  scan prouve d'abord que les deux textes divergent déjà quelque part. [Supposition] sur l'ampleur.
 
 - [ ] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M, **DÉCOUVERT PAR MESURE** 2026-08-14) — construire la
   garde de source `formatCAD` au niveau du DÉPÔT, comme `chartPrivacyScan.test.ts` le fait déjà pour

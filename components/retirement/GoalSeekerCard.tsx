@@ -57,8 +57,9 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                     Au lieu de tâtonner les sliders, dis-nous combien tu veux avoir et on calcule l'épargne nécessaire.
                 </p>
                 <div>
-                    <label className="block text-meta text-ink-300 mb-1">Patrimoine cible à la retraite</label>
+                    <label htmlFor="goalseek-target" className="block text-meta text-ink-300 mb-1">Patrimoine cible à la retraite</label>
                     <input
+                        id="goalseek-target"
                         type="number"
                         value={goalSeekTarget}
                         onChange={e => setGoalSeekTarget(Number(e.target.value))}

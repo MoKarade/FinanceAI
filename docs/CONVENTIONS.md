@@ -8523,6 +8523,74 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 51 — un nom manquant est une propriété du CONTRÔLE, pas du label
+
+`UN-NOM-MANQUANT-EST-UNE-PROPRIETE-DU-CONTROLE-PAS-DU-LABEL`
+
+`[A11Y-LABELS-RESTE-DU-DEPOT]` était **mon propre ticket**, écrit la veille en livrant le lot 50, et
+il désignait le mauvais objet. Il comptait les `<label>` non associés — 59 dans 16 fichiers — parce
+que c'est ce que le lot 50 venait de corriger. Or WCAG 4.1.2 ne dit rien des labels : il dit qu'un
+**contrôle** doit avoir un nom accessible. Recensé sur les contrôles, le périmètre devient 48 dans
+20 fichiers, dont 8 faux, soit **40 réels** — et les deux listes ne se recouvrent pas.
+
+**Ce que le mauvais objet faisait compter EN TROP.** Les 13 « labels orphelins » de
+`ProjectionControls` — le plus gros poste du ticket — ne sont pas un défaut : chacun de ces sliders
+porte déjà un `aria-label` explicite. Le label y est redondant, le champ est nommé, et les
+« corriger » n'aurait rien réparé du tout. Un quart du lot annoncé était du vent.
+
+**Ce que le mauvais objet faisait RATER.** Un contrôle peut être anonyme sans qu'aucun `<label>` ne
+le signale : `DividendPanel` le nommait par un simple `<span>` voisin, `PassphraseGate` par un
+`placeholder` (qui disparaît dès la première frappe et n'est un nom accessible qu'en dernier
+recours), `Onboarding` portait un `id` sans aucun `htmlFor` en face. Aucun de ces trois n'apparaît
+dans un recensement de labels — ils n'ont pas de label du tout.
+
+**La règle générale** : quand un ticket compte les occurrences d'un SYMPTÔME, vérifier d'abord que
+le symptôme et le défaut sont la même chose. Un label orphelin est un INDICE de champ anonyme ; le
+défaut est l'absence de nom. Compter les indices sur-compte (ceux qui n'indiquent rien) et sous-
+compte (les défauts sans indice) — les deux erreurs à la fois, et dans des proportions qu'on ne peut
+pas deviner sans re-recenser. Même famille que
+`UN-TICKET-QUI-GROUPE-PAR-LA-SYNTAXE-GROUPE-DES-ENJEUX-INCOMPARABLES`, avec cette aggravation : ici
+le ticket venait de MOI et portait la mention `[MESURÉ]`. Une mesure est fiable ; l'objet qu'elle
+mesure ne l'est que si on l'a choisi en relisant la règle, pas le lot précédent.
+
+**Quatre façons légitimes de nommer, et la garde doit connaître les quatre** : `aria-label`,
+`aria-labelledby`, un `id` cible d'un `htmlFor`, et un `<label>` ANCÊTRE qui enveloppe le contrôle.
+En rater une fabrique des faux positifs en masse — un scan qui ignore l'enveloppement remonte 40
+offenders sur `AdvancedProjectionParams` là où il y en a 26.
+
+**Et `id` littéral ne convient qu'à un contrôle rendu UNE fois.** Dans une liste (`policies.map`,
+`holdings.map`, les postes du budget), deux lignes porteraient le même `id` : les labels
+pointeraient alors le même contrôle, et un scan d'orphelins n'y verrait rien puisque chaque
+`htmlFor` trouve bien un `id` existant — le piège du lot 50, transposé d'un cran. Ces sites
+reçoivent un `aria-label` DISCRIMINANT (« Attribution — {nom du poste} »), et une seconde assertion
+tient l'unicité des `id` littéraux par fichier.
+
+**Deux exemptions, par RÈGLE quand c'en est une, par LISTE quand ce n'en est pas une.**
+`display:none` (`className="hidden"` sur un déclencheur de fichier caché derrière un bouton visible)
+retire vraiment l'élément de l'arbre d'accessibilité : c'est une règle, employée cinq fois dans le
+dépôt, et l'écrire comme telle vaut mieux que cinq entrées. Les primitives génériques
+(`PrivateNumberInput`, `PrivateSelect`) qui relaient `{...rest}` sont nominatives, avec leur raison —
+et un quatrième test EXIGE que chacune existe encore et relaie toujours `{...rest}`, sinon une
+exemption fantôme compterait comme protection dans tout inventaire futur (`ENTREE-D-INVENTAIRE-FANTOME`).
+
+**Une garde voisine a dénoncé ce lot le jour même — et elle avait raison.** Le scan de source de
+`PatrimoineExtended.privacy.test.tsx` exige que TOUT `aria-label` porté par un champ de SAISIE du
+fichier soit vu par le scan qui applique la convention « (dollars) » ; sa regex ne connaissait que
+`<input>` et `<PrivateNumberInput>`, et mon `<select aria-label="Type d'assurance">` lui échappait.
+Le correctif est d'**élargir l'ensemble des balises porteuses**, jamais d'exclure le champ : exclure
+aurait rendu la garde aveugle à un futur `<select>` monétaire. La garde portait déjà l'histoire du
+choix symétrique dans son commentaire — les `<button>` sont exclus parce que ce sont des ACTIONS, pas
+des montants. Lire cette histoire AVANT de choisir entre « élargir » et « exclure » a pris trente
+secondes et a évité de désarmer la garde.
+
+⚠️ **Note d'environnement, coûteuse en apparence** : le conteneur a été reverté à un clone de **157
+commits de retard**. `utils/stripComments.ts` et tout `tests/guards/` avaient « disparu », et le
+`CLAUDE.md` chargé était l'ancien. C'est exactement `AUDIT-SUR-TREE-PERIME`, et la parade est celle
+déjà écrite : `git fetch origin main` AVANT de juger l'état. Corollaire neuf : après une remise à
+jour de cette ampleur, `node_modules` ne suit pas — deux paquets récents manquaient et le typecheck
+échouait sur `App.tsx` pour une raison sans aucun rapport avec le lot. **Un gate rouge se lit avant
+d'être cru** : le fichier accusé n'était pas dans le diff.
+
 ### Lot 50 — un attribut présent ne prouve pas qu'il désigne la bonne chose
 
 `UN-ATTRIBUT-PRESENT-NE-PROUVE-PAS-QU-IL-DESIGNE-LA-BONNE-CHOSE`

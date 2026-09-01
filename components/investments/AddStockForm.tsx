@@ -275,10 +275,11 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             <div className="space-y-4">
                 {/* Step 1 : Symbol */}
                 <div>
-                    <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">1. Symbole / Ticker</label>
+                    <label htmlFor="stock-symbol" className="block text-meta text-ink-300 mb-1 font-bold uppercase">1. Symbole / Ticker</label>
                     <div className="relative">
                     <div className="flex gap-2">
                         <input
+                            id="stock-symbol"
                             type="text"
                             value={symbol}
                             onChange={(e) => { setSymbol(e.target.value.toUpperCase()); if (notice) setNotice(null); }}
@@ -356,8 +357,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     )}
                     {manualMode && (
                         <div className="mt-2">
-                            <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">Prix actuel par action (manuel)</label>
+                            <label htmlFor="stock-manualPrice" className="block text-meta text-ink-300 mb-1 font-bold uppercase">Prix actuel par action (manuel)</label>
                             <input
+                                id="stock-manualPrice"
                                 type="number"
                                 value={manualPrice}
                                 onChange={(e) => setManualPrice(e.target.value)}
@@ -385,8 +387,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     <>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">2. Date d'achat</label>
+                                <label htmlFor="stock-dateBought" className="block text-meta text-ink-300 mb-1 font-bold uppercase">2. Date d'achat</label>
                                 <input
+                                    id="stock-dateBought"
                                     type="date"
                                     value={dateBought}
                                     onChange={(e) => setDateBought(e.target.value)}
@@ -395,8 +398,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 />
                             </div>
                             <div>
-                                <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">3. Quantité</label>
+                                <label htmlFor="stock-quantity" className="block text-meta text-ink-300 mb-1 font-bold uppercase">3. Quantité</label>
                                 <input
+                                    id="stock-quantity"
                                     type="number"
                                     value={quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
@@ -408,7 +412,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             </div>
                         </div>
                         <div>
-                            <label className="block text-meta text-ink-300 mb-1 font-bold uppercase flex items-center justify-between">
+                            <label htmlFor="stock-buyPrice" className="block text-meta text-ink-300 mb-1 font-bold uppercase flex items-center justify-between">
                                 4. Prix d'achat par action
                                 {validatedSymbol && (
                                     <button
@@ -422,6 +426,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 )}
                             </label>
                             <input
+                                id="stock-buyPrice"
                                 type="number"
                                 value={buyPrice}
                                 onChange={(e) => setBuyPrice(e.target.value)}

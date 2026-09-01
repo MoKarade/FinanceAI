@@ -99,7 +99,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
 
                     {activeGoal.isRented && !activeGoal.isPrimaryResidence && (
                         <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2 mt-2">
-                            <label className="flex justify-between items-end text-meta text-green-400 font-bold">
+                            <label htmlFor="prop-rentalIncomeMonthly" className="flex justify-between items-end text-meta text-green-400 font-bold">
                                 <span>Revenu Locatif ($/mois)</span>
                                 <button
                                     onClick={() => updateActiveGoal({ rentalIncomeMonthly: Math.round(price / 23.3 / 12) })}
@@ -110,6 +110,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                                 </button>
                             </label>
                             <input
+                                id="prop-rentalIncomeMonthly"
                                 type="number"
                                 step="50"
                                 value={rentalIncomeMonthly}
@@ -158,8 +159,8 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             </select>
                         </div>
                         <div>
-                            <label className="block text-meta text-ink-300 mb-1">Date cible</label>
-                            <input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-body" />
+                            <label htmlFor="prop-targetDate" className="block text-meta text-ink-300 mb-1">Date cible</label>
+                            <input id="prop-targetDate" type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-body" />
                             {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : une date passée n'implique plus
                                 l'achat — le fait se DÉCLARE (et se corrige) ici. Seuil au MOIS
                                 (1er du mois courant, LOCAL — même helper que le popup), jamais
@@ -208,22 +209,22 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-meta text-orange-400 mb-1 font-bold">Taux Actuel (%)</label>
-                            <input type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-full bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5 text-orange-400 text-body font-bold" />
+                            <label htmlFor="prop-mortgageRate" className="block text-meta text-orange-400 mb-1 font-bold">Taux Actuel (%)</label>
+                            <input id="prop-mortgageRate" type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-full bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5 text-orange-400 text-body font-bold" />
                         </div>
                         <div>
-                            <label className="block text-meta text-danger-400 mb-1 font-bold">Taux Renouvellement</label>
-                            <input type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-danger-500/10 border border-danger-500/30 rounded px-2 py-1.5 text-danger-400 text-body font-bold" />
+                            <label htmlFor="prop-renewalRate" className="block text-meta text-danger-400 mb-1 font-bold">Taux Renouvellement</label>
+                            <input id="prop-renewalRate" type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-danger-500/10 border border-danger-500/30 rounded px-2 py-1.5 text-danger-400 text-body font-bold" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-meta text-info-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
-                            <input type="number" step="0.5" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-body" />
+                            <label htmlFor="prop-propertyGrowthRate" className="block text-meta text-info-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
+                            <input id="prop-propertyGrowthRate" type="number" step="0.5" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-body" />
                         </div>
                         <div>
-                            <label className="block text-meta text-success-400 mb-1 font-bold">Rénos annuelles ($)</label>
-                            <input type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-success-500/10 border border-success-500/30 rounded px-2 py-1.5 text-success-400 text-body font-bold" />
+                            <label htmlFor="prop-yearlyRenovations" className="block text-meta text-success-400 mb-1 font-bold">Rénos annuelles ($)</label>
+                            <input id="prop-yearlyRenovations" type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-success-500/10 border border-success-500/30 rounded px-2 py-1.5 text-success-400 text-body font-bold" />
                         </div>
                     </div>
                     <div>
@@ -253,8 +254,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         </button>
                     </div>
                     <div>
-                        <label className="text-meta text-ink-300">Taxes foncières ($/an)</label>
+                        <label htmlFor="prop-taxesYearly" className="text-meta text-ink-300">Taxes foncières ($/an)</label>
                         <input
+                            id="prop-taxesYearly"
                             type="number"
                             step="100"
                             value={taxesYearly}
@@ -264,8 +266,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                     </div>
                     <div>
-                        <label className="text-meta text-ink-300">Chauffage ($/mois)</label>
+                        <label htmlFor="prop-heatingMonthly" className="text-meta text-ink-300">Chauffage ($/mois)</label>
                         <input
+                            id="prop-heatingMonthly"
                             type="number"
                             step="10"
                             value={heatingMonthly}
@@ -275,8 +278,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                     </div>
                     <div>
-                        <label className="text-meta text-ink-300">Frais de condo ($/mois)</label>
+                        <label htmlFor="prop-condoFees" className="text-meta text-ink-300">Frais de condo ($/mois)</label>
                         <input
+                            id="prop-condoFees"
                             type="number"
                             step="50"
                             value={condoFees}

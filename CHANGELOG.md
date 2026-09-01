@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-30 (Accessibilité : 40 champs de formulaire enfin nommés)
+
+- **Corrigé** : dans seize écrans — projets immobiliers, planification enfants, ajout de titre,
+  voyages, aléas de vie, assurances, postes de budget, emplacement d'actifs, import de positions,
+  déverrouillage par passphrase… — quarante champs de saisie n'avaient aucun nom pour un lecteur
+  d'écran : soit leur étiquette n'était reliée à rien, soit ils n'en avaient jamais eu (un simple
+  texte à côté, ou juste un texte d'exemple à l'intérieur du champ, qui disparaît dès qu'on tape).
+  Chacun porte maintenant son nom, et un contrôle automatique empêche qu'un nouveau champ reparte
+  sans le sien.
+
 ## [unreleased] — 2026-08-29 (Accessibilité : 26 réglages avancés enfin nommés au lecteur d'écran)
 
 - **Corrigé** : dans « Paramètres avancés » de la projection, 26 champs n'étaient reliés à aucune

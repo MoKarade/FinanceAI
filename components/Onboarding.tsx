@@ -200,7 +200,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                         Je suis immigré au Canada <span className="text-ink-400">(ajuste le droit CELI/REER et la PSV)</span>
                                     </label>
                                     {user1.isImmigrant && (
-                                        <input id="user1-arrival" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-2 font-mono focus-ring" value={user1.canadaArrivalYear || ''} onChange={e => setUser1({ ...user1, canadaArrivalYear: parseInt(e.target.value) || 0 })} min={1950} max={new Date().getFullYear()} placeholder="Année de résidence fiscale (ex: 2018)" />
+                                        <input id="user1-arrival" aria-label="Année de résidence fiscale au Canada" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-2 font-mono focus-ring" value={user1.canadaArrivalYear || ''} onChange={e => setUser1({ ...user1, canadaArrivalYear: parseInt(e.target.value) || 0 })} min={1950} max={new Date().getFullYear()} placeholder="Année de résidence fiscale (ex: 2018)" />
                                     )}
                                 </div>
                             </div>

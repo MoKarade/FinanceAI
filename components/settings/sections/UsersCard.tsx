@@ -202,6 +202,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   </label>
                   {user.isImmigrant && (
                     <input
+                      aria-label={`Année de résidence fiscale au Canada — ${user.name || `conjoint ${idx + 1}`}`}
                       type="number"
                       value={user.canadaArrivalYear || ''}
                       onChange={(e) => {

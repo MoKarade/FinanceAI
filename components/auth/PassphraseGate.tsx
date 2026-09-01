@@ -66,6 +66,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
                     n'est pas fournie (chiffrement zéro-knowledge — personne ne peut les lire sans elle).
                 </p>
                 <input
+                    aria-label="Passphrase de déchiffrement"
                     type="password"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}

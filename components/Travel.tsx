@@ -62,8 +62,9 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 <Card className="border-2 border-dashed border-white/20 bg-white/5">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div>
-                            <label className="text-meta text-ink-300 mb-1 block">Destination</label>
+                            <label htmlFor="travel-destination" className="text-meta text-ink-300 mb-1 block">Destination</label>
                             <input
+                                id="travel-destination"
                                 type="text" placeholder="Japon, Italie..."
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
                                 value={newTrip.destination}
@@ -71,8 +72,9 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             />
                         </div>
                         <div>
-                            <label className="text-meta text-ink-300 mb-1 block">Date Départ</label>
+                            <label htmlFor="travel-date" className="text-meta text-ink-300 mb-1 block">Date Départ</label>
                             <input
+                                id="travel-date"
                                 type="date"
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
                                 value={newTrip.date}
@@ -80,8 +82,9 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             />
                         </div>
                         <div>
-                            <label className="text-meta text-ink-300 mb-1 block">Budget Total ($)</label>
+                            <label htmlFor="travel-totalCost" className="text-meta text-ink-300 mb-1 block">Budget Total ($)</label>
                             <input
+                                id="travel-totalCost"
                                 type="number" placeholder="5000"
                                 className="w-full bg-dark border border-white/20 rounded p-2 text-white"
                                 value={newTrip.totalCost || ''}

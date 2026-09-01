@@ -4,6 +4,33 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-30 — Lot 51 : le nom manquant est une propriété du CONTRÔLE
+> `[A11Y-LABELS-RESTE-DU-DEPOT]` — **40 champs sans aucun nom accessible** (WCAG 4.1.2) câblés dans
+> 16 fichiers, et la garde de dépôt livrée avec : `tests/guards/controlAccessibleNameGuard.test.ts`.
+> - ⚠️ **Mon propre ticket, écrit au lot 50, désignait le mauvais objet.** Il comptait les `<label>`
+>   non associés (59 dans 16 fichiers). Recensé sur les CONTRÔLES — le vrai critère WCAG — le
+>   périmètre devient 48 dans 20 fichiers, dont 8 faux, soit **40 réels**. Les deux listes ne se
+>   recouvrent pas : **13 « labels orphelins » de `ProjectionControls` n'étaient pas un défaut**
+>   (leurs sliders portent un `aria-label`), et **le ticket ratait des sites** qu'aucun `<label>` ne
+>   signalait — un `<span>` voisin (`DividendPanel`), un `placeholder` seul (`PassphraseGate`), un
+>   `id` sans `htmlFor` en face (`Onboarding`).
+> - ⚠️ **Un `id` littéral ne convient qu'à un contrôle rendu UNE fois.** Les listes (`policies.map`,
+>   `holdings.map`, les postes du budget) reçoivent un `aria-label` discriminant : un `id` statique
+>   y serait dupliqué, et les labels pointeraient alors le même contrôle sans qu'un scan d'orphelins
+>   n'y voie rien — le piège du lot 50, transposé.
+> - Discrimination prouvée par **4 perturbations séparées**, chacune vérifiée par `assert` avant la
+>   mesure : `aria-label` retiré, `htmlFor` retiré, `id` dupliqué, exemption rendue fantôme.
+> - ⚠️ **Une garde voisine a dénoncé le lot le jour même, et elle avait raison** : le scan de source
+>   de `PatrimoineExtended.privacy` exige que TOUT champ nommé du fichier passe par ses règles
+>   « (dollars) », et sa regex ne connaissait que `<input>` et `<PrivateNumberInput>`. Mon
+>   `<select aria-label="Type d'assurance">` lui échappait. Correctif : **élargir l'ensemble des
+>   balises porteuses**, jamais exclure le champ — l'exclure aurait rendu la garde aveugle à un futur
+>   `<select>` monétaire. Un `<select>` est un champ de saisie, pas une action.
+> - ⚠️ **Environnement** : le conteneur avait été reverté à un clone de **157 commits de retard**, et
+>   `node_modules` ne suivait pas le `package.json` remis à jour (`@vercel/analytics`,
+>   `@mokarade/hub-contract` introuvables au typecheck). `git fetch` AVANT de juger l'état, puis
+>   `npm install`. Le gate local aurait été rouge pour une raison sans aucun rapport avec le lot.
+
 > ## 🟦 Session 2026-08-29 — Lot 50 : 26 réglages avancés sans nom accessible
 > `[A11Y-LABELS-PARAMS-AVANCES]` — dans `components/AdvancedProjectionParams.tsx`, 26 `<label>`
 > n'étaient reliés à aucun champ (ni `htmlFor`/`id`, ni enveloppement). Nom accessible VIDE au sens

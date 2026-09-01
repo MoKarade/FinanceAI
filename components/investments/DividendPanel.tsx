@@ -169,6 +169,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                             <div className="flex items-center gap-2 flex-1 sm:flex-none">
                                 <span className="text-tiny text-ink-300 whitespace-nowrap">Croissance des div. :</span>
                                 <input
+                                    aria-label="Croissance des dividendes (% par an)"
                                     type="number"
                                     min="0"
                                     max="50"

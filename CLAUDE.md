@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 017 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 023 tests** Vitest
 (481 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -838,6 +838,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   peut viser du code dont la sortie est jetée » vaut aussi quand on se contente de ROUTER le bug, et
   un `CHANGELOG` qui décrit un défaut que l'utilisateur ne subit pas est pire qu'un ticket de trop
   (`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
+- ⚠️ **`cat >` court-circuite le garde-fou d'écrasement de `Write`** : j'ai créé « mon » fichier de
+  garde `PropertyConfigurator.privacy.test.tsx` — il existait déjà (49 lignes, 3 cas), et je l'ai
+  écrasé. Vu au `git diff --stat` (« 56 deletions » sur un fichier réputé neuf), rattrapé par
+  `git show HEAD:<fichier>` puis FUSION. Le nom « évident » d'une garde est celui qu'une garde
+  précédente a déjà pris. ⚠️ Et ce test PORTAIT le constat du défaut (« le plafond n'est PAS
+  masqué ») : restauré, il rougissait tout seul sur le correctif. **Un test qui documente une limite
+  connue est un inventaire de dette — l'écraser supprime le signal, pas la dette**
+  (`UN-FICHIER-DE-TEST-QUI-SEMBLE-NEUF-EXISTE-PEUT-ETRE-DEJA`).
 - **Une garde ancre le FAIT qu'elle défend, jamais la FORME qu'avait le code** : `taxBracketVizAnnee`
   ancrait `useMemo(() => new Date().getFullYear())` et a rougi quand le lot suivant a eu besoin du
   MOIS — rien de ce qu'elle défend n'avait bougé. **Deuxième fois pour la même assertion** (son

@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Mode discret : le formulaire de projet immobilier était masqué à moitié)
+
+- **Corrigé** : en mode discret, le prix d'achat et la mise de fonds d'un projet immobilier étaient
+  bien floutés — mais **pas** le revenu locatif, les rénovations annuelles, les taxes foncières, le
+  chauffage, les frais de condo ni le plafond de valeur. On pouvait donc lire le budget de
+  l'immeuble ligne à ligne par-dessus ton épaule. Les six sont masqués maintenant.
+- **Inchangé volontairement** : les taux (hypothèque, renouvellement, appréciation) et la date cible
+  restent lisibles. Ce ne sont pas des montants, et les masquer rendrait le formulaire pénible sans
+  rien protéger de plus.
+
 ## [unreleased] — 2026-09-01 (Le chercheur d'objectif partait de 2026, quelle que soit l'année)
 
 - **Corrigé** : l'outil « combien dois-je épargner pour atteindre X » (onglet Retraite → Outils)

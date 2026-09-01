@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 55 : le mode discret s'arrêtait au milieu d'un formulaire (PR #782)
+
+- [x] **`[A11Y-PRIVACY-PROPERTY-CONFIG]`** (S) — « les 2 sliders prix/mise de fonds SONT masqués mais
+  pas les champs voisins du même formulaire ». ✅ **Livré**, périmètre RE-RECENSÉ (les lignes citées
+  étaient périmées : le lot 51 avait modifié ce fichier).
+  · **5 champs de saisie masqués** — ceux dont le libellé porte un `$` : revenu locatif, rénovations
+    annuelles, taxes foncières, chauffage, frais de condo. Un mode discret qui cache le prix d'achat
+    et laisse le loyer et les taxes en clair ne protège rien.
+  · **4 champs LAISSÉS en clair** (taux en %, date) : masquer un non-montant coûte de la lisibilité
+    sans rien protéger. La garde tient les deux sens.
+  · ⚠️ **6ᵉ site, ABSENT du ticket** : le slider « Plafond Valeur Max » affiche un montant sans
+    `maskedSliderAria`, alors que les deux sliders d'à côté l'avaient depuis #608.
+    `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`.
+  · ⚠️ **Le test existant du fichier PORTAIT le constat du défaut** : il asserait « 2 sliders masqués
+    (le plafond ne l'est pas) ». Le compte passe à 3 — correction d'un état de fait, expliquée dans
+    le test, pas un re-basage de confort.
+
 ## 2026-09-01 — Lot 54 : deux défauts d'âge, un seul remède — la source unique (PR #781)
 
 - [x] **`[ENG-STARTYEAR-DEFAUT-2026]`** (XS, MOYEN) — `runScenario` déstructurait ses paramètres avec

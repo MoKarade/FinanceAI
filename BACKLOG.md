@@ -2096,10 +2096,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `investments/AddStockForm.tsx:418-419` · `FutureProjection.tsx:1642,1649` (bandeau « courbe au jour »,
   omission ponctuelle dans un fichier par ailleurs gardé) · `settings/sections/UsersCard.tsx:230` ·
   `retirement/RetirementSettingsCard.tsx:56-64`.
-- [ ] **`[A11Y-PRIVACY-PROPERTY-CONFIG]`** (S) — `components/realestate/PropertyConfigurator.tsx` : les
-  2 sliders prix/mise de fonds SONT masqués (test dédié), mais pas les champs voisins du même
-  formulaire — revenu locatif (96-103), rénos annuelles (185), taxes/chauffage/condo (216-245).
-  Même patron « omission par champ » que #608.
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.

@@ -8523,6 +8523,39 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 55 — écrire un fichier de test avec `cat >` court-circuite le garde-fou d'écrasement
+
+`UN-FICHIER-DE-TEST-QUI-SEMBLE-NEUF-EXISTE-PEUT-ETRE-DEJA`
+
+`[A11Y-PRIVACY-PROPERTY-CONFIG]` : le mode discret masquait le prix d'achat et la mise de fonds d'un
+projet immobilier, et laissait en clair le revenu locatif, les rénovations, les taxes foncières, le
+chauffage, les frais de condo et le plafond de valeur. Masquer la moitié d'un formulaire ne protège
+rien — on lit le budget de l'immeuble ligne à ligne. Cinq champs de saisie et un slider sont
+désormais masqués ; les taux et la date restent en clair, et la garde tient **les deux sens**.
+
+**Sixième site, absent du ticket** : « Plafond Valeur Max » affiche `fmt(maxValue)` sans
+`maskedSliderAria`, alors que les deux sliders du même formulaire l'avaient depuis #608.
+`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, une fois de plus — et sixième lot d'affilée où le périmètre
+annoncé par le ticket est faux.
+
+⚠️⚠️ **La vraie leçon : j'ai ÉCRASÉ un test existant.** J'ai créé « mon » fichier de garde avec un
+`cat > tests/components/PropertyConfigurator.privacy.test.tsx` — or il existait déjà, 49 lignes, trois
+cas D6-SR-2. **`cat >` via Bash n'a pas le garde-fou de l'outil `Write`**, qui refuse d'écraser un
+fichier qu'on n'a pas lu. La perte n'a été vue qu'au `git diff --stat` (« 56 deletions » sur un
+fichier réputé neuf), et rattrapée avant le commit : original restauré par `git show HEAD:<fichier>`,
+puis FUSIONNÉ avec mes scans. Avant d'écrire un fichier de test, vérifier qu'il n'existe pas — le nom
+« évident » pour une garde est justement celui qu'une garde précédente a déjà pris.
+
+**Et ce test écrasé portait le CONSTAT du défaut.** Son commentaire disait « prix d'achat + mise de
+fonds = 2 sliders monétaires masqués (**le plafond maxValue ne l'est pas**) », et son assertion
+figeait `toBe(2)`. C'était exactement le sixième site. Restauré, il a rougi tout seul sur mon
+correctif — `expected 3 to be 2` — et m'aurait désigné le défaut sans que j'aie à le chercher. **Un
+test qui documente une limite connue est un inventaire de dette** : l'écraser ne supprime pas la
+dette, il supprime le signal. Le compte passe à 3 avec sa raison écrite sur place : c'est une
+correction d'ÉTAT DE FAIT, pas un re-basage de confort — la distinction est celle de
+`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`, et elle se tranche en lisant ce
+que le test AFFIRME.
+
 ### Lot 54 — une garde qui ancre la FORME casse au lot suivant, sans que son fait bouge
 
 `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`

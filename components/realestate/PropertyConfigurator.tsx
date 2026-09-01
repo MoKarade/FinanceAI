@@ -3,6 +3,7 @@ import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { RealEstateGoal, Municipality } from '../../types';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { maskedSliderAria } from '../../utils/privacyAria';
 import { firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
@@ -109,7 +110,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                                     Auto (Moy. QC)
                                 </button>
                             </label>
-                            <input
+                            <PrivateNumberInput
                                 id="prop-rentalIncomeMonthly"
                                 type="number"
                                 step="50"
@@ -224,15 +225,25 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         </div>
                         <div>
                             <label htmlFor="prop-yearlyRenovations" className="block text-meta text-success-400 mb-1 font-bold">Rénos annuelles ($)</label>
-                            <input id="prop-yearlyRenovations" type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-success-500/10 border border-success-500/30 rounded px-2 py-1.5 text-success-400 text-body font-bold" />
+                            <PrivateNumberInput id="prop-yearlyRenovations" type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-success-500/10 border border-success-500/30 rounded px-2 py-1.5 text-success-400 text-body font-bold" />
                         </div>
                     </div>
                     <div>
+                        {/* [A11Y-PRIVACY-PROPERTY-CONFIG] Ce slider affiche un MONTANT et n'était
+                            pas masqué, alors que les deux sliders prix / mise de fonds du MÊME
+                            formulaire le sont depuis #608. Le ticket ne le citait pas — c'est
+                            `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : le risque était connu, traité
+                            deux fois, et le troisième site oublié. `PrivateAmount` masque à l'œil,
+                            `maskedSliderAria` empêche le lecteur d'écran d'annoncer la valeur réelle
+                            (le flou est purement CSS). »Aucun plafond« reste en clair : ce n'est pas
+                            un montant, et le masquer coûterait de la lisibilité pour rien. */}
                         <label className="flex justify-between text-meta text-purple-400 mb-1 font-bold">
                             <span>Plafond Valeur Max</span>
-                            <span>{maxValue > 0 ? fmt(maxValue) : 'Aucun plafond'}</span>
+                            {maxValue > 0
+                                ? <PrivateAmount>{fmt(maxValue)}</PrivateAmount>
+                                : <span>Aucun plafond</span>}
                         </label>
-                        <input type="range" aria-label="Plafond Valeur Max" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                        <input type="range" aria-label="Plafond Valeur Max" min="0" max={price * 4} step={price * 0.1} value={maxValue} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                         <p className="text-tiny text-ink-400 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
                     </div>
                 </div>
@@ -255,7 +266,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                     </div>
                     <div>
                         <label htmlFor="prop-taxesYearly" className="text-meta text-ink-300">Taxes foncières ($/an)</label>
-                        <input
+                        <PrivateNumberInput
                             id="prop-taxesYearly"
                             type="number"
                             step="100"
@@ -267,7 +278,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                     </div>
                     <div>
                         <label htmlFor="prop-heatingMonthly" className="text-meta text-ink-300">Chauffage ($/mois)</label>
-                        <input
+                        <PrivateNumberInput
                             id="prop-heatingMonthly"
                             type="number"
                             step="10"
@@ -279,7 +290,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                     </div>
                     <div>
                         <label htmlFor="prop-condoFees" className="text-meta text-ink-300">Frais de condo ($/mois)</label>
-                        <input
+                        <PrivateNumberInput
                             id="prop-condoFees"
                             type="number"
                             step="50"

@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Mode discret : l'écran « Explications » restait entièrement lisible)
+
+- **Corrigé** : la page qui détaille ta projection année par année et mois par mois — valeur nette,
+  cotisations, croissance des marchés, retraits, transferts — ne tenait **aucun** compte du mode
+  discret. C'était l'écran le plus bavard de l'app, et le seul entièrement en clair. Tous ses
+  montants sont masqués maintenant.
+- **Nouveau comportement à connaître** : en mode discret, les événements d'un mois (« achat de la
+  propriété », « héritage »…) ne s'affichent plus en toutes lettres, parce que le moteur écrit le
+  montant **à l'intérieur** de la phrase. L'app annonce leur nombre à la place — « 2 événements ce
+  mois-ci » — et il suffit de désactiver le mode discret pour les lire. Le fait reste visible, le
+  chiffre non.
+
 ## [unreleased] — 2026-09-01 (Mode discret : le formulaire de projet immobilier était masqué à moitié)
 
 - **Corrigé** : en mode discret, le prix d'achat et la mise de fonds d'un projet immobilier étaient

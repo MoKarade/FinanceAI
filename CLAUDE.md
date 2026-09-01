@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 046 tests** Vitest
-(484 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 052 tests** Vitest
+(485 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -426,6 +426,20 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ **Neuvième périmètre de ticket faux d'affilée — celui-là écrit la veille, par moi** : ce qui
   pourrit n'est pas l'ÂGE d'un ticket mais le fait qu'il ait été écrit en regardant autre chose que
   le code. Le recensement n'a d'exception ni d'auteur ni de fraîcheur.
+- Un **relevé fait par le nom CANONIQUE est aveugle à tous les alias** : le ticket de la garde du
+  mode discret annonçait « 38 sites dans 19 fichiers », chiffre produit par un grep `formatCAD` — or
+  la moitié des écrans passe par un raccourci local (`fmt`, `money`, `formatCurrency`) et n'écrit
+  jamais le nom canonique. Deux écrans entiers (`ChildPlanning`, `RealEstateWorkspace`, 20 sites)
+  étaient invisibles à l'outil qui a écrit le ticket. Une garde qui cherche l'usage d'une fonction
+  DÉCOUVRE ses alias par fichier avant de scanner
+  (`UN-RELEVE-PAR-LE-NOM-CANONIQUE-EST-AVEUGLE-AUX-ALIAS`).
+  ⚠️ Corollaire de garde, plus général que son lot : **une ligne d'ATTRIBUT (`sublabel`, `title`,
+  `aria-label`) doit porter sa marque À ELLE** — `KPIStat` masque son `value` et rend le `sublabel`
+  NU une ligne plus bas, donc une fenêtre de voisinage fait du masquage du voisin un ALIBI. Et un
+  texte qui mêle explication et montant ne se masque pas à la place de l'appelant : le type passe de
+  `string` à `React.ReactNode`. ⚠️ Une dette résiduelle se BORNE par un test (jeton en ligne + compte
+  qui refuse le suivant), jamais par un commentaire ; et **compter les occurrences d'un jeton n'est
+  pas compter les sites** — le commentaire qui l'explique porte le même mot.
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

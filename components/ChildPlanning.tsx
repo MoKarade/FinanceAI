@@ -297,7 +297,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             // le clic Activer ») — mais l'absence de la simulation doit être DITE.
                             : <Badge variant="neutral" size="md">Non compté dans la simulation</Badge>
                         }
-                        <Badge variant="info" size="md">Coût total: {fmt(costTimeline.totalCost)}</Badge>
+                        <Badge variant="info" size="md">Coût total: <PrivateAmount>{fmt(costTimeline.totalCost)}</PrivateAmount></Badge>
                     </div>
                 }
                 actions={
@@ -500,7 +500,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
                                     title="Projection officielle (FutureProjection) au 17e anniversaire — clic pour ouvrir"
                                 >
-                                    <Icon name="link" size={11} className="inline mr-1" />{fmt(projectedReeeAt18)}
+                                    <Icon name="link" size={11} className="inline mr-1" /><PrivateAmount>{fmt(projectedReeeAt18)}</PrivateAmount>
                                 </Badge>
                             )}
                             {respCovers != null ? (
@@ -580,22 +580,22 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{DAYCARE_INFO[daycareType].icon}</div>
                             <div className="text-tiny text-ink-300">Garde mensuelle</div>
-                            <div className="text-body font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</div>
+                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</PrivateAmount>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{SCHOOL_INFO[schoolType].icon}</div>
                             <div className="text-tiny text-ink-300">Frais scolaires/an</div>
-                            <div className="text-body font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</div>
+                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</PrivateAmount>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{ACTIVITIES_INFO[activitiesLevel].icon}</div>
                             <div className="text-tiny text-ink-300">Activités/an</div>
-                            <div className="text-body font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</div>
+                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</PrivateAmount>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
                             <div className="text-2xl mb-1">{UNI_INFO[universityType].icon}</div>
                             <div className="text-tiny text-ink-300">Études total</div>
-                            <div className="text-body font-bold text-white">{fmt(totalStudiesCost)}</div>
+                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(totalStudiesCost)}</PrivateAmount>
                         </div>
                     </div>
                 </div>

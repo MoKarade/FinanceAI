@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 59 : la garde qui MESURE le mode discret au lieu de l'énumérer
+> `[A11Y-PRIVACY-SCAN-GLOBAL]` — `tests/components/amountPrivacyScan.test.ts`, pendant JSX de
+> `chartPrivacyScan`. Livrée **bloquante**, plus **22 montants masqués** dans 8 écrans.
+> - ⚠️⚠️ **Le ticket annonçait « 38 sites dans 19 fichiers » — chiffre produit par un grep `formatCAD`,
+>   donc AVEUGLE aux ALIAS LOCAUX.** La moitié des écrans passe par `const fmt = (n) => formatCAD(n)`
+>   (`money`, `formatCurrency`, `fmtMoney`) et n'écrit jamais le nom canonique : `ChildPlanning` (6
+>   sites) et `RealEstateWorkspace` (14) étaient invisibles au relevé censé les trouver. La garde
+>   DÉCOUVRE les alias par fichier. Famille `UN-ALIAS-…-INTROUVABLE-PAR-UN-SEUL-NOM`.
+> - ⚠️ **Le vrai défaut de conception : `sublabel`.** `KPIStat`/`DualKPIStat` enveloppent leur `value`
+>   dans `PrivateAmount` et rendent le `sublabel` NU une ligne plus bas (« Manque 12 000 $ »). D'où la
+>   règle : **une ligne d'ATTRIBUT porte sa marque À ELLE** — sinon le voisin masqué sert d'ALIBI.
+> - **Dette BORNÉE, pas cachée** : 12 sites `MONTANT-CHAINE-A-DECOUPER` (montant dans une chaîne,
+>   classe des lots 56/58), comptés par un test qui refuse le 13ᵉ →
+>   `[A11Y-PRIVACY-CHAINES-RESTANTES]`. ⚠️ Compter les OCCURRENCES du jeton donnait 12 pour 11 sites —
+>   le commentaire qui EXPLIQUE la dette porte le même mot ; on compte les LIGNES qui portent le jeton
+>   **et** un formateur.
+> - **Question routée à Marc** : `[PRIVACY-CONTEXTE-IA]` — masquer le contexte envoyé à l'assistant ?
+>   Les deux réponses coûtent quelque chose. 4 sites marqués `MONTANT-HORS-ECRAN` en attendant.
+> - **Découverte** : `[FORMAT-EXPLAINS-TOLOCALESTRING]` attendait ce scan « pour poser la source
+>   unique ». Les deux prétextes sont tombés (la source existe déjà, le chiffre du ticket était faux) :
+>   c'est désormais un remplacement de 3 sites, pas un chantier.
+
 > ## 🟦 Session 2026-09-01 — Lot 58 : le mode discret est complet sur l'indicateur de santé
 > `[A11Y-PRIVACY-HEALTH-RAW]` — cible FIRE et coût mensuel des abonnements masqués. `raw` de
 > `HealthMetricRow` passe d'une **chaîne** à une liste de **segments** (`HealthRawPart`) : un montant

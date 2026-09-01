@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Mode discret : 22 montants de plus, et un filet qui les trouve tout seul)
+
+- **Corrigé** : 22 montants restaient lisibles en mode discret, dans huit écrans — le coût des
+  enfants (garde, école, activités, études, REEE), presque toute la fiche d'un projet immobilier
+  (taxe de bienvenue, notaire, rénos, maison totale, cash-flow locatif, équité projetée, « il te
+  manque X »), les dividendes (moyenne mensuelle et montant par versement), la cible d'un poste de
+  budget, l'écart budget du bandeau, la ventilation « Salaire · Divers », le coût d'un événement de
+  vie et l'écart d'ancre de trésorerie.
+- **Nouveau** : un contrôle automatique refuse désormais tout nouveau montant affiché sans son
+  masquage. Jusqu'ici la liste des écrans à corriger était écrite **à la main** par un audit — et
+  elle s'est trompée à chaque lot.
+- **Pourquoi il en restait autant** : l'ancien relevé cherchait le mot `formatCAD`. Or la moitié des
+  écrans se donne un raccourci maison (`fmt`, `money`, `formatCurrency`) et n'écrit jamais ce mot :
+  ces écrans étaient **invisibles** au relevé censé les trouver. Deux écrans entiers — le coût des
+  enfants et l'immobilier — n'apparaissaient nulle part.
+- **Le défaut de conception derrière** : les cartes de chiffres masquent bien leur grand nombre, mais
+  pas la **petite ligne en dessous** — qui contient parfois un montant elle aussi (« Manque 12 000 $ »).
+  Le contrôle exige maintenant que cette ligne se protège elle-même : le masquage du grand nombre ne
+  compte plus comme alibi.
+- **Reste à faire, et c'est compté** : 12 endroits où le montant est écrit **à l'intérieur d'une
+  phrase** fabriquée plus haut (la répartition d'un poste entre conjoints, les libellés de mouvement
+  du détail Futur, le sous-titre de l'immobilier, la liste des dépassements). Il n'y a rien à
+  envelopper : il faut découper la phrase, comme on l'a fait deux fois cette semaine. Le contrôle
+  refuse d'en accepter un treizième.
+- **Une question pour toi** : le mode discret doit-il aussi masquer ce que l'app envoie à
+  l'assistant ? Personne ne lit ça par-dessus ton épaule, mais ça part chez un tiers. Masquer rendrait
+  l'assistant inutile pendant que le mode est actif. Rien n'a été changé en attendant ta réponse.
+
 ## [unreleased] — 2026-09-01 (Mode discret : les deux derniers montants de l'indicateur de santé)
 
 - **Corrigé** : dans la carte « Santé financière », la cible FIRE (« 45,2 % (cible Future :

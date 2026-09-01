@@ -404,11 +404,12 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const equityPart = activeCount === 0
         ? 'Équité présente — (aucun bien actif dans la simulation)'
         : activeCount < countVisible
-            ? `Équité présente ${formatCurrency(presentEquityTotal)} (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})`
-            : `Équité présente ${formatCurrency(presentEquityTotal)}`;
+            // [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01] — sous-titre construit comme une phrase.
+        ? `Équité présente ${formatCurrency(presentEquityTotal)} (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})` // MONTANT-CHAINE-A-DECOUPER
+            : `Équité présente ${formatCurrency(presentEquityTotal)}`; // MONTANT-CHAINE-A-DECOUPER
     const pageSubtitle = isActuel
         ? `${countVisible} ${entityWord}${plural} détenu${plural} · ${equityPart}`
-        : `${PROJET_VIE_IDIOM} · ${countVisible} ${entityWord}${plural} d'achat · Mensualité nette ${formatCurrency(netMonthlyCost)}`;
+        : `${PROJET_VIE_IDIOM} · ${countVisible} ${entityWord}${plural} d'achat · Mensualité nette ${formatCurrency(netMonthlyCost)}`; // MONTANT-CHAINE-A-DECOUPER
     const otherCount = allGoals.length - visibleGoals.length;
     const crossLink = otherCount > 0 && (
         <button
@@ -628,7 +629,8 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                 label="Cash nécessaire"
                                 icon={<Icon name="cash" size={16} />}
                                 value={formatCurrency(totalCashNeeded)}
-                                sublabel={availableCash >= totalCashNeeded ? 'Disponible' : `Manque ${formatCurrency(totalCashNeeded - availableCash)}`}
+                                sublabel={availableCash >= totalCashNeeded ? 'Disponible'
+                                    : <>Manque <PrivateAmount>{formatCurrency(totalCashNeeded - availableCash)}</PrivateAmount></>}
                                 privacy
                                 variant={availableCash >= totalCashNeeded ? 'success' : 'danger'}
                             />
@@ -667,7 +669,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                 onClick={() => navigateWithFocus(TabEnum.FUTURE)}
                                 title={`Équité immo projetée par FutureProjection à l'année ${amortization} — clic pour ouvrir`}
                             >
-                                Projection: {formatCurrency(projectedEquityAtAmortEnd)}
+                                Projection: <PrivateAmount>{formatCurrency(projectedEquityAtAmortEnd)}</PrivateAmount>
                             </Badge>
                         ) : <ProjectionRequired variant="inline" feature="l'équité immo projetée" />
                     }>
@@ -750,7 +752,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                         <div className={`p-2 rounded-lg border flex flex-col justify-center ${netYield > 0 ? 'bg-green-900/20 border-green-500/20' : 'bg-red-900/20 border-danger-500/20'}`}>
                                             <div className="text-tiny uppercase font-bold text-ink-300">Si location (Cash-Flow)</div>
                                             <div className={`text-lg font-black ${netYield > 0 ? 'text-green-400' : 'text-danger-400'}`}>
-                                                {formatCurrency(netAnnualIncome)}<span className="text-tiny font-normal text-ink-400">/an</span>
+                                                <PrivateAmount>{formatCurrency(netAnnualIncome)}</PrivateAmount><span className="text-tiny font-normal text-ink-400">/an</span>
                                             </div>
                                         </div>
                                     </div>
@@ -798,10 +800,10 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
 
                     <Card title="Amortissement et Équité">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Welcome Tax</div><div className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</div></div>
-                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Notaire &amp; Insp.</div><div className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</div></div>
-                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Rénos Initiales</div><div className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</div></div>
-                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Maison Totale</div><div className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</div></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Welcome Tax</div><PrivateAmount as="div" className="text-body font-bold text-white">{formatCurrency(welcomeTax)}</PrivateAmount></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Notaire &amp; Insp.</div><PrivateAmount as="div" className="text-body font-bold text-white">{formatCurrency(notaryFees + inspectionFees)}</PrivateAmount></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Rénos Initiales</div><PrivateAmount as="div" className="text-body font-bold text-white">{formatCurrency(initialRenovations)}</PrivateAmount></div>
+                            <div><div className="text-tiny text-ink-400 uppercase tracking-wider">Maison Totale</div><PrivateAmount as="div" className="text-body font-bold text-white">{formatCurrency(price + initialRenovations)}</PrivateAmount></div>
                         </div>
                     </Card>
 

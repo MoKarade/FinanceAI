@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 59 : la garde qui MESURE le mode discret, au lieu de l'énumérer (PR #786)
+
+- [x] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M) — ✅ **Livrée**, bloquante, plus 22 sites corrigés.
+  · **La garde** : `tests/components/amountPrivacyScan.test.ts` — le pendant, pour le JSX ordinaire,
+    de `chartPrivacyScan.test.ts` (qui ne couvre que les props Recharts).
+  · ⚠️ **Le ticket annonçait « 38 sites dans 19 fichiers » — un chiffre produit par un grep
+    `formatCAD`, donc AVEUGLE aux alias locaux.** Une bonne moitié des écrans passe par
+    `const fmt = (n) => formatCAD(n)` (aussi `money`, `formatCurrency`, `fmtMoney`) : ces sites
+    étaient invisibles au grep qui a écrit le ticket. Le recensement alias-aware a fait passer le
+    balayage de 28 à 47 candidats, dont `ChildPlanning` (6) et `RealEstateWorkspace` (14) — deux
+    écrans entiers que le ticket ne nommait pas.
+  · **22 montants masqués** : `ChildPlanning` ×6, `RealEstateWorkspace` ×7, `DividendPanel` ×2,
+    `BudgetGroupTable` ×1, `Budget` ×2, `LifeEvents` ×1, `SystemView` ×1, plus le sous-libellé de
+    `DualKPIStat` (typé `string` → `React.ReactNode`).
+  · ⚠️ **`sublabel` était le vrai trou de conception** : `DualKPIStat` et `KPIStat` enveloppent leur
+    `value` dans `PrivateAmount` et rendent le `sublabel` NU, une ligne plus bas. D'où la règle de
+    garde : **une ligne d'ATTRIBUT doit porter sa marque À ELLE**, jamais celle d'un voisin — sinon
+    le masquage du `value` sert d'ALIBI à la fuite du `sublabel`.
+  · **Trois échappatoires**, explicites et greppables : `MONTANT-PUBLIC` (bornes de paliers fiscaux,
+    #608 exige de les garder visibles), `MONTANT-MASQUE-AILLEURS` (formateur d'axe enveloppé par son
+    appelant, sous-arbre retiré par un `{!isPrivacyMode && …}`), `MONTANT-HORS-ECRAN` (contexte IA).
+  · **La dette restante est BORNÉE** : 12 sites `MONTANT-CHAINE-A-DECOUPER`, comptés par un test qui
+    refuse le 13ᵉ. Routés dans `[A11Y-PRIVACY-CHAINES-RESTANTES]`.
+  · **Question routée** : `[PRIVACY-CONTEXTE-IA]` — le mode discret doit-il masquer ce qu'on envoie à
+    l'assistant ? Les deux réponses ont un coût ; c'est la décision de Marc.
+
 ## 2026-09-01 — Lot 58 : le mode discret est complet sur l'indicateur de santé (PR #785)
 
 - [x] **`[A11Y-PRIVACY-HEALTH-RAW]`** (S, MOYEN — découpé du lot 57) — ✅ **Livré**. La cible FIRE

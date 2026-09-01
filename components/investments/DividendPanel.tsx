@@ -97,7 +97,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                 </div>
                 <div className="text-right hidden sm:block">
                     <div className="text-tiny uppercase font-bold text-ink-400 tracking-widest mb-1">Moyenne mensuelle</div>
-                    <div className="text-xl font-bold text-ink-200">{formatCAD(totalAnnualDividends / 12)} / mois</div>
+                    <div className="text-xl font-bold text-ink-200"><PrivateAmount>{formatCAD(totalAnnualDividends / 12)}</PrivateAmount> / mois</div>
                 </div>
             </div>
 
@@ -126,7 +126,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-success-400 font-bold text-body">{formatSigned(item.amountPerPayout, { withCurrency: true })}</div>
+                                    <PrivateAmount as="div" className="text-success-400 font-bold text-body">{formatSigned(item.amountPerPayout, { withCurrency: true })}</PrivateAmount>
                                     <div className="text-tiny text-ink-400 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
                                 </div>
                             </div>

@@ -156,18 +156,24 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                             const isExpanded = expandedId === item.id;
                             const percentSpent = displayTarget > 0 ? (spent / displayTarget) * 100 : 0;
 
+                            // MONTANT-CHAINE-A-DECOUPER [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01]
+                            // — `splitDisplay` mêle les PRÉNOMS et les montants dans une seule
+                            // chaîne, rendue telle quelle plus bas. Deux raisons de le découper
+                            // plutôt que de l'envelopper : le montant doit redevenir un nœud, et
+                            // la répartition ENTRE CONJOINTS est une information relationnelle
+                            // (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
                             let splitDisplay = '';
                             if (isSolo) {
-                                splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`;
+                                splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`; // MONTANT-CHAINE-A-DECOUPER
                             } else {
                                 if (item.type === 'Commun') {
                                     const u1Share = displayTarget * splitRatio1;
                                     const u2Share = displayTarget * (1 - splitRatio1);
-                                    splitDisplay = `${userNames[0].substring(0, 3)}:${formatCAD(u1Share)} / ${userNames[1].substring(0, 3)}:${formatCAD(u2Share)}`;
+                                    splitDisplay = `${userNames[0].substring(0, 3)}:${formatCAD(u1Share)} / ${userNames[1].substring(0, 3)}:${formatCAD(u2Share)}`; // MONTANT-CHAINE-A-DECOUPER
                                 } else if (item.type === 'Perso 1') {
-                                    splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`;
+                                    splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`; // MONTANT-CHAINE-A-DECOUPER
                                 } else {
-                                    splitDisplay = `${userNames[1]}: ${formatCAD(displayTarget)}`;
+                                    splitDisplay = `${userNames[1]}: ${formatCAD(displayTarget)}`; // MONTANT-CHAINE-A-DECOUPER
                                 }
                             }
 
@@ -240,7 +246,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         {item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}
                                                     </span>
                                                 </div>
-                                                <span className="text-meta font-bold text-ink-300 tabular-nums">= {formatCAD(displayTarget)}</span>
+                                                <span className="text-meta font-bold text-ink-300 tabular-nums">= <PrivateAmount>{formatCAD(displayTarget)}</PrivateAmount></span>
                                             </div>
                                         </td>
                                         <td className="p-3 text-right">

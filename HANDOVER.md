@@ -18,10 +18,18 @@
 > - ⚠️ **Une clé (fichier, valeur) fusionne les SENS** : `65` recouvre quatre sites dont un simple
 >   défaut de saisie, `60` en recouvre trois dont un mois de scénario. La marque `[≠N]` compte les
 >   OCCURRENCES, pas les sens — la garde l'a corrigé sur-le-champ (j'avais écrit `[≠2]` pour 3).
-> - **Deux découvertes ROUTÉES, aucune corrigée** (convention §6) : `[ENG-LIBELLE-RRQ-70-VS-72]` — le
->   libellé annonce « RRQ 70 ans », le moteur applique 72 (`retirementIncome.ts:272,281`) ; et
+> - **Deux découvertes ROUTÉES, aucune corrigée** (convention §6) :
 >   `[ENG-STARTYEAR-DEFAUT-2026]` — `startYear = 2026` en dur, avec **un seul** site consommateur,
->   mesuré en rendant le champ requis (`GoalSeekerCard` via `Retirement.tsx:288`).
+>   mesuré en rendant le champ requis (`GoalSeekerCard` via `Retirement.tsx:288`) ; et
+>   `[ENG-LIBELLE-RRQ-70-VS-72]` — un repli `?? 70` et un commentaire qui contredisent le moteur
+>   (RRQ 72 sous report).
+> - ⚠️⚠️ **ET J'AI PUBLIÉ UNE AFFIRMATION FAUSSE AVANT DE LA MESURER**, dans cinq documents : « l'écran
+>   annonce 70 ». Il ne l'annonce pas. `delayPensions` vaut `false` dans les **11** définitions de
+>   `scenarios.ts`, donc la branche exige `rrqStart > 65` **défini** et le `?? 70` n'est jamais
+>   évalué — c'est un repli MORT. Le commentaire du code le disait, trois lignes plus haut
+>   (« toujours false dans STRATEGY_DEFS »), et je ne l'ai pas vérifié. Corrigé dans le même lot,
+>   avant merge. **Ce qui reste vrai** : la valeur du repli est fausse (bombe si le chemin redevient
+>   atteignable) et le commentaire de `projection.ts:362` trompe un développeur aujourd'hui.
 
 > ## 🟦 Session 2026-09-01 — Lot 52 : quinze décommenteurs, un seul survivant
 > `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les **15 décommenteurs ad hoc** (13 fichiers) consomment

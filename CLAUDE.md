@@ -830,6 +830,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   choisit selon le contexte (conteneur vs contrôle), et la garde se bâtit sur une LISTE d'exemptions
   nominatives — un automate qui remonte les ancêtres JSX finit désactivé par ses faux positifs
   (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
+- ⚠️ **Écrire un ticket, c'est PUBLIER une affirmation** : j'ai annoncé dans cinq documents — dont le
+  `CHANGELOG` qui parle à Marc — que « l'écran affiche RRQ 70 ans alors que le moteur applique 72 ».
+  L'écran ne l'affiche pas : `delayPensions` est `false` dans les 11 définitions de `scenarios.ts`,
+  donc le repli `?? 70` n'est jamais évalué. Le commentaire du code le disait TROIS LIGNES au-dessus
+  du site. L'atteignabilité d'un chemin se MESURE avant d'être annoncée — la règle « un bug confirmé
+  peut viser du code dont la sortie est jetée » vaut aussi quand on se contente de ROUTER le bug, et
+  un `CHANGELOG` qui décrit un défaut que l'utilisateur ne subit pas est pire qu'un ticket de trop
+  (`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
 - **Une exclusion de périmètre se justifie par ce que le fichier CONTIENT, jamais par son RÔLE** :
   `services/projection.ts` était exclu du ratchet fiscal parce que « c'est l'orchestrateur, le travail
   fiscal vit dans les sous-modules ». Vrai des BARÈMES, faux des **bornes d'âge**, qui se décident

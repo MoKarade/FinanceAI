@@ -21,7 +21,7 @@
     dans la boucle. Quatre vraies règles légales y vivaient sans clé : l'âge **18** de la résidence
     PSV, le **65** de fin d'accumulation, le **60** du taux au survivant, le **70** du report RRQ.
   · **Deux découvertes routées, aucune corrigée** (convention §6, scope non demandé) :
-    `[ENG-LIBELLE-RRQ-70-VS-72]` (le libellé annonce 70, le moteur applique 72) et
+    `[ENG-LIBELLE-RRQ-70-VS-72]` (un repli `?? 70` MORT et un commentaire faux, contre RRQ 72 au moteur) et
     `[ENG-STARTYEAR-DEFAUT-2026]` (défaut d'année consommé par un site, mesuré au typecheck).
   · **Discrimination prouvée** : un barème neuf non inventorié dans `projection.ts` fait désormais
     rougir le ratchet ; avant l'inclusion, le fichier n'était pas scanné du tout.

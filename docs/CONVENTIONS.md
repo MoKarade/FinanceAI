@@ -9605,3 +9605,23 @@ Deux corollaires de conduite :
   pour la troisième fois de la journée — et en situation d'urgence, où la tentation de publier le
   premier chiffre obtenu est maximale. **Un recenseur se vérifie par témoins nommés AVANT de servir
   de diagnostic, surtout quand quelqu'un attend une réponse.**
+
+**Corollaire du même incident — le diagnostic était cassé aussi**
+(`DEUX-BORNES-SUR-LA-MEME-GRANDEUR-C-EST-LA-PLUS-BETE-QUI-GAGNE`)
+
+`SystemView` affichait l'erreur de réhydratation tronquée à **80 caractères**. Le seul préfixe du
+message (« Données persistées illisibles — N champ(s) portent du texte là où un montant est
+attendu : ») en fait **95** : la coupe tombait exactement avant les chemins, c'est-à-dire avant la
+seule partie exploitable — dans l'écran qu'on demande à l'utilisateur d'ouvrir pour se diagnostiquer.
+
+Le message était pourtant **déjà borné** : `PLAFOND_CITATIONS` limite les chemins cités à cinq et
+compte le reste. La troncature à 80 était donc une SECONDE borne sur la même grandeur, posée sans
+connaître la première — et c'est la plus bête qui gagne. Quand une valeur est déjà bornée à sa
+source, une borne d'affichage n'ajoute rien et peut tout retirer : elle se dérive de la première ou
+elle n'existe pas.
+
+⚠️ Et le geste qui l'a trouvée mérite d'être noté : je venais d'écrire à Marc « le journal nomme le
+champ ». Vérifier une instruction qu'on vient de donner AVANT qu'elle ne soit suivie, c'est la même
+règle que `UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`, appliquée à une consigne
+plutôt qu'à un ticket. Elle était fausse, et elle aurait coûté un aller-retour de plus à quelqu'un
+qui croyait avoir tout perdu.

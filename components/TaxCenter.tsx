@@ -433,7 +433,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
             {config.users.length > 1 && (
                 <div className="flex bg-black/40 p-1 rounded-lg w-fit mx-auto border border-white/5">
                     <button
+                        type="button"
                         onClick={() => setViewUser('all')}
+                        aria-pressed={viewUser === 'all'}
                         className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
                     >
                         Global (Couple)
@@ -441,7 +443,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                     {config.users.map((u) => (
                         <button
                             key={u.name}
+                            type="button"
                             onClick={() => setViewUser(u.name)}
+                            aria-pressed={viewUser === u.name}
                             className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
                         >
                             {u.name}

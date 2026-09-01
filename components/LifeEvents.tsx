@@ -246,8 +246,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             {isAdding && (
                 <Card className="border-2 border-dashed border-white/20 bg-white/5 animate-slide-up">
                     <div className="mb-4 flex gap-4 border-b border-white/10 pb-2">
-                        <button onClick={() => setEventTypeCategory('TRAVEL')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'TRAVEL' ? 'text-white border-b-2 border-info-500' : 'text-ink-400'}`}>Voyage</button>
-                        <button onClick={() => setEventTypeCategory('EVENT')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'EVENT' ? 'text-white border-b-2 border-purple-500' : 'text-ink-400'}`}>Aléas & Projets</button>
+                        <button type="button" onClick={() => setEventTypeCategory('TRAVEL')} aria-pressed={eventTypeCategory === 'TRAVEL'} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'TRAVEL' ? 'text-white border-b-2 border-info-500' : 'text-ink-400'}`}>Voyage</button>
+                        <button type="button" onClick={() => setEventTypeCategory('EVENT')} aria-pressed={eventTypeCategory === 'EVENT'} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'EVENT' ? 'text-white border-b-2 border-purple-500' : 'text-ink-400'}`}>Aléas & Projets</button>
                     </div>
                     {eventTypeCategory === 'TRAVEL' ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -333,9 +333,9 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-7 space-y-4">
                     <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
-                        <button onClick={() => setActiveTab('ALL')} className={`px-4 py-1.5 rounded-full text-meta font-bold transition-all ${activeTab === 'ALL' ? 'bg-white text-black' : 'bg-white/5 text-ink-300 hover:bg-white/10'}`}>Tout</button>
-                        <button onClick={() => setActiveTab('TRAVEL')} className={`px-4 py-1.5 rounded-full text-meta font-bold transition-all ${activeTab === 'TRAVEL' ? 'bg-info-500 text-white' : 'bg-white/5 text-ink-300 hover:bg-white/10'}`}>Voyages</button>
-                        <button onClick={() => setActiveTab('RISK')} className={`px-4 py-1.5 rounded-full text-meta font-bold transition-all ${activeTab === 'RISK' ? 'bg-purple-500 text-white' : 'bg-white/5 text-ink-300 hover:bg-white/10'}`}>Aléas</button>
+                        <button type="button" onClick={() => setActiveTab('ALL')} aria-pressed={activeTab === 'ALL'} className={`px-4 py-1.5 rounded-full text-meta font-bold transition-all ${activeTab === 'ALL' ? 'bg-white text-black' : 'bg-white/5 text-ink-300 hover:bg-white/10'}`}>Tout</button>
+                        <button type="button" onClick={() => setActiveTab('TRAVEL')} aria-pressed={activeTab === 'TRAVEL'} className={`px-4 py-1.5 rounded-full text-meta font-bold transition-all ${activeTab === 'TRAVEL' ? 'bg-info-500 text-white' : 'bg-white/5 text-ink-300 hover:bg-white/10'}`}>Voyages</button>
+                        <button type="button" onClick={() => setActiveTab('RISK')} aria-pressed={activeTab === 'RISK'} className={`px-4 py-1.5 rounded-full text-meta font-bold transition-all ${activeTab === 'RISK' ? 'bg-purple-500 text-white' : 'bg-white/5 text-ink-300 hover:bg-white/10'}`}>Aléas</button>
                     </div>
                     <div className="relative border-l-2 border-white/10 ml-4 space-y-6">
                         {filteredItems.map((item) => {

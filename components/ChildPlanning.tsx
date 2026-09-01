@@ -369,7 +369,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="text-meta font-bold text-pink-400 uppercase mb-2">Mode de garde (0–5 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(DAYCARE_INFO) as [DaycareType, typeof DAYCARE_INFO[DaycareType]][]).map(([key, info]) => (
-                                        <button key={key} onClick={() => setDaycareType(key)}
+                                        <button key={key} type="button" onClick={() => setDaycareType(key)} aria-pressed={daycareType === key}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${daycareType === key ? 'border-primary bg-primary/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
@@ -385,7 +385,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="text-meta font-bold text-info-400 uppercase mb-2">Type d'école (6–17 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(SCHOOL_INFO) as [SchoolType, typeof SCHOOL_INFO[SchoolType]][]).map(([key, info]) => (
-                                        <button key={key} onClick={() => setSchoolType(key)}
+                                        <button key={key} type="button" onClick={() => setSchoolType(key)} aria-pressed={schoolType === key}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${schoolType === key ? 'border-info-500 bg-info-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1 text-meta font-bold">{info.label}</div>
@@ -398,7 +398,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="text-meta font-bold text-yellow-400 uppercase mb-2">Sports & activités</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(ACTIVITIES_INFO) as [ActivitiesLevel, typeof ACTIVITIES_INFO[ActivitiesLevel]][]).map(([key, info]) => (
-                                        <button key={key} onClick={() => setActivitiesLevel(key)}
+                                        <button key={key} type="button" onClick={() => setActivitiesLevel(key)} aria-pressed={activitiesLevel === key}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${activitiesLevel === key ? 'border-yellow-500 bg-yellow-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1 text-meta font-bold">{info.label}</div>
@@ -411,7 +411,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="text-meta font-bold text-purple-400 uppercase mb-2">Études post-secondaires (18–25 ans)</div>
                                 <div className="space-y-1.5">
                                     {(Object.entries(UNI_INFO) as [UniversityType, typeof UNI_INFO[UniversityType]][]).map(([key, info]) => (
-                                        <button key={key} onClick={() => setUniversityType(key)}
+                                        <button key={key} type="button" onClick={() => setUniversityType(key)} aria-pressed={universityType === key}
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${universityType === key ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1">
@@ -429,7 +429,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <div className="text-meta font-bold text-orange-400 uppercase mb-2">Voiture à 18 ans (cadeau)</div>
                                 <div className="flex gap-2">
                                     {(Object.entries(CAR_INFO) as [CarGift, typeof CAR_INFO[CarGift]][]).map(([key, info]) => (
-                                        <button key={key} onClick={() => setCarGift(key)}
+                                        <button key={key} type="button" onClick={() => setCarGift(key)} aria-pressed={carGift === key}
                                             className={`flex-1 flex flex-col items-center p-2.5 rounded-lg border text-center transition-all ${carGift === key ? 'border-orange-500 bg-orange-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl mb-1">{info.icon}</span>
                                             <div className="text-tiny font-bold leading-tight">{info.label.split(' (')[0]}</div>

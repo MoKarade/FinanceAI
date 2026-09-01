@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 64 : l'état sélectionné ne passait que par la COULEUR
+> `[A11Y-TABSTATE-TAXCENTER]` — `aria-pressed` (+ `type="button"`) sur **12** sites : `ChildPlanning`
+> ×5 (groupes à sélection unique), `LifeEvents` ×5, `TaxCenter` ×2. Garde de source neuve
+> (`tests/guards/etatSelectionAnnonceGuard.test.ts`) + test de RENDU dans `ChildPlanning.smoke`.
+> - ⚠️ Ticket : **1** site annoncé, **12** réels (14ᵉ périmètre faux d'affilée). Et **2 candidats
+>   écartés** parce que l'état est déjà dans le NOM ACCESSIBLE — `SavedProfilesCard` (`aria-label`
+>   qui bascule) et `PropertyConfigurator` (le libellé EST le mode). Exemptions déclarées + test qui
+>   refuse une exemption périmée.
+> - ⚠️⚠️ **Mon test de rendu était vacueux au premier jet** : il comptait les boutons pressés SUR
+>   TOUT L'ÉCRAN, donc un `aria-pressed={true}` constant sur le groupe « garde » le laissait VERT
+>   (les trois options actives ensemble, total invariant au clic parce que le clic tombait dans un
+>   AUTRE groupe). **La propriété est PAR GROUPE, elle se mesure par groupe.** Refondé : une seule
+>   active par groupe, avant ET après le clic, plus le groupe voisin qui ne bouge pas. Les trois
+>   perturbations (`true`, `false`, attribut retiré) rougissent.
+> - ⚠️ Un 6ᵉ `aria-pressed` préexistait (`ChildPlanning:330`, onglets par enfant) : un compte figé
+>   dans le test aurait menti — c'est son INVARIANCE au clic qui porte la propriété.
+
 > ## 🟦 Session 2026-09-01 — Lot 63 : la garde des cibles tactiles mesurait un CARRÉ
 > `[A11Y-TOUCH-DELETE-ICONS]` — 4 boutons sous le minimum WCAG 2.5.8 (24 px), corrigés `py-1` →
 > `py-1.5` : `Budget.tsx` ×2 (31×23), `Investments.tsx` (26×22), `AutoBackupPanel.tsx` (30×22).

@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Les boutons de choix disent enfin lequel est sélectionné)
+
+- **Corrigé** : dans douze boutons de sélection — les cinq groupes de « Choix de vie » de la
+  planification enfant, les onglets et filtres des Projets de vie, et la bascule Global/Conjoint de
+  la Fiscalité — l'option **active** ne se distinguait que par sa **couleur**. Pour quelqu'un qui
+  utilise un lecteur d'écran, les options s'annonçaient toutes pareil : impossible de savoir laquelle
+  était choisie. Chaque bouton déclare maintenant son état.
+- **Le ticket n'en signalait qu'un seul** (la Fiscalité). Le recensement en a trouvé douze, et a
+  écarté deux faux positifs où l'information passait déjà correctement : le bouton de suppression
+  d'un profil (son libellé change en « Confirmer la suppression ») et la bascule AUTO/MANUEL des
+  frais immobiliers (son libellé EST le mode courant).
+- **Nouveau** : un contrôle automatique refuse désormais tout bouton dont la sélection ne serait
+  peinte que par la couleur, avec ses deux exemptions écrites et justifiées.
+
 ## [unreleased] — 2026-09-01 (Quatre boutons trop petits pour le doigt)
 
 - **Corrigé** : quatre boutons à icône étaient **trop courts en hauteur** pour être visés au doigt

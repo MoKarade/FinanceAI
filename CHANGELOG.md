@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Mode discret : les douze dernières phrases découpées)
+
+- **Corrigé** : les 12 derniers endroits où un montant était écrit **à l'intérieur d'une phrase**
+  fabriquée plus haut dans le code — la répartition d'un poste entre toi et ta conjointe, les
+  explications de mouvement du détail Futur, le sous-titre de l'immobilier, la liste des
+  dépassements du budget. Il n'y avait rien à masquer : la phrase est maintenant découpée, et seul
+  le chiffre disparaît.
+- **Ce que tu vas voir changer** : en mode discret, tu gardes l'information et tu perds le montant.
+  « Mar: ••• / Ann: ••• » te dit toujours que la dépense est partagée. « Restaurants (••• dépassé) »
+  te dit toujours QUEL poste dépasse. Avant, ces lignes étaient soit lisibles en entier, soit
+  remplacées par un « ••• » qui ne disait plus rien.
+- **Un cas où ce n'était pas une fuite mais une perte** : dans le détail d'un compte (onglet Futur),
+  les explications de mouvement (« Rendement placements », « Dépôt », « Retrait ») disparaissaient
+  COMPLÈTEMENT en mode discret — icône comprise. Tu ne savais plus qu'il s'était passé quelque
+  chose. Maintenant la raison reste, seul le chiffre est caché.
+- **En cours de route** : découper la liste des dépassements a révélé qu'elle avait **trois**
+  destinataires aux besoins opposés — l'écran, le contexte du chat et le diagnostic IA. Une seule
+  phrase ne pouvait pas convenir aux trois ; chacun compose maintenant la sienne.
+
 ## [unreleased] — 2026-09-01 (Mode discret : 22 montants de plus, et un filet qui les trouve tout seul)
 
 - **Corrigé** : 22 montants restaient lisibles en mode discret, dans huit écrans — le coût des

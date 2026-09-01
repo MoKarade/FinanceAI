@@ -401,15 +401,26 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     // Aucun bien actif → « — » honnête plutôt qu'un « 0 $ » qui se lit comme un patrimoine nul.
     // Mélange actif/inactif → on annonce le dénominateur réel de la somme.
     const activeCount = activeVisibleGoals.length;
-    const equityPart = activeCount === 0
+    // [A11Y-PRIVACY-CHAINES-RESTANTES] Le sous-titre était UNE CHAÎNE portant l'équité et la
+    // mensualité à l'intérieur : rien à masquer. C'est du JSX maintenant — le contexte (« 2 biens
+    // détenus », « 1 actif sur 3 ») reste lisible, seuls les deux montants sont masquables.
+    const equityPart: React.ReactNode = activeCount === 0
         ? 'Équité présente — (aucun bien actif dans la simulation)'
-        : activeCount < countVisible
-            // [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01] — sous-titre construit comme une phrase.
-        ? `Équité présente ${formatCurrency(presentEquityTotal)} (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})` // MONTANT-CHAINE-A-DECOUPER
-            : `Équité présente ${formatCurrency(presentEquityTotal)}`; // MONTANT-CHAINE-A-DECOUPER
-    const pageSubtitle = isActuel
-        ? `${countVisible} ${entityWord}${plural} détenu${plural} · ${equityPart}`
-        : `${PROJET_VIE_IDIOM} · ${countVisible} ${entityWord}${plural} d'achat · Mensualité nette ${formatCurrency(netMonthlyCost)}`; // MONTANT-CHAINE-A-DECOUPER
+        : (
+            <>
+                Équité présente <PrivateAmount>{formatCurrency(presentEquityTotal)}</PrivateAmount>
+                {activeCount < countVisible
+                    && ` (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})`}
+            </>
+        );
+    const pageSubtitle: React.ReactNode = isActuel
+        ? <>{countVisible} {entityWord}{plural} détenu{plural} · {equityPart}</>
+        : (
+            <>
+                {PROJET_VIE_IDIOM} · {countVisible} {entityWord}{plural} d&apos;achat · Mensualité nette{' '}
+                <PrivateAmount>{formatCurrency(netMonthlyCost)}</PrivateAmount>
+            </>
+        );
     const otherCount = allGoals.length - visibleGoals.length;
     const crossLink = otherCount > 0 && (
         <button

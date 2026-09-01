@@ -156,26 +156,23 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                             const isExpanded = expandedId === item.id;
                             const percentSpent = displayTarget > 0 ? (spent / displayTarget) * 100 : 0;
 
-                            // MONTANT-CHAINE-A-DECOUPER [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01]
-                            // — `splitDisplay` mêle les PRÉNOMS et les montants dans une seule
-                            // chaîne, rendue telle quelle plus bas. Deux raisons de le découper
-                            // plutôt que de l'envelopper : le montant doit redevenir un nœud, et
-                            // la répartition ENTRE CONJOINTS est une information relationnelle
+                            // [A11Y-PRIVACY-CHAINES-RESTANTES] La répartition était UNE CHAÎNE qui
+                            // mêlait les prénoms et les montants — donc plus aucun nœud à masquer.
+                            // Elle est maintenant une LISTE de parts : le nom reste lisible, le
+                            // montant redevient un nœud. Deux raisons de ne pas simplement envelopper
+                            // la phrase entière : « ••• » seul ne dirait plus QUI paie quoi, et la
+                            // répartition ENTRE CONJOINTS est une information relationnelle
                             // (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
-                            let splitDisplay = '';
-                            if (isSolo) {
-                                splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`; // MONTANT-CHAINE-A-DECOUPER
-                            } else {
-                                if (item.type === 'Commun') {
-                                    const u1Share = displayTarget * splitRatio1;
-                                    const u2Share = displayTarget * (1 - splitRatio1);
-                                    splitDisplay = `${userNames[0].substring(0, 3)}:${formatCAD(u1Share)} / ${userNames[1].substring(0, 3)}:${formatCAD(u2Share)}`; // MONTANT-CHAINE-A-DECOUPER
-                                } else if (item.type === 'Perso 1') {
-                                    splitDisplay = `${userNames[0]}: ${formatCAD(displayTarget)}`; // MONTANT-CHAINE-A-DECOUPER
-                                } else {
-                                    splitDisplay = `${userNames[1]}: ${formatCAD(displayTarget)}`; // MONTANT-CHAINE-A-DECOUPER
-                                }
-                            }
+                            const parts: Array<{ nom: string; montant: number }> = isSolo
+                                ? [{ nom: userNames[0], montant: displayTarget }]
+                                : item.type === 'Commun'
+                                    ? [
+                                        { nom: userNames[0].substring(0, 3), montant: displayTarget * splitRatio1 },
+                                        { nom: userNames[1].substring(0, 3), montant: displayTarget * (1 - splitRatio1) },
+                                    ]
+                                    : item.type === 'Perso 1'
+                                        ? [{ nom: userNames[0], montant: displayTarget }]
+                                        : [{ nom: userNames[1], montant: displayTarget }];
 
                             return (
                                 <React.Fragment key={item.id}>
@@ -253,7 +250,14 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             <div className="text-tiny text-ink-400 font-mono">{percentageOfBudget.toFixed(1)}%</div>
                                         </td>
                                         <td className="p-3 text-right hidden sm:table-cell">
-                                            <div className="text-tiny text-ink-300 font-mono whitespace-nowrap">{splitDisplay}</div>
+                                            <div className="text-tiny text-ink-300 font-mono whitespace-nowrap">
+                                                {parts.map((p, i) => (
+                                                    <React.Fragment key={p.nom}>
+                                                        {i > 0 && ' / '}
+                                                        {p.nom}: <PrivateAmount>{formatCAD(p.montant)}</PrivateAmount>
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
                                         </td>
                                         <td className="p-3 text-right hidden sm:table-cell">
                                             {displayAvg === null ? (

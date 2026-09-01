@@ -18,6 +18,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import React from 'react';
 import { SubTabs, TabPanel } from '../../components/ui/SubTabs';
+import { stripComments } from '../../utils/stripComments';
 
 describe('[A11Y-SUBTABS-TABPANEL] le motif est COMPLET', () => {
     const TABS = [
@@ -81,8 +82,7 @@ describe('[A11Y-SUBTABS-TABPANEL] garde de SOURCE : personne ne recopie le balis
      *  `Profile.tsx`, qui documente pourquoi il ne recopie plus le balisage) n'est pas un offender.
      *  Ma première version l'accusait — une garde qui crie sur sa propre documentation finit
      *  désactivée. */
-    const sansCommentaires = (src: string): string =>
-        src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const sansCommentaires = (src: string): string => stripComments(src);
 
     /** Exception CONNUE, LISTÉE et JUSTIFIÉE — jamais une exclusion silencieuse.
      *  `FutureProjection` est un vrai motif à panneaux, mais son bandeau a un habillage DIFFÉRENT

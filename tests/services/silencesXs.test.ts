@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { normalizeHealthWeights, DEFAULT_HEALTH_WEIGHTS } from '../../utils/healthWeights';
 import * as errorLogger from '../../services/errorLogger';
+import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
 /**
  * Vague 1e (fin) — cinq XS « silence qui cache quelque chose », 2026-08-19.
@@ -28,16 +29,17 @@ afterEach(() => vi.restoreAllMocks());
  * du code. Le correctif est en AMONT — décommenter, puis garder le motif simple
  * (`SCAN-QUI-MATCHE-LA-PROSE`).
  *
- * ⚠️ Le `[^:]` évite de décapiter `https://…`. Ce décommentage est approximatif par construction
- * (une chaîne contenant `//` sera coupée) — acceptable parce qu'il ne peut que SUPPRIMER du texte,
- * donc AFFAIBLIR la garde, jamais fabriquer un faux positif. C'est pourquoi chaque scan qui l'emploie
- * pose son anti-vacuité.
+ * ⚠️ `[GUARD-STRIPCOMMENTS-DUPLIQUE]` (lot 52) : la copie locale — qui décapitait `https://…` d'un
+ * caractère et coupait toute chaîne contenant `//` — cède la place à la SOURCE UNIQUE, seule à
+ * connaître les littéraux de chaîne, les gabarits et les littéraux d'expression régulière.
  *
- * ⚠️ Septième copie de ce helper dans le dépôt, et elles ne se comportent pas toutes pareil.
- * Source unique tracée : `[GUARD-STRIPCOMMENTS-DUPLIQUE]`.
+ * ⚠️ ET SA SÉMANTIQUE DIFFÈRE : la source unique BLANCHIT (chaque caractère de commentaire devient
+ * une espace) au lieu de supprimer, pour préserver lignes et colonnes. Toute anti-vacuité fondée sur
+ * la LONGUEUR devient donc TAUTOLOGIQUE — le résultat a la même longueur que la source, par
+ * construction. Les deux de ce fichier comptent désormais les caractères NON BLANCS. Mesuré : sur un
+ * décommenteur qui mangerait tout le fichier, la version « longueur » reste VERTE.
  */
-const sansCommentaires = (src: string): string =>
-    src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+const sansCommentaires = (src: string): string => stripComments(src);
 
 
 describe('[SILENT-HEALTHWEIGHTS-FIELD] un poids corrompu laisse une trace, un poids absent non', () => {
@@ -92,8 +94,12 @@ describe('[SILENT-*] les erreurs avalées laissent désormais une trace (scan de
      *  commentaire citant le motif fautif rendrait rouge à tort. Les assertions de PRÉSENCE qui
      *  visent un commentaire (une leçon citée sur place) lisent `lire`, pas `lireCode`. */
     const lireCode = (rel: string): string => {
-        const code = sansCommentaires(lire(rel));
-        expect(code.length, `${rel} : le décommentage a tout supprimé`).toBeGreaterThan(300);
+        const brut = lire(rel);
+        const code = sansCommentaires(brut);
+        // ⚠️ PAS `code.length` : le décommenteur blanchit, donc la longueur est INCHANGÉE et
+        // l'assertion serait vraie quoi qu'il arrive.
+        expect(partDeCodeRestante(brut, code), `${rel} : le décommentage a tout supprimé`)
+            .toBeGreaterThan(0.05);
         return code;
     };
 
@@ -238,8 +244,11 @@ describe('[DEAD-PARSETX-SILENT-DROP] le parseur orphelin est parti, ses voisins 
         for (const rel of fichiers) {
             const brut = readFileSync(join(racine, rel), 'utf-8');
             const code = sansCommentaires(brut);
-            brutTotal += brut.length;
-            codeTotal += code.length;
+            // ⚠️ Caractères NON BLANCS des deux côtés : comparer des LONGUEURS donnerait un ratio de
+            // 1,0000 en toutes circonstances — une anti-vacuité qui ne peut plus rougir est pire que
+            // pas d'anti-vacuité du tout.
+            brutTotal += brut.replace(/\s/g, '').length;
+            codeTotal += code.replace(/\s/g, '').length;
             if (code.includes('markDuplicates')) avecMarkDuplicates++;
             expect(code, `${rel} référence parseTransactions dans du CODE`)
                 .not.toMatch(/\bparseTransactions\b/);

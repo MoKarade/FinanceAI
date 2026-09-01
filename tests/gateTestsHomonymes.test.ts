@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { testsHomonymes } from '../scripts/hooks/lib/testsHomonymes.mjs';
+import { stripComments } from '../utils/stripComments';
 
 const RACINE = resolve(__dirname, '..');
 
@@ -49,8 +50,7 @@ describe('[GATE-RELATED-RELIABILITY] le test homonyme est retrouvé', () => {
     it('le hook UTILISE bien ce filet (le câblage, pas seulement la fonction)', () => {
         // Une fonction juste qu'on n'appelle pas ne protège de rien : c'est exactement ce que le
         // ticket décrivait côté `vitest related`.
-        const src = readFileSync(resolve(RACINE, 'scripts/hooks/commit-gate.mjs'), 'utf8')
-            .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        const src = stripComments(readFileSync(resolve(RACINE, 'scripts/hooks/commit-gate.mjs'), 'utf8'));
         expect(src).toMatch(/import \{ testsHomonymes \} from '\.\/lib\/testsHomonymes\.mjs'/);
         expect(src).toMatch(/testsHomonymes\(sourceFiles\)/);
 

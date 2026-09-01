@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
+import { stripComments } from '../../utils/stripComments';
 
 const SPEC_DIR = resolve(process.cwd(), 'mcp/tools');
 
@@ -22,10 +23,6 @@ const NON_MONEY_FIELDS = new Set<string>([
     'startYear', 'birthYear', 'arrivalYear', 'currentYear', 'limit', 'termYears', 'monthsFromNow',
     'amortYears', 'age', 'targetAge', 'retirementAge', 'horizonYears', 'yearsUntil',
 ]);
-
-function stripComments(src: string): string {
-    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-}
 
 describe('garde-scan .finite() sur les champs $ des specs de tools', () => {
     const files = readdirSync(SPEC_DIR).filter((f) => f.endsWith('.spec.ts'));

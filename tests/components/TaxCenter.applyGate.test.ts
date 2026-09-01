@@ -18,10 +18,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stripComments } from '../../utils/stripComments';
 
 const CHEMIN = resolve(__dirname, '../../components/TaxCenter.tsx');
 const BRUT = readFileSync(CHEMIN, 'utf8');
-const CODE = BRUT.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CODE = stripComments(BRUT);
 
 describe('[AI-TAXCENTER-APPLY-NOGATE] pas d’écriture directe du profil', () => {
     it('le décommenteur n’a pas tout mangé (sinon « rien ne matche » se prouve tout seul)', () => {

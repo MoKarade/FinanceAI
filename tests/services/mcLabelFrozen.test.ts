@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { mcSublabel, runMonteCarlo } from '../../services/projection/monteCarlo';
 import type { SimulationParams } from '../../services/projection';
+import { stripComments } from '../../utils/stripComments';
 
 describe('[MC-LABEL-FROZEN] le libellé lit le résultat, pas la configuration', () => {
     it('MC désactivé : invitation, sans chiffre', () => {
@@ -37,8 +38,7 @@ describe('[MC-LABEL-FROZEN] le libellé lit le résultat, pas la configuration',
         // Garde de source : le défaut n'est pas dans le helper mais dans ce qu'on lui passe. Un
         // retour à `effectiveMcIterations(projection.…)` dans le JSX reproduirait exactement le
         // mensonge, sans qu'aucun test de rendu ne s'en aperçoive.
-        const src = readFileSync(resolve(__dirname, '../../components/FutureProjection.tsx'), 'utf8')
-            .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        const src = stripComments(readFileSync(resolve(__dirname, '../../components/FutureProjection.tsx'), 'utf8'));
         expect(src).not.toMatch(/effectiveMcIterations\s*\(\s*projection\./);
         expect(src).toMatch(/mcSublabel\(\s*runMC\s*,\s*results\?\.mcIterationsRun/);
     });
@@ -86,8 +86,7 @@ describe('[MC-LABEL-FROZEN] le moteur publie ce qu\'il a VRAIMENT exécuté', ()
         // COMPLÉMENT des deux tests ci-dessus, pas leur remplaçant : ils couvrent les deux bouts
         // (le moteur produit, le libellé consomme), le scan couvre le maillon du milieu, qui exige
         // sinon de faire tourner une projection complète.
-        const src = readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8')
-            .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        const src = stripComments(readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8'));
         expect(src).toMatch(/mcIterationsRun\s*=\s*mcResult\.iterationsRun/);
         expect(src).toMatch(/^\s*mcIterationsRun,\s*$/m);
     });

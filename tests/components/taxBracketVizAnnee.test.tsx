@@ -36,6 +36,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { TaxBracketViz } from '../../components/TaxBracketViz';
 import { bracketsForYear, FED_BRACKETS, calculateFiscalReport } from '../../utils/tax';
+import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
 afterEach(cleanup);
 
@@ -46,9 +47,7 @@ const lire = (rel: string): string => readFileSync(resolve(__dirname, '../../', 
  *  occurrences pour 1 seule ligne de code : les deux autres étaient dans les COMMENTAIRES qui
  *  EXPLIQUENT justement pourquoi il ne doit y en avoir qu'une (`SCAN-QUI-MATCHE-LA-PROSE`). Une
  *  garde d'absence contredit mécaniquement une bonne doc — le remède est le lecteur, pas la doc. */
-const lireCode = (rel: string): string => lire(rel)
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-    .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+const lireCode = (rel: string): string => stripComments(lire(rel));
 
 describe('[TAXBRACKETVIZ-ANNEE] les paliers affichés suivent l’année', () => {
     it('`bracketsForYear` indexe, et rend EXACTEMENT la table de l’impôt de la même année', () => {
@@ -140,7 +139,10 @@ describe('[TAXBRACKETVIZ-ANNEE] la paire appelant/composant reste accordée', ()
         const code = lireCode('components/Retirement.tsx');
         // Anti-vacuité du décommentage : si le décommenteur avait tout mangé, « 1 occurrence »
         // se prouverait à partir de « il ne reste rien ».
-        expect(code.length, 'décommentage trop agressif : il ne reste plus de code').toBeGreaterThan(3000);
+        // ⚠️ PAS `code.length` : la source unique BLANCHIT — le résultat a exactement la longueur de
+        // la source, donc un seuil en octets serait franchi même si tout avait été mangé.
+        expect(partDeCodeRestante(lire('components/Retirement.tsx'), code),
+            'décommentage trop agressif : il ne reste plus de code').toBeGreaterThan(0.2);
         expect(code, 'jeton de vrai code retrouvé après décommentage').toContain('anneeFiscaleCourante');
         expect((code.match(/new Date\(\)\.getFullYear\(\)/g) ?? []).length,
             'une seule lecture de l’horloge pour tout l’écran').toBe(1);

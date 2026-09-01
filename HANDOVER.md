@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 52 : quinze décommenteurs, un seul survivant
+> `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les **15 décommenteurs ad hoc** (13 fichiers) consomment
+> désormais `utils/stripComments.ts`. Garde neuve : `tests/guards/stripCommentsUniqueGuard.test.ts`.
+> - **Le coût, mesuré** : sur les 458 `.ts`/`.tsx` de `components/ services/ utils/ hooks/ store/
+>   mcp/`, l'ad hoc le plus répandu et la source unique diffèrent sur **154** (34 %) — **149** où
+>   l'ad hoc laissait passer de la prose, **5** où il MANGEAIT du code (`'https://hubperso.com'`
+>   coupé au `//`, 163 caractères perdus dans `Layout.tsx`).
+> - ⚠️ **Un décommenteur PLUS CORRECT casse ce qui dépendait de son approximation.** `stripComments`
+>   est un décommenteur JavaScript : dans un commentaire JSX il blanchit le bloc mais LAISSE les
+>   accolades, que les copies ad hoc retiraient. Une garde de `AdvancedProjectionParams` est passée
+>   de 40 à **39** paires label/champ vues, en silence. D'où `stripCommentsJsx` — même contrat, plus
+>   les accolades devenues vides.
+> - ⚠️ **Migrer vers un décommenteur qui BLANCHIT désarme toute anti-vacuité fondée sur la LONGUEUR**,
+>   et elle reste VERTE. Quatre refondées sur `partDeCodeRestante`. Prouvé : sur un décommenteur qui
+>   mange tout le fichier, la version « longueur » ne rougit pas.
+> - ⚠️ **Mon recensement manuel a raté 2 sites sur 17** — c'est la garde, écrite APRÈS, qui les a
+>   trouvés. Un fichier jugé « faux positif » sur sa première occurrence en cachait une vraie 250
+>   lignes plus bas.
+
 > ## 🟦 Session 2026-08-30 — Lot 51 : le nom manquant est une propriété du CONTRÔLE
 > `[A11Y-LABELS-RESTE-DU-DEPOT]` — **40 champs sans aucun nom accessible** (WCAG 4.1.2) câblés dans
 > 16 fichiers, et la garde de dépôt livrée avec : `tests/guards/controlAccessibleNameGuard.test.ts`.

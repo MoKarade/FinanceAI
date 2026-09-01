@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { computeEstateNetWorth, type EstateCalcInputs } from '../../services/projection/estateCalculation';
 import type { FiscalReport } from '../../utils/tax';
+import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
 // Stub fiscal : computeEstateNetWorth ne lit que report.totalTax.
 const fiscalStub = (gross: number): FiscalReport =>
@@ -531,11 +532,10 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // et le site d'appel vit au milieu d'une boucle moteur non instanciable, donc le patron
         // du dépôt pour ce cas est le scan de SOURCE.
         const src = readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8');
-        const code = src
-            .replace(/\/\*[\s\S]*?\*\//g, '')
-            .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        const code = stripComments(src);
         // Anti-vacuité du décommentage : il doit rester du VRAI code et un jeton connu.
-        expect(code.length).toBeGreaterThan(src.length * 0.25);
+        // ⚠️ PAS `code.length` : la source unique BLANCHIT, donc la longueur ne bouge jamais.
+        expect(partDeCodeRestante(src, code)).toBeGreaterThan(0.25);
         expect(code).toContain('computeEstateNetWorth');
         // ⚠️ CE QUE CE SCAN PROUVE, ET CE QU'IL NE PROUVE PAS. Il vérifie qu'un JETON attendu est
         // présent au bon endroit — pas que la valeur est réellement acheminée. Mesuré : il reste
@@ -579,11 +579,10 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // le patron du dépôt est le scan de SOURCE. On lit la source DÉCOMMENTÉE : le bloc au-dessus
         // explique la paire en prose, et un `toBe(2)` sur du texte commenté serait vacueux.
         const src = readFileSync(resolve(__dirname, '../../services/projection/estateCalculation.ts'), 'utf8');
-        const code = src
-            .replace(/\/\*[\s\S]*?\*\//g, '')
-            .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        const code = stripComments(src);
         // Anti-vacuité du décommentage : il doit rester du VRAI code, et un jeton connu.
-        expect(code.length).toBeGreaterThan(src.length * 0.25);
+        // ⚠️ PAS `code.length` : la source unique BLANCHIT, donc la longueur ne bouge jamais.
+        expect(partDeCodeRestante(src, code)).toBeGreaterThan(0.25);
         expect(code).toContain('const facteurNetRentes');
         // ⚠️ Extraction par PROFONDEUR, pas par `[^)]*` : un argument parenthésé
         // (`(estateCurrentIncome + totalEstateLiquidation)`) tronque la classe négative et l'appel

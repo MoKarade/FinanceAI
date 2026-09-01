@@ -13,6 +13,7 @@ import { FutureDetailModal } from '../../components/projection/FutureDetailModal
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import type { Transaction } from '../../types';
+import { stripComments } from '../../utils/stripComments';
 
 vi.mock('recharts', async () => {
     const React = await import('react');
@@ -315,7 +316,9 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
         const { readFileSync } = await import('node:fs');
         const { resolve } = await import('node:path');
         const src = readFileSync(resolve(__dirname, '../../components/projection/FutureDetailModal.tsx'), 'utf8');
-        expect(src.replace(/\/\*[\s\S]*?\*\//g, ''), 'lire le point ramènerait le bug d’origine')
+        // ⚠️ `[GUARD-STRIPCOMMENTS-DUPLIQUE]` (lot 52) : source unique. La copie locale ignorait les
+        // `//` en fin de ligne, donc une mention en commentaire de ligne aurait fait rougir à tort.
+        expect(stripComments(src), 'lire le point ramènerait le bug d’origine')
             .not.toMatch(/point[^\n]*\)\.dayIso/);
     });
 });

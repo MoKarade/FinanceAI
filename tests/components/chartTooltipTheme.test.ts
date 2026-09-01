@@ -17,6 +17,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import twConfig from '../../tailwind.config.js';
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_ITEM_STYLE } from '../../utils/chartTooltip';
+import { stripComments } from '../../utils/stripComments';
 
 const RACINE = resolve(__dirname, '../..');
 const COULEURS = (twConfig as { theme: { extend: { colors: Record<string, unknown> } } }).theme.extend.colors;
@@ -24,7 +25,7 @@ const COULEURS = (twConfig as { theme: { extend: { colors: Record<string, unknow
 /** Retire commentaires de bloc et de ligne — un scan d'ABSENCE matche sinon la PROSE qui décrit
  *  justement le motif interdit (`SCAN-QUI-MATCHE-LA-PROSE`, payé plusieurs fois dans ce dépôt). */
 function sansCommentaires(src: string): string {
-    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    return stripComments(src);
 }
 
 function fichiersTsx(dir: string): string[] {

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 004 tests** Vitest
-(479 fichiers de test, mesuré le 2026-08-30). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 012 tests** Vitest
+(480 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -830,6 +830,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   choisit selon le contexte (conteneur vs contrôle), et la garde se bâtit sur une LISTE d'exemptions
   nominatives — un automate qui remonte les ancêtres JSX finit désactivé par ses faux positifs
   (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
+- **Un outil plus CORRECT casse ce qui dépendait de son approximation** : consolider les 15
+  décommenteurs ad hoc vers `utils/stripComments.ts` a fait perdre une paire label/champ à une garde
+  (40 → **39**, en silence) — la source unique est un décommenteur JS, elle blanchit le bloc mais
+  LAISSE les accolades d'un commentaire JSX, que les copies retiraient. D'où `stripCommentsJsx`.
+  ⚠️ Et sa sémantique diffère : elle BLANCHIT au lieu de supprimer, donc **toute anti-vacuité écrite
+  `expect(code.length).toBeGreaterThan(…)` devient TAUTOLOGIQUE et reste VERTE** (4 refondées sur
+  `partDeCodeRestante`). Une migration qui change la sémantique d'un helper doit auditer tout ce qui
+  MESURE sa sortie, pas seulement ce qui l'appelle. Coût du statu quo, mesuré : 154 fichiers sur 458
+  traités différemment, dont 5 où l'ad hoc mangeait du code (`'https://…'` coupé au `//`).
+  ⚠️ Corollaires d'outillage : un commentaire de BLOC qui CITE le marqueur de fin de commentaire se
+  ferme sur sa citation (erreur de compilation) ; un fragment JSX isolé met l'automate en état
+  « regex » et ne prouve donc RIEN — la discrimination se mesure sur le vrai fichier
+  (`UN-OUTIL-PLUS-CORRECT-CASSE-CE-QUI-DEPENDAIT-DE-SON-APPROXIMATION`).
 - **Un nom manquant est une propriété du CONTRÔLE, pas du label** : mon propre ticket comptait les
   `<label>` non associés (59/16 fichiers) parce que c'est ce que le lot précédent avait corrigé.
   WCAG 4.1.2 porte sur le CONTRÔLE — recensé là, le périmètre devient 40 réels, et les deux listes ne

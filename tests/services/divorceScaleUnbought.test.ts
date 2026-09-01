@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { processRealEstate } from '../../services/projection/realEstateMonth';
 import type { RealEstateGoal } from '../../types';
+import { stripComments } from '../../utils/stripComments';
 
 const PRIX = 500_000;
 const MISE = 100_000;
@@ -98,8 +99,7 @@ describe('[ENG-DIVORCE-SCALE-UNBOUGHT] le divorce ne partage pas un bien pas enc
     it('le VRAI bloc divorce de `projection.ts` porte bien la garde `isBought`', () => {
         // Sans ce cas, tout ce fichier ne parlerait que de ma reproduction locale : le moteur
         // pourrait continuer à diviser sans garde et les deux tests ci-dessus resteraient verts.
-        const source = readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8')
-            .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        const source = stripComments(readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8'));
         // Anti-vacuité du décommentage : il reste du vrai code, et le bloc visé existe.
         expect(source.length).toBeGreaterThan(50_000);
         expect(source).toContain('propertiesState = propertiesState.map(');

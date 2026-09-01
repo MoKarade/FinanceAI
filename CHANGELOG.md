@@ -25,6 +25,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   coupait son message à 80 caractères — soit **juste avant** les noms des champs. La seule
   information utile du diagnostic était invisible, dans l'écran même qu'on te demande d'ouvrir.
 - **Ce qui reste vrai** : un vrai fichier corrompu est toujours refusé, et toujours nommé.
+- ⚠️ **Deuxième correctif, une heure plus tard — l'app s'est re-vidée sur un autre champ** : le nom
+  que tu donnes à une dette dans les réglages Fintable (`debtName`). Le contrôle ajouté au correctif
+  précédent aurait dû l'empêcher : il exige que tout champ textuel du contrat figure dans la liste.
+  Il ne voyait pas celui-là, parce qu'il ne savait lire que les champs écrits **seuls sur leur
+  ligne** — et celui-ci est déclaré au milieu d'une ligne. Le contrôle sait maintenant lire les deux
+  formes (78 champs vus au lieu de 76, aucun perdu), et l'état exact de ton écran est rejoué par un
+  test.
 
 ## [unreleased] — 2026-09-01 (Les deux graphiques du budget deviennent lisibles au lecteur d'écran)
 

@@ -104,6 +104,15 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // seule, à vider l'app au lancement. Elles viennent de la surface que la dérivation d'origine
     // n'avait pas lue : l'état propre au STORE (au-delà d'`AppState`) et les données Fintable.
     'accountId', 'activeTestPersonaId', 'revealedProjectionSig',
+    // ⚠️ DEUXIÈME VAGUE DU MÊME INCIDENT, quelques minutes plus tard : l'app de Marc s'est vidée à
+    // nouveau, sur `fintableRoles.<compte>.debtName`. La garde de dérivation posée pour empêcher
+    // exactement ça était AVEUGLE — son extracteur ancrait le nom du champ en début de LIGNE, et
+    // `debtName` n'est déclaré que dans un littéral de type EN LIGNE :
+    //     export type FintableAccountRoleConfig = … | { kind: 'debt'; debtName: string } | …
+    // Le correctif qui compte n'est pas cette ligne-ci mais l'élargissement de l'extracteur (76 → 78
+    // clés vues, zéro perdue) : un recenseur ancré sur la FORME du code ne couvre que les formes
+    // qu'il a croisées en l'écrivant.
+    'debtName',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

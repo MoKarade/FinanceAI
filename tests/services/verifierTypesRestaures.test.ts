@@ -161,6 +161,29 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         expect(verifierTypesRestaures(etatAvecBanque).map((f) => f.chemin)).toEqual([]);
     });
 
+    it('[INCIDENT 2026-09-01, 2e vague] ne refuse RIEN sur un rôle de compte Fintable « dette »', () => {
+        // ⚠️ Le correctif de la 1re vague n'a PAS suffi, et c'est la garde de dérivation elle-même
+        // qui était aveugle : son extracteur ancrait le nom du champ en DÉBUT DE LIGNE, donc il ne
+        // voyait aucun champ déclaré dans un littéral de type EN LIGNE. `FintableAccountRoleConfig`
+        // est exactement ça — une union dont chaque membre tient sur une ligne :
+        //
+        //     | { kind: 'debt'; debtName: string }
+        //
+        // `debtName` était donc invisible au scan CENSÉ empêcher un oubli, et l'app de Marc s'est
+        // vidée une seconde fois sur ce champ. Un recenseur ancré sur la FORME du code ne couvre que
+        // les formes qu'il a croisées en l'écrivant.
+        const etatAvecRoles = {
+            ...(etat() as unknown as Record<string, unknown>),
+            fintableRoles: {
+                acc_01KYQ1R472D9SHC12VB3JMSC0H: { kind: 'debt', debtName: 'Mastercard Cash Back' },
+                acc_01M0AM4WER91HA2Y8BGZA9ENJB: { kind: 'debt', debtName: 'Marge de crédit' },
+                acc_01QCASH: { kind: 'cash' },
+                acc_01QINV: { kind: 'investment', taxRegime: 'CELI' },
+            },
+        };
+        expect(verifierTypesRestaures(etatAvecRoles).map((f) => f.chemin)).toEqual([]);
+    });
+
     it('[garde de dérivation] tout champ TEXTUEL du contrat figure dans la liste blanche', () => {
         // ⚠️ La vraie leçon de l'incident n'est pas « il manquait `accountId` », c'est que la liste
         // était dérivée des états MESURÉS — donc aveugle à toute surface que le dépôt ne porte pas.
@@ -168,7 +191,12 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         // d'ici est un refus garanti chez qui utilise la fonctionnalité correspondante.
         const types = readFileSync(resolve(process.cwd(), 'types.ts'), 'utf8');
         const textuels = new Set<string>();
-        for (const m of types.matchAll(/^\s*(?:readonly\s+)?([A-Za-z_][\w]*)\??\s*:\s*([^;]+);/gm)) {
+        // ⚠️ Un champ ne commence pas toujours une LIGNE. Le premier jet ancrait sur `^`, donc il
+        // ratait tout littéral de type en ligne — `| { kind: 'debt'; debtName: string }`. C'est ce
+        // trou qui a vidé l'app une seconde fois. Le nom se reconnaît désormais aussi APRÈS un `{`
+        // ou un `;`, et la valeur s'arrête au `;` OU à l'accolade fermante. Mesuré : 76 → 78 clés
+        // vues, zéro perdue ; les deux gagnées sont `debtName` et `kind`.
+        for (const m of types.matchAll(/(?:^|(?<=[{;]))\s*(?:readonly\s+)?([A-Za-z_][\w]*)\??\s*:\s*([^;}]+)[;}]/gm)) {
             const [, cle, brut] = m;
             const type = brut.trim();
             // ⚠️ `Record<string, number>` est indexé PAR des chaînes mais ne porte que des nombres :
@@ -180,6 +208,10 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         // Anti-vacuité : le contrat EN A, et en nombre — sinon « aucun manquant » ne dirait rien.
         expect(textuels.size).toBeGreaterThan(50);
         expect(textuels.has('accountId'), 'témoin : la clé de l\'incident doit être vue par ce scan').toBe(true);
+        // ⚠️ Second témoin, et c'est lui qui vaut : `debtName` n'existe QUE dans un littéral en
+        // ligne. Ancré sur `^`, le scan ne le voyait pas — le témoin échoue alors, au lieu de
+        // laisser croire qu'il n'y avait rien à trouver.
+        expect(textuels.has('debtName'), 'témoin : un champ déclaré dans un littéral EN LIGNE doit être vu').toBe(true);
 
         const manquants = [...textuels].filter((c) => !CHAMPS_TEXTE.has(c)).sort();
         expect(
@@ -209,14 +241,18 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
             'projectionStatus', 'projectionRefus', 'lockedProjection', 'pendingFocus',
         ]);
         const textuels = new Set<string>();
-        for (const m of store.matchAll(/^ {4}([A-Za-z_][\w]*)\??\s*:\s*([^;=]+);/gm)) {
+        // ⚠️ Même élargissement que ci-dessus, et pour la même raison : l'ancrage `^ {4}` ne voyait
+        // que les champs de premier niveau écrits seuls sur leur ligne.
+        for (const m of store.matchAll(/(?:^|(?<=[{;]))\s*(?:readonly\s+)?([A-Za-z_][\w]*)\??\s*:\s*([^;}]+)[;}]/gm)) {
             const [, cle, brut] = m;
             const type = brut.trim().replace(/Record<\s*string\s*,/g, 'Record<K,');
             if (!/\bstring\b/.test(type)) continue;
-            // ⚠️ Une MÉTHODE du store n'est pas un champ persisté. `=>` ne suffit pas : une
-            // signature multi-lignes (`updateApiKeys: (keys: { anthropic: string; … }) => void`)
-            // est coupée avant sa flèche par la capture. C'est la parenthèse OUVRANTE qui tranche.
-            if (/=>/.test(type) || type.startsWith('(')) continue;
+            // ⚠️ Une MÉTHODE du store n'est pas un champ persisté. Le filtre se pose sur la LIGNE,
+            // pas sur le type capturé : élargi aux littéraux en ligne, le scan voit maintenant
+            // l'INTÉRIEUR des signatures (`updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void`),
+            // dont les champs ne sont pas persistés. Mesuré : sans ce filtre, `finnhub` entrait ici.
+            const ligne = store.slice(store.lastIndexOf('\n', m.index) + 1, store.indexOf('\n', m.index));
+            if (/=>/.test(ligne) || type.startsWith('(')) continue;
             if (EXCLUS_DE_LA_PERSISTANCE.has(cle)) continue;
             textuels.add(cle);
         }

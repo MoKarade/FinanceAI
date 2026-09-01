@@ -31,6 +31,21 @@
 >   dans l'écran qu'on demande à l'utilisateur d'ouvrir. `PLAFOND_CITATIONS` bornait déjà le message
 >   à cinq chemins : la troncature était une SECONDE borne sur la même grandeur, et c'est la plus
 >   bête qui gagnait. Constante partagée + test du pire cas.
+> - ⚠️⚠️ **DEUXIÈME VAGUE (~1 h plus tard) : l'app s'est RE-VIDÉE, et la garde posée contre l'oubli
+>   était elle-même aveugle.** Champ fautif : `fintableRoles.<compte>.debtName` (le nom que Marc
+>   donne à une dette dans les réglages Fintable). La garde de dérivation — « tout champ textuel de
+>   `types.ts` figure dans la liste » — est restée VERTE : son extracteur ancrait le nom du champ en
+>   début de LIGNE, et `debtName` n'est déclaré que dans un littéral de type EN LIGNE
+>   (`| { kind: 'debt'; debtName: string }`, membre d'union). Élargi (nom reconnu aussi après `{` ou
+>   `;`, valeur arrêtée au `;` OU à l'accolade) : **76 → 78** clés vues dans `types.ts`, zéro perdue.
+>   Sur la 2ᵉ surface, le même élargissement fait voir l'INTÉRIEUR des signatures de méthode → le
+>   filtre « c'est une méthode » se pose désormais sur la LIGNE (sans lui, `finnhub` entrait).
+>   Leçon : `UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`, et un témoin
+>   nommé ne discrimine que s'il n'existe QUE dans la forme la moins familière.
+> - ⚠️ **Risque résiduel à surveiller** : une clé LEGACY (champ retiré par une vieille migration mais
+>   encore présente dans le blob Drive de Marc) serait encore refusée — aucune dérivation ne peut la
+>   voir, puisqu'elle n'est plus au contrat. Le diagnostic la NOMME désormais (onglet Système, ou
+>   l'objet console `[FinanceAI] Hydration failure`).
 > - **Non tranché, laissé à Marc** : faut-il qu'un champ inattendu fasse échouer TOUTE la
 >   réhydratation, ou seulement signaler le champ ? Voir `[HYDRATATION-REFUS-TOUT-OU-RIEN]`.
 

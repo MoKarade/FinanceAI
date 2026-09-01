@@ -9625,3 +9625,46 @@ champ ». Vérifier une instruction qu'on vient de donner AVANT qu'elle ne soit 
 règle que `UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`, appliquée à une consigne
 plutôt qu'à un ticket. Elle était fausse, et elle aurait coûté un aller-retour de plus à quelqu'un
 qui croyait avoir tout perdu.
+
+**Deuxième vague, ~1 h plus tard — la garde posée contre l'oubli était elle-même aveugle**
+(`UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`)
+
+L'app de Marc s'est vidée **une seconde fois**, sur `fintableRoles.<compte>.debtName`. Le correctif
+de la première vague avait pourtant ajouté exactement ce qu'il fallait pour empêcher ça : une garde
+de dérivation qui exige que **tout** champ déclaré textuel dans `types.ts` figure dans la liste
+blanche. Elle a été verte tout du long.
+
+Son extracteur ancrait le nom du champ en **début de ligne** (`/^\s*([A-Za-z_]\w*)\??\s*:/gm`).
+Or `debtName` n'est déclaré nulle part en début de ligne — il vit dans un littéral de type **en
+ligne**, membre d'une union :
+
+```ts
+export type FintableAccountRoleConfig =
+  | { kind: 'cash' }
+  | { kind: 'debt'; debtName: string }
+  | …
+```
+
+Le champ était donc invisible au scan **censé empêcher son oubli**. Mesuré après élargissement
+(reconnaître un nom aussi après `{` ou `;`, et arrêter la valeur au `;` **ou** à l'accolade
+fermante) : **76 → 78** clés vues dans `types.ts`, **zéro perdue**, les deux gagnées étant
+`debtName` et `kind`. Sur la seconde surface (le corps de `FinanceState`), le même élargissement
+fait apparaître l'INTÉRIEUR des signatures de méthode — d'où un filtre qui se pose désormais sur la
+**ligne** et non sur le type capturé (sans lui, `finnhub`, déclaré dans
+`updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void`, entrait dans la liste).
+
+La leçon n'est pas « il manquait `debtName` », c'est : **un recenseur ancré sur la FORME du code ne
+couvre que les formes que son auteur avait sous les yeux en l'écrivant.** Une garde de dérivation
+qui rend « aucun manquant » n'affirme rien tant qu'on n'a pas nommé un témoin qui n'existe QUE dans
+la forme la moins familière — ici, un champ déclaré dans un littéral en ligne. Le témoin
+`accountId`, choisi parce que c'était la clé de l'incident, était satisfait par la forme la plus
+banale et ne discriminait donc rien de neuf. C'est
+`UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE` appliqué à la garde qui venait de naître
+d'un incident — et la récidive à ~1 h d'intervalle dit que le réflexe « quelle FORME mon motif
+suppose-t-il ? » ne se déclenche pas encore tout seul.
+
+⚠️ Corollaire de conduite pendant un incident : **le correctif d'un incident se re-teste sur la
+surface RÉELLE de l'utilisateur, pas seulement sur celle qu'on vient de comprendre.** Marc avait des
+rôles de comptes Fintable ; aucun état du dépôt n'en portait — exactement la même cécité que la
+première vague, sur un champ voisin. Après avoir corrigé un oubli de liste blanche, la question
+suivante est « quelle AUTRE surface de cet utilisateur n'est portée par aucune fixture ? ».

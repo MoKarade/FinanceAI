@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Les deux graphiques du budget deviennent lisibles au lecteur d'écran)
+
+- **Corrigé** : dans le tableau du budget, le mini-graphique « Historique (6 derniers mois) » et la
+  petite courbe de tendance de chaque ligne n'existaient tout simplement pas pour quelqu'un qui
+  utilise un lecteur d'écran — un graphique est une image opaque. C'étaient les deux derniers du
+  genre : les onze autres fichiers de l'app appliquaient déjà le bon patron.
+- **Deux solutions différentes, pour une bonne raison** : le graphique déplié reçoit un nom et,
+  surtout, ses données **en texte** (chaque mois avec son montant). La petite courbe de tendance,
+  elle, il y en a **une par ligne de budget** — annoncer six montants pour chacune noierait la
+  lecture. Elle reçoit donc un résumé : « Tendance de Épicerie sur 6 mois, en hausse de 12 % ».
+- **Ce résumé ne contient aucun montant**, uniquement un pourcentage. Il reste donc lisible en mode
+  discret, alors qu'un « de 820 $ à 910 $ » aurait dû être masqué et n'aurait plus rien appris. Et
+  quand il n'y a pas assez d'historique pour dire quoi que ce soit d'honnête, la courbe est
+  simplement ignorée par le lecteur d'écran au lieu d'annoncer une tendance inventée.
+- **Nouveau** : un contrôle automatique refuse désormais tout graphique sans alternative textuelle.
+
 ## [unreleased] — 2026-09-01 (Formats d'argent : une seule façon d'écrire un montant)
 
 - **Corrigé** : 16 endroits de l'app fabriquaient leurs montants à la main au lieu d'utiliser le

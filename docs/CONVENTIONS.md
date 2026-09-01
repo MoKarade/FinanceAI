@@ -9504,3 +9504,51 @@ Quatre constats du même tour :
 les millions (`2,3 M$` → `2,35 M$`), parce qu'elles utilisent désormais `formatCompactCAD`. Une
 exemption sur l'axe du graphique principal aurait été le plus gros trou de la garde neuve ; le
 changement est donc assumé et signalé à Marc plutôt que contourné.
+
+
+### Lot 62 — ma garde était satisfaite par le commentaire que je venais d'écrire
+
+`UNE-GARDE-ECRITE-A-COTE-DE-SON-SUJET-LIT-SON-PROPRE-COMMENTAIRE`
+
+`[A11Y-BUDGETGROUP-CHART-NOALT]` : les deux graphes de `budget/BudgetGroupTable.tsx` — le mini
+« Historique (6 derniers mois) » et la courbe de tendance de chaque ligne — n'existaient pas pour un
+lecteur d'écran. C'étaient les deux derniers du dépôt sans alternative textuelle.
+
+**La leçon du lot n'est pas dans le correctif, elle est dans la garde qui l'accompagne.** Écrite sur
+la source BRUTE, sa règle « chaque graphe porte sa marque dans les 8 lignes qui le précèdent »
+trouvait le `role="img"` cité **en prose**, dans le commentaire que je venais d'écrire juste au-dessus
+du graphe pour expliquer le patron. Retirer l'attribut RÉEL laissait la garde VERTE. Trouvé par
+perturbation, vingt minutes après l'avoir écrite.
+
+`SCAN-QUI-MATCHE-LA-PROSE` est la leçon la plus répétée de ce dépôt, et je l'ai re-commise **dans la
+garde qui la cite**. Le facteur aggravant est structurel et vaut d'être nommé : une garde qui vérifie
+la présence d'un motif **au voisinage immédiat** de son sujet est la plus exposée de toutes, parce que
+c'est exactement là qu'on écrit le commentaire qui explique le motif. **Toute assertion de présence
+ou d'absence sur du source lit la source DÉCOMMENTÉE — sans exception, y compris pendant qu'on écrit
+la garde.**
+
+Trois autres constats :
+
+- **Deux graphes, deux remèdes, et la différence est le sujet.** Le graphe déplié reçoit le patron
+  complet des onze autres fichiers (`role="img"` + `aria-label` + `ChartDataTable` sr-only). Le
+  sparkline, lui, existe **une fois par ligne de budget** : six mois chiffrés pour chacun noieraient
+  le lecteur d'écran sous des dizaines de tableaux, pour une information de FORME. Il reçoit donc un
+  résumé — sens et ampleur. **La bonne alternative textuelle dépend du nombre de fois que le graphe
+  est rendu, pas seulement de ce qu'il montre.**
+- **Un résumé sans montant n'a rien à masquer** : « 6 mois, en hausse de 12 % » reste lisible en mode
+  discret (un ratio n'est pas un montant, précédent du dépôt), là où « de 820 $ à 910 $ » aurait dû
+  passer par `MASKED_AMOUNT_LABEL` et n'aurait plus rien appris. Corollaire no-fake-data : quand la
+  série ne permet aucune description honnête (moins de deux points finis, ou un départ à zéro qui
+  rendrait la variation infinie), la fonction rend `null` et l'appelant marque le graphe
+  `aria-hidden` — plutôt que d'annoncer une tendance inventée dans un nom accessible.
+- ⚠️ **Une garde qui ne connaît qu'une ÉCRITURE rougit sur du code sain** : un composant qui choisit
+  entre « nommer » et « masquer » étale un objet de props (`{...alternative}`) et n'écrit jamais
+  l'attribut littéral `role="img"` — il écrit `role: 'img'`. La garde reconnaît les deux.
+- ⚠️ **`formatPercent` sépare le « % » par une espace INSÉCABLE** (U+00A0), comme `formatCAD` avant
+  le « $ ». Un attendu écrit à la main échoue sur deux chaînes visuellement identiques ; il se
+  COMPOSE avec le formateur. Troisième variante du même piège dans cette session.
+
+**Et le périmètre, encore** : le ticket annonçait « le seul des **10** graphiques ». Le dépôt en a
+**16 dans 12 fichiers**, et le fichier fautif en portait **DEUX**. Sa conclusion était juste, ses deux
+nombres faux — ce qui est le profil habituel : un ticket se trompe rarement sur l'existence du
+défaut, presque toujours sur son étendue.

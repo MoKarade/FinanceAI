@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 62 : ma garde était satisfaite par mon propre commentaire (PR #789)
+
+- [x] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S) — ✅ **Livré**, avec sa garde.
+  · ⚠️ **Le ticket disait « le seul des 10 graphiques » ; le dépôt en a 16 dans 12 fichiers**, et le
+    fichier fautif en portait **DEUX**, pas un. Sa conclusion était juste, ses deux nombres faux.
+  · **Deux remèdes DIFFÉRENTS, et c'est le sujet** : le graphe déplié reçoit le patron complet des
+    onze autres fichiers (`role="img"` + `aria-label` + `ChartDataTable` sr-only) ; le sparkline —
+    il y en a **un par ligne de budget** — reçoit un RÉSUMÉ (`tendanceSparkline`), parce que six
+    mois chiffrés par ligne noieraient le lecteur d'écran sous des dizaines de tableaux.
+  · **Le résumé ne porte aucun montant** : « 6 mois, en hausse de 12 % ». Un ratio n'est pas un
+    montant, il reste donc lisible en mode discret — là où « de 820 $ à 910 $ » aurait dû être
+    masqué et n'aurait plus rien dit. Et il rend `null` quand la série ne permet aucune description
+    honnête (< 2 points finis) : l'appelant marque alors le graphe `aria-hidden`.
+  · ⚠️⚠️ **MA GARDE ÉTAIT SATISFAITE PAR MON PROPRE COMMENTAIRE.** Écrite sur la source BRUTE, sa
+    règle « chaque graphe porte sa marque » trouvait le `role="img"` cité **en prose** dans le
+    commentaire que je venais d'écrire au-dessus du graphe. Retirer l'attribut RÉEL la laissait
+    verte. Mesuré par perturbation vingt minutes après l'avoir écrite : `SCAN-QUI-MATCHE-LA-PROSE`,
+    la leçon la plus répétée du dépôt, re-commise dans la garde qui la cite.
+  · **Garde livrée** : `tests/components/chartAlternativeTexteGuard.test.ts`, deux règles à deux
+    échelles (par fichier, par graphe) + une exemption nominative avec un test qui vérifie qu'elle
+    reste VRAIE.
+
 ## 2026-09-01 — Lot 61 : le format et la vie privée étaient le même trou (PR #788)
 
 - [x] **`[FORMAT-EXPLAINS-TOLOCALESTRING]`** (XS annoncé → **M mesuré**) — ✅ **Livré**, avec sa garde.

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 062 tests** Vitest
-(487 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 073 tests** Vitest
+(488 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -464,6 +464,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   trompeur** se RENOMME plutôt que d'élargir le motif de la garde (prop `blur` → `privacy` : la
   primitive ne floute pas, elle RETIRE) ; et **`${` contient un `$`** — un motif « chiffre puis
   dollar » sans `(?!\{)` relève des taux de change (5 faux positifs mesurés).
+- ⚠️⚠️ **Une garde qui cherche un motif AU VOISINAGE de son sujet lit son propre commentaire** : ma
+  règle « chaque graphe porte son `role="img"` dans les 8 lignes au-dessus » était satisfaite par le
+  commentaire que je venais d'écrire pour expliquer le patron — retirer l'attribut RÉEL la laissait
+  VERTE (mesuré, 20 min après l'avoir écrite). C'est le poste le plus exposé de tous, parce que le
+  commentaire qui explique le motif s'écrit exactement là. **Toute assertion de présence ou d'absence
+  sur du source lit la source DÉCOMMENTÉE, y compris pendant qu'on écrit la garde**
+  (`UNE-GARDE-ECRITE-A-COTE-DE-SON-SUJET-LIT-SON-PROPRE-COMMENTAIRE`).
+  ⚠️ Corollaires : **la bonne alternative textuelle d'un graphe dépend du nombre de fois qu'il est
+  RENDU** (un sparkline par ligne se résume, il ne se tabule pas) ; un résumé **sans montant** n'a
+  rien à masquer et survit au mode discret, mais rend `null` plutôt qu'une tendance inventée quand la
+  série ne permet rien d'honnête ; une garde qui ne connaît qu'une ÉCRITURE (`role="img"` mais pas
+  `role: 'img'` en props étalées) rougit sur du code sain ; et **`formatPercent` aussi sépare par une
+  insécable** — l'attendu se compose avec le formateur.
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

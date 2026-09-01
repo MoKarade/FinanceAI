@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 077 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 078 tests** Vitest
 (488 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -493,6 +493,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   imaginés** ; et mon recensement d'urgence était FAUX (les apostrophes de la prose française
   matchées comme des littéraux, « 0 couvert sur 81 »), démasqué par trois témoins nommés avant
   publication — **un recenseur se vérifie par témoins AVANT de servir de diagnostic**.
+  ⚠️⚠️ **DEUXIÈME VAGUE ~1 h plus tard, et c'est la garde POSÉE CONTRE L'OUBLI qui était aveugle** :
+  l'app s'est re-vidée sur `fintableRoles.<compte>.debtName`, pendant que la garde de dérivation —
+  « tout champ textuel de `types.ts` figure dans la liste » — restait VERTE. Son extracteur ancrait
+  le nom en début de LIGNE, or `debtName` n'existe que dans un littéral de type EN LIGNE
+  (`| { kind: 'debt'; debtName: string }`). Élargi (nom reconnu aussi après `{` ou `;`, valeur
+  arrêtée au `;` OU à l'accolade) : **76 → 78** clés vues, zéro perdue. **Un recenseur ancré sur la
+  FORME ne couvre que les formes que son auteur avait sous les yeux** — et un « aucun manquant »
+  n'affirme rien tant qu'un témoin nommé n'existe QUE dans la forme la moins familière (`accountId`,
+  choisi comme témoin, était satisfait par la forme banale et ne discriminait rien)
+  (`UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`). Corollaire d'incident :
+  après avoir corrigé un oubli de liste blanche, demander **quelle AUTRE surface de cet utilisateur
+  n'est portée par aucune fixture** — deux vagues, deux fois la même cécité, sur des champs voisins.
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

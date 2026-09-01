@@ -8557,11 +8557,26 @@ qu'une occurrence apparue ou disparue se fait remarquer.
 **Deux découvertes routées, aucune corrigée**, et c'est la règle (convention §6 : un bug préexistant
 découvert en chemin se signale et s'ajoute au backlog, jamais ne se corrige sans feu vert) :
 
-- `[ENG-LIBELLE-RRQ-70-VS-72]` — sous report de rentes, le libellé annonce « RRQ **70** ans » quand
-  l'âge n'est pas saisi, alors que le moteur applique **72** (`retirementIncome.ts:272,281`, +84 mois
-  ×1,588). Trois écritures pour un même fait — le libellé, le commentaire de `projection.ts:362`, et
-  le calcul —, dont deux sont fausses. Le correctif est de DÉRIVER le libellé de la constante du
-  moteur, pas de corriger `70` en `72` à deux endroits.
+- `[ENG-LIBELLE-RRQ-70-VS-72]` — un repli `rrqStart ?? 70` dans le libellé « rentes reportées » et
+  un commentaire (`projection.ts:362`, « à 70 ») contredisent le moteur, qui met la RRQ à **72** sous
+  report (`retirementIncome.ts:276-279`). Trois écritures d'un même fait, dont deux fausses. Le
+  correctif est de DÉRIVER des constantes du moteur, pas de corriger `70` en `72` à deux endroits.
+
+⚠️⚠️ **Et j'ai publié une affirmation d'ATTEIGNABILITÉ dans cinq documents avant de la mesurer.**
+J'avais écrit — dans `BACKLOG.md`, `CHANGELOG.md`, `HANDOVER.md`, l'inventaire du ratchet et le corps
+de la PR — que « l'écran annonce RRQ 70 ans ». **Il ne l'annonce pas.** `delayPensions` vaut `false`
+dans les **onze** définitions de `scenarios.ts` (aucun `true` dans le fichier), donc la branche
+« rentes reportées » n'est prise que si `rrqStart !== undefined && rrqStart > 65` — et le `?? 70`
+n'est alors jamais évalué. C'est un repli **mort**. Le commentaire du code le disait en toutes
+lettres **trois lignes au-dessus du site** (« delayPensions, toujours false dans STRATEGY_DEFS ») et
+je ne l'ai pas vérifié : le dépôt porte pourtant déjà « un bug confirmé peut viser du code dont la
+sortie est jetée → test de perturbation AVANT fix ». La règle vaut aussi pour un bug qu'on se
+contente de ROUTER : **écrire un ticket, c'est publier une affirmation** — l'atteignabilité d'un
+chemin s'établit avant d'être annoncée, surtout dans un `CHANGELOG` qui parle à l'utilisateur d'un
+défaut qu'il ne subit pas. Ce qui reste vrai après mesure est plus étroit et se dit tel quel : la
+valeur du repli est fausse (bombe le jour où le chemin redevient atteignable) et le commentaire
+trompe un développeur aujourd'hui. Le ticket est requalifié MOYEN → FAIBLE, corrigé **dans le même
+lot, avant merge** (`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
 - `[ENG-STARTYEAR-DEFAUT-2026]` — `startYear = 2026` en dur dans la déstructuration des paramètres,
   avec un champ optionnel. **Le périmètre s'est mesuré par l'EXPÉRIENCE** plutôt que par lecture :
   rendre le champ requis et lancer le typecheck sort **un seul** site fautif, `GoalSeekerCard` via

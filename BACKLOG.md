@@ -1182,16 +1182,24 @@
   **écrite en dur à 2026**. En 2027 le module consultatif lira un barème périmé sans rien dire.
   **Correctif** : reprendre l'année courante du moteur plutôt qu'un littéral.
 
-- [ ] **`[ENG-LIBELLE-RRQ-70-VS-72]`** (XS, MOYEN — **découvert en triant les littéraux de
-  `services/projection.ts`** pour `[FISC-GUARD-PROJECTION-TS]`, 2026-09-01) — sous report de rentes,
-  `services/projection.ts:2545` affiche « rentes reportées (RRQ **70** ans) » quand `rrqStartAge`
-  n'est pas saisi. **Le moteur, lui, applique 72** : `services/projection/retirementIncome.ts:272`
-  et `:281` disent en toutes lettres « delayPensions → RRQ 72, PSV 70 » et appliquent +84 mois
-  (×1,588). Le libellé annonce donc un âge que le calcul ne pratique pas — et le commentaire de
-  `projection.ts:362` répète la même erreur (« à 70 »).
-  ⚠️ **Trois écritures pour un même fait** (le libellé, le commentaire, le calcul) : le correctif est
-  de dériver le libellé de la CONSTANTE du moteur, pas de corriger `70` en `72` à deux endroits —
-  deux écritures divergent, trois encore plus. Vérifier au passage si `psvStartAge` a le même défaut.
+- [ ] **`[ENG-LIBELLE-RRQ-70-VS-72]`** (XS, FAIBLE — **découvert en triant les littéraux de
+  `services/projection.ts`** pour `[FISC-GUARD-PROJECTION-TS]`, 2026-09-01) — deux écritures d'un
+  même fait contredisent le moteur, qui met la RRQ à **72** sous report
+  (`services/projection/retirementIncome.ts:276-279`, +84 mois ×1,588) :
+  · `services/projection.ts:2545` — le repli `rrqStart ?? 70` du libellé « rentes reportées
+    (RRQ N ans) » ;
+  · `services/projection.ts:362` — le commentaire « delayPensions ne pilote QUE le début RRQ/PSV
+    (**à 70**, cf retirementIncome) ». Faux : c'est RRQ 72 / PSV 70.
+  ⚠️ **L'ÉCRAN N'AFFICHE PAS 70 AUJOURD'HUI — vérifié, et c'est la première chose que j'ai eu tort
+  d'affirmer.** `delayPensions` vaut `false` dans les **11** définitions de `scenarios.ts` (aucun
+  `true` dans le fichier), donc la branche « rentes reportées » n'est prise que si
+  `rrqStart !== undefined && rrqStart > 65` — et dans ce cas `rrqStart ?? 70` vaut `rrqStart`. **Le
+  `70` est un repli MORT.** Ce qui reste vrai : sa valeur est fausse, donc c'est une bombe le jour
+  où `delayPensions` redevient atteignable ; et le commentaire, lui, trompe un développeur
+  aujourd'hui.
+  ⚠️ **Correctif** : exporter la paire d'âges de report depuis `retirementIncome.ts` (elle y est en
+  dur, `rrqStartAge = 72` / `psvStartAge = 70`) et la consommer aux deux sites. Trois écritures pour
+  un même fait divergent ; corriger `70` en `72` à deux endroits n'est pas un correctif.
   ⚠️ **PAS corrigé dans le lot 53** : découverte en chemin, scope non demandé (convention §6). [MESURÉ]
 
 - [ ] **`[ENG-STARTYEAR-DEFAUT-2026]`** (XS, MOYEN — **découvert en triant les littéraux de

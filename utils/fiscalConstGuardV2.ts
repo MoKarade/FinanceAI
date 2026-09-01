@@ -84,7 +84,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection.ts', value: '60', family: 'fiscal',
       reason: '[≠3] L585 et L586 : part de la rente conservée par le SURVIVANT (RRQ et régime DB), défaut réglementaire — deux sites, même règle. L767 : `m === 60`, le mois 60 du scénario WINDFALL, qui n’a rien de fiscal.' },
     { file: 'services/projection.ts', value: '70', family: 'fiscal',
-      reason: 'L2545 : âge affiché quand `rrqStartAge` est absent sous report de rentes. ⚠️ Le moteur applique 72 (`retirementIncome.ts:272,281` — RRQ 72 / PSV 70) : le libellé annonce donc un âge que le calcul ne pratique pas. Routé en `[ENG-LIBELLE-RRQ-70-VS-72]`, PAS corrigé ici — scope non demandé.' },
+      reason: 'L2545 : repli du libellé « rentes reportées (RRQ N ans) » quand `rrqStartAge` est absent. ⚠️ Repli MORT et à valeur FAUSSE : `delayPensions` vaut false dans les 11 définitions de `scenarios.ts`, donc la branche exige `rrqStart > 65` défini et le `?? 70` n’est jamais évalué ; et le moteur met 72 sous report (`retirementIncome.ts:276`). Bombe si le chemin redevient atteignable. Routé en `[ENG-LIBELLE-RRQ-70-VS-72]`, PAS corrigé ici — scope non demandé.' },
     { file: 'services/projection.ts', value: '2026', family: 'design',
       reason: '`startYear = 2026` — défaut de déstructuration des paramètres du moteur. ⚠️ Ce n’est pas un barème mais un DÉFAUT QUI SE PÉRIME : mesuré (typecheck avec le champ rendu requis), un seul site le consomme, `GoalSeekerCard` via `Retirement.tsx`. Routé en `[ENG-STARTYEAR-DEFAUT-2026]`, PAS corrigé ici.' },
     { file: 'services/projection.ts', value: '30', family: 'design',

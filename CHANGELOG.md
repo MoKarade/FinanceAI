@@ -15,9 +15,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   compte pour la Pension de la Sécurité de la vieillesse, celui de 65 ans où elle cesse de
   s'accumuler, la part de rente conservée par un conjoint survivant et l'âge de report de la RRQ y
   vivaient sans trace. Les quatre sont désormais tracés et rattachés à la référence fiscale.
-- **Repéré, pas encore corrigé** : quand tu choisis de reporter tes rentes sans préciser d'âge,
-  l'écran annonce « RRQ 70 ans » alors que le calcul applique **72 ans**. Le chiffre affiché est
-  faux, celui utilisé pour la projection est le bon. Corrigé dans un prochain lot.
 
 ## [unreleased] — 2026-09-01 (Les contrôles automatiques du code lisent tous la même chose)
 

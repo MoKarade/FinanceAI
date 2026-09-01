@@ -2074,6 +2074,25 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   redondant, sinon `aria-label` gagne et le `<label>` reste décoratif. À faire seulement si un
   scan prouve d'abord que les deux textes divergent déjà quelque part. [Supposition] sur l'ampleur.
 
+- [ ] 🔴 **`[HYDRATATION-REFUS-TOUT-OU-RIEN]`** (S, **QUESTION POUR MARC** — née de l'incident du
+  2026-09-01) — aujourd'hui, un SEUL champ inattendu dans l'état persisté fait échouer **toute** la
+  réhydratation : `merge` lève, l'app s'ouvre vide, et l'utilisateur croit avoir tout perdu. Le blob
+  reste intact et la bannière le dit, mais l'écran vide parle plus fort que la bannière.
+  L'arbitrage du 2026-08-29 (« refuser et nommer, jamais coercer ») reste bon pour un **montant** :
+  hydrater à moitié un état money-critical produirait des chiffres que personne n'a saisis. Il l'est
+  beaucoup moins pour un **identifiant** — refuser tout le patrimoine parce qu'un `accountId` est
+  une chaîne est disproportionné.
+  ⚠️ Trois options, aucune évidente, et c'est pourquoi c'est une QUESTION et pas une tâche :
+  · **(a) statu quo** — le correctif du jour rend le refus beaucoup plus rare (liste dérivée du
+    contrat, CI qui rougit) ; on garde le tout-ou-rien, simple et sans demi-état.
+  · **(b) refus PAR CHAMP** — n'écarter que le champ fautif et hydrater le reste. Simple à dire,
+    mais il faut décider ce que devient l'objet amputé : une transaction sans `amount` n'est pas
+    « presque bonne ».
+  · **(c) refus SÉLECTIF par nature du champ** — bloquer sur un champ monétaire, tolérer et
+    journaliser sur un identifiant. Le plus proche de l'intention, mais il faut la liste des champs
+    monétaires, qui n'existe pas encore (celle des champs TEXTE a été choisie exprès à sa place).
+  Ne rien coder avant la réponse de Marc.
+
 - [ ] **`[PRIVACY-CONTEXTE-IA]`** (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
   discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
   alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.

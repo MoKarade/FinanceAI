@@ -9552,3 +9552,56 @@ Trois autres constats :
 **16 dans 12 fichiers**, et le fichier fautif en portait **DEUX**. Sa conclusion était juste, ses deux
 nombres faux — ce qui est le profil habituel : un ticket se trompe rarement sur l'existence du
 défaut, presque toujours sur son étendue.
+
+
+### Incident 2026-09-01 — un faux refus n'est pas « bruyant » quand il vide l'écran
+
+`UN-FAUX-REFUS-QUI-VIDE-L-ECRAN-EST-INDISCERNABLE-D-UNE-PERTE-DE-DONNEES`
+
+Marc : « j'ai perdu mes données, tout est vide alors que j'avais beaucoup de sauvegardes ». **Rien
+n'était perdu.** `verifierTypesRestaures` refusait un état LÉGITIME : `merge` lève, zustand charge
+l'état par défaut, l'écran est vide — et le blob reste intact dans `localStorage`. Restaurer depuis
+Drive rejouait le même refus, puisque le pull appelle `persist.rehydrate()`. La boucle est complète :
+plus il restaurait, plus il voyait du vide.
+
+**Trois clés persistées et déclarées textuelles manquaient à la liste blanche**, chacune suffisante à
+elle seule : `accountId` (identifiant Fintable), `revealedProjectionSig`, `activeTestPersonaId`.
+
+**La cause profonde est une mesure citée sans son périmètre.** Le module affirmait, comme un fait
+établi, que « zéro clé ne porte à la fois une chaîne et un nombre ». C'était vrai **des états du
+dépôt** — et `accountId` est justement `number` dans `Transaction` et `string` dans
+`FintableBrokerBalance`. Aucun persona ne porte de données bancaires synchronisées, donc la collision
+était structurellement invisible à la mesure qui servait de preuve. Une mesure dont le périmètre
+n'est pas écrit à côté d'elle se lit comme une loi générale, et c'est ainsi qu'elle a été relue.
+
+**Et l'arbitrage d'origine mérite d'être relu, pas jeté.** Le 2026-08-29, le choix « lister les
+champs TEXTE plutôt que les champs numériques » reposait sur une asymétrie explicite : oublier un
+champ numérique rouvre un canal money-critical **en silence**, oublier un champ texte donne « un faux
+refus **BRUYANT**, que le canari transforme en échec de CI avant qu'il n'atteigne qui que ce soit ».
+Le raisonnement est juste — mais il ne vaut que pour les surfaces **que la CI porte**. Pour une
+surface qu'aucune fixture ne contient, le faux refus n'atteint pas la CI : il atteint l'utilisateur.
+Et là, il n'est plus bruyant du tout — **il est silencieux et catastrophique en apparence**, parce
+qu'un écran vide ressemble à une perte de données bien plus qu'à un refus. La bannière avait beau
+dire « ne rien saisir, restaurer un backup », l'écran vide parlait plus fort.
+
+Le geste : **une liste blanche se dérive du CONTRAT, jamais des états mesurés** — et de *chacune* de
+ses surfaces. Ici il y en avait deux, et une seule avait été lue : `types.ts` (l'`AppState`) **et** le
+corps de `FinanceState`, qui ajoute ses propres champs persistés. Deux tests l'exigent désormais, et
+un troisième rejoue l'état de l'incident. C'est la même leçon que `version: '3.2'`
+(`UNE-LISTE-SE-DERIVE-DE-CHAQUE-SURFACE-QU-ELLE-GARDE`), à ceci près qu'elle avait été écrite, lue,
+et quand même appliquée à une surface de trop peu.
+
+Deux corollaires de conduite :
+
+- **Ce qui a sauvé les données n'est pas la garde, c'est le refus de pousser un état vide.**
+  `shouldPush(localIsEmpty)` et `decideOnLoad` (« local vide → pull, jamais push ») ont empêché
+  l'app d'écraser Drive avec du vide à chaque lancement. Un mécanisme conçu contre « incognito vide →
+  efface Drive » a couvert un scénario que personne n'avait prévu. **Une garde de dernier recours se
+  juge sur les cas qu'elle attrape et que personne n'avait imaginés.**
+- ⚠️ **Mon premier recensement de l'incident était FAUX, et il aurait déclenché une fausse alerte** :
+  l'extracteur de la liste blanche matchait les apostrophes de la PROSE française du fichier
+  (`n'existent`, `j'avais`) et rendait « 0 champ couvert sur 81 ». Trois témoins nommés
+  (`accountName`, `category`, `version`) l'ont démasqué avant publication. `SCAN-QUI-MATCHE-LA-PROSE`
+  pour la troisième fois de la journée — et en situation d'urgence, où la tentation de publier le
+  premier chiffre obtenu est maximale. **Un recenseur se vérifie par témoins nommés AVANT de servir
+  de diagnostic, surtout quand quelqu'un attend une réponse.**

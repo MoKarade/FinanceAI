@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 58 : le mode discret est complet sur l'indicateur de santé
+> `[A11Y-PRIVACY-HEALTH-RAW]` — cible FIRE et coût mensuel des abonnements masqués. `raw` de
+> `HealthMetricRow` passe d'une **chaîne** à une liste de **segments** (`HealthRawPart`) : un montant
+> reste un nœud jusqu'au rendu, donc `PrivateAmount` peut l'envelopper. `healthScore.ts` reste PUR —
+> il formate et MARQUE, le composant décide. Le helper `healthRawText(parts, masquer)` sert
+> l'`aria-label`, où il n'y a aucun nœud à envelopper.
+> - ⚠️ **Le ticket annonçait TROIS sites de consommation de `raw` ; il y en a DEUX.** Le troisième
+>   qu'il nommait (le `sr-only`) rend `m.help`, qui ne porte aucun montant. **Neuvième périmètre de
+>   ticket faux d'affilée — et celui-là, c'est MOI qui l'avais écrit la veille.** Un ticket récent et
+>   signé de sa propre main se re-recense exactement comme un vieux.
+> - ⚠️ **Un seuil d'anti-vacuité recopié d'une garde de DÉPÔT rougit sur un fichier de PROSE** :
+>   `healthScore.ts` est à 0,466 de code (chaque garde y porte son incident écrit), et mon
+>   `partDeCodeRestante > 0.5` l'a déclaré vide. Le seuil appartient à la PORTÉE mesurée.
+> - ⚠️ Récidive de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE` : mon motif `type: 'montant'`
+>   comptait 2 — la fabrication ET la déclaration de l'union. Ancré sur le `,` du littéral.
+> - **Découverte MESURÉE, routée** : `formatSigned(n, { withCurrency: true })` **existe déjà** dans
+>   `utils/format.ts` et sert à 8 sites. Le ticket `[FORMAT-EXPLAINS-TOLOCALESTRING]` prescrit de
+>   créer un `formatCADSigned` — ce serait un DOUBLON. Ticket corrigé, pas le code (scope).
+
 > ## 🟦 Session 2026-09-01 — Lot 57 : huit montants en clair, et un attribut mesuré redondant
 > `[A11Y-PRIVACY-DIVERS]` — 5 montants affichés + 3 champs de saisie masqués, dans 7 fichiers.
 > - **Périmètre RE-RECENSÉ** : lignes du ticket périmées, et pour `HealthIndicator` le ticket visait

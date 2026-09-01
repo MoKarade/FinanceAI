@@ -9283,3 +9283,65 @@ n'invoque aucune liste du module — il énumère `Object.keys()` des paramètre
 feuille numérique de chaque conteneur et exige un refus pour chacun. Vérifié : cette re-restriction
 le rend ROUGE alors que les cinq autres restent verts. **Une garde qui se dit exhaustive se teste par
 énumération de l'objet, pas par échantillon de ses champs connus.**
+
+
+### Lot 58 — un seuil d'anti-vacuité appartient à la PORTÉE qu'il mesure, pas à la garde qu'on copie
+
+`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`
+
+`[A11Y-PRIVACY-HEALTH-RAW]` : les deux derniers montants du mode discret — la cible FIRE
+(« 45,2 % (cible Future : 1 234 567 $) ») et le coût mensuel des abonnements (« 7 401 $/mois (…) ») —
+étaient interpolés dans la CHAÎNE `raw` de `HealthMetricRow`, produite par `utils/healthScore.ts`.
+Un montant noyé dans une chaîne n'est plus un nœud : `<PrivateAmount>` n'avait rien à envelopper.
+Même remède qu'au lot 56 — `raw` devient une liste de SEGMENTS (`HealthRawPart`, union
+`texte | montant`), et le montant reste une donnée jusqu'au rendu.
+
+**Le module reste PUR.** `healthScore.ts` ne lit pas le store et ne peut donc pas connaître le mode
+discret : il FORMATE et MARQUE, le composant DÉCIDE. L'alternative — une seconde chaîne « déjà
+masquée » produite en amont — aurait dupliqué chaque gabarit, et deux gabarits divergent. Corollaire
+de conception : le constructeur de segment monétaire (`mnt`) prend le NOMBRE, jamais une chaîne déjà
+composée, pour qu'aucun site ne puisse re-fabriquer son propre format à côté de `formatCAD`.
+
+**La leçon du lot est dans une garde qui a rougi sur du code parfaitement sain.** Mon scan de source
+posait l'anti-vacuité canonique du dépôt — `partDeCodeRestante(brut, code) > 0.5` — et elle a
+échoué : `healthScore.ts` est à **0,466** de code. Le fichier n'est pas malade, il est
+DOCUMENTÉ — chaque garde y porte son incident écrit, et c'est exactement ce qu'on lui demande. Le
+0,5 vient des gardes qui balaient le DÉPÔT, où il est agrégé sur des centaines de fichiers ; recopié
+sur un seul fichier de prose, il affirme « il ne reste plus de code » d'un fichier intact.
+**Un seuil se re-mesure à la portée où on le pose, et la mesure s'écrit à côté** — sinon la prochaine
+session le rebase au jugé au lieu de comprendre pourquoi il est là. C'est le prolongement direct de
+« l'anti-vacuité du décommentage se déplace avec la portée » (lot 52), constaté cette fois par une
+garde neuve qui naît rouge.
+
+Trois autres constats du même tour :
+
+- ⚠️ **Récidive de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`, version TypeScript.** Mon
+  motif `type:\s*'montant'` comptait **2** occurrences là où j'en attendais 1 : la FABRICATION (le
+  littéral d'objet du constructeur) et la DÉCLARATION de l'union. Une union discriminée écrit le même
+  jeton que ses valeurs — le `;` du type et le `,` du littéral sont la seule différence. La garde vise
+  désormais `type: 'montant',` et un second contrôle exige que la déclaration existe TOUJOURS : sans
+  lui, renommer l'union ferait tomber le compte à 0, ce qui se lirait « aucune fabrication
+  clandestine » — une garde satisfaite par la disparition de son objet.
+- ⚠️⚠️ **Neuvième périmètre de ticket faux d'affilée — et celui-là, je l'avais écrit la veille.**
+  Le ticket annonçait `raw` consommé à **TROIS** endroits de `HealthIndicator` ; mesuré, il y en a
+  **DEUX**. Le troisième qu'il nommait — le `sr-only` — rend `m.help`, qui ne porte aucun montant.
+  La série a une lecture confortable (« les vieux tickets pourrissent ») et une lecture juste : ce
+  qui pourrit n'est pas l'ÂGE du ticket mais le fait qu'il ait été écrit **en regardant autre chose
+  que le code qu'il décrit**. Un ticket rédigé la veille, de sa propre main, en pleine connaissance
+  du fichier, s'est trompé pareil. Le recensement est la première étape, sans exception d'auteur ni
+  de fraîcheur (`UN-PERIMETRE-CITE-N-EST-PAS-UN-PERIMETRE-RECENSE`).
+- ⚠️ **Le REMÈDE prescrit par un ticket est déjà livré aussi souvent que son défaut.** La règle
+  maison « vérifier qu'une feature n'est pas DÉJÀ faite » s'applique d'habitude au DÉFAUT ; ici c'est
+  la solution qui existait : `[FORMAT-EXPLAINS-TOLOCALESTRING]` demande d'écrire un `formatCADSigned`
+  dans `utils/format.ts`, or **`formatSigned(n, { withCurrency: true })` y est exporté et sert à huit
+  sites** (`Budget`, `Retirement`, `TaxCenter`), le plus souvent enveloppé dans `PrivateAmount`.
+  L'écrire aurait produit un doublon — et un doublon rend le code introuvable par un seul nom
+  (`UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM`). Grepper le remède, pas seulement
+  le défaut. Ticket corrigé ; le code n'a pas été touché (scope non demandé).
+
+**Effet de bord déclaré plutôt que caché** : la cible FIRE composait son format à la main
+(`` `${formatNumber(x)} $` ``), ce que le non-négociable « Formatage $ » interdit. Comme la ligne
+était réécrite de toute façon, elle passe par `formatCAD`. Seule différence de rendu, MESURÉE :
+l'espace avant le « $ » devient insécable (U+00A0 au lieu de U+0020) — invisible à l'œil, et le
+montant ne peut plus se couper en fin de ligne. Un changement invisible reste un changement : il
+s'écrit dans le commit et dans le `CHANGELOG`, pas seulement dans la tête de celui qui l'a fait.

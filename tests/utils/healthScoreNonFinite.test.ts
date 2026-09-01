@@ -15,9 +15,14 @@
 // et une trace `logError` au lieu du silence.
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, type HealthMetricRow, type HealthScoreInputs } from '../../utils/healthScore';
+import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, healthRawText, type HealthMetricRow, type HealthScoreInputs } from '../../utils/healthScore';
 import { clearErrors, filterErrors, __resetErrorThrottle } from '../../services/errorLogger';
 import type { HealthWeights } from '../../types';
+
+// [A11Y-PRIVACY-HEALTH-RAW] `raw` est passé d'une CHAÎNE à une liste de SEGMENTS (un montant doit
+// rester un nœud pour être masquable). Ces assertions parlent toutes du texte COMPLET, donc elles
+// le recomposent SANS masquage — l'équivalent exact de l'ancien `r.raw`, sens inchangé.
+const texte = (r: HealthMetricRow): string => healthRawText(r.raw, false);
 import { formatCAD, formatNumber, formatPercent } from '../../utils/format';
 
 const WEIGHTS: HealthWeights = {
@@ -76,7 +81,7 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         const rows = computeHealthMetrics(infiniteSalary());
         const savings = rows.find((r) => r.id === 'savingsRate')!;
         expect(savings.available).toBe(false); // l'UI rend « — » sur ce drapeau
-        expect(savings.raw).toContain('Donnée invalide');
+        expect(texte(savings)).toContain('Donnée invalide');
         expect(savings.help).toContain('n\'est pas un nombre exploitable');
     });
 
@@ -107,10 +112,10 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         expect(sain.available).toBe(true);
         expect(sain.value).toBeGreaterThan(0);
         expect(sain.value).toBeLessThan(100);
-        expect(sain.raw).toContain('du revenu net');
+        expect(texte(sain)).toContain('du revenu net');
         // Sous corruption : exclue, et surtout PAS un 100 compté au dénominateur.
         expect(pollue.available).toBe(false);
-        expect(pollue.raw).not.toContain('0,0 % du revenu net');
+        expect(texte(pollue)).not.toContain('0,0 % du revenu net');
     });
 
     it('une trace est écrite (le silence était le vrai défaut), et une SEULE malgré N appels', () => {
@@ -193,8 +198,8 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         const pollue = computeHealthMetrics(inputs({ transactions, budgetItems: bad }));
         const parity = find(pollue, 'budgetParity');
         expect(parity.available).toBe(false);
-        expect(parity.raw).toContain('illisible');
-        expect(parity.raw).not.toContain('non rapprochées');
+        expect(texte(parity)).toContain('illisible');
+        expect(texte(parity)).not.toContain('non rapprochées');
 
         // Coût d'abo illisible → le libellé nomme l'ABONNEMENT, pas le revenu.
         const subsKo = [
@@ -203,8 +208,8 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         ] as unknown as HealthScoreInputs['subscriptions'];
         const load = find(computeHealthMetrics(inputs({ transactions, budgetItems, subscriptions: subsKo })), 'subscriptionLoad');
         expect(load.available).toBe(false);
-        expect(load.raw).toContain('illisible');
-        expect(load.raw).not.toContain('Revenu requis');
+        expect(texte(load)).toContain('illisible');
+        expect(texte(load)).not.toContain('Revenu requis');
 
         // ⚠️ ORDRE des causes : sans revenu saisi (cas très courant — on épingle ses abos avant de
         // remplir son salaire), la vraie cause est le REVENU, pas l'abonnement. Sans cette
@@ -216,7 +221,7 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         }));
         const loadSansRevenu = find(sansRevenu, 'subscriptionLoad');
         expect(loadSansRevenu.available).toBe(false);
-        expect(loadSansRevenu.raw).toBe('Revenu requis');
+        expect(texte(loadSansRevenu)).toBe('Revenu requis');
 
         // ⚠️ Le cas qui exerce VRAIMENT la source unique `incomeUsableForRatios` (finding
         // code-reviewer, 4e passe) : `netSalary: 0` ne suffit pas — `0 > 0` est déjà faux sans
@@ -231,7 +236,7 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
             }));
             const l = find(croise, 'subscriptionLoad');
             expect(l.available, `revenu ${String(netSalary)} + abo illisible`).toBe(false);
-            expect(l.raw, `revenu ${String(netSalary)} : la cause est le REVENU, pas l'abonnement`).toBe('Revenu requis');
+            expect(texte(l), `revenu ${String(netSalary)} : la cause est le REVENU, pas l'abonnement`).toBe('Revenu requis');
         }
     });
 
@@ -286,9 +291,9 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         let avecMontant = 0;
         for (const [nom, over] of fixtures) {
             for (const r of computeHealthMetrics(inputs(over))) {
-                if (r.available) { if (MONTANT.test(r.raw)) avecMontant++; continue; }
+                if (r.available) { if (MONTANT.test(texte(r))) avecMontant++; continue; }
                 vus.add(r.id);
-                expect(MONTANT.test(r.raw), `${nom} · ${r.id} : montant dans un état indisponible → « ${r.raw} »`).toBe(false);
+                expect(MONTANT.test(texte(r)), `${nom} · ${r.id} : montant dans un état indisponible → « ${texte(r)} »`).toBe(false);
                 expect(
                     VALEUR_FORMATEE.test(r.help),
                     `${nom} · ${r.id} : « help » porte une valeur formatée — il n'est plus statique, la garde doit l'inclure → « ${r.help} »`,
@@ -314,8 +319,8 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         // La fonction est exportée : elle ne peut pas supposer que ses lignes viennent
         // de `computeHealthMetrics`.
         const rows: HealthMetricRow[] = [
-            { id: 'savingsRate', label: 'A', value: NaN, raw: '', help: '', available: true },
-            { id: 'emergencyFund', label: 'B', value: 80, raw: '', help: '', available: true },
+            { id: 'savingsRate', label: 'A', value: NaN, raw: [], help: '', available: true },
+            { id: 'emergencyFund', label: 'B', value: 80, raw: [], help: '', available: true },
         ];
         expect(computeHealthTotalScore(rows, WEIGHTS)).toBe(80); // la ligne saine seule, pas NaN
     });

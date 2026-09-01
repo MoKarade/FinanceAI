@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 039 tests** Vitest
-(483 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 046 tests** Vitest
+(484 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -412,6 +412,20 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   au moins un fuseau de chaque signe (mesuré : la variante UTC diverge 132/132 à Sydney, 0 à
   Montréal) et écrire la CONTRE-ÉPREUVE — « la variante fausse donnerait-elle autre chose ? »
   (`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
+- Un **seuil d'anti-vacuité appartient à la PORTÉE qu'il mesure**, jamais à la garde dont on le
+  copie : `partDeCodeRestante > 0.5`, canonique pour un scan de DÉPÔT (agrégé sur des centaines de
+  fichiers), a déclaré vide un `healthScore.ts` intact — mesuré **0,466** de code, parce que ce
+  fichier est majoritairement de la PROSE par conception. Re-mesurer à la portée où on le pose, et
+  écrire la mesure à côté du seuil (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
+  ⚠️ Récidive du même lot, version TypeScript : un motif de scan sur `type: 'montant'` compte la
+  FABRICATION **et** la DÉCLARATION de l'union discriminée — ancrer sur le `,` du littéral, et
+  exiger en plus que la déclaration existe toujours (sinon la garde est satisfaite par la
+  disparition de son objet). ⚠️ Et le **REMÈDE** prescrit par un ticket est déjà livré aussi souvent
+  que son défaut : `formatSigned(n, { withCurrency: true })` existait déjà (8 sites) là où le ticket
+  demandait d'écrire un `formatCADSigned`. Grepper le remède, pas seulement le défaut.
+  ⚠️ **Neuvième périmètre de ticket faux d'affilée — celui-là écrit la veille, par moi** : ce qui
+  pourrit n'est pas l'ÂGE d'un ticket mais le fait qu'il ait été écrit en regardant autre chose que
+  le code. Le recensement n'a d'exception ni d'auteur ni de fraîcheur.
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

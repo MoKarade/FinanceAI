@@ -1915,11 +1915,6 @@
   le nom par proximité DOM, non fiable. Les 2 champs « Devise »/« Compte fiscal » ont été corrigés
   en passant (revue #686, même patron `htmlFor`+`id`) ; ce ticket couvre le reste du formulaire.
 
-- [ ] 🔴 **`[A11Y-MODAL-GUIDE-NODIALOG]`** (S) — `GuideModal` : aucune sémantique de dialogue
-  (`role="dialog"` absente), pas de focus initial/piège Tab/restauration focus/Escape. Atteignable au
-  clavier (palette Cmd+K). **Correctif** : migrer vers primitive `<Modal>` existante (doc affirme
-  faussement que c'est déjà fait — leçon `DOC-STALE-IMPOSSIBILITY`).
-
 - [ ] **`[A11Y-ROUTE-FOCUS]`** (M) — changement onglet/route : aucun focus déplacé, aucune annonce SR.
   Un utilisateur SR qui clique nav n'a aucune indication que le contenu a changé. **Correctif** :
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link

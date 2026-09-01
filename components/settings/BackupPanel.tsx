@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { z } from 'zod';
 import { Card } from '../ui/Card';
+import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
@@ -101,6 +102,13 @@ interface BackupPanelProps {
 export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const encryptedFileRef = useRef<HTMLInputElement>(null);
+  // [A11Y-MODAL-GUIDE-NODIALOG] Focus initial des trois dialogues de sauvegarde. Ils portaient un
+  // `autoFocus` sur leur champ de passphrase ; la primitive `Modal` focalise le bouton ✕ après
+  // 50 ms et le leur aurait repris. Le focus initial se DÉCLARE donc, il ne se laisse pas au hasard
+  // de l'ordre des effets.
+  const exportPassphraseRef = useRef<HTMLInputElement>(null);
+  const importPassphraseRef = useRef<HTMLInputElement>(null);
+  const restoreConfirmRef = useRef<HTMLInputElement>(null);
 
   const [showExportEncModal, setShowExportEncModal] = React.useState(false);
   const [exportPassphrase, setExportPassphrase] = React.useState('');
@@ -270,18 +278,19 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     <>
       {/* Modal Export chiffré */}
       {showExportEncModal && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => !encWorking && setShowExportEncModal(false)}
+        <Modal
+          isOpen
+          onClose={() => { if (!encWorking) { setShowExportEncModal(false); setExportPassphrase(''); setExportPassphraseConfirm(''); } }}
+          closeOnBackdrop={!encWorking}
+          closeOnEsc={!encWorking}
+          initialFocusRef={exportPassphraseRef}
+          size="md"
+          icon={<Icon name="lock" size={22} className="text-ink-300 shrink-0" />}
+          title="Sauvegarde Chiffrée"
         >
-          <div
-            className="bg-surface border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
-            onClick={e => e.stopPropagation()}
-          >
+          <div>
             <div className="flex items-start gap-3 mb-4">
-              <Icon name="lock" size={22} className="mt-0.5 text-ink-300 shrink-0" />
               <div className="flex-1">
-                <h3 className="text-white font-bold text-base mb-2">Sauvegarde Chiffrée</h3>
                 <p className="text-ink-300 text-meta leading-relaxed">
                   Le fichier sera chiffré localement (AES-256-GCM + PBKDF2 600 000 itérations). Conserve la passphrase précieusement — <span className="text-red-300 font-bold">sans elle, le fichier est irrécupérable</span>.
                 </p>
@@ -295,8 +304,8 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                   type="password"
                   value={exportPassphrase}
                   onChange={e => setExportPassphrase(e.target.value)}
+                  ref={exportPassphraseRef}
                   className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-none font-mono"
-                  autoFocus
                   disabled={encWorking}
                 />
               </div>
@@ -333,26 +342,23 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Import chiffré */}
       {encryptedFile && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => !encWorking && setEncryptedFile(null)}
+        <Modal
+          isOpen
+          onClose={() => { if (!encWorking) { setEncryptedFile(null); setImportPassphrase(''); } }}
+          closeOnBackdrop={!encWorking}
+          closeOnEsc={!encWorking}
+          initialFocusRef={importPassphraseRef}
+          size="md"
+          icon={<Icon name="unlock" size={22} className="text-ink-300 shrink-0" />}
+          title="Déchiffrer la Sauvegarde"
+          subtitle={encryptedFile.name}
         >
-          <div
-            className="bg-surface border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <Icon name="unlock" size={22} className="mt-0.5 text-ink-300 shrink-0" />
-              <div className="flex-1">
-                <h3 className="text-white font-bold text-base mb-1">Déchiffrer la Sauvegarde</h3>
-                <p className="text-ink-400 text-meta font-mono break-all">{encryptedFile.name}</p>
-              </div>
-            </div>
+          <div>
             <div className="mb-5">
               <label htmlFor="backup-import-passphrase" className="block text-meta text-ink-300 mb-2">Passphrase</label>
               <input
@@ -361,8 +367,8 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 value={importPassphrase}
                 onChange={e => setImportPassphrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && importPassphrase.length >= MIN_PASSPHRASE_LENGTH && doEncryptedImport()}
+                ref={importPassphraseRef}
                 className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-none font-mono"
-                autoFocus
                 disabled={encWorking}
               />
             </div>
@@ -383,23 +389,22 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal confirmation restauration */}
       {pendingRestoreData && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => { setPendingRestoreData(null); setRestoreConfirmPhrase(''); }}
+        <Modal
+          isOpen
+          onClose={() => { setPendingRestoreData(null); setRestoreConfirmPhrase(''); }}
+          initialFocusRef={restoreConfirmRef}
+          size="md"
+          icon={<Icon name="alert" size={22} className="text-warning-400 shrink-0" />}
+          title="Restauration Complète"
         >
-          <div
-            className="bg-surface border border-white/15 rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in"
-            onClick={e => e.stopPropagation()}
-          >
+          <div>
             <div className="flex items-start gap-3 mb-4">
-              <Icon name="alert" size={22} className="mt-0.5 text-warning-400 shrink-0" />
               <div className="flex-1">
-                <h3 className="text-white font-bold text-base mb-2">Restauration Complète</h3>
                 <div className="text-ink-300 text-body space-y-1 bg-black/30 p-3 rounded-lg mb-3">
                   <p>Version : <span className="text-white font-mono">{String(pendingRestoreData.version ?? 'Inconnue')}</span></p>
                   <p>Transactions : <span className="text-white font-mono">{(pendingRestoreData.transactions as unknown[])?.length ?? 0}</span></p>
@@ -420,9 +425,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 value={restoreConfirmPhrase}
                 onChange={e => setRestoreConfirmPhrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && restoreConfirmPhrase === 'RESTAURER' && doRestore()}
+                ref={restoreConfirmRef}
                 className="w-full bg-black/50 border border-danger-500/30 rounded-lg px-3 py-2 text-white font-mono text-body focus:border-danger-500 outline-none"
                 placeholder="RESTAURER"
-                autoFocus
               />
             </div>
             <div className="flex gap-3 justify-end">
@@ -441,7 +446,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       <Card title="Zone de Sauvegarde (Full Backup)" className="border border-green-900/30 bg-green-900/10">

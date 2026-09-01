@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Cinq fenêtres se comportent enfin comme des fenêtres)
+
+- **Corrigé** : le guide contextuel, les trois fenêtres de sauvegarde chiffrée (export, import,
+  confirmation de restauration) et l'écran « Coffre verrouillé » recouvraient l'application **sans
+  jamais dire qu'ils étaient des fenêtres**. Conséquence concrète au clavier : la touche de
+  tabulation descendait *derrière* la fenêtre, dans des boutons invisibles — et un lecteur d'écran
+  continuait d'annoncer la page cachée dessous.
+- **Ce que les quatre premières gagnent** : la touche Échap ferme, le focus reste piégé dans la
+  fenêtre, il revient à l'endroit d'où tu venais à la fermeture, et l'arrière-plan ne défile plus.
+  « Coffre verrouillé » garde volontairement sa fermeture impossible — la seule sortie reste de
+  déverrouiller ou de se déconnecter de Drive.
+- **Un piège évité** : les trois fenêtres de sauvegarde plaçaient le curseur dans leur champ de
+  passphrase à l'ouverture. La brique commune, elle, plaçait le curseur sur le bouton ✕. Elle sait
+  désormais qu'on peut lui désigner le champ à viser — sans ça, la correction d'accessibilité aurait
+  introduit un agacement à chaque ouverture.
+- **Nouveau** : un contrôle automatique refuse toute surface qui recouvre l'app sans se déclarer,
+  avec ses deux exceptions écrites (l'écran d'accueil initial, qui ne cache rien, et le tiroir de
+  navigation mobile, qui est un menu).
+
 ## [unreleased] — 2026-09-01 (Les sous-onglets de Futur se parcourent aux flèches)
 
 - **Corrigé** : les quatre sous-onglets de Futur (Projection / Hypothèses / Plan d'action /

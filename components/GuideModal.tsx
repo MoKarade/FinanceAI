@@ -1,6 +1,16 @@
 
+// [A11Y-MODAL-GUIDE-NODIALOG] Ce guide était un `<div>` posé par-dessus l'app : aucun `role="dialog"`,
+// aucun `aria-modal`, pas de focus initial, pas de piège Tab, pas de restauration du focus à la
+// fermeture, pas d'Échap. Il est pourtant atteignable au clavier (palette Cmd+K) — donc un
+// utilisateur au clavier pouvait tabuler DANS l'application recouverte, sans rien qui le lui dise.
+//
+// ⚠️ La documentation affirmait que la migration vers la primitive `<Modal>` était déjà faite
+// (`DOC-STALE-IMPOSSIBILITY`). Elle ne l'était pas. Elle l'est ici — et le correctif n'est pas
+// d'ajouter les attributs à la main : tout ce qui manquait vit DÉJÀ dans `ui/Modal`, et le
+// réécrire localement aurait fabriqué une sixième variante à maintenir.
 import React from 'react';
 import { Tab } from '../types';
+import { Modal } from './ui/Modal';
 import { Icon } from './ui/Icon';
 
 interface GuideModalProps {
@@ -78,25 +88,26 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
     const content = getContent();
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-            <div
-                className="bg-surface border border-white/20 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="bg-white/[0.04] p-6 border-b border-white/10">
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-3">
-                            <Icon name="book" size={28} className="text-primary shrink-0" />
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">{content.title}</h2>
-                                <p className="text-ink-300 text-body mt-1">{content.desc}</p>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="inline-flex text-ink-300 hover:text-white transition-colors" aria-label="Fermer le guide"><Icon name="close" size={22} /></button>
-                    </div>
+        <Modal
+            isOpen
+            onClose={onClose}
+            size="xl"
+            icon={<Icon name="book" size={28} className="text-primary shrink-0" />}
+            title={content.title}
+            subtitle={content.desc}
+            footer={(
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-bold text-body transition-all focus-ring"
+                    >
+                        C'est compris !
+                    </button>
                 </div>
-
-                <div className="p-6 space-y-6">
+            )}
+        >
+                <div className="space-y-6">
                     <div>
                         <h3 className="text-body font-bold text-ink-300 uppercase tracking-widest mb-3">Guide Contextuel</h3>
                         <ul className="space-y-3">
@@ -118,13 +129,6 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
                         </div>
                     )}
                 </div>
-
-                <div className="p-4 border-t border-white/10 bg-black/20 flex justify-end">
-                    <button onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-bold text-body transition-all">
-                        C'est compris !
-                    </button>
-                </div>
-            </div>
-        </div>
+        </Modal>
     );
 };

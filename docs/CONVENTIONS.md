@@ -9808,3 +9808,41 @@ comment étiqueter : il dit que le bandeau se parcourt aux flèches, avec un `ta
 laisse la tabulation sortir vers le contenu. Extrait dans la primitive, le correctif profite aux
 trois écrans déjà migrés — un gain qu'aucun ticket ne demandait, obtenu parce que la logique a été
 mise en commun plutôt que posée sur l'écran du ticket.
+
+
+### Lot 66 (2026-09-01) — migrer vers une primitive, c'est hériter de ses décisions
+
+`UNE-PRIMITIVE-QUI-IMPOSE-SON-FOCUS-N-ACCUEILLE-PAS-UN-DIALOGUE-DE-SAISIE`
+
+Le ticket disait : « `GuideModal` n'a pas de sémantique de dialogue → migrer vers la primitive
+`<Modal>` ». Recensé, ce n'était pas un site mais **cinq** : `GuideModal`, les **trois** dialogues de
+`settings/BackupPanel.tsx`, et `auth/PassphraseGate.tsx`.
+
+Et la migration ne pouvait pas se faire telle quelle. Les trois dialogues de `BackupPanel` posaient
+`autoFocus` sur leur champ de passphrase ; `ui/Modal` focalise le bouton ✕ après 50 ms. Migrer sans
+rien changer aurait donc **repris le focus à l'utilisateur** au moment précis où on lui demande de
+taper un secret — une régression d'usage livrée *sous couvert d'accessibilité*, et invisible à toute
+garde de source puisque le balisage, lui, serait devenu correct.
+
+Le geste : **la primitive grandit d'abord** (`initialFocusRef`), la migration ensuite. La question à
+poser avant toute migration vers une primitive est « qu'est-ce que l'appelant faisait, que la
+primitive DÉCIDE à sa place ? » — focus initial, fermeture, défilement, z-index, animation. Ce que la
+primitive décide n'est un progrès que là où l'appelant n'avait pas de raison de décider autrement.
+
+⚠️ **Toutes les surfaces plein écran ne sont pas des dialogues**, et l'exemption est aussi importante
+que la règle. `Onboarding` prend le contrôle de l'écran : il n'y a rien derrière à rendre inerte, et
+un `aria-modal` y **affirmerait qu'on masque quelque chose** — une information fausse. Le tiroir
+mobile de `Layout` est un menu (`role="navigation"`) : le contenu derrière reste une destination
+légitime, c'est le but du tiroir. `PassphraseGate`, lui, est bien un dialogue mais **sans fermeture** —
+il déclare son rôle à la main plutôt que d'emprunter une primitive dont il n'utiliserait rien.
+
+⚠️ **Le contre-témoin d'une garde de migration.** Le scan cherche `fixed inset-0` : un écran migré
+**disparaît** de sa liste. Un test de présence ne dit donc plus rien de lui — et « il n'est plus dans
+les offenders » serait aussi vrai s'il avait été supprimé. La moitié manquante se vérifie à l'envers :
+il consomme la primitive, **et** il n'a pas repris d'overlay à lui. Les deux ensemble, sinon
+ré-inliner un `<div>` dans un fichier qui garde son import passerait.
+
+⚠️ **Et un test a rougi sans que son objet bouge** : `GuideModal.test` sélectionnait le bouton par
+`/Fermer le guide/`, le libellé de l'ancien bouton écrit à la main. Il mesurait la FORME. Ré-ancré sur
+« le bouton de fermeture du dialogue » — re-dérivé, pas rebasé
+(`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, troisième occurrence).

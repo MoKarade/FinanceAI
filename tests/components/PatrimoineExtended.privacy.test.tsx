@@ -22,6 +22,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act, fireEvent } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stripCommentsJsx } from '../../utils/stripComments';
 import {
     InsurancePanel, RentalPropertyPanel, BusinessPanel, CyclicalGoalsPanel,
 } from '../../components/PatrimoineExtended';
@@ -178,12 +179,12 @@ describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] nom accessible des champs masqués', 
 describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] garde de source : tout champ « (dollars) » est masqué', () => {
     const source = readFileSync(resolve(__dirname, '../../components/PatrimoineExtended.tsx'), 'utf8');
     // Source décommentée : ce fichier CITE des noms de champs dans ses commentaires, et un scan sur
-    // la source brute prendrait ces mentions pour de vrais champs (leçon #630). On retire les
-    // commentaires JSX en bloc ET les lignes `//` — une ligne entière, donc aucun risque de couper
-    // une URL au milieu d'une instruction.
-    const propre = source
-        .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-        .replace(/^\s*\/\/.*$/gm, '');
+    // la source brute prendrait ces mentions pour de vrais champs (leçon #630).
+    // ⚠️ `[GUARD-STRIPCOMMENTS-DUPLIQUE]` (lot 52) : la copie locale ne retirait que les commentaires
+    // JSX `{/* … */}` et les lignes `//` entières — un bloc `/* … */` HORS JSX y survivait, et un
+    // `//` en fin de ligne de code aussi. La source unique les traite, et elle connaît en plus les
+    // littéraux de chaîne, les gabarits et les regex.
+    const propre = stripCommentsJsx(source);
 
     /**
      * Chaque contrôle, avec l'`aria-label` qu'il porte.

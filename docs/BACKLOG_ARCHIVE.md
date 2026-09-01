@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 52 : quinze décommenteurs, un seul survivant (PR #778)
+
+- [x] **`[GUARD-STRIPCOMMENTS-DUPLIQUE]`** (S, MOYEN) — « sept décommenteurs indépendants, aucun
+  exporté ». ✅ **Livré**, après re-recensement : trois étaient déjà migrés par
+  `[GUARD-STRIPCOMMENTS-CONSOLIDER]`, et le résidu réel était **15 occurrences dans 13 fichiers**,
+  pas quatre. Tous consomment désormais `utils/stripComments.ts`.
+  · **Le coût du statu quo, mesuré** : sur 458 fichiers, l'ad hoc le plus répandu et la source unique
+    diffèrent sur **154** (34 %) — 149 où l'ad hoc laissait passer de la prose, **5 où il mangeait du
+    code** (`'https://hubperso.com'` coupé au `//`, 163 caractères perdus dans `Layout.tsx`).
+  · ⚠️ **La consolidation a cassé une garde en silence** : `stripComments` laisse les accolades d'un
+    commentaire JSX (c'est un décommenteur JS), que les copies retiraient. Une garde est passée de 40
+    à 39 paires vues. Correctif : `stripCommentsJsx`, livré et testé.
+  · ⚠️ **Quatre anti-vacuités sont devenues tautologiques** : la source unique BLANCHIT, donc
+    `code.length` ne bouge plus. Refondées sur `partDeCodeRestante`.
+  · **Garde livrée** : `tests/guards/stripCommentsUniqueGuard.test.ts` (4 cas) — aucune copie hors
+    des quatre fichiers nominatifs, et le sens INVERSE (les 15 migrés importent bien la source unique).
+
 ## 2026-08-30 — Lot 51 : le nom manquant est une propriété du CONTRÔLE, pas du label (PR #777)
 
 - [x] **`[A11Y-LABELS-RESTE-DU-DEPOT]`** (M, ÉLEVÉ) — recensé le 2026-08-29 en livrant

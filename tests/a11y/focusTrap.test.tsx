@@ -21,6 +21,7 @@ import React from 'react';
 import { FutureDetailModal } from '../../components/projection/FutureDetailModal';
 import { FOCUSABLE_SELECTOR } from '../../hooks/useFocusTrap';
 import type { ProjectionChartPoint } from '../../services/projection/types';
+import { stripComments } from '../../utils/stripComments';
 
 vi.mock('recharts', async () => {
     const R = await import('react');
@@ -113,7 +114,7 @@ describe('[A11Y-FUTUR-DETAIL-FOCUS-TRAP] une seule liste d’éléments focusabl
         // sélecteur (`… = '…:not([disabled])…'`), pas la mention du mot dans un commentaire.
         const offenders: string[] = [];
         for (const f of [...DIALOGUES, 'components/FutureProjection.tsx', 'components/Budget.tsx']) {
-            const src = lire(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+            const src = stripComments(lire(f));
             if (/=\s*['"`][^'"`]*\[tabindex\]:not\(\[tabindex="-1"\]\)/.test(src)) offenders.push(f);
         }
         expect(offenders, 'une liste locale rouvre la porte à la divergence').toEqual([]);

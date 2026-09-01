@@ -28,6 +28,7 @@ import { resolve } from 'node:path';
 import { AdvancedProjectionParams } from '../../components/AdvancedProjectionParams';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { ProjectionConfig } from '../../types';
+import { stripCommentsJsx } from '../../utils/stripComments';
 
 const setPrivacy = (on: boolean) => act(() => { useFinanceStore.setState({ isPrivacyMode: on }); });
 
@@ -205,8 +206,13 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] garde de source : tout libellé en $ pil
      * ⚠️ Nettoyer d'abord, scanner ensuite — plutôt que de tolérer les commentaires DANS la regex
      * de paires. Un `(?:\{\/\*[\s\S]*?\*\/\}\s*)*` y imbrique deux quantificateurs et ouvre un
      * backtracking exponentiel (signalé par CodeQL). Ici chaque motif reste linéaire.
+     *
+     * ⚠️ `[GUARD-STRIPCOMMENTS-DUPLIQUE]` (lot 52) : la copie locale ne retirait que les commentaires
+     * JSX (accolade + bloc) — un bloc hors JSX et un commentaire de LIGNE en fin de ligne de code y
+     * survivaient tous les deux. La source unique traite les trois formes, et elle connaît en plus
+     * les littéraux de chaîne, les gabarits et les regex.
      */
-    const propre = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    const propre = stripCommentsJsx(source);
 
     /** Chaque `<label>…</label>`, avec le contrôle qui le suit. */
     const paires = () => {

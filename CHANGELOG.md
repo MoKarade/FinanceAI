@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Les contrôles automatiques du code lisent tous la même chose)
+
+- **Amélioré** (interne, invisible à l'écran) : l'app est protégée par des dizaines de contrôles
+  automatiques qui relisent son propre code pour empêcher certains bugs de revenir. Chacun devait
+  d'abord écarter les commentaires — sinon une phrase d'explication se fait prendre pour du code —
+  et quinze le faisaient chacun à sa manière, avec quinze niveaux de rigueur différents. Ils partagent
+  désormais un seul outil, le plus strict. Mesuré : sur 458 fichiers, l'ancienne méthode la plus
+  répandue donnait un résultat différent sur 154 d'entre eux, dont 5 où elle effaçait du vrai code
+  (une adresse web `https://…` était coupée en deux). Aucun changement de comportement pour toi.
+
 ## [unreleased] — 2026-08-30 (Accessibilité : 40 champs de formulaire enfin nommés)
 
 - **Corrigé** : dans seize écrans — projets immobiliers, planification enfants, ajout de titre,

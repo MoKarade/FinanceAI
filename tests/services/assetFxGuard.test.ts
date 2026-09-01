@@ -21,6 +21,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { stripComments } from '../../utils/stripComments';
 
 const ROOT = resolve(process.cwd());
 const SCAN_DIRS = ['components', 'services', 'utils', 'hooks', 'mcp'];
@@ -48,13 +49,6 @@ function listSourceFiles(dir: string): string[] {
         }
     }
     return out;
-}
-
-/** Strip les commentaires (leçon FISC-CONST-LINT : un motif en commentaire pollue le scan). */
-function stripComments(src: string): string {
-    return src
-        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .replace(/\/\/[^\n]*/g, '');
 }
 
 describe('[ASSET-FX-DISPLAY] garde anti quantity×currentPrice sans FX', () => {

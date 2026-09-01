@@ -1391,24 +1391,6 @@
   une version). ⚠️ Modification de chaîne d'outils → **valider avec Marc avant** : un `engines`
   strict peut casser un `npm install` local sur une autre machine. [MESURÉ]
 
-### 🟡 Gardes de scan — le décommenteur écrit sept fois
-
-- [ ] **`[GUARD-STRIPCOMMENTS-DUPLIQUE]`** (S, MOYEN) — **sept** décommenteurs indépendants, aucun
-  exporté, donc aucun trouvable autrement qu'en cherchant le concept : `utils/fiscalConstGuardV2.ts:216`,
-  `utils/fiscalConstantsGuard.ts:34`, `utils/chartDataSumGuard.ts:51`,
-  `tests/aiTools/specFiniteGuard.test.ts:26`, `tests/services/assetFxGuard.test.ts:54`,
-  `tests/components/subTabsAria.test.tsx:84`, `tests/services/silencesXs.test.ts:122`. **Ils ne se
-  comportent PAS pareil** : certains préservent les numéros de ligne (remplacement par des espaces),
-  d'autres non ; certains gèrent le `//` dans une URL (`(^|[^:])`), d'autres le coupent ; l'un rend
-  `string`, l'autre `string[]`. Une garde de scan ne vaut que par son décommenteur — **le plus faible
-  des sept fixe le niveau réel de protection du dépôt**, et personne ne sait lequel c'est.
-  **Correctif** : un `utils/stripSourceComments.ts` exporté, avec ses cas de syntaxe testés (chaîne
-  contenant `//`, URL, commentaire imbriqué, template literal), puis migrer les sept sites. ⚠️ Migrer
-  AVANT de tester chaque garde perturbée : un décommenteur plus STRICT peut réveiller des offenders
-  jusqu'ici invisibles — ce sont eux le vrai périmètre (leçon « resserrer le scan AVANT le fix »).
-  ⚠️ Ne PAS unifier la SÉMANTIQUE au passage (préserver les lignes ou non) : c'est un choix par
-  appelant, pas un défaut. [MESURÉ — 7 définitions comptées le 2026-08-19]
-
 ### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
 
 - [ ] **`[FORMATCAD-OR-ZERO]`** (S, MOYEN) — **16 sites** font `formatCAD(… || 0)` : le `|| 0`

@@ -8523,6 +8523,74 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 52 — un décommenteur plus correct casse ce qui dépendait de son approximation
+
+`UN-OUTIL-PLUS-CORRECT-CASSE-CE-QUI-DEPENDAIT-DE-SON-APPROXIMATION`
+
+`[GUARD-STRIPCOMMENTS-DUPLIQUE]` : quinze décommenteurs ad hoc dans treize fichiers de test, tous
+remplacés par `utils/stripComments.ts`. Le ticket en annonçait sept — trois étaient déjà migrés, et
+le résidu réel était deux fois plus gros que les quatre restants qu'il décrivait.
+
+**Le coût, mesuré avant de coder.** Sur les 458 fichiers `.ts`/`.tsx` de `components/ services/
+utils/ hooks/ store/ mcp/`, le décommenteur ad hoc le plus répandu et la source unique rendent un
+résultat DIFFÉRENT sur **154** d'entre eux (34 %) : **149** où l'ad hoc laissait passer de la prose
+(un `//` en fin de ligne de code lui échappe, donc toute garde d'absence était affaiblie) et **5** où
+il MANGEAIT du code — `const HUB_URL = … || 'https://hubperso.com'` coupé au `//` de l'URL, 163
+caractères de vrai code perdus dans `components/Layout.tsx`. Un scan qui lit un fichier tronqué peut
+prouver « rien ne référence X » à partir de « il n'y a plus rien ».
+
+**Et voilà le piège de la consolidation.** `stripComments` est un décommenteur **JavaScript** : dans
+un commentaire JSX, il blanchit le bloc mais LAISSE les accolades — en JS, ce sont du code. Les
+copies ad hoc, elles, retiraient le motif JSX entier. Un scan qui cherche `</label>` suivi d'un
+champ voyait donc une accolade vide s'intercaler : la garde de `AdvancedProjectionParams` est passée
+de 40 à **39** paires vues, **sans qu'aucune assertion ne rougisse d'elle-même** — c'est son test
+d'angle mort, écrit un lot plus tôt, qui a parlé. Remplacer un outil approximatif par un outil
+correct n'est jamais neutre : les appelants ont pu s'appuyer sur l'approximation. Ça ne se voit
+qu'en REJOUANT chaque appelant, un par un. Le correctif est `stripCommentsJsx` : même contrat, plus
+les accolades dont le contenu est devenu entièrement blanc.
+
+**La deuxième conséquence, plus sournoise, ne rougit nulle part.** La source unique BLANCHIT (mêmes
+lignes, mêmes colonnes, même longueur) là où les copies SUPPRIMAIENT. Toute anti-vacuité écrite
+`expect(code.length).toBeGreaterThan(…)` devient donc **tautologique** — vraie par construction,
+quoi qu'il arrive, et parfaitement VERTE. Quatre en portaient une (`silencesXs` ×2,
+`w5TaxProxyAnchor` ×2, `estateCalculation` ×2, `taxBracketVizAnnee`), toutes refondées sur
+`partDeCodeRestante`, qui compte les caractères NON BLANCS. Prouvé par perturbation : sur un
+décommenteur qui blanchit TOUT le fichier, la version « longueur » laisse passer, la version
+« caractères non blancs » rougit. **Une migration qui change la SÉMANTIQUE d'un helper doit auditer
+tout ce qui mesurait sa sortie, pas seulement ce qui l'appelait.**
+
+**Mon recensement manuel a raté deux sites sur dix-sept**, et c'est la garde — écrite APRÈS — qui les
+a trouvés (`AdvancedProjectionParams.privacy`, `FutureDetailModal.transactions`). Le second parce que
+j'avais classé le fichier « faux positif » sur sa PREMIÈRE occurrence (une normalisation d'espaces,
+ligne 63) sans regarder la seconde, 250 lignes plus bas. **Un fichier ne se juge pas sur une
+occurrence** ; et un scan écrit puis rejoué bat une liste relue à la main —
+`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`, confirmé une fois de plus.
+
+**Trois pièges d'outillage payés en chemin, tous notables :**
+
+- **Un commentaire de BLOC qui cite le marqueur de fin de commentaire se ferme sur sa citation.**
+  Écrire « la copie ne retirait que les commentaires JSX `{/* … *​/}` » dans un `/** … */` a terminé
+  le commentaire au milieu de la phrase, et le reste est devenu du code — erreur de compilation.
+  Dans un commentaire de bloc, on DÉCRIT la forme en toutes lettres ; seul un commentaire de LIGNE
+  peut la citer.
+- **Un `git checkout -- <fichier>` pour annuler une perturbation efface tout le fichier** — leçon
+  déjà écrite dans ce document, re-commise ici : la migration de `silencesXs` a été perdue et a dû
+  être refaite. Une perturbation s'annule par le `replace` inverse, asserté.
+- **Un cas d'essai isolé n'est pas représentatif.** Ma preuve de discrimination de `stripCommentsJsx`
+  échouait sur un fragment `</label>{/` + `* … *` + `/}` : le `/` de la balise fermante suit un `<`,
+  donc l'automate le lit comme l'ouverture d'un littéral d'expression régulière et n'y voit plus
+  aucun commentaire. Le contexte d'un fichier complet lève l'ambiguïté. La preuve est donc faite sur
+  le VRAI fichier, avec ses deux chiffres (39 contre 40).
+
+⚠️ **Ce que la garde neuve interdit, et pourquoi elle lit la source décommentée.**
+`tests/guards/stripCommentsUniqueGuard.test.ts` refuse tout `.replace()` dont la regex vise un
+marqueur de commentaire, hors quatre fichiers nominatifs et motivés (la source unique, ses tests, le
+canari, et la garde elle-même — dont le motif de recherche EST un motif de décommentage). Elle lit la
+source DÉCOMMENTÉE, sans quoi elle rougirait sur les treize commentaires de migration que ce lot
+vient d'écrire : une garde d'absence contredit mécaniquement une bonne doc. Et un quatrième test
+vérifie le sens INVERSE — que les quinze fichiers migrés importent toujours la source unique —, sans
+quoi « plus aucune copie » serait aussi vrai si toutes les gardes avaient cessé de décommenter.
+
 ### Lot 51 — un nom manquant est une propriété du CONTRÔLE, pas du label
 
 `UN-NOM-MANQUANT-EST-UNE-PROPRIETE-DU-CONTROLE-PAS-DU-LABEL`

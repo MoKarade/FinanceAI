@@ -233,3 +233,25 @@ export function partDeCodeRestante(brut: string, decommente: string): number {
     if (denominateur === 0) return 1;
     return decommente.replace(/\s/g, '').length / denominateur;
 }
+
+/**
+ * Variante JSX : `stripComments` PLUS les accolades qui n'enveloppaient qu'un commentaire.
+ *
+ * ⚠️ Pourquoi elle existe (mesuré au lot 52). `stripComments` est un décommenteur JavaScript : dans
+ * `{/* … *​/}`, il blanchit le bloc mais laisse `{` et `}` — en JS ce sont du code. Les décommenteurs
+ * ad hoc qu'il remplace, eux, retiraient le motif JSX ENTIER, accolades comprises. Un scan qui
+ * cherche `</label>\s*<input` voyait donc `</label>   {   }   <input` et perdait la paire : une
+ * garde de `AdvancedProjectionParams` est passée de 40 à 39 champs vus, silencieusement, à la seule
+ * migration. Un décommenteur plus correct peut casser un appelant qui dépendait de son ancienne
+ * approximation — c'est le vrai risque de ce genre de consolidation, et il ne se voit qu'en
+ * REJOUANT chaque garde.
+ *
+ * Contrat identique pour le reste : on BLANCHIT (mêmes lignes, mêmes colonnes, même longueur), et on
+ * ne touche qu'aux accolades dont le contenu est devenu entièrement blanc — une accolade qui portait
+ * du code reste intacte.
+ */
+export function stripCommentsJsx(source: string): string {
+    const sansCommentaires = stripComments(source);
+    // `{` suivi de blancs seulement, puis `}` : c'est exactement ce que devient `{/* … *​/}`.
+    return sansCommentaires.replace(/\{(\s*)\}/g, (_m, blancs: string) => ` ${blancs} `);
+}

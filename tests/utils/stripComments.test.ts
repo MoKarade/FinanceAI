@@ -3,7 +3,9 @@
 // crie pas : il rend un fichier plausible, amputé, et toutes les gardes bâties dessus deviennent
 // silencieusement aveugles à ce qu'il a mangé.
 import { describe, it, expect } from 'vitest';
-import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { stripComments, stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 // Le contrat de GÉOMÉTRIE, que les gardes fiscales et `chartDataSumGuard` exigent (elles reportent
 // des numéros de ligne et travaillent ligne à ligne).
@@ -147,5 +149,45 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] partDeCodeRestante', () => {
         const src = 'const a = 1;';
         expect(partDeCodeRestante(src, stripComments(src))).toBe(1);
         expect(partDeCodeRestante('', '')).toBe(1);
+    });
+});
+
+describe('[GUARD-STRIPCOMMENTS-DUPLIQUE] stripCommentsJsx', () => {
+    it("blanchit l'accolade qui n'enveloppait qu'un commentaire JSX", () => {
+        const src = '<label/>{/' + '* note *' + '/}<input/>';
+        const out = stripCommentsJsx(src);
+        expect(out).toHaveLength(src.length);          // on blanchit, on ne supprime pas
+        expect(out.replace(/\s/g, '')).toBe('<label/><input/>');
+    });
+
+    it("NE touche PAS une accolade qui porte du code — c'est là qu'un décommenteur trop zélé casse tout", () => {
+        const src = '<div>{valeur}</div>';
+        expect(stripCommentsJsx(src)).toBe(src);
+        // Et une accolade dont SEULE une partie est un commentaire garde son code.
+        const mixte = '<div>{valeur /' + '* note *' + '/}</div>';
+        expect(stripCommentsJsx(mixte).replace(/\s/g, '')).toBe('<div>{valeur}</div>');
+    });
+
+    it('rend exactement `stripComments` hors JSX (aucun effet de bord sur un .ts)', () => {
+        const src = "const url = 'https://x.dev'; // note\nconst o = { a: 1 };";
+        expect(stripCommentsJsx(src)).toBe(stripComments(src));
+    });
+
+    it("DISCRIMINE, sur le VRAI fichier : `stripComments` seul perd une paire label/champ", () => {
+        // ⚠️ Mesuré sur `components/AdvancedProjectionParams.tsx`, pas sur un fragment. Un fragment
+        // isolé ne prouve RIEN ici : dans `<label>L</label>{/` + `* … *` + `/}`, le `/` de la balise
+        // fermante suit un `<`, donc l'automate le lit comme l'ouverture d'un littéral d'expression
+        // régulière et n'y voit plus aucun commentaire. Le contexte d'un fichier complet lève
+        // l'ambiguïté — une preuve de discrimination ne vaut que sur un cas REPRÉSENTATIF.
+        const src = readFileSync(resolve(process.cwd(), 'components/AdvancedProjectionParams.tsx'), 'utf8');
+        const paires = (s: string) => (s.match(/<label[^>]*>([^<]*)<\/label>\s*(<[A-Za-z]+)/g) ?? []).length;
+
+        // Les deux retirent bien les neuf commentaires JSX du fichier…
+        expect((stripComments(src).match(/\{\/\*/g) ?? []).length).toBe(0);
+        expect((stripCommentsJsx(src).match(/\{\/\*/g) ?? []).length).toBe(0);
+
+        // …mais `stripComments` laisse les accolades VIDES, et une paire label/champ y disparaît.
+        expect(paires(stripComments(src)), 'stripComments seul devrait perdre une paire').toBe(39);
+        expect(paires(stripCommentsJsx(src)), 'stripCommentsJsx doit les retrouver toutes').toBe(40);
     });
 });

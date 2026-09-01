@@ -19,10 +19,10 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stripComments } from '../../utils/stripComments';
 
 const lire = (p: string): string => readFileSync(resolve(__dirname, '../..', p), 'utf8');
-const sansCommentaires = (src: string): string =>
-    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const sansCommentaires = (src: string): string => stripComments(src);
 
 describe('[A11Y-CHART-HINT-HIDDEN] le graphe Futur annonce ce qui est ATTEIGNABLE', () => {
     const src = sansCommentaires(lire('components/FutureProjection.tsx'));

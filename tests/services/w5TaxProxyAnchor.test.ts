@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 import { RENTAL_NOI_TAX_PROXY, CCPC_DIVIDEND_TAX_PROXY, applyW5Effects } from '../../services/projection/w5Effects';
 import type { W5Context, W5Containers, W5Mutator } from '../../services/projection/w5Effects';
 import { vi } from 'vitest';
+import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
 const lire = (rel: string): string => readFileSync(resolve(__dirname, '../../', rel), 'utf8');
 const pct = (r: number): string => `${Math.round(r * 100)} %`;
@@ -61,8 +62,10 @@ describe('[W5-PROXY-NON-SOURCE] les proxys d\'impôt W5 sont ancrés, et les 3 s
         expect(ui).toMatch(/formatPercent\(CCPC_DIVIDEND_TAX_PROXY \* 100, 0\)/);
         // ⚠️ DISCRIMINANT du recopiage : aucun littéral « 45 % » / « 36 % » en dur dans le composant.
         // C'est ce qui empêcherait la mention de survivre à un changement de constante.
-        const code = ui.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
-        expect(code.length).toBeGreaterThan(ui.length * 0.5); // anti-vacuité du décommentage
+        const code = stripComments(ui);
+        // ⚠️ PAS `code.length` : la source unique BLANCHIT, la longueur est donc INCHANGÉE et
+        // l'assertion serait vraie par construction. On compte les caractères NON BLANCS restants.
+        expect(partDeCodeRestante(ui, code), 'anti-vacuité du décommentage').toBeGreaterThan(0.5);
         expect(code, 'taux recopié en dur dans l\'écran').not.toMatch(/\b45\s*%/);
         expect(code, 'taux recopié en dur dans l\'écran').not.toMatch(/\b36\s*%/);
     });
@@ -114,8 +117,8 @@ describe('[W5-PROXY-NON-SOURCE] les proxys d\'impôt W5 sont ancrés, et les 3 s
     it('le moteur applique bien les CONSTANTES NOMMÉES, plus des littéraux nus', () => {
         // « Nommer ou retirer » : le ticket reprochait deux littéraux anonymes au milieu du calcul.
         const src = lire('services/projection/w5Effects.ts');
-        const code = src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
-        expect(code.length).toBeGreaterThan(src.length * 0.3);
+        const code = stripComments(src);
+        expect(partDeCodeRestante(src, code), 'anti-vacuité du décommentage').toBeGreaterThan(0.3);
         expect(code).toMatch(/rentalPropertyNoiMonthly \* RENTAL_NOI_TAX_PROXY/);
         expect(code).toMatch(/businessDividendMonthly \* CCPC_DIVIDEND_TAX_PROXY/);
         // Les seuls `0.45` / `0.36` restants doivent être les DÉCLARATIONS, pas des usages.

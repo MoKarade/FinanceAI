@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 57 : huit montants en clair, et un attribut mesuré redondant (PR #784)
+
+- [x] **`[A11Y-PRIVACY-DIVERS]`** (M, 8 sites regroupés) — ✅ **Livré**, périmètre RE-RECENSÉ (les
+  numéros de ligne du ticket étaient périmés).
+  · **5 montants affichés** masqués : budget d'un voyage, économie d'impôt estimée, les deux bandeaux
+    d'avertissement du graphe Futur, et les deux résultats du chercheur d'objectif.
+  · **3 champs de SAISIE** passés en `PrivateNumberInput` : revenu mensuel cible, salaire net du
+    conjoint, prix d'achat par action.
+  · ⚠️ **Le ticket visait les mauvaises lignes pour `HealthIndicator`** : celles qu'il cite sont des
+    POURCENTAGES, et les vrais montants viennent de `utils/healthScore.ts`, un util PUR. Même classe
+    que les journaux du moteur du lot 56 → **découpé** en `[A11Y-PRIVACY-HEALTH-RAW]`.
+  · ⚠️ **Une perturbation a mesuré qu'un de mes attributs était REDONDANT** : le `htmlFor` ajouté sur
+    le salaire du conjoint ne change rien (le `<label>` qui ENVELOPPE nomme déjà le `<button>` de la
+    primitive). Conservé pour la robustesse au refactor, **avec sa raison écrite** — mais le test ne
+    prétend plus le prouver : il prouve le FAIT, pas le mécanisme.
+  · **Découverte ajoutée** au ticket de format : `GoalSeekerCard` viole `formatCAD` sur ses deux
+    sites — masqués par ce lot, mais toujours mal formatés.
+
 ## 2026-09-01 — Lot 56 : le plus gros trou du mode discret, et deux canaux à traiter autrement (PR #783)
 
 - [x] **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S, 🔴) — « `ProjectionExplains.tsx` : zéro

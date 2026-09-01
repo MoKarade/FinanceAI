@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Mode discret : huit montants oubliés dans sept écrans)
+
+- **Corrigé** : huit montants restaient lisibles en mode discret — le budget d'un voyage, l'économie
+  d'impôt estimée du couple, les deux avertissements sur les transactions du graphe Futur, les deux
+  résultats du chercheur d'objectif (patrimoine successoral et épargne mensuelle nécessaire), et
+  trois champs de saisie : le revenu mensuel visé à la retraite, le salaire net du conjoint et le
+  prix d'achat par action. Tous masqués maintenant.
+- **Reste à faire** : la cible FIRE et le coût des abonnements de l'indicateur de santé. Leur montant
+  est fabriqué à l'intérieur d'une phrase, plus haut dans le code — le corriger demande de changer la
+  façon dont cette phrase est construite, pas juste de l'habiller.
+
 ## [unreleased] — 2026-09-01 (Mode discret : l'écran « Explications » restait entièrement lisible)
 
 - **Corrigé** : la page qui détaille ta projection année par année et mois par mois — valeur nette,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '../ui/Card';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { RetirementGoal } from '../../types';
@@ -54,7 +55,7 @@ export const RetirementSettingsCard: React.FC = () => {
                     </div>
                     <div data-focus-section="profile-retirementIncome">
                         <label htmlFor="rsc-income" className="block text-meta text-ink-300 mb-1">Revenu mensuel cible</label>
-                        <input id="rsc-income"
+                        <PrivateNumberInput id="rsc-income"
                             type="number"
                             min={0}
                             step={100}

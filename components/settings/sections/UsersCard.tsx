@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { Card } from '../../ui/Card';
+import { PrivateNumberInput } from '../../ui/PrivateNumberInput';
 import { showToast } from '../../ui/Toast';
 import type { AppState, User } from '../../../types';
 import { Icon } from '../../ui/Icon';
@@ -118,9 +119,10 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
                 />
               </label>
-              <label className="block">
+              <label className="block" htmlFor="partner-netSalary">
                 <span className="text-tiny uppercase tracking-wider text-ink-400 font-semibold">Salaire net /mois</span>
-                <input
+                <PrivateNumberInput
+                  id="partner-netSalary"
                   type="number"
                   min={0}
                   value={partnerDraft.netSalary}

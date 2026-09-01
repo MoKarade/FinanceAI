@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { getQuote, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
 import { formatNumber } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
@@ -425,7 +426,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     </button>
                                 )}
                             </label>
-                            <input
+                            <PrivateNumberInput
                                 id="stock-buyPrice"
                                 type="number"
                                 value={buyPrice}

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 027 tests** Vitest
-(482 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 039 tests** Vitest
+(483 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -838,6 +838,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   peut viser du code dont la sortie est jetée » vaut aussi quand on se contente de ROUTER le bug, et
   un `CHANGELOG` qui décrit un défaut que l'utilisateur ne subit pas est pire qu'un ticket de trop
   (`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
+- **Une perturbation muette sur SON PROPRE ajout du jour mesure d'abord sa REDONDANCE** — pas un
+  défaut d'assertion : retirer le `htmlFor` que je venais de poser laissait 12 tests verts, parce que
+  le `<label>` qui ENVELOPPE nommait déjà le `<button>` de la primitive (`button` est labelable). Les
+  deux hypothèses expliquent le même silence, et seule « mon test est trop faible » est flatteuse.
+  Corollaire de conduite : garder l'attribut s'il rend le lien robuste à un refactor, mais ÉCRIRE sa
+  redondance, et faire porter au test le FAIT plutôt que le mécanisme
+  (`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`).
 - **Un montant INTERPOLÉ dans une phrase n'est plus un nœud** — donc plus masquable : `parts` était
   un `string[]` de `« +1 200 $ cotisé »`, et aucun `<PrivateAmount>` ne peut envelopper ça. Là où une
   valeur sensible finira masquée, elle doit rester une DONNÉE jusqu'au rendu (`{ montant, libelle }`).

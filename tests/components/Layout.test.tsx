@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Layout } from '../../components/Layout';
 import { Tab } from '../../types';
+import { TAB_LABELS } from '../../constants';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (k: string, d?: string) => d || k, i18n: { language: 'fr' } }),
@@ -37,6 +38,32 @@ describe('Layout', () => {
         const main = container.querySelector('main#main');
         expect(main).not.toBeNull();
         expect(main?.getAttribute('tabIndex')).toBe('-1');
+    });
+
+    it('[A11Y-ROUTE-FOCUS] changer d\'onglet déplace le focus vers le contenu ET l\'annonce', () => {
+        // ⚠️ Le défaut : cliquer une destination ne produisait AUCUN signal non visuel. Le focus
+        // restait sur le bouton de nav, donc atteindre le nouveau contenu demandait de re-tabuler
+        // tout le rail — pour une navigation que l'utilisateur venait justement de demander.
+        const { container, rerender } = render(<Layout {...baseProps} activeTab={Tab.FUTURE} />);
+        const main = container.querySelector('main#main') as HTMLElement;
+        const region = container.querySelector('[role="status"][aria-live="polite"]') as HTMLElement;
+
+        // ⚠️ La région est montée AVANT d'avoir quoi que ce soit à dire : montée au moment de parler,
+        // elle raterait la première transition — la seule qui compte.
+        expect(region, 'région d\'annonce absente au repos : la 1re transition serait muette').toBeTruthy();
+        expect(region.textContent, 'arriver sur l\'app n\'est pas un changement de destination').toBe('');
+        expect(document.activeElement, 'le focus ne doit PAS être volé au premier rendu').not.toBe(main);
+
+        rerender(<Layout {...baseProps} activeTab={Tab.BUDGET} />);
+        expect(document.activeElement, 'le focus n\'a pas suivi le changement d\'onglet').toBe(main);
+        expect(region.textContent, 'la destination n\'est pas annoncée').toBe(TAB_LABELS[Tab.BUDGET]);
+
+        // ⚠️ Contrôle : un re-rendu SANS changement d'onglet ne doit rien refaire — sinon la région
+        // répéterait la même annonce à chaque frappe, et le focus sauterait pendant une saisie.
+        const boutonNav = screen.getAllByRole('button')[0];
+        boutonNav.focus();
+        rerender(<Layout {...baseProps} activeTab={Tab.BUDGET} />);
+        expect(document.activeElement, 'le focus a été repris sans changement de destination').toBe(boutonNav);
     });
 
     it('a11y — le brand « FinanceAI » n\'est PAS un titre (le <h1> est réservé au titre de page)', () => {

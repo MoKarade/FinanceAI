@@ -47,6 +47,19 @@ export function usePendingFocus(matchedTab: Tab): string | null {
                     .find((node) => node.dataset.focusSection === section);
                 if (el) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // [A11Y-ROUTE-FOCUS] Le défilement et le clignotement sont deux signaux VISUELS :
+                    // ils ne disent rien à qui navigue au clavier ou au lecteur d'écran, alors que
+                    // c'est justement un deep-link — l'utilisateur a demandé « emmène-moi là ». On
+                    // déplace donc AUSSI le focus.
+                    //
+                    // ⚠️ La cible est un conteneur, pas un contrôle : elle n'est pas focalisable par
+                    // défaut, et un `focus()` y serait un no-op silencieux. On la rend focalisable
+                    // au clavier PROGRAMMATIQUEMENT (`tabIndex = -1` : atteignable par script, mais
+                    // pas insérée dans l'ordre de tabulation, où elle n'a rien à faire).
+                    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+                    // `preventScroll` : le `scrollIntoView` ci-dessus est fluide et vient d'être
+                    // lancé — laisser le focus rejouer son propre défilement le couperait net.
+                    el.focus({ preventScroll: true });
                     el.classList.add('animate-pulse-once');
                     setTimeout(() => el.classList.remove('animate-pulse-once'), 1500);
                 }

@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 67 : changer d'onglet ne produisait aucun signal non visuel
+> `[A11Y-ROUTE-FOCUS]` — focus sur `#main` + annonce de destination au changement d'onglet
+> (`Layout.tsx`), et focus sur la cible du deep-link (`utils/usePendingFocus.ts`, 3 écrans).
+> - ⚠️ **Périmètre du ticket JUSTE, correctif prescrit compris** — 2ᵉ fois en 5 lots. `<main
+>   id="main" tabIndex={-1}>` attendait depuis le lot du lien d'évitement ; il manquait l'appel.
+> - ⚠️ **Trois pièges, tous prouvés par perturbation** : (1) ne PAS voler le focus au 1er rendu — un
+>   rafraîchissement restaure l'onglet mémorisé, ce n'est pas une navigation ; (2) la région
+>   `role="status"` est montée EN PERMANENCE et on ÉCRIT dedans — montée au moment de parler, elle
+>   rate la 1re transition (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`) ; (3) la cible d'un
+>   deep-link est un CONTENEUR : sans `tabIndex = -1`, `focus()` y est un **no-op silencieux** —
+>   correctif qui a l'air posé et ne fait rien.
+> - Contrôle ajouté : un re-rendu SANS changement d'onglet ne reprend pas le focus (sinon il
+>   sauterait en pleine saisie) et ne répète pas l'annonce.
+
 > ## 🟦 Session 2026-09-01 — Lot 66 : cinq surfaces recouvraient l'app sans se déclarer
 > `[A11Y-MODAL-GUIDE-NODIALOG]` — ticket : 1 site (`GuideModal`). Réels : **5** — `GuideModal`, les
 > **trois** dialogues de `settings/BackupPanel.tsx`, et `auth/PassphraseGate.tsx`.

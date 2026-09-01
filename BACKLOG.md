@@ -1915,11 +1915,6 @@
   le nom par proximité DOM, non fiable. Les 2 champs « Devise »/« Compte fiscal » ont été corrigés
   en passant (revue #686, même patron `htmlFor`+`id`) ; ce ticket couvre le reste du formulaire.
 
-- [ ] **`[A11Y-ROUTE-FOCUS]`** (M) — changement onglet/route : aucun focus déplacé, aucune annonce SR.
-  Un utilisateur SR qui clique nav n'a aucune indication que le contenu a changé. **Correctif** :
-  appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
-  `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
-
 ### 🔴 `[PASSE-REEL-DETTE]` — le passé montre la dette actuelle depuis TOUJOURS (Marc, signalé 2×)
 
 > ⚠️ **Ces trois sous-tickets SONT le plan de `[DEBT-FROM-CONTRACT]`** (retour Marc 2026-08-12,

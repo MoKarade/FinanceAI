@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 097 tests** Vitest
-(492 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 102 tests** Vitest
+(493 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **`focus()` sur un CONTENEUR est un no-op SILENCIEUX** : un `<div>` ciblé par un deep-link n'est
+  pas focalisable ; l'appel a l'air posé, la garde de source le voit, et il ne se passe rien. Il faut
+  `tabIndex = -1` (atteignable par script, hors ordre de tabulation) — et le test interroge
+  `document.activeElement`, jamais la présence de l'appel. Corollaires du même lot : un effet de
+  navigation ne doit PAS tirer au PREMIER rendu (rouvrir l'app sur l'onglet mémorisé n'est pas une
+  navigation — garder l'état précédent en `ref`), un re-rendu SANS changement ne doit rien refaire
+  (sinon le focus saute en pleine saisie), et `preventScroll` est obligatoire quand un
+  `scrollIntoView` fluide vient d'être lancé, sinon le focus le coupe net
+  (`UN-FOCUS-SUR-UN-CONTENEUR-EST-UN-NO-OP-SILENCIEUX`).
 - ⚠️ **Une primitive qui impose son focus initial n'est pas prête à accueillir un dialogue de
   SAISIE** : `ui/Modal` focalise le ✕ après 50 ms ; les trois dialogues de `BackupPanel` posaient
   `autoFocus` sur leur champ de passphrase, et la migration le leur aurait repris — une régression

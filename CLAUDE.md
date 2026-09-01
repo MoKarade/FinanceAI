@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 111 tests** Vitest
-(495 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 115 tests** Vitest
+(496 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une valeur non vérifiée ne doit pas porter l'HABILLAGE d'une valeur vérifiée** : le montant
+  avancé par le modèle s'affichait en monospace verte encadrée — l'apparence exacte des montants
+  d'impôt calculés du voisin immédiat. Le défaut n'est pas le mot (« estimée » y était) mais le
+  STYLE : deux choses qui se ressemblent à l'écran et n'ont pas le même statut, c'est `no-fake-data`
+  appliqué à la forme. Un libellé dit QUI parle, et le style cesse d'imiter le calculé
+  (`UNE-VALEUR-NON-VERIFIEE-NE-PORTE-PAS-L-HABILLAGE-D-UNE-VALEUR-VERIFIEE`). ⚠️ Corollaire : une
+  mention d'avertissement se compte — répétée par élément, elle devient du décor qu'on cesse de lire,
+  donc son UNICITÉ s'asserte, et un contrôle vérifie qu'elle n'apparaît pas là où elle ne qualifie
+  rien.
 - ⚠️ **Un message d'erreur ne se corrige pas là où il s'affiche** : deux des huit surfaces écrivaient
   `catch { }` — sans LIER l'erreur, elles ne pouvaient rien dire d'autre que « vérifie ta clé », quoi
   qu'on écrive dans le composant. La première moitié du correctif est de CAPTURER. Et un texte

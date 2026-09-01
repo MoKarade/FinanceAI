@@ -9923,3 +9923,33 @@ rendu » — et un test l'exige, pour que personne ne l'« améliore » en réin
 messages Finnhub gardent les leurs : les erreurs de ce service n'ont pas la forme de celles du SDK
 Anthropic, et réutiliser le module sans le vérifier aurait recréé le défaut qu'on venait de corriger.
 Les deux sont au BACKLOG, non corrigés — c'est du scope non demandé.
+
+
+### Lot 69 (2026-09-01) — le défaut n'était pas le mot, c'était l'habillage
+
+`UNE-VALEUR-NON-VERIFIEE-NE-PORTE-PAS-L-HABILLAGE-D-UNE-VALEUR-VERIFIEE`
+
+`confidence` et `estimated_savings_cad` sont **auto-attribués par le modèle**. Le schéma Zod valide
+la forme — un enum, un nombre fini non négatif — jamais la justesse. Rien dans l'app ne vérifie
+qu'une stratégie « high » repose sur un calcul.
+
+Le ticket demandait de changer le libellé, et il avait raison sur le fond. Mais le mot « estimée »
+était **déjà là** (« Économie estimée : 1 500 $/an ») et ne suffisait pas — un calcul du moteur est
+lui aussi une estimation. Ce qui trompait, c'était le **style** : monospace, encadré, vert succès,
+c'est-à-dire l'apparence exacte des montants d'impôt affichés dix lignes plus haut, qui eux sortent
+du moteur et sont testés. **Deux choses qui se ressemblent à l'écran et n'ont pas le même statut**,
+c'est `no-fake-data` appliqué à la forme plutôt qu'à la valeur.
+
+D'où trois gestes, et pas un : le libellé dit QUI parle (`IA — piste solide` plutôt que `Haute
+confiance`), le montant porte sa provenance **dans** son texte, et il perd l'habillage « chiffre
+validé ». Le test l'exige explicitement — l'assertion sur la classe CSS est là parce que corriger le
+texte seul aurait laissé le chiffre inventé ressembler à un chiffre vérifié.
+
+⚠️ **Une mention d'avertissement se COMPTE.** Elle est unique sous la liste, et le test asserte
+`toHaveLength(1)` : répétée par carte, elle devient du décor qu'on cesse de lire — exactement l'effet
+qu'on cherchait à éviter. Et un contrôle vérifie qu'elle **n'apparaît pas** sur une carte vide, sinon
+« la mention est là » serait aussi vrai d'un texte permanent qui ne qualifie rien.
+
+⚠️ Enfin, ce lot n'a **rien retiré** : les pistes restent affichées avec leurs chiffres. Masquer une
+information parce qu'elle n'est pas vérifiée serait une autre erreur — c'est son STATUT qui manquait,
+pas sa légitimité.

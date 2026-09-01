@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 083 tests** Vitest
-(489 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 092 tests** Vitest
+(491 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un motif se re-perd par l'écran qui ressemble le MOINS aux autres** : `ui/SubTabs.tsx` est né
+  de trois copies divergentes et les a corrigées — mais `FutureProjection`, dont l'habillage diffère
+  (emoji au lieu d'icônes), est resté à part avec un motif ARIA incomplet. La bonne règle n'est pas
+  « utilise le composant » (un écran peut vouloir son apparence) mais « emprunte les FABRICANTS et
+  la LOGIQUE » : mêmes `tabId`/`panelId`, même gestionnaire de touches, exporté et jamais recopié —
+  et la garde interdit la ré-implémentation, pas seulement l'absence
+  (`UN-MOTIF-SE-REPERD-PAR-L-ECRAN-QUI-RESSEMBLE-LE-MOINS-AUX-AUTRES`). ⚠️ Corollaire de balisage :
+  quand le contenu d'un onglet est éclaté en PLUSIEURS blocs conditionnels, un panneau par bloc fait
+  des `id` EN DOUBLE — un panneau UNIQUE dont l'identité suit l'onglet actif est le seul qui ne mente
+  pas. ⚠️ Et le contre-témoin d'une garde de scan est aussi utile que ses témoins : `Profile.tsx`
+  ÉCRIT `role="tablist"` dans son en-tête sans en rendre aucun — c'est lui qui prouve que le
+  décommentage a bien eu lieu.
 - ⚠️ **Une propriété PAR GROUPE ne se mesure pas sur l'écran entier** : mon test « une seule option
   est annoncée active » comptait les `aria-pressed` de TOUTE la page — donc figer un groupe à
   `aria-pressed={true}` le laissait VERT (ses trois options actives ensemble, et le total invariant

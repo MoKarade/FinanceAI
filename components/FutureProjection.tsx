@@ -11,6 +11,7 @@ const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistoryS
 // [NAV-MERGE-SANTE-FUTUR] Résumé condensé de Santé, en tête de page — léger (pas de recharts),
 // import statique (pas de justification à le mettre derrière un lazy comme FutureHistorySection).
 import { FutureHealthSummary } from './future/FutureHealthSummary';
+import { TabPanel, tabId, panelId, clavierTablist } from './ui/SubTabs';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -185,6 +186,18 @@ interface FutureProjectionProps {
   setProjection: (p: ProjectionConfig) => void;
   isPrivacyMode?: boolean;
 }
+
+/** Les quatre sous-onglets de Futur — une SEULE source pour le rendu ET pour le clavier : une liste
+ *  recopiée dans le `onKeyDown` divergerait au premier onglet ajouté, et les flèches sauteraient
+ *  silencieusement le nouveau. */
+const FUTURE_SUB_TABS = [
+    { id: 'graph', emoji: '🎯', label: 'Projection' },
+    { id: 'params', emoji: '⚙️', label: 'Hypothèses' },
+    { id: 'plan', emoji: '🗂️', label: 'Plan d\'action' },
+    { id: 'historique', emoji: '📊', label: 'Historique' },
+] as const;
+
+type FutureSubTabId = typeof FUTURE_SUB_TABS[number]['id'];
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
     initialBalances = {}, transactions = [], budgetItems = [], config,
@@ -551,7 +564,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // PH4-FUT « leviers-d'abord » — sous-onglet « Optimisation » RETIRÉ : le composeur de leviers est
     // remonté dans l'écran d'amorçage du Graphique (en amont du calcul).
     // [REFONTE-NAV-L2b] + 4e sous-onglet « Historique » (l'évolution PASSÉE, ex-Accueil).
-    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'plan' | 'historique'>('graph');
+    const [futureSubTab, setFutureSubTab] = useState<FutureSubTabId>('graph');
     // PH4 (refonte Futur « leviers-d'abord », demande Marc) — la courbe ET les KPIs ne s'affichent
     // QUE sur un calcul EXPLICITE : la révélation est liée à une SIGNATURE de ce qui PILOTE la courbe.
     // Revue PH4 (MAJEUR) — on signe `params` ENTIER (la source UNIQUE, ~20 entrées du store) et NON un
@@ -1369,16 +1382,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </StatGrid>
             )}
             {/* PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection / Paramètres / Plan d'action */}
-            <div className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit" role="tablist" aria-label="Vue Future">
-                {([
-                    { id: 'graph', emoji: '🎯', label: 'Projection' },
-                    { id: 'params', emoji: '⚙️', label: 'Hypothèses' },
-                    { id: 'plan', emoji: '🗂️', label: 'Plan d\'action' },
-                    { id: 'historique', emoji: '📊', label: 'Historique' },
-                ] as const).map(t => (
+            {/* [A11Y-TABLIST-NO-PANEL] Ce bandeau garde son habillage (emoji, autres classes) mais
+                emprunte le MOTIF de `ui/SubTabs` : mêmes `id` d'onglet et de panneau, même clavier.
+                Sans `aria-controls` ni panneau déclaré, un lecteur d'écran annonçait « onglet » sans
+                pouvoir dire ce que l'onglet commande — le seul des quatre bandeaux resté à part. */}
+            <div
+                className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit"
+                role="tablist"
+                aria-label="Vue Future"
+                onKeyDown={clavierTablist<FutureSubTabId>('futur', FUTURE_SUB_TABS.map((t) => t.id), futureSubTab, setFutureSubTab)}
+            >
+                {FUTURE_SUB_TABS.map(t => (
                     <button
                         key={t.id}
                         type="button" role="tab" aria-selected={futureSubTab === t.id}
+                        id={tabId('futur', t.id)}
+                        aria-controls={panelId('futur', t.id)}
+                        tabIndex={futureSubTab === t.id ? 0 : -1}
                         onClick={() => setFutureSubTab(t.id)}
                         className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === t.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
                     >
@@ -1386,6 +1406,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </button>
                 ))}
             </div>
+
+            {/* ⚠️ UN SEUL panneau, dont l'identité SUIT l'onglet actif. Les blocs de chaque onglet
+                sont éclatés en plusieurs conditions (`graph` en porte trois, `plan` deux) : leur
+                donner chacun un `TabPanel` produirait des `id` EN DOUBLE, et `aria-controls`
+                pointerait alors vers un élément ambigu — un attribut présent qui désigne la mauvaise
+                chose. Comme un seul onglet est actif à la fois, un panneau unique et mobile dit
+                exactement la vérité. */}
+            <TabPanel idPrefix="futur" tab={futureSubTab} when className="space-y-6">
 
             {futureSubTab === 'params' && (
             <ProjectionControls
@@ -2071,6 +2099,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <FutureHistorySection />
                 </Suspense>
             )}
+            </TabPanel>
         </div>
     );
 };

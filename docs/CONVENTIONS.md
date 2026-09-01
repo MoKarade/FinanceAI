@@ -9846,3 +9846,35 @@ ré-inliner un `<div>` dans un fichier qui garde son import passerait.
 `/Fermer le guide/`, le libellé de l'ancien bouton écrit à la main. Il mesurait la FORME. Ré-ancré sur
 « le bouton de fermeture du dialogue » — re-dérivé, pas rebasé
 (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, troisième occurrence).
+
+
+### Lot 67 (2026-09-01) — un focus posé sur un conteneur ne fait rien, et ça ne se voit pas
+
+`UN-FOCUS-SUR-UN-CONTENEUR-EST-UN-NO-OP-SILENCIEUX`
+
+Le correctif prescrit par le ticket était juste — chose assez rare pour être notée — mais il avait
+trois pièges, tous du même genre : le code a l'air correct, une garde de source le confirmerait, et
+il ne produit pas l'effet annoncé.
+
+**1. Un `focus()` sur un conteneur ne fait rien.** La cible d'un deep-link est un `<div
+data-focus-section="…">`. Un `<div>` n'est pas focalisable : l'appel passe, ne lève pas, et
+`document.activeElement` ne bouge pas. Il faut lui poser `tabIndex = -1` — atteignable par script,
+hors de l'ordre de tabulation, où il n'a rien à faire. Le test doit donc interroger
+`document.activeElement`, **jamais** la présence de l'appel : un scan de source aurait certifié un
+correctif inerte.
+
+**2. Un effet de navigation ne doit pas tirer au premier rendu.** L'app restaure l'onglet mémorisé au
+chargement ; y déplacer le focus reviendrait à changer le point de départ de tout le monde sans que
+personne n'ait rien demandé. L'onglet précédent se garde en `ref`, et l'effet ne réagit qu'à un
+CHANGEMENT. Symétriquement, un re-rendu sans changement ne doit rien refaire — sinon le focus saute
+en pleine saisie et l'annonce se répète à chaque frappe. Les deux se testent, et le second est le
+plus facile à oublier parce que « ça marche » quand on ne fait que cliquer.
+
+**3. Une région d'annonce montée au moment de parler rate la première transition.** Déjà écrit dans
+ces pages (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`), re-appliqué ici : le conteneur
+`role="status"` est monté en permanence et **vide** au repos ; on écrit dedans. La perturbation qui le
+prouve est de le rendre conditionnel — le test rougit sur « région absente au repos ».
+
+⚠️ Et `preventScroll` n'est pas un détail de confort : le hook vient de lancer un `scrollIntoView`
+fluide, et un focus qui rejoue son propre défilement le coupe net. Quand deux mécanismes déplacent la
+vue, le second doit dire explicitement qu'il ne la déplace pas.

@@ -48,6 +48,31 @@ export const Layout: React.FC<LayoutProps> = ({
   useTranslation(); // <html lang> sync et re-render au changement de langue (labels via TAB_LABELS)
   const [showMobileDrawer, setShowMobileDrawer] = React.useState(false);
 
+  // [A11Y-ROUTE-FOCUS] Changer d'onglet ne déplaçait NI le focus NI rien qui s'annonce. Pour qui
+  // navigue au clavier ou au lecteur d'écran, cliquer une destination ne produisait donc aucun
+  // signal : le focus restait sur le bouton de nav, et la seule façon d'atteindre le nouveau contenu
+  // était de re-tabuler tout le rail. C'est le pendant du lien d'évitement — sauf qu'ici, le saut
+  // devrait être automatique puisque c'est l'utilisateur qui a demandé le changement.
+  //
+  // ⚠️ PAS au premier rendu. Voler le focus au chargement (ou à un rafraîchissement, où l'app
+  // restaure l'onglet mémorisé) déplacerait le point de départ de tout le monde sans que personne
+  // n'ait rien demandé. On ne réagit qu'à un CHANGEMENT, d'où l'onglet précédent gardé en ref.
+  //
+  // ⚠️ La région d'annonce est montée EN PERMANENCE et on écrit dedans. Montée au moment de parler,
+  // elle raterait la PREMIÈRE transition — la seule qui compte ici (leçon
+  // `COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+  const ongletPrecedent = React.useRef<Tab | null>(null);
+  const [annonceRoute, setAnnonceRoute] = React.useState('');
+  React.useEffect(() => {
+    const precedent = ongletPrecedent.current;
+    ongletPrecedent.current = activeTab;
+    if (precedent === null || precedent === activeTab) return;
+    // `preventScroll` : le focus ne doit pas rejouer un défilement par-dessus celui que le nouvel
+    // écran vient de faire (un deep-link `pendingFocus` scrolle vers sa section).
+    document.getElementById('main')?.focus({ preventScroll: true });
+    setAnnonceRoute(TAB_LABELS[activeTab]);
+  }, [activeTab]);
+
   // Phase B.1 — sidebar cachée par défaut, expansion au survol + focus clavier.
   const [sidebarHovered, setSidebarHovered] = React.useState(false);
   const [sidebarFocused, setSidebarFocused] = React.useState(false);
@@ -154,6 +179,10 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         Aller au contenu principal
       </a>
+
+      {/* [A11Y-ROUTE-FOCUS] Région d'annonce de destination — TOUJOURS montée, on ne fait qu'y
+          écrire. Vide au premier rendu : arriver sur l'app n'est pas un changement de destination. */}
+      <div role="status" aria-live="polite" className="sr-only">{annonceRoute}</div>
 
       {/* Banner Mode Test — toujours visible quand isTestMode=true. */}
       {isTestMode && (

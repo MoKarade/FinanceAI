@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 67 : changer d'onglet ne produisait aucun signal non visuel (PR #797)
+
+- [x] **`[A11Y-ROUTE-FOCUS]`** — 2026-09-01, PR #797. ⚠️ **Périmètre du ticket JUSTE, y compris son
+  correctif prescrit** (2ᵉ fois en cinq lots) : les deux sites qu'il nommait étaient les deux vrais,
+  et `<main id="main" tabIndex={-1}>` était déjà prêt à recevoir le focus depuis le lot du lien
+  d'évitement — il ne manquait que l'appel.
+- **Livré** : au changement d'onglet, le focus va au contenu principal et la destination est
+  annoncée ; le deep-link `usePendingFocus` déplace AUSSI le focus, pas seulement la vue.
+- ⚠️ **Trois pièges, tous vérifiés par perturbation** : ne PAS voler le focus au premier rendu (un
+  rafraîchissement restaure l'onglet mémorisé — ce n'est pas une navigation) ; la région d'annonce
+  est montée EN PERMANENCE et on écrit dedans (montée au moment de parler, elle raterait la première
+  transition) ; et la cible d'un deep-link est un CONTENEUR, donc `focus()` y est un no-op silencieux
+  sans `tabIndex = -1` — le genre de correctif qui a l'air posé et ne fait rien.
+
 ## 2026-09-01 — Lot 66 : cinq surfaces recouvraient l'app sans se déclarer (PR #796)
 
 - [x] **`[A11Y-MODAL-GUIDE-NODIALOG]`** — 2026-09-01, PR #796. Le ticket nommait `GuideModal` ; le

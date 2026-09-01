@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Changer d'onglet se voit maintenant aussi au clavier)
+
+- **Corrigé** : cliquer une destination ne produisait **aucun signal** hors de l'écran. Le curseur
+  clavier restait sur le bouton de navigation, et rien n'annonçait que le contenu avait changé — il
+  fallait re-parcourir tout le menu pour atteindre la page qu'on venait de demander. Le curseur va
+  désormais au contenu, et la destination est annoncée.
+- **Même chose pour les liens internes** (« voir ce poste au budget », « corriger ce champ ») : ils
+  faisaient défiler la page jusqu'à l'endroit visé et le faisaient clignoter — deux signaux
+  purement visuels. Le curseur y va maintenant aussi.
+- **Deux précautions** : rien ne bouge au chargement de l'app (rouvrir l'app sur le dernier onglet
+  n'est pas une navigation), et rien ne bouge non plus quand la page se redessine sans changer de
+  destination — sinon le curseur sauterait en pleine saisie.
+
 ## [unreleased] — 2026-09-01 (Cinq fenêtres se comportent enfin comme des fenêtres)
 
 - **Corrigé** : le guide contextuel, les trois fenêtres de sauvegarde chiffrée (export, import,

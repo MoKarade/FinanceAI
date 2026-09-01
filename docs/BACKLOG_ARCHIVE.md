@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 61 : le format et la vie privée étaient le même trou (PR #788)
+
+- [x] **`[FORMAT-EXPLAINS-TOLOCALESTRING]`** (XS annoncé → **M mesuré**) — ✅ **Livré**, avec sa garde.
+  · ⚠️ **Le ticket annonçait 3 sites ; le recensement en a trouvé 16** dans `components/`. Il avait
+    été écrit en regardant `toLocaleString`, alors que la moitié des sites compose avec
+    `toFixed(n) + 'k$'`. **Onzième périmètre de ticket faux d'affilée.**
+  · ⚠️⚠️ **CE N'ÉTAIT PAS QU'UNE QUESTION DE TYPOGRAPHIE.** Un montant composé à la main est
+    INVISIBLE à `amountPrivacyScan` (lot 59), qui cherche `formatCAD`/`formatCompactCAD` et leurs
+    alias. Les 16 sites échappaient donc AUX DEUX gardes — et migrer le format en a révélé **six**
+    non masqués en mode discret, dont trois coûts d'enfant (garde, école, activités). Le format et
+    la vie privée étaient le même trou vu deux fois.
+  · **Deux vrais défauts de rendu, pas des nits** : `StrategyOptimizerPanel` et `StressTestPanel`
+    écrivaient « 2.35M$ » — séparateur décimal **anglais** dans une app fr-CA ; et l'objectif FIRE de
+    `FutureProjection` restait en « k$ » quel que soit l'ordre de grandeur (« 1250k $ » pour 1,25 M$).
+  · **Un nom trompeur retiré** : la prop `blur` de `Metric` (`StrategyOptimizerPanel`) — la primitive
+    ne floute pas, elle RETIRE la valeur du DOM. Renommée `privacy`, comme `KPIStat`. Elle avait
+    fabriqué deux faux findings dans la garde du mode discret.
+  · ⚠️ **Ma propre garde du lot 57 a rougi pour la 3ᵉ fois de la série** : `privacyDivers` ancrait
+    l'EXPRESSION (`{Math.round(r.estateNetWorth)`) au lieu du FAIT (la valeur passe par
+    `PrivateAmount`). Ré-ancrée, pas rebasée.
+  · **Garde livrée** : `tests/components/formatMonetaireSourceUnique.test.ts`, bloquante.
+
 ## 2026-09-01 — Lot 60 : les douze chaînes découpées, et l'inventaire qui meurt (PR #787)
 
 - [x] **`[A11Y-PRIVACY-CHAINES-RESTANTES]`** (M) — ✅ **Livré**. Les 12 sites où le montant vivait à

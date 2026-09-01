@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Formats d'argent : une seule façon d'écrire un montant)
+
+- **Corrigé** : 16 endroits de l'app fabriquaient leurs montants à la main au lieu d'utiliser le
+  formateur commun. Deux d'entre eux étaient de vrais défauts visibles : le comparateur de stratégies
+  et le test de résistance affichaient « 2.35M$ » — avec un **point** décimal anglais dans une app en
+  français — et l'objectif FIRE restait en « k$ » même à un million (« 1250k $ » au lieu de
+  « 1,25 M$ »).
+- **Et ça cachait autre chose** : le contrôle du mode discret livré plus tôt aujourd'hui cherche le
+  formateur commun. Un montant fabriqué à la main lui est donc **invisible**. En les migrant, six
+  montants non masqués sont apparus — dont le coût de garde, les frais scolaires et les activités de
+  tes enfants. Ils sont masqués maintenant.
+- **Nouveau** : un second contrôle automatique refuse tout montant fabriqué à la main dans
+  l'interface. Les deux contrôles se complètent : celui du format garantit que l'autre voit tout.
+- **Un détail que tu peux vouloir changer** : les étiquettes de l'axe des graphiques passent d'une à
+  deux décimales pour les millions (« 2,3 M$ » → « 2,35 M$ »), parce qu'elles utilisent maintenant le
+  format commun. Un mot et je remets une décimale.
+
 ## [unreleased] — 2026-09-01 (Mode discret : les douze dernières phrases découpées)
 
 - **Corrigé** : les 12 derniers endroits où un montant était écrit **à l'intérieur d'une phrase**

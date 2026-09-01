@@ -9456,3 +9456,51 @@ Trois constats du même tour :
 au lot 59, `PageHeader.subtitle` ici — deux fois le même passage de `string` à `React.ReactNode`,
 pour la même raison. Un champ de texte d'interface qui peut contenir un montant ne doit pas être
 typé `string` : ce type force l'appelant à composer la phrase, donc à noyer le montant.
+
+
+### Lot 61 — le format et la vie privée étaient le même trou, vu deux fois
+
+`UN-MONTANT-COMPOSE-A-LA-MAIN-EST-INVISIBLE-A-LA-GARDE-QUI-CHERCHE-LE-FORMATEUR`
+
+`[FORMAT-EXPLAINS-TOLOCALESTRING]` était classé XS et nommait **3 sites**. Le recensement en a
+trouvé **16** dans `components/` : le ticket avait été écrit en cherchant `toLocaleString`, alors que
+la moitié des sites compose avec `toFixed(n)` suivi d'un `k$` ou d'un `M$`. Onzième périmètre de
+ticket faux d'affilée.
+
+**Mais l'intérêt du lot n'est pas le compte, c'est ce que le compte cachait.** La garde du mode
+discret livrée le matin même (lot 59) cherche `formatCAD`, `formatCompactCAD`, `formatSigned` et
+leurs alias locaux. **Un montant composé à la main ne ressemble à aucun des trois : il lui est
+strictement invisible.** Les seize sites échappaient donc AUX DEUX gardes à la fois, et il a suffi de
+migrer le format pour que la garde de vie privée en révèle **six** non masqués — dont le coût de
+garde, les frais scolaires et les activités des enfants.
+
+Le geste à retenir : **une garde qui cherche l'USAGE d'une fonction ne protège que le code qui a
+accepté d'appeler cette fonction.** Elle a donc besoin d'une garde JUMELLE qui interdit de faire le
+travail autrement. Ici la garde de format ne défend pas la typographie, elle garantit que la garde de
+vie privée voit tout. Deux gardes qui se tiennent, comme la liste écrite à la main et le test qui
+exige que la table soit balayée (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+
+Quatre constats du même tour :
+
+- **Deux vrais défauts de rendu se cachaient derrière le « nit de typographie »** : `2.35M$` —
+  séparateur décimal **anglais** dans une app fr-CA — sur deux panneaux ; et l'objectif FIRE bloqué
+  en `k$` quel que soit l'ordre de grandeur (`1250k $` pour 1,25 M$). Un ticket étiqueté « cosmétique »
+  mérite d'être mesuré avant d'être cru : ce qu'on prend pour une préférence de style est parfois un
+  format faux.
+- **Un nom trompeur fabrique des faux findings** — encore : la prop `blur` de `Metric` déclenchait un
+  `PrivateAmount`, qui ne floute PAS mais retire la valeur du DOM. Renommée `privacy`, comme
+  `KPIStat` et `DualKPIStat`. Elle avait produit deux faux positifs dans la garde du mode discret,
+  qui reconnaît `privacy` et pas `blur`. Le correctif est le RENOMMAGE, pas l'élargissement du motif.
+- ⚠️ **3ᵉ récidive de `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`**, et ma garde du
+  lot 57 cette fois : `privacyDivers` ancrait l'EXPRESSION (`{Math.round(r.estateNetWorth)`) alors
+  qu'elle défend un FAIT (la valeur passe par la primitive de masquage). Elle a rougi sur un lot qui
+  ne touchait pas à ce fait. Ré-ancrée sur `<PrivateAmount>…estateNetWorth…</PrivateAmount>`.
+- ⚠️ **`${` contient un `$`.** Un motif « chiffre formaté puis symbole dollar » sans exclusion
+  `(?!\{)` relève les `toFixed(4)` sur des TAUX DE CHANGE et des logs — 5 faux positifs mesurés,
+  tous de cette seule cause. Le symbole dollar est ambigu en JavaScript : dans un gabarit, il ouvre
+  une interpolation aussi souvent qu'il désigne une devise.
+
+**Effet visible déclaré** : les étiquettes d'axe des graphiques passent d'une à deux décimales pour
+les millions (`2,3 M$` → `2,35 M$`), parce qu'elles utilisent désormais `formatCompactCAD`. Une
+exemption sur l'axe du graphique principal aurait été le plus gros trou de la garde neuve ; le
+changement est donc assumé et signalé à Marc plutôt que contourné.

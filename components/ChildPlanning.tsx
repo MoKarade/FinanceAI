@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatCompactCAD } from '../utils/format';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
@@ -389,7 +389,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${schoolType === key ? 'border-info-500 bg-info-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1 text-meta font-bold">{info.label}</div>
-                                            <div className="text-meta font-mono font-bold text-right text-blue-300">+{(info.yearlyExtra / 1000).toFixed(0)}k$/an</div>
+                                            <div className="text-meta font-mono font-bold text-right text-blue-300">+<PrivateAmount>{formatCompactCAD(info.yearlyExtra)}</PrivateAmount>/an</div>
                                         </button>
                                     ))}
                                 </div>
@@ -418,7 +418,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                                 <div className="text-meta font-bold">{info.label}</div>
                                                 {info.years > 0 && <div className="text-tiny text-ink-400">{info.years} ans</div>}
                                             </div>
-                                            <div className="text-meta font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0 ? `${(info.yearlyCost / 1000).toFixed(0)}k$/an` : 'Gratuit'}</div>
+                                            <div className="text-meta font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0
+                                                ? <><PrivateAmount>{formatCompactCAD(info.yearlyCost)}</PrivateAmount>/an</>
+                                                : 'Gratuit'}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -431,7 +433,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             className={`flex-1 flex flex-col items-center p-2.5 rounded-lg border text-center transition-all ${carGift === key ? 'border-orange-500 bg-orange-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl mb-1">{info.icon}</span>
                                             <div className="text-tiny font-bold leading-tight">{info.label.split(' (')[0]}</div>
-                                            {info.cost > 0 && <div className="text-tiny font-mono text-orange-300 mt-0.5">{(info.cost / 1000).toFixed(0)}k$</div>}
+                                            {info.cost > 0 && <PrivateAmount as="div" className="text-tiny font-mono text-orange-300 mt-0.5">{formatCompactCAD(info.cost)}</PrivateAmount>}
                                         </button>
                                     ))}
                                 </div>

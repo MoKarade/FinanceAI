@@ -13,6 +13,7 @@ import { runProjectionAsync } from '../../services/projection/runAsync';
 import { STRESS_STRAT_TYPES } from '../../services/projection/scenarios';
 import { logError } from '../../services/errorLogger';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCompactCAD } from '../../utils/format';
 
 interface Props {
     params: SimulationParams;
@@ -22,7 +23,9 @@ interface Props {
 
 type Status = 'idle' | 'running' | 'done' | 'error';
 
-const fmtM = (v: number): string => `${(v / 1_000_000).toFixed(2)}M$`;
+// [FORMAT-EXPLAINS-TOLOCALESTRING] Même correctif que `StrategyOptimizerPanel` : le format
+// composé à la main écrivait « 2.35M$ », séparateur décimal ANGLAIS dans une app fr-CA.
+const fmtM = (v: number): string => formatCompactCAD(v);
 
 export const StressTestPanel: React.FC<Props> = ({ params, baselineEstateNW }) => {
     const [status, setStatus] = useState<Status>('idle');

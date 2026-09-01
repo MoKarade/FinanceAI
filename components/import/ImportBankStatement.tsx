@@ -6,6 +6,7 @@ import { analyzeBankStatement } from '../../services/claude';
 import { logError } from '../../services/errorLogger';
 import { Card } from '../ui/Card';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCAD } from '../../utils/format';
 
 interface ImportBankStatementProps {
     /** Reçoit le texte brut (CSV) ; l'app le re-parse + fusionne + dédoublonne. */
@@ -16,7 +17,7 @@ interface ImportBankStatementProps {
     className?: string;
 }
 
-const cad = (v: number) => `${v.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`;
+const cad = (v: number) => formatCAD(v, { decimals: 2 });
 
 const DELIM_LABEL: Record<string, string> = { ',': 'virgule', ';': 'point-virgule', '\t': 'tabulation' };
 

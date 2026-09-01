@@ -10,7 +10,7 @@
 // 100 % pilotée par les vraies données de projection — aucun chiffre inventé.
 
 import React, { useMemo, useState } from 'react';
-import { formatCAD } from '../../utils/format';
+import { formatCAD, formatSigned } from '../../utils/format';
 import { Card } from '../ui/Card';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import type { ProjectionChartPoint } from '../../services/projection/types';
@@ -23,7 +23,11 @@ interface ProjectionExplainsProps {
 }
 
 const fmt = (n: number): string => formatCAD(n);
-const fmtSigned = (n: number): string => `${n >= 0 ? '+' : '-'}${Math.abs(Math.round(n)).toLocaleString('fr-CA')} $`;
+// [FORMAT-EXPLAINS-TOLOCALESTRING] `formatSigned` EXISTAIT déjà et faisait exactement ça : le
+// ticket demandait d'écrire un `formatCADSigned`, qui en aurait été le doublon. Deux différences
+// de rendu, MESURÉES : l'espace avant le « $ » devient insécable, et le signe négatif devient le
+// moins typographique « − » (U+2212) au lieu du trait d'union.
+const fmtSigned = (n: number): string => formatSigned(n, { withCurrency: true });
 
 /** Définition d'un compte : libellé + champs du point de projection à lire. */
 interface AccountDef {

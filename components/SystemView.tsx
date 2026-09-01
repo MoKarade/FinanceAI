@@ -110,7 +110,9 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
     lines.push({
         text: stamp(
             `TAX_MODULE: barèmes ${TAX_BASE_YEAR} chargés (fédéral 1ère tranche ` +
-            `${FED_BRACKETS[0].label}, BPA ${BASIC_PERSONAL_AMOUNT_FED.toLocaleString('fr-CA')}$)`
+            // MONTANT-PUBLIC — le montant personnel de base FÉDÉRAL est une valeur de la loi, affichée dans
+            // le diagnostic pour vérifier quel barème l'app applique. Ce n'est pas une donnée de Marc.
+            `${FED_BRACKETS[0].label}, BPA ${formatCAD(BASIC_PERSONAL_AMOUNT_FED)})`
         ),
         level: 'info',
     });

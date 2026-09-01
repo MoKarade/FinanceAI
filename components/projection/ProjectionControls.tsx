@@ -8,6 +8,7 @@ import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { maskedSliderAria } from '../../utils/privacyAria';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCompactCAD } from '../../utils/format';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -251,7 +252,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Valeur Max Maison</span>
-                                <PrivateAmount className="text-pink-400 font-bold">{((realEstateGoals[0]?.maxValue || 1000000) / 1000).toFixed(0)}k$</PrivateAmount>
+                                <PrivateAmount className="text-pink-400 font-bold">{formatCompactCAD(realEstateGoals[0]?.maxValue || 1000000)}</PrivateAmount>
                             </label>
                             <input type="range" aria-label="Valeur Max Maison" min="300000" max="3000000" step="50000" value={realEstateGoals[0]?.maxValue || 1000000} {...maskedSliderAria(isPrivacyMode)} onChange={e => {
                                 const updated = [...realEstateGoals];

@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 55 : le mode discret s'arrêtait au milieu d'un formulaire
+> `[A11Y-PRIVACY-PROPERTY-CONFIG]` — 5 champs de saisie + 1 slider masqués dans
+> `PropertyConfigurator`. Critère : le libellé porte un `$`. Les taux et la date restent en clair.
+> - ⚠️ **6ᵉ site absent du ticket** : « Plafond Valeur Max » affichait un montant sans
+>   `maskedSliderAria`, alors que les deux sliders d'à côté l'avaient depuis #608.
+> - ⚠️⚠️ **J'AI ÉCRASÉ UN TEST EXISTANT** en créant « mon » fichier de garde avec `cat >` :
+>   `tests/components/PropertyConfigurator.privacy.test.tsx` existait déjà (49 lignes, 3 cas D6-SR-2).
+>   Rattrapé avant commit — restauré par `git show HEAD:<fichier>`, puis FUSIONNÉ avec mes scans (9
+>   cas au total). **`cat >` court-circuite le garde-fou d'écrasement de l'outil Write** : vérifier
+>   l'existence AVANT d'écrire un fichier de test.
+> - ⚠️ Et ce test écrasé PORTAIT le constat du défaut : il asserait « 2 sliders masqués (le plafond
+>   ne l'est PAS) ». Il aurait rougi tout seul sur mon correctif et m'aurait dit quoi regarder — en
+>   l'écrasant j'avais supprimé le signal. Le compte passe à 3, avec sa raison écrite dans le test.
+> - 4 perturbations séparées, chacune vérifiée par `assert` avant la mesure.
+
 > ## 🟦 Session 2026-09-01 — Lot 54 : deux défauts d'âge, un seul remède — la source unique
 > `[ENG-STARTYEAR-DEFAUT-2026]` + `[ENG-LIBELLE-RRQ-70-VS-72]`, les deux découvertes du lot 53.
 > - **`startYear` est REQUIS** (défaut `= 2026` retiré) : `tsc` exige la valeur sur chaque site.

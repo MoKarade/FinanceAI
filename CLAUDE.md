@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 052 tests** Vitest
-(485 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 059 tests** Vitest
+(486 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -440,6 +440,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   `string` à `React.ReactNode`. ⚠️ Une dette résiduelle se BORNE par un test (jeton en ligne + compte
   qui refuse le suivant), jamais par un commentaire ; et **compter les occurrences d'un jeton n'est
   pas compter les sites** — le commentaire qui l'explique porte le même mot.
+- **Un inventaire de dette doit savoir MOURIR** : le compteur du jeton `MONTANT-CHAINE-A-DECOUPER`
+  portait DEUX assertions — « pas de treizième » ET « dette à zéro → retire le jeton ». C'est la
+  seconde qui a rougi au lot suivant et exigé sa propre suppression. Un inventaire qui ne sait que
+  refuser des ajouts survit à sa raison d'être et devient une échappatoire
+  (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`). Une borne s'écrit dans les DEUX sens.
+  ⚠️ Corollaires du même lot : **découper un type, c'est se faire énumérer ses consommateurs par le
+  compilateur** (la liste des dépassements en avait TROIS aux règles opposées — écran, contexte de
+  chat, prompt IA — dont un révélé par le seul `typecheck`) ; **un champ de texte d'interface qui
+  peut contenir un montant ne doit jamais être typé `string`** (deux fois le même correctif :
+  `DualKPIStat.sublabel`, `PageHeader.subtitle`) ; et **un test qui rougit sur un lot qui ne touche
+  pas ce qu'il défend mesurait une FORME** (`getByText(/…/)` suppose un seul nœud de texte —
+  l'hypothèse même qui empêchait le masquage). ⚠️ `isPrivacyMode` est un état de MODULE : sans
+  `afterEach`, un cas qui l'active contamine les suivants (mesuré).
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

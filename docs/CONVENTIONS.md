@@ -9405,3 +9405,54 @@ Quatre constats d'outillage, tous mesurés :
 poser la source unique que les 37 autres sites consommeront » : la source unique existait déjà
 (`formatSigned`, lot 58), et les « 37 autres sites » venaient du chiffre aveugle. Un ticket qui attend
 un autre ticket mérite qu'on vérifie que l'attente a encore un objet.
+
+
+### Lot 60 — un inventaire de dette doit savoir mourir
+
+`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`
+
+`[A11Y-PRIVACY-CHAINES-RESTANTES]` : les 12 sites où le montant vivait à l'intérieur d'une chaîne
+construite en amont sont découpés, et le jeton `MONTANT-CHAINE-A-DECOUPER` a été **retiré** du
+vocabulaire de la garde du lot 59.
+
+**Ce qui a déclenché ce retrait n'est pas ma mémoire, c'est le test.** Le compteur de dette portait
+DEUX assertions : `n <= 12` (pas de treizième) et `n > 0` avec ce message — « dette soldée, retire le
+jeton de la garde et ce test ». En soldant le douzième site, c'est la seconde qui a rougi. Un
+inventaire qui ne sait que refuser des ajouts survit à sa raison d'être et devient une échappatoire
+permanente (`ENTREE-D-INVENTAIRE-FANTOME`) ; celui-ci a exigé sa propre suppression. **Une borne
+s'écrit toujours dans les deux sens.**
+
+**Et le cas le plus intéressant n'était pas une fuite.** J'avais écrit — dans une réponse, en lisant
+une ligne de `grep` sans son contexte — que `FutureDetailModal` avait deux consommateurs dont l'un
+laissait fuir le montant. C'était faux : **les deux** enveloppaient la phrase ENTIÈRE dans
+`PrivateAmount`. Le défaut était l'autre : en mode discret, la ligne devenait « ••• » — l'icône
+comprise, puisque la primitive ne floute pas mais REMPLACE — et « Rendement placements +1 234 $ »
+disparaissait au complet. Le FAIT partait avec le chiffre. C'est l'autre moitié de la leçon du lot 56
+(*garder le FAIT, taire le DÉTAIL*), et le découpage règle les deux sens à la fois : les deux
+perturbations le prouvent — enlever le masque rend le montant, envelopper la phrase entière fait
+disparaître le libellé, et le test rougit dans les deux cas.
+
+Trois constats du même tour :
+
+- **Découper un type, c'est se faire énumérer ses consommateurs par le compilateur.** La liste des
+  dépassements du budget avait TROIS destinataires aux règles opposées — le bandeau à l'écran (qui
+  doit masquer), la carte du contexte de chat, et le prompt du diagnostic IA (qui ont besoin du
+  chiffre). Le troisième n'est apparu qu'au `typecheck`, en changeant `string[]` en
+  `{ poste, depassement }[]`. Aucun `grep` ne l'avait sorti. Corollaire : une chaîne unique partagée
+  par des consommateurs aux besoins opposés est un compromis qui ne sert bien personne — chacun
+  compose la sienne à partir de la même donnée.
+- ⚠️ **Un test qui rougit sur un lot qui ne touche pas ce qu'il défend mesurait une FORME.**
+  `RealEstateWorkspace.split` vérifie que le sous-titre annonce le vrai dénominateur (« 1 bien actif
+  sur 2 ») — un fait intact. Mais il le lisait par `getByText(/…/)`, ce qui suppose **un seul nœud de
+  texte** : exactement l'hypothèse qui empêchait de masquer le montant. Le correctif est de lire le
+  texte COMPLET du sous-titre, pas de rebaser l'assertion — même famille que
+  `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`.
+- ⚠️ **`isPrivacyMode` est un état de MODULE** : un cas qui l'active sans le remettre à zéro
+  contamine les tests SUIVANTS du même fichier (mesuré — le KPI d'un bien inactif rendait « ••• » au
+  lieu du « — » qu'il défend). Les trois fichiers touchés ont reçu un `afterEach`. Même famille que
+  « un état de MODULE monotone rend la suite de tests vacueuse sans point de remise à zéro ».
+
+**Et un correctif de type qui se répète est une convention qui se cherche** : `DualKPIStat.sublabel`
+au lot 59, `PageHeader.subtitle` ici — deux fois le même passage de `string` à `React.ReactNode`,
+pour la même raison. Un champ de texte d'interface qui peut contenir un montant ne doit pas être
+typé `string` : ce type force l'appelant à composer la phrase, donc à noyer le montant.

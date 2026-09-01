@@ -7,13 +7,15 @@
 //     → « 1 bien détenu · Équité présente 0 $ » sur une maison payée (sous-déclaration muette) ;
 //  3. l'invariant documenté « toute écriture repasse par la liste COMPLÈTE » n'avait aucun test :
 //     un add/edit/delete depuis une vue ne doit JAMAIS perdre l'autre moitié de la tranche.
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { RealEstate } from '../../components/RealEstate';
 import { RealEstateProjects } from '../../components/life/RealEstateProjects';
 import { isOwnedToday } from '../../services/realEstatePartition';
 import { monthsSince } from '../../services/projection/pastPurchaseInit';
 import type { RealEstateGoal } from '../../types';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 
 vi.mock('recharts', async () => {
     const React = await import('react');
@@ -89,6 +91,21 @@ describe("addNewGoal — le SEED atterrit dans la zone où sa classification est
     });
 });
 
+/**
+ * ⚠️ [A11Y-PRIVACY-CHAINES-RESTANTES] Ces assertions lisaient le sous-titre par `getByText(/…/)`,
+ * ce qui suppose qu'il tient dans UN SEUL nœud de texte. C'était vrai tant qu'il était fabriqué
+ * comme une chaîne — et c'est exactement ce qui empêchait de masquer le montant qu'il porte. Le
+ * sous-titre est maintenant du JSX, donc plusieurs nœuds : le test rougissait sur un lot qui ne
+ * touchait pas à ce qu'il DÉFEND (le dénominateur réel est-il annoncé ?), seulement à la FORME
+ * qu'avait le code. On lit donc le texte COMPLET du sous-titre, ce que la structure ne change pas.
+ */
+const sousTitre = (): string => (document.querySelector('header p')?.textContent ?? '')
+    .replace(/[\s\u00A0\u202F]+/g, ' ').trim();
+
+// ⚠️ `isPrivacyMode` est un état de MODULE : sans remise à zéro, le cas « mode discret » ci-dessous
+// contamine les tests SUIVANTS (mesuré — le KPI d'un bien inactif rendait « ••• » au lieu de « — »).
+afterEach(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
+
 describe('Sous-titre « Équité présente » — no-fake-data sur les biens inactifs', () => {
     it("tous les biens visibles inactifs → « — » honnête, jamais un 0 $ crédible", () => {
         render(
@@ -98,8 +115,8 @@ describe('Sous-titre « Équité présente » — no-fake-data sur les biens ina
                 setGoals={vi.fn()}
             />,
         );
-        expect(screen.getByText(/Équité présente — \(aucun bien actif dans la simulation\)/)).toBeInTheDocument();
-        expect(screen.queryByText(/Équité présente 0/)).toBeNull();
+        expect(sousTitre()).toMatch(/Équité présente — \(aucun bien actif dans la simulation\)/);
+        expect(sousTitre()).not.toMatch(/Équité présente 0/);
     });
 
     it("mélange actif/inactif → le dénominateur RÉEL de la somme est annoncé", () => {
@@ -110,13 +127,32 @@ describe('Sous-titre « Équité présente » — no-fake-data sur les biens ina
                 setGoals={vi.fn()}
             />,
         );
-        expect(screen.getByText(/Équité présente .* \(1 bien actif sur 2\)/)).toBeInTheDocument();
+        expect(sousTitre()).toMatch(/Équité présente .* \(1 bien actif sur 2\)/);
     });
 
     it("tous actifs → pas de mention parasite du dénominateur", () => {
         render(<RealEstate availableCash={50_000} goals={[owned, project]} setGoals={vi.fn()} />);
-        expect(screen.getByText(/1 bien détenu · Équité présente/)).toBeInTheDocument();
-        expect(screen.queryByText(/bien actif sur/)).toBeNull();
+        expect(sousTitre()).toMatch(/1 bien détenu · Équité présente/);
+        expect(sousTitre()).not.toMatch(/bien actif sur/);
+    });
+
+    it("[mode discret] le MONTANT disparaît, le CONTEXTE reste — c'est tout l'intérêt du découpage", () => {
+        useFinanceStore.setState({ isPrivacyMode: true });
+        render(
+            <RealEstate
+                availableCash={50_000}
+                goals={[owned, goal({ id: 'paid', name: 'Maison Payée', purchaseDate: '2005-01-01', isActive: false })]}
+                setGoals={vi.fn()}
+            />,
+        );
+        const texte = sousTitre();
+        // Le FAIT survit : on sait toujours combien de biens comptent dans la somme.
+        expect(texte).toMatch(/Équité présente/);
+        expect(texte).toMatch(/\(1 bien actif sur 2\)/);
+        // Le DÉTAIL est tu : plus aucun montant. Avant le découpage, la phrase entière aurait dû
+        // être enveloppée — et le dénominateur serait parti avec le chiffre.
+        expect(texte).not.toMatch(/\$/);
+        expect(texte).toMatch(new RegExp(MASKED_AMOUNT_LABEL));
     });
 
     it("KPI d'un bien INACTIF → « — » (presentEquityOfGoal rend 0 pour un inactif)", () => {

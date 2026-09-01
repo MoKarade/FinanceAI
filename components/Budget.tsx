@@ -593,19 +593,19 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, usersIncome, budgetItems, timeView, inflationSim, customStart, customEnd, periodOffset, actualByOwner.owner0, actualByOwner.owner1, actualByOwner.commun]);
 
+    // [A11Y-PRIVACY-CHAINES-RESTANTES] La liste portait « Poste (312 $ dépassé) » en CHAÎNE, et elle
+    // a DEUX consommateurs aux règles opposées : le bandeau à l'écran, qui doit masquer le montant,
+    // et le contexte de l'assistant, qui a besoin du chiffre. Une chaîne ne peut pas servir les deux.
+    // Elle porte donc le nom et le dépassement séparément ; chaque consommateur compose le sien.
     const alerts = useMemo(() => {
-        const list: string[] = [];
+        const list: Array<{ poste: string; depassement: number }> = [];
         budgetItems.forEach(item => {
             const spent = actualsMap[item.name] || 0;
             const target = getDisplayTarget(item);
             // Alerte seulement au-delà de 10% de dépassement (tolérance anti-bruit
             // pour les petits écarts normaux).
             if (target > 0 && spent > target * 1.1) {
-                // Cette liste est RENDUE à l'écran (bandeau « Dépassements ») ET envoyée au contexte
-                // de l'assistant. Le montant est interpolé dans la chaîne : il faut découper en
-                // segments (lots 56 et 58), pas ajouter un `PrivateAmount` autour du tout.
-                // [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01]
-                list.push(`${item.name} (${formatCAD(spent - target)} dépassé)`); // MONTANT-CHAINE-A-DECOUPER
+                list.push({ poste: item.name, depassement: spent - target });
             }
         });
         return list;
@@ -726,7 +726,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         totalNetIncome: avgRealIncomeDisplay,
         totalBudget: totalBudgetDisplay,
         totalSpent: totalSpentDisplay,
-        alerts,
+        // TROISIÈME consommateur de `alerts`, révélé par le typecheck en découpant la chaîne : le
+        // prompt du diagnostic IA. Il attend des phrases ; on les compose ICI plutôt que de forcer
+        // les deux autres consommateurs à partager un format qui ne leur convient pas.
+        alerts: alerts.map((a) => `${a.poste} (${formatCAD(a.depassement)} dépassé)`), // MONTANT-HORS-ECRAN
         categories: budgetItems.map(item => ({
             name: item.name,
             nature: item.nature || 'Inconnu',
@@ -846,7 +849,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         if (timeView === 'MONTH' && alerts.length > 0) {
             cards.push({
                 label: 'Dépassements détectés',
-                value: `${alerts.length} poste(s) : ${alerts.slice(0, 3).join(', ')}`,
+                value: `${alerts.length} poste(s) : ${alerts.slice(0, 3).map((a) => `${a.poste} (${formatCAD(a.depassement)} dépassé)`).join(', ')}`, // MONTANT-HORS-ECRAN
                 note: 'postes dont le réel dépasse la cible de la période',
             });
         }
@@ -1110,7 +1113,12 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     <div>
                         <h4 className="text-body font-bold text-danger-400">Attention : Dépassements détectés</h4>
                         <p className="text-meta text-ink-300 mt-1">
-                            {alerts.slice(0, 3).join(', ')} {alerts.length > 3 && `et ${alerts.length - 3} autres.`}
+                            {alerts.slice(0, 3).map((a, i) => (
+                                <React.Fragment key={a.poste}>
+                                    {i > 0 && ', '}
+                                    {a.poste} (<PrivateAmount>{formatCAD(a.depassement)}</PrivateAmount> dépassé)
+                                </React.Fragment>
+                            ))} {alerts.length > 3 && `et ${alerts.length - 3} autres.`}
                         </p>
                     </div>
                 </div>

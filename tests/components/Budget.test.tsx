@@ -623,4 +623,41 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const ctx = getViewContext();
         expect(ctx?.detail).toMatchObject({ periodLabel: 'du 2026-08-01 au 2026-08-31' });
     });
+
+    /**
+     * [A11Y-PRIVACY-CHAINES-RESTANTES] La liste des dépassements était un `string[]` — « Restaurants
+     * (800 $ dépassé) » — avec TROIS consommateurs aux règles opposées : le bandeau à l'écran (qui
+     * doit masquer), la carte du contexte de chat et le prompt du diagnostic IA (qui ont besoin du
+     * chiffre). Une chaîne unique ne peut pas servir les trois. Elle porte maintenant le poste et le
+     * dépassement séparément.
+     */
+    describe('bandeau « Dépassements détectés » et mode discret', () => {
+        // `isPrivacyMode` est un état de MODULE : sans remise à zéro il contamine les tests suivants.
+        afterEach(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
+        const cur = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-05`;
+        const depassement = [
+            { id: 'd1', date: cur, payee: 'Resto', amount: -1000, category: 'Restaurants' } as unknown as Transaction,
+        ];
+        const bandeau = (): string => {
+            const el = Array.from(document.querySelectorAll('p'))
+                .find((p) => /dépassé/.test(p.textContent ?? ''));
+            return (el?.textContent ?? '').replace(/[\s\u00A0\u202F]+/g, ' ').trim();
+        };
+
+        it('mode NORMAL : le poste ET le montant du dépassement sont annoncés', () => {
+            render(<Budget {...baseProps} transactions={depassement} />);
+            // Cible 200 $, réel 1 000 $ → 800 $ de dépassement.
+            expect(bandeau()).toMatch(/Restaurants/);
+            expect(bandeau()).toMatch(/800/);
+        });
+
+        it('mode DISCRET : le POSTE reste nommé, le montant disparaît', () => {
+            useFinanceStore.setState({ isPrivacyMode: true });
+            render(<Budget {...baseProps} transactions={depassement} />);
+            // Le fait « Restaurants dépasse » est ce qui rend le bandeau utile : le masquer
+            // reviendrait à afficher une alerte qui ne dit pas de quoi elle parle.
+            expect(bandeau()).toMatch(/Restaurants/);
+            expect(bandeau()).not.toMatch(/800/);
+        });
+    });
 });

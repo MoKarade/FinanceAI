@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { formatCAD } from '../../utils/format';
+import { formatCAD, formatSigned } from '../../utils/format';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
@@ -91,7 +91,14 @@ interface AccountPoint {
 }
 
 type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
-interface MovementReason { icon: IconName; text: string; tone: ReasonTone; }
+/**
+ * [A11Y-PRIVACY-CHAINES-RESTANTES] `text` était une CHAÎNE qui portait le montant à l'intérieur
+ * (« Rendement placements +1 200 $ »). Les deux surfaces qui l'affichent enveloppaient donc la
+ * phrase ENTIÈRE dans `PrivateAmount` : en mode discret, la ligne devenait « ••• » — l'icône
+ * comprise — et le FAIT disparaissait avec le chiffre. C'est l'autre moitié de la leçon du lot 56 :
+ * garder le FAIT, taire le DÉTAIL. Le libellé et le montant sont donc séparés.
+ */
+interface MovementReason { icon: IconName; libelle: string; montant: number; tone: ReasonTone; }
 
 const fmtMoney = (n: number) => formatCAD(n);
 
@@ -102,13 +109,10 @@ const fmtMoney = (n: number) => formatCAD(n);
 function explainMovement(d: AccountPoint): MovementReason[] {
     if (!d.hasDecomp) return [];
     const out: MovementReason[] = [];
-    // Ces quatre libellés portent le montant DANS leur texte : le correctif est le même qu'au lot 56
-    // (structure `{ montant, libelle }`), pas un `PrivateAmount` autour de la phrase.
-    // [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01]
-    if (d.gain > 0.5) out.push({ icon: 'investments', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' }); // MONTANT-CHAINE-A-DECOUPER
-    else if (d.gain < -0.5) out.push({ icon: 'debt', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' }); // MONTANT-CHAINE-A-DECOUPER
-    if (d.flow > 0.5) out.push({ icon: 'cash', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' }); // MONTANT-CHAINE-A-DECOUPER
-    else if (d.flow < -0.5) out.push({ icon: 'bank', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' }); // MONTANT-CHAINE-A-DECOUPER
+    if (d.gain > 0.5) out.push({ icon: 'investments', libelle: 'Rendement placements', montant: d.gain, tone: 'pos' });
+    else if (d.gain < -0.5) out.push({ icon: 'debt', libelle: 'Perte de marché', montant: d.gain, tone: 'neg' });
+    if (d.flow > 0.5) out.push({ icon: 'cash', libelle: 'Dépôt (argent ajouté)', montant: d.flow, tone: 'in' });
+    else if (d.flow < -0.5) out.push({ icon: 'bank', libelle: 'Retrait (argent sorti)', montant: d.flow, tone: 'out' });
     return out;
 }
 
@@ -145,7 +149,8 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
                     <div className="text-tiny uppercase tracking-wide text-ink-400 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
                         <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]}`}>
-                            <Icon name={r.icon} size={12} /><PrivateAmount>{r.text}</PrivateAmount>
+                            <Icon name={r.icon} size={12} />{r.libelle}{' '}
+                            <PrivateAmount>{formatSigned(r.montant, { withCurrency: true })}</PrivateAmount>
                         </div>
                     ))}
                 </div>
@@ -1067,9 +1072,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                 {reasons.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {reasons.map((r, i) => (
-                                                            <PrivateAmount key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]}`}>
-                                                                <Icon name={r.icon} size={11} />{r.text}
-                                                            </PrivateAmount>
+                                                            <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]}`}>
+                                                                <Icon name={r.icon} size={11} />{r.libelle}{' '}
+                                                                <PrivateAmount>{formatSigned(r.montant, { withCurrency: true })}</PrivateAmount>
+                                                            </span>
                                                         ))}
                                                     </div>
                                                 ) : (

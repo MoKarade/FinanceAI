@@ -26,13 +26,15 @@
  *                           que son appelant enveloppe (`privacyMode ? … : yFormatter(v)`), ou un
  *                           sous-arbre entier retiré par un `{!isPrivacyMode && …}` plus haut.
  *                           Chaque usage DIT où, en clair, à côté du jeton.
- *  · `MONTANT-CHAINE-A-DECOUPER` — **dette INVENTORIÉE, datée du 2026-09-01** : le montant est
- *                           interpolé dans une CHAÎNE construite en amont, donc il n'y a aucun nœud
- *                           à envelopper. Le correctif est structurel (découper en segments, comme
- *                           aux lots 56 et 58), pas un `PrivateAmount` de plus — il vit dans
- *                           `[A11Y-PRIVACY-CHAINES-RESTANTES]`. Le jeton rend la dette GREPPABLE et
- *                           BORNÉE : la garde bloque tout le reste au lieu d'être livrée non
- *                           bloquante, ce qui l'aurait apprise à être ignorée.
+ *
+ * ⚠️ **Un quatrième jeton a existé pendant un lot, et a disparu comme prévu.** À la livraison de la
+ * garde (lot 59), 12 sites portaient le montant à l'intérieur d'une chaîne construite en amont :
+ * rien à envelopper, correctif structurel. Plutôt que de livrer la garde non bloquante — ce que la
+ * règle autorise, et qui l'aurait apprise à être ignorée — ils portaient `MONTANT-CHAINE-A-DECOUPER`
+ * et un test refusait le treizième. Ce test avait une SECONDE assertion, symétrique : « dette à
+ * zéro → retire le jeton ». Le lot 60 l'a fait rougir en soldant les 12 sites, et le jeton a été
+ * retiré du vocabulaire. Un inventaire de dette doit savoir mourir, sinon il devient une
+ * échappatoire permanente (`ENTREE-D-INVENTAIRE-FANTOME`).
  *
  * ⚠️ **DEUX LECTEURS, et c'est un choix.** MONEY et PRIVACY sont cherchés dans la source
  * DÉCOMMENTÉE : sans ça, un commentaire qui EXPLIQUE le mode discret satisfait la garde — classe
@@ -70,7 +72,6 @@ const LIGNE_ATTRIBUT = /\b(sublabel|title|aria-label|placeholder|alt|note)\s*=/;
 const PUBLIC_OK = /MONTANT-PUBLIC/;
 const HORS_ECRAN = /MONTANT-HORS-ECRAN/;
 const MASQUE_AILLEURS = /MONTANT-MASQUE-AILLEURS/;
-const CHAINE_DETTE = /MONTANT-CHAINE-A-DECOUPER/;
 /** Fenêtre de voisinage : un `<PrivateAmount>` ouvrant est souvent une ou deux lignes plus haut. */
 const W = 2;
 
@@ -106,7 +107,7 @@ function sitesNonMasques(): Site[] {
             if (LIGNE_ATTRIBUT.test(l)) { if (PRIVACY.test(l)) return; }
             else if (PRIVACY.test(fenetre)) return;
             if (PUBLIC_OK.test(fenetreBrute) || HORS_ECRAN.test(fenetreBrute)
-                || MASQUE_AILLEURS.test(fenetreBrute) || CHAINE_DETTE.test(fenetreBrute)) return;
+                || MASQUE_AILLEURS.test(fenetreBrute)) return;
             out.push({ fichier: path.relative(ROOT, file), ligne: i + 1, texte: l.trim().slice(0, 120) });
         });
     }
@@ -158,34 +159,13 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         expect(PRIVACY.test(faux.replace('{formatCAD(', '<PrivateAmount>{formatCAD('))).toBe(true);
     });
 
-    it('la dette « montant dans une chaîne » est BORNÉE et ne peut que décroître', () => {
-        // `MONTANT-CHAINE-A-DECOUPER` inventorie les sites dont le correctif est STRUCTUREL
-        // (découper la chaîne en segments), pas un `PrivateAmount` de plus. Un inventaire de dette
-        // sans plafond n'est pas un inventaire : c'est une échappatoire (`ENTREE-D-INVENTAIRE-FANTOME`).
-        // Le plafond descend avec `[A11Y-PRIVACY-CHAINES-RESTANTES]` ; il ne remonte jamais.
-        //
-        // ⚠️ On compte les SITES, pas les occurrences du jeton : un bloc de commentaire qui EXPLIQUE
-        // la dette (et cite le ticket) porte le même mot que les lignes qu'il justifie. Compter les
-        // occurrences donnait 12 pour 11 sites — l'assertion aurait CERTIFIÉ la prose au lieu de
-        // borner la dette, exactement `UN-REPLACE-GLOBAL-DE-JETON-REECRIT-LE-COMMENTAIRE-QUI-LE-NOMME`.
-        // Un site = une ligne qui porte À LA FOIS un formateur monétaire et le jeton.
-        // ⚠️ Le jeton est posé EN LIGNE sur chaque site, jamais dans un commentaire de bloc au-dessus :
-        // sinon le site échappe au compte (mesuré — deux sites manquaient, n rendait 9 pour 12) et
-        // l'inventaire borne moins que ce qu'il autorise.
-        const DETTE_MAX = 12; // MESURÉ le 2026-09-01, à la livraison de la garde
-        let n = 0;
-        for (const file of files) {
-            const brut = readFileSync(file, 'utf8');
-            const alias = aliasMonetaires(stripCommentsJsx(brut));
-            const ALIAS = alias.length ? new RegExp(`\\b(${alias.join('|')})\\s*\\(`) : null;
-            n += brut.split('\n').filter((l) => /MONTANT-CHAINE-A-DECOUPER/.test(l)
-                && (MONEY_BASE.test(l) || (ALIAS && ALIAS.test(l)))).length;
-        }
-        expect(n, 'nouvelle chaîne à découper : le correctif est structurel, pas un jeton de plus')
-            .toBeLessThanOrEqual(DETTE_MAX);
-        // Anti-vacuité SYMÉTRIQUE : le jour où la dette est soldée, ce test doit rougir pour qu'on
-        // retire le jeton du vocabulaire de la garde au lieu de le laisser traîner.
-        expect(n, 'dette soldée — retire `MONTANT-CHAINE-A-DECOUPER` de la garde et ce test').toBeGreaterThan(0);
+    it('le jeton de dette `MONTANT-CHAINE-A-DECOUPER` a bien disparu du dépôt', () => {
+        // Il a servi UN lot (59 → 60) et sa raison d'être est éteinte. Ce test empêche qu'on le
+        // ressuscite en douce : un montant dans une chaîne se DÉCOUPE, il ne se déclare pas.
+        // Il vise le CODE de `components/` — la prose de cette garde a le droit d'en raconter
+        // l'histoire, et c'est bien pour ça qu'elle lit les fichiers scannés, pas elle-même.
+        const survivants = files.filter((f) => /MONTANT-CHAINE-A-DECOUPER/.test(readFileSync(f, 'utf8')));
+        expect(survivants.map((f) => path.relative(ROOT, f))).toEqual([]);
     });
 
     it('aucun montant formaté ne reste hors du mode discret', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { BudgetGroupTable } from '../../components/budget/BudgetGroupTable';
@@ -25,6 +25,47 @@ const baseProps = {
     onUpdateItem: vi.fn(),
     onDeleteItem: vi.fn(),
 };
+
+/**
+ * [A11Y-PRIVACY-CHAINES-RESTANTES] La colonne « répartition » était UNE CHAÎNE (« Moi: 900 $ »,
+ * « Mar:540 $ / Ann:360 $ ») : aucun nœud à masquer. Elle est maintenant une liste de parts.
+ * Ce que ces deux cas défendent : le NOM reste lisible (sinon on ne sait plus QUI paie quoi) et le
+ * MONTANT disparaît. Envelopper la phrase entière aurait masqué les deux.
+ */
+describe('BudgetGroupTable — répartition par personne et mode discret', () => {
+    const item: BudgetCategory = { id: 'c1', name: 'Épicerie', nature: 'Besoin', target: 900, type: 'Commun' } as BudgetCategory;
+    const props = {
+        ...baseProps,
+        isSolo: false,
+        splitRatio1: 0.6,
+        userNames: ['Marc', 'Anna'] as [string, string],
+        getDisplayTarget: () => 900,
+        totalBudgetDisplay: 900,
+    };
+    const cellules = () => Array.from(document.querySelectorAll('td'))
+        .map((td) => (td.textContent ?? '').replace(/[\s\u00A0\u202F]+/g, ' ').trim());
+
+    afterEach(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
+
+    it('mode NORMAL : les deux parts sont chiffrées (anti-vacuité)', () => {
+        render(<BudgetGroupTable {...props} nature="Besoin" items={[item]} onAddItem={vi.fn()} />);
+        const texte = cellules().join(' | ');
+        expect(texte).toContain('Mar:');
+        expect(texte).toContain('Ann:');
+        expect(texte).toMatch(/540/);   // 900 × 0,6
+        expect(texte).toMatch(/360/);   // 900 × 0,4
+    });
+
+    it('mode DISCRET : les NOMS restent, les montants partent', () => {
+        useFinanceStore.setState({ isPrivacyMode: true });
+        render(<BudgetGroupTable {...props} nature="Besoin" items={[item]} onAddItem={vi.fn()} />);
+        const texte = cellules().join(' | ');
+        expect(texte).toContain('Mar:');
+        expect(texte).toContain('Ann:');
+        expect(texte).not.toMatch(/540/);
+        expect(texte).not.toMatch(/360/);
+    });
+});
 
 describe('BudgetGroupTable — groupe vide', () => {
     it('affiche le bouton « + Ajouter » même sans aucune catégorie', () => {

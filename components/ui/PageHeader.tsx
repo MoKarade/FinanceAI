@@ -2,7 +2,13 @@ import React from 'react';
 
 interface PageHeaderProps {
     title: string;
-    subtitle?: string;
+    /**
+     * [A11Y-PRIVACY-CHAINES-RESTANTES] `React.ReactNode`, pas `string` : un sous-titre de page mêle
+     * du contexte (« 2 biens détenus ») et parfois un MONTANT. Typé `string`, il forçait l'appelant
+     * à composer la phrase entière — donc à noyer le montant dans une chaîne, où plus rien ne peut
+     * le masquer. Même correctif que `DualKPIStat.sublabel` au lot 59.
+     */
+    subtitle?: React.ReactNode;
     icon?: React.ReactNode;
     badge?: React.ReactNode;
     actions?: React.ReactNode;

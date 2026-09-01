@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 60 : les douze chaînes découpées, et l'inventaire qui meurt (PR #787)
+
+- [x] **`[A11Y-PRIVACY-CHAINES-RESTANTES]`** (M) — ✅ **Livré**. Les 12 sites où le montant vivait à
+  l'intérieur d'une chaîne construite en amont sont découpés. Le jeton `MONTANT-CHAINE-A-DECOUPER`
+  a été **RETIRÉ** du vocabulaire de la garde, et un test verrouille sa disparition.
+  · `budget/BudgetGroupTable.tsx` — la répartition par personne devient une liste de parts. Le NOM
+    reste lisible en mode discret (sinon on ne saurait plus QUI paie quoi), le montant part.
+  · `projection/FutureDetailModal.tsx` — `MovementReason.text` devient `{ libelle, montant }`.
+    ⚠️ **Ce n'était PAS une fuite** : les deux surfaces enveloppaient la phrase ENTIÈRE, donc en mode
+    discret la ligne devenait « ••• », icône comprise — le FAIT partait avec le chiffre. C'est
+    l'autre moitié de la leçon du lot 56, et le découpage règle les deux sens d'un coup.
+  · `realestate/RealEstateWorkspace.tsx` — le sous-titre de page devient du JSX ; `PageHeader.subtitle`
+    passe de `string` à `React.ReactNode` (même correctif que `DualKPIStat.sublabel` au lot 59).
+  · `Budget.tsx` — la liste des dépassements porte `{ poste, depassement }`. ⚠️ **TROIS consommateurs
+    aux règles opposées**, dont un révélé par le TYPECHECK en découpant : le bandeau à l'écran (qui
+    masque), la carte du contexte de chat et le prompt du diagnostic IA (qui ont besoin du chiffre).
+    Une chaîne unique ne pouvait pas les servir tous les trois.
+  · ⚠️ **Un test qui rougit sur un lot qui ne touche pas son objet mesurait une FORME** :
+    `RealEstateWorkspace.split` lisait le sous-titre par `getByText(/…/)`, ce qui suppose UN SEUL
+    nœud de texte — l'hypothèse même qui empêchait de masquer. Ce qu'il défend (le dénominateur réel
+    est-il annoncé ?) n'avait pas bougé : le matcher lit désormais le texte complet.
+  · ⚠️ `isPrivacyMode` est un état de MODULE : les trois fichiers de test touchés ont reçu un
+    `afterEach` de remise à zéro — mesuré, sans lui un cas contaminait le suivant.
+
 ## 2026-09-01 — Lot 59 : la garde qui MESURE le mode discret, au lieu de l'énumérer (PR #786)
 
 - [x] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M) — ✅ **Livrée**, bloquante, plus 22 sites corrigés.

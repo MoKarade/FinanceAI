@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 60 : les douze chaînes découpées, et l'inventaire qui meurt
+> `[A11Y-PRIVACY-CHAINES-RESTANTES]` — les 12 sites `MONTANT-CHAINE-A-DECOUPER` sont soldés et le
+> jeton a été **RETIRÉ** du vocabulaire de la garde. C'est le test lui-même qui l'a exigé : sa
+> seconde assertion, symétrique, disait « dette à zéro → retire le jeton ». **Un inventaire de dette
+> doit savoir mourir**, sinon il devient une échappatoire permanente.
+> - ⚠️ **`FutureDetailModal` n'était PAS une fuite** — j'avais écrit l'inverse au tour précédent, en
+>   lisant une ligne de `grep` sans son contexte. Les deux surfaces enveloppaient la phrase ENTIÈRE :
+>   en mode discret la ligne devenait « ••• », icône comprise, et le FAIT partait avec le chiffre.
+>   Le découpage règle les deux sens ; les perturbations le prouvent dans les deux directions.
+> - ⚠️ **Le typecheck a révélé un TROISIÈME consommateur** de la liste des dépassements (le prompt du
+>   diagnostic IA), aux besoins opposés à ceux de l'écran. Découper un type, c'est se faire énumérer
+>   ses consommateurs par le compilateur — ce qu'aucun `grep` n'avait fait.
+> - ⚠️ **Un test qui rougit sur un lot qui ne touche pas son objet mesurait une FORME** :
+>   `RealEstateWorkspace.split` lisait le sous-titre par `getByText(/…/)`, donc supposait UN SEUL
+>   nœud — l'hypothèse même qui empêchait le masquage. Corrigé en lisant le texte complet, pas en
+>   rebasant.
+> - ⚠️ `isPrivacyMode` est un état de MODULE : trois fichiers de test ont reçu un `afterEach` de
+>   remise à zéro (mesuré — un cas contaminait le suivant).
+> - `PageHeader.subtitle` : `string` → `React.ReactNode`, même correctif que `DualKPIStat.sublabel`.
+
 > ## 🟦 Session 2026-09-01 — Lot 59 : la garde qui MESURE le mode discret au lieu de l'énumérer
 > `[A11Y-PRIVACY-SCAN-GLOBAL]` — `tests/components/amountPrivacyScan.test.ts`, pendant JSX de
 > `chartPrivacyScan`. Livrée **bloquante**, plus **22 montants masqués** dans 8 écrans.

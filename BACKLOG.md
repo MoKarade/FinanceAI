@@ -2074,19 +2074,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   redondant, sinon `aria-label` gagne et le `<label>` reste décoratif. À faire seulement si un
   scan prouve d'abord que les deux textes divergent déjà quelque part. [Supposition] sur l'ampleur.
 
-- [ ] **`[A11Y-PRIVACY-CHAINES-RESTANTES]`** (M, MOYEN — **né de la garde `[A11Y-PRIVACY-SCAN-GLOBAL]`**,
-  2026-09-01) — **12 sites** où le montant est interpolé dans une CHAÎNE construite en amont : il n'y
-  a aucun nœud à envelopper, donc `<PrivateAmount>` ne peut rien faire. Même classe et même remède
-  qu'aux lots 56 et 58 — découper en SEGMENTS.
-  Les 12 sites sont marqués `MONTANT-CHAINE-A-DECOUPER` dans le code (greppable), et leur nombre est
-  **BORNÉ par un test** : `tests/components/amountPrivacyScan.test.ts` refuse un 13ᵉ. Le plafond
-  descend à chaque site corrigé ; quand il tombe à 0, le test exige qu'on retire le jeton.
-  · `budget/BudgetGroupTable.tsx` ×4 — `splitDisplay` mêle PRÉNOMS et montants. ⚠️ C'est aussi la
-    répartition ENTRE CONJOINTS, information relationnelle (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
-  · `projection/FutureDetailModal.tsx` ×4 — les libellés de mouvement (`text:`).
-  · `realestate/RealEstateWorkspace.tsx` ×3 — le sous-titre de l'en-tête.
-  · `Budget.tsx` ×1 — la liste des dépassements, **rendue à l'écran ET envoyée au contexte IA**.
-
 - [ ] **`[PRIVACY-CONTEXTE-IA]`** (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
   discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
   alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.

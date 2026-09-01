@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Le dernier angle mort du contrôle des valeurs fiscales est fermé)
+
+- **Amélioré** (interne) : l'app vérifie automatiquement qu'aucun chiffre fiscal — un âge légal, un
+  taux, un plafond — n'est écrit en dur sans être tracé et sourcé. Le fichier principal du moteur de
+  projection échappait à ce contrôle, au motif que « le travail fiscal vit dans les sous-modules ».
+  C'était vrai des taux, faux des **âges** : l'âge de 18 ans à partir duquel la résidence au Canada
+  compte pour la Pension de la Sécurité de la vieillesse, celui de 65 ans où elle cesse de
+  s'accumuler, la part de rente conservée par un conjoint survivant et l'âge de report de la RRQ y
+  vivaient sans trace. Les quatre sont désormais tracés et rattachés à la référence fiscale.
+- **Repéré, pas encore corrigé** : quand tu choisis de reporter tes rentes sans préciser d'âge,
+  l'écran annonce « RRQ 70 ans » alors que le calcul applique **72 ans**. Le chiffre affiché est
+  faux, celui utilisé pour la projection est le bon. Corrigé dans un prochain lot.
+
 ## [unreleased] — 2026-09-01 (Les contrôles automatiques du code lisent tous la même chose)
 
 - **Amélioré** (interne, invisible à l'écran) : l'app est protégée par des dizaines de contrôles

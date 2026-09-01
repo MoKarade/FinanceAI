@@ -74,6 +74,50 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/taxJanuary.ts', value: '0.02', family: 'design',
       reason: 'Largeur de la bande de lissage Guyton-Klinger (−4 % → −6 %, linéaire). Design d’instabilité numérique, pas un chiffre fiscal ; [ENG-GK-THRESHOLD-KNIFE].' },
 
+    // ── services/projection.ts ──────────────────────────────────────────────────────────────
+    // [FISC-GUARD-PROJECTION-TS] 37 littéraux, 20 clés. QUATRE sont de vraies bornes légales ; les
+    // seize autres sont des défauts de saisie, des index ou des paramètres de SCÉNARIO.
+    { file: 'services/projection.ts', value: '18', family: 'fiscal',
+      reason: '[×2] Âge à partir duquel la résidence au Canada compte pour la PSV (L353 à l’initialisation, L840 dans la boucle annuelle). Même règle aux deux sites. Ancrée dans FISCAL_REFERENCE §PSV — « résidence au Canada après 18 ans » (PSV_MIN_RESIDENCY_YEARS).' },
+    { file: 'services/projection.ts', value: '65', family: 'fiscal',
+      reason: '[≠4] QUATRE sens sous la même clé, qui peuvent bouger indépendamment. L840 : fin de l’accumulation de résidence PSV (règle légale, FISCAL_REFERENCE §PSV). L1388 : seuil d’âge des crédits et de la récupération PSV (règle légale). L2544 : comparaison de l’âge RRQ choisi au standard 65 pour libeller « rentes reportées ». L359 : `retirementGoal.targetAge || 65` — DÉFAUT DE SAISIE, pas une règle : l’utilisateur choisit son âge de retraite.' },
+    { file: 'services/projection.ts', value: '60', family: 'fiscal',
+      reason: '[≠3] L585 et L586 : part de la rente conservée par le SURVIVANT (RRQ et régime DB), défaut réglementaire — deux sites, même règle. L767 : `m === 60`, le mois 60 du scénario WINDFALL, qui n’a rien de fiscal.' },
+    { file: 'services/projection.ts', value: '70', family: 'fiscal',
+      reason: 'L2545 : âge affiché quand `rrqStartAge` est absent sous report de rentes. ⚠️ Le moteur applique 72 (`retirementIncome.ts:272,281` — RRQ 72 / PSV 70) : le libellé annonce donc un âge que le calcul ne pratique pas. Routé en `[ENG-LIBELLE-RRQ-70-VS-72]`, PAS corrigé ici — scope non demandé.' },
+    { file: 'services/projection.ts', value: '2026', family: 'design',
+      reason: '`startYear = 2026` — défaut de déstructuration des paramètres du moteur. ⚠️ Ce n’est pas un barème mais un DÉFAUT QUI SE PÉRIME : mesuré (typecheck avec le champ rendu requis), un seul site le consomme, `GoalSeekerCard` via `Retirement.tsx`. Routé en `[ENG-STARTYEAR-DEFAUT-2026]`, PAS corrigé ici.' },
+    { file: 'services/projection.ts', value: '30', family: 'design',
+      reason: '[×6] `u.age || 30` — âge de repli quand un conjoint n’a pas d’âge saisi (L310, L351, L641, L750, L838, L1310). Défaut de saisie, aucune règle derrière.' },
+    { file: 'services/projection.ts', value: '0.5', family: 'design',
+      reason: '[≠3] L1708 : part de garde d’enfant au divorce (moitié). L1901 : seuil de « coussin passif » à 50 % du fonds d’urgence avant de vendre des actifs. L2089 : epsilon de découvert (`liquid < -0.5`). Trois moitiés sans rapport entre elles.' },
+    { file: 'services/projection.ts', value: '250000', family: 'design',
+      reason: '[×2] Montant d’héritage des scénarios WINDFALL (L768) et LATE_INHERITANCE (L777). Paramètre de SCÉNARIO comparatif, pas une valeur fiscale.' },
+    { file: 'services/projection.ts', value: '250', family: 'design',
+      reason: '[×2] Fragment du libellé « 250 000$ » des deux scénarios d’héritage (L770, L779) — du TEXTE, capté par le scan parce qu’il suit un caractère significatif.' },
+    { file: 'services/projection.ts', value: '11', family: 'design',
+      reason: '[×2] `currentMonthIndex === 11` — décembre, l’index du mois de la déclaration (L1239, L1388). Index de boucle, pas un barème.' },
+    { file: 'services/projection.ts', value: '5', family: 'design',
+      reason: '[≠2] L151 : `dateStr.slice(5, 7)`, position du mois dans une date ISO. L474 : `stressTestYear || 5`, année de krach par défaut du test de résistance.' },
+    { file: 'services/projection.ts', value: '7', family: 'design',
+      reason: 'L149 : longueur minimale d’une date ISO `AAAA-MM` avant de la découper.' },
+    { file: 'services/projection.ts', value: '55', family: 'design',
+      reason: 'L360 : âge de retraite du scénario nommé LIBERTE_55 — le nom du scénario EST sa définition, pas une règle externe.' },
+    { file: 'services/projection.ts', value: '4000', family: 'design',
+      reason: 'L379 : dépenses mensuelles théoriques par défaut du mode « projection théorique ». Défaut de saisie.' },
+    { file: 'services/projection.ts', value: '2.5', family: 'design',
+      reason: 'L468 : croissance salariale annuelle par défaut (%). Hypothèse de modèle modifiable par l’utilisateur.' },
+    { file: 'services/projection.ts', value: '50', family: 'design',
+      reason: 'L725 : plafond du nombre d’événements journalisés — garde-fou d’affichage.' },
+    { file: 'services/projection.ts', value: '31', family: 'design',
+      reason: 'L733 : borne haute d’un numéro de jour valide, pour décider si un événement porte un jour exploitable.' },
+    { file: 'services/projection.ts', value: '240', family: 'design',
+      reason: 'L776 : mois 240 (20 ans) du scénario LATE_INHERITANCE. Paramètre de scénario.' },
+    { file: 'services/projection.ts', value: '0.005', family: 'design',
+      reason: 'L1570 : epsilon sous lequel un solde de dette est considéré éteint, pour ne pas répéter l’alerte de fin de terme tous les mois.' },
+    { file: 'services/projection.ts', value: '300', family: 'design',
+      reason: 'L1579 : plancher de remboursement du capital d’une dette sans échéance — 300 mois, soit 25 ans × 12 (le commentaire du code le dit).' },
+
     // ── services/projection/taxApril.ts ─────────────────────────────────────────────────────
     { file: 'services/projection/taxApril.ts', value: '30', family: 'fiscal',
       reason: 'TAX_DUE_DAY : date limite de PAIEMENT du solde d’impôt des particuliers — le 30 avril (ARC et Revenu Québec). Ancrée dans FISCAL_REFERENCE §1 (échéances).' },
@@ -536,6 +580,14 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
  * juste en dessous : un périmètre borné en silence se lit comme « tout est couvert ».
  */
 export const FISCAL_MODULES = [
+    // ⚠️ AJOUTÉ le 2026-09-01 (`[FISC-GUARD-PROJECTION-TS]`). L'orchestrateur était le dernier
+    // trou DÉCLARÉ du ratchet : « le travail fiscal vit dans les sous-modules déjà scannés ». C'est
+    // vrai des BARÈMES, mais pas des BORNES D'ÂGE, qui se décident dans la boucle — l'entrée du
+    // fichier au périmètre a sorti de l'ombre l'âge 18 de la résidence PSV, le 65 de fin
+    // d'accumulation, le 60 du taux au survivant et le 70 du report RRQ.
+    // Périmètre MESURÉ avant d'écrire : 37 littéraux → 20 clés (fichier, valeur) à trier. Le ticket
+    // en annonçait 31, chiffre du 2026-08-20 : le fichier a bougé depuis.
+    'services/projection.ts',
     'services/projection/taxDecember.ts',
     'services/projection/taxApril.ts',
     'services/projection/taxJanuary.ts',
@@ -595,7 +647,6 @@ export const FISCAL_MODULES = [
 export const FISCAL_MODULES_HORS_PERIMETRE = [
     { file: 'utils/tax.ts', literals: 82, reason: 'source désignée du garde V1' },
     { file: 'services/realEstate.ts', literals: 26, reason: 'source désignée du garde V1' },
-    { file: 'services/projection.ts', literals: 31, reason: 'orchestrateur — trou connu et assumé' },
     // Ces trois-ci étaient chiffrés en PROSE seulement : une métrique qu'aucun test ne relit dérive
     // en silence (`DOC-METRIQUE-RECOPIEE`). Elles rejoignent la table pour être vérifiées.
     { file: 'services/projection/historicalReturns.ts', literals: 58, reason: 'rendements de marché observés' },

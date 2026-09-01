@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 53 : le dernier trou déclaré du ratchet fiscal (PR #779)
+
+- [x] **`[FISC-GUARD-PROJECTION-TS]`** (S, FAIBLE) — « `services/projection.ts` (31 littéraux) reste
+  hors du ratchet ; **décider** : l'inclure ou acter l'exclusion dans une ADR ». ✅ **INCLUS.**
+  · **Re-mesuré avant de coder** : **37 littéraux → 20 clés**, pas 31. Le chiffre du ticket datait du
+    2026-08-20 et le fichier avait bougé.
+  · **Le ticket avait tort sur le fond, pas seulement sur le chiffre** : « le travail fiscal vit dans
+    les sous-modules déjà scannés » est vrai des BARÈMES, faux des **bornes d'âge**, qui se décident
+    dans la boucle. Quatre vraies règles légales y vivaient sans clé : l'âge **18** de la résidence
+    PSV, le **65** de fin d'accumulation, le **60** du taux au survivant, le **70** du report RRQ.
+  · **Deux découvertes routées, aucune corrigée** (convention §6, scope non demandé) :
+    `[ENG-LIBELLE-RRQ-70-VS-72]` (le libellé annonce 70, le moteur applique 72) et
+    `[ENG-STARTYEAR-DEFAUT-2026]` (défaut d'année consommé par un site, mesuré au typecheck).
+  · **Discrimination prouvée** : un barème neuf non inventorié dans `projection.ts` fait désormais
+    rougir le ratchet ; avant l'inclusion, le fichier n'était pas scanné du tout.
+
 ## 2026-09-01 — Lot 52 : quinze décommenteurs, un seul survivant (PR #778)
 
 - [x] **`[GUARD-STRIPCOMMENTS-DUPLIQUE]`** (S, MOYEN) — « sept décommenteurs indépendants, aucun

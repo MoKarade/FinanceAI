@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 53 : le dernier trou déclaré du ratchet fiscal
+> `[FISC-GUARD-PROJECTION-TS]` — `services/projection.ts` entre au périmètre du ratchet
+> (`utils/fiscalConstGuardV2.ts`), avec ses **20 clés** inventoriées et triées une par une.
+> - **Re-mesuré avant de coder** : 37 littéraux / 20 clés, pas les 31 du ticket (chiffre du
+>   2026-08-20, le fichier a bougé).
+> - ⚠️ **Le ticket avait tort sur le FOND** : « le travail fiscal vit dans les sous-modules déjà
+>   scannés » vaut pour les BARÈMES, pas pour les **bornes d'âge**, qui se décident dans la boucle.
+>   Quatre vraies règles légales y vivaient sans clé — 18 (résidence PSV), 65 (fin d'accumulation),
+>   60 (taux au survivant), 70 (report RRQ). Toutes ancrables sur `FISCAL_REFERENCE.md` **existant** :
+>   aucune source externe requise, ce qui compte vu que le proxy bloque toujours `canada.ca` (re-testé
+>   le 2026-09-01, 403 en `curl` comme en `WebFetch`).
+> - ⚠️ **Une clé (fichier, valeur) fusionne les SENS** : `65` recouvre quatre sites dont un simple
+>   défaut de saisie, `60` en recouvre trois dont un mois de scénario. La marque `[≠N]` compte les
+>   OCCURRENCES, pas les sens — la garde l'a corrigé sur-le-champ (j'avais écrit `[≠2]` pour 3).
+> - **Deux découvertes ROUTÉES, aucune corrigée** (convention §6) : `[ENG-LIBELLE-RRQ-70-VS-72]` — le
+>   libellé annonce « RRQ 70 ans », le moteur applique 72 (`retirementIncome.ts:272,281`) ; et
+>   `[ENG-STARTYEAR-DEFAUT-2026]` — `startYear = 2026` en dur, avec **un seul** site consommateur,
+>   mesuré en rendant le champ requis (`GoalSeekerCard` via `Retirement.tsx:288`).
+
 > ## 🟦 Session 2026-09-01 — Lot 52 : quinze décommenteurs, un seul survivant
 > `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les **15 décommenteurs ad hoc** (13 fichiers) consomment
 > désormais `utils/stripComments.ts`. Garde neuve : `tests/guards/stripCommentsUniqueGuard.test.ts`.

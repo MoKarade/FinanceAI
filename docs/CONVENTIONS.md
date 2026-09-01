@@ -8523,6 +8523,67 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 53 — « le travail fiscal vit ailleurs » est vrai des barèmes, faux des BORNES
+
+`UN-PERIMETRE-EXCLU-SE-JUSTIFIE-PAR-CE-QU-IL-CONTIENT-PAS-PAR-SON-ROLE`
+
+`[FISC-GUARD-PROJECTION-TS]` : `services/projection.ts` était le dernier trou DÉCLARÉ du ratchet
+fiscal, avec sa justification écrite — « c'est l'orchestrateur, le travail fiscal vit dans les
+sous-modules déjà scannés ». La phrase est vraie des **barèmes** (taux, plafonds, tables) et fausse
+des **bornes d'âge**, qui se décident dans la boucle du moteur : l'entrée du fichier au périmètre a
+sorti de l'ombre quatre vraies règles légales — l'âge **18** à partir duquel la résidence au Canada
+compte pour la PSV, le **65** où elle cesse de s'accumuler, le **60** de la part conservée par un
+conjoint survivant, et le **70** du report RRQ. **Une exclusion se justifie par ce que le fichier
+CONTIENT, jamais par le rôle qu'on lui prête** ; et un rôle bien décrit (« orchestrateur ») rend
+l'exclusion d'autant plus crédible, donc d'autant moins relue.
+
+**Re-mesuré avant de coder** : 37 littéraux pour 20 clés, là où le ticket en annonçait 31. Son
+chiffre datait du 2026-08-20 et le fichier avait bougé. Troisième lot d'affilée où le périmètre
+annoncé est faux — c'est désormais l'attente par défaut, pas la surprise.
+
+**Les quatre bornes étaient ancrables sans source externe**, et ça comptait : `FISCAL_REFERENCE.md`
+portait déjà « résidence au Canada après 18 ans », « 65 ans », « la PSV ne se reporte pas au-delà de
+70 ans ». Vérifié avant d'écrire, parce que le proxy de sortie bloque toujours `canada.ca` —
+re-testé le 2026-09-01, 403 en `curl` comme en `WebFetch`. Un constat d'impossibilité se re-prouve
+avant d'être cité, et celui-là tient.
+
+**Une clé `(fichier, valeur)` fusionne les SENS, et la marque compte les OCCURRENCES.** Dans ce
+fichier, `65` recouvre quatre sites dont trois règles légales et **un simple défaut de saisie**
+(`retirementGoal.targetAge || 65`), et `60` en recouvre trois dont **un mois de scénario**
+(`m === 60`). J'ai d'abord écrit `[≠2]` pour `60` en comptant les SENS — la garde l'a refusé sur-le-
+champ : elle compte les occurrences. La distinction n'est pas cosmétique : c'est elle qui garantit
+qu'une occurrence apparue ou disparue se fait remarquer.
+
+**Deux découvertes routées, aucune corrigée**, et c'est la règle (convention §6 : un bug préexistant
+découvert en chemin se signale et s'ajoute au backlog, jamais ne se corrige sans feu vert) :
+
+- `[ENG-LIBELLE-RRQ-70-VS-72]` — sous report de rentes, le libellé annonce « RRQ **70** ans » quand
+  l'âge n'est pas saisi, alors que le moteur applique **72** (`retirementIncome.ts:272,281`, +84 mois
+  ×1,588). Trois écritures pour un même fait — le libellé, le commentaire de `projection.ts:362`, et
+  le calcul —, dont deux sont fausses. Le correctif est de DÉRIVER le libellé de la constante du
+  moteur, pas de corriger `70` en `72` à deux endroits.
+- `[ENG-STARTYEAR-DEFAUT-2026]` — `startYear = 2026` en dur dans la déstructuration des paramètres,
+  avec un champ optionnel. **Le périmètre s'est mesuré par l'EXPÉRIENCE** plutôt que par lecture :
+  rendre le champ requis et lancer le typecheck sort **un seul** site fautif, `GoalSeekerCard` via
+  `Retirement.tsx:288`. Le défaut n'est donc pas mort — le chercheur d'objectif projette depuis 2026
+  en dur. Puis **restauré par `replace` inverse, jamais par `git checkout --`** : mesurer n'est pas
+  livrer, et la leçon d'à côté a déjà coûté une migration au lot 52.
+
+⚠️ **Et un garde-fou d'édition qui matche plus large que sa cible, deuxième fois en deux lots.** Ma
+contre-épreuve voulait reconstituer l'état d'avant en retirant `'services/projection.ts'` de
+`FISCAL_MODULES` ; mon `assert` de vérification cherchait cette chaîne dans TOUT le fichier — or elle
+apparaît aussi dans les vingt entrées d'inventaire (`file: 'services/projection.ts'`). L'assert a
+donc levé sur un retrait pourtant réussi. **Un contrôle de perturbation doit viser la même portée que
+la perturbation** : ici, le bloc `FISCAL_MODULES` délimité par ses bornes, pas le fichier entier.
+C'est la variante « outil d'édition » de `SCAN-QUI-MATCHE-LA-PROSE`, et le remède est le même —
+ancrer sur la STRUCTURE, pas sur la chaîne.
+
+⚠️ **Ce qui n'a PAS été prouvé, et se dit** : la contre-épreuve complète — « la même perturbation
+passait-elle AVANT ? » — n'a pas été rejouée, parce que reconstituer l'état d'avant exige aussi de
+retirer les vingt entrées d'inventaire (deux autres assertions du ratchet s'y opposent). Ce qui EST
+prouvé : la perturbation fait rougir le ratchet MAINTENANT, et le diff montre que le fichier passe de
+`FISCAL_MODULES_HORS_PERIMETRE` à `FISCAL_MODULES` — donc qu'il n'était pas scanné.
+
 ### Lot 52 — un décommenteur plus correct casse ce qui dépendait de son approximation
 
 `UN-OUTIL-PLUS-CORRECT-CASSE-CE-QUI-DEPENDAIT-DE-SON-APPROXIMATION`

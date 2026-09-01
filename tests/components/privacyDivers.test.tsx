@@ -37,10 +37,15 @@ const SITES: ReadonlyArray<{ fichier: string; ecran: string; motif: RegExp }> = 
       motif: /<PrivateAmount>\{formatCAD\(Math\.abs\(dailyPast\.undatedTotal\)\)\}<\/PrivateAmount>/ },
     { fichier: 'components/FutureProjection.tsx', ecran: 'bandeau « transactions après aujourd’hui »',
       motif: /<PrivateAmount>\{formatCAD\(Math\.abs\(dailyPast\.flowsAfterNowDate\)\)\}<\/PrivateAmount>/ },
+    // ⚠️ [FORMAT-EXPLAINS-TOLOCALESTRING] Ces deux motifs ancraient l'EXPRESSION qu'avait le code
+    // (`{Math.round(r.estateNetWorth)`, `{goalSeekResult.savings`) : ils ont rougi au lot 61, qui
+    // remplace un formatage composé à la main par `formatCAD` — alors que RIEN de ce qu'ils
+    // défendent n'avait bougé. Ils ancrent désormais le FAIT : la valeur passe par la primitive de
+    // masquage (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, 3ᵉ fois).
     { fichier: 'components/retirement/GoalSeekerCard.tsx', ecran: 'patrimoine successoral comparé',
-      motif: /<PrivateAmount[^>]*>\{Math\.round\(r\.estateNetWorth\)/ },
+      motif: /<PrivateAmount[^>]*>\{[^}]*r\.estateNetWorth[^}]*\}<\/PrivateAmount>/ },
     { fichier: 'components/retirement/GoalSeekerCard.tsx', ecran: 'épargne mensuelle nécessaire',
-      motif: /<PrivateAmount>\{goalSeekResult\.savings/ },
+      motif: /<PrivateAmount>\{[^}]*goalSeekResult\.savings[^}]*\}<\/PrivateAmount>/ },
     { fichier: 'components/retirement/RetirementSettingsCard.tsx', ecran: 'revenu mensuel cible (saisie)',
       motif: /<PrivateNumberInput id="rsc-income"/ },
     { fichier: 'components/investments/AddStockForm.tsx', ecran: 'prix d’achat par action (saisie)',

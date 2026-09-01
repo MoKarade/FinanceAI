@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 059 tests** Vitest
-(486 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 062 tests** Vitest
+(487 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -453,6 +453,17 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   pas ce qu'il défend mesurait une FORME** (`getByText(/…/)` suppose un seul nœud de texte —
   l'hypothèse même qui empêchait le masquage). ⚠️ `isPrivacyMode` est un état de MODULE : sans
   `afterEach`, un cas qui l'active contamine les suivants (mesuré).
+- **Un montant composé À LA MAIN est invisible à la garde qui cherche le FORMATEUR** : le scan du
+  mode discret cherche `formatCAD`/`formatCompactCAD`/`formatSigned` et leurs alias — un
+  `` `${(v/1000).toFixed(0)}k$` `` ne ressemble à aucun des trois. 16 sites échappaient AUX DEUX
+  gardes, et migrer le format en a révélé 6 non masqués (dont trois coûts d'enfant). **Une garde qui
+  cherche l'USAGE d'une fonction a besoin d'une garde JUMELLE qui interdit de faire le travail
+  autrement** (`UN-MONTANT-COMPOSE-A-LA-MAIN-EST-INVISIBLE-A-LA-GARDE-QUI-CHERCHE-LE-FORMATEUR`).
+  ⚠️ Corollaires : un ticket étiqueté « cosmétique » se mesure avant d'être cru (« 2.35M$ » était un
+  séparateur décimal ANGLAIS en fr-CA, et l'objectif FIRE restait en « k$ » à 1,25 M$) ; un **nom
+  trompeur** se RENOMME plutôt que d'élargir le motif de la garde (prop `blur` → `privacy` : la
+  primitive ne floute pas, elle RETIRE) ; et **`${` contient un `$`** — un motif « chiffre puis
+  dollar » sans `(?!\{)` relève des taux de change (5 faux positifs mesurés).
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

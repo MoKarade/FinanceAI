@@ -1325,7 +1325,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <KPIStat
                     label="Objectif FIRE"
                     icon="🎯"
-                    value={`${(fireNumber / 1000).toFixed(0)}k $`}
+                    // ⚠️ MESURÉ : l'ancien format restait en « k$ » quel que soit l'ordre de grandeur — une cible
+                    // FIRE de 1,25 M$ s'affichait « 1250k $ ». `formatCompactCAD` bascule en M$.
+                    value={formatCompactCAD(fireNumber)}
                     sublabel="Règle des 4%"
                     privacy
                     variant="warning"
@@ -1340,7 +1342,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
                     // silencieux du moteur), utiliser finalNetWorth puis fireNumber
                     // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
-                    value={`${(((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0) / 1000000).toFixed(2)}M $`}
+                    value={formatCompactCAD((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0)}
                     sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
                     privacy
                     variant="primary"

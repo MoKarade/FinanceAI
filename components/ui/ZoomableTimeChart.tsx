@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_ITEM_STYLE } from '../../utils/chartTooltip';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatCAD } from '../../utils/format';
+import { formatCompactCAD } from '../../utils/format';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { ChartDataTable, type ChartDataColumn } from './ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
@@ -77,12 +77,12 @@ function formatTick(timestamp: string | number, spanDays: number): string {
 // MONTANT-MASQUE-AILLEURS — formateur par DÉFAUT, jamais appelé directement : les trois points de
 // rendu de ce fichier (tickFormatter, infobulle, table sr-only) le passent tous par
 // `privacyMode ? MASKED_AMOUNT_LABEL : yFormatter(val)`.
-const defaultYFormatter = (val: number) => {
-    const abs = Math.abs(val);
-    if (abs >= 1_000_000) return `${(val / 1_000_000).toFixed(1)} M$`;
-    if (abs >= 1_000) return `${(val / 1_000).toFixed(0)} k$`;
-    return formatCAD(val); // MONTANT-MASQUE-AILLEURS
-};
+// [FORMAT-EXPLAINS-TOLOCALESTRING] Trois seuils composés à la main, remplacés par la source unique.
+// ⚠️ Un seul changement de rendu, MESURÉ : les millions passent de UNE à DEUX décimales
+// (« 2,3 M$ » → « 2,35 M$ »). C'est une étiquette d'AXE, donc un peu plus large ; le reste est
+// identique au caractère près. À signaler à Marc plutôt qu'à exempter — une exemption sur l'axe du
+// graphique principal serait le plus gros trou de la garde qui accompagne ce lot.
+const defaultYFormatter = (val: number) => formatCompactCAD(val); // MONTANT-MASQUE-AILLEURS
 
 /**
  * Valeur du TOOLTIP (exporté pour test — findings panel #495) :

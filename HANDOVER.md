@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 61 : le format et la vie privée étaient le même trou
+> `[FORMAT-EXPLAINS-TOLOCALESTRING]` — annoncé XS (3 sites), **mesuré M (16 sites)**. Migration vers
+> `formatCAD` / `formatCompactCAD` / `formatSigned`, plus une garde bloquante
+> (`tests/components/formatMonetaireSourceUnique.test.ts`).
+> - ⚠️⚠️ **Un montant composé à la main est INVISIBLE à la garde du mode discret** (lot 59), qui
+>   cherche `formatCAD`/`formatCompactCAD` et leurs alias. Les 16 sites échappaient AUX DEUX gardes,
+>   et migrer le format en a révélé **six** non masqués — dont trois coûts d'enfant. **Le format et
+>   la vie privée sont ici le même trou vu deux fois** ; la garde de format garantit que l'autre voit
+>   tout.
+> - **Deux vrais défauts de rendu** : « 2.35M$ » (séparateur décimal ANGLAIS en fr-CA) dans
+>   `StrategyOptimizerPanel` et `StressTestPanel` ; et l'objectif FIRE bloqué en « k$ » (« 1250k $ »
+>   pour 1,25 M$).
+> - **Nom trompeur retiré** : la prop `blur` de `Metric` — `PrivateAmount` ne floute pas, il RETIRE.
+>   Renommée `privacy` ; elle fabriquait deux faux findings dans la garde du mode discret.
+> - ⚠️ **3ᵉ récidive de `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME`** : `privacyDivers` (ma garde du
+>   lot 57) ancrait l'EXPRESSION au lieu du FAIT. Ré-ancrée, pas rebasée.
+> - ⚠️ **Faux positif de scan à connaître** : `${` contient un `$`. Un motif « chiffre puis `$` » sans
+>   `(?!\{)` relève des `toFixed(4)` sur des TAUX DE CHANGE (5 faux positifs mesurés).
+> - **À signaler à Marc** : les étiquettes d'axe passent de 1 à 2 décimales pour les M$.
+
 > ## 🟦 Session 2026-09-01 — Lot 60 : les douze chaînes découpées, et l'inventaire qui meurt
 > `[A11Y-PRIVACY-CHAINES-RESTANTES]` — les 12 sites `MONTANT-CHAINE-A-DECOUPER` sont soldés et le
 > jeton a été **RETIRÉ** du vocabulaire de la garde. C'est le test lui-même qui l'a exigé : sa

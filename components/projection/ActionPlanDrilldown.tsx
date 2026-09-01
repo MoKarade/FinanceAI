@@ -8,13 +8,14 @@ import {
 import { ACTION_ACCOUNTS } from '../../services/projection/yearlyActions';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCAD } from '../../utils/format';
 
 interface ActionPlanDrilldownProps {
     chartData: Array<Record<string, unknown>>;
     strategyName?: string;
 }
 
-const cad = (v: number): string => `${Math.round(v).toLocaleString('fr-CA')}$`;
+const cad = (v: number): string => formatCAD(v);
 
 const FlowChips: React.FC<{ flows: PlanBucket['flows'] }> = ({ flows }) => {
     const deposits = ACTION_ACCOUNTS.filter((a) => flows[a.key] > 100);

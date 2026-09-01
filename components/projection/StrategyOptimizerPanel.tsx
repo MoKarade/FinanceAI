@@ -12,6 +12,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import type { SimulationParams, ConfigResult } from '../../services/projection';
+import { formatCompactCAD } from '../../utils/format';
 import {
     rankConfigResults,
     explainWinner,
@@ -54,7 +55,9 @@ const SIM_BUDGET = 24_000;
 const adaptiveIterations = (nConfigs: number): number =>
     Math.max(60, Math.min(400, Math.round(SIM_BUDGET / Math.max(1, nConfigs))));
 
-const fmtM = (v: number): string => `${(v / 1_000_000).toFixed(2)}M$`;
+// [FORMAT-EXPLAINS-TOLOCALESTRING] `formatCompactCAD` remplace un format composé à la main qui
+// écrivait le séparateur décimal ANGLAIS (« 2.35M$ ») dans une app en fr-CA — mesuré.
+const fmtM = (v: number): string => formatCompactCAD(v);
 const fmtMs = (ms: number): string => {
     const s = Math.ceil(ms / 1000);
     if (s < 60) return `~${s} s`;
@@ -349,7 +352,7 @@ const WinnerCard: React.FC<{
             {/* Métriques clés */}
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Metric label="Succès" value={`${r.successRate}%`} />
-                <Metric label="Patrimoine méd." value={fmtM(r.finalNWp50)} blur />
+                <Metric label="Patrimoine méd." value={fmtM(r.finalNWp50)} privacy />
                 {/* [ENG-RANKTAX-ESTATE] lifetimeTax est désormais l'impôt TOTAL MODÉLISÉ (A4) :
                     régularisations d'avril + solde à l'horizon + impôt SUCCESSORAL. ⚠️ Sémantique
                     DIFFÉRENTE du MCP netTaxSettlements (resté sur les seuls règlements) — les deux
@@ -358,7 +361,7 @@ const WinnerCard: React.FC<{
                 <Metric
                     label="Impôt total (modélisé)"
                     value={fmtM(r.lifetimeTax)}
-                    blur
+                    privacy
                     title="Impôt total du scénario : soldes/remboursements d'avril sur l'horizon, + le solde de la dernière année, + l'impôt successoral de liquidation (décision : l'impôt successoral entre dans « impôt minimum »). N'inclut PAS l'impôt retenu à la source sur les salaires. Négatif = remboursements nets supérieurs au reste."
                 />
                 <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} />
@@ -405,10 +408,14 @@ const WinnerCard: React.FC<{
     );
 };
 
-const Metric: React.FC<{ label: string; value: string; blur?: boolean; title?: string }> = ({ label, value, blur, title }) => (
+// [FORMAT-EXPLAINS-TOLOCALESTRING] La prop s'appelait `blur`, un nom FAUX depuis que le masquage
+// passe par `PrivateAmount` : celui-ci ne floute pas, il RETIRE la valeur du DOM. Renommée
+// `privacy`, comme `KPIStat` et `DualKPIStat` — un nom trompeur fabrique des faux findings, et
+// celui-ci en a fabriqué deux dans la garde du mode discret.
+const Metric: React.FC<{ label: string; value: string; privacy?: boolean; title?: string }> = ({ label, value, privacy, title }) => (
     <div className="rounded-lg bg-white/5 px-2.5 py-1.5" title={title}>
         <div className="text-tiny text-ink-400">{label}</div>
-        {blur
+        {privacy
             ? <PrivateAmount as="div" className="text-meta font-black text-white tabular-nums">{value}</PrivateAmount>
             : <div className="text-meta font-black text-white tabular-nums">{value}</div>}
     </div>

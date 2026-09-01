@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { verifierTypesRestaures, messageDeRefusTypes, CHAMPS_TEXTE } from '../../services/verifierTypesRestaures';
+import { verifierTypesRestaures, messageDeRefusTypes, resumeTechniqueDesFautifs, CHAMPS_TEXTE, LONGUEUR_MAX_DIAGNOSTIC } from '../../services/verifierTypesRestaures';
 import { TEST_PERSONAS, getPersonaOrDefault } from '../../services/testPersonas';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { INITIAL_PROJECTION } from '../../constants';
@@ -230,6 +230,24 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
             manquants,
             'champ TEXTUEL du store, PERSISTÉ, absent de CHAMPS_TEXTE : il videra l\'app au lancement.',
         ).toEqual([]);
+    });
+
+    it('[INCIDENT] le diagnostic affiché SURVIT à la troncature — les chemins sont la seule partie utile', () => {
+        // ⚠️ Pendant l'incident, `SystemView` tronquait la ligne à 80 caractères. Le seul préfixe en
+        // fait 95 : la coupe tombait EXACTEMENT avant les chemins, dans l'écran qu'on demande à
+        // l'utilisateur d'ouvrir pour se diagnostiquer. Un diagnostic amputé de sa conclusion n'est
+        // pas un diagnostic — et deux bornes sur la même grandeur, c'est la plus bête qui gagne
+        // (`PLAFOND_CITATIONS` bornait déjà le message à cinq chemins).
+        const fautifs = Array.from({ length: 9 }, (_, i) => ({
+            chemin: `transactions.${i}.accountId`, cle: 'accountId', valeur: 'acc_9f3c1',
+        }));
+        const message = `Error: ${resumeTechniqueDesFautifs(fautifs)}`;
+        const affiche = message.slice(0, LONGUEUR_MAX_DIAGNOSTIC);
+        // Le cas le PIRE : plafond de citations atteint (5 chemins) + le compteur de reste.
+        expect(message).toContain('+4');
+        expect(affiche, 'la troncature coupe les chemins — le diagnostic devient inexploitable')
+            .toBe(message);
+        expect(affiche).toContain('transactions.4.accountId');
     });
 
     it('ne refuse pas un TABLEAU de chaînes — ses éléments sont jugés sur la clé du tableau', () => {

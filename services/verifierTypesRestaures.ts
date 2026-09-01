@@ -181,6 +181,20 @@ export function resumeTechniqueDesFautifs(fautifs: ReadonlyArray<ChampMalType>):
 /** Au-delà, on compte au lieu d'énumérer : un journal illisible n'est pas lu. */
 const PLAFOND_CITATIONS = 5;
 
+/**
+ * Longueur d'affichage du diagnostic de réhydratation dans `SystemView`.
+ *
+ * ⚠️ MESURÉ pendant l'incident du 2026-09-01 : la ligne était tronquée à **80 caractères**, or le
+ * seul préfixe (« Données persistées illisibles — N champ(s) portent du texte là où un montant est
+ * attendu : ») en fait déjà 95. La coupe tombait donc EXACTEMENT avant les chemins — c'est-à-dire
+ * avant la seule partie exploitable, dans l'écran même qu'on demande à l'utilisateur de consulter.
+ *
+ * Le message ne peut pas grandir sans borne : `PLAFOND_CITATIONS` limite déjà les chemins cités à
+ * cinq. La troncature à 80 était donc une SECONDE borne, arbitraire, qui annulait la première.
+ * Deux bornes sur la même grandeur, et c'est la plus bête qui gagne.
+ */
+export const LONGUEUR_MAX_DIAGNOSTIC = 400;
+
 /** Phrase montrée à l'utilisateur, qui NOMME les champs sans jamais exposer un chemin technique. */
 export function messageDeRefusTypes(fautifs: ReadonlyArray<ChampMalType>): string {
     if (fautifs.length === 0) return '';

@@ -9768,3 +9768,43 @@ deux parce que l'état est déjà porté par le NOM ACCESSIBLE : un `aria-label`
 courant (« AUTO » / « MANUEL »), où `aria-pressed` aurait été ambigu plutôt qu'utile. Un scan
 heuristique sur du JSX propose des candidats ; il ne décide pas. Les deux sont déclarés en exemptions
 motivées, et un test refuse une exemption périmée — un inventaire doit savoir mourir.
+
+
+### Lot 65 (2026-09-01) — un motif se re-perd par l'écran qui ressemble le moins aux autres
+
+`UN-MOTIF-SE-REPERD-PAR-L-ECRAN-QUI-RESSEMBLE-LE-MOINS-AUX-AUTRES`
+
+`components/ui/SubTabs.tsx` existe précisément pour ça : trois écrans avaient recopié le même
+balisage d'onglets, incomplet de la même façon, et la primitive les a corrigés d'un coup. Son en-tête
+dit même pourquoi — « corriger trois copies aurait garanti qu'elles divergent ».
+
+Il en restait un quatrième. `FutureProjection` avait son propre bandeau, avec des emoji au lieu
+d'icônes et d'autres classes, et il n'a été migré par personne — pas par oubli, mais parce qu'il ne
+*ressemblait* pas aux trois autres. Un motif partagé se re-perd par l'écran qui s'en éloigne le plus
+visuellement, jamais par celui qui lui ressemble.
+
+D'où la forme de la règle. Elle n'exige **pas** d'utiliser le composant — un écran peut légitimement
+vouloir son apparence, et l'imposer aurait fait de ce lot un changement visuel que personne n'a
+demandé. Elle exige d'emprunter le **motif** : les mêmes fabricants d'identifiants (`tabId`,
+`panelId`) et la même logique de touches (`clavierTablist`), exportés. La garde vérifie les deux
+sens — la présence des emprunts, **et** l'absence d'une ré-implémentation locale des flèches. Une
+garde qui ne vérifierait que la présence serait satisfaite par une copie posée à côté.
+
+⚠️ **Le piège de balisage du lot** : le contenu d'un onglet n'est pas forcément un bloc. `graph` en
+porte trois (`curveRestoring`, `!curveVisible`, `curveVisible`), `plan` deux. Donner un `TabPanel` à
+chacun aurait produit des `id` **en double** — et `aria-controls` aurait désigné un élément ambigu,
+exactement `UN-ATTRIBUT-PRESENT-NE-PROUVE-PAS-QU-IL-DESIGNE-LA-BONNE-CHOSE`. Comme un seul onglet est
+actif à la fois, un panneau **unique dont l'identité suit l'onglet** est le seul balisage qui ne mente
+pas, et c'est aussi ce que fait la primitive.
+
+⚠️ **Le contre-témoin vaut le témoin.** La garde lit la source décommentée, et pour le prouver elle
+exige que `Profile.tsx` **n'apparaisse pas** dans le scan : ce fichier écrit `role="tablist"` dans son
+en-tête pour raconter d'où vient la primitive, alors qu'il n'en rend aucun. Un témoin dit « le scan
+voit » ; un contre-témoin dit « le scan ne voit pas ce qu'il ne doit pas voir » — et c'est le second
+qui attrape `SCAN-QUI-MATCHE-LA-PROSE`.
+
+⚠️ **Le clavier fait partie du motif, et il manquait aux quatre.** Le standard ne dit pas seulement
+comment étiqueter : il dit que le bandeau se parcourt aux flèches, avec un `tabIndex` roving qui
+laisse la tabulation sortir vers le contenu. Extrait dans la primitive, le correctif profite aux
+trois écrans déjà migrés — un gain qu'aucun ticket ne demandait, obtenu parce que la logique a été
+mise en commun plutôt que posée sur l'écran du ticket.

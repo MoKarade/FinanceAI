@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 65 : le quatrième bandeau d'onglets était resté à part (PR #795)
+
+- [x] **`[A11Y-TABLIST-NO-PANEL]`** — 2026-09-01, PR #795. ⚠️ **Pour une fois le périmètre du ticket
+  était JUSTE** (après quatorze faux d'affilée) : `Profile`, `Retirement` et `BudgetWorkspace`
+  étaient déjà passés par la primitive `components/ui/SubTabs.tsx`, et `FutureProjection` était bien
+  le seul bandeau resté à part — parce que son habillage diffère (libellés en emoji).
+- **Livré** : `aria-controls`/`id` via les fabricants partagés (`tabId`, `panelId`), **un seul**
+  panneau `role="tabpanel"` dont l'identité suit l'onglet actif, et le clavier du motif APG
+  (Gauche/Droite avec bouclage, Début, Fin, `tabIndex` roving) — extrait dans `clavierTablist`,
+  donc gagné aussi par les trois écrans déjà migrés.
+- ⚠️ **Un `TabPanel` par bloc conditionnel aurait produit des `id` EN DOUBLE** (`graph` porte trois
+  blocs, `plan` deux) : `aria-controls` aurait alors désigné un élément ambigu. Un panneau unique et
+  mobile dit la vérité, puisqu'un seul onglet est actif.
+- **Gardes** : `tests/guards/tablistMotifUniqueGuard.test.ts` (tout bandeau emprunte le motif, et la
+  logique de flèches ne se recopie pas) + `tests/components/subTabsClavier.test.tsx` (le RENDU : la
+  cible d'`aria-controls` existe, le panneau repointe, les flèches bouclent, le focus suit).
+
 ## 2026-09-01 — Lot 64 : l'état sélectionné ne passait que par la couleur (PR #794)
 
 - [x] **`[A11Y-TABSTATE-TAXCENTER]`** — 2026-09-01, PR #794. Le ticket nommait **1** site (la bascule

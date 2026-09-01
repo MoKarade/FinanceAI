@@ -2105,11 +2105,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
-- [ ] **`[A11Y-TABLIST-NO-PANEL]`** (S) — Futur : sous-onglets ont `role="tablist"` (bon) mais pas
-  `aria-controls`/tabpanel ni flèches gauche-droite (pattern APG complet). Impact limité : chaque tab
-  reste normal `<button>` donc atteignable/activable. **Correctif** : ajouter `id`/`aria-controls`
-  + `role="tabpanel"` + `aria-labelledby` sur panneau.
-
 ### 🔴 Performance (1 HIGH, 2 MED, 1 LOW)
 
 > Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.

@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 65 : le 4ᵉ bandeau d'onglets était resté à part
+> `[A11Y-TABLIST-NO-PANEL]` — `FutureProjection` rejoint le motif de `components/ui/SubTabs.tsx` :
+> `tabId`/`panelId` partagés, un `TabPanel` unique, et le clavier APG.
+> - ⚠️ **Périmètre du ticket JUSTE, pour la première fois après quatorze faux** : `Profile`,
+>   `Retirement` et `BudgetWorkspace` étaient déjà migrés ; Futur était bien le seul restant, parce
+>   que son habillage diffère (emoji). C'est comme ça qu'un motif se re-perd — par l'écran qui
+>   ressemble assez peu aux autres pour qu'on n'y pense pas.
+> - **Le clavier est un GAIN pour les 4 écrans** : `clavierTablist` (Gauche/Droite avec bouclage,
+>   Début, Fin) + `tabIndex` roving vivent dans la primitive, donc les trois déjà migrés en héritent.
+> - ⚠️ **Un `TabPanel` par bloc conditionnel aurait fait des `id` EN DOUBLE** (`graph` = 3 blocs,
+>   `plan` = 2) : `aria-controls` aurait désigné un élément ambigu. Un panneau UNIQUE dont l'identité
+>   suit l'onglet actif dit la vérité, puisqu'un seul onglet est actif à la fois.
+> - **Gardes** : `tests/guards/tablistMotifUniqueGuard.test.ts` (motif emprunté, flèches non
+>   recopiées ; son contre-témoin est `Profile.tsx`, qui PARLE de `role="tablist"` en commentaire
+>   sans en rendre — il prouve le décommentage) + `tests/components/subTabsClavier.test.tsx` (RENDU :
+>   la cible d'`aria-controls` EXISTE, le panneau repointe, les flèches bouclent, le focus suit).
+
 > ## 🟦 Session 2026-09-01 — Lot 64 : l'état sélectionné ne passait que par la COULEUR
 > `[A11Y-TABSTATE-TAXCENTER]` — `aria-pressed` (+ `type="button"`) sur **12** sites : `ChildPlanning`
 > ×5 (groupes à sélection unique), `LifeEvents` ×5, `TaxCenter` ×2. Garde de source neuve

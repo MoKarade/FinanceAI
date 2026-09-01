@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Les sous-onglets de Futur se parcourent aux flèches)
+
+- **Corrigé** : les quatre sous-onglets de Futur (Projection / Hypothèses / Plan d'action /
+  Historique) étaient annoncés comme des onglets, mais **rien ne disait quel contenu chacun
+  commande**. Le contenu affiché est maintenant déclaré comme le panneau de l'onglet actif, et les
+  deux se désignent mutuellement — un lecteur d'écran peut donc sauter de l'onglet à son contenu.
+- **Nouveau, et ça vaut pour les quatre écrans à sous-onglets** (Profil, Retraite, Budget, Futur) :
+  le bandeau se parcourt aux **flèches gauche/droite** (avec bouclage), plus Début et Fin. La touche
+  de tabulation ne traverse plus les onglets un par un — elle mène directement au contenu, ce qui est
+  le geste utile. C'était la dernière moitié manquante du standard.
+- **Pourquoi Futur était en retard** : trois écrans partagent déjà une brique commune ; Futur avait
+  gardé son propre bandeau parce que son habillage diffère (des emoji plutôt que des icônes). Il
+  garde son apparence, mais emprunte désormais la même mécanique — et un contrôle automatique refuse
+  qu'un cinquième bandeau la réinvente.
+
 ## [unreleased] — 2026-09-01 (Les boutons de choix disent enfin lequel est sélectionné)
 
 - **Corrigé** : dans douze boutons de sélection — les cinq groupes de « Choix de vie » de la

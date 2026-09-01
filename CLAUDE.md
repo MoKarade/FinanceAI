@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 012 tests** Vitest
-(480 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 017 tests** Vitest
+(481 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -838,6 +838,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   peut viser du code dont la sortie est jetée » vaut aussi quand on se contente de ROUTER le bug, et
   un `CHANGELOG` qui décrit un défaut que l'utilisateur ne subit pas est pire qu'un ticket de trop
   (`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
+- **Une garde ancre le FAIT qu'elle défend, jamais la FORME qu'avait le code** : `taxBracketVizAnnee`
+  ancrait `useMemo(() => new Date().getFullYear())` et a rougi quand le lot suivant a eu besoin du
+  MOIS — rien de ce qu'elle défend n'avait bougé. **Deuxième fois pour la même assertion** (son
+  commentaire raconte déjà le premier épisode). Elle compte désormais `new Date(`, ce qui est plus
+  fidèle à son intention ET plus strict : l'ancien motif aurait laissé passer un
+  `new Date().getMonth()` ajouté à côté. Une garde de forme coûte un aller-retour à chaque évolution
+  et apprend à être ignorée (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`).
 - **Une exclusion de périmètre se justifie par ce que le fichier CONTIENT, jamais par son RÔLE** :
   `services/projection.ts` était exclu du ratchet fiscal parce que « c'est l'orchestrateur, le travail
   fiscal vit dans les sous-modules ». Vrai des BARÈMES, faux des **bornes d'âge**, qui se décident

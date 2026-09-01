@@ -20,7 +20,7 @@ import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSched
 import { initRentalStates, processRentalMonth } from './projection/rentalMonth';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
-import { computeRetirementIncome, computeDbPensionMonthly } from './projection/retirementIncome';
+import { computeRetirementIncome, computeDbPensionMonthly, RRQ_DEFERRED_START_AGE } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 // [FUTUR-FIRE-STRUCT] Libellé du jalon FIRE partagé avec ses consommateurs (le texte n'est plus
 // dupliqué en dur : un lecteur qui doit matcher le libellé compare à la MÊME constante).
@@ -96,7 +96,15 @@ export interface SimulationParams {
     baseNetAnnual: number;
     currentRentExpense: number;
     baseMonthlyExpenses: number;
-    startYear?: number;
+    /**
+     * Année du mois 0 de la simulation. **REQUISE** depuis `[ENG-STARTYEAR-DEFAUT-2026]` : elle
+     * portait un défaut `= 2026` à la déstructuration, et un défaut d'année se périme en silence —
+     * en 2027 la projection serait partie de 2026 sans que rien ne bronche. Mesuré à l'époque : un
+     * seul appelant l'omettait (`GoalSeekerCard` via `Retirement.tsx`), donc le défaut n'était pas
+     * mort. Le rendre requis fait exiger la valeur par `tsc` sur chaque site, présent et futur —
+     * c'est le correctif prescrit par le dépôt pour cette classe, pas un meilleur littéral.
+     */
+    startYear: number;
     startMonth?: number;
     // W5.x — Conteneurs étendus (optionnels pour backward compat)
     insurancePolicies?: InsurancePolicy[];
@@ -134,7 +142,7 @@ export interface ScenarioDiagnostics {
 }
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}, diagnostics: ScenarioDiagnostics = {}) => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], financialGoals = [] } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
     const rng = buildSeededRng(scenarioType, strategy, mcIterationIndex);
@@ -359,9 +367,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let overrideRetirementAge = retirementGoal.targetAge || 65;
     if (scenarioType === 'LIBERTE_55') overrideRetirementAge = 55;
     // C1-fix (audit 2026-06) : « reporter les rentes » (delayPensions) ne force PLUS
-    // l'âge d'arrêt de travail. delayPensions ne pilote QUE le début RRQ/PSV (à 70,
-    // cf retirementIncome). L'âge de retraite reste celui choisi → permet le cas clé
-    // « arrêter à 60, vivre du REER/CELI, reporter RRQ/PSV à 70 » (le moteur ponte le
+    // l'âge d'arrêt de travail. delayPensions ne pilote QUE le début RRQ/PSV, et il les
+    // met à des âges DIFFÉRENTS — RRQ 72, PSV 70 (`RRQ_DEFERRED_START_AGE` /
+    // `PSV_DEFERRED_START_AGE`, cf retirementIncome). ⚠️ Ce commentaire disait « à 70 »
+    // pour les deux jusqu'à `[ENG-LIBELLE-RRQ-70-VS-72]` : faux pour la RRQ depuis que le
+    // report a été étendu à 72. L'âge de retraite reste celui choisi → permet le cas clé
+    // « arrêter à 60, vivre du REER/CELI, reporter les rentes » (le moteur ponte le
     // revenu via le décaissement des comptes entre l'arrêt et le début des rentes).
     const effectiveRetirementAge = overrideRetirementAge;
     const retirementMonthIndex = (effectiveRetirementAge - currentAge) * 12;
@@ -2540,9 +2551,13 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         target.chartData.forEach((d) => { d.P10 = null; d.P50 = null; d.P90 = null; });
         // [UI-SCEN] — le report des rentes passe par les âges rrqStartAge/psvStartAge (#210),
         // plus par delayPensions (toujours false dans STRATEGY_DEFS) : on lit les âges réels.
+        // [ENG-LIBELLE-RRQ-70-VS-72] Le repli DÉRIVE de la source unique du moteur. Il disait `70`
+        // alors que `delayPensions` met la RRQ à 72 — un repli aujourd'hui inatteignable
+        // (`delayPensions` est `false` dans les onze définitions de `scenarios.ts`, donc la branche
+        // exige `rrqStart` défini), mais à valeur FAUSSE : une bombe le jour où le chemin se rouvre.
         const rrqStart = params.retirementGoal?.rrqStartAge;
         const delayStr = target.delayPensions || (rrqStart !== undefined && rrqStart > 65)
-            ? `rentes reportées (RRQ ${rrqStart ?? 70} ans)` : 'rentes aux âges choisis';
+            ? `rentes reportées (RRQ ${rrqStart ?? RRQ_DEFERRED_START_AGE} ans)` : 'rentes aux âges choisis';
         const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
         target.aiNote = `Simulation déterministe (**${stratStr}** + **${delayStr}**).`;
     }

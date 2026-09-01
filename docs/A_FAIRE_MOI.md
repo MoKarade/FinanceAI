@@ -225,6 +225,7 @@ est pire que le bug : je ne touche à rien sans la source. **Une capture d'écra
 | C5 | Créer la dette **« Desjardins Cash Back Mastercard »** (vrai taux + paiement minimum) et vérifier qu'elle n'existe pas déjà en double | App → Réglages → Dettes | Sync du solde de carte. ⚠️ Un doublon compte la dette 2× dans ton patrimoine |
 | C6 | Me donner ta **date de bascule** (dernière transaction saisie à la main) + construire `.fintable-roles.json` avec le VRAI régime fiscal de chaque compte | Local | Mapping Fintable sans doublons. ⚠️ Un mauvais `taxRegime` fausse l'impôt de toute la projection |
 | C7 | Confirmer la **profondeur d'historique réellement offerte** par ton plan Fintable payant (90 j demandés, **30 rendus** au dernier test) | Fintable | `[FINTABLE-BACKFILL-HISTORY]` — ⚠️ en l'état il n'importera **aucune** transaction de plus |
+| C8 | Supprimer la branche morte **`claude/lot-53`** (bouton « Delete branch » sur https://github.com/MoKarade/FinanceAI/branches) | GitHub | Ménage. Elle a été RECRÉÉE par accident le 2026-09-01 : mon `git push` du correctif est arrivé après le squash-merge de la PR #779, qui avait déjà supprimé la branche. Son commit `130e910` est **identique** à ce que la PR #780 a livré — rien n'y est perdu. ⚠️ Je ne peux pas la supprimer moi-même : `git push origin :claude/lot-53` rend **HTTP 403** au proxy de sortie (les pushs normaux passent, la suppression non — 6 essais). |
 
 ## D. Vérifications sur ton écran — je ne vois pas l'app tourner
 

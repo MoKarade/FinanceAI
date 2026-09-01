@@ -124,7 +124,16 @@ describe('[TAXBRACKETVIZ-ANNEE] la paire appelant/composant reste accordée', ()
         // manquait, c'est qu'UNE SEULE des deux l'avait. La garde vise donc la variable PARTAGÉE,
         // pas la présence d'un `new Date()` quelque part.
         const src = lire('components/Retirement.tsx');
-        expect(src).toMatch(/const anneeFiscaleCourante = useMemo\(\(\) => new Date\(\)\.getFullYear\(\)/);
+        // ⚠️ [ENG-STARTYEAR-DEFAUT-2026] Ce motif ancrait la FORME `useMemo(() => new Date().getFullYear())`.
+        // Le lot suivant a eu besoin du MOIS en plus de l'année, donc d'une `new Date()` mémoïsée dont
+        // on tire les deux — et la garde a rougi alors que rien de ce qu'elle défend n'avait bougé.
+        // C'est la deuxième fois que cette assertion se casse sur la forme sans que le FAIT gardé
+        // change (cf le 3e argument de `calculateGrossFromNet`, plus bas). Elle vise désormais ce
+        // qu'elle veut dire : une seule lecture d'horloge, dont l'année dérive.
+        expect(src, 'une lecture d’horloge MÉMOÏSÉE, donc stable au re-rendu')
+            .toMatch(/const maintenant = useMemo\(\(\) => new Date\(\), \[\]\)/);
+        expect(src, 'l’année dérive de cette lecture, pas d’une seconde')
+            .toMatch(/const anneeFiscaleCourante = maintenant\.getFullYear\(\)/);
         // ⚠️ Le motif s'arrête à `[,)]` et n'exige PAS que l'appel se termine là : ce qui est gardé,
         // c'est que la variable PARTAGÉE occupe la position de l'ANNÉE — pas l'arité de l'appel.
         // Ancrer sur `\)` a rougi au lot suivant, quand `[GROSSFROMNET-CREDITS-65]` a ajouté un 3e
@@ -144,8 +153,33 @@ describe('[TAXBRACKETVIZ-ANNEE] la paire appelant/composant reste accordée', ()
         expect(partDeCodeRestante(lire('components/Retirement.tsx'), code),
             'décommentage trop agressif : il ne reste plus de code').toBeGreaterThan(0.2);
         expect(code, 'jeton de vrai code retrouvé après décommentage').toContain('anneeFiscaleCourante');
-        expect((code.match(/new Date\(\)\.getFullYear\(\)/g) ?? []).length,
+        // ⚠️ On compte `new Date(` et non `new Date().getFullYear()` : c'est la LECTURE D'HORLOGE
+        // qui doit être unique, pas une de ses projections. Le motif d'avant aurait laissé passer un
+        // `new Date().getMonth()` ajouté à côté — exactement ce que ce fichier a eu besoin de faire,
+        // et exactement le 31 décembre que la variable partagée existe pour fermer.
+        expect((code.match(/new Date\(/g) ?? []).length,
             'une seule lecture de l’horloge pour tout l’écran').toBe(1);
+        expect(code, 'le mois dérive de la MÊME lecture').toContain('maintenant.getMonth()');
+    });
+
+    it('[ENG-STARTYEAR-DEFAUT-2026] le chercheur d’objectif part de l’année COURANTE, pas d’un littéral', () => {
+        // Le moteur portait `startYear = 2026` en défaut de déstructuration, et `GoalSeekerCard`
+        // était le SEUL appelant à omettre le champ — il projetait donc depuis 2026 en dur, quelle
+        // que soit l'année réelle. Le champ est désormais REQUIS côté `SimulationParams` : `tsc`
+        // exige la valeur sur chaque site, et cette garde vérifie que celle qui est passée est bien
+        // la lecture d'horloge partagée, pas un littéral réintroduit.
+        const code = lireCode('components/Retirement.tsx');
+        expect(code, 'l’année de départ vient de la lecture d’horloge partagée')
+            .toMatch(/startYear:\s*anneeFiscaleCourante/);
+        expect(code, 'le mois de départ aussi — câbler une année, c’est câbler une paire')
+            .toMatch(/startMonth:\s*moisCourant/);
+
+        // Et le défaut ne revient pas côté moteur : le champ reste REQUIS. Un `startYear?:` ou un
+        // `startYear = <littéral>` rouvrirait la classe entière sans qu'aucun appelant ne bronche.
+        const moteur = lireCode('services/projection.ts');
+        expect(moteur, 'le champ doit rester REQUIS').toMatch(/\n\s*startYear:\s*number;/);
+        expect(moteur, 'aucun défaut d’année ne revient à la déstructuration')
+            .not.toMatch(/startYear\s*=\s*\d{4}/);
     });
 
     it('le composant n’a AUCUN défaut d’année ni aucune lecture d’horloge', () => {

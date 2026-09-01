@@ -10,6 +10,31 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 54 : deux défauts d'âge, un seul remède — la source unique (PR #781)
+
+- [x] **`[ENG-STARTYEAR-DEFAUT-2026]`** (XS, MOYEN) — `runScenario` déstructurait ses paramètres avec
+  `startYear = 2026` et le champ était optionnel : un défaut d'année se périme en silence.
+  ✅ **Champ rendu REQUIS**, défaut retiré — `tsc` exige désormais la valeur sur chaque site, présent
+  et futur (le correctif prescrit par le dépôt pour cette classe, pas un meilleur littéral).
+  · Le seul appelant fautif, `GoalSeekerCard` via `Retirement.tsx`, reçoit l'année **et le mois**
+    depuis une `new Date()` mémoïsée unique — `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`.
+  · ⚠️ La garde `taxBracketVizAnnee` a rougi : elle ancrait la FORME
+    `useMemo(() => new Date().getFullYear())`. Deuxième fois qu'elle casse sur la forme sans que le
+    fait gardé bouge — elle compte désormais `new Date(`, ce qui est à la fois plus fidèle à son
+    intention et plus strict (un `new Date().getMonth()` séparé serait attrapé).
+
+- [x] **`[ENG-LIBELLE-RRQ-70-VS-72]`** (XS, FAIBLE) — le même fait s'écrivait à TROIS endroits, dont
+  deux faux : le calcul (juste), le repli du libellé « rentes reportées (RRQ N ans) » (**70**) et un
+  commentaire (**70** pour les deux rentes).
+  ✅ **`RRQ_DEFERRED_START_AGE` / `PSV_DEFERRED_START_AGE` exportés** depuis `retirementIncome.ts` et
+  consommés partout. Corriger `70` en `72` à deux endroits n'aurait fait que remettre le compteur à
+  zéro : trois écritures d'un même fait divergent.
+  · **Garde COMPORTEMENTALE**, pas un scan : le moteur tourne, et chaque rente doit commencer à SON
+    âge — la PSV coule déjà quand la RRQ n'a pas encore commencé. Un test à un seul âge ne
+    distinguerait pas « 72 et 70 » de « 70 et 70 ».
+  · Deux entrées d'inventaire du ratchet sont devenues FANTÔMES (les littéraux ont disparu) et le
+    garde l'a dit sur-le-champ — retirées.
+
 ## 2026-09-01 — Lot 53 : le dernier trou déclaré du ratchet fiscal (PR #779)
 
 - [x] **`[FISC-GUARD-PROJECTION-TS]`** (S, FAIBLE) — « `services/projection.ts` (31 littéraux) reste

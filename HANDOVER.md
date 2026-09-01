@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 54 : deux défauts d'âge, un seul remède — la source unique
+> `[ENG-STARTYEAR-DEFAUT-2026]` + `[ENG-LIBELLE-RRQ-70-VS-72]`, les deux découvertes du lot 53.
+> - **`startYear` est REQUIS** (défaut `= 2026` retiré) : `tsc` exige la valeur sur chaque site.
+>   `GoalSeekerCard` — le seul appelant fautif — reçoit l'année ET le mois d'une `new Date()`
+>   mémoïsée unique. Le chercheur d'objectif partait de janvier 2026 en dur.
+> - **`RRQ_DEFERRED_START_AGE` (72) / `PSV_DEFERRED_START_AGE` (70) exportés** et consommés partout.
+>   Le fait s'écrivait à trois endroits, dont deux faux. Corriger les deux mauvaises copies aurait
+>   seulement remis le compteur à zéro.
+> - ⚠️ **Une garde a rougi sur la FORME, pas sur son fait** : `taxBracketVizAnnee` ancrait
+>   `useMemo(() => new Date().getFullYear())`. Deuxième fois qu'elle casse ainsi — elle compte
+>   désormais `new Date(`, plus fidèle à son intention ET plus strict.
+> - ⚠️ **Deux entrées d'inventaire du ratchet sont devenues FANTÔMES** (leurs littéraux ont disparu
+>   avec les correctifs) et le garde l'a dit tout de suite. C'est exactement ce que
+>   `ENTREE-D-INVENTAIRE-FANTOME` doit produire : un inventaire qui DÉCROÎT.
+> - **6 perturbations séparées**, chacune vérifiée par `assert` avant la mesure, chacune rougissant
+>   le test visé. La garde des âges est **COMPORTEMENTALE** : le moteur tourne, et la PSV doit couler
+>   quand la RRQ n'a pas encore commencé — un test à un seul âge ne distinguerait pas 72/70 de 70/70.
+> - ⚠️ **`git push origin :claude/lot-53` échoue en 403 (proxy)** : la branche recréée par accident au
+>   lot 53 est toujours là. Routé dans `docs/A_FAIRE_MOI.md`, geste d'une seconde côté GitHub.
+
 > ## 🟦 Session 2026-09-01 — Lot 53 : le dernier trou déclaré du ratchet fiscal
 > `[FISC-GUARD-PROJECTION-TS]` — `services/projection.ts` entre au périmètre du ratchet
 > (`utils/fiscalConstGuardV2.ts`), avec ses **20 clés** inventoriées et triées une par une.

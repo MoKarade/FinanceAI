@@ -6,17 +6,51 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
-import { formatCAD, formatSigned } from '../../utils/format';
+import { formatCAD, formatSigned, formatPercent } from '../../utils/format';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { maskedTick } from '../../utils/chartPrivacy';
+import { ChartDataTable } from '../ui/ChartDataTable';
 import { useFinanceStore } from '../../store/useFinanceStore';
 
 type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 
-const Sparkline = ({ data, color }: { data: number[]; color: string }) => {
+/**
+ * [A11Y-BUDGETGROUP-CHART-NOALT] Alternative TEXTUELLE d'un sparkline (WCAG 1.1.1).
+ *
+ * ⚠️ Pas de `ChartDataTable` ici, et c'est un choix : il y a UN sparkline PAR LIGNE de budget.
+ * Annoncer six mois chiffrés pour chacun noierait le lecteur d'écran sous des dizaines de tableaux
+ * pour une information de FORME. Un sparkline se résume : sens et ampleur.
+ *
+ * ⚠️ Et il se résume SANS montant — donc sans rien à masquer. Le pourcentage de variation reste
+ * lisible en mode discret (précédent du dépôt : un ratio n'est pas un montant), là où « de 820 $ à
+ * 910 $ » aurait dû passer par `MASKED_AMOUNT_LABEL` et n'aurait plus rien dit.
+ *
+ * Rend `null` quand la série ne permet AUCUNE description honnête (moins de deux points finis) :
+ * l'appelant marque alors le graphe `aria-hidden`, plutôt que d'annoncer une tendance inventée.
+ */
+export function tendanceSparkline(data: readonly number[]): string | null {
+    const finis = data.filter((v) => Number.isFinite(v));
+    if (finis.length < 2) return null;
+    const debut = finis[0];
+    const fin = finis[finis.length - 1];
+    const ecart = fin - debut;
+    // Seuil au cent près : deux mois qui ne diffèrent que d'arrondis sont « stables », pas « en hausse ».
+    if (Math.abs(ecart) < 0.01) return `${finis.length} mois, stable`;
+    const sens = ecart > 0 ? 'en hausse' : 'en baisse';
+    // Un point de départ nul rend la variation relative infinie : on annonce le SENS seul plutôt
+    // qu'un pourcentage fabriqué (no-fake-data vaut aussi pour un nom accessible).
+    if (debut === 0) return `${finis.length} mois, ${sens}`;
+    return `${finis.length} mois, ${sens} de ${formatPercent(Math.abs(ecart / debut) * 100, 0)}`;
+}
+
+const Sparkline = ({ data, color, poste }: { data: number[]; color: string; poste: string }) => {
     const chartData = data.map((val, i) => ({ i, val }));
+    const tendance = tendanceSparkline(data);
+    const alternative = tendance
+        ? { role: 'img' as const, 'aria-label': `Tendance de ${poste} sur ${tendance}` }
+        : { 'aria-hidden': true };
     return (
-        <div style={{ width: '80px', height: '32px' }}>
+        <div style={{ width: '80px', height: '32px' }} {...alternative}>
             <LineChart width={80} height={32} data={chartData}>
                 <Line type="monotone" dataKey="val" stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
                 <LYAxis domain={['dataMin', 'dataMax']} hide />
@@ -219,7 +253,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             </div>
                                         </td>
                                         <td className="p-3 hidden sm:table-cell">
-                                            <Sparkline data={trendMap[item.name] || []} color={isOver ? '#ef4444' : '#0f9d58'} />
+                                            <Sparkline data={trendMap[item.name] || []} color={isOver ? '#ef4444' : '#0f9d58'} poste={item.name} />
                                         </td>
                                         <td className="p-3 text-right">
                                             <div className="flex flex-col items-end">
@@ -330,7 +364,16 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                             </button>
                                                         )}
                                                     </div>
-                                                    <div style={{ width: '100%', height: '150px' }}>
+                                                    {/* [A11Y-BUDGETGROUP-CHART-NOALT] Ce graphe était le SEUL des 16 du
+                                                        dépôt sans nom accessible ni alternative textuelle : un SVG Recharts
+                                                        est OPAQUE au lecteur d'écran. Il porte désormais le patron des onze
+                                                        autres fichiers — `role="img"` + `aria-label` pour le nommer, et
+                                                        `ChartDataTable` pour en LIRE les données. */}
+                                                    <div
+                                                        style={{ width: '100%', height: '150px' }}
+                                                        role="img"
+                                                        aria-label={`Dépenses mensuelles de ${item.name} sur les six derniers mois, comparées à la cible du poste.`}
+                                                    >
                                                         <ResponsiveContainer width="100%" height="100%">
                                                             <BarChart data={monthlyDataMap[item.name] || []}>
                                                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -351,6 +394,22 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                             </BarChart>
                                                         </ResponsiveContainer>
                                                     </div>
+                                                    {/* Les MÊMES données, en table `sr-only` : le lecteur d'écran « lit » le
+                                                        graphe. Le formateur gère le mode discret — l'alternative textuelle
+                                                        n'est pas une porte dérobée sur les montants
+                                                        (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). */}
+                                                    <ChartDataTable
+                                                        caption={`Dépenses mensuelles de ${item.name} sur les six derniers mois (cible : ${isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(displayTarget)})`}
+                                                        columns={[
+                                                            { key: 'name', label: 'Mois' },
+                                                            {
+                                                                key: 'value',
+                                                                label: 'Dépense réelle',
+                                                                format: (v) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v))),
+                                                            },
+                                                        ]}
+                                                        rows={monthlyDataMap[item.name] || []}
+                                                    />
                                                 </div>
                                             </td>
                                         </tr>

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { BudgetGroupTable } from '../../components/budget/BudgetGroupTable';
+import { BudgetGroupTable, tendanceSparkline } from '../../components/budget/BudgetGroupTable';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { formatPercent } from '../../utils/format';
 import type { BudgetCategory } from '../../types';
 
 // Régression : un groupe VIDE doit toujours afficher le bouton « + Ajouter »,
@@ -32,6 +34,84 @@ const baseProps = {
  * Ce que ces deux cas défendent : le NOM reste lisible (sinon on ne sait plus QUI paie quoi) et le
  * MONTANT disparaît. Envelopper la phrase entière aurait masqué les deux.
  */
+/**
+ * [A11Y-BUDGETGROUP-CHART-NOALT] Les deux graphes de ce fichier étaient les seuls du dépôt sans nom
+ * accessible ni alternative textuelle. Deux remèdes DIFFÉRENTS, et la différence est le sujet :
+ * le graphe déplié reçoit le patron complet (`role="img"` + `ChartDataTable`), le sparkline — un
+ * PAR LIGNE — reçoit un résumé, parce que six mois chiffrés par ligne noieraient le lecteur d'écran.
+ */
+describe('tendanceSparkline — le résumé qui remplace six mois de chiffres', () => {
+    it('rend `null` quand aucune description honnête n\'est possible', () => {
+        // L'appelant marque alors le graphe `aria-hidden` : mieux vaut muet qu'inventé.
+        expect(tendanceSparkline([])).toBeNull();
+        expect(tendanceSparkline([100])).toBeNull();
+        expect(tendanceSparkline([NaN, Infinity])).toBeNull();
+    });
+
+    it('dit le SENS et l\'ampleur, en pourcentage — jamais un montant', () => {
+        // ⚠️ L'attendu se COMPOSE avec `formatPercent` : en fr-CA, l'espace avant le « % » est
+        // INSÉCABLE (U+00A0). Écrit avec une espace ordinaire, l'attendu échoue sur deux chaînes
+        // visuellement identiques — même piège que l'insécable de `formatCAD` au lot 56.
+        expect(tendanceSparkline([100, 110])).toBe(`2 mois, en hausse de ${formatPercent(10, 0)}`);
+        expect(tendanceSparkline([200, 150])).toBe(`2 mois, en baisse de ${formatPercent(25, 0)}`);
+        // ⚠️ Aucun « $ » : un ratio n'est pas un montant, il reste donc lisible en mode discret.
+        // Un résumé « de 820 $ à 910 $ » aurait dû être masqué et n'aurait plus rien dit.
+        expect(tendanceSparkline([820, 910])).not.toMatch(/\$/);
+    });
+
+    it('« stable » plutôt qu\'une hausse d\'arrondi, et pas de pourcentage infini depuis zéro', () => {
+        expect(tendanceSparkline([100, 100.005])).toBe('2 mois, stable');
+        // Départ à 0 : la variation relative est infinie. On annonce le sens seul.
+        expect(tendanceSparkline([0, 500])).toBe('2 mois, en hausse');
+    });
+});
+
+describe('BudgetGroupTable — alternatives textuelles des deux graphes', () => {
+    const item: BudgetCategory = { id: 'c1', name: 'Épicerie', nature: 'Besoin', target: 900 } as BudgetCategory;
+    const props = {
+        ...baseProps,
+        getDisplayTarget: () => 900,
+        totalBudgetDisplay: 900,
+        trendMap: { 'Épicerie': [800, 880] },
+        monthlyDataMap: { 'Épicerie': [{ name: 'juil.', value: 820 }, { name: 'août', value: 910 }] },
+        expandedId: 'c1',
+    };
+
+    afterEach(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
+
+    it('le sparkline est NOMMÉ, et son nom dit le poste et la tendance', () => {
+        render(<BudgetGroupTable {...props} nature="Besoin" items={[item]} onAddItem={vi.fn()} />);
+        expect(screen.getByRole('img', { name: `Tendance de Épicerie sur 2 mois, en hausse de ${formatPercent(10, 0)}` })).toBeInTheDocument();
+    });
+
+    it('sans données exploitables, le sparkline est MASQUÉ au lecteur d\'écran, pas nommé à tort', () => {
+        render(<BudgetGroupTable {...props} trendMap={{}} nature="Besoin" items={[item]} onAddItem={vi.fn()} />);
+        expect(screen.queryByRole('img', { name: /Tendance de Épicerie/ })).toBeNull();
+    });
+
+    it('le graphe déplié est nommé ET lisible : les six mois existent en table sr-only', () => {
+        render(<BudgetGroupTable {...props} nature="Besoin" items={[item]} onAddItem={vi.fn()} />);
+        expect(screen.getByRole('img', { name: /Dépenses mensuelles de Épicerie sur les six derniers mois/ })).toBeInTheDocument();
+        const table = screen.getByRole('table', { name: /Dépenses mensuelles de Épicerie/ });
+        const texte = (table.textContent ?? '').replace(/[\s\u00A0\u202F]+/g, ' ');
+        expect(texte).toMatch(/juil\./);
+        expect(texte).toMatch(/820/);
+        expect(texte).toMatch(/910/);
+    });
+
+    it('[mode discret] l\'alternative textuelle n\'est pas une porte dérobée sur les montants', () => {
+        useFinanceStore.setState({ isPrivacyMode: true });
+        render(<BudgetGroupTable {...props} nature="Besoin" items={[item]} onAddItem={vi.fn()} />);
+        const table = screen.getByRole('table', { name: /Dépenses mensuelles de Épicerie/ });
+        const texte = (table.textContent ?? '').replace(/[\s\u00A0\u202F]+/g, ' ');
+        // Les MOIS restent — sinon la table ne dirait plus de quoi elle parle — les montants non.
+        expect(texte).toMatch(/juil\./);
+        expect(texte).not.toMatch(/820/);
+        expect(texte).not.toMatch(/910/);
+        expect(texte).toMatch(new RegExp(MASKED_AMOUNT_LABEL));
+    });
+});
+
 describe('BudgetGroupTable — répartition par personne et mode discret', () => {
     const item: BudgetCategory = { id: 'c1', name: 'Épicerie', nature: 'Besoin', target: 900, type: 'Commun' } as BudgetCategory;
     const props = {

@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 62 : ma garde était satisfaite par mon propre commentaire
+> `[A11Y-BUDGETGROUP-CHART-NOALT]` — les 2 graphes de `BudgetGroupTable` reçoivent leur alternative
+> textuelle, plus une garde (`tests/components/chartAlternativeTexteGuard.test.ts`).
+> - ⚠️⚠️ **LA LEÇON DU LOT EST DANS MA PROPRE GARDE.** Écrite sur la source BRUTE, sa règle « chaque
+>   graphe porte sa marque » était satisfaite par le `role="img"` cité **en prose** dans le
+>   commentaire que je venais d'écrire au-dessus du graphe : retirer l'attribut RÉEL la laissait
+>   VERTE. Trouvé par perturbation, vingt minutes après l'avoir écrite. `SCAN-QUI-MATCHE-LA-PROSE`
+>   est la leçon la plus répétée du dépôt — et je l'ai re-commise dans la garde qui la cite.
+>   **Toute assertion de présence ou d'absence sur du source lit la source DÉCOMMENTÉE, sans
+>   exception, y compris quand on est en train d'écrire la garde.**
+> - ⚠️ Le ticket disait « le seul des **10** graphiques » : le dépôt en a **16 dans 12 fichiers**, et
+>   le fichier fautif en portait **DEUX**. Conclusion juste, deux nombres faux.
+> - **Deux remèdes différents** : patron complet (`role="img"` + `ChartDataTable`) pour le graphe
+>   déplié ; RÉSUMÉ (`tendanceSparkline`) pour le sparkline, qui existe une fois PAR LIGNE. Le résumé
+>   ne porte aucun montant (un pourcentage), donc rien à masquer en mode discret.
+> - ⚠️ Deuxième piège d'écriture de garde : la forme OBJET `role: 'img'` (props étalées) n'est pas
+>   l'attribut littéral `role="img"`. Une garde qui ne connaît qu'une écriture rougit sur du code sain.
+> - ⚠️ `formatPercent` sépare le « % » par une espace INSÉCABLE : un attendu écrit à la main échoue
+>   sur deux chaînes visuellement identiques. Composer l'attendu AVEC le formateur.
+
 > ## 🟦 Session 2026-09-01 — Lot 61 : le format et la vie privée étaient le même trou
 > `[FORMAT-EXPLAINS-TOLOCALESTRING]` — annoncé XS (3 sites), **mesuré M (16 sites)**. Migration vers
 > `formatCAD` / `formatCompactCAD` / `formatSigned`, plus une garde bloquante

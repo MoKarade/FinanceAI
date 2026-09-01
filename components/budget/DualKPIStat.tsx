@@ -24,7 +24,16 @@ interface DualKPIStatProps {
     reel: number;
     /** [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Cible saisie (Objectif) — 3e valeur, optionnelle. */
     objectif?: number;
-    sublabel?: string;
+    /**
+     * [A11Y-PRIVACY-SCAN-GLOBAL] `React.ReactNode`, pas `string` : les trois montants de cette carte
+     * passent par `PrivateAmount`, mais le sous-libellé sortait EN CLAIR juste en dessous — et un
+     * montant interpolé dans une CHAÎNE n'est plus un nœud à envelopper. En le typant `ReactNode`,
+     * l'appelant peut masquer ce qui doit l'être et garder lisible ce qui l'entoure.
+     * ⚠️ Cette carte ne peut pas masquer le sous-libellé À SA PLACE : il mêle du texte explicatif
+     * (« Budget = moy. passée (6 mois) ») et parfois un montant. Masquer le tout retirerait
+     * l'explication ; ne rien masquer laissait fuir le montant.
+     */
+    sublabel?: React.ReactNode;
     variant?: Variant;
     /** Inverse la logique vert/rouge : true pour Dépenses (moins = mieux). */
     invertGoodBad?: boolean;

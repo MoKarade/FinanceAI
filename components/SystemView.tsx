@@ -7,6 +7,7 @@ import { getMigrationStatus, getHydrationStatus } from '../store/useFinanceStore
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
 import { Icon } from './ui/Icon';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { TAX_BASE_YEAR, FED_BRACKETS, BASIC_PERSONAL_AMOUNT_FED } from '../utils/tax';
 import { logError } from '../services/errorLogger';
 import { formatRelative } from '../utils/relativeTime';
@@ -314,9 +315,9 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                     && Math.abs(fintableReportSafe.report.cashAnchorDelta as number) >= 0.01 && (
                                     <div className="flex items-center justify-between py-2 border-b border-white/5">
                                         <span className="text-ink-300">Ancre « Liquidités » déplacée</span>
-                                        <span className="font-mono text-warning-400">
+                                        <PrivateAmount className="font-mono text-warning-400">
                                             {formatCAD(fintableReportSafe.report.cashAnchorDelta as number)}
-                                        </span>
+                                        </PrivateAmount>
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between py-2 gap-3">

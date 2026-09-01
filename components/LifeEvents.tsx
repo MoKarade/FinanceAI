@@ -353,7 +353,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                                     <div className="text-meta text-ink-300">{item.date} • {item.details || 'Aucun détail'}</div>
                                                 </div>
                                             </div>
-                                            {item.cost > 0 && <div className="font-bold text-danger-400 text-lg">{formatSigned(-item.cost, { withCurrency: true })}</div>}
+                                            {item.cost > 0 && <PrivateAmount as="div" className="font-bold text-danger-400 text-lg">{formatSigned(-item.cost, { withCurrency: true })}</PrivateAmount>}
                                         </div>
                                         <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteKey(item.uniqueKey); }} className="absolute top-3 right-3 text-ink-500 hover:text-danger-500 p-2 transition-colors z-10 hover:bg-white/5 rounded-full" title="Supprimer cet événement" aria-label="Supprimer cet événement"><Icon name="trash" size={16} /></button>
                                     </div>

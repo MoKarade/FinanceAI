@@ -74,11 +74,14 @@ function formatTick(timestamp: string | number, spanDays: number): string {
     return d.toLocaleDateString('fr-CA', { year: 'numeric' });
 }
 
+// MONTANT-MASQUE-AILLEURS — formateur par DÉFAUT, jamais appelé directement : les trois points de
+// rendu de ce fichier (tickFormatter, infobulle, table sr-only) le passent tous par
+// `privacyMode ? MASKED_AMOUNT_LABEL : yFormatter(val)`.
 const defaultYFormatter = (val: number) => {
     const abs = Math.abs(val);
     if (abs >= 1_000_000) return `${(val / 1_000_000).toFixed(1)} M$`;
     if (abs >= 1_000) return `${(val / 1_000).toFixed(0)} k$`;
-    return formatCAD(val);
+    return formatCAD(val); // MONTANT-MASQUE-AILLEURS
 };
 
 /**

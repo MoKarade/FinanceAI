@@ -9345,3 +9345,63 @@ Trois autres constats du même tour :
 l'espace avant le « $ » devient insécable (U+00A0 au lieu de U+0020) — invisible à l'œil, et le
 montant ne peut plus se couper en fin de ligne. Un changement invisible reste un changement : il
 s'écrit dans le commit et dans le `CHANGELOG`, pas seulement dans la tête de celui qui l'a fait.
+
+
+### Lot 59 — un grep sur le nom CANONIQUE est aveugle à tous les alias, y compris quand c'est lui qui écrit le ticket
+
+`UN-RELEVE-PAR-LE-NOM-CANONIQUE-EST-AVEUGLE-AUX-ALIAS`
+
+`[A11Y-PRIVACY-SCAN-GLOBAL]` demandait « la garde de source `formatCAD` au niveau du DÉPÔT, comme
+`chartPrivacyScan.test.ts` le fait déjà pour les graphiques », et annonçait un majorant : **38 sites
+dans 19 fichiers**. Livrée, la garde en a trouvé un tout autre ensemble.
+
+**La cause tient en une ligne : le chiffre du ticket venait d'un grep `formatCAD`.** Or la moitié des
+écrans se donne un raccourci local — `const fmt = (n) => formatCAD(n)`, et aussi `money`,
+`formatCurrency`, `fmtMoney` — puis n'écrit plus jamais le nom canonique. `ChildPlanning` (6 sites) et
+`RealEstateWorkspace` (14) n'apparaissaient nulle part dans le ticket : ils étaient **invisibles à
+l'outil qui l'a écrit**. Le recensement alias-aware fait passer le balayage de 28 à 47 candidats.
+C'est `UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM` vu depuis l'autre bout : là-bas un
+second nom empêchait de conclure « orphelin » ; ici il empêche de conclure « couvert ».
+
+**Le geste** : une garde qui cherche l'usage d'une fonction DÉCOUVRE ses alias dans chaque fichier
+avant de scanner. Trois lignes de plus, et le point aveugle disparaît au lieu d'être documenté.
+
+**Le vrai défaut de conception était dans une primitive, pas dans les écrans.** `KPIStat` et
+`DualKPIStat` enveloppent leur `value` dans `PrivateAmount` — et rendent le `sublabel` NU, une ligne
+plus bas, alors qu'il porte parfois un montant (« Manque 12 000 $ », « Salaire 5 200 $ · Divers
+340 $ »). Une fenêtre de voisinage de ±2 lignes déclarait ces lignes saines : **le masquage du `value`
+servait d'ALIBI à la fuite du `sublabel`**. D'où une règle de garde qui vaut au-delà de ce lot —
+**une ligne d'ATTRIBUT (`sublabel`, `title`, `aria-label`, `placeholder`) doit porter sa marque à
+elle** ; ce que fait son voisin ne prouve rien sur elle. C'est
+`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` converti en mécanisme au lieu d'être un piège à retenir. Le
+correctif de typage suit la même logique : `sublabel` passe de `string` à `React.ReactNode`, parce
+qu'une carte ne peut pas masquer à la place de l'appelant un texte qui mêle explication et montant.
+
+Quatre constats d'outillage, tous mesurés :
+
+- **La dette restante se BORNE, elle ne se documente pas.** Douze sites portent le montant à
+  l'intérieur d'une chaîne construite en amont (classe des lots 56 et 58) : il n'y a aucun nœud à
+  envelopper, le correctif est structurel. Plutôt que de livrer la garde non bloquante — ce que la
+  règle autorise, et qui l'aurait apprise à être ignorée —, ces douze sites portent un jeton
+  `MONTANT-CHAINE-A-DECOUPER` et **un test refuse le treizième**. La garde bloque tout le reste.
+- ⚠️ **Compter les OCCURRENCES d'un jeton n'est pas compter les SITES** : le bloc de commentaire qui
+  EXPLIQUE la dette porte le même mot que les lignes qu'il justifie, et mon compte rendait 12 pour 11
+  sites. On compte les lignes qui portent le jeton **et** un formateur monétaire. Deuxième forme de
+  `UN-REPLACE-GLOBAL-DE-JETON-REECRIT-LE-COMMENTAIRE-QUI-LE-NOMME`, appliquée à une assertion de
+  compte. ⚠️ Et le corollaire de POSE : le jeton va **en ligne**, sur le site — posé dans un
+  commentaire au-dessus, il sort du compte (mesuré : n rendait 9 pour 12) et l'inventaire borne moins
+  que ce qu'il autorise.
+- ⚠️ **Une perturbation MUETTE, encore, et encore côté outil** : ajouter un 13ᵉ jeton laissait le
+  test vert. Ni « le code ne sert à rien » ni « la fixture n'atteint pas » — la troisième cause :
+  **mon compte ne mesurait pas ce que je croyais**. Il faut lire la valeur mesurée, pas seulement la
+  couleur du test.
+- ⚠️ **Un lookahead POSITIF échoue en fin de fenêtre** : `(?<![\w.])privacy(?=[\s/>}])` ne matchait
+  pas la prop `privacy` quand elle terminait la fenêtre de ±2 lignes — un caractère suivant était
+  exigé, et il n'y en avait pas. `(?![\w.])` dit la même chose sans exiger que quelque chose suive.
+  Cinq faux positifs, tous dans le même fichier, tous « expliqués » par de mauvaises hypothèses avant
+  la mesure.
+
+**Deux prétextes tombés avec ce lot.** `[FORMAT-EXPLAINS-TOLOCALESTRING]` attendait cette garde « pour
+poser la source unique que les 37 autres sites consommeront » : la source unique existait déjà
+(`formatSigned`, lot 58), et les « 37 autres sites » venaient du chiffre aveugle. Un ticket qui attend
+un autre ticket mérite qu'on vérifie que l'attente a encore un objet.

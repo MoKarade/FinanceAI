@@ -89,8 +89,11 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
             { key: 'range', label: 'Tranche de revenu' },
             { key: 'rate', label: 'Taux marginal' },
         ];
+        // MONTANT-PUBLIC — les BORNES d'un palier d'imposition sont la loi, pas les finances de
+        // l'utilisateur ; la revue #608 exige explicitement de les GARDER visibles. Seul son
+        // revenu à lui est masqué, plus bas.
         const ladderRows = brackets.map((b: { rate: number; upTo: number }, i: number) => ({
-            range: `${formatCAD(i === 0 ? 0 : brackets[i - 1].upTo)} → ${b.upTo === Infinity ? '∞' : formatCAD(b.upTo)}`,
+            range: `${formatCAD(i === 0 ? 0 : brackets[i - 1].upTo)} → ${b.upTo === Infinity ? '∞' : formatCAD(b.upTo)}`, // MONTANT-PUBLIC
             rate: `${(b.rate * 100).toFixed(1)} %`,
         }));
         return (
@@ -130,6 +133,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                                     width: `${widthPct}%`,
                                     background: `rgba(${colorBase}, ${intensity})`,
                                 }}
+                                /* MONTANT-PUBLIC — bornes du palier (loi), pas une donnée de l'utilisateur. */
                                 title={`Tranche ${(b.rate * 100).toFixed(1)}% : ${formatCAD(min)} → ${b.upTo === Infinity ? '∞' : formatCAD(b.upTo)}`}
                             >
                                 <span className="text-tiny text-white font-mono">{(b.rate * 100).toFixed(0)}%</span>
@@ -141,7 +145,11 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     <div
                         className="absolute top-0 bottom-0 w-0.5 bg-yellow-400"
                         style={{ left: `${(annualGrossIncome / maxIncome) * 100}%` }}
-                        title={`Revenu : ${formatCAD(annualGrossIncome)}`}
+                        /* MONTANT-MASQUE-AILLEURS — tout ce sous-arbre est retiré par le
+                           `{!isPrivacyMode && (` quatre lignes plus haut : en mode discret, ce
+                           `title` n'est jamais rendu. La garde exige la marque SUR la ligne pour
+                           les attributs (un voisin masqué ne prouve rien) — d'où ce jeton. */
+                        title={`Revenu : ${formatCAD(annualGrossIncome)}`} /* MONTANT-MASQUE-AILLEURS */
                     >
                         <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 bg-yellow-400 rounded-full" />
                     </div>
@@ -175,8 +183,10 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     <div className="mt-1 space-y-0.5 pl-2 border-l border-white/10">
                         {breakdown.perBracket.map((b, i) => b.income > 0 && (
                             <div key={i} className="flex justify-between font-mono">
+                                {/* MONTANT-PUBLIC — bornes du palier ; le revenu imposé DANS ce
+                                    palier, lui, est masqué juste à droite. */}
                                 <span className="text-ink-400">
-                                    {formatCAD(b.from)} → {b.to === Number.MAX_SAFE_INTEGER ? '∞' : formatCAD(b.to)}
+                                    {formatCAD(b.from)} → {b.to === Number.MAX_SAFE_INTEGER ? '∞' : formatCAD(b.to)}{/* MONTANT-PUBLIC */}
                                 </span>
                                 <span>
                                     <span className="text-ink-300"><PrivateAmount>{formatCAD(b.income)}</PrivateAmount> × {(b.rate * 100).toFixed(1)}% = </span>

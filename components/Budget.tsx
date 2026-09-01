@@ -601,7 +601,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             // Alerte seulement au-delà de 10% de dépassement (tolérance anti-bruit
             // pour les petits écarts normaux).
             if (target > 0 && spent > target * 1.1) {
-                list.push(`${item.name} (${formatCAD(spent - target)} dépassé)`);
+                // Cette liste est RENDUE à l'écran (bandeau « Dépassements ») ET envoyée au contexte
+                // de l'assistant. Le montant est interpolé dans la chaîne : il faut découper en
+                // segments (lots 56 et 58), pas ajouter un `PrivateAmount` autour du tout.
+                // [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01]
+                list.push(`${item.name} (${formatCAD(spent - target)} dépassé)`); // MONTANT-CHAINE-A-DECOUPER
             }
         });
         return list;
@@ -803,10 +807,16 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             .slice(0, 3)
             .map(([name, spent]) => ({ name, spent }));
         const personName = personFilter !== null ? config.users[personFilter]?.name?.trim() : '';
+        // Ces cartes ne sont PAS un rendu : elles composent le contexte envoyé à l'assistant IA
+        // (`services/aiChat/viewContext.ts`). Le mode discret doit-il s'y appliquer ? C'est une
+        // décision de Marc, pas une évidence — masquer les montants rendrait l'assistant inutile
+        // pendant qu'il est actif. Question posée dans `[PRIVACY-CONTEXTE-IA]`.
+        // Le jeton `MONTANT-HORS-ECRAN` est répété SUR chaque ligne : la garde lit une fenêtre de
+        // ±2 lignes, et ces cartes sont trop espacées pour qu'une seule marque les couvre.
         const cards: NonNullable<BudgetViewDetail['cards']> = [
             {
                 label: 'Revenus (ventilation)',
-                value: `Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`,
+                value: `Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`, // MONTANT-HORS-ECRAN
                 note: 'revenus RÉELS des transactions de la période (catégories de revenu), pas le salaire déclaré du profil',
             },
             {
@@ -818,18 +828,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         if (timeView === 'MONTH' && periodOffset === 0) {
             cards.push({
                 label: 'Fin de mois (projection)',
-                value: formatCAD(projectedTotalDisplay),
+                value: formatCAD(projectedTotalDisplay), // MONTANT-HORS-ECRAN
                 note: 'dépenses du mois projetées au rythme actuel (réel ÷ avancement du mois) — mois en cours seulement',
             });
         }
         if (projectionSummary) {
             cards.push({
                 label: 'Impact à long terme',
-                value: formatCAD(projectionSummary.estateNetWorth),
+                value: formatCAD(projectionSummary.estateNetWorth), // MONTANT-HORS-ECRAN
                 note: `patrimoine successoral projeté en ${projectionSummary.finalYear} (horizon ${projectionSummary.horizonYears} ans), rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth) ; pour comparer avec get_projection, utiliser years=${projectionSummary.horizonYears}`,
             }, {
                 label: 'Sensibilité',
-                value: `+${formatCAD(projectionSummary.per100Boost)}`,
+                value: `+${formatCAD(projectionSummary.per100Boost)}`, // MONTANT-HORS-ECRAN
                 note: `gain estimé de patrimoine final pour +100 $/mois d'épargne (valeur future d'une rente, rendement réel ~5 %)`,
             });
         }
@@ -883,7 +893,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <div className="flex flex-wrap items-center gap-3 min-w-0">
                     <Badge variant={avgRealIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
                         {avgRealIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
-                        <span className="ml-1 tabular-nums">{formatCAD(avgRealIncomeDisplay - totalBudgetDisplay)}</span>
+                        <PrivateAmount className="ml-1 tabular-nums">{formatCAD(avgRealIncomeDisplay - totalBudgetDisplay)}</PrivateAmount>
                     </Badge>
                     <p className="text-body text-ink-300">
                         {timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
@@ -996,7 +1006,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     objectif={incomeObjectifDisplay}
                     // [BUDGET-INCOME-REAL] Ventilation demandée par Marc : salaire (paie) vs revenus divers,
                     // depuis les vraies transactions de la période. Remplace « moy. passée » peu informatif.
-                    sublabel={`Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`}
+                    sublabel={<>Salaire <PrivateAmount>{formatCAD(incomeBreakdown.salary)}</PrivateAmount> · Divers <PrivateAmount>{formatCAD(incomeBreakdown.other)}</PrivateAmount></>}
                     variant="success"
                 />
                 <DualKPIStat

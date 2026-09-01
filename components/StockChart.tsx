@@ -111,9 +111,13 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
         };
     });
 
+    // MONTANT-MASQUE-AILLEURS — ce formateur ne rend rien lui-même : il est passé à
+    // `ZoomableTimeChart`, qui l'enveloppe dans `privacyMode ? MASKED_AMOUNT_LABEL : yFormatter(v)`
+    // pour l'axe, l'infobulle ET la table sr-only. Le masquage est décidé par l'appelant
+    // (`privacyMode={isPrivacyMode && mode === 'PRICE'}`, quelques lignes plus bas).
     const performanceFormatter = (val: number) => {
         if (mode === 'PERFORMANCE') return `${formatSigned(val, { decimals: 2 })}%`;
-        return formatCAD(val);
+        return formatCAD(val); // MONTANT-MASQUE-AILLEURS
     };
 
     return (

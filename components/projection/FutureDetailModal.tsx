@@ -102,10 +102,13 @@ const fmtMoney = (n: number) => formatCAD(n);
 function explainMovement(d: AccountPoint): MovementReason[] {
     if (!d.hasDecomp) return [];
     const out: MovementReason[] = [];
-    if (d.gain > 0.5) out.push({ icon: 'investments', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' });
-    else if (d.gain < -0.5) out.push({ icon: 'debt', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' });
-    if (d.flow > 0.5) out.push({ icon: 'cash', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' });
-    else if (d.flow < -0.5) out.push({ icon: 'bank', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' });
+    // Ces quatre libellés portent le montant DANS leur texte : le correctif est le même qu'au lot 56
+    // (structure `{ montant, libelle }`), pas un `PrivateAmount` autour de la phrase.
+    // [A11Y-PRIVACY-CHAINES-RESTANTES, 2026-09-01]
+    if (d.gain > 0.5) out.push({ icon: 'investments', text: `Rendement placements +${fmtMoney(d.gain)}`, tone: 'pos' }); // MONTANT-CHAINE-A-DECOUPER
+    else if (d.gain < -0.5) out.push({ icon: 'debt', text: `Perte de marché ${fmtMoney(d.gain)}`, tone: 'neg' }); // MONTANT-CHAINE-A-DECOUPER
+    if (d.flow > 0.5) out.push({ icon: 'cash', text: `Dépôt (argent ajouté) +${fmtMoney(d.flow)}`, tone: 'in' }); // MONTANT-CHAINE-A-DECOUPER
+    else if (d.flow < -0.5) out.push({ icon: 'bank', text: `Retrait (argent sorti) ${fmtMoney(d.flow)}`, tone: 'out' }); // MONTANT-CHAINE-A-DECOUPER
     return out;
 }
 

@@ -223,8 +223,9 @@
   ses offenders SONT le périmètre. **3b** corriger ce qu'il révèle, par dossier
   (`services/projection/*` en premier, 80 % du volume). Puis `[FORMATCAD-OR-ZERO]`, classe distincte.
 - [ ] **Vague 4 — a11y.** **4a Étendre les outils-garde D'ABORD** (`[A11Y-CONTRAST-ANGLE-MORT-541]`,
-  `[A11Y-CONTRAST-TOOL-GAP-CTA]`, `[A11Y-PRIVACY-SCAN-GLOBAL]`) — coder les fixes avant donnerait un
-  périmètre DEVINÉ, pas mesuré. **4b** mode discret formulaires · **4c** contraste · **4d** clavier /
+  `[A11Y-CONTRAST-TOOL-GAP-CTA]` ; ✅ `[A11Y-PRIVACY-SCAN-GLOBAL]` livré au lot 59) — coder les fixes
+  avant donnerait un périmètre DEVINÉ, pas mesuré. La garde du mode discret l'a confirmé une fois de
+  plus : son ticket annonçait 38 sites, la mesure alias-aware en a trouvé d'autres et en a réfuté. **4b** mode discret formulaires · **4c** contraste · **4d** clavier /
   focus / cibles tactiles (indépendant des outils, peut partir en parallèle) ·
   **4e** `[A11Y-SUBTABS-FUTUR]` ⚠️ **APRÈS** la vague 8b (même fichier, 2 026 lignes).
 - [ ] **Vague 5 — IA/Anthropic** : un seul lot, une seule surface (`services/claude.ts` + `mcp/`).
@@ -2073,20 +2074,28 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   redondant, sinon `aria-label` gagne et le `<label>` reste décoratif. À faire seulement si un
   scan prouve d'abord que les deux textes divergent déjà quelque part. [Supposition] sur l'ampleur.
 
-- [ ] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M, **DÉCOUVERT PAR MESURE** 2026-08-14) — construire la
-  garde de source `formatCAD` au niveau du DÉPÔT, comme `chartPrivacyScan.test.ts` le fait déjà pour
-  les graphiques. **Un scan brut remonte 38 sites dans 19 fichiers** — mais c'est un MAJORANT, pas un
-  compte : le tri est le vrai travail. Trois classes de faux positifs déjà identifiées sur un
-  échantillon de 4 :
-  · **valeur PUBLIQUE** (`TaxBracketViz.tsx:73` — bornes de paliers fiscaux, que #608 exige
-    explicitement de GARDER visibles) ;
-  · **primitive non reconnue** (`DebtManager.tsx:151` — déjà dans `PrivateSliderValue`) ;
-  · **chaîne, pas JSX** (`Budget.tsx:460` — construit un libellé d'alerte ; à tracer jusqu'à son
-    consommateur, qui peut être un prompt IA — cas money-critical, cf. la règle no-fake-data).
-  ⚠️ **Cette garde REMPLACERAIT la liste faite à la main par l'audit** : elle mesure au lieu
-  d'énumérer, et elle ne peut pas oublier un écran. Les tickets `-DIVERS`, `-PROJECTION-EXPLAINS`,
-  `-PROPERTY-CONFIG` et `-ONBOARDING` devraient être RE-CADRÉS depuis son résultat plutôt que depuis
-  l'audit — leurs sites sont corroborés par le scan, mais rien ne dit que l'audit soit exhaustif.
+- [ ] **`[A11Y-PRIVACY-CHAINES-RESTANTES]`** (M, MOYEN — **né de la garde `[A11Y-PRIVACY-SCAN-GLOBAL]`**,
+  2026-09-01) — **12 sites** où le montant est interpolé dans une CHAÎNE construite en amont : il n'y
+  a aucun nœud à envelopper, donc `<PrivateAmount>` ne peut rien faire. Même classe et même remède
+  qu'aux lots 56 et 58 — découper en SEGMENTS.
+  Les 12 sites sont marqués `MONTANT-CHAINE-A-DECOUPER` dans le code (greppable), et leur nombre est
+  **BORNÉ par un test** : `tests/components/amountPrivacyScan.test.ts` refuse un 13ᵉ. Le plafond
+  descend à chaque site corrigé ; quand il tombe à 0, le test exige qu'on retire le jeton.
+  · `budget/BudgetGroupTable.tsx` ×4 — `splitDisplay` mêle PRÉNOMS et montants. ⚠️ C'est aussi la
+    répartition ENTRE CONJOINTS, information relationnelle (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
+  · `projection/FutureDetailModal.tsx` ×4 — les libellés de mouvement (`text:`).
+  · `realestate/RealEstateWorkspace.tsx` ×3 — le sous-titre de l'en-tête.
+  · `Budget.tsx` ×1 — la liste des dépassements, **rendue à l'écran ET envoyée au contexte IA**.
+
+- [ ] **`[PRIVACY-CONTEXTE-IA]`** (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
+  discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
+  alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.
+  Mais `DECISION-PRIVACY-UNE-SEULE-SORTIE` dit qu'une décision de vie privée écrite pour une sortie se
+  repasse sur TOUTES — prompt LLM inclus. ⚠️ Les deux réponses ont un coût réel : masquer rend
+  l'assistant inutile pendant que le mode est actif ; ne pas masquer envoie les montants à un tiers
+  alors que l'utilisateur vient de demander qu'on les cache. **Question, pas tâche** — 4 sites marqués
+  `MONTANT-HORS-ECRAN` en attendant la réponse.
+
 - [ ] **`[FORMAT-EXPLAINS-TOLOCALESTRING]`** (XS, MOYEN — **découvert en livrant
   `[A11Y-PRIVACY-PROJECTION-EXPLAINS]`**, 2026-09-01) — `components/projection/ProjectionExplains.tsx`
   (ligne ~24) formate ses montants signés avec `` `${signe}${Math.abs(Math.round(n)).toLocaleString('fr-CA')} $` ``.
@@ -2104,9 +2113,11 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   ⚠️ **Le 4ᵉ site est TOMBÉ** : `utils/healthScore.ts` composait `` `${formatNumber(x)} $` `` pour la
   cible FIRE — corrigé en passant par `formatCAD` au lot 58, en découpant `raw` en segments. Restent
   `ProjectionExplains.tsx` (`fmtSigned`) et les 2 sites de `GoalSeekerCard.tsx`.
-  ⚠️ **PAS corrigé dans le lot 56** : découverte en chemin, scope non demandé (convention §6). Et le
-  ticket `[A11Y-PRIVACY-SCAN-GLOBAL]` (plus bas) annonce 38 sites de ce genre dans 19 fichiers — le
-  correctif isolé d'un site ne vaut que s'il pose la source unique que les 37 autres consommeront.
+  ⚠️ **PAS corrigé dans le lot 56** : découverte en chemin, scope non demandé (convention §6).
+  ⚠️ **Le prétexte à l'attente est TOMBÉ** (lot 59) : ce ticket disait attendre `[A11Y-PRIVACY-SCAN-GLOBAL]`
+  et ses « 38 sites dans 19 fichiers ». La garde est LIVRÉE, et le chiffre était faux dans les deux
+  sens (son grep ignorait les alias locaux). La source unique existe déjà (`formatSigned`), donc plus
+  rien ne justifie de reporter : ce ticket est un remplacement de 3 sites, pas un chantier.
   ⚠️ **Deux sites de plus, MESURÉS en livrant `[A11Y-PRIVACY-DIVERS]`** (lot 57) :
   `components/retirement/GoalSeekerCard.tsx` rend le patrimoine successoral et l'épargne mensuelle
   nécessaire avec `` `{…toLocaleString('fr-CA')}$` `` — même violation, et le fichier n'importe même

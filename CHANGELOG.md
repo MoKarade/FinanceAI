@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Le chercheur d'objectif partait de 2026, quelle que soit l'année)
+
+- **Corrigé** : l'outil « combien dois-je épargner pour atteindre X » (onglet Retraite → Outils)
+  démarrait sa projection en **janvier 2026** en dur, quelle que soit la date réelle. Le décalage
+  passait inaperçu tant qu'on était en 2026 ; il aurait grandi d'un an à chaque 1ᵉʳ janvier. Il part
+  maintenant du mois courant, comme le reste de l'app — et le champ est devenu obligatoire côté
+  moteur, pour qu'aucun autre écran ne puisse l'oublier à son tour.
+- **Corrigé** (interne) : quand une stratégie reporte les rentes, le moteur démarre la RRQ à
+  **72 ans** et la PSV à **70**. Deux textes du code annonçaient 70 pour les deux — un libellé de
+  repli et un commentaire. Les deux dérivent désormais de la valeur que le calcul applique
+  réellement, plutôt que de la recopier.
+
 ## [unreleased] — 2026-09-01 (Le dernier angle mort du contrôle des valeurs fiscales est fermé)
 
 - **Amélioré** (interne) : l'app vérifie automatiquement qu'aucun chiffre fiscal — un âge légal, un

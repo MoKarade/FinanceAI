@@ -200,6 +200,20 @@ export const computeDbPensionMonthly = (p: {
     return dbBaseMonthly * dbInflFactor * dbSurvivorFactor * dbHouseholdShare;
 };
 
+/**
+ * Âges de début des rentes sous REPORT OPTIMAL (`delayPensions`), qui sont aussi les bornes hautes
+ * légales : RRQ **72** (report étendu à 72 depuis 2024), PSV **70** (elle ne se reporte pas au-delà).
+ * Ancrés dans `docs/FISCAL_REFERENCE.md` §PSV/RRQ.
+ *
+ * ⚠️ EXPORTÉS depuis `[ENG-LIBELLE-RRQ-70-VS-72]` : le même fait s'écrivait à TROIS endroits — ici,
+ * dans le libellé « rentes reportées (RRQ N ans) » de `services/projection.ts` (qui disait 70) et
+ * dans un commentaire du même fichier (qui disait 70 lui aussi). Deux des trois étaient fausses.
+ * Trois écritures d'un même fait divergent ; corriger les deux mauvaises n'aurait fait que remettre
+ * le compteur à zéro. Tout consommateur de ces âges lit désormais CETTE paire.
+ */
+export const RRQ_DEFERRED_START_AGE = 72;
+export const PSV_DEFERRED_START_AGE = 70;
+
 export function computeRetirementIncome(
     ctx: RetirementIncomeCtx,
     retirementGoal: RetirementGoal,
@@ -271,11 +285,11 @@ export function computeRetirementIncome(
     // choix explicite. Bornes légales : RRQ 60-72 (report étendu à 72 depuis 2024), PSV 65-70.
     // delayPensions (stratégie de report optimal) → RRQ 72, PSV 70.
     const defaultStart = Math.min(retirementGoal.targetAge, 65);
-    let rrqStartAge = Math.min(72, Math.max(60, retirementGoal.rrqStartAge ?? defaultStart));
-    let psvStartAge = Math.min(70, Math.max(65, retirementGoal.psvStartAge ?? defaultStart));
+    let rrqStartAge = Math.min(RRQ_DEFERRED_START_AGE, Math.max(60, retirementGoal.rrqStartAge ?? defaultStart));
+    let psvStartAge = Math.min(PSV_DEFERRED_START_AGE, Math.max(65, retirementGoal.psvStartAge ?? defaultStart));
     if (delayPensions) {
-        rrqStartAge = 72;
-        psvStartAge = 70;
+        rrqStartAge = RRQ_DEFERRED_START_AGE;
+        psvStartAge = PSV_DEFERRED_START_AGE;
     }
     // Facteurs de report/anticipation dérivés des âges de début (source unique utils/tax.ts).
     // delayPensions → RRQ 72 = +84 mois ×1,588 ; PSV 70 = +60 mois ×1,36. La PSV ne s'anticipe pas.

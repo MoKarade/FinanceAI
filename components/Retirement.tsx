@@ -110,7 +110,13 @@ export const Retirement: React.FC<RetirementProps> = ({
     // [TAXBRACKETVIZ-ANNEE] Une SEULE lecture de l'horloge pour tout l'écran : le brut déduit et les
     // paliers affichés doivent parler de la même année, et deux `new Date()` séparés pourraient
     // tomber de part et d'autre d'un 31 décembre.
-    const anneeFiscaleCourante = useMemo(() => new Date().getFullYear(), []);
+    // [ENG-STARTYEAR-DEFAUT-2026] La même lecture alimente désormais l'ANNÉE et le MOIS de départ du
+    // chercheur d'objectif. `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` : `startMonth` vient du même
+    // besoin que `startYear`, et le tirer d'un second `new Date()` rouvrirait exactement la fenêtre
+    // du 31 décembre que cette variable existe pour fermer.
+    const maintenant = useMemo(() => new Date(), []);
+    const anneeFiscaleCourante = maintenant.getFullYear();
+    const moisCourant = maintenant.getMonth();
     const baseGrossAnnual = useMemo(() => config.users.reduce((sum: number, u) => {
         if (u.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = (u.netSalary || u.salary || 0) * 12;
@@ -291,6 +297,10 @@ export const Retirement: React.FC<RetirementProps> = ({
                             retirementGoal: goal, config,
                             baseGrossAnnual, baseNetAnnual,
                             currentRentExpense, baseMonthlyExpenses,
+                            // [ENG-STARTYEAR-DEFAUT-2026] Ce site était le SEUL à omettre `startYear`,
+                            // et il consommait donc le défaut `= 2026` du moteur : le chercheur
+                            // d'objectif projetait depuis 2026 en dur, quelle que soit l'année réelle.
+                            startYear: anneeFiscaleCourante, startMonth: moisCourant,
                         })}
                         targetAge={goal.targetAge}
                     />

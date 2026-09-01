@@ -1182,45 +1182,6 @@
   **écrite en dur à 2026**. En 2027 le module consultatif lira un barème périmé sans rien dire.
   **Correctif** : reprendre l'année courante du moteur plutôt qu'un littéral.
 
-- [ ] **`[ENG-LIBELLE-RRQ-70-VS-72]`** (XS, FAIBLE — **découvert en triant les littéraux de
-  `services/projection.ts`** pour `[FISC-GUARD-PROJECTION-TS]`, 2026-09-01) — deux écritures d'un
-  même fait contredisent le moteur, qui met la RRQ à **72** sous report
-  (`services/projection/retirementIncome.ts:276-279`, +84 mois ×1,588) :
-  · `services/projection.ts:2545` — le repli `rrqStart ?? 70` du libellé « rentes reportées
-    (RRQ N ans) » ;
-  · `services/projection.ts:362` — le commentaire « delayPensions ne pilote QUE le début RRQ/PSV
-    (**à 70**, cf retirementIncome) ». Faux : c'est RRQ 72 / PSV 70.
-  ⚠️ **L'ÉCRAN N'AFFICHE PAS 70 AUJOURD'HUI — vérifié, et c'est la première chose que j'ai eu tort
-  d'affirmer.** `delayPensions` vaut `false` dans les **11** définitions de `scenarios.ts` (aucun
-  `true` dans le fichier), donc la branche « rentes reportées » n'est prise que si
-  `rrqStart !== undefined && rrqStart > 65` — et dans ce cas `rrqStart ?? 70` vaut `rrqStart`. **Le
-  `70` est un repli MORT.** Ce qui reste vrai : sa valeur est fausse, donc c'est une bombe le jour
-  où `delayPensions` redevient atteignable ; et le commentaire, lui, trompe un développeur
-  aujourd'hui.
-  ⚠️ **Correctif** : exporter la paire d'âges de report depuis `retirementIncome.ts` (elle y est en
-  dur, `rrqStartAge = 72` / `psvStartAge = 70`) et la consommer aux deux sites. Trois écritures pour
-  un même fait divergent ; corriger `70` en `72` à deux endroits n'est pas un correctif.
-  ⚠️ **PAS corrigé dans le lot 53** : découverte en chemin, scope non demandé (convention §6). [MESURÉ]
-
-- [ ] **`[ENG-STARTYEAR-DEFAUT-2026]`** (XS, MOYEN — **découvert en triant les littéraux de
-  `services/projection.ts`**, 2026-09-01) — `runScenario` déstructure ses paramètres avec
-  `startYear = 2026` (`services/projection.ts:137`) et `SimulationParams.startYear` est **optionnel**.
-  C'est un **défaut qui se périme** : en 2027 la projection partira de 2026 sans rien dire.
-  · **Périmètre MESURÉ, pas supposé** : en rendant le champ requis et en retirant le défaut, le
-    typecheck sort **UN SEUL** site fautif — `components/Retirement.tsx:288`, le `paramsBuilder` de
-    `GoalSeekerCard`. Le défaut n'est donc pas mort : le chercheur d'objectif projette bel et bien
-    depuis 2026 en dur.
-  · **Correctif prescrit par le dépôt** (`UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`) :
-    `startYear: number` requis, défaut retiré, et `Retirement.tsx` passe son `anneeFiscaleCourante`
-    (la lecture d'horloge unique du fichier, posée par `[TAXBRACKETVIZ-ANNEE]`).
-  · ⚠️ **Câbler une année, c'est câbler une PAIRE** : `startMonth = 0` est juste à côté et vient du
-    même besoin. Le passer aussi, DEPUIS LA MÊME lecture d'horloge — sinon deux `new Date()` peuvent
-    tomber de part et d'autre d'un 31 décembre. Ça demande de transformer `anneeFiscaleCourante` en
-    une seule `new Date()` mémoïsée, donc d'ajuster la garde `tests/components/taxBracketVizAnnee.test.tsx`
-    qui compte aujourd'hui `new Date().getFullYear()` : la faire compter `new Date(` est plus fidèle
-    à ce qu'elle veut dire, et plus strict.
-  · ⚠️ **PAS corrigé dans le lot 53** : découverte en chemin, scope non demandé (convention §6). [MESURÉ]
-
 - [x] **`[FISC-GUARD-ARGUMENT]`** + **`[FISC-GUARD-BENIGN-60]`** ✅ 2026-08-22 (livrés ENSEMBLE, le
   ticket l'exigeait : le `60` de la RRQ était caché DEUX fois, par l'exemption ET par la position).
   ⚠️ **L'arbitrage du ticket était FAUX, et son inverse aussi.** Le ticket annonçait « ~1 clé fiscale

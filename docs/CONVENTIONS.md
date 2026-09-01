@@ -8523,6 +8523,56 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 54 — une garde qui ancre la FORME casse au lot suivant, sans que son fait bouge
+
+`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`
+
+Les deux découvertes du lot 53, livrées ensemble parce qu'elles ont le même remède : **une source
+unique**.
+
+**`[ENG-STARTYEAR-DEFAUT-2026]`** — `runScenario` déstructurait `startYear = 2026` sur un champ
+optionnel. Le champ est devenu **REQUIS** et le défaut a disparu : `tsc` exige alors la valeur sur
+chaque site, présent et futur. C'est le correctif prescrit par le dépôt pour cette classe
+(`UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`), et il vaut mieux qu'un meilleur
+littéral : un littéral se re-périme, un champ requis non. Le seul appelant fautif, `GoalSeekerCard`,
+reçoit l'année **et le mois** d'une `new Date()` mémoïsée unique — `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`,
+et un second `new Date()` rouvrirait la fenêtre du 31 décembre que cette variable existe pour fermer.
+
+**`[ENG-LIBELLE-RRQ-70-VS-72]`** — le fait « sous report, RRQ 72 et PSV 70 » s'écrivait à TROIS
+endroits, dont deux faux (un repli de libellé et un commentaire, tous deux à 70). `RRQ_DEFERRED_START_AGE`
+et `PSV_DEFERRED_START_AGE` sont désormais exportés et consommés partout. **Corriger les deux mauvaises
+copies aurait seulement remis le compteur à zéro** : trois écritures d'un même fait divergent, quel
+que soit le soin qu'on y met.
+
+**La leçon du lot est ailleurs, et elle est structurelle.** En câblant le mois, la garde
+`taxBracketVizAnnee` a rougi : elle ancrait le motif `const anneeFiscaleCourante = useMemo(() => new
+Date().getFullYear()`. Rien de ce qu'elle défend n'avait bougé — une seule lecture d'horloge, une
+variable partagée, deux consommateurs — mais la FORME de la lecture avait changé. **C'est la deuxième
+fois que cette même assertion casse ainsi** : son propre commentaire raconte déjà le premier
+épisode, quand un troisième argument ajouté à `calculateGrossFromNet` l'avait fait rougir sans rien
+casser. Une garde écrite sur la forme du code du jour se paie à chaque évolution, et le prix est
+double — elle coûte un aller-retour, et elle apprend à être ignorée. Elle vise désormais ce qu'elle
+veut dire : `new Date(` compté à un seul exemplaire, ce qui est **plus fidèle ET plus strict** que
+`new Date().getFullYear()` — l'ancien motif aurait laissé passer un `new Date().getMonth()` ajouté à
+côté, exactement le geste que ce lot avait besoin de faire.
+
+**La garde des âges est COMPORTEMENTALE, et sa fixture prouve la DISTINCTION.** Elle fait tourner
+`computeRetirementIncome` et vérifie que chaque rente commence à SON âge : la PSV coule déjà quand la
+RRQ n'a pas encore démarré. Un test à un seul âge ne distinguerait pas « 72 et 70 » de « 70 et 70 » —
+c'est-à-dire exactement le défaut corrigé. La perturbation qui met les deux constantes à la même
+valeur le prouve : deux tests rougissent.
+
+**Et l'inventaire du ratchet a DÉCRU tout seul.** Les deux correctifs ont fait disparaître les
+littéraux `2026` et `70` de `services/projection.ts`, et le garde a immédiatement signalé les entrées
+devenues fantômes. C'est précisément ce que `ENTREE-D-INVENTAIRE-FANTOME` doit produire : un registre
+de dette qui décroît par construction, plutôt que des constats périmés qui se lisent comme des faits.
+
+⚠️ **Limite d'environnement, routée plutôt que contournée** : `git push origin :<branche>` rend
+**HTTP 403** au proxy de sortie (six essais), alors que les pushs normaux passent. La branche
+`claude/lot-53`, recréée par accident au lot précédent, ne peut donc pas être supprimée d'ici — elle
+part dans `docs/A_FAIRE_MOI.md` (C8) avec la preuve que son contenu est identique à ce qui a été
+mergé. Un blocage d'outil se DIT et se route ; le taire laisserait croire au ménage.
+
 ### Lot 53 — « le travail fiscal vit ailleurs » est vrai des barèmes, faux des BORNES
 
 `UN-PERIMETRE-EXCLU-SE-JUSTIFIE-PAR-CE-QU-IL-CONTIENT-PAS-PAR-SON-ROLE`

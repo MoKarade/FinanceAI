@@ -71,11 +71,26 @@ export interface ChampMalType {
  *      Une liste tirée des seuls TYPES aurait donc refusé des données réelles.
  *
  * ⚠️ Aucune clé monétaire n'y figure, et ce n'est pas une intention mais une MESURE : sur les états
- * du dépôt, zéro clé porte à la fois une chaîne et un nombre (`amount`, `balance`, `target`,
- * `interestRate`… n'apparaissent jamais en texte). Sans cette vérification, une seule collision
- * aurait suffi à rendre la liste inopérante là où elle compte.
+ * du dépôt, `amount`, `balance`, `target`, `interestRate`… n'apparaissent jamais en texte.
+ *
+ * ⚠️⚠️ **CORRECTION DU 2026-09-01, et elle a coûté cher.** Cette phrase affirmait aussi que « zéro
+ * clé porte à la fois une chaîne et un nombre ». C'est FAUX, et la mesure qui le disait ne portait
+ * que sur les états DU DÉPÔT : `accountId` est un `number` dans `Transaction` et un `string` dans
+ * `FintableBrokerBalance` comme dans les lots de titres. Aucun persona ne porte de données Fintable,
+ * donc la collision était invisible à la mesure — et `accountId` manquait à cette liste.
+ *
+ * Conséquence VÉCUE : dès qu'un état persisté contenait un compte bancaire synchronisé, `merge`
+ * levait, l'app se réhydratait VIDE à chaque lancement, et restaurer depuis Drive rejouait le même
+ * refus (le pull appelle `persist.rehydrate()`). L'utilisateur voit « j'ai tout perdu » alors que le
+ * blob est intact. **Un faux refus n'est pas « bruyant » quand il vide l'écran : il est
+ * indiscernable d'une perte de données.** C'est l'arbitrage du 2026-08-29 qu'il faut relire à cette
+ * lumière — il reste valable pour un montant, il ne l'était pas pour un identifiant.
+ *
+ * La liste ne se dérive donc plus des seuls états mesurés : `tests/services/verifierTypesRestaures.test.ts`
+ * exige désormais que TOUT champ déclaré textuel dans `types.ts` y figure. Une surface que le dépôt
+ * ne porte pas ne peut plus créer un refus.
  */
-const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
+export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // ⚠️ TROISIÈME SOURCE, ajoutée après coup et c'est la plus instructive : les clés propres au
     // FORMAT DE BACKUP, qui n'existent dans aucun `AppState`. Les deux premières sources ne
     // couvraient qu'un des deux vecteurs — j'avais inventorié l'état du store et les types, jamais
@@ -84,6 +99,11 @@ const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // accepte, et il a été attrapé par un test au lieu d'atteindre Marc — mais il rappelle qu'une
     // liste se dérive de CHAQUE surface qu'elle garde, pas de la plus familière.
     'version', 'gemini', 'lunchMoney',
+    // ⚠️ Les trois clés de l'incident du 2026-09-01 : déclarées TEXTUELLES et PERSISTÉES, mais
+    // absentes de la liste parce qu'aucun état du dépôt ne les portait. Chacune suffisait, à elle
+    // seule, à vider l'app au lancement. Elles viennent de la surface que la dérivation d'origine
+    // n'avait pas lue : l'état propre au STORE (au-delà d'`AppState`) et les données Fintable.
+    'accountId', 'activeTestPersonaId', 'revealedProjectionSig',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

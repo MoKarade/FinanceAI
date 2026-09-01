@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 073 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 076 tests** Vitest
 (488 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -477,6 +477,22 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   série ne permet rien d'honnête ; une garde qui ne connaît qu'une ÉCRITURE (`role="img"` mais pas
   `role: 'img'` en props étalées) rougit sur du code sain ; et **`formatPercent` aussi sépare par une
   insécable** — l'attendu se compose avec le formateur.
+- ⚠️⚠️ **Un FAUX REFUS qui vide l'écran est indiscernable d'une perte de données** (incident
+  2026-09-01) : `verifierTypesRestaures` refusait un état légitime → `merge` lève → app vide, blob
+  INTACT, et le pull Drive rejouait le refus. Trois clés persistées et déclarées textuelles
+  manquaient (`accountId`, `revealedProjectionSig`, `activeTestPersonaId`). L'arbitrage « lister les
+  champs TEXTE, un oubli donne un faux refus BRUYANT attrapé par la CI » ne vaut que pour les
+  surfaces **que la CI porte** — pour les autres, le faux refus atteint l'utilisateur, et là il n'est
+  pas bruyant du tout. **Une liste blanche se dérive du CONTRAT et de CHACUNE de ses surfaces**
+  (`types.ts` ET le corps de `FinanceState`), jamais des états mesurés
+  (`UN-FAUX-REFUS-QUI-VIDE-L-ECRAN-EST-INDISCERNABLE-D-UNE-PERTE-DE-DONNEES`).
+  ⚠️ Corollaires : **une mesure citée sans son PÉRIMÈTRE se lit comme une loi** (« zéro clé ne porte
+  à la fois une chaîne et un nombre » était vrai des états du dépôt, faux du contrat) ; ce qui a
+  sauvé les données n'est pas la garde mais `shouldPush(localIsEmpty)` + « local vide → pull, jamais
+  push » — **une garde de dernier recours se juge sur les cas qu'elle attrape et que personne n'avait
+  imaginés** ; et mon recensement d'urgence était FAUX (les apostrophes de la prose française
+  matchées comme des littéraux, « 0 couvert sur 81 »), démasqué par trois témoins nommés avant
+  publication — **un recenseur se vérifie par témoins AVANT de servir de diagnostic**.
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

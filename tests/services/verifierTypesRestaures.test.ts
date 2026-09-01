@@ -6,7 +6,9 @@
 // immobilier → −52 %, chaque fois 0 refus et 0 valeur non finie publiée. C'est encore le mode
 // « absorbé » : rien ne crie, tout est faux.
 import { describe, it, expect } from 'vitest';
-import { verifierTypesRestaures, messageDeRefusTypes } from '../../services/verifierTypesRestaures';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { verifierTypesRestaures, messageDeRefusTypes, CHAMPS_TEXTE } from '../../services/verifierTypesRestaures';
 import { TEST_PERSONAS, getPersonaOrDefault } from '../../services/testPersonas';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { INITIAL_PROJECTION } from '../../constants';
@@ -132,6 +134,102 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
             aiChatCostUsdTotal: 0.42,
         };
         expect(verifierTypesRestaures(etatAvecChat).map((f) => f.chemin)).toEqual([]);
+    });
+
+    it('[INCIDENT 2026-09-01] ne refuse RIEN sur un état qui porte des comptes bancaires synchronisés', () => {
+        // ⚠️ LE CAS QUI A VIDÉ L'APP DE MARC. `accountId` est un `number` dans `Transaction` et un
+        // `string` dans `FintableBrokerBalance` — la seule clé du contrat à porter les deux types.
+        // La mesure qui justifiait la liste (« zéro collision ») portait sur les états DU DÉPÔT, et
+        // aucun persona ne porte de données Fintable : la collision était donc invisible.
+        //
+        // Effet réel : `merge` levait, l'app se réhydratait VIDE à chaque lancement, et la
+        // restauration Drive rejouait le refus (le pull appelle `persist.rehydrate()`). Vu de
+        // l'utilisateur, c'est indiscernable d'une perte totale de données.
+        const etatAvecBanque = {
+            ...(etat() as unknown as Record<string, unknown>),
+            fintableBrokerBalances: [
+                { accountId: 'acc_9f3c1', label: 'REER Disnat', balanceCad: 128_400, taxRegime: 'REER' },
+            ],
+            holdings: [
+                { symbol: 'VFV.TO', quantity: 120, price: 148.2, amount: 17_784, currency: 'CAD', accountId: 'acc_9f3c1' },
+            ],
+            // Le même nom de clé, en NOMBRE cette fois : les deux doivent passer.
+            transactions: [
+                { id: 1, date: '2026-08-01', payee: 'Épicerie', amount: -142.3, category: 'Épicerie', accountId: 4, status: 'processed' },
+            ],
+        };
+        expect(verifierTypesRestaures(etatAvecBanque).map((f) => f.chemin)).toEqual([]);
+    });
+
+    it('[garde de dérivation] tout champ TEXTUEL du contrat figure dans la liste blanche', () => {
+        // ⚠️ La vraie leçon de l'incident n'est pas « il manquait `accountId` », c'est que la liste
+        // était dérivée des états MESURÉS — donc aveugle à toute surface que le dépôt ne porte pas.
+        // Elle se dérive désormais du CONTRAT : un champ déclaré textuel dans `types.ts` et absent
+        // d'ici est un refus garanti chez qui utilise la fonctionnalité correspondante.
+        const types = readFileSync(resolve(process.cwd(), 'types.ts'), 'utf8');
+        const textuels = new Set<string>();
+        for (const m of types.matchAll(/^\s*(?:readonly\s+)?([A-Za-z_][\w]*)\??\s*:\s*([^;]+);/gm)) {
+            const [, cle, brut] = m;
+            const type = brut.trim();
+            // ⚠️ `Record<string, number>` est indexé PAR des chaînes mais ne porte que des nombres :
+            // ses valeurs ne sont jamais jugées sous cette clé. Sans cette exclusion, la garde
+            // réclamerait `initialBalances` et `investmentTargetPcts` — deux faux positifs mesurés.
+            const sansIndex = type.replace(/Record<\s*string\s*,/g, 'Record<K,');
+            if (/\bstring\b/.test(sansIndex) || /^'[^']*'(\s*\|\s*'[^']*')+$/.test(sansIndex)) textuels.add(cle);
+        }
+        // Anti-vacuité : le contrat EN A, et en nombre — sinon « aucun manquant » ne dirait rien.
+        expect(textuels.size).toBeGreaterThan(50);
+        expect(textuels.has('accountId'), 'témoin : la clé de l\'incident doit être vue par ce scan').toBe(true);
+
+        const manquants = [...textuels].filter((c) => !CHAMPS_TEXTE.has(c)).sort();
+        expect(
+            manquants,
+            'champ déclaré TEXTUEL dans types.ts mais absent de CHAMPS_TEXTE : toute donnée réelle qui '
+            + 'le porte fera échouer la réhydratation et VIDERA l\'app. Ajoute-le à la liste.',
+        ).toEqual([]);
+    });
+
+    it('[garde de dérivation, 2e surface] tout champ textuel PERSISTÉ du store figure dans la liste', () => {
+        // ⚠️ `AppState` n'est PAS toute la surface persistée : le store ajoute ses propres champs
+        // (`revealedProjectionSig`, `activeTestPersonaId`, …) et `partialize` en exclut seulement
+        // huit. La dérivation d'origine n'avait lu que `types.ts` — d'où deux des trois clés
+        // manquantes de l'incident. Une liste se dérive de CHAQUE surface qu'elle garde.
+        const fichier = readFileSync(resolve(process.cwd(), 'store/useFinanceStore.ts'), 'utf8');
+        // ⚠️ On borne au CORPS de `FinanceState` : le même fichier déclare `PendingFocus` et
+        // `MigrationStatus`, qui ne sont PAS l'état persisté. Sans cette borne, le scan réclamait
+        // `section` et `backupKey` — deux clés qui ne traversent jamais la persistance, et les
+        // ajouter aurait gonflé la liste blanche avec des noms que rien ne justifie.
+        const debut = fichier.indexOf('export interface FinanceState');
+        const fin = fichier.indexOf('\n}', debut);
+        expect(debut, 'interface FinanceState introuvable — le scan ne borne plus rien').toBeGreaterThan(0);
+        const store = fichier.slice(debut, fin);
+        // Les huit clés que `partialize` retire : elles ne sont jamais relues, donc hors périmètre.
+        const EXCLUS_DE_LA_PERSISTANCE = new Set([
+            'apiKeys', 'activeTab', 'isPrivacyMode', 'lastProjection',
+            'projectionStatus', 'projectionRefus', 'lockedProjection', 'pendingFocus',
+        ]);
+        const textuels = new Set<string>();
+        for (const m of store.matchAll(/^ {4}([A-Za-z_][\w]*)\??\s*:\s*([^;=]+);/gm)) {
+            const [, cle, brut] = m;
+            const type = brut.trim().replace(/Record<\s*string\s*,/g, 'Record<K,');
+            if (!/\bstring\b/.test(type)) continue;
+            // ⚠️ Une MÉTHODE du store n'est pas un champ persisté. `=>` ne suffit pas : une
+            // signature multi-lignes (`updateApiKeys: (keys: { anthropic: string; … }) => void`)
+            // est coupée avant sa flèche par la capture. C'est la parenthèse OUVRANTE qui tranche.
+            if (/=>/.test(type) || type.startsWith('(')) continue;
+            if (EXCLUS_DE_LA_PERSISTANCE.has(cle)) continue;
+            textuels.add(cle);
+        }
+        // Anti-vacuité + témoins : les deux clés que l'incident a révélées doivent être VUES ici.
+        expect(textuels.size).toBeGreaterThan(0);
+        expect(textuels.has('revealedProjectionSig')).toBe(true);
+        expect(textuels.has('activeTestPersonaId')).toBe(true);
+
+        const manquants = [...textuels].filter((c) => !CHAMPS_TEXTE.has(c)).sort();
+        expect(
+            manquants,
+            'champ TEXTUEL du store, PERSISTÉ, absent de CHAMPS_TEXTE : il videra l\'app au lancement.',
+        ).toEqual([]);
     });
 
     it('ne refuse pas un TABLEAU de chaînes — ses éléments sont jugés sur la clé du tableau', () => {

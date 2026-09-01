@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (CORRECTIF URGENT : l'app s'ouvrait vide alors que rien n'était perdu)
+
+- **Corrigé** : l'app pouvait s'ouvrir **entièrement vide** — sans qu'aucune donnée n'ait été perdue.
+  Le contrôle qui refuse un fichier corrompu se trompait de cible : il rejetait ta sauvegarde
+  **légitime**, et refuser la sauvegarde revient à afficher du vide. Trois champs parfaitement
+  normaux déclenchaient le refus, dont l'identifiant de tes comptes bancaires synchronisés.
+- **Tes données n'ont jamais été effacées** : le mécanisme laisse volontairement la sauvegarde
+  intacte dans le navigateur, et il refuse aussi de publier un état vide vers Drive — donc tes
+  sauvegardes en ligne n'ont pas été écrasées non plus. Un rechargement après ce correctif doit tout
+  ramener.
+- **Pourquoi personne ne l'a vu venir** : la liste des champs autorisés avait été dérivée des jeux de
+  données du dépôt. Or aucun d'eux ne contient de compte bancaire synchronisé, ni de projection
+  révélée, ni de mode test — donc trois champs bien réels n'y figuraient pas. La liste se dérive
+  désormais du **contrat de données lui-même**, sur ses deux surfaces, et un test le vérifie : un
+  champ textuel absent de la liste fait maintenant échouer la CI au lieu de vider ton app.
+- **Ce qui reste vrai** : un vrai fichier corrompu est toujours refusé, et toujours nommé.
+
 ## [unreleased] — 2026-09-01 (Les deux graphiques du budget deviennent lisibles au lecteur d'écran)
 
 - **Corrigé** : dans le tableau du budget, le mini-graphique « Historique (6 derniers mois) » et la

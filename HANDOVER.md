@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-01 — INCIDENT : l'app s'ouvrait VIDE, garde de type trop stricte
+> Marc : « j'ai perdu mes données, tout est vide alors que j'avais beaucoup de sauvegardes ».
+> **Rien n'était perdu.** `verifierTypesRestaures` (la garde de type de `[BACKUP-SCHEMA-NON-TYPE]`)
+> refusait des états LÉGITIMES : `merge` lève, zustand charge l'état par défaut, l'écran est vide —
+> et le blob reste intact dans `localStorage`. La restauration Drive rejouait le même refus, puisque
+> le pull appelle `persist.rehydrate()`. Vu de l'utilisateur : indiscernable d'une perte totale.
+> - **Trois clés PERSISTÉES et déclarées textuelles manquaient à la liste blanche** :
+>   `accountId` (identifiant de compte Fintable — `number` dans `Transaction`, `string` dans
+>   `FintableBrokerBalance`), `revealedProjectionSig` et `activeTestPersonaId`. **Chacune suffisait
+>   seule** à vider l'app.
+> - ⚠️ **La justification écrite dans le module était FAUSSE** : « zéro clé porte à la fois une chaîne
+>   et un nombre » — mesuré sur les états DU DÉPÔT uniquement, dont aucun ne porte de données
+>   Fintable. Corrigée sur place ; une mesure citée sans son périmètre se lit comme un fait général.
+> - **Correctif durable** : la liste se dérive désormais du CONTRAT, sur ses **deux** surfaces
+>   (`types.ts` ET le corps de `FinanceState`, moins les huit clés retirées par `partialize`). Deux
+>   tests l'exigent, plus un test de non-régression qui rejoue l'état de l'incident.
+> - ⚠️ **La vraie leçon est l'ASYMÉTRIE DES COÛTS.** L'arbitrage du 2026-08-29 disait : oublier un
+>   champ numérique rouvre un canal money-critical en silence, oublier un champ texte donne « un faux
+>   refus BRUYANT » attrapé par la CI. Le raisonnement tenait pour les surfaces que la CI porte —
+>   pas pour celles qu'elle ne porte pas. Et un faux refus n'est pas bruyant quand il vide l'écran :
+>   il ressemble à une perte de données.
+> - **Non tranché, laissé à Marc** : faut-il qu'un champ inattendu fasse échouer TOUTE la
+>   réhydratation, ou seulement signaler le champ ? Voir `[HYDRATATION-REFUS-TOUT-OU-RIEN]`.
+
 > ## 🟦 Session 2026-09-01 — Lot 62 : ma garde était satisfaite par mon propre commentaire
 > `[A11Y-BUDGETGROUP-CHART-NOALT]` — les 2 graphes de `BudgetGroupTable` reçoivent leur alternative
 > textuelle, plus une garde (`tests/components/chartAlternativeTexteGuard.test.ts`).

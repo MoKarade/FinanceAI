@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 000 tests** Vitest
-(478 fichiers de test, mesuré le 2026-08-29). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 004 tests** Vitest
+(479 fichiers de test, mesuré le 2026-08-30). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -830,6 +830,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   choisit selon le contexte (conteneur vs contrôle), et la garde se bâtit sur une LISTE d'exemptions
   nominatives — un automate qui remonte les ancêtres JSX finit désactivé par ses faux positifs
   (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
+- **Un nom manquant est une propriété du CONTRÔLE, pas du label** : mon propre ticket comptait les
+  `<label>` non associés (59/16 fichiers) parce que c'est ce que le lot précédent avait corrigé.
+  WCAG 4.1.2 porte sur le CONTRÔLE — recensé là, le périmètre devient 40 réels, et les deux listes ne
+  se recouvrent pas : 13 « orphelins » de `ProjectionControls` n'étaient PAS un défaut (leurs sliders
+  ont un `aria-label`), et le ticket ratait trois sites qu'aucun `<label>` ne signalait (`<span>`
+  voisin, `placeholder` seul, `id` sans `htmlFor`). **Quand un ticket compte un SYMPTÔME, vérifier
+  qu'il est le défaut** — compter les indices sur-compte ET sous-compte à la fois. Une garde doit
+  connaître les QUATRE façons légitimes de nommer (`aria-label`, `aria-labelledby`, `htmlFor`/`id`,
+  `<label>` ancêtre), et un `id` littéral ne vaut que hors d'une liste
+  (`UN-NOM-MANQUANT-EST-UNE-PROPRIETE-DU-CONTROLE-PAS-DU-LABEL`).
 - **Un attribut PRÉSENT ne prouve pas qu'il désigne la bonne chose** : dériver chaque `id` de la clé
   du champ a posé deux fois `app-returnRates` (clé `projection.returnRates`, commune au rendement
   crypto et au cash) — les deux labels pointaient le MÊME contrôle, et un scan d'orphelins n'y voyait

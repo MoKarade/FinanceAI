@@ -676,11 +676,12 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                 <>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-black/30 rounded-xl border border-white/5">
                                         <div>
-                                            <label className="text-tiny text-purple-400 font-bold uppercase block mb-1">
+                                            <label htmlFor="rew-currentRent" className="text-tiny text-purple-400 font-bold uppercase block mb-1">
                                                 Loyer actuel (scénario Louer)
                                             </label>
                                             <div className="flex items-center gap-2">
                                                 <input
+                                                    id="rew-currentRent"
                                                     type="number"
                                                     step="50"
                                                     value={currentRent}

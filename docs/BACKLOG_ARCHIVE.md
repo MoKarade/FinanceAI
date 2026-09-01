@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-30 — Lot 51 : le nom manquant est une propriété du CONTRÔLE, pas du label (PR #777)
+
+- [x] **`[A11Y-LABELS-RESTE-DU-DEPOT]`** (M, ÉLEVÉ) — recensé le 2026-08-29 en livrant
+  `[A11Y-LABELS-PARAMS-AVANCES]` : « 59 `<label>` sans `htmlFor` ni enveloppement dans 16 fichiers ».
+  ✅ **Livré**, mais **le ticket désignait le mauvais objet** et il a fallu le redresser avant de coder.
+  · **Recensé sur les CONTRÔLES et non sur les labels, le périmètre change** : 48 contrôles sans nom
+    dans 20 fichiers, dont 8 faux (primitives génériques, déclencheurs `display:none`) → **40 vrais**.
+  · **13 des 59 « labels orphelins » n'étaient PAS un défaut** : les sliders de `ProjectionControls`
+    portent tous un `aria-label` explicite. Le label y est redondant, le champ est nommé, et les
+    « corriger » n'aurait rien réparé. Routé en `[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]` (FAIBLE).
+  · **Inversement, le ticket ratait des sites** qu'aucun `<label>` ne signalait : un contrôle nommé
+    par un simple `<span>` voisin (`DividendPanel`), un `type="password"` à `placeholder` seul
+    (`PassphraseGate`), un `id` posé sans `htmlFor` en face (`Onboarding`).
+  · **Livré avec sa garde** : `tests/guards/controlAccessibleNameGuard.test.ts` (4 cas), scan de
+    source décommenté, quatre façons légitimes de nommer reconnues, unicité des `id` littéraux, et
+    contrôle d'obsolescence des deux exemptions. Discrimination prouvée par 4 perturbations séparées.
+
 ## 2026-08-29 — Lot 48 : un ticket de performance déjà livré par un autre
 
 - [x] **`[PERF-ENG-INCOMELOSS-DATESTR]`** (S) — `computeIncomeLossFactor` reforme date en chaîne à

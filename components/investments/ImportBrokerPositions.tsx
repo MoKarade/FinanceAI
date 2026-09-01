@@ -71,8 +71,9 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 </label>
 
                 <div>
-                    <label className="block text-meta text-ink-300 mb-1">… ou colle le CSV ici</label>
+                    <label htmlFor="import-csv-textarea" className="block text-meta text-ink-300 mb-1">… ou colle le CSV ici</label>
                     <textarea
+                        id="import-csv-textarea"
                         rows={4}
                         onChange={(e) => { const v = e.target.value; if (v.trim()) parse(v); else reset(); }}
                         placeholder={'Symbol,Quantity,Average Cost,Currency,Account\nAAPL,10,150.25,USD,TFSA'}

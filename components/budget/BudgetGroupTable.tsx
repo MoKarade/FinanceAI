@@ -182,6 +182,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                     >
                                         <td className="p-3">
                                             <input
+                                                aria-label="Nom du poste"
                                                 type="text"
                                                 value={item.name}
                                                 onChange={(e) => onUpdateItem(idx, 'name', e.target.value)}
@@ -190,6 +191,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             />
                                             <div className="flex gap-2 mt-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                                 <select
+                                                    aria-label={`Fréquence — ${item.name || `poste ${idx + 1}`}`}
                                                     value={item.frequency}
                                                     onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)}
                                                     className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
@@ -201,6 +203,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                     <option value="Yearly">Annuel</option>
                                                 </select>
                                                 <select
+                                                    aria-label={`Attribution — ${item.name || `poste ${idx + 1}`}`}
                                                     value={item.type}
                                                     onChange={(e) => onUpdateItem(idx, 'type', e.target.value)}
                                                     className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"

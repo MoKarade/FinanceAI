@@ -356,8 +356,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
                             </div>
                             <div>
-                                <label className="text-meta text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
-                                <input type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
+                                <label htmlFor="child-birthDate" className="text-meta text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
+                                <input id="child-birthDate" type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
                             </div>
                         </div>
                         <p className="text-tiny text-ink-400 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
@@ -442,20 +442,20 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                     <Card icon={<Icon name="money" size={18} />} title="Allocations">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <label className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
-                                <input type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-green-400 font-bold" />
+                                <label htmlFor="child-governmentBenefits" className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
+                                <input id="child-governmentBenefits" type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-green-400 font-bold" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-meta text-ink-200">Nourriture / mois</label>
-                                <input type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
+                                <label htmlFor="child-monthlyFood" className="text-meta text-ink-200">Nourriture / mois</label>
+                                <input id="child-monthlyFood" type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-meta text-ink-200">Vêtements / mois</label>
-                                <input type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
+                                <label htmlFor="child-monthlyClothing" className="text-meta text-ink-200">Vêtements / mois</label>
+                                <input id="child-monthlyClothing" type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
                             </div>
                             <div className="flex justify-between items-center">
-                                <label className="text-meta text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
-                                <input type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
+                                <label htmlFor="child-initialCost" className="text-meta text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
+                                <input id="child-initialCost" type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
                             </div>
                         </div>
                     </Card>

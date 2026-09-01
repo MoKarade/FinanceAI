@@ -411,10 +411,11 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               </div>
             </div>
             <div className="mb-5">
-              <label className="block text-meta text-ink-300 mb-2">
+              <label htmlFor="backup-restoreConfirm" className="block text-meta text-ink-300 mb-2">
                 Tapez <span className="text-danger-400 font-bold font-mono">RESTAURER</span> pour confirmer :
               </label>
               <input
+                id="backup-restoreConfirm"
                 type="text"
                 value={restoreConfirmPhrase}
                 onChange={e => setRestoreConfirmPhrase(e.target.value)}

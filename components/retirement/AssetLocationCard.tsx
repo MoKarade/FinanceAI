@@ -181,6 +181,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     {holdings.map((h, i) => (
                         <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white/[0.02] rounded p-2">
                             <select
+                                aria-label={`Classe d'actif ${i + 1}`}
                                 value={h.assetClass}
                                 onChange={e => { const next = [...holdings]; next[i] = { ...h, assetClass: e.target.value as AssetClass }; setHoldings(next); }}
                                 className="col-span-4 bg-dark border border-border rounded px-2 py-1 text-meta text-white"
@@ -196,6 +197,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                 className="col-span-4 bg-dark border border-border rounded px-2 py-1 text-meta text-white font-mono"
                             />
                             <select
+                                aria-label={`Compte de ${ASSET_CLASS_LABELS[h.assetClass]}`}
                                 value={h.currentAccount}
                                 onChange={e => { const next = [...holdings]; next[i] = { ...h, currentAccount: e.target.value as AccountType }; setHoldings(next); }}
                                 className="col-span-3 bg-dark border border-border rounded px-2 py-1 text-meta text-white"

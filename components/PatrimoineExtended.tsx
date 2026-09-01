@@ -50,6 +50,7 @@ export const InsurancePanel: React.FC<{
                 {policies.map((p, i) => (
                     <div key={p.id} className="grid grid-cols-12 gap-1 items-center p-2 bg-black/30 rounded border border-white/5">
                         <select
+                            aria-label="Type d'assurance"
                             value={p.kind}
                             onChange={e => update(i, { kind: e.target.value as InsuranceKind })}
                             className="col-span-3 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
@@ -67,6 +68,7 @@ export const InsurancePanel: React.FC<{
                             <option value="liability">Responsabilité</option>
                         </select>
                         <input
+                            aria-label="Assureur"
                             placeholder="Assureur" value={p.insurer ?? ''}
                             onChange={e => update(i, { insurer: e.target.value })}
                             className="col-span-3 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
@@ -84,6 +86,7 @@ export const InsurancePanel: React.FC<{
                             className="col-span-2 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
                         />
                         <input
+                            aria-label="Date d'expiration de la police"
                             type="date" placeholder="Expire" value={p.expiryDate ?? ''}
                             onChange={e => update(i, { expiryDate: e.target.value })}
                             className="col-span-1 bg-dark border border-border rounded px-0.5 py-1 text-tiny text-white"

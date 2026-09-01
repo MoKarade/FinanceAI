@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 64 : l'état sélectionné ne passait que par la couleur (PR #794)
+
+- [x] **`[A11Y-TABSTATE-TAXCENTER]`** — 2026-09-01, PR #794. Le ticket nommait **1** site (la bascule
+  Global/Conjoint de `TaxCenter`) ; le recensement en a trouvé **12** dans trois fichiers :
+  `ChildPlanning` ×5 (cinq groupes à sélection unique — garde, école, activités, études, voiture),
+  `LifeEvents` ×5 (deux onglets du formulaire + trois pastilles de filtre), `TaxCenter` ×2.
+  Quatorzième périmètre de ticket faux d'affilée.
+- **Deux candidats ÉCARTÉS après lecture**, tous deux parce que l'état est déjà dans le nom
+  accessible : `SavedProfilesCard` (l'`aria-label` bascule « Supprimer le profil X » / « Confirmer la
+  suppression ») et `PropertyConfigurator` (le libellé du bouton EST le mode, « AUTO » / « MANUEL » —
+  y ajouter `aria-pressed` l'aurait rendu ambigu). Ils sont déclarés en exemptions motivées, et un
+  test refuse une exemption périmée.
+- **Livré** : `aria-pressed` sur les 12 sites (+ `type="button"`), la garde de source
+  `tests/guards/etatSelectionAnnonceGuard.test.ts`, et un test de RENDU sur `ChildPlanning`.
+
 ## 2026-09-01 — Lot 63 : la garde des cibles tactiles mesurait un carré (PR #793)
 
 - [x] **`[A11Y-TOUCH-DELETE-ICONS]`** — 2026-09-01, PR #793. Le ticket nommait 3 sites (Travel,

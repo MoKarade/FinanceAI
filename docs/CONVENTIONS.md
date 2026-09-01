@@ -9723,3 +9723,48 @@ Elle ancre le FAIT — les deux axes atteignent 24 — et pas la forme du code.
 #791 et #792 sont restées ouvertes avec `mergeable_state: clean` et les six checks verts, pendant
 qu'un incident bloquait Marc. La fusion se fait à la main (`merge_pull_request`, squash) dès le vert,
 et l'auto-merge ne se compte pas comme une étape franchie.
+
+
+### Lot 64 (2026-09-01) — une propriété par groupe ne se mesure pas sur l'écran entier
+
+`UNE-PROPRIETE-PAR-GROUPE-NE-SE-MESURE-PAS-SUR-L-ECRAN-ENTIER`
+
+Le lot pose `aria-pressed` sur douze bascules dont l'option active n'était peinte que par la couleur.
+Le scan de source qui l'accompagne prouve que l'attribut EXISTE ; il ne peut rien dire de sa VALEUR.
+D'où un test de rendu — et c'est lui qui portait la leçon.
+
+Premier jet :
+
+```ts
+const actifsAvant = screen.getAllByRole('button', { pressed: true }).length;
+fireEvent.click(inactif);
+expect(screen.getAllByRole('button', { pressed: true })).toHaveLength(actifsAvant);
+```
+
+Perturbation : remplacer `aria-pressed={daycareType === key}` par un `true` constant. **Le test reste
+vert.** Les trois options de garde s'annoncent alors actives ensemble — exactement le défaut visé —
+mais le total de l'écran ne bouge pas, parce que le clic tombe dans un AUTRE groupe, qui gagne une
+option active et en perd une.
+
+La propriété défendue est « **dans chaque groupe**, une seule option est annoncée active ». Mesurée
+sur l'écran entier, elle devient « le nombre total d'options actives est stable » — une propriété
+plus faible, que le défaut satisfait. **Un agrégat masque exactement ce qu'on prétend interdire**, et
+c'est la version agrégée qui vient spontanément parce qu'elle est plus courte à écrire.
+
+Refondé : les options de chaque groupe sont retrouvées par leurs libellés (tirés des constantes, pas
+d'une liste écrite à la main), et l'assertion porte sur le groupe — une seule active avant le clic,
+une seule après, et le groupe voisin qui n'a pas bougé. Les trois perturbations (`true`, `false`,
+attribut retiré) rougissent.
+
+⚠️ Corollaire du même test : un **compte figé** aurait menti. Le fichier portait déjà un
+`aria-pressed` d'un lot antérieur (les onglets par enfant), donc « exactement 5 » était faux et
+« exactement 6 » aurait été vrai *pour un seul enfant*. C'est l'INVARIANCE au clic qui porte la
+propriété, pas le nombre — `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`.
+
+⚠️ Et le recensement, encore : le ticket nommait **un** site, il y en avait **douze**. Mais le
+résultat intéressant est ailleurs — **deux candidats du scan ont été écartés après lecture**, tous
+deux parce que l'état est déjà porté par le NOM ACCESSIBLE : un `aria-label` qui bascule
+(« Supprimer le profil X » / « Confirmer la suppression »), et un bouton dont le LIBELLÉ est le mode
+courant (« AUTO » / « MANUEL »), où `aria-pressed` aurait été ambigu plutôt qu'utile. Un scan
+heuristique sur du JSX propose des candidats ; il ne décide pas. Les deux sont déclarés en exemptions
+motivées, et un test refuse une exemption périmée — un inventaire doit savoir mourir.

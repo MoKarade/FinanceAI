@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 079 tests** Vitest
-(488 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 083 tests** Vitest
+(489 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une propriété PAR GROUPE ne se mesure pas sur l'écran entier** : mon test « une seule option
+  est annoncée active » comptait les `aria-pressed` de TOUTE la page — donc figer un groupe à
+  `aria-pressed={true}` le laissait VERT (ses trois options actives ensemble, et le total invariant
+  au clic parce que le clic tombait dans un AUTRE groupe). L'agrégat masque exactement ce qu'on
+  prétend interdire. Se mesure dans la PORTÉE de la propriété, et l'assertion doit inclure le LEVIER
+  (après le clic, toujours une seule) plus un témoin voisin qui NE bouge pas
+  (`UNE-PROPRIETE-PAR-GROUPE-NE-SE-MESURE-PAS-SUR-L-ECRAN-ENTIER`). Corollaires : un scan de source
+  prouve la PRÉSENCE d'un attribut, jamais sa VALEUR — il lui faut un test de rendu jumeau ; et un
+  compte figé dans un test ment dès qu'un usage préexistant partage l'attribut (un 6ᵉ `aria-pressed`
+  vivait déjà dans le fichier) — asserter l'INVARIANCE, pas le nombre.
 - ⚠️ **Une garde qui réduit DEUX dimensions à UNE mesure le mauvais objet** : `cibleSuffisante`
   prenait le `Math.max` des paddings et l'appliquait aux deux axes, donc elle voyait 26×26 un bouton
   de **26×22** — et un `w-8` seul la rendait verte quelle que soit la HAUTEUR. Mesurée par AXE, elle

@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 68 : « Vérifie ta clé » était affirmé sur des causes inconnues (PR #798)
+
+- [x] **`[AI-BUDGETMODAL-ERROR-COLLAPSE]`** — 2026-09-01, PR #798. Ticket : 1 site. Recensés : **4**
+  (`BudgetAiModal`, `CoupleOptimizationCard`, `RealEstateAdviceCard`, `Investments`) — puis **4 de
+  plus** révélés en REJOUANT la garde élargie (`TaxCenter`, `ImportBankStatement`,
+  `PayslipUploadCard`, `Planning`). Total : **8**.
+- ⚠️ **Deux sites écrivaient `catch { }`** — sans lier l'erreur. Ils ne POUVAIENT rien dire d'autre,
+  quoi qu'on écrive : capturer est la première moitié du correctif.
+- **Livré** : `services/messageErreurIa.ts`, sept causes distinctes, sept phrases distinctes, dérivé
+  du MÊME `httpStatusOf` que la stratégie de reprise (désormais exporté). Une annulation
+  (`AbortError`, provoquée par l'app au démontage) rend `null` — ce n'est pas un échec.
+- ⚠️ **Trois parties du ticket étaient périmées ou fausses** : le JSON tronqué retombe déjà sur le
+  texte brut depuis `[BUDGET-AI-DUP-PARSING]` ; `agentLoop.ts` n'est pas au chemin des quatre
+  surfaces ; et `classifyCategorizeError` existait déjà mais répond à « faut-il réessayer ? », pas à
+  « que dire à quelqu'un » — `retryable` fusionne réseau et 429.
+- ⚠️ **Deux bugs préexistants signalés, NON corrigés** (hors périmètre) :
+  `[AI-REBALANCE-CAUSE-PERDUE]` (le service avale l'erreur et rend `[]`, donc l'écran ne peut PAS
+  nommer sa cause — son message dit ce qu'il sait) et `[AI-FINNHUB-CAUSE-COLLAPSE]` (même défaut sur
+  l'autre service, dont les erreurs n'ont pas la même forme).
+
 ## 2026-09-01 — Lot 67 : changer d'onglet ne produisait aucun signal non visuel (PR #797)
 
 - [x] **`[A11Y-ROUTE-FOCUS]`** — 2026-09-01, PR #797. ⚠️ **Périmètre du ticket JUSTE, y compris son

@@ -14,6 +14,7 @@ import { BudgetConfig, Asset } from '../types';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
+import { causeErreurIa, messageErreurIa } from '../services/messageErreurIa';
 import { assetValueCad } from '../services/portfolio';
 import { ageOptsForSalaryInversion, calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { estimateTaxableInvestmentIncome } from '../services/taxEstimate';
@@ -177,7 +178,16 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 // SF-RESIDUS — routé vers logError (source 'ai' : analyse de paie via Claude). Le toast
                 // ci-dessous reste le retour utilisateur ; logError donne la visibilité prod (SystemView).
                 logError({ source: 'ai', severity: 'error', message: 'TaxCenter : analyse de paie (analyzePayslip) échouée', context: { fileName: file.name }, error: err instanceof Error ? err : new Error(String(err)) });
-                showToast(`Échec analyse ${file.name}. Vérifie le format (JPG/PNG/WEBP/PDF) et ta clé Anthropic.`, 'error');
+                // [AI-BUDGETMODAL-ERROR-COLLAPSE] Le message NOMMAIT deux causes à la fois — le format
+                // du fichier ET la clé — sur une erreur dont il ne savait rien. L'indice de format ne
+                // vaut que si la requête elle-même a été refusée ; sinon c'est le réseau, le quota ou
+                // le service, et aucun des deux conseils ne s'applique.
+                showToast(
+                    causeErreurIa(err) === 'requete'
+                        ? `Échec analyse ${file.name}. Vérifie le format du fichier (JPG/PNG/WEBP/PDF).`
+                        : `Échec analyse ${file.name}. ${messageErreurIa(err) ?? ''}`.trim(),
+                    'error',
+                );
                 setProgress({ current: i + 1, total: files.length });
                 continue;
             }

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { logError } from '../services/errorLogger';
+import { messageErreurIa } from '../services/messageErreurIa';
 // [PRIV-PAYEE-MODE-DISCRET] Un nom d'abonnement EST un nom de marchand (décision Marc 2026-08-17).
 import { PrivateText } from './ui/PrivateText';
 import { maskPayee } from '../utils/privacyAria';
@@ -163,7 +164,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
         setIsAnalyzing(true);
         try {
             if (!apiKey) {
-                showToast('Configure une clé Anthropic pour analyser tes abonnements.', 'info');
+                showToast(messageErreurIa(null, { cleAbsente: true }) ?? '', 'info');
                 return;
             }
             const results = await detectSubscriptionsAI(transactions, apiKey);
@@ -171,7 +172,11 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
             else showToast("L'IA n'a rien détecté de plus.", 'info');
         } catch (e) {
             logError({ source: 'ai', severity: 'error', message: 'Détection IA des abonnements échouée', error: e });
-            showToast("Erreur lors de l'analyse IA", 'error');
+            // [AI-BUDGETMODAL-ERROR-COLLAPSE] « Erreur lors de l'analyse IA » ne ment pas, mais
+            // n'apprend rien : réseau, quota et service se réparent différemment, et l'erreur porte
+            // déjà la réponse. `null` = annulation, rien à dire.
+            const message = messageErreurIa(e);
+            if (message) showToast(message, 'error');
         } finally {
             setIsAnalyzing(false);
         }

@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 68 : « Vérifie ta clé » affirmé sur des causes inconnues
+> `[AI-BUDGETMODAL-ERROR-COLLAPSE]` — `services/messageErreurIa.ts` (7 causes, 7 phrases), branché
+> sur **8** surfaces. Ticket : 1 site. Recensés : 4. **+4 de plus** en REJOUANT la garde élargie
+> (`TaxCenter`, `ImportBankStatement`, `PayslipUploadCard`, `Planning`) —
+> `REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`.
+> - ⚠️ **Deux sites écrivaient `catch { }`** : sans lier l'erreur, ils ne POUVAIENT rien dire d'autre.
+>   Capturer est la première moitié du correctif — un message ne se corrige pas là où il s'affiche.
+> - ⚠️ **`\b` est ASCII en JavaScript** : mon motif `\bcl[ée]\b` ne matchait JAMAIS (`é` n'est pas un
+>   caractère de mot, donc aucune frontière avant l'espace). La garde rendait « aucun offender » sur
+>   un fichier qui portait la phrase — c'est l'exemption qui a rougi et l'a démasqué.
+> - **Le classificateur existait déjà** (`classifyCategorizeError`) mais répond à « faut-il réessayer
+>   ce chunk ? », pas à « que dire à quelqu'un » : `retryable` fusionne réseau et 429. Les deux
+>   fonctions restent distinctes, dérivées du MÊME `httpStatusOf` (désormais exporté).
+> - ⚠️ **Deux bugs préexistants signalés, NON corrigés** : `[AI-REBALANCE-CAUSE-PERDUE]` (le service
+>   avale l'erreur → l'écran ne peut pas nommer sa cause, son message dit ce qu'il SAIT) et
+>   `[AI-FINNHUB-CAUSE-COLLAPSE]` (même défaut, autre service, erreurs de forme différente).
+
 > ## 🟦 Session 2026-09-01 — Lot 67 : changer d'onglet ne produisait aucun signal non visuel
 > `[A11Y-ROUTE-FOCUS]` — focus sur `#main` + annonce de destination au changement d'onglet
 > (`Layout.tsx`), et focus sur la cible du deep-link (`utils/usePendingFocus.ts`, 3 écrans).

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { logError } from '../../services/errorLogger';
+import { messageErreurIa } from '../../services/messageErreurIa';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { chatStream, safeJsonValidate, MODEL_HAIKU } from '../../services/claude';
@@ -50,7 +51,9 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
     const [isStreaming, setIsStreaming] = useState(true);
     const [streamingText, setStreamingText] = useState('');
     const [recommendations, setRecommendations] = useState<string[]>([]);
-    const [hasError, setHasError] = useState(false);
+    // [AI-BUDGETMODAL-ERROR-COLLAPSE] Le message, pas un booléen : quatre causes se disaient
+    // pareil. `null` couvre à la fois « pas d'erreur » et « annulation volontaire ».
+    const [erreur, setErreur] = useState<string | null>(null);
 
     // Phase D'.7 — diagnostic IA fluide (streaming) au lieu d'un one-shot 30s.
     useEffect(() => {
@@ -59,7 +62,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
 
         const run = async () => {
             if (!apiKey) {
-                setHasError(true);
+                setErreur(messageErreurIa(null, { cleAbsente: true }));
                 setIsStreaming(false);
                 return;
             }
@@ -92,7 +95,10 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                 }
             } catch (err) {
                 logError({ source: 'ai', severity: 'error', message: 'Diagnostic budget IA : échec du streaming', error: err });
-                if (!cancelled) setHasError(true);
+                // [AI-BUDGETMODAL-ERROR-COLLAPSE] `null` = annulation (l'utilisateur a fermé) : rien
+                // à afficher. Un booléen ne pouvait pas exprimer cette nuance — il rendait « erreur »
+                // sur un geste volontaire.
+                if (!cancelled) setErreur(messageErreurIa(err));
             } finally {
                 if (!cancelled) setIsStreaming(false);
             }
@@ -128,9 +134,9 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                         </div>
                     )}
                 </div>
-            ) : hasError ? (
+            ) : erreur !== null ? (
                 <div className="space-y-3">
-                    <p className="text-danger-400 text-body">Échec de l'analyse IA. Vérifie ta clé Anthropic dans Configuration.</p>
+                    <p className="text-danger-400 text-body">{erreur}</p>
                     <button
                         onClick={onClose}
                         className="w-full py-2 bg-white/10 hover:bg-white/15 text-white rounded-lg font-bold transition-colors"

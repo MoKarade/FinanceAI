@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { messageErreurIa } from '../../services/messageErreurIa';
 import { getCoupleOptimizationStrategies, type CoupleOptimizationStrategy, type CoupleTaxContext } from '../../services/claude';
 import { formatCAD } from '../../utils/format';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -38,7 +39,10 @@ export const CoupleOptimizationCard: React.FC = () => {
 
     const [strategies, setStrategies] = useState<CoupleOptimizationStrategy[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasError, setHasError] = useState(false);
+    // [AI-BUDGETMODAL-ERROR-COLLAPSE] Le MESSAGE, pas un booléen : ce drapeau recouvrait à la fois
+    // un échec d'appel (quatre causes possibles) et « le modèle n'a rien rendu », qui n'est pas une
+    // erreur de service et ne se corrige pas au même endroit.
+    const [erreur, setErreur] = useState<string | null>(null);
 
     const u1 = config?.users?.[0];
     const u2 = config?.users?.[1];
@@ -49,7 +53,7 @@ export const CoupleOptimizationCard: React.FC = () => {
     const handleGenerate = async () => {
         if (!apiKey) return;
         setIsLoading(true);
-        setHasError(false);
+        setErreur(null);
         // [COUPLE-CTX-FAKE-ZERO] ⚠️ PAS de `|| 0` ici. `promptCad` (services/claude.ts) rend
         // « (non disponible) » sur une valeur NON FINIE — c'est exactement sa raison d'être. Un
         // `|| 0` la court-circuitait : un salaire absent devenait un « 0 $ » AFFIRMÉ au modèle, qui
@@ -72,12 +76,14 @@ export const CoupleOptimizationCard: React.FC = () => {
         try {
             const result = await getCoupleOptimizationStrategies(ctx, apiKey);
             if (result.length === 0) {
-                setHasError(true);
+                setErreur('Aucune stratégie générée pour cette situation. Réessaie.');
             } else {
                 setStrategies(result);
             }
-        } catch {
-            setHasError(true);
+        } catch (err) {
+            // `catch {}` ne liait pas l'erreur : ce site ne pouvait rien dire d'autre que « vérifie
+            // ta clé », y compris sur une coupure réseau. Capturer est la première moitié.
+            setErreur(messageErreurIa(err));
         } finally {
             setIsLoading(false);
         }
@@ -108,10 +114,8 @@ export const CoupleOptimizationCard: React.FC = () => {
                                 {isLoading ? 'Analyse fiscale…' : 'Générer 3 stratégies IA'}
                             </button>
                         )}
-                        {hasError && (
-                            <p className="text-danger-400 text-tiny mt-2">
-                                Erreur lors de la génération. Vérifie ta clé Anthropic.
-                            </p>
+                        {erreur !== null && (
+                            <p className="text-danger-400 text-tiny mt-2">{erreur}</p>
                         )}
                     </div>
                 )}

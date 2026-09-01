@@ -9878,3 +9878,48 @@ prouve est de le rendre conditionnel — le test rougit sur « région absente a
 ⚠️ Et `preventScroll` n'est pas un détail de confort : le hook vient de lancer un `scrollIntoView`
 fluide, et un focus qui rejoue son propre défilement le coupe net. Quand deux mécanismes déplacent la
 vue, le second doit dire explicitement qu'il ne la déplace pas.
+
+
+### Lot 68 (2026-09-01) — un message d'erreur ne se corrige pas là où il s'affiche
+
+`UN-MESSAGE-NE-SE-CORRIGE-PAS-LA-OU-IL-S-AFFICHE`
+
+Huit surfaces affichaient « Vérifie ta clé Anthropic » quelle que soit la cause : coupure réseau,
+quota atteint, service en panne, clé réellement refusée. Un texte affiché est une **affirmation**, et
+celle-ci envoie l'utilisateur corriger un champ qui n'a rien pendant que le vrai problème est
+ailleurs. Le dépôt avait déjà nommé la classe — *un correctif de diagnostic se relit comme un
+correctif de calcul* — sans l'appliquer ici.
+
+**Deux des huit sites écrivaient `catch { }`.** Sans lier l'erreur, ils ne *pouvaient* rien dire
+d'autre, quoi qu'on écrive dans le composant. C'est le point de méthode : la correction d'un message
+commence rarement à l'endroit du message. Chercher d'abord si l'information existe encore à ce
+niveau — ici elle était jetée deux lignes plus haut.
+
+⚠️ **Un classificateur qui existe déjà ne répond pas forcément à la question qu'on pose.**
+`classifyCategorizeError` (`services/claude.ts`) partitionne en `retryable` / `auth` / `fatal` — une
+partition qui sert la REPRISE d'un lot de catégorisation. Pour un message, elle est fausse :
+`retryable` fusionne une coupure réseau et un quota atteint, qui ne se racontent pas pareil et ne se
+règlent pas pareil ; `fatal` n'apprend rien à un humain. Les deux fonctions restent distinctes — mais
+dérivent du **même fait** (`httpStatusOf`, désormais exporté), jamais d'une seconde lecture de
+l'erreur qui dériverait en silence.
+
+⚠️ **Rejouer la garde élargie a doublé le périmètre.** Le ticket nommait un site, le recensement en a
+trouvé quatre, et l'élargissement du motif en a révélé **quatre de plus** (`TaxCenter`,
+`ImportBankStatement`, `PayslipUploadCard`, `Planning`). Trois d'entre eux affirmaient *deux* causes à
+la fois (« vérifie le format **et** ta clé ») sur une erreur dont ils ne savaient rien : l'indice de
+format ne vaut que si la requête elle-même a été refusée.
+
+⚠️⚠️ **Et `\b` est ASCII en JavaScript.** Mon motif `/\bcl[ée]\b/` ne matchait **jamais** « clé »
+suivie d'un espace : `é` n'est pas un caractère de mot, donc il n'y a aucune frontière entre lui et
+l'espace. La garde rendait « aucun offender » sur un fichier qui portait la phrase — et ce n'est pas
+l'assertion principale qui l'a démasqué, c'est le test d'**exemption**, qui exigeait de retrouver une
+phrase précise et ne la retrouvait pas. Un test d'exemption n'est pas de la bureaucratie : c'est le
+seul qui vérifie que le scan *voit* quelque chose de nommé. Tout motif de scan sur du français se
+vérifie sur un accent.
+
+⚠️ **Deux limites consignées plutôt que masquées.** `Investments` ne peut PAS nommer sa cause
+(`getRebalanceJustifications` fait `catch → return []`) : son message dit ce qu'il sait — « n'a rien
+rendu » — et un test l'exige, pour que personne ne l'« améliore » en réinventant un coupable. Et les
+messages Finnhub gardent les leurs : les erreurs de ce service n'ont pas la forme de celles du SDK
+Anthropic, et réutiliser le module sans le vérifier aurait recréé le défaut qu'on venait de corriger.
+Les deux sont au BACKLOG, non corrigés — c'est du scope non demandé.

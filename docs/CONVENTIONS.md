@@ -8523,6 +8523,41 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 57 — une perturbation muette sur SON PROPRE ajout dit que l'ajout est inutile
+
+`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`
+
+`[A11Y-PRIVACY-DIVERS]` : huit montants restaient en clair en mode discret, dans sept écrans — cinq
+affichés (budget de voyage, économie d'impôt du couple, deux bandeaux du graphe Futur, deux résultats
+du chercheur d'objectif) et trois champs de SAISIE. Tous masqués.
+
+**Le ticket visait les mauvaises lignes pour un de ses huit sites**, et pas d'un cheveu : les lignes
+citées pour `HealthIndicator` sont des POURCENTAGES. Les vrais montants — cible FIRE, coût des
+abonnements — sont construits dans `utils/healthScore.ts`, dans le champ `raw` des métriques. C'est
+la classe du lot 56 (montant interpolé dans une phrase produite en amont), avec une différence qui
+compte : ces gabarits ne contiennent aucun texte utilisateur, donc le découpage est propre. Mais
+`healthScore.ts` est un util **pur** — il ne doit pas lire le store — et `raw` est consommé à TROIS
+endroits du composant (texte visible, `aria-label` du cas indisponible, `sr-only`). Découpé en
+ticket séparé plutôt que bâclé : un lot se coupe là où le geste cesse d'être mécanique.
+
+**La leçon du lot vient d'une perturbation qui n'a RIEN fait.** Le salaire net du conjoint vivait
+dans un `<label>` qui ENVELOPPAIT son `<input>`, sans `htmlFor`. En mode discret la primitive rend un
+`<button>`, et plutôt que de supposer que l'enveloppement le nomme encore, j'ai ajouté l'association
+explicite. Puis je l'ai perturbée : **retirer le `htmlFor` laisse les douze tests verts**.
+
+Devant une perturbation muette, la question par défaut est « mon assertion l'atteint-elle ? »
+(lot 56, les espaces insécables). Mais quand ce qu'on perturbe est **son propre ajout du jour**, la
+première hypothèse est l'autre : **l'ajout ne sert à rien**. Ici c'était le cas — `button` est un
+élément labelable, donc l'enveloppement suffisait déjà. Les deux hypothèses expliquent le même
+silence, et seule la seconde est flatteuse pour le code qu'on vient d'écrire ; c'est la symétrie
+exacte de `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`, appliquée à un attribut.
+
+L'attribut est **conservé** — il rend l'association indépendante de l'imbrication, donc il survit au
+jour où quelqu'un sortira le champ de son `<label>`, un refactor qui casse un nom accessible sans
+rien faire rougir. Mais sa redondance actuelle est ÉCRITE, et le test ne prétend plus la prouver :
+**il prouve le FAIT (le champ garde son nom sous masquage), pas le mécanisme qui l'assure.** La
+perturbation qui discrimine ce fait, elle, existe : retirer le libellé rougit les deux cas.
+
 ### Lot 56 — un montant INTERPOLÉ dans une phrase n'est plus masquable
 
 `UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`

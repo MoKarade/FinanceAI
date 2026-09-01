@@ -13,6 +13,7 @@ const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistoryS
 import { FutureHealthSummary } from './future/FutureHealthSummary';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
@@ -1836,7 +1837,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         )}
                         {dailyPast !== null && Math.abs(dailyPast.undatedTotal) > 0.5 && (
                             <span className="mt-1 block text-amber-300/90">
-                                ⚠ {formatCAD(Math.abs(dailyPast.undatedTotal))} de transactions datées au mois
+                                ⚠ <PrivateAmount>{formatCAD(Math.abs(dailyPast.undatedTotal))}</PrivateAmount> de transactions datées au mois
                                 seul (sans jour) ne peuvent pas être placées : le niveau des jours passés peut
                                 être décalé d'autant.
                             </span>
@@ -1855,7 +1856,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         )}
                         {dailyPast !== null && Math.abs(dailyPast.flowsAfterNowDate) > 0.5 && (
                             <span className="mt-1 block text-amber-300/90">
-                                ⚠ {formatCAD(Math.abs(dailyPast.flowsAfterNowDate))} de transactions datées
+                                ⚠ <PrivateAmount>{formatCAD(Math.abs(dailyPast.flowsAfterNowDate))}</PrivateAmount> de transactions datées
                                 après aujourd'hui sont déjà dans ton solde actuel mais pas encore dans les
                                 jours passés.
                             </span>

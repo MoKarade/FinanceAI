@@ -2100,13 +2100,27 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   ⚠️ **PAS corrigé dans le lot 56** : découverte en chemin, scope non demandé (convention §6). Et le
   ticket `[A11Y-PRIVACY-SCAN-GLOBAL]` (plus bas) annonce 38 sites de ce genre dans 19 fichiers — le
   correctif isolé d'un site ne vaut que s'il pose la source unique que les 37 autres consommeront.
+  ⚠️ **Deux sites de plus, MESURÉS en livrant `[A11Y-PRIVACY-DIVERS]`** (lot 57) :
+  `components/retirement/GoalSeekerCard.tsx` rend le patrimoine successoral et l'épargne mensuelle
+  nécessaire avec `` `{…toLocaleString('fr-CA')}$` `` — même violation, et le fichier n'importe même
+  pas `formatCAD`. Ils sont désormais MASQUÉS (mode discret), mais toujours mal formatés.
 
-- [ ] **`[A11Y-PRIVACY-DIVERS]`** (M, 8 sites MOYENS regroupés) — `Travel.tsx:125` (budget de voyage) ·
-  `dashboard/HealthIndicator.tsx:196,220` (cible FIRE $ et coût des abonnements $ sous les métriques,
-  widget permanent) · `retirement/GoalSeekerCard.tsx:61-66,100,111` · `tax/CoupleOptimizationCard.tsx:129` ·
-  `investments/AddStockForm.tsx:418-419` · `FutureProjection.tsx:1642,1649` (bandeau « courbe au jour »,
-  omission ponctuelle dans un fichier par ailleurs gardé) · `settings/sections/UsersCard.tsx:230` ·
-  `retirement/RetirementSettingsCard.tsx:56-64`.
+- [ ] **`[A11Y-PRIVACY-HEALTH-RAW]`** (S, MOYEN — **découpé du ticket `[A11Y-PRIVACY-DIVERS]`** en le
+  livrant, 2026-09-01) — deux montants de l'indicateur de santé restent en clair en mode discret :
+  la **cible FIRE** (`« … (cible Future : X $) »`) et le **coût mensuel des abonnements**
+  (`« X $/mois (… du revenu net) »`).
+  ⚠️ **Le ticket d'origine visait les mauvaises lignes** : `HealthIndicator.tsx:196,220` sont des
+  POURCENTAGES. Les montants sont construits dans `utils/healthScore.ts`, dans le champ `raw` des
+  métriques `fireProgress` et `subscriptionLoad`.
+  ⚠️ **MÊME CLASSE QUE LES JOURNAUX DU MOTEUR** (lot 56) : un montant interpolé dans une phrase
+  produite EN AMONT — `<PrivateAmount>` ne peut rien envelopper. Différence utile : ici les gabarits
+  ne contiennent AUCUN texte utilisateur, donc le découpage est propre.
+  ⚠️ **Et `healthScore.ts` est un util PUR** : il ne doit pas lire le store. Le correctif consiste à
+  découper `raw` (structure, ou variante sans montant) et à laisser le composant choisir. `raw` est
+  consommé à **TROIS** endroits de `HealthIndicator` — le texte visible, l'`aria-label` du cas
+  indisponible, et le `sr-only` de la description — et les trois doivent suivre, sinon la fuite se
+  déplace au lieu de disparaître (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). [MESURÉ]
+
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.

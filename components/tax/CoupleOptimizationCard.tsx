@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getCoupleOptimizationStrategies, type CoupleOptimizationStrategy, type CoupleTaxContext } from '../../services/claude';
 import { formatCAD } from '../../utils/format';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 /**
  * Phase G.4 — Optimisation fiscale croisée pour couple.
@@ -133,7 +134,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                     <p className="text-tiny text-ink-200 leading-relaxed">{s.description}</p>
                                     {s.estimated_savings_cad !== undefined && s.estimated_savings_cad > 0 && (
                                         <div className="mt-2 inline-block px-2 py-1 bg-success-500/15 border border-success-500/30 rounded text-tiny font-mono font-bold text-emerald-300">
-                                            Économie estimée : {formatCAD(s.estimated_savings_cad)}/an
+                                            Économie estimée : <PrivateAmount>{formatCAD(s.estimated_savings_cad)}</PrivateAmount>/an
                                         </div>
                                     )}
                                 </div>

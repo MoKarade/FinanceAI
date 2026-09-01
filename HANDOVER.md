@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 57 : huit montants en clair, et un attribut mesuré redondant
+> `[A11Y-PRIVACY-DIVERS]` — 5 montants affichés + 3 champs de saisie masqués, dans 7 fichiers.
+> - **Périmètre RE-RECENSÉ** : lignes du ticket périmées, et pour `HealthIndicator` le ticket visait
+>   des POURCENTAGES. Les vrais montants viennent de `utils/healthScore.ts` (`raw`), un util PUR —
+>   même classe que les journaux du moteur du lot 56 → **découpé** en `[A11Y-PRIVACY-HEALTH-RAW]`,
+>   avec la note que `raw` est consommé à TROIS endroits qui doivent tous suivre.
+> - ⚠️ **Une perturbation a mesuré qu'un de mes propres attributs était REDONDANT** : le `htmlFor`
+>   posé sur le salaire du conjoint ne change rien — le `<label>` qui ENVELOPPE nomme déjà le
+>   `<button>` rendu par la primitive (`button` est labelable). Conservé pour la robustesse au
+>   refactor, avec sa raison écrite, et le test ne prétend plus le prouver : il prouve le FAIT.
+>   **Une perturbation muette sur MON PROPRE ajout dit qu'il ne sert à rien — pas que le test est
+>   mauvais.** Il faut distinguer les deux, et ici c'était le premier cas.
+> - **Découverte** ajoutée au ticket de format : `GoalSeekerCard` viole `formatCAD` sur ses 2 sites.
+
 > ## 🟦 Session 2026-09-01 — Lot 56 : le plus gros trou du mode discret
 > `[A11Y-PRIVACY-PROJECTION-EXPLAINS]` — `ProjectionExplains.tsx` avait **zéro** `isPrivacyMode` sur
 > 293 lignes, alors qu'il détaille la projection année par année ET mois par mois.

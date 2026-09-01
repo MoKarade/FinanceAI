@@ -8,6 +8,7 @@ import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../../ser
 import { compareLifeScenarios } from '../../services/projection/drawdownOptimizer';
 import type { SimulationParams } from '../../services/projection';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 
 interface GoalSeekerCardProps {
     paramsBuilder: () => SimulationParams;
@@ -98,7 +99,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                                 .map((r, i) => (
                                     <div key={r.scenarioType} className="flex justify-between text-tiny text-ink-200">
                                         <span className="flex items-center gap-2"><span className="w-4 h-4 inline-flex items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-ink-300 shrink-0">{i + 1}</span>{r.strategyName}</span>
-                                        <span className="font-mono" title="Patrimoine successoral, rentes RRQ/PSV incluses">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}$</span>
+                                        <PrivateAmount className="font-mono" title="Patrimoine successoral, rentes RRQ/PSV incluses">{Math.round(r.estateNetWorth).toLocaleString('fr-CA')}$</PrivateAmount>
                                     </div>
                                 ))}
                         </div>
@@ -109,7 +110,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                     <div className="p-3 bg-white/[0.03] border border-white/10 rounded-lg">
                         {goalSeekResult.savings !== undefined && (
                             <p className="text-body text-ink-200">
-                                Tu dois épargner <strong className="text-primary">{goalSeekResult.savings.toLocaleString('fr-CA')}$/mois</strong>
+                                Tu dois épargner <strong className="text-primary"><PrivateAmount>{goalSeekResult.savings.toLocaleString('fr-CA')}$</PrivateAmount>/mois</strong>
                                 {goalSeekResult.error && <span className="text-meta text-orange-300 mt-1 flex items-center gap-1.5"><Icon name="alert" size={13} /> {goalSeekResult.error}</span>}
                             </p>
                         )}

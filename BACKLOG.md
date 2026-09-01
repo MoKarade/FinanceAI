@@ -2087,9 +2087,20 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   d'énumérer, et elle ne peut pas oublier un écran. Les tickets `-DIVERS`, `-PROJECTION-EXPLAINS`,
   `-PROPERTY-CONFIG` et `-ONBOARDING` devraient être RE-CADRÉS depuis son résultat plutôt que depuis
   l'audit — leurs sites sont corroborés par le scan, mais rien ne dit que l'audit soit exhaustif.
-- [ ] 🔴 **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S) — `components/projection/ProjectionExplains.tsx` :
-  zéro `isPrivacyMode`. Vue année-par-année ET mois-par-mois complète de la projection (soldes,
-  cotisations, croissance, retraits, transferts) en clair.
+- [ ] **`[FORMAT-EXPLAINS-TOLOCALESTRING]`** (XS, MOYEN — **découvert en livrant
+  `[A11Y-PRIVACY-PROJECTION-EXPLAINS]`**, 2026-09-01) — `components/projection/ProjectionExplains.tsx`
+  (ligne ~24) formate ses montants signés avec `` `${signe}${Math.abs(Math.round(n)).toLocaleString('fr-CA')} $` ``.
+  C'est une violation directe du non-négociable du `CLAUDE.md` : « **Formatage $ : `formatCAD`
+  (`utils/format.ts`) UNIQUEMENT. Jamais `toLocaleString()` nu, jamais `` `${n.toFixed(0)}$` ``** ».
+  Le fichier importe pourtant déjà `formatCAD` deux lignes plus haut, pour son autre helper.
+  ⚠️ **Le correctif n'est PAS un remplacement mécanique** : `formatCAD` ne préserve pas le signe `+`
+  d'un montant positif, qui porte ici de l'information (une cotisation vs un retrait). Il faut soit
+  un `formatCADSigned` exporté par `utils/format.ts` (source unique, réutilisable — `GoalSeekerCard`
+  et `HealthIndicator` ont le même besoin), soit composer le signe autour de `formatCAD`.
+  ⚠️ **PAS corrigé dans le lot 56** : découverte en chemin, scope non demandé (convention §6). Et le
+  ticket `[A11Y-PRIVACY-SCAN-GLOBAL]` (plus bas) annonce 38 sites de ce genre dans 19 fichiers — le
+  correctif isolé d'un site ne vaut que s'il pose la source unique que les 37 autres consommeront.
+
 - [ ] **`[A11Y-PRIVACY-DIVERS]`** (M, 8 sites MOYENS regroupés) — `Travel.tsx:125` (budget de voyage) ·
   `dashboard/HealthIndicator.tsx:196,220` (cible FIRE $ et coût des abonnements $ sous les métriques,
   widget permanent) · `retirement/GoalSeekerCard.tsx:61-66,100,111` · `tax/CoupleOptimizationCard.tsx:129` ·

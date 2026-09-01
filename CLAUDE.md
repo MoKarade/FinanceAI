@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 023 tests** Vitest
-(481 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 027 tests** Vitest
+(482 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -838,6 +838,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   peut viser du code dont la sortie est jetée » vaut aussi quand on se contente de ROUTER le bug, et
   un `CHANGELOG` qui décrit un défaut que l'utilisateur ne subit pas est pire qu'un ticket de trop
   (`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
+- **Un montant INTERPOLÉ dans une phrase n'est plus un nœud** — donc plus masquable : `parts` était
+  un `string[]` de `« +1 200 $ cotisé »`, et aucun `<PrivateAmount>` ne peut envelopper ça. Là où une
+  valeur sensible finira masquée, elle doit rester une DONNÉE jusqu'au rendu (`{ montant, libelle }`).
+  ⚠️ Et pour un texte construit par le MOTEUR, qui porte le montant à l'intérieur et interpole du
+  texte UTILISATEUR : ni clair, ni regex — **garder le FAIT, taire le DÉTAIL** (« 2 événements ce
+  mois-ci »). ⚠️ Corollaire de test : `formatCAD` sépare les milliers par une espace **insécable**
+  (U+00A0), donc un `not.toContain('90 000')` écrit avec une espace ordinaire est VACUEUX — mesuré,
+  la perturbation laissait les 4 tests verts. Normaliser les espaces avant toute assertion sur un
+  montant rendu (`UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`).
 - ⚠️ **`cat >` court-circuite le garde-fou d'écrasement de `Write`** : j'ai créé « mon » fichier de
   garde `PropertyConfigurator.privacy.test.tsx` — il existait déjà (49 lignes, 3 cas), et je l'ai
   écrasé. Vu au `git diff --stat` (« 56 deletions » sur un fichier réputé neuf), rattrapé par

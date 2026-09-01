@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 56 : le plus gros trou du mode discret
+> `[A11Y-PRIVACY-PROJECTION-EXPLAINS]` — `ProjectionExplains.tsx` avait **zéro** `isPrivacyMode` sur
+> 293 lignes, alors qu'il détaille la projection année par année ET mois par mois.
+> - **Deux canaux, deux remèdes** : les montants calculés étaient INTERPOLÉS dans des phrases (un
+>   `string[]`) — un montant noyé dans une chaîne n'est plus un nœud, donc la structure porte
+>   maintenant `{ montant, libelle }`. Les JOURNAUX du moteur portent le montant dans leur texte :
+>   regex proscrite (ils interpolent du texte utilisateur), donc on garde le FAIT et on tait le
+>   DÉTAIL — « 2 événements ce mois-ci ». **Décision de conception, tranchée au plus prudent.**
+> - ⚠️ **Une assertion d'absence VACUEUSE, démasquée par la perturbation** : `formatCAD` sépare les
+>   milliers par une espace INSÉCABLE (U+00A0). `not.toContain('90 000')` écrit avec une espace
+>   ordinaire ne pouvait JAMAIS matcher — et retirer le `PrivateAmount` laissait les 4 tests verts.
+>   Une perturbation muette dit d'abord que l'assertion ne l'atteint pas.
+> - ✅ **La leçon du lot 55 a servi immédiatement** : j'ai vérifié qu'un test existait déjà
+>   (`ProjectionExplains.test.tsx`, 6 cas) AVANT d'écrire — la garde neuve porte donc le suffixe
+>   `.privacy` et ne l'écrase pas.
+> - **Découverte routée** : `[FORMAT-EXPLAINS-TOLOCALESTRING]` — `fmtSigned` viole le non-négociable
+>   « `formatCAD` UNIQUEMENT ». Non corrigée : le correctif utile pose une source unique que les
+>   37 autres sites annoncés par `[A11Y-PRIVACY-SCAN-GLOBAL]` consommeront.
+
 > ## 🟦 Session 2026-09-01 — Lot 55 : le mode discret s'arrêtait au milieu d'un formulaire
 > `[A11Y-PRIVACY-PROPERTY-CONFIG]` — 5 champs de saisie + 1 slider masqués dans
 > `PropertyConfigurator`. Critère : le libellé porte un `$`. Les taux et la date restent en clair.

@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 56 : le plus gros trou du mode discret, et deux canaux à traiter autrement (PR #783)
+
+- [x] **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S, 🔴) — « `ProjectionExplains.tsx` : zéro
+  `isPrivacyMode`. Vue année-par-année ET mois-par-mois complète de la projection en clair. »
+  ✅ **Livré**, et le ticket sous-estimait la NATURE du travail : deux canaux, deux remèdes.
+  · **Montants calculés** : ils étaient INTERPOLÉS dans des phrases (`« +1 200 $ cotisé »`, un
+    `string[]`). Un montant noyé dans une chaîne n'est plus un nœud — impossible à envelopper après
+    coup. La structure porte désormais `{ montant, libelle }`.
+  · **Journaux du moteur** (`flowEvents`/`lifeEvents`) : des phrases construites en amont, qui
+    PORTENT le montant. Une regex y est proscrite (elles interpolent du texte utilisateur — noms de
+    dettes, d'immeubles, d'enfants). Retenu : garder le FAIT, taire le DÉTAIL — « 2 événements ce
+    mois-ci ». Décision de conception tranchée au plus prudent et signalée (convention §6).
+  · ⚠️ **Une de mes assertions d'absence était VACUEUSE et la perturbation l'a montré** :
+    `formatCAD` sépare les milliers par une espace INSÉCABLE (U+00A0), donc `not.toContain('90 000')`
+    écrit avec une espace ordinaire ne pouvait jamais matcher. Corrigé par normalisation.
+  · **Découverte routée** : `[FORMAT-EXPLAINS-TOLOCALESTRING]` — `fmtSigned` viole le non-négociable
+    `formatCAD` UNIQUEMENT.
+
 ## 2026-09-01 — Lot 55 : le mode discret s'arrêtait au milieu d'un formulaire (PR #782)
 
 - [x] **`[A11Y-PRIVACY-PROPERTY-CONFIG]`** (S) — « les 2 sliders prix/mise de fonds SONT masqués mais

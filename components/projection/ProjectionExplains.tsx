@@ -15,6 +15,8 @@ import { Card } from '../ui/Card';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { useFinanceStore } from '../../store/useFinanceStore';
 
 interface ProjectionExplainsProps {
   chartData: ProjectionChartPoint[];
@@ -57,10 +59,22 @@ const METHODOLOGY: ReadonlyArray<{ q: string; a: string }> = [
   { q: "C'est quoi le « cône » Monte Carlo ?", a: "Au lieu d'un rendement fixe, l'app simule des centaines de scénarios de marché (bons et mauvais). La zone ombrée montre la fourchette probable (P10 à P90) de ta valeur nette." },
 ];
 
+/**
+ * ⚠️ [A11Y-PRIVACY-PROJECTION-EXPLAINS] `parts` était un `string[]` : les montants y étaient
+ * INTERPOLÉS dans la phrase (`« +1 200 $ cotisé »`). Un montant noyé dans une chaîne ne peut pas
+ * être enveloppé de `<PrivateAmount>` — il n'est plus un nœud. Le mode discret ne se pose donc pas
+ * « après coup » sur ce genre de structure : il faut que le montant reste une DONNÉE jusqu'au rendu.
+ * C'est la même raison qui fait que `formatCAD` est une source unique et pas un `${n} $` local.
+ */
+interface MonthPart {
+  montant: number;
+  libelle: string;
+}
+
 interface MonthRow {
   account: string;
   balance: number;
-  parts: string[];
+  parts: MonthPart[];
 }
 
 /** Extrait les comptes ayant bougé ce mois-ci (cotisation/croissance/retrait/transfert). */
@@ -78,12 +92,12 @@ function buildMonthRows(p: ProjectionChartPoint): MonthRow[] {
     const withdrawal = num(acc.withdrawal);
     const transfer = num(acc.transfer);
     const payout = num(acc.payout);
-    const parts: string[] = [];
-    if (contrib > 0.5) parts.push(`${fmtSigned(contrib)} cotisé`);
-    if (Math.abs(growth) > 0.5) parts.push(`${fmtSigned(growth)} marché`);
-    if (withdrawal > 0.5) parts.push(`${fmtSigned(-withdrawal)} retrait`);
-    if (payout > 0.5) parts.push(`${fmtSigned(-payout)} versé`);
-    if (Math.abs(transfer) > 0.5) parts.push(`${fmtSigned(transfer)} transfert`);
+    const parts: MonthPart[] = [];
+    if (contrib > 0.5) parts.push({ montant: contrib, libelle: 'cotisé' });
+    if (Math.abs(growth) > 0.5) parts.push({ montant: growth, libelle: 'marché' });
+    if (withdrawal > 0.5) parts.push({ montant: -withdrawal, libelle: 'retrait' });
+    if (payout > 0.5) parts.push({ montant: -payout, libelle: 'versé' });
+    if (Math.abs(transfer) > 0.5) parts.push({ montant: transfer, libelle: 'transfert' });
     // On affiche un compte s'il a un solde non négligeable OU un mouvement ce mois.
     if (Math.abs(balance) > 0.5 || parts.length > 0) {
       rows.push({ account: acc.label, balance, parts });
@@ -110,6 +124,7 @@ interface YearGroup {
 export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartData }) => {
   const [query, setQuery] = useState('');
   const [openYears, setOpenYears] = useState<Set<number>>(new Set());
+  const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
   // [EP-7] La méthodologie passe sous <CollapsibleSection> « En savoir plus » (plus de toggle maison).
 
   // Garde uniquement les points mensuels « complets » (déterministes, avec une année).
@@ -220,9 +235,9 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
                 {typeof group.age === 'number' && <span className="text-meta text-ink-400">{group.age} ans</span>}
               </div>
               <div className="text-right">
-                <div className="text-body text-ink-50 font-bold font-mono">{fmt(group.endNetWorth)}</div>
+                <PrivateAmount as="div" className="text-body text-ink-50 font-bold font-mono">{fmt(group.endNetWorth)}</PrivateAmount>
                 <div className={`text-tiny font-mono ${growth >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                  {fmtSigned(growth)} cette année
+                  <PrivateAmount>{fmtSigned(growth)}</PrivateAmount> cette année
                 </div>
               </div>
             </button>
@@ -237,23 +252,48 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
                     <div key={m.monthIndex} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3 mb-1.5">
                         <span className="text-meta font-bold text-ink-100">{m.dateLabel}</span>
-                        <span className="text-meta font-mono text-ink-300">{fmt(m.NetWorth)}</span>
+                        <PrivateAmount className="text-meta font-mono text-ink-300">{fmt(m.NetWorth)}</PrivateAmount>
                       </div>
 
-                      {events.length > 0 && (
+                      {/* ⚠️ [A11Y-PRIVACY-PROJECTION-EXPLAINS] Les journaux du moteur portent des
+                          MONTANTS DANS LEUR TEXTE (« 🎁 Héritage Inattendu: +250 000$ ») : ce sont
+                          des phrases construites côté moteur, pas des nœuds séparables. Trois
+                          options, une seule tenable :
+                          · les laisser en clair → le mode discret ne protège rien sur cet écran, qui
+                            est justement la vue la plus détaillée de la projection ;
+                          · effacer les montants par REGEX sur le texte → interdit ici, ces libellés
+                            interpolent du texte UTILISATEUR (noms de dettes, d'immeubles, d'enfants)
+                            et une heuristique de texte sur du contenu saisi fabrique des faux
+                            positifs (`TEXT-HEURISTIC-OVER-USER-TEXT`) ;
+                          · garder le FAIT et taire le DÉTAIL — retenu. On annonce combien
+                            d'événements le mois porte, sans en révéler un seul chiffre. C'est le
+                            patron « séparer l'ALERTE du LIBELLÉ » déjà employé ailleurs dans le
+                            dépôt : l'information structurelle survit, la donnée sensible non. */}
+                      {events.length > 0 && (isPrivacyMode ? (
+                        <p className="text-meta text-ink-400 italic mb-2">
+                          {events.length === 1 ? '1 événement ce mois-ci' : `${events.length} événements ce mois-ci`}
+                          {' '}— désactive le mode discret pour les lire.
+                        </p>
+                      ) : (
                         <ul className="space-y-0.5 mb-2">
                           {events.map((ev, i) => (
                             <li key={i} className="text-meta text-ink-200 leading-snug">{ev}</li>
                           ))}
                         </ul>
-                      )}
+                      ))}
 
                       {moved.length > 0 && (
                         <div className="flex flex-wrap gap-x-4 gap-y-1">
                           {moved.map(r => (
                             <span key={r.account} className="text-tiny text-ink-400">
                               <span className="text-ink-300 font-medium">{r.account}</span>
-                              {' '}{r.parts.join(' · ')}
+                              {r.parts.map((part, i) => (
+                                <React.Fragment key={part.libelle}>
+                                  {i === 0 ? ' ' : ' · '}
+                                  <PrivateAmount>{fmtSigned(part.montant)}</PrivateAmount>
+                                  {' '}{part.libelle}
+                                </React.Fragment>
+                              ))}
                             </span>
                           ))}
                         </div>

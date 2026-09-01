@@ -8523,6 +8523,49 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 56 — un montant INTERPOLÉ dans une phrase n'est plus masquable
+
+`UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`
+
+`[A11Y-PRIVACY-PROJECTION-EXPLAINS]` : l'explorateur de projection — l'écran le plus détaillé de
+l'app, année par année ET mois par mois — n'avait **aucun** `isPrivacyMode` sur 293 lignes. Le ticket
+disait vrai, et sous-estimait la NATURE du travail : il n'y avait pas un canal de fuite mais **deux**,
+qui ne se traitent pas pareil.
+
+**1. Les montants CALCULÉS étaient interpolés dans des phrases.** `parts` était un `string[]` dont
+chaque entrée valait `« +1 200 $ cotisé »`. Un montant noyé dans une chaîne **n'est plus un nœud** :
+`<PrivateAmount>` ne peut rien envelopper, et aucun masquage ne se pose « après coup » sur ce genre
+de structure. La règle générale : **là où une valeur sensible finira masquée, elle doit rester une
+DONNÉE jusqu'au rendu**. C'est la même raison qui fait de `formatCAD` une source unique plutôt qu'un
+`${n} $` local. La structure porte désormais `{ montant, libelle }` et le rendu compose les deux.
+
+**2. Les JOURNAUX DU MOTEUR portent le montant dans leur texte** (« 🎁 Héritage Inattendu:
++250 000$ »). Ce sont des phrases construites en amont, et trois options seulement :
+
+- les laisser en clair — le mode discret ne protégerait rien sur l'écran le plus bavard ;
+- effacer les montants par REGEX — **proscrit ici** : ces libellés interpolent du texte UTILISATEUR
+  (noms de dettes, d'immeubles, d'enfants), et une heuristique de texte sur du contenu saisi fabrique
+  des faux positifs (`TEXT-HEURISTIC-OVER-USER-TEXT`) ;
+- **garder le FAIT, taire le DÉTAIL** — retenu. « 2 événements ce mois-ci » : l'information
+  structurelle survit, la donnée sensible non. C'est le patron « séparer l'ALERTE du LIBELLÉ »
+  (`EPURATION-SUPPRIME-LA-RESERVE`), appliqué au sens inverse.
+
+Décision de conception visible, tranchée au plus prudent et signalée — convention §6.
+
+⚠️ **Et une de mes assertions d'absence était VACUEUSE, démasquée par la perturbation.** Retirer le
+`<PrivateAmount>` de la valeur nette mensuelle laissait les quatre tests **verts**. Cause :
+`formatCAD(90000)` rend `"90\u00A0000\u00A0$"` — des espaces **insécables** (code 160), pas des
+espaces ordinaires. Mon `not.toContain('90 000')`, écrit avec une espace normale, ne pouvait donc
+jamais matcher. **Une perturbation muette dit d'abord que l'ASSERTION ne l'atteint pas, avant de dire
+que le code ne sert à rien** — leçon déjà au dépôt, re-payée ici sur un détail d'encodage. Toute
+assertion sur un montant RENDU normalise les espaces d'abord ; le patron existait dans
+`FutureDetailModal.transactions.test.tsx`.
+
+✅ **La leçon du lot 55 a servi dès le lot suivant** : avant d'écrire la garde, j'ai vérifié qu'un
+test existait déjà pour ce composant (`ProjectionExplains.test.tsx`, six cas). Il existait. La garde
+neuve porte donc le suffixe `.privacy` et ne l'écrase pas — et les six cas d'origine sont restés
+verts, ce qui vaut contrôle de non-régression sur la restructuration de `parts`.
+
 ### Lot 55 — écrire un fichier de test avec `cat >` court-circuite le garde-fou d'écrasement
 
 `UN-FICHIER-DE-TEST-QUI-SEMBLE-NEUF-EXISTE-PEUT-ETRE-DEJA`

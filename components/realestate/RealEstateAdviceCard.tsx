@@ -3,6 +3,7 @@ import { Icon, type IconName } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getRealEstateAdvice, type RealEstateContext, type RealEstateAdvice } from '../../services/claude';
+import { messageErreurIa } from '../../services/messageErreurIa';
 
 /**
  * Phase F.8 — Conseils IA Immobilier poussés.
@@ -31,7 +32,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
 
     const handleGenerate = async () => {
         if (!apiKey) {
-            setError('Configure ta clé Anthropic dans Configuration.');
+            setError(messageErreurIa(null, { cleAbsente: true }));
             return;
         }
         setIsLoading(true);
@@ -43,8 +44,11 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
             } else {
                 setError('Aucun conseil généré. Réessaie.');
             }
-        } catch {
-            setError('Erreur IA. Vérifie ta clé.');
+        } catch (err) {
+            // [AI-BUDGETMODAL-ERROR-COLLAPSE] `catch {}` ne LIAIT pas l'erreur : ce site ne pouvait
+            // rien dire d'autre que « vérifie ta clé », quelle que soit la cause. Capturer est la
+            // première moitié du correctif.
+            setError(messageErreurIa(err));
         } finally {
             setIsLoading(false);
         }

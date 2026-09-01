@@ -2117,9 +2117,23 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 
 
-- [ ] **`[AI-BUDGETMODAL-ERROR-COLLAPSE]`** (S) — catch générique rend « Vérifie ta clé Anthropic »
-  même quand clé valide (réseau, 429, JSON tronqué). Contraste avec `agentLoop.ts` qui distingue
-  `truncated`/`refused`/`error`. **Correctif** : détecter troncature + message honnête.
+- [ ] **`[AI-FINNHUB-CAUSE-COLLAPSE]`** (S) — ⚠️ **Révélé par la garde du lot 68, NON corrigé : autre
+  service, hors périmètre.** Même défaut que `[AI-BUDGETMODAL-ERROR-COLLAPSE]` côté **Finnhub** :
+  `investments/AddStockForm.tsx` (×2) et `future/FutureHistorySection.tsx` affirment « vérifie ta clé
+  Finnhub » sur des échecs dont la cause n'est pas lue (réseau, quota, symbole inconnu). ⚠️ Le module
+  `services/messageErreurIa.ts` ne les couvre PAS : il dérive de `httpStatusOf` du SDK Anthropic, et
+  Finnhub a ses propres formes d'erreur. **Correctif** : classifier équivalent côté `marketData`,
+  puis mêmes messages distincts. Ne pas réutiliser le module IA sans vérifier la forme des erreurs.
+
+- [ ] **`[AI-REBALANCE-CAUSE-PERDUE]`** (S) — ⚠️ **Découvert en livrant
+  `[AI-BUDGETMODAL-ERROR-COLLAPSE]` (lot 68), NON corrigé : hors périmètre.**
+  `getRebalanceJustifications` (`services/claude.ts`) fait `catch → logError → return []`, donc
+  l'écran Investissements ne reçoit qu'un tableau vide : il ne peut PAS distinguer « clé refusée »,
+  « réseau », « quota » et « le modèle n'a rien rendu ». C'est la seule des quatre surfaces IA qui
+  reste incapable de nommer sa cause — son message dit donc ce qu'il sait (« n'a rien rendu »)
+  plutôt qu'une phrase plausible. **Correctif** : propager l'erreur (ou rendre un résultat qui la
+  porte) et brancher `messageErreurIa`. ⚠️ Vérifier les AUTRES appelants de cette fonction avant de
+  changer sa signature.
 
 - [ ] **`[AI-COUPLE-SELFRATED-CONFIDENCE]`** (S) — `confidence` et `estimated_savings_cad` sont
   AUTO-évalués par le modèle ; code valide que la FORME (enum Zod) et affiche « Haute confiance »

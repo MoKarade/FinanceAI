@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 102 tests** Vitest
-(493 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 111 tests** Vitest
+(495 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un message d'erreur ne se corrige pas là où il s'affiche** : deux des huit surfaces écrivaient
+  `catch { }` — sans LIER l'erreur, elles ne pouvaient rien dire d'autre que « vérifie ta clé », quoi
+  qu'on écrive dans le composant. La première moitié du correctif est de CAPTURER. Et un texte
+  affiché est une AFFIRMATION : « vérifie ta clé » sur une coupure réseau envoie corriger un champ
+  qui n'a rien (`UN-MESSAGE-NE-SE-CORRIGE-PAS-LA-OU-IL-S-AFFICHE`). ⚠️ Corollaire : un classificateur
+  qui existe déjà ne répond pas forcément à la question qu'on pose — `classifyCategorizeError` sert
+  la REPRISE (`retryable` fusionne réseau et 429) ; le message a besoin d'une autre partition, dérivée
+  du MÊME fait (`httpStatusOf`), pas d'une seconde lecture de l'erreur.
+  ⚠️⚠️ **`\b` est ASCII en JavaScript** : `/\bcl[ée]\b/` ne matche JAMAIS « clé » suivi d'un espace —
+  `é` n'est pas un caractère de mot, donc il n'y a aucune frontière. Ma garde rendait « aucun
+  offender » sur un fichier qui portait la phrase, et c'est le test d'EXEMPTION qui l'a démasquée.
+  Tout motif de scan sur du français se vérifie sur un accent.
 - ⚠️ **`focus()` sur un CONTENEUR est un no-op SILENCIEUX** : un `<div>` ciblé par un deep-link n'est
   pas focalisable ; l'appel a l'air posé, la garde de source le voit, et il ne se passe rien. Il faut
   `tabIndex = -1` (atteignable par script, hors ordre de tabulation) — et le test interroge

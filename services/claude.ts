@@ -319,7 +319,10 @@ export const CATEGORIZE_CHUNK_PACING_MS = 1_000;
 const defaultSleep = (ms: number): Promise<void> => new Promise<void>((r) => { setTimeout(r, ms); });
 
 /** Statut HTTP porté par une erreur du SDK Anthropic (`APIError.status`), sinon `undefined`. */
-const httpStatusOf = (err: unknown): number | undefined => {
+// ⚠️ EXPORTÉ pour `services/messageErreurIa.ts` : le message affiché à l'utilisateur se dérive du
+// MÊME statut que la stratégie de reprise. Une seconde lecture de l'erreur ailleurs dériverait en
+// silence — les deux fonctions répondent à deux questions distinctes, mais à partir d'un seul fait.
+export const httpStatusOf = (err: unknown): number | undefined => {
     const s = (err as { status?: unknown } | null)?.status;
     return typeof s === 'number' ? s : undefined;
 };

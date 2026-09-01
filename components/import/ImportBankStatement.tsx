@@ -4,6 +4,7 @@ import { Icon } from '../ui/Icon';
 import { parseBankCsv, extractedTxnsToCsv, type ParsedBankCsv } from '../../services/import/parseBankCsv';
 import { analyzeBankStatement } from '../../services/claude';
 import { logError } from '../../services/errorLogger';
+import { causeErreurIa, messageErreurIa } from '../../services/messageErreurIa';
 import { Card } from '../ui/Card';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { formatCAD } from '../../utils/format';
@@ -78,7 +79,13 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
             setPreview(parsed);
         } catch (e) {
             logError({ source: 'ai', message: 'Import relevé : lecture/extraction échouée', error: e });
-            setError("Impossible de lire le fichier. (PDF/image : vérifie ta clé Anthropic et réessaie.)");
+            // [AI-BUDGETMODAL-ERROR-COLLAPSE] Idem : « vérifie ta clé » était affirmé sur une erreur
+            // dont la cause était disponible dans `e` mais jamais lue.
+            setError(
+                causeErreurIa(e) === 'requete'
+                    ? 'Impossible de lire le fichier. Vérifie son format (CSV, PDF ou image).'
+                    : `Impossible de lire le fichier. ${messageErreurIa(e) ?? ''}`.trim(),
+            );
         } finally {
             setAnalyzing(false);
         }

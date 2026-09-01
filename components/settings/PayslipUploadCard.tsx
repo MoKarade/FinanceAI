@@ -7,6 +7,7 @@ import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
+import { causeErreurIa, messageErreurIa } from '../../services/messageErreurIa';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { AiChatConfirmModal } from '../aiChat/AiChatConfirmModal';
@@ -157,7 +158,13 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
         } catch (err) {
             logError({ source: 'ai', severity: 'error', message: 'Analyse talon de paie (Vision) échouée', error: err });
             setStatus('');
-            showToast('Analyse échouée. Vérifie le fichier (JPG/PNG/PDF) et ta clé Anthropic.', 'error');
+            // [AI-BUDGETMODAL-ERROR-COLLAPSE] Deux conseils affirmés sur une cause inconnue.
+            showToast(
+                causeErreurIa(err) === 'requete'
+                    ? 'Analyse échouée. Vérifie le format du fichier (JPG/PNG/PDF).'
+                    : `Analyse échouée. ${messageErreurIa(err) ?? ''}`.trim(),
+                'error',
+            );
         } finally {
             setIsAnalyzing(false);
             // Reset l'input pour permettre re-upload du même fichier

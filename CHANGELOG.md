@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (L'app arrête d'accuser ta clé Anthropic à tort)
+
+- **Corrigé** : huit écrans affichaient « Vérifie ta clé Anthropic » **quelle que soit la cause** de
+  l'échec. Une coupure de réseau, un quota atteint, un service en panne et une clé réellement refusée
+  donnaient tous la même phrase — celle qui n'est vraie que dans le dernier cas. Résultat : on part
+  vérifier une clé parfaitement valide pendant que le vrai problème est ailleurs.
+- **Ce que tu verras maintenant** : « Quota atteint, réessaie dans quelques minutes », « Connexion
+  interrompue, vérifie ton accès Internet », « Le service est momentanément indisponible », ou
+  « Clé refusée » — seulement quand c'est vraiment elle.
+- **Fermer une fenêtre pendant une analyse n'est plus une erreur** : l'app provoquait elle-même une
+  interruption et l'affichait en rouge comme un échec.
+- **Deux limites signalées honnêtement plutôt que masquées** : sur l'écran Investissements, la cause
+  se perd à l'intérieur du service — le message dit donc ce qu'il sait (« n'a rien rendu ») au lieu
+  d'inventer un coupable. Et les erreurs de l'autre fournisseur de cours (Finnhub) gardent leur
+  ancien message : elles n'ont pas la même forme, et bâcler ce point aurait recréé le défaut.
+
 ## [unreleased] — 2026-09-01 (Changer d'onglet se voit maintenant aussi au clavier)
 
 - **Corrigé** : cliquer une destination ne produisait **aucun signal** hors de l'écran. Le curseur

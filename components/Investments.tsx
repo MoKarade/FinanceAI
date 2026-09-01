@@ -1086,7 +1086,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 )}
                                 {justificationsError && (
                                     <p role="status" className="text-danger-400 text-tiny">
-                                        Erreur lors de la génération. Vérifie ta clé Anthropic.
+                                        {/* [AI-BUDGETMODAL-ERROR-COLLAPSE] Ce site ne peut PAS nommer la cause, et
+                                            c'est un fait à dire plutôt qu'à masquer par une phrase plausible :
+                                            `getRebalanceJustifications` avale l'erreur (`catch → return []`), donc
+                                            l'écran ne reçoit qu'un tableau vide. Accuser la clé serait une
+                                            affirmation inventée — les trois autres surfaces IA nomment la cause
+                                            parce que leur erreur leur parvient. Propagation suivie au BACKLOG
+                                            (`[AI-REBALANCE-CAUSE-PERDUE]`). */}
+                                        La génération n'a rien rendu. Réessaie dans un moment.
                                     </p>
                                 )}
                                 <button

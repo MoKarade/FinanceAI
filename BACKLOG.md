@@ -2094,9 +2094,16 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   (`utils/format.ts`) UNIQUEMENT. Jamais `toLocaleString()` nu, jamais `` `${n.toFixed(0)}$` ``** ».
   Le fichier importe pourtant déjà `formatCAD` deux lignes plus haut, pour son autre helper.
   ⚠️ **Le correctif n'est PAS un remplacement mécanique** : `formatCAD` ne préserve pas le signe `+`
-  d'un montant positif, qui porte ici de l'information (une cotisation vs un retrait). Il faut soit
-  un `formatCADSigned` exporté par `utils/format.ts` (source unique, réutilisable — `GoalSeekerCard`
-  et `HealthIndicator` ont le même besoin), soit composer le signe autour de `formatCAD`.
+  d'un montant positif, qui porte ici de l'information (une cotisation vs un retrait).
+  ⚠️⚠️ **LA SOURCE UNIQUE EXISTE DÉJÀ — ne pas créer `formatCADSigned`** (MESURÉ 2026-09-01, lot 58) :
+  `formatSigned(n, { withCurrency: true })` est exporté par `utils/format.ts` et sert déjà à 8 sites
+  (`Budget.tsx`, `Retirement.tsx`, `TaxCenter.tsx`), le plus souvent enveloppé dans `PrivateAmount`.
+  La version précédente de ce ticket prescrivait de l'écrire : ç'aurait été un DOUBLON, et un doublon
+  rend le code introuvable par un seul nom. Seule différence de rendu à assumer : `formatSigned`
+  utilise le signe moins typographique `−` (U+2212) là où `fmtSigned` écrit un trait d'union `-`.
+  ⚠️ **Le 4ᵉ site est TOMBÉ** : `utils/healthScore.ts` composait `` `${formatNumber(x)} $` `` pour la
+  cible FIRE — corrigé en passant par `formatCAD` au lot 58, en découpant `raw` en segments. Restent
+  `ProjectionExplains.tsx` (`fmtSigned`) et les 2 sites de `GoalSeekerCard.tsx`.
   ⚠️ **PAS corrigé dans le lot 56** : découverte en chemin, scope non demandé (convention §6). Et le
   ticket `[A11Y-PRIVACY-SCAN-GLOBAL]` (plus bas) annonce 38 sites de ce genre dans 19 fichiers — le
   correctif isolé d'un site ne vaut que s'il pose la source unique que les 37 autres consommeront.
@@ -2104,22 +2111,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `components/retirement/GoalSeekerCard.tsx` rend le patrimoine successoral et l'épargne mensuelle
   nécessaire avec `` `{…toLocaleString('fr-CA')}$` `` — même violation, et le fichier n'importe même
   pas `formatCAD`. Ils sont désormais MASQUÉS (mode discret), mais toujours mal formatés.
-
-- [ ] **`[A11Y-PRIVACY-HEALTH-RAW]`** (S, MOYEN — **découpé du ticket `[A11Y-PRIVACY-DIVERS]`** en le
-  livrant, 2026-09-01) — deux montants de l'indicateur de santé restent en clair en mode discret :
-  la **cible FIRE** (`« … (cible Future : X $) »`) et le **coût mensuel des abonnements**
-  (`« X $/mois (… du revenu net) »`).
-  ⚠️ **Le ticket d'origine visait les mauvaises lignes** : `HealthIndicator.tsx:196,220` sont des
-  POURCENTAGES. Les montants sont construits dans `utils/healthScore.ts`, dans le champ `raw` des
-  métriques `fireProgress` et `subscriptionLoad`.
-  ⚠️ **MÊME CLASSE QUE LES JOURNAUX DU MOTEUR** (lot 56) : un montant interpolé dans une phrase
-  produite EN AMONT — `<PrivateAmount>` ne peut rien envelopper. Différence utile : ici les gabarits
-  ne contiennent AUCUN texte utilisateur, donc le découpage est propre.
-  ⚠️ **Et `healthScore.ts` est un util PUR** : il ne doit pas lire le store. Le correctif consiste à
-  découper `raw` (structure, ou variante sans montant) et à laisser le composant choisir. `raw` est
-  consommé à **TROIS** endroits de `HealthIndicator` — le texte visible, l'`aria-label` du cas
-  indisponible, et le `sr-only` de la description — et les trois doivent suivre, sinon la fuite se
-  déplace au lieu de disparaître (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). [MESURÉ]
 
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode

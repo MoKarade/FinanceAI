@@ -5,6 +5,7 @@ import { totalYearlyCostAudit } from './subscriptions';
 import { formatPercent, formatCAD, formatNumber } from './format';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } from '../services/portfolio';
 import { logErrorThrottled } from '../services/errorLogger';
+import { MASKED_AMOUNT_LABEL } from './privacyAria';
 
 // [NAV-MERGE-SANTE-FUTUR] Extrait de `components/dashboard/HealthIndicator.tsx` (Phase D.6) pour
 // SOURCE UNIQUE : la carte détaillée (Santé, sous-onglet Budget) et le résumé condensé (Futur)
@@ -51,17 +52,59 @@ function sanitizeNonFinite(rows: HealthMetricRow[]): HealthMetricRow[] {
         ...r,
         value: 0,
         available: false, // → l'UI affiche « — » et le total pondéré l'ignore
-        raw: 'Donnée invalide (valeur non finie)',
+        raw: [txt('Donnée invalide (valeur non finie)')],
         help: 'Une donnée source de cette métrique n\'est pas un nombre exploitable (infinie ou absente). '
             + 'Corrige-la dans Réglages (revenus, soldes, postes) pour réactiver la mesure.',
     }));
+}
+
+/**
+ * [A11Y-PRIVACY-HEALTH-RAW] Segment du détail d'une métrique de santé.
+ *
+ * `raw` était une CHAÎNE, donc les deux montants qu'elle interpole — la cible FIRE et le coût
+ * mensuel des abonnements — n'étaient plus des NŒUDS : `<PrivateAmount>` n'a rien à envelopper, et
+ * le mode discret les laissait en clair. Même classe que les journaux du moteur du lot 56
+ * (`UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`) : là où une valeur sensible finira
+ * masquée, elle doit rester une DONNÉE jusqu'au rendu.
+ *
+ * Ce module est PUR — il ne lit pas le store et ne connaît donc pas le mode discret. Il FORMATE et
+ * MARQUE ; c'est le composant qui DÉCIDE de masquer. D'où le découpage plutôt qu'une seconde
+ * chaîne « déjà masquée », qui dupliquerait chaque gabarit et divergerait.
+ */
+export type HealthRawPart =
+    /** Texte affiché tel quel (pourcentage, libellé, décompte) — jamais masqué. */
+    | { readonly type: 'texte'; readonly texte: string }
+    /** Montant en dollars, DÉJÀ formaté par `formatCAD` — masqué en mode discret. */
+    | { readonly type: 'montant'; readonly texte: string };
+
+/** Segment de texte simple. */
+const txt = (texte: string): HealthRawPart => ({ type: 'texte', texte });
+
+/**
+ * Segment de MONTANT. Le formatage passe obligatoirement par `formatCAD` (non négociable
+ * « Formatage $ » du `CLAUDE.md`) : le constructeur prend le NOMBRE, jamais une chaîne déjà
+ * composée, pour qu'aucun site ne puisse re-fabriquer son propre format.
+ */
+const mnt = (valeur: number): HealthRawPart => ({ type: 'montant', texte: formatCAD(valeur) });
+
+/**
+ * Rend les segments en CHAÎNE, pour un ATTRIBUT (`aria-label`) où il n'y a aucun nœud à envelopper.
+ *
+ * ⚠️ `masquer` n'est pas optionnel : un attribut est justement le canal par lequel ce dépôt a déjà
+ * vu fuir une valeur sensible (`MASQUAGE-RETIRE-UN-DISCRIMINANT`, revue #608). L'appelant doit
+ * trancher explicitement, et le libellé de remplacement est celui de `PrivateAmount` — un seul
+ * wording pour l'œil et pour le lecteur d'écran.
+ */
+export function healthRawText(parts: readonly HealthRawPart[], masquer: boolean): string {
+    return parts.map((p) => (masquer && p.type === 'montant' ? MASKED_AMOUNT_LABEL : p.texte)).join('');
 }
 
 export interface HealthMetricRow {
     id: keyof HealthWeights;
     label: string;
     value: number; // 0-100 (déjà clampé)
-    raw: string;   // valeur brute formatée pour le tooltip
+    /** Détail formaté, en SEGMENTS : un montant y reste identifiable jusqu'au rendu. */
+    raw: readonly HealthRawPart[];
     help: string;
     /** false = donnée de base manquante (ex. pas de projection FIRE, pas de dépenses du mois) :
      *  la métrique est affichée « requis » et EXCLUE du score pondéré. */
@@ -187,7 +230,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'savingsRate' as const,
             label: "Taux d'épargne",
             value: savingsRateScore,
-            raw: `${formatPercent(savingsRateRaw, 1)} (revenus − dépenses)`,
+            raw: [txt(`${formatPercent(savingsRateRaw, 1)} (revenus − dépenses)`)],
             help: "Cible 20%+ : marge mensuelle confortable.",
             available: true,
         },
@@ -195,7 +238,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'emergencyFund' as const,
             label: 'Coussin d\'urgence',
             value: emergencyScore,
-            raw: `${formatNumber(emergencyMonths, { decimals: 2 })} mois`,
+            raw: [txt(`${formatNumber(emergencyMonths, { decimals: 2 })} mois`)],
             help: "Cible 6 mois : suffisant pour absorber une perte d'emploi.",
             available: true,
         },
@@ -203,7 +246,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'debtRatio' as const,
             label: 'Ratio dette/actif',
             value: debtScore,
-            raw: `${formatPercent(debtAssetsRatio, 1)}`,
+            raw: [txt(formatPercent(debtAssetsRatio, 1))],
             help: "Cible 0% : pas de dette. >50% : zone critique.",
             available: true,
         },
@@ -211,9 +254,13 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'fireProgress' as const,
             label: 'Progression FIRE',
             value: fireScore ?? 0,
+            // ⚠️ Le montant est un SEGMENT à part (masquable), et il passe désormais par
+            // `formatCAD` : l'ancien `${formatNumber(x)} $` composait le format à la main, ce que le
+            // non-négociable « Formatage $ » interdit. Seule différence de rendu, MESURÉE :
+            // l'espace avant le « $ » devient insécable (U+00A0 au lieu de U+0020) — invisible.
             raw: fireProgressPct != null
-                ? `${formatPercent(fireProgressPct, 1)} (cible Future : ${formatNumber(fireTarget ?? 0)} $)`
-                : 'Projection requise — ouvrir Future',
+                ? [txt(`${formatPercent(fireProgressPct, 1)} (cible Future : `), mnt(fireTarget ?? 0), txt(')')]
+                : [txt('Projection requise — ouvrir Future')],
             help: fireProgressPct != null
                 ? "Cible 100% : indépendance financière atteinte (règle des 4%)."
                 : "La cible FIRE vient de l'onglet Future (moteur de projection). Calculez-la d'abord.",
@@ -223,7 +270,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'budgetParity' as const,
             label: 'Adhérence au budget',
             value: budgetParityScore ?? 0,
-            raw: budgetParityRaw,
+            raw: [txt(budgetParityRaw)],
             help: budgetParityScore != null
                 ? "Cible 100% : tu restes dans tes cibles par poste (hors épargne). Le score baisse avec le dépassement."
                 : !budgetInputsUsable
@@ -238,12 +285,12 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             label: 'Poids des abonnements',
             value: subscriptionLoadScore ?? 0,
             raw: subscriptionLoadScore != null
-                ? `${formatCAD(subMonthly)}/mois (${formatPercent(subLoadPct, 1)} du revenu net)`
+                ? [mnt(subMonthly), txt(`/mois (${formatPercent(subLoadPct, 1)} du revenu net)`)]
                 : subscriptions.length === 0
-                    ? 'Aucun abonnement épinglé'
+                    ? [txt('Aucun abonnement épinglé')]
                     : subsDiscarded > 0
-                        ? `${subsDiscarded} abonnement(s) au coût illisible — corrige-les dans Charges fixes`
-                        : 'Revenu requis',
+                        ? [txt(`${subsDiscarded} abonnement(s) au coût illisible — corrige-les dans Charges fixes`)]
+                        : [txt('Revenu requis')],
             // ⚠️ Aucun chiffre dans ce texte : il est LU par l'utilisateur, donc il aurait l'autorité
             // d'une mesure. Le « +7 points » que j'y avais écrit venait d'une fixture précise du
             // panel et n'était re-dérivable par personne — même classe que le chiffre recopié d'un

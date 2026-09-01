@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Mode discret : les deux derniers montants de l'indicateur de santé)
+
+- **Corrigé** : dans la carte « Santé financière », la cible FIRE (« 45,2 % (cible Future :
+  1 234 567 $) ») et le coût mensuel de tes abonnements (« 7 401 $/mois (…) ») restaient lisibles en
+  mode discret. Ils sont masqués maintenant, **sans perdre la phrase autour** : tu vois toujours
+  « (cible Future : ••• ) » et « •••/mois (12,4 % du revenu net) », donc la ligne reste
+  interprétable — c'est le montant qui disparaît, pas l'explication.
+- **Pourquoi c'était le dernier** : ces deux montants n'étaient pas écrits par l'écran mais fabriqués
+  plus haut, à l'intérieur d'une phrase toute faite. Il n'y avait donc rien à masquer au moment de
+  l'afficher. La phrase est maintenant découpée en morceaux, et le montant reste un morceau
+  identifiable jusqu'à l'écran.
+- **Détail invisible** : la cible FIRE passe par le formateur de montants commun à toute l'app. Seul
+  changement de rendu, mesuré : l'espace avant le « $ » devient insécable — le chiffre ne peut plus
+  se couper en fin de ligne.
+
 ## [unreleased] — 2026-09-01 (Mode discret : huit montants oubliés dans sept écrans)
 
 - **Corrigé** : huit montants restaient lisibles en mode discret — le budget d'un voyage, l'économie

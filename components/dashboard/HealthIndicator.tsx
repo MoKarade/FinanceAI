@@ -4,10 +4,11 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { DEFAULT_HEALTH_WEIGHTS, normalizeHealthWeights } from '../../utils/healthWeights';
 // [NAV-MERGE-SANTE-FUTUR] Calcul des métriques/score EXTRAIT vers `utils/healthScore.ts` (source
 // unique) : le résumé condensé de Futur (`FutureHealthSummary`) doit afficher le MÊME score.
-import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, type HealthMetricRow } from '../../utils/healthScore';
+import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, healthRawText, type HealthMetricRow } from '../../utils/healthScore';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 
 /**
@@ -66,6 +67,9 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const subscriptions = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
     // [ASSET-FX-DISPLAY] prix des actifs en devise NATIVE → conversion CAD pour le patrimoine du score.
     const fxRates = useFinanceStore(s => s.fxRates);
+    // [A11Y-PRIVACY-HEALTH-RAW] Le mode discret est lu ICI et pas dans `utils/healthScore.ts`,
+    // qui est un util PUR : il formate et marque les montants, le composant décide de les masquer.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // Centralisation : FireTarget vient de la projection si disponible
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
 
@@ -174,7 +178,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                         rencontre jamais (audit a11y, panel PR #757). */}
                                     <span
                                         className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`}
-                                        aria-label={m.available ? undefined : `${m.label} : ${m.raw}`}
+                                        aria-label={m.available ? undefined : `${m.label} : ${healthRawText(m.raw, isPrivacyMode)}`}
                                         aria-describedby={`${detailIdPrefix}-${m.id}`}
                                     >{m.available ? Math.round(m.value) : '—'}</span>
                                 </div>
@@ -196,7 +200,14 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                     coup la question WCAG 1.4.13 (contenu déclenché au survol), puisque
                                     l'information ne dépend plus du tooltip pour exister. */}
                                 <div id={`${detailIdPrefix}-${m.id}`} className="text-tiny text-ink-400 mt-0.5">
-                                    {m.raw}<span className="sr-only"> — {m.help}</span>
+                                    {/* [A11Y-PRIVACY-HEALTH-RAW] Le détail est une liste de SEGMENTS,
+                                        pas une chaîne : les deux montants (cible FIRE, coût mensuel des
+                                        abonnements) restent des nœuds, donc `PrivateAmount` peut les
+                                        masquer. Une chaîne interpolée ne se masque pas. */}
+                                    {m.raw.map((part, i) => (part.type === 'montant'
+                                        ? <PrivateAmount key={i}>{part.texte}</PrivateAmount>
+                                        : <React.Fragment key={i}>{part.texte}</React.Fragment>
+                                    ))}<span className="sr-only"> — {m.help}</span>
                                 </div>
                             </div>
                         );

@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 58 : le mode discret est complet sur l'indicateur de santé (PR #785)
+
+- [x] **`[A11Y-PRIVACY-HEALTH-RAW]`** (S, MOYEN — découpé du lot 57) — ✅ **Livré**. La cible FIRE
+  (« … (cible Future : X $) ») et le coût mensuel des abonnements (« X $/mois (…) ») sont masqués.
+  · **Correctif STRUCTUREL** : `raw` de `HealthMetricRow` passe d'une **chaîne** à une liste de
+    **segments** (`HealthRawPart`, union `texte | montant`). Un montant reste un NŒUD jusqu'au
+    rendu, donc `PrivateAmount` peut l'envelopper — même remède qu'au lot 56.
+  · **`utils/healthScore.ts` reste PUR** : il formate et MARQUE (le constructeur `mnt` impose
+    `formatCAD`), le composant DÉCIDE. Le helper `healthRawText(parts, masquer)` sert l'`aria-label`,
+    où il n'y a aucun nœud à envelopper — son paramètre de masquage est OBLIGATOIRE.
+  · ⚠️ **Le ticket annonçait TROIS sites de consommation de `raw` ; MESURÉ, il y en a DEUX.** Le
+    troisième qu'il nommait (le `sr-only`) rend `m.help`, qui ne porte aucun montant. **Neuvième
+    périmètre de ticket faux d'affilée — et celui-là avait été écrit la veille, par moi.**
+  · **Effet de bord DÉCLARÉ** : la cible FIRE passait par `` `${formatNumber(x)} $` `` (composition à
+    la main, interdite par le non-négociable « Formatage $ »). Elle passe par `formatCAD` : seule
+    différence de rendu, mesurée, l'espace avant le « $ » devient insécable (U+00A0 → au lieu de
+    U+0020). Invisible à l'œil.
+  · **Découverte MESURÉE, routée** au ticket `[FORMAT-EXPLAINS-TOLOCALESTRING]` :
+    `formatSigned(n, { withCurrency: true })` **existe déjà** (8 sites) — le ticket prescrivait de
+    créer un `formatCADSigned`, qui en serait le doublon. Ticket corrigé, code non touché (scope).
+
 ## 2026-09-01 — Lot 57 : huit montants en clair, et un attribut mesuré redondant (PR #784)
 
 - [x] **`[A11Y-PRIVACY-DIVERS]`** (M, 8 sites regroupés) — ✅ **Livré**, périmètre RE-RECENSÉ (les

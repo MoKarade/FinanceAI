@@ -10589,6 +10589,43 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 94 (2026-09-02) — une leçon se recopie avec sa PRÉMISSE, ou pas du tout
+
+`UNE-LECON-SE-RECOPIE-AVEC-SA-PREMISSE-OU-PAS-DU-TOUT`
+
+Au lot 93, la garde qui compte est « juger la cohérence sur les valeurs EFFECTIVES, après fusion avec
+ce qui est déjà stocké » : le payload MCP est PARTIEL par contrat, donc une comparaison sur le seul
+payload ne compare rien. J'ai recopié cette garde dans l'UI du lot suivant, avec son commentaire, sa
+référence au lot précédent, et l'assurance de quelqu'un qui vient de payer la leçon.
+
+Perturbation faite : juger sur le seul brouillon laisse **13 tests verts**. La prémisse était fausse
+— `startEdit` fait `setDraft({ ...d })`, le brouillon porte donc TOUJOURS tous les champs. La leçon
+était bonne, son domaine de validité s'arrêtait au MCP (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`,
+pris par l'autre bout : ici c'est celui qui APPLIQUE la règle qui doit prouver qu'il est dans son
+domaine). Deux hypothèses expliquaient le silence — « mon test est trop faible » et « mon code est
+redondant » — et seule la première est flatteuse
+(`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`, re-payée).
+
+Conduite retenue, la même que la fois précédente : garder la fusion (elle survit à un brouillon qui
+deviendrait partiel un jour), l'ÉCRIRE comme une précaution mesurée et non comme une garde, et faire
+porter au test le **FAIT** (« une origine incohérente ne s'enregistre pas ») plutôt que le mécanisme.
+Un test qui nomme un mécanisme redondant se met à défendre l'implémentation au lieu du comportement.
+
+⚠️ **Un test peut être bâti sur une prémisse fausse, et le dire clairement** : j'affirmais que les
+deux formulaires de `DebtManager` coexistent dans le DOM, donc que leurs `id` pouvaient entrer en
+collision. Mesuré : `startEdit` fait `setIsAdding(false)`, ils s'excluent — mon sélecteur n'en
+trouvait qu'un. Refondé sur ce qui est vrai (le suffixe SÉPARE les identifiants, vérifié en rendant
+chaque formulaire séparément), plus un second test qui épingle l'exclusion elle-même : c'est le fait
+dont dépend le premier, et s'il changeait, la séparation cesserait d'être une précaution.
+
+⚠️ **Le découpage prescrit par un ticket se re-mesure aussi.** Il demandait `LoanForm.tsx` /
+`LeaseForm.tsx` ; recensé, `DebtManager.tsx` fait 279 lignes et ses deux formulaires partagent cinq
+champs (nom, solde, taux, paiement, dates). Deux composants les auraient DUPLIQUÉS — exactement le
+défaut que le découpage prétendait éviter, en plus gros. Ce qu'il fallait extraire, c'est la PAIRE
+qui manquait, pas le formulaire. Corollaire de source unique : la condition d'affichage du montant
+emprunté vient de `KIND_AMORTISSANT`, la table du MOTEUR — un formulaire est un consommateur de la
+même vérité qu'un calcul, et une liste recopiée offrirait un champ pour un type que le moteur refuse.
+
 ### Lot 93 (2026-09-02) — le trou entre deux moitiés testées n'appartient à personne
 
 `UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`

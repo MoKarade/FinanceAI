@@ -2017,18 +2017,24 @@
   classification légitime que `Debt.amortizationYears` documente explicitement (« pour auto,
   hypothécaire »). Le double comptage réel — saisir la MÊME hypothèque dans la liste de dettes ET
   dans un bien — est un problème de SAISIE, antérieur à tout ce chantier et inchangé par lui.
-- [ ] 🟡 **`[DEBT-UI-PAR-TYPE]`** (M) — `DebtManager.tsx` n'expose JAMAIS le sélecteur `kind` (11
-  valeurs déjà dans `types.ts` depuis un lot antérieur — bail/prêt/marge/étudiant/autre…), seulement
-  4 `category` grossières. Marc ne peut donc pas distinguer bail vs prêt dans l'UI alors que le
-  moteur le sait déjà — `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`. **Correctif** : sélecteur
-  `kind` + champs conditionnels (originalBalance/amortizationYears pour les kinds amortissants,
-  `limit` pour heloc/carte, dates pour un bail) sortis en sous-composants dédiés
-  (`components/debt/LoanForm.tsx`, `LeaseForm.tsx`…) plutôt qu'empilés dans le même JSX déjà dense.
-  Indépendant de `[DEBT-AMORTIZATION]` (peut être livré avant ou après), mais fournit SON
-  discriminant `kind` fiable.
+- [x] 🟡 **`[DEBT-UI-PAR-TYPE]` — LIVRÉ le 2026-09-02** (PR #824), voir `docs/BACKLOG_ARCHIVE.md`.
+  Sélecteur `kind` (11 valeurs, libellés en `Record<DebtKind, string>` exhaustif) + `originalBalance`
+  affiché SEULEMENT pour les types que `KIND_AMORTISSANT` déclare amortissants, dans les DEUX
+  formulaires jumeaux. L'UI refuse désormais exactement ce que l'assistant refuse.
+  ⚠️ **Périmètre RÉDUIT par rapport au ticket, avec sa raison** : le ticket prescrivait un découpage
+  en `LoanForm.tsx`/`LeaseForm.tsx`. Recensé, `DebtManager.tsx` fait **279 lignes** et ses deux
+  formulaires partagent nom/solde/taux/paiement/dates — deux composants auraient DUPLIQUÉ ces champs
+  au lieu d'un seul, soit le défaut à éviter en plus gros. Extrait la PAIRE qui manquait
+  (`components/debt/DebtKindFields.tsx`), pas le formulaire.
+- [ ] 🟡 **`[DEBT-UI-CHAMPS-RESTANTS]`** (S, sorti du recensement de `[DEBT-UI-PAR-TYPE]`) — trois
+  champs du type restent inatteignables dans `DebtManager` : `limit` (plafond d'une marge ou d'une
+  carte), `amortizationYears` et `isInterestDeductible`. Aucun n'est sur le chemin de la courbe
+  d'amortissement — c'est pourquoi ils ont été laissés hors du lot 94 plutôt qu'ajoutés « pendant
+  qu'on y est ». ⚠️ Avant de coder : vérifier pour CHACUN qui le LIT dans le moteur, comme
+  `rsuYearsRemaining` l'a montré, un champ lu et jamais saisi est un chiffre FAUX, pas une lacune.
 
 **Ordre imposé** : `[DEBT-MCP-PARITE]` → `[DEBT-AMORTIZATION]` → `[DEBT-MCP-ORIGINALBALANCE]`.
-`[DEBT-UI-PAR-TYPE]` en parallèle, n'importe quand.
+Les trois sont LIVRÉS (lots 91→94). Reliquat : `[DEBT-UI-CHAMPS-RESTANTS]`, indépendant.
 
 ⚠️ **`[DEBT-LEASE-VS-LOAN-COMPARATOR]` (comparateur prêt vs bail, demandé par Marc dans le même
 message) N'EST PAS scopé ici** — cadrage insuffisant pour un MVP fiable : « rentable » n'a pas de

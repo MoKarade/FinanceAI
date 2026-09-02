@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Tu peux enfin dire à l'app si c'est un bail ou un prêt)
+
+- **Ajouté** : dans l'onglet Dettes, un choix du **type de dette** (hypothèque, prêt auto, bail auto,
+  marge, carte, prêt étudiant fédéral ou québécois, prêt personnel, prêt au conjoint, HELOC, autre).
+  L'app savait déjà manipuler ces onze types ; tu ne pouvais pas les lui dire.
+- **Ajouté** : le champ **montant emprunté à l'origine**, celui qui fait apparaître ta dette qui
+  diminue dans la partie passée du graphe. Il n'apparaît que pour les dettes qui s'amortissent
+  vraiment — inutile de le demander pour un bail ou une carte de crédit.
+- **Les deux fonctionnent à l'ajout ET à la modification** d'une dette existante.
+- **Même refus que côté assistant** : un montant emprunté inférieur à ce que tu dois encore est
+  refusé, avec l'explication, plutôt qu'accepté puis ignoré en silence par le calcul.
+- **Rappel** : ton bail auto reste plat dans le passé, quoi que tu saisisses. Un bail est un loyer sur
+  un terme, pas un solde qui fond — lui dessiner une courbe serait une invention.
+
+---
+
 ## [unreleased] — 2026-09-02 (Claude peut enfin lire le montant emprunté sur ton contrat)
 
 - **Ajouté** : l'assistant et l'import de document peuvent maintenant enregistrer le **montant

@@ -18,6 +18,7 @@ import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
 import { maskedTick } from '../utils/chartPrivacy';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
+import { DebtKindFields, refusOrigineIncoherente } from './debt/DebtKindFields';
 
 interface DebtManagerProps {
     debts: Debt[];
@@ -38,6 +39,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const handleAdd = () => {
+        // [DEBT-UI-PAR-TYPE] Même refus que l'écriture par l'assistant (`applyDocument`) : accepter
+        // ici ce que le MCP rejette laisserait le moteur refuser la courbe EN SILENCE.
+        if (refusOrigineIncoherente(newDebt.originalBalance, newDebt.balance)) return;
         if (newDebt.name && newDebt.balance && newDebt.balance > 0) {
             setDebts([...debts, { ...newDebt, id: Date.now().toString() } as Debt]);
             setIsAdding(false);
@@ -51,6 +55,19 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const cancelEdit = () => { setEditingId(null); setDraft({}); };
     const saveEdit = () => {
         if (!editingId) return;
+        // [DEBT-UI-PAR-TYPE] Cohérence du montant emprunté, sur les valeurs EFFECTIVES (brouillon
+        // fusionné sur la dette existante).
+        // ⚠️ REDONDANT AUJOURD'HUI, et mesuré comme tel : `startEdit` fait `setDraft({ ...d })`, donc
+        // le brouillon porte TOUJOURS tous les champs — juger sur `draft` seul donne le même résultat
+        // (perturbation faite : 13 tests verts). J'ai d'abord recopié ici la leçon du lot 93, où le
+        // payload MCP est VRAIMENT partiel ; sa prémisse est fausse dans cette UI. La fusion reste
+        // parce qu'elle survit à un brouillon qui deviendrait partiel (édition champ par champ,
+        // sauvegarde automatique) — mais elle est écrite comme une précaution, pas comme une garde,
+        // et le test porte le FAIT (« une origine incohérente ne s'enregistre pas ») plutôt que ce
+        // mécanisme (`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`).
+        const existante = debts.find(d => d.id === editingId);
+        if (refusOrigineIncoherente(draft.originalBalance ?? existante?.originalBalance,
+            draft.balance ?? existante?.balance)) return;
         // ⚠️ On fusionne sur la dette EXISTANTE (`{ ...d, ...draft }`) plutôt que de remplacer par le
         // brouillon : les champs que le formulaire ne montre pas (`kind`, `limit`, `rateProvider`,
         // `isInterestDeductible`…) survivraient sinon à peine à un clic sur « Enregistrer ».
@@ -154,6 +171,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                         <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.termEndDate ?? ''} onChange={e => setNewDebt({...newDebt, termEndDate: e.target.value || undefined})} />
                                     </label>
                                 </div>
+                                <DebtKindFields valeur={newDebt} onChange={patch => setNewDebt({ ...newDebt, ...patch })} idSuffixe="ajout" />
                                 <p className="text-tiny text-ink-400">
                                     Laisse vide si tu ne sais pas : sans date de fin, le paiement continue jusqu'à
                                     extinction. Avec une date de fin, il s'arrête à ce mois-là — et s'il reste un
@@ -183,6 +201,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                     <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.termEndDate ?? ''} onChange={e => setDraft({ ...draft, termEndDate: e.target.value || undefined })} />
                                                 </label>
                                             </div>
+                                            <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} />
                                             <div className="flex gap-2">
                                                 <button onClick={saveEdit} className="flex-1 bg-green-600 hover:bg-green-500 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>
                                                 <button onClick={cancelEdit} className="flex-1 bg-white/10 hover:bg-white/20 text-white text-meta py-1.5 rounded focus-ring">Annuler</button>

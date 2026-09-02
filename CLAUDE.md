@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 142 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 149 tests** Vitest
 (502 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -1053,6 +1053,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un correctif posé à l'étage où on a vu le SYMPTÔME peut être inatteignable** : j'ai écrit le
+  ticket jumeau de `[AI-FINNHUB-CAUSE-COLLAPSE]` en recopiant son diagnostic (« la façade fait
+  `catch { return [] }` ») — vrai, mais au MAUVAIS étage : `FinnhubProvider.searchSymbol` attrapait
+  et rendait `[]` lui-même, un cran plus bas. Mon correctif de façade était donc exactement le défaut
+  que le lot précédent venait de condamner. Ce qui l'a démasqué est l'ORDRE : garde comportementale
+  sur le VRAI module écrite et lancée AVANT de supposer la réussite (4 rouges). Le diagnostic d'un
+  ticket JUMEAU se re-mesure sur SON code — deux surfaces d'un même symptôme n'ont pas la même
+  profondeur de perte (`UN-CORRECTIF-POSE-A-L-ETAGE-OU-ON-A-VU-LE-SYMPTOME-PEUT-ETRE-INATTEIGNABLE`).
+  ⚠️ Corollaire de recensement : **une mesure qui CONFIRME se publie autant qu'une réfutation** —
+  après trois tickets faux, `[A11Y-RESERVE-CHIP-PROMINENCE]` était exact au centième (1,17 / 1,83 /
+  8,82 / 10,86) ; c'est sa CONCLUSION qui était fausse (WCAG 1.4.11 ne s'applique pas à une pastille
+  dont l'état est écrit en toutes lettres).
 - ⚠️ **Un sélecteur se restreint sur la DÉRIVÉE, pas sur les champs sources** : le ticket demandait
   « un sélecteur restreint aux champs RÉELLEMENT lus » — inapplicable, les champs lus sont décidés par
   `REQUIREMENTS[*].isMet`, HORS du composant ; les recopier ferait qu'un prérequis futur cesserait

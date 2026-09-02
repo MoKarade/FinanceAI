@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 78 : ma garde a démasqué MON correctif décoratif
+> `[MARKETDATA-SEARCH-CAUSE-COLLAPSE]` — ticket écrit par moi au lot 75. Défaut réel, **mais la perte
+> était attribuée au mauvais étage** : j'accusais le `catch` de la FAÇADE, or
+> `FinnhubProvider.searchSymbol` attrapait et rendait `[]` LUI-MÊME.
+> - ⚠️ Mon premier correctif était donc INATTEIGNABLE — le défaut que le lot 75 venait de nommer,
+>   re-commis par moi. C'est la garde comportementale, écrite AVANT de supposer la réussite, qui l'a
+>   démasqué (4 rouges sur un correctif que je croyais posé).
+> - Livré : le provider PROPAGE, la façade ENCODE (`searchSymbolsDetaille`), `searchSymbols` reste
+>   l'enveloppe au contrat inchangé, l'écran affiche la cause dans une région live PERMANENTE.
+> - **Requalifié** : `[A11Y-RESERVE-CHIP-PROMINENCE]` — chiffres du ticket CONFIRMÉS au centième
+>   (1,17 / 1,83 / 8,82 / 10,86), conclusion réfutée : WCAG 1.4.11 ne s'applique pas à une pastille
+>   dont l'état est écrit en toutes lettres. Reste un choix de DESIGN pour Marc.
+
 > ## 🟦 Session 2026-09-02 — Lot 77 : un sélecteur se restreint sur la DÉRIVÉE
 > `[PERF-RENDER-SETUPHUB-FULLSTORE]` — diagnostic juste, **remède du ticket faux** : « restreindre
 > aux champs réellement lus » est inapplicable (ils sont décidés par `REQUIREMENTS[*].isMet`, hors du

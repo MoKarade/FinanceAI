@@ -219,8 +219,13 @@ export class FinnhubProvider implements MarketDataProvider {
                 }))
                 .filter((r) => r.symbol && r.description);
         } catch (e) {
+            // [MARKETDATA-SEARCH-CAUSE-COLLAPSE] L'erreur se PROPAGE, comme celle de `getQuote` juste
+            // au-dessus — elle ne se transformait en `[]` que POUR ÊTRE JETÉE ensuite, ce qui rendait
+            // une clé refusée indiscernable d'un « aucun titre de ce nom ». Aucun appelant ne voit
+            // d'exception pour autant : la façade (`searchSymbolsDetaille`) l'ENCODE dans son
+            // résultat, parce que son unique consommateur est un effet de frappe sans `try/catch`.
             logProviderError('Finnhub', 'searchSymbol', query, e);
-            return [];
+            throw e;
         }
     }
 

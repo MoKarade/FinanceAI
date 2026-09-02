@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 78 : ma propre garde a démasqué mon propre correctif décoratif
+
+- [x] **`[MARKETDATA-SEARCH-CAUSE-COLLAPSE]`** — 2026-09-02. Ticket écrit par moi au lot 75, avec sa
+  mesure. Le défaut était réel (401 / 429 / panne réseau → `[]`, exactement comme « aucun résultat »,
+  donc une autocomplétion muette qui ne dit jamais qu'une clé est refusée) — **mais j'avais attribué
+  la perte au mauvais endroit** : je l'imputais au `catch { return [] }` de la façade, alors que
+  `FinnhubProvider.searchSymbol` attrapait et rendait `[]` LUI-MÊME, un cran plus bas.
+- ⚠️ **Mon premier correctif était donc décoratif** — un `catch` inatteignable, exactement le défaut
+  que le lot 75 venait de nommer. C'est la garde comportementale, écrite AVANT de supposer la
+  réussite, qui l'a démasqué : 4 rouges sur un correctif que je croyais posé.
+- **Livré** : `searchSymbol` du provider PROPAGE son erreur (comme `getQuote` et `getProfile` juste
+  au-dessus), `searchSymbolsDetaille` l'ENCODE (`ok` / `echec`), `searchSymbols` reste l'enveloppe au
+  contrat inchangé. `AddStockForm` affiche la cause sous le champ, dans une région live montée en
+  PERMANENCE dont on vide le texte.
+- **Garde** : les deux sens — un échec nomme sa cause, « aucun résultat » n'affiche RIEN (sans quoi
+  un message permanent, donc du bruit à chaque frappe, satisferait la moitié « échec »). Deux
+  perturbations séparées : le provider ré-avale (4 rouges), l'écran parle en permanence (1 rouge).
+- ⚠️ **Un test de LIMITE s'est INVERSÉ, il n'a pas été supprimé** : `finnhub.test.ts` affirmait
+  « erreur HTTP → `[]` (pas de crash) ». Ce `[]` n'était pas une protection, c'était la cause qui
+  mourait. Le test dit désormais que le provider PROPAGE — et son commentaire dit où la garantie
+  « pas de crash chez l'appelant » a DÉMÉNAGÉ (la façade l'encode, asserté ailleurs), sans quoi
+  l'inversion ressemblerait à un abandon de garantie.
+- **Requalifié au passage** : `[A11Y-RESERVE-CHIP-PROMINENCE]` — chiffres CONFIRMÉS au centième
+  (1,17 / 1,83 / 8,82 / 10,86), conclusion réfutée (WCAG 1.4.11 ne s'applique pas à une pastille dont
+  l'état est écrit en toutes lettres). Reste un choix de design pour Marc.
+
 ## 2026-09-02 — Lot 77 : un sélecteur se restreint sur la DÉRIVÉE, pas sur les champs sources
 
 - [x] **`[PERF-RENDER-SETUPHUB-FULLSTORE]`** — 2026-09-02. Le diagnostic était juste

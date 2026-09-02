@@ -434,11 +434,26 @@
   parent seul (mesuré : 166 $ → 250 $/mois au mois 36), ce qui est une **règle à trancher**, pas un
   correctif. Suivi en `[ENG-DIVORCE-ALLOC-ASSIETTE]`, en attente de Marc.
   ⚠️ Laisser ce ticket dans son état d'origine aurait fait re-livrer #721 (classe `PM-STALE-BACKLOG`).
-- [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS) — le TEXTE des pastilles de réserve est à ≈ 9–10:1
-  (AA et AAA : OK). C'est le CHIP qui ne ressort pas : fond à ≈ 1,15:1, bordure à ≈ 1,8:1, loin des
-  3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.
-  ⚠️ `check-contrast` ne couvre PAS ce cas (palette Tailwind par défaut, pas des tokens, et aucune
-  composition alpha) → **étendre l'outil d'abord**, choisir le shade par mesure ensuite.
+- [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS, **REQUALIFIÉ 2026-09-02 : design, pas conformité**)
+  — ⚠️ **Ses chiffres sont JUSTES, re-mesurés** (composition alpha sur `surfaceHighlight #15181E`,
+  palette Tailwind par défaut) : fond `bg-amber-500/10` → **1,17**, bordure `border-amber-500/30` →
+  **1,83**, texte → **8,82** (alerte) et **10,86** (réel). Le ticket annonçait ≈1,15 / ≈1,8 / ≈9–10.
+  Une mesure qui CONFIRME se publie autant qu'une réfutation.
+  ⚠️ **Mais sa conclusion ne suit pas.** Il veut étendre `check-contrast` pour imposer le seuil
+  non-texte 3:1 (WCAG 1.4.11) à ces pastilles. Or 1.4.11 vise l'information que la COULEUR SEULE
+  porte : ici l'état est écrit en toutes lettres DANS la pastille (« Réel », « Projeté »,
+  « ~ prix estimé »), à 8,8 et 10,9 de contraste, et la couleur ne porte rien de plus. Le seuil ne
+  s'applique pas — construire ce contrôle produirait un scanner qui crie sur du code conforme
+  (`UN-SCANNER-QUI-CRIE-SUR-DU-CODE-VIVANT-APPREND-A-ETRE-IGNORE`, et
+  `UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
+  **Ce qui reste** : la phrase du ticket lui-même — « l'effet *saute aux yeux* est affaibli » — sur
+  la seule pastille d'ALERTE. C'est un choix de DESIGN (quelle prominence pour une réserve ?), donc
+  à trancher avec Marc, pas à décider seul par une règle qui ne s'applique pas.
+  ⚠️ Note d'outillage, vraie et indépendante : `scripts/lib/ctaContrast.ts` ÉCARTE explicitement les
+  fonds translucides (`bg-…/10`) et ne résout que les tokens de `tailwind.config.js` — les classes de
+  la palette Tailwind par défaut lui sont invisibles. Réel, mais à ne PAS élargir pour ce ticket-ci :
+  la composition alpha dépend du fond de l'ANCÊTRE, qu'un scan par ligne ne connaît pas
+  (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
 
 - [x] ~~**`[ENG-GK-THRESHOLD-KNIFE]`**~~ ✅ **LIVRÉ 2026-08-21** (bande de lissage −4 %/−6 % —
   détail : section datée en tête de `docs/BACKLOG_ARCHIVE.md`, réf PR au merge).
@@ -2132,12 +2147,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   publier l'issue de l'hydratation (via le store) et faire dire à l'écran ce qui s'est réellement
   passé, ou retirer le champ mort ; dépend de `[MARKETDATA-HISTORY-CAUSE-PERDUE]` pour la cause.
 
-- [ ] **`[MARKETDATA-SEARCH-CAUSE-COLLAPSE]`** (XS) — `searchSymbols` (`services/marketData/index.ts`)
-  fait `catch { return [] }` : mesuré, 401 / 429 / panne réseau rendent `[]`, **exactement comme
-  « aucun résultat »**. Une clé refusée donne donc une autocomplétion vide et silencieuse dans
-  `AddStockForm`, sans jamais dire pourquoi. Impact faible (l'utilisateur peut basculer « À la
-  main »), mais c'est le même effondrement de causes. **Correctif** : même forme que
-  `getQuoteDetaille`, ou au minimum un indice à l'écran quand l'échec n'est pas « rien trouvé ».
 
 - [ ] **`[AI-MODELID-EPINGLER-SNAPSHOTS]`** (XS, **HUMAIN**) — ⚠️ **Moitié restante de
   `[AI-MODELID-PINNING-DRIFT]` (lot 70), non faisable par Claude.** `claude-sonnet-4-6` et

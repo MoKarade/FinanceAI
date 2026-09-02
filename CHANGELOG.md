@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (L'autocomplétion des titres ne se tait plus quand elle échoue)
+
+- **Corrigé** : quand tu tapes un nom de titre (Placements → Ajouter), si la recherche échouait —
+  clé refusée, quota atteint, connexion coupée — la liste ne descendait tout simplement pas. Mesuré :
+  ces trois cas rendaient exactement la même chose qu'un « aucun titre de ce nom », donc rien ne
+  permettait de les distinguer.
+- **Ce que tu verras** : une ligne discrète sous le champ qui dit ce qui a échoué. Et rien du tout
+  quand la recherche a simplement fini sans résultat — ce n'est pas un échec.
+
 ## [unreleased] — 2026-09-02 (Le hub de configuration ne se redessinait plus pour rien)
 
 - **Amélioré** : l'encart « état de la configuration » se redessinait à **chaque** écriture dans

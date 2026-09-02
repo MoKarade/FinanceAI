@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 71 : le correctif prescrit aurait annulé une décision antérieure (PR #801)
+
+- [x] **`[AI-BUDGETMODAL-RAW-FALLBACK]`** — 2026-09-02, PR #801. Le défaut décrit est RÉEL et encore
+  vivant : quand le modèle ne rend pas le JSON demandé, le texte brut était affiché dans les MÊMES
+  puces qu'une recommandation validée par `RecosSchema` — indiscernable.
+- ⚠️ **Mais le correctif prescrit (« échec honnête plutôt qu'affichage de secours ») aurait été une
+  RÉGRESSION** : le repli sur le texte brut est délibéré et commenté (`[BUDGET-AI-DUP-PARSING]`) —
+  jeter une réponse lisible pour cause de format est pire que de la montrer. Ce qui manquait n'était
+  pas le refus, c'était le STATUT. Même leçon qu'au lot 69, deux lots plus tôt.
+- **Livré** : `Diagnostic` en union discriminée (`validee` / `brute`), et la forme brute reçoit une
+  présentation VISUELLEMENT distincte (bordure pointillée, pas de puce) + une phrase qui dit qu'elle
+  n'a été « ni découpée ni vérifiée par l'app ». Le texte est conservé.
+- **Le test compare les DEUX habillages** (`not.toBe`), pas seulement la présence de la phrase : un
+  avertissement ajouté au-dessus d'une puce identique n'aurait rien corrigé.
+
 ## 2026-09-02 — Lot 70 : tous les identifiants de modèle ne se périment pas pareil (PR #800)
 
 - [x] **`[AI-MODELID-PINNING-DRIFT]`** — 2026-09-02, PR #800. Ticket JUSTE sur le fond

@@ -21,6 +21,7 @@ import { sanitizePersistEnvelope } from '../personaSanitizer';
 import { logError } from '../errorLogger';
 import type { ApiKeys } from './syncTypes';
 import { STORE_KEY, hasAnyKey } from './syncSnapshot';
+import { pushNow } from './syncPush';
 import { setStatus } from './syncStatusStore';
 import { currentMeta, readDrive, resolveSub } from './syncMeta';
 import { handleError } from './syncErrors';
@@ -36,8 +37,12 @@ import { handleError } from './syncErrors';
  * met à jour le store VIVANT → les composants se re-render avec les données restaurées, la session
  * reste connectée, les pushes suivants fonctionnent. (Bugs Marc 2026-05-29.)
  */
-async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<void> {
-    if (typeof localStorage === 'undefined') return;
+async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<{ clesPersistees: boolean }> {
+    // [SEC-AUDIT-SYNC-LEGACY-CLEARTEXT] Le retour dit si les clés ont VRAIMENT atteint le coffre.
+    // L'appelant en a besoin pour décider s'il peut ré-écrire le blob Drive en chiffré : pousser
+    // sans clés en main les EFFACERAIT de Drive — c'est le risque que ce lot ne doit pas courir.
+    let clesPersistees = false;
+    if (typeof localStorage === 'undefined') return { clesPersistees };
     // Filet : backup local de l'état courant avant d'écraser (réutilise backupAuto). Le SyncConflictModal
     // promet « un backup local est tenté avant » → un échec ne bloque pas la restauration, mais NE DOIT PAS
     // être avalé en silence (finding silent-failure 2026-07-14) : on journalise en 'warning' pour que
@@ -56,6 +61,7 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
     if (apiKeys && hasAnyKey(apiKeys)) {
         try {
             await saveApiKeys(apiKeys);
+            clesPersistees = true;
         } catch (e) {
             // [SYNC-APIKEYS-SILENT, audit 2026-07-16] Best-effort ASSUMÉ (les données sont restaurées
             // quand même) mais JOURNALISÉ : sans trace, les clés vivent en mémoire seulement et
@@ -101,6 +107,7 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
         // que l'utilisateur voie ses données (au prix d'un éventuel 2e login).
         if (typeof window !== 'undefined') window.location.reload();
     }
+    return { clesPersistees };
 }
 
 /** Tire Drive et applique (réhydratation EN PLACE). Met à jour la meta avant d'appliquer. */
@@ -119,6 +126,8 @@ export async function pullNow(): Promise<void> {
         // ceux de l'enveloppe ; pour un blob chiffré (`enc:true`), ils sortent du déchiffrement.
         let effectivePayload: unknown = drive.payload;
         let restoredKeys: ApiKeys = { anthropic: '', finnhub: '' };
+        // [SEC-AUDIT-SYNC-LEGACY-CLEARTEXT] Le blob lu portait-il des clés EN CLAIR ?
+        let clesEnClairSurDrive = false;
 
         if (drive.enc) {
             // Chemin ZÉRO-KNOWLEDGE : il FAUT la passphrase de cette session pour déchiffrer.
@@ -173,7 +182,11 @@ export async function pullNow(): Promise<void> {
                     }
                 }
             } else if (drive.apiKeys) {
+                // [SEC-AUDIT-SYNC-LEGACY-CLEARTEXT] Blob d'AVANT le chiffrement des clés (2026-05-29) :
+                // les clés y sont EN CLAIR. On les lit (rétro-compat) et on retient qu'il faudra
+                // ré-écrire le blob chiffré — voir plus bas.
                 restoredKeys = drive.apiKeys;
+                clesEnClairSurDrive = true;
             }
         }
 
@@ -189,7 +202,35 @@ export async function pullNow(): Promise<void> {
         const syncedAt = Date.now();
         // Pull réussi → plus besoin de passphrase (réinitialise le drapeau s'il était posé).
         setStatus({ conflict: false, conflictSummary: null, needsPassphrase: false });
-        await applyPulledPayload(effectivePayload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
+        const { clesPersistees } = await applyPulledPayload(effectivePayload, restoredKeys); // réhydrate le store EN PLACE (pas de reload)
+        // [SEC-AUDIT-SYNC-LEGACY-CLEARTEXT] Un vieux blob laisse les clés EN CLAIR dans Drive. Le
+        // ticket disait « ré-écrit au prochain push » — FAUX, mesuré : la meta qu'on vient d'écrire
+        // fait voir l'état comme INCHANGÉ (c'est voulu, cf. le commentaire de `lastLocalHash`), donc
+        // un utilisateur qui synchronise sans rien modifier les y laisse INDÉFINIMENT. On ré-écrit
+        // donc ICI, une fois, et à trois conditions strictes — parce que pousser sans clés en main
+        // les EFFACERAIT de Drive (c'est exactement ce que la garde `_apiKeysHydrated` évite au boot) :
+        //   1. le blob lu portait bien des clés en clair (sinon il n'y a rien à rechiffrer) ;
+        //   2. ces clés ne sont pas vides (`hasAnyKey`) ;
+        //   3. le COFFRE les a acceptées — sans ça, `pushNow` repartirait d'un local sans clés.
+        // ⚠️ On ne TOUCHE PAS au drapeau global `_apiKeysHydrated` : inutile ici, et le marquer
+        // désarmerait la protection anti-race du boot pour toute la session (mesuré — un test qui
+        // vérifie cette protection est devenu rouge dès que je l'ai marqué). Inutile parce que
+        // `applyPulledPayload` vient d'injecter les clés dans le STORE, d'où `pushNow` les lit :
+        // avec des clés non vides, la branche gardée par ce drapeau n'est jamais atteinte.
+        if (clesEnClairSurDrive && restoredKeys && hasAnyKey(restoredKeys) && clesPersistees) {
+            try {
+                await pushNow();
+            } catch (e) {
+                // Best-effort ASSUMÉ : les données et les clés sont déjà restaurées localement. Un
+                // échec laisse le vieux blob en clair (état d'avant), il ne perd rien — mais il se
+                // JOURNALISE, sinon « les clés sont toujours en clair sur Drive » serait invisible.
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: 'Pull Drive : ré-écriture chiffrée du blob hérité ÉCHOUÉE — les clés API restent EN CLAIR dans Drive jusqu\'au prochain push.',
+                    error: e instanceof Error ? e : new Error(String(e)),
+                });
+            }
+        }
         // Le pull réussi DOIT retomber busy:false : sinon le spinner « Synchronisation… » reste figé
         // après une restauration (applyPulledPayload ne touche pas au statut). Bug : seuls les chemins
         // early-return (drive null) et erreur (handleError) remettaient busy:false. (EPIC 1, 2026-06.)

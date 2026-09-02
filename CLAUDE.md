@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 166 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 170 tests** Vitest
 (504 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -1053,6 +1053,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une fenêtre d'exposition se mesure par ce qui la FERME, pas par ce qui l'ouvre** : le ticket
+  disait « les clés restent en clair jusqu'au prochain push » — rassurant, et faux : le pull écrit
+  délibérément une meta qui fait voir l'état INCHANGÉ (« pas de push parasite, donc pas d'effacement
+  des clés »), donc sans modification le blob reste en clair INDÉFINIMENT. Le mécanisme de fermeture
+  se lit dans le code, jamais dans la formule. ⚠️ Ici **le correctif était plus dangereux que le
+  défaut** (pousser sans clés en main les EFFACE de Drive) → trois conditions et trois cas NÉGATIFS
+  qui pèsent autant que le positif. ⚠️ **Devant un drapeau GLOBAL, demander ce qu'il protège
+  AILLEURS avant de le poser** : mon `markApiKeysHydrated()` « par sécurité » désarmait la protection
+  anti-race du boot pour toute la session (un test existant l'a dit), et était inutile. ⚠️⚠️ Une de
+  mes 4 gardes était VACUEUSE : fixture au chiffré BIDON ⇒ c'est `hasAnyKey` qui bloquait, pas la
+  condition testée — perturber CHAQUE condition séparément, une fixture d'échec « crédible » sature
+  souvent une autre contrainte
+  (`UNE-FENETRE-D-EXPOSITION-SE-MESURE-PAR-CE-QUI-LA-FERME-PAS-PAR-CE-QUI-L-OUVRE`).
 - ⚠️ **Une clé se dérive de ce qui IDENTIFIE, pas de ce qu'on AFFICHE** : `['L','M','M',…]` avec
   `key={d}` donnait deux clés `M` — la lettre est un rendu, le jour est l'identité, et les confondre
   ne marche que tant que l'abréviation est injective (par accident). Le `key={i}` que proposait le

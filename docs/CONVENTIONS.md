@@ -10494,6 +10494,50 @@ avertissement « same key ». **Avec son anti-vacuité** : un second cas rend d�
 React qui cesserait d'avertir, rendrait la garde verte quoi qu'il arrive. Toute garde qui repose sur
 un avertissement d'une bibliothèque doit prouver que l'avertissement existe encore.
 
+
+### Lot 83 (2026-09-02) — « jusqu'au prochain push » voulait dire « indéfiniment »
+
+`UNE-FENETRE-D-EXPOSITION-SE-MESURE-PAR-CE-QUI-LA-FERME-PAS-PAR-CE-QUI-L-OUVRE`
+
+Le ticket décrivait une fenêtre : « des clés API peuvent rester en clair dans un vieux blob Drive
+**jusqu'au prochain push** ». La phrase paraît rassurante — un push finit toujours par arriver. Mesuré,
+c'est faux : juste après un pull, le code écrit délibérément une meta qui fait voir l'état comme
+INCHANGÉ au prochain démarrage, avec le commentaire qui l'explique (« pas de push parasite, et donc
+pas d'effacement des clés dans Drive »). Un utilisateur qui synchronise sans rien modifier ne pousse
+jamais : la fenêtre ne se referme **pas**.
+
+La règle : une fenêtre d'exposition ne se décrit pas par l'événement qui l'OUVRE, mais par le
+mécanisme qui la FERME — et ce mécanisme se lit dans le code, jamais dans la formule. Ici il
+n'existait pas ; il existe maintenant, explicitement.
+
+⚠️ **Le correctif était plus dangereux que le défaut, et c'est ce qui a dicté sa forme.** Pousser
+sans clés en main les EFFACE de Drive — c'est exactement ce que la garde `_apiKeysHydrated` évite au
+boot. D'où trois conditions strictes, et trois cas de test NÉGATIFS qui pèsent autant que le positif :
+blob sans clair → rien ; clés vides → rien ; coffre qui refuse → rien.
+
+⚠️ **Mon premier jet appelait `markApiKeysHydrated()`** pour « être sûr ». Ce drapeau est global : le
+marquer depuis le pull désarme la protection anti-race du BOOT pour toute la session. Un test
+existant l'a dit immédiatement (il défendait précisément cette protection). Et c'était inutile :
+`applyPulledPayload` vient d'injecter les clés dans le store, d'où `pushNow` les lit — avec des clés
+non vides, la branche gardée par ce drapeau n'est jamais atteinte. **Devant un drapeau global,
+demander ce qu'il protège AILLEURS avant de le poser** ; la réponse était dans un test, pas dans son
+nom.
+
+⚠️⚠️ **Une de mes quatre gardes était VACUEUSE, et seule la perturbation l'a dit.** Le cas « blob
+déjà chiffré → aucune ré-écriture » passait — mais parce que ma fixture posait un chiffré BIDON : les
+clés n'étaient donc pas restaurées et c'est `hasAnyKey` qui bloquait le push, pas la condition testée.
+Retirer la condition testée laissait tout vert. Refaite avec un vrai `encryptApiKeys` (le test garde
+le vrai crypto), seule la bonne condition explique désormais le résultat. **Une fixture d'échec
+CRÉDIBLE (« une valeur opaque quelconque ») sature une AUTRE contrainte et rend la mesure aveugle** —
+famille `UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, et la seule parade est de
+perturber CHAQUE condition séparément.
+
+⚠️ **Un compte d'appels se RE-DÉRIVE, il ne se rebase pas** : le test du verrou anti-double-sync
+exigeait « 2 appels ». Il défend le VERROU ; le nombre n'en était que le proxy. Il passe à 3 (la
+ré-écriture est le troisième), avec le détail de chaque terme écrit sur place et le rappel que deux
+décisions en donneraient au moins quatre — donc l'assertion discrimine toujours ce qu'elle prétend
+défendre.
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

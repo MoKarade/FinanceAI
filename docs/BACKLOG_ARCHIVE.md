@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 83 : « jusqu'au prochain push » voulait dire « indéfiniment »
+
+- [x] **`[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]`** — 2026-09-02. Prémisse VÉRIFIÉE côté **producteurs**
+  (pas seulement consommateurs) : plus rien n'écrit de clés en clair dans l'enveloppe Drive —
+  `buildEnvelope` ne pose que `apiKeysEnc`, et `syncSnapshot` retire explicitement `apiKeys` de
+  l'état. Seule la LECTURE rétrocompatible subsiste, et c'est normal.
+- ⚠️ **Mais le ticket sous-estimait la fenêtre.** Il disait « jusqu'au prochain push » ; mesuré, le
+  pull écrit délibérément une meta qui fait voir l'état comme INCHANGÉ au prochain démarrage — avec
+  le commentaire qui l'explique (« pas de push parasite, et donc pas d'effacement des clés dans
+  Drive »). Un utilisateur qui synchronise sans rien modifier laisse donc un vieux blob en clair
+  **indéfiniment**.
+- **Livré** : ré-écriture chiffrée EXPLICITE après un pull hérité, à trois conditions strictes —
+  le blob lu portait bien des clés en clair, ces clés ne sont pas vides, et le COFFRE les a
+  acceptées. Sans la troisième, `pushNow` repartirait d'un local sans clés et les EFFACERAIT de
+  Drive : c'est le risque que ce lot ne devait pas courir.
+- ⚠️ **Correction de mon propre correctif** : mon premier jet appelait `markApiKeysHydrated()`, ce
+  qui désarme la protection anti-race du boot **pour toute la session**. Un test existant l'a
+  montré (il est devenu rouge). Inutile de surcroît : `applyPulledPayload` vient d'injecter les clés
+  dans le store, d'où `pushNow` les lit — avec des clés non vides, la branche gardée par ce drapeau
+  n'est jamais atteinte.
+- ⚠️ **Une de mes quatre gardes était VACUEUSE, et la perturbation l'a dit** : le cas « blob déjà
+  chiffré → aucune ré-écriture » passait parce que ma fixture posait un chiffré BIDON, donc les clés
+  n'étaient pas restaurées et c'est `hasAnyKey` qui bloquait — pas la condition testée. Refaite avec
+  un vrai `encryptApiKeys` : seule la bonne condition explique désormais le résultat.
+- ⚠️ **Un compte d'appels re-DÉRIVÉ, pas rebasé** : le test du verrou anti-double-sync comptait
+  « 2 appels ». Il défend le VERROU, le nombre n'en était que le proxy ; il passe à 3 (la ré-écriture
+  est le 3ᵉ), avec le détail écrit et le rappel que deux décisions en donneraient au moins 4.
+
 ## 2026-09-02 — Lot 82 : une clé se dérive de ce qui IDENTIFIE, pas de ce qu'on affiche
 
 - [x] **`[PLANNING-CALENDAR-KEY-DOUBLON]`** — 2026-09-02. L'en-tête du calendrier rendait

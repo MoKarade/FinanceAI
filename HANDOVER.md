@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 83 : « jusqu'au prochain push » voulait dire « indéfiniment »
+> `[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]` — prémisse vérifiée côté PRODUCTEURS (plus rien n'écrit de clés
+> en clair). Mais le ticket sous-estimait la fenêtre : le pull écrit une meta qui fait voir l'état
+> INCHANGÉ (volontairement), donc un vieux blob reste en clair INDÉFINIMENT sans modification.
+> - Livré : ré-écriture chiffrée après un pull hérité, à TROIS conditions (clair présent / clés non
+>   vides / coffre OK). Sans la 3ᵉ, `pushNow` partirait sans clés et les EFFACERAIT de Drive.
+> - ⚠️ Mon 1er jet appelait `markApiKeysHydrated()` → désarmait la protection anti-race du boot pour
+>   toute la session. Un test existant l'a montré. Inutile de surcroît (les clés sont déjà dans le
+>   store, d'où `pushNow` les lit).
+> - ⚠️ Une de mes 4 gardes était VACUEUSE (chiffré bidon ⇒ c'est `hasAnyKey` qui bloquait, pas la
+>   condition testée) — démasquée par la perturbation, refaite avec un vrai `encryptApiKeys`.
+> - ⚠️ Compte d'appels du verrou anti-double-sync RE-DÉRIVÉ (2 → 3), pas rebasé : il défend le
+>   verrou, le nombre n'en était que le proxy.
+
 > ## 🟦 Session 2026-09-02 — Lot 82 : une clé se dérive de ce qui IDENTIFIE
 > `[PLANNING-CALENDAR-KEY-DOUBLON]` — `['L','M','M',…]` avec `key={d}` ⇒ deux clés `M`, avertissement
 > React à chaque rendu. La clé devient le nom COMPLET du jour ; l'abréviation reste l'affichage.

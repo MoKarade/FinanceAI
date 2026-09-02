@@ -10589,6 +10589,42 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 90 (2026-09-02) — deux passes à la main sur la même classe, c'est qu'il faut une garde
+
+`UN-COMPTE-RECOPIE-DANS-UN-TITRE-NE-SE-MET-JAMAIS-A-JOUR`
+
+Cinq en-têtes de `BACKLOG.md` annonçaient un compte d'items. Additionnés, ils promettaient
+**50 items** là où il en restait **21** — et deux autres affirmaient au PRÉSENT des choses fausses :
+un « point chaud » de quatre défauts money-critical tous livrés depuis, et une section
+« la doc a décroché du code » vide depuis des mois. Un backlog est un outil de DÉCISION : la reprise
+de session choisit son lot d'après les titres avant de lire les listes. Annoncer plus du double de ce
+qu'on contient est donc un défaut d'outil, pas une coquette.
+
+⚠️ **Le correctif n'est pas de re-compter, c'est de SUPPRIMER le compte.** Un nombre recopié dans un
+titre est une `DOC-METRIQUE-RECOPIEE` dont la source unique est la liste juste en dessous : il ne se
+met à jour que si quelqu'un y pense, et personne n'y pense au moment de cocher une case. Les
+maintenir aurait garanti la prochaine dérive — et une garde qui vérifie l'ÉGALITÉ compte/réalité
+aurait imposé une maintenance à chaque livraison, pour une information que la liste donne déjà.
+
+⚠️⚠️ **Deux passes MANUELLES sur la même classe = il faut une garde.** Le lot 84 avait déjà corrigé à
+la main quatre en-têtes annonçant des tickets inexistants, dont un qui promettait « les 2 plus gros
+défauts de tout l'audit » au-dessus d'une section VIDE. La récidive six lots plus tard n'est pas un
+oubli, c'est une propriété du support. **Le seuil de « je corrige » à « j'automatise » est la
+deuxième occurrence, pas la dixième.**
+
+✅ **Et la garde se passe d'EXEMPTIONS.** Un titre qui doit raconter un reliquat historique le fait
+sans chiffre et renvoie à `docs/BACKLOG_ARCHIVE.md` — plutôt qu'une liste d'exceptions, qui est le
+réglage le plus dangereux d'un détecteur (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` : une liste trop
+courte se voit, une exclusion se lit comme un détail déjà tranché). Le détecteur porte ses TÉMOINS
+(les cinq formes réellement dérivées) et deux CONTRE-témoins, dont « un identifiant de ticket
+contenant un chiffre n'est pas un compte ».
+
+⚠️ **Un balayage de perturbations se termine par un run de CONTRÔLE, et voilà pourquoi** : ma
+restauration après perturbation utilisait `git checkout` sur un fichier de test **non encore suivi**
+— l'opération n'a rien fait, en silence, et c'est le run de contrôle final qui l'a vu (rouge alors
+qu'il devait être vert). Sans lui, j'aurais commité un détecteur neutralisé
+(`UN-GIT-CHECKOUT-DE-MESURE-PEUT-EFFACER-UNE-CORRECTION-NON-COMMITEE`, variante « ne restaure rien »).
+
 ### Lot 89 (2026-09-02) — un chiffre identique pour tous les utilisateurs n'en est pas un
 
 `UNE-GRANDEUR-QUI-NE-DEPEND-PAS-DE-L-UTILISATEUR-N-EN-DECRIT-AUCUN`

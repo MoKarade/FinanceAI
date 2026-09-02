@@ -1004,12 +1004,16 @@
 
 ### 🔴 Moteur — invariants et registres (agent `projection-validator`, tout MESURÉ)
 
-> ⚠️ **Point chaud : `services/projection/realEstateMonth.ts` cumule QUATRE défauts money-critical
-> indépendants**, trouvés par deux agents qui ne se parlaient pas — assiette fiscale absente,
-> registre d'affichage absent, plafond RAP de couple accordé à un célibataire, taux marginal plat
-> sur un retrait à six chiffres. Le module d'achat immobilier a visiblement été écrit sans passer la
-> checklist « quels registres ce producteur doit-il alimenter ? ». **À traiter en UN lot**, pas
-> ticket par ticket.
+> ✅ **Point chaud RÉSORBÉ — les QUATRE défauts sont livrés** (vérifié le 2026-09-02 : chacun est
+> `[x]` dans `docs/BACKLOG_ARCHIVE.md`). `services/projection/realEstateMonth.ts` cumulait, trouvés
+> par deux agents qui ne se parlaient pas, une assiette fiscale absente (`[REER-IMMO-HORS-ASSIETTE]`),
+> un registre d'affichage absent (`retraitReerMois`), le plafond RAP d'un COUPLE accordé à une
+> personne seule (`[RAP-DIVORCE-DEUX-TETES]`) et un taux marginal PLAT sur un retrait à six chiffres
+> (`[EMPILEMENT-REER-ACHAT-IMMO]`).
+> **Ce qui reste vrai, et c'est la seule raison de garder cette note** : le module d'achat immobilier
+> a été écrit sans passer la checklist « quels registres ce producteur doit-il alimenter ? ». Tout
+> nouveau producteur d'argent s'y confronte AVANT d'être livré. ⚠️ Cet en-tête annonçait encore
+> quatre défauts OUVERTS le 2026-09-02 — il envoyait chercher un point chaud déjà nettoyé.
 
 - [ ] **`[BUDGET-SENSIBILITE-MOTEUR]`** (M, FAIBLE — sorti du lot 89, MESURÉ) — la tuile
   « Sensibilité » de Budget a été SUPPRIMÉE (elle inventait le chiffre) ; la QUESTION qu'elle posait
@@ -1708,7 +1712,7 @@
   (`services/pdfReport.ts:265-879`), soit quasi tout le fichier. Correctif : découper par section
   de rapport (`buildHoldingsSection`, `buildDebtSection`…). [MESURÉ]
 
-### 📄 Documentation — la doc a décroché du code
+### ✅ Documentation — **SECTION VIDE, tout est livré** *(en-tête conservé pour l'historique des liens ; son titre affirmait au PRÉSENT que « la doc a décroché du code », sans un seul item dessous — vérifié vide depuis au moins #674)*
 
 
 ### ✅ Vérifié SAIN par le panel (ne pas re-lever sans nouvelle preuve)
@@ -1805,7 +1809,7 @@
 > Les 5 derniers captions du moteur détaillent CHAQUE hypothèse testée et RÉFUTÉE (ne pas
 > re-lever). Aucune baseline testée n'est cassée (3833/3833 verts post-audit).
 
-### 🔴 Moteur & fiscal — altère les calculs d'argent (8 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)  *(4 HIGH livrés : `[FISC-DON-ABATEMENT]` #611 · bloc DIVORCE #613)*
+### 🔴 Moteur & fiscal — altère les calculs d'argent
 
 > Périmètre : projection.ts + projection/* + utils/tax.ts + services/realEstate.ts
 > + services/claude.ts (Vision payslip). Tous les findings sont MESURÉS sur le vrai moteur
@@ -1919,14 +1923,14 @@
 
 
 
-### ✅ Échecs silencieux — **SECTION VIDE, tout est livré** *(le HIGH `[SILENT-ACTIONPLAN-NAN]` par #608, les 3 MED/LOW depuis ; le titre annonçait encore « 3 MED/LOW » restants)*
+### ✅ Échecs silencieux — **SECTION VIDE, tout est livré** *(le HIGH `[SILENT-ACTIONPLAN-NAN]` par #608, les MED/LOW ensuite ; le titre annonçait autrefois un reliquat — voir `docs/BACKLOG_ARCHIVE.md`)*
 
 > Pattern : traiter un champ présent-mais-non-fini comme absent, SANS log ni signal à l'utilisateur.
 > Référence : `services/finance.ts` (parseRate, patron parfait), `services/marketData/*` (appliqué),
 > `services/claude.ts` (safeJsonValidate loggue sys, rejets massifs tracés).
 
 
-### 🔴 A11y — 1 HIGH restant, 3 MED, 1 LOW  *(4 HIGH « Mode Discret » livrés par #608 → archive)*
+### 🔴 A11y
 
 > Les 4 fuites de Mode Discret de l'audit sont CORRIGÉES (#608), ainsi qu'une 5e trouvée à la revue
 > (axes et infobulles de graphiques, `[A11Y-PRIVACY-CHART-FORMATTER]`). Garde de non-régression :
@@ -2119,7 +2123,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
-### 🔴 Performance (1 HIGH, 2 MED, 1 LOW)
+### 🔴 Performance
 
 > Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.
 > Le coût dominant = volume itérations (mois × MC × configs), pas un algorithme mal choisi.
@@ -2132,7 +2136,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `docs/CONVENTIONS.md` « vraie contrainte »).
 
 
-### 🔴 IA / Anthropic (1 HIGH, 4 MED, 2 LOW)  *(2 HIGH talon de paie livrés par #608)*
+### 🔴 IA / Anthropic
 
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 
@@ -2152,7 +2156,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   « Régénérer » repaient plein tarif. **Correctif** : union `string | Array<block>` pour permettre
   `cache_control`.
 
-### 🔴 Dette technique (2 HIGH, 4 MED, 6 LOW/S)
+### 🔴 Dette technique
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 

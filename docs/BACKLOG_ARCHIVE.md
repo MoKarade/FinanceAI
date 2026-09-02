@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 90 : le backlog annonçait plus du double de ce qu'il contenait
+
+- [x] **`[PM-BACKLOG-ENTETES-PERIMES]`** — LIVRÉ le 2026-09-02 (PR #820). Aucun code de production
+  touché : c'est l'outil de DÉCISION qui mentait.
+- **MESURÉ.** Cinq en-têtes annonçaient un compte d'items ; additionnés, ils promettaient **50 items**
+  là où il en restait **21** :
+  `Moteur & fiscal (8 HIGH · 7 MED · 7 LOW)` → **10** · `A11y (1 HIGH restant, 3 MED, 1 LOW)` → **1** ·
+  `Performance (1 HIGH, 2 MED, 1 LOW)` → **1** · `IA / Anthropic (1 HIGH, 4 MED, 2 LOW)` → **2** ·
+  `Dette technique (2 HIGH, 4 MED, 6 LOW/S)` → **7**.
+- **Deux autres en-têtes affirmaient du FAUX au présent** : le « point chaud
+  `realEstateMonth.ts` cumule QUATRE défauts money-critical » — les quatre sont `[x]` en archive
+  (`[REER-IMMO-HORS-ASSIETTE]`, `retraitReerMois`, `[RAP-DIVORCE-DEUX-TETES]`,
+  `[EMPILEMENT-REER-ACHAT-IMMO]`), vérifié un par un — et « 📄 Documentation — la doc a décroché du
+  code », **vide depuis au moins #674**. Le premier envoyait chercher un point chaud déjà nettoyé ;
+  la LEÇON du point chaud (le module a été écrit sans passer la checklist des registres) est
+  conservée, au passé, parce qu'elle vaut pour le prochain producteur d'argent.
+- ⚠️ **Le correctif n'est PAS de re-compter, c'est de SUPPRIMER les comptes.** Un compte recopié dans
+  un titre est une `DOC-METRIQUE-RECOPIEE` : sa source unique est la LISTE, et personne ne pense au
+  titre en cochant une case. Les maintenir aurait garanti la prochaine dérive.
+- ⚠️ **Récidive assumée** : le lot 84 avait déjà corrigé À LA MAIN quatre en-têtes annonçant des
+  tickets inexistants. Deuxième passe manuelle ⇒ ce n'est plus un oubli, c'est une classe — d'où une
+  GARDE cette fois (`tests/backlogEnTetesSansCompte.test.ts`), **sans aucune exemption** : un titre
+  qui doit raconter un reliquat le fait sans chiffre et renvoie à l'archive.
+- **3 gardes neuves**, deux perturbations : un compte remis dans un en-tête → rouge ; le motif du
+  détecteur cassé → rouge (l'anti-vacuité tient). ⚠️ Le contrôle de restauration a rattrapé un
+  `git checkout` inopérant sur un fichier NON SUIVI — c'est exactement pour ça qu'un balayage de
+  perturbations se termine toujours par un run de contrôle.
+
 ## 2026-09-02 — Lot 89 : une sensibilité identique pour tout le monde n'est pas une sensibilité
 
 - [x] **`[BUDGET-SENSIBILITE-FORMULE-5PCT]`** — LIVRÉ le 2026-09-02 (PR #819). La tuile

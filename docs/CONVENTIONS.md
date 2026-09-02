@@ -9953,3 +9953,34 @@ qu'on cherchait à éviter. Et un contrôle vérifie qu'elle **n'apparaît pas**
 ⚠️ Enfin, ce lot n'a **rien retiré** : les pistes restent affichées avec leurs chiffres. Masquer une
 information parce qu'elle n'est pas vérifiée serait une autre erreur — c'est son STATUT qui manquait,
 pas sa légitimité.
+
+
+### Lot 70 (2026-09-02) — une péremption se surveille par un inventaire, pas par l'horloge
+
+`UNE-PEREMPTION-SE-SURVEILLE-PAR-UN-INVENTAIRE-PAS-PAR-L-HORLOGE`
+
+Deux des trois identifiants de modèle sont des **alias** (`claude-sonnet-4-6`, `claude-opus-4-8`) que
+le fournisseur peut repointer vers un autre instantané, à un autre tarif. Le tableau de prix, daté du
+2026-06-24, ne suivrait pas : le coût affiché deviendrait faux **en silence** — le mode de panne exact
+que `no-fake-data` vise.
+
+**Le correctif prescrit par le ticket n'était pas faisable.** « Épingler des instantanés datés
+partout » exige de connaître ces identifiants ; en inventer un casserait *tous* les appels du chat,
+c'est-à-dire bien pire que la dérive qu'on corrige. La règle de conduite : livrer la moitié qu'on peut
+prouver, router l'autre **avec sa raison** — ici la seconde branche du ticket (« dater la
+vérification »), et une tâche humaine pour relever les ids.
+
+**Et surtout : pas de test qui lit l'horloge.** Le réflexe serait un contrôle « si le relevé a plus de
+N jours, échouer ». Ce serait une **bombe** : il rougirait à une date donnée sans qu'aucune ligne
+n'ait changé, exactement ce que le dépôt s'interdit depuis `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`.
+Ce qui porte la dette est un **inventaire** (`ALIAS_A_EPINGLER`), et il est vérifié dans les **deux
+sens** : aucun alias absent de la liste (sinon la dette grossit en silence), aucune entrée qui ne
+corresponde plus à un alias (sinon l'inventaire affirme au présent un défaut déjà réglé —
+`ENTREE-D-INVENTAIRE-FANTOME`). Le drapeau `aliasFlottant` se **dérive de la forme de l'id** et un
+test refuse qu'il la contredise : impossible de marquer un alias « figé » pour faire taire le
+contrôle.
+
+⚠️ **Le mot « réel » était le vrai défaut d'affichage.** L'infobulle disait « coût API réel ». Les
+*tokens* sont réels ; le *tarif* vient d'un relevé daté, et pour un alias il peut avoir bougé depuis.
+Deux phrases différentes selon la nature de l'identifiant — un texte identique pour un instantané figé
+et un alias repointable n'apprendrait rien, et le test l'exige explicitement (`not.toBe`).

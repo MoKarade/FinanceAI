@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 70 : tous les ids de modèle ne se périment pas pareil
+> `[AI-MODELID-PINNING-DRIFT]` — chaque tarif porte `releveLe` + `aliasFlottant` (dérivé de la FORME
+> de l'id, vérifié), `ALIAS_A_EPINGLER` inventorie la dette, `provenanceTarif()` rend deux phrases
+> différentes selon la nature de l'id et alimente l'infobulle du coût.
+> - ⚠️ **Le correctif prescrit par le ticket n'était PAS faisable** (« épingler des instantanés datés
+>   partout ») : inventer un identifiant casserait tous les appels du chat — bien pire que la dérive.
+>   Livré la SECONDE branche (« dater la vérification ») ; la moitié restante est routée à Marc
+>   (`docs/A_FAIRE_MOI.md` C0, ticket `[AI-MODELID-EPINGLER-SNAPSHOTS]`).
+> - ⚠️ **PAS de test qui lit l'horloge** pour crier « tarif périmé » : un contrôle qui rougit à une
+>   date sans qu'aucune ligne n'ait changé est une BOMBE. C'est un inventaire qui porte la dette, et
+>   il doit SAVOIR MOURIR — le test refuse un alias absent de la liste ET une entrée qui n'est plus
+>   un alias (les deux sens, `ENTREE-D-INVENTAIRE-FANTOME`).
+> - Le mot « réel » retiré de l'infobulle : les TOKENS sont réels, le TARIF vient d'un relevé daté.
+
 > ## 🟦 Session 2026-09-01 — Lot 69 : l'auto-évaluation du modèle passait pour un verdict
 > `[AI-COUPLE-SELFRATED-CONFIDENCE]` — `CoupleOptimizationCard` : libellés qui disent QUI parle,
 > montant qui porte sa provenance, mention unique sous la liste. Périmètre du ticket EXACT

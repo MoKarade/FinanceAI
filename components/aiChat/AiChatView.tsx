@@ -22,8 +22,8 @@ import {
 import { showToast } from '../ui/Toast';
 import { AiConversationList } from './AiConversationList';
 // [B3+B4] Sélecteur de modèle par conversation + coût réel (modules purs, boot-safe).
-import { AI_CHAT_MODELS, resolveChatModelKey } from '../../services/aiChat/models';
-import { sumMessagesCostUsd } from '../../services/aiChat/pricing';
+import { AI_CHAT_MODELS, MODEL_IDS, resolveChatModelKey } from '../../services/aiChat/models';
+import { sumMessagesCostUsd, provenanceTarif } from '../../services/aiChat/pricing';
 import { formatCostCad } from '../../utils/format';
 // [CHAT-PAGE-CONTEXT] Badge du contexte d'écran perçu (contestable par l'utilisateur — confiance).
 import { useViewContextSnapshot } from '../../hooks/useViewContextSnapshot';
@@ -240,7 +240,14 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                             « masquer = ne pas rendre » est non négociable — un coût d'infra reste un
                             montant $ à l'écran, pas d'exception décidée en commentaire. */}
                         {!isPrivacyMode && (convCostUsd > 0 || totalCostUsd > 0) && (
-                            <span className="text-tiny text-ink-400" title="Coût API réel (tokens facturés × tarif Anthropic), converti en CAD">
+                            // [AI-MODELID-PINNING-DRIFT] « réel » était un mot de trop : les tokens sont
+                            // réels, le TARIF vient d'un relevé daté, et pour un alias flottant il peut
+                            // avoir bougé depuis. L'infobulle dit maintenant les deux, et sa provenance
+                            // se DÉRIVE du tarif au lieu d'être recopiée ici.
+                            <span
+                                className="text-tiny text-ink-400"
+                                title={`Tokens facturés × tarif Anthropic, converti en CAD. ${provenanceTarif(MODEL_IDS[chatModel]) ?? ''}`.trim()}
+                            >
                                 · conv. {formatCostCad(convCostUsd, fxUsd)} · total {formatCostCad(totalCostUsd, fxUsd)}
                             </span>
                         )}

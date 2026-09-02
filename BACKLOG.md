@@ -1992,18 +1992,28 @@
   Marc (« je te montre le résultat du lot 1 avant d'engager le lot 2 »). Livré : `Debt.originalBalance?`
   (additif, aucune migration) + le service PUR `services/projection/debtAmortization.ts` + 13 gardes.
   **Rien n'est branché : la courbe du passé ne bouge pas encore.**
-- [ ] 🔴 **`[DEBT-AMORTIZATION-CABLAGE]`** (M, money-critical) — **LOT 2/2.** Câbler
-  `amortirDettePassee` en **DELTA additif** dans `buildPastPrefix`/`dailyPastLedger` (jamais une
-  resommation complète — même piège que `[PASSE-REEL-DETTE-1]` a déjà rencontré et corrigé, cf
-  commentaire dans `debtSchedule.ts`), avec repli sur le niveau figé à chaque `inapplicable` (le
-  service NOMME sa cause : `kind-non-amortissant`, `donnees-manquantes`, `origine-incoherente`,
-  `recalage-hors-bande`). ⚠️ **Mesurer la courbe du passé AVANT/APRÈS et la publier** — c'est ce
-  lot-là qui change ce que Marc voit. ⚠️ **Annoter l'ADR** `docs/adr/0012-…` : l'inversion de la
-  Décision 2 (« aucun amortissement rétroactif ») devient VISIBLE à ce moment-là, pas avant.
-  ⚠️ Le cas réel de Marc est un `auto-lease` : il reste au niveau figé, la table du service le dit.
+- [x] 🔴 **`[DEBT-AMORTIZATION-CABLAGE]` — LOT 2/2 LIVRÉ le 2026-09-02** (PR #822), voir
+  `docs/BACKLOG_ARCHIVE.md`. Delta additif câblé dans `buildPastPrefix`/`dailyPastLedger`, bandeau
+  du graphe corrigé, ADR 0012 annoté, mesure reproductible committée
+  (`npx tsx scripts/mesureAmortissementPasse.ts`).
 - [ ] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]`** (S) — `originalBalance` au MCP/PDF, une fois
   `[DEBT-MCP-PARITE]` et `[DEBT-AMORTIZATION]` livrés. Validation `plausible()` (rejeter si
   `originalBalance < balance`, incohérent pour une dette qui s'amortit normalement).
+  ⚠️⚠️ **DEVENU BLOQUANT le 2026-09-02** : le câblage est livré et **mesuré à zéro effet chez Marc**,
+  parce qu'AUCUN producteur n'écrit `originalBalance` — grep de tout le dépôt, hors types et script de
+  mesure : zéro écriture (classe `UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`).
+  La courbe amortie existe, elle est prouvée par 14 gardes, et elle est **INATTEIGNABLE depuis
+  l'app** tant que ce ticket (ou `[DEBT-UI-PAR-TYPE]`, qui donnerait un champ de saisie) n'est pas
+  livré. C'est la suite immédiate du chantier, pas un item parmi d'autres.
+- [ ] 🟠 **`[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`** (S, découvert au lot 92) — `KIND_AMORTISSANT`
+  déclare `mortgage: true`, et `sumActiveDebts` (`services/projection.ts`) ne filtre `state.debts`
+  par AUCUN `kind` : une dette classée `mortgage` par l'ingestion MCP (distincte d'un
+  `RealEstateGoal.mortgage`) reçoit désormais une courbe d'amortissement DANS `DettesNonImmo` — un
+  registre censé être « hors hypothèque ». Le risque de double comptage avec l'équité immobilière
+  est ANTÉRIEUR à ce lot (`realEstateEquity` est déjà net d'hypothèque), mais le lot 92 le rend
+  actif pour la première fois. **Trancher** : soit l'ingestion refuse `kind: 'mortgage'` pour une
+  dette générique, soit `sumActiveDebts` l'exclut — pas les deux. ⚠️ Aujourd'hui INERTE (aucun
+  producteur d'`originalBalance`), à régler avec `[DEBT-MCP-ORIGINALBALANCE]`.
 - [ ] 🟡 **`[DEBT-UI-PAR-TYPE]`** (M) — `DebtManager.tsx` n'expose JAMAIS le sélecteur `kind` (11
   valeurs déjà dans `types.ts` depuis un lot antérieur — bail/prêt/marge/étudiant/autre…), seulement
   4 `category` grossières. Marc ne peut donc pas distinguer bail vs prêt dans l'UI alors que le

@@ -4,6 +4,34 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 92 : la courbe du passé montre enfin la dette qui fond (2/2)
+> `[DEBT-AMORTIZATION-CABLAGE]` — ferme le chantier ouvert au lot 91. C'est CE lot qui change ce que
+> Marc voit. Delta ADDITIF dans `buildPastPrefix` + `dailyPastLedger`, jamais une resommation.
+> - **Mesure publiée, script COMMITTÉ** : `npx tsx scripts/mesureAmortissementPasse.ts`. Prêt auto
+>   30 k$ / 18 k$ restants / 5 % / 560 $ : **−12 000 $** à −24 mois, −524 $ à −1 mois, **0 au raccord**.
+> - **Aucun golden n'a bougé, et c'est EXPLIQUÉ** : les 8 dettes des personas portent zéro
+>   `originalBalance` (mesuré par le même script) ⇒ le service refuse, comportement d'avant à l'octet.
+> - **Bandeau du graphe corrigé** : « dettes au niveau actuel » était devenu FAUX. Phrase sortie du
+>   JSX vers `services/history/pastDebtNotice.ts`, dérivée du MÊME verdict que le calcul, cas MIXTE
+>   nommé (un bail à côté d'un prêt = le cas de Marc). Garde jumelle contre le retour du ternaire.
+> - ⚠️⚠️ **INATTEIGNABLE depuis l'app** : grep du dépôt = **zéro producteur** de `originalBalance`.
+>   La courbe amortie ne s'affichera chez Marc qu'après `[DEBT-MCP-ORIGINALBALANCE]`, promu BLOQUANT
+>   au BACKLOG — **c'est la suite immédiate**. Classe `UN-CHAMP-TYPE-SANS-PRODUCTEUR…`.
+> - ⚠️ Le cas RÉEL de Marc est un `auto-lease` : même le champ rempli, il reste PLAT (2 gardes).
+> - ⚠️⚠️ **Le panel a trouvé un CRITIQUE dans mon propre lot, corrigé DANS le lot** : le
+>   rééchelonnement proportionnel de la série pouvait afficher **59 369 $ dus sur un prêt de
+>   30 000 $** (2× l'emprunt, facteur de bande). Remplacé par la résolution en FORME CLOSE du
+>   paiement qui relie les deux bouts — la courbe part du montant emprunté et arrive sur le solde
+>   réel, au dollar près. La bande `[0,5 ; 2]` porte désormais le PAIEMENT ; les deux tests de
+>   limite se sont INVERSÉS au même endroit.
+> - Trois autres findings livrés : `termEndDate` ignoré (le modèle payait après le terme),
+>   `jamais-decroissant` (paiement ≤ intérêt = refus, le moteur force un plancher), et une PERF
+>   O(jours × mois de prêt) — `amortirDettePassee` était appelée par mois ET par jour alors qu'elle
+>   reconstruit toute la série ; hissée hors des boucles, gardée par un espion.
+> - Absence vs corruption séparées + journalisées comme le module voisin le faisait déjà.
+> - Découverte routée : `[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`.
+> - **37 gardes, 14 perturbations séparées**, chacune ne rougissant que sa cible.
+
 > ## 🟦 Session 2026-09-02 — Lot 91 : le service d'amortissement, avant tout câblage (1/2)
 > `[DEBT-AMORTIZATION]` lot 1/2 — découpage CHOISI par Marc. `Debt.originalBalance?` + le service
 > PUR `debtAmortization.ts` + 13 gardes. **Rien n'est branché, la courbe du passé est inchangée.**

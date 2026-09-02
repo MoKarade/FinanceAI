@@ -17,17 +17,19 @@
 //   ✅ Dépôts vs rendement — le dépôt du jour vient des ACHATS datés ; le reste de la variation est
 //                            du mouvement de marché. Les deux sont donc de l'information, pas une clé.
 //   ⚠️ Équité immobilière — connue à l'ANNÉE (amortissement), pas au jour : palier annuel.
-//   ⚠️ Dettes             — chaque dette figée à son niveau ACTUEL depuis son `startDate` propre
-//                            (décision Marc, Option A + gating par dette `[PASSE-REEL-DETTE-1]`,
-//                            palier MENSUEL même ici — pas de fausse précision au jour) : l'app n'a
-//                            pas de courbe d'amortissement (voir `DEBT-AMORTIZATION` au backlog).
+//   ⚠️ Dettes             — amorties quand le montant emprunté est connu (`[DEBT-AMORTIZATION-CABLAGE]`,
+//                            2026-09-02), sinon figées à leur niveau ACTUEL depuis leur `startDate`
+//                            propre (décision Marc, Option A + gating `[PASSE-REEL-DETTE-1]`). Palier
+//                            MENSUEL dans les deux cas, même ici : un prêt ne bouge qu'aux dates de
+//                            paiement, interpoler au jour fabriquerait une précision inexistante.
 //
 // ⚠️ CE MODULE NE FABRIQUE JAMAIS UN JOUR. Une date hors de la période où les DEUX reconstructions
 // (cash ET placements) ont de la matière ne produit AUCUNE ligne — l'appelant garde alors la valeur
 // interpolée, qui est honnête pour ce qu'elle est. Un jour à moitié réel serait pire que les deux.
 
 import { computeRawNetWorth } from '../projection/netWorth';
-import { moisAbsolu, sumNotYetStartedDebtsAtAbsoluteMonth, type DebtBalance } from '../projection/debtSchedule';
+import { moisAbsolu, sumNotYetStartedDebtsAtAbsoluteMonth } from '../projection/debtSchedule';
+import { prepareSupplementAmortiAbsolu, type DebtAmortissable } from '../projection/debtAmortization';
 import { reconstructCashHistoryDaily } from './reconstructCashHistory';
 import { reconstructPortfolioHistoryDaily, MAX_DAILY_DAYS_DEFAULT, type MinimalAsset } from './reconstructPortfolioHistory';
 
@@ -133,7 +135,7 @@ export interface BuildDailyPastInput {
     /** Dettes hors hypothèque (store, tableau FRAIS) : sert UNIQUEMENT à déterminer, en palier
      *  MENSUEL, quelles dettes exclure de `currentDebtNonImmo` pour un jour où elles n'existaient
      *  pas encore (`sumNotYetStartedDebtsAtAbsoluteMonth`). */
-    debts: ReadonlyArray<DebtBalance>;
+    debts: ReadonlyArray<DebtAmortissable>;
     /** Garde-fou de volume : au-delà, on ne reconstruit pas (le graphe ne va pas jusque-là). */
     maxDays?: number;
 }
@@ -214,6 +216,9 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     // `?? Number.POSITIVE_INFINITY` en repli défensif (jamais atteint — `today` est une entrée ISO
     // garantie par l'appelant) neutralise seulement CE garde-fou, sans réintroduire le bug d'origine.
     const moisAujourdhui = moisAbsolu(today) ?? Number.POSITIVE_INFINITY;
+    // [DEBT-AMORTIZATION-CABLAGE] Préparé UNE fois : la boucle au JOUR va jusqu'à 4 000 itérations,
+    // et reconstruire la série d'un prêt de 25 ans à chacune coûtait des millions d'opérations.
+    const supplementAuMois = prepareSupplementAmortiAbsolu(debts, moisAujourdhui);
 
     // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
@@ -294,8 +299,14 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         // `currentDebtNonImmo` inchangé. `Math.max(0, …)` : voir le commentaire de
         // `sumNotYetStartedDebtsAtAbsoluteMonth` (le delta utilise le solde BRUT contre un total
         // post-amortissement — borne le résidu, une dette n'étant jamais négative).
+        // [DEBT-AMORTIZATION-CABLAGE] SECOND delta, additif : ce qu'on devait EN PLUS à ce mois-là.
+        // Palier MENSUEL comme le premier — `moisAbsolu` ignore le jour, et le service d'amortissement
+        // ne produit qu'un point par mois : interpoler au jour fabriquerait une précision que la
+        // donnée n'a pas (un prêt ne bouge qu'aux dates de paiement).
+        const moisDuJour = moisAbsolu(date) ?? Number.POSITIVE_INFINITY;
         const debtNonImmo = Math.max(0, currentDebtNonImmo
-            - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisAbsolu(date) ?? Number.POSITIVE_INFINITY, moisAujourdhui));
+            - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisDuJour, moisAujourdhui)
+            + supplementAuMois(moisDuJour));
 
         out.push({
             date,

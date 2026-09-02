@@ -69,10 +69,19 @@ describe('[DEBT-AMORTIZATION] le service REFUSE plutôt que d\'inventer, et nomm
 
     it('une entrée NON FINIE ne produit jamais un nombre plausible', () => {
         // `NaN × k = NaN` : sans cette garde, un champ corrompu ressortirait en courbe.
+        // ⚠️ La cause attendue était `donnees-manquantes` jusqu'au 2026-09-02 : elle fusionnait
+        // « champ jamais saisi » (le cas NOMINAL, silence voulu) et « champ présent mais corrompu »
+        // (à TRACER). Les deux sont désormais distinctes, et seule la seconde est journalisée.
         for (const champ of ['originalBalance', 'balance', 'interestRate', 'minimumPayment'] as const) {
             for (const valeur of [Number.NaN, Number.POSITIVE_INFINITY]) {
-                refus(amortirDettePassee(pret({ [champ]: valeur }), AUJOURDHUI), 'donnees-manquantes');
+                refus(amortirDettePassee(pret({ [champ]: valeur }), AUJOURDHUI), 'donnees-invalides');
             }
+        }
+    });
+
+    it('un champ ABSENT reste « donnees-manquantes » — l\'absence n\'est pas une corruption', () => {
+        for (const champ of ['originalBalance', 'interestRate', 'minimumPayment'] as const) {
+            refus(amortirDettePassee(pret({ [champ]: undefined }), AUJOURDHUI), 'donnees-manquantes');
         }
     });
 
@@ -101,13 +110,20 @@ describe('[DEBT-AMORTIZATION] la courbe rendue', () => {
         expect(r.soldes[r.soldes.length - 1]).toBeCloseTo(18000, 6);
     });
 
-    it('part du solde d\'origine RECALÉ, un mois par pas, du début à aujourd\'hui inclus', () => {
+    it('part EXACTEMENT du montant emprunté, un mois par pas, du début à aujourd\'hui inclus', () => {
+        // ⚠️ Ce test disait « part du solde d'origine RECALÉ » jusqu'au 2026-09-02 : la série
+        // entière était rééchelonnée, donc le premier point valait `30 000 × facteur` — jusqu'à
+        // 59 369 $ affichés sur un prêt de 30 000 $ (mesuré). Le montant emprunté est un FAIT lu sur
+        // un contrat : la courbe en part maintenant au dollar près. Le test s'inverse au même
+        // endroit plutôt que de disparaître, pour que la limite d'hier reste lisible.
         const r = amortirDettePassee(pret(), AUJOURDHUI);
         if (r.forme !== 'ok') throw new Error('cas de référence devenu inapplicable');
         expect(r.premierMoisAbsolu).toBe(mois(2024, 0));
         // Janvier 2024 → septembre 2026 inclus = 33 mois.
         expect(r.soldes.length).toBe(AUJOURDHUI - mois(2024, 0) + 1);
-        expect(r.soldes[0]).toBeCloseTo(30000 * r.facteurRecalage, 6);
+        expect(r.soldes[0]).toBe(30000);
+        // ... et jamais AU-DESSUS de l'emprunt, nulle part : c'est l'affirmation impossible d'avant.
+        for (const s of r.soldes) expect(s).toBeLessThanOrEqual(30000);
     });
 
     it('DÉCROÎT à chaque mois — un remboursement ne remonte pas', () => {
@@ -118,28 +134,65 @@ describe('[DEBT-AMORTIZATION] la courbe rendue', () => {
         }
     });
 
-    it('le facteur de recalage reste DANS la bande, et vaut 1 quand le modèle tombe déjà juste', () => {
+    it('le facteur reste DANS la bande, et vaut 1 quand le paiement saisi tombe déjà juste', () => {
+        // ⚠️ La bande portait la SÉRIE ; depuis le 2026-09-02 elle porte le PAIEMENT résolu, rapporté
+        // au paiement saisi. Même bande, même intention (« au-delà, le modèle ne décrit plus TON
+        // prêt »), mais appliquée au seul terme réellement incertain.
         const r = amortirDettePassee(pret(), AUJOURDHUI);
         if (r.forme !== 'ok') throw new Error('cas de référence devenu inapplicable');
         expect(r.facteurRecalage).toBeGreaterThanOrEqual(RECALAGE_MIN);
         expect(r.facteurRecalage).toBeLessThanOrEqual(RECALAGE_MAX);
+        expect(r.facteurRecalage).toBeCloseTo(r.paiementResolu / 560, 9);
 
-        // Anti-vacuité du recalage : on rejoue le MÊME prêt en prenant pour solde actuel ce que le
-        // modèle produit lui-même. Le facteur doit alors valoir exactement 1 — sinon le recalage
-        // déforme une courbe qui n'en avait pas besoin.
-        const sansRecalage = amortirDettePassee(pret({ balance: r.soldes[r.soldes.length - 1] / r.facteurRecalage }), AUJOURDHUI);
+        // Anti-vacuité : on rejoue le MÊME prêt en prenant pour solde actuel ce que le paiement
+        // SAISI produit lui-même. Le facteur doit alors valoir exactement 1 — sinon on déforme un
+        // prêt qui n'en avait pas besoin.
+        let modele = 30000;
+        for (let k = 0; k < AUJOURDHUI - mois(2024, 0); k++) modele = modele * (1 + 0.05 / 12) - 560;
+        const sansRecalage = amortirDettePassee(pret({ balance: modele }), AUJOURDHUI);
         if (sansRecalage.forme !== 'ok') throw new Error('témoin inapplicable');
         expect(sansRecalage.facteurRecalage).toBeCloseTo(1, 9);
     });
 
-    it('le recalage est PROPORTIONNEL : il ne déplace pas la forme, seulement l\'échelle', () => {
-        // Deux soldes actuels différents sur le même prêt ⇒ deux courbes homothétiques.
+    it('la courbe est ancrée aux DEUX bouts — plus homothétique, et c\'est le correctif', () => {
+        // ⚠️ Ce test affirmait l'inverse (« le recalage est PROPORTIONNEL ») : deux soldes actuels
+        // différents donnaient deux courbes homothétiques, donc DEUX premiers points différents pour
+        // un même montant emprunté. C'était précisément le défaut. Le test s'inverse ici plutôt que
+        // d'être supprimé — sans lui, rien ne dirait que l'homothétie a été un choix, puis un bug.
         const a = amortirDettePassee(pret({ balance: 18000 }), AUJOURDHUI);
         const b = amortirDettePassee(pret({ balance: 16000 }), AUJOURDHUI);
         if (a.forme !== 'ok' || b.forme !== 'ok') throw new Error('cas de référence inapplicable');
-        const rapport = b.soldes[0] / a.soldes[0];
-        for (let i = 0; i < a.soldes.length; i++) {
-            expect(b.soldes[i] / a.soldes[i], `mois ${i}`).toBeCloseTo(rapport, 9);
-        }
+        // Même origine, à l'octet près : c'est le montant emprunté, il ne dépend pas du solde actuel.
+        expect(a.soldes[0]).toBe(30000);
+        expect(b.soldes[0]).toBe(30000);
+        // Et chaque courbe atterrit EXACTEMENT sur SON solde.
+        expect(a.soldes[a.soldes.length - 1]).toBe(18000);
+        expect(b.soldes[b.soldes.length - 1]).toBe(16000);
+        // Le rapport n'est donc PAS constant — l'homothétie est morte, et on l'asserte.
+        const rapportDebut = b.soldes[0] / a.soldes[0];
+        const rapportFin = b.soldes[b.soldes.length - 1] / a.soldes[a.soldes.length - 1];
+        expect(rapportFin).not.toBeCloseTo(rapportDebut, 3);
+    });
+
+    it('un TERME ÉCHU gèle le solde résiduel au lieu de continuer à payer', () => {
+        // Le moteur cesse les paiements après le terme et LAISSE le résiduel au bilan. Sans cette
+        // borne, le modèle du passé amortissait jusqu'à aujourd'hui : il sous-estimait le solde
+        // d'aujourd'hui, gonflait le paiement résolu, et le passé décrivait un autre prêt que le futur.
+        const r = amortirDettePassee(pret({ balance: 24000, termEndDate: '2025-01-15' }), AUJOURDHUI);
+        if (r.forme !== 'ok') throw new Error('cas à terme échu devenu inapplicable');
+        const finTerme = mois(2025, 0) - r.premierMoisAbsolu;
+        expect(r.soldes[finTerme]).toBe(24000);
+        // Tous les mois APRÈS le terme sont plats sur le résiduel — aucun paiement fantôme.
+        for (let k = finTerme; k < r.soldes.length; k++) expect(r.soldes[k]).toBe(24000);
+        // Anti-vacuité : il reste bien des mois APRÈS le terme dans la série mesurée.
+        expect(r.soldes.length - 1 - finTerme).toBeGreaterThan(12);
+    });
+
+    it('un prêt qui ne se rembourserait JAMAIS est refusé, pas décrit', () => {
+        // Paiement inférieur à l'intérêt du principal ⇒ la dette enfle. Le moteur, lui, force un
+        // plancher d'amortissement : décrire ici une courbe croissante ferait diverger les deux bouts.
+        const r = amortirDettePassee(pret({ originalBalance: 20000, balance: 20000, interestRate: 12, minimumPayment: 100 }), AUJOURDHUI);
+        expect(r.forme).toBe('inapplicable');
+        if (r.forme === 'inapplicable') expect(r.cause).toBe('jamais-decroissant');
     });
 });

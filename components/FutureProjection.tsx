@@ -103,6 +103,7 @@ import { resolvePointByX } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
+import { mentionDettesPasse } from '../services/history/pastDebtNotice';
 import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
 // [REFONTE-NAV-L2a] Itérations MC réellement exécutées (source unique moteur) pour le libellé.
 import { mcSublabel } from '../services/projection/monteCarlo';
@@ -447,6 +448,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts: storeDebts });
         return built.length ? built : EMPTY_ARRAY;
     }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts]);
+
+    // [DEBT-AMORTIZATION-CABLAGE] Ce que le bandeau peut HONNÊTEMENT affirmer des dettes du passé.
+    // Le fait vient du service qui décide de l'amortissement, pas d'une seconde lecture des champs.
+    const mentionDettes = useMemo(
+        () => mentionDettesPasse(storeDebts, startYear * 12 + startMonth, currentDebtNonImmo),
+        [storeDebts, startYear, startMonth, currentDebtNonImmo],
+    );
     // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
     const lockedByMonth = useMemo(
         () => buildLockedByMonth(lockedProjection, isProjectionLocked, (p) => p.NetWorth ?? NaN),
@@ -1618,7 +1626,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <span aria-hidden="true">⟵</span>
                         <span>
                             Patrimoine net réel{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
-                            {currentDebtNonImmo > 0 ? ' · dettes au niveau actuel' : ''}
+                            {mentionDettes ? ` · ${mentionDettes}` : ''}
                             {hasForeignHoldings ? ' · titres étrangers au change du jour' : ''}
                             {pastHistory.isLoading ? ' · chargement des prix…' : (pastHistory.coverage < 0.99 ? ' · partiellement estimé aux prix actuels' : '')}
                         </span>

@@ -10589,6 +10589,104 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 92 (2026-09-02) — le lot qui change ce que l'écran MONTRE périme ce que l'écran AFFIRME
+
+`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`
+
+En branchant l'amortissement du passé, le calcul est devenu juste et le BANDEAU est devenu faux.
+Sous le graphe Futur, une ligne disait « Patrimoine net réel · **dettes au niveau actuel** ». Cette
+phrase était exacte depuis le jour où elle avait été écrite, elle n'a pas été touchée par le lot, et
+aucun test ne la couvrait : rien ne pouvait rougir. Elle décrivait pourtant une propriété que le lot
+venait précisément de supprimer.
+
+Le signal n'est pas dans le diff — c'est justement le problème. Il est dans la question :
+**qu'est-ce que l'écran PROMET à propos de ce que je viens de changer ?** Une légende, un titre
+d'axe, une infobulle, un état vide sont des AFFIRMATIONS ; elles vieillissent en silence parce que
+personne ne les relit quand le calcul dessous évolue. C'est la même famille que
+`UN-ECRAN-NE-PEUT-AFFIRMER-QUE-CE-QUE-SES-SOURCES-LUI-DONNENT`, prise par l'autre bout : là-bas la
+phrase n'avait jamais eu de source, ici elle en avait une et la source a bougé sous elle.
+
+Trois choses ont été faites, et les trois comptent :
+
+1. **La phrase sort du JSX** vers `services/history/pastDebtNotice.ts`. Un ternaire dans le rendu
+   n'est testable qu'en montant un composant de mille lignes ; une fonction pure se teste au
+   caractère près. Un libellé est un consommateur de la même vérité qu'un chiffre
+   (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`).
+2. **Le fait est STRUCTUREL**, pas relu : `compterDettesAmorties` demande son verdict à
+   `amortirDettePassee`, le module qui DÉCIDE. Une seconde lecture des champs de la dette
+   (« a-t-elle un `originalBalance` ? un `kind` amortissant ? ») aurait divergé du calcul au premier
+   changement de règle — `TEXT-HEURISTIC-OVER-USER-TEXT` appliqué à une condition plutôt qu'à un
+   texte.
+3. **Le cas MIXTE se nomme.** Un bail à côté d'un prêt auto — la situation exacte de Marc — rend
+   FAUSSES les deux formulations simples : « dettes amorties » ment pour la moitié de la somme
+   affichée, « niveau actuel » pour l'autre. Quand deux phrases mentent chacune sur une part, il en
+   faut une troisième, pas un arbitrage entre les deux.
+
+Garde JUMELLE, indispensable : la première prouve ce que la fonction REND, la seconde interdit de
+faire le travail autrement (`code.not.toContain('dettes au niveau actuel')` sur le composant
+décommenté). Sans elle, un ternaire recopié plus tard redonnerait la phrase périmée sans qu'aucun
+test ne bronche — perturbation faite, elle rougit seule.
+
+⚠️ **Corollaire de fixture : une fenêtre d'observation calée sur l'ANCRE mesure zéro par
+conception.** La garde du registre au JOUR échouait sur `expected -12850 to be less than -12850` :
+sa fenêtre (`2025-11-01`→`2025-11-05`) tombait dans le MÊME mois que son `today`, or c'est
+exactement le mois où le supplément vaut zéro — c'est l'invariant de raccord, la propriété numéro
+un du module. La fixture ne mesurait pas un défaut, elle observait le point fixe. Décaler `today`
+d'un mois a suffi. Même famille que
+`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE` : la valeur la plus naturelle
+(« aujourd'hui, tiens ») est souvent la seule où le mécanisme est invisible. Devant un module qui
+possède un point d'ancrage, écrire la fixture LOIN de l'ancre, et le dire dans le commentaire.
+
+⚠️ **Récidive assumée de `UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`** : le seuil
+canonique `partDeCodeRestante > 0.5` (calibré sur un scan de DÉPÔT agrégé) déclarait vide un
+`FutureProjection.tsx` intact — mesuré **0,485**, ce fichier étant majoritairement de la prose par
+conception, comme `healthScore.ts` avant lui. Re-mesuré à sa portée, seuil posé à 0,4 avec la mesure
+écrite à côté, plus un témoin de code indépendant de l'assertion (`export const FutureProjection`)
+— sans lui, un décommenteur qui aurait tout mangé rendrait le `not.toContain` trivialement vert.
+
+⚠️⚠️ **Le module écrit pour éviter une classe la contenait — et c'est le PANEL qui l'a vu, pas moi.**
+Deux corrections majeures sont venues de la revue, pas de l'écriture :
+
+1. **Un recalage PROPORTIONNEL contredit les saisies qu'il prétend relier.** Le premier jet faisait
+   atterrir la courbe sur le solde réel en rééchelonnant TOUTE la série
+   (`soldes.map(s => s * balance / modeleAujourdhui)`, facteur borné à `[0,5 ; 2]`). C'est
+   l'échéancier d'un prêt de `k × originalBalance` remboursé `k × minimumPayment` : la courbe
+   affichait jusqu'à **59 369 $ dus sur un prêt de 30 000 $** (mesuré ; 799 331 $ sur une hypothèque
+   de 400 000 $) — arithmétiquement impossible, et contredisant un montant que l'utilisateur lit sur
+   son contrat. Le piège est que toute l'erreur atterrit sur le point le plus ANCIEN, là où rien ne
+   la signale et où aucun invariant de raccord ne regarde. **Devant un ajustement multiplicatif,
+   demander CE QU'IL DÉPLACE parmi les faits durs** : ici deux (l'emprunt ET le paiement) alors qu'un
+   seul était incertain. Le correctif est de résoudre le terme INCONNU — le paiement, en forme close
+   `P* = (origine × g − solde) × i / (g − 1)` — au lieu de tordre les termes connus ; il est plus
+   simple, plus exact, et il rend l'ancre EXACTE au lieu de « presque ».
+2. **Une garde de coût manquait, et c'était O(n²) en production.** `amortirDettePassee` reconstruit
+   la série entière et **ne dépend pas du mois interrogé** — appelée dans la boucle des mois, puis
+   dans celle des JOURS (plafonnée à 4 000), elle coûtait des millions d'itérations synchrones par
+   recalcul du graphe. Une fonction pure et « pas chère » devient chère par le nombre d'appels : la
+   question n'est pas son coût unitaire mais **combien de fois la boucle l'appelle avec les mêmes
+   arguments**. Correctif sans cache ni identité de tableau à surveiller — l'appelant HISSE la
+   préparation hors de sa boucle, et le typecheck l'y oblige. Garde par ESPION (un getter sur le
+   champ déstructuré), jamais par chronomètre.
+
+Corollaire de conduite : les deux défauts étaient **latents** (aucun producteur d'`originalBalance`),
+donc invisibles à tous les goldens et à toutes les mesures du lot. Un lot dont la feature est
+inatteignable ne peut PAS être validé par la mesure de son effet — il n'en a aucun. Seule la relecture
+adverse tient ce rôle, et c'est exactement là qu'il est tentant de l'abréger.
+
+⚠️ Et **une union discriminée peut fusionner deux faits opposés sans qu'on le voie** : `donnees-manquantes`
+recouvrait « champ jamais saisi » (le cas NOMINAL, à taire) et « champ présent mais corrompu » (à
+TRACER). Le module VOISIN, appelé sur la même ligne d'addition chez les deux appelants, journalisait
+déjà cette corruption : ne pas le faire ici était `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, et la cause
+fusionnée est ce qui l'avait rendu invisible. Séparer les causes a suffi à faire apparaître le trou.
+
+⚠️ **Et la vraie nouvelle du lot n'est pas dans le lot** : le câblage est livré, prouvé par 14
+gardes… et **inatteignable**. Grep de tout le dépôt : **zéro producteur** de `originalBalance` — ni
+UI, ni MCP, ni import PDF. La courbe amortie ne s'affichera chez Marc qu'après
+`[DEBT-MCP-ORIGINALBALANCE]`, promu bloquant au BACKLOG.
+`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE` s'applique à ce que je viens
+d'écrire, pas seulement au code hérité — et il vaut mieux le mesurer et le DIRE que livrer en
+laissant croire que l'écran a changé.
+
 ### Lot 91 (2026-09-02) — une mesure ne vaut que ce que vaut l'arbre sur lequel elle tourne
 
 `UN-REDEMARRAGE-DE-CONTENEUR-PEUT-RESTAURER-UN-AUTRE-DEPOT`

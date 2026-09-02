@@ -6,6 +6,31 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le passé de ta courbe montre enfin ta dette qui fond)
+
+- **Corrigé** : jusqu'ici, la partie PASSÉE du graphe Futur affichait chacune de tes dettes à son
+  solde d'AUJOURD'HUI, figé, sur toute la période où elle existait. Tu l'avais dit deux fois :
+  « chaque semaine je dois un peu moins » — la courbe, elle, l'ignorait. Quand le montant emprunté
+  est connu, elle reconstruit maintenant le vrai solde mois par mois.
+- **Ce que ça change, en chiffres** : sur un prêt auto de 30 000 $ emprunté en janvier 2024 dont il
+  reste 18 000 $ (5 %, 560 $/mois), ton patrimoine d'il y a deux ans baisse de **12 000 $** — parce
+  que tu devais réellement plus à l'époque. L'écart se resserre en approchant d'aujourd'hui (−524 $
+  le mois dernier) et **s'annule au mois courant** : la courbe part du montant que tu as emprunté et
+  arrive exactement sur ton solde d'aujourd'hui, sans jamais rien afficher entre les deux qui
+  contredise ton contrat.
+- **Rien n'est inventé quand on ne sait pas.** Sans le montant emprunté, la dette reste au niveau
+  actuel, exactement comme avant. Un bail (ton cas réel) reste PLAT : un bail n'amortit pas un
+  solde, c'est un loyer sur un terme — lui dessiner une courbe serait une invention. Idem pour une
+  marge de crédit ou une carte, dont le solde monte et descend au gré de l'usage.
+- **Le bandeau sous le graphe ne ment plus** : il annonçait « dettes au niveau actuel » quoi qu'il
+  arrive. Il dit désormais lequel des trois cas s'applique, y compris le cas mixte — un bail à côté
+  d'un prêt, où les deux formulations simples seraient fausses.
+- ⚠️ **Ce que tu ne verras PAS encore** : aucun écran ni import ne permet aujourd'hui de saisir le
+  montant emprunté d'une dette. Le calcul est prêt et vérifié, mais il ne s'activera chez toi que
+  lorsque l'import de contrat le remplira (c'est la prochaine étape du chantier).
+
+---
+
 ## [unreleased] — 2026-09-02 (La tuile « Sensibilité » du Budget disparaît — elle affichait le même chiffre à tout le monde)
 
 - **Retiré** : la petite tuile « Sensibilité » (« +X $ par +100 $/mois d'épargne ») de l'onglet

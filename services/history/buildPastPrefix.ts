@@ -24,7 +24,8 @@
 import { reconstructCashHistory } from './reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from './reconstructRealEstateEquity';
 import { pastNetWorthAt } from './pastNetWorth';
-import { sumNotYetStartedDebtsAtMonth, type DebtBalance } from '../projection/debtSchedule';
+import { sumNotYetStartedDebtsAtMonth } from '../projection/debtSchedule';
+import { prepareSupplementAmortiAuMois, type DebtAmortissable } from '../projection/debtAmortization';
 import type { PortfolioHistoryPoint } from './reconstructPortfolioHistory';
 import type { RealEstateGoal } from '../../types';
 
@@ -58,7 +59,7 @@ export interface BuildPastPrefixInput {
     currentDebtNonImmo: number;
     /** Dettes hors hypothèque (store, tableau FRAIS — cf en-tête) : sert UNIQUEMENT à déterminer quelles
      *  dettes exclure de `currentDebtNonImmo` pour un mois passé où elles n'existaient pas encore. */
-    debts: ReadonlyArray<DebtBalance>;
+    debts: ReadonlyArray<DebtAmortissable>;
 }
 
 /**
@@ -94,6 +95,10 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixPoint[] 
     const minMi = Math.min(...mis);
     const firstTxnMi = cashRes.firstMonth ? miOf(cashRes.firstMonth) : 1; // 1 = jamais de passé connu
 
+    // [DEBT-AMORTIZATION-CABLAGE] Séries d'amortissement calculées UNE fois pour toutes les dettes,
+    // hors de la boucle : la fonction préparée ne fait plus qu'indexer (cf. son commentaire).
+    const supplementAu = prepareSupplementAmortiAuMois(debts, startYear, startMonth);
+
     const out: PastPrefixPoint[] = [];
     let lastInv: PortfolioHistoryPoint | null = null;
     for (let mi = minMi; mi < 0; mi++) {
@@ -115,7 +120,14 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixPoint[] 
         // DÉJÀ ACTIVE aujourd'hui mais non encore commencée à CE mi est retranchée du total (delta,
         // cf en-tête de `sumNotYetStartedDebtsAtMonth`). `Math.max(0, …)` : le delta utilise le solde
         // BRUT contre un total déjà post-amortissement — borne le résidu, une dette n'étant jamais négative.
-        const debtNonImmo = Math.max(0, currentDebtNonImmo - sumNotYetStartedDebtsAtMonth(debts, startYear, startMonth, mi));
+        // [DEBT-AMORTIZATION-CABLAGE] SECOND delta, additif comme le premier : ce qu'on devait EN PLUS
+        // à ce mois-là, pour les dettes qui s'amortissent VRAIMENT (`supplementAmortiAuMois` refuse
+        // les baux et les révolvants, et retombe à 0 dès qu'une donnée manque). Les deux corrections
+        // sont DISJOINTES : avant son `startDate`, une dette n'a pas de solde amorti, elle ne pèse
+        // que dans le premier delta. Le `Math.max(0, …)` global reste la même ceinture qu'avant.
+        const debtNonImmo = Math.max(0, currentDebtNonImmo
+            - sumNotYetStartedDebtsAtMonth(debts, startYear, startMonth, mi)
+            + supplementAu(mi));
         out.push({
             monthIndex: mi,
             year,

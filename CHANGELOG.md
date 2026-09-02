@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le diagnostic ne promet plus un nouvel essai qui ne marchera jamais)
+
+- **Corrigé** : quand l'historique de cours d'un titre ne se charge pas, le diagnostic de
+  synchronisation annonçait « nouvel essai automatique au prochain chargement ». C'est vrai d'un
+  quota atteint ou d'une coupure réseau — et **faux d'une clé API refusée**, où tu peux recharger
+  autant que tu veux sans que rien ne change. L'app te rassurait exactement là où il fallait agir.
+- **Ce que tu verras** : dans ce cas précis, « le fournisseur REFUSE la clé — recharger n'y changera
+  rien, corrige-la dans Réglages → Clés API ». Les pannes passagères gardent leur message d'avant,
+  qui, lui, dit vrai.
+- **Aussi** : le bouton « Suggérer prix historique » nomme la cause au lieu d'accuser ta connexion à
+  tout coup. Et « aucun cours à cette date » reste distinct d'une panne — ce n'en est pas une.
+
 ## [unreleased] — 2026-09-02 (Zéro vulnérabilité connue dans les dépendances)
 
 - **Sécurité (outillage)** : quatre avis de sécurité restaient ouverts dans les paquets utilisés pour

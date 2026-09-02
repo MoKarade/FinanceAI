@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 80 : le diagnostic promettait un nouvel essai qui ne réussirait jamais
+
+- [x] **`[MARKETDATA-HISTORY-CAUSE-PERDUE]`** — 2026-09-02. Ticket écrit par moi au lot 75, et
+  **mal cadré une deuxième fois** — dans l'autre sens : je l'avais écrit « la cause est détruite,
+  aucun écran ne peut la nommer ». Faux au sens strict. `hydrateAssetHistories` distinguait DÉJÀ
+  l'échec du vide, produisait un diagnostic par titre et le publiait dans l'écran Diagnostic de
+  synchronisation. L'utilisateur n'était pas dans le silence.
+- **Le vrai défaut, plus précis et plus gênant** : ce diagnostic promettait « nouvel essai
+  automatique au prochain chargement » — vrai d'un quota ou d'une coupure réseau, **FAUX d'une clé
+  refusée**, où aucun rechargement ne réussira jamais. L'app rassurait exactement là où il fallait
+  agir. Un texte affiché est une AFFIRMATION.
+- **Livré** : `FinnhubProvider.getHistory` PROPAGE (comme ses trois voisins), `getHistoryDetaille`
+  publie la cause, `getHistory` reste l'enveloppe au contrat INTACT (`[]` vide valide / `null`
+  échec — dont dépendent la résolution de variantes et le verrou « un échec d'historique n'arme
+  jamais le cache négatif »). `causePermanente()` est le FAIT partagé ; chaque écran garde sa
+  phrase. `AddStockForm` nomme aussi la cause à la suggestion de prix.
+- ⚠️ **Dépendance RENDUE REQUISE, pas optionnelle** : le compilateur a énuméré ses 25 sites (2 de
+  production, 23 de test). Une seconde porte optionnelle aurait laissé la production reprendre la
+  version muette en silence.
+- ⚠️ **Piège de test rencontré** : `findByRole('status')` est désormais satisfait INSTANTANÉMENT par
+  la région live vide montée au lot 78 — il rendait `''` avant que la notice existe. On attend le
+  NŒUD qui porte le message, pas le rôle.
+- **Garde** : 4 cas à la façade (3 causes + anti-effondrement), 3 à l'hydratation (permanent /
+  transitoire / sans cause connue), 2 à l'écran. Quatre perturbations séparées, chacune ne fait
+  rougir que ses propres cas.
+- ⚠️⚠️ **Un test existant a démasqué un défaut que MON correctif introduisait** : le provider mappait
+  `401 || 403` sur `AUTH`. Anodin tant que la cause mourait juste après ; en la publiant, ça devenait
+  un message FAUX — Finnhub rend **403 quand la clé est BONNE** mais que le forfait ne couvre pas
+  l'appel (chandelles premium, cotations européennes en tier gratuit). Le diagnostic aurait envoyé
+  Marc corriger une clé valide. D'où une cause `PLAN` distincte, avec sa propre phrase.
+- **Débloque** `[FUTURE-HISTORY-EMPTY-CAUSE]` : la cause existe maintenant côté hydratation.
+
 ## 2026-09-02 — Lot 79 : deux tickets de dépendances décrivaient un arbre qui avait bougé
 
 - [x] **`[SEC-AUDIT-DEP-FASTURI]`** — 2026-09-02, **CADUC, corrigé sans nous**. Il demandait un bump

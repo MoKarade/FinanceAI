@@ -10360,6 +10360,71 @@ d'une bombe (`UNE-PEREMPTION-SE-SURVEILLE-PAR-UN-INVENTAIRE-PAS-PAR-L-HORLOGE`).
 avis appartient à un outil externe qui tourne dans le temps, pas à une suite de tests qui doit être
 déterministe. Le dire vaut mieux que de fabriquer une garde qui finira désactivée.
 
+
+### Lot 80 (2026-09-02) — promettre un nouvel essai qui ne réussira jamais
+
+`UN-MESSAGE-QUI-PROMET-UNE-RESOLUTION-AUTOMATIQUE-EST-UNE-AFFIRMATION-SUR-L-AVENIR`
+
+Mon ticket disait : « la cause d'un échec d'historique est détruite dans le provider, aucun écran ne
+peut la nommer ». **Faux au sens strict**, et je l'ai découvert en le re-recensant :
+`hydrateAssetHistories` distinguait DÉJÀ `null` (échec) de `[]` (vide), produisait un diagnostic par
+titre et le publiait dans l'écran Diagnostic de synchronisation. L'utilisateur n'était pas dans le
+silence — c'est même une des surfaces les mieux traitées du dépôt.
+
+Le vrai défaut était plus précis, et pire : ce diagnostic disait **« nouvel essai automatique au
+prochain chargement »**. C'est vrai d'un quota ou d'une coupure réseau. C'est **faux** d'une clé
+refusée — l'utilisateur peut recharger indéfiniment, rien ne changera jamais. Le message rassure
+exactement là où il faut agir.
+
+D'où la règle : **un message qui promet une résolution automatique affirme quelque chose sur
+l'AVENIR**, et cette affirmation dépend de la CAUSE. Elle se vérifie comme un chiffre. Chercher dans
+le dépôt les phrases de cette famille (« réessaie plus tard », « ça se rétablira tout seul », « au
+prochain démarrage ») et se demander, pour chacune, sur quelles causes elle est fausse.
+
+⚠️ **Deuxième fois que je cadre mal le MÊME ticket, dans le sens opposé.** Au lot 78 j'avais mis la
+perte trop HAUT (façade au lieu du provider) ; ici je l'ai décrite trop LARGE (« aucun écran ne peut
+la nommer » alors qu'un écran la nommait déjà). Les deux erreurs ont la même origine : j'ai écrit le
+ticket en regardant la couche que je venais de corriger, pas la surface que l'utilisateur voit. Un
+ticket se recense **depuis l'écran**, en descendant — jamais depuis le module, en remontant.
+
+⚠️ **La dépendance a été rendue REQUISE, pas optionnelle**, et c'est le cœur du correctif : le
+compilateur a énuméré ses 25 sites (2 de production, 23 de test). Une seconde porte optionnelle
+(`getHistoryDetaille?`) aurait laissé la production reprendre la version muette en silence — c'est
+la leçon `UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`, appliquée à une
+dépendance injectée. La conversion se fait à la FRONTIÈRE (une ligne : `res.forme === 'ok' ?
+res.points : null`), pour que toute la logique `null` en aval reste identique au caractère près.
+
+⚠️ **Le FAIT se partage, le TEXTE non.** `causePermanente(cause)` répond à « ça peut-il se résoudre
+tout seul ? » — une seule fois, pour tout le monde. Les phrases restent locales : un formulaire
+d'ajout et un diagnostic de synchronisation n'ont pas la même action à proposer. Partager le texte
+aurait donné un message générique dans les deux écrans ; partager la vérité donne deux messages
+justes (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`).
+
+⚠️ **Piège de test, né de mon propre lot précédent** : `findByRole('status')` est désormais satisfait
+**instantanément** par la région live VIDE que le lot 78 a montée en permanence sous le champ
+symbole — il rendait `''` avant que la notice n'existe. Attendre le NŒUD qui porte le message, pas
+le rôle. Une région live permanente est une bonne pratique d'accessibilité **et** un piège pour tout
+`findByRole` écrit après elle : quand on en ajoute une, les sélecteurs par rôle du même écran
+cessent de discriminer.
+
+⚠️⚠️ **Un test existant a démasqué un défaut que MON correctif introduisait.** Le provider mappait
+`401 || 403` sur la même cause `AUTH` — historiquement sans conséquence, puisque la cause mourait
+juste après. En la publiant, ce raccourci devenait un message FAUX : Finnhub rend **403 quand la clé
+est BONNE mais que le forfait ne couvre pas l'appel** (chandelles premium, cotations européennes en
+tier gratuit — les deux documentés ailleurs dans ce même module). Le diagnostic aurait envoyé Marc
+« corriger » une clé parfaitement valide. D'où une cause `PLAN` distincte, et deux phrases distinctes.
+
+C'est la leçon `UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE` sous une autre forme :
+**publier une valeur jusque-là jetée transforme chacune de ses approximations en affirmation.** Avant
+de faire remonter une classification, relire comment elle a été REMPLIE — un regroupement anodin tant
+que personne ne lit devient un mensonge dès qu'on l'affiche. Et ce qui l'a attrapé n'est pas une
+relecture : c'est un test dont le TITRE portait le fait (« 403 candles premium »), écrit par quelqu'un
+qui connaissait le fournisseur.
+
+⚠️ Enfin, la garde d'hydratation tient TROIS cas et pas deux : permanent, transitoire, **et échec
+sans cause connue** (le comportement d'avant, qui doit continuer de marcher). Sans le troisième,
+rien n'empêcherait de supprimer la branche de repli.
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

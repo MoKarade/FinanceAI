@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AddStockForm } from '../../../components/investments/AddStockForm';
-import { getQuoteDetaille, searchSymbolsDetaille, getActiveProviderName } from '../../../services/marketData';
+import { getQuoteDetaille, getHistoryDetaille, searchSymbolsDetaille, getActiveProviderName } from '../../../services/marketData';
 
 // Aucune dépendance réseau ne doit être requise pour le mode manuel.
 vi.mock('../../../services/marketData', () => ({
@@ -15,7 +15,7 @@ vi.mock('../../../services/marketData', () => ({
     // que la production n'a jamais eu (mesuré : 401/429/réseau rendaient `null`, sans lever) —
     // le test de panne réseau passait donc sur un chemin qui n'existe pas.
     getQuoteDetaille: vi.fn(async () => ({ forme: 'absent' })),
-    getHistory: vi.fn(async () => []),
+    getHistoryDetaille: vi.fn(async () => ({ forme: 'ok', points: [] })),
     getActiveProviderName: vi.fn(() => 'none'), // PH4-INV-1 : pas de clé → mode dégradé, pas d'autocomplétion
     searchSymbolsDetaille: vi.fn(async () => ({ forme: 'ok', resultats: [] })),
 }));
@@ -25,6 +25,7 @@ beforeEach(() => {
     vi.mocked(getActiveProviderName).mockReturnValue('none');
     vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' });
     vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [] });
+    vi.mocked(getHistoryDetaille).mockResolvedValue({ forme: 'ok', points: [] });
 });
 
 describe('AddStockForm — saisie 100% manuelle (sans Finnhub)', () => {
@@ -127,6 +128,37 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         expect(reseau).not.toMatch(/Clés API|introuvable/i);
         expect(auth).toMatch(/Réglages/i);
         expect(absent).toMatch(/introuvable/i);
+    });
+
+    // [MARKETDATA-HISTORY-CAUSE-PERDUE] « Suggérer prix historique » disait « vérifie ta connexion »
+    // quelle que soit la cause. Depuis que la voie historique publie la sienne, il nomme ce qui a
+    // échoué. La contre-épreuve garde le cas VIDE distinct : un titre sans cours à cette date n'est
+    // PAS une panne, et le dire autrement serait le défaut symétrique.
+    const validerPuisSuggerer = async (): Promise<string> => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'AAPL', price: 200 } } as never);
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        const bouton = await screen.findByRole('button', { name: /Suggérer prix historique/i });
+        fireEvent.change(screen.getByLabelText(/Date d'achat/i), { target: { value: '2026-03-02' } });
+        fireEvent.click(bouton);
+        // ⚠️ PAS `findByRole('status')` : depuis [MARKETDATA-SEARCH-CAUSE-COLLAPSE], une région live
+        // VIDE est montée en permanence sous le champ symbole — `findBy` la trouve INSTANTANÉMENT
+        // et rend `''` avant que la notice n'existe. On attend le NŒUD qui porte le message.
+        return (await screen.findByText(/Réglages|Aucun cours trouvé|Impossible de récupérer/i)).textContent ?? '';
+    };
+
+    it('échec de l historique : le message nomme la cause au lieu d accuser la connexion', async () => {
+        vi.mocked(getHistoryDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'AUTH', provider: 'finnhub' } });
+        expect(await validerPuisSuggerer()).toMatch(/Réglages/i);
+    });
+
+    it('CONTRE-ÉPREUVE : aucun cours à cette date reste « aucun cours trouvé », pas une panne', async () => {
+        vi.mocked(getHistoryDetaille).mockResolvedValue({ forme: 'ok', points: [] });
+        const texte = await validerPuisSuggerer();
+        expect(texte).toMatch(/Aucun cours trouvé/i);
+        expect(texte).not.toMatch(/Réglages/i);
     });
 
     // [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Une autocomplétion qui ne descend pas ne dit RIEN par

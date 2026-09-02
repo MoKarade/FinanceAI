@@ -106,6 +106,16 @@ export interface EchecMarche {
     readonly provider: string;
 }
 
+/**
+ * [MARKETDATA-HISTORY-CAUSE-PERDUE] Résultat DISCRIMINÉ d'une demande d'historique.
+ * `forme: 'ok'` porte le contrat HISTORIQUE inchangé — `[]` = vide valide, `null` = pas de chemin
+ * (hors navigateur sans clé) — et `forme: 'echec'` n'apparaît que lorsqu'un maillon a VRAIMENT
+ * échoué (AUTH / RATE_LIMIT / NETWORK / UNKNOWN).
+ */
+export type ResultatHistorique =
+    | { readonly forme: 'ok'; readonly points: HistoryPoint[] | null }
+    | { readonly forme: 'echec'; readonly echec: EchecMarche };
+
 /** [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Résultat DISCRIMINÉ d'une recherche : voir `searchSymbolsDetaille`. */
 export type ResultatRecherche =
     | { readonly forme: 'ok'; readonly resultats: SymbolSearchResult[] }
@@ -215,21 +225,48 @@ export function hasHistoryProvider(symbol: string): boolean {
  *   chaîne » (logError + retry, historique existant préservé) d'un « vide légitime » (skip).
  */
 export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null> {
+    const r = await getHistoryDetaille(symbol, from, to);
+    return r.forme === 'ok' ? r.points : null;
+}
+
+/**
+ * [MARKETDATA-HISTORY-CAUSE-PERDUE] MÊME chaîne que `getHistory`, mais qui PUBLIE la cause de
+ * l'échec. Avant, elle mourait DANS le provider (`FinnhubProvider.getHistory` attrapait et rendait
+ * `null`), donc le diagnostic d'hydratation ne pouvait dire que « panne du fournisseur » — et
+ * promettait un « nouvel essai automatique au prochain chargement » y compris sur une clé REFUSÉE,
+ * où aucun rechargement ne réussira jamais. Un message est une AFFIRMATION.
+ *
+ * ⚠️ Le contrat de `getHistory` ne bouge PAS d'un pouce : `[]` = vide VALIDE (cacheable 24 h),
+ * `null` = échec de toute la chaîne (jamais caché). `hydrateAssetHistories` fait reposer sa
+ * résolution de variantes sur cette distinction, et un verrou de `marketDataQuoteFallback` exige
+ * qu'un échec d'historique n'arme JAMAIS le cache négatif — les deux restent vrais.
+ *
+ * ⚠️ La cause retenue est celle du PREMIER maillon (le provider CONFIGURÉ), même règle que
+ * `getQuoteDetaille` : c'est la seule sur laquelle l'utilisateur peut agir.
+ */
+export async function getHistoryDetaille(symbol: string, from: Date, to: Date): Promise<ResultatHistorique> {
     const key = `${symbol}::${from.toISOString().slice(0, 10)}::${to.toISOString().slice(0, 10)}`;
-    return withCache('history', key, async () => {
+    // (Tableau plutôt qu'un `let` : TypeScript rétrécit un `let` affecté uniquement depuis une
+    // closure — cf. `getQuoteDetaille`.)
+    const echecs: MarketDataError[] = [];
+    const markTransient = (e: MarketDataError) => { if (echecs.length === 0) echecs.push(e); };
+    const points = await withCache('history', key, async () => {
         const isCrypto = Boolean(coinGeckoIdFor(symbol));
-        if (isCrypto) return cryptoProvider.getHistory(symbol, from, to); // pas de repli Yahoo (crypto)
+        if (isCrypto) return runLink(() => cryptoProvider.getHistory(symbol, from, to), markTransient); // pas de repli Yahoo (crypto)
         // 1. Finnhub si configuré. `[]`/`null` → tenter Yahoo (candles gratuits absents chez Finnhub).
         if (activeProvider) {
-            const primary = await activeProvider.getHistory(symbol, from, to);
+            const primary = await runLink(() => activeProvider!.getHistory(symbol, from, to), markTransient);
             if (primary && primary.length > 0) return primary;
         }
         // 2. Repli Yahoo (proxy same-origin, navigateur seulement).
         if (typeof window !== 'undefined') {
-            return getYahooHistory(symbol, from, to);
+            return runLink(() => getYahooHistory(symbol, from, to), markTransient);
         }
         return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
     });
+    const echec = echecs[0] ?? null;
+    if (points === null && echec) return { forme: 'echec', echec: { cause: echec.code, provider: echec.provider } };
+    return { forme: 'ok', points };
 }
 
 /** [INVEST-ALLOC-GEO-SECTOR] Un provider de PROFIL existe-t-il ? (pas de repli Yahoo pour les

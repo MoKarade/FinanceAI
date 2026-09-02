@@ -2125,23 +2125,17 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 
 
-- [ ] **`[MARKETDATA-HISTORY-CAUSE-PERDUE]`** (S) — ⚠️ **Moitié restante de
-  `[AI-FINNHUB-CAUSE-COLLAPSE]` (lot 75), pas un oubli : la cause est détruite plus BAS.** Pour les
-  cours (`getQuote`), l'erreur typée survivait jusqu'à la façade, qui la jetait — il a suffi de la
-  publier. Pour l'HISTORIQUE, `FinnhubProvider.getHistory` **attrape et rend `null` lui-même** : à
-  la façade, il ne reste plus rien à transporter. Mesuré : 401, 429 et panne réseau rendent tous
-  `getHistory === null`, sans lever. Conséquence : `AddStockForm.suggestHistoricalPrice` et
-  `hydrateAssetHistories` ne peuvent pas nommer la cause. **Correctif** : faire remonter
-  `MarketDataError` hors du provider (son `null` sert AUSSI de signal de repli vers Yahoo et de
-  règle de cache — les trois usages se démêlent avant de toucher au contrat).
-
 - [ ] **`[FUTURE-HISTORY-EMPTY-CAUSE]`** (S) — L'état vide de `future/FutureHistorySection.tsx`
   affirme « vérifie ta clé Finnhub » — or **son hook ne fait AUCUN réseau** : `usePortfolioHistory`
   DÉRIVE du store (`buildMarketData`), le fetch a lieu ailleurs (`hydrateAssetHistories`, au boot).
   Il ne peut donc rien savoir de la cause, et son champ `error: Error | null` est **codé en dur à
-  `null` dans ses deux branches** — un champ toujours nul, jamais un cas limite. **Correctif** :
-  publier l'issue de l'hydratation (via le store) et faire dire à l'écran ce qui s'est réellement
-  passé, ou retirer le champ mort ; dépend de `[MARKETDATA-HISTORY-CAUSE-PERDUE]` pour la cause.
+  `null` dans ses deux branches** — un champ toujours nul, jamais un cas limite.
+  ✅ **Débloqué par le lot 80** : la cause EXISTE désormais côté hydratation
+  (`[MARKETDATA-HISTORY-CAUSE-PERDUE]` livré — le skip porte `detail` + `reason`, publié dans
+  `HistorySyncReport`). **Correctif** : faire lire ce rapport par l'état vide (il est déjà exposé
+  par `getHistorySyncReport`/`subscribeHistorySyncReport`, comme `HistorySyncDoctor`) au lieu
+  d'affirmer une cause, et retirer le champ `error` mort. ⚠️ Vérifier d'abord que le rapport est
+  peuplé au moment où cet écran s'affiche — sinon l'état vide dirait « on ne sait pas encore ».
 
 
 - [ ] **`[AI-MODELID-EPINGLER-SNAPSHOTS]`** (XS, **HUMAIN**) — ⚠️ **Moitié restante de

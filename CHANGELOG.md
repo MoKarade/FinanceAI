@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (La clé qui porte tes données n'est plus écrite à quatre endroits)
+
+- **Renforcé** : `financeai-storage`, le nom sous lequel toutes tes données sont enregistrées dans le
+  navigateur, était recopié à **quatre** endroits du code — dont un avec un commentaire demandant de
+  « penser à les garder synchronisés ». Un renommage appliqué à trois endroits sur quatre aurait fait
+  ouvrir l'app **vide**, exactement comme l'incident d'aujourd'hui, sans que rien ne soit rouge.
+- **Ce qui change pour toi** : rien de visible. C'est une correction de robustesse, sur la clé la
+  plus critique de l'app.
+- **Aucune donnée n'est déplacée ni renommée** : les noms de clés sont un contrat avec les
+  navigateurs déjà installés, et les changer effacerait tout. Seul l'endroit où ils sont *écrits*
+  dans le code a changé.
+
 ## [unreleased] — 2026-09-02 (Le diagnostic budget dit quand l'IA est sortie du format)
 
 - **Corrigé** : dans le diagnostic IA du budget, quand le modèle ne répond pas dans le format

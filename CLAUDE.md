@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 121 tests** Vitest
-(497 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 125 tests** Vitest
+(498 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un commentaire qui réclame de la VIGILANCE est l'aveu qu'il manque une source unique** :
+  `syncSnapshot.ts` portait « doit correspondre au `name` du persist Zustand et à backupAuto » —
+  autrement dit `financeai-storage`, la clé qui porte TOUTES les données, était écrite en QUATRE
+  endroits, et la garantie était que quelqu'un y pense. Un renommage appliqué à trois sur quatre
+  ouvre l'app VIDE, sans rien de rouge. ⚠️ Et le critère de regroupement n'est PAS « il y a beaucoup
+  de clés » mais « la même chaîne est écrite deux fois » : une clé à site unique n'a pas le défaut,
+  et l'y forcer ajoute un import inutile — du bruit qui rend la règle plus facile à ignorer. Enfin,
+  une duplication IRRÉDUCTIBLE (fichier hors bundle qui ne peut rien importer) ne se documente pas,
+  elle se TESTE (`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`).
 - ⚠️ **Le remède d'un ticket peut ANNULER une décision antérieure** : « échec honnête plutôt
   qu'affichage de secours » aurait supprimé un repli DÉLIBÉRÉ, posé et commenté par
   `[BUDGET-AI-DUP-PARSING]` — jeter une réponse lisible pour cause de format est pire que la montrer.

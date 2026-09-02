@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 72 : ce n'est pas le NOMBRE de clés qui est dangereux, c'est leur RÉPÉTITION (PR #802)
+
+- [x] **`[STORAGE-KEYS-NO-REGISTRY]`** — 2026-09-02, PR #802. ⚠️ **Le ticket se trompait deux fois** :
+  34 clés littérales dans **8** fichiers (pas « 40 dans ~20 »), et les trois `DISMISS_KEY` ne sont
+  **PAS des doublons** mais des HOMONYMES portant trois valeurs différentes — « les centraliser »
+  les aurait mises en collision, soit exactement le défaut que le registre existe pour empêcher.
+- **Le vrai risque, mesuré** : `financeai-storage` — la clé qui porte TOUTES les données de
+  l'utilisateur, celle de l'incident du jour — était écrite en **quatre** endroits, dont un avec un
+  commentaire demandant de la synchroniser à la main. Un commentaire qui réclame de la vigilance est
+  l'aveu qu'il manque une source unique.
+- **Livré** : `utils/storageKeys.ts` (module PUR, zéro import — il part dans le bundle de boot) pour
+  les **cinq** clés écrites à plusieurs endroits, avec propriétaire et rôle. Les clés écrites à un
+  seul endroit ne sont PAS déplacées : elles n'ont pas le défaut, et les y forcer ajouterait un
+  import à des fichiers qui n'en ont pas besoin.
+- ⚠️ **Une copie irréductible identifiée et enfin VÉRIFIÉE** : `public/ga-init.js` est chargé avant
+  le bundle et ne peut rien importer. La synchronisation reposait sur un commentaire ; elle repose
+  maintenant sur un test.
+
 ## 2026-09-02 — Lot 71 : le correctif prescrit aurait annulé une décision antérieure (PR #801)
 
 - [x] **`[AI-BUDGETMODAL-RAW-FALLBACK]`** — 2026-09-02, PR #801. Le défaut décrit est RÉEL et encore

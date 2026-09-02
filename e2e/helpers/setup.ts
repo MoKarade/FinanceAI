@@ -5,6 +5,9 @@
  * activate_test_mode — injecte les fixtures Alex/Sam via le store Zustand.
  */
 import { type Page } from '@playwright/test';
+// ⚠️ Le script est INJECTÉ comme source dans la page : il ne peut pas importer le registre, il
+// l'INTERPOLE. C'est la seule forme possible ici, et elle garde la source unique.
+import { STORAGE_KEYS } from '../../utils/storageKeys';
 
 /**
  * Bypass l'onboarding en injectant le flag localStorage avant le chargement
@@ -13,11 +16,11 @@ import { type Page } from '@playwright/test';
 export function scriptBypassOnboarding(): string {
   return `
     try {
-      localStorage.setItem('app_onboarding_done', 'true');
+      localStorage.setItem('${STORAGE_KEYS.onboardingDone}', 'true');
       // Pré-régler le consentement (Loi 25) : sinon la bannière fixe (bas, z-40)
       // se superpose au bas des pages (ex. le graphe Futur) et INTERCEPTE les clics
       // → faux échecs e2e selon le viewport. 'denied' = aucun tracking en test.
-      localStorage.setItem('financeai:analyticsConsent:v1', 'denied');
+      localStorage.setItem('${STORAGE_KEYS.analyticsConsent}', 'denied');
     } catch (e) {
       // localStorage indisponible — ne bloque pas le test
     }

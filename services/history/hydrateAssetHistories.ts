@@ -388,7 +388,12 @@ async function runHydrate(
                 ...(resolvedSymbol ? { historySymbol: resolvedSymbol } : {}),
             });
         } catch (e) {
-            skipped.push({ symbol: a.symbol, reason: 'error' });
+            // [FUTURE-HISTORY-EMPTY-CAUSE] Un skip SANS `detail` retombait chez ses lecteurs sur un
+            // texte de repli qui PROMET un nouvel essai automatique — la promesse que le lot 80
+            // vient de retirer en amont. Ici la cause est une exception INATTENDUE (cache, bug
+            // interne) : on ne sait pas si un nouvel essai aidera, donc on ne le promet pas.
+            const detail = `Erreur inattendue pendant la synchronisation de ${a.symbol} — voir le journal des erreurs (écran Système).`;
+            skipped.push({ symbol: a.symbol, reason: 'error', detail, detailPrivacySafe: detail });
             logError({
                 source: 'network', severity: 'warning',
                 message: `Hydratation de l'historique de ${a.symbol} échouée (graphe partiel).`,

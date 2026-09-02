@@ -85,3 +85,24 @@ export function subscribeHistorySyncReport(listener: () => void): () => void {
     _listeners.add(listener);
     return () => { _listeners.delete(listener); };
 }
+
+/**
+ * [FUTURE-HISTORY-EMPTY-CAUSE] Skips sur lesquels un ÉCRAN a quelque chose à dire, dédupliqués par
+ * symbole. Source unique du critère : `HistorySyncDoctor` le portait seul, et l'état vide du graphe
+ * « Évolution » allait en faire une deuxième copie — deux copies d'un critère divergent en silence.
+ *
+ * - `empty` (introuvable / refusé) et `error` (panne) sont ACTIONNABLES ; les raisons nominales
+ *   (`fresh`), hors navigateur (`no-provider`) ou déjà détaillées au journal (`currency-mismatch`)
+ *   n'appellent aucune action à l'écran.
+ * - DÉDUP par symbole (finding code-reviewer #494, mesuré) : le même titre détenu dans deux comptes
+ *   produit deux skips — donc deux clés React et deux `id` DOM identiques. Le remède (fixer le
+ *   symbole de cotation) s'applique de toute façon à TOUS les actifs de ce symbole.
+ */
+export function skipsActionnables(report: HistorySyncReport | null): HistorySyncReport['skipped'] {
+    if (!report) return [];
+    const parSymbole = new Map<string, HistorySyncReport['skipped'][number]>();
+    for (const s of report.skipped) {
+        if ((s.reason === 'empty' || s.reason === 'error') && !parSymbole.has(s.symbol)) parSymbole.set(s.symbol, s);
+    }
+    return [...parSymbole.values()];
+}

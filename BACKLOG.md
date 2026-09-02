@@ -2125,18 +2125,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 
 
-- [ ] **`[FUTURE-HISTORY-EMPTY-CAUSE]`** (S) — L'état vide de `future/FutureHistorySection.tsx`
-  affirme « vérifie ta clé Finnhub » — or **son hook ne fait AUCUN réseau** : `usePortfolioHistory`
-  DÉRIVE du store (`buildMarketData`), le fetch a lieu ailleurs (`hydrateAssetHistories`, au boot).
-  Il ne peut donc rien savoir de la cause, et son champ `error: Error | null` est **codé en dur à
-  `null` dans ses deux branches** — un champ toujours nul, jamais un cas limite.
-  ✅ **Débloqué par le lot 80** : la cause EXISTE désormais côté hydratation
-  (`[MARKETDATA-HISTORY-CAUSE-PERDUE]` livré — le skip porte `detail` + `reason`, publié dans
-  `HistorySyncReport`). **Correctif** : faire lire ce rapport par l'état vide (il est déjà exposé
-  par `getHistorySyncReport`/`subscribeHistorySyncReport`, comme `HistorySyncDoctor`) au lieu
-  d'affirmer une cause, et retirer le champ `error` mort. ⚠️ Vérifier d'abord que le rapport est
-  peuplé au moment où cet écran s'affiche — sinon l'état vide dirait « on ne sait pas encore ».
-
 
 - [ ] **`[AI-MODELID-EPINGLER-SNAPSHOTS]`** (XS, **HUMAIN**) — ⚠️ **Moitié restante de
   `[AI-MODELID-PINNING-DRIFT]` (lot 70), non faisable par Claude.** `claude-sonnet-4-6` et

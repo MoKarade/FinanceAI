@@ -15,7 +15,7 @@ import { Icon } from '../ui/Icon';
 import { showToast } from '../ui/Toast';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import {
-    getHistorySyncReport, subscribeHistorySyncReport,
+    getHistorySyncReport, subscribeHistorySyncReport, skipsActionnables,
 } from '../../services/history/syncDiagnostics';
 import { searchYahooSymbols, type YahooSearchResult } from '../../services/marketData/providers/yahooProxy';
 
@@ -56,24 +56,17 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
 
     if (isTestMode) return null; // ceinture — tickers réels, jamais en démo persona
     if (!report) return null;
-    // Seuls les échecs ACTIONNABLES : 'empty' (introuvable/refusé) et 'error' (panne). Les raisons
-    // nominales (fresh) ou couvertes ailleurs (no-provider hors navigateur, currency-mismatch déjà
-    // détaillée au journal) n'appellent pas d'action ici.
-    // [Finding code-reviewer #494 — MOYEN, mesuré] DÉDUP par symbole : le même titre détenu dans
-    // 2 comptes (CELI+REER) produit 2 skips → clé React + id DOM dupliqués (htmlFor cassé) et
-    // drafts/suggestions partagés entre les 2 lignes. Une seule ligne par symbole (le remède —
-    // historySymbol — s'applique de toute façon à TOUS les actifs de ce symbole).
-    const bySymbol = new Map<string, (typeof report.skipped)[number]>();
-    for (const s of report.skipped) {
-        if ((s.reason === 'empty' || s.reason === 'error') && !bySymbol.has(s.symbol)) bySymbol.set(s.symbol, s);
-    }
-    const actionable = [...bySymbol.values()];
+    // [FUTURE-HISTORY-EMPTY-CAUSE] Le critère (quelles raisons sont actionnables + dédup par
+    // symbole) vit désormais dans `skipsActionnables` : l'état vide du graphe « Évolution » le lit
+    // AUSSI, et deux copies d'un même critère divergent en silence.
+    const actionable = skipsActionnables(report);
     // [PRICE-SYNC-REPORT] Skips de QUOTES (currentPrice non rafraîchi) — dédup par symbole, et on
     // n'affiche pas en double un titre déjà listé ci-dessus (le remède — symbole de cotation — est
     // le même). currency-mismatch inclus (raison actionnable : corriger la devise/le suffixe).
+    const dejaListes = new Set(actionable.map((s) => s.symbol));
     const quoteBySymbol = new Map<string, { symbol: string; reason: string }>();
     for (const q of report.quoteSkips ?? []) {
-        if (!bySymbol.has(q.symbol) && !quoteBySymbol.has(q.symbol)) quoteBySymbol.set(q.symbol, q);
+        if (!dejaListes.has(q.symbol) && !quoteBySymbol.has(q.symbol)) quoteBySymbol.set(q.symbol, q);
     }
     const quoteActionable = [...quoteBySymbol.values()];
     if (actionable.length === 0 && quoteActionable.length === 0) return null;
@@ -134,7 +127,11 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
                             ? (s.detailPrivacySafe ?? 'Diagnostic masqué (mode discret) — désactive-le pour le détail complet.')
                             : s.detail)
                             ?? (s.reason === 'error'
-                                ? 'Panne du fournisseur de cours — nouvel essai automatique au prochain chargement.'
+                                // ⚠️ [FUTURE-HISTORY-EMPTY-CAUSE] Ce repli PROMETTAIT « nouvel essai
+                                // automatique au prochain chargement » — la promesse que le lot 80
+                                // vient de retirer en amont, recopiée ici. Un repli s'atteint quand
+                                // on ne SAIT pas : il ne peut donc rien promettre.
+                                ? 'Échec du fournisseur de cours pour ce titre — voir le journal des erreurs (écran Système).'
                                 : 'Aucun historique trouvé pour ce titre.')}
                         {s.reason === 'empty' && (suggestions[s.symbol]?.length ?? 0) > 0 && (
                             <ul className="mt-1.5 flex flex-wrap gap-2" aria-label={`Titres suggérés pour ${s.symbol}`}>

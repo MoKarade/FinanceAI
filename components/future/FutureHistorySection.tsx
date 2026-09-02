@@ -23,6 +23,8 @@ import { HistoryCoverageNote } from '../dashboard/HistoryCoverageNote';
 import { computeTotalDebt } from '../../services/portfolio';
 import { presentEquityOfGoal, monthsSince } from '../../services/projection/pastPurchaseInit';
 import { reconstructRealEstateEquityByYear } from '../../services/history/reconstructRealEstateEquity';
+import { useSyncExternalStore } from 'react';
+import { getHistorySyncReport, subscribeHistorySyncReport, skipsActionnables } from '../../services/history/syncDiagnostics';
 
 // Même chunk lazy que sur l'ex-Accueil (recharts ≈ 445 KB via ZoomableTimeChart) : le
 // sous-onglet Historique ne paie le graphe qu'à l'affichage. lazyWithRetry = retry/reload
@@ -80,6 +82,12 @@ const FutureHistorySection: React.FC = () => {
 
     // Sprint 3B M3 — cache singleton : un seul fetch global pour toute la session.
     const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = usePortfolioHistory();
+    // [FUTURE-HISTORY-EMPTY-CAUSE] L'état vide affirmait « vérifie ta clé Finnhub » — une cause que
+    // cet écran ne peut PAS connaître : `usePortfolioHistory` ne fait aucun réseau, il DÉRIVE du
+    // store. La vraie issue de l'hydratation est publiée au démarrage MÊME quand rien n'a pu être
+    // hydraté (`App.tsx`, commenté sur place) : on la lit, comme le fait l'écran Diagnostic.
+    const rapportSync = useSyncExternalStore(subscribeHistorySyncReport, getHistorySyncReport, getHistorySyncReport);
+    const echecsSync = skipsActionnables(rapportSync);
     // (L'état intermédiaire `marketData` de l'ex-Dashboard datait du chemin fetch legacy —
     // le hook est déjà la source, on le consomme directement.)
     const marketData = portfolioHistory;
@@ -255,12 +263,30 @@ const FutureHistorySection: React.FC = () => {
                         {assets.some(a => a.symbol) ? (
                             <>
                                 <p className="text-body text-ink-200 font-medium">Historique de cours indisponible pour l'instant</p>
-                                <p className="text-meta text-ink-400">
-                                    Les cours historiques se chargent au démarrage depuis tes dates d'achat
-                                    (la courbe apparaît toute seule quand ils arrivent). Si rien n'apparaît
-                                    après un rechargement, vérifie ta clé Finnhub (Réglages → Clés API) —
-                                    le repli gratuit couvre la plupart des titres.
-                                </p>
+                                {rapportSync === null ? (
+                                    // Rien à dire ENCORE : la synchro n'a pas fini. La promesse est vraie ici,
+                                    // et seulement ici — c'est le seul moment où la courbe peut arriver seule.
+                                    <p className="text-meta text-ink-400">
+                                        Les cours historiques se chargent au démarrage depuis tes dates d'achat —
+                                        la courbe apparaît toute seule quand ils arrivent.
+                                    </p>
+                                ) : echecsSync.length > 0 ? (
+                                    <p className="text-meta text-ink-400">
+                                        La synchronisation a échoué sur {echecsSync.length}{' '}
+                                        {echecsSync.length > 1 ? 'titres' : 'titre'}.{' '}
+                                        {/* Le détail vient du diagnostic, pas d'une cause devinée ici. En mode
+                                            discret, la variante SANS montant (le `detail` peut interpoler un prix). */}
+                                        {(isPrivacyMode ? echecsSync[0].detailPrivacySafe : echecsSync[0].detail)
+                                            ?? 'Détail indisponible.'}{' '}
+                                        Le détail par titre et les correctifs sont dans Placements → Diagnostic de synchronisation.
+                                    </p>
+                                ) : (
+                                    <p className="text-meta text-ink-400">
+                                        La synchronisation s'est terminée sans erreur signalée, mais aucun cours
+                                        n'est arrivé. Vérifie les dates d'achat de tes titres — l'historique part
+                                        du premier achat.
+                                    </p>
+                                )}
                             </>
                         ) : (
                             <>

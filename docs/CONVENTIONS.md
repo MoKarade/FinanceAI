@@ -10589,6 +10589,55 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 87 (2026-09-02) — le défaut dominant du ticket était écrit en incise
+
+`UN-TICKET-TITRE-CE-QU-IL-A-VU-EN-DERNIER-PAS-CE-QUI-COUTE-LE-PLUS`
+
+`[TAXDEC-ACTIF-72-PENSION-CREDIT]` titrait sur un crédit d'impôt refusé à une « population
+marginale » (les actifs de 72-75 ans) et mentionnait en incise, entre parenthèses, « l'assiette de
+bande active = salaires SEULS ». C'est cette incise qui coûtait cher : **701 à 2 520 $ d'impôt par an
+jamais facturés**, pour n'importe quel ménage actif qui décaisse son REER et réalise des gains.
+Le titre d'un ticket dit ce que son auteur regardait au moment de l'écrire, pas ce qui pèse le plus
+— **relire chaque incise comme si elle était le titre**.
+
+⚠️ **Le ticket nommait UN site ; il y en avait DEUX.** Il citait le §2 (gains). Le §3 (dividendes)
+portait le même trou, trouvé en énumérant les producteurs plutôt qu'en lisant la prose — et le
+comble : son propre commentaire `FA-8` raconte avoir corrigé exactement cette omission… du côté
+RETRAITÉ. Un correctif écrit dans une branche laisse la branche jumelle intacte, et son commentaire
+raconte alors le défaut qui subsiste juste à côté (`MODULE-ECRIT-HORS-CHECKLIST`). Douzième ticket
+d'affilée dont le périmètre est une borne inférieure.
+
+✅ **Le correctif est une FORME, pas seulement une valeur.** Les deux copies du ternaire deviennent
+une source unique, et `accRetraitsReerYear` est **factorisé HORS** du ternaire au lieu d'être ajouté
+dans la branche qui manquait : il appartient aux DEUX régimes, donc le laisser à l'intérieur, c'est
+garder la structure qui a produit l'erreur et attendre qu'elle se répète. **Quand un terme appartient
+à toutes les branches, le sortir du branchement est le vrai correctif.**
+
+⚠️⚠️ **Mesuré au PRODUCTEUR, un écart peut être universel ; mesuré sur la sortie PUBLIÉE, presque
+nul.** Le crédit de pension refusé aux actifs valait 250 à 679 $/an sur `calculateFiscalReport` — sur
+toutes les configurations essayées. Sur la sortie de décembre, il est **nul dans 4 cas sur 5** : le
+règlement vaut `impôt − retenue`, les deux appels portent les mêmes `ageOpts` avec le même
+`familyIncome`, et le crédit disparaît dans la soustraction. Il ne survit que là où il est PERDU du
+côté de la retenue, c'est-à-dire quand le salaire est petit devant les retraits (mesuré : −678,62 $
+sur le règlement et +372,81 $ sur la bande à 20 k$ de salaire pour 50 k$ de retraits). La population
+touchée n'est donc pas celle que le ticket décrivait. `UNE-GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`
+appliqué à la MESURE et non au test : **un montant ne se publie qu'après avoir été lu sur la grandeur
+que l'utilisateur voit** — et le contre-cas (« à salaire élevé, rien ne bouge ») s'écrit DANS le test,
+sinon le prochain lot cherchera un bug là où il n'y en a pas.
+
+⚠️ **« Zéro golden n'a bougé » s'est expliqué par un COMPTEUR, pas par une hypothèse.** J'ai
+instrumenté `taxDecember` : le chemin « actif + retraits REER + non-enregistré » est exercé **0 fois
+sur 7 personas × 40 ans**. C'est ce qui a permis à deux défauts money-critical de vivre. Le trou de
+couverture est routé (`[PERSONA-ACTIF-QUI-DECAISSE]`) au lieu d'être comblé au passage — ajouter un
+persona re-base des goldens, c'est un lot à part. Corollaire rassurant à écrire aussi : une
+couverture nulle veut dire un risque de régression nul sur ce lot.
+
+⚠️ Et pour la troisième fois sur ce dépôt, **un stub PLAT rendait le défaut invisible** : sous
+`gross × taux`, une bande vaut `tranche × taux` quelle que soit l'assiette, et un crédit non
+remboursable n'existe pas. Les 126 tests de caractérisation du module ne pouvaient donc rien voir —
+ce n'est pas leur faute, c'est leur contrat. Les gardes neuves injectent le VRAI barème ou espionnent
+ses arguments.
+
 ### Lot 86 (2026-09-02) — « inatteignable » est un constat qui se périme
 
 `UN-CONSTAT-D-INATTEIGNABILITE-SE-PERIME-DES-QU-ON-DECIDE-D-EXTRAIRE`

@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 87 : le défaut dominant n'était pas celui que le ticket titrait
+> `[TAXDEC-ACTIF-72-PENSION-CREDIT]` CLOS — deux défauts, dont le gros n'était qu'en incise.
+> - **(A) IMPÔT JAMAIS FACTURÉ** : les bandes §2 (gains) et §3 (dividendes) empilaient sur le
+>   SALAIRE SEUL pour un ménage ACTIF, alors que `[REER-ACTIF-NON-RECONCILIE]` avait élargi
+>   l'assiette du §1 à ses retraits REER. **701 à 2 520 $/an** mesurés. ⚠️ Le ticket ne citait que
+>   le §2 ; le §3 avait le même trou — 12ᵉ ticket au périmètre trop étroit.
+>   Correctif de FORME : source unique `assietteEmpilementNominale`, `accRetraitsReerYear`
+>   **factorisé HORS** du ternaire (il appartient aux deux régimes).
+> - **(B) crédit de pension d'un actif 72+** : corrigé des DEUX côtés ensemble (§1 + bande).
+>   ⚠️ **Effet PUBLIÉ nul dans 4 cas sur 5** — le crédit s'annule entre impôt et retenue ; il ne
+>   survit que si le SALAIRE est petit devant les retraits (−305,81 $ net à 20 k$/50 k$). Mesuré au
+>   producteur il valait 250-679 $ partout : `UNE-GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`.
+> - ⚠️ **Zéro mouvement moteur, EXPLIQUÉ par un compteur** : le chemin « actif + retraits REER +
+>   non-enregistré » est exercé **0 fois sur 7 personas × 40 ans** → ticket `[PERSONA-ACTIF-QUI-DECAISSE]`.
+> - Les 126 tests de `taxDecember` restent verts STRUCTURELLEMENT : leur stub fiscal est PLAT.
+> - ⚠️ Le test de LIMITE qui figeait « pension admissible = 0 chez un actif » a été **INVERSÉ**
+>   au même endroit, avec son histoire — il avait raison à sa date, le §1 n'était pas encore corrigé.
+
 > ## 🟦 Session 2026-09-02 — Lot 86 : la source unique déclarée inatteignable ne l'était plus
 > `[FISC-LATENT-PENSION-CREDIT]` — moitié **rente DB** livrée ; moitié **FERR** routée avec sa raison.
 > - **Le vrai livrable est l'EXTRACTION** : `eligiblePensionFor` était une CLOSURE de `taxDecember`

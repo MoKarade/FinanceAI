@@ -120,19 +120,24 @@ describe('[FISC-TAXDEC-INCR] la bande incrémentale porte l\'érosion du crédit
         expect(gainsTax({ ...db, incomeRetirementDbPerUserMonthly: undefined, age: 73 })).toBeCloseTo(5699.44, 1);
     });
 
-    it('ACTIF 72+ à retraits REER : la bande garde pension admissible = 0, alignée sur le calcul §1', () => {
-        // 2e relecture #676 (MOYEN 2) : le hissage de eligiblePensionFor faisait porter les
-        // retraits REER (admissibles dès 72 ans) à la bande d'un ACTIF, pendant que son calcul
-        // d'impôt principal garde eligiblePensionIncome: 0 — améliorer UN seul côté d'une
-        // incohérence partagée re-crée la classe CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE
-        // (mesuré ±1 878 $/an). Bornée à la branche retraitée ; l'incohérence active est routée
-        // ([TAXDEC-ACTIF-72-PENSION-CREDIT]). Ce test échoue si la borne saute (l'attendu est
-        // reconstruit avec pension 0 et l'ÂGE porté — le crédit d'âge, lui, reste dû).
+    it('ACTIF 72+ à retraits REER : la bande porte SA pension admissible ET empile sur SON assiette réelle', () => {
+        // ⚠️ TEST INVERSÉ le 2026-09-02 par `[TAXDEC-ACTIF-72-PENSION-CREDIT]`, au même endroit et
+        // avec son histoire — une limite s'inverse, elle ne se supprime pas
+        // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`). Ce qu'il affirmait AVANT :
+        // « la bande garde pension admissible = 0, alignée sur le calcul §1 ». C'était la bonne
+        // décision À L'ÉPOQUE : la 2e relecture #676 avait mesuré ±1 878 $/an d'incohérence si on
+        // portait la pension d'un SEUL côté (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`), et le §1
+        // n'était pas encore corrigé. Il l'est désormais — les deux côtés passent la MÊME
+        // `eligiblePensionFor`, donc l'alignement tient, sur la VRAIE valeur au lieu d'un zéro.
+        // Le même lot a corrigé l'ASSIETTE : la bande d'un actif empile désormais sur
+        // salaire + retraits REER (95 000), plus sur le salaire seul (75 000) — c'est ce qui rend
+        // ce test rouge à DEUX titres sur le code d'avant, et c'est voulu.
         const t = gainsTax({ isRetired: false, age: 72, ageSpouse: undefined, activeUsersCount: 1,
             grossMarcBaseAnnual: 75_000, accRetraitsReerYear: 20_000, accCapitalGainsYear: 30_000 });
-        const mk = (fam: number) => ({ age: 72, eligiblePensionIncome: 0, hasSpouse: false, familyIncome: fam });
-        const attendu = calculateFiscalReport(75_000 + 15_000, 0, 0, 2026, true, mk(90_000)).totalTax
-            - calculateFiscalReport(75_000, 0, 0, 2026, true, mk(75_000)).totalTax;
+        const mk = (fam: number) => ({ age: 72, eligiblePensionIncome: 20_000, hasSpouse: false, familyIncome: fam });
+        const assiette = 75_000 + 20_000;
+        const attendu = calculateFiscalReport(assiette + 15_000, 0, 0, 2026, true, mk(assiette + 15_000)).totalTax
+            - calculateFiscalReport(assiette, 0, 0, 2026, true, mk(assiette)).totalTax;
         expect(t).toBeCloseTo(attendu, 6);
     });
 });

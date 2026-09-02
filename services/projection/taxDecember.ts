@@ -532,17 +532,30 @@ export function processDecemberTaxFiling(
 
         // §6.2 — crédits 65+ pour salarié actif 65+ (audit silent-failure FINDING 2).
         // Cas : senior qui continue à travailler après 65 ans.
-        // B-AUDIT-3 — chaque conjoint selon SON âge (ctx.age / ctx.ageSpouse) : un 65+ qui
-        // travaille a le crédit d'âge, un conjoint <65 ne l'a pas (corrige l'ancien biais
-        // qui appliquait l'âge de Marc aux deux). eligiblePensionIncome=0 (aucune pension
-        // admissible en mode actif) ; familyIncome = revenu familial (réduction ligne 361).
+        // B-AUDIT-3 — chaque conjoint selon SON âge : un 65+ qui travaille a le crédit d'âge, un
+        // conjoint <65 ne l'a pas (corrige l'ancien biais qui appliquait l'âge de Marc aux deux).
+        // `familyIncome` = revenu familial (réduction ligne 361).
+        //
+        // [TAXDEC-ACTIF-72-PENSION-CREDIT] `eligiblePensionIncome` valait 0 EN DUR — « aucune
+        // pension admissible en mode actif ». Faux dès 72 ans : l'âge de retraite est saisissable
+        // jusqu'à **75** (`RetirementSettingsCard`, `max={75}`), et depuis
+        // `[REER-ACTIF-NON-RECONCILIE]` les retraits REER d'un ménage ACTIF entrent bien dans
+        // l'assiette imposable ci-dessus. Or le moteur les considère comme du FERR dès 72 ans —
+        // donc admissibles. Mesuré : **250 à 679 $/an de SUR-imposition** pour un actif de 73 ans
+        // à retraits REER. On passe donc la MÊME source unique que la branche retraitée
+        // (`eligiblePensionFor`, qui gate elle-même 65/72) : sa moitié DB vaut naturellement 0 ici,
+        // puisque `incomeRetirementDbPerUserMonthly` n'existe qu'en retraite.
+        // ⚠️ Indexé par DÉCLARANT et non par âge : l'assiette est per-conjoint, et un helper qui ne
+        // reçoit qu'un âge ne peut pas la retrouver.
         const familyGrossReal = taxableMarcReal + taxableAnnaReal;
-        const mkActiveAgeOpts = (a: number | undefined): AgeCreditOptions | undefined =>
-            (a !== undefined && a >= 65)
-                ? { age: a, eligiblePensionIncome: 0, hasSpouse: ctx.activeUsersCount > 1, familyIncome: familyGrossReal }
+        const mkActiveAgeOpts = (i: number): AgeCreditOptions | undefined => {
+            const a = ages[i];
+            return (a !== undefined && a >= 65)
+                ? { age: a, eligiblePensionIncome: eligiblePensionFor(i), hasSpouse: ctx.activeUsersCount > 1, familyIncome: familyGrossReal }
                 : undefined;
-        const ageOptsMarc = mkActiveAgeOpts(ctx.age);
-        const ageOptsAnna = mkActiveAgeOpts(ctx.ageSpouse);
+        };
+        const ageOptsMarc = mkActiveAgeOpts(0);
+        const ageOptsAnna = mkActiveAgeOpts(1);
 
         // [FISC-BRACKET-REALINDEX] revenus en dollars RÉELS (déflatés ci-dessus) → paliers/crédits
         // ramenés en réel via realDeflator = inflationFactor (sinon : double indexation, les
@@ -917,11 +930,15 @@ export function processDecemberTaxFiling(
             // par l'inflation SIMULÉE (comme le revenu du bloc), la MÊME aux deux appels — le
             // NIVEAU du crédit s'annule, le clamp de la ligne 361 QC tombe au vrai montant (avec
             // 0, il mordait ~16 300 $ de revenu familial trop tôt : −317,81 $ mesurés sur 80 k$
-            // + 15 k$ de gains, 73 ans, DB). BORNÉE À LA BRANCHE RETRAITÉE : chez un actif, le
-            // calcul principal (§1) garde `eligiblePensionIncome: 0` — porter la pension d'un
-            // seul côté re-créerait l'incohérence que F1 vient de fermer (mesuré ±1 878 $ sur un
-            // actif 72+ à retraits REER ; routé [TAXDEC-ACTIF-72-PENSION-CREDIT]).
-            const pensionNominal = ctx.isRetired ? eligiblePensionFor(i) * inflationFactor : 0;
+            // + 15 k$ de gains, 73 ans, DB).
+            // ⚠️ [TAXDEC-ACTIF-72-PENSION-CREDIT] La borne `ctx.isRetired` est LEVÉE. Elle existait
+            // pour une raison juste — « porter la pension d'un seul côté re-créerait l'incohérence
+            // que F1 vient de fermer, ±1 878 $ sur un actif 72+ » — mais c'était un alignement sur
+            // un ZÉRO faux, pas sur une vérité. Ce lot corrige les DEUX côtés ENSEMBLE : §1 passe
+            // désormais la même `eligiblePensionFor(i)`, donc la cohérence tient et le zéro
+            // disparaît des deux endroits. Retirer cette borne SEULE rouvrirait exactement l'écart
+            // que son commentaire décrit — c'est pour ça qu'elle nommait son ticket.
+            const pensionNominal = eligiblePensionFor(i) * inflationFactor;
             const mk = (fam: number): AgeCreditOptions | undefined =>
                 a !== undefined && a >= 65
                     ? { age: a, eligiblePensionIncome: pensionNominal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }
@@ -933,6 +950,26 @@ export function processDecemberTaxFiling(
         return total;
     };
 
+    // [TAXDEC-ACTIF-72-PENSION-CREDIT] ASSIETTE D'EMPILEMENT — source unique des §2 (gains) et §3
+    // (dividendes), en dollars NOMINAUX. Elle était écrite DEUX FOIS, et les deux copies avaient le
+    // même trou : les retraits REER de l'année n'étaient ajoutés QUE dans la branche retraitée.
+    // `[REER-ACTIF-NON-RECONCILIE]` (2026-08-19) avait pourtant élargi l'assiette imposable d'un
+    // ménage ACTIF à ses retraits REER — au §1 seulement. Les deux bandes empilaient donc leur
+    // tranche sur un revenu trop BAS, donc dans des paliers trop bas : **impôt jamais facturé**,
+    // mesuré 701 $/an (salaire 60 k$, retraits 40 k$, gains imposables 20 k$), 1 043 $ (40/20/10),
+    // 2 174 $ (150/100/50) et **2 520 $** (90/50/25). Aucun invariant de conservation ne pouvait le
+    // voir : un impôt non prélevé est parfaitement conservatif
+    // (`CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE`), et le ticket ne nommait que le §2 — le §3 a été
+    // trouvé en énumérant les producteurs plutôt qu'en lisant la prose.
+    // ⚠️ La forme compte autant que la valeur : `accRetraitsReerYear` est FACTORISÉ HORS du
+    // ternaire, parce qu'il appartient aux DEUX régimes. Le laisser dans une seule branche est
+    // exactement l'erreur qu'on vient de corriger, et elle se re-commettrait au prochain lot.
+    // FA-3a : SRG exclu de l'assiette (non imposable).
+    const assietteEmpilementNominale = (ctx.isRetired
+        ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear)
+        : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
+    ) + ctx.accRetraitsReerYear;
+
     // ---- 2. Gains en capital accumulés (palier 250k) ----
     // [FISC-STACK-GAINS-DIV] Hissé hors du bloc : le montant imposable des gains est l'ASSIETTE
     // sur laquelle les dividendes s'empilent ensuite (§3). Vaut 0 sans gains → §3 inchangé.
@@ -940,10 +977,7 @@ export function processDecemberTaxFiling(
         ? ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
         : 0;
     if (ctx.accCapitalGainsYear > 0) {
-        // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
-        const incomeForGains = ctx.isRetired
-            ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
-            : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
+        const incomeForGains = assietteEmpilementNominale;
 
         // Inclusion gains capitaux: 50% uniforme (annulation 66.67% > 250k$ mars 2025).
         const taxableCapGains = taxableCapGainsTotal;
@@ -1000,10 +1034,7 @@ export function processDecemberTaxFiling(
         // sur revenu+gains — ce qui rend la somme des deux bandes exactement égale à la bande
         // totale [revenu, revenu+gains+divMajoré] : aucun trou, aucun recouvrement (vérifié au
         // cent, et c'est le test d'additivité qui le verrouille).
-        const incomeForDiv = ((ctx.isRetired
-            ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
-            : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
-        ) + taxableCapGainsTotal) / ctx.activeUsersCount;
+        const incomeForDiv = (assietteEmpilementNominale + taxableCapGainsTotal) / ctx.activeUsersCount;
         // [FISC-BRACKET-REALINDEX] bloc NOMINAL-cohérent (comme les gains §2) : incomeForDiv est
         // nominal, l'impôt s'ajoute sans re-nominalisation → PAS de realDeflator.
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);

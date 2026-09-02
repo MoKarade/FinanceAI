@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le hub de configuration ne se redessinait plus pour rien)
+
+- **Amélioré** : l'encart « état de la configuration » se redessinait à **chaque** écriture dans
+  l'app — y compris les milliers d'écritures d'un calcul de projection, qui ne le concernent en rien.
+  Mesuré : 2 écritures sans rapport = 2 redessins ; maintenant 0. Il réagit toujours, évidemment,
+  quand une information de configuration change vraiment.
+- Aucun changement visible : c'est du travail que l'app cesse de faire.
+
 ## [unreleased] — 2026-09-02 (Mode discret : le nom du marchand sortait quand même dans la notification)
 
 - **Corrigé** : dans Charges fixes & Abonnements, si tu activais le mode discret **après** avoir

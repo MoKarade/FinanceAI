@@ -2108,10 +2108,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   +prix+profil consécutifs). **Correctif** : valider budget provider RÉEL avant de coder (cf. leçon
   `docs/CONVENTIONS.md` « vraie contrainte »).
 
-- [ ] **`[PERF-RENDER-SETUPHUB-FULLSTORE]`** (S) — `SetupHub.tsx` sélectionne store complet (`s => s`)
-  au lieu d'atomique → re-render sur TOUTE écriture store. Composant peu coûteux (11 onglets ×
-  2-4 reqs), gain modeste. **Correctif** : remplacer par sélecteur atomique
-  `useShallow` restreint aux champs RÉELLEMENT lus.
 
 ### 🔴 IA / Anthropic (1 HIGH, 4 MED, 2 LOW)  *(2 HIGH talon de paie livrés par #608)*
 

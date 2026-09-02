@@ -138,6 +138,13 @@ export interface DebtPayload {
     startDate?: string;
     /** [DEBT-MCP-PARITE] Fin du terme (YYYY-MM-DD), même sémantique que `startDate`. */
     termEndDate?: string;
+    /** [DEBT-MCP-ORIGINALBALANCE] Montant EMPRUNTÉ à l'origine ($). C'est le champ qui RÉVEILLE la
+     *  courbe d'amortissement du passé (`[DEBT-AMORTIZATION-CABLAGE]`, lot 92) : sans lui le service
+     *  refuse (`donnees-manquantes`) et la dette reste au niveau figé d'aujourd'hui. Il se LIT sur le
+     *  contrat — c'est une EXTRACTION, jamais une saisie ni une estimation (décision Marc consignée
+     *  dans `docs/adr/0012-…`, section « RENVERSEMENT du 2026-09-02 »). Absent ⇒ comportement
+     *  historique exact. */
+    originalBalance?: number;
 }
 
 /** [MCP-DIRECT-EDIT] Ajustement DIRECT du solde de liquidités (cash) à une cible. Le cash n'est PAS un
@@ -883,6 +890,11 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     if (doc.termEndDate != null && !isValidIsoDate(doc.termEndDate)) {
         throw new Error(`Date de fin invalide (${doc.termEndDate}), format attendu YYYY-MM-DD (date calendaire réelle). Rien n'a été écrit.`);
     }
+    // [DEBT-MCP-ORIGINALBALANCE] Même ceinture que `balance` : borne, finitude, strictement positif.
+    // Le schéma Zod du tool est la BRETELLE ; l'import PDF appelle `applyDocument` sans lui.
+    if (doc.originalBalance != null && (!plausible(doc.originalBalance, MAX_DEBT_BALANCE) || doc.originalBalance <= 0)) {
+        throw new Error(`Montant emprunté invalide/aberrant (${doc.originalBalance}). Rien n'a été écrit.`);
+    }
 
     const debts = (state.debts ?? []).map((d) => ({ ...d })) as Debt[];
     const changes: Change[] = [];
@@ -901,6 +913,20 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     const effectiveEnd = doc.termEndDate ?? existingForDates?.termEndDate;
     if (effectiveStart != null && effectiveEnd != null && effectiveEnd < effectiveStart) {
         throw new Error(`La date de fin (${effectiveEnd}) précède la date de début (${effectiveStart}). Rien n'a été écrit.`);
+    }
+    // [DEBT-MCP-ORIGINALBALANCE] Cohérence `originalBalance >= balance`, sur les valeurs EFFECTIVES
+    // (après fusion avec la dette déjà stockée) et JAMAIS sur le seul payload — exactement la leçon
+    // que la garde de dates trois lignes plus haut a déjà payée : une mise à jour PARTIELLE qui ne
+    // touche QUE `originalBalance` laisse `balance` en base, donc une comparaison payload-seul ne
+    // compare rien. Une dette dont le montant emprunté est INFÉRIEUR au solde actuel a GROSSI : ce
+    // n'est pas un profil d'amortissement, `amortirDettePassee` la refuserait en silence
+    // (`origine-incoherente`). Refuser À L'ÉCRITURE dit POURQUOI, au moment où c'est corrigeable.
+    const effectiveOriginal = doc.originalBalance ?? existingForDates?.originalBalance;
+    const effectiveBalance = doc.balance ?? existingForDates?.balance;
+    if (effectiveOriginal != null && effectiveBalance != null && effectiveOriginal < effectiveBalance) {
+        throw new Error(`Le montant emprunté (${effectiveOriginal} $) est INFÉRIEUR au solde actuel `
+            + `(${effectiveBalance} $) : une dette qui a grossi n'a pas de profil d'amortissement. `
+            + `Vérifie les deux chiffres sur le contrat. Rien n'a été écrit.`);
     }
     if (existingIdx >= 0) {
         // MISE À JOUR par nom (idempotent : re-soumettre la même dette ne crée pas de doublon).
@@ -922,6 +948,7 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         apply('kind', doc.debtKind);
         apply('startDate', doc.startDate);
         apply('termEndDate', doc.termEndDate);
+        apply('originalBalance', doc.originalBalance);
         const nextState: AppState = { ...state, debts, lastUpdate: Date.now() };
         const summary = changes.length
             ? `Dette « ${d.name} » mise à jour : ${changes.length} champ(s).`
@@ -950,6 +977,7 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         ...(doc.debtKind != null ? { kind: doc.debtKind } : {}),
         ...(doc.startDate != null ? { startDate: doc.startDate } : {}),
         ...(doc.termEndDate != null ? { termEndDate: doc.termEndDate } : {}),
+        ...(doc.originalBalance != null ? { originalBalance: doc.originalBalance } : {}),
     };
     debts.push(newDebt);
     changes.push({

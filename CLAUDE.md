@@ -238,6 +238,15 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un trou entre deux moitiés testées n'appartient à personne** : le lot 92 était vert de bout en
+  bout (37 gardes, CI verte, déployé) et ne changeait RIEN à l'écran — aucun producteur n'écrivait le
+  champ qui l'active. Le service était testé chez lui, l'ingestion chez elle, le CHAÎNON n'était le
+  sujet d'aucun fichier. Parade : une garde qui TRAVERSE (entrée la plus amont → écriture réelle →
+  grandeur la plus aval, sans reconstruire un maillon) plus son CONTRÔLE NÉGATIF, sinon elle prouve
+  « la chaîne marche » et non « c'est ce lot qui la débloque ». ⚠️ Une perturbation MUETTE accuse
+  d'abord la perturbation, ensuite la fixture, et seulement en dernier la garde — mesuré sur une
+  chaîne concaténée dont je n'avais remplacé que le premier fragment
+  (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`, 2026-09-02).
 - **Le lot qui change ce qu'un écran MONTRE périme ce qu'il AFFIRME** : brancher l'amortissement du
   passé a rendu FAUX le bandeau « dettes au niveau actuel », phrase exacte depuis toujours, non
   touchée par le diff, couverte par aucun test — rien ne pouvait rougir. Après tout changement de

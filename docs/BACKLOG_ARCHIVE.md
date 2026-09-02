@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 93 : le montant emprunté entre dans l'app, la courbe du lot 92 devient visible
+
+- [x] **`[DEBT-MCP-ORIGINALBALANCE]`** — LIVRÉ le 2026-09-02 (PR #823). Ferme le trou que le lot 92
+  avait lui-même mesuré : la courbe d'amortissement du passé était livrée, prouvée par 37 gardes, et
+  **inatteignable** faute d'un seul producteur d'`originalBalance`.
+- **Livré** : le champ dans `DebtPayload`, dans le schéma Zod du tool `apply_debt` (la bretelle) et
+  dans `applyDocument` (la ceinture — l'import PDF appelle l'ingestion SANS passer par Zod, leçon
+  `MCP-WHATIF`). Bornes métier identiques à `balance` (finitude, > 0, plafond 50 M$).
+- **Le refus `originalBalance < balance` se juge sur les valeurs EFFECTIVES**, après fusion avec la
+  dette déjà stockée — exactement la leçon que la garde de DATES du même fichier avait payée trois
+  lignes plus haut. Une mise à jour partielle qui ne porte QUE `originalBalance` n'a pas de `balance`
+  dans son payload : une comparaison payload-seul ne compare rien. Perturbation faite, la version
+  payload-seul rougit.
+- **La garde d'ATTEIGNABILITÉ est la vraie du lot** : elle part du payload MCP, passe par l'écriture
+  réelle, et va jusqu'au supplément de dette au passé — sans reconstruire un seul maillon. Avec son
+  contrôle négatif (« SANS le champ, la même dette reste PLATE »), sans lequel elle passerait aussi
+  si un autre champ suffisait déjà. C'est le test qui manquait au lot 92 : chaque moitié était testée
+  chez elle, et le trou entre les deux n'appartenait à personne.
+- **14 gardes**, dix perturbations séparées. ⚠️ L'une d'elles était MUETTE au premier jet : j'avais
+  remplacé le premier fragment d'une description concaténée par `+`, laissant les fragments suivants
+  — donc la perturbation ne perturbait pas ce que la garde lit. Re-perturbée sur l'expression
+  ENTIÈRE, la garde rougit seule.
+- ⚠️ **Ticket RÉFUTÉ dans le même lot** : `[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`, que j'avais
+  écrit la veille, est caduque — et ses deux correctifs proposés étaient des régressions
+  money-critical. Détail et mesure dans `BACKLOG.md`.
+
 ## 2026-09-02 — Lot 92 : la courbe du passé montre enfin la dette qui fond (lot 2/2)
 
 - [x] **`[DEBT-AMORTIZATION-CABLAGE]` lot 2/2** — LIVRÉ le 2026-09-02 (PR #822). Ferme le chantier

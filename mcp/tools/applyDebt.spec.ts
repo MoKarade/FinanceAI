@@ -47,6 +47,14 @@ const inputSchema = {
             "qu'à partir de cette date — ne fournis QUE la vraie date de signature/premier " +
             "paiement, jamais une estimation. Absente ⇒ la dette a toujours couru (comportement " +
             "historique)."),
+    originalBalance: z.number().positive().finite().optional()
+        .describe("Montant EMPRUNTÉ à l'origine ($ CAD), tel qu'écrit sur le contrat — ex. 30000 pour "
+            + "un prêt auto de 30 000 $ dont il reste 18 000 $. ⚠️ CONSÉQUENCE RÉELLE : c'est CE champ "
+            + "qui fait apparaître la décroissance de la dette dans le PASSÉ du graphe Futur ; sans "
+            + "lui la dette y reste figée à son solde actuel. Il doit être ≥ au solde actuel (une "
+            + "dette qui a grossi n'a pas de profil d'amortissement) et se LIT sur le contrat — ne "
+            + "l'estime JAMAIS à partir du solde, du taux ou de la mensualité : un montant inventé "
+            + "produirait une courbe crédible et fausse."),
     termEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidIsoDate, {
         message: 'Date calendaire invalide (ex. mois > 12 ou jour hors du mois) — pas seulement le format.',
     }).optional()

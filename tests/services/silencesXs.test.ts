@@ -129,8 +129,16 @@ describe('[SILENT-*] les erreurs avalées laissent désormais une trace (scan de
             .toMatch(/if \(history\.length === 0\) \{/);
         // Le contrat des deux sœurs est cité sur place — assertion de PRÉSENCE dans un COMMENTAIRE,
         // donc sur la source BRUTE. C'est le seul cas où lire la prose est voulu.
-        expect(lire('components/investments/AddStockForm.tsx'))
-            .toContain('PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR');
+        // ⚠️ [AI-FINNHUB-CAUSE-COLLAPSE] Cette assertion a rougi au lot 75, sur un lot qui ne touchait
+        // PAS ce qu'elle défend : la prose citait alors une raison FAUSSE (« `getQuote`, lui, LÈVE » —
+        // mesuré, il ne levait pas). Le jeton n'a pas été rebasé sur ce que la nouvelle prose disait :
+        // la LEÇON est plus vraie qu'avant (les deux sœurs s'opposent désormais pour de bon), donc
+        // elle reste exigée — et on exige EN PLUS le ticket qui porte la moitié non livrée, sans quoi
+        // la moitié routée disparaîtrait le jour où quelqu'un réécrit ce commentaire.
+        const prose = lire('components/investments/AddStockForm.tsx');
+        expect(prose).toContain('PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR');
+        expect(prose, 'la moitié NON livrée de la cause d’historique n’est plus tracée sur place')
+            .toContain('MARKETDATA-HISTORY-CAUSE-PERDUE');
     });
 
     it('[SILENT-STOCKFORM-PRICEHINT] une nouvelle tentative efface la notice précédente', () => {

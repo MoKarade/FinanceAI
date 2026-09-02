@@ -10128,3 +10128,66 @@ l'inventaire, mais sa **transformation en garantie**.
 ⚠️ Enfin : « rien à justifier » n'est **pas** un échec, et le distinguer compte autant que le reste.
 L'afficher en rouge aurait été faux — et c'est précisément le genre de confusion qu'un retour unique
 rend inévitable.
+
+
+### Lot 75 (2026-09-02) — la classification existait ; c'est son TRANSPORT qui manquait
+
+`UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`
+
+Le ticket `[AI-FINNHUB-CAUSE-COLLAPSE]` demandait « un classificateur équivalent côté `marketData` ».
+Il n'y avait rien à classifier : **chaque provider posait déjà un code** (`MarketDataError.code` :
+`AUTH` / `RATE_LIMIT` / `NETWORK` / `NOT_FOUND` / `UNKNOWN`), et la façade le LISAIT — `runLink`
+testait `e.code !== 'NOT_FOUND'` pour ne pas armer son cache négatif, puis rendait `null`. La cause
+était donc reconnue, utilisée pour une décision interne, et jetée à la ligne suivante. Écrire un
+second classificateur aurait ajouté un doublon là où il fallait un **fil**.
+
+C'est la variante la plus coûteuse du remède mal prescrit (`grepper le REMÈDE d'un ticket, pas
+seulement son défaut`, lot 62) : ici le remède n'était pas « déjà livré ailleurs », il était **déjà
+présent dans le fichier même que le ticket accusait**.
+
+⚠️ **Mesuré avant de coder, et c'est la mesure qui a réécrit le périmètre.** Sonde sur le vrai module
+(seul `fetch` simulé) : 401, 429, panne réseau et symbole inconnu rendaient **tous les quatre `null`,
+sans jamais lever**. Donc :
+- le `catch` de `AddStockForm.validateSymbol` — celui que le ticket voulait faire parler — était
+  **inatteignable** pour toutes les causes typées ; le corriger aurait été purement décoratif ;
+- le message réellement affiché venait de la branche `!quote` : « Ticker introuvable ou prix
+  indisponible. Configure ta clé Finnhub » — c'est-à-dire qu'une **coupure réseau** envoyait
+  l'utilisateur vérifier un champ qui n'avait rien.
+
+⚠️⚠️ **La garde qui protégeait cette distinction était nourrie par un faux module qui MENTAIT.**
+`AddStockForm.test` simulait `getQuote` en le faisant **REJETER**, et affirmait « une panne réseau
+garde l'erreur visible » — vert depuis toujours, sur un chemin que la production n'a jamais eu. Un
+faux module encode le contrat qu'on **croit** avoir ; quand c'est justement cette croyance qui est
+fausse, le test devient une machine à confirmer l'erreur. Corollaire de conduite : **le contrat
+d'erreur d'une façade se mesure sur le VRAI module** (simuler `fetch`, pas le module), au moins une
+fois, et cette sonde reste dans la suite — c'est elle qui rougirait si la cause se remettait à mourir.
+
+⚠️ **Un commentaire peut porter la même fausseté qu'un test.** Celui de `suggestHistoricalPrice`
+expliquait, avec un ID de lot à l'appui, que « `getQuote`, lui, LÈVE » — faux. Deux sœurs qu'on
+croyait opposées taisaient la cause **toutes les deux**. Un commentaire qui affirme un contrat se
+re-mesure comme le reste (`DOC-STALE-IMPOSSIBILITY` appliqué à une affirmation de contrat).
+
+⚠️ **La cause publiée est celle du PREMIER maillon, pas du dernier.** La chaîne essaie Finnhub puis
+Yahoo : retenir le dernier échec ferait dire « réseau » à une clé refusée dont le repli est aussi
+tombé. Le premier maillon est le provider que l'utilisateur a **configuré** — le seul sur lequel il
+peut agir. Une règle de ce genre s'écrit dans le code avec sa raison, sinon le prochain la
+« simplifie » en gardant le dernier.
+
+⚠️ **Où meurt la cause détermine le périmètre, pas le nom de l'écran.** Le ticket nommait trois
+surfaces comme un seul défaut. Mesurées, elles ne partagent que le symptôme :
+- **cours** : la cause survit jusqu'à la façade → il suffisait de la publier (livré) ;
+- **historique** : `FinnhubProvider.getHistory` **attrape et rend `null` lui-même** — à la façade il
+  ne reste rien à transporter ; corriger exige de démêler les trois usages de ce `null` (signal de
+  repli Yahoo, règle de cache, échec) → routé ;
+- **graphe « Évolution »** : son hook (`usePortfolioHistory`) ne fait **aucun réseau**, il dérive du
+  store ; son champ `error: Error | null` est **codé en dur à `null` dans ses deux branches** (un
+  champ toujours nul, cf `UN-CHAMP-TOUJOURS-NUL-N-EST-PAS-UN-CAS-LIMITE`) → routé.
+
+Trois défauts d'un même symptôme, trois profondeurs différentes. Le périmètre d'un ticket « même
+classe » se recense **par l'endroit où l'information disparaît**, jamais par la liste d'écrans qui
+affichent le mauvais texte (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`, appliqué à une chaîne en couches).
+
+⚠️ Détail TypeScript qui a coûté une passe : un `let x: MarketDataError | null = null` affecté
+**uniquement depuis une closure** est rétréci à `never` à la lecture (`tsc` ne suit pas l'affectation
+différée). Le porteur devient un tableau (`echecs[0] ?? null`) — et la raison s'écrit à côté, sinon
+quelqu'un « nettoiera » le tableau en `let` au prochain passage.

@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Ajouter un titre : l'app dit enfin POURQUOI le cours n'arrive pas)
+
+- **Corrigé** : à la validation d'un symbole (Placements → Ajouter), l'app affichait « Ticker
+  introuvable, configure ta clé Finnhub » dans **quatre** situations sans rapport — clé refusée,
+  quota atteint, connexion coupée, et titre réellement non coté. Mesuré : les quatre remontaient
+  au même « pas de cours », la cause était perdue au passage.
+- **Ce que tu verras** : le vrai motif. Une clé refusée renvoie aux Réglages, un quota dit d'attendre
+  une minute, une coupure réseau parle de la connexion — et « ce titre n'est pas coté » reste ce
+  qu'il a toujours été, avec sa bascule en saisie manuelle. Une panne, elle, ne bascule plus en
+  saisie manuelle en silence.
+- ⚠️ **Pas encore couvert** : la même chose sur l'HISTORIQUE des cours (le graphe « Évolution ») et
+  sur l'autocomplétion. La cause y est détruite plus tôt dans la chaîne — trois tickets écrits, avec
+  la mesure qui dit exactement où.
+
 ## [unreleased] — 2026-09-02 (Le dernier écran IA muet dit enfin ce qui a échoué)
 
 - **Corrigé** : sur l'écran Placements, le bouton « Pourquoi ces actions ? » affichait toujours la

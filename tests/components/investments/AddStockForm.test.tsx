@@ -6,11 +6,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AddStockForm } from '../../../components/investments/AddStockForm';
-import { getQuote, searchSymbols, getActiveProviderName } from '../../../services/marketData';
+import { getQuoteDetaille, searchSymbols, getActiveProviderName } from '../../../services/marketData';
 
 // Aucune dépendance réseau ne doit être requise pour le mode manuel.
 vi.mock('../../../services/marketData', () => ({
-    getQuote: vi.fn(async () => null),
+    // [AI-FINNHUB-CAUSE-COLLAPSE] Le faux module suit le contrat RÉEL de la façade : un résultat
+    // DISCRIMINÉ, jamais une exception. L'ancien faux `getQuote` qui REJETAIT décrivait un contrat
+    // que la production n'a jamais eu (mesuré : 401/429/réseau rendaient `null`, sans lever) —
+    // le test de panne réseau passait donc sur un chemin qui n'existe pas.
+    getQuoteDetaille: vi.fn(async () => ({ forme: 'absent' })),
     getHistory: vi.fn(async () => []),
     getActiveProviderName: vi.fn(() => 'none'), // PH4-INV-1 : pas de clé → mode dégradé, pas d'autocomplétion
     searchSymbols: vi.fn(async () => []),
@@ -19,7 +23,7 @@ vi.mock('../../../services/marketData', () => ({
 // Défauts restaurés avant chaque test (les tests manuels exigent provider 'none').
 beforeEach(() => {
     vi.mocked(getActiveProviderName).mockReturnValue('none');
-    vi.mocked(getQuote).mockResolvedValue(null);
+    vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' });
     vi.mocked(searchSymbols).mockResolvedValue([]);
 });
 
@@ -61,7 +65,7 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         vi.mocked(searchSymbols).mockResolvedValue([
             { symbol: 'SHOP.TO', description: 'Shopify Inc (TSX)', displaySymbol: 'SHOP.TO' },
         ]);
-        vi.mocked(getQuote).mockResolvedValue(null); // mismatch : proposé mais non cotable
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' }); // mismatch : proposé mais non cotable
 
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
         fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'shop' } });
@@ -77,23 +81,52 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         expect(screen.getByDisplayValue('SHOP.TO')).toBeInTheDocument();
     });
 
-    it('une PANNE réseau (getQuote throw) garde l erreur VISIBLE — pas de bascule manuelle silencieuse', async () => {
-        // Distinction money-UX : une exception réseau (timeout/401) ≠ un symbole non cotable. On ne doit
-        // PAS masquer une panne derrière « entre le prix à la main ».
+    it('une PANNE réseau garde l erreur VISIBLE — pas de bascule manuelle silencieuse', async () => {
+        // Distinction money-UX : une panne réseau ≠ un symbole non cotable. On ne doit PAS masquer
+        // une panne derrière « entre le prix à la main ».
         vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
         vi.mocked(searchSymbols).mockResolvedValue([
             { symbol: 'AAPL', description: 'Apple Inc', displaySymbol: 'AAPL' },
         ]);
-        vi.mocked(getQuote).mockRejectedValue(new Error('network down'));
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'NETWORK', provider: 'finnhub' } });
 
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
         fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'appl' } });
         fireEvent.click(await screen.findByText(/Apple Inc/i));
 
         // L'erreur réseau RESTE affichée ; pas de notice « entre à la main » ni de bascule en mode manuel.
-        expect(await screen.findByText(/Erreur lors de la validation/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Impossible de joindre le service de cours/i)).toBeInTheDocument();
         expect(screen.queryByText(/n.a pas de cours via Finnhub/i)).toBeNull();
         expect(screen.queryByText(/Prix actuel par action \(manuel\)/i)).toBeNull();
+    });
+
+    // [AI-FINNHUB-CAUSE-COLLAPSE] Le message doit NOMMER la cause : une panne réseau ne renvoie pas
+    // à la clé API, et une clé refusée ne dit pas « ticker introuvable ». Sans cette paire, les deux
+    // situations restaient indiscernables à l'écran (c'était le défaut).
+    it('la cause de l échec choisit le message : réseau ≠ clé refusée ≠ absence', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        const lire = async (): Promise<string> => {
+            const { unmount } = render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+            fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+            fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+            const texte = (await screen.findByRole('alert')).textContent ?? '';
+            unmount();
+            return texte;
+        };
+
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'NETWORK', provider: 'finnhub' } });
+        const reseau = await lire();
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'AUTH', provider: 'finnhub' } });
+        const auth = await lire();
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' });
+        const absent = await lire();
+
+        // Trois situations, trois phrases : c'est l'inverse exact du défaut corrigé.
+        expect(new Set([reseau, auth, absent]).size).toBe(3);
+        // Et chacune envoie au bon endroit.
+        expect(reseau).not.toMatch(/Clés API|introuvable/i);
+        expect(auth).toMatch(/Réglages/i);
+        expect(absent).toMatch(/introuvable/i);
     });
 
     it('[RECH-ACTION-UX] Escape ferme le dropdown SANS fermer la modale (ni perdre la saisie)', async () => {
@@ -160,7 +193,7 @@ describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais 
     // 90 lignes sous le premier correctif, sans qu'aucune suite ne rougisse.
     it('bannière « Prix actuel » (Finnhub validé) : devise NATIVE, pas CAD', async () => {
         vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
-        vi.mocked(getQuote).mockResolvedValue({ symbol: 'AAPL', price: 231.4 } as never);
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'AAPL', price: 231.4 } } as never);
 
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
         fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });

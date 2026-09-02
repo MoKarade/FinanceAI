@@ -9,6 +9,7 @@
 
 import type { Quote, HistoryPoint, AssetProfile, SymbolSearchResult, MarketDataProvider } from './types';
 import { MarketDataError } from './types';
+import type { MarketDataErrorCode } from './types';
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
@@ -41,12 +42,16 @@ function pickProvider(symbol: string): MarketDataProvider | null {
  *    signalé → comptée au skip (un titre manuel/GIC vraiment non coté l'atteint) ;
  *  - erreur NON typée (vrai bug) → propagée à l'appelant (inchangé).
  */
-async function runLink<T>(fn: () => Promise<T | null>, onTransient: () => void): Promise<T | null> {
+async function runLink<T>(fn: () => Promise<T | null>, onTransient: (e: MarketDataError) => void): Promise<T | null> {
     try {
         return await fn();
     } catch (e) {
         if (e instanceof MarketDataError) {
-            if (e.code !== 'NOT_FOUND') onTransient();
+            // [AI-FINNHUB-CAUSE-COLLAPSE] L'ERREUR ELLE-MÊME remonte, plus seulement le fait qu'il y
+            // en ait eu une : c'est elle qui porte `code`, la seule chose qui permette à un écran de
+            // dire « clé refusée » plutôt que « ticker introuvable ». Avant, ce paramètre était un
+            // `() => void` — la cause était classée ici puis jetée à la ligne suivante.
+            if (e.code !== 'NOT_FOUND') onTransient(e);
             return null;
         }
         throw e;
@@ -95,6 +100,18 @@ export function canAttemptQuote(symbol: string): boolean {
     return hasQuoteProvider(symbol) && !shouldSkipNegative('quote', symbol);
 }
 
+/** [AI-FINNHUB-CAUSE-COLLAPSE] Échec NOMMÉ d'un maillon de la chaîne de cours. */
+export interface EchecMarche {
+    readonly cause: MarketDataErrorCode;
+    readonly provider: string;
+}
+
+/** [AI-FINNHUB-CAUSE-COLLAPSE] Résultat DISCRIMINÉ d'une demande de cours : voir `getQuoteDetaille`. */
+export type ResultatQuote =
+    | { readonly forme: 'ok'; readonly quote: Quote }
+    | { readonly forme: 'absent' }
+    | { readonly forme: 'echec'; readonly echec: EchecMarche };
+
 /**
  * Quote spot, avec CHAÎNE DE REPLI ([HIST-MULTI-PROVIDER], choix Marc « tout gratuit / plusieurs
  * providers pour tout avoir ») : crypto → CoinGecko ; actions/ETF → Finnhub (si clé — quotes
@@ -102,13 +119,39 @@ export function canAttemptQuote(symbol: string): boolean {
  * aucun maillon ne répond (jamais caché → retry au prochain appel).
  */
 export async function getQuote(symbol: string): Promise<Quote | null> {
+    const r = await getQuoteDetaille(symbol);
+    return r.forme === 'ok' ? r.quote : null;
+}
+
+/**
+ * [AI-FINNHUB-CAUSE-COLLAPSE] MÊME chaîne que `getQuote`, mais qui PUBLIE la cause de l'échec au
+ * lieu de la réduire à `null`. Mesuré avant ce lot : 401 (clé refusée), 429 (quota), panne réseau et
+ * symbole inconnu rendaient TOUS les quatre `null`, sans jamais lever — donc l'écran d'ajout de
+ * titre affirmait « ticker introuvable, configure ta clé Finnhub » sur une coupure réseau, et le
+ * `catch` censé traiter la panne n'était JAMAIS atteint (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`,
+ * un cran plus haut : ici ce n'est pas le contrat qu'on avait copié, c'est la cause qu'on jetait).
+ *
+ * Trois formes, et la distinction est celle qui compte pour l'utilisateur :
+ *  - `ok`     : cours obtenu ;
+ *  - `absent` : ABSENCE confirmée (aucun maillon n'a échoué — titre non couvert, pas de clé…) ;
+ *  - `echec`  : au moins un maillon a échoué de façon transitoire (AUTH/RATE_LIMIT/NETWORK/UNKNOWN).
+ *
+ * ⚠️ La cause retenue est celle du PREMIER maillon qui échoue, c'est-à-dire du provider que
+ * l'utilisateur a CONFIGURÉ (Finnhub avant le repli Yahoo) : c'est la seule sur laquelle il peut
+ * agir. Prendre la dernière ferait dire « réseau » à une clé refusée dont le repli est aussi tombé.
+ */
+export async function getQuoteDetaille(symbol: string): Promise<ResultatQuote> {
     const hadPath = hasQuoteProvider(symbol);
     // [QUOTE-NEGATIVE-CACHE] Le skip négatif vit DANS le fetcher (finding silent-failure #499,
     // prouvé par sonde) : placé AVANT withCache, il masquait une valeur ENCORE VALIDE du cache
     // positif (clé de casse divergente) — une réponse déjà connue et fraîche doit toujours servir.
     let skippedNegative = false;
-    let transientError = false; // [QUOTE-ERRKIND] un maillon a échoué de façon TRANSITOIRE (429/réseau)
-    const markTransient = () => { transientError = true; };
+    // [QUOTE-ERRKIND] + [AI-FINNHUB-CAUSE-COLLAPSE] : le PREMIER échec transitoire (429/réseau/401)
+    // de la chaîne, gardé en entier — `transientError: boolean` ne disait que « il y en a eu un ».
+    // (Tableau plutôt qu'un `let` : TypeScript rétrécit un `let` initialisé à `null` et affecté
+    // UNIQUEMENT depuis une closure — il le voyait `never` à la lecture.)
+    const echecs: MarketDataError[] = [];
+    const markTransient = (e: MarketDataError) => { if (echecs.length === 0) echecs.push(e); };
     let value: Quote | null;
     try {
         value = await withCache('quote', symbol, async () => {
@@ -138,12 +181,13 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
     // n'arme le skip QUE sur une absence CONFIRMÉE (aucune erreur transitoire vue) — un null issu d'un
     // 429/réseau ne doit pas geler un vrai titre (staleness pire que le problème). « Sans chemin » /
     // skip / transitoire = rien compté. Succès → entrée effacée (no-op sans entrée).
+    const echec = echecs[0] ?? null;
     if (value === null) {
-        if (hadPath && !skippedNegative && !transientError) recordNegative('quote', symbol);
-    } else {
-        clearNegative('quote', symbol);
+        if (hadPath && !skippedNegative && !echec) recordNegative('quote', symbol);
+        return echec ? { forme: 'echec', echec: { cause: echec.code, provider: echec.provider } } : { forme: 'absent' };
     }
-    return value;
+    clearNegative('quote', symbol);
+    return { forme: 'ok', quote: value };
 }
 
 /**

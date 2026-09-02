@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 75 : la cause d'un échec de cours mourait DANS la façade
+
+- [x] **`[AI-FINNHUB-CAUSE-COLLAPSE]`** — 2026-09-02. Ticket écrit par la garde du lot 68 ; son
+  DIAGNOSTIC était juste, son REMÈDE et son périmètre non. Il demandait « un classificateur
+  équivalent côté `marketData` » : le classificateur existait déjà (`MarketDataError.code`, posé par
+  chaque provider). Ce qui manquait était son **TRANSPORT** — `runLink` recevait l'erreur typée,
+  lisait son code, puis rendait `null`.
+- **Mesuré avant de coder** (sonde sur le vrai module, seul `fetch` simulé) : 401 (clé refusée), 429
+  (quota), panne réseau et symbole inconnu rendaient **tous les quatre `null`, sans jamais lever**.
+  L'écran affirmait donc « ticker introuvable, configure ta clé Finnhub » sur une coupure réseau.
+- **Livré** : `getQuoteDetaille` (`ok` / `absent` / `echec` avec la cause et le provider), `getQuote`
+  devenu son enveloppe — contrat historique intact, `priceRefresh` en dépend (« ne rejette jamais »).
+  `services/marketData/messageEchec.ts` donne une phrase par cause. `AddStockForm` distingue enfin
+  l'ABSENCE (bascule légitime en saisie manuelle) de l'ÉCHEC (message visible, pas de bascule).
+- ⚠️ **La garde censée protéger cette distinction était nourrie par un faux module qui MENTAIT** :
+  `AddStockForm.test` simulait `getQuote` en REJETANT, un contrat que la production n'a jamais eu.
+  Le test « une panne réseau garde l'erreur visible » était vert sur un chemin inexistant.
+- **Routé, avec sa mesure** : `[MARKETDATA-HISTORY-CAUSE-PERDUE]` (la cause d'un échec d'historique
+  est détruite DANS le provider, pas à la façade), `[FUTURE-HISTORY-EMPTY-CAUSE]` (le hook de cet
+  écran ne fait aucun réseau, et son champ `error` est nul en dur), `[MARKETDATA-SEARCH-CAUSE-COLLAPSE]`.
+
 ## 2026-09-02 — Lot 74 : le service rendait `[]` pour quatre situations sans rapport (PR #804)
 
 - [x] **`[AI-REBALANCE-CAUSE-PERDUE]`** — 2026-09-02, PR #804. Ticket que j'avais écrit moi-même au

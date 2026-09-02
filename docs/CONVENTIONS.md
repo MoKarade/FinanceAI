@@ -10058,3 +10058,37 @@ rendre **bruyante en cas de dérive**.
 ⚠️ Note d'outillage : la garde lit la source **décommentée**. `financeai-storage` est nommée dans une
 vingtaine de commentaires qui expliquent la persistance — lue brute, la garde crierait sur de la
 prose, et c'est justement la prose qu'on veut laisser libre de raconter l'histoire.
+
+
+### Lot 73 (2026-09-02) — retirer un export mort demande de lire ce que la doc en dit
+
+`RETIRER-UN-EXPORT-MORT-DEMANDE-DE-LIRE-CE-QUE-LA-DOC-EN-DIT`
+
+Le ticket était simple et juste : `calculateNetFromGross` n'a aucun appelant, son jumeau
+`calculateGrossFromNet` est vivant, et un commentaire voisin la nomme comme si elle servait. Vérifié
+par grep sur toute la valeur — tests, scripts et `mcp/` compris, pas seulement sur les imports.
+
+Deux choses sont sorties du recensement, et aucune n'était dans le ticket.
+
+**1. La fonction n'était pas seulement inutile, elle était piégée.** Elle appelait
+`calculateFiscalReport(annualGross, 0, 0)` — sans année, donc sur le barème par défaut. C'est
+exactement le défaut que `[GROSSFROMNET-ANNEE-FIGEE]` a corrigé sur son jumeau le 2026-08-20. Un
+futur écran qui l'aurait « réveillée » parce qu'elle existait aurait réintroduit un écart connu et
+mesuré. Le code mort n'est pas neutre : il attend.
+
+**2. La supprimer cassait la source de vérité fiscale.** `docs/FISCAL_REFERENCE.md` la citait dans la
+**preuve d'auto-cohérence** de `[FISC-WHT-92PCT]`, comme « la source unique de conversion brut→net du
+dépôt ». Or rien ne l'appelait : ce n'était la source de rien. Mesuré, le moteur calcule sa retenue
+lui-même (`taxDecember.ts` : `calculateFiscalReport(brut, déductionsEmployeur, 0, année)`), et le
+dépôt ne convertit pas brut→net du tout — `netSalary` est une **saisie**, et la seule conversion codée
+est l'inverse.
+
+Le geste qui compte est la **séparation** : la CONCLUSION du ticket (retenue = 100 % de l'impôt sans
+déductions) est juste et tenue par son test discriminant — elle n'a pas bougé. C'est la CITATION qui
+était fausse. Corriger l'une sans toucher l'autre, et le dire explicitement dans la doc, parce que
+`FISCAL_REFERENCE.md` est lu comme un texte de loi : **une source de vérité qui cite du code mort
+donne l'autorité d'une preuve à une phrase que plus rien ne soutient**.
+
+⚠️ Généralisation : `knip` répond à « qui importe ce symbole ? ». Il ne répond pas à « qu'est-ce qui
+en PARLE ? ». Avant de retirer un export, greper son nom dans `docs/` — un symbole cité par la
+documentation a un consommateur, simplement pas un consommateur que le compilateur voit.

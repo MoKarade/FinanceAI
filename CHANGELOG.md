@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Une preuve de la référence fiscale citait du code mort)
+
+- **Corrigé, et c'est le point important** : `docs/FISCAL_REFERENCE.md` — le document qui fait
+  autorité sur tout ce qui est fiscal dans l'app — appuyait une de ses démonstrations sur une
+  fonction que **plus rien n'appelait**. La conclusion reste juste (elle est tenue par un test), mais
+  la preuve pointait vers du vide. La citation désigne maintenant ce que le moteur fait réellement.
+- **Nettoyé** : la fonction morte en question est retirée. Elle n'était pas seulement inutile — elle
+  contenait un défaut déjà corrigé ailleurs (un barème d'année figé), donc la réveiller aurait
+  réintroduit un écart connu.
+- **Rien ne change dans tes chiffres** : aucune ligne de calcul n'est touchée.
+
 ## [unreleased] — 2026-09-02 (La clé qui porte tes données n'est plus écrite à quatre endroits)
 
 - **Renforcé** : `financeai-storage`, le nom sous lequel toutes tes données sont enregistrées dans le

@@ -891,14 +891,21 @@ export const calculateFiscalReport = (
     };
 };
 
-export const calculateNetFromGross = (monthlyGross: number) => {
-    const annualGross = monthlyGross * 12;
-    const report = calculateFiscalReport(annualGross, 0, 0);
-    return report.netIncome / 12;
-};
+// [DEAD-CALCNETFROMGROSS] `calculateNetFromGross` vivait ici. RETIRÉE le 2026-09-02 : zéro appelant
+// dans tout le dépôt, tests et scripts compris — vérifié par grep sur la VALEUR, pas seulement sur
+// les imports. Son jumeau `calculateGrossFromNet` ci-dessous, lui, est bien utilisé.
+//
+// ⚠️ Elle n'était pas seulement inutile, elle était PIÉGÉE : elle appelait `calculateFiscalReport`
+// SANS année, donc sur le barème par défaut, exactement le défaut que `[GROSSFROMNET-ANNEE-FIGEE]`
+// a corrigé sur son jumeau le 2026-08-20. La réveiller aurait réintroduit un écart connu et mesuré.
+//
+// ⚠️ Elle était CITÉE par `docs/FISCAL_REFERENCE.md` comme « la source unique de conversion
+// brut→net du dépôt » dans la preuve d'auto-cohérence de `[FISC-WHT-92PCT]`. C'était faux : rien ne
+// l'appelait. La citation a été corrigée dans le même lot — la CONCLUSION de ce ticket (retenue =
+// 100 % de l'impôt sans déductions) est inchangée, elle repose sur `taxDecember.ts` et son test
+// discriminant, pas sur cette fonction.
 
-// Inverse de calculateNetFromGross : trouve le revenu BRUT annuel qui produit
-// un NET cible donné. L'impôt n'a pas d'inverse analytique simple (paliers +
+// Trouve le revenu BRUT annuel qui produit un NET cible donné. L'impôt n'a pas d'inverse analytique simple (paliers +
 // crédits), donc on cherche par dichotomie sur [net, high].
 //
 // ITEM 2b — la borne haute était figée à 2×net. Or, dès que le taux moyen dépasse

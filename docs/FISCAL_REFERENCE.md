@@ -1067,11 +1067,19 @@ choisir). Calcul cumulatif par tranche (style impôt).
   1 243,23 $/an réel sur le couple de référence à 98,4 k$ ; jusqu'à 6 393 $/an à 240 k$).
   Depuis le fix, le solde salarial d'avril ne règle plus que l'écart dû aux déductions (REER…) :
   nul sans déductions, remboursement sinon. **Preuve d'auto-cohérence** (panel #558, mesurée) :
-  `calculateNetFromGross` (`utils/tax.ts`) retient exactement `totalTax(brut, 0 déduction)` dans
-  le net mensuel que le moteur encaisse — impôt total supporté = `tax(g,0)` (dans le net) +
+  le net mensuel encaissé par le moteur est le `netSalary` SAISI, qui incorpore déjà ≈ 100 % de la
+  retenue réelle (tables TP-1015.F / T4032-QC) — impôt total supporté = `tax(g,0)` (dans le net) +
   solde d'avril. Avec retenue 100 % : `tax(g,0) + [tax(g,d) − tax(g,0)] = tax(g,d)` — EXACT.
   Avec 0,92 : `tax(g,d) + 0,08·tax(g,0)` — sur-imposition structurelle. `1.0` est la seule valeur
-  cohérente avec la source unique de conversion brut→net du dépôt. Discriminant :
+  cohérente avec la retenue que le moteur calcule lui-même
+  (`services/projection/taxDecember.ts` : `calculateFiscalReport(brut, déductionsEmployeur, 0, année)`).
+  ⚠️ **CITATION CORRIGÉE le 2026-09-02** (`[DEAD-CALCNETFROMGROSS]`) : ce paragraphe désignait
+  `calculateNetFromGross` (`utils/tax.ts`) comme « la source unique de conversion brut→net du
+  dépôt ». Mesuré, cette fonction n'avait **aucun appelant** — elle a été retirée. La CONCLUSION
+  (retenue = 100 %) est inchangée et reste tenue par le discriminant ci-dessous ; c'est la preuve
+  qui pointait vers du code mort. Le dépôt ne convertit d'ailleurs pas brut→net pour le moteur :
+  `netSalary` est une SAISIE, et la seule conversion codée est l'inverse (`calculateGrossFromNet`).
+  Discriminant :
   `tests/services/projection.whtSettlement.test.ts` (avant : ttp 106 915,04 / NW 720 557,13 ;
   après : 57 722,84 / 819 490,94 sur la fixture de référence 30 ans). La **branche décembre
   retraité est inchangée** : un scénario qui DÉMARRE retraité est bit-identique ; un scénario

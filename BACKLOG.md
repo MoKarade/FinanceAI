@@ -2126,16 +2126,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   Finnhub a ses propres formes d'erreur. **Correctif** : classifier équivalent côté `marketData`,
   puis mêmes messages distincts. Ne pas réutiliser le module IA sans vérifier la forme des erreurs.
 
-- [ ] **`[AI-REBALANCE-CAUSE-PERDUE]`** (S) — ⚠️ **Découvert en livrant
-  `[AI-BUDGETMODAL-ERROR-COLLAPSE]` (lot 68), NON corrigé : hors périmètre.**
-  `getRebalanceJustifications` (`services/claude.ts`) fait `catch → logError → return []`, donc
-  l'écran Investissements ne reçoit qu'un tableau vide : il ne peut PAS distinguer « clé refusée »,
-  « réseau », « quota » et « le modèle n'a rien rendu ». C'est la seule des quatre surfaces IA qui
-  reste incapable de nommer sa cause — son message dit donc ce qu'il sait (« n'a rien rendu »)
-  plutôt qu'une phrase plausible. **Correctif** : propager l'erreur (ou rendre un résultat qui la
-  porte) et brancher `messageErreurIa`. ⚠️ Vérifier les AUTRES appelants de cette fonction avant de
-  changer sa signature.
-
 - [ ] **`[AI-MODELID-EPINGLER-SNAPSHOTS]`** (XS, **HUMAIN**) — ⚠️ **Moitié restante de
   `[AI-MODELID-PINNING-DRIFT]` (lot 70), non faisable par Claude.** `claude-sonnet-4-6` et
   `claude-opus-4-8` sont des ALIAS que le fournisseur peut repointer ; les remplacer par leurs

@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 74 : `[]` pour quatre situations sans rapport
+> `[AI-REBALANCE-CAUSE-PERDUE]` — `getRebalanceJustifications` rend une union discriminée
+> (`ok` / `sans-cle` / `rien-a-justifier` / `sans-reponse` / `echec` + l'objet d'erreur ORIGINAL).
+> `Investments` rejoint les trois autres surfaces via `services/messageErreurIa.ts`.
+> - Ticket écrit par MOI au lot 68 : re-vérifié avant de coder — le recensement n'a d'exception ni
+>   d'auteur ni de fraîcheur. Il disait vrai.
+> - ⚠️ **Le service ENCODE l'échec plutôt que de LEVER**, explicitement : son unique appelant est un
+>   `onClick` en ligne sans `try/catch`. Le contrat d'erreur se DÉCIDE, il ne se copie pas du voisin.
+> - ⚠️ **La garde du lot 68 s'INVERSE au même endroit** : elle exigeait qu'`Investments` NE nomme PAS
+>   sa cause. Dette payée ⇒ l'exigence bascule, avec son histoire écrite dedans — un inventaire de
+>   dette doit savoir mourir, et sa mort s'écrit là où il vivait.
+> - **Reste** : `[AI-FINNHUB-CAUSE-COLLAPSE]` (autre service, erreurs de forme différente).
+
 > ## 🟦 Session 2026-09-02 — Lot 73 : retirer du code mort a exigé de corriger la source de vérité
 > `[DEAD-CALCNETFROMGROSS]` — `calculateNetFromGross` retirée (zéro appelant, vérifié sur tout le
 > dépôt : tests, scripts, `mcp/`).

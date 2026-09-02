@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le dernier écran IA muet dit enfin ce qui a échoué)
+
+- **Corrigé** : sur l'écran Placements, le bouton « Pourquoi ces actions ? » affichait toujours la
+  même phrase, que la cause soit une clé absente, une coupure réseau, un quota atteint ou une réponse
+  inutilisable du modèle. Le problème n'était pas le message mais le **service** : il répondait « rien
+  » dans les quatre cas, donc l'écran ne pouvait rien dire de plus.
+- **Ce que tu verras** : la vraie cause, comme sur les autres écrans IA depuis hier. Et « rien à
+  justifier » n'est plus traité comme une erreur — ce n'en est pas une.
+
 ## [unreleased] — 2026-09-02 (Une preuve de la référence fiscale citait du code mort)
 
 - **Corrigé, et c'est le point important** : `docs/FISCAL_REFERENCE.md` — le document qui fait

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 125 tests** Vitest
-(498 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 129 tests** Vitest
+(499 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un service qui rend la même valeur pour N situations rend son écran MUET** :
+  `getRebalanceJustifications` répondait `[]` pour « aucune clé », « rien à justifier », « erreur
+  d'appel » et « le modèle n'a rien rendu ». Aucun message ne pouvait alors être juste — la
+  correction n'était pas dans le composant mais deux appels plus haut. Le résultat porte sa CAUSE
+  (union discriminée + l'objet d'erreur ORIGINAL, c'est son `.status` qui nomme). ⚠️ Et le contrat
+  d'erreur se DÉCIDE : ce service ENCODE l'échec au lieu de LEVER parce que son unique appelant est
+  un `onClick` en ligne sans `try/catch` — passer au « lève » aurait transformé une panne réseau en
+  erreur non capturée. ⚠️ Corollaire d'inventaire : la garde qui portait cette limite s'est
+  INVERSÉE au même endroit plutôt que de disparaître — une dette payée laisse sa trace là où elle
+  vivait (`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`).
 - ⚠️ **Avant de retirer un export mort, regarder ce que la DOC en dit — pas seulement qui l'appelle** :
   `calculateNetFromGross` n'avait aucun appelant, mais `docs/FISCAL_REFERENCE.md` la citait comme
   « la source unique de conversion brut→net du dépôt » dans une PREUVE d'auto-cohérence. La supprimer

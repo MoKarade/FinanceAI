@@ -10092,3 +10092,39 @@ donne l'autorité d'une preuve à une phrase que plus rien ne soutient**.
 ⚠️ Généralisation : `knip` répond à « qui importe ce symbole ? ». Il ne répond pas à « qu'est-ce qui
 en PARLE ? ». Avant de retirer un export, greper son nom dans `docs/` — un symbole cité par la
 documentation a un consommateur, simplement pas un consommateur que le compilateur voit.
+
+
+### Lot 74 (2026-09-02) — un service qui rend la même valeur pour N situations rend son écran muet
+
+`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`
+
+`getRebalanceJustifications` répondait `[]` dans **quatre** situations sans rapport : aucune clé,
+aucune action à justifier, une erreur d'appel (réseau / quota / clé refusée / 5xx), et « le modèle
+n'a rien rendu d'exploitable ». L'écran Placements ne recevait qu'un tableau vide — **aucun message
+qu'il aurait pu afficher n'aurait été juste.**
+
+C'est la suite directe de `UN-MESSAGE-NE-SE-CORRIGE-PAS-LA-OU-IL-S-AFFICHE` (lot 68), un cran plus
+haut : là, deux composants écrivaient `catch { }` et jetaient l'erreur. Ici, c'est le **service** qui
+la jetait — et le composant, lui, était irréprochable. Quand un message ne peut pas être juste,
+remonter jusqu'à l'endroit où l'information a disparu ; ce n'est presque jamais celui où le texte
+s'écrit.
+
+⚠️ **Le contrat d'erreur se décide, il ne se copie pas.** Ce service **encode** l'échec dans son
+retour au lieu de **lever**, et c'est explicite : son unique appelant est un `onClick` en ligne dans
+du JSX, sans `try/catch`. Passer au « lève » aurait transformé une panne réseau en erreur non
+capturée — c'est exactement `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`, appliqué au moment de *changer*
+le contrat plutôt que de le réutiliser.
+
+⚠️ **Et l'erreur remontée est l'objet ORIGINAL, pas une copie appauvrie** : c'est son `.status` qui
+nomme la cause. Un `err: string` aurait re-fusionné les causes dans la couche qui devait les séparer.
+
+⚠️ **La garde du lot 68 s'est INVERSÉE au même endroit plutôt que de disparaître.** Elle exigeait
+qu'`Investments` **ne nomme pas** sa cause — l'inventaire portait la limite pour que personne ne
+l'« améliore » en réinventant un coupable. La dette payée, l'exigence bascule : la quatrième surface
+rejoint les trois autres, et l'histoire reste écrite là où la limite vivait. C'est
+`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR` vu depuis l'autre bout — non pas la suppression de
+l'inventaire, mais sa **transformation en garantie**.
+
+⚠️ Enfin : « rien à justifier » n'est **pas** un échec, et le distinguer compte autant que le reste.
+L'afficher en rouge aurait été faux — et c'est précisément le genre de confusion qu'un retour unique
+rend inévitable.

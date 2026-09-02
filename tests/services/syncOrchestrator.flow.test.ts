@@ -347,6 +347,70 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
     });
 });
 
+describe('[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT] un blob HÉRITÉ (clés en clair) est ré-écrit chiffré', () => {
+    // Le ticket disait « les clés restent en clair jusqu'au prochain push ». Mesuré, c'est PIRE : le
+    // pull écrit délibérément une meta qui fait voir l'état comme INCHANGÉ (« pas de push parasite,
+    // et donc pas d'effacement des clés dans Drive »), donc un utilisateur qui synchronise sans rien
+    // modifier les laisse en clair INDÉFINIMENT. D'où une ré-écriture explicite, ici, une fois.
+    //
+    // ⚠️ Les trois cas NÉGATIFS comptent autant que le positif : pousser sans clés en main les
+    // EFFACERAIT de Drive. C'est le risque que ce lot ne doit pas courir.
+
+    async function tirerPuisLireLEnvoi(): Promise<Record<string, unknown> | null> {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const updateSpy = driveApi.updateSyncFile as ReturnType<typeof vi.fn>;
+        updateSpy.mockClear();
+        await pullNow();
+        flushPush();
+        await new Promise((r) => setTimeout(r, 0));
+        const dernier = updateSpy.mock.calls.at(-1);
+        return (dernier?.[2] ?? null) as Record<string, unknown> | null;
+    }
+
+    it('clés en clair + coffre OK → un push part, chiffré, et le champ EN CLAIR disparaît', async () => {
+        const envoye = await tirerPuisLireLEnvoi();
+        expect(envoye, 'aucune ré-écriture : le blob hérité reste en clair dans Drive').not.toBeNull();
+        // L'assertion qui compte : les clés ne sont NI en clair NI perdues.
+        expect(envoye?.apiKeys, 'le champ EN CLAIR est reparti dans Drive').toBeUndefined();
+        expect(typeof envoye?.apiKeysEnc, 'clés PERDUES : poussées sans leur version chiffrée').toBe('string');
+    });
+
+    it('le coffre REFUSE les clés → aucun push (les pousser sans clés les effacerait de Drive)', async () => {
+        saveApiKeysMock.mockRejectedValueOnce(new Error('coffre indisponible'));
+        expect(await tirerPuisLireLEnvoi()).toBeNull();
+    });
+
+    it('blob DÉJÀ chiffré (apiKeysEnc) → aucune ré-écriture (on ne perturbe pas « état inchangé »)', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const readSpy = driveApi.readSyncFile as ReturnType<typeof vi.fn>;
+        const { apiKeys: _clair, ...sansClair } = driveEnvelope;
+        // ⚠️ Le chiffré doit être DÉCHIFFRABLE (vrai `encryptApiKeys` avec le même sub que le mock
+        // d'identité). Une valeur opaque bidon rendait ce test VACUEUX : les clés n'étaient alors
+        // pas restaurées, donc `hasAnyKey` bloquait le push et le test passait pour la MAUVAISE
+        // raison — perturbation à l'appui (retirer la condition « clés en clair » laissait tout
+        // vert). Ici, seule cette condition doit expliquer l'absence de ré-écriture.
+        const { encryptApiKeys } = await import('../../services/sync/keyCipher');
+        const chiffre = await encryptApiKeys({ anthropic: 'sk-deja-chiffre', finnhub: 'fh-deja' }, 'sub-123');
+        readSpy.mockResolvedValue({ ...sansClair, apiKeysEnc: chiffre });
+        try {
+            expect(await tirerPuisLireLEnvoi()).toBeNull();
+        } finally {
+            readSpy.mockResolvedValue(driveEnvelope);
+        }
+    });
+
+    it('blob hérité mais clés VIDES → aucun push (rien à rechiffrer)', async () => {
+        const driveApi = await import('../../services/googleDrive/driveAppData');
+        const readSpy = driveApi.readSyncFile as ReturnType<typeof vi.fn>;
+        readSpy.mockResolvedValue({ ...driveEnvelope, apiKeys: { anthropic: '', finnhub: '' } });
+        try {
+            expect(await tirerPuisLireLEnvoi()).toBeNull();
+        } finally {
+            readSpy.mockResolvedValue(driveEnvelope);
+        }
+    });
+});
+
 describe('Verrou anti-double-sync (boot : gate + runBootSync)', () => {
     it('deux reprises concurrentes → UNE seule décision (pas de double lecture / écriture Drive)', async () => {
         const driveApi = await import('../../services/googleDrive/driveAppData');
@@ -364,8 +428,13 @@ describe('Verrou anti-double-sync (boot : gate + runBootSync)', () => {
         release();
         await both;
 
-        // 1 décision = readDrive (1) + pullNow→readDrive (1) = 2 appels. Le verrou a évité le doublon.
-        expect(findSpy).toHaveBeenCalledTimes(2);
+        // Comptage RE-DÉRIVÉ, pas rebasé : ce test défend le VERROU (une seule décision), et le
+        // nombre n'en était que le proxy. Depuis [SEC-AUDIT-SYNC-LEGACY-CLEARTEXT], le blob de cette
+        // fixture porte des clés EN CLAIR (`apiKeys`), donc le pull déclenche en plus UNE ré-écriture
+        // chiffrée — comportement voulu, et ce test en devient un témoin au passage.
+        //   décision → readDrive (1) + pullNow → readDrive (1) + ré-écriture du blob hérité (1) = 3.
+        // Sans le verrou, DEUX décisions en donneraient au moins 4 : l'assertion discrimine toujours.
+        expect(findSpy).toHaveBeenCalledTimes(3);
     });
 
     it('local NON-vide + Drive SANS fichier : deux reprises concurrentes → UN SEUL createSyncFile (anti-doublon Drive)', async () => {

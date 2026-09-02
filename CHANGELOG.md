@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Sécurité : les vieilles sauvegardes Drive sont rechiffrées)
+
+- **Corrigé** : les sauvegardes Drive créées **avant le 29 mai 2026** portaient tes clés API en clair.
+  Le code savait les relire, et on croyait qu'elles seraient rechiffrées « au prochain envoi » — en
+  fait non : après une restauration, l'app considère l'état comme inchangé et n'envoie rien. Une
+  vieille sauvegarde pouvait donc rester en clair **indéfiniment**.
+- **Ce qui change** : après une restauration depuis une sauvegarde de cette époque, l'app réécrit
+  immédiatement le fichier Drive avec les clés **chiffrées**. Rien à faire de ton côté.
+- ⚠️ **Trois verrous, parce que l'opération est délicate** : la réécriture n'a lieu que si le fichier
+  contenait bien des clés en clair, qu'elles ne sont pas vides, et que le coffre local les a
+  acceptées. Envoyer sans avoir les clés en main les **effacerait** de Drive — c'est précisément ce
+  que ces conditions empêchent.
+
 ## [unreleased] — 2026-09-02 (Nettoyage : un avertissement permanent dans la console)
 
 - **Corrigé** : l'en-tête du calendrier (Charges fixes) utilisait la lettre du jour comme identifiant

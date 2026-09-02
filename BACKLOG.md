@@ -1902,10 +1902,6 @@
 > Ne reste ici que ce qui est encore à faire.
 
 
-- [ ] **`[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]`** (S) — chemin rétrocompatibilité pour blobs Drive
-  pré-chiffrement (2026-05-29) : clés API peuvent rester en clair jusqu'au prochain push (qui les
-  rechiffre). Fenêtre résiduelle théorique pour comptes abandonnés. **Correctif optionnel (low
-  priority)** : au pull, si `drive.apiKeys` détecté, forcer `pushNow()` immédiat pour rechiffrer.
 
 ### 🔴 Échecs silencieux — 3 MED/LOW  *(le HIGH `[SILENT-ACTIONPLAN-NAN]` est livré par #608)*
 

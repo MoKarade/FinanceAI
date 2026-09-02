@@ -1901,10 +1901,6 @@
 > `SPLITPCT-UNBOUNDED`, `MC-OBSERVABILITY`, `NO-CONSERVATION-GUARD`, `DISPLAY-RATES`.
 > Ne reste ici que ce qui est encore à faire.
 
-- [ ] **`[SEC-AUDIT-DEP-FASTURI]`** (S) — GHSA-7p8r-x3mc-p8w7 (confusion d'hôte) dans `fast-uri`
-  (transitif ajv → @modelcontextprotocol/sdk), CVSS 7.5. Exploitabilité non confirmée dans le code
-  actuel (aucun champ `format: uri` exposé dans MCP tools). **Correctif** : `npm audit fix`
-  (bump vers `fast-uri >=3.1.5`), re-vérifier tests + MCP dev après.
 
 - [ ] **`[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]`** (S) — chemin rétrocompatibilité pour blobs Drive
   pré-chiffrement (2026-05-29) : clés API peuvent rester en clair jusqu'au prochain push (qui les
@@ -2310,7 +2306,13 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 ## 🛡️ Dépendances
 
-- [ ] **`[DEP-ESLINT10]`** (M, dev-only) — 5 vulnérabilités high `brace-expansion`/`minimatch` dans la
-  chaîne eslint (outillage dev, DoS théorique) — fix = eslint@10 (breaking : config + règles à migrer).
-  À prendre comme un lot dédié, pas un audit fix --force aveugle.
+- [ ] **`[DEP-ESLINT10]`** (M, dev-only) — ⚠️ **SA RAISON A DISPARU (mesuré 2026-09-02, lot 79).** Il
+  existait pour « 5 vulnérabilités high `brace-expansion`/`minimatch` dans la chaîne eslint, fix =
+  eslint@10 (breaking) ». Mesuré : `npm audit` rend **0 vulnérabilité** après un `npm audit fix`
+  **simple, sans `--force`** — `brace-expansion` est passé 5.0.7 → 5.0.9 dans la chaîne eslint
+  existante, sans toucher à eslint. L'écosystème a bougé sous le ticket : le remède « breaking »
+  qu'il prescrivait n'était plus nécessaire.
+  **Ce qui RESTE** : migrer vers `eslint@10` peut valoir la peine pour d'autres raisons (règles,
+  performances, support), mais ce n'est plus un lot de SÉCURITÉ et rien ne le rend urgent. À
+  requalifier ou à fermer par Marc — il n'a plus de justification mesurable aujourd'hui.
 

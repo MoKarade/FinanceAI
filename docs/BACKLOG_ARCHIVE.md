@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 79 : deux tickets de dépendances décrivaient un arbre qui avait bougé
+
+- [x] **`[SEC-AUDIT-DEP-FASTURI]`** — 2026-09-02, **CADUC, corrigé sans nous**. Il demandait un bump
+  vers `fast-uri >= 3.1.5` (GHSA-7p8r-x3mc-p8w7). Mesuré : l'arbre porte **déjà 3.1.5**
+  (`@modelcontextprotocol/sdk@1.30.0 → ajv@8.20.0 → fast-uri@3.1.5`) et l'avis n'apparaît plus du
+  tout dans `npm audit`. Un bump transitif du SDK l'avait réglé. Coché avec sa mesure plutôt que
+  « corrigé » — appliquer le remède d'un ticket périmé, c'est agir sur du vide.
+- [x] **4 avis que ce ticket ne nommait pas**, révélés en REJOUANT l'outil : `brace-expansion`,
+  `browserslist`, `nanoid` (3 hautes) et `postcss-selector-parser` (basse), toutes transitives dans
+  la chaîne de BUILD (Vite / PostCSS / Tailwind / ESLint) — donc du DoS théorique sur l'outillage,
+  jamais sur l'app servie. Réglées par un `npm audit fix` **simple, sans `--force`** : 10 paquets,
+  `package-lock.json` SEUL modifié, `npm audit` → **0 vulnérabilité**.
+- **Gate REJOUÉ EN ENTIER** parce qu'un fichier de verrouillage touche le build : typecheck, lint,
+  build PROPRE (`rm -rf dist`), `check-contrast`, et 5 149 tests. Le vrai risque n'était pas les
+  paquets de sécurité mais `browserslist`/`caniuse-lite`, qui pilotent la sortie CSS.
+- **Push SANS garde neuve, et c'est délibéré** : un test qui lancerait `npm audit` rougirait le jour
+  où un avis NOUVEAU paraît, sans qu'aucune ligne du dépôt n'ait changé — la définition d'une bombe
+  (`UNE-PEREMPTION-SE-SURVEILLE-PAR-UN-INVENTAIRE-PAS-PAR-L-HORLOGE`).
+- **Requalifié** : `[DEP-ESLINT10]` — sa raison d'être (les 5 hautes de la chaîne eslint) a disparu
+  sans migration vers eslint@10. Le ticket reste ouvert mais sans justification de sécurité.
+
 ## 2026-09-02 — Lot 78 : ma propre garde a démasqué mon propre correctif décoratif
 
 - [x] **`[MARKETDATA-SEARCH-CAUSE-COLLAPSE]`** — 2026-09-02. Ticket écrit par moi au lot 75, avec sa

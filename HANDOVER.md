@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 79 : deux tickets décrivaient un arbre de dépendances qui a bougé
+> `[SEC-AUDIT-DEP-FASTURI]` **CADUC** : `fast-uri` est déjà en 3.1.5 (la version exacte réclamée) et
+> l'avis a disparu de `npm audit` — réglé par un bump transitif du SDK MCP.
+> - En REJOUANT l'outil : **4 autres avis** qu'il ne nommait pas (`brace-expansion`, `browserslist`,
+>   `nanoid`, `postcss-selector-parser`), tous chaîne de BUILD. `npm audit fix` SIMPLE (sans
+>   `--force`) → 10 paquets, `package-lock.json` seul modifié, **0 vulnérabilité**.
+> - Gate rejoué EN ENTIER (un lockfile touche le build) : le vrai risque était `browserslist`/
+>   `caniuse-lite`, qui pilotent la sortie CSS — pas les paquets de sécurité.
+> - ⚠️ **Push sans garde neuve, délibérément** : un test qui lancerait `npm audit` rougirait au
+>   prochain avis publié, sans qu'une ligne du dépôt ait changé — une bombe, pas une garde.
+> - **Requalifié** : `[DEP-ESLINT10]` a perdu sa raison d'être (ses 5 hautes sont parties SANS la
+>   migration eslint@10 qu'il présentait comme obligatoire).
+
 > ## 🟦 Session 2026-09-02 — Lot 78 : ma garde a démasqué MON correctif décoratif
 > `[MARKETDATA-SEARCH-CAUSE-COLLAPSE]` — ticket écrit par moi au lot 75. Défaut réel, **mais la perte
 > était attribuée au mauvais étage** : j'accusais le `catch` de la FAÇADE, or

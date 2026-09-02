@@ -10322,6 +10322,44 @@ Sans le second, afficher un message en permanence — donc du bruit à chaque fr
 satisferait la moitié « échec ». Une absence de résultat n'est pas un échec, et le dire est la
 moitié du correctif.
 
+
+### Lot 79 (2026-09-02) — un ticket de dépendances décrit un arbre qui BOUGE tout seul
+
+`UN-TICKET-DE-DEPENDANCES-DECRIT-UN-ARBRE-QUI-BOUGE-TOUT-SEUL`
+
+Deux tickets, deux affirmations sur l'arbre de dépendances, toutes deux **fausses au moment de les
+appliquer** — et pas parce qu'elles étaient mal écrites : parce que l'arbre a changé sans nous.
+
+- `[SEC-AUDIT-DEP-FASTURI]` demandait de bumper `fast-uri` vers `>= 3.1.5`. L'arbre portait **déjà**
+  3.1.5, et l'avis avait disparu de `npm audit` : un bump transitif du SDK MCP l'avait réglé.
+  Appliquer le remède aurait été agir sur du vide.
+- `[DEP-ESLINT10]` justifiait une migration **breaking** vers `eslint@10` par « 5 vulnérabilités
+  high dans la chaîne eslint ». Mesuré : un `npm audit fix` **simple, sans `--force`** les fait
+  disparaître (`brace-expansion` 5.0.7 → 5.0.9, dans la chaîne eslint existante). Le coût annoncé
+  n'était plus le coût réel.
+
+C'est une forme particulière de `PM-STALE-BACKLOG` : un ticket de code ne pourrit que si le code
+change ; un ticket de DÉPENDANCES pourrit tout seul, parce que son sujet est un arbre que des tiers
+modifient en continu. Il ne se relit pas, il se **re-mesure** — et la mesure prend dix secondes
+(`npm ls <paquet>`, `npm audit`), bien moins qu'un lot de migration inutile.
+
+⚠️ **Rejouer l'outil vaut ici comme ailleurs** : l'audit rejoué a sorti **quatre** avis que le ticket
+ne nommait pas (`brace-expansion`, `browserslist`, `nanoid`, `postcss-selector-parser`). Le périmètre
+d'un ticket de dépendances est une borne inférieure, exactement comme celui d'un ticket de classe
+(`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`).
+
+⚠️ **Le risque d'un lot de dépendances n'est pas là où l'étiquette le dit.** Ces avis sont du DoS
+théorique sur l'OUTILLAGE (rien n'atteint le navigateur de l'utilisateur). Le vrai danger était
+ailleurs, dans le même diff : `browserslist` et `caniuse-lite` pilotent la sortie CSS. D'où un gate
+rejoué EN ENTIER, avec un build PROPRE (`rm -rf dist`) et `check-contrast`, alors que le diff ne
+touchait qu'un `package-lock.json`.
+
+⚠️ **Et ce lot part SANS garde neuve, délibérément.** Un test qui lancerait `npm audit` rougirait le
+jour où un avis NOUVEAU est publié, sans qu'aucune ligne du dépôt n'ait changé : c'est la définition
+d'une bombe (`UNE-PEREMPTION-SE-SURVEILLE-PAR-UN-INVENTAIRE-PAS-PAR-L-HORLOGE`). La surveillance des
+avis appartient à un outil externe qui tourne dans le temps, pas à une suite de tests qui doit être
+déterministe. Le dire vaut mieux que de fabriquer une garde qui finira désactivée.
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

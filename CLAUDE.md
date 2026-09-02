@@ -1053,6 +1053,17 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un ticket de DÉPENDANCES décrit un arbre qui bouge tout seul** : deux tickets affirmaient un
+  état des paquets, faux au moment de les appliquer — `fast-uri` était DÉJÀ en 3.1.5 (la version
+  exacte réclamée, avis disparu de `npm audit`), et la migration « breaking » vers `eslint@10` que
+  `[DEP-ESLINT10]` présentait comme le seul remède s'est révélée inutile (`npm audit fix` SIMPLE
+  suffit). Un ticket de code pourrit quand le code change ; un ticket de dépendances pourrit tout
+  seul — il se RE-MESURE (`npm ls`, `npm audit`), jamais ne se relit. ⚠️ Rejouer l'outil a sorti
+  4 avis non nommés. ⚠️ Le risque n'est pas où l'étiquette le dit : ces avis sont du DoS d'OUTILLAGE,
+  mais `browserslist`/`caniuse-lite` du même diff pilotent la sortie CSS → gate COMPLET avec build
+  propre. ⚠️ Et **aucune garde neuve, délibérément** : un test qui lance `npm audit` rougit au
+  prochain avis publié sans qu'une ligne ait changé — une bombe
+  (`UN-TICKET-DE-DEPENDANCES-DECRIT-UN-ARBRE-QUI-BOUGE-TOUT-SEUL`).
 - ⚠️ **Un correctif posé à l'étage où on a vu le SYMPTÔME peut être inatteignable** : j'ai écrit le
   ticket jumeau de `[AI-FINNHUB-CAUSE-COLLAPSE]` en recopiant son diagnostic (« la façade fait
   `catch { return [] }` ») — vrai, mais au MAUVAIS étage : `FinnhubProvider.searchSymbol` attrapait

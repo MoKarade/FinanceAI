@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 69 : l'auto-évaluation du modèle passait pour un verdict
+> `[AI-COUPLE-SELFRATED-CONFIDENCE]` — `CoupleOptimizationCard` : libellés qui disent QUI parle,
+> montant qui porte sa provenance, mention unique sous la liste. Périmètre du ticket EXACT
+> (`estimated_savings_cad` est le SEUL montant produit par un modèle dans l'app).
+> - ⚠️ **Le défaut n'était pas le mot, c'était l'HABILLAGE** : monospace verte encadrée, soit
+>   l'apparence exacte des montants d'impôt calculés du voisin immédiat. Corriger le texte sans
+>   corriger le style aurait laissé le chiffre inventé ressembler à un chiffre vérifié.
+> - ⚠️ **La mention est UNIQUE, et le test l'exige** (`toHaveLength(1)`) : répétée par carte, elle
+>   devient du décor qu'on cesse de lire. Plus un contrôle qu'elle n'apparaît PAS sur une carte vide,
+>   sinon « la mention est là » serait vrai d'un texte permanent qui ne qualifie rien.
+> - Les trois perturbations (libellé d'origine, habillage restauré, mention retirée) rougissent.
+
 > ## 🟦 Session 2026-09-01 — Lot 68 : « Vérifie ta clé » affirmé sur des causes inconnues
 > `[AI-BUDGETMODAL-ERROR-COLLAPSE]` — `services/messageErreurIa.ts` (7 causes, 7 phrases), branché
 > sur **8** surfaces. Ticket : 1 site. Recensés : 4. **+4 de plus** en REJOUANT la garde élargie

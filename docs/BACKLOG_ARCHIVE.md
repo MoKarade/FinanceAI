@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 69 : l'auto-évaluation du modèle était présentée comme un verdict (PR #799)
+
+- [x] **`[AI-COUPLE-SELFRATED-CONFIDENCE]`** — 2026-09-01, PR #799. ⚠️ **Périmètre du ticket EXACT** :
+  `estimated_savings_cad` est le SEUL montant produit par un modèle dans toute l'app (vérifié par
+  recensement des schémas Zod), et `CoupleOptimizationCard` est son seul consommateur.
+- **Le défaut n'était pas le mot mais l'HABILLAGE** : le montant s'affichait en monospace verte
+  encadrée — l'apparence exacte des montants d'impôt calculés du voisin immédiat. Deux choses qui se
+  ressemblent à l'écran et n'ont pas le même statut, c'est `no-fake-data`.
+- **Livré** : les trois libellés disent QUI parle (`IA — piste solide / à vérifier / idée à
+  creuser`), le montant porte sa provenance dans son libellé (« Ordre de grandeur avancé par l'IA »)
+  et perd l'habillage « chiffre validé », plus une mention UNIQUE sous la liste qui dit ce que l'app
+  n'a PAS fait.
+- ⚠️ **La mention est unique, et le test l'exige** : répétée par carte, elle devient du décor qu'on
+  cesse de lire — exactement ce qu'on veut éviter. Un contrôle vérifie aussi qu'elle n'apparaît PAS
+  sur une carte vide, où elle ne qualifierait rien.
+
 ## 2026-09-01 — Lot 68 : « Vérifie ta clé » était affirmé sur des causes inconnues (PR #798)
 
 - [x] **`[AI-BUDGETMODAL-ERROR-COLLAPSE]`** — 2026-09-01, PR #798. Ticket : 1 site. Recensés : **4**

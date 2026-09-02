@@ -2135,11 +2135,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   porte) et brancher `messageErreurIa`. ⚠️ Vérifier les AUTRES appelants de cette fonction avant de
   changer sa signature.
 
-- [ ] **`[AI-COUPLE-SELFRATED-CONFIDENCE]`** (S) — `confidence` et `estimated_savings_cad` sont
-  AUTO-évalués par le modèle ; code valide que la FORME (enum Zod) et affiche « Haute confiance »
-  verbatim. Chiffre halluciné s'affiche avec autorité d'un calcul vérifié. **Correctif** : libellé
-  « estimation IA, non vérifiée » quel que soit `confidence`.
-
 - [ ] **`[AI-MODELID-PINNING-DRIFT]`** (S) — Haiku épinglé sur snapshot daté, Sonnet/Opus sur alias
   non datés → Anthropic peut faire évoluer modèle/tarif sans que `pricing.ts` (daté 2026-06-24) ne
   suive → coût affiché faux en silence. **Correctif** : épingler des snapshots datés partout, ou

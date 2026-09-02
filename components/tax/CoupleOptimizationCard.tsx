@@ -27,10 +27,23 @@ const CONFIDENCE_COLORS: Record<CoupleOptimizationStrategy['confidence'], string
     low: 'text-ink-300 border-white/10 bg-white/5',
 };
 
+/**
+ * [AI-COUPLE-SELFRATED-CONFIDENCE] ⚠️ CES NIVEAUX SONT AUTO-ATTRIBUÉS PAR LE MODÈLE.
+ *
+ * Le schéma Zod valide la FORME (`'high' | 'medium' | 'low'`), jamais la justesse : rien dans l'app
+ * ne vérifie qu'une stratégie « high » repose sur un calcul. « Haute confiance », écrit tel quel,
+ * se lit comme un verdict de l'application — c'est-à-dire comme les chiffres de la Fiscalité et du
+ * Futur, qui sortent du moteur et sont testés. Les deux se ressemblent à l'écran et n'ont pas du
+ * tout le même statut.
+ *
+ * Les libellés disent donc QUI parle. Ce n'est pas de la prudence décorative : le voisin immédiat
+ * de cette carte affiche des montants d'impôt calculés, et l'app pose comme règle qu'une valeur
+ * non vérifiée ne prend jamais l'apparence d'une valeur vérifiée (`no-fake-data`).
+ */
 const CONFIDENCE_LABELS: Record<CoupleOptimizationStrategy['confidence'], string> = {
-    high: 'Haute confiance',
-    medium: 'Estimation',
-    low: 'Idée à creuser',
+    high: 'IA — piste solide',
+    medium: 'IA — à vérifier',
+    low: 'IA — idée à creuser',
 };
 
 export const CoupleOptimizationCard: React.FC = () => {
@@ -137,13 +150,27 @@ export const CoupleOptimizationCard: React.FC = () => {
                                     </div>
                                     <p className="text-tiny text-ink-200 leading-relaxed">{s.description}</p>
                                     {s.estimated_savings_cad !== undefined && s.estimated_savings_cad > 0 && (
-                                        <div className="mt-2 inline-block px-2 py-1 bg-success-500/15 border border-success-500/30 rounded text-tiny font-mono font-bold text-emerald-300">
-                                            Économie estimée : <PrivateAmount>{formatCAD(s.estimated_savings_cad)}</PrivateAmount>/an
+                                        // ⚠️ Ce montant vient du MODÈLE, pas du moteur. En police monospace verte
+                                        // et encadré, il avait exactement l'allure des montants calculés affichés
+                                        // dix lignes plus haut dans la Fiscalité — un chiffre inventé héritait donc
+                                        // de l'autorité d'un chiffre vérifié. Il porte maintenant sa provenance
+                                        // DANS son libellé, là où on ne peut pas la manquer.
+                                        <div className="mt-2 inline-block px-2 py-1 bg-white/5 border border-white/15 rounded text-tiny font-mono text-ink-200">
+                                            Ordre de grandeur avancé par l'IA : <PrivateAmount>{formatCAD(s.estimated_savings_cad)}</PrivateAmount>/an
                                         </div>
                                     )}
                                 </div>
                             );
                         })}
+                        {/* ⚠️ Une mention UNIQUE sous la liste, pas répétée par carte : répétée, elle
+                            devient du décor qu'on cesse de lire, et c'est précisément ce qu'on veut
+                            éviter ici. Elle dit ce que l'app N'A PAS fait — la seule information que
+                            les libellés par stratégie ne portent pas. */}
+                        <p className="text-tiny text-ink-400 italic leading-snug">
+                            Niveaux et montants ci-dessus sont produits par l'IA à partir de tes données.
+                            L'app ne les recalcule pas : traite-les comme des pistes à valider, pas comme
+                            les montants de l'onglet Impôts.
+                        </p>
                         <button
                             type="button"
                             onClick={handleGenerate}

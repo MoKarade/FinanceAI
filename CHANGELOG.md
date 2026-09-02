@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (On voit maintenant quels chiffres viennent de l'IA)
+
+- **Corrigé** : dans « Optimisation fiscale du couple », le niveau de confiance (« Haute confiance »)
+  et l'économie annoncée sont **choisis par l'IA elle-même** — l'app ne les recalcule pas. Ils
+  s'affichaient pourtant comme les montants d'impôt de l'onglet Impôts, qui viennent du moteur et
+  sont testés : même police, même encadré vert. Un chiffre avancé au jugé héritait de l'autorité d'un
+  chiffre vérifié.
+- **Ce que tu verras** : chaque piste est étiquetée « IA — piste solide / à vérifier / idée à
+  creuser », le montant devient « Ordre de grandeur avancé par l'IA », et une phrase sous la liste
+  dit explicitement que l'app ne recalcule pas ces valeurs.
+- **Rien n'est retiré** : les pistes restent affichées avec leurs chiffres. C'est leur **statut** qui
+  change, pas leur contenu.
+
 ## [unreleased] — 2026-09-01 (L'app arrête d'accuser ta clé Anthropic à tort)
 
 - **Corrigé** : huit écrans affichaient « Vérifie ta clé Anthropic » **quelle que soit la cause** de

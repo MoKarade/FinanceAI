@@ -10,10 +10,59 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 85 : le refus est une livraison, quand il est MESURÉ
+
+- [~] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** — bande **SUCCESSORALE** de `estateCalculation`
+  livrée le 2026-09-02 (PR #815). Le SEUL site `facteurNetRentes` reste ouvert et **BLOQUÉ** :
+  il se livre avec `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`, jamais seul (voir `BACKLOG.md`).
+- **Livré** : `impôt(contexte + liquidation) − impôt(contexte)` porte désormais
+  `{ age: currentAge + simulationYears, hasSpouse: false }`. Le `false` vient du MODÈLE écrit dans
+  le fichier (double décès → une seule déclaration finale, celle du survivant, qui est seul), pas
+  d'un défaut : reprendre le compteur de têtes du ménage (`activeUsersCount > 1`) aurait été une
+  faute, et une perturbation dédiée le prouve.
+- ⚠️ **Le SIGNE surprend et il est juste** : ajouter un crédit AUGMENTE l'impôt successoral
+  (**+3 440 $** pour un déclarant seul de 65 ans, contexte 48 k$, liquidation 215 k$). Une bande
+  incrémentale facture aussi le crédit que la tranche DÉTRUIT. Effet par persona sur le patrimoine
+  successoral : `pre-retraite-riche` **−2 448 $**, `jeune-couple-dink` −1 944 à −3 155 $,
+  `couple-dettes` 0 à −4 450 $, `couple-confort` −262 $ ; `lea-fauchee` (âge final 64),
+  `karim-immigre` et `autonome-monoparentale` **inchangés**.
+- **MESURÉ : aucun classement ne bouge.** `estateNetWorth` n'est pas trié que par
+  `drawdownOptimizer` (le seul que le ticket nommait) — `rankStrategies` le score aussi, ET score
+  `totalEstateTax` par un autre chemin (`lifetimeTaxTotal`). Or ce lot déplace les deux champs.
+  Re-mesuré sur 7 personas × 4 objectifs + `compareLifeScenarios` : ordre IDENTIQUE, même
+  `bestScenario`.
+- ⚠️⚠️ **La moitié RENDUE est le vrai résultat du lot.** Le premier jet câblait AUSSI la bande des
+  rentes. Un invariant existant l'a arrêté : « une pension DB pleinement indexée ne peut pas
+  appauvrir » s'INVERSAIT pour tout horizon ≤ ~9 ans (5 ans : +4 836 → **−4 845 $**). Décomposition
+  par site : bande successorale seule +4 764 $ (intact), bande des rentes seule −4 773 $. La cause
+  n'est pas le crédit mais l'artefact déjà ticketé `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`, qu'une
+  sensibilité accrue au revenu AMPLIFIE. Correctif REMIS, ticket enrichi, dette BORNÉE par un test
+  qui doit mourir avec elle.
+- ⚠️ **Marche assumée à 65 ans** : `finalAge` est piloté par le curseur d'horizon, donc le patrimoine
+  successoral SAUTE de **+8 243 $** quand l'horizon fait passer le décès de 64 à 65 ans (ménage
+  modeste, ~1,1 M$), contre une pente voisine de −557 $/an. Ce n'est pas une falaise de mesure : le
+  crédit d'âge commence réellement à 65 ans. Consignée dans le code et dans `FISCAL_REFERENCE`.
+- ⚠️ **Aucun golden ne pouvait bouger sur le module** : son stub fiscal partagé est `gross × 0,3`,
+  un taux PLAT où un crédit non remboursable est structurellement invisible
+  (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`). Deux goldens moteur ont bougé et sont
+  re-basés avec leur raison ; le troisième rouge était l'invariant ci-dessus, qui a fait annuler la
+  moitié fautive.
+- ⚠️ **Slip de mesure attrapé en route** : ma première comparaison avant/après par `git stash` rendait
+  des chiffres IDENTIQUES — parce que le correctif était déjà COMMITÉ, donc `stash` ne retirait que
+  le commentaire non commité. Un écart nul inattendu accuse le protocole avant le code.
+- ⚠️ **Un seuil d'anti-vacuité a rougi sans que son objet bouge** : `partDeCodeRestante > 0,25` sur
+  `estateCalculation.ts` est tombé à **0,240** parce que ce lot y a ajouté ~40 lignes de prose.
+  Re-mesuré à 0,20 avec sa raison écrite à côté — un seuil appartient à la PORTÉE qu'il mesure, et un
+  module money-critical aussi documenté que calculé n'a pas à tendre vers un ratio de dépôt.
+- **7 gardes neuves** (`tests/services/estateAgeCredits.test.ts`), trois perturbations séparées :
+  bande sans `ageOpts` → 5 rouges ; `hasSpouse` recopié du voisin → 1 rouge ; crédits ajoutés à la
+  bande des rentes → 1 rouge (l'inventaire de dette, qui doit mourir ainsi).
+
 ## 2026-09-02 — Lot 84 : l'impôt latent ignorait l'âge (moitié « affichage » de #676)
 
 - [~] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** — moitié **`latentTax`** livrée le 2026-09-02 ; la
-  moitié `estateCalculation` reste ouverte (voir `BACKLOG.md`, elle touche une FONCTION OBJECTIF).
+  moitié `estateCalculation` n'a suivi qu'à MOITIÉ le même jour (lot 85, entrée ci-dessus) :
+  bande successorale livrée, bande des rentes BLOQUÉE et couplée. Ticket encore ouvert.
 - **Re-mesuré avant de coder** (un rapport d'agent n'est pas une source) : **1 854 $ par déclarant
   de 65 ans et plus** pour le seul crédit d'ÂGE — dans la fourchette annoncée par la revue
   (1 741-2 444 $). Le crédit réduit la facture de BASE mais pas celle de la LIQUIDATION TOTALE (il

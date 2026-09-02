@@ -583,12 +583,22 @@ et `totalEstateTax` ne couvre que la LIQUIDATION (REER + gains au décès) : il 
 Avant : un forfait **plat de 30 %** (`× 0,7`), sans nom, sans source. MESURÉ sur le barème 2026, le
 facteur net RÉEL d'une rente publique n'est plat pour personne :
 
-| autre revenu de retraite du ménage | facteur net réel |
-|---|---|
-| ~0 (vit de ses rentes, 24 k$/an) | **0,94** |
-| 30 k$ | 0,743 |
-| 60 k$ | 0,639 |
-| 100 k$ | 0,594 |
+| autre revenu de retraite du ménage | facteur net, déclarant < 65 ans | facteur net, 65+ seul | facteur net, 65+ en couple |
+|---|---|---|---|
+| ~0 (vit de ses rentes, 24 k$/an) | **0,940** | **1,000** | 0,994 |
+| 30 k$ | 0,743 | 0,725 | 0,725 |
+| 60 k$ | 0,639 | 0,603 | 0,615 |
+| 100 k$ | 0,594 | 0,587 | 0,587 |
+
+> ⚠️ **La colonne « < 65 ans » est celle que le moteur applique AUJOURD'HUI, à tout âge.** Cette bande
+> ne reçoit PAS les crédits d'âge : les deux colonnes 65+ mesurent ce qu'elle rendrait si on les lui
+> câblait — mesure produite par le lot 85 (2026-09-02) précisément pour justifier de NE PAS le faire
+> tant que `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]` n'est pas réglé (voir le point 7 ci-dessous et le
+> commentaire du module). L'effet CHANGE DE SIGNE avec le revenu : à revenu quasi nul le crédit
+> ABRITE la tranche (0,940 → 1,000, la rente n'est plus imposée du tout) ; à partir de ~30 k$ ce sont
+> les rentes qui poussent le revenu au-delà du seuil de récupération et DÉTRUISENT un crédit qui
+> existait sans elles (0,743 → 0,725). Aucune valeur unique — ni le vieux forfait 0,7, ni une moyenne
+> des colonnes — ne décrit cette bande.
 
 Le forfait sur-taxait donc lourdement les ménages modestes — ceux pour qui les rentes publiques
 pèsent le plus. Remplacé par un abattement **calculé**, avec le patron déjà utilisé pour l'impôt de
@@ -619,6 +629,31 @@ liquidation (impôt INCRÉMENTAL : `impôt(contexte) − impôt(contexte − tra
 6. Pour un ménage **sans pension privée**, le revenu résiduel est nul et le facteur « incrémental »
    dégénère en **taux MOYEN** sur la rente. Ce n'est pas un cas dégradé : c'est le cas nominal d'un
    ménage qui vit de ses rentes publiques.
+7. **L'abattement des RENTES n'a PAS de crédits d'âge, et ce refus est MESURÉ**
+   (`[FISC-BANDES-FRERES-SANS-AGEOPTS]`, lot 85, 2026-09-02). La bande SUCCESSORALE voisine, elle,
+   les a reçus au même lot — avec `hasSpouse: false`, cohérent avec le point 5 (double décès → une
+   seule déclaration finale, celle du survivant, qui est seul).
+   Pourquoi pas ici : câbler `{ age: finalAge, hasSpouse }` sur cette bande INVERSE un invariant vrai
+   du monde réel — « une pension DB pleinement indexée ne peut pas appauvrir » — pour tout horizon
+   ≤ ~9 ans. Écart `indexée 100 % − non indexée` du patrimoine successoral, fixture
+   `buildAtRetirement` (couple de 64 ans, DB 2 000 $/mois) : 5 ans **+4 836 $ → −4 845 $**, 6 ans
+   +9 324 → −2 594, 8 ans +15 999 → −175, 10 ans +26 284 → +6 398, 25 ans +327 886 → +315 912.
+   ⚠️ **La cause n'est pas le crédit d'âge** — décomposition par site à 5 ans : bande successorale
+   seule +4 764 $ (invariant intact), bande des rentes seule −4 773 $ — mais l'artefact du point 3
+   ci-dessus (`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`, facteur d'UNE année appliqué à une VAN
+   pluriannuelle), que rendre le facteur plus sensible au revenu AMPLIFIE. Les deux correctifs
+   forment un COUPLE et se livrent ensemble ; l'état actuel est borné par un test qui doit mourir
+   avec la dette.
+   ⚠️ Aucun `eligiblePensionIncome` n'est transmis nulle part dans ce module : la liquidation
+   successorale (REER réputé encaissé, gains en capital) n'est pas du revenu de pension admissible,
+   et le crédit de pension manquant ailleurs est chiffré et routé (`[FISC-LATENT-PENSION-CREDIT]`),
+   jamais approximé.
+   ⚠️ **Marche assumée à 65 ans** (bande successorale). `finalAge` est piloté par le curseur
+   d'horizon : le patrimoine successoral SAUTE quand l'horizon fait passer le décès de 64 à 65 ans —
+   mesuré **+8 243 $** sur un ménage modeste (~1,1 M$, contexte 30 k$/an), contre une pente voisine
+   de −557 $/an. Ce n'est PAS une falaise de mesure comme celles que `[ESTATE-NPV-07]` a supprimées :
+   le crédit d'âge commence réellement à 65 ans. La lisser reviendrait à créditer un âge que le
+   contribuable n'a pas.
 
 > La VAN elle-même reste bâtie sur l'estimé de saisie (convention FA-8) et ignore `rrqProrata` :
 > surévaluation mesurée de 129 503 $ sur la fixture de référence. Ticket `[ESTATE-NPV-BASE-REELLE]`.

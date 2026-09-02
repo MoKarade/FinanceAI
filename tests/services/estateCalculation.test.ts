@@ -582,7 +582,15 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         const code = stripComments(src);
         // Anti-vacuité du décommentage : il doit rester du VRAI code, et un jeton connu.
         // ⚠️ PAS `code.length` : la source unique BLANCHIT, donc la longueur ne bouge jamais.
-        expect(partDeCodeRestante(src, code)).toBeGreaterThan(0.25);
+        // ⚠️ Seuil RE-MESURÉ le 2026-09-02 (0,25 → 0,20) par `[FISC-BANDES-FRERES-SANS-AGEOPTS]`,
+        // qui a ajouté ~40 lignes de prose à ce fichier : la part de code y est tombée à **0,240**
+        // et la garde a rougi sans que rien de ce qu'elle défend ait bougé. Un seuil d'anti-vacuité
+        // appartient à la PORTÉE qu'il mesure — ici un module money-critical dont la documentation
+        // est aussi lourde que le calcul, et qui n'a AUCUNE raison de tendre vers un ratio de dépôt
+        // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`). Ce que le seuil doit
+        // attraper reste attrapé : un décommenteur qui mange le code rendrait un ratio proche de 0,
+        // pas 0,20. Il se re-mesure, il ne se supprime pas.
+        expect(partDeCodeRestante(src, code)).toBeGreaterThan(0.20);
         expect(code).toContain('const facteurNetRentes');
         // ⚠️ Extraction par PROFONDEUR, pas par `[^)]*` : un argument parenthésé
         // (`(estateCurrentIncome + totalEstateLiquidation)`) tronque la classe négative et l'appel

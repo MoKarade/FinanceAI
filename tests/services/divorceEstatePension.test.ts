@@ -111,11 +111,21 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // exactement la population que le forfait de 0,7 sur-taxait le plus.
         // Re-basé 2026-08-21 (−130 $) : attribution par bissection = assiettes DIV (revue #683),
         // PAS le GK que ma 1re note affirmait.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_565_268);
+        // Re-basé 2026-09-02 ([FISC-BANDES-FRERES-SANS-AGEOPTS] lot 85, **−3 307 $**) : la bande
+        // successorale porte désormais les crédits d'âge (`{ age: finalAge, hasSpouse: false }`).
+        // Le sens est celui, contre-intuitif et juste, de toute bande incrémentale : le crédit
+        // d'âge existe sur le revenu de BASE et la liquidation l'ÉCRASE, donc `final − base`
+        // facture EN PLUS le crédit que la liquidation détruit → impôt ↑, succession ↓. Ce que ce
+        // test défend (« sans divorce, rien ne fuit du chemin divorce ») est INCHANGÉ ; seule
+        // l'ancre de valeur bouge.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_561_961);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
         // Re-basé 2026-08-21 (−59 $) : bissection revue #683 = DIV (−53) + GK (−6) — pas GK seul.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_906_371);
+        // Re-basé 2026-09-02 (même cause, **−3 306 $**) : à un dollar d'arrondi près le MÊME écart
+        // qu'au-dessus — la correction porte sur l'impôt de liquidation, que le tirage Monte Carlo
+        // ne déplace pas.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_903_065);
     });
 });

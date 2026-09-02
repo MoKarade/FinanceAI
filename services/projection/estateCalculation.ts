@@ -3,7 +3,7 @@
 // V40 (bilan successoral) + V48 (Smith bug) + V60 (NPV pensions publiques).
 // Pattern: Pure Function + injection calculateFiscalReport.
 
-import { CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, type FiscalReport } from '../../utils/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, type AgeCreditOptions, type FiscalReport } from '../../utils/tax';
 import { computeRawNetWorth } from './netWorth';
 
 type FiscalFn = (
@@ -12,6 +12,12 @@ type FiscalFn = (
     fhsaContrib: number,
     year: number,
     skipBreakdown: boolean,
+    /** [FISC-BANDES-FRERES-SANS-AGEOPTS] Ce module calcule DEUX bandes incrémentales à un âge
+     *  PARFAITEMENT connu (`currentAge + simulationYears`) et les calculait toutes deux sans crédits
+     *  d'âge. Le lot 85 n'en a câblé QU'UNE — l'impôt successoral. L'autre (`facteurNetRentes`) reste
+     *  volontairement sans crédits, pour une raison MESURÉE écrite à son site. Optionnel : les
+     *  appelants historiques (et les stubs de test) restent valides tels quels. */
+    ageOpts?: AgeCreditOptions,
 ) => FiscalReport;
 
 export interface EstateCalcInputs {
@@ -214,8 +220,39 @@ export function computeEstateNetWorth(
     // → impôt successoral surévalué pour un couple. Symétrisé : les deux à l'échelle d'un seul
     // déclarant (pas de `/N`) → `totalEstateTax` = vrai impôt incrémental sur la liquidation.
     // (≠ latentTax.ts qui est per-capita, car là les deux conjoints sont VIVANTS.)
-    const estateReportBase = calculateFiscalReport(estateCurrentIncome, 0, 0, finalYear, enableMonteCarlo);
-    const estateReportFinal = calculateFiscalReport((estateCurrentIncome + totalEstateLiquidation), 0, 0, finalYear, enableMonteCarlo);
+    //
+    // [FISC-BANDES-FRERES-SANS-AGEOPTS] Les deux appels portent l'âge FINAL et le statut du
+    // déclarant. Trois choses à ne pas confondre :
+    //   · l'âge est CONNU ici (`finalAge`), il n'a jamais rien eu d'indéterminé — le passer ne
+    //     « suppose » pas 65 ans, il se limite tout seul (tous les crédits de
+    //     `calculateAgeAndPensionCredits` sont gatés `age >= 65`, montant « vivant seule » compris :
+    //     mesuré 0,00 $ d'écart à 60 ans) ;
+    //   · `hasSpouse: false` NON par défaut mais par le MODÈLE écrit trois lignes plus haut — la
+    //     liquidation est imposée sur UNE déclaration finale, celle du SURVIVANT, qui est seul.
+    //     C'est le cas que `AgeCreditOptions.hasSpouse` documente explicitement (« inclut le
+    //     survivant via taxFilers »). ⚠️ Recopier le `activeUsersCount > 1` employé ailleurs dans ce
+    //     fichier serait ici une FAUTE : ce n'est pas la même question, et une fixture SOLO ne
+    //     distinguerait pas les deux formules (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`) ;
+    //   · pas d'`eligiblePensionIncome` : la liquidation successorale (REER réputé encaissé, gains
+    //     en capital) n'est PAS du revenu de pension admissible, et le contexte est déjà porté
+    //     ailleurs. Le manque est routé (`[FISC-LATENT-PENSION-CREDIT]`), pas comblé au jugé.
+    // ⚠️ Le SIGNE surprend et il est juste : le crédit d'âge existe sur la base (revenu de
+    // retraite) et il est ÉCRASÉ sur le final (base + liquidation), donc la bande incrémentale
+    // MONTE. Mesuré +3 440 $ d'impôt successoral (déclarant 65+ seul, contexte 48 k$, liquidation
+    // 215 k$) — le patrimoine successoral baisse d'autant. C'est la perte réelle du crédit que la
+    // liquidation provoque, pas un durcissement arbitraire.
+    // ⚠️ MARCHE ASSUMÉE au franchissement de 65 ans. `finalAge` étant piloté par le CURSEUR
+    // d'horizon, le patrimoine successoral fait un SAUT quand l'horizon fait passer le décès de 64 à
+    // 65 ans — mesuré **+8 243 $** sur un ménage modeste (contexte 30 k$/an, patrimoine ~1,1 M$,
+    // soit 0,75 %), contre une pente voisine de −557 $/an. Contrairement aux falaises que
+    // `[ESTATE-NPV-07]` a supprimées (démarrage PSV, démarrage DB), celle-ci n'est PAS un artefact
+    // de mesure : le crédit d'âge commence réellement à 65 ans, donc mourir à 65 n'est pas mourir à
+    // 64. On la CONSIGNE plutôt que de la lisser — lisser reviendrait à créditer un âge que le
+    // contribuable n'a pas. Son SIGNE suit celui du reste du lot : vers le haut à revenu modeste,
+    // vers le bas à revenu élevé.
+    const estateAgeOpts: AgeCreditOptions = { age: finalAge, hasSpouse: false };
+    const estateReportBase = calculateFiscalReport(estateCurrentIncome, 0, 0, finalYear, enableMonteCarlo, estateAgeOpts);
+    const estateReportFinal = calculateFiscalReport((estateCurrentIncome + totalEstateLiquidation), 0, 0, finalYear, enableMonteCarlo, estateAgeOpts);
     const totalEstateTax = estateReportFinal.totalTax - estateReportBase.totalTax;
 
     // V60: NPV des rentes publiques futures (valeur invisible en fin de simulation avant 65 ans).
@@ -427,6 +464,25 @@ export function computeEstateNetWorth(
     // commentaire, à tort) : il vaut alors `1 − impôt(revenu)/rentes`, qui ne vaut 1 que si le
     // revenu est sous le montant personnel de base. Dégradation gracieuse et continue en `Y = R`.
     const revenuSansRentes = Math.max(0, revenuDeContexte - rentesAnnuellesFinales);
+    // ⚠️ [FISC-BANDES-FRERES-SANS-AGEOPTS] CETTE BANDE-CI RESTE SANS CRÉDITS D'ÂGE, DÉLIBÉRÉMENT.
+    // Le lot 85 les a câblés sur la bande successorale ci-dessus, PAS ici, et le refus est MESURÉ,
+    // pas frileux. Câbler `{ age: finalAge, hasSpouse: activeUsersCount > 1 }` sur cette paire-ci
+    // INVERSE un invariant VRAI du monde réel : « une pension DB pleinement indexée ne peut pas
+    // appauvrir ». Mesuré sur la fixture `buildAtRetirement` (couple de 64 ans, DB 2 000 $/mois),
+    // écart `indexée 100 % − non indexée` du patrimoine successoral, par horizon :
+    //     5 ans : +4 836 $ → **−4 845 $** · 6 ans : +9 324 → −2 594 · 8 ans : +15 999 → −175
+    //     10 ans : +26 284 → +6 398 · 15 ans : +65 776 → +42 403 · 25 ans : +327 886 → +315 912
+    // Le point de bascule passe donc de « sous 5 ans » à « ~9 ans ». Décomposition par site, même
+    // fixture à 5 ans : la bande SUCCESSORALE seule laisse +4 764 $ (invariant intact) ; c'est
+    // cette bande-ci, SEULE, qui rend −4 773 $. La cause n'est pas le crédit d'âge mais l'artefact
+    // déjà connu et ticketé `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]` — un facteur calculé sur le revenu
+    // d'UNE année, appliqué à une VAN pluriannuelle : rendre ce facteur PLUS sensible au revenu
+    // amplifie l'artefact au lieu de corriger quoi que ce soit. Les deux forment un COUPLE
+    // (contexte pluriannuel, crédits d'âge) et se livrent ensemble, jamais l'un sans l'autre —
+    // même arbitrage que `[ESTATE-NPV-BASE-REELLE]` (`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`).
+    // La mesure de ce que le câblage vaudrait est publiée dans `docs/FISCAL_REFERENCE.md` §
+    // « Abattement fiscal de la VAN des rentes publiques » — l'écart y CHANGE DE SIGNE avec le
+    // revenu (facteur 0,940 → 1,000 à revenu quasi nul, 0,743 → 0,725 à 30 k$).
     const impotSurRentes = rentesAnnuellesFinales > 0
         ? Math.max(0, calculateFiscalReport(revenuDeContexte, 0, 0, finalYear, enableMonteCarlo).totalTax
             - calculateFiscalReport(revenuSansRentes, 0, 0, finalYear, enableMonteCarlo).totalTax)

@@ -422,7 +422,7 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
 
 ## 9. Stratégies de décaissement (drawdown)
 
-5 stratégies disponibles, accessibles via `optimizeDrawdownOrder(params)` :
+5 stratégies disponibles, accessibles via `compareLifeScenarios(params)` :
 
 ```
 🥇 AUTO_MARGINAL  : optimise le taux marginal à chaque retrait
@@ -433,6 +433,15 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
 ```
 
 L'optimizer lance les 5 et retourne celle qui maximise `estateNetWorth` avec un gain mesuré vs la pire.
+
+> ⚠️ `estateNetWorth` n'est PAS trié qu'ici. `rankStrategies` (`strategyRanking.ts`, panneau
+> « Optimiser ») le score aussi pour les objectifs *équilibré* et *patrimoine max*, **et** score
+> `totalEstateTax` par un autre chemin — `lifetimeTaxTotal` l'additionne, ce qui alimente les
+> objectifs *impôt minimum* et *équilibré*. Tout correctif qui déplace l'un de ces deux champs doit
+> donc mesurer le CLASSEMENT sur les DEUX fonctions objectif, pas seulement le montant
+> (`[FISC-BANDES-FRERES-SANS-AGEOPTS]`, lot 85 : ordre re-mesuré identique sur 7 personas × 4
+> objectifs). L'alias `optimizeDrawdownOrder` a été supprimé le 2026-08-21
+> (`[DETTE-DEPRECATED-DRAWDOWN]`) — le point d'entrée est `compareLifeScenarios`.
 
 ### 9.1 Optimisations 2026-05 (cashflowAllocation.ts)
 

@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Mode discret : le nom du marchand sortait quand même dans la notification)
+
+- **Corrigé** : dans Charges fixes & Abonnements, si tu activais le mode discret **après** avoir
+  ouvert l'écran, la liste se masquait bien — mais épingler ou écarter un abonnement affichait une
+  notification qui **nommait le marchand en clair**. Mesuré : le bouton disait « Épingler Marchand
+  masqué » et la notification disait « Netflix ».
+- **Pourquoi c'est arrivé** : la fonction déclenchée au clic gardait en mémoire l'état du mode
+  discret tel qu'il était au chargement de l'écran. Le masquage des notifications, ajouté en août,
+  était donc annulé exactement dans le cas qu'il visait — devant quelqu'un.
+- **Aussi** : deux autres avertissements du même type corrigés (graphes) ; ceux-là étaient sans
+  effet réel, et c'est écrit dans le code pour que personne ne cherche un bug qui n'existe pas.
+
 ## [unreleased] — 2026-09-02 (Ajouter un titre : l'app dit enfin POURQUOI le cours n'arrive pas)
 
 - **Corrigé** : à la validation d'un symbole (Placements → Ajouter), l'app affichait « Ticker

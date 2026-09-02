@@ -252,7 +252,10 @@ export function useTimeChartZoom<T>(
         const newStart = Math.max(0, pinch.idx0 - midRel * newSpan);
         const newEnd = Math.min(dl - 1, newStart + newSpan);
         scheduleRange(Math.max(0, newEnd - newSpan), newEnd);
-    }, [scheduleRange]);
+        // [HOOKS-EXHAUSTIVE-DEPS-WARN] `armPinch` manquait. INERTE aujourd'hui : il est lui-même
+        // `useCallback(…, [])`, donc d'identité stable — l'ajouter ne recrée rien. Déclarée quand
+        // même : c'est la déclaration qui rend le jour où `armPinch` gagnerait une dépendance.
+    }, [scheduleRange, armPinch]);
 
     const handleTouchEnd = useCallback((e: TouchEvent) => {
         if (twoFingersRef.current && e.touches.length < 2) {

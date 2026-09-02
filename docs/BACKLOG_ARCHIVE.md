@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 76 : un avertissement de lint qui cachait une fuite de vie privée
+
+- [x] **`[HOOKS-EXHAUSTIVE-DEPS-WARN]`** (moitié (a)) — 2026-09-02. Le ticket annonçait **2**
+  violations et les classait « dette technique ». Mesuré en rejouant l'outil : **4**, et les deux
+  qu'il ne nommait pas (`components/Planning.tsx`) ne sont pas de la dette — c'est une **fuite de
+  vie privée**.
+- **Mesuré** : `handlePinSub` / `handleDismissSub` appelaient `maskPayee(sub.payee, isPrivacyMode)`
+  sans déclarer `isPrivacyMode`. Activer le mode discret ne change ni `pinnedSubs` ni `setAppState`,
+  donc la fonction mémorisée gardait l'ancienne valeur — bouton « Épingler **Marchand masqué** »,
+  toast « **Netflix** épinglé ». C'est le correctif #645 (« masquer aussi les toasts ») annulé par
+  une fermeture périmée, au moment précis où l'utilisateur interagit devant quelqu'un.
+- **Les deux autres warnings sont INERTES** (`dockedRef` est une ref stable, `armPinch` est
+  `useCallback(…, [])`) : corrigés quand même, et l'inertie est écrite dans le code plutôt que
+  couverte par une fixture qui n'exercerait rien.
+- **Garde** : 3 cas de rendu qui visent ce qui SORT du toast, plus la contre-épreuve (hors mode
+  discret, le marchand reste lisible). Deux perturbations séparées, chacune ne fait rougir que ses
+  propres cas.
+- **Routé** : `[Q-HOOKS-DEPS-ERROR]` (moitié (b) — arbitrage de politique, avec la mesure : 0
+  violation restante, donc le basculement est gratuit aujourd'hui) et
+  `[PLANNING-CALENDAR-KEY-DOUBLON]` (découvert en chemin, non corrigé).
+
 ## 2026-09-02 — Lot 75 : la cause d'un échec de cours mourait DANS la façade
 
 - [x] **`[AI-FINNHUB-CAUSE-COLLAPSE]`** — 2026-09-02. Ticket écrit par la garde du lot 68 ; son

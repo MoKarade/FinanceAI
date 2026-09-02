@@ -120,7 +120,11 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
         // rendu, au même titre qu'une ligne de tableau. Masquer la liste et pas la confirmation
         // annule le masquage au moment précis où l'utilisateur interagit devant quelqu'un.
         showToast(`« ${maskPayee(sub.payee, isPrivacyMode)} » épinglé — il restera après actualisation.`, 'success');
-    }, [pinnedSubs, setAppState]);
+        // ⚠️ [HOOKS-EXHAUSTIVE-DEPS-WARN] `isPrivacyMode` EST une dépendance, et son absence annulait
+        // le correctif #645 ci-dessus : activer le mode discret ne change ni `pinnedSubs` ni
+        // `setAppState`, donc la fonction mémorisée gardait l'ancienne valeur et le toast sortait le
+        // marchand EN CLAIR (mesuré : bouton « Épingler Marchand masqué » → toast « Netflix »).
+    }, [pinnedSubs, setAppState, isPrivacyMode]);
     const handleUnpinSub = useCallback((sub: RecurringItem) => {
         setAppState({ subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)) });
     }, [pinnedSubs, setAppState]);
@@ -134,7 +138,8 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
             subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)),
         });
         showToast(`« ${maskPayee(sub.payee, isPrivacyMode)} » ne sera plus proposé comme abonnement.`, 'success');
-    }, [dismissedSubs, pinnedSubs, setAppState]);
+        // ⚠️ Même fermeture périmée que `handlePinSub` — cf. le commentaire là-haut.
+    }, [dismissedSubs, pinnedSubs, setAppState, isPrivacyMode]);
 
     const handleRestoreSub = useCallback((key: string) => {
         setAppState({ dismissedSubscriptions: restoreSubscription(dismissedSubs, key) });

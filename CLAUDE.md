@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 137 tests** Vitest
-(500 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 140 tests** Vitest
+(501 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un avertissement de lint est un SYMPTÔME, pas une gravité** : le ticket annonçait « 2
+  violations `exhaustive-deps`, dette technique » ; rejoué, l'outil en sort **4**, et les deux non
+  nommées étaient une **fuite de vie privée** — `isPrivacyMode` absent des deps de deux `useCallback`
+  de `Planning.tsx`, or basculer le mode ne change rien d'autre dans leurs deps. Mesuré : bouton
+  « Épingler **Marchand masqué** », toast « **Netflix** épinglé » — le correctif #645 annulé dans le
+  cas exact qu'il visait. La gravité se lit dans ce que la variable manquante CONTRÔLE, jamais dans la
+  règle violée. ⚠️ Une fermeture périmée se voit au **CONTRASTE** (le JSX se re-rend, la fonction
+  mémorisée non) : la garde vise ce qui SORT, avec le contraste comme anti-vacuité. ⚠️ Une correction
+  **INERTE** (ref stable, `useCallback(…, [])`) s'ÉCRIT comme telle plutôt que couverte par une
+  fixture qui n'exerce rien. ⚠️ Et le basculement `warn` → `error` est un arbitrage de POLITIQUE :
+  mesurer (0 violation restante ⇒ gratuit aujourd'hui) et router, pas trancher
+  (`UN-AVERTISSEMENT-DE-LINT-EST-UN-SYMPTOME-PAS-UNE-GRAVITE`).
 - ⚠️ **Une cause CLASSÉE puis JETÉE est une cause absente** : le ticket réclamait « un classificateur
   côté `marketData` » — chaque provider en posait déjà un (`MarketDataError.code`), et la façade le
   LISAIT (`e.code !== 'NOT_FOUND'`) avant de rendre `null`. Il manquait le FIL, pas le tri. Mesuré sur

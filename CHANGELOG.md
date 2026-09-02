@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le coût affiché du chat dit d'où vient son tarif)
+
+- **Corrigé** : le coût du chat IA était présenté comme un « coût API réel ». Les tokens comptés sont
+  bien réels, mais le **tarif** vient d'un relevé daté du 24 juin 2026 — et pour deux des trois
+  modèles (Sonnet et Opus), l'identifiant utilisé est un **alias** que le fournisseur peut faire
+  pointer vers une autre version, à un autre prix. Le coût affiché pouvait donc devenir faux sans que
+  rien ne le signale.
+- **Ce que tu verras** : l'infobulle du coût indique la date du relevé, et précise quand
+  l'identifiant peut avoir bougé depuis (le coût est alors un ordre de grandeur). Le modèle Haiku,
+  lui, est figé sur une version datée — sa mention le dit.
+- **Ce qui reste à faire, et pourquoi je ne l'ai pas fait** : la vraie correction serait d'épingler
+  les versions datées de Sonnet et Opus. Je ne peux pas deviner ces identifiants, et en inventer un
+  casserait le chat — bien pire que le problème. C'est noté dans tes tâches à faire.
+
 ## [unreleased] — 2026-09-01 (On voit maintenant quels chiffres viennent de l'IA)
 
 - **Corrigé** : dans « Optimisation fiscale du couple », le niveau de confiance (« Haute confiance »)

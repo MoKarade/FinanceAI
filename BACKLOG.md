@@ -2135,10 +2135,14 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   porte) et brancher `messageErreurIa`. ⚠️ Vérifier les AUTRES appelants de cette fonction avant de
   changer sa signature.
 
-- [ ] **`[AI-MODELID-PINNING-DRIFT]`** (S) — Haiku épinglé sur snapshot daté, Sonnet/Opus sur alias
-  non datés → Anthropic peut faire évoluer modèle/tarif sans que `pricing.ts` (daté 2026-06-24) ne
-  suive → coût affiché faux en silence. **Correctif** : épingler des snapshots datés partout, ou
-  dater la vérification.
+- [ ] **`[AI-MODELID-EPINGLER-SNAPSHOTS]`** (XS, **HUMAIN**) — ⚠️ **Moitié restante de
+  `[AI-MODELID-PINNING-DRIFT]` (lot 70), non faisable par Claude.** `claude-sonnet-4-6` et
+  `claude-opus-4-8` sont des ALIAS que le fournisseur peut repointer ; les remplacer par leurs
+  instantanés datés supprimerait la dérive de tarif à la source. **Claude ne peut pas inventer ces
+  identifiants** — un mauvais id casserait tous les appels du chat, ce qui est bien pire que la
+  dérive. **Action** : relever les ids datés sur docs.claude.com, puis les substituer dans
+  `services/aiChat/models.ts` et `pricing.ts` (un suffixe de date, rien d'autre) et retirer les
+  entrées correspondantes de `ALIAS_A_EPINGLER` — le test refuse un inventaire périmé, il guidera.
 
 - [ ] **`[AI-ONESHOT-NO-CACHE]`** (M) — `system` typé `string` nu → **aucun** appel one-shot ne peut
   utiliser cache prompt (contrairement à `agentLoop.ts`). Impact faible (~190 tokens), mais boutons

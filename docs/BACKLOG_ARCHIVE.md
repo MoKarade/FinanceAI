@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 70 : tous les identifiants de modèle ne se périment pas pareil (PR #800)
+
+- [x] **`[AI-MODELID-PINNING-DRIFT]`** — 2026-09-02, PR #800. Ticket JUSTE sur le fond
+  (`claude-haiku-4-5-20251001` est daté, `claude-sonnet-4-6` et `claude-opus-4-8` sont des alias
+  repointables), mais son correctif prescrit — « épingler des instantanés datés partout » — n'est
+  **pas faisable par Claude** : inventer un identifiant casserait tous les appels du chat, ce qui est
+  bien pire que la dérive de tarif. C'est la SECONDE branche du ticket qui est livrée.
+- **Livré** : chaque tarif porte `releveLe` et `aliasFlottant` (dérivé de la forme de l'id, vérifié
+  par test) ; `ALIAS_A_EPINGLER` inventorie la dette avec sa raison ; `provenanceTarif()` rend deux
+  phrases DIFFÉRENTES selon la nature de l'id, affichée dans l'infobulle du coût — d'où le mot
+  « réel » retiré : les tokens sont réels, le tarif vient d'un relevé daté.
+- ⚠️ **PAS de test qui lit l'horloge** pour crier « tarif périmé » : un contrôle qui rougit à une date
+  sans qu'aucune ligne n'ait changé est une bombe. C'est un inventaire qui porte la dette, et il doit
+  **savoir mourir** — le test refuse un alias absent de la liste ET une entrée qui n'est plus un alias.
+- **Moitié restante routée à Marc** : `[AI-MODELID-EPINGLER-SNAPSHOTS]` (relever les ids datés).
+
 ## 2026-09-01 — Lot 69 : l'auto-évaluation du modèle était présentée comme un verdict (PR #799)
 
 - [x] **`[AI-COUPLE-SELFRATED-CONFIDENCE]`** — 2026-09-01, PR #799. ⚠️ **Périmètre du ticket EXACT** :

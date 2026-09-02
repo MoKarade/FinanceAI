@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { MODEL_IDS, AI_CHAT_MODELS, DEFAULT_AI_CHAT_MODEL, resolveChatModelKey } from '../../services/aiChat/models';
 import {
     PRICING_USD_PER_MTOK, chatCostUsd, addUsage, sumMessagesCostUsd, EMPTY_USAGE,
+    ALIAS_A_EPINGLER, provenanceTarif,
     type AiTokenUsage,
 } from '../../services/aiChat/pricing';
 import { MODEL_SONNET } from '../../services/claude';
@@ -23,6 +24,49 @@ describe('models (B3)', () => {
             expect(id, `id manquant pour ${m.key}`).toBeTruthy();
             expect(PRICING_USD_PER_MTOK[id], `tarif manquant pour ${id} — le coût serait silencieusement non compté`).toBeDefined();
         }
+    });
+
+    it('[AI-MODELID-PINNING-DRIFT] chaque tarif dit QUAND il a été relevé, et s\'il peut avoir bougé', () => {
+        // ⚠️ Un id DATÉ désigne un instantané figé : son tarif ne peut pas changer sous nos pieds.
+        // Un ALIAS peut être repointé par le fournisseur vers un autre instantané, à un autre tarif —
+        // et le coût affiché deviendrait faux EN SILENCE. Le tableau ne distinguait pas les deux.
+        for (const [id, t] of Object.entries(PRICING_USD_PER_MTOK)) {
+            expect(t.releveLe, `tarif sans date de relevé : ${id}`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+            // Le drapeau se DÉRIVE de la forme de l'id : un suffixe `-AAAAMMJJ` = instantané figé.
+            const estDate = /-\d{8}$/.test(id);
+            expect(t.aliasFlottant, `${id} : le drapeau contredit la forme de l'identifiant`).toBe(!estDate);
+        }
+    });
+
+    it('[AI-MODELID-PINNING-DRIFT] l\'inventaire des alias est EXACT dans les deux sens', () => {
+        // ⚠️ Un inventaire de dette doit savoir MOURIR. Les deux sens sont nécessaires :
+        //  · un alias ABSENT de la liste ⇒ la dette grossit en silence ;
+        //  · une entrée qui ne correspond plus à un alias ⇒ l'inventaire affirme AU PRÉSENT un défaut
+        //    déjà réglé, et se lit comme un fait (classe `ENTREE-D-INVENTAIRE-FANTOME`).
+        const alias = Object.entries(PRICING_USD_PER_MTOK).filter(([, t]) => t.aliasFlottant).map(([id]) => id);
+        expect(ALIAS_A_EPINGLER.map((a) => a.id).sort()).toEqual(alias.sort());
+        // Anti-vacuité : la comparaison de deux listes VIDES serait verte et ne prouverait rien.
+        expect(alias.length, 'aucun alias : le test ne discrimine plus rien').toBeGreaterThan(0);
+        for (const a of ALIAS_A_EPINGLER) {
+            expect(a.raison.length, `raison trop courte pour ${a.id}`).toBeGreaterThan(40);
+        }
+    });
+
+    it('[AI-MODELID-PINNING-DRIFT] la provenance affichée DIT la nuance, et pas la même pour les deux', () => {
+        // ⚠️ C'est l'assertion qui porte le lot : deux natures d'identifiant, deux phrases. Une
+        // provenance identique pour un instantané figé et un alias repointable n'apprendrait rien.
+        const fige = provenanceTarif('claude-haiku-4-5-20251001');
+        const flottant = provenanceTarif('claude-sonnet-4-6');
+        expect(fige).toBeTruthy();
+        expect(flottant).toBeTruthy();
+        expect(fige).not.toBe(flottant);
+        expect(flottant, 'un alias doit être annoncé comme tel').toMatch(/alias/i);
+        expect(fige, 'un instantané figé ne doit pas être présenté comme incertain').not.toMatch(/alias/i);
+        // Les deux portent la date : c'est le seul fait que l'app peut affirmer sans réserve.
+        expect(fige).toContain('2026-06-24');
+        expect(flottant).toContain('2026-06-24');
+        // Modèle sans tarif : `null`, cohérent avec `chatCostUsd` — jamais une phrase inventée.
+        expect(provenanceTarif('claude-inconnu-9')).toBeNull();
     });
 
     it('MODEL_SONNET (services/claude) dérive de la MÊME source — jamais deux littéraux qui divergent', () => {

@@ -214,6 +214,19 @@ est pire que le bug : je ne touche à rien sans la source. **Une capture d'écra
 | B8 | **REEE — âge de fermeture.** Le moteur ferme le régime à **25 ans** (`childrenReee.ts`, `childAgeMonths === 25 * 12`). Le ticket affirme que le régime réel autorise **35 ans**, mais un ticket n'est pas une source et je ne peux pas vérifier. Deux questions : (1) quel est l'âge réel ? (2) veux-tu qu'on s'aligne, ou qu'on garde 25 comme limite de simulation assumée ? | `[FISC-REEE-AGE-FERMETURE]` | non mesuré — 10 ans de croissance à l'abri en jeu |
 | B9 | **Plafonds REER 2010 → 2023** (14 valeurs, 22 000 → 30 780 $, `utils/tax.ts`). Elles pilotent les droits REER HISTORIQUES, donc de l'argent, et n'apparaissent nulle part dans `FISCAL_REFERENCE.md` (le §7 ne liste que 2024+). Elles ont l'air justes, mais la règle du dépôt dit qu'un chiffre sans source est suspect. Une capture de la page ARC « Plafonds de cotisation REER » suffit. | `[FISC-RRSP-LIMITS-PRE2024-DOC]` | non mesuré — reconstruction des droits accumulés avant le début de la simulation |
 
+## C0. Identifiants de modèle datés — je ne peux pas les deviner (ajouté 2026-09-02, lot 70)
+
+- [ ] **Relever les instantanés DATÉS de Sonnet et Opus** sur `docs.claude.com` (forme
+  `claude-…-AAAAMMJJ`, comme le `claude-haiku-4-5-20251001` déjà en place), puis me les donner.
+  **Pourquoi toi** : les deux identifiants actuels (`claude-sonnet-4-6`, `claude-opus-4-8`) sont des
+  ALIAS que le fournisseur peut repointer vers une autre version, à un autre tarif — le coût affiché
+  dans le chat deviendrait faux sans que rien ne le signale. Je ne peux pas inventer ces
+  identifiants : un mauvais id casserait **tous** les appels du chat, ce qui est bien pire que la
+  dérive de prix. Une fois les ids connus, la substitution est mécanique (`services/aiChat/models.ts`
+  et `pricing.ts`) et un test refuse déjà un inventaire périmé — il guidera.
+  Ticket : `[AI-MODELID-EPINGLER-SNAPSHOTS]`. En attendant, l'infobulle du coût dit honnêtement que
+  le tarif date du 2026-06-24 et que l'identifiant peut avoir bougé.
+
 ## C. Configuration de comptes — je n'ai pas les accès
 
 | # | Action | Où | Ce que ça débloque |

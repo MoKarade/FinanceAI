@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 115 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 118 tests** Vitest
 (496 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -1053,6 +1053,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Quand le correctif prescrit est hors de portée, livrer la moitié qu'on peut PROUVER et router
+  l'autre** : « épingler des instantanés datés partout » exigeait d'inventer des identifiants de
+  modèle — un mauvais id casse TOUS les appels, bien pire que la dérive qu'on corrige. Livré la
+  seconde branche du ticket (dater la vérification, inventorier les alias, dire la nuance à l'écran),
+  routé le reste à Marc avec la raison. ⚠️ Et la surveillance d'une péremption ne se fait PAS par un
+  test qui lit l'horloge — il rougirait à une date sans qu'aucune ligne n'ait changé, c'est la
+  définition d'une bombe. C'est un INVENTAIRE qui porte la dette, avec ses deux sens (aucun alias
+  absent, aucune entrée qui n'est plus un alias)
+  (`UNE-PEREMPTION-SE-SURVEILLE-PAR-UN-INVENTAIRE-PAS-PAR-L-HORLOGE`).
 - ⚠️ **Une valeur non vérifiée ne doit pas porter l'HABILLAGE d'une valeur vérifiée** : le montant
   avancé par le modèle s'affichait en monospace verte encadrée — l'apparence exacte des montants
   d'impôt calculés du voisin immédiat. Le défaut n'est pas le mot (« estimée » y était) mais le

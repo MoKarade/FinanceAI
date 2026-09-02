@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 71 : le correctif prescrit aurait annulé une décision antérieure
+> `[AI-BUDGETMODAL-RAW-FALLBACK]` — le texte brut du modèle s'affichait dans les MÊMES puces qu'une
+> recommandation validée par `RecosSchema`. Union discriminée `validee` / `brute` + présentation
+> distincte (bordure pointillée, pas de puce) + la phrase qui dit ce que l'app n'a pas fait.
+> - ⚠️ **Le correctif du ticket (« échec honnête plutôt qu'affichage de secours ») aurait été une
+>   RÉGRESSION** : le repli est délibéré et commenté (`[BUDGET-AI-DUP-PARSING]`). Avant d'appliquer
+>   le remède d'un ticket, chercher si un lot ANTÉRIEUR a tranché dans l'autre sens — et le
+>   commentaire qui porte un ID de lot est fait pour ça.
+> - Ce qui manquait n'était pas le refus mais le STATUT — 3ᵉ fois en 3 lots (69, 70, 71).
+> - Le test compare les DEUX habillages (`not.toBe`), pas la présence de la phrase : un
+>   avertissement au-dessus d'une puce identique n'aurait rien corrigé.
+
 > ## 🟦 Session 2026-09-02 — Lot 70 : tous les ids de modèle ne se périment pas pareil
 > `[AI-MODELID-PINNING-DRIFT]` — chaque tarif porte `releveLe` + `aliasFlottant` (dérivé de la FORME
 > de l'id, vérifié), `ALIAS_A_EPINGLER` inventorie la dette, `provenanceTarif()` rend deux phrases

@@ -2149,10 +2149,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   « Régénérer » repaient plein tarif. **Correctif** : union `string | Array<block>` pour permettre
   `cache_control`.
 
-- [ ] **`[AI-BUDGETMODAL-RAW-FALLBACK]`** (S) — sans JSON détecté, texte BRUT non validé est affiché
-  comme recommandation légitime (hors `RecosSchema`). **Correctif** : échec honnête plutôt qu'affichage
-  de secours.
-
 ### 🔴 Dette technique (2 HIGH, 4 MED, 6 LOW/S)
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.

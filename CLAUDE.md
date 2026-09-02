@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 118 tests** Vitest
-(496 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 121 tests** Vitest
+(497 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Le remède d'un ticket peut ANNULER une décision antérieure** : « échec honnête plutôt
+  qu'affichage de secours » aurait supprimé un repli DÉLIBÉRÉ, posé et commenté par
+  `[BUDGET-AI-DUP-PARSING]` — jeter une réponse lisible pour cause de format est pire que la montrer.
+  Avant d'appliquer un remède prescrit, grepper l'ID de lot dans le commentaire du code visé : c'est
+  exactement à ça qu'ils servent. Et le vrai manque était le STATUT, pas le refus — troisième fois en
+  trois lots (69, 70, 71) que la bonne réponse est « garder l'information, dire ce qu'elle vaut »
+  (`LE-REMEDE-D-UN-TICKET-PEUT-ANNULER-UNE-DECISION-ANTERIEURE`).
 - ⚠️ **Quand le correctif prescrit est hors de portée, livrer la moitié qu'on peut PROUVER et router
   l'autre** : « épingler des instantanés datés partout » exigeait d'inventer des identifiants de
   modèle — un mauvais id casse TOUS les appels, bien pire que la dérive qu'on corrige. Livré la

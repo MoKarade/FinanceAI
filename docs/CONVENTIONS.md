@@ -9984,3 +9984,35 @@ contrôle.
 *tokens* sont réels ; le *tarif* vient d'un relevé daté, et pour un alias il peut avoir bougé depuis.
 Deux phrases différentes selon la nature de l'identifiant — un texte identique pour un instantané figé
 et un alias repointable n'apprendrait rien, et le test l'exige explicitement (`not.toBe`).
+
+
+### Lot 71 (2026-09-02) — le remède d'un ticket peut annuler une décision antérieure
+
+`LE-REMEDE-D-UN-TICKET-PEUT-ANNULER-UNE-DECISION-ANTERIEURE`
+
+Le défaut décrit était réel et encore vivant : quand le modèle ne rend pas le JSON demandé, le
+diagnostic budget affichait sa réponse **brute** dans les mêmes puces qu'une recommandation validée
+par `RecosSchema`. Rien ne distinguait « trois conseils contrôlés » de « un bloc de texte tel quel ».
+
+Mais le remède prescrit — « échec honnête plutôt qu'affichage de secours » — aurait **supprimé un
+repli délibéré**. Ce repli a été posé par `[BUDGET-AI-DUP-PARSING]`, et son commentaire explique
+pourquoi : l'ancienne version faisait remonter l'exception au `catch` global, ce qui affichait
+« erreur » et **perdait tout le texte déjà streamé alors qu'il était lisible**. Appliquer le ticket
+tel quel aurait rejoué ce défaut, sous couvert de le corriger.
+
+Le geste : **avant d'appliquer un remède prescrit, grepper l'ID de lot dans le commentaire du code
+visé.** C'est exactement ce à quoi servent ces marqueurs, et le dépôt l'avait déjà écrit pour les
+tickets périmés (`UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`) — ici la variante
+est plus dangereuse, parce que le ticket n'est pas périmé : sa description est juste, seule sa
+conclusion est fausse.
+
+⚠️ Et le vrai manque n'était pas le refus mais le **statut** — troisième fois en trois lots. Lot 69 :
+un montant du modèle avec l'habillage d'un montant calculé. Lot 70 : un tarif présenté comme « réel »
+alors que son identifiant peut avoir bougé. Lot 71 : un texte non validé dans la puce d'un texte
+validé. À chaque fois la bonne réponse est la même — **garder l'information, dire ce qu'elle vaut** —
+et à chaque fois la tentation était de retirer.
+
+⚠️ Le test compare les **deux habillages** (`not.toBe` sur les classes des deux conteneurs), pas la
+présence de la phrase d'avertissement : celle-ci pourrait exister au-dessus d'une puce restée
+identique, et le défaut serait intact. Plus un contrôle que l'avertissement **n'apparaît pas** sur
+une réponse conforme, sinon il ne distinguerait plus rien.

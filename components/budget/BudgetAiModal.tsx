@@ -50,7 +50,22 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict de 3 strings (pas de markdown):
 export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, onClose }) => {
     const [isStreaming, setIsStreaming] = useState(true);
     const [streamingText, setStreamingText] = useState('');
-    const [recommendations, setRecommendations] = useState<string[]>([]);
+    /**
+     * [AI-BUDGETMODAL-RAW-FALLBACK] ⚠️ DEUX RÉSULTATS DE NATURE DIFFÉRENTE, et le composant n'en
+     * connaissait qu'un. Quand le modèle rend le JSON demandé, chaque entrée a traversé `RecosSchema`.
+     * Quand il rend autre chose, on affichait le texte BRUT dans les mêmes puces — indiscernable
+     * d'une recommandation validée.
+     *
+     * ⚠️ Le ticket prescrivait « échec honnête plutôt qu'affichage de secours ». Ce serait une
+     * RÉGRESSION : le repli sur le texte brut est délibéré (`[BUDGET-AI-DUP-PARSING]`), parce que
+     * jeter une réponse lisible pour cause de format est pire que de la montrer. Ce qui manquait
+     * n'était pas le refus, c'était le STATUT — même leçon que le lot 69, où le mot « estimée » était
+     * là mais l'habillage mentait.
+     */
+    type Diagnostic =
+        | { readonly forme: 'validee'; readonly items: readonly string[] }
+        | { readonly forme: 'brute'; readonly texte: string };
+    const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
     // [AI-BUDGETMODAL-ERROR-COLLAPSE] Le message, pas un booléen : quatre causes se disaient
     // pareil. `null` couvre à la fois « pas d'erreur » et « annulation volontaire ».
     const [erreur, setErreur] = useState<string | null>(null);
@@ -88,10 +103,11 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                 // le texte déjà streamé alors qu'il était lisible.
                 const validated = safeJsonValidate(accumulator, RecosSchema);
                 if (validated) {
-                    if (!cancelled) setRecommendations(validated);
+                    if (!cancelled) setDiagnostic({ forme: 'validee', items: validated });
                 } else {
-                    // Rien d'exploitable en JSON : on montre le texte brut plutôt que rien.
-                    if (!cancelled) setRecommendations([accumulator]);
+                    // Rien d'exploitable en JSON : on montre le texte brut plutôt que rien — mais
+                    // MARQUÉ, parce qu'il n'a traversé aucun schéma.
+                    if (!cancelled) setDiagnostic({ forme: 'brute', texte: accumulator });
                 }
             } catch (err) {
                 logError({ source: 'ai', severity: 'error', message: 'Diagnostic budget IA : échec du streaming', error: err });
@@ -119,7 +135,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
             icon={<Icon name="sparkles" size={22} />}
             size="lg"
         >
-            {isStreaming && recommendations.length === 0 ? (
+            {isStreaming && diagnostic === null ? (
                 <div className="space-y-3">
                     <div className="flex items-center gap-3">
                         <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
@@ -146,12 +162,24 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {recommendations.map((reco, idx) => (
+                    {diagnostic?.forme === 'validee' && diagnostic.items.map((reco, idx) => (
                         <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-4 flex gap-3 animate-slide-up" style={{ animationDelay: `${idx * 100}ms` }}>
                             <div className="text-indigo-400 mt-0.5 text-lg" aria-hidden="true">•</div>
                             <p className="text-body text-ink-100 leading-relaxed">{reco}</p>
                         </div>
                     ))}
+                    {diagnostic?.forme === 'brute' && (
+                        // ⚠️ Présentation DIFFÉRENTE, volontairement : ni puce ni carte de
+                        // recommandation. Le texte est conservé (le jeter serait pire) mais il
+                        // n'emprunte pas l'apparence de ce qui a été validé.
+                        <div className="bg-white/[0.03] border border-dashed border-white/15 rounded-lg p-4 space-y-2">
+                            <p className="text-tiny text-ink-400 italic">
+                                L'IA n'a pas répondu dans le format attendu. Voici sa réponse telle
+                                quelle — elle n'a été ni découpée ni vérifiée par l'app.
+                            </p>
+                            <p className="text-body text-ink-200 leading-relaxed whitespace-pre-wrap">{diagnostic.texte}</p>
+                        </div>
+                    )}
                     <button
                         onClick={onClose}
                         className="w-full mt-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-colors"

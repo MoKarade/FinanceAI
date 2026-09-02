@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le diagnostic budget dit quand l'IA est sortie du format)
+
+- **Corrigé** : dans le diagnostic IA du budget, quand le modèle ne répond pas dans le format
+  demandé, l'app affichait sa réponse brute **dans les mêmes puces** qu'une recommandation vérifiée.
+  Impossible de faire la différence entre « trois conseils contrôlés » et « un bloc de texte tel
+  quel ».
+- **Ce que tu verras** : la réponse hors format garde sa place — la jeter serait pire — mais dans un
+  encadré distinct, avec une phrase qui dit qu'elle n'a été ni découpée ni vérifiée.
+
 ## [unreleased] — 2026-09-02 (Le coût affiché du chat dit d'où vient son tarif)
 
 - **Corrigé** : le coût du chat IA était présenté comme un « coût API réel ». Les tokens comptés sont

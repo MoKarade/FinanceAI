@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 81 : un écran affirmait une cause que son hook ne peut pas connaître
+> `[FUTURE-HISTORY-EMPTY-CAUSE]` — l'état vide du graphe « Évolution » disait « vérifie ta clé
+> Finnhub » alors que `usePortfolioHistory` ne fait AUCUN réseau (il dérive du store), et que sans
+> clé le repli gratuit EST le chemin normal.
+> - Livré : l'écran LIT le rapport de synchro réel → trois états (en cours / échec avec la cause du
+>   diagnostic / succès sans données). La promesse « apparaît toute seule » ne survit que dans l'état
+>   où elle est VRAIE.
+> - ⚠️ Mode discret traité (variante sans montant), avec contre-épreuve.
+> - ⚠️ Le critère des skips actionnables est extrait (`skipsActionnables`) — une 2ᵉ copie allait
+>   naître. Et le repli de l'écran Diagnostic RECOPIAIT la promesse retirée au lot 80 : corrigé, plus
+>   la source (l'exception inattendue de l'hydratation pousse maintenant son propre détail).
+
 > ## 🟦 Session 2026-09-02 — Lot 80 : le diagnostic promettait un retry impossible
 > `[MARKETDATA-HISTORY-CAUSE-PERDUE]` — mon ticket, **mal cadré une 2ᵉ fois, dans l'AUTRE sens** :
 > j'avais écrit « la cause est détruite, aucun écran ne peut la nommer ». Faux — `hydrateAssetHistories`

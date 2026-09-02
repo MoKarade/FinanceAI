@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 160 tests** Vitest
-(502 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 164 tests** Vitest
+(503 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un écran ne peut affirmer que ce que ses SOURCES lui donnent** : l'état vide du graphe
+  « Évolution » conseillait « vérifie ta clé Finnhub » — or son hook ne fait AUCUN réseau (il dérive
+  du store), et sans clé le repli gratuit EST le chemin normal : on envoyait chercher une clé jamais
+  possédée. Devant un texte d'état vide, demander **d'où viendrait l'information qui rend cette
+  phrase vraie** ; ici elle existait (rapport d'hydratation publié même quand rien n'a été hydraté)
+  mais n'était pas branchée. ⚠️ TROIS états, pas deux — la promesse « la courbe arrive toute seule »
+  est VRAIE pendant la synchro et fausse après un échec ; la supprimer partout retirerait une
+  information juste. ⚠️ Et après avoir corrigé un message à sa SOURCE, **grep la phrase corrigée** :
+  ses copies de REPLI vivent chez les lecteurs (celle de l'écran Diagnostic recopiait la promesse
+  retirée au lot 80) (`UN-ECRAN-NE-PEUT-AFFIRMER-QUE-CE-QUE-SES-SOURCES-LUI-DONNENT`).
 - ⚠️ **Un message qui promet une résolution AUTOMATIQUE est une affirmation sur l'AVENIR** : le
   diagnostic d'historique annonçait « nouvel essai automatique au prochain chargement » — vrai d'un
   quota ou d'une coupure réseau, **FAUX d'une clé refusée**, où aucun rechargement ne réussira jamais.

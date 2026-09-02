@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Le graphe « Évolution » ne devine plus pourquoi il est vide)
+
+- **Corrigé** : quand la courbe d'évolution n'a rien à afficher, l'écran disait « la courbe apparaît
+  toute seule quand ils arrivent — si rien n'apparaît, vérifie ta clé Finnhub ». Il n'en savait rien :
+  cet écran ne fait aucun appel réseau. Et sans clé Finnhub, le repli gratuit est le chemin NORMAL —
+  on t'envoyait chercher une clé que tu n'as peut-être jamais eue.
+- **Ce que tu verras** : trois messages selon ce qui s'est réellement passé — « ça charge » pendant la
+  synchro (là, la courbe arrive bien toute seule), la **vraie** raison de l'échec avec un renvoi vers
+  Placements → Diagnostic, ou « terminé sans erreur, vérifie tes dates d'achat » quand rien n'a
+  échoué mais que rien n'est arrivé non plus.
+
 ## [unreleased] — 2026-09-02 (Le diagnostic ne promet plus un nouvel essai qui ne marchera jamais)
 
 - **Corrigé** : quand l'historique de cours d'un titre ne se charge pas, le diagnostic de

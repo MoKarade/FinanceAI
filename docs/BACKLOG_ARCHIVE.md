@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 81 : un écran affirmait une cause que son hook ne peut pas connaître
+
+- [x] **`[FUTURE-HISTORY-EMPTY-CAUSE]`** — 2026-09-02, débloqué par le lot 80. L'état vide du graphe
+  « Évolution » disait « la courbe apparaît toute seule quand ils arrivent — si rien n'apparaît,
+  vérifie ta clé Finnhub ». Deux affirmations, deux problèmes : son hook (`usePortfolioHistory`) ne
+  fait **AUCUN réseau** (il dérive du store), donc il ne peut rien savoir de la cause ; et sans clé
+  Finnhub le repli gratuit EST le chemin normal — on envoyait chercher une clé qui n'a jamais existé.
+- **Livré** : l'écran LIT le rapport de synchro réel (publié au démarrage même quand rien n'a pu être
+  hydraté), et rend TROIS états — synchro en cours (la promesse d'auto-résolution est vraie **là et
+  seulement là**), échec (la cause vient du diagnostic, jamais d'une supposition, avec le renvoi vers
+  Placements → Diagnostic), succès sans données (dire quoi vérifier sans inventer de coupable).
+- ⚠️ **Le mode discret est traité** : c'est la variante SANS montant du détail qui est rendue (le
+  `detail` peut interpoler un prix). Contre-épreuve dans la garde.
+- ⚠️ **Deux copies évitées, une trouvée** : le critère « quels skips sont actionnables + dédup par
+  symbole » est extrait en `skipsActionnables()` (l'écran Diagnostic le portait seul, celui-ci allait
+  en faire une 2ᵉ copie). Et le repli de l'écran Diagnostic RECOPIAIT la promesse « nouvel essai
+  automatique » que le lot 80 venait de retirer en amont — un repli s'atteint quand on ne SAIT pas,
+  il ne peut donc rien promettre. La source est corrigée aussi : l'exception inattendue de
+  l'hydratation pousse désormais son propre détail au lieu de tomber sur ce repli.
+
 ## 2026-09-02 — Lot 80 : le diagnostic promettait un nouvel essai qui ne réussirait jamais
 
 - [x] **`[MARKETDATA-HISTORY-CAUSE-PERDUE]`** — 2026-09-02. Ticket écrit par moi au lot 75, et

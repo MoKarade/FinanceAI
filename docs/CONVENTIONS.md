@@ -10425,6 +10425,42 @@ qui connaissait le fournisseur.
 sans cause connue** (le comportement d'avant, qui doit continuer de marcher). Sans le troisième,
 rien n'empêcherait de supprimer la branche de repli.
 
+
+### Lot 81 (2026-09-02) — un écran ne peut affirmer que ce que ses SOURCES lui donnent
+
+`UN-ECRAN-NE-PEUT-AFFIRMER-QUE-CE-QUE-SES-SOURCES-LUI-DONNENT`
+
+L'état vide du graphe « Évolution » disait : « la courbe apparaît toute seule quand ils arrivent —
+si rien n'apparaît après un rechargement, vérifie ta clé Finnhub ». Deux affirmations, aucune des
+deux à sa portée : son unique source de données (`usePortfolioHistory`) **ne fait aucun appel
+réseau**, elle dérive du store. L'écran devinait, et devinait mal — sans clé Finnhub, le repli
+gratuit est le chemin NORMAL, donc le conseil envoyait chercher une clé qui n'a peut-être jamais
+existé.
+
+La question à se poser devant tout texte d'état vide : **d'où viendrait l'information qui rend cette
+phrase vraie ?** Si aucune source du composant ne la porte, la phrase est une supposition, quelle que
+soit sa plausibilité. Ici l'information EXISTAIT — publiée au démarrage par l'hydratation, même quand
+rien n'a pu être hydraté (c'est écrit et commenté dans `App.tsx`) — mais personne ne l'avait branchée
+à cet écran-là.
+
+⚠️ **Trois états, pas deux, et c'est le troisième qui protège.** Pendant la synchro, « la courbe
+apparaît toute seule » est VRAIE : la supprimer partout aurait retiré une information juste au moment
+où elle rassure à raison. Après un échec, elle est fausse. Et « terminé sans erreur, mais rien
+n'est arrivé » est un troisième cas réel (dates d'achat manquantes) qu'aucun des deux autres ne
+couvre. Une garde qui n'aurait tenu que « ne dis plus vérifie ta clé » aurait été satisfaite par le
+mauvais moyen.
+
+⚠️ **Une deuxième copie évitée, une troisième trouvée.** Le critère « quels skips sont actionnables,
+dédupliqués par symbole » vivait dans l'écran Diagnostic ; cet écran-ci allait en faire une copie →
+extrait en `skipsActionnables()`. Et en le lisant, j'ai trouvé mieux : le TEXTE DE REPLI de l'écran
+Diagnostic recopiait mot pour mot la promesse « nouvel essai automatique au prochain chargement » que
+le lot 80 venait de retirer en amont. **Un repli s'atteint précisément quand on ne SAIT pas — il ne
+peut donc rien promettre.** La source est corrigée aussi (l'exception inattendue de l'hydratation
+pousse désormais son propre détail au lieu de tomber dans ce repli).
+
+Corollaire de conduite : après avoir corrigé un message à sa source, **grep la phrase corrigée** —
+ses copies de repli vivent chez les lecteurs, et elles ne sont pas couvertes par le correctif amont.
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

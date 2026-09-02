@@ -515,7 +515,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // raté — le cœur même du bouton.
             let historySyncFailed = false;
             try {
-                const { clearMarketDataCache, clearNegativeCache, getHistory, hasHistoryProvider } = await import('../services/marketData');
+                const { clearMarketDataCache, clearNegativeCache, getHistoryDetaille, hasHistoryProvider } = await import('../services/marketData');
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('../services/history/hydrateAssetHistories');
                 const { setHistorySyncReport } = await import('../services/history/syncDiagnostics');
                 clearMarketDataCache('history');
@@ -524,7 +524,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 // immédiatement au lieu d'attendre l'expiration du TTL.
                 clearNegativeCache();
                 const current = useFinanceStore.getState().assets ?? [];
-                const histRes = await hydrateAssetHistories(current, { getHistory, hasProvider: hasHistoryProvider }, { force: true });
+                const histRes = await hydrateAssetHistories(current, { getHistory: getHistoryDetaille, hasProvider: hasHistoryProvider }, { force: true });
                 setHistorySyncReport({ at: Date.now(), skipped: histRes.skipped, patchedCount: histRes.patches.size });
                 if (histRes.patches.size > 0) {
                     const freshAssets = useFinanceStore.getState().assets ?? [];

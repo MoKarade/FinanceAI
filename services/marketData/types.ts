@@ -100,7 +100,17 @@ export interface MarketDataProvider {
  * `null`), donc AUCUN écran ne pouvait nommer ce qui s'était passé. Ce qui manquait n'était pas un
  * classificateur — c'était son TRANSPORT.
  */
-export type MarketDataErrorCode = 'AUTH' | 'RATE_LIMIT' | 'NOT_FOUND' | 'NETWORK' | 'UNKNOWN';
+export type MarketDataErrorCode =
+    /** Clé refusée (401) : l'utilisateur doit la corriger, aucun essai ultérieur ne réussira. */
+    | 'AUTH'
+    /**
+     * [MARKETDATA-HISTORY-CAUSE-PERDUE] 403 : la clé est BONNE, c'est le FORFAIT qui ne couvre pas
+     * cet appel — Finnhub rend 403 sur les chandelles (premium) et sur les cotations européennes en
+     * tier gratuit, documenté depuis toujours dans ce dépôt. Confondre 403 et 401 enverrait
+     * l'utilisateur « corriger » une clé parfaitement valide : deux causes, deux actions.
+     */
+    | 'PLAN'
+    | 'RATE_LIMIT' | 'NOT_FOUND' | 'NETWORK' | 'UNKNOWN';
 
 /** Erreur de provider (rate limit, auth, network…). */
 export class MarketDataError extends Error {

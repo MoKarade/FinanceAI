@@ -61,8 +61,15 @@ async function finnhubFetch(path: string, apiKey: string): Promise<Record<string
     const timeout = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
         const res = await fetch(url, { signal: ctrl.signal });
-        if (res.status === 401 || res.status === 403) {
+        if (res.status === 401) {
             throw new MarketDataError('Clé API Finnhub invalide.', 'AUTH', 'finnhub');
+        }
+        // [MARKETDATA-HISTORY-CAUSE-PERDUE] 403 ≠ 401. Finnhub rend 403 quand la clé est VALIDE mais
+        // que l'appel n'est pas couvert par le forfait : chandelles premium, cotations européennes
+        // en tier gratuit (les deux sont documentés ailleurs dans ce module). Les fusionner faisait
+        // dire « clé refusée, corrige-la » sur une clé parfaitement bonne.
+        if (res.status === 403) {
+            throw new MarketDataError('Appel non couvert par le forfait Finnhub.', 'PLAN', 'finnhub');
         }
         if (res.status === 429) {
             throw new MarketDataError('Rate limit Finnhub atteint (60 req/min).', 'RATE_LIMIT', 'finnhub');
@@ -145,10 +152,17 @@ export class FinnhubProvider implements MarketDataProvider {
                 volume: vArr?.[i],
             }));
         } catch (e) {
-            // [PORTFOLIO-HISTORY] null = ERREUR (403 premium candles, 429, réseau) : withCache ne la
-            // cache PAS (avant : `[]` d'erreur caché 24h = trou silencieux) et la façade peut replier.
+            // [MARKETDATA-HISTORY-CAUSE-PERDUE] L'erreur se PROPAGE, comme celles de `getQuote`,
+            // `getProfile` et `searchSymbol`. Elle devenait `null` ICI — et ce `null` disait ensuite
+            // « échec de la chaîne » sans jamais dire LEQUEL, si bien que le diagnostic promettait un
+            // « nouvel essai automatique au prochain chargement » même sur une clé REFUSÉE, où aucun
+            // rechargement ne réussira jamais.
+            // ⚠️ Le contrat AVAL ne bouge pas : la façade rattrape (`runLink`), continue de replier
+            // sur Yahoo, et `getHistory` rend toujours `null` en cas d'échec — c'est
+            // `getHistoryDetaille` qui publie la cause. Les `null` NON-erreur ci-dessus (forme
+            // inattendue, `s !== 'ok'`) restent des `null` : ce ne sont pas des échecs de transport.
             logProviderError('Finnhub', 'getHistory', symbol, e);
-            return null;
+            throw e;
         }
     }
 

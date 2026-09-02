@@ -21,10 +21,20 @@ import type { HistoryPoint } from '../marketData';
 import { coinGeckoQuoteCurrencyFor, coinGeckoIdFor } from '../marketData/providers/coingecko';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { logError, logErrorThrottled } from '../errorLogger';
+import type { ResultatHistorique } from '../marketData';
+import { causePermanente } from '../marketData/messageEchec';
+import type { MarketDataErrorCode } from '../marketData/types';
 
 export interface HydrateHistoryDeps {
-    /** Contrat façade : `[]` = vide VALIDE, `null` = ERREUR (chaîne entière en échec). */
-    getHistory: (symbol: string, from: Date, to: Date) => Promise<HistoryPoint[] | null>;
+    /**
+     * Contrat façade : `[]` = vide VALIDE, `null` = ERREUR (chaîne entière en échec).
+     * [MARKETDATA-HISTORY-CAUSE-PERDUE] La forme DÉTAILLÉE (`getHistoryDetaille`) est exigée, pas
+     * proposée : sans la cause, le diagnostic ne peut pas distinguer une panne passagère d'une clé
+     * refusée, et promet un « nouvel essai automatique » qui ne réussira jamais. Un champ REQUIS
+     * fait exiger la cause par le compilateur sur chaque site, présent et futur — une deuxième
+     * porte optionnelle laisserait la production reprendre la version muette en silence.
+     */
+    getHistory: (symbol: string, from: Date, to: Date) => Promise<ResultatHistorique>;
     hasProvider?: (symbol: string) => boolean;
     sleep?: (ms: number) => Promise<void>;
     delayMs?: number;
@@ -248,7 +258,11 @@ async function runHydrate(
             // [HIST-COVERAGE-TOTAL] Une variante déjà RÉSOLUE (`historySymbol`) frappe directement
             // le bon symbole ; sinon symbole saisi, puis variantes de suffixe.
             const primarySymbol = a.historySymbol || a.symbol;
-            const hist = await deps.getHistory(primarySymbol, from, new Date(now()));
+            // [MARKETDATA-HISTORY-CAUSE-PERDUE] Conversion à la FRONTIÈRE : toute la logique `null`
+            // en aval reste identique au caractère près, seule la CAUSE est captée en plus.
+            const res = await deps.getHistory(primarySymbol, from, new Date(now()));
+            const hist = res.forme === 'ok' ? res.points : null;
+            let causeEchec: MarketDataErrorCode | null = res.forme === 'echec' ? res.echec.cause : null;
             let fresh = hist === null ? null : toFresh(hist);
             let resolvedSymbol: string | undefined;
             const variantNetFailures: string[] = [];
@@ -272,7 +286,11 @@ async function runHydrate(
                     await sleep(delayMs);
                     networkCalls++;
                     triedSymbols.push(alt);
-                    const altHist = await deps.getHistory(alt, from, new Date(now()));
+                    const altRes = await deps.getHistory(alt, from, new Date(now()));
+                    const altHist = altRes.forme === 'ok' ? altRes.points : null;
+                    // La cause du PREMIER maillon en échec prime (cf. `getQuoteDetaille`) : celle du
+                    // provider configuré est la seule sur laquelle l'utilisateur peut agir.
+                    if (causeEchec === null && altRes.forme === 'echec') causeEchec = altRes.echec.cause;
                     if (altHist === null) {
                         // Échec RÉSEAU d'une variante ≠ « ce symbole n'existe pas » — collecté pour
                         // que le verdict final ne mente pas (finding silent-failure #493 : avalé
@@ -305,14 +323,28 @@ async function runHydrate(
             if (fresh === null) {
                 // Contrat façade : null = ÉCHEC de toute la chaîne (≠ vide légitime) → tracé,
                 // pas de patch (l'historique existant SURVIT), retry au prochain boot.
+                // ⚠️ [MARKETDATA-HISTORY-CAUSE-PERDUE] …SAUF quand la cause ne peut PAS se résoudre
+                // toute seule. Promettre un « nouvel essai automatique » sur une clé refusée est une
+                // affirmation FAUSSE : elle rassure exactement là où il faut agir, et l'utilisateur
+                // peut recharger indéfiniment sans que rien ne change.
+                // Le prédicat partagé répond « ça ne se résoudra pas tout seul » ; l'ACTION, elle,
+                // dépend de la cause et reste locale à cet écran — une clé à corriger et un forfait
+                // insuffisant n'appellent pas le même geste.
+                const permanent = causeEchec !== null && causePermanente(causeEchec);
+                const detail = !permanent
+                    ? `Panne du fournisseur de cours sur ${primarySymbol} — nouvel essai automatique au prochain chargement.`
+                    : causeEchec === 'AUTH'
+                        ? `Le fournisseur de cours REFUSE la clé API (${primarySymbol}) — recharger n'y changera rien. Corrige la clé dans Réglages → Clés API.`
+                        : `Le forfait du fournisseur ne couvre pas l'historique de ${primarySymbol} (la clé est bonne) — recharger n'y changera rien. Fixe le symbole de cotation ci-dessous pour viser le repli gratuit.`;
                 skipped.push({
                     symbol: a.symbol, reason: 'error', triedSymbols,
-                    detail: `Panne du fournisseur de cours sur ${primarySymbol} — nouvel essai automatique au prochain chargement.`,
-                    detailPrivacySafe: `Panne du fournisseur de cours sur ${primarySymbol} — nouvel essai automatique au prochain chargement.`,
+                    detail, detailPrivacySafe: detail,
                 });
                 logError({
                     source: 'network', severity: 'warning',
-                    message: `Historique ${a.symbol} : tous les providers ont échoué (graphe partiel, nouvel essai au prochain démarrage).`,
+                    message: permanent
+                        ? `Historique ${a.symbol} : échec NON transitoire (${causeEchec}) — aucun nouvel essai ne réussira tant que la cause n'est pas levée.`
+                        : `Historique ${a.symbol} : tous les providers ont échoué (graphe partiel, nouvel essai au prochain démarrage).`,
                 });
                 continue;
             }

@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 80 : le diagnostic promettait un retry impossible
+> `[MARKETDATA-HISTORY-CAUSE-PERDUE]` — mon ticket, **mal cadré une 2ᵉ fois, dans l'AUTRE sens** :
+> j'avais écrit « la cause est détruite, aucun écran ne peut la nommer ». Faux — `hydrateAssetHistories`
+> distinguait déjà l'échec du vide et publiait un diagnostic par titre.
+> - **Le vrai défaut** : ce diagnostic promettait « nouvel essai automatique au prochain chargement »,
+>   VRAI d'un quota/réseau, **FAUX d'une clé refusée**. L'app rassurait là où il fallait agir.
+> - Livré : le provider PROPAGE, `getHistoryDetaille` publie, `getHistory` garde son contrat INTACT
+>   (`[]`/`null`, dont dépendent la résolution de variantes et le verrou du cache négatif).
+>   `causePermanente()` = le FAIT partagé, chaque écran garde sa phrase.
+> - ⚠️ Dépendance rendue REQUISE (25 sites énumérés par le compilateur) : une porte optionnelle
+>   aurait laissé la production reprendre la version muette en silence.
+> - ⚠️ Piège : `findByRole('status')` est satisfait INSTANTANÉMENT par la région live vide du lot 78
+>   (rend `''` avant que la notice existe) — attendre le NŒUD du message, pas le rôle.
+> - **Débloque** `[FUTURE-HISTORY-EMPTY-CAUSE]` (la cause existe désormais côté hydratation).
+
 > ## 🟦 Session 2026-09-02 — Lot 79 : deux tickets décrivaient un arbre de dépendances qui a bougé
 > `[SEC-AUDIT-DEP-FASTURI]` **CADUC** : `fast-uri` est déjà en 3.1.5 (la version exacte réclamée) et
 > l'avis a disparu de `npm audit` — réglé par un bump transitif du SDK MCP.

@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 149 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 160 tests** Vitest
 (502 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -1053,6 +1053,25 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un message qui promet une résolution AUTOMATIQUE est une affirmation sur l'AVENIR** : le
+  diagnostic d'historique annonçait « nouvel essai automatique au prochain chargement » — vrai d'un
+  quota ou d'une coupure réseau, **FAUX d'une clé refusée**, où aucun rechargement ne réussira jamais.
+  Chercher les phrases de cette famille (« réessaie plus tard », « au prochain démarrage ») et
+  demander sur quelles CAUSES elles sont fausses. ⚠️ **Deuxième mauvais cadrage du MÊME ticket, en
+  sens inverse** : au lot 78 j'avais mis la perte trop HAUT, ici je l'ai décrite trop LARGE (« aucun
+  écran ne peut la nommer » — un écran la nommait déjà). Même origine : ticket écrit en regardant la
+  couche qu'on vient de corriger. **Un ticket se recense DEPUIS L'ÉCRAN, en descendant.** ⚠️ La
+  dépendance a été rendue REQUISE (25 sites énumérés par le compilateur) : une porte optionnelle
+  laisse la production reprendre la version muette en silence. ⚠️ Le FAIT se partage
+  (`causePermanente`), le TEXTE non — deux écrans n'ont pas la même action à proposer. ⚠️ Piège né du
+  lot précédent : `findByRole('status')` est satisfait INSTANTANÉMENT par une région live vide montée
+  en permanence — attendre le NŒUD du message. ⚠️⚠️ **Publier une valeur jusque-là JETÉE transforme
+  chacune de ses approximations en AFFIRMATION** : le provider mappait `401 || 403` sur `AUTH`, anodin
+  tant que personne ne lisait — mais Finnhub rend 403 quand la clé est BONNE et que le FORFAIT ne
+  couvre pas l'appel (chandelles premium, cotations européennes gratuites), donc le message aurait
+  envoyé corriger une clé valide. Avant de faire remonter une classification, relire COMMENT elle a
+  été remplie ; ici c'est un test existant, dont le titre portait le fait, qui l'a démasqué
+  (`UN-MESSAGE-QUI-PROMET-UNE-RESOLUTION-AUTOMATIQUE-EST-UNE-AFFIRMATION-SUR-L-AVENIR`).
 - ⚠️ **Un ticket de DÉPENDANCES décrit un arbre qui bouge tout seul** : deux tickets affirmaient un
   état des paquets, faux au moment de les appliquer — `fast-uri` était DÉJÀ en 3.1.5 (la version
   exacte réclamée, avis disparu de `npm audit`), et la migration « breaking » vers `eslint@10` que

@@ -557,8 +557,8 @@ export const App: React.FC = () => {
             if (current.length === 0) return;
             try {
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('./services/history/hydrateAssetHistories');
-                const { getHistory, hasHistoryProvider } = await import('./services/marketData');
-                const res = await hydrateAssetHistories(current, { getHistory, hasProvider: hasHistoryProvider });
+                const { getHistoryDetaille, hasHistoryProvider } = await import('./services/marketData');
+                const res = await hydrateAssetHistories(current, { getHistory: getHistoryDetaille, hasProvider: hasHistoryProvider });
                 if (cancelled) return;
                 // [HIST-MULTI-PROVIDER] Publier le rapport MÊME sans patch (c'est justement quand
                 // rien n'a pu être hydraté que le diagnostic par titre est utile à l'écran).

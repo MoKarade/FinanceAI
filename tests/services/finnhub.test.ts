@@ -97,9 +97,23 @@ describe('FinnhubProvider — getHistory', () => {
         mockFetch({ s: 'no_data' });
         expect(await p.getHistory('AAPL', new Date(), new Date())).toEqual([]);
     });
-    it('[PORTFOLIO-HISTORY] 403 (candles premium) → null (ERREUR, jamais cachée → repli possible)', async () => {
+    // [MARKETDATA-HISTORY-CAUSE-PERDUE] Ce test AFFIRMAIT « 403 → null ». Il s'INVERSE avec son
+    // histoire : le `null` était la CAUSE qui mourait, et c'est lui qui a démasqué un défaut que
+    // mon propre correctif introduisait — 403 était mappé sur `AUTH` comme 401, donc le diagnostic
+    // aurait dit « clé refusée, corrige-la » sur une clé PARFAITEMENT VALIDE (Finnhub rend 403 pour
+    // les chandelles premium et les cotations européennes en tier gratuit). D'où la cause `PLAN`.
+    // ⚠️ La garantie que ce test protégeait — « une erreur d'historique n'est jamais cachée, le
+    // repli Yahoo reste possible » — n'est pas perdue, elle a changé d'étage : la façade rattrape
+    // (`runLink`), replie, et `getHistory` rend toujours `null`. C'est asserté dans
+    // `tests/services/marketDataCauseQuote.test.ts`.
+    it('[PORTFOLIO-HISTORY] 403 (candles premium) → PROPAGE la cause PLAN, jamais AUTH', async () => {
         mockFetch({}, 403);
-        expect(await p.getHistory('AAPL', new Date(), new Date())).toBeNull();
+        await expect(p.getHistory('AAPL', new Date(), new Date())).rejects.toMatchObject({ code: 'PLAN' });
+    });
+
+    it('401 (clé réellement refusée) reste AUTH — les deux ne se confondent pas', async () => {
+        mockFetch({}, 401);
+        await expect(p.getHistory('AAPL', new Date(), new Date())).rejects.toMatchObject({ code: 'AUTH' });
     });
     it('[PORTFOLIO-HISTORY] forme inattendue (s manquant) → null', async () => {
         mockFetch({ bizarre: true });

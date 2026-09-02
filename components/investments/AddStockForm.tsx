@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
-import { getQuoteDetaille, getHistory, searchSymbolsDetaille, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
+import { getQuoteDetaille, getHistoryDetaille, searchSymbolsDetaille, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
 import { messageEchecMarche } from '../../services/marketData/messageEchec';
 import { formatNumber } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
@@ -210,23 +210,37 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             from.setDate(from.getDate() - 3);
             const to = new Date(date);
             to.setDate(to.getDate() + 3);
-            const history = await getHistory(validatedSymbol, from, to);
+            const resHist = await getHistoryDetaille(validatedSymbol, from, to);
+            if (resHist.forme === 'echec') {
+                // [MARKETDATA-HISTORY-CAUSE-PERDUE] La voie HISTORIQUE publie sa cause depuis ce lot :
+                // ce chemin dit maintenant CE QUI a échoué au lieu de « vérifie ta connexion » en
+                // toutes circonstances — un texte affiché est une affirmation.
+                logError({
+                    source: 'network', severity: 'warning',
+                    message: 'Suggestion de prix historique ÉCHOUÉE (chaîne de cours)',
+                    context: { symbol: validatedSymbol, dateBought, cause: resHist.echec.cause, provider: resHist.echec.provider },
+                });
+                setNotice(messageEchecMarche(resHist.echec.cause, resHist.echec.provider));
+                return;
+            }
+            const history = resHist.points;
 
-            // ⚠️ [SILENT-STOCKFORM-PRICEHINT] `getHistory` ne LÈVE PAS sur panne réseau : son contrat
-            // (documenté dans `services/marketData/index.ts`) distingue `[]` = vide VALIDE de
+            // ⚠️ [SILENT-STOCKFORM-PRICEHINT] La voie HISTORIQUE ne LÈVE PAS sur panne réseau : son
+            // contrat (documenté dans `services/marketData/index.ts`) distingue `[]` = vide VALIDE de
             // `null` = ERREUR, et la façade INTERDIT explicitement d'aplatir l'un dans l'autre.
             // Un `if (!history || history.length === 0)` fait exactement cet aplatissement chez le
             // consommateur : la panne réseau s'affiche « aucun cours trouvé » (donc « ce titre n'a
             // pas de cours »), et le `catch` ci-dessous ne sert plus à rien.
-            // ⚠️ [AI-FINNHUB-CAUSE-COLLAPSE] Ce commentaire affirmait avant que « `getQuote`, lui,
-            // LÈVE » : c'était FAUX, mesuré — 401, 429 et panne réseau rendaient tous `null` sans
-            // lever, parce que `runLink` avalait les erreurs typées. Les deux sœurs ne s'opposaient
-            // pas, elles taisaient la cause TOUTES LES DEUX. Elles s'opposent DEPUIS ce lot, et
-            // c'est toujours `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` : la voie quote PUBLIE sa
-            // cause (`getQuoteDetaille` → `forme: 'echec'`), la voie historique la DÉTRUIT plus bas
-            // encore, DANS le provider (`FinnhubProvider.getHistory` attrape et rend `null`) — d'où
-            // le ticket `[MARKETDATA-HISTORY-CAUSE-PERDUE]`. Copier le patron de l'une pour l'autre
-            // reste donc faux, mais plus pour la raison qui était écrite ici.
+            // ⚠️ [MARKETDATA-HISTORY-CAUSE-PERDUE] Histoire de ce commentaire, en trois temps, parce
+            // qu'elle explique pourquoi il ne faut PAS copier un patron de gestion d'erreur d'une
+            // sœur à l'autre (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`) :
+            //  1. il affirmait « `getQuote`, lui, LÈVE » — FAUX, mesuré : 401/429/réseau rendaient
+            //     tous `null` sans lever, les deux sœurs taisaient la cause ensemble ;
+            //  2. le lot 75 a fait publier la sienne à la voie QUOTE ; l'historique la détruisait
+            //     encore plus bas, DANS le provider (`FinnhubProvider.getHistory` rendait `null`) ;
+            //  3. ce lot-ci fait de même pour l'historique. Les deux voies publient désormais leur
+            //     cause — mais leurs CONTRATS restent opposés (`getQuoteDetaille` n'a pas de cas
+            //     « vide valide », l'historique si), donc copier l'un pour l'autre reste faux.
             if (history === null) {
                 logError({
                     source: 'network', severity: 'warning',

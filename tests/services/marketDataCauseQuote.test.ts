@@ -76,6 +76,50 @@ describe('[AI-FINNHUB-CAUSE-COLLAPSE] la chaîne de cours nomme sa cause', () =>
     });
 });
 
+describe('[MARKETDATA-HISTORY-CAUSE-PERDUE] l’historique nomme sa cause, sans changer son contrat', () => {
+    beforeEach(() => { vi.resetModules(); });
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    async function demanderHistorique(reponse: () => Promise<Response>) {
+        const mod = await import('../../services/marketData');
+        mod.clearMarketDataCache();
+        mod.configureMarketDataProvider({ finnhubKey: CLE });
+        vi.stubGlobal('fetch', vi.fn(reponse));
+        const detaille = await mod.getHistoryDetaille('NASDAQ:NVDA', new Date('2026-01-01'), new Date('2026-01-05'));
+        mod.clearMarketDataCache();
+        // Contrat HISTORIQUE : `null` = échec de la chaîne. `hydrateAssetHistories` en dépend, et un
+        // verrou de `marketDataQuoteFallback` exige qu'un échec d'historique n'arme aucun skip.
+        const simple = await mod.getHistory('NASDAQ:NVDA', new Date('2026-01-01'), new Date('2026-01-05'));
+        return { detaille, simple };
+    }
+
+    it('401 → échec AUTH, et `getHistory` rend toujours null', async () => {
+        const { detaille, simple } = await demanderHistorique(REPONSES.auth);
+        expect(detaille.forme === 'echec' && detaille.echec.cause).toBe('AUTH');
+        expect(simple).toBeNull();
+    });
+
+    it('429 → échec RATE_LIMIT', async () => {
+        const { detaille } = await demanderHistorique(REPONSES.quota);
+        expect(detaille.forme === 'echec' && detaille.echec.cause).toBe('RATE_LIMIT');
+    });
+
+    it('panne réseau → échec NETWORK', async () => {
+        const { detaille } = await demanderHistorique(REPONSES.reseau);
+        expect(detaille.forme === 'echec' && detaille.echec.cause).toBe('NETWORK');
+    });
+
+    // ANTI-EFFONDREMENT : trois causes, trois valeurs distinctes de bout en bout.
+    it('les trois causes restent DISTINGUABLES', async () => {
+        const vus: string[] = [];
+        for (const rep of [REPONSES.auth, REPONSES.quota, REPONSES.reseau]) {
+            const { detaille } = await demanderHistorique(rep);
+            vus.push(detaille.forme === 'echec' ? `echec:${detaille.echec.cause}` : 'ok');
+        }
+        expect(new Set(vus).size).toBe(3);
+    });
+});
+
 describe('[MARKETDATA-SEARCH-CAUSE-COLLAPSE] la recherche distingue « rien trouvé » d’un ÉCHEC', () => {
     beforeEach(() => { vi.resetModules(); });
     afterEach(() => { vi.unstubAllGlobals(); });

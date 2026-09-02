@@ -94,11 +94,19 @@ export interface MarketDataProvider {
     searchSymbol?(query: string): Promise<SymbolSearchResult[]>;
 }
 
+/**
+ * CAUSE d'un échec de provider. Exportée à part depuis `[AI-FINNHUB-CAUSE-COLLAPSE]` : la
+ * classification existait déjà ici, mais elle mourait dans la façade (`runLink` la convertissait en
+ * `null`), donc AUCUN écran ne pouvait nommer ce qui s'était passé. Ce qui manquait n'était pas un
+ * classificateur — c'était son TRANSPORT.
+ */
+export type MarketDataErrorCode = 'AUTH' | 'RATE_LIMIT' | 'NOT_FOUND' | 'NETWORK' | 'UNKNOWN';
+
 /** Erreur de provider (rate limit, auth, network…). */
 export class MarketDataError extends Error {
     constructor(
         message: string,
-        public readonly code: 'AUTH' | 'RATE_LIMIT' | 'NOT_FOUND' | 'NETWORK' | 'UNKNOWN',
+        public readonly code: MarketDataErrorCode,
         public readonly provider: string,
     ) {
         super(message);

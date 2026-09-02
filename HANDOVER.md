@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 75 : la cause existait, c'est son TRANSPORT qui manquait
+> `[AI-FINNHUB-CAUSE-COLLAPSE]` — `getQuoteDetaille` publie `ok` / `absent` / `echec` (+ cause et
+> provider) ; `getQuote` en devient l'enveloppe, contrat historique intact (`priceRefresh` repose sur
+> « ne rejette jamais »). `services/marketData/messageEchec.ts` : une phrase par cause.
+> - **Mesuré avant de coder** : 401, 429, panne réseau et symbole inconnu rendaient TOUS `null`, sans
+>   lever — l'écran disait « ticker introuvable, configure ta clé » sur une coupure réseau.
+> - ⚠️ Le ticket demandait « un classificateur côté marketData » : il **existait déjà**
+>   (`MarketDataError.code`). Grepper le REMÈDE d'un ticket, pas seulement son défaut.
+> - ⚠️ **La garde qui protégeait cette distinction était nourrie par un faux module qui MENTAIT** :
+>   `AddStockForm.test` simulait un `getQuote` qui REJETTE — un contrat que la prod n'a jamais eu.
+> - **Routé avec sa mesure** : `[MARKETDATA-HISTORY-CAUSE-PERDUE]` (cause détruite DANS le provider,
+>   pas à la façade), `[FUTURE-HISTORY-EMPTY-CAUSE]` (le hook de cet écran ne fait aucun réseau, champ
+>   `error` nul en dur), `[MARKETDATA-SEARCH-CAUSE-COLLAPSE]`.
+
 > ## 🟦 Session 2026-09-02 — Lot 74 : `[]` pour quatre situations sans rapport
 > `[AI-REBALANCE-CAUSE-PERDUE]` — `getRebalanceJustifications` rend une union discriminée
 > (`ok` / `sans-cle` / `rien-a-justifier` / `sans-reponse` / `echec` + l'objet d'erreur ORIGINAL).

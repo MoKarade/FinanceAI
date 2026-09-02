@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 129 tests** Vitest
-(499 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 137 tests** Vitest
+(500 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une cause CLASSÉE puis JETÉE est une cause absente** : le ticket réclamait « un classificateur
+  côté `marketData` » — chaque provider en posait déjà un (`MarketDataError.code`), et la façade le
+  LISAIT (`e.code !== 'NOT_FOUND'`) avant de rendre `null`. Il manquait le FIL, pas le tri. Mesuré sur
+  le vrai module (seul `fetch` simulé) : 401, 429, réseau et symbole inconnu rendaient tous `null`
+  **sans lever** — donc le `catch` que le ticket voulait faire parler était INATTEIGNABLE, et le
+  message réel envoyait vérifier une clé sur une coupure réseau. ⚠️⚠️ La garde censée protéger cette
+  distinction était nourrie par un **faux module qui MENTAIT** (`getQuote` simulé en REJETANT, contrat
+  jamais eu en prod) : un faux module encode le contrat qu'on CROIT avoir — quand c'est cette croyance
+  qui est fausse, le test confirme l'erreur. Le contrat d'erreur d'une façade se mesure au moins une
+  fois sur le VRAI module. ⚠️ Le périmètre se recense **par l'endroit où l'information disparaît** :
+  trois surfaces d'un même symptôme, trois profondeurs (façade → livré ; DANS le provider → routé ;
+  hook sans réseau au champ `error` nul en dur → routé)
+  (`UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`).
 - ⚠️ **Un service qui rend la même valeur pour N situations rend son écran MUET** :
   `getRebalanceJustifications` répondait `[]` pour « aucune clé », « rien à justifier », « erreur
   d'appel » et « le modèle n'a rien rendu ». Aucun message ne pouvait alors être juste — la

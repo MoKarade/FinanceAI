@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
-import { getQuote, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
+import { getQuoteDetaille, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
+import { messageEchecMarche } from '../../services/marketData/messageEchec';
 import { formatNumber } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
 import type { Asset } from '../../types';
@@ -120,11 +121,25 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         setError(null);
         setNotice(null);
         try {
-            const quote = await getQuote(sym);
-            if (!quote || quote.price <= 0) {
+            // [AI-FINNHUB-CAUSE-COLLAPSE] `getQuoteDetaille` distingue l'ABSENCE (titre non couvert)
+            // de l'ÉCHEC (clé refusée, quota, réseau). Avant, les deux arrivaient en `null` et cet
+            // écran affirmait « ticker introuvable, configure ta clé » sur une coupure réseau —
+            // c'est-à-dire qu'il envoyait corriger un champ qui n'avait rien.
+            const res = await getQuoteDetaille(sym);
+            if (res.forme === 'echec') {
+                logError({
+                    source: 'network', severity: 'error',
+                    message: 'Validation de ticker ÉCHOUÉE (chaîne de cours)',
+                    context: { symbole: sym, cause: res.echec.cause, provider: res.echec.provider },
+                });
+                setError(messageEchecMarche(res.echec.cause, res.echec.provider));
+                return 'error';
+            }
+            if (res.forme === 'absent' || res.quote.price <= 0) {
                 setError(`Ticker "${sym}" introuvable ou prix indisponible. Configure ta clé Finnhub si pas déjà fait.`);
                 return 'no-quote';
             }
+            const quote = res.quote;
             setSymbol(sym);
             setValidatedSymbol(sym);
             setStockName(nameOverride || quote.symbol);
@@ -132,17 +147,19 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             setBuyPrice(quote.price.toString()); // par défaut = prix actuel
             return 'ok';
         } catch (e) {
-            // [SILENT-STOCKFORM-PRICEHINT] Même patron que l'échec de suggestion 60 lignes plus bas :
-            // `console.error` seul est visible dans la console du navigateur, jamais dans les
-            // diagnostics de l'écran Système (ni exportable, ni compté dans les stats 24 h).
-            // `logError` route DÉJÀ vers `console.error` pour cette sévérité — on ne perd rien.
+            // Chemin RÉSIDUEL depuis [AI-FINNHUB-CAUSE-COLLAPSE] : la chaîne de cours n'expose plus
+            // les échecs typés par une exception (mesuré : 401/429/réseau rendent `forme: 'echec'`,
+            // sans lever). Ce `catch` n'attrape donc plus qu'un bug interne (cache IDB, forme
+            // inattendue) — il reste, mais son message ne prétend plus connaître la cause.
+            // [SILENT-STOCKFORM-PRICEHINT] `logError` route DÉJÀ vers `console.error` pour cette
+            // sévérité — la trace reste dans les diagnostics de l'écran Système.
             logError({
                 source: 'network', severity: 'error',
-                message: 'Validation de ticker ÉCHOUÉE (getQuote)',
+                message: 'Validation de ticker ÉCHOUÉE (exception inattendue)',
                 error: e instanceof Error ? e : new Error(String(e)),
                 context: { symbole: sym },
             });
-            setError("Erreur lors de la validation. Vérifie ta connexion et la clé Finnhub.");
+            setError('Erreur inattendue pendant la validation. Réessaie, ou entre le prix à la main.');
             return 'error';
         } finally {
             setIsValidating(false);
@@ -189,9 +206,15 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             // Un `if (!history || history.length === 0)` fait exactement cet aplatissement chez le
             // consommateur : la panne réseau s'affiche « aucun cours trouvé » (donc « ce titre n'a
             // pas de cours »), et le `catch` ci-dessous ne sert plus à rien.
-            // ⚠️ C'est le patron de `validateSymbol` qui induit en erreur : `getQuote`, lui, LÈVE
-            // (`[QUOTE-ERRKIND]`). Deux fonctions sœurs, deux contrats d'erreur OPPOSÉS
-            // (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+            // ⚠️ [AI-FINNHUB-CAUSE-COLLAPSE] Ce commentaire affirmait avant que « `getQuote`, lui,
+            // LÈVE » : c'était FAUX, mesuré — 401, 429 et panne réseau rendaient tous `null` sans
+            // lever, parce que `runLink` avalait les erreurs typées. Les deux sœurs ne s'opposaient
+            // pas, elles taisaient la cause TOUTES LES DEUX. Elles s'opposent DEPUIS ce lot, et
+            // c'est toujours `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` : la voie quote PUBLIE sa
+            // cause (`getQuoteDetaille` → `forme: 'echec'`), la voie historique la DÉTRUIT plus bas
+            // encore, DANS le provider (`FinnhubProvider.getHistory` attrape et rend `null`) — d'où
+            // le ticket `[MARKETDATA-HISTORY-CAUSE-PERDUE]`. Copier le patron de l'une pour l'autre
+            // reste donc faux, mais plus pour la raison qui était écrite ici.
             if (history === null) {
                 logError({
                     source: 'network', severity: 'warning',

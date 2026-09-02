@@ -26,6 +26,8 @@ posée explicitement, avec les trois options et leurs conséquences. C'est donc 
 assumé**, pas un oubli : le coût de la saisie manuelle a été jugé supérieur au bénéfice.
 ⚠️ Conséquence pour la prochaine session : ce n'est PAS une régression à corriger si le
 symptôme est re-signalé. Tout volet de `[PASSE-REEL-DETTE]` visant l'amortissement est CADUQUE.
+⚠️⚠️ **PÉRIMÉ depuis le 2026-09-02 — lire la section « RENVERSEMENT » en fin de Décision 2 avant
+d'agir sur ce paragraphe.** L'amortissement rétroactif est livré, sur arbitrage explicite de Marc.
 
 #### ⚠️ PRÉCISION Marc du 2026-08-19 — l'EXTRACTION du contrat, elle, est VOULUE
 
@@ -49,6 +51,33 @@ Conséquence pour le BACKLOG : `[DEBT-FROM-CONTRACT]`, `[PASSE-REEL-DETTE-1]` (n
 avant la date de début), `[PASSE-REEL-DETTE-2]` (les champs `startDate`/`originalBalance`, remplis
 par l'extraction et non par Marc) et `[PASSE-REEL-DETTE-3]` (l'import PDF les capte) restent
 OUVERTS et VIVANTS. Seul un éventuel volet « amortissement rétroactif » serait à refuser.
+
+#### ⚠️⚠️ RENVERSEMENT Marc du 2026-09-02 — l'amortissement rétroactif est finalement VOULU
+
+La Décision 2 refusait l'amortissement rétroactif ; il est **livré** (`[DEBT-AMORTIZATION]` lot 91,
+`[DEBT-AMORTIZATION-CABLAGE]` lot 92). Cette section existe pour qu'une prochaine session ne lise
+pas « caduque » au-dessus et ne défasse pas le travail — c'est exactement le mode de panne que
+l'ADR sert à empêcher.
+
+**Ce qui a changé, et rien d'autre.** La Décision 2 pesait le bénéfice contre le **coût d'une saisie
+manuelle**. Ce coût a disparu : `originalBalance` est déjà dans le contrat, et
+`[PASSE-REEL-DETTE-2]`/`[PASSE-REEL-DETTE-3]` — déjà déclarés VOULUS ci-dessus — le remplissent par
+extraction. Le refus portait sur la saisie, jamais sur la courbe. Marc, confronté à la contradiction
+et invité à choisir, a répondu « en deux temps » : le service pur d'abord, le câblage ensuite, avec
+la mesure avant/après. Ce n'est donc pas un renversement décidé par Claude.
+
+**Ce qui reste vrai de la Décision 2** :
+
+- ❌ Toujours **aucune saisie demandée à Marc**. Sans `originalBalance`, le service refuse
+  (`donnees-manquantes`) et la dette reste FIGÉE au niveau actuel : le comportement d'avant, à
+  l'octet près. Mesuré : les 8 dettes des personas du dépôt portent zéro `originalBalance`, donc
+  **aucun golden ne bouge** (`npx tsx scripts/mesureAmortissementPasse.ts`).
+- ❌ Toujours **aucune courbe inventée** : un bail (`auto-lease`, le cas RÉEL de Marc), un révolvant
+  ou un modèle qui rate le solde réel de plus d'un facteur 2 restent plats. Le service NOMME sa
+  cause au lieu de rendre un `null` muet.
+- ✅ Ce qui s'ajoute : quand le montant emprunté EST connu, le passé montre la dette telle qu'elle
+  était (mesuré sur un prêt auto de 30 000 $ : −12 000 $ de patrimoine 24 mois en arrière, −524 $
+  au dernier mois passé, supplément exactement nul au mois d'aujourd'hui).
 
 ### Décision 3 — La variabilité du jour : section REPLIABLE, FERMÉE par défaut
 

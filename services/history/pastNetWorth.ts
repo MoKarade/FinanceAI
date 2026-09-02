@@ -8,7 +8,10 @@
 //
 // Décision Marc 2026-07-24 (Option A) : le passé soustrait les dettes à leur solde ACTUEL — approximation
 // ASSUMÉE et SIGNALÉE (on n'a pas l'historique d'amortissement des dettes génériques ; seul le solde
-// courant existe). Depuis `[PASSE-REEL-DETTE-1]` (2026-08-21), chaque dette n'entre dans ce total qu'À
+// courant existe). ⚠️ [DEBT-AMORTIZATION-CABLAGE 2026-09-02] L'Option A n'est plus le SEUL régime :
+// quand une dette porte son montant emprunté (`originalBalance`), l'appelant AJOUTE au total le
+// supplément qu'on devait à ce mois-là (`supplementAmortiAuMois*`). Sans ce champ — le cas de toutes
+// les dettes du dépôt aujourd'hui — le comportement reste celui décrit ci-dessus, à l'octet près. Depuis `[PASSE-REEL-DETTE-1]` (2026-08-21), chaque dette n'entre dans ce total qu'À
 // PARTIR de son `startDate` propre : l'appelant (`buildPastPrefix`/`dailyPastLedger`) retranche du total
 // « aujourd'hui » (`debtNonImmo` passé ici) le solde des dettes pas-encore-commencées à CE mois passé
 // (`sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`, delta plutôt que resommation — cf commentaire

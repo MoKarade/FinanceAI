@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 230 tests** Vitest
-(512 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 254 tests** Vitest
+(513 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,13 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Le lot qui change ce qu'un écran MONTRE périme ce qu'il AFFIRME** : brancher l'amortissement du
+  passé a rendu FAUX le bandeau « dettes au niveau actuel », phrase exacte depuis toujours, non
+  touchée par le diff, couverte par aucun test — rien ne pouvait rougir. Après tout changement de
+  calcul, demander ce que légendes, titres, infobulles et états vides PROMETTENT à son sujet ; la
+  phrase sort du JSX vers un module pur, son fait se dérive du module qui DÉCIDE (jamais d'une
+  seconde lecture des champs), et une garde JUMELLE interdit de la recopier dans le rendu
+  (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`, 2026-09-02).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

@@ -10538,6 +10538,57 @@ ré-écriture est le troisième), avec le détail de chaque terme écrit sur pla
 décisions en donneraient au moins quatre — donc l'assertion discrimine toujours ce qu'elle prétend
 défendre.
 
+
+### Lot 84 (2026-09-02) — un paramètre TYPÉ `undefined` est une information qu'on a décidé de ne pas avoir
+
+`UN-PARAMETRE-TYPE-UNDEFINED-EST-UNE-DECISION-PAS-UN-OUBLI`
+
+`latentTax.ts` déclarait sa dépendance fiscale ainsi : `ageOpts?: undefined`. Le module ne pouvait
+donc PAS transmettre l'âge — pas par oubli d'un appelant, mais parce que le TYPE l'interdisait. Un
+paramètre typé `undefined` est un « on ne saura jamais » gravé dans la signature : il ne se repère
+par aucun grep de valeur, aucun lint, et il survit à toutes les revues qui lisent les appels.
+
+Conséquence mesurée : l'impôt latent ignorait les crédits d'âge (65+). Le crédit réduit la facture
+de BASE mais pas celle de la LIQUIDATION TOTALE (récupéré aux revenus élevés) — or l'impôt latent EST
+l'écart entre les deux, donc l'omettre le RÉTRÉCIT : **1 854 $ de dette fiscale manquante par
+déclarant de 65 ans et plus**, et un patrimoine net d'impôt affiché d'autant trop flatteur.
+
+⚠️ **Le ticket avait raison sur le défaut et tort sur le remède** (neuvième fois de la série). Il
+parlait de « contextes par définition 65+ » : faux, une retraite peut commencer à 55 ans. La bonne
+réponse n'est pas d'assumer 65+, c'est de **transmettre la VÉRITÉ** — l'âge réel — et de laisser le
+calcul de crédits appliquer son propre seuil. Mesuré : **écart 0,00 $ à 60 ans**. Transmettre un
+fait est presque toujours plus sûr que transmettre une hypothèse, et ça se prouve par la mesure du
+cas où l'hypothèse serait fausse.
+
+⚠️ **La « source unique » désignée par le ticket était INATTEIGNABLE** : `eligiblePensionFor` est une
+CLOSURE de `taxDecember` sur un contexte plus riche (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`). La
+part « crédit de pension » (280 $/déclarant, mesurée) est donc ROUTÉE plutôt que devinée — et le
+ticket porte l'avertissement qui compte : y mettre les rentes publiques serait un SUR-crédit, le
+défaut exact que ce module a déjà connu et corrigé.
+
+⚠️ **`hasSpouse` voyage AVEC l'âge, jamais après.** `AgeCreditOptions` traite l'absence comme « vit
+seul » et ajoute le montant québécois correspondant : passer l'âge sans le statut sur-crédite un
+couple (~305 $/tête). C'est `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` appliqué à un couple de
+paramètres — améliorer un seul côté d'un défaut partagé est pire que ne rien faire.
+
+⚠️ **Le ratchet fiscal a arrêté mon propre correctif** : en recopiant l'expression du voisin
+(`users[1].age || 30`), j'ajoutais un septième littéral `30` dans `projection.ts`, et l'inventaire
+l'a immédiatement signalé. La bonne réponse n'était pas de déclarer l'occurrence mais de HISSER
+l'expression en source unique, consommée par le dépôt de décembre ET par l'impôt latent : un
+littéral en moins, une copie en moins. **Un garde-fou qui rougit sur un ajout légitime pose souvent
+la bonne question** — ici « pourquoi cette expression existe-t-elle deux fois ? ».
+
+⚠️⚠️ **Deuxième garde vacueuse de la session, même mécanisme.** « Le statut conjoint voyage avec
+l'âge » comparait un couple à « deux fois un solo » — deux grandeurs qui diffèrent DÉJÀ par le revenu
+par déclarant, donc l'assertion passait sans `hasSpouse`. Refondée en OBSERVATION de l'argument
+(fonction fiscale espionne). Règle qui se confirme : **quand la variable visée n'est pas isolable par
+deux exécutions, on observe l'argument — on ne déduit pas d'un écart** dont on n'a pas prouvé qu'il
+n'a qu'une cause.
+
+⚠️ **« Aucun golden n'a bougé » s'explique ici** : `ImpotLatent` n'est épinglé par AUCUN golden, et
+les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
+absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

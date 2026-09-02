@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (L'impôt dormant tenait compte de tout, sauf de ton âge)
+
+- **Corrigé** : la courbe « Impôt Latent » (l'impôt qu'on paierait en liquidant tout aujourd'hui)
+  ignorait les crédits d'impôt liés à l'âge. Effet mesuré : **1 854 $ de dette fiscale manquants par
+  personne de 65 ans et plus** — donc un patrimoine « net d'impôt » affiché un peu trop flatteur.
+- **Pourquoi ça allait dans ce sens** : le crédit d'âge allège la facture ordinaire, mais pas celle
+  d'une liquidation totale (il disparaît aux revenus élevés). L'impôt dormant EST l'écart entre les
+  deux : l'oublier le rétrécit.
+- **Sous 65 ans, rien ne change** (mesuré : 0,00 $) — l'app transmet ton âge réel, pas une hypothèse.
+- ⚠️ Il reste un petit écart connu et chiffré (~280 $/personne) sur le crédit de revenu de pension :
+  son calcul exact vit ailleurs dans le moteur, et l'approximer aurait donné un crédit trop généreux.
+  Ticket écrit avec la mesure plutôt que deviné.
+
 ## [unreleased] — 2026-09-02 (Sécurité : les vieilles sauvegardes Drive sont rechiffrées)
 
 - **Corrigé** : les sauvegardes Drive créées **avant le 29 mai 2026** portaient tes clés API en clair.

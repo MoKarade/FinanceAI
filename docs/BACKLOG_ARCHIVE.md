@@ -10,6 +10,40 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 84 : l'impôt latent ignorait l'âge (moitié « affichage » de #676)
+
+- [~] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** — moitié **`latentTax`** livrée le 2026-09-02 ; la
+  moitié `estateCalculation` reste ouverte (voir `BACKLOG.md`, elle touche une FONCTION OBJECTIF).
+- **Re-mesuré avant de coder** (un rapport d'agent n'est pas une source) : **1 854 $ par déclarant
+  de 65 ans et plus** pour le seul crédit d'ÂGE — dans la fourchette annoncée par la revue
+  (1 741-2 444 $). Le crédit réduit la facture de BASE mais pas celle de la LIQUIDATION TOTALE (il
+  est récupéré aux revenus élevés) ; l'impôt latent EST l'écart entre les deux, donc l'omettre le
+  rétrécit et SURESTIME le patrimoine net d'impôt affiché.
+- ⚠️ **Le ticket se trompait sur le REMÈDE** : « contextes par définition 65+ » est faux (une
+  retraite peut commencer à 55 ans). On transmet l'âge RÉEL, qui se limite tout seul —
+  `calculateAgeAndPensionCredits` applique le seuil, mesuré : écart **0,00 $ à 60 ans**. Plus sûr
+  que ce que le ticket demandait.
+- ⚠️ **`eligiblePensionFor` n'était pas réutilisable** : c'est une CLOSURE de `taxDecember` sur un
+  contexte plus riche (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`). La part pension (280 $/déclarant)
+  est ROUTÉE en `[FISC-LATENT-PENSION-CREDIT]` avec sa mesure et l'avertissement de ne pas y mettre
+  les rentes publiques — le sur-crédit que ce module a déjà connu.
+- **Une déclaration PAR déclarant** (au lieu d'une multipliée par leur nombre) : bit-identique quand
+  les âges sont absents ou égaux, correct quand ils diffèrent. `hasSpouse` voyage AVEC l'âge — sans
+  lui, l'absence est traitée comme « vit seul » et un couple est sur-crédité (~305 $/tête).
+- ⚠️ **Le ratchet fiscal a arrêté mon correctif** : mon `(users[1].age || 30)` recopié ajoutait un
+  7ᵉ littéral `30` dans `projection.ts`. Plutôt que de déclarer l'occurrence, l'expression a été
+  HISSÉE en source unique (`ageSpouseProjete`), consommée par le dépôt de décembre ET par l'impôt
+  latent : un littéral en moins et une copie en moins.
+- ⚠️ **Une de mes gardes était VACUEUSE, démasquée par la perturbation** (2ᵉ fois de la nuit) :
+  « le statut conjoint voyage avec l'âge » comparait un couple à « deux fois un solo » — deux
+  grandeurs qui diffèrent DÉJÀ par le revenu par déclarant. Refondée en OBSERVATION de l'argument.
+- ⚠️ **Aucun golden n'a bougé, et c'est à EXPLIQUER** : `ImpotLatent` est un champ d'AFFICHAGE
+  qu'aucun golden n'épingle, et les fixtures moteur existantes ne sont pas 65+ aux mois mesurés.
+  Ça mesure l'absence de COUVERTURE, pas l'absence d'effet.
+- **Tenue du backlog** : quatre en-têtes annonçaient des tickets qui n'existent plus — dont
+  « 🔴 Fiscal — impôt jamais facturé (les 2 plus gros de tout l'audit) », section VIDE, qui faisait
+  croire à deux défauts d'argent ouverts. Corrigés (`PM-STALE-BACKLOG`).
+
 ## 2026-09-02 — Lot 83 : « jusqu'au prochain push » voulait dire « indéfiniment »
 
 - [x] **`[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]`** — 2026-09-02. Prémisse VÉRIFIÉE côté **producteurs**

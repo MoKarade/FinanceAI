@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 84 : l'impôt latent ignorait l'âge
+> `[FISC-BANDES-FRERES-SANS-AGEOPTS]`, moitié `latentTax` (AFFICHAGE) livrée ; moitié
+> `estateCalculation` **laissée ouverte** — elle touche une FONCTION OBJECTIF triée par
+> `drawdownOptimizer`, donc elle exige de mesurer le CLASSEMENT avant/après.
+> - Re-mesuré : **1 854 $/déclarant 65+** (fourchette du ticket : 1 741-2 444). **0,00 $ à 60 ans** —
+>   on transmet l'âge RÉEL, qui se limite tout seul ; le ticket disait « contextes par définition
+>   65+ », c'était faux et plus risqué.
+> - ⚠️ `eligiblePensionFor` INUTILISABLE (closure de `taxDecember`) → part pension (280 $) routée en
+>   `[FISC-LATENT-PENSION-CREDIT]`, avec l'avertissement RRQ/PSV non admissibles.
+> - ⚠️ Le RATCHET FISCAL a arrêté mon correctif (7ᵉ littéral `30`) → expression HISSÉE en source
+>   unique `ageSpouseProjete`, consommée par décembre ET par le latent.
+> - ⚠️ 2ᵉ garde vacueuse de la nuit, démasquée par la perturbation → refondée en OBSERVATION.
+> - ⚠️ Aucun golden n'a bougé : `ImpotLatent` n'est épinglé par AUCUN golden (absence de couverture,
+>   pas absence d'effet).
+> - **Backlog** : 4 en-têtes annonçaient des tickets inexistants (dont « les 2 plus gros de tout
+>   l'audit », section VIDE) — corrigés.
+
 > ## 🟦 Session 2026-09-02 — Lot 83 : « jusqu'au prochain push » voulait dire « indéfiniment »
 > `[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]` — prémisse vérifiée côté PRODUCTEURS (plus rien n'écrit de clés
 > en clair). Mais le ticket sous-estimait la fenêtre : le pull écrit une meta qui fait voir l'état

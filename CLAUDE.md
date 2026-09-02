@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 170 tests** Vitest
-(504 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 177 tests** Vitest
+(505 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un paramètre TYPÉ `undefined` est une décision, pas un oubli** : `latentTax` déclarait
+  `ageOpts?: undefined` — le module ne POUVAIT pas transmettre l'âge, et aucun grep de valeur ni lint
+  ne le signale. Mesuré : **1 854 $ de dette fiscale latente manquante par déclarant 65+** (le crédit
+  allège la facture de BASE mais pas la LIQUIDATION, or le latent est leur ÉCART). ⚠️ Le ticket avait
+  raison sur le défaut, tort sur le remède (« contextes par définition 65+ ») : on transmet la VÉRITÉ
+  — l'âge réel — et le calcul applique son propre seuil (mesuré : 0,00 $ à 60 ans). ⚠️ La « source
+  unique » qu'il désignait était une CLOSURE, donc inatteignable → part pension (280 $) ROUTÉE.
+  ⚠️ `hasSpouse` voyage AVEC l'âge (absence = « vit seul » ⇒ couple sur-crédité de ~305 $/tête).
+  ⚠️ **Le ratchet fiscal a arrêté mon correctif** (7ᵉ littéral `30`) : la réponse n'était pas de
+  déclarer l'occurrence mais de HISSER l'expression en source unique — un garde-fou qui rougit sur un
+  ajout légitime pose souvent la bonne question. ⚠️ 2ᵉ garde vacueuse de la session : comparer deux
+  grandeurs qui diffèrent DÉJÀ par autre chose ne mesure rien — OBSERVER l'argument
+  (`UN-PARAMETRE-TYPE-UNDEFINED-EST-UNE-DECISION-PAS-UN-OUBLI`).
 - ⚠️ **Une fenêtre d'exposition se mesure par ce qui la FERME, pas par ce qui l'ouvre** : le ticket
   disait « les clés restent en clair jusqu'au prochain push » — rassurant, et faux : le pull écrit
   délibérément une meta qui fait voir l'état INCHANGÉ (« pas de push parasite, donc pas d'effacement

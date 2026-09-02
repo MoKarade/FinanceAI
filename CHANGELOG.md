@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Ménage interne : deux copies d'une même règle fiscale qui commençaient à diverger)
+
+- **Rien ne change pour toi** : les chiffres sont identiques au millionième près sur les sept profils
+  de test. C'est un nettoyage interne, mesuré comme tel avant/après.
+- **Ce qui a été supprimé** : dans le calcul d'impôt de décembre, la même règle était écrite en
+  plusieurs exemplaires — trois pour les crédits liés à l'âge, deux pour la répartition des retraits
+  REER entre conjoints. Les copies ne disaient déjà plus tout à fait la même chose sur les données
+  abîmées ; elles arrivaient au même résultat uniquement parce qu'un filet plus loin rattrapait
+  l'écart. C'est le genre de situation qui finit par coûter cher sans prévenir.
+
+---
+
 ## [unreleased] — 2026-09-02 (Un impôt qui n'était jamais facturé quand tu travailles encore et décaisses ton REER)
 
 - **Corrigé (le plus important)** : si tu travailles encore ET que tu retires du REER dans la même

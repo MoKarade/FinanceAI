@@ -1345,17 +1345,6 @@
   des retraits REER et un solde non-enregistré. ⚠️ Ajouter un persona re-base des goldens : lot à
   part, avec la mesure de ce qui bouge.
 
-- [ ] **`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`** (S, MOYEN — revue #676, projection-validator) — trois
-  fabriques d'`AgeCreditOptions` coexistent dans `taxDecember.ts` (`mkActiveAgeOpts` L~439,
-  `mkRetiredAgeOpts` L~630, `mk` du helper de bande) avec des gardes déjà textuellement différentes
-  (`a >= 65` vs `a !== undefined` seul). Équivalentes AUJOURD'HUI (les gates internes de
-  `calculateAgeAndPensionCredits` rattrapent), mais classe `UNE-FORMULE-RECOPIEE-DIVERGE` : 3 copies,
-  3 dérives possibles. Consolider en une fabrique unique paramétrée. Même passe : la branche ACTIVE
-  garde une validation `accRetraitsReerYearByUser` quasi-jumelle de `useReerPerUser` (règles
-  subtilement différentes — gate `> 1`, assainissement, NaN), désormais dans la MÊME portée depuis
-  le hissage #676 : à un caractère d'une erreur d'aiguillage — aligner ou documenter pourquoi.
-  [VÉRIFIÉ équivalentes]
-
 - [x] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** ✅ CONSIGNÉ 2026-08-22 (FISCAL_REFERENCE §4 + garde ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #676, financial-integrity F6) —
   branche ACTIVE : `incomeForGains` est le salaire BRUT alors que le §4 accorde le crédit d'âge sur
   le taxable NET des déductions (REER/FHSA). Un travailleur 65+ qui cotise voit l'érosion de sa

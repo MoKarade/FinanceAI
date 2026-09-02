@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 88 : deux copies divergeaient déjà, sans que rien puisse rougir
+> `[TAXDEC-TROIS-FABRIQUES-AGEOPTS]` CLOS. Refactor PUR : **bit-identique sur les 7 personas**.
+> - **3 fabriques d'`AgeCreditOptions` → 1**, garde stricte `>= 65` (équivalence VÉRIFIÉE : tous les
+>   crédits sont gatés en interne, `ageOpts` n'a pas d'autre consommateur). `hasSpouse` décidé à un
+>   seul endroit — le champ qui a déjà coûté ~305 $/tête.
+> - **2 validations jumelles de `accRetraitsReerYearByUser` → 1 autorité.** ⚠️ MESURÉ : elles
+>   divergeaient sur 3 entrées (solo, total non fini, total négatif). Les 3 donnaient le même
+>   résultat final **par ABSORPTION en aval**, pas par accord — une divergence rattrapée par un
+>   filet est une bombe à retardement.
+> - ⚠️ Le gate `activeUsersCount > 1` d'une des copies était **INERTE, prouvé** : chez un solo le
+>   repli vaut l'unique part. D'où sa longévité : rien ne pouvait la faire rougir.
+> - ⚠️ Un test a rougi sans que son objet bouge (`FRONTIÈRE 65 ans`) : il lisait la présence
+>   d'options, une propriété de la FORME. Re-fondé sur le FAIT, avec son anti-vacuité.
+
 > ## 🟦 Session 2026-09-02 — Lot 87 : le défaut dominant n'était pas celui que le ticket titrait
 > `[TAXDEC-ACTIF-72-PENSION-CREDIT]` CLOS — deux défauts, dont le gros n'était qu'en incise.
 > - **(A) IMPÔT JAMAIS FACTURÉ** : les bandes §2 (gains) et §3 (dividendes) empilaient sur le

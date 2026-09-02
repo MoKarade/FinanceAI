@@ -438,17 +438,49 @@ export function processDecemberTaxFiling(
     // par conjoint reconstitue bien le total (Σ == accRetraitsReerYear, à epsilon près).
     // Sinon (un retrait non attribué en amont — ex. meltdown oublié), on retombe sur le
     // split égal CONSERVATEUR plutôt que de taxer une assiette sous-comptée (sous-imposition).
-    const perUserReerSum = Array.isArray(perUserReer) ? perUserReer.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0) : NaN;
-    const useReerPerUser = ctx.activeUsersCount > 1
-        && Array.isArray(perUserReer)
+    //
+    // [TAXDEC-TROIS-FABRIQUES-AGEOPTS] ⚠️ SOURCE UNIQUE. Cette validation existait en DEUX
+    // exemplaires quasi-jumeaux — ici pour l'assiette du crédit de pension, et dans la branche
+    // ACTIVE pour la répartition imposable — avec des règles subtilement différentes. Mesuré, les
+    // deux prédicats DIVERGEAIENT sur trois entrées : déclarant SOLO (l'un refusait l'attribution,
+    // l'autre l'acceptait), total NON FINI (l'un se repliait sur `NaN / n`, l'autre sur 0), et total
+    // NÉGATIF (l'un gardait des parts négatives, l'autre se repliait sur 0). Les trois donnaient le
+    // même résultat FINAL, mais par ABSORPTION en aval (`Math.max(0, …)`, `safe()`) — pas par
+    // conception : `UNE-FORMULE-RECOPIEE-DIVERGE` avec un filet, ce qui est la définition d'une
+    // bombe à retardement. La version retenue prend la moitié la plus SÛRE de chacune : total
+    // assaini, parts clampées, aucun repli non fini.
+    const reerAnnualNominal = Number.isFinite(ctx.accRetraitsReerYear) ? Math.max(0, ctx.accRetraitsReerYear) : 0;
+    const useReerPerUser = Array.isArray(perUserReer)
         && perUserReer.length === nAdults
         && perUserReer.every(v => Number.isFinite(v))
-        && Math.abs(perUserReerSum - ctx.accRetraitsReerYear) <= Math.max(1, Math.abs(ctx.accRetraitsReerYear) * 1e-6);
+        && Math.abs(perUserReer.reduce((s, v) => s + v, 0) - reerAnnualNominal) <= Math.max(1, reerAnnualNominal * 1e-6);
+    /** Retrait REER NOMINAL attribué au déclarant `i` — la seule autorité du module. */
+    const reerNominalUser = (i: number): number => (useReerPerUser
+        ? Math.max(0, perUserReer![i])
+        : reerAnnualNominal / nAdults);
 
     // Revenu imposable réel et pension admissible réelle, par conjoint.
     // - splitÉgal : tout le taxable / N (comportement historique).
     // - perUser   : pension_i + part égale des rentes + SES retraits REER (Phase 2).
     const ages = [ctx.age, ctx.ageSpouse];
+
+    // [TAXDEC-TROIS-FABRIQUES-AGEOPTS] FABRIQUE UNIQUE d'`AgeCreditOptions`. Il en existait TROIS
+    // dans ce fichier (branche active, branche retraitée, helper de bande), à la forme identique et
+    // aux gardes textuellement DIFFÉRENTES : deux exigeaient `age >= 65`, la troisième se contentait
+    // de `age !== undefined`. VÉRIFIÉ équivalent aujourd'hui — tous les crédits de
+    // `calculateAgeAndPensionCredits` sont gatés `>= 65` en interne, et `ageOpts` n'a aucun autre
+    // consommateur dans `calculateFiscalReport` (tracé) —, mais trois copies, c'est trois dérives
+    // possibles, et `hasSpouse` en particulier a déjà coûté un sur-crédit de ~305 $/tête quand il
+    // manquait d'un seul côté. La garde retenue est la STRICTE (`>= 65`), la plus lisible.
+    // ⚠️ Ce qui varie légitimement d'un site à l'autre reste PARAMÈTRE : l'assiette de pension (réelle
+    // ou nominale selon l'espace du bloc appelant) et le revenu familial (fixe hors bande, mobile
+    // dans une bande, où il suit la tranche empilée).
+    const mkAgeOpts = (i: number, eligiblePensionIncome: number, familyIncome: number): AgeCreditOptions | undefined => {
+        const a = ages[i];
+        return (a !== undefined && a >= 65)
+            ? { age: a, eligiblePensionIncome, hasSpouse: ctx.activeUsersCount > 1, familyIncome }
+            : undefined;
+    };
 
     // FA-1 (audit fiscal 2026-06-09) — assiette du crédit pension (féd ligne 31400 + QC
     // ligne 361) CORRIGÉE : l'ancienne assiette (pension RRQ/PSV/DB + accRentesYear)
@@ -464,7 +496,7 @@ export function processDecemberTaxFiling(
         const v = ctx.incomeRetirementDbPerUserMonthly?.[i];
         return Number.isFinite(v) ? ((v as number) * 12) / inflationFactor : 0;
     };
-    const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / nAdults) / inflationFactor;
+    const reerRealUser = (i: number): number => reerNominalUser(i) / inflationFactor;
     // [FISC-LATENT-PENSION-CREDIT] Le CORPS de cette règle vit désormais dans
     // `./pensionCredit.ts` : il était une CLOSURE, donc inatteignable depuis l'impôt latent, qui a
     // dû être livré sans crédit de pension au lot 84. Ce qui reste ici est le CÂBLAGE — quelles
@@ -503,22 +535,12 @@ export function processDecemberTaxFiling(
         // `accRetraitsReerYearByUser` que s'il est COHÉRENT avec le total (Σ == total, bonne
         // longueur, tout fini), sinon repli sur le split égal. Un tableau incohérent taxerait le
         // mauvais conjoint en silence.
-        const nFilersActive = Math.max(1, ctx.activeUsersCount);
-        const reerAnnualNominal = Number.isFinite(ctx.accRetraitsReerYear) ? Math.max(0, ctx.accRetraitsReerYear) : 0;
-        const reerByUserActive = ctx.accRetraitsReerYearByUser;
-        const reerByUserSum = Array.isArray(reerByUserActive)
-            ? reerByUserActive.reduce((acc, v) => acc + (Number.isFinite(v) ? v : NaN), 0)
-            : NaN;
-        const reerByUserValid = Array.isArray(reerByUserActive)
-            && reerByUserActive.length === nFilersActive
-            && Number.isFinite(reerByUserSum)
-            && Math.abs(reerByUserSum - reerAnnualNominal) <= Math.max(1, Math.abs(reerAnnualNominal) * 1e-6);
-        const reerShareOf = (i: number): number => (reerByUserValid
-            ? Math.max(0, reerByUserActive![i])
-            : reerAnnualNominal / nFilersActive);
+        // [TAXDEC-TROIS-FABRIQUES-AGEOPTS] La validation jumelle qui vivait ici est SUPPRIMÉE : le
+        // module n'a plus qu'une seule autorité sur l'attribution per-conjoint (`reerNominalUser`,
+        // déclarée en tête). Elle était à un caractère près de sa sœur, sur la MÊME entrée.
         // Solo (1 déclarant) : tout le retrait est au principal, rien au « conjoint ».
-        const reerMarcReal = reerShareOf(0) / inflationFactor;
-        const reerAnnaReal = nFilersActive > 1 ? reerShareOf(1) / inflationFactor : 0;
+        const reerMarcReal = reerRealUser(0);
+        const reerAnnaReal = nAdults > 1 ? reerRealUser(1) : 0;
         // Assiette IMPOSABLE élargie. ⚠️ L'assiette d'EMPLOI reste le SALAIRE SEUL : les cotisations
         // RRQ/RQAP/AE ne portent pas sur un retrait REER, et `employmentIncome` absent vaut
         // `grossIncome` par défaut (cf. FISC-PAYROLL-BASE-INVEST) — l'omettre ici gonflerait les
@@ -548,14 +570,8 @@ export function processDecemberTaxFiling(
         // ⚠️ Indexé par DÉCLARANT et non par âge : l'assiette est per-conjoint, et un helper qui ne
         // reçoit qu'un âge ne peut pas la retrouver.
         const familyGrossReal = taxableMarcReal + taxableAnnaReal;
-        const mkActiveAgeOpts = (i: number): AgeCreditOptions | undefined => {
-            const a = ages[i];
-            return (a !== undefined && a >= 65)
-                ? { age: a, eligiblePensionIncome: eligiblePensionFor(i), hasSpouse: ctx.activeUsersCount > 1, familyIncome: familyGrossReal }
-                : undefined;
-        };
-        const ageOptsMarc = mkActiveAgeOpts(0);
-        const ageOptsAnna = mkActiveAgeOpts(1);
+        const ageOptsMarc = mkAgeOpts(0, eligiblePensionFor(0), familyGrossReal);
+        const ageOptsAnna = mkAgeOpts(1, eligiblePensionFor(1), familyGrossReal);
 
         // [FISC-BRACKET-REALINDEX] revenus en dollars RÉELS (déflatés ci-dessus) → paliers/crédits
         // ramenés en réel via realDeflator = inflationFactor (sinon : double indexation, les
@@ -693,10 +709,13 @@ export function processDecemberTaxFiling(
             // pour réduire correctement la ligne 361 QC.
             // B-AUDIT-3 — crédit d'âge/pension PAR conjoint : chacun selon SON âge.
             // Couple de même âge ET revenu → taxMarc + taxAnna == ancien per-adulte × N.
-            const mkRetiredAgeOpts = (a: number | undefined, eligible: number): AgeCreditOptions | undefined =>
-                a !== undefined
-                    ? { age: a, eligiblePensionIncome: eligible, hasSpouse: ctx.activeUsersCount > 1, familyIncome: taxableReal }
-                    : undefined;
+            // [TAXDEC-TROIS-FABRIQUES-AGEOPTS] Cette 3ᵉ fabrique consomme désormais `mkAgeOpts`.
+            // ⚠️ Sa garde passe de `a !== undefined` à `a !== undefined && a >= 65` : VÉRIFIÉ
+            // équivalent (sous 65 ans, les trois blocs de `calculateAgeAndPensionCredits` sont gatés
+            // et rendent 0 ; `ageOpts` n'a pas d'autre consommateur). Un retraité de 55 ans passait
+            // donc des options qui ne créditaient rien — il n'en passe plus, même résultat.
+            const mkRetiredAgeOpts = (i: number, eligible: number): AgeCreditOptions | undefined =>
+                mkAgeOpts(i, eligible, taxableReal);
             // Impôt combiné du ménage pour une répartition imposable donnée (crédits d'âge/pension
             // par conjoint, familyIncome = total inchangé). Le 2e conjoint sans âge → pas de crédit.
             // PV-3 : l'assiette du crédit pension (féd 31400 / QC 361) est passée PAR APPEL — elle
@@ -706,7 +725,7 @@ export function processDecemberTaxFiling(
             const combinedTaxFor = (taxables: number[], eligibles: number[] = eligiblePensionRealByUser): number => {
                 let t = 0;
                 for (let i = 0; i < n; i++) {
-                    const ageOpts = mkRetiredAgeOpts(ages[i], eligibles[i]);
+                    const ageOpts = mkRetiredAgeOpts(i, eligibles[i]);
                     // [FISC-BRACKET-REALINDEX] taxables[i] est en $ RÉELS → paliers/crédits en réel.
                     t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts, undefined, inflationFactor).totalTax;
                 }
@@ -925,7 +944,6 @@ export function processDecemberTaxFiling(
         }
         let total = 0;
         for (let i = 0; i < ctx.activeUsersCount; i++) {
-            const a = ages[i];
             // [Revue #676 F1 + 2e relecture] Pension admissible RÉELLE de l'adulte, renominalisée
             // par l'inflation SIMULÉE (comme le revenu du bloc), la MÊME aux deux appels — le
             // NIVEAU du crédit s'annule, le clamp de la ligne 361 QC tombe au vrai montant (avec
@@ -939,10 +957,9 @@ export function processDecemberTaxFiling(
             // disparaît des deux endroits. Retirer cette borne SEULE rouvrirait exactement l'écart
             // que son commentaire décrit — c'est pour ça qu'elle nommait son ticket.
             const pensionNominal = eligiblePensionFor(i) * inflationFactor;
-            const mk = (fam: number): AgeCreditOptions | undefined =>
-                a !== undefined && a >= 65
-                    ? { age: a, eligiblePensionIncome: pensionNominal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }
-                    : undefined;
+            // [TAXDEC-TROIS-FABRIQUES-AGEOPTS] 3ᵉ site migré vers la fabrique unique. Ici le revenu
+            // familial est MOBILE — il suit la tranche empilée —, d'où le paramètre.
+            const mk = (fam: number): AgeCreditOptions | undefined => mkAgeOpts(i, pensionNominal, fam);
             const tb = helpers.calculateFiscalReport(perAdultBase, 0, 0, ctx.loopYear, true, mk(familyBase)).totalTax;
             const tt = helpers.calculateFiscalReport(perAdultBase + perAdultBand, 0, 0, ctx.loopYear, true, mk(familyBase + familyBand)).totalTax;
             total += Math.max(0, tt - tb);

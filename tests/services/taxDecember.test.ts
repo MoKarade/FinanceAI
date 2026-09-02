@@ -1107,13 +1107,23 @@ describe('processDecemberTaxFiling — FA-1 (audit 2026-06-09) : assiette du cr�
     });
 
     it('FRONTIÈRE 65 ans pour la rente DB : 64 → 0 ; 65 → DB×12', () => {
+        // ⚠️ Re-fondé le 2026-09-02 (`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`) : ce test lisait
+        // `calls.find(c => c.ageOpts !== undefined)`, ce qui SUPPOSAIT que des options existent à
+        // 64 ans. C'était vrai de la fabrique d'alors (garde `a !== undefined`), ce n'est plus vrai
+        // de la fabrique unifiée (garde `>= 65`) — et rien de ce que le test DÉFEND n'a bougé :
+        // sous 65 ans, la rente DB n'est pas dans l'assiette du crédit, que ce soit parce qu'elle
+        // vaut 0 ou parce qu'aucune option n'est transmise. On ancre donc le FAIT (« assiette
+        // créditée = 0 ») et non la FORME qu'avait le code
+        // (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`).
+        // L'anti-vacuité est la ligne d'après : à 65 ans, des options DOIVENT exister et porter
+        // 12 000 $ — un code qui cesserait d'en émettre partout ferait rougir ce test-là.
         const run = (age: number): number => {
             const { helpers, calls } = spy();
             processDecemberTaxFiling(DECEMBER, baseCtx({
                 isRetired: true, age, activeUsersCount: 1,
                 incomeRetirementMonthly: 5000, incomeRetirementDbPerUserMonthly: [1000],
             }), helpers, ZERO_TAX);
-            return calls.find(c => c.ageOpts !== undefined)!.ageOpts!.eligiblePensionIncome!;
+            return calls.find(c => c.ageOpts !== undefined)?.ageOpts?.eligiblePensionIncome ?? 0;
         };
         expect(run(64)).toBe(0);
         expect(run(65)).toBeCloseTo(12000, 5);

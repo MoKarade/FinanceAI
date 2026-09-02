@@ -10,6 +10,48 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 88 : deux copies qui divergeaient déjà, sans que rien puisse rougir
+
+- [x] **`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`** — LIVRÉ le 2026-09-02 (PR #818). Refactor PUR :
+  **bit-identique sur les 7 personas** (`finalNetWorth`, `totalTaxesPaid`, `estateNetWorth` au
+  millionième), vérifié avant/après contre le contenu de `HEAD`.
+- **(1) TROIS fabriques d'`AgeCreditOptions` → UNE.** Même forme, gardes textuellement différentes :
+  deux exigeaient `age >= 65`, la troisième `age !== undefined`. VÉRIFIÉ équivalent (tous les blocs
+  de `calculateAgeAndPensionCredits` sont gatés `>= 65`, et `ageOpts` n'a aucun autre consommateur —
+  tracé), donc l'unification retient la garde STRICTE. Ce qui varie légitimement reste paramètre :
+  l'assiette de pension (réelle ou nominale selon le bloc) et le revenu familial (fixe hors bande,
+  mobile dans une bande). ⚠️ `hasSpouse` est désormais décidé à UN seul endroit — c'est le champ qui
+  a déjà coûté ~305 $/tête de sur-crédit quand il manquait d'un côté.
+- **(2) DEUX validations quasi-jumelles de `accRetraitsReerYearByUser` → UNE autorité.** Elles
+  lisaient la MÊME entrée avec des règles subtilement différentes. **MESURÉ, elles divergeaient sur
+  trois entrées** : déclarant SOLO (l'une refusait l'attribution, l'autre l'acceptait), total NON
+  FINI (repli sur `NaN / n` contre repli sur 0), total NÉGATIF (parts négatives conservées contre
+  repli sur 0). ⚠️ Les trois donnaient le même résultat FINAL — mais par ABSORPTION en aval
+  (`Math.max(0, …)`, `safe()`), pas par accord. Une divergence rattrapée par un filet est la
+  définition d'une bombe à retardement. La règle retenue prend la moitié la plus SÛRE de chacune :
+  total assaini, parts clampées, aucun repli non fini.
+- ⚠️ **Le gate `activeUsersCount > 1` d'une des copies était INERTE, et c'est PROUVÉ, pas supposé** :
+  chez un solo, le repli `total / 1` vaut exactement l'unique part, et un tableau qui ne reconstitue
+  pas le total est rejeté par le contrôle de somme de toute façon. Le test le démontre en comparant
+  les deux chemins. C'est aussi l'explication de la longévité de la divergence : **rien ne pouvait la
+  faire rougir**.
+- ⚠️ **Un test a rougi sur un lot qui ne touchait pas ce qu'il défend** : « FRONTIÈRE 65 ans pour la
+  rente DB » lisait `calls.find(c => c.ageOpts !== undefined)`, ce qui SUPPOSAIT que des options
+  existent à 64 ans — une propriété de la FORME d'alors, pas du fait défendu. Re-fondé sur le FAIT
+  (« assiette créditée = 0 », que les options soient absentes ou nulles), avec son anti-vacuité à
+  65 ans (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`).
+- ⚠️ **Le ratchet fiscal a rougi une TROISIÈME fois de suite sur un changement légitime** : fusionner
+  les trois fabriques a fait passer le compte de littéraux `65` de `taxDecember.ts` de 3 à 2. Contrôlé
+  avant de corriger le compte — la règle n'a PAS quitté le fichier cette fois (contrairement au lot
+  86), elle y a seulement cessé d'être écrite trois fois. Inventaire mis à jour avec la raison.
+- **7 gardes neuves** (`tests/services/taxDecemberSourcesUniques.test.ts`), quatre perturbations
+  discriminantes : total non assaini → 1 rouge · parts non clampées → 1 rouge · `hasSpouse` figé →
+  1 rouge · garde d'âge relâchée → 1 rouge. ⚠️ Une cinquième perturbation (retour du gate `> 1`) ne
+  rougit PAS, et c'est le résultat lui-même : elle mesure une propriété inobservable.
+  ⚠️ Le cas qui atteint le clamp a dû être CONSTRUIT (`[-10000, 10000]` pour un total de 0 : la
+  somme reconstitue le total, donc l'attribution est acceptée) — une borne « assiette ≥ 0 » ne
+  l'attrapait pas, 50 000 − 10 000 restant positif. Asserter la VALEUR, pas le signe.
+
 ## 2026-09-02 — Lot 87 : le ticket nommait un site, il y en avait deux — et le défaut dominant n'était pas celui qu'il titrait
 
 - [x] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** — LIVRÉ le 2026-09-02 (PR #817), les deux défauts.

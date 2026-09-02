@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 217 tests** Vitest
-(511 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 230 tests** Vitest
+(512 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -50,7 +50,7 @@ i18next · jspdf. Prod : **Vercel**.
 
 Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
 `i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/
-scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (56 sous-modules, mesuré le 2026-09-02).
+scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (57 sous-modules, mesuré le 2026-09-02).
 
 ⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger
 (`lazyWithRetry` + Suspense) tout composant/service app-level qui importe du lourd.

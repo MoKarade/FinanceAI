@@ -582,6 +582,14 @@ export interface Debt {
    *  dette : ni paiement, ni intérêt, ni présence au bilan. Absent ⇒ elle a toujours couru
    *  (rétrocompatible bit-à-bit). Champ ADDITIF optionnel : aucune migration de schéma. */
   startDate?: string;
+  /** [DEBT-AMORTIZATION] Solde d'ORIGINE du prêt (montant emprunté), pour reconstruire la
+   *  décroissance du passé — « chaque semaine je dois un peu moins » (Marc). Absent ⇒ la dette
+   *  reste au niveau figé d'aujourd'hui, comportement d'avant. Champ ADDITIF optionnel : aucune
+   *  migration de schéma, donc aucun bug de migration.
+   *  ⚠️ Un `originalBalance` INFÉRIEUR au solde actuel décrit une dette qui a grossi : ce n'est pas
+   *  un profil d'amortissement et `amortirDettePassee` le refuse plutôt que de tracer une courbe
+   *  croissante présentée comme un remboursement. */
+  originalBalance?: number;
   /** [DETTE-DATES] Fin du TERME : échéance d'un bail, fin d'un prêt, renouvellement hypothécaire
    *  (YYYY-MM-DD). Le mois de cette date est INCLUS (dernier paiement). Après, le moteur cesse de
    *  payer — et si le solde n'est pas nul, il le LAISSE au bilan avec une alerte plutôt que de

@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 91 : le service d'amortissement, avant tout câblage (lot 1/2)
+
+- [x] **`[DEBT-AMORTIZATION]` lot 1/2** — LIVRÉ le 2026-09-02 (PR #821). Découpage **choisi par
+  Marc** quand je lui ai posé la question : « en deux temps — je te montre le résultat du lot 1
+  avant d'engager le lot 2 ». Le lot 2 (`[DEBT-AMORTIZATION-CABLAGE]`) reste ouvert.
+- **Livré** : `Debt.originalBalance?` (additif, aucune migration donc aucun bug de migration) et
+  `services/projection/debtAmortization.ts`, fonction PURE. **Rien n'est branché : la courbe du
+  passé est inchangée.**
+- **La table des types amortissants est un `Record<DebtKind, boolean>` EXHAUSTIF**, pas un `Set` de
+  littéraux : ajouter un type de dette casse le typecheck ici tant que personne n'a tranché son cas.
+  Un `Set` l'aurait rangé en silence parmi les non-amortissants — un défaut par OMISSION, la forme
+  d'erreur que ce dépôt paie le plus cher. `auto-lease` (le cas réel de Marc) est explicitement
+  `false` : un bail est un loyer sur un terme, pas un solde qui fond.
+- **Le service REFUSE plutôt que d'inventer, et NOMME sa cause** (`kind-non-amortissant`,
+  `donnees-manquantes`, `origine-incoherente`, `recalage-hors-bande`) — patron des lots 74/75/78/80,
+  jamais un `null` muet. Le recalage proportionnel borné `[0,5 ; 2]` fait atterrir la courbe
+  EXACTEMENT sur le solde réel ; hors bande, refus — « une courbe qu'il faut tordre d'un facteur 3
+  ne décrit plus le prêt, elle décrit le modèle ».
+- ⚠️ **INCIDENT D'ENVIRONNEMENT, à connaître** : le redémarrage du conteneur a restauré un clone
+  d'AOÛT (branche `claude/eng-divorce-coherent-v2`, HEAD du 13 août) **et** un `node_modules`
+  d'août. `git log` montrait pourtant mon lot 90 avant le redémarrage. Mon premier recensement du
+  ticket a donc porté sur le MAUVAIS ARBRE : j'y ai « constaté » que `Debt.startDate` n'existait pas
+  et j'ai failli publier « le ticket se trompe ». Sur le vrai `main`, `startDate` et `termEndDate`
+  existent bien et **le ticket avait raison**. Rien n'était perdu (tout était poussé et mergé) ;
+  récupération par `git checkout -B <branche> origin/main` + `npm ci`.
+- **13 gardes neuves**, cinq perturbations séparées : `auto-lease` déclaré amortissant → 1 rouge ·
+  recalage retiré → 3 rouges · bande supprimée → 1 rouge · origine incohérente acceptée → 1 rouge ·
+  garde de finitude retirée → 1 rouge.
+- ⚠️ `knip` signalait les deux TYPES exportés comme inutilisés (le service, lui, est consommé par ses
+  tests). Corrigé en les faisant consommer par un helper de test qui a du sens (`refus(r, cause)`),
+  pas par une exemption.
+
 ## 2026-09-02 — Lot 90 : le backlog annonçait plus du double de ce qu'il contenait
 
 - [x] **`[PM-BACKLOG-ENTETES-PERIMES]`** — LIVRÉ le 2026-09-02 (PR #820). Aucun code de production

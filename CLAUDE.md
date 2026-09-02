@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 140 tests** Vitest
-(501 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 142 tests** Vitest
+(502 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,17 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Un sélecteur se restreint sur la DÉRIVÉE, pas sur les champs sources** : le ticket demandait
+  « un sélecteur restreint aux champs RÉELLEMENT lus » — inapplicable, les champs lus sont décidés par
+  `REQUIREMENTS[*].isMet`, HORS du composant ; les recopier ferait qu'un prérequis futur cesserait
+  SILENCIEUSEMENT de rafraîchir l'écran (donnée périmée ≫ rendu en trop). Le bon patron vivait 40
+  lignes plus loin (`MissingDataChecklist`, `[PERF-MISSINGDATA]`) : `useShallow` sur le RÉSULTAT
+  dérivé — le sélecteur tourne encore, c'est le RENDU qui s'arrête. ⚠️ `useShallow` sur un tableau
+  d'OBJETS est VACUEUX (jamais shallow-égal) → dérivée PLATE, objets reconstruits après. ⚠️ Et une
+  garde de perf a besoin de son LEVIER : « aucun rendu inutile » est trivialement vrai d'un composant
+  qui ne se met jamais à jour (mesuré `React.Profiler` : 2 écritures sans rapport → 2 rendus avant,
+  0 après ; le levier rend toujours)
+  (`UN-SELECTEUR-SE-RESTREINT-SUR-LA-DERIVEE-PAS-SUR-LES-CHAMPS-SOURCES`).
 - ⚠️ **Un avertissement de lint est un SYMPTÔME, pas une gravité** : le ticket annonçait « 2
   violations `exhaustive-deps`, dette technique » ; rejoué, l'outil en sort **4**, et les deux non
   nommées étaient une **fuite de vie privée** — `isPrivacyMode` absent des deps de deux `useCallback`

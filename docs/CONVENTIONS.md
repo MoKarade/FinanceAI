@@ -10242,3 +10242,44 @@ mesure est mon travail, la politique est celui de Marc.
 qui a rougi, pas les cas qu'elle contrôle : un test qui échoue pour une raison qui n'est pas la
 sienne signale l'isolation avant le code
 (`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`, version « état de store »).
+
+
+### Lot 77 (2026-09-02) — un sélecteur se restreint sur la DÉRIVÉE, pas sur les champs sources
+
+`UN-SELECTEUR-SE-RESTREINT-SUR-LA-DERIVEE-PAS-SUR-LES-CHAMPS-SOURCES`
+
+Le ticket avait raison sur le défaut (`useFinanceStore((s) => s)` = abonnement au store ENTIER, donc
+un rendu à chaque écriture) et tort sur le remède : « remplacer par un sélecteur atomique restreint
+aux champs RÉELLEMENT lus ».
+
+Ce remède est **inapplicable**, et l'appliquer quand même serait une régression silencieuse. Les
+champs lus par `SetupHub` ne sont pas décidés dans `SetupHub` : il passe l'état à
+`REQUIREMENTS[*].isMet(state)`, un registre externe. Recopier la liste des champs, c'est dupliquer
+une connaissance qui vit ailleurs — et le jour où une exigence nouvelle lit un champ non listé,
+l'écran cesse **sans rien dire** de se rafraîchir. Une donnée périmée coûte bien plus qu'un rendu en
+trop. C'est la famille de `HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR` : un remède qui suppose une
+information dont le site ne dispose pas.
+
+Le patron juste vivait **quarante lignes plus loin**, chez le voisin qui consomme le même genre de
+registre (`MissingDataChecklist`, marqué `[PERF-MISSINGDATA]`, avec sa justification écrite) :
+`useShallow` sur le **RÉSULTAT DÉRIVÉ**. Le sélecteur continue de tourner à chaque écriture — c'est
+le RENDU qui s'arrête, et il repart dès que la dérivée change. Aucune liste de champs à tenir, donc
+aucune liste à oublier. Encore une fois : **grepper le remède d'un ticket, pas seulement son
+défaut** (lot 62, lot 75, et maintenant celui-ci).
+
+⚠️ **`useShallow` sur un tableau d'OBJETS est vacueux.** Il compare élément par élément ; un tableau
+de statuts reconstruits à chaque passage n'est jamais shallow-égal, donc le composant se re-rendrait
+exactement comme avant — un correctif qui a l'air posé et ne fait rien. La dérivée doit être PLATE :
+ici deux tableaux de primitives (nombre d'exigences satisfaites par onglet, hors-périmètre par
+onglet), les objets étant reconstruits APRÈS le sélecteur depuis des constantes de module.
+
+⚠️ **Une garde de perf a besoin de son LEVIER, sinon la pire régression la satisfait.** « Aucun rendu
+inutile » est trivialement vrai d'un composant qui ne se met JAMAIS à jour. Les deux moitiés se
+tiennent : rien sur une écriture sans rapport, ET un rendu — plus un changement VISIBLE à l'écran —
+sur une écriture qui change un prérequis. C'est le même principe que « un test de perf se fait par
+espion, et il vérifie les DEUX sens » (`RETIRER-UN-CALCUL-JETE-SE-PROUVE-AVANT-DE-SE-FAIRE`), appliqué
+au rendu : le compteur de rendus commités (`React.Profiler`) est binaire et stable en CI, là où un
+chronomètre ne l'est pas.
+
+Mesures : 2 écritures sans rapport → **2 rendus avant, 0 après** ; l'écriture qui change un prérequis
+→ **1 rendu**, avant comme après.

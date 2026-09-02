@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 77 : un sélecteur se restreint sur la DÉRIVÉE
+> `[PERF-RENDER-SETUPHUB-FULLSTORE]` — diagnostic juste, **remède du ticket faux** : « restreindre
+> aux champs réellement lus » est inapplicable (ils sont décidés par `REQUIREMENTS[*].isMet`, hors du
+> composant) et produirait une donnée PÉRIMÉE au prochain prérequis ajouté.
+> - Le bon patron vivait 40 lignes plus loin (`MissingDataChecklist`, `[PERF-MISSINGDATA]`) :
+>   `useShallow` sur le RÉSULTAT DÉRIVÉ. Grepper le remède, pas seulement le défaut.
+> - **Mesuré** (`React.Profiler`) : 2 écritures sans rapport → 2 rendus avant, **0 après** ; le levier
+>   (un prérequis qui change) rend toujours.
+> - ⚠️ `useShallow` sur un tableau d'OBJETS est vacueux (jamais shallow-égal) → deux tableaux de
+>   primitives.
+
 > ## 🟦 Session 2026-09-02 — Lot 76 : un avertissement de lint cachait une fuite de vie privée
 > `[HOOKS-EXHAUSTIVE-DEPS-WARN]` (moitié (a)) — le ticket annonçait 2 violations « dette
 > technique » ; rejoué, l'outil en sort **4**, et les 2 non nommées (`Planning.tsx`) sont une

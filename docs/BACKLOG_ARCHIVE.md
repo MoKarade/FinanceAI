@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 77 : un sélecteur se restreint sur la DÉRIVÉE, pas sur les champs sources
+
+- [x] **`[PERF-RENDER-SETUPHUB-FULLSTORE]`** — 2026-09-02. Le diagnostic était juste
+  (`useFinanceStore((s) => s)` = abonnement au store ENTIER), **le remède prescrit était faux et
+  dangereux**. « Restreindre aux champs RÉELLEMENT lus » est inapplicable : les champs lus sont
+  décidés par `REQUIREMENTS[*].isMet`, hors du composant. Les recopier ferait qu'une exigence future
+  lisant un champ non listé cesserait **silencieusement** de rafraîchir l'écran — une donnée périmée,
+  bien pire que le rendu en trop.
+- **Le bon patron existait 40 lignes plus loin**, chez le voisin qui consomme le même genre de
+  registre (`MissingDataChecklist`, `[PERF-MISSINGDATA]`) : `useShallow` sur le RÉSULTAT DÉRIVÉ. Le
+  sélecteur tourne toujours à chaque écriture ; c'est le RENDU qui s'arrête.
+- **Mesuré** (compteur de rendus commités, `React.Profiler`) : 2 écritures sans rapport →
+  **2 rendus avant, 0 après** ; une écriture qui change un prérequis → **toujours 1 rendu**, et
+  l'écran change bien (« 0/1 » → prêt).
+- ⚠️ **Piège du correctif** : `useShallow` sur le tableau de statuts aurait été VACUEUX — il compare
+  élément par élément, et un tableau d'objets recréés à chaque passage n'est jamais shallow-égal.
+  D'où deux tableaux de PRIMITIVES.
+- **Garde** : les deux sens (aucun rendu inutile / le levier rend toujours), sans quoi un composant
+  qui ne se met JAMAIS à jour passerait la moitié « perf ». Deux perturbations séparées, chacune ne
+  fait rougir que son propre cas.
+
 ## 2026-09-02 — Lot 76 : un avertissement de lint qui cachait une fuite de vie privée
 
 - [x] **`[HOOKS-EXHAUSTIVE-DEPS-WARN]`** (moitié (a)) — 2026-09-02. Le ticket annonçait **2**

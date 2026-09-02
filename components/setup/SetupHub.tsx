@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { useShallow } from 'zustand/shallow';
 import { Icon } from '../ui/Icon';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { PAGE_SETUP, RequirementCard } from './PageSetupGate';
@@ -28,17 +29,46 @@ const TAB_ORDER: Tab[] = [
     Tab.TRANSACTIONS, Tab.BUDGET, Tab.ASSISTANT,
 ];
 
+/**
+ * [PERF-RENDER-SETUPHUB-FULLSTORE] Onglets gatés, calculés UNE fois : `PAGE_SETUP` est une
+ * constante de module, donc la liste ne dépend d'aucun état. Hors composant, la fermeture des
+ * sélecteurs ci-dessous reste stable.
+ */
+const TABS_GATES: Tab[] = TAB_ORDER.filter((t) => PAGE_SETUP[t]);
+
 export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) => {
-    const state = useFinanceStore((s) => s);
+    // [PERF-RENDER-SETUPHUB-FULLSTORE] Avant : `useFinanceStore((s) => s)` — abonnement au store
+    // ENTIER, donc un rendu à CHAQUE écriture (mesuré : 2 écritures sans rapport = 2 rendus).
+    //
+    // ⚠️ Le remède « restreindre aux champs réellement lus » est INAPPLICABLE ici : les champs lus
+    // sont décidés par `REQUIREMENTS[*].isMet`, hors de ce composant. Les recopier ferait qu'une
+    // exigence future lisant un champ non listé cesserait SILENCIEUSEMENT de rafraîchir l'écran —
+    // une donnée périmée, bien pire que le rendu en trop qu'on corrige.
+    //
+    // Le patron juste vit chez le voisin qui consomme le même genre de registre
+    // (`MissingDataChecklist`, `[PERF-MISSINGDATA]`) : `useShallow` sur le RÉSULTAT DÉRIVÉ. Le
+    // sélecteur tourne toujours à chaque écriture, mais le composant ne se re-rend que si la
+    // dérivée change.
+    //
+    // ⚠️ Et la dérivée doit être PLATE : `useShallow` compare élément par élément, donc un tableau
+    // d'objets recréés à chaque passage n'est JAMAIS shallow-égal et rendrait le sélecteur
+    // vacueux. D'où deux tableaux de primitives plutôt qu'un tableau de statuts.
+    const metParOnglet = useFinanceStore(useShallow((s) => TABS_GATES.map(
+        (t) => PAGE_SETUP[t]!.requirementIds.filter((id) => REQUIREMENTS[id].isMet(s)).length,
+    )));
+    const horsPerimetreParOnglet = useFinanceStore(useShallow((s) => TABS_GATES.map((t) => {
+        const cfg = PAGE_SETUP[t]!;
+        return !!(cfg.optOut && s.setupOptOut?.[cfg.optOut.key]);
+    })));
     const navigateWithFocus = useFinanceStore((s) => s.navigateWithFocus);
     const [open, setOpen] = useState<Tab | null>(null);
 
-    const tabs = TAB_ORDER.filter((t) => PAGE_SETUP[t]);
-    const tabStatus = tabs.map((t) => {
+    const tabs = TABS_GATES;
+    const tabStatus = tabs.map((t, i) => {
         const cfg = PAGE_SETUP[t]!;
         const reqs = cfg.requirementIds.map((id) => REQUIREMENTS[id]);
-        const met = reqs.filter((r) => r.isMet(state)).length;
-        const optedOut = !!(cfg.optOut && state.setupOptOut?.[cfg.optOut.key]);
+        const met = metParOnglet[i];
+        const optedOut = horsPerimetreParOnglet[i];
         return { tab: t, cfg, reqs, met, total: reqs.length, ready: met === reqs.length || optedOut, optedOut };
     });
     const readyCount = tabStatus.filter((s) => s.ready).length;

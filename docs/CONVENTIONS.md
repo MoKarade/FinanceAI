@@ -10589,6 +10589,51 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 89 (2026-09-02) — un chiffre identique pour tous les utilisateurs n'en est pas un
+
+`UNE-GRANDEUR-QUI-NE-DEPEND-PAS-DE-L-UTILISATEUR-N-EN-DECRIT-AUCUN`
+
+La tuile « Sensibilité » de l'onglet Budget promettait « +X $ de patrimoine par +100 $/mois
+d'épargne ». Sa formule — valeur future d'une rente à 5 % en dur — ne dépendait que de l'HORIZON.
+Mesurée sur les sept personas, elle rendait donc **145 648 $ pour les sept**, revenus, dettes, âge de
+retraite et fiscalité confondus, tandis que le moteur répondait de **18 495 $** à **307 118 $** selon
+le ménage (**16,6×** d'écart). **Le tell n'était pas la valeur, c'était l'invariance** : une
+sensibilité qui ne bouge pas quand l'utilisateur change ne décrit personne. Devant un chiffre
+personnalisé, le premier contrôle utile est de le mesurer sur DEUX profils opposés — s'il ne bouge
+pas, aucune correction de coefficient ne le sauvera.
+
+⚠️ **Et c'est ce qui tranche entre « corriger » et « supprimer ».** Le rapport formule/moteur va de
+**0,47× à 7,88×** : ce n'est pas un biais de signe constant qu'on ramènerait par un facteur, c'est du
+bruit. Brancher le vrai `projection.returnRate` à la place du 5 % aurait donné à un chiffre toujours
+faux l'HABILLAGE d'un chiffre sourcé — exactement
+`UNE-VALEUR-NON-VERIFIEE-NE-PORTE-PAS-L-HABILLAGE-D-UNE-VALEUR-VERIFIEE`, appliqué à une formule au
+lieu d'un style.
+
+⚠️ **Le ticket sous-estimait parce qu'il mesurait UN point.** Il annonçait « ratio 0,56× » et
+« 10 623 $ d'écart avec la tuile voisine » — vrai de SA fixture, et trompeur comme description : ça
+se lit comme un biais modeste, donc corrigeable. Balayer les sept personas a changé la CONCLUSION, pas
+seulement le chiffre. Même geste que `UN-BIAIS-QUI-COMPOSE-N-EST-PAS-UN-BIAIS-FIXE`, appliqué cette
+fois à l'axe des UTILISATEURS.
+
+⚠️ **La surface la plus dangereuse n'était pas l'écran.** Le même montant partait dans le contexte
+publié au chat IA. Une valeur inventée transmise au modèle hérite de l'autorité de la source unique,
+et le chat l'explique ensuite avec aplomb — c'est la raison pour laquelle
+`DECISION-PRIVACY-UNE-SEULE-SORTIE` vaut aussi pour la justesse, pas seulement pour la vie privée :
+**une correction d'affichage se repasse sur TOUTES les sorties, prompt LLM compris**.
+
+✅ **Supprimer se justifie par ce que ça n'emporte PAS.** La carte entière est déjà un bouton qui
+navigue vers l'onglet Futur, et la tuile voisine consomme le vrai `estateNetWorth` : rien
+d'atteignable n'est perdu. La QUESTION, elle, est légitime et routée avec sa mesure
+(`[BUDGET-SENSIBILITE-MOTEUR]`) — ⚠️ avec l'avertissement qui compte : le correctif n'est pas de
+rappeler le moteur depuis l'écran Budget (une seconde simulation complète par rendu), mais de faire
+PUBLIER la grandeur par la projection, pour que Budget la consomme.
+
+⚠️ Corollaire de garde : la garde d'ABSENCE lit la source **décommentée**, parce que le commentaire
+qui explique la suppression cite la formule et le taux — sans ça elle matcherait sa propre
+explication (`UNE-GARDE-ECRITE-A-COTE-DE-SON-SUJET-LIT-SON-PROPRE-COMMENTAIRE`). Et le jeton choisi
+(`Math.pow`) est assumé comme un PROXY du fait défendu, fidèle ici parce qu'il n'y en avait qu'UNE
+occurrence dans tout le fichier : celle qu'on retire.
+
 ### Lot 88 (2026-09-02) — une divergence rattrapée par un filet est une bombe à retardement
 
 `UNE-DIVERGENCE-ABSORBEE-EN-AVAL-EST-UNE-BOMBE-PAS-UNE-EQUIVALENCE`

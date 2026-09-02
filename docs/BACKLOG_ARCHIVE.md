@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 89 : une sensibilité identique pour tout le monde n'est pas une sensibilité
+
+- [x] **`[BUDGET-SENSIBILITE-FORMULE-5PCT]`** — LIVRÉ le 2026-09-02 (PR #819). La tuile
+  « Sensibilité » de l'onglet Budget est **SUPPRIMÉE**, des DEUX surfaces où elle vivait : l'écran et
+  le **contexte publié au chat IA**.
+- **Pourquoi supprimer plutôt que corriger le taux.** La formule locale (valeur future d'une rente à
+  5 % en dur) ne dépendait QUE de l'horizon : mesurée sur les sept personas, elle rendait
+  **145 648 $ pour tous les sept**, revenus, dettes, âge de retraite et fiscalité confondus. La vraie
+  réponse du moteur (dépenses −100 $/mois, tout le reste égal) va de **18 495 $**
+  (`pre-retraite-riche`) à **307 118 $** (`lea-fauchee`) — **16,6× d'écart entre ménages**. Le rapport
+  formule/moteur va de **0,47× à 7,88×** : ce n'est pas un biais qu'on corrige en changeant un taux,
+  c'est la FORME qui est fausse (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`).
+- ⚠️ **Le ticket sous-estimait, parce qu'il mesurait UN point.** Il annonçait « ratio 0,56× » et
+  « 10 623 $ d'écart avec la tuile voisine ». Vrai de sa fixture ; faux comme description. Un écart
+  qui va de 0,47× à 7,88× selon le ménage n'est pas un écart, c'est du bruit
+  (`UN-ECART-MESURE-A-UN-POINT-NE-DIT-RIEN-DE-SA-NATURE`).
+- ⚠️ **La surface la plus dangereuse était la seconde** : le chiffre partait aussi dans le contexte
+  d'écran envoyé au modèle. Une valeur inventée transmise à l'IA hérite de l'autorité de la source
+  unique — et le chat l'explique ensuite avec aplomb.
+- **Rien d'ATTEIGNABLE n'est perdu** : la carte entière est déjà un bouton qui navigue vers l'onglet
+  Futur, et la tuile « Impact à long terme » qui l'accompagne consomme, elle, le vrai
+  `estateNetWorth`. La question posée par la tuile est ROUTÉE en `[BUDGET-SENSIBILITE-MOTEUR]` avec
+  sa mesure, pas abandonnée.
+- **3 gardes neuves** (`tests/components/budgetSensibiliteRetiree.test.tsx`), trois perturbations
+  séparées : tuile écran remise → 1 rouge · carte IA remise → 1 rouge · capitalisation locale remise
+  → 1 rouge. La garde de SOURCE lit la source DÉCOMMENTÉE — le commentaire qui explique la
+  suppression cite la formule, donc une lecture brute matcherait sa propre explication.
+
 ## 2026-09-02 — Lot 88 : deux copies qui divergeaient déjà, sans que rien puisse rougir
 
 - [x] **`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`** — LIVRÉ le 2026-09-02 (PR #818). Refactor PUR :

@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (La tuile « Sensibilité » du Budget disparaît — elle affichait le même chiffre à tout le monde)
+
+- **Retiré** : la petite tuile « Sensibilité » (« +X $ par +100 $/mois d'épargne ») de l'onglet
+  Budget. Elle ne dépendait que de la durée de la projection, donc elle affichait **exactement le
+  même montant quel que soit ton profil** — revenus, dettes, âge de retraite et impôts confondus.
+- **De combien elle se trompait** : sur les sept profils de test, elle annonçait 145 648 $ pour tout
+  le monde, alors que la vraie réponse va de **18 495 $ à 307 118 $** selon le ménage. Selon le
+  profil, elle était donc deux fois trop basse ou huit fois trop haute. Ce n'était pas un réglage à
+  ajuster : le calcul lui-même ne pouvait pas répondre à la question.
+- **Le chiffre partait aussi dans le chat** : l'assistant recevait cette valeur inventée et pouvait
+  l'expliquer comme si elle venait du moteur. C'est corrigé aussi.
+- **Ce qui reste** : la carte « Impact à long terme » à côté, elle, vient bien de la projection, et
+  cliquer dessus ouvre toujours l'onglet Futur. La question « et si j'épargnais 100 $ de plus ? »
+  reste au programme — mais elle sera calculée par le moteur, pas approximée.
+
+---
+
 ## [unreleased] — 2026-09-02 (Ménage interne : deux copies d'une même règle fiscale qui commençaient à diverger)
 
 - **Rien ne change pour toi** : les chiffres sont identiques au millionième près sur les sept profils

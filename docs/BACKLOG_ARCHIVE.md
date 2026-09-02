@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 74 : le service rendait `[]` pour quatre situations sans rapport (PR #804)
+
+- [x] **`[AI-REBALANCE-CAUSE-PERDUE]`** — 2026-09-02, PR #804. Ticket que j'avais écrit moi-même au
+  lot 68 : re-vérifié avant de coder (le recensement n'a d'exception ni d'auteur ni de fraîcheur), il
+  disait vrai. `getRebalanceJustifications` rendait `[]` pour **quatre** situations sans rapport —
+  aucune clé, aucune action, une erreur d'appel, et « le modèle n'a rien rendu d'exploitable ».
+- **Livré** : un résultat en union discriminée (`ok` / `sans-cle` / `rien-a-justifier` /
+  `sans-reponse` / `echec` avec l'objet d'erreur ORIGINAL — c'est son `.status` qui nomme la cause).
+  L'écran Investissements rejoint les trois autres surfaces via `services/messageErreurIa.ts`.
+- ⚠️ **Le service ENCODE l'échec plutôt que de LEVER**, et c'est explicite : son unique appelant est
+  un `onClick` en ligne dans du JSX, sans `try/catch` — passer au « lève » aurait transformé une
+  panne réseau en erreur non capturée. Le contrat d'erreur se DÉCIDE, il ne se copie pas du voisin.
+- ⚠️ **La garde du lot 68 s'INVERSE au même endroit plutôt que de disparaître** : elle exigeait
+  qu'`Investments` NE nomme PAS sa cause (l'inventaire portait la limite pour que personne ne
+  l'« améliore » en réinventant un coupable). La dette payée, l'exigence bascule — un inventaire de
+  dette doit savoir mourir, et sa mort s'écrit là où il vivait.
+- **Reste ouvert** : `[AI-FINNHUB-CAUSE-COLLAPSE]` (autre service, erreurs de forme différente).
+
 ## 2026-09-02 — Lot 73 : retirer du code mort a demandé de corriger la source de vérité fiscale (PR #803)
 
 - [x] **`[DEAD-CALCNETFROMGROSS]`** — 2026-09-02, PR #803. `calculateNetFromGross` (`utils/tax.ts`)

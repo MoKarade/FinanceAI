@@ -83,19 +83,27 @@ describe('[AI-BUDGETMODAL-ERROR-COLLAPSE] la clé n\'est accusée que quand elle
         expect(offenders, `Phrase qui accuse la clé, écrite en dur :\n${offenders.join('\n')}`).toEqual([]);
     });
 
-    it('les quatre surfaces IA passent par le module partagé — ou disent qu\'elles ne savent pas', () => {
-        // ⚠️ Témoins NOMMÉS. Trois surfaces reçoivent leur erreur et nomment la cause ; la
-        // quatrième (`Investments`) ne le peut pas — `getRebalanceJustifications` avale l'erreur et
-        // rend `[]`. Elle dit donc ce qu'elle SAIT (« n'a rien rendu »), ce qui est le comportement
-        // attendu tant que `[AI-REBALANCE-CAUSE-PERDUE]` n'est pas livré. L'écrire ici empêche que
-        // quelqu'un « améliore » ce message en réinventant une cause.
-        for (const f of ['components/budget/BudgetAiModal.tsx', 'components/tax/CoupleOptimizationCard.tsx', 'components/realestate/RealEstateAdviceCard.tsx']) {
+    it('les quatre surfaces IA passent par le module partagé', () => {
+        // ⚠️ CETTE ASSERTION A CHANGÉ, ET C'EST LE SIGNE QUE LA DETTE EST PAYÉE. Au lot 68 elle
+        // exigeait qu'`Investments` NE nomme PAS sa cause : le service avalait l'erreur, l'écran ne
+        // recevait qu'un tableau vide, et son message disait ce qu'il savait (« n'a rien rendu »).
+        // L'inventaire portait cette limite pour que personne ne l'« améliore » en réinventant un
+        // coupable. `[AI-REBALANCE-CAUSE-PERDUE]` (lot 74) a fait remonter la cause : la quatrième
+        // surface rejoint les trois autres, et l'exigence s'INVERSE au même endroit plutôt que de
+        // disparaître — un inventaire de dette doit savoir mourir, et sa mort s'écrit.
+        for (const f of [
+            'components/budget/BudgetAiModal.tsx',
+            'components/tax/CoupleOptimizationCard.tsx',
+            'components/realestate/RealEstateAdviceCard.tsx',
+            'components/Investments.tsx',
+        ]) {
             const code = readFileSync(resolve(process.cwd(), f), 'utf8');
             expect(/messageErreurIa/.test(code), `${f} ne passe pas par le module partagé`).toBe(true);
         }
+        // …et aucune ne réécrit la phrase qui accuse la clé (le test précédent le vérifie sur tout
+        // le dépôt ; ici on nomme le témoin qui vient de changer de camp).
         const invest = stripCommentsJsx(readFileSync(resolve(process.cwd(), 'components/Investments.tsx'), 'utf8'));
-        expect(invest, 'Investments accuse de nouveau la clé alors qu\'il ne connaît pas la cause').not.toMatch(ACCUSE_LA_CLE);
-        expect(invest).toMatch(/n'a rien rendu/);
+        expect(invest, 'Investments réécrit la phrase qui accuse la clé').not.toMatch(ACCUSE_LA_CLE);
     });
 
     it('chaque exemption est RÉELLE — une exemption périmée se retire', () => {

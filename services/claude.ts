@@ -899,11 +899,38 @@ RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
  * justifiant le mouvement (ex: "Tesla dépasse 18% du portefeuille — réduire
  * pour respecter la cible 10% et diversifier").
  */
+/**
+ * [AI-REBALANCE-CAUSE-PERDUE] Le résultat porte sa CAUSE — il ne se réduit plus à un tableau.
+ *
+ * ⚠️ La version précédente rendait `[]` dans QUATRE situations sans rapport : aucune clé, aucune
+ * action à justifier, une erreur d'appel (réseau, quota, clé refusée, 5xx), et « le modèle n'a rien
+ * rendu d'exploitable ». L'écran ne recevait qu'un tableau vide : il ne POUVAIT pas nommer la cause,
+ * quoi qu'on écrive dans son message. C'était la seule des surfaces IA du dépôt restée incapable de
+ * le faire après `[AI-BUDGETMODAL-ERROR-COLLAPSE]`, et la raison n'était pas dans le composant —
+ * elle était ici, deux appels plus haut, là où l'erreur était jetée.
+ *
+ * ⚠️ Elle ENCODE l'échec plutôt que de LEVER, et c'est un choix explicite : son unique appelant est
+ * un `onClick` en ligne dans du JSX, sans `try/catch`. Passer au « lève » aurait transformé une
+ * panne réseau en erreur non capturée. Le contrat d'erreur se décide, il ne se copie pas du voisin
+ * (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+ */
+export type RebalanceJustificationsResult =
+    | { readonly forme: 'ok'; readonly justifications: RebalanceJustification[] }
+    /** Aucune clé configurée : l'appel n'a pas été tenté. */
+    | { readonly forme: 'sans-cle' }
+    /** Rien à justifier — ce n'est pas un échec, et l'écran ne doit rien afficher de rouge. */
+    | { readonly forme: 'rien-a-justifier' }
+    /** L'appel a réussi mais la réponse n'était pas exploitable. Le modèle, pas le service. */
+    | { readonly forme: 'sans-reponse' }
+    /** L'appel a échoué. `err` porte le statut HTTP : c'est lui qui nomme la cause à l'écran. */
+    | { readonly forme: 'echec'; readonly err: unknown };
+
 export const getRebalanceJustifications = async (
     actions: RebalanceActionInput[],
     apiKey: string,
-): Promise<RebalanceJustification[]> => {
-    if (!apiKey || actions.length === 0) return [];
+): Promise<RebalanceJustificationsResult> => {
+    if (!apiKey) return { forme: 'sans-cle' };
+    if (actions.length === 0) return { forme: 'rien-a-justifier' };
 
     const userPrompt = buildRebalancePrompt(actions);
 
@@ -914,10 +941,14 @@ export const getRebalanceJustifications = async (
             { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 2048, temperature: 0.5, timeoutMs: 25000 },
         );
         const validated = safeJsonValidate(text, RebalanceJustificationsSchema);
-        return validated ?? [];
+        // ⚠️ Un tableau VIDE validé n'est pas un succès ici : l'appelant garde son bouton derrière
+        // `hasActions`, donc il a demandé au moins une justification. Rien reçu ⇒ le modèle n'a pas
+        // répondu à la question, et le dire vaut mieux que d'afficher un bloc muet.
+        if (!validated || validated.length === 0) return { forme: 'sans-reponse' };
+        return { forme: 'ok', justifications: validated };
     } catch (e) {
         logError({ source: 'ai', message: 'getRebalanceJustifications failed', error: e });
-        return [];
+        return { forme: 'echec', err: e };
     }
 };
 

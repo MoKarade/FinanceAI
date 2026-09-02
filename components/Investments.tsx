@@ -37,6 +37,7 @@ import { formatCAD, formatDate } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
+import { messageErreurIa } from '../services/messageErreurIa';
 import { AddStockForm } from './investments/AddStockForm';
 import { showToast } from './ui/Toast';
 import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
@@ -233,10 +234,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Phase E.7 — justifications IA des actions de rééquilibrage
     const [iaJustifications, setIaJustifications] = useState<Map<string, string>>(new Map());
     const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
-    // [REBALANCE-SILENT-FAIL] `getRebalanceJustifications` rend `[]` sur ERREUR comme sur « rien à
-    // dire » — sans état d'erreur, un 429 ou une clé invalide se lisait « l'IA n'avait rien à
-    // ajouter ». Même patron que CoupleOptimizationCard / RealEstateAdviceCard.
-    const [justificationsError, setJustificationsError] = useState(false);
+    // [AI-REBALANCE-CAUSE-PERDUE] Le MESSAGE, pas un booléen. `[REBALANCE-SILENT-FAIL]` avait déjà
+    // vu qu'un tableau vide se lisait « l'IA n'avait rien à ajouter » sur un 429 ou une clé
+    // invalide — mais l'état d'erreur qu'il a ajouté ne pouvait rien dire de plus, parce que la
+    // CAUSE était jetée dans le service. Elle remonte maintenant jusqu'ici.
+    const [justificationsError, setJustificationsError] = useState<string | null>(null);
     // Phase E.9 — modal d'ajout manuel d'une action
     const [showAddStockForm, setShowAddStockForm] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // suppression de position (2 clics)
@@ -1055,7 +1057,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         type="button"
                                         onClick={async () => {
                                             setIsFetchingJustifications(true);
-                                            setJustificationsError(false);
+                                            setJustificationsError(null);
                                             const inputs: RebalanceActionInput[] = rebalancingActions.map(a => ({
                                                 id: a.id,
                                                 label: a.label,
@@ -1064,17 +1066,22 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 targetPct: a.targetPct,
                                                 diffAmount: a.diffAmount,
                                             }));
-                                            const justifications = await getRebalanceJustifications(inputs, claudeKey);
-                                            // [REBALANCE-SILENT-FAIL] Un tableau VIDE ne peut pas
-                                            // être un succès ici : on a demandé une justification
-                                            // pour au moins une action (`hasActions` garde le
-                                            // bouton). Vide ⇒ l'appel a échoué, on le DIT.
-                                            if (justifications.length === 0) {
-                                                setJustificationsError(true);
-                                            } else {
+                                            const res = await getRebalanceJustifications(inputs, claudeKey);
+                                            // [AI-REBALANCE-CAUSE-PERDUE] Chaque forme a sa phrase.
+                                            // « rien à justifier » n'est PAS un échec : le bouton
+                                            // est gardé par `hasActions`, donc ce cas n'arrive pas
+                                            // ici — et s'il arrivait, l'afficher en rouge serait
+                                            // faux. Il ne dit donc rien.
+                                            if (res.forme === 'ok') {
                                                 const map = new Map<string, string>();
-                                                justifications.forEach(j => map.set(j.actionId, j.reason));
+                                                res.justifications.forEach(j => map.set(j.actionId, j.reason));
                                                 setIaJustifications(map);
+                                            } else if (res.forme === 'echec') {
+                                                setJustificationsError(messageErreurIa(res.err));
+                                            } else if (res.forme === 'sans-cle') {
+                                                setJustificationsError(messageErreurIa(null, { cleAbsente: true }));
+                                            } else if (res.forme === 'sans-reponse') {
+                                                setJustificationsError("L'IA n'a rien rendu d'exploitable pour ces actions. Réessaie.");
                                             }
                                             setIsFetchingJustifications(false);
                                         }}
@@ -1084,16 +1091,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         {isFetchingJustifications ? 'Analyse…' : 'Pourquoi ces actions ?'}
                                     </button>
                                 )}
-                                {justificationsError && (
+                                {justificationsError !== null && (
                                     <p role="status" className="text-danger-400 text-tiny">
-                                        {/* [AI-BUDGETMODAL-ERROR-COLLAPSE] Ce site ne peut PAS nommer la cause, et
-                                            c'est un fait à dire plutôt qu'à masquer par une phrase plausible :
-                                            `getRebalanceJustifications` avale l'erreur (`catch → return []`), donc
-                                            l'écran ne reçoit qu'un tableau vide. Accuser la clé serait une
-                                            affirmation inventée — les trois autres surfaces IA nomment la cause
-                                            parce que leur erreur leur parvient. Propagation suivie au BACKLOG
-                                            (`[AI-REBALANCE-CAUSE-PERDUE]`). */}
-                                        La génération n'a rien rendu. Réessaie dans un moment.
+                                        {/* [AI-REBALANCE-CAUSE-PERDUE] Cet écran était le SEUL qui ne pouvait pas
+                                            nommer sa cause après `[AI-BUDGETMODAL-ERROR-COLLAPSE]` : le service
+                                            avalait l'erreur (`catch → return []`) et il ne recevait qu'un tableau
+                                            vide. Il disait donc ce qu'il savait. La cause remonte maintenant
+                                            jusqu'ici, et le message la nomme. */}
+                                        {justificationsError}
                                     </p>
                                 )}
                                 <button

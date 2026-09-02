@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 164 tests** Vitest
-(503 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 166 tests** Vitest
+(504 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une clé se dérive de ce qui IDENTIFIE, pas de ce qu'on AFFICHE** : `['L','M','M',…]` avec
+  `key={d}` donnait deux clés `M` — la lettre est un rendu, le jour est l'identité, et les confondre
+  ne marche que tant que l'abréviation est injective (par accident). Le `key={i}` que proposait le
+  ticket est correct sur une liste statique et faux dès qu'elle devient dynamique. ⚠️ **Un
+  avertissement PERMANENT est un avertissement mort** — son coût n'est pas le bruit mais la surdité
+  qu'il installe. ⚠️ Le balayage se publie même quand il ne trouve presque rien (27 sites, 1 offender,
+  2 déjà dédoublonnés AVEC leur commentaire : la classe était comprise, c'était le reliquat).
+  ⚠️ Garde COMPORTEMENTALE (aucun scan ne juge l'unicité en général) + anti-vacuité : un 2ᵉ cas rend
+  `['A','B','B']` et exige que l'espion le VOIE — sinon un espion mal câblé rend la garde verte quoi
+  qu'il arrive (`UNE-CLE-SE-DERIVE-DE-CE-QUI-IDENTIFIE-PAS-DE-CE-QU-ON-AFFICHE`).
 - ⚠️ **Un écran ne peut affirmer que ce que ses SOURCES lui donnent** : l'état vide du graphe
   « Évolution » conseillait « vérifie ta clé Finnhub » — or son hook ne fait AUCUN réseau (il dérive
   du store), et sans clé le repli gratuit EST le chemin normal : on envoyait chercher une clé jamais

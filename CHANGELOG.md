@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Nettoyage : un avertissement permanent dans la console)
+
+- **Corrigé** : l'en-tête du calendrier (Charges fixes) utilisait la lettre du jour comme identifiant
+  — or « M » sert deux fois (mardi, mercredi). React s'en plaignait à chaque affichage de l'écran.
+  Rien de visible pour toi ; mais un avertissement qui crie en permanence est un avertissement qu'on
+  finit par ignorer, y compris quand il a raison.
+- **Vérifié au passage** : les 26 autres listes du même genre dans l'app sont saines — deux d'entre
+  elles portent déjà la trace écrite d'un incident passé sur ce sujet.
+
 ## [unreleased] — 2026-09-02 (Le graphe « Évolution » ne devine plus pourquoi il est vide)
 
 - **Corrigé** : quand la courbe d'évolution n'a rien à afficher, l'écran disait « la courbe apparaît

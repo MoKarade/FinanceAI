@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 82 : une clé se dérive de ce qui IDENTIFIE, pas de ce qu'on affiche
+
+- [x] **`[PLANNING-CALENDAR-KEY-DOUBLON]`** — 2026-09-02. L'en-tête du calendrier rendait
+  `['L','M','M','J','V','S','D']` avec `key={d}` : deux clés `M` (mardi/mercredi), donc un
+  avertissement React à CHAQUE rendu de cet écran. Sans conséquence visible (liste statique, jamais
+  réordonnée), mais un avertissement permanent est un avertissement qu'on cesse de lire — y compris
+  le jour où il désignera une vraie liste dynamique.
+- **Correctif** : la clé devient le nom COMPLET du jour, l'abréviation reste l'affichage. Une clé se
+  dérive de ce qui IDENTIFIE l'élément, jamais de ce qu'on en montre. (Le ticket proposait `key={i}` :
+  correct ici, mais il redevient faux le jour où la liste devient dynamique.)
+- **Balayage demandé par le ticket, fait et publié** : 27 sites du dépôt utilisent l'élément lui-même
+  comme clé. **UN seul offender** (celui-ci) ; **deux** sont explicitement dédoublonnés, avec le
+  commentaire qui dit pourquoi (`AiChatView` via `new Set`, `FutureHistorySection` « leçon Diane &
+  Robert » — un compte cash peut porter le nom d'une catégorie) ; les 24 autres itèrent des ensembles
+  uniques par construction (clés d'objet, `Set`, énumérations, mois `YYYY-MM`). La classe était déjà
+  comprise ici : c'était le reliquat.
+- **Garde comportementale, pas de scan statique** : aucun outil ne peut juger l'unicité d'une liste
+  en général. Le test rend l'écran en écoutant `console.error` et exige zéro avertissement « same
+  key », **plus un cas d'anti-vacuité** qui prouve que l'espion voit réellement une clé dupliquée —
+  sans lui, un espion mal câblé rendrait la garde verte quoi qu'il arrive.
+
 ## 2026-09-02 — Lot 81 : un écran affirmait une cause que son hook ne peut pas connaître
 
 - [x] **`[FUTURE-HISTORY-EMPTY-CAUSE]`** — 2026-09-02, débloqué par le lot 80. L'état vide du graphe

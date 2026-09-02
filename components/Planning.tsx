@@ -303,7 +303,14 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                             <button onClick={() => changeMonth(1)} aria-label="Mois suivant" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-ink-300 focus-ring">▶</button>
                         </div>
                         <div className="grid grid-cols-7 gap-1">
-                            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => <div key={d} className="text-center text-ink-400 text-tiny font-bold uppercase pb-1">{d}</div>)}
+                            {/* [PLANNING-CALENDAR-KEY-DOUBLON] La clé est le nom COMPLET, pas la lettre
+                                affichée : `['L','M','M',…]` en portait deux fois `M` (mardi/mercredi),
+                                donc deux clés React identiques et un avertissement à CHAQUE rendu de cet
+                                écran — du bruit permanent qui rend les vrais avertissements de clé
+                                invisibles. Une clé se dérive de ce qui IDENTIFIE l'élément, jamais de ce
+                                qu'on en affiche : l'abréviation est un rendu, le jour est l'identité. */}
+                            {([['lundi', 'L'], ['mardi', 'M'], ['mercredi', 'M'], ['jeudi', 'J'], ['vendredi', 'V'], ['samedi', 'S'], ['dimanche', 'D']] as const)
+                                .map(([jour, lettre]) => <div key={jour} className="text-center text-ink-400 text-tiny font-bold uppercase pb-1">{lettre}</div>)}
                             {calendarDays.map((date, idx) => {
                                 if (!date) return <div key={idx} />;
                                 const day = date.getDate();

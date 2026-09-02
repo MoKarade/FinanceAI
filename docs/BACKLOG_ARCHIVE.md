@@ -10,6 +10,45 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 86 : la source unique que le lot 84 avait déclarée inatteignable
+
+- [~] **`[FISC-LATENT-PENSION-CREDIT]`** — moitié **rente privée (DB)** livrée le 2026-09-02
+  (PR #816). La moitié FERR reste ouverte, **bloquée par une question d'unité** (voir `BACKLOG.md`).
+- **Le vrai livrable est l'EXTRACTION.** `eligiblePensionFor` était une CLOSURE de `taxDecember` —
+  c'est pour ça que le lot 84 avait ROUTÉ cette part au lieu de la livrer
+  (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`). Elle devient `services/projection/pensionCredit.ts`,
+  fonction PURE à entrées explicites, consommée par le dépôt de décembre ET par l'impôt latent. Les
+  126 tests de `taxDecember` restent verts : la délégation est à comportement identique.
+- ⚠️ **Le ticket annonçait « 280 $ de plus par déclarant » ; le SIGNE dépend du revenu.** Mesuré
+  (retraité seul, REER 400 k$, non-enr. 200 k$ dont 120 k$ d'ACB) : revenu de base 12 k$ ou 24 k$ →
+  **−250,50 $ de dette latente** (l'impôt de base est déjà nul, le crédit fédéral y est PERDU et ne
+  sert qu'à la liquidation) ; revenu de base 40 k$ ou 70 k$ → **+280 $** à 2 000 $ d'assiette,
+  **+428 $** dès 3 058 $ (le montant québécois de la ligne 361, lui, est testé au revenu : il survit
+  sur la base et est écrasé par la liquidation). Les tests assertent les deux SIGNES, jamais les
+  montants.
+- **Effet moteur, personas** : **un seul bouge**, `pre-retraite-riche` — dernier point −30 734 →
+  −30 025 $ (+709), point à 75 % de l'horizon −188 913 → −189 793 $ (−880), cumul sur tous les mois
+  −249 178 $. Les six autres sont à **0,00 $**, et c'est EXPLIQUÉ, pas subi : leurs fixtures portent
+  `dbPensionMonthly: 0` (ou pas de champ du tout) — sans rente d'employeur, il n'y a pas d'assiette.
+  `pre-retraite-riche` est le seul à 2 200 $/mois.
+- ⚠️ **La moitié FERR est absente pour une raison d'UNITÉ, mesurable** : la seule grandeur
+  disponible est `accRetraitsReerYear`, un accumulateur ANNÉE-À-DATE, alors que l'impôt latent se
+  calcule chaque mois — le brancher rendrait une valeur d'écran dépendante du mois de lancement
+  (210 997 $ d'amplitude mesurés sur le voisin par `[ESTATE-NPV-07]`). Et sa portée réelle est
+  étroite : le plafond est saturé dès 3 058 $/an, soit une rente DB de 255 $/mois.
+- **Source unique aussi côté appelant** : l'effondrement solo de la rente DB par déclarant
+  (`survivorMode || divorced` ⇒ une seule tête) était écrit dans le seul dépôt de décembre ; hissé en
+  `dbPerUserMonthly()` et consommé par les deux — même geste qu'au lot 84 avec `ageSpouseProjete`.
+- `ImpotLatent` est une valeur d'AFFICHAGE : vérifié par grep de ses consommateurs (graphe, infobulle,
+  classification `dailyLedger`) — aucune fonction objectif ne la trie, contrairement au lot 85.
+- ⚠️ **Le ratchet fiscal a exigé l'ajout du nouveau module au périmètre** : extraire la règle a fait
+  passer le compte de littéraux `65` de `taxDecember.ts` de 4 à 3, et l'inventaire a rougi. Corriger
+  le compte ne suffisait pas — deux gates d'âge légaux venaient de déménager dans un fichier NON
+  scanné. `pensionCredit.ts` entre donc au périmètre (il n'a aucun littéral : constantes nommées).
+- **13 gardes neuves** (`tests/services/latentTaxPensionCredit.test.ts`), quatre perturbations
+  séparées : gate DB 65→60 → 2 rouges · gate FERR 72→65 → 1 rouge · assiette non déflatée → 1 rouge ·
+  assiette non transmise → 6 rouges.
+
 ## 2026-09-02 — Lot 85 : le refus est une livraison, quand il est MESURÉ
 
 - [~] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** — bande **SUCCESSORALE** de `estateCalculation`

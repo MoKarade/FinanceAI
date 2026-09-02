@@ -120,7 +120,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
 
     // ── services/projection/taxDecember.ts ───────────────────────────────────────────────────
     { file: 'services/projection/taxDecember.ts', value: '65', family: 'fiscal',
-      reason: '[≠4] QUATRE occurrences, trois dispositions distinctes. Gate de `computeOasClawback` — âge d’ouverture de la PSV. Admissibilité au crédit en raison de l’âge, à DEUX sites : `mkActiveAgeOpts` (§4) et le `mk` d’`incrementalBandTax` (bandes incrémentales §2 gains / §3 dividendes, [FISC-TAXDEC-INCR]). Gate `dbRealUser` du revenu de pension admissible / fractionnement (§4 et §6). ⚠️ Et il n’y a AUCUN « pivot RRQ » dans ce fichier : cette mention de ma première raison était fausse.' },
+      reason: '[≠3] TROIS occurrences, deux dispositions distinctes. Gate de `computeOasClawback` — âge d’ouverture de la PSV. Admissibilité au crédit en raison de l’âge, à DEUX sites : `mkActiveAgeOpts` (§4) et le `mk` d’`incrementalBandTax` (bandes incrémentales §2 gains / §3 dividendes, [FISC-TAXDEC-INCR]). ⚠️ La QUATRIÈME — le gate d’âge du revenu de pension ADMISSIBLE — a QUITTÉ ce fichier le 2026-09-02 (`[FISC-LATENT-PENSION-CREDIT]`) : la règle est extraite en source unique `services/projection/pensionCredit.ts`, ajoutée au périmètre scanné ci-dessous pour que la dette ne change pas de cachette, et elle y est écrite avec la CONSTANTE NOMMÉE `AGE_AMOUNT_FED_MIN_AGE` — donc plus aucun littéral à déclarer. ⚠️ Et il n’y a AUCUN « pivot RRQ » dans ce fichier : cette mention de ma première raison était fausse.' },
     { file: 'services/projection/taxDecember.ts', value: '0.50', family: 'design',
       reason: 'Fraction de vente FICTIVE servant à estimer la récolte de pertes — pas un taux d’inclusion.' },
     { file: 'services/projection/taxDecember.ts', value: '40', family: 'design',
@@ -588,6 +588,14 @@ export const FISCAL_MODULES = [
     'services/projection/taxApril.ts',
     'services/projection/taxJanuary.ts',
     'services/projection/latentTax.ts',
+    // ⚠️ AJOUTÉ le 2026-09-02 (`[FISC-LATENT-PENSION-CREDIT]`) — et c'est CETTE GARDE qui l'a exigé :
+    // en extrayant l'assiette du crédit pour revenu de retraite hors de `taxDecember`, le compte de
+    // littéraux `65` du fichier d'origine est passé de 4 à 3 et l'inventaire a rougi. Sans l'entrée
+    // ci-dessous, deux règles d'âge fiscales (65 ARC, 72 FERR) auraient quitté le périmètre scanné :
+    // exactement le mode d'échec que l'ajout de 2026-08-06 décrit plus bas — la dette qui change de
+    // cachette au lieu de se résorber. Le module n'a AUCUN littéral aujourd'hui (constantes nommées),
+    // donc aucune entrée d'inventaire ; le scanner est là pour le jour où quelqu'un en écrira un.
+    'services/projection/pensionCredit.ts',
     'services/projection/meltdownReer.ts',
     'services/projection/retirementIncome.ts',
     // ⚠️ AJOUTÉS le 2026-08-06 (finding F5 de l'audit d'ancrage) : déplacer une constante fiscale

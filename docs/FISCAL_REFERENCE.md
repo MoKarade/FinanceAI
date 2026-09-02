@@ -396,6 +396,22 @@ les retraits FERR/RIF et rentes REER. Sont **EXCLUS** : RRQ, PSV, SRG, et les re
 > pas modélisés ; la rente DB avant 65 ans (admissible au FÉDÉRAL 31400 sans âge minimum) est gateée
 > à 65 dans le modèle, comme pour le fractionnement (§9) — sens conservateur.
 > (Le revenu fractionné REÇU alimente bien le crédit du récipiendaire depuis **PV-3** — cf §6.)
+> **Source unique depuis `[FISC-LATENT-PENSION-CREDIT]` (lot 86, 2026-09-02)** : la règle vit
+> désormais dans `services/projection/pensionCredit.ts` (`eligiblePensionRealFor`, fonction PURE à
+> entrées explicites). Elle était une CLOSURE de `taxDecember`, donc inatteignable — c'est pour ça
+> que l'impôt latent avait été livré SANS crédit de pension au lot 84.
+> ⚠️ **L'impôt latent ne porte que la moitié DB de cette assiette**, et l'absence de la moitié FERR
+> est une question d'UNITÉ, pas un oubli : la seule grandeur dont il dispose est
+> `accRetraitsReerYear`, un accumulateur **année-à-date**, alors qu'il se calcule à chaque mois — la
+> brancher rendrait une valeur d'écran dépendante du mois de lancement de la simulation. Portée
+> mesurée de ce qui manque : **nulle dès 3 058 $/an d'assiette** (le plafond québécois, saturé par une
+> rente DB de 255 $/mois). Ticket `[FISC-LATENT-PENSION-CREDIT]`, réduit à cette moitié.
+> ⚠️ **Sens de l'effet sur une BANDE incrémentale** : les deux crédits tirent en sens opposés. Le
+> fédéral (2 000 $, non testé au revenu) s'annule entre la base et la liquidation — sauf quand
+> l'impôt de base est déjà nul, où il est perdu sur la base et ne sert qu'à la liquidation (mesuré :
+> **−250,50 $** de dette latente à 12-24 k$ de revenu de base). Le québécois (ligne 361, testé au
+> revenu) survit sur la base et est écrasé par la liquidation, donc la bande le facture (**+280 $** à
+> 2 000 $ d'assiette, **+428 $** dès 3 058 $, à 40-70 k$ de revenu de base).
 
 ---
 

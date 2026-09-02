@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 82 : une clé se dérive de ce qui IDENTIFIE
+> `[PLANNING-CALENDAR-KEY-DOUBLON]` — `['L','M','M',…]` avec `key={d}` ⇒ deux clés `M`, avertissement
+> React à chaque rendu. La clé devient le nom COMPLET du jour ; l'abréviation reste l'affichage.
+> - **Balayage publié** : 27 sites où la clé EST l'élément → 1 offender (celui-ci), 2 explicitement
+>   dédoublonnés avec leur commentaire, 24 uniques par construction. La classe était déjà comprise.
+> - Garde COMPORTEMENTALE (aucun scan statique ne juge l'unicité) : zéro avertissement « same key »
+>   au rendu, **plus** un cas d'anti-vacuité qui prouve que l'espion en voit une vraie.
+
 > ## 🟦 Session 2026-09-02 — Lot 81 : un écran affirmait une cause que son hook ne peut pas connaître
 > `[FUTURE-HISTORY-EMPTY-CAUSE]` — l'état vide du graphe « Évolution » disait « vérifie ta clé
 > Finnhub » alors que `usePortfolioHistory` ne fait AUCUN réseau (il dérive du store), et que sans

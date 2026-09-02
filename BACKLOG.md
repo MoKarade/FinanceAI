@@ -2217,13 +2217,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   citation de `docs/FISCAL_REFERENCE.md` : vérifier ce que la DOC dit d'un export avant de le retirer). Deux exports dupliqués détectés aussi (`resetAttachmentDriveMemos|_reset...`
   + `compareLifeScenarios|optimizeDrawdownOrder`).
 
-- [ ] **`[PLANNING-CALENDAR-KEY-DOUBLON]`** (XS, **découvert au lot 76, non corrigé — hors périmètre**)
-  — `components/Planning.tsx` rend l'en-tête du calendrier depuis `['L','M','M','J','V','S','D']` avec
-  `key={d}` : **deux clés `M`** (mardi/mercredi), donc un avertissement React à CHAQUE rendu, dans
-  chaque suite qui monte cet écran. Sans conséquence visible (liste statique, jamais réordonnée),
-  mais c'est du bruit permanent qui rend les vrais avertissements de clé invisibles.
-  **Correctif** : `key={i}` (ou un libellé complet). Vérifier au passage qu'aucune autre liste du
-  dépôt ne prend une valeur non unique pour clé.
 
 ---
 

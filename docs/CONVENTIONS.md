@@ -10461,6 +10461,39 @@ pousse désormais son propre détail au lieu de tomber dans ce repli).
 Corollaire de conduite : après avoir corrigé un message à sa source, **grep la phrase corrigée** —
 ses copies de repli vivent chez les lecteurs, et elles ne sont pas couvertes par le correctif amont.
 
+
+### Lot 82 (2026-09-02) — une clé se dérive de ce qui IDENTIFIE, pas de ce qu'on affiche
+
+`UNE-CLE-SE-DERIVE-DE-CE-QUI-IDENTIFIE-PAS-DE-CE-QU-ON-AFFICHE`
+
+`['L','M','M','J','V','S','D'].map(d => <div key={d}>)` : deux clés `M` (mardi, mercredi), donc un
+avertissement React à chaque rendu de l'écran. Le défaut est minuscule et la leçon ne l'est pas : la
+lettre est un **rendu**, le jour est l'**identité**. Prendre la première pour la seconde marche tant
+que l'abréviation est injective — c'est-à-dire par accident.
+
+Le ticket proposait `key={i}`. Correct ici (liste statique, jamais réordonnée) et faux le jour où la
+liste devient dynamique : un index n'identifie rien, il localise. Le nom complet, lui, reste juste
+dans les deux mondes.
+
+⚠️ **Un avertissement PERMANENT est un avertissement mort.** Aucune conséquence visible ici — mais il
+criait dans chaque suite qui monte cet écran, donc plus personne ne lisait les avertissements de clé,
+y compris le jour où l'un d'eux désignerait une vraie liste dynamique. Le coût d'un bruit constant
+n'est pas le bruit : c'est la surdité qu'il installe.
+
+⚠️ **Le balayage demandé se publie, même quand il ne trouve presque rien.** 27 sites du dépôt
+utilisent l'élément lui-même comme clé ; un seul était fautif. Deux autres sont explicitement
+dédoublonnés **avec le commentaire qui dit pourquoi** (« un compte cash peut porter le nom d'une
+catégorie »), c'est-à-dire que la classe était déjà comprise ici et que celui-ci en était le
+reliquat. Ce résultat vaut d'être écrit : sans lui, le prochain ticket de la même famille repartirait
+de zéro.
+
+⚠️ **Garde COMPORTEMENTALE, pas scan statique** : aucun outil ne peut juger en général l'unicité
+d'une liste (elle dépend des données). Le test rend l'écran en écoutant `console.error` et exige zéro
+avertissement « same key ». **Avec son anti-vacuité** : un second cas rend délibérément une liste
+`['A','B','B']` et exige que l'espion la voie — sans lui, un espion mal câblé, ou une version de
+React qui cesserait d'avertir, rendrait la garde verte quoi qu'il arrive. Toute garde qui repose sur
+un avertissement d'une bibliothèque doit prouver que l'avertissement existe encore.
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

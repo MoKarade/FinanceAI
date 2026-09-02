@@ -8,9 +8,13 @@ import type { ApiKeys, ConflictSideCounts } from './syncTypes';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { hasMeaningfulData } from '../../utils/onboarding';
 import { sanitizePersistEnvelope } from '../personaSanitizer';
+import { STORAGE_KEYS } from '../../utils/storageKeys';
 
-// Doit correspondre au `name` du persist Zustand (store/useFinanceStore.ts) et à backupAuto.
-export const STORE_KEY = 'financeai-storage';
+// [STORAGE-KEYS-NO-REGISTRY] Le commentaire qui vivait ici — « doit correspondre au `name` du
+// persist Zustand et à backupAuto » — demandait de la VIGILANCE à trois endroits. C'est l'aveu
+// qu'il manquait une source unique : elle existe maintenant, et l'export reste pour les
+// appelants qui le connaissent sous ce nom.
+export const STORE_KEY = STORAGE_KEYS.persistStore;
 
 /** Lit les clés API courantes depuis le store (vide si indispo). Sync v2 (V2-C). */
 function currentApiKeys(): ApiKeys {

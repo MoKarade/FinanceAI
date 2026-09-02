@@ -49,6 +49,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 // import dynamique dans useAiChat). Le panneau latéral global est lazy (hors bundle de boot).
 import { AiChatProvider } from './components/aiChat/AiChatContext';
 import { Analytics } from '@vercel/analytics/react';
+import { STORAGE_KEYS } from './utils/storageKeys';
 const AiChatLauncher = lazyWithRetry(() => import('./components/aiChat/AiChatLauncher').then(m => ({ default: m.AiChatLauncher })), 'AiChatLauncher');
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
@@ -458,7 +459,7 @@ export const App: React.FC = () => {
 
     const [isFirstLaunch, setIsFirstLaunch] = useState<boolean>(() => {
         try {
-            const flag = localStorage.getItem('app_onboarding_done');
+            const flag = localStorage.getItem(STORAGE_KEYS.onboardingDone);
             // On n'accueille pas un utilisateur qui a déjà des données : après un restore Drive
             // (nouvel appareil / navigation privée), le flag local n'est pas posé mais les données
             // sont là → sans ce garde, l'onboarding « du début » réapparaissait (retour Marc). On
@@ -758,7 +759,7 @@ export const App: React.FC = () => {
             {isFirstLaunch && (
                 <Onboarding onComplete={(data) => {
                     setAppState({ ...data, lastUpdate: Date.now() });
-                    localStorage.setItem('app_onboarding_done', 'true');
+                    localStorage.setItem(STORAGE_KEYS.onboardingDone, 'true');
                     setIsFirstLaunch(false);
                     // G22-F4 — lance le tutoriel guidé juste après l'onboarding (1re fois).
                     setTimeout(() => startGuidedTour(), 700);

@@ -10016,3 +10016,45 @@ et à chaque fois la tentation était de retirer.
 présence de la phrase d'avertissement : celle-ci pourrait exister au-dessus d'une puce restée
 identique, et le défaut serait intact. Plus un contrôle que l'avertissement **n'apparaît pas** sur
 une réponse conforme, sinon il ne distinguerait plus rien.
+
+
+### Lot 72 (2026-09-02) — un commentaire qui réclame de la vigilance est une source unique manquante
+
+`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`
+
+`services/sync/syncSnapshot.ts` portait cette ligne :
+
+```ts
+// Doit correspondre au `name` du persist Zustand (store/useFinanceStore.ts) et à backupAuto.
+export const STORE_KEY = 'financeai-storage';
+```
+
+Le commentaire est juste, l'intention est bonne, et c'est précisément le problème : il dit qu'il
+existe une contrainte que **rien ne fait respecter**. `financeai-storage` — la clé qui porte *toutes*
+les données de l'utilisateur, celle au centre de l'incident du jour — était écrite en **quatre**
+endroits. Un renommage appliqué à trois sur quatre ouvre l'app **vide**, sans rien de rouge nulle
+part : exactement le mode de panne que la session venait de vivre.
+
+⚠️ **Le critère de regroupement n'est pas le nombre.** Le ticket comptait « 40 clés dans ~20
+fichiers » (mesuré : 34 dans 8) et demandait de toutes les centraliser. Mais une clé écrite à **un
+seul** endroit n'a pas le défaut : elle ne peut pas diverger d'elle-même. Les regrouper toutes
+ajouterait un import à des fichiers qui n'en ont pas besoin, pour un tableau plus gros et pas plus
+sûr — et une règle bruyante s'ignore. Ce qui est déplacé, c'est ce qui est **répété** : cinq clés.
+
+⚠️ **Le ticket se trompait aussi sur le remède.** Il demandait de « centraliser les 3 `DISMISS_KEY`
+dupliqués ». Ils ne sont pas dupliqués : trois composants déclarent une constante du même **nom**
+portant trois valeurs **différentes** (`statementReminderDismissedMonth`, `celiNudgeDismissedAt`,
+`backupReminderDismissedAt`). Les centraliser les aurait mises en collision — c'est-à-dire aurait
+créé le défaut que le registre existe pour empêcher. Des homonymes ne sont pas des doublons, et la
+distinction ne se voit qu'en lisant les valeurs.
+
+⚠️ **Une duplication irréductible se teste, elle ne se documente pas.** `public/ga-init.js` est un
+fichier statique chargé *avant* le bundle, pour rétablir le consentement d'une session précédente. Il
+ne peut rien importer : la copie de la clé y est inévitable. Elle était « garantie » par un
+commentaire (« la valeur DOIT rester synchronisée avec public/ga-init.js ») ; elle l'est maintenant
+par une assertion. Quand la duplication ne peut pas être supprimée, ce qui reste faisable est de la
+rendre **bruyante en cas de dérive**.
+
+⚠️ Note d'outillage : la garde lit la source **décommentée**. `financeai-storage` est nommée dans une
+vingtaine de commentaires qui expliquent la persistance — lue brute, la garde crierait sur de la
+prose, et c'est justement la prose qu'on veut laisser libre de raconter l'histoire.

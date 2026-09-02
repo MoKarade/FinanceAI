@@ -26,10 +26,11 @@ import { sanitizePersistEnvelope } from './personaSanitizer';
 let _cleartextBackupWarned = false;
 
 const DB_NAME = 'financeai-backups';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 const STORE_NAME = 'backups';
 const DB_VERSION = 1;
 const MAX_DAILY_BACKUPS = 7;
-const STORE_KEY_LOCALSTORAGE = 'financeai-storage';
+const STORE_KEY_LOCALSTORAGE = STORAGE_KEYS.persistStore;
 
 export interface BackupEntry {
     id: string;

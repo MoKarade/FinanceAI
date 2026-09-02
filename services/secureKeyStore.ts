@@ -40,6 +40,7 @@
  */
 
 import { logError } from './errorLogger';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export interface PersistedApiKeys {
     anthropic: string;
@@ -55,7 +56,7 @@ const DB_NAME = 'financeai-secure';
 const DB_VERSION = 1;
 const STORE_NAME = 'crypto-keys';
 const DEVICE_KEY_ID = 'apiKeysDeviceKey';
-const LS_BLOB_KEY = 'app_api_keys_enc';
+const LS_BLOB_KEY = STORAGE_KEYS.apiKeysEncrypted;
 const IV_BYTES = 12;
 const AES_KEY_BITS = 256;
 

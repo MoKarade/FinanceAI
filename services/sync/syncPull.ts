@@ -15,6 +15,7 @@ import { saveApiKeys } from '../secureKeyStore';
 // [PERF-BUNDLE] import STATIQUE : backupAuto est déjà dans le chunk de BOOT (importé statiquement par
 // App.tsx via initAutoBackup) → le dynamic import ne créait aucun chunk séparé (INEFFECTIVE_DYNAMIC_IMPORT).
 import { createBackupNow } from '../backupAuto';
+import { STORAGE_KEYS } from '../../utils/storageKeys';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { sanitizePersistEnvelope } from '../personaSanitizer';
 import { logError } from '../errorLogger';
@@ -88,7 +89,7 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
     // qui ÉCRASAIT les profils (config.users) ET les clés API restaurés par des valeurs vides du
     // formulaire — d'où « âge retraite OK mais profils/clés absents » (bug Marc 2026-05-29).
     try {
-        localStorage.setItem('app_onboarding_done', 'true');
+        localStorage.setItem(STORAGE_KEYS.onboardingDone, 'true');
     } catch {
         /* best-effort */
     }

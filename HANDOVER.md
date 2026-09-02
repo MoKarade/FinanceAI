@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 72 : ce n'est pas le NOMBRE de clés, c'est leur RÉPÉTITION
+> `[STORAGE-KEYS-NO-REGISTRY]` — `utils/storageKeys.ts` (module PUR, zéro import : il part dans le
+> bundle de BOOT) pour les **cinq** clés écrites à plusieurs endroits. Garde :
+> `tests/guards/storageKeysRegistreGuard.test.ts`.
+> - ⚠️ **Ticket faux DEUX fois** : 34 clés dans **8** fichiers (pas « 40 dans ~20 ») ; et les trois
+>   `DISMISS_KEY` ne sont pas des doublons mais des HOMONYMES à trois valeurs différentes — « les
+>   centraliser » les aurait mises en COLLISION, soit le défaut même que le registre empêche.
+> - **Le vrai risque** : `financeai-storage` (toutes les données de l'utilisateur, la clé de
+>   l'incident du jour) était écrite en QUATRE endroits, dont un avec un commentaire demandant de la
+>   synchroniser à la main. **Un commentaire qui réclame de la vigilance est l'aveu qu'il manque une
+>   source unique.**
+> - **Les clés écrites à UN seul endroit ne sont PAS déplacées** : elles n'ont pas le défaut, et les
+>   y forcer ajouterait un import à des fichiers qui n'en ont pas besoin — du bruit qui rend la règle
+>   plus facile à ignorer.
+> - ⚠️ **Copie irréductible enfin VÉRIFIÉE** : `public/ga-init.js` est chargé avant le bundle et ne
+>   peut rien importer. La synchronisation reposait sur un commentaire ; elle repose sur un test.
+
 > ## 🟦 Session 2026-09-02 — Lot 71 : le correctif prescrit aurait annulé une décision antérieure
 > `[AI-BUDGETMODAL-RAW-FALLBACK]` — le texte brut du modèle s'affichait dans les MÊMES puces qu'une
 > recommandation validée par `RecosSchema`. Union discriminée `validee` / `brute` + présentation

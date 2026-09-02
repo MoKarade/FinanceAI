@@ -13,6 +13,7 @@ import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
 import { clearAttachmentCache } from '../services/aiChat/attachments';
 import { clearHistorySyncReport } from '../services/history/syncDiagnostics';
 import { DEFAULT_AI_CHAT_MODEL } from '../services/aiChat/models';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -260,11 +261,11 @@ export const getInitialStateWithMigration = (): AppState => {
     // l'ère persist (aucune perte : financeai-storage contient toutes les données
     // persistables ; les clés API vivent dans secureKeyStore).
     try {
-        if (localStorage.getItem('financeai-storage') !== null) return defaultState;
+        if (localStorage.getItem(STORAGE_KEYS.persistStore) !== null) return defaultState;
     } catch { /* localStorage inaccessible : on tente la lecture legacy quand même */ }
 
     try {
-        const savedApiKeysStr = localStorage.getItem('app_api_keys');
+        const savedApiKeysStr = localStorage.getItem(STORAGE_KEYS.apiKeysLegacy);
         // Phase 4 A5: Gemini retiré — pas de migration depuis l'ancienne clé.
         // L'utilisateur doit fournir une clé Anthropic Claude.
         let safeApiKeys: { anthropic: string; finnhub: string } = {
@@ -290,7 +291,7 @@ export const getInitialStateWithMigration = (): AppState => {
                     finnhub: parsed.finnhub || '',
                 };
             } catch { /* parse error, ignorer */ }
-            try { localStorage.removeItem('app_api_keys'); } catch { /* quota / privacy */ }
+            try { localStorage.removeItem(STORAGE_KEYS.apiKeysLegacy); } catch { /* quota / privacy */ }
         }
 
         const savedTransactions = localStorage.getItem('cached_transactions');
@@ -388,7 +389,7 @@ export const getInitialStateWithMigration = (): AppState => {
                 const key = localStorage.key(i);
                 // On exclut le blob de clés chiffrées du dump de crash (sécurité H1) :
                 // pas besoin de l'élargir à une 2e clef localStorage.
-                if (key && key !== 'app_api_keys_enc' && key !== 'app_api_keys' && watchedPrefixes.some(p => key.startsWith(p))) {
+                if (key && key !== STORAGE_KEYS.apiKeysEncrypted && key !== STORAGE_KEYS.apiKeysLegacy && watchedPrefixes.some(p => key.startsWith(p))) {
                     corruptedDump[key] = localStorage.getItem(key);
                 }
             }
@@ -694,7 +695,7 @@ export const useFinanceStore = create<FinanceState>()(
             },
         }),
         {
-            name: 'financeai-storage',
+            name: STORAGE_KEYS.persistStore,
             storage: createJSONStorage(() => quotaStorage),
             // Schema versioning: incrémenter à chaque changement non-rétrocompatible
             // de la forme du state, et ajouter une étape dans `migrate`.

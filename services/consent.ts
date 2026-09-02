@@ -12,8 +12,9 @@
 // localStorage ci-dessous. ga-init lit `'granted'` au boot pour rétablir le
 // consentement d'une session précédente ; ce module l'écrit au clic de l'UI.
 // La valeur DOIT rester synchronisée avec public/ga-init.js.
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
-export const CONSENT_STORAGE_KEY = 'financeai:analyticsConsent:v1';
+export const CONSENT_STORAGE_KEY = STORAGE_KEYS.analyticsConsent;
 
 export type ConsentChoice = 'granted' | 'denied';
 

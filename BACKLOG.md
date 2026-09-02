@@ -2192,12 +2192,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   manuel 6 fichiers sans garantie exhaustivité. **Correctif** : `utils/chartColors.ts` exportant
   teintes de séries (mappées aux tokens Tailwind existants), importé par les 6 fichiers.
 
-- [ ] **`[STORAGE-KEYS-NO-REGISTRY]`** (S) — **40 clés localStorage** en chaînes littérales à travers
-  **~20 fichiers**. 3 composants définissent chacun leur propre `DISMISS_KEY` (exportés mais unused).
-  Aucune table documentant qui possède quoi → futur renommage/purge risqué (collision silencieuse).
-  **Correctif** : `utils/storageKeys.ts` avec `const STORAGE_KEYS = {...} as const` documentant owner
-  + but, centraliser les 3 `DISMISS_KEY` dupliqués.
-
 - [ ] **`[DEAD-CALCNETFROMGROSS]`** (S) — `calculateNetFromGross` (`utils/tax.ts:852`) mort (grep :
   zéro appelant). Fonction jumelle `calculateGrossFromNet` active. Commentaire voisin y fait référence
   comme si active → lecture trompeuse. **Correctif** : supprimer, ou ajouter test dédié si futur UI

@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 90 : le backlog annonçait plus du double de ce qu'il contenait
+> `[PM-BACKLOG-ENTETES-PERIMES]` — aucun code de prod touché : c'est l'outil de DÉCISION qui mentait.
+> - **MESURÉ** : cinq en-têtes promettaient **50 items** pour **21** réels (Moteur & fiscal 8+7+7 →
+>   10 · A11y 5 → 1 · Performance 4 → 1 · IA 7 → 2 · Dette technique 12 → 7).
+> - Deux en-têtes affirmaient du FAUX au présent : le « point chaud `realEstateMonth` : QUATRE
+>   défauts money-critical » (les quatre sont `[x]` en archive, vérifiés un par un) et
+>   « Documentation — la doc a décroché du code » (vide depuis #674).
+> - ⚠️ Correctif = **supprimer les comptes**, pas les re-compter : leur source unique est la liste.
+> - ⚠️ **2ᵉ passe manuelle sur la même classe** (le lot 84 avait corrigé 4 en-têtes) ⇒ GARDE cette
+>   fois, sans exemption. Le seuil « je corrige → j'automatise » est la 2ᵉ occurrence.
+
 > ## 🟦 Session 2026-09-02 — Lot 89 : une sensibilité identique pour tous n'est pas une sensibilité
 > `[BUDGET-SENSIBILITE-FORMULE-5PCT]` CLOS — tuile SUPPRIMÉE des DEUX surfaces (écran + contexte IA).
 > - **Mesuré** : la formule locale ne dépendait que de l'horizon → **145 648 $ pour les 7 personas**.

@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (L'impôt dormant tient compte de ta rente d'employeur)
+
+- **Corrigé** : la courbe « Impôt Latent » ignorait le crédit d'impôt pour revenu de retraite. Elle
+  en tient désormais compte pour la **rente d'employeur** (RPA / prestations déterminées).
+- **Effet mesuré** : il **change de signe selon ton revenu**. À revenu modeste (12-24 k$/an), la
+  dette dormante affichée baisse de ~250 $ ; à revenu moyen ou élevé (40-70 k$/an), elle monte de
+  280 à 428 $. Ce n'est pas un réglage : le crédit fédéral n'est pas récupéré au revenu, le
+  québécois l'est — les deux ne jouent donc pas dans le même sens.
+- **Sans rente d'employeur, rien ne change** : sur les sept profils de test, un seul bouge (celui qui
+  touche 2 200 $/mois de rente), les six autres restent identiques au dollar près.
+- **Une moitié reste à faire, et pour une raison précise** : les retraits FERR (dès 72 ans) font
+  aussi partie de l'assiette, mais l'app n'en connaît, à ce point du calcul, qu'un cumul depuis
+  janvier — l'utiliser rendrait le chiffre dépendant du mois où tu lances la simulation. Le plafond
+  du crédit étant atteint dès 3 058 $/an, ça ne change rien dès que tu as une vraie rente d'employeur.
+
+---
+
 ## [unreleased] — 2026-09-02 (L'impôt payé au décès tient compte de ton âge — et une moitié du correctif a été refusée)
 
 - **Corrigé** : l'impôt calculé au décès sur la liquidation (REER, gains en capital) ignorait les

@@ -1026,6 +1026,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // donc l'espace REER de l'année suivante, alors que décembre déclarait `grossAnna = 0`.
         // `tryDivorce` est donc désormais évalué JUSTE AU-DESSUS, avant les revenus.
         const soloHousehold = survivorMode || divorced;
+        // [FISC-LATENT-PENSION-CREDIT] Rente DB mensuelle PAR DÉCLARANT, effondrée sur une seule
+        // tête après un décès ou un divorce — exactement comme `ages` et `taxFilers`. Source unique
+        // consommée par le dépôt de décembre ET par l'impôt latent.
+        const dbPerUserMonthly = (): number[] => soloHousehold
+            ? [incomeRetirementDbPerUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0)]
+            : incomeRetirementDbPerUser;
 
         // Nombre de CONTRIBUABLES du ménage — ≠ `activeUsersCount`, qui reste la taille NOMINALE et
         // sert de diviseur d'agrégats. Hissé ici (il vivait dans le seul bloc de décembre) parce
@@ -1312,9 +1318,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
                     incomeRetirementPerUserMonthly: soloHousehold ? undefined : incomeRetirementPerUser,
                     // Phase 3 — composante DB mensuelle par conjoint (fractionnement 65+).
-                    incomeRetirementDbPerUserMonthly: soloHousehold
-                        ? [incomeRetirementDbPerUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0)]
-                        : incomeRetirementDbPerUser,
+                    // [FISC-LATENT-PENSION-CREDIT] Expression HISSÉE en `dbPerUserMonthly()` : elle
+                    // sert aussi à l'impôt latent, et deux écritures d'un même effondrement solo
+                    // divergeraient en silence (leçon du lot 84, où le même geste a supprimé un
+                    // littéral en double au lieu de le déclarer).
+                    incomeRetirementDbPerUserMonthly: dbPerUserMonthly(),
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
@@ -2254,6 +2262,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // déclarant de 65 ans et plus. Le tableau suit `taxFilers` : après un décès ou un
                   // divorce, il ne reste qu'une déclaration, donc qu'un âge.
                   ages: soloHousehold ? [age] : [age, ageSpouseProjete],
+                  // [FISC-LATENT-PENSION-CREDIT] L'assiette du crédit pour revenu de retraite, par
+                  // la MÊME source unique que le dépôt de décembre. Seule la moitié DB voyage : la
+                  // moitié FERR n'existe ici que sous forme d'accumulateur année-à-date, et la
+                  // brancher rendrait une valeur d'écran dépendante du mois de lancement (raison
+                  // détaillée et mesurée dans `latentTax.ts`).
+                  dbPensionPerUserMonthly: dbPerUserMonthly(),
                   reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
                 calculateFiscalReport,
             );

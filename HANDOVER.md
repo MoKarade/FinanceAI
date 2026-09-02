@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 86 : la source unique déclarée inatteignable ne l'était plus
+> `[FISC-LATENT-PENSION-CREDIT]` — moitié **rente DB** livrée ; moitié **FERR** routée avec sa raison.
+> - **Le vrai livrable est l'EXTRACTION** : `eligiblePensionFor` était une CLOSURE de `taxDecember`
+>   (le motif exact du routage au lot 84). Devenue `services/projection/pensionCredit.ts`, PURE,
+>   consommée par décembre ET par l'impôt latent. Les 126 tests de `taxDecember` restent verts.
+> - ⚠️ **Le ticket disait « +280 $ » ; le SIGNE dépend du revenu** : −250,50 $ à 12-24 k$ de base
+>   (impôt de base nul ⇒ crédit fédéral perdu, il ne sert qu'à la liquidation), +280 à +428 $ à
+>   40-70 k$ (le montant québécois est testé au revenu, lui). Les tests assertent les SIGNES.
+> - **Un seul persona bouge** (`pre-retraite-riche`, +709 $ au dernier point, −880 $ à 75 % de
+>   l'horizon) : les six autres portent `dbPensionMonthly: 0`. Absence EXPLIQUÉE, pas subie.
+> - ⚠️ **Moitié FERR bloquée par une UNITÉ** : seul `accRetraitsReerYear` (année-à-date) est
+>   disponible, or l'impôt latent se calcule chaque mois ⇒ dépendance au mois de lancement. Portée
+>   réelle étroite : le plafond est saturé dès 3 058 $/an (255 $/mois de rente DB).
+> - `ImpotLatent` est de l'AFFICHAGE (vérifié par grep) — aucune fonction objectif ne la trie.
+
 > ## 🟦 Session 2026-09-02 — Lot 85 : le refus est une livraison, quand il est MESURÉ
 > `[FISC-BANDES-FRERES-SANS-AGEOPTS]` — bande **SUCCESSORALE** de `estateCalculation` livrée ; bande
 > `facteurNetRentes` **ANNULÉE en cours de lot**, et c'est le vrai résultat.

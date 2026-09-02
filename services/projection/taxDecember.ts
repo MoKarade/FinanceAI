@@ -4,7 +4,8 @@
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
 import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
-import { NONREG_DIVIDEND_DISTRIBUTION_SHARE, RRIF_FIRST_WITHDRAWAL_AGE } from './helpers';
+import { NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './helpers';
+import { eligiblePensionRealFor } from './pensionCredit';
 
 /**
  * [ENG-TAXDEC-FLOOR-INDEX] Borne du solde d'impôt d'avril, en dollars d'AUJOURD'HUI (2026).
@@ -464,20 +465,16 @@ export function processDecemberTaxFiling(
         return Number.isFinite(v) ? ((v as number) * 12) / inflationFactor : 0;
     };
     const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / nAdults) / inflationFactor;
-    const eligiblePensionFor = (i: number): number => {
-        const a = ages[i];
-        if (a === undefined) return 0;
-        // ⚠️ [Audit 2026-08-06] `RRIF_FIRST_WITHDRAWAL_AGE` est ici DÉRIVÉ, pas coïncident :
-        // un retrait REER n'entre dans l'assiette du crédit pension qu'à partir du moment où
-        // le moteur le considère comme du FERR — c'est-à-dire exactement le gate de
-        // `taxJanuary`. Découpler les deux constantes accorderait le crédit (et le
-        // fractionnement) un an trop tôt : MESURÉ +6 508 $ sur 22 personas / 56.
-        // La règle stricte serait `max(65 ARC ; âge FERR du modèle)` ; le `max` est lié par
-        // 72 aujourd'hui et ne se dénouerait que si la conversion volontaire 65-71 était
-        // modélisée (limite déjà consignée FISCAL_REFERENCE §4).
-        return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0)
-            + (a >= RRIF_FIRST_WITHDRAWAL_AGE ? Math.max(0, reerRealUser(i)) : 0);
-    };
+    // [FISC-LATENT-PENSION-CREDIT] Le CORPS de cette règle vit désormais dans
+    // `./pensionCredit.ts` : il était une CLOSURE, donc inatteignable depuis l'impôt latent, qui a
+    // dû être livré sans crédit de pension au lot 84. Ce qui reste ici est le CÂBLAGE — quelles
+    // grandeurs de ce module nourrissent l'assiette —, et c'est bien ce qui doit y rester. Les
+    // gates d'âge et leur justification (65 ARC, 72 FERR dérivé) sont partis avec la règle.
+    // ⚠️ Les deux arguments sont désormais évalués AVANT le gate d'âge, alors que l'ancienne forme
+    // sortait tôt sur `a === undefined` : les deux accesseurs sont PURS et rendent 0 hors plage,
+    // donc le comportement est identique — ce que les tests de ce module vérifient déjà.
+    const eligiblePensionFor = (i: number): number =>
+        eligiblePensionRealFor(ages[i], dbRealUser(i), reerRealUser(i));
 
     // ---- 1. Impôt sur revenu salarial ou retraite ----
     if (!ctx.isRetired) {

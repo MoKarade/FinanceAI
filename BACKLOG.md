@@ -1321,15 +1321,20 @@
   L'état actuel est BORNÉ par un test qui doit MOURIR au moment du correctif couplé
   (`tests/services/estateAgeCredits.test.ts`, cas « INVENTAIRE DE DETTE »).
 
-- [ ] **`[FISC-LATENT-PENSION-CREDIT]`** (S, FAIBLE — sorti du lot 84, MESURÉ) — l'impôt latent
-  transmet désormais l'ÂGE mais pas `eligiblePensionIncome`. Écart mesuré : **280 $ de plus par
-  déclarant** (crédit fédéral pension plafonné à 2 000 $) — donc l'impôt latent reste très légèrement
-  sous-estimé. ⚠️ **Ne PAS y mettre les rentes publiques** (RRQ/PSV) : elles ne sont pas admissibles,
-  et c'est exactement le sur-crédit que le commentaire de `eligiblePensionFor` raconte avoir corrigé
-  (~250-680 $/an/personne). La bonne assiette est « rente DB dès 65 ans + retraits FERR dès 72 » —
-  **Correctif** : extraire `eligiblePensionFor` de `taxDecember` en fonction PURE à entrées
-  explicites, puis la faire consommer par les deux modules. C'est la vraie source unique ; aujourd'hui
-  c'est une closure, donc inatteignable d'ailleurs.
+- [ ] **`[FISC-LATENT-PENSION-CREDIT]`** (XS, FAIBLE — **moitié DB livrée le 2026-09-02, lot 86**) —
+  ⬜ **RESTE la seule moitié FERR** (retraits ≥ 72 ans dans l'assiette du crédit), et elle est
+  **BLOQUÉE par une question d'UNITÉ**, pas par un oubli : la seule grandeur disponible côté impôt
+  latent est `accRetraitsReerYear`, un accumulateur **année-à-date** remis à zéro chaque janvier.
+  L'impôt latent se calcule à CHAQUE mois — le nourrir d'un cumul à date rendrait une valeur d'écran
+  dépendante du MOIS CALENDRIER de lancement, le défaut exact que `[ESTATE-NPV-07]` a mesuré à
+  210 997 $ d'amplitude sur son voisin. **Correctif** : produire une grandeur ANNUALISÉE de retraits
+  FERR par déclarant (comme `incomeRetirementDbPerUserMonthly` l'est pour la rente privée), puis la
+  passer en 3ᵉ argument de `eligiblePensionRealFor`.
+  ⚠️ **Portée réelle, mesurée** : le plafond du crédit est atteint dès **3 058 $/an** d'assiette
+  (ligne 361 QC ; 2 000 $ au fédéral) — une rente DB de 255 $/mois le sature. La moitié manquante ne
+  change donc RIEN pour un ménage qui touche une vraie rente d'employeur ; elle ne vaut que pour un
+  ménage sans rente privée qui décaisse un FERR. L'état actuel est BORNÉ par un test qui doit mourir
+  avec la dette (`tests/services/latentTaxPensionCredit.test.ts`, cas « INVENTAIRE DE DETTE »).
 
 - [ ] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** (S, MOYEN — 2e relecture #676, MESURÉ) — un ACTIF de
   72-75 ans (`targetAge` saisissable jusqu'à 75) avec retraits REER (cascade shortfall, meltdown,

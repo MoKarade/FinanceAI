@@ -10589,6 +10589,60 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 86 (2026-09-02) — « inatteignable » est un constat qui se périme
+
+`UN-CONSTAT-D-INATTEIGNABILITE-SE-PERIME-DES-QU-ON-DECIDE-D-EXTRAIRE`
+
+Le lot 84 a ROUTÉ la part « crédit de pension » de l'impôt latent avec une raison exacte :
+`eligiblePensionFor` est une CLOSURE de `taxDecember`, donc inatteignable
+(`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`). Vrai — mais c'est un constat sur l'ÉTAT du code, pas sur
+sa nature. Le lot suivant l'a extrait en trois lignes. **Un « on ne peut pas » qui décrit une forme
+de code se relit comme « il faut d'abord changer la forme », jamais comme une impossibilité** ;
+c'est la variante constructive de `DOC-STALE-IMPOSSIBILITY`, où le même piège coûtait deux
+livraisons.
+
+⚠️ **Le ticket annonçait un montant ; c'est un SIGNE qui dépendait du revenu.** « 280 $ de plus par
+déclarant » est exact — pour un déclarant à revenu moyen. Mesuré sur quatre revenus de base
+(retraité seul, REER 400 k$, non-enr. 200 k$ dont 120 k$ d'ACB) : **−250,50 $ à 12 k$ et 24 k$**,
+**+280 $ à 40 k$ et 70 k$** (assiette ≥ 2 000 $), **+428 $** dès 3 058 $ d'assiette. Deux crédits
+tirent en sens OPPOSÉS dans une bande incrémentale : le fédéral (2 000 $, **non** testé au revenu)
+s'annule entre la base et la liquidation — sauf quand l'impôt de base est déjà nul, où il est PERDU
+sur la base et ne sert qu'à la liquidation ; le québécois (ligne 361, **testé** au revenu) survit sur
+la base et est écrasé par la liquidation, donc la bande le facture. **Devant un crédit, demander s'il
+est testé au revenu avant de prédire le sens de son effet sur une bande.**
+
+⚠️ **Une absence d'effet sur six personas sur sept s'EXPLIQUE avant d'être publiée.** Ici : leurs
+fixtures portent `dbPensionMonthly: 0` ou pas de champ du tout, donc aucune assiette. Un seul persona
+touche une rente d'employeur. C'est `« AUCUN GOLDEN N'A BOUGÉ » EST UN RÉSULTAT À EXPLIQUER` appliqué
+au moteur : l'explication (couverture de fixture) est une information, le silence n'en est pas une.
+
+⚠️ **La moitié non livrée l'est pour une question d'UNITÉ, et l'unité se lit dans le producteur.**
+L'assiette du crédit contient aussi les retraits FERR (≥ 72 ans), mais la seule grandeur disponible
+est `accRetraitsReerYear` — un accumulateur ANNÉE-À-DATE remis à zéro chaque janvier — alors que
+l'impôt latent se calcule à CHAQUE mois. La brancher rendrait une valeur d'écran dépendante du MOIS
+CALENDRIER de lancement : le défaut exact que `[ESTATE-NPV-07]` a mesuré à 210 997 $ d'amplitude sur
+le module voisin. **Avant de brancher une grandeur, demander à quelle CADENCE elle est produite et à
+quelle cadence son consommateur tourne** ; un cumul à date ne nourrit pas un calcul mensuel.
+Corollaire de cadrage : la portée de ce qui manque se mesure aussi — le plafond du crédit est saturé
+dès 3 058 $/an d'assiette, soit 255 $/mois de rente, donc la moitié absente ne change rien à quiconque
+touche une vraie rente d'employeur. Une dette dont on connaît la borne se route sans inquiétude.
+
+⚠️ **Extraire une règle fiscale, c'est la faire SORTIR du périmètre qui la surveillait.** Le ratchet
+a rougi tout seul : le compte de littéraux `65` de `taxDecember.ts` est passé de 4 à 3. La bonne
+réponse n'était pas de corriger le compte et de passer — c'était de comprendre que **deux gates
+d'âge légaux venaient de déménager dans un fichier NON scanné**, et d'ajouter le nouveau module au
+périmètre. C'est mot pour mot le mode d'échec que la liste documente déjà (« déplacer une constante
+fiscale vers un fichier non scanné la fait sortir du garde — la dette change de cachette au lieu de
+se résorber »), et il se déclenche même quand on extrait pour BIEN faire. Troisième fois de la série
+qu'un garde-fou qui rougit sur un changement légitime **pose la bonne question**.
+
+✅ **Et le geste « hisser plutôt que recopier » a resservi tel quel** : l'effondrement solo de la
+rente DB par déclarant (`survivorMode || divorced` ⇒ une seule tête) n'existait que dans le dépôt de
+décembre. Recopié à l'impôt latent, il aurait divergé au premier changement ; hissé en
+`dbPerUserMonthly()`, il est la même vérité pour les deux — exactement ce que le lot 84 avait fait
+avec `ageSpouseProjete`. Deux lots de suite, la bonne réponse à « j'ai besoin de l'expression du
+voisin » a été de la SORTIR, jamais de la copier.
+
 ### Lot 85 (2026-09-02) — la moitié REFUSÉE était le vrai résultat du lot
 
 `RENDRE-UN-CALCUL-PLUS-SENSIBLE-AU-REVENU-AMPLIFIE-L-ARTEFACT-QU-IL-CONTIENT-DEJA`

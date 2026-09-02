@@ -76,6 +76,57 @@ describe('[AI-FINNHUB-CAUSE-COLLAPSE] la chaîne de cours nomme sa cause', () =>
     });
 });
 
+describe('[MARKETDATA-SEARCH-CAUSE-COLLAPSE] la recherche distingue « rien trouvé » d’un ÉCHEC', () => {
+    beforeEach(() => { vi.resetModules(); });
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    async function chercher(reponse: () => Promise<Response>) {
+        const mod = await import('../../services/marketData');
+        mod.configureMarketDataProvider({ finnhubKey: CLE });
+        vi.stubGlobal('fetch', vi.fn(reponse));
+        const detaille = await mod.searchSymbolsDetaille('NVDA');
+        // Contrat HISTORIQUE inchangé : l'enveloppe rend toujours un tableau, jamais une exception.
+        const simple = await mod.searchSymbols('NVDA');
+        return { detaille, simple };
+    }
+
+    it('401 → échec AUTH, et l’enveloppe rend toujours []', async () => {
+        const { detaille, simple } = await chercher(REPONSES.auth);
+        expect(detaille.forme === 'echec' && detaille.echec.cause).toBe('AUTH');
+        expect(simple).toEqual([]);
+    });
+
+    it('429 → échec RATE_LIMIT', async () => {
+        const { detaille } = await chercher(REPONSES.quota);
+        expect(detaille.forme === 'echec' && detaille.echec.cause).toBe('RATE_LIMIT');
+    });
+
+    it('panne réseau → échec NETWORK', async () => {
+        const { detaille } = await chercher(REPONSES.reseau);
+        expect(detaille.forme === 'echec' && detaille.echec.cause).toBe('NETWORK');
+    });
+
+    it('aucun résultat n’est PAS un échec (c’est la distinction qui manquait)', async () => {
+        const { detaille } = await chercher(async () => new Response(
+            JSON.stringify({ count: 0, result: [] }), { status: 200, headers: { 'content-type': 'application/json' } },
+        ));
+        expect(detaille.forme).toBe('ok');
+        expect(detaille.forme === 'ok' && detaille.resultats).toEqual([]);
+    });
+
+    // ANTI-EFFONDREMENT : les quatre situations doivent rester distinguables. Prises une par une,
+    // les assertions ci-dessus resteraient vertes sous un mapping qui les reconvergerait.
+    it('les quatre situations restent DISTINGUABLES', async () => {
+        const vus: string[] = [];
+        for (const rep of [REPONSES.auth, REPONSES.quota, REPONSES.reseau,
+            async () => new Response(JSON.stringify({ count: 0, result: [] }), { status: 200, headers: { 'content-type': 'application/json' } })]) {
+            const { detaille } = await chercher(rep as () => Promise<Response>);
+            vus.push(detaille.forme === 'echec' ? `echec:${detaille.echec.cause}` : 'ok');
+        }
+        expect(new Set(vus).size).toBe(4);
+    });
+});
+
 describe('[AI-FINNHUB-CAUSE-COLLAPSE] chaque cause a SA phrase', () => {
     const CAUSES: MarketDataErrorCode[] = ['AUTH', 'RATE_LIMIT', 'NOT_FOUND', 'NETWORK', 'UNKNOWN'];
 

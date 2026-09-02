@@ -10283,3 +10283,63 @@ chronomètre ne l'est pas.
 
 Mesures : 2 écritures sans rapport → **2 rendus avant, 0 après** ; l'écriture qui change un prérequis
 → **1 rendu**, avant comme après.
+
+
+### Lot 78 (2026-09-02) — la garde a démasqué mon propre correctif décoratif
+
+`UN-CORRECTIF-POSE-A-L-ETAGE-OU-ON-A-VU-LE-SYMPTOME-PEUT-ETRE-INATTEIGNABLE`
+
+Trois lots plus tôt, `[AI-FINNHUB-CAUSE-COLLAPSE]` avait établi que la cause d'un échec de cours
+mourait dans la façade. En écrivant le ticket jumeau pour la RECHERCHE, j'ai recopié ce diagnostic :
+« `searchSymbols` fait `catch { return [] }` ». Vrai — et **au mauvais étage**. Le `catch` de la
+façade n'était jamais atteint, parce que `FinnhubProvider.searchSymbol` attrapait et rendait `[]`
+LUI-MÊME, un cran plus bas. Mon correctif de façade était donc exactement ce que le lot 75 venait de
+condamner : un `catch` décoratif sur un chemin mort.
+
+Ce qui l'a démasqué n'est pas une relecture, c'est **l'ordre de travail** : la garde comportementale
+sur le VRAI module (seul `fetch` simulé) a été écrite et lancée AVANT de supposer que le correctif
+marchait. Quatre rouges sur un correctif que je croyais posé. Une garde qui n'est lancée qu'après
+« ça devrait marcher » ne sert qu'à confirmer.
+
+Deux règles qui en sortent :
+
+1. **Le diagnostic d'un ticket jumeau se re-mesure sur SON code.** Deux surfaces du même symptôme
+   n'ont pas forcément la même profondeur de perte — `getQuote` propage jusqu'à la façade,
+   `getHistory` et `searchSymbol` détruisent la cause dans le provider. Recopier l'étage du ticket
+   voisin, c'est recopier une conclusion, pas une mesure (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`).
+2. **Corriger « au plus haut niveau qui compile » est le réflexe à surveiller.** L'étage se choisit
+   par la question « où l'information disparaît-elle ? », jamais par « où est-ce le plus commode
+   d'écrire un `catch` ? ».
+
+⚠️ Le contrat d'erreur reste DÉCIDÉ par l'appelant : le provider **propage** (comme ses voisins
+`getQuote`/`getProfile`), la façade **encode** (`ok` / `echec`), parce que l'unique consommateur est
+un effet de frappe débouncé sans `try/catch` — lever y ferait un rejet non capturé à chaque
+caractère. L'enveloppe `searchSymbols` garde son contrat historique au pouce près (toujours un
+tableau, jamais d'exception), et c'est asserté dans la garde.
+
+⚠️ Et la garde tient les DEUX sens : un échec nomme sa cause, « aucun résultat » n'affiche **rien**.
+Sans le second, afficher un message en permanence — donc du bruit à chaque frappe sans résultat —
+satisferait la moitié « échec ». Une absence de résultat n'est pas un échec, et le dire est la
+moitié du correctif.
+
+### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
+
+`UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`
+
+Après trois lots où le ticket se trompait, celui-ci était **exact au centième** : re-mesuré en
+composition alpha sur `surfaceHighlight`, fond 1,17 (annoncé ≈1,15), bordure 1,83 (≈1,8), texte 8,82
+et 10,86 (≈9–10). La série installe une attente de réfutation ; re-mesurer protège de la confiance
+aveugle dans les tickets, pas de la confiance aveugle dans ses propres attentes.
+
+Ce qui ne suit pas, c'est sa CONCLUSION. Il demandait d'étendre `check-contrast` pour imposer le
+seuil non-texte 3:1 (WCAG 1.4.11) à ces pastilles — or 1.4.11 vise l'information que la COULEUR SEULE
+porte, et ici l'état est écrit en toutes lettres dans la pastille (« Réel », « Projeté »,
+« ~ prix estimé »). La couleur ne porte rien de plus. Construire ce contrôle produirait un scanner
+qui crie sur du code conforme, c'est-à-dire un scanner qu'on apprend à ignorer
+(`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE` appliqué à un critère WCAG).
+
+Reste la phrase du ticket lui-même — « l'effet *saute aux yeux* est affaibli » — qui est un choix de
+DESIGN sur la seule pastille d'alerte, donc à trancher avec Marc. Et une vraie limite d'outillage,
+notée sans être élargie : `ctaContrast` écarte les fonds translucides et ne connaît que les tokens de
+`tailwind.config.js`, mais la composition alpha dépend du fond de l'ANCÊTRE, qu'un scan par ligne ne
+connaît pas (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).

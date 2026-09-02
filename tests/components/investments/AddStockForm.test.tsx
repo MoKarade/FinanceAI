@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AddStockForm } from '../../../components/investments/AddStockForm';
-import { getQuoteDetaille, searchSymbols, getActiveProviderName } from '../../../services/marketData';
+import { getQuoteDetaille, searchSymbolsDetaille, getActiveProviderName } from '../../../services/marketData';
 
 // Aucune dépendance réseau ne doit être requise pour le mode manuel.
 vi.mock('../../../services/marketData', () => ({
@@ -17,14 +17,14 @@ vi.mock('../../../services/marketData', () => ({
     getQuoteDetaille: vi.fn(async () => ({ forme: 'absent' })),
     getHistory: vi.fn(async () => []),
     getActiveProviderName: vi.fn(() => 'none'), // PH4-INV-1 : pas de clé → mode dégradé, pas d'autocomplétion
-    searchSymbols: vi.fn(async () => []),
+    searchSymbolsDetaille: vi.fn(async () => ({ forme: 'ok', resultats: [] })),
 }));
 
 // Défauts restaurés avant chaque test (les tests manuels exigent provider 'none').
 beforeEach(() => {
     vi.mocked(getActiveProviderName).mockReturnValue('none');
     vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' });
-    vi.mocked(searchSymbols).mockResolvedValue([]);
+    vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [] });
 });
 
 describe('AddStockForm — saisie 100% manuelle (sans Finnhub)', () => {
@@ -62,9 +62,9 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
     it('sélectionner un symbole sans cours Finnhub bascule en mode manuel pré-rempli + notice (pas d erreur sèche)', async () => {
         // Provider configuré (autocomplétion active), mais /quote ne price pas ce symbole (TSX hors free tier).
         vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
-        vi.mocked(searchSymbols).mockResolvedValue([
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [
             { symbol: 'SHOP.TO', description: 'Shopify Inc (TSX)', displaySymbol: 'SHOP.TO' },
-        ]);
+        ] });
         vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' }); // mismatch : proposé mais non cotable
 
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
@@ -85,9 +85,9 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         // Distinction money-UX : une panne réseau ≠ un symbole non cotable. On ne doit PAS masquer
         // une panne derrière « entre le prix à la main ».
         vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
-        vi.mocked(searchSymbols).mockResolvedValue([
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [
             { symbol: 'AAPL', description: 'Apple Inc', displaySymbol: 'AAPL' },
-        ]);
+        ] });
         vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'NETWORK', provider: 'finnhub' } });
 
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
@@ -129,11 +129,40 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         expect(absent).toMatch(/introuvable/i);
     });
 
+    // [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Une autocomplétion qui ne descend pas ne dit RIEN par
+    // elle-même : sans message, une clé refusée et un titre inexistant se ressemblent trait pour
+    // trait. La garde tient les DEUX sens — sans le second, afficher un message en permanence
+    // (donc du bruit à chaque frappe sans résultat) la satisferait.
+    it('un ÉCHEC de recherche nomme sa cause sous le champ', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'AUTH', provider: 'finnhub' } });
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+
+        expect(await screen.findByText(/Réglages/i)).toBeInTheDocument();
+    });
+
+    it('CONTRE-ÉPREUVE : « aucun résultat » n’affiche aucune cause', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [] });
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'zzzz' } });
+
+        // La région live existe DÉJÀ (montée en permanence — sinon la première annonce est perdue)…
+        const region = screen.getByRole('status');
+        expect(region).toBeInTheDocument();
+        // …et elle est VIDE : rien n'a échoué, il n'y a rien à dire.
+        await new Promise((r) => setTimeout(r, 350)); // au-delà du débounce de 300 ms
+        expect(region.textContent).toBe('');
+    });
+
     it('[RECH-ACTION-UX] Escape ferme le dropdown SANS fermer la modale (ni perdre la saisie)', async () => {
         vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
-        vi.mocked(searchSymbols).mockResolvedValue([
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [
             { symbol: 'AAPL', description: 'Apple Inc', displaySymbol: 'AAPL' },
-        ]);
+        ] });
         const onClose = vi.fn();
         render(<AddStockForm isOpen onClose={onClose} onAdd={vi.fn()} />);
         const input = screen.getByPlaceholderText(/Tape un nom/i);

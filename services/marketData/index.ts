@@ -106,6 +106,11 @@ export interface EchecMarche {
     readonly provider: string;
 }
 
+/** [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Résultat DISCRIMINÉ d'une recherche : voir `searchSymbolsDetaille`. */
+export type ResultatRecherche =
+    | { readonly forme: 'ok'; readonly resultats: SymbolSearchResult[] }
+    | { readonly forme: 'echec'; readonly echec: EchecMarche };
+
 /** [AI-FINNHUB-CAUSE-COLLAPSE] Résultat DISCRIMINÉ d'une demande de cours : voir `getQuoteDetaille`. */
 export type ResultatQuote =
     | { readonly forme: 'ok'; readonly quote: Quote }
@@ -282,12 +287,36 @@ export async function getProfile(symbol: string): Promise<AssetProfile | null> {
  * débounce côté UI borne le débit (free tier Finnhub 60 req/min).
  */
 export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
+    const r = await searchSymbolsDetaille(query);
+    return r.forme === 'ok' ? r.resultats : [];
+}
+
+/**
+ * [MARKETDATA-SEARCH-CAUSE-COLLAPSE] MÊME recherche, mais qui PUBLIE la cause d'un échec au lieu de
+ * la confondre avec « aucun résultat ». Mesuré avant ce lot : 401 (clé refusée), 429 (quota) et
+ * panne réseau rendaient tous `[]`, exactement comme une requête qui ne trouve rien — l'utilisateur
+ * voyait donc une autocomplétion muette, sans jamais pouvoir distinguer « ce titre n'existe pas »
+ * de « ta clé est refusée ». Même défaut que `[AI-FINNHUB-CAUSE-COLLAPSE]`, sur la voie voisine.
+ *
+ * ⚠️ Ce résultat ENCODE l'échec au lieu de LEVER, et c'est un choix, pas un réflexe : l'unique
+ * appelant est un effet de frappe débouncé, sans `try/catch` — lever transformerait une coupure
+ * réseau en rejet non capturé à chaque caractère tapé. Le contrat d'erreur se DÉCIDE d'après
+ * l'appelant (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`). Une erreur NON typée est encodée elle
+ * aussi, en `UNKNOWN` : `searchSymbols` avalait déjà TOUT, et son contrat ne bouge pas d'un pouce.
+ *
+ * `forme: 'ok'` avec une liste VIDE reste le cas nominal (requête trop courte, pas de provider
+ * configuré, ou aucun titre trouvé) : une absence de résultat n'est pas un échec.
+ */
+export async function searchSymbolsDetaille(query: string): Promise<ResultatRecherche> {
     const q = query.trim();
-    if (q.length < 1 || !activeProvider?.searchSymbol) return [];
+    if (q.length < 1 || !activeProvider?.searchSymbol) return { forme: 'ok', resultats: [] };
     try {
-        return await activeProvider.searchSymbol(q);
-    } catch {
-        return []; // le provider journalise déjà ; pas de remontée bloquante pour une autocomplétion
+        return { forme: 'ok', resultats: await activeProvider.searchSymbol(q) };
+    } catch (e) {
+        // Le provider journalise déjà ; ici on garde ce qu'il a CLASSÉ pour que l'écran puisse le dire.
+        return e instanceof MarketDataError
+            ? { forme: 'echec', echec: { cause: e.code, provider: e.provider } }
+            : { forme: 'echec', echec: { cause: 'UNKNOWN', provider: getActiveProviderName() } };
     }
 }
 

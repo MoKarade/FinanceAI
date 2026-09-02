@@ -176,9 +176,19 @@ describe('FinnhubProvider — searchSymbol (PH4-INV-1 autocomplétion)', () => {
         expect(await p.searchSymbol('zzz')).toEqual([]);
     });
 
-    it('erreur HTTP (429 rate limit) → [] (pas de crash)', async () => {
+    // [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Ce test AFFIRMAIT « erreur HTTP → [] (pas de crash) ». Il
+    // s'INVERSE ici plutôt que de disparaître, avec son histoire écrite dedans : ce `[]` n'était pas
+    // une protection, c'était la CAUSE qui mourait — une clé refusée devenait indiscernable d'un
+    // « aucun titre de ce nom », et l'autocomplétion restait muette sans jamais dire pourquoi.
+    // Le provider PROPAGE désormais, comme `getQuote`/`getProfile` juste au-dessus.
+    // ⚠️ La garantie que le test PROTÉGEAIT (« pas de crash chez l'appelant ») n'est pas perdue :
+    // elle a changé d'étage. La façade l'ENCODE — c'est asserté dans
+    // `tests/services/marketDataCauseQuote.test.ts` (`searchSymbols` rend toujours `[]`,
+    // `searchSymbolsDetaille` rend `forme: 'echec'` avec la cause). Sans cette phrase, l'inversion
+    // ressemblerait à un abandon de garantie.
+    it('erreur HTTP (429 rate limit) → PROPAGE la cause, elle ne devient plus []', async () => {
         mockFetch({}, 429);
-        expect(await p.searchSymbol('aapl')).toEqual([]);
+        await expect(p.searchSymbol('aapl')).rejects.toMatchObject({ code: 'RATE_LIMIT' });
     });
 });
 

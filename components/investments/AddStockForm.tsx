@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
-import { getQuoteDetaille, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
+import { getQuoteDetaille, getHistory, searchSymbolsDetaille, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
 import { messageEchecMarche } from '../../services/marketData/messageEchec';
 import { formatNumber } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
@@ -54,6 +54,10 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     // une clé Finnhub est configurée ; sinon l'utilisateur reste sur la saisie « À la main ».
     const [suggestions, setSuggestions] = useState<SymbolSearchResult[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    // [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Cause de l'échec de la DERNIÈRE recherche, ou '' quand tout
+    // va bien. Une autocomplétion qui ne descend pas ne dit rien par elle-même : sans ça, une clé
+    // refusée et un titre inexistant se ressemblent trait pour trait.
+    const [echecRecherche, setEchecRecherche] = useState('');
     const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchSeq = useRef(0); // anti-course : ne garde que la réponse de la dernière requête
     const hasProvider = getActiveProviderName() !== 'none';
@@ -80,13 +84,21 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         const q = symbol.trim();
         if (!hasProvider || validatedSymbol !== null || manualMode || q.length < 2) {
             setSuggestions([]);
+            setEchecRecherche(''); // plus de recherche en cours ⇒ plus de cause à annoncer
             return;
         }
         const seq = ++searchSeq.current;
         searchTimer.current = setTimeout(async () => {
-            const res = await searchSymbols(q);
+            const res = await searchSymbolsDetaille(q);
             if (seq !== searchSeq.current) return; // une frappe plus récente a pris le relais
-            setSuggestions(res.slice(0, 8));
+            if (res.forme === 'echec') {
+                // On garde les suggestions PRÉCÉDENTES : les effacer en plus de ne rien pouvoir
+                // proposer punirait deux fois une panne qui n'est pas celle de l'utilisateur.
+                setEchecRecherche(messageEchecMarche(res.echec.cause, res.echec.provider));
+                return;
+            }
+            setEchecRecherche('');
+            setSuggestions(res.resultats.slice(0, 8));
             setShowSuggestions(true);
         }, 300);
         return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
@@ -351,6 +363,15 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             </>
                         )}
                     </div>
+                    {/* [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Cause de l'échec de recherche. Le conteneur
+                        reste MONTÉ et c'est son TEXTE qu'on vide : une région live insérée au moment
+                        où elle doit parler rate la première annonce — la seule qui compte
+                        (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`). Ton DISCRET assumé : une
+                        autocomplétion qui échoue pendant la frappe ne doit pas crier comme une erreur
+                        de saisie, mais elle ne doit plus se taire non plus. */}
+                    <p role="status" aria-live="polite" className="mt-1 text-tiny text-ink-400 min-h-0">
+                        {echecRecherche}
+                    </p>
                     {/* PH4-INV-1 — dropdown d'autocomplétion (Finnhub symbol search). */}
                     {showSuggestions && suggestions.length > 0 && !validatedSymbol && !manualMode && (
                         <ul

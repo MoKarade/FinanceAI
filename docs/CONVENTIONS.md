@@ -10589,6 +10589,48 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 88 (2026-09-02) — une divergence rattrapée par un filet est une bombe à retardement
+
+`UNE-DIVERGENCE-ABSORBEE-EN-AVAL-EST-UNE-BOMBE-PAS-UNE-EQUIVALENCE`
+
+`taxDecember.ts` portait deux validations quasi-jumelles de la MÊME entrée
+(`accRetraitsReerYearByUser`), à quelques caractères près. Mesuré, elles rendaient des verdicts
+OPPOSÉS sur trois entrées : déclarant solo, total non fini, total négatif. Et pourtant le résultat
+final coïncidait à chaque fois — parce qu'un `Math.max(0, …)` ou un `safe()` plus loin rattrapait
+l'écart. **Ce n'est pas une équivalence, c'est un filet** : le jour où l'un des deux chemins gagne un
+consommateur qui n'a pas ce filet, la divergence devient un montant faux, et rien dans l'historique
+ne dira qu'elle existait depuis toujours. Devant deux copies « équivalentes en pratique », demander
+**par quoi** l'équivalence est obtenue : par la règle, ou par ce qui vient après ?
+
+⚠️ **Une garde peut être INERTE au point que rien ne puisse la faire rougir — et ça se prouve.** Le
+gate `activeUsersCount > 1` d'une des copies n'était observable sur aucune entrée : chez un
+déclarant seul, le repli `total / 1` vaut exactement l'unique part, et un tableau qui ne reconstitue
+pas le total est rejeté de toute façon par le contrôle de somme. La perturbation qui la remet en
+place ne rougit sur AUCUN test — et c'est le résultat, pas un échec du test. **Une perturbation
+muette qu'on a expliquée vaut une perturbation rouge** (`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`,
+appliqué cette fois à du code qu'on SUPPRIME). C'est aussi l'explication de la longévité de la
+divergence.
+
+⚠️ **Le cas qui atteint un clamp se CONSTRUIT ; il ne se rencontre pas.** Ma première anti-vacuité
+balayait des entrées sales en assertant « assiette ≥ 0 » — et ne voyait rien, parce que
+50 000 − 10 000 reste positif. Le seul chemin qui exerce `Math.max(0, part)` est un tableau dont la
+somme reconstitue le total tout en contenant une part négative (`[-10000, 10000]` pour un total de
+0) : l'attribution est alors ACCEPTÉE, et sans le clamp un déclarant se voit retirer 10 000 $ de
+revenu qu'il n'a jamais gagné. **Asserter la VALEUR, pas le signe** — un invariant de signe est
+souvent satisfait par une grandeur voisine.
+
+⚠️ **Un test qui rougit sur un lot qui ne touche pas ce qu'il défend mesurait une FORME.** « FRONTIÈRE
+65 ans pour la rente DB » lisait `calls.find(c => c.ageOpts !== undefined)` : il supposait que des
+options existent à 64 ans, ce qui était vrai de la fabrique d'alors et n'a rien à voir avec le fait
+qu'il défend (« sous 65 ans, la rente DB n'est pas dans l'assiette »). Re-fondé sur le fait — absente
+ou nulle, l'assiette créditée vaut 0 — avec l'anti-vacuité à 65 ans qui empêche un moteur muet de le
+satisfaire. Troisième occurrence de `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`.
+
+✅ **Et un refactor pur se PROUVE par la mesure, pas par la relecture** : bit-identique sur les sept
+personas (`finalNetWorth`, `totalTaxesPaid`, `estateNetWorth` au millionième), comparé au contenu de
+`HEAD` restauré depuis une copie — jamais par `git checkout`, jamais par `git stash` sur un correctif
+déjà commité (les deux pièges de la veille).
+
 ### Lot 87 (2026-09-02) — le défaut dominant du ticket était écrit en incise
 
 `UN-TICKET-TITRE-CE-QU-IL-A-VU-EN-DERNIER-PAS-CE-QUI-COUTE-LE-PLUS`

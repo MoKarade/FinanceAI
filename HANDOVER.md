@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 93 : le montant emprunté entre dans l'app
+> `[DEBT-MCP-ORIGINALBALANCE]` — ferme le trou que le lot 92 avait mesuré chez lui-même : la courbe
+> d'amortissement était livrée et **inatteignable**, faute d'un producteur d'`originalBalance`.
+> - Champ câblé dans `DebtPayload`, le schéma Zod d'`apply_debt` (bretelle) et `applyDocument`
+>   (ceinture — l'import PDF ne passe PAS par Zod). Bornes identiques à `balance`.
+> - Refus `originalBalance < balance` sur les valeurs **EFFECTIVES** (après fusion), jamais sur le
+>   payload seul : même leçon que la garde de dates du même fichier, re-payée sinon.
+> - **Garde d'ATTEIGNABILITÉ bout-en-bout** (payload MCP → dette écrite → supplément au passé non
+>   nul) + son contrôle négatif. C'est le test qui manquait au lot 92 : chaque moitié était testée
+>   chez elle, le trou entre les deux n'appartenait à personne.
+> - ⚠️ **`[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]` RÉFUTÉ et fermé** (ticket écrit par moi la
+>   veille). `DettesNonImmo` exclut l'hypothèque des BIENS, pas les dettes de `kind: 'mortgage'` ;
+>   `Debt` n'a aucun lien vers un bien. Ses DEUX correctifs proposés étaient des régressions
+>   money-critical. Mesure dans `BACKLOG.md`.
+> - ⚠️ Reste ouvert pour rendre le champ saisissable À LA MAIN : `[DEBT-UI-PAR-TYPE]` (DebtManager
+>   n'expose ni `kind` ni `originalBalance`). Aujourd'hui le chemin est l'extraction de contrat.
+
 > ## 🟦 Session 2026-09-02 — Lot 92 : la courbe du passé montre enfin la dette qui fond (2/2)
 > `[DEBT-AMORTIZATION-CABLAGE]` — ferme le chantier ouvert au lot 91. C'est CE lot qui change ce que
 > Marc voit. Delta ADDITIF dans `buildPastPrefix` + `dailyPastLedger`, jamais une resommation.

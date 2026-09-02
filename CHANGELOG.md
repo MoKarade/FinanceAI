@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Claude peut enfin lire le montant emprunté sur ton contrat)
+
+- **Ajouté** : l'assistant et l'import de document peuvent maintenant enregistrer le **montant
+  emprunté à l'origine** d'une dette. C'est le chiffre qui manquait pour que la courbe livrée juste
+  avant s'affiche : sans lui, ta dette restait figée dans le passé même si tout le calcul était prêt.
+- **Concrètement** : donne-lui le PDF de ton contrat de prêt, ou dis-lui « mon prêt auto, j'avais
+  emprunté 30 000 $ » — la partie passée du graphe montre alors ta dette qui fond, jusqu'à son solde
+  réel d'aujourd'hui.
+- **Il refuse plutôt que d'inventer.** Un montant emprunté inférieur à ce que tu dois encore décrit
+  une dette qui a GROSSI : ce n'est pas un remboursement, l'app le refuse en te disant lequel des
+  deux chiffres vérifier, au lieu d'écrire une courbe absurde. Le refus tient compte de ce qui est
+  déjà enregistré, pas seulement de ce que l'assistant vient de fournir.
+- **Et il ne devine jamais ce chiffre** : la consigne donnée au modèle lui interdit de l'estimer à
+  partir du solde, du taux ou de la mensualité. Un montant inventé produirait une courbe crédible et
+  fausse — pire que pas de courbe du tout.
+
+---
+
 ## [unreleased] — 2026-09-02 (Le passé de ta courbe montre enfin ta dette qui fond)
 
 - **Corrigé** : jusqu'ici, la partie PASSÉE du graphe Futur affichait chacune de tes dettes à son

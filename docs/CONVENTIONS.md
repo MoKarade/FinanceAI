@@ -10589,6 +10589,47 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 93 (2026-09-02) — le trou entre deux moitiés testées n'appartient à personne
+
+`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`
+
+Le lot 92 était vert de bout en bout : 37 gardes, neuf perturbations, gate complet, CI verte,
+déploiement `READY`. Et il ne changeait **rien** à l'écran, parce qu'aucun producteur n'écrivait
+`originalBalance`. Ce n'est pas un oubli de test : le service était testé chez lui, l'ingestion était
+testée chez elle, et le CHAÎNON entre les deux n'était le sujet d'aucun fichier. Un trou entre deux
+moitiés correctement testées n'a pas de propriétaire, donc personne ne le voit rougir.
+
+La parade est une garde qui **traverse** : partir de l'entrée la plus en amont que l'utilisateur
+touche réellement (ici le payload MCP), passer par l'écriture RÉELLE, et asserter la grandeur la plus
+en aval (ici le supplément de dette au passé) — sans reconstruire un seul maillon au passage. Si le
+test contient une expression qui ressemble au code testé, il teste sa copie
+(`LE-TEST-ECRIT-POUR-FERMER-UN-TROU-PEUT-RE-COMMETTRE-LE-TROU`).
+
+Elle a besoin de son **contrôle négatif** : « SANS le champ, la même dette reste PLATE ». Sans lui,
+la garde passerait aussi si un autre champ, livré par un lot antérieur, suffisait déjà — elle
+prouverait « la chaîne marche », jamais « c'est CE lot qui la débloque ».
+
+⚠️ **Une perturbation sur une chaîne CONCATÉNÉE doit viser l'expression entière.** Ma garde sur la
+description du champ Zod a d'abord semblé vacueuse : perturbation appliquée, 14 tests verts. La
+garde était bonne — c'est la perturbation qui ne perturbait rien : elle remplaçait le premier
+fragment d'un `.describe(a + b + c)`, et les jetons cherchés vivaient dans `b` et `c`. Re-perturbée
+sur le `.describe(...)` complet, la garde rougit seule. **Une perturbation muette accuse d'abord la
+perturbation, ensuite la fixture, et seulement en dernier la garde** — l'ordre inverse de celui qui
+vient spontanément.
+
+⚠️ **Et le ticket que j'avais écrit la veille était faux** (`[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`,
+neuvième périmètre faux d'affilée, de ma main). Il partait du NOM d'un champ : « `DettesNonImmo`, un
+registre censé être hors hypothèque », donc une dette de `kind: 'mortgage'` n'y aurait rien à faire.
+Le code dit autre chose : ce que ce registre exclut est `mortgageBalance`, l'hypothèque des BIENS,
+déjà nettée dans `Immobilier` — et `Debt` ne porte AUCUN lien vers un bien (`propertyId` appartient à
+`LifeEvent`). Une dette hypothécaire saisie dans la liste n'est donc nettée par rien d'autre : la
+compter est correct, l'amortir aussi. **Un nom de champ décrit une intention, pas une condition** —
+même famille que « le nom qu'un ticket donne à un chemin est une PARAPHRASE ». Et le coût aurait été
+lourd : les DEUX correctifs proposés étaient des régressions money-critical (faire disparaître une
+vraie dette du bilan, ou retirer une classification que le type documente explicitement). Un ticket
+écrit en regardant la couche qu'on vient de changer se re-recense **contre le code**, sans exception
+d'auteur ni de fraîcheur.
+
 ### Lot 92 (2026-09-02) — le lot qui change ce que l'écran MONTRE périme ce que l'écran AFFIRME
 
 `UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`

@@ -1996,24 +1996,27 @@
   `docs/BACKLOG_ARCHIVE.md`. Delta additif câblé dans `buildPastPrefix`/`dailyPastLedger`, bandeau
   du graphe corrigé, ADR 0012 annoté, mesure reproductible committée
   (`npx tsx scripts/mesureAmortissementPasse.ts`).
-- [ ] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]`** (S) — `originalBalance` au MCP/PDF, une fois
-  `[DEBT-MCP-PARITE]` et `[DEBT-AMORTIZATION]` livrés. Validation `plausible()` (rejeter si
-  `originalBalance < balance`, incohérent pour une dette qui s'amortit normalement).
-  ⚠️⚠️ **DEVENU BLOQUANT le 2026-09-02** : le câblage est livré et **mesuré à zéro effet chez Marc**,
-  parce qu'AUCUN producteur n'écrit `originalBalance` — grep de tout le dépôt, hors types et script de
-  mesure : zéro écriture (classe `UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`).
-  La courbe amortie existe, elle est prouvée par 14 gardes, et elle est **INATTEIGNABLE depuis
-  l'app** tant que ce ticket (ou `[DEBT-UI-PAR-TYPE]`, qui donnerait un champ de saisie) n'est pas
-  livré. C'est la suite immédiate du chantier, pas un item parmi d'autres.
-- [ ] 🟠 **`[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`** (S, découvert au lot 92) — `KIND_AMORTISSANT`
-  déclare `mortgage: true`, et `sumActiveDebts` (`services/projection.ts`) ne filtre `state.debts`
-  par AUCUN `kind` : une dette classée `mortgage` par l'ingestion MCP (distincte d'un
-  `RealEstateGoal.mortgage`) reçoit désormais une courbe d'amortissement DANS `DettesNonImmo` — un
-  registre censé être « hors hypothèque ». Le risque de double comptage avec l'équité immobilière
-  est ANTÉRIEUR à ce lot (`realEstateEquity` est déjà net d'hypothèque), mais le lot 92 le rend
-  actif pour la première fois. **Trancher** : soit l'ingestion refuse `kind: 'mortgage'` pour une
-  dette générique, soit `sumActiveDebts` l'exclut — pas les deux. ⚠️ Aujourd'hui INERTE (aucun
-  producteur d'`originalBalance`), à régler avec `[DEBT-MCP-ORIGINALBALANCE]`.
+- [x] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]` — LIVRÉ le 2026-09-02** (PR #823), voir
+  `docs/BACKLOG_ARCHIVE.md`. `originalBalance` câblé dans le schéma Zod du tool `apply_debt` ET dans
+  `applyDocument` (import PDF compris, qui ne passe pas par Zod) : bornes métier, refus
+  `originalBalance < balance` jugé sur les valeurs EFFECTIVES après fusion, et une garde
+  d'ATTEIGNABILITÉ bout-en-bout (payload MCP → dette écrite → courbe du passé non plate).
+  La courbe du lot 92 est désormais atteignable par extraction de contrat.
+- [x] ~~🟠 `[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`~~ — **CADUQUE, RÉFUTÉ le 2026-09-02** au
+  re-recensement (lot 93). Je l'avais écrit la veille, en regardant la couche que je venais de
+  changer — le neuvième périmètre de ticket faux d'affilée, et cette fois de ma main.
+  **Ce que dit le code** : `DettesNonImmo = activeDebtsTotal + liquidDebt + smithManoeuvreDebt`, et
+  ce qu'il EXCLUT est `mortgageBalance`, l'hypothèque des BIENS (`realEstateGoals`), déjà nettée dans
+  `Immobilier`. « Hors hypothèque » ne veut donc pas dire « aucune dette de `kind: 'mortgage'` » :
+  `Debt` n'a AUCUN champ de liaison à un bien (vérifié — `propertyId` appartient à `LifeEvent`, pas à
+  `Debt`), donc une dette hypothécaire saisie dans la liste n'est nettée par RIEN d'autre. La compter
+  est correct, et l'amortir dans le passé l'est aussi — une hypothèque s'amortit.
+  ⚠️ **Les deux correctifs que le ticket proposait étaient des régressions money-critical** :
+  exclure ce `kind` de `sumActiveDebts` ferait DISPARAÎTRE une vraie dette du bilan (classe
+  `EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`), et le refuser à l'ingestion retirerait une
+  classification légitime que `Debt.amortizationYears` documente explicitement (« pour auto,
+  hypothécaire »). Le double comptage réel — saisir la MÊME hypothèque dans la liste de dettes ET
+  dans un bien — est un problème de SAISIE, antérieur à tout ce chantier et inchangé par lui.
 - [ ] 🟡 **`[DEBT-UI-PAR-TYPE]`** (M) — `DebtManager.tsx` n'expose JAMAIS le sélecteur `kind` (11
   valeurs déjà dans `types.ts` depuis un lot antérieur — bail/prêt/marge/étudiant/autre…), seulement
   4 `category` grossières. Marc ne peut donc pas distinguer bail vs prêt dans l'UI alors que le

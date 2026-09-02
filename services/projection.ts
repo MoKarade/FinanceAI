@@ -643,6 +643,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
 
         const age = currentAge + Math.floor(m / 12);
+        // [FISC-BANDES-FRERES-SANS-AGEOPTS] Âge PROJETÉ du conjoint, hissé ICI plutôt que recopié :
+        // il servait au dépôt de décembre, il sert maintenant aussi à l'impôt latent. Deux écritures
+        // de la même expression divergent en silence — et la seconde aurait en plus introduit un
+        // deuxième littéral `30` dans ce fichier, que le ratchet fiscal a immédiatement signalé.
+        const ageSpouseProjete = config.users[1] ? (config.users[1].age || 30) + Math.floor(m / 12) : undefined;
         const isRetired = age >= effectiveRetirementAge;
 
         // Cycle 9 split: mortalité user + conjoint → ./projection/stochasticEvents
@@ -1318,7 +1323,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
                     // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint
                     // (ou conjoint décédé — FA-10).
-                    ageSpouse: (!soloHousehold && config.users[1]) ? (config.users[1].age || 30) + yearsElapsed : undefined,
+                    ageSpouse: !soloHousehold ? ageSpouseProjete : undefined,
                     // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
                     // Approximé via childGoals.length faute de champ dédié dans User.
                     // TODO: ajouter `User.dependentChildrenCount` pour précision.
@@ -2243,6 +2248,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // qu'au dépôt de décembre et au meltdown REER.
                   grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
                   accRentesYear, incomeRetirement,
+                  // [FISC-BANDES-FRERES-SANS-AGEOPTS] Âges des DÉCLARANTS, même expression qu'au
+                  // dépôt de décembre (`ages = [ctx.age, ctx.ageSpouse]`) : sans eux, l'impôt latent
+                  // ignorait les crédits d'âge et sous-estimait la dette fiscale de ~1 854 $ par
+                  // déclarant de 65 ans et plus. Le tableau suit `taxFilers` : après un décès ou un
+                  // divorce, il ne reste qu'une déclaration, donc qu'un âge.
+                  ages: soloHousehold ? [age] : [age, ageSpouseProjete],
                   reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
                 calculateFiscalReport,
             );

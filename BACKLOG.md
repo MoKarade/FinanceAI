@@ -993,7 +993,7 @@
 > money-critical est une hypothèse, ≈3/8 des HIGH sont faux).
 > Les findings RÉFUTÉS sont en fin de section — ne pas les re-lever.
 
-### 🔴 Fiscal — impôt jamais facturé (les 2 plus gros de tout l'audit)
+### ✅ Fiscal — impôt jamais facturé — **SECTION VIDE, tout est livré** *(en-tête conservé pour l'historique des liens ; il annonçait « les 2 plus gros de tout l'audit » et faisait croire à deux défauts d'argent OUVERTS)*
 
 > ⚠️ Les deux CRITIQUES ci-dessous sont **invisibles pour la garde de conservation monétaire**
 > (`projection.moneyConservation.test.ts` : 20/20 VERT avec les bugs en place). Un impôt jamais
@@ -1299,16 +1299,30 @@
   **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
   6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
 
-- [ ] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** (M, **ÉLEVÉ** — revue #676, financial-integrity, MESURÉ) —
-  trois bandes incrémentales frères passent encore `ageOpts: undefined` dans des contextes par
-  définition 65+, même classe que le défaut fermé par #676 (`MODULE-ECRIT-HORS-CHECKLIST` : le
-  ticket disait « les bandes », le lot n'a couvert que décembre). Mesures de la revue :
-  `latentTax.ts:65,78` (impôt latent **sous-estimé de 1 741 à 2 444 $/adulte** → NW surévalué) ;
-  `estateCalculation.ts:217-218` (impôt successoral sous-estimé 1 291-2 192 $ — ⚠️ `estateNetWorth`
-  est une FONCTION OBJECTIF triée par `drawdownOptimizer`) ; `estateCalculation.ts:431-432`
-  (`facteurNetRentes` déplacé de −2,8 à +8,9 pts). Réutiliser `incrementalBandTax`/la source unique
-  `eligiblePensionFor` plutôt que recopier. Mesurer le CLASSEMENT du ranking avant/après
-  (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). [MESURÉ par la revue, à re-mesurer]
+- [ ] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** (M, **ÉLEVÉ** — revue #676 · **moitié LATENTE livrée
+  le 2026-09-02, lot 84**) — trois bandes incrémentales frères passaient `ageOpts: undefined` dans
+  des contextes où l'âge est connu.
+  ✅ **`latentTax.ts` — LIVRÉ.** Re-mesuré avant de coder (un rapport d'agent n'est pas une source) :
+  **1 854 $ par déclarant de 65 ans et plus** pour le seul crédit d'ÂGE, dans la fourchette annoncée
+  (1 741–2 444 $). ⚠️ Et le ticket se trompait sur le REMÈDE : il parlait de « contextes par
+  définition 65+ » — faux, une retraite peut commencer à 55 ans. On transmet donc l'âge RÉEL, qui se
+  limite tout seul (mesuré : écart 0,00 $ à 60 ans). `eligiblePensionFor` n'était pas réutilisable :
+  c'est une CLOSURE de `taxDecember` sur un contexte plus riche (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
+  ⬜ **RESTE — `estateCalculation.ts`** (deux sites : impôt successoral, `facteurNetRentes`). ⚠️ À
+  traiter À PART et avec précaution : `estateNetWorth` est une **FONCTION OBJECTIF** triée par
+  `drawdownOptimizer`, donc le lot doit MESURER LE CLASSEMENT avant/après
+  (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`) — ce que la moitié « affichage »
+  livrée ici n'exigeait pas.
+
+- [ ] **`[FISC-LATENT-PENSION-CREDIT]`** (S, FAIBLE — sorti du lot 84, MESURÉ) — l'impôt latent
+  transmet désormais l'ÂGE mais pas `eligiblePensionIncome`. Écart mesuré : **280 $ de plus par
+  déclarant** (crédit fédéral pension plafonné à 2 000 $) — donc l'impôt latent reste très légèrement
+  sous-estimé. ⚠️ **Ne PAS y mettre les rentes publiques** (RRQ/PSV) : elles ne sont pas admissibles,
+  et c'est exactement le sur-crédit que le commentaire de `eligiblePensionFor` raconte avoir corrigé
+  (~250-680 $/an/personne). La bonne assiette est « rente DB dès 65 ans + retraits FERR dès 72 » —
+  **Correctif** : extraire `eligiblePensionFor` de `taxDecember` en fonction PURE à entrées
+  explicites, puis la faire consommer par les deux modules. C'est la vraie source unique ; aujourd'hui
+  c'est une closure, donc inatteignable d'ailleurs.
 
 - [ ] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** (S, MOYEN — 2e relecture #676, MESURÉ) — un ACTIF de
   72-75 ans (`targetAge` saisissable jusqu'à 75) avec retraits REER (cascade shortfall, meltdown,
@@ -1536,7 +1550,7 @@
   Correctif : passer `instructions` au constructeur `McpServer` et/ou l'injecter dans la description
   de chaque tool exposant du texte libre. [MESURÉ]
 
-### 🔴 Échecs silencieux
+### ✅ Échecs silencieux — **SECTION VIDE, tout est livré** *(en-tête conservé pour l'historique)*
 
 ### 🚀 Performance — mesurée par harnais, pas déduite
 
@@ -1903,7 +1917,7 @@
 
 
 
-### 🔴 Échecs silencieux — 3 MED/LOW  *(le HIGH `[SILENT-ACTIONPLAN-NAN]` est livré par #608)*
+### ✅ Échecs silencieux — **SECTION VIDE, tout est livré** *(le HIGH `[SILENT-ACTIONPLAN-NAN]` par #608, les 3 MED/LOW depuis ; le titre annonçait encore « 3 MED/LOW » restants)*
 
 > Pattern : traiter un champ présent-mais-non-fini comme absent, SANS log ni signal à l'utilisateur.
 > Référence : `services/finance.ts` (parseRate, patron parfait), `services/marketData/*` (appliqué),
@@ -2004,7 +2018,7 @@ sans décision sur la valeur résiduelle nette de l'actif (ignorer la valeur ré
 « le prêt coûte plus cher » trompeur — un prêt payé laisse un bien au bilan, un bail non). Router
 vers une session de cadrage dédiée (batch de questions habituel) avant d'écrire un seul test.
 
-### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
+### ✅ `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13) — **SECTION VIDE, tout est livré**
 
 > Marc : « mon passé ne semble pas correspondre à mon passé réel mais au futur qui était estimé.
 > Je n'ai pas de compte CELI et pourtant mon passé me dit que j'ai de l'argent dedans. »

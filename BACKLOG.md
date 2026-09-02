@@ -1749,8 +1749,9 @@
 
 - **`calculateDetailedTax` « code mort »** : FAUX — la fonction **est appelée** (`utils/tax.ts:803` et
   `814`). `knip` signalait l'`export` superflu, pas la fonction. L'agent a confondu les deux.
-- **`calculateNetFromGross` mort** : vrai, mais **doublon** — déjà au backlog sous
-  `[DEAD-CALCNETFROMGROSS]` (plus bas dans ce fichier).
+- **`calculateNetFromGross` mort** : vrai. Traité au lot 73 (`[DEAD-CALCNETFROMGROSS]`, PR #803) —
+  fonction retirée, et la citation de `docs/FISCAL_REFERENCE.md` qui la présentait comme « la source
+  unique de conversion brut→net du dépôt » corrigée : elle n'avait aucun appelant.
 - **`expect(x).toBeDefined()` « tests vacueux »** (56 occurrences / 30 fichiers) : inspection par
   échantillon → presque tous suivent le patron légitime « garde d'existence avant assertion réelle »
   (`find(...)` puis `expect(x!.valeur).toBe(...)`). Pas un item.
@@ -2192,10 +2193,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   manuel 6 fichiers sans garantie exhaustivité. **Correctif** : `utils/chartColors.ts` exportant
   teintes de séries (mappées aux tokens Tailwind existants), importé par les 6 fichiers.
 
-- [ ] **`[DEAD-CALCNETFROMGROSS]`** (S) — `calculateNetFromGross` (`utils/tax.ts:852`) mort (grep :
-  zéro appelant). Fonction jumelle `calculateGrossFromNet` active. Commentaire voisin y fait référence
-  comme si active → lecture trompeuse. **Correctif** : supprimer, ou ajouter test dédié si futur UI
-  l'utilisera.
 
 
 - [ ] **`[GODFILE-FUTUREPROJECTION]`** (L — unifie `[DETTE-GODFILE-FUTUREPROJECTION]` et la part
@@ -2225,8 +2222,9 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 - [ ] **`[KNIP-UNUSED-EXPORTS-73]`** (S triage) — **73 exports non-utilisés** + **209 types** exportés
   inutilisés. Types bénins (aucun coût réel). Valeurs notables : `utils/tax.ts` **19 constantes RRQ/
   RQAP/AE/RAMQ/FSS** non-ré-exportées (probablement usage interne au fichier seulement). **Correctif** :
-  triage item-par-item : retirer `export` si usage interne, supprimer si vraiment mort (cf.
-  `calculateNetFromGross`). Deux exports dupliqués détectés aussi (`resetAttachmentDriveMemos|_reset...`
+  triage item-par-item : retirer `export` si usage interne, supprimer si vraiment mort (l'exemple
+  `calculateNetFromGross` a été traité au lot 73 — ⚠️ sa suppression a exigé de corriger d'abord une
+  citation de `docs/FISCAL_REFERENCE.md` : vérifier ce que la DOC dit d'un export avant de le retirer). Deux exports dupliqués détectés aussi (`resetAttachmentDriveMemos|_reset...`
   + `compareLifeScenarios|optimizeDrawdownOrder`).
 
 - [ ] **`[HOOKS-EXHAUSTIVE-DEPS-WARN]`** (S) — `react-hooks/exhaustive-deps` en `warn` (pas `error`) →

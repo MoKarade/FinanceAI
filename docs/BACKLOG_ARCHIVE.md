@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 73 : retirer du code mort a demandé de corriger la source de vérité fiscale (PR #803)
+
+- [x] **`[DEAD-CALCNETFROMGROSS]`** — 2026-09-02, PR #803. `calculateNetFromGross` (`utils/tax.ts`)
+  n'avait **aucun** appelant — vérifié par grep sur tout le dépôt, tests, scripts et `mcp/` compris,
+  pas seulement sur les imports. Retirée.
+- ⚠️ **Elle n'était pas seulement inutile, elle était PIÉGÉE** : elle appelait `calculateFiscalReport`
+  SANS année, donc sur le barème par défaut — exactement le défaut que `[GROSSFROMNET-ANNEE-FIGEE]`
+  a corrigé sur son jumeau le 2026-08-20. La réveiller aurait réintroduit un écart connu et mesuré.
+- ⚠️⚠️ **LA VRAIE TROUVAILLE EST DANS LA DOC.** `docs/FISCAL_REFERENCE.md` — la source de vérité
+  fiscale — la citait comme « la source unique de conversion brut→net du dépôt », dans la **preuve
+  d'auto-cohérence** de `[FISC-WHT-92PCT]`. C'était faux : rien ne l'appelait. Le moteur calcule sa
+  retenue lui-même (`taxDecember.ts`), et le dépôt ne convertit pas brut→net — `netSalary` est une
+  SAISIE, la seule conversion codée est l'inverse. **La conclusion du ticket (retenue = 100 %) est
+  INCHANGÉE** et reste tenue par son test discriminant ; c'est la preuve qui pointait vers du mort.
+- **Leçon** : supprimer un export demande de regarder ce que la DOC en dit, pas seulement qui
+  l'appelle. Une source de vérité qui cite du code mort donne l'autorité d'une preuve à une phrase
+  que plus rien ne soutient.
+
 ## 2026-09-02 — Lot 72 : ce n'est pas le NOMBRE de clés qui est dangereux, c'est leur RÉPÉTITION (PR #802)
 
 - [x] **`[STORAGE-KEYS-NO-REGISTRY]`** — 2026-09-02, PR #802. ⚠️ **Le ticket se trompait deux fois** :

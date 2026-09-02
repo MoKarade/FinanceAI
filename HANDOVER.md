@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 73 : retirer du code mort a exigé de corriger la source de vérité
+> `[DEAD-CALCNETFROMGROSS]` — `calculateNetFromGross` retirée (zéro appelant, vérifié sur tout le
+> dépôt : tests, scripts, `mcp/`).
+> - ⚠️ **Elle était PIÉGÉE** : appel à `calculateFiscalReport` SANS année → barème par défaut, le
+>   défaut exact que `[GROSSFROMNET-ANNEE-FIGEE]` a corrigé sur son jumeau. La réveiller aurait
+>   réintroduit un écart connu et mesuré.
+> - ⚠️⚠️ **LA VRAIE TROUVAILLE EST DANS LA DOC** : `docs/FISCAL_REFERENCE.md` la citait comme « la
+>   source unique de conversion brut→net du dépôt » dans la preuve d'auto-cohérence de
+>   `[FISC-WHT-92PCT]`. FAUX — rien ne l'appelait. Le moteur calcule sa retenue lui-même
+>   (`taxDecember.ts`) et le dépôt ne convertit PAS brut→net : `netSalary` est une SAISIE, la seule
+>   conversion codée est l'inverse. **La conclusion du ticket (retenue = 100 %) est INCHANGÉE**,
+>   tenue par son test discriminant ; c'est la preuve qui pointait vers du mort.
+> - **Leçon** : avant de retirer un export, regarder ce que la DOC en dit — pas seulement qui
+>   l'appelle. Une source de vérité qui cite du code mort donne l'autorité d'une preuve à une phrase
+>   que plus rien ne soutient.
+
 > ## 🟦 Session 2026-09-02 — Lot 72 : ce n'est pas le NOMBRE de clés, c'est leur RÉPÉTITION
 > `[STORAGE-KEYS-NO-REGISTRY]` — `utils/storageKeys.ts` (module PUR, zéro import : il part dans le
 > bundle de BOOT) pour les **cinq** clés écrites à plusieurs endroits. Garde :

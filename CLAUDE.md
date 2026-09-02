@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Avant de retirer un export mort, regarder ce que la DOC en dit — pas seulement qui l'appelle** :
+  `calculateNetFromGross` n'avait aucun appelant, mais `docs/FISCAL_REFERENCE.md` la citait comme
+  « la source unique de conversion brut→net du dépôt » dans une PREUVE d'auto-cohérence. La supprimer
+  sans toucher la doc aurait laissé la source de vérité fiscale appuyer une démonstration sur du
+  vide. **Une source de vérité qui cite du code mort donne l'autorité d'une preuve à une phrase que
+  plus rien ne soutient** — et la corriger se fait en séparant la CONCLUSION (ici inchangée, tenue
+  par son test discriminant) de la CITATION (fausse). ⚠️ Corollaire : une fonction morte peut aussi
+  être PIÉGÉE — celle-ci appelait `calculateFiscalReport` sans année, le défaut même que
+  `[GROSSFROMNET-ANNEE-FIGEE]` avait corrigé sur son jumeau ; la réveiller aurait réintroduit un
+  écart connu (`RETIRER-UN-EXPORT-MORT-DEMANDE-DE-LIRE-CE-QUE-LA-DOC-EN-DIT`).
 - ⚠️ **Un commentaire qui réclame de la VIGILANCE est l'aveu qu'il manque une source unique** :
   `syncSnapshot.ts` portait « doit correspondre au `name` du persist Zustand et à backupAuto » —
   autrement dit `financeai-storage`, la clé qui porte TOUTES les données, était écrite en QUATRE

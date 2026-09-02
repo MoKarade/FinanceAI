@@ -1336,15 +1336,14 @@
   ménage sans rente privée qui décaisse un FERR. L'état actuel est BORNÉ par un test qui doit mourir
   avec la dette (`tests/services/latentTaxPensionCredit.test.ts`, cas « INVENTAIRE DE DETTE »).
 
-- [ ] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** (S, MOYEN — 2e relecture #676, MESURÉ) — un ACTIF de
-  72-75 ans (`targetAge` saisissable jusqu'à 75) avec retraits REER (cascade shortfall, meltdown,
-  achat immo) n'a AUCUN crédit pension : `mkActiveAgeOpts` passe `eligiblePensionIncome: 0` alors
-  que les retraits REER sont admissibles dès 72 ans (règle FERR du modèle). La bande incrémentale
-  a été ALIGNÉE sur ce 0 (borne `ctx.isRetired` du helper — porter la pension d'un seul côté
-  faisait ±1 878 $/an d'incohérence interne). Corriger les DEUX côtés ensemble : `mkActiveAgeOpts`
-  ET la bande via `eligiblePensionFor`, avec l'assiette de bande active (`incomeForGains` = salaires
-  SEULS, sans les retraits REER — défaut dominant à traiter dans le même lot). Population marginale.
-  [MESURÉ par la revue]
+- [ ] **`[PERSONA-ACTIF-QUI-DECAISSE]`** (S, FAIBLE — découvert en livrant le lot 87, MESURÉ) — **aucun
+  des 7 personas n'exerce jamais** le chemin « ménage ACTIF qui retire du REER ET détient du
+  non-enregistré » : compteur instrumenté dans `taxDecember`, **0 occurrence sur 7 personas × 40 ans**.
+  C'est pourtant un ménage plausible (un 70 ans qui travaille à temps partiel et décaisse), et c'est
+  la raison pour laquelle deux défauts money-critical du lot 87 ont pu vivre sans qu'aucun golden ne
+  bouge. **Correctif** : ajouter un persona (ou étendre `pre-retraite-riche`) avec `targetAge` ≥ 73,
+  des retraits REER et un solde non-enregistré. ⚠️ Ajouter un persona re-base des goldens : lot à
+  part, avec la mesure de ce qui bouge.
 
 - [ ] **`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`** (S, MOYEN — revue #676, projection-validator) — trois
   fabriques d'`AgeCreditOptions` coexistent dans `taxDecember.ts` (`mkActiveAgeOpts` L~439,

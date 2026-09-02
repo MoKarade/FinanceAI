@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Un impôt qui n'était jamais facturé quand tu travailles encore et décaisses ton REER)
+
+- **Corrigé (le plus important)** : si tu travailles encore ET que tu retires du REER dans la même
+  année, l'impôt sur tes gains en capital et tes dividendes était calculé comme si ces retraits
+  n'existaient pas — donc dans des tranches d'imposition trop basses. Mesuré : **de 701 $ à 2 520 $
+  d'impôt par an qui n'étaient jamais facturés**, selon le salaire et les montants.
+- **Corrigé aussi** : à partir de 72 ans, tes retraits REER donnent droit au crédit pour revenu de
+  retraite. L'app te le refusait tant que tu n'étais pas « à la retraite » — or l'âge de retraite se
+  saisit jusqu'à 75 ans. Effet réel : **nul dans la plupart des cas** (le crédit s'annule entre
+  l'impôt et la retenue à la source), sauf quand ton salaire est petit devant tes retraits, où il te
+  redonne ~306 $/an.
+- **Rien ne change pour les profils de test** : le chemin corrigé n'est exercé par aucun d'eux —
+  vérifié par comptage, pas supposé. C'est justement pour ça que ces deux défauts avaient survécu.
+
+---
+
 ## [unreleased] — 2026-09-02 (L'impôt dormant tient compte de ta rente d'employeur)
 
 - **Corrigé** : la courbe « Impôt Latent » ignorait le crédit d'impôt pour revenu de retraite. Elle

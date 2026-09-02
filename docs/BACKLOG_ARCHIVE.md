@@ -10,6 +10,56 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 87 : le ticket nommait un site, il y en avait deux — et le défaut dominant n'était pas celui qu'il titrait
+
+- [x] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** — LIVRÉ le 2026-09-02 (PR #817), les deux défauts.
+- **(A) ASSIETTE D'EMPILEMENT — le défaut DOMINANT, et le ticket ne le nommait qu'en incise.**
+  `[REER-ACTIF-NON-RECONCILIE]` (2026-08-19) avait élargi l'assiette imposable d'un ménage ACTIF à
+  ses retraits REER — **au §1 seulement**. Les deux bandes incrémentales empilaient donc leur tranche
+  sur le SALAIRE SEUL, dans des paliers trop bas. **Impôt jamais facturé, mesuré** : 701 $/an
+  (salaire 60 k$, retraits 40 k$, gains imposables 20 k$), 1 043 $ (40/20/10), 2 174 $ (150/100/50),
+  **2 520 $** (90/50/25). Aucun invariant de conservation ne pouvait le voir — un impôt non prélevé
+  est parfaitement conservatif.
+  ⚠️ **Le ticket ne citait que le §2 (gains) ; le §3 (dividendes) avait le MÊME trou**, trouvé en
+  énumérant les producteurs plutôt qu'en lisant la prose — et son propre commentaire FA-8 racontait
+  avoir corrigé exactement ça… côté retraité. Périmètre d'un ticket = borne inférieure, 12ᵉ fois.
+  **Correctif de FORME autant que de valeur** : les deux copies du ternaire sont remplacées par une
+  source unique `assietteEmpilementNominale`, où `accRetraitsReerYear` est **factorisé HORS** du
+  ternaire — il appartient aux deux régimes, et le laisser dans une branche est l'erreur même qu'on
+  vient de corriger.
+- **(B) CRÉDIT DE PENSION d'un ACTIF de 72+** : `mkActiveAgeOpts` passait `eligiblePensionIncome: 0`
+  en dur (« aucune pension admissible en mode actif »), alors que l'âge de retraite est saisissable
+  jusqu'à **75** (`max={75}`, vérifié dans l'UI) et que le moteur traite les retraits REER comme du
+  FERR dès 72 ans. Corrigé des DEUX côtés ENSEMBLE (§1 et la bande) — la borne `ctx.isRetired` de la
+  bande était un alignement sur un zéro FAUX, et la lever seule aurait rouvert les ±1 878 $ que son
+  commentaire décrivait. Les deux consomment `eligiblePensionFor`, la source unique du lot 86.
+- ⚠️⚠️ **L'effet PUBLIÉ de (B) est bien plus étroit que le ticket, et pour une autre raison.** Mesuré
+  au producteur, l'écart valait 250-679 $ PARTOUT ; mesuré sur la sortie de décembre, il est **nul
+  dans 4 configurations sur 5**. `revenu` vaut `impôt − retenue`, et les deux appels portent les
+  mêmes `ageOpts` avec le même `familyIncome` : le crédit s'annule dans la soustraction. Il ne
+  survit que là où il est PERDU côté retenue — c'est-à-dire quand le SALAIRE est petit devant les
+  retraits (20 k$ vs 50 k$ : **−678,62 $** sur `revenu`, **+372,81 $** sur la bande, −305,81 $ net).
+  La population n'est donc pas « les actifs de 72-75 ans » mais « ceux dont le salaire est petit
+  devant leurs retraits » (`UNE-GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
+- ⚠️ **Zéro mouvement moteur sur les 7 personas, et c'est EXPLIQUÉ par un compteur, pas supposé** :
+  instrumenté dans `taxDecember`, le chemin « actif + retraits REER + non-enregistré » est exercé
+  **0 fois sur 7 personas × 40 ans**. Absence de COUVERTURE, pas absence d'effet — d'où le ticket
+  `[PERSONA-ACTIF-QUI-DECAISSE]`. Corollaire rassurant : risque de régression nul sur les goldens.
+- ⚠️ Les 126 tests de caractérisation de `taxDecember` restent verts, et c'est STRUCTUREL : leur stub
+  fiscal est `gross × TAUX`, un barème PLAT où une bande vaut `tranche × taux` quelle que soit
+  l'assiette et où un crédit non remboursable est invisible
+  (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`, 3ᵉ fois sur ce dépôt). Le fichier de
+  gardes neuf injecte donc le VRAI barème, ou espionne ses arguments.
+- ⚠️ **Un test de LIMITE a rougi et il a été INVERSÉ, pas supprimé** : « ACTIF 72+ : la bande garde
+  pension admissible = 0, alignée sur le calcul §1 » avait raison À SA DATE (la 2e relecture #676
+  avait mesuré ±1 878 $/an si on portait la pension d'un seul côté). Le §1 étant désormais corrigé,
+  l'alignement tient sur la VRAIE valeur au lieu d'un zéro : le test affirme maintenant l'inverse, au
+  même endroit, avec son histoire écrite dedans. Il rougissait à DEUX titres sur le code d'avant
+  (pension ET assiette) — c'est voulu.
+- **7 gardes neuves** (`tests/services/taxDecemberActifPension.test.ts`), trois perturbations
+  séparées : assiette sans les retraits → 3 rouges · crédit remis à 0 au §1 → 2 rouges · borne
+  `isRetired` remise sur la bande → 1 rouge.
+
 ## 2026-09-02 — Lot 86 : la source unique que le lot 84 avait déclarée inatteignable
 
 - [~] **`[FISC-LATENT-PENSION-CREDIT]`** — moitié **rente privée (DB)** livrée le 2026-09-02

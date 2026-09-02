@@ -10191,3 +10191,54 @@ affichent le mauvais texte (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`, appliqué à une 
 **uniquement depuis une closure** est rétréci à `never` à la lecture (`tsc` ne suit pas l'affectation
 différée). Le porteur devient un tableau (`echecs[0] ?? null`) — et la raison s'écrit à côté, sinon
 quelqu'un « nettoiera » le tableau en `let` au prochain passage.
+
+
+### Lot 76 (2026-09-02) — un avertissement de lint peut être une fuite de vie privée
+
+`UN-AVERTISSEMENT-DE-LINT-EST-UN-SYMPTOME-PAS-UNE-GRAVITE`
+
+Le ticket disait : « `react-hooks/exhaustive-deps` en `warn`, **2 violations**, dépendances
+manquantes sur des refs stables, dette technique (S) ». Rejouer l'outil en a sorti **4**, et les deux
+qu'il ne nommait pas étaient d'une autre nature :
+
+```
+components/Planning.tsx  123:8  warning  ... missing dependency: 'isPrivacyMode'
+components/Planning.tsx  137:8  warning  ... missing dependency: 'isPrivacyMode'
+```
+
+`handlePinSub` et `handleDismissSub` appellent `maskPayee(sub.payee, isPrivacyMode)` sans déclarer
+`isPrivacyMode`. Basculer le mode discret ne change **ni** `pinnedSubs` **ni** `setAppState` — la
+fonction mémorisée n'est donc jamais recréée et garde la valeur du premier rendu. Mesuré : le bouton
+s'appelait « Épingler **Marchand masqué** » (le JSX, lui, se re-rend) et le toast déclenché par ce
+même clic annonçait « **Netflix** ».
+
+C'est le correctif de vie privée #645 — « masquer AUSSI les toasts : une notification est du texte
+rendu » — **annulé exactement dans le cas qu'il visait** : l'utilisateur qui interagit devant
+quelqu'un. Le commentaire qui explique #645 est à trois lignes du défaut.
+
+Trois enseignements :
+
+1. **La gravité d'un avertissement de lint ne se lit pas dans sa catégorie, mais dans ce que la
+   variable manquante CONTRÔLE.** `exhaustive-deps` sur `dockedRef` est inerte ; le même
+   avertissement sur `isPrivacyMode` est une fuite. Trier par la règle violée revient à trier par la
+   syntaxe (`UN-TICKET-QUI-GROUPE-PAR-LA-SYNTAXE-GROUPE-DES-ENJEUX-INCOMPARABLES`).
+2. **Une fermeture périmée se voit au CONTRASTE, pas dans le code.** Le JSX et la fonction mémorisée
+   lisent la même variable, à deux fraîcheurs différentes ; l'écran a l'air juste, et c'est ce qui
+   rend le défaut invisible à la relecture. La garde vise donc ce qui SORT (le texte du toast) et
+   pose le contraste comme anti-vacuité (« l'écran, lui, est bien masqué »).
+3. **Une correction INERTE s'écrit comme telle.** Les deux autres warnings (`dockedRef` est une ref
+   d'identité stable, `armPinch` est `useCallback(…, [])`) n'ont aucun test possible — par
+   définition. On les corrige, on écrit pourquoi c'est sans effet aujourd'hui et ce qui les
+   réveillerait, plutôt que de fabriquer une fixture qui n'exerce rien mais éteint l'alarme.
+
+⚠️ **Le déclaratif avertit, l'exécutoire protège** — mais tout basculement d'exécutoire n'est pas à
+moi. Après le correctif il reste **0 violation**, donc passer la règle à `'error'` ne coûte rien
+*aujourd'hui* ; ce qu'elle coûte, c'est *demain* (faux positifs connus de la règle, sortie de secours
+en désactivations ligne à ligne). Mesure livrée, arbitrage routé (`[Q-HOOKS-DEPS-ERROR]`) : la
+mesure est mon travail, la politique est celui de Marc.
+
+⚠️ Corollaire d'isolation, re-payé : les cas de ce fichier partagent le store, et le premier
+ÉPINGLE l'abonnement — au cas suivant le bouton devient « Désépingler ». C'est la **contre-épreuve**
+qui a rougi, pas les cas qu'elle contrôle : un test qui échoue pour une raison qui n'est pas la
+sienne signale l'isolation avant le code
+(`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`, version « état de store »).

@@ -2234,10 +2234,13 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   citation de `docs/FISCAL_REFERENCE.md` : vérifier ce que la DOC dit d'un export avant de le retirer). Deux exports dupliqués détectés aussi (`resetAttachmentDriveMemos|_reset...`
   + `compareLifeScenarios|optimizeDrawdownOrder`).
 
-- [ ] **`[HOOKS-EXHAUSTIVE-DEPS-WARN]`** (S) — `react-hooks/exhaustive-deps` en `warn` (pas `error`) →
-  **2 violations actives** ne bloquent pas le gate : `useChartTooltipPosition.ts:96` et
-  `useTimeChartZoom.ts:255` (dépendances manquantes sur refs stables). **Correctif (a)** : corriger les
-  2 warnings ; **(b)** discuter passage à `'error'` avec Marc (impact sur autres fichiers à mesurer).
+- [ ] **`[PLANNING-CALENDAR-KEY-DOUBLON]`** (XS, **découvert au lot 76, non corrigé — hors périmètre**)
+  — `components/Planning.tsx` rend l'en-tête du calendrier depuis `['L','M','M','J','V','S','D']` avec
+  `key={d}` : **deux clés `M`** (mardi/mercredi), donc un avertissement React à CHAQUE rendu, dans
+  chaque suite qui monte cet écran. Sans conséquence visible (liste statique, jamais réordonnée),
+  mais c'est du bruit permanent qui rend les vrais avertissements de clé invisibles.
+  **Correctif** : `key={i}` (ou un libellé complet). Vérifier au passage qu'aucune autre liste du
+  dépôt ne prend une valeur non unique pour clé.
 
 ---
 
@@ -2277,6 +2280,15 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 - [ ] **`[Q-SOLO-SPLIT]`** — `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
   par détention réelle ?
+
+- [ ] **`[Q-HOOKS-DEPS-ERROR]`** — moitié (b) de `[HOOKS-EXHAUSTIVE-DEPS-WARN]`, livré au lot 76.
+  Passe-t-on `react-hooks/exhaustive-deps` de `warn` à **`error`** ? **Mesuré après le lot 76 :
+  0 violation dans tout le dépôt**, donc le basculement ne coûte RIEN aujourd'hui et rendrait la
+  classe impossible à réintroduire (c'est la leçon de `[ENV-NODE-NON-DECLARE]` : seul l'artefact
+  EXÉCUTOIRE protège, le déclaratif n'avertit que). **Ce qu'il coûte à l'avenir** : la règle a des
+  faux positifs connus, et sous `error` la sortie de secours est un commentaire de désactivation
+  ligne par ligne — certains la gardent en `warn` pour ça. C'est un arbitrage de politique, donc
+  ta décision, pas la mienne.
 
 ## 👤 Actions humaines Marc (jamais auto-cochées)
 

@@ -93,7 +93,12 @@ export function useChartTooltipPosition<P>({ getKey, containerRef, dockedRef }: 
         });
         el.style.left = `${left}px`;
         el.style.top = `${top}px`;
-    }, []);
+        // [HOOKS-EXHAUSTIVE-DEPS-WARN] `dockedRef` est une dépendance réelle même si elle est INERTE
+        // aujourd'hui : lire `.current` donne toujours la valeur fraîche, et tous les appelants
+        // passent une ref d'identité stable. Elle cesserait de l'être le jour où un appelant en
+        // recrée une — la fonction mémorisée garderait alors l'ANCIENNE ref. Ajoutée sans coût
+        // (une ref stable ne provoque aucun recalcul), donc préventive, et c'est écrit tel quel.
+    }, [dockedRef]);
 
     const onPointerMove = useCallback((clientX: number, clientY: number) => {
         posRef.current = { x: clientX, y: clientY };

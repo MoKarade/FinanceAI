@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 76 : un avertissement de lint cachait une fuite de vie privée
+> `[HOOKS-EXHAUSTIVE-DEPS-WARN]` (moitié (a)) — le ticket annonçait 2 violations « dette
+> technique » ; rejoué, l'outil en sort **4**, et les 2 non nommées (`Planning.tsx`) sont une
+> **fuite**.
+> - **Mesuré** : mode discret activé après le montage ⇒ bouton « Épingler **Marchand masqué** »,
+>   toast « **Netflix** épinglé ». `isPrivacyMode` manquait aux deps de deux `useCallback`, et rien
+>   d'autre ne change quand on bascule le mode ⇒ fermeture périmée. Le correctif vie privée #645
+>   était annulé exactement dans le cas qu'il visait.
+> - Les 2 autres warnings (`dockedRef`, `armPinch`) sont **INERTES** — corrigés, et l'inertie est
+>   écrite dans le code au lieu d'être couverte par une fixture qui n'exerce rien.
+> - **Routé** : `[Q-HOOKS-DEPS-ERROR]` (passer la règle à `error` = arbitrage de POLITIQUE pour Marc,
+>   avec sa mesure : 0 violation restante ⇒ gratuit aujourd'hui) et `[PLANNING-CALENDAR-KEY-DOUBLON]`.
+
 > ## 🟦 Session 2026-09-02 — Lot 75 : la cause existait, c'est son TRANSPORT qui manquait
 > `[AI-FINNHUB-CAUSE-COLLAPSE]` — `getQuoteDetaille` publie `ok` / `absent` / `echec` (+ cause et
 > provider) ; `getQuote` en devient l'enveloppe, contrat historique intact (`priceRefresh` repose sur

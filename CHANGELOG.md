@@ -6,6 +6,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (L'impôt payé au décès tient compte de ton âge — et une moitié du correctif a été refusée)
+
+- **Corrigé** : l'impôt calculé au décès sur la liquidation (REER, gains en capital) ignorait les
+  crédits d'impôt liés à l'âge. Il est désormais calculé avec ton âge réel à l'horizon.
+- **Ce que ça change** : l'impôt successoral MONTE — jusqu'à ~3 440 $ pour une personne seule de
+  65 ans et plus — donc le patrimoine légué affiché baisse d'autant. C'est normal et c'est plus
+  juste : le crédit d'âge existe sur ton revenu ordinaire, et la liquidation totale le fait perdre.
+  Sur les sept profils de test : −2 448 $ au maximum, et trois profils ne bougent pas du tout.
+- **Le conseil de décaissement ne change pas** : le classement des cinq façons de gérer a été
+  re-mesuré avant/après sur les sept profils et les quatre objectifs (équilibré, patrimoine, impôt,
+  FIRE) — ordre identique, même « Meilleur avenir ».
+- **Une moitié du correctif a été volontairement ANNULÉE** : appliquer la même correction à l'impôt
+  attribué aux rentes RRQ/PSV rendait le modèle absurde à court terme — une pension d'employeur
+  pleinement indexée y faisait BAISSER le patrimoine légué (−4 845 $ à 5 ans d'horizon). La cause
+  est un défaut connu et déjà répertorié du calcul des rentes, pas le crédit d'âge : les deux se
+  corrigeront ensemble. La mesure est écrite noir sur blanc dans le dépôt plutôt que le correctif
+  livré à moitié.
+- **Sous 65 ans, rien ne change** — l'app transmet ton âge réel, jamais une hypothèse.
+
+---
+
 ## [unreleased] — 2026-09-02 (L'impôt dormant tenait compte de tout, sauf de ton âge)
 
 - **Corrigé** : la courbe « Impôt Latent » (l'impôt qu'on paierait en liquidant tout aujourd'hui)

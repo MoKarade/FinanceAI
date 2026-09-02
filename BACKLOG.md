@@ -1140,6 +1140,11 @@
   années restantes. ⚠️ `estateNetWorth` est l'objectif de tri de `drawdownOptimizer.ts` et le score
   `wealth` de `strategyRanking.ts` : toute variante doit être mesurée sur le CLASSEMENT, pas seulement
   sur la valeur.
+  ⚠️ **Ce ticket a gagné un COMPAGNON obligatoire le 2026-09-02** (lot 85) : la bande des rentes doit
+  aussi recevoir les crédits d'âge (`[FISC-BANDES-FRERES-SANS-AGEOPTS]`), et les deux ne peuvent PAS
+  se livrer séparément — câbler les crédits seuls inverse l'invariant « une pension DB pleinement
+  indexée ne peut pas appauvrir » pour tout horizon ≤ ~9 ans (mesures dans l'autre ticket). Le
+  contexte pluriannuel est le prérequis : c'est lui qui rend la sensibilité au revenu légitime.
 
 - [ ] **`[ESTATE-COUPLE-DECLARANT-UNIQUE]`** (M, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
   `estateCalculation.ts` empile la liquidation successorale sur UNE déclaration (hypothèse du double
@@ -1299,20 +1304,22 @@
   **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
   6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
 
-- [ ] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** (M, **ÉLEVÉ** — revue #676 · **moitié LATENTE livrée
-  le 2026-09-02, lot 84**) — trois bandes incrémentales frères passaient `ageOpts: undefined` dans
-  des contextes où l'âge est connu.
-  ✅ **`latentTax.ts` — LIVRÉ.** Re-mesuré avant de coder (un rapport d'agent n'est pas une source) :
-  **1 854 $ par déclarant de 65 ans et plus** pour le seul crédit d'ÂGE, dans la fourchette annoncée
-  (1 741–2 444 $). ⚠️ Et le ticket se trompait sur le REMÈDE : il parlait de « contextes par
-  définition 65+ » — faux, une retraite peut commencer à 55 ans. On transmet donc l'âge RÉEL, qui se
-  limite tout seul (mesuré : écart 0,00 $ à 60 ans). `eligiblePensionFor` n'était pas réutilisable :
-  c'est une CLOSURE de `taxDecember` sur un contexte plus riche (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
-  ⬜ **RESTE — `estateCalculation.ts`** (deux sites : impôt successoral, `facteurNetRentes`). ⚠️ À
-  traiter À PART et avec précaution : `estateNetWorth` est une **FONCTION OBJECTIF** triée par
-  `drawdownOptimizer`, donc le lot doit MESURER LE CLASSEMENT avant/après
-  (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`) — ce que la moitié « affichage »
-  livrée ici n'exigeait pas.
+- [ ] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** (S, MOYEN — revue #676 · **deux tiers livrés** :
+  `latentTax` au lot 84, bande SUCCESSORALE de `estateCalculation` au lot 85, 2026-09-02) —
+  ⬜ **RESTE le SEUL site `facteurNetRentes`**, et il est **BLOQUÉ, pas oublié** : à livrer dans le
+  MÊME lot que `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]` ci-dessus, jamais seul.
+  **MESURÉ au lot 85** (fixture `buildAtRetirement`, couple 64 ans, DB 2 000 $/mois) : câbler les
+  crédits d'âge sur cette bande INVERSE l'invariant vrai « une pension DB pleinement indexée ne peut
+  pas appauvrir ». Écart `indexée − non indexée` du patrimoine successoral, par horizon :
+  5 ans **+4 836 → −4 845 $** · 6 ans +9 324 → −2 594 · 8 ans +15 999 → −175 · 10 ans +26 284 →
+  +6 398 · 25 ans +327 886 → +315 912. Le point de bascule passe de « sous 5 ans » à « ~9 ans ».
+  ⚠️ **La cause n'est PAS le crédit d'âge** : décomposition par site à 5 ans, bande successorale
+  seule = +4 764 $ (invariant intact), bande des rentes seule = **−4 773 $**. C'est l'artefact
+  `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]` (facteur d'UNE année appliqué à une VAN pluriannuelle) que
+  rendre le facteur plus sensible au revenu AMPLIFIE. Livrer la moitié isolément déplacerait un
+  chiffre faux au lieu de le corriger (`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`).
+  L'état actuel est BORNÉ par un test qui doit MOURIR au moment du correctif couplé
+  (`tests/services/estateAgeCredits.test.ts`, cas « INVENTAIRE DE DETTE »).
 
 - [ ] **`[FISC-LATENT-PENSION-CREDIT]`** (S, FAIBLE — sorti du lot 84, MESURÉ) — l'impôt latent
   transmet désormais l'ÂGE mais pas `eligiblePensionIncome`. Écart mesuré : **280 $ de plus par

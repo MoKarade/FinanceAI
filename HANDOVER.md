@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 85 : le refus est une livraison, quand il est MESURÉ
+> `[FISC-BANDES-FRERES-SANS-AGEOPTS]` — bande **SUCCESSORALE** de `estateCalculation` livrée ; bande
+> `facteurNetRentes` **ANNULÉE en cours de lot**, et c'est le vrai résultat.
+> - ⚠️⚠️ **Un invariant existant a arrêté la moitié fautive** : « une pension DB pleinement indexée
+>   ne peut pas appauvrir » s'INVERSAIT pour tout horizon ≤ ~9 ans (5 ans : +4 836 → **−4 845 $**).
+>   Décomposition par SITE : bande successorale seule +4 764 $ (intact), bande des rentes seule
+>   **−4 773 $**. Cause = l'artefact déjà ticketé `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`, qu'une
+>   sensibilité accrue au revenu AMPLIFIE. Les deux se livrent ENSEMBLE — ticket enrichi, dette
+>   bornée par un test qui doit MOURIR avec elle.
+> - ⚠️ **Le ticket nommait UNE fonction objectif, il y en avait DEUX** : `rankStrategies` score aussi
+>   `estateNetWorth` ET `totalEstateTax` (via `lifetimeTaxTotal`). **Mesuré : aucun classement ne
+>   bouge** (7 personas × 4 objectifs + `compareLifeScenarios`).
+> - Livré : `hasSpouse: false` sur la succession — par le MODÈLE du fichier (double décès → une
+>   déclaration, celle du survivant seul), pas par défaut. Impôt successoral **+3 440 $** (65+ seul).
+> - ⚠️ **Marche assumée à 65 ans** : +8 243 $ de saut quand l'horizon fait passer le décès de 64 à
+>   65 ans. Réelle (le crédit commence à 65), donc consignée et non lissée.
+> - ⚠️ **Slip de protocole attrapé** : un avant/après par `git stash` rendait des chiffres identiques
+>   — le correctif était déjà COMMITÉ. Un écart nul inattendu accuse le protocole avant le code.
+> - ⚠️ Le seuil d'anti-vacuité de `estateCalculation.test.ts` a rougi **sans que rien de ce qu'il
+>   défend ait bougé** : mes ~40 lignes de prose ont fait tomber la part de code à 0,240 (< 0,25).
+>   RE-MESURÉ à 0,20 avec sa raison, pas supprimé.
+
 > ## 🟦 Session 2026-09-02 — Lot 84 : l'impôt latent ignorait l'âge
 > `[FISC-BANDES-FRERES-SANS-AGEOPTS]`, moitié `latentTax` (AFFICHAGE) livrée ; moitié
 > `estateCalculation` **laissée ouverte** — elle touche une FONCTION OBJECTIF triée par

@@ -10589,6 +10589,83 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 85 (2026-09-02) — la moitié REFUSÉE était le vrai résultat du lot
+
+`RENDRE-UN-CALCUL-PLUS-SENSIBLE-AU-REVENU-AMPLIFIE-L-ARTEFACT-QU-IL-CONTIENT-DEJA`
+
+Seconde moitié de `[FISC-BANDES-FRERES-SANS-AGEOPTS]` : `estateCalculation.ts` calcule DEUX bandes
+fiscales incrémentales — l'impôt successoral et l'impôt attribué aux rentes — à un âge parfaitement
+connu, et les calculait sans crédits d'âge. Le premier jet a câblé les deux. **Un seul a été livré.**
+
+⚠️⚠️ **Un correctif juste en isolation peut être faux là où il atterrit.** Câbler les crédits sur la
+bande des RENTES inverse un invariant vrai du monde réel — « une pension DB pleinement indexée ne
+peut pas appauvrir » — pour tout horizon ≤ ~9 ans (écart `indexée − non indexée` du patrimoine
+successoral, mesuré : 5 ans **+4 836 → −4 845 $**, 6 ans +9 324 → −2 594, 8 ans +15 999 → −175,
+10 ans +26 284 → +6 398, 25 ans +327 886 → +315 912). La décomposition PAR SITE tranche : la bande
+successorale seule laisse +4 764 $ (invariant intact), la bande des rentes seule rend −4 773 $. La
+cause n'est donc PAS le crédit d'âge mais l'artefact déjà connu et ticketé
+`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]` — un facteur calculé sur le revenu d'UNE année, appliqué à une
+VAN pluriannuelle. **Rendre un calcul plus sensible à une grandeur dont il utilise déjà un mauvais
+proxy amplifie l'erreur au lieu de la corriger.** Les deux forment un COUPLE et se livrent ensemble,
+exactement comme `[ESTATE-NPV-BASE-REELLE]` avant eux
+(`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`).
+
+⚠️ **Ce qui a sauvé le lot est un test rouge qu'il aurait été FACILE de re-baser.** Trois tests ont
+rougi : deux goldens (valeur ancrée, re-basée avec sa raison) et un INVARIANT. Même couleur dans la
+sortie ; seule la lecture de ce que chacun AFFIRME les sépare. Et le voisin immédiat de l'invariant
+portait déjà, écrite, la mesure du même mécanisme au même horizon — le commentaire disait même que
+« le correctif propre rendrait ce test rouge alors qu'il aurait raison ». **Quand un test rougit,
+lire son VOISIN : s'il raconte déjà le mécanisme, ce n'est pas un golden à re-baser.**
+
+⚠️ **Le ticket nommait UNE fonction objectif ; il y en avait DEUX.** Il avertissait, à juste titre,
+que `estateNetWorth` est trié par `drawdownOptimizer`. Mais `rankStrategies` le score aussi
+(objectifs *équilibré*, *patrimoine max*) **et** score `totalEstateTax` par un CHEMIN DIFFÉRENT —
+`lifetimeTaxTotal` l'additionne, ce qui alimente *impôt minimum* et *équilibré*. Or ce lot déplace
+les DEUX champs. Corollaire de « grepper qui TRIE une grandeur » : **on la rejoue sur CHAQUE champ
+publié que le correctif déplace**, pas seulement sur celui que le ticket nomme — le périmètre d'un
+ticket est une borne inférieure même quand il a déjà fait l'effort de nommer un risque. Mesuré,
+aucun classement ne bouge : 7 personas × 4 objectifs + `compareLifeScenarios`, ordre identique.
+
+⚠️ **Le signe d'un correctif de BANDE peut être l'inverse de l'intuition, et il est juste.** Ajouter
+un crédit AUGMENTE l'impôt successoral (**+3 440 $**, déclarant seul de 65 ans). Une bande vaut
+`impôt(base + tranche) − impôt(base)` : le crédit existe sur la base, la tranche l'ÉCRASE, donc la
+bande facture EN PLUS le crédit que la tranche détruit. C'est ce que subit le contribuable. Devant un
+correctif de bande, se demander ce que la tranche DÉTRUIT, pas seulement ce qu'elle ajoute.
+
+⚠️ **Un écart NUL inattendu accuse le protocole avant le code.** Mon avant/après par
+`git stash push <fichier>` rendait des chiffres IDENTIQUES au dollar près — non pas parce que le
+correctif était sans effet, mais parce qu'il était déjà **COMMITÉ** : `stash` ne retirait que le
+commentaire non commité. J'ai failli en conclure « ce test rouge est pré-existant ». La mesure
+correcte compare au contenu de `HEAD~1` (`git show HEAD~1:<fichier>`), restauré depuis une COPIE et
+jamais par `git checkout` (`UN-GIT-CHECKOUT-DE-MESURE-PEUT-EFFACER-UNE-CORRECTION-NON-COMMITEE`).
+
+⚠️ **Marche ASSUMÉE plutôt que lissée.** `finalAge` est piloté par le curseur d'horizon, donc le
+patrimoine successoral SAUTE de **+8 243 $** quand l'horizon fait passer le décès de 64 à 65 ans
+(ménage modeste, ~1,1 M$, contre une pente voisine de −557 $/an). Contrairement aux falaises que
+`[ESTATE-NPV-07]` a supprimées, celle-ci n'est PAS un artefact de mesure : le crédit d'âge commence
+réellement à 65 ans, et la lisser reviendrait à créditer un âge que le contribuable n'a pas. Une
+limite se consigne avec sa CAUSE, pas seulement son montant.
+
+⚠️ **Pourquoi aucun golden du module ne pouvait bouger** : son stub fiscal partagé est `gross × 0,3`
+— un taux PLAT, où un crédit non remboursable est structurellement invisible (ni seuil de
+récupération, ni montant personnel). `UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`, deuxième
+fois sur ce module. Les assertions de comportement passent donc par le VRAI `calculateFiscalReport`,
+et le témoin est **ce même barème amputé de son 6ᵉ argument** — la même fonction privée de la seule
+chose que le lot ajoute, jamais une ré-implémentation.
+
+⚠️ **Un seuil d'anti-vacuité peut rougir sans que son objet bouge.** `partDeCodeRestante > 0,25` sur
+`estateCalculation.ts` est tombé à **0,240** — non pas parce que le décommenteur s'est cassé, mais
+parce que ce lot a ajouté ~40 lignes de PROSE au fichier. Re-mesuré à 0,20 avec sa raison écrite à
+côté (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`), jamais supprimé : ce qu'il doit
+attraper — un décommenteur qui mange le code — rendrait un ratio proche de 0, pas 0,20. Corollaire
+inattendu : **mieux documenter un module money-critical le rapproche mécaniquement de ce seuil**, donc
+le seuil se re-mesure à chaque lot très commenté au lieu d'être traité comme une constante.
+
+✅ **Et la dette restante sait mourir.** L'état « la bande des rentes n'a pas de crédits » est BORNÉ
+par un test à deux sens : aucun TROISIÈME appel non crédité ne s'ajoute en douce, et le jour où le
+correctif couplé arrive, ce test rougit PAR CONCEPTION — il s'INVERSE alors, il ne se supprime pas
+(`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+
 ### Note de recensement — `[A11Y-RESERVE-CHIP-PROMINENCE]` requalifié le même jour
 
 `UNE-MESURE-QUI-CONFIRME-SE-PUBLIE-AUTANT-QU-UNE-REFUTATION`

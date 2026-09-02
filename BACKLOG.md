@@ -1988,19 +1988,19 @@
 - [x] 🔴 **`[DEBT-MCP-PARITE]`** — ✅ **LIVRÉ 2026-08-21** (PR #? — à compléter au merge), voir
   `docs/BACKLOG_ARCHIVE.md`. `debtKind`/`startDate`/`termEndDate` câblés dans l'import PDF et le
   tool MCP direct ; description du tool corrigée.
-- [ ] 🔴 **`[DEBT-AMORTIZATION]`** (L, money-critical) — **Le cœur.** `Debt.originalBalance?:
-  number` (additif, aucune migration). Formule d'amortissement standard dans un nouveau service pur
-  (`services/projection/debtAmortization.ts`, patron `runAmortization` déjà utilisé côté immobilier).
-  Allowlist EXPLICITE des `kind` amortissants (`mortgage`, `auto`, `student-federal`,
-  `student-quebec`, `personal`, `spouse-loan`) — **PAS** `auto-lease`/`heloc`/`margin`/
-  `credit-card`/`other` (pas de solde qui s'amortit de cette façon ; le cas réel de Marc,
-  `auto-lease`, reste donc au niveau figé du `[PASSE-REEL-DETTE-1]`). Câblage en **DELTA additif**
-  dans `buildPastPrefix`/`dailyPastLedger` (jamais une resommation complète — même piège que
-  `[PASSE-REEL-DETTE-1]` a déjà rencontré et corrigé, cf commentaire dans `debtSchedule.ts`), avec
-  garde de plausibilité : rééchelonnage proportionnel BORNÉ (ratio `[0,5 ; 2]`) pour recoller
-  exactement au solde actuel ; hors de cette bande → repli automatique sur le niveau figé (jamais
-  une courbe absurde affichée comme un fait). Palier MENSUEL même au jour (pas de fausse précision).
-  Dépendait de `[DEBT-MCP-PARITE]` pour que `kind` soit fiable comme discriminant — **livré**.
+- [x] 🔴 **`[DEBT-AMORTIZATION]` — LOT 1/2 LIVRÉ le 2026-09-02** (PR #821), découpage demandé par
+  Marc (« je te montre le résultat du lot 1 avant d'engager le lot 2 »). Livré : `Debt.originalBalance?`
+  (additif, aucune migration) + le service PUR `services/projection/debtAmortization.ts` + 13 gardes.
+  **Rien n'est branché : la courbe du passé ne bouge pas encore.**
+- [ ] 🔴 **`[DEBT-AMORTIZATION-CABLAGE]`** (M, money-critical) — **LOT 2/2.** Câbler
+  `amortirDettePassee` en **DELTA additif** dans `buildPastPrefix`/`dailyPastLedger` (jamais une
+  resommation complète — même piège que `[PASSE-REEL-DETTE-1]` a déjà rencontré et corrigé, cf
+  commentaire dans `debtSchedule.ts`), avec repli sur le niveau figé à chaque `inapplicable` (le
+  service NOMME sa cause : `kind-non-amortissant`, `donnees-manquantes`, `origine-incoherente`,
+  `recalage-hors-bande`). ⚠️ **Mesurer la courbe du passé AVANT/APRÈS et la publier** — c'est ce
+  lot-là qui change ce que Marc voit. ⚠️ **Annoter l'ADR** `docs/adr/0012-…` : l'inversion de la
+  Décision 2 (« aucun amortissement rétroactif ») devient VISIBLE à ce moment-là, pas avant.
+  ⚠️ Le cas réel de Marc est un `auto-lease` : il reste au niveau figé, la table du service le dit.
 - [ ] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]`** (S) — `originalBalance` au MCP/PDF, une fois
   `[DEBT-MCP-PARITE]` et `[DEBT-AMORTIZATION]` livrés. Validation `plausible()` (rejeter si
   `originalBalance < balance`, incohérent pour une dette qui s'amortit normalement).

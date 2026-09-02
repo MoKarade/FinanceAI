@@ -10589,6 +10589,42 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 91 (2026-09-02) — une mesure ne vaut que ce que vaut l'arbre sur lequel elle tourne
+
+`UN-REDEMARRAGE-DE-CONTENEUR-PEUT-RESTAURER-UN-AUTRE-DEPOT`
+
+Au milieu du recensement de `[DEBT-AMORTIZATION]`, le conteneur a redémarré. Le clone local est
+revenu à un état d'**AOÛT** — autre branche (`claude/eng-divorce-coherent-v2`), autre HEAD, autre
+arborescence (`BACKLOG.md` y vit dans `docs/`), et un `node_modules` d'août par-dessus. Or juste
+avant le redémarrage, `git log` montrait bien mon lot 90.
+
+J'ai donc mesuré sur le mauvais arbre sans le savoir : j'y ai « constaté » que `Debt.startDate`
+n'existait pas, et j'étais à une phrase de publier « le ticket se trompe, treizième fois ». Sur le
+vrai `main`, `startDate` et `termEndDate` sont là, documentés — **le ticket avait raison**.
+
+Ce qui a sauvé le coup n'est pas la prudence, c'est un DÉTAIL QUI NE COLLAIT PAS : `grep` disait
+« `BACKLOG.md`: No such file or directory » pour un fichier que je venais d'éditer. **Quand un
+outil nie une chose qu'on vient de faire soi-même, l'hypothèse à tester en premier n'est pas
+« le dépôt a changé » mais « je ne suis pas là où je crois ».**
+
+Règles qui en sortent, à appliquer sans exception :
+- **Après tout redémarrage de conteneur, avant TOUTE mesure** : `git branch --show-current` et
+  `git log --oneline -1`, puis comparer à ce qu'on croit. Le CLAUDE.md demandait déjà de fetch avant
+  de juger l'état (« le clone local ne se met pas à jour seul, vu 146 commits de retard ») ; le cas
+  limite est pire — ce n'est plus le même dépôt.
+- **Un `node_modules` restauré vieillit avec le clone** : les erreurs `Cannot find module` d'un
+  typecheck après redémarrage accusent l'environnement, pas le code. `npm ci` avant de conclure.
+- **Le travail poussé est le seul travail sûr.** Les six lots précédents étaient intacts sur
+  `origin/main` parce qu'ils étaient mergés — la règle « committer et POUSSER avant toute attente
+  longue » a exactement couvert ce cas, cette fois pour de vrai.
+
+✅ **Sur le fond du lot** : la table des types amortissants est un `Record<DebtKind, boolean>`
+EXHAUSTIF plutôt qu'un `Set` de littéraux. Ajouter un type de dette casse alors le typecheck tant
+que personne n'a tranché son cas ; avec un `Set`, il aurait été rangé en silence parmi les
+non-amortissants. **Quand un défaut par OMISSION est possible, choisir la structure qui force la
+décision** — c'est la même famille que « un paramètre typé `undefined` est une décision, pas un
+oubli » (lot 84), prise cette fois du bon côté dès l'écriture.
+
 ### Lot 90 (2026-09-02) — deux passes à la main sur la même classe, c'est qu'il faut une garde
 
 `UN-COMPTE-RECOPIE-DANS-UN-TITRE-NE-SE-MET-JAMAIS-A-JOUR`

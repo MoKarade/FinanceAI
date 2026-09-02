@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 91 : le service d'amortissement, avant tout câblage (1/2)
+> `[DEBT-AMORTIZATION]` lot 1/2 — découpage CHOISI par Marc. `Debt.originalBalance?` + le service
+> PUR `debtAmortization.ts` + 13 gardes. **Rien n'est branché, la courbe du passé est inchangée.**
+> - Table `Record<DebtKind, boolean>` EXHAUSTIVE (pas un `Set`) : un nouveau type de dette casse le
+>   typecheck tant que son cas n'est pas tranché. `auto-lease` (cas réel de Marc) = `false`.
+> - Le service REFUSE en NOMMANT sa cause ; recalage proportionnel borné `[0,5 ; 2]` qui fait
+>   atterrir la courbe EXACTEMENT sur le solde réel, refus hors bande.
+> - **SUITE = `[DEBT-AMORTIZATION-CABLAGE]`** : delta additif dans `buildPastPrefix`/
+>   `dailyPastLedger`, mesure AVANT/APRÈS de la courbe, et annotation de l'ADR 0012.
+> - ⚠️⚠️ **INCIDENT ENV** : un redémarrage de conteneur a restauré un clone + `node_modules` d'AOÛT
+>   (branche `claude/eng-divorce-coherent-v2`). Mon 1er recensement a porté sur le mauvais arbre et
+>   j'ai failli publier une fausse conclusion. **Après tout redémarrage : vérifier `git branch` ET
+>   `git log` AVANT de mesurer quoi que ce soit.** Récupération : `checkout -B <br> origin/main` + `npm ci`.
+> - ✅ **Incident données CLOS** : Marc a confirmé « tout est revenu » le 2026-09-02.
+
 > ## 🟦 Session 2026-09-02 — Lot 90 : le backlog annonçait plus du double de ce qu'il contenait
 > `[PM-BACKLOG-ENTETES-PERIMES]` — aucun code de prod touché : c'est l'outil de DÉCISION qui mentait.
 > - **MESURÉ** : cinq en-têtes promettaient **50 items** pour **21** réels (Moteur & fiscal 8+7+7 →

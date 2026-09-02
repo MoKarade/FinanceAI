@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-02 (Zéro vulnérabilité connue dans les dépendances)
+
+- **Sécurité (outillage)** : quatre avis de sécurité restaient ouverts dans les paquets utilisés pour
+  CONSTRUIRE l'app (Vite, PostCSS, Tailwind, ESLint) — jamais dans ce qui est servi à ton navigateur.
+  Réglés par une mise à jour simple : `npm audit` rend maintenant **0 vulnérabilité**.
+- **Deux tickets classés sans travail** : celui qui réclamait de corriger `fast-uri` visait un paquet
+  **déjà à jour**, et celui qui justifiait une migration ESLint lourde (« breaking ») n'a plus de
+  raison d'être — le correctif est arrivé tout seul, sans migration.
+- Aucun changement dans l'app. Seul le fichier de verrouillage des versions a bougé, et tout le gate
+  a été rejoué (le risque réel n'était pas la sécurité mais la génération du CSS).
+
 ## [unreleased] — 2026-09-02 (L'autocomplétion des titres ne se tait plus quand elle échoue)
 
 - **Corrigé** : quand tu tapes un nom de titre (Placements → Ajouter), si la recherche échouait —

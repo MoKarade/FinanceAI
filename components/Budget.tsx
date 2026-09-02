@@ -764,17 +764,26 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         if (!lastProjection?.chartData?.length) return null;
         const last = lastProjection.chartData[lastProjection.chartData.length - 1];
         const monthlyTotalSavings = coupleAnalysis.totalSavings / getMultiplier(); // ramène mensuel
-        // Sensibilité: estimation linéaire grossière "+100$/mo → +Δ patrimoine".
-        // On utilise l'horizon de la projection et un rendement réel net ~5%.
         const horizonYears = lastProjection.chartData.length / 12;
-        const realRate = 0.05;
-        const factor = ((Math.pow(1 + realRate, horizonYears) - 1) / realRate) * 12; // FV d'une rente
-        const per100 = 100 * factor; // impact patrimoine si +100$/mo
+        // [BUDGET-SENSIBILITE-FORMULE-5PCT] ⚠️ La tuile « Sensibilité » vivait ICI, et elle est
+        // SUPPRIMÉE plutôt que corrigée. Elle recalculait localement un patrimoine long terme
+        // (valeur future d'une rente à 5 % en dur), ce qui viole le non-négociable « Future = source
+        // unique » — et le chiffre était faux d'une façon qui interdit de le réparer :
+        //   · il ne dépendait QUE de l'horizon, donc il valait **145 648 $ pour les SEPT personas**,
+        //     identiques revenus, dettes, âge de retraite et fiscalité confondus ;
+        //   · la vraie réponse du moteur (même scénario, dépenses −100 $/mois) va de **18 495 $**
+        //     (`pre-retraite-riche`) à **307 118 $** (`lea-fauchee`), soit un rapport de **16,6×**.
+        //   · l'écart n'est donc pas un biais qu'on corrigerait en changeant le taux : le rapport
+        //     formule/moteur va de **0,47× à 7,88×** selon le ménage. C'est la FORME qui est fausse
+        //     (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`).
+        // Une sensibilité qui ne dépend pas de l'utilisateur n'est pas une sensibilité. La question
+        // reste légitime et le moteur sait y répondre : elle est ROUTÉE en
+        // `[BUDGET-SENSIBILITE-MOTEUR]` plutôt que devinée ici. La carte entière navigue déjà vers
+        // l'onglet Futur, donc rien d'ATTEIGNABLE n'est perdu.
         return {
             estateNetWorth: lastProjection.estateNetWorth ?? last?.NetWorth ?? 0,
             finalYear: last?.year ?? new Date().getFullYear() + Math.round(horizonYears),
             horizonYears: Math.round(horizonYears),
-            per100Boost: per100,
             currentMonthlySavings: monthlyTotalSavings,
         };
     // getMultiplier est recréé à chaque render ; ses deps (timeView, customStart, customEnd)
@@ -840,10 +849,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 label: 'Impact à long terme',
                 value: formatCAD(projectionSummary.estateNetWorth), // MONTANT-HORS-ECRAN
                 note: `patrimoine successoral projeté en ${projectionSummary.finalYear} (horizon ${projectionSummary.horizonYears} ans), rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth) ; pour comparer avec get_projection, utiliser years=${projectionSummary.horizonYears}`,
-            }, {
-                label: 'Sensibilité',
-                value: `+${formatCAD(projectionSummary.per100Boost)}`, // MONTANT-HORS-ECRAN
-                note: `gain estimé de patrimoine final pour +100 $/mois d'épargne (valeur future d'une rente, rendement réel ~5 %)`,
             });
         }
         if (timeView === 'MONTH' && alerts.length > 0) {
@@ -1095,13 +1100,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <div className="text-tiny text-ink-400 mt-1">
                             Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
-                    </div>
-                    <div className="bg-black/30 rounded-xl p-3 border border-white/5">
-                        <div className="text-tiny uppercase font-bold text-ink-300 tracking-widest mb-1">Sensibilité</div>
-                        <PrivateAmount as="div" className="text-base font-bold text-success-400">
-                            +{formatCAD(projectionSummary.per100Boost)}
-                        </PrivateAmount>
-                        <div className="text-tiny text-ink-400">par +100$/mois d'épargne supplémentaire</div>
                     </div>
                 </button>
             )}

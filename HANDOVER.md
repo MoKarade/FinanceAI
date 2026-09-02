@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 89 : une sensibilité identique pour tous n'est pas une sensibilité
+> `[BUDGET-SENSIBILITE-FORMULE-5PCT]` CLOS — tuile SUPPRIMÉE des DEUX surfaces (écran + contexte IA).
+> - **Mesuré** : la formule locale ne dépendait que de l'horizon → **145 648 $ pour les 7 personas**.
+>   Le moteur répond **18 495 $ à 307 118 $** selon le ménage (**16,6×**). Rapport formule/moteur :
+>   **0,47× à 7,88×** — la FORME est fausse, pas le taux.
+> - ⚠️ Le ticket annonçait « ratio 0,56× » : vrai de SA fixture, faux comme description. Un écart
+>   mesuré à un seul point ne dit rien de sa nature.
+> - ⚠️ Surface la plus dangereuse : le chiffre partait dans le **prompt du chat**.
+> - Rien d'atteignable perdu (la carte navigue déjà vers Futur) ; question routée en
+>   `[BUDGET-SENSIBILITE-MOTEUR]` avec sa mesure. ⚠️ Le correctif n'est PAS de rappeler le moteur
+>   depuis Budget (2e simulation par rendu) mais de le faire PUBLIER la grandeur.
+
 > ## 🟦 Session 2026-09-02 — Lot 88 : deux copies divergeaient déjà, sans que rien puisse rougir
 > `[TAXDEC-TROIS-FABRIQUES-AGEOPTS]` CLOS. Refactor PUR : **bit-identique sur les 7 personas**.
 > - **3 fabriques d'`AgeCreditOptions` → 1**, garde stricte `>= 65` (équivalence VÉRIFIÉE : tous les

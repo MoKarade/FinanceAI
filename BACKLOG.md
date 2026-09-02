@@ -1011,15 +1011,17 @@
 > checklist « quels registres ce producteur doit-il alimenter ? ». **À traiter en UN lot**, pas
 > ticket par ticket.
 
-- [ ] **`[BUDGET-SENSIBILITE-FORMULE-5PCT]`** (XS, MOYEN) — **violation du non-négociable « Future =
-  source unique »** : la tuile « Sensibilité » recalcule localement un patrimoine long terme avec une
-  valeur future de rente à **5 % en dur** (`components/Budget.tsx:633-637`, affiché l:700 et l:945),
-  alors que le moteur répond exactement à la même question. **Mesuré (horizon 30,08 ans) : la formule
-  locale donne +80 149 $ ; le moteur re-simulé à −100 $/mois de dépenses donne +144 272 $ sur le NW
-  final (écart −64 123 $, ratio 0,56×) et +69 526 $ sur `estateNetWorth`** — soit 10 623 $ d'écart
-  avec la tuile voisine, qui affiche justement `estateNetWorth`. Correctif : dériver d'un run moteur
-  (`savingsMultiplier` existe déjà, cf. `tests/services/projection.savingsLever.test.ts`) ou retirer
-  la tuile. [MESURÉ]
+- [ ] **`[BUDGET-SENSIBILITE-MOTEUR]`** (M, FAIBLE — sorti du lot 89, MESURÉ) — la tuile
+  « Sensibilité » de Budget a été SUPPRIMÉE (elle inventait le chiffre) ; la QUESTION qu'elle posait
+  reste légitime : « si j'épargne 100 $/mois de plus, combien ça change à la fin ? ». Le moteur sait
+  y répondre — `calculateFutureProjection` avec `baseMonthlyExpenses − 100` — mais **la vraie réponse
+  dépend du ménage**, et beaucoup : mesuré sur les 7 personas, de **18 495 $** (`pre-retraite-riche`)
+  à **307 118 $** (`lea-fauchee`), un rapport de **16,6×**. ⚠️ Le correctif n'est PAS de rappeler le
+  moteur depuis l'onglet Budget (une seconde simulation complète par rendu) : c'est de faire PUBLIER
+  la grandeur par la projection elle-même, à côté de `estateNetWorth`, pour que Budget la CONSOMME —
+  non-négociable « Future = source unique ». Coût réel : un second run moteur par projection, à
+  mesurer avant de décider (le harnais de perf existe).
+
 - [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** ✅ 2026-08-22 — les quatre nombres sont nommés et
   documentés dans `services/projection/modelAssumptions.ts` (un 4e site s'est ajouté au tri : le
   multiple 25× existait en DEUX copies anonymes, `projection.ts` et `monthlyOutput.ts`). ⚠️ Ils

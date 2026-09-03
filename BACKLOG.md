@@ -2176,45 +2176,36 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 
-- [ ] 🔴 **`[FMT-TOLOCALESTRING-MONEY]`** (L) — ⚠️ **TICKET UNIFIÉ le 2026-08-19** : absorbe
-  `[FMT-MONEY-BYPASS]`, `[FMT-INFOBULLE-TOLOCALESTRING]`, `[UI-FMTM-FORMATCAD]`,
-  `[FORMAT-CAD-BYPASS]` et `[DETTE-FORMATCAD-BYPASS]` — cinq tickets pour la MÊME classe, mesurée à
-  trois dates différentes (45 → 77 sites). Ne pas re-scinder.
-  ✅ **Étape 1 LIVRÉE le 2026-09-03 (lot 100, PR #831) : le SCAN**, `tests/toLocaleStringMoneyScan.test.ts`.
-  Le ticket l'exigeait avant tout correctif (« ses offenders SONT le périmètre ») — c'est fait, et
-  le périmètre a été RE-MESURÉ plutôt que recopié.
-  **Périmètre réel au 2026-09-03** : 81 occurrences brutes hors `utils/format.ts` et hors tests,
-  dont 3 en commentaire → **78 en code : 67 MONTANTS, 9 dates, 2 compteurs**, classification relue
-  à la main ligne par ligne. Le compte 67 est ÉPINGLÉ par la garde, dans les deux sens (aucun 68ᵉ,
-  et « dette à zéro → retire la garde »).
-  ⚠️ **Cinq des offenders NOMMÉS par le ticket sont DÉJÀ corrigés** et ne portent plus une seule
-  occurrence : `ProjectionExplains.tsx`, `ActionPlanDrilldown.tsx`, `GoalSeekerCard.tsx`,
-  `ImportBankStatement.tsx`, et le `fmtM` de `StrategyOptimizerPanel.tsx` (il délègue à
-  `formatCompactCAD`). Les numéros de ligne des autres avaient tous dérivé.
-  ⚠️ **Le remède prescrit est REDONDANT** : `formatCADRound` n'a pas lieu d'être, `formatCAD` arrondit
-  déjà à zéro décimale par défaut ; et `formatCADSigned` existe sous le nom `formatSigned(n,
-  { withCurrency: true })`. Grepper le remède, pas seulement le défaut.
-  ⚠️⚠️ **Un des offenders ne doit PAS recevoir `formatCAD`** : `investments/ImportBrokerPositions.tsx`
-  rend `` `${fmt(h.avgCost)} ${h.currency}` `` — un prix en devise **NATIVE** suivi de son code de
-  devise. `formatCAD` y collerait « $ » et afficherait « 1 234,56 $ USD ». Le bon helper est
-  `formatNumber(v, { decimals: 2 })`. Appliquer le remède du ticket en aveugle y créerait un bug de
-  devise (règle §1 « Devises »).
-- [ ] 🔴 **`[FMT-TOLOCALESTRING-MONEY-CORRECTIFS]`** (L) — **étape 2** : corriger les 67 montants que
-  le scan recense, par dossier, en faisant BAISSER le compte épinglé dans
-  `tests/toLocaleStringMoneyScan.test.ts` à chaque lot. Découpage à la frontière du risque :
-  (a) **logs du moteur** (~60 sites, `services/projection/*` : `cashflowAllocation` 6, `taxDecember`
-  12, `monthlyEvents` 8, `realEstateMonth` 11, `w5Effects`, `vehicleCycle`, `childrenReee`,
-  `meltdownReer`, `stochasticEvents`, `strategyConfigRanking`, `assetLocation`, `drawdownOptimizer`,
-  `goalSeek`, `projection.ts`) — ces chaînes sont ASSERTÉES par des goldens : mesurer combien
-  rougissent AVANT de convertir, et se rappeler que `formatCAD` pose une espace **insécable** que
-  les attendus écrits à la main n'ont pas.
-  (b) **`ProjectionTooltip.tsx`** — son `fmt` maison est appelé ~20 fois avec le « $ » ajouté À LA
-  MAIN dans le JSX, et **une fois SANS** (`{fmt(a.gain)}`, un nombre nu) : migrer vers `formatCAD`
-  impose de retirer les 20 « $ » et de basculer ce site-là sur `formatNumber`. Un remplacement
-  global y doublerait le symbole ou perdrait le nu.
-  (c) **`ImportBrokerPositions.tsx`** — `formatNumber`, PAS `formatCAD` (devise native, voir plus haut).
-  ⚠️ NE PAS confondre avec `[FORMATCAD-OR-ZERO]`, classe DISTINCTE (le `|| 0` annule la garde de
-  `formatCAD` au lieu de la contourner — correctif différent).
+- [ ] 🟠 **`[FMT-MONTANTS-COMPOSES-A-LA-MAIN]`** (M) — **classe JUMELLE**, invisible à la garde du
+  lot 100 : un montant écrit `` `+${x}$` `` ne contient aucun `toLocaleString`, donc le scan ne le
+  voit pas (`UN-MONTANT-COMPOSE-A-LA-MAIN-EST-INVISIBLE-A-LA-GARDE-QUI-CHERCHE-LE-FORMATEUR`).
+  Recensé par la revue du lot 101, **hors des lignes qu'il touchait** : `taxJanuary.ts` [×2],
+  `services/projection.ts` [×2, « +250 000$ » en dur], `services/claude.ts`,
+  `services/aiChat/viewContext.ts`, `mcp/ingest/applyDocument.ts` [×11].
+  ⚠️ Le périmètre ci-dessus vient d'un agent, donc **il se RE-RECENSE avant d'être cru**
+  (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`). **Correctif** : une garde JUMELLE qui interdit de
+  faire le travail autrement, puis les sites — une garde qui cherche l'USAGE d'une fonction a besoin
+  de sa jumelle, sinon la dette se déplace au lieu de se payer.
+- [ ] 🟡 **`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`** (XS) — **défaut PRÉEXISTANT**, rendu plus
+  visible par le lot 101 (signalé, PAS corrigé — hors périmètre demandé) : `taxDecember.ts` journalise
+  `💊 RAMQ médicaments: <total>/an (<par adulte>/adulte)` où le total est en dollars **INFLATÉS** et
+  la part par adulte en dollars **RÉELS**. Les deux n'ont jamais été divisibles l'un par l'autre ;
+  depuis que les deux passent par `formatCAD`, ils se ressemblent typographiquement et le log invite
+  à faire la division. Idem FSS. **Correctif** : publier les deux dans la MÊME unité, ou nommer
+  l'unité dans la phrase.
+- [ ] 🟠 **`[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]`** (S) — **dernier reliquat** de
+  `[FMT-TOLOCALESTRING-MONEY]` (scan livré au lot 100, 65 logs du moteur convertis au lot 101).
+  Il reste **2 sites**, tous deux des formateurs MAISON de composants, épinglés par
+  `tests/toLocaleStringMoneyScan.test.ts` (`toBeLessThanOrEqual(2)`) :
+  - `components/projection/ProjectionTooltip.tsx` — son `fmt` est appelé **~20 fois avec le « $ »
+    ajouté à la main dans le JSX** et **une fois SANS** (`{fmt(a.gain)}`, un nombre nu). Migrer vers
+    `formatCAD` impose de retirer les 20 « $ » et de basculer ce site-là sur `formatNumber` : un
+    remplacement global doublerait le symbole vingt fois et perdrait le nu une fois.
+  - `components/investments/ImportBrokerPositions.tsx` — ⚠️ **`formatNumber`, PAS `formatCAD`** :
+    il rend `` `${fmt(h.avgCost)} ${h.currency}` ``, un prix en devise **NATIVE** suivi de son code.
+    `formatCAD` y afficherait « 1 234,56 $ USD » (règle §1 « Devises »).
+  Quand le compte atteint 0, **SUPPRIMER** la garde et ce ticket : sa dette est payée
+  (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
 
 
 - [ ] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,

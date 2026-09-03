@@ -6,6 +6,7 @@
 // Méthode: dichotomie sur le paramètre cible (épargne mensuelle ou âge de retraite).
 // Convergence garantie en log2(range) itérations, typiquement 10-15.
 
+import { formatCAD } from '../../utils/format';
 import { calculateFutureProjection, type SimulationParams } from '../projection';
 
 export interface GoalSeekResult {
@@ -88,7 +89,7 @@ export function findRequiredMonthlySavings(
         value: Math.round((lo + hi) / 2),
         iterations: iter,
         finalNetWorthAtTarget: lastNW,
-        error: converged ? undefined : `Convergence partielle (${iter} itérations, écart ~${Math.round(Math.abs(lastNW - targetNetWorth)).toLocaleString('fr-CA')}\$)`,
+        error: converged ? undefined : `Convergence partielle (${iter} itérations, écart ~${formatCAD(Math.round(Math.abs(lastNW - targetNetWorth)))})`,
     };
 }
 

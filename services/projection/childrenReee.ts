@@ -6,6 +6,7 @@
 // les applique sur ses propres variables locales.
 // Injection: calculateFiscalReport passé en argument — pour la TESTABILITÉ (stub/espion).
 
+import { formatCAD } from '../../utils/format';
 import type { ChildGoal } from '../../types';
 import { RQAP_MAX_INCOME, type FiscalReport } from '../../utils/tax';
 import {
@@ -430,7 +431,7 @@ export function processOneChild(
         const carInflated = carCost * expenseMultiplier * custody;
         liquidDelta -= carInflated;
         liquidDeltaCosts -= carInflated;
-        lifeEventLogs.push(`🚗 Cadeau voiture pour ${child.name || 'l\'enfant'} (18 ans) : -${Math.round(carInflated).toLocaleString('fr-CA')} $`);
+        lifeEventLogs.push(`🚗 Cadeau voiture pour ${child.name || 'l\'enfant'} (18 ans) : -${formatCAD(Math.round(carInflated))}`);
         childGrossCostAdd += carInflated;
         childMonthlyCostAdd += carInflated;
     }
@@ -469,7 +470,7 @@ export function processOneChild(
         liquidDelta += reeeNewBalance;
         liquidDeltaReee += reeeNewBalance;
         taxDiversAdd += reeeNewBalance * REEE_AIP_TAX_RATE;
-        flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${Math.round(reeeNewBalance).toLocaleString('fr-CA')} $ versés dans tes liquidités`);
+        flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${formatCAD(Math.round(reeeNewBalance))} versés dans tes liquidités`);
         reeeNewBalance = 0;
     }
 

@@ -7,6 +7,7 @@
 // Pattern: State Object — toutes les variables mutables dans RealEstateState.
 // propertiesState est mutée en place (objets référencés).
 
+import { formatCAD } from '../../utils/format';
 import type { RealEstateGoal, Municipality } from '../../types';
 import { RAP_LIMIT_PER_USER, calculateGrossWithholdingRRSP, withholdingForGrossRRSP } from '../../utils/tax';
 import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
@@ -157,7 +158,7 @@ export function processRealEstate(
                 prop.mortgage = 0;
                 prop.calculatedPmt = 0;                   // plus d'hypothèque à payer
                 state.lifeEventLogs.push(
-                    `🏠 Downsizing retraite : équité libérée +${Math.round(released).toLocaleString('fr-CA')}$ → placements`,
+                    `🏠 Downsizing retraite : équité libérée +${formatCAD(Math.round(released))} → placements`,
                 );
             }
         }
@@ -206,13 +207,13 @@ export function processRealEstate(
             const totalCashNeeded = Math.max(0, goal.downPayment + goal.totalClosingCosts + welcomeFees - newHomeRebate);
             if (newHomeRebate > 0) {
                 state.lifeEventLogs.push(
-                    `💰 Rembours. TPS/TVQ neuve §6.7 (${goal.id}): -${Math.round(newHomeRebate).toLocaleString('fr-CA')}$`,
+                    `💰 Rembours. TPS/TVQ neuve §6.7 (${goal.id}): -${formatCAD(Math.round(newHomeRebate))}`,
                 );
             }
 
             if (state.celiapp > 0) {
                 state.liquid += state.celiapp;
-                state.flowEventLogs.push(`💰 Retrait CELIAPP (FHSA) pour l'achat : +${Math.round(state.celiapp).toLocaleString('fr-CA')} $`);
+                state.flowEventLogs.push(`💰 Retrait CELIAPP (FHSA) pour l'achat : +${formatCAD(Math.round(state.celiapp))}`);
                 state.celiapp = 0;
                 state.fhsaClosingYear = loopYear;
             }
@@ -247,7 +248,7 @@ export function processRealEstate(
                             state.retraitReerMois += rapAmount;
                             state.contribLiquid += rapAmount;
                             remainingShortfall -= rapAmount;
-                            state.flowEventLogs.push(`🏦 ↳ Retrait REER via le RAP, sans impôt : +${Math.round(rapAmount).toLocaleString('fr-CA')} $`);
+                            state.flowEventLogs.push(`🏦 ↳ Retrait REER via le RAP, sans impôt : +${formatCAD(Math.round(rapAmount))}`);
                         }
                     }
                 }
@@ -262,7 +263,7 @@ export function processRealEstate(
                     state.retraitCeliMois += celiAmount;
                     state.contribLiquid += celiAmount;
                     remainingShortfall -= celiAmount;
-                    state.flowEventLogs.push(`🏦 ↳ Retrait CELI pour l'achat : +${Math.round(celiAmount).toLocaleString('fr-CA')} $`);
+                    state.flowEventLogs.push(`🏦 ↳ Retrait CELI pour l'achat : +${formatCAD(Math.round(celiAmount))}`);
                 }
 
                 // Phase 3: NonReg
@@ -272,7 +273,7 @@ export function processRealEstate(
                     state.withdrawalNonReg += nonRegAmount;
                     state.contribLiquid += nonRegAmount;
                     remainingShortfall -= nonRegAmount;
-                    state.flowEventLogs.push(`🏦 ↳ Retrait du compte non-enregistré pour l'achat : +${Math.round(nonRegAmount).toLocaleString('fr-CA')} $`);
+                    state.flowEventLogs.push(`🏦 ↳ Retrait du compte non-enregistré pour l'achat : +${formatCAD(Math.round(nonRegAmount))}`);
                 }
 
                 // Phase 4: REER imposable (dernier recours)
@@ -310,7 +311,7 @@ export function processRealEstate(
                         state.taxCurrentYearReer += withholding;
                         state.rrspWithholdingMois += withholding;
                         state.impotReerMois += withholding;
-                        state.flowEventLogs.push(`🚨 ↳ Retrait REER imposable pour l'achat : -${Math.round(drawn).toLocaleString('fr-CA')} $ brut (retenue ${Math.round(withholding).toLocaleString('fr-CA')} $, solde réglé en avril)`);
+                        state.flowEventLogs.push(`🚨 ↳ Retrait REER imposable pour l'achat : -${formatCAD(Math.round(drawn))} brut (retenue ${formatCAD(Math.round(withholding))}, solde réglé en avril)`);
                     }
                 }
             }
@@ -329,7 +330,7 @@ export function processRealEstate(
                 if (schl.required) {
                     pState.mortgage += schl.premium;
                     state.lifeEventLogs.push(
-                        `🏦 Prime SCHL §6.5 (${goal.id}): +${Math.round(schl.premium).toLocaleString('fr-CA')}$ ` +
+                        `🏦 Prime SCHL §6.5 (${goal.id}): +${formatCAD(Math.round(schl.premium))} ` +
                         `(${(schl.rate * 100).toFixed(2)}% sur LTV ${(schl.ltv * 100).toFixed(1)}%)`,
                     );
                 }
@@ -338,8 +339,8 @@ export function processRealEstate(
                 const n = goal.amortization * 12;
                 const p = pState.mortgage;
                 pState.calculatedPmt = r > 0 ? p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1) : p / n;
-                state.lifeEventLogs.push(`🏠 Achat ${goal.name || 'de la propriété'} : -${Math.round(totalCashNeeded).toLocaleString('fr-CA')} $ (argent sorti de tes comptes)`);
-                state.flowEventLogs.push(`📌 Mise de fonds : -${goal.downPayment.toLocaleString('fr-CA')} $ · Frais de notaire + taxe de bienvenue : -${Math.round(goal.totalClosingCosts + welcomeFees).toLocaleString('fr-CA')} $`);
+                state.lifeEventLogs.push(`🏠 Achat ${goal.name || 'de la propriété'} : -${formatCAD(Math.round(totalCashNeeded))} (argent sorti de tes comptes)`);
+                state.flowEventLogs.push(`📌 Mise de fonds : -${formatCAD(goal.downPayment)} · Frais de notaire + taxe de bienvenue : -${formatCAD(Math.round(goal.totalClosingCosts + welcomeFees))}`);
                 if (goal.isPrimaryResidence) state.hasPurchasedPrimary = true;
 
                 // §6.6 — Stress test OSFI B-20 (qualifying rate + GDS/TDS).
@@ -460,7 +461,7 @@ export function processRealEstate(
                 if (surplusMarginCall > 0 && state.nonReg > 0) {
                     const call = handleNonRegSale(state, surplusMarginCall);
                     state.smithManoeuvreDebt -= call;
-                    state.flowEventLogs.push(`🚨 Appel de marge : vente forcée de ${Math.round(call).toLocaleString('fr-CA')} $ (compte non-enregistré)`);
+                    state.flowEventLogs.push(`🚨 Appel de marge : vente forcée de ${formatCAD(Math.round(call))} (compte non-enregistré)`);
                 }
             }
 

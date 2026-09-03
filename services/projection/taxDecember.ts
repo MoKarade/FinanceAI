@@ -3,6 +3,7 @@
 // Cycle 10 (computeOasClawback, processTaxLossHarvesting): décembre = mois 11.
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
+import { formatCAD } from '../../utils/format';
 import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 import { NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './helpers';
 import { eligiblePensionRealFor } from './pensionCredit';
@@ -145,7 +146,7 @@ export function computeOasClawback(
     if (clawbackAnnual > 1 || capInvalid) {
         return {
             clawbackAnnual,
-            logMsg: `⚠️ PSV Clawback prévu: -${Math.round(clawbackAnnual).toLocaleString('fr-CA')}$/an${invalidNote}`,
+            logMsg: `⚠️ PSV Clawback prévu: -${formatCAD(Math.round(clawbackAnnual))}/an${invalidNote}`,
         };
     }
     return { clawbackAnnual };
@@ -191,7 +192,7 @@ export function processTaxLossHarvesting(
     return {
         harvestedLoss,
         acbDelta,
-        logMsg: `🛡️ Perte Cristallisée (TLH): +${Math.round(harvestedLoss).toLocaleString('fr-CA')}$ (Banque) | ACB −${Math.round(harvestedLoss).toLocaleString('fr-CA')}$`,
+        logMsg: `🛡️ Perte Cristallisée (TLH): +${formatCAD(Math.round(harvestedLoss))} (Banque) | ACB −${formatCAD(Math.round(harvestedLoss))}`,
     };
 }
 
@@ -254,7 +255,7 @@ export function processGainHarvesting(opts: {
     const harvestedGain = freeGain + bracketGain;
     if (!(harvestedGain > 1)) return { harvestedGain: 0, consumedLoss: 0 };
     const freeNote = freeGain > 0.5
-        ? ` dont ${Math.round(freeGain).toLocaleString('fr-CA')}$ compensés par la banque de pertes (0$ d'impôt)`
+        ? ` dont ${formatCAD(Math.round(freeGain))} compensés par la banque de pertes (${formatCAD(0)} d'impôt)`
         : '';
     // Libellé honnête (revue) : « au palier bas » seulement si une part remplit RÉELLEMENT le
     // palier — une récolte 100 % compensée peut avoir lieu palier PLEIN.
@@ -262,7 +263,7 @@ export function processGainHarvesting(opts: {
     return {
         harvestedGain,
         consumedLoss: freeGain,
-        logMsg: `🌱 Récolte de gains: +${Math.round(harvestedGain).toLocaleString('fr-CA')}$${where} (ACB relevé)${freeNote}`,
+        logMsg: `🌱 Récolte de gains: +${formatCAD(Math.round(harvestedGain))}${where} (ACB relevé)${freeNote}`,
     };
 }
 
@@ -629,7 +630,7 @@ export function processDecemberTaxFiling(
             const floor = -APRIL_SETTLEMENT_FLOOR_REAL * Math.max(1, inflationFactor);
             taxCurrent.revenu = Math.max(floor, aprilSettlementRaw);
             if (aprilSettlementRaw < floor) {
-                logs.push(`⚠️ Remboursement d'avril tronqué au plancher ${Math.round(floor).toLocaleString('fr-CA')}$ (calculé: ${Math.round(aprilSettlementRaw).toLocaleString('fr-CA')}$)`);
+                logs.push(`⚠️ Remboursement d'avril tronqué au plancher ${formatCAD(Math.round(floor))} (calculé: ${formatCAD(Math.round(aprilSettlementRaw))})`);
             }
         }
     } else {
@@ -793,7 +794,7 @@ export function processDecemberTaxFiling(
                 taxCurrent.revenu += Math.max(floor, reconciliation);
                 // Panel #558 : troncature journalisée (miroir du plancher de la phase active).
                 if (reconciliation < floor) {
-                    logs.push(`⚠️ Régularisation retraité tronquée au plancher ${Math.round(floor).toLocaleString('fr-CA')}$ (calculée: ${Math.round(reconciliation).toLocaleString('fr-CA')}$)`);
+                    logs.push(`⚠️ Régularisation retraité tronquée au plancher ${formatCAD(Math.round(floor))} (calculée: ${formatCAD(Math.round(reconciliation))})`);
                 }
             } else if (!Number.isFinite(reconciliation)) {
                 // [Revue #680] Symétrie avec la branche ACTIVE (⚠️ solde d'avril NON FINI) : un
@@ -877,7 +878,7 @@ export function processDecemberTaxFiling(
         const ramqTotal = ramqPerAdult * ctx.activeUsersCount * inflationFactor;
         if (ramqTotal > 0) {
             taxCurrent.divers += ramqTotal;
-            logs.push(`💊 RAMQ médicaments: ${Math.round(ramqTotal).toLocaleString('fr-CA')}$/an (${Math.round(ramqPerAdult)}$/adulte)`);
+            logs.push(`💊 RAMQ médicaments: ${formatCAD(Math.round(ramqTotal))}/an (${formatCAD(Math.round(ramqPerAdult))}/adulte)`);
         }
     }
 
@@ -915,7 +916,7 @@ export function processDecemberTaxFiling(
         const fssTotal = fssPerAdult * ctx.activeUsersCount * inflationFactor;
         if (fssTotal > 0) {
             taxCurrent.divers += fssTotal;
-            logs.push(`🏥 FSS (ligne 446): ${Math.round(fssTotal).toLocaleString('fr-CA')}$/an (${Math.round(fssPerAdult)}$/adulte)`);
+            logs.push(`🏥 FSS (ligne 446): ${formatCAD(Math.round(fssTotal))}/an (${formatCAD(Math.round(fssPerAdult))}/adulte)`);
         }
     }
 
@@ -1024,7 +1025,7 @@ export function processDecemberTaxFiling(
         // familial). Actif < 65 → opts undefined → bit-identique à l'ancien calcul.
         const tax = incrementalBandTax(perAdultIncome, perAdultGains, incomeForGains, taxableCapGains);
         taxCurrent.gains += tax;
-        if (tax > 100) logs.push(`↳ Impôt Gains Cap Accumulés: +${Math.round(tax).toLocaleString('fr-CA')}$`);
+        if (tax > 100) logs.push(`↳ Impôt Gains Cap Accumulés: +${formatCAD(Math.round(tax))}`);
     }
 
     // ---- 3. Dividendes Non-Reg (30% du rendement) ----
@@ -1095,7 +1096,7 @@ export function processDecemberTaxFiling(
         const appliedCredit = Math.min(donCredit, offsettableTax);
         taxCurrent.divers -= appliedCredit;
         if (donCredit - appliedCredit > 1) {
-            logs.push(`↳ Crédit dons plafonné à l'impôt dû: ${Math.round(appliedCredit).toLocaleString('fr-CA')}$ appliqué, ${Math.round(donCredit - appliedCredit).toLocaleString('fr-CA')}$ non utilisable`);
+            logs.push(`↳ Crédit dons plafonné à l'impôt dû: ${formatCAD(Math.round(appliedCredit))} appliqué, ${formatCAD(Math.round(donCredit - appliedCredit))} non utilisable`);
         }
     }
     taxCurrent.donCredit = 0; // consommé (excédent perdu : aucun report modélisé)

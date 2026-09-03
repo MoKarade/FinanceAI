@@ -3,6 +3,7 @@
 // Trois helpers indépendants groupés car ils tournent tous au même moment
 // du loop mensuel (après les dépenses enfants, avant shortfall).
 
+import { formatCAD } from '../../utils/format';
 import type { TravelGoal, LifeEvent, ProjectionConfig, FinancialGoal } from '../../types';
 import { logErrorThrottled } from '../errorLogger';
 
@@ -20,7 +21,7 @@ export function applyTravelExpenses(
         if (t.date.startsWith(currentIsoMonth)) {
             const effectiveCost = (t.totalCost ?? 0) * expenseMultiplier;
             state.addExpense(effectiveCost);
-            state.logFlow(`✈️ Voyage (${t.destination}): -${Math.round(effectiveCost).toLocaleString('fr-CA')}$`, dayOfIsoDate(t.date));
+            state.logFlow(`✈️ Voyage (${t.destination}): -${formatCAD(Math.round(effectiveCost))}`, dayOfIsoDate(t.date));
         }
     }
 }
@@ -157,7 +158,7 @@ export function applyLifeEvents(
             const gain = Number.isFinite(rawGain) ? Math.max(0, rawGain) : 0;
             state.addLiquid(gain);
             state.logLife(`${e.name} 💰`, dayOfIsoDate(e.date));
-            state.logFlow(`💰 Héritage/Gain (${e.name}): +${Math.round(gain).toLocaleString('fr-CA')}$`, dayOfIsoDate(e.date));
+            state.logFlow(`💰 Héritage/Gain (${e.name}): +${formatCAD(Math.round(gain))}`, dayOfIsoDate(e.date));
         } else {
             // [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique explicite d'abord (`eventKind`) : 'VENTE_IMMO'
             // force la vente, 'NONE' la désarme ; absent → détection historique par sous-chaîne (« vente »
@@ -203,19 +204,19 @@ export function applyLifeEvents(
                         const rawGain = soldProp.currentValue * 0.95 - (soldProp.cost ?? 0);
                         const { bankedLoss, taxableGain } = state.realizeCapitalDisposition(rawGain);
                         if (taxableGain > 0) {
-                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(taxableGain).toLocaleString('fr-CA')}$ — 50 % imposable`, dayOfIsoDate(e.date));
+                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${formatCAD(Math.round(taxableGain))} — 50 % imposable`, dayOfIsoDate(e.date));
                         } else if (bankedLoss > 0) {
-                            state.logFlow(`🏠 Perte en capital (locatif) : ${Math.round(bankedLoss).toLocaleString('fr-CA')}$ portée en banque de pertes (déductible des gains futurs)`, dayOfIsoDate(e.date));
+                            state.logFlow(`🏠 Perte en capital (locatif) : ${formatCAD(Math.round(bankedLoss))} portée en banque de pertes (déductible des gains futurs)`, dayOfIsoDate(e.date));
                         }
                     }
                     soldProp.isBought = false;
                     soldProp.mortgage = 0;
                     soldProp.isSold = true;
                     state.logLife(saleNet >= 0
-                        ? `🏠 Vente (net 95%): +${Math.round(saleNet).toLocaleString('fr-CA')}$`
+                        ? `🏠 Vente (net 95%): +${formatCAD(Math.round(saleNet))}`
                         // saleNet < 0 : les frais de 5 % dépassent l'équité → net négatif DÉDUIT du patrimoine
                         // (ponctionné du liquide, ou porté en dette si le liquide est épuisé — PV-6).
-                        : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`, dayOfIsoDate(e.date));
+                        : `🏠 Vente (net 95%): −${formatCAD(Math.round(-saleNet))} (frais > équité)`, dayOfIsoDate(e.date));
                 } else if (e.propertyId) {
                     // DETTE-RE-SALE / observabilité (panel silent-failure) : `propertyId` visait un bien
                     // introuvable / non vendable (supprimé du store, underwater, déjà vendu) → la vente
@@ -246,7 +247,7 @@ export function applyLifeEvents(
                 const effectiveImpact = Number.isFinite(rawImpact) ? rawImpact : 0;
                 state.addExpense(effectiveImpact);
                 state.logLife(`${e.name} 💸`, dayOfIsoDate(e.date));
-                state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`, dayOfIsoDate(e.date));
+                state.logFlow(`🔔 Événement (${e.name}): -${formatCAD(Math.round(effectiveImpact))}`, dayOfIsoDate(e.date));
             }
         }
     }
@@ -287,8 +288,8 @@ export function applyFinancialGoalDeadlines(
         // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
         const isShort = effective - drawn > 0.5;
         if (isShort) state.onGoalShortfall?.(g.name || 'But financier', effective, drawn);
-        const short = isShort ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
-        state.logFlow(`🏆 But financier (${g.name}): -${Math.round(Math.max(0, drawn)).toLocaleString('fr-CA')}$ depuis ${account}${short}`);
+        const short = isShort ? ` (visé ${formatCAD(Math.round(effective))} — fonds insuffisants)` : '';
+        state.logFlow(`🏆 But financier (${g.name}): -${formatCAD(Math.round(Math.max(0, drawn)))} depuis ${account}${short}`);
     }
 }
 

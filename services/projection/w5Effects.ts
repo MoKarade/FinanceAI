@@ -9,6 +9,7 @@
 
 import type { InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../../types';
 import { computeDonationCredit } from '../../utils/donationCredit';
+import { formatCAD } from '../../utils/format';
 
 export interface W5Context {
     m: number;
@@ -85,7 +86,7 @@ export function applyW5Effects(
         if (cyclMonths > 0 && m > 0 && m % cyclMonths === 0) {
             const cost = (v.costEstimate || 0) * expenseMultiplier;
             state.subtractLiquid(cost);
-            state.logFlow(`🚗 Remplacement véhicule: -${Math.round(cost).toLocaleString('fr-CA')}$`);
+            state.logFlow(`🚗 Remplacement véhicule: -${formatCAD(Math.round(cost))}`);
         }
     }
 
@@ -97,7 +98,7 @@ export function applyW5Effects(
         if (renoMonthIdx === m) {
             const cost = (reno.cost || 0) * expenseMultiplier;
             state.subtractLiquid(cost);
-            state.logLife(`🔨 Rénovation majeure: -${Math.round(cost).toLocaleString('fr-CA')}$ (${reno.description || 'maison'})`);
+            state.logLife(`🔨 Rénovation majeure: -${formatCAD(Math.round(cost))} (${reno.description || 'maison'})`);
         }
     }
 

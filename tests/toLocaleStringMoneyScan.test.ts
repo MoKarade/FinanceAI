@@ -132,8 +132,14 @@ describe('[FMT-TOLOCALESTRING-MONEY] le scan qui définit le périmètre', () =>
         // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
         expect(r.partCode).toBeGreaterThan(0.45);
         // Et il trouve les TROIS familles : un scan qui n'en verrait qu'une classerait mal.
-        expect(r.montants.length + r.compteurs.length + r.dates).toBeGreaterThan(40);
+        // ⚠️ Ce total a BAISSÉ de 78 (lot 100) à 13 (lot 101) parce que le lot a payé la dette —
+        // ce n'est pas une régression du scan, et le seuil se re-mesure avec elle. Les familles
+        // s'assertent une par une : un total qui tiendrait grâce aux seules dates ne prouverait
+        // pas que les deux autres sont encore reconnues.
+        expect(r.montants.length + r.compteurs.length + r.dates).toBeGreaterThan(10);
         expect(r.dates).toBeGreaterThan(5);
+        expect(r.compteurs.length).toBeGreaterThan(0);
+        expect(r.montants.length).toBeGreaterThan(0);
     });
 
     it('le décommentage FONCTIONNE : la prose qui cite le motif n\'est pas comptée', () => {
@@ -152,22 +158,35 @@ describe('[FMT-TOLOCALESTRING-MONEY] le scan qui définit le périmètre', () =>
         const n = r.montants.length;
         // eslint-disable-next-line no-console
         console.log(`[FMT-TOLOCALESTRING-MONEY] montants=${n} · compteurs=${r.compteurs.length} · dates=${r.dates}`);
-        expect(n, `Un ${n > 67 ? 'NOUVEAU' : ''} montant formaté sans passer par formatCAD. `
-            + `Mesuré 67 le 2026-09-03 (81 occurrences brutes, 3 en commentaire, 78 en code : `
-            + `67 montants, 9 dates, 2 compteurs — classification relue À LA MAIN, ligne par ligne). `
+        expect(n, `Un ${n > 2 ? 'NOUVEAU' : ''} montant formaté sans passer par formatCAD. `
+            + `Mesuré 67 au lot 100 (2026-09-03), ramené à 2 au lot 101 : les 65 chaînes de log du `
+            + `moteur passent désormais par la source unique. Les 2 restants sont les formateurs `
+            + `MAISON de deux composants, qui demandent un travail par site d'appel (le « $ » y est `
+            + `ajouté à la main dans le JSX, et l'un d'eux affiche une devise NATIVE). `
+            + `⚠️ CE COMPTE NE PORTE QUE SUR toLocaleString : un montant composé À LA MAIN `
+            + `(\`+\${x}$\`) lui est INVISIBLE, et il en reste (recensés dans `
+            + `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]). Ne pas lire « 2 » comme « toute la dette ». `
             + `Si tu en AJOUTES un, utilise formatCAD ; si tu en CORRIGES, baisse ce compte — et `
             + `quand il atteint 0, SUPPRIME cette garde, sa dette est payée.`)
-            .toBeLessThanOrEqual(67);
+            .toBeLessThanOrEqual(2);
         expect(n, 'Dette à ZÉRO : retire cette garde et le ticket, ils n\'ont plus d\'objet.')
             .toBeGreaterThan(0);
     });
 
-    it('les fichiers MONEY-CRITICAL du ticket sont bien dans le périmètre mesuré', () => {
-        // Le ticket nomme `cashflowAllocation.ts` (logs de flux). Un scan qui ne le verrait pas
-        // mesurerait autre chose que ce que le ticket décrit — vérifié plutôt que supposé.
-        const fichiers = new Set(r.montants.map(m => m.fichier));
-        expect([...fichiers].some(f => f.includes('cashflowAllocation'))).toBe(true);
-        expect([...fichiers].some(f => f.includes('taxDecember'))).toBe(true);
+    it('les fichiers MONEY-CRITICAL du ticket sont bien BALAYÉS', () => {
+        // ⚠️ Cette garde s'est INVERSÉE au lot 101, elle n'a pas été supprimée. Elle affirmait
+        // « `cashflowAllocation` et `taxDecember` FIGURENT parmi les offenders » — vrai au lot 100,
+        // et devenu faux dès qu'on les a corrigés : elle rougissait sur le correctif qu'elle était
+        // censée préparer. Elle ancrait la FORME (qui est offender aujourd'hui) au lieu du FAIT
+        // (ces modules sont dans le périmètre BALAYÉ), et un garde-fou qui rougit sur un correctif
+        // légitime pose souvent la bonne question
+        // (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`).
+        const balayes = fichiersProd();
+        expect(balayes).toContain(join('services', 'projection', 'cashflowAllocation.ts'));
+        expect(balayes).toContain(join('services', 'projection', 'taxDecember.ts'));
+        // …et le scan les a bien LUS, pas seulement listés : sans cette seconde moitié, un
+        // marcheur qui rendrait les chemins sans jamais ouvrir les fichiers passerait.
+        expect(balayes.length).toBeGreaterThan(200);
     });
 
     it('le classificateur ne prend PAS un montant pour une date (témoins nommés)', () => {

@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Les montants du journal s'écrivent tous pareil)
+
+- **Corrigé** : les 65 messages du journal de projection qui affichaient un montant (retraits,
+  remboursements, achats immobiliers, impôts, événements de vie) passent maintenant par le
+  formateur unique de l'app. Ils s'écrivent donc exactement comme les montants du reste des écrans.
+- **Deux d'entre eux montraient des centimes** (« 12 345,67 $ » pour un héritage ou une mise de
+  fonds) là où toute l'app arrondit au dollar. C'est corrigé.
+- **Un montant aberrant ne s'affiche plus comme un montant** : une valeur infinie donnait « ∞$ »
+  dans le journal, elle donne « — ».
+- **Trois montants écrits « à la main »** dans les mêmes phrases (le capital d'une maladie grave,
+  les parts par adulte de la RAMQ et du FSS) s'affichaient sans séparateur de milliers — « 250000$ »
+  au lieu de « 250 000 $ ». Corrigés aussi.
+- **Aucun chiffre ne bouge** : la conversion garde l'arrondi exact d'avant, y compris sur les
+  demi-dollars négatifs où les deux méthodes ne tombent pas du même côté.
+
+---
+
 ## [unreleased] — 2026-09-03 (Un garde-fou de plus sur le format des montants)
 
 - **Ajouté** : un contrôle automatique qui refuse tout NOUVEAU montant affiché sans passer par le

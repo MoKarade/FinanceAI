@@ -11,6 +11,7 @@
 //   stratégies internes. On expose ces 5 résultats avec un classement honnête,
 //   en 1 seul appel.
 
+import { formatCAD } from '../../utils/format';
 import { STRATEGY_DEFS } from './scenarios';
 import { calculateFutureProjection, type SimulationParams } from '../projection';
 import { logError } from '../errorLogger';
@@ -85,7 +86,7 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
         bestEstateNetWorth: best?.estateNetWorth ?? 0,
         results,
         explanation: best
-            ? `Meilleur avenir: ${best.strategyName}. Écart entre le meilleur et le pire: ${Math.round(gain).toLocaleString('fr-CA')}\$ (+${gainPct.toFixed(1)}%).`
+            ? `Meilleur avenir: ${best.strategyName}. Écart entre le meilleur et le pire: ${formatCAD(Math.round(gain))} (+${gainPct.toFixed(1)}%).`
             : 'Aucun résultat disponible.',
     };
 }

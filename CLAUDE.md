@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 316 tests** Vitest
-(518 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 320 tests** Vitest
+(519 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,17 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Une garde qui épingle QUI est offender rougit sur sa propre réparation** : le lot 100 asserait
+  « `cashflowAllocation` et `taxDecember` figurent parmi les offenders » ; les corriger — ce que ce
+  lot préparait — l'a fait rougir. Elle ancrait la FORME au lieu du FAIT (« ces modules sont
+  BALAYÉS »), et s'est INVERSÉE au même endroit plutôt que d'être supprimée. Une garde qui nomme des
+  coupables se périme au premier correctif ; une garde qui nomme un périmètre survit. ⚠️ Et
+  « toute la suite est verte » sur 65 chaînes de log réécrites était le résultat à EXPLIQUER : ça
+  mesurait qu'AUCUN test n'assertait leur texte — d'où une garde comportementale sur un producteur
+  réel. ⚠️ Retirer le `Math.round` « redondant » devant `formatCAD` aurait DÉPLACÉ des montants
+  (mesuré : divergence sur 4 valeurs de 11, tous les demis NÉGATIFS — Intl arrondit à l'opposé de
+  zéro, `Math.round` vers +∞)
+  (`UNE-GARDE-QUI-EPINGLE-QUI-EST-OFFENDER-ROUGIT-SUR-SA-PROPRE-REPARATION`, 2026-09-03).
 - **Un seuil écrit AVANT sa mesure est un chiffre INVENTÉ** : le scan du lot 100 a coûté trois
   chiffres devinés d'affilée dans le même fichier — inventaire annoncé `≤ 34` (mesuré **67**), seuil
   d'anti-vacuité à `0,45` sur un ratio qui ne mesurait rien, puis à `0,9` (mesuré **0,583** : ces

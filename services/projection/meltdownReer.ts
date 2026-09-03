@@ -3,6 +3,7 @@
 // Décaissement agressif du REER pour éviter la bombe fiscale à la mort.
 // Pure Return: retourne null si aucune action.
 
+import { formatCAD } from '../../utils/format';
 import type { AllocationStrategy } from './types';
 import { withholdingForGrossRRSP } from '../../utils/tax';
 
@@ -115,7 +116,7 @@ export function processReerMeltdown(
         nonRegAdd: netMelt,
         withholding,
         log: m % 12 === 0
-            ? `🔥 Stratégie Meltdown: Retrait de ${Math.round(meltAmountBrut * 12).toLocaleString('fr-CA')}$ pour saturer les paliers.`
+            ? `🔥 Stratégie Meltdown: Retrait de ${formatCAD(Math.round(meltAmountBrut * 12))} pour saturer les paliers.`
             : null,
     };
 }

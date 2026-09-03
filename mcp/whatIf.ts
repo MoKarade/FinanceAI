@@ -21,6 +21,7 @@ import {
     deriveSimulationInputsFromState,
 } from '../services/projection/buildSimulationParams';
 import { calculateMortgagePayment, calculatePurchaseCosts } from '../services/realEstate';
+import { formatCAD } from '../utils/format';
 
 // ── Types de changements hypothétiques ───────────────────────────────────────
 
@@ -138,7 +139,7 @@ function loanMonthlyPayment(principal: number, ratePct: number, years: number): 
 }
 
 function fmt(n: number): string {
-    return `${Math.round(n).toLocaleString('fr-CA')} $`;
+    return formatCAD(Math.round(n));
 }
 
 /** Y a-t-il un 2ᵉ conjoint ? Test de CONTENU, jamais la longueur du tuple (leçon PH4E-OWNER-EDIT). */

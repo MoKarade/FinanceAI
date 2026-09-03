@@ -2,6 +2,7 @@
 // Aucune dependance React. Reutilisable par le MCP server et les tests.
 
 import type { Municipality } from '../types';
+import { formatCAD } from '../utils/format';
 
 export interface MortgageInput {
   price: number;
@@ -413,12 +414,12 @@ export const validateMortgageParameters = (input: MortgageValidationInput): Mort
     // "mise de fonds insuffisante" qui serait redondant).
     errors.push(
       `Prix > 1,5M$ : assurance SCHL non disponible. Mise de fonds doit être ≥ 20% ` +
-      `(actuellement ${(downPaymentRatio * 100).toFixed(1)}%, soit ${Math.round(safeDown).toLocaleString('fr-CA')}$)`,
+      `(actuellement ${(downPaymentRatio * 100).toFixed(1)}%, soit ${formatCAD(Math.round(safeDown))})`,
     );
   } else if (safeDown < minDownPayment) {
     errors.push(
-      `Mise de fonds insuffisante : ${Math.round(safeDown).toLocaleString('fr-CA')}$ ` +
-      `< minimum SCHL ${Math.round(minDownPayment).toLocaleString('fr-CA')}$ ` +
+      `Mise de fonds insuffisante : ${formatCAD(Math.round(safeDown))} ` +
+      `< minimum SCHL ${formatCAD(Math.round(minDownPayment))} ` +
       `(${(downPaymentRatio * 100).toFixed(1)}% du prix)`,
     );
   }

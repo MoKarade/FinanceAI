@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 101 : les 65 logs du moteur passent par la source unique
+> Étape 2 de `[FMT-TOLOCALESTRING-MONEY]`. **67 → 2** montants hors `formatCAD` ; le ticket parent
+> part à l'archive, le reliquat est `[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]` (2 sites de composants).
+> - **Forme retenue** : `formatCAD(Math.round(x))`, en GARDANT `Math.round` — mesuré, `formatCAD(x)`
+>   en diffère sur les demis NÉGATIFS (4 cas sur 11) : le retirer aurait déplacé des montants.
+>   Le lot ne bouge donc aucun chiffre, il change qui FORMATE.
+> - ⚠️ **La garde du lot 100 a rougi sur le correctif qu'elle préparait** (elle épinglait
+>   `cashflowAllocation`/`taxDecember` comme OFFENDERS). Inversée au même endroit : elle affirme
+>   maintenant qu'ils sont BALAYÉS. Une garde qui nomme des coupables se périme au 1er correctif.
+> - ⚠️ **La suite est restée verte sur 65 chaînes réécrites** — résultat à EXPLIQUER, pas feu vert :
+>   aucun test n'assertait leur texte. D'où `tests/services/logsMoteurFormatCAD.test.ts`, garde
+>   comportementale sur `tryInheritance`, 3 rouges sur 3 au retour du code d'avant.
+> - ⚠️ **La revue a trouvé le JUMEAU à 36 lignes** : « Maladie grave (capital +250000$) », montant
+>   composé À LA MAIN dans le fichier même que le lot migrait — invisible à la garde, qui cherche
+>   `toLocaleString`. Corrigé, et le message de l'inventaire dit maintenant ce qu'il ne compte PAS.
+>   Classe jumelle routée : `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]`.
+> - **Deux sites changeaient vraiment de sortie** (héritage, mise de fonds) : ils n'avaient aucun
+>   `Math.round` et Intl affiche jusqu'à 3 décimales par défaut → ils montraient des centimes.
+
 > ## 🟦 Session 2026-09-03 — Lot 100 : le SCAN de `[FMT-TOLOCALESTRING-MONEY]` (étape 1 sur 2)
 > Le ticket exige son scan AVANT tout correctif (« ses offenders SONT le périmètre »). Livré :
 > `tests/toLocaleStringMoneyScan.test.ts`. **Aucun code de prod touché.**

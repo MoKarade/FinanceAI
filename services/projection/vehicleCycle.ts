@@ -6,6 +6,8 @@
 // V22 — Remplacement véhicule automatique.
 // Retourne {cost, log} si remplacement déclenché ce mois.
 
+import { formatCAD } from '../../utils/format';
+
 export function processAutoVehicleReplacement(
     m: number,
     monthsSinceLast: number,
@@ -19,6 +21,6 @@ export function processAutoVehicleReplacement(
     return {
         cost: vehicleCost,
         resetCounter: true,
-        logMsg: `🚗 Remplacement véhicule: -${Math.round(vehicleCost).toLocaleString('fr-CA')}$`,
+        logMsg: `🚗 Remplacement véhicule: -${formatCAD(Math.round(vehicleCost))}`,
     };
 }

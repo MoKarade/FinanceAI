@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Un versement RAP que tu ne peux pas payer devient un revenu imposable)
+
+- **Corrigé** : quand tu achètes ta résidence avec le RAP (le retrait REER sans impôt pour une
+  première maison), tu dois rembourser un quinzième par an pendant 15 ans. Si un mois tu n'avais pas
+  l'argent, l'app faisait comme si de rien n'était : le versement était simplement reporté, sans
+  jamais être rattrapé ni imposé. La règle de l'ARC est l'inverse — ce que tu ne rembourses pas
+  s'ajoute à ton revenu imposable de l'année, et ta dette RAP diminue d'autant.
+- **Ce que ça change pour toi** : si tu es à l'aise en trésorerie, **rien du tout** (mesuré : zéro
+  dollar d'écart). Mais sur un budget serré, l'app annonçait un avenir trop rose — mesuré sur un
+  célibataire à 60 000 $ qui achète un condo à 420 000 $, elle sautait jusqu'à **205 versements sur
+  205** et oubliait **68 333 $** d'impôt, soit environ **20 000 $** de patrimoine imaginaire à 20 ans.
+- **Aussi** : la dette RAP finit maintenant par s'éteindre. Avant, faute de la réduire, elle restait
+  affichée indéfiniment même après les 15 ans réglementaires.
+
+---
+
 ## [unreleased] — 2026-09-03 (Un problème de données qui revient n'est plus passé sous silence)
 
 - **Corrigé** : quand l'app détecte une donnée corrompue (un prix illisible, un montant impossible),

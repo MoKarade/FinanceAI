@@ -11713,3 +11713,47 @@ DESIGN sur la seule pastille d'alerte, donc à trancher avec Marc. Et une vraie 
 notée sans être élargie : `ctaContrast` écarte les fonds translucides et ne connaît que les tokens de
 `tailwind.config.js`, mais la composition alpha dépend du fond de l'ANCÊTRE, qu'un scan par ligne ne
 connaît pas (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
+
+### `UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE` (2026-09-03, lot 111)
+
+`[ENG-RAP-MISSED-REPAYMENT-TAX]` était étiqueté **S**, et `FISCAL_REFERENCE.md` — la source de
+vérité fiscale, donc le document qui fait autorité — classait la limite « LOW assumée (impact borné
+pour les profils qui gardent des liquidités) ». Cette parenthèse EST la mesure : elle dit à voix
+haute que la gravité a été jugée depuis un profil, celui de Marc, qui ne saute jamais un versement.
+
+Re-mesuré sur un profil ordinaire (célibataire à 60 k$, condo 420 k$, RAP 60 000 $, 20 ans) :
+**190 à 205 versements sautés sur 205** selon la pression budgétaire, soit **63 333 $ à 68 333 $**
+jamais portés au revenu imposable, et un patrimoine final surévalué de **18 121 $ à 19 864 $**. Sur
+le profil qui rembourse, l'écart est de **0 $ exactement** — c'est le contrôle négatif, et c'est
+aussi l'explication du mauvais classement : les deux mesures sont vraies, seule la seconde avait été
+faite.
+
+**La règle** : quand la justification d'une gravité contient une CONDITION sur l'utilisateur
+(« pour les profils qui… », « tant que… », « sauf si… »), cette condition nomme la fixture où le
+défaut est INVISIBLE. La mesure qui compte est celle qui la viole. Une gravité sans son périmètre de
+mesure se lit comme une propriété du mécanisme ; c'en est une du scénario
+(`UNE-MESURE-CITEE-SANS-SON-PERIMETRE-SE-LIT-COMME-UNE-LOI`, appliquée à la SÉVÉRITÉ plutôt qu'au
+fait).
+
+⚠️ **Corollaire — un chemin qui « ne fait rien » cache souvent DEUX défauts, pas un.** Le `if` sans
+`else` n'omettait pas seulement l'imposition : il n'amortissait pas non plus le solde. Résultat
+mesuré, et invisible dans l'énoncé du ticket : **205 mois dus pour une obligation de 180**, une dette
+RAP qui ne s'éteignait jamais. Devant une branche vide, énumérer tout ce que la branche PLEINE fait
+et vérifier chaque terme séparément — ici « l'argent bouge » ET « la dette diminue ».
+
+⚠️ **Corollaire de registre** : le canal d'imposition existait déjà (`accRetraitsReerYearAdd`) et
+aurait « marché ». Il a quand même fallu un registre DÉDIÉ, parce qu'un versement RAP manqué n'est
+pas un retrait REER : aucun argent ne sort d'un compte, aucune retenue à la source n'est prélevée, et
+une garde voisine affirme `accRetraitsReerYearAdd === withdrawalREER − rapBorrowed`. Y verser le RAP
+aurait rendu cette garde fausse sans que rien ne rougisse à court terme — `CLE-QUI-FUSIONNE-DEUX-SENS`
+appliqué à un registre de moteur. La perturbation qui le prouve est la troisième du lot : router le
+montant vers le mauvais registre laisse le FAIT (« c'est imposé ») vert et ne fait rougir que les
+assertions de NATURE.
+
+⚠️ **Corollaire de fixture, payé avant toute mesure** : mon premier scénario ne déclenchait AUCUN
+RAP — `totalClosingCosts` était absent de la fixture, donc `downPayment + undefined` donnait `NaN`,
+donc `liquid < NaN` était **faux** et la cascade de financement n'était jamais empruntée. Zéro erreur,
+zéro `NaN` publié, un patrimoine final parfaitement plausible. Sans le compteur d'instrumentation
+posé AVANT de conclure, j'aurais écrit « le chemin est inatteignable » — la conclusion opposée à la
+vérité. Un `NaN` dans une COMPARAISON ne propage rien : il rend la condition fausse et disparaît
+(`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`, variante « champ absent »).

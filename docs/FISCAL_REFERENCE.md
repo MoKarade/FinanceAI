@@ -1176,10 +1176,21 @@ choisir). Calcul cumulatif par tranche (style impôt).
   une **HEURISTIQUE conservatrice**, PAS le vrai régime (féd = déduction T778 ligne 21400 plafonnée par
   âge/revenu ; QC = crédit remboursable dégressif ~67-78 %, CPE déjà subventionné exclu). À sourcer/raffiner
   si on veut la précision réelle — borné et conservateur en l'état.
-- **Remboursement RAP — « toujours honoré »** (`realEstateMonth.ts:405-414`, FISC-RAP-REPAY) : le moteur
-  rembourse le RAP dès que `liquid ≥ versement` ; un versement MANQUÉ est reporté en silence (le vrai régime
-  l'inclurait au revenu imposable ligne 12900) et le solde RAP impayé n'est PAS porté au revenu de la
-  déclaration finale au décès. Limite LOW assumée (impact borné pour les profils qui gardent des liquidités).
+- ~~**Remboursement RAP — « toujours honoré »**~~ **CORRIGÉ le 2026-09-03**
+  (`[ENG-RAP-MISSED-REPAYMENT-TAX]`, bloc « RAP repayment » de `realEstateMonth.ts`) : un versement DÛ
+  et non payé faute de liquidités s'ajoute désormais au revenu imposable de l'année (ARC, ligne 12900)
+  et **réduit le solde du RAP du même montant** — il n'est ni reporté, ni accumulé.
+  ⚠️ **La limite était classée « LOW, impact borné pour les profils qui gardent des liquidités ». Elle
+  ne l'était pas** : mesuré sur un célibataire à 60 k$ achetant un condo de 420 k$ (RAP 60 000 $,
+  20 ans), 190 à 205 des 205 versements dus étaient sautés selon la pression budgétaire, soit
+  **63 333 $ à 68 333 $ jamais portés au revenu** — et l'obligation de 180 mois ne s'éteignait jamais,
+  faute de réduction du solde. Effet du correctif sur le patrimoine final : −18 121 $ à −19 864 $ pour
+  ces profils, et **0 $ exactement** pour celui qui rembourse (contrôle négatif). Le classement de
+  gravité venait du profil de Marc, pas du mécanisme.
+  ⚠️ **Deux limites SUBSISTENT sur ce chemin** : (a) le solde RAP impayé n'est toujours pas porté au
+  revenu de la déclaration finale au décès ; (b) l'inclusion est ventilée entre conjoints au prorata
+  des soldes REER (`reerByUser`), car le moteur ne mémorise pas QUI a emprunté au RAP alors que le
+  plafond est un droit par personne. Approximation ASSUMÉE, identique à celle du retrait immobilier.
 - **Attribution par conjoint** : refactor « soldes REER par conjoint »
   (`docs/REFACTOR_REER_PAR_CONJOINT.md`). Phase 1 = registre REER par conjoint (invariant
   Σ==commun). Phase 2 = retraits REER/FERR taxés PAR CONJOINT (prorata des soldes). **Phase 3 =

@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[ENG-RAP-MISSED-REPAYMENT-TAX]` — LIVRÉ (lot 111, PR #842)
+
+Un versement RAP dû mais non payé faute de liquidités ne faisait **rien** : ni imposition, ni
+réduction du solde. Le versement était reporté en silence, et comme le solde ne descendait jamais,
+l'obligation de 180 mois ne s'éteignait pas non plus.
+
+**Correctif** (règle ARC, ligne 12900) : la portion non versée s'ajoute au revenu imposable de
+l'année via un registre DÉDIÉ (`rapMissedRepaymentAdd`, séparé de `accRetraitsReerYearAdd` — ce
+n'est pas un retrait du REER : aucun argent ne bouge, aucune retenue à la source), et le solde du
+RAP diminue du même montant.
+
+⚠️ **La gravité annoncée était fausse.** Le ticket disait « S » et `FISCAL_REFERENCE.md` classait la
+limite « LOW, impact borné pour les profils qui gardent des liquidités ». Mesuré sur un célibataire
+à 60 k$ (condo 420 k$, RAP 60 000 $, 20 ans) : **190 à 205 versements sautés sur 205**, soit 63 333 $
+à 68 333 $ jamais portés au revenu, et un patrimoine final surévalué de **18 121 $ à 19 864 $**. Le
+profil de référence (celui de Marc, à l'aise en trésorerie) ne saute aucun versement — d'où le
+classement. Contrôle négatif mesuré : **0 $ d'écart exactement** sur ce profil-là.
+
+⚠️ **Deux limites subsistent, consignées dans `FISCAL_REFERENCE.md`** : le solde impayé au décès
+n'est pas porté à la déclaration finale, et l'inclusion est ventilée entre conjoints au prorata des
+soldes REER faute d'attribution réelle de l'emprunt RAP.
+
+Garde : `tests/services/rapVersementManqueImpose.test.ts` (6 cas, 3 perturbations séparées prouvées).
+
 ## 2026-09-03 — `[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]` — **CADUQUE**, déjà livré sous un autre ID
 
 Le ticket décrivait un défaut RÉEL : `HealthIndicator.tsx` affichait la cible FIRE et le coût

@@ -71,6 +71,15 @@ export interface RealEstateState {
      *  Sans ce registre, le module posait une RETENUE que décembre crédite sans jamais inscrire
      *  le retrait dans l'assiette que décembre débite : un crédit sans sa dette. */
     accRetraitsReerYearAdd: number;
+    /** [ENG-RAP-MISSED-REPAYMENT-TAX] Versement RAP DÛ mais non effectué ce mois, à ajouter par le
+     *  caller à `accRetraitsReerYear` (l'assiette que décembre impose) et à sa ventilation
+     *  per-conjoint. Règle ARC : la portion non remboursée d'une année est incluse au revenu de
+     *  cette année (ligne 12900) et le solde RAP diminue d'autant — le versement n'est PAS reporté.
+     *  ⚠️ Registre SÉPARÉ de `accRetraitsReerYearAdd` à dessein : ce n'est pas un retrait du REER
+     *  (aucun argent ne sort d'un compte ce mois-ci, et aucune RETENUE à la source n'est prélevée) —
+     *  seulement une inclusion au revenu. Les fusionner ferait mentir la garde
+     *  `accRetraitsReerYearAdd === withdrawalREER − rapBorrowed` (`CLE-QUI-FUSIONNE-DEUX-SENS`). */
+    rapMissedRepaymentAdd: number;
     immoInterest: number;
     immoPrincipal: number;
     immoHypo: number;
@@ -498,6 +507,28 @@ export function processRealEstate(
             state.liquid -= amnt;
             state.reer += amnt;
             state.rapRepaymentDueTotal -= amnt;
+        } else {
+            // [ENG-RAP-MISSED-REPAYMENT-TAX] Versement DÛ et non payé. Avant ce lot, ce chemin ne
+            // faisait RIEN : le versement était reporté en silence, l'argent n'était jamais imposé,
+            // et le solde restait dû indéfiniment (mesuré : 205 mois dus pour une obligation de 180,
+            // et jusqu'à 68 333 $ jamais portés au revenu sur un ménage à 60 k$ — la limite était
+            // documentée « LOW / impact borné », elle ne l'était pas).
+            //
+            // Règle ARC (ligne 12900) : la portion NON remboursée d'une année s'ajoute au revenu de
+            // cette année, et le solde du RAP diminue du même montant. Ce n'est donc ni un report
+            // ni une dette qui s'accumule.
+            //
+            // ⚠️ Pourquoi un traitement MENSUEL est ici exactement équivalent au traitement ANNUEL
+            // de l'ARC : le versement du mois est PLAFONNÉ à `monthlyRepayment` (jamais davantage),
+            // donc un mois riche ne peut pas rattraper un mois creux de la même année. La somme des
+            // manques mensuels d'une année EST le manque annuel. Et le canal choisi
+            // (`accRetraitsReerYear`) est une assiette ANNUELLE que décembre impose : le timing
+            // fiscal est déjà celui de la règle, pas celui du mois.
+            state.rapRepaymentDueTotal -= amnt;
+            state.rapMissedRepaymentAdd += amnt;
+            state.flowEventLogs.push(
+                `⚠️ Versement RAP non fait, ajouté à ton revenu imposable : ${formatCAD(Math.round(amnt))}`,
+            );
         }
     }
 

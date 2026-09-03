@@ -4,6 +4,7 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 // [PRIV-PAYEE-MODE-DISCRET] Le NOM du marchand est de la donnée personnelle : « pharmacie X, le 3 »
 // dit déjà beaucoup, même sans le montant à côté. Décision Marc 2026-08-17.
 import { PrivateText } from '../ui/PrivateText';
+import { formatCAD, formatNumber } from '../../utils/format';
 
 // Normalise un label d'event : extrait l'emoji du début pour l'aligner dans
 // un slot fixe, et garde le reste du texte. Si pas d'emoji détecté, retourne
@@ -132,7 +133,11 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     // réellement DATÉ mais sans libellé — n'écouter que `labels.length` aurait alors annoncé
     // « aucun mouvement à date connue » un jour où un mouvement a bel et bien eu lieu.
     const dayHasMovement = daily.dayIsDated === true || (dayLabels?.length ?? 0) > 0;
-    const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
+    const fmt = (n: number) => formatCAD(Math.round(n));
+    // ⚠️ Ce site-ci n'a JAMAIS porté de « $ » : c'est le gain affiché sous la valeur du
+    // compte, dont le symbole est déjà une ligne plus haut. `formatCAD` y ajouterait un
+    // symbole que l'écran n'avait pas — le membre déviant d'un remplacement de classe.
+    const fmtNu = (n: number) => formatNumber(Math.round(n));
 
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
         + (data.NetTransferCrypto || 0) + (data.NetTransferLiquid || 0) + (data.NetTransferCELIAPP || 0) + (data.NetTransferREEE || 0);
@@ -178,11 +183,11 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                            l'infobulle échappait au seul mécanisme prévu pour elle. */
                         <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
                             Variation {isDailyPoint ? 'du jour ' : ''}
-                            <PrivateAmount>{diffNW > 0 ? '+' : ''}{fmt(diffNW)}$</PrivateAmount>
+                            <PrivateAmount>{diffNW > 0 ? '+' : ''}{fmt(diffNW)}</PrivateAmount>
                         </span>
                     )}
                 </div>
-                <PrivateAmount as="div" className="mt-1 text-2xl font-black text-white font-mono leading-none">{fmt(data.NetWorth || 0)}$</PrivateAmount>
+                <PrivateAmount as="div" className="mt-1 text-2xl font-black text-white font-mono leading-none">{fmt(data.NetWorth || 0)}</PrivateAmount>
             </div>
 
             {/* [PH2-d-2] — référence VERROUILLÉE au survol (présente seulement sous verrou, via
@@ -197,10 +202,10 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         <div className="flex items-center justify-between gap-2">
                             <span className="text-tiny uppercase tracking-widest text-amber-300 font-bold">🔒 Verrouillée</span>
                             <PrivateAmount className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${delta >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`} title="Écart entre l'aperçu live et la référence verrouillée">
-                                Live {delta >= 0 ? '+' : ''}{fmt(delta)}$
+                                Live {delta >= 0 ? '+' : ''}{fmt(delta)}
                             </PrivateAmount>
                         </div>
-                        <PrivateAmount as="div" className="mt-1 text-body font-black text-amber-200 font-mono leading-none">{fmt(locked)}$</PrivateAmount>
+                        <PrivateAmount as="div" className="mt-1 text-body font-black text-amber-200 font-mono leading-none">{fmt(locked)}</PrivateAmount>
                     </div>
                 );
             })()}
@@ -214,10 +219,10 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 <div className="mb-2.5">
                     <div className="flex items-center gap-2 text-tiny font-mono">
                         <PrivateAmount className={`flex-1 text-center px-1.5 py-1 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`} title="Argent que tu ajoutes toi-même (dépôts − retraits)">
-                            Dépôts {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}$
+                            Dépôts {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}
                         </PrivateAmount>
                         <PrivateAmount className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`} title="Ce que tes placements rapportent (rendement du marché)">
-                            Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
+                            Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}
                         </PrivateAmount>
                     </div>
                 </div>
@@ -227,17 +232,17 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 [FUTUR-DAILY-FULL] `dailyLedger` ventile ces mêmes champs au jour : rien à changer ici
                 hormis les libellés, ce qui élimine tout risque de divergence entre les deux vues. */}
             <div className="space-y-1 mb-2.5 text-meta">
-                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeMarc || 0)}$</PrivateAmount></div>}
-                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeAnna || 0)}$</PrivateAmount></div>}
-                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between" title="Rentes et prestations de retraite (RRQ, PSV, régimes)"><span className="text-ink-300">Rentes</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeRetirement || 0)}$</PrivateAmount></div>}
+                {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeMarc || 0)}</PrivateAmount></div>}
+                {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeAnna || 0)}</PrivateAmount></div>}
+                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between" title="Rentes et prestations de retraite (RRQ, PSV, régimes)"><span className="text-ink-300">Rentes</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeRetirement || 0)}</PrivateAmount></div>}
                 {/* [REVENUS-NON-VENTILES-AFFICHAGE] Loyers, allocations et REEE font partie d'`Income`
                     mais n'étaient ventilés nulle part (mesuré : 3 551 $/mois de loyer manquants).
                     Champs CONSOMMÉS tels que le moteur les émet — jamais recalculés ici. */}
-                {(data.RentalIncome || 0) > 0 && <div className="flex justify-between" title="Loyers encaissés sur tes immeubles locatifs (net de rien — les charges sont dans les dépenses)"><span className="text-ink-300">Loyers</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.RentalIncome || 0)}$</PrivateAmount></div>}
-                {(data.childBenefits || 0) > 0 && <div className="flex justify-between" title="Allocations familiales (ACE fédérale + Allocation famille du Québec)"><span className="text-ink-300">Allocations</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.childBenefits || 0)}$</PrivateAmount></div>}
-                {(data.ReeePayout || 0) > 0 && <div className="flex justify-between" title="Versement du REEE pendant les études"><span className="text-ink-300">REEE versé</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.ReeePayout || 0)}$</PrivateAmount></div>}
-                {portfolioOutflow > 0 && <div className="flex justify-between" title="Retraits de ton portefeuille (REER + CELI) pour couvrir tes dépenses"><span className="text-ink-300">Décaissement</span><PrivateAmount className="font-mono text-warning-400">+{fmt(portfolioOutflow)}$</PrivateAmount></div>}
-                {(data.Expenses || 0) > 0 && <div className="flex justify-between" title="Dépenses de vie (hors impôts et hors remboursements de dette)"><span className="text-ink-300">Dépenses</span><PrivateAmount className="font-mono text-danger-400">-{fmt(data.Expenses || 0)}$</PrivateAmount></div>}
+                {(data.RentalIncome || 0) > 0 && <div className="flex justify-between" title="Loyers encaissés sur tes immeubles locatifs (net de rien — les charges sont dans les dépenses)"><span className="text-ink-300">Loyers</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.RentalIncome || 0)}</PrivateAmount></div>}
+                {(data.childBenefits || 0) > 0 && <div className="flex justify-between" title="Allocations familiales (ACE fédérale + Allocation famille du Québec)"><span className="text-ink-300">Allocations</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.childBenefits || 0)}</PrivateAmount></div>}
+                {(data.ReeePayout || 0) > 0 && <div className="flex justify-between" title="Versement du REEE pendant les études"><span className="text-ink-300">REEE versé</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.ReeePayout || 0)}</PrivateAmount></div>}
+                {portfolioOutflow > 0 && <div className="flex justify-between" title="Retraits de ton portefeuille (REER + CELI) pour couvrir tes dépenses"><span className="text-ink-300">Décaissement</span><PrivateAmount className="font-mono text-warning-400">+{fmt(portfolioOutflow)}</PrivateAmount></div>}
+                {(data.Expenses || 0) > 0 && <div className="flex justify-between" title="Dépenses de vie (hors impôts et hors remboursements de dette)"><span className="text-ink-300">Dépenses</span><PrivateAmount className="font-mono text-danger-400">-{fmt(data.Expenses || 0)}</PrivateAmount></div>}
             </div>
 
             {/* Impôts du point (demande Marc) : (1) régularisation réglée en avril
@@ -252,14 +257,14 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         <div className="flex justify-between" title="Solde réglé en avril : impôt réel de l'année moins les retenues déjà prélevées (positif = reste à payer, négatif = remboursement).">
                             <span className="text-ink-300">{(data.FluxImpots || 0) > 0 ? "Solde d'impôt (avril)" : "Remboursement d'impôt"}</span>
                             <PrivateAmount className={`font-mono ${(data.FluxImpots || 0) > 0 ? 'text-danger-400' : 'text-green-400'}`}>
-                                {(data.FluxImpots || 0) > 0 ? '-' : '+'}{fmt(Math.abs(data.FluxImpots || 0))}$
+                                {(data.FluxImpots || 0) > 0 ? '-' : '+'}{fmt(Math.abs(data.FluxImpots || 0))}
                             </PrivateAmount>
                         </div>
                     )}
                     {Math.abs(data.ImpotLatent || 0) > 0.5 && (
                         <div className="flex justify-between" title="Impôt « dormant » : ce que tu devrais plus tard sur ton REER et tes gains non réalisés si tu liquidais tout aujourd'hui. Ce n'est PAS un décaissement de ce mois.">
                             <span className="text-ink-300">Impôt dormant</span>
-                            <PrivateAmount className="font-mono text-amber-300/90">{fmt(Math.abs(data.ImpotLatent || 0))}$</PrivateAmount>
+                            <PrivateAmount className="font-mono text-amber-300/90">{fmt(Math.abs(data.ImpotLatent || 0))}</PrivateAmount>
                         </div>
                     )}
                 </div>
@@ -276,9 +281,9 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                 <span className="truncate">{a.label}</span>
                             </span>
                             <span className="flex items-center gap-1.5 shrink-0 font-mono">
-                                <PrivateAmount className="text-white">{fmt(a.value)}$</PrivateAmount>
+                                <PrivateAmount className="text-white">{fmt(a.value)}</PrivateAmount>
                                 {Math.abs(a.gain) > 0.5 && (
-                                    <PrivateAmount className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-danger-400'}`}>{a.gain > 0 ? '+' : ''}{fmt(a.gain)}</PrivateAmount>
+                                    <PrivateAmount className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-danger-400'}`}>{a.gain > 0 ? '+' : ''}{fmtNu(a.gain)}</PrivateAmount>
                                 )}
                             </span>
                         </div>
@@ -372,7 +377,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                         <div key={`${mv.payee}-${i}`} className="flex items-baseline justify-between gap-3">
                                             <PrivateText className="text-tiny text-ink-100 truncate">{mv.payee}</PrivateText>
                                             <PrivateAmount className={`text-tiny font-mono shrink-0 ${mv.amount >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
-                                                {mv.amount > 0 ? '+' : ''}{fmt(mv.amount)}$
+                                                {mv.amount > 0 ? '+' : ''}{fmt(mv.amount)}
                                             </PrivateAmount>
                                         </div>
                                     ))}

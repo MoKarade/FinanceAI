@@ -2193,21 +2193,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   depuis que les deux passent par `formatCAD`, ils se ressemblent typographiquement et le log invite
   à faire la division. Idem FSS. **Correctif** : publier les deux dans la MÊME unité, ou nommer
   l'unité dans la phrase.
-- [ ] 🟠 **`[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]`** (S) — **dernier reliquat** de
-  `[FMT-TOLOCALESTRING-MONEY]` (scan livré au lot 100, 65 logs du moteur convertis au lot 101).
-  Il reste **2 sites**, tous deux des formateurs MAISON de composants, épinglés par
-  `tests/toLocaleStringMoneyScan.test.ts` (`toBeLessThanOrEqual(2)`) :
-  - `components/projection/ProjectionTooltip.tsx` — son `fmt` est appelé **~20 fois avec le « $ »
-    ajouté à la main dans le JSX** et **une fois SANS** (`{fmt(a.gain)}`, un nombre nu). Migrer vers
-    `formatCAD` impose de retirer les 20 « $ » et de basculer ce site-là sur `formatNumber` : un
-    remplacement global doublerait le symbole vingt fois et perdrait le nu une fois.
-  - `components/investments/ImportBrokerPositions.tsx` — ⚠️ **`formatNumber`, PAS `formatCAD`** :
-    il rend `` `${fmt(h.avgCost)} ${h.currency}` ``, un prix en devise **NATIVE** suivi de son code.
-    `formatCAD` y afficherait « 1 234,56 $ USD » (règle §1 « Devises »).
-  Quand le compte atteint 0, **SUPPRIMER** la garde et ce ticket : sa dette est payée
-  (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
-
-
 - [ ] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
   write direct `localStorage.setItem`) + 4 autres modules sync (`syncPassphrase`, `syncSnapshot`,
   `syncMeta`, `syncPolling`, cumulé 886 lignes) **zéro test direct**. `syncOrchestrator` a des tests

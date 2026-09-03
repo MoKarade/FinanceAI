@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 102 : la dette `toLocaleString` tombe à ZÉRO
+> Dernier reliquat de `[FMT-TOLOCALESTRING-MONEY]` : `ProjectionTooltip` (18 « $ » retirés du JSX,
+> le 19ᵉ site basculé sur `formatNumber`) et `ImportBrokerPositions` (`formatNumber`, PAS
+> `formatCAD` — devise NATIVE suivie de son code).
+> - ⚠️ **L'inventaire a exigé sa propre mort et il ne fallait PAS le supprimer** : « dette à zéro →
+>   retire cette garde » a rougi, comme prévu. Le supprimer aurait rouvert la porte. L'INVENTAIRE
+>   meurt, la RÈGLE reste : « pas plus de N » est devenu « exactement zéro », au même endroit.
+> - ⚠️ **18 sites sur 19 portaient le « $ » à la main, 1 non** — un remplacement global aurait doublé
+>   le symbole 18 fois ou en aurait ajouté un jamais eu. Le membre déviant se compte.
+> - ⚠️⚠️ J'ai écrit l'avertissement sur l'INSÉCABLE puis commis l'erreur : un attendu NÉGATIF se
+>   compose avec le formateur autant que le positif ; `` `${formatNumber(n)} $` `` ne matche rien.
+> - **Reste ouvert** : `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` (classe jumelle, invisible à ce scan).
+
 > ## 🟦 Session 2026-09-03 — Lot 101 : les 65 logs du moteur passent par la source unique
 > Étape 2 de `[FMT-TOLOCALESTRING-MONEY]`. **67 → 2** montants hors `formatCAD` ; le ticket parent
 > part à l'archive, le reliquat est `[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]` (2 sites de composants).

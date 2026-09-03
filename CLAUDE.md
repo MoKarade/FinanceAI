@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 320 tests** Vitest
-(519 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 323 tests** Vitest
+(520 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,17 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un inventaire qui atteint ZÉRO s'INVERSE en règle, il ne se supprime pas** : le compteur du lot
+  100 portait « dette à zéro → retire cette garde », et cette assertion a rougi quand la dette a été
+  payée — elle a fonctionné. Mais l'exécuter à la lettre aurait rouvert en silence la porte que trois
+  lots venaient de fermer : ce qui meurt est l'INVENTAIRE (« combien reste-t-il ? »), ce qui reste est
+  la RÈGLE (« plus jamais »). Une consigne que je me suis écrite à moi-même dans un message
+  d'assertion se re-juge, elle ne s'exécute pas. ⚠️ **Le membre déviant se compte** : 18 des 19 appels
+  du formateur maison portaient un « $ » posé à la main, 1 n'en portait pas — un remplacement global
+  aurait doublé le symbole 18 fois ou en aurait ajouté un jamais eu. ⚠️⚠️ Et j'ai écrit l'avertissement
+  sur l'insécable puis commis l'erreur : un attendu NÉGATIF se compose avec le formateur autant que le
+  positif — `` `${formatNumber(n)} $` `` (espace ordinaire) ne matche RIEN, donc la perturbation
+  restait verte (`UN-INVENTAIRE-QUI-ATTEINT-ZERO-S-INVERSE-EN-REGLE`, 2026-09-03).
 - **Une garde qui épingle QUI est offender rougit sur sa propre réparation** : le lot 100 asserait
   « `cashflowAllocation` et `taxDecember` figurent parmi les offenders » ; les corriger — ce que ce
   lot préparait — l'a fait rougir. Elle ancrait la FORME au lieu du FAIT (« ces modules sont

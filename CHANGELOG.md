@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Plus un seul montant formaté à part)
+
+- **Terminé** : l'infobulle du graphe Futur et l'import de positions de courtier étaient les deux
+  derniers écrans à composer leurs montants eux-mêmes. Ils passent par le formateur unique.
+- **Un détail qui comptait** : le prix d'un titre acheté en devise étrangère est suivi de son code
+  (« 1 234,56 USD »). Lui coller un « $ » aurait affiché « 1 234,56 $ USD » — faux. Ce site-là
+  utilise donc le format « nombre », pas le format « dollars canadiens ».
+- **Rien ne change visuellement**, sauf que les montants qui n'auraient pas dû l'être ne peuvent
+  plus être coupés en fin de ligne entre le chiffre et le « $ ».
+
+---
+
 ## [unreleased] — 2026-09-03 (Les montants du journal s'écrivent tous pareil)
 
 - **Corrigé** : les 65 messages du journal de projection qui affichaient un montant (retraits,

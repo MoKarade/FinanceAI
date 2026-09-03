@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatNumber } from '../../utils/format';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { parseBrokerCsv, holdingsToAssets, type ParsedBrokerCsv } from '../../services/import/parseBrokerCsv';
@@ -17,7 +18,11 @@ interface Props {
     onImport: (assets: Asset[]) => void;
 }
 
-const fmt = (v: number) => v.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// ⚠️ `formatNumber` et NON `formatCAD` : ce prix est en devise NATIVE et l'écran affiche son
+// code juste après (`${fmt(h.avgCost)} ${h.currency}`). `formatCAD` y collerait « $ » et
+// afficherait « 1 234,56 $ USD » — le remède prescrit par le ticket était faux sur ce site
+// (règle §1 « Devises » : `currentPrice`/`buyPrice` sont en devise native).
+const fmt = (v: number) => formatNumber(v, { decimals: 2 });
 
 export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImport }) => {
     const [preview, setPreview] = useState<ParsedBrokerCsv | null>(null);

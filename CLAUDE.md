@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 309 tests** Vitest
-(517 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 316 tests** Vitest
+(518 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,24 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un seuil écrit AVANT sa mesure est un chiffre INVENTÉ** : le scan du lot 100 a coûté trois
+  chiffres devinés d'affilée dans le même fichier — inventaire annoncé `≤ 34` (mesuré **67**), seuil
+  d'anti-vacuité à `0,45` sur un ratio qui ne mesurait rien, puis à `0,9` (mesuré **0,583** : ces
+  fichiers sont à 42 % de commentaire). Aucun n'était un calcul faux, les trois étaient des ATTENTES
+  — et une attente écrite dans un `expect` a l'apparence d'une mesure. Le nombre s'obtient d'abord,
+  l'assertion s'écrit ensuite, la mesure s'écrit À CÔTÉ du seuil avec sa date. ⚠️ Et **un remède
+  juste pour une CLASSE peut être faux pour un MEMBRE** : « remplacer par `formatCAD` » a raison
+  66 fois sur 67 et tort sur un prix en devise NATIVE suivi de son code (« 1 234,56 $ USD ») — le
+  membre déviant ne se signale par aucune différence de SYNTAXE, seulement par ce que la valeur EST
+  (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`, 2026-09-03).
+  ⚠️⚠️ Corollaire trouvé par le panel DANS cette garde : `RECEPTEUR_DATE` écrivait `[Tt]s`, donc
+  `debts`, `assets`, `amounts`, `results` — les noms monétaires les plus courants du dépôt —
+  étaient classés « date » et n'entraient jamais dans l'inventaire. Aucune occurrence du jour ne
+  l'exploitait, ce qui le rendait invisible : **une garde se relit sur les noms que le dépôt
+  EMPLOIE, pas sur ceux qu'elle a croisés**, et un faux négatif SILENCIEUX ne se traite pas au
+  même titre qu'un faux positif bruyant. ⚠️ Et un témoin de perturbation qui ne contient pas la
+  valeur rendant la condition vraie (un `{suffixe}` JSX là où il fallait un `${` de gabarit) ne
+  mesure rien.
 - **Un chiffre JUSTE peut être illisible, et le correctif est une PHRASE** : la « chute de 10k »
   signalée par Marc n'était pas une erreur — le dernier point du passé DÉFAIT les flux du jour, donc
   les deux points sont exacts. Lisser aurait affiché un solde jamais eu. Devant « ce chiffre est

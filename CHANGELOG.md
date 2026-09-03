@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Un garde-fou de plus sur le format des montants)
+
+- **Ajouté** : un contrôle automatique qui refuse tout NOUVEAU montant affiché sans passer par le
+  formateur unique de l'app. C'est de la plomberie — rien ne change à l'écran aujourd'hui.
+- **Pourquoi ça compte quand même** : le formateur unique est celui qui affiche « — » plutôt que
+  « NaN$ » quand une valeur est absente ou aberrante, et qui pose le même espacement partout.
+  Les 67 endroits qui le contournent encore sont maintenant **recensés et comptés** ; chaque
+  correction fera baisser ce compte, et le contrôle disparaîtra quand il tombera à zéro.
+- **Ce lot ne corrige encore aucun des 67** : ce sont à 90 % des messages du moteur de projection
+  dont le texte exact est vérifié par des tests. Les convertir sans avoir d'abord mesuré lesquels
+  changent reviendrait à ajuster les tests pour faire passer le lot.
+
+---
+
 ## [unreleased] — 2026-09-03 (Tes placements vides disent enfin pourquoi)
 
 - **Corrigé** : quand ta banque ou ton courtier ne fournit pas le détail de tes positions, l'app

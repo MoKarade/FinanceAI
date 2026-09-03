@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 100 : le SCAN de `[FMT-TOLOCALESTRING-MONEY]` (étape 1 sur 2)
+> Le ticket exige son scan AVANT tout correctif (« ses offenders SONT le périmètre »). Livré :
+> `tests/toLocaleStringMoneyScan.test.ts`. **Aucun code de prod touché.**
+> - **Périmètre RE-MESURÉ** : 81 occurrences brutes hors `utils/format.ts`, 3 en commentaire,
+>   78 en code → **67 montants, 9 dates, 2 compteurs**, relus à la main dans les deux sens.
+>   Le ticket annonçait 77 au 2026-08-19.
+> - ⚠️ **Cinq offenders NOMMÉS déjà corrigés** (`ProjectionExplains`, `ActionPlanDrilldown`,
+>   `GoalSeekerCard`, `ImportBankStatement`, le `fmtM` de `StrategyOptimizerPanel`) et remède
+>   prescrit REDONDANT (`formatCAD` arrondit déjà ; `formatSigned(n,{withCurrency:true})` existe).
+> - ⚠️⚠️ **Le remède du ticket est FAUX sur un membre** : `ImportBrokerPositions.tsx` affiche un prix
+>   en devise NATIVE suivi de son code → `formatCAD` donnerait « 1 234,56 $ USD ». C'est
+>   `formatNumber` qu'il lui faut. Et le `fmt` de `ProjectionTooltip` est appelé ~20× avec le « $ »
+>   à la main et **1× sans** : un remplacement global doublerait le symbole.
+> - ⚠️ **Trois seuils inventés avant d'être mesurés** dans le même fichier (34 → 67 ; 0,45 sur un
+>   ratio qui ne mesurait rien ; 0,9 → mesuré 0,583). Leçon `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`.
+> - ⚠️⚠️ **Le panel a trouvé dans la garde le défaut qu'elle empêche** : `[Tt]s` matchait `ts`
+>   minuscule ⇒ `debts`/`assets`/`amounts`/`results` classés « date », jamais comptés. Corrigé
+>   (`Ts`), plus témoins nommés dans les deux sens. Compte re-mesuré APRÈS : inchangé, 67/9/2.
+> - **Étape 2 routée** : `[FMT-TOLOCALESTRING-MONEY-CORRECTIFS]`, découpée logs moteur / infobulle /
+>   devise native, avec le compteur que chaque lot doit faire baisser.
+
 > ## 🟦 Session 2026-09-03 — Lot 99 : les placements muets disent enfin pourquoi
 > `[FINTABLE-INVESTMENTS-MUET]` livré (demande Marc du 2026-08-17), depuis le recensement du lot 98.
 > - Il manquait le FIL, pas le diagnostic : `holdingsSkipped` était mesuré puis jeté (seul

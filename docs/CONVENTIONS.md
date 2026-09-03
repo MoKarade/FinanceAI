@@ -10589,6 +10589,85 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 100 (2026-09-03) — un seuil écrit AVANT sa mesure est un chiffre inventé
+
+`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`
+
+Le ticket `[FMT-TOLOCALESTRING-MONEY]` exige son scan AVANT tout correctif : « ses offenders SONT le
+périmètre ». Écrire ce scan a coûté **trois chiffres inventés d'affilée**, tous dans le même fichier,
+tous corrigés par la mesure qui aurait dû les précéder :
+
+1. l'inventaire de dette annoncé `toBeLessThanOrEqual(34)` — mesuré **67** ;
+2. le seuil d'anti-vacuité posé à `0.45` sur un ratio calculé en comparant des caractères NON BLANCS
+   à une longueur BRUTE (espaces compris) — un rapport qui ne mesure rien, sorti à 0,426 ;
+3. le même seuil re-posé à `0.9` « puisque le décommentage ne retire presque rien » — mesuré
+   **0,583** : ces fichiers de prod sont denses en prose par convention de dépôt, 42 % de leurs
+   caractères non blancs sont du commentaire.
+
+Aucun des trois n'était un calcul faux : les trois étaient des **attentes**. Et une attente écrite
+dans un `expect` a exactement l'apparence d'une mesure — c'est ce qui la rend chère. La règle est
+mécanique, pas de jugement : **le nombre s'obtient d'abord, l'assertion s'écrit ensuite**, et la
+mesure s'écrit à CÔTÉ du seuil avec sa date (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`,
+quatrième récidive). Le seuil final est 0,45 pour une mesure de 0,583, et le commentaire dit
+pourquoi il n'est pas collé à la mesure : ce que la garde doit attraper est un décommenteur qui
+AVALE le code (ratio proche de 0), pas une dérive de densité de commentaires — un seuil serré sur
+cette grandeur serait une bombe que le prochain lot bien documenté ferait exploser.
+
+⚠️ **Un remède juste pour une CLASSE peut être faux pour un MEMBRE.** Le ticket prescrit « remplacer
+par `formatCAD` » pour les 67 sites. Il a raison 66 fois et tort une fois :
+`investments/ImportBrokerPositions.tsx` rend `` `${fmt(h.avgCost)} ${h.currency}` `` — un prix en
+devise **NATIVE** suivi de son code de devise. `formatCAD` y collerait « $ » et afficherait
+« 1 234,56 $ USD ». Le bon helper est `formatNumber`. Un remplacement de classe se relit MEMBRE par
+MEMBRE avant d'être appliqué ; le membre déviant ne se signale par aucune différence de syntaxe,
+seulement par ce que la valeur EST. Deuxième membre déviant du même lot : le `fmt` de
+`ProjectionTooltip.tsx` est appelé ~20 fois avec le « $ » ajouté à la main dans le JSX et **une fois
+sans** — un remplacement global y doublerait le symbole vingt fois et perdrait le nombre nu une fois.
+
+⚠️ **Et le recensement a de nouveau réfuté le ticket** : cinq de ses offenders NOMMÉS ne portent plus
+une seule occurrence (`ProjectionExplains`, `ActionPlanDrilldown`, `GoalSeekerCard`,
+`ImportBankStatement`, et le `fmtM` de `StrategyOptimizerPanel` qui délègue désormais à
+`formatCompactCAD`), et son remède prescrit est REDONDANT — `formatCADRound` n'a pas lieu d'être,
+`formatCAD` arrondit déjà à zéro décimale, et `formatCADSigned` existe sous le nom `formatSigned(n,
+{ withCurrency: true })`. Grepper le remède, pas seulement le défaut.
+
+✅ **Ce que le scan prouve, et comment.** 81 occurrences brutes, 3 en commentaire, 78 en code —
+l'écart se vérifie par soustraction contre un `grep` nu, pas par confiance dans le décommenteur.
+67 montants / 9 dates / 2 compteurs, chaque ligne relue à la main dans les DEUX sens (aucun montant
+classé date ou compteur, aucune date classée montant). Sept perturbations SÉPARÉES, chacune
+restaurée depuis le contenu gardé en mémoire — jamais un `git checkout --`, qui effacerait les
+corrections non commitées du même arbre. Trois d'entre elles ne font rougir QUE leur cible (le
+décommentage neutralisé, l'arrivée d'un 68ᵉ montant, `cashflowAllocation` sorti du périmètre) ; les
+autres cassent le scan globalement et rougissent en grappe, ce qui prouve leur cible sans prouver
+les autres (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+
+⚠️⚠️ **Le panel a trouvé dans MA garde le défaut exact qu'elle prétend empêcher.** `RECEPTEUR_DATE`
+écrivait `[Tt]s`, classe qui matche `ts` MINUSCULE : `debts`, `assets`, `amounts`, `results` — les
+noms les plus courants du dépôt pour des grandeurs monétaires — étaient donc classés « date ». Un
+futur `totalDebts.toLocaleString('fr-CA')` n'aurait jamais été compté et le plafond serait resté
+VERT sur une régression neuve. Aucune des 78 occurrences du jour n'exploitait le trou (le compte 67
+était juste), ce qui est précisément ce qui le rendait invisible : **une garde se relit sur les
+noms que le dépôt EMPLOIE, pas sur ceux qu'elle a croisés**. Le sens de l'erreur décide de
+l'urgence — un faux négatif est SILENCIEUX, un faux positif fait rougir bruyamment ; les deux se
+corrigent, pas au même titre.
+
+⚠️ **Deux de mes trois perturbations de correctif étaient MUETTES, et pour deux raisons opposées.**
+(a) Mon témoin du piège `${` ne contenait AUCUN `$` dans la fenêtre examinée (`{suffixe}` en JSX
+n'en a pas) : la perturbation ne mesurait rien — le témoin doit instancier la valeur qui rend la
+condition vraie, ici un littéral de gabarit. (b) Le contrôle des compteurs lisait `extrait`
+(110 caractères depuis le début de LIGNE) au lieu de la fenêtre de décision (40 caractères depuis
+l'APPEL) : sur les deux compteurs d'aujourd'hui les deux se recouvrent, donc l'échanger ne fait
+rougir personne. Le correctif n'est pas une fixture inventée mais **une source unique pour la
+fenêtre** (`fenetreDeClassement`, consommée par le classificateur ET par le scan) plus un témoin qui
+prouve que les deux fenêtres PEUVENT diverger — et l'assertion restante est écrite pour ce qu'elle
+est : une précaution que la donnée du jour ne discrimine pas.
+
+⚠️ **Le lot s'arrête à l'étape 1, et c'est le ticket qui le dit.** Les 67 corrections vivent à 90 %
+dans des chaînes de log du moteur que des goldens assertent, et `formatCAD` pose une espace
+**insécable** que des attendus écrits à la main n'ont pas : convertir sans avoir d'abord mesuré
+combien de goldens rougissent, ce serait re-baser des tests pour faire passer un lot. L'étape 2 est
+routée avec son découpage (logs moteur / infobulle / devise native) et son compteur, que chaque lot
+devra faire BAISSER.
+
 ### Lot 96 (2026-09-03) — un chiffre JUSTE peut être illisible, et le correctif est une phrase
 
 `UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`

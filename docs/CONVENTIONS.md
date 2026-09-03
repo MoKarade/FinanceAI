@@ -10589,6 +10589,44 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 106 (2026-09-03) — une affirmation JURIDIQUE non citée hérite de l'autorité du document
+
+`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`
+
+`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE` visait un CHIFFRE. Le même mécanisme
+existe pour une RÈGLE, et il est plus discret : « le plafond RQAP est indexé sur la rémunération
+hebdomadaire moyenne au Québec » décrit ce que fait la loi, et vivait dans `FISCAL_REFERENCE.md`
+sans une seule citation. Un chiffre non sourcé se repère (le ratchet fiscal le cherche) ; une PHRASE
+non sourcée ne déclenche rien, et dans ce fichier-là elle emprunte l'autorité de tout ce qui
+l'entoure. Le test à appliquer : **cette phrase décrit-elle ce que quelqu'un a MESURÉ, ou ce que la
+loi PRESCRIT ?** La seconde exige une référence, ou une marque.
+
+⚠️ **Citer était la bonne réponse et l'environnement l'a interdite.** Le ticket offrait « citer, ou
+requalifier ». J'ai tenté la citation : LégisQuébec répond `EGRESS_BLOCKED` (politique réseau) et
+`rqap.gouv.qc.ca` expire. Écrire un numéro d'article de mémoire aurait fabriqué exactement la source
+qu'on prétend citer — la faute même que la leçon jumelle condamne. **Quand la meilleure option est
+hors de portée pour une raison d'ENVIRONNEMENT, livrer la seconde ET consigner la tentative avec sa
+cause** : sinon la prochaine session la retentera à l'aveugle, ou pire, conclura qu'elle est
+impossible (`DOC-STALE-IMPOSSIBILITY`).
+
+⚠️ **Le ticket annonçait deux sites, il y en avait TROIS — et le troisième était sa propre note.**
+La note de §2 qui SIGNALAIT le problème (« l'affirmation n'est pas citée… à citer ou à requalifier »)
+répétait l'affirmation au présent, sans marque. Un inventaire qui décrit un défaut finit par le
+PORTER (`ENTREE-D-INVENTAIRE-FANTOME`), et celui-ci était invisible au recensement du ticket parce
+que le ticket l'avait écrit lui-même.
+
+⚠️ **Ma garde exigeait la phrase dans CHAQUE fichier de sa liste — perturbation mesurée, elle
+rougissait sur un retrait PARFAITEMENT SAIN.** Retirer l'affirmation d'un seul site (parce qu'on l'a
+citée là, ou qu'elle n'y sert plus) est légitime ; c'est la disparition TOTALE qui doit tuer la
+garde. La liste de sites se DÉRIVE donc de ceux qui portent la phrase aujourd'hui, et les deux sens
+sont testés séparément : retrait partiel → vert, retrait total → rouge avec « retire cette garde ».
+Une garde dont la liste est figée transforme chaque nettoyage légitime en alarme.
+
+⚠️ **Choisir le lecteur par la NATURE de l'assertion, pas par habitude.** Ce scan lit la source
+BRUTE, commentaires COMPRIS — l'affirmation VIT dans un commentaire, et c'est lui qu'on veut voir
+marqué. Décommenter ici, réflexe de cinq lots consécutifs, aurait rendu la garde aveugle à son
+propre sujet.
+
 ### Lot 105 (2026-09-03) — la divergence que le ticket voulait corriger était la bonne réponse
 
 `AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`

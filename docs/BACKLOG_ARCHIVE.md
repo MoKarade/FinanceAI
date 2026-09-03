@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[RQAP-INDEX-SOURCE]` (PR lot 106)
+
+La phrase « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » décrit
+ce que fait la **LOI** et vivait dans `docs/FISCAL_REFERENCE.md` — le document que le dépôt déclare
+source de vérité fiscale — **sans aucune citation**. Non marquée, elle héritait de l'autorité du
+document.
+
+**Réglé par REQUALIFICATION**, la seconde option du ticket. Citer aurait été mieux et n'a pas pu
+être fait : la politique réseau de l'environnement bloque LégisQuébec (`EGRESS_BLOCKED`) et
+`rqap.gouv.qc.ca` (délai dépassé) — tenté le 2026-09-03. Écrire une référence de mémoire aurait
+fabriqué la source qu'on prétend citer.
+
+⚠️ **Le ticket annonçait deux sites, il y en avait TROIS** : la note de §2 qui SIGNALAIT le problème
+l'affirmait elle-même au présent, sans marque (`ENTREE-D-INVENTAIRE-FANTOME`).
+
+Garde livrée : `tests/services/rqapIndexNonSource.test.ts` — l'affirmation porte sa marque partout
+où elle apparaît, aucun site ne prétend citer un article absent, et la garde exige sa propre mort
+quand la phrase disparaît de tous les sites. 6 perturbations, dont un retrait PARTIEL qui doit
+rester vert (mon 1ᵉʳ jet rougissait dessus).
+
 ## 2026-09-03 — `[MGA-PATRON-5-COPIES]` (PR lot 105)
 
 Le patron d'indexation `base × (1 + (inflation + 0,5)/100)^n` était recopié à **5 sites** —

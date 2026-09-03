@@ -68,9 +68,15 @@ const RQAP_REPLACEMENT_RATE_BASE = 0.55;
  *     décaissement faisait passer l'assiette RQAP de 80 092 $ à 53 900 $. Aucune stratégie de
  *     portefeuille ne peut déplacer un plafond gouvernemental.
  *
- * Le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec — la même nature
- * que le MGA de la RRQ, que ce dépôt projette DÉJÀ à `inflation + 0,5 %/an`
- * (`retirementIncome.ts`, FISCAL_REFERENCE §6). On réutilise ce patron plutôt que d'en inventer un.
+ * ⚠️ [RQAP-INDEX-SOURCE] **NON SOURCÉ — hypothèse de travail, pas une règle établie.** Ce dépôt
+ * SUPPOSE que le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec, de la
+ * même nature que le MGA de la RRQ, que ce dépôt projette DÉJÀ à `inflation + 0,5 %/an`
+ * (`retirementIncome.ts`, FISCAL_REFERENCE §6) — d'où la réutilisation de ce patron plutôt que
+ * l'invention d'un autre. Aucune disposition de la Loi sur l'assurance parentale n'est citée à
+ * l'appui : c'est le RATIONNEL d'un choix de modèle, et il ne doit pas se lire comme du droit.
+ * La citation reste le meilleur correctif ; elle n'a pas pu être établie depuis l'environnement de
+ * développement (LégisQuébec et `rqap.gouv.qc.ca` sont bloqués par la politique réseau — tenté le
+ * 2026-09-03). Inventer une référence serait fabriquer la source qu'on prétend citer.
  *
  * ⚠️ DEUX INDEX DIFFÉRENTS SUR LA MÊME BOUCLE, ET C'EST VOULU — ne pas « harmoniser ».
  * `annaGrossAnnual` juste au-dessus est indexé par `simSalaryGrowth`, pas par ce facteur-ci. C'est

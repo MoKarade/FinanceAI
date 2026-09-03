@@ -114,8 +114,16 @@
 > `expenseMultiplier`, qui compose l'inflation des DÉPENSES DU MÉNAGE — et qui est **gelable par
 > Guyton-Klinger**. MESURÉ à l'année 20 : un gel de la règle de décaissement faisait tomber
 > l'assiette RQAP de **80 092 $ à 53 900 $**. Aucune stratégie de portefeuille ne peut déplacer un
-> plafond gouvernemental. Le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au
-> Québec — même nature que le MGA de la RRQ, déjà projeté à inflation + 0,5 %/an (§6).
+> plafond gouvernemental.
+>
+> ⚠️ **`[RQAP-INDEX-SOURCE]` — NON SOURCÉ, et c'est écrit ici parce que ce document fait autorité.**
+> Ce dépôt SUPPOSE que le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au
+> Québec — même nature que le MGA de la RRQ, déjà projeté à inflation + 0,5 %/an (§6). **Aucune
+> disposition de la Loi sur l'assurance parentale n'est citée à l'appui.** C'est le rationnel d'un
+> choix de modèle, pas une règle : dans ce fichier, une phrase non marquée hérite de l'autorité du
+> document, et celle-ci ne l'a jamais méritée. La citation reste le meilleur correctif ; elle n'a
+> pas pu être établie depuis l'environnement de développement (LégisQuébec et `rqap.gouv.qc.ca`
+> bloqués par la politique réseau — tenté le 2026-09-03).
 
 > ⚠️ **Le +0,5 pp est calibré SOUS l'indexation observée — à ne pas lire comme « sourcé ».** Les
 > seuls points de comparaison du dépôt : plafond RQAP **98 000 $ (2025) → 103 000 $ (2026) = +5,10 %**
@@ -124,9 +132,14 @@
 > prestation est sous-estimée à mesure que l'horizon s'allonge). C'est une hypothèse d'indexation
 > héritée du patron MGA, pas une règle de l'ARC ou de Revenu Québec.
 >
-> ⚠️ **L'affirmation « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne » n'est
-> pas citée** (aucun article de la Loi sur l'assurance parentale) : c'est le rationnel du choix
-> d'index, pas une source. À citer ou à requalifier — `[RQAP-INDEX-SOURCE]`.
+> ✅ **`[RQAP-INDEX-SOURCE]` réglé le 2026-09-03 par REQUALIFICATION** (la seconde option du ticket) :
+> l'affirmation sur l'indice n'est plus posée comme un fait mais comme une hypothèse de travail,
+> marquée aux TROIS sites où elle vivait — ici, dans son encadré plus haut, et dans
+> `services/projection/childrenReee.ts`. Le ticket n'en annonçait que deux : cette note-ci était le
+> troisième, et elle affirmait le défaut AU PRÉSENT (`ENTREE-D-INVENTAIRE-FANTOME`). La citation
+> reste le meilleur correctif si quelqu'un a accès au texte de loi ; elle n'a pas pu être établie
+> depuis l'environnement de développement, dont la politique réseau bloque LégisQuébec et
+> `rqap.gouv.qc.ca`.
 
 ### AE — Assurance-emploi (taux Québec)
 | Constante | Valeur 2026 |

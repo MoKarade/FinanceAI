@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 106 : une affirmation juridique non citée, dans la source de vérité
+> `[RQAP-INDEX-SOURCE]` — **doc et commentaires seulement, aucun code de prod, donc aucun
+> déploiement à vérifier.**
+> - La phrase « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne » décrit la LOI
+>   et vivait dans `FISCAL_REFERENCE.md` sans citation : non marquée, elle héritait de l'autorité du
+>   document. Un chiffre non sourcé, le ratchet le cherche ; une PHRASE, rien ne la cherche.
+> - **Réglé par REQUALIFICATION** (2ᵉ option du ticket). ⚠️ Citer était mieux : LégisQuébec répond
+>   `EGRESS_BLOCKED` et `rqap.gouv.qc.ca` expire — tentative CONSIGNÉE avec sa cause pour que la
+>   prochaine session ne la retente pas à l'aveugle et ne la déclare pas impossible.
+> - ⚠️ **Deux sites annoncés, TROIS réels** : la note de §2 qui SIGNALAIT le problème le répétait
+>   elle-même au présent (`ENTREE-D-INVENTAIRE-FANTOME`) — invisible au ticket qui l'avait écrite.
+> - ⚠️ Ma garde exigeait la phrase dans CHAQUE fichier : mesuré, elle rougissait sur un retrait
+>   PARTIEL sain. Liste DÉRIVÉE ; retrait partiel → vert, retrait total → « retire cette garde ».
+> - **Routé sans être tranché** : `[MIGRATE-GROSS-DEJA-PERSISTE]` → `docs/A_FAIRE_MOI.md`, trois
+>   options, recommandation « détecter et DEMANDER » (le seul chemin qui ne peut pas écraser une
+>   saisie de Marc).
+
 > ## 🟦 Session 2026-09-03 — Lot 105 : cinq copies d'un patron, et une divergence qu'il fallait GARDER
 > `[MGA-PATRON-5-COPIES]` — périmètre re-recensé et confirmé (5 sites). Source unique :
 > `projeterAuPatronMga` + `MGA_EXCES_SUR_INFLATION_PP` dans `helpers.ts`. **Aucun montant ne bouge.**

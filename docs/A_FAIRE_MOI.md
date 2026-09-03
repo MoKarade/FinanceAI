@@ -86,6 +86,27 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[HEALTH-CORRUPTION…]` (a) — faut-il signaler une donnée invalide dans le RÉSUMÉ ? (2026-09-03)
+
+**Ce qui est déjà réglé.** Quand *aucune* de tes métriques n'est calculable, le résumé de santé le
+dit honnêtement au lieu d'afficher « 0/100 » en rouge. Et sur l'écran de détail, une métrique exclue
+parce que ta donnée est invalide s'annonce différemment d'une métrique simplement non calculable.
+
+**Ce qui reste.** Dans le **résumé** (la ligne « Santé financière » en tête de Futur), une métrique
+exclue pour **donnée invalide** est invisible : le résumé n'affiche que le score global. Or les deux
+cas ne se valent pas — une donnée invalide, **tu peux la corriger** ; une métrique non calculable
+(ton objectif FIRE n'est pas défini, par exemple) n'appelle aucune action.
+
+**Pourquoi je ne tranche pas.** Le résumé est un résumé : son rôle est de ne PAS multiplier les
+affirmations. Y ajouter un signal, c'est ajouter du bruit permanent pour un cas rare — et le dépôt a
+déjà appris qu'un avertissement permanent finit par ne plus être lu.
+
+**Trois options :**
+1. **Ne rien changer** — l'information existe sur l'écran de détail, à un clic. *(recommandé)*
+2. **Un marqueur discret** dans le résumé (une pastille, pas une phrase) quand au moins une métrique
+   est exclue pour donnée invalide, cliquable vers le détail.
+3. **Une phrase** dans le résumé — le plus visible, et le plus bruyant.
+
 ## `[BUDGET-DEUX-NETS-MEME-ECRAN]` — « Effort : X % » n'est pas calculé sur le net affiché (2026-09-03)
 
 **Ce qui se passe.** Dans la carte fiscale de l'écran Budget, la ligne **« Revenu Net Disponible »**

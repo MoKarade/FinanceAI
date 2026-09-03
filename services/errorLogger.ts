@@ -223,10 +223,37 @@ export function logError(input: {
  * reviendrait à CHAQUE appel et thrasherait le localStorage. Calque le throttle de `computeRawNetWorth`
  * (HARDEN-NETWORTH-NAN). État module-scope (intrinsèque au throttle).
  */
-const throttledSignatures = new Set<string>();
+/**
+ * [HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE] (c) Fenêtre de RÉARMEMENT du throttle.
+ *
+ * ⚠️ Le défaut corrigé : le throttle était un `Set` JAMAIS purgé côté navigateur. Une corruption qui
+ * apparaît, disparaît, puis RÉCIDIVE dans la même session — un onglet ouvert des jours, ce qui est
+ * le mode d'usage normal de cette app — était journalisée UNE fois puis muette pour toujours. Le
+ * serveur MCP n'avait pas le problème : `mcp/tools/_dataAware.ts` appelle `__resetErrorThrottle()` à
+ * CHAQUE requête, précisément pour ça. Le navigateur n'avait aucun équivalent de « nouvelle
+ * occasion ».
+ *
+ * ⚠️ Pourquoi une fenêtre de temps et pas un réarmement « par recalcul » : les appelants ne
+ * partagent aucune occasion commune — `useNetWorthVariation` (hook), `services/portfolio.ts`
+ * (valorisation, à chaque rendu) et `hydrateAssetHistories` ne passent pas par la boucle de
+ * projection. Il n'existe donc pas d'événement unique où poser le reset.
+ *
+ * ⚠️ La VALEUR est dérivée d'une MESURE, pas choisie : ce que le throttle doit absorber est une
+ * RAFALE de recomposition. Mesuré le 2026-09-03 sur le plus chaud des appelants — **10 000 appels
+ * en 2,7 ms** (≈ 3 700 appels/ms) sur `assetValueCad` avec des prix non finis. Soixante secondes,
+ * c'est quatre ordres de grandeur au-dessus de la rafale mesurée, et quatre ordres de grandeur
+ * en dessous d'une session « onglet ouvert des jours ». Le throttle reste donc intégral pendant
+ * un recalcul, et redevient parlant pour une VRAIE récidive.
+ */
+export const THROTTLE_REARM_WINDOW_MS = 60_000;
+
+/** signature → horodatage du dernier passage journalisé. */
+const throttledSignatures = new Map<string, number>();
 export function logErrorThrottled(signature: string, input: Parameters<typeof logError>[0]): void {
-    if (throttledSignatures.has(signature)) return;
-    throttledSignatures.add(signature);
+    const maintenant = Date.now();
+    const dernier = throttledSignatures.get(signature);
+    if (dernier !== undefined && maintenant - dernier < THROTTLE_REARM_WINDOW_MS) return;
+    throttledSignatures.set(signature, maintenant);
     logError(input);
 }
 

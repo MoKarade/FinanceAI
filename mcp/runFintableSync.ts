@@ -23,6 +23,7 @@ import type { AppState, FintableSyncReport } from '../types';
 import type { StateStore } from './state/stateStore';
 import { FintableClient } from '../services/fintable/client';
 import { readFintableSnapshot } from '../services/fintable/readSnapshot';
+import { comptesSansPositionsDuSnapshot } from '../services/fintable/comptesSansPositions';
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { toPersistableBrokerBalances } from '../services/fintable/brokerBalances';
 import { decideCutoverDate, applyPayloadsIsolated } from '../services/fintable/syncCore';
@@ -139,6 +140,8 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
                 debtsUpdated,
                 investmentReferenceCount: mapReport.investmentBalances.length,
                 warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],
+                // [FINTABLE-INVESTMENTS-MUET] Même fil que le chemin navigateur, même source unique.
+                comptesSansPositions: comptesSansPositionsDuSnapshot(snapshot),
                 error: null,
             };
             // [FINTABLE-6] Les soldes courtier étaient CALCULÉS par le mapper puis JETÉS (seul un

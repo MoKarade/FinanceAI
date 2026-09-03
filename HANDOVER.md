@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 99 : les placements muets disent enfin pourquoi
+> `[FINTABLE-INVESTMENTS-MUET]` livré (demande Marc du 2026-08-17), depuis le recensement du lot 98.
+> - Il manquait le FIL, pas le diagnostic : `holdingsSkipped` était mesuré puis jeté (seul
+>   consommateur = un script CLI). `services/fintable/comptesSansPositions.ts` est la SOURCE UNIQUE
+>   qui le traduit ; les DEUX chemins de sync la consomment, une garde couvre chacun.
+> - Champ DÉDIÉ et non un `warnings` de plus : `warnings` n'est rendu qu'en COMPTE à l'écran
+>   (« · 3 avertissement(s) »), découvert en écrivant le lot. Le `label` voyage avec l'`accountId`.
+> - `undefined` et non `[]` quand rien à signaler ⇒ rapport persisté identique dans le cas nominal.
+> - Message : dit où ça se répare (Fintable), ne promet PAS de guérison automatique
+>   (`FINTABLE-POSITIONS` : certaines institutions ne fournissent JAMAIS les positions), et n'affiche
+>   AUCUN montant — un « 0 $ » y serait crédible et faux.
+> - 10 gardes, neuf perturbations séparées. ⚠️ 3ᵉ re-mesure du seuil d'anti-vacuité : `browserSync.ts`
+>   est à **0,358** de code (le 0,5 canonique le déclarerait vide). Seuils par fichier, mesure datée.
+
 > ## 🟦 Session 2026-09-03 — Lot 98 : recensement de `[FINTABLE-INVESTMENTS-MUET]` (doc seule)
 > **Aucun code de prod touché.** Le ticket (demandé par Marc) partait d'un diagnostic imprécis qui
 > envoyait au mauvais correctif ; le recensement est consigné DANS le ticket pour que le lot suivant

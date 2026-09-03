@@ -38,6 +38,7 @@
 import type { AppState, FintableSyncReport, FintableAccountRoleConfig } from '../../types';
 import { FintableClient } from './client';
 import { readFintableSnapshot } from './readSnapshot';
+import { comptesSansPositionsDuSnapshot } from './comptesSansPositions';
 import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
 import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
@@ -290,6 +291,9 @@ export async function runFintableBrowserSync(
             cashAnchorDelta,
             debtsUpdated,
             investmentReferenceCount: mapReport.investmentBalances.length,
+            // [FINTABLE-INVESTMENTS-MUET] La cause d'un écran de placements VIDE, jusqu'ici
+            // mesurée puis jetée. Source unique partagée avec l'autre chemin de sync.
+            comptesSansPositions: comptesSansPositionsDuSnapshot(snapshot),
             warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],
             error: null,
         };

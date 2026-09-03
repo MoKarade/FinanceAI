@@ -933,6 +933,23 @@ export interface FintableSyncReport {
   debtsUpdated: string[];
   investmentReferenceCount: number;
   warnings: string[];
+  /**
+   * [FINTABLE-INVESTMENTS-MUET] Comptes dont les POSITIONS n'ont pas pu être lues, avec leur cause.
+   *
+   * ⚠️ Demande Marc 2026-08-17 : « les placements s'affichent vides sans dire pourquoi ». La raison
+   * était DÉJÀ mesurée par `readFintableSnapshot` (`holdingsSkipped`), mais son seul consommateur
+   * était un script CLI de développement — classée puis JETÉE avant l'écran
+   * (`UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`, recensement du lot 98).
+   *
+   * ⚠️ Champ DÉDIÉ et non un `warnings: string[]` de plus, pour deux raisons mesurées : `warnings`
+   * n'est rendu qu'en COMPTE à l'écran (« · 3 avertissement(s) »), et une chaîne aplatie ne permet
+   * pas de distinguer « aucune position » de « ce compte ne FOURNIT pas les positions » — c'est
+   * exactement la distinction que le ticket demande. Le `label` voyage avec l'`accountId` parce
+   * qu'un identifiant seul ne dit rien à un humain.
+   *
+   * Additif OPTIONNEL : absent = rapport d'avant ce lot, aucune migration.
+   */
+  comptesSansPositions?: Array<{ accountId: string; label: string; reason: string }>;
   /** Raison de l'échec, ou `null` si la passe a réussi. */
   error: string | null;
 }

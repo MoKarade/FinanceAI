@@ -10,6 +10,35 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — Lot 99 : les placements muets disent enfin pourquoi
+
+- [x] **`[FINTABLE-INVESTMENTS-MUET]`** — LIVRÉ le 2026-09-03 (PR #830). Demande Marc du 2026-08-17 :
+  « les placements s'affichent vides sans dire pourquoi ». Le recensement du lot 98 avait corrigé le
+  diagnostic ; ce lot livre le correctif qui en découle.
+- **Il ne manquait pas un diagnostic, il manquait le FIL.** `readFintableSnapshot` remplissait déjà
+  `holdingsSkipped: { accountId, reason }` ; son seul consommateur était `scripts/fintableDry.ts`,
+  un script CLI de développement. La cause était classée puis JETÉE avant l'écran.
+- **Source UNIQUE partagée par les deux chemins de sync** (`comptesSansPositions.ts`). Les deux
+  composaient leurs `warnings` à l'identique et avaient oublié `holdingsSkipped` TOUS LES DEUX, de
+  la même façon : deux recopies auraient rendu le prochain oubli certain
+  (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`). Une garde couvre CHAQUE
+  chemin — celui du serveur est justement celui que personne ne regarde.
+- **Champ DÉDIÉ, pas un `warnings: string[]` de plus**, pour deux raisons mesurées : `warnings` n'est
+  rendu qu'en COMPTE à l'écran (« · 3 avertissement(s) » — découvert en écrivant le lot), et une
+  chaîne aplatie ne distingue pas « aucune position » de « ce compte ne FOURNIT pas les positions ».
+  Le `label` voyage avec l'`accountId` : un identifiant seul ne dit pas à Marc quoi reconnecter.
+- **`undefined` et non `[]` quand il n'y a rien à signaler** : les deux se lisent pareil à l'écran,
+  mais `undefined` garde le rapport persisté identique à celui d'avant ce lot dans le cas nominal.
+- **Le message ne promet pas de guérison** : pour certaines institutions Fintable ne rend JAMAIS les
+  positions (`FINTABLE-POSITIONS`, Disnat hors SnapTrade), donc « réessaie plus tard » serait une
+  affirmation FAUSSE sur l'avenir. Il dit où est la réparation — chez Fintable, pas dans l'app.
+  ⚠️ Et **aucun montant** dans le bloc : un « 0 $ » y serait crédible et faux, le solde total peut
+  exister et c'est le DÉTAIL qui manque. Une garde interdit tout formateur monétaire dans ce bloc.
+- **10 gardes, neuf perturbations séparées**, chacune ne faisant rougir que sa cible.
+- ⚠️ **Troisième re-mesure du seuil d'anti-vacuité** : le 0,5 canonique déclarerait vides les trois
+  fichiers gardés — mesuré `browserSync.ts` **0,358**, `runFintableSync.ts` 0,459,
+  `FintableSyncCard.tsx` 0,634. Seuils posés par fichier, avec leur mesure datée à côté.
+
 ## 2026-09-03 — Lot 97 : la même explication sur la vue par DÉFAUT
 
 - [x] **`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`** — LIVRÉ le 2026-09-03 (PR #827). Ferme ce que le lot 96

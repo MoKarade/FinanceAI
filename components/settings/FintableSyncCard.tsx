@@ -543,6 +543,38 @@ export const FintableSyncCard: React.FC = () => {
                         {(report.skippedBeforeCutover ?? 0) > 0
                             && ` · ${report.skippedBeforeCutover} plus ancienne(s) ignorée(s)`}
                         {report.warnings.length > 0 && ` · ${report.warnings.length} avertissement(s)`}
+                        {/* [FINTABLE-INVESTMENTS-MUET] Marc : les placements s'affichent VIDES sans
+                            dire pourquoi. La cause était mesurée depuis toujours et jetée avant
+                            l'écran (recensement lot 98). Elle est ÉNUMÉRÉE ici, pas comptée : un
+                            « · N avertissement(s) » — ce que fait la ligne juste au-dessus — n'apprend
+                            rien à qui cherche pourquoi son courtier est absent.
+                            ⚠️ Aucun montant, et surtout PAS de 0 $ : un chiffre crédible et faux est
+                            pire qu'une absence expliquée (no-fake-data).
+                            ⚠️ La réparation n'est PAS dans l'app — c'est écrit, plutôt que de laisser
+                            Marc chercher un réglage qui n'existe pas ici. Et rien ne promet que ça
+                            se règlera au prochain essai : pour certaines institutions, Fintable ne
+                            rend JAMAIS les positions (`FINTABLE-POSITIONS`, limite mesurée). */}
+                        {(report.comptesSansPositions?.length ?? 0) > 0 && (
+                            <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/5 p-2">
+                                <span className="block font-bold text-amber-300/90">
+                                    Positions non fournies pour {report.comptesSansPositions!.length} compte(s)
+                                </span>
+                                <ul className="mt-1 list-disc pl-4">
+                                    {report.comptesSansPositions!.map((c) => (
+                                        <li key={c.accountId}>
+                                            <span className="text-ink-200">{c.label}</span> — {c.reason}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <span className="block mt-1">
+                                    Leur solde total peut être connu, mais pas le détail des titres : ces
+                                    comptes apparaissent donc sans positions. Ça se règle chez Fintable
+                                    (reconnecter l'institution, ou ajouter le courtier comme source
+                                    distincte), pas dans cette app — et pour certaines institutions, les
+                                    positions ne sont jamais fournies.
+                                </span>
+                            </div>
+                        )}
                         <span className="block mt-1">Détail complet dans Réglages → Système &amp; diagnostics.</span>
                     </div>
                 )}

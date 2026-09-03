@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 332 tests** Vitest
-(522 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 335 tests** Vitest
+(523 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,18 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Une affirmation JURIDIQUE non citée hérite de l'autorité du document** : la leçon jumelle
+  (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER…`) visait un CHIFFRE ; une PHRASE non sourcée est plus
+  discrète — aucun ratchet ne la cherche, et dans `FISCAL_REFERENCE.md` elle emprunte l'autorité de
+  ce qui l'entoure. Test : cette phrase décrit-elle ce que quelqu'un a MESURÉ, ou ce que la loi
+  PRESCRIT ? ⚠️ Citer était la bonne réponse et l'ENVIRONNEMENT l'a interdite (LégisQuébec
+  `EGRESS_BLOCKED`) : livrer la seconde option ET consigner la tentative avec sa cause, sinon la
+  prochaine session la retente à l'aveugle ou la déclare impossible. ⚠️ Le ticket annonçait deux
+  sites, il y en avait TROIS — le troisième était **sa propre note**, qui répétait l'affirmation au
+  présent. ⚠️ Et ma garde exigeait la phrase dans CHAQUE fichier de sa liste : mesuré, elle
+  rougissait sur un retrait PARTIEL parfaitement sain. La liste se DÉRIVE des sites qui la portent ;
+  retrait partiel → vert, retrait total → « retire cette garde »
+  (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`, 2026-09-03).
 - **Avant d'unifier N copies, séparer ce qui est PARTAGÉ de ce qui ne l'est pas** : un ticket
   signalait cinq copies d'un patron d'indexation et, comme une alarme, qu'« un site diverge ». Le
   réflexe — aligner — aurait été une RÉGRESSION : une extrapolation porte deux paramètres, la

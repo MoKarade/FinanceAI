@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 367 tests** Vitest
-(531 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 374 tests** Vitest
+(532 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -259,6 +259,17 @@ n'est pas réécrire un récit.
   FluxImpots` ». **Un golden bien écrit dit à quelles conditions il se re-base ; le lire bat tout
   raisonnement sur son titre.** ⚠️ Et `toBe` INTERROMPT le cas : trois ancres ne sont apparues
   qu'après réparation des précédentes — un premier gate rouge SOUS-COMPTE les re-bases.
+- **Un ORDRE écrit dans un ticket est une photo datée** : `[ENG-RANKING-ORDER-PIN]` fournissait « LA
+  baseline à pinner » (balanced : MELTDOWN > PRIO_REER > AUTO). Re-mesuré, deux stratégies non
+  comparées par le ticket s'intercalent et PRIO_REER change de rang. Un ordre est une propriété de
+  l'ENSEMBLE comparé : il bouge dès qu'un lot déplace de l'argent — et il y en avait un le jour même.
+  « Le périmètre d'un ticket se RECENSE » vaut aussi pour ses BASELINES. ⚠️ Épingler l'ORDRE, jamais
+  les SCORES (un min-max bouge au centième ; l'ordre est ce que l'utilisateur voit), et écrire dans
+  le fichier que la garde est FAITE pour rougir — ce qu'elle interdit est le basculement SILENCIEUX.
+  ⚠️ Et **un rouge ABSENT est une mesure** : inverser le sens de l'impôt ne retourne pas `balanced`,
+  parce qu'il est dominé par le poids `estate` (0,4 vs 0,25). Une perturbation qui ne rougit pas là
+  où on l'attendait apprend la structure du modèle — demander POURQUOI avant de renforcer
+  l'assertion (`UN-ORDRE-ECRIT-DANS-UN-TICKET-EST-UNE-PHOTO-DATEE`, 2026-09-03).
 - **Un ticket qui n'annonce qu'un MONTANT ne dit pas sa gravité** : `[ENG-T1213-NET-MONTHLY]` portait
   « MOYEN, −183 598 $/30 ans ». Re-mesuré à quatre horizons : **−16,1 % à 5 ans, −24,5 % à 10,
   −29,2 % à 20, −45,7 % (−1 031 419 $) à 30** — cinq fois le chiffre annoncé, et un POURCENTAGE qui

@@ -11924,3 +11924,30 @@ sous-compte les re-bases à faire ; ne pas conclure « c'est fini » avant un ga
 ⚠️ Et comme au lot 113, **le correctif juste imitait un jumeau déjà présent dans le fichier** :
 `processGainHarvesting` rend un delta que l'appelant applique à l'ACB, dix lignes plus haut. Deuxième
 lot d'affilée où la spécification du correctif était déjà écrite à côté du défaut.
+
+### `UN-ORDRE-ECRIT-DANS-UN-TICKET-EST-UNE-PHOTO-DATEE` (2026-09-03, lot 116)
+
+`[ENG-RANKING-ORDER-PIN]` fournissait l'ordre à épingler, et le présentait comme acquis : « le
+validator a MESURÉ le nouvel ordre post-fix (balanced : MELTDOWN > PRIO_REER > AUTO) — c'est LA
+baseline à pinner ». Re-mesuré : `balanced` donne MELTDOWN > **DEBT_FIRST** > **PRIO_CELI** >
+PRIO_REER > AUTO. Deux stratégies que le ticket ne comparait pas s'intercalent, et l'ordre relatif
+de PRIO_REER change.
+
+**Ce qui pourrit ici n'est pas la mesure mais son OBJET** : un ordre est une propriété de
+l'ENSEMBLE comparé et des grandeurs qui le nourrissent. Il change dès qu'un lot déplace de l'argent
+— et le dépôt en avait livré un le jour même (`[FISC-DIV-ACB-STEPUP]` déplace `estateNetWorth`).
+Un ticket qui fournit une baseline chiffrée la fournit toujours pour un état du code qui n'existe
+plus. La règle du dépôt « le périmètre d'un ticket se RECENSE, il ne se cite pas » vaut donc aussi
+pour ses BASELINES.
+
+⚠️ **Corollaire — épingler l'ORDRE, jamais les SCORES.** Un score min-max bouge au centième à chaque
+correctif fiscal ; l'ordre est la seule chose que l'utilisateur voit. Et une garde de ce type est
+FAITE pour rougir : un lot qui déplace de l'argent peut légitimement changer le classement. Ce
+qu'elle interdit, c'est que ça arrive en silence — d'où l'obligation, écrite dans le fichier, de
+mesurer le nouvel ordre et d'écrire sa cause plutôt que de re-baser.
+
+⚠️ **Corollaire de perturbation — un rouge ABSENT est une mesure.** Inverser le sens de l'impôt fait
+rougir l'objectif `tax` et le contraste nommé, mais PAS `balanced`. Ce n'est pas un trou de la
+garde : c'est que `balanced` est dominé par le poids `estate` (0,4) devant `tax` (0,25). Une
+perturbation qui ne rougit pas là où on l'attendait apprend la structure du modèle, à condition de
+demander POURQUOI au lieu de renforcer l'assertion.

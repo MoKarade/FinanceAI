@@ -517,10 +517,6 @@
 - [x] ~~**`[ENG-TTP-UNSETTLED-PROPAGATE]`**~~ ✅ **LIVRÉ 2026-08-21** (surface par surface :
   monteCarlo PROPAGÉ, MCP netTaxSettlements DOCUMENTÉ — contrat IA stable, drawdownOptimizer
   documenté orphelin — détail en tête d'archive, réf PR au merge).
-- [ ] **`[ENG-RANKING-ORDER-PIN]`** (S — panel #554) — `rankStrategies` normalise min-max sur le
-  compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
-  référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix
-  (balanced : MELTDOWN > PRIO_REER > AUTO sur retraité 62) — c'est LA baseline à pinner.
 - [x] ~~**`[ENG-RANKTAX-ESTATE]`**~~ ✅ **LIVRÉ 2026-08-21** (décision Marc A4 « TOUT » ; détail :
   section datée en tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
 - [ ] **`[ENG-FVI-EFFICIENCY-ESTATE]`** (M, MOYEN [MESURÉ — relecture #681 ; ré-ouvert : la ligne

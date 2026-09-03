@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 116 : l'ordre du classement de stratégies est épinglé
+> `[ENG-RANKING-ORDER-PIN]` livré — **aucun code de prod touché** (une garde). Aucun déploiement.
+> - `rankStrategies` normalise en min-max sur l'ensemble comparé : déplacer une grandeur d'un seul
+>   scénario change l'échelle de tous. Le conseil de décaissement affiché pouvait donc basculer sans
+>   qu'aucun test ne bronche — les tests existants portent sur des scénarios SYNTHÉTIQUES.
+> - ⚠️ **L'ordre donné par le ticket était PÉRIMÉ** (« balanced : MELTDOWN > PRIO_REER > AUTO ») :
+>   mesuré, DEBT_FIRST et PRIO_CELI s'intercalent et PRIO_REER change de rang. Une baseline de ticket
+>   se re-mesure comme son périmètre — d'autant que le lot 115 du même jour déplace `estateNetWorth`.
+> - Les 4 objectifs donnent 4 ordres DIFFÉRENTS : c'est ce qui rend le pin par objectif utile.
+> - ⚠️ **Cette garde est FAITE pour rougir** : devant un rouge, mesurer le nouvel ordre et écrire sa
+>   cause — ne jamais re-baser mécaniquement. Elle épingle l'ORDRE, jamais les scores.
+> - ⚠️ Un rouge ABSENT est une mesure : inverser le sens de l'impôt ne retourne pas `balanced`, qui
+>   est dominé par le poids `estate` (0,4 vs 0,25).
+> - Gate complet VERT : **5 374 tests / 532 fichiers**, exit 0.
+
 > ## 🟦 Session 2026-09-03 — Lot 115 : le dividende réputé n'est plus imposé deux fois
 > `[FISC-DIV-ACB-STEPUP]` livré — **code de prod money-critical touché** (`taxDecember.ts`,
 > `projection.ts`). Déploiement à vérifier.

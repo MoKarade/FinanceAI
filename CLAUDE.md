@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 341 tests** Vitest
-(525 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 344 tests** Vitest
+(526 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,15 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un no-op COMMENTÉ est une décision à relire avant de la défaire** : `addExpense: (_n) => {}`
+  dans le mutateur d'objectifs porte « déjà soustrait du compte ciblé ». Le rendre effectif paraît
+  être LE correctif du registre qui sous-compte — il soustrairait le montant une SECONDE fois du
+  flux réel, `monthlyExpenses` alimentant `monthlyCashflow`. ⚠️ Et la consigne du ticket (« vérifier
+  qui LIT ce champ avant de corriger ») a produit les deux résultats : le seul lecteur est le **SWR**,
+  qui n'a aucun consommateur d'écran — donc coût NUL aujourd'hui, mais un SWR sous-estimé demain est
+  un plan qui a l'air plus sûr qu'il ne l'est. « Qui lit ? » ne répond pas par oui/non : elle répond
+  *aujourd'hui rien, demain grave*, et c'est ce qui impose un INVENTAIRE plutôt qu'un correctif
+  (`UN-NO-OP-COMMENTE-EST-UNE-DECISION-A-RELIRE-AVANT-DE-LA-DEFAIRE`, 2026-09-03).
 - **Un throttle sans horloge est un silence DÉFINITIF** : `logErrorThrottled` gardait ses signatures
   dans un `Set` jamais purgé côté navigateur — « une fois par rafale » devenait « une fois par
   session », et une corruption qui RÉCIDIVE dans un onglet ouvert des jours était muette. Le serveur

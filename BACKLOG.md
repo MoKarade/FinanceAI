@@ -2069,15 +2069,12 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `reconstructCashHistoryDaily` publie `fluxPeriodeAnnulee` (le flux du jour qu'elle vient de
   défaire), le registre au jour le remonte, et `services/history/raccordNotice.ts` en fait une
   phrase — sans montant, pour qu'elle survive au mode discret.
-- [ ] 🟠 **`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`** (S, découvert au lot 96) — **le périmètre du
-  ticket précédent était une borne INFÉRIEURE** : `reconstructCashHistory` (version MENSUELLE) a le
-  MÊME mécanisme, et sa marche est plus grosse — son dernier point passé annule **tout le mois
-  courant**, pas une journée (`cash -= flowByMonth.get(m)`, même boucle, granularité au mois). La
-  vue mensuelle est celle par défaut. **Non livré avec le lot 96 pour une raison précise** : la
-  phrase a besoin du champ, or `buildPastPrefix` rend un `PastPrefixPoint[]` nu — lui faire porter
-  un second retour touche ses consommateurs. ⚠️ Ne PAS exposer le champ côté mensuel avant d'avoir
-  son consommateur : c'est exactement ce que le lot 95 vient de condamner (un champ publié que
-  personne ne lit).
+- [x] 🟠 **`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — LIVRÉ le 2026-09-03** (PR #827), voir
+  `docs/BACKLOG_ARCHIVE.md`. `reconstructCashHistory` publie `fluxPeriodeAnnulee` (tout le mois
+  courant), `buildPastPrefix` le remonte — son retour passe d'un tableau nu à
+  `{ points, fluxPeriodeAnnulee }`, seize sites énumérés par le compilateur —, et la mention est
+  GATÉE sur la vue au jour : quand la reconstruction quotidienne est en place, c'est la marche du
+  JOUR que Marc voit, et la phrase mensuelle décrirait un raccord absent de l'écran.
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
 > Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE

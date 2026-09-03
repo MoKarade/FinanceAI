@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — Lot 97 : la même explication sur la vue par DÉFAUT
+
+- [x] **`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`** — LIVRÉ le 2026-09-03 (PR #827). Ferme ce que le lot 96
+  avait routé faute de fil de données.
+- **Mesuré** : la version MENSUELLE a le même mécanisme, mais son dernier point passé annule **tout
+  le mois courant**. Sur une même fixture, la marche mensuelle vaut −10 900 $ contre −900 $ au jour —
+  un test le MESURE au lieu de l'affirmer. Et c'est la vue par défaut.
+- **Le fil manquant a été ouvert par le TYPE** : `buildPastPrefix` rendait un `PastPrefixPoint[]` nu,
+  il rend désormais `{ points, fluxPeriodeAnnulee }`. Seize sites d'appel énumérés par le
+  compilateur — c'est exactement ce qu'on attend de lui. L'alternative (recalculer le flux du mois
+  dans le composant) aurait fait une SECONDE somme sur la même base d'exclusion, donc deux vérités
+  qui divergent à la première évolution de la règle.
+- ⚠️ **Le GATE fait partie du fait défendu** : la mention mensuelle ne s'affiche QUE si la
+  reconstruction au jour n'est pas en place. Sinon le dernier point du passé est une JOURNÉE, et la
+  phrase mensuelle décrirait un raccord absent de l'écran — une phrase qui explique la mauvaise
+  marche est pire que pas de phrase. Une perturbation retire le gate et la garde rougit.
+- ⚠️ **Référence stable préservée** : `pastPrefix` est un objet neuf à chaque memo, mais ses POINTS
+  gardent `EMPTY_ARRAY` quand il n'y a pas de passé — c'est cette identité que les memos avals
+  comparent, et la casser aurait re-rendu tout le graphe à chaque rendu.
+- **19 gardes** (6 neuves), six perturbations séparées : champ nul · mauvais mois · préfixe qui ne
+  remonte pas · exclusion retirée · gate supprimé · mention jamais rendue.
+
 ## 2026-09-03 — Lot 96 : la « chute de 10k » que Marc voyait est expliquée, jamais lissée
 
 - [x] **`[PASSE-REEL-RACCORD-CHUTE]`** — LIVRÉ le 2026-09-03 (PR #826). Marc : « je vois une chute de

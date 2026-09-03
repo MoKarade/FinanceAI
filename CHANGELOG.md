@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (La même explication, sur la vue par mois)
+
+- **Complété** : l'explication de la marche au raccord, livrée juste avant pour la vue au jour,
+  couvre maintenant la vue par **mois** — celle que tu vois par défaut, et où l'effet est **plus
+  gros** : le dernier point du passé y annule *tout le mois en cours*, pas seulement la journée.
+- **En chiffres, sur un même exemple** : une hypothèque de 10 000 $ le 1er du mois plus 900 $
+  d'épicerie donnent une marche de **10 900 $** sur la vue par mois, contre 900 $ sur la vue au jour.
+- **Une seule phrase à la fois** : quand tu passes en vue au jour, c'est l'explication du jour qui
+  s'affiche. Décrire une marche que tu n'as pas sous les yeux serait pire que se taire.
+- **Toujours pas lissé**, toujours **aucun montant** dans la phrase.
+
+---
+
 ## [unreleased] — 2026-09-03 (La « chute » que tu voyais au raccord est enfin expliquée)
 
 - **Expliqué** : tu avais signalé « une chute de 10k aujourd'hui, jsp pourquoi » sur la courbe. Ce

@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 97 : la marche du raccord expliquée sur la vue par DÉFAUT
+> `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — ferme ce que le lot 96 avait routé.
+> - **Mesuré** : la marche mensuelle annule TOUT le mois courant (−10 900 $ contre −900 $ au jour sur
+>   la même fixture). Un test le mesure, il ne l'affirme pas.
+> - **Le fil est passé par le TYPE** : `buildPastPrefix` rend `{ points, fluxPeriodeAnnulee }` au lieu
+>   d'un tableau nu — 16 sites énumérés par le compilateur. Recalculer dans le composant aurait fait
+>   une SECONDE somme sur la même base d'exclusion.
+> - ⚠️ **Le GATE est le fait** : mention mensuelle affichée SEULEMENT hors vue au jour, sinon elle
+>   décrirait un raccord absent de l'écran. Perturbation retirant le gate → rouge.
+> - ⚠️ `pastPrefix.points` garde `EMPTY_ARRAY` : c'est l'identité que les memos avals comparent.
+> - 19 gardes (6 neuves), six perturbations séparées.
+
 > ## 🟦 Session 2026-09-03 — Lot 96 : la « chute de 10k » de Marc, expliquée
 > `[PASSE-REEL-RACCORD-CHUTE]` — cause confirmée contre le code : le dernier point du passé est
 > reconstruit en DÉFAISANT les flux du jour, donc `veille = aujourd'hui − flux_du_jour`. Les deux

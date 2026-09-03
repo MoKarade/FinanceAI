@@ -62,12 +62,27 @@ export interface BuildPastPrefixInput {
     debts: ReadonlyArray<DebtAmortissable>;
 }
 
+/** Ce que `buildPastPrefix` rend : les points, PLUS ce que l'écran doit pouvoir DIRE à leur sujet.
+ *
+ *  ⚠️ Le retour était un `PastPrefixPoint[]` nu. Il est devenu un objet au lot 97 pour laisser passer
+ *  `fluxPeriodeAnnulee` — la marche au raccord, que le lot 96 avait livrée côté vue au JOUR et pas
+ *  ici faute de ce fil. L'alternative (recalculer le flux du mois dans le composant) aurait fait une
+ *  SECONDE somme sur la même base d'exclusion, donc deux vérités qui divergent à la première
+ *  évolution de la règle. Le compilateur a énuméré les seize sites d'appel — c'est exactement ce
+ *  qu'on attend de lui. */
+export interface PastPrefixResult {
+    points: PastPrefixPoint[];
+    /** [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Flux net du mois COURANT, défait par la reconstruction du
+     *  cash pour produire le dernier point passé. Remonté tel quel depuis `reconstructCashHistory`. */
+    fluxPeriodeAnnulee: number;
+}
+
 /**
  * Reconstruit les points du PASSÉ (monthIndex < 0) : placements (carry-forward) + cash + équité immo,
  * NetWorth = Σ − dette courante. La ligne VN ne démarre qu'à la 1re transaction connue (`hasNW`) → avant,
- * `NetWorth = undefined` (no-fake : pas de fausse ligne à 0). Retourne `[]` si aucun passé connu.
+ * `NetWorth = undefined` (no-fake : pas de fausse ligne à 0). `points` est vide si aucun passé connu.
  */
-export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixPoint[] {
+export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
     const { pastHistoryPoints, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts } = input;
 
     const miOf = (ym: string): number => {
@@ -91,7 +106,7 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixPoint[] 
         if (mi < 0) cashByMi.set(mi, c.cash);
     }
     const mis = [...invByMi.keys(), ...cashByMi.keys()];
-    if (mis.length === 0) return [];
+    if (mis.length === 0) return { points: [], fluxPeriodeAnnulee: cashRes.fluxPeriodeAnnulee };
     const minMi = Math.min(...mis);
     const firstTxnMi = cashRes.firstMonth ? miOf(cashRes.firstMonth) : 1; // 1 = jamais de passé connu
 
@@ -141,5 +156,5 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixPoint[] 
             isPast: true,
         });
     }
-    return out;
+    return { points: out, fluxPeriodeAnnulee: cashRes.fluxPeriodeAnnulee };
 }

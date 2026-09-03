@@ -447,8 +447,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // dates) se prouve sans rendre le composant. Vide → `EMPTY_ARRAY` (référence stable pour l'aval).
     const pastPrefix = useMemo(() => {
         const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts: storeDebts });
-        return built.length ? built : EMPTY_ARRAY;
+        // [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Le lot 97 fait remonter `fluxPeriodeAnnulee` avec les
+        // points : la marche au raccord de la vue par MOIS annule TOUT le mois courant.
+        return { points: built.points.length ? built.points : EMPTY_ARRAY, fluxPeriodeAnnulee: built.fluxPeriodeAnnulee };
     }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts]);
+    // Référence STABLE pour l'aval : `pastPrefix` est un objet neuf à chaque memo, mais ses POINTS
+    // gardent `EMPTY_ARRAY` quand il n'y a pas de passé — c'est cette identité que les memos avals
+    // comparent, et la casser rendrait tout le graphe à chaque rendu.
+    const pastPrefixPoints = pastPrefix.points;
 
     // [DEBT-AMORTIZATION-CABLAGE] Ce que le bandeau peut HONNÊTEMENT affirmer des dettes du passé.
     // Le fait vient du service qui décide de l'amortissement, pas d'une seconde lecture des champs.
@@ -462,12 +468,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         [isProjectionLocked, lockedProjection],
     );
     const displayData = useMemo(() => {
-        const base = pastPrefix.length ? [...pastPrefix, ...chartData] : chartData;
+        const base = pastPrefixPoints.length ? [...pastPrefixPoints, ...chartData] : chartData;
         // Sous verrou : on ajoute `lockedNetWorth` à chaque point (référence figée) → 2e courbe tracée.
         if (!lockedByMonth) return base;
         return base.map((d) => ({ ...d, lockedNetWorth: lockedByMonth.get((d as { monthIndex: number }).monthIndex) }));
-    }, [pastPrefix, chartData, lockedByMonth]);
-    const pastStartIndex = pastPrefix.length ? pastPrefix[0].monthIndex : 0;
+    }, [pastPrefixPoints, chartData, lockedByMonth]);
+    const pastStartIndex = pastPrefixPoints.length ? pastPrefixPoints[0].monthIndex : 0;
 
     // PH2-c — la PUBLICATION dans store.lastProjection est faite par ProjectionEngine (app-level),
     // plus par ce composant. Futur est désormais un pur CONSOMMATEUR de la source unique.
@@ -905,6 +911,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const mentionRaccordJour = useMemo(
         () => (dailyPast === null ? '' : mentionRaccord(dailyPast.fluxPeriodeAnnulee)),
         [dailyPast],
+    );
+    // [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Même explication pour la vue par MOIS, où la marche est
+    // structurellement plus grosse (elle annule TOUT le mois courant) — et c'est la vue par défaut.
+    // ⚠️ Gaté sur `dailyPast === null` : quand la reconstruction au JOUR est en place, le dernier
+    // point du passé est une JOURNÉE, donc c'est la marche du jour que Marc voit et la mention
+    // mensuelle décrirait un raccord qui n'est pas à l'écran. Une phrase qui explique la mauvaise
+    // marche est pire que pas de phrase.
+    const mentionRaccordMois = useMemo(
+        () => (dailyPast !== null ? '' : mentionRaccord(pastPrefix.fluxPeriodeAnnulee)),
+        [dailyPast, pastPrefix],
     );
     /**
      * [PASSE-REEL-VARIATION-DU-JOUR] La ventilation du jour ouvert, calculée à partir des lignes
@@ -1632,7 +1648,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 </div>
                 {/* [FUTUR-REAL-HISTORY] Note d'honnêteté sur le passé reconstruit : patrimoine net réel
                     (placements + cash + immo − dettes), avec deux approximations SIGNALÉES (Option A + FX du jour). */}
-                {pastPrefix.length > 0 && (
+                {pastPrefixPoints.length > 0 && (
                     <div className="-mt-1 mb-2 text-tiny text-cyan-300/80 flex items-center gap-1.5 flex-wrap">
                         <span aria-hidden="true">⟵</span>
                         <span>
@@ -1731,7 +1747,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
 
-                            {pastPrefix.length > 0 && (
+                            {pastPrefixPoints.length > 0 && (
                                 <ReferenceArea
                                     // ⚠️ [FUTUR-DAILY-NATIVE] x1 clampé au 1er point RENDU : le 1er mois
                                     // de `displayData` sert d'ANCRE de ventilation (non rendu), donc
@@ -1754,7 +1770,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 PRÉFIXE mensuel) disparaît en courbe quotidienne : la vraie frontière
                                 réel/projeté est AUJOURD'HUI — la bande + la ligne « Aujourd'hui »
                                 la racontent, une 2e ligne au 1er du mois serait un faux repère. */}
-                            {pastPrefix.length > 0 && !isDailyCurve && (
+                            {pastPrefixPoints.length > 0 && !isDailyCurve && (
                                 <ReferenceLine x={0} stroke="#22d3ee" strokeOpacity={0.5} strokeDasharray="3 3" label={<RefLineLabel value="Passé réel ⟵" color="#22d3ee" />} />
                             )}
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
@@ -1916,6 +1932,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             les deux points sont JUSTES, il n'y a rien à corriger. */}
                         {mentionRaccordJour && (
                             <span className="mt-1 block">{mentionRaccordJour}</span>
+                        )}
+                        {mentionRaccordMois && (
+                            <span className="mt-1 block">{mentionRaccordMois}</span>
                         )}
                     </p>
                 )}

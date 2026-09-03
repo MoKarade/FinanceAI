@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[RRSP-FIRST-YEAR-13M]` — LIVRÉ (lot 113, PR #844)
+
+Le revenu gagné du mois était versé à l'accumulateur annuel AVANT le reset de janvier : le revenu
+de janvier entrait dans l'assiette de l'année qui venait de se clore. Correctif : un tampon d'un
+mois, versé APRÈS le bloc de janvier — ce qui ALIGNE ce producteur sur le second producteur du même
+accumulateur (le congé parental), qui versait déjà après.
+
+⚠️ **Le ticket sous-estimait son propre défaut.** Il annonçait « 13 mois la première année, fenêtre
+glissante de 12 mois ensuite ». La fenêtre glissante n'était pas neutre : février→janvier est en
+avance d'un mois sur l'année civile, ce qui gonfle l'assiette de tout salaire qui CROÎT. Mesuré à
+3 %/an sur 100 000 $ — avant : 19 545, 18 586, 19 144, 19 718… ; après : exactement
+18 % × 100 000 × 1,03ⁿ. Soit ≈ 0,25 %/an de droits fantômes en plus du +8,33 % initial.
+
+⚠️ **J'avais d'abord classé ce décalage « de second ordre »** sur la foi du cas à croissance nulle,
+où les deux fenêtres contiennent le même total et où il est strictement invisible.
+
+⚠️ **Élargissement ÉCARTÉ après vérification** : `accCapitalGainsYear` est lui aussi alimenté avant
+le bloc de janvier et avait l'air de porter le même défaut. Il ne le porte pas — il est accumulé,
+imposé et remis à zéro entièrement dans le bloc de DÉCEMBRE. Faux positif attrapé avant publication.
+
+Effet sur l'argent : nul là où les droits ne limitent personne ; **−311 $ à −411 $** de patrimoine
+final sur 8 ans là où ils saturent. Garde : `tests/services/rrspRoomAnneeCivile.test.ts` (espion sur
+l'argument remis à janvier — deux capteurs indirects essayés avant, tous deux mesuraient autre chose).
+
 ## 2026-09-03 — `[ENG-RAP-MISSED-REPAYMENT-TAX]` — LIVRÉ (lot 111, PR #842)
 
 Un versement RAP dû mais non payé faute de liquidités ne faisait **rien** : ni imposition, ni

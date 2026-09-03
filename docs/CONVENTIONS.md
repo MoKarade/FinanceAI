@@ -11788,3 +11788,63 @@ correctif soit inerte — l'un n'asserte que des SIGNES (`toBeGreaterThan(0)`, `
 épingle l'année d'ACHAT, dont l'équité est posée à la mise de fonds sans passer par la fonction
 corrigée. « Aucun golden n'a bougé » mesurait l'absence de couverture AU MONTANT, exactement comme
 la leçon du dépôt le prédit — et c'est cette explication, pas le vert, qui autorise à livrer.
+
+### `UN-ACCUMULATEUR-ANNUEL-SE-JUGE-SUR-SA-POSITION-PAR-RAPPORT-A-SON-RESET` (2026-09-03, lot 113)
+
+`accGrossIncomeYearByUser` était alimenté AVANT le bloc de janvier, donc le revenu de janvier
+entrait dans l'assiette de l'année qui venait de se clore. Trois choses valent d'être retenues, et
+aucune n'était dans le ticket.
+
+**1. Le ticket sous-estimait son propre défaut.** Il annonçait « 13 mois la première année, fenêtre
+glissante de 12 mois ensuite » — comme si la glissade était neutre. Elle ne l'est pas : février→
+janvier est en avance d'un mois sur l'année civile, ce qui gonfle l'assiette de tout salaire qui
+CROÎT. Mesuré à 3 %/an : ≈ 0,25 % de droits fantômes CHAQUE année, en plus du +8,33 % initial.
+Et j'ai moi-même classé ce décalage « de second ordre » avant de le mesurer — sur la foi du cas à
+croissance NULLE, où les deux fenêtres contiennent exactement le même total et où le défaut est
+strictement invisible (`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, appliqué à
+un paramètre laissé à zéro « pour simplifier »).
+
+**2. L'incohérence était INTERNE, et c'est elle qui donne la bonne forme du correctif.** Le même
+accumulateur a DEUX producteurs : le salaire (avant janvier) et le congé parental (après). Le
+second était déjà correct. Un correctif qui ALIGNE deux producteurs d'un même registre est bien
+plus sûr qu'un correctif qui invente une règle : la référence existe déjà dans le fichier.
+Avant de déplacer quoi que ce soit dans une boucle moteur, chercher si un jumeau fait déjà
+autrement — c'est lui la spécification.
+
+**3. Un élargissement PLAUSIBLE, écarté par la mesure.** `accCapitalGainsYear` est lui aussi
+alimenté avant le bloc de janvier et avait toute l'apparence du même défaut ; j'allais l'écrire
+dans le ticket. Il ne l'a PAS : il est accumulé, imposé et remis à zéro **entièrement dans le bloc
+de décembre**, donc sa position relative à janvier est sans objet. La question qui tranche n'est
+pas « où est-il alimenté ? » mais **« où est son RESET, et qui le LIT entre les deux ? »**. Un
+accumulateur annuel ne se juge jamais sur sa position absolue dans la boucle.
+
+⚠️ **Corollaire de capteur** : le défaut est la valeur d'un ARGUMENT, pas d'une grandeur publiée.
+Deux capteurs indirects ont été essayés et mesuraient autre chose — `REERMax` est CONSOMMÉ par les
+cotisations, et « une fixture qui ne cotise rien » n'existe pas (l'allocation place le surplus
+toute seule, le premier capteur rendait des droits DÉCROISSANTS). La reconstitution
+« Δplafond + Δcotisé » était fausse aussi. La bonne réponse est celle que le dépôt écrit déjà :
+pour vérifier un argument, l'OBSERVER par espion, jamais le reconstruire.
+
+⚠️⚠️ **Corollaire de re-basement — le MÊME correctif a des signes OPPOSÉS sur deux grandeurs
+d'écran.** Trois goldens ont rougi, et ils ne disaient pas la même chose. Deux (`rrspRoomWiring`)
+ÉPINGLAIENT le défaut : ils écrivaient `200_004 * 13 / 12` en citant l'ID du ticket. C'est un
+inventaire de dette qui rougit quand la dette est payée — son travail exact
+(`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`). Le troisième était une ancre de valeur sur le
+patrimoine SUCCESSORAL, et elle a MONTÉ de 1 177 $ alors qu'un correctif qui RETIRE des droits REER
+devrait tout baisser. Mesuré sur la même fixture : `finalNetWorth` **−1 769 $**, `estateNetWorth`
+**+1 177 $**. Les deux sont justes — moins de droits = moins cotisé au REER = moins d'abri fiscal
+(le patrimoine courant descend), mais aussi moins de REER à LIQUIDER au décès, donc moins d'impôt
+latent (la succession remonte). Une grandeur NETTE d'impôt latent et une grandeur BRUTE ne bougent
+pas dans le même sens, et un re-basement mécanique aurait enterré ce fait.
+
+⚠️ **Corollaire de mesure, payé sur ce lot** : ma première comparaison « avant/après » a restauré
+`git show HEAD:services/projection.ts` — or j'avais DÉJÀ commité le correctif avant de lancer le
+gate (c'est la règle du dépôt). Mon « avant » était donc mon « après », et les deux colonnes
+sortaient identiques. Quand on committe avant de mesurer, la référence est `HEAD~1`, jamais `HEAD` :
+une comparaison qui rend deux colonnes rigoureusement égales accuse d'abord le protocole.
+
+⚠️ **Corollaire d'impact** : « le patrimoine final est identique » n'a PAS voulu dire « le correctif
+est inerte ». Il voulait dire que la fixture cotisait 6 000 $/an contre 18 000 $ de droits — les
+droits n'y LIMITENT rien. Sur une fixture qui sature, l'écart est de −311 $ à −411 $. Un mécanisme
+n'est observable que là où il est limitant, et ça vaut pour mesurer un correctif autant que pour
+écrire un test.

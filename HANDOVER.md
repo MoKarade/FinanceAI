@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 113 : les droits REER suivent enfin l'année civile
+> `[RRSP-FIRST-YEAR-13M]` livré — **code de prod money-critical touché** (`services/projection.ts`,
+> l'ORDRE de la boucle mensuelle). Déploiement à vérifier.
+> - Le revenu gagné était versé à l'accumulateur annuel AVANT le reset de janvier : janvier
+>   comptait dans l'année qui venait de se clore. Un tampon d'un mois verse désormais APRÈS.
+> - ⚠️ **Le ticket sous-estimait son défaut** : « fenêtre glissante de 12 mois ensuite » n'était pas
+>   neutre — février→janvier gonfle l'assiette de tout salaire qui CROÎT (**≈ 0,25 %/an** à 3 %), en
+>   plus du **+8,33 %** initial. Après correctif, les droits valent exactement 18 % × salaire × 1,03ⁿ.
+> - ⚠️ J'avais classé ce décalage « second ordre » d'après le cas à croissance NULLE, où il est
+>   strictement invisible (les deux fenêtres ont le même total).
+> - **Le correctif ALIGNE deux producteurs du même registre** : le congé parental versait déjà après
+>   janvier. La référence existait dans le fichier.
+> - ⚠️ Élargissement ÉCARTÉ par la mesure : `accCapitalGainsYear` semblait porter le même défaut —
+>   il est accumulé, imposé et remis à zéro entièrement dans le bloc de DÉCEMBRE. Faux positif.
+> - **Impact** : nul là où les droits ne limitent rien ; **−311 $ à −411 $** de patrimoine sur 8 ans
+>   là où ils saturent.
+> - Garde : `tests/services/rrspRoomAnneeCivile.test.ts` (espion sur l'argument — deux capteurs
+>   indirects essayés avant, tous deux mesuraient autre chose).
+> - ⚠️ **3 goldens re-basés, 2 natures** : deux ÉPINGLAIENT le défaut (`200_004 * 13/12` avec l'ID du
+>   ticket) ; le 3ᵉ a MONTÉ de 1 177 $ — moins de REER cotisé = moins d'abri fiscal (`finalNetWorth`
+>   **−1 769 $**) mais moins de REER à liquider au décès (`estateNetWorth` **+1 177 $**). Signes
+>   opposés, les deux justes.
+> - Gate complet VERT : **5 360 tests / 529 fichiers**, exit 0.
+
 > ## 🟦 Session 2026-09-03 — Lot 112 : la prime SCHL manquait à l'historique immobilier
 > `[IMMO-3-FORMULES]` **volet SCHL livré**, volet CLAMP routé — **code de prod touché**
 > (`services/realEstate.ts`). Déploiement à vérifier.

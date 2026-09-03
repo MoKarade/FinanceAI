@@ -118,7 +118,16 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // facture EN PLUS le crédit que la liquidation détruit → impôt ↑, succession ↓. Ce que ce
         // test défend (« sans divorce, rien ne fuit du chemin divorce ») est INCHANGÉ ; seule
         // l'ancre de valeur bouge.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_561_961);
+        // Re-basé 2026-09-03 ([RRSP-FIRST-YEAR-13M] lot 113, **+1 177 $**) : le revenu de janvier
+        // n'entre plus dans l'assiette de l'année qui vient de se clore, donc les droits REER de la
+        // première année tombent de 13 à 12 mois de salaire.
+        // ⚠️ LE SIGNE EST L'INVERSE DE CELUI DU PATRIMOINE, et c'est le fait à retenir : sur cette
+        // même fixture, `finalNetWorth` BAISSE de 1 769 $ (3 889 397 → 3 887 628) pendant que la
+        // succession MONTE de 1 177 $. Moins de droits = moins cotisé au REER = moins d'abri fiscal
+        // (le patrimoine courant descend), mais aussi moins de REER à LIQUIDER au décès, donc moins
+        // d'impôt latent (la succession remonte). Une grandeur nette d'impôt latent et une grandeur
+        // brute ne bougent pas dans le même sens — re-baser sans le vérifier l'aurait masqué.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_563_138);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
@@ -126,6 +135,11 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // Re-basé 2026-09-02 (même cause, **−3 306 $**) : à un dollar d'arrondi près le MÊME écart
         // qu'au-dessus — la correction porte sur l'impôt de liquidation, que le tirage Monte Carlo
         // ne déplace pas.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_903_065);
+        // Re-basé 2026-09-03 (même cause, **+888 $**) : l'écart est PLUS PETIT qu'en déterministe
+        // (+1 177 $) — contrairement aux re-bases précédentes, qui portaient sur la VAN des rentes
+        // et étaient donc identiques des deux côtés. Ici la cause est un déplacement de cotisations,
+        // que le tirage Monte Carlo dilue. Patrimoine final MC : 2 925 097 → 2 922 954 (−2 143 $),
+        // de nouveau en sens INVERSE de la succession.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_903_953);
     });
 });

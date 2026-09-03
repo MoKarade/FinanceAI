@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 356 tests** Vitest
-(528 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 360 tests** Vitest
+(529 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,30 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un accumulateur ANNUEL se juge sur sa position par rapport à son RESET, jamais dans l'absolu** :
+  le revenu gagné était versé avant le bloc de janvier, donc janvier entrait dans l'année qui venait
+  de se clore (13 mois la 1re année, +8,33 % de droits REER). ⚠️ Le ticket sous-estimait son défaut —
+  « fenêtre glissante de 12 mois ensuite » n'est pas neutre : février→janvier est en avance d'un mois
+  et gonfle l'assiette de tout salaire qui CROÎT (**≈ 0,25 %/an** mesuré à 3 %), et j'avais classé ça
+  « second ordre » d'après le cas à croissance NULLE, où c'est strictement invisible. ⚠️ Le correctif
+  juste ALIGNE deux producteurs du même registre (le congé parental versait déjà après janvier) —
+  chercher le jumeau AVANT de déplacer quoi que ce soit dans une boucle moteur. ⚠️ Élargissement
+  plausible ÉCARTÉ par la mesure : `accCapitalGainsYear` est aussi alimenté avant janvier mais est
+  accumulé, imposé ET remis à zéro dans le bloc de DÉCEMBRE — la question n'est pas « où est-il
+  alimenté ? » mais « où est son reset, et qui le lit entre les deux ? ». ⚠️ Capteur : deux mesures
+  indirectes ont échoué (`REERMax` est CONSOMMÉ par les cotisations) — un ARGUMENT s'OBSERVE par
+  espion. ⚠️ Et « patrimoine identique » signifiait « les droits ne limitent rien ici » (6 000 $
+  cotisés contre 18 000 $) : sur une fixture qui sature, **−311 $ à −411 $**
+  (`UN-ACCUMULATEUR-ANNUEL-SE-JUGE-SUR-SA-POSITION-PAR-RAPPORT-A-SON-RESET`, 2026-09-03).
+  ⚠️⚠️ **Trois goldens rouges, DEUX natures** : deux ÉPINGLAIENT le défaut (`200_004 * 13 / 12`, avec
+  l'ID du ticket en commentaire — un inventaire de dette qui rougit quand la dette est payée) ; le
+  troisième était une ancre de valeur qui a **MONTÉ** de 1 177 $ alors qu'un correctif retirant des
+  droits devrait tout baisser. Mesuré : `finalNetWorth` **−1 769 $**, `estateNetWorth` **+1 177 $** —
+  moins de REER cotisé = moins d'abri fiscal (patrimoine ↓) mais aussi moins de REER à LIQUIDER au
+  décès (succession ↑). **Une grandeur nette d'impôt latent et une grandeur brute ne bougent pas dans
+  le même sens** ; un re-basement mécanique aurait enterré ça. ⚠️ Et ma 1re mesure avant/après a
+  restauré `HEAD` — or le correctif y était DÉJÀ commité (règle « committer avant le gate ») : deux
+  colonnes rigoureusement identiques accusent d'abord le PROTOCOLE, la référence est `HEAD~1`.
 - **Une mesure avant/après par RACCOURCI DE PARAMÈTRE déplace deux grandeurs** : pour chiffrer la
   prime SCHL absente de `runAmortization`, rappeler la fonction avec `price + prime` (au lieu
   d'écrire le correctif) a rendu l'équité **plus haute** — `price` pilote le principal emprunté ET

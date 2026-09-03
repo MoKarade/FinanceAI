@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Tes droits REER se comptent enfin sur l'année civile)
+
+- **Corrigé** : l'app comptait ton revenu de janvier dans l'année qui venait de se terminer. La
+  première année de projection recevait donc **13 mois** de salaire au lieu de 12, et toutes les
+  années suivantes étaient décalées d'un mois (février→janvier au lieu de janvier→décembre).
+- **Combien** : sur un salaire de 100 000 $, les droits REER de la première année passaient à
+  **19 500 $ au lieu de 18 000 $** (+8,33 %, une seule fois). Et si ton salaire augmente, le
+  décalage ajoutait ~0,25 % de droits imaginaires **chaque année** — invisible à salaire constant,
+  où les deux façons de compter donnent le même total.
+- **Ce que ça change pour toi** : rien si tu ne cotises pas jusqu'au plafond (des droits en trop ne
+  servent à rien tant que personne ne s'en sert). Si tu satures ton REER, l'app t'annonçait un abri
+  fiscal légèrement trop grand — mesuré **300 à 400 $** de patrimoine imaginaire sur huit ans.
+
+---
+
 ## [unreleased] — 2026-09-03 (L'historique de ton immobilier oubliait l'assurance prêt)
 
 - **Corrigé** : quand tu achètes avec moins de 20 % de mise de fonds, la loi t'oblige à assurer ton

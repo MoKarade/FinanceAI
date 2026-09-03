@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 117 : le ratchet des décommenteurs passe à INTERDIRE
+> `[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]` livré — **aucun code de prod touché**. Aucun déploiement.
+> - ⚠️ **Le travail décrit par le ticket n'existait plus** : il annonçait 15 décommenteurs à migrer,
+>   il n'en restait qu'UN, non migrable (`stripCommentsUniqueGuard`, dont le motif de recherche EST
+>   un motif de décommentage) — désormais exempté nommément.
+> - ⚠️⚠️ **Le vrai défaut était le plafond lui-même** : 15 pour un compte réel de 1, soit QUATORZE
+>   régressions silencieuses autorisées. Un plafond qui a cessé de suivre son compte porte le nom
+>   d'une protection sans en être une. Passé à **0** = « interdire ».
+> - ⚠️ Passer à zéro a créé un second trou, fermé dans le même lot : sans offender réel, « aucun
+>   trouvé » ne prouve plus que le motif marche → anti-vacuité explicite, prouvée par perturbation.
+> - 3 perturbations, 3 rouges ciblés (offender neuf · motif cassé · exemption retirée).
+> - Gate complet VERT : **5 375 tests / 532 fichiers**, exit 0.
+
 > ## 🟦 Session 2026-09-03 — Lot 116 : l'ordre du classement de stratégies est épinglé
 > `[ENG-RANKING-ORDER-PIN]` livré — **aucun code de prod touché** (une garde). Aucun déploiement.
 > - `rankStrategies` normalise en min-max sur l'ensemble comparé : déplacer une grandeur d'un seul

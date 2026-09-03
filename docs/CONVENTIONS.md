@@ -11951,3 +11951,34 @@ rougir l'objectif `tax` et le contraste nommé, mais PAS `balanced`. Ce n'est pa
 garde : c'est que `balanced` est dominé par le poids `estate` (0,4) devant `tax` (0,25). Une
 perturbation qui ne rougit pas là où on l'attendait apprend la structure du modèle, à condition de
 demander POURQUOI au lieu de renforcer l'assertion.
+
+### `UN-PLAFOND-DE-RATCHET-QUI-A-CESSE-DE-SUIVRE-SON-COMPTE-N-EST-PLUS-UNE-PROTECTION` (2026-09-03, lot 117)
+
+Le ratchet des décommenteurs privés portait `PLAFOND = 15`, mesuré et daté, avec un commentaire
+exemplaire expliquant qu'un plafond se COMPTE et ne s'estime pas. Tout était juste — à sa date.
+Re-mesuré : le compte réel était **1**. Quatorze migrations avaient eu lieu dans d'autres lots sans
+que le plafond ne suive.
+
+**Ce que ça coûtait** : la garde autorisait quatorze régressions silencieuses. La classe pouvait
+revenir en force sans que rien ne rougisse. Un plafond qui a cessé de suivre son compte est **pire
+qu'absent** : il porte le nom d'une protection, et il compte comme telle dans tout inventaire futur
+— même famille que `UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`, mais par DÉRIVE et
+non par conception.
+
+**La règle** : un ratchet ne se relit pas, il se RE-COMPTE. Et le geste qui le re-compte est déjà
+écrit dans la garde elle-même — forcer le plafond à 0 fait imprimer la liste à jour. Toute garde à
+seuil devrait offrir ce geste ; celle-ci l'offrait, et le ticket disait même de s'en servir.
+
+⚠️ **Corollaire — descendre un plafond à ZÉRO crée un trou qu'il faut fermer dans le MÊME lot.**
+Tant qu'un offender réel subsiste, il prouve incidemment que le détecteur fonctionne. À zéro, cette
+preuve disparaît : « aucun trouvé » devient indistinguable de « le motif est cassé », et la garde
+serait verte pour toujours. Il faut alors une anti-vacuité EXPLICITE — le motif doit reconnaître un
+offender synthétique — et la prouver par perturbation. Mesuré ici : casser le motif de bloc laisse
+le compteur vert et ne fait rougir QUE cette anti-vacuité.
+
+⚠️ **Corollaire de recensement — le travail décrit par un ticket peut avoir été fait par d'autres.**
+Celui-ci prescrivait quinze migrations « fichier par fichier, en rejouant le test concerné ». Il n'en
+restait aucune à faire, et le seul site restant était un faux offender STRUCTUREL (une garde qui
+cherche des décommenteurs doit en écrire un). Cinquième fois cette session qu'un ticket décrit un
+état du dépôt qui n'existe plus : ce qui pourrit n'est pas son âge, c'est que sa description est une
+photo.

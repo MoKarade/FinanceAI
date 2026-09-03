@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 105 : cinq copies d'un patron, et une divergence qu'il fallait GARDER
+> `[MGA-PATRON-5-COPIES]` — périmètre re-recensé et confirmé (5 sites). Source unique :
+> `projeterAuPatronMga` + `MGA_EXCES_SUR_INFLATION_PP` dans `helpers.ts`. **Aucun montant ne bouge.**
+> - ⚠️⚠️ **La divergence signalée par le ticket était la BONNE réponse** : `taxJanuary` part d'une
+>   TABLE qui s'arrête à sa dernière année publiée, les quatre autres de l'année COURANTE. Ce ne
+>   sont pas deux vitesses, ce sont deux ANCRES. Les aligner aurait re-fabriqué la marche de
+>   **+4,54 %/an** corrigée par `UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE`.
+> - La source unique n'expose donc que la VITESSE ; l'ancre et le nombre d'années restent chez
+>   l'appelant, et un test verrouille l'écart des deux ancres (> 10 % sur le même plafond).
+> - ⚠️⚠️ **Le ratchet fiscal a arrêté le lot, et il avait raison** : deux entrées devenues FANTÔMES,
+>   un compte qui ment (4 déclarées, 2 réelles) et une constante hors inventaire. Aucun faux
+>   positif — c'est ce qu'une déduplication doit provoquer dans un registre indexé par FICHIER.
+>   Résultat non prévu : **cinq entrées éparpillées deviennent UNE**.
+> - 4 perturbations, dont une mesurée REDONDANTE et écrite comme telle : la prose française écrit
+>   « 0,5 » avec une virgule, le motif cherche le point décimal — le décommentage ne tire pas encore.
+> - ⚠️⚠️ **INCIDENT ENV — lot écrit DEUX FOIS.** Un redémarrage de conteneur PENDANT le gate a
+>   restauré `claude/lot-92` (12 commits de retard) et effacé tout le travail non commité. 4ᵉ revert
+>   de la session, 1ᵉʳ qui coûte un lot. **Le gate complet EST une attente longue** : vérifs ciblées
+>   → commit → push → gate. Nouvel ordre appliqué au 2ᵉ jet.
+
 > ## 🟦 Session 2026-09-03 — Lot 104 : le plafond RQAP enfin couvert SUR LA CHAÎNE
 > `[GOLDEN-RQAP-NON-COUVERT]` — prémisse RE-MESURÉE avant de coder, et **confirmée** : perturber le
 > plafond fait rougir 4 tests, tous UNITAIRES, aucun de scénario.

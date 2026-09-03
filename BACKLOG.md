@@ -132,14 +132,24 @@
   `Set` de module jamais purgé côté navigateur, donc une corruption qui guérit puis RÉCIDIVE
   dans la même session est muette la 2e fois — le remède touche l'`errorLogger` partagé par
   tout le dépôt, il ne se glisse pas dans un lot d'a11y.
-- [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
-  MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
-  mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =
-  2 959 741,7505609933 alors que `finalNetWorth` chute de **215 045,84 $**. Pas un trou de
-  conservation (l'argent sort de `liquid` et est publié en `withdrawalLiquid`, le NW baisse) mais
-  un registre de REPORTING qui ignore une sortie réelle. Mécanisme probable : `addExpense` est un
-  no-op dans le `goalMutator` (`services/projection.ts`, « déjà soustrait du compte ciblé ») — le
-  fait MESURÉ est l'écart, pas sa cause. Vérifier qui LIT `totalExpenses` avant de corriger.
+- [ ] ⏸️ **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S — finding projection-validator MESURÉ, panel
+  PR #755, PRÉ-EXISTANT · **RE-RECENSÉ le 2026-09-03 : mécanisme CONFIRMÉ, lecteur IDENTIFIÉ, et le
+  correctif évident est une RÉGRESSION** · limite épinglée par `tests/services/goalsHorsTotalExpenses.test.ts`
+  au lot 110 · **correctif ROUTÉ**, `docs/A_FAIRE_MOI.md`) — un tirage d'objectif n'entre PAS dans
+  `totalExpenses` : l'argent sort de `liquid`, est publié en `withdrawalLiquid`, le patrimoine
+  baisse — mais le registre de REPORTING l'ignore.
+  ⚠️ **Mécanisme CONFIRMÉ** (le ticket le disait « probable ») : `addExpense: (_n) => {}` est un
+  no-op DÉLIBÉRÉ dans le `goalMutator`, commenté « déjà soustrait du compte ciblé ».
+  ⚠️⚠️ **LE CORRECTIF ÉVIDENT EST UNE RÉGRESSION MONEY-CRITICAL.** Rendre ce `addExpense` effectif
+  paraît être « le » correctif ; il soustrairait le montant une SECONDE fois du flux réel, parce que
+  `monthlyExpenses` n'est PAS un registre de reporting — il alimente directement
+  `monthlyCashflow = monthlyIncome − monthlyExpenses`. Le seul correctif correct est un
+  accumulateur de REPORTING **distinct** de celui qui pilote la trésorerie.
+  ⚠️ **Qui LIT `totalExpenses`** (la question que le ticket posait) : un seul vrai lecteur, le calcul
+  du **SWR** (taux de retrait sécuritaire) dans `monteCarlo.ts`. Et ce champ n'a **aucun consommateur
+  d'interface** — vérifié par grep sur `components/`. Coût aujourd'hui : **nul à l'écran**. Le risque
+  est pour DEMAIN : un lot qui brancherait le SWR publierait un taux **sous-estimé**, donc un plan
+  qui a l'air plus sûr qu'il ne l'est.
 - [ ] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** (XS, FAIBLE — finding projection-validator, panel
   PR #755) — `goalShortfalls` (`services/projection.ts`, `services/projection/types.ts`) n'a
   **zéro consommateur** : grep exhaustif `.ts`/`.tsx`/`.md`, aucune UI, aucun outil MCP, aucun

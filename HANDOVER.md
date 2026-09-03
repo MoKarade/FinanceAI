@@ -17,6 +17,10 @@
 > - ⚠️ Garde ancrée sur la RELATION, pas sur une valeur de fixture : mon 1er jet supposait 7 500 $
 >   d'après les soldes de départ, le premier décembre n'en voit que 178 587 $.
 > - Garde : `tests/services/dividendeReputeStepUpAcb.test.ts` (2 perturbations, signatures distinctes).
+> - ⚠️ « Re-base MASSIF » annoncé par le ticket = **5 assertions dans 4 fichiers**, toutes du même
+>   signe. Deux s'intitulaient « NEUTRALITÉ NW » (titre de CONCEPTION) — c'est le test lui-même qui
+>   a tranché : quatre re-bases y sont annotées « vrai changement fiscal, PAS une fuite de compteur ».
+> - Gate complet VERT : **5 367 tests / 531 fichiers**, exit 0.
 
 > ## 🔴 Session 2026-09-03 — Lot 114 : un bouton de l'UI détruit 46 % de la projection
 > `[ENG-T1213-NET-MONTHLY]` — **aucun code de prod touché** : le fait est FIGÉ, la décision est

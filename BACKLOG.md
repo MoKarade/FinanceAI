@@ -22,6 +22,32 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
+- [ ] **`[IMMO-CLAMP-EQUITE-NEGATIVE]`** (S — **DÉCIDÉ par Marc le 2026-09-03** : retirer le plancher)
+  — `runAmortization` publie `Equite: Math.max(0, valeur − solde)`. Un bien *underwater* apparaît donc
+  à équité NULLE au lieu de négative, ce qui retire le déficit du patrimoine passé. Retirer le clamp,
+  et re-baser les tests d'historique concernés AVEC leur explication chiffrée.
+  ⚠️ Vérifier les CONSOMMATEURS avant : `addEquity` fait déjà `Math.max(0, equity)` de son côté
+  (`reconstructRealEstateEquity.ts`) — retirer un seul des deux ne changerait rien à l'écran.
+- [ ] **`[BUDGET-EFFORT-NOMMER-LA-BASE]`** (XS — **DÉCIDÉ par Marc le 2026-09-03** : nommer la base)
+  — le badge « Effort : X % » se calcule sur le net SAISI, pas sur le « Revenu Net Disponible »
+  affiché deux lignes au-dessus (écart mesuré −0,3 % à +3,5 %). Garder la paie déclarée comme
+  dénominateur et l'ÉCRIRE sur le badge (« sur ta paie déclarée »). Aucun chiffre ne bouge.
+- [ ] **`[HEALTH-MARQUEUR-DONNEE-INVALIDE]`** (S — **DÉCIDÉ par Marc le 2026-09-03** : marqueur discret)
+  — dans le résumé « Santé financière », une pastille cliquable quand au moins une métrique est
+  exclue pour donnée INVALIDE. ⚠️ Elle ne doit PAS s'afficher pour une métrique simplement non
+  calculable : c'est la distinction « tu peux corriger » vs « rien à faire » qui justifie le marqueur.
+- [ ] **`[MIGRATE-GROSS-PROPOSER]`** (M — **DÉCIDÉ par Marc le 2026-09-03** : migrer en DEMANDANT)
+  — détecter `brut == arrondi(net × 1,35)` (la signature de l'ancien défaut) et PROPOSER la
+  correction à l'utilisateur. ⚠️ Aucune écriture automatique : écraser une saisie est irréversible
+  côté app, et une coïncidence est possible.
+- [ ] **`[FMT-PROMPT-MIGRER]`** (M — **DÉCIDÉ par Marc le 2026-09-03** : migrer + abandonner l'arrondi)
+  — migrer les 17 sites de prompts/MCP vers `formatCAD` et retirer les 4 entrées d'`EXEMPTIONS` de
+  `tests/components/formatMonetaireSourceUnique.test.ts`.
+  ⚠️⚠️ **NON LIVRABLE SANS** la correction du texte de consentement : il promet « montants arrondis
+  à 100$ », et l'arrondi disparaît. Laisser la promesse en place la rendrait FAUSSE — c'est un
+  engagement de vie privée, pas un détail technique.
+  ⚠️ Vérifier aussi ce que devient le repli `'(non disponible)'` : `formatCAD` rend « — », qu'un
+  modèle peut lire comme une valeur.
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).
@@ -697,21 +723,6 @@
   `perUserBalances.ts`, que le terme est ratio-neutre. ⚠️ Ne PAS choisir (b) sans traiter le cas
   dégénéré : c'est le seul endroit où la double soustraction change quelque chose.
   Caractérisation verrouillée par `tests/services/stepReerByUserProprietes.test.ts`.
-- [ ] ⏸️ **`[ENG-T1213-NET-MONTHLY]`** (M → **ÉLEVÉ, RE-MESURÉ le 2026-09-03** ; **DÉCISION ROUTÉE à
-  Marc**, `docs/A_FAIRE_MOI.md` ; le fait est FIGÉ par `tests/services/t1213ToggleNuisible.test.ts`)
-  — activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER : la retenue
-  modélisée baisse (`taxDecember.ts`, `deductionsEmployer*`) mais le net MENSUEL encaissé vient du
-  `netSalary` SAISI et ne monte jamais. Le ménage perd l'économie sans jamais toucher la
-  contrepartie — à l'ENVERS de la réalité, où le T1213 est neutre à positif.
-  ⚠️ **Le ticket sous-estimait le défaut d'un facteur ~5, parce qu'il n'annonçait qu'un MONTANT.**
-  Re-mesuré (célibataire 150 k$, 3 000 $/mois d'épargne, REER 80 k$) — le POURCENTAGE GRANDIT :
-  **−16,1 % à 5 ans · −24,5 % à 10 ans · −29,2 % à 20 ans · −45,7 % (−1 031 419 $) à 30 ans.**
-  Ce n'est pas un biais fixe : c'est une économie fiscale annuelle qu'on cesse de capitaliser.
-  🧭 **Deux remèdes, tous deux des décisions** : (a) majorer le net mensuel de
-  `[tax(g,0)−tax(g,d)]/12` — ce que prescrit le ticket, mais il a un problème de CAUSALITÉ qu'il ne
-  mentionne pas (les déductions REER de l'année ne sont connues qu'en décembre, or le net de
-  janvier en dépendrait) ; (b) retirer le bouton de `AdvancedProjectionParams.tsx` — retirer une
-  fonctionnalité visible est un choix produit.
 - [ ] **`[ENG-NET-MODEL-RESIDUAL]`** (M, FAIBLE-MOYEN, pré-existant — mesuré panel #558) — le net
   MENSUEL encaissé est le `netSalary` SAISI, jamais réconcilié avec l'impôt du MODÈLE : résidu
   mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,

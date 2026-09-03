@@ -71,13 +71,16 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         >
                             Smith Manoeuvre {projection.useSmithManoeuvre ? 'ON' : 'OFF'}
                         </button>
-                        <button
-                            onClick={() => updateProj('optimizeSourceDeductions', !projection.optimizeSourceDeductions)}
-                            title="T1213: réduction de la retenue à la source pour ne plus prêter d'argent au gouvernement pendant l'année (cotisations REER déductibles immédiates)."
-                            className={`px-3 py-2 text-meta font-bold rounded-md border transition-all ${projection.optimizeSourceDeductions ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-surfaceHighlight border-white/10 text-ink-300'}`}
-                        >
-                            T1213 retenue source {projection.optimizeSourceDeductions ? 'ON' : 'OFF'}
-                        </button>
+                        {/* [ENG-T1213-NET-MONTHLY] Le bouton « T1213 retenue source » a été RETIRÉ le
+                            2026-09-03 (décision de Marc). Le moteur ne modélisait que la moitié du
+                            mécanisme : activer le réglage réduisait la retenue estimée, mais le net
+                            mensuel encaissé vient du `netSalary` SAISI et ne montait jamais — le
+                            ménage perdait l'économie fiscale de son REER sans jamais toucher la
+                            contrepartie. Mesuré : −16,1 % de patrimoine à 5 ans, −45,7 % à 30 ans.
+                            Le réglage ne pouvait donc que NUIRE à qui l'activait en croyant
+                            s'optimiser. Le champ survit dans `ProjectionConfig` (aucune migration de
+                            données), mais le moteur le force à OFF — voir `services/projection.ts`.
+                            Le remettre exige d'abord de modéliser la hausse du net mensuel. */}
                         <button
                             onClick={() => updateProj('vehicleReplacementEnabled', !projection.vehicleReplacementEnabled)}
                             title="Achat de véhicule automatique tous les ~10 ans (utile si tu n'as pas configuré de véhicules cycliques dans Settings)."

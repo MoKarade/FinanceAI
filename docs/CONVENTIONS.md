@@ -11982,3 +11982,35 @@ restait aucune à faire, et le seul site restant était un faux offender STRUCTU
 cherche des décommenteurs doit en écrire un). Cinquième fois cette session qu'un ticket décrit un
 état du dépôt qui n'existe plus : ce qui pourrit n'est pas son âge, c'est que sa description est une
 photo.
+### `RETIRER-UN-REGLAGE-NUISIBLE-EXIGE-DE-NEUTRALISER-SA-VALEUR-PERSISTEE` (2026-09-03, lot 118)
+
+Marc a tranché : retirer le bouton « T1213 retenue source », qui coûtait jusqu'à 45,7 % du
+patrimoine projeté. Le geste évident — supprimer le JSX du bouton — aurait été un **demi-correctif
+dangereux**, et c'est la sous-question qu'il a fallu poser avant de coder.
+
+`optimizeSourceDeductions` est **persisté** dans la configuration. Retirer le seul bouton aurait
+laissé toute config déjà à `true` bloquée avec sa projection amputée de moitié, **et sans plus aucun
+moyen de la désactiver** : l'interface qui permettait de revenir en arrière venait de disparaître.
+Le correctif complet est donc la PAIRE — retirer le bouton **et** faire ignorer la valeur par le
+moteur. C'est le même mécanisme que `UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE` a déjà payé sur
+`grossSalary` (« un repli PERSISTÉ est pire qu'un repli calculé ») : **avant de livrer le retrait
+d'un réglage nuisible, demander si sa mauvaise valeur a été SAUVEGARDÉE.**
+
+Le champ, lui, reste dans le type, marqué `@deprecated` avec sa raison. Le supprimer aurait exigé
+une migration du schéma persisté — donc un risque sur les données de l'utilisateur, pour un gain
+nul : un champ que plus personne ne lit ne coûte rien.
+
+⚠️ **Corollaire — l'inventaire de dette du lot 114 s'est INVERSÉ au même endroit.** Il affirmait
+« activer ce réglage coûte jusqu'à −45,7 % » ; il affirme désormais « activer ce réglage ne change
+RIEN », avec l'histoire du défaut écrite dedans et l'avertissement de ce qu'il faut modéliser avant
+de le rebrancher. Supprimé, il aurait laissé croire que la limite n'a jamais existé — or c'est cette
+trace qui empêche de re-livrer le défaut « pour simplifier »
+(`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`, `UN-TEST-DE-LIMITE-S-INVERSE`).
+
+⚠️ **Corollaire de conduite** : sur les huit décisions posées à Marc, **deux ont divergé de ma
+recommandation** (marqueur de santé, migration des prompts). Une recommandation n'est pas un vote :
+elle sert à rendre le choix rapide, pas à le pré-décider. Ce qui compte est que le coût de chaque
+option ait été chiffré HONNÊTEMENT — y compris celui de l'option que je préférais. Et deux réponses
+ont ouvert une SOUS-question que je n'avais pas anticipée (la valeur persistée, le texte de
+consentement) : une décision produit n'est complète que quand ses conséquences irréversibles sont
+sur la table.

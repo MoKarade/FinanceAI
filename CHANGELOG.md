@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Le bouton « T1213 » est retiré : il ne pouvait que te nuire)
+
+- **Retiré** : le bouton « T1213 retenue source » des réglages avancés de la projection. Dans la
+  vraie vie, ce formulaire fait réduire l'impôt retenu sur chaque paie pour tenir compte de tes
+  cotisations REER — tu encaisses plus tous les mois au lieu d'attendre ton remboursement d'avril.
+  C'est neutre à positif pour toi, jamais négatif.
+- **Le problème** : l'app n'en modélisait que la moitié. Elle réduisait bien la retenue, mais le net
+  que tu encaisses chaque mois vient du salaire net que tu as saisi — il ne montait jamais. Tu
+  perdais l'économie sans jamais toucher la contrepartie. Mesuré sur un célibataire à 150 000 $ :
+  **−16 % de patrimoine à 5 ans, −46 % à 30 ans**. Le pourcentage grandissait avec l'horizon.
+- **Aussi** : si tu avais déjà activé ce réglage, il restait enregistré dans ta configuration. Le
+  moteur l'ignore désormais complètement — retirer le bouton seul t'aurait laissé bloqué avec une
+  projection amputée et aucun moyen de revenir en arrière. Ta configuration n'est pas modifiée.
+- **Pour plus tard** : le réglage pourra revenir le jour où l'app saura aussi majorer ton net
+  mensuel. C'est écrit noir sur blanc dans le code pour que personne ne le rebranche à moitié.
+
+---
+
 ## [unreleased] — 2026-09-03 (Tes dividendes n'étaient plus imposés deux fois)
 
 - **Corrigé** : sur ton compte non enregistré, l'app considère qu'une partie du rendement t'est

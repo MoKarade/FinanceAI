@@ -2180,24 +2180,41 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `[FMT-MONEY-BYPASS]`, `[FMT-INFOBULLE-TOLOCALESTRING]`, `[UI-FMTM-FORMATCAD]`,
   `[FORMAT-CAD-BYPASS]` et `[DETTE-FORMATCAD-BYPASS]` — cinq tickets pour la MÊME classe, mesurée à
   trois dates différentes (45 → 77 sites). Ne pas re-scinder.
-  **Mesure la plus récente (2026-08-19) : 77 occurrences** de `toLocaleString('fr-CA')` hors
-  `utils/format.ts` et hors dates, dont **6 dans `services/projection/cashflowAllocation.ts`**
-  (l:213, 266, 272, 285, 332, 398 — logs de flux money-critical). Offenders nommés à surveiller :
-  `ProjectionTooltip.tsx:135` (son propre `fmt` → rendrait `NaN$` au lieu de « — »),
-  `ProjectionExplains.tsx:24`, `ActionPlanDrilldown.tsx:17`, `GoalSeekerCard.tsx:100,111`,
-  `StrategyOptimizerPanel.tsx:57` (`fmtM` maison : 6 157 $ → « 0.01M$ », granularité écrasée),
-  `assetLocation.ts:188`, `drawdownOptimizer.ts:79`, `goalSeek.ts:91`,
-  `import/ImportBankStatement.tsx:19`, `investments/ImportBrokerPositions.tsx:20`.
-  ⚠️ **Aucune garde du dépôt n'interdit ce motif** — `chartPrivacyScan` ne le couvre pas. Le scan
-  se livre AVANT les fixes (règle « resserrer le scan-garde d'abord ») : ses offenders SONT le
-  périmètre. ⚠️ NE PAS confondre avec `[FORMATCAD-OR-ZERO]`, classe DISTINCTE (le `|| 0` annule la
-  garde de `formatCAD` au lieu de la contourner — correctif différent).
-  Historique : **45 sites** `Math.round(x).toLocaleString('fr-CA') + '$'`
-  sur des MONTANTS (hors dates, exclues). **17 fichiers**, services/projection/* surtout (80 % volume).
-  Classe de bug déjà vécue (couleurs/contraste divergence par site). **Correctif** : helper
-  `formatCADSigned`/`formatCADRound` dans `utils/format.ts` (réutilise `formatCAD`), remplacer les
-  45 sites (script grep-replace + relecture, aucun changement visuel attendu). Par dossier
-  `services/projection/*` d'abord (plein d'impact).
+  ✅ **Étape 1 LIVRÉE le 2026-09-03 (lot 100, PR #831) : le SCAN**, `tests/toLocaleStringMoneyScan.test.ts`.
+  Le ticket l'exigeait avant tout correctif (« ses offenders SONT le périmètre ») — c'est fait, et
+  le périmètre a été RE-MESURÉ plutôt que recopié.
+  **Périmètre réel au 2026-09-03** : 81 occurrences brutes hors `utils/format.ts` et hors tests,
+  dont 3 en commentaire → **78 en code : 67 MONTANTS, 9 dates, 2 compteurs**, classification relue
+  à la main ligne par ligne. Le compte 67 est ÉPINGLÉ par la garde, dans les deux sens (aucun 68ᵉ,
+  et « dette à zéro → retire la garde »).
+  ⚠️ **Cinq des offenders NOMMÉS par le ticket sont DÉJÀ corrigés** et ne portent plus une seule
+  occurrence : `ProjectionExplains.tsx`, `ActionPlanDrilldown.tsx`, `GoalSeekerCard.tsx`,
+  `ImportBankStatement.tsx`, et le `fmtM` de `StrategyOptimizerPanel.tsx` (il délègue à
+  `formatCompactCAD`). Les numéros de ligne des autres avaient tous dérivé.
+  ⚠️ **Le remède prescrit est REDONDANT** : `formatCADRound` n'a pas lieu d'être, `formatCAD` arrondit
+  déjà à zéro décimale par défaut ; et `formatCADSigned` existe sous le nom `formatSigned(n,
+  { withCurrency: true })`. Grepper le remède, pas seulement le défaut.
+  ⚠️⚠️ **Un des offenders ne doit PAS recevoir `formatCAD`** : `investments/ImportBrokerPositions.tsx`
+  rend `` `${fmt(h.avgCost)} ${h.currency}` `` — un prix en devise **NATIVE** suivi de son code de
+  devise. `formatCAD` y collerait « $ » et afficherait « 1 234,56 $ USD ». Le bon helper est
+  `formatNumber(v, { decimals: 2 })`. Appliquer le remède du ticket en aveugle y créerait un bug de
+  devise (règle §1 « Devises »).
+- [ ] 🔴 **`[FMT-TOLOCALESTRING-MONEY-CORRECTIFS]`** (L) — **étape 2** : corriger les 67 montants que
+  le scan recense, par dossier, en faisant BAISSER le compte épinglé dans
+  `tests/toLocaleStringMoneyScan.test.ts` à chaque lot. Découpage à la frontière du risque :
+  (a) **logs du moteur** (~60 sites, `services/projection/*` : `cashflowAllocation` 6, `taxDecember`
+  12, `monthlyEvents` 8, `realEstateMonth` 11, `w5Effects`, `vehicleCycle`, `childrenReee`,
+  `meltdownReer`, `stochasticEvents`, `strategyConfigRanking`, `assetLocation`, `drawdownOptimizer`,
+  `goalSeek`, `projection.ts`) — ces chaînes sont ASSERTÉES par des goldens : mesurer combien
+  rougissent AVANT de convertir, et se rappeler que `formatCAD` pose une espace **insécable** que
+  les attendus écrits à la main n'ont pas.
+  (b) **`ProjectionTooltip.tsx`** — son `fmt` maison est appelé ~20 fois avec le « $ » ajouté À LA
+  MAIN dans le JSX, et **une fois SANS** (`{fmt(a.gain)}`, un nombre nu) : migrer vers `formatCAD`
+  impose de retirer les 20 « $ » et de basculer ce site-là sur `formatNumber`. Un remplacement
+  global y doublerait le symbole ou perdrait le nu.
+  (c) **`ImportBrokerPositions.tsx`** — `formatNumber`, PAS `formatCAD` (devise native, voir plus haut).
+  ⚠️ NE PAS confondre avec `[FORMATCAD-OR-ZERO]`, classe DISTINCTE (le `|| 0` annule la garde de
+  `formatCAD` au lieu de la contourner — correctif différent).
 
 
 - [ ] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,

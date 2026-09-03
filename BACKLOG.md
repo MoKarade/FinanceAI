@@ -720,13 +720,21 @@
   `perUserBalances.ts`, que le terme est ratio-neutre. ⚠️ Ne PAS choisir (b) sans traiter le cas
   dégénéré : c'est le seul endroit où la double soustraction change quelque chose.
   Caractérisation verrouillée par `tests/services/stepReerByUserProprietes.test.ts`.
-- [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
-  activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
-  la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →
-  le ménage supporte `tax(g,0)` au lieu de `tax(g,d)`, à l'ENVERS de la réalité (T1213 est
-  neutre-à-positif). Pré-existant (−180 136 $ avant WHT-92PCT, amplifié +1,9 %). Fix : majorer le
-  net mensuel de `[tax(g,0)−tax(g,d)]/12` quand T1213 actif — sinon RETIRER le toggle de l'UI
-  (`AdvancedProjectionParams.tsx`), il ne peut que nuire.
+- [ ] ⏸️ **`[ENG-T1213-NET-MONTHLY]`** (M → **ÉLEVÉ, RE-MESURÉ le 2026-09-03** ; **DÉCISION ROUTÉE à
+  Marc**, `docs/A_FAIRE_MOI.md` ; le fait est FIGÉ par `tests/services/t1213ToggleNuisible.test.ts`)
+  — activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER : la retenue
+  modélisée baisse (`taxDecember.ts`, `deductionsEmployer*`) mais le net MENSUEL encaissé vient du
+  `netSalary` SAISI et ne monte jamais. Le ménage perd l'économie sans jamais toucher la
+  contrepartie — à l'ENVERS de la réalité, où le T1213 est neutre à positif.
+  ⚠️ **Le ticket sous-estimait le défaut d'un facteur ~5, parce qu'il n'annonçait qu'un MONTANT.**
+  Re-mesuré (célibataire 150 k$, 3 000 $/mois d'épargne, REER 80 k$) — le POURCENTAGE GRANDIT :
+  **−16,1 % à 5 ans · −24,5 % à 10 ans · −29,2 % à 20 ans · −45,7 % (−1 031 419 $) à 30 ans.**
+  Ce n'est pas un biais fixe : c'est une économie fiscale annuelle qu'on cesse de capitaliser.
+  🧭 **Deux remèdes, tous deux des décisions** : (a) majorer le net mensuel de
+  `[tax(g,0)−tax(g,d)]/12` — ce que prescrit le ticket, mais il a un problème de CAUSALITÉ qu'il ne
+  mentionne pas (les déductions REER de l'année ne sont connues qu'en décembre, or le net de
+  janvier en dépendrait) ; (b) retirer le bouton de `AdvancedProjectionParams.tsx` — retirer une
+  fonctionnalité visible est un choix produit.
 - [ ] **`[ENG-NET-MODEL-RESIDUAL]`** (M, FAIBLE-MOYEN, pré-existant — mesuré panel #558) — le net
   MENSUEL encaissé est le `netSalary` SAISI, jamais réconcilié avec l'impôt du MODÈLE : résidu
   mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,

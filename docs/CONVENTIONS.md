@@ -11848,3 +11848,30 @@ est inerte ». Il voulait dire que la fixture cotisait 6 000 $/an contre 18 000 
 droits n'y LIMITENT rien. Sur une fixture qui sature, l'écart est de −311 $ à −411 $. Un mécanisme
 n'est observable que là où il est limitant, et ça vaut pour mesurer un correctif autant que pour
 écrire un test.
+
+### `UN-TICKET-QUI-N-ANNONCE-QU-UN-MONTANT-NE-DIT-PAS-SA-GRAVITE` (2026-09-03, lot 114)
+
+`[ENG-T1213-NET-MONTHLY]` portait « MOYEN, mesuré −183 598 $/30 ans ». Un montant seul se lit comme
+une erreur bornée, et une erreur bornée se range derrière les autres. Re-mesuré à quatre horizons
+sur une fixture ordinaire (150 000 $, 3 000 $/mois d'épargne) : **−16,1 % à 5 ans, −24,5 % à 10,
+−29,2 % à 20, −45,7 % à 30** — soit −1 031 419 $, cinq fois le chiffre annoncé, et surtout un
+POURCENTAGE qui grandit. Le mécanisme est une économie fiscale annuelle qu'on cesse de capitaliser :
+par construction, il compose.
+
+**La règle** : un ticket qui chiffre un défaut doit porter la TRAJECTOIRE, pas un point.
+`UN-BIAIS-QUI-COMPOSE-N-EST-PAS-UN-BIAIS-FIXE` disait déjà de mesurer à ≥ 3 horizons *avant de
+classer* ; ce lot ajoute le symétrique — **devant un ticket déjà classé, le montant seul est le
+signe qu'on ne l'a mesuré qu'une fois**. Et le classement porte sur le POURCENTAGE : −183 598 $
+paraît petit à côté d'un patrimoine de 2,2 M$, jusqu'à ce qu'on voie que c'est 46 % de ce qu'il
+aurait dû être.
+
+⚠️ **Corollaire de gravité — un défaut ATTEIGNABLE PAR UN CLIC ne se classe pas comme un défaut
+interne.** Celui-ci vit derrière un bouton de l'interface (« T1213 retenue source ON »), que
+n'importe quel utilisateur peut activer en croyant s'optimiser. Un défaut que l'utilisateur
+DÉCLENCHE lui-même, en pensant bien faire, mérite un cran de plus qu'un défaut qu'il subit — parce
+qu'il ne saura jamais que c'est le bouton qui a coûté la moitié de sa projection.
+
+⚠️ **Signal ÉCARTÉ, et c'est la bonne conduite** : en mesurant, j'ai vu `totalTaxesPaid` sortir
+NÉGATIF (−423 648 $ sur 30 ans à 150 k$ de revenu), ce qui a tout l'air d'un second bug à router.
+C'en est un connu, documenté sous `[PROJ-TAXPAID-LABEL]` avec son clamp là où il est lu. Grepper
+le nom AVANT d'écrire un ticket : un commentaire qui porte un ID de lot est exactement fait pour ça.

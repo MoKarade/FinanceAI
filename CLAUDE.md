@@ -238,6 +238,18 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un ticket qui n'annonce qu'un MONTANT ne dit pas sa gravité** : `[ENG-T1213-NET-MONTHLY]` portait
+  « MOYEN, −183 598 $/30 ans ». Re-mesuré à quatre horizons : **−16,1 % à 5 ans, −24,5 % à 10,
+  −29,2 % à 20, −45,7 % (−1 031 419 $) à 30** — cinq fois le chiffre annoncé, et un POURCENTAGE qui
+  grandit (une économie fiscale annuelle qu'on cesse de capitaliser compose par construction).
+  `UN-BIAIS-QUI-COMPOSE-N-EST-PAS-UN-BIAIS-FIXE` disait de mesurer à ≥3 horizons avant de CLASSER ;
+  le symétrique est que **devant un ticket déjà classé, un montant seul signale qu'on ne l'a mesuré
+  qu'une fois**. ⚠️ Et un défaut ATTEIGNABLE PAR UN CLIC (ici un bouton des réglages avancés, que
+  l'utilisateur active en croyant s'optimiser) mérite un cran de plus qu'un défaut subi — il ne
+  saura jamais que c'est le bouton qui a coûté la moitié de sa projection. ⚠️ Signal écarté en
+  chemin : `totalTaxesPaid` NÉGATIF est déjà documenté sous `[PROJ-TAXPAID-LABEL]` — grepper le nom
+  avant d'écrire un second ticket
+  (`UN-TICKET-QUI-N-ANNONCE-QU-UN-MONTANT-NE-DIT-PAS-SA-GRAVITE`, 2026-09-03).
 - **Un accumulateur ANNUEL se juge sur sa position par rapport à son RESET, jamais dans l'absolu** :
   le revenu gagné était versé avant le bloc de janvier, donc janvier entrait dans l'année qui venait
   de se clore (13 mois la 1re année, +8,33 % de droits REER). ⚠️ Le ticket sous-estimait son défaut —

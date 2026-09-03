@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-03 — Lot 114 : un bouton de l'UI détruit 46 % de la projection
+> `[ENG-T1213-NET-MONTHLY]` — **aucun code de prod touché** : le fait est FIGÉ, la décision est
+> ROUTÉE (c'est le point le plus grave de `docs/A_FAIRE_MOI.md`). Aucun déploiement à vérifier.
+> - Le réglage « T1213 retenue source ON » réduit la retenue modélisée mais ne majore JAMAIS le net
+>   mensuel encaissé (qui vient du `netSalary` saisi). L'utilisateur perd l'économie fiscale de son
+>   REER sans jamais toucher la contrepartie — l'inverse de la réalité.
+> - ⚠️ **Le ticket sous-estimait d'un facteur ~5** en n'annonçant qu'un montant (−183 598 $).
+>   Re-mesuré à quatre horizons : **−16,1 % / −24,5 % / −29,2 % / −45,7 %** (5, 10, 20, 30 ans),
+>   soit −1 031 419 $ à 30 ans. Le pourcentage GRANDIT — le défaut compose.
+> - 🧭 **Deux remèdes, tous deux des décisions** : (a) majorer le net mensuel — le remède prescrit,
+>   mais il bute sur une CAUSALITÉ que le ticket ignore (les déductions de l'année ne sont connues
+>   qu'en décembre) ; (b) retirer le bouton de l'UI. Recommandation : (b) en attendant (a).
+> - ⚠️ Signal écarté : `totalTaxesPaid` NÉGATIF est déjà documenté sous `[PROJ-TAXPAID-LABEL]`.
+> - Garde : `tests/services/t1213ToggleNuisible.test.ts` — inventaire de dette à INVERSER le jour du
+>   correctif, pas à supprimer.
+
 > ## 🟦 Session 2026-09-03 — Lot 113 : les droits REER suivent enfin l'année civile
 > `[RRSP-FIRST-YEAR-13M]` livré — **code de prod money-critical touché** (`services/projection.ts`,
 > l'ORDRE de la boucle mensuelle). Déploiement à vérifier.

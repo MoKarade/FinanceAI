@@ -4,6 +4,7 @@
 
 import { RRIF_FIRST_WITHDRAWAL_AGE, rrifRateForAge } from './helpers';
 import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, LAST_KNOWN_RRSP_YEAR, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { formatCAD } from '../../utils/format';
 
 // [ENG-GK-THRESHOLD-KNIFE] Bande de lissage du gel Guyton-Klinger — DESIGN (stabilité du modèle
 // maison), pas des chiffres fiscaux : indexation pleine jusqu'à −4 % de baisse du portefeuille,
@@ -283,7 +284,10 @@ export function processJanuaryReset(
         // l'affichage de la retenue mensuelle / WithheldTaxRrif / ImpotRetraitREER était faux.
         ferrTaxOnRrif = ferrMandatoryGross * rrifMarginalRate;
         const netRrif = ferrMandatoryGross - ferrTaxOnRrif;
-        ferrLogMsg = `🏦 FERR (per-conjoint): Brut ${ferrMandatoryGross.toFixed(2)}$ → Net ${netRrif.toFixed(2)}$ → Liquidités`;
+        // ⚠️ `decimals: 2` : l'ancien code écrivait `.toFixed(2)$`. Passer au défaut (0 décimale)
+        // aurait CHANGÉ la sortie de ce journal — la migration route le formatage vers la source
+        // unique, elle ne décide pas à sa place de la précision affichée.
+        ferrLogMsg = `🏦 FERR (per-conjoint): Brut ${formatCAD(ferrMandatoryGross, { decimals: 2 })} → Net ${formatCAD(netRrif, { decimals: 2 })} → Liquidités`;
     }
 
     // === 5. Guyton-Klinger trigger ===

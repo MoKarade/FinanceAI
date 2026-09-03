@@ -2176,16 +2176,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 
-- [ ] 🟠 **`[FMT-MONTANTS-COMPOSES-A-LA-MAIN]`** (M) — **classe JUMELLE**, invisible à la garde du
-  lot 100 : un montant écrit `` `+${x}$` `` ne contient aucun `toLocaleString`, donc le scan ne le
-  voit pas (`UN-MONTANT-COMPOSE-A-LA-MAIN-EST-INVISIBLE-A-LA-GARDE-QUI-CHERCHE-LE-FORMATEUR`).
-  Recensé par la revue du lot 101, **hors des lignes qu'il touchait** : `taxJanuary.ts` [×2],
-  `services/projection.ts` [×2, « +250 000$ » en dur], `services/claude.ts`,
-  `services/aiChat/viewContext.ts`, `mcp/ingest/applyDocument.ts` [×11].
-  ⚠️ Le périmètre ci-dessus vient d'un agent, donc **il se RE-RECENSE avant d'être cru**
-  (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`). **Correctif** : une garde JUMELLE qui interdit de
-  faire le travail autrement, puis les sites — une garde qui cherche l'USAGE d'une fonction a besoin
-  de sa jumelle, sinon la dette se déplace au lieu de se payer.
 - [ ] 🟡 **`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`** (XS) — **défaut PRÉEXISTANT**, rendu plus
   visible par le lot 101 (signalé, PAS corrigé — hors périmètre demandé) : `taxDecember.ts` journalise
   `💊 RAMQ médicaments: <total>/an (<par adulte>/adulte)` où le total est en dollars **INFLATÉS** et

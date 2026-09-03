@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Les derniers montants sans séparateur de milliers)
+
+- **Corrigé** : quelques montants s'affichaient encore collés à leur symbole et sans séparateur —
+  « 1250$/m » dans le coût de garde d'un enfant, « +250 000$ » dans le journal d'un héritage de
+  scénario. Ils s'écrivent comme partout ailleurs.
+- **Un garde-fou existant ne surveillait que les écrans** : il regarde maintenant aussi le moteur
+  et les outils. Ce qu'il laisse volontairement de côté est écrit noir sur blanc, avec la raison.
+- **Une question t'attend** (`docs/A_FAIRE_MOI.md`) : les montants envoyés à l'assistant IA sont
+  arrondis à 100 $ EXPRÈS, pour ta vie privée — et c'est promis dans le texte que tu as accepté.
+  Les faire passer par le même formateur que les écrans révélerait le montant exact. Je ne l'ai pas
+  fait, et je ne le ferai pas sans ton accord.
+
+---
+
 ## [unreleased] — 2026-09-03 (Plus un seul montant formaté à part)
 
 - **Terminé** : l'infobulle du graphe Futur et l'import de positions de courtier étaient les deux

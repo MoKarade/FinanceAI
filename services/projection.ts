@@ -784,7 +784,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (scenarioType === 'WINDFALL' && m === 60) {
             const windfallAmount = 250000;
             liquid += windfallAmount;
-            logEvent(lifeEventsLog, `🎁 Héritage Inattendu: +250 000$`);
+            logEvent(lifeEventsLog, `🎁 Héritage Inattendu: +${formatCAD(windfallAmount)}`);
             logEvent(flowEventsLog, `💰 WINDFALL: Injection de surplus.`);
         }
 
@@ -793,7 +793,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (scenarioType === 'LATE_INHERITANCE' && m === 240) {
             const lateAmount = 250000;
             liquid += lateAmount;
-            logEvent(lifeEventsLog, `⏳ Héritage Tardif (an 20): +250 000$`);
+            logEvent(lifeEventsLog, `⏳ Héritage Tardif (an 20): +${formatCAD(lateAmount)}`);
             logEvent(flowEventsLog, `💰 LATE_INHERITANCE: enfin libéré.`);
         }
 

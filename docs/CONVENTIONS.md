@@ -10589,6 +10589,67 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 103 (2026-09-03) — le périmètre venait d'un agent, et il était faux dans les deux sens
+
+`UN-PERIMETRE-RECOPIE-D-UN-AGENT-EST-FAUX-DANS-LES-DEUX-SENS`
+
+J'avais écrit dans `BACKLOG.md` le recensement d'un agent, avec l'avertissement « il se RE-RECENSE
+avant d'être cru ». Bien m'en a pris — il était faux **deux fois, en sens opposés** :
+
+- **Sur-compté** : `mcp/ingest/applyDocument.ts` « ×11 » désignait onze occurrences vivant toutes
+  dans des **COMMENTAIRES** et des noms de constantes (`// 50 M$/an`, `MAX_ANNUAL_INCOME`). Zéro
+  offender. C'est `SCAN-QUI-MATCHE-LA-PROSE`, cinquième fois dans ce dépôt — commis cette fois par
+  l'agent, et importé tel quel dans un document de travail par moi.
+- **Sous-compté** : six sites qu'il ne nommait pas (`ChildPlanning` ×2, `BudgetAiModal` ×4), et deux
+  qu'il nommait mais que son motif ne pouvait pas trouver — `${x} $` (avec ESPACE) et un **littéral**
+  `+250 000$` qui n'interpole rien.
+
+Un rapport d'agent se traite comme un ticket : ce qui vaut, c'est le FAIT qualitatif (« cette classe
+existe hors de `components/` »), jamais sa liste ni son compte.
+
+⚠️ **Le vrai résultat du recensement n'était pas un nombre mais une PARTITION.** Les 19 lignes
+restantes se rangent en trois familles aux règles OPPOSÉES : 2 faux positifs (`${b.max} $` est la
+branche NON-numérique d'un ternaire dont le cas nombre passe déjà par `formatCAD`), 4 sites d'écran
+et de journal — corrigés —, et **17 sites de texte destiné à un MODÈLE**. Ces derniers ne sont pas
+un reliquat : `BudgetAiModal` et `claude.ts` arrondissent DÉLIBÉRÉMENT à 100 $, et le texte de
+consentement de l'app promet cet arrondi en toutes lettres. Y appliquer le formateur d'écran
+révélerait le montant au dollar près dans le prompt. Exemptés AVEC leur raison, question routée —
+`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE` : « `formatCAD` UNIQUEMENT » a été écrite pour des
+écrans, et un prompt n'en est pas un.
+
+⚠️ **Migrer un formateur, ce n'est pas décider de la précision à sa place** : le journal FERR
+écrivait `.toFixed(2)$`. Passer au défaut de `formatCAD` (zéro décimale) aurait CHANGÉ sa sortie —
+d'où `formatCAD(x, { decimals: 2 })`. La migration route le formatage vers la source unique ; ce
+qu'elle ne doit pas faire, c'est en profiter pour trancher une question d'affichage que personne
+n'a posée.
+
+⚠️⚠️ **Le gate a trouvé ce que le lot ne cherchait pas, et c'était le plus important.** Deux gardes
+préexistantes ont rougi sur mes quatre corrections :
+
+1. **`amountPrivacyScan`** — les deux montants de `ChildPlanning` que je venais de faire passer par
+   `formatCAD` n'étaient **pas enveloppés dans `<PrivateAmount>`** : ils restaient LISIBLES en mode
+   discret. Ils échappaient à cette garde tant qu'ils étaient composés à la main, puisqu'elle cherche
+   le FORMATEUR. C'est exactement ce que son propre en-tête annonçait
+   (`UN-MONTANT-COMPOSE-A-LA-MAIN-EST-INVISIBLE-A-LA-GARDE-QUI-CHERCHE-LE-FORMATEUR`) — et la
+   prédiction s'est vérifiée un lot plus tard, sur d'autres sites que les siens. **Corriger le format
+   RÉVÈLE la fuite de vie privée** : les deux défauts sont le même trou vu deux fois, et le second ne
+   devient visible qu'une fois le premier réparé.
+2. **`fiscalConstantsGuardV2`** — l'entrée `services/projection.ts::250` est devenue FANTÔME. Sa
+   raison disait « fragment du libellé "250 000$" … du TEXTE capté par le scan » : en remplaçant le
+   littéral par `formatCAD(windfallAmount)`, j'ai supprimé son objet. Retirée
+   (`ENTREE-D-INVENTAIRE-FANTOME`). Un lot de FORMAT a donc nettoyé une entrée de l'inventaire
+   FISCAL — deux registres qu'on ne penserait pas liés le sont par le texte des journaux.
+
+Conduite à en tirer : **un lot qui touche au format se juge sur le gate COMPLET, jamais sur ses
+propres gardes.** Les miennes étaient toutes vertes ; ce sont deux gardes écrites par d'autres lots,
+pour d'autres raisons, qui ont trouvé les vrais défauts.
+
+⚠️ **Une de mes cinq perturbations était REDONDANTE, pas révélatrice d'un trou** : réduire les
+racines scannées à `components/` ne fait rougir personne, parce que le test d'exemptions lit ses
+fichiers par CHEMIN, indépendamment des racines. Ce que l'élargissement apporte est prouvé par deux
+AUTRES perturbations — deux offenders situés dans `services/` qui rougissent bien. Une perturbation
+muette dit d'abord qu'elle vise à côté (`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`).
+
 ### Lot 102 (2026-09-03) — l'inventaire a exigé sa propre mort, et il ne fallait pas le supprimer
 
 `UN-INVENTAIRE-QUI-ATTEINT-ZERO-S-INVERSE-EN-REGLE`

@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 103 : la classe JUMELLE, et un périmètre d'agent réfuté
+> `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` — un montant `` `+${x}$` `` n'appelle aucune fonction, donc
+> aucune garde ne le cherchait.
+> - ⚠️ **Le périmètre du BACKLOG venait d'un AGENT et était faux DANS LES DEUX SENS** : sur-compte
+>   (`applyDocument` « ×11 » = onze COMMENTAIRES), sous-compte (6 sites non nommés, 2 formes que son
+>   motif ne voyait pas : `${x} $` avec espace, et un LITTÉRAL `+250 000$`).
+> - **Le résultat utile est une PARTITION, pas un nombre** : sur 19 lignes → 2 faux positifs,
+>   **4 corrigés** (ChildPlanning, journal FERR, deux littéraux qui recopiaient leur constante), et
+>   **17 de texte pour un MODÈLE**, exemptés AVEC leur raison.
+> - ⚠️ `formatCAD(x, { decimals: 2 })` sur le journal FERR : passer au défaut aurait CHANGÉ sa
+>   sortie. Migrer un formateur ne donne pas le droit de trancher la précision à sa place.
+> - **Question routée à Marc** (`[FMT-PROMPT-MONTANTS]`, `docs/A_FAIRE_MOI.md`) : les prompts
+>   arrondissent à 100 $ DÉLIBÉRÉMENT — le texte de consentement le promet. Recommandation : ne pas
+>   y toucher.
+> - ⚠️⚠️ **Le gate a trouvé ce que le lot ne cherchait pas** : `amountPrivacyScan` a rougi — les deux
+>   montants de `ChildPlanning` migrés vers `formatCAD` n'étaient PAS dans `<PrivateAmount>` et
+>   restaient lisibles en mode discret. Ils lui échappaient tant qu'ils étaient composés à la main.
+>   Corriger le FORMAT révèle la fuite de VIE PRIVÉE : même trou vu deux fois. Et
+>   `fiscalConstantsGuardV2` a signalé une entrée devenue FANTÔME (`projection.ts::250`, le fragment
+>   du libellé « 250 000$ ») — retirée. Un lot de format nettoie l'inventaire FISCAL.
+> - Garde élargie : `components/` → + `services/` + `mcp/`, 3ᵉ motif pour l'interpolation nue,
+>   exemptions déclarées + garde d'obsolescence. 5 perturbations, 4 discriminantes, 1 redondante.
+
 > ## 🟦 Session 2026-09-03 — Lot 102 : la dette `toLocaleString` tombe à ZÉRO
 > Dernier reliquat de `[FMT-TOLOCALESTRING-MONEY]` : `ProjectionTooltip` (18 « $ » retirés du JSX,
 > le 19ᵉ site basculé sur `formatNumber`) et `ImportBrokerPositions` (`formatNumber`, PAS

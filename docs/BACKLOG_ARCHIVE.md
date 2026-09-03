@@ -10,6 +10,35 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-02 — Lot 94 : la saisie à la main, dernier chemin manquant du chantier Dette
+
+- [x] **`[DEBT-UI-PAR-TYPE]`** — LIVRÉ le 2026-09-02 (PR #824). Ferme le chantier ouvert au lot 91 :
+  la courbe d'amortissement du passé est désormais atteignable par les TROIS chemins (assistant,
+  import de contrat, saisie manuelle).
+- **Livré** : `components/debt/debtKindLabels.ts` (`Record<DebtKind, string>` EXHAUSTIF — un nouveau
+  type casse le typecheck tant que personne ne lui écrit un libellé) et
+  `components/debt/DebtKindFields.tsx`, câblé dans les DEUX formulaires jumeaux de `DebtManager`.
+- **La condition d'affichage vient de `KIND_AMORTISSANT`**, la table que le MOTEUR consulte — jamais
+  une liste recopiée. Un formulaire est un consommateur de la même vérité qu'un calcul : une liste
+  locale offrirait un champ pour un type que le moteur refuse (chiffre saisi sans effet, et rien ne
+  le dit). Le test BALAIE les onze types et exige que la présence du champ suive exactement la table.
+- **L'UI refuse ce que l'assistant refuse** (`originalBalance < balance`) : deux chemins d'écriture
+  qui ne disent pas la même chose, c'est l'incohérence qui est le bug (`UN-BOUTON-N-EST-PAS-UN-FILET`).
+- **Un champ vidé rend `undefined`, jamais `0` ni `NaN`** : `parseFloat('')` vaut `NaN`, et un `NaN`
+  écrit ici traverserait jusqu'au moteur.
+- ⚠️ **Périmètre RÉDUIT par rapport au ticket, avec sa raison.** Il prescrivait
+  `LoanForm.tsx`/`LeaseForm.tsx` ; recensé, `DebtManager.tsx` fait 279 lignes et ses deux formulaires
+  partagent cinq champs — deux composants les auraient DUPLIQUÉS. Extrait la paire manquante, pas le
+  formulaire. Reliquat routé : `[DEBT-UI-CHAMPS-RESTANTS]`.
+- **13 gardes**, onze perturbations séparées. ⚠️ L'une était MUETTE et c'est le CODE qui avait tort :
+  ma fusion « valeurs effectives » en édition est REDONDANTE (`startEdit` fait `setDraft({ ...d })`,
+  le brouillon n'est jamais partiel — contrairement au payload MCP du lot 93, dont j'avais recopié la
+  leçon sans en vérifier la prémisse). Gardée comme précaution, écrite comme telle dans le code, et
+  le test porte désormais le FAIT plutôt que le mécanisme.
+- ⚠️ Un test écrit sur une prémisse fausse : j'affirmais que les deux formulaires coexistent dans le
+  DOM. Mesuré, `startEdit` fait `setIsAdding(false)` — ils s'excluent. Le test a été refondé sur ce
+  qui est vrai (les suffixes SÉPARENT les identifiants), plus un second qui épingle l'exclusion.
+
 ## 2026-09-02 — Lot 93 : le montant emprunté entre dans l'app, la courbe du lot 92 devient visible
 
 - [x] **`[DEBT-MCP-ORIGINALBALANCE]`** — LIVRÉ le 2026-09-02 (PR #823). Ferme le trou que le lot 92

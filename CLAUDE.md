@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 268 tests** Vitest
-(514 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 281 tests** Vitest
+(515 fichiers de test, mesuré le 2026-09-02). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,15 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Une leçon se recopie avec sa PRÉMISSE, ou pas du tout** : j'ai porté dans l'UI la garde du lot
+  précédent (« juger la cohérence sur les valeurs EFFECTIVES »), avec son commentaire et sa
+  référence — perturbation faite, 13 tests verts : le brouillon d'édition n'est JAMAIS partiel
+  (`setDraft({ ...d })`), contrairement au payload MCP. La règle était bonne, son domaine s'arrêtait
+  là-bas. Garder la précaution, l'ÉCRIRE comme telle, et faire porter au test le FAIT plutôt que le
+  mécanisme. ⚠️ Même lot : un test bâti sur une prémisse fausse (« les deux formulaires coexistent »
+  — `startEdit` ferme l'ajout), et un DÉCOUPAGE prescrit par un ticket qui aurait dupliqué cinq
+  champs communs au lieu d'extraire la paire manquante
+  (`UNE-LECON-SE-RECOPIE-AVEC-SA-PREMISSE-OU-PAS-DU-TOUT`, 2026-09-02).
 - **Un trou entre deux moitiés testées n'appartient à personne** : le lot 92 était vert de bout en
   bout (37 gardes, CI verte, déployé) et ne changeait RIEN à l'écran — aucun producteur n'écrivait le
   champ qui l'active. Le service était testé chez lui, l'ingestion chez elle, le CHAÎNON n'était le

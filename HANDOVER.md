@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-02 — Lot 94 : la saisie à la main (chantier Dette CLOS)
+> `[DEBT-UI-PAR-TYPE]` — la courbe d'amortissement du passé est atteignable par les TROIS chemins :
+> assistant, import de contrat, saisie manuelle.
+> - `components/debt/debtKindLabels.ts` (`Record<DebtKind, string>` exhaustif) +
+>   `DebtKindFields.tsx`, câblé dans les DEUX formulaires jumeaux de `DebtManager`.
+> - La condition d'affichage d'`originalBalance` vient de **`KIND_AMORTISSANT`** (la table du
+>   moteur), jamais d'une liste recopiée. Le test balaie les 11 types.
+> - L'UI refuse ce que l'assistant refuse ; champ vidé ⇒ `undefined`, jamais `0` ni `NaN`.
+> - ⚠️ Périmètre RÉDUIT vs le ticket (pas de `LoanForm`/`LeaseForm` : 279 lignes, cinq champs
+>   communs ⇒ duplication). Reliquat routé : **`[DEBT-UI-CHAMPS-RESTANTS]`** (`limit`,
+>   `amortizationYears`, `isInterestDeductible`).
+> - ⚠️ Deux erreurs à MOI, corrigées et écrites : une garde muette (fusion « valeurs effectives »
+>   REDONDANTE ici — leçon du lot 93 recopiée sans vérifier sa prémisse) et un test bâti sur une
+>   prémisse fausse (les deux formulaires ne coexistent pas : `startEdit` ferme l'ajout).
+
 > ## 🟦 Session 2026-09-02 — Lot 93 : le montant emprunté entre dans l'app
 > `[DEBT-MCP-ORIGINALBALANCE]` — ferme le trou que le lot 92 avait mesuré chez lui-même : la courbe
 > d'amortissement était livrée et **inatteignable**, faute d'un producteur d'`originalBalance`.

@@ -86,6 +86,31 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[MIGRATE-GROSS-DEJA-PERSISTE]` — faut-il re-dériver un salaire brut déjà enregistré ? (2026-09-03)
+
+**Le problème.** Un ancien défaut fabriquait ton salaire brut en multipliant le net par 1,35. Il est
+corrigé — mais **seulement pour les configurations qui n'avaient pas encore de brut enregistré** :
+`migrateUserConfig` fait `u.grossSalary || (…)`, donc dès que le champ existe, le repli est
+court-circuité et la mauvaise valeur reste. Le correctif ne rattrape personne dont le brut a déjà
+été écrit.
+
+**Ce qu'on pourrait faire.** Une migration qui re-dérive le brut **quand il vaut exactement
+`arrondi(net × 1,35)`** — la signature du défaut est reconnaissable.
+
+**Pourquoi je ne le fais pas seul.** ⚠️ Le risque est symétrique et il porte sur TES données : si tu
+as SAISI un brut qui coïncide par hasard avec 1,35 × net, la migration l'écraserait. Écraser une
+saisie de l'utilisateur est irréversible côté app. Le ticket lui-même dit « décision produit à poser
+à Marc avant de coder ».
+
+**Trois options :**
+1. **Ne rien faire** — le défaut reste sur les configs déjà écrites, et se corrige à la main en
+   ré-saisissant le brut. *(le plus prudent)*
+2. **Migrer avec la signature** — re-dériver quand `brut == arrondi(net × 1,35)`, en acceptant le
+   risque d'écraser une coïncidence.
+3. **Migrer en DEMANDANT** — détecter la signature et afficher un message qui te propose la
+   correction, sans jamais écrire tout seul. *(ma recommandation : c'est le seul qui ne peut pas
+   détruire une saisie)*
+
 ## `[FMT-PROMPT-MONTANTS]` — un texte destiné à un MODÈLE doit-il passer par `formatCAD` ? (2026-09-03)
 
 **Contexte.** Les lots 100-103 ont fermé la classe « montant formaté hors `utils/format.ts` » sur

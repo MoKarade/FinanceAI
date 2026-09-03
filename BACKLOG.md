@@ -1251,7 +1251,7 @@
   10 tests neufs, **3 perturbations prouvées rouges** (paramètre non transmis · socle moteur muet ·
   `hasSpouse` figé). Un 11e test existant a rougi : ma propre garde de `[TAXBRACKETVIZ-ANNEE]`,
   ancrée sur l'ARITÉ de l'appel — resserrée sur le FAIT qu'elle défend.
-- [ ] **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — découvert en livrant `[MIGRATE-GROSS-135]`) —
+- [ ] ⏸️ **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — **ROUTÉ à Marc le 2026-09-03**, `docs/A_FAIRE_MOI.md` : le ticket dit lui-même « décision produit à poser à Marc avant de coder ») —
   le correctif ne rattrape PAS les utilisateurs dont le brut a **déjà** été fabriqué à 1,35 et
   persisté. `migrateUserConfig` fait `u.grossSalary || (…)` : dès que le champ existe, le repli est
   court-circuité, donc la valeur erronée est STICKY. Le correctif ne profite qu'aux configs qui
@@ -1259,14 +1259,6 @@
   le brut quand il est exactement `round(net × 1,35)` — la signature du défaut est reconnaissable.
   ⚠️ **Risque** : écraser un brut que l'utilisateur a SAISI et qui coïnciderait avec 1,35 × net.
   Décision produit à poser à Marc avant de coder. [Structure VÉRIFIÉE dans le code]
-
-- [ ] **`[RQAP-INDEX-SOURCE]`** (XS, FAIBLE — découvert en revue de `[RQAP-CAP-98K]`) — la phrase
-  « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » justifie le
-  choix d'index dans le code ET dans `FISCAL_REFERENCE.md` §2, **sans aucune citation** (pas
-  d'article de la Loi sur l'assurance parentale). C'est le rationnel d'une hypothèse, pas une
-  source — or il vit dans la source de vérité, où il hérite de son autorité. **Correctif** : citer,
-  ou requalifier explicitement en hypothèse. (Le caractère « hypothèse » est déjà écrit ; il reste à
-  sourcer ou à retirer l'affirmation juridique.)
 
 - [ ] **`[RQAP-PHASES-70-55]`** (M, MOYEN — sorti de `[RQAP-CAP-98K]`, décision PRODUIT) — le moteur
   applique **55 % plat** sur les 12 mois de congé parental. Le régime de BASE du RQAP verse en

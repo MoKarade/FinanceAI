@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (La « chute » que tu voyais au raccord est enfin expliquée)
+
+- **Expliqué** : tu avais signalé « une chute de 10k aujourd'hui, jsp pourquoi » sur la courbe. Ce
+  n'était **pas une erreur de calcul** — les deux points sont justes. Le dernier point du passé est
+  reconstruit en *défaisant* les mouvements de la journée en cours : il montre donc ton solde **avant**
+  ton paiement d'hypothèque du jour, et la courbe marche vers le bas jusqu'à aujourd'hui.
+- **Ce qui change** : une ligne sous le graphe le dit, quand il y a effectivement des mouvements
+  aujourd'hui. Elle dit aussi le **sens** — une rentrée d'argent produit la marche inverse, vers le
+  haut.
+- **Ce qui ne change pas, volontairement** : la marche n'est **pas lissée**. L'adoucir reviendrait à
+  afficher un solde que tu n'as jamais eu.
+- **La phrase ne contient aucun montant** : le chiffre est déjà sur la courbe, et une phrase qui le
+  contiendrait ne serait plus masquable en mode discret.
+- ⚠️ **Encore à faire** : la vue par **mois** a le même effet, en plus marqué (son dernier point passé
+  annule tout le mois en cours). C'est noté et ce sera le prochain lot sur ce sujet.
+
+---
+
 ## [unreleased] — 2026-09-02 (Tu peux enfin dire à l'app si c'est un bail ou un prêt)
 
 - **Ajouté** : dans l'onglet Dettes, un choix du **type de dette** (hypothèque, prêt auto, bail auto,

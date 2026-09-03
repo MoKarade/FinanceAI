@@ -102,3 +102,113 @@ describe('[PASSE-REEL-RACCORD-CHUTE] la SECONDE cause, DISTINCTE : ce que l’an
         expect(veilleDe(res.points)).toBe(50_000);
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// [PASSE-REEL-RACCORD-CHUTE] LE CORRECTIF : la marche est désormais DITE.
+//
+// Ce qui précède établit la CAUSE ; ce qui suit garde le remède. Rappel de l'arbitrage : on ne
+// LISSE pas la marche — ce serait fabriquer un solde que Marc n'a jamais eu. Le correctif est une
+// PHRASE, et le fait qu'elle énonce vient du module qui PRODUIT la marche, jamais d'une seconde
+// lecture des transactions.
+import { readFileSync } from 'node:fs';
+import { buildDailyPastLedger } from '../../services/history/dailyPastLedger';
+import { mentionRaccord } from '../../services/history/raccordNotice';
+import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
+import type { MinimalAsset } from '../../services/history/reconstructPortfolioHistory';
+
+describe('[PASSE-REEL-RACCORD-CHUTE] le flux annulé est PUBLIÉ, et il vaut la marche', () => {
+    it('le champ publié égale la MARCHE réellement visible, pas une re-somme des transactions', () => {
+        // ⚠️ Assertion NON CIRCULAIRE : on compare le champ à l'écart mesuré entre le dernier point
+        // du passé et le solde d'aujourd'hui. Le comparer à une somme des transactions re-écrite ici
+        // ne prouverait que « deux additions identiques donnent le même résultat ».
+        const soldeAujourdhui = 50_000;
+        const r = reconstructCashHistoryDaily(
+            [txn({ date: '2026-08-01', amount: 1_000 }), txn({ date: AUJOURDHUI, amount: -10_000 })],
+            soldeAujourdhui, AUJOURDHUI,
+        );
+        const marche = soldeAujourdhui - veilleDe(r.points);
+        expect(marche).toBe(-10_000);              // la chute que Marc a vue
+        expect(r.fluxPeriodeAnnulee).toBe(marche); // et le champ la NOMME
+    });
+
+    it('aucun mouvement aujourd\'hui ⇒ champ nul ⇒ AUCUNE phrase', () => {
+        // Anti-bruit : un avertissement permanent est un avertissement mort.
+        const r = reconstructCashHistoryDaily([txn({ date: '2026-08-01', amount: 1_000 })], 50_000, AUJOURDHUI);
+        expect(r.fluxPeriodeAnnulee).toBe(0);
+        expect(veilleDe(r.points)).toBe(50_000);   // pas de marche non plus
+        expect(mentionRaccord(r.fluxPeriodeAnnulee)).toBe('');
+    });
+
+    it('MÊME base d\'exclusion que la courbe : un doublon ou un virement interne ne compte pas', () => {
+        // Sinon la phrase annoncerait une marche que la courbe ne montre pas — pire que le silence.
+        const r = reconstructCashHistoryDaily([
+            txn({ date: '2026-08-01', amount: 1_000 }),
+            txn({ date: AUJOURDHUI, amount: -10_000, isTransfer: true }),
+            txn({ date: AUJOURDHUI, amount: -7_000, isDuplicate: true }),
+        ], 50_000, AUJOURDHUI);
+        expect(r.fluxPeriodeAnnulee).toBe(0);
+        expect(50_000 - veilleDe(r.points)).toBe(0);
+    });
+
+    it('le SENS est dit : une entrée fait monter, une sortie fait descendre', () => {
+        // Annoncer « chute » sur une entrée enverrait chercher un problème inexistant.
+        expect(mentionRaccord(-10_000)).toMatch(/vers le bas/);
+        expect(mentionRaccord(10_000)).toMatch(/vers le haut/);
+        expect(mentionRaccord(0)).toBe('');
+        expect(mentionRaccord(Number.NaN)).toBe('');
+    });
+
+    it('la phrase ne porte AUCUN montant — elle survit au mode discret', () => {
+        // Un montant interpolé dans une chaîne n'est plus un nœud, donc plus masquable. Le FAIT
+        // suffit : le montant est déjà lisible sur la courbe.
+        for (const v of [-10_000, 10_000, -0.5, 12_345.67]) {
+            expect(mentionRaccord(v)).not.toMatch(/\d/);
+        }
+    });
+});
+
+describe('[PASSE-REEL-RACCORD-CHUTE] le fait traverse jusqu\'à l\'écran', () => {
+    const actif: MinimalAsset = {
+        symbol: 'AAA', quantity: 10, currency: 'CAD', currentPrice: 100, accountType: 'CELI',
+        purchases: [{ date: '2026-08-02', quantity: 10, price: 90 }],
+        priceHistory: [
+            { date: '2026-08-01', price: 88 }, { date: '2026-08-02', price: 90 },
+            { date: '2026-08-16', price: 95 }, { date: AUJOURDHUI, price: 97 },
+        ],
+    };
+
+    it('`buildDailyPastLedger` REMONTE le champ, il ne le recalcule pas', () => {
+        // Le registre au jour est la seule surface qui parle à l'écran : si le champ s'arrête ici,
+        // le correctif est inerte en prod même avec toutes les gardes ci-dessus vertes
+        // (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`).
+        const res = buildDailyPastLedger({
+            from: '2026-08-01', to: AUJOURDHUI, today: AUJOURDHUI,
+            transactions: [
+                { date: '2026-08-01', amount: 2_000, payee: 'Paie' },
+                { date: AUJOURDHUI, amount: -10_000, payee: 'Hypothèque' },
+            ],
+            currentCash: 50_000, assets: [actif], fx: {},
+            equityByYear: new Map([[2026, 0]]), currentDebtNonImmo: 0, debts: [],
+        });
+        expect(res.rows.length, 'anti-vacuité : le registre doit produire des jours').toBeGreaterThan(1);
+        expect(res.fluxPeriodeAnnulee).toBe(-10_000);
+        expect(mentionRaccord(res.fluxPeriodeAnnulee)).toMatch(/vers le bas/);
+    });
+
+    it('l\'écran CONSOMME la source unique, il ne réécrit pas la phrase', () => {
+        // Garde JUMELLE : la précédente prouve ce que le module rend, celle-ci interdit de refaire
+        // le travail dans le JSX — où il divergerait sans que rien ne rougisse.
+        const brut = readFileSync('components/FutureProjection.tsx', 'utf8');
+        const code = stripCommentsJsx(brut);
+        // Seuil re-mesuré à la portée de CE fichier (majoritairement de la prose par conception).
+        expect(partDeCodeRestante(brut, code)).toBeGreaterThan(0.4);
+        expect(code).toContain('export const FutureProjection'); // témoin de code indépendant
+        // ⚠️ Ancré sur l'APPEL avec son ARGUMENT, jamais sur le nom seul : mesuré, débrancher le
+        // `useMemo` laissait `toContain('mentionRaccord')` vert (l'IMPORT porte le même nom) et
+        // `toContain('fluxPeriodeAnnulee')` vert aussi (la construction du memo le nomme). Un scan
+        // qui matche la DÉCLARATION au lieu de l'USAGE est vacueux.
+        expect(code).toContain('mentionRaccord(dailyPast.fluxPeriodeAnnulee)');
+        // ... et le résultat doit être RENDU, pas seulement calculé.
+        expect(code).toContain('{mentionRaccordJour');
+    });
+});

@@ -132,6 +132,21 @@ export interface CashHistoryDailyResult {
      * granularité quotidienne en élargit la fenêtre.
      */
     flowsAfterNowDate: number;
+    /**
+     * [PASSE-REEL-RACCORD-CHUTE] Flux NET du jour courant, celui que la reconstruction vient de
+     * DÉFAIRE pour produire le dernier point (la veille).
+     *
+     * ⚠️ C'est la MARCHE que Marc a signalée : « je vois une chute de 10k aujourd'hui jsp pourquoi ».
+     * La reconstruction remonte le temps depuis le solde d'AUJOURD'HUI en défaisant les flux, et son
+     * dernier point est la VEILLE — donc `veille = aujourd'hui − flux_du_jour`. Une sortie de
+     * 10 000 $ datée d'aujourd'hui fait apparaître la veille 10 000 $ PLUS HAUTE, et la courbe
+     * « chute » au raccord. Les deux points sont JUSTES : l'argent est réellement sorti. Ce qui
+     * manquait n'est pas un calcul, c'est de le DIRE (`SILENCE-READS-AS-BROKEN`).
+     * ⚠️ Ne JAMAIS lisser cette marche : ce serait fabriquer un solde que Marc n'a jamais eu.
+     * Même base d'exclusion que l'ancre (`isDuplicate`/`isTransfer` écartés) — sinon la mention
+     * annoncerait une marche que la courbe ne montre pas.
+     */
+    fluxPeriodeAnnulee: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -161,7 +176,7 @@ export function reconstructCashHistoryDaily(
     nowDate: string = new Date().toISOString().slice(0, 10),
 ): CashHistoryDailyResult {
     if (!transactions || transactions.length === 0) {
-        return { points: [], firstDate: null, undatedTotal: 0, flowsAfterNowDate: 0 };
+        return { points: [], firstDate: null, undatedTotal: 0, flowsAfterNowDate: 0, fluxPeriodeAnnulee: 0 };
     }
 
     const flowByDay = new Map<string, number>();
@@ -187,7 +202,7 @@ export function reconstructCashHistoryDaily(
         flowByDay.set(d, (flowByDay.get(d) ?? 0) + t.amount);
         movedOn.add(d);
     }
-    if (firstDate === null) return { points: [], firstDate: null, undatedTotal, flowsAfterNowDate };
+    if (firstDate === null) return { points: [], firstDate: null, undatedTotal, flowsAfterNowDate, fluxPeriodeAnnulee: 0 };
 
     const points: CashHistoryDailyPoint[] = [];
     let cash = currentCash;
@@ -199,5 +214,8 @@ export function reconstructCashHistoryDaily(
         d = prev;
     }
     points.reverse();
-    return { points, firstDate, undatedTotal, flowsAfterNowDate };
+    // Le flux DÉFAIT pour produire la veille est exactement celui du jour courant. On le relit dans
+    // la même carte que la boucle a consommée — jamais une seconde somme sur les transactions, qui
+    // divergerait de la base d'exclusion à la première évolution (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+    return { points, firstDate, undatedTotal, flowsAfterNowDate, fluxPeriodeAnnulee: flowByDay.get(nowDate) ?? 0 };
 }

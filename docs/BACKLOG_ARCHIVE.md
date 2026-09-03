@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — Lot 96 : la « chute de 10k » que Marc voyait est expliquée, jamais lissée
+
+- [x] **`[PASSE-REEL-RACCORD-CHUTE]`** — LIVRÉ le 2026-09-03 (PR #826). Marc : « je vois une chute de
+  10k aujourd'hui jsp pourquoi ».
+- **Cause CONFIRMÉE contre le code** : `reconstructCashHistoryDaily` remonte le temps depuis le solde
+  d'AUJOURD'HUI en défaisant les flux, et son dernier point est la VEILLE — donc
+  `veille = aujourd'hui − flux_du_jour`. Un paiement de 10 000 $ daté d'aujourd'hui fait apparaître
+  la veille 10 000 $ plus haute. **Les deux points sont JUSTES** : l'argent est réellement sorti.
+- **Le correctif est une PHRASE, pas un calcul.** Lisser la marche fabriquerait un solde que Marc n'a
+  jamais eu. `fluxPeriodeAnnulee` est publié par le module qui PRODUIT la marche, remonté par le
+  registre au jour, et `services/history/raccordNotice.ts` en fait la mention affichée sous le graphe.
+- **La phrase ne porte AUCUN montant**, délibérément : interpolé dans une chaîne il ne serait plus
+  masquable en mode discret, et il est déjà lisible sur la courbe. Elle dit le SENS (une entrée fait
+  monter, une sortie descendre) — annoncer « chute » sur une entrée enverrait chercher un problème
+  inexistant. Ton informatif, pas d'avertissement : il n'y a rien à corriger.
+- ⚠️ **Le périmètre du ticket était une borne INFÉRIEURE** : la version MENSUELLE
+  (`reconstructCashHistory`) a le MÊME mécanisme, et sa marche annule **tout le mois courant** — plus
+  grosse, sur la vue par défaut. Routé (`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`) plutôt que livré à
+  moitié : la phrase a besoin du champ, or `buildPastPrefix` rend un tableau nu. ⚠️ Et surtout : **ne
+  pas exposer le champ mensuel avant d'avoir son consommateur** — c'est ce que le lot 95 vient de
+  condamner.
+- **13 gardes** (7 neuves) dans `tests/services/raccordChute.test.ts`, qui portait déjà la CAUSE et
+  porte maintenant le REMÈDE. Dix perturbations séparées.
+- ⚠️ **Une garde jumelle était MUETTE** : « l'écran consomme la source unique » cherchait
+  `mentionRaccord` et `fluxPeriodeAnnulee` — les deux survivent au débranchement du `useMemo`
+  (l'IMPORT porte le premier nom, la construction du memo porte le second). `SCAN-QUI-MATCHE-LA-
+  DECLARATION-AU-LIEU-DE-L-USAGE`, re-payé. Ré-ancrée sur l'APPEL avec son argument exact ET sur le
+  RENDU de la variable, elle rougit sur les deux perturbations.
+- ⚠️ Deux pointeurs fermés au passage, vérifiés contre le code : `[PASSE-REEL-DETTE-2]`
+  (`originalBalance` existe depuis le lot 91) et `[PASSE-REEL-DETTE-3]` (`DebtPayload` porte les
+  dates et `originalBalance`).
+
 ## 2026-09-03 — Lot 95 : le lot qui devait ajouter trois champs, et qui a prouvé qu'il ne fallait pas
 
 - [x] **`[DEBT-UI-CHAMPS-RESTANTS]`** — REMÈDE RÉFUTÉ le 2026-09-03 (PR #825). Le ticket, que j'avais

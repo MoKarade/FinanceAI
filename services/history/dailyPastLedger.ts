@@ -70,6 +70,11 @@ export interface DailyPastLedgerResult {
      * Un trou silencieux dans une courbe est pire qu'une plage plus courte annoncée.
      */
     truncatedFrom: string | null;
+    /** [PASSE-REEL-RACCORD-CHUTE] Flux net du jour courant, DÉFAIT par la reconstruction pour
+     *  produire le dernier point (la veille) — c'est la MARCHE visible au raccord. Remonté tel quel
+     *  depuis `reconstructCashHistoryDaily` (jamais recalculé ici : deux sommes sur la même base
+     *  divergeraient à la première évolution de l'exclusion `isDuplicate`/`isTransfer`). */
+    fluxPeriodeAnnulee: number;
 }
 
 /** Une journée du passé, reconstruite. Les clés reprennent EXACTEMENT celles du point de graphe :
@@ -224,20 +229,20 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
     // présentés comme mesurés, à côté d'une projection qui, elle, croît. Le même défaut avait déjà
     // été corrigé une fois dans le panneau quotidien ; on ne le réintroduit pas ici.
-    const NONE: DailyPastLedgerResult = { rows: [], undatedTotal: 0, flowsAfterNowDate: 0, truncatedFrom: null };
+    const NONE: DailyPastLedgerResult = { rows: [], undatedTotal: 0, flowsAfterNowDate: 0, truncatedFrom: null, fluxPeriodeAnnulee: 0 };
     const end = to < today ? to : today;
     if (!from || !end || end < from) return NONE;
 
     const cash = reconstructCashHistoryDaily(transactions, currentCash, today);
     // ⚠️ Même quand AUCUNE ligne n'est produite, les caveats d'ancre sont rendus : un historique
     // fait UNIQUEMENT de transactions au mois seul a un `undatedTotal` non nul et zéro point.
-    if (cash.points.length === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null };
+    if (cash.points.length === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null, fluxPeriodeAnnulee: cash.fluxPeriodeAnnulee };
     const cashByDate = new Map(cash.points.map((p) => [p.date, p]));
 
     const invStart = from < (cash.firstDate ?? from) ? (cash.firstDate ?? from) : from;
     const inv = reconstructPortfolioHistoryDaily(assets, fx, invStart, end, { maxDays });
     const invByDate = new Map(inv.map((p) => [p.date, p]));
-    if (invByDate.size === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null };
+    if (invByDate.size === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null, fluxPeriodeAnnulee: cash.fluxPeriodeAnnulee };
 
     // Mouvements réels du jour : MÊME base d'exclusion que l'ancre `computeStartingCash`
     // (`isDuplicate` = artefact, `isTransfer` = neutre) — sinon les deux bouts de la même courbe
@@ -270,7 +275,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     const out: DailyPastRow[] = [];
     const startMs = Date.parse(`${from}T00:00:00Z`);
     const endMs = Date.parse(`${end}T00:00:00Z`);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null };
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null, fluxPeriodeAnnulee: cash.fluxPeriodeAnnulee };
 
     let lastMs: number | null = null;
     for (let ms = startMs; ms <= endMs && out.length < maxDays; ms += DAY_MS) {
@@ -351,5 +356,5 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     const truncatedFrom = lastMs !== null && lastMs < endMs
         ? new Date(lastMs + DAY_MS).toISOString().slice(0, 10)
         : null;
-    return { rows: out, undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom };
+    return { rows: out, undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom, fluxPeriodeAnnulee: cash.fluxPeriodeAnnulee };
 }

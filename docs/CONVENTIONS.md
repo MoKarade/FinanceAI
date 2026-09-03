@@ -10589,6 +10589,52 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 96 (2026-09-03) — un chiffre JUSTE peut être illisible, et le correctif est une phrase
+
+`UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`
+
+Marc : « je vois une chute de 10k aujourd'hui jsp pourquoi ». Le réflexe est de chercher une erreur
+de calcul. Il n'y en a pas : le dernier point du passé est reconstruit en DÉFAISANT les flux du jour
+(`veille = aujourd'hui − flux_du_jour`), donc il montre le solde d'avant le paiement d'hypothèque du
+matin. Les deux points sont exacts, la marche entre eux est réelle, et l'argent est bien sorti. Ce
+qui manquait, c'est de le DIRE (`SILENCE-READS-AS-BROKEN`).
+
+**Le correctif d'un défaut d'explication est une PHRASE, pas un calcul** — et la tentation inverse
+est forte : lisser la marche aurait « réglé » le symptôme en affichant un solde que Marc n'a jamais
+eu, c'est-à-dire en remplaçant une mesure exacte par une invention. Devant un signalement du genre
+« ce chiffre est bizarre », la première question est « est-il FAUX, ou seulement illisible ? » : les
+deux se signalent avec les mêmes mots et leurs correctifs sont opposés.
+
+Trois choix de forme, chacun payé ailleurs dans ce dépôt :
+
+1. **Le fait vient du module qui le PRODUIT.** `reconstructCashHistoryDaily` publie
+   `fluxPeriodeAnnulee` en relisant la carte que sa propre boucle a consommée — jamais une seconde
+   somme sur les transactions, qui divergerait de la base d'exclusion (`isDuplicate`/`isTransfer`) à
+   la première évolution (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`). Une garde le vérifie de façon NON
+   CIRCULAIRE : le champ est comparé à la marche mesurée entre deux points, pas à une addition
+   réécrite dans le test.
+2. **Aucun montant dans la phrase.** Interpolé dans une chaîne il ne serait plus un nœud, donc plus
+   masquable en mode discret (`UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`) — et il est
+   déjà lisible sur la courbe. Le FAIT suffit.
+3. **Le SENS est dit.** Une rentrée d'argent produit la marche INVERSE ; annoncer « chute » dans ce
+   cas enverrait chercher un problème qui n'existe pas. Et rien ne s'affiche quand le flux du jour est
+   nul : un avertissement permanent est un avertissement mort.
+
+⚠️ **Le périmètre du ticket était une borne inférieure, encore.** La version MENSUELLE partage le
+mécanisme au caractère près, sa marche annule TOUT le mois courant (donc plus grosse), et c'est la vue
+par DÉFAUT. Routé plutôt que livré à moitié — et surtout **sans exposer le champ côté mensuel avant
+d'avoir son consommateur**, ce que le lot 95 venait précisément de condamner. Deux leçons du dépôt
+peuvent se contredire sur un même lot : celle qui dit « livre la moitié prouvable » et celle qui dit
+« n'expose pas un champ que personne ne lit ». C'est la seconde qui gagne ici, parce que sa
+transgression est SILENCIEUSE.
+
+⚠️ **Et ma garde jumelle était MUETTE au premier jet** : « l'écran consomme la source unique »
+cherchait `mentionRaccord` et `fluxPeriodeAnnulee` dans le source décommenté — les deux SURVIVENT au
+débranchement, le premier dans l'IMPORT, le second dans la construction du memo qui le range.
+`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`, re-payé un lot après avoir écrit qu'il fallait
+ancrer sur l'usage. Ré-ancrée sur l'APPEL avec son argument exact **et** sur le RENDU de la variable,
+elle rougit sur les deux perturbations (memo débranché, résultat calculé mais jamais affiché).
+
 ### Lot 95 (2026-09-03) — un champ SANS LECTEUR ne se corrige pas en lui donnant une saisie
 
 `UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`

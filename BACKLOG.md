@@ -1964,16 +1964,12 @@
 
 ✅ **`[PASSE-REEL-DETTE-1]` livré 2026-08-21, PR #687 — voir `docs/BACKLOG_ARCHIVE.md`.**
 
-- [ ] 🔴 **`[PASSE-REEL-DETTE-2]`** (S) — ⚠️ PRÉMISSE PARTIELLEMENT PÉRIMÉE (2026-08-21) : `Debt`
-  a désormais `startDate?`/`termEndDate?` (livrés par `[DETTE-DATES]`, 2026-08-19) — SEUL
-  `originalBalance?: number` manque encore. Nécessaire pour la courbe d'amortissement du passé
-  demandée par Marc (voir `[DEBT-AMORTIZATION]` ci-dessous, qui reprend ce champ dans son scope).
-  Ce ticket-ci reste ouvert comme POINTEUR vers `[DEBT-AMORTIZATION]` plutôt que dupliqué.
-- [ ] 🔴 **`[PASSE-REEL-DETTE-3]`** (S) — **l'import du PDF ne capte pas ces champs non plus.**
-  `DebtPayload` (`mcp/ingest/applyDocument.ts`) porte `balance`, `interestRate`, `minimumPayment`,
-  `category`, `amortizationYears`, `rateProvider` — **ni les dates, ni `originalBalance`**. Repris
-  et précisé par `[DEBT-MCP-PARITE]` (dates, plus large que prévu ici — le tool MCP direct a le
-  MÊME trou) et `[DEBT-MCP-ORIGINALBALANCE]` (le nouveau champ) ci-dessous.
+- [x] ~~🔴 `[PASSE-REEL-DETTE-2]`~~ — **CADUC le 2026-09-03** (lot 96) : c'était un POINTEUR vers
+  `[DEBT-AMORTIZATION]`, dont il ne restait que `originalBalance?: number`. Vérifié sur `types.ts` :
+  le champ existe depuis le lot 91.
+- [x] ~~🔴 `[PASSE-REEL-DETTE-3]`~~ — **CADUC le 2026-09-03** (lot 96) : « l'import PDF ne capte ni
+  les dates ni `originalBalance` ». Vérifié sur `mcp/ingest/applyDocument.ts` : `DebtPayload` porte
+  `startDate`, `termEndDate` (`[DEBT-MCP-PARITE]`, 2026-08-21) et `originalBalance` (lot 93).
 
 ### 🔴 `[DEBT-AMORTIZATION]` — courbe d'amortissement du passé + refonte onglet Dette (Marc, 2026-08-21)
 
@@ -2068,26 +2064,20 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 ### 🔴 `[PASSE-REEL-JOUR]` — la courbe passée au jour (bug + demande de Marc, 2026-08-14)
 
-- [ ] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]`** (S — **CAUSE ÉTABLIE PAR MESURE 2026-08-17**) — Marc :
-  « je vois une chute de 10k aujourd'hui jsp pourquoi ». Ses données étant locales, j'ai mesuré le
-  MÉCANISME sur des données construites : `tests/services/raccordChute.test.ts` (6 tests).
-  **`reconstructCashHistoryDaily` remonte le temps À PARTIR du solde d'aujourd'hui en DÉFAISANT les
-  flux jour par jour, et s'arrête à la VEILLE** (aujourd'hui n'est pas reconstruit — le présent
-  vient de l'ancre du moteur). Donc `veille = solde_aujourd'hui − flux_du_jour` : le dernier point
-  du passé ANNULE les mouvements du jour, et la marche veille→aujourd'hui vaut EXACTEMENT le flux
-  net d'aujourd'hui. Une sortie de 10 000 $ datée d'aujourd'hui (hypothèque, gros transfert,
-  facture) produit une chute de 10 000 $ — et elle revient à chaque échéance.
-  ⚠️ **PAS un bug de calcul** : l'argent est réellement sorti, les deux points sont justes. C'est un
-  défaut d'EXPLICATION — rien ne dit que la veille est un solde RECONSTRUIT qui a volontairement
-  défait la journée en cours. Même classe que `SILENCE-READS-AS-BROKEN` : le chiffre est juste, sa
-  lecture est fausse. Gardes discriminantes : sans mouvement du jour → aucune marche ; une ENTRÉE
-  produit la marche inverse ; un virement interne n'en produit aucune.
-  **Correctif à faire** : DIRE la marche (infobulle du jour ou mention au raccord).
-  ⚠️ Ne JAMAIS la lisser — ce serait fabriquer un solde que Marc n'a jamais eu.
-  ⚠️ **Seconde cause POSSIBLE et DISTINCTE**, non confirmée chez lui : `undatedTotal` /
-  `flowsAfterNowDate` décalent tout le NIVEAU passé au lieu de créer une marche d'un jour. Le
-  bandeau les affiche déjà ; s'ils sont nuls chez Marc, cette piste est réfutée.
-
+- [x] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]` — LIVRÉ le 2026-09-03** (PR #826), voir
+  `docs/BACKLOG_ARCHIVE.md`. La marche au raccord est désormais DITE sous le graphe, jamais lissée.
+  `reconstructCashHistoryDaily` publie `fluxPeriodeAnnulee` (le flux du jour qu'elle vient de
+  défaire), le registre au jour le remonte, et `services/history/raccordNotice.ts` en fait une
+  phrase — sans montant, pour qu'elle survive au mode discret.
+- [ ] 🟠 **`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`** (S, découvert au lot 96) — **le périmètre du
+  ticket précédent était une borne INFÉRIEURE** : `reconstructCashHistory` (version MENSUELLE) a le
+  MÊME mécanisme, et sa marche est plus grosse — son dernier point passé annule **tout le mois
+  courant**, pas une journée (`cash -= flowByMonth.get(m)`, même boucle, granularité au mois). La
+  vue mensuelle est celle par défaut. **Non livré avec le lot 96 pour une raison précise** : la
+  phrase a besoin du champ, or `buildPastPrefix` rend un `PastPrefixPoint[]` nu — lui faire porter
+  un second retour touche ses consommateurs. ⚠️ Ne PAS exposer le champ côté mensuel avant d'avoir
+  son consommateur : c'est exactement ce que le lot 95 vient de condamner (un champ publié que
+  personne ne lit).
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
 > Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE

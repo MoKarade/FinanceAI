@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 286 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 293 tests** Vitest
 (516 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -238,6 +238,15 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un chiffre JUSTE peut être illisible, et le correctif est une PHRASE** : la « chute de 10k »
+  signalée par Marc n'était pas une erreur — le dernier point du passé DÉFAIT les flux du jour, donc
+  les deux points sont exacts. Lisser aurait affiché un solde jamais eu. Devant « ce chiffre est
+  bizarre », demander d'abord s'il est FAUX ou seulement ILLISIBLE : mêmes mots, correctifs opposés.
+  Le fait vient du module qui le PRODUIT (jamais une seconde somme), la phrase ne porte AUCUN montant
+  (plus masquable une fois interpolé), et elle dit le SENS. ⚠️ Deux leçons du dépôt se sont
+  contredites sur ce lot — « livrer la moitié prouvable » contre « ne pas exposer un champ sans
+  consommateur » : la seconde gagne, sa transgression étant SILENCIEUSE
+  (`UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`, 2026-09-03).
 - **Un champ SANS LECTEUR ne se corrige pas en lui donnant une SAISIE** — image miroir de
   `UN-CHAMP-TYPE-SANS-PRODUCTEUR`, et le réflexe qu'elle déclenche est le mauvais : trois champs de
   `Debt` absents du formulaire n'étaient lus par PERSONNE (les accès homonymes portaient sur un

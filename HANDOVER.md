@@ -21,6 +21,7 @@
 >   zéro et retire le déficit du patrimoine passé. Trois options, recommandation « retirer le
 >   plancher » (`docs/A_FAIRE_MOI.md`).
 > - Garde : `tests/services/schlDansAmortissementHistorique.test.ts` (6 cas · 3 perturbations).
+> - Gate complet VERT : **5 356 tests / 528 fichiers**, exit 0. CI verte sur les six checks.
 
 > ## 🟦 Session 2026-09-03 — Lot 111 : un versement RAP manqué devient un revenu imposable
 > `[ENG-RAP-MISSED-REPAYMENT-TAX]` livré — **code de prod money-critical touché**

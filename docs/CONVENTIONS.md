@@ -10589,6 +10589,39 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 104 (2026-09-03) — une garde de chaîne se pose sur une PENTE, pas sur un montant
+
+`UNE-GARDE-DE-CHAINE-SE-POSE-SUR-UNE-PENTE-PAS-SUR-UN-MONTANT`
+
+Le ticket demandait « une fixture golden avec cette configuration ». Un golden épingle des nombres :
+il aurait rougi à la première indexation du plafond, à la première correction de barème, à chaque
+lot qui déplace un dollar — et se serait fait re-baser sans que personne relise ce qu'il défend
+(`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`, vu de l'autre côté). Ce que le
+plafond produit d'observable n'est pas une valeur mais un **changement de régime** : sous le
+plafond, un dollar de salaire en plus augmente aussi la prestation, donc le congé ne coûte que la
+fraction non remplacée (**0,291 $ par dollar de brut**, mesuré) ; au-dessus, la prestation est FIGÉE
+et chaque dollar est perdu en entier (**0,700 $**, soit exactement le taux net de la fixture).
+Le **rapport des deux pentes, 2,40**, est la signature du plafond, et il ne dépend d'aucun montant.
+
+⚠️ **Le moteur ne publie pas la prestation séparément** — elle est fondue dans `Income`. Une garde
+qui aurait voulu lire « le montant de la prestation » n'avait rien à lire ; c'est en mesurant une
+DIFFÉRENCE (avec nourrisson moins sans nourrisson) puis sa DÉRIVÉE par rapport au salaire qu'on
+retrouve la grandeur cachée. Devant un champ non publié, chercher ce que sa présence CHANGE dans un
+champ qui l'est, plutôt que renoncer ou reconstruire le calcul dans le test (« si le test contient
+une expression qui ressemble au code testé, il teste sa copie »).
+
+⚠️ **La prémisse du ticket a été re-mesurée avant d'être crue, et elle était JUSTE** : perturber le
+plafond fait rougir 4 tests, tous unitaires sur le plafond, aucun de scénario. Après une série de
+tickets réfutés, c'est la confirmation qu'il fallait publier au même titre
+(`NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR`).
+
+⚠️ Corollaire de fixture : la perturbation « plafond ÷ 2 » fait rougir la garde **pour une raison
+qu'elle n'avait pas prévue** — le couple de salaires « sous le plafond » passe alors AU-DESSUS du
+plafond réduit, et les deux pentes se confondent. C'est une bonne nouvelle (elle attrape aussi un
+plafond déplacé), mais ça se DIT : une garde qui rougit pour une raison qu'on n'a pas écrite est
+une garde qu'on ne sait pas encore lire. D'où l'assertion qui vérifie, depuis la source unique
+`RQAP_MAX_INCOME`, que la fixture ENCADRE toujours le plafond.
+
 ### Lot 103 (2026-09-03) — le périmètre venait d'un agent, et il était faux dans les deux sens
 
 `UN-PERIMETRE-RECOPIE-D-UN-AGENT-EST-FAUX-DANS-LES-DEUX-SENS`

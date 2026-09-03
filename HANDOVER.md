@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 104 : le plafond RQAP enfin couvert SUR LA CHAÎNE
+> `[GOLDEN-RQAP-NON-COUVERT]` — prémisse RE-MESURÉE avant de coder, et **confirmée** : perturber le
+> plafond fait rougir 4 tests, tous UNITAIRES, aucun de scénario.
+> - **Pas un golden, une PENTE** : un golden épingle des nombres et se re-base à l'indexation. La
+>   garde mesure l'effet du congé par dollar de salaire du 2ᵉ parent — **0,291 sous le plafond,
+>   0,700 au-dessus** (le taux net de la fixture), rapport **2,40**. C'est le changement de RÉGIME
+>   qui est défendu.
+> - ⚠️ Le moteur ne publie PAS la prestation séparément (fondue dans `Income`) : on mesure ce que sa
+>   présence CHANGE — une différence, puis sa dérivée. Jamais reconstruire le calcul dans le test.
+> - 3 perturbations, 3 discriminantes. La 2ᵉ (plafond ÷ 2) rougit pour une raison non prévue — le
+>   couple « sous le plafond » passe au-dessus du plafond réduit ; c'est écrit, et une assertion
+>   dérivée de `RQAP_MAX_INCOME` vérifie que la fixture ENCADRE toujours le plafond.
+
 > ## 🟦 Session 2026-09-03 — Lot 103 : la classe JUMELLE, et un périmètre d'agent réfuté
 > `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` — un montant `` `+${x}$` `` n'appelle aucune fonction, donc
 > aucune garde ne le cherchait.

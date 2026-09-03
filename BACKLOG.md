@@ -1277,13 +1277,6 @@
   le régime à l'utilisateur ou si on assume le régime de base. La constante est déjà NOMMÉE
   (`RQAP_REPLACEMENT_RATE_BASE`) et la divergence documentée sur place + FISCAL_REFERENCE §2.
 
-- [ ] **`[GOLDEN-RQAP-NON-COUVERT]`** (S, MOYEN — découvert en livrant `[RQAP-CAP-98K]`) — **aucun
-  golden n'exerce le plafond RQAP.** Preuve : le correctif déplace l'assiette de +2 750 $/an dès que
-  le 2ᵉ parent dépasse le plafond, et **zéro** golden a bougé sur la suite complète — donc aucune
-  fixture ne combine « enfant < 12 mois » et « 2ᵉ parent au-dessus du plafond ». Un chemin
-  money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
-  isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
-  **Correctif** : une fixture golden avec cette configuration.
 - [ ] **`[MGA-PATRON-5-COPIES]`** (S, MOYEN — revue #675, 2026-08-20) — le patron d'indexation MGA
   (`base × (1 + (simInflation + 0,5)/100)^années`) est recopié à **5 sites** : `retirementIncome.ts`
   (×2), `taxJanuary.ts`, `childrenReee.ts` (`rqapCapProjected`, non exporté), `activeIncome.ts`

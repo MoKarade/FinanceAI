@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Un filet sous le congé parental à haut salaire)
+
+- **Ajouté** : un test de bout en bout qui vérifie que le plafond du RQAP mord vraiment quand le
+  2ᵉ parent gagne plus que lui. Rien ne change dans l'app — c'était un trou de couverture.
+- **Pourquoi ça comptait** : un correctif d'août avait déplacé 2 750 $/an d'assiette imposable sur
+  ce chemin, et aucun test de scénario ne l'avait vu passer. Re-mesuré avant d'écrire : c'était
+  exact, aucun scénario ne combinait un nourrisson et un 2ᵉ salaire au-dessus du plafond.
+
+---
+
 ## [unreleased] — 2026-09-03 (Les derniers montants sans séparateur de milliers)
 
 - **Corrigé** : quelques montants s'affichaient encore collés à leur symbole et sans séparateur —

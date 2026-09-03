@@ -11825,6 +11825,24 @@ toute seule, le premier capteur rendait des droits DÉCROISSANTS). La reconstitu
 « Δplafond + Δcotisé » était fausse aussi. La bonne réponse est celle que le dépôt écrit déjà :
 pour vérifier un argument, l'OBSERVER par espion, jamais le reconstruire.
 
+⚠️⚠️ **Corollaire de re-basement — le MÊME correctif a des signes OPPOSÉS sur deux grandeurs
+d'écran.** Trois goldens ont rougi, et ils ne disaient pas la même chose. Deux (`rrspRoomWiring`)
+ÉPINGLAIENT le défaut : ils écrivaient `200_004 * 13 / 12` en citant l'ID du ticket. C'est un
+inventaire de dette qui rougit quand la dette est payée — son travail exact
+(`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`). Le troisième était une ancre de valeur sur le
+patrimoine SUCCESSORAL, et elle a MONTÉ de 1 177 $ alors qu'un correctif qui RETIRE des droits REER
+devrait tout baisser. Mesuré sur la même fixture : `finalNetWorth` **−1 769 $**, `estateNetWorth`
+**+1 177 $**. Les deux sont justes — moins de droits = moins cotisé au REER = moins d'abri fiscal
+(le patrimoine courant descend), mais aussi moins de REER à LIQUIDER au décès, donc moins d'impôt
+latent (la succession remonte). Une grandeur NETTE d'impôt latent et une grandeur BRUTE ne bougent
+pas dans le même sens, et un re-basement mécanique aurait enterré ce fait.
+
+⚠️ **Corollaire de mesure, payé sur ce lot** : ma première comparaison « avant/après » a restauré
+`git show HEAD:services/projection.ts` — or j'avais DÉJÀ commité le correctif avant de lancer le
+gate (c'est la règle du dépôt). Mon « avant » était donc mon « après », et les deux colonnes
+sortaient identiques. Quand on committe avant de mesurer, la référence est `HEAD~1`, jamais `HEAD` :
+une comparaison qui rend deux colonnes rigoureusement égales accuse d'abord le protocole.
+
 ⚠️ **Corollaire d'impact** : « le patrimoine final est identique » n'a PAS voulu dire « le correctif
 est inerte ». Il voulait dire que la fixture cotisait 6 000 $/an contre 18 000 $ de droits — les
 droits n'y LIMITENT rien. Sur une fixture qui sature, l'écart est de −311 $ à −411 $. Un mécanisme

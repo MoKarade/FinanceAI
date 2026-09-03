@@ -22,6 +22,10 @@
 >   là où ils saturent.
 > - Garde : `tests/services/rrspRoomAnneeCivile.test.ts` (espion sur l'argument — deux capteurs
 >   indirects essayés avant, tous deux mesuraient autre chose).
+> - ⚠️ **3 goldens re-basés, 2 natures** : deux ÉPINGLAIENT le défaut (`200_004 * 13/12` avec l'ID du
+>   ticket) ; le 3ᵉ a MONTÉ de 1 177 $ — moins de REER cotisé = moins d'abri fiscal (`finalNetWorth`
+>   **−1 769 $**) mais moins de REER à liquider au décès (`estateNetWorth` **+1 177 $**). Signes
+>   opposés, les deux justes.
 
 > ## 🟦 Session 2026-09-03 — Lot 112 : la prime SCHL manquait à l'historique immobilier
 > `[IMMO-3-FORMULES]` **volet SCHL livré**, volet CLAMP routé — **code de prod touché**

@@ -253,6 +253,15 @@ n'est pas réécrire un récit.
   espion. ⚠️ Et « patrimoine identique » signifiait « les droits ne limitent rien ici » (6 000 $
   cotisés contre 18 000 $) : sur une fixture qui sature, **−311 $ à −411 $**
   (`UN-ACCUMULATEUR-ANNUEL-SE-JUGE-SUR-SA-POSITION-PAR-RAPPORT-A-SON-RESET`, 2026-09-03).
+  ⚠️⚠️ **Trois goldens rouges, DEUX natures** : deux ÉPINGLAIENT le défaut (`200_004 * 13 / 12`, avec
+  l'ID du ticket en commentaire — un inventaire de dette qui rougit quand la dette est payée) ; le
+  troisième était une ancre de valeur qui a **MONTÉ** de 1 177 $ alors qu'un correctif retirant des
+  droits devrait tout baisser. Mesuré : `finalNetWorth` **−1 769 $**, `estateNetWorth` **+1 177 $** —
+  moins de REER cotisé = moins d'abri fiscal (patrimoine ↓) mais aussi moins de REER à LIQUIDER au
+  décès (succession ↑). **Une grandeur nette d'impôt latent et une grandeur brute ne bougent pas dans
+  le même sens** ; un re-basement mécanique aurait enterré ça. ⚠️ Et ma 1re mesure avant/après a
+  restauré `HEAD` — or le correctif y était DÉJÀ commité (règle « committer avant le gate ») : deux
+  colonnes rigoureusement identiques accusent d'abord le PROTOCOLE, la référence est `HEAD~1`.
 - **Une mesure avant/après par RACCOURCI DE PARAMÈTRE déplace deux grandeurs** : pour chiffrer la
   prime SCHL absente de `runAmortization`, rappeler la fonction avec `price + prime` (au lieu
   d'écrire le correctif) a rendu l'équité **plus haute** — `price` pilote le principal emprunté ET

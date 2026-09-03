@@ -62,10 +62,16 @@ describe('[FISC-RRSP-ROOM-PER-USER] le tuple CÂBLÉ dans projection.ts (espion,
         run(params());
         const jan = janCalls.find(c => c.monthIndex === 0 && c.m > 0);
         expect(jan, 'aucun janvier capturé').toBeTruthy();
-        // 16 667 × 12 = 200 004 $/an et 5 000 × 12 = 60 000 $/an (salaryGrowth 0). Le 1er janvier
-        // voit 13 mois (biais préexistant documenté — [RRSP-FIRST-YEAR-13M]) : 13/12 du brut.
-        expect(jan!.byUser[0]).toBeCloseTo(200_004 * 13 / 12, 0);
-        expect(jan!.byUser[1]).toBeCloseTo(60_000 * 13 / 12, 0);
+        // 16 667 × 12 = 200 004 $/an et 5 000 × 12 = 60 000 $/an (salaryGrowth 0).
+        // ⚠️ Ces deux ancres portaient `× 13 / 12` et l'expliquaient par « biais préexistant
+        // documenté — [RRSP-FIRST-YEAR-13M] » : elles ÉPINGLAIENT le défaut. Le lot 113 l'a corrigé
+        // (le revenu du mois est désormais versé APRÈS le reset de janvier, donc janvier n'entre
+        // plus dans l'année qui vient de se clore) et ces assertions ont rougi — c'était leur
+        // travail (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`). Le premier janvier voit maintenant
+        // 12 mois pleins. Ce que ce test DÉFEND — chaque index porte le brut de SA personne, sans
+        // croisement — n'a pas bougé d'un iota ; seule l'ancre de valeur change.
+        expect(jan!.byUser[0]).toBeCloseTo(200_004, 0);
+        expect(jan!.byUser[1]).toBeCloseTo(60_000, 0);
         // Ancre négative contre le CROISEMENT (perturbation restée verte sur 4 545 tests) :
         expect(jan!.byUser[0]).toBeGreaterThan(jan!.byUser[1]);
     });
@@ -78,8 +84,9 @@ describe('[FISC-RRSP-ROOM-PER-USER] le tuple CÂBLÉ dans projection.ts (espion,
         }));
         const jan = janCalls.find(c => c.monthIndex === 0 && c.m > 0);
         expect(jan, 'aucun janvier capturé').toBeTruthy();
-        // Marc n'est PAS en congé : son brut est identique au run sans bébé (13 mois du salaire).
-        expect(jan!.byUser[0]).toBeCloseTo(200_004 * 13 / 12, 0);
+        // Marc n'est PAS en congé : son brut est identique au run sans bébé (12 mois du salaire —
+        // re-basé au lot 113, cf. le commentaire du premier cas).
+        expect(jan!.byUser[0]).toBeCloseTo(200_004, 0);
         // Anna est en congé ~10 des 13 mois (naissance 2026-03) : son slot doit être NETTEMENT
         // réduit — en dessous de 50 % de son brut plein. L'inversion de l'attribution (perturbée
         // par la revue : +7 911 $ de REER, suite verte) mettrait ce retrait chez Marc.
@@ -104,8 +111,9 @@ describe('[FISC-RRSP-ROOM-PER-USER] le tuple CÂBLÉ dans projection.ts (espion,
         // 45 % (brut ≈ 67 629 $/an) atterrissait à l'index 1 qu'aucun roomUsers ne lit — MESURÉ
         // −12 173 $/an de droits, −50 159 $ de NW à 12 ans. Le repli remet TOUT à l'index 0.
         expect(jan!.byUser[1]).toBeCloseTo(0, 6);
-        // Le brut total solo (55 % ET 45 % réunis) dépasse largement le seul 55 % (86 022 × 13/12
-        // ≈ 93 190) : on exige > 120 000 pour prouver que la part 45 % est bien LÀ.
+        // Le brut total solo (55 % ET 45 % réunis) dépasse largement le seul 55 % (86 022) : on
+        // exige > 120 000 pour prouver que la part 45 % est bien LÀ. Le seuil est inchangé au
+        // lot 113 — il était déjà largement au-dessus des deux valeurs, avec ou sans le 13e mois.
         expect(jan!.byUser[0]).toBeGreaterThan(120_000);
     });
 });

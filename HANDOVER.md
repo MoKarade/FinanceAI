@@ -19,6 +19,7 @@
 > - ⚠️ Signal écarté : `totalTaxesPaid` NÉGATIF est déjà documenté sous `[PROJ-TAXPAID-LABEL]`.
 > - Garde : `tests/services/t1213ToggleNuisible.test.ts` — inventaire de dette à INVERSER le jour du
 >   correctif, pas à supprimer.
+> - Gate complet VERT : **5 363 tests / 530 fichiers**, exit 0.
 
 > ## 🟦 Session 2026-09-03 — Lot 113 : les droits REER suivent enfin l'année civile
 > `[RRSP-FIRST-YEAR-13M]` livré — **code de prod money-critical touché** (`services/projection.ts`,

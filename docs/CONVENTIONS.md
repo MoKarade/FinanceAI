@@ -10589,6 +10589,34 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 108 (2026-09-03) — « deux montants coexistent » : vérifier qu'ils sont AFFICHÉS
+
+`UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE`
+
+Le ticket décrivait deux « net » de provenance différente sur l'écran Budget et prescrivait « une
+mention de provenance visible sur CHACUN ». Recensé ligne à ligne : le second net **n'est jamais
+affiché comme un montant**. Ses trois seuls usages sont des DÉNOMINATEURS — le badge « Effort : X % »
+et la largeur de deux barres. Le correctif prescrit est donc **inapplicable** : il n'y a pas de
+second montant à étiqueter.
+
+Ce qui existe est plus discret, et plus intéressant : un POURCENTAGE calculé sur une base différente
+du net affiché quelques lignes au-dessus, dans la MÊME carte. Rien à l'écran ne peut le signaler,
+puisque la base n'apparaît nulle part. **« Deux valeurs coexistent » et « deux valeurs sont
+affichées » ne sont pas la même affirmation** — et c'est la seconde qui décide du correctif. La
+question qui tranche : *est-ce que je peux pointer les deux du doigt sur une capture d'écran ?*
+
+⚠️ **L'écart chiffré du ticket était une valeur de FIXTURE lue comme une loi.** « 154 $/mois, 3,1 % »
+suggère un biais constant. Mesuré sur quatre paires brut/net réalistes, il **change de signe** :
+−0,3 %, −1,8 %, +2,6 %, +3,5 %. Ce n'est pas un défaut du moteur — c'est la distance entre la paie
+RÉELLE de l'utilisateur et ce que le modèle prédit depuis son brut, donc une grandeur qui dépend
+entièrement de SES données. Un écart cité sans son domaine se lit comme une constante
+(`UNE-MESURE-CITEE-SANS-SON-PERIMETRE-SE-LIT-COMME-UNE-LOI`).
+
+⚠️ **Et le lot s'arrête là, délibérément.** Aligner le dénominateur déplacerait un pourcentage
+affiché (≈ 1,4 point sur un « Effort » de 40 %) ; le nommer n'en déplace aucun. Les deux sont
+défendables, l'un touche ce que Marc voit — routé avec le tableau des quatre mesures pour qu'il
+tranche sur des chiffres et non sur une intuition.
+
 ### Lot 107 (2026-09-03) — l'alarme d'un ticket se re-mesure autant que son défaut
 
 `L-ALARME-D-UN-TICKET-SE-REMESURE-AUTANT-QUE-SON-DEFAUT`

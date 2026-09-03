@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 108 : recensement de `[BUDGET-DEUX-NETS-MEME-ECRAN]` (doc seule)
+> **Aucun code touché.** Le ticket envoyait au mauvais correctif ; le recensement est consigné DANS
+> le ticket pour que le lot suivant parte du bon endroit.
+> - ⚠️ **Le second « net » n'est JAMAIS affiché comme montant** : ses trois usages sont des
+>   DÉNOMINATEURS (badge « Effort : X % », largeur de deux barres). « Une mention de provenance
+>   visible sur chacun » est donc inapplicable — il n'y a pas de second montant à étiqueter.
+> - Le vrai défaut est plus discret : un POURCENTAGE calculé sur une base différente du net affiché
+>   quelques lignes au-dessus, dans la MÊME carte fiscale.
+> - ⚠️ **L'écart « 154 $/mois, 3,1 % » était une valeur de fixture** : mesuré sur quatre paires
+>   brut/net, il CHANGE DE SIGNE (−0,3 %, −1,8 %, +2,6 %, +3,5 %). Il mesure la distance entre la
+>   paie réelle et le modèle fiscal, pas un biais du moteur.
+> - **Décision routée** (`docs/A_FAIRE_MOI.md`) avec le tableau des quatre mesures : aligner le
+>   dénominateur (déplace le badge de ~1,4 pt) ou nommer la base (ne déplace rien, recommandé).
+
 > ## 🟦 Session 2026-09-03 — Lot 107 : un réglage qui ne pilote rien, figé plutôt que tranché
 > `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — **aucun code de prod touché**, donc aucun déploiement à
 > vérifier. Moitié prouvable livrée, décision routée.

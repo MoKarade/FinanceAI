@@ -134,13 +134,26 @@
   être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
   seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
   (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
-- [ ] **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
-  PRÉ-EXISTANT) — deux « net » de PROVENANCE différente coexistent sur l'écran Budget :
-  l'Objectif Revenus affiche le net RECALCULÉ depuis le brut par `calculateFiscalReport`
-  (4 846 $ mesuré sur la fixture) tandis que la carte de répartition du couple et le score de
-  santé affichent `netSalary × multiplier` (5 000 $) — 154 $/mois, 3,1 % d'écart. Aucun des deux
-  n'est faux ; c'est leur COEXISTENCE non expliquée qui trompe. Trancher : une source unique, ou
-  une mention de provenance visible sur chacun.
+- [ ] ⏸️ **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
+  PRÉ-EXISTANT · **RE-RECENSÉ le 2026-09-03, la description était FAUSSE sur un point décisif** ·
+  **décision ROUTÉE à Marc**, `docs/A_FAIRE_MOI.md`) — deux « net » de PROVENANCE différente
+  coexistent bien sur l'écran Budget :
+  · le **RECALCULÉ** depuis le brut par `calculateFiscalReport` — `fiscalBreakdown.netDisplay`,
+    affiché comme « Revenu Net Disponible » et servant d'`objectif` à la tuile Revenus ;
+  · le **SAISI** — `netSalary × multiplier` (`user1IncomeDisplay`/`user2IncomeDisplay`).
+  ⚠️ **Le net SAISI n'est JAMAIS affiché comme un montant.** Le ticket annonçait « la carte de
+  répartition affiche 5 000 $ » : vérifié ligne à ligne, ses trois seuls usages sont des
+  DÉNOMINATEURS — le badge « Effort: X % » et la largeur des deux barres de répartition. Il n'y a
+  donc **aucun second montant à étiqueter**, et « une mention de provenance visible sur chacun »
+  est inapplicable telle quelle. Ce qui existe est plus discret : un POURCENTAGE calculé sur une
+  base différente du net affiché quelques lignes au-dessus, dans la MÊME carte.
+  ⚠️ **L'écart n'est pas le « 154 $/mois, 3,1 % » du ticket** : c'est une valeur de fixture. MESURÉ
+  sur quatre paires brut/net réalistes, il change de SIGNE — `−0,3 %` (8 200/5 620), `−1,8 %`
+  (7 100/4 995), `+2,6 %` (5 000/3 600), `+3,5 %` (12 000/7 500). Ce n'est pas un biais du moteur :
+  c'est la distance entre la paie RÉELLE de l'utilisateur et ce que le modèle fiscal prédit depuis
+  son brut. Les deux chiffres sont légitimes et disent des choses différentes.
+  **Décision pour Marc** (elle change un pourcentage affiché) : aligner le dénominateur d'« Effort »
+  sur le net recalculé de la même carte, ou garder la paie déclarée et le NOMMER.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :

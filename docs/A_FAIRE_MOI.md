@@ -86,6 +86,41 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[BUDGET-DEUX-NETS-MEME-ECRAN]` — « Effort : X % » n'est pas calculé sur le net affiché (2026-09-03)
+
+**Ce qui se passe.** Dans la carte fiscale de l'écran Budget, la ligne **« Revenu Net Disponible »**
+est calculée depuis ton **brut**, par le moteur fiscal. Juste en dessous, le badge **« Effort : X % »**
+de chaque conjoint est calculé sur le **net que tu as saisi** dans ton profil. Deux bases
+différentes, à quelques lignes d'écart, sans que rien ne le dise.
+
+**Ce n'est pas un bug de calcul.** Les deux chiffres sont justes : l'un dit ce que le modèle fiscal
+prédit à partir de ton salaire brut, l'autre ce que tu reçois réellement d'après ta paie. Leur écart
+mesure la distance entre les deux — utile en soi.
+
+**L'écart, mesuré sur quatre paires réalistes** (il change de signe, ce n'est pas un biais) :
+
+| Brut / mois | Net saisi | Net recalculé | Écart |
+|---|---|---|---|
+| 8 200 $ | 5 620 $ | 5 604 $ | **−0,3 %** |
+| 7 100 $ | 4 995 $ | 4 906 $ | **−1,8 %** |
+| 5 000 $ | 3 600 $ | 3 695 $ | **+2,6 %** |
+| 12 000 $ | 7 500 $ | 7 763 $ | **+3,5 %** |
+
+Sur un « Effort » de 40 %, un écart de 3,5 % déplace le badge d'environ **1,4 point**.
+
+**⚠️ Le ticket d'origine se trompait sur un point** : il annonçait que la carte de répartition
+*affiche* le net saisi (« 5 000 $ »). Vérifié ligne à ligne — il n'est **jamais affiché comme
+montant**, il ne sert que de dénominateur au badge « Effort » et à la largeur des barres. Il n'y a
+donc pas de second montant à étiqueter, et le correctif « mettre une mention sur chacun » ne
+s'applique pas tel quel.
+
+**Deux options, et je ne tranche pas parce que la première change un pourcentage que tu vois :**
+1. **Aligner** le dénominateur d'« Effort » sur le net recalculé de la même carte. Le badge devient
+   cohérent avec le chiffre au-dessus, mais sa valeur bouge (jusqu'à ~1,4 point).
+2. **Garder ta paie déclarée** comme base — c'est défendable, c'est l'argent que tu touches vraiment
+   — et le **nommer** sur le badge (« sur ta paie déclarée »). Aucun chiffre ne bouge.
+   *(ma recommandation : c'est celle qui ne déplace rien et qui supprime quand même la confusion)*
+
 ## `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — un réglage de rendement qui ne fait rien (2026-09-03)
 
 **Le fait, mesuré.** L'app a **deux** réglages de rendement : un taux **global** (`returnRate`) et

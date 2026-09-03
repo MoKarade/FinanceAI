@@ -15,6 +15,7 @@
 > - ⚠️ Passer à zéro a créé un second trou, fermé dans le même lot : sans offender réel, « aucun
 >   trouvé » ne prouve plus que le motif marche → anti-vacuité explicite, prouvée par perturbation.
 > - 3 perturbations, 3 rouges ciblés (offender neuf · motif cassé · exemption retirée).
+> - Gate complet VERT : **5 375 tests / 532 fichiers**, exit 0.
 
 > ## 🟦 Session 2026-09-03 — Lot 116 : l'ordre du classement de stratégies est épinglé
 > `[ENG-RANKING-ORDER-PIN]` livré — **aucun code de prod touché** (une garde). Aucun déploiement.

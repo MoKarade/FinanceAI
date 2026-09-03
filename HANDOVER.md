@@ -17,6 +17,7 @@
 >   cause — ne jamais re-baser mécaniquement. Elle épingle l'ORDRE, jamais les scores.
 > - ⚠️ Un rouge ABSENT est une mesure : inverser le sens de l'impôt ne retourne pas `balanced`, qui
 >   est dominé par le poids `estate` (0,4 vs 0,25).
+> - Gate complet VERT : **5 374 tests / 532 fichiers**, exit 0.
 
 > ## 🟦 Session 2026-09-03 — Lot 115 : le dividende réputé n'est plus imposé deux fois
 > `[FISC-DIV-ACB-STEPUP]` livré — **code de prod money-critical touché** (`taxDecember.ts`,

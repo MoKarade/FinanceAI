@@ -10,6 +10,31 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[ENG-RANKING-ORDER-PIN]` — LIVRÉ (lot 116, PR #847)
+
+L'ORDRE complet du classement de stratégies est épinglé sur les résultats RÉELS du moteur (cinq
+stratégies, quatre objectifs), pas seulement sur des scénarios synthétiques. `rankStrategies`
+normalise en min-max sur l'ensemble comparé : déplacer une grandeur d'un seul scénario change
+l'échelle de tous les autres, donc le conseil de décaissement affiché peut basculer sans qu'aucun
+test unitaire ne bronche.
+
+⚠️ **L'ordre que donnait le ticket était PÉRIMÉ.** Il annonçait « balanced : MELTDOWN > PRIO_REER >
+AUTO » comme « LA baseline à pinner ». Mesuré : `balanced` intercale DEBT_FIRST et PRIO_CELI entre
+les deux, et PRIO_REER passe derrière PRIO_CELI. Un ordre écrit dans un ticket est une photo prise à
+une date — d'autant que `[FISC-DIV-ACB-STEPUP]` (lot 115, le même jour) déplace `estateNetWorth`.
+
+Ordres mesurés (célibataire 58 ans, retraite 62, 450 k$ REER / 150 k$ non-enreg / 120 k$ CELI) —
+les quatre objectifs en donnent quatre DIFFÉRENTS, ce qui est ce qui rend le pin utile :
+· tax : AUTO > PRIO_REER > DEBT_FIRST > MELTDOWN > PRIO_CELI
+· balanced : MELTDOWN > DEBT_FIRST > PRIO_CELI > PRIO_REER > AUTO
+· wealth : MELTDOWN > PRIO_CELI > DEBT_FIRST > PRIO_REER > AUTO
+· fire : DEBT_FIRST > MELTDOWN > PRIO_CELI > PRIO_REER > AUTO
+
+Garde : `tests/services/rankStrategiesOrdreComplet.test.ts`. Deux perturbations aux signatures
+distinctes : échanger les poids `estate`/`tax` ne fait rougir que `balanced` ; inverser le sens de
+l'impôt fait rougir `tax` et le contraste nommé, mais PAS `balanced` — mesuré, ce dernier est dominé
+par le poids `estate` (0,4 contre 0,25).
+
 ## 2026-09-03 — `[FISC-DIV-ACB-STEPUP]` — LIVRÉ (lot 115, PR #846)
 
 Le dividende réputé du non-enregistré était imposé chaque année, mais son montant restait dans le

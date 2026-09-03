@@ -401,6 +401,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // ménage accGrossIncomeYear a été SUPPRIMÉ (plus aucun lecteur) — un total se dérive par somme,
     // il ne se co-tient pas (PARTAGER-LE-MONTANT-PAS-SES-REFLETS).
     let accGrossIncomeYearByUser: [number, number] = [0, 0];
+    // [RRSP-FIRST-YEAR-13M] Tampon d'UN mois entre la production du revenu gagné et son versement
+    // à l'accumulateur annuel, pour que le versement ait lieu APRÈS le reset de janvier.
+    // ⚠️ Il est VIDÉ à chaque mois : entre deux itérations il vaut toujours [0, 0], donc aucun
+    // instantané Monte Carlo n'a besoin de le porter (contrairement à l'accumulateur lui-même).
+    let grossIncomeEnAttenteByUser: [number, number] = [0, 0];
     let accRrspYear = 0;
 
     // donCredit [FA-6-CREDIT-CAP] = crédit-don accumulé (positif) ; plafonné à l'impôt dû puis appliqué
@@ -1140,11 +1145,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // lit : −12 173 $/an de droits mesurés (−50 159 $ de NW à 12 ans). MÊME critère que
             // reerShares (l. 438) — pas soloHousehold : après décès/divorce, activeIncome met déjà
             // le brut du conjoint à 0 et le repli est alors un no-op.
+            // [RRSP-FIRST-YEAR-13M] Le revenu gagné du mois est mis EN ATTENTE ici et versé à
+            // l'accumulateur annuel APRÈS le reset de janvier (juste après le bloc `janResult`).
+            // Versé ici, le revenu de JANVIER entrait dans l'assiette de l'année qui venait de se
+            // clore : le premier cycle comptait 13 mois. Mesuré sur un mono-gagnant à 100 000 $ —
+            // droits REER de 19 500 $ au lieu de 18 000 $ (= 18 000 × 13/12, +8,33 %), une seule
+            // fois, puis 18 000 $/an.
+            // ⚠️ Le SECOND producteur du même accumulateur (le congé parental, plus bas) verse
+            // DÉJÀ après le bloc de janvier : ce lot aligne les deux, il n'invente pas une règle.
+            // ⚠️ `accCapitalGainsYear` a l'air d'avoir le même défaut (il est alimenté avant
+            // janvier) — il ne l'a PAS : il est accumulé, imposé et remis à zéro entièrement dans
+            // le bloc de DÉCEMBRE, donc sa position par rapport à janvier est sans objet. Vérifié
+            // avant d'élargir ce lot.
             if (activeUsersCount > 1) {
-                accGrossIncomeYearByUser[0] += activeGrossAddByUser[0];
-                accGrossIncomeYearByUser[1] += activeGrossAddByUser[1];
+                grossIncomeEnAttenteByUser[0] += activeGrossAddByUser[0];
+                grossIncomeEnAttenteByUser[1] += activeGrossAddByUser[1];
             } else {
-                accGrossIncomeYearByUser[0] += activeGrossAddByUser[0] + activeGrossAddByUser[1];
+                grossIncomeEnAttenteByUser[0] += activeGrossAddByUser[0] + activeGrossAddByUser[1];
             }
             unemployedMonthsRemaining = aiResult.newUnemployedMonths;
             ltdMonthsRemaining = aiResult.newLtdMonths;
@@ -1565,6 +1582,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // Logs
             janResult.logs.forEach(msg => flowEventsLog.push(msg));
         }
+
+        // [RRSP-FIRST-YEAR-13M] Versement du revenu gagné du mois, APRÈS le reset de janvier :
+        // il appartient à l'année qui COMMENCE, jamais à celle qui vient de se clore. Rien entre
+        // sa mise en attente et ce point ne lit `accGrossIncomeYearByUser`, et aucun `continue`
+        // ne saute cette ligne (vérifié) — le mois ne peut donc pas se perdre.
+        accGrossIncomeYearByUser[0] += grossIncomeEnAttenteByUser[0];
+        accGrossIncomeYearByUser[1] += grossIncomeEnAttenteByUser[1];
+        grossIncomeEnAttenteByUser = [0, 0];
 
         // Cycle 10/23 split: Auto-vehicle → ./projection/vehicleCycle (processAutoVehicleReplacement)
         monthsSinceLastVehicle++;

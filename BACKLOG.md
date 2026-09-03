@@ -395,12 +395,6 @@
   `tests/services/projection.helpers.test.ts:80` dans le même lot.
 - [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
   datée en tête de `docs/BACKLOG_ARCHIVE.md`).
-- [ ] **`[RRSP-FIRST-YEAR-13M]`** (S, FAIBLE [MESURÉ — revue #679, PRÉEXISTANT]) — la PREMIÈRE
-  année de droits REER est calculée sur **13 mois** de revenu gagné (l'accumulation du mois de
-  janvier précède le reset du même mois ; fenêtre glissante ensuite). Mesuré : mono-gagnant
-  100 k$, droits an 2 = 19 500 $ = 18 000 × 13/12 (+8,33 % une seule fois), puis 18 000 $/an.
-  Biais BORNÉ documenté dans `FISCAL_REFERENCE.md` §REER — corriger = décaler l'accumulation ou
-  exclure janvier du premier cycle, avec goldens re-basés.
 - [ ] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
   **14 valeurs 2010→2023** (22 000 → 30 780) qui n'apparaissent NULLE PART dans
   `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via

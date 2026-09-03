@@ -847,9 +847,22 @@ moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : AR
 > mono-gagnant 250 k$ : 45 000 → 34 480 $ (−10 520, le chiffre du ticket au dollar) ; couple
 > 125/125 : inchangé (45 000) ; 90/10 sous plafond : inchangé (36 000) ; le FE d'un conjoint
 > sans revenu ne réduit PLUS le room de l'autre (10 000 → 18 000, clamp par personne).
-> ⚠️ **Biais assumé et borné** (`[RRSP-FIRST-YEAR-13M]`, préexistant) : la PREMIÈRE année de droits
-> compte 13 mois de revenu gagné (+8,33 % une seule fois, ex. 19 500 au lieu de 18 000 sur
-> 100 k$) ; fenêtre glissante de 12 mois ensuite — la règle ARC stricte est l'année civile N.
+> ✅ ~~**Biais assumé et borné** (`[RRSP-FIRST-YEAR-13M]`)~~ — **CORRIGÉ le 2026-09-03** (lot 113).
+> Le revenu gagné du mois était versé à l'accumulateur annuel AVANT le reset de janvier : le revenu
+> de janvier entrait dans l'assiette de l'année qui venait de se CLORE. L'assiette est désormais
+> l'année CIVILE, comme l'exige l'ARC.
+> ⚠️ **La description d'origine sous-estimait le défaut sur un point** : elle annonçait « 13 mois la
+> première année, fenêtre glissante de 12 mois ensuite ». La fenêtre glissante n'était pas neutre —
+> elle courait de février à janvier, donc en avance d'un mois sur l'année civile, ce qui gonfle
+> l'assiette de tout salaire qui CROÎT. Mesuré à 3 %/an sur 100 000 $ : avant, 19 545 puis 18 586,
+> 19 144, 19 718… ; après, exactement 18 % × 100 000 × 1,03ⁿ (18 000, 18 540, 19 096, 19 669…),
+> soit ≈ 0,25 %/an de droits fantômes EN PLUS du +8,33 % initial.
+> ⚠️ **À salaire CONSTANT, le décalage de fenêtre est strictement invisible** (les deux fenêtres
+> contiennent le même total) — c'est ce qui l'avait fait passer pour neutre. Seule une fixture à
+> croissance non nulle l'observe.
+> ⚠️ **Effet sur l'argent** : nul tant que les droits ne LIMITENT personne (mesuré identique au
+> dollar près sur une fixture cotisant 6 000 $/an contre 18 000 $ de droits) ; **−311 $ à −411 $**
+> de patrimoine final sur 8 ans quand ils saturent — les droits fantômes gonflaient l'abri fiscal.
 
 > ### Au-delà du barème : `inflation + 0,5 pp` — hypothèse de MODÈLE, PAS une valeur sourcée
 >

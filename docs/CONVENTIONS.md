@@ -10589,6 +10589,39 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 107 (2026-09-03) — l'alarme d'un ticket se re-mesure autant que son défaut
+
+`L-ALARME-D-UN-TICKET-SE-REMESURE-AUTANT-QUE-SON-DEFAUT`
+
+Le ticket portait deux affirmations. La première — « `projection.returnRate` ne pilote aucune
+croissance du moteur » — est **exacte**, vérifiée comportementalement : faire passer le champ du
+simple au TRIPLE laisse le patrimoine final identique au dollar près, alors que la carte par compte
+le déplace de plus de 10 %. La seconde — « des dizaines de fixtures fixent `returnRate` sans
+`returnRates`, elles tournent sur les défauts sans le savoir » — est **fausse aujourd'hui** :
+**72 fichiers** de test posent le champ, **69** posent aussi la carte, et par SITE il en reste
+**trois**, tous des tests d'UI où le singulier est le consommateur légitime.
+
+Ce sont deux assertions de nature différente, et on n'a pas le réflexe de les traiter pareil : le
+DÉFAUT décrit un mécanisme (stable tant que le code ne change pas), l'ALARME décrit une POPULATION
+(qui bouge à chaque lot, sans que personne touche au ticket). Une alarme périmée est plus coûteuse
+qu'un défaut périmé : elle dimensionne le lot, et ici elle aurait fait ouvrir des dizaines de
+fixtures pour n'en trouver aucune fautive. **Mesurer par SITE et pas par FICHIER** est ce qui a
+tranché — 72 fichiers « concernés » se réduisent à 3 sites réels.
+
+⚠️ **La moitié prouvable se livre, la décision se route — et la garde EST la moitié prouvable.**
+Retirer le champ ou le câbler change ce que l'utilisateur voit (le « coût d'opportunité » de Projets
+de vie et l'hypothèse de croissance de l'atelier Immobilier le lisent pour de vrai), donc la réponse
+appartient à Marc. Ce qui se livre sans lui, c'est de FIGER le fait : si quelqu'un câble le champ un
+jour, un test rougit, et le câblage devient un acte délibéré au lieu d'un accident. Un fait
+surprenant que rien ne défend se re-découvre — et ce champ-là avait déjà fait dérailler deux mesures.
+
+⚠️ **Et un ticket voisin s'est révélé CADUQUE dans le même passage** :
+`[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]` décrivait un vrai défaut de vie privée, corrigé deux jours
+plus tôt sous `[A11Y-PRIVACY-HEALTH-RAW]` — par le correctif même qu'il prescrivait. Vérifié
+COMPORTEMENTALEMENT et non par grep : un compte d'occurrences de `PrivateAmount` dirait « il y en a
+cinq » sans rien prouver du masquage ; c'est la garde dédiée, qui asserte l'absence des deux montants
+dans le DOM en mode discret, qui ferme le ticket (`UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`).
+
 ### Lot 106 (2026-09-03) — une affirmation JURIDIQUE non citée hérite de l'autorité du document
 
 `UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`

@@ -238,6 +238,16 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un chiffre qui sert de DÉNOMINATEUR n'est pas un chiffre AFFICHÉ** : un ticket décrivait « deux
+  net qui coexistent à l'écran » et prescrivait « une mention de provenance sur chacun ». Recensé :
+  le second n'est JAMAIS affiché comme montant — ses trois usages sont des dénominateurs (un badge
+  « Effort : X % », deux largeurs de barre). Le correctif prescrit était inapplicable, et le vrai
+  défaut plus discret : un POURCENTAGE calculé sur une autre base que le net affiché juste au-dessus,
+  dans la même carte. « Deux valeurs coexistent » ≠ « deux valeurs sont affichées » — la question qui
+  tranche est : *puis-je les pointer toutes les deux sur une capture d'écran ?* ⚠️ Et son écart
+  chiffré (« 154 $, 3,1 % ») était une valeur de FIXTURE : mesuré sur quatre paires, il change de
+  SIGNE (−0,3 % à +3,5 %) — il mesure la distance entre la paie réelle et le modèle, pas un biais
+  (`UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE`, 2026-09-03).
 - **L'ALARME d'un ticket se re-mesure autant que son DÉFAUT** : un ticket portait les deux — « ce
   champ ne pilote rien » (exact, vérifié en le triplant : patrimoine identique au dollar près) et
   « des dizaines de fixtures tournent sur les défauts sans le savoir » (FAUX : 72 fichiers posent le

@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Tes dividendes n'étaient plus imposés deux fois)
+
+- **Corrigé** : sur ton compte non enregistré, l'app considère qu'une partie du rendement t'est
+  versée en dividendes, et elle l'impose chaque année — c'est juste. Mais comme cet argent reste
+  dans le compte, il était **ré-imposé une seconde fois** plus tard, dans le gain en capital, le
+  jour où tu vends (ou à ton décès). En vrai, un dividende réinvesti augmente ton « prix d'achat
+  fiscal » : c'est ce qui empêche la double imposition, et ça manquait.
+- **Combien** : sur 500 000 $ de placements non enregistrés à 5 %/an, tu récupères **1 900 $ à
+  10 ans, 12 100 $ à 20 ans, 31 100 $ à 30 ans**. L'écart grandit avec le temps, puisque c'est un
+  petit ajustement oublié **chaque année**. Ta succession y gagne autant.
+
+---
+
 ## [unreleased] — 2026-09-03 (Tes droits REER se comptent enfin sur l'année civile)
 
 - **Corrigé** : l'app comptait ton revenu de janvier dans l'année qui venait de se terminer. La

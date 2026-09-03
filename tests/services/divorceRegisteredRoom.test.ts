@@ -91,10 +91,18 @@ describe('[ENG-DIVORCE-ROOM-COUPLE] les droits enregistrés suivent le nombre de
     // Le SIGNE est le bon sens : la marche ouvrait des droits que rien ne justifiait. Que ces deux
     // goldens bougent PROUVE au passage que le chemin corrigé est réellement couvert.
     it('sans divorce ni décès, la sortie est INCHANGÉE', () => {
-        expect(Math.round(finalNW({}, false))).toBe(22_861_914);
+        // Re-basé 2026-09-03 ([FISC-DIV-ACB-STEPUP] lot 115, **+65 105 $**, était 22 861 914) :
+        // l'ACB du non-enregistré monte désormais du dividende réputé, donc le gain latent ne porte
+        // plus la somme déjà imposée. Vrai changement fiscal, sens attendu (NW ↑). Ce que ce test
+        // DÉFEND — « sans divorce ni décès, ce lot-ci ne change rien » — est intact ; seule l'ancre
+        // de valeur bouge, et l'écart relatif (+0,28 %) est cohérent avec un portefeuille de 22 M$
+        // dont une part importante est non enregistrée.
+        expect(Math.round(finalNW({}, false))).toBe(22_927_019);
     });
 
     it('le scénario de décès n\'est pas perturbé par ce lot', () => {
-        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_428_892);
+        // Re-basé 2026-09-03 (même cause, **+96 997 $**, était 44 428 892 — soit +0,22 %, le même
+        // ordre relatif que ci-dessus sur un patrimoine deux fois plus gros).
+        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_525_889);
     });
 });

@@ -11875,3 +11875,52 @@ qu'il ne saura jamais que c'est le bouton qui a coûté la moitié de sa project
 NÉGATIF (−423 648 $ sur 30 ans à 150 k$ de revenu), ce qui a tout l'air d'un second bug à router.
 C'en est un connu, documenté sous `[PROJ-TAXPAID-LABEL]` avec son clamp là où il est lu. Grepper
 le nom AVANT d'écrire un ticket : un commentaire qui porte un ID de lot est exactement fait pour ça.
+
+### `UN-ACB-MANQUANT-N-EST-PAS-UN-IMPOT-PAYE` (2026-09-03, lot 115)
+
+`[FISC-DIV-ACB-STEPUP]` annonçait « ≈ 248 k$ d'ACB manquant ≈ 58 k$ d'impôt en double » sur
+500 000 $ à 5 %/20 ans. Le mécanisme était JUSTE — le dividende réputé était imposé chaque année
+sans que le prix de base rajusté ne monte, donc la même somme était ré-imposée dans le gain latent.
+Le CHIFFRE, lui, était une arithmétique, pas une mesure : mesuré sur la configuration exacte du
+ticket, c'est **+12 055 $** de patrimoine à 20 ans, pas 58 k$.
+
+**Pourquoi l'écart, et c'est la leçon** : un ACB manquant ne coûte rien tant qu'on ne vend pas.
+Convertir un ACB manquant en impôt suppose que TOUT le gain sera réalisé — ce qu'une projection ne
+fait pas. La grandeur qui approche le coût plein est la **succession**, qui liquide tout (+30 975 $
+à 30 ans). Avant de traduire un stock fiscal (ACB, report, crédit inutilisé) en dollars d'impôt,
+demander **quand et dans quelle proportion il se réalise** : entre les deux il y a un facteur qui
+n'est ni 0 ni 1.
+
+⚠️ **Corollaire de garde — ancrer sur la RELATION, jamais sur une valeur de fixture supposée.** Mon
+premier jet asserait « le pas d'ACB vaut 500 000 × 5 % × 30 % = 7 500 $ » d'après les soldes de
+DÉPART. Mesuré, le premier décembre ne voit que **178 587 $** de non-enregistré (l'allocation a déjà
+déplacé de l'argent). L'assertion refondue — `delta === computeAnnualNonRegDividends(nonReg vu par
+ce décembre, taux vu)` — est à la fois plus forte et indépendante de la fixture.
+
+⚠️ **Corollaire de couverture** : deux perturbations, deux signatures distinctes, et c'est ce
+contraste qui prouve la couverture. Retirer le pas côté MODULE fait rougir les 4 cas (producteur +
+chaîne) ; retirer son application côté APPELANT n'en fait rougir que 2 — le producteur reste vert.
+Sans la seconde, rien ne distinguerait « le module calcule » de « le moteur applique »
+(`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
+
+⚠️ **Corollaire de re-basement — « re-base MASSIF » annoncé, cinq assertions réelles.** Le ticket
+prévenait d'un « re-base massif de goldens, lot dédié ». Mesuré : **5 assertions dans 4 fichiers**,
+toutes du même signe (+), toutes explicables par la même phrase. L'avertissement d'un ticket sur le
+COÛT d'un lot se re-mesure comme son défaut — il dimensionne la décision de le prendre ou non, et
+celui-ci aurait pu faire renoncer à un correctif d'une ligne.
+
+⚠️ **Et deux des cinq portaient le titre « NEUTRALITÉ NW », qui a tout d'une CONCEPTION à ne pas
+re-baser.** C'est le test lui-même qui a tranché : il porte écrit « si un futur refactor fait fuir un
+compteur d'affichage dans un solde, ce golden casse », et quatre re-bases antérieures y sont
+annotées « vrai changement fiscal, PAS une fuite de compteur — la neutralité reste garantie par
+l'identité `ttp == Σ FluxImpots` ». La conception est défendue AILLEURS, par une identité ; ici
+l'ancre n'est qu'une valeur. Un golden bien écrit dit lui-même à quelles conditions il se re-base —
+le lire est plus rapide que de raisonner sur son titre.
+
+⚠️ **Trois ancres n'apparaissent qu'après la réparation des précédentes** : `toBe` interrompt le
+test, donc les assertions suivantes du même cas ne sont jamais évaluées. Un premier gate rouge
+sous-compte les re-bases à faire ; ne pas conclure « c'est fini » avant un gate COMPLET re-joué.
+
+⚠️ Et comme au lot 113, **le correctif juste imitait un jumeau déjà présent dans le fichier** :
+`processGainHarvesting` rend un delta que l'appelant applique à l'ACB, dix lignes plus haut. Deuxième
+lot d'affilée où la spécification du correctif était déjà écrite à côté du défaut.

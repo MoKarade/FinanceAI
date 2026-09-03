@@ -135,7 +135,13 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // de DIVIDENDES de décembre (le meltdown remplit le non-enregistré → §3 non nul) porte
         // désormais l'érosion des crédits d'âge après 65 ans. Vrai changement fiscal, sens attendu
         // (impôt ↑ → NW ↓) ; les GAINS restent nuls ici (accCapitalGainsYear = 0, cf. note #564).
-        expect(melt.finalNetWorth).toBeCloseTo(-7267.80, 0);
+        // Re-basé SCIEMMENT 2026-09-03 ([FISC-DIV-ACB-STEPUP] lot 115, **+751,02 $**) : le dividende
+        // réputé du non-enregistré fait désormais monter l'ACB, donc le gain latent ne contient
+        // plus la somme déjà imposée. Vrai changement FISCAL, sens attendu (moins d'impôt en double
+        // → NW ↑), PAS une fuite de compteur d'affichage — le meltdown remplit le non-enregistré,
+        // donc §3 est non nul sur cette fixture. La neutralité que ce golden défend reste garantie
+        // par l'identité `ttp == Σ FluxImpots` de projection.totalTaxesPaid.test.ts.
+        expect(melt.finalNetWorth).toBeCloseTo(-6516.78, 0);
         // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
         // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
@@ -153,6 +159,6 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // ici : ce point n'exerce PAS cette branche-là.
         // Re-basé 2026-08-20 ([FISC-TAXDEC-INCR], était 208 594,46) : même −57,98 $ que le NW
         // final ci-dessus — l'estate en hérite tel quel, aucun effet propre à la branche estate.
-        expect(melt.estateNetWorth).toBeCloseTo(208536.48, 0);
+        expect(melt.estateNetWorth).toBeCloseTo(209287.50, 0);
     });
 });

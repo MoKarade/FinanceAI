@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 115 : le dividende réputé n'est plus imposé deux fois
+> `[FISC-DIV-ACB-STEPUP]` livré — **code de prod money-critical touché** (`taxDecember.ts`,
+> `projection.ts`). Déploiement à vérifier.
+> - Le dividende réputé du non-enregistré était imposé chaque année sans que l'ACB monte : la même
+>   somme était ré-imposée dans le gain latent, à la réalisation comme au décès. Le module rend
+>   désormais `nonRegACBAdd`, l'appelant l'applique — **même patron que `processGainHarvesting`**.
+> - ⚠️ **Le ticket avait raison sur le mécanisme et surestimait le chiffre** (« ≈ 58 k$ » par
+>   arithmétique). Mesuré : **+1 911 $ / +12 055 $ / +31 055 $** de patrimoine à 10, 20, 30 ans, et
+>   +7 739 / +16 703 / +30 975 $ de succession. Un ACB manquant n'est un impôt que le jour où on vend.
+> - Montant = dividende BRUT (ni le majoré, fiction de calcul ; ni le net, l'impôt sortant à part).
+> - ⚠️ Garde ancrée sur la RELATION, pas sur une valeur de fixture : mon 1er jet supposait 7 500 $
+>   d'après les soldes de départ, le premier décembre n'en voit que 178 587 $.
+> - Garde : `tests/services/dividendeReputeStepUpAcb.test.ts` (2 perturbations, signatures distinctes).
+> - ⚠️ « Re-base MASSIF » annoncé par le ticket = **5 assertions dans 4 fichiers**, toutes du même
+>   signe. Deux s'intitulaient « NEUTRALITÉ NW » (titre de CONCEPTION) — c'est le test lui-même qui
+>   a tranché : quatre re-bases y sont annotées « vrai changement fiscal, PAS une fuite de compteur ».
+> - Gate complet VERT : **5 367 tests / 531 fichiers**, exit 0.
+
 > ## 🔴 Session 2026-09-03 — Lot 114 : un bouton de l'UI détruit 46 % de la projection
 > `[ENG-T1213-NET-MONTHLY]` — **aucun code de prod touché** : le fait est FIGÉ, la décision est
 > ROUTÉE (c'est le point le plus grave de `docs/A_FAIRE_MOI.md`). Aucun déploiement à vérifier.

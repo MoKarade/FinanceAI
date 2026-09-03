@@ -73,7 +73,11 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // des crédits d'âge est désormais facturée à la bande de dividendes du non-enregistré que
         // le meltdown remplit (impôt ↑ → NW ↓). La fixture FERR ne bouge PAS (pension couvrante,
         // aucune bande de placement) — l'effet est ciblé, c'est la preuve inverse.
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-7267.80, 0);
+        // Re-basé SCIEMMENT 2026-09-03 ([FISC-DIV-ACB-STEPUP] lot 115, **+751,02 $**) : l'ACB du
+        // non-enregistré monte désormais du dividende réputé, donc le gain latent ne porte plus la
+        // somme déjà imposée. Vrai changement fiscal (NW ↑), pas un double comptage du compteur —
+        // ce que ce fichier DÉFEND, l'identité `ttp == Σ FluxImpots`, est vérifié à part et reste vert.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-6516.78, 0);
         expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(372625.14, 0);
     });
 

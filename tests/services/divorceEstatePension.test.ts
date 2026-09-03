@@ -127,7 +127,12 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // (le patrimoine courant descend), mais aussi moins de REER à LIQUIDER au décès, donc moins
         // d'impôt latent (la succession remonte). Une grandeur nette d'impôt latent et une grandeur
         // brute ne bougent pas dans le même sens — re-baser sans le vérifier l'aurait masqué.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_563_138);
+        // Re-basé 2026-09-03 ([FISC-DIV-ACB-STEPUP] lot 115, **+8 442 $**) : l'ACB du non-enregistré
+        // monte du dividende réputé, donc le gain latent que la succession LIQUIDE ne contient plus
+        // la somme déjà imposée chaque année. Le signe va cette fois dans le MÊME sens que le
+        // patrimoine (les deux montent) — contrairement au re-basement du lot 113, où retirer des
+        // droits REER baissait le patrimoine tout en remontant la succession.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_571_580);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
@@ -140,6 +145,8 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // et étaient donc identiques des deux côtés. Ici la cause est un déplacement de cotisations,
         // que le tirage Monte Carlo dilue. Patrimoine final MC : 2 925 097 → 2 922 954 (−2 143 $),
         // de nouveau en sens INVERSE de la succession.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_903_953);
+        // Re-basé 2026-09-03 (même cause, **+3 264 $**) : écart plus petit qu'en déterministe
+        // (+8 442 $) — le tirage Monte Carlo dilue un effet qui dépend du solde non-enregistré.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_907_217);
     });
 });

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 363 tests** Vitest
-(530 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 367 tests** Vitest
+(531 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,27 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un ACB manquant n'est pas un impôt payé** : `[FISC-DIV-ACB-STEPUP]` annonçait « ≈ 58 k$ d'impôt
+  en double » à 20 ans par arithmétique sur l'ACB manquant. Mécanisme JUSTE (le dividende réputé est
+  imposé sans que le prix de base monte, donc ré-imposé dans le gain latent), chiffre SURESTIMÉ :
+  mesuré **+1 911 $ / +12 055 $ / +31 055 $** de patrimoine à 10, 20 et 30 ans. Un stock fiscal (ACB,
+  report, crédit inutilisé) ne coûte rien tant qu'il n'est pas RÉALISÉ — avant de le traduire en
+  dollars, demander quand et dans quelle proportion il se réalise ; la grandeur qui approche le coût
+  plein est la SUCCESSION, qui liquide tout. ⚠️ Garde : ancrer sur la RELATION, jamais sur une valeur
+  de fixture supposée — mon 1er jet asserait 7 500 $ d'après les soldes de DÉPART, or le premier
+  décembre n'en voit que 178 587 $. ⚠️ Deux perturbations aux signatures DISTINCTES prouvent la
+  couverture des deux moitiés (module → 4 rouges, appelant → 2). ⚠️ Et 2ᵉ lot d'affilée où le
+  correctif juste IMITE un jumeau déjà présent dans le fichier (`processGainHarvesting` rend déjà un
+  delta d'ACB) (`UN-ACB-MANQUANT-N-EST-PAS-UN-IMPOT-PAYE`, 2026-09-03).
+  ⚠️⚠️ **« Re-base MASSIF de goldens » annoncé par le ticket = 5 assertions dans 4 fichiers.**
+  L'avertissement d'un ticket sur le COÛT d'un lot se re-mesure comme son défaut : il dimensionne la
+  décision de le prendre, et celui-là aurait pu faire renoncer à un correctif d'une ligne. ⚠️ Deux
+  des cinq s'intitulaient « NEUTRALITÉ NW » — un titre de CONCEPTION, qu'on ne re-base pas. C'est le
+  test lui-même qui a tranché : il porte quatre re-bases antérieures annotées « vrai changement
+  fiscal, PAS une fuite de compteur — la neutralité reste garantie par l'identité `ttp == Σ
+  FluxImpots` ». **Un golden bien écrit dit à quelles conditions il se re-base ; le lire bat tout
+  raisonnement sur son titre.** ⚠️ Et `toBe` INTERROMPT le cas : trois ancres ne sont apparues
+  qu'après réparation des précédentes — un premier gate rouge SOUS-COMPTE les re-bases.
 - **Un ticket qui n'annonce qu'un MONTANT ne dit pas sa gravité** : `[ENG-T1213-NET-MONTHLY]` portait
   « MOYEN, −183 598 $/30 ans ». Re-mesuré à quatre horizons : **−16,1 % à 5 ans, −24,5 % à 10,
   −29,2 % à 20, −45,7 % (−1 031 419 $) à 30** — cinq fois le chiffre annoncé, et un POURCENTAGE qui

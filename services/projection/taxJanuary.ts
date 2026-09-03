@@ -2,7 +2,7 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { RRIF_FIRST_WITHDRAWAL_AGE, rrifRateForAge } from './helpers';
+import { RRIF_FIRST_WITHDRAWAL_AGE, rrifRateForAge, projeterAuPatronMga } from './helpers';
 import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, LAST_KNOWN_RRSP_YEAR, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 import { formatCAD } from '../../utils/format';
 
@@ -193,9 +193,13 @@ export function processJanuaryReset(
     // contre l'indexation réellement observée (2,72 %/an de 2010 à 2026).
     // ⚠️ L'ancre était le littéral `2026` alors que la table va jusqu'à 2030 : la couture
     // 2030 → 2031 sautait de +1 663 $ (+4,54 %) en une année (mesuré à inflation 2 %).
+    // ⚠️ ANCRE DIFFÉRENTE des quatre autres sites du patron, et c'est VOULU : la base vient
+    // d'une TABLE qui s'arrête à `LAST_KNOWN_RRSP_YEAR`, donc on prolonge depuis CETTE année-là,
+    // pas depuis le début de la projection. La vitesse est partagée, l'ancre ne l'est pas
+    // (`UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE`).
     const rrspYearlyCap = RRSP_ANNUAL_LIMITS[nextLoopYear]
-        ?? (RRSP_ANNUAL_LIMITS[LAST_KNOWN_RRSP_YEAR]
-            * Math.pow(1 + (ctx.simInflation + 0.5) / 100, nextLoopYear - LAST_KNOWN_RRSP_YEAR));
+        ?? projeterAuPatronMga(RRSP_ANNUAL_LIMITS[LAST_KNOWN_RRSP_YEAR], ctx.simInflation,
+            nextLoopYear - LAST_KNOWN_RRSP_YEAR);
     // [FISC-RRSP-ROOM-PER-USER] Règle ARC (décision Marc A1 2026-08-20, ADR 0014 : « par
     // personne ») : les droits REER se calculent PAR PERSONNE — room_i = min(plafond,
     // revenu_gagné_i × 18 %) − FE_i, clampé à 0 par personne, puis sommé. L'ancien calcul

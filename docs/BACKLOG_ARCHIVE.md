@@ -10,6 +10,36 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[MGA-PATRON-5-COPIES]` (PR lot 105)
+
+Le patron d'indexation `base × (1 + (inflation + 0,5)/100)^n` était recopié à **5 sites** —
+re-recensé et confirmé : `retirementIncome.ts` (×2), `activeIncome.ts`, `childrenReee.ts`,
+`taxJanuary.ts`. Source unique : `projeterAuPatronMga` + `MGA_EXCES_SUR_INFLATION_PP` dans
+`services/projection/helpers.ts`.
+
+**La divergence que le ticket demandait de TRAITER est VOULUE.** `taxJanuary` utilise l'exposant
+`nextLoopYear − LAST_KNOWN_RRSP_YEAR` là où les quatre autres utilisent `yearsElapsed` : ce ne sont
+pas deux vitesses, ce sont deux **ANCRES**. Quatre sites partent d'une base connue pour l'année
+courante ; `taxJanuary` part d'une table qui s'arrête à sa dernière année publiée. Les uniformiser
+aurait re-fabriqué la marche de **+4,54 % en une année** que
+`UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE` avait corrigée. Ce qui est mis en commun est
+donc la **vitesse seule** ; l'ancre et le nombre d'années restent chez l'appelant, et c'est écrit
+dans la fonction comme dans `taxJanuary`.
+
+⚠️ **Le ratchet fiscal a arrêté le lot** (deux entrées devenues fantômes, un compte faux, une
+constante hors inventaire) : aucun faux positif, c'est ce qu'une déduplication doit provoquer dans un
+registre indexé par fichier. **Cinq entrées éparpillées sont devenues UNE**, à l'endroit où
+l'hypothèse vit désormais.
+
+**Aucun montant ne bouge** : l'arithmétique est identique. 4 gardes, 4 perturbations dont une
+mesurée REDONDANTE et écrite comme telle (la prose française écrit « 0,5 » avec une virgule, le
+motif cherche le point décimal — le décommentage ne tire pas encore).
+
+⚠️ **Incident d'environnement** : ce lot a été écrit DEUX FOIS. Un redémarrage de conteneur pendant
+le gate a restauré une branche périmée (`claude/lot-92`, 12 commits de retard) et effacé le travail
+non commité. La règle du dépôt le disait déjà (« committer et POUSSER avant toute attente longue ») —
+appliquée au second jet : commit et push AVANT le gate complet.
+
 ## 2026-09-03 — `[GOLDEN-RQAP-NON-COUVERT]` (PR lot 104)
 
 Le ticket disait : « aucun golden n'exerce le plafond RQAP », preuve à l'appui (`[RQAP-CAP-98K]`

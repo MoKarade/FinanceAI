@@ -10589,6 +10589,55 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 105 (2026-09-03) — la divergence que le ticket voulait corriger était la bonne réponse
+
+`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`
+
+Le ticket signalait cinq copies d'un patron d'indexation et notait, comme une alarme, que « la
+divergence a DÉJÀ commencé » : un site utilise un exposant différent des quatre autres. Réflexe
+attendu : unifier. **C'aurait été une régression.** Une extrapolation porte DEUX paramètres — la
+VITESSE et l'ANCRE — et seule la vitesse était commune :
+
+- quatre sites indexent une base connue pour l'année COURANTE (MGA de la RRQ, plafond RQAP, maximum
+  assurable de l'AE) → l'exposant est le nombre d'années écoulées depuis le début de la projection ;
+- le cinquième indexe une base lue dans une TABLE qui s'arrête à sa dernière année publiée → son
+  exposant part de CETTE année-là.
+
+Les aligner aurait re-fabriqué exactement la marche de **+4,54 % en une année** que
+`UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE` avait corrigée quelques semaines plus tôt —
+le dépôt aurait payé deux fois le même défaut, la seconde fois au nom de la « déduplication ».
+**Avant d'unifier N copies, séparer ce qui est partagé de ce qui ne l'est pas** : ici la source
+unique n'expose que la vitesse, et l'ancre reste un ARGUMENT de l'appelant. Le test le verrouille en
+montrant que les deux ancres donnent des résultats distants de plus de 10 % sur le même plafond.
+
+⚠️⚠️ **Le ratchet fiscal a arrêté ce lot, et il avait raison — deuxième fois.** Déplacer le demi-point
+dans `helpers.ts` a rendu FANTÔMES deux entrées de l'inventaire (`activeIncome`, `taxJanuary`), fait
+mentir le compte d'une troisième (`retirementIncome` déclarait 4 occurrences, il en reste 2) et
+introduit une constante fiscale hors inventaire. Aucune de ces trois alertes n'est un faux positif :
+c'est exactement ce qu'une déduplication DOIT provoquer dans un registre qui suit les valeurs par
+FICHIER. Le résultat est un progrès que je n'avais pas prévu — **cinq entrées éparpillées sont
+devenues UNE**, à l'endroit où l'hypothèse vit désormais. Comme au lot 84 : un garde-fou qui rougit
+sur un ajout légitime pose souvent la bonne question, et la réponse n'est jamais de déclarer une
+exception.
+
+⚠️ **Une perturbation mesurée REDONDANTE, écrite comme telle.** Faire lire au scan la source BRUTE
+au lieu de la source décommentée ne fait rougir personne — parce que la prose française écrit
+« inflation + 0,5 pp » avec une **virgule** et que le motif cherche le **point** décimal de
+JavaScript. La précaution reste (le jour où un commentaire cite le code tel quel, la garde
+accuserait le fichier qui la documente), mais elle ne tire pas encore, et le test le dit plutôt que
+de se doter d'une fixture qui n'exerce rien.
+
+⚠️⚠️ **INCIDENT D'ENVIRONNEMENT — ce lot a été écrit DEUX FOIS.** Un redémarrage de conteneur
+PENDANT le gate complet a restauré une branche périmée (`claude/lot-92`, 12 commits de retard) et
+effacé tout le travail non commité : source unique, cinq migrations, garde, inventaire fiscal,
+documents. Quatrième revert de la session, et le premier qui coûte un lot entier. La règle existait
+déjà (`CLAUDE.md` §11 : « committer et POUSSER avant TOUTE attente longue — panel, suite de tests,
+CI ») ; je l'avais lue et pas appliquée au gate, en la classant mentalement comme « avant les
+attentes d'agents ». **Le gate complet EST une attente longue** (~10 min), c'est même la plus longue
+du cycle. Second jet : typecheck + garde neuve + ratchet fiscal en ciblé, puis commit et push, PUIS
+le gate complet. Ce que le dépôt permet explicitement, et la seule façon de ne pas payer trois fois
+(`COMMITTER-AVANT-TOUTE-ATTENTE-LONGUE-INCLUT-LE-GATE`).
+
 ### Lot 104 (2026-09-03) — une garde de chaîne se pose sur une PENTE, pas sur un montant
 
 `UNE-GARDE-DE-CHAINE-SE-POSE-SUR-UNE-PENTE-PAS-SUR-UN-MONTANT`

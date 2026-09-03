@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 328 tests** Vitest
-(521 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 332 tests** Vitest
+(522 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,21 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Avant d'unifier N copies, séparer ce qui est PARTAGÉ de ce qui ne l'est pas** : un ticket
+  signalait cinq copies d'un patron d'indexation et, comme une alarme, qu'« un site diverge ». Le
+  réflexe — aligner — aurait été une RÉGRESSION : une extrapolation porte deux paramètres, la
+  VITESSE et l'ANCRE, et seule la vitesse était commune (quatre sites partent de l'année courante,
+  le cinquième d'une table qui s'arrête à sa dernière année publiée). Les aligner aurait re-fabriqué
+  la marche de +4,54 % que `UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE` venait de
+  corriger — le même défaut payé deux fois, la seconde au nom de la déduplication. La source unique
+  n'expose que la vitesse ; l'ancre reste un ARGUMENT
+  (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`, 2026-09-03).
+  ⚠️⚠️ **« Committer avant toute attente longue » INCLUT le gate complet** : un redémarrage de
+  conteneur pendant les ~10 min du gate a restauré une branche périmée et effacé ce lot entier, qui
+  a dû être réécrit. La règle était en §11, lue et mal cadrée — je la réservais aux attentes
+  d'agents. Le gate est la plus longue attente du cycle. Ordre correct : vérifs CIBLÉES (typecheck +
+  gardes neuves + ratchet) → commit → push → gate complet
+  (`COMMITTER-AVANT-TOUTE-ATTENTE-LONGUE-INCLUT-LE-GATE`).
 - **Une garde de CHAÎNE se pose sur une PENTE, pas sur un montant** : le ticket demandait un golden
   pour le plafond RQAP ; un golden épingle des nombres et se fait re-baser à la première indexation.
   Ce que le plafond produit d'observable est un CHANGEMENT DE RÉGIME — sous le plafond la prestation

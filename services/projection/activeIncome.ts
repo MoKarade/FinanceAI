@@ -10,6 +10,7 @@ import { tickJobLoss, tickLtd } from './stochasticEvents';
 
 import { AE_MAX_INCOME } from '../../utils/tax';
 import type { FiscalReport } from '../../utils/tax';
+import { projeterAuPatronMga } from './helpers';
 
 /** Signature injectée de `calculateFiscalReport` (même patron que `childrenReee.ts`).
  *  ⚠️ La raison de l'injection est la TESTABILITÉ (brancher un stub/espion), PAS une dépendance
@@ -104,7 +105,7 @@ export function computeActiveIncome(
         // MGA que `rqapCapProjected` (inflation simulée + 0,5 pt — biais documenté §2).
         const grossMarcAnnual = ctx.grossMarcBaseAnnual * salaryGrowthFactor;
         if (grossMarcAnnual > 0) {
-            const aeCapProjected = AE_MAX_INCOME * Math.pow(1 + (ctx.simInflation + 0.5) / 100, yearsElapsed);
+            const aeCapProjected = projeterAuPatronMga(AE_MAX_INCOME, ctx.simInflation, yearsElapsed);
             const aeGrossAnnual = Math.min(grossMarcAnnual, aeCapProjected) * 0.55;
             incomeMarc = ctx.calculateFiscalReport(
                 aeGrossAnnual, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, undefined, 0,

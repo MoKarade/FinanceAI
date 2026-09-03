@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Une seule écriture pour la vitesse d'indexation des plafonds)
+
+- **Réorganisé** : la façon dont l'app prolonge les plafonds gouvernementaux au-delà des années
+  publiées (RRQ, RQAP, assurance-emploi, REER) était recopiée à cinq endroits. Elle n'existe plus
+  qu'une fois. **Aucun chiffre ne change** — c'est exactement le même calcul.
+- **Ce qui n'a PAS été uniformisé, exprès** : les cinq endroits ne partent pas de la même année de
+  référence. Quatre partent d'aujourd'hui, un part de la dernière année que le gouvernement a
+  publiée. Les aligner aurait recréé un saut de +4,5 % en une année, corrigé il y a quelques
+  semaines. C'est la *vitesse* qui est partagée, pas le point de départ.
+
+---
+
 ## [unreleased] — 2026-09-03 (Un filet sous le congé parental à haut salaire)
 
 - **Ajouté** : un test de bout en bout qui vérifie que le plafond du RQAP mord vraiment quand le

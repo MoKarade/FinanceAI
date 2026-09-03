@@ -14,6 +14,7 @@ import {
     type DaycareType, type SchoolType, type ActivitiesLevel,
     type UniversityType, type CarGift,
 } from './childCosts';
+import { projeterAuPatronMga } from './helpers';
 
 // ── Constantes fiscales REEE — SCEE / IQEE ──────────────────────────────────────
 // Source de vérité : docs/FISCAL_REFERENCE.md § « REEE — SCEE / IQEE » (FISC-REEE-CONST).
@@ -86,7 +87,7 @@ const RQAP_REPLACEMENT_RATE_BASE = 0.55;
  * prestation est sous-estimée avec l'horizon) et hérité du patron MGA. Écart chiffré en §2.
  */
 const rqapCapProjected = (simInflation: number, yearsElapsed: number): number =>
-    RQAP_MAX_INCOME * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
+    projeterAuPatronMga(RQAP_MAX_INCOME, simInflation, yearsElapsed);
 
 type FiscalReportFn = (
     grossIncome: number,

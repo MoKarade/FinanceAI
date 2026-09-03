@@ -911,38 +911,11 @@
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,
   investissements) ; tables sr-only faites pour les donuts Budget.
 
-- [ ] 🔴 **`[FINTABLE-INVESTMENTS-MUET]`** (S, **demandé par Marc 2026-08-17**) — quand Plaid refuse le
-  produit `investments` pour une institution (`PRODUCTS_NOT_SUPPORTED`, `ITEM_ERROR`), les positions
-  n'arrivent jamais et l'app affiche un patrimoine de placements **VIDE, sans dire pourquoi**.
-  ⚠️⚠️ **DIAGNOSTIC CORRIGÉ par recensement le 2026-09-03** (lot 98). L'affirmation ci-dessous
-  (« `services/fintable/` ne traite AUCUN code d'erreur Plaid ») est **imprécise, et elle envoie au
-  mauvais correctif**. Mesuré contre le code :
-  - La raison EST déjà captée. `readFintableSnapshot` (`services/fintable/readSnapshot.ts`) remplit
-    `holdingsSkipped: Array<{ accountId, reason }>` pour chaque compte dont la lecture des positions
-    échoue — son commentaire dit même « jamais silencieux ».
-  - Mais son **seul consommateur est `scripts/fintableDry.ts`**, un script CLI de développement. Zéro
-    consommateur d'interface : grep du dépôt entier.
-  - Les DEUX chemins de sync composent leurs `warnings` de la même façon —
-    `[...preflightWarnings, ...mapReport.warnings, ...applyWarnings]` dans `browserSync.ts` ET dans
-    `mcp/runFintableSync.ts` — et **aucun des deux n'y verse `snapshot.holdingsSkipped`**. La cause
-    est donc classée puis JETÉE avant l'écran (classe `UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`).
-  - Même constat pour la santé de connexion : `FintableConnection` porte `healthy`, `statusText` et
-    `needsReconnect`, et ces trois champs ont **zéro occurrence dans `components/`**.
-  **Conséquence sur le correctif** : il ne s'agit PAS d'ajouter un traitement de codes Plaid, mais de
-  brancher ce qui existe déjà. `FintableSyncReport.warnings` (`string[]`, PERSISTÉ et lu par
-  `FintableSyncCard`) est le canal existant — mais il aplatit tout en chaînes : pour distinguer
-  « aucune position » de « ce compte ne FOURNIT pas les positions », il faut un champ dédié portant
-  l'identité du compte, ajouté AVEC son consommateur d'écran dans le même lot (leçon du lot 95 :
-  jamais un champ publié que personne ne lit).
-  ⚠️ Note connexe déjà dans `types.ts` : `FintableBrokerBalance` documente que Fintable ne rend JAMAIS
-  les positions de certains comptes (`FINTABLE-POSITIONS`, Disnat hors SnapTrade) — le cas du ticket
-  est donc STRUCTUREL pour certaines institutions, pas seulement accidentel.
-  C'est la classe `SILENCE-READS-AS-BROKEN`, la 4e du même motif : Marc conclurait à un bug de
-  l'app alors que la donnée n'a **jamais été fournie** par sa banque.
-  **Correctif** : distinguer « aucune position » de « ce compte ne fournit pas les positions », et le
-  DIRE là où les placements s'affichent. ⚠️ Ne PAS afficher 0 $ : c'est un chiffre crédible et faux.
-  ⚠️ L'action de RÉPARATION est chez Fintable (reconnecter l'institution sans `investments`, ajouter
-  le courtier comme source distincte) — l'app ne peut que rendre la cause visible.
+- [x] 🔴 **`[FINTABLE-INVESTMENTS-MUET]` — LIVRÉ le 2026-09-03** (PR #830), voir
+  `docs/BACKLOG_ARCHIVE.md`. `services/fintable/comptesSansPositions.ts` traduit `holdingsSkipped`
+  en `FintableSyncReport.comptesSansPositions` (identité + LIBELLÉ humain + raison) ; les DEUX
+  chemins de sync le remplissent depuis cette source unique, et `FintableSyncCard` ÉNUMÈRE la cause
+  au lieu de la compter. Aucun montant, aucune promesse de guérison automatique.
 
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le

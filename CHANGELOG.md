@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Tes placements vides disent enfin pourquoi)
+
+- **Corrigé** : quand ta banque ou ton courtier ne fournit pas le détail de tes positions, l'app
+  affichait un patrimoine de placements **vide, sans un mot**. Tu ne pouvais pas savoir si c'était un
+  bug de l'app ou une donnée jamais reçue. Elle le dit maintenant, **compte par compte**, avec le nom
+  du compte et la raison.
+- **La raison était déjà connue de l'app** — elle était mesurée à chaque synchro, puis jetée avant
+  d'arriver à l'écran. Elle n'était visible que dans un outil de développement.
+- **Elle dit aussi où ça se répare** : chez Fintable (reconnecter l'institution, ou ajouter le
+  courtier comme source distincte), pas dans cette app. Et elle ne te promet **pas** que ça marchera
+  au prochain essai : pour certaines institutions, les positions ne sont jamais fournies — te faire
+  réessayer indéfiniment serait pire que de le dire.
+- **Aucun montant n'est affiché à côté**, et surtout pas un « 0 $ » : le solde total du compte peut
+  être connu, c'est le détail des titres qui manque. Un zéro serait crédible et faux.
+
+---
+
 ## [unreleased] — 2026-09-03 (La même explication, sur la vue par mois)
 
 - **Complété** : l'explication de la marche au raccord, livrée juste avant pour la vue au jour,

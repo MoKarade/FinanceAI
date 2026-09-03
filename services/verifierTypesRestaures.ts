@@ -125,6 +125,13 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     'fintable', 'fintableRoles', 'frequency', 'historySymbol',
     'icon', 'id', 'image', 'industry',
     'insurer', 'kind', 'label', 'lastDate',
+    // [FINTABLE-INVESTMENTS-MUET] `comptesSansPositions` (le tableau lui-même, dont la présence est
+    // testée par clé) et `reason` (le motif lisible de chaque compte sans positions). `accountId` et
+    // `label` figurent déjà plus bas. ⚠️ Ces trois clés arrivent dans un champ PERSISTÉ
+    // (`FintableSyncReport`) : sans elles, la première synchro qui saute un compte rendrait la
+    // réhydratation impossible et VIDERAIT l'écran de Marc — le mode de panne exact de l'incident du
+    // 2026-09-01, attrapé ici par la garde de dérivation née de cet incident.
+    'comptesSansPositions', 'reason',
     'mimeType', 'model', 'municipality', 'name',
     'nature', 'nextDividendDate', 'notes', 'originalCategory',
     'owner', 'pattern', 'payee', 'priceHistory',

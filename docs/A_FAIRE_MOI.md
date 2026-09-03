@@ -86,6 +86,35 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[IMMO-3-FORMULES]` volet CLAMP — faut-il montrer une équité NÉGATIVE ? (2026-09-03)
+
+**Ce qui se passe.** Quand l'app reconstruit l'historique de ton immobilier, elle calcule l'équité
+d'un bien comme « ce qu'il vaut moins ce que tu dois dessus » — mais elle refuse le résultat
+négatif et affiche **zéro** à la place. Un bien qui vaut moins que son hypothèque (le cas
+*underwater* : marché en baisse, mise de fonds minimale, premières années) apparaît donc comme
+« ni dette ni valeur », alors que la réalité est un déficit.
+
+**Pourquoi ça compte.** Ce zéro ne se contente pas de cacher le déficit : il le **retire du
+patrimoine passé**. Ta courbe historique est alors trop haute d'exactement le montant du déficit,
+au moment précis où l'information serait la plus utile.
+
+**Pourquoi je ne tranche pas seul.** Retirer ce plancher change ce que l'écran MONTRE dans une
+situation difficile, et rien dans le dépôt ne dit laquelle des deux tu veux. Trois options :
+
+1. **Retirer le plancher** — la courbe dit la vérité, y compris quand elle est mauvaise. C'est
+   cohérent avec la règle « no-fake-data » du projet (un zéro crédible est pire qu'un chiffre juste
+   qui dérange). *Ma recommandation.*
+2. **Garder le plancher, mais le SIGNALER** — l'équité reste à zéro et une mention explique
+   « la valeur ne couvre pas l'hypothèque ». Plus doux, mais le patrimoine reste faux.
+3. **Ne rien changer** — statu quo, et j'ajoute une note dans la documentation pour que la limite
+   soit au moins écrite quelque part.
+
+**Ce qui est déjà fait.** L'autre moitié du même ticket est livrée : la prime d'assurance prêt
+(SCHL) manquait au calcul de l'historique, qui surestimait ton équité de 8 400 $ à 15 600 $ selon
+le profil. Corrigé et mesuré ; les deux formules de l'écran concordent maintenant.
+
+---
+
 ## `[ENG-GOALS-HORS-TOTALEXPENSES]` — un compteur de dépenses qui oublie tes objectifs (2026-09-03)
 
 **Ce qui se passe.** Quand un de tes objectifs financiers arrive à échéance, l'app sort l'argent du

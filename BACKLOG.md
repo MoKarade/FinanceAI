@@ -589,12 +589,21 @@
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
-- [ ] **`[IMMO-3-FORMULES]`** (M, MOYEN [Certain, mesuré 8 364 $] — panel #552) — TROIS formules
-  concurrentes pour l'équité passée/présente : `initPastPurchase` (SCHL, sans rénos), 
-  `runAmortization` (`realEstate.ts:118` — IGNORE la prime SCHL, clampe l'équité ≥ 0, rénos),
-  moteur mensuel. Écart mesuré 8 364,31 $ au raccord historique↔présent du MÊME écran. Fix :
-  intégrer la prime SCHL au principal de `runAmortization` (même `calculateSchlPremium`) + revisiter
-  le clamp ≥ 0 (perte d'info underwater), puis re-baseliner les tests d'historique.
+- [ ] ⏸️ **`[IMMO-3-FORMULES]`** (M — **VOLET SCHL LIVRÉ au lot 111bis/112 (PR #843)** ; il reste le
+  volet CLAMP, **DÉCISION ROUTÉE à Marc**, `docs/A_FAIRE_MOI.md`) — trois formules concurrentes pour
+  l'équité passée/présente : `initPastPurchase` (le présent du moteur), `runAmortization`
+  (l'historique) et le moteur mensuel.
+  ✅ **Volet SCHL** : `runAmortization` ignorait la prime d'assurance prêt que `initPastPurchase`
+  finançait — l'historique amortissait une dette trop petite et SURESTIMAIT l'équité. Mesuré à 5 %,
+  25 ans, croissance 3 % : **15 631 $ à 1 an / 14 137 $ à 5 ans / 11 798 $ à 10 ans** sur
+  420 000 $ à 5 % de mise (l'écart DÉCROÎT, la prime s'amortit), et **0 $ exactement** à 20 % de
+  mise (contrôle négatif). Les deux formules concordent désormais à moins d'1 $ à 5 ans. Garde :
+  `tests/services/schlDansAmortissementHistorique.test.ts`.
+  ⬜ **Volet CLAMP** : `runAmortization` publie `Equite: Math.max(0, valeur − solde)`. Un bien
+  *underwater* (qui vaut moins que son hypothèque) y apparaît donc à équité **nulle** au lieu de
+  négative — une perte d'information, et un patrimoine passé surévalué de tout le déficit. Retirer
+  le clamp change ce que l'écran MONTRE sur un cas où l'utilisateur est en difficulté : c'est un
+  arbitrage produit, routé plutôt que tranché seul.
 - [ ] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** (S — découverte `[FUZZ-ONETIME-FLOWS]` 2026-08-12,
   [Certain, mesuré au grep]) — `ProjectionConfig.propertyGrowthRate` (types.ts:219) n'est lu par
   AUCUN code de prod : le moteur ne lit que `goal.propertyGrowthRate` (realEstateMonth.ts:354,

@@ -149,9 +149,23 @@ export const runAmortization = (input: AmortizationInput): AmortizationResult =>
     startYear = new Date().getFullYear(),
   } = input;
 
-  const { monthlyMortgage: initialPayment, totalMortgage } = calculateMortgagePayment({
+  // [IMMO-3-FORMULES] La prime SCHL est FINANCÉE : elle s'ajoute au principal emprunté, elle
+  // n'ajoute AUCUNE valeur au bien. `pastPurchaseInit` le faisait déjà (`principal += premium`),
+  // pas cette fonction — d'où deux courbes d'équité concurrentes sur le MÊME écran, l'historique
+  // surestimant l'équité parce qu'il amortissait une dette trop petite.
+  // ⚠️ `propertyValue` reste ancré sur `price` (+ rénovations) plus bas : gonfler le prix pour
+  // financer la prime ferait monter la valeur du bien du même montant et INVERSERAIT le signe de
+  // l'écart — mesuré en écrivant ce lot.
+  // ⚠️ `calculateSchlPremium` rend `required: false` au-delà de 20 % de mise de fonds : le cas
+  // conventionnel reste bit-identique, aucune prime n'est inventée.
+  const schl = calculateSchlPremium({ price, downPayment });
+  const { monthlyMortgage: paymentSansPrime, totalMortgage: mortgageSansPrime } = calculateMortgagePayment({
     price, downPayment, rate, amortization,
   });
+  const totalMortgage = mortgageSansPrime + (schl.required ? schl.premium : 0);
+  const initialPayment = totalMortgage === mortgageSansPrime
+    ? paymentSansPrime
+    : calculateMortgagePayment({ price: totalMortgage, downPayment: 0, rate, amortization }).monthlyMortgage;
 
   const data: AmortizationYearPoint[] = [];
   let balance = totalMortgage;

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 350 tests** Vitest
-(527 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 356 tests** Vitest
+(528 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,18 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Une mesure avant/après par RACCOURCI DE PARAMÈTRE déplace deux grandeurs** : pour chiffrer la
+  prime SCHL absente de `runAmortization`, rappeler la fonction avec `price + prime` (au lieu
+  d'écrire le correctif) a rendu l'équité **plus haute** — `price` pilote le principal emprunté ET
+  la valeur du bien. Le raccourci finançait la prime et offrait un bien qui vaut la prime de plus ;
+  seul le SIGNE inattendu a démasqué la mesure, et il n'aurait rien dit si les deux effets avaient
+  poussé dans le même sens. Mesuré correctement : surestimation de **15 631 $ / 14 137 $ / 11 798 $**
+  à 1, 5 et 10 ans, **0 $ exactement** à 20 % de mise (contrôle négatif). ⚠️ Le piège se GARDE, pas
+  seulement se note — l'assertion « la valeur du bien reste `prix × croissance` » a pour perturbation
+  exactement le raccourci que j'avais pris. ⚠️ Et deux tests à mise ASSURABLE sont restés verts : l'un
+  n'asserte que des SIGNES, l'autre épingle l'année d'achat, qui ne passe pas par la fonction — c'est
+  l'EXPLICATION, pas le vert, qui autorise à livrer
+  (`UNE-MESURE-AVANT-APRES-PAR-RACCOURCI-DE-PARAMETRE-DEPLACE-DEUX-GRANDEURS`, 2026-09-03).
 - **Une GRAVITÉ classée depuis un PROFIL n'est pas une gravité** : `FISCAL_REFERENCE.md` classait le
   versement RAP manqué « LOW assumée (impact borné pour les profils qui gardent des liquidités) » — la
   parenthèse EST l'aveu que la mesure a été faite sur le profil de Marc. Sur un profil ordinaire

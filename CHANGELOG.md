@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (L'historique de ton immobilier oubliait l'assurance prêt)
+
+- **Corrigé** : quand tu achètes avec moins de 20 % de mise de fonds, la loi t'oblige à assurer ton
+  prêt (SCHL), et cette prime est **ajoutée à ce que tu empruntes**. L'app en tenait compte pour le
+  présent, mais pas pour reconstruire ton passé : la courbe historique amortissait une dette trop
+  petite et t'annonçait donc **plus d'équité que tu n'en avais**.
+- **Combien** : mesuré sur un condo de 420 000 $ acheté avec 5 % de mise, l'écart était de
+  **15 600 $ la première année**, **14 100 $ à cinq ans**, **11 800 $ à dix ans** — il rétrécit avec
+  le temps, la prime finissant par s'amortir comme le reste du prêt. Avec 20 % de mise ou plus,
+  **rien ne change** : il n'y a pas de prime.
+- **Ce que ça règle** : la petite marche que tu pouvais voir sur la courbe Futur à la jonction entre
+  ton passé et aujourd'hui. Les deux moitiés du graphe décrivent enfin le même prêt.
+
+---
+
 ## [unreleased] — 2026-09-03 (Un versement RAP que tu ne peux pas payer devient un revenu imposable)
 
 - **Corrigé** : quand tu achètes ta résidence avec le RAP (le retrait REER sans impôt pour une

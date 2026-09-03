@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 112 : la prime SCHL manquait à l'historique immobilier
+> `[IMMO-3-FORMULES]` **volet SCHL livré**, volet CLAMP routé — **code de prod touché**
+> (`services/realEstate.ts`). Déploiement à vérifier.
+> - `runAmortization` (l'historique) ignorait la prime d'assurance prêt que `initPastPurchase`
+>   (le présent) finançait : deux formules pour le MÊME prêt sur le MÊME écran, l'historique
+>   amortissant une dette trop petite et surestimant l'équité.
+> - **Mesuré** (420 000 $ à 5 % de mise, 5 %/25 ans) : surestimation de **15 631 $ à 1 an,
+>   14 137 $ à 5 ans, 11 798 $ à 10 ans** — elle DÉCROÎT, la prime s'amortissant. **0 $ exactement**
+>   à 20 % de mise (contrôle négatif). Les deux formules concordent désormais à moins d'1 $.
+> - ⚠️ **Piège de mesure payé** : mesurer par `price + prime` gonfle AUSSI la valeur du bien et
+>   INVERSE le signe. Gardé par une assertion dédiée, dont la perturbation est ce raccourci même.
+> - ⚠️ **Deux tests à mise ASSURABLE sont restés verts** — l'un n'asserte que des signes, l'autre
+>   épingle l'année d'achat qui ne passe pas par la fonction. Absence de couverture, pas d'effet.
+> - **Volet CLAMP routé à Marc** : `Equite: Math.max(0, …)` cache un bien *underwater* derrière un
+>   zéro et retire le déficit du patrimoine passé. Trois options, recommandation « retirer le
+>   plancher » (`docs/A_FAIRE_MOI.md`).
+> - Garde : `tests/services/schlDansAmortissementHistorique.test.ts` (6 cas · 3 perturbations).
+> - Gate complet VERT : **5 356 tests / 528 fichiers**, exit 0. CI verte sur les six checks.
+
 > ## 🟦 Session 2026-09-03 — Lot 111 : un versement RAP manqué devient un revenu imposable
 > `[ENG-RAP-MISSED-REPAYMENT-TAX]` livré — **code de prod money-critical touché**
 > (`services/projection/realEstateMonth.ts`, `services/projection.ts`). Déploiement à vérifier.

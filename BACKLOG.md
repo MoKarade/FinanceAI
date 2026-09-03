@@ -914,8 +914,29 @@
 - [ ] 🔴 **`[FINTABLE-INVESTMENTS-MUET]`** (S, **demandé par Marc 2026-08-17**) — quand Plaid refuse le
   produit `investments` pour une institution (`PRODUCTS_NOT_SUPPORTED`, `ITEM_ERROR`), les positions
   n'arrivent jamais et l'app affiche un patrimoine de placements **VIDE, sans dire pourquoi**.
-  ⚠️ **Vérifié** : `services/fintable/` ne traite AUCUN code d'erreur Plaid — l'erreur est remontée
-  telle quelle par Fintable et l'app n'en sait rien.
+  ⚠️⚠️ **DIAGNOSTIC CORRIGÉ par recensement le 2026-09-03** (lot 98). L'affirmation ci-dessous
+  (« `services/fintable/` ne traite AUCUN code d'erreur Plaid ») est **imprécise, et elle envoie au
+  mauvais correctif**. Mesuré contre le code :
+  - La raison EST déjà captée. `readFintableSnapshot` (`services/fintable/readSnapshot.ts`) remplit
+    `holdingsSkipped: Array<{ accountId, reason }>` pour chaque compte dont la lecture des positions
+    échoue — son commentaire dit même « jamais silencieux ».
+  - Mais son **seul consommateur est `scripts/fintableDry.ts`**, un script CLI de développement. Zéro
+    consommateur d'interface : grep du dépôt entier.
+  - Les DEUX chemins de sync composent leurs `warnings` de la même façon —
+    `[...preflightWarnings, ...mapReport.warnings, ...applyWarnings]` dans `browserSync.ts` ET dans
+    `mcp/runFintableSync.ts` — et **aucun des deux n'y verse `snapshot.holdingsSkipped`**. La cause
+    est donc classée puis JETÉE avant l'écran (classe `UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`).
+  - Même constat pour la santé de connexion : `FintableConnection` porte `healthy`, `statusText` et
+    `needsReconnect`, et ces trois champs ont **zéro occurrence dans `components/`**.
+  **Conséquence sur le correctif** : il ne s'agit PAS d'ajouter un traitement de codes Plaid, mais de
+  brancher ce qui existe déjà. `FintableSyncReport.warnings` (`string[]`, PERSISTÉ et lu par
+  `FintableSyncCard`) est le canal existant — mais il aplatit tout en chaînes : pour distinguer
+  « aucune position » de « ce compte ne FOURNIT pas les positions », il faut un champ dédié portant
+  l'identité du compte, ajouté AVEC son consommateur d'écran dans le même lot (leçon du lot 95 :
+  jamais un champ publié que personne ne lit).
+  ⚠️ Note connexe déjà dans `types.ts` : `FintableBrokerBalance` documente que Fintable ne rend JAMAIS
+  les positions de certains comptes (`FINTABLE-POSITIONS`, Disnat hors SnapTrade) — le cas du ticket
+  est donc STRUCTUREL pour certaines institutions, pas seulement accidentel.
   C'est la classe `SILENCE-READS-AS-BROKEN`, la 4e du même motif : Marc conclurait à un bug de
   l'app alors que la donnée n'a **jamais été fournie** par sa banque.
   **Correctif** : distinguer « aucune position » de « ce compte ne fournit pas les positions », et le

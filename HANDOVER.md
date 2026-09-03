@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 98 : recensement de `[FINTABLE-INVESTMENTS-MUET]` (doc seule)
+> **Aucun code de prod touché.** Le ticket (demandé par Marc) partait d'un diagnostic imprécis qui
+> envoyait au mauvais correctif ; le recensement est consigné DANS le ticket pour que le lot suivant
+> parte du bon endroit.
+> - La raison EST captée : `readFintableSnapshot` remplit `holdingsSkipped: {accountId, reason}`.
+> - Son **seul consommateur est `scripts/fintableDry.ts`** (CLI de dev). Zéro consommateur d'UI.
+> - Les DEUX chemins de sync (`browserSync.ts`, `mcp/runFintableSync.ts`) composent `warnings` de la
+>   même façon et **aucun n'y verse `holdingsSkipped`** → cause classée puis JETÉE.
+> - `FintableConnection.healthy` / `statusText` / `needsReconnect` : zéro occurrence dans `components/`.
+> - ⚠️ Correctif à faire : BRANCHER l'existant, pas ajouter un traitement de codes Plaid. Le canal
+>   `FintableSyncReport.warnings` existe et est persisté, mais il aplatit en chaînes — un champ dédié
+>   (avec l'identité du compte) est nécessaire, ajouté AVEC son consommateur d'écran (leçon lot 95).
+> - ⚠️ `types.ts` documente déjà que Fintable ne rend JAMAIS les positions de certains comptes
+>   (`FINTABLE-POSITIONS`, Disnat hors SnapTrade) : le cas est STRUCTUREL, pas seulement accidentel.
+
 > ## 🟦 Session 2026-09-03 — Lot 97 : la marche du raccord expliquée sur la vue par DÉFAUT
 > `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — ferme ce que le lot 96 avait routé.
 > - **Mesuré** : la marche mensuelle annule TOUT le mois courant (−10 900 $ contre −900 $ au jour sur

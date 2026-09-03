@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-03 (Un problème de données qui revient n'est plus passé sous silence)
+
+- **Corrigé** : quand l'app détecte une donnée corrompue (un prix illisible, un montant impossible),
+  elle l'inscrit dans son journal d'erreurs — mais **une seule fois**, pour ne pas se répéter des
+  milliers de fois pendant un même recalcul. Le problème : cette règle valait pour **toute la
+  session**. Si le problème disparaissait puis revenait, l'app restait muette — et l'app est faite
+  pour rester ouverte des jours.
+- **Maintenant** : le silence dure une minute, pas la session. Une rafale reste absorbée (mesuré :
+  10 000 détections en moins de 3 millisecondes), mais une vraie récidive se signale à nouveau.
+
+---
+
 ## [unreleased] — 2026-09-03 (Une seule écriture pour la vitesse d'indexation des plafonds)
 
 - **Réorganisé** : la façon dont l'app prolonge les plafonds gouvernementaux au-delà des années

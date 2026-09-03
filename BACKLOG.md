@@ -75,8 +75,25 @@
   ⚠️ **Dernière étape du ticket** : basculer le ratchet de « compter » à « interdire » (plafond → 0),
   ce qui est le seul état qui empêche la classe de revenir. Aujourd'hui il naît non bloquant AVEC sa
   raison datée dans le code, comme l'exige la convention pour une garde qui rougirait à la livraison.
-- [ ] **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
-  panel PR #756) — trois angles morts de restitution de l'état « donnée corrompue » introduit au
+- [ ] ⏸️ **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
+  panel PR #756 · **RE-RECENSÉ le 2026-09-03 : (b), (d) et (e) sont DÉJÀ LIVRÉS ; (c) est LIVRÉ au
+  lot 109 ; il ne reste que (a), routé à Marc**) —
+  · **(b) et (e) — DÉJÀ LIVRÉS.** L'`aria-label` des métriques indisponibles ne dit plus « donnée
+    indisponible » pour tous les états : `HealthIndicator.tsx` compose désormais
+    `${m.label} : ${healthRawText(m.raw, isPrivacyMode)}`, et le commentaire qui l'explique CITE cet
+    ID. Vérifié le 2026-09-03.
+  · **(d) — DÉJÀ LIVRÉ.** `m.help` ne transite plus uniquement par l'attribut `title` : il est rendu
+    dans un `<span className="sr-only">`, donc présent dans l'arbre d'accessibilité. Un commentaire
+    sur place raconte le défaut d'origine.
+  · **(c) — LIVRÉ au lot 109.** Le `Set` jamais purgé devient une `Map` signature → horodatage, avec
+    une fenêtre de réarmement de 60 s. Valeur DÉRIVÉE d'une mesure (rafale : 10 000 appels en
+    **2,7 ms** sur `assetValueCad`), pas choisie.
+  · **(a) — RESTE, et c'est une décision produit** → `docs/A_FAIRE_MOI.md`. Le cas « AUCUNE métrique
+    mesurable » est déjà traité honnêtement (`totalScore === null` a son propre libellé). Ce qui
+    reste : UNE métrique exclue pour corruption, parmi d'autres valides, est invisible dans le
+    résumé — qui n'affiche que le score global, **par conception**. Le signaler demande d'ajouter
+    une affirmation à un résumé dont c'est justement le rôle de ne pas en faire.
+  Contexte d'origine — trois angles morts de restitution de l'état « donnée corrompue » introduit au
   lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une
   métrique exclue pour CORRUPTION y est visuellement identique à une exclue pour absence légitime
   (FIRE non calculé), alors que la première est ACTIONNABLE ; (b) `HealthIndicator.tsx` annonce le

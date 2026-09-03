@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 109 : une récidive de corruption redevient audible
+> `[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]` (c) livré — **code de prod touché**
+> (`services/errorLogger.ts`).
+> - Le `Set` du throttle n'était JAMAIS purgé côté navigateur : « une fois par rafale » devenait
+>   « une fois par SESSION ». Devenu `Map` signature → horodatage, fenêtre de réarmement 60 s.
+> - **Valeur dérivée d'une MESURE** : rafale de 10 000 appels en **2,7 ms** sur `assetValueCad`.
+>   60 s = 4 ordres de grandeur au-dessus de la rafale, 4 en dessous d'une session longue.
+> - Pas de reset « par recalcul » : les appelants (hook, valorisation, hydratation) ne partagent
+>   AUCUNE occasion commune — c'est ce constat qui impose une fenêtre de temps.
+> - ⚠️ **3 des 5 sous-findings étaient DÉJÀ LIVRÉS** — (b), (e) et (d) — et deux portaient dans le
+>   code un commentaire qui CITE l'ID du ticket, lequel les affirmait encore au présent.
+> - ⚠️⚠️ Ma 3ᵉ perturbation ne changeait que la LECTURE d'une paire lecture/écriture : elle
+>   dupliquait « throttle supprimé » au lieu de tester la clé PAR SIGNATURE. Refaite des deux côtés.
+> - **(a) routé** : signaler une donnée invalide dans le RÉSUMÉ est une décision produit (trois
+>   options, recommandation « ne rien changer » — l'info est à un clic sur le détail).
+
 > ## 🟦 Session 2026-09-03 — Lot 108 : recensement de `[BUDGET-DEUX-NETS-MEME-ECRAN]` (doc seule)
 > **Aucun code touché.** Le ticket envoyait au mauvais correctif ; le recensement est consigné DANS
 > le ticket pour que le lot suivant parte du bon endroit.

@@ -4,6 +4,34 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-09-03 — MARC A TRANCHÉ HUIT DÉCISIONS (+ deux sous-questions)
+> Toutes consignées dans `docs/A_FAIRE_MOI.md` (marquées ✅ RÉPONDU, énoncés d'origine conservés) et
+> converties en tickets actionnables dans `BACKLOG.md`. **Le backlog n'est plus bloqué.**
+> - ✅ `[ENG-T1213-NET-MONTHLY]` → retirer le bouton **+ forcer à OFF** — **LIVRÉ au lot 118**.
+> - ⬜ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → retirer le plancher `Math.max(0, …)` de l'équité.
+> - ⬜ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « sur ta paie déclarée » (aucun chiffre ne bouge).
+> - ⬜ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable (≠ ma reco, qui était de ne rien faire).
+> - ⬜ `[MIGRATE-GROSS-PROPOSER]` → proposer, JAMAIS écrire seul.
+> - ⬜ `[FMT-PROMPT-MIGRER]` → migrer les 17 sites **+ abandonner l'arrondi à 100 $** (≠ ma reco).
+>   ⚠️⚠️ **NON LIVRABLE SANS** corriger le texte de consentement, qui promet cet arrondi.
+> - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
+>   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-03 — Lot 118 : le bouton T1213 est retiré et neutralisé
+> `[ENG-T1213-NET-MONTHLY]` livré — **code de prod touché** (UI + moteur). Déploiement à vérifier.
+> - Bouton retiré de `AdvancedProjectionParams`, ET le moteur force `optimizeSourceDeductions: false`.
+> - ⚠️ **Les deux vont ENSEMBLE** : le réglage est PERSISTÉ. Retirer le seul bouton aurait laissé une
+>   config déjà à `true` bloquée avec −45,7 % et AUCUN recours. C'est la sous-question posée à Marc.
+> - Le champ reste dans le type, `@deprecated` : le supprimer exigerait une migration du schéma
+>   persisté — un risque sur les données pour un gain nul.
+> - **La garde du lot 114 s'est INVERSÉE** au même endroit → `t1213ToggleInerte.test.ts` : elle
+>   affirme désormais que le réglage ne change RIEN (`toBe`, pas une tolérance : même calcul).
+> - ⚠️ Incident de pipeline payé DEUX fois dans ce lot : un script docs interrompu par une ancre
+>   fausse a laissé CLAUDE.md/HANDOVER non écrits, et le commit est parti quand même (heredoc et
+>   `git commit` non chaînés par `&&` — le saut de ligne les sépare). Rattrapé en relisant le DIFF
+>   contre l'intention, comme la leçon du dépôt l'exige.
+> - Gate complet VERT après rebase sur le lot 117 : **5 376 tests / 532 fichiers**, exit 0.
+
 > ## 🟦 Session 2026-09-03 — Lot 117 : le ratchet des décommenteurs passe à INTERDIRE
 > `[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]` livré — **aucun code de prod touché**. Aucun déploiement.
 > - ⚠️ **Le travail décrit par le ticket n'existait plus** : il annonçait 15 décommenteurs à migrer,

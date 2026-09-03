@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 325 tests** Vitest
-(520 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 328 tests** Vitest
+(521 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,15 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Une garde de CHAÎNE se pose sur une PENTE, pas sur un montant** : le ticket demandait un golden
+  pour le plafond RQAP ; un golden épingle des nombres et se fait re-baser à la première indexation.
+  Ce que le plafond produit d'observable est un CHANGEMENT DE RÉGIME — sous le plafond la prestation
+  suit le salaire (0,291 $ par dollar de brut, mesuré), au-dessus elle est figée et chaque dollar est
+  perdu en entier (0,700, le taux net de la fixture) ; le RAPPORT des pentes (2,40) est la signature,
+  et il survit à l'indexation. ⚠️ Le moteur ne publie pas la prestation séparément : devant un champ
+  non publié, mesurer ce que sa présence CHANGE dans un champ qui l'est (une différence, puis sa
+  dérivée), jamais reconstruire le calcul dans le test
+  (`UNE-GARDE-DE-CHAINE-SE-POSE-SUR-UNE-PENTE-PAS-SUR-UN-MONTANT`, 2026-09-03).
 - ⚠️⚠️ **Corriger le FORMAT d'un montant RÉVÈLE sa fuite de vie privée** : les deux montants de
   `ChildPlanning` migrés vers `formatCAD` n'étaient pas enveloppés dans `<PrivateAmount>` et
   restaient lisibles en mode discret — ils échappaient à `amountPrivacyScan` tant qu'ils étaient

@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[GOLDEN-RQAP-NON-COUVERT]` (PR lot 104)
+
+Le ticket disait : « aucun golden n'exerce le plafond RQAP », preuve à l'appui (`[RQAP-CAP-98K]`
+déplaçait 2 750 $/an d'assiette et zéro golden n'avait bougé).
+
+**RE-MESURÉ avant de coder** — et confirmé : diviser `rqapCapProjected` par deux fait rougir
+**4 tests, tous unitaires sur le plafond lui-même**, et **zéro test de scénario**. Une mesure qui
+CONFIRME se publie autant qu'une réfutation.
+
+**Livré** : `tests/services/rqapPlafondScenario.test.ts`, une garde de CHAÎNE (pas au producteur).
+Elle ne fige aucun montant : elle mesure la **pente** de l'effet du congé par dollar de salaire du
+2ᵉ parent, de part et d'autre du plafond — **0,291 sous, 0,700 au-dessus, rapport 2,40** (mesuré le
+2026-09-03). Au-dessus du plafond la prestation est figée, donc chaque dollar de salaire est perdu
+en entier pendant le congé ; en dessous, la prestation suit. Le changement de RÉGIME est le fait
+défendu, et il survit à l'indexation.
+
+3 perturbations, 3 discriminantes : plafond supprimé, plafond divisé par deux, congé désactivé.
+
 ## 2026-09-03 — `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` (PR lot 103)
 
 Classe JUMELLE de `[FMT-TOLOCALESTRING-MONEY]` : un montant écrit `` `+${x}$` `` n'appelle aucune

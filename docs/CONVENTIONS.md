@@ -11903,6 +11903,24 @@ chaîne) ; retirer son application côté APPELANT n'en fait rougir que 2 — le
 Sans la seconde, rien ne distinguerait « le module calcule » de « le moteur applique »
 (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
 
+⚠️ **Corollaire de re-basement — « re-base MASSIF » annoncé, cinq assertions réelles.** Le ticket
+prévenait d'un « re-base massif de goldens, lot dédié ». Mesuré : **5 assertions dans 4 fichiers**,
+toutes du même signe (+), toutes explicables par la même phrase. L'avertissement d'un ticket sur le
+COÛT d'un lot se re-mesure comme son défaut — il dimensionne la décision de le prendre ou non, et
+celui-ci aurait pu faire renoncer à un correctif d'une ligne.
+
+⚠️ **Et deux des cinq portaient le titre « NEUTRALITÉ NW », qui a tout d'une CONCEPTION à ne pas
+re-baser.** C'est le test lui-même qui a tranché : il porte écrit « si un futur refactor fait fuir un
+compteur d'affichage dans un solde, ce golden casse », et quatre re-bases antérieures y sont
+annotées « vrai changement fiscal, PAS une fuite de compteur — la neutralité reste garantie par
+l'identité `ttp == Σ FluxImpots` ». La conception est défendue AILLEURS, par une identité ; ici
+l'ancre n'est qu'une valeur. Un golden bien écrit dit lui-même à quelles conditions il se re-base —
+le lire est plus rapide que de raisonner sur son titre.
+
+⚠️ **Trois ancres n'apparaissent qu'après la réparation des précédentes** : `toBe` interrompt le
+test, donc les assertions suivantes du même cas ne sont jamais évaluées. Un premier gate rouge
+sous-compte les re-bases à faire ; ne pas conclure « c'est fini » avant un gate COMPLET re-joué.
+
 ⚠️ Et comme au lot 113, **le correctif juste imitait un jumeau déjà présent dans le fichier** :
 `processGainHarvesting` rend un delta que l'appelant applique à l'ACB, dix lignes plus haut. Deuxième
 lot d'affilée où la spécification du correctif était déjà écrite à côté du défaut.

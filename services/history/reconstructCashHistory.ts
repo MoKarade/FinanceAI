@@ -25,6 +25,16 @@ export interface CashHistoryResult {
     points: CashHistoryPoint[];
     /** Mois de la 1re transaction connue ('YYYY-MM'), ou null. */
     firstMonth: string | null;
+    /**
+     * [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Flux NET du mois COURANT, celui que la reconstruction vient
+     * de DÉFAIRE pour produire son dernier point (le mois précédent).
+     *
+     * ⚠️ Même mécanisme que la variante quotidienne, mais la marche est structurellement PLUS GROSSE :
+     * ici on annule un MOIS entier de mouvements, pas une journée — et c'est la vue par DÉFAUT.
+     * Les deux points restent JUSTES ; ce qui manquait est de le DIRE (`SILENCE-READS-AS-BROKEN`).
+     * ⚠️ Ne JAMAIS lisser : ce serait fabriquer un solde que Marc n'a jamais eu.
+     */
+    fluxPeriodeAnnulee: number;
 }
 
 const monthKey = (isoDate: string): string => isoDate.slice(0, 7); // 'YYYY-MM'
@@ -49,7 +59,7 @@ export function reconstructCashHistory(
     currentCash: number,
     nowMonth: string = new Date().toISOString().slice(0, 7),
 ): CashHistoryResult {
-    if (!transactions || transactions.length === 0) return { points: [], firstMonth: null };
+    if (!transactions || transactions.length === 0) return { points: [], firstMonth: null, fluxPeriodeAnnulee: 0 };
 
     // Flux net par mois + borne inférieure (1re transaction). ⚠️ Exclure dup/transfert EXACTEMENT comme
     // `computeStartingCash` (cohérence de base ancre↔walk-back). `firstMonth` inclut TOUTE transaction
@@ -63,7 +73,7 @@ export function reconstructCashHistory(
         if (t.isDuplicate || t.isTransfer) continue; // n'affecte PAS le solde de cash (comme computeStartingCash)
         flowByMonth.set(mk, (flowByMonth.get(mk) ?? 0) + t.amount);
     }
-    if (firstMonth === null) return { points: [], firstMonth: null };
+    if (firstMonth === null) return { points: [], firstMonth: null, fluxPeriodeAnnulee: 0 };
 
     // Remonte depuis le mois courant : cash(fin M) = cash(fin M+1) − flux(M+1).
     // On part du présent (currentCash) et on soustrait le flux du mois suivant.
@@ -80,7 +90,12 @@ export function reconstructCashHistory(
         if (m < firstMonth) break;
     }
     points.reverse(); // du plus ancien au plus récent
-    return { points, firstMonth };
+    // [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Le flux DÉFAIT pour produire le dernier point passé — ici
+    // c'est TOUT le mois courant, pas une journée. La marche au raccord est donc structurellement
+    // plus grosse que sur la vue au jour, et c'est la vue par DÉFAUT. Relu dans la carte que la
+    // boucle vient de consommer, jamais re-sommé : deux additions sur la même base divergent à la
+    // première évolution de la règle d'exclusion (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+    return { points, firstMonth, fluxPeriodeAnnulee: flowByMonth.get(nowMonth) ?? 0 };
 }
 
 // ── [FUTUR-DAILY] Variante QUOTIDIENNE ───────────────────────────────────────────────────────

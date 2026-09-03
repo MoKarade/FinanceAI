@@ -54,8 +54,8 @@ const base = {
 };
 
 // ── 1. Effet sur la courbe du passé ─────────────────────────────────────────────────────────────
-const avant = buildPastPrefix({ ...base, debts: [{ ...SCENARIO.pret, originalBalance: undefined }] });
-const apres = buildPastPrefix({ ...base, debts: [SCENARIO.pret] });
+const avant = buildPastPrefix({ ...base, debts: [{ ...SCENARIO.pret, originalBalance: undefined }] }).points;
+const apres = buildPastPrefix({ ...base, debts: [SCENARIO.pret] }).points;
 
 console.log('=== Patrimoine net du PASSÉ : sans / avec le montant emprunté ===');
 console.log('mois  date      avant($)   après($)    écart($)');

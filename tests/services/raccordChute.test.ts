@@ -212,3 +212,107 @@ describe('[PASSE-REEL-RACCORD-CHUTE] le fait traverse jusqu\'à l\'écran', () =
         expect(code).toContain('{mentionRaccordJour');
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// [PASSE-REEL-RACCORD-CHUTE-MENSUEL] La MÊME marche, en plus gros, sur la vue par DÉFAUT.
+//
+// Le lot 96 avait livré l'explication côté vue au JOUR et ROUTÉ celle-ci : la version mensuelle a le
+// même mécanisme, mais son dernier point passé annule **tout le mois courant** au lieu d'une journée.
+// La marche est donc structurellement plus grosse — et c'est la vue que Marc voit par défaut.
+import { reconstructCashHistory } from '../../services/history/reconstructCashHistory';
+import { buildPastPrefix } from '../../services/history/buildPastPrefix';
+import type { PortfolioHistoryPoint } from '../../services/history/reconstructPortfolioHistory';
+
+const MOIS_COURANT = '2026-08';
+const MOIS_PRECEDENT = '2026-07';
+
+const moisPrecedentDe = (points: ReadonlyArray<{ month: string; cash: number }>): number => {
+    const p = points.find((x) => x.month === MOIS_PRECEDENT);
+    if (!p) throw new Error('point du mois précédent absent');
+    return p.cash;
+};
+
+describe('[PASSE-REEL-RACCORD-CHUTE-MENSUEL] la marche vaut TOUT le mois courant', () => {
+    it('le champ publié égale la MARCHE réellement visible', () => {
+        // Non circulaire, comme au jour : on compare le champ à l'écart mesuré entre le dernier point
+        // du passé et le solde d'aujourd'hui — pas à une somme des transactions réécrite ici.
+        const soldeAujourdhui = 50_000;
+        const r = reconstructCashHistory([
+            { date: '2026-06-15', amount: 1_000 },
+            { date: '2026-08-01', amount: -10_000 },  // hypothèque
+            { date: '2026-08-14', amount: -900 },     // épicerie du mois
+        ], soldeAujourdhui, MOIS_COURANT);
+        const marche = soldeAujourdhui - moisPrecedentDe(r.points);
+        expect(marche).toBe(-10_900);              // TOUT le mois, pas une journée
+        expect(r.fluxPeriodeAnnulee).toBe(marche);
+    });
+
+    it('la marche MENSUELLE est plus GROSSE que la marche du JOUR sur les mêmes données', () => {
+        // C'est la raison d'être du ticket : le lot 96 a expliqué la petite, la grosse restait muette
+        // sur la vue par DÉFAUT. Le test le mesure au lieu de l'affirmer.
+        const txns = [
+            { date: '2026-06-15', amount: 1_000 },
+            { date: '2026-08-01', amount: -10_000 },
+            { date: '2026-08-14', amount: -900 },
+        ];
+        const mois = reconstructCashHistory(txns, 50_000, MOIS_COURANT).fluxPeriodeAnnulee;
+        const jour = reconstructCashHistoryDaily(txns, 50_000, '2026-08-14').fluxPeriodeAnnulee;
+        expect(jour).toBe(-900);
+        expect(Math.abs(mois)).toBeGreaterThan(Math.abs(jour));
+    });
+
+    it('aucun mouvement ce mois-ci ⇒ champ nul ⇒ AUCUNE phrase', () => {
+        const r = reconstructCashHistory([{ date: '2026-06-15', amount: 1_000 }], 50_000, MOIS_COURANT);
+        expect(r.fluxPeriodeAnnulee).toBe(0);
+        expect(mentionRaccord(r.fluxPeriodeAnnulee)).toBe('');
+    });
+
+    it('MÊME base d\'exclusion que la courbe : doublon et virement interne ne comptent pas', () => {
+        const r = reconstructCashHistory([
+            { date: '2026-06-15', amount: 1_000 },
+            { date: '2026-08-02', amount: -10_000, isTransfer: true },
+            { date: '2026-08-03', amount: -7_000, isDuplicate: true },
+        ], 50_000, MOIS_COURANT);
+        expect(r.fluxPeriodeAnnulee).toBe(0);
+        expect(50_000 - moisPrecedentDe(r.points)).toBe(0);
+    });
+});
+
+describe('[PASSE-REEL-RACCORD-CHUTE-MENSUEL] le fait traverse `buildPastPrefix`', () => {
+    const invPoint = (date: string): PortfolioHistoryPoint =>
+        ({ date, monthIndex: 0, CELI: 50_000, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0, InvestedValue: 50_000 });
+
+    it('le préfixe passé REMONTE le champ, il ne le recalcule pas', () => {
+        // `buildPastPrefix` rendait un tableau NU : c'est ce fil manquant qui avait fait router le
+        // ticket au lot 96. Sans cette assertion, le correctif serait vert en test et INERTE en prod.
+        const res = buildPastPrefix({
+            pastHistoryPoints: [invPoint('2026-06-30'), invPoint('2026-07-31')],
+            transactions: [
+                { date: '2026-06-15', amount: 1_000 },
+                { date: '2026-08-01', amount: -10_000 },
+            ],
+            calculatedStartingCash: 3_000,
+            realEstateGoals: [],
+            startYear: 2026, startMonth: 7, // août = mois 0 de la projection
+            currentDebtNonImmo: 0,
+            debts: [],
+        });
+        expect(res.points.length, 'anti-vacuité : le préfixe doit produire des mois').toBeGreaterThan(0);
+        expect(res.fluxPeriodeAnnulee).toBe(-10_000);
+        expect(mentionRaccord(res.fluxPeriodeAnnulee)).toMatch(/vers le bas/);
+    });
+
+    it('l\'écran consomme la source MENSUELLE et la gate sur la vue au jour', () => {
+        // Garde jumelle, ancrée sur l'APPEL avec son argument (leçon du lot 96 : chercher le nom seul
+        // est vacueux, l'import et la construction le portent aussi).
+        const brut = readFileSync('components/FutureProjection.tsx', 'utf8');
+        const code = stripCommentsJsx(brut);
+        expect(partDeCodeRestante(brut, code)).toBeGreaterThan(0.4);
+        expect(code).toContain('export const FutureProjection');
+        expect(code).toContain('mentionRaccord(pastPrefix.fluxPeriodeAnnulee)');
+        expect(code).toContain('{mentionRaccordMois');
+        // ⚠️ Le GATE fait partie du fait défendu : sans lui, la vue au jour afficherait DEUX phrases,
+        // dont une qui décrit un raccord absent de l'écran.
+        expect(code).toContain("dailyPast !== null ? '' : mentionRaccord(pastPrefix.fluxPeriodeAnnulee)");
+    });
+});

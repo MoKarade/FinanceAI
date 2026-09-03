@@ -90,8 +90,8 @@ describe('[DEBT-AMORTIZATION-CABLAGE] les deux corrections de dette sont DISJOIN
 
 describe('[DEBT-AMORTIZATION-CABLAGE] la courbe MENSUELLE du passé', () => {
     it('le patrimoine passé BAISSE : on devait plus, donc on valait moins', () => {
-        const sans = buildPastPrefix({ ...basePrefix, debts: [{ ...pretAuto, originalBalance: undefined }] });
-        const avec = buildPastPrefix({ ...basePrefix, debts: [pretAuto] });
+        const sans = buildPastPrefix({ ...basePrefix, debts: [{ ...pretAuto, originalBalance: undefined }] }).points;
+        const avec = buildPastPrefix({ ...basePrefix, debts: [pretAuto] }).points;
         expect(avec.length).toBe(sans.length);
         // Mesuré : −12 000 $ au point le plus ancien (janvier 2024), −524 $ au dernier mois passé.
         expect((avec[0].NetWorth ?? 0)).toBeLessThan(sans[0].NetWorth ?? 0);
@@ -104,12 +104,12 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la courbe MENSUELLE du passé', () => {
 
     it('SANS `originalBalance`, la courbe est INCHANGÉE — non-régression stricte', () => {
         // C'est le cas de tout utilisateur qui n'a pas saisi le montant emprunté : rien ne bouge.
-        const avant = buildPastPrefix({ ...basePrefix, debts: [{ balance: 18000, kind: 'auto', startDate: '2024-01-15', interestRate: 5, minimumPayment: 560 }] });
+        const avant = buildPastPrefix({ ...basePrefix, debts: [{ balance: 18000, kind: 'auto', startDate: '2024-01-15', interestRate: 5, minimumPayment: 560 }] }).points;
         for (const p of avant) expect(p.NetWorth).toBe(35000);
     });
 
     it('un BAIL reste PLAT — le cas réel de Marc, et ce n\'est pas un oubli', () => {
-        const avecBail = buildPastPrefix({ ...basePrefix, debts: [bail] });
+        const avecBail = buildPastPrefix({ ...basePrefix, debts: [bail] }).points;
         for (const p of avecBail) expect(p.NetWorth).toBe(35000);
     });
 });

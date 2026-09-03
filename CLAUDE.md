@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 281 tests** Vitest
-(515 fichiers de test, mesuré le 2026-09-02). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 286 tests** Vitest
+(516 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,14 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un champ SANS LECTEUR ne se corrige pas en lui donnant une SAISIE** — image miroir de
+  `UN-CHAMP-TYPE-SANS-PRODUCTEUR`, et le réflexe qu'elle déclenche est le mauvais : trois champs de
+  `Debt` absents du formulaire n'étaient lus par PERSONNE (les accès homonymes portaient sur un
+  immeuble locatif, un prompt IA, un payload d'écriture). Leur ajouter une saisie aurait promis un
+  effet inexistant. Devant un champ absent de l'UI, demander « qui le LIT ? » avant « pourquoi ne
+  peut-on pas le saisir ? ». ⚠️ Et un champ mort ENTOURÉ de validations (4 producteurs, refus
+  d'ingestion, schéma MCP) a l'apparence d'un mécanisme vivant
+  (`UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`, 2026-09-03).
 - **Une leçon se recopie avec sa PRÉMISSE, ou pas du tout** : j'ai porté dans l'UI la garde du lot
   précédent (« juger la cohérence sur les valeurs EFFECTIVES »), avec son commentaire et sa
   référence — perturbation faite, 13 tests verts : le brouillon d'édition n'est JAMAIS partiel

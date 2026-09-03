@@ -11757,3 +11757,34 @@ zéro `NaN` publié, un patrimoine final parfaitement plausible. Sans le compteu
 posé AVANT de conclure, j'aurais écrit « le chemin est inatteignable » — la conclusion opposée à la
 vérité. Un `NaN` dans une COMPARAISON ne propage rien : il rend la condition fausse et disparaît
 (`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`, variante « champ absent »).
+
+### `UNE-MESURE-AVANT-APRES-PAR-RACCOURCI-DE-PARAMETRE-DEPLACE-DEUX-GRANDEURS` (2026-09-03, lot 112)
+
+Pour mesurer ce que coûtait la prime SCHL absente de `runAmortization`, j'ai pris le raccourci
+évident : rappeler la fonction avec `price + prime` au lieu de la modifier. Le résultat a rendu
+l'équité **plus HAUTE** avec la prime qu'avant — l'inverse du sens attendu, et l'inverse de la
+vérité.
+
+Cause : `price` pilote DEUX grandeurs dans cette fonction, le principal emprunté **et** la valeur du
+bien (`propertyValue = price + initialRenovations`). Le raccourci finançait la prime *et* offrait au
+propriétaire un bien qui vaut la prime de plus. Mesuré correctement (le correctif écrit à
+l'intérieur, la valeur laissée ancrée sur `price`), l'historique surestimait l'équité de **15 631 $
+à 1 an, 14 137 $ à 5 ans, 11 798 $ à 10 ans** sur 420 000 $ à 5 % de mise, et de **0 $ exactement**
+à 20 % de mise.
+
+**La règle** : avant de mesurer un avant/après en poussant un PARAMÈTRE plutôt qu'en écrivant le
+correctif, énumérer tout ce que ce paramètre pilote en aval. Un paramètre qui alimente deux
+grandeurs ne mesure pas l'effet d'une seule — et rien ne prévient : le chiffre sort, plausible, avec
+le mauvais signe. Le signe inattendu est ici le seul signal qui ait sauvé la mesure, et il ne serait
+pas apparu si les deux effets avaient poussé dans le même sens.
+
+⚠️ **Corollaire** : ce piège vaut la peine d'être GARDÉ, pas seulement noté. Le troisième cas du
+fichier de garde asserte que la valeur du bien reste `prix × croissance` — et la perturbation qui le
+prouve est précisément le raccourci que j'avais pris.
+
+⚠️ **Corollaire de couverture, deuxième moitié du même lot** : deux tests existants portaient une
+mise de fonds ASSURABLE (10 % et 12,5 %) et sont pourtant restés verts. Ce n'est pas que le
+correctif soit inerte — l'un n'asserte que des SIGNES (`toBeGreaterThan(0)`, `toBe(0)`), l'autre
+épingle l'année d'ACHAT, dont l'équité est posée à la mise de fonds sans passer par la fonction
+corrigée. « Aucun golden n'a bougé » mesurait l'absence de couverture AU MONTANT, exactement comme
+la leçon du dépôt le prédit — et c'est cette explication, pas le vert, qui autorise à livrer.

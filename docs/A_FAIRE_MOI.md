@@ -86,6 +86,31 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[ENG-GOALS-HORS-TOTALEXPENSES]` — un compteur de dépenses qui oublie tes objectifs (2026-09-03)
+
+**Ce qui se passe.** Quand un de tes objectifs financiers arrive à échéance, l'app sort l'argent du
+compte visé — le patrimoine baisse, la sortie est bien enregistrée. Mais le **compteur total de
+dépenses** de la simulation, lui, ne la compte pas.
+
+**Ce que ça coûte aujourd'hui : rien à l'écran.** Le seul calcul qui lit ce compteur est le **taux
+de retrait sécuritaire** (SWR), et ce chiffre n'est affiché nulle part dans l'app. Vérifié.
+
+**Le risque est pour plus tard.** Si un jour on affiche ce taux, il sera **sous-estimé** — donc ton
+plan aurait l'air plus sûr qu'il ne l'est. C'est le genre d'erreur qu'on ne voit pas : le chiffre est
+plausible, juste trop optimiste.
+
+**⚠️ Et le correctif évident est un vrai bug.** Le code contient volontairement une ligne qui « ne
+fait rien », avec un commentaire qui explique pourquoi. La rendre active semble être *la* correction
+— elle retirerait ton argent **une deuxième fois** du flux mensuel, parce que ce compteur-là n'est
+pas un compteur de rapport : c'est celui qui pilote ta trésorerie. J'ai posé un test qui rougit si
+quelqu'un tente cette « correction ».
+
+**Deux options :**
+1. **Ne rien faire pour l'instant** — la limite est documentée et testée ; elle deviendra urgente le
+   jour où on voudra afficher le taux de retrait sécuritaire. *(recommandé)*
+2. **Séparer les deux compteurs** — un pour la trésorerie, un pour le rapport. C'est le seul
+   correctif juste, mais il touche le cœur du moteur et mérite son propre lot avec plan préalable.
+
 ## `[HEALTH-CORRUPTION…]` (a) — faut-il signaler une donnée invalide dans le RÉSUMÉ ? (2026-09-03)
 
 **Ce qui est déjà réglé.** Quand *aucune* de tes métriques n'est calculable, le résumé de santé le

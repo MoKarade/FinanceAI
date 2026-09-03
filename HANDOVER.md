@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 110 : une limite épinglée dont le correctif évident est un BUG
+> `[ENG-GOALS-HORS-TOTALEXPENSES]` — **aucun code de prod touché** : un inventaire de dette + le
+> routage du vrai correctif. Aucun déploiement à vérifier.
+> - **Mécanisme CONFIRMÉ** (le ticket le disait « probable ») : `addExpense` est un no-op DÉLIBÉRÉ
+>   dans le `goalMutator`, commenté « déjà soustrait du compte ciblé ».
+> - ⚠️⚠️ **Le rendre effectif est une RÉGRESSION money-critical** : double soustraction du flux réel,
+>   `monthlyExpenses` alimentant `monthlyCashflow = monthlyIncome − monthlyExpenses`. Une garde de
+>   source fait rougir cette « correction ».
+> - ⚠️ **Qui LIT `totalExpenses`** (la consigne du ticket) : uniquement le **SWR** de `monteCarlo.ts`,
+>   qui n'a AUCUN consommateur d'écran. Coût aujourd'hui NUL ; risque demain : un SWR sous-estimé =
+>   un plan qui a l'air plus sûr qu'il ne l'est.
+> - **Correctif routé** : séparer le compteur de REPORTING de celui qui pilote la trésorerie touche
+>   le cœur du moteur → lot à part, plan-first. Recommandation : attendre que le SWR soit affiché.
+
 > ## 🟦 Session 2026-09-03 — Lot 109 : une récidive de corruption redevient audible
 > `[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]` (c) livré — **code de prod touché**
 > (`services/errorLogger.ts`).

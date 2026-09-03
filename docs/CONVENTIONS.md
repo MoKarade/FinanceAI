@@ -10589,6 +10589,40 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 110 (2026-09-03) — la question la plus utile du ticket était « qui LIT ce champ »
+
+`UN-NO-OP-COMMENTE-EST-UNE-DECISION-A-RELIRE-AVANT-DE-LA-DEFAIRE`
+
+Le ticket décrivait un registre de reporting (`totalExpenses`) qui ignore un tirage d'objectif —
+215 045 $ de patrimoine en moins, et le compteur de dépenses inchangé au 10ᵉ chiffre. Il finissait
+par une consigne : « **vérifier qui LIT `totalExpenses` avant de corriger** ». C'était la bonne
+question, et elle a produit les deux résultats du lot.
+
+**Premier résultat : le correctif évident est une régression money-critical.** Le mutateur porte
+`addExpense: (_n) => { /* déjà soustrait du compte ciblé */ }` — un no-op commenté. Le rendre
+effectif *paraît* être le correctif ; il soustrairait le montant une SECONDE fois du flux réel,
+parce que `monthlyExpenses` n'est pas un registre de rapport : il alimente directement
+`monthlyCashflow = monthlyIncome − monthlyExpenses`. **Un no-op qui porte un commentaire
+d'explication est une décision, pas un oubli** — le relire coûte trente secondes, le défaire coûte
+un bug d'argent. Même famille que `UN-PARAMETRE-TYPE-UNDEFINED-EST-UNE-DECISION-PAS-UN-OUBLI` et
+que `LE-REMEDE-D-UN-TICKET-PEUT-ANNULER-UNE-DECISION-ANTERIEURE`.
+
+**Second résultat : le seul lecteur change la gravité, dans les deux sens.** `totalExpenses` n'est
+lu, réellement, que par le calcul du **SWR** (taux de retrait sécuritaire) — et ce champ n'a AUCUN
+consommateur d'interface. Donc le coût aujourd'hui est **nul à l'écran**, ce qui rétrograde
+l'urgence ; mais la nature du lecteur **remonte** l'enjeu pour demain : un SWR sous-estimé est un
+plan qui a l'air plus sûr qu'il ne l'est, exactement le genre d'erreur qu'on ne voit pas parce que
+le chiffre reste plausible. « Qui lit ? » ne répond donc pas par oui ou non : elle répond
+*aujourd'hui rien, demain quelque chose de grave*, et c'est ce qui décide de la forme de la
+livraison — un INVENTAIRE plutôt qu'un correctif.
+
+⚠️ **Une garde de SOURCE assumée comme telle.** Le fait à protéger ici est une INTENTION (« ce
+no-op est délibéré »), et le seul endroit où une intention est lisible est le code. Le test l'ancre
+donc sur le texte, ET sur la ligne `monthlyCashflow = monthlyIncome − monthlyExpenses` qui explique
+pourquoi — sans elle, la garde dirait « ne touche pas » sans dire « parce que ». Perturbation :
+rendre le no-op effectif fait rougir les deux gardes de la limite, et elles exigeront leur inversion
+le jour du vrai correctif.
+
 ### Lot 109 (2026-09-03) — un throttle sans horloge est un silence définitif
 
 `UN-THROTTLE-SANS-HORLOGE-EST-UN-SILENCE-DEFINITIF`

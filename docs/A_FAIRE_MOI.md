@@ -86,6 +86,46 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## 🔴 `[ENG-T1213-NET-MONTHLY]` — un bouton de l'app détruit jusqu'à 46 % de ta projection (2026-09-03)
+
+**C'est le plus grave de cette liste.** Dans les réglages avancés de la projection, il y a un bouton
+« T1213 retenue source ON/OFF ». Dans la vraie vie, le formulaire T1213 te permet de faire réduire
+l'impôt retenu sur chaque paie pour tenir compte de tes cotisations REER : tu encaisses plus tous les
+mois au lieu d'attendre ton remboursement d'avril. C'est neutre à positif pour toi, jamais négatif.
+
+**Ce que l'app en fait.** Elle n'en modélise que la moitié : activer le bouton réduit bien la retenue
+(donc ton remboursement d'avril disparaît), mais le net que tu encaisses chaque mois vient du salaire
+net que tu as SAISI — il ne monte jamais. Tu perds l'économie sans jamais toucher la contrepartie.
+
+**Combien**, mesuré sur un célibataire à 150 000 $ qui épargne 3 000 $/mois :
+
+| horizon | bouton OFF | bouton ON | écart |
+|---|---|---|---|
+| 5 ans | 596 195 $ | 499 933 $ | −96 263 $ (−16,1 %) |
+| 10 ans | 877 470 $ | 662 078 $ | −215 392 $ (−24,5 %) |
+| 20 ans | 1 676 357 $ | 1 186 194 $ | −490 163 $ (−29,2 %) |
+| 30 ans | 2 258 470 $ | 1 227 051 $ | **−1 031 419 $ (−45,7 %)** |
+
+Le pourcentage **grandit** avec l'horizon : ce n'est pas une erreur bornée, c'est une économie
+annuelle qu'on cesse de capitaliser. Le ticket d'origine n'annonçait qu'un montant (−183 598 $) et
+sous-estimait donc la gravité d'un facteur cinq.
+
+**Trois options :**
+
+1. **Retirer le bouton de l'interface.** Immédiat, et il ne peut aujourd'hui que nuire. On perd un
+   réglage que personne ne peut utiliser correctement. *Ma recommandation, tant que 2 n'est pas fait.*
+2. **Modéliser correctement** : majorer le net mensuel de l'économie de retenue. C'est le vrai
+   correctif, mais il bute sur une difficulté que le ticket ne mentionne pas — tes cotisations REER
+   de l'année ne sont connues qu'en décembre, alors que ton net de janvier en dépendrait. Il faudrait
+   se baser sur l'année précédente (ce que fait le vrai T1213, d'ailleurs). Lot à part, plan d'abord.
+3. **Ne rien changer, mais avertir** : garder le bouton en affichant que le modèle est incomplet.
+   Le moins bon des trois à mes yeux : ça laisse un chiffre faux à l'écran, avec un avertissement.
+
+En attendant ta réponse, le fait est FIGÉ par un test (`t1213ToggleNuisible.test.ts`) qui rougira le
+jour où le défaut sera corrigé, pour qu'on ne le re-livre pas par accident.
+
+---
+
 ## `[IMMO-3-FORMULES]` volet CLAMP — faut-il montrer une équité NÉGATIVE ? (2026-09-03)
 
 **Ce qui se passe.** Quand l'app reconstruit l'historique de ton immobilier, elle calcule l'équité

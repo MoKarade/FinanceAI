@@ -23,6 +23,7 @@
 >   n'est pas porté à la déclaration finale ; l'inclusion est ventilée entre conjoints au prorata des
 >   soldes REER, le moteur ne mémorisant pas QUI a emprunté au RAP.
 > - Garde : `tests/services/rapVersementManqueImpose.test.ts` (6 cas · 3 perturbations séparées).
+> - Gate complet VERT : **5 350 tests / 527 fichiers**, exit 0. CI verte sur les six checks.
 
 > ## 🟦 Session 2026-09-03 — Lot 110 : une limite épinglée dont le correctif évident est un BUG
 > `[ENG-GOALS-HORS-TOTALEXPENSES]` — **aucun code de prod touché** : un inventaire de dette + le

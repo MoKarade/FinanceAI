@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 335 tests** Vitest
-(523 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 337 tests** Vitest
+(524 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,15 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **L'ALARME d'un ticket se re-mesure autant que son DÉFAUT** : un ticket portait les deux — « ce
+  champ ne pilote rien » (exact, vérifié en le triplant : patrimoine identique au dollar près) et
+  « des dizaines de fixtures tournent sur les défauts sans le savoir » (FAUX : 72 fichiers posent le
+  champ, 69 posent aussi la carte, et par SITE il en reste 3, tous légitimes). Le défaut décrit un
+  MÉCANISME, stable ; l'alarme décrit une POPULATION, qui bouge à chaque lot sans que personne
+  touche au ticket — et c'est elle qui dimensionne le lot. **Mesurer par SITE, pas par FICHIER.**
+  ⚠️ La moitié prouvable se livre (une garde qui FIGE le fait, pour qu'un câblage futur soit
+  délibéré), la décision se route quand elle change ce que l'utilisateur voit
+  (`L-ALARME-D-UN-TICKET-SE-REMESURE-AUTANT-QUE-SON-DEFAUT`, 2026-09-03).
 - **Une affirmation JURIDIQUE non citée hérite de l'autorité du document** : la leçon jumelle
   (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER…`) visait un CHIFFRE ; une PHRASE non sourcée est plus
   discrète — aucun ratchet ne la cherche, et dans `FISCAL_REFERENCE.md` elle emprunte l'autorité de

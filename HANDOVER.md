@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 107 : un réglage qui ne pilote rien, figé plutôt que tranché
+> `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — **aucun code de prod touché**, donc aucun déploiement à
+> vérifier. Moitié prouvable livrée, décision routée.
+> - **Fait vérifié COMPORTEMENTALEMENT** : `projection.returnRate` du simple au TRIPLE ⇒ patrimoine
+>   final identique au dollar près ; la carte `returnRates`, elle, le déplace de > 10 % (levier).
+> - **La garde fige le fait** pour qu'un câblage futur soit DÉLIBÉRÉ. 2 perturbations, 2 cibles.
+> - ⚠️ **L'ALARME du ticket est RÉFUTÉE** : « des dizaines de fixtures sans `returnRates` » →
+>   **72 fichiers posent le champ, 69 posent aussi la carte ; par SITE il en reste 3**, tous des
+>   tests d'UI/a11y où le singulier est légitime. Mesurer par SITE, pas par FICHIER.
+> - **Décision routée** (`docs/A_FAIRE_MOI.md`) : retirer / câbler / ne rien changer. Trois écrans
+>   lisent vraiment ce champ (Immobilier, Projets de vie) — ça change ce que Marc voit.
+> - ⚠️ **`[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]` fermé CADUQUE** : défaut réel, corrigé le 2026-09-01
+>   sous `[A11Y-PRIVACY-HEALTH-RAW]`. Vérifié par la garde de rendu, pas par un compte de grep.
+
 > ## 🟦 Session 2026-09-03 — Lot 106 : une affirmation juridique non citée, dans la source de vérité
 > `[RQAP-INDEX-SOURCE]` — **doc et commentaires seulement, aucun code de prod, donc aucun
 > déploiement à vérifier.**

@@ -837,3 +837,25 @@ l'extension de la normalisation de période si tu la veux.
 
 </details>
 
+## `[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]` — décision de Marc (2026-09-03)
+
+**La question en une phrase** : `Debt.amortizationYears` (la durée d'un prêt, en années) est écrit
+par quatre endroits de l'app, validé à l'import, exposé à l'assistant… et **lu par personne**. Que
+veux-tu qu'on en fasse ?
+
+**Ce qui est mesuré** : zéro lecture dans tout le code de production. Les trois usages qui portent ce
+nom concernent d'autres objets (un immeuble locatif, l'hypothèque du ménage dans un prompt,
+l'écriture par l'assistant). Aucun chiffre n'est donc FAUX aujourd'hui — c'est du poids mort, pas un
+bug.
+
+**Trois issues, et c'est un choix de produit, pas de technique** :
+
+1. **Le brancher** — un prêt à terme fini cesserait d'être payé à son échéance. ⚠️ Ça DÉPLACE de
+   l'argent dans la projection, et `termEndDate` fait déjà quelque chose de proche autrement : il
+   faudrait décider lequel des deux fait foi.
+2. **Le supprimer** du type, avec ses quatre écritures. ⚠️ Le type est PERSISTÉ : à examiner avec le
+   même soin qu'une migration.
+3. **Le laisser** et l'assumer par écrit (l'inventaire livré au lot 95 le surveille déjà et rougira
+   si quelqu'un le branche sans le dire).
+
+Je ne tranche pas seul : (1) touche de l'argent, (2) touche des données persistées.

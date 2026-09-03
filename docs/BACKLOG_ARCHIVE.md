@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — Lot 95 : le lot qui devait ajouter trois champs, et qui a prouvé qu'il ne fallait pas
+
+- [x] **`[DEBT-UI-CHAMPS-RESTANTS]`** — REMÈDE RÉFUTÉ le 2026-09-03 (PR #825). Le ticket, que j'avais
+  écrit la veille au lot 94, demandait d'ajouter `limit`, `amortizationYears` et
+  `isInterestDeductible` au formulaire de dettes.
+- **Mesuré : aucun des trois n'est LU.** Zéro accès à `<dette>.limit`, zéro à
+  `<dette>.isInterestDeductible` (ce champ n'existe QUE dans `types.ts` et dans un commentaire), et
+  les trois accès à `.amortizationYears` en production portent sur d'AUTRES objets — `rp.`
+  (`RentalProperty`), `ctx.` (l'hypothèque du ménage dans un prompt IA), `doc.` (le payload MCP, qui
+  ÉCRIT). Leur donner une saisie aurait fabriqué trois champs dont le remplissage ne change rien.
+- **C'est l'image MIROIR de `UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`** : là-bas
+  un champ lu sans personne pour l'écrire, ici des champs écrits que personne ne lit. Le premier
+  produit un chiffre FAUX ; le second, une interface qui promet un effet qu'elle n'a pas.
+- **Livré à la place** : `tests/services/debtChampsSansLecteur.test.ts`, un inventaire qui **sait
+  mourir** — il rougit dès qu'un vrai lecteur apparaît et exige alors qu'on retire son entrée, plutôt
+  que de survivre à sa raison d'être. Il porte les DEUX sens : aucun lecteur inattendu, et les
+  homonymes tolérés (nommés avec leur raison) doivent toujours exister, sinon l'exemption couvrirait
+  un vrai lecteur ajouté au même endroit.
+- **5 gardes**, trois perturbations séparées : un lecteur de `limit` apparaît → rouge · l'homonyme
+  `RentalProperty` disparaît → rouge · un lecteur d'`isInterestDeductible` apparaît → rouge. Plus un
+  témoin (`balance`, lu partout) qui prouve que le scanner VOIT les accès, et sa contre-épreuve.
+- ⚠️ **Question ROUTÉE à Marc** (`docs/A_FAIRE_MOI.md`) :
+  `[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]`. Ce champ est écrit par quatre
+  producteurs, validé à l'ingestion, exposé au schéma MCP — et lu par personne. Le brancher DÉPLACE
+  de l'argent, le supprimer touche un type PERSISTÉ : ni l'un ni l'autre ne se tranche seul.
+
 ## 2026-09-02 — Lot 94 : la saisie à la main, dernier chemin manquant du chantier Dette
 
 - [x] **`[DEBT-UI-PAR-TYPE]`** — LIVRÉ le 2026-09-02 (PR #824). Ferme le chantier ouvert au lot 91 :

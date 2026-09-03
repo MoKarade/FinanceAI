@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 95 : trois champs qu'il ne fallait PAS ajouter
+> `[DEBT-UI-CHAMPS-RESTANTS]` — le ticket (écrit par moi la veille) demandait d'exposer `limit`,
+> `amortizationYears` et `isInterestDeductible`. **Mesuré : aucun des trois n'est LU** en production.
+> - Les trois accès à `.amortizationYears` portent sur d'AUTRES objets (`rp.` RentalProperty, `ctx.`
+>   prompt IA, `doc.` payload MCP en écriture). `limit` et `isInterestDeductible` : zéro accès.
+> - Leur donner une saisie = trois champs dont le remplissage ne change rien. Image MIROIR de
+>   `UN-CHAMP-TYPE-SANS-PRODUCTEUR` : ici des producteurs, zéro consommateur.
+> - **Livré** : `tests/services/debtChampsSansLecteur.test.ts` — un inventaire qui SAIT MOURIR
+>   (rouge dès qu'un lecteur apparaît, et exemptions vérifiées dans l'autre sens).
+> - ⚠️ **QUESTION POUR MARC** dans `docs/A_FAIRE_MOI.md` :
+>   `[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]` — quatre écritures, zéro lecture.
+>   Brancher (déplace de l'argent), supprimer (type persisté) ou assumer : à lui de trancher.
+
 > ## 🟦 Session 2026-09-02 — Lot 94 : la saisie à la main (chantier Dette CLOS)
 > `[DEBT-UI-PAR-TYPE]` — la courbe d'amortissement du passé est atteignable par les TROIS chemins :
 > assistant, import de contrat, saisie manuelle.

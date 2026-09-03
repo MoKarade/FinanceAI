@@ -10589,6 +10589,42 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 95 (2026-09-03) — un champ SANS LECTEUR ne se corrige pas en lui donnant une saisie
+
+`UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`
+
+Le dépôt connaît bien `UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE` : un champ que
+le moteur LIT et que rien n'écrit produit un chiffre faux (`rsuYearsRemaining`, +23 % de patrimoine
+final). Ce lot a rencontré son IMAGE MIROIR, et le réflexe qu'elle déclenche est le mauvais.
+
+`limit`, `amortizationYears` et `isInterestDeductible` sont dans `Debt`, absents du formulaire. Le
+ticket — que j'avais écrit la veille — en concluait « champs inatteignables dans l'UI, il faut les
+ajouter ». Mesuré : **aucun des trois n'est LU** en production. Zéro accès à `<dette>.limit`, zéro à
+`<dette>.isInterestDeductible`, et les trois accès à `.amortizationYears` portent sur d'AUTRES objets
+(`rp.` un immeuble locatif, `ctx.` l'hypothèque d'un prompt IA, `doc.` le payload MCP qui ÉCRIT).
+
+Leur donner une saisie aurait fabriqué trois champs dont le remplissage ne change rien : l'utilisateur
+entre le plafond de sa carte, et il ne se passe RIEN, nulle part, jamais. C'est `no-fake-data`
+appliqué à l'interaction — une interface qui promet un effet qu'elle n'a pas ment autant qu'un
+montant inventé. **La question à poser devant un champ absent de l'UI n'est pas « pourquoi ne
+peut-on pas le saisir ? » mais « qui le LIT ? »** : les deux défauts se ressemblent et leurs
+correctifs sont opposés.
+
+Ce qui a été livré à la place est un **inventaire qui sait mourir**
+(`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`) : il rougit dès qu'un vrai lecteur apparaît et exige
+alors qu'on retire son entrée. Il porte les DEUX sens, et le second est le moins évident — les
+homonymes TOLÉRÉS doivent toujours exister, sinon l'exemption survit à son objet et couvrirait en
+silence un vrai lecteur ajouté au même endroit (`ENTREE-D-INVENTAIRE-FANTOME`). Les trois
+perturbations le prouvent, dont celle qui fait disparaître l'homonyme.
+
+⚠️ **Et le champ le plus intéressant n'était pas le sujet du ticket** : `amortizationYears` a QUATRE
+producteurs (deux personas, `mcp/whatIf.ts` deux fois, `applyDocument`), une validation d'ingestion
+qui refuse « (N ans) invalide », une entrée dans le schéma Zod du tool MCP — et zéro lecteur. Tout
+un appareil de rigueur autour d'une valeur que personne ne consulte. Ni le brancher (ça déplace de
+l'argent, et `termEndDate` occupe déjà une partie du terrain) ni le supprimer (type PERSISTÉ) ne se
+tranche seul : routé à Marc. **Un champ mort entouré de validations donne l'apparence d'un mécanisme
+vivant** — c'est précisément ce qui l'avait fait passer pour une lacune d'interface.
+
 ### Lot 94 (2026-09-02) — une leçon se recopie avec sa PRÉMISSE, ou pas du tout
 
 `UNE-LECON-SE-RECOPIE-AVEC-SA-PREMISSE-OU-PAS-DU-TOUT`

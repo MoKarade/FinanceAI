@@ -2026,15 +2026,31 @@
   formulaires partagent nom/solde/taux/paiement/dates — deux composants auraient DUPLIQUÉ ces champs
   au lieu d'un seul, soit le défaut à éviter en plus gros. Extrait la PAIRE qui manquait
   (`components/debt/DebtKindFields.tsx`), pas le formulaire.
-- [ ] 🟡 **`[DEBT-UI-CHAMPS-RESTANTS]`** (S, sorti du recensement de `[DEBT-UI-PAR-TYPE]`) — trois
-  champs du type restent inatteignables dans `DebtManager` : `limit` (plafond d'une marge ou d'une
-  carte), `amortizationYears` et `isInterestDeductible`. Aucun n'est sur le chemin de la courbe
-  d'amortissement — c'est pourquoi ils ont été laissés hors du lot 94 plutôt qu'ajoutés « pendant
-  qu'on y est ». ⚠️ Avant de coder : vérifier pour CHACUN qui le LIT dans le moteur, comme
-  `rsuYearsRemaining` l'a montré, un champ lu et jamais saisi est un chiffre FAUX, pas une lacune.
+- [x] ~~🟡 `[DEBT-UI-CHAMPS-RESTANTS]`~~ — **REMÈDE RÉFUTÉ le 2026-09-03** (lot 95, PR #825).
+  Le ticket demandait d'ajouter `limit`, `amortizationYears` et `isInterestDeductible` au formulaire.
+  **Mesuré, aucun des trois n'est LU par quoi que ce soit** : zéro accès à `<dette>.limit`, zéro à
+  `<dette>.isInterestDeductible` (le champ n'existe QUE dans `types.ts`), et les trois accès à
+  `.amortizationYears` en production portent sur d'AUTRES objets — `rp.` (`RentalProperty`, un
+  immeuble locatif), `ctx.` (l'hypothèque du ménage dans un prompt IA) et `doc.` (le payload MCP, qui
+  ÉCRIT). Leur donner une saisie aurait fabriqué trois champs dont le remplissage ne change rien :
+  une interface qui promet un effet qu'elle n'a pas. Image MIROIR de
+  `UN-CHAMP-TYPE-SANS-PRODUCTEUR` — ici il y a des producteurs et zéro consommateur.
+  ⚠️ Livré à la place : `tests/services/debtChampsSansLecteur.test.ts`, un inventaire qui **sait
+  mourir** (il rougit dès qu'un vrai lecteur apparaît et exige alors qu'on retire son entrée).
+- [ ] 🟠 **`[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]`** (QUESTION POUR MARC, sortie
+  du lot 95) — `Debt.amortizationYears` est ÉCRIT par quatre producteurs (`jeuneCoupleDink`,
+  `coupleDettes`, `mcp/whatIf.ts` ×2, `applyDocument`), **validé** à l'ingestion (« Amortissement
+  invalide (N ans) »), exposé dans le schéma Zod du tool MCP… et **lu par personne**. `mcp/whatIf.ts`
+  calcule un `termYears` et le range en croyant qu'il compte. Trois issues, et le choix n'est pas
+  technique : (a) le BRANCHER — un prêt à terme fini devrait cesser d'être payé à son échéance, ce
+  que `termEndDate` fait déjà autrement ; (b) le SUPPRIMER du type avec ses quatre écritures ;
+  (c) le laisser et l'assumer par écrit. ⚠️ Ne rien trancher seul : (a) déplace de l'argent,
+  (b) touche un type persisté. Même famille que `rsuYearsRemaining` (+23 % de patrimoine final), sauf
+  qu'ici le champ n'est lu par personne — donc aucun chiffre n'est faux AUJOURD'HUI.
 
 **Ordre imposé** : `[DEBT-MCP-PARITE]` → `[DEBT-AMORTIZATION]` → `[DEBT-MCP-ORIGINALBALANCE]`.
-Les trois sont LIVRÉS (lots 91→94). Reliquat : `[DEBT-UI-CHAMPS-RESTANTS]`, indépendant.
+Les trois sont LIVRÉS (lots 91→94). Reste UNE question pour Marc :
+`[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]`.
 
 ⚠️ **`[DEBT-LEASE-VS-LOAN-COMPARATOR]` (comparateur prêt vs bail, demandé par Marc dans le même
 message) N'EST PAS scopé ici** — cadrage insuffisant pour un MVP fiable : « rentable » n'a pas de

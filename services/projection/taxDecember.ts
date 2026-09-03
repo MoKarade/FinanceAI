@@ -378,6 +378,14 @@ export interface DecemberResult {
     newTaxCurrentYear: { revenu: number; gains: number; divers: number; reer: number; donCredit: number };
     /** Logs à émettre. */
     logs: string[];
+    /** [FISC-DIV-ACB-STEPUP] Montant dont le caller doit MAJORER `nonRegACB` : le dividende réputé
+     *  du non-enregistré est imposé chaque année mais son montant RESTE dans le compte (aucun cash
+     *  n'en sort). C'est donc un dividende RÉINVESTI, et un réinvestissement augmente le prix de
+     *  base rajusté du montant BRUT distribué — sans quoi la même somme est imposée une seconde
+     *  fois dans le gain latent, à la réalisation ou au décès.
+     *  ⚠️ Même patron que `processGainHarvesting`, dont l'appelant fait déjà
+     *  `nonRegACB += gh.harvestedGain` : le module rend un DELTA, le caller l'applique. */
+    nonRegACBAdd: number;
 }
 
 export function processDecemberTaxFiling(
@@ -387,9 +395,11 @@ export function processDecemberTaxFiling(
     taxCurrentYearInitial: { revenu: number; gains: number; divers: number; reer: number; donCredit: number },
 ): DecemberResult {
     if (currentMonthIndex !== 11 || ctx.m === 0) {
-        return { newTaxCurrentYear: { ...taxCurrentYearInitial }, logs: [] };
+        return { newTaxCurrentYear: { ...taxCurrentYearInitial }, logs: [], nonRegACBAdd: 0 };
     }
     const logs: string[] = [];
+    // [FISC-DIV-ACB-STEPUP] Delta de prix de base rajusté à remettre au caller (cf. le champ du même nom).
+    let nonRegACBAdd = 0;
 
     // [TAXDEC-INFLATIONFACTOR-AMONT] Le facteur d'inflation est validé UNE FOIS, ICI, à l'entrée du
     // mois de décembre — au lieu d'être réparé en SILENCE N fois en aval.
@@ -1075,6 +1085,17 @@ export function processDecemberTaxFiling(
         }
         const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal, 'eligible', progressiveGrossTax);
         if (divTax > 1) taxCurrent.gains += divTax;
+        // [FISC-DIV-ACB-STEPUP] Le dividende vient d'être IMPOSÉ, et son montant est resté dans le
+        // compte : c'est un réinvestissement, donc le prix de base rajusté monte d'autant. Sans
+        // cette ligne, la même somme était imposée une SECONDE fois dans `nonReg − nonRegACB`
+        // (le gain latent), à la réalisation comme au décès.
+        // ⚠️ Le montant est le dividende BRUT, pas le majoré : la majoration est une fiction de
+        // calcul de l'impôt, elle n'a jamais été investie. Et pas non plus le net d'impôt —
+        // l'impôt est payé À PART (il sort du compte de liquidités), il ne réduit pas la mise.
+        // ⚠️ Le pas est fait même quand `divTax <= 1` : c'est le DIVIDENDE qui monte l'ACB, pas
+        // l'impôt qu'il déclenche. Les lier ferait qu'un petit portefeuille cumulerait du gain
+        // latent fantôme sans qu'aucune ligne ne rougisse.
+        nonRegACBAdd += annualDiv;
     }
 
     // ---- 4. [FA-6-CREDIT-CAP] Crédit-don NON REMBOURSABLE, PLAFONNÉ à l'impôt dû ----
@@ -1101,5 +1122,5 @@ export function processDecemberTaxFiling(
     }
     taxCurrent.donCredit = 0; // consommé (excédent perdu : aucun report modélisé)
 
-    return { newTaxCurrentYear: taxCurrent, logs };
+    return { newTaxCurrentYear: taxCurrent, logs, nonRegACBAdd };
 }

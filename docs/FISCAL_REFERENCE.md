@@ -774,10 +774,20 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > ligne 12000 féd → 23400), réparti à parts égales par conjoint (non attribuable dans le modèle,
 > même limite que les gains). Mesuré : +1 552,50 $/an de récupération (couple 100 k$/conjoint +
 > 500 k$ non-enreg à 5 %) ; 0 sous le seuil. Le test SRG reste OUVERT (ci-dessus).
-> ⚠️ **Limite assumée [FISC-DIV-ACB-STEPUP]** : le dividende réputé est imposé mais l'ACB du
-> non-enregistré n'est PAS incrémenté (pas de step-up) ni le cash sorti — le même rendement est
-> re-imposé en gain latent à la réalisation/au décès (≈ 58 k$ sur 500 k$/5 %/20 ans, arithmétique
-> revue #683). Correctif = re-base massif, ticket ouvert au BACKLOG.
+> ✅ ~~**Limite assumée [FISC-DIV-ACB-STEPUP]**~~ — **CORRIGÉE le 2026-09-03** (lot 115). Le
+> dividende réputé est imposé chaque année et son montant reste dans le compte : c'est un
+> réinvestissement, donc l'ACB monte désormais du dividende **BRUT** (`processDecemberTaxFiling`
+> rend `nonRegACBAdd`, l'appelant l'applique — même patron que `processGainHarvesting`). Sans ce
+> pas, le même rendement était re-imposé en gain latent à la réalisation comme au décès.
+> ⚠️ **Le chiffre annoncé était surestimé** : « ≈ 58 k$ sur 500 k$/5 %/20 ans » venait d'une
+> arithmétique sur l'ACB manquant, pas d'une mesure. Mesuré sur cette configuration exacte —
+> **+1 911 $ (10 ans) · +12 055 $ (20 ans) · +31 055 $ (30 ans)** de patrimoine, et +7 739 $ /
+> +16 703 $ / +30 975 $ de succession. Un ACB manquant n'est pas un impôt payé : c'est un impôt
+> payé le jour où on vend, et une projection n'en réalise qu'une partie — c'est la SUCCESSION, qui
+> liquide tout, qui approche le coût plein. Le gain COMPOSE (un pas manqué par an).
+> ⚠️ **Pourquoi le BRUT** : pas le dividende majoré (la majoration est une fiction de calcul de
+> l'impôt, elle n'a jamais été investie), et pas le net d'impôt (l'impôt sort des liquidités, il ne
+> réduit pas la mise réinvestie).
 
 ### Décès du conjoint — survivorMode (FA-10, 2026-06-10)
 > Quand le conjoint (user2) décède (`modelSurvivor`, Monte Carlo), le moteur traite le SURVIVANT

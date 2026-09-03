@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[FISC-DIV-ACB-STEPUP]` — LIVRÉ (lot 115, PR #846)
+
+Le dividende réputé du non-enregistré était imposé chaque année, mais son montant restait dans le
+compte sans que le prix de base rajusté (ACB) ne monte : la même somme était donc ré-imposée dans le
+gain latent, à la réalisation comme au décès. Correctif : `processDecemberTaxFiling` rend un
+`nonRegACBAdd`, que l'appelant applique — **le même patron que `processGainHarvesting` juste à côté**
+(`nonRegACB += gh.harvestedGain`). La référence existait dans le fichier.
+
+⚠️ **Le ticket avait raison sur le mécanisme et SURESTIMAIT le chiffre.** Il annonçait « ≈ 58 k$
+d'impôt en double » à 20 ans, par une arithmétique sur l'ACB manquant. Mesuré (500 000 $ de
+non-enregistré, 5 %/an) — le gain COMPOSE, puisque c'est un pas manqué chaque année :
+10 ans **+1 911 $** de patrimoine / +7 739 $ de succession · 20 ans **+12 055 $** / +16 703 $ ·
+30 ans **+31 055 $** / +30 975 $. L'écart vient de ce qu'un ACB manquant n'est pas un impôt payé :
+c'est un impôt payé le jour où on vend, et une projection ne réalise qu'une partie du gain. C'est la
+SUCCESSION, qui liquide tout, qui approche le coût plein.
+
+Montant retenu : le dividende BRUT — pas le majoré (fiction de calcul de l'impôt, jamais investie),
+pas le net d'impôt (l'impôt sort des liquidités, il ne réduit pas la mise).
+
+Garde : `tests/services/dividendeReputeStepUpAcb.test.ts` (espion sur le delta rendu ; deux
+perturbations aux signatures distinctes — retirer le pas côté module rougit 4 cas, retirer son
+application côté appelant n'en rougit que 2, ce qui prouve que les deux moitiés sont couvertes).
+
 ## 2026-09-03 — `[RRSP-FIRST-YEAR-13M]` — LIVRÉ (lot 113, PR #844)
 
 Le revenu gagné du mois était versé à l'accumulateur annuel AVANT le reset de janvier : le revenu

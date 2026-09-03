@@ -1366,6 +1366,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear,
             );
             taxCurrentYear = decResult.newTaxCurrentYear;
+            // [FISC-DIV-ACB-STEPUP] Le dividende réputé du non-enregistré vient d'être imposé et son
+            // montant est resté dans le compte : le prix de base rajusté monte d'autant, sinon la
+            // même somme est ré-imposée dans le gain latent à la réalisation ou au décès.
+            // ⚠️ MÊME patron que `processGainHarvesting` quelques lignes plus haut
+            // (`nonRegACB += gh.harvestedGain`) : le module rend un delta, l'appelant l'applique.
+            nonRegACB += decResult.nonRegACBAdd;
             // [ENG-TTP-UNSETTLED-HORIZON] Décembre vient de RÉCONCILIER l'année : ce montant est
             // la vraie dette fiscale de l'année (retenues provisionnées + complément), réglée par
             // l'avril SUIVANT. Photo ICI ≡ lire taxPreviousYear (son transfert est quelques lignes

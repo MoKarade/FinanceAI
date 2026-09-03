@@ -483,14 +483,6 @@
 - [x] ~~**`[FISC-DIV-DERIVED-BASES]`**~~ ✅ **LIVRÉ 2026-08-21** (FSS +70 $/ménage, récupération
   PSV +1 552,50 $/an mesurés — détail en tête d'archive, réf PR au merge). Le voisin **clamp du
   CID** reste OUVERT et documenté (mesuré 0 $ avant comme après sur le profil du panel) :
-- [ ] **`[FISC-DIV-ACB-STEPUP]`** (M, **ÉLEVÉ** [Probable — arithmétique revue #683, PRÉ-EXISTANT
-  amplifié par la visibilité du dividende]) — le dividende réputé du non-enregistré est IMPOSÉ
-  chaque année (§3) mais l'ACB n'est PAS incrémenté (aucun des 6 sites `nonRegACB`) ni le cash
-  sorti : les 30 % du rendement sont imposés comme dividende PUIS re-imposés dans le gain latent
-  à la réalisation/au décès. Arithmétique : 500 k$ à 5 %/20 ans → ≈ 248 k$ d'ACB manquant ≈
-  58 k$ d'impôt en double. Point d'accroche évident : `computeAnnualNonRegDividends` (source
-  unique du montant). ⚠️ Re-base massif de goldens — lot dédié. Limite assumée documentée
-  FISCAL_REFERENCE §6 en attendant.
 - [x] ~~**`[FISC-BAND-AGE-CREDITS]`**~~ ✅ **DOUBLON — LIVRÉ par #676** (`[FISC-TAXDEC-INCR]`,
   2026-08-20) : mêmes bandes §2/§3 sans ageOpts, mêmes chiffres (675,56 $ à 60 k$). Le panel #564
   et le triage 2026-06-16 avaient nommé le même défaut sous deux IDs. Constaté au lot vague 1b.

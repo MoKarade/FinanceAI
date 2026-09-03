@@ -86,7 +86,15 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
-## 🔴 `[ENG-T1213-NET-MONTHLY]` — un bouton de l'app détruit jusqu'à 46 % de ta projection (2026-09-03)
+## ✅ `[ENG-T1213-NET-MONTHLY]` — RÉPONDU par Marc le 2026-09-03 : **retirer le bouton + forcer à OFF** — LIVRÉ (lot 118)
+
+> **Réponse de Marc** : option 1 (retirer le bouton), et sur la sous-question du réglage déjà
+> enregistré : **forcer à OFF partout** — le moteur ignore la valeur persistée, le champ reste dans
+> le type (aucune migration de données). Livré au lot 118 ; la garde du lot 114 s'est INVERSÉE au
+> même endroit (`tests/services/t1213ToggleInerte.test.ts`).
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **C'est le plus grave de cette liste.** Dans les réglages avancés de la projection, il y a un bouton
 « T1213 retenue source ON/OFF ». Dans la vraie vie, le formulaire T1213 te permet de faire réduire
@@ -126,7 +134,16 @@ jour où le défaut sera corrigé, pour qu'on ne le re-livre pas par accident.
 
 ---
 
-## `[IMMO-3-FORMULES]` volet CLAMP — faut-il montrer une équité NÉGATIVE ? (2026-09-03)
+</details>
+
+## ✅ `[IMMO-3-FORMULES]` volet CLAMP — RÉPONDU le 2026-09-03 : **retirer le plancher**
+
+> **Réponse de Marc** : option 1. La courbe dit la vérité, y compris quand elle est mauvaise —
+> cohérent avec `no-fake-data`. ⬜ **À LIVRER** : retirer le `Math.max(0, …)` de `Equite` dans
+> `runAmortization`, et re-baser les tests d'historique concernés AVEC leur explication.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Ce qui se passe.** Quand l'app reconstruit l'historique de ton immobilier, elle calcule l'équité
 d'un bien comme « ce qu'il vaut moins ce que tu dois dessus » — mais elle refuse le résultat
@@ -155,7 +172,15 @@ le profil. Corrigé et mesuré ; les deux formules de l'écran concordent mainte
 
 ---
 
-## `[ENG-GOALS-HORS-TOTALEXPENSES]` — un compteur de dépenses qui oublie tes objectifs (2026-09-03)
+</details>
+
+## ✅ `[ENG-GOALS-HORS-TOTALEXPENSES]` — RÉPONDU le 2026-09-03 : **attendre l'affichage du SWR**
+
+> **Réponse de Marc** : ne rien changer maintenant. Le coût est nul tant que le SWR n'est affiché
+> nulle part ; la garde du lot 110 rougira le jour où quelqu'un le branche. Rien à livrer.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Ce qui se passe.** Quand un de tes objectifs financiers arrive à échéance, l'app sort l'argent du
 compte visé — le patrimoine baisse, la sortie est bien enregistrée. Mais le **compteur total de
@@ -180,7 +205,17 @@ quelqu'un tente cette « correction ».
 2. **Séparer les deux compteurs** — un pour la trésorerie, un pour le rapport. C'est le seul
    correctif juste, mais il touche le cœur du moteur et mérite son propre lot avec plan préalable.
 
-## `[HEALTH-CORRUPTION…]` (a) — faut-il signaler une donnée invalide dans le RÉSUMÉ ? (2026-09-03)
+</details>
+
+## ✅ `[HEALTH-CORRUPTION…]` (a) — RÉPONDU le 2026-09-03 : **un marqueur discret**
+
+> **Réponse de Marc** : option 2 — *différente de ma recommandation*, qui était de ne rien changer.
+> ⬜ **À LIVRER** : une pastille (pas une phrase) dans le résumé « Santé financière » quand au moins
+> une métrique est exclue pour donnée INVALIDE, cliquable vers le détail. ⚠️ Ne doit PAS s'afficher
+> pour une métrique simplement non calculable — c'est toute la distinction qui justifie le marqueur.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Ce qui est déjà réglé.** Quand *aucune* de tes métriques n'est calculable, le résumé de santé le
 dit honnêtement au lieu d'afficher « 0/100 » en rouge. Et sur l'écran de détail, une métrique exclue
@@ -201,7 +236,15 @@ déjà appris qu'un avertissement permanent finit par ne plus être lu.
    est exclue pour donnée invalide, cliquable vers le détail.
 3. **Une phrase** dans le résumé — le plus visible, et le plus bruyant.
 
-## `[BUDGET-DEUX-NETS-MEME-ECRAN]` — « Effort : X % » n'est pas calculé sur le net affiché (2026-09-03)
+</details>
+
+## ✅ `[BUDGET-DEUX-NETS-MEME-ECRAN]` — RÉPONDU le 2026-09-03 : **nommer la base**
+
+> **Réponse de Marc** : option 2. La paie déclarée reste le dénominateur — aucun chiffre ne bouge —
+> et le badge le DIT. ⬜ **À LIVRER** : mention « sur ta paie déclarée » sur le badge « Effort ».
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Ce qui se passe.** Dans la carte fiscale de l'écran Budget, la ligne **« Revenu Net Disponible »**
 est calculée depuis ton **brut**, par le moteur fiscal. Juste en dessous, le badge **« Effort : X % »**
@@ -236,7 +279,15 @@ s'applique pas tel quel.
    — et le **nommer** sur le badge (« sur ta paie déclarée »). Aucun chiffre ne bouge.
    *(ma recommandation : c'est celle qui ne déplace rien et qui supprime quand même la confusion)*
 
-## `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — un réglage de rendement qui ne fait rien (2026-09-03)
+</details>
+
+## ✅ `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — RÉPONDU le 2026-09-03 : **ne rien changer**
+
+> **Réponse de Marc** : option 1. Le taux global reste un réglage d'écrans, la carte par compte
+> pilote la projection. La garde du lot 107 fige le fait. Rien à livrer.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Le fait, mesuré.** L'app a **deux** réglages de rendement : un taux **global** (`returnRate`) et
 une **carte par compte** (CELI / REER / non-enregistré / crypto / liquidités). Le moteur de
@@ -267,7 +318,16 @@ l'utilisent légitimement.)*
    compte : l'écraser entièrement ? servir de défaut ? Cette option change les projections de tout
    le monde et demande un plan à part.
 
-## `[MIGRATE-GROSS-DEJA-PERSISTE]` — faut-il re-dériver un salaire brut déjà enregistré ? (2026-09-03)
+</details>
+
+## ✅ `[MIGRATE-GROSS-DEJA-PERSISTE]` — RÉPONDU le 2026-09-03 : **migrer en DEMANDANT**
+
+> **Réponse de Marc** : option 3. Détecter la signature (`brut == arrondi(net × 1,35)`) et PROPOSER
+> la correction ; ne jamais écrire tout seul. ⬜ **À LIVRER**. ⚠️ Le point non négociable : aucune
+> écriture automatique sur une saisie de l'utilisateur — c'est irréversible côté app.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Le problème.** Un ancien défaut fabriquait ton salaire brut en multipliant le net par 1,35. Il est
 corrigé — mais **seulement pour les configurations qui n'avaient pas encore de brut enregistré** :
@@ -292,7 +352,22 @@ saisie de l'utilisateur est irréversible côté app. Le ticket lui-même dit «
    correction, sans jamais écrire tout seul. *(ma recommandation : c'est le seul qui ne peut pas
    détruire une saisie)*
 
-## `[FMT-PROMPT-MONTANTS]` — un texte destiné à un MODÈLE doit-il passer par `formatCAD` ? (2026-09-03)
+</details>
+
+## ✅ `[FMT-PROMPT-MONTANTS]` — RÉPONDU le 2026-09-03 : **tout migrer + abandonner l'arrondi**
+
+> **Réponse de Marc** : migrer les 17 sites vers `formatCAD` — *différent de ma recommandation* —
+> et, sur la sous-question, **abandonner l'arrondi à 100 $**.
+> ⚠️⚠️ **CONSÉQUENCE OBLIGATOIRE, à livrer DANS LE MÊME LOT** : le texte de consentement de l'app
+> promet « montants arrondis à 100$ ». Sans l'arrondi, cette phrase devient FAUSSE — c'est un
+> engagement de vie privée affiché à l'utilisateur, pas un détail technique. Le lot n'est pas
+> livrable sans la correction du consentement.
+> ⬜ **À LIVRER** : retirer les 4 entrées d'`EXEMPTIONS` de
+> `tests/components/formatMonetaireSourceUnique.test.ts`, migrer les 17 sites, retirer l'arrondi,
+> corriger le texte de consentement.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
 
 **Contexte.** Les lots 100-103 ont fermé la classe « montant formaté hors `utils/format.ts` » sur
 tous les écrans et tous les journaux du moteur. Il reste **17 sites**, tous du texte lu par un
@@ -317,6 +392,8 @@ sont pas celles d'un prompt.
 `tests/components/formatMonetaireSourceUnique.test.ts` et migrer les 17 sites — mais il faut alors
 décider ce qu'on fait de l'arrondi à 100 $ (le garder EN PLUS de `formatCAD`, ou l'abandonner et
 corriger le texte de consentement).
+
+</details>
 
 ## A00. ✅ RÉPONDU par Marc le 2026-08-20 — règle sourcée, transcrite
 

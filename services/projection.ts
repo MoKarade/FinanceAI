@@ -1327,7 +1327,19 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     grossMarcBaseAnnual,
                     grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
                     simSalaryGrowth,
-                    optimizeSourceDeductions: effProj.optimizeSourceDeductions,
+                    // [ENG-T1213-NET-MONTHLY] FORCÉ À FALSE (décision de Marc, 2026-09-03), et pas
+                    // seulement retiré de l'interface. Le réglage est PERSISTÉ dans la configuration :
+                    // se contenter de retirer le bouton laisserait une config qui l'a déjà à `true`
+                    // bloquée avec −45,7 % de patrimoine projeté et AUCUN moyen de revenir en arrière
+                    // (« un repli persisté est pire qu'un repli calculé » — le dépôt a déjà payé ce
+                    // piège sur `grossSalary`). Le champ reste dans le type : aucune migration de
+                    // données, donc aucun risque d'écraser une saisie.
+                    // ⚠️ Le mécanisme n'est pas « désactivé par prudence » : il était FAUX. Réduire la
+                    // retenue sans majorer le net mensuel encaissé fait perdre l'économie fiscale du
+                    // REER sans jamais verser la contrepartie — l'inverse du vrai T1213, qui est
+                    // neutre à positif. Le rebrancher exige de modéliser cette hausse, ce qui bute
+                    // sur une causalité (les déductions de l'année ne sont connues qu'en décembre).
+                    optimizeSourceDeductions: false,
                     incomeRetirementMonthly: incomeRetirement,
                     // FA-3a — SRG mensuel familial : NON IMPOSABLE (Service Canada), soustrait
                     // de l'assiette imposable par taxDecember (revenu cash inchangé).

@@ -224,6 +224,10 @@ export interface ProjectionConfig {
   manualREERRoom?: number;
   vehicleReplacementEnabled?: boolean;
   useSmithManoeuvre?: boolean;
+  /** @deprecated [ENG-T1213-NET-MONTHLY] Plus AUCUN effet depuis le 2026-09-03 : le moteur le force
+   *  à `false` et son bouton a été retiré de l'interface. Conservé pour que les configurations déjà
+   *  enregistrées restent lisibles sans migration. Ne pas re-brancher sans modéliser d'abord la
+   *  hausse du net mensuel encaissé, sinon le réglage re-devient une perte sèche (−45,7 % à 30 ans). */
   optimizeSourceDeductions?: boolean;
   investmentTargetPcts?: Record<string, number>;
   // D2.5: Smile Curve — courbe en U des dépenses de retraite (étude CIBC).

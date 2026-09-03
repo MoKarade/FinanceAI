@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 375 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 376 tests** Vitest
 (532 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -259,6 +259,20 @@ n'est pas réécrire un récit.
   FluxImpots` ». **Un golden bien écrit dit à quelles conditions il se re-base ; le lire bat tout
   raisonnement sur son titre.** ⚠️ Et `toBe` INTERROMPT le cas : trois ancres ne sont apparues
   qu'après réparation des précédentes — un premier gate rouge SOUS-COMPTE les re-bases.
+- **Retirer un réglage nuisible exige de neutraliser sa valeur PERSISTÉE** : supprimer le seul bouton
+  « T1213 » aurait laissé toute config déjà à `true` bloquée avec −45,7 % de patrimoine **et sans
+  plus aucun moyen de revenir en arrière** — l'interface qui le permettait venait de disparaître. Le
+  correctif est la PAIRE (retirer le bouton ET faire ignorer la valeur par le moteur) ; le champ reste
+  `@deprecated` dans le type, car le supprimer exigerait une migration du schéma persisté — un risque
+  sur les données pour un gain nul. Même mécanisme que le repli persisté de `grossSalary` : **avant de
+  livrer le retrait d'un réglage nuisible, demander si sa mauvaise valeur a été SAUVEGARDÉE.**
+  ⚠️ L'inventaire de dette du lot 114 s'est INVERSÉ au même endroit (« ça coûte −45,7 % » → « ça ne
+  change plus rien »), avec l'histoire dedans. ⚠️ Corollaire de conduite : sur huit décisions posées
+  à Marc, **deux ont divergé de ma recommandation** — une recommandation sert à rendre le choix
+  rapide, pas à le pré-décider ; et deux réponses ont ouvert une SOUS-question non anticipée (valeur
+  persistée, texte de consentement) : une décision produit n'est complète que quand ses conséquences
+  irréversibles sont sur la table
+  (`RETIRER-UN-REGLAGE-NUISIBLE-EXIGE-DE-NEUTRALISER-SA-VALEUR-PERSISTEE`, 2026-09-03).
 - **Un plafond de ratchet qui a cessé de suivre son compte n'est plus une protection** : le ratchet
   des décommenteurs portait `PLAFOND = 15`, mesuré et daté. Compte réel re-mesuré : **1** — quatorze
   migrations faites par d'autres lots sans que le plafond suive, donc **quatorze régressions

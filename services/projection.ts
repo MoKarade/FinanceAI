@@ -1622,6 +1622,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             withdrawalLiquid, withdrawalCELI, withdrawalNonReg, withdrawalREER, contribLiquid,
             celiWithdrawalsThisYear, retraitCeliMois,
             retraitReerMois, rrspWithholdingMois, accRetraitsReerYearAdd: 0,
+            rapMissedRepaymentAdd: 0,
             immoInterest, immoPrincipal, immoHypo, immoCharges,
             totalRentalIncome: 0,
             lifeEventLogs: [], flowEventLogs: [],
@@ -1675,6 +1676,19 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (reState.accRetraitsReerYearAdd > 0) {
             accRetraitsReerYear += reState.accRetraitsReerYearAdd;
             accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, reState.accRetraitsReerYearAdd, reerByUser);
+        }
+        // [ENG-RAP-MISSED-REPAYMENT-TAX] Un versement RAP DÛ et non fait s'ajoute au revenu
+        // imposable de l'année (ARC, ligne 12900) — même assiette annuelle que ci-dessus, mais
+        // registre d'entrée SÉPARÉ : ce n'est pas un retrait du REER, il n'a ni retenue à la
+        // source ni ligne « RetraitREER » à l'affichage.
+        // ⚠️ Ventilation per-conjoint par `reerByUser` (prorata des soldes REER), la même
+        // approximation que le retrait immobilier juste au-dessus : le moteur ne mémorise pas QUI
+        // a emprunté au RAP (le plafond est pourtant un droit par personne). Faute d'attribution
+        // réelle, le prorata est la répartition la moins arbitraire disponible ici — c'est une
+        // limite ASSUMÉE, consignée dans `FISCAL_REFERENCE.md`.
+        if (reState.rapMissedRepaymentAdd > 0) {
+            accRetraitsReerYear += reState.rapMissedRepaymentAdd;
+            accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, reState.rapMissedRepaymentAdd, reerByUser);
         }
         immoInterest = reState.immoInterest; immoPrincipal = reState.immoPrincipal;
         immoHypo = reState.immoHypo; immoCharges = reState.immoCharges;

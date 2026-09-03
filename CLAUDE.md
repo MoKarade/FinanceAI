@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 344 tests** Vitest
-(526 fichiers de test, mesuré le 2026-09-03). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 350 tests** Vitest
+(527 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -238,6 +238,21 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Une GRAVITÉ classée depuis un PROFIL n'est pas une gravité** : `FISCAL_REFERENCE.md` classait le
+  versement RAP manqué « LOW assumée (impact borné pour les profils qui gardent des liquidités) » — la
+  parenthèse EST l'aveu que la mesure a été faite sur le profil de Marc. Sur un profil ordinaire
+  (60 k$, condo 420 k$), **190 à 205 versements sautés sur 205**, 63 333 $ à 68 333 $ jamais imposés,
+  patrimoine final surévalué de **18 121 $ à 19 864 $** ; sur le profil confortable, **0 $ exactement**
+  (contrôle négatif). Quand la justification d'une gravité porte une CONDITION sur l'utilisateur
+  (« pour les profils qui… », « tant que… »), cette condition NOMME la fixture où le défaut est
+  invisible : la mesure qui compte est celle qui la viole. ⚠️ Corollaires : **une branche vide cache
+  souvent DEUX défauts** (ici l'imposition ET l'amortissement du solde — 205 mois dus pour une
+  obligation de 180, la dette ne s'éteignait jamais) ; un canal d'imposition qui « marcherait » n'est
+  pas le bon si les SENS diffèrent (registre dédié, parce qu'un RAP manqué n'a ni mouvement d'argent
+  ni retenue à la source) ; et **un champ ABSENT d'une fixture donne `NaN` dans une comparaison, donc
+  `false`, donc un chemin jamais emprunté sans la moindre trace** — `totalClosingCosts` oublié m'a
+  fait mesurer « zéro RAP » et failli publier « chemin inatteignable »
+  (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`, 2026-09-03).
 - **Un no-op COMMENTÉ est une décision à relire avant de la défaire** : `addExpense: (_n) => {}`
   dans le mutateur d'objectifs porte « déjà soustrait du compte ciblé ». Le rendre effectif paraît
   être LE correctif du registre qui sous-compte — il soustrairait le montant une SECONDE fois du

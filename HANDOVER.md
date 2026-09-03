@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 111 : un versement RAP manqué devient un revenu imposable
+> `[ENG-RAP-MISSED-REPAYMENT-TAX]` livré — **code de prod money-critical touché**
+> (`services/projection/realEstateMonth.ts`, `services/projection.ts`). Déploiement à vérifier.
+> - Un versement RAP dû et non payé ne faisait **rien** : ni imposition, ni réduction du solde. Il
+>   s'ajoute désormais au revenu imposable de l'année (ARC, ligne 12900) et amortit la dette.
+> - ⚠️ **La gravité annoncée était fausse dans les deux documents qui la portaient** (ticket « S »,
+>   `FISCAL_REFERENCE.md` « LOW, impact borné pour les profils qui gardent des liquidités »). Mesuré
+>   sur un célibataire à 60 k$ / condo 420 k$ : **190 à 205 versements sautés sur 205**, 63 333 $ à
+>   68 333 $ jamais imposés, patrimoine final surévalué de **18 121 $ à 19 864 $**. Contrôle négatif :
+>   **0 $ exactement** sur le profil qui rembourse — d'où le mauvais classement.
+> - **Second défaut, absent du ticket** : sans réduction du solde, l'obligation de 180 mois ne
+>   s'éteignait jamais (mesuré **205 mois dus**). Une branche vide cachait deux manques, pas un.
+> - **Registre DÉDIÉ** (`rapMissedRepaymentAdd`), pas `accRetraitsReerYearAdd` : un RAP manqué n'est
+>   pas un retrait REER — aucun mouvement d'argent, aucune retenue à la source, et une garde voisine
+>   affirme `accRetraitsReerYearAdd === withdrawalREER − rapBorrowed`.
+> - ⚠️ **Deux limites SUBSISTENT** (consignées dans `FISCAL_REFERENCE.md`) : le solde impayé au décès
+>   n'est pas porté à la déclaration finale ; l'inclusion est ventilée entre conjoints au prorata des
+>   soldes REER, le moteur ne mémorisant pas QUI a emprunté au RAP.
+> - Garde : `tests/services/rapVersementManqueImpose.test.ts` (6 cas · 3 perturbations séparées).
+> - Gate complet VERT : **5 350 tests / 527 fichiers**, exit 0. CI verte sur les six checks.
+
 > ## 🟦 Session 2026-09-03 — Lot 110 : une limite épinglée dont le correctif évident est un BUG
 > `[ENG-GOALS-HORS-TOTALEXPENSES]` — **aucun code de prod touché** : un inventaire de dette + le
 > routage du vrai correctif. Aucun déploiement à vérifier.

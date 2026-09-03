@@ -35,7 +35,7 @@ const lire = (rel: string): string => readFileSync(resolve(RACINE, rel), 'utf8')
 // ─── Fixture Smith ────────────────────────────────────────────────────────────
 
 const makeState = (over: Partial<RealEstateState> = {}): RealEstateState => ({
-    retraitReerMois: 0, rrspWithholdingMois: 0, accRetraitsReerYearAdd: 0,
+    retraitReerMois: 0, rrspWithholdingMois: 0, accRetraitsReerYearAdd: 0, rapMissedRepaymentAdd: 0,
     liquid: 0, celi: 0, celiapp: 0, reer: 0, nonReg: 0, nonRegACB: 0, capitalLossBank: 0,
     monthlyIncome: 0, monthlyExpenses: 0, accRentesYear: 0, accCapitalGainsYear: 0,
     realEstateEquity: 0, mortgageBalance: 0, hasPurchasedPrimary: false,

@@ -15,6 +15,32 @@ import type { Municipality } from '../../types';
  */
 export const NONREG_DIVIDEND_DISTRIBUTION_SHARE = 0.30;
 
+/**
+ * [MGA-PATRON-5-COPIES] Hypothèse de MODÈLE (PAS une valeur fiscale) : les plafonds indexés sur la
+ * croissance des salaires — MGA de la RRQ, plafond RQAP, maximum assurable de l'AE, plafond REER —
+ * montent d'environ **un demi-point de plus que l'inflation** par an. Le plafond, lui, est de l'ARC
+ * ou de Retraite Québec ; la VITESSE à laquelle on le prolonge au-delà des années publiées ne l'est
+ * pas. Écart mesuré contre l'indexation réellement observée : `docs/FISCAL_REFERENCE.md` §7.
+ *
+ * ⚠️ CE QUI EST PARTAGÉ ICI EST LA VITESSE, PAS L'ANCRE. Une extrapolation porte DEUX paramètres,
+ * et le dépôt a déjà payé la confusion des deux (`UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE` :
+ * une ancre figée à 2026 pendant que la table allait jusqu'à 2030 fabriquait une marche de +4,54 %
+ * en une année). Chaque appelant garde donc SON ancre et calcule SON nombre d'années :
+ *   • base connue pour l'année COURANTE → `annees = yearsElapsed` (MGA RRQ, RQAP, AE) ;
+ *   • base lue dans une TABLE qui s'arrête à une dernière année connue → `annees = cible − dernière
+ *     année connue` (plafond REER, `taxJanuary`). Cette divergence est VOULUE et correcte : ce sont
+ *     deux ancres différentes, pas deux vitesses différentes.
+ */
+export const MGA_EXCES_SUR_INFLATION_PP = 0.5;
+
+/**
+ * Projette une valeur indexée au patron MGA sur `annees` années.
+ * `simInflation` est en POINTS DE POURCENTAGE (2 = 2 %/an), comme partout dans le moteur.
+ */
+export function projeterAuPatronMga(base: number, simInflation: number, annees: number): number {
+    return base * Math.pow(1 + (simInflation + MGA_EXCES_SUR_INFLATION_PP) / 100, annees);
+}
+
 // ---- PRNG seedé (Mulberry32) — déterministe, rapide ----
 export function mulberry32(seed: number): () => number {
     return function () {

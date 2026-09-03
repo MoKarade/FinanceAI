@@ -1277,15 +1277,6 @@
   le régime à l'utilisateur ou si on assume le régime de base. La constante est déjà NOMMÉE
   (`RQAP_REPLACEMENT_RATE_BASE`) et la divergence documentée sur place + FISCAL_REFERENCE §2.
 
-- [ ] **`[MGA-PATRON-5-COPIES]`** (S, MOYEN — revue #675, 2026-08-20) — le patron d'indexation MGA
-  (`base × (1 + (simInflation + 0,5)/100)^années`) est recopié à **5 sites** : `retirementIncome.ts`
-  (×2), `taxJanuary.ts`, `childrenReee.ts` (`rqapCapProjected`, non exporté), `activeIncome.ts`
-  (plafond AE, neuf). ⚠️ **La divergence a DÉJÀ commencé** : `taxJanuary` utilise un exposant
-  DIFFÉRENT (`nextLoopYear − 2026` au lieu de `yearsElapsed`). Extraire
-  `mgaPatternProjected(base, simInflation, années)` dans `services/projection/helpers.ts` et faire
-  passer les 5 sites — en TRAITANT la divergence de `taxJanuary` (est-elle voulue ?), pas en
-  l'écrasant. `UNE-FORMULE-RECOPIEE-DIVERGE`. [MESURÉ]
-
 - [ ] **`[CHOMAGE-DEUX-MODELES]`** (M, MOYEN — revue #675) — deux modèles de chômage DIVERGENTS :
   le stochastique (`activeIncome`, Marc seul, prestation AE complète 55 % du brut plafonné net
   d'impôt) et l'événement daté `PERTE_EMPLOI` (`computeIncomeLossFactor`, coupe le MÉNAGE entier

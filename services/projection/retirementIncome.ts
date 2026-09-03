@@ -5,6 +5,7 @@
 
 import type { RetirementGoal, User } from '../../types';
 import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, getResidencyStartYear } from '../../utils/tax';
+import { projeterAuPatronMga } from './helpers';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada) — règles documentées
 // FISCAL_REFERENCE §6 « Prorata RRQ / résidence PSV » (FA-8, 2026-06-11).
@@ -229,7 +230,7 @@ export function computeRetirementIncome(
     let totalRrqWeight = 0;
     const yearsElapsed = Math.floor(m / 12);
     // MGA RRQ projeté: base 2026 (RRQ_MPE) indexée à inflation + croissance salariale ~0.5%/an
-    const rrqMpeProjected = RRQ_MPE * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
+    const rrqMpeProjected = projeterAuPatronMga(RRQ_MPE, simInflation, yearsElapsed);
 
     // A1 — on conserve les POIDS PAR CONJOINT (et pas seulement leur somme) pour
     // attribuer RRQ/PSV à chaque personne selon SON salaire / SA résidence.
@@ -244,8 +245,9 @@ export function computeRetirementIncome(
         // FISC-RRQ-UNIT — grossSalary est MENSUEL (convention canonique du store, cf utils/salary.ts) ;
         // baseGrossAnnual/activeUsersCount est ANNUEL. On annualise grossSalary (×12) pour que le ratio
         // earnings/MGA (rrqMpeProjected, annuel) ait la bonne échelle — sinon RRQ ~12× trop basse.
-        const currentGrossUser = (u.grossSalary ? u.grossSalary * 12 : (baseGrossAnnual / activeUsersCount))
-            * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
+        const currentGrossUser = projeterAuPatronMga(
+            u.grossSalary ? u.grossSalary * 12 : (baseGrossAnnual / activeUsersCount),
+            simInflation, yearsElapsed);
         const rrqRatioUser = Math.min(1.0, currentGrossUser / rrqMpeProjected);
 
         // FISC-RRQ-PRORATA (2026-06-16) — prorata de RÉSIDENCE RRQ désormais PER-CONJOINT (avant :

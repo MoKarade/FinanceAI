@@ -23,7 +23,11 @@ import {
 
 const SIGNATURE = 'test:recidive';
 const entree = () => ({
-    source: 'engine' as const, severity: 'warning' as const,
+    // `ErrorSource` est une union FERMÉE (`services/errorLogger.ts`) : 'engine' n'en fait pas
+    // partie, et mon premier jet l'avait inventé. Vitest ne typecheck pas — c'est `tsc` qui l'a
+    // attrapé, au gate. D'où la règle appliquée depuis : les vérifs ciblées incluent `typecheck`
+    // APRÈS la DERNIÈRE édition, pas avant.
+    source: 'projection' as const, severity: 'warning' as const,
     message: 'donnée corrompue', context: {},
 });
 const combien = () => getErrors().filter(e => e.message === 'donnée corrompue').length;

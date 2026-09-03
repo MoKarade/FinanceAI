@@ -238,6 +238,21 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- **Un throttle sans horloge est un silence DÉFINITIF** : `logErrorThrottled` gardait ses signatures
+  dans un `Set` jamais purgé côté navigateur — « une fois par rafale » devenait « une fois par
+  session », et une corruption qui RÉCIDIVE dans un onglet ouvert des jours était muette. Le serveur
+  MCP n'avait pas le défaut (reset à chaque requête) ; côté navigateur **aucune occasion commune
+  n'existe** (un hook, une valorisation, une hydratation — aucun ne passe par la boucle de
+  projection), ce qui impose une fenêtre de TEMPS. Valeur DÉRIVÉE d'une mesure : rafale de 10 000
+  appels en **2,7 ms**, fenêtre à 60 s. ⚠️⚠️ Et une perturbation qui ne change que la LECTURE d'une
+  paire lecture/écriture ne teste pas son nom : `get('*')` avec une écriture restée par signature ne
+  trouvait plus rien, donc dupliquait « throttle supprimé » au lieu de tester la clé PAR SIGNATURE —
+  une clé se perturbe PARTOUT où elle est employée
+  (`UN-THROTTLE-SANS-HORLOGE-EST-UN-SILENCE-DEFINITIF`, 2026-09-03).
+  ⚠️ Corollaire de PROCÉDURE : les vérifs ciblées se lancent **APRÈS la DERNIÈRE édition**. J'avais
+  lancé `typecheck` après avoir modifié le module, puis écrit le fichier de test sans le relancer —
+  et **vitest ne typecheck pas**. Le gate a rougi sur une union fermée dont j'avais inventé un
+  membre. Rien de perdu (le travail était poussé), mais un aller-retour évitable.
 - **Un chiffre qui sert de DÉNOMINATEUR n'est pas un chiffre AFFICHÉ** : un ticket décrivait « deux
   net qui coexistent à l'écran » et prescrivait « une mention de provenance sur chacun ». Recensé :
   le second n'est JAMAIS affiché comme montant — ses trois usages sont des dénominateurs (un badge

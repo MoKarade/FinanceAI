@@ -10589,6 +10589,49 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 109 (2026-09-03) — un throttle sans horloge est un silence définitif
+
+`UN-THROTTLE-SANS-HORLOGE-EST-UN-SILENCE-DEFINITIF`
+
+`logErrorThrottled` gardait ses signatures dans un `Set` **jamais purgé** côté navigateur. Le
+throttle existe pour absorber une rafale — un même input corrompu qui revient à chaque itération
+d'une boucle chaude — et il le faisait très bien. Mais sans horloge, « une fois par rafale » devient
+**« une fois par session »**, et une corruption qui apparaît, disparaît, puis RÉCIDIVE dans un onglet
+ouvert des jours est muette la seconde fois. Le serveur MCP n'avait pas le défaut : il appelle
+`__resetErrorThrottle()` à chaque requête, parce que là « une occasion » est une notion évidente.
+Côté navigateur, **il n'existe aucune occasion commune** : les appelants sont un hook, une
+valorisation de portefeuille et une hydratation d'historique, dont aucun ne passe par la boucle de
+projection. C'est ce constat — et pas une préférence — qui impose une fenêtre de TEMPS.
+
+⚠️ **La valeur de la fenêtre est DÉRIVÉE d'une mesure.** Ce que le throttle doit absorber est une
+rafale : mesurée sur le plus chaud des appelants, **10 000 appels en 2,7 ms** (≈ 3 700 appels/ms).
+Soixante secondes sont quatre ordres de grandeur au-dessus de cette rafale et quatre ordres en
+dessous d'une session « onglet ouvert des jours ». Après `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`,
+le réflexe est acquis : le nombre s'obtient d'abord, il s'écrit ensuite, et la mesure vit à côté de
+lui.
+
+⚠️⚠️ **Une perturbation qui ne change que la LECTURE d'une paire lecture/écriture ne teste pas ce
+que son nom annonce.** Ma troisième perturbation remplaçait `map.get(signature)` par `map.get('*')`
+en laissant l'écriture indexée par signature : plus rien n'était jamais trouvé, donc plus rien
+n'était throttlé — elle **dupliquait** la perturbation « throttle supprimé » au lieu de tester la clé
+PAR SIGNATURE. Refaite des deux côtés, elle ne fait plus rougir que sa cible. Une clé se perturbe
+partout où elle est employée, sinon on mesure sa disparition et pas son identité.
+
+⚠️⚠️ **Mes vérifs « ciblées » ont laissé passer un typecheck rouge, et l'ordre en était la cause.**
+J'ai lancé `typecheck` juste après avoir modifié le module — puis j'ai ÉCRIT le fichier de test, et
+je ne l'ai plus relancé : seul `vitest` a tourné dessus, et **vitest ne typecheck pas**. Le gate a
+rougi sur une union fermée (`ErrorSource` n'a pas de membre `'engine'`, que j'avais inventé). La
+règle du lot 105 disait « vérifs ciblées → commit → push → gate » ; il lui manquait le mot qui
+compte : **les vérifs ciblées se lancent APRÈS la DERNIÈRE édition**, pas après la première. Rien
+n'a été perdu — le travail était poussé, c'est justement à ça que sert cet ordre — mais le gate a
+coûté un aller-retour évitable.
+
+⚠️ **Trois des cinq sous-findings du ticket étaient DÉJÀ LIVRÉS** — et deux d'entre eux portaient,
+dans le code, un commentaire qui CITE l'ID du ticket. Le ticket, lui, les affirmait encore au
+présent. Quand un ticket énumère des sous-findings, chacun se re-recense séparément : un ticket
+partiellement livré est plus trompeur qu'un ticket faux, parce que ce qui reste est vrai et donne
+au reste une apparence de fraîcheur.
+
 ### Lot 108 (2026-09-03) — « deux montants coexistent » : vérifier qu'ils sont AFFICHÉS
 
 `UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE`

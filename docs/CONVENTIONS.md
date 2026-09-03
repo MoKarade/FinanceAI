@@ -10589,6 +10589,47 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 102 (2026-09-03) — l'inventaire a exigé sa propre mort, et il ne fallait pas le supprimer
+
+`UN-INVENTAIRE-QUI-ATTEINT-ZERO-S-INVERSE-EN-REGLE`
+
+Le compteur né au lot 100 portait deux assertions : « pas plus de N » **et** « dette à zéro → retire
+cette garde ». En ramenant les 2 derniers sites à 0, c'est la seconde qui a rougi — elle a fonctionné
+exactement comme prévu (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`). Mais la suivre à la lettre,
+c'est-à-dire **supprimer le fichier**, aurait rouvert en silence la porte que trois lots venaient de
+fermer : plus rien n'aurait refusé le prochain `toLocaleString` sur un montant. Ce qui meurt est
+l'INVENTAIRE (« combien reste-t-il ? ») ; ce qui reste est la RÈGLE (« il ne doit plus jamais y en
+avoir »). La même limite, inversée au même endroit, avec son histoire écrite dedans
+(`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`). Corollaire de lecture : « supprime cette
+garde » écrit dans un message d'assertion est une CONSIGNE DE MOI-MÊME, donc à re-juger, pas à
+exécuter (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`).
+
+⚠️ **Le membre déviant se compte, il ne se devine pas** : sur les 19 appels du formateur maison de
+`ProjectionTooltip`, **18** portaient un « $ » posé à la main dans le JSX et **1** n'en portait pas —
+le gain par compte, dont le symbole est déjà une ligne plus haut. Un remplacement global aurait
+doublé le symbole dix-huit fois ou ajouté un symbole jamais eu une fois. Et le second site du lot,
+`ImportBrokerPositions`, appelle `formatNumber` et non `formatCAD` : le prix y est en devise NATIVE,
+suivi de son code — le remède prescrit par le ticket y aurait écrit « 1 234,56 $ USD ».
+
+⚠️⚠️ **J'ai écrit l'avertissement sur l'insécable et commis l'erreur trois lignes plus bas.** Ma
+perturbation « migre le site NU vers `formatCAD` » est restée VERTE parce que l'assertion négative
+cherchait `` `${formatNumber(1500)} $` `` — une espace ORDINAIRE devant le « $ », que `formatCAD`
+n'écrit jamais (il pose U+00A0). L'attendu NÉGATIF se compose avec le formateur exactement comme le
+positif ; c'est le sens négatif qu'on oublie, parce qu'un `not.toContain` qui ne matche rien passe.
+
+⚠️ **Et la correction de cette assertion a révélé une fixture qui confondait deux grandeurs** : avec
+un seul compte, le gain (1 500) et le TOTAL « Rendement » (1 500 aussi) sont indiscernables, donc
+« `formatCAD(1500)` n'apparaît pas » devenait faux pour une raison LÉGITIME — la ligne de total porte
+bien son symbole. Deux comptes à gains différents (1 500 et 700) séparent les deux, et le total
+formaté devient l'anti-vacuité : il distingue « le gain est nu » de « rien n'est formaté »
+(`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`).
+
+⚠️ **Ce que la garde ne couvre TOUJOURS pas, et elle le dit** : elle ne voit que `toLocaleString`.
+Un montant composé à la main (`` `+${x}$` ``) lui est invisible — c'est la garde JUMELLE
+`formatMonetaireSourceUnique.test.ts` qui tient cette moitié, et seulement dans `components/`.
+Le reste est routé en `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]`. Un compteur qui ne dit pas ce qu'il ne
+compte pas se lit comme le total.
+
 ### Lot 101 (2026-09-03) — la garde du lot précédent a rougi sur le correctif qu'elle préparait
 
 `UNE-GARDE-QUI-EPINGLE-QUI-EST-OFFENDER-ROUGIT-SUR-SA-PROPRE-REPARATION`

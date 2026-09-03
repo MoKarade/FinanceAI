@@ -10,6 +10,19 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]` (PR lot 102)
+
+Dernier reliquat de `[FMT-TOLOCALESTRING-MONEY]`. **La dette passe à ZÉRO** : plus aucun montant
+formaté hors `utils/format.ts` par un `toLocaleString`.
+
+- `ProjectionTooltip.tsx` — **18 « $ » retirés du JSX** (le formateur pose le sien) et le 19ᵉ site,
+  qui n'en a jamais porté, basculé sur `formatNumber` : c'est le gain par compte, dont le symbole
+  est déjà une ligne plus haut.
+- `ImportBrokerPositions.tsx` — `formatNumber(v, { decimals: 2 })` et **non** `formatCAD` : le prix
+  est en devise NATIVE et son code s'affiche juste après (`formatCAD` aurait rendu « 1 234,56 $ USD »).
+- L'inventaire du lot 100 **s'est inversé plutôt que d'être supprimé** : « pas plus de N » est
+  devenu « exactement zéro », au même endroit, avec son histoire dedans.
+
 ## 2026-09-03 — `[FMT-TOLOCALESTRING-MONEY]` (PR #831 lot 100 · PR lot 101)
 
 Ticket unifié (absorbait `[FMT-MONEY-BYPASS]`, `[FMT-INFOBULLE-TOLOCALESTRING]`,

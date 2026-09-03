@@ -132,14 +132,15 @@ describe('[FMT-TOLOCALESTRING-MONEY] le scan qui définit le périmètre', () =>
         // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
         expect(r.partCode).toBeGreaterThan(0.45);
         // Et il trouve les TROIS familles : un scan qui n'en verrait qu'une classerait mal.
-        // ⚠️ Ce total a BAISSÉ de 78 (lot 100) à 13 (lot 101) parce que le lot a payé la dette —
-        // ce n'est pas une régression du scan, et le seuil se re-mesure avec elle. Les familles
-        // s'assertent une par une : un total qui tiendrait grâce aux seules dates ne prouverait
-        // pas que les deux autres sont encore reconnues.
-        expect(r.montants.length + r.compteurs.length + r.dates).toBeGreaterThan(10);
+        // ⚠️ Ce total a BAISSÉ de 78 (lot 100) à 13 (lot 101) puis à 11 (lot 102) parce que les lots
+        // ont payé la dette — ce n'est pas une régression du scan, et le seuil se re-mesure avec
+        // elle. Les familles restantes s'assertent une par une : un total qui tiendrait grâce aux
+        // seules dates ne prouverait pas que les compteurs sont encore reconnus. La famille
+        // MONTANT, elle, est désormais VIDE par construction — c'est le sujet du test d'inventaire
+        // plus bas, et sa capacité de détection est prouvée par les témoins nommés.
+        expect(r.montants.length + r.compteurs.length + r.dates).toBeGreaterThan(8);
         expect(r.dates).toBeGreaterThan(5);
         expect(r.compteurs.length).toBeGreaterThan(0);
-        expect(r.montants.length).toBeGreaterThan(0);
     });
 
     it('le décommentage FONCTIONNE : la prose qui cite le motif n\'est pas comptée', () => {
@@ -151,26 +152,31 @@ describe('[FMT-TOLOCALESTRING-MONEY] le scan qui définit le périmètre', () =>
         expect(stripCommentsJsx(brut)).not.toContain('toLocaleString'); // …et le scan ne la voit pas
     });
 
-    it('INVENTAIRE des montants à corriger — ce compte EST le périmètre du ticket', () => {
-        // ⚠️ Ce test ne fait pas rougir le dépôt aujourd'hui : il ÉPINGLE le compte mesuré pour que
-        // le prochain ajout soit visible, et pour que chaque lot de correction le fasse BAISSER.
-        // Une borne s'écrit dans les DEUX sens (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+    it('AUCUN montant formaté hors de la source unique — la dette est à ZÉRO', () => {
+        // ⚠️ CE TEST A CHANGÉ DE NATURE AU LOT 102, et c'est lui-même qui l'a exigé. Il est né
+        // INVENTAIRE au lot 100 (« pas plus de 67 »), a été abaissé à 2 au lot 101, et portait
+        // depuis le début une SECONDE assertion — « dette à zéro → retire cette garde ». C'est
+        // elle qui a rougi ici : la dette EST payée. Un inventaire qui ne saurait que refuser des
+        // ajouts survivrait à sa raison d'être (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+        //
+        // Il ne disparaît pas pour autant : ce qu'il mesurait — « combien reste-t-il ? » — devient
+        // « il ne doit plus jamais y en avoir ». C'est la même limite, INVERSÉE au même endroit,
+        // avec son histoire écrite dedans (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`) :
+        // supprimer le fichier laisserait croire que la règle n'a jamais eu besoin d'être tenue,
+        // et rouvrirait en silence la porte que trois lots viennent de fermer.
         const n = r.montants.length;
         // eslint-disable-next-line no-console
         console.log(`[FMT-TOLOCALESTRING-MONEY] montants=${n} · compteurs=${r.compteurs.length} · dates=${r.dates}`);
-        expect(n, `Un ${n > 2 ? 'NOUVEAU' : ''} montant formaté sans passer par formatCAD. `
-            + `Mesuré 67 au lot 100 (2026-09-03), ramené à 2 au lot 101 : les 65 chaînes de log du `
-            + `moteur passent désormais par la source unique. Les 2 restants sont les formateurs `
-            + `MAISON de deux composants, qui demandent un travail par site d'appel (le « $ » y est `
-            + `ajouté à la main dans le JSX, et l'un d'eux affiche une devise NATIVE). `
+        expect(n, `Un montant formaté sans passer par formatCAD (${r.montants.map(m => `${m.fichier}:${m.ligne}`).join(', ')}). `
+            + `La dette de [FMT-TOLOCALESTRING-MONEY] a été ramenée de 67 (lot 100) à 0 (lot 102) : `
+            + `il n'y a plus de compte à faire baisser, seulement une règle à tenir. `
+            + `Utilise formatCAD (montant en CAD), formatNumber (nombre nu ou devise ÉTRANGÈRE — le `
+            + `« $ » y serait FAUX) ou formatSigned(n, { withCurrency: true }). `
             + `⚠️ CE COMPTE NE PORTE QUE SUR toLocaleString : un montant composé À LA MAIN `
-            + `(\`+\${x}$\`) lui est INVISIBLE, et il en reste (recensés dans `
-            + `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]). Ne pas lire « 2 » comme « toute la dette ». `
-            + `Si tu en AJOUTES un, utilise formatCAD ; si tu en CORRIGES, baisse ce compte — et `
-            + `quand il atteint 0, SUPPRIME cette garde, sa dette est payée.`)
-            .toBeLessThanOrEqual(2);
-        expect(n, 'Dette à ZÉRO : retire cette garde et le ticket, ils n\'ont plus d\'objet.')
-            .toBeGreaterThan(0);
+            + `(\`+\${x}$\`) lui est INVISIBLE — c'est la garde JUMELLE `
+            + `formatMonetaireSourceUnique.test.ts qui tient cette moitié-là, et il en reste `
+            + `hors de components/ (voir [FMT-MONTANTS-COMPOSES-A-LA-MAIN]).`)
+            .toBe(0);
     });
 
     it('les fichiers MONEY-CRITICAL du ticket sont bien BALAYÉS', () => {

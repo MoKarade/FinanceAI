@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]` — LIVRÉ (lot 117, PR #848)
+
+Le ratchet des décommenteurs privés passe de « compter » à **INTERDIRE** (plafond 15 → **0**), la
+dernière étape que le ticket réclamait.
+
+⚠️ **Le travail que le ticket décrivait n'existait plus.** Il annonçait « 15 décommenteurs privés à
+migrer, fichier par fichier ». Re-mesuré en forçant le ratchet à imprimer sa liste : il n'en restait
+**qu'UN SEUL**, et il n'était pas migrable — `stripCommentsUniqueGuard.test.ts`, dont le propre motif
+de recherche EST un motif de décommentage (sa jumelle le déclarait déjà comme exempt, avec la même
+raison). Les quatorze autres avaient été migrés par d'autres lots.
+
+⚠️⚠️ **Le vrai défaut du jour était donc ailleurs, et personne ne l'avait vu : un plafond de 15 sur
+un compte réel de 1 autorisait QUATORZE régressions silencieuses.** Un ratchet dont le plafond a
+cessé de suivre son compte n'est plus une protection — il en porte seulement le nom, et il compte
+comme telle dans tout inventaire futur (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
+
+⚠️ **Passer à zéro a créé un second trou qu'il a fallu fermer dans le même lot** : plus aucun
+offender réel ne subsistant, « aucun trouvé » ne prouvait plus que le détecteur fonctionne. Un motif
+cassé aurait rendu la garde verte pour toujours. D'où une anti-vacuité explicite (le motif doit
+reconnaître un décommenteur synthétique), vérifiée par perturbation.
+
+Trois perturbations, trois rouges ciblés : un décommenteur privé neuf → refusé ; le motif de bloc
+cassé → l'anti-vacuité rougit ; l'exemption retirée → le faux offender structurel reparaît.
+
 ## 2026-09-03 — `[ENG-RANKING-ORDER-PIN]` — LIVRÉ (lot 116, PR #847)
 
 L'ORDRE complet du classement de stratégies est épinglé sur les résultats RÉELS du moteur (cinq

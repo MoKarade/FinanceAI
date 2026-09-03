@@ -259,6 +259,18 @@ n'est pas réécrire un récit.
   FluxImpots` ». **Un golden bien écrit dit à quelles conditions il se re-base ; le lire bat tout
   raisonnement sur son titre.** ⚠️ Et `toBe` INTERROMPT le cas : trois ancres ne sont apparues
   qu'après réparation des précédentes — un premier gate rouge SOUS-COMPTE les re-bases.
+- **Un plafond de ratchet qui a cessé de suivre son compte n'est plus une protection** : le ratchet
+  des décommenteurs portait `PLAFOND = 15`, mesuré et daté. Compte réel re-mesuré : **1** — quatorze
+  migrations faites par d'autres lots sans que le plafond suive, donc **quatorze régressions
+  silencieuses autorisées**. Pire qu'absent : il porte le nom d'une protection et compte comme telle
+  dans tout inventaire (variante par DÉRIVE de `UNE-GARDE-QUI-NE-PEUT-PAS-TIRER…`). Un ratchet se
+  RE-COMPTE, il ne se relit pas — et le geste est dans la garde : forcer le plafond à 0 imprime la
+  liste. ⚠️⚠️ **Descendre un plafond à ZÉRO crée un trou à fermer dans le MÊME lot** : tant qu'un
+  offender subsiste, il prouve incidemment que le détecteur marche ; à zéro, « aucun trouvé » devient
+  indistinguable de « motif cassé ». Anti-vacuité EXPLICITE obligatoire, prouvée par perturbation.
+  ⚠️ Et le seul site restant était un faux offender STRUCTUREL — une garde qui cherche des
+  décommenteurs doit en écrire un
+  (`UN-PLAFOND-DE-RATCHET-QUI-A-CESSE-DE-SUIVRE-SON-COMPTE-N-EST-PLUS-UNE-PROTECTION`, 2026-09-03).
 - **Un ORDRE écrit dans un ticket est une photo datée** : `[ENG-RANKING-ORDER-PIN]` fournissait « LA
   baseline à pinner » (balanced : MELTDOWN > PRIO_REER > AUTO). Re-mesuré, deux stratégies non
   comparées par le ticket s'intercalent et PRIO_REER change de rang. Un ordre est une propriété de

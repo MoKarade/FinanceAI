@@ -64,17 +64,6 @@
   par défaut. Avant de coder : établir si le champ doit être RETIRÉ (et l'UI recâblée sur
   `returnRates`) ou CÂBLÉ (et alors il faut décider ce qu'il écrase de la carte par compte) — la
   réponse change ce que voit l'utilisateur, donc elle se demande à Marc.
-- [ ] **`[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]`** (S — reste du lot 37) — la source unique existe
-  (`utils/stripComments.ts`, durcie), et les TROIS gardes d'`utils/` la consomment. Restent **15**
-  décommenteurs privés, tous dans des fichiers de TEST — compte MESURÉ par le ratchet
-  `tests/guards/stripCommentsRatchet.test.ts`, qui imprime la liste à jour quand il rougit (elle
-  n'est pas recopiée ici : une liste dans une doc pourrit).
-  ⚠️ La migration n'est pas un `replace` : les signatures DIFFÈRENT (certaines rendent `string[]`,
-  d'autres `string`) et chacune change le contrat de ses appelants. Se fait fichier par fichier, en
-  rejouant le test concerné à chaque fois.
-  ⚠️ **Dernière étape du ticket** : basculer le ratchet de « compter » à « interdire » (plafond → 0),
-  ce qui est le seul état qui empêche la classe de revenir. Aujourd'hui il naît non bloquant AVEC sa
-  raison datée dans le code, comme l'exige la convention pour une garde qui rougirait à la livraison.
 - [ ] ⏸️ **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
   panel PR #756 · **RE-RECENSÉ le 2026-09-03 : (b), (d) et (e) sont DÉJÀ LIVRÉS ; (c) est LIVRÉ au
   lot 109 ; il ne reste que (a), routé à Marc**) —

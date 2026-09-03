@@ -32,6 +32,11 @@ const IGNORES = new Set(['node_modules', '.git', 'dist', 'coverage', '.vercel', 
 const DECOMMENTEURS_AUTORISES = new Set([
     'utils/stripComments.ts',                        // la source unique
     'tests/guards/stripCommentsRatchet.test.ts',     // le point de comparaison du canari
+    // [GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS] Faux offender STRUCTUREL, pas une dette : le propre
+    // motif de recherche de cette garde EST un motif de décommentage. Elle ne peut pas chercher des
+    // décommenteurs sans en écrire un. Sa jumelle le déclare déjà dans sa propre liste d'exempts,
+    // avec la même raison — on ne fait ici que la refléter.
+    'tests/guards/stripCommentsUniqueGuard.test.ts',
 ]);
 
 /** Ce qui trahit un décommenteur, quelle que soit sa signature : un `replace` dont le motif décrit
@@ -116,17 +121,36 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] canari : aucun fichier n\'est ENGLOUT
 });
 
 describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] ratchet des décommenteurs privés', () => {
-    // MESURÉ le 2026-08-29, APRÈS la migration des trois gardes d'`utils/` (celles qui devaient
-    // absolument passer à la source unique : `chartDataSumGuard` part dans le bundle du navigateur,
-    // donc il ne peut rien importer de `tests/`). Ce nombre ne doit JAMAIS monter.
+    // ⚠️ HISTOIRE DE CE PLAFOND, parce qu'elle explique pourquoi il vaut ZÉRO aujourd'hui.
+    // Le ticket d'origine annonçait SIX copies ; mesuré à l'échelle du dépôt, il y en avait 15 —
+    // un périmètre de ticket qui était une borne INFÉRIEURE. Et je l'avais d'abord écrit au jugé
+    // (12) avant de le mesurer : un plafond de ratchet se COMPTE, il ne s'estime pas.
     //
-    // ⚠️ Le ticket annonçait SIX copies. Le compte réel, à l'échelle du dépôt, est celui-ci — encore
-    // un périmètre de ticket qui était une borne INFÉRIEURE. Et je l'ai d'abord écrit au jugé (12)
-    // avant de le mesurer : un plafond de ratchet se COMPTE, il ne s'estime pas, sinon il naît faux.
-    // La liste complète n'est pas recopiée ici — elle pourrirait ; le message d'échec l'imprime.
-    const PLAFOND = 15;
+    // ⚠️ RE-MESURÉ le 2026-09-03 : il n'en restait plus qu'UN SEUL — et il n'était pas migrable.
+    // C'est `stripCommentsUniqueGuard.test.ts`, dont le propre motif de recherche EST un motif de
+    // décommentage ; il est désormais exempté NOMMÉMENT plus haut, avec sa raison. Les quatorze
+    // autres avaient été migrés par d'autres lots sans que le plafond ne suive.
+    //
+    // ⚠️⚠️ ET C'EST LÀ LE VRAI DÉFAUT QUE CE LOT CORRIGE : un plafond de 15 sur un compte réel de 1
+    // n'est plus un ratchet. Il autorisait QUATORZE régressions silencieuses — la classe pouvait
+    // revenir en force sans que rien ne rougisse. Un plafond qui a cessé de suivre son compte est
+    // pire qu'absent : il porte le nom d'une protection.
+    //
+    // À ZÉRO, la garde passe de « compter » à « INTERDIRE » — le seul état qui empêche la classe de
+    // revenir, et la dernière étape que le ticket réclamait. Une copie neuve doit désormais soit
+    // importer la source unique, soit être exemptée NOMMÉMENT ici, avec sa raison écrite.
+    const PLAFOND = 0;
 
-    it('aucun décommenteur privé NEUF — le compteur ne monte pas', () => {
+    it('anti-vacuité : le motif RECONNAÎT encore un décommenteur', () => {
+        // ⚠️ Indispensable À PARTIR du moment où le plafond vaut 0 : plus aucun offender réel ne
+        // subsiste dans le dépôt, donc « aucun trouvé » ne prouve plus que le détecteur fonctionne.
+        // Sans ce cas, un motif cassé rendrait la garde VERTE pour toujours — exactement la panne
+        // que `stripCommentsUniqueGuard` s'interdit déjà de son côté.
+        const faux = String.raw`const nettoie = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ');`;
+        expect(MOTIFS_DE_DECOMMENTEUR.some((m) => m.test(faux))).toBe(true);
+    });
+
+    it('AUCUN décommenteur privé — la source unique ou une exemption nommée, rien d\'autre', () => {
         const trouves = decommenteursPrives();
         expect(trouves.length, `decommenteurs prives trouves :\n${trouves.join('\n')}`).toBeLessThanOrEqual(PLAFOND);
     });

@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-03 — Lot 96 : la « chute de 10k » de Marc, expliquée
+> `[PASSE-REEL-RACCORD-CHUTE]` — cause confirmée contre le code : le dernier point du passé est
+> reconstruit en DÉFAISANT les flux du jour, donc `veille = aujourd'hui − flux_du_jour`. Les deux
+> points sont JUSTES ; il manquait l'explication.
+> - `fluxPeriodeAnnulee` publié par `reconstructCashHistoryDaily`, remonté par `dailyPastLedger`,
+>   transformé en phrase par `services/history/raccordNotice.ts`, rendu sous le graphe.
+> - **Jamais lissé** (ce serait fabriquer un solde inexistant) ; **aucun montant** dans la phrase
+>   (plus masquable une fois interpolé) ; le SENS est dit (entrée → marche vers le haut).
+> - ⚠️ **Périmètre = borne INFÉRIEURE** : la version MENSUELLE a le même mécanisme, en plus gros
+>   (elle annule tout le mois courant) et sur la vue par défaut → `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`.
+>   Non livré ici : `buildPastPrefix` rend un tableau nu, et exposer le champ sans consommateur est
+>   exactement ce que le lot 95 a condamné.
+> - ⚠️ Garde jumelle MUETTE au 1er jet (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`) :
+>   `mentionRaccord` survit dans l'IMPORT, `fluxPeriodeAnnulee` dans la construction du memo.
+>   Ré-ancrée sur l'appel + le rendu.
+> - Deux pointeurs fermés, vérifiés : `[PASSE-REEL-DETTE-2]`, `[PASSE-REEL-DETTE-3]`.
+
 > ## 🟦 Session 2026-09-03 — Lot 95 : trois champs qu'il ne fallait PAS ajouter
 > `[DEBT-UI-CHAMPS-RESTANTS]` — le ticket (écrit par moi la veille) demandait d'exposer `limit`,
 > `amortizationYears` et `isInterestDeductible`. **Mesuré : aucun des trois n'est LU** en production.

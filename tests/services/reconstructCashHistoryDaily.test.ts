@@ -149,8 +149,12 @@ describe('[FUTUR-DAILY] reconstructCashHistoryDaily', () => {
     });
 
     it('aucune transaction → série vide, pas une ligne à zéro', () => {
+        // ⚠️ `toEqual` sur l'objet ENTIER est délibéré : il fait rougir tout champ ajouté au
+        // résultat sans qu'on ait décidé ce qu'il vaut dans le cas vide. C'est ce qui s'est produit
+        // au lot 96 (`fluxPeriodeAnnulee`) — le rouge a posé la bonne question, et la réponse est
+        // 0 : sans transaction, il n'y a aucun flux du jour à défaire, donc aucune marche.
         expect(reconstructCashHistoryDaily([], 1_000, '2026-01-08')).toEqual({
-            points: [], firstDate: null, undatedTotal: 0, flowsAfterNowDate: 0,
+            points: [], firstDate: null, undatedTotal: 0, flowsAfterNowDate: 0, fluxPeriodeAnnulee: 0,
         });
     });
 

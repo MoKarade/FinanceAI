@@ -104,6 +104,7 @@ import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
 import { mentionDettesPasse } from '../services/history/pastDebtNotice';
+import { mentionRaccord } from '../services/history/raccordNotice';
 import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
 // [REFONTE-NAV-L2a] Itérations MC réellement exécutées (source unique moteur) pour le libellé.
 import { mcSublabel } from '../services/projection/monteCarlo';
@@ -892,9 +893,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // AVANT la fin de la fenêtre demandée. Muet jusqu'ici — c'est précisément ce qui a
             // fait qu'un trou de 7 mois est passé inaperçu jusqu'à ce que Marc le signale.
             truncatedFrom: built.truncatedFrom,
+            // [PASSE-REEL-RACCORD-CHUTE] Le flux du jour que la reconstruction a DÉFAIT pour produire
+            // la veille : c'est la marche visible au raccord (« je vois une chute de 10k aujourd'hui
+            // jsp pourquoi »). Les deux points sont justes — c'est leur lecture qui manquait.
+            fluxPeriodeAnnulee: built.fluxPeriodeAnnulee,
         };
     }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo, storeDebts]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
+    // [PASSE-REEL-RACCORD-CHUTE] Le fait est dérivé du module qui le PRODUIT ; le composant ne
+    // relit pas les transactions pour se faire une seconde opinion.
+    const mentionRaccordJour = useMemo(
+        () => (dailyPast === null ? '' : mentionRaccord(dailyPast.fluxPeriodeAnnulee)),
+        [dailyPast],
+    );
     /**
      * [PASSE-REEL-VARIATION-DU-JOUR] La ventilation du jour ouvert, calculée à partir des lignes
      * DÉJÀ reconstruites — aucune donnée nouvelle, aucun recalcul financier.
@@ -1898,6 +1909,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 après aujourd'hui sont déjà dans ton solde actuel mais pas encore dans les
                                 jours passés.
                             </span>
+                        )}
+                        {/* [PASSE-REEL-RACCORD-CHUTE] La marche au raccord, EXPLIQUÉE. Aucun montant
+                            dans la phrase : interpolé dans une chaîne il ne serait plus masquable, et
+                            il est déjà lisible sur la courbe. Ton informatif, pas d'avertissement —
+                            les deux points sont JUSTES, il n'y a rien à corriger. */}
+                        {mentionRaccordJour && (
+                            <span className="mt-1 block">{mentionRaccordJour}</span>
                         )}
                     </p>
                 )}

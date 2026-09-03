@@ -26,6 +26,7 @@
 >   ticket) ; le 3ᵉ a MONTÉ de 1 177 $ — moins de REER cotisé = moins d'abri fiscal (`finalNetWorth`
 >   **−1 769 $**) mais moins de REER à liquider au décès (`estateNetWorth` **+1 177 $**). Signes
 >   opposés, les deux justes.
+> - Gate complet VERT : **5 360 tests / 529 fichiers**, exit 0.
 
 > ## 🟦 Session 2026-09-03 — Lot 112 : la prime SCHL manquait à l'historique immobilier
 > `[IMMO-3-FORMULES]` **volet SCHL livré**, volet CLAMP routé — **code de prod touché**

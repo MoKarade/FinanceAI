@@ -34,20 +34,7 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
-- [ ] **`[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]`** (S — finding code-reviewer, panel PR #758,
-  PRÉ-EXISTANT) — `components/dashboard/HealthIndicator.tsx` affiche des MONTANTS en clair
-  (`subMonthly` dans « X $/mois », `fireTarget` dans « cible Future : X $ », via le `raw` des
-  métriques construit par `utils/healthScore.ts`) **sans passer par `PrivateAmount`**, alors que le
-  reste du dépôt applique cette discipline strictement (`FutureKpiStrip`, `Budget`…). Grep confirmé :
-  ni `HealthIndicator.tsx` ni `utils/healthScore.ts` n'ont la moindre occurrence de
-  `isPrivacyMode`/`PrivateAmount`. Donc le mode discret ne masque RIEN sur cette carte.
-  ⚠️ Pré-existant, **pas** introduit par le lot 32 : ce texte visible était identique avant. Le lot
-  a seulement vérifié que son `aria-label` neuf ne CRÉE pas de fuite — il ne s'active que sur les
-  métriques indisponibles, dont les libellés sont des textes statiques sans montant (mesuré).
-  ⚠️ Le correctif n'est pas mécanique : `raw` est une CHAÎNE déjà formatée, donc l'envelopper dans
-  `PrivateAmount` masquerait aussi la prose autour du montant. Il faut probablement séparer le
-  montant du libellé dans `HealthMetricRow` avant de pouvoir masquer l'un sans l'autre.
-- [ ] **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — découvert en instruisant, panel PR #759) —
+- [ ] ⏸️ **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — **DÉCISION ROUTÉE à Marc le 2026-09-03**, `docs/A_FAIRE_MOI.md` ; la moitié prouvable est LIVRÉE au lot 107 : `tests/services/returnRateSingulierNonCable.test.ts` fige le fait pour qu'un câblage futur soit délibéré) —
   `projection.returnRate` (SINGULIER) ne pilote AUCUNE croissance du moteur : `computeScenarioOverrides`
   (`services/projection/setupSimulation.ts`) lit `projection.returnRates`, la carte par compte, et
   jamais le singulier. Vérifié par grep : ses seuls lecteurs sont `components/realestate/RealEstateWorkspace.tsx`
@@ -60,11 +47,13 @@
   `rate = returnRate / 100` est composé sur 20 ans pour produire le « coût d'opportunité » AFFICHÉ
   à l'utilisateur. Retirer ou recâbler le champ touche donc aussi `LifeProjects.tsx` et
   `LifeEvents.tsx` (finding silent-failure-hunter, 3e passe PR #759).
-  ⚠️ **Amplitude bien plus large que le seul protocole de mesure** : des dizaines de fixtures de
-  test (`tests/services/*.test.ts`, `tests/components/*.test.tsx`) fixent `returnRate: 6` (ou 4, 5)
-  sans jamais fixer `returnRates` — elles tournent donc silencieusement sur les taux par défaut
-  (7 / 6,5 / 6,5 / 10 / 3), pas sur celui qu'elles croient fixer. À vérifier avant de conclure
-  qu'un de ces tests mesure ce qu'il annonce.
+  ⚠️ ~~Amplitude bien plus large : des dizaines de fixtures fixent `returnRate` sans `returnRates`~~
+  — **RÉFUTÉ, re-mesuré le 2026-09-03** : **72 fichiers** de test posent `returnRate:`, dont **69**
+  posent aussi `returnRates`. Par SITE il en reste **TROIS**, tous des tests d'UI ou d'a11y où le
+  champ singulier est le consommateur LÉGITIME (`LifeProjects.test.tsx`, `Settings.test.tsx`,
+  `a11y/pages.axe.test.tsx`). **Aucune fixture de moteur ne tombe dans le piège aujourd'hui** —
+  c'est ce que la garde du lot 107 préserve. Le piège reste réel pour un auteur FUTUR ; il n'est
+  pas une dette présente.
   ⚠️ **À NE PAS confondre avec `[COASTFIRE-CROISSANCE-FIGEE]`**, qui cite la même phrase
   « indépendant de `projection.returnRate` » : celui-là vise un CONSOMMATEUR figé à 5 %/an et
   lui-même sans lecteur ; celui-ci vise le CHAMP SOURCE, qui n'alimente aucune croissance du

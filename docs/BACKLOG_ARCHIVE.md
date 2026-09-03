@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]` — **CADUQUE**, déjà livré sous un autre ID
+
+Le ticket décrivait un défaut RÉEL : `HealthIndicator.tsx` affichait la cible FIRE et le coût
+mensuel des abonnements en clair, sans passer par `PrivateAmount`, donc le mode discret ne masquait
+rien sur cette carte.
+
+**Il a été corrigé le 2026-09-01 sous `[A11Y-PRIVACY-HEALTH-RAW]` (lot 58)**, exactement par le
+correctif que ce ticket prescrivait : `raw` est passé d'une CHAÎNE à une liste de SEGMENTS
+(`HealthRawPart`), pour qu'un montant reste un nœud jusqu'au rendu.
+
+Vérifié le 2026-09-03, comportementalement et non par grep : `HealthIndicator.privacy.test.tsx`
+asserte que **les deux montants nommés par le ticket sont absents du DOM** en mode discret, avec son
+anti-vacuité en mode normal, et que le contexte de la phrase, lui, reste lisible.
+Classe `UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`.
+
 ## 2026-09-03 — `[RQAP-INDEX-SOURCE]` (PR lot 106)
 
 La phrase « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » décrit

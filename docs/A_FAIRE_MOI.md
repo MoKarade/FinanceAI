@@ -86,6 +86,37 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — un réglage de rendement qui ne fait rien (2026-09-03)
+
+**Le fait, mesuré.** L'app a **deux** réglages de rendement : un taux **global** (`returnRate`) et
+une **carte par compte** (CELI / REER / non-enregistré / crypto / liquidités). Le moteur de
+projection ne lit **que la carte par compte**. Le taux global ne déplace pas un dollar de ta
+projection — vérifié en le faisant passer du simple au triple : patrimoine final **identique au
+dollar près**.
+
+**Il n'est pas mort pour autant.** Trois écrans le lisent vraiment :
+- l'atelier **Immobilier**, comme hypothèse de croissance des placements pour la comparaison
+  « acheter ou investir » ;
+- et **Projets de vie**, où il produit le « coût d'opportunité » affiché : « si cet argent avait été
+  investi à X % au lieu d'être dépensé… ».
+
+**Le vrai risque est ailleurs.** Ce champ a déjà fait dérailler deux mesures internes qui croyaient
+simuler à 5 % et tournaient sur les taux par défaut. J'ai posé une garde qui fige le fait : si
+quelqu'un câble le champ un jour, un test rouge le signalera — le câblage deviendra un acte
+délibéré. *(L'alarme du ticket sur « des dizaines de tests faussés » est **réfutée** : 72 fichiers
+posent ce champ, 69 posent aussi la carte par compte, et les 3 restants sont des écrans qui
+l'utilisent légitimement.)*
+
+**La décision t'appartient, parce qu'elle change ce que tu vois :**
+1. **Ne rien changer** — le taux global reste un réglage d'écrans, la carte par compte pilote la
+   projection. C'est l'état actuel, et il est cohérent une fois qu'on le sait. *(recommandé)*
+2. **Retirer le taux global** et faire lire aux trois écrans une valeur dérivée de la carte par
+   compte (une moyenne, ou le taux du non-enregistré). Un réglage de moins, mais le « coût
+   d'opportunité » de Projets de vie changerait de valeur.
+3. **Câbler le taux global sur le moteur** — il faudrait alors décider ce qu'il fait de la carte par
+   compte : l'écraser entièrement ? servir de défaut ? Cette option change les projections de tout
+   le monde et demande un plan à part.
+
 ## `[MIGRATE-GROSS-DEJA-PERSISTE]` — faut-il re-dériver un salaire brut déjà enregistré ? (2026-09-03)
 
 **Le problème.** Un ancien défaut fabriquait ton salaire brut en multipliant le net par 1,35. Il est

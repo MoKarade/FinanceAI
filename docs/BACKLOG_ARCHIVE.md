@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[FMT-TOLOCALESTRING-MONEY]` (PR #831 lot 100 · PR lot 101)
+
+Ticket unifié (absorbait `[FMT-MONEY-BYPASS]`, `[FMT-INFOBULLE-TOLOCALESTRING]`,
+`[UI-FMTM-FORMATCAD]`, `[FORMAT-CAD-BYPASS]`, `[DETTE-FORMATCAD-BYPASS]`). Livré en deux temps,
+comme le ticket l'exigeait : le **scan d'abord** (ses offenders sont le périmètre), les correctifs
+ensuite.
+
+- **Lot 100** — `tests/toLocaleStringMoneyScan.test.ts`. Périmètre re-mesuré : 81 occurrences
+  brutes, 3 en commentaire, 78 en code → **67 montants, 9 dates, 2 compteurs**. Le ticket annonçait
+  77 ; cinq de ses offenders nommés étaient déjà corrigés, son remède prescrit
+  (`formatCADRound`/`formatCADSigned`) était redondant.
+- **Lot 101** — **65 `toLocaleString` convertis** (plus 3 montants composés À LA MAIN sur les lignes mêmes que le lot réécrivait : les deux « /adulte » de `taxDecember`, et le jumeau « Maladie grave » de `stochasticEvents`, à 36 lignes du site migré) dans 16 fichiers (`services/projection/*`, `services/projection.ts`,
+  `services/realEstate.ts`, `mcp/whatIf.ts`). Forme retenue : `formatCAD(Math.round(x))`, en gardant
+  `Math.round` — mesuré, `formatCAD(x)` en diffère sur les demis NÉGATIFS (Intl arrondit à l'opposé
+  de zéro, `Math.round` vers +∞ : 4 cas divergents sur 11 testés), donc le retirer aurait DÉPLACÉ
+  des montants.
+- **Reliquat** : 2 sites de composants, routés en `[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]`.
+
 ## 2026-09-03 — Lot 99 : les placements muets disent enfin pourquoi
 
 - [x] **`[FINTABLE-INVESTMENTS-MUET]`** — LIVRÉ le 2026-09-03 (PR #830). Demande Marc du 2026-08-17 :

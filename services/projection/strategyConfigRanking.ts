@@ -10,6 +10,7 @@
 // lieu de résultats déterministes : survie (successRate), patrimoine médian (P50),
 // impôt à vie, âge FIRE, risque de séquence.
 
+import { formatCAD } from '../../utils/format';
 import type { ConfigResult } from './strategySearch';
 import type { OptimizeObjective } from './strategyRanking';
 import { OBJECTIVE_LABELS } from './strategyRanking';
@@ -145,8 +146,7 @@ export function decisiveLevers(winner: StrategyConfig, runnerUp: StrategyConfig)
         }));
 }
 
-const fmtMoney = (v: number): string =>
-    `${Math.round(v).toLocaleString('fr-CA')} $`;
+const fmtMoney = (v: number): string => formatCAD(Math.round(v));
 
 /**
  * Explique en français pourquoi le gagnant l'emporte sur le dauphin : compare les

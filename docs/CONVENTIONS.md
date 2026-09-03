@@ -10589,6 +10589,73 @@ n'a qu'une cause.
 les fixtures moteur ne sont pas 65+ aux mois mesurés. C'est une absence de COUVERTURE, pas une
 absence d'effet — et le fait qu'un champ publié n'ait aucun golden est en soi une information.
 
+### Lot 101 (2026-09-03) — la garde du lot précédent a rougi sur le correctif qu'elle préparait
+
+`UNE-GARDE-QUI-EPINGLE-QUI-EST-OFFENDER-ROUGIT-SUR-SA-PROPRE-REPARATION`
+
+Le lot 100 avait posé, à côté du compteur de dette, une assertion « `cashflowAllocation.ts` et
+`taxDecember.ts` FIGURENT parmi les offenders » — pour prouver que le scan couvrait bien les
+modules money-critical que le ticket nommait. Corriger ces deux fichiers, exactement ce que le lot
+100 préparait, l'a fait **rougir**. Elle ancrait la FORME (qui est offender aujourd'hui) au lieu du
+FAIT (ces modules sont dans le périmètre BALAYÉ) — le même défaut que
+`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, commis vingt-quatre heures après avoir
+recopié cette leçon. Elle s'est **INVERSÉE au même endroit**, avec son histoire écrite dedans, plutôt
+que d'être supprimée : elle affirme désormais que ces fichiers sont balayés, plus qu'ils sont fautifs.
+Signal réutilisable : **une garde qui nomme des coupables se périme au premier correctif ; une garde
+qui nomme un périmètre survit.**
+
+⚠️ **« Toute la suite est verte » était le résultat à EXPLIQUER, pas le feu vert.** 65 chaînes de log
+ont changé de texte (espace ordinaire → insécable devant le « $ », et deux sites arrondis au dollar)
+et **zéro test sur 5 316 ne l'a vu**. Ça ne prouve pas que le changement est sûr : ça prouve
+qu'aucun test n'assertait le texte formaté de ces journaux — le seul qui s'en approche
+(`realEstate.test.ts`) ne vérifie que le début de la phrase. D'où une garde COMPORTEMENTALE écrite
+sur un producteur réel (`tryInheritance`), perturbée par retour au code d'avant : 3 rouges sur 3.
+
+⚠️ **Retirer un `Math.round` « redondant » aurait DÉPLACÉ des montants.** `formatCAD` arrondit déjà
+à zéro décimale, donc `formatCAD(Math.round(x))` semble pléonastique. Mesuré sur 11 valeurs : les
+deux formes divergent sur **4** — tous les demis NÉGATIFS, parce qu'Intl arrondit à l'opposé de zéro
+(`-1234,5 → -1 235 $`) et `Math.round` vers +∞ (`-1 234 $`). Des logs formatent bien des négatifs
+(`Math.round(-saleNet)`, `Math.round(donCredit - appliedCredit)`). La conversion garde donc
+`Math.round` et reste **prouvablement identique sur toute entrée finie** : le lot ne déplace pas un
+dollar, il change qui FORMATE. C'est la frontière de découpage du dépôt (« ça déplace de l'argent /
+ça n'en déplace pas ») appliquée à une refonte mécanique.
+
+⚠️ **Deux sites changeaient quand même de sortie, et il fallait les nommer** : `stochasticEvents`
+(héritage) et `realEstateMonth` (mise de fonds) n'avaient **aucun** `Math.round`, or le défaut d'Intl
+est `maximumFractionDigits: 3` — ils affichaient « 12 345,67 $ » là où le reste de l'app montre des
+dollars entiers. Un lot mécanique a presque toujours un ou deux membres qui ne le sont pas ; ils se
+trouvent en relisant le DIFF, pas l'intention.
+
+⚠️ **Ce que la garde n'affirme PAS.** Le gain « NaN devient — » n'est pas prouvé sur ce producteur :
+`proj.inheritanceExpectedAmount || 0` rabat déjà un NaN sur 0 et la garde `amount <= 0` sort. Le
+chemin non fini réellement atteignable est l'**INFINI** (`Infinity || 0` vaut `Infinity`, et
+`Infinity <= 0` est faux) — c'est celui-là qui est testé, et lui seul
+(`UNE-AFFIRMATION-D-ATTEIGNABILITE-SE-MESURE-AVANT-D-ETRE-PUBLIEE`).
+
+⚠️⚠️ **La revue a trouvé le JUMEAU du site migré, à 36 lignes, dans le même fichier.**
+`stochasticEvents.ts` journalisait « Maladie grave (capital +250000$) » — un montant composé À LA
+MAIN, sans séparateur ni arrondi — pendant que la ligne 102 du MÊME fichier passait désormais par
+`formatCAD`. La garde ne pouvait pas le voir : elle cherche `toLocaleString`, et il n'y en a pas.
+C'est `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` et
+`UN-MONTANT-COMPOSE-A-LA-MAIN-EST-INVISIBLE-A-LA-GARDE-QUI-CHERCHE-LE-FORMATEUR` réunis — et le vrai
+coût n'était pas la ligne, c'était l'AFFIRMATION que mon inventaire publiait : « il reste 2 sites ».
+Un compteur de dette doit dire ce qu'il ne compte PAS, sinon il se lit comme le total. Le message de
+la garde le dit maintenant, et la classe jumelle est routée avec son recensement.
+
+⚠️ **Un lot mécanique se fait relire pour ce qu'il a AJOUTÉ, pas seulement pour ce qu'il a remplacé** :
+mon script a posé l'import de `formatCAD` **à la dernière ligne** de `vehicleCycle.ts` (le seul
+fichier sans aucun `import`, où le repli visait le dernier commentaire). Le hoisting ESM le rend
+fonctionnel, `tsc` et ESLint sont muets — zéro effet, et invisible à tout ce qui juge le
+comportement. La comparaison mécanique qui compte n'est pas « le code marche-t-il » mais « les
+65 expressions RÉCEPTRICES sont-elles les mêmes des deux côtés » : c'est ce contrôle-là, pas la
+relecture, qui prouve qu'aucun montant n'a bougé.
+
+⚠️ **Le seuil d'anti-vacuité du scan a BAISSÉ de 78 à 13, et ce n'est pas une régression** : le lot a
+payé la dette. Un seuil posé sur une grandeur que les lots suivants font DÉCROÎTRE doit être re-mesuré
+avec elle et porter son histoire, sinon il se lit comme une alarme. Et les familles s'assertent une
+par une : un total qui tiendrait grâce aux seules dates ne prouverait pas que les deux autres sont
+encore reconnues.
+
 ### Lot 100 (2026-09-03) — un seuil écrit AVANT sa mesure est un chiffre inventé
 
 `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`

@@ -1,4 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
+import { formatCAD } from '../utils/format';
 import type { EntreeRefusee } from './projection/verifierEntreesMoteur';
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
@@ -723,7 +724,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (m === 0) {
             propertiesState.forEach((p, i) => {
                 if (p.isBought) {
-                    lifeEventsLog.push(`🏠 ${activeRE[i]?.name || 'Propriété'} : supposée DÉTENUE depuis ${activeRE[i]?.purchaseDate || '?'} (équité de départ ${Math.round(p.currentValue - p.mortgage).toLocaleString('fr-CA')}$)`);
+                    lifeEventsLog.push(`🏠 ${activeRE[i]?.name || 'Propriété'} : supposée DÉTENUE depuis ${activeRE[i]?.purchaseDate || '?'} (équité de départ ${formatCAD(Math.round(p.currentValue - p.mortgage))})`);
                 }
             });
         }
@@ -1594,7 +1595,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 && d.balance > 0.005
                 && estLePremierMoisApresLeTerme(d, startYear, startMonth, m)) {
                 lifeEventsLog.push(
-                    `⚠️ ${d.name} : fin du terme, il reste ${Math.round(d.balance).toLocaleString('fr-CA')} $ à régler`,
+                    `⚠️ ${d.name} : fin du terme, il reste ${formatCAD(Math.round(d.balance))} à régler`,
                 );
             }
 
@@ -1999,7 +2000,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // ignore les poussières d'arrondi (zone morte 0,1–1 $ négligeable), aligné sur le résiduel PV-6.
         if (cashState.uncoveredShortfall > 1) {
             liquidDebt += cashState.uncoveredShortfall;
-            logEvent(flowEventsLog, `⚠️ Dépense non couverte (comptes de décaissement épuisés) : ${Math.round(cashState.uncoveredShortfall).toLocaleString('fr-CA')} $ — portée en dette`);
+            logEvent(flowEventsLog, `⚠️ Dépense non couverte (comptes de décaissement épuisés) : ${formatCAD(Math.round(cashState.uncoveredShortfall))} — portée en dette`);
         }
 
         // Cycle 15 split: REER Meltdown → ./projection/meltdownReer
@@ -2128,10 +2129,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const grossDrawn = assetsBeforeRescue - (celi + reer + nonReg + crypto);
             const covered = grossDrawn - (taxCurrentYear.reer - withholdingBeforeRescue);
             const residual = overdraft - covered;
-            logEvent(flowEventsLog, `🏦 Découvert de liquidités couvert par vente de placements : ${Math.round(Math.min(covered, overdraft)).toLocaleString('fr-CA')} $ sur ${Math.round(overdraft).toLocaleString('fr-CA')} $`);
+            logEvent(flowEventsLog, `🏦 Découvert de liquidités couvert par vente de placements : ${formatCAD(Math.round(Math.min(covered, overdraft)))} sur ${formatCAD(Math.round(overdraft))}`);
             if (residual > 1) {
                 liquidDebt += residual; // [PV-6] porté en dette (plus absorbé silencieusement)
-                logEvent(flowEventsLog, `⚠️ Découvert NON couvert (comptes insuffisants) : ${Math.round(residual).toLocaleString('fr-CA')} $ — porté en dette`);
+                logEvent(flowEventsLog, `⚠️ Découvert NON couvert (comptes insuffisants) : ${formatCAD(Math.round(residual))} — porté en dette`);
             }
             // Un seul incrément de shortfallMonths par mois, même si l'allocation régulière
             // ET le sauvetage ont chacun constaté un déficit.

@@ -13,6 +13,7 @@
 // L'optimizer estime le gain net annuel d'une mauvaise vs bonne allocation
 // pour un patrimoine donné, sur la base du taux marginal de l'utilisateur.
 
+import { formatCAD } from '../../utils/format';
 import { getMarginalRate, US_DIVIDEND_WITHHOLDING_RATE, CAPITAL_GAINS_INCLUSION_STANDARD } from '../../utils/tax';
 
 export type AssetClass =
@@ -212,7 +213,7 @@ export function optimizeAssetLocation(input: AssetLocationInput): AssetLocationR
     recommendations.sort((a, b) => b.annualLossIfUnchanged - a.annualLossIfUnchanged);
 
     const summary = totalLoss > 0
-        ? `Tu perds environ ${Math.round(totalLoss).toLocaleString('fr-CA')}\$/an d'impôts évitables. Sur 20 ans, c'est ~${Math.round(totalLoss * 20).toLocaleString('fr-CA')}\$ de patrimoine final non capitalisé.`
+        ? `Tu perds environ ${formatCAD(Math.round(totalLoss))}/an d'impôts évitables. Sur 20 ans, c'est ~${formatCAD(Math.round(totalLoss * 20))} de patrimoine final non capitalisé.`
         : 'Ton allocation par compte est déjà optimale. 🎯';
 
     return {

@@ -6,6 +6,7 @@
 // inchangé) + applique les mutations via callbacks. Évite de manipuler
 // directement les variables locales de runScenario.
 
+import { formatCAD } from '../../utils/format';
 import type { ProjectionConfig } from '../../types';
 import { ltcAnnualProbability, mortalityAnnualProbability } from './helpers';
 
@@ -62,7 +63,7 @@ export function tryCriticalIllness(
     if (payout > 0) state.addLiquid(payout);
     const extra = proj.ciExtraMonthlyExpense || 0;
     if (extra > 0) state.addExpense(extra * ctx.expenseMultiplier);
-    state.logLife(`🩺 Maladie grave (capital +${payout}\$, dépenses +${extra}\$/mois)`);
+    state.logLife(`🩺 Maladie grave (capital +${formatCAD(payout)}, dépenses +${formatCAD(extra)}/mois)`);
     return true;
 }
 
@@ -98,7 +99,7 @@ export function tryInheritance(
     if (!triggers) return false;
 
     state.addLiquid(amount);
-    state.logLife(`🎁 Héritage reçu: +${amount.toLocaleString('fr-CA')}\$`);
+    state.logLife(`🎁 Héritage reçu: +${formatCAD(amount)}`);
     return true;
 }
 

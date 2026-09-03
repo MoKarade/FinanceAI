@@ -86,6 +86,32 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## `[FMT-PROMPT-MONTANTS]` — un texte destiné à un MODÈLE doit-il passer par `formatCAD` ? (2026-09-03)
+
+**Contexte.** Les lots 100-103 ont fermé la classe « montant formaté hors `utils/format.ts` » sur
+tous les écrans et tous les journaux du moteur. Il reste **17 sites**, tous du texte lu par un
+modèle : les prompts (`BudgetAiModal`, `services/claude.ts`, `services/aiChat/viewContext.ts`) et
+les résumés d'outils MCP (`mcp/ingest/applyDocument.ts`).
+
+**Pourquoi je ne tranche pas seul.** Ce n'est pas un oubli, c'est un arbitrage :
+1. `BudgetAiModal` et `claude.ts` arrondissent **délibérément à 100 $** — c'est une mesure de vie
+   privée, et le texte de consentement de l'app la promet en toutes lettres (« montants arrondis à
+   100$ »). Y appliquer `formatCAD` afficherait le montant au dollar près dans le prompt.
+2. `formatCAD` rend « — » sur une valeur non finie. Dans un prompt, ces sites ont déjà leur propre
+   traitement (`'(non disponible)'`, `null` qui fait OMETTRE la ligne) — souvent meilleur, parce
+   qu'un « — » se lit comme une valeur par un modèle.
+3. L'espace **insécable** de `formatCAD` entre dans le texte envoyé à l'API. Sans effet connu, mais
+   c'est un changement de ce que le modèle LIT, donc à décider et non à subir.
+
+**Ce que je propose** *(recommandation)* : les LAISSER tels quels et garder l'exemption déclarée.
+Le formateur d'écran répond à des contraintes d'écran (typographie, masquage, « — » honnête) qui ne
+sont pas celles d'un prompt.
+
+**Si tu veux l'inverse**, le lot est petit : retirer les 4 entrées d'`EXEMPTIONS` dans
+`tests/components/formatMonetaireSourceUnique.test.ts` et migrer les 17 sites — mais il faut alors
+décider ce qu'on fait de l'arrondi à 100 $ (le garder EN PLUS de `formatCAD`, ou l'abandonner et
+corriger le texte de consentement).
+
 ## A00. ✅ RÉPONDU par Marc le 2026-08-20 — règle sourcée, transcrite
 
 > **Réponse reçue** (recherche sourcée : canada.ca, Retraite Québec, dépliant RQAP, U. Sherbrooke) :

@@ -89,8 +89,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '[≠3] L1708 : part de garde d’enfant au divorce (moitié). L1901 : seuil de « coussin passif » à 50 % du fonds d’urgence avant de vendre des actifs. L2089 : epsilon de découvert (`liquid < -0.5`). Trois moitiés sans rapport entre elles.' },
     { file: 'services/projection.ts', value: '250000', family: 'design',
       reason: '[×2] Montant d’héritage des scénarios WINDFALL (L768) et LATE_INHERITANCE (L777). Paramètre de SCÉNARIO comparatif, pas une valeur fiscale.' },
-    { file: 'services/projection.ts', value: '250', family: 'design',
-      reason: '[×2] Fragment du libellé « 250 000$ » des deux scénarios d’héritage (L770, L779) — du TEXTE, capté par le scan parce qu’il suit un caractère significatif.' },
     { file: 'services/projection.ts', value: '11', family: 'design',
       reason: '[×2] `currentMonthIndex === 11` — décembre, l’index du mois de la déclaration (L1239, L1388). Index de boucle, pas un barème.' },
     { file: 'services/projection.ts', value: '5', family: 'design',

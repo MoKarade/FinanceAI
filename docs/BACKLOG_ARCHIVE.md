@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-03 — `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` (PR lot 103)
+
+Classe JUMELLE de `[FMT-TOLOCALESTRING-MONEY]` : un montant écrit `` `+${x}$` `` n'appelle aucune
+fonction de formatage, donc aucune garde ne le cherchait.
+
+⚠️ **Le périmètre écrit dans ce ticket venait d'un rapport d'AGENT et il était FAUX.** Re-recensé :
+- `mcp/ingest/applyDocument.ts` « ×11 » → les onze étaient dans des **COMMENTAIRES** et des noms de
+  constantes (`// 50 M$/an`). Zéro offender de cette cause — `SCAN-QUI-MATCHE-LA-PROSE`, commis
+  cette fois par l'agent dont j'ai recopié la liste dans le BACKLOG.
+- `services/aiChat/viewContext.ts` et `services/projection.ts` étaient réels, mais introuvables par
+  le motif du ticket : le premier écrit `${x} $` (avec ESPACE), le second un **littéral** `+250 000$`.
+- Et six sites qu'il ne nommait pas (`ChildPlanning` ×2, `BudgetAiModal` ×4).
+
+**Livré** : la garde jumelle élargie (`components/` → `components/` + `services/` + `mcp/`, plus un
+3ᵉ motif pour l'interpolation nue), et les **4 sites d'écran et de journal** corrigés —
+`ChildPlanning` (« 1250$/m » → format complet), `taxJanuary` (journal FERR, `decimals: 2` pour ne
+pas changer la précision), `services/projection.ts` (deux littéraux qui RECOPIAIENT la constante
+d'à côté).
+
+**Non corrigé, déclaré, et routé** : les 17 sites restants sont du **texte pour un MODÈLE** (prompts
+LLM et résumés d'outils MCP), pas des écrans. Ils sont exemptés AVEC leur raison et une garde
+d'obsolescence. La question de fond va à `docs/A_FAIRE_MOI.md`.
+
 ## 2026-09-03 — `[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]` (PR lot 102)
 
 Dernier reliquat de `[FMT-TOLOCALESTRING-MONEY]`. **La dette passe à ZÉRO** : plus aucun montant

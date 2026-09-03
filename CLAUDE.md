@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 323 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 325 tests** Vitest
 (520 fichiers de test, mesuré le 2026-09-03). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -238,6 +238,23 @@ n'est pas réécrire un récit.
 - Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
   de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
   le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
+- ⚠️⚠️ **Corriger le FORMAT d'un montant RÉVÈLE sa fuite de vie privée** : les deux montants de
+  `ChildPlanning` migrés vers `formatCAD` n'étaient pas enveloppés dans `<PrivateAmount>` et
+  restaient lisibles en mode discret — ils échappaient à `amountPrivacyScan` tant qu'ils étaient
+  composés À LA MAIN, puisqu'elle cherche le FORMATEUR. Les deux défauts sont le même trou vu deux
+  fois, et le second n'apparaît qu'une fois le premier réparé. ⚠️ Même lot : un lot de FORMAT a rendu
+  FANTÔME une entrée de l'inventaire FISCAL (le fragment de libellé « 250 000$ »). **Un lot qui
+  touche au format se juge sur le gate COMPLET** : mes propres gardes étaient toutes vertes, ce sont
+  deux gardes écrites par d'autres lots qui ont trouvé les vrais défauts.
+- **Un périmètre recopié d'un AGENT est faux dans les DEUX sens** : la liste que j'avais portée au
+  BACKLOG sur-comptait `applyDocument.ts` « ×11 » (les onze vivaient dans des COMMENTAIRES —
+  `SCAN-QUI-MATCHE-LA-PROSE`, 5ᵉ fois, commis par l'agent et importé par moi) ET sous-comptait six
+  sites qu'elle ne nommait pas, plus deux formes que son motif ne pouvait pas voir (`${x} $` avec
+  espace, et un LITTÉRAL `+250 000$`). ⚠️ Et le vrai résultat d'un recensement n'est pas un nombre
+  mais une **PARTITION** : sur 19 lignes, 2 faux positifs, 4 vrais sites d'écran/journal, et 17 de
+  texte destiné à un MODÈLE — dont l'arrondi à 100 $ est DÉLIBÉRÉ et promis dans le texte de
+  consentement. « `formatCAD` UNIQUEMENT » a été écrite pour des écrans ; un prompt n'en est pas un
+  (`UN-PERIMETRE-RECOPIE-D-UN-AGENT-EST-FAUX-DANS-LES-DEUX-SENS`, 2026-09-03).
 - **Un inventaire qui atteint ZÉRO s'INVERSE en règle, il ne se supprime pas** : le compteur du lot
   100 portait « dette à zéro → retire cette garde », et cette assertion a rougi quand la dette a été
   payée — elle a fonctionné. Mais l'exécuter à la lettre aurait rouvert en silence la porte que trois

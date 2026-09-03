@@ -376,7 +376,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                                 <div className="text-meta font-bold">{info.label}</div>
                                                 <div className="text-tiny text-ink-400">{info.desc}</div>
                                             </div>
-                                            <div className="text-meta font-mono font-bold text-right">{info.monthly > 0 ? `${info.monthly}$/m` : 'Gratuit'}</div>
+                                            <div className="text-meta font-mono font-bold text-right">{info.monthly > 0 ? <><PrivateAmount>{formatCAD(info.monthly)}</PrivateAmount>/m</> : 'Gratuit'}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -402,7 +402,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${activitiesLevel === key ? 'border-yellow-500 bg-yellow-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
                                             <span className="text-xl">{info.icon}</span>
                                             <div className="flex-1 text-meta font-bold">{info.label}</div>
-                                            <div className="text-meta font-mono font-bold text-right text-yellow-300">{info.yearlyExtra > 0 ? `+${info.yearlyExtra}$/an` : 'Rien'}</div>
+                                            <div className="text-meta font-mono font-bold text-right text-yellow-300">{info.yearlyExtra > 0 ? <>+<PrivateAmount>{formatCAD(info.yearlyExtra)}</PrivateAmount>/an</> : 'Rien'}</div>
                                         </button>
                                     ))}
                                 </div>

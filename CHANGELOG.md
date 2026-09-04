@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (L'onglet Impôts te dit quand ta paie et le modèle ne se réconcilient pas)
+
+- **Ajouté** : si tu as saisi ton salaire BRUT à la main et que le net que le modèle en déduit ne
+  retombe pas sur ton net déclaré (écart de plus de 1 %), l'onglet Impôts affiche maintenant la
+  ligne « Écart net déclaré ↔ net du modèle » avec le montant et une explication du sens de
+  l'écart. Les projections continuent d'encaisser ton net DÉCLARÉ — cette ligne est un
+  diagnostic, pas un changement de calcul. Si ton brut est déduit automatiquement de ton net,
+  l'écart est nul par construction et rien ne s'affiche.
+
 ## [unreleased] — 2026-09-04 (Ton taux marginal suit enfin l'année — les paliers d'impôt montent chaque année)
 
 - **Corrigé (peut changer ta projection)** : le « taux marginal » que l'app calculait pour les

@@ -1193,7 +1193,10 @@ choisir). Calcul cumulatif par tranche (style impôt).
   modèle redonne le net saisi par construction. MESURÉ, net du modèle − net déclaré : à 60 000 $ de
   net, −3 627 $ avec l'ancien facteur contre **−0,29 $** avec le brut déduit ; à 120 000 $,
   −17 388 $ contre **+0,77 $**. Le biais SUBSISTE pour les utilisateurs qui ont SAISI leur brut
-  (rien ne réconcilie alors le net saisi avec l'impôt du modèle) ; (b) un REER cotisé PAR
+  (rien ne réconcilie alors le net saisi avec l'impôt du modèle) — depuis 2026-09-04
+  (`[ENG-NET-MODEL-RESIDUAL]`, lot 139), l'onglet Impôts AFFICHE cet écart quand il dépasse 1 % du
+  net déclaré (`services/taxResidual.ts` — diagnostic seulement, le net encaissé reste le net
+  DÉCLARÉ ; la réconciliation par facteur calibré est une décision routée) ; (b) un REER cotisé PAR
   RETENUE SALARIALE (l'employeur réduit la rémunération assujettie sans T1213) équivaut à
   `optimizeSourceDeductions=true` — sinon le modèle rembourse en avril un bénéfice déjà dans le
   net saisi (double-comptage côté utilisateur, remède : activer le flag).

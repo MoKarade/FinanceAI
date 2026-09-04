@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 149 : le serveur HTTP MCP est découpé pour l'audit sécurité
+> `[GODFILE-MCPHTTP]` livré — `mcp/http.ts` (761 l.) → `http/plomberie.ts` (corps plafonné,
+> temps constant), `http/oauth.ts` (flux OAuth 2.1, limiteur en paramètre — un par process),
+> `http/routesPlanifiees.ts` (/refresh, /fintable-sync, /hub/summary, store en paramètre) ;
+> l'entrée garde options/sessions/routeur/refus de démarrage (467 l.). Extraction par tranches,
+> 70 tests HTTP/OAuth existants verts. Push sans leçon (classes connues).
+
 > ## 🟦 Session 2026-09-04 — Lot 148 : l'ingestion de documents est découpée par type
 > `[GODFILE-APPLYDOCUMENT]` livré — le monolithe de 1 012 lignes (8 handlers, pas les 5 du
 > ticket : re-recensé) devient `applyDocument/<type>.ts` + `types.ts` + `commun.ts`, façade de

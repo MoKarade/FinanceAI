@@ -6,6 +6,13 @@
 // est défini par la plateforme → écoute 0.0.0.0:$PORT (exigence Cloud Run).
 // Le mode stdio (mcp/stdio.ts, npm run mcp:dev) reste inchangé pour le local.
 //
+// [GODFILE-MCPHTTP] Découpé pour l'auditabilité sécurité : la plomberie transport
+// (readBody plafonné, réponses JSON, comparaison en temps constant) vit dans
+// `http/plomberie.ts`, le flux OAuth 2.1 dans `http/oauth.ts`, les routes
+// planifiées (/refresh, /fintable-sync) et /hub/summary dans
+// `http/routesPlanifiees.ts`. Ce fichier reste l'ENTRÉE : options, sessions MCP,
+// routeur, refus de démarrage (main).
+//
 // Endpoints :
 //   - POST/GET/DELETE /mcp : protocole MCP Streamable HTTP (sessions à ID,
 //     réponses JSON directes — enableJsonResponse) ;
@@ -22,25 +29,19 @@
 // hors Cloud Run est REFUSÉ au démarrage sauf opt-in explicite.
 
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { HUB_TOKEN_HEADER, serveSummary } from '@mokarade/hub-contract/endpoint';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
 import { makeAttemptLimiter } from './auth/rateLimit';
-import { buildHubSummary, errorHubSummary } from './hubSummary';
-import { runPriceRefresh } from './refreshPrices';
-import { runFintableSync } from './runFintableSync';
-import { FintableClient } from '../services/fintable/client';
 import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { parseRolesJson } from '../services/fintable/rolesConfig';
-import { isStateConflictError } from './state/stateErrors';
-import { configureMarketDataProvider } from '../services/marketData';
+import { BodyTooLargeError, readBody, sendJson, sendRpcError } from './http/plomberie';
+import { handleOAuth } from './http/oauth';
+import { handleFintableSync, handleHubSummary, handleRefresh } from './http/routesPlanifiees';
 
-/** Cap du corps de requête : largement suffisant pour du JSON-RPC MCP, borne l'OOM (mesuré : RSS ~7× la taille du corps). */
-const MAX_BODY_BYTES = 5 * 1024 * 1024;
 /** Délai de grâce de l'arrêt : au-delà, fermeture FORCÉE des connexions (sinon une requête en vol
  *  suspendue bloque `server.close()` à jamais → SIGKILL Cloud Run — prouvé par le panel 2026-07-13). */
 const CLOSE_GRACE_MS = 5_000;
@@ -88,66 +89,6 @@ export interface RunningHttpServer {
     server: Server;
     port: number;
     close: () => Promise<void>;
-}
-
-class BodyTooLargeError extends Error {
-    constructor() { super(`Corps de requête > ${MAX_BODY_BYTES} octets.`); }
-}
-
-/** Lit le corps en le PLAFONNANT (413 sinon) et en rejetant si la connexion coupe avant la fin
- *  (sans ça, la Promise resterait pendante à jamais — fuite de handlers, prouvé par le panel). */
-function readBody(req: IncomingMessage): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const chunks: Buffer[] = [];
-        let total = 0;
-        let settled = false;
-        const settle = (fn: () => void): void => {
-            if (!settled) { settled = true; fn(); }
-        };
-        req.on('data', (c: Buffer) => {
-            // Après dépassement : on continue de LIRE (drain) mais on n'ACCUMULE plus —
-            // détruire la socket ferait un RST qui jette le 413 déjà envoyé (ECONNRESET
-            // client, vu au test) ; drainer garde la mémoire PLATE et la réponse intacte.
-            if (settled) return;
-            total += c.length;
-            if (total > MAX_BODY_BYTES) {
-                settle(() => reject(new BodyTooLargeError()));
-                return;
-            }
-            chunks.push(c);
-        });
-        req.on('end', () => settle(() => resolve(Buffer.concat(chunks).toString('utf8'))));
-        req.on('error', (err) => settle(() => reject(err)));
-        // 'close' arrive AUSSI après 'end' (fin normale) → settled le neutralise ; il ne
-        // rejette que si la connexion coupe AVANT la fin du corps (client parti/abort).
-        req.on('close', () => settle(() => reject(new Error('Connexion fermée avant la fin du corps.'))));
-    });
-}
-
-function sendJson(
-    res: ServerResponse,
-    status: number,
-    payload: unknown,
-    extraHeaders: Record<string, string> = {},
-): void {
-    res.writeHead(status, { 'Content-Type': 'application/json', ...extraHeaders });
-    res.end(JSON.stringify(payload));
-}
-
-/** [HUB-01] un summary est un instantané : jamais mis en cache (contrat hub). */
-const HUB_NO_STORE = { 'Cache-Control': 'no-store' } as const;
-
-/** [HUB-01] comparaison en temps constant (via digests de longueur fixe — timingSafeEqual
- *  exige des buffers de même taille, un secret de longueur différente ne doit pas fuiter). */
-function hubTokensMatch(provided: string, expected: string): boolean {
-    const a = createHash('sha256').update(provided).digest();
-    const b = createHash('sha256').update(expected).digest();
-    return timingSafeEqual(a, b);
-}
-
-/** Erreur JSON-RPC (forme attendue par un client MCP, id null = hors requête identifiable). */
-function sendRpcError(res: ServerResponse, status: number, code: number, message: string): void {
-    sendJson(res, status, { jsonrpc: '2.0', error: { code, message }, id: null });
 }
 
 /**
@@ -285,124 +226,6 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     // protection. En construire un à chaque appel remettrait le compteur à zéro à chaque tentative.
     const authorizeLimiter = makeAttemptLimiter();
 
-    const escapeHtml = (s: string): string =>
-        s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
-
-    const authorizeFormHtml = (q: Record<string, string>, error?: string): string => `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FinanceAI — autorisation</title>
-<style>body{font-family:system-ui;max-width:26rem;margin:4rem auto;padding:0 1rem;background:#0f1115;color:#e8eaf0}
-input,button{font-size:1rem;padding:.6rem;width:100%;box-sizing:border-box;border-radius:.5rem;border:1px solid #333}
-button{background:#2563eb;color:#fff;border:0;margin-top:.75rem;cursor:pointer}.err{color:#f87171}</style></head>
-<body><h1>FinanceAI MCP</h1>
-<p>Claude demande l'accès à tes finances. Entre ta <strong>clé d'accès</strong> pour autoriser.</p>
-${error ? `<p class="err">${escapeHtml(error)}</p>` : ''}
-<form method="POST" action="/oauth/authorize">
-${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_method', 'response_type']
-    .map((k) => `<input type="hidden" name="${k}" value="${escapeHtml(q[k] ?? '')}">`).join('\n')}
-<input type="password" name="access_key" placeholder="Clé d'accès" autofocus autocomplete="current-password">
-<button type="submit">Autoriser</button></form></body></html>`;
-
-    const handleOAuth = async (auth: OAuthProvider, url: string, req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
-        if (url === '/.well-known/oauth-authorization-server') {
-            sendJson(res, 200, auth.authorizationServerMetadata());
-            return true;
-        }
-        if (url === '/.well-known/oauth-protected-resource') {
-            sendJson(res, 200, auth.protectedResourceMetadata());
-            return true;
-        }
-        if (url === '/oauth/register' && req.method === 'POST') {
-            let body: { redirect_uris?: string[] };
-            try {
-                body = JSON.parse(await readBody(req)) as { redirect_uris?: string[] };
-            } catch {
-                throw new OAuthError('invalid_request', 'Corps JSON invalide.');
-            }
-            sendJson(res, 201, auth.registerClient(body.redirect_uris ?? []));
-            return true;
-        }
-        if (url === '/oauth/authorize' && req.method === 'GET') {
-            const q = Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
-            auth.validateAuthorizeRequest(q);
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(authorizeFormHtml(q));
-            return true;
-        }
-        if (url === '/oauth/authorize' && req.method === 'POST') {
-            const form = Object.fromEntries(new URLSearchParams(await readBody(req)));
-            auth.validateAuthorizeRequest(form);
-            // ⚠️ [MCP-CLOUDRUN-AUTH-HARDENING] Plafond AVANT toute comparaison de clé : c'est la
-            // seule porte devinable du serveur (voir `mcp/auth/rateLimit.ts` pour le pourquoi du
-            // compteur global et de la limite assumée en mémoire).
-            if (authorizeLimiter.isBlocked()) {
-                const retryAfter = authorizeLimiter.retryAfterSeconds();
-                // ⚠️ [finding silent-failure-hunter, PR #566] Un blocage NON TRACÉ rend une attaque
-                // invisible — et le runbook de rotation de clé (mcp/README.md) désigne justement
-                // « une tentative suspecte dans les logs Cloud Run » comme son déclencheur. Sans
-                // cette ligne, la doc décrivait un signal que le code ne produisait pas.
-                console.error(
-                    `[FinanceAI MCP http] /oauth/authorize BLOQUÉ : quota d'échecs épuisé, `
-                    + `réessai dans ${retryAfter} s. Si ce n'est pas toi → runbook de rotation (mcp/README.md).`,
-                );
-                res.writeHead(429, {
-                    'Content-Type': 'text/html; charset=utf-8',
-                    'Retry-After': String(retryAfter),
-                });
-                res.end(authorizeFormHtml(
-                    form,
-                    `Trop de tentatives échouées. Réessaie dans ${Math.ceil(retryAfter / 60)} minute(s).`,
-                ));
-                return true;
-            }
-            let code: string;
-            try {
-                code = auth.authorize({
-                    clientId: form.client_id, redirectUri: form.redirect_uri,
-                    codeChallenge: form.code_challenge, accessKey: form.access_key ?? '',
-                });
-            } catch (err) {
-                if (err instanceof OAuthError && err.code === 'access_denied') {
-                    authorizeLimiter.recordFailure();
-                    // Tracé aussi : un pilonnage se voit à la RÉPÉTITION de cette ligne, pas
-                    // seulement au blocage final (qui n'arrive qu'au 8ᵉ échec).
-                    console.error('[FinanceAI MCP http] /oauth/authorize : clé d\'accès REFUSÉE.');
-                    res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-                    res.end(authorizeFormHtml(form, 'Clé d’accès invalide — réessaie.'));
-                    return true;
-                }
-                throw err;
-            }
-            // Succès : l'historique est effacé — l'usage légitime de Marc ne consomme aucun quota.
-            authorizeLimiter.reset();
-            const target = new URL(form.redirect_uri);
-            target.searchParams.set('code', code);
-            if (form.state) target.searchParams.set('state', form.state);
-            res.writeHead(302, { Location: target.toString() });
-            res.end();
-            return true;
-        }
-        if (url === '/oauth/token' && req.method === 'POST') {
-            const form = Object.fromEntries(new URLSearchParams(await readBody(req)));
-            if (form.grant_type === 'authorization_code') {
-                sendJson(res, 200, auth.exchangeCode({
-                    code: form.code ?? '', clientId: form.client_id ?? '',
-                    clientSecret: form.client_secret, redirectUri: form.redirect_uri ?? '',
-                    codeVerifier: form.code_verifier ?? '',
-                }));
-            } else if (form.grant_type === 'refresh_token') {
-                sendJson(res, 200, auth.refreshGrant({
-                    refreshToken: form.refresh_token ?? '', clientId: form.client_id ?? '',
-                    clientSecret: form.client_secret,
-                }));
-            } else {
-                sendJson(res, 400, { error: 'unsupported_grant_type', error_description: 'authorization_code ou refresh_token.' });
-            }
-            return true;
-        }
-        return false;
-    };
-
     const knownEndpoints = [
         '/mcp',
         '/health',
@@ -411,123 +234,6 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         ...(options.fintableSyncSecret ? ['/fintable-sync'] : []),
     ];
 
-    // [HUB-REFRESH-CRON] POST /refresh — rafraîchit les prix de marché dans le blob Drive, sans
-    // ouvrir l'app. Déclenché par un job planifié EXTERNE (GitHub Actions), authentifié par un
-    // secret dédié (Authorization: Bearer). Réponses : 200 { ok:true, saved, refreshed[], skipped[] }
-    // au succès ; 200 { ok:false, conflict:true } si l'app a poussé entre-temps (transitoire, le
-    // prochain tick réessaie) ; 5xx sur panne RÉELLE (Drive KO, jeton révoqué, coffre chiffré) pour
-    // que le cron rougisse au lieu de rester vert sur des prix figés. Ne modifie QUE les cours.
-    const handleRefresh = (req: IncomingMessage, res: ServerResponse, refreshSecret: string, finnhubKey?: string): void => {
-        if (req.method !== 'POST') {
-            sendJson(res, 405, { error: 'POST uniquement.' }, HUB_NO_STORE);
-            return;
-        }
-        const header = req.headers.authorization;
-        const provided = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : '';
-        if (!provided || !hubTokensMatch(provided, refreshSecret)) {
-            sendJson(res, 401, { error: 'Authorization: Bearer absent ou invalide.' }, HUB_NO_STORE);
-            return;
-        }
-        if (finnhubKey) configureMarketDataProvider({ finnhubKey });
-        runPriceRefresh(state.store)
-            .then((outcome) => sendJson(res, 200, { ok: true, ...outcome }, HUB_NO_STORE))
-            .catch((err: unknown) => {
-                const reason = err instanceof Error ? err.message : String(err);
-                // Conflit OCC (l'app a poussé entre-temps) = TRANSITOIRE, rien d'écrasé → 200 { ok:false,
-                // conflict:true } : le prochain tick réessaie, le cron ne doit pas rougir. Toute AUTRE
-                // erreur (source non inscriptible, jeton Drive révoqué, coffre chiffré, Drive KO) est une
-                // panne RÉELLE → 5xx, pour que le job planifié rougisse et alerte au lieu de rester vert
-                // à jamais sur des prix qui ne se rafraîchissent plus (silence = pire que l'erreur).
-                if (isStateConflictError(err)) {
-                    sendJson(res, 200, { ok: false, conflict: true, error: reason }, HUB_NO_STORE);
-                    return;
-                }
-                console.error('[FinanceAI MCP http] /refresh : échec —', reason);
-                sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
-            });
-    };
-
-    // [FINTABLE-3] POST /fintable-sync — synchronise transactions/soldes/dettes depuis Fintable dans
-    // le blob Drive, sans ouvrir l'app. Déclenché par un cron EXTERNE (Cloud Scheduler), authentifié
-    // par un secret DÉDIÉ (distinct de FINANCEAI_REFRESH_SECRET — périmètre différent : celui-ci
-    // AUTORISE l'écriture de transactions/soldes réels, pas seulement des cours de marché). Réponses :
-    // 200 { ok:true, report } au succès (report = FintableSyncReport, TOUJOURS persisté aussi dans
-    // AppState — visible dans l'app sans notification proactive, choix Marc) ; 200 { ok:false,
-    // conflict:true } si l'app a poussé entre-temps (transitoire, le prochain tick réessaie) ; 5xx sur
-    // panne RÉELLE (Fintable KO/jeton révoqué, Drive KO) pour que le cron rougisse au lieu de rester
-    // vert sur une sync qui ne progresse plus.
-    const handleFintableSync = (
-        req: IncomingMessage, res: ServerResponse, syncSecret: string,
-        fintableToken: string | undefined, fintableRoles: FintableMappingConfig['roles'] | undefined,
-    ): void => {
-        if (req.method !== 'POST') {
-            sendJson(res, 405, { error: 'POST uniquement.' }, HUB_NO_STORE);
-            return;
-        }
-        const header = req.headers.authorization;
-        const provided = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : '';
-        if (!provided || !hubTokensMatch(provided, syncSecret)) {
-            sendJson(res, 401, { error: 'Authorization: Bearer absent ou invalide.' }, HUB_NO_STORE);
-            return;
-        }
-        if (!fintableToken) {
-            sendJson(res, 503, { ok: false, error: 'FINTABLE_TOKEN absent : sync impossible.' }, HUB_NO_STORE);
-            return;
-        }
-        const client = new FintableClient({ token: fintableToken });
-        runFintableSync(state.store, { token: fintableToken, roles: fintableRoles ?? {}, client })
-            .then((report) => sendJson(res, 200, { ok: true, report }, HUB_NO_STORE))
-            .catch((err: unknown) => {
-                const reason = err instanceof Error ? err.message : String(err);
-                // Conflit OCC = TRANSITOIRE (cf /refresh) : rien d'écrasé, le prochain tick réessaie.
-                if (isStateConflictError(err)) {
-                    sendJson(res, 200, { ok: false, conflict: true, error: reason }, HUB_NO_STORE);
-                    return;
-                }
-                console.error('[FinanceAI MCP http] /fintable-sync : échec —', reason);
-                sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
-            });
-    };
-
-    // [HUB-01] GET /hub/summary — résumé conforme au contrat hub, données réelles.
-    //
-    // La mécanique (405, jeton comparé en temps constant, `no-store`, validation avant
-    // émission) vient de `serveSummary` (`@mokarade/hub-contract/endpoint`), écrite une fois
-    // pour toutes les apps. Elle est SANS framework, ce qui est exactement ce qu'il faut
-    // ici : ce serveur-ci est un `node:http` nu, pas un route handler Next.
-    //
-    // ⚠️ DEUX ÉCARTS VOULUS, tous deux préservés :
-    //
-    // 1. Le 503 « hub désactivé » de `serveSummary` ne peut pas se produire : cette route
-    //    n'est CÂBLÉE que si `options.hubToken` existe (voir le routeur plus bas). Sans
-    //    jeton, l'URL n'existe pas du tout — 404, et c'est plus discret qu'un 503 qui
-    //    confirmerait l'existence du endpoint à qui le sonde.
-    // 2. Un échec de lecture d'état renvoie un summary `status: "error"` en **HTTP 200**,
-    //    pas un 500 : le widget du hub affiche la panne au lieu de traiter l'app comme
-    //    injoignable. `serveSummary` répondrait 500 si son `build` JETAIT — d'où le `catch`
-    //    ci-dessous, qui EST le contrat et ne doit pas disparaître.
-    const handleHubSummary = (req: IncomingMessage, res: ServerResponse, hubToken: string): void => {
-        const jeton = req.headers[HUB_TOKEN_HEADER];
-        void serveSummary(
-            { method: req.method ?? 'GET', token: typeof jeton === 'string' ? jeton : null },
-            {
-                expectedToken: hubToken,
-                build: () =>
-                    state.store
-                        .get()
-                        .then((appState) => buildHubSummary(appState))
-                        .catch((err: unknown) => {
-                            const reason = err instanceof Error ? err.message : String(err);
-                            console.error('[FinanceAI MCP http] /hub/summary : état indisponible —', reason);
-                            return errorHubSummary(reason);
-                        }),
-            },
-        ).then(({ status, headers, body }) => {
-            res.writeHead(status, headers);
-            res.end(body);
-        });
-    };
-
     const server = createHttpServer((req, res) => {
         const url = (req.url ?? '/').split('?')[0];
         if (url === '/health') {
@@ -535,20 +241,20 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
             return;
         }
         if (url === '/hub/summary' && options.hubToken) {
-            handleHubSummary(req, res, options.hubToken);
+            handleHubSummary(req, res, state.store, options.hubToken);
             return;
         }
         if (url === '/refresh' && options.refreshSecret) {
-            handleRefresh(req, res, options.refreshSecret, options.finnhubKey);
+            handleRefresh(req, res, state.store, options.refreshSecret, options.finnhubKey);
             return;
         }
         if (url === '/fintable-sync' && options.fintableSyncSecret) {
-            handleFintableSync(req, res, options.fintableSyncSecret, options.fintableToken, options.fintableRoles);
+            handleFintableSync(req, res, state.store, options.fintableSyncSecret, options.fintableToken, options.fintableRoles);
             return;
         }
         if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
             const auth = options.auth;
-            handleOAuth(auth, url, req, res)
+            handleOAuth(auth, authorizeLimiter, url, req, res)
                 .then((handled) => {
                     if (!handled) sendJson(res, 404, { error: 'introuvable' });
                 })

@@ -313,7 +313,7 @@
   `[A11Y-BORDER-PROMINENCE-SWEEP]`. ⚠️ `[D6-KBD]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` archivés
   (2026-08-12, PR #598, #599).
 - [ ] **V11 — Dette structurée** (fond, par lots) : ✅ `[GODFILE-APPLYDOCUMENT]` (#879) →
-  `[GODFILE-MCPHTTP]` →
+  ✅ `[GODFILE-MCPHTTP]` (#880) →
   `[DETTE-GODFILES]` (Budget/FutureProjection/…) + `[DETTE-UI-PRIMITIVES]` + `[CA-07]` + `[T4]`.
 - [ ] **V12 — Gros chantiers (tous GO Marc 2026-07-31, plan-first chacun)** :
   `[IA-NAV-CONSOLIDATE]` (GO — préparer un GROS batch de questions de cadrage d'abord) →
@@ -757,8 +757,6 @@
   actuel, qui ne dépend que de `chartData`. Faire ce lot = déplacer la décision au rendu (fenêtre
   visible + largeur mesurée), pas changer la clé de groupement. ⚠️ Ne PAS livrer « grouper par
   abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
-- [ ] **`[GODFILE-MCPHTTP]`** (M — V11) — `mcp/http.ts` 710 l. (OAuth+CORS+DNS-guard+dispatch) →
-  split `http/oauth.ts` + `http/security.ts` + `http/server.ts` (auditabilité sécurité).
 - [ ] **`[GODFILE-APP]`** (M — V11) — `App.tsx` 866 l. → extraire `AppProviders.tsx`.
   **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
   **`[GODFILE-REALESTATE-CMP]`** RealEstate.tsx 624 · **`[GODFILE-FUTUREDETAILMODAL]`** 606.

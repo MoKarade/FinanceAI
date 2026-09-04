@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[GODFILE-MCPHTTP]` — LIVRÉ (lot 149)
+
+`mcp/http.ts` (mesuré 761 l. — le ticket disait 710) est découpé pour l'auditabilité sécurité,
+en suivant les COUTURES réelles du fichier plutôt que les trois noms du ticket (`security.ts`
+n'existait pas comme frontière — la plomberie transport EST la couche sécurité) :
+`http/plomberie.ts` (lecture de corps PLAFONNÉE + drain, réponses JSON/JSON-RPC, comparaison de
+jetons en temps constant), `http/oauth.ts` (découverte RFC 8414/9728, enregistrement dynamique,
+formulaire d'autorisation + plafond de tentatives, échange code/refresh — le LIMITEUR reste
+construit par le serveur, un par process, et arrive en paramètre : sa mémoire EST la protection),
+`http/routesPlanifiees.ts` (/refresh, /fintable-sync, /hub/summary — le store d'état passe en
+paramètre, il vivait en closure). `mcp/http.ts` (467 l.) garde l'entrée : options, sessions MCP,
+`handleMcp`, routeur, refus de démarrage. Extraction par tranches (script à ancres, aucun code
+retapé, seuls paramètres ajoutés : `limiter`, `store`). Preuve d'équivalence : les 70 tests
+HTTP/OAuth/hub existants (serveur booté sur port éphémère), verts ; typecheck, lint, knip sans
+signalement neuf. PR #880.
+
 ## 2026-09-04 — `[GODFILE-APPLYDOCUMENT]` — LIVRÉ (lot 148)
 
 `mcp/ingest/applyDocument.ts` (mesuré **1 012 lignes et 8 handlers** — le ticket disait 873/5 : trois

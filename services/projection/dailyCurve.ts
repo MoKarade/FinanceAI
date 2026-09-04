@@ -78,7 +78,10 @@ export function mergeDailyRealPoint(
         // commencent. Une journée passée sans mesure n'est pas tracée.
         // Le FUTUR, lui, est légitimement projeté : d'où la borne stricte sur `todayIso`.
         if (todayIso && d.dayIso < todayIso) return null;
-        return { ...d, monthIndex: x } as unknown as ProjectionChartPoint;
+        // Cast SIMPLE (plus de `unknown`) : `DailyLedgerPoint` = Partial<ProjectionChartPoint> + les
+        // champs du jour, désormais DÉCLARÉS sur le type. Seul `NetWorth` (requis) peut manquer sur
+        // un jour légitime — l'absence est le contrat (« — » à l'écran), pas un défaut.
+        return { ...d, monthIndex: x } as ProjectionChartPoint;
     }
 
     const wants = (key: string): boolean => !fields || fields.has(key);
@@ -118,7 +121,9 @@ export function mergeDailyRealPoint(
         put(point, `NetTransfer${k}`, real.deposits[k as PastAccountKey]);
         put(point, `MarketGrowth${k}`, real.growth[k as PastAccountKey]);
     }
-    return point as unknown as ProjectionChartPoint;
+    // Cast SIMPLE : le point réel est construit champ par champ (jamais un spread du projeté) et
+    // `NetWorth` (seul requis) peut légitimement être ABSENT d'un jour non couvert par `fields`.
+    return point as ProjectionChartPoint;
 }
 
 /**
@@ -147,11 +152,11 @@ export function realOnlyMonthPoints(
         const iso = isoDate(year, month, day);
         const real = realByDate.get(iso);
         if (!real) continue;
-        const d = {
+        const d: DailyLedgerPoint = {
             monthIndex: hostMonthIndex, hostMonthIndex, dayIso: iso, dayOfMonth: day,
             dateLabel: dayLabel(year, month, day), isDailyPoint: true,
             dayIsDated: real.isDated, dayLabels: real.labels,
-        } as unknown as DailyLedgerPoint;
+        };
         // `real` vient d'être trouvé juste au-dessus → `mergeDailyRealPoint` ne peut pas rendre
         // `null` ici. La garde est là parce que le compilateur l'exige, pas parce que le cas existe.
         const point = mergeDailyRealPoint(d, startYear, startMonth, realByDate, fields, syncConfirmedUntilIso);
@@ -208,8 +213,7 @@ export function buildEnrichedMonth(
 
     const byIso = new Map<string, ProjectionChartPoint>();
     for (const d of merged) {
-        const dd = d as unknown as { hostMonthIndex?: number; dayIso?: string };
-        if (dd.hostMonthIndex === hostMonthIndex && typeof dd.dayIso === 'string') byIso.set(dd.dayIso, d);
+        if (d.hostMonthIndex === hostMonthIndex && typeof d.dayIso === 'string') byIso.set(d.dayIso, d);
     }
     return byIso.size > 0 ? byIso : null;
 }
@@ -223,8 +227,8 @@ export function buildEnrichedMonth(
 export function recomputeDailyDiffs(merged: ProjectionChartPoint[]): void {
     const DIFFS = [['diffNW', 'NetWorth'], ['diffCELI', 'CELI'], ['diffREER', 'REER'], ['diffLiquid', 'Liquidites']] as const;
     for (let i = 1; i < merged.length; i++) {
-        const prevP = merged[i - 1] as unknown as Record<string, unknown>;
-        const curP = merged[i] as unknown as Record<string, unknown>;
+        const prevP = merged[i - 1];
+        const curP = merged[i];
         // ⚠️ Contiguïté CALENDAIRE exigée (finding projection-validator #592) : le mois ANCRE
         // n'émet que les jours à ligne réelle — deux jours réels NON voisins (05/01 puis 20/01)
         // produisaient une « Variation » de 15 jours présentée comme celle d'UN jour (mesuré :
@@ -244,8 +248,8 @@ export function recomputeDailyDiffs(merged: ProjectionChartPoint[]): void {
         }
     }
     if (merged.length > 0) {
-        for (const k of ['diffNW', 'diffCELI', 'diffREER', 'diffLiquid']) {
-            delete (merged[0] as unknown as Record<string, unknown>)[k];
+        for (const k of ['diffNW', 'diffCELI', 'diffREER', 'diffLiquid'] as const) {
+            delete merged[0][k];
         }
     }
 }
@@ -326,7 +330,7 @@ export function decimateForRender(
         const keep = (globalFrom + i) % k === 0
             || i === 0 // les BORDS de la fenêtre ne reculent jamais (dataMin/dataMax stables)
             || i === slice.length - 1
-            || (p as unknown as Record<string, unknown>).FluxImpots !== undefined;
+            || p.FluxImpots !== undefined;
         if (keep) out.push(p);
     }
     return out;

@@ -1375,15 +1375,6 @@
   calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
   est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
   devra être délibéré ET répondre à cette question.
-- [ ] **`[DETTE-CAST-DAILYCURVE]`** (S, ÉLEVÉ) — **17 `as unknown as`** sur la courbe journalière
-  money-critical : 8 dans `services/projection/dailyCurve.ts` (l:81, 121, 154, 211, 226-227, 248, 329)
-  et 9 dans `components/FutureProjection.tsx` (l:886-906, 972, 1014, 1105, 1593-1594) — pile aux
-  points de fusion réel↔projeté, terrain identifié à risque dans `CLAUDE.md`. Correctif : typer les
-  unions ou introduire un type guard partagé. [MESURÉ]
-- [x] **`[DETTE-DEPRECATED-DRAWDOWN]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — l'alias `@deprecated` `optimizeDrawdownOrder`
-  (`services/projection/drawdownOptimizer.ts:88`) est **encore consommé en prod** par
-  `components/retirement/GoalSeekerCard.tsx:8,20,46`. Correctif : basculer sur `compareLifeScenarios`,
-  retirer l'alias, mettre à jour `tests/services/drawdownOptimizer.test.ts:142-145`. [MESURÉ]
 - [ ] **`[DETTE-COULEURS-ADHOC]`** (S, MOYEN) — **26 couleurs hex en dur** (`bg-[#1a1a1a]`,
   `text-[#2dd4bf]`, `bg-[#0d1118]`…) dans ~15 fichiers dont `Layout.tsx` (×3), `Investments.tsx` (×2),
   `aiChat/AiChatView.tsx` (×2), `Retirement.tsx` (×2). Ces teintes échappent à `check-contrast` ET

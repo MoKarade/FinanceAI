@@ -73,6 +73,28 @@ export interface ProjectionChartPoint {
     diffCELI?: number;
     diffREER?: number;
     diffLiquid?: number;
+    // [DETTE-CAST-DAILYCURVE 2026-09-04] Identité d'un point QUOTIDIEN de la courbe Futur
+    // ([FUTUR-DAILY-NATIVE]) — DÉCLARÉE ici pour que les points de fusion réel↔projeté soient
+    // TYPÉS : avant, 17 `as unknown as` faisaient taire tsc pile aux endroits money-critical où
+    // le passé réel remplace le projeté. Tous OPTIONNELS : un point mensuel ne les porte pas, et
+    // un champ non mesuré reste ABSENT (no-fake-data — jamais un défaut plausible).
+    /** Mois HÔTE du moteur (entier) — clé de jointure d'un jour ; `monthIndex` est fractionnaire. */
+    hostMonthIndex?: number;
+    /** Date ISO `YYYY-MM-DD` du jour. Présent ⇔ point quotidien. */
+    dayIso?: string;
+    dayOfMonth?: number;
+    isDailyPoint?: boolean;
+    /** Vrai si le jour vient du PASSÉ RÉEL (dailyPastLedger), reconstruit à partir de RIEN. */
+    dayIsReal?: boolean;
+    /** Un mouvement à DATE connue tombe ce jour-là (vs simple étalement). */
+    dayIsDated?: boolean;
+    dayLabels?: string[];
+    dayMovements?: Array<{ payee: string; amount: number }>;
+    dayMovementsTotal?: number;
+    priceAgeMaxDays?: number;
+    hasEstimatedPrice?: boolean;
+    /** [FUTUR-DAILY-ROLLOVER] Jour réel postérieur à la dernière sync bancaire confirmée. */
+    daySyncUnconfirmed?: boolean;
     ImpotLatent?: number;
     FluxImpots?: number;
     ImpotRetraitREER?: number;
@@ -142,7 +164,8 @@ export interface ProjectionChartPoint {
     // forcer narrowing côté consommateur sans casser l'accès aux champs ad-hoc.
     // [FUTUR-DAILY-EVENTS] + Record<string, number> : le membre `eventDays` doit être admis par
     // la signature d'index (TS2411 sinon).
-    [extra: string]: number | string | boolean | string[] | Record<string, number> | null | undefined;
+    // [DETTE-CAST-DAILYCURVE] + Array<{payee; amount}> : même exigence pour `dayMovements`.
+    [extra: string]: number | string | boolean | string[] | Record<string, number> | Array<{ payee: string; amount: number }> | null | undefined;
 }
 
 // FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection

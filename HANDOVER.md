@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 145 : la fusion réel↔projeté de la courbe au jour est typée
+> `[DETTE-CAST-DAILYCURVE]` livré — l'identité d'un point quotidien est DÉCLARÉE sur
+> `ProjectionChartPoint` : 15 des 17 `as unknown as` retirés (tsc retrouve prise sur la fusion),
+> les 2 restants (handlers recharts, typage tiers) justifiés et bornés par
+> `dailyCurveCastGuard.test.ts`. Empreinte identique à l'octet, 57 tests ciblés verts, 3
+> perturbations chacune rouge au bon endroit.
+
 > ## 🟦 Session 2026-09-04 — Lot 144 : le reset de janvier est découpé, comportement prouvé inchangé
 > `[DETTE-GODFN-JANUARY]` livré — `processJanuaryReset` (183 lignes) devient 5 étapes nommées
 > (CELI, FHSA, droits REER, FERR, Guyton-Klinger), orchestrateur ~35 lignes. Empreinte identique

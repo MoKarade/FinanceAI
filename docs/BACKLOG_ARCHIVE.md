@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[GODFILE-REALESTATE-CMP]` — LIVRÉ (lot 153, PR #884)
+
+Le ticket disait « RealEstate.tsx 624 lignes » — recensé contre le code, ce fichier était déjà une
+FAÇADE de 29 lignes (le split [REFONTE-NAV-L3] l'avait vidé) ; le vrai godfile était
+`components/realestate/RealEstateWorkspace.tsx`, **912 lignes** re-mesurées. Redescendu à **661**
+par trois extractions VERBATIM : `calculsImmoLocaux.ts` (les deux calculs d'écran — table
+d'amortissement locale et comparaison Acheter-vs-Louer — en fonctions PURES, sans store ni
+horloge), `ScenariosComparatifsCard.tsx` (la carte interactive ; l'ÉTAT des curseurs reste chez le
+parent parce que la carte-conseil IA en bas de page lit les mêmes valeurs) et
+`AmortissementCards.tsx` (frais d'acquisition + table annuelle, purement présentationnel).
+Équivalence : typecheck + les 9 suites existantes qui montent le composant (69 tests) + 2 fichiers
+neufs — invariants de RELATION du calcul (jamais de montants épinglés : solde strictement
+décroissant et mort au terme, équité = valeur − solde, renouvellement à l'année 6, valeur du bien
+indépendante du financement, plafond `maxValue` avec contrôle négatif) et preuve de CÂBLAGE par
+espion (`vi.mock` enveloppant le vrai module : arguments observés, DOM asserté sur le résultat
+CAPTURÉ). Trois perturbations séparées, chacune UN rouge ciblé nommé, restauration prouvée par
+`git diff` vide. Leçon (CONVENTIONS, variante lot 153) : le normaliseur de testing-library ramène
+les insécables du DOM à des espaces ordinaires mais ne touche pas l'attendu — composer avec
+`formatCAD` PUIS normaliser pareil.
+
 ## 2026-09-04 — `[T3]` — LIVRÉ (lot 151, mesure)
 
 Le run coverage demandé (« trancher la cible 64→80 %, jamais mesuré depuis ~2 350 tests ») a été

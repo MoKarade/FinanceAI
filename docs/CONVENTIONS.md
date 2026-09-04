@@ -8596,6 +8596,17 @@ que le code ne sert à rien** — leçon déjà au dépôt, re-payée ici sur un
 assertion sur un montant RENDU normalise les espaces d'abord ; le patron existait dans
 `FutureDetailModal.transactions.test.tsx`.
 
+⚠️ **Variante en sens INVERSE (lot 153, 2026-09-04)** : « l'attendu se compose avec le formateur »
+ne suffit pas pour un `getByText`/`getAllByText` de testing-library. Son normaliseur ramène les
+insécables du DOM à des espaces ORDINAIRES, mais **ne touche jamais la chaîne attendue** : un
+attendu composé tel quel avec `formatCAD` (insécables intacts, code 160) ne matche donc RIEN sur
+un rendu parfaitement correct — symptôme trompeur « broken up by multiple elements » alors que le
+nœud est unique. Diagnostic fait par instrumentation (`t.includes(attendu)` vrai, `queryAllByText`
+vide). Le geste complet est en DEUX temps : composer avec le formateur (jamais taper le montant),
+PUIS normaliser l'attendu comme testing-library normalise le DOM
+(`formatCAD(v).replace(/\s/g, ' ')`). Un `toContain` sur du texte brut, lui, garde les insécables
+des DEUX côtés — c'est la requête par élément qui introduit l'asymétrie.
+
 ✅ **La leçon du lot 55 a servi dès le lot suivant** : avant d'écrire la garde, j'ai vérifié qu'un
 test existait déjà pour ce composant (`ProjectionExplains.test.tsx`, six cas). Il existait. La garde
 neuve porte donc le suffixe `.privacy` et ne l'écrase pas — et les six cas d'origine sont restés

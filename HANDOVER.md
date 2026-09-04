@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 153 : RealEstateWorkspace n'est plus un godfile
+> `[GODFILE-REALESTATE-CMP]` livré — le ticket visait « RealEstate.tsx 624 » (déjà une façade de
+> 29 l.) ; le vrai godfile était `RealEstateWorkspace.tsx` (912 l. re-mesurées) → **661** :
+> `calculsImmoLocaux.ts` (amortissement local + Acheter-vs-Louer, fonctions PURES),
+> `ScenariosComparatifsCard.tsx` (état des curseurs resté chez le parent — la carte-conseil IA lit
+> les mêmes valeurs), `AmortissementCards.tsx`. 69 tests des 9 suites existantes verts + 12 neufs
+> (invariants de relation + câblage par espion, 3 perturbations à rouge ciblé). Leçon CONVENTIONS :
+> le normaliseur de testing-library ne touche pas l'attendu — composer avec formatCAD PUIS
+> normaliser. Reste V11 : `[GODFILE-FUTUREDETAILMODAL]` (re-mesuré 1 142 l.), `[GODFILE-STORE]`.
+
 > ## 🟦 Session 2026-09-04 — Lot 152 : le « 65 » du moteur est ancré — quatre constantes, un sens chacune
 > Tranche « seul vrai gain » de `[FISC-CONST-ANCHOR-DEBT]` : 13 littéraux 65/72 dans 5 modules →
 > `RRQ_STANDARD_START_AGE`, `PSV_ELIGIBILITY_AGE`, `PENSION_SPLIT_MIN_AGE`, `RRQ_MAX_DEFERRAL_AGE`

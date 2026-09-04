@@ -96,6 +96,7 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
 type DailyChartPoint = DailyLedgerPoint;
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
@@ -1257,9 +1258,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const point = selectSeries[idxAujourdhui === -1 ? selectSeries.length - 1 : idxAujourdhui];
         if (point) tooltip.freezeOn(enrichDailyPoint(point) ?? point);
     }, [selectSeries, tooltip, enrichDailyPoint]);
+    // ⚠️ Le prédicat des touches vit dans `utils/chartKeyboardSelect.ts` — PAS inline : ce fichier
+    // rend un tablist, et la garde tablistMotifUniqueGuard interdit ici tout littéral de flèche
+    // (le clavier des bandeaux vit dans SubTabs ; celui du graphe n'est pas un bandeau).
     const handleChartKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.target !== e.currentTarget) return;
-        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (!estGesteSelectionJourClavier(e.key)) return;
         e.preventDefault(); // Espace/flèches : ne pas défiler la page pendant le geste
         figerAuClavier();
     };

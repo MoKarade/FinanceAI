@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Un bien qui vaut moins que son hypothèque affiche enfin son déficit)
+
+- **Corrigé** : dans l'historique de ton patrimoine, une propriété « underwater » (elle vaut moins
+  que ce qu'il reste à payer dessus) s'affichait à **0 $** — ni dette, ni valeur, comme si elle
+  n'existait pas. C'est ta décision du 2026-09-03 : un déficit est un vrai chiffre négatif, il se
+  DÉDUIT de ton patrimoine au lieu de disparaître.
+- **Quand ça arrive** : mise de fonds minimale (5 %) + prime SCHL financée + marché en baisse.
+  Mesuré sur un condo de 420 000 $ dans un marché à −5 %/an : le déficit caché allait de 7 400 $ la
+  première année à 42 600 $ la cinquième — ton patrimoine passé était surévalué d'autant, exactement
+  dans le scénario où tu voudrais le savoir.
+- **Cohérence** : la projection FUTURE affichait déjà le négatif ; c'est le passé qui le cachait.
+  Les deux moitiés du même graphe disent maintenant la même chose. Un bien en santé ne bouge pas
+  d'un dollar.
+
+---
+
 ## [unreleased] — 2026-09-03 (Le bouton « T1213 » est retiré : il ne pouvait que te nuire)
 
 - **Retiré** : le bouton « T1213 retenue source » des réglages avancés de la projection. Dans la

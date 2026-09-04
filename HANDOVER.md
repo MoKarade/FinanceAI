@@ -8,7 +8,7 @@
 > Toutes consignées dans `docs/A_FAIRE_MOI.md` (marquées ✅ RÉPONDU, énoncés d'origine conservés) et
 > converties en tickets actionnables dans `BACKLOG.md`. **Le backlog n'est plus bloqué.**
 > - ✅ `[ENG-T1213-NET-MONTHLY]` → retirer le bouton **+ forcer à OFF** — **LIVRÉ au lot 118**.
-> - ⬜ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → retirer le plancher `Math.max(0, …)` de l'équité.
+> - ✅ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → plancher retiré (les DEUX sites) — **LIVRÉ au lot 119**.
 > - ⬜ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « sur ta paie déclarée » (aucun chiffre ne bouge).
 > - ⬜ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable (≠ ma reco, qui était de ne rien faire).
 > - ⬜ `[MIGRATE-GROSS-PROPOSER]` → proposer, JAMAIS écrire seul.
@@ -16,6 +16,19 @@
 >   ⚠️⚠️ **NON LIVRABLE SANS** corriger le texte de consentement, qui promet cet arrondi.
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-04 — Lot 119 : l'équité immobilière peut être négative
+> `[IMMO-CLAMP-EQUITE-NEGATIVE]` livré — **code de prod touché** (historique du patrimoine).
+> - Le plancher `Math.max(0, …)` vivait en DEUX endroits (producteur `runAmortization` +
+>   consommateur `addEquity`), comme le ticket l'avait nommé : les deux retirés dans le même lot.
+> - Recensé : aucun 3e clamp en aval (tous les consommateurs sont additifs), et le moteur FUTUR
+>   publiait déjà le négatif (`realEstateMonth.ts:448`) — le passé contredisait le futur.
+> - Mesuré : fixture 5 % de mise + SCHL + marché −5 %/an → 5 années passées à 0 $ au lieu de
+>   −7 404 $ à −42 584 $. ⚠️ La fixture « naturelle » à −2 % ne passait JAMAIS underwater — le cas
+>   de test se mesure avant de s'écrire.
+> - Garde `equiteNegativeSansPlancher.test.ts` (6 cas, relation valeur−solde, 2 perturbations
+>   séparées : P2 ne rougit que la chaîne). Aucun test existant re-basé (aucune fixture underwater).
+> - Le déploiement Vercel du lot 118 a été vérifié READY (production) avant ce lot.
 
 > ## 🟦 Session 2026-09-03 — Lot 118 : le bouton T1213 est retiré et neutralisé
 > `[ENG-T1213-NET-MONTHLY]` livré — **code de prod touché** (UI + moteur). Déploiement à vérifier.

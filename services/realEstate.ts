@@ -209,7 +209,16 @@ export const runAmortization = (input: AmortizationInput): AmortizationResult =>
       age: year,
       Solde: Math.max(0, Math.round(balance)),
       ValeurPropriete: Math.round(propertyValue),
-      Equite: Math.max(0, Math.round(propertyValue - Math.max(0, balance))),
+      // [IMMO-CLAMP-EQUITE-NEGATIVE] L'équité peut être NÉGATIVE (décision de Marc, 2026-09-03) :
+      // un bien qui vaut moins que son hypothèque (« underwater » — marché en baisse, mise de fonds
+      // minimale + prime SCHL financée) est un DÉFICIT, pas un zéro. Le `Math.max(0, …)` externe qui
+      // vivait ici affichait « ni dette ni valeur » et retirait le déficit du patrimoine passé,
+      // exactement au moment où l'information compte le plus (`no-fake-data` : un zéro crédible est
+      // pire qu'un chiffre juste qui dérange). Tous les consommateurs recensés sont ADDITIFS
+      // (buildPastPrefix, dailyPastLedger, FutureHistorySection) : une valeur négative y est bien
+      // formée. ⚠️ Le clamp INTERNE sur le solde reste : un solde négatif est un artefact de
+      // sur-remboursement du dernier mois (le PMT dépasse le restant dû), pas une créance.
+      Equite: Math.round(propertyValue - Math.max(0, balance)),
       InteretsCumul: Math.round(totalInterestPaid),
       PrincipalCumul: Math.round(totalPrincipalPaid),
       PartInteretAnnuelle: Math.round(yearInterest),

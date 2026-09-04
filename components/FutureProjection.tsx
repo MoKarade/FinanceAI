@@ -5,7 +5,7 @@ import { Skeleton } from './ui/Skeleton';
 // [REFONTE-NAV-L2b] Sous-onglet « Historique » (évolution passée par compte, ex-Accueil) —
 // lazy : son pipeline (usePortfolioHistory + helpers immo/dettes) ne se paie qu'à l'affichage.
 import { lazyWithRetry } from '../utils/lazyWithRetry';
-import { resolveDaySeriesIndex, type DaySeriesPoint } from '../utils/daySeriesIndex';
+import { resolveDaySeriesIndex } from '../utils/daySeriesIndex';
 import { hasForeignCurrencyAssets } from '../services/portfolio';
 const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistorySection'), 'FutureHistorySection');
 // [NAV-MERGE-SANTE-FUTUR] Résumé condensé de Santé, en tête de page — léger (pas de recharts),
@@ -93,7 +93,6 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
  *  ventilation au jour couvre tous les champs du moteur, le contrat et sa construction ne peuvent
  *  plus diverger sans casser le typecheck. `Partial<>` reste la clé : un champ que le mois n'émet
  *  pas doit s'afficher « — », jamais « 0 $ ». */
-type DailyChartPoint = DailyLedgerPoint;
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
@@ -120,7 +119,7 @@ import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso, axisXAtD
 import { useViewportBelowSm } from '../hooks/useViewportBelowSm';
 import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
 import { centeredWindowRange } from '../services/projection/dailyRefine';
-import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
+import { buildDailyLedger } from '../services/projection/dailyLedger';
 import { buildDailyPastLedger } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
@@ -954,10 +953,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * sa fenêtre découpe cette série par VALEUR d'abscisse (`sliceDailyByX`), jamais par indice.
      */
     const dailyAll = useMemo<ProjectionChartPoint[]>(() => {
-        if (dailyAnchors.length < 2) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
+        if (dailyAnchors.length < 2) return EMPTY_ARRAY;
         const keep = new Set(dailyAnchors.map((a) => a.monthIndex));
         const months = (displayData as ProjectionChartPoint[]).filter((p) => keep.has(p.monthIndex));
-        if (months.length < 2) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
+        if (months.length < 2) return EMPTY_ARRAY;
 
         const days = buildDailyLedger({
             months,
@@ -966,7 +965,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             dated: dailyDated,
             fields: CURVE_FIELDS,
         });
-        if (days.length === 0) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
+        if (days.length === 0) return EMPTY_ARRAY;
 
         // [PASSE-REEL-1] `todayIso` transmis ⇒ une journée PASSÉE sans donnée réelle rend `null` et
         // n'est PAS tracée (avant : elle affichait le point PROJETÉ, présenté comme du passé).
@@ -974,7 +973,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const points = days
             .map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, CURVE_FIELDS, syncConfirmedUntilIso, todayIso))
             .filter((p): p is ProjectionChartPoint => p !== null);
-        if (points.length === 0) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
+        if (points.length === 0) return EMPTY_ARRAY;
         // ⚠️ `FluxImpots` ≈ 0 (tous les jours SAUF l'échéance, cadence monthEnd) devient ABSENT :
         // recharts ne rend pas de rect pour une valeur absente — sinon la Bar créerait ~11 000
         // rects DOM à hauteur nulle. Vérifié par la sonde perf (comptage des rects rendus).
@@ -1040,9 +1039,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth, syncConfirmedUntilIso, todayIso]);
     const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;
-        const dp = p as unknown as DailyChartPoint;
-        const host = dp.hostMonthIndex;
-        const iso = dp.dayIso;
+        const host = p.hostMonthIndex;
+        const iso = p.dayIso;
         if (typeof host !== 'number' || typeof iso !== 'string') return p; // pas un jour de la courbe
         const cached = enrichCache.byHost.get(host);
         if (cached) return cached.get(iso) ?? p;
@@ -1082,7 +1080,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      */
     const detailPointFor = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;
-        const host = (p as unknown as DailyChartPoint).hostMonthIndex;
+        const host = p.hostMonthIndex;
         if (typeof host !== 'number') return p; // point mensuel : inchangé
         return (displayData as ProjectionChartPoint[]).find((d) => d.monthIndex === host) ?? null;
     }, [displayData]);
@@ -1173,7 +1171,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // est rebasé sur le mois par `detailPointFor` et n'a donc jamais de `dayIso`. Détail du
         // défaut mesuré dans `utils/daySeriesIndex.ts`.
         () => resolveDaySeriesIndex(
-            selectSeries as unknown as DaySeriesPoint[],
+            selectSeries,
             detailAnchorIso,
             detailPoint?.monthIndex,
         ),
@@ -1727,6 +1725,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             data={chartSeries}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
                             onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => {
+                                // [DETTE-CAST-DAILYCURVE] Les DEUX derniers `as unknown as` du fichier
+                                // (celui-ci et onMouseLeave), JUSTIFIÉS : les types recharts v3
+                                // déclarent ces handlers sans `activePayload` — un typage TIERS qu'on
+                                // ne contrôle pas (seul cas où un cast se garde, cf. lot 138). Bornés
+                                // par tests/services/dailyCurveCastGuard.test.ts : un 3e est refusé.
                                 // [FUTUR-DAILY-NATIVE] Le point recharts est LÉGER (champs de la courbe) :
                                 // l'infobulle reçoit sa version COMPLÈTE, ventilée à la demande et cachée
                                 // par mois (~10 ms la 1re entrée dans un mois, 0 ensuite).

@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-CAST-DAILYCURVE]` — LIVRÉ (lot 145)
+
+Les 17 `as unknown as` de la courbe journalière (8 `dailyCurve.ts` + 9 `FutureProjection.tsx`,
+pile aux points de fusion réel↔projeté) : **15 RETIRÉS, 2 justifiés et BORNÉS**. Le correctif de
+fond : l'identité d'un point quotidien (hostMonthIndex, dayIso, dayIsReal, dayLabels,
+dayMovements, daySyncUnconfirmed…) est désormais DÉCLARÉE sur `ProjectionChartPoint` (types.ts,
++ union d'index élargie pour `dayMovements`) — les lecteurs accèdent aux champs sans re-caster,
+et tsc retrouve prise sur le terrain money-critical. Les 2 restants sont les handlers recharts
+(`onMouseMove`/`onMouseLeave` — typage tiers sans `activePayload`), bornés par
+`tests/services/dailyCurveCastGuard.test.ts` (zéro dans dailyCurve/dailyRefine, ≤1 dans
+dailyLedger, exactement 2 dans FutureProjection ancrés à leurs handlers par fenêtre sur source
+décommentée ; un 3e se refuse, un 0 se re-juge). Équivalence : empreinte des grandeurs publiées
+identique à l'octet + 57 tests ciblés. Perturbations P1 (cast revenu), P2 (champ retiré du
+type), P3 (3e cast) — chacune rougit son seul test. PR #876.
+
 ## 2026-09-04 — `[DETTE-GODFN-JANUARY]` — LIVRÉ (lot 144)
 
 `processJanuaryReset` (183 lignes) découpée selon ses propres sections `=== N ===`, à

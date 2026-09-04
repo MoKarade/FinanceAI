@@ -59,6 +59,35 @@ export interface LifeEventMutator {
     logFlow: (msg: string, day?: number) => void;
 }
 
+/**
+ * [CHOMAGE-DEUX-MODELES] Part de la perte de revenu du mois attribuable aux SEULS événements
+ * PERTE_EMPLOI (0 = aucune, 0,5 = la moitié du revenu perdue pour cause de perte d'emploi…).
+ * Sert à verser la prestation d'assurance-emploi sur l'événement daté — l'AE ne couvre NI une
+ * sabbatique (départ volontaire, inadmissible) NI un accident (régime maladie/LTD distinct,
+ * hors de ce lot). Même base de date et mêmes gardes que `computeIncomeLossFactor` ci-dessous ;
+ * composition multiplicative identique quand plusieurs événements se chevauchent.
+ */
+export function computePerteEmploiLossPct(lifeEvents: LifeEvent[], currentLoopDate: Date): number {
+    const curIdx = currentLoopDate.getUTCFullYear() * 12 + currentLoopDate.getUTCMonth();
+    if (!Number.isFinite(curIdx)) return 0;
+    let factor = 1;
+    for (const e of lifeEvents) {
+        if (e.type !== 'PERTE_EMPLOI') continue;
+        if (!e.date || typeof e.date !== 'string') continue;
+        const [eyStr, emStr] = e.date.split('-');
+        const startIdx = Number(eyStr) * 12 + (Number(emStr) - 1);
+        if (!Number.isFinite(startIdx)) continue;
+        const dur = Math.floor(e.durationMonths ?? 0);
+        if (!(dur > 0)) continue;
+        const offset = curIdx - startIdx;
+        if (offset < 0 || offset >= dur) continue;
+        const rawPct = e.incomeLossPercent;
+        const lossPct = Number.isFinite(rawPct) ? Math.min(100, Math.max(0, rawPct as number)) : 0;
+        factor *= (1 - lossPct / 100);
+    }
+    return 1 - Math.max(0, Math.min(1, factor));
+}
+
 /** [FISC-EVENT-INCOMELOSS] Types d'événements de vie qui réduisent le REVENU (pas une dépense) :
  *  perte d'emploi, année sabbatique, accident/maladie. Traités par `computeIncomeLossFactor` en
  *  phase active — exclus du chemin « dépense one-shot » d'`applyLifeEvents`. */

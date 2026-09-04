@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 129 : la perte d'emploi datée verse l'assurance-emploi
+> `[CHOMAGE-DEUX-MODELES]` livré — **code de prod touché** (moteur, money-critical).
+> - Source UNIQUE `prestationAeNetteMensuelle` extraite du stochastique (bit-identique, 50 verts)
+>   et consommée par l'événement daté PERTE_EMPLOI. SABBATIQUE/ACCIDENT : coupe sèche inchangée.
+> - Approximation linéaire assumée (prestation pleine × part perdue) ; pas de double prestation si
+>   chômage stochastique le même mois ; AE ≠ revenu gagné (rien dans accGrossAddByUser).
+> - Mesuré : +20 492 $ à 5 ans / +80 711 $ à 30 ans (96 k$ brut, perte 100 % de 6 mois).
+> - 4 gardes comportementales sur Income publié (plafond prouvé par la RELATION), 3 perturbations
+>   à rouges exactement ciblés.
+> - Au passage : `[MCP-WHATIF-DATED-DEBT]` constaté livré par `[DETTE-DATES]` — ligne V12 corrigée.
+
 > ## 🟦 Session 2026-09-04 — Lot 128 : supprimer un bien purge ses ventes planifiées
 > `[DETTE-RE-SALE-PURGE]` livré (tranché Marc 2026-07-31) — **code de prod touché** (Immobilier).
 > - La confirmation ANNONCE le compte de ventes liées ; la purge retire exactement les événements

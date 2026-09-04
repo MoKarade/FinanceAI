@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Une perte d'emploi planifiée touche enfin l'assurance-emploi)
+
+- **Corrigé** : quand tu planifiais une perte d'emploi datée (événement de vie), l'app coupait ton
+  revenu net… sans rien verser en échange — alors que la même perte d'emploi tirée au sort par le
+  mode Monte-Carlo, elle, versait la prestation d'assurance-emploi. Les deux font maintenant
+  pareil : 55 % de ton brut assurable (plafonné, comme la vraie AE), imposé correctement.
+- **Combien** : sur un salaire de 96 000 $/an avec 6 mois de perte totale, ta projection remonte
+  de **20 500 $ à 5 ans** (la prestation reçue) et l'écart compose ensuite.
+- **Ce qui ne change pas** : une année sabbatique (départ volontaire) ou un accident ne touchent
+  pas d'AE — la sabbatique n'y donne pas droit, et l'accident relève d'un autre régime.
+
+---
+
 ## [unreleased] — 2026-09-04 (Supprimer un bien emporte ses ventes planifiées — et te le dit avant)
 
 - **Corrigé (ta décision du 2026-07-31)** : supprimer une propriété laissait derrière elle les

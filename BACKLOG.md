@@ -310,7 +310,7 @@
   `[IA-NAV-CONSOLIDATE]` (GO — préparer un GROS batch de questions de cadrage d'abord) →
   `[UI-TABS-RICH]`+`[IA-NAV-LABELS]` ; `[PH4-BUD]` refonte Budget (GO — « faut tout refaire »,
   batch de questions d'abord) ; `[CIX-*]` (critère défini : bascule couple↔solo fiable →
-  CIX-B → CIX-F → CIX-A1B en priorité) ; `[MCP-WHATIF-DATED-DEBT]` (Debt.startDate moteur) ;
+  CIX-B → CIX-F → CIX-A1B en priorité) ; ~~`[MCP-WHATIF-DATED-DEBT]`~~ ✅ **livré par `[DETTE-DATES]` (2026-08-19)** — le moteur honore `Debt.startDate` (phaseDette : pas de paiement ni de solde avant la date), constaté au lot 129 ;
   `[P0-IDB]` (si quota le justifie).
 - [x] **V3' — Nettoyage décidé** ✅ **SOLDÉ le 2026-09-04 (lot 128)** — tout était déjà réglé ou
   l'est maintenant : `futureProvince`/`futureProvinceMoveYear` RETIRÉS et `rsuYearsRemaining` doté
@@ -1127,13 +1127,6 @@
   part. ⚠️ **Ce n'est pas un correctif, c'est une feature** : il faut d'abord décider si on demande
   le régime à l'utilisateur ou si on assume le régime de base. La constante est déjà NOMMÉE
   (`RQAP_REPLACEMENT_RATE_BASE`) et la divergence documentée sur place + FISCAL_REFERENCE §2.
-
-- [ ] **`[CHOMAGE-DEUX-MODELES]`** (M, MOYEN — revue #675) — deux modèles de chômage DIVERGENTS :
-  le stochastique (`activeIncome`, Marc seul, prestation AE complète 55 % du brut plafonné net
-  d'impôt) et l'événement daté `PERTE_EMPLOI` (`computeIncomeLossFactor`, coupe le MÉNAGE entier
-  de `incomeLossPercent` %, **aucune prestation AE**). #675 a fortement amélioré le premier ; l'écart
-  entre les deux se creuse. Unifier : donner l'AE à l'événement daté (le levier le plus rentable),
-  plutôt qu'étendre le stochastique à Anna. [MESURÉ]
 
 - [x] **`[JOBLOSS-DUREE-N-PLUS-1]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
   **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte

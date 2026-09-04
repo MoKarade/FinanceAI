@@ -190,6 +190,10 @@ Compléments sourcés du même échange :
   même biais documenté que `rqapCapProjected`), puis nette d'impôt à assiette de cotisation nulle.
   Avant : `net × 0,55` sans plafond — sur-payait les hauts salaires et cotisait sur la prestation.
   Repli documenté : brut absent (donnée legacy) → `net × 0,55` (mieux qu'une prestation inventée à 0).
+  **[CHOMAGE-DEUX-MODELES] (2026-09-04)** : l'événement de vie DATÉ `PERTE_EMPLOI` verse la MÊME
+  prestation (source unique `prestationAeNetteMensuelle`, part perdue × prestation pleine —
+  approximation linéaire assumée). SABBATIQUE (départ volontaire, inadmissible) et ACCIDENT
+  (régime maladie/LTD distinct) ne touchent RIEN — la coupe sèche y reste le modèle.
 - Non modélisé, assumé : le remboursement AE 30 % > 86 125 $ (prestations régulières) — le chômage
   simulé remplace le revenu, le cumul prestation + haut revenu la même année est hors modèle.
 

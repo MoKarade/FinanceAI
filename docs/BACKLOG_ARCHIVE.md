@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[GODFILE-APPLYDOCUMENT]` — LIVRÉ (lot 148)
+
+`mcp/ingest/applyDocument.ts` (mesuré **1 012 lignes et 8 handlers** — le ticket disait 873/5 : trois
+handlers MCP-DIRECT-EDIT s'étaient ajoutés depuis, périmètre re-recensé) est découpé en modules par
+type de document : `applyDocument/types.ts` (contrat payloads + résultat), `applyDocument/commun.ts`
+(bornes D9 + `plausible`, `resolveUserIndex`, `budgetNameKey` — uniquement ce que ≥2 handlers
+consomment), et un module par section (`payslip`, `taxSlip`, `bankStatement`, `brokerStatement`,
+`debt`, `cashBalance`, `budgetItem`, `deleteItem`). La façade `applyDocument.ts` (39 lignes) garde le
+dispatcher et RÉ-EXPORTE tout le contrat : **zéro consommateur modifié** (outils MCP, sync Fintable,
+exécuteur IA, 12 fichiers de test). Extraction par TRANCHES du source d'origine (script, aucun code
+retapé) ; aides à site unique restées locales (`txnKey`, `debtKey`, `inferDebtCategory`,
+`fmtOrUnavailable`…). Aucun test neuf, délibérément : le contrat public est le même et les 235 tests
+existants du périmètre sont la preuve d'équivalence. Seule retouche de garde :
+`debtChampsSansLecteur.test.ts` épinglait l'exclusion `amortizationYears` au CHEMIN du monolithe →
+suivi vers `applyDocument/debt.ts` (l'exclusion nominative garde son fait). PR #879.
+
 ## 2026-09-04 — `[DEP-AUDIT-VAGUE-09-04]` — LIVRÉ (lot 147, sans ticket préalable)
 
 Bannière GitHub « 6 vulnérabilités » re-mesurée localement (`npm audit`) : **3 avis** — `fast-uri`

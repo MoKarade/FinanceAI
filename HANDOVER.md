@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 148 : l'ingestion de documents est découpée par type
+> `[GODFILE-APPLYDOCUMENT]` livré — le monolithe de 1 012 lignes (8 handlers, pas les 5 du
+> ticket : re-recensé) devient `applyDocument/<type>.ts` + `types.ts` + `commun.ts`, façade de
+> 39 lignes qui ré-exporte tout le contrat (zéro consommateur modifié). Extraction par tranches
+> du source (aucun code retapé) ; preuve d'équivalence = les 235 tests existants du périmètre,
+> verts. Push sans leçon (classes déjà connues).
+
 > ## 🟦 Session 2026-09-04 — Lot 147 : vague `npm audit` du jour purgée (3 avis → 0)
 > `fast-uri` 3.1.5 (HIGH, 4 CVE — la version qui était le remède de la vague précédente),
 > `fflate` 0.8.2 (chaîne jspdf, bundle servi) et `qs` 6.15.2 (express du serveur MCP) corrigés

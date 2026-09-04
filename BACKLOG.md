@@ -647,8 +647,12 @@
   contrôle que l'utilisateur doit ouvrir lui-même. L'option (a) du ticket d'origine — le tour force
   l'ouverture du groupe de l'étape active — la rendrait ATTEIGNABLE, au prix d'un tour qui défait un
   repli VOLONTAIRE et d'un couplage entre les étapes et l'état de la nav. Décision d'UX : à trancher.
-- [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
-  libellés visibles par défaut (ou rail plus large).
+- [ ] **`[IA-NAV-LABELS]`** (S, 🧭 gaté Marc 2026-09-04) — sidebar w-16 par défaut, libellés
+  opacity-0, icônes cryptiques → libellés visibles par défaut (ou rail plus large). ⚠️ Recensé
+  contre le code (lot 140) : le rail replié est une DÉCISION de la Phase B.1 (expand au
+  survol/focus en overlay, `md:ml-16` réservé, a11y soignée — `aria-label` par item replié,
+  Échap) ; le ticket la CONTREDIT et porte deux remèdes mutuellement exclusifs qui changent la
+  mise en page de TOUS les écrans. Question routée dans `docs/A_FAIRE_MOI.md`.
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
   Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. ⚠️ L1-L4 ARCHIVÉS
   (2026-08-12, PR #600-#604). Lots restants :

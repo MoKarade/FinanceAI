@@ -55,7 +55,7 @@ const TOLERES: ReadonlyArray<{ champ: string; fichier: string; recepteur: string
         raison: "Contexte de prompt IA : l'amortissement de l'HYPOTHÈQUE du ménage, pas d'une dette.",
     },
     {
-        champ: 'amortizationYears', fichier: 'mcp/ingest/applyDocument.ts', recepteur: 'doc',
+        champ: 'amortizationYears', fichier: 'mcp/ingest/applyDocument/debt.ts', recepteur: 'doc',
         raison: "`DebtPayload.amortizationYears` — c'est une ÉCRITURE vers la dette, pas une lecture.",
     },
 ];

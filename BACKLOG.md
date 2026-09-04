@@ -312,7 +312,8 @@
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` +
   `[A11Y-BORDER-PROMINENCE-SWEEP]`. ⚠️ `[D6-KBD]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` archivés
   (2026-08-12, PR #598, #599).
-- [ ] **V11 — Dette structurée** (fond, par lots) : `[GODFILE-APPLYDOCUMENT]` → `[GODFILE-MCPHTTP]` →
+- [ ] **V11 — Dette structurée** (fond, par lots) : ✅ `[GODFILE-APPLYDOCUMENT]` (#879) →
+  `[GODFILE-MCPHTTP]` →
   `[DETTE-GODFILES]` (Budget/FutureProjection/…) + `[DETTE-UI-PRIMITIVES]` + `[CA-07]` + `[T4]`.
 - [ ] **V12 — Gros chantiers (tous GO Marc 2026-07-31, plan-first chacun)** :
   `[IA-NAV-CONSOLIDATE]` (GO — préparer un GROS batch de questions de cadrage d'abord) →
@@ -756,8 +757,6 @@
   actuel, qui ne dépend que de `chartData`. Faire ce lot = déplacer la décision au rendu (fenêtre
   visible + largeur mesurée), pas changer la clé de groupement. ⚠️ Ne PAS livrer « grouper par
   abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
-- [ ] **`[GODFILE-APPLYDOCUMENT]`** (M — V11, 1er par impact) — `mcp/ingest/applyDocument.ts` 873 l.,
-  5 handlers indépendants (:531,597,655,719,792) → split `applyDocument/<type>.ts` + orchestrateur mince.
 - [ ] **`[GODFILE-MCPHTTP]`** (M — V11) — `mcp/http.ts` 710 l. (OAuth+CORS+DNS-guard+dispatch) →
   split `http/oauth.ts` + `http/security.ts` + `http/server.ts` (auditabilité sécurité).
 - [ ] **`[GODFILE-APP]`** (M — V11) — `App.tsx` 866 l. → extraire `AppProviders.tsx`.

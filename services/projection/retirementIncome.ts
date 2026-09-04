@@ -215,17 +215,28 @@ export const computeDbPensionMonthly = (p: {
 export const RRQ_DEFERRED_START_AGE = 72;
 export const PSV_DEFERRED_START_AGE = 70;
 
-export function computeRetirementIncome(
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// [DETTE-GODFN-RETIREMENT 2026-09-04] `computeRetirementIncome` (260 lignes) est DÉCOUPÉE en
+// étapes nommées — à COMPORTEMENT STRICTEMENT INCHANGÉ (empreinte des grandeurs publiées
+// `scripts/mesureOrdreBoucle.ts` identique à l'octet avant/après + les 62 tests du module).
+// ⚠️ Toute extraction future préserve l'ORDRE des opérations arithmétiques : l'empreinte juge.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** Poids RRQ/PSV PAR CONJOINT (ratio salaire/MGA × résidence ; prorata de résidence PSV). */
+interface PoidsParConjoint {
+    perUserRrqWeight: number[];
+    perUserPsvProrata: number[];
+    /** Moyennes ménage (Σ poids / activeUsersCount) — le comportement antérieur exact. */
+    rrqProrata: number;
+    psvProrata: number;
+}
+
+function calculerPoidsParConjoint(
     ctx: RetirementIncomeCtx,
     retirementGoal: RetirementGoal,
-    users: User[],
-): RetirementIncomeBreakdown {
-    const {
-        m, age, simInflation, activeUsersCount, baseGrossAnnual,
-        delayPensions, survivorMode, monthlyOasReduction,
-        dbSurvivorPct, rrqSurvivorPct, psvResidencyYears, startYear,
-    } = ctx;
-
+    filteredUsers: User[],
+): PoidsParConjoint {
+    const { m, simInflation, activeUsersCount, baseGrossAnnual, psvResidencyYears, startYear } = ctx;
     let totalPsvProrata = 0;
     let totalRrqWeight = 0;
     const yearsElapsed = Math.floor(m / 12);
@@ -234,7 +245,6 @@ export function computeRetirementIncome(
 
     // A1 — on conserve les POIDS PAR CONJOINT (et pas seulement leur somme) pour
     // attribuer RRQ/PSV à chaque personne selon SON salaire / SA résidence.
-    const filteredUsers = users.filter(u => u);
     const perUserRrqWeight: number[] = [];
     const perUserPsvProrata: number[] = [];
     filteredUsers.forEach((u, idx) => {
@@ -278,7 +288,13 @@ export function computeRetirementIncome(
     // RRQ : moyenne des poids per-conjoint (gains/MGA × résidence). Couple non-immigrant (résidence=1
     // chacun) ⇒ = moyenne des ratios gains/MGA = comportement antérieur EXACT (zéro régression baseline).
     const rrqProrata = totalRrqWeight / activeUsersCount;
+    return { perUserRrqWeight, perUserPsvProrata, rrqProrata, psvProrata };
+}
 
+/** Âges de début et facteurs de report/anticipation des rentes (bornes légales incluses). */
+function agesEtFacteursDesRentes(retirementGoal: RetirementGoal, delayPensions: boolean): {
+    rrqStartAge: number; psvStartAge: number; rrqFactor: number; psvFactor: number;
+} {
     // Début des rentes = CHOIX INDÉPENDANT de l'âge d'arrêt de travail (correctif Marc 2026-06 :
     // l'ancien `max(60/65, targetAge)` FORÇAIT les rentes à démarrer à l'âge de retraite → « pas de
     // rente avant 71 » si on prévoyait d'arrêter tard, alors qu'on touche le RRQ dès 65 même en
@@ -297,6 +313,23 @@ export function computeRetirementIncome(
     // delayPensions → RRQ 72 = +84 mois ×1,588 ; PSV 70 = +60 mois ×1,36. La PSV ne s'anticipe pas.
     const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
     const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
+    return { rrqStartAge, psvStartAge, rrqFactor, psvFactor };
+}
+
+/** RRQ et PSV mensuels (base RÉELLE, avant ×inflFactor) — branche survivant vs couple/solo vivant. */
+function calculerRrqPsvMensuels(p: {
+    retirementGoal: RetirementGoal;
+    activeUsersCount: number;
+    survivorMode: boolean;
+    rrqSurvivorPct: number;
+    age: number;
+    startYear: number;
+    filteredUsers: User[];
+    poids: PoidsParConjoint;
+    rrqStartAge: number; psvStartAge: number; rrqFactor: number; psvFactor: number;
+}): { rrqMonthly: number; psvMonthly: number } {
+    const { retirementGoal, activeUsersCount, survivorMode, rrqSurvivorPct, age, startYear, filteredUsers, poids } = p;
+    const { rrqStartAge, psvStartAge, rrqFactor, psvFactor } = p;
 
     // Base FAMILIALE (ménage) de RRQ / PSV — deux chemins qui aboutissent TOUS DEUX à un montant
     // familial (cohérent avec estateCalculation.ts:177-178 et setupSimulation.ts:114-118) :
@@ -319,56 +352,57 @@ export function computeRetirementIncome(
     const survivorPsvFactor = survivorMode ? 0.5 : 1;
     // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022) — évaluée per-conjoint.
     const psv75BonusOf = (ageI: number): number => (ageI >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1);
-    let rrqMonthly: number;
-    let psvMonthly: number;
     if (survivorMode) {
         // SURVIVANT (1 contribuable = user0) : modèle FAMILIAL × facteur survivant INCHANGÉ (le gate utilise
         // l'âge du survivant ; la part du défunt est déjà modélisée par le facteur survivant). Le per-conjoint
         // au décès est un raffinement séparé → zéro impact sur la baseline FISC-SURVIVOR-DRAWDOWN.
-        rrqMonthly = age >= rrqStartAge ? (rrqBaseFamily * rrqProrata * rrqFactor * survivorRrqFactor) : 0;
-        psvMonthly = age >= psvStartAge ? (psvBaseFamily * psvProrata * psvFactor * psv75BonusOf(age) * survivorPsvFactor) : 0;
-    } else {
-        // [ITEM-2C] COUPLE/SOLO VIVANT : le DÉPART RRQ/PSV et le BONUS PSV 75+ sont évalués à l'âge de CHAQUE
-        // conjoint, sur SA part (`base/N × poids_i`). Avant : gate + bonus sur l'âge de user1 sur la base
-        // familiale → un conjoint plus jeune touchait sa rente trop tôt / profitait du bonus de l'aîné. Défaut
-        // additif : `Σ_i (base/N × poids_i) == base × prorata` ⇒ âges égaux/solo identiques (zéro régression).
-        // Âge de DÉPART de chaque conjoint (age explicite, sinon dérivé de birthYear).
-        const startAgeOf = (i: number): number | null => {
-            const u = filteredUsers[i];
-            if (u?.age != null && Number.isFinite(u.age)) return u.age;
-            if (u?.birthYear != null && Number.isFinite(u.birthYear)) return startYear - u.birthYear;
-            return null;
+        return {
+            rrqMonthly: age >= rrqStartAge ? (rrqBaseFamily * poids.rrqProrata * rrqFactor * survivorRrqFactor) : 0,
+            psvMonthly: age >= psvStartAge ? (psvBaseFamily * poids.psvProrata * psvFactor * psv75BonusOf(age) * survivorPsvFactor) : 0,
         };
-        const a0 = startAgeOf(0);
-        // Âge COURANT de chaque conjoint = âge de boucle de user0 (`ctx.age`, authoritative) + l'ÉCART d'âge
-        // avec user0. Ancré sur `ctx.age` (cohérent même quand un test passe `age` ≠ users[0].age) ET symétrique
-        // pour des conjoints de même âge (écart = 0). En prod `ctx.age == users[0].age + yearsElapsed` → identique
-        // à `users[i].age + yearsElapsed`.
-        const ageOfUser = (i: number): number => {
-            if (i === 0) return age;
-            const ai = startAgeOf(i);
-            // Conjoint sans âge NI année de naissance → on suppose le MÊME âge que user0 (préserve le
-            // comportement ménage d'avant et évite d'amputer en silence sa rente sur une donnée manquante).
-            return (ai != null && a0 != null) ? age + (ai - a0) : age;
-        };
-        let rrqSum = 0;
-        let psvSum = 0;
-        for (let i = 0; i < perUserRrqWeight.length; i++) {
-            const ageI = ageOfUser(i);
-            if (ageI >= rrqStartAge) rrqSum += (rrqBaseFamily / activeUsersCount) * perUserRrqWeight[i] * rrqFactor;
-            if (ageI >= psvStartAge) psvSum += (psvBaseFamily / activeUsersCount) * perUserPsvProrata[i] * psvFactor * psv75BonusOf(ageI);
-        }
-        rrqMonthly = rrqSum;
-        psvMonthly = psvSum;
     }
+    // [ITEM-2C] COUPLE/SOLO VIVANT : le DÉPART RRQ/PSV et le BONUS PSV 75+ sont évalués à l'âge de CHAQUE
+    // conjoint, sur SA part (`base/N × poids_i`). Avant : gate + bonus sur l'âge de user1 sur la base
+    // familiale → un conjoint plus jeune touchait sa rente trop tôt / profitait du bonus de l'aîné. Défaut
+    // additif : `Σ_i (base/N × poids_i) == base × prorata` ⇒ âges égaux/solo identiques (zéro régression).
+    // Âge de DÉPART de chaque conjoint (age explicite, sinon dérivé de birthYear).
+    const startAgeOf = (i: number): number | null => {
+        const u = filteredUsers[i];
+        if (u?.age != null && Number.isFinite(u.age)) return u.age;
+        if (u?.birthYear != null && Number.isFinite(u.birthYear)) return startYear - u.birthYear;
+        return null;
+    };
+    const a0 = startAgeOf(0);
+    // Âge COURANT de chaque conjoint = âge de boucle de user0 (`ctx.age`, authoritative) + l'ÉCART d'âge
+    // avec user0. Ancré sur `ctx.age` (cohérent même quand un test passe `age` ≠ users[0].age) ET symétrique
+    // pour des conjoints de même âge (écart = 0). En prod `ctx.age == users[0].age + yearsElapsed` → identique
+    // à `users[i].age + yearsElapsed`.
+    const ageOfUser = (i: number): number => {
+        if (i === 0) return age;
+        const ai = startAgeOf(i);
+        // Conjoint sans âge NI année de naissance → on suppose le MÊME âge que user0 (préserve le
+        // comportement ménage d'avant et évite d'amputer en silence sa rente sur une donnée manquante).
+        return (ai != null && a0 != null) ? age + (ai - a0) : age;
+    };
+    let rrqSum = 0;
+    let psvSum = 0;
+    for (let i = 0; i < poids.perUserRrqWeight.length; i++) {
+        const ageI = ageOfUser(i);
+        if (ageI >= rrqStartAge) rrqSum += (rrqBaseFamily / activeUsersCount) * poids.perUserRrqWeight[i] * rrqFactor;
+        if (ageI >= psvStartAge) psvSum += (psvBaseFamily / activeUsersCount) * poids.perUserPsvProrata[i] * psvFactor * psv75BonusOf(ageI);
+    }
+    return { rrqMonthly: rrqSum, psvMonthly: psvSum };
+}
 
-    const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
-
-    const dbMonthly = computeDbPensionMonthly({
-        retirementGoal, age, inflFactor, survivorMode, dbSurvivorPct,
-        householdPensionShare: ctx.householdPensionShare,
-    });
-
+/** SRG mensuel FAMILIAL (base réelle) — barème célibataire/couple, revenu test de l'an passé. */
+function calculerSrgMensuel(
+    ctx: RetirementIncomeCtx,
+    inflFactor: number,
+    rrqMonthly: number,
+    dbMonthly: number,
+    psvMonthly: number,
+): number {
+    const { survivorMode, activeUsersCount } = ctx;
     // §6.3 — SRG (Supplément de revenu garanti) pour retraités 65+ recevant la PSV.
     // FA-3b (audit fiscal 2026-06-09) : le « revenu autre que PSV » du test SRG inclut
     // désormais le revenu imposable de l'ANNÉE PRÉCÉDENTE (retraits REER/FERR + loyers,
@@ -414,7 +448,7 @@ export function computeRetirementIncome(
     const hasSpouseWithOAS = !survivorMode && householdAdults > 1 && psvMonthly > 0;
     // FA-9 (audit 2026-06-09, fix 2026-06-10) — TOUT en base RÉELLE ici, comme RRQ/PSV : appel
     // SANS `year` (seuils/max 2026 de base) contre le revenu test déjà en base réelle, puis la
-    // nominalisation UNIQUE ×inflFactor ci-dessous (gisTotal). Avant : `year=currentYear`
+    // nominalisation UNIQUE ×inflFactor dehors (gisTotal). Avant : `year=currentYear`
     // indexait max+seuils ×1,02^Δ DANS calculateGISBenefit PUIS ×inflFactor dehors → max SRG
     // double-indexé (surévalué ~49 % à 20 ans, ~+6,5 k$/an fictifs en $ RÉELS 2026, célibataire)
     // et seuils nominaux face à un revenu réel (clawback trop clément, même sens non conservateur).
@@ -424,7 +458,73 @@ export function computeRetirementIncome(
             hasSpouseWithOAS,
         )
         : 0;
-    const gisMonthly = gisMonthlyPerAdult * gisHeads;
+    return gisMonthlyPerAdult * gisHeads;
+}
+
+/** Assemblage PAR CONJOINT : répartit les totaux famille au prorata des poids individuels. */
+function assemblerParConjoint(p: {
+    nbUsers: number;
+    poids: PoidsParConjoint;
+    rrq: number;
+    psvOasOnly: number;
+    gisTotal: number;
+    privee: number;
+    monthlyOasReduction: number;
+}): RetirementIncomePerUser[] {
+    // A1 — décomposition PAR CONJOINT. RRQ ∝ POIDS individuel (ratio salaire/MGA × prorata de
+    // résidence, FISC-RRQ-PRORATA) ; PSV (volet OAS) ∝ prorata de résidence individuel. Le SRG
+    // (familial), la pension DB (« cumulée pour le couple ») et l'écrêtement PSV sont répartis
+    // également faute de donnée par conjoint. On répartit les TOTAUX famille au prorata des poids
+    // individuels : la somme par conjoint == total famille (invariant exact, même quand un poids
+    // est nul — fallback part égale).
+    const n = Math.max(1, p.nbUsers);
+    const sumRrqWeight = p.poids.perUserRrqWeight.reduce((s, r) => s + r, 0);
+    const sumPsvProrata = p.poids.perUserPsvProrata.reduce((s, pr) => s + pr, 0);
+    return Array.from({ length: p.nbUsers }, (_, i) => {
+        const rrqShare = sumRrqWeight > 0 ? p.poids.perUserRrqWeight[i] / sumRrqWeight : 1 / n;
+        const psvShare = sumPsvProrata > 0 ? p.poids.perUserPsvProrata[i] / sumPsvProrata : 1 / n;
+        const rrqUser = p.rrq * rrqShare;
+        // PSV individuelle = volet OAS au prorata résidence + part égale du SRG familial.
+        const psvUser = p.psvOasOnly * psvShare + p.gisTotal / n;
+        const priveeUser = p.privee / n;            // DB household → part égale
+        const oasReductionUser = p.monthlyOasReduction / n;
+        return {
+            total: Math.max(0, rrqUser + psvUser + priveeUser - oasReductionUser),
+            rrq: Math.max(0, rrqUser),
+            psv: Math.max(0, psvUser),
+            privee: Math.max(0, priveeUser),
+        };
+    });
+}
+
+export function computeRetirementIncome(
+    ctx: RetirementIncomeCtx,
+    retirementGoal: RetirementGoal,
+    users: User[],
+): RetirementIncomeBreakdown {
+    const {
+        m, age, simInflation, activeUsersCount,
+        delayPensions, survivorMode, monthlyOasReduction,
+        dbSurvivorPct, rrqSurvivorPct, startYear,
+    } = ctx;
+
+    const filteredUsers = users.filter(u => u);
+    const poids = calculerPoidsParConjoint(ctx, retirementGoal, filteredUsers);
+    const { rrqStartAge, psvStartAge, rrqFactor, psvFactor } = agesEtFacteursDesRentes(retirementGoal, delayPensions);
+
+    const { rrqMonthly, psvMonthly } = calculerRrqPsvMensuels({
+        retirementGoal, activeUsersCount, survivorMode, rrqSurvivorPct, age, startYear,
+        filteredUsers, poids, rrqStartAge, psvStartAge, rrqFactor, psvFactor,
+    });
+
+    const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
+
+    const dbMonthly = computeDbPensionMonthly({
+        retirementGoal, age, inflFactor, survivorMode, dbSurvivorPct,
+        householdPensionShare: ctx.householdPensionShare,
+    });
+
+    const gisMonthly = calculerSrgMensuel(ctx, inflFactor, rrqMonthly, dbMonthly, psvMonthly);
 
     // Phase 3 Tier 3 — split par source avant clamp Math.max(0, ...)
     const rrq = rrqMonthly * inflFactor;
@@ -434,29 +534,8 @@ export function computeRetirementIncome(
     const privee = dbMonthly;
     const totalRaw = rrq + psv + privee - monthlyOasReduction;
 
-    // A1 — décomposition PAR CONJOINT. RRQ ∝ POIDS individuel (ratio salaire/MGA × prorata de
-    // résidence, FISC-RRQ-PRORATA) ; PSV (volet OAS) ∝ prorata de résidence individuel. Le SRG
-    // (familial), la pension DB (« cumulée pour le couple ») et l'écrêtement PSV sont répartis
-    // également faute de donnée par conjoint. On répartit les TOTAUX famille au prorata des poids
-    // individuels : la somme par conjoint == total famille (invariant exact, même quand un poids
-    // est nul — fallback part égale).
-    const n = Math.max(1, filteredUsers.length);
-    const sumRrqWeight = perUserRrqWeight.reduce((s, r) => s + r, 0);
-    const sumPsvProrata = perUserPsvProrata.reduce((s, p) => s + p, 0);
-    const perUser: RetirementIncomePerUser[] = filteredUsers.map((_, i) => {
-        const rrqShare = sumRrqWeight > 0 ? perUserRrqWeight[i] / sumRrqWeight : 1 / n;
-        const psvShare = sumPsvProrata > 0 ? perUserPsvProrata[i] / sumPsvProrata : 1 / n;
-        const rrqUser = rrq * rrqShare;
-        // PSV individuelle = volet OAS au prorata résidence + part égale du SRG familial.
-        const psvUser = psvOasOnly * psvShare + gisTotal / n;
-        const priveeUser = privee / n;            // DB household → part égale
-        const oasReductionUser = monthlyOasReduction / n;
-        return {
-            total: Math.max(0, rrqUser + psvUser + priveeUser - oasReductionUser),
-            rrq: Math.max(0, rrqUser),
-            psv: Math.max(0, psvUser),
-            privee: Math.max(0, priveeUser),
-        };
+    const perUser = assemblerParConjoint({
+        nbUsers: filteredUsers.length, poids, rrq, psvOasOnly, gisTotal, privee, monthlyOasReduction,
     });
 
     return {

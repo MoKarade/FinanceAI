@@ -280,10 +280,18 @@
   `setupSimulation.ts:70`, donc de l'argent. Valeurs jugées correctes, mais non sourcées = suspectes
   par la règle du dépôt. Documenter dans le même geste que `[FISC-REF-DEDUP]`.
   ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B9**.
-- [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M, [Supposition] non chiffrée — audit 2026-08-06) — le
-  revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
-  et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
-  propriétaire-bailleur (~4 320 $/an de droits non créés sur 24 k$ de loyer net). À confirmer.
+- [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M — audit 2026-08-06) — ⚠️ **GATÉ source humaine
+  (2026-09-04)** → `docs/A_FAIRE_MOI.md` « [DÉCISION — FISC-RRSP-RENTAL-EARNED] ». Recensement
+  fait : le constat CODE est CONFIRMÉ — le loyer net alimente `accRentesYear` (unique écriture,
+  `realEstateMonth.ts`, jamais `accGrossIncomeYearByUser`, dont les seuls producteurs sont le
+  versement différé `grossIncomeEnAttente` — qui porte le salaire — et l'ajustement congé
+  parental de `childrenReee.ts`) → zéro droit REER créé par un revenu locatif.
+  L'affirmation JURIDIQUE (« revenu gagné au sens de 146(1) ») reste NON SOURCÉE : la
+  vérification T4040 sur `canada.ca` a été tentée le 2026-09-04 et bloquée par l'environnement
+  (`EGRESS_BLOCKED`, même classe que LégisQuébec). Et le correctif exige une décision produit
+  ABSENTE du ticket : le modèle n'a AUCUN champ de propriété par conjoint sur l'immobilier
+  locatif, or `accGrossIncomeYearByUser` est PER-CONJOINT — attribuer le loyer exige de choisir
+  la clé. Ne pas coder avant la double réponse de Marc.
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
   ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
   l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·
@@ -1394,10 +1402,6 @@
   ⚠️ **Aucune garde ajoutée, et c'est délibéré** : si quelqu'un importe un jour `adm-zip` depuis un
   fichier **TypeScript**, `tsc` échouera de lui-même sur la déclaration manquante. La garde existe
   déjà, c'est le typecheck (`AVANT-D-AJOUTER-LA-GARDE-VERIFIER-QU-ELLE-N-EXISTE-PAS-DEJA`).
-
-- [ ] **`[DETTE-GODFN-PDF]`** (M, MOYEN) — `generateFinancialReport` fait **615 lignes**
-  (`services/pdfReport.ts:265-879`), soit quasi tout le fichier. Correctif : découper par section
-  de rapport (`buildHoldingsSection`, `buildDebtSection`…). [MESURÉ]
 
 ### ✅ Documentation — **SECTION VIDE, tout est livré** *(en-tête conservé pour l'historique des liens ; son titre affirmait au PRÉSENT que « la doc a décroché du code », sans un seul item dessous — vérifié vide depuis au moins #674)*
 

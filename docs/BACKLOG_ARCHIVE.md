@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-GODFN-PDF]` — LIVRÉ (lot 146)
+
+`generateFinancialReport` (615 lignes, quasi tout `services/pdfReport.ts`) est découpée en
+**8 fonctions de section** (`rendrePagePatrimoine`, `rendrePageFiscale`, `rendrePagePlacements`,
+`rendrePageDettes`, `rendrePageObjectifs`, `rendrePageScenarios`, `rendrePageRetraiteImmo`,
+`rendrePageBudget`) partageant un `ContexteRenduPdf` (document, libellés, aides de rendu, position
+verticale `y` par accesseur) ; l'orchestrateur garde la garde vie privée, le chargement lazy de
+jspdf, les aides et le pied de page. Au passage : le `any` du constructeur jsPDF remplacé par un
+contrat structurel `DocPdf` (l'eslint-disable tombe), et l'en-tête du fichier cessait de citer une
+`generateCompleteReport` qui n'a jamais existé. **Équivalence prouvée au journal d'appels jsPDF
+complet** (chaque méthode + arguments, dans l'ordre) : identique à l'octet avant/après sur 3
+fixtures (riche 695 appels / minimale / scénarios vides) — protocole committé dans l'en-tête de
+`tests/services/pdfReport.journalRendu.test.ts`, qui fige durablement la STRUCTURE (ordre des 8
+pages, témoins de contenu par section, refus des chemins d'erreur, nom de fichier daté).
+Perturbation : retirer l'appel `rendrePageDettes` rougit le seul test d'ordre des pages. 37 tests
+PDF verts. Le ticket prescrivait des noms `buildHoldingsSection` — écartés : `build*` désigne déjà
+les DÉRIVATEURS de données purs du même fichier, un préfixe distinct (`rendrePage*`) évite de
+fusionner deux familles. PR #877.
+
 ## 2026-09-04 — `[DETTE-CAST-DAILYCURVE]` — LIVRÉ (lot 145)
 
 Les 17 `as unknown as` de la courbe journalière (8 `dailyCurve.ts` + 9 `FutureProjection.tsx`,

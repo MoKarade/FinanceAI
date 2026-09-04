@@ -769,7 +769,13 @@
   abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
 - [ ] **Godfiles restants (V11)** :
   **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
-  **`[GODFILE-REALESTATE-CMP]`** RealEstate.tsx 624 · **`[GODFILE-FUTUREDETAILMODAL]`** 606.
+  **`[GODFILE-FUTUREDETAILMODAL]`** ⚠️ taille re-mesurée le 2026-09-04 : `components/projection/FutureDetailModal.tsx` **1 142 l.** (le « 606 » du ticket décrivait un état d'avant).
+  ✅ `[GODFILE-REALESTATE-CMP]` fait le 2026-09-04 (lot 153, PR #884) — le ticket disait
+  « RealEstate.tsx 624 » mais ce fichier était déjà une façade de 29 l. ; le vrai godfile était
+  `components/realestate/RealEstateWorkspace.tsx` (912 l.), redescendu à 661 en extrayant
+  `calculsImmoLocaux.ts` (amortissement local + comparaison Acheter-vs-Louer, fonctions pures),
+  `ScenariosComparatifsCard.tsx` et `AmortissementCards.tsx` (extraction verbatim ; l'état des
+  curseurs reste chez le parent — la carte-conseil IA lit les mêmes valeurs).
 
 - [ ] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) (M) — `components/ui/Input|Select|Field` (label+erreur+aria) sur
   les tokens existants + migrer les hotspots (AdvancedProjectionParams 40 inputs, PatrimoineExtended

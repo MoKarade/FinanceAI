@@ -10,6 +10,18 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[SVC-STORE-COUPLING]` — LIVRÉ (lot 138)
+
+La frontière store ↔ services est désormais DOCUMENTÉE (`docs/ARCHITECTURE.md` §2 : moteur
+`services/projection*` PUR, services d'orchestration/IO inventoriés) et GARDÉE dans trois
+directions (`tests/services/storeCouplingBoundary.test.ts` : pureté du moteur, inventaire fermé
+dans les deux sens, zéro `getState() as …`). Les doubles casts ont été RETIRÉS — ils étaient du
+bruit pur : `FinanceState extends AppState`, l'assignation directe est déjà typée (prouvé par le
+typecheck après retrait, 7 sites autoSync + 1 appStateProvider + 1 writeExecutor). Recensement
+vs ticket : « 8 fichiers » → 7 réels, le 8e (`quotaStorage.ts`) ne citait le store qu'en
+commentaire (SCAN-QUI-MATCHE-LA-PROSE, 6e fois). 4 perturbations séparées prouvées (P1 pureté,
+P2/P3 inventaire dans chaque sens, P4 cast), restaurations vérifiées par `diff -q`. PR #869.
+
 ## 2026-09-04 — `[STORE-RENAME-NO-GUARD]` — LIVRÉ (lot 137)
 
 `tests/store/storeRenameGuard.test.ts` porte désormais LA RÈGLE (renommer un champ persisté = un

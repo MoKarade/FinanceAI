@@ -12070,3 +12070,19 @@ PAIRE : le champ suit (year, realDeflator) ET le site déflaté passe son défla
 `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE` : la branche en danger est celle dont
 la justesse reposait sur le défaut. L'espion d'ARGUMENT (le test observe que l'appel FERR porte
 year ET déflateur) est la garde qui verrouille la paire.
+
+### Variante notée au lot 138 (2026-09-04) — un cast qui « fait passer le type » peut être du bruit PUR, et ça se tranche en le RETIRANT
+
+`[SVC-STORE-COUPLING]` : les `useFinanceStore.getState() as unknown as AppState` d'autoSync
+avaient l'air d'une nécessité (deux types différents ?) — or `FinanceState extends AppState`,
+l'assignation directe est déjà typée, et le typecheck l'a prouvé en restant vert après retrait
+des 9 sites. Un `as unknown as` se JUSTIFIE ou se RETIRE, jamais ne se recopie : chacun de ces
+casts désactivait tsc exactement sur le chemin d'écriture IA/MCP. Même geste que
+`UN-PAQUET-DE-TYPES-N-EST-UTILE-QUE-SI-QUELQUE-CHOSE-EST-TYPE` : l'EXPÉRIENCE (retirer +
+typecheck) tranche, pas le raisonnement sur la config. ⚠️ Deux récidives ATTRAPÉES en direct par
+mes propres seuils : anti-vacuité PAR FICHIER rougie sur `services/tax.ts` (alias de ré-export
+légitime, 26 caractères de code) → agrégée sur le dossier ; et seuil 0,5 écrit avant sa mesure
+(mesuré 0,475 : services/ est commenté à ~52 %) → 0,35 avec la mesure datée à côté
+(`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`, deux fois dans le même test).
+Et 6e occurrence de `SCAN-QUI-MATCHE-LA-PROSE` : le « 8e fichier » du ticket ne citait le store
+qu'en commentaire — le témoin quotaStorage est asserté DANS la garde.

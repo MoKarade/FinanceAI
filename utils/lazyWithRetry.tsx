@@ -60,14 +60,41 @@ function markReloadAttempt(): boolean {
  * d'un module lourd hors du chemin React.lazy (ex. le SDK chat chargé au 1er message, AITOOLS-E) —
  * sinon un déploiement Vercel entre l'ouverture de l'onglet et le 1er message ferait boucler le 404
  * alors que le reste de l'app se répare tout seul.
+ *
+ * [SDK-IMPORT-TIMEOUT] Budget d'attente PAR TENTATIVE avant de déclarer un `import()` BLOQUÉ
+ * (ni succès ni échec — connexion qui pend, proxy muet). Sans lui, le premier usage d'un chunk
+ * (SDK chat au 1er message, recharts à l'ouverture de Futur) pendait indéfiniment.
+ *
+ * Dimensionné pour le PIRE chunk sur connexion lente (mesuré au build du 2026-09-04 : recharts
+ * 404 Ko, jspdf 399 Ko → ~16 s à ~25 Ko/s). Le budget TOTAL est ~2× ce délai : la 2e tentative
+ * re-attend la MÊME promesse d'import en vol (le module map du navigateur dédoublonne), donc un
+ * chargement lent mais VIVANT qui rate la 1re fenêtre aboutit dans la 2e — seul un vrai blocage
+ * finit en erreur (~20,5 s), remontée à l'appelant/ErrorBoundary, JAMAIS en reload (un blocage
+ * réseau n'est pas un chunk périmé : recharger perdrait l'état pour rien).
  */
+export const IMPORT_STALL_TIMEOUT_MS = 10_000;
+
+/** Course promesse vs minuterie. Le message ne matche PAS `isChunkLoadError` — c'est voulu. */
+function withStallTimeout<T>(p: Promise<T>, ms: number, chunkName?: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const t = setTimeout(
+            () => reject(new Error(`Import bloqué depuis ${ms} ms${chunkName ? ` (${chunkName})` : ''} — ni succès ni échec`)),
+            ms,
+        );
+        p.then(
+            (v) => { clearTimeout(t); resolve(v); },
+            (e: unknown) => { clearTimeout(t); reject(e); },
+        );
+    });
+}
+
 export async function importWithRetry<T>(factory: () => Promise<T>, chunkName?: string): Promise<T> {
     try {
-        return await factory();
+        return await withStallTimeout(factory(), IMPORT_STALL_TIMEOUT_MS, chunkName);
     } catch (firstError) {
         await new Promise(resolve => setTimeout(resolve, 500));
         try {
-            return await factory();
+            return await withStallTimeout(factory(), IMPORT_STALL_TIMEOUT_MS, chunkName);
         } catch (secondError) {
             logError({
                 source: 'ui',

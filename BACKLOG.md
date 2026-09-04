@@ -537,10 +537,6 @@
   mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
   il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
   net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
-- [ ] **`[SDK-IMPORT-TIMEOUT]`** (S, résiduel panel #547, non bloquant) — le chargement du chunk SDK
-  (`services/claude.ts:157`) n'est couvert par aucun timeout : un `import()` qui stalle sans rejeter
-  pend indéfiniment (borné : 1er usage par session). Fix : course import() vs timer 8-10 s dans
-  importWithRetry. ⚠️ Partagé par tous les lazy — dimensionner pour recharts sur connexion lente.
 - [ ] **`[P0-IDB]`** (L, ⏳) — migrer la persistance localStorage → IndexedDB (quota ~5 Mo + parsing
   synchrone au boot). ⚠️ Migration schéma persist v7 — vigilance corruption.
 - [ ] **`[PROFIL-SWITCH]`** (M, 🧭 gaté questions 2026-08-01) — (a)+(d) couverts par PERSONA-PURGE ;

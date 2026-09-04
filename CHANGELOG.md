@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Démarrage plus léger : les cours de bourse se chargent à la demande)
+
+- **Amélioré** : le code qui interroge les fournisseurs de cours (Finnhub, CoinGecko) était
+  embarqué dans le tout premier chargement de l'app alors qu'il ne sert qu'aux placements. Il se
+  charge maintenant à la demande — le démarrage télécharge ~14 Ko de moins, sans rien changer au
+  comportement (l'ordre « poser la clé puis coter » est garanti par construction).
+
+---
+
 ## [unreleased] — 2026-09-04 (Projections plus rapides, chiffres identiques)
 
 - **Amélioré** : le calcul de projection formatait chacun de ses ~94 chiffres mensuels par un

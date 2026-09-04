@@ -19,7 +19,9 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { getEffectivePurchases } from '../utils/assetPurchases';
-import { getHistory, configureMarketDataProvider } from '../services/marketData';
+// [PERF-MARKETDATA-DYNIMPORT-INERTE] Ce hook est monté au niveau App (ProjectionEngine) → il est
+// dans le chunk d'ENTRÉE : pas d'import statique de valeurs marketData (voir lazy.ts).
+import { loadMarketData } from '../services/marketData/lazy';
 import { logError } from '../services/errorLogger';
 import {
     reconstructPortfolioHistory,
@@ -143,6 +145,7 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
         (async () => {
             const next: FetchedMap = {};
             try {
+                const { configureMarketDataProvider, getHistory } = await loadMarketData();
                 configureMarketDataProvider({ finnhubKey });
                 for (const a of toFetch) {
                     const purchases = getEffectivePurchases(a);

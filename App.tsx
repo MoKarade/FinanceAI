@@ -28,7 +28,11 @@ import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 import { useTranslation } from 'react-i18next';
-import { configureMarketDataProvider, getQuote, canAttemptQuote } from './services/marketData';
+// [PERF-MARKETDATA-DYNIMPORT-INERTE] JAMAIS d'import statique de valeurs depuis
+// services/marketData ici : App.tsx est le chunk d'ENTRÉE, et un seul import statique annule la
+// frontière asynchrone du module entier (~67 Ko). Tout passe par la promesse mémoïsée de lazy.ts,
+// qui préserve aussi l'ordre configure→quote (voir son en-tête).
+import { loadMarketData } from './services/marketData/lazy';
 import { refreshAssetPrices, applyPricePatches } from './services/priceRefresh';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
@@ -329,8 +333,11 @@ export const App: React.FC = () => {
     }, [i18nInstance.language]);
 
     // §7.F.5 — Configure le provider marketData (Finnhub) quand la clé change.
+    // Async depuis le lot 133 (module paresseux) : l'ordre avec les cotations est préservé par la
+    // promesse PARTAGÉE de loadMarketData — cet effet l'attend en premier (déclaré avant tout
+    // consommateur), ses continuations passent donc avant celles des quotes (FIFO).
     useEffect(() => {
-        configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub });
+        void loadMarketData().then((md) => md.configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub }));
     }, [state.apiKeys.finnhub]);
 
     // Hydratation des clés API depuis le coffre chiffré (au boot, une fois).
@@ -557,7 +564,7 @@ export const App: React.FC = () => {
             if (current.length === 0) return;
             try {
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('./services/history/hydrateAssetHistories');
-                const { getHistoryDetaille, hasHistoryProvider } = await import('./services/marketData');
+                const { getHistoryDetaille, hasHistoryProvider } = await loadMarketData();
                 const res = await hydrateAssetHistories(current, { getHistory: getHistoryDetaille, hasProvider: hasHistoryProvider });
                 if (cancelled) return;
                 // [HIST-MULTI-PROVIDER] Publier le rapport MÊME sans patch (c'est justement quand
@@ -589,6 +596,7 @@ export const App: React.FC = () => {
                 // intervalle min du service — anti-entrelacement avec le bouton, anti-spam reload).
                 // [QUOTE-NEGATIVE-CACHE] hasProvider = provider présent ET pas de skip négatif :
                 // un titre manuel/GIC (3 nulls consécutifs) ne repaie plus réseau + pacing au boot.
+                const { getQuote, canAttemptQuote } = await loadMarketData();
                 const res = await refreshAssetPrices(current, { getQuote, hasProvider: canAttemptQuote });
                 // [Finding silent-failure #499] Des cours non rafraîchis au boot laissent une trace
                 // au JOURNAL (pas de toast — les titres manuels skippés par design en feraient un
@@ -625,7 +633,7 @@ export const App: React.FC = () => {
                 const { hydrateAssetProfiles, applyProfilePatches } = await import('./services/assetProfileSync');
                 // [QUOTE-NEGATIVE-CACHE] canAttemptProfile : un profil non couvert (3 nulls
                 // consécutifs) n'est plus retenté à chaque boot (skip TTL 7 j, self-heal).
-                const { getProfile, canAttemptProfile } = await import('./services/marketData');
+                const { getProfile, canAttemptProfile } = await loadMarketData();
                 const res = await hydrateAssetProfiles(current, { getProfile, hasProvider: canAttemptProfile });
                 if (cancelled || res.size === 0) return;
                 const fresh = useFinanceStore.getState().assets ?? [];

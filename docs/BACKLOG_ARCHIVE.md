@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[PERF-MARKETDATA-DYNIMPORT-INERTE]` — LIVRÉ (lot 133)
+
+La frontière asynchrone de marketData existe enfin : les deux importeurs statiques du chunk
+d'ENTRÉE (App.tsx, usePastPortfolioHistory — les deux autres, Investments/AddStockForm, sont déjà
+dans un chunk paresseux et gardent leur import statique LÉGITIMEMENT) passent par
+`services/marketData/lazy.ts` — une promesse de chargement MÉMOÏSÉE, la forme que le ticket
+prescrivait contre la course silencieuse configure→quote (classe PERF-REFACTOR-A-RISQUE-DE-COURSE) :
+les continuations s'exécutent dans l'ordre où les appelants l'ont attendue, même ordre temporel
+que le module synchrone d'avant. Un échec de chargement n'empoisonne pas la façade (promesse
+rejetée oubliée, le geste suivant retente via importWithRetry).
+
+**Vérité du build (rm -rf dist, 2026-09-04)** : 0 avertissement INEFFECTIVE_DYNAMIC_IMPORT (4
+avant), `api.coingecko.com`/`finnhub.io` absents du chunk d'entrée, chunk `marketData-*.js`
+asynchrone créé, entrée 293 → 279,6 Ko minifié. Le `import()` redondant d'Investments (statique +
+dynamique dans le même chunk paresseux) est consolidé sur le statique. Garde
+`marketDataLazyBoundary.test.ts` (source décommentée, témoins loadMarketData, mémoïsation) —
+2 perturbations à rouges exacts (import statique ré-introduit dans App ; frontière court-circuitée
+dans lazy.ts).
+
 ## 2026-09-04 — `[ENG-FERR-ECART-AGE-NON-COUVERT]` — CLOS (lot 132) : l'audit per-conjoint est complet
 
 Le « reste à faire » du ticket est soldé, moitié par des lots antérieurs, moitié ici :

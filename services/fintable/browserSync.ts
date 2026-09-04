@@ -45,6 +45,7 @@ import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
 import { classerRattrapage, type ClassementRattrapage, type PaireIncertaine } from './backfillDedup';
 import { referenceDeltaPatch } from './applyStatePatch';
 import { toPersistableBrokerBalances } from './brokerBalances';
+import { lastProductiveAtSuivant } from './syncHealth';
 import { FintableError } from './types';
 import { logError } from '../errorLogger';
 
@@ -201,6 +202,8 @@ export async function runFintableBrowserSync(
         at: now(), cutoverDateUsed, accountsSeen: 0, accountsWithoutRole: 0,
         transactionsAdded: 0, transfersDetected: 0, cashUpdated: false, debtsUpdated: [],
         investmentReferenceCount: 0, warnings: [], error,
+        // [FINTABLE-SOURCE-TAG] Un échec ne « dé-produit » pas : l'horodatage précédent est reporté.
+        lastProductiveAt: lastProductiveAtSuivant(state.fintableSyncReport, 0, now()),
     });
 
     if (typeof token !== 'string' || token.trim() === '') {
@@ -286,6 +289,9 @@ export async function runFintableBrowserSync(
             accountsSeen: snapshot.accounts.length,
             accountsWithoutRole: mapReport.accountsWithoutRole.length,
             transactionsAdded,
+            // [FINTABLE-SOURCE-TAG] Fraîcheur du connecteur : horodatée si la passe a ÉCRIT,
+            // reportée du rapport précédent sinon (source unique de la règle : syncHealth.ts).
+            lastProductiveAt: lastProductiveAtSuivant(baseState.fintableSyncReport, transactionsAdded, now()),
             transfersDetected: mapReport.transferPairs.length,
             cashUpdated,
             cashAnchorDelta,

@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (L'alerte « import bancaire gelé » ne se laisse plus tromper)
+
+- **Corrigé** : si ton connecteur bancaire (Fintable) cessait de livrer des transactions mais que
+  tu importais un relevé CSV à la main, l'app croyait l'import « à jour » et éteignait l'alerte —
+  un connecteur mort passait pour vivant. Elle distingue maintenant ce que le connecteur a
+  réellement produit de ce que tu as ajouté toi-même.
+- **Aussi** : après un rattrapage d'historique (qui écrit de VIEILLES transactions), l'app ne crie
+  plus faussement « flux gelé » alors que le connecteur vient justement de prouver qu'il marche.
+- **Le message dit la bonne chose** : « l'import bancaire n'a rien produit depuis X jours » (tes
+  ajouts manuels ne comptent pas), au lieu d'affirmer qu'aucune transaction n'est arrivée quand tu
+  en as saisi une hier.
+
+---
+
 ## [unreleased] — 2026-09-04 (Une perte d'emploi planifiée touche enfin l'assurance-emploi)
 
 - **Corrigé** : quand tu planifiais une perte d'emploi datée (événement de vie), l'app coupait ton

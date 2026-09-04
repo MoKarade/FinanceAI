@@ -138,6 +138,27 @@ describe('FintableSyncCard — écriture de l\'état après une passe', () => {
         expect(useFinanceStore.getState().fintableSyncReport?.error).toContain('NETWORK');
         expect(useFinanceStore.getState().transactions).toEqual([]);
     });
+
+    it('[FINTABLE-SOURCE-TAG] un THROW de la passe écrit un rapport d\'échec qui REPORTE lastProductiveAt', async () => {
+        // Le chaînon du chemin MANUEL (les trois autres écrivains sont testés chez eux) : sans le
+        // report, tout échec effaçait la fraîcheur du connecteur et le gel redevenait invisible.
+        const PREV = Date.now() - 3 * 86_400_000;
+        useFinanceStore.setState({
+            fintableSyncReport: {
+                at: Date.now() - 26 * 3_600_000, cutoverDateUsed: null, accountsSeen: 1,
+                accountsWithoutRole: 0, transactionsAdded: 2, transfersDetected: 0, cashUpdated: false,
+                debtsUpdated: [], investmentReferenceCount: 0, warnings: [], error: null,
+                lastProductiveAt: PREV,
+            },
+        });
+        syncMock.mockRejectedValue(new Error('panne pendant la passe'));
+
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
+        await waitFor(() => expect(useFinanceStore.getState().fintableSyncReport?.error).toBeTruthy());
+
+        expect(useFinanceStore.getState().fintableSyncReport?.lastProductiveAt).toBe(PREV);
+    });
 });
 
 describe('FintableSyncCard — assignation des rôles', () => {

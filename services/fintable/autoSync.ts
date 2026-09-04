@@ -22,6 +22,7 @@ import type { AppState, FintableSyncReport } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { logError } from '../errorLogger';
+import { lastProductiveAtSuivant } from './syncHealth';
 
 /** Une passe réussie par 24 h — la cadence demandée. */
 const DAILY_MS = 24 * 3600_000;
@@ -234,6 +235,9 @@ async function runDailyFintableSyncGuarded(
                     transactionsAdded: 0, transfersDetected: 0, cashUpdated: false, debtsUpdated: [],
                     investmentReferenceCount: 0, warnings: [],
                     error: err instanceof Error ? err.message : String(err),
+                    // [FINTABLE-SOURCE-TAG] Une tentative ratée ne « dé-produit » pas : report.
+                    lastProductiveAt: lastProductiveAtSuivant(
+                        (useFinanceStore.getState() as unknown as AppState).fintableSyncReport, 0, now()),
                 },
             });
         }

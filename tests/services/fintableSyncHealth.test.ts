@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     computeSyncHealth, computeStaleThresholdDays, STALE_SYNC_HOURS,
-    DEFAULT_STALE_TRANSACTION_DAYS, MIN_STALE_TRANSACTION_DAYS,
+    DEFAULT_STALE_TRANSACTION_DAYS, MIN_STALE_TRANSACTION_DAYS, lastProductiveAtSuivant,
 } from '../../services/fintable/syncHealth';
 import type { FintableSyncReport, Transaction } from '../../types';
 
@@ -146,5 +146,64 @@ describe('[FINTABLE-STALE-ALERT] computeSyncHealth', () => {
         const h = computeSyncHealth([], okReport(NOW), NOW);
         expect(h.status).toBe('stale');
         expect(h.daysSinceLastTransaction).toBeNull();
+    });
+});
+
+describe('[FINTABLE-SOURCE-TAG] la fraîcheur du CONNECTEUR ne se laisse plus rajeunir par un CSV', () => {
+    // La limite CONNUE de [FINTABLE-STALE-ALERT] (finding #1 panel #561) : `daysSinceLastTransaction`
+    // mélange toutes les sources, donc un import CSV manuel récent rendait « frais » un flux
+    // Fintable mort — le même vert trompeur que l'incident 2026-08-05, par une autre porte. La
+    // fermeture : le rapport porte `lastProductiveAt` (dernière passe qui a ÉCRIT), et quand il est
+    // présent, c'est LUI qui pilote la détection de gel.
+    const dailyHistory = (upToDaysAgo: number): Transaction[] =>
+        Array.from({ length: 40 }, (_, i) =>
+            tx(new Date(NOW - (upToDaysAgo + i) * dayMs).toISOString().slice(0, 10)));
+
+    it('LE cas du ticket : CSV d\'hier + connecteur muet depuis 6 jours → STALE (avant : ok trompeur)', () => {
+        // Transactions récentes (le CSV manuel) → cadence quotidienne, seuil au plancher (4 j),
+        // dernière transaction à J-1 : l\'ancien monde disait « ok ». Le rapport, lui, sait que la
+        // dernière passe PRODUCTIVE date de 6 jours.
+        const h = computeSyncHealth(dailyHistory(1),
+            { ...okReport(NOW - 2 * 3_600_000), lastProductiveAt: NOW - 6 * dayMs }, NOW);
+        expect(h.daysSinceLastTransaction).toBe(1);            // l'appât : une transaction d'hier
+        expect(h.daysSinceLastProductiveSync).toBe(6);
+        expect(h.status).toBe('stale');                        // DISCRIMINANT : ok sur le code d'avant
+        expect(h.reason).toMatch(/n'a rien produit depuis 6 jours/);
+        expect(h.reason).toMatch(/gelé côté fournisseur/);
+        // La phrase ne PRÉTEND pas « aucune transaction importée » — il y en a une d'hier à l'écran.
+        expect(h.reason).not.toMatch(/Aucune transaction importée/);
+    });
+
+    it('sens INVERSE : passe productive fraîche + dates de transactions anciennes → ok (fausse alerte fermée)', () => {
+        // Un rattrapage d'historique vient d'écrire des transactions ANCIENNES : le connecteur est
+        // manifestement vivant, mais la date de la dernière transaction dépasse le seuil. L'ancien
+        // monde criait « gelé côté fournisseur » juste après une passe qui venait de produire.
+        const oldTx = [tx(new Date(NOW - 10 * dayMs).toISOString().slice(0, 10))];
+        const h = computeSyncHealth(oldTx,
+            { ...okReport(NOW - 3_600_000), lastProductiveAt: NOW - 3_600_000 }, NOW);
+        expect(h.daysSinceLastTransaction).toBe(10);           // > seuil par défaut (7)
+        expect(h.daysSinceLastProductiveSync).toBe(0);
+        expect(h.status).toBe('ok');                           // DISCRIMINANT : stale sur le code d'avant
+    });
+
+    it('RÉTROCOMPAT : rapport d\'avant ce lot (champ absent) → repli sur la date de transaction, aucune fausse alerte au déploiement', () => {
+        // Même fixture « import vivant » que le test historique : rien ne change tant que le champ
+        // n'existe pas — et le gel par date (test de l'incident, plus haut) reste couvert tel quel.
+        const h = computeSyncHealth(dailyHistory(1), okReport(NOW - 3_600_000), NOW);
+        expect(h.daysSinceLastProductiveSync).toBeNull();
+        expect(h.status).toBe('ok');
+    });
+
+    it('lastProductiveAtSuivant — la règle de report en un seul endroit', () => {
+        const prev = { ...okReport(NOW - 5 * dayMs), lastProductiveAt: NOW - 5 * dayMs };
+        // Une passe qui ÉCRIT horodate maintenant.
+        expect(lastProductiveAtSuivant(prev, 3, NOW)).toBe(NOW);
+        // Une passe à 0 ajout CONSERVE l'horodatage précédent (elle ne « dé-produit » pas).
+        expect(lastProductiveAtSuivant(prev, 0, NOW)).toBe(NOW - 5 * dayMs);
+        // Aucun précédent → rien à reporter (jamais un 0 crédible — no-fake-data).
+        expect(lastProductiveAtSuivant(undefined, 0, NOW)).toBeUndefined();
+        expect(lastProductiveAtSuivant(okReport(NOW - dayMs), 0, NOW)).toBeUndefined();
+        // Un précédent corrompu (non fini) ne se propage pas.
+        expect(lastProductiveAtSuivant({ ...okReport(NOW), lastProductiveAt: Number.NaN }, 0, NOW)).toBeUndefined();
     });
 });

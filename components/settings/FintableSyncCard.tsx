@@ -24,6 +24,8 @@ import { formatCAD } from '../../utils/format';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
 import { acquireFintableSyncLock, releaseFintableSyncLock, withCrossTabLock } from '../../services/fintable/autoSync';
+// Pur et sans dépendance lourde (types seulement) — même statut que computeSyncHealth chez SyncStaleBanner.
+import { lastProductiveAtSuivant } from '../../services/fintable/syncHealth';
 import { saveApiKeys } from '../../services/secureKeyStore';
 import { logError } from '../../services/errorLogger';
 import type { AppState, FintableAccountRoleConfig } from '../../types';
@@ -266,6 +268,9 @@ export const FintableSyncCard: React.FC = () => {
                         transactionsAdded: 0, transfersDetected: 0, cashUpdated: false, debtsUpdated: [],
                         investmentReferenceCount: 0, warnings: [],
                         error: err instanceof Error ? err.message : String(err),
+                        // [FINTABLE-SOURCE-TAG] Une tentative ratée ne « dé-produit » pas : report.
+                        lastProductiveAt: lastProductiveAtSuivant(
+                            useFinanceStore.getState().fintableSyncReport, 0, Date.now()),
                     },
                 });
             }

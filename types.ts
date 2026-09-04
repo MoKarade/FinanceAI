@@ -916,6 +916,16 @@ export interface FintableSyncReport {
   /** Epoch ms de la fin de la passe. */
   at: number;
   /**
+   * [FINTABLE-SOURCE-TAG] Epoch ms de la dernière passe PRODUCTIVE (`transactionsAdded > 0`),
+   * REPORTÉE de rapport en rapport (une passe à 0 ajout ou en échec la conserve telle quelle —
+   * source unique du report : `lastProductiveAtSuivant`, `services/fintable/syncHealth.ts`).
+   * C'est la fraîcheur du CONNECTEUR, immunisée contre un import CSV/manuel récent qui rendait
+   * un flux Fintable mort « frais » (le vert trompeur de l'incident 2026-08-05, par une autre
+   * porte). ADDITIF optionnel : absent = rapports d'avant ce lot → la détection de gel retombe
+   * sur la date de la dernière transaction, toutes sources confondues (comportement historique).
+   */
+  lastProductiveAt?: number;
+  /**
    * [FINTABLE-RATTRAPAGE] Transactions ÉCARTÉES parce qu'antérieures ou égales à la bascule.
    *
    * ⚠️ Ce compteur EXISTAIT déjà dans le rapport du mapper, mais n'était affiché QUE dans le script

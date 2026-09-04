@@ -16,6 +16,12 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 144 : le reset de janvier est découpé, comportement prouvé inchangé
+> `[DETTE-GODFN-JANUARY]` livré — `processJanuaryReset` (183 lignes) devient 5 étapes nommées
+> (CELI, FHSA, droits REER, FERR, Guyton-Klinger), orchestrateur ~35 lignes. Empreinte identique
+> à l'octet + 29 tests module + 43 ciblés. Troisième découpage god-fonction de la journée, même
+> protocole — la famille DETTE-GODFN moteur est SOLDÉE (reste PDF, hors moteur).
+
 > ## 🟦 Session 2026-09-04 — Lot 143 : le revenu de retraite est découpé, comportement prouvé inchangé
 > `[DETTE-GODFN-RETIREMENT]` livré — `computeRetirementIncome` (260 lignes) devient 5 étapes
 > nommées (poids per-conjoint, âges/facteurs, RRQ+PSV, SRG, assemblage), orchestrateur ~40

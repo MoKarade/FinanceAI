@@ -108,17 +108,15 @@ export interface JanuaryResult {
     logs: string[];
 }
 
-export function processJanuaryReset(
-    currentMonthIndex: number,
-    ctx: JanuaryContext,
-    helpers: JanuaryHelpers,
-): JanuaryResult | null {
-    if (currentMonthIndex !== 0 || ctx.m === 0) return null;
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// [DETTE-GODFN-JANUARY 2026-09-04] `processJanuaryReset` (183 lignes) est DÉCOUPÉE en étapes
+// nommées — à COMPORTEMENT STRICTEMENT INCHANGÉ (empreinte des grandeurs publiées
+// `scripts/mesureOrdreBoucle.ts` identique à l'octet avant/après + les tests du module).
+// ⚠️ Toute extraction future préserve l'ORDRE des opérations arithmétiques : l'empreinte juge.
+// ───────────────────────────────────────────────────────────────────────────────────────────
 
-    const logs: string[] = [];
-    const nextLoopYear = ctx.startYear + Math.floor(ctx.m / 12);
-
-    // === 1. Plafond CELI annuel ===
+/** === 1. Plafond CELI annuel (somme des droits PERSONNELS des adultes résidents) === */
+function plafondCeliAnnuel(ctx: JanuaryContext, roomUsers: JanuaryContext['users'], nextLoopYear: number): number {
     // FA-4 (audit fiscal 2026-06-09) : SOURCE UNIQUE `CELI_ANNUAL_LIMITS` pour les années connues
     // (l'ancien recalcul local 7000×inflation donnait 7 000 $ en 2027 vs 7 500 $ au doc — divergence
     // code↔doc). Au-delà de la dernière année connue : extrapolation indexée depuis cette valeur,
@@ -127,10 +125,6 @@ export function processJanuaryReset(
     const celiLimitThisYear = nextLoopYear <= LAST_KNOWN_CELI_YEAR
         ? (CELI_ANNUAL_LIMITS[nextLoopYear] ?? lastKnownCeliLimit)
         : Math.round((lastKnownCeliLimit * Math.pow(1 + ctx.simInflation / 100, nextLoopYear - LAST_KNOWN_CELI_YEAR)) / CELI_LIMIT_ROUNDING) * CELI_LIMIT_ROUNDING;
-
-    // [ENG-DIVORCE-ROOM-COUPLE] Les droits sont PERSONNELS : ceux d'un conjoint parti (divorce)
-    // ou décédé ne s'ajoutent plus aux miens. `users` reste INTACT pour la boucle FERR.
-    const roomUsers = ctx.roomUsers ?? ctx.users;
 
     let totalCeliLimitThisYear = 0;
     roomUsers.filter(u => u).forEach(u => {
@@ -141,8 +135,16 @@ export function processJanuaryReset(
             totalCeliLimitThisYear += celiLimitThisYear;
         }
     });
+    return totalCeliLimitThisYear;
+}
 
-    // === 2. FHSA: éligibilité dynamique + carry-forward + fermeture 15 ans OU 71 ans ===
+/** === 2. FHSA : éligibilité dynamique + carry-forward + fermeture 15 ans OU 71 ans === */
+function roulementFhsa(
+    ctx: JanuaryContext,
+    roomUsers: JanuaryContext['users'],
+    nextLoopYear: number,
+    logs: string[],
+): { fhsaRoomNew: number; celiappTransferToReer: number } {
     // Audit §6.10: ARC exige la fermeture du CELIAPP au 31 décembre de l'année
     // où le titulaire atteint 71 ans (ou après 15 ans, ou 1 an après le premier
     // retrait admissible — premier événement applicable). On ajoute le check 71 ans.
@@ -182,8 +184,11 @@ export function processJanuaryReset(
     } else {
         fhsaRoomNew = 0;
     }
+    return { fhsaRoomNew, celiappTransferToReer };
+}
 
-    // === 3. REER: 18% revenu brut canadien année précédente - FE ===
+/** === 3. Droits REER annuels : 18 % du revenu brut canadien de l'année précédente − FE === */
+function droitsReerAnnuels(ctx: JanuaryContext, roomUsers: JanuaryContext['users'], nextLoopYear: number): number {
     // Plafond REER : la table tant que l'année y figure, extrapolation à `inflation + 0,5 pp`
     // au-delà — depuis la DERNIÈRE année connue de la table, comme le fait déjà le CELI juste
     // au-dessus (`LAST_KNOWN_CELI_YEAR`).
@@ -219,8 +224,13 @@ export function processJanuaryReset(
         const roomUser = Math.min(rrspYearlyCap, earnedIncome * RRSP_ROOM_RATE) - (u?.facteurEquivalence || 0);
         return acc + Math.max(0, roomUser);
     }, 0);
+    return newRrspRoom;
+}
 
-    // === 4. FERR — retrait minimum obligatoire (dès 72 ans) ===
+/** === 4. FERR — retrait minimum obligatoire (dès 72 ans), PER-CONJOINT === */
+function retraitFerrObligatoire(ctx: JanuaryContext, helpers: JanuaryHelpers): {
+    ferrMandatoryGross: number; ferrGrossByUser: number[]; ferrTaxOnRrif: number; ferrLogMsg?: string;
+} {
     let ferrMandatoryGross = 0;
     let ferrTaxOnRrif = 0;
     let ferrLogMsg: string | undefined;
@@ -298,8 +308,13 @@ export function processJanuaryReset(
         // unique, elle ne décide pas à sa place de la précision affichée.
         ferrLogMsg = `🏦 FERR (per-conjoint): Brut ${formatCAD(ferrMandatoryGross, { decimals: 2 })} → Net ${formatCAD(netRrif, { decimals: 2 })} → Liquidités`;
     }
+    return { ferrMandatoryGross, ferrGrossByUser, ferrTaxOnRrif, ferrLogMsg };
+}
 
-    // === 5. Guyton-Klinger trigger ===
+/** === 5. Guyton-Klinger : facteur d'indexation des dépenses (bande lissée autour du seuil) === */
+function facteurGuytonKlinger(ctx: JanuaryContext, logs: string[]): {
+    guytonKlingerIndexationFactor: number; newPrevPortfolioNW: number;
+} {
     // [ENG-GK-THRESHOLD-KNIFE] Le gel binaire à −5 % était un seuil COUTEAU : quelques centaines
     // de dollars d'impôt suffisaient à déclencher un gel valant −174,36 $/mois À VIE, et le
     // CLASSEMENT des stratégies basculait sur un écart négligeable (panel #564 : le CID de
@@ -327,6 +342,27 @@ export function processJanuaryReset(
         }
         newPrevPortfolioNW = currentPortfolio;
     }
+    return { guytonKlingerIndexationFactor, newPrevPortfolioNW };
+}
+
+export function processJanuaryReset(
+    currentMonthIndex: number,
+    ctx: JanuaryContext,
+    helpers: JanuaryHelpers,
+): JanuaryResult | null {
+    if (currentMonthIndex !== 0 || ctx.m === 0) return null;
+
+    const logs: string[] = [];
+    const nextLoopYear = ctx.startYear + Math.floor(ctx.m / 12);
+    // [ENG-DIVORCE-ROOM-COUPLE] Les droits sont PERSONNELS : ceux d'un conjoint parti (divorce)
+    // ou décédé ne s'ajoutent plus aux miens. `users` reste INTACT pour la boucle FERR.
+    const roomUsers = ctx.roomUsers ?? ctx.users;
+
+    const totalCeliLimitThisYear = plafondCeliAnnuel(ctx, roomUsers, nextLoopYear);
+    const { fhsaRoomNew, celiappTransferToReer } = roulementFhsa(ctx, roomUsers, nextLoopYear, logs);
+    const newRrspRoom = droitsReerAnnuels(ctx, roomUsers, nextLoopYear);
+    const { ferrMandatoryGross, ferrGrossByUser, ferrTaxOnRrif, ferrLogMsg } = retraitFerrObligatoire(ctx, helpers);
+    const { guytonKlingerIndexationFactor, newPrevPortfolioNW } = facteurGuytonKlinger(ctx, logs);
 
     return {
         accRetraitsReerYearReset: 0,

@@ -404,14 +404,16 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`DONATION_FIRST_TIER_CEILING` — plafond du premier palier du crédit pour dons (200 $), au-delà duquel le taux bonifié s’applique. Vrai paramètre ARC/RQ, déjà ancré FISCAL_REFERENCE §10 et nommé sur place.' },
 
     // ── store/useFinanceStore.ts ─────────────────────────────────────────────────────────────
-    { file: 'store/useFinanceStore.ts', value: '36', family: 'structural',
+    { file: 'store/etatParDefaut.ts', value: '36', family: 'structural',
       reason: 'Base 36 de `Math.random().toString(36)` dans le générateur d’identifiants. Mécanique de chaîne de caractères — le seul faux positif ASSUMÉ de l’élargissement à la position d’argument, gardé plutôt qu’exempté : une exemption se lit comme un détail déjà tranché, une entrée d’inventaire dit ce qu’elle est (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).' },
-    { file: 'store/useFinanceStore.ts', value: '5', family: 'structural',
+    { file: 'store/migrationsPersistees.ts', value: '5', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 5`). Palier de migration, aucun rapport avec la fiscalité.' },
-    { file: 'store/useFinanceStore.ts', value: '6', family: 'structural',
+    { file: 'store/migrationsPersistees.ts', value: '6', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 6`). Palier de migration.' },
+    { file: 'store/migrationsPersistees.ts', value: '7', family: 'structural',
+      reason: 'Numéro de version de schéma persisté (`fromVersion < 7`). Palier de migration. (Le [×2] historique couvrait aussi `version: 7` — resté dans la façade, entrée séparée depuis le découpage du lot 158.)' },
     { file: 'store/useFinanceStore.ts', value: '7', family: 'structural',
-      reason: '[×2] Numéro de version de schéma persisté (`fromVersion < 7`). Palier de migration.' },
+      reason: 'Version COURANTE du schéma persisté (`version: 7` de la config persist). Palier de migration, aucun rapport avec la fiscalité.' },
     // ── Révélés par l'élargissement du filtre aux VALEURS LIÉES (2026-08-20) ────────────────────
     // `[FISC-GUARD-VALEUR-LIEE]`. Le filtre ne relevait qu'un littéral qu'on CALCULE. Or un barème
     // est tout aussi souvent un littéral qu'on NOMME (propriété d'objet) ou qu'on CHOISIT (branche
@@ -514,13 +516,13 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Croissance supposée des FPI (2 %). Hypothèse de marché.' },
     { file: 'services/projection/assetLocation.ts', value: '3.5', family: 'design',
       reason: 'Rendement supposé des liquidités (3,5 %). Hypothèse de marché.' },
-    { file: 'store/useFinanceStore.ts', value: '65', family: 'design',
+    { file: 'store/etatParDefaut.ts', value: '65', family: 'design',
       reason: '[×2] Âge de retraite VISÉ par défaut dans l’état initial et dans le repli de lecture du store. ⚠️ Homonyme de l’âge-pivot fiscal des rentes publiques, mais ici c’est un DÉFAUT d’amorçage que l’utilisateur change — pas une règle.' },
-    { file: 'store/useFinanceStore.ts', value: '4000', family: 'design',
+    { file: 'store/etatParDefaut.ts', value: '4000', family: 'design',
       reason: '[×2] Revenu mensuel de retraite VISÉ par défaut (4 000 $). Valeur d’amorçage de l’état, modifiable par l’utilisateur.' },
-    { file: 'store/useFinanceStore.ts', value: '1200', family: 'design',
+    { file: 'store/etatParDefaut.ts', value: '1200', family: 'design',
       reason: '[×2] Rente gouvernementale mensuelle supposée par défaut (1 200 $). Valeur d’amorçage, remplacée dès que l’utilisateur saisit ses estimations RRQ/PSV.' },
-    { file: 'store/useFinanceStore.ts', value: '90', family: 'design',
+    { file: 'store/migrationsPersistees.ts', value: '90', family: 'design',
       reason: 'Espérance de vie par défaut posée par une migration de schéma (90 ans). Hypothèse de modèle, pas une table de mortalité.' },
 
     // ── Révélés par le RETRAIT de `0.5` et `1000` de BENIGN (2026-08-20, revue) ──────────────
@@ -616,6 +618,13 @@ export const FISCAL_MODULES = [
     'services/taxEstimate.ts',
     'utils/donationCredit.ts',
     'store/useFinanceStore.ts',
+    // [GODFILE-STORE] (lot 158) — le découpage du store est une PARTITION : les quatre modules
+    // extraits restent scannés, sinon le périmètre rétrécirait en silence au moment exact où les
+    // littéraux déménagent (UN-PERIMETRE-EXCLU-SE-JUSTIFIE-PAR-CE-QU-IL-CONTIENT).
+    'store/etatParDefaut.ts',
+    'store/migrationsPersistees.ts',
+    'store/actionsModeTest.ts',
+    'store/optionsPersistance.ts',
 ] as const;
 
 /**

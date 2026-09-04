@@ -1,3 +1,4 @@
+import { formatCAD } from '../../utils/format';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -32,12 +33,15 @@ describe('[COUPLE-CTX-FAKE-ZERO] un salaire absent ne devient pas un « 0 $ » a
         // Non-vacuité : le prompt contient bien les deux conjoints et le montant connu.
         expect(prompt).toContain('Marc');
         expect(prompt).toContain('Anna');
-        expect(prompt).toContain('96000$');
+        // [FMT-PROMPT-MIGRER] L'attendu se compose avec formatCAD (arrondi à 100 $ abandonné,
+        // décision Marc 2026-09-03 — l'espace insécable du formateur ne se tape pas à la main).
+        expect(prompt).toContain(formatCAD(96_000));
 
         // Le discriminant : Anna n'a pas de salaire saisi. Le modèle doit le SAVOIR.
         expect(prompt).toContain('(non disponible)');
         expect(prompt, 'un revenu inconnu est affirmé à 0 $ — le modèle bâtira des stratégies dessus')
             .not.toMatch(/Anna\s*:\s*brut\s*0\$/);
+        expect(prompt, 'idem, forme formatCAD').not.toContain(`brut ${formatCAD(0)}`);
     });
 
     it('le composant ne rétablit PAS le `|| 0` (scan de source)', () => {

@@ -139,7 +139,7 @@ jour où le défaut sera corrigé, pour qu'on ne le re-livre pas par accident.
 ## ✅ `[IMMO-3-FORMULES]` volet CLAMP — RÉPONDU le 2026-09-03 : **retirer le plancher**
 
 > **Réponse de Marc** : option 1. La courbe dit la vérité, y compris quand elle est mauvaise —
-> cohérent avec `no-fake-data`. ⬜ **À LIVRER** : retirer le `Math.max(0, …)` de `Equite` dans
+> cohérent avec `no-fake-data`. ✅ **LIVRÉ au lot 119 (PR #850, 2026-09-04)** : retiré le `Math.max(0, …)` de `Equite` dans
 > `runAmortization`, et re-baser les tests d'historique concernés AVEC leur explication.
 
 <details><summary>Énoncé d'origine (conservé)</summary>
@@ -210,7 +210,7 @@ quelqu'un tente cette « correction ».
 ## ✅ `[HEALTH-CORRUPTION…]` (a) — RÉPONDU le 2026-09-03 : **un marqueur discret**
 
 > **Réponse de Marc** : option 2 — *différente de ma recommandation*, qui était de ne rien changer.
-> ⬜ **À LIVRER** : une pastille (pas une phrase) dans le résumé « Santé financière » quand au moins
+> ✅ **LIVRÉ au lot 122 (PR #853, 2026-09-04)** : une pastille (pas une phrase) dans le résumé « Santé financière » quand au moins
 > une métrique est exclue pour donnée INVALIDE, cliquable vers le détail. ⚠️ Ne doit PAS s'afficher
 > pour une métrique simplement non calculable — c'est toute la distinction qui justifie le marqueur.
 
@@ -241,7 +241,7 @@ déjà appris qu'un avertissement permanent finit par ne plus être lu.
 ## ✅ `[BUDGET-DEUX-NETS-MEME-ECRAN]` — RÉPONDU le 2026-09-03 : **nommer la base**
 
 > **Réponse de Marc** : option 2. La paie déclarée reste le dénominateur — aucun chiffre ne bouge —
-> et le badge le DIT. ⬜ **À LIVRER** : mention « sur ta paie déclarée » sur le badge « Effort ».
+> et le badge le DIT. ✅ **LIVRÉ au lot 120 (PR #851, 2026-09-04)** : mention « de la paie déclarée » + infobulle sur le badge « Effort ».
 
 <details><summary>Énoncé d'origine (conservé)</summary>
 
@@ -323,7 +323,7 @@ l'utilisent légitimement.)*
 ## ✅ `[MIGRATE-GROSS-DEJA-PERSISTE]` — RÉPONDU le 2026-09-03 : **migrer en DEMANDANT**
 
 > **Réponse de Marc** : option 3. Détecter la signature (`brut == arrondi(net × 1,35)`) et PROPOSER
-> la correction ; ne jamais écrire tout seul. ⬜ **À LIVRER**. ⚠️ Le point non négociable : aucune
+> la correction ; ne jamais écrire tout seul. ✅ **LIVRÉ au lot 121 (PR #852, 2026-09-04)**. ⚠️ Le point non négociable : aucune
 > écriture automatique sur une saisie de l'utilisateur — c'est irréversible côté app.
 
 <details><summary>Énoncé d'origine (conservé)</summary>
@@ -362,9 +362,8 @@ saisie de l'utilisateur est irréversible côté app. Le ticket lui-même dit «
 > promet « montants arrondis à 100$ ». Sans l'arrondi, cette phrase devient FAUSSE — c'est un
 > engagement de vie privée affiché à l'utilisateur, pas un détail technique. Le lot n'est pas
 > livrable sans la correction du consentement.
-> ⬜ **À LIVRER** : retirer les 4 entrées d'`EXEMPTIONS` de
-> `tests/components/formatMonetaireSourceUnique.test.ts`, migrer les 17 sites, retirer l'arrondi,
-> corriger le texte de consentement.
+> ✅ **LIVRÉ au lot 123 (PR #854, 2026-09-04)** : 4 exemptions retirées, 17 sites migrés, arrondi
+> abandonné, consentement corrigé (« montants exacts ») + garde de cohérence promesse ↔ mécanisme.
 
 <details><summary>Énoncé d'origine (conservé)</summary>
 

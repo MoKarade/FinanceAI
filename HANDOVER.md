@@ -12,10 +12,22 @@
 > - ✅ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « de la paie déclarée » + infobulle — **LIVRÉ au lot 120**.
 > - ✅ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable dans le résumé de Futur — **LIVRÉ au lot 122**.
 > - ✅ `[MIGRATE-GROSS-PROPOSER]` → avis au Profil + deux boutons, zéro écriture seule — **LIVRÉ au lot 121**.
-> - ⬜ `[FMT-PROMPT-MIGRER]` → migrer les 17 sites **+ abandonner l'arrondi à 100 $** (≠ ma reco).
->   ⚠️⚠️ **NON LIVRABLE SANS** corriger le texte de consentement, qui promet cet arrondi.
+> - ✅ `[FMT-PROMPT-MIGRER]` → 17 sites migrés + arrondi abandonné + consentement corrigé — **LIVRÉ au lot 123**.
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-04 — Lot 123 : les prompts passent par formatCAD, l'arrondi à 100 $ est abandonné
+> `[FMT-PROMPT-MIGRER]` livré — **code de prod touché** (prompts IA, résumés MCP, consentement).
+> - 17 sites migrés, `roundToHundred` supprimé (categorizeBatch : champ JSON → arrondi au dollar).
+> - ⚠️⚠️ Consentement corrigé DANS LE MÊME LOT (« montants exacts ») + garde de COHÉRENCE
+>   promesse ↔ mécanisme, prouvée par 2 perturbations (chaque moitié seule rougit).
+> - Survivants délibérés : replis honnêtes (`(non disponible)`, `null` — le « — » de formatCAD se
+>   lit comme une valeur par un modèle) et le prix en devise NATIVE d'applyDocument (formatCAD y
+>   serait faux). 4 EXEMPTIONS du scan de format retirées ; jetons `MONTANT-HORS-ECRAN` posés
+>   (exigés par le scan de vie privée).
+> - 11 assertions re-composées avec le formateur dans 6 fichiers. Leçon : « 12 000 $ » dans un
+>   `new RegExp` fait du $ une ANCRE (`UN-ATTENDU-COMPOSE-AVEC-LE-FORMATEUR-S-ECHAPPE…`).
+> - Ce lot solde les HUIT décisions de Marc du 2026-09-03 : toutes livrées ou classées.
 
 > ## 🟦 Session 2026-09-04 — Lot 122 : la pastille « donnée invalide » du résumé de santé
 > `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` livré — **code de prod touché** (résumé de Futur + healthScore).

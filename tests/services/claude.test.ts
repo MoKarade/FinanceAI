@@ -8,6 +8,7 @@
  *  - categorizeBatch / detectSubscriptionsAI : court-circuits (sans clé / vide)
  *    → AUCUN appel réseau (vérifié par le retour immédiat).
  */
+import { formatCAD } from '../../utils/format';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import {
@@ -153,9 +154,11 @@ describe('buildRebalancePrompt — anti-injection de prompt (C1)', () => {
     // (`roundToHundred` renvoyait 0 pour non-fini), le prompt aurait contenu « 0$ ».
     const base: RebalanceActionInput = { id: 'x', label: 'AAPL', action: 'BUY', currentPct: 5, targetPct: 10, diffAmount: 1500 };
 
-    it('montant fini → rendu « <arrondi>$ » (1500$)', () => {
+    it('montant fini → rendu par formatCAD ([FMT-PROMPT-MIGRER] : arrondi à 100 $ ABANDONNÉ, décision Marc 2026-09-03)', () => {
         const prompt = buildRebalancePrompt([base]);
-        expect(prompt).toContain('1500$');
+        // L'attendu se COMPOSE avec le formateur (espace insécable de formatCAD — un littéral
+        // tapé à la main ne matcherait rien).
+        expect(prompt).toContain(formatCAD(1500));
     });
 
     it('montant NON FINI (NaN) → « (non disponible) », JAMAIS « 0$ » ni « NaN »', () => {

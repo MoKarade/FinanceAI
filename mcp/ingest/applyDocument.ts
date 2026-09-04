@@ -8,6 +8,7 @@
 import { DEBT_KINDS } from '../../types';
 import type { AppState, User, Asset, Transaction, Debt, DebtKind } from '../../types';
 import { isValidIsoDate } from '../../utils/isoDate';
+import { formatCAD } from '../../utils/format';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
 import { computeCashLedgerDetailed } from '../../services/startingCash';
@@ -314,7 +315,7 @@ function applyCashBalance(state: AppState, doc: CashBalancePayload): ApplyResult
         throw new Error('Solde de liquidités actuel non calculable (un solde de départ ou une transaction est corrompu / non fini). Rien n\'a été écrit — corrige la donnée en cause d\'abord.');
     }
     if (Math.abs(delta) < 0.005) {
-        return { nextState: state, changes: [], summary: `Solde de liquidités déjà à ${Math.round(target)} $ : aucune modification.` };
+        return { nextState: state, changes: [], summary: `Solde de liquidités déjà à ${formatCAD(target)} : aucune modification.` };
     }
     const initialBalances: Record<string, number> = { ...(state.initialBalances ?? {}) };
     initialBalances.LIQUIDITE = (Number(initialBalances.LIQUIDITE) || 0) + delta;
@@ -325,7 +326,7 @@ function applyCashBalance(state: AppState, doc: CashBalancePayload): ApplyResult
         note: 'ajusté via le compte LIQUIDITE des soldes de départ (Réglages → Comptes) — réversible',
     }];
     const nextState: AppState = { ...state, initialBalances, lastUpdate: Date.now() };
-    const summary = `Solde de liquidités ajusté : ${Math.round(current)} $ → ${Math.round(target)} $ `
+    const summary = `Solde de liquidités ajusté : ${formatCAD(current)} → ${formatCAD(target)} `
         + `(compte LIQUIDITE, visible dans Réglages → Comptes). Sauvegarde créée avant l'écriture.`;
     return { nextState, changes, summary };
 }
@@ -370,7 +371,9 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
     // avant qu'il confirme une écriture dirait littéralement « passe de NaN $ à X $ » : ni un
     // « 0 $ » faussement crédible (proscrit par le no-fake-data) ni un « — » honnête, juste une
     // fuite technique (finding code-reviewer, 2e passe panel PR #757).
-    const montantLabel = (n: unknown): string => (Number.isFinite(n) ? `${Math.round(n as number)} $` : '— (cible non exploitable)');
+    // [FMT-PROMPT-MIGRER] `formatCAD` sur la branche FINIE ; le libellé nommé reste sur l'autre
+    // (le « — » nu de `formatCAD` se lirait comme une valeur par un modèle).
+    const montantLabel = (n: unknown): string => (Number.isFinite(n) ? formatCAD(n) : '— (cible non exploitable)');
     const monthlyTargetLabel = (item: Parameters<typeof monthlyTargetOf>[0]): string => montantLabel(monthlyTargetOf(item));
 
 
@@ -380,7 +383,7 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
             const freq = doc.frequency ?? b.frequency;
             changes.push({
                 field: `poste « ${b.name} » (cible)`, before: b.target,
-                after: `${doc.targetCad} $ / ${freq} (≈ ${monthlyTargetLabel({ target: doc.targetCad, frequency: freq })}/mois)`,
+                after: `${formatCAD(doc.targetCad)} / ${freq} (≈ ${monthlyTargetLabel({ target: doc.targetCad, frequency: freq })}/mois)`,
                 note: (b.autoTarget ? 'cible auto-gérée décrochée (édition manuelle)' : undefined),
             });
             b.target = doc.targetCad;
@@ -440,13 +443,13 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
         : `⚠️ aucune transaction de catégorie « ${name} » : le poste sera RETIRÉ au prochain chargement de l'app tant qu'aucune dépense ne s'y rattache (le budget suit les catégories observées).`;
     changes.push({
         field: `poste « ${name} »`, before: null,
-        after: `${added.target} $ / ${added.frequency} (≈ ${monthlyTargetLabel(added)}/mois)`,
+        after: `${formatCAD(added.target)} / ${added.frequency} (≈ ${monthlyTargetLabel(added)}/mois)`,
         note: orphanNote ?? 'nouveau poste — rapproché des dépenses réelles de la catégorie du même nom (un nom proche peut être auto-renommé vers la catégorie observée)',
     });
     const nextState: AppState = { ...state, budgetItems: items, lastUpdate: Date.now() };
     return {
         nextState, changes,
-        summary: `Poste de budget « ${name} » ajouté (${added.target} $ / ${added.frequency}, ${added.nature}, ${added.type}).`
+        summary: `Poste de budget « ${name} » ajouté (${formatCAD(added.target)} / ${added.frequency}, ${added.nature}, ${added.type}).`
             + (orphanNote ? ` ${orphanNote}` : ''),
     };
 }
@@ -461,6 +464,12 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
 // de formatage honnête : « (non disponible) », jamais un 0 plausible.
 const fmtOrUnavailable = (v: unknown): string =>
     Number.isFinite(Number(v)) ? String(Math.round(Number(v))) : '(non disponible)';
+// [FMT-PROMPT-MIGRER] Variante CAD pour les montants EN DOLLARS CANADIENS (solde de dette).
+// ⚠️ `fmtOrUnavailable` ci-dessus reste NU exprès : son autre site formate un PRIX EN DEVISE
+// NATIVE suivi de son code (« 123,45 USD ») — y mettre `formatCAD` fabriquerait « 123 $ USD »,
+// le membre déviant mesuré par `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`.
+const cadOrUnavailable = (v: unknown): string =>
+    Number.isFinite(Number(v)) ? formatCAD(Number(v)) : '(non disponible)';
 
 function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
     const name = String(doc.name || '').trim();
@@ -510,7 +519,7 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
     const target = matches[0];
     const changes: Change[] = [{
         field: `dette « ${target.name} »`,
-        before: `${fmtOrUnavailable(target.balance)} $ à ${target.interestRate} %`,
+        before: `${cadOrUnavailable(target.balance)} à ${target.interestRate} %`,
         after: 'supprimée',
         note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
     }];
@@ -924,8 +933,8 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     const effectiveOriginal = doc.originalBalance ?? existingForDates?.originalBalance;
     const effectiveBalance = doc.balance ?? existingForDates?.balance;
     if (effectiveOriginal != null && effectiveBalance != null && effectiveOriginal < effectiveBalance) {
-        throw new Error(`Le montant emprunté (${effectiveOriginal} $) est INFÉRIEUR au solde actuel `
-            + `(${effectiveBalance} $) : une dette qui a grossi n'a pas de profil d'amortissement. `
+        throw new Error(`Le montant emprunté (${formatCAD(effectiveOriginal)}) est INFÉRIEUR au solde actuel `
+            + `(${formatCAD(effectiveBalance)}) : une dette qui a grossi n'a pas de profil d'amortissement. `
             + `Vérifie les deux chiffres sur le contrat. Rien n'a été écrit.`);
     }
     if (existingIdx >= 0) {
@@ -997,7 +1006,7 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     const debutDifferencie = doc.startDate != null && doc.startDate > today
         ? `Débute le ${doc.startDate} (absente du patrimoine avant cette date).`
         : 'Servie dès maintenant par la projection.';
-    const summary = `Dette « ${name} » ajoutée (${category}) : solde ${balance} $, ${interestRate} %, ` +
-        `paiement ${minimumPayment} $/mois. ${debutDifferencie}`;
+    const summary = `Dette « ${name} » ajoutée (${category}) : solde ${formatCAD(balance)}, ${interestRate} %, ` +
+        `paiement ${formatCAD(minimumPayment)}/mois. ${debutDifferencie}`;
     return { nextState, changes, summary };
 }

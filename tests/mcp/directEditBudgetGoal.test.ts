@@ -6,6 +6,7 @@
 // [NAV-REMOVE-OBJECTIFS-TAB] Le volet `upsert_savings_goal` (Lot 3) de ce fichier a été retiré
 // avec la feature (UI + moteur + tools MCP) — décision Marc 2026-08-27.
 
+import { formatCAD } from '../../utils/format';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -55,8 +56,9 @@ describe('[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] aucune fuite de « NaN » dans le
         // Sans ce cas, « pas de NaN » serait satisfait par un diff qui n'afficherait plus rien.
         const { changes } = applyDocument(withBudget(), budgetDoc({ frequency: 'Yearly' }));
         const note = String(changes.find((c) => c.field.includes('fréquence'))?.note ?? '');
-        expect(note).toContain('550 $');   // cible mensuelle avant
-        expect(note).toContain('46 $');    // 550 / 12 arrondi
+        // [FMT-PROMPT-MIGRER] L'attendu se compose avec formatCAD (espace insécable).
+        expect(note).toContain(formatCAD(550));   // cible mensuelle avant
+        expect(note).toContain(formatCAD(46));    // 550 / 12 arrondi
         expect(note).not.toContain('non exploitable');
     });
 });
@@ -108,7 +110,7 @@ describe('applyBudgetItem — mise à jour PAR NOM (partielle, idempotente)', ()
         expect(b.autoTarget).toBe(false); // décroché, comme l'édition UI de la fréquence
         expect(b.target).toBe(550);       // la cible elle-même n'a pas bougé
         // L'aperçu montre l'équivalent MENSUEL avant/après (piège ×12 visible à la confirmation).
-        expect(String(changes[0].note)).toMatch(/550 \$ à 46 \$/);
+        expect(String(changes[0].note)).toContain(`${formatCAD(550)} à ${formatCAD(46)}`);
     });
 
     it('AJOUT : cible requise ; défauts Monthly/Commun/Besoin, autoTarget false, id horodaté cat_', () => {

@@ -179,8 +179,9 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                     Relevé (image/PDF) → l'IA Vision extrait brut, net, impôt et fréquence, et remplit le profil.
                 </p>
                 {/* [SEC-VISION-CONSENT-INJECTION] Loi 25 : consentement éclairé — la fiche de paie (nom,
-                    employeur, salaire exact) part BRUTE chez Anthropic (pas tronquée/arrondie comme la
-                    catégorisation texte). À dire explicitement avant l'envoi. */}
+                    employeur, salaire exact) part BRUTE chez Anthropic. (Depuis [FMT-PROMPT-MIGRER],
+                    la catégorisation texte envoie aussi les montants exacts — seuls les noms de
+                    marchands restent tronqués.) À dire explicitement avant l'envoi. */}
                 <p className="text-tiny text-amber-300/90 bg-amber-900/10 border border-warning-500/20 rounded-lg px-3 py-2">
                     Confidentialité : la fiche de paie (image/PDF) est envoyée à Anthropic (Claude) pour en
                     extraire les montants — elle contient des données personnelles (nom, employeur, salaire exact).

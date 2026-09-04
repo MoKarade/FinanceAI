@@ -5,6 +5,7 @@
 // (jamais prétendre voir), montants non finis OMIS (AI-PROMPT-FAKE-ZERO), noms utilisateur
 // assainis (anti-injection), et rétrocompat BYTE-IDENTIQUE du system prompt sans contexte.
 
+import { formatCAD } from '../../utils/format';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     publishViewContext, clearViewContext, getViewContext, subscribeViewContext,
@@ -61,10 +62,12 @@ describe('describeViewContextForPrompt', () => {
         const line = describeViewContextForPrompt(Tab.BUDGET);
         expect(line).toContain('« Budget »');
         expect(line).toContain('juillet 2026');
-        expect(line).toContain('dépenses réelles 3457 $');
-        expect(line).toContain('cible du budget 4000 $');
-        expect(line).toContain('revenus réels de la période 5200 $');
-        expect(line).toContain('Épicerie 820 $');
+        // [FMT-PROMPT-MIGRER] formatCAD arrondit au dollar comme avant — 3 456,70 → 3 457 $ —
+        // et l'attendu se compose avec le formateur (espace insécable).
+        expect(line).toContain(`dépenses réelles ${formatCAD(3457)}`);
+        expect(line).toContain(`cible du budget ${formatCAD(4000)}`);
+        expect(line).toContain(`revenus réels de la période ${formatCAD(5200)}`);
+        expect(line).toContain(`Épicerie ${formatCAD(820)}`);
     });
 
     it('montant NON FINI → composante OMISE (jamais un 0 plausible)', () => {
@@ -72,7 +75,7 @@ describe('describeViewContextForPrompt', () => {
         const line = describeViewContextForPrompt(Tab.BUDGET);
         expect(line).not.toContain('dépenses réelles');
         expect(line).not.toContain('revenus réels');
-        expect(line).toContain('cible du budget 4000 $'); // les composantes valides restent
+        expect(line).toContain(`cible du budget ${formatCAD(4000)}`); // les composantes valides restent
     });
 
     it('nom de catégorie/filtre UTILISATEUR malveillant → assaini + encadré <DONNEES> (anti-injection)', () => {

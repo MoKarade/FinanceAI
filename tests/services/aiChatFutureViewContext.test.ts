@@ -5,6 +5,7 @@
 // ignore le passé reconstruit (monthIndex < 0), et la ligne de prompt avoue HONNÊTEMENT l'absence
 // de projection (zéro chiffre). Chips : ancrées sur la courbe, AUCUNE sans projection.
 
+import { formatCAD } from '../../utils/format';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { buildFutureViewDetail, buildFutureChips } from '../../services/aiChat/futureViewContext';
 import {
@@ -146,12 +147,12 @@ describe('describeViewContextForPrompt — scope future', () => {
         publishViewContext('future', buildFutureViewDetail(results(), pt(168, 500_000, 2040, { dateLabel: 'mars 2040' })));
         const line = describeViewContextForPrompt(Tab.FUTURE);
         expect(line).toContain('« Futur »');
-        expect(line).toContain('patrimoine net actuel (départ de la courbe) 100000 $');
-        expect(line).toContain("patrimoine net à l'horizon (2065, 74 ans) 450000 $");
+        expect(line).toContain(`patrimoine net actuel (départ de la courbe) ${formatCAD(100000)}`);
+        expect(line).toContain(`patrimoine net à l'horizon (2065, 74 ans) ${formatCAD(450000)}`);
         expect(line).toContain('retraite marquée sur la courbe en 2043 à 52 ans');
-        expect(line).toContain('objectif FIRE 480000 $ (atteint vers 2040)');
+        expect(line).toContain(`objectif FIRE ${formatCAD(480000)} (atteint vers 2040)`);
         expect(line).toContain('BAISSE d\'environ 16 % à partir de 2040');
-        expect(line).toContain('point SÉLECTIONNÉ par l\'utilisateur : mars 2040 (patrimoine net 500000 $)');
+        expect(line).toContain(`point SÉLECTIONNÉ par l'utilisateur : mars 2040 (patrimoine net ${formatCAD(500000)})`);
         expect(line).toContain('stratégie « Équilibrée »');
         expect(line).toContain('ne recalcule JAMAIS'); // source unique : l'assistant CONSOMME le moteur
     });
@@ -172,7 +173,7 @@ describe('describeViewContextForPrompt — scope future', () => {
         expect(line).not.toContain('départ de la courbe) NaN');
         expect(line).toContain('Valeurs INDISPONIBLES');
         expect(line).toContain('ne les invente JAMAIS');
-        expect(line).toContain("patrimoine net à l'horizon (2065, 74 ans) 450000 $"); // le valide reste
+        expect(line).toContain(`patrimoine net à l'horizon (2065, 74 ans) ${formatCAD(450000)}`); // le valide reste
     });
 
     it('AUCUN champ fini (courbe présente mais valeurs non calculées) → repli NOMMÉ, pas une énumération vide', () => {

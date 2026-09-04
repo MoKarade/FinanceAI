@@ -15,6 +15,7 @@
 // get_current_view, un tool serait relu à chaque tour de boucle = contexte qui dérive mi-envoi,
 // et le registre de tools est partagé app↔MCP par construction).
 
+import { formatCAD } from '../../utils/format';
 import { TAB_LABELS } from '../../constants';
 import { Tab } from '../../types';
 import { sanitizePromptText } from '../../utils/promptSafety';
@@ -154,10 +155,12 @@ export function viewContextMatchesTab(entry: ViewContextEntry | null, activeTab:
     return SCOPE_TO_TAB[entry.scope] === activeTab;
 }
 
-/** Montant pour le prompt : arrondi au dollar, JAMAIS un défaut plausible sur non-fini
- *  (classe AI-PROMPT-FAKE-ZERO — un « 0 $ » crédible est pire qu'une omission honnête). */
+/** Montant pour le prompt : `formatCAD` ([FMT-PROMPT-MIGRER], décision Marc 2026-09-03), et
+ *  JAMAIS un défaut plausible sur non-fini (classe AI-PROMPT-FAKE-ZERO — un « 0 $ » crédible est
+ *  pire qu'une omission honnête). ⚠️ Le `null` d'OMISSION reste : le « — » de `formatCAD` se
+ *  lirait comme une valeur par le modèle. */
 function promptAmount(v: number | undefined): string | null {
-    return v !== undefined && Number.isFinite(v) ? `${Math.round(v)} $` : null;
+    return v !== undefined && Number.isFinite(v) ? formatCAD(v) : null;
 }
 
 /** [REFONTE-NAV-L6a] Ligne de contexte de l'onglet Futur. Les chiffres viennent TOUS du moteur

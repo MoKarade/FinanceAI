@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Les montants envoyés à l'IA sont exacts — et le consentement le dit)
+
+- **Changé (ta décision du 2026-09-03)** : les montants inclus dans les demandes à Claude
+  (recommandations budget, catégorisation, contexte de l'assistant) partaient arrondis à la
+  centaine ; ils partent désormais **exacts**, formatés comme à l'écran (« 1 500 $ »). Les noms de
+  marchands restent tronqués.
+- **Vie privée** : le texte de consentement promettait « montants arrondis à 100$ » — cette phrase
+  est corrigée en même temps (« montants exacts »), et un test garde les deux moitiés ensemble :
+  impossible de réintroduire l'arrondi sans re-corriger la promesse, ou l'inverse.
+- **Inchangé** : une valeur manquante reste annoncée « (non disponible) » — jamais un tiret que le
+  modèle prendrait pour un chiffre, jamais un faux zéro.
+
+---
+
 ## [unreleased] — 2026-09-04 (Une pastille discrète quand une donnée invalide ampute ton score de santé)
 
 - **Nouveau** : dans la ligne « Santé financière » en tête de Futur, une petite pastille orange

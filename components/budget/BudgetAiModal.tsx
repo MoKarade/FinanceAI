@@ -1,3 +1,4 @@
+import { formatCAD } from '../../utils/format';
 import React, { useState, useEffect } from 'react';
 import { logError } from '../../services/errorLogger';
 import { messageErreurIa } from '../../services/messageErreurIa';
@@ -30,14 +31,17 @@ ${PROMPT_DATA_ISOLATION_NOTE}`;
 // S-D (étendu) — les libellés utilisateur (noms/natures de catégories, alertes)
 // sont neutralisés via sanitizePromptText et le bloc de données isolé en <DONNEES>.
 const buildPrompt = (p: BudgetAiPayload): string => {
-    const dataBlock = wrapUserData(`DONNÉES DU MOIS (montants arrondis à 100$):
-- Revenu net mensuel: ${Math.round(p.totalNetIncome / 100) * 100}$
-- Budget prévu: ${Math.round(p.totalBudget / 100) * 100}$
-- Dépenses réelles: ${Math.round(p.totalSpent / 100) * 100}$
+    // [FMT-PROMPT-MIGRER] Décision de Marc (2026-09-03) : `formatCAD` partout, arrondi à 100 $
+    // ABANDONNÉ — le texte de consentement (Onboarding) qui le promettait est corrigé dans le
+    // même lot (un engagement de vie privée ne survit pas au mécanisme qu'il décrit).
+    const dataBlock = wrapUserData(`DONNÉES DU MOIS:
+- Revenu net mensuel: ${formatCAD(p.totalNetIncome) /* MONTANT-HORS-ECRAN : prompt IA, pas un rendu */}
+- Budget prévu: ${formatCAD(p.totalBudget) /* MONTANT-HORS-ECRAN */}
+- Dépenses réelles: ${formatCAD(p.totalSpent) /* MONTANT-HORS-ECRAN */}
 - Alertes de dépassement: ${p.alerts.length > 0 ? p.alerts.map(a => sanitizePromptText(a, 80)).join(', ') : 'Aucune'}
 
 DÉTAIL DES CATÉGORIES (Prévu vs Réel):
-${p.categories.map(c => `- ${sanitizePromptText(c.name, 40)} (${sanitizePromptText(c.nature, 20)}): ${Math.round(c.target)}$ prévu, ${Math.round(c.spent)}$ dépensé`).join('\n')}`);
+${p.categories.map(c => `- ${sanitizePromptText(c.name, 40)} (${sanitizePromptText(c.nature, 20)}): ${formatCAD(c.target) /* MONTANT-HORS-ECRAN */} prévu, ${formatCAD(c.spent)} dépensé`).join('\n')}`);
 
     return `Analyse ce budget mensuel et fournis EXACTEMENT 3 recommandations courtes (1-2 phrases max) très concrètes et orientées action.
 

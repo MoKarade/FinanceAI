@@ -9,6 +9,11 @@
 // INTENTION-JAMAIS-LIVREE`). La garde d'ATTEIGNABILITÉ en fin de fichier est donc la plus importante
 // des quatorze : elle part du payload MCP et va jusqu'au supplément de dette au passé, sans
 // reconstruire aucun maillon — c'est la seule qui rougirait si la chaîne se rompait ailleurs.
+import { formatCAD } from '../../utils/format';
+
+// ⚠️ formatCAD rend « 12 000 $ » : le « $ » est une ANCRE en regex — il s'échappe, sinon le motif
+// exige une fin de ligne au milieu du message (mesuré : le test rougissait sur le message JUSTE).
+const escRx = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 import { describe, it, expect } from 'vitest';
 import { applyDocument, type DebtPayload } from '../../mcp/ingest/applyDocument';
 import { buildDefaultAppState } from '../../mcp/state/loadAppState';
@@ -66,7 +71,9 @@ describe('[DEBT-MCP-ORIGINALBALANCE] refus d\'une origine incohérente', () => {
         // Sans ce refus, `amortirDettePassee` renverrait `origine-incoherente` en SILENCE : la dette
         // serait écrite, la courbe resterait plate, et personne ne saurait pourquoi.
         expect(() => applyDocument(baseState(), pretAuto({ originalBalance: 12000 })))
-            .toThrow(/montant emprunté.*12000.*INFÉRIEUR.*18000/i);
+            // [FMT-PROMPT-MIGRER] L'attendu se compose avec formatCAD (espace insécable) — un littéral
+            // « 12000 » n'existe plus dans le message.
+            .toThrow(new RegExp(`montant emprunté.*${escRx(formatCAD(12000))}.*INFÉRIEUR.*${escRx(formatCAD(18000))}`, 'i'));
     });
 
     it('⚠️ le refus se juge sur les valeurs EFFECTIVES, pas sur le payload seul', () => {

@@ -226,6 +226,13 @@ n'est pas réécrire un récit.
 
 ## 9. Leçons apprises — index des pièges, détail dans `docs/CONVENTIONS.md`
 
+- **Une valeur d'échec s'identifie par sa LIGNE, pas par l'assertion qu'on craint** : deux
+  `toBeLessThan(1)` dans le même test — le rouge « 5 611,99 » visait « revenu ~0 pendant la perte »
+  (obsolète par conception : l'AE coule désormais), pas le résiduel de conservation trois lignes plus
+  haut, et un cycle de debug entier a cherché une fuite inexistante. Ouvrir le fichier À la ligne du
+  rapport avant de nommer l'assertion ; après un correctif qui change un comportement, grep les
+  assertions qui épinglent l'ANCIEN avant de pousser
+  (`UNE-VALEUR-D-ECHEC-S-IDENTIFIE-PAR-SA-LIGNE-PAS-PAR-L-ASSERTION-QU-ON-CRAINT`, 2026-09-04).
 - Une valeur sensible qui sort par une **prop de composant tiers** (`tickFormatter`/`formatter` Recharts)
   échappe AU grep ET aux tests qui mockent ce composant : la garde est un scan de SOURCE (revue #608).
   Elle sort aussi par un **attribut** (`title`/`aria-label`) et par la **STRUCTURE** (nombre de lignes,

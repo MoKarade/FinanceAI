@@ -24,7 +24,6 @@ import { sanitizePromptText } from '../../utils/promptSafety';
 // [MCP-WRITE-SUMMARY-SCRUB] Désinfection du résultat renvoyé au modèle — helper PARTAGÉ avec le
 // serveur MCP (runApply) pour éviter la dérive « delta appliqué à une seule copie ». Voir le module.
 import { scrubWriteResultForModel } from '../../mcp/tools/scrubWriteResult';
-import type { AppState } from '../../types';
 
 /** Aperçu montré dans le modal de confirmation. */
 export interface WritePreview {
@@ -84,7 +83,7 @@ export async function executeWriteTool(
     }
 
     // 4. Appliquer — SANS apiKeys (cf. en-tête) et avec un lastUpdate frais.
-    const { apiKeys: _ak, ...safePatch } = final.nextState as AppState;
+    const { apiKeys: _ak, ...safePatch } = final.nextState; // déjà typé AppState par applyDocument
     void _ak;
     useFinanceStore.getState().setAppState({ ...safePatch, lastUpdate: Date.now() });
 

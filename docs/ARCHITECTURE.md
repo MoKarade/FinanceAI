@@ -80,6 +80,15 @@ Règles structurelles :
   `services/projection/types.ts`.
 - **Composants UI** ne **JAMAIS** appeler une API tierce directement —
   passer par un service.
+- **Frontière store ↔ services** (`[SVC-STORE-COUPLING]`, 2026-09-04) : le **moteur**
+  (`services/projection.ts`, `services/projection/`, `projection.worker.ts`) est **PUR** — zéro
+  import du store, tout entre par arguments (c'est ce qui rend chaque calcul testable par
+  fixture). Les services d'**orchestration/IO** (sync Drive, sync Fintable, outils IA/MCP,
+  rapport PDF) LISENT le store via `useFinanceStore.getState()` — c'est assumé et **inventorié**
+  dans `tests/services/storeCouplingBoundary.test.ts` : tout nouvel importeur du store dans
+  `services/` est une décision d'architecture (à documenter ici, puis à ajouter à l'inventaire).
+  ⚠️ Jamais de `getState() as unknown as …` : `FinanceState extends AppState`, l'assignation
+  directe est déjà typée — un cast désactive tsc exactement là où l'IA écrit (garde dédiée).
 
 ---
 

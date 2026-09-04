@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 138 : la frontière store ↔ services est documentée et gardée
+> `[SVC-STORE-COUPLING]` livré — les `as unknown as AppState` de `autoSync`/`appStateProvider`/
+> `writeExecutor` étaient du bruit (`FinanceState extends AppState` : l'assignation directe est
+> déjà typée) et désactivaient tsc sur le chemin d'écriture IA/MCP ; retirés, typecheck vert.
+> Frontière écrite dans `ARCHITECTURE.md` §2 (moteur PUR / orchestration-IO inventoriée) et gardée
+> par `storeCouplingBoundary.test.ts` (pureté moteur, inventaire fermé 2 sens, zéro cast — 4
+> perturbations séparées). Recensement : 7 importeurs réels, pas 8 (quotaStorage = prose).
+> Lot code de service (casts retirés, zéro comportement changé) + tests + doc.
+
 > ## 🟦 Session 2026-09-04 — Lot 137 : la règle anti-renommage du store existe (tests seulement)
 > `[STORE-RENAME-NO-GUARD]` livré — `storeRenameGuard.test.ts` : règle « rename = palier neuf +
 > nom réservé » + inventaire recensé (gemini, salary — les champs de test ont été re-légitimés,

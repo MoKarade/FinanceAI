@@ -18,7 +18,7 @@
 // l'appelant (App) décide quoi montrer. Échec → rapport PERSISTÉ (diagnostics) + logError déjà fait
 // par runFintableBrowserSync ; jamais d'état à moitié écrit (`nextState: null` → rien du contenu).
 
-import type { AppState, FintableSyncReport } from '../../types';
+import type { FintableSyncReport } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { logError } from '../errorLogger';
@@ -74,7 +74,7 @@ export function isDailySyncDue(report: FintableSyncReport | undefined, now: numb
 
 /** Le mode test est-il actif MAINTENANT (lecture fraîche du store) ? */
 function isTestModeNow(): boolean {
-    return (useFinanceStore.getState() as { isTestMode?: boolean }).isTestMode === true;
+    return useFinanceStore.getState().isTestMode === true;
 }
 
 /**
@@ -164,7 +164,9 @@ async function runDailyFintableSyncGuarded(
     opts: { now?: () => number } = {},
 ): Promise<AutoSyncOutcome> {
     const now = opts.now ?? (() => Date.now());
-    const state = useFinanceStore.getState() as unknown as AppState;
+    // [SVC-STORE-COUPLING] Pas de cast : `FinanceState extends AppState`, `getState()` EST un
+    // AppState — les `as unknown as` historiques désactivaient tsc sur ces lectures pour rien.
+    const state = useFinanceStore.getState();
     const token = state.apiKeys?.fintable ?? '';
 
     if (typeof token !== 'string' || token.trim() === '') return { ran: false, reason: 'no-token' };
@@ -186,7 +188,7 @@ async function runDailyFintableSyncGuarded(
         );
         // [Finding code-reviewer #545 §4] Gardes RE-vérifiées à l'état FRAIS après l'await : le
         // jeton peut avoir été effacé et le mode démo activé pendant le chargement du chunk.
-        const current = useFinanceStore.getState() as unknown as AppState;
+        const current = useFinanceStore.getState();
         const freshToken = current.apiKeys?.fintable ?? '';
         if (typeof freshToken !== 'string' || freshToken.trim() === '') return { ran: false, reason: 'no-token' };
         if (isTestModeNow()) return { ran: false, reason: 'test-mode' };
@@ -195,7 +197,7 @@ async function runDailyFintableSyncGuarded(
         // store juste avant l'application pour qu'une saisie manuelle faite pendant le réseau ne
         // soit pas écrasée (le verrou de sync ne protège que contre une autre PASSE).
         const { report, statePatch } = await runFintableBrowserSync(current, freshToken, {
-            getFreshState: () => useFinanceStore.getState() as unknown as AppState,
+            getFreshState: () => useFinanceStore.getState(),
         });
 
         // ⚠️ [Finding security-privacy #545, ÉLEVÉ, PROUVÉ par sonde] Re-vérifier le mode démo
@@ -206,9 +208,7 @@ async function runDailyFintableSyncGuarded(
         // démo re-synchronisera.
         if (isTestModeNow()) return { ran: false, reason: 'test-mode' };
 
-        const setAppState = (useFinanceStore.getState() as unknown as {
-            setAppState: (p: Partial<AppState>) => void;
-        }).setAppState;
+        const setAppState = useFinanceStore.getState().setAppState;
         if (statePatch === null) {
             // Échec : SEUL le rapport est écrit (diagnostics honnêtes), aucun contenu.
             setAppState({ fintableSyncReport: report });
@@ -226,9 +226,7 @@ async function runDailyFintableSyncGuarded(
         // sans lui, la carte Réglages ne montrait RIEN de cette tentative. Gaté mode démo (jamais
         // d'écriture pendant un persona, même un rapport).
         if (!isTestModeNow()) {
-            const setAppState = (useFinanceStore.getState() as unknown as {
-                setAppState: (p: Partial<AppState>) => void;
-            }).setAppState;
+            const setAppState = useFinanceStore.getState().setAppState;
             setAppState({
                 fintableSyncReport: {
                     at: now(), cutoverDateUsed: null, accountsSeen: 0, accountsWithoutRole: 0,
@@ -237,7 +235,7 @@ async function runDailyFintableSyncGuarded(
                     error: err instanceof Error ? err.message : String(err),
                     // [FINTABLE-SOURCE-TAG] Une tentative ratée ne « dé-produit » pas : report.
                     lastProductiveAt: lastProductiveAtSuivant(
-                        (useFinanceStore.getState() as unknown as AppState).fintableSyncReport, 0, now()),
+                        useFinanceStore.getState().fintableSyncReport, 0, now()),
                 },
             });
         }

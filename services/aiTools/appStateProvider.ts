@@ -28,7 +28,10 @@ import { useFinanceStore } from '../../store/useFinanceStore';
  *    changée » garanti structurellement ; coût mesuré ~1 ms sur ~700 tx, une fois par envoi).
  */
 export function snapshotAppState(): AppState {
-    const store = useFinanceStore.getState() as unknown as Record<string, unknown>;
+    // [SVC-STORE-COUPLING] Lecture TYPÉE : `FinanceState extends AppState`, donc `store[key]` avec
+    // `key: keyof AppState` est vérifié par tsc (une clé fantôme casserait ici). Seule l'ÉCRITURE
+    // garde son cast (limitation des types corrélés de TS sur `Partial<T>[K] = T[K]`).
+    const store = useFinanceStore.getState();
     const dataOnly: Partial<AppState> = {};
     for (const key of Object.keys(buildDefaultAppState()) as Array<keyof AppState>) {
         if (key === 'apiKeys') continue; // jamais les vraies clés dans le snapshot (défaut vide via normalize)

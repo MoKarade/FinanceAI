@@ -1372,16 +1372,6 @@
   **pas** un refactor de l'orchestrateur (trop risqué, ROI nul) mais des **tests de régression
   d'ordre** sur les paires déjà connues comme fragiles (taxApril↔taxDecember,
   meltdownReer↔retirementIncome), avec preuve de discrimination par inversion chirurgicale.
-- [ ] **`[SVC-STORE-COUPLING]`** (M, ÉLEVÉ) — 8 fichiers de `services/` appellent
-  `useFinanceStore.getState()` directement, plusieurs via `as unknown as AppState` qui **désactive le
-  compilateur** sur ces lectures/écritures : `services/pdfReport.ts:17,269`, `services/sync/syncPull.ts:18,70,97`,
-  `services/sync/syncPush.ts:13,37`, `services/sync/syncSnapshot.ts:8,18`, `services/fintable/autoSync.ts:22,76-149`,
-  `services/aiTools/appStateProvider.ts:16,31`, `services/aiTools/writeExecutor.ts:20,89`. Ce couplage
-  n'est **pas** décrit par `docs/ARCHITECTURE.md` §2 (qui n'interdit que services→components).
-  Aggravant : `writeExecutor.ts` est le chemin d'écriture piloté par l'IA/MCP — le plus exposé, et
-  celui où `tsc` ne voit plus rien. Point positif : `services/projection*` reste PUR (zéro import du
-  store). Correctif : documenter la frontière RÉELLE (services d'orchestration/IO vs moteur pur) et
-  retirer les doubles casts pour que `tsc` retrouve prise.
 - [ ] **`[DETTE-GODFN-CASHFLOW]`** (M, ÉLEVÉ) — `processCashflowAllocation` (cascade de décaissement
   CELI/REER/non-enregistré/crypto, argent réel) fait **296 lignes**
   (`services/projection/cashflowAllocation.ts:119-414`) — la logique money-critical la plus dense du

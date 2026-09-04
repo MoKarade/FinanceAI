@@ -86,6 +86,19 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## 🧭 `[IA-NAV-LABELS]` — DÉCISION (routée le 2026-09-04, lot 140)
+
+Le ticket demande des libellés de navigation visibles par défaut (aujourd'hui : rail replié de
+64 px, libellés au survol/focus). Mais le rail replié est un CHOIX de la Phase B.1 (expansion en
+overlay sans décaler le contenu), et le ticket propose deux remèdes exclusifs — élargir le rail
+par défaut (mange ~200 px de contenu sur chaque écran) ou un rail intermédiaire avec libellés
+courts. **Coût** : une réponse parmi trois : (1) rail large par défaut, (2) rail intermédiaire
+(~120-160 px, libellés visibles, contenu à peine décalé), (3) garder le rail replié (fermer le
+ticket — l'a11y est déjà couverte : `aria-label` par item, expansion au focus clavier).
+**Ce que ça débloque** : `[IA-NAV-LABELS]`, et la moitié nav de `[UI-TABS-RICH]` qui y est
+adossée. [Probable] Option 3 ou 2 — le survol/focus ouvre déjà les libellés en un geste, et
+l'écran utile est précieux sur portable.
+
 ## 🧭 `[ENG-NET-MODEL-RESIDUAL]` volet CALIBRATION — DÉCISION (routée le 2026-09-04, lot 139)
 
 Le volet DIAGNOSTIC est livré (l'onglet Impôts affiche l'écart net déclaré ↔ net du modèle quand

@@ -117,6 +117,26 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     }
   });
 
+  test('[D6-GRAPH] AU CLAVIER : Entrée sur le graphe fige le jour d\'aujourd\'hui, Échap relâche et restitue le focus', async ({ page }) => {
+    // Le seul chaînon qui manquait au clavier : le PREMIER geste (figer un jour sans souris).
+    // Après le gel, l'infobulle figée est déjà un dialogue clavier complet (Veille/Lendemain,
+    // « Détail complet », Échap) — couverts par les tests souris ci-dessus qui empruntent les
+    // mêmes boutons. Ici on prouve : focus → Entrée → jour DATÉ figé → Échap → relâché ET focus
+    // restitué au graphe (le hook comptait sur la focusabilité du conteneur — désormais tabIndex 0).
+    await chartBox(page);
+    const chart = page.getByRole('img', { name: /Courbe de vie/ });
+    await chart.focus();
+    await expect(chart).toBeFocused();
+    await page.keyboard.press('Enter');
+    const frozen = page.locator('[data-frozen-tooltip]');
+    await expect(frozen).toBeVisible({ timeout: 5_000 });
+    const txt = (await frozen.textContent()) ?? '';
+    expect(txt.match(DAY_RE), `le gel clavier n'a pas figé un jour daté : ${txt.slice(0, 160)}`).not.toBeNull();
+    await page.keyboard.press('Escape');
+    await frozen.waitFor({ state: 'hidden', timeout: 2_000 });
+    await expect(chart, 'le focus doit revenir au graphe au relâchement (restitution du hook)').toBeFocused();
+  });
+
   test('[FUTUR-DAILY-NATIVE] vue LARGE : « Lendemain » avance d’exactement un jour, et le pied d’actions est visible sans défiler', async ({ page }) => {
     // Le scénario EXACT de Marc, sans étape intermédiaire : vue 30 ans, clic → jour figé → flèche.
     const box = await chartBox(page);

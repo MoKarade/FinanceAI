@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (La courbe Futur se pilote entièrement au clavier)
+
+- **Ajouté** : sur l'onglet Futur, la touche Tab atteint maintenant la courbe, et Entrée (ou une
+  flèche) fige le jour d'aujourd'hui — ensuite, les boutons Veille/Lendemain et « Détail complet »
+  de l'infobulle font tout le reste, et Échap relâche en te ramenant sur la courbe. C'était le
+  seul geste du graphe qui exigeait encore une souris ; le mode d'emploi clavier est aussi annoncé
+  aux lecteurs d'écran.
+
 ## [unreleased] — 2026-09-04 (L'onglet Impôts te dit quand ta paie et le modèle ne se réconcilient pas)
 
 - **Ajouté** : si tu as saisi ton salaire BRUT à la main et que le net que le modèle en déduit ne

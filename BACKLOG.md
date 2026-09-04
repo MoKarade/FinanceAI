@@ -253,17 +253,27 @@
   ✅ **+2 le 2026-08-06 (PR #573)** — `72` → `RRIF_FIRST_WITHDRAWAL_AGE` (il vivait en dur sur
   taxJanuary ET taxDecember : la configuration JUMELLE exacte qui avait laissé survivre le `0.18`)
   et `95` → `RRIF_PLATEAU_AGE` (seuil qui n'était porté par AUCUN littéral, seulement par l'absence
-  d'entrée dans la table). **RESTENT 9 :**
+  d'entrée dans la table).
+  ✅ **+ la tranche « 65 » et le « 72 » RRQ le 2026-09-04 (lot 152, PR #883)** — le « seul vrai
+  gain restant » du ticket, re-recensé sur source DÉCOMMENTÉE : **13 littéraux dans 5 modules**
+  (le ticket disait « 2 modules »). Quatre constantes nommées dans `utils/tax.ts` — un sens par
+  constante : `RRQ_STANDARD_START_AGE` (pivot des facteurs, défaut de départ, libellé « rentes
+  reportées », VAN succession), `PSV_ELIGIBILITY_AGE` (borne basse, pivot du report, fin
+  d'accumulation de résidence, VAN), `PENSION_SPLIT_MIN_AGE` (gate décembre — projection.ts ET
+  taxDecember, le vrai jumeau à risque de divergence), `RRQ_MAX_DEFERRAL_AGE` (72, setupSimulation)
+  — plus l'IMPORT d'`AGE_AMOUNT_FED_MIN_AGE` dans `mkAgeOpts`. 5 entrées d'inventaire RÉSOLUES
+  (l'anti-fantôme du ratchet les a nommées lui-même), l'entrée `projection.ts::65` requalifiée
+  (seul reste le défaut de saisie `targetAge || 65`, qu'on n'ancre pas). Perturbation : 65→66 sur
+  `RRQ_STANDARD_START_AGE` rougit `retirementIncome` ; valeur restaurée, tout vert.
+  **RESTENT (hygiène au fil de l'eau) :**
   - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS) — ⚠️ à REQUALIFIER : c'est un index
     d'extrapolation, pas un paramètre ARC. Probablement `structural`, à trancher en le codant.
-  - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `15` (durée de vie CELIAPP) ·
-    `65` (crédit d'âge, pivot RRQ/PSV — **2 modules**, donc le plus payant) · `70` (report PSV max) ·
-    `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS
-    → doc seulement, aucun code à toucher).
-  ⚠️ **Rendement décroissant assumé** : les 3 premières valeurs pilotaient un CALCUL. Ce qui reste
-  est surtout des âges-seuils déjà commentés et sourcés sur place. Le seul vrai gain restant est le
-  `65` (deux modules → risque de divergence). Le reste est de l'hygiène, à prendre au fil de l'eau,
-  pas un chantier à prioriser.
+  - Âges-seuils : `18` (CELI/CELIAPP + résidence PSV) · `71` (conversion REER→FERR — la constante
+    `RRSP_TO_RRIF_CONVERSION_AGE` existe, reste l'import aux sites littéraux s'il en reste) · `15`
+    (durée de vie CELIAPP) · `70` (report PSV max) · `75` (bonification PSV) · `39`/`40` (déjà
+    nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS → doc seulement).
+  ⚠️ **Rendement décroissant assumé** : ce qui reste est des âges-seuils déjà commentés et sourcés
+  sur place, sans jumeau multi-modules — de l'hygiène au fil de l'eau, pas un chantier.
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.

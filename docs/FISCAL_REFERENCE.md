@@ -984,7 +984,14 @@ et en a sorti des valeurs qui vivaient **EN DUR** dans `services/projection/`, s
 exactement la classe du `0.92`. Sont désormais nommées et importées depuis la source unique :
 
 - `RRSP_ROOM_RATE`, `CELI_LIMIT_ROUNDING` (`utils/tax.ts`) → §REER et §CELI ;
-- `RRIF_RATE_PLATEAU`, `RRIF_PLATEAU_AGE`, `RRIF_FIRST_WITHDRAWAL_AGE` (`helpers.ts`) → §FERR.
+- `RRIF_RATE_PLATEAU`, `RRIF_PLATEAU_AGE`, `RRIF_FIRST_WITHDRAWAL_AGE` (`helpers.ts`) → §FERR ;
+- `[FISC-CONST-ANCHOR-65]` (2026-09-04, lot 152) : `RRQ_STANDARD_START_AGE`, `RRQ_MAX_DEFERRAL_AGE`,
+  `PSV_ELIGIBILITY_AGE`, `PENSION_SPLIT_MIN_AGE` (`utils/tax.ts`) → §6 (RRQ/PSV) et §9
+  (fractionnement). Le « 65 » vivait en dur dans CINQ modules du moteur sous QUATRE sens distincts
+  (pivot RRQ des facteurs, admissibilité/borne/résidence PSV, gate du fractionnement, crédit d'âge —
+  ce dernier déjà nommé `AGE_AMOUNT_FED_MIN_AGE`) ; le `72` du report RRQ maximal était en dur dans
+  `setupSimulation` alors que §6 l'ancrait. Un sens par constante — un même nombre n'est pas une
+  même règle.
 
 > ⚠️ **Leçon de la dédup (2026-08-06, `[FISC-REF-DEDUP]`)** : la première rédaction de cette section
 > RECOPIAIT les trois valeurs dans un tableau, alors que §CELI, §REER et §FERR les portaient déjà.

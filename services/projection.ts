@@ -2,7 +2,7 @@
 import { formatCAD } from '../utils/format';
 import type { EntreeRefusee } from './projection/verifierEntreesMoteur';
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, FinancialGoal } from '../types';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER, PSV_ELIGIBILITY_AGE, PENSION_SPLIT_MIN_AGE, RRQ_STANDARD_START_AGE } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError, logErrorThrottled } from './errorLogger';
@@ -859,7 +859,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         config.users.filter(u => u).forEach((u, idx) => {
             const birthYear = u.birthYear || (startYear - (u.age || 30));
             const currentAgeUser = loopYear - birthYear;
-            if (currentAgeUser >= 18 && currentAgeUser < 65) {
+            if (currentAgeUser >= 18 && currentAgeUser < PSV_ELIGIBILITY_AGE) {
                 psvResidencyYears[idx] += 1 / 12;
             }
         });
@@ -1479,7 +1479,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Cycle 10 split: OAS Clawback → ./projection/taxCycle (computeOasClawback)
         // FA-2 — décomposition par conjoint transmise : le seuil de récupération est PAR
         // PARTICULIER (revenu_i vs seuil), plus jamais l'agrégat familial vs seuil individuel.
-        if (currentMonthIndex === 11 && m > 0 && isRetired && age >= 65) {
+        if (currentMonthIndex === 11 && m > 0 && isRetired && age >= PENSION_SPLIT_MIN_AGE) {
             // FA-3a — le SRG (non imposable, hors revenu net de récupération en pratique) est
             // exclu du revenu de clawback, total ET par conjoint (réparti également).
             // NB : pas de clamp sur (v − gisShare) — un négatif est fini, économiquement correct
@@ -2673,7 +2673,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         // (`delayPensions` est `false` dans les onze définitions de `scenarios.ts`, donc la branche
         // exige `rrqStart` défini), mais à valeur FAUSSE : une bombe le jour où le chemin se rouvre.
         const rrqStart = params.retirementGoal?.rrqStartAge;
-        const delayStr = target.delayPensions || (rrqStart !== undefined && rrqStart > 65)
+        const delayStr = target.delayPensions || (rrqStart !== undefined && rrqStart > RRQ_STANDARD_START_AGE)
             ? `rentes reportées (RRQ ${rrqStart ?? RRQ_DEFERRED_START_AGE} ans)` : 'rentes aux âges choisis';
         const stratStr = (target.strategyName as string ?? '').split(' / ')[0];
         target.aiNote = `Simulation déterministe (**${stratStr}** + **${delayStr}**).`;

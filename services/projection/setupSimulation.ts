@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, FIRST_KNOWN_RRSP_YEAR, RRSP_ANNUAL_LIMIT_PRE_TABLE, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
+import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, FIRST_KNOWN_RRSP_YEAR, RRSP_ANNUAL_LIMIT_PRE_TABLE, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE, RRQ_MAX_DEFERRAL_AGE, RRQ_STANDARD_START_AGE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -109,8 +109,8 @@ export function computeRrqAdjustment(
     delayPensions: boolean,
     retirementGoal: { governmentPension: number },
 ): RrqAdjustmentResult {
-    const effectivePensionStartAge = delayPensions ? 72 : 65;
-    const rrqMonthsFromRef = (effectivePensionStartAge - 65) * 12;
+    const effectivePensionStartAge = delayPensions ? RRQ_MAX_DEFERRAL_AGE : RRQ_STANDARD_START_AGE;
+    const rrqMonthsFromRef = (effectivePensionStartAge - RRQ_STANDARD_START_AGE) * 12;
     // Facteur d'ajustement RRQ : source unique utils/tax.ts (anticipation −0,6 %/mois max −60 mois,
     // report +0,7 %/mois max +84 mois → ×1,588 à 72 ans).
     const rrqAdjustmentFactor = computeRrqFactor(rrqMonthsFromRef);

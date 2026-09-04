@@ -95,6 +95,27 @@ export const PENSION_EARLY_MAX_MONTHS = 60;        // 65 → 60 ans (anticipatio
 export const PSV_DEFERRAL_MAX_MONTHS = 60;         // 65 → 70 ans
 export const PSV_BONUS_75_PLUS = 0.10;             // +10 % automatique dès 75 ans (PSV, depuis juillet 2022)
 
+// [FISC-CONST-ANCHOR-65] Les ÂGES eux-mêmes, jusque-là écrits en dur dans le moteur (le « 65 »
+// vivait dans 5 modules — le seul reste de l'inventaire du ratchet où deux copies pouvaient
+// diverger). Un même nombre, PLUSIEURS règles : une constante PAR SENS, jamais une constante
+// « 65 » fourre-tout (leçon CLE-QUI-FUSIONNE-DEUX-SENS). Réf docs/FISCAL_REFERENCE.md §6 (+ §9
+// pour le fractionnement, « Prorata RRQ / résidence PSV » pour l'accumulation de résidence).
+/** Âge NORMAL de la RRQ (65 ans) : base des facteurs d'anticipation/report (`monthsFrom65`) et
+ *  pivot des plafonds en mois ci-dessus. */
+export const RRQ_STANDARD_START_AGE = 65;
+/** Âge de report MAXIMAL de la RRQ (72 ans depuis le 1ᵉʳ janvier 2024) — REFLET de
+ *  `RRQ_DEFERRAL_MAX_MONTHS` (84 = (72−65)×12). ⚠️ COÏNCIDE avec `RRIF_FIRST_WITHDRAWAL_AGE`
+ *  (72, `services/projection/helpers.ts`) sans être la même règle — ne jamais substituer. */
+export const RRQ_MAX_DEFERRAL_AGE = 72;
+/** Âge d'ADMISSIBILITÉ à la PSV (65 ans) : borne basse légale du début, pivot du report
+ *  (`PSV_DEFERRAL_MAX_MONTHS`), et fin d'ACCUMULATION de la résidence canadienne (18 → 65). */
+export const PSV_ELIGIBILITY_AGE = 65;
+/** Fractionnement du revenu de pension ADMISSIBLE : gate d'âge 65+ du modèle (décembre,
+ *  `taxDecember`/boucle moteur) — voir la table « Admissible au fractionnement » de
+ *  FISCAL_REFERENCE §9. Même nombre que le crédit d'âge (`AGE_AMOUNT_FED_MIN_AGE`), règle
+ *  DISTINCTE. */
+export const PENSION_SPLIT_MIN_AGE = 65;
+
 // FA-8 (2026-06-11) — convention de MODÈLE (PAS une règle ARC/RQ) : split du champ AGRÉGÉ legacy
 // `RetirementGoal.governmentPension` (RRQ+PSV combinés) quand les champs précis
 // `rrqEstimateMonthly`/`psvEstimateMonthly` ne sont pas fournis. 65/35 ≈ ordre de grandeur d'un

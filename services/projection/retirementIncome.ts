@@ -4,7 +4,7 @@
 // avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, getResidencyStartYear } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, getResidencyStartYear, RRQ_STANDARD_START_AGE, PSV_ELIGIBILITY_AGE } from '../../utils/tax';
 import { projeterAuPatronMga } from './helpers';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada) — règles documentées
@@ -302,17 +302,17 @@ function agesEtFacteursDesRentes(retirementGoal: RetirementGoal, delayPensions: 
     // préservant l'anticipation d'un retraité précoce. Champs `rrqStartAge`/`psvStartAge` pour un
     // choix explicite. Bornes légales : RRQ 60-72 (report étendu à 72 depuis 2024), PSV 65-70.
     // delayPensions (stratégie de report optimal) → RRQ 72, PSV 70.
-    const defaultStart = Math.min(retirementGoal.targetAge, 65);
+    const defaultStart = Math.min(retirementGoal.targetAge, RRQ_STANDARD_START_AGE);
     let rrqStartAge = Math.min(RRQ_DEFERRED_START_AGE, Math.max(60, retirementGoal.rrqStartAge ?? defaultStart));
-    let psvStartAge = Math.min(PSV_DEFERRED_START_AGE, Math.max(65, retirementGoal.psvStartAge ?? defaultStart));
+    let psvStartAge = Math.min(PSV_DEFERRED_START_AGE, Math.max(PSV_ELIGIBILITY_AGE, retirementGoal.psvStartAge ?? defaultStart));
     if (delayPensions) {
         rrqStartAge = RRQ_DEFERRED_START_AGE;
         psvStartAge = PSV_DEFERRED_START_AGE;
     }
     // Facteurs de report/anticipation dérivés des âges de début (source unique utils/tax.ts).
     // delayPensions → RRQ 72 = +84 mois ×1,588 ; PSV 70 = +60 mois ×1,36. La PSV ne s'anticipe pas.
-    const rrqFactor = rrqAdjustmentFactor((rrqStartAge - 65) * 12);
-    const psvFactor = psvDeferralFactor((psvStartAge - 65) * 12);
+    const rrqFactor = rrqAdjustmentFactor((rrqStartAge - RRQ_STANDARD_START_AGE) * 12);
+    const psvFactor = psvDeferralFactor((psvStartAge - PSV_ELIGIBILITY_AGE) * 12);
     return { rrqStartAge, psvStartAge, rrqFactor, psvFactor };
 }
 

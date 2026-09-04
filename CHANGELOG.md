@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Une pastille discrète quand une donnée invalide ampute ton score de santé)
+
+- **Nouveau** : dans la ligne « Santé financière » en tête de Futur, une petite pastille orange
+  apparaît quand au moins une métrique est exclue du score parce qu'une donnée source est
+  invalide (un revenu ou un solde corrompu, par exemple). Cliquer ouvre le détail pour voir
+  laquelle et la corriger. Ta décision du 2026-09-03.
+- **Ce qu'elle ne fait pas** : elle ne s'allume PAS pour une métrique simplement non calculable
+  (pas de projection FIRE, pas de dépenses ce mois-ci) — là, il n'y a rien à corriger, et une
+  pastille allumée en permanence finirait par ne plus être lue.
+
+---
+
 ## [unreleased] — 2026-09-04 (L'app te signale un salaire brut qu'elle avait inventé — et te demande avant de corriger)
 
 - **Nouveau** : jusqu'en août, quand tu saisissais ton net sans ton brut, une ancienne version

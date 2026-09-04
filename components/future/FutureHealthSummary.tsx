@@ -92,16 +92,35 @@ export const FutureHealthSummary: React.FC = () => {
 
     const colors = colorForHealthScore(totalScore);
 
+    // [HEALTH-MARQUEUR-DONNEE-INVALIDE] Décision de Marc (2026-09-03) : une PASTILLE discrète —
+    // pas une phrase — quand au moins une métrique est exclue pour donnée INVALIDE (corrigeable),
+    // cliquable vers le détail. Le résumé entier EST déjà le bouton vers le détail : la pastille
+    // vit dedans (un bouton dans un bouton serait du HTML invalide — `FINDING-JUSTE-CORRECTIF-INVALIDE`).
+    // ⚠️ Ancrée sur le marqueur STRUCTUREL `invalidData`, jamais sur `available:false` seul : une
+    // métrique simplement non calculable (cible FIRE absente…) n'appelle AUCUNE action, et une
+    // pastille qui s'allumerait pour elle serait un avertissement permanent — donc mort.
+    const nbInvalides = metrics.filter((m) => m.invalidData).length;
+    const suffixeInvalide = nbInvalides > 0
+        ? ` ${nbInvalides === 1 ? 'Une métrique est exclue' : `${nbInvalides} métriques sont exclues`} : donnée invalide à corriger.`
+        : '';
+
     return (
         <button
             type="button"
             onClick={goToDetail}
-            aria-label={`Santé financière : ${totalScore} sur 100. Voir le détail.`}
+            aria-label={`Santé financière : ${totalScore} sur 100.${suffixeInvalide} Voir le détail.`}
             className="touch-target w-full flex items-center gap-3 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
         >
             <Icon name="health" size={16} className={`${colors.text} shrink-0`} aria-hidden="true" />
             <span className="text-meta text-ink-200 flex-1" aria-hidden="true">
                 Santé financière : <span className={`font-bold ${colors.text}`}>{totalScore}/100</span>
+                {nbInvalides > 0 && (
+                    <span
+                        data-testid="pastille-donnee-invalide"
+                        title="Au moins une métrique est exclue du score : une donnée source est invalide. Clique pour voir laquelle et la corriger."
+                        className="ml-2 inline-block w-2 h-2 rounded-full bg-warning-500 align-middle"
+                    />
+                )}
             </span>
             <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
         </button>

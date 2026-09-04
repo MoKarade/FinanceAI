@@ -52,6 +52,7 @@ function sanitizeNonFinite(rows: HealthMetricRow[]): HealthMetricRow[] {
         ...r,
         value: 0,
         available: false, // → l'UI affiche « — » et le total pondéré l'ignore
+        invalidData: true as const, // → le résumé de Futur affiche sa pastille (décision Marc 2026-09-03)
         raw: [txt('Donnée invalide (valeur non finie)')],
         help: 'Une donnée source de cette métrique n\'est pas un nombre exploitable (infinie ou absente). '
             + 'Corrige-la dans Réglages (revenus, soldes, postes) pour réactiver la mesure.',
@@ -109,6 +110,11 @@ export interface HealthMetricRow {
     /** false = donnée de base manquante (ex. pas de projection FIRE, pas de dépenses du mois) :
      *  la métrique est affichée « requis » et EXCLUE du score pondéré. */
     available: boolean;
+    /** [HEALTH-MARQUEUR-DONNEE-INVALIDE] true = exclue parce qu'une donnée SOURCE est INVALIDE
+     *  (non finie) — l'utilisateur PEUT la corriger. Distinct d'`available:false` seul (métrique
+     *  simplement non calculable : rien à corriger). C'est un marqueur STRUCTUREL : le résumé de
+     *  Futur s'y ancre — jamais sur le texte de `raw`, qu'une reformulation casserait en silence. */
+    invalidData?: true;
 }
 
 export interface HealthScoreInputs {

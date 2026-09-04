@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 158 : le store est découpé — la famille godfiles V11 est COMPLÈTE
+> `[GODFILE-STORE]` livré — useFinanceStore.ts (783 l. re-mesurées) → façade de 207 :
+> `etatParDefaut` (défauts + migration legacy + initialState calculé là), `migrationsPersistees`
+> (v1→v7), `actionsModeTest` (créateur set/get), `optionsPersistance` (merge/filet/partialize).
+> **Zéro migration** : nom/version/forme persistée inchangés, prouvé par EMPREINTE sha256 de la
+> sortie de partialize (61 clés, identique avant/après). Ré-exports de compatibilité (~200 sites
+> d'import intacts). 2 perturbations sur les modules extraits (apiKeys persistées → 2 rouges
+> sécurité ; refus de blob désarmé → rouge) ; storeRenameGuard suivie avec le code. Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 157 : la jambe d'arrivée du meltdown est publiée (sans déplacer d'argent)
 > `[ENG-MELTDOWN-JAMBE-ARRIVEE]`, moitié sans arbitrage — registre d'affichage dédié
 > (`arriveeMeltdownNonReg`) versé dans `NetTransferNonReg`, jamais dans `contribNonReg`

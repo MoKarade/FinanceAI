@@ -63,8 +63,11 @@ describe('[STORE-RENAME-NO-GUARD] les noms consommés par un palier restent cons
         // Si un refactor retire ce repli, l'entrée `salary` de l'inventaire ci-dessus doit être
         // RE-JUGÉE (le nom reste réservé tant que de vieux blobs peuvent le porter — mais la
         // justification écrite ici ne serait plus la bonne). Usage-anchored, source décommentée.
-        const src = stripComments(readFileSync('store/useFinanceStore.ts', 'utf8'));
-        expect(src.replace(/\s/g, '').length).toBeGreaterThan(10_000);
+        // [GODFILE-STORE] (lot 158) le repli vit désormais dans `migrateUserConfig`, déménagé tel
+        // quel vers store/etatParDefaut.ts — la garde suit le code. Anti-vacuité re-mesurée à la
+        // portée du NOUVEAU fichier (2026-09-04) : ~11 000 caractères non blancs.
+        const src = stripComments(readFileSync('store/etatParDefaut.ts', 'utf8'));
+        expect(src.replace(/\s/g, '').length).toBeGreaterThan(8_000);
         expect(src).toMatch(/u\.netSalary\s*\|\|\s*u\.salary/);
         // Et `salary?` est bien toujours DÉCLARÉ (rétrocompat de type) — sa disparition serait un
         // renommage de contrat qui exige exactement le palier que ce fichier réclame.

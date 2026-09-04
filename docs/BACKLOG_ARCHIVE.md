@@ -10,6 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[FMT-PROMPT-MIGRER]` — LIVRÉ (lot 123, PR #854)
+
+Décision de Marc (2026-09-03, différente de ma recommandation) : les 17 sites de texte pour un
+MODÈLE (prompts `BudgetAiModal`/`claude.ts`/`viewContext.ts` + résumés MCP `applyDocument.ts`)
+passent par `formatCAD`, et l'**arrondi à 100 $ est abandonné** (`roundToHundred` supprimé, y
+compris le champ JSON de `categorizeBatch`, arrondi au dollar).
+
+⚠️⚠️ **La conséquence de vie privée est livrée DANS LE MÊME LOT** : le texte de consentement
+(Onboarding) promettait « montants arrondis à 100$ » — il dit désormais « montants exacts ». Une
+garde de COHÉRENCE promesse ↔ mécanisme (`consentementMontantsExacts.test.ts`) tient les deux
+moitiés ensemble : ré-introduire l'arrondi sans re-promettre, ou l'inverse, rougit avec la consigne
+dans le message. Le commentaire de contraste de `PayslipUploadCard` (« pas arrondie comme la
+catégorisation ») est corrigé aussi.
+
+**Ce qui a survécu à la migration, délibérément** : les replis honnêtes (`(non disponible)`,
+`null` d'omission — le « — » de `formatCAD` se lirait comme une VALEUR par un modèle) et le prix
+en devise NATIVE d'`applyDocument` (« 123,45 USD » — `formatCAD` y serait faux : le membre déviant
+de `UN-SEUIL-ECRIT-AVANT-SA-MESURE`). Les 4 entrées d'`EXEMPTIONS` du scan de format sont
+retirées ; seule reste le faux positif mesuré de `TaxCenter`. Les nouveaux `formatCAD` de
+`BudgetAiModal` portent `MONTANT-HORS-ECRAN` (prompt, pas un rendu — le scan de vie privée l'a
+exigé de lui-même).
+
+Re-bases : 11 assertions dans 6 fichiers de test, toutes RE-COMPOSÉES avec le formateur au lieu de
+littéraux (espace insécable). ⚠️ Leçon au passage : « 12 000 $ » injecté dans un `new RegExp` fait
+du `$` une ANCRE — le test rougissait sur le message juste
+(`UN-ATTENDU-COMPOSE-AVEC-LE-FORMATEUR-S-ECHAPPE-AVANT-D-ENTRER-DANS-UNE-REGEX`).
+
 ## 2026-09-04 — `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` — LIVRÉ (lot 122, PR #853)
 
 Une pastille discrète dans le résumé « Santé financière » de Futur quand au moins une métrique est

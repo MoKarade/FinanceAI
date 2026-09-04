@@ -240,7 +240,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <h2 className="text-h1 text-ink-50">Clés API</h2>
                             <p className="text-meta text-ink-400 mt-1">Optionnelles — l'app fonctionne sans, mais avec moins de fonctionnalités.</p>
                             <p className="text-meta text-warning-400 mt-2 leading-relaxed">
-                                En activant Claude (Anthropic), tu consens à ce que des données (marchands tronqués + montants arrondis à 100$) soient envoyées à Anthropic.
+                                En activant Claude (Anthropic), tu consens à ce que des données financières (noms de marchands tronqués, montants exacts) soient envoyées à Anthropic.
                             </p>
                         </div>
                         <div className="space-y-4">

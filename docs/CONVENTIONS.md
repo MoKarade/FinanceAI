@@ -12014,3 +12014,16 @@ option ait été chiffré HONNÊTEMENT — y compris celui de l'option que je pr
 ont ouvert une SOUS-question que je n'avais pas anticipée (la valeur persistée, le texte de
 consentement) : une décision produit n'est complète que quand ses conséquences irréversibles sont
 sur la table.
+
+### `UN-ATTENDU-COMPOSE-AVEC-LE-FORMATEUR-S-ECHAPPE-AVANT-D-ENTRER-DANS-UNE-REGEX` — le « $ » de formatCAD est une ancre (2026-09-04, lot 123)
+
+Variante REGEX de la règle « l'attendu se compose avec le formateur » (`UN-MONTANT-INTERPOLE-DANS-
+UNE-CHAINE-N-EST-PLUS-UN-NOEUD`). En migrant les prompts vers `formatCAD`, un test composait bien
+son attendu avec le formateur — mais l'injectait dans un `new RegExp(...)` : « 12 000 $ » y devient
+`12 000 $` où **`$` est une ANCRE de fin**, donc `/12 000 $.*INFÉRIEUR/` exige une fin de ligne au
+milieu du message et rougit sur le message JUSTE (mesuré : le texte reçu était exactement celui
+attendu). Une chaîne produite par un formateur qui entre dans une regex passe par un échappement
+(`t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`) — ou l'assertion reste un `toContain`, qui n'a pas
+le problème. Le symptôme qui doit alerter : un test qui rougit en AFFICHANT la valeur attendue dans
+le « Received ».
+

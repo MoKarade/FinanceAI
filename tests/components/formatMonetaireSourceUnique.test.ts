@@ -49,21 +49,17 @@ const files = RACINES.flatMap((r) => readdirSync(path.join(ROOT, r), { recursive
 /**
  * EXEMPTIONS DÉCLARÉES — jamais un périmètre borné en silence
  * (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` : « déclarer aussi ce qu'on EXCLUT, chiffré et
- * motivé »). Mesuré le 2026-09-03 : 19 lignes restantes, dont **2 faux positifs** et **17 sites
- * de TEXTE POUR UN MODÈLE**, aucune surface d'écran.
+ * motivé »).
  *
- * ⚠️ Ces 17 sites ne sont PAS « à corriger plus tard par oubli » : un prompt n'est pas un écran.
- * `BudgetAiModal`/`claude.ts` arrondissent DÉLIBÉRÉMENT à 100 $ — c'est la vie privée, et le texte
- * de consentement de l'app le promet en toutes lettres (« montants arrondis à 100$ »). Y appliquer
- * `formatCAD` changerait ce que le modèle LIT, et son repli « — » remplacerait une omission déjà
- * traitée sur place. La question « le texte destiné à un modèle doit-il passer par le formateur
- * d'écran ? » est routée à Marc, elle n'est pas tranchée ici.
+ * [FMT-PROMPT-MIGRER] Marc a tranché le 2026-09-03 : les 17 sites de texte pour un MODÈLE
+ * (prompts + résumés MCP) sont MIGRÉS vers `formatCAD` et l'arrondi à 100 $ est ABANDONNÉ — le
+ * texte de consentement qui le promettait a été corrigé dans le même lot. Les quatre exemptions
+ * de prompt sont donc RETIRÉES : la garde couvre désormais les prompts comme les écrans. Ce qui
+ * a survécu à la migration, délibérément : les replis honnêtes (`(non disponible)`, `null`
+ * d'omission — le « — » de `formatCAD` se lirait comme une valeur par un modèle) et le prix en
+ * devise NATIVE d'`applyDocument` (« 123,45 USD » — `formatCAD` y serait FAUX).
  */
 const EXEMPTIONS: Array<{ fichier: string; raison: string }> = [
-    { fichier: 'components/budget/BudgetAiModal.tsx', raison: 'prompt LLM — arrondi à 100 $ DÉLIBÉRÉ (vie privée, promis dans le texte de consentement)' },
-    { fichier: 'services/claude.ts', raison: 'prompt LLM — `roundToHundred` volontaire, même raison' },
-    { fichier: 'services/aiChat/viewContext.ts', raison: 'prompt LLM — helper qui rend `null` (jamais un 0 plausible) ; sa règle est écrite sur place' },
-    { fichier: 'mcp/ingest/applyDocument.ts', raison: 'résumés d\'outils MCP lus par un modèle, pas par un écran' },
     { fichier: 'components/TaxCenter.tsx', raison: 'FAUX POSITIF mesuré : `${b.max} $` est la branche NON-numérique du ternaire (le cas nombre passe déjà par formatCAD)' },
 ];
 

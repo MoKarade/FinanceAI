@@ -14,6 +14,7 @@
 // VALEUR hissait le SDK (`ai-vendor`, ~126 Ko brut) dans un chunk `modulepreload` téléchargé au BOOT
 // par tous les visiteurs — alors qu'aucun appel IA n'a lieu sans geste. La valeur est chargée
 // paresseusement dans `makeClient` (importWithRetry : anti-chunk-périmé, leçon AITOOLS-E).
+import { formatCAD } from '../utils/format';
 import type Anthropic from '@anthropic-ai/sdk';
 import { importWithRetry } from '../utils/lazyWithRetry';
 import { z } from 'zod';
@@ -45,23 +46,16 @@ export const CATEGORIZE_MODEL_ID = MODEL_HAIKU;
 // utils/promptSafety.ts (sanitizePromptText) — partagée avec AiAssistant et testée.
 // On évite ici une copie locale qui dériverait.
 
-// Arrondit un montant à la centaine avant de l'envoyer à l'API Claude.
-// Double intérêt : confidentialité (on ne transmet pas les montants exacts de
-// l'utilisateur) et économie de tokens (des chiffres plus courts à encoder).
-// ⚠️ [AI-PROMPT-FAKE-ZERO] : une entrée NON FINIE (NaN/Infinity) rend `NaN`, JAMAIS `0` —
-// un « 0 $ » plausible envoyé au modèle est de la fausse donnée (no-fake-data), plus
-// trompeur qu'un marqueur honnête. Les sites d'AFFICHAGE passent par `promptCad` (ci-dessous)
-// qui rend « (non disponible) » ; le seul appel brut restant (categorizeBatch) est gardé sur place.
-const roundToHundred = (amount: number): number => {
-    if (!isFinite(amount)) return NaN;
-    return Math.round(amount / 100) * 100;
-};
-
-// Formate un montant pour un PROMPT : « 1500$ » si fini, « (non disponible) » sinon.
-// Évite le faux « 0$ » (no-fake-data) — pendant `claude.ts` du fix Vague 1 d'`AiAssistant.tsx`
-// (qui rend « — » via `formatNumber`).
+// [FMT-PROMPT-MIGRER] Décision de Marc (2026-09-03) : les montants des prompts passent par
+// `formatCAD` comme partout ailleurs, et l'ARRONDI À 100 $ est ABANDONNÉ (l'ex-`roundToHundred`).
+// ⚠️ Cette décision a une CONSÉQUENCE de vie privée, corrigée dans le même lot : le texte de
+// consentement (Onboarding) promettait « montants arrondis à 100$ » — il dit désormais que les
+// montants partent tels quels.
+// ⚠️ Le repli « (non disponible) » RESTE : `formatCAD` rend « — » sur un non-fini, et un « — »
+// dans un prompt se lit comme une VALEUR par un modèle — le marqueur nommé est la garde
+// no-fake-data de ce module ([AI-PROMPT-FAKE-ZERO] : jamais un « 0 $ » plausible non plus).
 const promptCad = (amount: number): string =>
-    Number.isFinite(amount) ? `${roundToHundred(amount)}$` : '(non disponible)';
+    Number.isFinite(amount) ? formatCAD(amount) : '(non disponible)';
 
 // ─── Schémas Zod ─────────────────────────────────────────────────────────────
 
@@ -460,7 +454,10 @@ export const categorizeBatch = async (
             continue;
         }
 
-        const txList = toAnalyze.map(t => `- {id: ${t.id}, payee: "${cleanMerchantName(t.payee || '')}", amount: ${Number.isFinite(t.amount) ? roundToHundred(t.amount) : 'null'}}`).join('\n');
+        // [FMT-PROMPT-MIGRER] Champ NUMÉRIQUE d'un littéral JSON, pas un montant affiché : `formatCAD`
+        // y injecterait du texte non numérique. L'arrondi à 100 $ est abandonné (décision Marc) —
+        // arrondi au dollar, comme le reste.
+        const txList = toAnalyze.map(t => `- {id: ${t.id}, payee: "${cleanMerchantName(t.payee || '')}", amount: ${Number.isFinite(t.amount) ? Math.round(t.amount) : 'null'}}`).join('\n');
 
         // C3 fix : données utilisateur encadrées <DONNEES> (via wrapUserData, qui
         // retire aussi toute balise </DONNEES> littérale injectée) + allowlist
@@ -636,7 +633,7 @@ export const detectSubscriptionsAI = async (
 
     // Parité avec categorizeBatch : on isole les données dans <DONNEES> pour que
     // l'instruction de sécurité du system prompt (QUEBEC_FISCAL_CONTEXT) s'applique.
-    const userPrompt = `Voici l'historique des transactions (dates + marchand + montant arrondi). Identifie les ABONNEMENTS RÉCURRENTS (Netflix, Spotify, hypothèque, gym...).
+    const userPrompt = `Voici l'historique des transactions (dates + marchand + montant). Identifie les ABONNEMENTS RÉCURRENTS (Netflix, Spotify, hypothèque, gym...).
 
 ${wrapUserData(sample)}
 

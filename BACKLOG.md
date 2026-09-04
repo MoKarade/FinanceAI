@@ -31,14 +31,6 @@
   Mesuré (fixture nets 5 000/4 000, commun 1 500 $) : Effort affiché 30 %/0 % au lieu de 15 %/19 %.
   Correctif probable : `ratio1 = 0.5` pour `'50/50'` — vérifier qu'aucun autre consommateur ne
   compense (recensé au lot 120 : `Budget.tsx:551` est le SEUL consommateur de ratio).
-- [ ] **`[FMT-PROMPT-MIGRER]`** (M — **DÉCIDÉ par Marc le 2026-09-03** : migrer + abandonner l'arrondi)
-  — migrer les 17 sites de prompts/MCP vers `formatCAD` et retirer les 4 entrées d'`EXEMPTIONS` de
-  `tests/components/formatMonetaireSourceUnique.test.ts`.
-  ⚠️⚠️ **NON LIVRABLE SANS** la correction du texte de consentement : il promet « montants arrondis
-  à 100$ », et l'arrondi disparaît. Laisser la promesse en place la rendrait FAUSSE — c'est un
-  engagement de vie privée, pas un détail technique.
-  ⚠️ Vérifier aussi ce que devient le repli `'(non disponible)'` : `formatCAD` rend « — », qu'un
-  modèle peut lire comme une valeur.
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).

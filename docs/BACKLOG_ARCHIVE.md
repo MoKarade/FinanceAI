@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[PERF-ENGINE-TOFIXED-ROUND]` — LIVRÉ (lot 131)
+
+Les ~94 champs mensuels que `buildMonthlyDataPoint` construisait via `Number(x.toFixed(2))`
+passent par `round2` (`services/projection/helpers.ts`) : **bit-identique** à `toFixed` et ~13×
+plus rapide (mesuré 2026-09-04, Node 22 : 556 ms → 42 ms sur 2 M d'appels). Le contrat est la
+PARITÉ, pas « un meilleur arrondi » — le correctif naïf `Math.round(x*100)/100` diverge sur les
+demi-frontières (`-0.005` → `-0` au lieu de `-0.01` ; `2.675` binaire → `2.68` au lieu de `2.67`),
+exactement le piège que le ticket documentait. Chemin hybride : voie rapide loin des
+demi-frontières, repli sur `toFixed` lui-même dans une fenêtre de quelques ulp. Preuve committée
+(`tests/services/projection.round2.test.ts`) : fuzz adversarial ~1 M de valeurs (grilles k/1000,
+k/200, k/800, tueurs connus, aléatoire multi-magnitudes à graine fixe), 0 divergence `Object.is`
+(−0 compris) + anti-vacuité (le naïf diverge bien sous le même banc) + garde de source (« plus de
+`.toFixed(2)` dans monthlyOutput », décommentée, témoin ≥ 60 usages de round2). 2 perturbations à
+rouges exactement ciblés. Zéro golden bougé — attendu et PROUVÉ par la parité, pas constaté.
+
 ## 2026-09-04 — `[FINTABLE-SOURCE-TAG]` — LIVRÉ (lot 130)
 
 La détection de gel du connecteur Fintable ne se laisse plus rajeunir par un import CSV/manuel :

@@ -141,7 +141,7 @@
   plus loin dans le même fichier), `[PERF-ENGINE-ISOSTRING-HOTLOOP]`, `[PERF-MARKETDATA-DYNIMPORT-INERTE]`,
   puis `[PERF-ENGINE-TOFIXED-ROUND]` ⚠️ **fuzz exhaustif obligatoire avant merge** (le correctif
   « évident » diverge de `toFixed` sur les piles `.xx5`).
-- [ ] **Vague 7 — Fintable/sync** : `[FINTABLE-INVESTMENTS-MUET]` en tête (demandé par Marc).
+- [ ] **Vague 7 — Fintable/sync** : ✅ `[FINTABLE-INVESTMENTS-MUET]` (PR #830) · ✅ `[FINTABLE-SOURCE-TAG]` (lot 130). Reste : `[FINTABLE-BACKFILL-HISTORY]` (prérequis Marc), `[DEFAULTS-DRIFT…]` fermé caduque.
 - [ ] **Vague 8 — Dette technique** : **8a** god-fonctions moteur · **8b** god-files UI, UN fichier à
   la fois · **8c** primitives et tokens · **8d** casts/dépréciations/exports morts ·
   **8e** garde-fous structurels (`[STORE-RENAME-NO-GUARD]`, `[SVC-STORE-COUPLING]`,
@@ -1388,18 +1388,6 @@
   **Mesuré : 1,096 µs/appel** contre **0,046 µs** avec
   `getUTCFullYear()*12 + getUTCMonth()` (~24×, valeur numérique identique). Gain ≈ **500 ms sur une
   recherche de stratégie à 1 000 itérations**, ≈ 50 ms sur un run MC à 100. [MESURÉ]
-- [ ] **`[PERF-ENGINE-TOFIXED-ROUND]`** (S, ÉLEVÉ — ⚠️ **gain réel, correctif à NE PAS appliquer à
-  l'aveugle**) — `buildMonthlyDataPoint` construit ~90 champs via `Number(x.toFixed(2))` à chaque mois
-  (`services/projection/monthlyOutput.ts:212-324`). **Mesuré : 2 128 ms vs 42-52 ms** sur 8,64 M
-  appels (~40-50×), soit **~13,7 ms/run**.
-  ⚠️ **Piège d'arrondi confirmé par fuzz** : `Math.round` naïf diverge de `toFixed` sur les valeurs
-  qui tombent exactement sur `.xx5`, surtout en négatif (`-0.005` → `toFixed` = `-0.01`, round naïf =
-  `-0` ; `-99.995` → `-100` vs `-99.99`). Le correctif « évident »
-  `Math.sign(x)*Math.round(Math.abs(x)*100)/100` corrige 3 cas sur 4 mais **pas** `2.675` (représentation
-  binaire). Point rassurant vérifié : l'arrondi est purement un artefact d'affichage/export — `prevNW`
-  est recalculé par `currentRawNetWorth()` et n'est jamais relu depuis le point arrondi, donc aucun
-  compounding. Correctif : `round2()` half-away-from-zero **prouvé par un fuzz exhaustif** avant merge.
-  [MESURÉ, avec réserve explicite]
 - [ ] **`[PERF-MARKETDATA-DYNIMPORT-INERTE]`** (S, MOYEN — **trouvé par Claude dans la sortie du
   build**, non relevé par le rapport perf) — le build de production émet
   `[INEFFECTIVE_DYNAMIC_IMPORT] services/marketData/index.ts is dynamically imported by App.tsx,

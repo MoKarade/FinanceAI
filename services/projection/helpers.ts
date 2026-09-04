@@ -8,6 +8,36 @@ import { logErrorThrottled } from '../errorLogger';
 import type { Municipality } from '../../types';
 
 /**
+ * [PERF-ENGINE-TOFIXED-ROUND] Arrondi à 2 décimales BIT-IDENTIQUE à `Number(x.toFixed(2))`,
+ * ~13× plus rapide (mesuré 2026-09-04, Node 22 : 556 ms vs 42 ms sur 2 M d'appels).
+ * `buildMonthlyDataPoint` construit ~92 champs par mois via ce motif — sur une recherche de
+ * stratégies ou un run Monte-Carlo, `toFixed` (conversion décimale exacte + parse) dominait.
+ *
+ * ⚠️ La PARITÉ est le contrat, pas « un meilleur arrondi » : les goldens épinglent des valeurs
+ * produites par `toFixed`, et `Math.round(x*100)/100` nu en diverge sur les demi-frontières
+ * (`-0.005` → `-0` au lieu de `-0.01` ; `2.675` binaire → `2.68` au lieu de `2.67`). D'où le
+ * chemin hybride : voie rapide LOIN des demi-frontières (où toute règle d'arrondi coïncide),
+ * repli sur `toFixed` lui-même dans la fenêtre d'incertitude (± quelques ulp du produit).
+ * Parité prouvée par `tests/services/projection.round2.test.ts` : fuzz adversarial
+ * (grilles k/1000, k/200, k/800 — les demis décimaux exacts —, tueurs connus, aléatoire
+ * multi-magnitudes) : 2 880 017 valeurs, 0 divergence (Object.is, −0 compris), mesuré 2026-09-04.
+ */
+export function round2(x: number): number {
+    if (!Number.isFinite(x)) return Number(x);          // NaN → NaN, ±Infinity → ±Infinity (comme toFixed)
+    if (Object.is(x, -0)) return 0;                     // (-0).toFixed(2) === "0.00" → +0
+    const scaled = x * 100;
+    const r = Math.round(scaled);
+    const frac = scaled - Math.trunc(scaled);
+    const dist = Math.abs(Math.abs(frac) - 0.5);
+    // Fenêtre d'incertitude : quelques ulp du produit (le ×100 porte ≤ ½ ulp d'erreur, et la
+    // conversion décimale exacte de x peut différer d'autant). Hors fenêtre, l'entier le plus
+    // proche est le même pour Math.round et pour toFixed — quel que soit le sens du demi.
+    const fenetre = 4 * Math.abs(scaled) * Number.EPSILON + 1e-12;
+    if (dist > fenetre) return r / 100;
+    return Number(x.toFixed(2));                        // demi-frontière : la sémantique EXACTE
+}
+
+/**
  * Hypothèse de MODÈLE (PAS une constante fiscale, réf FISCAL_REFERENCE §3) : part du rendement
  * NON-ENREGISTRÉ versée en dividendes ADMISSIBLES chaque année. SOURCE UNIQUE consommée par le
  * moteur (`projection.ts`, `dividendIncome`) ET l'impôt de décembre (`taxDecember.ts`) — évite la

@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Projections plus rapides, chiffres identiques)
+
+- **Amélioré** : le calcul de projection formatait chacun de ses ~94 chiffres mensuels par un
+  chemin lent ; il passe par un arrondi ~13× plus rapide, **prouvé identique au centime près**
+  (aucun chiffre affiché ne change). Concrètement : l'onglet Futur recalcule un peu plus vite à
+  chaque réglage, et les recherches de stratégie/Monte-Carlo gagnent le plus.
+
+---
+
 ## [unreleased] — 2026-09-04 (L'alerte « import bancaire gelé » ne se laisse plus tromper)
 
 - **Corrigé** : si ton connecteur bancaire (Fintable) cessait de livrer des transactions mais que

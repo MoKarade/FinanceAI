@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[BUDGET-SPLIT-5050-RATIO-1]` — LIVRÉ (lot 124, PR #855)
+
+Le mode « 50 / 50 » du sélecteur des réglages n'avait AUCUNE branche dans `coupleAnalysis` :
+`ratio1` restait à 1 et **100 % des dépenses communes allaient au conjoint 1** — toute la carte
+couple mentait dans ce mode (Effort 30 %/0 % au lieu de 15 %/19 %, mesuré), atteignable en un
+clic, et les six personas de test étaient dessus. Corrigé par la branche explicite
+`ratio1 = 0.5`.
+
+Recensé avant de coder (confirmation du lot 120) : `Budget.tsx` est le SEUL consommateur de ratio
+— aucun autre code ne compensait. Garde `budgetSplit5050.test.tsx` (3 cas, attendus dérivés à la
+main : 15 %/19 % en 50/50, contrôle custom 70 % intact, contrôle solo), 2 perturbations séparées
+(branche retirée → rouge ciblé ; branche custom cassée → seul le contrôle custom rougit).
+
+⚠️ Reliquat NOTÉ, pas corrigé (hors périmètre) : `prorata` avec `totalNet == 0` reste à ratio 1 —
+même classe de fallthrough, gravité moindre → `[BUDGET-SPLIT-PRORATA-SANS-NET]` au BACKLOG.
+
 ## 2026-09-04 — `[FMT-PROMPT-MIGRER]` — LIVRÉ (lot 123, PR #854)
 
 Décision de Marc (2026-09-03, différente de ma recommandation) : les 17 sites de texte pour un

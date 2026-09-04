@@ -548,8 +548,16 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
         let ratio1 = 1; // Solo user takes 100%
         if (user2) {
+            // [BUDGET-SPLIT-5050-RATIO-1] Le mode « 50 / 50 » du sélecteur n'avait AUCUNE branche
+            // ici : ratio1 restait à 1 et 100 % du commun allait au conjoint 1 (Effort affiché
+            // 30 %/0 % au lieu de 15 %/19 %, mesuré au lot 120). La valeur offerte par un <select>
+            // doit avoir sa branche chez son consommateur — un fallthrough silencieux vaut un
+            // no-op typé vert.
             if (config.splitMode === 'prorata' && totalNet > 0) ratio1 = user1.netSalary / totalNet;
             else if (config.splitMode === 'custom') ratio1 = (config.customSplit || 50) / 100;
+            else if (config.splitMode === '50/50') ratio1 = 0.5;
+            // ⚠️ Reste à 1 : prorata avec totalNet == 0 (aucun net saisi) — comportement
+            // préexistant, hors du périmètre de ce correctif ([BUDGET-SPLIT-PRORATA-SANS-NET]).
         }
         const ratio2 = 1 - ratio1;
 

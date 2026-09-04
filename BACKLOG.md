@@ -35,10 +35,6 @@
   — dans le résumé « Santé financière », une pastille cliquable quand au moins une métrique est
   exclue pour donnée INVALIDE. ⚠️ Elle ne doit PAS s'afficher pour une métrique simplement non
   calculable : c'est la distinction « tu peux corriger » vs « rien à faire » qui justifie le marqueur.
-- [ ] **`[MIGRATE-GROSS-PROPOSER]`** (M — **DÉCIDÉ par Marc le 2026-09-03** : migrer en DEMANDANT)
-  — détecter `brut == arrondi(net × 1,35)` (la signature de l'ancien défaut) et PROPOSER la
-  correction à l'utilisateur. ⚠️ Aucune écriture automatique : écraser une saisie est irréversible
-  côté app, et une coïncidence est possible.
 - [ ] **`[FMT-PROMPT-MIGRER]`** (M — **DÉCIDÉ par Marc le 2026-09-03** : migrer + abandonner l'arrondi)
   — migrer les 17 sites de prompts/MCP vers `formatCAD` et retirer les 4 entrées d'`EXEMPTIONS` de
   `tests/components/formatMonetaireSourceUnique.test.ts`.

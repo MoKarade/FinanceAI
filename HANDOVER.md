@@ -11,11 +11,24 @@
 > - ✅ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → plancher retiré (les DEUX sites) — **LIVRÉ au lot 119**.
 > - ✅ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « de la paie déclarée » + infobulle — **LIVRÉ au lot 120**.
 > - ⬜ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable (≠ ma reco, qui était de ne rien faire).
-> - ⬜ `[MIGRATE-GROSS-PROPOSER]` → proposer, JAMAIS écrire seul.
+> - ✅ `[MIGRATE-GROSS-PROPOSER]` → avis au Profil + deux boutons, zéro écriture seule — **LIVRÉ au lot 121**.
 > - ⬜ `[FMT-PROMPT-MIGRER]` → migrer les 17 sites **+ abandonner l'arrondi à 100 $** (≠ ma reco).
 >   ⚠️⚠️ **NON LIVRABLE SANS** corriger le texte de consentement, qui promet cet arrondi.
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-04 — Lot 121 : le brut fabriqué (1,35×) est détecté et PROPOSÉ à la correction
+> `[MIGRATE-GROSS-PROPOSER]` livré — **code de prod touché** (Profil / Salaires + nouveau service).
+> - Détection `services/legacyGrossSignature.ts` : égalité STRICTE avec `Math.round(net × 1,35)`
+>   mensuel (la signature exacte de l'ancien `migrateUserConfig`), net dérivé comme le fabricant
+>   (`netSalary || salary`), exclusions confirmé/payslip/MCP. Borne INFÉRIEURE assumée.
+> - Deux boutons, AUCUNE écriture sans clic (décision de Marc) : recalcul = `calculateGrossFromNet`
+>   + `grossSalaryConfirmed` ; « C'est bien mon brut » = confirme seulement. Champ additif optionnel.
+> - ⚠️ La garde d'indiscernabilité du mode discret a rougi sur le premier jet : deux boutons
+>   conditionnels aux valeurs = fuite par la STRUCTURE → pas d'avis en mode discret.
+> - ⚠️ Perturbation `setTimeout(patch, 0)` restée VERTE sur « le rendu n'écrit rien » → test durci
+>   par un flush (instance de `UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).
+> - 17 cas neufs, 6 perturbations séparées, rouges ciblés. Déploiements 119 et 120 vérifiés READY.
 
 > ## 🟦 Session 2026-09-04 — Lot 120 : le badge Effort nomme sa base
 > `[BUDGET-EFFORT-NOMMER-LA-BASE]` livré — **code de prod touché** (carte couple du Budget).

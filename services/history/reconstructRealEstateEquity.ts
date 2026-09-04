@@ -52,6 +52,9 @@ export function reconstructRealEstateEquityByYear(
         });
 
         // Année d'achat : équité ≈ mise de fonds (avant le 1er point annuel d'amortissement).
+        // ⚠️ Ce `Math.max(0, …)`-ci RESTE : c'est un garde-fou d'ENTRÉE (une mise de fonds négative
+        // est une donnée corrompue, pas un bien underwater) — rien à voir avec le clamp d'équité
+        // retiré par [IMMO-CLAMP-EQUITE-NEGATIVE] dans `addEquity` ci-dessous.
         addEquity(byYear, purchaseYear, Math.max(0, p.downPayment), currentYear);
         for (const point of data) {
             if (point.calendarYear > currentYear) break;
@@ -63,5 +66,10 @@ export function reconstructRealEstateEquityByYear(
 
 function addEquity(map: EquityByYear, year: number, equity: number, currentYear: number): void {
     if (year > currentYear) return;
-    map.set(year, (map.get(year) ?? 0) + Math.max(0, equity));
+    // [IMMO-CLAMP-EQUITE-NEGATIVE] Plus de `Math.max(0, equity)` ici : le clamp vivait en DEUX
+    // endroits (le producteur `runAmortization` ET ce consommateur), et retirer un seul des deux
+    // n'aurait rien changé à l'écran — c'est le piège que le ticket avait nommé d'avance. La somme
+    // par année reste juste avec un déficit : underwater −30 k$ + autre bien +100 k$ = 70 k$, là où
+    // le double clamp affichait 100 k$.
+    map.set(year, (map.get(year) ?? 0) + equity);
 }

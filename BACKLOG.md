@@ -22,12 +22,6 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[IMMO-CLAMP-EQUITE-NEGATIVE]`** (S — **DÉCIDÉ par Marc le 2026-09-03** : retirer le plancher)
-  — `runAmortization` publie `Equite: Math.max(0, valeur − solde)`. Un bien *underwater* apparaît donc
-  à équité NULLE au lieu de négative, ce qui retire le déficit du patrimoine passé. Retirer le clamp,
-  et re-baser les tests d'historique concernés AVEC leur explication chiffrée.
-  ⚠️ Vérifier les CONSOMMATEURS avant : `addEquity` fait déjà `Math.max(0, equity)` de son côté
-  (`reconstructRealEstateEquity.ts`) — retirer un seul des deux ne changerait rien à l'écran.
 - [ ] **`[BUDGET-EFFORT-NOMMER-LA-BASE]`** (XS — **DÉCIDÉ par Marc le 2026-09-03** : nommer la base)
   — le badge « Effort : X % » se calcule sur le net SAISI, pas sur le « Revenu Net Disponible »
   affiché deux lignes au-dessus (écart mesuré −0,3 % à +3,5 %). Garder la paie déclarée comme

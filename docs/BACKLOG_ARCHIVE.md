@@ -10,6 +10,31 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[IMMO-CLAMP-EQUITE-NEGATIVE]` — LIVRÉ (lot 119, PR #850)
+
+L'équité immobilière peut désormais être **NÉGATIVE** (décision de Marc, 2026-09-03) : un bien
+underwater (valeur < hypothèque) est un déficit au bilan, plus un zéro.
+
+Le plancher vivait en DEUX endroits — `runAmortization` (producteur) et `addEquity` de
+`reconstructRealEstateEquityByYear` (consommateur) — exactement comme le ticket l'avait nommé
+d'avance ; les deux sont retirés dans le même lot. Recensé : aucun TROISIÈME clamp en aval
+(buildPastPrefix, dailyPastLedger, netWorth, FutureHistorySection sont tous additifs), et le moteur
+FUTUR publiait déjà l'équité sans plancher (`realEstateMonth.ts:448`) — le passé contredisait le
+futur sur le même écran. Le seul `Math.max(0, …)` conservé côté downsizing est une garde de
+TRANSACTION (on ne libère pas une équité négative), pas un plancher d'affichage.
+
+Mesuré (2026-09-04, fixture 420 000 $ / mise 5 % + prime SCHL financée / marché −5 %/an) : cinq
+années passées publiaient 0 $ au lieu de −7 404 $ à −42 584 $ — patrimoine passé surévalué d'autant,
+dans le scénario exact où l'information compte. ⚠️ La fixture « naturelle » (−2 %/an) ne passait
+JAMAIS underwater (le remboursement bat l'érosion) : le cas de test se MESURE avant d'être écrit.
+
+Garde `tests/services/equiteNegativeSansPlancher.test.ts` (6 cas) : relation `Equite = valeur −
+solde` sur chaque point (tolérance 1 $ dérivée des trois arrondis indépendants), propagation
+non-replanchérisée jusqu'à la map, somme underwater + sain, contrôle négatif (bien sain = no-op
+arithmétique), clamp interne du solde conservé, garde-fou d'entrée sur la mise de fonds négative
+conservé. 2 perturbations séparées (chaque site re-clampé) → rouges ciblés, P2 ne rougit QUE les
+tests de chaîne. Aucun test existant à re-baser : aucune fixture du dépôt n'était underwater.
+
 ## 2026-09-03 — `[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]` — LIVRÉ (lot 117, PR #848)
 
 Le ratchet des décommenteurs privés passe de « compter » à **INTERDIRE** (plafond 15 → **0**), la

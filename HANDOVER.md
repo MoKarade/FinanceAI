@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 135 : clique-partout prouvé par e2e (le mécanisme existait)
+> `[FUTUR-CLICK-ANYWHERE]` clos — le clic résolvait déjà le jour par l'abscisse seule sur tout le
+> conteneur ([R3]+[FUTUR-CLICK-AREA]+[FUTUR-DAILY-NATIVE], postérieurs au ticket) ; ajouté l'e2e
+> clique-partout (ciel vide, bande basse, marge gauche). ⚠️ E2E local du conteneur inutilisable
+> (échec beforeEach sur les 5 tests préexistants — navigateur shimé + dev server lent) : la CI
+> est l'arbitre e2e, comme d'habitude.
+
 > ## 🟦 Session 2026-09-04 — Lot 134 : un chunk qui pend n'est plus une attente infinie
 > `[SDK-IMPORT-TIMEOUT]` livré — `importWithRetry` court chaque tentative contre 10 s
 > (`IMPORT_STALL_TIMEOUT_MS`, dimensionné sur recharts 404 Ko) ; blocage → erreur explicite,

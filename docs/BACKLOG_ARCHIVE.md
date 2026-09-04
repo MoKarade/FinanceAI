@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[FUTUR-CLICK-ANYWHERE]` — CLOS (lot 135) : le mécanisme existait, la preuve manquait
+
+Recensé contre le code : le clic résout DÉJÀ le jour par l'abscisse seule, partout —
+`handleChartContainerClick` est posé en `pointerup` sur le CONTENEUR entier du graphe (pas le
+tracé) et passe par `resolvePointByX(clientX)` qui clampe l'abscisse au domaine visible. C'est le
+travail cumulé de [R3] (clic = figer l'infobulle), `[FUTUR-CLICK-AREA]` (pointerup, pas click —
+recharts re-rend le path sous le pointeur) et `[FUTUR-DAILY-NATIVE]` — le ticket (2026-08-12)
+précédait ces lots. Ce qui manquait est la moitié « e2e clique-partout » : ajoutée à
+`futureDailySelect.spec.ts` — trois zones inhabituelles (ciel vide au-dessus de la pile, bande
+basse près de l'axe des dates, marge gauche clampée au premier jour) doivent toutes figer un jour
+daté. ⚠️ Validée par la CI (E2E requis) : l'e2e local du conteneur échoue en `beforeEach` sur les
+5 tests du fichier, préexistants compris (navigateur Playwright shimé + dev server lent —
+environnement, pas le code ; la CI passe ce même fichier en vert à chaque PR).
+
 ## 2026-09-04 — `[SDK-IMPORT-TIMEOUT]` — LIVRÉ (lot 134)
 
 Un `import()` qui pend sans rejeter (connexion bloquée, proxy muet) suspendait l'appelant pour

@@ -621,11 +621,6 @@
   PASSÉ doit montrer les TRANSACTIONS de ce jour (elles existent dans le store — les brancher au
   point réel). Cadrer : quelles approximations restantes le gênent (ancre, flux non datés — cf.
   FUTUR-DAILY-ANCHOR-CAVEAT) ?
-- [ ] **`[FUTUR-CLICK-ANYWHERE]`** (S, retour Marc 2026-08-12) — « quand je clique sur la courbe
-  pour avoir l'infobulle je dois cliquer exactement sur la courbe, je veux pouvoir cliquer
-  n'importe où » : le clic doit résoudre le jour par l'ABSCISSE seule (x), partout dans la zone
-  du graphe (aires, vide au-dessus/en-dessous), pas seulement sur le tracé. Vérifier ce qui
-  bloque aujourd'hui (zones mortes ? garde ?) et l'e2e clique-partout.
 - [ ] **`[DEBT-FROM-CONTRACT]`** (M, 🧭 retour Marc 2026-08-12) — « ma dette doit être exactement
   ce que j'ai — là ça me dit que j'ai la dette depuis des années mais c'est faux, je t'ai donné
   le PDF du contrat, ça devrait être automatique » : extraire du contrat la date de début, le

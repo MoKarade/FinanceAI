@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Supprimer un bien emporte ses ventes planifiées — et te le dit avant)
+
+- **Corrigé (ta décision du 2026-07-31)** : supprimer une propriété laissait derrière elle les
+  événements de vente planifiés qui la visaient — des événements morts dans ta liste, et un
+  avertissement « vente ignorée » à chaque projection. Ils sont maintenant supprimés en même temps
+  que le bien, et la confirmation te dit combien avant que tu confirmes.
+- Les événements de vente d'un AUTRE bien, et tes événements sans bien associé, ne bougent pas.
+
+---
+
 ## [unreleased] — 2026-09-04 (Tes droits REER d'avant 2010 ne sont plus calculés avec le plafond d'aujourd'hui)
 
 - **Corrigé** : pour reconstituer tes droits REER accumulés avant l'ouverture de l'app, chaque

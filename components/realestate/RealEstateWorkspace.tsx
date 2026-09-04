@@ -155,6 +155,10 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const doConfirmDeleteGoal = () => {
         if (!confirmDeleteGoalId) return;
         setAllGoals(allGoals.filter(g => g.id !== confirmDeleteGoalId));
+        // [DETTE-RE-SALE-PURGE] Purge des ventes liées, dans le MÊME geste confirmé.
+        if (ventesLieesA(confirmDeleteGoalId).length > 0) {
+            setAppState({ lifeEvents: (lifeEvents ?? []).filter(e => e.propertyId !== confirmDeleteGoalId) });
+        }
         if (activeGoalId === confirmDeleteGoalId) {
             const remaining = visibleGoals.filter(g => g.id !== confirmDeleteGoalId);
             setActiveGoalId(remaining[0]?.id || '');
@@ -163,6 +167,17 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     };
 
     const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
+
+    // [DETTE-RE-SALE-PURGE] Décision de Marc (2026-07-31) : supprimer un bien SUPPRIME aussi les
+    // événements de VENTE qui le référencent (`LifeEvent.propertyId`). Sans ça, la vente planifiée
+    // devenait un événement orphelin : le moteur la refuse déjà proprement (aucune vente d'un autre
+    // bien — monthlyEvents.ts), mais l'utilisateur gardait un événement mort dans sa liste, et un
+    // avertissement « vente ignorée » à chaque projection. Le compte est annoncé dans la
+    // confirmation AVANT le geste : supprimer un bien + ses ventes est irréversible.
+    const lifeEvents = useFinanceStore(s => s.lifeEvents);
+    const setAppState = useFinanceStore(s => s.setAppState);
+    const ventesLieesA = (goalId: string | null) =>
+        goalId ? (lifeEvents ?? []).filter(e => e.propertyId === goalId) : [];
 
     // Mode Switch
     const [mode, setMode] = useState<'AUTO' | 'MANUAL'>('MANUAL');
@@ -472,7 +487,12 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 onConfirm={doConfirmDeleteGoal}
                 onCancel={() => setConfirmDeleteGoalId(null)}
                 title="Supprimer la propriété"
-                message="Supprimer ce scénario immobilier définitivement ?"
+                message={(() => {
+                    const n = ventesLieesA(confirmDeleteGoalId).length;
+                    return n > 0
+                        ? `Supprimer ce scénario immobilier définitivement ? ${n === 1 ? 'Un événement de vente planifié sur ce bien sera supprimé aussi.' : `${n} événements de vente planifiés sur ce bien seront supprimés aussi.`}`
+                        : 'Supprimer ce scénario immobilier définitivement ?';
+                })()}
                 confirmLabel="Supprimer"
             />
             {pendingOwnedGoal && (

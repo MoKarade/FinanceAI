@@ -312,9 +312,12 @@
   batch de questions d'abord) ; `[CIX-*]` (critère défini : bascule couple↔solo fiable →
   CIX-B → CIX-F → CIX-A1B en priorité) ; `[MCP-WHATIF-DATED-DEBT]` (Debt.startDate moteur) ;
   `[P0-IDB]` (si quota le justifie).
-- [ ] **V3' — Nettoyage décidé** (S, greffé à V3) : supprimer `rsuYearsRemaining` +
-  `futureProvince`/`futureMoveYear` (Marc : « retire ») ; `[DETTE-RE-SALE-PURGE]` option
-  « supprimer l'événement » ; archiver SEC-DRIVE-ENCRYPT-DEFAULT (Marc : « non ») + .mcpb (fermé).
+- [x] **V3' — Nettoyage décidé** ✅ **SOLDÉ le 2026-09-04 (lot 128)** — tout était déjà réglé ou
+  l'est maintenant : `futureProvince`/`futureProvinceMoveYear` RETIRÉS et `rsuYearsRemaining` doté
+  de son éditeur (PR #729, `[PH3-c-bis]` — le « retire » initial de Marc a été supersédé par la
+  mesure : le champ était LU par le moteur, +1,38 M$ de patrimoine fantôme sans lui) ;
+  SEC-DRIVE-ENCRYPT-DEFAULT fermé (`[Q-DRIVE-ENCRYPT]`, Marc : « non ») ; .mcpb fermé ;
+  `[DETTE-RE-SALE-PURGE]` livré au lot 128.
 
 ---
 
@@ -2081,8 +2084,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 - [ ] **`[NAN-MUTATOR-CENTRAL]`** (S) — garde centrale des 4 mutateurs nus — SEULEMENT si un vecteur
   d'entrée non-UI apparaît (numericInput couvre le boundary ; plan prêt en réserve).
-- [ ] **`[DETTE-RE-SALE-PURGE]`** (S, ✅ tranché Marc 2026-07-31 : SUPPRIMER l'événement) — à la
-  suppression d'un bien, supprimer les lifeEvents de vente qui le référencent (+ confirmation UI).
 - [ ] **`[FISC-RAP-REPAY]`** (M, fixIsSafe:false) — inclusion ligne 12900 + passif successoral RAP —
   risque double-comptage estate ; limite consignée FISCAL_REFERENCE §9.
 - [ ] **`[FISC-CHILDCARE]`** (M) — T778/crédit QC exacts au lieu de l'heuristique 30 % — travail dédié.

@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[T3]` — LIVRÉ (lot 151, mesure)
+
+Le run coverage demandé (« trancher la cible 64→80 %, jamais mesuré depuis ~2 350 tests ») a été
+fait — commande à rejouer : `npx vitest run --coverage --testTimeout=30000` (le timeout élargi est
+NÉCESSAIRE : l'instrumentation v8 fait dépasser 5 s à une garde de scan de source,
+`storageKeysRegistreGuard`, verte au gate ordinaire — un rouge de MODE de mesure, pas un rouge de
+code). Mesuré le 2026-09-04, périmètre de `vitest.config.ts` (services/ + utils/ + hooks/ ;
+components/ exclu par config) : **90,56 % Stmts · 82,39 % Branch · 89,13 % Funcs · 92,33 % Lines**.
+La question du ticket est donc CADUQUE : la cible 80 % est déjà dépassée sur tout le périmètre
+mesuré — aucune décision à router. Par dossier : utils 98,0 · services 90,4 (sync 85,1, le plus
+bas) · hooks **68,4**. Les 0 % honnêtes : les trois hooks extraits au lot 150 le jour même
+(`useAppBootEffects`, `useAssetDataHydration`, `useTabNavigation` — montés seulement via App, que
+l'unitaire ne rend pas ; leur filet est l'E2E CI, dit tel quel au lot 150), `services/analytics.ts`
+(3 lignes de wrapper GA), `utils/chartKeyboardSelect.ts` (1 ligne, exercée par l'E2E clavier),
+plus `persistentCache` (13,8) et `runAsync` (28,7 — chemin Worker). Aucun correctif livré,
+délibérément : le ticket demandait une MESURE, pas un chantier — et un chantier de couverture sur
+ces fichiers-là re-testerait surtout des chemins déjà couverts ailleurs (E2E, intégration).
+
 ## 2026-09-04 — `[GODFILE-APP]` — LIVRÉ (lot 150)
 
 `App.tsx` (mesuré **910 l.** — le ticket disait 866 et prescrivait « extraire AppProviders.tsx »,

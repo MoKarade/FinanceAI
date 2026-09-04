@@ -768,8 +768,6 @@
   → champ User + bascule RAMQ/privé dans taxDecember.
 - [ ] **`[T4]`** (M, par lots) — automatiser les tests manuels critiques en Playwright : 8 specs e2e
   aujourd'hui, cible 20-30 (depuis MANUAL_TEST_CHECKLIST.md).
-- [ ] **`[T3]`** (S pour mesurer) — lancer un run coverage pour trancher la cible 64→80 % (jamais
-  mesuré depuis ~2350 tests ajoutés).
 
 ## 🚀 Gros chantiers (⏳ — plan-first + OK Marc par chantier)
 

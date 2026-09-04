@@ -10,6 +10,19 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-GODFN-RETIREMENT]` — LIVRÉ (lot 143)
+
+`computeRetirementIncome` (260 lignes) découpée selon les coutures que le ticket nommait, à
+comportement STRICTEMENT inchangé : `calculerPoidsParConjoint` (ratios salaire/MGA + proratas
+de résidence per-conjoint), `agesEtFacteursDesRentes` (bornes légales + report), 
+`calculerRrqPsvMensuels` (bases familiales + branches survivant/couple), `calculerSrgMensuel`
+(barème célibataire/couple, revenu test de l'an passé), `assemblerParConjoint` (répartition des
+totaux famille). Corps de l'orchestrateur : ~40 lignes. Équivalence prouvée par l'EMPREINTE des
+grandeurs publiées (identique à l'octet — le banc du lot 141 couvre RRQ/PSV/SRG via les
+fixtures retraités) + 62 tests du module + 34 tests moteur ciblés (survivant, divorce estate,
+conservation, ordre). Aucun test neuf : les 62 existants testent déjà chaque couture au
+CONTRAT publié — en écrire au niveau des helpers internes re-testerait des copies. PR #874.
+
 ## 2026-09-04 — `[DETTE-GODFN-CASHFLOW]` — LIVRÉ (lot 142)
 
 `processCashflowAllocation` (296 lignes, la logique money-critical la plus dense du moteur)

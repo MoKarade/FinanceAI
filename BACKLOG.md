@@ -1375,9 +1375,6 @@
   calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
   est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
   devra être délibéré ET répondre à cette question.
-- [ ] **`[DETTE-GODFN-RETIREMENT]`** (M, ÉLEVÉ) — `computeRetirementIncome` fait **260 lignes**
-  (`services/projection/retirementIncome.ts:162-421`). Correctif : séparer calcul RRQ, calcul
-  PSV/SRG, et assemblage du breakdown par personne. [MESURÉ]
 - [ ] **`[DETTE-GODFN-JANUARY]`** (S, ÉLEVÉ) — `processJanuaryReset` fait **183 lignes**
   (`services/projection/taxJanuary.ts:102-284`) : roulement des droits, impôt annuel, remise à zéro
   des compteurs, tout mélangé. [MESURÉ]

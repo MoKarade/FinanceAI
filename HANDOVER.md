@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 143 : le revenu de retraite est découpé, comportement prouvé inchangé
+> `[DETTE-GODFN-RETIREMENT]` livré — `computeRetirementIncome` (260 lignes) devient 5 étapes
+> nommées (poids per-conjoint, âges/facteurs, RRQ+PSV, SRG, assemblage), orchestrateur ~40
+> lignes. Empreinte des grandeurs publiées identique à l'octet + 62 tests module + 34 moteur.
+> Aucun test neuf, délibérément : le contrat publié est déjà couvert, tester les helpers
+> internes re-testerait des copies. Refactor pur — bundle fonctionnellement identique.
+
 > ## 🟦 Session 2026-09-04 — Lot 142 : la cascade de décaissement est découpée, comportement prouvé inchangé
 > `[DETTE-GODFN-CASHFLOW]` livré — la god-fonction de 296 lignes devient des étapes nommées +
 > deux décisions pures exportées et testées (`ordreDesBuckets`, `reerDAbordEnCotisation` — la

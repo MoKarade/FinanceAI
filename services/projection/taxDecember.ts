@@ -4,7 +4,7 @@
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
 import { formatCAD } from '../../utils/format';
-import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, PENSION_SPLIT_MIN_AGE, AGE_AMOUNT_FED_MIN_AGE, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 import { NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './helpers';
 import { eligiblePensionRealFor } from './pensionCredit';
 
@@ -68,7 +68,7 @@ export function computeOasClawback(
     // (0,3) dans l'assiette : re-mesuré avec la source unique (classe ECRIRE-UN-CHIFFRE).
     annualGrossedUpDividends: number = 0,
 ): { clawbackAnnual: number; logMsg?: string } {
-    if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
+    if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < PENSION_SPLIT_MIN_AGE) {
         return { clawbackAnnual: 0 };
     }
     // BONUS FIX (Marc, 2026-06) — le seuil de récupération PSV doit être indexé par
@@ -488,7 +488,7 @@ export function processDecemberTaxFiling(
     // dans une bande, où il suit la tranche empilée).
     const mkAgeOpts = (i: number, eligiblePensionIncome: number, familyIncome: number): AgeCreditOptions | undefined => {
         const a = ages[i];
-        return (a !== undefined && a >= 65)
+        return (a !== undefined && a >= AGE_AMOUNT_FED_MIN_AGE)
             ? { age: a, eligiblePensionIncome, hasSpouse: ctx.activeUsersCount > 1, familyIncome }
             : undefined;
     };

@@ -80,7 +80,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection.ts', value: '18', family: 'fiscal',
       reason: '[×2] Âge à partir duquel la résidence au Canada compte pour la PSV (L353 à l’initialisation, L840 dans la boucle annuelle). Même règle aux deux sites. Ancrée dans FISCAL_REFERENCE §PSV — « résidence au Canada après 18 ans » (PSV_MIN_RESIDENCY_YEARS).' },
     { file: 'services/projection.ts', value: '65', family: 'fiscal',
-      reason: '[≠4] QUATRE sens sous la même clé, qui peuvent bouger indépendamment. L840 : fin de l’accumulation de résidence PSV (règle légale, FISCAL_REFERENCE §PSV). L1388 : seuil d’âge des crédits et de la récupération PSV (règle légale). L2544 : comparaison de l’âge RRQ choisi au standard 65 pour libeller « rentes reportées ». L359 : `retirementGoal.targetAge || 65` — DÉFAUT DE SAISIE, pas une règle : l’utilisateur choisit son âge de retraite.' },
+      reason: 'DÉFAUT DE SAISIE (`retirementGoal.targetAge || 65`), pas une règle fiscale : l’utilisateur choisit son âge de retraite — on ne l’ancre pas. ⚠️ Les TROIS autres sens que cette clé fusionnait ([≠4] historique) sont ANCRÉS depuis [FISC-CONST-ANCHOR-65] (lot 152) : résidence PSV → PSV_ELIGIBILITY_AGE, fractionnement décembre → PENSION_SPLIT_MIN_AGE, libellé « rentes reportées » → RRQ_STANDARD_START_AGE (utils/tax.ts).' },
     { file: 'services/projection.ts', value: '60', family: 'fiscal',
       reason: '[≠3] L585 et L586 : part de la rente conservée par le SURVIVANT (RRQ et régime DB), défaut réglementaire — deux sites, même règle. L767 : `m === 60`, le mois 60 du scénario WINDFALL, qui n’a rien de fiscal.' },
     { file: 'services/projection.ts', value: '30', family: 'design',
@@ -117,8 +117,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'TAX_DUE_DAY : date limite de PAIEMENT du solde d’impôt des particuliers — le 30 avril (ARC et Revenu Québec). Ancrée dans FISCAL_REFERENCE §1 (échéances).' },
 
     // ── services/projection/taxDecember.ts ───────────────────────────────────────────────────
-    { file: 'services/projection/taxDecember.ts', value: '65', family: 'fiscal',
-      reason: '[≠2] DEUX occurrences, deux dispositions distinctes. Gate de `computeOasClawback` — âge d’ouverture de la PSV. Admissibilité au crédit en raison de l’âge, désormais à UN SEUL site : la fabrique unique `mkAgeOpts` (`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`, 2026-09-02), qui a remplacé les TROIS fabriques d’`AgeCreditOptions` du fichier — leurs gardes étaient textuellement différentes (deux à `>= 65`, une à `!== undefined`), équivalentes mais libres de diverger. ⚠️ La QUATRIÈME — le gate d’âge du revenu de pension ADMISSIBLE — a QUITTÉ ce fichier le 2026-09-02 (`[FISC-LATENT-PENSION-CREDIT]`) : la règle est extraite en source unique `services/projection/pensionCredit.ts`, ajoutée au périmètre scanné ci-dessous pour que la dette ne change pas de cachette, et elle y est écrite avec la CONSTANTE NOMMÉE `AGE_AMOUNT_FED_MIN_AGE` — donc plus aucun littéral à déclarer. ⚠️ Et il n’y a AUCUN « pivot RRQ » dans ce fichier : cette mention de ma première raison était fausse.' },
     { file: 'services/projection/taxDecember.ts', value: '0.50', family: 'design',
       reason: 'Fraction de vente FICTIVE servant à estimer la récolte de pertes — pas un taux d’inclusion.' },
     { file: 'services/projection/taxDecember.ts', value: '40', family: 'design',
@@ -129,8 +127,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '[×3] Index du mois de DÉCEMBRE (0-based). Aucun rapport avec la fiscalité.' },
 
     // ── services/projection/retirementIncome.ts ──────────────────────────────────────────────
-    { file: 'services/projection/retirementIncome.ts', value: '65', family: 'fiscal',
-      reason: '[≠3] TROIS occurrences, deux sens. (1)+(2) Âge PIVOT de la RRQ et de la PSV, base des facteurs d’ajustement et de report (`(rrqStartAge - 65) * 12`, `(psvStartAge - 65) * 12`). (3) ⚠️ AJOUTÉE au périmètre le 2026-08-22 : borne LÉGALE BASSE de la PSV, `Math.max(65, psvStartAge ?? defaultStart)` — on ne peut pas toucher la PSV avant 65 ans. Le pivot et la borne coïncident numériquement mais ne sont PAS la même règle : le pivot survivrait à un changement de la borne.' },
     { file: 'services/projection/retirementIncome.ts', value: '70', family: 'fiscal',
       reason: '[×2] Âge maximal de report de la PSV, écrit DEUX fois : comme borne du clamp (`Math.min(70, …)`, visible depuis le 2026-08-22 seulement) et comme valeur imposée par la stratégie de report optimal (`psvStartAge = 70`). Deux écritures de la même règle légale — si l’une change sans l’autre, le clamp et la stratégie se contredisent en silence.' },
     { file: 'services/projection/retirementIncome.ts', value: '72', family: 'fiscal',
@@ -204,8 +200,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Repli d’âge par défaut quand ni birthYear ni age ne sont saisis. Structurel.' },
         { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
       reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
-    { file: 'services/projection/setupSimulation.ts', value: '65', family: 'fiscal',
-      reason: '[×2] Âge pivot RRQ : base du décalage `(pensionStartAge - 65) * 12`. Âge fiscal, à ancrer.' },
     { file: 'services/projection/setupSimulation.ts', value: '1.02', family: 'design',
       reason: 'Dé-indexation du salaire à 2 %/an pour RECONSTITUER les salaires passés (`individualSalaryPortion / Math.pow(1.02, y)`) et en déduire les droits REER accumulés avant le début de la simulation. Hypothèse de carrière, pas un barème : le barème de cette même ligne, ce sont `RRSP_ROOM_RATE` et `RRSP_ANNUAL_LIMITS`, tous deux déjà nommés et ancrés. ⚠️ Ce 2 % est INDÉPENDANT de l’inflation saisie par l’utilisateur — un profil qui projette 4 % voit quand même son passé reconstruit à 2 %.' },
     { file: 'services/projection/setupSimulation.ts', value: '8000', family: 'design',
@@ -356,8 +350,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Taux d’actualisation réel de la VAN des rentes (`r_npv` = 2 %). Hypothèse financière de modèle. Le `1.02` des deux lignes de VAN (RRQ et PSV) en est le reflet et doit bouger AVEC lui — piège de duplication signalé par `[ESTATE-NPV-07]`.' },
     { file: 'services/projection/estateCalculation.ts', value: '1.02', family: 'design',
       reason: '[×2] Le REFLET de `r_npv` (0.02, entrée ci-dessus), écrit en dur sur les DEUX lignes de VAN — RRQ et PSV — pour actualiser une rente qui ne démarrera qu’à 65 ans. Même sens les deux fois, et même nombre que `r_npv` : c’est une duplication, pas un second paramètre. Le piège est déjà nommé par `[ESTATE-NPV-07]` — changer `r_npv` sans changer ces deux `1.02` fait diverger l’actualisation de son propre taux, en silence. La clé existe pour que la duplication soit VISIBLE au garde, pas seulement en commentaire.' },
-    { file: 'services/projection/estateCalculation.ts', value: '65', family: 'fiscal',
-      reason: '[×2] Âge pivot des rentes publiques (RRQ/PSV), pour la RRQ et pour la PSV, pour décider si la rente est déjà en cours. Vrai paramètre fédéral/QC, ancré FISCAL_REFERENCE §6.' },
 
     // ── services/projection/activeIncome.ts ──────────────────────────────────────────────────
     { file: 'services/projection/activeIncome.ts', value: '0.55', family: 'fiscal',
@@ -496,8 +488,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`DONATION_CREDIT_RATES.qc.excess` — taux du crédit québécois pour dons au-delà de 200 $ (24 %). Barème Revenu Québec, ancré §10.' },
     { file: 'services/projection/realEstateMonth.ts', value: '5', family: 'fiscal',
       reason: 'Durée de la période de grâce ALLONGÉE du RAP (5 ans au lieu de 2) pour les retraits de la fenêtre 2022-2025 — Budget fédéral 2024. Elle forme un TOUT avec les bornes `2022`/`2025` et la durée de 15 ans du même fichier : les quatre se sourcent ou se retirent ENSEMBLE, ticket `[FISC-RAP-GRACE-WINDOW]`.' },
-    { file: 'services/projection/setupSimulation.ts', value: '72', family: 'fiscal',
-      reason: 'Âge de report MAXIMAL de la **RRQ** quand `delayPensions` est actif (`delayPensions ? 72 : 65`) — report étendu à 72 ans depuis le 1er janvier 2024, et le seul consommateur est `computeRrqFactor`. ⚠️ NE PAS écrire « rentes publiques » au pluriel : §6 précise que la PSV ne se reporte PAS au-delà de 70 ans. Et §6 ANCRE déjà le 72 : la dette n’est donc pas l’ancrage mais l’IMPORT — le littéral est en dur ici alors que la source unique existe.' },
     { file: 'services/projection/setupSimulation.ts', value: '1.0', family: 'design',
       reason: 'Rendement de repli des LIQUIDITÉS dans le jeu de taux conservateur (1,0 %/an). Hypothèse de marché.' },
     { file: 'services/projection/setupSimulation.ts', value: '3.0', family: 'design',

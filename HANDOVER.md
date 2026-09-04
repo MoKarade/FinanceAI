@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 152 : le « 65 » du moteur est ancré — quatre constantes, un sens chacune
+> Tranche « seul vrai gain » de `[FISC-CONST-ANCHOR-DEBT]` : 13 littéraux 65/72 dans 5 modules →
+> `RRQ_STANDARD_START_AGE`, `PSV_ELIGIBILITY_AGE`, `PENSION_SPLIT_MIN_AGE`, `RRQ_MAX_DEFERRAL_AGE`
+> (utils/tax.ts) + import d'`AGE_AMOUNT_FED_MIN_AGE` dans mkAgeOpts. Valeurs identiques (65===65,
+> zéro re-base) ; 5 entrées d'inventaire résolues (l'anti-fantôme du ratchet les a nommées),
+> `projection.ts::65` requalifiée (défaut de saisie seulement). Perturbation 65→66 → rouge ciblé.
+> Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 151 : la couverture est MESURÉE — la cible 80 % est déjà dépassée
 > `[T3]` livré (mesure seule) : **90,6 % Stmts / 82,4 % Branch / 92,3 % Lines** sur le périmètre
 > config (services+utils+hooks). La question « 64→80 % » est caduque. Points bas honnêtes :

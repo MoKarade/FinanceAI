@@ -3,7 +3,7 @@
 // V40 (bilan successoral) + V48 (Smith bug) + V60 (NPV pensions publiques).
 // Pattern: Pure Function + injection calculateFiscalReport.
 
-import { CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, type AgeCreditOptions, type FiscalReport } from '../../utils/tax';
+import { CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRQ_STANDARD_START_AGE, PSV_ELIGIBILITY_AGE, type AgeCreditOptions, type FiscalReport } from '../../utils/tax';
 import { computeRawNetWorth } from './netWorth';
 
 type FiscalFn = (
@@ -294,8 +294,8 @@ export function computeEstateNetWorth(
 
     const r_npv = 0.02;
     const npvFactor = r_npv > 0 ? (1 - Math.pow(1 + r_npv, -remainingYearsAtEnd)) / r_npv : remainingYearsAtEnd;
-    const rrqNPV = finalAge >= 65 ? (rrqExpected * npvFactor) : (rrqExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
-    const psvNPV = finalAge >= 65 ? (psvExpected * npvFactor) : (psvExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
+    const rrqNPV = finalAge >= RRQ_STANDARD_START_AGE ? (rrqExpected * npvFactor) : (rrqExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
+    const psvNPV = finalAge >= PSV_ELIGIBILITY_AGE ? (psvExpected * npvFactor) : (psvExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
 
     // [ESTATE-NPV-07] La VAN des rentes est ajoutée NETTE d'impôt — les rentes publiques sont un
     // revenu IMPOSABLE, et `totalEstateTax` ci-dessus ne couvre que la LIQUIDATION (REER + gains),

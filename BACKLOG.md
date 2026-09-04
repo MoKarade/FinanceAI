@@ -491,10 +491,6 @@
   ⚠️ Ce ticket REMPLACE `[ENG-RENEWAL-M0]` (« renouvellement dès le mois 0 »), dont la prémisse est
   exacte mais sans conséquence : le renouvellement au m0 est LOGGÉ, et avec un choc nul il ne change
   ni le PMT ni le taux. Rien à corriger de ce côté tant que le choc est mort.
-- [ ] **`[ENG-CELIAPP-RESIDUAL-PASTBUY]`** (S, FAIBLE — panel #552) — un solde CELIAPP résiduel
-  n'est plus liquidé quand l'achat est déjà fait (bloc d'achat sauté) ; repli 15 ans/71 ans
-  (`taxJanuary.ts:149-153`) → retrait non imposable MANQUÉ (pas de perte de capital). Détecter le
-  cas « CELIAPP > 0 + bien passé » et le signaler (ou transférer au REER à l'init).
 - [ ] **`[ENG-RENEWAL-RATE-MISMATCH]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552, PRÉ-EXISTANT) —
   au renouvellement hypothécaire, le PMT est recalculé au NOUVEAU taux mais l'intérêt mensuel reste
   à `goal.mortgageRate` (`realEstateMonth.ts:~349`) : renouvellement 4,5 %→3 % mesuré → capital

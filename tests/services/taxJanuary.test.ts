@@ -181,6 +181,29 @@ describe('processJanuaryReset — CELIAPP & Guyton-Klinger', () => {
         expect(r.celiappTransferToReer).toBe(8000);
         expect(r.logs.some(l => l.includes('CELIAPP'))).toBe(true);
     });
+    // [ENG-CELIAPP-RESIDUAL-PASTBUY] Ticket CLASSÉ CADUQUE (recensé + mesuré 2026-09-04) : il
+    // annonçait « retrait non imposable MANQUÉ » quand un bien est déjà acheté — or un détenteur
+    // qui possède sa résidence n'est PLUS premier acheteur : aucun retrait admissible n'existe
+    // pour lui (ARC). Le comportement légal est exactement celui du moteur — le compte reste
+    // ouvert puis se ferme au premier de {15 ans, 71 ans}, solde transféré au REER en franchise.
+    // MESURÉ bout en bout : transférer dès l'init (le « remède » du ticket) donne +0 $ à 10 ans,
+    // +227 $ à 15 ans, +444 $ (+0,014 %) à 30 ans — l'attente n'a pas de coût significatif.
+    // Ces deux cas FIGENT le fait pour qu'un futur lot ne « corrige » pas ce qui est légal.
+    it('bien DÉJÀ acheté + CELIAPP résiduel : la fermeture à 15 ans transfère quand même (rien n\'est perdu)', () => {
+        const r = processJanuaryReset(0, baseCtx({
+            hasPurchasedPrimary: true, celiappOpeningYear: 2010, celiapp: 8000,
+        }), helpers)!;
+        expect(r.celiappTransferToReer).toBe(8000);
+    });
+    it('bien DÉJÀ acheté + CELIAPP résiduel AVANT 15 ans : le compte tient (ni transfert, ni nouveaux droits)', () => {
+        // La détention est le comportement LÉGAL — pas un solde « oublié ». Aucun droit neuf ne
+        // s'ouvre (le détenteur n'est plus premier acheteur), et le solde attend la fermeture.
+        const r = processJanuaryReset(0, baseCtx({
+            hasPurchasedPrimary: true, celiappOpeningYear: 2020, celiapp: 8000,
+        }), helpers)!;
+        expect(r.celiappTransferToReer).toBe(0);
+        expect(r.fhsaRoomNew).toBe(0);
+    });
     it('Guyton-Klinger LISSÉ : baisse ≥ 5 % → gel total (facteur 0), extrême identique à l\'ancien', () => {
         // portefeuille courant = 50k + 0 + 100k = 150k ; précédent 200k → −25 % ≥ 5 % → facteur 0.
         const r = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 200000 }), helpers)!;

@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 126 : le ticket CELIAPP résiduel était fiscalement faux — classé, mesuré, figé
+> `[ENG-CELIAPP-RESIDUAL-PASTBUY]` classé CADUQUE — **aucun code de prod touché** (2 cas de test).
+> Aucun déploiement à vérifier.
+> - Le ticket annonçait un « retrait non imposable manqué » : faux — un propriétaire n'est plus
+>   premier acheteur, aucun retrait admissible n'existe. Le moteur fait déjà le comportement
+>   légal : fermeture à 15 ans/71 ans, transfert au REER en franchise.
+> - Mesuré bout en bout : transférer dès l'init (le « remède ») = +0 $ à 10 ans, +444 $ (+0,014 %)
+>   à 30 ans. L'attente légale ne coûte rien de significatif.
+> - Deux cas ajoutés à `taxJanuary.test.ts` figent le fait (2 perturbations, rouges ciblés).
+
 > ## 🟦 Session 2026-09-04 — Lot 125 : reliquat prorata-sans-net + hygiène du BACKLOG
 > `[BUDGET-SPLIT-PRORATA-SANS-NET]` livré (else final → 0,5 en couple) — **code de prod touché**.
 > - Hygiène `PM-STALE-BACKLOG` : 4 tickets retirés dont l'objet n'existait plus —

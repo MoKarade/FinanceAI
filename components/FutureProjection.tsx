@@ -1243,6 +1243,27 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (point) tooltip.freezeOn(enrichDailyPoint(point) ?? point);
     };
 
+    // [D6-GRAPH] Sélection d'un jour AU CLAVIER. Le seul chaînon qui manquait : une fois un jour
+    // FIGÉ, tout est déjà clavier (l'infobulle figée est un dialogue focalisé avec Veille/
+    // Lendemain, « Détail complet » et Échap — le hook restitue le focus au conteneur au
+    // relâchement). Il manquait le PREMIER geste : figer un jour sans souris. Entrée/Espace/
+    // flèches sur le conteneur figent le jour d'AUJOURD'HUI (frontière passé/futur — l'ancre la
+    // plus parlante), ou le point le plus proche si la fenêtre zoomée ne le contient pas.
+    // ⚠️ `e.target === e.currentTarget` : les pastilles d'événement DANS le conteneur ont leurs
+    // propres touches (Entrée/Espace = modale) — on ne double pas leur geste.
+    const figerAuClavier = useCallback(() => {
+        if (selectSeries.length === 0) return;
+        const idxAujourdhui = selectSeries.findIndex((p) => p.monthIndex >= 0);
+        const point = selectSeries[idxAujourdhui === -1 ? selectSeries.length - 1 : idxAujourdhui];
+        if (point) tooltip.freezeOn(enrichDailyPoint(point) ?? point);
+    }, [selectSeries, tooltip, enrichDailyPoint]);
+    const handleChartKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault(); // Espace/flèches : ne pas défiler la page pendant le geste
+        figerAuClavier();
+    };
+
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
     // respecter la règle des Hooks. Retourne un placeholder UI si les props
     // critiques manquent. Avant ce fix, cette garde était ligne 46 (avant les
@@ -1677,10 +1698,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onPointerDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
                     onPointerUp={handleChartContainerClick}
                     onPointerMove={(e) => tooltip.onPointerMove(e.clientX, e.clientY)}
-                    tabIndex={-1}
-                    className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
+                    // [D6-GRAPH] tabIndex 0 (était -1) : le conteneur entre dans l'ordre de
+                    // tabulation — c'est LE point d'entrée clavier du geste « figer un jour ».
+                    // Le hook comptait déjà sur sa focusabilité pour restituer le focus.
+                    tabIndex={0}
+                    onKeyDown={handleChartKeyDown}
+                    className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
-                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Les mêmes données sont lisibles sous la courbe, sous forme de tableau et de liste de jalons. À la souris : clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler."
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Les mêmes données sont lisibles sous la courbe, sous forme de tableau et de liste de jalons. À la souris : clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = figer le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans l'infobulle, Échap = relâcher."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
@@ -1961,9 +1986,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     rows={selectSeries}
                 />
                 {/* [FUTUR-ICONS-RICH, a11y] Liste sr-only des JALONS affichés sur la courbe (RRQ/PSV/retraits/
-                    impôts/retraite/FIRE…) : les pastilles SVG ne sont pas atteignables au clavier (dette
-                    A11Y-FUTUR-MILESTONES-KEYBOARD au BACKLOG) → cette liste donne au lecteur d'écran la PARITÉ
-                    d'information (date + libellé), sans échantillonnage (bornée par le cap visuel des icônes). */}
+                    impôts/retraite/FIRE…). Les pastilles SVG sont focusables DEPUIS le lot
+                    A11Y-FUTUR-MILESTONES-KEYBOARD (PR #599) — la liste reste utile pour la LECTURE
+                    d'ensemble (date + libellé d'un coup, sans tabuler 29 pastilles), sans
+                    échantillonnage (bornée par le cap visuel des icônes). */}
                 {(shownLifeEvents.length > 0 || shownFlowEvents.length > 0) && (
                     <ul className="sr-only">
                         <li>Jalons de la projection :</li>

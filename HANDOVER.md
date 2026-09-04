@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 140 : la courbe Futur se pilote au clavier de bout en bout
+> `[D6-GRAPH]` clos — inventaire de 18 graphes : tout était couvert sauf le PREMIER geste clavier
+> sur la courbe Futur (figer un jour sans souris ; l'infobulle figée était déjà un dialogue
+> clavier complet). Livré : conteneur focusable (`tabIndex=0` + `focus-ring`), Entrée/flèches
+> figent le jour d'aujourd'hui, `aria-label` enrichi, e2e clavier ajouté (CI arbitre). Routé dans
+> la même PR : `[IA-NAV-LABELS]` → décision Marc (`docs/A_FAIRE_MOI.md`). Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 139 : l'onglet Impôts diagnostique l'écart net déclaré ↔ net du modèle
 > `[ENG-NET-MODEL-RESIDUAL]` volet diagnostic livré — `services/taxResidual.ts` (pur) + ligne
 > conditionnelle dans la carte Retenues (brut SAISI et |écart| ≥ 1 % du net déclaré ; brut déduit

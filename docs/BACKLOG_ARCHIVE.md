@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[D6-GRAPH]` — LIVRÉ (lot 140)
+
+Inventaire par graphe RENDU (18 graphes, agent a11y + vérifs sur le code) : le périmètre annoncé
+(« projections, investissements ») était livré à 95 % par les lots antérieurs — tous les graphes
+portent `role="img"` + `ChartDataTable` sr-only, les donuts Investissements ont leur légende en
+vrais boutons, les pastilles de jalons sont focusables depuis `A11Y-FUTUR-MILESTONES-KEYBOARD`
+(PR #599). LE seul écart réel : le PREMIER geste clavier sur la courbe Futur — figer un jour
+quelconque sans souris (l'infobulle figée était déjà un dialogue clavier complet : Veille/
+Lendemain, Détail complet, Échap avec restitution du focus). Livré : conteneur `tabIndex=0` +
+`focus-ring`, Entrée/Espace/flèches figent le jour d'AUJOURD'HUI (ou le plus proche dans la
+fenêtre), `aria-label` enrichi du mode d'emploi clavier, commentaire périmé (« pastilles non
+atteignables ») corrigé. Preuve : e2e `[D6-GRAPH]` dans `futureDailySelect.spec.ts` (focus →
+Entrée → jour daté figé → Échap → relâché + focus restitué) — CI arbitre (e2e local du conteneur
+inutilisable, connu). Routé dans la même PR : `[IA-NAV-LABELS]` (décision produit). PR #871.
+
 ## 2026-09-04 — `[ENG-NET-MODEL-RESIDUAL]` volet diagnostic — LIVRÉ (lot 139)
 
 La moitié PROUVABLE du ticket : l'onglet Impôts affiche « Écart net déclaré ↔ net du modèle »

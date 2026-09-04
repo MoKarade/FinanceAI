@@ -724,9 +724,6 @@
   DÉDIÉE, avec les tests de l'écran en filet. Chiffré M, pas S.
   ⚠️ En attendant, il reste épinglé dans le CLIQUET de `tests/components/subTabsAria.test.tsx` —
   exception listée et justifiée, jamais silencieuse.
-- [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,
-  investissements) ; tables sr-only faites pour les donuts Budget.
-
 - [x] 🔴 **`[FINTABLE-INVESTMENTS-MUET]` — LIVRÉ le 2026-09-03** (PR #830), voir
   `docs/BACKLOG_ARCHIVE.md`. `services/fintable/comptesSansPositions.ts` traduit `holdingsSkipped`
   en `FintableSyncReport.comptesSansPositions` (identité + LIBELLÉ humain + raison) ; les DEUX

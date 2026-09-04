@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[MIGRATE-GROSS-PROPOSER]` — LIVRÉ (lot 121, PR #852)
+
+Le Profil détecte la signature du brut FABRIQUÉ par l'ancien repli (`Math.round(net × 1,35)`
+mensuel, écrit et PERSISTÉ par `migrateUserConfig` jusqu'au 2026-08-20 — reliquat
+`[MIGRATE-GROSS-DEJA-PERSISTE]`) et PROPOSE la correction. Décision de Marc (2026-09-03) :
+proposer en DEMANDANT, aucune écriture automatique — écraser une saisie est irréversible et une
+coïncidence est possible.
+
+- Détection en source unique `services/legacyGrossSignature.ts` : égalité STRICTE au dollar
+  mensuel (la signature de l'ÉCRITURE, pas un seuil), même dérivation du net que le fabricant
+  (`netSalary || salary`), exclusions : confirmé, salaire estampillé payslip/MCP (document réel).
+  Limite assumée : borne INFÉRIEURE — un net modifié depuis la fabrication rend le brut fabriqué
+  indétectable.
+- Avis dans la section Salaires du Profil, deux boutons : « Recalculer depuis mon net » (inversion
+  fiscale exacte + `grossSalaryConfirmed`) et « C'est bien mon brut » (confirme SEULEMENT — la
+  coïncidence existe, et un avertissement permanent est un avertissement mort). Champ additif
+  optionnel `User.grossSalaryConfirmed` — aucun bump de version.
+- ⚠️ **Pas d'avis en mode discret** : la garde d'indiscernabilité existante (leçon #608) a rougi —
+  deux boutons conditionnels aux VALEURS de salaire sont une fuite par la STRUCTURE. Et une
+  proposition de réécriture s'examine à découvert de toute façon.
+- Gardes : 9 cas purs (signature stricte, ±1 $, roundtrip de PROPRIÉTÉ « le brut proposé redonne
+  le net », discrimination du facteur plat) + 8 cas composant (le RENDU seul n'écrit RIEN — durci
+  contre l'écriture DIFFÉRÉE après une perturbation `setTimeout` restée verte, instance de
+  `UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE` ; chaque bouton fait exactement ce qu'il dit).
+  6 perturbations séparées, rouges ciblés.
+
 ## 2026-09-04 — `[BUDGET-EFFORT-NOMMER-LA-BASE]` — LIVRÉ (lot 120, PR #851)
 
 Le badge « Effort : X % » de la carte couple NOMME sa base (décision de Marc, 2026-09-03) :

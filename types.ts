@@ -153,6 +153,10 @@ export interface User {
   celiContributed?: number;
   rrspContributed?: number;
   facteurEquivalence?: number;
+  /** [MIGRATE-GROSS-PROPOSER] L'utilisateur a confirmé que son brut est bien le sien (ou a
+   *  accepté le brut recalculé). Éteint l'avis « brut fabriqué par l'ancienne version » du Profil
+   *  — un avertissement permanent est un avertissement mort. Champ additif optionnel. */
+  grossSalaryConfirmed?: boolean;
   /** [INCOME-PROVENANCE] Provenance du salaire (source UNIQUE = fiche de paie, demande Marc
    *  2026-07-15) : estampillé par TaxCenter (scan de paie) et par le MCP (apply_payslip).
    *  Absent = saisie manuelle/inconnue (l'onglet Impôt l'affiche). Champ additif optionnel. */

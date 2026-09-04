@@ -4,6 +4,9 @@ import { Icon } from '../ui/Icon';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { annualSalaryToMonthly } from '../../utils/salary';
+import { hasLegacyGross135Signature, proposedGrossMonthlyFromNet } from '../../services/legacyGrossSignature';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCAD } from '../../utils/format';
 import type { User } from '../../types';
 
 /**
@@ -56,6 +59,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
     const config = useFinanceStore((s) => s.config);
     const setAppState = useFinanceStore((s) => s.setAppState);
     const setConfig = (c: typeof config) => setAppState({ config: c });
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
 
     // Brouillon ANNUEL du brut (store = mensuel) — cf. convention UsersCard.
     const [grossAnnualDraft, setGrossAnnualDraft] = React.useState<Record<number, string>>({});
@@ -105,6 +109,48 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
                                         />
                                     </div>
+                                    {/* [MIGRATE-GROSS-PROPOSER] Décision de Marc (2026-09-03) : détecter la signature du
+                                        brut FABRIQUÉ par l'ancienne version (net × 1,35 arrondi) et PROPOSER — aucune
+                                        écriture sans clic explicite : écraser une saisie est irréversible, et une
+                                        coïncidence est possible (d'où « C'est bien mon brut », qui éteint l'avis). */}
+                                    {/* ⚠️ Pas d'avis en mode discret : la structure du DOM ne doit
+                                        pas dépendre des VALEURS de salaire (garde d'indiscernabilité,
+                                        leçon #608), et une proposition de réécriture s'examine à
+                                        découvert — le montant proposé serait masqué de toute façon. */}
+                                    {!isPrivacyMode && hasLegacyGross135Signature(user) && (() => {
+                                        const propose = proposedGrossMonthlyFromNet(
+                                            user, new Date().getFullYear(),
+                                            config.users.filter((x) => (x?.netSalary || 0) > 0 || (x?.grossSalary || 0) > 0).length || 1,
+                                        );
+                                        return (
+                                            <div role="note" className="col-span-2 bg-warning-500/10 border border-warning-500/30 rounded p-2 space-y-1">
+                                                <p className="text-tiny text-warning-300">
+                                                    Ce brut ressemble à une valeur fabriquée automatiquement par une ancienne
+                                                    version de l'app (1,35 × le net), pas à une saisie. Le vrai brut est
+                                                    probablement différent — il pilote les impôts et les droits REER projetés.
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className="text-tiny px-2 py-1 rounded bg-info-500/20 text-info-300 border border-info-500/40 hover:bg-info-500/30"
+                                                        onClick={() => {
+                                                            setGrossAnnualDraft((d) => ({ ...d, [idx]: String(propose * 12) }));
+                                                            patch(idx, { grossSalary: propose, grossSalaryConfirmed: true });
+                                                        }}
+                                                    >
+                                                        Recalculer depuis mon net (<PrivateAmount>{formatCAD(propose * 12)}</PrivateAmount>/an)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="text-tiny px-2 py-1 rounded bg-white/5 text-ink-300 border border-border hover:bg-white/10"
+                                                        onClick={() => patch(idx, { grossSalaryConfirmed: true })}
+                                                    >
+                                                        C'est bien mon brut
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
 

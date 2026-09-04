@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (L'app te signale un salaire brut qu'elle avait inventé — et te demande avant de corriger)
+
+- **Nouveau** : jusqu'en août, quand tu saisissais ton net sans ton brut, une ancienne version
+  fabriquait un brut approximatif (1,35 × le net) et l'enregistrait comme si tu l'avais tapé. Ce
+  chiffre pilote tes impôts projetés et tes droits REER — et il pouvait être faux de dizaines de
+  milliers de dollars par an aux revenus élevés.
+- **Ce qui change** : dans Profil → Salaires, si ton brut porte exactement cette signature, un
+  avis apparaît avec deux choix : « Recalculer depuis mon net » (le vrai calcul fiscal inversé) ou
+  « C'est bien mon brut » (si c'est une coïncidence). **Rien n'est modifié sans ton clic** — ta
+  décision du 2026-09-03.
+- L'avis ne s'affiche pas en mode discret, ni pour un salaire importé d'une fiche de paie (c'est
+  un vrai document, pas une invention).
+
+---
+
 ## [unreleased] — 2026-09-04 (Le badge « Effort » dit sur quoi il est calculé)
 
 - **Précisé** : dans la carte « Santé Financière du Couple », le badge « Effort : X % » affiche

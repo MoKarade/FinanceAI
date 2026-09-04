@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 157 : la jambe d'arrivée du meltdown est publiée (sans déplacer d'argent)
+> `[ENG-MELTDOWN-JAMBE-ARRIVEE]`, moitié sans arbitrage — registre d'affichage dédié
+> (`arriveeMeltdownNonReg`) versé dans `NetTransferNonReg`, jamais dans `contribNonReg`
+> (l'exclusion de croissance). Résiduel de forme-flux sous meltdown : 25 273 $ → l'arrondi ; la
+> borne de 30 000 $ s'est INVERSÉE en tolérance au cent. Goldens NEUTRALITÉ verts, et prouvés
+> discriminants (le geste interdit les fait rougir). RESTE la 🧭 décision du rendement de mi-mois.
+> + [T4] re-censé : sa source (MANUAL_TEST_CHECKLIST) est morte depuis #244 — annoté au BACKLOG.
+> Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 156 : les formulaires ont leurs primitives Input/Select/Field
 > `[DETTE-UI-PRIMITIVES]` livré — trois primitives qui unifient le CODE, pas l'apparence (variants
 > reproduisant les densités peintes). Re-censé : APP 26 migrés (le « 27e » était de la prose),

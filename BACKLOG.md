@@ -497,8 +497,16 @@
   le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
 - [ ] **`[ENG-MELTDOWN-JAMBE-ARRIVEE]`** (M, 🧭 **décision de Marc — MESURÉ 2026-08-25**) — le
   meltdown REER transfère du REER vers le NON-ENREGISTRÉ. La jambe de DÉPART est publiée depuis
-  PR #733 ; la jambe d'ARRIVÉE reste muette : le non-enregistré monte sans flux publié (résiduel
-  mesuré **25 273,39 $** au pire mois sous `MELTDOWN_REER`).
+  PR #733 ; la jambe d'ARRIVEE restait muette : le non-enregistré montait sans flux publié
+  (résiduel mesuré **25 273,39 $** au pire mois sous `MELTDOWN_REER`).
+  ✅ **Moitié SANS arbitrage livrée le 2026-09-04 (lot 157, PR #888)** — la « piste » du ticket :
+  registre d'AFFICHAGE dédié (`arriveeMeltdownNonReg`), versé dans `NetTransferNonReg` publié mais
+  JAMAIS dans `contribNonReg` (l'exclusion de croissance) → le flux se voit, l'argent ne bouge pas
+  (goldens NEUTRALITÉ verts, prouvés discriminants par le geste interdit → 2 rouges). Le résiduel
+  de forme-flux sous meltdown est retombé de 25 273 $ à l'arrondi ; la borne de 30 000 $ de
+  `projection.fluxForm` s'est INVERSÉE en règle (tolérance au cent). **RESTE la 🧭 décision** :
+  le rendement fantôme de mi-mois (verser aussi l'arrivée dans la base d'exclusion — déplace
+  −5 045,04 $ de patrimoine final, contre les goldens NEUTRALITÉ).
   ⚠️ **Le geste symétrique DÉPLACE DE L'ARGENT.** `contribNonReg` n'est pas un simple registre
   d'affichage : `growthApplication` s'en sert comme base d'exclusion de la croissance de mi-mois
   (`nonReg - contribNonReg`). L'alimenter retire un rendement fantôme sur de l'argent arrivé en
@@ -799,8 +807,13 @@
   était la granularité par adulte ET le producteur du champ. Reste routé (préexistant, hors
   périmètre) : `childrenCount` approximé via `childGoals.length` (TODO `User.dependentChildrenCount`
   dans projection.ts, inchangé).
-- [ ] **`[T4]`** (M, par lots) — automatiser les tests manuels critiques en Playwright : 8 specs e2e
-  aujourd'hui, cible 20-30 (depuis MANUAL_TEST_CHECKLIST.md).
+- [ ] **`[T4]`** (M, par lots) — automatiser les tests manuels critiques en Playwright : 15 specs e2e
+  aujourd'hui (re-compté 2026-09-04), cible 20-30. ⚠️ **PRÉMISSE MORTE (recensé 2026-09-04)** : la
+  source annoncée, `docs/MANUAL_TEST_CHECKLIST.md`, a été SUPPRIMÉE par la PR #244 (réduction
+  47→9 docs) et son contenu décrit une app d'avant la refonte nav (onglet « Accueil », fixtures
+  Alex+Sam aux valeurs d'époque). Faire ce lot = RE-DÉRIVER la liste des parcours critiques depuis
+  l'app ACTUELLE (onglets, flux réels), jamais depuis le récit mort — sinon on automatise des
+  attendus périmés.
 
 ## 🚀 Gros chantiers (⏳ — plan-first + OK Marc par chantier)
 

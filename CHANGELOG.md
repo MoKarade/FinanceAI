@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Tes droits REER d'avant 2010 ne sont plus calculés avec le plafond d'aujourd'hui)
+
+- **Corrigé** : pour reconstituer tes droits REER accumulés avant l'ouverture de l'app, chaque
+  année d'historique antérieure à 2010 utilisait le plafond de **2025** (32 490 $) — un plafond
+  moderne appliqué à tes années 1990-2009. Ces années utilisent désormais le plafond de **2010**
+  (22 000 $), la plus ancienne valeur connue — encore généreux, mais beaucoup moins faux.
+- **Qui est touché** : seulement les hauts revenus de longue date (le plafond ne mord qu'au-delà
+  d'environ 122 000 $ de salaire projeté en arrière). Mesuré : un 400 000 $/an né en 1971 perd
+  220 290 $ de droits fantômes ; à 60 000 $/an, rien ne change (0 $).
+
+---
+
 ## [unreleased] — 2026-09-04 (Le partage « 50 / 50 » du couple partage enfin en deux)
 
 - **Corrigé** : dans les réglages, le mode de répartition « 50 / 50 » des dépenses communes ne

@@ -626,10 +626,28 @@ export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
  */
 export const LAST_KNOWN_RRSP_YEAR = Math.max(...Object.keys(RRSP_ANNUAL_LIMITS).map(Number));
 
-// Plafond REER de repli pour une année HORS table (ex. années en sol canadien avant 2010, lors du
-// calcul des droits historiques). Source unique (évite la recopie en dur du 32490 ailleurs —
-// FISC-CONST-LINT). = plafond 2025 ; conserve le comportement existant de setupSimulation.
+// Plafond REER de repli pour une année HORS table. Source unique (évite la recopie en dur du
+// 32490 ailleurs — FISC-CONST-LINT). = plafond 2025.
+// ⚠️ [FISC-RRSP-FALLBACK-PRE2010] Depuis le 2026-09-04, ce repli ne sert PLUS aux années
+// ANTÉRIEURES à la table : leur donner le plafond 2025 sur-attribuait des droits historiques
+// (un plafond d'aujourd'hui appliqué à 1990). Elles reçoivent le PLANCHER ci-dessous.
 export const RRSP_ANNUAL_LIMIT_FALLBACK = 32490;
+
+/** Première année où le plafond REER est CONNU dans la table — miroir de `LAST_KNOWN_RRSP_YEAR`. */
+export const FIRST_KNOWN_RRSP_YEAR = Math.min(...Object.keys(RRSP_ANNUAL_LIMITS).map(Number));
+
+/**
+ * [FISC-RRSP-FALLBACK-PRE2010] Plafond appliqué aux années AVANT la table (droits historiques d'un
+ * résident de longue date). HYPOTHÈSE DE MODÈLE, documentée comme telle (FISCAL_REFERENCE §REER) :
+ * on ne connaît pas les plafonds pré-2010 dans le dépôt (source ARC inaccessible depuis
+ * l'environnement — cf A_FAIRE_MOI B9), mais le plafond REER n'a jamais BAISSÉ d'une année à
+ * l'autre : la plus ancienne valeur CONNUE (2010 : 22 000 $) est donc une BORNE SUPÉRIEURE du vrai
+ * plafond de chaque année antérieure — strictement moins fausse que le plafond 2025 (32 490 $)
+ * qu'appliquait l'ancien repli. L'erreur résiduelle reste une SUR-attribution, mais bornée par
+ * (22 000 − vrai plafond) au lieu de (32 490 − vrai plafond).
+ * Valeur DÉRIVÉE de la table — étendre la table vers le passé corrige les deux consommateurs.
+ */
+export const RRSP_ANNUAL_LIMIT_PRE_TABLE = RRSP_ANNUAL_LIMITS[FIRST_KNOWN_RRSP_YEAR];
 
 /**
  * Année de début de résidence fiscale canadienne, utilisée pour les droits de

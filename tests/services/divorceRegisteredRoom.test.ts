@@ -97,12 +97,20 @@ describe('[ENG-DIVORCE-ROOM-COUPLE] les droits enregistrés suivent le nombre de
         // DÉFEND — « sans divorce ni décès, ce lot-ci ne change rien » — est intact ; seule l'ancre
         // de valeur bouge, et l'écart relatif (+0,28 %) est cohérent avec un portefeuille de 22 M$
         // dont une part importante est non enregistrée.
-        expect(Math.round(finalNW({}, false))).toBe(22_927_019);
+        // Re-basé 2026-09-04 ([FISC-RRSP-FALLBACK-PRE2010] lot 127, **−13 333 $**, était
+        // 22 927 019) : les années d'historique PRÉ-2010 plafonnent désormais au plafond 2010
+        // (22 000 $) et plus au plafond 2025 (32 490 $). Cette fixture est justement l'une des
+        // rares où le plafond REER mord (300 k$/an) — moins de droits historiques fabriqués, donc
+        // moins d'abri fiscal : le SIGNE négatif est le bon sens, et l'écart (−0,058 %) est du
+        // même ordre que les re-bases fiscales précédentes de ce fichier.
+        expect(Math.round(finalNW({}, false))).toBe(22_913_686);
     });
 
     it('le scénario de décès n\'est pas perturbé par ce lot', () => {
         // Re-basé 2026-09-03 (même cause, **+96 997 $**, était 44 428 892 — soit +0,22 %, le même
         // ordre relatif que ci-dessus sur un patrimoine deux fois plus gros).
-        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_525_889);
+        // Re-basé 2026-09-04 ([FISC-RRSP-FALLBACK-PRE2010], **−33 461 $**, était 44 525 889 —
+        // −0,075 %, même cause et même sens que ci-dessus).
+        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_492_428);
     });
 });

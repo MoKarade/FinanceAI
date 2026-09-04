@@ -137,10 +137,10 @@
   focus / cibles tactiles (indépendant des outils, peut partir en parallèle) ·
   **4e** `[A11Y-SUBTABS-FUTUR]` ⚠️ **APRÈS** la vague 8b (même fichier, 2 026 lignes).
 - [ ] **Vague 5 — IA/Anthropic** : un seul lot, une seule surface (`services/claude.ts` + `mcp/`).
-- [ ] **Vague 6 — Performance** : `[PERF-ENGINE-DATELABEL-INTL]` (correctif déjà écrit 200 lignes
-  plus loin dans le même fichier), `[PERF-ENGINE-ISOSTRING-HOTLOOP]`, `[PERF-MARKETDATA-DYNIMPORT-INERTE]`,
-  puis `[PERF-ENGINE-TOFIXED-ROUND]` ⚠️ **fuzz exhaustif obligatoire avant merge** (le correctif
-  « évident » diverge de `toFixed` sur les piles `.xx5`).
+- [x] **Vague 6 — Performance** ✅ **SOLDÉE le 2026-09-04** : ✅ `[PERF-ENGINE-DATELABEL-INTL]` +
+  ✅ `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (2026-08-21) · ✅ `[PERF-MARKETDATA-DYNIMPORT-INERTE]`
+  (lot 133) · ✅ `[PERF-ENGINE-TOFIXED-ROUND]` (lot 131, fuzz ~1M valeurs). Reste de perf ailleurs :
+  `[PERF-BOOT]` (différé sciemment, provider-aware).
 - [ ] **Vague 7 — Fintable/sync** : ✅ `[FINTABLE-INVESTMENTS-MUET]` (PR #830) · ✅ `[FINTABLE-SOURCE-TAG]` (lot 130). Reste : `[FINTABLE-BACKFILL-HISTORY]` (prérequis Marc), `[DEFAULTS-DRIFT…]` fermé caduque.
 - [ ] **Vague 8 — Dette technique** : **8a** god-fonctions moteur · **8b** god-files UI, UN fichier à
   la fois · **8c** primitives et tokens · **8d** casts/dépréciations/exports morts ·

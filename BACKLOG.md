@@ -1372,14 +1372,6 @@
   **pas** un refactor de l'orchestrateur (trop risqué, ROI nul) mais des **tests de régression
   d'ordre** sur les paires déjà connues comme fragiles (taxApril↔taxDecember,
   meltdownReer↔retirementIncome), avec preuve de discrimination par inversion chirurgicale.
-- [ ] **`[STORE-RENAME-NO-GUARD]`** (S, ÉLEVÉ) — la chaîne de migration v1→v7 est solide pour les cas
-  traités, mais **rien ne protège contre un RENOMMAGE de champ sans palier de migration**.
-  `partialize` (`store/useFinanceStore.ts:698`) fait un allow-all moins une exclude-list : renommer
-  un champ passe le typecheck alors qu'un blob localStorage/Drive existant garde l'ANCIEN nom,
-  silencieusement ignoré au rehydrate (merge shallow par défaut). Plus silencieux que
-  `STORE-REHYDRATE-SILENT` : aucune exception, juste une perte de données. La règle du `CLAUDE.md`
-  ne couvre que l'ADDITIF, jamais le RENAME. Correctif : un test qui énumère les noms de champs
-  legacy déjà consommés par un palier et échoue si l'un est réutilisé sans palier neuf.
 - [ ] **`[SVC-STORE-COUPLING]`** (M, ÉLEVÉ) — 8 fichiers de `services/` appellent
   `useFinanceStore.getState()` directement, plusieurs via `as unknown as AppState` qui **désactive le
   compilateur** sur ces lectures/écritures : `services/pdfReport.ts:17,269`, `services/sync/syncPull.ts:18,70,97`,

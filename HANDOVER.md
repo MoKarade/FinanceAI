@@ -16,6 +16,12 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 137 : la règle anti-renommage du store existe (tests seulement)
+> `[STORE-RENAME-NO-GUARD]` livré — `storeRenameGuard.test.ts` : règle « rename = palier neuf +
+> nom réservé » + inventaire recensé (gemini, salary — les champs de test ont été re-légitimés,
+> pas retirés). Chaîne comportementale + porte de réutilisation + anti-obsolescence. Lot tests+doc
+> seulement — rien à vérifier côté déploiement.
+
 > ## 🟦 Session 2026-09-04 — Lot 136 : le taux marginal suit enfin l'année du rapport (money-critical)
 > `[FISC-MARGINAL-SPACE]` livré — `FiscalReport.marginalRate` passait par les paliers FIGÉS 2026
 > quel que soit `year` : rapport auto-contradictoire dès 2027. Corrigé à la source + alignement

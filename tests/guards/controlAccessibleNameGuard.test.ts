@@ -39,6 +39,9 @@ const racine = resolve(process.cwd(), 'components');
 const PRIMITIVES_GENERIQUES: ReadonlyArray<{ fichier: string; raison: string }> = [
     { fichier: 'PrivateNumberInput.tsx', raison: 'relaie `{...rest}` : le nom vient de l\'appelant (`aria-label` ou `<label htmlFor>` côté site d\'usage).' },
     { fichier: 'PrivateSelect.tsx', raison: 'même contrat de primitive : `{...rest}` porte le nom choisi par l\'appelant.' },
+    // [DETTE-UI-PRIMITIVES] (lot 156) — les deux primitives canoniques rejoignent le même contrat.
+    { fichier: 'Input.tsx', raison: 'primitive `ui/Input` : relaie `{...rest}` — le nom vient du site (`aria-label`, ou `id` posé par `ui/Field` et son `<label htmlFor>`).' },
+    { fichier: 'Select.tsx', raison: 'primitive `ui/Select` : même contrat — `{...rest}` porte `id`/`aria-label` de l\'appelant.' },
 ];
 
 function fichiersTsx(dir: string): string[] {

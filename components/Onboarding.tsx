@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Input } from './ui/Input';
+import { Field } from './ui/Field';
 import { AppState, BudgetConfig, User } from '../types';
 import { INITIAL_BUDGET, INITIAL_PROJECTION, INITIAL_REAL_ESTATE_GOAL, INITIAL_CHILD_GOAL, DEFAULT_FX_RATES } from '../constants';
 import { annualSalaryToMonthly } from '../utils/salary';
@@ -178,29 +180,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10">
                             <div className="font-bold text-ink-50 text-body">Utilisateur principal</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label htmlFor="user1-name" className="text-meta text-ink-400">Prénom</label>
-                                    <input id="user1-name" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 focus-ring" value={user1.name} onChange={e => setUser1({ ...user1, name: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label htmlFor="user1-age" className="text-meta text-ink-400">Âge</label>
-                                    <input id="user1-age" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.age} onChange={e => setUser1({ ...user1, age: parseInt(e.target.value) || 30 })} min={18} max={80} />
-                                </div>
-                                <div>
-                                    <label htmlFor="user1-gross" className="text-meta text-ink-400">Salaire brut annuel ($)</label>
-                                    <input id="user1-gross" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.grossSalary} onChange={e => setUser1({ ...user1, grossSalary: Math.max(0, Math.min(10000000, parseInt(e.target.value) || 0)) })} />
-                                </div>
-                                <div>
-                                    <label htmlFor="user1-net" className="text-meta text-ink-400">Salaire net mensuel ($)</label>
-                                    <input id="user1-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
-                                </div>
+                                <Field id="user1-name" label="Prénom">
+                                        <Input variant="large" className="mt-1" value={user1.name} onChange={e => setUser1({ ...user1, name: e.target.value })} />
+                                </Field>
+                                <Field id="user1-age" label="Âge">
+                                        <Input variant="large" className="mt-1 font-mono" type="number" inputMode="numeric" value={user1.age} onChange={e => setUser1({ ...user1, age: parseInt(e.target.value) || 30 })} min={18} max={80} />
+                                </Field>
+                                <Field id="user1-gross" label="Salaire brut annuel ($)">
+                                        <Input variant="large" className="mt-1 font-mono" type="number" inputMode="decimal" value={user1.grossSalary} onChange={e => setUser1({ ...user1, grossSalary: Math.max(0, Math.min(10000000, parseInt(e.target.value) || 0)) })} />
+                                </Field>
+                                <Field id="user1-net" label="Salaire net mensuel ($)">
+                                        <Input variant="large" className="mt-1 font-mono" type="number" inputMode="decimal" value={user1.netSalary} onChange={e => setUser1({ ...user1, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
+                                </Field>
                                 <div className="col-span-2">
                                     <label className="flex items-center gap-2 text-meta text-warning-400 cursor-pointer">
                                         <input type="checkbox" checked={!!user1.isImmigrant} onChange={e => setUser1({ ...user1, isImmigrant: e.target.checked })} className="w-4 h-4 rounded focus-ring" />
                                         Je suis immigré au Canada <span className="text-ink-400">(ajuste le droit CELI/REER et la PSV)</span>
                                     </label>
                                     {user1.isImmigrant && (
-                                        <input id="user1-arrival" aria-label="Année de résidence fiscale au Canada" type="number" inputMode="numeric" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-2 font-mono focus-ring" value={user1.canadaArrivalYear || ''} onChange={e => setUser1({ ...user1, canadaArrivalYear: parseInt(e.target.value) || 0 })} min={1950} max={new Date().getFullYear()} placeholder="Année de résidence fiscale (ex: 2018)" />
+                                        <Input variant="large" className="mt-2 font-mono" id="user1-arrival" aria-label="Année de résidence fiscale au Canada" type="number" inputMode="numeric" value={user1.canadaArrivalYear || ''} onChange={e => setUser1({ ...user1, canadaArrivalYear: parseInt(e.target.value) || 0 })} min={1950} max={new Date().getFullYear()} placeholder="Année de résidence fiscale (ex: 2018)" />
                                     )}
                                 </div>
                             </div>
@@ -215,14 +213,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             <div className="space-y-4 p-4 bg-white/5 rounded-card border border-white/10 animate-fade-in">
                                 <div className="font-bold text-ink-50 text-body">Partenaire</div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label htmlFor="user2-name" className="text-meta text-ink-400">Prénom</label>
-                                        <input id="user2-name" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 focus-ring" value={user2.name} onChange={e => setUser2({ ...user2, name: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="user2-net" className="text-meta text-ink-400">Salaire net mensuel ($)</label>
-                                        <input id="user2-net" type="number" inputMode="decimal" className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body mt-1 font-mono focus-ring" value={user2.netSalary} onChange={e => setUser2({ ...user2, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
-                                    </div>
+                                    <Field id="user2-name" label="Prénom">
+                                            <Input variant="large" className="mt-1" value={user2.name} onChange={e => setUser2({ ...user2, name: e.target.value })} />
+                                    </Field>
+                                    <Field id="user2-net" label="Salaire net mensuel ($)">
+                                            <Input variant="large" className="mt-1 font-mono" type="number" inputMode="decimal" value={user2.netSalary} onChange={e => setUser2({ ...user2, netSalary: Math.max(0, Math.min(1000000, parseInt(e.target.value) || 0)) })} />
+                                    </Field>
                                 </div>
                             </div>
                         )}
@@ -249,7 +245,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                     <Icon name="bot" size={18} className="text-primary" /> Anthropic Claude API Key
                                     <span className="text-tiny text-ink-400 font-normal">(Catégorisation IA + conseiller + objectifs intelligents)</span>
                                 </label>
-                                <input id="anthropic-key" type="password" placeholder="sk-ant-..." className="w-full bg-dark border border-white/10 rounded-card px-3 py-2 text-ink-50 text-body font-mono focus-ring" value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} />
+                                <Input variant="large" className="font-mono" id="anthropic-key" type="password" placeholder="sk-ant-..." value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} />
                                 <p className="text-tiny text-ink-400 mt-2">Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
                             </div>
                         </div>

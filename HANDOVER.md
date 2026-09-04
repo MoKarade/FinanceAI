@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 156 : les formulaires ont leurs primitives Input/Select/Field
+> `[DETTE-UI-PRIMITIVES]` livré — trois primitives qui unifient le CODE, pas l'apparence (variants
+> reproduisant les densités peintes). Re-censé : APP 26 migrés (le « 27e » était de la prose),
+> Onboarding 8 (6 Field), ProjectionControls 1 select. Exclusions déclarées : PatrimoineExtended
+> (grille dense), sliders, prop « erreur » (aucun producteur), unification visuelle (décision
+> produit). Suites + scans privacy verts sans modification ; 6 tests neufs, 2 perturbations.
+> Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 155 : la prime RAMQ connaît l'assurance privée, par adulte
 > `[ENG-RAMQ-FIELDS]` livré — `User.hasPrivateDrugInsurance` (case par personne, Profil → Options
 > fiscales) → `ramqExemptAdultsCount` dans taxDecember (Annexe K : chaque conjoint calcule SA

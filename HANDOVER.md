@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 131 : la boucle chaude du moteur cesse de payer toFixed
+> `[PERF-ENGINE-TOFIXED-ROUND]` livré — ~94 champs/mois passent de `Number(x.toFixed(2))` à
+> `round2` (helpers.ts), BIT-IDENTIQUE (fuzz ~1 M de valeurs committé, 0 divergence) et ~13× plus
+> rapide (556 → 42 ms / 2 M d'appels, mesuré). Garde de source : plus de `.toFixed(2)` dans
+> monthlyOutput. Zéro golden bougé — prouvé par la parité, pas constaté.
+> ⚠️ Vercel n'a PAS créé de déploiement pour le merge du lot 130 (#861, 0b6beae) après ~8 min —
+> même panne que le 31/07 ; le push du lot 131 doit rattraper les DEUX. À re-vérifier au merge.
+
 > ## 🟦 Session 2026-09-04 — Lot 130 : le gel Fintable ne se cache plus derrière un CSV
 > `[FINTABLE-SOURCE-TAG]` livré — la limite connue de `[FINTABLE-STALE-ALERT]` est fermée.
 > - `FintableSyncReport.lastProductiveAt` (additif) : epoch de la dernière passe qui a ÉCRIT des

@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 150 : App.tsx n'est plus une god-function
+> `[GODFILE-APP]` livré — App.tsx (910 l.) → 324 l. d'assemblage : effets de boot dans
+> `useAppBootEffects` (ordre provider-marché-avant-consommateurs préservé), navigation dans
+> `useTabNavigation`, hydratation marché dans `useAssetDataHydration`, handlers PDF/import dans
+> `components/app/`. Le remède du ticket (« AppProviders.tsx ») était périmé — re-dérivé du code.
+> Trois gardes ancrées au chemin suivies avec le code. Preuve : gate + E2E CI.
+
 > ## 🟦 Session 2026-09-04 — Lot 149 : le serveur HTTP MCP est découpé pour l'audit sécurité
 > `[GODFILE-MCPHTTP]` livré — `mcp/http.ts` (761 l.) → `http/plomberie.ts` (corps plafonné,
 > temps constant), `http/oauth.ts` (flux OAuth 2.1, limiteur en paramètre — un par process),

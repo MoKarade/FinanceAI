@@ -78,9 +78,11 @@ describe('câblage App.tsx — refs de toast INDÉPENDANTS (scan du source)', ()
     it('la branche hydratation est gatée par SON ref, jamais par celui de la migration', async () => {
         const { readFileSync } = await import('node:fs');
         const { resolve } = await import('node:path');
-        const src = readFileSync(resolve(process.cwd(), 'App.tsx'), 'utf-8');
+        // [GODFILE-APP] Le câblage des toasts a déménagé d'App.tsx vers hooks/useAppBootEffects.ts
+        // (extraction telle quelle) — la garde suit le code, le FAIT défendu ne change pas.
+        const src = readFileSync(resolve(process.cwd(), 'hooks/useAppBootEffects.ts'), 'utf-8');
 
-        // Preuve de volume : les deux filets existent bien dans App.
+        // Preuve de volume : les deux filets existent bien dans le hook de boot.
         expect(src).toContain('getMigrationStatus()');
         expect(src).toContain('getHydrationStatus()');
 

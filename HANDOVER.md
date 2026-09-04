@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 124 : le partage 50/50 du couple partage enfin en deux
+> `[BUDGET-SPLIT-5050-RATIO-1]` livré — **code de prod touché** (carte couple du Budget).
+> - Le mode « 50 / 50 » n'avait aucune branche dans `coupleAnalysis` : ratio1 restait à 1, 100 %
+>   du commun au conjoint 1 (Effort 30 %/0 % mesuré). Branche explicite `ratio1 = 0.5`.
+> - Bug découvert au lot 120 (par la dérivation MANUELLE des attendus), routé au BACKLOG, corrigé
+>   ici comme lot à part entière. Seul consommateur de ratio confirmé : `Budget.tsx`.
+> - Garde 3 cas (50/50 = 15 %/19 % dérivés à la main, contrôle custom intact, contrôle solo),
+>   2 perturbations séparées à rouges ciblés.
+> - ⚠️ Reliquat routé : `prorata` sans aucun net saisi reste à ratio 1
+>   (`[BUDGET-SPLIT-PRORATA-SANS-NET]`, XS).
+
 > ## 🟦 Session 2026-09-04 — Lot 123 : les prompts passent par formatCAD, l'arrondi à 100 $ est abandonné
 > `[FMT-PROMPT-MIGRER]` livré — **code de prod touché** (prompts IA, résumés MCP, consentement).
 > - 17 sites migrés, `roundToHundred` supprimé (categorizeBatch : champ JSON → arrondi au dollar).

@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Le partage « 50 / 50 » du couple partage enfin en deux)
+
+- **Corrigé** : dans les réglages, le mode de répartition « 50 / 50 » des dépenses communes ne
+  faisait... rien : 100 % du commun était attribué au conjoint 1, 0 % au conjoint 2. Toute la
+  carte « Santé Financière du Couple » mentait dans ce mode (badges Effort, barres, Sorties,
+  Épargne). Chaque conjoint porte maintenant la moitié, comme le bouton le promet.
+- Les modes « Prorata des salaires nets » et « Personnalisé » n'ont pas bougé — eux
+  fonctionnaient déjà.
+
+---
+
 ## [unreleased] — 2026-09-04 (Les montants envoyés à l'IA sont exacts — et le consentement le dit)
 
 - **Changé (ta décision du 2026-09-03)** : les montants inclus dans les demandes à Claude

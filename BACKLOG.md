@@ -22,15 +22,11 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[BUDGET-SPLIT-5050-RATIO-1]`** (S — bug PRÉEXISTANT découvert au lot 120, 2026-09-04)
-  — le mode « 50 / 50 » offert par le sélecteur des réglages (`UserConfigFields.tsx`) n'a AUCUNE
-  branche dans `coupleAnalysis` (`Budget.tsx:551-552` ne traite que `prorata` et `custom`) :
-  `ratio1` reste à 1 → **100 % du commun est attribué au conjoint 1, 0 % au conjoint 2**. Toute la
-  carte couple ment dans ce mode (badges Effort, barres, Sorties, Épargne). Atteignable en UN clic,
-  et les SIX personas de test sont à `'50/50'` — leurs écrans couple sont faux aujourd'hui.
-  Mesuré (fixture nets 5 000/4 000, commun 1 500 $) : Effort affiché 30 %/0 % au lieu de 15 %/19 %.
-  Correctif probable : `ratio1 = 0.5` pour `'50/50'` — vérifier qu'aucun autre consommateur ne
-  compense (recensé au lot 120 : `Budget.tsx:551` est le SEUL consommateur de ratio).
+- [ ] **`[BUDGET-SPLIT-PRORATA-SANS-NET]`** (XS — reliquat noté au lot 124, 2026-09-04) — en mode
+  `prorata` avec AUCUN net saisi (`totalNet == 0`), `ratio1` reste à 1 : un couple sans salaires
+  saisis voit 100 % du commun sur le conjoint 1. Même classe de fallthrough que le 50/50 corrigé
+  au lot 124, gravité bien moindre (un couple sans aucun net saisi n'a presque rien d'autre de
+  calculable non plus). Correctif candidat : repli 0,5 quand `totalNet == 0` en couple.
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).

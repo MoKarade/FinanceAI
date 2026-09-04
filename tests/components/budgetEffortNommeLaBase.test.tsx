@@ -28,9 +28,10 @@ vi.mock('recharts', async () => {
 // seul est IDENTIQUE pour les deux conjoints par construction (commun/totalNet) — sans le poste
 // perso, les deux badges porteraient le même pourcentage et une inversion user1/user2 serait
 // invisible.
-// ⚠️ `splitMode: 'prorata'` et pas '50/50' : le mode 50/50 a un défaut PRÉEXISTANT (aucune branche
-// de coupleAnalysis ne le traite, ratio1 reste 1 → tout le commun va au conjoint 1) — routé au
-// BACKLOG sous [BUDGET-SPLIT-5050-RATIO-1], hors périmètre de ce lot.
+// ⚠️ `splitMode: 'prorata'` et pas '50/50' : au moment d'écrire ce test, le mode 50/50 avait un
+// défaut (aucune branche dans coupleAnalysis — corrigé au lot 124, sa garde vit dans
+// budgetSplit5050.test.tsx). La fixture reste au prorata : c'est le poste perso asymétrique qui
+// rend les deux badges différents, l'histoire du 50/50 n'est plus la raison.
 const config: BudgetConfig = {
     users: [
         { name: 'Marc', grossSalary: 7000, netSalary: 5000 } as unknown as User,

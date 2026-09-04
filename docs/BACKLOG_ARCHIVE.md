@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-GODFN-CASHFLOW]` — LIVRÉ (lot 142)
+
+`processCashflowAllocation` (296 lignes, la logique money-critical la plus dense du moteur)
+découpée en étapes NOMMÉES de niveau module, à comportement STRICTEMENT inchangé :
+`processShortfall`/`processExcess` + `puiserLiquideJusquAuSeuil`, `tirerReer` (l'ex-closure,
+son couple shortfall/runningGross rendu explicite via `CascadeEnCours`), `cascadeStandard`,
+`remplirCoussinEtBalayer`, `rembourserDettes`, et DEUX décisions pures EXPORTÉES et testées
+séparément : `ordreDesBuckets` (ordres par stratégie + swap banque-de-pertes, avec le
+contre-cas PRIO_CELI où le swap ne s'applique pas) et `reerDAbordEnCotisation` (la frontière
+CF-3 à 0,40 DÉCIMAL épinglée — 0,399 → false). Équivalence prouvée par l'EMPREINTE des
+grandeurs publiées (`scripts/mesureOrdreBoucle.ts`, 5 fixtures, identique à l'octet avant/
+après — vérifiée deux fois) + les 64 tests d'intégration du module + moneyConservation/
+loopOrder/engineOrder/autoMarginalBascule (102 tests ciblés verts). Perturbations : seuil
+CF-3 → 40 (le bug historique) et garde du swap inversée — chacune rougit son seul test.
+PR #873.
+
 ## 2026-09-04 — `[ENGINE-IMPLICIT-ORDER]` — LIVRÉ (lot 141)
 
 Tests de régression d'ordre sur la boucle mensuelle de `runScenario`, dimensionnés par la

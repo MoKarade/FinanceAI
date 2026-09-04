@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 142 : la cascade de décaissement est découpée, comportement prouvé inchangé
+> `[DETTE-GODFN-CASHFLOW]` livré — la god-fonction de 296 lignes devient des étapes nommées +
+> deux décisions pures exportées et testées (`ordreDesBuckets`, `reerDAbordEnCotisation` — la
+> frontière CF-3 à 0,40 décimal épinglée). Équivalence prouvée par l'empreinte des grandeurs
+> publiées (banc du lot 141, identique à l'octet) + 102 tests moteur ciblés. Refactor pur —
+> le déploiement suit `main` mais le bundle est fonctionnellement identique.
+
 > ## 🟦 Session 2026-09-04 — Lot 141 : l'ordre de la boucle moteur est gardé — et mesuré d'abord
 > `[ENGINE-IMPLICIT-ORDER]` livré — la paire du ticket (avril↔décembre) RÉFUTÉE par la mesure
 > (inversion bit-identique) ; trois couples réels gardés avec leurs chiffres (meltdown↔revenus

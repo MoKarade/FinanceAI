@@ -1375,11 +1375,6 @@
   calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
   est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
   devra être délibéré ET répondre à cette question.
-- [ ] **`[DETTE-GODFN-CASHFLOW]`** (M, ÉLEVÉ) — `processCashflowAllocation` (cascade de décaissement
-  CELI/REER/non-enregistré/crypto, argent réel) fait **296 lignes**
-  (`services/projection/cashflowAllocation.ts:119-414`) — la logique money-critical la plus dense du
-  moteur, illisible d'un bloc. Correctif : découper par source de retrait en fonctions pures testées
-  séparément, à comportement inchangé. [MESURÉ]
 - [ ] **`[DETTE-GODFN-RETIREMENT]`** (M, ÉLEVÉ) — `computeRetirementIncome` fait **260 lignes**
   (`services/projection/retirementIncome.ts:162-421`). Correctif : séparer calcul RRQ, calcul
   PSV/SRG, et assemblage du breakdown par personne. [MESURÉ]

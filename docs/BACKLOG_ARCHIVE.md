@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[ENG-CELIAPP-RESIDUAL-PASTBUY]` — CLASSÉ CADUQUE, mesuré (lot 126, PR #857)
+
+Le ticket annonçait « retrait non imposable MANQUÉ » quand un CELIAPP résiduel coexiste avec un
+bien déjà acheté. **Le mécanisme du ticket est fiscalement faux** : un détenteur qui possède sa
+résidence n'est PLUS premier acheteur — aucun retrait admissible (non imposable) n'existe pour
+lui. Le comportement légal (ARC) est exactement celui du moteur : le compte reste ouvert, se
+ferme au premier de {15 ans d'ouverture, 71 ans}, et le solde est transféré au REER en franchise
+d'impôt — `taxJanuary.ts` le fait déjà, et `celiappTransfertFlux.test.ts` couvrait déjà la chaîne.
+
+**Mesuré bout en bout** (fixture bien passé + CELIAPP 40 000 $, 30 ans) : le CELIAPP se vide bien
+à l'année 13-14 (fermeture 15 ans, solde ~88 000 $ transféré au REER), et le « remède » du ticket
+(transférer dès l'init) donne **+0 $ à 10 ans, +227 $ à 15 ans, +444 $ (+0,014 %) à 30 ans** —
+l'attente légale n'a pas de coût significatif (mêmes taux de croissance, transfert en franchise).
+
+Livré : deux cas ajoutés à `taxJanuary.test.ts` qui FIGENT le fait (la fermeture transfère même
+avec un bien acheté ; avant 15 ans le compte tient, ni transfert ni nouveaux droits) — pour qu'un
+futur lot ne « corrige » pas ce qui est légal. 2 perturbations séparées, rouges ciblés.
+
 ## 2026-09-04 — `[BUDGET-SPLIT-PRORATA-SANS-NET]` + hygiène du BACKLOG — LIVRÉ (lot 125, PR #856)
 
 **Correctif XS** : en couple, le mode `prorata` avec AUCUN net saisi retombait sur `ratio1 = 1`

@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[GODFILE-STORE]` — LIVRÉ (lot 158, PR #889) — la famille godfiles V11 est COMPLÈTE
+
+Le dernier godfile de la famille V11, gardé pour la fin par son propre ticket (« DERNIER, risque
+migration »). `useFinanceStore.ts` re-mesuré **783 lignes** (le ticket disait 717) → façade de
+**207** : `etatParDefaut.ts` (défauts de l'app, migration LEGACY des clés `app_*`, bases persona ;
+`initialState` y est calculé au chargement du module — UNE seule exécution de
+`getInitialStateWithMigration`, qui a des effets localStorage), `migrationsPersistees.ts`
+(chaîne v1→v7), `actionsModeTest.ts` (les trois actions persona en créateur `(set, get)`,
+fermetures identiques), `optionsPersistance.ts` (merge typé, filet `onRehydrateStorage`,
+`partialize`, statut d'hydratation). Le risque nommé par le ticket était la PERSISTANCE : la
+config persist (name/version/storage/migrate) reste dans la façade à côté du `create()`, et
+l'équivalence est prouvée par EMPREINTE — sha256 de la sortie de `partialize` sur l'état initial
+(clés triées, `lastUpdate` neutralisé), liste des 61 clés, version 7, nom `financeai-storage` :
+IDENTIQUES avant/après (commande rejouable : test d'empreinte temporaire, gabarit dans l'historique
+de session). Ré-exports de compatibilité depuis la façade — aucun des ~200 sites d'import ne bouge.
+Vérifs : 52 tests store + suites voisines (personaSanitizer, ProjectionEngine, persist) verts ;
+2 perturbations sur les modules EXTRAITS (partialize cesse d'exclure `apiKeys` → 2 rouges sécurité ;
+merge cesse de refuser un blob illisible → rouge de la garde de type), restauration prouvée.
+Garde `storeRenameGuard` suivie avec le code (le repli `netSalary || salary` vit dans
+`etatParDefaut.ts`, anti-vacuité re-mesurée à la portée du nouveau fichier).
+
 ## 2026-09-04 — `[DETTE-UI-PRIMITIVES]` — LIVRÉ (lot 156, PR #887)
 
 Primitives de formulaire : `ui/Input.tsx` (variants `compact`/`large` qui REPRODUISENT les deux

@@ -775,8 +775,15 @@
   actuel, qui ne dépend que de `chartData`. Faire ce lot = déplacer la décision au rendu (fenêtre
   visible + largeur mesurée), pas changer la clé de groupement. ⚠️ Ne PAS livrer « grouper par
   abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
-- [ ] **Godfiles restants (V11)** :
-  **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
+- [x] **Godfiles (V11)** — ✅ **FAMILLE COMPLÈTE le 2026-09-04** :
+  ✅ `[GODFILE-STORE]` fait le 2026-09-04 (lot 158, PR #889) — `useFinanceStore.ts` re-mesuré
+  **783 l.** → façade de **207** : `etatParDefaut.ts` (défauts + migration legacy `app_*` +
+  `initialState` calculé LÀ, une seule exécution), `migrationsPersistees.ts` (v1→v7),
+  `actionsModeTest.ts` (créateur, mêmes fermetures set/get), `optionsPersistance.ts`
+  (merge/filet/partialize + statut d'hydratation). **Zéro migration** : nom, version (7) et forme
+  persistée inchangés — prouvé par EMPREINTE (sha256 de la sortie de `partialize` triée, clés,
+  version, nom : identiques avant/après). Le risque du ticket était la persistance : la CONFIG
+  persist reste dans la façade, à côté du create().
   ✅ `[GODFILE-FUTUREDETAILMODAL]` fait le 2026-09-04 (lot 154, PR #885) — re-mesuré **1 142 l.**
   (le « 606 » du ticket décrivait un état d'avant) → **445** : `futureDetail/comptes.ts` (ACCOUNTS,
   espace par année, explainMovement — pur), `detailsTransaction.ts`, `DrillDownCompte.tsx` (la vue

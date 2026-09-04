@@ -108,6 +108,18 @@ describe('maybeRunDailyFintableSync — « ne lève jamais » tenu même sur un 
         const report = useFinanceStore.getState().fintableSyncReport;
         expect(report?.error).toContain('chunk périmé');
     });
+
+    it('[FINTABLE-SOURCE-TAG] le rapport d\'échec REPORTE lastProductiveAt (un échec ne « dé-produit » pas)', async () => {
+        const PREV = Date.now() - 3 * 86_400_000;
+        useFinanceStore.setState({
+            fintableSyncReport: mkReport({ at: Date.now() - 26 * 3600_000, lastProductiveAt: PREV }),
+        });
+        runMock.mockRejectedValue(new Error('chunk périmé'));
+        await maybeRunDailyFintableSync();
+        const report = useFinanceStore.getState().fintableSyncReport;
+        expect(report?.error).toContain('chunk périmé');
+        expect(report?.lastProductiveAt).toBe(PREV); // perdu = gel du connecteur invisible après tout échec
+    });
 });
 
 describe('maybeRunDailyFintableSync — verrou partagé auto ↔ manuel', () => {

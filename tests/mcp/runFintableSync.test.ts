@@ -345,3 +345,39 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
         expect(saved[0].transactions).toHaveLength(1);
     });
 });
+
+describe('[FINTABLE-SOURCE-TAG] lastProductiveAt — le cron serveur consomme la même règle', () => {
+    // Le chaînon côté SERVEUR (le navigateur a le sien dans browserSync.test.ts) : une passe à
+    // vide REPORTE l'horodatage de la dernière passe productive, un échec aussi — sinon le gel
+    // du connecteur redevient invisible dès que le cron tourne « avec succès » à vide.
+    const PREV = Date.parse('2026-07-01T12:00:00Z');
+    const prevReport = (): NonNullable<AppState['fintableSyncReport']> => ({
+        at: PREV, cutoverDateUsed: null, accountsSeen: 1, accountsWithoutRole: 0,
+        transactionsAdded: 2, transfersDetected: 0, cashUpdated: false, debtsUpdated: [],
+        investmentReferenceCount: 0, warnings: [], error: null, lastProductiveAt: PREV,
+    });
+
+    it('passe à VIDE → reporté tel quel dans le rapport persisté', async () => {
+        const { store, saved } = makeStore(baseState({
+            transactions: [tx(1, '2026-07-08')], fintableSyncReport: prevReport(),
+        }));
+        const report = await runFintableSync(store, { token: 't', roles: {}, client: makeFakeClient() });
+        expect(report.error).toBeNull();
+        expect(report.transactionsAdded).toBe(0);
+        expect(report.lastProductiveAt).toBe(PREV);
+        expect(saved[0].fintableSyncReport?.lastProductiveAt).toBe(PREV);
+    });
+
+    it('passe en ÉCHEC → le rapport d\'échec persisté le reporte aussi', async () => {
+        const { store, saved } = makeStore(baseState({ fintableSyncReport: prevReport() }));
+        const client = {
+            get: vi.fn(async () => { throw new FintableError('panne', 'NETWORK'); }),
+            getAllPages: vi.fn(async () => []),
+        } as unknown as FintableClient;
+        await expect(runFintableSync(store, { token: 't', roles: {}, client })).rejects.toThrow();
+        // persistFailureReport écrit un rapport d'échec best-effort — avec le report.
+        expect(saved).toHaveLength(1);
+        expect(saved[0].fintableSyncReport?.error).toContain('panne');
+        expect(saved[0].fintableSyncReport?.lastProductiveAt).toBe(PREV);
+    });
+});

@@ -30,6 +30,10 @@ export interface SyncHealth {
     observedGapDays: number | null;
     /** Jours entiers depuis la transaction la plus récente ; `null` si aucune transaction. */
     daysSinceLastTransaction: number | null;
+    /** [FINTABLE-SOURCE-TAG] Jours entiers depuis la dernière passe PRODUCTIVE du connecteur
+     *  (`report.lastProductiveAt`) ; `null` si le rapport ne la porte pas encore (rapports
+     *  d'avant ce lot). Quand elle est connue, c'est ELLE qui pilote la détection de gel. */
+    daysSinceLastProductiveSync: number | null;
     /** Date (YYYY-MM-DD) de la transaction la plus récente ; `null` si aucune. */
     lastTransactionDate: string | null;
     /** Heures depuis la fin de la dernière passe ; `null` si aucune passe connue. */
@@ -75,6 +79,25 @@ export const STALE_SYNC_HOURS = 48;
 
 const MS_PER_DAY = 86_400_000;
 const MS_PER_HOUR = 3_600_000;
+
+/**
+ * [FINTABLE-SOURCE-TAG] Valeur de `lastProductiveAt` à écrire dans le PROCHAIN rapport.
+ *
+ * SOURCE UNIQUE de la règle de report (5 sites de construction de rapport la consomment —
+ * browserSync ×2, autoSync, FintableSyncCard, runFintableSync ×2) : une passe qui ÉCRIT des
+ * transactions horodate maintenant ; une passe à 0 ajout ou en échec CONSERVE l'horodatage
+ * précédent tel quel (le connecteur n'a pas prouvé qu'il produit, mais il n'a pas non plus
+ * « dé-produit »). Recopier ce ternaire à chaque site divergerait
+ * (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`).
+ */
+export function lastProductiveAtSuivant(
+    prev: FintableSyncReport | undefined,
+    transactionsAdded: number,
+    nowMs: number,
+): number | undefined {
+    if (transactionsAdded > 0) return nowMs;
+    return prev && Number.isFinite(prev.lastProductiveAt) ? prev.lastProductiveAt : undefined;
+}
 
 /** Date d'une transaction en epoch ms, ou `null` si la donnée est inexploitable (jamais 0 : un 0
  *  silencieux daterait tout de 1970 et rendrait l'import éternellement « gelé »). */
@@ -145,11 +168,14 @@ export function computeStaleThresholdDays(
 /**
  * Évalue la santé de l'import à l'instant `nowMs`.
  *
- * @param transactions Transactions connues, TOUTES SOURCES CONFONDUES.
- *   ⚠️ **LIMITE CONNUE** (finding #1 panel #561, ticket `[FINTABLE-SOURCE-TAG]`) : faute d'un champ
- *   de provenance sur `Transaction`, un import CSV manuel récent rend l'import Fintable « frais »
- *   alors qu'il peut être mort — le même vert trompeur que l'incident, par une autre porte. Ce
- *   n'est PAS un compromis tranché, c'est un angle mort assumé en attendant le tag de source.
+ * @param transactions Transactions connues, TOUTES SOURCES CONFONDUES. Elles servent à la CADENCE
+ *   (le rythme de dépense de l'utilisateur, indépendant du canal d'import) et de REPLI de fraîcheur.
+ *   ⚠️ [FINTABLE-SOURCE-TAG — limite FERMÉE le 2026-09-04] L'ancien angle mort (« un import CSV
+ *   manuel récent rend l'import Fintable frais alors qu'il peut être mort ») est clos : quand le
+ *   rapport porte `lastProductiveAt` (toute passe postérieure à ce lot), c'est LUI qui pilote la
+ *   détection de gel — un CSV ne le rajeunit pas. Le repli sur la date de transaction ne subsiste
+ *   que pour les rapports d'AVANT ce lot (champ absent), afin de ne pas fabriquer de fausse alerte
+ *   au déploiement.
  * @param report Dernier rapport de passe, ou `undefined` si aucune passe n'a jamais tourné.
  */
 export function computeSyncHealth(
@@ -176,6 +202,15 @@ export function computeSyncHealth(
         ? null
         : new Date(lastTxMs).toISOString().slice(0, 10);
 
+    // [FINTABLE-SOURCE-TAG] Fraîcheur du CONNECTEUR : jours depuis la dernière passe qui a
+    // réellement ÉCRIT des transactions. `Math.max(0, …)` : même garde anti-futur que ci-dessus.
+    const lastProductiveMs = report && Number.isFinite(report.lastProductiveAt)
+        ? (report.lastProductiveAt as number)
+        : null;
+    const daysSinceLastProductiveSync = lastProductiveMs === null
+        ? null
+        : Math.max(0, Math.floor((nowMs - lastProductiveMs) / MS_PER_DAY));
+
     const reportAt = report && Number.isFinite(report.at) ? report.at : null;
     const hoursSinceLastSync = reportAt === null
         ? null
@@ -184,7 +219,7 @@ export function computeSyncHealth(
 
     const staleThresholdDays = computeStaleThresholdDays(transactions, nowMs);
     const gapDays = observedGapDays(transactions, nowMs);
-    const base = { staleThresholdDays, observedGapDays: gapDays, daysSinceLastTransaction, lastTransactionDate, hoursSinceLastSync, lastError };
+    const base = { staleThresholdDays, observedGapDays: gapDays, daysSinceLastTransaction, daysSinceLastProductiveSync, lastTransactionDate, hoursSinceLastSync, lastError };
 
     if (report === undefined) {
         return { ...base, status: 'never', reason: "L'import bancaire n'a jamais été exécuté." };
@@ -201,7 +236,12 @@ export function computeSyncHealth(
             reason: `Aucune synchronisation depuis ${Math.floor(hoursSinceLastSync / 24)} jour(s) — l'import ne tourne plus.`,
         };
     }
-    if (daysSinceLastTransaction !== null && daysSinceLastTransaction > staleThresholdDays) {
+    // [FINTABLE-SOURCE-TAG] La fraîcheur qui JUGE le connecteur : la dernière passe PRODUCTIVE
+    // quand le rapport la porte (immunisée contre un import CSV/manuel récent), sinon la date de
+    // la dernière transaction toutes sources (rapports d'avant ce lot — comportement historique,
+    // aucune fausse alerte fabriquée au déploiement).
+    const fraicheurConnecteurJours = daysSinceLastProductiveSync ?? daysSinceLastTransaction;
+    if (fraicheurConnecteurJours !== null && fraicheurConnecteurJours > staleThresholdDays) {
         // ⚠️ LE cas de l'incident : la passe réussit, sans erreur, mais ne rapporte plus rien —
         // le flux est gelé CHEZ LE FOURNISSEUR. Sans cette branche, le statut resterait « ok ».
         return {
@@ -210,9 +250,16 @@ export function computeSyncHealth(
             // ⚠️ La cadence citée est la cadence OBSERVÉE, jamais re-dérivée du seuil : quand le
             // seuil est clampé au plafond, la reconstruction affichait un chiffre FAUX présenté
             // comme un fait (panel #561, contraire au no-fake-data). Inconnue → on n'invente rien.
-            reason: `Aucune transaction importée depuis ${daysSinceLastTransaction} jours `
-                + `(dernière : ${lastTransactionDate}${gapDays === null ? ''
-                    : ` ; ton rythme habituel en produit une tous les ${gapDays} jour(s)`}), `
+            // ⚠️ Deux mesures, deux phrases : quand `lastProductiveAt` pilote, dire « l'import n'a
+            // rien produit » (la dernière transaction AFFICHÉE peut être un CSV d'hier — affirmer
+            // « aucune transaction importée » serait FAUX à l'écran).
+            reason: (daysSinceLastProductiveSync !== null
+                ? `L'import bancaire n'a rien produit depuis ${daysSinceLastProductiveSync} jours `
+                    + `(les ajouts manuels ou CSV ne comptent pas${gapDays === null ? ''
+                        : ` ; ton rythme habituel produit une transaction tous les ${gapDays} jour(s)`}), `
+                : `Aucune transaction importée depuis ${daysSinceLastTransaction} jours `
+                    + `(dernière : ${lastTransactionDate}${gapDays === null ? ''
+                        : ` ; ton rythme habituel en produit une tous les ${gapDays} jour(s)`}), `)
                 + 'alors que la synchronisation dit réussir : le flux est probablement gelé côté fournisseur '
                 + '(abonnement expiré ou lien bancaire à ré-autoriser).',
         };

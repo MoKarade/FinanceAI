@@ -27,6 +27,7 @@ import { comptesSansPositionsDuSnapshot } from '../services/fintable/comptesSans
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { toPersistableBrokerBalances } from '../services/fintable/brokerBalances';
 import { decideCutoverDate, applyPayloadsIsolated } from '../services/fintable/syncCore';
+import { lastProductiveAtSuivant } from '../services/fintable/syncHealth';
 import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
 import { logError } from '../services/errorLogger';
@@ -59,7 +60,11 @@ function describeError(err: unknown): string {
 async function persistFailureReport(store: StateStore, cutoverDateUsed: string | null, err: unknown): Promise<void> {
     try {
         const { state, version } = await store.getWithVersion();
-        const report = emptyReport(cutoverDateUsed, describeError(err));
+        // [FINTABLE-SOURCE-TAG] Un échec ne « dé-produit » pas : l'horodatage précédent est reporté.
+        const report: FintableSyncReport = {
+            ...emptyReport(cutoverDateUsed, describeError(err)),
+            lastProductiveAt: lastProductiveAtSuivant(state.fintableSyncReport, 0, Date.now()),
+        };
         await store.save({ ...state, fintableSyncReport: report }, version);
     } catch (writeErr) {
         logError({
@@ -134,6 +139,9 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
                 accountsSeen: snapshot.accounts.length,
                 accountsWithoutRole: mapReport.accountsWithoutRole.length,
                 transactionsAdded,
+                // [FINTABLE-SOURCE-TAG] Fraîcheur du connecteur (source unique : syncHealth.ts) —
+                // reportée du rapport de la BASE de cette tentative (recalculée par tentative OCC).
+                lastProductiveAt: lastProductiveAtSuivant(base.fintableSyncReport, transactionsAdded, Date.now()),
                 transfersDetected: mapReport.transferPairs.length,
                 cashUpdated,
                 cashAnchorDelta,

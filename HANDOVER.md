@@ -16,6 +16,18 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 130 : le gel Fintable ne se cache plus derrière un CSV
+> `[FINTABLE-SOURCE-TAG]` livré — la limite connue de `[FINTABLE-STALE-ALERT]` est fermée.
+> - `FintableSyncReport.lastProductiveAt` (additif) : epoch de la dernière passe qui a ÉCRIT des
+>   transactions, reporté par la source unique `lastProductiveAtSuivant` (syncHealth.ts) à travers
+>   les 5 écrivains de rapport (browserSync ×2, autoSync, carte manuelle, cron MCP ×2).
+> - `computeSyncHealth` : quand le champ est présent, c'est LUI qui pilote « gelé côté
+>   fournisseur » (un CSV d'hier ne rajeunit plus un connecteur mort) ; absent → repli historique
+>   sur la date de transaction (zéro fausse alerte au déploiement). Nouveau champ exposé
+>   `daysSinceLastProductiveSync`.
+> - 12 gardes neuves (santé, chaînons navigateur/cron/auto/carte), 3 perturbations ciblées.
+> - Au passage : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` constaté DÉJÀ livré (PR #686) → archivé.
+
 > ## 🟦 Session 2026-09-04 — Lot 129 : la perte d'emploi datée verse l'assurance-emploi
 > `[CHOMAGE-DEUX-MODELES]` livré — **code de prod touché** (moteur, money-critical).
 > - Source UNIQUE `prestationAeNetteMensuelle` extraite du stochastique (bit-identique, 50 verts)

@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[FINTABLE-SOURCE-TAG]` — LIVRÉ (lot 130)
+
+La détection de gel du connecteur Fintable ne se laisse plus rajeunir par un import CSV/manuel :
+le rapport porte désormais `lastProductiveAt` (epoch de la dernière passe qui a réellement ÉCRIT
+des transactions), reporté de rapport en rapport par la source unique `lastProductiveAtSuivant`
+(`syncHealth.ts`) — une passe à 0 ajout ou en échec le conserve tel quel. Quand le rapport le
+porte, c'est LUI qui pilote la branche « gelé côté fournisseur » de `computeSyncHealth` ; les
+rapports d'avant ce lot (champ absent) retombent sur la date de la dernière transaction
+(comportement historique — aucune fausse alerte fabriquée au déploiement). Bonus symétrique : un
+rattrapage d'historique qui vient d'écrire des transactions ANCIENNES ne déclenche plus de fausse
+alerte de gel. Remède retenu = `lastProductiveAt` (proposé par le ticket) plutôt que le tag de
+provenance par transaction : surface bien plus petite (5 littéraux de rapport + 1 helper), zéro
+taxonomie sans lecteur, même garantie. Gardes : 4 cas santé + 4 chaînons navigateur + 2 cron MCP
++ 1 autoSync + 1 carte manuelle ; 3 perturbations à rouges exactement ciblés (santé qui ignore le
+champ → 2 rouges ; règle de report cassée → 4 rouges ; constructeur qui oublie le champ → 2).
+
+## 2026-09-04 — `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` — CADUQUE : déjà livré (PR #686, vague 2 PM)
+
+Constaté au recensement du lot 130 : `buildDefaultAppState()` porte les 4 champs (`: undefined`,
+avec le commentaire qui cite ce ticket) et `registryParity.test.ts` a bien le test BIDIRECTIONNEL
+(« chaque champ du store existe dans buildDefaultAppState »). Classe `PM-STALE-BACKLOG` — le
+ticket décrivait un défaut déjà corrigé sous d'autres IDs.
+
 ## 2026-09-04 — `[CHOMAGE-DEUX-MODELES]` — LIVRÉ (lot 129, PR #860)
 
 L'événement de vie DATÉ `PERTE_EMPLOI` verse désormais la prestation d'assurance-emploi — la même

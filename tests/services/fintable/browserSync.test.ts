@@ -418,3 +418,55 @@ describe('runFintableBrowserSync — rattrapage d\'historique', () => {
         expect(r.incertaines[0].existante.payee).toBe('PAIEMENT CAISSE');
     });
 });
+
+/**
+ * [FINTABLE-SOURCE-TAG] Le CHAÎNON entre la règle (`lastProductiveAtSuivant`, testée chez
+ * syncHealth) et les rapports RÉELS : un trou entre deux moitiés testées n'appartient à personne
+ * (leçon lot 92) — ici on vérifie que le constructeur de rapport du navigateur consomme bien la
+ * règle, dans les trois issues d'une passe (productive, à vide, en échec).
+ */
+describe('runFintableBrowserSync — lastProductiveAt (fraîcheur du connecteur)', () => {
+    const PREV = Date.parse('2026-07-20T12:00:00Z');
+    const prevReport = (): NonNullable<AppState['fintableSyncReport']> => ({
+        at: PREV, cutoverDateUsed: null, accountsSeen: 1, accountsWithoutRole: 0,
+        transactionsAdded: 2, transfersDetected: 0, cashUpdated: true, debtsUpdated: [],
+        investmentReferenceCount: 0, warnings: [], error: null, lastProductiveAt: PREV,
+    });
+    const roles = { acc_1: { kind: 'cash' } as FintableAccountRoleConfig };
+
+    it('passe PRODUCTIVE → horodatée maintenant (le connecteur vient de prouver qu\'il produit)', async () => {
+        const client = fakeClient([account()], [{
+            id: 'ft_1', account_id: 'acc_1', date: '2026-07-30', amount: '-19.99',
+            currency: 'CAD', description: 'ABONNEMENT FINTABLE', merchant: null, category: null,
+        }]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, fintableSyncReport: prevReport() }), 'jeton', { client, now });
+        expect(r.report.error).toBeNull();
+        expect(r.report.transactionsAdded).toBe(1);   // non-vacuité : la passe a bien écrit
+        expect(r.report.lastProductiveAt).toBe(NOW);
+    });
+
+    it('passe à VIDE (0 ajout) → l\'horodatage PRÉCÉDENT est reporté, jamais rajeuni ni perdu', async () => {
+        const client = fakeClient([account()], []);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, fintableSyncReport: prevReport() }), 'jeton', { client, now });
+        expect(r.report.error).toBeNull();
+        expect(r.report.transactionsAdded).toBe(0);
+        expect(r.report.lastProductiveAt).toBe(PREV); // rajeuni = le gel redeviendrait invisible
+    });
+
+    it('passe en ÉCHEC (jeton absent) → reporté aussi : un échec ne « dé-produit » pas', async () => {
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableSyncReport: prevReport() }), '  ', { now });
+        expect(r.report.error).toMatch(/[Jj]eton/);
+        expect(r.report.lastProductiveAt).toBe(PREV);
+    });
+
+    it('aucun rapport précédent + passe à vide → champ ABSENT (jamais un horodatage inventé)', async () => {
+        const client = fakeClient([account()], []);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles }), 'jeton', { client, now });
+        expect(r.report.error).toBeNull();
+        expect(r.report.lastProductiveAt).toBeUndefined();
+    });
+});

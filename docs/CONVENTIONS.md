@@ -12086,3 +12086,22 @@ légitime, 26 caractères de code) → agrégée sur le dossier ; et seuil 0,5 �
 (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`, deux fois dans le même test).
 Et 6e occurrence de `SCAN-QUI-MATCHE-LA-PROSE` : le « 8e fichier » du ticket ne citait le store
 qu'en commentaire — le témoin quotaStorage est asserté DANS la garde.
+
+### Variante notée au lot 141 (2026-09-04) — une garde d'ORDRE ne se pose qu'après avoir mesuré que l'inversion change une SORTIE
+
+`[ENGINE-IMPLICIT-ORDER]` nommait deux paires fragiles ; l'inversion chirurgicale a montré que la
+première (taxApril↔taxDecember intra-mois) est INERTE — sortie bit-identique sur 5 fixtures,
+re-mesurée par deux exécutions indépendantes (agent puis moi : un rapport d'agent n'est pas une
+source, même quand il réfute). Une garde écrite dessus aurait été vacueuse ET se serait lue comme
+une protection dans tout inventaire futur (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER…`). Le geste canonique
+avant TOUTE garde d'ordre : banc d'inversion sur COPIE du moteur + mesure des grandeurs PUBLIÉES —
+c'est `UN-INVARIANT-QUI-NE-TROUVE-RIEN-DOIT-PROUVER-QU-IL-POURRAIT`, appliqué à l'axe de l'ORDRE.
+⚠️ Et la mesure a rapporté plus que le ticket : le couple le PLUS coûteux (décembre↔flux du même
+mois, +25 568 $ d'impôt sous AUTO — indépendant de la stratégie) n'était nommé nulle part, et il
+porte une vraie question fiscale (retraits REER de décembre hors de toute assiette annuelle),
+routée sans être « corrigée » (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`). ⚠️ Deux gardes complémentaires,
+prouvées par TROIS perturbations aux signatures distinctes : l'espion d'argument voit le
+DÉBRANCHEMENT sémantique (sonde → lui seul rougit), le scan d'ordre voit le DÉPLACEMENT d'un appel
+(décembre déplacé → lui seul rougit), le vrai déplacement du bloc fait rougir les deux. ⚠️ Et un
+banc dont les chiffres sont cités dans le dépôt se COMMITTE (`scripts/mesureOrdreBoucle.ts`),
+vérifié en reproduisant la baseline à l'octet depuis la version committée.

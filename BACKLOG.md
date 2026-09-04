@@ -1361,13 +1361,20 @@
 
 ### 🧱 Dette technique et architecture
 
-- [ ] **`[ENGINE-IMPLICIT-ORDER]`** (L, ÉLEVÉ) — `runScenario()` (`services/projection.ts`, **2 228
-  lignes mesurées**) enchaîne ~40 fonctions des 50 sous-modules dans un ordre documenté **uniquement
-  par des commentaires `// Phase N`** : aucune contrainte de type, aucun test de contrat d'ordre.
-  C'est la classe de fragilité déjà responsable du meltdown REER (2026-07-31). Correctif proposé :
-  **pas** un refactor de l'orchestrateur (trop risqué, ROI nul) mais des **tests de régression
-  d'ordre** sur les paires déjà connues comme fragiles (taxApril↔taxDecember,
-  meltdownReer↔retirementIncome), avec preuve de discrimination par inversion chirurgicale.
+- [ ] **`[FISC-DEC-FLUX-ASSIETTE-TIMING]`** (M, à TRANCHER — découverte du lot 141, MESURÉ,
+  ⚠️ bug préexistant potentiel, signalé sans correctif) — le dépôt fiscal de décembre
+  (`processDecemberTaxFiling`, L~1355) lit `accRetraitsReerYear` AVANT que la cascade
+  d'allocation, le meltdown, le RAP et les objectifs du MÊME décembre ne l'alimentent — puis
+  janvier remet l'accumulateur à zéro (`taxJanuary.ts:332`). Les retraits REER de décembre
+  n'entrent donc dans l'assiette d'AUCUNE année. Mesuré (banc `scripts/mesureOrdreBoucle.ts` +
+  `scripts/inverserOrdreBoucle.py`, clef `dec_fin_de_mois`, re-mesuré 2 exécutions
+  indépendantes 2026-09-04) : déplacer décembre en fin de mois = totalTaxesPaid
+  **+25 568,08 $** (fixture retraités sous AUTO — indépendant de la stratégie), +14 737,13 $
+  sous MELTDOWN, ±3 k$ sur un couple actif. À trancher (financial-integrity/Marc) : fuite
+  d'assiette RÉELLE (les retraits de décembre devraient être imposés) ou convention de
+  calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
+  est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
+  devra être délibéré ET répondre à cette question.
 - [ ] **`[DETTE-GODFN-CASHFLOW]`** (M, ÉLEVÉ) — `processCashflowAllocation` (cascade de décaissement
   CELI/REER/non-enregistré/crypto, argent réel) fait **296 lignes**
   (`services/projection/cashflowAllocation.ts:119-414`) — la logique money-critical la plus dense du

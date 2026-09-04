@@ -10,12 +10,22 @@
 > - ✅ `[ENG-T1213-NET-MONTHLY]` → retirer le bouton **+ forcer à OFF** — **LIVRÉ au lot 118**.
 > - ✅ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → plancher retiré (les DEUX sites) — **LIVRÉ au lot 119**.
 > - ✅ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « de la paie déclarée » + infobulle — **LIVRÉ au lot 120**.
-> - ⬜ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable (≠ ma reco, qui était de ne rien faire).
+> - ✅ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable dans le résumé de Futur — **LIVRÉ au lot 122**.
 > - ✅ `[MIGRATE-GROSS-PROPOSER]` → avis au Profil + deux boutons, zéro écriture seule — **LIVRÉ au lot 121**.
 > - ⬜ `[FMT-PROMPT-MIGRER]` → migrer les 17 sites **+ abandonner l'arrondi à 100 $** (≠ ma reco).
 >   ⚠️⚠️ **NON LIVRABLE SANS** corriger le texte de consentement, qui promet cet arrondi.
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-04 — Lot 122 : la pastille « donnée invalide » du résumé de santé
+> `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` livré — **code de prod touché** (résumé de Futur + healthScore).
+> - Marqueur STRUCTUREL `HealthMetricRow.invalidData` posé par `sanitizeNonFinite` : le résumé s'y
+>   ancre, jamais sur le texte de `raw` (une reformulation le casserait en silence).
+> - Pastille DANS le bouton-résumé existant (bouton dans bouton = HTML invalide), nom accessible
+>   qui dit la cause, `title` au survol.
+> - ⚠️ LA distinction du ticket (invalide = corrigeable ≠ non calculable = rien à faire) est
+>   prouvée par perturbation : ancrer sur `!available` fait rougir exactement les 2 contrôles négatifs.
+> - 6 cas neufs, 3 perturbations séparées ; suites santé complètes vertes (55).
 
 > ## 🟦 Session 2026-09-04 — Lot 121 : le brut fabriqué (1,35×) est détecté et PROPOSÉ à la correction
 > `[MIGRATE-GROSS-PROPOSER]` livré — **code de prod touché** (Profil / Salaires + nouveau service).

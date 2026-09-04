@@ -31,10 +31,6 @@
   Mesuré (fixture nets 5 000/4 000, commun 1 500 $) : Effort affiché 30 %/0 % au lieu de 15 %/19 %.
   Correctif probable : `ratio1 = 0.5` pour `'50/50'` — vérifier qu'aucun autre consommateur ne
   compense (recensé au lot 120 : `Budget.tsx:551` est le SEUL consommateur de ratio).
-- [ ] **`[HEALTH-MARQUEUR-DONNEE-INVALIDE]`** (S — **DÉCIDÉ par Marc le 2026-09-03** : marqueur discret)
-  — dans le résumé « Santé financière », une pastille cliquable quand au moins une métrique est
-  exclue pour donnée INVALIDE. ⚠️ Elle ne doit PAS s'afficher pour une métrique simplement non
-  calculable : c'est la distinction « tu peux corriger » vs « rien à faire » qui justifie le marqueur.
 - [ ] **`[FMT-PROMPT-MIGRER]`** (M — **DÉCIDÉ par Marc le 2026-09-03** : migrer + abandonner l'arrondi)
   — migrer les 17 sites de prompts/MCP vers `formatCAD` et retirer les 4 entrées d'`EXEMPTIONS` de
   `tests/components/formatMonetaireSourceUnique.test.ts`.

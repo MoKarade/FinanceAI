@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` — LIVRÉ (lot 122, PR #853)
+
+Une pastille discrète dans le résumé « Santé financière » de Futur quand au moins une métrique est
+exclue pour donnée INVALIDE (décision de Marc, 2026-09-03 — différente de ma recommandation, qui
+était de ne rien changer). Le résumé entier est déjà le bouton vers le détail : la pastille vit
+dedans (un bouton dans un bouton serait du HTML invalide), et le nom accessible dit la cause.
+
+- Le fait voyage par un marqueur STRUCTUREL neuf (`HealthMetricRow.invalidData`, posé par
+  `sanitizeNonFinite`) — jamais par le texte de `raw`, qu'une reformulation casserait en silence
+  (même classe que `TEXT-HEURISTIC-OVER-USER-TEXT`).
+- ⚠️ LA distinction du ticket est GARDÉE par perturbation : ancrer la pastille sur `!available`
+  au lieu d'`invalidData` fait rougir exactement les deux contrôles négatifs (métrique simplement
+  non calculable → aucune pastille : rien à corriger, une pastille permanente serait morte).
+- 6 cas (couche pure + rendu + clic observé par l'ÉTAT du store, pas un espion), 3 perturbations
+  séparées, rouges ciblés. Suites santé complètes vertes (55).
+
 ## 2026-09-04 — `[MIGRATE-GROSS-PROPOSER]` — LIVRÉ (lot 121, PR #852)
 
 Le Profil détecte la signature du brut FABRIQUÉ par l'ancien repli (`Math.round(net × 1,35)`

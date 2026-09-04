@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-GODFN-JANUARY]` — LIVRÉ (lot 144)
+
+`processJanuaryReset` (183 lignes) découpée selon ses propres sections `=== N ===`, à
+comportement STRICTEMENT inchangé : `plafondCeliAnnuel`, `roulementFhsa` (fermeture 15 ans/71
+ans incluse), `droitsReerAnnuels` (règle ARC par personne), `retraitFerrObligatoire`
+(per-conjoint, taux marginal FERR avec déflateur du lot 136), `facteurGuytonKlinger` (bande
+lissée) — orchestrateur ~35 lignes. Équivalence : empreinte des grandeurs publiées identique à
+l'octet (le banc couvre le FERR via les fixtures retraités 62→87 ans) + 29 tests du module +
+43 ciblés. Même protocole que les lots 142-143 ; aucun test neuf (contrat publié déjà couvert).
+PR #875.
+
 ## 2026-09-04 — `[DETTE-GODFN-RETIREMENT]` — LIVRÉ (lot 143)
 
 `computeRetirementIncome` (260 lignes) découpée selon les coutures que le ticket nommait, à

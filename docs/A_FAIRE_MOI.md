@@ -86,6 +86,18 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## 🧭 `[ENG-NET-MODEL-RESIDUAL]` volet CALIBRATION — DÉCISION (routée le 2026-09-04, lot 139)
+
+Le volet DIAGNOSTIC est livré (l'onglet Impôts affiche l'écart net déclaré ↔ net du modèle quand
+ton brut est saisi à la main et que l'écart dépasse 1 %). Reste la seconde piste du ticket :
+**réconcilier** — appliquer au boot un facteur calibré pour que le net du modèle retombe sur ton
+net déclaré. Ça changerait TOUTES les projections des profils au brut saisi (mesuré ±3 à 7 k$/an
+selon la fixture), dans un sens qui dépend du profil. **Coût** : une réponse (« calibrer » ou
+« rester au diagnostic »). **Ce que ça débloque** : la fermeture définitive du biais (a) de
+`FISCAL_REFERENCE` §9. [Probable] Le diagnostic suffit — le brut déduit (défaut depuis
+`[MIGRATE-GROSS-135]`) n'a pas le biais, et calibrer par-dessus une saisie divergente masquerait
+une saisie périmée au lieu de la faire corriger.
+
 ## ✅ `[ENG-T1213-NET-MONTHLY]` — RÉPONDU par Marc le 2026-09-03 : **retirer le bouton + forcer à OFF** — LIVRÉ (lot 118)
 
 > **Réponse de Marc** : option 1 (retirer le bouton), et sur la sous-question du réglage déjà

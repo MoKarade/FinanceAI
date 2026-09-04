@@ -17,6 +17,7 @@ import { logError } from '../services/errorLogger';
 import { causeErreurIa, messageErreurIa } from '../services/messageErreurIa';
 import { assetValueCad } from '../services/portfolio';
 import { ageOptsForSalaryInversion, calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
+import { netModelResidual } from '../services/taxResidual';
 import { estimateTaxableInvestmentIncome } from '../services/taxEstimate';
 import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK } from '../utils/tax';
 
@@ -285,6 +286,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 gross: uGross,
                 taxable: uTotalTaxable,
                 report: { ...res, refundOrOwe },
+                // [ENG-NET-MODEL-RESIDUAL] Diagnostic net déclaré vs net du modèle (salaire seul) —
+                // même PAIRE (année, ageOpts) que le rapport ci-dessus, sinon l'écart mesurerait le
+                // désaccord des paramètres et pas celui de la paie.
+                residuelNet: netModelResidual(u, anneeFiscaleCourante, ageOptsUser),
                 fedBreakdown: res.fedBreakdown,
                 qcBreakdown: res.qcBreakdown
             };
@@ -320,6 +325,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 // La base du calcul inclut le revenu de placement ESTIMÉ (non-enreg/crypto) — la
                 // cascade affichée doit l'inclure pour BOUCLER (finding financial-integrity F1).
                 taxableAddOn: investmentTaxData.taxableAddOn,
+                // Diagnostic PAR PERSONNE seulement (comme les paliers) : sommer un écart de paie
+                // par-dessus des conjoints aux situations différentes brouillerait le signal.
+                // ⚠️ SAUF en solo : le sélecteur de profil n'existe que pour un couple
+                // (`users.length > 1`), donc la vue « all » est la SEULE vue d'un solo — sans ce
+                // cas, le diagnostic serait inatteignable pour lui (classe UX-UNREACHABLE-FEATURE).
+                residuelNet: results.length === 1 ? results[0].residuelNet : null,
                 fedBreakdown: results[0].fedBreakdown,
                 qcBreakdown: results[0].qcBreakdown
             };
@@ -329,6 +340,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 isGlobal: false,
                 grossIncome: userRes.gross,
                 report: userRes.report,
+                residuelNet: userRes.residuelNet,
                 deductions: {
                     fed: userRes.report.fedTax,
                     qc: userRes.report.qcTax,
@@ -343,7 +355,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
         }
     }, [config.users, viewUser, rrspContribution, fhsaContribution, investmentTaxData, alreadyPaidTax]);
 
-    const { grossIncome, report, fedBreakdown, qcBreakdown, isGlobal, deductions, taxableAddOn } = taxData;
+    const { grossIncome, report, fedBreakdown, qcBreakdown, isGlobal, deductions, taxableAddOn, residuelNet } = taxData;
 
     // [INCOME-PROVENANCE] Source du revenu du profil principal (fiche de paie = source unique).
     const salarySource = config.users[0]?.salarySource;
@@ -626,7 +638,20 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                                     <dt className="text-ink-300">Soit par mois (net fiscal)</dt>
                                     <dd className="font-mono text-ink-100"><PrivateAmount>{formatCAD(report.netIncome / 12)}</PrivateAmount></dd>
                                 </div>
+                                {/* [ENG-NET-MODEL-RESIDUAL] Affiché seulement quand il y a un FAIT à montrer :
+                                    brut SAISI (déduit → écart nul par construction, un 0 $ serait du décor) ET
+                                    écart ≥ 1 % du net déclaré (sous ça : bruit de paie). Le montant reste un
+                                    NŒUD (PrivateAmount), la phrase du dessous ne porte aucun chiffre. */}
+                                {residuelNet?.significatif && (
+                                    <div className="flex justify-between py-1 border-t border-white/10">
+                                        <dt className="text-warning-400">Écart net déclaré ↔ net du modèle (salaire)</dt>
+                                        <dd className="font-mono text-warning-400"><PrivateAmount>{formatSigned(residuelNet.residuel, { withCurrency: true })}</PrivateAmount></dd>
+                                    </div>
+                                )}
                             </dl>
+                            {residuelNet?.significatif && (
+                                <p className="text-tiny text-ink-400 mt-2">Ton brut est saisi à la main et le net que le modèle en déduit ne retombe pas sur ton net déclaré — les projections encaissent le net DÉCLARÉ, l'impôt vient du MODÈLE. Écart positif : le modèle rend plus de net que ta paie (retenues d'employeur type RPP/assurances non modélisées ?). Écart négatif : vérifie le brut et le net au Profil (une des deux saisies est peut-être périmée).</p>
+                            )}
                             <p className="text-tiny text-ink-400 mt-2">Estimation {new Date().getFullYear()}{isGlobal ? ' (couple, sommé par conjoint)' : ''}. Net FISCAL = imposable − impôts − cotisations (avant RPP/assurances collectives). Les cotisations RRQ/RQAP/AE sont estimées sur le revenu imposable (léger sur-compte si salaire sous les maximums — suivi au BACKLOG).</p>
                         </Card>
                         <Card icon={<Icon name="transactions" size={18} />} title="Ce que tu dépenses — réel (transactions, ménage)">

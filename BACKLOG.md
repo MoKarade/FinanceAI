@@ -524,11 +524,6 @@
   `perUserBalances.ts`, que le terme est ratio-neutre. ⚠️ Ne PAS choisir (b) sans traiter le cas
   dégénéré : c'est le seul endroit où la double soustraction change quelque chose.
   Caractérisation verrouillée par `tests/services/stepReerByUserProprietes.test.ts`.
-- [ ] **`[ENG-NET-MODEL-RESIDUAL]`** (M, FAIBLE-MOYEN, pré-existant — mesuré panel #558) — le net
-  MENSUEL encaissé est le `netSalary` SAISI, jamais réconcilié avec l'impôt du MODÈLE : résidu
-  mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
-  il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
-  net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
 - [ ] **`[P0-IDB]`** (L, ⏳) — migrer la persistance localStorage → IndexedDB (quota ~5 Mo + parsing
   synchrone au boot). ⚠️ Migration schéma persist v7 — vigilance corruption.
 - [ ] **`[PROFIL-SWITCH]`** (M, 🧭 gaté questions 2026-08-01) — (a)+(d) couverts par PERSONA-PURGE ;

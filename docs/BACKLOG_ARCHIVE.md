@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[ENG-NET-MODEL-RESIDUAL]` volet diagnostic — LIVRÉ (lot 139)
+
+La moitié PROUVABLE du ticket : l'onglet Impôts affiche « Écart net déclaré ↔ net du modèle »
+(`services/taxResidual.ts`, pur — même PAIRE année/ageOpts que le panneau) quand le brut est
+SAISI et que |écart| ≥ 1 % du net déclaré (seuil MESURÉ : la population « brut déduit » reste
+sous 1 $ par construction — re-mesuré −0,29 $/+0,77 $ le 2026-09-04). Vue par personne (comme
+les paliers) ; en SOLO le diagnostic vit dans la vue globale, la seule qui existe (le sélecteur
+n'apparaît qu'en couple — classe UX-UNREACHABLE-FEATURE évitée). Le net encaissé reste le net
+DÉCLARÉ — zéro changement moteur. La 2e piste (facteur calibré au boot = money-critical) est
+ROUTÉE à Marc (`docs/A_FAIRE_MOI.md`). Tests : 4 relations pures (oracle = aller-retour
+`calculateGrossFromNet`, jamais de reconstruction du barème) + 3 rendus ; perturbations P1a
+(atteignabilité solo), P1b (affichage), P2a (seuil), P2b (signe) toutes rouges au bon endroit.
+PR #870.
+
 ## 2026-09-04 — `[SVC-STORE-COUPLING]` — LIVRÉ (lot 138)
 
 La frontière store ↔ services est désormais DOCUMENTÉE (`docs/ARCHITECTURE.md` §2 : moteur

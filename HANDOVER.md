@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 139 : l'onglet Impôts diagnostique l'écart net déclaré ↔ net du modèle
+> `[ENG-NET-MODEL-RESIDUAL]` volet diagnostic livré — `services/taxResidual.ts` (pur) + ligne
+> conditionnelle dans la carte Retenues (brut SAISI et |écart| ≥ 1 % du net déclaré ; brut déduit
+> → nul par construction, rien d'affiché). Par personne ; en solo, la vue globale (la seule) le
+> porte. Zéro changement moteur — le net encaissé reste le net déclaré. La piste « facteur
+> calibré au boot » (change les projections) est ROUTÉE dans `docs/A_FAIRE_MOI.md`.
+
 > ## 🟦 Session 2026-09-04 — Lot 138 : la frontière store ↔ services est documentée et gardée
 > `[SVC-STORE-COUPLING]` livré — les `as unknown as AppState` de `autoSync`/`appStateProvider`/
 > `writeExecutor` étaient du bruit (`FinanceState extends AppState` : l'assignation directe est

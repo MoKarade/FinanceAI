@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 132 : audit per-conjoint clos (tests seulement)
+> `[ENG-FERR-ECART-AGE-NON-COUVERT]` clos — les cas « toujours PAS testés » (`shares=[1,0]`,
+> soldes négatifs) sont couverts dans `stepReerByUserProprietes.test.ts` ; l'audit conclut
+> qu'aucune autre garde per-conjoint n'est vacueuse (seule la FERR dépend de l'âge, déjà couverte
+> sous écart d'âge). Absorption du négatif = DEUX planchers redondants, écrit dans le test.
+> Lot TESTS+DOC uniquement — aucun code de prod touché, rien à vérifier côté déploiement.
+
 > ## 🟦 Session 2026-09-04 — Lot 131 : la boucle chaude du moteur cesse de payer toFixed
 > `[PERF-ENGINE-TOFIXED-ROUND]` livré — ~94 champs/mois passent de `Number(x.toFixed(2))` à
 > `round2` (helpers.ts), BIT-IDENTIQUE (fuzz ~1 M de valeurs committé, 0 divergence) et ~13× plus

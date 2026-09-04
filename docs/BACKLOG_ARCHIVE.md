@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[ENG-FERR-ECART-AGE-NON-COUVERT]` — CLOS (lot 132) : l'audit per-conjoint est complet
+
+Le « reste à faire » du ticket est soldé, moitié par des lots antérieurs, moitié ici :
+- **Exclusions observables sous écart d'âge** — déjà MESURÉ par `stepReerByUserProprietes.test.ts`
+  (en-tête) : retirer l'exclusion FERR coûte 0 $ à âge égal, −141,22 $ à 15 ans d'écart,
+  −1 641,85 $ à 27 ans (0,09 % du pool) — le terme `withdrawal` est ratio-neutre, seule la porte
+  dégénérée compte. L'exclusion DIVORCE est documentée INERTE (en-tête de
+  `divorceFluxPublie.test.ts` : le callback consolide `reerByUser = [reer, 0]`), gardée pour le
+  jour où `reerShares` cesse d'être [1, 0].
+- **`shares = [1, 0]` et soldes négatifs** (« toujours PAS testés ») — testés au lot 132
+  (2 cas dans `stepReerByUserProprietes.test.ts`) : rien ne fuit jamais vers le conjoint parti
+  (cotisation, retrait, repli de vidange), et un solde négatif est absorbé (0), Σ == poolEnd.
+  ⚠️ Perturbation : l'absorption du négatif est portée par DEUX planchers redondants (clamp
+  d'entrée + plancher de `reconcileToPool`) — retirer un seul reste vert, les deux rougit.
+- **Audit des autres gardes per-conjoint** (recensé lot 132) : le seul flux per-user piloté par
+  l'ÂGE est la FERR, couverte sous écart d'âge par `reerByUserEcartAge.test.ts` ; les gardes de
+  divorce défendent des opérations PROPORTIONNELLES (l'âge n'y joue aucun rôle) ; la parité
+  Σ==pool tourne déjà sur un couple 45/43. Aucune garde vacueuse supplémentaire trouvée.
+
 ## 2026-09-04 — `[PERF-ENGINE-TOFIXED-ROUND]` — LIVRÉ (lot 131)
 
 Les ~94 champs mensuels que `buildMonthlyDataPoint` construisait via `Number(x.toFixed(2))`

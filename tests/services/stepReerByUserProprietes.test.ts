@@ -104,3 +104,44 @@ describe('[ENG-REERBYUSER-RETRAIT-INERTE] ce que chaque paramètre de stepReerBy
         }
     });
 });
+
+describe('[ENG-FERR-ECART-AGE-NON-COUVERT] les deux cas que le ticket disait « toujours PAS testés »', () => {
+    // (a) `shares = [1, 0]` — l'état APRÈS divorce/décès (le callback consolide `reerByUser =
+    // [reer, 0]` et `reerShares` devient [1, 0]). Toute fuite vers l'ex-conjoint serait un solde
+    // fantôme au nom de quelqu'un qui n'est plus dans le ménage.
+    it('shares = [1, 0] : cotisations, retraits et REPLI n\'attribuent JAMAIS rien au conjoint parti', () => {
+        const seul = [100_000, 0];
+        // Cotisation : intégralement au survivant.
+        const avecCotisation = stepReerByUser(seul, { withdrawal: 0, contribution: 10_000, poolEnd: 110_000, shares: [1, 0] });
+        expect(avecCotisation[0]).toBeCloseTo(110_000, 6);
+        expect(avecCotisation[1]).toBe(0);
+        // Retrait partiel : le survivant paie tout, l'autre reste à zéro exactement.
+        const avecRetrait = stepReerByUser(seul, { withdrawal: 40_000, contribution: 0, poolEnd: 60_000, shares: [1, 0] });
+        expect(avecRetrait[0]).toBeCloseTo(60_000, 6);
+        expect(avecRetrait[1]).toBe(0);
+        // VIDANGE (le cas dégénéré passe par le REPLI `splitByShares`) : même là, rien ne fuit.
+        const vidange = stepReerByUser(seul, { withdrawal: 100_000, contribution: 0, poolEnd: 20_000, shares: [1, 0] });
+        expect(vidange[0]).toBeCloseTo(20_000, 6);
+        expect(vidange[1]).toBe(0);
+    });
+
+    // (b) Un solde per-conjoint NÉGATIF (cotisation à l'un + gros retrait à l'autre peut en
+    // fabriquer un transitoirement) : il est ABSORBÉ — plancher à 0 avant la mise à l'échelle —
+    // jamais propagé ni compensé par le conjoint sain au-delà du pool.
+    // ⚠️ REDONDANCE mesurée (perturbations 2026-09-04) : DEUX planchers indépendants absorbent ce
+    // cas — le clamp d'entrée de `stepReerByUser` ET le plancher de `reconcileToPool`. Retirer UN
+    // seul laisse ce test VERT (l'autre rattrape) ; retirer les DEUX le fait rougir ([-60 k, 180 k]).
+    // Ce test défend donc le FAIT (« jamais de registre négatif publié »), pas un mécanisme précis
+    // (`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`).
+    it('solde négatif en entrée : absorbé (0), Σ == poolEnd exact, aucun registre négatif en sortie', () => {
+        const r = stepReerByUser([-50_000, 150_000], { withdrawal: 30_000, contribution: 0, poolEnd: 120_000, shares: [0.5, 0.5] });
+        expect(r[0], 'le conjoint négatif ressort à 0, pas en dette fantôme').toBe(0);
+        expect(r[1]).toBeCloseTo(120_000, 6);
+        expect(r.every((x) => x >= 0)).toBe(true);
+        expect(r.reduce((s, x) => s + x, 0)).toBeCloseTo(120_000, 6);
+        // Anti-vacuité : le négatif est bien DISCRIMINANT — sans le plancher de `reconcileToPool`,
+        // la mise à l'échelle propagerait un registre négatif (mesuré en perturbation : [-60 k, 180 k]).
+        const sain = stepReerByUser([50_000, 150_000], { withdrawal: 30_000, contribution: 0, poolEnd: 120_000, shares: [0.5, 0.5] });
+        expect(sain[0], 'le même cas SANS négatif garde deux registres non nuls').toBeGreaterThan(0);
+    });
+});

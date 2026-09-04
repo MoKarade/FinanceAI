@@ -517,23 +517,6 @@
   fausse le budget réel ET la moyenne 12 mois. Ne JAMAIS écrire sans dédoublonnage.
   Prérequis : confirmer avec Marc la profondeur réellement offerte par son plan (mesurer, ne pas
   supposer — 90 j demandés / 30 rendus au dernier test).
-- [ ] **`[ENG-FERR-ECART-AGE-NON-COUVERT]`** (M — ⚠️ **REMPLACE `[ENG-REERBYUSER-FLUX-DECORATIF]`,
-  dont le constat était TROP LARGE et FAUX ; correction MESURÉE le 2026-08-25**) — j'avais écrit que
-  l'arithmétique de flux du registre REER per-conjoint était « décorative », parce qu'une perturbation
-  (`contribution: 0`) ne faisait rien bouger. C'est une propriété de la FIXTURE, pas du module : le
-  registre est semé par `splitByShares(reer, reerShares)`, les trois opérations qui le font vivre
-  (retrait au prorata du solde, cotisation selon `shares`, `reconcileToPool`) PRÉSERVENT le rapport,
-  et `reerShares` ne change qu'au décès/divorce → **sur un couple du MÊME ÂGE, le registre est épinglé
-  à la clé salariale pour toujours** (mesuré 0,535948 = 8 200/15 300, exactement).
-  Le seul flux NON proportionnel est la FERR (part exacte par âge, `ferrGrossByUser`). Sous écart
-  d'âge : **0,906412** (45/58) et **0,962539** (50/65). Et la même perturbation déplace alors le REER
-  FINAL du ménage — **1 220 204,75 $ → 1 236 327,88 $ (+16 123,13 $)** — avec les 29 tests
-  per-conjoint VERTS.
-  ✅ Le trou est fermé côté registre (`tests/services/reerByUserEcartAge.test.ts`).
-  **Reste à faire** : auditer les AUTRES gardes per-conjoint, toutes écrites sur des couples du même
-  âge et donc potentiellement vacueuses — en particulier vérifier si les exclusions
-  `ferrWithdrawalMois` et `divorceReerWithdrawalMois` sont observables sous écart d'âge.
-  ⚠️ Toujours PAS testé : `shares = [1, 0]` (après divorce/décès) et les soldes per-conjoint négatifs.
 - [ ] **`[ENG-REERBYUSER-RETRAIT-INERTE]`** (XS, ARBITRAGE — découvert en auditant les gardes
   per-conjoint) — le terme `withdrawal` de `stepReerByUser` est **ratio-neutre par construction** :
   retirer au prorata du solde multiplie chaque part par le même facteur, et `reconcileToPool` efface

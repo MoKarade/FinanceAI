@@ -142,6 +142,10 @@ export interface MonthlyOutputCtx {
     withdrawalREER: number;
     contribNonReg: number;
     withdrawalNonReg: number;
+    /** [ENG-MELTDOWN-JAMBE-ARRIVEE] Jambe d'arrivée du meltdown REER→NonReg — registre
+     *  d'AFFICHAGE seul (n'entre jamais dans l'exclusion de croissance, contrairement à
+     *  `contribNonReg`). Optionnel à défaut 0 : tout appelant existant reste bit-identique. */
+    arriveeMeltdownNonReg?: number;
     contribCrypto: number;
     withdrawalCrypto: number;
     contribLiquid: number;
@@ -227,7 +231,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
         taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
         contribCELI, withdrawalCELI, contribREER, withdrawalREER,
-        contribNonReg, withdrawalNonReg, contribCrypto, withdrawalCrypto,
+        contribNonReg, withdrawalNonReg, arriveeMeltdownNonReg = 0, contribCrypto, withdrawalCrypto,
         contribLiquid, withdrawalLiquid, contribCELIAPP, withdrawalCELIAPP,
         contribREEE, withdrawalREEE,
         growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
@@ -348,7 +352,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         MarketGrowthPctREEE: round2(growthPctREEE),
         NetTransferCELI: round2((contribCELI - withdrawalCELI)),
         NetTransferREER: round2((contribREER - withdrawalREER)),
-        NetTransferNonReg: round2((contribNonReg - withdrawalNonReg)),
+        NetTransferNonReg: round2((contribNonReg + arriveeMeltdownNonReg - withdrawalNonReg)),
         NetTransferCrypto: round2((contribCrypto - withdrawalCrypto)),
         NetTransferLiquid: round2((contribLiquid - withdrawalLiquid)),
         NetTransferCELIAPP: round2((contribCELIAPP - withdrawalCELIAPP)),

@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Le détail Futur montre enfin l'argent qui ARRIVE au non-enregistré pendant un meltdown REER)
+
+- **Corrigé** : sous la stratégie « meltdown REER », l'argent tiré du REER apparaissait bien en
+  sortie, mais son arrivée dans le compte non-enregistré restait invisible — le solde montait de
+  dizaines de milliers sans aucun flux affiché (jusqu'à 25 273 $ en un mois). Le panneau de détail
+  et les flux annuels montrent maintenant ce dépôt. Aucun montant de projection ne change : c'est
+  l'affichage du flux qui était muet, pas le calcul.
+
 ## [unreleased] — 2026-09-04 (L'assurance médicaments privée retire la prime RAMQ de la bonne personne)
 
 - **Ajouté** : dans Profil → Options fiscales, une case « Assurance médicaments privée » par

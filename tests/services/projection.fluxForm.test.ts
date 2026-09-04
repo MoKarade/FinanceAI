@@ -217,19 +217,17 @@ describe('[ENG-INV-FLUXFORM-COVERAGE] toute variation de compte est EXPLIQUÉE p
         expect(gros.length, 'la fixture ne déclenche jamais le meltdown : rien n\'est mesuré')
             .toBeGreaterThan(20);
 
-        // ⚠️ SEULE la jambe de DÉPART (REER) est publiée, et c'est un choix MESURÉ, pas un oubli.
-        // Publier la jambe d'ARRIVÉE (`contribNonReg += nonRegAdd`) est le geste symétrique — mais
-        // `contribNonReg` n'est pas qu'un registre d'affichage : `growthApplication` s'en sert comme
-        // base d'exclusion de la croissance de mi-mois (`nonReg - contribNonReg`). L'y ajouter
-        // RETIRE un rendement fantôme et déplace donc de l'argent : MESURÉ **−5 045,04 $** de
-        // patrimoine final (−0,12 %) et −5 198,23 $ de croissance non-enregistrée cumulée, ce qui
-        // fait ROUGIR les deux goldens « NEUTRALITÉ NW » de `projection.meltdownDisplay` et
-        // `projection.totalTaxesPaid`. Correction plausible, décision de Marc → ticket
-        // `[ENG-MELTDOWN-JAMBE-ARRIVEE]`. Le résiduel NonReg restant est donc ATTENDU (mesuré
-        // 25 273,39 $ au pire mois) : on le borne pour qu'il ne GRANDISSE pas en silence.
+        // [ENG-MELTDOWN-JAMBE-ARRIVEE] (lot 157) La jambe d'ARRIVÉE est publiée depuis lors — via
+        // un registre d'AFFICHAGE dédié (`arriveeMeltdownNonReg`), PAS via `contribNonReg` :
+        // celui-ci pilote l'exclusion de croissance de mi-mois (`nonReg - contribNonReg`), et l'y
+        // verser aurait déplacé de l'argent (mesuré −5 045,04 $) contre les goldens « NEUTRALITÉ
+        // NW ». Histoire de cette borne : elle valait 30 000 $ tant que la jambe d'arrivée restait
+        // muette (résiduel ATTENDU, mesuré 25 273,39 $ au pire mois) — un inventaire de dette.
+        // La dette payée, l'inventaire s'INVERSE en règle : le résiduel retombe à l'arrondi, comme
+        // partout ailleurs. La re-desserrer serait rouvrir la porte en silence.
         const { max, where } = worstFluxResidual(data);
         expect(max, `résiduel de flux inattendu sous MELTDOWN_REER — ${where}`)
-            .toBeLessThan(30_000);
+            .toBeLessThan(CENT_ROUNDING_TOLERANCE);
 
         // Les deux registres du retrait REER, eux, concordent mois par mois.
         let pire = 0;

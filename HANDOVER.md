@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 141 : l'ordre de la boucle moteur est gardé — et mesuré d'abord
+> `[ENGINE-IMPLICIT-ORDER]` livré — la paire du ticket (avril↔décembre) RÉFUTÉE par la mesure
+> (inversion bit-identique) ; trois couples réels gardés avec leurs chiffres (meltdown↔revenus
+> +7 387 $, décembre↔flux +25 568 $, avril↔allocation +438 $) : espion d'argument + scan d'ordre,
+> banc de mesure COMMITTÉ (`scripts/mesureOrdreBoucle.ts` + `inverserOrdreBoucle.py`).
+> Découverte routée au BACKLOG : `[FISC-DEC-FLUX-ASSIETTE-TIMING]` (retraits REER de décembre
+> hors de toute assiette annuelle — fuite ou convention, à trancher). Lot tests + scripts + doc
+> — rien à vérifier côté déploiement.
+
 > ## 🟦 Session 2026-09-04 — Lot 140 : la courbe Futur se pilote au clavier de bout en bout
 > `[D6-GRAPH]` clos — inventaire de 18 graphes : tout était couvert sauf le PREMIER geste clavier
 > sur la courbe Futur (figer un jour sans souris ; l'infobulle figée était déjà un dialogue

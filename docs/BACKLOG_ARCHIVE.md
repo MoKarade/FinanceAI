@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[ENGINE-IMPLICIT-ORDER]` — LIVRÉ (lot 141)
+
+Tests de régression d'ordre sur la boucle mensuelle de `runScenario`, dimensionnés par la
+MESURE (banc committé `scripts/mesureOrdreBoucle.ts` + `scripts/inverserOrdreBoucle.py`,
+inversions chirurgicales sur COPIE du moteur, grandeurs publiées seulement — chaque chiffre
+re-mesuré par deux exécutions indépendantes). **La paire nommée par le ticket
+(taxApril↔taxDecember intra-mois) est RÉFUTÉE : inversion bit-identique sur 5 fixtures** — les
+deux blocs ne co-tirent jamais (mois 3 vs 11), leur seul lien est le tampon inter-années
+`taxPreviousYear` qu'un réordonnancement intra-mois ne peut pas casser ; aucune garde écrite
+dessus (elle serait vacueuse). Gardé, chacun avec sa mesure :
+meltdown↔revenus (+7 387 $ d'impôt à la sonde, contrôles 0,00 exact) par ESPION sur l'argument
+`incomeRetirement` (revenu vu 0,00 les mois 0-35 — RRQ/PSV à 65 ans — puis 557→3 120 $/mois,
+assertion mois ≥ 40 > 100 $) + SCAN d'ordre décommenté/sans imports pour les trois couples
+mesurés (meltdown +8 374 $, décembre↔flux +25 568 $, avril↔allocation +438 $). Perturbations :
+P1 sonde → espion seul rougit ; P2 bloc déplacé → espion ET scan ; P3 décembre déplacé → scan
+seul. Découverte ROUTÉE : `[FISC-DEC-FLUX-ASSIETTE-TIMING]` (les retraits REER de décembre
+n'entrent dans aucune assiette annuelle — fuite ou convention, à trancher). PR #872.
+
 ## 2026-09-04 — `[D6-GRAPH]` — LIVRÉ (lot 140)
 
 Inventaire par graphe RENDU (18 graphes, agent a11y + vérifs sur le code) : le périmètre annoncé

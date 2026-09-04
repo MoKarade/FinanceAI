@@ -553,11 +553,12 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             // 30 %/0 % au lieu de 15 %/19 %, mesuré au lot 120). La valeur offerte par un <select>
             // doit avoir sa branche chez son consommateur — un fallthrough silencieux vaut un
             // no-op typé vert.
-            if (config.splitMode === 'prorata' && totalNet > 0) ratio1 = user1.netSalary / totalNet;
-            else if (config.splitMode === 'custom') ratio1 = (config.customSplit || 50) / 100;
-            else if (config.splitMode === '50/50') ratio1 = 0.5;
-            // ⚠️ Reste à 1 : prorata avec totalNet == 0 (aucun net saisi) — comportement
-            // préexistant, hors du périmètre de ce correctif ([BUDGET-SPLIT-PRORATA-SANS-NET]).
+            if (config.splitMode === 'custom') ratio1 = (config.customSplit || 50) / 100;
+            else if (config.splitMode === 'prorata' && totalNet > 0) ratio1 = user1.netSalary / totalNet;
+            // [BUDGET-SPLIT-PRORATA-SANS-NET] Tout le reste en couple → moitié-moitié : le mode
+            // « 50 / 50 », ET le prorata quand AUCUN net n'est saisi (100 %/0 % n'a aucun sens
+            // pour un couple sans salaires — c'était le même fallthrough silencieux que le 50/50).
+            else ratio1 = 0.5;
         }
         const ratio2 = 1 - ratio1;
 

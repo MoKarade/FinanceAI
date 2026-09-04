@@ -22,11 +22,6 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[BUDGET-SPLIT-PRORATA-SANS-NET]`** (XS — reliquat noté au lot 124, 2026-09-04) — en mode
-  `prorata` avec AUCUN net saisi (`totalNet == 0`), `ratio1` reste à 1 : un couple sans salaires
-  saisis voit 100 % du commun sur le conjoint 1. Même classe de fallthrough que le 50/50 corrigé
-  au lot 124, gravité bien moindre (un couple sans aucun net saisi n'a presque rien d'autre de
-  calculable non plus). Correctif candidat : repli 0,5 quand `totalNet == 0` en couple.
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).
@@ -39,97 +34,7 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
-- [ ] ⏸️ **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — **DÉCISION ROUTÉE à Marc le 2026-09-03**, `docs/A_FAIRE_MOI.md` ; la moitié prouvable est LIVRÉE au lot 107 : `tests/services/returnRateSingulierNonCable.test.ts` fige le fait pour qu'un câblage futur soit délibéré) —
-  `projection.returnRate` (SINGULIER) ne pilote AUCUNE croissance du moteur : `computeScenarioOverrides`
-  (`services/projection/setupSimulation.ts`) lit `projection.returnRates`, la carte par compte, et
-  jamais le singulier. Vérifié par grep : ses seuls lecteurs sont `components/realestate/RealEstateWorkspace.tsx`
-  et `components/TabRouter.tsx` — de l'UI, pas le moteur. Même famille que le bug documenté dans ce
-  même fichier (« lisait `projection.rates`… toujours undefined », 2026-05-22), et que
-  `[PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX]` du `CLAUDE.md`.
-  ⚠️ **Il a bien DEUX consommateurs réels, tous deux côté UI** — mon énumération « seulement
-  `RealEstateWorkspace` et `TabRouter` » était incomplète : `TabRouter.tsx:217` ne fait que
-  TRANSMETTRE le champ, via `LifeProjects.tsx`, jusqu'à `components/LifeEvents.tsx:94`, où
-  `rate = returnRate / 100` est composé sur 20 ans pour produire le « coût d'opportunité » AFFICHÉ
-  à l'utilisateur. Retirer ou recâbler le champ touche donc aussi `LifeProjects.tsx` et
-  `LifeEvents.tsx` (finding silent-failure-hunter, 3e passe PR #759).
-  ⚠️ ~~Amplitude bien plus large : des dizaines de fixtures fixent `returnRate` sans `returnRates`~~
-  — **RÉFUTÉ, re-mesuré le 2026-09-03** : **72 fichiers** de test posent `returnRate:`, dont **69**
-  posent aussi `returnRates`. Par SITE il en reste **TROIS**, tous des tests d'UI ou d'a11y où le
-  champ singulier est le consommateur LÉGITIME (`LifeProjects.test.tsx`, `Settings.test.tsx`,
-  `a11y/pages.axe.test.tsx`). **Aucune fixture de moteur ne tombe dans le piège aujourd'hui** —
-  c'est ce que la garde du lot 107 préserve. Le piège reste réel pour un auteur FUTUR ; il n'est
-  pas une dette présente.
-  ⚠️ **À NE PAS confondre avec `[COASTFIRE-CROISSANCE-FIGEE]`**, qui cite la même phrase
-  « indépendant de `projection.returnRate` » : celui-là vise un CONSOMMATEUR figé à 5 %/an et
-  lui-même sans lecteur ; celui-ci vise le CHAMP SOURCE, qui n'alimente aucune croissance du
-  moteur. Câbler l'un ne règle pas l'autre — et le second rappelle qu'un champ câblé reste sans
-  effet si ses lecteurs n'en ont pas.
-  ⚠️ **Ce n'est pas un ticket « nettoyer un champ mort »** : il a déjà fait dérailler DEUX mesures
-  money-critical (panel PR #759), qui croyaient simuler à 5 % et tournaient en réalité sur les taux
-  par défaut. Avant de coder : établir si le champ doit être RETIRÉ (et l'UI recâblée sur
-  `returnRates`) ou CÂBLÉ (et alors il faut décider ce qu'il écrase de la carte par compte) — la
-  réponse change ce que voit l'utilisateur, donc elle se demande à Marc.
-- [ ] ⏸️ **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
-  panel PR #756 · **RE-RECENSÉ le 2026-09-03 : (b), (d) et (e) sont DÉJÀ LIVRÉS ; (c) est LIVRÉ au
-  lot 109 ; il ne reste que (a), routé à Marc**) —
-  · **(b) et (e) — DÉJÀ LIVRÉS.** L'`aria-label` des métriques indisponibles ne dit plus « donnée
-    indisponible » pour tous les états : `HealthIndicator.tsx` compose désormais
-    `${m.label} : ${healthRawText(m.raw, isPrivacyMode)}`, et le commentaire qui l'explique CITE cet
-    ID. Vérifié le 2026-09-03.
-  · **(d) — DÉJÀ LIVRÉ.** `m.help` ne transite plus uniquement par l'attribut `title` : il est rendu
-    dans un `<span className="sr-only">`, donc présent dans l'arbre d'accessibilité. Un commentaire
-    sur place raconte le défaut d'origine.
-  · **(c) — LIVRÉ au lot 109.** Le `Set` jamais purgé devient une `Map` signature → horodatage, avec
-    une fenêtre de réarmement de 60 s. Valeur DÉRIVÉE d'une mesure (rafale : 10 000 appels en
-    **2,7 ms** sur `assetValueCad`), pas choisie.
-  · **(a) — RESTE, et c'est une décision produit** → `docs/A_FAIRE_MOI.md`. Le cas « AUCUNE métrique
-    mesurable » est déjà traité honnêtement (`totalScore === null` a son propre libellé). Ce qui
-    reste : UNE métrique exclue pour corruption, parmi d'autres valides, est invisible dans le
-    résumé — qui n'affiche que le score global, **par conception**. Le signaler demande d'ajouter
-    une affirmation à un résumé dont c'est justement le rôle de ne pas en faire.
-  Contexte d'origine — trois angles morts de restitution de l'état « donnée corrompue » introduit au
-  lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une
-  métrique exclue pour CORRUPTION y est visuellement identique à une exclue pour absence légitime
-  (FIRE non calculé), alors que la première est ACTIONNABLE ; (b) `HealthIndicator.tsx` annonce le
-  même `aria-label` « donnée indisponible » dans les deux cas (le texte visuel `raw` distingue, pas
-  l'accessibilité) ; (c) `logErrorThrottled` a un `Set` de module jamais purgé côté navigateur —
-  une corruption qui disparaît puis RÉCIDIVE dans la même session (onglet ouvert des jours) est
-  muette la 2e fois, alors que le serveur MCP appelle `__resetErrorThrottle()` à chaque requête
-  précisément pour ça.
-  ⚠️ **Élargi et re-mesuré par l'audit a11y du lot 31** (panel PR #757) — le mécanisme est
-  PRÉ-EXISTANT, mais le lot 31 y a fait passer du contenu ACTIONNABLE, ce qui change l'enjeu :
-  · **(d, ÉLEVÉ, WCAG 1.4.13)** `HealthIndicator.tsx` rend `m.help` UNIQUEMENT via l'attribut
-  `title` d'un `<span>` **non focusable** (pas de `tabIndex`, pas de rôle) : le texte n'est
-  atteignable ni au clavier (rien ne peut le déclencher), ni au tactile (`title` ne s'affiche pas
-  sans survol), et un lecteur d'écran ne l'annonce pas de façon fiable sur un élément sans rôle.
-  L'INSTRUCTION reste accessible — elle est dans `m.raw`, texte visible et lu en linéaire — c'est
-  la JUSTIFICATION qui se perd. Correctif : rendre `help` visible, ou derrière un bouton
-  `aria-expanded`/`aria-describedby` focusable ; ⚠️ un simple `tabIndex="0"` sur le span ne suffit
-  pas (il rendrait le tooltip focusable sans régler la fiabilité SR).
-  · **(e, MOYEN, WCAG 1.3.1 / 4.1.2)** L'`aria-label` du score reste textuellement IDENTIQUE
-  (« <métrique> : donnée indisponible ») pour trois états désormais sémantiquement distincts, dont
-  un qui dit « corrige tes données MAINTENANT ». Le texte `raw` n'est pas perdu (il est lu en
-  navigation linéaire) mais rien ne l'ASSOCIE au score : ni `aria-describedby`, ni regroupement.
-  Un correctif d'une ligne règle les deux — donner un `id` au `<div>` de `raw`, le référencer en
-  `aria-describedby`, et faire varier l'`aria-label` (`${m.label} : ${m.raw}`).
-  ⚠️ NON corrigé au lot 31 délibérément : `HealthIndicator.tsx` n'est pas touché par ce lot, et
-  c'est du scope non demandé (règle « proposer ≠ faire »).
-  ✅ **Volets (b), (d) et (e) livrés au lot 32** (`claude/lot-32`, gate vert 4 895 tests) : l'`aria-label` du score porte
-  désormais la VRAIE cause (`m.raw`) au lieu de « donnée indisponible » pour tous les états ;
-  `aria-describedby` ASSOCIE le score à sa ligne de détail (sans quoi un lecteur d'écran qui
-  navigue par éléments, et non au fil du texte, ne la rencontre jamais) ; et la JUSTIFICATION
-  (`m.help`) ne dépend plus d'un survol — elle est dans le nom accessible en `sr-only`, le
-  `title` restant pour la souris. Discriminé par perturbation (retour à l'état d'avant → rouge).
-  ⬜ **Restent OUVERTS** : (a) `FutureHealthSummary` n'affiche que le score global, donc une
-  exclusion pour corruption y est visuellement identique à une exclusion légitime — c'est un
-  choix de DENSITÉ à trancher, pas un correctif mécanique ; (c) `logErrorThrottled` garde un
-  `Set` de module jamais purgé côté navigateur, donc une corruption qui guérit puis RÉCIDIVE
-  dans la même session est muette la 2e fois — le remède touche l'`errorLogger` partagé par
-  tout le dépôt, il ne se glisse pas dans un lot d'a11y.
-- [ ] ⏸️ **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S — finding projection-validator MESURÉ, panel
-  PR #755, PRÉ-EXISTANT · **RE-RECENSÉ le 2026-09-03 : mécanisme CONFIRMÉ, lecteur IDENTIFIÉ, et le
-  correctif évident est une RÉGRESSION** · limite épinglée par `tests/services/goalsHorsTotalExpenses.test.ts`
-  au lot 110 · **correctif ROUTÉ**, `docs/A_FAIRE_MOI.md`) — un tirage d'objectif n'entre PAS dans
+- [ ] ⏸️ **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S — **DÉCIDÉ par Marc le 2026-09-03 : ATTENDRE l'affichage du SWR** — rien à faire tant qu'aucun lot ne branche le SWR à l'écran ; ce ticket se rouvre DANS le lot qui l'affichera · mécanisme confirmé, correctif évident = RÉGRESSION, limite épinglée par `tests/services/goalsHorsTotalExpenses.test.ts` au lot 110) — un tirage d'objectif n'entre PAS dans
   `totalExpenses` : l'argent sort de `liquid`, est publié en `withdrawalLiquid`, le patrimoine
   baisse — mais le registre de REPORTING l'ignore.
   ⚠️ **Mécanisme CONFIRMÉ** (le ticket le disait « probable ») : `addExpense: (_n) => {}` est un
@@ -155,26 +60,6 @@
   être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
   seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
   (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
-- [ ] ⏸️ **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
-  PRÉ-EXISTANT · **RE-RECENSÉ le 2026-09-03, la description était FAUSSE sur un point décisif** ·
-  **décision ROUTÉE à Marc**, `docs/A_FAIRE_MOI.md`) — deux « net » de PROVENANCE différente
-  coexistent bien sur l'écran Budget :
-  · le **RECALCULÉ** depuis le brut par `calculateFiscalReport` — `fiscalBreakdown.netDisplay`,
-    affiché comme « Revenu Net Disponible » et servant d'`objectif` à la tuile Revenus ;
-  · le **SAISI** — `netSalary × multiplier` (`user1IncomeDisplay`/`user2IncomeDisplay`).
-  ⚠️ **Le net SAISI n'est JAMAIS affiché comme un montant.** Le ticket annonçait « la carte de
-  répartition affiche 5 000 $ » : vérifié ligne à ligne, ses trois seuls usages sont des
-  DÉNOMINATEURS — le badge « Effort: X % » et la largeur des deux barres de répartition. Il n'y a
-  donc **aucun second montant à étiqueter**, et « une mention de provenance visible sur chacun »
-  est inapplicable telle quelle. Ce qui existe est plus discret : un POURCENTAGE calculé sur une
-  base différente du net affiché quelques lignes au-dessus, dans la MÊME carte.
-  ⚠️ **L'écart n'est pas le « 154 $/mois, 3,1 % » du ticket** : c'est une valeur de fixture. MESURÉ
-  sur quatre paires brut/net réalistes, il change de SIGNE — `−0,3 %` (8 200/5 620), `−1,8 %`
-  (7 100/4 995), `+2,6 %` (5 000/3 600), `+3,5 %` (12 000/7 500). Ce n'est pas un biais du moteur :
-  c'est la distance entre la paie RÉELLE de l'utilisateur et ce que le modèle fiscal prédit depuis
-  son brut. Les deux chiffres sont légitimes et disent des choses différentes.
-  **Décision pour Marc** (elle change un pourcentage affiché) : aligner le dénominateur d'« Effort »
-  sur le net recalculé de la même carte, ou garder la paie déclarée et le NOMMER.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
@@ -1255,15 +1140,6 @@
   10 tests neufs, **3 perturbations prouvées rouges** (paramètre non transmis · socle moteur muet ·
   `hasSpouse` figé). Un 11e test existant a rougi : ma propre garde de `[TAXBRACKETVIZ-ANNEE]`,
   ancrée sur l'ARITÉ de l'appel — resserrée sur le FAIT qu'elle défend.
-- [ ] ⏸️ **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — **ROUTÉ à Marc le 2026-09-03**, `docs/A_FAIRE_MOI.md` : le ticket dit lui-même « décision produit à poser à Marc avant de coder ») —
-  le correctif ne rattrape PAS les utilisateurs dont le brut a **déjà** été fabriqué à 1,35 et
-  persisté. `migrateUserConfig` fait `u.grossSalary || (…)` : dès que le champ existe, le repli est
-  court-circuité, donc la valeur erronée est STICKY. Le correctif ne profite qu'aux configs qui
-  n'ont encore aucun `grossSalary`. **Correctif possible** : une migration de schéma qui re-dérive
-  le brut quand il est exactement `round(net × 1,35)` — la signature du défaut est reconnaissable.
-  ⚠️ **Risque** : écraser un brut que l'utilisateur a SAISI et qui coïnciderait avec 1,35 × net.
-  Décision produit à poser à Marc avant de coder. [Structure VÉRIFIÉE dans le code]
-
 - [ ] **`[RQAP-PHASES-70-55]`** (M, MOYEN — sorti de `[RQAP-CAP-98K]`, décision PRODUIT) — le moteur
   applique **55 % plat** sur les 12 mois de congé parental. Le régime de BASE du RQAP verse en
   réalité **70 %** pendant la maternité/paternité et le début du parental, puis 55 % — donc le début

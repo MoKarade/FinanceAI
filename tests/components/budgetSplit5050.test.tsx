@@ -59,6 +59,18 @@ describe('[BUDGET-SPLIT-5050-RATIO-1] le mode 50/50 partage vraiment en deux', (
         expect(t).toContain('Effort: 11%');
     });
 
+    it('[BUDGET-SPLIT-PRORATA-SANS-NET] prorata sans AUCUN net saisi → moitié-moitié, pas 100 %/0 %', () => {
+        const c = config({ splitMode: 'prorata' });
+        (c.users[0] as User).netSalary = 0;
+        (c.users[1] as User).netSalary = 0;
+        const t = rendu(c);
+        // Chaque conjoint porte la moitié du commun (750 $) — avant, tout allait au conjoint 1.
+        // `rendu` normalise TOUT l'espace (y compris l'insécable de formatCAD) en espace simple :
+        // l'attendu se compose donc en clair, sans piège d'espace invisible.
+        const n = t.split('Sorties: 750 $').length - 1;
+        expect(n).toBe(2);
+    });
+
     it('solo (user2 sans nom) : 50/50 ne change rien — le solo porte toujours 100 %', () => {
         const c = config();
         (c.users[1] as User).name = '';

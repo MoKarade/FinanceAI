@@ -69,6 +69,33 @@ export interface ActiveIncomeResult {
  * Calcule le revenu net mensuel du ménage en phase active.
  * Gère la croissance salariale, chômage, LTD et revenus variables.
  */
+/**
+ * [CHOMAGE-DEUX-MODELES] Prestation d'assurance-emploi NETTE mensuelle pour un brut annuel
+ * assurable donné — SOURCE UNIQUE des deux modèles de chômage (le stochastique ci-dessous et
+ * l'événement daté PERTE_EMPLOI de `projection.ts`). Une formule money-critical recopiée diverge
+ * (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`) : c'est l'extraction qui unifie, pas la copie.
+ * Règle (décision Marc 2026-08-20, FISCAL_REFERENCE §2) : 55 % des gains assurables BRUTS
+ * plafonnés (`AE_MAX_INCOME` projeté au patron MGA), prestation IMPOSABLE à assiette de
+ * cotisation NULLE (`employmentIncome: 0`).
+ */
+export function prestationAeNetteMensuelle(
+    grossAnnual: number,
+    ctx: {
+        simInflation: number;
+        yearsElapsed: number;
+        loopYear: number;
+        enableMonteCarlo: boolean;
+        calculateFiscalReport: FiscalReportFn;
+    },
+): number {
+    if (!(grossAnnual > 0)) return 0;
+    const aeCapProjected = projeterAuPatronMga(AE_MAX_INCOME, ctx.simInflation, ctx.yearsElapsed);
+    const aeGrossAnnual = Math.min(grossAnnual, aeCapProjected) * 0.55;
+    return ctx.calculateFiscalReport(
+        aeGrossAnnual, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, undefined, 0,
+    ).netIncome / 12;
+}
+
 export function computeActiveIncome(
     ctx: ActiveIncomeCtx,
     proj: ProjectionConfig,
@@ -105,11 +132,13 @@ export function computeActiveIncome(
         // MGA que `rqapCapProjected` (inflation simulée + 0,5 pt — biais documenté §2).
         const grossMarcAnnual = ctx.grossMarcBaseAnnual * salaryGrowthFactor;
         if (grossMarcAnnual > 0) {
-            const aeCapProjected = projeterAuPatronMga(AE_MAX_INCOME, ctx.simInflation, yearsElapsed);
-            const aeGrossAnnual = Math.min(grossMarcAnnual, aeCapProjected) * 0.55;
-            incomeMarc = ctx.calculateFiscalReport(
-                aeGrossAnnual, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, undefined, 0,
-            ).netIncome / 12;
+            // [CHOMAGE-DEUX-MODELES] Formule EXTRAITE en source unique (partagée avec l'événement
+            // daté PERTE_EMPLOI) — comportement bit-identique à l'inline qu'elle remplace.
+            incomeMarc = prestationAeNetteMensuelle(grossMarcAnnual, {
+                simInflation: ctx.simInflation, yearsElapsed,
+                loopYear: ctx.loopYear, enableMonteCarlo: ctx.enableMonteCarlo,
+                calculateFiscalReport: ctx.calculateFiscalReport,
+            });
         } else {
             // ⚠️ Repli quasi INATTEIGNABLE, gardé en défense en profondeur (revue 2026-08-20) :
             // depuis #669, `computeIncomeBaseline` dérive TOUJOURS un brut positif d'un net —

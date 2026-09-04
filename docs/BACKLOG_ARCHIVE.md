@@ -10,6 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[CHOMAGE-DEUX-MODELES]` — LIVRÉ (lot 129, PR #860)
+
+L'événement de vie DATÉ `PERTE_EMPLOI` verse désormais la prestation d'assurance-emploi — la même
+formule que le chômage STOCHASTIQUE, extraite en **source unique** `prestationAeNetteMensuelle`
+(`activeIncome.ts` : 55 % du brut assurable plafonné `AE_MAX_INCOME` projeté au patron MGA,
+imposée à assiette de cotisation nulle). Avant, la perte datée coupait le revenu SANS prestation :
+deux réponses différentes au même événement de vie (revue #675), et l'écart se creusait à chaque
+amélioration du stochastique.
+
+Décisions de modèle, écrites dans le code : l'AE ne couvre QUE `PERTE_EMPLOI` (SABBATIQUE =
+départ volontaire inadmissible ; ACCIDENT = régime maladie/LTD, hors lot) ; approximation
+LINÉAIRE (prestation pleine × part de revenu perdue — exacte à 100 %, le cas nominal) ; pas de
+seconde prestation pour Marc s'il est déjà au chômage stochastique le même mois ; l'AE n'est PAS
+du revenu gagné (146(1)) — rien n'entre dans `accGrossAddByUser`, même convention que le
+stochastique.
+
+**Mesuré** (8 000 $/mois brut, perte 100 % de 6 mois) : **+20 492 $ à 5 ans, +35 976 $ à 15 ans,
++80 711 $ à 30 ans** de patrimoine — la prestation de ~6 mois compose ensuite. Gardes
+comportementales sur `chartData[].Income` (4 cas) : prestation > 0 à 100 % de perte, PLAFOND
+prouvé par la RELATION (deux bruts sur-plafond → même prestation, pendant qu'ils diffèrent hors
+perte), sabbatique → 0 (la distinction), perte partielle proportionnelle. **3 perturbations
+séparées à rouges exactement ciblés** (versement retiré → 3 rouges, sabbatique servie → seul son
+cas, plafond retiré → seul le sien). Suite activeIncome bit-identique (50 verts).
+
+Au passage : ~~`[MCP-WHATIF-DATED-DEBT]`~~ constaté LIVRÉ par `[DETTE-DATES]` (2026-08-19) — la
+ligne V12 l'affichait encore comme à faire (`PM-STALE-BACKLOG`).
+
 ## 2026-09-04 — `[DETTE-RE-SALE-PURGE]` + V3' soldé — LIVRÉ (lot 128, PR #859)
 
 **Correctif** (tranché par Marc le 2026-07-31 : « supprimer l'événement ») : supprimer un bien

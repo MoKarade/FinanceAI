@@ -12027,3 +12027,32 @@ attendu). Une chaîne produite par un formateur qui entre dans une regex passe p
 le problème. Le symptôme qui doit alerter : un test qui rougit en AFFICHANT la valeur attendue dans
 le « Received ».
 
+
+### `UNE-VALEUR-D-ECHEC-S-IDENTIFIE-PAR-SA-LIGNE-PAS-PAR-L-ASSERTION-QU-ON-CRAINT` — 5 611,99 $ n'était pas un résiduel (2026-09-04, lot 129)
+
+Le rouge CI du lot 129 disait « expected 5611.99 to be less than 1 » à la ligne 216 de
+`projection.moneyConservation.test.ts`. J'ai lu « moneyConservation » + « toBeLessThan(1) » et
+diagnostiqué une **fuite de conservation de 5 612 $** — le fichier porte en effet un
+`expect(maxResid).toBeLessThan(1)`… trois lignes PLUS HAUT (ligne 213). La ligne 216 était une
+AUTRE assertion au même seuil : « le revenu tombe à ~0 pendant une perte d'emploi 100 % », devenue
+obsolète PAR CONCEPTION puisque le lot versait désormais l'assurance-emploi. 5 611,99 $ était la
+**prestation AE mensuelle du couple** — le comportement voulu, publié correctement.
+
+Coût : un cycle de debug entier (reproductions, instrumentations, comparaison avec un jumeau 50 %)
+à chercher une fuite d'argent qui n'existait pas — la conservation, re-mesurée mois par mois, tenait
+à 0,01 $ près sur les 144 points. Deux gestes l'auraient évité :
+
+1. **Ouvrir le fichier À LA LIGNE du rapport avant de nommer l'assertion.** Deux assertions au même
+   seuil (`< 1`) dans le même test se distinguent uniquement par leur ligne ; le nom du describe et
+   la forme du seuil ne disent PAS laquelle a tiré. La valeur d'échec elle-même portait l'indice :
+   5 611,99 est un revenu plausible, pas un résiduel — un résiduel de conservation cassé par un flux
+   oublié vaut le FLUX, et le flux ici était… exactement 5 611,99 $, versé et bien comptabilisé.
+2. **Après un correctif qui CHANGE un comportement, grep les assertions qui épinglent l'ANCIEN
+   comportement AVANT de pousser** — je l'avais même écrit (« cette assertion deviendra obsolète »)
+   sans faire le rapprochement avec la ligne du rouge. Une note qu'on s'écrit sans la relier au
+   symptôme observé ne protège de rien (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`, variante : la note
+   était JUSTE et je ne l'ai pas consultée).
+
+Corollaire de re-base : l'assertion s'est INVERSÉE avec son histoire (« > 1 000 $ : l'AE coule ; 0 =
+régression lot 129 ») + une borne haute qui garde le CHOC (< revenu d'avant − 3 000 $) — le test
+continue de prouver que la perte de revenu est réelle, il ne dit plus qu'elle est totale.

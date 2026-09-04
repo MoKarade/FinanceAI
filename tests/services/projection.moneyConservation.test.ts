@@ -211,9 +211,15 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         let maxResid = 0;
         for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
         expect(maxResid).toBeLessThan(1);
-        // Sur la fenêtre (mois 12..20), le revenu d'emploi tombe à ~0 (100 % coupé, persona sans bonus/side).
+        // [CHOMAGE-DEUX-MODELES re-base 2026-09-04] Avant le lot 129, une perte planifiée de 100 %
+        // laissait le revenu à ~0 sur la fenêtre (assertion historique : min < 1 $). Le moteur verse
+        // désormais l'assurance-emploi pendant une PERTE_EMPLOI datée (55 % du brut assurable plafonné,
+        // net d'impôt — mesuré 5 611,99 $/mois pour ce couple), donc le revenu de la fenêtre est la
+        // prestation : STRICTEMENT positive ET nettement sous le revenu d'avant (toujours une vraie perte).
         const windowIncome = cd.slice(12, 21).map(p => num(p.Income));
-        expect(Math.min(...windowIncome)).toBeLessThan(1);
+        const preLossIncome = num(cd[10].Income);
+        expect(Math.min(...windowIncome)).toBeGreaterThan(1_000);          // l'AE coule (0 = régression lot 129)
+        expect(Math.max(...windowIncome)).toBeLessThan(preLossIncome - 3_000); // et reste bien un choc de revenu
     });
 
     it('INV-1 — reconstructabilité : NetWorth = Σ(actifs affichés) − DetteTotale (sans placement)', () => {

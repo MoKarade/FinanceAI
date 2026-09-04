@@ -26,11 +26,11 @@ import { processOneChild } from './projection/childrenReee';
 // [FUTUR-FIRE-STRUCT] Libellé du jalon FIRE partagé avec ses consommateurs (le texte n'est plus
 // dupliqué en dur : un lecteur qui doit matcher le libellé compare à la MÊME constante).
 import { FIRE_LIFE_EVENT } from './projection/fireMilestone';
-import { computeActiveIncome } from './projection/activeIncome';
+import { computeActiveIncome, prestationAeNetteMensuelle } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
 import { initPastPurchase } from './projection/pastPurchaseInit';
 import { SCHL_AMORT_MAX_INSURED_STANDARD } from './realEstate';
-import { applyTravelExpenses, applyLifeEvents, computeStressTest, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest, applyFinancialGoalDeadlines, computeIncomeLossFactor, computePerteEmploiLossPct } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
@@ -1138,6 +1138,40 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 monthlyIncome *= incomeLossFactor;
                 activeGrossAddByUser = [activeGrossAddByUser[0] * incomeLossFactor, activeGrossAddByUser[1] * incomeLossFactor];
                 logEvent(lifeEventsLog, `📉 Perte de revenu planifiée (-${Math.round((1 - incomeLossFactor) * 100)} %)`);
+
+                // [CHOMAGE-DEUX-MODELES] L'événement daté PERTE_EMPLOI verse désormais l'AE, comme
+                // le chômage STOCHASTIQUE (même formule, source unique `prestationAeNetteMensuelle`
+                // — 55 % du brut assurable plafonné, imposée à assiette de cotisation nulle).
+                // Avant : la perte datée coupait le revenu SANS prestation, alors que la même perte
+                // tirée au sort en versait une — deux réponses au même événement de vie.
+                // ⚠️ Seule la part PERTE_EMPLOI reçoit l'AE : une SABBATIQUE est un départ
+                // volontaire (inadmissible), un ACCIDENT relève du régime maladie/LTD (hors lot).
+                // ⚠️ Approximation LINÉAIRE assumée : prestation pleine × part de revenu perdue —
+                // exacte à 100 % de perte (le cas nominal), proportionnelle en deçà.
+                // ⚠️ L'AE n'est PAS du revenu GAGNÉ (146(1)) : rien n'est ré-ajouté à
+                // `activeGrossAddByUser` — même convention que le chômage stochastique.
+                const pertePct = computePerteEmploiLossPct(lifeEvents, currentLoopDate);
+                if (pertePct > 0) {
+                    const yearsElapsedAe = Math.floor(m / 12);
+                    const sgf = Math.pow(1 + simSalaryGrowth / 100, yearsElapsedAe);
+                    const aeCtx = {
+                        simInflation, yearsElapsed: yearsElapsedAe, loopYear,
+                        enableMonteCarlo, calculateFiscalReport,
+                    };
+                    // Marc DÉJÀ au chômage stochastique ce mois : son revenu EST une prestation AE
+                    // — pas de seconde prestation pour la même personne.
+                    const marcDejaAuChomage = unemployedMonthsRemaining > 0 || aiResult.newUnemployedMonths > 0;
+                    const aeMarc = marcDejaAuChomage ? 0
+                        : prestationAeNetteMensuelle(grossMarcBaseAnnual * sgf, aeCtx) * pertePct;
+                    const aeAnna = soloHousehold ? 0
+                        : prestationAeNetteMensuelle(grossAnnaBaseAnnual * sgf, aeCtx) * pertePct;
+                    if (aeMarc + aeAnna > 0) {
+                        incomeMarc += aeMarc;
+                        incomeAnna += aeAnna;
+                        monthlyIncome += aeMarc + aeAnna;
+                        logEvent(lifeEventsLog, `💼 Prestation d'assurance-emploi versée pendant la perte d'emploi planifiée`);
+                    }
+                }
             }
             // [Revue #679 ÉLEVÉ-1] Ménage à UN SEUL déclarant : le mode « sandbox »
             // (computeIncomeBaseline) splitte TOUJOURS le revenu théorique 55/45, même avec un

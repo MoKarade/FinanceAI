@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 159 : six décisions en attente sont enfin VISIBLES chez Marc
+> Routage (doc seul) — six tickets « décision de Marc » du BACKLOG n'avaient AUCUNE entrée dans
+> `docs/A_FAIRE_MOI.md` : bloqués sans être visibles. Batch écrit en tête du fichier (meltdown
+> mi-mois, goalShortfalls, propGrowth locatifs, renouvellement ×2, FVI/efficacité, rankStrategies),
+> une recommandation par question. Le backlog NON GATÉ est épuisé : ce qui reste attend Marc
+> (décisions ci-dessus + B-sources fiscales), un cadrage plan-first (CHARGES-FIXES, ITEM-2A,
+> FISC-REEE), ou des données 👤. Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 158 : le store est découpé — la famille godfiles V11 est COMPLÈTE
 > `[GODFILE-STORE]` livré — useFinanceStore.ts (783 l. re-mesurées) → façade de 207 :
 > `etatParDefaut` (défauts + migration legacy + initialState calculé là), `migrationsPersistees`

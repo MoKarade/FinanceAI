@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[STORE-RENAME-NO-GUARD]` — LIVRÉ (lot 137)
+
+`tests/store/storeRenameGuard.test.ts` porte désormais LA RÈGLE (renommer un champ persisté = un
+palier neuf + le nom retiré entre dans l'inventaire réservé) et son inventaire, RECENSÉ contre le
+code — plus petit que le ticket le laissait croire, et c'est un constat : seuls `apiKeys.gemini`
+(jeté v2→v3) et `User.salary` (repli legacy `netSalary || salary`, toujours déclaré en rétrocompat)
+sont des noms consommés/réservés. Les champs du mode test (purgés v6→v7) ont été RE-LÉGITIMÉS
+depuis (persistés à nouveau, choix Marc, poussée Drive gatée par shouldPush) et `dateBought`/
+`buyPrice`/`quantity` (v5→v6) restent vivants — les inscrire « retirés » aurait été faux.
+Gardes : chaîne comportementale (blob v2 avec gemini → jeté, anthropic préservé — redondance
+mesurée : DEUX paliers reconstruisent apiKeys, perturber un seul reste vert, les deux rougit),
+porte de la réutilisation (défauts + types décommentés sans gemini, défauts users sans `salary`),
+anti-obsolescence du repli salary. 3 perturbations, rouges exacts.
+
 ## 2026-09-04 — `[FISC-MARGINAL-SPACE]` — LIVRÉ (lot 136) : le marginal du rapport suit enfin son année
 
 La racine était DANS `calculateFiscalReport` : ses impôts utilisaient les paliers indexés de

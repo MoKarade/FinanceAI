@@ -94,6 +94,29 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     expect(dates[0]).not.toBe(dates[1]);
   });
 
+  test('[FUTUR-CLICK-ANYWHERE] le clic fige un jour PARTOUT dans la zone du graphe — ciel vide, bord des axes, pas seulement le tracé', async ({ page }) => {
+    // Retour Marc 2026-08-12 : « je dois cliquer exactement sur la courbe, je veux pouvoir cliquer
+    // n'importe où ». Le mécanisme résout le jour par l'ABSCISSE seule (resolvePointByX sur le
+    // conteneur entier, pointerup) — ce test PROUVE qu'aucune zone morte ne subsiste : le CIEL
+    // au-dessus de la pile (l'ordonnée n'y croise aucune aire), la bande BASSE près de l'axe des
+    // dates, et la marge GAUCHE (l'abscisse y est clampée au premier jour visible). Le tracé
+    // lui-même est déjà couvert par le test « deux clics = deux jours » (y = 80 %).
+    const box = await chartBox(page);
+    const vpH = page.viewportSize()?.height ?? 720;
+    const spots: Array<[string, number, number]> = [
+      ['ciel vide au-dessus de la pile', box.x + box.width * 0.6, box.y + box.height * 0.08],
+      ['bande basse près de l\'axe des dates', box.x + box.width * 0.45, Math.min(box.y + box.height * 0.93, vpH - 24)],
+      ['marge gauche (axe des montants)', box.x + 10, box.y + box.height * 0.5],
+    ];
+    for (const [nom, x, y] of spots) {
+      const frozen = await clickAndFreeze(page, x, y);
+      const txt = (await frozen.textContent()) ?? '';
+      expect(txt.match(DAY_RE), `zone morte au clic : ${nom} — ${txt.slice(0, 120)}`).not.toBeNull();
+      await page.keyboard.press('Escape');
+      await frozen.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+    }
+  });
+
   test('[FUTUR-DAILY-NATIVE] vue LARGE : « Lendemain » avance d’exactement un jour, et le pied d’actions est visible sans défiler', async ({ page }) => {
     // Le scénario EXACT de Marc, sans étape intermédiaire : vue 30 ans, clic → jour figé → flèche.
     const box = await chartBox(page);

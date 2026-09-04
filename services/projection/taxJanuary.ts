@@ -80,7 +80,7 @@ export interface JanuaryContext {
 
 export interface JanuaryHelpers {
     RRIF_RATES: Record<number, number>;
-    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, skipBreakdown?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
+    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, skipBreakdown?: boolean, ageOpts?: AgeCreditOptions, employmentIncome?: number, realDeflator?: number) => FiscalReport;
 }
 
 export interface JanuaryResult {
@@ -268,11 +268,11 @@ export function processJanuaryReset(
         // crédit sous-évalué = retenue surévaluée = conservateur ; l'année charnière des 72 ans,
         // ce sont les retraits REER des 71 ans — légère surévaluation ponctuelle). Avant : le
         // revenu TOTAL (RRQ+PSV+SRG+gains inclus) était passé — assiette surévaluée vs FA-1.
-        // Impact chiffré : NUL aujourd'hui — `calculateFiscalReport().marginalRate` =
-        // `getMarginalRate(netTaxable)`, fonction des PALIERS seulement (les crédits d'âge/
-        // pension n'y entrent pas), et la retenue FERR est réconciliée à la déclaration de
-        // décembre (effet de timing pur). On passe la bonne assiette pour que le calcul reste
-        // juste si marginalRate devient un jour crédit-aware.
+        // Impact chiffré : NUL aujourd'hui côté PALIERS — `marginalRate` reste fonction des
+        // paliers seulement (les crédits d'âge/pension n'y entrent pas), et la retenue FERR est
+        // réconciliée à la déclaration de décembre (effet de timing pur). On passe la bonne
+        // assiette pour que le calcul reste juste si marginalRate devient un jour crédit-aware.
+        // ⚠️ Depuis le lot 136, `marginalRate` suit (year, realDeflator) — voir l'appel plus bas.
         const deflatedEligiblePension = (ctx.accRetraitsReerYearOld / ctx.activeUsersCount) / inflFactorAtNow;
         const ageOptsFerr: AgeCreditOptions = {
             age: ctx.age,
@@ -280,7 +280,12 @@ export function processJanuaryReset(
             hasSpouse: ctx.activeUsersCount > 1,
             familyIncome: deflatedIncomeForMargRate * ctx.activeUsersCount,
         };
-        const rrifMarginalRate = helpers.calculateFiscalReport(deflatedIncomeForMargRate, 0, 0, ctx.loopYear, false, ageOptsFerr).marginalRate;
+        // [FISC-MARGINAL-SPACE] L'assiette ci-dessus est DÉFLATÉE (dollars 2026) : depuis que
+        // `marginalRate` suit l'année du rapport, il faut passer AUSSI le déflateur (convention
+        // [FISC-BRACKET-REALINDEX], comme taxDecember) — sinon revenu réel contre paliers nominaux
+        // de loopYear = retenue FERR sous-évaluée. Avant le lot 136, la cohérence de ce site était
+        // ACCIDENTELLE (marginal figé aux paliers 2026 = l'espace du revenu déflaté).
+        const rrifMarginalRate = helpers.calculateFiscalReport(deflatedIncomeForMargRate, 0, 0, ctx.loopYear, false, ageOptsFerr, undefined, inflFactorAtNow).marginalRate;
 
         // M-1 (2026-06) : `calculateFiscalReport(...).marginalRate` est un DÉCIMAL (~0,30–0,53),
         // pas un pourcentage. L'ancien `/ 100` rendait la retenue FERR ~100× trop faible. La retenue

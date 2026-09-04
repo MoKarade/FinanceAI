@@ -78,7 +78,15 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // Re-basé 2026-08-21, attribution par BISSECTION de commits (revue #683 — ma 1re
         // attribution « retrait chirurgical » était partiellement FAUSSE, 4e récidive) :
         // finalNetWorth −7 097 = GK (bande de lissage traversée) ;
-        expect(Math.round(r.finalNetWorth)).toBe(475_413);
+        // Re-basé 2026-09-04 ([FISC-MARGINAL-SPACE], lot 136, **−69 436 $, −14,6 %**) : le taux
+        // marginal du rapport suit désormais les paliers INDEXÉS de l'année courante. Sur cette
+        // fixture (91 800 $/tête, croissance 2 % = l'indexation des paliers), le marginal RÉEL ne
+        // franchit JAMAIS 40 % — l'ancienne bascule REER-first d'AUTO_MARGINAL vers l'année 9 était
+        // un artefact des paliers figés 2026 (marginal fantôme 41,1 %). Treize années de
+        // cotisations REER-first (et leurs remboursements composés) disparaissent : le SIGNE est
+        // négatif par construction, et c'est la règle de Marc (« REER d'abord si ≥ 40 % ») enfin
+        // appliquée au vrai marginal — pas une fuite.
+        expect(Math.round(r.finalNetWorth)).toBe(405_977);
     });
 
     it('sans divorce, la succession est INCHANGÉE (rétrocompat mesurée)', () => {
@@ -132,7 +140,11 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // la somme déjà imposée chaque année. Le signe va cette fois dans le MÊME sens que le
         // patrimoine (les deux montent) — contrairement au re-basement du lot 113, où retirer des
         // droits REER baissait le patrimoine tout en remontant la succession.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_571_580);
+        // Re-basé 2026-09-04 ([FISC-MARGINAL-SPACE], lot 136, **+591 $, +0,017 %**) : même cause,
+        // effet successoral marginal — les quelques lectures du taux marginal dans la chaîne
+        // succession/impôt latent utilisent désormais les paliers indexés (taux légèrement plus
+        // bas sur revenu nominal → un peu moins d'impôt latent → succession un peu plus haute).
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_572_171);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
@@ -147,6 +159,9 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // de nouveau en sens INVERSE de la succession.
         // Re-basé 2026-09-03 (même cause, **+3 264 $**) : écart plus petit qu'en déterministe
         // (+8 442 $) — le tirage Monte Carlo dilue un effet qui dépend du solde non-enregistré.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_907_217);
+        // Re-basé 2026-09-04 ([FISC-MARGINAL-SPACE], lot 136, **+144 $** ici vs +591 $ en
+        // déterministe) : la cause passe par l'impôt latent ET par la composition du patrimoine,
+        // que le tirage MC dilue — pas par la seule VAN des rentes, d'où deux écarts différents.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_907_361);
     });
 });

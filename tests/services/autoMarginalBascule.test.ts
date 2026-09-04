@@ -87,7 +87,13 @@ function ordreParAnnee(brutMensuel: number, croissance: number, projOver: Partia
 
 describe('[AUTOMARGINAL-BASCULE-SILENCIEUSE] l’ordre de cotisation bascule EN COURS de projection', () => {
     it('un salaire qui croît fait passer les cotisations de CELI d’abord à REER d’abord', () => {
-        const ordres = ordreParAnnee(7_000, 3);
+        // ⚠️ RE-DÉRIVÉ le 2026-09-04 ([FISC-MARGINAL-SPACE], lot 136) : le marginal suit désormais
+        // les paliers INDEXÉS de l'année courante (+2 %/an). À 3 % de croissance salariale, le
+        // différentiel réel n'est plus que ~1 %/an et la frontière des 40 % n'est plus atteinte en
+        // 20 ans — l'ancienne bascule « année 9 » était un ARTEFACT des paliers figés 2026 (le vrai
+        // marginal de ce revenu restait sous 40 %). Le mécanisme, lui, est inchangé : il faut une
+        // croissance qui DÉPASSE l'indexation des paliers. 5 % → bascule mesurée à l'année 9.
+        const ordres = ordreParAnnee(7_000, 5);
 
         // Anti-vacuité : il faut de VRAIES cotisations, sinon « CELI » et « REER » sont deux zéros.
         expect(ordres.filter(o => o !== 'aucune cotisation').length,
@@ -115,8 +121,9 @@ describe('[AUTOMARGINAL-BASCULE-SILENCIEUSE] l’ordre de cotisation bascule EN 
 
     it('un revenu plus élevé bascule PLUS TÔT — la date suit le revenu', () => {
         // Troisième point, qui ferme le débat sur la cause : ce n'est ni le temps, ni le hasard.
-        const bas = ordreParAnnee(7_000, 3).indexOf('REER');
-        const haut = ordreParAnnee(9_000, 3).indexOf('REER');
+        // (croissance 5 % : même raison que ci-dessus — au-dessus de l'indexation des paliers.)
+        const bas = ordreParAnnee(7_000, 5).indexOf('REER');
+        const haut = ordreParAnnee(9_000, 5).indexOf('REER');
         expect(haut, 'le scénario haut doit basculer aussi').toBeGreaterThan(-1);
         expect(haut, `bascule à ${haut} (9 000 $) contre ${bas} (7 000 $) : le revenu ne décale rien`)
             .toBeLessThan(bas);
@@ -124,9 +131,15 @@ describe('[AUTOMARGINAL-BASCULE-SILENCIEUSE] l’ordre de cotisation bascule EN 
 
     it('le levier explicite « Ordre de cotisation » SUPPRIME la bascule automatique', () => {
         // C’est la dernière phrase de la réponse FAQ : elle doit être vraie.
-        const ordres = ordreParAnnee(7_000, 3, { appliedContributionOrder: 'CELI_FIRST' } as Partial<ProjectionConfig>);
-        expect(ordres.includes('REER'),
-            `le levier CELI_FIRST n’a pas tenu : ${ordres.join(' ')}`).toBe(false);
+        // (croissance 5 % : SANS le levier, cette fixture bascule à l'année 9 — c'est ce qui rend
+        // le test discriminant depuis le lot 136 ; à 3 %, il ne basculerait plus de toute façon.)
+        // ⚠️ La fenêtre s'arrête à l'année 11 : au-delà, le SURPLUS (qui croît à 5 %) dépasse le
+        // plafond CELI et le TROP-PLEIN déborde légitimement vers le REER même sous CELI_FIRST —
+        // c'est du VOLUME, pas de l'ordre (mesuré : « REER » d'étiquette dès l'année 12 parce que
+        // le débordement annuel excède le plafond CELI, alors que le CELI est bien servi d'abord).
+        const ordres = ordreParAnnee(7_000, 5, { appliedContributionOrder: 'CELI_FIRST' } as Partial<ProjectionConfig>);
+        expect(ordres.slice(0, 12).includes('REER'),
+            `le levier CELI_FIRST n’a pas tenu sur les années de la bascule auto : ${ordres.join(' ')}`).toBe(false);
     });
 });
 

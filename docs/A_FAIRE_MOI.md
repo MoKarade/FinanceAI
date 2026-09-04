@@ -1,5 +1,19 @@
 # À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
 
+- [ ] **[DÉCISION — FISC-RRSP-RENTAL-EARNED]** (2026-09-04) — le moteur ne crée AUCUN droit REER
+  pour un revenu de location (confirmé dans le code : le loyer net nourrit le registre des rentes,
+  jamais l'assiette de revenu gagné per-conjoint). Avant de corriger, DEUX réponses requises :
+  **(1) La source fiscale.** La règle « le revenu NET de location est du revenu gagné au sens de
+  146(1) LIR » doit être confirmée par une source officielle (guide ARC **T4040**, section
+  « revenu gagné », ou le texte de 146(1)). Je ne peux pas la citer moi-même : `canada.ca` est
+  bloqué depuis cet environnement (`EGRESS_BLOCKED`, tenté le 2026-09-04 — même blocage déjà
+  consigné pour LégisQuébec). Sans source, la règle du dépôt interdit d'écrire le calcul.
+  **(2) L'attribution par conjoint.** Les droits REER sont un registre PAR CONJOINT, mais un
+  immeuble locatif du modèle n'appartient à personne (aucun champ de propriété). À qui va le
+  loyer net d'un couple : 50/50 ? au conjoint 1 ? un champ de propriété à ajouter au formulaire ?
+  [Probable] Recommandation : champ de propriété optionnel (défaut 50/50), cohérent avec le
+  partage déjà fait ailleurs — mais c'est une décision produit, pas technique.
+
 - [ ] **[DÉCISION — TX-INTERAC-BUDGET]** (2026-08-26, audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]`) —
   un Interac REÇU doit-il être un REVENU ou un CRÉDIT sur le poste de dépense ? Deux décisions déjà
   prises se contredisent : `spendRules.ts` documente « l'entrant ne devient PAS un revenu … ne

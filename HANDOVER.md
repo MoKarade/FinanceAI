@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 146 : le rendu PDF est découpé par section + `[FISC-RRSP-RENTAL-EARNED]` routé
+> `[DETTE-GODFN-PDF]` livré — `generateFinancialReport` (615 lignes) devient 8 fonctions de
+> section + un `ContexteRenduPdf` ; équivalence prouvée au journal d'appels jsPDF identique à
+> l'octet (3 fixtures), garde structurelle committée (`pdfReport.journalRendu.test.ts`, ordre des
+> pages + témoins). Le dernier ticket god-fonction du backlog est soldé. En chemin :
+> `[FISC-RRSP-RENTAL-EARNED]` re-recensé (constat code CONFIRMÉ : le loyer net ne crée aucun
+> droit REER) puis GATÉ source humaine — la source T4040 est inaccessible d'ici
+> (`canada.ca` EGRESS_BLOCKED) et l'attribution per-conjoint du loyer est une décision produit →
+> `docs/A_FAIRE_MOI.md` « [DÉCISION — FISC-RRSP-RENTAL-EARNED] ».
+
 > ## 🟦 Session 2026-09-04 — Lot 145 : la fusion réel↔projeté de la courbe au jour est typée
 > `[DETTE-CAST-DAILYCURVE]` livré — l'identité d'un point quotidien est DÉCLARÉE sur
 > `ProjectionChartPoint` : 15 des 17 `as unknown as` retirés (tsc retrouve prise sur la fusion),

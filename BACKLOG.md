@@ -782,9 +782,16 @@
   `ScenariosComparatifsCard.tsx` et `AmortissementCards.tsx` (extraction verbatim ; l'état des
   curseurs reste chez le parent — la carte-conseil IA lit les mêmes valeurs).
 
-- [ ] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) (M) — `components/ui/Input|Select|Field` (label+erreur+aria) sur
-  les tokens existants + migrer les hotspots (AdvancedProjectionParams 40 inputs, PatrimoineExtended
-  19, Onboarding 11, ProjectionControls 10). (≡ CA-08.)
+- [x] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) ✅ fait le 2026-09-04 (lot 156,
+  PR #887) — `ui/Input` (variants compact/large + accents, classes ÉCRITES EN ENTIER), `ui/Select`,
+  `ui/Field` (paire label↔id écrite une fois, id toujours EXPLICITE). Périmètre RE-CENSÉ (les
+  comptes du ticket étaient périmés) : APP 26 réels migrés (le « 27e » était un commentaire —
+  prose), Onboarding 8 (dont 6 en Field), ProjectionControls 1 select (les 13 sliders = autre
+  famille). EXCLUSIONS déclarées : PatrimoineExtended reste tel quel (grille dense hétérogène —
+  col-span/px-0.5/text-tiny par cellule, une primitive y dégraderait) ; la prop « erreur » du
+  ticket N'EST PAS livrée (aucun site migré n'affiche d'erreur aujourd'hui — un prop sans
+  producteur est une intention jamais livrée) ; unification VISUELLE des trois densités non faite
+  (changement visible = décision produit, pas un refactor). (≡ CA-08.)
 - [x] **`[ENG-RAMQ-FIELDS]`** ✅ fait le 2026-09-04 (lot 155, PR #886) — `User.hasPrivateDrugInsurance`
   + case par personne (Profil → Options fiscales) + `ramqExemptAdultsCount` PAR ADULTE dans
   taxDecember (Annexe K : chaque conjoint calcule SA prime ; le drapeau de ménage `ramqExempt`

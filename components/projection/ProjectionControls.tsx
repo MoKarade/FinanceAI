@@ -1,4 +1,5 @@
 import React from 'react';
+import { Select } from '../ui/Select';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
@@ -315,16 +316,15 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                     {/* Replay krach */}
                     <div className="flex items-center gap-2 flex-wrap">
                         <label className="text-meta text-ink-300" htmlFor="replay-select">Replay krach historique:</label>
-                        <select
+                        <Select
                             id="replay-select"
                             value={projection.replayHistoricalYear ?? ''}
                             onChange={e => updateProj('replayHistoricalYear', e.target.value ? Number(e.target.value) : undefined)}
-                            className="bg-dark border border-border rounded px-2 py-1 text-meta text-ink-100"
                         >
                             {REPLAY_OPTIONS.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
-                        </select>
+                        </Select>
                         <span className="text-tiny text-ink-400">→ Force les rendements historiques.</span>
                     </div>
 

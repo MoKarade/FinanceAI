@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-UI-PRIMITIVES]` — LIVRÉ (lot 156, PR #887)
+
+Primitives de formulaire : `ui/Input.tsx` (variants `compact`/`large` qui REPRODUISENT les deux
+densités déjà peintes — ce lot unifie le code, pas l'apparence ; accents de bordure en classes
+écrites en entier, Tailwind ne générant jamais une classe interpolée), `ui/Select.tsx`,
+`ui/Field.tsx` (le `<label htmlFor>` et l'`id` du contrôle écrits UNE fois, id toujours explicite
+— les gardes s'ancrent sur des ids nommés). Périmètre RE-CENSÉ, les quatre comptes du ticket
+étaient périmés (« 40/19/11/10 ») : AdvancedProjectionParams **26** inputs réels migrés (le 27e du
+grep était un `<input type="number">` CITÉ dans un commentaire — prose), Onboarding **8** (6 en
+Field+Input, 2 en Input seuls, leur nommage existant conservé), ProjectionControls **1** select ;
+les 14 montants d'APP restent sur `PrivateNumberInput` (mode discret) et la garde de source qui
+interdit un libellé en $ hors PrivateNumberInput reste verte telle quelle. Exclusions DÉCLARÉES :
+PatrimoineExtended (grille dense — chaque cellule porte col-span/padding/taille propres, la
+primitive y serait fausse membre par membre), sliders/radios/checkboxes (autre famille), prop
+« erreur » du ticket (aucun producteur aujourd'hui), unification visuelle des densités (décision
+produit, pas un refactor). Vérifs : suites existantes des trois écrans + scans privacy verts sans
+modification ; 6 tests neufs sur les primitives comparant des ENSEMBLES de classes aux chaînes
+historiques ; 2 perturbations (padding de base, clonage d'id) à rouge ciblé, restauration prouvée.
+
 ## 2026-09-04 — `[ENG-RAMQ-FIELDS]` — LIVRÉ (lot 155, PR #886)
 
 Recensé contre le code : la « bascule RAMQ/privé dans taxDecember » que demandait le ticket

@@ -50,7 +50,7 @@ type Section = 'salary' | 'fiscal' | 'children' | 'detailed';
 
 const SECTION_META: Record<Section, { title: string; icon: Parameters<typeof Icon>[0]['name']; help?: string }> = {
     salary: { title: 'Salaires', icon: 'tax', help: 'Brut annuel + net mensuel, par personne. Base des impôts et de la répartition.' },
-    fiscal: { title: 'Options fiscales', icon: 'tax', help: 'Premier acheteur (CELIAPP) et facteur d\'équivalence (réduit le plafond REER).' },
+    fiscal: { title: 'Options fiscales', icon: 'tax', help: 'Premier acheteur (CELIAPP), assurance médicaments privée (exempte de la prime RAMQ) et facteur d\'équivalence (réduit le plafond REER).' },
     children: { title: 'Enfants (REEE)', icon: 'child', help: 'Active le REEE et la subvention pour la planification des coûts.' },
     detailed: { title: 'Carrière & rémunération variable', icon: 'tax', help: 'Bonus, RSU et revenus secondaires entrent dans les revenus projetés. Industrie : informatif.' },
 };
@@ -164,6 +164,18 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
                                         />
                                         <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Premier Acheteur (CELIAPP)</span>
+                                    </label>
+                                    {/* [ENG-RAMQ-FIELDS] Exemption PAR ADULTE (Annexe K) : cocher retire
+                                        LA prime de CETTE personne (max 766 $/an indexé), pas celle du
+                                        conjoint resté au régime public. */}
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!user.hasPrivateDrugInsurance}
+                                            onChange={(e) => patch(idx, { hasPrivateDrugInsurance: e.target.checked })}
+                                            className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
+                                        />
+                                        <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Assurance médicaments privée (exempt de la prime RAMQ)</span>
                                     </label>
                                     <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
                                         <span className="text-tiny text-ink-300 uppercase font-black shrink-0 inline-flex items-center gap-1">FE <Icon name="budget" size={11} /></span>

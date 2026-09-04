@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 155 : la prime RAMQ connaît l'assurance privée, par adulte
+> `[ENG-RAMQ-FIELDS]` livré — `User.hasPrivateDrugInsurance` (case par personne, Profil → Options
+> fiscales) → `ramqExemptAdultsCount` dans taxDecember (Annexe K : chaque conjoint calcule SA
+> prime ; 1 exempt sur 2 = moitié EXACTE, drapeau de ménage `ramqExempt` toujours accepté).
+> Défaut absent = bit-identique à avant (goldens/conservation verts, expliqué). 8 tests décembre +
+> scan de câblage + 2 tests UI, 3 perturbations à rouge ciblé. CHANGELOG (visible). Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 154 : FutureDetailModal n'est plus un godfile
 > `[GODFILE-FUTUREDETAILMODAL]` livré — re-mesuré 1 142 l. (ticket disait 606) → **445** :
 > `futureDetail/` porte les comptes (pur), les pastilles de transaction, le drill-down entier

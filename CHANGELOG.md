@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (L'assurance médicaments privée retire la prime RAMQ de la bonne personne)
+
+- **Ajouté** : dans Profil → Options fiscales, une case « Assurance médicaments privée » par
+  personne. Cochée, la projection cesse de facturer LA prime RAMQ de cette personne (jusqu'à
+  766 $/an indexés) — celle du conjoint resté au régime public continue d'être comptée, comme le
+  fait la vraie Annexe K. Avant, le modèle supposait que tout le monde payait au régime public.
+
 ## [unreleased] — 2026-09-04 (La courbe Futur se pilote entièrement au clavier)
 
 - **Ajouté** : sur l'onglet Futur, la touche Tab atteint maintenant la courbe, et Entrée (ou une

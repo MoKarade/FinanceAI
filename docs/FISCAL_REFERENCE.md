@@ -445,6 +445,11 @@ Sources : RAMQ, Revenu Québec ligne 447, CFFP U. Sherbrooke. **Prime max : 766 
 | Taux tranche 2 (9 600 $ suivants) | 11,48 % | 5,75 % |
 > Exemptions : couverture privée (employeur/conjoint), 65+ avec SRG max, étudiant 18-25, etc.
 > → le caller passe `exempt: true`.
+> [ENG-RAMQ-FIELDS] (2026-09-04) Granularité : l'Annexe K se remplit **par déclarant** — chaque
+> conjoint calcule SA prime sur le revenu familial. Le modèle suit : `User.hasPrivateDrugInsurance`
+> exempte l'adulte couvert SEULEMENT (`ramqExemptAdultsCount` dans taxDecember) ; le conjoint resté
+> au public paie la sienne. Le drapeau de MÉNAGE `ramqExempt` reste accepté (tout le ménage ou
+> personne) ; `ramqExemptAdultsCount` PRIME quand les deux sont fournis.
 
 ### FSS — Fonds des services de santé (ligne 446 / Annexe F) — barème **2026**
 S'applique surtout aux retraités/indépendants (les salariés sont couverts par l'employeur).

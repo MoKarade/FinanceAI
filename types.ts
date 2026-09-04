@@ -147,6 +147,12 @@ export interface User {
   canadaArrivalYear?: number;
   isImmigrant?: boolean;                 // immigré au Canada → droits CELI/REER + résidence PSV calculés depuis canadaArrivalYear (sinon depuis la naissance)
   hasOwnedPropertyLast4Years?: boolean;
+  /** [ENG-RAMQ-FIELDS] Couverture PRIVÉE d'assurance médicaments (régime employeur/association).
+   *  Annexe K (ligne 447) : la prime RAMQ se calcule PAR ADULTE sur le revenu familial — un adulte
+   *  couvert au privé toute l'année en est exempté, l'autre conjoint resté au public paie la
+   *  sienne. Champ additif optionnel (aucune migration) ; absent/false = paie au régime public,
+   *  le défaut CONSERVATEUR historique du moteur. Réf docs/FISCAL_REFERENCE.md §6.4. */
+  hasPrivateDrugInsurance?: boolean;
   hasChildren?: boolean;
   childCount?: number;
   fhsaBalance?: number;

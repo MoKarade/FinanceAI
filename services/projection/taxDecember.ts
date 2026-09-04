@@ -353,8 +353,18 @@ export interface DecemberContext {
      * privée par régime employeur/association, livret de réclamation valide,
      * étudiant 18-25, 65+ avec SRG max.
      * Optionnel, défaut false (l'utilisateur paie au public).
+     * ⚠️ Exemption du MÉNAGE ENTIER — conservé pour les appelants existants ;
+     * `ramqExemptAdultsCount` (plus fin) a PRIORITÉ quand il est fourni.
      */
     ramqExempt?: boolean;
+    /**
+     * [ENG-RAMQ-FIELDS] Nombre d'adultes du ménage couverts par une assurance
+     * médicaments PRIVÉE. L'Annexe K calcule la prime PAR ADULTE sur le revenu
+     * familial : un conjoint couvert au privé est exempté de SA prime pendant que
+     * l'autre paie la sienne. Clampé à `activeUsersCount`. Optionnel — absent,
+     * on retombe sur `ramqExempt` (tout le ménage ou personne).
+     */
+    ramqExemptAdultsCount?: number;
 }
 
 export interface DecemberHelpers {
@@ -875,17 +885,27 @@ export function processDecemberTaxFiling(
             // ACTIF entre aussi dans l'assiette RAMQ.
             familyNetIncome = Math.max(0, grossFamily - deductions + retraitsReer + gainsImposables + annualGrossedUpDivForBases) / inflationFactor;
         }
+        // [ENG-RAMQ-FIELDS] Exemption PAR ADULTE (Annexe K : chaque conjoint calcule SA prime sur
+        // le revenu familial). `ramqExemptAdultsCount` prime sur le drapeau de ménage `ramqExempt` ;
+        // absent, l'ancien comportement (tout ou rien) est inchangé bit à bit.
+        const exemptAdults = Math.min(
+            Math.max(0, ctx.ramqExemptAdultsCount ?? (ctx.ramqExempt ? ctx.activeUsersCount : 0)),
+            ctx.activeUsersCount,
+        );
+        const payingAdults = ctx.activeUsersCount - exemptAdults;
         const ramqPerAdult = calculateRamqPremium(
             familyNetIncome,
             {
+                // `hasSpouse` décrit la SITUATION FAMILIALE (seuils d'exemption du couple), pas le
+                // nombre de payeurs : un conjoint exempté ne transforme pas l'autre en célibataire.
                 hasSpouse: ctx.activeUsersCount > 1,
                 childrenCount: ctx.childrenCount ?? 0,
-                exempt: !!ctx.ramqExempt,
+                exempt: payingAdults === 0,
             },
             ctx.loopYear,  // indexation seuils + prime max
             inflationFactor,  // [FISC-BRACKET-REALINDEX] familyNetIncome est en $ RÉELS → seuils en réel
         );
-        const ramqTotal = ramqPerAdult * ctx.activeUsersCount * inflationFactor;
+        const ramqTotal = ramqPerAdult * payingAdults * inflationFactor;
         if (ramqTotal > 0) {
             taxCurrent.divers += ramqTotal;
             logs.push(`💊 RAMQ médicaments: ${formatCAD(Math.round(ramqTotal))}/an (${formatCAD(Math.round(ramqPerAdult))}/adulte)`);

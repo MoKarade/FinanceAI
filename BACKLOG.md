@@ -785,8 +785,13 @@
 - [ ] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) (M) — `components/ui/Input|Select|Field` (label+erreur+aria) sur
   les tokens existants + migrer les hotspots (AdvancedProjectionParams 40 inputs, PatrimoineExtended
   19, Onboarding 11, ProjectionControls 10). (≡ CA-08.)
-- [ ] **`[ENG-RAMQ-FIELDS]`** (S, reste) — assurance médicaments PRIVÉE absente (enfants à charge ✓)
-  → champ User + bascule RAMQ/privé dans taxDecember.
+- [x] **`[ENG-RAMQ-FIELDS]`** ✅ fait le 2026-09-04 (lot 155, PR #886) — `User.hasPrivateDrugInsurance`
+  + case par personne (Profil → Options fiscales) + `ramqExemptAdultsCount` PAR ADULTE dans
+  taxDecember (Annexe K : chaque conjoint calcule SA prime ; le drapeau de ménage `ramqExempt`
+  reste accepté, le compte fin prime). Recensé : la bascule de MÉNAGE existait déjà — le manque
+  était la granularité par adulte ET le producteur du champ. Reste routé (préexistant, hors
+  périmètre) : `childrenCount` approximé via `childGoals.length` (TODO `User.dependentChildrenCount`
+  dans projection.ts, inchangé).
 - [ ] **`[T4]`** (M, par lots) — automatiser les tests manuels critiques en Playwright : 8 specs e2e
   aujourd'hui, cible 20-30 (depuis MANUAL_TEST_CHECKLIST.md).
 

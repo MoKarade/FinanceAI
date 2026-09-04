@@ -1400,10 +1400,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     // Approximé via childGoals.length faute de champ dédié dans User.
                     // TODO: ajouter `User.dependentChildrenCount` pour précision.
                     childrenCount: activeChild.length,
-                    // §6.4 RAMQ: exempt si couverture privée (employeur/association).
-                    // TODO: flag `User.hasPrivateDrugInsurance` à ajouter. Par défaut
-                    // false (paie au régime public) — conservateur pour FinanceAI.
-                    ramqExempt: false,
+                    // §6.4 RAMQ — [ENG-RAMQ-FIELDS] exemption PAR ADULTE si couverture privée
+                    // (`User.hasPrivateDrugInsurance`, Annexe K : chaque conjoint calcule SA prime).
+                    // Ménage solo (décès/divorce : c'est user[0] qui reste, cf. survivorMode) →
+                    // seul son drapeau compte. Champ absent = false (paie au public, conservateur).
+                    ramqExemptAdultsCount: soloHousehold
+                        ? (config.users[0]?.hasPrivateDrugInsurance ? 1 : 0)
+                        : config.users.filter(u => u?.hasPrivateDrugInsurance).length,
                     // PH4-FUT-B — levier fractionnement de pension. Absent/true = actif (historique) ;
                     // false → la Phase 3 d'optimisation de décembre est sautée (impôt = brut par conjoint).
                     enablePensionSplitting: effProj.appliedPensionSplitting !== false,

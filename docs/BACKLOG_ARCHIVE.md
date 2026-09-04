@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[ENG-RAMQ-FIELDS]` — LIVRÉ (lot 155, PR #886)
+
+Recensé contre le code : la « bascule RAMQ/privé dans taxDecember » que demandait le ticket
+existait DÉJÀ (`ramqExempt`, exemption de MÉNAGE, consommée à la ligne du calcul) — le vrai manque
+était (a) la granularité PAR ADULTE et (b) le producteur du champ (le seul appelant écrivait
+`ramqExempt: false` en dur avec un TODO nommant exactement `User.hasPrivateDrugInsurance`).
+Livré : champ `User.hasPrivateDrugInsurance` (additif optionnel, zéro migration),
+`ramqExemptAdultsCount` dans le contexte de décembre (clampé, prioritaire sur le drapeau de
+ménage ; absent = comportement d'avant bit à bit — goldens et conservation verts, EXPLIQUÉ : le
+défaut du nouveau paramètre reproduit l'ancien chemin), câblage moteur solo/couple (décès/divorce :
+seul le drapeau de user[0] compte, c'est lui qui reste), case à cocher par personne dans Profil →
+Options fiscales, note de granularité dans FISCAL_REFERENCE §6.4 (Annexe K se remplit par
+déclarant sur le revenu familial — mêmes sources que la section). Garde-fou nommé dans le calcul :
+`hasSpouse` décrit la situation familiale (seuils du couple), pas le nombre de payeurs — un
+conjoint exempté ne transforme pas l'autre en célibataire. Tests : 8 cas de relation à décembre
+(moitié EXACTE pour 1 exempt sur 2, zéro + log éteint pour 2/2, rétrocompat, priorité, clamp des
+comptes délirants), scan de source du câblage (appelant enfoui dans la boucle moteur — leçon
+CABLER-UNE-ANNEE), 2 tests UI (écriture par utilisateur, décocher = false explicite). Trois
+perturbations séparées (multiplication revenue à `activeUsersCount`, câblage débranché, onChange
+muet), rouges ciblés, restauration prouvée.
+
 ## 2026-09-04 — `[GODFILE-FUTUREDETAILMODAL]` — LIVRÉ (lot 154, PR #885)
 
 Re-mesuré **1 142 lignes** (le « 606 » du ticket décrivait un état d'avant) → parent à **445** par

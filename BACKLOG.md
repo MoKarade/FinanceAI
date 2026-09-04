@@ -769,7 +769,12 @@
   abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
 - [ ] **Godfiles restants (V11)** :
   **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
-  **`[GODFILE-FUTUREDETAILMODAL]`** ⚠️ taille re-mesurée le 2026-09-04 : `components/projection/FutureDetailModal.tsx` **1 142 l.** (le « 606 » du ticket décrivait un état d'avant).
+  ✅ `[GODFILE-FUTUREDETAILMODAL]` fait le 2026-09-04 (lot 154, PR #885) — re-mesuré **1 142 l.**
+  (le « 606 » du ticket décrivait un état d'avant) → **445** : `futureDetail/comptes.ts` (ACCOUNTS,
+  espace par année, explainMovement — pur), `detailsTransaction.ts`, `DrillDownCompte.tsx` (la vue
+  compte entière avec ses dérivations, tooltip DÉCLARÉ dedans — exigence de `chartPrivacyScan`),
+  et les trois sections (catégories du mois, variation du jour avec son pli persisté, transactions
+  du jour). Conditions d'affichage et leurs justifications restées chez le parent.
   ✅ `[GODFILE-REALESTATE-CMP]` fait le 2026-09-04 (lot 153, PR #884) — le ticket disait
   « RealEstate.tsx 624 » mais ce fichier était déjà une façade de 29 l. ; le vrai godfile était
   `components/realestate/RealEstateWorkspace.tsx` (912 l.), redescendu à 661 en extrayant

@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[GODFILE-FUTUREDETAILMODAL]` — LIVRÉ (lot 154, PR #885)
+
+Re-mesuré **1 142 lignes** (le « 606 » du ticket décrivait un état d'avant) → parent à **445** par
+extraction VERBATIM vers `components/projection/futureDetail/` : `comptes.ts` (ACCOUNTS,
+`computeRoomByYear`, `explainMovement` — fonctions pures), `detailsTransaction.ts` (pastilles de
+faits d'une transaction), `DrillDownCompte.tsx` (la vue compte ENTIÈRE : série, zoom, moments clés,
+marqueurs, espace par année — toutes des dérivations que le parent ne consommait pas),
+`SectionCategoriesMois.tsx`, `SectionVariationJour.tsx` (emporte son état de pli persisté),
+`SectionTransactionsDuJour.tsx`. Les CONDITIONS d'affichage et leurs commentaires-justifications
+(no-fake-data, jour mesuré) restent chez le parent. Deux gardes de source ont contraint le
+découpage : `revenusVentiles`/`focusTrap` exigent que le parent porte encore la ventilation des
+revenus et `useFocusTrap` (respecté), et `chartPrivacyScan` exige qu'un tooltip `content={<X/>}`
+soit DÉCLARÉ dans le fichier qui l'emploie (« déclaré ailleurs = invérifiable ») — le tooltip du
+drill-down a donc été replié dans `DrillDownCompte.tsx` plutôt que d'élargir la garde. Équivalence :
+81 tests / 12 suites existantes (mouvements.privacy, variation avec persistance du pli,
+transactions + mode discret, catégories, stepDay, totalComptes, focus, focusTrap, scans privacy)
++ 3 perturbations séparées sur les modules extraits, chacune UN rouge ciblé nommé, restauration
+prouvée. Aucun test neuf, délibérément : les suites existantes exercent chaque section extraite.
+
 ## 2026-09-04 — `[GODFILE-REALESTATE-CMP]` — LIVRÉ (lot 153, PR #884)
 
 Le ticket disait « RealEstate.tsx 624 lignes » — recensé contre le code, ce fichier était déjà une

@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 154 : FutureDetailModal n'est plus un godfile
+> `[GODFILE-FUTUREDETAILMODAL]` livré — re-mesuré 1 142 l. (ticket disait 606) → **445** :
+> `futureDetail/` porte les comptes (pur), les pastilles de transaction, le drill-down entier
+> (tooltip replié DEDANS — `chartPrivacyScan` exige la déclaration dans le fichier d'usage) et les
+> trois sections (catégories, variation avec pli persisté, transactions du jour). Conditions
+> no-fake-data restées chez le parent. 81 tests / 12 suites verts, 3 perturbations à rouge ciblé.
+> **V11 : il ne reste que `[GODFILE-STORE]`** (DERNIER, risque migration). Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 153 : RealEstateWorkspace n'est plus un godfile
 > `[GODFILE-REALESTATE-CMP]` livré — le ticket visait « RealEstate.tsx 624 » (déjà une façade de
 > 29 l.) ; le vrai godfile était `RealEstateWorkspace.tsx` (912 l. re-mesurées) → **661** :

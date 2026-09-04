@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[GODFILE-APP]` — LIVRÉ (lot 150)
+
+`App.tsx` (mesuré **910 l.** — le ticket disait 866 et prescrivait « extraire AppProviders.tsx »,
+or les providers font 3 lignes : le vrai gras était les EFFETS et deux gros handlers ; périmètre
+re-recensé et remède re-dérivé). Découpe : `hooks/useAppBootEffects.ts` (handlers d'erreur, courbe
+verrouillée, SW, purge persona, init sync Drive, filets migration/hydratation, provider marché,
+clés API chiffrées, sync bancaire auto, taux FX — ordre relatif préservé, la config du provider
+marché précède toujours ses consommateurs), `hooks/useTabNavigation.ts` (hash + redirections
+#ACTIONS/#DASHBOARD, titre, Alt+1..9, GA4, `<html lang>`), `hooks/useAssetDataHydration.ts`
+(historiques + prix live + profils, même clé de re-déclenchement), et les deux handlers en modules
+`components/app/` (`exportPdfEcran.ts`, `importReleveManuel.ts` — sous components/, pas services/ :
+la frontière store↔services du lot 138 reste intacte). `App.tsx` = **324 l.** d'assemblage. Trois
+gardes ancrées au CHEMIN suivies avec le code : `appDeepLinkActions` → useTabNavigation (seuil de
+volume re-mesuré), `hydrationNet` (câblage des refs de toast) → useAppBootEffects,
+`marketDataLazyBoundary` → les deux hooks ajoutés aux fichiers d'entrée (témoin façade restreint
+aux consommateurs). Preuve : typecheck + 56 tests des gardes + 44 smokes composants + gate complet ;
+le filet comportemental d'App est l'E2E de la CI. PR #881.
+
 ## 2026-09-04 — `[GODFILE-MCPHTTP]` — LIVRÉ (lot 149)
 
 `mcp/http.ts` (mesuré 761 l. — le ticket disait 710) est découpé pour l'auditabilité sécurité,

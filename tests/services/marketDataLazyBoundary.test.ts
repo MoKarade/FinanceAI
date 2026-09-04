@@ -18,7 +18,20 @@ import { readFileSync } from 'node:fs';
 import { stripComments } from '../../utils/stripComments';
 import { loadMarketData } from '../../services/marketData/lazy';
 
-const ENTRY_FILES = ['App.tsx', 'hooks/usePastPortfolioHistory.ts'];
+const ENTRY_FILES = [
+    'App.tsx',
+    'hooks/usePastPortfolioHistory.ts',
+    // [GODFILE-APP] Les consommateurs de la façade ont déménagé d'App.tsx vers ces hooks —
+    // toujours tirés STATIQUEMENT par le chunk d'entrée (App les importe) : la frontière
+    // asynchrone se joue chez eux désormais.
+    'hooks/useAppBootEffects.ts',
+    'hooks/useAssetDataHydration.ts',
+];
+// [GODFILE-APP] App.tsx n'appelle plus `loadMarketData` lui-même (ses hooks le font) : le témoin
+// « la façade est bien consommée » ne vaut que pour les fichiers qui la consomment.
+const CONSOMME_FACADE = new Set([
+    'hooks/usePastPortfolioHistory.ts', 'hooks/useAppBootEffects.ts', 'hooks/useAssetDataHydration.ts',
+]);
 // Import de VALEURS depuis le module (ou son index) — `import type` reste permis (n'émet rien),
 // et `marketData/lazy` / `marketData/messageEchec` (types seuls) ne sont pas le module lourd.
 const IMPORT_VALEURS = /import\s*\{[^}]*\}\s*from\s*'[^']*services\/marketData(?:\/index)?'/;
@@ -36,7 +49,7 @@ describe('[PERF-MARKETDATA-DYNIMPORT-INERTE] le chunk d\'entrée ne ré-importe 
             expect(sansTypes).not.toMatch(IMPORT_VALEURS);
             // Témoin : le fichier consomme bien la façade (sinon la garde serait satisfaite par la
             // disparition de son objet — le module ne serait juste plus utilisé du tout).
-            expect(code).toMatch(/\bloadMarketData\(/);
+            if (CONSOMME_FACADE.has(f)) expect(code).toMatch(/\bloadMarketData\(/);
         });
     }
 

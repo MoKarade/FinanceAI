@@ -7,42 +7,21 @@ import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ConsentBanner } from './components/ConsentBanner';
 import { Tab, AppState } from './types';
 import { INITIAL_CHILD_GOAL } from './constants';
-import { markDuplicates } from './utils/transactionParser';
-import { parseBankCsv } from './services/import/parseBankCsv';
-// [TX-TRANSFERS] Appariement des virements internes — module PUR et léger (aucune dépendance),
-// sans effet sur le bundle de boot.
-import { applyTransferDetection } from './services/transactions/applyTransferDetection';
-import { logAudit } from './services/auditLog';
-// [FX-FALLBACK-SILENCIEUX] Import STATIQUE, pas dynamique : services/portfolio.ts est déjà tiré au
-// boot par de nombreux autres composants (DebtManager, FutureProjection, Investments, TaxCenter,
-// HealthIndicator…) — un `import()` ici ne l'aurait PAS rendu lazy (mesuré : warning Rolldown
-// INEFFECTIVE_DYNAMIC_IMPORT au build) ; il aurait juste ajouté une indirection sans bénéfice.
-import { isFxRatesEstimated, hasForeignCurrencyAssets } from './services/portfolio';
-import { fetchFxRates } from './services/finance';
-// Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
-// "Générer PDF" plutôt qu'au boot de l'app.
-import { useFinanceStore, getMigrationStatus, getHydrationStatus } from './store/useFinanceStore';
-import { loadApiKeysDetailed, saveApiKeys } from './services/secureKeyStore';
+import { useFinanceStore } from './store/useFinanceStore';
+import { saveApiKeys } from './services/secureKeyStore';
 import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
-import { useTranslation } from 'react-i18next';
-// [PERF-MARKETDATA-DYNIMPORT-INERTE] JAMAIS d'import statique de valeurs depuis
-// services/marketData ici : App.tsx est le chunk d'ENTRÉE, et un seul import statique annule la
-// frontière asynchrone du module entier (~67 Ko). Tout passe par la promesse mémoïsée de lazy.ts,
-// qui préserve aussi l'ordre configure→quote (voir son en-tête).
-import { loadMarketData } from './services/marketData/lazy';
-import { refreshAssetPrices, applyPricePatches } from './services/priceRefresh';
-import { installGlobalErrorHandlers, logError } from './services/errorLogger';
+// [GODFILE-APP] Les effets de boot / navigation / hydratation marché et les deux gros handlers
+// (PDF, import de relevé) vivent dans leurs modules — App reste l'assemblage.
+import { useAppBootEffects } from './hooks/useAppBootEffects';
+import { useTabNavigation } from './hooks/useTabNavigation';
+import { useAssetDataHydration } from './hooks/useAssetDataHydration';
+import { genererRapportPdfEcran } from './components/app/exportPdfEcran';
+import { importerReleveManuel } from './components/app/importReleveManuel';
 import { lazyWithRetry } from './utils/lazyWithRetry';
-import { initAutoBackup, createBackupNow } from './services/backupAuto';
-import { sanitizePersonaArtifacts } from './services/personaSanitizer';
-import { RULE_CATEGORIES } from './services/import/categoryRules';
-import { loadLockedProjection } from './services/lockedProjectionStore';
-import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout, type SyncStatus } from './services/sync/syncOrchestrator';
-import { maybeRunDailyFintableSync } from './services/fintable/autoSync';
-import { trackPageView } from './services/analytics';
+import { pushNow, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, type SyncStatus } from './services/sync/syncOrchestrator';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
 import { PassphraseGate } from './components/auth/PassphraseGate';
@@ -95,329 +74,15 @@ export const App: React.FC = () => {
     const isHydrated = useRef(false);
 
 
-    // P1 — installation des handlers d'erreur globaux au boot (une seule fois)
-    const errorHandlersInstalled = useRef(false);
-    useEffect(() => {
-        if (errorHandlersInstalled.current) return;
-        errorHandlersInstalled.current = true;
-        installGlobalErrorHandlers();
-        // PH2-d — restaure la courbe VERROUILLÉE depuis IndexedDB si un verrou était actif au dernier
-        // reload (le booléen isProjectionLocked est persisté, le gros blob non → relu de l'IDB ici).
-        // PH2-d-1 — 'empty' (rien/erreur d'accès) → silence ; 'unreadable' (entrée présente mais clé
-        // disparue) → on AVERTIT l'utilisateur (jumeau de decrypt_failed des clés API).
-        if (useFinanceStore.getState().isProjectionLocked) {
-            // [PERF-BUNDLE] import STATIQUE : lockedProjectionStore est déjà dans le chunk de BOOT (importé
-            // statiquement par le store) → le dynamic import ne créait aucun chunk séparé (INEFFECTIVE_DYNAMIC_IMPORT).
-            loadLockedProjection()
-                .then((res) => {
-                    if (res.status === 'ok') {
-                        useFinanceStore.getState().setLockedProjection(res.result);
-                    } else {
-                        useFinanceStore.getState().setLockedProjection(null);
-                        if (res.status === 'unreadable') {
-                            showToast('Ta courbe verrouillée n\'a pas pu être restaurée (clé de chiffrement introuvable) et a été retirée.', 'info');
-                        }
-                    }
-                })
-                .catch(() => { /* module/IDB HS : on reste déverrouillé en mémoire */ });
-        }
-        // PH1-a (revue) : le clear du flag « chunk reload attempted » au mount a été RETIRÉ —
-        // il tournait AVANT la résolution des chunks lazy du boot et neutralisait la garde
-        // anti-boucle (échec persistant ⇒ reload infini). La garde est désormais un timestamp
-        // auto-expirant dans utils/lazyWithRetry (au plus 1 reload auto/min, aucun clear requis).
-        // P1.3 — auto-backup quotidien dans IndexedDB (silent fail si indispo).
-        // Léger debounce (2s) pour ne pas bloquer le 1er paint.
-        const timer = setTimeout(() => { initAutoBackup(); }, 2000);
+    // [GODFILE-APP] Effets de démarrage (handlers d'erreur, courbe verrouillée, SW, purge
+    // persona, init sync Drive, filets migration/hydratation, provider marché, clés API,
+    // sync bancaire auto, taux FX) : extraits dans hooks/useAppBootEffects.ts. ⚠️ Appelé
+    // AVANT useAssetDataHydration — la config du provider marketData précède ses consommateurs.
+    useAppBootEffects();
 
-        // P2.9 — service worker en PROD seulement (Vite HMR en dev s'auto-gère).
-        // Bug fix 2026-05-21 : ce useEffect tourne souvent APRÈS window.load
-        // (mount React arrive après l'event), donc addEventListener('load') ne
-        // déclenchait jamais le callback → SW jamais registered, cache vide.
-        // Fix : register direct si le DOM est déjà loaded, sinon on attend l'event.
-        if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-            const registerSW = () => {
-                navigator.serviceWorker.register('/sw.js').catch((err) => {
-                    // log explicite plutôt qu'un silent catch — utile en cas
-                    // de régression future (anti-pattern silent-failure-hunter).
-                    console.error('[SW] registration failed:', err);
-                });
-            };
-            if (document.readyState === 'complete') {
-                registerSW();
-            } else {
-                window.addEventListener('load', registerSW, { once: true });
-            }
-        }
-
-        // [PERSONA-PURGE] Self-heal AVANT l'init sync : si des artefacts de persona de test ont
-        // fui dans les données réelles (incident 2026-07-15 : ~600 transactions « Karim » chez
-        // Marc), on les retire par id déterministe — l'état guéri est ensuite persisté et poussé
-        // vers Drive par le cycle normal. No-op en mode test et sur état propre.
-        // Détection À SEC d'abord ; pollution détectée → backup IndexedDB de l'état PRÉ-purge
-        // (finding panel sécurité : symétrie avec applyPulledPayload — toute mutation automatique
-        // des vraies données a son filet), PUIS purge. Best-effort : backup HS ≠ rester pollué.
-        void (async () => {
-            const st = useFinanceStore.getState();
-            if (st.isTestMode) return;
-            const { report } = sanitizePersonaArtifacts(st as unknown as Parameters<typeof sanitizePersonaArtifacts>[0]);
-            if (report.removedTotal === 0) return;
-            try {
-                // Depuis [BACKUP-PROMISE-CATCH], createBackupNow journalise EN INTERNE ses échecs
-                // IndexedDB (rejet async tx.onerror → null) ; ici on trace juste que le filet est absent.
-                const backup = await createBackupNow('auto');
-                if (!backup) {
-                    logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge indisponible (null) — purge SANS filet' });
-                }
-            } catch (e) {
-                // Erreur SYNCHRONE en amont du backup (payload/crypto de chiffrement) — la purge procède
-                // quand même (chirurgicale, ids déterministes), mais « filet absent » doit être visible.
-                logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge échoué (amont) — purge SANS filet', error: e instanceof Error ? e : new Error(String(e)) });
-            }
-            const purged = useFinanceStore.getState().purgePersonaArtifacts();
-            if (purged > 0) {
-                showToast(`${purged} donnée(s) de test (persona) retirée(s) de tes vraies données (backup pris avant).`, 'info');
-            }
-        })();
-
-        // Sync Google Drive — inerte si VITE_GOOGLE_CLIENT_ID absent. Init + sync silencieuse au
-        // boot (uniquement si déjà connecté), puis push debouncé sur chaque changement du store.
-        initSync(import.meta.env.VITE_GOOGLE_CLIENT_ID);
-        const syncTimer = setTimeout(() => { void runBootSync(); }, 2500);
-        const unsubSync = useFinanceStore.subscribe(() => schedulePush());
-        // [AUTH-DRIVE-INACTIVITY] Déconnexion auto après 8h d'inactivité (demande Marc 2026-07-22) :
-        // le minuteur suit l'activité (clic/clavier/retour d'onglet) et, au bout de 8h sans interaction,
-        // révoque le jeton Drive + prévient. La reprise silencieuse au boot s'appuie sur le même seuil
-        // (< 8h → reconnexion sans clic ; ≥ 8h → login requis). Données locales jamais touchées.
-        const stopInactivity = startInactivityWatch(() => {
-            handleInactivityLogout();
-            showToast('Déconnecté de Google Drive après 8 h d\'inactivité (sécurité). Reconnecte-toi pour reprendre la sauvegarde.', 'info');
-        });
-        // Rafraîchissement « fluide » : reflète SEUL les changements de Drive (ex. doc rangé par le
-        // connecteur MCP) sur intervalle + au retour sur l'onglet (garde anti-perte réutilisée).
-        const stopPolling = startDrivePolling();
-        // Flush du push en attente quand l'onglet se masque/ferme : garantit que le DERNIER changement
-        // atteint Drive avant que Marc parte parler à Claude (sinon le debounce 8s pourrait ne jamais
-        // partir → le connecteur MCP lirait une copie périmée). No-op si non connecté / rien de neuf.
-        const onHide = () => {
-            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') flushPush();
-        };
-        const onPageHide = () => flushPush();
-        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onHide);
-        if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide);
-
-        return () => {
-            clearTimeout(timer);
-            clearTimeout(syncTimer);
-            unsubSync();
-            stopPolling();
-            stopInactivity();
-            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide);
-            if (typeof window !== 'undefined') window.removeEventListener('pagehide', onPageHide);
-        };
-    }, []);
-
-    // GA4 — page_view explicite à chaque changement d'onglet. GA4 ne
-    // track automatiquement que la page d'entrée ; sans cet effect, les
-    // navigations SPA n'apparaissent pas dans "Pages and screens".
-    useEffect(() => {
-        trackPageView(activeTab);
-    }, [activeTab]);
-
-    // Deux refs SÉPARÉS (finding panel silent-failure, lot audit 2026-07-17) : un ref partagé
-    // ferait avaler le toast d'hydratation quand migration legacy ET réhydratation échouent
-    // ENSEMBLE (localStorage inaccessible : les deux chemins tombent en même temps) — le pire
-    // scénario perdrait précisément son avertissement « NE RIEN SAISIR ».
-    const migrationWarningShown = useRef(false);
-    const hydrationWarningShown = useRef(false);
-    useEffect(() => {
-        const status = getMigrationStatus();
-        if (status.failed && !migrationWarningShown.current) {
-            migrationWarningShown.current = true;
-            const backupHint = status.backupKey
-                ? `Backup sauvegarde sous la cle ${status.backupKey} (F12 -> Application -> Local Storage).`
-                : 'Aucun backup recuperable.';
-            showToast(
-                `[CRITIQUE] Etat corrompu detecte au demarrage. ${backupHint} Vos donnees actuelles sont vides ou par defaut.`,
-                'error'
-            );
-            console.error('[FinanceAI] Migration failure:', status);
-        }
-        // [STORE-REHYDRATE-SILENT, audit 2026-07-16] Chemin DISTINCT : la réhydratation ZUSTAND
-        // (financeai-storage) a échoué → l'app affiche l'état par défaut alors que les données existent
-        // encore (blob intact + Drive + backups). Avant ce filet : app vierge SANS AUCUN message →
-        // risque de sur-réaction destructrice (re-onboarding par-dessus, pull écrasant).
-        const hydration = getHydrationStatus();
-        if (hydration.failed && !hydrationWarningShown.current) {
-            hydrationWarningShown.current = true;
-            showToast(
-                '[CRITIQUE] Tes données n\'ont PAS pu être chargées (sauvegarde locale illisible). NE RIEN SAISIR : tes données existent encore — restaure un backup (Réglages → Sauvegarde) ou reconnecte Drive.',
-                'error'
-            );
-            console.error('[FinanceAI] Hydration failure:', hydration);
-        }
-    }, []);
-
-    useEffect(() => {
-        const applyHash = () => {
-            const hash = window.location.hash.replace('#', '');
-            // [ASSISTANT-HUB] L'onglet ACTIONS a fusionné dans ASSISTANT : un deep-link/bookmark
-            // #ACTIONS redirige explicitement (jamais un 404 silencieux) et l'URL est réécrite.
-            if (hash === 'ACTIONS') {
-                setActiveTab(Tab.ASSISTANT);
-                window.history.replaceState(null, '', '#ASSISTANT');
-                return;
-            }
-            // [REFONTE-NAV Lot 1] L'Accueil est retiré : un deep-link/bookmark #DASHBOARD
-            // redirige vers la courbe Future (jamais un écran vide), URL réécrite. DOIT rester
-            // AVANT le check générique : DASHBOARD est encore dans l'enum, le check générique
-            // l'accepterait vers un onglet sans route.
-            if (hash === 'DASHBOARD') {
-                setActiveTab(Tab.FUTURE);
-                window.history.replaceState(null, '', '#FUTURE');
-                return;
-            }
-            if (Object.values(Tab).includes(hash as Tab) && hash !== activeTab) {
-                setActiveTab(hash as Tab);
-            }
-        };
-        // BUG FIX 2026-05-21 (audit checklist) : `hashchange` ne se déclenche
-        // PAS au boot. Sans cet appel direct, ouvrir https://www.hubperso.com/#FUTURE
-        // affichait toujours le Dashboard (le tab `title` changeait mais pas
-        // le contenu). Appel immédiat au mount + listener pour les changements
-        // ultérieurs.
-        applyHash();
-        window.addEventListener('hashchange', applyHash);
-        return () => window.removeEventListener('hashchange', applyHash);
-    }, [activeTab, setActiveTab]);
-
-    useEffect(() => {
-        // Le titre est mis à jour avec le tab actif. Les labels détaillés
-        // sont dans TabRouter — ici on se contente d'un fallback générique.
-        document.title = `FinanceAI - ${activeTab || 'Pro'}`;
-    }, [activeTab]);
-
-    // Q3 — Keyboard shortcuts Alt+1..9 pour switcher d'onglet rapidement
-    useEffect(() => {
-        const SHORTCUTS: Array<Tab> = [
-            // [REFONTE-NAV Lot 1] Ordre = destinations (Futur d'abord, Accueil retiré).
-            Tab.FUTURE, Tab.TRANSACTIONS, Tab.BUDGET, Tab.ASSISTANT,
-            Tab.PROFILE, Tab.INVESTMENTS, Tab.RETIREMENT, Tab.TAX, Tab.SETTINGS,
-        ];
-        const onKeyDown = (e: KeyboardEvent) => {
-            // Ignore si l'utilisateur tape dans un input/textarea/contenteditable
-            const target = e.target as HTMLElement | null;
-            if (target && (
-                target.tagName === 'INPUT' ||
-                target.tagName === 'TEXTAREA' ||
-                target.tagName === 'SELECT' ||
-                target.isContentEditable
-            )) return;
-            // Alt+1..9 pour naviguer (Cmd/Ctrl+1 est réservé navigateur)
-            if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-            const num = parseInt(e.key, 10);
-            if (Number.isNaN(num) || num < 1 || num > SHORTCUTS.length) return;
-            e.preventDefault();
-            setActiveTab(SHORTCUTS[num - 1]);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [setActiveTab]);
-
-    // §7.D.3 — <html lang> dynamique synchronisé avec i18next.
-    const { i18n: i18nInstance } = useTranslation();
-    useEffect(() => {
-        const lang = (i18nInstance.language || 'fr').split('-')[0];
-        if (document.documentElement.lang !== lang) {
-            document.documentElement.lang = lang;
-        }
-    }, [i18nInstance.language]);
-
-    // §7.F.5 — Configure le provider marketData (Finnhub) quand la clé change.
-    // Async depuis le lot 133 (module paresseux) : l'ordre avec les cotations est préservé par la
-    // promesse PARTAGÉE de loadMarketData — cet effet l'attend en premier (déclaré avant tout
-    // consommateur), ses continuations passent donc avant celles des quotes (FIFO).
-    useEffect(() => {
-        void loadMarketData().then((md) => md.configureMarketDataProvider({ finnhubKey: state.apiKeys.finnhub }));
-    }, [state.apiKeys.finnhub]);
-
-    // Hydratation des clés API depuis le coffre chiffré (au boot, une fois).
-    // C5 les avait rendues mémoire-seulement → elles disparaissaient à chaque
-    // rechargement. Désormais : on les recharge tout seul au démarrage (donc
-    // dès que le gate Google in-app t'a laissé charger l'app). Quand la clé est
-    // posée dans le store, les effets réactifs ci-dessous (Finnhub) partent
-    // automatiquement. Best-effort : si le coffre est indisponible (vieux
-    // navigateur, pas de Web Crypto), on ne casse pas le boot.
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const result = await loadApiKeysDetailed();
-                if (cancelled) return;
-                // D5 (anti-race sync) : le vault a répondu « ok » → l'état des clés est CONNU (même
-                // vide). À partir d'ici, un push avec clés vides reflète l'intention (et n'est plus
-                // bloqué/préservé). NB : on NE marque PAS sur decrypt_failed (clés présentes mais
-                // illisibles ici → mieux vaut préserver celles du Drive).
-                if (result.status === 'ok') markApiKeysHydrated();
-                if (result.status === 'decrypt_failed') {
-                    // Blob chiffré présent mais clé IDB absente (ex: navigation privée
-                    // entre sessions, IndexedDB vidé) → on prévient l'utilisateur.
-                    showToast(
-                        'Clés API non restaurées — la clé de chiffrement est introuvable. Re-saisissez vos clés dans Paramètres.',
-                        'error'
-                    );
-                    return;
-                }
-                // ⚠️ [Finding silent-failure #545, ÉLEVÉ] `fintable` DOIT compter dans la garde :
-                // un coffre qui ne contient QUE le jeton Fintable (ni Anthropic ni Finnhub) n'était
-                // JAMAIS restauré dans le store → jeton perdu à chaque reload, sync auto neutralisée
-                // en silence (reason 'no-token' en boucle, zéro trace).
-                if (result.status === 'ok' && (result.keys.anthropic || result.keys.finnhub || result.keys.fintable)) {
-                    useFinanceStore.getState().updateApiKeys(result.keys);
-                    return;
-                }
-                // Migration : clés legacy encore lues en clair au boot (avant C5)
-                // mais pas encore dans le coffre → on les chiffre maintenant.
-                const current = useFinanceStore.getState().apiKeys;
-                if (current.anthropic || current.finnhub) {
-                    await saveApiKeys(current);
-                }
-            } catch (e) {
-                // Règle « ne jamais avaler les erreurs » : un échec d'hydratation des clés (l'IA et
-                // les cours d'actions ne fonctionneront pas) doit être visible dans les diagnostics.
-                logError({ source: 'storage', severity: 'error', message: 'Hydratation des clés API chiffrées impossible', error: e });
-            }
-        })();
-        return () => { cancelled = true; };
-    }, []);
-
-    // [FINTABLE-7 Lot 3] Sync bancaire AUTOMATIQUE à l'ouverture, throttlée 1×/jour (demande Marc).
-    // Effet RÉACTIF au jeton (hydraté ASYNC depuis le coffre par l'effet ci-dessus) — un timer au
-    // boot lirait un store encore vide et ne partirait jamais. Toutes les gardes (mode test, passe
-    // réussie < 24 h, cooldown de tentative 1 h, mutex) vivent dans le service ; ici on ne fait que
-    // déclencher et montrer un signal DISCRET (compte de transactions, jamais de montant).
-    const fintableToken = useFinanceStore((s) => s.apiKeys?.fintable ?? '');
-    useEffect(() => {
-        if (!fintableToken) return;
-        let cancelled = false;
-        // [Finding code-reviewer #545 §3] Debounce 3 s : `saveToken` persiste le jeton à CHAQUE
-        // frappe → sans délai, taper le jeton à la main déclencherait une passe réseau avec un jeton
-        // incomplet (faux « jeton refusé » dans Diagnostics). Une frappe suivante annule et re-arme.
-        const timer = setTimeout(() => {
-            void (async () => {
-                // `autoSync` est LÉGER (store + gardes) — import statique, pas de chunk à risque ; le
-                // LOURD (browserSync → client HTTP + mapper) est chargé DANS le service via importWithRetry.
-                const outcome = await maybeRunDailyFintableSync();
-                if (cancelled || !outcome.ran) return;
-                if (outcome.report.error === null && outcome.report.transactionsAdded > 0) {
-                    showToast(`Sync bancaire : ${outcome.report.transactionsAdded} transaction(s) importée(s).`, 'success');
-                }
-                // Échec : PAS de toast d'erreur à chaque boot (le rapport est visible dans Réglages →
-                // Sync Fintable / Diagnostics, et logError a tracé) — un échec récurrent de sync AUTO ne
-                // doit pas devenir une bannière quotidienne anxiogène ; le manuel reste disponible.
-            })();
-        }, 3000);
-        return () => { cancelled = true; clearTimeout(timer); };
-    }, [fintableToken]);
+    // [GODFILE-APP] Navigation par onglet (hash + redirections héritées, titre, Alt+1..9,
+    // GA4, <html lang>) : extraite dans hooks/useTabNavigation.ts.
+    useTabNavigation(activeTab, setActiveTab);
 
     const handleSetTab = (tab: Tab) => {
         setActiveTab(tab);
@@ -524,133 +189,9 @@ export const App: React.FC = () => {
         }
     }, [state.childGoal, state.childGoals, setAppState]);
 
-    useEffect(() => {
-        const updateFxRates = async () => {
-            try {
-                const rates = await fetchFxRates();
-                if (state.fxRates.USD !== rates.USD || state.fxRates.EUR !== rates.EUR) {
-                    state.updateFxRates(rates);
-                }
-            } catch (e) {
-                logError({ source: 'network', severity: 'warning', message: 'Mise à jour des taux FX impossible (taux de repli utilisés)', error: e });
-            }
-        };
-        updateFxRates();
-    // Effet run-once au boot : fetch FX rates une seule fois, sans re-run réactif sur state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-
-    // [HIST-SESSION-HYDRATE] Clé stable = ENSEMBLE des symboles (tri + join) : un actif AJOUTÉ en cours
-    // de session redéclenche l'hydratation (avant : useEffect [] = boot seulement → pas de courbe ni de
-    // part au TOTAL avant le prochain reload, sans message). Pas de boucle : les patchs (priceHistory/
-    // currentPrice/secteur) ne changent PAS les symboles ; une re-passe est bon marché (fraîcheur 24 h
-    // par actif + mutex module `_hydrateQueue` + mutex/intervalle min de priceRefresh).
-    const assetSymbolsKey = useMemo(
-        () => (state.assets ?? []).map(a => a?.symbol || '').filter(Boolean).sort().join(','),
-        [state.assets],
-    );
-
-    useEffect(() => {
-        let cancelled = false;
-        // [PORTFOLIO-HISTORY] Hydrate priceHistory (clôtures natives datées) DEPUIS LE 1ER ACHAT via
-        // la chaîne marketData (Finnhub → repli Yahoo proxy → CoinGecko crypto) — remplace l'ancien
-        // stub CSV mort (priceHistory jamais rempli → graphes de cours vides, bug Marc 2026-07-22).
-        // Sauté en mode test (les fixtures persona portent leur propre priceHistory).
-        const hydrateAssets = async () => {
-            const s = useFinanceStore.getState();
-            if (s.isTestMode === true) return;
-            const current = s.assets ?? [];
-            if (current.length === 0) return;
-            try {
-                const { hydrateAssetHistories, applyHistoryPatches } = await import('./services/history/hydrateAssetHistories');
-                const { getHistoryDetaille, hasHistoryProvider } = await loadMarketData();
-                const res = await hydrateAssetHistories(current, { getHistory: getHistoryDetaille, hasProvider: hasHistoryProvider });
-                if (cancelled) return;
-                // [HIST-MULTI-PROVIDER] Publier le rapport MÊME sans patch (c'est justement quand
-                // rien n'a pu être hydraté que le diagnostic par titre est utile à l'écran).
-                const { setHistorySyncReport } = await import('./services/history/syncDiagnostics');
-                setHistorySyncReport({ at: Date.now(), skipped: res.skipped, patchedCount: res.patches.size });
-                if (res.patches.size === 0) return;
-                // Anti-course : patch par symbole sur l'état FRAIS (un pull Drive pendant l'hydratation
-                // n'est pas écrasé) — même patron qu'applyPricePatches.
-                const fresh = useFinanceStore.getState().assets ?? [];
-                setAppState({ assets: applyHistoryPatches(fresh, res.patches) });
-            } catch (e) {
-                logError({ source: 'network', severity: 'warning', message: 'Hydratation des historiques de cours échouée (graphes partiels).', error: e });
-            }
-        };
-        // [PRICE-REFRESH-LIVE] — après l'hydratation d'historique, rafraîchit les currentPrice
-        // depuis les quotes live (séquentiel 2 500 ms, cf services/priceRefresh). Sans ça, un prix
-        // reste FIGÉ à sa valeur d'ajout pour toujours (dérive mesurée ~20 k$ vs courtier).
-        // Anti-course : lit l'état FRAIS du store au lancement ET à l'application (fusion par
-        // symbole) — un pull Drive pendant le refresh n'est pas écrasé. Sauté en mode test
-        // (ne pas réécrire les prix des fixtures persona).
-        const refreshPricesAtBoot = async (): Promise<void> => {
-            const s = useFinanceStore.getState();
-            if (s.isTestMode === true) return;
-            const current = s.assets ?? [];
-            if (current.filter(a => a?.symbol && (a.quantity || 0) > 0).length === 0) return;
-            try {
-                // Boot = passe NON forcée : sautée si une passe a fini il y a < 5 min (mutex +
-                // intervalle min du service — anti-entrelacement avec le bouton, anti-spam reload).
-                // [QUOTE-NEGATIVE-CACHE] hasProvider = provider présent ET pas de skip négatif :
-                // un titre manuel/GIC (3 nulls consécutifs) ne repaie plus réseau + pacing au boot.
-                const { getQuote, canAttemptQuote } = await loadMarketData();
-                const res = await refreshAssetPrices(current, { getQuote, hasProvider: canAttemptQuote });
-                // [Finding silent-failure #499] Des cours non rafraîchis au boot laissent une trace
-                // au JOURNAL (pas de toast — les titres manuels skippés par design en feraient un
-                // bruit permanent) : sans ça, un skip négatif post-panne était strictement invisible.
-                if (res.skipped.length > 0) {
-                    logError({
-                        source: 'network', severity: 'warning',
-                        message: `Cours non rafraîchis au boot pour ${res.skipped.length} titre(s) : ${res.skipped.map(s => s.symbol).slice(0, 6).join(', ')}${res.skipped.length > 6 ? '…' : ''} — bouton « Actualiser les cours » pour forcer un nouvel essai.`,
-                    });
-                }
-                // [PRICE-SYNC-REPORT] Publier les skips de quotes à l'ÉCRAN (doctor Investissements) —
-                // le journal seul était invisible (finding ÉLEVÉ #499). Toujours publié ([] efface
-                // les skips périmés d'une passe précédente).
-                const { updateQuoteSkips } = await import('./services/history/syncDiagnostics');
-                updateQuoteSkips(res.skipped);
-                if (cancelled || res.patches.size === 0) return;
-                const fresh = useFinanceStore.getState().assets ?? [];
-                setAppState({ assets: applyPricePatches(fresh, res.patches) });
-            } catch (e) {
-                // [PRICE-SYNC-REPORT] Échec TOTAL : quoteSkips précédents CONSERVÉS à dessein
-                // (toujours vrais — pas de prix frais) ; l'échec global part au journal.
-                logError({ source: 'network', severity: 'warning', message: 'Rafraîchissement des cours au boot échoué (prix existants conservés)', error: e });
-            }
-        };
-        // [INVEST-ALLOC-GEO-SECTOR] Après les prix : auto-remplit Asset.sector/region (profil
-        // provider) pour les actifs non résolus — répare les donuts « tout en Autre ». Même garde
-        // mode test + patches sur l'état FRAIS (anti-course).
-        const hydrateProfilesAtBoot = async (): Promise<void> => {
-            const s = useFinanceStore.getState();
-            if (s.isTestMode === true) return;
-            const current = s.assets ?? [];
-            if (current.length === 0) return;
-            try {
-                const { hydrateAssetProfiles, applyProfilePatches } = await import('./services/assetProfileSync');
-                // [QUOTE-NEGATIVE-CACHE] canAttemptProfile : un profil non couvert (3 nulls
-                // consécutifs) n'est plus retenté à chaque boot (skip TTL 7 j, self-heal).
-                const { getProfile, canAttemptProfile } = await loadMarketData();
-                const res = await hydrateAssetProfiles(current, { getProfile, hasProvider: canAttemptProfile });
-                if (cancelled || res.size === 0) return;
-                const fresh = useFinanceStore.getState().assets ?? [];
-                setAppState({ assets: applyProfilePatches(fresh, res) });
-            } catch (e) {
-                logError({ source: 'network', severity: 'warning', message: 'Auto-remplissage secteur/région échoué (répartitions inchangées).', error: e });
-            }
-        };
-        hydrateAssets()
-            .then(() => { if (!cancelled) return refreshPricesAtBoot(); })
-            .then(() => { if (!cancelled) void hydrateProfilesAtBoot(); });
-        return () => { cancelled = true; };
-    // [HIST-SESSION-HYDRATE] Re-run quand l'ENSEMBLE des symboles change (ajout/retrait d'actif en
-    // session) — jamais sur un simple patch de prix/historique (la clé ne bouge pas). setAppState et
-    // state.assets restent volontairement omis (une dep sur l'objet assets re-fetcherait en boucle).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [assetSymbolsKey]);
+    // [GODFILE-APP] Hydratation marché des actifs (historiques, prix live, profils) :
+    // extraite dans hooks/useAssetDataHydration.ts (même clé de re-déclenchement).
+    useAssetDataHydration(state.assets, setAppState);
 
     const handleUpdateApiKeys = async (keys: AppState['apiKeys']) => {
         state.updateApiKeys(keys);
@@ -670,71 +211,14 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleManualImport = async (rawData: string) => {
-        const result = parseBankCsv(rawData);
-        const combined = [...result.transactions, ...state.transactions];
-        const deduped = markDuplicates(combined);
-        // [TX-TRANSFERS] Appariement des virements internes sur l'historique COMPLET (pas seulement
-        // les nouvelles lignes) : les deux côtés d'un virement peuvent arriver dans deux imports
-        // différents, et l'appariement a besoin de les voir ensemble. Marquage AUTOMATIQUE des seules
-        // paires PROUVÉES (deux comptes connus et différents) — les paires plausibles sans compte
-        // remontent au panneau « Virements internes » de l'onglet Transactions, jamais écrites.
-        const { transactions: withTransfers, report: transferReport } = applyTransferDetection(deduped);
-        setAppState({ transactions: withTransfers, lastUpdate: Date.now() });
-        // SYS-AUDIT — trace l'import dans le journal d'audit (qui-quoi-quand).
-        logAudit({
-            field: 'transactions',
-            operation: 'add',
-            description: `Import relevé : ${result.transactions.length} ajoutée(s)${result.skipped > 0 ? `, ${result.skipped} ignorée(s)` : ''}`,
-            countBefore: state.transactions.length,
-            countAfter: withTransfers.length,
-        });
-        // No-silent-failure : on dit combien de lignes ont été ignorées.
-        const baseMsg = result.skipped > 0
-            ? `${result.transactions.length} transaction(s) importée(s), ${result.skipped} ligne(s) ignorée(s).`
-            : `${result.transactions.length} transaction(s) importée(s).`;
-        // [TX-TRANSFERS] Un marquage automatique doit laisser une TRACE visible : marquer sans le
-        // dire retirerait des montants du budget en silence (classe « staleness silencieuse »).
-        const transferMsg = transferReport.markedCount > 0
-            ? ` ${transferReport.markedCount} virement(s) interne(s) marqué(s).`
-            : '';
-
-        // Auto-catégorisation IA (choix Marc) : classe les NOUVELLES transactions non
-        // dupliquées / non-transfert encore « à classer ». Lazy-import de claude.ts →
-        // ne tire PAS le SDK Anthropic dans le bundle de BOOT (règle CLAUDE.md).
-        const apiKey = state.apiKeys.anthropic;
-        const newIds = new Set(result.transactions.map(t => t.id));
-        const toClassify = withTransfers.filter(t =>
-            newIds.has(t.id) && !t.isDuplicate && !t.isTransfer &&
-            (t.category === 'Uncategorized' || t.category === 'Inconnu' || t.category === ''),
-        );
-        if (!apiKey || toClassify.length === 0) {
-            showToast(apiKey ? `${baseMsg}${transferMsg}` : `${baseMsg}${transferMsg} Ajoute ta clé Anthropic pour la classification auto.`, 'success');
-            return;
-        }
-        showToast(`${baseMsg}${transferMsg} Classification IA en cours…`, 'info');
-        try {
-            const { categorizeBatch } = await import('./services/claude');
-            // 'Inconnu' EXCLU des cibles : c'est un statut « à classer », pas une destination.
-            // [TX-CATEGORY-RULES] + jeu canonique des règles : cibles IA disponibles même quand
-            // le budget est encore vide (post-purge), cohérentes avec l'import et le Budget.
-            const allowed = Array.from(new Set([
-                ...state.budgetItems.map(b => b.name),
-                'Salaire', 'Autre', 'Transfert', 'Investissement', 'Remboursement',
-                ...RULE_CATEGORIES,
-            ]));
-            const classified = await categorizeBatch(toClassify, apiKey, withTransfers, allowed);
-            const byId = new Map(classified.map(t => [t.id, t]));
-            // Applique les catégories sur l'état FRAIS (et non le snapshot `deduped` capturé
-            // avant l'await) → un edit utilisateur survenu pendant la classification n'est pas écrasé.
-            const current = useFinanceStore.getState().transactions;
-            setAppState({ transactions: current.map(t => byId.get(t.id) ?? t), lastUpdate: Date.now() });
-            showToast(`${classified.length} nouvelle(s) transaction(s) classée(s).`, 'success');
-        } catch (e) {
-            logError({ source: 'ai', message: "Auto-catégorisation à l'import échouée", error: e });
-            showToast("Import OK, mais la classification auto a échoué — utilise « classer ».", 'error');
-        }
-    };
+    // [GODFILE-APP] Corps extrait dans components/app/importReleveManuel.ts (comportement
+    // inchangé — dédup + virements + audit + classification IA paresseuse).
+    const handleManualImport = (rawData: string): Promise<void> => importerReleveManuel(rawData, {
+        transactions: state.transactions,
+        budgetItems: state.budgetItems,
+        apiKeyAnthropic: state.apiKeys.anthropic,
+        setAppState,
+    });
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts
     const { globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
@@ -782,80 +266,10 @@ export const App: React.FC = () => {
                 togglePrivacyMode={togglePrivacyMode}
                 netWorth={globalNetWorth}
                 onOpenGuide={() => setShowGuide(true)}
-                onGeneratePDF={async () => {
-                    try {
-                        // P1.5 — PDF complet : patrimoine + fiscal + holdings + dettes + goals + retraite + budget.
-                        // Lazy-load jspdf vendor chunk seulement à l'usage.
-                        const {
-                            generateFinancialReport,
-                            buildHoldingsRows,
-                            buildDebtsRows,
-                            buildGoalsRows,
-                            buildFiscalSummary,
-                            buildScenariosRows,
-                        } = await import('./services/pdfReport');
-                        // [NW-PARITY-SURFACES] Équité immo RÉELLE par propriété (était `equity: 0`
-                        // en dur → la ligne « Équité bâtie » du PDF ne s'affichait jamais). Import
-                        // dynamique : même frontière lazy que le PDF lui-même (rien au boot).
-                        const { presentEquityOfGoal, monthsSince } = await import('./services/projection/pastPurchaseInit');
-                        // Snapshot store hors React pour éviter la dépendance sur state
-                        // (lastProjection est délibérément exclu du selector App.tsx).
-                        const { lastProjection } = useFinanceStore.getState();
-
-                        await generateFinancialReport({
-                            netWorth: globalNetWorth,
-                            monthlySavings: calculatedMonthlySavings,
-                            monthlyIncome: state.config.users.reduce((s, u) => s + (u.netSalary || u.salary || 0), 0),
-                            totalDebts: state.debts.reduce((s, d) => s + d.balance, 0),
-                            celiBalance: assetBreakdown.celi,
-                            reerBalance: assetBreakdown.reer,
-                            investmentsTotal: assetBreakdown.nonReg,
-                            liquidityBalance: currentLiquidity,
-                            budgetItems: state.budgetItems.map(b => ({ name: b.name, nature: b.nature || 'Autre', target: b.target, frequency: b.frequency || 'Monthly' })),
-                            realEstateGoals: state.realEstateGoals.filter(g => g.isActive).map(g => ({
-                                name: g.name || 'Propriete',
-                                price: g.price || 0,
-                                equity: presentEquityOfGoal(g, monthsSince(g.purchaseDate)),
-                            })),
-                            retirementTargetAge: state.retirementGoal.targetAge,
-                            retirementTargetIncome: state.retirementGoal.targetMonthlyIncome,
-                            userName: state.config.users[0]?.name,
-                            generatedAt: new Date().toLocaleDateString('fr-CA'),
-                            lang: document.documentElement.lang || 'fr',
-                            // P1.5 — sections étendues (dérivées via builders purs testés)
-                            fiscal: buildFiscalSummary(state),
-                            holdings: buildHoldingsRows(state),
-                            // [FX-FALLBACK-SILENCIEUX] : note sous « Total placements » quand le
-                            // taux vient du repli en dur ET qu'un avoir est en devise étrangère.
-                            fxRatesEstimated: isFxRatesEstimated(state.fxRates, state.fxRatesEstimated) && hasForeignCurrencyAssets(state.assets),
-                            debtsDetail: buildDebtsRows(state),
-                            goalsDetail: buildGoalsRows(state),
-                            // PDF Futur — comparaison scénarios (allResults depuis lastProjection)
-                            scenarios: lastProjection?.allResults
-                                ? buildScenariosRows(
-                                      lastProjection.allResults,
-                                      lastProjection.bestStrategyIdx as number | undefined,
-                                  )
-                                : [],
-                        });
-                        showToast('Rapport PDF généré avec succès.', 'success');
-                    } catch (e) {
-                        // Le refus en mode discret n'est PAS une erreur : c'est le contrat. Le
-                        // confondre avec une panne dirait « ça a planté » là où il faut dire
-                        // « désactive le mode discret » — l'utilisateur chercherait un bug.
-                        if (e instanceof Error && e.name === 'PdfRefusedPrivacyError') {
-                            showToast('Mode discret actif : l’export PDF est bloqué. Un PDF sort de l’app et garderait tes montants en clair — désactive le mode discret pour le générer.', 'error');
-                            return;
-                        }
-                        // ⚠️ [finding silent-failure #644] `logError`, PAS `console.error` : ce
-                        // `catch` couvre aussi les imports dynamiques et les `build*Rows`, hors du
-                        // `try` interne de `pdfReport.ts` qui, lui, route déjà vers `logError`. Une
-                        // vraie panne ici ne laissait aucune trace dans Diagnostics — l'utilisateur
-                        // voyait un toast et moi rien du tout.
-                        logError({ source: 'ui', severity: 'error', message: 'Génération PDF échouée', error: e instanceof Error ? e : new Error(String(e)) });
-                        showToast('Erreur lors de la génération du PDF.', 'error');
-                    }
-                }}
+                onGeneratePDF={() => genererRapportPdfEcran({
+                    // [GODFILE-APP] Corps extrait dans components/app/exportPdfEcran.ts.
+                    state, globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
+                })}
                 monthlySavings={calculatedMonthlySavings}
                 financialGoals={state.financialGoals}
                 currentValues={{ celi: assetBreakdown.celi, reer: assetBreakdown.reer, liquidity: currentLiquidity }}

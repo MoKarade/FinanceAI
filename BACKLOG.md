@@ -757,7 +757,7 @@
   actuel, qui ne dépend que de `chartData`. Faire ce lot = déplacer la décision au rendu (fenêtre
   visible + largeur mesurée), pas changer la clé de groupement. ⚠️ Ne PAS livrer « grouper par
   abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
-- [ ] **`[GODFILE-APP]`** (M — V11) — `App.tsx` 866 l. → extraire `AppProviders.tsx`.
+- [ ] **Godfiles restants (V11)** :
   **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
   **`[GODFILE-REALESTATE-CMP]`** RealEstate.tsx 624 · **`[GODFILE-FUTUREDETAILMODAL]`** 606.
 

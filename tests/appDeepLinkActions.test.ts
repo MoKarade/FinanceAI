@@ -10,11 +10,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Tab } from '../types';
 
-const src = readFileSync(resolve(process.cwd(), 'App.tsx'), 'utf8');
+// [GODFILE-APP] La logique de hash a déménagé d'App.tsx vers hooks/useTabNavigation.ts (extraction
+// telle quelle) — la garde suit le code, le FAIT défendu ne change pas.
+const src = readFileSync(resolve(process.cwd(), 'hooks/useTabNavigation.ts'), 'utf8');
 
-describe('deep-link #ACTIONS → ASSISTANT (App.tsx, scan du source)', () => {
-    it('volume prouvé : le fichier scanné est bien App.tsx entier', () => {
-        expect(src.length).toBeGreaterThan(5000);
+describe('deep-link #ACTIONS → ASSISTANT (useTabNavigation, scan du source)', () => {
+    it('volume prouvé : le fichier scanné est bien le hook de navigation entier', () => {
+        // Mesuré 2026-09-04 : ~4 100 caractères (le hook est plus petit qu'App.tsx entier).
+        expect(src.length).toBeGreaterThan(2500);
         expect(src).toContain('applyHash');
     });
 

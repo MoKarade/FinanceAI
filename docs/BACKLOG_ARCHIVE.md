@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DETTE-RE-SALE-PURGE]` + V3' soldé — LIVRÉ (lot 128, PR #859)
+
+**Correctif** (tranché par Marc le 2026-07-31 : « supprimer l'événement ») : supprimer un bien
+immobilier supprime AUSSI les événements de VENTE qui le référencent (`LifeEvent.propertyId`), et
+la confirmation ANNONCE le compte avant le geste (« N événements de vente planifiés sur ce bien
+seront supprimés aussi »). Sans la purge, la vente devenait un événement orphelin : le moteur la
+refusait déjà proprement (aucune vente d'un AUTRE bien — monthlyEvents.ts), mais l'utilisateur
+gardait un événement mort et un avertissement « vente ignorée » à chaque projection.
+
+Garde `realEstateDeletePurgeVente.test.tsx` (3 cas) : la confirmation nomme le compte ; la purge
+retire EXACTEMENT les ventes du bien (témoin d'un autre bien + événement sans `propertyId`
+survivent) ; sans vente liée, ni mention ni réécriture des événements (référence d'objet
+inchangée). 3 perturbations séparées (purge retirée · filtre trop large · mention retirée),
+rouges ciblés.
+
+**V3' soldé** : `futureProvince`/`futureProvinceMoveYear` retirés et `rsuYearsRemaining` doté de
+son éditeur dès PR #729 (le « retire » initial de Marc supersédé par la mesure), SEC-DRIVE et
+.mcpb déjà fermés — la ligne V3' du BACKLOG affichait encore tout ça comme à faire
+(`PM-STALE-BACKLOG`).
+
 ## 2026-09-04 — `[FISC-RRSP-FALLBACK-PRE2010]` + clôtures — LIVRÉ (lot 127, PR #858)
 
 **Correctif** : une année d'historique REER ANTÉRIEURE à la table (pré-2010) recevait le plafond

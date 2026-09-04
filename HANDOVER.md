@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 128 : supprimer un bien purge ses ventes planifiées
+> `[DETTE-RE-SALE-PURGE]` livré (tranché Marc 2026-07-31) — **code de prod touché** (Immobilier).
+> - La confirmation ANNONCE le compte de ventes liées ; la purge retire exactement les événements
+>   du bien (témoin + événement libre survivent, aucune réécriture à vide). 3 cas, 3 perturbations.
+> - V3' soldé au BACKLOG : tout était déjà réglé (PR #729, Q-décisions) sauf ce ticket-ci —
+>   la ligne l'affichait encore entier (`PM-STALE-BACKLOG`).
+> - ⚠️ Re-base CI du lot 127 : les 2 ancres divorceRegisteredRoom ont bougé (−0,058 %/−0,075 %,
+>   sens attendu — la fixture 300 k$ est l'une des rares où le plafond REER mord), re-basées avec
+>   l'explication datée selon leur propre protocole.
+
 > ## 🟦 Session 2026-09-04 — Lot 127 : le plafond REER pré-2010 n'est plus celui de 2025
 > `[FISC-RRSP-FALLBACK-PRE2010]` livré — **code de prod touché** (droits REER historiques).
 > - Année pré-table → `RRSP_ANNUAL_LIMIT_PRE_TABLE` (= plafond 2010, DÉRIVÉ de la table, borne

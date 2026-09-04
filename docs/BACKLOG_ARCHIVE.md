@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[FISC-MARGINAL-SPACE]` — LIVRÉ (lot 136) : le marginal du rapport suit enfin son année
+
+La racine était DANS `calculateFiscalReport` : ses impôts utilisaient les paliers indexés de
+`year`, mais son champ `marginalRate` restait calculé sur les paliers FIGÉS 2026 — le rapport se
+contredisait lui-même dès 2027. Corrigé à la source (`getMarginalRate(netTaxable, year,
+realDeflator)`), PLUS l'alignement du seul consommateur dont la justesse était ACCIDENTELLE :
+taxJanuary (retenue FERR) passe une assiette DÉFLATÉE — avec le marginal figé 2026, l'espace
+coïncidait par accident ; il passe désormais AUSSI son déflateur (convention
+[FISC-BRACKET-REALINDEX]), bit-identique à 2 % d'inflation par construction.
+
+**Mesuré** : rapport auto-cohérent (60 k$ nominal : 36,12 % en 2026, 25,69 % en 2035 — l'ancien
+code rendait 36,12 % pour les deux) ; taux AFFICHÉ corrigé (fixture 120 k$/tête statique :
+45,71 % → 36,12 % à l'an 9) ; la bascule REER-first d'AUTO_MARGINAL obéit enfin au VRAI marginal —
+sur la fixture divorce (91,8 k$/tête, croissance 2 % = l'indexation), le marginal réel ne franchit
+JAMAIS 40 % et l'ancienne bascule « année 9 » était un artefact (re-base : finalNetWorth
+−69 436 $, −14,6 % — treize années de REER-first fantôme et leurs remboursements composés).
+2 goldens re-basés avec explication + signe (succession +591 $/+144 $), 3 fixtures de
+`autoMarginalBascule` re-dérivées (croissance 5 % > indexation, la seule où la frontière est
+atteignable), 3 gardes neuves (relation multi-années + contrôle ; paire (year, deflator) ; espion
+d'ARGUMENT sur l'appel FERR), 3 perturbations à rouges exacts. Suites services 3 481 vertes.
+
 ## 2026-09-04 — `[FUTUR-CLICK-ANYWHERE]` — CLOS (lot 135) : le mécanisme existait, la preuve manquait
 
 Recensé contre le code : le clic résout DÉJÀ le jour par l'abscisse seule, partout —

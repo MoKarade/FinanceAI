@@ -380,14 +380,6 @@
   correctif re-base des goldens et peut changer le CLASSEMENT des stratégies. ⚠️ D'ici là, toute
   mesure d'impact « NW » d'un retraité à gros REER près d'un seuil de palier est non
   représentative (la falaise domine).
-- [ ] **`[FISC-MARGINAL-SPACE]`** (M — panel #556, PRÉ-EXISTANTS, non chiffrés en $) — sites qui
-  confrontent un revenu et un barème d'espaces différents via `.marginalRate`/`getMarginalRate`
-  (barème 2026 figé : `utils/tax.ts:824` ne passe ni `year` ni `realDeflator`) :
-  `cashflowAllocation.ts:350` (revenu NOMINAL croissant vs barème 2026 → AUTO_MARGINAL bascule
-  REER-first trop tôt), `realEstateMonth.ts:250` (retrait REER d'achat sur-imposé, conservateur),
-  `projection.ts:1616-1618` (taux affichés sous-évalués : salaire de base sans croissance vs
-  barème indexé). Chiffrer en $ avant tout fix ; propager `year`+`realDeflator` au
-  `.marginalRate` du report changerait TOUS les lecteurs → mesurer d'abord.
 - [x] ~~**`[ENG-TTP-UNSETTLED-PROPAGATE]`**~~ ✅ **LIVRÉ 2026-08-21** (surface par surface :
   monteCarlo PROPAGÉ, MCP netTaxSettlements DOCUMENTÉ — contrat IA stable, drawdownOptimizer
   documenté orphelin — détail en tête d'archive, réf PR au merge).

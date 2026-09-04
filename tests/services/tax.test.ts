@@ -1095,3 +1095,34 @@ describe('calculateGISBenefit (§6.3)', () => {
     expect(max2030).toBeGreaterThan(max2026);
   });
 });
+
+describe('[FISC-MARGINAL-SPACE] marginalRate du rapport suit (year, realDeflator) — plus jamais figé 2026', () => {
+    // Avant le lot 136, `FiscalReport.marginalRate` était calculé sur les paliers 2026 QUEL QUE
+    // SOIT le `year` du rapport : le rapport se contredisait lui-même dès 2027 (ses impôts sur
+    // paliers indexés, son marginal sur paliers figés). Consommateurs touchés : la bascule
+    // REER-first d'AUTO_MARGINAL (cashflowAllocation — un marginal fantôme de 45,71 % déclenchait
+    // REER-first sur un revenu dont le vrai marginal 2035 est 36,12 %), la retenue FERR
+    // (taxJanuary, aligné dans le même lot) et les taux AFFICHÉS (marginalTaxRate publié).
+    it('même revenu NOMINAL, année plus lointaine → marginal PLUS BAS (les paliers montent) ; contrôle : palier stable inchangé', () => {
+        // Mesuré 2026-09-04 : 60 000 $ nominal — 36,12 % en 2026, 25,69 % en 2035 (le revenu est
+        // retombé sous le 1er palier indexé). DISCRIMINANT : l'ancien code rendait 36,12 % pour les deux.
+        const m26 = calculateFiscalReport(60_000, 0, 0, 2026).marginalRate;
+        const m35 = calculateFiscalReport(60_000, 0, 0, 2035).marginalRate;
+        expect(m26).toBeCloseTo(0.3612, 3);
+        expect(m35).toBeLessThan(m26 - 0.05);
+        // CONTRÔLE (anti-vacuité de la relation) : un revenu qui reste DANS le même palier aux deux
+        // années rend le même taux — la relation ci-dessus mesure bien les paliers, pas un bruit.
+        expect(calculateFiscalReport(100_000, 0, 0, 2035).marginalRate)
+            .toBeCloseTo(calculateFiscalReport(100_000, 0, 0, 2026).marginalRate, 6);
+    });
+    it('le déflateur voyage avec l\'année : (revenu déflaté, year, deflator) ≈ l\'espace de base — la paire, pas la moitié', () => {
+        // Un revenu DÉFLATÉ en dollars 2026 confronté aux paliers NOMINAUX de 2035 serait
+        // sous-imposé ; avec le déflateur (convention [FISC-BRACKET-REALINDEX]), le marginal
+        // retombe sur celui de l'espace 2026. C'est la cohérence dont taxJanuary dépend.
+        const deflator = Math.pow(1.02, 9); // même vitesse que l'indexation des paliers (ADR 009)
+        const mPaire = calculateFiscalReport(60_000, 0, 0, 2035, true, undefined, undefined, deflator).marginalRate;
+        expect(mPaire).toBeCloseTo(0.3612, 3);      // == l'espace 2026, exactement
+        // Sans le déflateur, le même appel donne le marginal nominal 2035 (plus bas) — la moitié seule ment.
+        expect(calculateFiscalReport(60_000, 0, 0, 2035).marginalRate).toBeLessThan(mPaire - 0.05);
+    });
+});

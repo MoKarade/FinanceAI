@@ -4,7 +4,7 @@
  * Sans test direct. `RRIF_RATES` et `calculateFiscalReport` sont injectés → on
  * les STUB pour des montants exacts indépendants des tables fiscales réelles.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
     processJanuaryReset,
     type JanuaryContext,
@@ -237,5 +237,22 @@ describe('processJanuaryReset — CELIAPP & Guyton-Klinger', () => {
     it('réduction PSV mensualisée = clawback annuel / 12', () => {
         const r = processJanuaryReset(0, baseCtx({ oasClawbackNextPeriod: 1200 }), helpers)!;
         expect(r.monthlyOasReduction).toBe(100);
+    });
+});
+
+describe('[FISC-MARGINAL-SPACE] la retenue FERR reste dans l\'espace DÉFLATÉ — l\'argument s\'OBSERVE', () => {
+    // L'assiette du taux marginal FERR est DÉFLATÉE en dollars 2026 ; depuis que
+    // `FiscalReport.marginalRate` suit (year, realDeflator), ce site DOIT passer son déflateur —
+    // sinon revenu réel contre paliers nominaux de loopYear = retenue sous-évaluée, en silence.
+    // Un ARGUMENT s'observe par ESPION (jamais en reconstruisant le calcul dans le test).
+    it('l\'appel FERR porte loopYear ET le déflateur (1+i)^(m/12) — la paire, pas la moitié', () => {
+        const spy = vi.fn(() => ({ marginalRate: 0.30, netIncome: 50000 } as unknown as FiscalReport));
+        const spiedHelpers: JanuaryHelpers = { RRIF_RATES: { 72: 0.054 }, calculateFiscalReport: spy };
+        const r = processJanuaryReset(0, baseCtx({ age: 72, reer: 100000, m: 108, simInflation: 3, loopYear: 2035 }), spiedHelpers)!;
+        expect(r.ferrMandatoryGross).toBeGreaterThan(0);   // anti-vacuité : la branche FERR a bien tiré
+        expect(spy).toHaveBeenCalled();
+        const args = spy.mock.calls[0] as unknown[];
+        expect(args[3]).toBe(2035);                                        // l'année du rapport…
+        expect(args[7]).toBeCloseTo(Math.pow(1.03, 108 / 12), 10);         // …ET son déflateur (paire)
     });
 });

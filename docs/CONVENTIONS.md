@@ -12056,3 +12056,17 @@ Coût : un cycle de debug entier (reproductions, instrumentations, comparaison a
 Corollaire de re-base : l'assertion s'est INVERSÉE avec son histoire (« > 1 000 $ : l'AE coule ; 0 =
 régression lot 129 ») + une borne haute qui garde le CHOC (< revenu d'avant − 3 000 $) — le test
 continue de prouver que la perte de revenu est réelle, il ne dit plus qu'elle est totale.
+
+
+### Variante notée au lot 136 (2026-09-04) — un champ FIGÉ dans un rapport indexé crée des justesses ACCIDENTELLES
+
+`FiscalReport.marginalRate` restait sur les paliers 2026 pendant que le reste du rapport
+s'indexait sur `year`. Avant de réparer le champ, RECENSER ses consommateurs pour trouver ceux qui
+étaient justes PAR ACCIDENT : taxJanuary passait une assiette DÉFLATÉE en dollars 2026 — contre le
+marginal figé 2026, l'espace coïncidait exactement ; réparer le champ SEUL aurait cassé ce site en
+silence (revenu réel contre paliers nominaux → retenue FERR sous-évaluée). Le correctif est la
+PAIRE : le champ suit (year, realDeflator) ET le site déflaté passe son déflateur. C'est
+`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` vu de l'INTÉRIEUR d'une fonction, et le mécanisme de
+`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE` : la branche en danger est celle dont
+la justesse reposait sur le défaut. L'espion d'ARGUMENT (le test observe que l'appel FERR porte
+year ET déflateur) est la garde qui verrouille la paire.

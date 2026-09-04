@@ -892,7 +892,11 @@ export const calculateFiscalReport = (
     const totalDeductions = totalTax + rrq + rqap + ae;
     const netIncome = grossIncome - totalDeductions;
 
-    const marginalRate = getMarginalRate(netTaxable);
+    // [FISC-MARGINAL-SPACE] MÊME (année, déflateur) que les paliers du rapport lui-même : figé à
+    // 2026, ce champ contredisait son propre rapport dès 2027 (mesuré : 36,12 % affiché pour un
+    // 60 k$ nominal de 2035 dont le vrai marginal indexé est 25,69 %) — et il pilote la bascule
+    // REER-first d'AUTO_MARGINAL (cashflowAllocation) et la retenue FERR (taxJanuary).
+    const marginalRate = getMarginalRate(netTaxable, year, realDeflator);
 
     return {
         fedTax: Math.max(0, fedTax),

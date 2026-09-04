@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 136 : le taux marginal suit enfin l'année du rapport (money-critical)
+> `[FISC-MARGINAL-SPACE]` livré — `FiscalReport.marginalRate` passait par les paliers FIGÉS 2026
+> quel que soit `year` : rapport auto-contradictoire dès 2027. Corrigé à la source + alignement
+> taxJanuary (assiette déflatée → déflateur passé, justesse plus accidentelle). Effets mesurés :
+> taux affichés indexés (45,71 → 36,12 % sur 120 k$ en 2035), bascule AUTO_MARGINAL sur le VRAI
+> marginal (re-base −69 436 $ / −14,6 % sur la fixture divorce — 13 ans de REER-first fantôme).
+> ⚠️ Changement VISIBLE pour un salarié proche des seuils : projections AUTO_MARGINAL et taux
+> affichés bougent — c'est la règle des 40 % de Marc appliquée à la réalité indexée.
+
 > ## 🟦 Session 2026-09-04 — Lot 135 : clique-partout prouvé par e2e (le mécanisme existait)
 > `[FUTUR-CLICK-ANYWHERE]` clos — le clic résolvait déjà le jour par l'abscisse seule sur tout le
 > conteneur ([R3]+[FUTUR-CLICK-AREA]+[FUTUR-DAILY-NATIVE], postérieurs au ticket) ; ajouté l'e2e

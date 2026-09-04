@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Ton taux marginal suit enfin l'année — les paliers d'impôt montent chaque année)
+
+- **Corrigé (peut changer ta projection)** : le « taux marginal » que l'app calculait pour les
+  années futures restait collé aux paliers d'impôt de 2026, alors que ces paliers montent
+  d'environ 2 % par année. Concrètement : un salaire de 120 000 $ en 2035 affichait un taux
+  marginal de 45,7 % alors que son vrai taux, paliers indexés, est 36,1 %.
+- **Ce que ça change** : la stratégie automatique (« REER d'abord dès 40 % de taux marginal »)
+  se déclenchait parfois sur un taux fantôme. Si ton salaire grandit à peu près comme l'inflation,
+  ton vrai taux marginal ne monte pas — et l'app ne passera plus au REER-d'abord sans raison.
+  Sur un scénario type, ça déplace la projection de quelques pourcents : c'est la règle appliquée
+  aux bons chiffres, pas une perte.
+- **Les taux affichés** (cartes d'impôt, PDF) suivent le même correctif pour les années futures.
+
+---
+
 ## [unreleased] — 2026-09-04 (Un écran qui charge ne peut plus rester suspendu pour toujours)
 
 - **Corrigé** : si le téléchargement d'un morceau de l'app se bloquait en silence (connexion qui

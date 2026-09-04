@@ -16,6 +16,12 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 151 : la couverture est MESURÉE — la cible 80 % est déjà dépassée
+> `[T3]` livré (mesure seule) : **90,6 % Stmts / 82,4 % Branch / 92,3 % Lines** sur le périmètre
+> config (services+utils+hooks). La question « 64→80 % » est caduque. Points bas honnêtes :
+> hooks 68,4 (les 3 hooks du lot 150, filet = E2E), sync 85,1, runAsync (Worker). Commande à
+> rejouer dans l'archive. Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 150 : App.tsx n'est plus une god-function
 > `[GODFILE-APP]` livré — App.tsx (910 l.) → 324 l. d'assemblage : effets de boot dans
 > `useAppBootEffects` (ordre provider-marché-avant-consommateurs préservé), navigation dans

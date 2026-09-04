@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[BUDGET-SPLIT-PRORATA-SANS-NET]` + hygiène du BACKLOG — LIVRÉ (lot 125, PR #856)
+
+**Correctif XS** : en couple, le mode `prorata` avec AUCUN net saisi retombait sur `ratio1 = 1`
+(100 % du commun au conjoint 1) — même fallthrough silencieux que le 50/50 du lot 124. Le `else`
+final de `coupleAnalysis` rend désormais 0,5 pour tout ce qui n'est ni `custom` ni un prorata
+calculable. Garde ajoutée à `budgetSplit5050.test.tsx` (2 × « Sorties: 750 $ »), perturbation à
+rouge ciblé.
+
+**Hygiène (classe `PM-STALE-BACKLOG`)** — quatre tickets retirés parce que leur objet n'existait
+plus, le BACKLOG continuant d'afficher « décision en attente » sur des décisions PRISES et
+LIVRÉES :
+- `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — **classé par Marc le 2026-09-03 : ne rien changer.**
+  La garde du lot 107 (`returnRateSingulierNonCable.test.ts`) reste : elle fige le fait pour
+  qu'un câblage futur soit délibéré.
+- `[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]` — les volets (b)(c)(d)(e) étaient déjà
+  livrés (recensé 2026-09-03) et le volet (a) est **livré au lot 122** sous
+  `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` (la pastille du résumé).
+- `[BUDGET-DEUX-NETS-MEME-ECRAN]` — **livré au lot 120** sous `[BUDGET-EFFORT-NOMMER-LA-BASE]`
+  (le badge nomme sa base, décision de Marc).
+- `[MIGRATE-GROSS-DEJA-PERSISTE]` — **livré au lot 121** sous `[MIGRATE-GROSS-PROPOSER]`
+  (détection de la signature 1,35 + proposition, jamais d'écriture seule).
+Et `[ENG-GOALS-HORS-TOTALEXPENSES]` re-statué : plus « décision routée » mais « ATTENDRE le SWR »
+(décision de Marc) — il se rouvre dans le lot qui affichera le SWR.
+
 ## 2026-09-04 — `[BUDGET-SPLIT-5050-RATIO-1]` — LIVRÉ (lot 124, PR #855)
 
 Le mode « 50 / 50 » du sélecteur des réglages n'avait AUCUNE branche dans `coupleAnalysis` :

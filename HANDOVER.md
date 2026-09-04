@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 125 : reliquat prorata-sans-net + hygiène du BACKLOG
+> `[BUDGET-SPLIT-PRORATA-SANS-NET]` livré (else final → 0,5 en couple) — **code de prod touché**.
+> - Hygiène `PM-STALE-BACKLOG` : 4 tickets retirés dont l'objet n'existait plus —
+>   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (classé par Marc : ne rien changer),
+>   `[HEALTH-CORRUPTION…]` (livré lots antérieurs + 122), `[BUDGET-DEUX-NETS…]` (livré lot 120),
+>   `[MIGRATE-GROSS-DEJA-PERSISTE]` (livré lot 121). `[ENG-GOALS-HORS-TOTALEXPENSES]` re-statué
+>   « ATTENDRE le SWR » (décision Marc) au lieu de « décision routée ».
+> - Un BACKLOG qui affiche « en attente de décision » sur des décisions PRISES trompe la reprise
+>   de session — c'est la tenue à chaque push qui empêche la dérive, pas les grandes passes.
+
 > ## 🟦 Session 2026-09-04 — Lot 124 : le partage 50/50 du couple partage enfin en deux
 > `[BUDGET-SPLIT-5050-RATIO-1]` livré — **code de prod touché** (carte couple du Budget).
 > - Le mode « 50 / 50 » n'avait aucune branche dans `coupleAnalysis` : ratio1 restait à 1, 100 %

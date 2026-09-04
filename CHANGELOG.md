@@ -14,6 +14,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Épargne). Chaque conjoint porte maintenant la moitié, comme le bouton le promet.
 - Les modes « Prorata des salaires nets » et « Personnalisé » n'ont pas bougé — eux
   fonctionnaient déjà.
+- **Aussi (même famille)** : en prorata sans aucun salaire net saisi, le commun allait lui aussi à
+  100 % sur le conjoint 1 — désormais moitié-moitié.
 
 ---
 

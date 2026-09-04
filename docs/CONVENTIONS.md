@@ -10360,6 +10360,14 @@ d'une bombe (`UNE-PEREMPTION-SE-SURVEILLE-PAR-UN-INVENTAIRE-PAS-PAR-L-HORLOGE`).
 avis appartient à un outil externe qui tourne dans le temps, pas à une suite de tests qui doit être
 déterministe. Le dire vaut mieux que de fabriquer une garde qui finira désactivée.
 
+⚠️ Confirmation deux jours plus tard (lot 147, 2026-09-04) — et elle est piquante : `fast-uri`
+**3.1.5**, la version qui ÉTAIT le remède du ticket ci-dessus, porte désormais quatre avis (SSRF /
+confusion d'hôte) et le remède du jour est 3.1.7 ; `fflate` (chaîne jspdf, donc code SERVI) et `qs`
+(chaîne express du serveur MCP) ont suivi dans la même vague. Une version n'est jamais « la »
+version sûre, seulement la version sûre À UNE DATE — raison de plus pour que ni ticket ni doc
+n'épinglent un numéro comme un état final. Même geste : `npm audit fix` simple, 0 avis restant,
+lockfile seul au diff, gate complet avec build propre parce que `fflate` part dans le bundle.
+
 
 ### Lot 80 (2026-09-02) — promettre un nouvel essai qui ne réussira jamais
 

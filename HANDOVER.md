@@ -16,6 +16,12 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 147 : vague `npm audit` du jour purgée (3 avis → 0)
+> `fast-uri` 3.1.5 (HIGH, 4 CVE — la version qui était le remède de la vague précédente),
+> `fflate` 0.8.2 (chaîne jspdf, bundle servi) et `qs` 6.15.2 (express du serveur MCP) corrigés
+> par `npm audit fix` simple — lockfile seul au diff, 0 avis restant, gate complet avec build.
+> Aucune garde neuve, délibérément (un test qui lance `npm audit` est une bombe).
+
 > ## 🟦 Session 2026-09-04 — Lot 146 : le rendu PDF est découpé par section + `[FISC-RRSP-RENTAL-EARNED]` routé
 > `[DETTE-GODFN-PDF]` livré — `generateFinancialReport` (615 lignes) devient 8 fonctions de
 > section + un `ContexteRenduPdf` ; équivalence prouvée au journal d'appels jsPDF identique à

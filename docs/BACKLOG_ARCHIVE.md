@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[DEP-AUDIT-VAGUE-09-04]` — LIVRÉ (lot 147, sans ticket préalable)
+
+Bannière GitHub « 6 vulnérabilités » re-mesurée localement (`npm audit`) : **3 avis** — `fast-uri`
+3.1.5 HIGH (4 CVE SSRF/confusion d'hôte — la version qui était LE remède de la vague précédente),
+`fflate` 0.8.2 MODERATE (boucle infinie ZIP64 ; chaîne **jspdf**, donc bundle servi), `qs` 6.15.2
+MODERATE (chaîne express du serveur MCP). `npm audit fix` **simple, sans `--force`** →
+fast-uri 3.1.7, fflate 0.8.3, qs 6.16.0, `package-lock.json` seul au diff, **0 avis restant**.
+Gate complet avec build (fflate part dans le chunk jspdf). Aucune garde neuve, délibérément
+(`UN-TICKET-DE-DEPENDANCES-DECRIT-UN-ARBRE-QUI-BOUGE-TOUT-SEUL`, confirmation consignée dans
+`docs/CONVENTIONS.md`). PR #878.
+
 ## 2026-09-04 — `[DETTE-GODFN-PDF]` — LIVRÉ (lot 146)
 
 `generateFinancialReport` (615 lignes, quasi tout `services/pdfReport.ts`) est découpée en

@@ -9,13 +9,27 @@
 > converties en tickets actionnables dans `BACKLOG.md`. **Le backlog n'est plus bloqué.**
 > - ✅ `[ENG-T1213-NET-MONTHLY]` → retirer le bouton **+ forcer à OFF** — **LIVRÉ au lot 118**.
 > - ✅ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → plancher retiré (les DEUX sites) — **LIVRÉ au lot 119**.
-> - ⬜ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « sur ta paie déclarée » (aucun chiffre ne bouge).
+> - ✅ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « de la paie déclarée » + infobulle — **LIVRÉ au lot 120**.
 > - ⬜ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable (≠ ma reco, qui était de ne rien faire).
 > - ⬜ `[MIGRATE-GROSS-PROPOSER]` → proposer, JAMAIS écrire seul.
 > - ⬜ `[FMT-PROMPT-MIGRER]` → migrer les 17 sites **+ abandonner l'arrondi à 100 $** (≠ ma reco).
 >   ⚠️⚠️ **NON LIVRABLE SANS** corriger le texte de consentement, qui promet cet arrondi.
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-04 — Lot 120 : le badge Effort nomme sa base
+> `[BUDGET-EFFORT-NOMMER-LA-BASE]` livré — **code de prod touché** (carte couple du Budget).
+> - « Effort : X % de la paie déclarée » + infobulle expliquant la distinction avec le « Revenu Net
+>   Disponible » de la même carte. Constante UNIQUE consommée par les deux badges. Aucun chiffre
+>   ne bouge. Suffixe laissé en ink-400 : ink-500 est AA-large seulement (dit par tailwind.config),
+>   trop faible pour du `text-meta`.
+> - Garde 3 cas, pourcentages dérivés À LA MAIN (prorata + poste perso asymétrique, sinon les deux
+>   badges seraient identiques par construction) ; 3 perturbations séparées, rouges ciblés.
+> - ⚠️⚠️ **Bug préexistant ROUTÉ, pas corrigé** : le mode « 50 / 50 » n'a AUCUNE branche dans
+>   `coupleAnalysis` → 100 % du commun au conjoint 1 (Effort 30 %/0 % mesuré). Atteignable en un
+>   clic, et les six personas de test sont à '50/50'. → `[BUDGET-SPLIT-5050-RATIO-1]`.
+> - C'est la dérivation MANUELLE des attendus qui a démasqué le défaut (ma fixture 50/50 rougissait
+>   sur 30 %/0 %) — une fixture copiée du code l'aurait certifié.
 
 > ## 🟦 Session 2026-09-04 — Lot 119 : l'équité immobilière peut être négative
 > `[IMMO-CLAMP-EQUITE-NEGATIVE]` livré — **code de prod touché** (historique du patrimoine).

@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Le badge « Effort » dit sur quoi il est calculé)
+
+- **Précisé** : dans la carte « Santé Financière du Couple », le badge « Effort : X % » affiche
+  désormais « de la paie déclarée », avec une infobulle. Ce pourcentage se calcule sur le salaire
+  net que tu as saisi au Profil — pas sur le « Revenu Net Disponible » affiché juste au-dessus,
+  qui est un calcul fiscal. Les deux peuvent différer de quelques pourcents ; maintenant c'est
+  écrit. Aucun chiffre ne change (ta décision du 2026-09-03).
+
+---
+
 ## [unreleased] — 2026-09-04 (Un bien qui vaut moins que son hypothèque affiche enfin son déficit)
 
 - **Corrigé** : dans l'historique de ton patrimoine, une propriété « underwater » (elle vaut moins

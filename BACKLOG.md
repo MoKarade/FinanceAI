@@ -22,10 +22,15 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[BUDGET-EFFORT-NOMMER-LA-BASE]`** (XS — **DÉCIDÉ par Marc le 2026-09-03** : nommer la base)
-  — le badge « Effort : X % » se calcule sur le net SAISI, pas sur le « Revenu Net Disponible »
-  affiché deux lignes au-dessus (écart mesuré −0,3 % à +3,5 %). Garder la paie déclarée comme
-  dénominateur et l'ÉCRIRE sur le badge (« sur ta paie déclarée »). Aucun chiffre ne bouge.
+- [ ] **`[BUDGET-SPLIT-5050-RATIO-1]`** (S — bug PRÉEXISTANT découvert au lot 120, 2026-09-04)
+  — le mode « 50 / 50 » offert par le sélecteur des réglages (`UserConfigFields.tsx`) n'a AUCUNE
+  branche dans `coupleAnalysis` (`Budget.tsx:551-552` ne traite que `prorata` et `custom`) :
+  `ratio1` reste à 1 → **100 % du commun est attribué au conjoint 1, 0 % au conjoint 2**. Toute la
+  carte couple ment dans ce mode (badges Effort, barres, Sorties, Épargne). Atteignable en UN clic,
+  et les SIX personas de test sont à `'50/50'` — leurs écrans couple sont faux aujourd'hui.
+  Mesuré (fixture nets 5 000/4 000, commun 1 500 $) : Effort affiché 30 %/0 % au lieu de 15 %/19 %.
+  Correctif probable : `ratio1 = 0.5` pour `'50/50'` — vérifier qu'aucun autre consommateur ne
+  compense (recensé au lot 120 : `Budget.tsx:551` est le SEUL consommateur de ratio).
 - [ ] **`[HEALTH-MARQUEUR-DONNEE-INVALIDE]`** (S — **DÉCIDÉ par Marc le 2026-09-03** : marqueur discret)
   — dans le résumé « Santé financière », une pastille cliquable quand au moins une métrique est
   exclue pour donnée INVALIDE. ⚠️ Elle ne doit PAS s'afficher pour une métrique simplement non

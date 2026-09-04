@@ -76,6 +76,17 @@ function parseLocalDateStr(s: string): Date {
 // l'intervalle décale ce delta de ±1 h, ce qui peut faire basculer `Math.ceil` sur un jour de
 // plus (finding financial-integrity, mesuré +3,45 % sur le multiplicateur d'une plage Custom
 // traversant un changement d'heure).
+// [BUDGET-EFFORT-NOMMER-LA-BASE] Décision de Marc (2026-09-03) : le badge « Effort » garde la
+// paie déclarée (net SAISI au Profil) comme dénominateur, et il le DIT. Le « Revenu Net
+// Disponible » affiché plus haut dans la même carte est un calcul fiscal sur le brut — un
+// pourcentage calculé sur une autre base que le net affiché juste au-dessus se signale, sinon il
+// se lit comme s'il portait sur lui (écart mesuré −0,3 % à +3,5 % selon la paire brut/net).
+// Aucun chiffre ne bouge : seule la provenance est nommée. Constante UNIQUE : deux badges la
+// consomment, deux copies divergeraient.
+const EFFORT_BASE_LABEL = 'de la paie déclarée';
+const EFFORT_BASE_TITLE = 'Part de la paie déclarée (le net saisi au Profil) qui part en dépenses, commun + perso. '
+    + 'Ce pourcentage ne se calcule PAS sur le « Revenu Net Disponible » ci-dessus, qui est un calcul fiscal.';
+
 function civilDaysBetween(a: Date, b: Date): number {
     const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
     const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
@@ -1211,8 +1222,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         {coupleAnalysis.splitMode === 'prorata' && (
                                             <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
-                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded">
-                                            Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%
+                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded" title={EFFORT_BASE_TITLE}>
+                                            Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
                                         </span>
                                     </div>
                                 </div>
@@ -1246,8 +1257,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                             {coupleAnalysis.splitMode === 'prorata' && (
                                                 <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
-                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded">
-                                                Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%
+                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded" title={EFFORT_BASE_TITLE}>
+                                                Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
                                             </span>
                                         </div>
                                     </div>

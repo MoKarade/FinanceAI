@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[BUDGET-EFFORT-NOMMER-LA-BASE]` — LIVRÉ (lot 120, PR #851)
+
+Le badge « Effort : X % » de la carte couple NOMME sa base (décision de Marc, 2026-09-03) :
+« Effort : X % de la paie déclarée », avec une infobulle qui explique la distinction avec le
+« Revenu Net Disponible » affiché plus haut dans la même carte (calcul fiscal, pas la base du
+pourcentage). Aucun chiffre ne bouge — la constante est UNIQUE (deux badges la consomment).
+
+Garde `tests/components/budgetEffortNommeLaBase.test.tsx` (3 cas) : pourcentages dérivés À LA MAIN
+de la fixture (17 %/27 % au prorata, poste perso asymétrique pour que les deux badges diffèrent),
+mention collée au pourcentage, compte EXACT de 2 (une mention répétée devient du décor), infobulle
+porte la distinction. 3 perturbations séparées → rouges ciblés.
+
+⚠️ **Bug préexistant découvert et ROUTÉ (pas corrigé)** : le mode « 50 / 50 » du sélecteur n'a
+aucune branche dans `coupleAnalysis` → ratio1 reste 1, tout le commun va au conjoint 1. Ma
+première fixture (50/50, valeurs dérivées à la main 15 %/19 %) a rougi sur 30 %/0 % — c'est la
+dérivation MANUELLE qui a démasqué le défaut, une fixture copiée du code l'aurait certifié.
+→ `[BUDGET-SPLIT-5050-RATIO-1]` au BACKLOG.
+
 ## 2026-09-04 — `[IMMO-CLAMP-EQUITE-NEGATIVE]` — LIVRÉ (lot 119, PR #850)
 
 L'équité immobilière peut désormais être **NÉGATIVE** (décision de Marc, 2026-09-03) : un bien

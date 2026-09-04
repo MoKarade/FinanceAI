@@ -18,6 +18,7 @@ import {
     computeHistoricalContributionRoom,
     makeSmileLifestyleFactor,
 } from '../../services/projection/setupSimulation';
+import { RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, FIRST_KNOWN_RRSP_YEAR } from '../../utils/tax';
 import type { FutureScenarioType } from '../../services/projection';
 
 describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
@@ -236,6 +237,32 @@ describe('computeHistoricalContributionRoom', () => {
         expect(r.activeUsersCount).toBe(1);
         expect(r.totalHistoricalCeliRoom).toBeGreaterThan(0);
         expect(r.totalHistoricalRrspRoom).toBeGreaterThan(0);
+    });
+
+    // [FISC-RRSP-FALLBACK-PRE2010] Une année AVANT la table (pré-2010) recevait le plafond 2025
+    // (32 490 $) : sur-attribution de 10 490 $/an pour un revenu qui sature le plafond. Mesuré
+    // avant/après (2026-09-04) : né 1971 à 400 k$ → −220 290 $ de droits historiques (21 années
+    // pré-2010 × 10 490 $, au dollar) ; à 250 k$ → −96 001 $ ; à 60 k$ → 0 $ exactement (contrôle :
+    // le plafond ne mord jamais). Les gardes s'ancrent sur la RELATION (le coût marginal d'UNE
+    // année d'historique de part et d'autre de la frontière de table), jamais sur ces montants.
+    it('[FISC-RRSP-FALLBACK-PRE2010] une année PRÉ-TABLE vaut le PLANCHER (plafond 2010), jamais le repli 2025', () => {
+        // Salaire énorme : le plafond mord CHAQUE année, la déflation 2 %/an ne le libère jamais.
+        // Né 1991 → 18 ans en 2009 → une année d'historique DE PLUS que né 1992, et cette année
+        // marginale est 2009 — hors table. Sa contribution doit être le plancher (22 000 $), pas
+        // le repli 2025 (32 490 $) — l'ancien code rendait +10 490 $ de trop ici.
+        const r1991 = computeHistoricalContributionRoom([{ birthYear: 1991 }], 5_000_000, 2026);
+        const r1992 = computeHistoricalContributionRoom([{ birthYear: 1992 }], 5_000_000, 2026);
+        const marginale = r1991.totalHistoricalRrspRoom - r1992.totalHistoricalRrspRoom;
+        expect(marginale).toBe(RRSP_ANNUAL_LIMITS[FIRST_KNOWN_RRSP_YEAR]);
+        expect(marginale).not.toBe(RRSP_ANNUAL_LIMIT_FALLBACK); // anti-vacuité : les deux diffèrent bien
+    });
+
+    it('[FISC-RRSP-FALLBACK-PRE2010] contrôle : une année DANS la table vaut toujours sa valeur de table', () => {
+        // Né 1993 → 18 ans en 2011 ; né 1994 → 2012. L'année marginale est 2011, tabulée à 22 450 $ :
+        // le correctif ne touche pas les années connues.
+        const r1993 = computeHistoricalContributionRoom([{ birthYear: 1993 }], 5_000_000, 2026);
+        const r1994 = computeHistoricalContributionRoom([{ birthYear: 1994 }], 5_000_000, 2026);
+        expect(r1993.totalHistoricalRrspRoom - r1994.totalHistoricalRrspRoom).toBe(RRSP_ANNUAL_LIMITS[2011]);
     });
 
     it('immigrant arrivé récemment : MOINS de droit CELI qu\'un natif du même âge', () => {

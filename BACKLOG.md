@@ -280,14 +280,6 @@
   `setupSimulation.ts:70`, donc de l'argent. Valeurs jugées correctes, mais non sourcées = suspectes
   par la règle du dépôt. Documenter dans le même geste que `[FISC-REF-DEDUP]`.
   ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B9**.
-- [ ] **`[FISC-RRSP-FALLBACK-PRE2010]`** (M, MOYEN [MESURÉ — audit 2026-08-06], PRÉ-EXISTANT) —
-  `RRSP_ANNUAL_LIMIT_FALLBACK = 32 490 $` (le plafond **2025**) est appliqué à TOUTE année
-  **antérieure à 2010** (`setupSimulation.ts:70`). Pour un résident de longue date, chaque année
-  pré-2010 reçoit donc un plafond de 2025. Le plafond ne mord qu'au-delà de ~180 k$ de salaire
-  projeté en arrière (vs ~122 k$ avec le vrai plafond 2010) → **sur-attribution possible de
-  10-19 k$ de droits REER par année pré-2010** pour un haut revenu, donc des déductions supérieures
-  au légal. ⚠️ Changement de MODÈLE sur les droits historiques → plan + mesure avant/après, pas un
-  fix au fil de l'eau.
 - [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M, [Supposition] non chiffrée — audit 2026-08-06) — le
   revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
   et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
@@ -450,29 +442,17 @@
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
-- [ ] ⏸️ **`[IMMO-3-FORMULES]`** (M — **VOLET SCHL LIVRÉ au lot 111bis/112 (PR #843)** ; il reste le
-  volet CLAMP, **DÉCISION ROUTÉE à Marc**, `docs/A_FAIRE_MOI.md`) — trois formules concurrentes pour
-  l'équité passée/présente : `initPastPurchase` (le présent du moteur), `runAmortization`
-  (l'historique) et le moteur mensuel.
-  ✅ **Volet SCHL** : `runAmortization` ignorait la prime d'assurance prêt que `initPastPurchase`
-  finançait — l'historique amortissait une dette trop petite et SURESTIMAIT l'équité. Mesuré à 5 %,
-  25 ans, croissance 3 % : **15 631 $ à 1 an / 14 137 $ à 5 ans / 11 798 $ à 10 ans** sur
-  420 000 $ à 5 % de mise (l'écart DÉCROÎT, la prime s'amortit), et **0 $ exactement** à 20 % de
-  mise (contrôle négatif). Les deux formules concordent désormais à moins d'1 $ à 5 ans. Garde :
-  `tests/services/schlDansAmortissementHistorique.test.ts`.
-  ⬜ **Volet CLAMP** : `runAmortization` publie `Equite: Math.max(0, valeur − solde)`. Un bien
-  *underwater* (qui vaut moins que son hypothèque) y apparaît donc à équité **nulle** au lieu de
-  négative — une perte d'information, et un patrimoine passé surévalué de tout le déficit. Retirer
-  le clamp change ce que l'écran MONTRE sur un cas où l'utilisateur est en difficulté : c'est un
-  arbitrage produit, routé plutôt que tranché seul.
-- [ ] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** (S — découverte `[FUZZ-ONETIME-FLOWS]` 2026-08-12,
-  [Certain, mesuré au grep]) — `ProjectionConfig.propertyGrowthRate` (types.ts:219) n'est lu par
-  AUCUN code de prod : le moteur ne lit que `goal.propertyGrowthRate` (realEstateMonth.ts:354,
-  pastPurchaseInit.ts:98), l'UI aussi (RealEstate.tsx:82, PropertyConfigurator.tsx:40). Le champ
-  config est un réglage FANTÔME : le remplir ne change RIEN (prouvé : équité négative 0/120 dans
-  le fuzz tant que le taux était câblé côté config). Fix à trancher : le retirer de
-  `ProjectionConfig` (+ des `makeProjection` de tests), OU le brancher comme défaut d'un bien
-  sans taux propre — puis nettoyer.
+- [ ] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** (S — ⚠️ **PRÉMISSE RE-RECENSÉE le 2026-09-04 : elle est
+  devenue FAUSSE**) — le ticket (2026-08-12) affirmait « lu par AUCUN code de prod ». Aujourd'hui
+  `projection.ts:1750` lit `effProj.propertyGrowthRate ?? 3` pour la croissance des **immeubles
+  LOCATIFS** (`processRentalMonth`) — un lecteur prod bien réel. Ce qui reste vrai : AUCUN
+  producteur (aucune UI n'écrit `projection.propertyGrowthRate`, aucun défaut dans `constants.ts`,
+  aucun scénario ne l'écrase) → les locatifs croissent toujours à 3 %/an, taux non réglable, et
+  `RentalProperty` n'a pas de champ de croissance propre. « Retirer » n'est donc plus un simple
+  nettoyage (il faut décider où vit le taux des locatifs) et « brancher » est une décision d'UI.
+  Options re-posées : (a) donner un `propertyGrowthRate?` à `RentalProperty` (cohérent avec les
+  buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
+  comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
 - [ ] **`[ENG-RENEWAL-CHOC-MORT]`** (M, 🧭 **DEUX décisions pour Marc — MESURÉ 2026-08-25**) — le
   « choc » de taux au renouvellement hypothécaire est dérivé du PREMIER CARACTÈRE de l'identifiant
   du bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`). **Mesuré : il vaut ZÉRO partout dans le dépôt.**

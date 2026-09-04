@@ -16,6 +16,18 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 127 : le plafond REER pré-2010 n'est plus celui de 2025
+> `[FISC-RRSP-FALLBACK-PRE2010]` livré — **code de prod touché** (droits REER historiques).
+> - Année pré-table → `RRSP_ANNUAL_LIMIT_PRE_TABLE` (= plafond 2010, DÉRIVÉ de la table, borne
+>   supérieure du vrai plafond) au lieu du plafond 2025. Hypothèse de modèle documentée
+>   (FISCAL_REFERENCE §REER) ; étendre la table vers le passé (B9) corrigera tout seul.
+> - Mesuré : −220 290 $ de droits fantômes (400 k$ né 1971, 21 ans × 10 490 $ au dollar),
+>   −96 001 $ à 250 k$, 0 $ à 60 k$ (contrôle). Gardes sur la RELATION (coût marginal d'une année
+>   de part et d'autre de la frontière de table), 2 perturbations à rouges ciblés.
+> - Clôtures : `[IMMO-3-FORMULES]` archivé (2 volets livrés, lots 112 + 119) ;
+>   `[ENG-PROPGROWTH-CONFIG-DEAD]` re-recensé (prémisse devenue FAUSSE : `projection.ts:1750` lit
+>   le champ pour les LOCATIFS ; toujours aucun producteur → locatifs figés à 3 %/an, décision).
+
 > ## 🟦 Session 2026-09-04 — Lot 126 : le ticket CELIAPP résiduel était fiscalement faux — classé, mesuré, figé
 > `[ENG-CELIAPP-RESIDUAL-PASTBUY]` classé CADUQUE — **aucun code de prod touché** (2 cas de test).
 > Aucun déploiement à vérifier.

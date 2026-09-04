@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[FISC-RRSP-FALLBACK-PRE2010]` + clôtures — LIVRÉ (lot 127, PR #858)
+
+**Correctif** : une année d'historique REER ANTÉRIEURE à la table (pré-2010) recevait le plafond
+**2025** (32 490 $) via `RRSP_ANNUAL_LIMIT_FALLBACK` — un plafond d'aujourd'hui appliqué à 1990.
+Elle reçoit désormais `RRSP_ANNUAL_LIMIT_PRE_TABLE` = plafond **2010** (22 000 $), une borne
+SUPÉRIEURE du vrai plafond (jamais baissé d'une année à l'autre), DÉRIVÉE de la table — étendre la
+table vers le passé (A_FAIRE_MOI B9) corrigera tout automatiquement. Hypothèse de modèle
+documentée dans FISCAL_REFERENCE §REER.
+
+**Mesuré** : né 1971 à 400 k$ → **−220 290 $** de droits historiques (21 années pré-2010 ×
+10 490 $, au dollar près) ; 250 k$ → −96 001 $ ; 60 k$ → **0 $ exactement** (le plafond ne mord
+pas) ; né 1990 à 250 k$ → −19 644 $ (2 années pré-2010). Gardes ancrées sur la RELATION (le coût
+marginal d'UNE année d'historique de part et d'autre de la frontière de table, sous un salaire qui
+sature), 2 perturbations séparées à rouges ciblés.
+
+**Clôtures du même lot** :
+- `[IMMO-3-FORMULES]` — retiré du BACKLOG : ses deux volets sont livrés (SCHL au lot 112, CLAMP au
+  lot 119 sous `[IMMO-CLAMP-EQUITE-NEGATIVE]`).
+- `[ENG-PROPGROWTH-CONFIG-DEAD]` — re-recensé : sa prémisse (« lu par aucun code de prod ») est
+  devenue FAUSSE — `projection.ts:1750` lit le champ pour la croissance des immeubles LOCATIFS ;
+  il reste sans producteur (aucune UI ne l'écrit) → locatifs figés à 3 %/an. Options re-posées au
+  ticket, décision produit.
+
 ## 2026-09-04 — `[ENG-CELIAPP-RESIDUAL-PASTBUY]` — CLASSÉ CADUQUE, mesuré (lot 126, PR #857)
 
 Le ticket annonçait « retrait non imposable MANQUÉ » quand un CELIAPP résiduel coexiste avec un

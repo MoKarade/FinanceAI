@@ -843,6 +843,16 @@ pour minimiser l'impôt combiné (élection optionnelle).
 Espace gagné = **18 % du revenu GAGNÉ** de l'année précédente (`RRSP_ROOM_RATE`, `utils/tax.ts`),
 moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : ARC.
 
+> ⚠️ **Années AVANT la table (pré-2010) — HYPOTHÈSE DE MODÈLE** (`[FISC-RRSP-FALLBACK-PRE2010]`,
+> 2026-09-04) : les droits HISTORIQUES d'un résident de longue date (`setupSimulation.ts`)
+> plafonnent chaque année pré-2010 à **`RRSP_ANNUAL_LIMIT_PRE_TABLE` = plafond 2010 (22 000 $)** —
+> une BORNE SUPÉRIEURE du vrai plafond (le plafond REER n'a jamais baissé d'une année à l'autre),
+> les valeurs réelles pré-2010 n'étant pas sourçables depuis l'environnement (A_FAIRE_MOI B9).
+> L'ancien repli appliquait le plafond **2025** (32 490 $) à 1990 : MESURÉ, −220 290 $ de droits
+> historiques retirés à un 400 k$ né en 1971 (21 années × 10 490 $, au dollar), −96 001 $ à
+> 250 k$, **0 $ exactement** à 60 k$ (le plafond ne mord pas). L'erreur résiduelle reste une
+> sur-attribution, bornée par (22 000 − vrai plafond) par année. Étendre la table vers le passé
+> (quand B9 sera sourcé) corrige tout automatiquement — la constante est DÉRIVÉE de la table.
 > ⚠️ **« Revenu GAGNÉ » ≠ revenu total** : ni les gains en capital, ni un paiement de revenu
 > accumulé de REEE n'ouvrent de droits REER. C'est précisément le piège évité lors de la tentative
 > `[FISC-REEE-GRANT-CLAWBACK]` — y ajouter le PRA aurait fabriqué des droits inexistants.

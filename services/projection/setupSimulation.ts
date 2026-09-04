@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
+import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, FIRST_KNOWN_RRSP_YEAR, RRSP_ANNUAL_LIMIT_PRE_TABLE, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -67,7 +67,14 @@ export function computeHistoricalContributionRoom(
             for (let y = 1; y <= yearsInCanadaBeforeStart; y++) {
                 const histYear = startYear - y;
                 const pastSalary = individualSalaryPortion / Math.pow(1.02, y);
-                const annualCap = RRSP_ANNUAL_LIMITS[histYear] || RRSP_ANNUAL_LIMIT_FALLBACK;
+                // [FISC-RRSP-FALLBACK-PRE2010] Une année AVANT la table recevait le plafond 2025
+                // (32 490 $) : pour un haut revenu de longue date, chaque année pré-2010 gagnait
+                // 10-19 k$ de droits de plus que le légal. Le plancher (plafond 2010, la plus
+                // ancienne valeur CONNUE) est une borne SUPÉRIEURE du vrai plafond de ces années —
+                // le plafond REER n'a jamais baissé. Après la table (startYear futur), le repli
+                // 2025 reste (sous-estime légèrement, l'inverse du danger).
+                const annualCap = RRSP_ANNUAL_LIMITS[histYear]
+                    ?? (histYear < FIRST_KNOWN_RRSP_YEAR ? RRSP_ANNUAL_LIMIT_PRE_TABLE : RRSP_ANNUAL_LIMIT_FALLBACK);
                 totalHistoricalRrspRoom += Math.max(0, Math.min(pastSalary * RRSP_ROOM_RATE, annualCap) - (totalFE / (activeUsers.length || 1)));
             }
         }

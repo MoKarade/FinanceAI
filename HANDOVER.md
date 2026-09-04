@@ -16,6 +16,11 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 134 : un chunk qui pend n'est plus une attente infinie
+> `[SDK-IMPORT-TIMEOUT]` livré — `importWithRetry` court chaque tentative contre 10 s
+> (`IMPORT_STALL_TIMEOUT_MS`, dimensionné sur recharts 404 Ko) ; blocage → erreur explicite,
+> jamais de reload. Partagé par tous les lazy. 3 gardes + perturbation à 2 rouges exacts.
+
 > ## 🟦 Session 2026-09-04 — Lot 133 : la frontière asynchrone de marketData existe enfin
 > `[PERF-MARKETDATA-DYNIMPORT-INERTE]` livré — App.tsx et usePastPortfolioHistory passent par
 > `services/marketData/lazy.ts` (promesse mémoïsée = ordre configure→quote préservé, échec non

@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-04 (Un écran qui charge ne peut plus rester suspendu pour toujours)
+
+- **Corrigé** : si le téléchargement d'un morceau de l'app se bloquait en silence (connexion qui
+  pend), l'écran concerné — le chat au premier message, l'onglet Futur — attendait indéfiniment.
+  Au bout d'environ 20 secondes, tu obtiens maintenant une vraie erreur au lieu d'un écran figé.
+  Un chargement simplement LENT n'est pas coupé : la fenêtre est dimensionnée pour le plus gros
+  morceau de l'app sur une connexion lente.
+
+---
+
 ## [unreleased] — 2026-09-04 (Démarrage plus léger : les cours de bourse se chargent à la demande)
 
 - **Amélioré** : le code qui interroge les fournisseurs de cours (Finnhub, CoinGecko) était

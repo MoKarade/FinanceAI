@@ -10,6 +10,19 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-04 — `[SDK-IMPORT-TIMEOUT]` — LIVRÉ (lot 134)
+
+Un `import()` qui pend sans rejeter (connexion bloquée, proxy muet) suspendait l'appelant pour
+toujours — 1er message du chat (chunk SDK), ouverture de Futur (recharts). `importWithRetry` court
+désormais chaque tentative contre `IMPORT_STALL_TIMEOUT_MS` (10 s, dimensionné sur le pire chunk
+mesuré au build : recharts 404 Ko ≈ 16 s à ~25 Ko/s — couvert par le budget TOTAL ~20,5 s puisque
+la 2e tentative re-attend la MÊME promesse d'import en vol). Un blocage finit en erreur EXPLICITE
+« Import bloqué » (journalisée critique), remontée à l'appelant/ErrorBoundary — JAMAIS en reload :
+le message ne matche pas `isChunkLoadError`, un blocage réseau n'est pas un chunk périmé et
+recharger perdrait l'état pour rien. Partagé par TOUS les lazy (lazyWithRetry passe par là).
+3 gardes (blocage → erreur sans reload ; chargement lent VIVANT → succès, la fenêtre ne coupe pas ;
+retry à fenêtre propre) ; perturbation « course retirée » → 2 rouges exacts, contrôle vert.
+
 ## 2026-09-04 — `[PERF-MARKETDATA-DYNIMPORT-INERTE]` — LIVRÉ (lot 133)
 
 La frontière asynchrone de marketData existe enfin : les deux importeurs statiques du chunk

@@ -30,7 +30,10 @@ import { seriesReturnPct, priceReturnPct, isBenchmarkCandidate, PERF_PERIODS, PE
 import { StockChart } from './StockChart';
 import { resolveAssetMeta, lookupSeedMeta, CANONICAL_SECTORS, CANONICAL_REGIONS } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
-import { getQuote, hasQuoteProvider } from '../services/marketData';
+// Investments est un chunk PARESSEUX (TabRouter → lazyWithRetry) : l'import statique est
+// LÉGITIME ici — marketData part dans CE chunk, pas dans celui d'entrée
+// ([PERF-MARKETDATA-DYNIMPORT-INERTE] ne vise que le code atteignable au boot).
+import { getQuote, hasQuoteProvider, clearMarketDataCache, clearNegativeCache, getHistoryDetaille, hasHistoryProvider } from '../services/marketData';
 import { refreshAssetPrices, applyPricePatches } from '../services/priceRefresh';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD, formatDate } from '../utils/format';
@@ -515,7 +518,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // raté — le cœur même du bouton.
             let historySyncFailed = false;
             try {
-                const { clearMarketDataCache, clearNegativeCache, getHistoryDetaille, hasHistoryProvider } = await import('../services/marketData');
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('../services/history/hydrateAssetHistories');
                 const { setHistorySyncReport } = await import('../services/history/syncDiagnostics');
                 clearMarketDataCache('history');

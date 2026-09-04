@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-04 — Lot 133 : la frontière asynchrone de marketData existe enfin
+> `[PERF-MARKETDATA-DYNIMPORT-INERTE]` livré — App.tsx et usePastPortfolioHistory passent par
+> `services/marketData/lazy.ts` (promesse mémoïsée = ordre configure→quote préservé, échec non
+> empoisonnant). Build propre : 0 INEFFECTIVE (4 avant), providers hors du chunk d'entrée
+> (293 → 279,6 Ko), chunk marketData-*.js asynchrone créé. Garde de frontière + 2 perturbations.
+> Investments/AddStockForm gardent leur import statique (chunk paresseux — légitime, documenté).
+
 > ## 🟦 Session 2026-09-04 — Lot 132 : audit per-conjoint clos (tests seulement)
 > `[ENG-FERR-ECART-AGE-NON-COUVERT]` clos — les cas « toujours PAS testés » (`shares=[1,0]`,
 > soldes négatifs) sont couverts dans `stepReerByUserProprietes.test.ts` ; l'audit conclut

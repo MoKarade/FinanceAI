@@ -549,6 +549,29 @@ ARC/RQ — ce sont des choix de modèle assumés, et voici ce qu'ils valent.
 
 #### Locatif — `0,45`
 
+> ✅ **Base imposable = NOI − intérêts hypothécaires depuis le 2026-09-05** (`[W5-RENTAL-INTERET-DPA]`,
+> lot 188, volet « intérêts »). Guide ARC **T4036** « Revenus de location », ligne 8710 « Intérêts et
+> frais bancaires » : les intérêts sur l'argent emprunté pour acheter ou améliorer l'immeuble se
+> déduisent du revenu de location ; Revenu Québec, formulaire **TP-128** (même règle) — sources
+> **RELAYÉES** (canada.ca et revenuquebec.ca illisibles depuis le conteneur, `EGRESS_BLOCKED`,
+> re-vérifié le 2026-09-05). Avant : le NOI était imposé BRUT au proxy pendant que le service de dette
+> sortait en dépense — un bailleur levieré payait 45 % sur des intérêts qu'il ne gardait pas.
+> Mécanique : `rentalInterestOfMonth` (`rentalMonth.ts`, SOURCE UNIQUE, solde de début de mois) →
+> `rentalInterestMensuelParImmeuble` (contexte W5) → `applyW5Effects` impose `NOI − intérêt` et attribue
+> la même base NETTE au revenu GAGNÉ (T4040, ci-dessous §7). Le flux de trésorerie ne change pas : le
+> NOI encaissé reste brut, l'intérêt sort déjà via le service de dette. Intérêts > NOI → base négative →
+> impôt négatif au proxy (perte de location déductible, T4036), symétrique du cas charges > loyer.
+> MESURÉ (couple 260 k$, plex 450 k$, prêt 300 k$ à 5 % sur 25 ans, NOI 22 500 $/an) : impôt cumulé
+> **−49 114 $ à 10 ans, −79 804 $ à 20 ans, −77 772 $ à 30 ans** (le prêt s'éteint à 25 ans),
+> patrimoine final **+61 791 $ / +128 255 $ / +175 797 $** ; sans hypothèque : **0 $ exactement**
+> (contrôle négatif). ⚠️ Le rapport impôt/intérêts mesuré par `totalTaxesPaid` (≈ 0,37) est SOUS le
+> proxy (0,45) parce que ce compteur ne somme que les règlements d'avril — la dernière année de
+> l'horizon n'est jamais réglée dedans (cf `[PROJ-TAXPAID-SOLDE-AVRIL]`).
+> ⚠️ NON modélisé, ROUTÉ : la **DPA** (`[W5-RENTAL-DPA-ELECTION]`, décision Marc) — `ccaTaken` est une
+> DPA CUMULÉE saisie pour la recapture à la vente, pas une élection annuelle, et aucun module ne la lit ;
+> et l'immeuble d'un BUT immobilier locatif (`realEstateMonth.ts`, loyer → `accRentesYear`) est encore
+> imposé BRUT d'intérêts (`[IMMO-BUT-LOCATIF-INTERET-BRUT]`, jumeau de ce correctif).
+
 MESURÉ : impôt INCRÉMENTAL réel sur **30 000 $ de NOI** empilés sur un revenu existant, barème 2026
 (`calculateFiscalReport`, QC + fédéral net de l'abattement de 16,5 %) :
 
@@ -917,7 +940,8 @@ moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : AR
 > nourrissait le registre des rentes (`accRentesYear`) et jamais `accGrossIncomeYearByUser` : **zéro
 > droit REER créé par un immeuble**, quel que soit son loyer.
 > **Base = ce que le moteur IMPOSE**, jamais une seconde lecture des champs : le NOI pour un immeuble
-> W5 (loyer net de vacance et de charges, `w5Effects.ts`) et le loyer indexé pour un but immobilier
+> W5 (loyer net de vacance, de charges **et d'intérêts hypothécaires** depuis le lot 188 —
+> `[W5-RENTAL-INTERET-DPA]`, §6 « Locatif » —, `w5Effects.ts`) et le loyer indexé pour un but immobilier
 > locatif (`realEstateMonth.ts`, même montant que `accRentesYear`). Une perte locative RÉDUIT le revenu
 > gagné de son propriétaire (T4040). **Clé d'attribution** (`revenuGagnePartage.ts`) : champ `owner`
 > optionnel par immeuble, `user1 | user2 | joint` comme les actifs ; absent = conjoint = **50/50**

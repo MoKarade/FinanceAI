@@ -16,6 +16,27 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 188 : les intérêts hypothécaires d'un locatif W5 sont déduits de la base imposable (`[W5-RENTAL-INTERET-DPA]`, volet intérêts)
+> `applyW5Effects` imposait le NOI BRUT au proxy 45 % pendant que `processRentalMonth` sortait le service de
+> dette en dépense. Désormais : `rentalInterestOfMonth` (`rentalMonth.ts`, SOURCE UNIQUE, solde de début de
+> mois) → `rentalInterestParImmeuble(rentalStates)` passé dans le contexte W5 AVANT le mois locatif →
+> base imposable = NOI − intérêt, même base NETTE pour le revenu GAGNÉ (T4040) ; trésorerie inchangée ;
+> intérêts > NOI → perte déductible (impôt négatif au proxy). T4036 ligne 8710 / TP-128 RELAYÉS
+> (`EGRESS_BLOCKED`, canada.ca 403 depuis le conteneur). MESURÉ AVANT/APRÈS (couple 260 k$, plex 450 k$,
+> prêt 300 k$ à 5 %) : impôt −49 114 $ / −79 804 $ / −77 772 $ à 10/20/30 ans, patrimoine +61 791 $ /
+> +128 255 $ / +175 797 $ ; sans hypothèque 0 $ (contrôle). Gardes : 7 unitaires (module, contexte
+> absent = rétrocompat), 1 revenu gagné hypothéqué (delta = NOI − Σ `ImmoInterest` PUBLIÉ), 3 de câblage
+> par espion sur `applyW5Effects` (table passée == `ImmoInterest` du point, mois par mois, décroissante ;
+> deux immeubles = deux clés ; sans immeuble = table vide). Perturbations SÉPARÉES : argument retiré au
+> site d'appel → 4 rouges (câblage + hypothéqué, unitaires verts) ; module sourd → 7 rouges (unitaires +
+> hypothéqué, câblage vert). Fixture des cas d'ATTRIBUTION du revenu gagné passée à `mortgageBalance: 0`
+> (ils portaient un prêt inutile qui, déduction faite, retirait 14 859,52 $ de l'attendu). Garde de FORME
+> du proxy ré-ancrée sur `rentalNoiImposableMonthly`. Écran : la phrase du proxy dit « net des intérêts
+> hypothécaires ». ROUTÉ : volet DPA → `[W5-RENTAL-DPA-ELECTION]` (décision Marc, A_FAIRE_MOI) ; jumeau
+> du but immobilier locatif (loyer → `accRentesYear` brut d'intérêts) → `[IMMO-BUT-LOCATIF-INTERET-BRUT]`.
+> Docs : FISCAL_REFERENCE §6 (+§7 base nette), PROJECTION, CHANGELOG, BACKLOG (+ archive du lot 187),
+> A_FAIRE_MOI, CONVENTIONS (leçon : `totalTaxesPaid` ne règle pas la dernière année).
+
 > ## 🟦 Session 2026-09-05 — Lot 187 : la succession lit l'espérance de vie SAISIE, plus un 95 en dur (`[ESTATE-LIFEEXPECTANCY-95-DUR]`)
 > `estateCalculation.ts` posait `lifeExpectancy = 95` sous le MÊME NOM que la saisie et ne la lisait jamais
 > (l'entrée du ratchet le justifiait par ce nom — c'est ce qui masquait le no-op). `EstateCalcInputs.lifeExpectancy`

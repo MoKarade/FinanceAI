@@ -1385,3 +1385,29 @@ bug.
    si quelqu'un le branche sans le dire).
 
 Je ne tranche pas seul : (1) touche de l'argent, (2) touche des données persistées.
+
+## `[W5-RENTAL-DPA-ELECTION]` — décision de Marc (2026-09-05)
+
+**La question en une phrase** : veux-tu que la projection **élise la DPA** (la déduction pour
+amortissement d'un immeuble locatif) chaque année, et si oui, avec ou sans la reprise à la vente ?
+
+**Ce qui est mesuré** (lot 188) : le champ « DPA cumulée » (`ccaTaken`) de l'écran Patrimoine étendu
+n'est lu par **aucun** module — il servait à une recapture à la vente qui n'est pas modélisée. Le lot
+188 a livré la moitié qui ne demande aucun choix : les **intérêts hypothécaires** sont maintenant
+déduits du revenu locatif imposable (c'est la loi, T4036 ligne 8710 ; mesuré −49 k$ à −80 k$ d'impôt
+sur 10 à 30 ans pour un plex à 300 k$ de prêt). La DPA, elle, est un CHOIX : on peut l'élire ou non,
+elle ne peut pas créer une perte, et elle est reprise (imposée) le jour de la vente.
+
+**Trois issues** :
+
+1. **Ne pas la modéliser, et le dire à l'écran** — une note sous le champ « DPA cumulée » : « non
+   utilisée par la projection ». Prudent (patrimoine un peu sous-estimé pour un bailleur qui l'élit),
+   zéro nouveau calcul. [Recommandé tant que la vente n'est pas modélisée : élire une déduction sans
+   modéliser sa reprise gonflerait le patrimoine d'un impôt seulement différé.]
+2. **Élection par immeuble** (case à cocher + taux, défaut 4 % catégorie 1, demi-année la 1re année),
+   SANS recapture — l'impôt différé disparaît de la projection. Optimiste par construction.
+3. **Élection AVEC vente et recapture** — exige d'abord de modéliser la vente d'un immeuble W5 (date,
+   gain en capital, recapture) : un lot M à part.
+
+Je ne tranche pas seul : (2) et (3) déplacent de l'argent, et (2) le fait dans un seul sens.
+

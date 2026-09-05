@@ -52,8 +52,13 @@ const params = (o: Record<string, unknown> = {}): SimulationParams => ({
 /** Immeuble W5 : loyer 2 500, vacance 5 %, charges 500 → NOI 28 500 − 6 000 = 22 500 $/an.
  *  ⚠️ Le loyer BRUT (28 500) et le NOI (22 500) diffèrent : l'attendu ci-dessous discrimine « base =
  *  ce que le moteur impose » (le NOI) d'un câblage sur le loyer brut. */
+// [W5-RENTAL-INTERET-DPA] (lot 188) — `mortgageBalance: 0` PAR DÉFAUT : la base du revenu gagné est
+// désormais NETTE des intérêts hypothécaires (T4040 « revenu NET de location », même base que l'impôt).
+// Les cas d'ATTRIBUTION ci-dessous ne parlent que de « chez qui » ; ils portaient un prêt de 300 k$
+// à 5 % qui ne servait à rien et qui, depuis que la déduction existe, retirait 14 859,52 $ d'intérêts
+// de l'attendu. Le cas « avec hypothèque » plus bas mesure la base nette contre l'intérêt PUBLIÉ.
 const plex = (over: Partial<RentalProperty> = {}): RentalProperty => ({
-    id: 'rp1', name: 'Plex', purchasePrice: 400_000, currentValue: 450_000, mortgageBalance: 300_000,
+    id: 'rp1', name: 'Plex', purchasePrice: 400_000, currentValue: 450_000, mortgageBalance: 0,
     mortgageRate: 5, monthlyRent: 2_500, vacancyPct: 5, monthlyExpenses: 500, ...over,
 });
 const NOI_PLEX = 22_500;
@@ -73,6 +78,13 @@ const premierJanvier = (p: SimulationParams): [number, number] => {
     const jan = janCalls.find(c => c.monthIndex === 0 && c.m > 0);
     expect(jan, 'aucun janvier capturé').toBeTruthy();
     return jan!.byUser;
+};
+
+/** Intérêt locatif PUBLIÉ sur les 12 premiers points (`ImmoInterest`, écrit par `processRentalMonth`) —
+ *  lu du moteur, jamais reconstruit (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`). */
+const interetsAnnee1 = (p: SimulationParams): number => {
+    const r = __runScenarioForTests(p, 'AUTO_MARGINAL' as AllocationStrategy) as unknown as { chartData: Array<{ ImmoInterest?: number }> };
+    return r.chartData.slice(0, 12).reduce((s, pt) => s + (pt.ImmoInterest ?? 0), 0);
 };
 
 describe('[FISC-RRSP-RENTAL-EARNED] le loyer net entre dans le revenu gagné de SON propriétaire (espion)', () => {
@@ -100,6 +112,19 @@ describe('[FISC-RRSP-RENTAL-EARNED] le loyer net entre dans le revenu gagné de 
         const [u0, u1] = premierJanvier(params({ rentalProperties: [plex()] }));
         expect(u0).toBeCloseTo(200_004 + NOI_PLEX / 2, 0);
         expect(u1).toBeCloseTo(60_000 + NOI_PLEX / 2, 0);
+    });
+
+    it('[W5-RENTAL-INTERET-DPA] immeuble HYPOTHÉQUÉ : le revenu gagné est le NOI NET des intérêts publiés (T4040 « revenu NET de location »)', () => {
+        // 300 k$ à 5 % : ~14 860 $ d'intérêts la 1re année. Le delta chez Anna vaut NOI − Σ intérêts
+        // PUBLIÉS des 12 premiers mois (au cent près : même solde, même formule, `rentalInterestOfMonth`).
+        const p = params({ rentalProperties: [plex({ owner: 'user2', mortgageBalance: 300_000 })] });
+        const interets = interetsAnnee1(p);
+        expect(interets, 'la fixture doit produire des intérêts, sinon rien n\'est mesuré').toBeGreaterThan(10_000);
+        const [u0, u1] = premierJanvier(p);
+        expect(u1).toBeCloseTo(60_000 + NOI_PLEX - interets, 0);
+        expect(u0).toBeCloseTo(200_004, 0);
+        // Contrôle négatif : sans hypothèque, la base est le NOI entier (l'intérêt vaut 0, pas « absent »).
+        expect(premierJanvier(params({ rentalProperties: [plex({ owner: 'user2' })] }))[1]).toBeCloseTo(60_000 + NOI_PLEX, 0);
     });
 
     it('perte locative (charges > loyer) : le revenu gagné du propriétaire BAISSE (T4040 : pertes déduites)', () => {

@@ -416,7 +416,7 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
 | **W5.3** | Dettes étendues | kind, taux variable, limite, terme, prêteur, déductible |
 | **W5.4** | **InsurancePolicy** (11 types) | vie temp/entière/U, invalidité ST/LT, maladies graves, soins LD, voyage, auto, habitation, responsabilité |
 | **W5.5** | DB joint-life vs single-life | option survivant + % rente |
-| **W5.6** | **RentalProperty** | cap rate, vacancy, NOI, DPA, amortization |
+| **W5.6** | **RentalProperty** | cap rate, vacancy, NOI imposé NET des intérêts hypothécaires (`[W5-RENTAL-INTERET-DPA]`, lot 188 ; DPA saisie mais non lue, routée), amortization |
 | **W5.7** | **PrivateBusiness** (CCPC) | % détention, JVM, dividendes, BNR, accès DPE |
 | **W5.x** | Goals cycliques | véhicules cycliques, rénovations majeures, dons charitables |
 

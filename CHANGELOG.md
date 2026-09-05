@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Les intérêts hypothécaires d'un immeuble locatif sont déduits de son revenu imposable)
+
+- **Corrigé** : le revenu net d'exploitation d'un immeuble locatif (section Patrimoine étendu) était
+  imposé en entier, alors que les intérêts de son hypothèque sont déductibles (ARC, guide T4036).
+  Ils sont maintenant retirés de la base imposable — et de la base des droits REER — chaque mois.
+  Effet : moins d'impôt pour un immeuble hypothéqué (mesuré −49 k$ à −80 k$ sur 10 à 30 ans pour un
+  plex avec 300 k$ de prêt à 5 %), rien ne change sans hypothèque. La phrase sous le tableau le dit.
+- **Non modélisé, en attente d'une décision** : la déduction pour amortissement (DPA) — le champ
+  « DPA cumulée » n'est utilisé par aucun calcul de projection.
+
 ## [unreleased] — 2026-09-05 (Le patrimoine successoral respecte enfin ton espérance de vie)
 
 - **Corrigé** : la valeur actualisée des rentes publiques (RRQ / PSV) ajoutée au patrimoine

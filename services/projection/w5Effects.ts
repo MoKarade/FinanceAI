@@ -7,6 +7,7 @@
 // et écrivent dans 4 cibles bien définies (monthlyIncome, monthlyExpenses,
 // liquid, taxCurrentYear). Pas de dépendance sur growth/income/shortfall/etc.
 
+import { rentalStateId } from './rentalMonth';
 import type { InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../../types';
 import { computeDonationCredit } from '../../utils/donationCredit';
 import { formatCAD } from '../../utils/format';
@@ -19,6 +20,13 @@ export interface W5Context {
     startYear: number;
     startMonth: number;
     expenseMultiplier: number;
+    /** [W5-RENTAL-INTERET-DPA] Intérêt hypothécaire du MOIS par immeuble locatif (clé `rentalStateId`,
+     *  produit par `rentalInterestParImmeuble` sur l'état AVANT le mois locatif). Il est DÉDUIT de la
+     *  base imposable du NOI (T4036, « intérêts et frais bancaires » — et T4040 : le revenu GAGNÉ
+     *  est le revenu NET de location). Il ne touche PAS le flux de trésorerie : le service de dette
+     *  sort déjà en dépense dans `processRentalMonth`. Absent → 0 (appelants historiques, tests
+     *  unitaires) : NOI imposé brut, comme avant le lot 188. */
+    rentalInterestMensuelParImmeuble?: Readonly<Record<string, number>>;
 }
 
 export interface W5Mutator {
@@ -133,21 +141,37 @@ export function applyW5Effects(
 
     // W5.6 — Immeubles locatifs: NOI lissé.
     let rentalPropertyNoiMonthly = 0;
-    // [FISC-RRSP-RENTAL-EARNED] Le même NOI, ventilé par PROPRIÉTAIRE : c'est la base du revenu gagné
-    // (droits REER) de chaque conjoint. Base = ce que le moteur IMPOSE (le NOI, net de vacance et de
-    // charges), donc une perte locative réduit le revenu gagné — T4040, pertes en déduction.
+    // [W5-RENTAL-INTERET-DPA] Base IMPOSABLE du mois = NOI − intérêt hypothécaire du mois (T4036 :
+    // les intérêts sur l'argent emprunté pour acheter l'immeuble se déduisent du revenu de location).
+    // Deux grandeurs, deux registres : le NOI (trésorerie encaissée → `addIncome`) reste BRUT, la
+    // base nette (→ `addTaxDivers` et revenu GAGNÉ par propriétaire) porte la déduction. Avant le
+    // lot 188, le NOI était imposé brut au proxy alors que le service de dette sortait en dépense —
+    // un bailleur levieré payait 45 % sur des intérêts qu'il ne gardait pas.
+    let rentalNoiImposableMonthly = 0;
+    // [FISC-RRSP-RENTAL-EARNED] La base IMPOSABLE, ventilée par PROPRIÉTAIRE : c'est la base du revenu
+    // gagné (droits REER) de chaque conjoint. Base = ce que le moteur IMPOSE (le NOI net de vacance,
+    // de charges ET d'intérêts — T4040 : « revenu NET de location »), donc une perte locative réduit le
+    // revenu gagné — T4040, pertes en déduction.
     const noiParProprietaire = montantsParProprietaireVides();
     for (const rp of containers.rentalProperties) {
         const annualRent = (rp.monthlyRent || 0) * 12 * (1 - (rp.vacancyPct || 0) / 100);
         const annualExpenses = (rp.monthlyExpenses || 0) * 12;
         const noi = annualRent - annualExpenses;
+        const interetBrut = ctx.rentalInterestMensuelParImmeuble?.[rentalStateId(rp)];
+        const interetMensuel = Number.isFinite(interetBrut) ? Math.max(0, interetBrut as number) : 0;
+        const noiImposableMensuel = noi / 12 - interetMensuel;
         rentalPropertyNoiMonthly += noi / 12;
-        ajouterParProprietaire(noiParProprietaire, rp.owner, noi / 12);
+        rentalNoiImposableMonthly += noiImposableMensuel;
+        ajouterParProprietaire(noiParProprietaire, rp.owner, noiImposableMensuel);
     }
     let revenuGagneLocatif = montantsParProprietaireVides();
     // [NAN-INPUT-HARDENING] `!== 0` laisse passer NaN (`NaN !== 0` = true) → garde l'agrégat (un `noi` NaN
     // corromprait revenu + impôt locatif). (La branche business ci-dessous est déjà sûre : `NaN > 0` = false.)
-    if (Number.isFinite(rentalPropertyNoiMonthly) && rentalPropertyNoiMonthly !== 0) {
+    // [W5-RENTAL-INTERET-DPA] La porte s'ouvre aussi quand seule la base imposable est non nulle (NOI de
+    // trésorerie exactement nul mais intérêts déductibles) : le registre fiscal ne dépend pas d'une
+    // coïncidence du flux de trésorerie.
+    if (Number.isFinite(rentalPropertyNoiMonthly) && Number.isFinite(rentalNoiImposableMonthly)
+        && (rentalPropertyNoiMonthly !== 0 || rentalNoiImposableMonthly !== 0)) {
         state.addIncome(rentalPropertyNoiMonthly);
         // [FA-6] via `addTaxDivers` → l'impôt locatif SURVIT à l'écrasement de `.revenu` en décembre :
         // avant, le revenu locatif d'un bailleur ACTIF n'était PAS imposé (clobberé).
@@ -165,7 +189,8 @@ export function applyW5Effects(
         // 30 000 $ de NOI au lieu de 13 500 $ — un taux EFFECTIF de 3,75 % pendant que la décision
         // Marc, la doc et l'écran annonçaient 45 %. Le défaut d'unité classique : traiter une
         // grandeur mensuelle comme annuelle parce que la ligne d'à côté divisait par 12.
-        state.addTaxDivers(rentalPropertyNoiMonthly * RENTAL_NOI_TAX_PROXY);
+        // [W5-RENTAL-INTERET-DPA] Le proxy s'applique à la base NETTE d'intérêts, pas au NOI encaissé.
+        state.addTaxDivers(rentalNoiImposableMonthly * RENTAL_NOI_TAX_PROXY);
         // Revenu gagné publié EXACTEMENT quand le revenu l'est (même porte) : ce que le moteur
         // n'encaisse ni n'impose ne crée pas de droits.
         revenuGagneLocatif = noiParProprietaire;

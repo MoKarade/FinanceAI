@@ -16,6 +16,24 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 180 : le revenu de placement est imposé chez son DÉTENTEUR (`[FISC-SOLO-INVEST-SPLIT]`)
+> Décision Marc 12 (« mode couple prévu ») a débloqué le ticket, dont le remède prescrit est la
+> détention réelle — livré tel quel, `[Q-SOLO-SPLIT]` fermé sur cette base (à contester si Marc voulait
+> un autre partage). Helper partagé `estimateTaxableInvestmentIncomeByOwner` (`services/taxEstimate.ts`)
+> + `isCoupleMode` hissé en source unique (`services/couple/netWorthByOwner.ts`), consommés par
+> `TaxCenter` et `get_tax_situation` : `owner` user1/user2 → chez lui, `joint`/absent → moitié-moitié en
+> couple, hors couple tout à user1. Le MCP nomme la part d'un conjoint sans brut dans `perUserOmitted`
+> (montant + « détention réelle ») au lieu de la taire. Trois gardes (helper 7 cas, MCP 4, TaxCenter 2),
+> trois perturbations SÉPARÉES : helper aveugle à `owner` → 7 rouges sur les 3 fichiers ; ancien split
+> dans TaxCenter seul → 2 rouges (TaxCenter seul) ; ancien split dans le MCP seul → 2 rouges (MCP seul).
+> Contrôles : sans `owner`, couple à deux salaires = même moitié chacun ; solo = tout à user1 (inchangé,
+> Marc est en solo → 0 $ aujourd'hui, comme mesuré au ticket). ⚠️ Deux gardes de `silencesFakeZero`
+> ancraient la FORME de l'ancien code (`reason: 'brut annuel inconnu…'`, la déstructuration exacte du
+> filtre) et ont rougi sans que le fait défendu bouge — ré-ancrées sur le fait avec commentaire daté
+> (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, 3e et 4e occurrences). Découverte routée :
+> `[COUPLE-PREDICAT-COPIES]` (6 copies du prédicat couple, 3 formes). Docs : FISCAL_REFERENCE (assiette
+> placement), mcp/README, CHANGELOG, BACKLOG (+ archive lot 179), A_FAIRE_MOI. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 179 : le dépôt fiscal de décembre se fait en FIN de mois (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`)
 > Décision Marc 15 (« corriger : fuite d'assiette réelle »). Le bloc `processDecemberTaxFiling` de
 > `projection.ts` est déplacé APRÈS la cascade d'allocation, le meltdown, l'immobilier et les objectifs

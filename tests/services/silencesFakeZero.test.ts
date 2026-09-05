@@ -76,7 +76,11 @@ describe('[TOOL-TAXSITUATION-FAKE-ZERO] un conjoint exclu du calcul est NOMMÉ, 
         expect(src, 'un conjoint sans brut disparaît du payload sans laisser de trace')
             .toMatch(/perUserOmitted,\n\s*perUser: perUserReports\.map/);
         // La raison est portée par la donnée, pas laissée au modèle à deviner.
-        expect(src).toMatch(/reason:\s*'brut annuel inconnu/);
+        // Ré-ancré 2026-09-05 ([FISC-SOLO-INVEST-SPLIT] lot 180) : la raison vit désormais dans une
+        // constante (`raison = actif ? 'brut annuel inconnu…' : …`) enrichie de la part de placement —
+        // la garde exige le TEXTE (le fait), plus la forme `reason: '…'` (la ligne qu'avait le code).
+        expect(src).toContain("'brut annuel inconnu (seul un salaire NET est saisi)");
+        expect(src).toMatch(/reason:\s*raison/);
     });
 
     it('le champ est TOUJOURS présent, même vide', () => {
@@ -90,6 +94,9 @@ describe('[TOOL-TAXSITUATION-FAKE-ZERO] un conjoint exclu du calcul est NOMMÉ, 
     it('le filtre qui EXCLUT est toujours là (le correctif ne l’a pas remplacé)', () => {
         // ⚠️ La tentation serait d'inclure le conjoint avec un impôt à 0 : ce serait rétablir le faux
         // 0 $ que le ticket croyait déjà présent. On exclut ET on le dit — pas l'un ou l'autre.
-        expect(src).toContain('.filter(({ grossAnnual: g }) => g > 0)');
+        // Ré-ancré 2026-09-05 ([FISC-SOLO-INVEST-SPLIT] lot 180) : le filtre porte aussi l'index de
+        // détention (`{ user: u, i, grossAnnual }`) — on ancre le FAIT « brut > 0 exclut », pas la
+        // déstructuration exacte qu'avait la ligne.
+        expect(src).toMatch(/\.filter\(\(\{[^)]*grossAnnual: g \}\) => [^)]*g > 0\)/);
     });
 });

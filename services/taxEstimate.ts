@@ -8,6 +8,7 @@
 import type { Asset } from '../types';
 import { assetValueCad } from './portfolio';
 import { CAPITAL_GAINS_INCLUSION_STANDARD } from '../utils/tax';
+import { assetsToHoldings, netWorthByOwner } from './couple/netWorthByOwner';
 
 /** Rendement en dividendes estimé (~2 %/an) — hypothèse affichée dans l'onglet Impôt. */
 export const EST_DIVIDEND_YIELD = 0.02;
@@ -32,4 +33,41 @@ export function estimateTaxableInvestmentIncome(
     const estDividends = nonRegValue * EST_DIVIDEND_YIELD;
     const estCapitalGains = nonRegValue * EST_CAPITAL_GAINS_YIELD;
     return estDividends + estCapitalGains * CAPITAL_GAINS_INCLUSION_STANDARD;
+}
+
+/** Revenu de placement imposable estimé pour une valeur non enregistrée donnée (même formule que le total). */
+function revenuImposableEstime(valeurNonEnregistree: number): number {
+    const v = Math.max(0, valeurNonEnregistree);
+    return v * EST_DIVIDEND_YIELD + v * EST_CAPITAL_GAINS_YIELD * CAPITAL_GAINS_INCLUSION_STANDARD;
+}
+
+interface RevenuPlacementParProprietaire {
+    user1: number;
+    user2: number;
+}
+
+/**
+ * [FISC-SOLO-INVEST-SPLIT] Revenu de placement IMPOSABLE estimé réparti par DÉTENTION RÉELLE
+ * (`Asset.owner`), source unique de l'onglet Impôt ET de get_tax_situation (MCP) :
+ * - `user1` / `user2` : l'actif est imposé chez son détenteur ;
+ * - `joint` (ou `owner` absent — défaut du non-enregistré et de la crypto) : moitié-moitié en couple ;
+ * - hors couple (`isCouple = false`) : tout revient à user1, quel que soit `owner`.
+ * Avant ce lot, les deux sites divisaient le total par le NOMBRE de conjoints : la part d'un conjoint
+ * sans salaire tombait sous son BPA (app) ou sortait du payload (MCP) — sous-imposition mesurée
+ * 2 342 $/an sur un couple mono-salarié à 200 k$ de non-enregistré.
+ * Invariant : `user1 + user2 == estimateTaxableInvestmentIncome(...)` dès que les valeurs sont ≥ 0
+ * (le clamp à 0 se fait par propriétaire — un revenu imposable n'est jamais négatif).
+ */
+export function estimateTaxableInvestmentIncomeByOwner(
+    assets: readonly Asset[],
+    fxRates: Record<string, number> | undefined,
+    isCouple: boolean,
+): RevenuPlacementParProprietaire {
+    const nonReg = assets.filter((a) => a.accountType === 'NON-ENREG' || a.accountType === 'CRYPTO');
+    const bd = netWorthByOwner(assetsToHoldings(nonReg, fxRates ?? {}), isCouple);
+    const moitieCommun = bd.joint / 2;
+    return {
+        user1: revenuImposableEstime(bd.user1 + moitieCommun),
+        user2: revenuImposableEstime(bd.user2 + moitieCommun),
+    };
 }

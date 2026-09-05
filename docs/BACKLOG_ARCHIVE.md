@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-DEC-FLUX-ASSIETTE-TIMING]` — LIVRÉ (lot 179, PR #910, décision Marc 15 « corriger »)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-DEC-FLUX-ASSIETTE-TIMING]`** ✅ **LIVRÉ au lot 179 (2026-09-05)** — le dépôt fiscal de décembre (`processDecemberTaxFiling`) se fait en FIN de mois, après la cascade d'allocation, le meltdown, l'immobilier et les objectifs du même décembre ; les flux REER de décembre entrent dans l'assiette de l'année MÊME. Garde d'ordre `engineOrder.test.ts` INVERSÉE (décembre APRÈS allocation et meltdown) + garde comportementale `decemberReerWithdrawalAssiette.test.ts` (un retrait REER de décembre coûte le même impôt qu'en novembre : ratio 1,08 mesuré, 0,0055 sur l'ancien moteur) ; 17 goldens re-basés SCIEMMENT dans 7 fichiers, chacun avec son sens (retraité : impôt ↑ patrimoine ↓ ; actif : cotisations de décembre déduites → patrimoine ↑). Découverte routée : `[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`. (M, à TRANCHER — découverte du lot 141, MESURÉ,
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **CORRIGER** — c'est une fuite d'assiette réelle : les retraits REER de décembre entrent dans l'assiette de l'année. Re-base des goldens SCIEMMENT (+25 568 $ d'impôt mesuré sur la fixture retraités), la garde d'ordre `engineOrder.test.ts` se met à jour DÉLIBÉRÉMENT.
+  ⚠️ bug préexistant potentiel, signalé sans correctif) — le dépôt fiscal de décembre
+  (`processDecemberTaxFiling`, L~1355) lit `accRetraitsReerYear` AVANT que la cascade
+  d'allocation, le meltdown, le RAP et les objectifs du MÊME décembre ne l'alimentent — puis
+  janvier remet l'accumulateur à zéro (`taxJanuary.ts:332`). Les retraits REER de décembre
+  n'entrent donc dans l'assiette d'AUCUNE année. Mesuré (banc `scripts/mesureOrdreBoucle.ts` +
+  `scripts/inverserOrdreBoucle.py`, clef `dec_fin_de_mois`, re-mesuré 2 exécutions
+  indépendantes 2026-09-04) : déplacer décembre en fin de mois = totalTaxesPaid
+  **+25 568,08 $** (fixture retraités sous AUTO — indépendant de la stratégie), +14 737,13 $
+  sous MELTDOWN, ±3 k$ sur un couple actif. À trancher (financial-integrity/Marc) : fuite
+  d'assiette RÉELLE (les retraits de décembre devraient être imposés) ou convention de
+  calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
+  est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
+  devra être délibéré ET répondre à cette question.
+
+
 ## 2026-09-05 — `[ENG-DIVORCE-ALLOC-ASSIETTE]` — LIVRÉ (lot 178, PR #909, décision Marc 14 « comme mesuré »)
 
 Ticket d'origine tel qu'au moment de l'archivage :

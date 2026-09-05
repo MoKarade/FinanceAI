@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, cleanup } from '@testing-library/react';
 import { PrivateNumberInput } from '../../../components/ui/PrivateNumberInput';
 import { useFinanceStore } from '../../../store/useFinanceStore';
+import { MASKED_AMOUNT_LABEL as LIBELLE_MASQUE } from '../../../utils/privacyAria';
 
 /** Marqueur d'état masqué, désormais porté par un texte sr-only (et non plus par un `aria-label`
  *  en dur, qui écrasait le nom du champ — cf. [A11Y-PRIVACY-SALAIRE] plus bas). */
@@ -147,5 +148,30 @@ describe('[SEC-PRIVACY-BLUR-INPUTS] PrivateNumberInput', () => {
             expect(net, 'les deux champs annonçaient le même nom').toHaveAccessibleName('Salaire net');
             cleanup();
         });
+    });
+});
+
+// [A11Y-PRIVACY-TITLE-CLOBBER] (lot 186) — le `title` de l'appelant survit au masquage (composé avec
+// « Montant masqué »), au lieu d'être écrasé en dur. Le second volet du ticket (« aucun indice visuel au
+// clavier ») a été RE-MESURÉ : le focus clavier RÉVÈLE l'input (cas « Tab » ci-dessus, [SEC-PRIVACY-BLUR-INPUTS]),
+// donc un utilisateur au clavier ne voit jamais le bouton masqué figé — il n'y a pas d'indice à ajouter.
+describe('[A11Y-PRIVACY-TITLE-CLOBBER] le title de l\'appelant est composé, jamais écrasé', () => {
+    it('mode discret ACTIF + title appelant : le bouton masqué porte LES DEUX (appelant — Montant masqué)', () => {
+        useFinanceStore.setState({ isPrivacyMode: true });
+        const { container } = render(<PrivateNumberInput type="number" value={1234} onChange={() => {}} title="Salaire mensuel brut" />);
+        const btn = container.querySelector('button')!;
+        expect(btn.getAttribute('title')).toBe(`Salaire mensuel brut — ${LIBELLE_MASQUE}`);
+    });
+
+    it('sans title appelant : « Montant masqué » seul (contrôle — pas de « undefined — » ni de tiret orphelin)', () => {
+        useFinanceStore.setState({ isPrivacyMode: true });
+        const { container } = render(<PrivateNumberInput type="number" value={1234} onChange={() => {}} />);
+        expect(container.querySelector('button')!.getAttribute('title')).toBe(LIBELLE_MASQUE);
+    });
+
+    it('mode discret INACTIF : le title appelant passe tel quel à l\'input (aucune composition hors masquage)', () => {
+        useFinanceStore.setState({ isPrivacyMode: false });
+        const { container } = render(<PrivateNumberInput type="number" value={1234} onChange={() => {}} title="Salaire mensuel brut" />);
+        expect(container.querySelector('input')!.getAttribute('title')).toBe('Salaire mensuel brut');
     });
 });

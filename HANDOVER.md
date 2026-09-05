@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 186 : le `title` d'un champ masqué est composé, pas écrasé (`[A11Y-PRIVACY-TITLE-CLOBBER]`)
+> `PrivateNumberInput` : `title={rest.title ? \`${rest.title} — Montant masqué\` : 'Montant masqué'}` — la
+> porte qu'un appelant futur aurait franchie sans avertissement est fermée. Trois gardes (composé ;
+> contrôle sans title : pas de « undefined — » ; hors mode discret : title tel quel sur l'input),
+> perturbation (écrasement remis) → 1 rouge. Le second volet du ticket (« aucun indice visuel au
+> clavier ») est RE-MESURÉ caduc : le focus clavier révèle l'input (cas « Tab » existant, vert), le
+> bouton masqué n'est jamais figé sous le focus — la piste `aria-describedby` n'a plus d'objet, écrit
+> dans le test. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 185 : une seule écriture du prédicat « mode couple » (`[COUPLE-PREDICAT-COPIES]`)
 > Re-recensé par le MOTIF : neuf sites, pas six (`MissingDataBanner` en négation, `Budget` qui dérive
 > `user2`, `nomsConjoints` de `SelectProprietaire`), tous sur `isCoupleMode` (hissé au lot 180). Les

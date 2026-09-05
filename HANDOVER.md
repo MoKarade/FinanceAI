@@ -16,6 +16,18 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 162 : `rankStrategies` est RETIRÉ (module orphelin, décision Marc)
+> `[ENG-RANKING-MODULES-ORPHELINS]` — `strategyRanking.ts` supprimé avec ses deux fichiers de
+> test (aucun appelant hors tests, alias re-vérifiés au recensement). `OptimizeObjective` et
+> `OBJECTIVE_LABELS`, ses seuls exports VIVANTS (consommés par `strategyConfigRanking.ts`),
+> déménagent chez leur consommateur — avec l'avertissement daté du double-comptage successoral
+> du score `balanced`, pour quiconque ressusciterait le module depuis git. `compareLifeScenarios`
+> INTACT (vivant via GoalSeekerCard — le recensement #683 l'avait établi). Doc `PROJECTION.md`
+> réécrite (elle citait le trieur comme vivant), commentaires croisés (fireMilestone,
+> totalTaxesPaid.test) mis à jour. Aucun test neuf, délibérément : la garde du retrait est le
+> COMPILATEUR (tout import mort casse le typecheck) + knip rejoué (rien de neuf sur le périmètre
+> hors deux types internes déjà dans la liste tolérée). Rien de visible à l'écran. Push sans leçon.
+
 > ## 🟦 Session 2026-09-05 — Lot 161 : le taux de renouvellement SAISI pilote enfin l'hypothèque
 > `[ENG-RENEWAL-SAISIE]` + `[ENG-RENEWAL-RATE-MISMATCH]`, livrés ENSEMBLE (décision Marc).
 > Recensement : le champ `renewalRateProjection` existait dans le TYPE et le Studio immobilier

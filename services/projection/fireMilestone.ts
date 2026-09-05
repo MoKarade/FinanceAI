@@ -25,9 +25,10 @@ export interface FireMilestonePoint {
 }
 
 /**
- * Le point atteint-il la cible FIRE du mois ? Même prédicat que le classement des stratégies
- * (services/projection/strategyRanking.ts) et que le moteur lui-même (`rawNetWorth >=
- * futureFireTarget`, projection.ts).
+ * Le point atteint-il la cible FIRE du mois ? Même prédicat que le moteur lui-même
+ * (`rawNetWorth >= futureFireTarget`, projection.ts) et que le contexte IA. (Son autre
+ * consommateur historique, `strategyRanking.ts`, a été retiré le 2026-09-05 —
+ * `[ENG-RANKING-MODULES-ORPHELINS]`.)
  *
  * ⚠️ Garde `FireTarget > 0` : sans objectif configuré (dépenses de référence à 0 → cible 0), le
  * moteur journalise le lifeEvent dès le mois 0 puisque tout patrimoine ≥ 0. Un jalon dérivé ici

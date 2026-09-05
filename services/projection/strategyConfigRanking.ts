@@ -12,12 +12,24 @@
 
 import { formatCAD } from '../../utils/format';
 import type { ConfigResult } from './strategySearch';
-import type { OptimizeObjective } from './strategyRanking';
-import { OBJECTIVE_LABELS } from './strategyRanking';
 import { leverLabel, leverValueLabel, type StrategyConfig } from './strategyConfig';
 
-export type { OptimizeObjective };
-export { OBJECTIVE_LABELS };
+// [ENG-RANKING-MODULES-ORPHELINS] `strategyRanking.ts` (rankStrategies, le classement des
+// scénarios DÉTERMINISTES) a été RETIRÉ le 2026-09-05 (décision Marc 2026-09-04) : aucun
+// appelant hors tests, alias re-vérifiés. Le type d'objectif et ses libellés — les seuls
+// exports que ce module vivant consommait — déménagent ICI, leur dernier domicile réel.
+// ⚠️ À qui voudrait le RESSUSCITER depuis git : son score `balanced` comptait l'impôt
+// successoral DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax, à 0,40 + axe
+// tax = lifetimeTaxTotal qui l'inclut, à 0,25 — relecture #681). À corriger AVANT tout
+// branchement, jamais après.
+export type OptimizeObjective = 'balanced' | 'wealth' | 'tax' | 'fire';
+
+export const OBJECTIVE_LABELS: Record<OptimizeObjective, string> = {
+    balanced: 'Équilibré',
+    wealth: 'Patrimoine max',
+    tax: 'Impôt minimum',
+    fire: 'FIRE le plus tôt',
+};
 
 /** Sous-scores normalisés 0..1 d'une config (pour l'affichage du détail). */
 export interface ScoreBreakdown {

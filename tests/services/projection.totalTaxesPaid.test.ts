@@ -134,10 +134,10 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
     });
 
     it('ratio MELT/AUTO borné (~2,8 mesuré post-REALINDEX, était ~4,4) — PAS un pin d\'ordre du ranking complet', () => {
-        // ⚠️ Le validator #554 a MESURÉ que l'ordre de rankStrategies CHANGE avec le compteur
-        // corrigé (balanced : best PRIO_REER → MELTDOWN sur le retraité 62) — voulu, l'ancien
-        // ordre reposait sur le double-comptage. Le pin d'ordre COMPLET (objectifs tax/balanced)
-        // est le ticket [ENG-RANKING-ORDER-PIN]. Ici : la paire MELT/AUTO seulement.
+        // ⚠️ Le validator #554 avait MESURÉ que l'ordre de rankStrategies changeait avec le
+        // compteur corrigé — voulu, l'ancien ordre reposait sur le double-comptage. Ce module et
+        // son pin d'ordre ([ENG-RANKING-ORDER-PIN]) ont été RETIRÉS le 2026-09-05 (décision Marc,
+        // [ENG-RANKING-MODULES-ORPHELINS] : aucun appelant). Ici : la paire MELT/AUTO seulement.
         const melt = run(base(), 'MELTDOWN_REER');
         const auto = run(base(), 'AUTO_MARGINAL');
         const ratio = melt.totalTaxesPaid / auto.totalTaxesPaid;

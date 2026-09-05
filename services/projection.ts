@@ -1328,175 +1328,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             impotSalaireMois = 0;
         }
 
-        // Cycle 11 split: December tax filing → ./projection/taxCycle.processDecemberTaxFiling
-        if (currentMonthIndex === 11 && m > 0) {
-            const yearsElapsed = Math.floor(m / 12);
-            const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
-            // FA-10 — `taxFilers` (déclaré en tête d'itération) : nombre de CONTRIBUABLES du ménage.
-            // Sert ici à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
-            // [ENG-DIVORCE-REGISTRE-PERCONJOINT] DEUX portes y mènent : le décès et le DIVORCE. Le
-            // divorce était fiscalement INERTE — mesuré : Δ impôt = 0 $ EXACT sur 30 ans, alors que
-            // la différence entre 1 et 2 contribuables vaut ~187 k$ d'impôt cumulé.
-
-            // Levier « récolte de gains » (timing) : réalise des gains non-enreg latents dans une
-            // année à faible revenu pour remplir le 1er palier (ACB relevé). À FAIRE AVANT le dépôt
-            // fiscal de décembre → le gain réalisé entre dans accCapitalGainsYear et est imposé CETTE
-            // année (au taux bas), sans fuite (l'ACB monte du montant imposé).
-            // FA-10 : palier du SURVIVANT seul (×1) et sans le salaire fantôme du défunt — sinon le
-            // levier récoltait avec une marge de palier doublée par un contribuable mort.
-            const ghOtherNominal = isRetired
-                ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear)
-                : (grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            const gh = processGainHarvesting({
-                enabled: !!overrides.gainHarvesting,
-                nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
-                existingGainsNominal: accCapitalGainsYear, activeUsersCount: taxFilers, loopYear,
-                capitalLossBank,
-            });
-            if (gh.harvestedGain > 0) {
-                // [PV-2] Seule la part NON compensée par la banque de pertes est imposable ;
-                // l'ACB monte du gain TOTAL réalisé (la part compensée = step-up gratuit).
-                accCapitalGainsYear += gh.harvestedGain - gh.consumedLoss;
-                capitalLossBank -= gh.consumedLoss;
-                nonRegACB += gh.harvestedGain;
-                if (gh.logMsg) logEvent(flowEventsLog, gh.logMsg);
-            }
-
-            // FA-10 — survivorMode : UN seul contribuable (user2 décédé, cf. activeIncome.ts:61 ;
-            // le roulement REER fait que tout le revenu de retraite est celui du SURVIVANT user1).
-            // Même traitement que le clawback FA-2 (oasBeneficiaries) : n=1, pas de décomposition
-            // par conjoint, pas d'ageSpouse (⇒ pas de crédits d'âge du défunt, pas de fractionnement
-            // avec lui, seuils RAMQ/ligne 361 célibataire, RAMQ/FSS ×1), salaire du défunt à 0 dans
-            // la branche active. La DB par conjoint est AGRÉGÉE sur une tête (l'assiette du crédit
-            // pension / fractionnable reste complète — la diviser perdait la moitié du crédit).
-            // Avant : le revenu du survivant était réparti sur 2 têtes → barème progressif appliqué
-            // 2× à demi-revenu + crédits du défunt + fractionnement fictif = sous-imposition.
-            const decResult = processDecemberTaxFiling(
-                currentMonthIndex,
-                {
-                    m, loopYear, isRetired, enableMonteCarlo,
-                    yearsElapsed, inflationFactor,
-                    activeUsersCount: taxFilers,
-                    grossMarcBaseAnnual,
-                    grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
-                    simSalaryGrowth,
-                    // [ENG-T1213-NET-MONTHLY] FORCÉ À FALSE (décision de Marc, 2026-09-03), et pas
-                    // seulement retiré de l'interface. Le réglage est PERSISTÉ dans la configuration :
-                    // se contenter de retirer le bouton laisserait une config qui l'a déjà à `true`
-                    // bloquée avec −45,7 % de patrimoine projeté et AUCUN moyen de revenir en arrière
-                    // (« un repli persisté est pire qu'un repli calculé » — le dépôt a déjà payé ce
-                    // piège sur `grossSalary`). Le champ reste dans le type : aucune migration de
-                    // données, donc aucun risque d'écraser une saisie.
-                    // ⚠️ Le mécanisme n'est pas « désactivé par prudence » : il était FAUX. Réduire la
-                    // retenue sans majorer le net mensuel encaissé fait perdre l'économie fiscale du
-                    // REER sans jamais verser la contrepartie — l'inverse du vrai T1213, qui est
-                    // neutre à positif. Le rebrancher exige de modéliser cette hausse, ce qui bute
-                    // sur une causalité (les déductions de l'année ne sont connues qu'en décembre).
-                    optimizeSourceDeductions: false,
-                    incomeRetirementMonthly: incomeRetirement,
-                    // FA-3a — SRG mensuel familial : NON IMPOSABLE (Service Canada), soustrait
-                    // de l'assiette imposable par taxDecember (revenu cash inchangé).
-                    incomeRetirementGisMonthly: incomeRetirementGis,
-                    // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
-                    // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
-                    incomeRetirementPerUserMonthly: soloHousehold ? undefined : incomeRetirementPerUser,
-                    // Phase 3 — composante DB mensuelle par conjoint (fractionnement 65+).
-                    // [FISC-LATENT-PENSION-CREDIT] Expression HISSÉE en `dbPerUserMonthly()` : elle
-                    // sert aussi à l'impôt latent, et deux écritures d'un même effondrement solo
-                    // divergeraient en silence (leçon du lot 84, où le même geste a supprimé un
-                    // littéral en double au lieu de le déclarer).
-                    incomeRetirementDbPerUserMonthly: dbPerUserMonthly(),
-                    nonReg, baseNonRegRate: baseRates.nonReg,
-                    accRrspYear, accFhsaYear, smithInterestDeductibleYear,
-                    accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
-                    accRetraitsReerYearByUser: soloHousehold ? undefined : accRetraitsReerYearByUser,
-                    age,
-                    // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
-                    // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint
-                    // (ou conjoint décédé — FA-10).
-                    ageSpouse: !soloHousehold ? ageSpouseProjete : undefined,
-                    // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
-                    // Approximé via childGoals.length faute de champ dédié dans User.
-                    // TODO: ajouter `User.dependentChildrenCount` pour précision.
-                    childrenCount: activeChild.length,
-                    // §6.4 RAMQ — [ENG-RAMQ-FIELDS] exemption PAR ADULTE si couverture privée
-                    // (`User.hasPrivateDrugInsurance`, Annexe K : chaque conjoint calcule SA prime).
-                    // Ménage solo (décès/divorce : c'est user[0] qui reste, cf. survivorMode) →
-                    // seul son drapeau compte. Champ absent = false (paie au public, conservateur).
-                    ramqExemptAdultsCount: soloHousehold
-                        ? (config.users[0]?.hasPrivateDrugInsurance ? 1 : 0)
-                        : config.users.filter(u => u?.hasPrivateDrugInsurance).length,
-                    // PH4-FUT-B — levier fractionnement de pension. Absent/true = actif (historique) ;
-                    // false → la Phase 3 d'optimisation de décembre est sautée (impôt = brut par conjoint).
-                    enablePensionSplitting: effProj.appliedPensionSplitting !== false,
-                },
-                { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate },
-                taxCurrentYear,
-            );
-            taxCurrentYear = decResult.newTaxCurrentYear;
-            // [FISC-DIV-ACB-STEPUP] Le dividende réputé du non-enregistré vient d'être imposé et son
-            // montant est resté dans le compte : le prix de base rajusté monte d'autant, sinon la
-            // même somme est ré-imposée dans le gain latent à la réalisation ou au décès.
-            // ⚠️ MÊME patron que `processGainHarvesting` quelques lignes plus haut
-            // (`nonRegACB += gh.harvestedGain`) : le module rend un delta, l'appelant l'applique.
-            nonRegACB += decResult.nonRegACBAdd;
-            // [ENG-TTP-UNSETTLED-HORIZON] Décembre vient de RÉCONCILIER l'année : ce montant est
-            // la vraie dette fiscale de l'année (retenues provisionnées + complément), réglée par
-            // l'avril SUIVANT. Photo ICI ≡ lire taxPreviousYear (son transfert est quelques lignes
-            // plus bas, MÊME bloc décembre — vérifié #555) : la photo est le point le plus lisible.
-            // NB : l'audit #554 mesurait 5 815,50 $ en sommant les séries AccruedTax* = année
-            // réconciliée (171,89 $ NET) + stub de l'année en cours NON réconciliée (5 643,61 $ de
-            // retenues brutes) — c'est le NET réconcilié seul qui est la vraie dette.
-            reconciledUnsettledTax = (['revenu', 'gains', 'divers', 'reer'] as const)
-                .reduce((s, k) => s + (Number.isFinite(taxCurrentYear[k]) ? taxCurrentYear[k] : 0), 0);
-            decResult.logs.forEach(msg => logEvent(flowEventsLog, msg));
-
-            // PV-9 : capture des gains réalisés de l'année AVANT le reset (réutilisés par le clawback
-            // PSV ci-dessous, même décembre, et par le test SRG de l'an prochain via le lag de janvier).
-            capitalGainsRealizedThisYear = accCapitalGainsYear;
-            accCapitalGainsYear = 0;
-            smithInterestDeductibleYear = 0;
-            accRrspYear = 0;
-            accFhsaYear = 0;
-
-            // V30: Transfer accumulated taxes to the 'previous year' bucket to be paid in April.
-            taxPreviousYear = { ...taxCurrentYear };
-            taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
-
-            // V28 + Cycle 12: TFSA Room reset géré en Janvier — voir processJanuaryReset (./projection/taxJanuary)
-
-            // [CELIAPP-DOUBLE-RECHARGE] Décembre n'écrit PLUS l'espace CELIAPP — audit 2026-08-19.
-            //
-            // Il posait ici `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`, ce qui REMETTAIT
-            // l'espace au plein annuel quoi qu'on ait cotisé. Or janvier (`taxJanuary.ts`, la
-            // source unique depuis le Cycle 12) calcule SON report à partir de cette valeur :
-            //   allowedCarryForward = min(annuel, fhsaRoomCurrent)
-            // Il lisait donc toujours « annuel » comme résiduel → report TOUJOURS MAXIMAL, quelle
-            // que soit l'utilisation réelle. Deux producteurs qui s'ignorent.
-            //
-            // MESURÉ (couple, plafond annuel 16 000 $) : espace publié 32 000 $ CHAQUE année au
-            // lieu de suivre le résiduel (16 000 $ si tout est cotisé, 24 000 $ si la moitié l'est),
-            // et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5.
-            //
-            // ⚠️ La garde du panel #613 (« les droits sont PERSONNELS : ceux du conjoint partent
-            // avec lui ») n'est PAS perdue : janvier reçoit déjà `fhsaEligibleUsersCount` passé au
-            // travers de `soloHousehold` (voir l'appel à `processJanuaryReset` plus bas), et ce
-            // compteur est même PLUS juste que `taxFilers` — il exclut les propriétaires récents,
-            // qui n'ont pas droit au CELIAPP.
-            //
-            // Le résiduel transmis est désormais le VRAI : `cashflowAllocation` fait
-            // `state.fhsaRoom -= fillFhsa` à chaque cotisation. Le CELI avait migré vers janvier au
-            // Cycle 12 (cf. commentaire ci-dessus) ; le CELIAPP était resté en arrière.
-
-            // Cycle 10 split: TLH → ./projection/taxCycle (processTaxLossHarvesting)
-            const currentNonRegRate = enableMonteCarlo ? mcNonRegRate : baseRates.nonReg;
-            const tlhResult = processTaxLossHarvesting(currentMonthIndex, m, nonReg, nonRegACB, currentNonRegRate);
-            if (tlhResult.harvestedLoss > 0) {
-                capitalLossBank += tlhResult.harvestedLoss;
-                nonRegACB += tlhResult.acbDelta;
-                if (tlhResult.logMsg) logEvent(flowEventsLog, tlhResult.logMsg);
-            }
-        }
 
         // Cycle 10 split: OAS Clawback → ./projection/taxCycle (computeOasClawback)
         // FA-2 — décomposition par conjoint transmise : le seuil de récupération est PAR
@@ -2191,6 +2022,188 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, meltResult.reerDrawn, reerByUser);
             taxCurrentYear.reer += meltResult.withholding;
             if (meltResult.log) logEvent(flowEventsLog, meltResult.log);
+        }
+
+        // Cycle 11 split: December tax filing → ./projection/taxCycle.processDecemberTaxFiling
+        // [FISC-DEC-FLUX-ASSIETTE-TIMING] (décision Marc 2026-09-05, réponse 15 : CORRIGER) Ce bloc
+        // vivait AVANT la cascade d'allocation, le meltdown, l'immobilier (RAP) et les objectifs du
+        // MÊME décembre : il lisait `accRetraitsReerYear`, `taxCurrentYear` et les autres
+        // accumulateurs annuels avant qu'ils ne soient alimentés, puis janvier les remettait à zéro —
+        // les retraits REER de décembre n'entraient dans l'assiette d'AUCUNE année (fuite d'assiette,
+        // pas une convention de calendrier). Déplacé en FIN de mois, après le dernier producteur
+        // (le meltdown ; le transfert NonReg → CELI/REER qui suit ne produit ni retrait ni revenu).
+        // Mesuré (banc `scripts/mesureOrdreBoucle.ts`, clef `dec_fin_de_mois`) : totalTaxesPaid
+        // +25 568 $ (retraités AUTO), +14 751 $ (MELTDOWN), −2 991 $ (couple actif : les cotisations
+        // REER de décembre sont enfin déduites l'année où elles sont faites), ≈ 0 $ (droits saturants).
+        // L'ordre est gardé par `tests/services/projection.engineOrder.test.ts` (assertion INVERSÉE
+        // avec son histoire) — le remettre en haut de boucle rouvrirait la fuite en silence.
+        if (currentMonthIndex === 11 && m > 0) {
+            const yearsElapsed = Math.floor(m / 12);
+            const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
+            // FA-10 — `taxFilers` (déclaré en tête d'itération) : nombre de CONTRIBUABLES du ménage.
+            // Sert ici à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
+            // [ENG-DIVORCE-REGISTRE-PERCONJOINT] DEUX portes y mènent : le décès et le DIVORCE. Le
+            // divorce était fiscalement INERTE — mesuré : Δ impôt = 0 $ EXACT sur 30 ans, alors que
+            // la différence entre 1 et 2 contribuables vaut ~187 k$ d'impôt cumulé.
+
+            // Levier « récolte de gains » (timing) : réalise des gains non-enreg latents dans une
+            // année à faible revenu pour remplir le 1er palier (ACB relevé). À FAIRE AVANT le dépôt
+            // fiscal de décembre → le gain réalisé entre dans accCapitalGainsYear et est imposé CETTE
+            // année (au taux bas), sans fuite (l'ACB monte du montant imposé).
+            // FA-10 : palier du SURVIVANT seul (×1) et sans le salaire fantôme du défunt — sinon le
+            // levier récoltait avec une marge de palier doublée par un contribuable mort.
+            const ghOtherNominal = isRetired
+                ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear)
+                : (grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+            const gh = processGainHarvesting({
+                enabled: !!overrides.gainHarvesting,
+                nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
+                existingGainsNominal: accCapitalGainsYear, activeUsersCount: taxFilers, loopYear,
+                capitalLossBank,
+            });
+            if (gh.harvestedGain > 0) {
+                // [PV-2] Seule la part NON compensée par la banque de pertes est imposable ;
+                // l'ACB monte du gain TOTAL réalisé (la part compensée = step-up gratuit).
+                accCapitalGainsYear += gh.harvestedGain - gh.consumedLoss;
+                capitalLossBank -= gh.consumedLoss;
+                nonRegACB += gh.harvestedGain;
+                if (gh.logMsg) logEvent(flowEventsLog, gh.logMsg);
+            }
+
+            // FA-10 — survivorMode : UN seul contribuable (user2 décédé, cf. activeIncome.ts:61 ;
+            // le roulement REER fait que tout le revenu de retraite est celui du SURVIVANT user1).
+            // Même traitement que le clawback FA-2 (oasBeneficiaries) : n=1, pas de décomposition
+            // par conjoint, pas d'ageSpouse (⇒ pas de crédits d'âge du défunt, pas de fractionnement
+            // avec lui, seuils RAMQ/ligne 361 célibataire, RAMQ/FSS ×1), salaire du défunt à 0 dans
+            // la branche active. La DB par conjoint est AGRÉGÉE sur une tête (l'assiette du crédit
+            // pension / fractionnable reste complète — la diviser perdait la moitié du crédit).
+            // Avant : le revenu du survivant était réparti sur 2 têtes → barème progressif appliqué
+            // 2× à demi-revenu + crédits du défunt + fractionnement fictif = sous-imposition.
+            const decResult = processDecemberTaxFiling(
+                currentMonthIndex,
+                {
+                    m, loopYear, isRetired, enableMonteCarlo,
+                    yearsElapsed, inflationFactor,
+                    activeUsersCount: taxFilers,
+                    grossMarcBaseAnnual,
+                    grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
+                    simSalaryGrowth,
+                    // [ENG-T1213-NET-MONTHLY] FORCÉ À FALSE (décision de Marc, 2026-09-03), et pas
+                    // seulement retiré de l'interface. Le réglage est PERSISTÉ dans la configuration :
+                    // se contenter de retirer le bouton laisserait une config qui l'a déjà à `true`
+                    // bloquée avec −45,7 % de patrimoine projeté et AUCUN moyen de revenir en arrière
+                    // (« un repli persisté est pire qu'un repli calculé » — le dépôt a déjà payé ce
+                    // piège sur `grossSalary`). Le champ reste dans le type : aucune migration de
+                    // données, donc aucun risque d'écraser une saisie.
+                    // ⚠️ Le mécanisme n'est pas « désactivé par prudence » : il était FAUX. Réduire la
+                    // retenue sans majorer le net mensuel encaissé fait perdre l'économie fiscale du
+                    // REER sans jamais verser la contrepartie — l'inverse du vrai T1213, qui est
+                    // neutre à positif. Le rebrancher exige de modéliser cette hausse, ce qui bute
+                    // sur une causalité (les déductions de l'année ne sont connues qu'en décembre).
+                    optimizeSourceDeductions: false,
+                    incomeRetirementMonthly: incomeRetirement,
+                    // FA-3a — SRG mensuel familial : NON IMPOSABLE (Service Canada), soustrait
+                    // de l'assiette imposable par taxDecember (revenu cash inchangé).
+                    incomeRetirementGisMonthly: incomeRetirementGis,
+                    // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
+                    // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
+                    incomeRetirementPerUserMonthly: soloHousehold ? undefined : incomeRetirementPerUser,
+                    // Phase 3 — composante DB mensuelle par conjoint (fractionnement 65+).
+                    // [FISC-LATENT-PENSION-CREDIT] Expression HISSÉE en `dbPerUserMonthly()` : elle
+                    // sert aussi à l'impôt latent, et deux écritures d'un même effondrement solo
+                    // divergeraient en silence (leçon du lot 84, où le même geste a supprimé un
+                    // littéral en double au lieu de le déclarer).
+                    incomeRetirementDbPerUserMonthly: dbPerUserMonthly(),
+                    nonReg, baseNonRegRate: baseRates.nonReg,
+                    accRrspYear, accFhsaYear, smithInterestDeductibleYear,
+                    accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
+                    accRetraitsReerYearByUser: soloHousehold ? undefined : accRetraitsReerYearByUser,
+                    age,
+                    // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
+                    // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint
+                    // (ou conjoint décédé — FA-10).
+                    ageSpouse: !soloHousehold ? ageSpouseProjete : undefined,
+                    // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
+                    // Approximé via childGoals.length faute de champ dédié dans User.
+                    // TODO: ajouter `User.dependentChildrenCount` pour précision.
+                    childrenCount: activeChild.length,
+                    // §6.4 RAMQ — [ENG-RAMQ-FIELDS] exemption PAR ADULTE si couverture privée
+                    // (`User.hasPrivateDrugInsurance`, Annexe K : chaque conjoint calcule SA prime).
+                    // Ménage solo (décès/divorce : c'est user[0] qui reste, cf. survivorMode) →
+                    // seul son drapeau compte. Champ absent = false (paie au public, conservateur).
+                    ramqExemptAdultsCount: soloHousehold
+                        ? (config.users[0]?.hasPrivateDrugInsurance ? 1 : 0)
+                        : config.users.filter(u => u?.hasPrivateDrugInsurance).length,
+                    // PH4-FUT-B — levier fractionnement de pension. Absent/true = actif (historique) ;
+                    // false → la Phase 3 d'optimisation de décembre est sautée (impôt = brut par conjoint).
+                    enablePensionSplitting: effProj.appliedPensionSplitting !== false,
+                },
+                { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate },
+                taxCurrentYear,
+            );
+            taxCurrentYear = decResult.newTaxCurrentYear;
+            // [FISC-DIV-ACB-STEPUP] Le dividende réputé du non-enregistré vient d'être imposé et son
+            // montant est resté dans le compte : le prix de base rajusté monte d'autant, sinon la
+            // même somme est ré-imposée dans le gain latent à la réalisation ou au décès.
+            // ⚠️ MÊME patron que `processGainHarvesting` quelques lignes plus haut
+            // (`nonRegACB += gh.harvestedGain`) : le module rend un delta, l'appelant l'applique.
+            nonRegACB += decResult.nonRegACBAdd;
+            // [ENG-TTP-UNSETTLED-HORIZON] Décembre vient de RÉCONCILIER l'année : ce montant est
+            // la vraie dette fiscale de l'année (retenues provisionnées + complément), réglée par
+            // l'avril SUIVANT. Photo ICI ≡ lire taxPreviousYear (son transfert est quelques lignes
+            // plus bas, MÊME bloc décembre — vérifié #555) : la photo est le point le plus lisible.
+            // NB : l'audit #554 mesurait 5 815,50 $ en sommant les séries AccruedTax* = année
+            // réconciliée (171,89 $ NET) + stub de l'année en cours NON réconciliée (5 643,61 $ de
+            // retenues brutes) — c'est le NET réconcilié seul qui est la vraie dette.
+            reconciledUnsettledTax = (['revenu', 'gains', 'divers', 'reer'] as const)
+                .reduce((s, k) => s + (Number.isFinite(taxCurrentYear[k]) ? taxCurrentYear[k] : 0), 0);
+            decResult.logs.forEach(msg => logEvent(flowEventsLog, msg));
+
+            // PV-9 : capture des gains réalisés de l'année AVANT le reset (réutilisés par le clawback
+            // PSV ci-dessous, même décembre, et par le test SRG de l'an prochain via le lag de janvier).
+            capitalGainsRealizedThisYear = accCapitalGainsYear;
+            accCapitalGainsYear = 0;
+            smithInterestDeductibleYear = 0;
+            accRrspYear = 0;
+            accFhsaYear = 0;
+
+            // V30: Transfer accumulated taxes to the 'previous year' bucket to be paid in April.
+            taxPreviousYear = { ...taxCurrentYear };
+            taxCurrentYear = { revenu: 0, gains: 0, reer: 0, divers: 0, donCredit: 0 };
+
+            // V28 + Cycle 12: TFSA Room reset géré en Janvier — voir processJanuaryReset (./projection/taxJanuary)
+
+            // [CELIAPP-DOUBLE-RECHARGE] Décembre n'écrit PLUS l'espace CELIAPP — audit 2026-08-19.
+            //
+            // Il posait ici `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`, ce qui REMETTAIT
+            // l'espace au plein annuel quoi qu'on ait cotisé. Or janvier (`taxJanuary.ts`, la
+            // source unique depuis le Cycle 12) calcule SON report à partir de cette valeur :
+            //   allowedCarryForward = min(annuel, fhsaRoomCurrent)
+            // Il lisait donc toujours « annuel » comme résiduel → report TOUJOURS MAXIMAL, quelle
+            // que soit l'utilisation réelle. Deux producteurs qui s'ignorent.
+            //
+            // MESURÉ (couple, plafond annuel 16 000 $) : espace publié 32 000 $ CHAQUE année au
+            // lieu de suivre le résiduel (16 000 $ si tout est cotisé, 24 000 $ si la moitié l'est),
+            // et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5.
+            //
+            // ⚠️ La garde du panel #613 (« les droits sont PERSONNELS : ceux du conjoint partent
+            // avec lui ») n'est PAS perdue : janvier reçoit déjà `fhsaEligibleUsersCount` passé au
+            // travers de `soloHousehold` (voir l'appel à `processJanuaryReset` plus bas), et ce
+            // compteur est même PLUS juste que `taxFilers` — il exclut les propriétaires récents,
+            // qui n'ont pas droit au CELIAPP.
+            //
+            // Le résiduel transmis est désormais le VRAI : `cashflowAllocation` fait
+            // `state.fhsaRoom -= fillFhsa` à chaque cotisation. Le CELI avait migré vers janvier au
+            // Cycle 12 (cf. commentaire ci-dessus) ; le CELIAPP était resté en arrière.
+
+            // Cycle 10 split: TLH → ./projection/taxCycle (processTaxLossHarvesting)
+            const currentNonRegRate = enableMonteCarlo ? mcNonRegRate : baseRates.nonReg;
+            const tlhResult = processTaxLossHarvesting(currentMonthIndex, m, nonReg, nonRegACB, currentNonRegRate);
+            if (tlhResult.harvestedLoss > 0) {
+                capitalLossBank += tlhResult.harvestedLoss;
+                nonRegACB += tlhResult.acbDelta;
+                if (tlhResult.logMsg) logEvent(flowEventsLog, tlhResult.logMsg);
+            }
         }
 
         // Transfert NonReg → CELI/REER si espace

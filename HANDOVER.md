@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 194 (DOC) : deux tickets fermés CADUCS après mesure
+> `[ENG-TTP-NEGATIF]` : le risque de libellé n'existe pas — 0 composant lit `totalTaxesPaid`, le MCP l'a
+> renommé `netTaxSettlements` (`[PROJ-TAXPAID-LABEL]`), le seul « impôt à vie » affiché est `lifetimeTax`
+> (impôt total modélisé) ; le fond reste dans `[PROJ-TAXPAID-SOLDE-AVRIL]`. `[A11Y-PRIVACY-ONBOARDING]` :
+> masquer les champs de l'onboarding serait inerte — `isPrivacyMode` n'est pas persisté et l'onboarding
+> n'est rendu qu'au premier lancement, sans relance : il ne peut jamais s'afficher en mode discret.
+> Archive du lot 193. Rien de servi ne change. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 193 : badge « Taux de change estimés » sur la surface fiscale (`[FX-BADGE-SURFACES-RESTANTES]`)
 > Re-recensé : la surface Futur nommée par le ticket était DÉJÀ couverte (`FutureKpiStrip` rend le badge) ;
 > restait `TaxCenter` — `<FxEstimateBadge />` posé à côté de « Invest. Non-Enregistrés » (montant et impact

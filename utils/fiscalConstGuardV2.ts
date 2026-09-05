@@ -316,10 +316,11 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Borne HAUTE de la fenêtre du report de remboursement du RAP (Budget fédéral 2024), cf. l’entrée `2022` du même fichier. Les deux bornes ET la durée de grâce (5 ans vs 2) doivent être sourcées ENSEMBLE en §7 : en ancrer une seule laisserait une règle à moitié fausse.' },
     { file: 'services/projection/realEstateMonth.ts', value: '60', family: 'design',
       reason: 'Terme hypothécaire de 5 ans exprimé en MOIS : `remainingMonths > 60` empêche de « renouveler » un prêt dont il reste moins d’un terme. Convention du marché canadien, pas une règle de loi. ⚠️ Son JUMEAU `monthsSincePurchase % 60 === 0`, deux lignes plus haut, reste INVISIBLE au scan — l’opérateur `%` n’est pas une position retenue. Les deux 60 disent la même chose et doivent bouger ensemble ; celui-ci sert de sentinelle pour l’autre.' },
-    { file: 'services/projection/realEstateMonth.ts', value: '0.01', family: 'design',
-      reason: 'Plancher du taux au renouvellement hypothécaire (`Math.max(0.01, mortgageRate/100 + rateShock)`) : le choc pseudo-aléatoire de ±1,5 pp pourrait sinon rendre un taux négatif, qui casserait la formule d’amortissement. Garde-fou numérique du modèle, aucune origine réglementaire.' },
-    { file: 'services/projection/realEstateMonth.ts', value: '0.015', family: 'design',
-      reason: 'Amplitude du choc de taux pseudo-aléatoire dérivé de l’identifiant du bien (±1,5 pp). Paramètre de simulation, pas un taux de marché observé.' },
+    // ⚠️ 2026-09-05 — les entrées `0.01` (plancher du taux renouvelé) et `0.015` (amplitude du
+    // choc pseudo-aléatoire) ont QUITTÉ ce fichier avec leurs littéraux : le choc par identifiant
+    // a été RETIRÉ au lot 161 ([ENG-RENEWAL-SAISIE], décision Marc 2026-09-04) — le taux au
+    // renouvellement vient d'une saisie (`renewalRateProjection`, défaut = taux courant, ≤ 0 =
+    // absence). L'inventaire décroît, exactement comme il doit ; l'anti-fantôme les a réclamées.
     // ⚠️ 2026-08-22 — l'entrée `0.05` (taux de marge Smith) a QUITTÉ ce fichier : le littéral est
     // devenu `SMITH_HELOC_ANNUAL_RATE` dans `modelAssumptions.ts`, importé ici
     // ([CONSTANTES-MOTEUR-NON-SOURCEES]). Elle n'est PAS supprimée pour autant — la valeur existe

@@ -87,38 +87,56 @@ const noWelcomeTax = () => 0;
  * NUL), les fixtures utilisent `p1`, les personas `jc-re1` ('j' → 106 → 1). **Aucune propriété
  * atteignable par un utilisateur n'a jamais vu son taux bouger au renouvellement.**
  *
- * Le mécanisme n'est pas corrigé ici — le rendre vivant déplacerait de l'argent sur toute
- * projection avec hypothèque et exposerait `[ENG-RENEWAL-RATE-MISMATCH]`. Ce qui est corrigé,
- * c'est le MESSAGE : « nouveau taux 5,00 % » quand l'ancien était 5,00 % affirme un changement qui
- * n'a pas eu lieu (no-fake-data). Le renouvellement, lui, a bien eu lieu.
+ * ✅ INVERSÉ le 2026-09-05 (`[ENG-RENEWAL-SAISIE]`, décision Marc 2026-09-04) : le choc par
+ * identifiant a été RETIRÉ — le taux au renouvellement vient désormais de la SAISIE
+ * `goal.renewalRateProjection` (défaut = taux courant). Ce test de limite s'inverse au même
+ * endroit plutôt que de disparaître : ce qu'il défend reste le no-fake-data du MESSAGE
+ * (« nouveau taux » seulement quand le taux a bougé), mais le discriminant n'est plus le premier
+ * caractère de l'identifiant — c'est la saisie. Un identifiant « à choc » (`re1`, jadis −1,5 pt)
+ * doit désormais rendre « taux inchangé » : c'est la preuve que le hachage est bien MORT.
  */
-describe('[ENG-RENEWAL-CHOC-MORT] le message dit ce qui s\'est passé', () => {
-    const renouvellement = (id: string) => {
+describe('[ENG-RENEWAL-SAISIE] le message dit ce qui s\'est passé — piloté par la saisie, plus par l\'identifiant', () => {
+    const renouvellement = (id: string, renewalRateProjection?: number) => {
         const state = makeState();
-        const goal = makeGoal({ id, mortgageRate: 5, amortization: 25, isPrimaryResidence: true, propertyGrowthRate: 0 });
+        const goal = makeGoal({ id, mortgageRate: 5, amortization: 25, isPrimaryResidence: true, propertyGrowthRate: 0, ...(renewalRateProjection === undefined ? {} : { renewalRateProjection }) });
         const prop = makeProp({ id, isBought: true, mortgage: 300_000, currentValue: 500_000, calculatedPmt: 1_800 });
         // m = 60 = un terme de 5 ans échu, et 240 − 60 = 180 mois restants (> 60, condition du bloc).
         processRealEstate(state, makeCtx({ m: 60 }), [goal], [prop], offset0, noWelcomeTax);
         return state.lifeEventLogs.filter((l) => l.includes('Renouvellement'));
     };
 
-    it('identifiant RÉEL de l\'app (`prop_…`) : choc nul → le message dit « taux INCHANGÉ »', () => {
+    it('sans saisie : le message dit « taux INCHANGÉ », quel que soit l\'identifiant', () => {
         const logs = renouvellement('prop_1787632344299');
         expect(logs.length, 'le renouvellement doit bien se produire').toBe(1);
         expect(logs[0]).toContain('taux inchangé');
-        expect(logs[0]).toContain('5,00 %'.replace(',', '.')); // toFixed rend un point décimal
+        expect(logs[0]).toContain('5.00'); // toFixed rend un point décimal
         expect(logs[0]).not.toContain('nouveau taux');
     });
 
-    it('identifiant à choc NON nul : le message dit « nouveau taux » (la branche vit toujours)', () => {
-        // Anti-vacuité : sans ce cas, « ne contient pas *nouveau taux* » serait vrai parce que la
-        // phrase a été supprimée, pas parce qu'elle est conditionnée. 'r' → 114 → 114 % 3 = 0 → −1,5 pt.
+    it('identifiant qui déclenchait l\'ancien choc (`re1`) : plus AUCUN effet — le hachage est mort', () => {
+        // Sous l'ancien code, 'r' → 114 % 3 = 0 → −1,5 pt et « nouveau taux 3.50 % ». Ce cas est la
+        // trace de la limite levée : s'il annonce un jour un changement sans saisie, le hachage est
+        // revenu par une porte de derrière.
         const logs = renouvellement('re1');
         expect(logs.length).toBe(1);
+        expect(logs[0]).toContain('taux inchangé');
+        expect(logs[0]).not.toContain('nouveau taux');
+    });
+
+    it('avec saisie : le message dit « nouveau taux » et l\'annonce au taux SAISI', () => {
+        // Anti-vacuité de la branche « nouveau taux » : sans ce cas, « ne contient pas *nouveau
+        // taux* » serait vrai parce que la phrase a été supprimée, pas parce qu'elle est conditionnée.
+        const logs = renouvellement('prop_1787632344299', 3.5);
+        expect(logs.length).toBe(1);
         expect(logs[0]).toContain('nouveau taux');
-        expect(logs[0]).not.toContain('inchangé');
-        // Et le taux annoncé est bien DIFFÉRENT de celui du prêt (5 % − 1,5 pt = 3,50 %).
         expect(logs[0]).toContain('3.50');
+        expect(logs[0]).not.toContain('inchangé');
+    });
+
+    it('saisie ÉGALE au taux courant : « taux inchangé » — on n\'annonce pas un changement qui n\'existe pas', () => {
+        const logs = renouvellement('prop_1787632344299', 5);
+        expect(logs.length).toBe(1);
+        expect(logs[0]).toContain('taux inchangé');
     });
 });
 
@@ -349,7 +367,7 @@ describe('realEstateMonth — chemins-bords', () => {
 
     it('renouvellement à 5 ans (m=60) : recalcule le PMT sur la durée résiduelle', () => {
         const state = makeState();
-        // id 'p1' → charCodeAt(0)=112, 112%3=1 → choc de taux nul → renouvellement au même taux 6 %.
+        // Sans saisie de taux de renouvellement : renouvellement au même taux 6 % ([ENG-RENEWAL-SAISIE]).
         const goal = makeGoal({ mortgageRate: 6, amortization: 25, isPrimaryResidence: false, propertyGrowthRate: 0 });
         const prop = makeProp({ id: 'p1', isBought: true, mortgage: 280000, currentValue: 600000, calculatedPmt: 1 });
 

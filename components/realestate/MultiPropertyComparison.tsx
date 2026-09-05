@@ -27,7 +27,8 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
         const r = (goal.mortgageRate || 4.5) / 100 / 12;
         const amort = goal.amortization || 25;
         const mort = p - dp;
-        const renewR = (goal.renewalRateProjection || 5.0) / 100 / 12;
+        // Défaut = taux ACTUEL (décision Marc 2026-09-04, aligné sur le moteur — `||` voulu : ≤ 0 = absence).
+        const renewR = (goal.renewalRateProjection || (goal.mortgageRate || 4.5)) / 100 / 12;
         const growth = (goal.propertyGrowthRate ?? 3.0) / 100;
         const numPmt = amort * 12;
         let monthlyPmt = r > 0

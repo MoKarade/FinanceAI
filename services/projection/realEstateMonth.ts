@@ -24,6 +24,12 @@ export interface PropertyStateMutable {
     calculatedPmt: number;
     isSold?: boolean;
     isPaidOff?: boolean;
+    /** [ENG-RENEWAL-RATE-MISMATCH] Taux CONTRACTUEL courant du prêt, en % annuel (comme
+     *  `goal.mortgageRate`). Écrit à l'achat puis à CHAQUE renouvellement ; l'intérêt mensuel et
+     *  le taux de la marge Smith le lisent (`?? goal.mortgageRate` pour l'état SEMÉ d'un bien déjà
+     *  détenu, qui ne traverse pas le bloc d'achat). Au partage du divorce, il SURVIT tel quel au
+     *  spread — un taux n'est pas un montant, il ne se divise pas. */
+    currentRatePct?: number;
 }
 
 export interface RealEstateState {
@@ -348,6 +354,10 @@ export function processRealEstate(
                 const n = goal.amortization * 12;
                 const p = pState.mortgage;
                 pState.calculatedPmt = r > 0 ? p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1) : p / n;
+                // [ENG-RENEWAL-RATE-MISMATCH] Le taux courant du prêt vit dans l'ÉTAT dès l'achat :
+                // c'est lui (jamais `goal.mortgageRate` directement) que l'intérêt mensuel consomme,
+                // sinon un renouvellement à taux différent affame le capital en silence.
+                pState.currentRatePct = goal.mortgageRate;
                 state.lifeEventLogs.push(`🏠 Achat ${goal.name || 'de la propriété'} : -${formatCAD(Math.round(totalCashNeeded))} (argent sorti de tes comptes)`);
                 state.flowEventLogs.push(`📌 Mise de fonds : -${formatCAD(goal.downPayment)} · Frais de notaire + taxe de bienvenue : -${formatCAD(Math.round(goal.totalClosingCosts + welcomeFees))}`);
                 if (goal.isPrimaryResidence) state.hasPurchasedPrimary = true;
@@ -408,33 +418,45 @@ export function processRealEstate(
             if (monthsSincePurchase > 0 && monthsSincePurchase % 60 === 0) {
                 const remainingMonths = goal.amortization * 12 - monthsSincePurchase;
                 if (remainingMonths > 60 && pState.mortgage > 0) {
-                    // ⚠️ [ENG-RENEWAL-CHOC-MORT] Ce « choc » de taux est dérivé du PREMIER CARACTÈRE
-                    // de l'identifiant du bien — et MESURÉ, il vaut ZÉRO partout dans le dépôt :
-                    // l'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → choc nul), les fixtures
-                    // utilisent `p1` et les personas `jc-re1` ('j' → 106 → 1 → nul aussi). Aucune
-                    // propriété atteignable par un utilisateur n'a jamais vu son taux bouger au
-                    // renouvellement. Le mécanisme n'est PAS corrigé ici : le rendre vivant
-                    // déplacerait de l'argent sur toute projection avec hypothèque et exposerait
-                    // `[ENG-RENEWAL-RATE-MISMATCH]` (l'intérêt reste calculé à l'ANCIEN taux) —
-                    // deux décisions qui appartiennent à Marc. Suivi : `[ENG-RENEWAL-CHOC-MORT]`.
-                    const rateShock = ((pState.id.charCodeAt(0) % 3) - 1) * 0.015;
-                    const newRate = Math.max(0.01, goal.mortgageRate / 100 + rateShock);
-                    const nr = newRate / 12;
-                    pState.calculatedPmt = pState.mortgage * nr * Math.pow(1 + nr, remainingMonths) / (Math.pow(1 + nr, remainingMonths) - 1);
-                    // ⚠️ NO-FAKE-DATA : annoncer « nouveau taux 5,00 % » quand l'ancien était 5,00 %
-                    // affirme un changement qui n'a pas eu lieu. Le renouvellement, lui, a bien eu
-                    // lieu (le terme est échu) — on dit donc ce qui s'est PASSÉ, pas ce qu'on aurait
-                    // aimé modéliser. Tant que le choc est nul, c'est la seconde branche qui sort.
-                    const tauxChange = Math.abs(newRate - goal.mortgageRate / 100) > 1e-9;
+                    // [ENG-RENEWAL-CHOC-MORT → SAISIE] (décision Marc 2026-09-04) Le taux au
+                    // renouvellement vient d'une SAISIE (`goal.renewalRateProjection`, le champ que
+                    // le Studio immobilier écrivait déjà et que ce moteur IGNORAIT), jamais plus du
+                    // hachage d'un identifiant technique — l'ancien « choc » `charCodeAt(0) % 3`
+                    // valait ZÉRO pour tout identifiant atteignable (mesuré : `prop_<ts>`, `p1`,
+                    // `jc-re1` → tous nuls). Défaut = taux courant ⇒ comportement inchangé sans
+                    // saisie. Un taux saisi ≤ 0 ou non fini est traité comme absent : 0 % n'est pas
+                    // un taux de renouvellement, c'est une absence de saisie plausible (champ vidé
+                    // → `Number('')` = 0 côté formulaire).
+                    const tauxCourantPct = pState.currentRatePct ?? goal.mortgageRate;
+                    const saisie = goal.renewalRateProjection;
+                    const newRatePct = (Number.isFinite(saisie) && (saisie as number) > 0) ? (saisie as number) : tauxCourantPct;
+                    const nr = (newRatePct / 100) / 12;
+                    pState.calculatedPmt = nr > 0
+                        ? pState.mortgage * nr * Math.pow(1 + nr, remainingMonths) / (Math.pow(1 + nr, remainingMonths) - 1)
+                        : pState.mortgage / remainingMonths;
+                    // [ENG-RENEWAL-RATE-MISMATCH] Le taux COURANT suit : l'intérêt mensuel et la
+                    // marge Smith lisent `currentRatePct`, donc PMT et intérêt restent calculés au
+                    // MÊME taux. Avant, seul le PMT bougeait — capital affamé (mesuré au panel
+                    // #552 : renouvellement 4,5 % → 3 %, solde encore 211 569 $ après 10 ans sur un
+                    // prêt censé s'éteindre à 240 mois).
+                    pState.currentRatePct = newRatePct;
+                    // ⚠️ NO-FAKE-DATA : annoncer « nouveau taux » quand le taux n'a pas bougé
+                    // affirmerait un changement qui n'a pas eu lieu — la comparaison se fait au
+                    // taux d'AVANT ce renouvellement (les renouvellements suivants au même taux
+                    // saisi disent « taux inchangé »).
+                    const tauxChange = Math.abs(newRatePct - tauxCourantPct) > 1e-9;
                     state.lifeEventLogs.push(tauxChange
-                        ? `🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${(newRate * 100).toFixed(2)} %`
-                        : `🏦 Renouvellement hypothécaire ${goal.name || ''} : taux inchangé à ${(newRate * 100).toFixed(2)} %`);
+                        ? `🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${newRatePct.toFixed(2)} %`
+                        : `🏦 Renouvellement hypothécaire ${goal.name || ''} : taux inchangé à ${newRatePct.toFixed(2)} %`);
                 }
             }
             pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate ?? 3) / 100, 1 / 12);
             if (goal.maxValue && pState.currentValue > goal.maxValue) pState.currentValue = goal.maxValue;
 
-            const monthlyRate = (goal.mortgageRate / 100) / 12;
+            // [ENG-RENEWAL-RATE-MISMATCH] L'intérêt se calcule au taux COURANT du prêt (écrit à
+            // l'achat, mis à jour au renouvellement) — `?? goal.mortgageRate` couvre l'état SEMÉ
+            // d'un bien déjà détenu au départ de la simulation, qui n'a pas traversé le bloc d'achat.
+            const monthlyRate = ((pState.currentRatePct ?? goal.mortgageRate) / 100) / 12;
             const interestPaid = pState.mortgage * monthlyRate;
             const principalPaid = Math.max(0, pState.calculatedPmt - interestPaid);
             const prevMortgage = pState.mortgage;
@@ -459,7 +481,9 @@ export function processRealEstate(
                 // (décision Marc 2026-08-24). Avant : 5 % figé, indépendant du dossier — donc une
                 // marge moins chère que l'hypothèque dès que celle-ci dépassait 5 %, ce qui rendait
                 // le levier flatteur exactement quand il devient dangereux.
-                const smithInterest = state.smithManoeuvreDebt * (smithHelocAnnualRate(goal.mortgageRate) / 12);
+                // [ENG-RENEWAL-RATE-MISMATCH] « Le taux du prêt » = le taux COURANT : après un
+                // renouvellement, c'est lui que la marge suit, pas le taux d'origine du dossier.
+                const smithInterest = state.smithManoeuvreDebt * (smithHelocAnnualRate(pState.currentRatePct ?? goal.mortgageRate) / 12);
                 state.smithManoeuvreDebt += smithInterest;
                 state.smithInterestDeductibleYear += smithInterest;
             }

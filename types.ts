@@ -531,6 +531,10 @@ export interface RealEstateGoal {
   propertyGrowthRate?: number;
   rentalIncomeMonthly?: number;
   initialRenovations?: number;
+  /** Taux attendu au renouvellement hypothécaire (% annuel), CONSOMMÉ par le moteur depuis
+   *  [ENG-RENEWAL-SAISIE] (décision Marc 2026-09-04) : appliqué à chaque renouvellement de terme
+   *  (60 mois), PMT et intérêt recalculés ensemble. Absent ou ≤ 0 = le taux courant est conservé
+   *  (comportement historique). */
   renewalRateProjection?: number;
   yearlyRenovations?: number;
   maintenanceYearly?: number;

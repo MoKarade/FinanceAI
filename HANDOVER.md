@@ -16,6 +16,18 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 161 : le taux de renouvellement SAISI pilote enfin l'hypothèque
+> `[ENG-RENEWAL-SAISIE]` + `[ENG-RENEWAL-RATE-MISMATCH]`, livrés ENSEMBLE (décision Marc).
+> Recensement : le champ `renewalRateProjection` existait dans le TYPE et le Studio immobilier
+> l'ÉCRIVAIT déjà — seul le moteur l'ignorait (choc `charCodeAt` mort à la place). Livré :
+> `pState.currentRatePct` (écrit à l'achat + à chaque renouvellement), consommé par le PMT,
+> l'intérêt mensuel ET la marge Smith — la paire PMT/intérêt ne diverge plus ; choc retiré,
+> message no-fake-data piloté par la saisie ; 3 défauts UI « 5,0 % » alignés sur « défaut = taux
+> actuel » ; ≤ 0 = absence (champ vidé écrit 0). Défaut neutre ⇒ zéro re-base attendu. 5 tests
+> moteur neufs (LEVIER, sentinelle d'extinction à l'échéance, Smith en différence-en-différences
+> au seuil mesuré des deux côtés 135 399 $/38 416 $), garde du message INVERSÉE avec son histoire.
+> 3 perturbations séparées → rouges ciblés nommés. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 160 : le meltdown ne gagne plus un mois plein de rendement sur son arrivée
 > `[ENG-MELTDOWN-MIMOIS]` — première des six décisions livrée. `growthApplication` reçoit
 > `arriveeMeltdownNonReg?` (défaut neutre, rétrocompat bit-identique) et l'exclut de la base de

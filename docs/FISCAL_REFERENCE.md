@@ -159,6 +159,12 @@
 | Revenu max (`AE_MAX_INCOME`) | 68 900 $ |
 | Cotisation max (`AE_MAX_QC`) | 895,70 $ |
 
+> ✅ **Assiette d'emploi bornée à 0 depuis le 2026-09-05** (`[FISC-PAYROLL-NEG-GROSS]`, lot 191) : RRQ, RQAP et AE
+> se calculent sur `max(0, assiette d'emploi)` en UN point de `calculateFiscalReport`. Avant, seule la RRQ l'était
+> par sa propre soustraction d'exemption ; un brut négatif (jamais produit par l'app, filtré en amont) donnait des
+> cotisations RQAP/AE NÉGATIVES (mesuré −86,50 $ pour −5 000 $), soit un net supérieur au brut. Pas une règle
+> fiscale : une garde d'entrée, symétrique pour les trois cotisations.
+
 ---
 
 ### Prestations RQAP / AE / RRQ — hors assiette de cotisation, imposables (2026-08-20)

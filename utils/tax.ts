@@ -882,7 +882,13 @@ export const calculateFiscalReport = (
     // même discipline que getMarginalRate : utils/tax.ts n'importe jamais logError — le repli explicite EST
     // le signal). Les 2 appelants vivants (TaxCenter uGross, get_tax_situation g filtré > 0) sont pré-assainis
     // en amont ; un futur appelant qui brancherait un employmentIncome non validé doit loguer côté appelant.
-    const employmentBase = employmentIncome === undefined ? grossIncome : (Number(employmentIncome) || 0);
+    // [FISC-PAYROLL-NEG-GROSS] Assiette d'emploi BORNÉE à 0 — en UN point, pour les trois cotisations.
+    // Avant, seule la RRQ l'était (par son `Math.max(0, … − exemption)`) : un brut NÉGATIF donnait des
+    // cotisations RQAP/AE négatives (mesuré : brut −5 000 $ → deductionsSource −86,50 $, donc un net
+    // SUPÉRIEUR au brut — de l'argent créé). Impact nul aujourd'hui (les appelants filtrent en amont),
+    // mais une garde asymétrique est une garde qui ne tient que par ses voisins. Bit-identique pour
+    // toute assiette ≥ 0.
+    const employmentBase = Math.max(0, employmentIncome === undefined ? grossIncome : (Number(employmentIncome) || 0));
     const { fed: indexedFedBrackets, qc: indexedQcBrackets, basicFed: indexedBasicFed, basicQc: indexedBasicQc } = getIndexedBracketsForYear(year, realDeflator);
 
     const netTaxable = Math.max(0, grossIncome - rrspContribution - fhsaContribution);

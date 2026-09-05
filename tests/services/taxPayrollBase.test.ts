@@ -70,3 +70,31 @@ describe('[FISC-PAYROLL-BASE-INVEST] assiette emploi vs assiette imposable', () 
         expect(r.ae).toBe(0);
     });
 });
+
+describe('[FISC-PAYROLL-NEG-GROSS] une assiette d’emploi NÉGATIVE ne crée aucune cotisation négative', () => {
+    it('brut −5 000 $ : RRQ, RQAP et AE valent 0 — deductionsSource = 0, jamais négatif (avant : −86,50 $)', () => {
+        const r = calculateFiscalReport(-5_000, 0, 0);
+        expect(r.rrq).toBe(0);
+        expect(r.rqap).toBe(0);
+        expect(r.ae).toBe(0);
+        expect(r.deductionsSource).toBe(0);
+        // Le net ne peut pas dépasser le brut par des cotisations négatives.
+        expect(r.netIncome).toBeLessThanOrEqual(-5_000);
+    });
+
+    it('employmentIncome NÉGATIF avec un brut positif : même clamp (l’assiette d’emploi est le seul point de passage)', () => {
+        const r = calculateFiscalReport(40_000, 0, 0, undefined, undefined, undefined, -3_000);
+        expect(r.rqap).toBe(0);
+        expect(r.ae).toBe(0);
+        expect(r.rrq).toBe(0);
+        // Contrôle : l'impôt sur le placement reste calculé (le clamp ne touche que les cotisations).
+        expect(r.totalTax).toBeGreaterThan(0);
+    });
+
+    it('contrôle : assiette POSITIVE strictement inchangée (bit-identique) — RQAP = min(max, base × taux)', () => {
+        const r = calculateFiscalReport(60_000, 0, 0);
+        expect(r.rqap).toBeCloseTo(Math.min(442.90, 60_000 * 0.0043), 6);
+        expect(r.ae).toBeGreaterThan(0);
+    });
+});
+

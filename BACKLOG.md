@@ -1423,14 +1423,9 @@
   2 qui s'excluent). **Correctif** : re-sourcer Annexe K 2026 réelle (Revenu Québec / RAMQ / CFFP) et
   corriger la valeur fautive EN CODE ET EN DOC. Ne rien ajuster sans source.
 
-- [x] **`[SCHL-1500K-BOUNDARY]`** ✅ **LIVRÉ au lot 190 (2026-09-05)** — borne STRICTE aux **4** sites de `services/realEstate.ts` (le ticket en nommait 3 : `calculateMinDownPayment`, `insured`, la branche d'erreur « prix > 1,5 M$ » ET `aboveMaxPrice` de la prime) ; deux pins qui ENCODAIENT le défaut (« 1,5 M$ = 125 000 $ », « 1,5 M$ + 125 000 $ : assuré, valide ») inversés avec leur histoire ; bornes 1 499 999 / 1 500 000 / 1 500 001 + validation + prime ; perturbations SÉPARÉES (mise de fonds → 3 rouges ; prime → 1 rouge). Comportement identique hors du point exact. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — au prix EXACT 1,5 M$, mise de fonds minimale celle du palier
-  assuré (non celle non-assuré). **Mesuré : 1,5 M$ → 125 k$ (8,33 %) ; 1,6 M$ → 320 k$ (20 %)** ;
-  écart au point bascule −175 k$ mise de fonds exigée. Le code écrit `<=` au lieu de `<`. **Correctif** :
-  `price < SCHL_PRICE_THRESHOLD_TIER2` (3 sites) + test de bornes 1 499 999 / 1 500 000 / 1 500 001.
-
 #### LOW / FAIBLE
 
-- [ ] **`[FISC-PAYROLL-NEG-GROSS]`** (S) — cotisations RQAP/AE non-clamped sur brut négatif (RRQ l'est).
+- [x] **`[FISC-PAYROLL-NEG-GROSS]`** ✅ **LIVRÉ au lot 191 (2026-09-05)** — assiette d'emploi bornée à 0 en UN point (`employmentBase`, `utils/tax.ts`) : les trois cotisations héritent du clamp au lieu d'un `Math.max` par cotisation ; gardes : brut −5 000 $ → RRQ/RQAP/AE = 0 et `deductionsSource` = 0 ; `employmentIncome` négatif avec brut positif → idem, impôt sur placement conservé ; contrôle assiette positive bit-identique. Perturbation (clamp retiré) → 2 rouges. Pas d'entrée CHANGELOG : impact nul à l'écran (les appelants filtrent en amont). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — cotisations RQAP/AE non-clamped sur brut négatif (RRQ l'est).
   **Mesuré : brut −5 000 $ → deductionsSource −86,50 $ (net > brut : argent créé).** Impact nul
   aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
   RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).

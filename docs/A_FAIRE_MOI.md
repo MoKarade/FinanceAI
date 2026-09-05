@@ -77,6 +77,7 @@
 
 - [x] **[DÉCISION — TX-INTERAC-BUDGET]** (2026-08-26, audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]`) —
   ✅ **RÉPONDU 2026-09-05 (en session)** : **(a)** — un Interac REÇU est routé vers `'Remboursement'` (crédit sur la dépense), jamais un revenu. Ticket `[TX-INTERAC-REMBOURSEMENT]` au BACKLOG.
+  ✅ **LIVRÉE au lot 172 (2026-09-05)** — règle d'import posée (FR et EN), garde de chaîne CSV → revenu du Budget.
   un Interac REÇU doit-il être un REVENU ou un CRÉDIT sur le poste de dépense ? Deux décisions déjà
   prises se contredisent : `spendRules.ts` documente « l'entrant ne devient PAS un revenu … ne
   jamais recompter un remboursement comme une rentrée » et prévoit un mécanisme dédié

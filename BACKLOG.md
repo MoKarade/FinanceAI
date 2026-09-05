@@ -19,7 +19,7 @@
 
 ## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)
 
-- [ ] **`[TX-INTERAC-REMBOURSEMENT]`** (S, money-critical budget — décision 2026-09-05 (a)) — ajouter la règle de
+- [x] **`[TX-INTERAC-REMBOURSEMENT]`** ✅ **LIVRÉ au lot 172 (2026-09-05)** — règle d'import « Interac reçu » (FR + « e-Transfer from/received ») → `Remboursement`, catégorie devenue canonique (`RULE_CATEGORIES`), test de limite inversé + garde de CHAÎNE `interacRecuRemboursement.test.ts` (CSV réel → règles → revenu du Budget : 5 000 $, pas 5 300 $). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, money-critical budget — décision 2026-09-05 (a)) — ajouter la règle de
   catégorisation qui route un Interac **REÇU** vers `'Remboursement'` (`services/import/categoryRules.ts`),
   ce qui active enfin `CREDIT_BACK_CATEGORIES` de `spendRules.ts` (crédit sur le poste de dépense, jamais un
   revenu). Mesuré au routage : 300 $ de faux revenu (9,1 % du mois) sur la fixture couple. Les 6 tests de
@@ -293,19 +293,6 @@
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
 - [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
   datée en tête de `docs/BACKLOG_ARCHIVE.md`).
-- [x] **`[FISC-RRSP-RENTAL-EARNED]`** ✅ **LIVRÉ au lot 171 (2026-09-05)** — loyer net → revenu gagné du propriétaire (champ `owner` optionnel, défaut 50/50), gardes unitaires + chaîne par espion + UI, mesuré +10 753 $ à +64 802 $ sur droits saturants, 0 $ sans immeuble. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S-M — audit 2026-08-06) — ⚠️ **GATÉ source humaine
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : (a) champ de propriété optionnel par immeuble, défaut 50/50 ; source T4040 relayée (revenu net de location = revenu gagné, pertes déduites) — DÉBLOQUÉ.
-  (2026-09-04)** → `docs/A_FAIRE_MOI.md` « [DÉCISION — FISC-RRSP-RENTAL-EARNED] ». Recensement
-  fait : le constat CODE est CONFIRMÉ — le loyer net alimente `accRentesYear` (unique écriture,
-  `realEstateMonth.ts`, jamais `accGrossIncomeYearByUser`, dont les seuls producteurs sont le
-  versement différé `grossIncomeEnAttente` — qui porte le salaire — et l'ajustement congé
-  parental de `childrenReee.ts`) → zéro droit REER créé par un revenu locatif.
-  L'affirmation JURIDIQUE (« revenu gagné au sens de 146(1) ») reste NON SOURCÉE : la
-  vérification T4040 sur `canada.ca` a été tentée le 2026-09-04 et bloquée par l'environnement
-  (`EGRESS_BLOCKED`, même classe que LégisQuébec). Et le correctif exige une décision produit
-  ABSENTE du ticket : le modèle n'a AUCUN champ de propriété par conjoint sur l'immobilier
-  locatif, or `accGrossIncomeYearByUser` est PER-CONJOINT — attribuer le loyer exige de choisir
-  la clé. Ne pas coder avant la double réponse de Marc.
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
   ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
   l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·

@@ -49,7 +49,7 @@
   d'interface** — vérifié par grep sur `components/`. Coût aujourd'hui : **nul à l'écran**. Le risque
   est pour DEMAIN : un lot qui brancherait le SWR publierait un taux **sous-estimé**, donc un plan
   qui a l'air plus sûr qu'il ne l'est.
-- [ ] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** (XS, FAIBLE — finding projection-validator, panel
+- [x] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** ✅ **LIVRÉ au lot 163 (2026-09-05)** — EXPOSÉ sur Futur : bandeau « objectif non financé » sous le bandeau « pas à jour », dérivation PURE (`components/projection/alerteObjectifsManques.ts` — la phrase n'est jamais recopiée dans le JSX, le montant reste un nœud `PrivateAmount`), null honnête quand il n'y a rien à dire (champ absent d'un gel d'avant PV-11 inclus). 3 perturbations séparées à rouges nommés (dont une 1re version MUETTE : la garde voisine saturait la contrainte — fixture isolante ajoutée). (XS, FAIBLE — finding projection-validator, panel
   PR #755) — `goalShortfalls` (`services/projection.ts`, `services/projection/types.ts`) n'a
   **zéro consommateur** : grep exhaustif `.ts`/`.tsx`/`.md`, aucune UI, aucun outil MCP, aucun
   prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
@@ -60,7 +60,7 @@
   être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
   seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
   (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
-  ✅ **Décision Marc 2026-09-04 (en session)** : EXPOSER sur Futur — « ton but n'a pas pu être financé, il manquait X $ ». À livrer (lot à venir).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 163 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
@@ -415,18 +415,6 @@
   brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
   pas au FVI » dans l'ADR.
   ✅ **Décision Marc 2026-09-04 (en session)** : BRANCHER l'impôt à vie dans le calcul (option a) — re-base FVI massif assumé. À livrer (lot à venir).
-- [x] **`[ENG-RANKING-MODULES-ORPHELINS]`** ✅ **LIVRÉ au lot 162 (2026-09-05)** — `rankStrategies` RETIRÉ avec ses deux fichiers de test ; `OptimizeObjective`/`OBJECTIVE_LABELS` (seuls exports vivants) déménagés dans `strategyConfigRanking.ts` avec l'avertissement du double-comptage successoral pour toute résurrection depuis git ; doc PROJECTION.md et commentaires croisés mis à jour ; garde = le compilateur (imports morts) + knip rejoué. `compareLifeScenarios` INTACT (vivant via GoalSeekerCard). (S, FAIBLE — RE-CADRÉ par la revue #683 : ma
-  1re affirmation était à moitié FAUSSE) — `rankStrategies` (strategyRanking.ts) est orphelin
-  (aucun appelant hors tests, re-vérifié alias compris). **`compareLifeScenarios` NE L'EST PAS** :
-  son alias `optimizeDrawdownOrder` est appelé par `GoalSeekerCard` (bouton « Optimiser ordre de
-  décaissement ») — le 1er grep ratait l'alias, et « le retirer » aurait supprimé une
-  fonctionnalité UI vivante (leçon : grep les ALIAS d'export avant de déclarer un module mort).
-  Reste à trancher pour `rankStrategies` seul : brancher ou retirer. Son champ `totalTaxesPaid`
-  affiché par compareLifeScenarios n'est pas rendu par la carte (0 impact UI aujourd'hui).
-  ⚠️ AVANT tout branchement de `rankStrategies` : son score `balanced` compte l'impôt successoral
-  DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax à 0,40 + axe tax = lifetimeTaxTotal
-  qui l'inclut à 0,25 — relecture #681, sans effet aujourd'hui faute d'appelant).
-  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 162 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la

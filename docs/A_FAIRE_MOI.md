@@ -170,6 +170,8 @@
 
 ## 🧭 `[IA-NAV-LABELS]` — DÉCISION (routée le 2026-09-04, lot 140)
 
+> ✅ **Tranché le 2026-09-05 (option 3 : garder le rail replié) — ticket FERMÉ et archivé au lot 177.**
+
 ✅ **RÉPONDU 2026-09-05 (en session)** : option **(3)** — garder le rail replié, **fermer le ticket** (l'a11y est déjà couverte).
 
 Le ticket demande des libellés de navigation visibles par défaut (aujourd'hui : rail replié de
@@ -611,7 +613,7 @@ Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chac
 - `[AUTH-REMEMBER-DEVICE]` → **retirer la déconnexion automatique 8 h** quand « se souvenir de cet appareil » est actif (ré-auth seulement pour les Réglages).
 - Section 4 des tâches humaines : jetons Fintable **révoqués** (C1 fait) ; C2/C3/C4/C6/C0 à **ré-expliquer en détail** (fait en session le 2026-09-05, à reporter ici en clair au prochain lot) ; C5 (profondeur Fintable) : Marc croit que le plan en offre plus → à MESURER par `npm run fintable:dry -- --days 365` chez lui ; C8 (branches mortes) : plus tard. Section D (vérifs écran) : à redemander plus tard — Marc n'a que son téléphone.
 
-**`[PROFIL-SWITCH]`** (4 questions d'un coup, posées le 2026-08-01, sans réponse) — ⚠️ touche la
+**`[PROFIL-SWITCH]`** (4 questions d'un coup, posées le 2026-08-01) — ✅ **tranché le 2026-09-05 (réponse 8 : un seul profil, Marc, pour toujours) → CADUQUE, archivé au lot 177 avec `[PROFIL-NOMMER-MARC]` (recensé : aucun écran ne nomme le profil courant).** — ⚠️ touche la
 ✅ **RÉPONDU 2026-09-05 (en session)** : « profil actuel = Marc, **seul profil, pour toujours** ». Donc : un seul profil RÉEL, il pousse seul vers Drive, la clé existante EST « Marc », et les autres profils ne sont que des personas de test — le multi-profil réel est CADUQUE ; il ne reste au plus qu'à nommer le profil courant « Marc » là où l'app le désigne.
 persistance de tes VRAIES données, je ne code rien avant :
 1. Combien de profils **RÉELS** ? (juste « Marc » + des personas de test, ou plusieurs réels ?)

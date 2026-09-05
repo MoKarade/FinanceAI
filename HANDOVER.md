@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 191 : assiette d'emploi bornée à 0 (`[FISC-PAYROLL-NEG-GROSS]`)
+> `utils/tax.ts` : `employmentBase = Math.max(0, …)` en UN point — les trois cotisations (RRQ, RQAP, AE)
+> héritent du clamp au lieu d'un `Math.max` recopié par cotisation (seule la RRQ l'avait, par son
+> exemption). Mesuré avant : brut −5 000 $ → `deductionsSource` −86,50 $ (net > brut). Trois gardes
+> (brut négatif ; `employmentIncome` négatif avec brut positif, impôt sur placement conservé ; contrôle
+> positif bit-identique), perturbation (clamp retiré) → 2 rouges. Impact nul à l'écran (filtré en
+> amont) : pas d'entrée CHANGELOG. Docs : FISCAL_REFERENCE (note sous AE), BACKLOG (+ archive du lot 190).
+> Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 190 : borne SCHL stricte à 1,5 M$ (`[SCHL-1500K-BOUNDARY]`)
 > `services/realEstate.ts` écrivait `<=` là où la règle SCHL dit « inférieur à 1 500 000 $ » — au prix
 > EXACT, mise de fonds minimale 125 000 $ au lieu de 300 000 $, prêt assurable et prime calculée. Quatre

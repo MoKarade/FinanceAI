@@ -273,6 +273,43 @@ describe('applyW5Effects — immeubles locatifs', () => {
     });
 });
 
+describe('[FISC-RRSP-RENTAL-EARNED] applyW5Effects — le NOI par propriétaire est RENDU (revenu gagné)', () => {
+    const plex = (over: Partial<W5Containers['rentalProperties'][number]> = {}) => ({
+        id: 'rp1', name: 'Plex', monthlyRent: 2500, monthlyExpenses: 500, vacancyPct: 5,
+        purchasePrice: 400000, currentValue: 450000, mortgageBalance: 300000, mortgageRate: 5, ...over,
+    });
+
+    it('propriétaire user2 : tout le NOI mensuel (1 875 $) dans son seau, les autres à zéro', () => {
+        const { mutator } = makeMutator();
+        const r = applyW5Effects(makeCtx(), { ...emptyContainers(), rentalProperties: [plex({ owner: 'user2' })] }, mutator);
+        expect(r.rentalNoiMensuelParProprietaire.user2).toBeCloseTo(1875, 6);
+        expect(r.rentalNoiMensuelParProprietaire.user1).toBe(0);
+        expect(r.rentalNoiMensuelParProprietaire.joint).toBe(0);
+    });
+
+    it('sans propriétaire → seau conjoint ; deux immeubles s’additionnent chacun chez le sien', () => {
+        const { mutator, s } = makeMutator();
+        const r = applyW5Effects(makeCtx(), { ...emptyContainers(), rentalProperties: [plex(), plex({ id: 'rp2', owner: 'user1', monthlyRent: 1000, monthlyExpenses: 0, vacancyPct: 0 })] }, mutator);
+        expect(r.rentalNoiMensuelParProprietaire.joint).toBeCloseTo(1875, 6);
+        expect(r.rentalNoiMensuelParProprietaire.user1).toBeCloseTo(1000, 6);
+        // Même porte que le revenu : la somme des seaux est EXACTEMENT ce qui a été encaissé.
+        expect(r.rentalNoiMensuelParProprietaire.joint + r.rentalNoiMensuelParProprietaire.user1).toBeCloseTo(s.income, 6);
+    });
+
+    it('perte locative : le seau est NÉGATIF (T4040 : pertes déduites du revenu gagné)', () => {
+        const { mutator } = makeMutator();
+        const r = applyW5Effects(makeCtx(), { ...emptyContainers(), rentalProperties: [plex({ owner: 'user1', monthlyRent: 1000, monthlyExpenses: 1500 })] }, mutator);
+        // 1000×12×0,95 − 1500×12 = 11 400 − 18 000 = −6 600 → −550/mois
+        expect(r.rentalNoiMensuelParProprietaire.user1).toBeCloseTo(-550, 6);
+    });
+
+    it('aucun immeuble : les trois seaux valent zéro (jamais undefined)', () => {
+        const { mutator } = makeMutator();
+        const r = applyW5Effects(makeCtx(), emptyContainers(), mutator);
+        expect(r.rentalNoiMensuelParProprietaire).toEqual({ user1: 0, user2: 0, joint: 0 });
+    });
+});
+
 // ── Entreprises privées ───────────────────────────────────────────────────────
 
 describe('applyW5Effects — entreprises privées', () => {

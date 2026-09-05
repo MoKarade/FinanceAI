@@ -16,6 +16,26 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 171 : le loyer net crée des droits REER chez son PROPRIÉTAIRE (`[FISC-RRSP-RENTAL-EARNED]`)
+> Décision Marc 5a. Nouveau module `services/projection/revenuGagnePartage.ts` (clé d'attribution :
+> `owner` optionnel `user1 | user2 | joint` sur `RentalProperty` et `RealEstateGoal`, absent = 50/50,
+> ménage solo/effondré → index 0). `applyW5Effects` RETOURNE le NOI mensuel par propriétaire (produit
+> avant janvier → tampon `grossIncomeEnAttenteByUser`) ; `processRealEstate` accumule
+> `rentalEarnedParProprietaire` (REQUIS dans `RealEstateState`, versé direct après le bloc de janvier).
+> Base = ce que le moteur impose (NOI W5, loyer indexé des buts) ; une perte locative réduit. UI :
+> `ui/SelectProprietaire.tsx` (source unique des libellés) posé dans `RentalPropertyPanel` (prop
+> `conjoints`) et `PropertyConfigurator` (bien loué seulement), jamais en solo. Gardes : 11 unitaires
+> (clé), 4 W5, 2 realEstateMonth, **9 par espion sur `processJanuaryReset`** (contrôle sans immeuble,
+> NOI ≠ loyer brut, perte, 50/50, but immobilier, résidence principale, solo), 7 UI. Six perturbations
+> nommées, chacune rouge SEULEMENT là où attendu (routage W5 → 5, routage buts → 2, base brute → 8,
+> 50/50 → 4, soloHousehold → 1, sélecteur en solo → 1). Mesuré : +10 753 / +31 703 / +56 558 $ (W5)
+> et +11 598 / +36 769 / +64 802 $ (but) à 10/20/30 ans sur droits SATURANTS, succession ↓ (plus de
+> REER à liquider), 0 $ sans immeuble ; et **0 $ à neuf points sur la 1re fixture**, où les droits ne
+> limitaient rien — le mécanisme n'est observable que là où il est limitant (leçon déjà indexée).
+> ⚠️ Un grep de fixtures par NOM DE CHAMP (`totalRentalIncome: 0`) a attrapé un cinquième site qui
+> n'était PAS un `RealEstateState` (`MonthlyOutputCtx` porte le même champ) : le compilateur l'a dit.
+> Push sans leçon nouvelle (variante d'homonymie déjà indexée).
+
 > ## 🟦 Session 2026-09-05 — Lot 170 : quatre règles fiscales ANCRÉES (doc + raisons du ratchet, code inchangé)
 > `[FISC-RAP-15ANS]` + `[FISC-RAP-GRACE-WINDOW]` (15 ans, début 2e année, fenêtre 2022-2025 → 5e
 > année — les quatre littéraux sourcés ENSEMBLE, sous-section « RAP — remboursement » en §7),

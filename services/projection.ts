@@ -13,6 +13,7 @@ import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOpt
 import { ASSET_LOCATION_BONUS_PP } from './projection/strategySpace';
 import { SCENARIO_DEFINITIONS, strategyDefFor } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
+import { repartirRevenuGagne, montantsParProprietaireVides } from './projection/revenuGagnePartage';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce, clampSplitPct, DIVORCE_SPLIT_PCT_DEFAULT } from './projection/stochasticEvents';
 import { processAprilSettlement } from './projection/taxApril';
 import { computeOasClawback, computeAnnualNonRegDividends, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
@@ -1257,7 +1258,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Cycle 7 split: 6 effets W5.x extraits dans ./projection/w5Effects.ts
         // (insurance/véhicules cycliques/rénos majeures/dons charity/locatifs/CCPC).
         // Mutation via mutateur passé par référence — état partagé inchangé.
-        applyW5Effects(
+        const w5Resultat = applyW5Effects(
             { m, currentMonthIndex, currentLoopDate, startYear, startMonth, expenseMultiplier },
             { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses },
             {
@@ -1272,6 +1273,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 logLife: (msg, day?: number) => logEvent(lifeEventsLog, msg, day),
             }
         );
+        // [FISC-RRSP-RENTAL-EARNED] (décision Marc 2026-09-05) Le NOI locatif W5 est du revenu GAGNÉ
+        // pour les droits REER de son propriétaire. Produit AVANT le bloc de janvier, il prend le
+        // même chemin que le salaire : le tampon, versé APRÈS le reset (sinon janvier entrerait dans
+        // l'année qui vient de se clore — `UN-ACCUMULATEUR-ANNUEL-SE-JUGE-SUR-SA-POSITION…`).
+        // `soloHousehold` effondre tout sur le déclarant restant, comme `taxFilers`.
+        {
+            const [locatif0, locatif1] = repartirRevenuGagne(w5Resultat.rentalNoiMensuelParProprietaire, { activeUsersCount, soloHousehold });
+            grossIncomeEnAttenteByUser[0] += locatif0;
+            grossIncomeEnAttenteByUser[1] += locatif1;
+        }
 
         // --- 4. TAX WITHHOLDING & APRIL SETTLEMENT ---
         // Cycle 8 split: avril extrait dans ./projection/taxCycle (processAprilSettlement).
@@ -1713,6 +1724,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             rapMissedRepaymentAdd: 0,
             immoInterest, immoPrincipal, immoHypo, immoCharges,
             totalRentalIncome: 0,
+            rentalEarnedParProprietaire: montantsParProprietaireVides(),
             lifeEventLogs: [], flowEventLogs: [],
         };
         processRealEstate(
@@ -1740,6 +1752,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         accRentesYear = reState.accRentesYear; accCapitalGainsYear = reState.accCapitalGainsYear;
         realEstateEquity = reState.realEstateEquity; mortgageBalance = reState.mortgageBalance;
         hasPurchasedPrimary = reState.hasPurchasedPrimary;
+        // [FISC-RRSP-RENTAL-EARNED] Loyer des buts locatifs → revenu gagné du propriétaire. Ce site est
+        // APRÈS le bloc de janvier ET après le versement du tampon : on écrit l'accumulateur DIRECTEMENT
+        // (passer par le tampon décalerait décembre dans l'année suivante).
+        {
+            const [locatif0, locatif1] = repartirRevenuGagne(reState.rentalEarnedParProprietaire, { activeUsersCount, soloHousehold });
+            accGrossIncomeYearByUser[0] += locatif0;
+            accGrossIncomeYearByUser[1] += locatif1;
+        }
 
         hasUsedRap = reState.hasUsedRap; rapBorrowed = reState.rapBorrowed;
         rapRepaymentDueTotal = reState.rapRepaymentDueTotal;

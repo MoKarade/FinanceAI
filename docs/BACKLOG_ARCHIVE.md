@@ -10,6 +10,45 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-RAP-15ANS]` `[FISC-RAP-GRACE-WINDOW]` `[FISC-RRSP-LIMITS-PRE2024-DOC]` `[FISC-LINE361-PERCONJOINT-REDUC]` — LIVRÉS (lot 170, PR #901)
+
+Tickets d'origine tels qu'au moment de l'archivage :
+
+- [x] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** ✅ **LIVRÉ au lot 170 (2026-09-05)** — les 14 plafonds ancrés en FISCAL_REFERENCE §7 (source relayée). (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : les 14 plafonds 2010-2023 sont CONFIRMÉS identiques (CQFF/KPMG/Manuvie/BNC, relayé) — DÉBLOQUÉ, ancrer en FISCAL_REFERENCE §7 avec la mention « relayé ».
+  **14 valeurs 2010→2023** (22 000 → 30 780) qui n'apparaissent NULLE PART dans
+  `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via
+  `setupSimulation.ts:70`, donc de l'argent. Valeurs jugées correctes, mais non sourcées = suspectes
+  par la règle du dépôt. Documenter dans le même geste que `[FISC-REF-DEDUP]`.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B9**.
+- [x] **`[FISC-LINE361-PERCONJOINT-REDUC]`** ✅ **CONFIRMÉ et ancré au lot 170 (2026-09-05)** — le code est cohérent avec la règle relayée (réduction par conjoint sur le revenu familial), ligne ajoutée à la table ligne 361 de FISCAL_REFERENCE. Aucun changement de calcul. (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée (Revenu Québec « Ligne 361 », DT Max) : 18,75 % du revenu FAMILIAL, chaque conjoint remplit SA propre Annexe B avec le même revenu familial — le code est cohérent ; passe de « à vérifier » à « confirmé (relayé) », il reste à l'ANCRER en FISCAL_REFERENCE.
+  appliquée par conjoint avec le revenu familial TOTAL (`taxDecember.ts:529` → `tax.ts:255`).
+  Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
+
+> Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
+> les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
+
+- [x] **`[FISC-RAP-GRACE-WINDOW]`** ✅ **LIVRÉ au lot 170 (2026-09-05)** — les trois valeurs (2022, 2025, 5 ans) ancrées ENSEMBLE en FISCAL_REFERENCE §7 « RAP — remboursement » (relayé), raisons du ratchet mises à jour ; code inchangé (il était exact). (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`, RENOMMÉ en revue :
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée (ARC « Comment rembourser… », CFFP, iA) : 1er retrait du **1er janvier 2022 au 31 décembre 2025 → début à la 5e année**, sinon 2e année — les TROIS valeurs du code sont EXACTES → ancrer en FISCAL_REFERENCE §8, source marquée relayée.
+  il s'appelait `[FISC-RAP-GRACE-WINDOW]`, nom hérité de ma première lecture FAUSSE du code) — la
+  fenêtre `2022`/`2025` de `services/projection/realEstateMonth.ts` module la période de grâce du
+  **début de remboursement du RAP** (Budget fédéral 2024), et **PAS** la règle anti-flip : `graceYears = 5` dans la
+  fenêtre, `2` dehors. **Deux bornes d'une vraie règle ARC, absentes de `FISCAL_REFERENCE.md` §8.**
+  **Correctif** : sourcer les deux bornes ET la durée de grâce, ou retirer la règle. ⚠️ Les trois
+  valeurs doivent bouger ENSEMBLE — en sourcer une seule laisserait une règle à moitié fausse.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B7**, les trois
+  valeurs demandées ensemble.
+
+- [x] **`[FISC-RAP-15ANS]`** ✅ **LIVRÉ au lot 170 (2026-09-05)** — 15 ans ancrés en FISCAL_REFERENCE §7 (relayé), raison du ratchet mise à jour ; code inchangé. (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) — la durée de
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **15 ans**, 1/15 par an — code EXACT → ancrer en FISCAL_REFERENCE §7, source marquée relayée.
+  remboursement du RAP (15 ans, ARC) est en dur dans `services/projection/realEstateMonth.ts:467`
+  (`state.rapBorrowed / 15`) et absente de `FISCAL_REFERENCE.md` §7. Vraie règle, non ancrée.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B6**. Le proxy de
+  sortie répond 403 à `canada.ca` : écrire un chiffre fiscal non vérifié dans la source de vérité
+  lui donnerait l'autorité d'un texte de loi.
+
+
 ## 2026-09-05 — `[FISC-GIS-COUPLE-RATE]` — LIVRÉ (lot 169, PR #900)
 
 Ticket d'origine tel qu'au moment de l'archivage :

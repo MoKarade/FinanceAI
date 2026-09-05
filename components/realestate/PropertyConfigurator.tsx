@@ -7,6 +7,7 @@ import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { maskedSliderAria } from '../../utils/privacyAria';
 import { firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
+import { SelectProprietaire, nomsConjoints } from '../ui/SelectProprietaire';
 
 const fmt = (val: number) =>
     new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
@@ -48,6 +49,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
     // le NOI même à loyer nul (le NOI devient alors négatif, dépenses seules). Filtrer sur
     // `monthlyRent > 0` raterait donc un doublon réel dont seules les charges sont saisies.
     const nbLocatifsW5 = useFinanceStore((s) => (s.rentalProperties ?? []).length);
+    // [FISC-RRSP-RENTAL-EARNED] Référence stable, dérivation en dehors du sélecteur (cf. PatrimoineSection).
+    const users = useFinanceStore((s) => s.config.users);
+    const conjoints = nomsConjoints(users);
     const price = activeGoal.price || 450000;
     const downPayment = activeGoal.downPayment || (price * 0.2);
     const downPaymentPercent = Math.round((downPayment / price) * 100);
@@ -121,6 +125,12 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                                 className="w-full bg-black/50 border border-green-500/30 rounded px-2 py-1.5 text-green-400 text-body font-bold focus:outline-none focus:border-green-400"
                                 placeholder="Ex: 1500$"
                             />
+                            {conjoints && (
+                                <div className="flex items-center justify-between gap-2 text-meta text-ink-300">
+                                    <label htmlFor="prop-owner">Propriétaire (droits REER)</label>
+                                    <SelectProprietaire id="prop-owner" value={activeGoal.owner} noms={conjoints} onChange={owner => updateActiveGoal({ owner })} className="bg-black/50 border border-green-500/30 rounded px-2 py-1 text-white" />
+                                </div>
+                            )}
                             {nbLocatifsW5 > 0 && (
                                 <p role="status" className="mt-2 text-tiny text-warning-300">
                                     ⚠️ {nbLocatifsW5 === 1 ? 'Un immeuble locatif est aussi saisi' : `${nbLocatifsW5} immeubles locatifs sont aussi saisis`}

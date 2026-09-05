@@ -889,6 +889,29 @@ pour minimiser l'impôt combiné (élection optionnelle).
 Espace gagné = **18 % du revenu GAGNÉ** de l'année précédente (`RRSP_ROOM_RATE`, `utils/tax.ts`),
 moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : ARC.
 
+> ✅ **Le revenu NET de location est du revenu GAGNÉ depuis le 2026-09-05** (`[FISC-RRSP-RENTAL-EARNED]`,
+> lot 171, décision Marc 5a). Guide ARC **T4040**, « revenu gagné » : le *revenu net de location de biens
+> immeubles* s'ajoute, les *pertes de location* se déduisent — source **RELAYÉE** (recherche web du
+> 2026-09-05 ; la page canada.ca reste illisible depuis le conteneur, `EGRESS_BLOCKED`). Avant, le loyer
+> nourrissait le registre des rentes (`accRentesYear`) et jamais `accGrossIncomeYearByUser` : **zéro
+> droit REER créé par un immeuble**, quel que soit son loyer.
+> **Base = ce que le moteur IMPOSE**, jamais une seconde lecture des champs : le NOI pour un immeuble
+> W5 (loyer net de vacance et de charges, `w5Effects.ts`) et le loyer indexé pour un but immobilier
+> locatif (`realEstateMonth.ts`, même montant que `accRentesYear`). Une perte locative RÉDUIT le revenu
+> gagné de son propriétaire (T4040). **Clé d'attribution** (`revenuGagnePartage.ts`) : champ `owner`
+> optionnel par immeuble, `user1 | user2 | joint` comme les actifs ; absent = conjoint = **50/50**
+> (décision produit, pas règle fiscale) ; ménage solo ou effondré (décès, divorce) → tout au
+> déclarant restant. Deux producteurs, deux positions par rapport au reset de janvier : le NOI W5 passe
+> par le tampon (comme le salaire), le loyer des buts est versé après le bloc de janvier.
+> MESURÉ (couple 60 k$/60 k$, PRIO_REER, droits SATURANTS ; routage coupé ↔ rétabli sur le même arbre ;
+> immeuble à 24 000 $/an de loyer net = +4 320 $/an de droits) : patrimoine final **+10 753 $ / +31 703 $ /
+> +56 558 $** à 10, 20, 30 ans (immeuble W5 détenu par le conjoint 2), **+11 598 $ / +36 769 $ /
+> +64 802 $** (but immobilier détenu par le conjoint 1) ; succession en BAISSE de 15 636 $ à 50 953 $
+> (plus de REER à liquider au décès — une grandeur nette d'impôt latent et une grandeur brute ne bougent
+> pas dans le même sens, cf. lot 113) ; **0 $ exactement** sans immeuble (contrôle négatif). Sur une
+> fixture où les droits ne limitent PAS les cotisations (couple 96 k$/60 k$, AUTO), **0 $ exactement à
+> neuf points** : le mécanisme n'est observable que là où il est LIMITANT.
+
 > ⚠️ **Années AVANT la table (pré-2010) — HYPOTHÈSE DE MODÈLE** (`[FISC-RRSP-FALLBACK-PRE2010]`,
 > 2026-09-04) : les droits HISTORIQUES d'un résident de longue date (`setupSimulation.ts`)
 > plafonnent chaque année pré-2010 à **`RRSP_ANNUAL_LIMIT_PRE_TABLE` = plafond 2010 (22 000 $)** —

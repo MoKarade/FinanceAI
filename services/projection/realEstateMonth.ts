@@ -9,6 +9,7 @@
 
 import { formatCAD } from '../../utils/format';
 import type { RealEstateGoal, Municipality } from '../../types';
+import { ajouterParProprietaire, type MontantsParProprietaire } from './revenuGagnePartage';
 import { RAP_LIMIT_PER_USER, calculateGrossWithholdingRRSP, withholdingForGrossRRSP } from '../../utils/tax';
 import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
 
@@ -91,6 +92,10 @@ export interface RealEstateState {
     immoHypo: number;
     immoCharges: number;
     totalRentalIncome: number;
+    /** [FISC-RRSP-RENTAL-EARNED] Loyer du mois par PROPRIÉTAIRE du but (base du revenu gagné, droits
+     *  REER). REQUIS et non optionnel : une porte optionnelle laisserait la production reprendre la
+     *  version muette en silence — le compilateur énumère les sites. */
+    rentalEarnedParProprietaire: MontantsParProprietaire;
     lifeEventLogs: string[];
     flowEventLogs: string[];
 }
@@ -504,6 +509,9 @@ export function processRealEstate(
                 state.monthlyIncome += rentalIncome;
                 state.accRentesYear += rentalIncome;
                 state.totalRentalIncome += rentalIncome;
+                // [FISC-RRSP-RENTAL-EARNED] Même montant, même porte : ce loyer est imposé (accRentesYear),
+                // il est donc du revenu GAGNÉ pour les droits REER de son propriétaire.
+                ajouterParProprietaire(state.rentalEarnedParProprietaire, goal.owner, rentalIncome);
             }
 
             const monthlyCharges = goal.unrecoverableMonthly || 0;

@@ -10,6 +10,7 @@
 import type { InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness } from '../../types';
 import { computeDonationCredit } from '../../utils/donationCredit';
 import { formatCAD } from '../../utils/format';
+import { montantsParProprietaireVides, ajouterParProprietaire, type MontantsParProprietaire } from './revenuGagnePartage';
 
 export interface W5Context {
     m: number;
@@ -43,6 +44,15 @@ export interface W5Containers {
     privateBusinesses: PrivateBusiness[];
 }
 
+/** [FISC-RRSP-RENTAL-EARNED] Ce que l'appelant doit encore ROUTER après les effets : le NOI locatif
+ *  MENSUEL par propriétaire, base du revenu gagné (droits REER). Rendu plutôt qu'écrit par le
+ *  mutateur parce que sa destination dépend de la position dans la boucle (il est produit AVANT le
+ *  bloc de janvier → tampon `grossIncomeEnAttenteByUser`, jamais l'accumulateur direct). Vaut zéro
+ *  partout quand aucun revenu locatif n'a été publié ce mois-ci. */
+export interface W5Resultat {
+    rentalNoiMensuelParProprietaire: MontantsParProprietaire;
+}
+
 /**
  * Applique les 6 effets W5.x sur l'état du mois courant.
  * Doit être appelé une fois par itération mensuelle.
@@ -62,7 +72,7 @@ export function applyW5Effects(
     ctx: W5Context,
     containers: W5Containers,
     state: W5Mutator,
-): void {
+): W5Resultat {
     const { m, currentMonthIndex, currentLoopDate, startYear, startMonth, expenseMultiplier } = ctx;
 
     // W5.4 — Primes d'assurance mensuelles (vie/invalidité/maladies graves/
@@ -123,12 +133,18 @@ export function applyW5Effects(
 
     // W5.6 — Immeubles locatifs: NOI lissé.
     let rentalPropertyNoiMonthly = 0;
+    // [FISC-RRSP-RENTAL-EARNED] Le même NOI, ventilé par PROPRIÉTAIRE : c'est la base du revenu gagné
+    // (droits REER) de chaque conjoint. Base = ce que le moteur IMPOSE (le NOI, net de vacance et de
+    // charges), donc une perte locative réduit le revenu gagné — T4040, pertes en déduction.
+    const noiParProprietaire = montantsParProprietaireVides();
     for (const rp of containers.rentalProperties) {
         const annualRent = (rp.monthlyRent || 0) * 12 * (1 - (rp.vacancyPct || 0) / 100);
         const annualExpenses = (rp.monthlyExpenses || 0) * 12;
         const noi = annualRent - annualExpenses;
         rentalPropertyNoiMonthly += noi / 12;
+        ajouterParProprietaire(noiParProprietaire, rp.owner, noi / 12);
     }
+    let revenuGagneLocatif = montantsParProprietaireVides();
     // [NAN-INPUT-HARDENING] `!== 0` laisse passer NaN (`NaN !== 0` = true) → garde l'agrégat (un `noi` NaN
     // corromprait revenu + impôt locatif). (La branche business ci-dessous est déjà sûre : `NaN > 0` = false.)
     if (Number.isFinite(rentalPropertyNoiMonthly) && rentalPropertyNoiMonthly !== 0) {
@@ -150,6 +166,9 @@ export function applyW5Effects(
         // Marc, la doc et l'écran annonçaient 45 %. Le défaut d'unité classique : traiter une
         // grandeur mensuelle comme annuelle parce que la ligne d'à côté divisait par 12.
         state.addTaxDivers(rentalPropertyNoiMonthly * RENTAL_NOI_TAX_PROXY);
+        // Revenu gagné publié EXACTEMENT quand le revenu l'est (même porte) : ce que le moteur
+        // n'encaisse ni n'impose ne crée pas de droits.
+        revenuGagneLocatif = noiParProprietaire;
     }
 
     // W5.7 — Entreprise privée (CCPC) : dividendes mensuels.
@@ -174,6 +193,8 @@ export function applyW5Effects(
         // mensuel, le `/ 12` ramenait le taux effectif à 3 % au lieu de 36 %.
         state.addTaxDivers(businessDividendMonthly * CCPC_DIVIDEND_TAX_PROXY);
     }
+
+    return { rentalNoiMensuelParProprietaire: revenuGagneLocatif };
 }
 
 /**

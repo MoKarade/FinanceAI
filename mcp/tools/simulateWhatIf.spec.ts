@@ -24,6 +24,7 @@ import {
 } from '../whatIf';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 const financingSchema = z.object({
     downPayment: z.number().finite().min(0).describe('Mise de fonds comptant ($)'),
@@ -101,7 +102,7 @@ export const simulateWhatIfSpec = {
         'tourne deux fois (trajectoire actuelle vs trajectoire avec le changement) et renvoie les écarts de patrimoine ' +
         'à 1/2/5/10/20 ans, l’impact sur l’âge FIRE et les impôts, plus les deux séries annuelles pour tracer des ' +
         'graphiques comparés. IMPORTANT : présente toujours à l’utilisateur les hypothèses (`assumptions`) retournées, ' +
-        'et n’invente JAMAIS de chiffre — tout vient du moteur.',
+        'et n’invente JAMAIS de chiffre — tout vient du moteur.' + CLAUSE_DONNEES_TOOL,
     inputSchema,
     handler: async ({ changes, years, includeSeries }, getState) => withState(getState, async (state: AppState) => {
         const now = new Date();

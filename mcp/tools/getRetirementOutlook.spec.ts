@@ -11,6 +11,7 @@ import type { ProjectionChartPoint } from '../../services/projection/types';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 const inputSchema = {
     monteCarlo: z.boolean().default(true)
@@ -105,7 +106,7 @@ export const getRetirementOutlookSpec = {
         'retraite —, la cible de revenu, et un verdict meetsIncomeTarget basé sur la SOUTENABILITÉ du ' +
         'plan (le moteur finance-t-il le train de vie cible jusqu\'au bout sans épuiser le patrimoine, ' +
         'minNetWorth + Monte Carlo) — PAS sur la somme des sources (le décaissement non-enregistré ' +
-        'n\'y est pas détaillé).',
+        'n\'y est pas détaillé).' + CLAUSE_DONNEES_TOOL,
     inputSchema,
     handler: async ({ monteCarlo }, getState) => withState(getState, async (state: AppState) => {
         const params = buildSimulationParamsFromState(state);

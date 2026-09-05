@@ -13,6 +13,7 @@ import type { AppState } from '../../types';
 import { computeFinancialSignals } from '../financialSignals';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 // `satisfies` (pas une annotation) : préserve les types concrets → inférence server.tool correcte.
 export const getNextBestActionsSpec = {
@@ -22,7 +23,7 @@ export const getNextBestActionsSpec = {
         "Signaux financiers priorisés (calculés sur les VRAIES données) pour guider les prochaines " +
         "actions de l'utilisateur : espace REER/CELI inexploité, dettes à taux élevé, cashflow mensuel, " +
         'coussin de sécurité, statut FIRE. Renvoie des FAITS chiffrés (pas de prose) — à toi, Claude, ' +
-        'de formuler les recommandations québécoises concrètes à partir de ces signaux.',
+        'de formuler les recommandations québécoises concrètes à partir de ces signaux.' + CLAUSE_DONNEES_TOOL,
     inputSchema: {},
     handler: async (_args, getState) => withState(getState, (state: AppState) => {
         // [HUB-01] calcul extrait dans mcp/financialSignals.ts, partagé avec /hub/summary.

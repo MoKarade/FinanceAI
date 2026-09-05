@@ -9,6 +9,7 @@ import type { AppState } from '../../types';
 import { searchTransactions } from '../../services/transactionsSearch';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 const inputSchema = {
     query: z.string().optional()
@@ -33,7 +34,7 @@ export const searchTransactionsSpec = {
         "Recherche et agrège les VRAIES transactions de l'utilisateur (lues depuis son état). Filtres : " +
         'texte (marchand/catégorie), catégorie exacte, plage de montants, plage de dates. Renvoie les ' +
         'transactions correspondantes (triées récentes d\'abord, bornées par `limit`) ET les agrégats ' +
-        '(total dépensé, total reçu, solde net) sur TOUT l\'ensemble filtré.',
+        '(total dépensé, total reçu, solde net) sur TOUT l\'ensemble filtré.' + CLAUSE_DONNEES_TOOL,
     inputSchema,
     handler: async ({ query, category, minAmount, maxAmount, fromDate, toDate, includeTransfers, limit }, getState) =>
         withState(getState, (state: AppState) => {

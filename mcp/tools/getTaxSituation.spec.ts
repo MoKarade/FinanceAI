@@ -14,6 +14,7 @@ import { isCoupleMode } from '../../services/couple/netWorthByOwner';
 import { computeBaseGrossAnnual } from '../../services/projection/buildSimulationParams';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 const inputSchema = {
     year: z.number().int().min(2024).max(2050).default(2026)
@@ -32,7 +33,7 @@ export const getTaxSituationSpec = {
         'Québec estimé PAR CONTRIBUABLE puis sommé (fiscalité canadienne = individuelle, pas de ' +
         'déclaration conjointe), taux marginal par conjoint, cotisations RRQ/RQAP/AE, revenu net, ET ' +
         "l'espace de cotisation RESTANT REER et CELI du MÉNAGE (droits historiques cumulés moins " +
-        'soldes actuels).',
+        'soldes actuels).' + CLAUSE_DONNEES_TOOL,
     inputSchema,
     handler: async ({ year }, getState) => withState(getState, (state: AppState) => {
         const users = (state.config?.users ?? []) as unknown as User[];

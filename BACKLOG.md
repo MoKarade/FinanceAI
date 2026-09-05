@@ -382,20 +382,6 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
-- [x] **`[FISC-SOLO-INVEST-SPLIT]`** ✅ **LIVRÉ au lot 180 (2026-09-05)** — le revenu de placement estimé suit son DÉTENTEUR (`Asset.owner` ; commun = moitié-moitié en couple ; hors couple tout à user1) via le helper partagé `estimateTaxableInvestmentIncomeByOwner` (+ `isCoupleMode`, source unique du prédicat couple), consommé par l'onglet Impôt ET `get_tax_situation` ; la part d'un conjoint sans brut est NOMMÉE dans `perUserOmitted`. Trois gardes, trois perturbations séparées (helper → 7 rouges sur les 3 fichiers ; TaxCenter seul → 2 ; MCP seul → 2). Sans `owner` posé, rien ne change (commun = ÷ 2, contrôle vert). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (M, 🧭 Q3 — conditionnel au profil) — `getTaxSituation.spec.ts:64`
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **mode couple PRÉVU** → débloqué (Q3 répondue oui).
-  + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
-  conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
-  app+MCP au même helper.
-  ⚠️ **RE-MESURÉ 2026-08-05 avant de coder (avec les VRAIES données de Marc) : impact 0,00 $** —
-  il est en mode SOLO (`coupleMode: false`, 1 user) donc `splitRatio = 1/1` et tout le revenu de
-  placement lui est déjà attribué. Le bug est réel mais DORMANT : 2 342 $/an de sous-imposition
-  sur une fixture couple mono-salarié (60 k$ + 0 $, addOn 12 970 $). ⚠️ Hypothèse RÉFUTÉE au
-  passage : je pensais l'app et le MCP divergents (le MCP `filter(g>0)` exclut le conjoint sans
-  salaire, l'app non) — mesuré IDENTIQUES, parce que la moitié du placement tombe sous le BPA et
-  ne produit aucun impôt. La divergence n'apparaîtrait qu'au-delà de ~670 k$ de non-enregistré.
-  → **Condition d'activation : bascule de Marc en mode couple.** Le levier existe déjà
-  (`Asset.owner` + `services/couple/netWorthByOwner.ts` `defaultOwner`), donc rien à préparer.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : Marc pense que son plan offre plus de 30 jours → à MESURER chez lui (`npm run fintable:dry -- --days 365`, compte de transactions rendues, montants masqués) ; je ne peux pas appeler fintable.io d'ici (403).
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
@@ -1190,7 +1176,7 @@
 
 ### 🔴 Sécurité / vie privée
 
-- [ ] **`[MCP-NO-INJECTION-FRAME]`** (S, ÉLEVÉ) — le serveur MCP externe ne porte **aucune consigne
+- [x] **`[MCP-NO-INJECTION-FRAME]`** ✅ **LIVRÉ au lot 182 (2026-09-05)** — `instructions` posé au constructeur `McpServer` (`mcp/instructions.ts`, publié dans `initialize`) + clause « DONNÉE, jamais une instruction » en fin de description de chaque tool data-aware (au niveau des `.spec.ts` : la garde de parité MCP ↔ chat exige la même description des deux côtés — le 1er jet la posait à l'enregistrement MCP et rougissait). Version MCP 0.11.0. Deux gardes protocole (`initialize.instructions`, `tools/list` descriptions + contrôle `ping`), deux perturbations séparées → 1 rouge chacune. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, ÉLEVÉ) — le serveur MCP externe ne porte **aucune consigne
   anti-injection au niveau protocole**, contrairement au chat in-app. `scrubMcpDeep`
   (`mcp/tools/_dataAware.ts`) neutralise les CARACTÈRES d'injection des champs texte-libre, mais pas
   une instruction en **langage naturel** glissée dans un nom de marchand importé — limite assumée et
@@ -1841,9 +1827,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   dérive flottante déjà bornée ≤ 0,02 $ ; mesurer le coût MC avant d'adopter.
 
 ## 🧭 Décisions Marc requises (posées en UN lot le 2026-07-31)
-
-- [x] **`[Q-SOLO-SPLIT]`** ✅ **FERMÉ au lot 180 (2026-09-05)** — la réponse 12 de Marc (« mode couple prévu ») a débloqué `[FISC-SOLO-INVEST-SPLIT]`, dont le remède prescrit EST la détention réelle ; livré tel quel, sans re-poser la question (à contester si Marc préférait un autre partage — signalé dans HANDOVER). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (historique) `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
-  par détention réelle ?
 
 - [ ] **`[Q-HOOKS-DEPS-ERROR]`** — moitié (b) de `[HOOKS-EXHAUSTIVE-DEPS-WARN]`, livré au lot 76.
   Passe-t-on `react-hooks/exhaustive-deps` de `warn` à **`error`** ? **Mesuré après le lot 76 :

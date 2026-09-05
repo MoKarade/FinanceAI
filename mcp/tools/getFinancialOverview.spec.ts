@@ -7,6 +7,7 @@ import { buildFinancialOverview } from '../../services/financialSnapshot';
 import { syncHealthFromState } from '../../services/fintable/syncHealth';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 // `satisfies` (pas une annotation) : préserve les types concrets → inférence server.tool correcte.
 export const getFinancialOverviewSpec = {
@@ -19,7 +20,7 @@ export const getFinancialOverviewSpec = {
         "totale, dettes principales et objectifs actifs. Aucun paramètre : répond sur l'état chargé. " +
         "Inclut syncHealth : FRAÎCHEUR de l'import bancaire (ok / stale / error / never). Si le statut " +
         "n'est pas « ok », le DIRE avant de commenter des montants — ils peuvent être figés depuis des " +
-        'jours ; `reason` nomme déjà la cause probable.',
+        'jours ; `reason` nomme déjà la cause probable.' + CLAUSE_DONNEES_TOOL,
     inputSchema: {},
     handler: async (_args, getState) => withState(getState, (state: AppState) => {
         const o = buildFinancialOverview(state);

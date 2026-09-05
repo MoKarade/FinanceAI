@@ -23,7 +23,9 @@
 > Appel `void requestPersistentStorage()` dans `useAppBootEffects` avant le boot Drive ; `SystemView`
 > relit l'état au montage (et au bouton Rafraîchir) et pousse une ligne `STORAGE:` (`warn` si refusée).
 > Trois gardes / trois perturbations SÉPARÉES : appel de boot retiré → le scan du hook seul ; ligne
-> retirée → les 3 cas SystemView ; mémo cassé → « une seule demande » seul. ⚠️ Mon insertion a déplacé
+> retirée → les 3 cas SystemView ; mémo cassé → « une seule demande » seul. ⚠️ Leçon : un
+> `--force-with-lease` chaîné par `;` derrière un rebase interrompu a poussé `origin/main` sous le nom
+> de la branche (rattrapé par `--abort` + `rebase --onto`, arbre identique) — voir CONVENTIONS. ⚠️ Mon insertion a déplacé
 > la directive `eslint-disable-next-line exhaustive-deps` posée devant le `useMemo` de SystemView (lint :
 > directive orpheline + dépendance « inutile ») — remise devant son sujet. Push sans leçon nouvelle.
 

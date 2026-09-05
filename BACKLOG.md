@@ -1012,13 +1012,6 @@
   (optimizeSourceDeductions) — la retenue absorbe les déductions REER strategy-dépendantes,
   écart mesuré 107 530 $ entre PRIO_REER et PRIO_CELI sur le même profil. [MESURÉ]
 
-- [x] **`[W5-RENTAL-INTERET-DPA]`** ✅ **LIVRÉ (volet INTÉRÊTS) au lot 188 (2026-09-05)** — base imposable du NOI W5 = NOI − intérêt du mois (`rentalInterestOfMonth`, source unique partagée avec `processRentalMonth` ; T4036 ligne 8710, relayé `EGRESS_BLOCKED`), même base NETTE pour le revenu gagné (T4040) ; trésorerie inchangée. MESURÉ (plex 450 k$, prêt 300 k$ à 5 %) : impôt −49 114 $ / −79 804 $ / −77 772 $ à 10/20/30 ans, patrimoine +61 791 $ / +128 255 $ / +175 797 $, 0 $ sans hypothèque. Gardes : 7 unitaires (module), 1 revenu gagné hypothéqué, 3 de câblage par espion (table passée == `ImmoInterest` publié, mois par mois) ; perturbations SÉPARÉES : site d'appel → 4 rouges, module sourd → 7 rouges. Volet **DPA** ROUTÉ à Marc (`[W5-RENTAL-DPA-ELECTION]`), jumeau du but immobilier routé (`[IMMO-BUT-LOCATIF-INTERET-BRUT]`). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
-  le forfait imposant désormais 12× plus, deux déductions non modélisées deviennent matérielles :
-  les **intérêts hypothécaires** du locatif (le service de dette sort en dépense mais le NOI est
-  imposé BRUT à 45 %) et la **DPA** — `ccaTaken` est une SAISIE (`PatrimoineExtended.tsx`) que
-  AUCUN module moteur ne lit (grep : un seul commentaire). Sens conservateur (sur-imposition d'un
-  bailleur levieré) mais un champ de saisie sans effet est un mensonge d'UI. [À vérifier l'ampleur]
-
 - [ ] ⏸️ **`[W5-RENTAL-DPA-ELECTION]`** (S, MOYEN — découvert en livrant `[W5-RENTAL-INTERET-DPA]`, lot 188 ;
   **DÉCISION MARC dans `docs/A_FAIRE_MOI.md`**) — la DPA (déduction pour amortissement, catégorie 1,
   4 %/an dégressif, règle de demi-année) n'est PAS modélisée : `RentalProperty.ccaTaken` est une DPA
@@ -1030,8 +1023,30 @@
   l'écran ; élection par immeuble (case + taux) sans recapture ; élection AVEC vente/recapture.
   [MESURÉ : 0 lecteur de `ccaTaken` ; ampleur DPA ≈ 4 % × (valeur − terrain) × proxy/an, non mesurée]
 
+- [ ] 🔴 **`[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]`** (S, **ÉLEVÉ money-critical** — découvert au lot 189
+  en MESURANT le jumeau ci-dessous, 2026-09-05 ; **plan P5 à valider dans `docs/A_FAIRE_MOI.md`**) — le
+  loyer d'un BUT immobilier locatif (`realEstateMonth.ts` → `accRentesYear`) n'entre dans l'assiette
+  du barème de décembre QUE dans la branche RETRAITÉE (`taxDecember.ts` §1, `basePensionAnnual`) ; la
+  branche ACTIVE taxe `salaire + retraits REER` seulement — le loyer d'un ménage qui travaille n'est
+  imposé par AUCUN barème (il n'entre que dans les bases RAMQ/FSS et la récupération PSV). Miroir
+  exact de `[REER-ACTIF-NON-RECONCILIE]` (2026-08-19 : la branche retraitée avait le terme, l'active
+  pas). **MESURÉ** (couple 260 k$ actif 30 ans, condo loué 350 k$ / 1 500 $ de loyer, prêt 280 k$ à
+  4,5 %) en ajoutant le loyer à l'assiette active (part égale par adulte, comme la branche
+  retraitée) : impôt cumulé **+63 242 $ à 10 ans, +156 559 $ à 20, +264 356 $ à 30** ; patrimoine
+  final **−76 038 $ / −224 099 $ / −436 909 $** (−4,1 % à 30 ans) ; sans hypothèque
+  −79 189 $ / −228 719 $ / −443 392 $. Le persona et les fixtures à `rentalIncomeMonthly` (7 fichiers
+  de tests) re-baseraient. ⚠️ DOIT se livrer AVEC le jumeau ci-dessous (la déduction des intérêts) :
+  l'un sans l'autre est faux dans un sens ou dans l'autre. ⚠️ L'assiette d'EMPLOI (RRQ/RQAP/AE)
+  reste le salaire seul, comme pour les retraits REER. [MESURÉ]
+
 - [ ] **`[IMMO-BUT-LOCATIF-INTERET-BRUT]`** (S, MOYEN — JUMEAU trouvé en livrant `[W5-RENTAL-INTERET-DPA]`,
-  lot 188) — le loyer d'un BUT immobilier locatif (`realEstateMonth.ts`, `goal.rentalIncomeMonthly` →
+  lot 188 ; ⚠️ **NE PAS livrer seul — apparié à `[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]`, plan P5**.
+  MESURÉ au lot 189, 2026-09-05 : la déduction SEULE (`accRentesYear += loyer − intérêt`, revenu
+  gagné net) sur le couple actif ci-dessus donne impôt **inchangé** au dollar près quand le revenu
+  gagné reste brut, et patrimoine **−2 820 $ / −6 836 $ / −10 076 $** à 10/20/30 ans quand il
+  passe net — parce que le loyer n'est pas imposé en phase active, la déduction ne réduit AUCUN
+  impôt et ne fait que retirer des droits REER : une perte sèche, le cas d'école
+  `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`. Le code a été écrit, mesuré, puis RETIRÉ) — le loyer d'un BUT immobilier locatif (`realEstateMonth.ts`, `goal.rentalIncomeMonthly` →
   `accRentesYear`, imposé au barème en décembre) est imposé BRUT des intérêts hypothécaires, alors que
   `state.immoInterest` les calcule au même endroit et que le lot 188 vient de les déduire pour le chemin
   W5 — deux chemins, deux règles pour le même fait fiscal (T4036 ligne 8710). ⚠️ Pas au proxy ici : la

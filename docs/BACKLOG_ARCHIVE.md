@@ -10,6 +10,18 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[W5-RENTAL-INTERET-DPA]` (volet intérêts) — LIVRÉ (lot 188, PR #919)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[W5-RENTAL-INTERET-DPA]`** ✅ **LIVRÉ (volet INTÉRÊTS) au lot 188 (2026-09-05)** — base imposable du NOI W5 = NOI − intérêt du mois (`rentalInterestOfMonth`, source unique partagée avec `processRentalMonth` ; T4036 ligne 8710, relayé `EGRESS_BLOCKED`), même base NETTE pour le revenu gagné (T4040) ; trésorerie inchangée. MESURÉ (plex 450 k$, prêt 300 k$ à 5 %) : impôt −49 114 $ / −79 804 $ / −77 772 $ à 10/20/30 ans, patrimoine +61 791 $ / +128 255 $ / +175 797 $, 0 $ sans hypothèque. Gardes : 7 unitaires (module), 1 revenu gagné hypothéqué, 3 de câblage par espion (table passée == `ImmoInterest` publié, mois par mois) ; perturbations SÉPARÉES : site d'appel → 4 rouges, module sourd → 7 rouges. Volet **DPA** ROUTÉ à Marc (`[W5-RENTAL-DPA-ELECTION]`), jumeau du but immobilier routé (`[IMMO-BUT-LOCATIF-INTERET-BRUT]`). Contexte d'origine : (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
+  le forfait imposant désormais 12× plus, deux déductions non modélisées deviennent matérielles :
+  les **intérêts hypothécaires** du locatif (le service de dette sort en dépense mais le NOI est
+  imposé BRUT à 45 %) et la **DPA** — `ccaTaken` est une SAISIE (`PatrimoineExtended.tsx`) que
+  AUCUN module moteur ne lit (grep : un seul commentaire). Sens conservateur (sur-imposition d'un
+  bailleur levieré) mais un champ de saisie sans effet est un mensonge d'UI. [À vérifier l'ampleur]
+
+
 ## 2026-09-05 — `[ESTATE-LIFEEXPECTANCY-95-DUR]` — LIVRÉ (lot 187, PR #918)
 
 Ticket d'origine tel qu'au moment de l'archivage :

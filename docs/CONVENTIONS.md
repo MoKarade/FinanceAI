@@ -12200,3 +12200,22 @@ un rapport qui ne tombe pas sur la constante attendue s'explique AVANT d'être p
 première hypothèse (« la déduction n'atteint qu'une partie des mois ») était fausse, et la vraie
 cause se lisait dans le nom du ticket voisin.
 
+### Variante notée au lot 189 (2026-09-05) — une déduction dont le SIGNE mesuré contredit le correctif révèle l'IMPÔT qui manque
+
+Le jumeau du lot 188 (déduire les intérêts hypothécaires du loyer d'un BUT immobilier, `accRentesYear`)
+était juste en droit, une ligne de code, et sa mesure a rendu **patrimoine en BAISSE et impôt
+INCHANGÉ** — l'inverse de ce qu'une déduction fait. Deux hypothèses expliquaient ce silence fiscal
+(« la fixture n'atteint pas décembre », « l'assiette ne lit pas ce registre ») ; l'expérience qui
+tranche coûte une ligne : laisser le revenu GAGNÉ brut et ne changer que l'assiette → résultats
+identiques à l'AVANT au dollar près. Donc `accRentesYear` n'avait AUCUN lecteur fiscal en phase
+active — la branche active de `taxDecember.ts` §1 ne taxe que salaire + retraits REER, et c'est le
+miroir exact de `[REER-ACTIF-NON-RECONCILIE]`, déjà corrigé une fois pour un autre terme du même
+ternaire. Trois règles : (1) **un correctif de DÉDUCTION se mesure d'abord par l'impôt qu'il réduit,
+jamais par le patrimoine** — si l'impôt ne bouge pas, la déduction n'a rien à déduire ; (2) livré
+seul, il est PIRE que rien (il retire des droits REER sans rendre un dollar) → code RETIRÉ, les deux
+moitiés appariées dans le BACKLOG et un plan posé à Marc ; (3) quand un terme vit dans UNE branche
+d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il appartient aux deux régimes
+— `accRetraitsReerYear` a été factorisé hors du ternaire au lot `[TAXDEC-ACTIF-72-PENSION-CREDIT]`,
+`accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
+pour un couple actif avec un condo loué 1 500 $/mois.
+

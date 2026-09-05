@@ -1411,3 +1411,33 @@ elle ne peut pas créer une perte, et elle est reprise (imposée) le jour de la 
 
 Je ne tranche pas seul : (2) et (3) déplacent de l'argent, et (2) le fait dans un seul sens.
 
+## Plan P5 à valider — `[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]` + `[IMMO-BUT-LOCATIF-INTERET-BRUT]` (2026-09-05, lot 189)
+
+**Le fait en une phrase** : le loyer d'un immeuble saisi comme BUT immobilier (onglet Immobilier, case
+« loué ») n'est imposé par aucun barème tant que tu travailles — il ne l'est qu'une fois à la retraite.
+Et ses intérêts hypothécaires ne sont déduits nulle part. Les deux se corrigent ENSEMBLE (l'un sans
+l'autre donne un chiffre faux dans un sens ou dans l'autre — mesuré).
+
+**Ce que ça pèse** (couple actif 260 k$, condo loué 1 500 $/mois, prêt 280 k$ à 4,5 %) : impôt
++63 k$ à 10 ans, +157 k$ à 20, +264 k$ à 30 ; patrimoine projeté −76 k$ / −224 k$ / −437 k$. Les
+intérêts déduits rendent une partie : ≈ 87 k$ d'intérêts sur 10 ans, ≈ 117 k$ sur la vie du prêt,
+au taux marginal du ménage.
+
+**Plan proposé (un lot, S/M, money-critical)** :
+1. `taxDecember.ts` §1, branche ACTIVE : ajouter `accRentesYear` (part égale par adulte, en réel) à
+   l'assiette imposable — même forme que la branche retraitée ; l'assiette d'EMPLOI (RRQ/RQAP/AE)
+   reste le salaire seul. Sortir `accRentesYear` du ternaire de l'assiette d'empilement (§2/§3), comme
+   `accRetraitsReerYear` l'a été.
+2. `realEstateMonth.ts` : `accRentesYear += loyer − intérêt du mois` (T4036 ligne 8710), revenu GAGNÉ
+   sur la même base nette (T4040) ; trésorerie et affichage restent au loyer brut. Le code existe
+   (écrit et retiré au lot 189).
+3. Gardes : espion sur le contexte de décembre (assiette active = salaire + REER + loyer net), cas
+   retraité inchangé (contrôle), perturbations séparées pour chaque moitié ; re-base sciemment des
+   goldens des 7 fichiers de fixtures à `rentalIncomeMonthly`, chacun avec son sens mesuré.
+4. Docs : FISCAL_REFERENCE §6/§7, PROJECTION, CHANGELOG (visible : impôt en hausse pour tout
+   bailleur actif saisi en but immobilier).
+
+**Question Q12** : OK pour livrer ce plan tel quel ? (Alternative écartée : ne corriger que la
+déduction — c'est une perte sèche mesurée, −2,8 k$ à −10 k$ de patrimoine sans un dollar d'impôt en
+moins.) [Recommandé : OUI — c'est la loi, et l'écart grandit avec l'horizon.]
+

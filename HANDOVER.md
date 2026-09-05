@@ -16,6 +16,19 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 189 (DOC) : le jumeau du 188 s'est révélé un TROU d'impôt — deux tickets appariés, plan P5 à valider
+> Coder `[IMMO-BUT-LOCATIF-INTERET-BRUT]` (déduire les intérêts du loyer d'un BUT immobilier, `accRentesYear`)
+> a donné un SIGNE inattendu : patrimoine −2 820 $ / −6 836 $ / −10 076 $ à 10/20/30 ans, impôt INCHANGÉ.
+> Expérience discriminante (revenu gagné laissé brut → résultats identiques à l'AVANT au dollar près) :
+> `accRentesYear` n'a AUCUN effet fiscal pour un ménage ACTIF — la branche active de `taxDecember.ts` §1
+> taxe `salaire + retraits REER` seulement, le loyer de but n'entre que dans la branche RETRAITÉE
+> (miroir de `[REER-ACTIF-NON-RECONCILIE]`). Mesuré en l'ajoutant (part égale par adulte) : impôt
+> **+63 242 $ / +156 559 $ / +264 356 $**, patrimoine **−76 038 $ / −224 099 $ / −436 909 $** (couple
+> actif, condo loué 1 500 $/mois). Code du jumeau RETIRÉ (livré seul, il ne fait que retirer des droits
+> REER : `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`). Routé : `[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]`
+> (ÉLEVÉ, nouveau) + jumeau apparié, plan **P5** dans A_FAIRE_MOI (lot money-critical avec re-base de
+> 7 fichiers de fixtures — porte de plan). Rien de servi ne change. Leçon dans CONVENTIONS.
+
 > ## 🟦 Session 2026-09-05 — Lot 188 : les intérêts hypothécaires d'un locatif W5 sont déduits de la base imposable (`[W5-RENTAL-INTERET-DPA]`, volet intérêts)
 > `applyW5Effects` imposait le NOI BRUT au proxy 45 % pendant que `processRentalMonth` sortait le service de
 > dette en dépense. Désormais : `rentalInterestOfMonth` (`rentalMonth.ts`, SOURCE UNIQUE, solde de début de

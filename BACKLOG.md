@@ -471,7 +471,7 @@
   buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
   comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
   ✅ **Décision Marc 2026-09-04 (en session)** : taux PAR IMMEUBLE locatif (option a, comme les buts immobiliers). À livrer (lot à venir).
-- [ ] **`[ENG-RENEWAL-CHOC-MORT]`** (M, 🧭 **DEUX décisions pour Marc — MESURÉ 2026-08-25**) — le
+- [x] **`[ENG-RENEWAL-CHOC-MORT]`** ✅ **LIVRÉ au lot 161 (2026-09-05, avec RATE-MISMATCH)** (M, était 🧭 — MESURÉ 2026-08-25) — le
   « choc » de taux au renouvellement hypothécaire est dérivé du PREMIER CARACTÈRE de l'identifiant
   du bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`). **Mesuré : il vaut ZÉRO partout dans le dépôt.**
   L'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → nul), les fixtures utilisent `p1`, les
@@ -489,8 +489,8 @@
   ⚠️ Ce ticket REMPLACE `[ENG-RENEWAL-M0]` (« renouvellement dès le mois 0 »), dont la prémisse est
   exacte mais sans conséquence : le renouvellement au m0 est LOGGÉ, et avec un choc nul il ne change
   ni le PMT ni le taux. Rien à corriger de ce côté tant que le choc est mort.
-  ✅ **Décision Marc 2026-09-04 (en session)** : SAISIE « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé), livrée AVEC `[ENG-RENEWAL-RATE-MISMATCH]` dans le même lot. À livrer (lot à venir).
-- [ ] **`[ENG-RENEWAL-RATE-MISMATCH]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552, PRÉ-EXISTANT) —
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 161 (2026-09-05)** : le moteur consomme `renewalRateProjection` — le champ que le Studio immobilier ÉCRIVAIT déjà (producteur UI existant, moteur aveugle) ; défaut = taux courant (≤ 0 traité comme absence, un champ vidé écrit 0), choc par identifiant RETIRÉ, message no-fake-data piloté par la saisie. Les 3 défauts UI `|| 5.0` alignés sur « défaut = taux actuel ». → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+- [x] **`[ENG-RENEWAL-RATE-MISMATCH]`** ✅ **LIVRÉ au lot 161 (2026-09-05, avec CHOC-MORT)** — le taux courant vit dans `pState.currentRatePct` (écrit à l'achat et à chaque renouvellement) ; l'intérêt mensuel ET la marge Smith le consomment, donc PMT et intérêt suivent ENSEMBLE. Preuves : sentinelle « le prêt s'éteint à l'échéance même quand le taux baisse » (rouge si l'intérêt reste à l'ancien taux), Smith par différence-en-différences au seuil mesuré des deux côtés (135 399 $ vs 38 416 $). (M, ÉLEVÉ [Certain, mesuré] — panel #552, PRÉ-EXISTANT) —
   au renouvellement hypothécaire, le PMT est recalculé au NOUVEAU taux mais l'intérêt mensuel reste
   à `goal.mortgageRate` (`realEstateMonth.ts:~349`) : renouvellement 4,5 %→3 % mesuré → capital
   551 $/mois seulement, solde encore 211 569 $ après 10 ans sur un prêt censé s'éteindre à 240 mois.
@@ -500,34 +500,6 @@
   et le correctif juste, mais il n'est ATTEIGNABLE qu'une fois le choc rendu vivant. Les deux
   tickets se livrent donc ENSEMBLE. Fix : porter le taux courant dans pState (ex. `currentRate`) et
   le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
-- [x] **`[ENG-MELTDOWN-JAMBE-ARRIVEE]`** ✅ **LIVRÉ EN ENTIER au lot 160 (2026-09-05)** (M, était 🧭 — MESURÉ 2026-08-25) — le
-  meltdown REER transfère du REER vers le NON-ENREGISTRÉ. La jambe de DÉPART est publiée depuis
-  PR #733 ; la jambe d'ARRIVEE restait muette : le non-enregistré montait sans flux publié
-  (résiduel mesuré **25 273,39 $** au pire mois sous `MELTDOWN_REER`).
-  ✅ **Moitié SANS arbitrage livrée le 2026-09-04 (lot 157, PR #888)** — la « piste » du ticket :
-  registre d'AFFICHAGE dédié (`arriveeMeltdownNonReg`), versé dans `NetTransferNonReg` publié mais
-  JAMAIS dans `contribNonReg` (l'exclusion de croissance) → le flux se voit, l'argent ne bouge pas
-  (goldens NEUTRALITÉ verts, prouvés discriminants par le geste interdit → 2 rouges). Le résiduel
-  de forme-flux sous meltdown est retombé de 25 273 $ à l'arrondi ; la borne de 30 000 $ de
-  `projection.fluxForm` s'est INVERSÉE en règle (tolérance au cent). **RESTE la 🧭 décision** :
-  le rendement fantôme de mi-mois (verser aussi l'arrivée dans la base d'exclusion — déplace
-  −5 045,04 $ de patrimoine final, contre les goldens NEUTRALITÉ).
-  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 160 (2026-09-05)** : l'arrivée du meltdown est exclue de la croissance du mois plein via son PROPRE paramètre de `growthApplication` (jamais fusionnée dans `contribNonReg`, qui est aussi un affichage). Goldens NEUTRALITÉ re-basés SCIEMMENT : −155,82 $ de NW final ET d'estate sur la fixture 10 ans (le rendement fantôme disparaît, NW ↓) ; câblage prouvé par perturbation (arg neutralisé → les 2 goldens reviennent aux anciennes valeurs). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
-  ⚠️ **Le geste symétrique DÉPLACE DE L'ARGENT.** `contribNonReg` n'est pas un simple registre
-  d'affichage : `growthApplication` s'en sert comme base d'exclusion de la croissance de mi-mois
-  (`nonReg - contribNonReg`). L'alimenter retire un rendement fantôme sur de l'argent arrivé en
-  cours de mois — **mesuré −5 045,04 $ de patrimoine final (−0,12 %)** et −5 198,23 $ de croissance
-  non-enregistrée cumulée — et fait **ROUGIR deux goldens « NEUTRALITÉ NW »**
-  (`projection.meltdownDisplay`, `projection.totalTaxesPaid`), posés le 2026-07-31 avec la preuve
-  « bit-identique sur 301 mois × 9 grandeurs ».
-  🧭 **La question** : ces goldens verrouillent-ils une VÉRITÉ (« les compteurs d'affichage du
-  meltdown ne touchent jamais le patrimoine ») ou seulement l'état d'alors ? Le rendement retiré
-  paraît être une correction — de l'argent arrivé le 15 ne devrait pas toucher un mois plein de
-  croissance — mais c'est un changement d'argent contre un invariant explicite, donc à trancher.
-  ⚠️ Piste sans arbitrage : séparer le registre PUBLIÉ de la base d'exclusion de croissance, pour
-  publier le flux sans toucher au rendement. Coût : un champ de plus dans l'état mensuel.
-## 🏦 Sync & données (Fintable, Drive, persistance)
-
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
   il n'en importera AUCUNE de plus** : `deriveCutoverDate` (`services/fintable/deriveCutoverDate.ts`)

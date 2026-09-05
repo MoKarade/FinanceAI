@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le taux de renouvellement hypothécaire que tu saisis agit enfin)
+
+- **Corrigé** (décision Marc 2026-09-04) : le champ « Taux Renouvellement » du Studio immobilier
+  était ignoré par la projection — le taux ne bougeait JAMAIS au renouvellement (l'ancien
+  mécanisme interne était mort par construction). Désormais, à chaque renouvellement de terme
+  (5 ans), le taux saisi s'applique : la mensualité ET l'intérêt sont recalculés ensemble, et la
+  marge du levier Smith suit le nouveau taux. Sans saisie, rien ne change (le taux courant est
+  conservé). Le message de renouvellement dit « nouveau taux » seulement quand il a vraiment bougé.
+- **Corrigé** : le défaut affiché du champ était « 5,0 % » alors que, sans saisie, la projection
+  garde le taux actuel — l'affichage montre maintenant le vrai défaut (ton taux actuel).
+
 ## [unreleased] — 2026-09-05 (Le meltdown REER cesse de gagner un mois de rendement sur l'argent qui vient d'arriver)
 
 - **Corrigé** (décision Marc 2026-09-04) : sous la stratégie « meltdown REER », l'argent transféré

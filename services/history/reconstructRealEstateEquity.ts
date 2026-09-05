@@ -43,7 +43,9 @@ export function reconstructRealEstateEquityByYear(
             downPayment: p.downPayment,
             rate: p.mortgageRate,
             amortization: p.amortization,
-            renewalRate: p.renewalRateProjection ?? p.mortgageRate,
+            // `||` voulu, aligné sur le moteur ([ENG-RENEWAL-SAISIE]) : un ≤ 0 (champ vidé →
+            // `Number('')` = 0) est une ABSENCE de saisie, pas un renouvellement à 0 %.
+            renewalRate: p.renewalRateProjection || p.mortgageRate,
             propertyGrowthRate: p.propertyGrowthRate ?? 3,
             initialRenovations: p.initialRenovations ?? 0,
             yearlyRenovations: p.yearlyRenovations ?? 0,

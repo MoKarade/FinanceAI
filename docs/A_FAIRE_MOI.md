@@ -36,6 +36,7 @@
   saisie « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé),
   livrée avec le correctif RATE-MISMATCH dans le même lot.
   ✅ **RÉPONDU 2026-09-04 (en session)** : SAISIE « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé), livrée AVEC le correctif RATE-MISMATCH dans le même lot.
+  ✅ **LIVRÉE au lot 161 (2026-09-05)** — le champ « Taux Renouvellement » du Studio immobilier pilote enfin le moteur ; PMT et intérêt suivent ensemble.
 - [x] **[DÉCISION — ENG-FVI-EFFICIENCY-ESTATE]** (mesuré, relecture #681) — l'« efficacité
   fiscale » du FVI affiche 100 % dès que l'impôt courant est négatif (situation NORMALE d'un
   salarié) et ignore l'impôt successoral — mesuré : PRIO_REER passe de 100 % à 0 % selon la

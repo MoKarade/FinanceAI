@@ -57,7 +57,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
     const propertyGrowthRate = activeGoal.propertyGrowthRate ?? 3.0;
     const rentalIncomeMonthly = activeGoal.rentalIncomeMonthly || 0;
     const yearlyRenovations = activeGoal.yearlyRenovations || 0;
-    const renewalRate = activeGoal.renewalRateProjection || 5.0;
+    // Défaut = taux ACTUEL (décision Marc 2026-09-04 : sans saisie, le renouvellement garde le
+    // taux courant — le moteur fait pareil). `||` voulu : le moteur traite un ≤ 0 comme une absence.
+    const renewalRate = activeGoal.renewalRateProjection || rate;
     const maxValue = activeGoal.maxValue || 0;
 
     return (

@@ -10,6 +10,39 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-MELTDOWN-JAMBE-ARRIVEE]` — LIVRÉ EN ENTIER (lots 157 + 160, PR #888 et #891)
+
+Ticket d'origine (2026-08-25) tel qu'au moment de l'archivage, réponses incluses :
+
+- [x] **`[ENG-MELTDOWN-JAMBE-ARRIVEE]`** ✅ **LIVRÉ EN ENTIER au lot 160 (2026-09-05)** (M, était 🧭 — MESURÉ 2026-08-25) — le
+  meltdown REER transfère du REER vers le NON-ENREGISTRÉ. La jambe de DÉPART est publiée depuis
+  PR #733 ; la jambe d'ARRIVEE restait muette : le non-enregistré montait sans flux publié
+  (résiduel mesuré **25 273,39 $** au pire mois sous `MELTDOWN_REER`).
+  ✅ **Moitié SANS arbitrage livrée le 2026-09-04 (lot 157, PR #888)** — la « piste » du ticket :
+  registre d'AFFICHAGE dédié (`arriveeMeltdownNonReg`), versé dans `NetTransferNonReg` publié mais
+  JAMAIS dans `contribNonReg` (l'exclusion de croissance) → le flux se voit, l'argent ne bouge pas
+  (goldens NEUTRALITÉ verts, prouvés discriminants par le geste interdit → 2 rouges). Le résiduel
+  de forme-flux sous meltdown est retombé de 25 273 $ à l'arrondi ; la borne de 30 000 $ de
+  `projection.fluxForm` s'est INVERSÉE en règle (tolérance au cent). **RESTE la 🧭 décision** :
+  le rendement fantôme de mi-mois (verser aussi l'arrivée dans la base d'exclusion — déplace
+  −5 045,04 $ de patrimoine final, contre les goldens NEUTRALITÉ).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 160 (2026-09-05)** : l'arrivée du meltdown est exclue de la croissance du mois plein via son PROPRE paramètre de `growthApplication` (jamais fusionnée dans `contribNonReg`, qui est aussi un affichage). Goldens NEUTRALITÉ re-basés SCIEMMENT : −155,82 $ de NW final ET d'estate sur la fixture 10 ans (le rendement fantôme disparaît, NW ↓) ; câblage prouvé par perturbation (arg neutralisé → les 2 goldens reviennent aux anciennes valeurs). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+  ⚠️ **Le geste symétrique DÉPLACE DE L'ARGENT.** `contribNonReg` n'est pas un simple registre
+  d'affichage : `growthApplication` s'en sert comme base d'exclusion de la croissance de mi-mois
+  (`nonReg - contribNonReg`). L'alimenter retire un rendement fantôme sur de l'argent arrivé en
+  cours de mois — **mesuré −5 045,04 $ de patrimoine final (−0,12 %)** et −5 198,23 $ de croissance
+  non-enregistrée cumulée — et fait **ROUGIR deux goldens « NEUTRALITÉ NW »**
+  (`projection.meltdownDisplay`, `projection.totalTaxesPaid`), posés le 2026-07-31 avec la preuve
+  « bit-identique sur 301 mois × 9 grandeurs ».
+  🧭 **La question** : ces goldens verrouillent-ils une VÉRITÉ (« les compteurs d'affichage du
+  meltdown ne touchent jamais le patrimoine ») ou seulement l'état d'alors ? Le rendement retiré
+  paraît être une correction — de l'argent arrivé le 15 ne devrait pas toucher un mois plein de
+  croissance — mais c'est un changement d'argent contre un invariant explicite, donc à trancher.
+  ⚠️ Piste sans arbitrage : séparer le registre PUBLIÉ de la base d'exclusion de croissance, pour
+  publier le flux sans toucher au rendement. Coût : un champ de plus dans l'état mensuel.
+## 🏦 Sync & données (Fintable, Drive, persistance)
+
+
 ## 2026-09-04 — `[GODFILE-STORE]` — LIVRÉ (lot 158, PR #889) — la famille godfiles V11 est COMPLÈTE
 
 Le dernier godfile de la famille V11, gardé pour la fin par son propre ticket (« DERNIER, risque

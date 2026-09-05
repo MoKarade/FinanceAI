@@ -187,7 +187,8 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const rentalIncomeMonthly = activeGoal.rentalIncomeMonthly || 0;
     const initialRenovations = activeGoal.initialRenovations || 0;
     const yearlyRenovations = activeGoal.yearlyRenovations || 0;
-    const renewalRate = activeGoal.renewalRateProjection || 5.0;
+    // Défaut = taux ACTUEL (décision Marc 2026-09-04, aligné sur le moteur — `||` voulu : ≤ 0 = absence).
+    const renewalRate = activeGoal.renewalRateProjection || (activeGoal.mortgageRate || 4.5);
     const maxValue = activeGoal.maxValue || 0;
     const propertyName = activeGoal.name || (activeGoal.isPrimaryResidence ? 'Résidence Principale' : 'Investissement');
 

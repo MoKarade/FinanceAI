@@ -41,6 +41,12 @@ export interface PropertyStateMutable {
      *  la vente par `LifeEvent.propertyId`. Optionnel + explicitement typé (vs l'index catch-all `unknown`) :
      *  le moteur le fournit toujours (`projection.ts` propertiesState), absent ⇒ jamais ciblé (fallback). */
     id?: string;
+    /** [ENG-RENEWAL-RATE-MISMATCH] Taux CONTRACTUEL courant du prêt, en % annuel (comme
+     *  `goal.mortgageRate`). Écrit à l'achat puis à CHAQUE renouvellement ; l'intérêt mensuel et le
+     *  taux de la marge Smith le lisent (`?? goal.mortgageRate` pour un état semé avant l'achat ou
+     *  hérité d'un bien déjà détenu). Avant : le PMT était recalculé au nouveau taux mais l'intérêt
+     *  restait à `goal.mortgageRate` — capital affamé dès que le taux changeait au renouvellement. */
+    currentRatePct?: number;
     [key: string]: unknown;
 }
 

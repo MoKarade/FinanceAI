@@ -1189,6 +1189,14 @@ exactes par `fiscal-accuracy`) :
 | 500 000 → 1 500 000 $ (`SCHL_PRICE_THRESHOLD_TIER2`) | 5 % du 1er 500 k$ + **10 %** de l'excédent |
 | ≥ 1 500 000 $ | **20 %** (assurance SCHL indisponible) |
 
+> ✅ **Borne STRICTE alignée le 2026-09-05** (`[SCHL-1500K-BOUNDARY]`, lot 190) : ce tableau disait « ≥ 1 500 000 $ →
+> 20 % » depuis toujours, mais le code écrivait `price <= SCHL_PRICE_THRESHOLD_TIER2` à quatre endroits — au prix
+> EXACT de 1,5 M$, mise de fonds minimale 125 000 $ (8,33 %) au lieu de 300 000 $, prêt déclaré assurable et prime
+> calculée. Règle SCHL : assurance disponible pour un prix d'achat **inférieur à** 1 500 000 $ (plafond relevé de
+> 1 M$ à 1,5 M$ le 2024-12-15 — source RELAYÉE, cmhc-schl.gc.ca illisible depuis le conteneur, `EGRESS_BLOCKED`).
+> Le doc avait raison, le code non : un tableau de référence n'est une source unique que si une garde le
+> confronte au code — d'où les bornes testées des deux côtés du seuil.
+
 Amortissement max : **25 ans** assuré standard · **30 ans** assuré si 1er acheteur OU construction
 neuve (règle d'août 2024, `SCHL_AMORT_MAX_INSURED_FTB_OR_NEW`) · **30 ans** conventionnel (≥ 20 %).
 Assurance SCHL : **requise si LTV > 80 %**, indisponible si LTV > 95 % ou prix > 1,5 M$.

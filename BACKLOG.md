@@ -24,9 +24,6 @@
   (marqueur + libellé court), chaque type d'annotation **désactivable en décochant** (préférence
   persistée). Réutiliser le mécanisme des pastilles d'événements existant (rang après écrêtage, cf.
   `UN-RANG-CALCULE-AVANT-L-ECRETAGE-SURVIT-A-SES-VOISINS`) — ne pas en écrire un second.
-- [ ] **`[PROFIL-NOMMER-MARC]`** (XS — remplace `[PROFIL-SWITCH]`, caduque : un seul profil réel) — là où
-  l'app désigne le profil courant, le nommer « Marc » ; les personas restent des profils de TEST.
-
 ## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
 
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
@@ -279,8 +276,7 @@
 - [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
   datée en tête de `docs/BACKLOG_ARCHIVE.md`).
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
-  ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
-  l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·
+  ✅ `[SUBS-TAB]` volet « ignorer » (#570), ~~volet EMPLACEMENT~~ (FERMÉ 2026-09-05 : la liste reste dans Budget). RESTENT : `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·
   `[ASSET-CURRENCY-BACKFILL]` (gaté : rien à coder tant que le log `services/portfolio.ts:60-62`
   n'apparaît pas chez Marc).
 - [ ] **V8bis — `[FUTUR-DAILY]` granularité QUOTIDIENNE (demande explicite Marc 2026-08-06)** —
@@ -431,20 +427,8 @@
   Caractérisation verrouillée par `tests/services/stepReerByUserProprietes.test.ts`.
 - [ ] **`[P0-IDB]`** (L, ⏳) — migrer la persistance localStorage → IndexedDB (quota ~5 Mo + parsing
   synchrone au boot). ⚠️ Migration schéma persist v7 — vigilance corruption.
-- [ ] **`[PROFIL-SWITCH]`** (M, 🧭 gaté questions 2026-08-01) — (a)+(d) couverts par PERSONA-PURGE ;
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : « profil actuel = Marc, seul profil, pour toujours » → le multi-profil RÉEL est **CADUQUE** ; reste au plus à nommer le profil courant « Marc » là où l'app le désigne (XS) — à requalifier puis fermer.
-  restent : sélecteur de profil explicite (nom + type réel/test visibles) + persistance ISOLÉE par
-  profil (clé storage dédiée, pas d'écrasement croisé). ⚠️ Touche la persistance des VRAIES données
-  → questions posées à Marc AVANT de coder (batch en chat 2026-08-01) : (1) combien de profils
-  RÉELS (juste « Marc » + personas de test, ou plusieurs réels genre « couple » vs « perso ») ?
-  (2) lequel pousse vers Drive (un seul ? chacun son fichier ?) ; (3) que devient le profil actuel
-  au premier lancement (migration de la clé existante = profil « Marc » par défaut ?) ;
-  (4) le switch doit-il exiger une confirmation (anti-fausse-manip devant témoin) ?
 - [ ] **`[ASSET-CURRENCY-BACKFILL]`** (S, attente signal) — backfill devise legacy SEULEMENT si le
   log `services/portfolio.ts:60-62` apparaît chez Marc. Ne rien coder avant.
-- [x] **`[PURGE-TOAST-UX]`** ✅ **LIVRÉ au lot 176 (2026-09-05)** — canal d'avis générique `subscribeSyncNotice` (racine `syncStatusStore`, 0 dep), émission dans `applyPulledPayload` à côté du journal, abonnement au boot → toast (posé AVANT le premier pull). Garde 3 étages (canal, émission sur le vrai orchestrateur + contrôle propre, câblage du boot). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **OUI** → débloqué.
-  ne fait que logError (`syncPull.ts:78`) ; le toast n'existe qu'au boot. Abonnement générique → toast.
 ## 💬 Chat / IA
 
 - [ ] **`[CHAT-PAGE-CONTEXT-V2]`** (M, file Marc « chat conscient de la page ») — instrumenter les
@@ -468,16 +452,6 @@
   du Futur, ligne sélectionnée) — fragile ; juger la valeur réelle avant de coder.
 
 ## 📈 Investissements & historique
-
-- [ ] **`[SUBS-TAB]` — volet EMPLACEMENT seulement** (S, ⚠️ EN ATTENTE d'une décision de Marc) —
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : la liste **RESTE dans Budget** → volet emplacement **FERMÉ** (à archiver « caduque » à la prochaine PR).
-  le flux « confirmer / ignorer » est LIVRÉ (#570 : « Pas un abo » persistant + réaffichage).
-  ⚠️ **Constat 2026-08-05, à ne pas re-découvrir** : la surface EXISTE DÉJÀ dans `Planning.tsx`
-  (section `fixed`, « Abonnements & Récurrents ») avec alertes, totaux et épinglage — le ticket
-  parlait d'une « surface dédiée » comme s'il n'y en avait aucune. Marc a répondu « sous-onglet de
-  Transactions », mais la liste vit aujourd'hui dans **Budget**. Je lui ai signalé que déménager
-  n'apporte rien au manque réel (l'exclusion, maintenant livrée) → **attendre son arbitrage** avant
-  tout chantier de navigation. Ne PAS coder le déplacement sans go explicite.
 
 - [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (M, 🧭 **décision d'apparence — MESURÉ 2026-08-25**) —
   ⚠️ **Le ticket disait « S » et annonçait 28 sites. Mesuré : 255 occurrences de `border-white/10`
@@ -557,13 +531,6 @@
   contrôle que l'utilisateur doit ouvrir lui-même. L'option (a) du ticket d'origine — le tour force
   l'ouverture du groupe de l'étape active — la rendrait ATTEIGNABLE, au prix d'un tour qui défait un
   repli VOLONTAIRE et d'un couplage entre les étapes et l'état de la nav. Décision d'UX : à trancher.
-- [ ] **`[IA-NAV-LABELS]`** (S, 🧭 gaté Marc 2026-09-04) — sidebar w-16 par défaut, libellés
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : option (3) **garder le rail replié → ticket FERMÉ** (à archiver « caduque » à la prochaine PR).
-  opacity-0, icônes cryptiques → libellés visibles par défaut (ou rail plus large). ⚠️ Recensé
-  contre le code (lot 140) : le rail replié est une DÉCISION de la Phase B.1 (expand au
-  survol/focus en overlay, `md:ml-16` réservé, a11y soignée — `aria-label` par item replié,
-  Échap) ; le ticket la CONTREDIT et porte deux remèdes mutuellement exclusifs qui changent la
-  mise en page de TOUS les écrans. Question routée dans `docs/A_FAIRE_MOI.md`.
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
   Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. ⚠️ L1-L4 ARCHIVÉS
   (2026-08-12, PR #600-#604). Lots restants :

@@ -10,6 +10,55 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[PROFIL-NOMMER-MARC]` `[PROFIL-SWITCH]` `[SUBS-TAB]` (emplacement) `[IA-NAV-LABELS]` — CADUQUES / FERMÉS (lot 177, décisions Marc du 2026-09-05)
+
+Tickets d'origine tels qu'au moment de l'archivage, chacun avec la décision qui le ferme :
+
+- [x] **`[PROFIL-NOMMER-MARC]`** (XS — remplace `[PROFIL-SWITCH]`, caduque : un seul profil réel) — là où
+  l'app désigne le profil courant, le nommer « Marc » ; les personas restent des profils de TEST.
+
+  ❌ **CADUQUE après recensement (lot 177, 2026-09-05)** — aucun écran ne nomme le profil courant : la bannière de `Layout` nomme les PERSONAS (mode test), `TestModePanel` et `SavedProfilesCard` disent « tes vraies données » / « ta config actuelle ». Rien à renommer ; une pastille « Profil : Marc » serait une fonctionnalité neuve, non demandée.
+
+- [x] **`[PROFIL-SWITCH]`** (M, 🧭 gaté questions 2026-08-01) — (a)+(d) couverts par PERSONA-PURGE ;
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : « profil actuel = Marc, seul profil, pour toujours » → le multi-profil RÉEL est **CADUQUE** ; reste au plus à nommer le profil courant « Marc » là où l'app le désigne (XS) — à requalifier puis fermer.
+  restent : sélecteur de profil explicite (nom + type réel/test visibles) + persistance ISOLÉE par
+  profil (clé storage dédiée, pas d'écrasement croisé). ⚠️ Touche la persistance des VRAIES données
+  → questions posées à Marc AVANT de coder (batch en chat 2026-08-01) : (1) combien de profils
+  RÉELS (juste « Marc » + personas de test, ou plusieurs réels genre « couple » vs « perso ») ?
+  (2) lequel pousse vers Drive (un seul ? chacun son fichier ?) ; (3) que devient le profil actuel
+  au premier lancement (migration de la clé existante = profil « Marc » par défaut ?) ;
+  (4) le switch doit-il exiger une confirmation (anti-fausse-manip devant témoin) ?
+  ❌ **CADUQUE (lot 177, 2026-09-05, décision Marc 8 : « profil actuel = Marc, seul profil, pour toujours »)** — le multi-profil réel n'aura pas lieu ; les personas restent des profils de TEST.
+
+- [x] **`[SUBS-TAB]` — volet EMPLACEMENT seulement** (S, ⚠️ EN ATTENTE d'une décision de Marc) —
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : la liste **RESTE dans Budget** → volet emplacement **FERMÉ** (à archiver « caduque » à la prochaine PR).
+  le flux « confirmer / ignorer » est LIVRÉ (#570 : « Pas un abo » persistant + réaffichage).
+  ⚠️ **Constat 2026-08-05, à ne pas re-découvrir** : la surface EXISTE DÉJÀ dans `Planning.tsx`
+  (section `fixed`, « Abonnements & Récurrents ») avec alertes, totaux et épinglage — le ticket
+  parlait d'une « surface dédiée » comme s'il n'y en avait aucune. Marc a répondu « sous-onglet de
+  Transactions », mais la liste vit aujourd'hui dans **Budget**. Je lui ai signalé que déménager
+  n'apporte rien au manque réel (l'exclusion, maintenant livrée) → **attendre son arbitrage** avant
+  tout chantier de navigation. Ne PAS coder le déplacement sans go explicite.
+
+  ❌ **FERMÉ (lot 177, 2026-09-05, décision Marc 10 : la liste RESTE dans Budget)** — le volet « ignorer » était déjà livré (#570).
+
+- [x] **`[IA-NAV-LABELS]`** (S, 🧭 gaté Marc 2026-09-04) — sidebar w-16 par défaut, libellés
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : option (3) **garder le rail replié → ticket FERMÉ** (à archiver « caduque » à la prochaine PR).
+  opacity-0, icônes cryptiques → libellés visibles par défaut (ou rail plus large). ⚠️ Recensé
+  contre le code (lot 140) : le rail replié est une DÉCISION de la Phase B.1 (expand au
+  survol/focus en overlay, `md:ml-16` réservé, a11y soignée — `aria-label` par item replié,
+  Échap) ; le ticket la CONTREDIT et porte deux remèdes mutuellement exclusifs qui changent la
+  mise en page de TOUS les écrans. Question routée dans `docs/A_FAIRE_MOI.md`.
+  ❌ **FERMÉ (lot 177, 2026-09-05, décision Marc 6, option 3 : garder le rail replié)** — la Phase B.1 tient.
+
+## 2026-09-05 — `[PURGE-TOAST-UX]` — LIVRÉ (lot 176, PR #907)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[PURGE-TOAST-UX]`** ✅ **LIVRÉ au lot 176 (2026-09-05)** — canal d'avis générique `subscribeSyncNotice` (racine `syncStatusStore`, 0 dep), émission dans `applyPulledPayload` à côté du journal, abonnement au boot → toast (posé AVANT le premier pull). Garde 3 étages (canal, émission sur le vrai orchestrateur + contrôle propre, câblage du boot). (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **OUI** → débloqué.
+  ne fait que logError (`syncPull.ts:78`) ; le toast n'existe qu'au boot. Abonnement générique → toast.
+
 ## 2026-09-05 — `[PRIVACY-CONTEXTE-IA]` — LIVRÉ (lot 175, PR #906)
 
 Ticket d'origine tel qu'au moment de l'archivage :

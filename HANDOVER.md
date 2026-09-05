@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 177 (doc) : quatre tickets fermés par les décisions du jour, archivés avec leur décision
+> `[PROFIL-SWITCH]` (décision 8 : un seul profil), `[SUBS-TAB]` volet emplacement (10 : la liste reste
+> dans Budget), `[IA-NAV-LABELS]` (6 : rail replié), et `[PROFIL-NOMMER-MARC]` — mon propre ticket
+> dérivé, CADUQUE après recensement : la bannière de `Layout` nomme les PERSONAS, `TestModePanel` et
+> `SavedProfilesCard` disent « tes vraies données » / « ta config actuelle » ; aucun écran ne désigne
+> le profil courant par un nom générique, donc rien à renommer (une pastille « Profil : Marc » serait
+> une fonctionnalité neuve, non demandée). `[PURGE-TOAST-UX]` (lot 176) déménagé à l'archive. Rien de
+> servi ne change. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 176 : la purge d'artefacts au pull Drive prévient par un toast (`[PURGE-TOAST-UX]`)
 > Décision Marc 11 (OUI). Un AVIS est un événement, pas un état : canal distinct de `SyncStatus`
 > dans `syncStatusStore` (racine du graphe, 0 dep) — `emitSyncNotice` côté service, `subscribeSyncNotice`

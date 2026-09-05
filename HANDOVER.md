@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 168 : le facteur FERR à 94 ans passe de 20,00 % à 18,79 %
+> `[FISC-RRIF-94-FACTOR]` → livré. La table prescrite ne rejoint le plateau qu'à 95 ans ; le 20 % à
+> 94 était le plateau un an trop tôt (CONTESTÉ depuis le 2026-08-06). Source RELAYÉE (4 tables 2026
+> concordantes ; officiels illisibles d'ici), écrite comme telle en FISCAL_REFERENCE §7. Mesuré en
+> process (couple 90 → 98) : **+1 367 $** de patrimoine final avec 500 k$ de REER à 94, **+4 778 $**
+> avec 1,5 M$, **0 $** sur un horizon qui n'atteint jamais 94 — ⚠️ ma 1re mesure (couple 62 → 102,
+> REER 900 k$) était MUETTE sur les 3 cas : le ménage était ruiné avant 94, REER vide, facteur sans
+> objet. Une perturbation muette accuse d'abord la fixture (classe déjà consignée). Le test « peaks at
+> age 94 at 20% » ÉPINGLAIT le défaut → inversé avec son histoire ; entrée du ratchet 0.2000 → 0.1879.
+> Push sans leçon nouvelle.
+
 > ## 🟢 Session 2026-09-05 — MARC A RÉPONDU À 17 QUESTIONS + recherche fiscale (lot 167, doc seulement)
 > Toutes consignées dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées dans les
 > tickets BACKLOG (annotation « DÉCISION Marc 2026-09-05 »). Décisions : Interac reçu → Remboursement (a) ·

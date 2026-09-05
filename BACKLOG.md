@@ -291,7 +291,7 @@
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
-- [ ] **`[FISC-RRIF-94-FACTOR]`** (S si confirmé, ⚠️ GATÉ source humaine — `A_FAIRE_MOI`) —
+- [x] **`[FISC-RRIF-94-FACTOR]`** ✅ **LIVRÉ au lot 168 (2026-09-05)** — `RRIF_RATES[94]` 0.2000 → 0.1879 (source relayée, dite telle quelle en FISCAL_REFERENCE §7) ; test épinglant le défaut INVERSÉ, entrée du ratchet 0.2000 → 0.1879 avec historique ; mesuré +1 367 $ / +4 778 $ de patrimoine final selon le REER détenu à 94 ans, 0 $ avant 94 (contrôle). Le « +13 726 $ » du ticket venait d'une fixture plus riche — même ordre de grandeur. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S si confirmé, ⚠️ GATÉ source humaine — `A_FAIRE_MOI`) —
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche web du même jour (source RELAYÉE, détail A_FAIRE_MOI « 🔎 Recherche ») : **94 ans = 18,79 %, 95+ = 20,00 %** sur quatre tables 2026 — l'écart est confirmé, DÉBLOQUÉ (citer la source comme relayée).
   `helpers.ts:95` code `94: 0.2000` ; le facteur prescrit serait 18,79 % (plateau 20 % à 95+).
   **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS

@@ -1216,7 +1216,7 @@
   n'est lu qu'en janvier : rien ne l'oblige à précéder le dépôt). Non corrigé : hors du périmètre nommé par
   la décision 15 (le dépôt fiscal). Reproduction : `scratchpad/mesurePsv181.ts` (non committé — fixtures
   décrites ci-dessus, banc `mesureOrdreBoucle.ts` aveugle par construction sur ce lecteur).
-- [ ] **`[COUPLE-PREDICAT-COPIES]`** (XS, FAIBLE — découverte du lot 180, 2026-09-05) — le prédicat « mode couple = un 2e
+- [x] **`[COUPLE-PREDICAT-COPIES]`** ✅ **LIVRÉ au lot 185 (2026-09-05)** — re-recensé par le MOTIF (le ticket en nommait 6, il y en avait **9** : + `MissingDataBanner` (négation), `Budget` (user2 dérivé), `nomsConjoints` de `SelectProprietaire`), tous migrés vers `isCoupleMode` ; les simples AFFICHAGES du nom (`userName2={…}`, `users[1]?.name ?? ''`) restent tels quels. Garde de scan `couplePredicatSourceUnique.test.ts` (source décommentée, motif « `[1]` + `.name` + `.trim()` », anti-vacuité sur six formes retirées, perturbation → 1 rouge). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, FAIBLE — découverte du lot 180, 2026-09-05) — le prédicat « mode couple = un 2e
   utilisateur NOMMÉ » est écrit à la main dans SIX endroits (`Layout.tsx`, `Transactions.tsx`, `PayslipUploadCard.tsx`,
   `NetWorthByOwnerCard.tsx`, `CoupleModeBadge.tsx`, `services/financialSnapshot.ts:coupleMode`), avec trois formes
   différentes (`users.length >= 2 && …`, `Boolean(name && trim() !== '')`, `!!name?.trim()`). Le lot 180 a hissé
@@ -1413,15 +1413,6 @@
   **Mesuré : brut −5 000 $ → deductionsSource −86,50 $ (net > brut : argent créé).** Impact nul
   aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
   RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
-
-- [x] **`[STORAGE-PERSIST-REQUEST]`** ✅ **LIVRÉ au lot 184 (2026-09-05)** — `services/storagePersistence.ts` (`requestPersistentStorage` UNE fois au boot, promesse mémoïsée, jamais de throw : accordée / refusée / non supportée / inconnue ; `queryStoragePersisted` relit l'état RÉEL), appelé dans `useAppBootEffects`, ligne `STORAGE:` dans le diagnostic de `SystemView` (relue au montage, `warn` si refusée, le libellé dit ce que l'état IMPLIQUE). Trois gardes, trois perturbations séparées (boot → scan rouge ; ligne retirée → 3 rouges SystemView ; mémo cassé → 1 rouge service). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, découvert en diagnostiquant `[FINTABLE-TOKEN-WIPE]`) —
-  l'app ne demande **JAMAIS** `navigator.storage.persist()` (0 occurrence dans le dépôt). Le coffre
-  chiffré repose sur IndexedDB (clé AES) + localStorage (blob) : sans persistance accordée, le
-  navigateur classe le stockage « best-effort » et peut l'évincer sous pression disque — perte des
-  clés API ET de la courbe verrouillée. Ce n'était PAS la cause du bug de Marc (c'était la synchro
-  Drive), donc non corrigé au passage. **Correctif** : demander la persistance au boot, une fois,
-  et exposer l'état dans SystemView (`navigator.storage.persisted()`) pour que ce soit
-  diagnosticable. Chrome l'accorde selon l'engagement / l'installation PWA.
 
 - [ ] **`[FISC-DON-FEDRATE-DUP]`** (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
   dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et

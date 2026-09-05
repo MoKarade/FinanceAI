@@ -1,6 +1,7 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Icon } from './Icon';
+import { isCoupleMode } from '../../services/couple/netWorthByOwner';
 
 /**
  * Phase A.5 — indicateur visuel read-only du mode Couple/Individuel.
@@ -16,10 +17,8 @@ export const CoupleModeBadge: React.FC<{ className?: string; compact?: boolean }
     className = '',
     compact = false,
 }) => {
-    const isCouple = useFinanceStore(s => {
-        const u2 = s.config?.users?.[1];
-        return Boolean(u2?.name && u2.name.trim() !== '');
-    });
+    // [COUPLE-PREDICAT-COPIES] source unique du prédicat (services/couple/netWorthByOwner.isCoupleMode).
+    const isCouple = useFinanceStore(s => isCoupleMode(s.config?.users));
 
     return (
         <div

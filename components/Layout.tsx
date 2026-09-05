@@ -10,6 +10,7 @@ import { Icon, type IconName } from './ui/Icon';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
 import { getPersonaById, getPersonaOrDefault, TEST_PERSONAS } from '../services/testFixtures';
+import { isCoupleMode } from '../services/couple/netWorthByOwner';
 
 // Hub perso — cible du lien « ← Hub » de la sidebar (overridable au build via VITE_HUB_URL).
 const HUB_URL = (import.meta.env.VITE_HUB_URL as string | undefined)?.replace(/\/+$/, '') || 'https://hubperso.com';
@@ -154,7 +155,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const coupleConfig = useFinanceStore(s => s.config);
   const setAppState = useFinanceStore(s => s.setAppState);
   // Même définition que CoupleModeBadge : couple = 2e utilisateur avec un nom.
-  const isCouple = Boolean(coupleConfig?.users?.[1]?.name && coupleConfig.users[1].name.trim() !== '');
+  const isCouple = isCoupleMode(coupleConfig?.users); // [COUPLE-PREDICAT-COPIES] source unique
   const toggleCoupleMode = () => {
     if (!coupleConfig) return;
     const users: User[] = coupleConfig.users as User[];

@@ -24,6 +24,7 @@ import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthly
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { isCoupleMode } from '../services/couple/netWorthByOwner';
 
 interface BudgetProps {
     transactions: Transaction[];
@@ -548,7 +549,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         // [PH4E-OWNER-EDIT] solo = user2 SANS NOM. `config.users` est un tuple [User, User] (length TOUJOURS 2),
         // donc `length > 1` rendait `isSolo` toujours faux → la section couple s'affichait en solo (et un override
         // `ownerId` orphelin y montrait un montant inexpliqué). Détection par NOM, cohérente avec `Transactions.isCouple`.
-        const user2 = usersIncome[1]?.name?.trim() ? usersIncome[1] : null;
+        const user2 = isCoupleMode(usersIncome) ? usersIncome[1] : null; // [COUPLE-PREDICAT-COPIES] source unique
 
         // Explicitly use Net Salary for ratio calculation
         const totalNet = user1.netSalary + (user2 ? user2.netSalary : 0);

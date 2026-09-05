@@ -31,6 +31,7 @@ import { DuplicatesPanel } from './transactions/DuplicatesPanel';
 import { TransfersPanel } from './transactions/TransfersPanel';
 import { CategoryReviewPanel } from './transactions/CategoryReviewPanel';
 import { markTransactionsAsDuplicate, unmarkTransactionsAsDuplicate } from '../services/transactions/duplicateDetection';
+import { isCoupleMode } from '../services/couple/netWorthByOwner';
 
 interface TransactionsProps {
     transactions: Transaction[];
@@ -66,7 +67,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const pendingFocus = useFinanceStore(s => s.pendingFocus);
     const coupleUsers = config?.users ?? [];
-    const isCouple = !!coupleUsers[1]?.name?.trim();
+    const isCouple = isCoupleMode(coupleUsers); // [COUPLE-PREDICAT-COPIES] source unique
     const ownerFirstName = (i: 0 | 1): string => coupleUsers[i]?.name?.trim().split(' ')[0] || `Conjoint ${i + 1}`;
 
     const [processing, setProcessing] = useState(false);

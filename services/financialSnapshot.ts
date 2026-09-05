@@ -16,6 +16,7 @@
 
 import type { AppState } from '../types';
 import { computeMonthlyActualAverages } from '../utils/budgetSync';
+import { isCoupleMode } from './couple/netWorthByOwner';
 import {
     computeAssetBreakdown,
     computeInvestmentsValue,
@@ -131,7 +132,7 @@ export function buildFinancialSnapshot(
                 deadline: g.deadline,
             })),
         projectedNetWorth20y: opts?.projectedNetWorth20y,
-        coupleMode: Boolean(users[1]?.name && users[1].name.trim() !== ''),
+        coupleMode: isCoupleMode(users), // [COUPLE-PREDICAT-COPIES] source unique
     };
 }
 

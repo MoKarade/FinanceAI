@@ -1092,6 +1092,13 @@ exactes par `fiscal-accuracy`) :
 > **approximation de modèle**, PAS un taux combiné officiel — à raffiner séparément.
 > Le **clawback d'allocation** (`householdGross > 150 000 $` → dégressif sur 100 000 $) est une heuristique
 > de modèle (PAS un barème ARC/RQ officiel d'allocation), à raffiner si besoin.
+> ✅ **Assiette après séparation ou décès (`[ENG-DIVORCE-ALLOC-ASSIETTE]`, lot 178, 2026-09-05, décision Marc
+> 14 « comme mesuré »)** : `householdGross` est le revenu du ménage qui RESTE (`soloHousehold` → le salaire
+> de l'ex-conjoint ou du défunt n'y entre plus), même règle que `taxFilers`. Avant, un parent seul était
+> récupéré sur un revenu qui incluait celui de l'ex. Mesuré (fixture `divorceEnfantsScenario`, 98 400 $
+> + 85 200 $, enfant à 500 $/mois, divorce à l'an 1) : allocation publiée **166 → 250 $/mois** au mois 36,
+> patrimoine **+13 460 $ / +29 388 $** à 10/20 ans. Un solo à 168 000 $ reste récupéré sur SON revenu
+> (205 $) : l'assiette change, pas la règle. Reste une heuristique de modèle.
 
 ---
 

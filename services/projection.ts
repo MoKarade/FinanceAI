@@ -1890,15 +1890,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     incomeAnna: _childIncomeAnna,
                     liquid: _childLiquid,
                     reee: _childReee,
-                    // ⚠️ `householdGross` reste la somme des DEUX salaires, volontairement : il ne
-                    // sert PAS au congé mais à la récupération des allocations (`householdGross >
-                    // 150 000`). Y appliquer `soloHousehold` fait BAISSER la récupération, donc
-                    // MONTER les allocations d'un parent seul — mesuré 166 $ → 250 $/mois au mois 36,
-                    // et le test de scénario `[ENG-DIVORCE-BENEFITS-FLUX]` le voit immédiatement.
-                    // C'est une question de RÈGLE (quelle assiette pour les allocations après une
-                    // séparation ?), pas le défaut de câblage que ce lot corrige : routée en
-                    // `[ENG-DIVORCE-ALLOC-ASSIETTE]` plutôt que tranchée en passant.
-                    householdGross: grossMarcBaseAnnual + grossAnnaBaseAnnual,
+                    // [ENG-DIVORCE-ALLOC-ASSIETTE] (décision Marc 2026-09-05, réponse 14 : « comme mesuré »)
+                    // L'assiette de la RÉCUPÉRATION des allocations (`householdGross > 150 000`) est le
+                    // revenu du MÉNAGE QUI RESTE : après un divorce ou un décès, le salaire de l'ex-conjoint
+                    // (ou du défunt) n'y entre plus — même règle que `grossAnnaBaseAnnual` juste au-dessus
+                    // et que `taxFilers`. Avant, un parent seul se voyait récupérer ses allocations sur un
+                    // revenu qui incluait celui de l'ex : mesuré 166 $ → 250 $/mois au mois 36 sur la
+                    // fixture de `divorceEnfantsScenario` (98 400 $ seul < 150 000 $ : plus de récupération).
+                    // ⚠️ La récupération s'applique toujours au revenu du parent restant : un solo à
+                    // 168 000 $ reste récupéré (garde dédiée) — `soloHousehold` change l'ASSIETTE, pas la règle.
+                    householdGross: grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual),
                     trackerScee: tracker.scee, trackerIqee: tracker.iqee,
                     trackerReeeContribLifetime: tracker.contribLifetime ?? 0,
                     enableMonteCarlo,

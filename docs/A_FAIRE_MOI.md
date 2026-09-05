@@ -607,7 +607,7 @@ Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chac
 
 **Réponses du 2026-09-05 (en session) sur des questions qui n'étaient qu'au BACKLOG** — reportées dans chaque ticket :
 - `[PRIVACY-CONTEXTE-IA]` → **masquer** : en mode discret, les montants ne partent pas non plus vers l'assistant. ✅ **Livré au lot 175 (2026-09-05)** — le chat l'était déjà, le diagnostic Budget l'est maintenant (égress + ouvreur).
-- `[ENG-DIVORCE-ALLOC-ASSIETTE]` → **« comme mesuré »** : après une séparation, l'assiette des allocations est le revenu du parent seul (`soloHousehold`), 166 → 250 $/mois sur la fixture.
+- `[ENG-DIVORCE-ALLOC-ASSIETTE]` → **« comme mesuré »** : après une séparation, l'assiette des allocations est le revenu du parent seul (`soloHousehold`), 166 → 250 $/mois sur la fixture. ✅ **Livré au lot 178 (2026-09-05)**.
 - `[FISC-DEC-FLUX-ASSIETTE-TIMING]` → **corriger** : les retraits REER de décembre doivent entrer dans l'assiette (fuite réelle, +25 568 $ d'impôt mesuré sur la fixture retraités).
 - `[FISC-REEE-GRANT-CLAWBACK]` → **GO pour retenter** (périmètre chiffré en 7 facettes). Marc ne sait PAS séparer cotisations et subventions sur son REEE réel (« j'ai jamais fait, je sais pas ») → la part subvention se DÉRIVE des règles SCEE/IQEE sur l'historique de cotisation, hypothèse écrite et affichée, jamais un chiffre inventé.
 - `[AUTH-REMEMBER-DEVICE]` → **retirer la déconnexion automatique 8 h** quand « se souvenir de cet appareil » est actif (ré-auth seulement pour les Réglages).

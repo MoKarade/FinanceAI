@@ -141,7 +141,13 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // → NW ↑), PAS une fuite de compteur d'affichage — le meltdown remplit le non-enregistré,
         // donc §3 est non nul sur cette fixture. La neutralité que ce golden défend reste garantie
         // par l'identité `ttp == Σ FluxImpots` de projection.totalTaxesPaid.test.ts.
-        expect(melt.finalNetWorth).toBeCloseTo(-6516.78, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([ENG-MELTDOWN-MIMOIS] lot 160, **−155,82 $** : était
+        // −6516,78). Décision Marc 2026-09-04 : l'arrivée du meltdown est désormais exclue du mois
+        // plein de croissance (demi-mois, comme les cotisations ordinaires) — le rendement fantôme
+        // disparaît, donc NW ↓. Vrai changement de CALCUL décidé, PAS une fuite de compteur
+        // d'affichage : la neutralité que ce golden défend reste garantie par l'identité
+        // `ttp == Σ FluxImpots` de projection.totalTaxesPaid.test.ts, verte sur ce même lot.
+        expect(melt.finalNetWorth).toBeCloseTo(-6672.60, 0);
         // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
         // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
@@ -159,6 +165,9 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // ici : ce point n'exerce PAS cette branche-là.
         // Re-basé 2026-08-20 ([FISC-TAXDEC-INCR], était 208 594,46) : même −57,98 $ que le NW
         // final ci-dessus — l'estate en hérite tel quel, aucun effet propre à la branche estate.
-        expect(melt.estateNetWorth).toBeCloseTo(209287.50, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([ENG-MELTDOWN-MIMOIS] lot 160, était 209 287,50) : même
+        // −155,82 $ que le NW final ci-dessus — l'estate en hérite tel quel, aucun effet propre à
+        // la branche estate.
+        expect(melt.estateNetWorth).toBeCloseTo(209131.68, 0);
     });
 });

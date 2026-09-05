@@ -500,7 +500,7 @@
   et le correctif juste, mais il n'est ATTEIGNABLE qu'une fois le choc rendu vivant. Les deux
   tickets se livrent donc ENSEMBLE. Fix : porter le taux courant dans pState (ex. `currentRate`) et
   le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
-- [ ] **`[ENG-MELTDOWN-JAMBE-ARRIVEE]`** (M, 🧭 **décision de Marc — MESURÉ 2026-08-25**) — le
+- [x] **`[ENG-MELTDOWN-JAMBE-ARRIVEE]`** ✅ **LIVRÉ EN ENTIER au lot 160 (2026-09-05)** (M, était 🧭 — MESURÉ 2026-08-25) — le
   meltdown REER transfère du REER vers le NON-ENREGISTRÉ. La jambe de DÉPART est publiée depuis
   PR #733 ; la jambe d'ARRIVEE restait muette : le non-enregistré montait sans flux publié
   (résiduel mesuré **25 273,39 $** au pire mois sous `MELTDOWN_REER`).
@@ -512,7 +512,7 @@
   `projection.fluxForm` s'est INVERSÉE en règle (tolérance au cent). **RESTE la 🧭 décision** :
   le rendement fantôme de mi-mois (verser aussi l'arrivée dans la base d'exclusion — déplace
   −5 045,04 $ de patrimoine final, contre les goldens NEUTRALITÉ).
-  ✅ **Décision Marc 2026-09-04 (en session)** : CORRIGER le rendement de mi-mois (exclure l'arrivée du meltdown de la croissance du mois plein, comme les cotisations ordinaires) — re-base SCIEMMENT des 2 goldens NEUTRALITÉ avec la mesure dans le commit. À livrer (lot à venir).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 160 (2026-09-05)** : l'arrivée du meltdown est exclue de la croissance du mois plein via son PROPRE paramètre de `growthApplication` (jamais fusionnée dans `contribNonReg`, qui est aussi un affichage). Goldens NEUTRALITÉ re-basés SCIEMMENT : −155,82 $ de NW final ET d'estate sur la fixture 10 ans (le rendement fantôme disparaît, NW ↓) ; câblage prouvé par perturbation (arg neutralisé → les 2 goldens reviennent aux anciennes valeurs). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
   ⚠️ **Le geste symétrique DÉPLACE DE L'ARGENT.** `contribNonReg` n'est pas un simple registre
   d'affichage : `growthApplication` s'en sert comme base d'exclusion de la croissance de mi-mois
   (`nonReg - contribNonReg`). L'alimenter retire un rendement fantôme sur de l'argent arrivé en

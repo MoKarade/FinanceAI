@@ -43,6 +43,20 @@ describe('applyMonthlyGrowth — orchestration', () => {
         expect(withContrib.nonReg.growth).toBeLessThan(noContrib.nonReg.growth);
     });
 
+    it('[ENG-MELTDOWN-MIMOIS] NonReg : l\'arrivée du meltdown est exclue de la base, comme une cotisation', () => {
+        // Décision Marc 2026-09-04 : l'argent du meltdown arrivé en cours de mois ne touche qu'un
+        // demi-mois de rendement. Même règle que `contribNonReg` — au dollar près : les deux
+        // paramètres doivent produire EXACTEMENT la même croissance pour le même montant.
+        const viaMeltdown = applyMonthlyGrowth(inputs({ nonReg: 15000, arriveeMeltdownNonReg: 8000 }));
+        const sansArrivee = applyMonthlyGrowth(inputs({ nonReg: 15000 }));
+        expect(viaMeltdown.nonReg.growth).toBeLessThan(sansArrivee.nonReg.growth);
+        const viaContrib = applyMonthlyGrowth(inputs({ nonReg: 15000, contribNonReg: 8000 }));
+        expect(viaMeltdown.nonReg.growth).toBeCloseTo(viaContrib.nonReg.growth, 10);
+        // Défaut NEUTRE : omettre le paramètre = 0 (rétrocompat bit-identique des appelants).
+        const omis = applyMonthlyGrowth(inputs({ nonReg: 15000, arriveeMeltdownNonReg: 0 }));
+        expect(omis.nonReg.growth).toBeCloseTo(sansArrivee.nonReg.growth, 10);
+    });
+
     it('REEE : les contributions du mois sont aussi exclues de la base', () => {
         const withContrib = applyMonthlyGrowth(inputs({ reee: 4000, contribREEE: 4000 }));
         const noContrib = applyMonthlyGrowth(inputs({ reee: 4000, contribREEE: 0 }));

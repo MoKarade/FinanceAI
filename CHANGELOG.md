@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le Centre fiscal signale un taux de change estimé)
+
+- **Ajouté** : dans « Revenus & Déductions », la ligne « Invest. Non-Enregistrés » porte le badge
+  « Taux de change estimés » quand tes avoirs étrangers sont convertis avec un taux de repli — le
+  même signal que sur Patrimoine, Investissements, le PDF et le bandeau Futur. Rien sans avoir
+  étranger ou avec un taux réel.
+
 ## [unreleased] — 2026-09-05 (Le « Combiné marginal » de l'écran Tranches d'imposition est celui du moteur)
 
 - **Corrigé** : le taux marginal combiné affiché additionnait le fédéral et le québécois sans

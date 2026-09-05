@@ -339,6 +339,7 @@ revenus l'est aussi, donc l'excédent n'aurait rien à réduire.
 | Seuil revenu familial — avec conjoint | 45 270 $ | crédit complet en dessous (ancien) |
 | **Seuil revenu familial net — personne vivant seule (2026)** | **42 955 $** | nouveau ; ancien 42 090 $ (2025) |
 | Taux de réduction (`QC_LINE_361_REDUCTION_RATE`) | 18,75 % | au-delà du seuil applicable (personne vivant seule + âge + revenu retraite, PUIS réduit une fois) |
+| Réduction — assiette et portée | revenu **FAMILIAL** net (le sien + celui du conjoint), réduction calculée **par conjoint** sur ce total | Revenu Québec « Ligne 361 » (Annexe B parties A-B : chaque conjoint remplit SA propre Annexe B et y reporte le MÊME revenu familial, ligne 20) — **relayée**, `[FISC-LINE361-PERCONJOINT-REDUC]` confirmé le 2026-09-05 |
 | Âge minimum | 65 ans | |
 | Conversion en crédit (taux) | **14 %** | taux du crédit non remboursable ligne 361 QC |
 > **Mécanique (source : MFQ Dépenses fiscales 2025, fiche 110606, Tableau C.31 + Loi sur les impôts art. 752.0.7.4)** :
@@ -860,9 +861,31 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > dans le moteur. L'ancien fallback `|| 7 500 $` FIGÉ non indexé (divergent dès 2031) est supprimé ;
 > étendre la table `CELI_ANNUAL_LIMITS` met à jour les deux consommateurs automatiquement.
 
+### RAP — remboursement (`services/projection/realEstateMonth.ts`, bloc « RAP repayment »)
+| Règle | Valeur dans le moteur | Source |
+|---|---|---|
+| Durée de remboursement | **15 ans**, 1/15 du retrait par an (`state.rapBorrowed / 15`) | ARC « Comment rembourser les fonds retirés de vos REER dans le cadre du RAP » ; CFFP ; iA — **relayée** |
+| Début du remboursement | **2e année** suivant le retrait (`graceYears = 2`) | idem |
+| Allègement temporaire (Budget fédéral 2024) | 1er retrait entre le **1er janvier 2022 et le 31 décembre 2025** → début à la **5e année** (`graceYears = 5` si `loopYear` ∈ [2022, 2025]) | idem — les trois valeurs (deux bornes + durée) forment un TOUT |
+> ✅ **Ancré le 2026-09-05 (`[FISC-RAP-15ANS]`, `[FISC-RAP-GRACE-WINDOW]`, lot 170).** Les quatre
+> littéraux (`15`, `2022`, `2025`, `5`) vivaient dans le code sans ligne ici ; recensés par le ratchet
+> fiscal le 2026-08-25, ils attendaient une source. La recherche du 2026-09-05 (source **RELAYÉE** —
+> canada.ca et CFFP restent illisibles depuis le conteneur, `EGRESS_BLOCKED`) confirme les quatre :
+> **le code était exact, il manquait la protection, pas la valeur.** Un versement dû et non fait est
+> imposé l'année même (cf. §9, `[ENG-RAP-MISSED-REPAYMENT-TAX]`).
+
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
+2010 : 22 000 · 2011 : 22 450 · 2012 : 22 970 · 2013 : 23 820 · 2014 : 24 270 · 2015 : 24 930 ·
+2016 : 25 370 · 2017 : 26 010 · 2018 : 26 230 · 2019 : 26 500 · 2020 : 27 230 · 2021 : 27 830 ·
+2022 : 29 210 · 2023 : 30 780 ·
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
 2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget).
+> ✅ **2010 → 2023 ancrés le 2026-09-05 (`[FISC-RRSP-LIMITS-PRE2024-DOC]`, lot 170)** : ces quatorze
+> valeurs pilotent les droits REER HISTORIQUES (`setupSimulation.ts`) et n'apparaissaient pas ici.
+> Source **RELAYÉE** (tables CQFF « Plafonds des nouvelles contributions à un REER », KPMG « Plafonds des
+> cotisations à des régimes de retraite ou d'épargne », Manuvie, Banque Nationale — les quatre
+> concordent avec la table du code, valeur par valeur ; la page ARC reste illisible depuis le
+> conteneur). Une capture de la page ARC « Plafonds REER » ferait passer la ligne de « relayée » à « lue ».
 Espace gagné = **18 % du revenu GAGNÉ** de l'année précédente (`RRSP_ROOM_RATE`, `utils/tax.ts`),
 moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : ARC.
 

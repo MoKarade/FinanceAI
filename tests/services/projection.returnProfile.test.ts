@@ -106,11 +106,14 @@ describe('PH4-FUT-B — profil de rendement dans le moteur (déterministe, 30 an
         // employeur ne sont plus facturés en double chaque avril → NW ↑ ~7 % (+118 115/+133 461/+197 374 $ ;
         // étaient 1 559 230,44 / 1 897 602,38 / 2 983 538,23). Fixture salariée sans T1213 : tout
         // l'écart est la fin du double-comptage, discriminant dédié dans projection.whtSettlement.test.ts.
-        expect(finalNetWorth('conservative')).toBeCloseTo(1_677_345.75, 1);
-        expect(finalNetWorth('balanced')).toBeCloseTo(2_031_063.15, 1);
-        expect(finalNetWorth('aggressive')).toBeCloseTo(3_180_912.56, 1);
+        // RE-CALIBRÉ 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169) : récupération du SRG d'un couple
+        // à 25 ¢/$ par conjoint au lieu de 50 ¢ — ce couple touche un peu de SRG en fin d'horizon
+        // (+355,54 $ conservateur ; voir les trois autres pins). Dérive VOULUE et sourcée.
+        expect(finalNetWorth('conservative')).toBeCloseTo(1_677_701.29, 1);
+        expect(finalNetWorth('balanced')).toBeCloseTo(2_031_418.55, 1);
+        expect(finalNetWorth('aggressive')).toBeCloseTo(3_181_268.10, 1);
         // Le run historique (champ absent) est pinné sur la valeur 'balanced'.
-        expect(finalNetWorth(undefined)).toBeCloseTo(2_031_063.15, 1);
+        expect(finalNetWorth(undefined)).toBeCloseTo(2_031_418.55, 1);
     });
 
     it("'aggressive' + asset location > 'aggressive' seul (le bonus 0.4pp s'empile sur le preset)", () => {

@@ -121,7 +121,11 @@ describe('[FISC-BRACKET-REALINDEX] moteur — un revenu réel constant paie un i
         // conservatrice du test (ttp ↑, NW ↓ vs l'ancien barème figé) est INCHANGÉE — les deux
         // assertions d'inégalité ci-dessous restent la preuve, les pins ne sont que l'ampleur.
         expect(r.totalTaxesPaid).toBeCloseTo(49_657.43, 0);
-        expect(r.finalNetWorth).toBeCloseTo(-204_034.74, 0);
+        // Re-basé 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+7 297,07 $**, était −204 034,74) :
+        // ce couple retraité à bas revenu touche plus de SRG (récupération 25 ¢/$ par conjoint au lieu
+        // de 50 ¢). Le SRG n'est PAS imposable : `totalTaxesPaid` ci-dessus n'a pas bougé d'un cent —
+        // c'est la signature attendue du correctif. La direction conservatrice du test est inchangée.
+        expect(r.finalNetWorth).toBeCloseTo(-196_737.67, 0);
     });
 });
 

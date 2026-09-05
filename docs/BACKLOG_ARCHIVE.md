@@ -10,6 +10,15 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[BUDGET-IMPOTS-HORS-COMPARAISON]` — LIVRÉ (lot 173, PR #904)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[BUDGET-IMPOTS-HORS-COMPARAISON]`** ✅ **LIVRÉ au lot 173 (2026-09-05)** — `HORS_COMPARAISON_BUDGET` (source unique `spendRules.ts`), `totalSpent`/`totalHorsComparaison` dans la parité, `expenseAvgHorsComparaison`/`horsComparaisonAvg` dans les moyennes (l'assiette complète `expenseAvg` reste celle de TaxCenter, qui le dit) ; la tuile Dépenses écrit « hors impôts (exclus : X $) ». (S — décision 2026-09-05 (a)) — la comparaison budget↔réel de
+  l'écran Budget exclut la catégorie `Impôts` des DEUX côtés (`totalSpent`/`pastAverages.expenseAvg`
+  comme les cibles) — écart structurel 44 % mesuré, badge « Excédentaire » faux. Le libellé dit que les
+  impôts sont hors comparaison (un chiffre qui exclut quelque chose le DIT).
+
 ## 2026-09-05 — `[TX-INTERAC-REMBOURSEMENT]` — LIVRÉ (lot 172, PR #903)
 
 Ticket d'origine tel qu'au moment de l'archivage :

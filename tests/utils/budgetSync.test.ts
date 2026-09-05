@@ -161,11 +161,17 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
         const salaire = l.incomeRows.find(r => r.category === 'Salaire')!;
         expect(salaire.byMonth[10]).toBe(1674.62);
         expect(salaire.byMonth[11]).toBe(837.31);
-        expect(l.incomeRows.find(r => r.category === 'Autres revenus')!.byMonth[10]).toBe(50);
-        // Totaux + solde (juin) : revenus 1674.62+50, dépenses 230
-        expect(l.totalIncomeByMonth[10]).toBeCloseTo(1724.62, 2);
+        // [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] INVERSÉ le 2026-09-05 (décision Marc 2b) : le positif
+        // « à classer » (+50) était une ligne de REVENU « Autres revenus » et entrait dans le total —
+        // le grand livre disait 1 724,62 $ pendant que le KPI Revenus disait 1 674,62 $. Il est
+        // désormais EXCLU du revenu et NOMMÉ sous « Non classées ». Un test de limite s'inverse.
+        expect(l.incomeRows.find(r => r.category === 'Autres revenus')).toBeUndefined();
+        expect(l.entreesHorsRevenuRows.find(r => r.category === 'Non classées')!.byMonth[10]).toBe(50);
+        expect(l.entreesHorsRevenuByMonth[10]).toBe(50);
+        // Totaux + solde (juin) : revenus 1674.62 (le +50 est hors revenu), dépenses 230
+        expect(l.totalIncomeByMonth[10]).toBeCloseTo(1674.62, 2);
         expect(l.totalExpenseByMonth[10]).toBe(230);
-        expect(l.netByMonth[10]).toBeCloseTo(1494.62, 2);
+        expect(l.netByMonth[10]).toBeCloseTo(1444.62, 2);
     });
 
     // [BUDGET-MATCH-UNIFY] Le ledger rapproche par la MÊME règle que le réel (fuzzy) — avant,
@@ -200,6 +206,32 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
         expect(autres.byMonth[10]).toBeCloseTo(495.96, 2);
         const sumRows = l.expenseRows.reduce((s, r) => s + r.byMonth[10], 0);
         expect(sumRows).toBeCloseTo(l.totalExpenseByMonth[10], 2); // aucun écart silencieux
+    });
+
+    // [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] Le cas MESURÉ du ticket (salaire 6 000 + retour Amazon 200 +
+    // dépôt non classé 500) : le grand livre disait 6 700 $ pendant que le KPI disait 6 000 $ (11,7 %).
+    it('[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] les positifs hors revenu sont EXCLUS du total et NOMMÉS, rien n\'est perdu', () => {
+        const transactions = [
+            tx({ category: 'Salaire', amount: 6000, date: '2026-06-04' }),
+            tx({ category: 'Magasinage', amount: 200, date: '2026-06-10' }),      // retour marchand
+            tx({ category: 'Uncategorized', amount: 500, date: '2026-06-12' }),   // dépôt non classé
+            tx({ category: 'Remboursement', amount: 100, date: '2026-06-15' }),   // crédit reçu (lot 172)
+            tx({ category: 'Revenus divers', amount: 45, date: '2026-06-20' }),   // vrai revenu
+            tx({ category: 'Épicerie', amount: -300, date: '2026-06-18' }),
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie'], 12, REF);
+        expect(l.totalIncomeByMonth[10]).toBe(6045);
+        expect(l.incomeRows.map(r => r.category).sort()).toEqual(['Revenus divers', 'Salaire']);
+        expect(l.entreesHorsRevenuByMonth[10]).toBe(800);
+        expect(l.entreesHorsRevenuRows.map(r => [r.category, r.byMonth[10]])).toEqual([
+            ['Non classées', 500], ['Magasinage', 200], ['Remboursement', 100],
+        ]);
+        expect(l.netByMonth[10]).toBe(6045 - 300);
+        // Invariant « jamais perdu en silence » : Σ positifs = revenu + hors revenu.
+        const positifs = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+        expect(l.totalIncomeByMonth[10] + l.entreesHorsRevenuByMonth[10]).toBe(positifs);
+        // Même revenu que le KPI (source unique INCOME_CATEGORIES) : fin des deux soldes côte à côte.
+        expect(l.totalIncomeByMonth[10]).toBe(computeIncomeBreakdown(transactions).total);
     });
 
     it('lastMonths rend N clés YYYY-MM, ancien → récent', () => {

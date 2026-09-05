@@ -16,6 +16,19 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 174 : le grand livre exclut les positifs hors revenu, et les NOMME (`[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`)
+> Décision Marc 2b. `buildMonthlyLedger` ne compte en revenu que `INCOME_CATEGORIES` — la règle du KPI
+> Revenus, source unique — et publie `entreesHorsRevenuRows` (par catégorie, « Non classées » pour
+> les statuts à classer) + `entreesHorsRevenuByMonth`. Le tableau du Budget gagne une section
+> « Entrées hors revenu (exclues du total et du solde) », ligne par ligne + total, en `PrivateAmount`.
+> Fin des deux « soldes du mois » différents côte à côte (KPI 6 000 $ / grand livre 6 700 $ mesurés).
+> ⚠️ Effet de bord ASSUMÉ : un remboursement REÇU (« Remboursement », lot 172) apparaît ici comme
+> entrée hors revenu — le grand livre montre les MOUVEMENTS, le crédit sur le poste vit dans les tuiles
+> et la parité (`isCreditBack`). Test de limite INVERSÉ (le « +50 à classer » n'est plus un revenu),
+> garde neuve avec l'invariant Σ positifs = revenu + hors revenu et l'égalité grand livre = KPI,
+> garde UI (tuile Revenus et « Total revenus » : le même 6 000 $ ; 700 $ nommés). Perturbations :
+> tout positif redevenu revenu → rouges attendus ; section retirée → rouge UI. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 173 : les impôts sortent des deux côtés de la comparaison budget↔réel, et la tuile le dit (`[BUDGET-IMPOTS-HORS-COMPARAISON]`)
 > Décision Marc 3a. Source unique `HORS_COMPARAISON_BUDGET = {Impôts}` dans `spendRules.ts` (le module
 > neutre partagé par `budget.ts` et `budgetSync.ts`). `computeBudgetParity` publie `totalSpent` HORS

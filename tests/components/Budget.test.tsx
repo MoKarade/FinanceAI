@@ -184,6 +184,36 @@ describe('Budget — refonte UI (Phase C3)', () => {
         expect(text).not.toContain('du Couple');     // mais pas la variante couple
     });
 
+    it('[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] le grand livre et le KPI Revenus disent le MÊME revenu ; les autres entrées sont nommées', () => {
+        // Décision Marc 2026-09-05 (2b). Avant : KPI 6 000 $ et « Total revenus » 6 700 $ sur le même écran.
+        const now = new Date();
+        const iso = (d: Date) => d.toISOString().split('T')[0];
+        const curDate = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+        const tx = (id: string, category: string, amount: number): Transaction =>
+            ({ id, date: curDate, description: category, category, amount } as unknown as Transaction);
+        const transactions = [tx('s1', 'Salaire', 6000), tx('m1', 'Magasinage', 200), tx('u1', 'Uncategorized', 500)];
+
+        const { container } = render(<Budget {...baseProps} transactions={transactions} />);
+        const norm = (s: string | null) => (s ?? '').replace(/\u00a0/g, ' ');
+        const rowByHeader = (texte: string): HTMLElement => {
+            const th = (Array.from(container.querySelectorAll('th')) as HTMLElement[])
+                .find((el) => norm(el.textContent).trim() === texte);
+            expect(th, `ligne « ${texte} » introuvable`).toBeTruthy();
+            return th!.closest('tr') as HTMLElement;
+        };
+        // Le KPI Revenus (tuile) et le « Total revenus » du grand livre : le même 6 000 $.
+        const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+            .find((l) => (l.textContent ?? '').includes('Revenus'));
+        const kpiReel = (label!.closest('.rounded-card') as HTMLElement).querySelector('.text-kpi') as HTMLElement;
+        expect(norm(kpiReel.textContent)).toContain(norm(formatCAD(6000)));
+        expect(norm(rowByHeader('Total revenus').textContent)).toContain(norm(formatCAD(6000)));
+        expect(norm(rowByHeader('Total revenus').textContent)).not.toContain(norm(formatCAD(6700)));
+        // Les 700 $ ne sont pas perdus : nommés, ligne par ligne, et totalisés à part.
+        expect(norm(rowByHeader('Total entrées hors revenu').textContent)).toContain(norm(formatCAD(700)));
+        expect(norm(rowByHeader('Magasinage').textContent)).toContain(norm(formatCAD(200)));
+        expect(norm(rowByHeader('Non classées').textContent)).toContain(norm(formatCAD(500)));
+    });
+
     it('[BUDGET-IMPOTS-HORS-COMPARAISON] la tuile « Dépenses » exclut les impôts de son réel ET le dit, montant à l’appui', () => {
         // Décision Marc 2026-09-05 (3a). Sur l'ancien code, la réel valait 1 700 (impôts inclus) et rien ne
         // le disait ; les cibles, elles, n'ont jamais eu de poste Impôts → deux assiettes comparées.

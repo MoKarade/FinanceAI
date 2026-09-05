@@ -5,6 +5,7 @@ import { Tab } from '../../types';
 import type { FinanceState } from '../../store/useFinanceStore';
 import { Icon } from './Icon';
 import { REQUIREMENTS } from '../setup/requirements';
+import { isCoupleMode } from '../../services/couple/netWorthByOwner';
 
 /**
  * Phase C.5 — bannière "Données manquantes" avec redirect vers le Hub.
@@ -98,7 +99,7 @@ const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
         label: 'Nom du conjoint',
         section: 'profile-user2-name',
         tab: Tab.SETTINGS,
-        isMissing: (s) => !s.config?.users?.[1]?.name?.trim(),
+        isMissing: (s) => !isCoupleMode(s.config?.users), // [COUPLE-PREDICAT-COPIES] négation de la source unique
     },
     'user2.grossSalary': {
         label: 'Salaire brut (conjoint)',

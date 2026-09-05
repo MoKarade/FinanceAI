@@ -9,7 +9,7 @@ import { formatCAD } from '../../utils/format';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { Asset, AssetOwner } from '../../types';
-import { computeNetWorthByOwner, defaultOwner } from '../../services/couple/netWorthByOwner';
+import { computeNetWorthByOwner, defaultOwner, isCoupleMode } from '../../services/couple/netWorthByOwner';
 import { assetValueCad } from '../../services/portfolio';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -28,7 +28,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
     const fxRates = useFinanceStore((s) => s.fxRates);
     const users = (config?.users ?? []).filter(Boolean);
     // Mode couple = 2e utilisateur avec un nom (même définition que CoupleModeBadge).
-    const isCouple = users.length >= 2 && !!users[1]?.name?.trim();
+    const isCouple = isCoupleMode(users); // [COUPLE-PREDICAT-COPIES] source unique (même module que le partage)
     if (!isCouple) return null;
 
     const name1 = users[0]?.name || 'Utilisateur 1';

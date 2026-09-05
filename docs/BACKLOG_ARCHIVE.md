@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[STORAGE-PERSIST-REQUEST]` — LIVRÉ (lot 184, PR #915)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[STORAGE-PERSIST-REQUEST]`** ✅ **LIVRÉ au lot 184 (2026-09-05)** — `services/storagePersistence.ts` (`requestPersistentStorage` UNE fois au boot, promesse mémoïsée, jamais de throw : accordée / refusée / non supportée / inconnue ; `queryStoragePersisted` relit l'état RÉEL), appelé dans `useAppBootEffects`, ligne `STORAGE:` dans le diagnostic de `SystemView` (relue au montage, `warn` si refusée, le libellé dit ce que l'état IMPLIQUE). Trois gardes, trois perturbations séparées (boot → scan rouge ; ligne retirée → 3 rouges SystemView ; mémo cassé → 1 rouge service). (XS, découvert en diagnostiquant `[FINTABLE-TOKEN-WIPE]`) —
+  l'app ne demande **JAMAIS** `navigator.storage.persist()` (0 occurrence dans le dépôt). Le coffre
+  chiffré repose sur IndexedDB (clé AES) + localStorage (blob) : sans persistance accordée, le
+  navigateur classe le stockage « best-effort » et peut l'évincer sous pression disque — perte des
+  clés API ET de la courbe verrouillée. Ce n'était PAS la cause du bug de Marc (c'était la synchro
+  Drive), donc non corrigé au passage. **Correctif** : demander la persistance au boot, une fois,
+  et exposer l'état dans SystemView (`navigator.storage.persisted()`) pour que ce soit
+  diagnosticable. Chrome l'accorde selon l'engagement / l'installation PWA.
+
+
 ## 2026-09-05 — `[FORMATCAD-OR-ZERO]` — LIVRÉ (lot 183, PR #914)
 
 Ticket d'origine tel qu'au moment de l'archivage :

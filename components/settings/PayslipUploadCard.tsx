@@ -11,6 +11,7 @@ import { causeErreurIa, messageErreurIa } from '../../services/messageErreurIa';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { AiChatConfirmModal } from '../aiChat/AiChatConfirmModal';
+import { isCoupleMode } from '../../services/couple/netWorthByOwner';
 
 /**
  * Phase C.2 — upload IA de relevé de salaire dans le Hub Configuration.
@@ -49,7 +50,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
     // hook, où toute nouvelle surface en hérite.
     const { pendingWrite, requestConfirmation, resolvePendingWrite } = useWriteConfirmation();
 
-    const isCouple = Boolean(config?.users?.[1]?.name?.trim());
+    const isCouple = isCoupleMode(config?.users); // [COUPLE-PREDICAT-COPIES] source unique
 
     const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;

@@ -9,6 +9,7 @@
 // déclarant et un choix sans effet serait une promesse vide.
 import React from 'react';
 import type { AssetOwner } from '../../types';
+import { isCoupleMode } from '../../services/couple/netWorthByOwner';
 
 const LIBELLE_PROPRIETAIRE_CONJOINT = 'Les deux (50/50)';
 
@@ -36,8 +37,7 @@ export const SelectProprietaire: React.FC<{
 
 /** Prénoms à afficher, ou `null` si le ménage n'a qu'une tête (second conjoint sans nom). */
 export const nomsConjoints = (users: ReadonlyArray<{ name?: string } | undefined>): [string, string] | null => {
+    if (!isCoupleMode(users)) return null; // [COUPLE-PREDICAT-COPIES] source unique
     const n0 = users[0]?.name?.trim() || '';
-    const n1 = users[1]?.name?.trim() || '';
-    if (!n1) return null;
-    return [n0 || 'Conjoint 1', n1];
+    return [n0 || 'Conjoint 1', users[1]!.name!.trim()];
 };

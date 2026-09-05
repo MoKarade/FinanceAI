@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 185 : une seule écriture du prédicat « mode couple » (`[COUPLE-PREDICAT-COPIES]`)
+> Re-recensé par le MOTIF : neuf sites, pas six (`MissingDataBanner` en négation, `Budget` qui dérive
+> `user2`, `nomsConjoints` de `SelectProprietaire`), tous sur `isCoupleMode` (hissé au lot 180). Les
+> affichages du nom ne sont pas des prédicats et restent. Garde `couplePredicatSourceUnique.test.ts` :
+> scan décommenté de components/services/store/hooks/utils sur « `[1]` + `.name` + `.trim()` », source
+> unique exclue, six témoins retirés (anti-vacuité), trois affichages comme contre-témoins ; perturbation
+> (prédicat remis dans Transactions) → 1 rouge. 17 suites des composants touchés vertes (150 tests) —
+> comportement identique par construction (même définition : nom NON VIDE après trim). Pas d'entrée
+> CHANGELOG : rien ne change à l'écran. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 184 : persistance du stockage demandée au boot et diagnosticable (`[STORAGE-PERSIST-REQUEST]`)
 > `services/storagePersistence.ts` : `requestPersistentStorage()` (une fois, promesse mémoïsée, quatre issues
 > sans throw : accordée / refusée / non supportée / inconnue), `queryStoragePersisted()` (état RÉEL via

@@ -1065,6 +1065,31 @@ describe('calculateGISBenefit (§6.3)', () => {
     expect(calculateGISBenefit(40000, true)).toBe(0);
   });
 
+  // [FISC-GIS-COUPLE-RATE] (2026-09-05) — le taux couple est 1 $ par 4 $ de revenu COMBINÉ pour
+  // CHAQUE conjoint. Avant : 50 ¢/$ par adulte sur le combiné → SRG nul dès 15 888 $ (662×12/0,5),
+  // le seuil 29 760 $ ne servait jamais. Ancre sur la RELATION (taux = pente), pas sur un montant.
+  it('[FISC-GIS-COUPLE-RATE] couple : chaque conjoint perd 25 ¢ par dollar de revenu COMBINÉ', () => {
+    const a = calculateGISBenefit(8000, true);
+    const b = calculateGISBenefit(16000, true);
+    // Pente mensuelle = 8 000 × 0,25 / 12 = 166,67 $ — la moitié de la pente célibataire.
+    expect(a - b).toBeCloseTo(8000 * 0.25 / 12, 5);
+    const s1 = calculateGISBenefit(8000, false);
+    const s2 = calculateGISBenefit(16000, false);
+    expect((s1 - s2) / (a - b)).toBeCloseTo(2, 5);
+  });
+
+  it('[FISC-GIS-COUPLE-RATE] à 15 888 $ combinés, un couple touche encore la MOITIÉ du maximum (le défaut rendait 0)', () => {
+    // 15 888 = 662 × 12 / 0,50 : c'est exactement là où l'ancien taux annulait le SRG couple.
+    const parAdulte = calculateGISBenefit(15888, true);
+    expect(parAdulte).toBeCloseTo(GIS_MAX_MONTHLY_COUPLE_2026 / 2, 1);
+    expect(parAdulte * 2 * 12).toBeCloseTo(7944, 0); // 7 944 $/an pour le couple — le chiffre du ticket
+  });
+
+  it('[FISC-GIS-COUPLE-RATE] le seuil couple 29 760 $ n\'est plus du code mort : juste dessous, le SRG est encore > 0', () => {
+    expect(calculateGISBenefit(GIS_INCOME_THRESHOLD_COUPLE - 1, true)).toBeGreaterThan(0);
+    expect(calculateGISBenefit(GIS_INCOME_THRESHOLD_COUPLE, true)).toBe(0);
+  });
+
   it('couple paie moins par adulte que célibataire au même revenu', () => {
     const single = calculateGISBenefit(10000, false);
     const couple = calculateGISBenefit(10000, true);

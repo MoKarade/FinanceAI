@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Un Interac reçu n'est plus compté comme un revenu)
+
+- **Corrigé** : à l'import d'un relevé, un virement Interac REÇU (« Virement Interac de… »,
+  « e-Transfer received/from… ») était classé « Revenus divers » et gonflait le revenu réel du
+  Budget, pendant que la dépense remboursée restait comptée en entier. Il est désormais classé
+  « Remboursement » : un crédit qui vient en déduction de ce poste, jamais un revenu. Un Interac
+  ENVOYÉ reste une dépense. La catégorie « Remboursement » est maintenant proposée partout où l'on
+  classe (menu, assistant, MCP).
+
 ## [unreleased] — 2026-09-05 (Un immeuble loué crée enfin des droits REER, chez son propriétaire)
 
 - **Corrigé** : le loyer net d'un immeuble (immeuble locatif des Réglages → Patrimoine, ou bien locatif

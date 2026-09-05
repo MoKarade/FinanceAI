@@ -16,6 +16,20 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 172 : un Interac REÇU importé devient « Remboursement », plus un revenu (`[TX-INTERAC-REMBOURSEMENT]`)
+> Décision Marc 1a. `categoryRules.ts` : la règle « VIREMENT INTERAC DE / E-TRANSFER RECU|RECEIVED »
+> passe de `Revenus divers` à `Remboursement` (+ graphie « E-TRANSFER FROM », qui rendait `null`), et
+> `Remboursement` entre dans `RULE_CATEGORIES` — donc dans l'allowlist IA, MCP et le menu de classement
+> par la MÊME source. Le mécanisme `CREDIT_BACK_CATEGORIES` (2026-07-31) est enfin ALIMENTÉ par la
+> prod : ses six tests unitaires fabriquaient la catégorie eux-mêmes (`UN-TROU-ENTRE-DEUX-MOITIES…`),
+> d'où la garde de CHAÎNE `interacRecuRemboursement.test.ts` (CSV brut → `parseBankCsv` → règles →
+> `computeIncomeBreakdown` / `computeMonthlyActualAverages`) : revenu 5 000 $ et non 5 300 $ (+5,7 %
+> de faux revenu sur la fixture ; 900 $/mois sur le corpus réel), dépenses 350 $ (le crédit ne réduit
+> que son poste), l'Interac ENVOYÉ reste une dépense « Autre ». Test de limite du corpus INVERSÉ avec
+> son histoire. Perturbation (règle remise sur `Revenus divers`) : 6 rouges, 56 verts. Non couvert,
+> délibérément : « e-Transfer to » (Interac envoyé, graphie anglaise) rend toujours `null` → IA ;
+> hors ticket. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 171 : le loyer net crée des droits REER chez son PROPRIÉTAIRE (`[FISC-RRSP-RENTAL-EARNED]`)
 > Décision Marc 5a. Nouveau module `services/projection/revenuGagnePartage.ts` (clé d'attribution :
 > `owner` optionnel `user1 | user2 | joint` sur `RentalProperty` et `RealEstateGoal`, absent = 50/50,

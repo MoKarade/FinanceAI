@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-RRSP-RENTAL-EARNED]` — LIVRÉ (lot 171, PR #902)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-RRSP-RENTAL-EARNED]`** ✅ **LIVRÉ au lot 171 (2026-09-05)** — loyer net → revenu gagné du propriétaire (champ `owner` optionnel, défaut 50/50), gardes unitaires + chaîne par espion + UI, mesuré +10 753 $ à +64 802 $ sur droits saturants, 0 $ sans immeuble. (S-M — audit 2026-08-06) — ⚠️ **GATÉ source humaine
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : (a) champ de propriété optionnel par immeuble, défaut 50/50 ; source T4040 relayée (revenu net de location = revenu gagné, pertes déduites) — DÉBLOQUÉ.
+  (2026-09-04)** → `docs/A_FAIRE_MOI.md` « [DÉCISION — FISC-RRSP-RENTAL-EARNED] ». Recensement
+  fait : le constat CODE est CONFIRMÉ — le loyer net alimente `accRentesYear` (unique écriture,
+  `realEstateMonth.ts`, jamais `accGrossIncomeYearByUser`, dont les seuls producteurs sont le
+  versement différé `grossIncomeEnAttente` — qui porte le salaire — et l'ajustement congé
+  parental de `childrenReee.ts`) → zéro droit REER créé par un revenu locatif.
+  L'affirmation JURIDIQUE (« revenu gagné au sens de 146(1) ») reste NON SOURCÉE : la
+  vérification T4040 sur `canada.ca` a été tentée le 2026-09-04 et bloquée par l'environnement
+  (`EGRESS_BLOCKED`, même classe que LégisQuébec). Et le correctif exige une décision produit
+  ABSENTE du ticket : le modèle n'a AUCUN champ de propriété par conjoint sur l'immobilier
+  locatif, or `accGrossIncomeYearByUser` est PER-CONJOINT — attribuer le loyer exige de choisir
+  la clé. Ne pas coder avant la double réponse de Marc.
+
 ## 2026-09-05 — `[FISC-RAP-15ANS]` `[FISC-RAP-GRACE-WINDOW]` `[FISC-RRSP-LIMITS-PRE2024-DOC]` `[FISC-LINE361-PERCONJOINT-REDUC]` — LIVRÉS (lot 170, PR #901)
 
 Tickets d'origine tels qu'au moment de l'archivage :

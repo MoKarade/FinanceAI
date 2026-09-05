@@ -18,7 +18,13 @@ describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard
         ['Paie / ALGO SERVICE DE PAIE', 'Salaire'],
         ['Ristourne', 'Revenus divers'],
         ['Intérêt sur ET', 'Revenus divers'],
-        ['Virement Interac de / ANNA LUCIE MAL/', 'Revenus divers'],
+        // [TX-INTERAC-REMBOURSEMENT] INVERSÉ le 2026-09-05 (décision Marc 1a) : cette ligne disait
+        // « Revenus divers » — un Interac reçu est un CRÉDIT sur une dépense partagée, pas un revenu.
+        // Un test de limite s'inverse, il ne se supprime pas : c'est la trace qui empêche de le
+        // re-classer revenu « pour simplifier ».
+        ['Virement Interac de / ANNA LUCIE MAL/', 'Remboursement'],
+        ['E-Transfer received / JOHN DOE', 'Remboursement'],
+        ['Interac e-Transfer from /ANNA LUCIE MAL/', 'Remboursement'],
         ['Loyer/bail / 9420 3767 Quebec inc.', 'Logement'],
         ['Virement envoyé à / Valerie cameron    /Loyer', 'Logement'],
         ['Paiement facture - AccèsD Internet / HYDRO-QUEBEC', 'Logement'],

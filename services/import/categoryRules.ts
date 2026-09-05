@@ -15,6 +15,12 @@
 export const RULE_CATEGORIES = [
     'Salaire',
     'Revenus divers',
+    // [TX-INTERAC-REMBOURSEMENT] (décision Marc 2026-09-05, réponse 1a) Un Interac REÇU est un
+    // CRÉDIT sur une dépense partagée, jamais un revenu : la catégorie existait (`CREDIT_BACK_CATEGORIES`
+    // de `utils/spendRules.ts`, décision du 2026-07-31) mais AUCUNE règle ne l'écrivait — le
+    // mécanisme était vert en test et inerte en prod. Canonique ici pour que l'IA, le MCP et le
+    // menu de classement la proposent tous par la même source.
+    'Remboursement',
     'Logement',
     'Transfert',
     'Assurances',
@@ -87,7 +93,14 @@ const RULES: ReadonlyArray<readonly [RegExp, RuleCategory]> = [
     // on TS ») — jamais le mot NU : « FRAIS DE PROVISION INTERET » est une CHARGE, pas un revenu
     // (finding panel ; les intérêts facturés carte = « FRAIS DE CRÉDIT » → Frais bancaires).
     [/RISTOURNE|INTERET SUR|INTEREST ON|CREDIT REMISES|DEPOT DIRECT|TRANSFERT DE FONDS RECU/, 'Revenus divers'],
-    [/VIREMENT INTERAC DE\b|E-TRANSFER.*(RECU|RECEIVED)/, 'Revenus divers'],
+    // [TX-INTERAC-REMBOURSEMENT] Interac REÇU → « Remboursement » (crédit qui vient en déduction du
+    // poste, `isCreditBack`), plus « Revenus divers » : classé revenu, un remboursement de dépense
+    // partagée gonflait le revenu affiché ET laissait la dépense comptée en entier (double
+    // comptage dans les deux sens — 900 $/mois mesurés sur le corpus réel, A_FAIRE_MOI). Les
+    // autres motifs de la ligne du dessus (ristourne, intérêts, dépôt direct) restent du revenu.
+    // « E-TRANSFER FROM » (graphie anglaise de l'Interac reçu, déjà reconnue par `isInteracPayee` et
+    // par `isInternalTransferLabel`) rendait `null` faute de motif : même règle, même destination.
+    [/VIREMENT INTERAC DE\b|E-TRANSFER.*(RECU|RECEIVED|FROM)/, 'Remboursement'],
     // — Logement (AVANT les virements génériques : « Virement envoyé à … /Loyer ») —
     [/LOYER|HYDRO-?QUEBEC|ENERGIR|\bBAIL\b/, 'Logement'],
     // — Transferts internes / placements (mouvements, pas des dépenses) —

@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (L'app demande au navigateur de ne pas évincer tes données)
+
+- **Ajouté** : au démarrage, l'app demande la « persistance du stockage » au navigateur — sans elle,
+  le coffre chiffré (clés API) et tes données locales sont classés « best-effort » et peuvent être
+  effacés sous pression disque. L'état réel (accordée, refusée, non supportée) s'affiche dans
+  Réglages › Système & diagnostics, avec ce que ça implique. Chrome l'accorde selon l'usage ou
+  l'installation en PWA ; un refus n'est pas une panne, c'est l'état par défaut d'un site peu visité.
+
 ## [unreleased] — 2026-09-05 (Une donnée absente s'affiche « — », plus « 0 $ »)
 
 - **Corrigé** : dans treize tableaux et infobulles (Retraite, Dettes, Placements, Dividendes,

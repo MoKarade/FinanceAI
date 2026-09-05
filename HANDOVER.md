@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 184 : persistance du stockage demandée au boot et diagnosticable (`[STORAGE-PERSIST-REQUEST]`)
+> `services/storagePersistence.ts` : `requestPersistentStorage()` (une fois, promesse mémoïsée, quatre issues
+> sans throw : accordée / refusée / non supportée / inconnue), `queryStoragePersisted()` (état RÉEL via
+> `persisted()`), `libellePersistance()` (la phrase dit ce que l'état IMPLIQUE : évictable ou non).
+> Appel `void requestPersistentStorage()` dans `useAppBootEffects` avant le boot Drive ; `SystemView`
+> relit l'état au montage (et au bouton Rafraîchir) et pousse une ligne `STORAGE:` (`warn` si refusée).
+> Trois gardes / trois perturbations SÉPARÉES : appel de boot retiré → le scan du hook seul ; ligne
+> retirée → les 3 cas SystemView ; mémo cassé → « une seule demande » seul. ⚠️ Mon insertion a déplacé
+> la directive `eslint-disable-next-line exhaustive-deps` posée devant le `useMemo` de SystemView (lint :
+> directive orpheline + dépendance « inutile ») — remise devant son sujet. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 183 : `formatCAD(… || 0)` — le formateur reçoit la valeur brute (`[FORMATCAD-OR-ZERO]`)
 > Re-recensé par le MOTIF du ticket (sa liste en annonçait 16, trois avaient disparu) : 13 sites, huit
 > formateurs de colonnes `ChartDataTable`, cinq tuiles de l'infobulle Retraite, un `formatter` Recharts —

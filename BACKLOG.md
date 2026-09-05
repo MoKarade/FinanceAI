@@ -1056,24 +1056,6 @@
 
 ### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
 
-- [x] **`[FORMATCAD-OR-ZERO]`** ✅ **LIVRÉ au lot 183 (2026-09-05)** — re-recensé PAR LE MOTIF du ticket (pas sa liste) : **13 sites** le jour du lot (les 3 autres avaient disparu — `Budget.tsx`, `RealEstateWorkspace.tsx`, `AddStockForm.tsx`), tous migrés vers `formatCAD(v)` / `formatCAD(data.X)`. Garde de SOURCE ajoutée dans `formatMonetaireSourceUnique.test.ts` (même règle, autre face : le formateur reçoit la valeur BRUTE) + garde COMPORTEMENTALE `Retirement.tooltipNoFakeZero.test.tsx` (un compte absent ou NaN dans l'infobulle rend « — », jamais « 0 $ » ; REER présent = contrôle). Perturbations : `|| 0` remis sur la tuile CELI → 2 rouges ; remis sur DebtManager → la garde de source seule. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, MOYEN) — **16 sites** font `formatCAD(… || 0)` : le `|| 0`
-  **annule la garde no-fake-data de `formatCAD`** (qui rend « — » sur non-fini) et transforme une
-  donnée absente en « 0 $ » crédible. Correctif : passer la valeur brute à `formatCAD`, qui gère
-  déjà `unknown`.
-  ⚠️ **Périmètre RE-MESURÉ le 2026-08-19** — l'ancien libellé annonçait « 10 sites » et n'en listait
-  que 9, à des lignes qui ont bougé depuis. Le vrai compte est **16**, dont **7 que l'ancienne liste
-  ne voyait pas** : cinq `formatCAD(data.X || 0)` (`Retirement.tsx:466,470,476,482,487` — motif
-  `data.X`, pas `Number(v)`), `AddStockForm.tsx:447` (`parseFloat(buyPrice) || 0`) et
-  `DividendPanel.tsx:198` (`val || 0`, dans un `formatter` Recharts — donc invisible aux tests qui
-  mockent Recharts, cf. revue #608). **Ne PAS repartir de la liste, repartir du scan** : le motif
-  utile n'est pas `Number(v) || 0` mais `formatCAD(<n'importe quoi> || 0)`, parenthèses imbriquées
-  comprises (`grep -oE "formatCAD\((\([^()]*\)|[^()])*\|\| ?0\)"`). Sites : `Budget.tsx:589,613` ·
-  `RealEstateWorkspace.tsx:342` · `MultiPropertyComparison.tsx:75` · `Retirement.tsx:206,466,470,476,482,487` ·
-  `DebtManager.tsx:112` · `Investments.tsx:143` · `AddStockForm.tsx:447` · `DividendPanel.tsx:79,198` ·
-  `LifeEvents.tsx:148`. Classe `DOC-METRIQUE-RECOPIEE` : un périmètre listé EN DUR se périme, un scan non. [MESURÉ]
-
-### 🔴 Devises et unités
-
 - [ ] **`[FX-BADGE-SURFACES-RESTANTES]`** (S, FAIBLE — routé revue #686, financial-integrity
   INFO) — le badge `FxEstimateBadge` (câblé Patrimoine net + Investissements + PDF) ne couvre PAS
   toutes les surfaces qui convertissent des devises étrangères : `TaxCenter.tsx:170-171`
@@ -1432,7 +1414,7 @@
   aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
   RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
 
-- [ ] **`[STORAGE-PERSIST-REQUEST]`** (XS, découvert en diagnostiquant `[FINTABLE-TOKEN-WIPE]`) —
+- [x] **`[STORAGE-PERSIST-REQUEST]`** ✅ **LIVRÉ au lot 184 (2026-09-05)** — `services/storagePersistence.ts` (`requestPersistentStorage` UNE fois au boot, promesse mémoïsée, jamais de throw : accordée / refusée / non supportée / inconnue ; `queryStoragePersisted` relit l'état RÉEL), appelé dans `useAppBootEffects`, ligne `STORAGE:` dans le diagnostic de `SystemView` (relue au montage, `warn` si refusée, le libellé dit ce que l'état IMPLIQUE). Trois gardes, trois perturbations séparées (boot → scan rouge ; ligne retirée → 3 rouges SystemView ; mémo cassé → 1 rouge service). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, découvert en diagnostiquant `[FINTABLE-TOKEN-WIPE]`) —
   l'app ne demande **JAMAIS** `navigator.storage.persist()` (0 occurrence dans le dépôt). Le coffre
   chiffré repose sur IndexedDB (clé AES) + localStorage (blob) : sans persistance accordée, le
   navigateur classe le stockage « best-effort » et peut l'évincer sous pression disque — perte des

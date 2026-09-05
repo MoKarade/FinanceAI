@@ -11,6 +11,7 @@ import { Icon } from './ui/Icon';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { TAX_BASE_YEAR, FED_BRACKETS, BASIC_PERSONAL_AMOUNT_FED } from '../utils/tax';
 import { logError } from '../services/errorLogger';
+import { getStoragePersistence, queryStoragePersisted, libellePersistance, type EtatPersistance } from '../services/storagePersistence';
 import { formatRelative } from '../utils/relativeTime';
 
 interface SystemViewProps {
@@ -37,7 +38,7 @@ const BUILD_INFO = {
 // formatRelative : déplacé vers utils/relativeTime.ts ([FINTABLE-6 Lot 2] — partagé avec le badge
 // de fraîcheur des soldes courtier, une seule copie).
 
-const computeDiagnostics = (state: AppState): LogLine[] => {
+const computeDiagnostics = (state: AppState, persistance: EtatPersistance): LogLine[] => {
     const now = new Date().toLocaleTimeString();
     const stamp = (txt: string): string => `[${now}] ${txt}`;
 
@@ -76,6 +77,10 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
     } else {
         lines.push({ text: stamp(`STATE_MGR: réhydratation du store OK`), level: 'info' });
     }
+
+    // [STORAGE-PERSIST-REQUEST] État RÉEL de la persistance (relu auprès du navigateur au montage) :
+    // « refusée » n'est pas une erreur, c'est l'état par défaut d'un site peu utilisé — on le DIT.
+    lines.push({ text: stamp(libellePersistance(persistance)), level: persistance === 'accordee' ? 'info' : 'warn' });
 
     lines.push({
         text: stamp(
@@ -164,8 +169,16 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
     const [refreshKey, setRefreshKey] = useState(0);
 
     // refreshKey force le recalcul volontairement (incrémenté par le bouton Refresh).
+    // [STORAGE-PERSIST-REQUEST] État RÉEL relu au montage (persisted()), pas seulement le souvenir de
+    // la demande du boot — une persistance révoquée ou accordée entre-temps se voit ici.
+    const [persistance, setPersistance] = useState<EtatPersistance>(getStoragePersistence);
+    useEffect(() => {
+        let vivant = true;
+        void queryStoragePersisted().then((e) => { if (vivant) setPersistance(e); });
+        return () => { vivant = false; };
+    }, [refreshKey]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const logs = useMemo(() => computeDiagnostics(state), [state, refreshKey]);
+    const logs = useMemo(() => computeDiagnostics(state, persistance), [state, refreshKey, persistance]);
 
     // [SYSVIEW-DBSIZE-ZERO] `null` et non `0` : un « 0 KB » est une valeur CRÉDIBLE, donc un mensonge
     // — l'utilisateur lit « ma base est vide » alors que la sérialisation vient d'échouer (structure

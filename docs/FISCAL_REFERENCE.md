@@ -76,6 +76,17 @@
   Production/travailleur autonome (15 juin pour PRODUIRE, paiement 30 avril quand même) : non
   modélisé — le moteur ne simule pas la date de production, seulement le flux de paiement.
 
+> ✅ **Calendrier du dépôt de décembre dans le moteur (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`, lot 179, 2026-09-05, décision
+> Marc 15 « corriger »)** : `processDecemberTaxFiling` s'exécute en **FIN** de décembre, après la cascade d'allocation,
+> le meltdown REER, l'immobilier (RAP) et les objectifs datés du même mois. Avant, il lisait les accumulateurs annuels
+> (`accRetraitsReerYear`, `taxCurrentYear`…) AVANT ces producteurs et janvier les remettait à zéro : les flux REER de
+> décembre n'entraient dans l'assiette d'AUCUNE année — une fuite d'assiette, pas une convention de calendrier.
+> Mesuré (banc `scripts/mesureOrdreBoucle.ts`, clef `dec_fin_de_mois`) : impôt à vie **+25 568 $** (retraités, AUTO),
+> **+14 751 $** (MELTDOWN), **−2 991 $** (couple actif : les cotisations de décembre sont enfin déduites l'année même).
+> Garde comportementale : un retrait REER de décembre coûte le même impôt qu'en novembre (ratio 1,08 mesuré ; 0,0055
+> avant le lot). ⚠️ Le bloc de récupération PSV de décembre lit encore ces accumulateurs AVANT les producteurs —
+> `[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`, routé.
+
 ## 2. Cotisations sociales (2026)
 
 ### RRQ — Régime de rentes du Québec (`utils/tax.ts`)

@@ -19,12 +19,16 @@
 //     périmée — 0, sans garde) et sur-tire. Mesuré : totalTaxesPaid +7 387,01 $ (sonde
 //     incomeRetirement→0 au seul site d'appel) / +8 373,73 $ (bloc déplacé), fixture retraités
 //     MELTDOWN_REER ; contrôles AUTO_MARGINAL/actifs/PRIO_REER à 0,00 EXACT.
-//  2. processDecemberTaxFiling AVANT processCashflowAllocation — le dépôt fiscal de décembre lit
-//     les accumulateurs annuels que la cascade du MÊME mois alimente ensuite. Décembre déplacé en
-//     fin de mois : totalTaxesPaid +25 568,08 $ (fixture retraités sous AUTO — indépendant de la
-//     stratégie), +14 737,13 $ sous MELTDOWN. [La question fiscale « les retraits de décembre
-//     échappent-ils à l'assiette ? » est ROUTÉE au BACKLOG — ce test fige l'ordre ACTUEL, il ne
-//     tranche pas la convention.]
+//  2. processDecemberTaxFiling APRÈS processCashflowAllocation ET processReerMeltdown — INVERSÉ le
+//     2026-09-05 (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`, décision Marc 15 : CORRIGER). Jusque-là le
+//     dépôt fiscal de décembre lisait les accumulateurs annuels AVANT que la cascade, le meltdown,
+//     l'immobilier et les objectifs du même décembre ne les alimentent, et janvier les effaçait :
+//     les retraits REER de décembre n'entraient dans l'assiette d'AUCUNE année. Ce test figeait
+//     l'ordre fautif en attendant la décision — il s'inverse au même endroit, il ne se supprime pas
+//     (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`). Mesuré (clef `dec_fin_de_mois`, re-mesuré
+//     2026-09-05 sur le banc COMMITTÉ) : totalTaxesPaid +25 568,08 $ (retraités AUTO), +14 750,81 $
+//     (MELTDOWN), +14 579,44 $ (MELTDOWN + locatif), −2 990,55 $ (couple actif : les cotisations REER
+//     de décembre sont enfin déduites l'année où elles sont faites), +12 $ (droits saturants).
 //  3. processAprilSettlement AVANT processCashflowAllocation — avril débite le liquide et publie
 //     `contribNonReg`, que l'allocation puis la croissance de mi-mois consomment. Déplacé après :
 //     finalNetWorth +438,02 $ (couple actif + locatif), ±293 $ (retraités).
@@ -154,8 +158,13 @@ describe('[ENGINE-IMPLICIT-ORDER] ordre des appels dans la boucle (scan de sourc
         const alloc = idx('processCashflowAllocation(');
         expect(idx('computeRetirementIncome('), 'meltdown avant la phase revenus : il lirait un revenu à 0 (mesuré +7 387 $ d\'impôt)')
             .toBeLessThan(idx('processReerMeltdown('));
-        expect(idx('processDecemberTaxFiling('), 'dépôt fiscal après les flux du mois (mesuré +25 568 $ d\'impôt sous AUTO)')
-            .toBeLessThan(alloc);
+        // [FISC-DEC-FLUX-ASSIETTE-TIMING] INVERSÉE (voir l'en-tête, point 2) : décembre se dépose APRÈS
+        // le dernier producteur d'assiette du mois — l'allocation ET le meltdown. Le remettre au-dessus
+        // rouvrirait la fuite (+25 568 $ d'impôt éludés sur la fixture retraités AUTO) en silence.
+        expect(idx('processDecemberTaxFiling('), 'dépôt fiscal de décembre AVANT la cascade du mois : fuite d\'assiette rouverte (mesuré +25 568 $)')
+            .toBeGreaterThan(alloc);
+        expect(idx('processDecemberTaxFiling('), 'dépôt fiscal de décembre AVANT le meltdown : ses retraits échapperaient à l\'assiette')
+            .toBeGreaterThan(idx('processReerMeltdown('));
         expect(idx('processAprilSettlement('), 'règlement d\'avril après l\'allocation (mesuré +438 $ de patrimoine)')
             .toBeLessThan(alloc);
         // ⚠️ PAS d'assertion avril↔décembre : leur inversion intra-mois est MESURÉE bit-identique

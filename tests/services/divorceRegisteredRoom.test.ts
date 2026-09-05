@@ -103,7 +103,11 @@ describe('[ENG-DIVORCE-ROOM-COUPLE] les droits enregistrés suivent le nombre de
         // rares où le plafond REER mord (300 k$/an) — moins de droits historiques fabriqués, donc
         // moins d'abri fiscal : le SIGNE négatif est le bon sens, et l'écart (−0,058 %) est du
         // même ordre que les re-bases fiscales précédentes de ce fichier.
-        expect(Math.round(finalNW({}, false))).toBe(22_913_686);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−8 414 $**, −0,037 %, était 22 913 686) :
+        // le dépôt fiscal de décembre se fait en fin de mois, donc les retraits REER/FERR de décembre
+        // sont enfin imposés l'année même (impôt à vie +4 149 $ sur cet horizon qui traverse la
+        // retraite) → patrimoine ↓. Vrai changement fiscal décidé (Marc 2026-09-05, réponse 15).
+        expect(Math.round(finalNW({}, false))).toBe(22_905_272);
     });
 
     it('le scénario de décès n\'est pas perturbé par ce lot', () => {
@@ -111,6 +115,8 @@ describe('[ENG-DIVORCE-ROOM-COUPLE] les droits enregistrés suivent le nombre de
         // ordre relatif que ci-dessus sur un patrimoine deux fois plus gros).
         // Re-basé 2026-09-04 ([FISC-RRSP-FALLBACK-PRE2010], **−33 461 $**, était 44 525 889 —
         // −0,075 %, même cause et même sens que ci-dessus).
-        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_492_428);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−15 147 $**, −0,034 %, était 44 492 428 —
+        // impôt à vie +4 032 $, même cause et même sens que ci-dessus).
+        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_477_281);
     });
 });

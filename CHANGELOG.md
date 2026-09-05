@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Les retraits et cotisations REER de décembre comptent enfin dans l'impôt de l'année)
+
+- **Corrigé** : dans la projection, l'impôt de l'année se calculait au début de décembre, AVANT les
+  mouvements REER de ce mois-là (retraits de subsistance, décaissement « meltdown », buts datés,
+  cotisations), et janvier effaçait le compteur : ces mouvements n'étaient imposés (ni déduits) dans
+  aucune année. L'impôt se calcule maintenant en fin de décembre. Effet mesuré : un retraité qui
+  décaisse son REER paie plus d'impôt (jusqu'à +25 568 $ sur 30 ans, patrimoine −12 574 $ sur une
+  fixture retraités) ; un salarié qui cotise en décembre récupère sa déduction (patrimoine +1 249 $
+  sur 30 ans). Un retrait REER fait en décembre coûte désormais le même impôt qu'en novembre.
+
 ## [unreleased] — 2026-09-05 (Après une séparation, les allocations pour enfants ne sont plus réduites sur le salaire de l'ex)
 
 - **Corrigé** : dans la projection, la réduction des allocations pour enfants au-delà de 150 000 $

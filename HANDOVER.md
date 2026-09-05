@@ -16,6 +16,25 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 179 : le dépôt fiscal de décembre se fait en FIN de mois (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`)
+> Décision Marc 15 (« corriger : fuite d'assiette réelle »). Le bloc `processDecemberTaxFiling` de
+> `projection.ts` est déplacé APRÈS la cascade d'allocation, le meltdown, l'immobilier et les objectifs
+> datés du même décembre (déplacement fait par le banc `scripts/inverserOrdreBoucle.py`, clef
+> `dec_fin_de_mois`, puis commenté) ; avant, janvier effaçait les flux REER de décembre sans qu'aucune
+> année ne les ait imposés. La garde d'ORDRE `engineOrder.test.ts` est INVERSÉE au même endroit avec son
+> histoire ; garde COMPORTEMENTALE neuve `decemberReerWithdrawalAssiette.test.ts` (retraité seul, but de
+> 60 000 $ tiré du REER en novembre vs décembre : même impôt à ±25 %, ratio mesuré 1,080 ; 0,0055 sur
+> l'ancien moteur — prouvé en rejouant le fichier sur la copie `HEAD~1` du moteur). **17 goldens
+> re-basés SCIEMMENT dans 7 fichiers**, chacun avec son sens mesuré avant/après (instrument par fichier,
+> pas par console — voir la leçon) : retraités (item2c, bracketRealIndex, meltdownDisplay, totalTaxesPaid,
+> divorce*) impôt ↑ / patrimoine ↓ ; salariés (returnProfile, divorceEstatePension « mensuel ») cotisations
+> de décembre déduites → patrimoine ↑. Banc : ttp +25 568 $ (retraités AUTO), +14 751 $ (MELTDOWN),
+> −2 991 $ (couple actif). ⚠️ Découverte ROUTÉE, non corrigée : le bloc de récupération PSV lit les mêmes
+> accumulateurs AVANT les producteurs (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`) ; le banc y est aveugle
+> (0 $ sur 5 fixtures sous le seuil PSV). Docs : FISCAL_REFERENCE §1 (calendrier), PROJECTION Phase 4,
+> CHANGELOG, BACKLOG (+ archive du lot 178), A_FAIRE_MOI, leçon dans CONVENTIONS.
+> Gate complet VERT : **5 588 tests / 565 fichiers**, exit 0 (arbre re-basé sur `main` byte-identique).
+
 > ## 🟦 Session 2026-09-05 — Lot 178 : après une séparation, les allocations se récupèrent sur le revenu du parent qui RESTE (`[ENG-DIVORCE-ALLOC-ASSIETTE]`)
 > Décision Marc 14 (« comme mesuré »). Une ligne dans `projection.ts` : `householdGross` suit
 > `soloHousehold`, comme `grossAnnaBaseAnnual` juste au-dessus et `taxFilers`. L'assertion

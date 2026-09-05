@@ -85,7 +85,13 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // −6672,60) : récupération du SRG d'un couple à 25 ¢/$ par conjoint au lieu de 50 ¢ → plus
         // de SRG non imposable pour ce ménage à bas revenu → NW ↑. Vrai changement fiscal sourcé,
         // pas une fuite de compteur.
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-6610.22, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−22 457,07 $**, était
+        // −6610,22) : le dépôt fiscal de décembre se fait en FIN de mois, après le meltdown — le retrait
+        // REER de décembre est enfin imposé l'année même (impôt à vie +10 143,55 $ ; le reste de l'écart
+        // est le déficit d'un ménage insolvable qui compose, mesuré non décomposé). Vrai changement
+        // fiscal décidé (Marc 2026-09-05), pas une fuite de compteur : l'identité `ttp == Σ FluxImpots`
+        // du 1er test reste verte sur ce même lot.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-29067.29, 0);
         // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+53 431,96 $**, était
         // 372 625,14) — un GROS écart, EXPLIQUÉ par la mesure année par année : ce couple de 73 ans
         // vit d'une pension publique et de retraits FERR modestes ; dès l'an 3 son revenu mensuel
@@ -93,7 +99,12 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // n'est plus 50 ¢ mais 25 ¢ par dollar de revenu combiné pour chaque conjoint. Huit ans de
         // SRG capitalisé = l'écart. Le retrait FERR forcé de l'an 3 baisse (1 356 → 878 $) — moins
         // besoin de puiser. `ttp == Σ FluxImpots` reste l'identité défendue ici, verte.
-        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(426057.10, 0);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−117,44 $**, était 426 057,10 ;
+        // impôt à vie 9 185,78 → 9 295,55 $) : effet PETIT ici — le retrait minimum FERR se fait en
+        // janvier, seuls les retraits complémentaires de décembre entrent désormais dans l'assiette.
+        // Le contraste avec la fixture MELTDOWN ci-dessus (−22 457 $) est la signature attendue :
+        // le lot ne mord que là où décembre décaisse du REER.
+        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(425939.66, 0);
     });
 
     it('[ENG-TTP-UNSETTLED-HORIZON] la dette fiscale réconciliée non réglée à l\'horizon est EXPOSÉE', () => {
@@ -116,7 +127,11 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // fixture a NON_ENREG: 0, c'était IMPOSSIBLE (revue #683, bissection) : la vraie cause
         // est la bande GK ([ENG-GK-THRESHOLD-KNIFE]) qui module l'indexation des dépenses → les
         // retraits du dernier exercice changent → sa dette réconciliée aussi.
-        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(16_541.98, 0);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **+3 096,18 $**, était 16 541,98) :
+        // le dernier décembre réconcilie désormais AUSSI les retraits REER de son propre mois — la
+        // dette non réglée à l'horizon grossit d'autant. La fixture FERR ci-dessous ne bouge PAS d'un
+        // cent (942,28 avant comme après : son décembre ne décaisse rien de plus) — preuve inverse.
+        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(19_638.16, 0);
         // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE
         // (re-basé, était 171,89).
         // Re-basé 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, +34,57 : était 907,71) : le couple de
@@ -144,7 +159,11 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
             config: { ...config, users: config.users.map(u => ({ ...u, grossSalary: 10_000, netSalary: 7_000, age: 45, birthYear: 1981 })) as typeof config.users },
             baseGrossAnnual: 240_000, baseNetAnnual: 168_000, baseMonthlyExpenses: 9_000,
         });
-        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-23_552.86, 0);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−40,41 $**, était −23 552,86) :
+        // les cotisations REER de décembre de la dernière année sont enfin déduites dans SA
+        // réconciliation → remboursement final un peu plus gros. Le SIGNE négatif et l'absence de
+        // clamp — ce que cette assertion défend — sont intacts.
+        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-23_593.27, 0);
     });
 
     it('ratio MELT/AUTO borné (~2,8 mesuré post-REALINDEX, était ~4,4) — PAS un pin d\'ordre du ranking complet', () => {

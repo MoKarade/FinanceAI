@@ -86,7 +86,13 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // cotisations REER-first (et leurs remboursements composés) disparaissent : le SIGNE est
         // négatif par construction, et c'est la règle de Marc (« REER d'abord si ≥ 40 % ») enfin
         // appliquée au vrai marginal — pas une fuite.
-        expect(Math.round(r.finalNetWorth)).toBe(405_977);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **+2 091 $**, +0,52 %) : le dépôt fiscal de
+        // décembre se fait désormais en FIN de mois, après la cascade d'allocation et le meltdown —
+        // les flux REER de décembre entrent dans l'assiette de l'année MÊME au lieu d'être effacés
+        // par le reset de janvier. Couple ACTIF ici : les cotisations REER de décembre sont enfin
+        // déduites (impôt à vie 29 383 → 29 049 $, −334 $), donc patrimoine ↑. Vrai changement fiscal
+        // décidé (Marc, réponse 15), pas une fuite — le sens (actif ↑ / retraité ↓) est la signature.
+        expect(Math.round(r.finalNetWorth)).toBe(408_068);
     });
 
     it('sans divorce, la succession est INCHANGÉE (rétrocompat mesurée)', () => {
@@ -144,7 +150,12 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // effet successoral marginal — les quelques lectures du taux marginal dans la chaîne
         // succession/impôt latent utilisent désormais les paliers indexés (taux légèrement plus
         // bas sur revenu nominal → un peu moins d'impôt latent → succession un peu plus haute).
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_572_171);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−4 726 $**, −0,13 %) : décembre déposé en fin
+        // de mois. Sur CET horizon long la retraite domine : les retraits REER/FERR de décembre sont
+        // enfin imposés (impôt à vie +11 228 $, patrimoine final −9 514 $) et la succession en hérite
+        // en partie. Sens opposé au test « patrimoine MENSUEL » ci-dessus (couple encore actif sur son
+        // horizon court) — c'est la même règle vue des deux côtés de la retraite.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_567_445);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
@@ -162,6 +173,10 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // Re-basé 2026-09-04 ([FISC-MARGINAL-SPACE], lot 136, **+144 $** ici vs +591 $ en
         // déterministe) : la cause passe par l'impôt latent ET par la composition du patrimoine,
         // que le tirage MC dilue — pas par la seule VAN des rentes, d'où deux écarts différents.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_907_361);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−4 511 $** ici vs −4 726 $
+        // en déterministe) : décembre déposé en fin de mois — la cause passe par les retraits de
+        // décembre enfin imposés, dont le montant dépend du tirage MC (soldes différents), d'où deux
+        // écarts proches mais distincts, de même sens.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_902_850);
     });
 });

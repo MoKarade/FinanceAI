@@ -12132,3 +12132,23 @@ DÉBRANCHEMENT sémantique (sonde → lui seul rougit), le scan d'ordre voit le 
 (décembre déplacé → lui seul rougit), le vrai déplacement du bloc fait rougir les deux. ⚠️ Et un
 banc dont les chiffres sont cités dans le dépôt se COMMITTE (`scripts/mesureOrdreBoucle.ts`),
 vérifié en reproduisant la baseline à l'octet depuis la version committée.
+
+### Variante notée au lot 179 (2026-09-05) — un instrument de mesure posé DANS un test ne parle que si le test ROUGIT
+
+Pour chiffrer avant/après les 15 goldens de `[FISC-DEC-FLUX-ASSIETTE-TIMING]`, j'ai posé des
+`console.log` à côté de chaque assertion et rejoué les sept fichiers sur les deux moteurs. Colonne
+APRÈS pleine, colonne AVANT **vide** : Vitest tait la console des tests qui PASSENT, et sur l'ancien
+moteur tout passait. Une colonne vide se lit comme « rien à mesurer » — deux exécutions perdues avant
+de comprendre que c'était l'instrument, pas le moteur. Cousin de « une perturbation MUETTE accuse
+d'abord la perturbation » : un silence d'OUTIL accuse d'abord l'outil. Remède : un instrument de mesure
+écrit dans un FICHIER (`appendFileSync`, chemin par variable d'environnement), jamais sur la console
+d'un test — et sa première ligne se vérifie sur le cas où tout est VERT.
+⚠️ Même lot, même famille : la tolérance de la garde comportementale (« décembre ≈ novembre ») était
+écrite à ±5 % AVANT la mesure ; mesurée, le ratio vaut **1,080** (le retrait de novembre laisse du
+liquide qui évite un mois de retrait de subsistance en décembre, et ce mois d'assiette glisse hors de
+l'année) contre **0,0055** sur l'ancien moteur. La bande s'est écrite APRÈS (±25 %), avec les deux
+mesures et leur date à côté — `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`, re-commis puis
+rattrapé par la perturbation.
+⚠️ Et le grep de l'accumulateur a sorti un SECOND lecteur dans le même mois (la récupération PSV),
+que le banc d'inversion ne peut pas voir (0,00 $ sur 5 fixtures : aucune n'atteint le seuil PSV) —
+routé avec cette cécité écrite dedans, pas corrigé : la décision de Marc nommait le dépôt fiscal.

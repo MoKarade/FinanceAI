@@ -151,7 +151,16 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // −6672,60). Le SRG d'un COUPLE est récupéré à 25 ¢/$ par conjoint (1 $ par 4 $ de revenu
         // combiné) au lieu de 50 ¢ : ce ménage insolvable à bas revenu touche un peu plus de SRG (non
         // imposable) → NW ↑. Vrai changement FISCAL sourcé, PAS une fuite de compteur d'affichage.
-        expect(melt.finalNetWorth).toBeCloseTo(-6610.22, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−22 457,07 $** : était
+        // −6610,22). Le dépôt fiscal de décembre se fait en FIN de mois, APRÈS le meltdown : le retrait
+        // REER du meltdown de décembre n'entrait dans l'assiette d'AUCUNE année (janvier l'effaçait) —
+        // il est imposé l'année même (impôt à vie 137 051 → 147 195 $, +10 144 $). [Probable] L'écart de
+        // patrimoine dépasse l'impôt cumulé parce que l'impôt est prélevé en cours d'horizon sur un
+        // ménage déjà insolvable (le déficit compose) — mesuré, non décomposé. Vrai changement FISCAL
+        // décidé (Marc 2026-09-05, réponse 15), PAS une fuite de compteur d'affichage : la neutralité
+        // que ce golden défend reste garantie par l'identité `ttp == Σ FluxImpots` de
+        // projection.totalTaxesPaid.test.ts, verte sur ce même lot.
+        expect(melt.finalNetWorth).toBeCloseTo(-29067.29, 0);
         // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
         // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
@@ -175,6 +184,9 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, était 209 131,68) : même
         // +62,38 $ que le NW final ci-dessus — l'estate en hérite tel quel, aucun effet propre à la
         // branche estate (le SRG n'est pas imposable, rien ne change à la liquidation).
-        expect(melt.estateNetWorth).toBeCloseTo(209194.06, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, était 209 194,06) : même
+        // −22 457,07 $ que le NW final ci-dessus — l'estate en hérite tel quel, aucun effet propre à la
+        // branche estate (le REER est déjà vidé à l'horizon, rien de plus à liquider).
+        expect(melt.estateNetWorth).toBeCloseTo(186736.99, 0);
     });
 });

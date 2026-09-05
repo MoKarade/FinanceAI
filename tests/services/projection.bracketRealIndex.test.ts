@@ -120,12 +120,19 @@ describe('[FISC-BRACKET-REALINDEX] moteur — un revenu réel constant paie un i
         // dépenses plus indexées → plus de retraits imposés (ttp ↑) ET NW ↓. La DIRECTION
         // conservatrice du test (ttp ↑, NW ↓ vs l'ancien barème figé) est INCHANGÉE — les deux
         // assertions d'inégalité ci-dessous restent la preuve, les pins ne sont que l'ampleur.
-        expect(r.totalTaxesPaid).toBeCloseTo(49_657.43, 0);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **+16 540,66 $**, +33 %) : le dépôt fiscal de
+        // décembre se fait en fin de mois — les retraits REER de décembre de ce retraité (700 k$ de
+        // REER décaissés sous AUTO_MARGINAL) entraient dans l'assiette d'AUCUNE année (janvier les
+        // effaçait). Ils sont imposés l'année même : ttp ↑ ET NW ↓ (−5 835,07 $ ci-dessous). La
+        // direction CONSERVATRICE de ce test s'en trouve renforcée, pas contredite.
+        expect(r.totalTaxesPaid).toBeCloseTo(66_198.09, 0);
         // Re-basé 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+7 297,07 $**, était −204 034,74) :
         // ce couple retraité à bas revenu touche plus de SRG (récupération 25 ¢/$ par conjoint au lieu
         // de 50 ¢). Le SRG n'est PAS imposable : `totalTaxesPaid` ci-dessus n'a pas bougé d'un cent —
         // c'est la signature attendue du correctif. La direction conservatrice du test est inchangée.
-        expect(r.finalNetWorth).toBeCloseTo(-196_737.67, 0);
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−5 835,07 $**, était −196 737,67) : même cause
+        // que le ttp ci-dessus — un impôt enfin facturé sort du patrimoine.
+        expect(r.finalNetWorth).toBeCloseTo(-202_572.74, 0);
     });
 });
 

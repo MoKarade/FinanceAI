@@ -109,11 +109,17 @@ describe('PH4-FUT-B — profil de rendement dans le moteur (déterministe, 30 an
         // RE-CALIBRÉ 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169) : récupération du SRG d'un couple
         // à 25 ¢/$ par conjoint au lieu de 50 ¢ — ce couple touche un peu de SRG en fin d'horizon
         // (+355,54 $ conservateur ; voir les trois autres pins). Dérive VOULUE et sourcée.
-        expect(finalNetWorth('conservative')).toBeCloseTo(1_677_701.29, 1);
-        expect(finalNetWorth('balanced')).toBeCloseTo(2_031_418.55, 1);
-        expect(finalNetWorth('aggressive')).toBeCloseTo(3_181_268.10, 1);
+        // RE-CALIBRÉ 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179) : le dépôt fiscal de décembre
+        // se fait en FIN de mois — chez ce couple SALARIÉ, les cotisations REER de décembre sont enfin
+        // déduites l'année même au lieu d'être effacées par le reset de janvier (impôt à vie
+        // 49 647,55 → 48 486,22 $ en conservateur, −1 161,33 $) → NW ↑ +1 248,78 / +1 246,15 /
+        // +1 266,74 $ (étaient 1 677 701,29 / 2 031 418,55 / 3 181 268,10). Dérive VOULUE, décidée
+        // (Marc 2026-09-05, réponse 15) ; chez un RETRAITÉ le même lot fait l'inverse (retraits imposés).
+        expect(finalNetWorth('conservative')).toBeCloseTo(1_678_950.07, 1);
+        expect(finalNetWorth('balanced')).toBeCloseTo(2_032_664.71, 1);
+        expect(finalNetWorth('aggressive')).toBeCloseTo(3_182_534.84, 1);
         // Le run historique (champ absent) est pinné sur la valeur 'balanced'.
-        expect(finalNetWorth(undefined)).toBeCloseTo(2_031_418.55, 1);
+        expect(finalNetWorth(undefined)).toBeCloseTo(2_032_664.71, 1);
     });
 
     it("'aggressive' + asset location > 'aggressive' seul (le bonus 0.4pp s'empile sur le preset)", () => {

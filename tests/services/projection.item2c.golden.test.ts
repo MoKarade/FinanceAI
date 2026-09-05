@@ -99,9 +99,16 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
         // le partage attendu. Ces ancres pinnent l'AMPLEUR ; la conception per-conjoint est prouvée
         // par les tests « FIX » plus bas, qui restent verts. (Étaient : −82 434/13 337, −82 024/13 337,
         // −78 810/13 351, −84 939/14 165, −82 480/15 044.)
-        coupleUser1Older:   { ferr: 24, nw: -68939, tax: 12680 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
-        coupleUser1Younger: { ferr: 24, nw: -68528, tax: 12680 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
-        coupleEqual:        { ferr: 24, nw: -65304, tax: 12701 },  // ANCRE — inchangé vs ménage
+        // Re-basés SCIEMMENT 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179) : le dépôt fiscal de
+        // décembre se fait en FIN de mois — les retraits REER/FERR de décembre de ces retraités
+        // n'entraient dans l'assiette d'AUCUNE année (janvier les effaçait). Imposés l'année même :
+        // `tax` ↑ de 3 477 à 14 895 $, `nw` ↓ de 2 225 à 9 694 $ selon le scénario ; `ferr` (timing)
+        // STRICTEMENT inchangé — le lot ne touche aucun gate d'âge, ce que les tests « FIX » prouvent.
+        // Décision Marc 2026-09-05 (réponse 15 : corriger la fuite d'assiette). (Étaient : −68 939/12 680,
+        // −68 528/12 680, −65 304/12 701, −116 951/60 210, −75 556/13 566, −72 096/13 475.)
+        coupleUser1Older:   { ferr: 24, nw: -71717, tax: 17003 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
+        coupleUser1Younger: { ferr: 24, nw: -71307, tax: 17003 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
+        coupleEqual:        { ferr: 24, nw: -67529, tax: 16178 },  // ANCRE — inchangé vs ménage
         // Re-basé 2026-08-20 [FISC-PENSION-CREDIT-REAL] (était nw −116 753 / tax 59 919) : le
         // crédit pension féd est désormais déflaté en espace réel → +291 $ d'impôt cumulé
         // (recoupé analytiquement : Σ 0,15 × 0,835 × 2 000 × (d−1) ≈ 288 $), −198 $ de NW.
@@ -111,9 +118,9 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
         // à 0 (BPA + montant d'âge > revenu imposable per-adulte) : le crédit non remboursable
         // est perdu, réduire un crédit perdu ne change rien. Si le REVENU des couples monte, ces
         // goldens DOIVENT bouger — ils ne sont pas structurellement insensibles au fix.
-        solo:               { ferr: 24, nw: -116951, tax: 60210 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
-        couplePsvBonus:     { ferr: 12, nw: -75556, tax: 13566 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
-        couplePsvStartGap:  { ferr: 72, nw: -72096, tax: 13475 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
+        solo:               { ferr: 24, nw: -126645, tax: 75105 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
+        couplePsvBonus:     { ferr: 12, nw: -78720, tax: 18541 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
+        couplePsvStartGap:  { ferr: 72, nw: -77043, tax: 21052 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
     } as const;
 
     // ── ANCRES ZÉRO-RÉGRESSION : le fix per-conjoint NE change RIEN quand les âges coïncident ──────

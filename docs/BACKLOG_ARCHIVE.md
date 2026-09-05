@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-DIVORCE-ALLOC-ASSIETTE]` — LIVRÉ (lot 178, PR #909, décision Marc 14 « comme mesuré »)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ENG-DIVORCE-ALLOC-ASSIETTE]`** ✅ **LIVRÉ au lot 178 (2026-09-05)** — `householdGross` = revenu du ménage qui RESTE (`soloHousehold`), assertion re-basée sciemment 166 → 250 $ + contrôle négatif « solo à 168 k$ reste récupéré sur SON revenu (205 $) » ; mesuré +13 460 $ / +29 388 $ de patrimoine à 10/20 ans sur la fixture divorce. (S, 🧭 **règle à trancher** — sorti de
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **« comme mesuré »** → appliquer `soloHousehold` à l'assiette des allocations après séparation (166 → 250 $/mois sur la fixture) ; le test `[ENG-DIVORCE-BENEFITS-FLUX]` se re-base SCIEMMENT.
+  `[REEE-CONGE-SANS-GARDE-SOLO]`) — après un divorce, `householdGross` reste la somme des DEUX
+  salaires, alors que la récupération des allocations enfants s'y applique (`householdGross >
+  150 000`). Un parent seul se voit donc récupérer ses allocations sur un revenu qui inclut celui de
+  l'ex-conjoint. **MESURÉ** : appliquer `soloHousehold` à cette assiette fait passer l'allocation
+  publiée de **166 $ à 250 $/mois** au mois 36 (scénario divorce du test
+  `[ENG-DIVORCE-BENEFITS-FLUX]`, qui rougit immédiatement).
+  ⚠️ Ce n'est PAS un défaut de câblage mais une question de RÈGLE : quelle assiette de revenu retenir
+  pour les allocations après une séparation, et comment ça s'articule avec la convention « le parent
+  reçoit la moitié » que le test encode aujourd'hui. Écarté du lot de câblage pour cette raison.
+
+
 ## 2026-09-05 — `[PROFIL-NOMMER-MARC]` `[PROFIL-SWITCH]` `[SUBS-TAB]` (emplacement) `[IA-NAV-LABELS]` — CADUQUES / FERMÉS (lot 177, décisions Marc du 2026-09-05)
 
 Tickets d'origine tels qu'au moment de l'archivage, chacun avec la décision qui le ferme :

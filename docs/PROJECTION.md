@@ -125,7 +125,7 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
 | Mois | Action |
 |---|---|
 | **Avril** (currentMonthIndex = 3) | Règlement des impôts de l'an passé. `taxPreviousYear` payé depuis le liquide. Remboursement éventuel re-déposé dans NonReg (avec ajustement ACB). |
-| **Décembre** (currentMonthIndex = 11) | Calcul de la facture finale annuelle réelle. `taxPreviousYear ← taxCurrentYear` pour le règlement d'avril prochain. |
+| **Décembre** (currentMonthIndex = 11) | Calcul de la facture finale annuelle réelle, en **FIN de mois** — après la cascade d'allocation, le meltdown REER, l'immobilier (RAP) et les objectifs datés de décembre, pour que les flux REER de ce mois entrent dans l'assiette de l'année (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`, lot 179 ; ordre figé par `projection.engineOrder.test.ts`). `taxPreviousYear ← taxCurrentYear` pour le règlement d'avril prochain. ⚠️ La récupération PSV de décembre, elle, lit encore les accumulateurs AVANT ces producteurs (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`). |
 | **Janvier** (currentMonthIndex = 0, sauf m=0) | **CELI** : régénération de l'espace (`celiRoom += celiWithdrawalsThisYear`). **FERR** : conversion REER→FERR à 71 ans, retrait minimum obligatoire selon table RRIF (5.4% à 72 → 20% à 94, plafonné). |
 | **Mensuel** | Aucune retenue mensuelle modélisée (le `netSalary` saisi est déjà net de tout). `taxCurrentYear.revenu` ne porte que le solde de DÉCEMBRE : `impôt(revenu−déductions) − retenue(100 % de l'impôt sans déductions)` — nul sans déductions, remboursement sinon ; `optimizeSourceDeductions` (T1213) fait suivre la retenue aux déductions → solde toujours nul (`[FISC-WHT-92PCT]`). |
 

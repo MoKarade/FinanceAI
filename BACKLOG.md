@@ -320,7 +320,8 @@
   **RESTE** : `householdGross` est toujours la somme des DEUX salaires — délibérément, avec sa raison
   écrite dans le code. Ce n'est PAS un oubli : baisser cette assiette ferait MONTER l'allocation d'un
   parent seul (mesuré : 166 $ → 250 $/mois au mois 36), ce qui est une **règle à trancher**, pas un
-  correctif. Suivi en `[ENG-DIVORCE-ALLOC-ASSIETTE]`, en attente de Marc.
+  correctif. Suivi en `[ENG-DIVORCE-ALLOC-ASSIETTE]` — tranché par Marc (14, « comme mesuré ») et
+  **LIVRÉ au lot 178** (2026-09-05, archivé) : l'assiette suit désormais `soloHousehold`.
   ⚠️ Laisser ce ticket dans son état d'origine aurait fait re-livrer #721 (classe `PM-STALE-BACKLOG`).
 - [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS, **REQUALIFIÉ 2026-09-02 : design, pas conformité**)
   — ⚠️ **Ses chiffres sont JUSTES, re-mesurés** (composition alpha sur `surfaceHighlight #15181E`,
@@ -514,17 +515,6 @@
   prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
   d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
   déjà en place — lire le journal Diagnostics avant de coder).
-- [x] **`[ENG-DIVORCE-ALLOC-ASSIETTE]`** ✅ **LIVRÉ au lot 178 (2026-09-05)** — `householdGross` = revenu du ménage qui RESTE (`soloHousehold`), assertion re-basée sciemment 166 → 250 $ + contrôle négatif « solo à 168 k$ reste récupéré sur SON revenu (205 $) » ; mesuré +13 460 $ / +29 388 $ de patrimoine à 10/20 ans sur la fixture divorce. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, 🧭 **règle à trancher** — sorti de
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **« comme mesuré »** → appliquer `soloHousehold` à l'assiette des allocations après séparation (166 → 250 $/mois sur la fixture) ; le test `[ENG-DIVORCE-BENEFITS-FLUX]` se re-base SCIEMMENT.
-  `[REEE-CONGE-SANS-GARDE-SOLO]`) — après un divorce, `householdGross` reste la somme des DEUX
-  salaires, alors que la récupération des allocations enfants s'y applique (`householdGross >
-  150 000`). Un parent seul se voit donc récupérer ses allocations sur un revenu qui inclut celui de
-  l'ex-conjoint. **MESURÉ** : appliquer `soloHousehold` à cette assiette fait passer l'allocation
-  publiée de **166 $ à 250 $/mois** au mois 36 (scénario divorce du test
-  `[ENG-DIVORCE-BENEFITS-FLUX]`, qui rougit immédiatement).
-  ⚠️ Ce n'est PAS un défaut de câblage mais une question de RÈGLE : quelle assiette de revenu retenir
-  pour les allocations après une séparation, et comment ça s'articule avec la convention « le parent
-  reçoit la moitié » que le test encode aujourd'hui. Écarté du lot de câblage pour cette raison.
 - [ ] **`[TOUR-STEP-GROUPE-REPLIE]`** (S, 🧭 si Marc le veut — reste de `[TOUR-ANCHOR-INVISIBLE]`) —
   depuis que `findVisibleAnchorRect` refuse une ancre `visibility:hidden`, le tour ne pointe plus un
   bouton invisible : il retombe sur sa carte centrée. C'est HONNÊTE, mais l'étape décrit encore un
@@ -1252,7 +1242,7 @@
 
 ### 🧱 Dette technique et architecture
 
-- [ ] **`[FISC-DEC-FLUX-ASSIETTE-TIMING]`** (M, à TRANCHER — découverte du lot 141, MESURÉ,
+- [x] **`[FISC-DEC-FLUX-ASSIETTE-TIMING]`** ✅ **LIVRÉ au lot 179 (2026-09-05)** — le dépôt fiscal de décembre (`processDecemberTaxFiling`) se fait en FIN de mois, après la cascade d'allocation, le meltdown, l'immobilier et les objectifs du même décembre ; les flux REER de décembre entrent dans l'assiette de l'année MÊME. Garde d'ordre `engineOrder.test.ts` INVERSÉE (décembre APRÈS allocation et meltdown) + garde comportementale `decemberReerWithdrawalAssiette.test.ts` (un retrait REER de décembre coûte le même impôt qu'en novembre : ratio 1,08 mesuré, 0,0055 sur l'ancien moteur) ; 17 goldens re-basés SCIEMMENT dans 7 fichiers, chacun avec son sens (retraité : impôt ↑ patrimoine ↓ ; actif : cotisations de décembre déduites → patrimoine ↑). Découverte routée : `[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (M, à TRANCHER — découverte du lot 141, MESURÉ,
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : **CORRIGER** — c'est une fuite d'assiette réelle : les retraits REER de décembre entrent dans l'assiette de l'année. Re-base des goldens SCIEMMENT (+25 568 $ d'impôt mesuré sur la fixture retraités), la garde d'ordre `engineOrder.test.ts` se met à jour DÉLIBÉRÉMENT.
   ⚠️ bug préexistant potentiel, signalé sans correctif) — le dépôt fiscal de décembre
   (`processDecemberTaxFiling`, L~1355) lit `accRetraitsReerYear` AVANT que la cascade
@@ -1267,6 +1257,19 @@
   calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
   est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
   devra être délibéré ET répondre à cette question.
+- [ ] **`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`** (S, ⚠️ bug préexistant potentiel, signalé sans correctif —
+  découverte du lot 179, 2026-09-05) — le bloc de récupération PSV de décembre (`computeOasClawback`, « Cycle 10 »
+  de `projection.ts`) lit `accRetraitsReerYear`, `accRetraitsReerYearByUser`, `capitalGainsRealizedThisYear` et
+  les dividendes de l'année AVANT la cascade d'allocation, le meltdown, l'immobilier et les objectifs du même
+  décembre — exactement le trou que le lot 179 vient de fermer pour le DÉPÔT fiscal, un lecteur plus haut dans
+  la boucle. Un retrait REER de décembre échappe donc au revenu de récupération PSV (ligne 23400) de l'année.
+  **MESURÉ, et le banc est AVEUGLE** : `scripts/inverserOrdreBoucle.py dec_psv_fin_de_mois` (déplace les DEUX
+  blocs) rend **0,00 $ d'écart sur les 5 fixtures** de `scripts/mesureOrdreBoucle.ts` — parce qu'aucune n'atteint
+  le seuil de récupération PSV (`OAS_CLAWBACK_THRESHOLD_2026`), pas parce que le lecteur est inerte
+  (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`). À faire : mesurer sur un retraité à HAUT revenu
+  qui décaisse du REER en décembre (MELTDOWN_REER ou but daté), puis déplacer le bloc APRÈS le meltdown avec sa
+  garde d'ordre (`oasClawbackNextPeriod` n'est lu qu'en janvier : rien ne l'oblige à précéder le dépôt). Non
+  corrigé au lot 179 : hors du périmètre nommé par le ticket et par la décision 15 (le dépôt fiscal). [MESURÉ, aveugle]
 - [ ] **`[DETTE-COULEURS-ADHOC]`** (S, MOYEN) — **26 couleurs hex en dur** (`bg-[#1a1a1a]`,
   `text-[#2dd4bf]`, `bg-[#0d1118]`…) dans ~15 fichiers dont `Layout.tsx` (×3), `Investments.tsx` (×2),
   `aiChat/AiChatView.tsx` (×2), `Retirement.tsx` (×2). Ces teintes échappent à `check-contrast` ET

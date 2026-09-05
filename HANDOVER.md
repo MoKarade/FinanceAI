@@ -17,7 +17,7 @@
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
 > ## 🟦 Session 2026-09-05 — Lot 186 : le `title` d'un champ masqué est composé, pas écrasé (`[A11Y-PRIVACY-TITLE-CLOBBER]`)
-> `PrivateNumberInput` : `title={rest.title ? \`${rest.title} — Montant masqué\` : 'Montant masqué'}` — la
+> `PrivateNumberInput` : le `title` devient « <title appelant> — Montant masqué », ou « Montant masqué » seul — la
 > porte qu'un appelant futur aurait franchie sans avertissement est fermée. Trois gardes (composé ;
 > contrôle sans title : pas de « undefined — » ; hors mode discret : title tel quel sur l'input),
 > perturbation (écrasement remis) → 1 rouge. Le second volet du ticket (« aucun indice visuel au

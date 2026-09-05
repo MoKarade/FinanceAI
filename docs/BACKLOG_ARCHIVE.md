@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-FVI-EFFICIENCY-ESTATE]` — LIVRÉ (lot 165, PR #896)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ENG-FVI-EFFICIENCY-ESTATE]`** ✅ **LIVRÉ au lot 165 (2026-09-05)** — l'efficacité du FVI score l'impôt À VIE via la source unique `lifetimeTaxTotal` (réglé + dette d'horizon + successoral) ; le clamp [0,1] reste (c'est un SCORE), `expertMetrics.taxLeakage` reste une MESURE d'horizon (contrat distinct, dit dans le code). ⚠️ Le « re-base FVI massif » annoncé est RÉFUTÉ par la mesure : AUCUN test n'épinglait un FVI calculé par le moteur (bornes 0-100, un test de clamp, des fixtures injectées) — zéro re-base. 2 tests neufs (LEVIER −16 pts à 800/1000 d'estate tax ; le scénario exact du ticket rend 97, plus jamais 100), rouges sous perturbation (retour à l'horizon seul). (M, MOYEN [MESURÉ — relecture #681 ; ré-ouvert : la ligne
+  « avgEfficiency/FVI ont le même angle mort » du ticket #554 avait été SUPPRIMÉE au cochage au
+  lieu d'être routée]) — `monteCarlo.ts:165-173` : `leakage = clamp(ttp/totalGrowth, 0, 1)` —
+  le clamp force 100 % d'« efficacité fiscale » dès que ttp < 0, la situation NORMALE d'un
+  salarié, et l'impôt successoral n'y entre pas. Mesuré : PRIO_REER affiché 100 % d'efficacité
+  vs 0 % avec l'impôt total (−20 points de FVI sur 100). Le FVI alimente la carte Vitalité,
+  le PDF, DEUX outils MCP lus par le LLM, et ÉCRASE successRate (projection.ts:2416). Trancher :
+  brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
+  pas au FVI » dans l'ADR.
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 165 (2026-09-05)** — et le re-base « massif » assumé s'est mesuré à ZÉRO.
+
+Ménage du même archivage : les deux stubs `[ENG-TTP-UNSETTLED-PROPAGATE]` (PR #683) et
+`[ENG-RANKTAX-ESTATE]` (PR #681) sont retirés de `BACKLOG.md` — leurs sections datées vivent
+déjà plus bas dans ce fichier ; la référence « PR à compléter au merge » de la seconde est
+complétée ici même (PR #681, retrouvée par `git log --grep RANKTAX`).
+
 ## 2026-09-05 — `[ENG-PROPGROWTH-CONFIG-DEAD]` — LIVRÉ (lot 164, PR #895)
 
 Ticket d'origine tel qu'au moment de l'archivage :
@@ -4751,7 +4771,7 @@ DecemberHelpers, NaN tracé patron FA-8, GK bordé prev>0 fini, FISCAL_REFERENCE
 
 ## 2026-08-21 — [ENG-RANKTAX-ESTATE] : « impôt minimum » score l'impôt TOTAL (successoral inclus)
 
-- [x] **`[ENG-RANKTAX-ESTATE]`** (M, MOYEN) — ✅ 2026-08-21, PR à compléter au merge.
+- [x] **`[ENG-RANKTAX-ESTATE]`** (M, MOYEN) — ✅ 2026-08-21, PR #681 (réf complétée le 2026-09-05).
 
 **Décision Marc A4 (ADR 0014) : « TOUT ».** L'objectif « impôt minimum » ne scorait que
 `totalTaxesPaid` (règlements d'avril) : il RÉCOMPENSAIT le report — panel #554 : PRIO_CELI classé
@@ -4788,7 +4808,7 @@ dans CONVENTIONS : le compte de tests du gate est un DÉTECTEUR de revert.
 
 ## 2026-08-20 — [FISC-PENSION-CREDIT-REAL] : le crédit pension fédéral décroît en espace réel
 
-- [x] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN) — ✅ 2026-08-20, PR à compléter au merge.
+- [x] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN) — ✅ 2026-08-20, PR #680 (réf complétée le 2026-09-05).
 
 **GO Marc A3.** Le montant fédéral (2 000 $, ARC 31400) est GELÉ nominalement depuis 2006 ; le
 barème réel le traitait à plat → 2 000 $ RÉELS constants au lieu de `2 000/(1+i)^Δ`. C'était

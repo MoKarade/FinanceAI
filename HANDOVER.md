@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 166 : clôture du cycle des six décisions (doc seulement)
+> Les lots 160 à 165 sont TOUS mergés sur `main` et les déploiements Vercel de production sont
+> `READY` (vérifiés jusqu'au squash du lot 165, `f77917e`). Ménage BACKLOG : le bloc
+> `[ENG-FVI-EFFICIENCY-ESTATE]` déménagé vers l'archive (promesse « à la prochaine PR » tenue),
+> deux stubs 2026-08-21 retirés (leurs sections d'archive existaient déjà) et deux références
+> « PR à compléter au merge » complétées (#681, #680 — retrouvées par `git log --grep`).
+> Le backlog restant est entièrement gaté : décisions/sources humaines dans
+> `docs/A_FAIRE_MOI.md`, ou cadrage plan-d'abord. Rien de servi ne change dans ce lot.
+
 > ## 🟦 Session 2026-09-05 — Lot 165 : l'efficacité du FVI score l'impôt À VIE — LES SIX DÉCISIONS SONT LIVRÉES
 > `[ENG-FVI-EFFICIENCY-ESTATE]` → livré (option a). Le leakage de l'efficacité passe de l'impôt
 > d'HORIZON à `lifetimeTaxTotal` (source unique : réglé + dette d'horizon + successoral) ; le

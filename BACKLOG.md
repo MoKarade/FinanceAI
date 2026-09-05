@@ -388,21 +388,6 @@
   correctif re-base des goldens et peut changer le CLASSEMENT des stratégies. ⚠️ D'ici là, toute
   mesure d'impact « NW » d'un retraité à gros REER près d'un seuil de palier est non
   représentative (la falaise domine).
-- [x] ~~**`[ENG-TTP-UNSETTLED-PROPAGATE]`**~~ ✅ **LIVRÉ 2026-08-21** (surface par surface :
-  monteCarlo PROPAGÉ, MCP netTaxSettlements DOCUMENTÉ — contrat IA stable, drawdownOptimizer
-  documenté orphelin — détail en tête d'archive, réf PR au merge).
-- [x] ~~**`[ENG-RANKTAX-ESTATE]`**~~ ✅ **LIVRÉ 2026-08-21** (décision Marc A4 « TOUT » ; détail :
-  section datée en tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
-- [x] **`[ENG-FVI-EFFICIENCY-ESTATE]`** ✅ **LIVRÉ au lot 165 (2026-09-05)** — l'efficacité du FVI score l'impôt À VIE via la source unique `lifetimeTaxTotal` (réglé + dette d'horizon + successoral) ; le clamp [0,1] reste (c'est un SCORE), `expertMetrics.taxLeakage` reste une MESURE d'horizon (contrat distinct, dit dans le code). ⚠️ Le « re-base FVI massif » annoncé est RÉFUTÉ par la mesure : AUCUN test n'épinglait un FVI calculé par le moteur (bornes 0-100, un test de clamp, des fixtures injectées) — zéro re-base. 2 tests neufs (LEVIER −16 pts à 800/1000 d'estate tax ; le scénario exact du ticket rend 97, plus jamais 100), rouges sous perturbation (retour à l'horizon seul). (M, MOYEN [MESURÉ — relecture #681 ; ré-ouvert : la ligne
-  « avgEfficiency/FVI ont le même angle mort » du ticket #554 avait été SUPPRIMÉE au cochage au
-  lieu d'être routée]) — `monteCarlo.ts:165-173` : `leakage = clamp(ttp/totalGrowth, 0, 1)` —
-  le clamp force 100 % d'« efficacité fiscale » dès que ttp < 0, la situation NORMALE d'un
-  salarié, et l'impôt successoral n'y entre pas. Mesuré : PRIO_REER affiché 100 % d'efficacité
-  vs 0 % avec l'impôt total (−20 points de FVI sur 100). Le FVI alimente la carte Vitalité,
-  le PDF, DEUX outils MCP lus par le LLM, et ÉCRASE successRate (projection.ts:2416). Trancher :
-  brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
-  pas au FVI » dans l'ADR.
-  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 165 (2026-09-05)** — et le re-base « massif » assumé s'est mesuré à ZÉRO. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la

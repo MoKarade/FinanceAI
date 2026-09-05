@@ -16,6 +16,29 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟢 Session 2026-09-04 (soir) — MARC A RÉPONDU AUX SIX DÉCISIONS DU LOT 159, en session
+> Les six réponses sont dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées
+> dans les tickets BACKLOG. **Le backlog est débloqué** — six lots livrables :
+> - Meltdown mi-mois → **CORRIGER** (re-base sciemment des 2 goldens NEUTRALITÉ, mesure au commit).
+> - `goalShortfalls` → **EXPOSER sur Futur** (« il manquait X $ »).
+> - Croissance des locatifs → **taux PAR IMMEUBLE** (`propertyGrowthRate?` sur `RentalProperty`).
+> - Renouvellement hypothécaire → **saisie par bien** (défaut = taux actuel), livrée AVEC
+>   `[ENG-RENEWAL-RATE-MISMATCH]` dans le même lot.
+> - FVI/efficacité fiscale → **brancher l'impôt à vie** (re-base FVI assumé).
+> - `rankStrategies` → **RETIRER**.
+> En chemin : CI rouge sur un dépôt inchangé — BOMBE DATÉE dans deux fixtures d'abonnements
+> (dates figées mai-juillet 2026 ; 62 jours plus tard, l'alerte « Plus débité depuis N jours »
+> rend un 2ᵉ « Netflix » → `getByText` rougit). Fixtures passées en dates RELATIVES, classe déjà
+> consignée (« un test qui fige une date pendant que le code lit l'horloge est une bombe »).
+
+> ## 🟦 Session 2026-09-04 — Lot 159 : six décisions en attente sont enfin VISIBLES chez Marc
+> Routage (doc seul) — six tickets « décision de Marc » du BACKLOG n'avaient AUCUNE entrée dans
+> `docs/A_FAIRE_MOI.md` : bloqués sans être visibles. Batch écrit en tête du fichier (meltdown
+> mi-mois, goalShortfalls, propGrowth locatifs, renouvellement ×2, FVI/efficacité, rankStrategies),
+> une recommandation par question. Le backlog NON GATÉ est épuisé : ce qui reste attend Marc
+> (décisions ci-dessus + B-sources fiscales), un cadrage plan-first (CHARGES-FIXES, ITEM-2A,
+> FISC-REEE), ou des données 👤. Push sans leçon.
+
 > ## 🟦 Session 2026-09-04 — Lot 158 : le store est découpé — la famille godfiles V11 est COMPLÈTE
 > `[GODFILE-STORE]` livré — useFinanceStore.ts (783 l. re-mesurées) → façade de 207 :
 > `etatParDefaut` (défauts + migration legacy + initialState calculé là), `migrationsPersistees`

@@ -27,11 +27,14 @@ vi.mock('../../services/claude', () => ({ detectSubscriptionsAI: vi.fn() }));
 vi.mock('../../components/ui/Toast', () => ({ showToast: vi.fn() }));
 
 // 3 débits mensuels stables au même marchand → détecté comme abonnement récurrent.
-const TX: Transaction[] = [
-    { id: 1, date: '2026-05-05', payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' },
-    { id: 2, date: '2026-06-05', payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' },
-    { id: 3, date: '2026-07-05', payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' },
-] as unknown as Transaction[];
+// ⚠️ Dates RELATIVES (dernier débit il y a 5 jours) : à dates figées, `subscriptionAlerts` finit
+// par déclarer l'abo « arrêté » (> 2 cycles sans débit) et rend un DEUXIÈME « Netflix » — les
+// `getByText('Netflix')` de ce fichier ont rougi le 2026-09-05 sur un dépôt inchangé (bombe datée).
+const TX: Transaction[] = [65, 35, 5].map((jours, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - jours);
+    return { id: i + 1, date: d.toISOString().slice(0, 10), payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' };
+}) as unknown as Transaction[];
 
 // ⚠️ Le store est PARTAGÉ entre les cas de ce fichier : sans remise à zéro, un cas qui active le
 // mode discret contamine les suivants, et surtout l'abonnement ÉPINGLÉ par le premier cas survit —

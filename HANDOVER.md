@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 193 : badge « Taux de change estimés » sur la surface fiscale (`[FX-BADGE-SURFACES-RESTANTES]`)
+> Re-recensé : la surface Futur nommée par le ticket était DÉJÀ couverte (`FutureKpiStrip` rend le badge) ;
+> restait `TaxCenter` — `<FxEstimateBadge />` posé à côté de « Invest. Non-Enregistrés » (montant et impact
+> fiscal convertis via `assetValueCad`). Trois gardes (USD + repli → badge ; CAD seul → aucun ; USD + taux
+> réel → aucun), perturbation (badge retiré) → 1 rouge, contrôles verts. ⚠️ Le badge lit le STORE et
+> `TaxCenter` reçoit `assets` en prop : le test pose les deux (en prod c'est le même store). Push sans
+> leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 192 : « Combiné marginal » lu du moteur, net d'abattement (`[FISC-UI-MARGINAL-ABATEMENT]`)
 > `TaxBracketViz.tsx` : `combinedMarginal = getMarginalRate(annualGrossIncome, year) × 100` (fédéral net de
 > l'abattement 16,5 % + QC, paliers indexés de l'année) au lieu de `fed + qc` brut — 100 k$ : 39,5 % → **36,1 %**

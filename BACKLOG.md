@@ -1085,7 +1085,7 @@
 
 ### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
 
-- [ ] **`[FX-BADGE-SURFACES-RESTANTES]`** (S, FAIBLE — routé revue #686, financial-integrity
+- [x] **`[FX-BADGE-SURFACES-RESTANTES]`** ✅ **LIVRÉ au lot 193 (2026-09-05)** — RE-RECENSÉ : la surface Futur était DÉJÀ couverte (`FutureKpiStrip.tsx` rend `<FxEstimateBadge />` dans le bandeau des KPI) ; restait `TaxCenter` → badge posé à côté de « Invest. Non-Enregistrés » dans la carte « Revenus & Déductions » (montant et impact fiscal convertis via `assetValueCad`). Trois gardes (`TaxCenter.fxBadge.test.tsx`) : USD + repli → badge ; CAD seul → aucun ; USD + taux réel → aucun ; perturbation (badge retiré) → 1 rouge, contrôles verts. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE — routé revue #686, financial-integrity
   INFO) — le badge `FxEstimateBadge` (câblé Patrimoine net + Investissements + PDF) ne couvre PAS
   toutes les surfaces qui convertissent des devises étrangères : `TaxCenter.tsx:170-171`
   (`estimateTaxableInvestmentIncome`, nourrit un affichage FISCAL) et
@@ -1410,13 +1410,6 @@
   `realEstateMonth` et les objectifs enfants → mesurer CHAQUE consommateur avant de livrer.
   ⚠️ `tests/services/netTransferLiquidVide.test.ts` verrouille le contrat ACTUEL : au correctif, il
   s'INVERSE là-bas (avec son histoire), il ne se supprime pas.
-- [x] **`[FISC-UI-MARGINAL-ABATEMENT]`** ✅ **LIVRÉ au lot 192 (2026-09-05)** — « Combiné marginal » = `getMarginalRate(revenu, année)` du moteur (fédéral net de l'abattement 16,5 %, paliers indexés de la même année) : 100 k$ → **36,1 %** affiché au lieu de 39,5 % ; décomposition $ par palier lue de `calculateDetailedTax` (plus de boucle `× b.rate` recopiée) ; les « X % marginal » PAR juridiction restent le taux brut du palier (contrôle). Gardes : rendu (moteur ≠ somme brute, anti-vacuité > 2 pts), contrôle par juridiction, montants par palier == `calculateDetailedTax`, scan de source ; perturbations SÉPARÉES : somme brute remise → 2 rouges, boucle recopiée → 1 rouge (le scan — les montants sont égaux par construction, d'où sa nécessité). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
-  `TaxBracketViz.tsx` somme brute (fedRate + qcRate) ignore abattement 16,5 %, alors que
-  `getMarginalRate` le fait. Re-code aussi ses propres paliers au lieu de consommer
-  `calculateDetailedTax`. **Mesuré : 100 k$ brut → moteur 36,12 % vs affichage 39,50 % (3,38 pts,
-  survend le REER).** **Correctif** : `combinedMarginal = getMarginalRate(...) * 100` + consommer
-  `calculateDetailedTax` pour les barres.
-
 - [ ] **`[FISC-RAMQ-COUPLE-CAP]`** (S) — couple ne peut jamais atteindre prime RAMQ max 766 $ (tranche
   2 bornée 9 600 $ → 744 $ max possible). **Mesuré : célibataire 766 $, couple 744 $ constant.**
   Impact −22 $/adulte/an = ~1 300 $ / 30 ans retraite. Incohérence interne doc (prime max vs tranche

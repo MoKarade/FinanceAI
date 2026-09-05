@@ -19,6 +19,7 @@ import { assetValueCad } from '../services/portfolio';
 import { ageOptsForSalaryInversion, calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { netModelResidual } from '../services/taxResidual';
 import { estimateTaxableInvestmentIncome, estimateTaxableInvestmentIncomeByOwner } from '../services/taxEstimate';
+import { FxEstimateBadge } from './ui/FxEstimateBadge';
 import { isCoupleMode } from '../services/couple/netWorthByOwner';
 import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK } from '../utils/tax';
 
@@ -516,7 +517,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                             {investmentTaxData.totalNonReg > 0 && (
                                 <div className="p-3 bg-white/5 rounded border border-white/10">
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-meta text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
+                                        {/* [FX-BADGE-SURFACES-RESTANTES] Ce montant et l'impact fiscal en dessous convertissent
+                                            les avoirs étrangers avec `fxRates` (`assetValueCad`) : la surface fiscale portait
+                                            le même repli silencieux que le patrimoine avant #686. Le badge rend `null` sans
+                                            avoir étranger ou avec un taux réel — aucun bruit hors-sujet. */}
+                                        <span className="flex items-center gap-2">
+                                            <span className="text-meta text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
+                                            <FxEstimateBadge />
+                                        </span>
                                         <PrivateAmount className="text-meta text-white">{formatCAD(investmentTaxData.totalNonReg)}</PrivateAmount>
                                     </div>
                                     <div className="text-tiny text-ink-400">

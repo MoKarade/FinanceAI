@@ -957,7 +957,7 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 | 75 | 5,82 % | 83 | 7,71 % | 91 | 13,06 % |
 | 76 | 5,98 % | 84 | 8,08 % | 92 | 14,49 % |
 | 77 | 6,17 % | 85 | 8,51 % | 93 | 16,34 % |
-| 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
+| 78 | 6,36 % | 86 | 8,99 % | 94 | 18,79 % |
 > **95 ans et + : plafond 20 %** (`RRIF_RATE_PLATEAU` / `RRIF_PLATEAU_AGE`, `helpers.ts`).
 > Source : ARC, facteurs FERR prescrits (post-2015).
 > ⚠️ Le plateau **échappait au premier scan** du garde de constantes : écrit en repli
@@ -973,10 +973,19 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 > `age < 72` (toute comparaison avec NaN est fausse) pour ressortir à 20 % lui aussi. Durcissement,
 > pas correction d'un bug observable — aucun producteur d'âge fractionnaire n'existe aujourd'hui.
 
-> ⚠️ **`94 : 20,00 % est CONTESTÉ`** — le facteur prescrit serait 18,79 %, le plateau ne commençant
-> qu'à 95 ans. Écart MESURÉ : **+13 726 $** de patrimoine final si corrigé. Non modifié : le
-> règlement 7308(4) n'est pas atteignable depuis le conteneur (proxy). Routé dans
-> `docs/A_FAIRE_MOI.md` → `[FISC-RRIF-94-FACTOR]`.
+> ✅ **`94 : 18,79 %` — CORRIGÉ le 2026-09-05 (`[FISC-RRIF-94-FACTOR]`, lot 168).** La table portait
+> 20,00 % à 94 ans depuis l'origine, c'est-à-dire le plateau appliqué un an trop tôt ; l'entrée était
+> marquée CONTESTÉE depuis le 2026-08-06. **Source RELAYÉE** (le règlement 7308(4) et canada.ca
+> restent illisibles depuis le conteneur — `EGRESS_BLOCKED`, re-vérifié le 2026-09-05) : quatre tables
+> 2026 concordantes citant les facteurs prescrits — Empire Vie « Pourcentages de retrait minimal et
+> maximal d'un FRV en 2026 », Retraite 101 « Retrait minimum du FERR en 2026 », calculconversion.com,
+> CIBC Wood Gundy « Tableau des retraits minimums d'un FERR » — toutes : 94 ans = 18,79 %, 95 et plus =
+> 20,00 %. Une capture de la table 7308(4) ferait passer cette ligne de « relayée » à « lue » ; rien
+> d'autre n'y manque. Mesuré au correctif (`scripts` de mesure en session, couple 90 → 98 ans) :
+> **+1 367 $** de patrimoine final avec 500 k$ de REER à 94 ans, **+4 778 $** avec 1,5 M$,
+> **0 $ exactement** sur un horizon qui n'atteint jamais 94 (contrôle négatif) — le « +13 726 $ »
+> annoncé le 2026-08-06 venait d'une fixture plus riche ; l'ordre de grandeur est le même, le montant
+> dépend du REER encore détenu à 94 ans.
 
 ### Ancrage des constantes du moteur — FISC-CONST-ANCHOR-DEBT (2026-08-06)
 

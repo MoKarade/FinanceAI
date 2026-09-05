@@ -82,8 +82,12 @@ describe('projection/helpers', () => {
             expect(RRIF_RATES[72]).toBe(0.0540);
         });
 
-        it('peaks at age 94 at 20%', () => {
-            expect(RRIF_RATES[94]).toBe(0.2000);
+        // [FISC-RRIF-94-FACTOR] Ce cas s'appelait « peaks at age 94 at 20% » et ÉPINGLAIT le défaut :
+        // la table prescrite ne rejoint le plateau qu'à 95 ans, 94 vaut 18,79 %. Inversé le 2026-09-05
+        // (lot 168) plutôt que supprimé — la trace empêche de re-mettre le plateau un an trop tôt.
+        it('[FISC-RRIF-94-FACTOR] 94 ans vaut 18,79 % — PAS encore le plateau de 20 %', () => {
+            expect(RRIF_RATES[94]).toBe(0.1879);
+            expect(RRIF_RATES[94]).toBeLessThan(RRIF_RATE_PLATEAU);
         });
 
         it('is monotonically increasing', () => {

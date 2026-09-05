@@ -166,7 +166,12 @@ export const RRIF_RATES: Record<number, number> = {
     77: 0.0617, 78: 0.0636, 79: 0.0658, 80: 0.0682, 81: 0.0708,
     82: 0.0738, 83: 0.0771, 84: 0.0808, 85: 0.0851, 86: 0.0899,
     87: 0.0955, 88: 0.1021, 89: 0.1099, 90: 0.1192, 91: 0.1306,
-    92: 0.1449, 93: 0.1634, 94: 0.2000,
+    // [FISC-RRIF-94-FACTOR] 94 ans = 18,79 % (corrigé le 2026-09-05, lot 168) : la table prescrite
+    // ne rejoint le plateau de 20 % qu'à 95 ans. Le 20,00 % qui vivait ici depuis l'origine était
+    // CONTESTÉ dans FISCAL_REFERENCE §7 ; source relayée (4 tables 2026 concordantes, règl. 7308(4)
+    // illisible depuis le conteneur). Mesuré : +1 367 $ à +4 778 $ de patrimoine final selon le REER
+    // encore détenu à 94 ans, 0 $ sur un horizon qui n'atteint jamais 94.
+    92: 0.1449, 93: 0.1634, 94: 0.1879,
 };
 
 /**

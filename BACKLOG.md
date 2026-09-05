@@ -393,7 +393,7 @@
   documenté orphelin — détail en tête d'archive, réf PR au merge).
 - [x] ~~**`[ENG-RANKTAX-ESTATE]`**~~ ✅ **LIVRÉ 2026-08-21** (décision Marc A4 « TOUT » ; détail :
   section datée en tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
-- [ ] **`[ENG-FVI-EFFICIENCY-ESTATE]`** (M, MOYEN [MESURÉ — relecture #681 ; ré-ouvert : la ligne
+- [x] **`[ENG-FVI-EFFICIENCY-ESTATE]`** ✅ **LIVRÉ au lot 165 (2026-09-05)** — l'efficacité du FVI score l'impôt À VIE via la source unique `lifetimeTaxTotal` (réglé + dette d'horizon + successoral) ; le clamp [0,1] reste (c'est un SCORE), `expertMetrics.taxLeakage` reste une MESURE d'horizon (contrat distinct, dit dans le code). ⚠️ Le « re-base FVI massif » annoncé est RÉFUTÉ par la mesure : AUCUN test n'épinglait un FVI calculé par le moteur (bornes 0-100, un test de clamp, des fixtures injectées) — zéro re-base. 2 tests neufs (LEVIER −16 pts à 800/1000 d'estate tax ; le scénario exact du ticket rend 97, plus jamais 100), rouges sous perturbation (retour à l'horizon seul). (M, MOYEN [MESURÉ — relecture #681 ; ré-ouvert : la ligne
   « avgEfficiency/FVI ont le même angle mort » du ticket #554 avait été SUPPRIMÉE au cochage au
   lieu d'être routée]) — `monteCarlo.ts:165-173` : `leakage = clamp(ttp/totalGrowth, 0, 1)` —
   le clamp force 100 % d'« efficacité fiscale » dès que ttp < 0, la situation NORMALE d'un
@@ -402,7 +402,7 @@
   le PDF, DEUX outils MCP lus par le LLM, et ÉCRASE successRate (projection.ts:2416). Trancher :
   brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
   pas au FVI » dans l'ADR.
-  ✅ **Décision Marc 2026-09-04 (en session)** : BRANCHER l'impôt à vie dans le calcul (option a) — re-base FVI massif assumé. À livrer (lot à venir).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 165 (2026-09-05)** — et le re-base « massif » assumé s'est mesuré à ZÉRO. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
@@ -435,18 +435,6 @@
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
-- [x] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** ✅ **LIVRÉ au lot 164 (2026-09-05)** — `RentalProperty.propertyGrowthRate?` (taux PAR immeuble, défaut nommé `DEFAULT_RENTAL_GROWTH_PCT` = 3 écrit au semis, 0 explicite préservé), champ « Croissance %/an » dans le panneau des locatifs (vidé → undefined, 0 tapé → 0), lecteur config `effProj.propertyGrowthRate ?? 3` RETIRÉ du chemin locatif (le champ config n'a plus AUCUN lecteur — laissé dans le type pour les configs persistées). 3 tests moteur + 4 tests UI neufs, 2 perturbations séparées à rouges nommés. (S — ⚠️ **PRÉMISSE RE-RECENSÉE le 2026-09-04 : elle est
-  devenue FAUSSE**) — le ticket (2026-08-12) affirmait « lu par AUCUN code de prod ». Aujourd'hui
-  `projection.ts:1750` lit `effProj.propertyGrowthRate ?? 3` pour la croissance des **immeubles
-  LOCATIFS** (`processRentalMonth`) — un lecteur prod bien réel. Ce qui reste vrai : AUCUN
-  producteur (aucune UI n'écrit `projection.propertyGrowthRate`, aucun défaut dans `constants.ts`,
-  aucun scénario ne l'écrase) → les locatifs croissent toujours à 3 %/an, taux non réglable, et
-  `RentalProperty` n'a pas de champ de croissance propre. « Retirer » n'est donc plus un simple
-  nettoyage (il faut décider où vit le taux des locatifs) et « brancher » est une décision d'UI.
-  Options re-posées : (a) donner un `propertyGrowthRate?` à `RentalProperty` (cohérent avec les
-  buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
-  comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
-  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 164 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
   il n'en importera AUCUNE de plus** : `deriveCutoverDate` (`services/fintable/deriveCutoverDate.ts`)

@@ -146,6 +146,44 @@ describe('runMonteCarlo — agrégation', () => {
         expect(r.fvi).toBeLessThanOrEqual(100);
     });
 
+    it('[ENG-FVI-EFFICIENCY-ESTATE] l\'impôt SUCCESSORAL entre dans l\'efficacité du FVI (décision Marc 2026-09-04)', () => {
+        // LEVIER : même run avec et sans impôt successoral — l'efficacité doit bouger.
+        // estateTax 800 sur une croissance de 1 000 → leakage 0,8 → efficacité 0,2 (vs 1,0 avant) :
+        // le FVI perd 0,8 × 0,2 × 100 = 16 points. Rouge sur l'ancien code (base = horizon seul).
+        const runAvec = vi.fn(() => ({
+            chartData: Array.from({ length: 13 }, () => ({ NetWorth: 300000 })),
+            finalNetWorth: 300000, estateNetWorth: 300000,
+            totalTaxesPaid: 0, unsettledTaxAtHorizon: 0, totalEstateTax: 800,
+            totalGrowth: 1000, totalExpenses: 1000, minNetWorth: 300000, shortfallRate: 0,
+        }));
+        const runSans = vi.fn(() => ({
+            chartData: Array.from({ length: 13 }, () => ({ NetWorth: 300000 })),
+            finalNetWorth: 300000, estateNetWorth: 300000,
+            totalTaxesPaid: 0, unsettledTaxAtHorizon: 0, totalEstateTax: 0,
+            totalGrowth: 1000, totalExpenses: 1000, minNetWorth: 300000, shortfallRate: 0,
+        }));
+        const avec = runMonteCarlo(runAvec as never, makeParams(), STRAT, false, 10);
+        const sans = runMonteCarlo(runSans as never, makeParams(), STRAT, false, 10);
+        expect(sans.fvi - avec.fvi).toBe(16);
+        // Et l'expertMetrics.taxLeakage, MESURE d'horizon, ne bouge PAS : autre contrat, délibéré.
+        expect(avec.expertMetrics.taxLeakage).toBe(sans.expertMetrics.taxLeakage);
+    });
+
+    it('[ENG-FVI-EFFICIENCY-ESTATE] le scénario du ticket : remboursement net du vivant + facture à la succession → plus jamais « 100 % »', () => {
+        // Le défaut mesuré (#681) : ttp NÉGATIF (situation NORMALE d'un salarié — gros REER) +
+        // impôt successoral ignoré ⇒ clamp à 0 ⇒ efficacité 100 %. Avec l'impôt à vie :
+        // −20 000 + 0 + 50 000 = 30 000 sur 200 000 de croissance → leakage 0,15, efficacité 0,85
+        // → le FVI descend de 3 points (0,15 × 0,2 × 100). L'ancien code rendait fvi = 100.
+        const salarie = vi.fn(() => ({
+            chartData: Array.from({ length: 13 }, () => ({ NetWorth: 300000 })),
+            finalNetWorth: 300000, estateNetWorth: 300000,
+            totalTaxesPaid: -20000, unsettledTaxAtHorizon: 0, totalEstateTax: 50000,
+            totalGrowth: 200000, totalExpenses: 1000, minNetWorth: 300000, shortfallRate: 0,
+        }));
+        const r = runMonteCarlo(salarie as never, makeParams(), STRAT, false, 10);
+        expect(r.fvi).toBe(97); // ancien code : 100 (le clamp masquait tout)
+    });
+
     it('expertMetrics : toutes les métriques sont des nombres finis', () => {
         const r = runMonteCarlo(makeRun(idx => idx * 1000), makeParams(), STRAT, false, 100);
         const m = r.expertMetrics;

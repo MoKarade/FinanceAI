@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le score d'efficacité fiscale cesse de dire « 100 % » à tout le monde)
+
+- **Corrigé** (décision Marc 2026-09-04) : l'axe « efficacité fiscale » du score de vitalité
+  financière (FVI) ignorait l'impôt de la succession et affichait ~100 % à presque tout salarié
+  (l'impôt du vivant peut être négatif l'année d'un gros remboursement). Il score désormais
+  l'impôt À VIE — payé du vivant, dette à l'horizon ET facture successorale. Le score de vitalité
+  peut baisser de quelques points : il était surestimé d'autant.
+
 ## [unreleased] — 2026-09-05 (Chaque immeuble locatif a maintenant son taux de croissance)
 
 - **Ajouté** (décision Marc 2026-09-04) : un champ « Croissance %/an » par immeuble locatif dans

@@ -571,6 +571,14 @@ ARC/RQ — ce sont des choix de modèle assumés, et voici ce qu'ils valent.
 > DPA CUMULÉE saisie pour la recapture à la vente, pas une élection annuelle, et aucun module ne la lit ;
 > et l'immeuble d'un BUT immobilier locatif (`realEstateMonth.ts`, loyer → `accRentesYear`) est encore
 > imposé BRUT d'intérêts (`[IMMO-BUT-LOCATIF-INTERET-BRUT]`, jumeau de ce correctif).
+> ⚠️⚠️ **Limite MESURÉE le 2026-09-05 (lot 189), NON corrigée — plan P5 à valider** : ce loyer de BUT
+> immobilier n'est imposé au barème QUE dans la branche RETRAITÉE de `taxDecember.ts` ; en phase
+> ACTIVE, `accRentesYear` n'entre pas dans l'assiette §1 (salaire + retraits REER seulement) — le loyer
+> d'un ménage qui travaille n'est imposé par aucun barème (`[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]`,
+> miroir de `[REER-ACTIF-NON-RECONCILIE]`). Mesuré : **+63 242 $ / +156 559 $ / +264 356 $** d'impôt
+> à 10/20/30 ans quand on l'ajoute (couple actif, loyer 1 500 $/mois). Les deux (imposer le loyer,
+> déduire ses intérêts) se livrent ENSEMBLE : la déduction seule ne réduit aucun impôt en phase active
+> et ne fait que retirer des droits REER (mesuré −2 820 $ à −10 076 $ de patrimoine).
 
 MESURÉ : impôt INCRÉMENTAL réel sur **30 000 $ de NOI** empilés sur un revenu existant, barème 2026
 (`calculateFiscalReport`, QC + fédéral net de l'abattement de 16,5 %) :

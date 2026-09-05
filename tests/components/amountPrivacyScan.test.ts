@@ -20,8 +20,12 @@
  *  · `MONTANT-PUBLIC`     — la valeur n'est pas celle de l'utilisateur (borne de palier fiscal,
  *                           barème légal, tarif de référence). #608 exige de les GARDER visibles.
  *  · `MONTANT-HORS-ECRAN` — la ligne construit une chaîne pour un canal qui n'est PAS un rendu
- *                           (contexte de l'assistant IA). Le mode discret y est une décision
- *                           distincte, non tranchée : voir `[PRIVACY-CONTEXTE-IA]` au BACKLOG.
+ *                           (contexte de l'assistant IA, prompt du diagnostic). Décision Marc
+ *                           2026-09-05 (`[PRIVACY-CONTEXTE-IA]`) : MASQUER — le jeton ne dispense
+ *                           pas du mode discret, il déclare que le canal est gaté EN AMONT et
+ *                           PROUVÉ : chokepoint du chat (`useAiChat.viewContext.test.tsx`),
+ *                           diagnostic Budget (`budgetAiModalModeDiscret.test.tsx`). Un nouveau
+ *                           canal qui poserait ce jeton sans sa garde amont serait un trou.
  *  · `MONTANT-MASQUE-AILLEURS` — le masquage existe, mais hors de la fenêtre : un formateur d'axe
  *                           que son appelant enveloppe (`privacyMode ? … : yFormatter(v)`), ou un
  *                           sous-arbre entier retiré par un `{!isPrivacyMode && …}` plus haut.

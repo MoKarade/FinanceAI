@@ -7,6 +7,12 @@ import { Icon } from '../ui/Icon';
 import { chatStream, safeJsonValidate, MODEL_HAIKU } from '../../services/claude';
 import { z } from 'zod';
 import { sanitizePromptText, wrapUserData, PROMPT_DATA_ISOLATION_NOTE } from '../../utils/promptSafety';
+import { useFinanceStore } from '../../store/useFinanceStore';
+
+/** [PRIVACY-CONTEXTE-IA] (décision Marc 2026-09-05 : MASQUER) Le seul texte du refus — l'ouvreur
+ *  (`Budget.tsx`, toast) et le modal (égress) disent la même chose, par la même source. */
+export const MESSAGE_DIAGNOSTIC_MODE_DISCRET =
+    'Mode discret actif : le diagnostic enverrait tes montants à l’assistant. Désactive le mode discret pour le lancer.';
 
 export interface BudgetAiPayload {
     totalNetIncome: number;
@@ -73,6 +79,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
     // [AI-BUDGETMODAL-ERROR-COLLAPSE] Le message, pas un booléen : quatre causes se disaient
     // pareil. `null` couvre à la fois « pas d'erreur » et « annulation volontaire ».
     const [erreur, setErreur] = useState<string | null>(null);
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
 
     // Phase D'.7 — diagnostic IA fluide (streaming) au lieu d'un one-shot 30s.
     useEffect(() => {
@@ -82,6 +89,15 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
         const run = async () => {
             if (!apiKey) {
                 setErreur(messageErreurIa(null, { cleAbsente: true }));
+                setIsStreaming(false);
+                return;
+            }
+            // [PRIVACY-CONTEXTE-IA] (décision Marc 2026-09-05 : MASQUER) Garde AU SERVICE, pas seulement
+            // au clic : l'ouvreur refuse déjà avec un toast, mais le point d'ÉGRESS se garde en propre
+            // — même ceinture que le chokepoint du chat (`useAiChat`, finding #490). Le prompt porte
+            // les montants en clair (`MONTANT-HORS-ECRAN`) : il ne se construit même pas.
+            if (isPrivacyMode) {
+                setErreur(MESSAGE_DIAGNOSTIC_MODE_DISCRET);
                 setIsStreaming(false);
                 return;
             }
@@ -129,7 +145,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
             cancelled = true;
             controller.abort();
         };
-    }, [apiKey, payload]);
+    }, [apiKey, payload, isPrivacyMode]);
 
     return (
         <Modal

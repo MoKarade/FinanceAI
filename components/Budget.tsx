@@ -8,7 +8,7 @@ import { PrivateText } from './ui/PrivateText';
 import { showToast } from './ui/Toast';
 import { logError } from '../services/errorLogger';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
-import { BudgetAiModal } from './budget/BudgetAiModal';
+import { BudgetAiModal, MESSAGE_DIAGNOSTIC_MODE_DISCRET } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { StatementReminder } from './StatementReminder';
@@ -770,6 +770,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             showToast("Clé API Anthropic requise pour le diagnostic IA.", "info");
             return;
         }
+        // [PRIVACY-CONTEXTE-IA] (décision Marc 2026-09-05 : MASQUER) Lu à l'instant du geste, comme le
+        // chokepoint du chat ; le modal porte la MÊME garde à l'égress (ceinture) — ici c'est l'UX :
+        // dire pourquoi, plutôt qu'ouvrir un modal qui refuse.
+        if (useFinanceStore.getState().isPrivacyMode) {
+            showToast(MESSAGE_DIAGNOSTIC_MODE_DISCRET, 'info');
+            return;
+        }
         setShowAiModal(true);
     };
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
@@ -847,9 +854,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             .map(([name, spent]) => ({ name, spent }));
         const personName = personFilter !== null ? config.users[personFilter]?.name?.trim() : '';
         // Ces cartes ne sont PAS un rendu : elles composent le contexte envoyé à l'assistant IA
-        // (`services/aiChat/viewContext.ts`). Le mode discret doit-il s'y appliquer ? C'est une
-        // décision de Marc, pas une évidence — masquer les montants rendrait l'assistant inutile
-        // pendant qu'il est actif. Question posée dans `[PRIVACY-CONTEXTE-IA]`.
+        // (`services/aiChat/viewContext.ts`). [PRIVACY-CONTEXTE-IA] Décision Marc 2026-09-05 :
+        // MASQUER — appliquée EN AMONT : le publisher (`useViewContextPublisher`) purge le détail en
+        // mode discret et le chokepoint d'envoi (`useAiChat`) refuse la ligne de contexte. Ces cartes
+        // ne partent donc jamais en mode discret (prouvé : `useAiChat.viewContext.test.tsx`).
         // Le jeton `MONTANT-HORS-ECRAN` est répété SUR chaque ligne : la garde lit une fenêtre de
         // ±2 lignes, et ces cartes sont trop espacées pour qu'une seule marque les couvre.
         const cards: NonNullable<BudgetViewDetail['cards']> = [

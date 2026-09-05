@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Un nettoyage de ta copie Drive se dit, au lieu de rester dans le journal)
+
+- **Ajouté** : quand la restauration depuis Google Drive retire des données de test (persona) qui
+  s'étaient glissées dans ta copie, un message le dit maintenant à l'écran — comme le nettoyage
+  local au démarrage le faisait déjà. Avant, seul le journal d'erreurs en gardait la trace.
+
 ## [unreleased] — 2026-09-05 (En mode discret, le diagnostic IA du Budget ne part plus)
 
 - **Corrigé** : le bouton « Diagnostic » de l'onglet Budget envoyait tes montants à l'assistant même

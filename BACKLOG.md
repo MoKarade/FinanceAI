@@ -442,7 +442,7 @@
   (4) le switch doit-il exiger une confirmation (anti-fausse-manip devant témoin) ?
 - [ ] **`[ASSET-CURRENCY-BACKFILL]`** (S, attente signal) — backfill devise legacy SEULEMENT si le
   log `services/portfolio.ts:60-62` apparaît chez Marc. Ne rien coder avant.
-- [ ] **`[PURGE-TOAST-UX]`** (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
+- [x] **`[PURGE-TOAST-UX]`** ✅ **LIVRÉ au lot 176 (2026-09-05)** — canal d'avis générique `subscribeSyncNotice` (racine `syncStatusStore`, 0 dep), émission dans `applyPulledPayload` à côté du journal, abonnement au boot → toast (posé AVANT le premier pull). Garde 3 étages (canal, émission sur le vrai orchestrateur + contrôle propre, câblage du boot). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : **OUI** → débloqué.
   ne fait que logError (`syncPull.ts:78`) ; le toast n'existe qu'au boot. Abonnement générique → toast.
 ## 💬 Chat / IA
@@ -1740,16 +1740,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
     journaliser sur un identifiant. Le plus proche de l'intention, mais il faut la liste des champs
     monétaires, qui n'existe pas encore (celle des champs TEXTE a été choisie exprès à sa place).
   Ne rien coder avant la réponse de Marc.
-
-- [x] **`[PRIVACY-CONTEXTE-IA]`** ✅ **LIVRÉ au lot 175 (2026-09-05)** — le chat était déjà gaté (publisher + chokepoint, #490) ; le diagnostic Budget ne l'était PAS : garde à l'égress dans `BudgetAiModal` (le prompt ne se construit pas en mode discret) + refus à l'ouvreur avec toast, message unique ; jeton `MONTANT-HORS-ECRAN` requalifié « gaté en amont, prouvé ». → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **MASQUER** — en mode discret, les montants ne partent pas vers l'assistant non plus ; les 4 sites `MONTANT-HORS-ECRAN` passent sous la règle.
-  discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
-  alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.
-  Mais `DECISION-PRIVACY-UNE-SEULE-SORTIE` dit qu'une décision de vie privée écrite pour une sortie se
-  repasse sur TOUTES — prompt LLM inclus. ⚠️ Les deux réponses ont un coût réel : masquer rend
-  l'assistant inutile pendant que le mode est actif ; ne pas masquer envoie les montants à un tiers
-  alors que l'utilisateur vient de demander qu'on les cache. **Question, pas tâche** — 4 sites marqués
-  `MONTANT-HORS-ECRAN` en attendant la réponse.
 
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode

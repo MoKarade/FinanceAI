@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[PRIVACY-CONTEXTE-IA]` — LIVRÉ (lot 175, PR #906)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[PRIVACY-CONTEXTE-IA]`** ✅ **LIVRÉ au lot 175 (2026-09-05)** — le chat était déjà gaté (publisher + chokepoint, #490) ; le diagnostic Budget ne l'était PAS : garde à l'égress dans `BudgetAiModal` (le prompt ne se construit pas en mode discret) + refus à l'ouvreur avec toast, message unique ; jeton `MONTANT-HORS-ECRAN` requalifié « gaté en amont, prouvé ». (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **MASQUER** — en mode discret, les montants ne partent pas vers l'assistant non plus ; les 4 sites `MONTANT-HORS-ECRAN` passent sous la règle.
+  discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
+  alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.
+  Mais `DECISION-PRIVACY-UNE-SEULE-SORTIE` dit qu'une décision de vie privée écrite pour une sortie se
+  repasse sur TOUTES — prompt LLM inclus. ⚠️ Les deux réponses ont un coût réel : masquer rend
+  l'assistant inutile pendant que le mode est actif ; ne pas masquer envoie les montants à un tiers
+  alors que l'utilisateur vient de demander qu'on les cache. **Question, pas tâche** — 4 sites marqués
+  `MONTANT-HORS-ECRAN` en attendant la réponse.
+
+
 ## 2026-09-05 — `[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]` — LIVRÉ (lot 174, PR #905)
 
 Ticket d'origine tel qu'au moment de l'archivage :

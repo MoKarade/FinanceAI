@@ -107,3 +107,37 @@ export function subscribeSyncStatus(cb: (s: SyncStatus) => void): () => void {
     cb(_status);
     return () => _listeners.delete(cb);
 }
+
+// ── Avis ponctuels (pour un toast) ───────────────────────────────────────────
+
+/**
+ * [PURGE-TOAST-UX] (décision Marc 2026-09-05 : OUI, un toast) Un AVIS est un ÉVÉNEMENT, pas un état :
+ * « 3 artefacts retirés du payload Drive » se dit une fois, il ne se relit pas dans un statut. D'où un
+ * canal distinct de `SyncStatus` — abonnement générique côté UI (`useAppBootEffects` → toast), émission
+ * côté service (`syncPull`) sans qu'un module sync* importe jamais un composant. Un avis émis sans
+ * abonné est PERDU (il n'y a pas de file) : l'abonnement se pose au boot, avant `runBootSync`.
+ */
+export interface SyncNotice {
+    kind: 'purge-pull';
+    /** Phrase prête à afficher, en français, SANS montant (rien à masquer). */
+    texte: string;
+    /** Nombre d'artefacts retirés — pour un consommateur qui voudrait autre chose qu'un toast. */
+    removed: number;
+}
+
+const _noticeListeners = new Set<(n: SyncNotice) => void>();
+
+/** @internal — émission réservée aux modules sync*. */
+export function emitSyncNotice(notice: SyncNotice): void {
+    _noticeListeners.forEach((cb) => cb(notice));
+}
+
+export function subscribeSyncNotice(cb: (n: SyncNotice) => void): () => void {
+    _noticeListeners.add(cb);
+    return () => _noticeListeners.delete(cb);
+}
+
+/** Réservé aux TESTS (même raison que `_resetSyncStatusForTests` : état de module). */
+export function _resetSyncNoticeForTests(): void {
+    _noticeListeners.clear();
+}

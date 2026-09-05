@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le « Combiné marginal » de l'écran Tranches d'imposition est celui du moteur)
+
+- **Corrigé** : le taux marginal combiné affiché additionnait le fédéral et le québécois sans
+  l'abattement du Québec (16,5 % du fédéral) — à 100 000 $ de brut il affichait 39,5 % là où le
+  moteur calcule 36,1 %, ce qui survendait l'économie d'une cotisation REER. Il vient maintenant
+  du même calcul que le moteur. La décomposition « $ par tranche » lit aussi la source unique.
+
 ## [unreleased] — 2026-09-05 (À exactement 1,5 M$, un achat exige 20 % de mise de fonds)
 
 - **Corrigé** : au prix d'achat de 1 500 000 $ pile, l'app acceptait une mise de fonds de 125 000 $

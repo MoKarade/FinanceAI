@@ -16,6 +16,19 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 192 : « Combiné marginal » lu du moteur, net d'abattement (`[FISC-UI-MARGINAL-ABATEMENT]`)
+> `TaxBracketViz.tsx` : `combinedMarginal = getMarginalRate(annualGrossIncome, year) × 100` (fédéral net de
+> l'abattement 16,5 % + QC, paliers indexés de l'année) au lieu de `fed + qc` brut — 100 k$ : 39,5 % → **36,1 %**
+> (3,38 pts, survendait le REER). `computeTaxBreakdown` lit désormais `calculateDetailedTax` (montants par
+> palier de la source unique) et ne garde que la mise en forme (bornes) ; les « X % marginal » par
+> juridiction restent le taux brut du palier — c'est le seul endroit où le brut est juste. Quatre gardes
+> (`taxBracketVizMarginalAbattement.test.tsx`) : rendu = moteur ≠ somme brute (anti-vacuité > 2 pts),
+> contrôle par juridiction, montants par palier == `calculateDetailedTax`, scan de source décommenté.
+> Perturbations SÉPARÉES : somme brute remise → 2 rouges ; boucle `× b.rate` recopiée → 1 rouge (le scan
+> seul — les montants sont égaux par construction, c'est la DÉRIVE future qu'il interdit). ⚠️ `innerHTML`
+> encode l'insécable en `&nbsp;` : un attendu composé avec `formatCAD` ne matche qu'après normalisation
+> des DEUX formes (leçon, variante). Docs : CHANGELOG, BACKLOG (+ archive du lot 191).
+
 > ## 🟦 Session 2026-09-05 — Lot 191 : assiette d'emploi bornée à 0 (`[FISC-PAYROLL-NEG-GROSS]`)
 > `utils/tax.ts` : `employmentBase = Math.max(0, …)` en UN point — les trois cotisations (RRQ, RQAP, AE)
 > héritent du clamp au lieu d'un `Math.max` recopié par cotisation (seule la RRQ l'avait, par son

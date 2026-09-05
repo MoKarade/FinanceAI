@@ -7,7 +7,7 @@ import React from 'react';
 import { Card } from './ui/Card';
 // `FED_BRACKETS` reste importé pour son TYPE (`typeof FED_BRACKETS`) ; les VALEURS affichées
 // viennent toutes de `bracketsForYear(year)` — plus aucune table 2026 en dur ici.
-import { FED_BRACKETS, bracketsForYear, calculateFiscalReport } from '../utils/tax';
+import { FED_BRACKETS, bracketsForYear, calculateFiscalReport, calculateDetailedTax, getMarginalRate } from '../utils/tax';
 import { formatCAD, formatPercent } from '../utils/format';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -33,21 +33,25 @@ interface TaxBracketVizProps {
     year: number;
 }
 
+/**
+ * [FISC-UI-MARGINAL-ABATEMENT] (lot 192) Décomposition PAR PALIER d'une juridiction, lue de la SOURCE
+ * UNIQUE `calculateDetailedTax` (celle de l'impôt du moteur) — plus une seconde boucle `× b.rate`
+ * recopiée ici, qui ne pouvait diverger que dans un sens : en silence. Ce composant ne garde que la
+ * MISE EN FORME (bornes `from`/`to` pour les libellés, qui sont du droit public). `marginalRate` est
+ * le taux BRUT du palier de CETTE juridiction (affiché « X % marginal » sous chaque barre) ; le taux
+ * COMBINÉ, lui, vient de `getMarginalRate` — voir plus bas.
+ */
 function computeTaxBreakdown(income: number, brackets: typeof FED_BRACKETS): { perBracket: Array<{ rate: number; income: number; tax: number; from: number; to: number }>; totalTax: number; marginalRate: number; effectiveRate: number } {
-    let totalTax = 0;
-    let prev = 0;
-    let marginalRate = 0;
-    const perBracket: Array<{ rate: number; income: number; tax: number; from: number; to: number }> = [];
-    for (const b of brackets) {
-        const max = b.upTo === Infinity ? Number.MAX_SAFE_INTEGER : b.upTo;
-        const incomeInBracket = Math.max(0, Math.min(income, max) - prev);
-        const taxInBracket = incomeInBracket * b.rate;
-        perBracket.push({ rate: b.rate, income: incomeInBracket, tax: taxInBracket, from: prev, to: max });
-        totalTax += taxInBracket;
-        if (income > prev && income <= max) marginalRate = b.rate;
-        prev = max;
-        if (income <= max) break;
-    }
+    const { totalTax, breakdown } = calculateDetailedTax(income, brackets);
+    const perBracket = brackets.map((b, i) => {
+        const from = i === 0 ? 0 : brackets[i - 1].upTo;
+        const to = b.upTo === Infinity ? Number.MAX_SAFE_INTEGER : b.upTo;
+        const ligne = breakdown?.[i];
+        return { rate: b.rate, income: ligne?.filled ?? 0, tax: ligne?.amount ?? 0, from, to };
+    });
+    // Même règle que le moteur (`getMarginalRate`) : le palier est celui où `income <= upTo` ; à
+    // revenu nul, aucun palier n'est « atteint » (0, comme avant ce lot).
+    const marginalRate = income > 0 ? (brackets.find(b => income <= b.upTo)?.rate ?? brackets[brackets.length - 1].rate) : 0;
     return { perBracket, totalTax, marginalRate, effectiveRate: income > 0 ? totalTax / income : 0 };
 }
 
@@ -201,7 +205,11 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
         );
     };
 
-    const combinedMarginal = (fedBreakdown.marginalRate + qcBreakdown.marginalRate) * 100;
+    // [FISC-UI-MARGINAL-ABATEMENT] Le taux COMBINÉ vient du MOTEUR (`getMarginalRate`) : fédéral net de
+    // l'abattement du Québec (16,5 %) + provincial, sur les paliers indexés de la même année. Avant, la
+    // somme BRUTE `fed + qc` ignorait l'abattement — mesuré : 100 k$ brut → 39,50 % affiché contre
+    // 36,12 % pour le moteur (3,38 points), ce qui SURVENDAIT la déduction REER de ce même écran.
+    const combinedMarginal = getMarginalRate(annualGrossIncome, year) * 100;
     // [M4] Effectif combiné = impôt NET total / revenu (crédits inclus), pas la somme des taux bruts.
     const combinedEffective = report.averageRate;
 

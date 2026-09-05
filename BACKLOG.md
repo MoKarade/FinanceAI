@@ -1410,7 +1410,7 @@
   `realEstateMonth` et les objectifs enfants → mesurer CHAQUE consommateur avant de livrer.
   ⚠️ `tests/services/netTransferLiquidVide.test.ts` verrouille le contrat ACTUEL : au correctif, il
   s'INVERSE là-bas (avec son histoire), il ne se supprime pas.
-- [ ] **`[FISC-UI-MARGINAL-ABATEMENT]`** (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
+- [x] **`[FISC-UI-MARGINAL-ABATEMENT]`** ✅ **LIVRÉ au lot 192 (2026-09-05)** — « Combiné marginal » = `getMarginalRate(revenu, année)` du moteur (fédéral net de l'abattement 16,5 %, paliers indexés de la même année) : 100 k$ → **36,1 %** affiché au lieu de 39,5 % ; décomposition $ par palier lue de `calculateDetailedTax` (plus de boucle `× b.rate` recopiée) ; les « X % marginal » PAR juridiction restent le taux brut du palier (contrôle). Gardes : rendu (moteur ≠ somme brute, anti-vacuité > 2 pts), contrôle par juridiction, montants par palier == `calculateDetailedTax`, scan de source ; perturbations SÉPARÉES : somme brute remise → 2 rouges, boucle recopiée → 1 rouge (le scan — les montants sont égaux par construction, d'où sa nécessité). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
   `TaxBracketViz.tsx` somme brute (fedRate + qcRate) ignore abattement 16,5 %, alors que
   `getMarginalRate` le fait. Re-code aussi ses propres paliers au lieu de consommer
   `calculateDetailedTax`. **Mesuré : 100 k$ brut → moteur 36,12 % vs affichage 39,50 % (3,38 pts,
@@ -1424,11 +1424,6 @@
   corriger la valeur fautive EN CODE ET EN DOC. Ne rien ajuster sans source.
 
 #### LOW / FAIBLE
-
-- [x] **`[FISC-PAYROLL-NEG-GROSS]`** ✅ **LIVRÉ au lot 191 (2026-09-05)** — assiette d'emploi bornée à 0 en UN point (`employmentBase`, `utils/tax.ts`) : les trois cotisations héritent du clamp au lieu d'un `Math.max` par cotisation ; gardes : brut −5 000 $ → RRQ/RQAP/AE = 0 et `deductionsSource` = 0 ; `employmentIncome` négatif avec brut positif → idem, impôt sur placement conservé ; contrôle assiette positive bit-identique. Perturbation (clamp retiré) → 2 rouges. Pas d'entrée CHANGELOG : impact nul à l'écran (les appelants filtrent en amont). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — cotisations RQAP/AE non-clamped sur brut négatif (RRQ l'est).
-  **Mesuré : brut −5 000 $ → deductionsSource −86,50 $ (net > brut : argent créé).** Impact nul
-  aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
-  RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
 
 - [ ] **`[FISC-DON-FEDRATE-DUP]`** (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
   dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et

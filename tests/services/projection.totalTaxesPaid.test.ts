@@ -77,7 +77,11 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // non-enregistré monte désormais du dividende réputé, donc le gain latent ne porte plus la
         // somme déjà imposée. Vrai changement fiscal (NW ↑), pas un double comptage du compteur —
         // ce que ce fichier DÉFEND, l'identité `ttp == Σ FluxImpots`, est vérifié à part et reste vert.
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-6516.78, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([ENG-MELTDOWN-MIMOIS] lot 160, **−155,82 $**, était
+        // −6516,78) : l'arrivée du meltdown ne touche plus qu'un demi-mois de rendement (décision
+        // Marc 2026-09-04) — moins de croissance fantôme → NW ↓. La fixture FERR ne bouge PAS
+        // (aucun meltdown sous AUTO_MARGINAL) — l'effet est ciblé, c'est la preuve inverse.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-6672.60, 0);
         expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(372625.14, 0);
     });
 

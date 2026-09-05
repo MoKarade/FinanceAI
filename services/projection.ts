@@ -841,11 +841,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let contribCELI = 0, withdrawalCELI = 0;
         let contribREER = 0, withdrawalREER = 0;
         let contribNonReg = 0, withdrawalNonReg = 0;
-        // [ENG-MELTDOWN-JAMBE-ARRIVEE] Jambe d'ARRIVÉE du meltdown, registre d'AFFICHAGE SEUL :
-        // séparé de `contribNonReg` parce que celui-ci pilote AUSSI l'exclusion de croissance de
-        // mi-mois (`growthApplication` : `nonReg − contribNonReg`) — l'y verser déplacerait de
-        // l'argent (mesuré −5 045,04 $) et contredirait les goldens « NEUTRALITÉ NW ». Ce champ-ci
-        // n'alimente QUE le flux publié `NetTransferNonReg`.
+        // [ENG-MELTDOWN-JAMBE-ARRIVEE] Jambe d'ARRIVÉE du meltdown, registre SÉPARÉ de
+        // `contribNonReg` (les deux n'ont pas les mêmes lecteurs). Il alimente (1) le flux publié
+        // `NetTransferNonReg` (lot 157) et (2) depuis [ENG-MELTDOWN-MIMOIS] (décision Marc
+        // 2026-09-04) la base d'exclusion de croissance de mi-mois de `growthApplication`, par son
+        // PROPRE paramètre — l'argent arrivé en cours de mois ne touche qu'un demi-mois de
+        // rendement, comme les cotisations ordinaires. Le verser dans `contribNonReg` resterait
+        // faux : ce registre-là est aussi un affichage (`ContribNonReg` publié).
         let arriveeMeltdownNonReg = 0;
         let contribCrypto = 0, withdrawalCrypto = 0;
         let contribLiquid = 0, withdrawalLiquid = 0;
@@ -2150,11 +2152,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // meltdown est attribué AU PRORATA (`addByWeights` ci-dessous). Le soustraire au prorata
             // dans le registre per-conjoint est donc la MÊME règle, pas une seconde.
             // [ENG-MELTDOWN-JAMBE-ARRIVEE] (lot 157) La jambe d'ARRIVÉE est publiée via le
-            // registre d'AFFICHAGE dédié — PAS via `contribNonReg`, qui pilote l'exclusion de
-            // croissance de mi-mois : l'y verser déplacerait de l'argent (mesuré −5 045,04 $) et
-            // ferait rougir les goldens « NEUTRALITÉ NW ». C'est la « piste sans arbitrage » du
-            // ticket : le flux se voit, le rendement ne bouge pas. La question du rendement
-            // fantôme de mi-mois, elle, reste une décision de Marc (ticket conservé).
+            // registre dédié — PAS via `contribNonReg` (qui est aussi un affichage publié).
+            // [ENG-MELTDOWN-MIMOIS] (décision Marc 2026-09-04) : ce registre est AUSSI passé à
+            // `growthApplication` pour exclure l'arrivée du mois plein de croissance — le
+            // rendement fantôme de mi-mois est corrigé (les goldens NEUTRALITÉ ont été re-basés
+            // SCIEMMENT avec la mesure dans le commit du lot).
             arriveeMeltdownNonReg += meltResult.nonRegAdd;
             withdrawalREER += meltResult.reerDrawn;
             rrspWithholdingMois += meltResult.withholding;
@@ -2256,7 +2258,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             prevCELI, celi, effectiveCeliRate,
             celiapp, activeCeliRate,
             prevREER, reer, effectiveReerRate,
-            nonReg, contribNonReg, effectiveNonRegRate,
+            nonReg, contribNonReg, arriveeMeltdownNonReg, effectiveNonRegRate,
             crypto, activeCryptoRate,
             prevLiquid, liquid, activeCashRate,
             reee, contribREEE,

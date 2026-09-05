@@ -14,6 +14,7 @@
   la règle pour les cotisations ordinaires — le meltdown est la seule arrivée qui y échappe), en
   re-basant les goldens SCIEMMENT avec la mesure dans le commit.
   ✅ **RÉPONDU 2026-09-04 (en session)** : CORRIGER — exclure l'arrivée du meltdown du mois plein de croissance, re-base SCIEMMENT des 2 goldens NEUTRALITÉ avec la mesure dans le commit.
+  ✅ **LIVRÉE au lot 160 (2026-09-05)** — mesuré −155,82 $ de patrimoine final sur la fixture de référence (le rendement fantôme disparaît).
 - [x] **[DÉCISION — ENG-GOALSHORTFALLS-CHAMP-MORT]** (routée 2026-09-04) — `goalShortfalls` est
   calculé correctement et lu par PERSONNE. (a) supprimer le champ mort, ou (b) l'exposer sur Futur
   (« ton but n'a pas pu être financé, il manquait X $ »). [Probable] Recommandation : (b) —

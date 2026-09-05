@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 160 : le meltdown ne gagne plus un mois plein de rendement sur son arrivée
+> `[ENG-MELTDOWN-MIMOIS]` — première des six décisions livrée. `growthApplication` reçoit
+> `arriveeMeltdownNonReg?` (défaut neutre, rétrocompat bit-identique) et l'exclut de la base de
+> croissance NonReg comme une cotisation ordinaire ; câblé au site d'appel de `projection.ts`.
+> Goldens NEUTRALITÉ re-basés SCIEMMENT : **−155,82 $** (NW final ET estate, fixture 10 ans) —
+> le rendement fantôme disparaît, sens attendu NW ↓. Preuves : perturbation du câblage (arg
+> neutralisé → les 2 goldens reviennent aux anciennes valeurs), unité « même croissance au dollar
+> près que via `contribNonReg` » rougie quand la soustraction saute. En chemin (lot 159) : bombe
+> datée désamorcée dans deux fixtures d'abonnements (dates relatives). Push sans leçon nouvelle.
+
 > ## 🟢 Session 2026-09-04 (soir) — MARC A RÉPONDU AUX SIX DÉCISIONS DU LOT 159, en session
 > Les six réponses sont dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées
 > dans les tickets BACKLOG. **Le backlog est débloqué** — six lots livrables :

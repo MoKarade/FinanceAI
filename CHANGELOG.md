@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le meltdown REER cesse de gagner un mois de rendement sur l'argent qui vient d'arriver)
+
+- **Corrigé** (décision Marc 2026-09-04) : sous la stratégie « meltdown REER », l'argent transféré
+  du REER vers le non-enregistré en cours de mois touchait quand même un mois PLEIN de rendement.
+  Il ne touche plus qu'un demi-mois, exactement comme une cotisation ordinaire — la seule arrivée
+  qui échappait à cette règle. Effet mesuré : le patrimoine projeté baisse légèrement sous cette
+  stratégie (−156 $ sur la fixture de référence de 10 ans, ordre de −5 000 $ sur 35 ans) ; il était
+  surestimé d'autant.
+
 ## [unreleased] — 2026-09-04 (Le détail Futur montre enfin l'argent qui ARRIVE au non-enregistré pendant un meltdown REER)
 
 - **Corrigé** : sous la stratégie « meltdown REER », l'argent tiré du REER apparaissait bien en

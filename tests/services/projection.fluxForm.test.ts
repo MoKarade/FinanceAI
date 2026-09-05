@@ -218,10 +218,12 @@ describe('[ENG-INV-FLUXFORM-COVERAGE] toute variation de compte est EXPLIQUÉE p
             .toBeGreaterThan(20);
 
         // [ENG-MELTDOWN-JAMBE-ARRIVEE] (lot 157) La jambe d'ARRIVÉE est publiée depuis lors — via
-        // un registre d'AFFICHAGE dédié (`arriveeMeltdownNonReg`), PAS via `contribNonReg` :
-        // celui-ci pilote l'exclusion de croissance de mi-mois (`nonReg - contribNonReg`), et l'y
-        // verser aurait déplacé de l'argent (mesuré −5 045,04 $) contre les goldens « NEUTRALITÉ
-        // NW ». Histoire de cette borne : elle valait 30 000 $ tant que la jambe d'arrivée restait
+        // un registre dédié (`arriveeMeltdownNonReg`), PAS via `contribNonReg` (aussi un affichage
+        // publié). [ENG-MELTDOWN-MIMOIS] (lot 160, décision Marc 2026-09-04) : ce registre est
+        // depuis AUSSI exclu de la croissance du mois plein — l'argent déplacé alors (mesuré
+        // −5 045,04 $ sur cette fixture au lot 157) est devenu la correction VOULUE, et les
+        // goldens « NEUTRALITÉ NW » ont été re-basés SCIEMMENT avec la mesure dans le commit.
+        // Histoire de cette borne : elle valait 30 000 $ tant que la jambe d'arrivée restait
         // muette (résiduel ATTENDU, mesuré 25 273,39 $ au pire mois) — un inventaire de dette.
         // La dette payée, l'inventaire s'INVERSE en règle : le résiduel retombe à l'arrondi, comme
         // partout ailleurs. La re-desserrer serait rouvrir la porte en silence.

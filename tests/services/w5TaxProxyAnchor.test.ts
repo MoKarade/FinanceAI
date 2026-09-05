@@ -119,7 +119,11 @@ describe('[W5-PROXY-NON-SOURCE] les proxys d\'impôt W5 sont ancrés, et les 3 s
         const src = lire('services/projection/w5Effects.ts');
         const code = stripComments(src);
         expect(partDeCodeRestante(src, code), 'anti-vacuité du décommentage').toBeGreaterThan(0.3);
-        expect(code).toMatch(/rentalPropertyNoiMonthly \* RENTAL_NOI_TAX_PROXY/);
+        // [W5-RENTAL-INTERET-DPA] (lot 188) : le proxy s'applique à la base NETTE d'intérêts
+        // (`rentalNoiImposableMonthly`), plus au NOI encaissé — ré-ancré ici, le fait défendu
+        // (« la constante nommée, pas un littéral ») est inchangé.
+        expect(code).toMatch(/rentalNoiImposableMonthly \* RENTAL_NOI_TAX_PROXY/);
+        expect(code, 'le proxy ne doit plus s\'appliquer au NOI BRUT').not.toMatch(/rentalPropertyNoiMonthly \* RENTAL_NOI_TAX_PROXY/);
         expect(code).toMatch(/businessDividendMonthly \* CCPC_DIVIDEND_TAX_PROXY/);
         // Les seuls `0.45` / `0.36` restants doivent être les DÉCLARATIONS, pas des usages.
         expect((code.match(/0\.45/g) ?? []).length).toBe(1);

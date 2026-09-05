@@ -80,12 +80,37 @@ export function rentalMonthlyPayment(balance: number, annualRatePct: number, yea
     return (b * r * f) / (f - 1);
 }
 
+/** Identifiant d'état d'un immeuble (SOURCE UNIQUE du repli `'anon'` — `initRentalStates` et le
+ *  consommateur W5 doivent former la même clé, sinon l'intérêt d'un immeuble sans `id` se perd). */
+export const rentalStateId = (rp: Pick<RentalProperty, 'id'>): string => rp.id || 'anon';
+
+/**
+ * [W5-RENTAL-INTERET-DPA] Intérêt hypothécaire du MOIS d'un immeuble, sur le solde de DÉBUT de mois.
+ * SOURCE UNIQUE : `processRentalMonth` (qui l'encaisse et amortit) et `applyW5Effects` (qui le
+ * DÉDUIT de la base imposable du NOI, T4036) lisent la même formule — un `mortgage × taux / 12`
+ * recopié chez l'un aurait divergé de l'autre au premier arrondi. Immeuble payé → 0.
+ */
+export const rentalInterestOfMonth = (s: Pick<RentalState, 'mortgage' | 'ratePct'>): number =>
+    s.mortgage > 0 ? s.mortgage * (s.ratePct / 100 / 12) : 0;
+
+/**
+ * [W5-RENTAL-INTERET-DPA] Intérêt du mois PAR immeuble (clé = `rentalStateId`), lu AVANT
+ * `processRentalMonth` du même mois — l'ordre de la boucle appelle les effets W5 avant le mois
+ * locatif, et l'intérêt se calcule sur le solde de début de mois dans les deux cas : la somme de cette
+ * table vaut EXACTEMENT `processRentalMonth(...).interest` du même mois (garde de chaîne).
+ */
+export function rentalInterestParImmeuble(states: readonly RentalState[]): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const s of states) out[s.id] = (out[s.id] ?? 0) + rentalInterestOfMonth(s);
+    return out;
+}
+
 /** État initial des immeubles locatifs, calculé UNE fois avant la boucle mensuelle. */
 export function initRentalStates(rentals: readonly RentalProperty[] | undefined): RentalState[] {
     return (rentals ?? []).filter(Boolean).map((rp) => {
         const mortgage = Math.max(0, num(rp.mortgageBalance));
         return {
-            id: rp.id || 'anon',
+            id: rentalStateId(rp),
             currentValue: Math.max(0, num(rp.currentValue)),
             mortgage,
             monthlyPayment: rentalMonthlyPayment(
@@ -143,8 +168,7 @@ export function processRentalMonth(
         // ⚠️ Le service ne dépasse JAMAIS ce qu'il reste à devoir (solde + intérêt du mois) : sans
         // ce plafond, le dernier versement rembourserait plus que la dette et créerait de l'argent.
         // Même garde que le chemin des buts immobiliers.
-        const rate = s.ratePct / 100 / 12;
-        const interestPaid = s.mortgage > 0 ? s.mortgage * rate : 0;
+        const interestPaid = rentalInterestOfMonth(s);
         const payment = s.mortgage > 0 ? Math.min(s.monthlyPayment, s.mortgage + interestPaid) : 0;
         const principalPaid = Math.max(0, payment - interestPaid);
 

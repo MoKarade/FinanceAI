@@ -10,6 +10,19 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ESTATE-LIFEEXPECTANCY-95-DUR]` — LIVRÉ (lot 187, PR #918)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ESTATE-LIFEEXPECTANCY-95-DUR]`** ✅ **LIVRÉ au lot 187 (2026-09-05)** — `EstateCalcInputs.lifeExpectancy` câblé depuis `retirementGoal.lifeExpectancy` ; défaut `DEFAULT_LIFE_EXPECTANCY = 90` hissé dans `modelAssumptions.ts` (source unique du moteur ET des deux écrans qui écrivaient `?? 90`) ; entrée `95` du ratchet retirée, entrée `90` ajoutée. Gardes : discriminant absent ≠ 95, monotonie, ≤ âge final → 0, valeurs inutilisables → défaut ; câblage + chaîne par espion (100 ans > 85 ans en succession, patrimoine final identique). « Re-base MASSIF » annoncé = **3 assertions dans 2 fichiers** (divorce −79 923 $ à 92 ans, déterministe ET MC ; dividende −113 910 $ à 90 ans), et la 3ᵉ était CACHÉE derrière la 1ʳᵉ dans le même `it`. Contexte d'origine : (S, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  `services/projection/estateCalculation.ts` fixe `lifeExpectancy = 95` **en dur** pour le nombre
+  d'années de rentes restantes, alors que `retirementGoal.lifeExpectancy` existe (`types.ts`, défaut
+  90 ; 90/92/94 selon les personas) et est **ignoré**. Piège d'HOMONYME à deux niveaux : l'entrée du
+  ratchet `utils/fiscalConstGuardV2.ts` justifie ce 95 en disant qu'il est « explicitement nommé
+  `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
+  espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
+
+
 ## 2026-09-05 — `[A11Y-PRIVACY-TITLE-CLOBBER]` — LIVRÉ (lot 186, PR #917)
 
 Ticket d'origine tel qu'au moment de l'archivage :

@@ -12184,3 +12184,19 @@ assertions dans deux fichiers, et la troisième (Monte Carlo) n'apparaissait PAS
 le même `it` que l'ancre déterministe, dont le `toBe` interrompt le cas. Un instrument posé AVANT la première
 assertion du `it` la mesure ; un gate rouge ne compte que la première ancre de chaque cas.
 
+### Variante notée au lot 188 (2026-09-05) — `totalTaxesPaid` mesure un impôt qui n'a PAS encore réglé sa dernière année
+
+En chiffrant la déduction des intérêts locatifs (`[W5-RENTAL-INTERET-DPA]`), le rapport « impôt
+économisé / intérêts déduits » lu sur `totalTaxesPaid` valait **0,37** là où le proxy est 0,45. Ce
+n'est pas le correctif qui fuit : ce compteur ne somme que les RÈGLEMENTS d'avril, et l'année finale
+de l'horizon n'est jamais réglée dedans (son avril tombe après le dernier point) — donc toute mesure
+d'impôt « par totalTaxesPaid » sous-compte d'environ une année sur N, et d'autant plus que l'horizon
+est court (10 ans : ~10 %, plus la pente de l'intérêt qui décroît). Deux parades : mesurer l'effet
+dans un registre réglé DANS l'horizon (l'accumulateur de l'année, ou la publication mensuelle
+`ImmoInterest` × proxy), ou allonger l'horizon d'un an et lire N années réglées. Le ticket
+`[PROJ-TAXPAID-SOLDE-AVRIL]` décrit le même compteur sous un autre angle (il est négatif par
+construction) — les deux disent que ce nom promet plus que ce qu'il somme. Corollaire de conduite :
+un rapport qui ne tombe pas sur la constante attendue s'explique AVANT d'être publié ; ici la
+première hypothèse (« la déduction n'atteint qu'une partie des mois ») était fausse, et la vraie
+cause se lisait dans le nom du ticket voisin.
+

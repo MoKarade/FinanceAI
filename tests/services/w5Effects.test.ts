@@ -429,3 +429,66 @@ describe('applyAgeBasedExpenses', () => {
         expect(depense).toBe(0);
     });
 });
+
+// ── [W5-RENTAL-INTERET-DPA] intérêts hypothécaires déductibles du NOI imposable ────────────────
+
+describe('[W5-RENTAL-INTERET-DPA] applyW5Effects — l’intérêt du mois est DÉDUIT de la base imposable, pas du flux', () => {
+    // Plex : NOI 1 875 $/mois. Intérêt du mois passé par le contexte : 1 250 $ (300 k$ × 5 % / 12).
+    const plex = (over: Partial<W5Containers['rentalProperties'][number]> = {}) => ({
+        id: 'rp1', name: 'Plex', monthlyRent: 2500, monthlyExpenses: 500, vacancyPct: 5,
+        purchasePrice: 400000, currentValue: 450000, mortgageBalance: 300000, mortgageRate: 5, ...over,
+    });
+    const avecInteret = (interet: number, over: Partial<W5Containers['rentalProperties'][number]> = {}) => {
+        const { mutator, s } = makeMutator();
+        const r = applyW5Effects(makeCtx({ rentalInterestMensuelParImmeuble: { rp1: interet } }), { ...emptyContainers(), rentalProperties: [plex(over)] }, mutator);
+        return { r, s };
+    };
+
+    it('le revenu ENCAISSÉ reste le NOI brut ; l’impôt porte sur NOI − intérêt', () => {
+        const { s } = avecInteret(1250);
+        expect(s.income).toBeCloseTo(1875, 6);
+        expect(s.taxDivers).toBeCloseTo((1875 - 1250) * 0.45, 6);
+        // Discriminant : l'ancien calcul (NOI brut × proxy) donnait 843,75.
+        expect(s.taxDivers).not.toBeCloseTo(1875 * 0.45, 2);
+    });
+
+    it('le revenu GAGNÉ par propriétaire est la base NETTE (T4040 : revenu net de location)', () => {
+        const { r } = avecInteret(1250, { owner: 'user2' });
+        expect(r.rentalNoiMensuelParProprietaire.user2).toBeCloseTo(625, 6);
+        expect(r.rentalNoiMensuelParProprietaire.user1).toBe(0);
+    });
+
+    it('contexte ABSENT → base = NOI brut (rétrocompat : les appelants historiques ne changent pas)', () => {
+        const { mutator, s } = makeMutator();
+        applyW5Effects(makeCtx(), { ...emptyContainers(), rentalProperties: [plex()] }, mutator);
+        expect(s.taxDivers).toBeCloseTo(1875 * 0.45, 6);
+    });
+
+    it('intérêt > NOI → base NÉGATIVE : perte locative déductible (impôt négatif, revenu gagné négatif), flux inchangé', () => {
+        const { r, s } = avecInteret(2000, { owner: 'user1' });
+        expect(s.income).toBeCloseTo(1875, 6);
+        expect(s.taxDivers).toBeCloseTo((1875 - 2000) * 0.45, 6);
+        expect(r.rentalNoiMensuelParProprietaire.user1).toBeCloseTo(-125, 6);
+    });
+
+    it('intérêt qui annule EXACTEMENT le NOI de trésorerie : la porte reste ouverte sur la base fiscale (0 n’est pas « absent »)', () => {
+        // NOI 1 875 et intérêt 1 875 → base 0 ; à l'inverse un NOI de trésorerie nul avec 500 $ d'intérêts
+        // doit produire une perte de 500 $ — la porte ne dépend pas d'une coïncidence du flux.
+        const { mutator, s } = makeMutator();
+        applyW5Effects(makeCtx({ rentalInterestMensuelParImmeuble: { rp1: 500 } }), { ...emptyContainers(), rentalProperties: [plex({ monthlyRent: 500 / 0.95, monthlyExpenses: 500 })] }, mutator);
+        expect(s.income).toBeCloseTo(0, 6);
+        expect(s.taxDivers).toBeCloseTo(-500 * 0.45, 6);
+    });
+
+    it('intérêt NaN ou NÉGATIF dans le contexte → traité comme 0 (jamais propagé, jamais un crédit fantôme)', () => {
+        expect(avecInteret(NaN).s.taxDivers).toBeCloseTo(1875 * 0.45, 6);
+        expect(avecInteret(-300).s.taxDivers).toBeCloseTo(1875 * 0.45, 6);
+    });
+
+    it('clé d’un immeuble SANS id : `rentalStateId` (repli « anon ») — l’intérêt n’est pas perdu', () => {
+        const { mutator, s } = makeMutator();
+        applyW5Effects(makeCtx({ rentalInterestMensuelParImmeuble: { anon: 1250 } }), { ...emptyContainers(), rentalProperties: [plex({ id: '' })] }, mutator);
+        expect(s.taxDivers).toBeCloseTo((1875 - 1250) * 0.45, 6);
+    });
+});
+

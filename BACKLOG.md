@@ -851,14 +851,6 @@
   commentaire de code. **Correctif** : soit ventiler la VAN par conjoint avant d'appliquer le barème,
   soit documenter l'hypothèse dans `docs/PROJECTION.md` et la nommer dans l'UI.
 
-- [x] **`[ESTATE-LIFEEXPECTANCY-95-DUR]`** ✅ **LIVRÉ au lot 187 (2026-09-05)** — `EstateCalcInputs.lifeExpectancy` câblé depuis `retirementGoal.lifeExpectancy` ; défaut `DEFAULT_LIFE_EXPECTANCY = 90` hissé dans `modelAssumptions.ts` (source unique du moteur ET des deux écrans qui écrivaient `?? 90`) ; entrée `95` du ratchet retirée, entrée `90` ajoutée. Gardes : discriminant absent ≠ 95, monotonie, ≤ âge final → 0, valeurs inutilisables → défaut ; câblage + chaîne par espion (100 ans > 85 ans en succession, patrimoine final identique). « Re-base MASSIF » annoncé = **3 assertions dans 2 fichiers** (divorce −79 923 $ à 92 ans, déterministe ET MC ; dividende −113 910 $ à 90 ans), et la 3ᵉ était CACHÉE derrière la 1ʳᵉ dans le même `it`. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
-  `services/projection/estateCalculation.ts` fixe `lifeExpectancy = 95` **en dur** pour le nombre
-  d'années de rentes restantes, alors que `retirementGoal.lifeExpectancy` existe (`types.ts`, défaut
-  90 ; 90/92/94 selon les personas) et est **ignoré**. Piège d'HOMONYME à deux niveaux : l'entrée du
-  ratchet `utils/fiscalConstGuardV2.ts` justifie ce 95 en disant qu'il est « explicitement nommé
-  `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
-  espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
-
 - [x] **`[ASSETLOC-INCLUSION-RECOPIEE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — découvert en revue de `[FISC-GUARD-SCOPE]`) —
   `services/projection/assetLocation.ts:117` écrit `return marginalRate * 0.5` : le taux d'inclusion
   des gains en capital **recopié en dur**. C'est le SEUL site du dépôt à le faire — `latentTax`,
@@ -1020,12 +1012,34 @@
   (optimizeSourceDeductions) — la retenue absorbe les déductions REER strategy-dépendantes,
   écart mesuré 107 530 $ entre PRIO_REER et PRIO_CELI sur le même profil. [MESURÉ]
 
-- [ ] **`[W5-RENTAL-INTERET-DPA]`** (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
+- [x] **`[W5-RENTAL-INTERET-DPA]`** ✅ **LIVRÉ (volet INTÉRÊTS) au lot 188 (2026-09-05)** — base imposable du NOI W5 = NOI − intérêt du mois (`rentalInterestOfMonth`, source unique partagée avec `processRentalMonth` ; T4036 ligne 8710, relayé `EGRESS_BLOCKED`), même base NETTE pour le revenu gagné (T4040) ; trésorerie inchangée. MESURÉ (plex 450 k$, prêt 300 k$ à 5 %) : impôt −49 114 $ / −79 804 $ / −77 772 $ à 10/20/30 ans, patrimoine +61 791 $ / +128 255 $ / +175 797 $, 0 $ sans hypothèque. Gardes : 7 unitaires (module), 1 revenu gagné hypothéqué, 3 de câblage par espion (table passée == `ImmoInterest` publié, mois par mois) ; perturbations SÉPARÉES : site d'appel → 4 rouges, module sourd → 7 rouges. Volet **DPA** ROUTÉ à Marc (`[W5-RENTAL-DPA-ELECTION]`), jumeau du but immobilier routé (`[IMMO-BUT-LOCATIF-INTERET-BRUT]`). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
   le forfait imposant désormais 12× plus, deux déductions non modélisées deviennent matérielles :
   les **intérêts hypothécaires** du locatif (le service de dette sort en dépense mais le NOI est
   imposé BRUT à 45 %) et la **DPA** — `ccaTaken` est une SAISIE (`PatrimoineExtended.tsx`) que
   AUCUN module moteur ne lit (grep : un seul commentaire). Sens conservateur (sur-imposition d'un
   bailleur levieré) mais un champ de saisie sans effet est un mensonge d'UI. [À vérifier l'ampleur]
+
+- [ ] ⏸️ **`[W5-RENTAL-DPA-ELECTION]`** (S, MOYEN — découvert en livrant `[W5-RENTAL-INTERET-DPA]`, lot 188 ;
+  **DÉCISION MARC dans `docs/A_FAIRE_MOI.md`**) — la DPA (déduction pour amortissement, catégorie 1,
+  4 %/an dégressif, règle de demi-année) n'est PAS modélisée : `RentalProperty.ccaTaken` est une DPA
+  **CUMULÉE** saisie pour la recapture à la vente — or la vente n'est pas modélisée non plus, donc le
+  champ n'a aucun lecteur (`UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`). Élire la
+  DPA chaque année est un CHOIX de l'utilisateur (elle ne peut pas créer une perte de location, et elle
+  est reprise à la vente) : la modéliser sans la vente surévaluerait le patrimoine, ne pas la modéliser
+  le sous-évalue pour un bailleur qui l'élit. Trois issues posées à Marc : ne pas modéliser et le DIRE à
+  l'écran ; élection par immeuble (case + taux) sans recapture ; élection AVEC vente/recapture.
+  [MESURÉ : 0 lecteur de `ccaTaken` ; ampleur DPA ≈ 4 % × (valeur − terrain) × proxy/an, non mesurée]
+
+- [ ] **`[IMMO-BUT-LOCATIF-INTERET-BRUT]`** (S, MOYEN — JUMEAU trouvé en livrant `[W5-RENTAL-INTERET-DPA]`,
+  lot 188) — le loyer d'un BUT immobilier locatif (`realEstateMonth.ts`, `goal.rentalIncomeMonthly` →
+  `accRentesYear`, imposé au barème en décembre) est imposé BRUT des intérêts hypothécaires, alors que
+  `state.immoInterest` les calcule au même endroit et que le lot 188 vient de les déduire pour le chemin
+  W5 — deux chemins, deux règles pour le même fait fiscal (T4036 ligne 8710). ⚠️ Pas au proxy ici : la
+  déduction doit RÉDUIRE l'assiette `accRentesYear` (barème complet), pas un `divers` forfaitaire — et
+  `accRentesYear` a d'AUTRES lecteurs (crédit de pension ? fractionnement ?) à recenser AVANT (leçon
+  « un flux moteur alimente plusieurs registres »). [Dérivé, à mesurer : ≈ 12,5 k$ d'intérêts la
+  1re année sur le condo 350 k$ à 4,5 % de la fixture `rrspRentalEarnedWiring`, imposés en trop au
+  taux marginal du ménage]
 
 - [x] **`[W5-DOUBLE-SAISIE-LOCATIF]`** ✅ LIVRÉ 2026-08-22 (note UX aux DEUX écrans ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue 2026-08-20) — rien n'empêche de saisir
   le MÊME immeuble comme `realEstateGoal` avec `rentalIncomeMonthly` (imposé via `accRentesYear` en

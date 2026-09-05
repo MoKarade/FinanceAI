@@ -19,7 +19,7 @@ import { processAprilSettlement } from './projection/taxApril';
 import { computeOasClawback, computeAnnualNonRegDividends, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
 import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSchedule';
-import { initRentalStates, processRentalMonth } from './projection/rentalMonth';
+import { initRentalStates, processRentalMonth, rentalInterestParImmeuble } from './projection/rentalMonth';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome, computeDbPensionMonthly, RRQ_DEFERRED_START_AGE } from './projection/retirementIncome';
@@ -1259,7 +1259,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // (insurance/véhicules cycliques/rénos majeures/dons charity/locatifs/CCPC).
         // Mutation via mutateur passé par référence — état partagé inchangé.
         const w5Resultat = applyW5Effects(
-            { m, currentMonthIndex, currentLoopDate, startYear, startMonth, expenseMultiplier },
+            {
+                m, currentMonthIndex, currentLoopDate, startYear, startMonth, expenseMultiplier,
+                // [W5-RENTAL-INTERET-DPA] Intérêt du mois par immeuble, lu sur l'état AVANT le mois
+                // locatif (qui vient plus bas dans la boucle) : même solde, même formule, donc la somme
+                // vaut exactement le `rm.interest` que `processRentalMonth` publiera pour ce mois.
+                rentalInterestMensuelParImmeuble: rentalInterestParImmeuble(rentalStates),
+            },
             { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses },
             {
                 addExpense: (amt) => { monthlyExpenses += amt; },

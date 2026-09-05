@@ -189,7 +189,8 @@ export const RentalPropertyPanel: React.FC<{
                     de `RENTAL_NOI_TAX_PROXY`, et son sens d'erreur mesuré vit dans
                     `docs/FISCAL_REFERENCE.md` §6. Une garde interdit tout littéral dans ce fichier. */}
                 <p className="text-tiny text-ink-400 italic">
-                    L'impôt sur le revenu locatif est estimé à un taux marginal forfaitaire de{' '}
+                    L'impôt sur le revenu locatif (net des intérêts hypothécaires, qui sont déduits) est
+                    estimé à un taux marginal forfaitaire de{' '}
                     {formatPercent(RENTAL_NOI_TAX_PROXY * 100, 0)}, pas calculé au barème. C'est prudent
                     en dessous d'environ 125 000 $ de revenu total (jusqu'à ~140 000 $ pour un gros
                     revenu locatif), et optimiste au-dessus.

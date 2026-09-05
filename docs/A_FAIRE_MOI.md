@@ -1,10 +1,11 @@
 # À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
 
-> **Batch de décisions routées le 2026-09-04 (lot 159)** — six tickets du BACKLOG attendaient une
+> **Batch de décisions routées le 2026-09-04 (lot 159) — ✅ les SIX répondues le jour même (en
+> session)**, réponses reportées sous chaque entrée et dans les tickets BACKLOG. — six tickets du BACKLOG attendaient une
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
-- [ ] **[DÉCISION — ENG-MELTDOWN-JAMBE-ARRIVEE, reste]** (2026-09-04, lot 157) — la jambe
+- [x] **[DÉCISION — ENG-MELTDOWN-JAMBE-ARRIVEE, reste]** (2026-09-04, lot 157) — la jambe
   d'arrivée du meltdown REER→non-enregistré est maintenant AFFICHÉE (fait, sans déplacer
   d'argent). Reste la vraie question : l'argent arrivé en COURS de mois doit-il toucher un mois
   PLEIN de croissance ? Aujourd'hui oui (rendement « fantôme » de mi-mois) ; le corriger déplace
@@ -12,17 +13,20 @@
   avec preuve bit-identique. [Probable] Recommandation : corriger (l'exclusion de mi-mois est déjà
   la règle pour les cotisations ordinaires — le meltdown est la seule arrivée qui y échappe), en
   re-basant les goldens SCIEMMENT avec la mesure dans le commit.
-- [ ] **[DÉCISION — ENG-GOALSHORTFALLS-CHAMP-MORT]** (routée 2026-09-04) — `goalShortfalls` est
+  ✅ **RÉPONDU 2026-09-04 (en session)** : CORRIGER — exclure l'arrivée du meltdown du mois plein de croissance, re-base SCIEMMENT des 2 goldens NEUTRALITÉ avec la mesure dans le commit.
+- [x] **[DÉCISION — ENG-GOALSHORTFALLS-CHAMP-MORT]** (routée 2026-09-04) — `goalShortfalls` est
   calculé correctement et lu par PERSONNE. (a) supprimer le champ mort, ou (b) l'exposer sur Futur
   (« ton but n'a pas pu être financé, il manquait X $ »). [Probable] Recommandation : (b) —
   l'information existe déjà et répond à une vraie question d'utilisateur ; mais c'est du scope
   d'écran que tu n'as pas demandé, donc je ne le fais pas sans ton oui.
-- [ ] **[DÉCISION — ENG-PROPGROWTH-CONFIG-DEAD]** (re-recensé 2026-09-04) — les immeubles
+  ✅ **RÉPONDU 2026-09-04 (en session)** : (b) EXPOSER sur Futur (« ton but n'a pas pu être financé, il manquait X $ »).
+- [x] **[DÉCISION — ENG-PROPGROWTH-CONFIG-DEAD]** (re-recensé 2026-09-04) — les immeubles
   LOCATIFS croissent à 3 %/an, taux NON réglable (le champ config est lu par le moteur mais
   aucune UI ne l'écrit). (a) champ `propertyGrowthRate?` par immeuble locatif (comme les biens),
   ou (b) réglage global. [Probable] Recommandation : (a), cohérent avec les buts immobiliers qui
   ont déjà leur taux par bien.
-- [ ] **[DÉCISION — ENG-RENEWAL-CHOC-MORT + RATE-MISMATCH]** (mesuré 2026-08-25) — le « choc de
+  ✅ **RÉPONDU 2026-09-04 (en session)** : (a) champ `propertyGrowthRate?` PAR IMMEUBLE locatif ; le réglage config-niveau mort est retiré du chemin.
+- [x] **[DÉCISION — ENG-RENEWAL-CHOC-MORT + RATE-MISMATCH]** (mesuré 2026-08-25) — le « choc de
   taux » au renouvellement hypothécaire vaut ZÉRO pour tout identifiant atteignable (dérivé du
   hachage d'un id technique) : le risque de renouvellement n'est PAS modélisé. (1) Le modéliser
   (par SAISIE d'un taux de renouvellement attendu — jamais par hachage) ou retirer le mécanisme et
@@ -30,19 +34,22 @@
   mensuel resterait à l'ancien taux — les deux se livrent ENSEMBLE). [Probable] Recommandation :
   saisie « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé),
   livrée avec le correctif RATE-MISMATCH dans le même lot.
-- [ ] **[DÉCISION — ENG-FVI-EFFICIENCY-ESTATE]** (mesuré, relecture #681) — l'« efficacité
+  ✅ **RÉPONDU 2026-09-04 (en session)** : SAISIE « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé), livrée AVEC le correctif RATE-MISMATCH dans le même lot.
+- [x] **[DÉCISION — ENG-FVI-EFFICIENCY-ESTATE]** (mesuré, relecture #681) — l'« efficacité
   fiscale » du FVI affiche 100 % dès que l'impôt courant est négatif (situation NORMALE d'un
   salarié) et ignore l'impôt successoral — mesuré : PRIO_REER passe de 100 % à 0 % selon la
   définition (−20 points de FVI). Le FVI alimente Vitalité, le PDF et deux outils MCP. (a) brancher
   l'impôt À VIE dans le calcul (re-base FVI massif, assumé), ou (b) documenter dans un ADR que le
   FVI mesure autre chose. [Probable] Recommandation : (a) — un indicateur qui dit 100 % à presque
   tout le monde ne discrimine rien.
-- [ ] **[DÉCISION — ENG-RANKING-MODULES-ORPHELINS]** (re-cadré revue #683) — `rankStrategies` n'a
+  ✅ **RÉPONDU 2026-09-04 (en session)** : (a) BRANCHER l'impôt à vie dans le calcul — re-base FVI massif assumé.
+- [x] **[DÉCISION — ENG-RANKING-MODULES-ORPHELINS]** (re-cadré revue #683) — `rankStrategies` n'a
   AUCUN appelant (alias vérifiés) : brancher ou retirer ? ⚠️ S'il est branché un jour, son score
   `balanced` compte l'impôt successoral DEUX fois (à corriger d'abord). [Probable] Recommandation :
   retirer (un module mort entouré de tests a l'air vivant et coûte à chaque refactor) — le
   branchement resterait possible depuis git si le besoin naît.
 
+  ✅ **RÉPONDU 2026-09-04 (en session)** : RETIRER le module (re-branchement possible depuis git si le besoin naît).
 - [ ] **[DÉCISION — FISC-RRSP-RENTAL-EARNED]** (2026-09-04) — le moteur ne crée AUCUN droit REER
   pour un revenu de location (confirmé dans le code : le loyer net nourrit le registre des rentes,
   jamais l'assiette de revenu gagné per-conjoint). Avant de corriger, DEUX réponses requises :

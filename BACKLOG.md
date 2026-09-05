@@ -60,7 +60,7 @@
   être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
   seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
   (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
-  🧭 **Routé `docs/A_FAIRE_MOI.md` le 2026-09-04 (lot 159)** — entrée de décision avec recommandation.
+  ✅ **Décision Marc 2026-09-04 (en session)** : EXPOSER sur Futur — « ton but n'a pas pu être financé, il manquait X $ ». À livrer (lot à venir).
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
@@ -414,7 +414,7 @@
   le PDF, DEUX outils MCP lus par le LLM, et ÉCRASE successRate (projection.ts:2416). Trancher :
   brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
   pas au FVI » dans l'ADR.
-  🧭 **Routé `docs/A_FAIRE_MOI.md` le 2026-09-04 (lot 159)** — entrée de décision avec recommandation.
+  ✅ **Décision Marc 2026-09-04 (en session)** : BRANCHER l'impôt à vie dans le calcul (option a) — re-base FVI massif assumé. À livrer (lot à venir).
 - [ ] **`[ENG-RANKING-MODULES-ORPHELINS]`** (S, FAIBLE — RE-CADRÉ par la revue #683 : ma
   1re affirmation était à moitié FAUSSE) — `rankStrategies` (strategyRanking.ts) est orphelin
   (aucun appelant hors tests, re-vérifié alias compris). **`compareLifeScenarios` NE L'EST PAS** :
@@ -426,7 +426,7 @@
   ⚠️ AVANT tout branchement de `rankStrategies` : son score `balanced` compte l'impôt successoral
   DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax à 0,40 + axe tax = lifetimeTaxTotal
   qui l'inclut à 0,25 — relecture #681, sans effet aujourd'hui faute d'appelant).
-  🧭 **Routé `docs/A_FAIRE_MOI.md` le 2026-09-04 (lot 159)** — entrée de décision avec recommandation.
+  ✅ **Décision Marc 2026-09-04 (en session)** : RETIRER le module (le branchement resterait possible depuis git). À livrer (lot à venir).
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
@@ -470,7 +470,7 @@
   Options re-posées : (a) donner un `propertyGrowthRate?` à `RentalProperty` (cohérent avec les
   buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
   comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
-  🧭 **Routé `docs/A_FAIRE_MOI.md` le 2026-09-04 (lot 159)** — entrée de décision avec recommandation.
+  ✅ **Décision Marc 2026-09-04 (en session)** : taux PAR IMMEUBLE locatif (option a, comme les buts immobiliers). À livrer (lot à venir).
 - [ ] **`[ENG-RENEWAL-CHOC-MORT]`** (M, 🧭 **DEUX décisions pour Marc — MESURÉ 2026-08-25**) — le
   « choc » de taux au renouvellement hypothécaire est dérivé du PREMIER CARACTÈRE de l'identifiant
   du bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`). **Mesuré : il vaut ZÉRO partout dans le dépôt.**
@@ -489,7 +489,7 @@
   ⚠️ Ce ticket REMPLACE `[ENG-RENEWAL-M0]` (« renouvellement dès le mois 0 »), dont la prémisse est
   exacte mais sans conséquence : le renouvellement au m0 est LOGGÉ, et avec un choc nul il ne change
   ni le PMT ni le taux. Rien à corriger de ce côté tant que le choc est mort.
-  🧭 **Routé `docs/A_FAIRE_MOI.md` le 2026-09-04 (lot 159)** — entrée de décision avec recommandation.
+  ✅ **Décision Marc 2026-09-04 (en session)** : SAISIE « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé), livrée AVEC `[ENG-RENEWAL-RATE-MISMATCH]` dans le même lot. À livrer (lot à venir).
 - [ ] **`[ENG-RENEWAL-RATE-MISMATCH]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552, PRÉ-EXISTANT) —
   au renouvellement hypothécaire, le PMT est recalculé au NOUVEAU taux mais l'intérêt mensuel reste
   à `goal.mortgageRate` (`realEstateMonth.ts:~349`) : renouvellement 4,5 %→3 % mesuré → capital
@@ -512,7 +512,7 @@
   `projection.fluxForm` s'est INVERSÉE en règle (tolérance au cent). **RESTE la 🧭 décision** :
   le rendement fantôme de mi-mois (verser aussi l'arrivée dans la base d'exclusion — déplace
   −5 045,04 $ de patrimoine final, contre les goldens NEUTRALITÉ).
-  🧭 **Routé `docs/A_FAIRE_MOI.md` le 2026-09-04 (lot 159)** — entrée de décision avec recommandation.
+  ✅ **Décision Marc 2026-09-04 (en session)** : CORRIGER le rendement de mi-mois (exclure l'arrivée du meltdown de la croissance du mois plein, comme les cotisations ordinaires) — re-base SCIEMMENT des 2 goldens NEUTRALITÉ avec la mesure dans le commit. À livrer (lot à venir).
   ⚠️ **Le geste symétrique DÉPLACE DE L'ARGENT.** `contribNonReg` n'est pas un simple registre
   d'affichage : `growthApplication` s'en sert comme base d'exclusion de la croissance de mi-mois
   (`nonReg - contribNonReg`). L'alimenter retire un rendement fantôme sur de l'argent arrivé en

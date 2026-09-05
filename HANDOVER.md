@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟢 Session 2026-09-04 (soir) — MARC A RÉPONDU AUX SIX DÉCISIONS DU LOT 159, en session
+> Les six réponses sont dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées
+> dans les tickets BACKLOG. **Le backlog est débloqué** — six lots livrables :
+> - Meltdown mi-mois → **CORRIGER** (re-base sciemment des 2 goldens NEUTRALITÉ, mesure au commit).
+> - `goalShortfalls` → **EXPOSER sur Futur** (« il manquait X $ »).
+> - Croissance des locatifs → **taux PAR IMMEUBLE** (`propertyGrowthRate?` sur `RentalProperty`).
+> - Renouvellement hypothécaire → **saisie par bien** (défaut = taux actuel), livrée AVEC
+>   `[ENG-RENEWAL-RATE-MISMATCH]` dans le même lot.
+> - FVI/efficacité fiscale → **brancher l'impôt à vie** (re-base FVI assumé).
+> - `rankStrategies` → **RETIRER**.
+
 > ## 🟦 Session 2026-09-04 — Lot 159 : six décisions en attente sont enfin VISIBLES chez Marc
 > Routage (doc seul) — six tickets « décision de Marc » du BACKLOG n'avaient AUCUNE entrée dans
 > `docs/A_FAIRE_MOI.md` : bloqués sans être visibles. Batch écrit en tête du fichier (meltdown

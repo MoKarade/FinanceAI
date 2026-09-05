@@ -26,6 +26,10 @@
 >   `[ENG-RENEWAL-RATE-MISMATCH]` dans le même lot.
 > - FVI/efficacité fiscale → **brancher l'impôt à vie** (re-base FVI assumé).
 > - `rankStrategies` → **RETIRER**.
+> En chemin : CI rouge sur un dépôt inchangé — BOMBE DATÉE dans deux fixtures d'abonnements
+> (dates figées mai-juillet 2026 ; 62 jours plus tard, l'alerte « Plus débité depuis N jours »
+> rend un 2ᵉ « Netflix » → `getByText` rougit). Fixtures passées en dates RELATIVES, classe déjà
+> consignée (« un test qui fige une date pendant que le code lit l'horloge est une bombe »).
 
 > ## 🟦 Session 2026-09-04 — Lot 159 : six décisions en attente sont enfin VISIBLES chez Marc
 > Routage (doc seul) — six tickets « décision de Marc » du BACKLOG n'avaient AUCUNE entrée dans

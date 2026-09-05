@@ -25,13 +25,21 @@ describe('Planning — rendu de base (Charges fixes & Abonnements)', () => {
 
     it('détecte un abonnement récurrent depuis les transactions (heuristique)', () => {
         // 3 débits mensuels stables au même montant/marchand → détecté comme récurrent.
-        const transactions: Transaction[] = [
-            { id: 1, date: '2026-05-05', payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' } as unknown as Transaction,
-            { id: 2, date: '2026-06-05', payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' } as unknown as Transaction,
-            { id: 3, date: '2026-07-05', payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' } as unknown as Transaction,
-        ];
+        // ⚠️ Dates RELATIVES à aujourd'hui, jamais figées : le composant lit l'horloge
+        // (`subscriptionAlerts` déclare l'abo « arrêté » quand le dernier débit date de plus de
+        // deux cycles), donc une fixture à dates fixes devient une BOMBE — vécu le 2026-09-05,
+        // 62 jours après le dernier débit figé, l'alerte « Plus débité depuis N jours » a rendu
+        // un DEUXIÈME « Netflix » et `getByText` a rougi sur un dépôt inchangé.
+        const transactions: Transaction[] = [65, 35, 5].map((jours, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - jours);
+            return { id: i + 1, date: d.toISOString().slice(0, 10), payee: 'Netflix', amount: -18, category: 'Loisirs', status: 'processed' } as unknown as Transaction;
+        });
         render(<Planning transactions={transactions} />);
         expect(screen.queryByText(/Aucun abonnement détecté/)).not.toBeInTheDocument();
+        // La fixture décrit un abo ACTIF (dernier débit il y a 5 jours) : aucune alerte d'arrêt.
+        // Si cette ligne rougit un jour, c'est la fixture qui a re-dérivé vers le cas « arrêté ».
+        expect(screen.queryByText(/Plus débité depuis/)).not.toBeInTheDocument();
         expect(screen.getByText('Netflix')).toBeInTheDocument();
     });
 });

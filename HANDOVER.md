@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 183 : `formatCAD(… || 0)` — le formateur reçoit la valeur brute (`[FORMATCAD-OR-ZERO]`)
+> Re-recensé par le MOTIF du ticket (sa liste en annonçait 16, trois avaient disparu) : 13 sites, huit
+> formateurs de colonnes `ChartDataTable`, cinq tuiles de l'infobulle Retraite, un `formatter` Recharts —
+> tous passent la valeur brute à `formatCAD`, qui rend « — » sur non fini. Garde de SOURCE ajoutée DANS
+> `formatMonetaireSourceUnique.test.ts` (même règle que « `formatCAD` UNIQUEMENT », vue par son autre face)
+> avec anti-vacuité sur les trois formes retirées ; garde COMPORTEMENTALE `Retirement.tooltipNoFakeZero`
+> (faux `Tooltip` Recharts qui rend le contenu avec un point troué : CELI absent et Liquidites NaN → « — »,
+> REER = contrôle). ⚠️ Les tuiles Non-Enreg./CELIAPP sont CONDITIONNELLES (`> 0`) : un trou les cache,
+> il ne les met pas à zéro — la garde vise les tuiles inconditionnelles. Perturbations : `|| 0` remis sur
+> la tuile CELI → 2 rouges ; sur DebtManager → la garde de source seule. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 182 : cadre anti-injection au niveau du protocole MCP (`[MCP-NO-INJECTION-FRAME]`)
 > `mcp/instructions.ts` (module sans import) porte `MCP_INSTRUCTIONS` — posé au constructeur `McpServer`,
 > publié dans `initialize.instructions` — et `CLAUSE_DONNEES_TOOL`, ajoutée en fin de description des 8

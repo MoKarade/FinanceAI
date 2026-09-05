@@ -77,7 +77,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
     // projection des dividendes, opaque aux lecteurs d'écran). Mois (axe X, déjà formaté = visible)
     // + revenu mensuel + cumul annuel. Mode privé masque les MONTANTS (pas le mois).
     const dividendColumns = useMemo<ChartDataColumn[]>(() => {
-        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
         return [
             { key: 'month', label: 'Mois', format: (v) => String(v ?? '') },
             { key: 'Revenu', label: 'Revenu mensuel', format: money },
@@ -197,7 +197,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     contentStyle={CHART_TOOLTIP_STYLE}
                                     itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                                     labelStyle={{ color: '#9ca3af', fontSize: '10px', marginBottom: '4px' }}
-                                    formatter={(val: number) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val || 0), 'Revenu Mensuel']}
+                                    formatter={(val: number) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val), 'Revenu Mensuel']}
                                 />
                                 <Bar dataKey="Revenu" fill="#4f9d86" radius={[4, 4, 0, 0]} maxBarSize={40}>
                                     {dividendProjectionData.map((_, index) => (

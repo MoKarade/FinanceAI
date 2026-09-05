@@ -56,7 +56,7 @@ export const ScenariosComparatifsCard: React.FC<ScenariosComparatifsCardProps> =
     // (année) reste visible. Mêmes séries que l'AreaChart ; le graphe n'affiche que les scénarios pertinents
     // selon le type de propriété, mais la table les liste tous (lecture exhaustive = signal plus riche au SR).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
-    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
     const scenariosColumns: ChartDataColumn[] = [
         { key: 'year', label: 'Année', format: (v) => `An ${v}` },
         { key: 'Acheter (Résidence)', label: 'Acheter (Résidence)', format: money },

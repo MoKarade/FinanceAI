@@ -162,7 +162,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     const allocationColumns: ChartDataColumn[] = [
         { key: 'name', label: "Classe d'actif" },
-        { key: 'value', label: 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'value', label: 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v) },
         { key: 'percent', label: 'Part', format: (v) => `${(Number(v) || 0).toFixed(1)}%` },
     ];
 

@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Chaque immeuble locatif a maintenant son taux de croissance)
+
+- **Ajouté** (décision Marc 2026-09-04) : un champ « Croissance %/an » par immeuble locatif dans
+  le panneau Patrimoine. Avant, la valeur de tous les locatifs croissait à 3 %/an, non réglable
+  (le réglage global existait dans le code mais aucun écran ne permettait de l'écrire). Vide =
+  3 % comme avant ; un 0 tapé reste 0 (« je ne parie pas sur l'appréciation » est une saisie
+  légitime).
+
 ## [unreleased] — 2026-09-05 (Futur te dit quand un objectif n'a pas pu être financé)
 
 - **Ajouté** (décision Marc 2026-09-04) : quand la projection n'arrive pas à financer un de tes

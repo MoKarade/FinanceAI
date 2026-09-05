@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, __runScenarioForTests, type SimulationParams } from '../../services/projection';
 import {
-    initRentalStates, processRentalMonth, rentalMonthlyPayment,
+    initRentalStates, processRentalMonth, rentalMonthlyPayment, DEFAULT_RENTAL_GROWTH_PCT,
     DEFAULT_RENTAL_AMORTIZATION_YEARS,
 } from '../../services/projection/rentalMonth';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
@@ -109,7 +109,7 @@ describe('[ENG-W5-RENTAL-OFFBALANCE] le module pur', () => {
         const states = initRentalStates([{ ...IMMEUBLE, mortgageBalance: 1_000, mortgageRate: 5, amortizationYears: 25 }]);
         // Mensualité artificiellement énorme : le plafond doit mordre.
         states[0].monthlyPayment = 999_999;
-        const r = processRentalMonth(states, 3, ['Duplex']);
+        const r = processRentalMonth(states, ['Duplex']);
         expect(states[0].mortgage).toBe(0);
         // Le service payé vaut le solde + son intérêt du mois, pas la mensualité folle.
         expect(r.debtService).toBeLessThan(1_100);
@@ -127,10 +127,41 @@ describe('[ENG-W5-RENTAL-OFFBALANCE] le module pur', () => {
     });
 
     it('l’équité rendue est DÉJÀ nette (ne jamais re-soustraire l’hypothèque)', () => {
-        const states = initRentalStates([IMMEUBLE]);
-        const r = processRentalMonth(states, 0, ['Duplex']);   // croissance 0 → arithmétique lisible
+        // [ENG-PROPGROWTH-PAR-IMMEUBLE] croissance 0 EXPLICITE sur l'immeuble → arithmétique lisible
+        // (et c'est la saisie légitime que le 0 doit exprimer — leçon ENG-PROPGROWTH-ZERO-INEXPRIMABLE).
+        const states = initRentalStates([{ ...IMMEUBLE, propertyGrowthRate: 0 }]);
+        const r = processRentalMonth(states, ['Duplex']);
         expect(r.equity).toBeCloseTo(states[0].currentValue - states[0].mortgage, 6);
         expect(r.equity + r.mortgageBalance).toBeCloseTo(states[0].currentValue, 6);
+    });
+});
+
+describe('[ENG-PROPGROWTH-PAR-IMMEUBLE] la croissance vit PAR immeuble (décision Marc 2026-09-04)', () => {
+    it('deux immeubles, deux taux : chacun croît au SIEN — rouge si le semis ignore le champ', () => {
+        const states = initRentalStates([
+            { ...IMMEUBLE, id: 'gel', propertyGrowthRate: 0 },
+            { ...IMMEUBLE, id: 'chaud', propertyGrowthRate: 6 },
+        ]);
+        const avantGel = states[0].currentValue;
+        const avantChaud = states[1].currentValue;
+        processRentalMonth(states, ['Gelé', 'Chaud']);
+        expect(states[0].currentValue).toBeCloseTo(avantGel, 6); // 0 explicite = 0, pas 3
+        expect(states[1].currentValue).toBeCloseTo(avantChaud * Math.pow(1.06, 1 / 12), 6);
+        // Anti-vacuité : le taux « chaud » fait vraiment bouger la valeur.
+        expect(states[1].currentValue).toBeGreaterThan(avantChaud + 1_000);
+    });
+
+    it('champ ABSENT → défaut documenté (3 %), écrit dans l\'état au semis, jamais un repli tardif', () => {
+        const states = initRentalStates([IMMEUBLE]);
+        expect(states[0].growthRatePct).toBe(DEFAULT_RENTAL_GROWTH_PCT);
+        const avant = states[0].currentValue;
+        processRentalMonth(states, ['Duplex']);
+        expect(states[0].currentValue).toBeCloseTo(avant * Math.pow(1 + DEFAULT_RENTAL_GROWTH_PCT / 100, 1 / 12), 6);
+    });
+
+    it('0 EXPLICITE saisi → 0 dans l\'état (leçon ENG-PROPGROWTH-ZERO-INEXPRIMABLE)', () => {
+        const states = initRentalStates([{ ...IMMEUBLE, propertyGrowthRate: 0 }]);
+        expect(states[0].growthRatePct).toBe(0);
     });
 });
 
@@ -225,7 +256,7 @@ describe('[ENG-W5-RENTAL-OFFBALANCE] l’immeuble se PARTAGE au divorce comme le
         // fois trop vite ET ponctionnerait un cashflow que le divorcé n'a plus. Divergence VOULUE
         // avec le chemin des buts immobiliers, qui ne partage pas `calculatedPmt`
         // (défaut préexistant, tracé au BACKLOG).
-        const states = initRentalStates([IMMEUBLE]);
+        const states = initRentalStates([{ ...IMMEUBLE, propertyGrowthRate: 0 }]);
         const pmtInitial = states[0].monthlyPayment;
         expect(pmtInitial).toBeGreaterThan(0);
 
@@ -235,7 +266,7 @@ describe('[ENG-W5-RENTAL-OFFBALANCE] l’immeuble se PARTAGE au divorce comme le
         states[0].mortgage *= keep;
         states[0].monthlyPayment *= keep;
 
-        const r = processRentalMonth(states, 0, ['Duplex']);
+        const r = processRentalMonth(states, ['Duplex']);
         expect(states[0].monthlyPayment).toBeCloseTo(pmtInitial * keep, 6);
         // Le service payé reste proportionné à la dette conservée.
         expect(r.debtService).toBeCloseTo(pmtInitial * keep, 6);

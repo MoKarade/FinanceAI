@@ -28,6 +28,7 @@
   ou (b) réglage global. [Probable] Recommandation : (a), cohérent avec les buts immobiliers qui
   ont déjà leur taux par bien.
   ✅ **RÉPONDU 2026-09-04 (en session)** : (a) champ `propertyGrowthRate?` PAR IMMEUBLE locatif ; le réglage config-niveau mort est retiré du chemin.
+  ✅ **LIVRÉE au lot 164 (2026-09-05)** — champ « Croissance %/an » par immeuble dans le panneau des locatifs ; le lecteur config est retiré du chemin.
 - [x] **[DÉCISION — ENG-RENEWAL-CHOC-MORT + RATE-MISMATCH]** (mesuré 2026-08-25) — le « choc de
   taux » au renouvellement hypothécaire vaut ZÉRO pour tout identifiant atteignable (dérivé du
   hachage d'un id technique) : le risque de renouvellement n'est PAS modélisé. (1) Le modéliser

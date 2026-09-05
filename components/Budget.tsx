@@ -1385,7 +1385,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     {/* [BUDGET-MONTHLY-LEDGER] Grand livre mensuel (12 mois) : RÉEL des revenus ET
                         des dépenses par mois + solde (demande Marc). Lignes de dépenses =
                         exactement les catégories des transactions (mêmes que les postes). */}
-                    {(ledger.expenseRows.length > 0 || ledger.incomeRows.length > 0) && (
+                    {(ledger.expenseRows.length > 0 || ledger.incomeRows.length > 0 || ledger.entreesHorsRevenuRows.length > 0) && (
                         <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
                             <div className="flex items-center gap-2 mb-3">
                                 <Icon name="chart" size={16} />
@@ -1438,6 +1438,40 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         ))}
                                         {ledger.incomeRows.length === 0 && (
                                             <tr><td colSpan={ledger.months.length + 2} className="text-ink-400 text-meta py-1.5">Aucun revenu dans les transactions sur 12 mois.</td></tr>
+                                        )}
+                                        {/* — ENTRÉES HORS REVENU — [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] (décision Marc
+                                            2026-09-05, 2b) : exclues du « Total revenus » et du solde, comme du KPI
+                                            Revenus — mais NOMMÉES ici, ligne par ligne, jamais perdues en silence. */}
+                                        {ledger.entreesHorsRevenuRows.length > 0 && (
+                                            <>
+                                                <tr className="border-t border-white/10">
+                                                    <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-ink-300 font-bold pt-3 pb-1 sticky left-0 bg-surface">Entrées hors revenu (exclues du total et du solde)</th>
+                                                </tr>
+                                                {ledger.entreesHorsRevenuRows.map(row => (
+                                                    <tr key={`hr-${row.category}`} className="border-t border-white/5">
+                                                        <th scope="row" className="text-left font-medium text-ink-200 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
+                                                        {row.byMonth.map((v, i) => (
+                                                            <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
+                                                                {v > 0
+                                                                    ? <PrivateAmount className="text-ink-300">{formatCAD(v)}</PrivateAmount>
+                                                                    : <span className="text-ink-400" aria-label="aucune entrée">—</span>}
+                                                            </td>
+                                                        ))}
+                                                        <td className="text-right py-1.5 pl-2 font-mono">
+                                                            <PrivateAmount className="text-ink-200 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                <tr className="font-medium">
+                                                    <th scope="row" className="text-left text-ink-200 py-1 pr-2 sticky left-0 bg-surface">Total entrées hors revenu</th>
+                                                    {ledger.entreesHorsRevenuByMonth.map((v, i) => (
+                                                        <td key={ledger.months[i]} className="text-right py-1 px-1.5 font-mono">
+                                                            <PrivateAmount className="text-ink-300">{formatCAD(v)}</PrivateAmount>
+                                                        </td>
+                                                    ))}
+                                                    <td className="py-1 pl-2" />
+                                                </tr>
+                                            </>
                                         )}
                                         {/* — DÉPENSES — */}
                                         <tr className="border-t border-white/10">

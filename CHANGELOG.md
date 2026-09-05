@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le grand livre du Budget ne compte plus un retour marchand comme un revenu)
+
+- **Corrigé** : le tableau « Réel par mois » comptait TOUTE entrée d'argent comme un revenu
+  (retour marchand, remboursement d'impôt, dépôt non classé…), alors que la tuile Revenus ne compte
+  que la paie et les revenus divers — deux totaux différents sur le même écran. Le grand livre suit
+  désormais la même règle, et ces entrées apparaissent dans une section à part, « Entrées hors
+  revenu », ligne par ligne avec leur total : exclues du revenu et du solde, jamais perdues.
+
 ## [unreleased] — 2026-09-05 (Le Budget compare enfin les dépenses aux cibles sur la même base : hors impôts)
 
 - **Corrigé** : les tuiles Dépenses, Fin de mois et Restant de l'onglet Budget comptaient les

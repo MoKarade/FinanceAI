@@ -310,6 +310,14 @@ export interface MonthlyLedger {
      * (indisponible), jamais comme un vrai zéro ([BUDGET-3-VUES]).
      */
     coveredFullMonths: number;
+    /** [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] (décision Marc 2026-09-05, réponse 2b) Entrées POSITIVES
+     *  hors `INCOME_CATEGORIES` (retour marchand, remboursement d'impôt, dépôt non classé,
+     *  remboursement reçu…) : EXCLUES de `incomeRows`/`totalIncomeByMonth`/`netByMonth` — le grand
+     *  livre dit désormais le MÊME revenu que le KPI Revenus — mais jamais perdues : listées ici
+     *  par catégorie (« Non classées » pour les statuts à classer), tri par total décroissant. */
+    entreesHorsRevenuRows: LedgerRow[];
+    /** Total mensuel des entrées hors revenu (à afficher NOMMÉ, jamais fondu dans un total). */
+    entreesHorsRevenuByMonth: number[];
 }
 
 /** Statuts « à classer » (partagés : dénominateur commun de NON_BUDGET_CATEGORIES). */
@@ -319,9 +327,10 @@ const INCOME_STATUS_CATEGORIES = new Set<string>(STATUS_CATEGORIES);
 /**
  * Grand livre mensuel : RÉEL des dépenses ET des revenus par mois (demande Marc 2026-07-15 :
  * « chaque mois, je devrai avoir le réel de dépenses et revenus pour ce mois ci »).
- * Dépenses = catégories fournies (postes) ; revenus = toute transaction positive non-transfert,
- * groupée par sa catégorie (« Autres revenus » pour les statuts à classer). Les moyennes par
- * ligne EXCLUENT le mois courant (partiel).
+ * Dépenses = catégories fournies (postes) ; revenus = transactions positives non-transfert des
+ * SEULES `INCOME_CATEGORIES` (la même règle que le KPI Revenus — avant, TOUT positif comptait ici,
+ * d'où deux « soldes du mois » différents côte à côte, écart 11,7 % mesuré) ; tout autre positif
+ * part dans `entreesHorsRevenuRows`, nommé. Les moyennes par ligne EXCLUENT le mois courant (partiel).
  */
 export function buildMonthlyLedger(
     transactions: Transaction[],
@@ -335,6 +344,8 @@ export function buildMonthlyLedger(
 
     const expense = new Map<string, number[]>(expenseCategories.map(c => [c, months.map(() => 0)]));
     const income = new Map<string, number[]>();
+    const horsRevenu = new Map<string, number[]>();
+    const entreesHorsRevenuByMonth = months.map(() => 0);
     // [BUDGET-MATCH-UNIFY] Cache catégorie→poste résolu (le fuzzy est O(postes) ; ~2000 tx).
     const resolved = new Map<string, string>();
     const totalExpenseByMonth = months.map(() => 0);
@@ -360,10 +371,18 @@ export function buildMonthlyLedger(
             if (!expense.has(cat)) expense.set(cat, months.map(() => 0));
             expense.get(cat)![mi] += Math.abs(t.amount);
         } else if (t.amount > 0) {
-            totalIncomeByMonth[mi] += t.amount;
-            const cat = INCOME_STATUS_CATEGORIES.has(t.category ?? '') ? 'Autres revenus' : t.category;
-            if (!income.has(cat)) income.set(cat, months.map(() => 0));
-            income.get(cat)![mi] += t.amount;
+            // [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] Revenu = `INCOME_CATEGORIES` seulement (source
+            // unique, celle du KPI) ; le reste est EXCLU du revenu ET montré sous son nom.
+            if (t.category === INCOME_CATEGORIES.salary || t.category === INCOME_CATEGORIES.other) {
+                totalIncomeByMonth[mi] += t.amount;
+                if (!income.has(t.category)) income.set(t.category, months.map(() => 0));
+                income.get(t.category)![mi] += t.amount;
+            } else {
+                entreesHorsRevenuByMonth[mi] += t.amount;
+                const cat = INCOME_STATUS_CATEGORIES.has(t.category ?? '') ? 'Non classées' : t.category;
+                if (!horsRevenu.has(cat)) horsRevenu.set(cat, months.map(() => 0));
+                horsRevenu.get(cat)![mi] += t.amount;
+            }
         }
     }
 
@@ -384,6 +403,8 @@ export function buildMonthlyLedger(
         months,
         expenseRows: toRows(expense),
         incomeRows: toRows(income),
+        entreesHorsRevenuRows: toRows(horsRevenu),
+        entreesHorsRevenuByMonth,
         totalExpenseByMonth,
         totalIncomeByMonth,
         netByMonth: months.map((_, i) => totalIncomeByMonth[i] - totalExpenseByMonth[i]),

@@ -97,6 +97,7 @@
 
 - [x] **[DÉCISION — BUDGET-LEDGER-REVENUS-ORPHELINS]** (2026-08-26, même audit) — le grand livre
   ✅ **RÉPONDU 2026-09-05 (en session)** : **(b)** — les positifs hors salaire/revenus divers sont EXCLUS du revenu, explicitement et sous un nom visible (jamais perdus en silence). Ticket `[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]` au BACKLOG.
+  ✅ **LIVRÉE au lot 174 (2026-09-05)** — grand livre et KPI disent le même revenu ; section « Entrées hors revenu » nommée ligne par ligne.
   budget (`utils/budgetSync.ts`) signale les DÉPENSES orphelines (catégories de transactions sans
   poste, panneau Parité) mais AUCUN équivalent côté REVENUS : tout montant positif hors
   `{Salaire, Revenus divers}` (retour marchand, remboursement d'impôt, dépôt non catégorisé…)

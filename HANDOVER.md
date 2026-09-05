@@ -16,6 +16,19 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 176 : la purge d'artefacts au pull Drive prévient par un toast (`[PURGE-TOAST-UX]`)
+> Décision Marc 11 (OUI). Un AVIS est un événement, pas un état : canal distinct de `SyncStatus`
+> dans `syncStatusStore` (racine du graphe, 0 dep) — `emitSyncNotice` côté service, `subscribeSyncNotice`
+> exporté par le barrel ; `applyPulledPayload` émet à côté de son `logError` (phrase sans montant, rien
+> à masquer) ; `useAppBootEffects` s'abonne AVANT `runBootSync` (un avis sans abonné est perdu, pas de
+> file) et rend le toast, désabonné au démontage. Aucun module sync* n'importe un composant. Garde à
+> trois étages : canal (abonné/désabonné), émission sur le VRAI orchestrateur (harnais du flow test :
+> payload Drive pollué → 1 avis + restauration désinfectée ; payload propre → 0 avis, contrôle),
+> câblage du boot lu en source décommentée (ordre abonnement < premier pull, rappel → showToast,
+> désabonnement). Perturbations : émission retirée → 1 rouge (le contrôle « payload propre » reste vert,
+> par conception) ; abonnement retiré → 1 rouge.
+> Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 175 : en mode discret, le diagnostic IA du Budget ne part plus (`[PRIVACY-CONTEXTE-IA]`)
 > Décision Marc 13 (MASQUER). Recensé : le CHAT était déjà couvert — publisher purgé en mode discret
 > + chokepoint d'envoi qui refuse la ligne de contexte (finding #490, test existant) ; les quatre

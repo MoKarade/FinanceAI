@@ -13,7 +13,7 @@
 // INERTE tant que VITE_GOOGLE_CLIENT_ID n'est pas configuré (cf gisAuth.isGoogleAuthConfigured).
 
 // ── Statut observable + abonnement (syncStatusStore) ─────────────────────────
-export { getSyncStatus, subscribeSyncStatus, type SyncStatus } from './syncStatusStore';
+export { getSyncStatus, subscribeSyncStatus, subscribeSyncNotice, type SyncStatus, type SyncNotice } from './syncStatusStore';
 
 // ── Types partagés (syncTypes) ───────────────────────────────────────────────
 export type { ConflictSideCounts, ConflictSummary } from './syncTypes';

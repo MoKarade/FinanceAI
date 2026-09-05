@@ -19,7 +19,7 @@ import { installGlobalErrorHandlers, logError } from '../services/errorLogger';
 import { initAutoBackup, createBackupNow } from '../services/backupAuto';
 import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
 import { loadLockedProjection } from '../services/lockedProjectionStore';
-import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout } from '../services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout, subscribeSyncNotice } from '../services/sync/syncOrchestrator';
 import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
 
@@ -114,6 +114,10 @@ export function useAppBootEffects(): void {
         // Sync Google Drive — inerte si VITE_GOOGLE_CLIENT_ID absent. Init + sync silencieuse au
         // boot (uniquement si déjà connecté), puis push debouncé sur chaque changement du store.
         initSync(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+        // [PURGE-TOAST-UX] Abonnement générique aux AVIS de sync → toast. Posé AVANT le premier pull
+        // (un avis sans abonné est perdu, il n'y a pas de file) ; un seul point de sortie UI pour
+        // tous les avis futurs, sans qu'un module sync* n'importe jamais le composant Toast.
+        const unsubNotice = subscribeSyncNotice((n) => showToast(n.texte, 'info'));
         const syncTimer = setTimeout(() => { void runBootSync(); }, 2500);
         const unsubSync = useFinanceStore.subscribe(() => schedulePush());
         // [AUTH-DRIVE-INACTIVITY] Déconnexion auto après 8h d'inactivité (demande Marc 2026-07-22) :
@@ -141,6 +145,7 @@ export function useAppBootEffects(): void {
             clearTimeout(timer);
             clearTimeout(syncTimer);
             unsubSync();
+            unsubNotice();
             stopPolling();
             stopInactivity();
             if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide);

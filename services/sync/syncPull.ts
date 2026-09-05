@@ -22,7 +22,7 @@ import { logError } from '../errorLogger';
 import type { ApiKeys } from './syncTypes';
 import { STORE_KEY, hasAnyKey } from './syncSnapshot';
 import { pushNow } from './syncPush';
-import { setStatus } from './syncStatusStore';
+import { setStatus, emitSyncNotice } from './syncStatusStore';
 import { currentMeta, readDrive, resolveSub } from './syncMeta';
 import { handleError } from './syncErrors';
 
@@ -87,6 +87,13 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
         logError({
             source: 'storage', severity: 'warning',
             message: `applyPulledPayload : ${pullPurge.removedTotal} artefact(s) de persona retirés du payload Drive avant restauration`,
+        });
+        // [PURGE-TOAST-UX] (décision Marc 2026-09-05) Le journal ne suffit pas : une mutation
+        // automatique des vraies données se DIT à l'utilisateur, comme la purge locale au boot.
+        emitSyncNotice({
+            kind: 'purge-pull',
+            removed: pullPurge.removedTotal,
+            texte: `${pullPurge.removedTotal} donnée(s) de test (persona) retirée(s) de ta copie Drive avant restauration (backup pris avant).`,
         });
     }
     localStorage.setItem(STORE_KEY, JSON.stringify(cleanPayload));

@@ -313,7 +313,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/realEstateMonth.ts', value: '2022', family: 'fiscal',
       reason: '⚠️ MA PREMIÈRE RAISON ÉTAIT FAUSSE (revue 2026-08-20) : j’y avais lu la règle anti-flip et l’exemption de résidence principale. Le code est DANS le bloc RAP et pilote `rapRepaymentStartOffset` — c’est la borne BASSE de la fenêtre du report temporaire du DÉBUT DE REMBOURSEMENT du RAP (Budget fédéral 2024 : 5 ans de grâce au lieu de 2 pour les retraits du 1er janvier 2022 au 31 décembre 2025). Rien à voir avec le gain en capital. À ancrer §7 (régimes enregistrés), avec la durée de 15 ans — pas §8.' },
     { file: 'services/projection/realEstateMonth.ts', value: '2025', family: 'fiscal',
-      reason: 'Borne HAUTE de la fenêtre du report de remboursement du RAP (Budget fédéral 2024), cf. l’entrée `2022` du même fichier. Les deux bornes ET la durée de grâce (5 ans vs 2) doivent être sourcées ENSEMBLE en §7 : en ancrer une seule laisserait une règle à moitié fausse.' },
+      reason: 'Borne HAUTE de la fenêtre du report de remboursement du RAP (Budget fédéral 2024), cf. l’entrée `2022` du même fichier. Les deux bornes ET la durée de grâce (5 ans vs 2) doivent être sourcées ENSEMBLE en §7 : en ancrer une seule laisserait une règle à moitié fausse. ✅ Les quatre le sont depuis le 2026-09-05 (FISCAL_REFERENCE §7 « RAP — remboursement », source relayée, `[FISC-RAP-GRACE-WINDOW]`).' },
     { file: 'services/projection/realEstateMonth.ts', value: '60', family: 'design',
       reason: 'Terme hypothécaire de 5 ans exprimé en MOIS : `remainingMonths > 60` empêche de « renouveler » un prêt dont il reste moins d’un terme. Convention du marché canadien, pas une règle de loi. ⚠️ Son JUMEAU `monthsSincePurchase % 60 === 0`, deux lignes plus haut, reste INVISIBLE au scan — l’opérateur `%` n’est pas une position retenue. Les deux 60 disent la même chose et doivent bouger ensemble ; celui-ci sert de sentinelle pour l’autre.' },
     // ⚠️ 2026-09-05 — les entrées `0.01` (plancher du taux renouvelé) et `0.015` (amplitude du
@@ -330,7 +330,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/realEstateMonth.ts', value: '0.65', family: 'fiscal',
       reason: '[×2] Ratio prêt/valeur au-delà duquel le modèle déclenche un appel de marge (test du seuil, puis calcul du surplus). ⚠️ Reclassé `fiscal` en revue : j’avais écrit « pratique commerciale » alors que le §8 que je citais en preuve dit « LTV 65 %, plafond B-20 de la portion réavançable » — B-20 est une ligne directrice OSFI, source réglementaire dont §8 ancre déjà quatre constantes (`OSFI_MQR_FLOOR`, `OSFI_MQR_BUFFER`, GDS, TDS). Une raison ne peut pas contredire la section qu’elle invoque.' },
     { file: 'services/projection/realEstateMonth.ts', value: '15', family: 'fiscal',
-      reason: 'Durée de remboursement du RAP (régime d’accession à la propriété) : 15 ans, ARC. Non ancrée dans FISCAL_REFERENCE — à ajouter §7.' },
+      reason: 'Durée de remboursement du RAP (régime d’accession à la propriété) : 15 ans, ARC. ✅ Ancrée en FISCAL_REFERENCE §7 « RAP — remboursement » le 2026-09-05 (source relayée, `[FISC-RAP-15ANS]`).' },
 
     // ── services/projection/w5Effects.ts ─────────────────────────────────────────────────────
     { file: 'services/projection/w5Effects.ts', value: '0.45', family: 'fiscal',
@@ -490,7 +490,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'utils/donationCredit.ts', value: '0.24', family: 'fiscal',
       reason: '`DONATION_CREDIT_RATES.qc.excess` — taux du crédit québécois pour dons au-delà de 200 $ (24 %). Barème Revenu Québec, ancré §10.' },
     { file: 'services/projection/realEstateMonth.ts', value: '5', family: 'fiscal',
-      reason: 'Durée de la période de grâce ALLONGÉE du RAP (5 ans au lieu de 2) pour les retraits de la fenêtre 2022-2025 — Budget fédéral 2024. Elle forme un TOUT avec les bornes `2022`/`2025` et la durée de 15 ans du même fichier : les quatre se sourcent ou se retirent ENSEMBLE, ticket `[FISC-RAP-GRACE-WINDOW]`.' },
+      reason: 'Durée de la période de grâce ALLONGÉE du RAP (5 ans au lieu de 2) pour les retraits de la fenêtre 2022-2025 — Budget fédéral 2024. Elle forme un TOUT avec les bornes `2022`/`2025` et la durée de 15 ans du même fichier : les quatre se sourcent ou se retirent ENSEMBLE, ticket `[FISC-RAP-GRACE-WINDOW]`. ✅ Sourcées ensemble le 2026-09-05 (FISCAL_REFERENCE §7, relayé).' },
     { file: 'services/projection/setupSimulation.ts', value: '1.0', family: 'design',
       reason: 'Rendement de repli des LIQUIDITÉS dans le jeu de taux conservateur (1,0 %/an). Hypothèse de marché.' },
     { file: 'services/projection/setupSimulation.ts', value: '3.0', family: 'design',

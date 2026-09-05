@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-GIS-COUPLE-RATE]` — LIVRÉ (lot 169, PR #900)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-GIS-COUPLE-RATE]`** ✅ **LIVRÉ au lot 169 (2026-09-05)** — `GIS_CLAWBACK_RATE_COUPLE_PER_ADULT` = 0,25 (1 $ par 4 $ de revenu combiné pour chaque conjoint, source relayée dite telle quelle en FISCAL_REFERENCE §6.3) ; le seuil 29 760 $ redevient vivant ; 3 gardes unitaires (pente = moitié du célibataire, 7 944 $/an à 15 888 $, seuil vivant) + 1 garde de chaîne moteur ; mesuré +57 315 $ (couple modeste) / +3 075 $ (couple 400 k$) / 0 $ (célibataire, contrôle). (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée cohérente sur 4 sources : couple = **1 $ par 4 $ de revenu combiné POUR CHAQUE conjoint** (0,25/adulte), seul = 1 $ par 2 $ — DÉBLOQUÉ ; table officielle des seuils souhaitable, non bloquante pour le taux.
+  confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
+  COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
+  formule s'annule dès 15 888 $) ; test `tax.test.ts:968` VACUEUX. Mesuré : 0 $ vs 7 944 $/an à
+  15 888 $ combiné. ⚠️ Exiger la table SC + corriger FISCAL_REFERENCE §6 + remplacer le test, même PR.
+
 ## 2026-09-05 — `[FISC-RRIF-94-FACTOR]` — LIVRÉ (lot 168, PR #899)
 
 Ticket d'origine tel qu'au moment de l'archivage :

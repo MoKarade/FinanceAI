@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 170 : quatre règles fiscales ANCRÉES (doc + raisons du ratchet, code inchangé)
+> `[FISC-RAP-15ANS]` + `[FISC-RAP-GRACE-WINDOW]` (15 ans, début 2e année, fenêtre 2022-2025 → 5e
+> année — les quatre littéraux sourcés ENSEMBLE, sous-section « RAP — remboursement » en §7),
+> `[FISC-RRSP-LIMITS-PRE2024-DOC]` (14 plafonds 2010-2023 ajoutés à §7), `[FISC-LINE361-PERCONJOINT-
+> REDUC]` (réduction par conjoint sur le revenu familial : ligne ajoutée à la table ligne 361). Tout en
+> source RELAYÉE, écrite comme telle. **Le code était exact aux quatre endroits — il manquait la
+> protection, pas la valeur.** Raisons du ratchet fiscal mises à jour (plus de « non ancrée »). Doc +
+> commentaires seulement : rien de servi ne change. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 169 : la récupération du SRG d'un couple est 25 ¢/$ par adulte, pas 50 ¢
 > `[FISC-GIS-COUPLE-RATE]` → livré. Le taux célibataire était appliqué PAR ADULTE sur le revenu
 > COMBINÉ : SRG nul dès 15 888 $, seuil 29 760 $ mort. Nouvelle constante

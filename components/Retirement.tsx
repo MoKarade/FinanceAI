@@ -216,7 +216,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     // (axe X) + rente gouv./PSV + revenu total + besoin (dépenses). Mode privé masque les MONTANTS
     // (pas l'âge). Mêmes dataKeys que le graphe : IncomeRetirement / Income / Expenses.
     const cashflowColumns = useMemo<ChartDataColumn[]>(() => {
-        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
         return [
             { key: 'age', label: 'Âge', format: (v) => v != null ? `${v} ans` : '' },
             { key: 'IncomeRetirement', label: 'Rente gouv. + PSV', format: money },
@@ -484,28 +484,28 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-primary font-bold mb-1">CELI</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELI || 0)}</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELI)}</PrivateAmount>
                     </div>
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-info-500 font-bold mb-1">REER</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.REER || 0)}</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.REER)}</PrivateAmount>
                     </div>
                     {/* Revue #245 (a11y S1) — CELIAPP visible au stack doit avoir sa valeur TEXTE ici. */}
                     {(data.CELIAPP || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-[#2dd4bf] font-bold mb-1">CELIAPP</div>
-                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELIAPP || 0)}</PrivateAmount>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.CELIAPP)}</PrivateAmount>
                         </div>
                     )}
                     {(data.NonReg || 0) > 0 && (
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                             <div className="text-tiny text-warning-500 font-bold mb-1">Non-Enreg.</div>
-                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.NonReg || 0)}</PrivateAmount>
+                            <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.NonReg)}</PrivateAmount>
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
                         <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidites</div>
-                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.Liquidites || 0)}</PrivateAmount>
+                        <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.Liquidites)}</PrivateAmount>
                     </div>
                 </div>
             </div>

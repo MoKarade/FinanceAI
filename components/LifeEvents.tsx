@@ -154,7 +154,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     // masqué en mode privé). Le breakdown a la forme { name, value, color }.
     const breakdownColumns: ChartDataColumn[] = [
         { key: 'name', label: 'Poste', format: (v) => String(v ?? '') },
-        { key: 'value', label: 'Montant estimé', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
+        { key: 'value', label: 'Montant estimé', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v) },
     ];
 
     return (

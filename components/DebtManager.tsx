@@ -127,7 +127,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // opaque aux lecteurs d'écran). Mois (axe X) + solde restant + intérêts cumulés. Mode privé
     // masque les MONTANTS (pas le numéro de mois).
     const debtColumns = useMemo<ChartDataColumn[]>(() => {
-        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
         return [
             { key: 'month', label: 'Mois', format: (v) => `Mois ${v ?? 0}` },
             { key: 'balance', label: 'Solde restant', format: money },

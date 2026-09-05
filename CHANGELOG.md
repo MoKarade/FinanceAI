@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Une donnée absente s'affiche « — », plus « 0 $ »)
+
+- **Corrigé** : dans treize tableaux et infobulles (Retraite, Dettes, Placements, Dividendes,
+  Événements de vie, comparaisons immobilières), une valeur absente ou invalide était affichée comme
+  un « 0 $ » crédible. Elle s'affiche maintenant « — », comme partout ailleurs dans l'app.
+
 ## [unreleased] — 2026-09-05 (Le connecteur MCP porte enfin un cadre anti-injection, comme le chat)
 
 - **Sécurité** : le serveur MCP (v0.11.0) publie à la connexion des consignes d'usage — le texte

@@ -74,7 +74,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
     // [A11Y-CHARTS] (LOT 3) — colonnes de la table sr-only (alternative texte à l'AreaChart multi-
     // propriétés, opaque aux lecteurs d'écran). Année (axe X, visible) + une colonne d'équité ($) par
     // propriété (= dataKey de chaque <Area>). Mode privé masque les MONTANTS (pas l'année).
-    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0);
+    const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
     const comparisonColumns: ChartDataColumn[] = [
         { key: 'year', label: 'Année', format: (v) => v != null ? `An ${v}` : '' },
         ...allSeries.map(s => ({ key: s.name, label: s.name, format: money })),

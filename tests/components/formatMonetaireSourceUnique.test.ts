@@ -132,3 +132,39 @@ describe('[FORMAT] tout montant de l\'UI passe par utils/format.ts', () => {
         }
     });
 });
+
+/**
+ * [FORMATCAD-OR-ZERO] (lot 183, 2026-09-05) — `formatCAD(… || 0)` ANNULE la garde no-fake-data de
+ * `formatCAD`, qui rend « — » sur une valeur non finie : le `|| 0` transforme une donnée ABSENTE en
+ * « 0 $ » crédible avant même que le formateur ne la voie. Recensé par le motif du ticket (pas par
+ * sa liste, périmée : 16 annoncés, 13 trouvés le jour du lot), 13 sites migrés vers `formatCAD(v)`.
+ * Même fichier que la garde de format : c'est la même règle (« `formatCAD` UNIQUEMENT ») vue par
+ * son autre face — le formateur doit RECEVOIR la valeur brute, pas un défaut posé devant lui.
+ */
+const FORMATCAD_OU_ZERO = /formatCAD\((?:\([^()]*\)|[^()])*\|\| ?0\)/;
+
+describe('[FORMATCAD-OR-ZERO] formatCAD reçoit la valeur BRUTE, jamais `… || 0`', () => {
+    it('aucun `formatCAD(… || 0)` dans components/, services/ et mcp/ (source décommentée)', () => {
+        const offenders: string[] = [];
+        for (const file of files) {
+            const code = stripCommentsJsx(readFileSync(file, 'utf8'));
+            code.split('\n').forEach((l, i) => {
+                if (FORMATCAD_OU_ZERO.test(l)) offenders.push(`${path.relative(ROOT, file)}:${i + 1}: ${l.trim()}`);
+            });
+        }
+        expect(offenders, 'un `|| 0` devant formatCAD fabrique un « 0 $ » à partir d\'une donnée absente').toEqual([]);
+    });
+
+    it('le motif TIRE sur les trois formes que ce lot a retirées (anti-vacuité)', () => {
+        for (const temoin of [
+            "formatCAD(Number(v) || 0)",          // formateurs de colonnes ChartDataTable (×8)
+            "formatCAD(data.CELI || 0)",          // tuiles de l'infobulle Retraite (×5)
+            "formatCAD(val || 0)",                // formatter Recharts de DividendPanel
+            "isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) ||0)",
+        ]) expect(temoin, temoin).toMatch(FORMATCAD_OU_ZERO);
+        // Et il ne tire PAS sur la forme migrée ni sur un défaut posé AILLEURS que devant le formateur.
+        for (const sain of ["formatCAD(v)", "formatCAD(data.CELI)", "formatCAD(Number(v))", "(Number(v) || 0).toFixed(1)"]) {
+            expect(sain, sain).not.toMatch(FORMATCAD_OU_ZERO);
+        }
+    });
+});

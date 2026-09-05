@@ -125,10 +125,37 @@ describe('[ENG-DIVORCE-BENEFITS-FLUX] allocations : l’encaisse et le registre 
 
     // ⚠️ Anti-sur-correctif : la cohérence ci-dessus serait aussi verte si le divorce ne partageait
     // plus RIEN (les deux à 100 %). Il faut donc prouver que le partage a bien lieu.
-    it('le divorce partage VRAIMENT les allocations (≈ moitié du couple)', () => {
+    // [ENG-DIVORCE-ALLOC-ASSIETTE] RE-BASÉ SCIEMMENT le 2026-09-05 (décision Marc 14, « comme
+    // mesuré ») : cette assertion disait `div ≈ cpl / 2` (166 $), parce que la récupération des
+    // allocations se calculait encore sur les DEUX salaires après le divorce. L'assiette est
+    // désormais celle du ménage qui reste : Marc seul gagne 98 400 $ < 150 000 $, donc plus de
+    // récupération, et le parent reçoit sa moitié PLEINE — 500 × 0,5 = 250 $. Le couple, lui, reste
+    // récupéré (183 600 $ → ratio 0,664 → 332 $) : la relation `div > cpl / 2` est la signature du
+    // correctif, et `div < cpl` prouve que le divorce partage toujours.
+    it('le divorce partage VRAIMENT les allocations, sur l’assiette du parent qui RESTE (250 $, pas 166 $)', () => {
         const div = ecart(true, 36).dBenefits;
         const cpl = ecart(false, 36).dBenefits;
-        expect(div).toBeCloseTo(cpl / 2, 0);
+        expect(cpl).toBeCloseTo(500 * (1 - (183_600 - 150_000) / 100_000), 0); // 332 : le couple est récupéré
+        expect(div).toBeCloseTo(500 * 0.5, 0);                                     // 250 : le solo ne l'est plus
+        expect(div).toBeGreaterThan(cpl / 2);                                       // > 166 — l'ex n'est plus dans l'assiette
+        expect(div).toBeLessThan(cpl);                                              // le divorce partage toujours
+    });
+
+    // ⚠️ Contrôle négatif de la RÈGLE : `soloHousehold` change l'ASSIETTE, pas la récupération elle-même.
+    // Un parent seul qui gagne 168 000 $ reste récupéré sur SON revenu (ratio 0,82 → 500 × 0,82 × 0,5
+    // = 205 $), alors qu'en couple (253 200 $) tout était récupéré (0 $). Perturbation : retirer la
+    // récupération pour un solo donnerait 250 ; remettre l'ex dans l'assiette donnerait 0.
+    it('un parent seul au-dessus du seuil reste récupéré sur SON revenu (205 $, ni 250 ni 0)', () => {
+        const riche = (divorce: boolean, benefits: number) => {
+            const p = params({ divorce, childGoals: [enfant({ governmentBenefits: benefits })] });
+            (p.config as BudgetConfig).users[0] = { ...(p.config as BudgetConfig).users[0], grossSalary: 14_000, netSalary: 8_900 } as User;
+            const r = __runScenarioForTests(p, 'AUTO_MARGINAL' as AllocationStrategy, true, false, 0, 'BASE' as never, {}, { verboseMonthlyPoints: true } as never) as unknown as { chartData?: Pt[] };
+            return Number(at(r.chartData ?? [], 36).childBenefits ?? 0);
+        };
+        const div = riche(true, 500) - riche(true, 0);
+        const cpl = riche(false, 500) - riche(false, 0);
+        expect(cpl).toBeCloseTo(0, 0);
+        expect(div).toBeCloseTo(500 * (1 - (168_000 - 150_000) / 100_000) * 0.5, 0);
     });
 });
 

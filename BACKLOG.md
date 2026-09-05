@@ -514,7 +514,7 @@
   prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
   d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
   déjà en place — lire le journal Diagnostics avant de coder).
-- [ ] **`[ENG-DIVORCE-ALLOC-ASSIETTE]`** (S, 🧭 **règle à trancher** — sorti de
+- [x] **`[ENG-DIVORCE-ALLOC-ASSIETTE]`** ✅ **LIVRÉ au lot 178 (2026-09-05)** — `householdGross` = revenu du ménage qui RESTE (`soloHousehold`), assertion re-basée sciemment 166 → 250 $ + contrôle négatif « solo à 168 k$ reste récupéré sur SON revenu (205 $) » ; mesuré +13 460 $ / +29 388 $ de patrimoine à 10/20 ans sur la fixture divorce. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, 🧭 **règle à trancher** — sorti de
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : **« comme mesuré »** → appliquer `soloHousehold` à l'assiette des allocations après séparation (166 → 250 $/mois sur la fixture) ; le test `[ENG-DIVORCE-BENEFITS-FLUX]` se re-base SCIEMMENT.
   `[REEE-CONGE-SANS-GARDE-SOLO]`) — après un divorce, `householdGross` reste la somme des DEUX
   salaires, alors que la récupération des allocations enfants s'y applique (`householdGross >

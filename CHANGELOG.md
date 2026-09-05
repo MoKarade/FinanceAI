@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Après une séparation, les allocations pour enfants ne sont plus réduites sur le salaire de l'ex)
+
+- **Corrigé** : dans la projection, la réduction des allocations pour enfants au-delà de 150 000 $
+  de revenu se calculait encore sur les DEUX salaires après un divorce ou un décès. Elle se calcule
+  désormais sur le revenu du parent qui reste (un parent seul au-dessus du seuil reste réduit sur
+  son propre revenu). Mesuré sur un scénario de divorce : 166 → 250 $ d'allocation par mois, soit
+  +13 460 $ de patrimoine à 10 ans.
+
 ## [unreleased] — 2026-09-05 (Un nettoyage de ta copie Drive se dit, au lieu de rester dans le journal)
 
 - **Ajouté** : quand la restauration depuis Google Drive retire des données de test (persona) qui

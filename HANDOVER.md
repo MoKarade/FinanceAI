@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 178 : après une séparation, les allocations se récupèrent sur le revenu du parent qui RESTE (`[ENG-DIVORCE-ALLOC-ASSIETTE]`)
+> Décision Marc 14 (« comme mesuré »). Une ligne dans `projection.ts` : `householdGross` suit
+> `soloHousehold`, comme `grossAnnaBaseAnnual` juste au-dessus et `taxFilers`. L'assertion
+> « div ≈ cpl / 2 » de `divorceEnfantsScenario` est RE-BASÉE sciemment avec son histoire (166 → 250 $ :
+> 98 400 $ seul < 150 000 $, plus de récupération ; le couple à 183 600 $ reste à 332 $), plus un
+> contrôle négatif de la RÈGLE — un solo à 168 000 $ reste récupéré sur son revenu (205 $, ni 250 ni 0),
+> alors qu'en couple tout était récupéré. Perturbations : ex remis dans l'assiette → 2 rouges ; solo
+> jamais récupéré → 1 rouge (le contrôle seul). Mesuré (routage coupé ↔ rétabli, même seed MC) :
+> patrimoine **+13 460 $ / +29 388 $** à 10/20 ans. FISCAL_REFERENCE §7 porte la règle et sa mesure.
+> Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 177 (doc) : quatre tickets fermés par les décisions du jour, archivés avec leur décision
 > `[PROFIL-SWITCH]` (décision 8 : un seul profil), `[SUBS-TAB]` volet emplacement (10 : la liste reste
 > dans Budget), `[IA-NAV-LABELS]` (6 : rail replié), et `[PROFIL-NOMMER-MARC]` — mon propre ticket

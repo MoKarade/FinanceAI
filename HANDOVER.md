@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 181 (doc) : quatre plans « plan d'abord » + onze questions routées à Marc, ticket PSV mesuré
+> Les quatre tickets débloqués le 2026-09-05 à condition d'un plan (`[AUTH-REMEMBER-DEVICE]`,
+> `[PROJ-NW-FALAISE-REER]` (b), `[FISC-REEE-GRANT-CLAWBACK]`, `[FUTUR-ANNOTATIONS]`) ont leur plan court
+> dans `docs/A_FAIRE_MOI.md` (section « Plans à valider — lot 181 »), avec TOUTES les questions en un batch
+> (Q1–Q10, une recommandation chacune) — aucun des quatre ne se code avant la réponse. Q11 porte la
+> découverte du lot 179 (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`), MESURÉE ici sur quatre retraités à haut
+> revenu : 0 $ sous AUTO (récupération saturée), +180 / −2 920 $ de patrimoine sous MELTDOWN — reclassée XS,
+> FAIBLE. Lot 180 : gate complet VERT **5 601 tests / 567 fichiers** (compte porté dans `CLAUDE.md`),
+> déployé READY sur Vercel (`34ac35a`). En attendant Marc : continuer les tickets MESURÉS qui n'attendent
+> personne. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 180 : le revenu de placement est imposé chez son DÉTENTEUR (`[FISC-SOLO-INVEST-SPLIT]`)
 > Décision Marc 12 (« mode couple prévu ») a débloqué le ticket, dont le remède prescrit est la
 > détention réelle — livré tel quel, `[Q-SOLO-SPLIT]` fermé sur cette base (à contester si Marc voulait

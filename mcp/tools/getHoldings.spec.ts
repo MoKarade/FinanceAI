@@ -12,6 +12,7 @@ import { assetValueCad } from '../../services/portfolio';
 import { logErrorThrottled } from '../../services/errorLogger';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 // `satisfies` (pas une annotation) : préserve les types concrets → inférence server.tool correcte.
 export const getHoldingsSpec = {
@@ -24,7 +25,7 @@ export const getHoldingsSpec = {
         'marge/autre) et rendement (%). Trié par valeur CAD décroissante, avec le total et la ventilation ' +
         'par compte. Lecture seule. Réponds à « qu\'est-ce que je détiens », « ma plus grosse position », ' +
         '« combien ai-je en CELI ». La valeur CAD est la SOURCE UNIQUE (mêmes chiffres que l\'app) : ne ' +
-        'JAMAIS recalculer quantité × prix sans conversion de devise (le prix est en devise native).',
+        'JAMAIS recalculer quantité × prix sans conversion de devise (le prix est en devise native).' + CLAUSE_DONNEES_TOOL,
     inputSchema: {},
     handler: async (_args, getState) => withState(getState, (state: AppState) => {
         const assets = (state.assets ?? []) as Asset[];

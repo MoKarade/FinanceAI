@@ -36,6 +36,7 @@ import { registerDeleteItem } from './tools/deleteItem.tool';
 import { registerConnectDrive } from './tools/connectDrive.tool';
 import type { StateProvider } from './tools/_dataAware';
 import type { StateStore } from './state/stateStore';
+import { MCP_INSTRUCTIONS } from './instructions';
 
 export interface CreateServerOptions {
     /**
@@ -56,6 +57,10 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     const server = new McpServer({
         name: 'financeai-mcp',
         version: MCP_SERVER_VERSION,
+    }, {
+        // [MCP-NO-INJECTION-FRAME] cadre anti-injection publié au client dans `initialize.instructions`
+        // — le second rempart que le chat in-app avait (systemPrompt) et que le connecteur n'avait pas.
+        instructions: MCP_INSTRUCTIONS,
     });
 
     // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.

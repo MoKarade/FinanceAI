@@ -15,6 +15,7 @@ import { buildSimulationParamsFromState } from '../../services/projection/buildS
 import { extractYearlySeries, fireAgeOf } from '../whatIf';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
+import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
 
 // Scénarios exposés à Claude → stratType interne du moteur.
 const SCENARIO_MAP = {
@@ -49,7 +50,7 @@ export const getProjectionSpec = {
         "Projette le patrimoine RÉEL de l'utilisateur à un horizon donné, à partir de tout son état " +
         '(comptes, salaires, budget, objectifs, immobilier, enfants, dettes…) via le moteur complet de ' +
         'FinanceAI. Renvoie le patrimoine final NOMINAL et RÉEL (déflaté), le patrimoine successoral, ' +
-        "l'objectif FIRE, l'âge d'indépendance financière, et (si Monte Carlo) la probabilité de réussite.",
+        "l'objectif FIRE, l'âge d'indépendance financière, et (si Monte Carlo) la probabilité de réussite." + CLAUSE_DONNEES_TOOL,
     inputSchema,
     handler: async ({ years, scenario, monteCarlo, includeSeries }, getState) => withState(getState, async (state: AppState) => {
         const params = buildSimulationParamsFromState(state);

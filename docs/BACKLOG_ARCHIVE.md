@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-SOLO-INVEST-SPLIT]` + `[Q-SOLO-SPLIT]` — LIVRÉ / FERMÉ (lot 180, PR #911, décision Marc 12)
+
+Tickets d'origine tels qu'au moment de l'archivage :
+
+- [x] **`[FISC-SOLO-INVEST-SPLIT]`** ✅ **LIVRÉ au lot 180 (2026-09-05)** — le revenu de placement estimé suit son DÉTENTEUR (`Asset.owner` ; commun = moitié-moitié en couple ; hors couple tout à user1) via le helper partagé `estimateTaxableInvestmentIncomeByOwner` (+ `isCoupleMode`, source unique du prédicat couple), consommé par l'onglet Impôt ET `get_tax_situation` ; la part d'un conjoint sans brut est NOMMÉE dans `perUserOmitted`. Trois gardes, trois perturbations séparées (helper → 7 rouges sur les 3 fichiers ; TaxCenter seul → 2 ; MCP seul → 2). Sans `owner` posé, rien ne change (commun = ÷ 2, contrôle vert). (M, 🧭 Q3 — conditionnel au profil) — `getTaxSituation.spec.ts:64`
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **mode couple PRÉVU** → débloqué (Q3 répondue oui).
+  + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
+  conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
+  app+MCP au même helper.
+  ⚠️ **RE-MESURÉ 2026-08-05 avant de coder (avec les VRAIES données de Marc) : impact 0,00 $** —
+  il est en mode SOLO (`coupleMode: false`, 1 user) donc `splitRatio = 1/1` et tout le revenu de
+  placement lui est déjà attribué. Le bug est réel mais DORMANT : 2 342 $/an de sous-imposition
+  sur une fixture couple mono-salarié (60 k$ + 0 $, addOn 12 970 $). ⚠️ Hypothèse RÉFUTÉE au
+  passage : je pensais l'app et le MCP divergents (le MCP `filter(g>0)` exclut le conjoint sans
+  salaire, l'app non) — mesuré IDENTIQUES, parce que la moitié du placement tombe sous le BPA et
+  ne produit aucun impôt. La divergence n'apparaîtrait qu'au-delà de ~670 k$ de non-enregistré.
+  → **Condition d'activation : bascule de Marc en mode couple.** Le levier existe déjà
+  (`Asset.owner` + `services/couple/netWorthByOwner.ts` `defaultOwner`), donc rien à préparer.
+
+- [x] **`[Q-SOLO-SPLIT]`** ✅ **FERMÉ au lot 180 (2026-09-05)** — la réponse 12 de Marc (« mode couple prévu ») a débloqué `[FISC-SOLO-INVEST-SPLIT]`, dont le remède prescrit EST la détention réelle ; livré tel quel, sans re-poser la question (à contester si Marc préférait un autre partage — signalé dans HANDOVER). (historique) `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
+  par détention réelle ?
+
+
+
 ## 2026-09-05 — `[FISC-DEC-FLUX-ASSIETTE-TIMING]` — LIVRÉ (lot 179, PR #910, décision Marc 15 « corriger »)
 
 Ticket d'origine tel qu'au moment de l'archivage :

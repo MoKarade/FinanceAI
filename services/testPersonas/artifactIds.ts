@@ -30,6 +30,8 @@ export const PERSONA_EXACT_IDS: ReadonlySet<string> = new Set([
     'cd-a1', 'cd-b1', 'cd-b2', 'cd-b3', 'cd-b4', 'cd-b5', 'cd-b6', 'cd-b7',
     'cd-d1', 'cd-d2', 'cd-d3', 'cd-fg1',
     'child-1', 'd1', 'd2', 'fg-1',
+    'gi-a1', 'gi-a2', 'gi-a3', 'gi-b1', 'gi-b2', 'gi-b3', 'gi-b4', 'gi-b5', 'gi-b6', 'gi-b7',
+    'gi-fg1', 'gi-tr1',
     'jc-a1', 'jc-a2', 'jc-b1', 'jc-b2', 'jc-b3', 'jc-b4', 'jc-b5', 'jc-b6',
     'jc-b7', 'jc-b8', 'jc-d1', 'jc-fg1', 'jc-re1', 'jc-tr1',
     'kar-a1', 'kar-a2', 'kar-a3', 'kar-a4', 'kar-b1', 'kar-b2', 'kar-b3',

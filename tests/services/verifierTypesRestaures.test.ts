@@ -75,7 +75,7 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
     // refus — là où l'oubli d'un champ numérique rouvrirait un canal en silence. Ce test est ce qui
     // rend cet arbitrage tenable : il transforme le faux refus en échec de CI. Un champ texte ajouté
     // au produit sans être ajouté à la liste rougit ICI, pas chez Marc.
-    it('ne refuse RIEN sur les sept personas ni sur l\'état initial du store', () => {
+    it('ne refuse RIEN sur les huit personas ni sur l\'état initial du store', () => {
         const cas: Array<{ nom: string; objet: unknown }> = [
             { nom: 'état initial du store', objet: JSON.parse(JSON.stringify(useFinanceStore.getState())) },
             ...TEST_PERSONAS.map((p) => ({
@@ -87,7 +87,7 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
             nom: c.nom,
             champs: verifierTypesRestaures(c.objet).map((f) => `${f.chemin}="${String(f.valeur)}"`),
         }));
-        expect(refuses).toHaveLength(8);
+        expect(refuses).toHaveLength(9); // 8 personas + l'état initial du store
         expect(refuses.filter((r) => r.champs.length > 0)).toEqual([]);
     });
 

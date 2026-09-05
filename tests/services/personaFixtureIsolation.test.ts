@@ -36,12 +36,12 @@ describe('[TEST-PERSONA-FIXTURE-PARTAGEE] deux builds d\'un persona ne partagent
         }
     });
 
-    it('muter un build ne change PAS ce que lit le build suivant — sur les SEPT personas', () => {
+    it('muter un build ne change PAS ce que lit le build suivant — sur les HUIT personas', () => {
         // La conséquence observable, et la seule qui compte : c'est elle qui a faussé une mesure.
         // ⚠️ Ce contrôle-ci porte sur la PROFONDEUR, et il est le seul à le faire : le test
         // d'identité ci-dessus est structurellement AVEUGLE à une copie superficielle
         // (`{ ...CONFIG }` rend bien un objet neuf, tout en partageant encore `users`). Il boucle
-        // donc sur les SEPT personas, pas sur le seul persona par défaut — sinon une régression en
+        // donc sur les HUIT personas, pas sur le seul persona par défaut — sinon une régression en
         // spread sur un des six autres passerait au vert (finding financial-integrity, PR #759).
         let profondeurVerifiee = 0;
         for (const persona of TEST_PERSONAS) {
@@ -57,7 +57,7 @@ describe('[TEST-PERSONA-FIXTURE-PARTAGEE] deux builds d\'un persona ne partagent
             // Même contrôle dans un TABLEAU : `[...ASSETS]` partagerait encore chaque élément.
             const assets = (persona.build() as AppState).assets;
             // Défensif : AUCUN persona n'a de tableau d'actifs vide aujourd'hui (mesuré : 5, 1, 4,
-            // 1, 3, 2, 2). Le compteur ci-dessous rend visible le jour où l'un en manquerait —
+            // 1, 3, 2, 2, 3). Le compteur ci-dessous rend visible le jour où l'un en manquerait —
             // sans lui, un persona à `assets: []` ferait taire en silence son contrôle de
             // profondeur (finding code-reviewer, 2e passe PR #759).
             if (assets.length === 0) continue;

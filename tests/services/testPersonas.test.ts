@@ -74,8 +74,8 @@ function paramsFromPersona(state: Partial<AppState>): SimulationParams {
 }
 
 describe('TEST_PERSONAS', () => {
-    it('expose 7 personas avec des id uniques', () => {
-        expect(TEST_PERSONAS.length).toBe(7);
+    it('expose 8 personas avec des id uniques', () => {
+        expect(TEST_PERSONAS.length).toBe(8);
         const ids = TEST_PERSONAS.map((p) => p.id);
         expect(new Set(ids).size).toBe(ids.length);
     });

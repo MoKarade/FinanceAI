@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Futur te dit quand un objectif n'a pas pu être financé)
+
+- **Ajouté** (décision Marc 2026-09-04) : quand la projection n'arrive pas à financer un de tes
+  objectifs financiers en entier (l'argent manquait à l'échéance), l'onglet Futur l'affiche
+  désormais dans un bandeau : combien d'objectifs sont touchés et combien il a manqué au total.
+  Le moteur le calculait depuis longtemps — personne ne le montrait. Le montant suit le mode
+  discret ; aucun bandeau quand tout est financé.
+
 ## [unreleased] — 2026-09-05 (Le taux de renouvellement hypothécaire que tu saisis agit enfin)
 
 - **Corrigé** (décision Marc 2026-09-04) : le champ « Taux Renouvellement » du Studio immobilier

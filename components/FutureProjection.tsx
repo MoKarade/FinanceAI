@@ -29,6 +29,7 @@ import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
 import { computeForecastAccuracy } from '../services/projection/forecastAccuracy';
 import { ForecastAccuracyBadge } from './projection/ForecastAccuracyBadge';
 import { findInsolvencyPoint } from '../utils/insolvency';
+import { construireAlerteObjectifsManques } from './projection/alerteObjectifsManques';
 import { sampleEvenly } from '../utils/sampleEvenly';
 import { assignStackIndex } from '../utils/stackEventIcons';
 
@@ -373,6 +374,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // [PROJ-INSOLVENCY-BADGE] premier moment où le patrimoine net projeté passe sous 0 (plan
     // insoutenable, capital épuisé). null si solvable sur tout l'horizon → aucun badge (empty state honnête).
     const insolvency = useMemo(() => findInsolvencyPoint(chartData), [chartData]);
+
+    // [ENG-GOALSHORTFALLS-EXPOSE] (décision Marc 2026-09-04) objectifs que la projection n'a pas pu
+    // financer en entier — le moteur le publiait depuis PV-11 sans aucun lecteur. null = rien à
+    // afficher (aucun manque, champ absent d'un gel d'avant PV-11) : pas de bandeau.
+    const alerteObjectifs = useMemo(
+        () => construireAlerteObjectifsManques(allResults[0]?.goalShortfalls),
+        [allResults],
+    );
 
     // PH2-d — courbe VERROUILLÉE (référence figée) : lue du store ; le moteur continue de publier
     // `results` en direct (aperçu). Verrouiller/déverrouiller = snapshot + persistance IndexedDB.
@@ -1568,6 +1577,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         >
                             Rechoisir mes leviers
                         </button>
+                    </span>
+                </div>
+            )}
+            {/* [ENG-GOALSHORTFALLS-EXPOSE] Bandeau des objectifs non financés — la phrase vient du
+                module PUR (alerteObjectifsManques), jamais recopiée ici ; le montant reste un NŒUD
+                (PrivateAmount) pour suivre le mode discret. Pas de bandeau quand il n'y a rien à
+                dire (null) : une alerte permanente est une alerte morte. */}
+            {alerteObjectifs && (
+                <div className="flex flex-wrap items-center gap-3 rounded-card border border-warning-500/40 bg-warning-500/10 px-4 py-2.5">
+                    <span aria-hidden="true">🎯</span>
+                    <span className="text-meta text-ink-100 font-bold">{alerteObjectifs.libelle}</span>
+                    <span className="text-tiny text-ink-300">
+                        Il a manqué <PrivateAmount>{formatCAD(alerteObjectifs.montant)}</PrivateAmount> au
+                        fil de la projection — avance la date de l&apos;objectif, réduis son montant ou
+                        libère de l&apos;épargne.
                     </span>
                 </div>
             )}

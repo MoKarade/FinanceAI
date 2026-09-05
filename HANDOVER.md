@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 163 : Futur affiche enfin les objectifs que la projection n'a pas pu financer
+> `[ENG-GOALSHORTFALLS-CHAMP-MORT]` → EXPOSÉ (décision Marc). Bandeau sur l'onglet Futur (sous
+> « pas à jour ») : « N objectif(s) n'ont pas pu être financés en entier — il a manqué X $ ».
+> Dérivation PURE `components/projection/alerteObjectifsManques.ts` (phrase jamais recopiée dans
+> le JSX, montant en NŒUD `PrivateAmount` → suit le mode discret) ; null honnête quand rien à
+> dire (aucun manque, champ absent d'un gel d'avant PV-11, entrées sales). 5 tests unitaires +
+> 3 tests de rendu (harnais applyReveal réutilisé, mode discret vérifié en comportement).
+> 3 perturbations séparées → rouges nommés ; la 1re version de la perturbation « garde du
+> compte » était MUETTE (la garde du montant saturait la contrainte sur {0,0}) → fixture
+> isolante {0, 500} ajoutée, classe déjà consignée. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 162 : `rankStrategies` est RETIRÉ (module orphelin, décision Marc)
 > `[ENG-RANKING-MODULES-ORPHELINS]` — `strategyRanking.ts` supprimé avec ses deux fichiers de
 > test (aucun appelant hors tests, alias re-vérifiés au recensement). `OptimizeObjective` et

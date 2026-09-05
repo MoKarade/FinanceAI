@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-RANKING-MODULES-ORPHELINS]` — LIVRÉ (lot 162, PR #893)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ENG-RANKING-MODULES-ORPHELINS]`** ✅ **LIVRÉ au lot 162 (2026-09-05)** — `rankStrategies` RETIRÉ avec ses deux fichiers de test ; `OptimizeObjective`/`OBJECTIVE_LABELS` (seuls exports vivants) déménagés dans `strategyConfigRanking.ts` avec l'avertissement du double-comptage successoral pour toute résurrection depuis git ; doc PROJECTION.md et commentaires croisés mis à jour ; garde = le compilateur (imports morts) + knip rejoué. `compareLifeScenarios` INTACT (vivant via GoalSeekerCard). (S, FAIBLE — RE-CADRÉ par la revue #683 : ma
+  1re affirmation était à moitié FAUSSE) — `rankStrategies` (strategyRanking.ts) est orphelin
+  (aucun appelant hors tests, re-vérifié alias compris). **`compareLifeScenarios` NE L'EST PAS** :
+  son alias `optimizeDrawdownOrder` est appelé par `GoalSeekerCard` (bouton « Optimiser ordre de
+  décaissement ») — le 1er grep ratait l'alias, et « le retirer » aurait supprimé une
+  fonctionnalité UI vivante (leçon : grep les ALIAS d'export avant de déclarer un module mort).
+  Reste à trancher pour `rankStrategies` seul : brancher ou retirer. Son champ `totalTaxesPaid`
+  affiché par compareLifeScenarios n'est pas rendu par la carte (0 impact UI aujourd'hui).
+  ⚠️ AVANT tout branchement de `rankStrategies` : son score `balanced` compte l'impôt successoral
+  DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax à 0,40 + axe tax = lifetimeTaxTotal
+  qui l'inclut à 0,25 — relecture #681, sans effet aujourd'hui faute d'appelant).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 162 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+
 ## 2026-09-05 — `[ENG-RENEWAL-CHOC-MORT]` + `[ENG-RENEWAL-RATE-MISMATCH]` — LIVRÉS ENSEMBLE (lot 161, PR #892)
 
 Tickets d'origine tels qu'au moment de l'archivage, réponses incluses :

@@ -21,6 +21,7 @@
   l'information existe déjà et répond à une vraie question d'utilisateur ; mais c'est du scope
   d'écran que tu n'as pas demandé, donc je ne le fais pas sans ton oui.
   ✅ **RÉPONDU 2026-09-04 (en session)** : (b) EXPOSER sur Futur (« ton but n'a pas pu être financé, il manquait X $ »).
+  ✅ **LIVRÉE au lot 163 (2026-09-05)** — bandeau sur l'onglet Futur, montant masquable au mode discret.
 - [x] **[DÉCISION — ENG-PROPGROWTH-CONFIG-DEAD]** (re-recensé 2026-09-04) — les immeubles
   LOCATIFS croissent à 3 %/an, taux NON réglable (le champ config est lu par le moteur mais
   aucune UI ne l'écrit). (a) champ `propertyGrowthRate?` par immeuble locatif (comme les biens),

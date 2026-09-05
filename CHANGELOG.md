@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Un immeuble loué crée enfin des droits REER, chez son propriétaire)
+
+- **Corrigé** : le loyer net d'un immeuble (immeuble locatif des Réglages → Patrimoine, ou bien locatif
+  de l'onglet Immobilier) ne comptait pas comme revenu gagné : aucun droit REER n'en naissait, alors
+  que le guide fédéral T4040 l'inclut (et déduit les pertes de location). Le moteur l'attribue
+  désormais au propriétaire de l'immeuble. Mesuré sur un couple dont les cotisations REER sont
+  limitées par les droits : +10 753 $ à 10 ans et +56 558 $ à 30 ans de patrimoine pour un immeuble
+  à 24 000 $ de loyer net par an ; aucun changement quand les droits ne limitaient rien.
+- **Ajouté** : un champ « Propriétaire (droits REER) » sur chaque immeuble locatif et sur chaque bien
+  loué de l'onglet Immobilier — « Les deux (50/50) » par défaut, ou l'un des conjoints. Il n'apparaît
+  qu'en mode couple. Source relayée, détaillée dans la référence fiscale.
+
 ## [unreleased] — 2026-09-05 (Le Supplément de revenu garanti d'un couple ne disparaît plus deux fois trop vite)
 
 - **Corrigé** : pour un couple dont les deux conjoints reçoivent la pension de la Sécurité de la

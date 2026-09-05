@@ -34,7 +34,7 @@ const makeState = (over: Partial<RealEstateState> = {}): RealEstateState => ({
     withdrawalLiquid: 0, withdrawalCELI: 0, withdrawalNonReg: 0, withdrawalREER: 0, contribLiquid: 0,
     celiWithdrawalsThisYear: 0, retraitCeliMois: 0,
     immoInterest: 0, immoPrincipal: 0, immoHypo: 0, immoCharges: 0,
-    totalRentalIncome: 0,
+    totalRentalIncome: 0, rentalEarnedParProprietaire: { user1: 0, user2: 0, joint: 0 },
     lifeEventLogs: [], flowEventLogs: [],
     ...over,
 });
@@ -313,6 +313,29 @@ describe('realEstateMonth — flux post-achat', () => {
         expect(state.monthlyIncome).toBeCloseTo(2000, 6);
         expect(state.accRentesYear).toBeCloseTo(2000, 6);
         expect(state.totalRentalIncome).toBeCloseTo(2000, 6);
+    });
+
+    it('[FISC-RRSP-RENTAL-EARNED] le loyer va dans le seau de SON propriétaire (revenu gagné, droits REER)', () => {
+        const state = makeState();
+        const goal = makeGoal({ isPrimaryResidence: false, rentalIncomeMonthly: 2000, propertyGrowthRate: 0, owner: 'user2' });
+        const prop = makeProp({ isBought: true, mortgage: 0, currentValue: 400000, calculatedPmt: 0 });
+
+        processRealEstate(state, makeCtx({ m: 0, simInflation: 0 }), [goal], [prop], offset0, noWelcomeTax);
+
+        expect(state.rentalEarnedParProprietaire).toEqual({ user1: 0, user2: 2000, joint: 0 });
+        // Même montant que le registre imposé : une porte, pas deux.
+        expect(state.rentalEarnedParProprietaire.user2).toBeCloseTo(state.accRentesYear, 6);
+    });
+
+    it('[FISC-RRSP-RENTAL-EARNED] sans propriétaire → seau conjoint ; résidence principale → rien', () => {
+        const state = makeState();
+        const loue = makeGoal({ isPrimaryResidence: false, rentalIncomeMonthly: 1500, propertyGrowthRate: 0 });
+        const principale = makeGoal({ id: 'p2', isPrimaryResidence: true, rentalIncomeMonthly: 9999, propertyGrowthRate: 0, owner: 'user1' });
+        const props = [makeProp({ isBought: true, currentValue: 400000 }), makeProp({ id: 'p2', isBought: true, currentValue: 500000 })];
+
+        processRealEstate(state, makeCtx({ m: 0, simInflation: 0 }), [loue, principale], props, offset0, noWelcomeTax);
+
+        expect(state.rentalEarnedParProprietaire).toEqual({ user1: 0, user2: 0, joint: 1500 });
     });
 });
 

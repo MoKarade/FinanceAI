@@ -43,7 +43,7 @@ const makeState = (over: Partial<RealEstateState> = {}): RealEstateState => ({
     celiWithdrawalsThisYear: 0, retraitCeliMois: 0,
     retraitReerMois: 0, rrspWithholdingMois: 0, accRetraitsReerYearAdd: 0, rapMissedRepaymentAdd: 0,
     immoInterest: 0, immoPrincipal: 0, immoHypo: 0, immoCharges: 0,
-    totalRentalIncome: 0,
+    totalRentalIncome: 0, rentalEarnedParProprietaire: { user1: 0, user2: 0, joint: 0 },
     lifeEventLogs: [], flowEventLogs: [],
     ...over,
 });

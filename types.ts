@@ -458,6 +458,11 @@ export interface RentalProperty {
    *  taux PAR immeuble, comme les buts immobiliers). Absent = défaut documenté du moteur (3 %) ;
    *  un 0 EXPLICITE reste 0 (« je ne parie pas sur l'appréciation » est une saisie légitime). */
   propertyGrowthRate?: number;
+  /** [FISC-RRSP-RENTAL-EARNED] Propriétaire de l'immeuble (décision Marc 2026-09-05 : champ optionnel,
+   *  défaut 50/50). Pilote l'attribution du loyer NET comme revenu GAGNÉ pour les droits REER de ce
+   *  conjoint (`services/projection/revenuGagnePartage.ts`). Absent = `joint`. Additif : aucun bump
+   *  de version du store. */
+  owner?: AssetOwner;
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -534,6 +539,10 @@ export interface RealEstateGoal {
   maxValue?: number;
   propertyGrowthRate?: number;
   rentalIncomeMonthly?: number;
+  /** [FISC-RRSP-RENTAL-EARNED] Propriétaire du bien (décision Marc 2026-09-05, même convention que
+   *  `RentalProperty.owner`) : le loyer d'un bien LOCATIF est du revenu gagné pour les droits REER
+   *  de ce conjoint. Absent = `joint` (50/50). Sans effet sur une résidence principale. */
+  owner?: AssetOwner;
   initialRenovations?: number;
   /** Taux attendu au renouvellement hypothécaire (% annuel), CONSOMMÉ par le moteur depuis
    *  [ENG-RENEWAL-SAISIE] (décision Marc 2026-09-04) : appliqué à chaque renouvellement de terme

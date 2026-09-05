@@ -11,6 +11,7 @@ import { formatCAD, formatPercent } from '../utils/format';
 // l'écran annoncerait un taux que le calcul n'applique plus (`UN-OUTIL-GARDE-A-VALEURS-RECODEES`).
 import { RENTAL_NOI_TAX_PROXY, CCPC_DIVIDEND_TAX_PROXY } from '../services/projection/w5Effects';
 import { Icon } from './ui/Icon';
+import { SelectProprietaire } from './ui/SelectProprietaire';
 import type {
     InsurancePolicy, InsuranceKind,
     RentalProperty,
@@ -114,7 +115,10 @@ export const RentalPropertyPanel: React.FC<{
      *  coupler pour un seul avertissement le rendrait intestable en isolation. Absent ⇒ pas
      *  d'avertissement, comportement d'avant. */
     nbLocatifsImmobilier?: number;
-}> = ({ properties, onChange, nbLocatifsImmobilier = 0 }) => {
+    /** [FISC-RRSP-RENTAL-EARNED] Prénoms des deux conjoints. Absent = ménage solo : le sélecteur de
+     *  propriétaire n'est pas rendu (tout revient de toute façon au seul déclarant). */
+    conjoints?: [string, string];
+}> = ({ properties, onChange, nbLocatifsImmobilier = 0, conjoints }) => {
     const add = () => onChange([...properties, { id: newId(), name: 'Nouveau locatif', purchasePrice: 0, currentValue: 0, mortgageBalance: 0, mortgageRate: 5, monthlyRent: 0, vacancyPct: 5, monthlyExpenses: 0 }]);
     const update = (i: number, patch: Partial<RentalProperty>) => { const next = [...properties]; next[i] = { ...next[i], ...patch }; onChange(next); };
     const remove = (i: number) => { const next = [...properties]; next.splice(i, 1); onChange(next); };
@@ -168,6 +172,9 @@ export const RentalPropertyPanel: React.FC<{
                                 <input aria-label="Croissance annuelle de la valeur (pourcentage, vide = 3)" type="number" step="0.1" placeholder="Croissance %/an (3)" value={rp.propertyGrowthRate ?? ''} onChange={e => update(i, { propertyGrowthRate: e.target.value === '' ? undefined : Number(e.target.value) })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
                                 <PrivateNumberInput aria-label="Charges mensuelles (dollars)" type="number" placeholder="Charges $/mois" value={rp.monthlyExpenses || ''} onChange={e => update(i, { monthlyExpenses: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
                                 <PrivateNumberInput aria-label="DPA cumulée (dollars)" type="number" placeholder="DPA cumulée $" value={rp.ccaTaken || ''} onChange={e => update(i, { ccaTaken: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                {conjoints && (
+                                    <SelectProprietaire value={rp.owner} noms={conjoints} onChange={owner => update(i, { owner })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                )}
                                 <button onClick={() => remove(i)} className="col-span-3 text-danger-400 text-tiny hover:text-red-300">Supprimer cet immeuble</button>
                             </div>
                         </details>

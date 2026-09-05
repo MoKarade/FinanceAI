@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FX-BADGE-SURFACES-RESTANTES]` — LIVRÉ (lot 193, PR #924)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FX-BADGE-SURFACES-RESTANTES]`** ✅ **LIVRÉ au lot 193 (2026-09-05)** — RE-RECENSÉ : la surface Futur était DÉJÀ couverte (`FutureKpiStrip.tsx` rend `<FxEstimateBadge />` dans le bandeau des KPI) ; restait `TaxCenter` → badge posé à côté de « Invest. Non-Enregistrés » dans la carte « Revenus & Déductions » (montant et impact fiscal convertis via `assetValueCad`). Trois gardes (`TaxCenter.fxBadge.test.tsx`) : USD + repli → badge ; CAD seul → aucun ; USD + taux réel → aucun ; perturbation (badge retiré) → 1 rouge, contrôles verts. Contexte d'origine : (S, FAIBLE — routé revue #686, financial-integrity
+  INFO) — le badge `FxEstimateBadge` (câblé Patrimoine net + Investissements + PDF) ne couvre PAS
+  toutes les surfaces qui convertissent des devises étrangères : `TaxCenter.tsx:170-171`
+  (`estimateTaxableInvestmentIncome`, nourrit un affichage FISCAL) et
+  `services/projection/buildSimulationParams.ts:279` (`derivePortfolioStartingBalances`, alimente
+  TOUTE la courbe Futur). « Un signal posé pour UNE surface ne protège que celle-là »
+  (`DECISION-PRIVACY-UNE-SEULE-SORTIE`) s'applique ici aussi. Pas une régression du lot FX ; le
+  ticket d'origine ne les listait pas.
+
+
 ## 2026-09-05 — `[FISC-UI-MARGINAL-ABATEMENT]` — LIVRÉ (lot 192, PR #923)
 
 Ticket d'origine tel qu'au moment de l'archivage :

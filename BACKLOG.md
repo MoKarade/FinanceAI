@@ -1085,15 +1085,6 @@
 
 ### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
 
-- [x] **`[FX-BADGE-SURFACES-RESTANTES]`** ✅ **LIVRÉ au lot 193 (2026-09-05)** — RE-RECENSÉ : la surface Futur était DÉJÀ couverte (`FutureKpiStrip.tsx` rend `<FxEstimateBadge />` dans le bandeau des KPI) ; restait `TaxCenter` → badge posé à côté de « Invest. Non-Enregistrés » dans la carte « Revenus & Déductions » (montant et impact fiscal convertis via `assetValueCad`). Trois gardes (`TaxCenter.fxBadge.test.tsx`) : USD + repli → badge ; CAD seul → aucun ; USD + taux réel → aucun ; perturbation (badge retiré) → 1 rouge, contrôles verts. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE — routé revue #686, financial-integrity
-  INFO) — le badge `FxEstimateBadge` (câblé Patrimoine net + Investissements + PDF) ne couvre PAS
-  toutes les surfaces qui convertissent des devises étrangères : `TaxCenter.tsx:170-171`
-  (`estimateTaxableInvestmentIncome`, nourrit un affichage FISCAL) et
-  `services/projection/buildSimulationParams.ts:279` (`derivePortfolioStartingBalances`, alimente
-  TOUTE la courbe Futur). « Un signal posé pour UNE surface ne protège que celle-là »
-  (`DECISION-PRIVACY-UNE-SEULE-SORTIE`) s'applique ici aussi. Pas une régression du lot FX ; le
-  ticket d'origine ne les listait pas.
-
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
 - [ ] **`[BACKUP-TEXTE-INCONNU-REFUSE]`** (S, FAIBLE) — limite ASSUMÉE de la garde de type livrée au
@@ -1431,7 +1422,7 @@
 
 
 
-- [ ] **`[ENG-TTP-NEGATIF]`** (S) — `totalTaxesPaid` ressort NÉGATIF pour salarié (compte seulement
+- [x] **`[ENG-TTP-NEGATIF]`** ✅ **CADUQUE, MESURÉ au lot 194 (2026-09-05)** — le risque de libellé n'existe pas : **0 composant** lit `totalTaxesPaid` (grep `components/`), la surface MCP l'a déjà renommé `netTaxSettlements` (`[PROJ-TAXPAID-LABEL]`, `getProjection.spec.ts` / `simulateWhatIf.spec.ts`), et le seul « impôt à vie » affiché (`StrategyOptimizerPanel`) est `lifetimeTax` = impôt TOTAL modélisé (`[ENG-RANKTAX-ESTATE]`). Le fond (compteur négatif par construction) vit dans `[PROJ-TAXPAID-SOLDE-AVRIL]`, qui reste ouvert. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — `totalTaxesPaid` ressort NÉGATIF pour salarié (compte seulement
   débits du liquide, retenues à la source n'y transitent pas → seuls remboursements nets). Cohérent
   avec contrat documenté, mais libellé à risque si l'UI affiche « Impôt à vie ». Jugement quantitatif
   à financial-integrity.
@@ -1651,7 +1642,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
     monétaires, qui n'existe pas encore (celle des champs TEXTE a été choisie exprès à sa place).
   Ne rien coder avant la réponse de Marc.
 
-- [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
+- [x] **`[A11Y-PRIVACY-ONBOARDING]`** ✅ **CADUQUE, MESURÉ au lot 194 (2026-09-05)** — masquer ces champs serait INERTE : `isPrivacyMode` est EXCLU de la persistance (`store/optionsPersistance.ts`, déstructuré hors de `persistable`), donc chaque chargement démarre hors mode discret ; et `Onboarding` n'est rendu que sous `isFirstLaunch` (`App.tsx`), sans aucune relance possible (grep : aucun `setIsFirstLaunch(true)` hors initialisation). L'onboarding ne peut donc jamais s'afficher en mode discret — `UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`, version « un masque sans état qui le déclenche ». À rouvrir si l'onboarding devient relançable. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
 ### 🔴 Performance

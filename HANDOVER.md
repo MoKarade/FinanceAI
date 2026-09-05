@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 195 : persona « Gilles, 71 ans », le ménage ACTIF qui décaisse (`[PERSONA-ACTIF-QUI-DECAISSE]`)
+> Huitième persona du mode test : célibataire de 71 ans, consultant à temps partiel jusqu'à 76 ans, maison payée,
+> REER ~698 k$, non-enregistré ~197 k$, déficit mensuel voulu — le minimum FERR (72 ans) tombe PENDANT qu'il
+> travaille. Garde par espion sur `processDecemberTaxFiling` (vrai moteur, vrai constructeur de paramètres) :
+> **4 décembres** « actif + retraits REER + non-enregistré » (2027-2030), **0** sur les sept autres personas —
+> le contrôle négatif du lot 87. Pins de compte 7 → 8 dans quatre suites, ids `gi-*` au registre du sanitizer.
+> Goldens déplacés : aucun (5 678 verts) — les suites qui bouclent sur les personas n'épinglent que des BORNES (fini, ∈ [0, 1], > 1 000 $), jamais une valeur ; +19 tests (3 de la garde + 16 itérations du nouveau persona dans les boucles existantes). ⚠️ Découvert en mesurant, NON corrigé : un ménage actif ne touche aucune
+> rente RRQ/PSV avant `targetAge`, même après l'âge maximal de report (70 / 72) → ticket
+> `[ENG-RENTES-ACTIF-APRES-AGE-MAX-REPORT]` (≈ 126 k$ bruts sur Gilles). Servi : le menu du mode test liste
+> le persona → déploiement à vérifier.
+
 > ## 🟦 Session 2026-09-05 — Lot 194 (DOC) : deux tickets fermés CADUCS après mesure
 > `[ENG-TTP-NEGATIF]` : le risque de libellé n'existe pas — 0 composant lit `totalTaxesPaid`, le MCP l'a
 > renommé `netTaxSettlements` (`[PROJ-TAXPAID-LABEL]`), le seul « impôt à vie » affiché est `lifetimeTax`

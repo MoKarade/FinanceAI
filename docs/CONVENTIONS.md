@@ -12219,6 +12219,27 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 195 (2026-09-05) — une perturbation MUETTE sur une FIXTURE dit d'abord par quel AUTRE chemin elle atteint la condition
+
+Corollaire de `UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`, côté fixture. La garde du
+persona « Gilles » compte les décembres « actif + retraits REER + non-enregistré ». Retirer le compte
+non-enregistré de la fixture laissait le compte à **4** — j'avais écrit d'avance, dans le commentaire du test,
+« sans `gi-a3` → 0 ». Faux : le minimum FERR dépasse le déficit, et la cascade investit le surplus en
+non-enregistré dès que le CELI est plein — la fixture atteint `nonReg > 0` sans l'actif. Deux gestes en sont
+sortis : (1) une perturbation qui doit prouver la LECTURE d'un champ se pose sur la CONDITION (`nonReg > 1e9`
+→ 0, rouge), pas sur la fixture, parce qu'une fixture vivante a plusieurs producteurs pour un même solde ;
+(2) la perturbation muette s'ÉCRIT dans le test avec sa cause, sinon la prochaine session « corrige » une garde
+qu'elle croit aveugle. Et un résultat de perturbation ne s'écrit JAMAIS avant d'être mesuré — la phrase fausse
+a vécu vingt minutes dans un commentaire qui avait l'air d'un fait (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-
+CHIFFRE-INVENTE`, version perturbation).
+
+⚠️ Même lot, même mécanisme, à l'échelle du dépôt : c'est aussi POURQUOI les sept autres personas n'exerçaient
+jamais ce chemin — le non-enregistré de « Diane & Robert » (90 k$) est VERSÉ au REER dès le mois 0 par la
+cascade d'optimisation des droits (`rrspRoom > 0 && nonReg > 0 && !isRetired`), donc `nonReg` vaut 0 pendant
+toute leur phase active. Gilles y échappe parce qu'à 71 ans on ne cotise plus au REER. Un persona « avec du
+non-enregistré » n'en a que si le moteur le lui LAISSE : la couverture se mesure sur le point de chart, pas sur
+la fixture.
+
 ### Variante notée au lot 192 (2026-09-05) — `innerHTML` encode l'insécable en `&nbsp;` : normaliser l'ENTITÉ, pas seulement le caractère
 
 Corollaire de `UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD` (« `formatCAD` sépare par une

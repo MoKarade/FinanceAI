@@ -968,7 +968,7 @@
   ménage sans rente privée qui décaisse un FERR. L'état actuel est BORNÉ par un test qui doit mourir
   avec la dette (`tests/services/latentTaxPensionCredit.test.ts`, cas « INVENTAIRE DE DETTE »).
 
-- [ ] **`[PERSONA-ACTIF-QUI-DECAISSE]`** (S, FAIBLE — découvert en livrant le lot 87, MESURÉ) — **aucun
+- [x] **`[PERSONA-ACTIF-QUI-DECAISSE]`** ✅ **LIVRÉ au lot 195 (2026-09-05)** — huitième persona « Gilles, 71 ans » (`services/testPersonas/gillesActifDecaisse.ts`) : célibataire, consultant à temps partiel jusqu'à 76 ans, maison payée, REER ~698 k$, non-enregistré ~197 k$, budget en déficit voulu — le minimum FERR (72 ans) tombe PENDANT qu'il travaille. Garde `tests/services/personaActifQuiDecaisse.test.ts` : espion sur `processDecemberTaxFiling` (vrai moteur + vrai constructeur de paramètres) — **4 décembres** « actif + retraits REER + non-enregistré » (2027-2030, épinglé exact), **0** sur les sept autres (contrôle négatif, comme au lot 87). Perturbations : targetAge 71 → 0 ; condition sans `!isRetired` → contrôle rouge (21 / 15) ; `nonReg > 1e9` → 0 ; retirer le compte non-enregistré est MUET (la cascade réinvestit le surplus FERR en non-enregistré). Goldens déplacés : aucun (5 678 verts) — les suites qui bouclent sur les personas n'épinglent que des BORNES (fini, ∈ [0, 1], > 1 000 $), jamais une valeur ; +19 tests (3 de la garde + 16 itérations du nouveau persona dans les boucles existantes). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE — découvert en livrant le lot 87, MESURÉ) — **aucun
   des 7 personas n'exerce jamais** le chemin « ménage ACTIF qui retire du REER ET détient du
   non-enregistré » : compteur instrumenté dans `taxDecember`, **0 occurrence sur 7 personas × 40 ans**.
   C'est pourtant un ménage plausible (un 70 ans qui travaille à temps partiel et décaisse), et c'est
@@ -976,6 +976,8 @@
   bouge. **Correctif** : ajouter un persona (ou étendre `pre-retraite-riche`) avec `targetAge` ≥ 73,
   des retraits REER et un solde non-enregistré. ⚠️ Ajouter un persona re-base des goldens : lot à
   part, avec la mesure de ce qui bouge.
+
+- [ ] **`[ENG-RENTES-ACTIF-APRES-AGE-MAX-REPORT]`** (M, MOYEN — découvert au lot 195 en mesurant le persona « Gilles, 71 ans », MESURÉ) — **un ménage ACTIF ne touche AUCUNE rente RRQ/PSV tant que `isRetired` est faux**, quel que soit son âge : `computeRetirementIncome` n'est appelé que sous `if (isRetired)` (`services/projection.ts`, phase retraite), et `rrqStartAge`/`psvStartAge` ne sont lus que là. Or la PSV ne se reporte pas au-delà de **70 ans** ni la RRQ au-delà de **72** (`PSV_DEFERRED_START_AGE`, `RRQ_DEFERRED_START_AGE`) : un travailleur de 71-75 ans les REÇOIT obligatoirement. Mesuré sur Gilles (71 ans, `targetAge` 76, `governmentPension` 2 100 $/mois) : `IncomeRetirement` vaut **0 sur les 60 premiers mois**, premier versement au mois 60 (76 ans) — ≈ **126 k$ bruts** de rentes jamais versées ni imposées (avant impôt et récupération PSV, `[À vérifier]` en net). Population : quiconque saisit un `targetAge` > 70. ⚠️ Correctif non trivial : les rentes de la branche active doivent aussi entrer dans l'assiette de décembre (§1 actif) et dans la récupération PSV — grep les DEUX registres avant de câbler, comme pour les retraits REER actifs (`[REER-ACTIF-NON-RECONCILIE]`). Le `governmentPension` saisi est un AGRÉGAT RRQ+PSV : le découpage par âge de début est à décider (Marc). Non corrigé au lot 195 (hors périmètre, bug préexistant signalé).
 
 - [x] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** ✅ CONSIGNÉ 2026-08-22 (FISCAL_REFERENCE §4 + garde ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #676, financial-integrity F6) —
   branche ACTIVE : `incomeForGains` est le salaire BRUT alors que le §4 accorde le crédit d'âge sur
@@ -1420,13 +1422,6 @@
   pourquoi elles sont volontairement découplées. Ne rien changer sans la source.
 
 
-
-
-- [x] **`[ENG-TTP-NEGATIF]`** ✅ **CADUQUE, MESURÉ au lot 194 (2026-09-05)** — le risque de libellé n'existe pas : **0 composant** lit `totalTaxesPaid` (grep `components/`), la surface MCP l'a déjà renommé `netTaxSettlements` (`[PROJ-TAXPAID-LABEL]`, `getProjection.spec.ts` / `simulateWhatIf.spec.ts`), et le seul « impôt à vie » affiché (`StrategyOptimizerPanel`) est `lifetimeTax` = impôt TOTAL modélisé (`[ENG-RANKTAX-ESTATE]`). Le fond (compteur négatif par construction) vit dans `[PROJ-TAXPAID-SOLDE-AVRIL]`, qui reste ouvert. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S) — `totalTaxesPaid` ressort NÉGATIF pour salarié (compte seulement
-  débits du liquide, retenues à la source n'y transitent pas → seuls remboursements nets). Cohérent
-  avec contrat documenté, mais libellé à risque si l'UI affiche « Impôt à vie ». Jugement quantitatif
-  à financial-integrity.
-
 #### Divorce — reliquat MESURÉ par le panel de re-revue (PR #616)
 
 > Les deux blocages ÉLEVÉ (SRG et cible du meltdown) sont CORRIGÉS dans #616. Ce qui suit a été
@@ -1438,7 +1433,6 @@
 > (2026-08-14, PR #626) — `ROOM-COUPLE`, `ESTATE-PENSION`, `LATENTTAX`, `TAXDEBT-UNSPLIT`,
 > `SPLITPCT-UNBOUNDED`, `MC-OBSERVABILITY`, `NO-CONSERVATION-GUARD`, `DISPLAY-RATES`.
 > Ne reste ici que ce qui est encore à faire.
-
 
 
 ### ✅ Échecs silencieux — **SECTION VIDE, tout est livré** *(le HIGH `[SILENT-ACTIONPLAN-NAN]` par #608, les MED/LOW ensuite ; le titre annonçait autrefois un reliquat — voir `docs/BACKLOG_ARCHIVE.md`)*
@@ -1642,9 +1636,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
     monétaires, qui n'existe pas encore (celle des champs TEXTE a été choisie exprès à sa place).
   Ne rien coder avant la réponse de Marc.
 
-- [x] **`[A11Y-PRIVACY-ONBOARDING]`** ✅ **CADUQUE, MESURÉ au lot 194 (2026-09-05)** — masquer ces champs serait INERTE : `isPrivacyMode` est EXCLU de la persistance (`store/optionsPersistance.ts`, déstructuré hors de `persistable`), donc chaque chargement démarre hors mode discret ; et `Onboarding` n'est rendu que sous `isFirstLaunch` (`App.tsx`), sans aucune relance possible (grep : aucun `setIsFirstLaunch(true)` hors initialisation). L'onboarding ne peut donc jamais s'afficher en mode discret — `UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`, version « un masque sans état qui le déclenche ». À rouvrir si l'onboarding devient relançable. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
-  masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
-  discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
 ### 🔴 Performance
 
 > Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.
@@ -1661,7 +1652,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 ### 🔴 IA / Anthropic
 
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
-
 
 
 - [ ] **`[AI-MODELID-EPINGLER-SNAPSHOTS]`** (XS, **HUMAIN**) — ⚠️ **Moitié restante de
@@ -1703,7 +1693,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   (ex. `#ef4444` rouge alerte dans 6 fichiers). Un changement de teinte design system = grep-replace
   manuel 6 fichiers sans garantie exhaustivité. **Correctif** : `utils/chartColors.ts` exportant
   teintes de séries (mappées aux tokens Tailwind existants), importé par les 6 fichiers.
-
 
 
 - [ ] **`[GODFILE-FUTUREPROJECTION]`** (L — unifie `[DETTE-GODFILE-FUTUREPROJECTION]` et la part

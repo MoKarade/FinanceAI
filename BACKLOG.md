@@ -1251,10 +1251,17 @@
   **MESURÉ, et le banc est AVEUGLE** : `scripts/inverserOrdreBoucle.py dec_psv_fin_de_mois` (déplace les DEUX
   blocs) rend **0,00 $ d'écart sur les 5 fixtures** de `scripts/mesureOrdreBoucle.ts` — parce qu'aucune n'atteint
   le seuil de récupération PSV (`OAS_CLAWBACK_THRESHOLD_2026`), pas parce que le lecteur est inerte
-  (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`). À faire : mesurer sur un retraité à HAUT revenu
-  qui décaisse du REER en décembre (MELTDOWN_REER ou but daté), puis déplacer le bloc APRÈS le meltdown avec sa
-  garde d'ordre (`oasClawbackNextPeriod` n'est lu qu'en janvier : rien ne l'oblige à précéder le dépôt). Non
-  corrigé au lot 179 : hors du périmètre nommé par le ticket et par la décision 15 (le dépôt fiscal). [MESURÉ, aveugle]
+  (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+  ✅ **MESURÉ au lot 181 (2026-09-05)** sur quatre retraités à HAUT revenu (REER 2 à 2,5 M$, 25 ans, bloc PSV
+  déplacé après le meltdown, moteur de `main` post-#910) : **0,00 $ sous AUTO_MARGINAL** sur les deux fixtures
+  (récupération déjà saturée au plafond — un dollar de plus n'y change rien) ; sous MELTDOWN_REER : couple
+  66/66 patrimoine **+180,41 $**, impôt à vie −415,58 $ ; solo 70 patrimoine **−2 919,53 $**, impôt à vie
+  −918,30 $, retraits REER +836 $. Effet PETIT et de signe non évident (le retrait de décembre déplace le
+  calendrier du meltdown de l'année suivante) — reclassé **XS, FAIBLE**. Correctif si GO (Q11 de
+  `docs/A_FAIRE_MOI.md`) : déplacer le bloc APRÈS le meltdown avec sa garde d'ordre (`oasClawbackNextPeriod`
+  n'est lu qu'en janvier : rien ne l'oblige à précéder le dépôt). Non corrigé : hors du périmètre nommé par
+  la décision 15 (le dépôt fiscal). Reproduction : `scratchpad/mesurePsv181.ts` (non committé — fixtures
+  décrites ci-dessus, banc `mesureOrdreBoucle.ts` aveugle par construction sur ce lecteur).
 - [ ] **`[COUPLE-PREDICAT-COPIES]`** (XS, FAIBLE — découverte du lot 180, 2026-09-05) — le prédicat « mode couple = un 2e
   utilisateur NOMMÉ » est écrit à la main dans SIX endroits (`Layout.tsx`, `Transactions.tsx`, `PayslipUploadCard.tsx`,
   `NetWorthByOwnerCard.tsx`, `CoupleModeBadge.tsx`, `services/financialSnapshot.ts:coupleMode`), avec trois formes

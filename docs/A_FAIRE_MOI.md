@@ -621,6 +621,79 @@ persistance de tes VRAIES données, je ne code rien avant :
 3. Que devient le profil actuel au premier lancement (la clé existante devient « Marc » ?)
 4. Le switch doit-il exiger une confirmation (anti-fausse-manip) ?
 
+## 🧭 Plans à valider — lot 181 (2026-09-05) : quatre tickets « plan d'abord », onze questions d'un coup
+
+> Tes réponses du 2026-09-05 ont débloqué ces quatre tickets en demandant un plan AVANT de coder.
+> Voici les plans courts et TOUTES les questions en un seul batch (une recommandation par question,
+> `[Certain]`/`[Probable]` indiqués). Réponds par numéro (« Q1 a, Q2 b… ») ; sans réponse, je ne
+> code aucun des quatre et je continue les tickets MESURÉS du BACKLOG qui n'attendent personne.
+
+### P1 — `[AUTH-REMEMBER-DEVICE]` : retirer la déconnexion automatique 8 h quand « se souvenir de cet appareil » est coché
+- **Constat** `[Certain]` : l'option n'existe pas encore. La déco 8 h vit dans `services/sync/inactivityLogout.ts`
+  (horodatage local, lu au boot ET par le polling) ; `handleInactivityLogout` révoque le jeton. Le journal
+  D4 (raison GIS des reconnexions) n'a jamais été lu : tu n'as que ton téléphone.
+- **Plan** : (1) case « Se souvenir de cet appareil » sur la carte Drive (Réglages › Sauvegarde), préférence
+  locale à l'appareil (jamais synchronisée, comme le jeton) ; (2) cochée → la borne 8 h ne coupe plus la
+  reprise silencieuse (boot + polling), le jeton se renouvelle sans clic tant que la session Google le
+  permet ; (3) ré-auth exigée seulement pour les sous-onglets sensibles des Réglages ; (4) garde :
+  « préférence ignorée » → rouge ; contrôle : case décochée = comportement d'aujourd'hui, identique.
+- **Q1** « Réglages » à protéger = (a) **Clés API + Sauvegarde seulement** (reco — c'est là que vivent les
+  secrets et Drive) · (b) tout l'onglet Réglages.
+- **Q2** Ré-auth = (a) **nouveau consentement Google (popup)** (reco — marche pour tout le monde) · (b)
+  re-saisie de la passphrase quand elle est active, popup sinon.
+- **Q3** Durée du « souvenir » = (a) **illimitée** (reco : c'est ta demande) · (b) 30 jours puis re-login
+  (borne Loi 25 conservée).
+- **Q4** `[Probable]` Une partie des reconnexions « trop souvent » vient d'un ÉCHEC de renouvellement
+  Google (cookies tiers bloqués, session Google expirée) que « se souvenir » ne peut PAS contourner :
+  (a) **livrer quand même et lire D4 après** (reco) · (b) lire D4 d'abord (il te faut un ordinateur).
+
+### P2 — `[PROJ-NW-FALAISE-REER]` (b) plancher de préservation CELI
+- **Constat** `[Certain]` : `cashflowAllocation.ts` (bloc « Palier 14 % ») remplit le REER jusqu'au sommet
+  du palier (mur dur) puis la cascade vide le CELI en premier — d'où les 112 k$ d'écart pour 1 000 $ de REER.
+- **Plan** : (1) MESURER X : balayer 12 / 18 / 24 / 36 mois de dépenses sur les 7 personas + la fixture
+  72/72 du ticket ; relever patrimoine final, impôt à vie, mois de mort du CELI et le CLASSEMENT des
+  stratégies ; (2) règle : au-delà du palier, si `CELI < X × dépenses mensuelles` et `REER > 0`, tirer
+  du REER avant le CELI ; (3) goldens re-basés SCIEMMENT, chacun avec son mécanisme ; (4) garde de
+  pente (« ±1 000 $ de REER d'ouverture ne déplace plus 112 k$ ») + contrôle « CELI ≥ plancher tant que
+  REER > 0 ».
+- **Q5** X = (a) **24 mois sauf si la mesure montre un meilleur point, et je tranche par la mesure**
+  (reco) · (b) tu veux voir le tableau avant que je fixe X.
+- **Q6** Le plancher s'applique à (a) **AUTO_MARGINAL seulement** (reco — c'est elle qui a le mur) ·
+  (b) toutes les stratégies qui décaissent.
+
+### P3 — `[FISC-REEE-GRANT-CLAWBACK]` : re-tentative cadrée (7 facettes déjà chiffrées)
+- **Plan en 3 lots** : (1) poches PAR ENFANT + amorçage du solde d'ouverture (part subvention DÉRIVÉE des
+  règles SCEE/IQEE sur l'historique de cotisation — hypothèse écrite et affichée, jamais un chiffre
+  inventé) + conservation de flux (registre entrant/sortant des subventions) ; (2) fermeture :
+  remboursement des subventions non utilisées, PRA imposé au SOUSCRIPTEUR (barème indexé), cotisations
+  non taxées ; (3) dérivés (`latentTax`, `netWorth`, succession) + transfert entre frères/sœurs. Chaque
+  lot mesuré sur les 3 cas du ticket (60 k$ d'ouverture ; aînée 23 / cadette 6 ; PRA 50 k$ en 2051).
+- **Q7** Souscripteur par défaut du RÉEE = (a) **toi (user1)** (reco) · (b) le conjoint · (c) un champ à
+  choisir par enfant.
+- **Q8** À la fermeture du RÉEE d'un enfant, transférer le solde à un frère/sœur qui étudie encore :
+  (a) **automatique tant qu'un autre enfant a du solde** (reco — c'est ce qu'on fait dans la vraie vie
+  pour ne rien rembourser) · (b) jamais (rembourser tout de suite).
+
+### P4 — `[FUTUR-ANNOTATIONS]` : annoter la courbe Futur
+- **Plan** : (1) quatre types (âge de retraite, épuisement d'un compte, début RRQ/PSV, bascule de
+  stratégie) dérivés de champs DÉJÀ publiés par le moteur — grep avant d'ajouter un champ ;
+  (2) marqueur + libellé court, MÊME écrêtage que les pastilles d'événements (rang après écrêtage) ;
+  (3) quatre cases à décocher, préférence persistée (champ additif, pas de migration) ; (4) garde :
+  chaque type apparaît sur une fixture qui le déclenche, disparaît quand décoché, rang stable.
+- **Q9** « Épuisement d'un compte » vise (a) **CELI, REER, non-enregistré et liquidités** (reco) ·
+  (b) CELI et REER seulement.
+- **Q10** En mode discret, les annotations restent visibles (elles ne portent AUCUN montant) :
+  (a) **oui** (reco) · (b) non, tout disparaît.
+
+### Q11 — `[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]` (découverte du lot 179, MESURÉE au lot 181)
+- Le bloc de récupération PSV de décembre lit les retraits REER AVANT le meltdown du même mois — même
+  trou que celui que tu as fait corriger pour l'impôt (réponse 15), un lecteur plus haut. Mesuré sur
+  quatre retraités à HAUT revenu (2 à 2,5 M$ de REER, 25 ans) : **0,00 $ sous AUTO_MARGINAL** (la
+  récupération est déjà PLEINE, un dollar de plus ne change rien) ; sous MELTDOWN, **+180 $** de
+  patrimoine (couple) et **−2 920 $** (solo), impôt à vie −416 / −918 $. Petit, et de signe non évident.
+  (a) **corriger dans le même geste que le lot 179** (déplacer le bloc après le meltdown, garde d'ordre)
+  (reco : cohérence, coût XS) · (b) laisser tel quel, documenté.
+
 ## B. Sources fiscales officielles — le proxy sortant me les BLOQUE
 
 Je ne peux joindre ni `canada.ca` ni Service Canada (403). Un faux correctif dans un moteur d'impôt

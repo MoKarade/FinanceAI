@@ -33,6 +33,7 @@
 > accumulateurs AVANT les producteurs (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`) ; le banc y est aveugle
 > (0 $ sur 5 fixtures sous le seuil PSV). Docs : FISCAL_REFERENCE §1 (calendrier), PROJECTION Phase 4,
 > CHANGELOG, BACKLOG (+ archive du lot 178), A_FAIRE_MOI, leçon dans CONVENTIONS.
+> Gate complet VERT : **5 588 tests / 565 fichiers**, exit 0 (arbre re-basé sur `main` byte-identique).
 
 > ## 🟦 Session 2026-09-05 — Lot 178 : après une séparation, les allocations se récupèrent sur le revenu du parent qui RESTE (`[ENG-DIVORCE-ALLOC-ASSIETTE]`)
 > Décision Marc 14 (« comme mesuré »). Une ligne dans `projection.ts` : `householdGross` suit

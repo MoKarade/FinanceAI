@@ -19,18 +19,12 @@
 
 ## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)
 
-- [x] **`[TX-INTERAC-REMBOURSEMENT]`** ✅ **LIVRÉ au lot 172 (2026-09-05)** — règle d'import « Interac reçu » (FR + « e-Transfer from/received ») → `Remboursement`, catégorie devenue canonique (`RULE_CATEGORIES`), test de limite inversé + garde de CHAÎNE `interacRecuRemboursement.test.ts` (CSV réel → règles → revenu du Budget : 5 000 $, pas 5 300 $). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S, money-critical budget — décision 2026-09-05 (a)) — ajouter la règle de
-  catégorisation qui route un Interac **REÇU** vers `'Remboursement'` (`services/import/categoryRules.ts`),
-  ce qui active enfin `CREDIT_BACK_CATEGORIES` de `spendRules.ts` (crédit sur le poste de dépense, jamais un
-  revenu). Mesuré au routage : 300 $ de faux revenu (9,1 % du mois) sur la fixture couple. Les 6 tests de
-  `spendRules.test.ts` testaient une combinaison que la prod ne fabriquait jamais → en faire des tests de
-  CHAÎNE (transaction brute → catégorie → KPI Revenus). Un Interac ENVOYÉ reste une dépense.
 - [ ] **`[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`** (S-M — décision 2026-09-05 (b)) — le grand livre budget
   (`utils/budgetSync.ts`) EXCLUT explicitement du revenu tout positif hors `{Salaire, Revenus divers}`
   (retour marchand, remboursement d'impôt, dépôt non catégorisé) et les montre sous un nom visible
   (« Entrées hors revenu : X $ ») au lieu de les compter dans le total du grand livre — fin des deux
   « soldes du mois » différents côte à côte (écart 11,7 % mesuré). Jamais perdus en silence.
-- [ ] **`[BUDGET-IMPOTS-HORS-COMPARAISON]`** (S — décision 2026-09-05 (a)) — la comparaison budget↔réel de
+- [x] **`[BUDGET-IMPOTS-HORS-COMPARAISON]`** ✅ **LIVRÉ au lot 173 (2026-09-05)** — `HORS_COMPARAISON_BUDGET` (source unique `spendRules.ts`), `totalSpent`/`totalHorsComparaison` dans la parité, `expenseAvgHorsComparaison`/`horsComparaisonAvg` dans les moyennes (l'assiette complète `expenseAvg` reste celle de TaxCenter, qui le dit) ; la tuile Dépenses écrit « hors impôts (exclus : X $) ». → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S — décision 2026-09-05 (a)) — la comparaison budget↔réel de
   l'écran Budget exclut la catégorie `Impôts` des DEUX côtés (`totalSpent`/`pastAverages.expenseAvg`
   comme les cibles) — écart structurel 44 % mesuré, badge « Excédentaire » faux. Le libellé dit que les
   impôts sont hors comparaison (un chiffre qui exclut quelque chose le DIT).

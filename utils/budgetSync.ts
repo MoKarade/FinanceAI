@@ -12,7 +12,7 @@
 import type { BudgetCategory, Transaction } from '../types';
 import { matchTransactionToCategory, matchCategoryToName } from './budget';
 // Règles de dépense PARTAGÉES (module neutre : évite le cycle budgetSync ↔ budget).
-import { CREDIT_BACK_CATEGORIES, isCreditBack, isSpend, spendAmountOf } from './spendRules';
+import { CREDIT_BACK_CATEGORIES, isCreditBack, isSpend, spendAmountOf, isHorsComparaisonBudget } from './spendRules';
 
 export { CREDIT_BACK_CATEGORIES, isSpend, spendAmountOf } from './spendRules';
 
@@ -117,11 +117,23 @@ export const historicalMonthlyAverage = (transactions: Transaction[], category: 
 export function computeMonthlyActualAverages(
     transactions: Transaction[],
     ref: Date = new Date(),
-): { expenseAvg: number; incomeAvg: number; salaryAvg: number; otherAvg: number; fullMonths: number } {
+): {
+    /** Moyenne de TOUTES les sorties (impôts inclus) — assiette complète, celle de `TaxCenter`. */
+    expenseAvg: number;
+    /** [BUDGET-IMPOTS-HORS-COMPARAISON] La même moyenne SANS `HORS_COMPARAISON_BUDGET` — l'assiette
+     *  du « prévu » des tuiles de l'écran Budget, alignée sur ses cibles (qui n'ont jamais eu de
+     *  poste Impôts). `expenseAvg` reste entier : un écran qui affirme « impôts inclus » ne doit
+     *  pas changer de chiffre parce qu'un autre écran change de règle. */
+    expenseAvgHorsComparaison: number;
+    /** Moyenne mensuelle de ce qui est exclu (pour le DIRE à l'écran). */
+    horsComparaisonAvg: number;
+    incomeAvg: number; salaryAvg: number; otherAvg: number; fullMonths: number;
+} {
     const months = fullHistoryMonths(transactions, ref);
-    if (months.length === 0) return { expenseAvg: 0, incomeAvg: 0, salaryAvg: 0, otherAvg: 0, fullMonths: 0 };
+    if (months.length === 0) return { expenseAvg: 0, expenseAvgHorsComparaison: 0, horsComparaisonAvg: 0, incomeAvg: 0, salaryAvg: 0, otherAvg: 0, fullMonths: 0 };
     const inWindow = new Set(months);
     let expense = 0;
+    let horsComparaison = 0;
     let salary = 0;
     let other = 0;
     // [TX-INTERAC-BUDGET] Sorties et crédits des catégories « à crédit », comptés À PART : un crédit
@@ -138,7 +150,12 @@ export function computeMonthlyActualAverages(
         const cat = t.category ?? '';
         if (t.amount < 0) {
             if (CREDIT_BACK_CATEGORIES.has(cat)) bump(creditCatSpend, cat, Math.abs(t.amount));
-            else expense += Math.abs(t.amount);
+            else {
+                expense += Math.abs(t.amount);
+                // [BUDGET-IMPOTS-HORS-COMPARAISON] Comptée dans `expense` (assiette complète) ET à part,
+                // pour dériver l'assiette « hors comparaison » de la MÊME boucle — jamais deux lectures.
+                if (isHorsComparaisonBudget(t)) horsComparaison += Math.abs(t.amount);
+            }
             continue;
         }
         if (isCreditBack(t)) { bump(creditCatCredit, cat, t.amount); continue; }
@@ -152,8 +169,11 @@ export function computeMonthlyActualAverages(
     }
     const salaryAvg = Math.round(salary / months.length);
     const otherAvg = Math.round(other / months.length);
+    const horsComparaisonAvg = Math.round(horsComparaison / months.length);
     return {
         expenseAvg: Math.max(0, Math.round(expense / months.length)),
+        expenseAvgHorsComparaison: Math.max(0, Math.round((expense - horsComparaison) / months.length)),
+        horsComparaisonAvg,
         incomeAvg: salaryAvg + otherAvg,
         salaryAvg,
         otherAvg,

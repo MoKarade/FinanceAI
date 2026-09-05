@@ -16,6 +16,22 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 173 : les impôts sortent des deux côtés de la comparaison budget↔réel, et la tuile le dit (`[BUDGET-IMPOTS-HORS-COMPARAISON]`)
+> Décision Marc 3a. Source unique `HORS_COMPARAISON_BUDGET = {Impôts}` dans `spendRules.ts` (le module
+> neutre partagé par `budget.ts` et `budgetSync.ts`). `computeBudgetParity` publie `totalSpent` HORS
+> impôts + `totalHorsComparaison` (les lignes restent listées parmi les orphelins : la parité informe,
+> elle ne compare pas). `computeMonthlyActualAverages` publie `expenseAvgHorsComparaison` +
+> `horsComparaisonAvg` en GARDANT `expenseAvg` entier — `TaxCenter` l'affiche « impôts inclus » et sa
+> phrase « mêmes chiffres que l'onglet Budget » est réécrite (elle serait devenue fausse :
+> `UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`) ; `financialSnapshot` ne lit que
+> le revenu. Tuiles Dépenses / Fin de mois / Restant : prévu ET réel sur l'assiette hors impôts, sublabel
+> « hors impôts (exclus : X $) » en `PrivateAmount`. Gardes : 3 parité, 2 moyennes (dont l'identité
+> `expenseAvg = horsComparaison + exclu`), 1 UI (réel 1 000 $ et non 1 700 $, phrase + montant).
+> Perturbations : ensemble vidé → 3 rouges (les gardes qui n'en dépendent pas restent vertes, par
+> conception) ; phrase retirée → 1 rouge. Le contexte de chat
+> (`totalSpent` de `chatViewDetail`) suit le réel affiché, donc hors impôts — même chiffre que l'écran.
+> Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 172 : un Interac REÇU importé devient « Remboursement », plus un revenu (`[TX-INTERAC-REMBOURSEMENT]`)
 > Décision Marc 1a. `categoryRules.ts` : la règle « VIREMENT INTERAC DE / E-TRANSFER RECU|RECEIVED »
 > passe de `Revenus divers` à `Remboursement` (+ graphie « E-TRANSFER FROM », qui rendait `null`), et

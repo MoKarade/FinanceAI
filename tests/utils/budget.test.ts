@@ -191,3 +191,29 @@ describe('computeActualByOwner — [PH4-E]', () => {
         expect(computeActualByOwner([], OWNER_ITEMS)).toEqual({ owner0: 0, owner1: 0, commun: 0 });
     });
 });
+
+// [BUDGET-IMPOTS-HORS-COMPARAISON] (décision Marc 2026-09-05, 3a) Les impôts sortent du total COMPARÉ,
+// mais sont NOMMÉS (somme publiée) et restent visibles parmi les orphelins. Discriminant : retirer
+// « Impôts » de `HORS_COMPARAISON_BUDGET` rend totalSpent 2 700 et totalHorsComparaison 0.
+describe('[BUDGET-IMPOTS-HORS-COMPARAISON] computeBudgetParity — impôts hors du total comparé, jamais en silence', () => {
+    const lignes = [
+        tx({ id: 1, category: 'Loyer', amount: -1500 }),
+        tx({ id: 2, category: 'Impôts', amount: -1000 }),
+        tx({ id: 3, category: 'Restaurants', amount: -200 }),
+    ];
+    it('totalSpent exclut les impôts ; totalHorsComparaison les porte ; les postes ne bougent pas', () => {
+        const p = computeBudgetParity(lignes, ITEMS);
+        expect(p.totalSpent).toBe(1700);
+        expect(p.totalHorsComparaison).toBe(1000);
+        expect(p.actualsMap).toEqual({ Loyer: 1500, Restaurants: 200 });
+    });
+    it('« Impôts » reste listée parmi les catégories sans poste (la parité informe, elle ne compare pas)', () => {
+        const p = computeBudgetParity(lignes, ITEMS);
+        expect(p.orphanCategories).toEqual([{ category: 'Impôts', total: 1000 }]);
+    });
+    it('sans impôts : totalHorsComparaison vaut 0 (jamais undefined) et totalSpent est inchangé', () => {
+        const p = computeBudgetParity(lignes.filter(t => t.category !== 'Impôts'), ITEMS);
+        expect(p.totalHorsComparaison).toBe(0);
+        expect(p.totalSpent).toBe(1700);
+    });
+});

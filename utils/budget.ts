@@ -9,7 +9,7 @@
 // transactions sans poste, postes sans dépense).
 
 import type { BudgetCategory, Transaction } from '../types';
-import { isSpend, spendAmountOf } from './spendRules';
+import { isSpend, spendAmountOf, isHorsComparaisonBudget } from './spendRules';
 
 /**
  * Rapproche une catégorie de transaction d'un poste de budget. Règle (préservée
@@ -92,6 +92,11 @@ export interface BudgetParity {
     /** Total dépensé sur la FENÊTRE, TOUTES dépenses (postes rapprochés + orphelins). Sert au KPI
      *  « Dépenses » : il doit refléter l'argent réellement sorti, qu'il y ait un poste ou non. */
     totalSpent: number;
+    /** [BUDGET-IMPOTS-HORS-COMPARAISON] Somme des dépenses de la fenêtre EXCLUES de `totalSpent`
+     *  (`HORS_COMPARAISON_BUDGET`, aujourd'hui « Impôts ») — publiée pour que l'écran nomme ce
+     *  qu'il exclut. Ces lignes restent listées parmi les orphelins : la parité informe, elle ne
+     *  compare pas. */
+    totalHorsComparaison: number;
     /** Catégories de transactions (de la FENÊTRE) sans poste, triées par total décroissant. */
     orphanCategories: OrphanCategory[];
     /** Postes (hors épargne) qu'AUCUNE dépense ne rapproche sur TOUT l'historique. */
@@ -124,6 +129,7 @@ export function computeBudgetParity(
     const actualsMap: Record<string, number> = {};
     const orphanTotals: Record<string, number> = {};
     let totalSpent = 0;
+    let totalHorsComparaison = 0;
 
     for (const t of spendTransactions) {
         // [BUDGET-CATEGORY-INCOME-SIGN] `spendAmountOf` (= `-t.amount`), jamais `Math.abs` : pour
@@ -137,7 +143,9 @@ export function computeBudgetParity(
         // `spendAmountOf` est la source unique du signe. Ne pas la « simplifier » en `Math.abs`
         // sous prétexte qu'aucun appelant n'exerce ce chemin aujourd'hui.
         const amount = spendAmountOf(t);
-        totalSpent += amount; // total dépensé = TOUT (rapproché + orphelin), comme avant le refactor
+        // [BUDGET-IMPOTS-HORS-COMPARAISON] Hors du total COMPARÉ, mais nommé (décision Marc 3a).
+        if (isHorsComparaisonBudget(t)) totalHorsComparaison += amount;
+        else totalSpent += amount; // total dépensé = TOUT le reste (rapproché + orphelin), comme avant le refactor
         const match = matchTransactionToCategory(t.category, items);
         if (match) {
             actualsMap[match.name] = (actualsMap[match.name] ?? 0) + amount;
@@ -161,7 +169,7 @@ export function computeBudgetParity(
         (i) => !isSavingsNature(i.nature) && !matchedNames.has(i.name),
     );
 
-    return { actualsMap, totalSpent, orphanCategories, itemsWithoutTransactions };
+    return { actualsMap, totalSpent, totalHorsComparaison, orphanCategories, itemsWithoutTransactions };
 }
 
 // [NAV-REMOVE-OBJECTIFS-TAB] `monthlyActualsMap` retiré avec la feature qu'elle servait : son

@@ -34,6 +34,22 @@ export const CREDIT_BACK_CATEGORIES = new Set<string>(['Remboursement']);
 export const isCreditBack = (t: Transaction): boolean =>
     t.amount > 0 && CREDIT_BACK_CATEGORIES.has(t.category ?? '');
 
+/**
+ * [BUDGET-IMPOTS-HORS-COMPARAISON] (décision Marc 2026-09-05, réponse 3a) Catégories HORS de la
+ * comparaison budget↔réel de l'écran Budget, des DEUX côtés. « Impôts » n'est jamais un poste
+ * (`NON_BUDGET_CATEGORIES` : le revenu projeté est déjà net), donc aucune CIBLE ne le porte — mais
+ * le RÉEL (`totalSpent`) et la moyenne passée (`expenseAvg`) comptaient TOUS les négatifs, impôts
+ * inclus : deux assiettes différentes comparées, écart STRUCTUREL de 44 % mesuré, badge
+ * « Excédentaire » faux. La catégorie sort des deux côtés ET l'écran le DIT (un chiffre qui exclut
+ * quelque chose le dit) — jamais retirée en silence : le montant exclu est publié à côté.
+ * Sans effet sur l'onglet Transactions ni sur le réel de `TaxCenter`, qui gardent l'assiette
+ * complète et l'affirment.
+ */
+export const HORS_COMPARAISON_BUDGET = new Set<string>(['Impôts']);
+
+export const isHorsComparaisonBudget = (t: Transaction): boolean =>
+    HORS_COMPARAISON_BUDGET.has(t.category ?? '');
+
 /** Une ligne compte-t-elle dans les DÉPENSES d'un poste (sortie, ou crédit qui les réduit) ? */
 export const isSpend = (t: Transaction): boolean =>
     !t.isTransfer && !t.isDuplicate && !NON_BUDGET_CATEGORIES.has(t.category ?? '')

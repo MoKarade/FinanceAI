@@ -112,6 +112,7 @@
 
 - [x] **[DÉCISION — BUDGET-IMPOTS-POSTE]** (2026-08-26, même audit) — les impôts payés (catégorie
   ✅ **RÉPONDU 2026-09-05 (en session)** : **(a)** — les impôts sortent des DEUX côtés de la comparaison (réel ET cible). Ticket `[BUDGET-IMPOTS-HORS-COMPARAISON]` au BACKLOG.
+  ✅ **LIVRÉE au lot 173 (2026-09-05)** — réel et prévu sur la même assiette, montant exclu nommé sur la tuile.
   `Impôts`, exclue de `isSpend`/`NON_BUDGET_CATEGORIES` parce que la PROJECTION travaille déjà sur
   un revenu net) faussent la comparaison budget↔réel de l'écran Budget : `totalSpent`/
   `pastAverages.expenseAvg` comptent TOUS les négatifs (impôts inclus), mais `totalBudgetDisplay`

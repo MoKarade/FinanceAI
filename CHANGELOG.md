@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le Budget compare enfin les dépenses aux cibles sur la même base : hors impôts)
+
+- **Corrigé** : les tuiles Dépenses, Fin de mois et Restant de l'onglet Budget comptaient les
+  règlements d'impôt dans le réel et dans la moyenne passée, alors qu'aucune cible de budget n'a
+  jamais porté d'impôts (le revenu de référence est déjà net). Les deux côtés excluent désormais
+  la catégorie « Impôts », et la tuile Dépenses écrit ce qu'elle exclut avec le montant. Les impôts
+  restent visibles dans Transactions, dans le panneau de parité et dans le réel de l'onglet Impôts,
+  qui précise maintenant « impôts inclus ».
+
 ## [unreleased] — 2026-09-05 (Un Interac reçu n'est plus compté comme un revenu)
 
 - **Corrigé** : à l'import d'un relevé, un virement Interac REÇU (« Virement Interac de… »,

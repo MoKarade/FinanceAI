@@ -16,14 +16,35 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟢 Session 2026-09-05 — MARC A RÉPONDU À 17 QUESTIONS + recherche fiscale (lot 167, doc seulement)
+> Toutes consignées dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées dans les
+> tickets BACKLOG (annotation « DÉCISION Marc 2026-09-05 »). Décisions : Interac reçu → Remboursement (a) ·
+> positifs orphelins EXCLUS nommés (b) · impôts hors comparaison des deux côtés (a) · falaise REER →
+> **plancher CELI (b)**, contre ma reco · loyer net → droits REER avec champ de propriété 50/50 (a) ·
+> rail de nav replié, ticket fermé · calibration net : rester au diagnostic · un SEUL profil réel « Marc »
+> (multi-profil caduque) · annotations Futur : TOUT, en bref, décochable · abonnements restent dans
+> Budget · toast de purge OUI · mode couple PRÉVU · mode discret → masquer aussi vers l'IA · divorce →
+> assiette du parent seul · décembre fiscal → CORRIGER · REEE clawback → GO (part subvention dérivée) ·
+> déco auto 8 h RETIRÉE avec « se souvenir de l'appareil ». Jetons Fintable révoqués (C1 fait).
+> **Recherche fiscale** : lecture de page bloquée PARTOUT (`EGRESS_BLOCKED`, y compris CFFP/CQFF/KPMG),
+> mais la recherche web répond → 9 items sourcés en « relayé » (tableau dans A_FAIRE_MOI) : B1 FERR 94 =
+> 18,79 % (écart confirmé), B2 SRG couple 1 $/4 $ combiné par conjoint (écart confirmé), B3 ligne 361
+> cohérente, B4 fédéral 14 % en 2026 + crédit compensatoire (écart confirmé, formule MANQUANTE), B5 loyer
+> net = revenu gagné, B6-B7 RAP exact, B8 REEE 35 ans après ouverture (décision 25 vs 35 à prendre),
+> B9 les 14 plafonds identiques. **Il ne manque plus que** : la formule du crédit compensatoire (B4) et la
+> décision B8 ; captures 7308(4)/SRG optionnelles. Marc : « tu pourras continuer tout ce qu'il manque ».
+> Nouveaux tickets : `[TX-INTERAC-REMBOURSEMENT]`, `[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`,
+> `[BUDGET-IMPOTS-HORS-COMPARAISON]`, `[FUTUR-ANNOTATIONS]`, `[PROFIL-NOMMER-MARC]`.
+
 > ## 🟦 Session 2026-09-05 — Lot 166 : clôture du cycle des six décisions (doc seulement)
 > Les lots 160 à 165 sont TOUS mergés sur `main` et les déploiements Vercel de production sont
 > `READY` (vérifiés jusqu'au squash du lot 165, `f77917e`). Ménage BACKLOG : le bloc
 > `[ENG-FVI-EFFICIENCY-ESTATE]` déménagé vers l'archive (promesse « à la prochaine PR » tenue),
 > deux stubs 2026-08-21 retirés (leurs sections d'archive existaient déjà) et deux références
 > « PR à compléter au merge » complétées (#681, #680 — retrouvées par `git log --grep`).
-> Le backlog restant est entièrement gaté : décisions/sources humaines dans
-> `docs/A_FAIRE_MOI.md`, ou cadrage plan-d'abord. Rien de servi ne change dans ce lot.
+> ⚠️ Correction du lot 167 : « backlog restant entièrement gaté » était TROP FORT — il reste de la
+> dette technique, des god-files, de l'a11y et des gardes avançables sans Marc. Rien de servi ne
+> change dans ce lot.
 
 > ## 🟦 Session 2026-09-05 — Lot 165 : l'efficacité du FVI score l'impôt À VIE — LES SIX DÉCISIONS SONT LIVRÉES
 > `[ENG-FVI-EFFICIENCY-ESTATE]` → livré (option a). Le leakage de l'efficacité passe de l'impôt

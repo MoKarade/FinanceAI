@@ -56,7 +56,11 @@
 
   ✅ **RÉPONDU 2026-09-04 (en session)** : RETIRER le module (re-branchement possible depuis git si le besoin naît).
   ✅ **LIVRÉE au lot 162 (2026-09-05)** — module et tests retirés, avertissement du double-comptage laissé au nouveau domicile des exports vivants.
-- [ ] **[DÉCISION — FISC-RRSP-RENTAL-EARNED]** (2026-09-04) — le moteur ne crée AUCUN droit REER
+- [x] **[DÉCISION — FISC-RRSP-RENTAL-EARNED]** (2026-09-04) — le moteur ne crée AUCUN droit REER
+  ✅ **RÉPONDU 2026-09-05 (en session)** — volet (2) : **(a) champ de propriété optionnel par immeuble, défaut 50/50**.
+  Volet (1), recherche du 2026-09-05 (voir « 🔎 Recherche » plus bas) : le guide **T4040** liste le « revenu net de
+  location de biens immeubles » dans le revenu gagné et les « pertes de location » en déduction — source
+  RELAYÉE par la recherche web (la page canada.ca reste illisible d'ici) ; à citer telle quelle, avec cette mention.
   pour un revenu de location (confirmé dans le code : le loyer net nourrit le registre des rentes,
   jamais l'assiette de revenu gagné per-conjoint). Avant de corriger, DEUX réponses requises :
   **(1) La source fiscale.** La règle « le revenu NET de location est du revenu gagné au sens de
@@ -70,7 +74,8 @@
   [Probable] Recommandation : champ de propriété optionnel (défaut 50/50), cohérent avec le
   partage déjà fait ailleurs — mais c'est une décision produit, pas technique.
 
-- [ ] **[DÉCISION — TX-INTERAC-BUDGET]** (2026-08-26, audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]`) —
+- [x] **[DÉCISION — TX-INTERAC-BUDGET]** (2026-08-26, audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]`) —
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(a)** — un Interac REÇU est routé vers `'Remboursement'` (crédit sur la dépense), jamais un revenu. Ticket `[TX-INTERAC-REMBOURSEMENT]` au BACKLOG.
   un Interac REÇU doit-il être un REVENU ou un CRÉDIT sur le poste de dépense ? Deux décisions déjà
   prises se contredisent : `spendRules.ts` documente « l'entrant ne devient PAS un revenu … ne
   jamais recompter un remboursement comme une rentrée » et prévoit un mécanisme dédié
@@ -88,7 +93,8 @@
   requalifier le mécanisme `CREDIT_BACK` mort. Sans trancher, le revenu affiché reste gonflé par
   tout Interac récurrent (loyer partagé, remboursement de colocataire, etc.).
 
-- [ ] **[DÉCISION — BUDGET-LEDGER-REVENUS-ORPHELINS]** (2026-08-26, même audit) — le grand livre
+- [x] **[DÉCISION — BUDGET-LEDGER-REVENUS-ORPHELINS]** (2026-08-26, même audit) — le grand livre
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(b)** — les positifs hors salaire/revenus divers sont EXCLUS du revenu, explicitement et sous un nom visible (jamais perdus en silence). Ticket `[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]` au BACKLOG.
   budget (`utils/budgetSync.ts`) signale les DÉPENSES orphelines (catégories de transactions sans
   poste, panneau Parité) mais AUCUN équivalent côté REVENUS : tout montant positif hors
   `{Salaire, Revenus divers}` (retour marchand, remboursement d'impôt, dépôt non catégorisé…)
@@ -102,7 +108,8 @@
   faut-il un panneau de parité REVENUS symétrique de celui des dépenses) ou doit-il les exclure
   explicitement (et alors sous quel nom, pour ne pas les perdre silencieusement) ?
 
-- [ ] **[DÉCISION — BUDGET-IMPOTS-POSTE]** (2026-08-26, même audit) — les impôts payés (catégorie
+- [x] **[DÉCISION — BUDGET-IMPOTS-POSTE]** (2026-08-26, même audit) — les impôts payés (catégorie
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(a)** — les impôts sortent des DEUX côtés de la comparaison (réel ET cible). Ticket `[BUDGET-IMPOTS-HORS-COMPARAISON]` au BACKLOG.
   `Impôts`, exclue de `isSpend`/`NON_BUDGET_CATEGORIES` parce que la PROJECTION travaille déjà sur
   un revenu net) faussent la comparaison budget↔réel de l'écran Budget : `totalSpent`/
   `pastAverages.expenseAvg` comptent TOUS les négatifs (impôts inclus), mais `totalBudgetDisplay`
@@ -115,7 +122,8 @@
   (et alors `isSpend`/la synchro doivent-ils changer), ou l'écran doit-il exclure les impôts des
   DEUX côtés de la comparaison (réel ET cible) pour rester cohérent ?
 
-- [ ] **[DÉCISION — PROJ-NW-FALAISE-REER]** (2026-08-21) — la cascade de décaissement
+- [x] **[DÉCISION — PROJ-NW-FALAISE-REER]** (2026-08-21) — la cascade de décaissement
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(b) plancher de préservation CELI** (contre ma reco (a)) — le CELI ne descend pas sous X mois de dépenses tant que le REER n'est pas vide ; X à fixer PAR MESURE (24 proposé dans le ticket), plan-first, re-base des goldens SCIEMMENT et mesure du CLASSEMENT des stratégies avant/après.
   AUTO_MARGINAL a un MUR au sommet du palier 14 % : au-delà, elle vide le CELI avant le REER.
   Mesuré : deux couples identiques à 1 000 $ de REER près finissent à **112 k$ d'écart** (celui
   qui « préserve » son REER au-delà du palier perd — son CELI meurt plus tôt, puis tout sort au
@@ -158,6 +166,8 @@
 
 ## 🧭 `[IA-NAV-LABELS]` — DÉCISION (routée le 2026-09-04, lot 140)
 
+✅ **RÉPONDU 2026-09-05 (en session)** : option **(3)** — garder le rail replié, **fermer le ticket** (l'a11y est déjà couverte).
+
 Le ticket demande des libellés de navigation visibles par défaut (aujourd'hui : rail replié de
 64 px, libellés au survol/focus). Mais le rail replié est un CHOIX de la Phase B.1 (expansion en
 overlay sans décaler le contenu), et le ticket propose deux remèdes exclusifs — élargir le rail
@@ -170,6 +180,8 @@ adossée. [Probable] Option 3 ou 2 — le survol/focus ouvre déjà les libellé
 l'écran utile est précieux sur portable.
 
 ## 🧭 `[ENG-NET-MODEL-RESIDUAL]` volet CALIBRATION — DÉCISION (routée le 2026-09-04, lot 139)
+
+✅ **RÉPONDU 2026-09-05 (en session)** : **rester au diagnostic** — pas de calibration. Volet clos.
 
 Le volet DIAGNOSTIC est livré (l'onglet Impôts affiche l'écart net déclaré ↔ net du modèle quand
 ton brut est saisi à la main et que l'écart dépasse 1 %). Reste la seconde piste du ticket :
@@ -580,14 +592,23 @@ Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chac
 | ~~A5~~ | ✅ **RÉPONDU 2026-08-20 (ADR 0014), LIVRÉ PR #684** : « on attend le clic Activer, pareil pour enfant » — défaut inchangé, badge « Non comptée dans la simulation » sur bien et enfant inactifs. | `[UX-ISACTIVE-BADGE]` | Livré |
 | ~~A6~~ | ✅ **RÉPONDU 2026-08-20 (ADR 0014), LIVRÉ PR #684** : OUI au champ `isOwned` + popup « est-ce acheté ? » à la date planifiée passée. | `[ENG-PAST-OWNED-VS-PLANNED]` | Livré — les +156 628 $ / +307 081 $ fantômes sont fermés |
 | A7 | En scénario de STRESS (i ≠ 2 %), faut-il indexer les paliers d'impôt à `simInflation` (fidèle au CPI, contredit l'ADR 009) ou garder le statu quo documenté (conservateur) ? | `[FISC-BRACKET-CPI-STRESS]` | Impôt total **+106 %** à i = 8 %. **0 effet** à i = 2 % (ton défaut) |
-| A8 | La liste des abonnements vit dans **Budget**. Tu as dit « sous-onglet de Transactions ». Le manque réel (pouvoir refuser un faux positif) est **livré** (#570) — déménager n'apporte plus rien. **Je déménage quand même, ou on laisse ?** | `[SUBS-TAB]` volet emplacement | Aucun — pur confort de navigation |
-| A9 | Tu es en **mode solo**. `[FISC-SOLO-INVEST-SPLIT]` ne mord que si tu passes en mode couple avec un seul salaire. **Prévois-tu d'y passer ?** | `[FISC-SOLO-INVEST-SPLIT]` | **0 $ aujourd'hui**, 2 342 $/an en couple mono-salarié |
+| ~~A8~~ | ✅ **RÉPONDU 2026-09-05 : la liste RESTE dans Budget** — volet emplacement de `[SUBS-TAB]` fermé. (historique) La liste des abonnements vit dans **Budget**. Tu as dit « sous-onglet de Transactions ». Le manque réel (pouvoir refuser un faux positif) est **livré** (#570) — déménager n'apporte plus rien. **Je déménage quand même, ou on laisse ?** | `[SUBS-TAB]` volet emplacement | Aucun — pur confort de navigation |
+| ~~A9~~ | ✅ **RÉPONDU 2026-09-05 : OUI, mode couple prévu** → `[FISC-SOLO-INVEST-SPLIT]` débloqué. (historique) Tu es en **mode solo**. `[FISC-SOLO-INVEST-SPLIT]` ne mord que si tu passes en mode couple avec un seul salaire. **Prévois-tu d'y passer ?** | `[FISC-SOLO-INVEST-SPLIT]` | **0 $ aujourd'hui**, 2 342 $/an en couple mono-salarié |
 | A10 | As-tu une assurance médicaments **PRIVÉE** ou es-tu à la **RAMQ** ? Je ne peux pas le deviner et ça change la prime. | `[ENG-RAMQ-FIELDS]` | Prime RAMQ vs 0 |
-| A11 | Le pull Drive qui purge des artefacts persona ne fait qu'un log. **Veux-tu un toast visible ?** | `[PURGE-TOAST-UX]` | Confort |
-| A12 | Sur la courbe du Futur, **qu'est-ce que tu veux voir annoté** ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ? début RRQ/PSV ?) — question de ton brief de 2026-06-10, jamais répondue. | `[PH4-FUT]` | Feature entière en attente |
+| ~~A11~~ | ✅ **RÉPONDU 2026-09-05 : OUI, un toast** → `[PURGE-TOAST-UX]` débloqué. (historique) Le pull Drive qui purge des artefacts persona ne fait qu'un log. **Veux-tu un toast visible ?** | `[PURGE-TOAST-UX]` | Confort |
+| ~~A12~~ | ✅ **RÉPONDU 2026-09-05 : TOUT ce qui était cité** (retraite, épuisement d'un compte, début RRQ/PSV, bascule de stratégie), **en bref**, chaque annotation **désactivable en décochant** → ticket `[FUTUR-ANNOTATIONS]`. (historique) Sur la courbe du Futur, **qu'est-ce que tu veux voir annoté** ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ? début RRQ/PSV ?) — question de ton brief de 2026-06-10, jamais répondue. | `[PH4-FUT]` | Feature entière en attente |
 | ~~A13~~ | ✅ **RÉPONDU 2026-08-06** : « chaque semaine jeudi, pareil pour dette ». Paie et paiements de dette sont donc **hebdomadaires, le jeudi**. | `[FUTUR-DAILY]` | **Livré** : `weeklyDeltasForMonth` convertit les montants MENSUELS du store en versements hebdomadaires (×12/52) et les pose à chaque jeudi. Un mois à 5 jeudis reçoit bien 5 paies. ⚠️ Reste une limite assumée : le MOTEUR raisonne au mois et ignore les mois à 5 paies — le rythme affiché est juste, le total du mois reste celui du moteur. |
 
+**Réponses du 2026-09-05 (en session) sur des questions qui n'étaient qu'au BACKLOG** — reportées dans chaque ticket :
+- `[PRIVACY-CONTEXTE-IA]` → **masquer** : en mode discret, les montants ne partent pas non plus vers l'assistant.
+- `[ENG-DIVORCE-ALLOC-ASSIETTE]` → **« comme mesuré »** : après une séparation, l'assiette des allocations est le revenu du parent seul (`soloHousehold`), 166 → 250 $/mois sur la fixture.
+- `[FISC-DEC-FLUX-ASSIETTE-TIMING]` → **corriger** : les retraits REER de décembre doivent entrer dans l'assiette (fuite réelle, +25 568 $ d'impôt mesuré sur la fixture retraités).
+- `[FISC-REEE-GRANT-CLAWBACK]` → **GO pour retenter** (périmètre chiffré en 7 facettes). Marc ne sait PAS séparer cotisations et subventions sur son REEE réel (« j'ai jamais fait, je sais pas ») → la part subvention se DÉRIVE des règles SCEE/IQEE sur l'historique de cotisation, hypothèse écrite et affichée, jamais un chiffre inventé.
+- `[AUTH-REMEMBER-DEVICE]` → **retirer la déconnexion automatique 8 h** quand « se souvenir de cet appareil » est actif (ré-auth seulement pour les Réglages).
+- Section 4 des tâches humaines : jetons Fintable **révoqués** (C1 fait) ; C2/C3/C4/C6/C0 à **ré-expliquer en détail** (fait en session le 2026-09-05, à reporter ici en clair au prochain lot) ; C5 (profondeur Fintable) : Marc croit que le plan en offre plus → à MESURER par `npm run fintable:dry -- --days 365` chez lui ; C8 (branches mortes) : plus tard. Section D (vérifs écran) : à redemander plus tard — Marc n'a que son téléphone.
+
 **`[PROFIL-SWITCH]`** (4 questions d'un coup, posées le 2026-08-01, sans réponse) — ⚠️ touche la
+✅ **RÉPONDU 2026-09-05 (en session)** : « profil actuel = Marc, **seul profil, pour toujours** ». Donc : un seul profil RÉEL, il pousse seul vers Drive, la clé existante EST « Marc », et les autres profils ne sont que des personas de test — le multi-profil réel est CADUQUE ; il ne reste au plus qu'à nommer le profil courant « Marc » là où l'app le désigne.
 persistance de tes VRAIES données, je ne code rien avant :
 1. Combien de profils **RÉELS** ? (juste « Marc » + des personas de test, ou plusieurs réels ?)
 2. Lequel pousse vers Drive — un seul, ou chacun son fichier ?
@@ -603,7 +624,30 @@ est pire que le bug : je ne touche à rien sans la source. **Une capture d'écra
 > `revenuquebec.ca`, `bankofcanada.ca` et les moteurs de recherche répondent tous **403** au proxy
 > de sortie (relevé dans son journal de refus). Ce n'est donc pas une panne passagère à re-tenter :
 > tant que la politique réseau ne change pas, **aucune** valeur fiscale ne peut être sourcée depuis
+
 > le conteneur. Je continue à router ici plutôt que d'inventer.
+
+### 🔎 Recherche du 2026-09-05 — ce que la recherche web a rendu, et ce qui MANQUE encore
+
+> Demande de Marc le 2026-09-05 : « essaie de refaire toi une recherche plus approfondie et ensuite dis-moi tout ce
+> qu'il te manque ». Mesuré le 2026-09-05 : la LECTURE de page est bloquée sur TOUS les domaines essayés
+> (`canada.ca`, `laws-lois.justice.gc.ca`, `revenuquebec.ca`, `budget.finances.gouv.qc.ca`, CFFP Sherbrooke,
+> CQFF, KPMG, CIBC — `EGRESS_BLOCKED`), mais la **recherche** web répond : ce qui suit est donc de la
+> source **RELAYÉE** (résumés de moteur de recherche citant les pages), pas une page lue. Assez pour
+> avancer en le disant ; pas assez pour prétendre avoir lu le règlement.
+
+| # | Trouvé (source relayée) | Code aujourd'hui | Verdict | Ce qui manque |
+|---|---|---|---|---|
+| B1 | FERR : **94 ans = 18,79 %**, **95 et plus = 20,00 %** (tables 2026 Empire Vie, Retraite 101, calculconversion, CIBC Wood Gundy — toutes citent les facteurs prescrits, règl. 7308) | 20 % dès 94 ans | ⚠️ écart CONFIRMÉ (+13 726 $ mesuré) → corriger `[FISC-RRIF-94-FACTOR]` | rien de bloquant ; une capture de la table 7308(4) ferait passer la source de « relayée » à « lue » |
+| B2 | SRG couple (les deux avec PSV) : réduction de **1 $ par 4 $ de revenu COMBINÉ pour chaque conjoint** (= 0,25 $/adulte, 0,50 $/couple) ; personne seule : 1 $ par 2 $ (TurboImpôt, Wealthsimple, FADOQ, Servitax — cohérents) | 0,50 $ PAR ADULTE sur le combiné → 2× trop vite | ⚠️ écart CONFIRMÉ (0 $ vs 7 944 $/an) → corriger `[FISC-GIS-COUPLE-RATE]` | la TABLE officielle Service Canada (seuils exacts par période) : capture souhaitable, non bloquante pour le TAUX |
+| B3 | Ligne 361 QC : réduction **18,75 %** du revenu FAMILIAL (revenu net + celui du conjoint) au-delà du seuil ; **chaque conjoint remplit sa propre Annexe B** et y reporte le MÊME revenu familial (ligne 20) (Revenu Québec « Ligne 361 », DT Max) | par conjoint sur le revenu familial total | ✅ cohérent avec le code → `[FISC-LINE361-PERCONJOINT-REDUC]` passe de « à vérifier » à « confirmé (relayé) » | une capture de l'Annexe B partie B pour lever le [Probable] |
+| B4 | Taux fédéral le plus bas : **14,5 % pour 2025** (moyenne pondérée, baisse au 1er juillet), **14 % dès 2026** ; les crédits non remboursables suivent ce taux, MAIS un **crédit d'impôt compensatoire** (2025-2030) garde l'équivalent de 15 % pour la part des crédits qui dépasse le 1er palier (58 523 $ en 2026), pour les contribuables du 2e palier (KPMG 2026, ImpôtExpert, Thomson Reuters, DPB) | 15 % plat | ⚠️ écart CONFIRMÉ pour 2026 (~165 $/pers/an) → `[FISC-FED-CREDITRATE-15]` devient un correctif à DEUX étages (taux de base 14 % + compensatoire) | la **formule exacte** du crédit compensatoire (page ARC « Quoi de neuf 2025 » ou le formulaire) — c'est LE morceau qu'aucun résumé ne donne |
+| B5 | T4040 : le revenu gagné inclut le **revenu net de location de biens immeubles** (ligne 12600) ; on soustrait les **pertes de location** | aucun droit créé | ⚠️ manque CONFIRMÉ (~4 320 $/an) → `[FISC-RRSP-RENTAL-EARNED]` débloqué avec la décision (a) | rien de bloquant |
+| B6-B7 | RAP : remboursement sur **15 ans**, à partir de la **2e année** suivant le retrait ; allègement : 1er retrait entre le **1er janvier 2022 et le 31 décembre 2025** → début à la **5e année** (ARC « Comment rembourser… », CFFP, iA) | identique (15 ans ; grâce 5 si 2022-2025, sinon 2) | ✅ code EXACT → ancrer en `FISCAL_REFERENCE` §7/§8 avec la source relayée | rien |
+| B8 | REEE : fermeture au plus tard le **31 décembre de la 35e année** suivant l'ouverture ; cotisations pendant **31 ans** (canada.ca « Gestion du plan », Desjardins, RBC) | ferme à 25 ans de l'enfant (hypothèse de simulation) | ✅ « 35 ans » CONFIRMÉ (relayé) — mais c'est 35 ans après l'OUVERTURE, pas un âge | **décision** : garder 25 ans comme hypothèse de simulation DOCUMENTÉE (ma reco — fin d'études typique) ou aligner sur l'ouverture + 35 ans |
+| B9 | Plafonds REER 2010 → 2023 : 22 000 · 22 450 · 22 970 · 23 820 · 24 270 · 24 930 · 25 370 · 26 010 · 26 230 · 26 500 · 27 230 · 27 830 · 29 210 · 30 780 (CQFF, KPMG, Manuvie, BNC) | **identiques, les 14** | ✅ CONFIRMÉ → ancrer en `FISCAL_REFERENCE` §7 | rien |
+
+**Ce qu'il te manque encore, en tout et pour tout** : (1) la formule exacte du crédit compensatoire fédéral (B4) — une capture de la page ARC ou de la ligne du formulaire ; (2) une décision sur B8 (25 ans assumé, ou ouverture + 35) ; (3) optionnel, pour passer de « relayé » à « lu » : captures de la table 7308(4) (B1) et de la table SRG de Service Canada (B2). Tout le reste avance avec la source relayée, marquée comme telle.
 
 | # | Ce qu'il me faut | Ticket | Impact mesuré |
 |---|---|---|---|
@@ -634,7 +678,7 @@ est pire que le bug : je ne touche à rien sans la source. **Une capture d'écra
 
 | # | Action | Où | Ce que ça débloque |
 |---|---|---|---|
-| C1 | 🔴 **Révoquer les 2 jetons Fintable collés en clair dans le chat** (les deux en `read+write`) | Fintable → Dashboard → API | **Sécurité.** À faire même si tout le reste attend |
+| ~~C1~~ | ✅ **FAIT — confirmé par Marc le 2026-09-05** (« fait »). (historique) 🔴 **Révoquer les 2 jetons Fintable collés en clair dans le chat** (les deux en `read+write`) | Fintable → Dashboard → API | **Sécurité.** À faire même si tout le reste attend |
 | C2 | 3 secrets Secret Manager + redéployer Cloud Run + 2 secrets GitHub Actions | GCP + GitHub | `FINTABLE-3` — la sync quotidienne AUTOMATIQUE (aujourd'hui, seule l'ouverture de l'app synchronise) |
 | C3 | Redéployer le serveur MCP sur Cloud Run | `mcp/deploy.sh` | `MCP-CATEGORY-ALLOWLIST` (#502) — sans ça, claude.ai peut encore écrire des catégories inventées |
 | C4 | Poser `PROXY_ACCESS_TOKEN` + `VITE_PROXY_ACCESS_TOKEN` sur Vercel, redéployer, smoke test | Vercel | `P0-PROXY` — le relais BYOK, livré mais jamais allumé |

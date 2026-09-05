@@ -17,6 +17,31 @@
 
 ---
 
+## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)
+
+- [ ] **`[TX-INTERAC-REMBOURSEMENT]`** (S, money-critical budget — décision 2026-09-05 (a)) — ajouter la règle de
+  catégorisation qui route un Interac **REÇU** vers `'Remboursement'` (`services/import/categoryRules.ts`),
+  ce qui active enfin `CREDIT_BACK_CATEGORIES` de `spendRules.ts` (crédit sur le poste de dépense, jamais un
+  revenu). Mesuré au routage : 300 $ de faux revenu (9,1 % du mois) sur la fixture couple. Les 6 tests de
+  `spendRules.test.ts` testaient une combinaison que la prod ne fabriquait jamais → en faire des tests de
+  CHAÎNE (transaction brute → catégorie → KPI Revenus). Un Interac ENVOYÉ reste une dépense.
+- [ ] **`[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`** (S-M — décision 2026-09-05 (b)) — le grand livre budget
+  (`utils/budgetSync.ts`) EXCLUT explicitement du revenu tout positif hors `{Salaire, Revenus divers}`
+  (retour marchand, remboursement d'impôt, dépôt non catégorisé) et les montre sous un nom visible
+  (« Entrées hors revenu : X $ ») au lieu de les compter dans le total du grand livre — fin des deux
+  « soldes du mois » différents côte à côte (écart 11,7 % mesuré). Jamais perdus en silence.
+- [ ] **`[BUDGET-IMPOTS-HORS-COMPARAISON]`** (S — décision 2026-09-05 (a)) — la comparaison budget↔réel de
+  l'écran Budget exclut la catégorie `Impôts` des DEUX côtés (`totalSpent`/`pastAverages.expenseAvg`
+  comme les cibles) — écart structurel 44 % mesuré, badge « Excédentaire » faux. Le libellé dit que les
+  impôts sont hors comparaison (un chiffre qui exclut quelque chose le DIT).
+- [ ] **`[FUTUR-ANNOTATIONS]`** (M — réponse A12 du 2026-09-05) — annoter la courbe Futur avec les événements
+  cités : âge de retraite, épuisement d'un compte, début RRQ/PSV, bascule de stratégie — **en bref**
+  (marqueur + libellé court), chaque type d'annotation **désactivable en décochant** (préférence
+  persistée). Réutiliser le mécanisme des pastilles d'événements existant (rang après écrêtage, cf.
+  `UN-RANG-CALCULE-AVANT-L-ECRETAGE-SURVIT-A-SES-VOISINS`) — ne pas en écrire un second.
+- [ ] **`[PROFIL-NOMMER-MARC]`** (XS — remplace `[PROFIL-SWITCH]`, caduque : un seul profil réel) — là où
+  l'app désigne le profil courant, le nommer « Marc » ; les personas restent des profils de TEST.
+
 ## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
 
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
@@ -267,6 +292,7 @@
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
 - [ ] **`[FISC-RRIF-94-FACTOR]`** (S si confirmé, ⚠️ GATÉ source humaine — `A_FAIRE_MOI`) —
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche web du même jour (source RELAYÉE, détail A_FAIRE_MOI « 🔎 Recherche ») : **94 ans = 18,79 %, 95+ = 20,00 %** sur quatre tables 2026 — l'écart est confirmé, DÉBLOQUÉ (citer la source comme relayée).
   `helpers.ts:95` code `94: 0.2000` ; le facteur prescrit serait 18,79 % (plateau 20 % à 95+).
   **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS
   modifier sans avoir vu le règlement 7308(4). Corriger aussi `FISCAL_REFERENCE.md:467` et
@@ -274,12 +300,14 @@
 - [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
   datée en tête de `docs/BACKLOG_ARCHIVE.md`).
 - [ ] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : les 14 plafonds 2010-2023 sont CONFIRMÉS identiques (CQFF/KPMG/Manuvie/BNC, relayé) — DÉBLOQUÉ, ancrer en FISCAL_REFERENCE §7 avec la mention « relayé ».
   **14 valeurs 2010→2023** (22 000 → 30 780) qui n'apparaissent NULLE PART dans
   `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via
   `setupSimulation.ts:70`, donc de l'argent. Valeurs jugées correctes, mais non sourcées = suspectes
   par la règle du dépôt. Documenter dans le même geste que `[FISC-REF-DEDUP]`.
   ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B9**.
 - [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M — audit 2026-08-06) — ⚠️ **GATÉ source humaine
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : (a) champ de propriété optionnel par immeuble, défaut 50/50 ; source T4040 relayée (revenu net de location = revenu gagné, pertes déduites) — DÉBLOQUÉ.
   (2026-09-04)** → `docs/A_FAIRE_MOI.md` « [DÉCISION — FISC-RRSP-RENTAL-EARNED] ». Recensement
   fait : le constat CODE est CONFIRMÉ — le loyer net alimente `accRentesYear` (unique écriture,
   `realEstateMonth.ts`, jamais `accGrossIncomeYearByUser`, dont les seuls producteurs sont le
@@ -373,6 +401,7 @@
 - [x] ~~**`[FISC-PENSION-CREDIT-REAL]`**~~ ✅ **LIVRÉ 2026-08-20** (détail : section datée en
   tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
 - [ ] **`[PROJ-NW-FALAISE-REER]`** (M, **ÉLEVÉ** [DIAGNOSTIQUÉ 2026-08-21 — décision produit
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **(b) plancher de préservation CELI** (X mois de dépenses, X fixé par MESURE — 24 proposé). Plan-first : chiffrer X, re-base des goldens SCIEMMENT, mesurer le classement des stratégies avant/après.
   routée A_FAIRE_MOI]) — reproduit et EXPLIQUÉ : ±1 000 $ de REER d'ouverture → **−112 k$** de NW
   final (couple 72/72, 30 ans, AUTO_MARGINAL ; bifurcation au mois 143). **Mécanisme prouvé**
   (`cashflowAllocation.ts:182-236`) : `runningGross` inclut le FERR minimum forcé (∝ REER
@@ -389,18 +418,22 @@
   mesure d'impact « NW » d'un retraité à gros REER près d'un seuil de palier est non
   représentative (la falaise domine).
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée cohérente sur 4 sources : couple = **1 $ par 4 $ de revenu combiné POUR CHAQUE conjoint** (0,25/adulte), seul = 1 $ par 2 $ — DÉBLOQUÉ ; table officielle des seuils souhaitable, non bloquante pour le taux.
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
   formule s'annule dès 15 888 $) ; test `tax.test.ts:968` VACUEUX. Mesuré : 0 $ vs 7 944 $/an à
   15 888 $ combiné. ⚠️ Exiger la table SC + corriger FISCAL_REFERENCE §6 + remplacer le test, même PR.
 - [ ] **`[FISC-REEE-GRANT-CLAWBACK]`** (S, [Probable] — V6) — à la fermeture du REEE,
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **GO pour retenter** (voir le ticket L du même ID plus haut) ; Marc ne peut pas séparer cotisations/subventions sur son REEE réel → part subvention DÉRIVÉE des règles SCEE/IQEE sur l'historique de cotisation, hypothèse écrite et affichée.
   `liquidDelta += reeeNewBalance` verse 100 % du solde aux liquidités : les subventions SCEE/IQEE
   non utilisées (jusqu'à ~10 800 $/enfant) doivent être REMBOURSÉES au gouvernement → patrimoine
   surévalué. (Découvert en re-validant FISC-REEE-AIP-MODEL — défaut plus gros que le taux.)
 - [ ] **`[FISC-FED-CREDITRATE-15]`** (S vérif, 🧭 source ARC requise) — `FED_NONREFUNDABLE_RATE`
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
 - [ ] **`[FISC-SOLO-INVEST-SPLIT]`** (M, 🧭 Q3 — conditionnel au profil) — `getTaxSituation.spec.ts:64`
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **mode couple PRÉVU** → débloqué (Q3 répondue oui).
   + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
   conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
   app+MCP au même helper.
@@ -414,6 +447,7 @@
   → **Condition d'activation : bascule de Marc en mode couple.** Le levier existe déjà
   (`Asset.owner` + `services/couple/netWorthByOwner.ts` `defaultOwner`), donc rien à préparer.
 - [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée (Revenu Québec « Ligne 361 », DT Max) : 18,75 % du revenu FAMILIAL, chaque conjoint remplit SA propre Annexe B avec le même revenu familial — le code est cohérent ; passe de « à vérifier » à « confirmé (relayé) », il reste à l'ANCRER en FISCAL_REFERENCE.
   appliquée par conjoint avec le revenu familial TOTAL (`taxDecember.ts:529` → `tax.ts:255`).
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
 
@@ -421,6 +455,7 @@
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : Marc pense que son plan offre plus de 30 jours → à MESURER chez lui (`npm run fintable:dry -- --days 365`, compte de transactions rendues, montants masqués) ; je ne peux pas appeler fintable.io d'ici (403).
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
   il n'en importera AUCUNE de plus** : `deriveCutoverDate` (`services/fintable/deriveCutoverDate.ts`)
   fixe la bascule à la date de la transaction la PLUS RÉCENTE, et le mapper ne prend que ce qui est
@@ -452,6 +487,7 @@
 - [ ] **`[P0-IDB]`** (L, ⏳) — migrer la persistance localStorage → IndexedDB (quota ~5 Mo + parsing
   synchrone au boot). ⚠️ Migration schéma persist v7 — vigilance corruption.
 - [ ] **`[PROFIL-SWITCH]`** (M, 🧭 gaté questions 2026-08-01) — (a)+(d) couverts par PERSONA-PURGE ;
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : « profil actuel = Marc, seul profil, pour toujours » → le multi-profil RÉEL est **CADUQUE** ; reste au plus à nommer le profil courant « Marc » là où l'app le désigne (XS) — à requalifier puis fermer.
   restent : sélecteur de profil explicite (nom + type réel/test visibles) + persistance ISOLÉE par
   profil (clé storage dédiée, pas d'écrasement croisé). ⚠️ Touche la persistance des VRAIES données
   → questions posées à Marc AVANT de coder (batch en chat 2026-08-01) : (1) combien de profils
@@ -462,6 +498,7 @@
 - [ ] **`[ASSET-CURRENCY-BACKFILL]`** (S, attente signal) — backfill devise legacy SEULEMENT si le
   log `services/portfolio.ts:60-62` apparaît chez Marc. Ne rien coder avant.
 - [ ] **`[PURGE-TOAST-UX]`** (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **OUI** → débloqué.
   ne fait que logError (`syncPull.ts:78`) ; le toast n'existe qu'au boot. Abonnement générique → toast.
 ## 💬 Chat / IA
 
@@ -488,6 +525,7 @@
 ## 📈 Investissements & historique
 
 - [ ] **`[SUBS-TAB]` — volet EMPLACEMENT seulement** (S, ⚠️ EN ATTENTE d'une décision de Marc) —
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : la liste **RESTE dans Budget** → volet emplacement **FERMÉ** (à archiver « caduque » à la prochaine PR).
   le flux « confirmer / ignorer » est LIVRÉ (#570 : « Pas un abo » persistant + réaffichage).
   ⚠️ **Constat 2026-08-05, à ne pas re-découvrir** : la surface EXISTE DÉJÀ dans `Planning.tsx`
   (section `fixed`, « Abonnements & Récurrents ») avec alertes, totaux et épinglage — le ticket
@@ -548,6 +586,7 @@
   erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
   transactions, dettes-contrats, simulations). Plan-first.
 - [ ] **`[AUTH-REMEMBER-DEVICE]`** (M, retour Marc 2026-08-12) — « je veux pas qu'à chaque fois
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **retirer la déconnexion auto 8 h** quand « se souvenir de cet appareil » est actif ; ré-auth exigée seulement pour les Réglages. Lire le journal `[AUTH-DRIVE-STILL-RECONNECT]` d'abord (D4 en attente : Marc n'a que son téléphone).
   je doive me reconnecter, ça me le demande trop souvent pour rien : me connecter UNE fois avec
   option de se souvenir de l'appareil… à part pour changer des paramètres » : session Drive
   persistante par appareil (option « se souvenir de cet appareil »), ré-auth exigée SEULEMENT
@@ -557,6 +596,7 @@
   d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
   déjà en place — lire le journal Diagnostics avant de coder).
 - [ ] **`[ENG-DIVORCE-ALLOC-ASSIETTE]`** (S, 🧭 **règle à trancher** — sorti de
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **« comme mesuré »** → appliquer `soloHousehold` à l'assiette des allocations après séparation (166 → 250 $/mois sur la fixture) ; le test `[ENG-DIVORCE-BENEFITS-FLUX]` se re-base SCIEMMENT.
   `[REEE-CONGE-SANS-GARDE-SOLO]`) — après un divorce, `householdGross` reste la somme des DEUX
   salaires, alors que la récupération des allocations enfants s'y applique (`householdGross >
   150 000`). Un parent seul se voit donc récupérer ses allocations sur un revenu qui inclut celui de
@@ -573,6 +613,7 @@
   l'ouverture du groupe de l'étape active — la rendrait ATTEIGNABLE, au prix d'un tour qui défait un
   repli VOLONTAIRE et d'un couplage entre les étapes et l'état de la nav. Décision d'UX : à trancher.
 - [ ] **`[IA-NAV-LABELS]`** (S, 🧭 gaté Marc 2026-09-04) — sidebar w-16 par défaut, libellés
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : option (3) **garder le rail replié → ticket FERMÉ** (à archiver « caduque » à la prochaine PR).
   opacity-0, icônes cryptiques → libellés visibles par défaut (ou rail plus large). ⚠️ Recensé
   contre le code (lot 140) : le rail replié est une DÉCISION de la Phase B.1 (expand au
   survol/focus en overlay, `md:ml-16` réservé, a11y soignée — `aria-label` par item replié,
@@ -940,6 +981,7 @@
   ce site suivra.
 
 - [ ] **`[FISC-REEE-AGE-FERMETURE]`** (XS, FAIBLE — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : « 35 ans » CONFIRMÉ par recherche relayée — mais c'est **35 ans après l'OUVERTURE** (cotisations 31 ans), pas un âge de l'enfant. Reste UNE question à Marc : garder 25 ans comme hypothèse de simulation documentée (reco) ou aligner sur ouverture + 35.
   `services/projection/childrenReee.ts:401` ferme le REEE à **25 ans** alors que le régime réel
   autorise 35 ans. L'écart est un choix de simulation défendable, mais il n'est **documenté nulle
   part** : `FISCAL_REFERENCE.md` ne mentionne ni « 35 ans » ni l'âge de fermeture (vérifié — le §9
@@ -949,6 +991,7 @@
   AFFIRME « 35 ans » — mais un ticket n'est pas une source, et le proxy bloque `canada.ca`.
 
 - [ ] **`[FISC-RAP-GRACE-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`, RENOMMÉ en revue :
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée (ARC « Comment rembourser… », CFFP, iA) : 1er retrait du **1er janvier 2022 au 31 décembre 2025 → début à la 5e année**, sinon 2e année — les TROIS valeurs du code sont EXACTES → ancrer en FISCAL_REFERENCE §8, source marquée relayée.
   il s'appelait `[FISC-RAP-GRACE-WINDOW]`, nom hérité de ma première lecture FAUSSE du code) — la
   fenêtre `2022`/`2025` de `services/projection/realEstateMonth.ts` module la période de grâce du
   **début de remboursement du RAP** (Budget fédéral 2024), et **PAS** la règle anti-flip : `graceYears = 5` dans la
@@ -959,6 +1002,7 @@
   valeurs demandées ensemble.
 
 - [ ] **`[FISC-RAP-15ANS]`** (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) — la durée de
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **15 ans**, 1/15 par an — code EXACT → ancrer en FISCAL_REFERENCE §7, source marquée relayée.
   remboursement du RAP (15 ans, ARC) est en dur dans `services/projection/realEstateMonth.ts:467`
   (`state.rapBorrowed / 15`) et absente de `FISCAL_REFERENCE.md` §7. Vraie règle, non ancrée.
   ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B6**. Le proxy de
@@ -1316,6 +1360,7 @@
 ### 🧱 Dette technique et architecture
 
 - [ ] **`[FISC-DEC-FLUX-ASSIETTE-TIMING]`** (M, à TRANCHER — découverte du lot 141, MESURÉ,
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **CORRIGER** — c'est une fuite d'assiette réelle : les retraits REER de décembre entrent dans l'assiette de l'année. Re-base des goldens SCIEMMENT (+25 568 $ d'impôt mesuré sur la fixture retraités), la garde d'ordre `engineOrder.test.ts` se met à jour DÉLIBÉRÉMENT.
   ⚠️ bug préexistant potentiel, signalé sans correctif) — le dépôt fiscal de décembre
   (`processDecemberTaxFiling`, L~1355) lit `accRetraitsReerYear` AVANT que la cascade
   d'allocation, le meltdown, le RAP et les objectifs du MÊME décembre ne l'alimentent — puis
@@ -1771,6 +1816,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   Ne rien coder avant la réponse de Marc.
 
 - [ ] **`[PRIVACY-CONTEXTE-IA]`** (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **MASQUER** — en mode discret, les montants ne partent pas vers l'assistant non plus ; les 4 sites `MONTANT-HORS-ECRAN` passent sous la règle.
   discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
   alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.
   Mais `DECISION-PRIVACY-UNE-SEULE-SORTIE` dit qu'une décision de vie privée écrite pour une sortie se

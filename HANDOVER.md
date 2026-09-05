@@ -16,6 +16,23 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 187 : la succession lit l'espérance de vie SAISIE, plus un 95 en dur (`[ESTATE-LIFEEXPECTANCY-95-DUR]`)
+> `estateCalculation.ts` posait `lifeExpectancy = 95` sous le MÊME NOM que la saisie et ne la lisait jamais
+> (l'entrée du ratchet le justifiait par ce nom — c'est ce qui masquait le no-op). `EstateCalcInputs.lifeExpectancy`
+> câblé depuis `retirementGoal.lifeExpectancy` (`projection.ts`) ; absent / non fini / ≤ 0 → `DEFAULT_LIFE_EXPECTANCY
+> = 90` (`modelAssumptions.ts`), SOURCE UNIQUE consommée aussi par `Retirement.tsx` et `RetirementSettingsCard.tsx`
+> (trois `?? 90` / `|| 90`) — le moteur et l'écran disent enfin le même nombre. Ratchet : entrée `95` retirée,
+> entrée `90` ajoutée. Gardes unitaires (absent ≠ 95 = le discriminant ; absent == 90 ; monotone 85 < 90 < 100 ;
+> ≤ âge final → 0 ; NaN/0/−5 → défaut) + `estateLifeExpectancyWiring.test.ts` (espion : 88 transmis, `undefined`
+> transmis quand absent ; chaîne : 100 ans > 85 ans en succession, patrimoine final IDENTIQUE). Six pins
+> FA-5/FA-8/annualisation de `estateCalculation.test.ts` comptaient « 95 − 65 = 30 ans » sur le défaut implicite :
+> la fixture porte désormais `lifeExpectancy: 95` EXPLICITEMENT (voir la leçon). « Re-baserait des goldens » = **3
+> assertions dans 2 fichiers** : divorce −79 923 $ (92 ans ; déterministe ET Monte Carlo, même écart — la VAN ne
+> dépend pas du tirage), dividende −113 910 $ (90 ans, borne 1 700 000 → 1 590 000), patrimoine final inchangé
+> partout. ⚠️ La 3ᵉ (MC) n'a PAS rougi au premier gate : même `it` que la déterministe, dont le `toBe` interrompt
+> le cas — trouvée par instrument posé AVANT la première assertion. Docs : FISCAL_REFERENCE §6, PROJECTION,
+> CHANGELOG, BACKLOG (+ archive du lot 186), CONVENTIONS (leçon : une formule épinglée sur un défaut IMPLICITE).
+
 > ## 🟦 Session 2026-09-05 — Lot 186 : le `title` d'un champ masqué est composé, pas écrasé (`[A11Y-PRIVACY-TITLE-CLOBBER]`)
 > `PrivateNumberInput` : le `title` devient « <title appelant> — Montant masqué », ou « Montant masqué » seul — la
 > porte qu'un appelant futur aurait franchie sans avertissement est fermée. Trois gardes (composé ;

@@ -624,6 +624,16 @@ Un remplacement par le barème réel re-baserait des goldens et changerait le pa
 tout ménage détenant un immeuble locatif ou une CCPC — c'est un lot à part entière, pas un
 ajustement de constante.
 
+### Horizon de la VAN des rentes successorales — l'espérance de vie SAISIE (défaut 90), hypothèse de MODÈLE
+`services/projection/estateCalculation.ts` actualise les rentes publiques restantes (RRQ + PSV) entre
+l'âge de fin de simulation et **`retirementGoal.lifeExpectancy`** — la saisie de l'utilisateur
+(Profil → Retraite, 80–105 ans). Champ absent ou inutilisable → `DEFAULT_LIFE_EXPECTANCY = 90`
+(`modelAssumptions.ts`), le même défaut que l'écran affiche pour un champ vide. Jusqu'au lot 187
+(2026-09-05, `[ESTATE-LIFEEXPECTANCY-95-DUR]`), le module posait `95` EN DUR sous le même nom et
+ignorait la saisie : un utilisateur réglé à 90 voyait « Héritage (90 ans) » à l'écran et 95 ans de
+rentes valorisés dans le patrimoine successoral. Ce n'est pas une règle ARC/RQ ni une table de
+mortalité : une espérance de vie ≤ âge final donne simplement 0 année de rentes à valoriser.
+
 ### Abattement fiscal de la VAN des rentes publiques (succession) — hypothèse de MODÈLE
 
 `services/projection/estateCalculation.ts` (`[ESTATE-NPV-07]`, 2026-08-20). Le bilan successoral

@@ -12167,3 +12167,20 @@ au lot des sites alignés : un `;` exécute la suite quoi qu'il arrive. Règles 
 jamais un `;` entre les deux ; (2) une branche empilée sur un lot fusionné en SQUASH se re-base par
 `--onto` depuis l'ancien head du lot fusionné, pas par un `rebase origin/main` nu qui rejoue les
 commits déjà squashés et conflicte sur les docs.
+
+### Variante notée au lot 187 (2026-09-05) — une formule épinglée sur un défaut IMPLICITE rougit quand le défaut devient une saisie
+
+`[ESTATE-LIFEEXPECTANCY-95-DUR]` remplace un `95` en dur par la lecture de `retirementGoal.lifeExpectancy`
+(défaut 90). Six pins de `estateCalculation.test.ts` — FA-5 (pas de ×N), FA-8 (estimés précis), annualisation
+(×12) — ont rougi alors qu'AUCUN des faits qu'ils défendent n'avait bougé : ils reconstruisaient la VAN avec
+« 95 − 65 = 30 ans restants » écrit en COMMENTAIRE, c'est-à-dire sur le défaut implicite du module. Même
+famille que `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, vue par le bout de la FIXTURE : un test
+qui épingle une formule doit porter dans sa fixture CHAQUE paramètre qu'il suppose — ici `lifeExpectancy: 95`
+explicite, avec la date et la raison — sinon il épingle en plus le défaut courant, et rougit le jour où ce
+défaut devient un champ. Le correctif n'est pas de re-baser six nombres (la formule est intacte) mais de rendre
+la supposition VISIBLE ; les gardes du lot passent ensuite `undefined` par-dessus pour mesurer le défaut.
+⚠️ Corollaire de recensement, 2ᵉ occurrence après le lot 115 : « ⚠️ Re-baserait des goldens » = trois
+assertions dans deux fichiers, et la troisième (Monte Carlo) n'apparaissait PAS au premier gate — elle vit dans
+le même `it` que l'ancre déterministe, dont le `toBe` interrompt le cas. Un instrument posé AVANT la première
+assertion du `it` la mesure ; un gate rouge ne compte que la première ancre de chaque cas.
+

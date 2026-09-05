@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[A11Y-PRIVACY-TITLE-CLOBBER]` — LIVRÉ (lot 186, PR #917)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** ✅ **LIVRÉ au lot 186 (2026-09-05)** — le `title` de l'appelant est COMPOSÉ (« <title appelant> — Montant masqué ») au lieu d'être écrasé ; sans title appelant, « Montant masqué » seul (contrôle) ; hors mode discret, le title passe tel quel à l'input. Le second volet (« aucun indice visuel au clavier ») RE-MESURÉ : le focus clavier RÉVÈLE l'input (cas « Tab » de `[SEC-PRIVACY-BLUR-INPUTS]`, vert), donc le bouton masqué n'est jamais figé sous le focus — rien à ajouter, la piste `aria-describedby` n'a plus d'objet. Perturbation (title écrasé) → 1 rouge. (XS, relevé par le panel a11y de #629) —
+  `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
+  « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié
+  call site par call site), donc non bloquant — mais un appelant qui compterait sur son `title`
+  pour porter une info la perdrait SANS avertissement. Deux pistes : composer les deux `title`, ou
+  passer l'état masqué en `aria-describedby` vers un `sr-only` dédié. ⚠️ La seconde piste corrige
+  AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
+  dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
+  « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
+
+
 ## 2026-09-05 — `[COUPLE-PREDICAT-COPIES]` — LIVRÉ (lot 185, PR #916)
 
 Ticket d'origine tel qu'au moment de l'archivage :

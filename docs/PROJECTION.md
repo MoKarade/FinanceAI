@@ -319,7 +319,7 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
 ### Par scénario (`allResults[i]`)
 - `chartData[]` — snapshot mensuel complet
 - `finalNetWorth` — patrimoine en fin d'horizon
-- `estateNetWorth` — patrimoine au décès (après impôts latents)
+- `estateNetWorth` — patrimoine au décès (après impôts latents) ; la VAN des rentes publiques qu'il inclut s'arrête à `retirementGoal.lifeExpectancy` (défaut `DEFAULT_LIFE_EXPECTANCY` = 90, `modelAssumptions.ts` — `[ESTATE-LIFEEXPECTANCY-95-DUR]`, lot 187 ; avant : 95 en dur)
 - `totalTaxesPaid`, `totalGrowth`, `totalExpenses`
 - `minNetWorth`, `shortfallMonths`, `shortfallRate`
 - `gainVsAuto` (vs BASE)

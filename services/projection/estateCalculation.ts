@@ -5,6 +5,7 @@
 
 import { CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRQ_STANDARD_START_AGE, PSV_ELIGIBILITY_AGE, type AgeCreditOptions, type FiscalReport } from '../../utils/tax';
 import { computeRawNetWorth } from './netWorth';
+import { DEFAULT_LIFE_EXPECTANCY } from './modelAssumptions';
 
 type FiscalFn = (
     grossIncome: number,
@@ -59,6 +60,12 @@ export interface EstateCalcInputs {
     currentAge: number;
     retirementTargetAge: number;
     governmentPension: number;
+    /** [ESTATE-LIFEEXPECTANCY-95-DUR] Espérance de vie SAISIE (`retirementGoal.lifeExpectancy`) : horizon
+     *  jusqu'auquel les rentes publiques restantes sont actualisées dans la VAN. Jusqu'au lot 187, un
+     *  `95` en dur ignorait la saisie — piège d'HOMONYME : la variable locale s'appelait déjà
+     *  `lifeExpectancy`, ce qui donnait au no-op l'apparence d'un câblage. Absent / non fini / ≤ 0 →
+     *  `DEFAULT_LIFE_EXPECTANCY` (90), le défaut que l'écran affiche quand le champ est vide. */
+    lifeExpectancy?: number;
     /** FA-8 — estimés PRÉCIS par rente (per-personne, mensuels ; relevés Retraite Québec / Service
      *  Canada). Quand fournis, PRIMENT sur le split 65/35 du champ agrégé `governmentPension` (×N pour
      *  le familial), exactement comme `retirementIncome.ts` → aligne le NPV estate sur le revenu de
@@ -259,7 +266,12 @@ export function computeEstateNetWorth(
     // FA-5 (audit fiscal 2026-06-09) : `governmentPension` est déjà FAMILIAL dans tout le moteur
     // (retirementIncome ne multiplie pas par N) — l'ancien ×activeUsersCount le comptait DEUX fois
     // pour un couple → NPV des rentes ~doublée → estateNetWorth gonflé de dizaines de k$.
-    const lifeExpectancy = 95;
+    // [ESTATE-LIFEEXPECTANCY-95-DUR] La saisie de l'utilisateur, plus un 95 en dur. Une espérance de
+    // vie ≤ finalAge donne 0 année restante (clamp ci-dessous) : aucune rente à valoriser, ce qui est
+    // exactement ce que l'utilisateur affirme en la posant là.
+    const lifeExpectancy = Number.isFinite(inputs.lifeExpectancy) && (inputs.lifeExpectancy as number) > 0
+        ? (inputs.lifeExpectancy as number)
+        : DEFAULT_LIFE_EXPECTANCY;
     const remainingYearsAtEnd = Math.max(0, lifeExpectancy - finalAge);
     // FA-8 (résolu) — les estimés PRÉCIS par rente priment, exactement comme retirementIncome.ts:207-212
     // (estimé per-personne × activeUsersCount = familial mensuel ; repli sur le split 65/35 de l'agrégé

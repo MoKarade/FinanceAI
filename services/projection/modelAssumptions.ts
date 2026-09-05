@@ -143,3 +143,19 @@ export const BARISTA_ASSUMED_MONTHLY_INCOME = 1500;
  * et c'est le seul moment où la fusion est gratuite.
  */
 export const FIRE_TARGET_MULTIPLE = 25;
+
+/**
+ * [ESTATE-LIFEEXPECTANCY-95-DUR] Espérance de vie PAR DÉFAUT (années), quand
+ * `retirementGoal.lifeExpectancy` est absent ou inutilisable (non fini, ≤ 0).
+ *
+ * SOURCE UNIQUE d'un défaut qui vivait en QUATRE écritures : `types.ts` (commentaire « défaut 90 »),
+ * `Retirement.tsx` (`?? 90`), `RetirementSettingsCard.tsx` (`?? 90` et `|| 90`) — et, DIVERGENT,
+ * `estateCalculation.ts` qui posait `lifeExpectancy = 95` EN DUR sans jamais lire la saisie. Un
+ * utilisateur réglé à 90 voyait « Héritage (90 ans) » à l'écran et 95 ans de rentes valorisés dans
+ * le patrimoine successoral. Le moteur lit désormais la saisie et retombe sur CE défaut, le même que
+ * l'écran affiche quand le champ est vide.
+ *
+ * ⚠️ La migration v4→v5 (`store/migrationsPersistees.ts`) écrit son propre `90` : c'est un RÉCIT
+ * daté (ce qu'elle a écrit ce jour-là), pas un consommateur de ce défaut — il ne bouge pas avec lui.
+ */
+export const DEFAULT_LIFE_EXPECTANCY = 90;

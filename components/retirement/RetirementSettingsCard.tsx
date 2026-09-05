@@ -4,6 +4,7 @@ import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { RetirementGoal } from '../../types';
+import { DEFAULT_LIFE_EXPECTANCY } from '../../services/projection/modelAssumptions';
 
 /**
  * Carte d'édition des paramètres de retraite, déplacée depuis Configuration
@@ -48,8 +49,8 @@ export const RetirementSettingsCard: React.FC = () => {
                             type="number"
                             min={80}
                             max={105}
-                            value={retirementGoal?.lifeExpectancy ?? 90}
-                            onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), lifeExpectancy: Number(e.target.value) || 90 } })}
+                            value={retirementGoal?.lifeExpectancy ?? DEFAULT_LIFE_EXPECTANCY}
+                            onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), lifeExpectancy: Number(e.target.value) || DEFAULT_LIFE_EXPECTANCY } })}
                             className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
                         />
                     </div>

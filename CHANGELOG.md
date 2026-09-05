@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le retrait minimum du FERR à 94 ans suit enfin le barème)
+
+- **Corrigé** : le facteur de retrait minimum d'un FERR à 94 ans valait 20 % dans le moteur, soit
+  le plafond des 95 ans et plus appliqué un an trop tôt ; le barème prescrit est 18,79 %. Un
+  retraité qui détient encore un REER/FERR à 94 ans est forcé d'en sortir un peu moins cette
+  année-là, donc paie un peu moins d'impôt et garde un peu plus à l'abri : mesuré +1 367 $ de
+  patrimoine final avec 500 k$ de FERR à 94 ans, +4 778 $ avec 1,5 M$, rien du tout avant 94 ans.
+  Source relayée (les sites officiels sont illisibles depuis l'environnement de travail), détaillée
+  dans la référence fiscale.
+
 ## [unreleased] — 2026-09-05 (Le score d'efficacité fiscale cesse de dire « 100 % » à tout le monde)
 
 - **Corrigé** (décision Marc 2026-09-04) : l'axe « efficacité fiscale » du score de vitalité

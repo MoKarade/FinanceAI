@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { computeEstateNetWorth, type EstateCalcInputs } from '../../services/projection/estateCalculation';
 import type { FiscalReport } from '../../utils/tax';
 import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
+import { DEFAULT_LIFE_EXPECTANCY } from '../../services/projection/modelAssumptions';
 
 // Stub fiscal : computeEstateNetWorth ne lit que report.totalTax.
 const fiscalStub = (gross: number): FiscalReport =>
@@ -39,6 +40,11 @@ const base: EstateCalcInputs = {
     grossMarcBaseAnnual: 70000, grossAnnaBaseAnnual: 0, simSalaryGrowth: 2,
     simulationYears: 30, startYear: 2026, currentAge: 35, retirementTargetAge: 65,
     governmentPension: 1200, activeUsersCount: 1, simInflation: 2, enableMonteCarlo: false,
+    // [ESTATE-LIFEEXPECTANCY-95-DUR] (lot 187) — 95 était le DÉFAUT EN DUR du module jusqu'ici ; les
+    // pins FA-5 / FA-8 / annualisation ci-dessous comptent « 95 − 65 = 30 ans restants ». Le module lit
+    // désormais la saisie (défaut 90) : la fixture porte donc son 95 EXPLICITEMENT, et les gardes du
+    // lot 187 (tout en bas) passent `undefined` par-dessus pour mesurer le défaut.
+    lifeExpectancy: 95,
     startingCash: 50000, startingCELI: 100000, startingCELIAPP: 0, startingREER: 200000,
     startingNonReg: 80000, startingCrypto: 10000, startingREEE: 20000,
 };
@@ -164,7 +170,7 @@ describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON
     });
 
     it('NPV PINNÉE à la formule FAMILIALE (sans ×N) : pension×12×infl^années×facteur d\'annuité', () => {
-        // base : finalAge = 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
+        // base : finalAge = 35+30 = 65 → branche SANS escompte pré-65 ; lifeExpectancy 95 (fixture) − 65 = 30 ans restants.
         const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
         // [FISC-ESTATE-PENSION-NPV] ×12 : la pension mensuelle (1200) est ANNUALISÉE avant le facteur
         // d'annuité ANNUEL (avant le fix, le ×12 manquait → NPV ÷12, ~49 k$ au lieu de ~584 k$ brut).
@@ -192,7 +198,7 @@ describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON
 
 describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment sur le split 65/35', () => {
     const extractNPV = extractNPVBrute;
-    // base : finalAge 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
+    // base : finalAge 35+30 = 65 → branche SANS escompte pré-65 ; lifeExpectancy 95 (fixture) − 65 = 30 ans restants.
     const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
     const inflPow = Math.pow(1 + 2 / 100, 30);
     // [FISC-ESTATE-PENSION-NPV] NPV attendue à partir d'un montant MENSUEL familial : ANNUALISER (×12)
@@ -729,5 +735,43 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // (impôt non nul sur un revenu négatif) pour le « couvrir », on écrit ici qu'il ne l'est
         // pas et pourquoi. Un test qui n'aurait discriminé que contre un barème impossible
         // n'aurait rien prouvé sur le moteur réel.
+    });
+});
+
+describe('[ESTATE-LIFEEXPECTANCY-95-DUR] l’horizon de la VAN est l’espérance de vie SAISIE, plus un 95 en dur', () => {
+    // Fixture `base` : currentAge 35 + simulationYears 30 → finalAge 65. La VAN brute s'isole par
+    // `extractNPVBrute` (barème nul), donc chaque assertion ne parle que des ANNÉES RESTANTES.
+    const van = (lifeExpectancy: number | undefined): number =>
+        extractNPVBrute({ ...base, lifeExpectancy } as EstateCalcInputs);
+
+    it('DISCRIMINANT : absent ≠ 95 — l’ancien défaut en dur n’est plus le défaut', () => {
+        // Sur le moteur d'avant, `lifeExpectancy` était ignoré et valait 95 quoi qu'on passe : cette
+        // assertion y rougissait (absent == 95). Elle est la seule qui distingue « lu » de « ignoré ».
+        expect(van(undefined)).not.toBe(van(95));
+    });
+
+    it('absent == DEFAULT_LIFE_EXPECTANCY explicite (90), strictement', () => {
+        expect(DEFAULT_LIFE_EXPECTANCY).toBe(90);
+        expect(van(undefined)).toBe(van(DEFAULT_LIFE_EXPECTANCY));
+    });
+
+    it('MONOTONE : plus d’années de rentes restantes → VAN brute plus grande (85 < 90 < 100)', () => {
+        const v85 = van(85), v90 = van(90), v100 = van(100);
+        expect(v85, 'la fixture doit produire une VAN non nulle, sinon rien n’est mesuré').toBeGreaterThan(0);
+        expect(v90).toBeGreaterThan(v85);
+        expect(v100).toBeGreaterThan(v90);
+    });
+
+    it('espérance de vie ≤ âge final (65) → aucune année restante → VAN brute nulle', () => {
+        expect(van(65)).toBe(0);
+        expect(van(60)).toBe(0);
+    });
+
+    it('valeur INUTILISABLE (NaN, 0, négative) → repli sur le défaut, jamais NaN ni zéro silencieux', () => {
+        const ref = van(undefined);
+        expect(van(NaN)).toBe(ref);
+        expect(van(0)).toBe(ref);
+        expect(van(-5)).toBe(ref);
+        expect(Number.isFinite(computeEstateNetWorth({ ...base, lifeExpectancy: NaN }, fiscalStub).estateNetWorth)).toBe(true);
     });
 });

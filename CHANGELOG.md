@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le patrimoine successoral respecte enfin ton espérance de vie)
+
+- **Corrigé** : la valeur actualisée des rentes publiques (RRQ / PSV) ajoutée au patrimoine
+  successoral s'arrêtait toujours à **95 ans**, quoi que tu aies saisi comme espérance de vie. Elle
+  s'arrête maintenant à TON espérance de vie (Profil → Retraite ; 90 ans si le champ est vide — le
+  même défaut que l'écran affiche). Effet : succession plus BASSE pour une espérance de vie sous 95
+  (mesuré −80 k$ à 92 ans et −114 k$ à 90 ans sur deux profils de test, patrimoine de fin d'horizon
+  inchangé), plus haute au-dessus.
+
 ## [unreleased] — 2026-09-05 (En mode discret, l'infobulle d'un champ masqué garde son texte d'origine)
 
 - **Corrigé** : un champ numérique masqué (« ••• ») remplaçait l'infobulle de son appelant par

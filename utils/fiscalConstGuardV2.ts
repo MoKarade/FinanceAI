@@ -304,6 +304,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`SMITH_HELOC_RATE_FLOOR` — plancher du taux de la marge Smith. Un bien sans taux hypothécaire saisi donnerait sinon une marge quasi gratuite, donc un levier artificiellement gagnant : c’est précisément le biais que [SMITH-HELOC-TAUX-FIGE] corrige. Garde-fou de modèle, aucune origine réglementaire.' },
     { file: 'services/projection/modelAssumptions.ts', value: '1500', family: 'design',
       reason: '`BARISTA_ASSUMED_MONTHLY_INCOME` — revenu mensuel supposé d’un emploi d’appoint dans la cible BaristaFIRE. Nombre conventionnel, sans source et NON indexé (il reste nominal alors que les dépenses dont il se soustrait sont indexées). Portée mesurée nulle : `BaristaFIRE` est publié au contrat et lu par personne.' },
+    { file: 'services/projection/modelAssumptions.ts', value: '90', family: 'design',
+      reason: '`DEFAULT_LIFE_EXPECTANCY` — espérance de vie par défaut quand `retirementGoal.lifeExpectancy` est absent (horizon de la VAN des rentes successorales). Hypothèse de modèle, le MÊME 90 que l’écran affiche pour un champ vide ; remplace le `95` en dur d’`estateCalculation.ts` qui ignorait la saisie ([ESTATE-LIFEEXPECTANCY-95-DUR], lot 187).' },
     { file: 'services/projection/modelAssumptions.ts', value: '25', family: 'design',
       reason: '`FIRE_TARGET_MULTIPLE` — multiple de dépenses annuelles de la règle des 4 % (Trinity Study, 1998). Convention de planification largement documentée, PAS un paramètre fiscal : aucune autorité ne la publie et aucun texte de loi ne s’y réfère. Source unique des deux sites qui en portaient chacun une copie anonyme (`projection.ts`, `monthlyOutput.ts`).' },
 
@@ -345,8 +347,11 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Surcoût mensuel par défaut du scénario snowbird. Hypothèse d’amorçage, surchargeable.' },
 
     // ── services/projection/estateCalculation.ts ─────────────────────────────────────────────
-    { file: 'services/projection/estateCalculation.ts', value: '95', family: 'design',
-      reason: 'Espérance de vie retenue pour actualiser les rentes publiques restantes. Hypothèse de modèle explicitement nommée (`lifeExpectancy`), pas une table de mortalité.' },
+    // ⚠️ 2026-09-05 — l'entrée `'95'` (« espérance de vie … explicitement nommée `lifeExpectancy` ») est
+    // RETIRÉE ([ESTATE-LIFEEXPECTANCY-95-DUR], lot 187) : le nom qui la justifiait était précisément ce
+    // qui masquait le no-op — la variable locale `lifeExpectancy` ne lisait JAMAIS
+    // `retirementGoal.lifeExpectancy`. Le moteur lit désormais la saisie ; le défaut vit dans
+    // `modelAssumptions.ts` (`DEFAULT_LIFE_EXPECTANCY`, entrée `'90'` ci-dessus).
     { file: 'services/projection/estateCalculation.ts', value: '0.02', family: 'design',
       reason: 'Taux d’actualisation réel de la VAN des rentes (`r_npv` = 2 %). Hypothèse financière de modèle. Le `1.02` des deux lignes de VAN (RRQ et PSV) en est le reflet et doit bouger AVEC lui — piège de duplication signalé par `[ESTATE-NPV-07]`.' },
     { file: 'services/projection/estateCalculation.ts', value: '1.02', family: 'design',

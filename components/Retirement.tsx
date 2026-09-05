@@ -11,6 +11,7 @@ import { PrivateAmount } from './ui/PrivateAmount';
 import { maskedTick } from '../utils/chartPrivacy';
 import { VieCurveLink } from './vie/VieCurveLink';
 import { TAB_LABELS } from '../constants';
+import { DEFAULT_LIFE_EXPECTANCY } from '../services/projection/modelAssumptions';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Tab } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
@@ -90,7 +91,7 @@ export const Retirement: React.FC<RetirementProps> = ({
     // Configuration (Phase C.1) sera l'endroit canonique pour le modifier ; le
     // slider local reste pour rétrocompat et exploration rapide.
     const retirementGoalStore = useFinanceStore(s => s.retirementGoal);
-    const lifeExpectancy = retirementGoalStore?.lifeExpectancy ?? 90;
+    const lifeExpectancy = retirementGoalStore?.lifeExpectancy ?? DEFAULT_LIFE_EXPECTANCY;
     // States Goal Seeker / Asset Location déplacés dans leurs sous-composants
     // (refactor architecture cycle 2 — réduction Retirement.tsx de 700→527 lignes).
     // PH3 — `setLifeExpectancy` + l'état `currentAge` retirés avec les éditeurs (déplacés dans Profil).

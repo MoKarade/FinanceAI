@@ -851,7 +851,7 @@
   commentaire de code. **Correctif** : soit ventiler la VAN par conjoint avant d'appliquer le barème,
   soit documenter l'hypothèse dans `docs/PROJECTION.md` et la nommer dans l'UI.
 
-- [ ] **`[ESTATE-LIFEEXPECTANCY-95-DUR]`** (S, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+- [x] **`[ESTATE-LIFEEXPECTANCY-95-DUR]`** ✅ **LIVRÉ au lot 187 (2026-09-05)** — `EstateCalcInputs.lifeExpectancy` câblé depuis `retirementGoal.lifeExpectancy` ; défaut `DEFAULT_LIFE_EXPECTANCY = 90` hissé dans `modelAssumptions.ts` (source unique du moteur ET des deux écrans qui écrivaient `?? 90`) ; entrée `95` du ratchet retirée, entrée `90` ajoutée. Gardes : discriminant absent ≠ 95, monotonie, ≤ âge final → 0, valeurs inutilisables → défaut ; câblage + chaîne par espion (100 ans > 85 ans en succession, patrimoine final identique). « Re-base MASSIF » annoncé = **3 assertions dans 2 fichiers** (divorce −79 923 $ à 92 ans, déterministe ET MC ; dividende −113 910 $ à 90 ans), et la 3ᵉ était CACHÉE derrière la 1ʳᵉ dans le même `it`. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
   `services/projection/estateCalculation.ts` fixe `lifeExpectancy = 95` **en dur** pour le nombre
   d'années de rentes restantes, alors que `retirementGoal.lifeExpectancy` existe (`types.ts`, défaut
   90 ; 90/92/94 selon les personas) et est **ignoré**. Piège d'HOMONYME à deux niveaux : l'entrée du
@@ -1607,15 +1607,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
 > refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [x] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** ✅ **LIVRÉ au lot 186 (2026-09-05)** — le `title` de l'appelant est COMPOSÉ (« <title appelant> — Montant masqué ») au lieu d'être écrasé ; sans title appelant, « Montant masqué » seul (contrôle) ; hors mode discret, le title passe tel quel à l'input. Le second volet (« aucun indice visuel au clavier ») RE-MESURÉ : le focus clavier RÉVÈLE l'input (cas « Tab » de `[SEC-PRIVACY-BLUR-INPUTS]`, vert), donc le bouton masqué n'est jamais figé sous le focus — rien à ajouter, la piste `aria-describedby` n'a plus d'objet. Perturbation (title écrasé) → 1 rouge. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, relevé par le panel a11y de #629) —
-  `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
-  « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié
-  call site par call site), donc non bloquant — mais un appelant qui compterait sur son `title`
-  pour porter une info la perdrait SANS avertissement. Deux pistes : composer les deux `title`, ou
-  passer l'état masqué en `aria-describedby` vers un `sr-only` dédié. ⚠️ La seconde piste corrige
-  AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
-  dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
-  « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
 - [ ] **`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`** (S, FAIBLE — **découvert en livrant
   `[A11Y-LABELS-RESTE-DU-DEPOT]`** le 2026-08-30) — il reste dans `components/` des `<label>` qui
   n'ont ni `htmlFor` ni enveloppement alors que leur contrôle porte déjà un `aria-label`. **Ce n'est

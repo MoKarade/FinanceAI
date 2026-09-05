@@ -109,6 +109,12 @@ describe('[FISC-DIV-ACB-STEPUP] le dividende réinvesti majore le prix de base r
     it('la SUCCESSION en profite davantage : elle liquide tout le gain latent', () => {
         // C'est elle qui approche le coût PLEIN de la double imposition — l'écart y est de
         // +30 975 $ à 30 ans, contre +31 055 $ sur le patrimoine, mais sur une base plus petite.
-        expect(Number(lance(30).estateNetWorth)).toBeGreaterThan(1_700_000);
+        // Re-basé 2026-09-05 ([ESTATE-LIFEEXPECTANCY-95-DUR] lot 187, **−113 910 $**, −6,6 %) : la fixture
+        // dit `lifeExpectancy: 90`, et le module valorisait 95 ans de rentes en ignorant le champ.
+        // Mesuré : 1 721 406 $ avec 95 explicite → 1 607 496 $ avec 90 ; patrimoine final IDENTIQUE
+        // (1 974 764 $). La borne reste ENTRE les deux séries : la VAN ne dépend pas de l'ACB, donc
+        // l'écart de +30 975 $ du pas d'ACB se conserve — sans le pas ≈ 1 576 521 $ (DÉRIVÉ de cette
+        // indépendance, pas re-mesuré). 1 590 000 est à ~13 k$ de chacune.
+        expect(Number(lance(30).estateNetWorth)).toBeGreaterThan(1_590_000);
     });
 });

@@ -155,7 +155,11 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // enfin imposés (impôt à vie +11 228 $, patrimoine final −9 514 $) et la succession en hérite
         // en partie. Sens opposé au test « patrimoine MENSUEL » ci-dessus (couple encore actif sur son
         // horizon court) — c'est la même règle vue des deux côtés de la retraite.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_567_445);
+        // Re-basé 2026-09-05 ([ESTATE-LIFEEXPECTANCY-95-DUR] lot 187, **−79 923 $**, −2,24 %) : la VAN
+        // des rentes s'arrête désormais à l'espérance de vie SAISIE (92 ans dans cette fixture) au lieu
+        // d'un 95 en dur qui ignorait le champ — trois années de rentes en moins. Contrôle : le
+        // patrimoine final est IDENTIQUE au cent près (3 880 912,68 $), la saisie ne touche que la VAN.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_487_522);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
@@ -177,6 +181,11 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // en déterministe) : décembre déposé en fin de mois — la cause passe par les retraits de
         // décembre enfin imposés, dont le montant dépend du tirage MC (soldes différents), d'où deux
         // écarts proches mais distincts, de même sens.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_902_850);
+        // Re-basé 2026-09-05 ([ESTATE-LIFEEXPECTANCY-95-DUR] lot 187, **−79 923 $** — EXACTEMENT l'écart
+        // déterministe) : la cause est la VAN des rentes, que le tirage MC ne déplace pas (patrimoine
+        // final MC inchangé, 2 919 844,60 $). ⚠️ Cette ancre n'a PAS rougi au premier gate : elle vit
+        // dans le même `it` que l'ancre déterministe, dont le `toBe` interrompt le cas — mesurée par
+        // instrument posé AVANT la première assertion (`toBe` INTERROMPT le cas, leçon du lot 115).
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_822_927);
     });
 });

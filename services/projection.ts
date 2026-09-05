@@ -2497,6 +2497,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         startYear, currentAge,
         retirementTargetAge: retirementGoal.targetAge,
         governmentPension: retirementGoal.governmentPension,
+        // [ESTATE-LIFEEXPECTANCY-95-DUR] L'horizon de la VAN des rentes est la saisie de l'utilisateur
+        // (défaut 90 dans le module, jamais ici — un second défaut à ce site redivergerait).
+        lifeExpectancy: retirementGoal.lifeExpectancy,
         // FA-8 — estimés précis par rente (per-personne) : priment sur le split 65/35 dans le NPV estate,
         // comme dans le revenu de retraite (plus de divergence silencieuse).
         rrqEstimateMonthly: retirementGoal.rrqEstimateMonthly,

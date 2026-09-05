@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 190 : borne SCHL stricte à 1,5 M$ (`[SCHL-1500K-BOUNDARY]`)
+> `services/realEstate.ts` écrivait `<=` là où la règle SCHL dit « inférieur à 1 500 000 $ » — au prix
+> EXACT, mise de fonds minimale 125 000 $ au lieu de 300 000 $, prêt assurable et prime calculée. Quatre
+> sites alignés (le ticket en nommait trois ; `aboveMaxPrice` de la prime est le quatrième — recensé par
+> grep de la constante), deux pins qui ENCODAIENT le défaut inversés avec leur histoire, bornes
+> 1 499 999 / 1 500 000 / 1 500 001 + validation + prime. Perturbations SÉPARÉES : `<=` remis au minimum
+> → 3 rouges ; `>` remis à la prime → 1 rouge. FISCAL_REFERENCE §8 : le tableau disait déjà « ≥ 1,5 M$ →
+> 20 % » — note datée « le doc avait raison, le code non ». Push sans leçon nouvelle (classe connue : un
+> pin peut encoder le défaut ; le périmètre d'un ticket se recense).
+
 > ## 🟦 Session 2026-09-05 — Lot 189 (DOC) : le jumeau du 188 s'est révélé un TROU d'impôt — deux tickets appariés, plan P5 à valider
 > Coder `[IMMO-BUT-LOCATIF-INTERET-BRUT]` (déduire les intérêts du loyer d'un BUT immobilier, `accRentesYear`)
 > a donné un SIGNE inattendu : patrimoine −2 820 $ / −6 836 $ / −10 076 $ à 10/20/30 ans, impôt INCHANGÉ.

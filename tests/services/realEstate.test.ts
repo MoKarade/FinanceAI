@@ -353,14 +353,58 @@ describe('calculateMinDownPayment (§6.8)', () => {
     expect(calculateMinDownPayment(2000000)).toBe(2000000 * SCHL_MIN_DOWN_TIER3);
   });
 
-  it('frontière exacte tier 2 : 1.5M$ = 5%×500k + 10%×1M = 125 000$', () => {
-    expect(calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2)).toBe(25000 + 100000);
+  it('[SCHL-1500K-BOUNDARY] frontière exacte tier 2 : 1,5 M$ EXACT n’est PLUS assurable → 20 % = 300 000 $', () => {
+    // INVERSÉ le 2026-09-05 (lot 190) : ce pin affirmait « 1,5 M$ = 125 000 $ » — il ENCODAIT le défaut
+    // (borne `<=` au lieu de `<`). La règle SCHL vise un prix « inférieur à 1 500 000 $ » ; au prix
+    // exact, la mise de fonds minimale est 20 %. Écart mesuré au point de bascule : 175 000 $.
+    expect(calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2)).toBe(SCHL_PRICE_THRESHOLD_TIER2 * SCHL_MIN_DOWN_TIER3);
+    expect(calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2)).not.toBe(25000 + 100000);
+  });
+
+  it('[SCHL-1500K-BOUNDARY] bornes 1 499 999 / 1 500 000 / 1 500 001 : la marche est à 1,5 M$ EXACT, d’un seul côté', () => {
+    const sous = calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2 - 1);
+    const exact = calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2);
+    const dessus = calculateMinDownPayment(SCHL_PRICE_THRESHOLD_TIER2 + 1);
+    // 1 499 999 : palier 2 (5 % × 500 k + 10 % × 999 999) ≈ 124 999,90 $
+    expect(sous).toBeCloseTo(25000 + (SCHL_PRICE_THRESHOLD_TIER2 - 1 - 500000) * 0.10, 2);
+    // 1 500 000 et 1 500 001 : palier 3 (20 %), continus entre eux
+    expect(exact).toBe(300000);
+    expect(dessus).toBeCloseTo(300000.2, 2);
+    expect(dessus - exact).toBeLessThan(1);
+    expect(exact - sous).toBeGreaterThan(170000);
   });
 
   it('renvoie 0 pour prix invalide', () => {
     expect(calculateMinDownPayment(0)).toBe(0);
     expect(calculateMinDownPayment(-1000)).toBe(0);
     expect(calculateMinDownPayment(NaN)).toBe(0);
+  });
+});
+
+describe('[SCHL-1500K-BOUNDARY] validation et prime au prix EXACT de 1,5 M$ — même sens de borne aux quatre sites', () => {
+  it('1 500 000 $ avec 10 % : NON assurable → erreur « ≥ 20 % », `insured` faux (avant : assurable, minimum 125 000 $)', () => {
+    const r = validateMortgageParameters({ price: SCHL_PRICE_THRESHOLD_TIER2, downPayment: 150000, amortization: 25 });
+    expect(r.valid).toBe(false);
+    expect(r.insured).toBe(false);
+    expect(r.minDownPayment).toBe(300000);
+    expect(r.errors.some(e => /20/.test(e) && /SCHL/.test(e))).toBe(true);
+  });
+
+  it('1 499 999 $ avec 10 % : encore assurable (contrôle — la marche est d’un seul côté)', () => {
+    const r = validateMortgageParameters({ price: SCHL_PRICE_THRESHOLD_TIER2 - 1, downPayment: 150000, amortization: 25 });
+    expect(r.valid).toBe(true);
+    expect(r.insured).toBe(true);
+  });
+
+  it('prime SCHL : indisponible à 1 500 000 $ exact, disponible à 1 499 999 $', () => {
+    const exact = calculateSchlPremium({ price: SCHL_PRICE_THRESHOLD_TIER2, downPayment: 150000 });
+    const sous = calculateSchlPremium({ price: SCHL_PRICE_THRESHOLD_TIER2 - 1, downPayment: 150000 });
+    expect(exact.available).toBe(false);
+    expect(exact.required).toBe(false);
+    expect(exact.premium).toBe(0);
+    expect(sous.available).toBe(true);
+    expect(sous.required).toBe(true);
+    expect(sous.premium).toBeGreaterThan(0);
   });
 });
 
@@ -463,14 +507,22 @@ describe('validateMortgageParameters (§6.8)', () => {
     expect(r.errors[0]).toContain('1,5M$');
   });
 
-  it('frontière exacte prix = 1.5M$ + MDP minimum (125 000$) : assuré, valide', () => {
+  it('[SCHL-1500K-BOUNDARY] frontière exacte prix = 1,5 M$ + 125 000 $ : REFUSÉ (20 % exigé), plus assuré', () => {
+    // INVERSÉ le 2026-09-05 (lot 190) : ce cas affirmait « 1,5 M$ + 125 000 $ : assuré, valide » — il
+    // ENCODAIT la borne `<=`. Au prix exact, l'assurance SCHL n'existe pas (prix « inférieur à
+    // 1 500 000 $ ») : 125 000 $ (8,33 %) sont insuffisants, il en faut 300 000 $.
     const r = validateMortgageParameters({
       price: 1500000,
-      downPayment: 125000,  // 5%×500k + 10%×1M = 125k exact
+      downPayment: 125000,
       amortization: 25,
     });
-    expect(r.valid).toBe(true);
-    expect(r.insured).toBe(true);
+    expect(r.valid).toBe(false);
+    expect(r.insured).toBe(false);
+    expect(r.minDownPayment).toBe(300000);
+    // Le même dossier à 1 499 999 $ reste assuré et valide : la marche est d'un seul côté.
+    const sous = validateMortgageParameters({ price: 1499999, downPayment: 125000, amortization: 25 });
+    expect(sous.valid).toBe(true);
+    expect(sous.insured).toBe(true);
   });
 
   it('frontière MDP = 20% exact (price × 0.20) : conventionnel malgré arrondi flottant', () => {

@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (À exactement 1,5 M$, un achat exige 20 % de mise de fonds)
+
+- **Corrigé** : au prix d'achat de 1 500 000 $ pile, l'app acceptait une mise de fonds de 125 000 $
+  (8,33 %) et calculait une prime SCHL, alors que l'assurance SCHL n'existe que sous 1,5 M$. Le
+  minimum est maintenant 300 000 $ (20 %) à ce prix, comme au-dessus. Rien ne change pour tout
+  autre prix.
+
 ## [unreleased] — 2026-09-05 (Les intérêts hypothécaires d'un immeuble locatif sont déduits de son revenu imposable)
 
 - **Corrigé** : le revenu net d'exploitation d'un immeuble locatif (section Patrimoine étendu) était

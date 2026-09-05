@@ -367,15 +367,22 @@ export const SCHL_AMORT_MAX_CONVENTIONAL = 30;           // ≥ 20% MDP
  *
  * Paliers 2026 :
  *  - prix ≤ 500 000$ : 5% du prix
- *  - 500 000 < prix ≤ 1 500 000 : 5% sur premier 500k$ + 10% au-delà
- *  - prix > 1 500 000 : 20% (assurance SCHL non disponible)
+ *  - 500 000 < prix < 1 500 000 : 5% sur premier 500k$ + 10% au-delà
+ *  - prix ≥ 1 500 000 : 20% (assurance SCHL non disponible)
+ *
+ * [SCHL-1500K-BOUNDARY] (lot 190) La borne haute est STRICTE : l'assurance SCHL vise un prix
+ * d'achat « inférieur à 1 500 000 $ » (FISCAL_REFERENCE, « ≥ 1 500 000 $ → 20 % »). Le code écrivait
+ * `<=` — au prix EXACT de 1,5 M$, la mise de fonds minimale valait 125 000 $ (8,33 %) au lieu de
+ * 300 000 $ (20 %), et `validateMortgageParameters` déclarait le prêt ASSURABLE. Quatre sites
+ * alignés (ici, `insured`, la branche d'erreur « prix > 1,5 M$ » et `aboveMaxPrice`) : une borne
+ * écrite à quatre endroits ne peut être juste que si elle a le même sens partout.
  */
 export const calculateMinDownPayment = (price: number): number => {
   if (!Number.isFinite(price) || price <= 0) return 0;
   if (price <= SCHL_PRICE_THRESHOLD_TIER1) {
     return price * SCHL_MIN_DOWN_TIER1;
   }
-  if (price <= SCHL_PRICE_THRESHOLD_TIER2) {
+  if (price < SCHL_PRICE_THRESHOLD_TIER2) {
     return SCHL_PRICE_THRESHOLD_TIER1 * SCHL_MIN_DOWN_TIER1
       + (price - SCHL_PRICE_THRESHOLD_TIER1) * SCHL_MIN_DOWN_TIER2;
   }
@@ -427,13 +434,14 @@ export const validateMortgageParameters = (input: MortgageValidationInput): Mort
   // à cause de l'arithmétique flottante. On considère ≥ 20% si on est à
   // 1e-9 près du seuil.
   const insured = downPaymentRatio < (SCHL_MIN_DOWN_TIER3 - 1e-9)
-    && safePrice <= SCHL_PRICE_THRESHOLD_TIER2;
+    && safePrice < SCHL_PRICE_THRESHOLD_TIER2; // [SCHL-1500K-BOUNDARY] borne STRICTE
   const minDownPayment = calculateMinDownPayment(safePrice);
 
   if (safePrice <= 0) {
     errors.push('Prix d\'achat invalide ou nul.');
-  } else if (safePrice > SCHL_PRICE_THRESHOLD_TIER2 && downPaymentRatio < SCHL_MIN_DOWN_TIER3) {
-    // Cas prix > 1.5M$ : un seul message ciblé (pas de doublon avec
+  } else if (safePrice >= SCHL_PRICE_THRESHOLD_TIER2 && downPaymentRatio < SCHL_MIN_DOWN_TIER3) {
+    // Cas prix ≥ 1.5M$ ([SCHL-1500K-BOUNDARY] : borne STRICTE, 1,5 M$ exact n'est plus assurable) :
+    // un seul message ciblé (pas de doublon avec
     // "mise de fonds insuffisante" qui serait redondant).
     errors.push(
       `Prix > 1,5M$ : assurance SCHL non disponible. Mise de fonds doit être ≥ 20% ` +
@@ -530,9 +538,9 @@ export interface SchlPremiumResult {
   rate: number;
   /** Prime à ajouter au principal du prêt (price - downPayment + premium). */
   premium: number;
-  /** True si le prêt nécessite une assurance SCHL (LTV > 80% et price ≤ 1.5M$). */
+  /** True si le prêt nécessite une assurance SCHL (LTV > 80% et price < 1.5M$ — borne STRICTE, [SCHL-1500K-BOUNDARY]). */
   required: boolean;
-  /** True si l'assurance est DISPONIBLE (LTV ≤ 95% et price ≤ 1.5M$). */
+  /** True si l'assurance est DISPONIBLE (LTV ≤ 95% et price < 1.5M$ — borne STRICTE, [SCHL-1500K-BOUNDARY]). */
   available: boolean;
 }
 
@@ -551,7 +559,7 @@ export const calculateSchlPremium = (input: SchlPremiumInput): SchlPremiumResult
   const ltv = safePrice > 0 ? baseLoan / safePrice : 0;
 
   const aboveMaxLtv = ltv > 0.95;
-  const aboveMaxPrice = safePrice > SCHL_PRICE_THRESHOLD_TIER2;
+  const aboveMaxPrice = safePrice >= SCHL_PRICE_THRESHOLD_TIER2; // [SCHL-1500K-BOUNDARY] borne STRICTE
   const available = !aboveMaxLtv && !aboveMaxPrice && safePrice > 0;
   const required = ltv > 0.80 && available;
 

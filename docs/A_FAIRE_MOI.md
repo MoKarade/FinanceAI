@@ -52,6 +52,7 @@
   branchement resterait possible depuis git si le besoin naît.
 
   ✅ **RÉPONDU 2026-09-04 (en session)** : RETIRER le module (re-branchement possible depuis git si le besoin naît).
+  ✅ **LIVRÉE au lot 162 (2026-09-05)** — module et tests retirés, avertissement du double-comptage laissé au nouveau domicile des exports vivants.
 - [ ] **[DÉCISION — FISC-RRSP-RENTAL-EARNED]** (2026-09-04) — le moteur ne crée AUCUN droit REER
   pour un revenu de location (confirmé dans le code : le loyer net nourrit le registre des rentes,
   jamais l'assiette de revenu gagné per-conjoint). Avant de corriger, DEUX réponses requises :

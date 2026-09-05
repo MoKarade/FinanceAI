@@ -415,7 +415,7 @@
   brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
   pas au FVI » dans l'ADR.
   ✅ **Décision Marc 2026-09-04 (en session)** : BRANCHER l'impôt à vie dans le calcul (option a) — re-base FVI massif assumé. À livrer (lot à venir).
-- [ ] **`[ENG-RANKING-MODULES-ORPHELINS]`** (S, FAIBLE — RE-CADRÉ par la revue #683 : ma
+- [x] **`[ENG-RANKING-MODULES-ORPHELINS]`** ✅ **LIVRÉ au lot 162 (2026-09-05)** — `rankStrategies` RETIRÉ avec ses deux fichiers de test ; `OptimizeObjective`/`OBJECTIVE_LABELS` (seuls exports vivants) déménagés dans `strategyConfigRanking.ts` avec l'avertissement du double-comptage successoral pour toute résurrection depuis git ; doc PROJECTION.md et commentaires croisés mis à jour ; garde = le compilateur (imports morts) + knip rejoué. `compareLifeScenarios` INTACT (vivant via GoalSeekerCard). (S, FAIBLE — RE-CADRÉ par la revue #683 : ma
   1re affirmation était à moitié FAUSSE) — `rankStrategies` (strategyRanking.ts) est orphelin
   (aucun appelant hors tests, re-vérifié alias compris). **`compareLifeScenarios` NE L'EST PAS** :
   son alias `optimizeDrawdownOrder` est appelé par `GoalSeekerCard` (bouton « Optimiser ordre de
@@ -426,7 +426,7 @@
   ⚠️ AVANT tout branchement de `rankStrategies` : son score `balanced` compte l'impôt successoral
   DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax à 0,40 + axe tax = lifetimeTaxTotal
   qui l'inclut à 0,25 — relecture #681, sans effet aujourd'hui faute d'appelant).
-  ✅ **Décision Marc 2026-09-04 (en session)** : RETIRER le module (le branchement resterait possible depuis git). À livrer (lot à venir).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 162 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
@@ -471,35 +471,6 @@
   buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
   comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
   ✅ **Décision Marc 2026-09-04 (en session)** : taux PAR IMMEUBLE locatif (option a, comme les buts immobiliers). À livrer (lot à venir).
-- [x] **`[ENG-RENEWAL-CHOC-MORT]`** ✅ **LIVRÉ au lot 161 (2026-09-05, avec RATE-MISMATCH)** (M, était 🧭 — MESURÉ 2026-08-25) — le
-  « choc » de taux au renouvellement hypothécaire est dérivé du PREMIER CARACTÈRE de l'identifiant
-  du bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`). **Mesuré : il vaut ZÉRO partout dans le dépôt.**
-  L'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → nul), les fixtures utilisent `p1`, les
-  personas `jc-re1` ('j' → 106 → 1). **Aucune propriété atteignable par un utilisateur n'a jamais vu
-  son taux bouger au renouvellement** — le risque de renouvellement, argument de vente d'un
-  planificateur, n'est pas modélisé du tout.
-  ✅ **Livré en attendant** (PR #732, zéro dollar déplacé) : le message ne dit plus « nouveau taux
-  5,00 % » quand l'ancien était 5,00 % — il dit « taux inchangé ». Affirmer un changement qui n'a pas
-  eu lieu viole le no-fake-data ; le renouvellement, lui, a bien eu lieu.
-  🧭 **Décision 1 — faut-il modéliser le risque de renouvellement ?** Si oui, le choc doit venir
-  d'une SAISIE (taux de renouvellement attendu) ou d'un aléa assumé, jamais du hachage d'un
-  identifiant technique. Si non, retirer le mécanisme et le dire.
-  🧭 **Décision 2 — l'activer expose `[ENG-RENEWAL-RATE-MISMATCH]`** (voir ci-dessous), qui devient
-  alors un vrai bug d'argent. Les deux se livrent ENSEMBLE ou pas du tout.
-  ⚠️ Ce ticket REMPLACE `[ENG-RENEWAL-M0]` (« renouvellement dès le mois 0 »), dont la prémisse est
-  exacte mais sans conséquence : le renouvellement au m0 est LOGGÉ, et avec un choc nul il ne change
-  ni le PMT ni le taux. Rien à corriger de ce côté tant que le choc est mort.
-  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 161 (2026-09-05)** : le moteur consomme `renewalRateProjection` — le champ que le Studio immobilier ÉCRIVAIT déjà (producteur UI existant, moteur aveugle) ; défaut = taux courant (≤ 0 traité comme absence, un champ vidé écrit 0), choc par identifiant RETIRÉ, message no-fake-data piloté par la saisie. Les 3 défauts UI `|| 5.0` alignés sur « défaut = taux actuel ». → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
-- [x] **`[ENG-RENEWAL-RATE-MISMATCH]`** ✅ **LIVRÉ au lot 161 (2026-09-05, avec CHOC-MORT)** — le taux courant vit dans `pState.currentRatePct` (écrit à l'achat et à chaque renouvellement) ; l'intérêt mensuel ET la marge Smith le consomment, donc PMT et intérêt suivent ENSEMBLE. Preuves : sentinelle « le prêt s'éteint à l'échéance même quand le taux baisse » (rouge si l'intérêt reste à l'ancien taux), Smith par différence-en-différences au seuil mesuré des deux côtés (135 399 $ vs 38 416 $). (M, ÉLEVÉ [Certain, mesuré] — panel #552, PRÉ-EXISTANT) —
-  au renouvellement hypothécaire, le PMT est recalculé au NOUVEAU taux mais l'intérêt mensuel reste
-  à `goal.mortgageRate` (`realEstateMonth.ts:~349`) : renouvellement 4,5 %→3 % mesuré → capital
-  551 $/mois seulement, solde encore 211 569 $ après 10 ans sur un prêt censé s'éteindre à 240 mois.
-  ⚠️ **Portée RE-MESURÉE le 2026-08-25** : le ticket dit « frappe tout achat ». En réalité il ne
-  frappe RIEN aujourd'hui — le décalage n'existe que si le taux CHANGE au renouvellement, or le choc
-  de taux vaut zéro pour tout identifiant du dépôt (voir `[ENG-RENEWAL-CHOC-MORT]`). Le bug est réel
-  et le correctif juste, mais il n'est ATTEIGNABLE qu'une fois le choc rendu vivant. Les deux
-  tickets se livrent donc ENSEMBLE. Fix : porter le taux courant dans pState (ex. `currentRate`) et
-  le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
   il n'en importera AUCUNE de plus** : `deriveCutoverDate` (`services/fintable/deriveCutoverDate.ts`)

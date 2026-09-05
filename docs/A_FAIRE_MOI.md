@@ -604,7 +604,7 @@ Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chac
 | ~~A13~~ | ✅ **RÉPONDU 2026-08-06** : « chaque semaine jeudi, pareil pour dette ». Paie et paiements de dette sont donc **hebdomadaires, le jeudi**. | `[FUTUR-DAILY]` | **Livré** : `weeklyDeltasForMonth` convertit les montants MENSUELS du store en versements hebdomadaires (×12/52) et les pose à chaque jeudi. Un mois à 5 jeudis reçoit bien 5 paies. ⚠️ Reste une limite assumée : le MOTEUR raisonne au mois et ignore les mois à 5 paies — le rythme affiché est juste, le total du mois reste celui du moteur. |
 
 **Réponses du 2026-09-05 (en session) sur des questions qui n'étaient qu'au BACKLOG** — reportées dans chaque ticket :
-- `[PRIVACY-CONTEXTE-IA]` → **masquer** : en mode discret, les montants ne partent pas non plus vers l'assistant.
+- `[PRIVACY-CONTEXTE-IA]` → **masquer** : en mode discret, les montants ne partent pas non plus vers l'assistant. ✅ **Livré au lot 175 (2026-09-05)** — le chat l'était déjà, le diagnostic Budget l'est maintenant (égress + ouvreur).
 - `[ENG-DIVORCE-ALLOC-ASSIETTE]` → **« comme mesuré »** : après une séparation, l'assiette des allocations est le revenu du parent seul (`soloHousehold`), 166 → 250 $/mois sur la fixture.
 - `[FISC-DEC-FLUX-ASSIETTE-TIMING]` → **corriger** : les retraits REER de décembre doivent entrer dans l'assiette (fuite réelle, +25 568 $ d'impôt mesuré sur la fixture retraités).
 - `[FISC-REEE-GRANT-CLAWBACK]` → **GO pour retenter** (périmètre chiffré en 7 facettes). Marc ne sait PAS séparer cotisations et subventions sur son REEE réel (« j'ai jamais fait, je sais pas ») → la part subvention se DÉRIVE des règles SCEE/IQEE sur l'historique de cotisation, hypothèse écrite et affichée, jamais un chiffre inventé.

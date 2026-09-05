@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (En mode discret, le diagnostic IA du Budget ne part plus)
+
+- **Corrigé** : le bouton « Diagnostic » de l'onglet Budget envoyait tes montants à l'assistant même
+  en mode discret (le chat, lui, se taisait déjà). Il refuse désormais avec une explication, et le
+  modal lui-même ne construit plus la demande tant que le mode discret est actif.
+
 ## [unreleased] — 2026-09-05 (Le grand livre du Budget ne compte plus un retour marchand comme un revenu)
 
 - **Corrigé** : le tableau « Réel par mois » comptait TOUTE entrée d'argent comme un revenu

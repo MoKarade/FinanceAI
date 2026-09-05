@@ -19,11 +19,6 @@
 
 ## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)
 
-- [x] **`[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`** ✅ **LIVRÉ au lot 174 (2026-09-05)** — `buildMonthlyLedger` ne compte en revenu que `INCOME_CATEGORIES` (même règle que le KPI) et publie `entreesHorsRevenuRows`/`entreesHorsRevenuByMonth` ; section « Entrées hors revenu (exclues du total et du solde) » dans le tableau, ligne par ligne + total. Invariant testé : Σ positifs = revenu + hors revenu. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S-M — décision 2026-09-05 (b)) — le grand livre budget
-  (`utils/budgetSync.ts`) EXCLUT explicitement du revenu tout positif hors `{Salaire, Revenus divers}`
-  (retour marchand, remboursement d'impôt, dépôt non catégorisé) et les montre sous un nom visible
-  (« Entrées hors revenu : X $ ») au lieu de les compter dans le total du grand livre — fin des deux
-  « soldes du mois » différents côte à côte (écart 11,7 % mesuré). Jamais perdus en silence.
 - [ ] **`[FUTUR-ANNOTATIONS]`** (M — réponse A12 du 2026-09-05) — annoter la courbe Futur avec les événements
   cités : âge de retraite, épuisement d'un compte, début RRQ/PSV, bascule de stratégie — **en bref**
   (marqueur + libellé court), chaque type d'annotation **désactivable en décochant** (préférence
@@ -1746,7 +1741,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
     monétaires, qui n'existe pas encore (celle des champs TEXTE a été choisie exprès à sa place).
   Ne rien coder avant la réponse de Marc.
 
-- [ ] **`[PRIVACY-CONTEXTE-IA]`** (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
+- [x] **`[PRIVACY-CONTEXTE-IA]`** ✅ **LIVRÉ au lot 175 (2026-09-05)** — le chat était déjà gaté (publisher + chokepoint, #490) ; le diagnostic Budget ne l'était PAS : garde à l'égress dans `BudgetAiModal` (le prompt ne se construit pas en mode discret) + refus à l'ouvreur avec toast, message unique ; jeton `MONTANT-HORS-ECRAN` requalifié « gaté en amont, prouvé ». → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, QUESTION POUR MARC — **née de la garde**, 2026-09-01) — le mode
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : **MASQUER** — en mode discret, les montants ne partent pas vers l'assistant non plus ; les 4 sites `MONTANT-HORS-ECRAN` passent sous la règle.
   discret doit-il s'appliquer au **contexte envoyé à l'assistant** (`services/aiChat/viewContext.ts`,
   alimenté par `Budget.tsx`) ? Ce n'est PAS un rendu : personne ne le lit par-dessus l'épaule de Marc.

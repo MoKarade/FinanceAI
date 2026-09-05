@@ -16,6 +16,20 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 175 : en mode discret, le diagnostic IA du Budget ne part plus (`[PRIVACY-CONTEXTE-IA]`)
+> Décision Marc 13 (MASQUER). Recensé : le CHAT était déjà couvert — publisher purgé en mode discret
+> + chokepoint d'envoi qui refuse la ligne de contexte (finding #490, test existant) ; les quatre
+> cartes `MONTANT-HORS-ECRAN` de `Budget.tsx` ne partaient donc jamais. Le trou était le DIAGNOSTIC
+> (`BudgetAiModal`) : prompt aux montants en clair, envoyé mode discret ou pas. Livré : garde à
+> l'ÉGRESS dans le modal (le prompt ne se construit pas, message affiché) + refus à l'OUVREUR
+> (`handleAiDiagnosis`, toast) — un seul texte exporté (`MESSAGE_DIAGNOSTIC_MODE_DISCRET`). Le
+> jeton `MONTANT-HORS-ECRAN` de la garde de vie privée est requalifié : il ne dispense pas du mode
+> discret, il déclare un canal gaté EN AMONT et PROUVÉ (deux tests nommés). Gardes : 2 par étage,
+> chacune avec son contrôle « mode normal → le diagnostic part » (sans lui, « pas appelé » serait
+> vrai d'un espion jamais câblé). Perturbations : garde d'égress retirée → 1 rouge ; garde de
+> l'ouvreur retirée → 1 rouge. Autres surfaces IA (catégorisation, rééquilibrage, optimisation
+> couple, import) : HORS ticket, non recensées ici — à traiter si Marc le demande. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 174 : le grand livre exclut les positifs hors revenu, et les NOMME (`[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`)
 > Décision Marc 2b. `buildMonthlyLedger` ne compte en revenu que `INCOME_CATEGORIES` — la règle du KPI
 > Revenus, source unique — et publie `entreesHorsRevenuRows` (par catégorie, « Non classées » pour

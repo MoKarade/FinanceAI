@@ -1792,7 +1792,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // re-soustrait JAMAIS `rentalMortgage` du patrimoine (double comptage interdit par la
         // source unique `computeRawNetWorth`).
         if (rentalStates.length > 0) {
-            const rm = processRentalMonth(rentalStates, effProj.propertyGrowthRate ?? 3, rentalNames);
+            // [ENG-PROPGROWTH-PAR-IMMEUBLE] (décision Marc 2026-09-04) La croissance vient de CHAQUE
+            // immeuble (semée dans son état) — le lecteur config `effProj.propertyGrowthRate ?? 3`
+            // est RETIRÉ de ce chemin : aucune UI n'a jamais écrit ce champ, il figeait 3 % partout.
+            const rm = processRentalMonth(rentalStates, rentalNames);
             realEstateEquity += rm.equity;
             mortgageBalance += rm.mortgageBalance;
             monthlyExpenses += rm.debtService;

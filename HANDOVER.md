@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 164 : la croissance des immeubles locatifs se règle PAR immeuble
+> `[ENG-PROPGROWTH-CONFIG-DEAD]` → livré selon la décision (option a). `RentalProperty.
+> propertyGrowthRate?` (additif, zéro migration), semé dans `RentalState.growthRatePct` avec le
+> défaut NOMMÉ `DEFAULT_RENTAL_GROWTH_PCT` = 3 (écrit au semis, jamais un repli tardif — un 0
+> explicite reste 0, leçon ENG-PROPGROWTH-ZERO-INEXPRIMABLE appliquée aux locatifs).
+> `processRentalMonth` perd son paramètre config : le lecteur `effProj.propertyGrowthRate ?? 3`
+> est RETIRÉ du chemin — le champ config n'a plus aucun lecteur (laissé dans le type, configs
+> persistées). UI : champ « Croissance %/an » par immeuble (vidé → undefined, 0 tapé → 0).
+> 3 tests moteur + 4 tests UI neufs ; 2 perturbations séparées (semis qui ignore le champ → 2
+> rouges nommés ; régression `|| 0` au champ → 1 rouge nommé). Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 163 : Futur affiche enfin les objectifs que la projection n'a pas pu financer
 > `[ENG-GOALSHORTFALLS-CHAMP-MORT]` → EXPOSÉ (décision Marc). Bandeau sur l'onglet Futur (sous
 > « pas à jour ») : « N objectif(s) n'ont pas pu être financés en entier — il a manqué X $ ».

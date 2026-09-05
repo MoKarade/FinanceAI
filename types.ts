@@ -454,6 +454,10 @@ export interface RentalProperty {
   acquisitionDate?: string;
   amortizationYears?: number;
   ccaTaken?: number;            // DPA cumulée (recapture à la vente)
+  /** [ENG-PROPGROWTH-PAR-IMMEUBLE] Croissance annuelle de la valeur (% — décision Marc 2026-09-04 :
+   *  taux PAR immeuble, comme les buts immobiliers). Absent = défaut documenté du moteur (3 %) ;
+   *  un 0 EXPLICITE reste 0 (« je ne parie pas sur l'appréciation » est une saisie légitime). */
+  propertyGrowthRate?: number;
 }
 
 // ────────────────────────────────────────────────────────────────────

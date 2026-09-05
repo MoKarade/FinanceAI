@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-GOALSHORTFALLS-CHAMP-MORT]` — LIVRÉ (lot 163, PR #894)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** ✅ **LIVRÉ au lot 163 (2026-09-05)** — EXPOSÉ sur Futur : bandeau « objectif non financé » sous le bandeau « pas à jour », dérivation PURE (`components/projection/alerteObjectifsManques.ts` — la phrase n'est jamais recopiée dans le JSX, le montant reste un nœud `PrivateAmount`), null honnête quand il n'y a rien à dire (champ absent d'un gel d'avant PV-11 inclus). 3 perturbations séparées à rouges nommés (dont une 1re version MUETTE : la garde voisine saturait la contrainte — fixture isolante ajoutée). (XS, FAIBLE — finding projection-validator, panel
+  PR #755) — `goalShortfalls` (`services/projection.ts`, `services/projection/types.ts`) n'a
+  **zéro consommateur** : grep exhaustif `.ts`/`.tsx`/`.md`, aucune UI, aucun outil MCP, aucun
+  prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
+  `knip`/nettoyage. ⚠️ Le champ reste ALIMENTÉ correctement, ce n'est pas un bug : juste du code
+  publié que personne ne lit (même classe que `[UTIL-GOLDENSPLIT-ORPHELIN]`).
+  ⚠️ **Arbitrage requis avant de coder** (constat lot 30, 2026-08-28) : le ticket prescrit la
+  suppression, mais le champ porte une information UTILE à l'utilisateur (« ton but n'a pas pu
+  être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
+  seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
+  (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 163 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+
 ## 2026-09-05 — `[ENG-RANKING-MODULES-ORPHELINS]` — LIVRÉ (lot 162, PR #893)
 
 Ticket d'origine tel qu'au moment de l'archivage :

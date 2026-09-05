@@ -49,18 +49,6 @@
   d'interface** — vérifié par grep sur `components/`. Coût aujourd'hui : **nul à l'écran**. Le risque
   est pour DEMAIN : un lot qui brancherait le SWR publierait un taux **sous-estimé**, donc un plan
   qui a l'air plus sûr qu'il ne l'est.
-- [x] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** ✅ **LIVRÉ au lot 163 (2026-09-05)** — EXPOSÉ sur Futur : bandeau « objectif non financé » sous le bandeau « pas à jour », dérivation PURE (`components/projection/alerteObjectifsManques.ts` — la phrase n'est jamais recopiée dans le JSX, le montant reste un nœud `PrivateAmount`), null honnête quand il n'y a rien à dire (champ absent d'un gel d'avant PV-11 inclus). 3 perturbations séparées à rouges nommés (dont une 1re version MUETTE : la garde voisine saturait la contrainte — fixture isolante ajoutée). (XS, FAIBLE — finding projection-validator, panel
-  PR #755) — `goalShortfalls` (`services/projection.ts`, `services/projection/types.ts`) n'a
-  **zéro consommateur** : grep exhaustif `.ts`/`.tsx`/`.md`, aucune UI, aucun outil MCP, aucun
-  prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
-  `knip`/nettoyage. ⚠️ Le champ reste ALIMENTÉ correctement, ce n'est pas un bug : juste du code
-  publié que personne ne lit (même classe que `[UTIL-GOLDENSPLIT-ORPHELIN]`).
-  ⚠️ **Arbitrage requis avant de coder** (constat lot 30, 2026-08-28) : le ticket prescrit la
-  suppression, mais le champ porte une information UTILE à l'utilisateur (« ton but n'a pas pu
-  être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
-  seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
-  (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
-  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 163 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
@@ -447,7 +435,7 @@
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
-- [ ] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** (S — ⚠️ **PRÉMISSE RE-RECENSÉE le 2026-09-04 : elle est
+- [x] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** ✅ **LIVRÉ au lot 164 (2026-09-05)** — `RentalProperty.propertyGrowthRate?` (taux PAR immeuble, défaut nommé `DEFAULT_RENTAL_GROWTH_PCT` = 3 écrit au semis, 0 explicite préservé), champ « Croissance %/an » dans le panneau des locatifs (vidé → undefined, 0 tapé → 0), lecteur config `effProj.propertyGrowthRate ?? 3` RETIRÉ du chemin locatif (le champ config n'a plus AUCUN lecteur — laissé dans le type pour les configs persistées). 3 tests moteur + 4 tests UI neufs, 2 perturbations séparées à rouges nommés. (S — ⚠️ **PRÉMISSE RE-RECENSÉE le 2026-09-04 : elle est
   devenue FAUSSE**) — le ticket (2026-08-12) affirmait « lu par AUCUN code de prod ». Aujourd'hui
   `projection.ts:1750` lit `effProj.propertyGrowthRate ?? 3` pour la croissance des **immeubles
   LOCATIFS** (`processRentalMonth`) — un lecteur prod bien réel. Ce qui reste vrai : AUCUN
@@ -458,7 +446,7 @@
   Options re-posées : (a) donner un `propertyGrowthRate?` à `RentalProperty` (cohérent avec les
   buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
   comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
-  ✅ **Décision Marc 2026-09-04 (en session)** : taux PAR IMMEUBLE locatif (option a, comme les buts immobiliers). À livrer (lot à venir).
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 164 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
   il n'en importera AUCUNE de plus** : `deriveCutoverDate` (`services/fintable/deriveCutoverDate.ts`)

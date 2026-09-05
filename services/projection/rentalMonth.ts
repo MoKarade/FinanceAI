@@ -32,6 +32,16 @@ import type { RentalProperty } from '../../types';
  */
 export const DEFAULT_RENTAL_AMORTIZATION_YEARS = 25;
 
+/**
+ * Croissance annuelle par DÉFAUT (%) quand `RentalProperty.propertyGrowthRate` est absent.
+ *
+ * ⚠️ HYPOTHÈSE de modèle, pas une valeur sourcée — même défaut (3 %) que le chemin des buts
+ * immobiliers (`goal.propertyGrowthRate ?? 3`). [ENG-PROPGROWTH-PAR-IMMEUBLE] (décision Marc
+ * 2026-09-04) : le taux vit PAR immeuble ; le réglage config (`projection.propertyGrowthRate`)
+ * est RETIRÉ du chemin locatif — aucune UI ne l'a jamais écrit. Un 0 EXPLICITE saisi reste 0.
+ */
+export const DEFAULT_RENTAL_GROWTH_PCT = 3;
+
 /** État MUTABLE d'un immeuble locatif au fil des mois (valeur et solde évoluent). */
 export interface RentalState {
     id: string;
@@ -44,6 +54,10 @@ export interface RentalState {
     /** Taux annuel (%) — conservé DANS l'état : sans lui, le calcul d'intérêt devrait re-croiser
      *  l'immeuble d'origine à chaque mois, et un décalage d'index donnerait le taux d'un AUTRE bien. */
     ratePct: number;
+    /** [ENG-PROPGROWTH-PAR-IMMEUBLE] Croissance annuelle (%) de CET immeuble — écrite au semis
+     *  (défaut explicite, jamais l'absence : absent voudrait dire « je ne sais pas » et relancerait
+     *  un repli), même raison d'être dans l'état que `ratePct`. */
+    growthRatePct: number;
     isPaidOff: boolean;
 }
 
@@ -80,6 +94,7 @@ export function initRentalStates(rentals: readonly RentalProperty[] | undefined)
                 num(rp.amortizationYears, DEFAULT_RENTAL_AMORTIZATION_YEARS),
             ),
             ratePct: num(rp.mortgageRate),
+            growthRatePct: num(rp.propertyGrowthRate, DEFAULT_RENTAL_GROWTH_PCT),
             isPaidOff: mortgage <= 0,
         };
     });
@@ -110,10 +125,8 @@ export interface RentalMonthResult {
  */
 export function processRentalMonth(
     states: RentalState[],
-    propertyGrowthRatePct: number,
     names: readonly string[],
 ): RentalMonthResult {
-    const growth = Math.pow(1 + num(propertyGrowthRatePct, 3) / 100, 1 / 12);
     let equity = 0;
     let mortgageBalance = 0;
     let debtService = 0;
@@ -123,6 +136,8 @@ export function processRentalMonth(
 
     for (let i = 0; i < states.length; i++) {
         const s = states[i];
+        // [ENG-PROPGROWTH-PAR-IMMEUBLE] La croissance est celle de CET immeuble (semée au state).
+        const growth = Math.pow(1 + s.growthRatePct / 100, 1 / 12);
         s.currentValue = Math.max(0, s.currentValue * growth);
 
         // ⚠️ Le service ne dépasse JAMAIS ce qu'il reste à devoir (solde + intérêt du mois) : sans

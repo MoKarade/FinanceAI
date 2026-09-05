@@ -24,7 +24,7 @@ vi.mock('recharts', async () => {
         XAxis: () => null, YAxis: () => null, CartesianGrid: () => null,
         // Le faux Tooltip rend le contenu personnalisé avec un point TROUÉ (CELI absent, Liquidites NaN).
         // (Non-Enreg. et CELIAPP sont des tuiles CONDITIONNELLES `> 0` : un trou les cache, il ne les met pas à 0.)
-        Tooltip: ({ content }: { content?: React.ReactElement }) => content
+        Tooltip: ({ content }: { content?: React.ReactElement<Record<string, unknown>> }) => content
             ? React.cloneElement(content, { active: true, payload: [{ payload: { monthIndex: 360, age: 65, RetirementAge: 65, NetWorth: 900_000, REER: 400_000, NonReg: 100_000, Liquidites: Number.NaN, Income: 6_000, Expenses: 5_000 } }], label: 65 })
             : null,
     };

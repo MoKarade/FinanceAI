@@ -6,6 +6,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (En mode discret, l'infobulle d'un champ masqué garde son texte d'origine)
+
+- **Corrigé** : un champ numérique masqué (« ••• ») remplaçait l'infobulle de son appelant par
+  « Montant masqué ». Les deux textes sont maintenant composés (« … — Montant masqué »).
+
 ## [unreleased] — 2026-09-05 (L'app demande au navigateur de ne pas évincer tes données)
 
 - **Ajouté** : au démarrage, l'app demande la « persistance du stockage » au navigateur — sans elle,

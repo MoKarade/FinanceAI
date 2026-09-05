@@ -1216,14 +1216,6 @@
   n'est lu qu'en janvier : rien ne l'oblige à précéder le dépôt). Non corrigé : hors du périmètre nommé par
   la décision 15 (le dépôt fiscal). Reproduction : `scratchpad/mesurePsv181.ts` (non committé — fixtures
   décrites ci-dessus, banc `mesureOrdreBoucle.ts` aveugle par construction sur ce lecteur).
-- [x] **`[COUPLE-PREDICAT-COPIES]`** ✅ **LIVRÉ au lot 185 (2026-09-05)** — re-recensé par le MOTIF (le ticket en nommait 6, il y en avait **9** : + `MissingDataBanner` (négation), `Budget` (user2 dérivé), `nomsConjoints` de `SelectProprietaire`), tous migrés vers `isCoupleMode` ; les simples AFFICHAGES du nom (`userName2={…}`, `users[1]?.name ?? ''`) restent tels quels. Garde de scan `couplePredicatSourceUnique.test.ts` (source décommentée, motif « `[1]` + `.name` + `.trim()` », anti-vacuité sur six formes retirées, perturbation → 1 rouge). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, FAIBLE — découverte du lot 180, 2026-09-05) — le prédicat « mode couple = un 2e
-  utilisateur NOMMÉ » est écrit à la main dans SIX endroits (`Layout.tsx`, `Transactions.tsx`, `PayslipUploadCard.tsx`,
-  `NetWorthByOwnerCard.tsx`, `CoupleModeBadge.tsx`, `services/financialSnapshot.ts:coupleMode`), avec trois formes
-  différentes (`users.length >= 2 && …`, `Boolean(name && trim() !== '')`, `!!name?.trim()`). Le lot 180 a hissé
-  `isCoupleMode(users)` (`services/couple/netWorthByOwner.ts`) pour ses deux sites ; les six autres n'ont PAS été touchés
-  (hors périmètre). Correctif : les faire pointer sur `isCoupleMode` + une garde de scan « aucune autre écriture du
-  prédicat » (source décommentée). Une divergence future entre deux copies rendrait un écran « couple » et un autre
-  « solo » sur le même état — sans rien de rouge. [MESURÉ : 6 sites]
 - [ ] **`[DETTE-COULEURS-ADHOC]`** (S, MOYEN) — **26 couleurs hex en dur** (`bg-[#1a1a1a]`,
   `text-[#2dd4bf]`, `bg-[#0d1118]`…) dans ~15 fichiers dont `Layout.tsx` (×3), `Investments.tsx` (×2),
   `aiChat/AiChatView.tsx` (×2), `Retirement.tsx` (×2). Ces teintes échappent à `check-contrast` ET
@@ -1615,7 +1607,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
 > refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [ ] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** (XS, relevé par le panel a11y de #629) —
+- [x] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** ✅ **LIVRÉ au lot 186 (2026-09-05)** — le `title` de l'appelant est COMPOSÉ (« <title appelant> — Montant masqué ») au lieu d'être écrasé ; sans title appelant, « Montant masqué » seul (contrôle) ; hors mode discret, le title passe tel quel à l'input. Le second volet (« aucun indice visuel au clavier ») RE-MESURÉ : le focus clavier RÉVÈLE l'input (cas « Tab » de `[SEC-PRIVACY-BLUR-INPUTS]`, vert), donc le bouton masqué n'est jamais figé sous le focus — rien à ajouter, la piste `aria-describedby` n'a plus d'objet. Perturbation (title écrasé) → 1 rouge. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (XS, relevé par le panel a11y de #629) —
   `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
   « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié
   call site par call site), donc non bloquant — mais un appelant qui compterait sur son `title`

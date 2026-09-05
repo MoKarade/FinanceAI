@@ -58,7 +58,11 @@ export const PrivateNumberInput: React.FC<Props> = ({ className = '', onBlur, on
                 // exactement le défaut corrigé ici pour le prochain qui s'en sert.
                 aria-label={rest['aria-label']}
                 aria-labelledby={rest['aria-labelledby']}
-                title={MASKED_AMOUNT_LABEL}
+                // [A11Y-PRIVACY-TITLE-CLOBBER] Le `title` de l'appelant est COMPOSÉ, pas écrasé : un
+                // appelant qui porte une information dans son `title` la garderait sinon jusqu'au jour
+                // où le mode discret la ferait disparaître SANS avertissement. (Aucun appelant n'en
+                // dépend aujourd'hui — vérifié site par site ; c'est la porte qu'on ferme.)
+                title={rest.title ? `${rest.title} — ${MASKED_AMOUNT_LABEL}` : MASKED_AMOUNT_LABEL}
                 onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
                 onFocus={(e) => { e.stopPropagation(); setRevealed(true); }}
             >

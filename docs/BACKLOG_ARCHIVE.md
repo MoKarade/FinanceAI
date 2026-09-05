@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[COUPLE-PREDICAT-COPIES]` — LIVRÉ (lot 185, PR #916)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[COUPLE-PREDICAT-COPIES]`** ✅ **LIVRÉ au lot 185 (2026-09-05)** — re-recensé par le MOTIF (le ticket en nommait 6, il y en avait **9** : + `MissingDataBanner` (négation), `Budget` (user2 dérivé), `nomsConjoints` de `SelectProprietaire`), tous migrés vers `isCoupleMode` ; les simples AFFICHAGES du nom (`userName2={…}`, `users[1]?.name ?? ''`) restent tels quels. Garde de scan `couplePredicatSourceUnique.test.ts` (source décommentée, motif « `[1]` + `.name` + `.trim()` », anti-vacuité sur six formes retirées, perturbation → 1 rouge). (XS, FAIBLE — découverte du lot 180, 2026-09-05) — le prédicat « mode couple = un 2e
+  utilisateur NOMMÉ » est écrit à la main dans SIX endroits (`Layout.tsx`, `Transactions.tsx`, `PayslipUploadCard.tsx`,
+  `NetWorthByOwnerCard.tsx`, `CoupleModeBadge.tsx`, `services/financialSnapshot.ts:coupleMode`), avec trois formes
+  différentes (`users.length >= 2 && …`, `Boolean(name && trim() !== '')`, `!!name?.trim()`). Le lot 180 a hissé
+  `isCoupleMode(users)` (`services/couple/netWorthByOwner.ts`) pour ses deux sites ; les six autres n'ont PAS été touchés
+  (hors périmètre). Correctif : les faire pointer sur `isCoupleMode` + une garde de scan « aucune autre écriture du
+  prédicat » (source décommentée). Une divergence future entre deux copies rendrait un écran « couple » et un autre
+  « solo » sur le même état — sans rien de rouge. [MESURÉ : 6 sites]
+
+
 ## 2026-09-05 — `[STORAGE-PERSIST-REQUEST]` — LIVRÉ (lot 184, PR #915)
 
 Ticket d'origine tel qu'au moment de l'archivage :

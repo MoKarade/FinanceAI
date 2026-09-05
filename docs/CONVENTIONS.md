@@ -12219,3 +12219,11 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 192 (2026-09-05) — `innerHTML` encode l'insécable en `&nbsp;` : normaliser l'ENTITÉ, pas seulement le caractère
+
+Corollaire de `UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD` (« `formatCAD` sépare par une
+insécable, normaliser avant d'asserter ») : un test qui lit `container.innerHTML` voit `100&nbsp;000&nbsp;$`,
+pas `100 000 $` — la sérialisation HTML remplace U+00A0 par son entité. Ma normalisation ne traitait que
+le caractère ; deux gardes rougissaient sur un rendu JUSTE. `textContent` rend le caractère, `innerHTML`
+l'entité : le normaliseur couvre les deux (`/&nbsp;|\u00a0|\u202f/g`), ou l'assertion lit `textContent`.
+

@@ -10,6 +10,16 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-PAYROLL-NEG-GROSS]` — LIVRÉ (lot 191, PR #922)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-PAYROLL-NEG-GROSS]`** ✅ **LIVRÉ au lot 191 (2026-09-05)** — assiette d'emploi bornée à 0 en UN point (`employmentBase`, `utils/tax.ts`) : les trois cotisations héritent du clamp au lieu d'un `Math.max` par cotisation ; gardes : brut −5 000 $ → RRQ/RQAP/AE = 0 et `deductionsSource` = 0 ; `employmentIncome` négatif avec brut positif → idem, impôt sur placement conservé ; contrôle assiette positive bit-identique. Perturbation (clamp retiré) → 2 rouges. Pas d'entrée CHANGELOG : impact nul à l'écran (les appelants filtrent en amont). Contexte d'origine : (S) — cotisations RQAP/AE non-clamped sur brut négatif (RRQ l'est).
+  **Mesuré : brut −5 000 $ → deductionsSource −86,50 $ (net > brut : argent créé).** Impact nul
+  aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
+  RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
+
+
 ## 2026-09-05 — `[SCHL-1500K-BOUNDARY]` — LIVRÉ (lot 190, PR #921)
 
 Ticket d'origine tel qu'au moment de l'archivage :

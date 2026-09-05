@@ -147,7 +147,11 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // disparaît, donc NW ↓. Vrai changement de CALCUL décidé, PAS une fuite de compteur
         // d'affichage : la neutralité que ce golden défend reste garantie par l'identité
         // `ttp == Σ FluxImpots` de projection.totalTaxesPaid.test.ts, verte sur ce même lot.
-        expect(melt.finalNetWorth).toBeCloseTo(-6672.60, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+62,38 $** : était
+        // −6672,60). Le SRG d'un COUPLE est récupéré à 25 ¢/$ par conjoint (1 $ par 4 $ de revenu
+        // combiné) au lieu de 50 ¢ : ce ménage insolvable à bas revenu touche un peu plus de SRG (non
+        // imposable) → NW ↑. Vrai changement FISCAL sourcé, PAS une fuite de compteur d'affichage.
+        expect(melt.finalNetWorth).toBeCloseTo(-6610.22, 0);
         // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
         // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
@@ -168,6 +172,9 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // Re-basé SCIEMMENT 2026-09-05 ([ENG-MELTDOWN-MIMOIS] lot 160, était 209 287,50) : même
         // −155,82 $ que le NW final ci-dessus — l'estate en hérite tel quel, aucun effet propre à
         // la branche estate.
-        expect(melt.estateNetWorth).toBeCloseTo(209131.68, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, était 209 131,68) : même
+        // +62,38 $ que le NW final ci-dessus — l'estate en hérite tel quel, aucun effet propre à la
+        // branche estate (le SRG n'est pas imposable, rien ne change à la liquidation).
+        expect(melt.estateNetWorth).toBeCloseTo(209194.06, 0);
     });
 });

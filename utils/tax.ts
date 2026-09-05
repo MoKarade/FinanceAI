@@ -483,14 +483,22 @@ export const calculateFSSPremium = (
 // ============================================
 // SRG — Supplément de revenu garanti (audit §6.3)
 // Source: Service Canada. Programme aux aînés 65+ recevant la PSV avec
-// revenu autre que PSV faible. Réduit par clawback 50¢/1$ d'autre revenu.
+// revenu autre que PSV faible. Réduit par récupération sur l'autre revenu :
+//  - célibataire : 1 $ de SRG par 2 $ de revenu (50 ¢/$) ;
+//  - couple dont les DEUX reçoivent la PSV : 1 $ par 4 $ de revenu COMBINÉ, POUR CHAQUE
+//    conjoint (25 ¢/$ par adulte, donc 50 ¢/$ pour le couple).
 //
 // Barème 2026 Q1 (janvier-mars), indexé trimestriellement :
 //  - Célibataire 65+ : max 1 105$/mois, seuil revenu 22 512$
 //  - Couple (2 reçoivent PSV) : max 662$/mois par adulte, seuil 29 760$ combiné
 //  - (Cas conjoint sans PSV ou Allocation : non implémentés ici)
 //
-// Clawback : 50% du revenu autre que PSV au-delà de l'exemption d'emploi.
+// [FISC-GIS-COUPLE-RATE] (corrigé le 2026-09-05, lot 169) : le taux célibataire (50 ¢/$) était
+// appliqué PAR ADULTE sur le revenu COMBINÉ du couple → récupération deux fois trop rapide, SRG
+// nul dès 15 888 $ combinés (vs 0 $ contre 7 944 $/an mesurés), et le seuil couple 29 760 $ était
+// du code MORT (la formule s'annulait avant). Source relayée (TurboImpôt, Wealthsimple, FADOQ,
+// Servitax — cohérentes ; la table Service Canada reste illisible depuis le conteneur), détail
+// docs/FISCAL_REFERENCE.md §6.3.
 //
 // https://www.canada.ca/en/services/benefits/publicpensions/old-age-security/guaranteed-income-supplement/benefit-amount.html
 // ============================================
@@ -500,6 +508,9 @@ export const GIS_MAX_MONTHLY_COUPLE_2026 = 662;       // par adulte
 export const GIS_INCOME_THRESHOLD_SINGLE = 22512;
 export const GIS_INCOME_THRESHOLD_COUPLE = 29760;     // revenu combiné
 export const GIS_CLAWBACK_RATE = 0.50;                // 50¢ par 1$ d'autre revenu
+/** Couple (les deux reçoivent la PSV) : 1 $ par 4 $ de revenu COMBINÉ pour CHAQUE conjoint.
+ *  [FISC-GIS-COUPLE-RATE] — source relayée, cf. docs/FISCAL_REFERENCE.md §6.3. */
+export const GIS_CLAWBACK_RATE_COUPLE_PER_ADULT = 0.25;
 
 /**
  * Calcule le SRG mensuel pour un retraité 65+ recevant la PSV.
@@ -533,10 +544,12 @@ export const calculateGISBenefit = (
 
     if (otherIncomeAnnual >= incomeThreshold) return 0;
 
-    // Clawback : 50% du revenu autre que PSV (les seuils incluent déjà cette
-    // logique : à 0$ revenu autre = max, à incomeThreshold = 0).
-    // SRG mensuel = max - (clawback × revenu / 12).
-    const monthlyClawback = (otherIncomeAnnual * GIS_CLAWBACK_RATE) / 12;
+    // Récupération : 50 ¢/$ pour un célibataire ; 25 ¢/$ PAR ADULTE sur le revenu COMBINÉ pour un
+    // couple ([FISC-GIS-COUPLE-RATE]). La coupure DURE au seuil officiel reste (limite FA-11 : le
+    // barème réel intègre un montant complémentaire récupéré plus vite, non modélisé sans la table).
+    // SRG mensuel = max - (taux × revenu / 12).
+    const clawbackRate = hasSpouseWithOAS ? GIS_CLAWBACK_RATE_COUPLE_PER_ADULT : GIS_CLAWBACK_RATE;
+    const monthlyClawback = (otherIncomeAnnual * clawbackRate) / 12;
     return Math.max(0, maxMonthly - monthlyClawback);
 };
 

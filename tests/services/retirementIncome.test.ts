@@ -294,6 +294,22 @@ describe('FA-3 (audit 2026-06-09) : SRG exposé (gis) + test de réduction sur l
         expect(reductionAnnuelle).toBeLessThanOrEqual(20000 * 0.55 + 1);
     });
 
+    // [FISC-GIS-COUPLE-RATE] (2026-09-05) — garde de CHAÎNE (contexte moteur → breakdown publié) :
+    // un couple à 20 000 $ de retraits N-1 + RRQ touche ENCORE du SRG. Avant, le taux célibataire
+    // (50 ¢/$ par adulte) appliqué au revenu COMBINÉ l'annulait dès 15 888 $ — ce cas rendait 0.
+    // Le contrôle négatif est le test FA-3b ci-dessous (80 000 $ → 0 reste vrai pour le couple).
+    it('[FISC-GIS-COUPLE-RATE] couple : 20 000 $ de revenu N-1 laisse du SRG (le défaut rendait 0)', () => {
+        const couple = [lowEarner, { ...lowEarner, name: 'Partner' }] as User[];
+        const ctxCouple = { ...baseCtx, activeUsersCount: 2, otherIncomeAnnualLaggedNominal: 20000 };
+        const r = computeRetirementIncome(ctxCouple, lowIncomeGoal, couple);
+        expect(r.gis).toBeGreaterThan(0);
+        // Et le barème couple mord bien : plus de revenu N-1 = moins de SRG (levier, pas un forfait).
+        const plus = computeRetirementIncome({ ...ctxCouple, otherIncomeAnnualLaggedNominal: 24000 }, lowIncomeGoal, couple);
+        expect(plus.gis).toBeLessThan(r.gis);
+        const zero = computeRetirementIncome({ ...ctxCouple, otherIncomeAnnualLaggedNominal: 80000 }, lowIncomeGoal, couple);
+        expect(zero.gis).toBe(0);
+    });
+
     it('FA-3b — assez de revenu N-1 → SRG à ZÉRO (pas de SRG fictif pour un gros meltdown REER)', () => {
         const r = computeRetirementIncome({ ...baseCtx, otherIncomeAnnualLaggedNominal: 80000 }, lowIncomeGoal, [lowEarner]);
         expect(r.gis).toBe(0);

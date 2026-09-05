@@ -92,9 +92,16 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
     // ~4-8 %). Direction CONSERVATRICE voulue, mesurée avant/après par git-stash. `ferr` (timing)
     // STRICTEMENT inchangé — le fix ne touche aucun gate d'âge.
     const GOLDEN = {
-        coupleUser1Older:   { ferr: 24, nw: -82434, tax: 13337 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
-        coupleUser1Younger: { ferr: 24, nw: -82024, tax: 13337 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
-        coupleEqual:        { ferr: 24, nw: -78810, tax: 13351 },  // ANCRE — inchangé vs ménage
+        // Re-basés SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169) : la récupération du SRG d'un
+        // COUPLE passe de 50 ¢ à 25 ¢ par dollar de revenu combiné pour chaque conjoint → plus de SRG
+        // (non imposable) → NW ↑ de 9 383 à 13 506 $, impôt ↓ de 599 à 1 569 $ selon le scénario. Le
+        // SOLO ne bouge PAS (contrôle négatif : le barème célibataire est intact) — c'est exactement
+        // le partage attendu. Ces ancres pinnent l'AMPLEUR ; la conception per-conjoint est prouvée
+        // par les tests « FIX » plus bas, qui restent verts. (Étaient : −82 434/13 337, −82 024/13 337,
+        // −78 810/13 351, −84 939/14 165, −82 480/15 044.)
+        coupleUser1Older:   { ferr: 24, nw: -68939, tax: 12680 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
+        coupleUser1Younger: { ferr: 24, nw: -68528, tax: 12680 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
+        coupleEqual:        { ferr: 24, nw: -65304, tax: 12701 },  // ANCRE — inchangé vs ménage
         // Re-basé 2026-08-20 [FISC-PENSION-CREDIT-REAL] (était nw −116 753 / tax 59 919) : le
         // crédit pension féd est désormais déflaté en espace réel → +291 $ d'impôt cumulé
         // (recoupé analytiquement : Σ 0,15 × 0,835 × 2 000 × (d−1) ≈ 288 $), −198 $ de NW.
@@ -105,8 +112,8 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
         // est perdu, réduire un crédit perdu ne change rien. Si le REVENU des couples monte, ces
         // goldens DOIVENT bouger — ils ne sont pas structurellement insensibles au fix.
         solo:               { ferr: 24, nw: -116951, tax: 60210 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
-        couplePsvBonus:     { ferr: 12, nw: -84939, tax: 14165 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
-        couplePsvStartGap:  { ferr: 72, nw: -82480, tax: 15044 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
+        couplePsvBonus:     { ferr: 12, nw: -75556, tax: 13566 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
+        couplePsvStartGap:  { ferr: 72, nw: -72096, tax: 13475 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
     } as const;
 
     // ── ANCRES ZÉRO-RÉGRESSION : le fix per-conjoint NE change RIEN quand les âges coïncident ──────

@@ -81,8 +81,19 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // −6516,78) : l'arrivée du meltdown ne touche plus qu'un demi-mois de rendement (décision
         // Marc 2026-09-04) — moins de croissance fantôme → NW ↓. La fixture FERR ne bouge PAS
         // (aucun meltdown sous AUTO_MARGINAL) — l'effet est ciblé, c'est la preuve inverse.
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-6672.60, 0);
-        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(372625.14, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+62,38 $**, était
+        // −6672,60) : récupération du SRG d'un couple à 25 ¢/$ par conjoint au lieu de 50 ¢ → plus
+        // de SRG non imposable pour ce ménage à bas revenu → NW ↑. Vrai changement fiscal sourcé,
+        // pas une fuite de compteur.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-6610.22, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+53 431,96 $**, était
+        // 372 625,14) — un GROS écart, EXPLIQUÉ par la mesure année par année : ce couple de 73 ans
+        // vit d'une pension publique et de retraits FERR modestes ; dès l'an 3 son revenu mensuel
+        // passe de 1 836 à 2 267 $ (+431 $/mois de SRG, non imposable) parce que la récupération
+        // n'est plus 50 ¢ mais 25 ¢ par dollar de revenu combiné pour chaque conjoint. Huit ans de
+        // SRG capitalisé = l'écart. Le retrait FERR forcé de l'an 3 baisse (1 356 → 878 $) — moins
+        // besoin de puiser. `ttp == Σ FluxImpots` reste l'identité défendue ici, verte.
+        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(426057.10, 0);
     });
 
     it('[ENG-TTP-UNSETTLED-HORIZON] la dette fiscale réconciliée non réglée à l\'horizon est EXPOSÉE', () => {
@@ -108,7 +119,10 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         expect(rs.unsettledTaxAtHorizon).toBeCloseTo(16_541.98, 0);
         // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE
         // (re-basé, était 171,89).
-        expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(907.71, 0);
+        // Re-basé 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, +34,57 : était 907,71) : le couple de
+        // la fixture FERR touche désormais du SRG (récupération 25 ¢/$ par conjoint), ce qui change
+        // les retraits du dernier exercice, donc sa dette réconciliée.
+        expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(942.28, 0);
         // Portefeuille épuisé avant la fin : plus d'impôt la dernière année → 0 (jamais un fantôme).
         expect(Math.abs(run(base(), 'MELTDOWN_REER').unsettledTaxAtHorizon ?? Number.NaN)).toBeLessThan(1);
 

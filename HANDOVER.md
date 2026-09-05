@@ -16,6 +16,19 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 169 : la récupération du SRG d'un couple est 25 ¢/$ par adulte, pas 50 ¢
+> `[FISC-GIS-COUPLE-RATE]` → livré. Le taux célibataire était appliqué PAR ADULTE sur le revenu
+> COMBINÉ : SRG nul dès 15 888 $, seuil 29 760 $ mort. Nouvelle constante
+> `GIS_CLAWBACK_RATE_COUPLE_PER_ADULT` = 0,25 (source RELAYÉE, quatre sources cohérentes, table
+> Service Canada illisible d'ici — dit tel quel en FISCAL_REFERENCE §6.3). Mesuré (couple 66 ans,
+> 25 ans, constante basculée entre deux exécutions) : **+57 315 $** couple modeste (REER 150 k$),
+> **+3 075 $** couple 400 k$, **0 $** célibataire (contrôle). Gardes : pente couple = moitié de la
+> pente célibataire (RELATION, pas montant), 7 944 $/an à 15 888 $ (le chiffre du ticket), seuil
+> vivant, + garde de CHAÎNE au breakdown moteur ; perturbation (0,50 remis) → 4 rouges nommés.
+> Limite FA-11 conservée et re-chiffrée : marche de 42 $/mois au seuil couple (167 $ célibataire).
+> Lot 168 au gate : **zéro golden rouge — expliqué** (aucune fixture ne détient un REER à 94 ans),
+> couvert par le test inversé + la mesure. Push sans leçon nouvelle.
+
 > ## 🟦 Session 2026-09-05 — Lot 168 : le facteur FERR à 94 ans passe de 20,00 % à 18,79 %
 > `[FISC-RRIF-94-FACTOR]` → livré. La table prescrite ne rejoint le plateau qu'à 95 ans ; le 20 % à
 > 94 était le plateau un an trop tôt (CONTESTÉ depuis le 2026-08-06). Source RELAYÉE (4 tables 2026

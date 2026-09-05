@@ -184,6 +184,28 @@ describe('Budget — refonte UI (Phase C3)', () => {
         expect(text).not.toContain('du Couple');     // mais pas la variante couple
     });
 
+    it('[BUDGET-IMPOTS-HORS-COMPARAISON] la tuile « Dépenses » exclut les impôts de son réel ET le dit, montant à l’appui', () => {
+        // Décision Marc 2026-09-05 (3a). Sur l'ancien code, la réel valait 1 700 (impôts inclus) et rien ne
+        // le disait ; les cibles, elles, n'ont jamais eu de poste Impôts → deux assiettes comparées.
+        const now = new Date();
+        const iso = (d: Date) => d.toISOString().split('T')[0];
+        const curDate = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+        const tx = (id: string, category: string, amount: number): Transaction =>
+            ({ id, date: curDate, description: category, category, amount } as unknown as Transaction);
+        const transactions = [tx('r1', 'Restaurants', -1000), tx('i1', 'Impôts', -700)];
+
+        const { container } = render(<Budget {...baseProps} transactions={transactions} />);
+        const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+            .find((l) => (l.textContent ?? '').includes('Dépenses'));
+        const tile = label!.closest('.rounded-card') as HTMLElement;
+        const reel = tile.querySelector('.text-kpi') as HTMLElement;
+        expect((reel.textContent ?? '').replace(/[^\d]/g, '')).toBe('1000');
+        const texte = (tile.textContent ?? '').replace(/\u00a0/g, ' ');
+        expect(texte).toContain('hors impôts');
+        // Le montant exclu est NOMMÉ, composé par le formateur (espace insécable normalisée ci-dessus).
+        expect(texte).toContain(`exclus : ${formatCAD(700).replace(/\u00a0/g, ' ')}`);
+    });
+
     it('[BUDGET-MONTH-NAV] naviguer vers le mois précédent RECALCULE les dépenses RÉELLES (régression periodOffset)', () => {
         // Bug Marc 2026-07-16 : le memo `actualsMap` (dépenses réelles par poste) omettait `periodOffset`
         // dans ses deps → naviguer vers un autre mois NE recalculait pas les réels (« ça s'actualise pas »).

@@ -684,7 +684,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                             ) : (
                                 <p className="text-meta text-ink-400">Aucun mois complet de transactions — importe tes relevés pour voir le réel ici.</p>
                             )}
-                            <p className="text-tiny text-ink-400 mt-2">Moyennes sur {realAverages.fullMonths} mois plein(s) d'historique, hors transferts et doublons — mêmes chiffres que l'onglet Budget. Un écart net↔réel notable = revenus hors paie (Interac, remboursements) ou relevés incomplets.</p>
+                            <p className="text-tiny text-ink-400 mt-2">Moyennes sur {realAverages.fullMonths} mois plein(s) d'historique, hors transferts et doublons, impôts INCLUS — l'onglet Budget, lui, met les impôts hors de sa comparaison budget↔réel. Un écart net↔réel notable = revenus hors paie (Interac, remboursements) ou relevés incomplets.</p>
                         </Card>
                     </div>
 

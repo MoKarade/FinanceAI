@@ -320,7 +320,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         });
     }, [config.users]);
 
-    const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
+    const { actualsMap, totalSpent, totalHorsComparaison, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
         // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `getDateRangeStrings()` (jour LOCAL, jamais un
         // aller-retour UTC) — l'ancien `.toISOString().split('T')[0]` ici même décalait `endStr`
         // d'un jour sous un fuseau négatif (mesuré, `TZ=America/Toronto`).
@@ -376,6 +376,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         return {
             actualsMap: parity.actualsMap,
             totalSpent: parity.totalSpent,
+            totalHorsComparaison: parity.totalHorsComparaison,
             trendMap: trends,
             monthlyDataMap: detailedMonthly,
             orphanCategories: parity.orphanCategories,
@@ -440,7 +441,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
     // `totalSpent` — préserve le total d'AVANT le refactor (les orphelins comptent dans le réel).
     // `actualsMap` ne contient plus les orphelins → on NE somme PLUS ses valeurs ici.
+    // [BUDGET-IMPOTS-HORS-COMPARAISON] (décision Marc 2026-09-05, 3a) `totalSpent` est désormais HORS
+    // impôts (la parité les met à part et publie leur somme) ; le « prévu » d'en face prend la même
+    // assiette (`expenseAvgHorsComparaison`). Les deux côtés se comparent enfin sur le même périmètre,
+    // et la tuile DIT ce qu'elle exclut — un chiffre qui exclut quelque chose le dit.
     const totalSpentDisplay = totalSpent;
+    const horsComparaisonDisplay = totalHorsComparaison;
+    const prevuDepensesDisplay = pastAverages.expenseAvgHorsComparaison * getMultiplier();
     // [BUDGET-INCOME-REAL] Revenu de référence = MOYENNE RÉELLE (paie + divers) des mois pleins passés,
     // PAS le salaire d'onboarding. Sert au badge Excédentaire/Déficitaire (cohérent avec les tuiles réel).
     const avgRealIncomeDisplay = pastAverages.incomeAvg * getMultiplier();
@@ -1040,15 +1047,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <DualKPIStat
                     label="Dépenses"
                     icon={<Icon name="debt" size={16} />}
-                    prevu={pastAverages.expenseAvg * getMultiplier()}
+                    prevu={prevuDepensesDisplay}
                     reel={totalSpentDisplay}
                     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif = somme des cibles de dépense par
                     // catégorie, hors ÉPARGNE et hors simulateur d'inflation (cf. sa définition).
                     objectif={totalSpendObjectifDisplay}
-                    sublabel={`Budget = moy. passée (${pastAverages.fullMonths} mois)`}
+                    sublabel={<>Budget = moy. passée ({pastAverages.fullMonths} mois) · hors impôts{horsComparaisonDisplay > 0 && <> (exclus : <PrivateAmount>{formatCAD(horsComparaisonDisplay)}</PrivateAmount>)</>}</>}
                     // Aucun mois complet → comparaison NON pertinente : neutre, jamais « danger »
                     // sur un prévu=0 (finding panel : badge rouge + écart 0,0 % contradictoires).
-                    variant={pastAverages.fullMonths > 0 && totalSpentDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
+                    variant={pastAverages.fullMonths > 0 && totalSpentDisplay > prevuDepensesDisplay ? 'danger' : 'info'}
                     invertGoodBad
                 />
                 {/* Vue MOIS + mois EN COURS seulement : hors MONTH ou sur un mois passé,
@@ -1058,24 +1065,24 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     <DualKPIStat
                         label="Fin de mois (projection)"
                         icon={<Icon name="goal" size={16} />}
-                        prevu={pastAverages.expenseAvg * getMultiplier()}
+                        prevu={prevuDepensesDisplay}
                         reel={projectedTotalDisplay}
                         objectif={totalSpendObjectifDisplay}
-                        sublabel="Dépenses au rythme actuel"
-                        variant={pastAverages.fullMonths > 0 && projectedTotalDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
+                        sublabel="Dépenses au rythme actuel (hors impôts)"
+                        variant={pastAverages.fullMonths > 0 && projectedTotalDisplay > prevuDepensesDisplay ? 'danger' : 'info'}
                         invertGoodBad
                     />
                 )}
                 <DualKPIStat
                     label="Restant"
                     icon={<Icon name="status" size={16} />}
-                    prevu={(pastAverages.incomeAvg - pastAverages.expenseAvg) * getMultiplier()}
+                    prevu={(pastAverages.incomeAvg - pastAverages.expenseAvgHorsComparaison) * getMultiplier()}
                     reel={totalActualIncomeDisplay - totalSpentDisplay}
                     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Restant = objectif Revenus −
                     // objectif Dépenses (les deux MÊMES sources que les tuiles ci-dessus, donc
                     // l'identité affichée tient). Objectif Revenus absent ⇒ pas d'objectif de reste.
                     objectif={incomeObjectifDisplay === undefined ? undefined : incomeObjectifDisplay - totalSpendObjectifDisplay}
-                    sublabel="Revenus − dépenses (réels)"
+                    sublabel="Revenus − dépenses (réels, hors impôts)"
                     variant={totalActualIncomeDisplay - totalSpentDisplay < 0 ? 'danger' : 'success'}
                 />
             </div>

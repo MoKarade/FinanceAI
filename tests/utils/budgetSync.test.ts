@@ -312,6 +312,33 @@ describe('moyennes de TOUT le passé (mois pleins)', () => {
     });
 });
 
+describe('[BUDGET-IMPOTS-HORS-COMPARAISON] computeMonthlyActualAverages — deux assiettes, nommées', () => {
+    it('expenseAvg reste ENTIER (impôts inclus) ; expenseAvgHorsComparaison les retire ; horsComparaisonAvg les nomme', () => {
+        const transactions = [
+            tx({ category: 'Salaire', amount: 2000, date: '2026-05-04' }),
+            tx({ category: 'Salaire', amount: 2000, date: '2026-06-04' }),
+            tx({ category: 'Épicerie', amount: -400, date: '2026-05-10' }),
+            tx({ category: 'Épicerie', amount: -600, date: '2026-06-10' }),
+            tx({ category: 'Impôts', amount: -1500, date: '2026-05-20' }), // solde d'impôt : hors comparaison
+            tx({ category: 'Impôts', amount: -100, date: '2026-06-20' }),
+        ];
+        const a = computeMonthlyActualAverages(transactions, REF);
+        expect(a.fullMonths).toBe(2);
+        expect(a.expenseAvg).toBe(1300);                 // (400+600+1500+100)/2 — l'assiette complète (TaxCenter)
+        expect(a.expenseAvgHorsComparaison).toBe(500);   // (400+600)/2 — l'assiette du Budget
+        expect(a.horsComparaisonAvg).toBe(800);          // (1500+100)/2 — ce que le Budget DIT exclure
+        expect(a.expenseAvg).toBe(a.expenseAvgHorsComparaison + a.horsComparaisonAvg); // identité des trois
+    });
+    it('sans impôts, les deux assiettes coïncident et l’exclu vaut 0', () => {
+        const a = computeMonthlyActualAverages([
+            tx({ category: 'Salaire', amount: 2000, date: '2026-05-04' }),
+            tx({ category: 'Épicerie', amount: -400, date: '2026-05-10' }),
+        ], REF);
+        expect(a.expenseAvgHorsComparaison).toBe(a.expenseAvg);
+        expect(a.horsComparaisonAvg).toBe(0);
+    });
+});
+
 describe('[BUDGET-INCOME-REAL] computeIncomeBreakdown (salaire vs revenus divers, source de vérité du revenu)', () => {
     it('sépare salaire / divers ; ignore transferts, doublons, dépenses et positifs non-revenu', () => {
         const b = computeIncomeBreakdown([

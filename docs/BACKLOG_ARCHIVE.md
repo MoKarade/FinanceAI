@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[TX-INTERAC-REMBOURSEMENT]` — LIVRÉ (lot 172, PR #903)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[TX-INTERAC-REMBOURSEMENT]`** ✅ **LIVRÉ au lot 172 (2026-09-05)** — règle d'import « Interac reçu » (FR + « e-Transfer from/received ») → `Remboursement`, catégorie devenue canonique (`RULE_CATEGORIES`), test de limite inversé + garde de CHAÎNE `interacRecuRemboursement.test.ts` (CSV réel → règles → revenu du Budget : 5 000 $, pas 5 300 $). (S, money-critical budget — décision 2026-09-05 (a)) — ajouter la règle de
+  catégorisation qui route un Interac **REÇU** vers `'Remboursement'` (`services/import/categoryRules.ts`),
+  ce qui active enfin `CREDIT_BACK_CATEGORIES` de `spendRules.ts` (crédit sur le poste de dépense, jamais un
+  revenu). Mesuré au routage : 300 $ de faux revenu (9,1 % du mois) sur la fixture couple. Les 6 tests de
+  `spendRules.test.ts` testaient une combinaison que la prod ne fabriquait jamais → en faire des tests de
+  CHAÎNE (transaction brute → catégorie → KPI Revenus). Un Interac ENVOYÉ reste une dépense.
+
 ## 2026-09-05 — `[FISC-RRSP-RENTAL-EARNED]` — LIVRÉ (lot 171, PR #902)
 
 Ticket d'origine tel qu'au moment de l'archivage :

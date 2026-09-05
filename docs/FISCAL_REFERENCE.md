@@ -763,8 +763,22 @@ pour minimiser l'impôt combiné (élection optionnelle).
 |---|---|---|
 | Maximum mensuel | 1 105 $ | 662 $ |
 | Seuil de revenu (autre que PSV) | 22 512 $ | 29 760 $ (combiné) |
-| Récupération (`GIS_CLAWBACK_RATE`) | 50 ¢ / 1 $ | 50 ¢ / 1 $ |
+| Récupération | 50 ¢ / 1 $ (`GIS_CLAWBACK_RATE`) | 25 ¢ / 1 $ de revenu COMBINÉ, pour CHAQUE conjoint (`GIS_CLAWBACK_RATE_COUPLE_PER_ADULT`) |
 > Cas « conjoint sans PSV / Allocation » : non implémentés.
+> ✅ **`[FISC-GIS-COUPLE-RATE]` — CORRIGÉ le 2026-09-05 (lot 169).** Le taux célibataire (50 ¢/$) était
+> appliqué PAR ADULTE sur le revenu COMBINÉ du couple : récupération deux fois trop rapide, SRG nul
+> dès 15 888 $ combinés (662 × 12 / 0,50), et le seuil couple de 29 760 $ était du CODE MORT — la
+> formule s'annulait avant de l'atteindre. Règle : **1 $ de SRG par 4 $ de revenu combiné pour chaque
+> conjoint** (25 ¢/$ par adulte, 50 ¢/$ pour le couple), et 1 $ par 2 $ pour une personne seule.
+> **Source RELAYÉE** (la table Service Canada « Montant de la prestation » reste illisible depuis le
+> conteneur — `EGRESS_BLOCKED`, re-vérifié le 2026-09-05) : TurboImpôt « Qu'est-ce que le SRG »,
+> Wealthsimple « Tout savoir sur le SRG », FADOQ « Le supplément de revenu garanti », Servitax — toutes
+> cohérentes sur « 0,25 $ par conjoint par dollar de revenu combiné ». Mesuré au correctif (couple
+> 66 ans, 25 ans, AUTO, constante basculée entre deux exécutions) : **+57 315 $** de patrimoine final
+> pour un couple modeste (REER 150 k$), **+3 075 $** pour un couple à 400 k$, **0 $ exactement** pour
+> un célibataire (contrôle négatif). La coupure dure au seuil (limite FA-11 ci-dessous) reste : elle
+> vaut désormais **42 $/mois** pour un couple (662 − 29 760 × 0,25 / 12) contre 167 $ pour un
+> célibataire — le montant complémentaire (top-up), récupéré plus vite, expliquerait les deux.
 >
 > **Limite assumée — discontinuité au seuil (FA-11, 2026-06-10)** : le modèle applique la
 > récupération LINÉAIRE 50 ¢/$ depuis le max (1 105 $/mois célibataire) avec coupure DURE au seuil

@@ -291,12 +291,6 @@
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
-- [x] **`[FISC-RRIF-94-FACTOR]`** ✅ **LIVRÉ au lot 168 (2026-09-05)** — `RRIF_RATES[94]` 0.2000 → 0.1879 (source relayée, dite telle quelle en FISCAL_REFERENCE §7) ; test épinglant le défaut INVERSÉ, entrée du ratchet 0.2000 → 0.1879 avec historique ; mesuré +1 367 $ / +4 778 $ de patrimoine final selon le REER détenu à 94 ans, 0 $ avant 94 (contrôle). Le « +13 726 $ » du ticket venait d'une fixture plus riche — même ordre de grandeur. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (S si confirmé, ⚠️ GATÉ source humaine — `A_FAIRE_MOI`) —
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche web du même jour (source RELAYÉE, détail A_FAIRE_MOI « 🔎 Recherche ») : **94 ans = 18,79 %, 95+ = 20,00 %** sur quatre tables 2026 — l'écart est confirmé, DÉBLOQUÉ (citer la source comme relayée).
-  `helpers.ts:95` code `94: 0.2000` ; le facteur prescrit serait 18,79 % (plateau 20 % à 95+).
-  **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS
-  modifier sans avoir vu le règlement 7308(4). Corriger aussi `FISCAL_REFERENCE.md:467` et
-  `tests/services/projection.helpers.test.ts:80` dans le même lot.
 - [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
   datée en tête de `docs/BACKLOG_ARCHIVE.md`).
 - [ ] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
@@ -417,7 +411,7 @@
   correctif re-base des goldens et peut changer le CLASSEMENT des stratégies. ⚠️ D'ici là, toute
   mesure d'impact « NW » d'un retraité à gros REER près d'un seuil de palier est non
   représentative (la falaise domine).
-- [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
+- [x] **`[FISC-GIS-COUPLE-RATE]`** ✅ **LIVRÉ au lot 169 (2026-09-05)** — `GIS_CLAWBACK_RATE_COUPLE_PER_ADULT` = 0,25 (1 $ par 4 $ de revenu combiné pour chaque conjoint, source relayée dite telle quelle en FISCAL_REFERENCE §6.3) ; le seuil 29 760 $ redevient vivant ; 3 gardes unitaires (pente = moitié du célibataire, 7 944 $/an à 15 888 $, seuil vivant) + 1 garde de chaîne moteur ; mesuré +57 315 $ (couple modeste) / +3 075 $ (couple 400 k$) / 0 $ (célibataire, contrôle). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée cohérente sur 4 sources : couple = **1 $ par 4 $ de revenu combiné POUR CHAQUE conjoint** (0,25/adulte), seul = 1 $ par 2 $ — DÉBLOQUÉ ; table officielle des seuils souhaitable, non bloquante pour le taux.
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la

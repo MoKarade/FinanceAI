@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Le Supplément de revenu garanti d'un couple ne disparaît plus deux fois trop vite)
+
+- **Corrigé** : pour un couple dont les deux conjoints reçoivent la pension de la Sécurité de la
+  vieillesse, le moteur réduisait le Supplément de revenu garanti (SRG) de 50 ¢ par dollar de
+  revenu combiné POUR CHAQUE conjoint, soit deux fois le taux réel (25 ¢ par conjoint, « 1 $ par
+  4 $ »). Le SRG d'un couple tombait à zéro dès 15 888 $ de revenu combiné au lieu de s'éteindre
+  vers 29 760 $. Un couple retraité modeste voit son patrimoine projeté remonter nettement (mesuré
+  +57 315 $ sur 25 ans avec 150 k$ de REER) ; une personne seule n'est pas touchée. Source relayée,
+  détaillée dans la référence fiscale.
+
 ## [unreleased] — 2026-09-05 (Le retrait minimum du FERR à 94 ans suit enfin le barème)
 
 - **Corrigé** : le facteur de retrait minimum d'un FERR à 94 ans valait 20 % dans le moteur, soit

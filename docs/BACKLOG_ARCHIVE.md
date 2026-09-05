@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FISC-RRIF-94-FACTOR]` — LIVRÉ (lot 168, PR #899)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-RRIF-94-FACTOR]`** ✅ **LIVRÉ au lot 168 (2026-09-05)** — `RRIF_RATES[94]` 0.2000 → 0.1879 (source relayée, dite telle quelle en FISCAL_REFERENCE §7) ; test épinglant le défaut INVERSÉ, entrée du ratchet 0.2000 → 0.1879 avec historique ; mesuré +1 367 $ / +4 778 $ de patrimoine final selon le REER détenu à 94 ans, 0 $ avant 94 (contrôle). Le « +13 726 $ » du ticket venait d'une fixture plus riche — même ordre de grandeur. (S si confirmé, ⚠️ GATÉ source humaine — `A_FAIRE_MOI`) —
+  ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche web du même jour (source RELAYÉE, détail A_FAIRE_MOI « 🔎 Recherche ») : **94 ans = 18,79 %, 95+ = 20,00 %** sur quatre tables 2026 — l'écart est confirmé, DÉBLOQUÉ (citer la source comme relayée).
+  `helpers.ts:95` code `94: 0.2000` ; le facteur prescrit serait 18,79 % (plateau 20 % à 95+).
+  **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS
+  modifier sans avoir vu le règlement 7308(4). Corriger aussi `FISCAL_REFERENCE.md:467` et
+  `tests/services/projection.helpers.test.ts:80` dans le même lot.
+
 ## 2026-09-05 — `[ENG-FVI-EFFICIENCY-ESTATE]` — LIVRÉ (lot 165, PR #896)
 
 Ticket d'origine tel qu'au moment de l'archivage :

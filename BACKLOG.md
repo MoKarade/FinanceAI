@@ -382,7 +382,7 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
-- [ ] **`[FISC-SOLO-INVEST-SPLIT]`** (M, 🧭 Q3 — conditionnel au profil) — `getTaxSituation.spec.ts:64`
+- [x] **`[FISC-SOLO-INVEST-SPLIT]`** ✅ **LIVRÉ au lot 180 (2026-09-05)** — le revenu de placement estimé suit son DÉTENTEUR (`Asset.owner` ; commun = moitié-moitié en couple ; hors couple tout à user1) via le helper partagé `estimateTaxableInvestmentIncomeByOwner` (+ `isCoupleMode`, source unique du prédicat couple), consommé par l'onglet Impôt ET `get_tax_situation` ; la part d'un conjoint sans brut est NOMMÉE dans `perUserOmitted`. Trois gardes, trois perturbations séparées (helper → 7 rouges sur les 3 fichiers ; TaxCenter seul → 2 ; MCP seul → 2). Sans `owner` posé, rien ne change (commun = ÷ 2, contrôle vert). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (M, 🧭 Q3 — conditionnel au profil) — `getTaxSituation.spec.ts:64`
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : **mode couple PRÉVU** → débloqué (Q3 répondue oui).
   + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
   conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
@@ -1242,21 +1242,6 @@
 
 ### 🧱 Dette technique et architecture
 
-- [x] **`[FISC-DEC-FLUX-ASSIETTE-TIMING]`** ✅ **LIVRÉ au lot 179 (2026-09-05)** — le dépôt fiscal de décembre (`processDecemberTaxFiling`) se fait en FIN de mois, après la cascade d'allocation, le meltdown, l'immobilier et les objectifs du même décembre ; les flux REER de décembre entrent dans l'assiette de l'année MÊME. Garde d'ordre `engineOrder.test.ts` INVERSÉE (décembre APRÈS allocation et meltdown) + garde comportementale `decemberReerWithdrawalAssiette.test.ts` (un retrait REER de décembre coûte le même impôt qu'en novembre : ratio 1,08 mesuré, 0,0055 sur l'ancien moteur) ; 17 goldens re-basés SCIEMMENT dans 7 fichiers, chacun avec son sens (retraité : impôt ↑ patrimoine ↓ ; actif : cotisations de décembre déduites → patrimoine ↑). Découverte routée : `[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (M, à TRANCHER — découverte du lot 141, MESURÉ,
-  ✅ **DÉCISION Marc 2026-09-05 (en session)** : **CORRIGER** — c'est une fuite d'assiette réelle : les retraits REER de décembre entrent dans l'assiette de l'année. Re-base des goldens SCIEMMENT (+25 568 $ d'impôt mesuré sur la fixture retraités), la garde d'ordre `engineOrder.test.ts` se met à jour DÉLIBÉRÉMENT.
-  ⚠️ bug préexistant potentiel, signalé sans correctif) — le dépôt fiscal de décembre
-  (`processDecemberTaxFiling`, L~1355) lit `accRetraitsReerYear` AVANT que la cascade
-  d'allocation, le meltdown, le RAP et les objectifs du MÊME décembre ne l'alimentent — puis
-  janvier remet l'accumulateur à zéro (`taxJanuary.ts:332`). Les retraits REER de décembre
-  n'entrent donc dans l'assiette d'AUCUNE année. Mesuré (banc `scripts/mesureOrdreBoucle.ts` +
-  `scripts/inverserOrdreBoucle.py`, clef `dec_fin_de_mois`, re-mesuré 2 exécutions
-  indépendantes 2026-09-04) : déplacer décembre en fin de mois = totalTaxesPaid
-  **+25 568,08 $** (fixture retraités sous AUTO — indépendant de la stratégie), +14 737,13 $
-  sous MELTDOWN, ±3 k$ sur un couple actif. À trancher (financial-integrity/Marc) : fuite
-  d'assiette RÉELLE (les retraits de décembre devraient être imposés) ou convention de
-  calendrier assumée (ils le seraient l'année suivante — or janvier les efface). L'ordre ACTUEL
-  est figé par `tests/services/projection.engineOrder.test.ts` en attendant : tout changement
-  devra être délibéré ET répondre à cette question.
 - [ ] **`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`** (S, ⚠️ bug préexistant potentiel, signalé sans correctif —
   découverte du lot 179, 2026-09-05) — le bloc de récupération PSV de décembre (`computeOasClawback`, « Cycle 10 »
   de `projection.ts`) lit `accRetraitsReerYear`, `accRetraitsReerYearByUser`, `capitalGainsRealizedThisYear` et
@@ -1270,6 +1255,14 @@
   qui décaisse du REER en décembre (MELTDOWN_REER ou but daté), puis déplacer le bloc APRÈS le meltdown avec sa
   garde d'ordre (`oasClawbackNextPeriod` n'est lu qu'en janvier : rien ne l'oblige à précéder le dépôt). Non
   corrigé au lot 179 : hors du périmètre nommé par le ticket et par la décision 15 (le dépôt fiscal). [MESURÉ, aveugle]
+- [ ] **`[COUPLE-PREDICAT-COPIES]`** (XS, FAIBLE — découverte du lot 180, 2026-09-05) — le prédicat « mode couple = un 2e
+  utilisateur NOMMÉ » est écrit à la main dans SIX endroits (`Layout.tsx`, `Transactions.tsx`, `PayslipUploadCard.tsx`,
+  `NetWorthByOwnerCard.tsx`, `CoupleModeBadge.tsx`, `services/financialSnapshot.ts:coupleMode`), avec trois formes
+  différentes (`users.length >= 2 && …`, `Boolean(name && trim() !== '')`, `!!name?.trim()`). Le lot 180 a hissé
+  `isCoupleMode(users)` (`services/couple/netWorthByOwner.ts`) pour ses deux sites ; les six autres n'ont PAS été touchés
+  (hors périmètre). Correctif : les faire pointer sur `isCoupleMode` + une garde de scan « aucune autre écriture du
+  prédicat » (source décommentée). Une divergence future entre deux copies rendrait un écran « couple » et un autre
+  « solo » sur le même état — sans rien de rouge. [MESURÉ : 6 sites]
 - [ ] **`[DETTE-COULEURS-ADHOC]`** (S, MOYEN) — **26 couleurs hex en dur** (`bg-[#1a1a1a]`,
   `text-[#2dd4bf]`, `bg-[#0d1118]`…) dans ~15 fichiers dont `Layout.tsx` (×3), `Investments.tsx` (×2),
   `aiChat/AiChatView.tsx` (×2), `Retirement.tsx` (×2). Ces teintes échappent à `check-contrast` ET
@@ -1842,7 +1835,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 ## 🧭 Décisions Marc requises (posées en UN lot le 2026-07-31)
 
-- [ ] **`[Q-SOLO-SPLIT]`** — `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
+- [x] **`[Q-SOLO-SPLIT]`** ✅ **FERMÉ au lot 180 (2026-09-05)** — la réponse 12 de Marc (« mode couple prévu ») a débloqué `[FISC-SOLO-INVEST-SPLIT]`, dont le remède prescrit EST la détention réelle ; livré tel quel, sans re-poser la question (à contester si Marc préférait un autre partage — signalé dans HANDOVER). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. (historique) `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
   par détention réelle ?
 
 - [ ] **`[Q-HOOKS-DEPS-ERROR]`** — moitié (b) de `[HOOKS-EXHAUSTIVE-DEPS-WARN]`, livré au lot 76.

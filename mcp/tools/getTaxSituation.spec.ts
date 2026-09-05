@@ -9,7 +9,8 @@ import { calculateFiscalReport, FHSA_ANNUAL_LIMIT_PER_USER } from '../../utils/t
 import { computeMonthlyActualAverages } from '../../utils/budgetSync';
 import { computeHistoricalContributionRoom } from '../../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../../services/portfolio';
-import { estimateTaxableInvestmentIncome } from '../../services/taxEstimate';
+import { estimateTaxableInvestmentIncomeByOwner } from '../../services/taxEstimate';
+import { isCoupleMode } from '../../services/couple/netWorthByOwner';
 import { computeBaseGrossAnnual } from '../../services/projection/buildSimulationParams';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
@@ -53,17 +54,21 @@ export const getTaxSituationSpec = {
         // réduit que le revenu de SON titulaire — l'ancien code fusionné l'appliquait à tort
         // au revenu de l'autre conjoint).
         // [TAX-APP-MCP-BASE] même assiette que l'onglet Impôt : le revenu de placement imposable
-        // (non-enreg/crypto, helper PARTAGÉ services/taxEstimate) s'ajoute au revenu imposable, réparti
-        // par conjoint comme dans TaxCenter (÷ nombre de users, tuple [User,User] → ratio 1/2).
+        // (non-enreg/crypto, helper PARTAGÉ services/taxEstimate) s'ajoute au revenu imposable.
+        // [FISC-SOLO-INVEST-SPLIT] réparti par DÉTENTION RÉELLE (`Asset.owner` ; commun = moitié-moitié
+        // en couple ; hors couple tout à user1) — plus « ÷ nombre de users » : ce split-là laissait la
+        // part d'un conjoint SANS brut hors de perUserReports, donc non imposée (2 342 $/an mesurés sur
+        // un couple mono-salarié). Un actif attribué à un conjoint est imposé chez lui ; la part d'un
+        // conjoint sans brut est NOMMÉE dans perUserOmitted (jamais tue).
         // [FISC-PAYROLL-BASE-INVEST] mais l'assiette EMPLOI (RRQ/RQAP/AE) reste le SALAIRE seul (`g`)
-        // — le placement ne cotise pas. NB (limite documentée, à traiter au BACKLOG [FISC-SOLO-INVEST-SPLIT])
-        // : le split par longueur de tuple laisse la part d'un conjoint SANS brut (exclu de perUserReports,
-        // ou payé en net seul) NON imposée — sous-imposition du placement d'un solo/mono-salarié.
-        const taxableAddOn = estimateTaxableInvestmentIncome(
+        // — le placement ne cotise pas.
+        const placementParProprietaire = estimateTaxableInvestmentIncomeByOwner(
             (state.assets ?? []) as AppState['assets'],
             state.fxRates ?? {},
+            isCoupleMode(users),
         );
-        const splitRatio = users.length > 0 ? 1 / users.length : 1;
+        const partPlacementDe = (i: number): number =>
+            i === 0 ? placementParProprietaire.user1 : i === 1 ? placementParProprietaire.user2 : 0;
         // [TOOL-TAXSITUATION-FAKE-ZERO] ⚠️ Le ticket annonçait un « faux 0 $ » publié au modèle.
         // VÉRIFIÉ : c'est INEXACT ici — le `.filter(g > 0)` juste en dessous EXCLUT ces conjoints de
         // `perUserReports`, donc aucun 0 n'est publié. Le vrai défaut est l'inverse et il est plus
@@ -73,18 +78,27 @@ export const getTaxSituationSpec = {
         // Correctif : `perUserOmitted` ci-dessous nomme les exclus et la raison (patron déjà utilisé
         // par `describeFutureDetail`). On ne publie pas un chiffre faux, et on ne tait pas non plus
         // une absence.
-        const perUserOmitted = activeUsers
-            .filter((u) => !((u.grossSalary || 0) > 0))
-            .map((u) => ({
-                name: u.name || null,
-                reason: 'brut annuel inconnu (seul un salaire NET est saisi) — impôt incalculable pour ce conjoint',
-            }));
-        const perUserReports = activeUsers
-            .map((u) => ({ user: u, grossAnnual: (u.grossSalary || 0) * 12 }))
-            .filter(({ grossAnnual: g }) => g > 0)
-            .map(({ user: u, grossAnnual: g }) => {
-                // Assiette IMPOSABLE = salaire + part de placement ; assiette EMPLOI = salaire (`g`).
-                const taxableBase = g + taxableAddOn * splitRatio;
+        // [FISC-SOLO-INVEST-SPLIT] l'index dans `users` est la clé de détention (user1/user2) : on
+        // l'emporte AVANT de filtrer, sinon un conjoint exclu décalerait la part de l'autre.
+        const perUserOmitted = users.flatMap((u, i) => {
+            if (!u || (u.grossSalary || 0) > 0) return [];
+            const actif = !!(u.grossSalary || u.netSalary);
+            const part = partPlacementDe(i);
+            if (!actif && part <= 0) return [];
+            const raison = actif
+                ? 'brut annuel inconnu (seul un salaire NET est saisi) — impôt incalculable pour ce conjoint'
+                : 'aucun salaire saisi pour ce conjoint';
+            const placement = part > 0
+                ? ` ; sa part de revenu de placement estimé (${Math.round(part)} $, détention réelle) n'est PAS imposée dans ce payload`
+                : '';
+            return [{ name: u.name || null, reason: raison + placement }];
+        });
+        const perUserReports = users
+            .map((u, i) => ({ user: u, i, grossAnnual: u ? (u.grossSalary || 0) * 12 : 0 }))
+            .filter(({ user: u, grossAnnual: g }) => !!u && g > 0)
+            .map(({ user: u, i, grossAnnual: g }) => {
+                // Assiette IMPOSABLE = salaire + part de placement (détention réelle) ; assiette EMPLOI = salaire (`g`).
+                const taxableBase = g + partPlacementDe(i);
                 return {
                     name: u.name || null,
                     grossAnnual: g,
@@ -218,7 +232,9 @@ export const getTaxSituationSpec = {
                 'celiRoomRemaining/reerRoomRemaining sont des AGRÉGATS du ménage (somme des droits des ' +
                 "2 comptes légaux distincts) — ne pas verser tout l'espace dans le compte d'UNE personne. " +
                 "Assiette imposable = salaires bruts annualisés + revenu de placement IMPOSABLE ESTIMÉ du " +
-                "non-enregistré/crypto (dividendes ~2 % + gains ~7 %×50 %, champ taxableInvestmentIncome) ; les " +
+                "non-enregistré/crypto (dividendes ~2 % + gains ~7 %×50 %, champ taxableInvestmentIncome), " +
+                'réparti par DÉTENTION RÉELLE (Asset.owner ; commun = moitié-moitié en couple ; hors couple tout ' +
+                "au 1er utilisateur) — la part d'un conjoint sans brut est nommée dans perUserOmitted ; les " +
                 "cotisations RRQ/RQAP/AE portent sur le SALAIRE seul. N'inclut pas : revenu locatif, tous les crédits. " +
                 'perUser.withholdings = retenues détaillées ; perUser.salarySource = provenance du salaire ' +
                 '(fiche de paie = source unique — null = saisie manuelle) ; realMonthlyAverages = réel des ' +

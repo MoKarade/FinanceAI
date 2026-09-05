@@ -1302,6 +1302,14 @@ choisir). Calcul cumulatif par tranche (style impôt).
 - **Assiette placement estimée** (`services/taxEstimate.ts:13-15`) : `EST_DIVIDEND_YIELD = 0,02` et
   `EST_CAPITAL_GAINS_YIELD = 0,07` (gains réalisés à 50 % inclus) — HYPOTHÈSES de modèle (pas des
   valeurs fiscales), consommées par l'onglet Impôt ET `get_tax_situation` (MCP).
+  ✅ **Répartition par DÉTENTION RÉELLE (`[FISC-SOLO-INVEST-SPLIT]`, lot 180, 2026-09-05, décision Marc 12)** :
+  `estimateTaxableInvestmentIncomeByOwner` impose chaque actif chez son `owner` (user1/user2) ; un actif
+  `joint` — le défaut du non-enregistré et de la crypto — est partagé moitié-moitié en couple ; hors couple
+  (`isCoupleMode` = 2e utilisateur nommé) tout revient à user1. Règle fiscale réelle : chacun déclare le
+  revenu de SES placements (ARC/RQ, déclaration individuelle) ; les règles d'attribution entre conjoints
+  ne sont PAS modélisées. Avant : « ÷ nombre de conjoints », soit 2 342 $/an de sous-imposition mesurés
+  sur un couple mono-salarié à 200 k$ de non-enregistré (la moitié du conjoint sans brut n'était imposée
+  nulle part).
 - **REEE à la fermeture** : `REEE_AIP_TAX_RATE = 0,20` appliqué au SOLDE total (approximation — le
   vrai régime ne vise que la portion revenu accumulé, surtaxe en sus : `[FISC-REEE-AIP-MODEL]`,
   différé) ; et les subventions SCEE/IQEE non utilisées ne sont PAS remboursées au gouvernement

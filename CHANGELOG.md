@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (En couple, le revenu de placement est imposé chez son détenteur)
+
+- **Corrigé** : l'onglet Impôt et l'outil `get_tax_situation` (connecteur) coupaient le revenu de
+  placement estimé (non-enregistré, crypto) en deux parts égales entre les conjoints, même quand
+  l'actif appartient à un seul — et la part du conjoint sans salaire n'était imposée nulle part.
+  Désormais chaque actif est imposé chez son détenteur (réglable dans « Répartition du portefeuille
+  par personne », onglet Placements) ; un actif commun reste moitié-moitié. En mode solo, rien ne
+  change. Le connecteur nomme la part d'un conjoint sans salaire au lieu de la taire.
+
 ## [unreleased] — 2026-09-05 (Les retraits et cotisations REER de décembre comptent enfin dans l'impôt de l'année)
 
 - **Corrigé** : dans la projection, l'impôt de l'année se calculait au début de décembre, AVANT les

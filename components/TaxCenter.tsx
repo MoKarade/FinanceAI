@@ -18,7 +18,8 @@ import { causeErreurIa, messageErreurIa } from '../services/messageErreurIa';
 import { assetValueCad } from '../services/portfolio';
 import { ageOptsForSalaryInversion, calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { netModelResidual } from '../services/taxResidual';
-import { estimateTaxableInvestmentIncome } from '../services/taxEstimate';
+import { estimateTaxableInvestmentIncome, estimateTaxableInvestmentIncomeByOwner } from '../services/taxEstimate';
+import { isCoupleMode } from '../services/couple/netWorthByOwner';
 import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK } from '../utils/tax';
 
 // [Finding financial-integrity #549] Borne du slider REER = plafond de l'ANNÉE COURANTE
@@ -243,9 +244,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
         const nonRegAssets = assets.filter(a => a.accountType === 'NON-ENREG' || a.accountType === 'CRYPTO');
         const nonRegValue = nonRegAssets.reduce((sum, a) => sum + assetValueCad(a, fxRates), 0);
         const taxableInvestmentIncome = estimateTaxableInvestmentIncome(assets, fxRates);
+        // [FISC-SOLO-INVEST-SPLIT] part de chaque conjoint par DÉTENTION RÉELLE (Asset.owner ; commun =
+        // moitié-moitié en couple ; hors couple tout à user1) — même helper que get_tax_situation.
+        const parProprietaire = estimateTaxableInvestmentIncomeByOwner(assets, fxRates, isCoupleMode(config.users));
 
-        return { totalNonReg: nonRegValue, taxableAddOn: taxableInvestmentIncome };
-    }, [assets, fxRates]);
+        return { totalNonReg: nonRegValue, taxableAddOn: taxableInvestmentIncome, parProprietaire };
+    }, [assets, fxRates, config.users]);
 
     const [viewUser, setViewUser] = useState<string>('all');
 
@@ -272,7 +276,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 // au moins cohérent ; n'en câbler qu'un aurait été pire que le défaut.
                 : calculateGrossFromNet((u.netSalary || 0) * 12, anneeFiscaleCourante, ageOptsUser);
             const splitRatio = 1 / config.users.length;
-            const uTotalTaxable = uGross + (investmentTaxData.taxableAddOn * splitRatio);
+            // [FISC-SOLO-INVEST-SPLIT] le placement suit son DÉTENTEUR (plus « ÷ nombre de conjoints ») :
+            // un actif attribué à Marc est imposé chez Marc, même si le conjoint n'a pas de salaire.
+            const partPlacement = i === 0 ? investmentTaxData.parProprietaire.user1
+                : i === 1 ? investmentTaxData.parProprietaire.user2 : 0;
+            const uTotalTaxable = uGross + partPlacement;
             // [FISC-PAYROLL-BASE-INVEST] assiette IMPOSABLE = salaire + placement (paliers d'impôt),
             // mais assiette EMPLOI (RRQ/RQAP/AE) = salaire SEUL (uGross) — le placement ne cotise pas.
             const res = calculateFiscalReport(
@@ -285,6 +293,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 name: u.name,
                 gross: uGross,
                 taxable: uTotalTaxable,
+                partPlacement,
                 report: { ...res, refundOrOwe },
                 // [ENG-NET-MODEL-RESIDUAL] Diagnostic net déclaré vs net du modèle (salaire seul) —
                 // même PAIRE (année, ageOpts) que le rapport ci-dessus, sinon l'écart mesurerait le
@@ -348,7 +357,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                     rqap: userRes.report.rqap,
                     ae: userRes.report.ae,
                 },
-                taxableAddOn: investmentTaxData.taxableAddOn / config.users.length,
+                taxableAddOn: userRes.partPlacement,
                 fedBreakdown: userRes.fedBreakdown,
                 qcBreakdown: userRes.qcBreakdown
             };

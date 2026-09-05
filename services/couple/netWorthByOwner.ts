@@ -24,6 +24,17 @@ export interface OwnableHolding {
 }
 
 /**
+ * Mode couple = un 2e utilisateur NOMMÉ (même définition que `financialSnapshot.coupleMode`,
+ * `CoupleModeBadge`, `NetWorthByOwnerCard`). [FISC-SOLO-INVEST-SPLIT] hissé ici en source unique
+ * pour les deux sites qui répartissent le revenu de placement (onglet Impôt, get_tax_situation) ;
+ * les autres copies du prédicat sont recensées dans `[COUPLE-PREDICAT-COPIES]`.
+ */
+export function isCoupleMode(users: ReadonlyArray<{ name?: string } | null | undefined> | undefined): boolean {
+    const second = users?.[1];
+    return !!(second && typeof second.name === 'string' && second.name.trim() !== '');
+}
+
+/**
  * Propriétaire par défaut quand `owner` est absent.
  * Les comptes enregistrés (CELI/REER/CELIAPP/REEE) sont INDIVIDUELS par la loi
  * canadienne → attribués à user1 par défaut (l'utilisateur peut corriger).

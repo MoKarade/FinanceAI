@@ -12152,3 +12152,18 @@ rattrapé par la perturbation.
 ⚠️ Et le grep de l'accumulateur a sorti un SECOND lecteur dans le même mois (la récupération PSV),
 que le banc d'inversion ne peut pas voir (0,00 $ sur 5 fixtures : aucune n'atteint le seuil PSV) —
 routé avec cette cécité écrite dedans, pas corrigé : la décision de Marc nommait le dépôt fiscal.
+
+### Variante notée au lot 184 (2026-09-05) — un `git push --force-with-lease` chaîné par `;` derrière un rebase pousse ce que le rebase a LAISSÉ
+
+`git rebase origin/main` s'est arrêté sur un conflit (la branche du lot 184 était EMPILÉE sur le lot 183,
+et le squash-merge de #914 ne se laisse pas reconnaître comme « déjà appliqué » quand il fusionne deux
+commits) ; la commande suivante, chaînée par `;`, était `git push --force-with-lease` — elle a poussé
+le HEAD du rebase interrompu, c'est-à-dire **le commit de `origin/main`, sous le nom de ma branche** :
+le lot 184 n'existait plus sur le dépôt distant pendant deux minutes. Rien de perdu (reflog, `git
+rebase --abort`, puis `git rebase --onto origin/main <ancien head du lot 183>` → arbre identique à
+l'octet, 0 ligne de diff), mais le mécanisme est celui de « chaîner édition et commit par `&&` » vu
+au lot des sites alignés : un `;` exécute la suite quoi qu'il arrive. Règles : (1) après un rebase,
+`git status --porcelain` VIDE et `git diff <ancien head> HEAD` VIDE avant tout `--force-with-lease`,
+jamais un `;` entre les deux ; (2) une branche empilée sur un lot fusionné en SQUASH se re-base par
+`--onto` depuis l'ancien head du lot fusionné, pas par un `rebase origin/main` nu qui rejoue les
+commits déjà squashés et conflicte sur les docs.

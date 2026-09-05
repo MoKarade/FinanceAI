@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[FORMATCAD-OR-ZERO]` — LIVRÉ (lot 183, PR #914)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FORMATCAD-OR-ZERO]`** ✅ **LIVRÉ au lot 183 (2026-09-05)** — re-recensé PAR LE MOTIF du ticket (pas sa liste) : **13 sites** le jour du lot (les 3 autres avaient disparu — `Budget.tsx`, `RealEstateWorkspace.tsx`, `AddStockForm.tsx`), tous migrés vers `formatCAD(v)` / `formatCAD(data.X)`. Garde de SOURCE ajoutée dans `formatMonetaireSourceUnique.test.ts` (même règle, autre face : le formateur reçoit la valeur BRUTE) + garde COMPORTEMENTALE `Retirement.tooltipNoFakeZero.test.tsx` (un compte absent ou NaN dans l'infobulle rend « — », jamais « 0 $ » ; REER présent = contrôle). Perturbations : `|| 0` remis sur la tuile CELI → 2 rouges ; remis sur DebtManager → la garde de source seule. (S, MOYEN) — **16 sites** font `formatCAD(… || 0)` : le `|| 0`
+  **annule la garde no-fake-data de `formatCAD`** (qui rend « — » sur non-fini) et transforme une
+  donnée absente en « 0 $ » crédible. Correctif : passer la valeur brute à `formatCAD`, qui gère
+  déjà `unknown`.
+  ⚠️ **Périmètre RE-MESURÉ le 2026-08-19** — l'ancien libellé annonçait « 10 sites » et n'en listait
+  que 9, à des lignes qui ont bougé depuis. Le vrai compte est **16**, dont **7 que l'ancienne liste
+  ne voyait pas** : cinq `formatCAD(data.X || 0)` (`Retirement.tsx:466,470,476,482,487` — motif
+  `data.X`, pas `Number(v)`), `AddStockForm.tsx:447` (`parseFloat(buyPrice) || 0`) et
+  `DividendPanel.tsx:198` (`val || 0`, dans un `formatter` Recharts — donc invisible aux tests qui
+  mockent Recharts, cf. revue #608). **Ne PAS repartir de la liste, repartir du scan** : le motif
+  utile n'est pas `Number(v) || 0` mais `formatCAD(<n'importe quoi> || 0)`, parenthèses imbriquées
+  comprises (`grep -oE "formatCAD\((\([^()]*\)|[^()])*\|\| ?0\)"`). Sites : `Budget.tsx:589,613` ·
+  `RealEstateWorkspace.tsx:342` · `MultiPropertyComparison.tsx:75` · `Retirement.tsx:206,466,470,476,482,487` ·
+  `DebtManager.tsx:112` · `Investments.tsx:143` · `AddStockForm.tsx:447` · `DividendPanel.tsx:79,198` ·
+  `LifeEvents.tsx:148`. Classe `DOC-METRIQUE-RECOPIEE` : un périmètre listé EN DUR se périme, un scan non. [MESURÉ]
+
+### 🔴 Devises et unités
+
+
 ## 2026-09-05 — `[MCP-NO-INJECTION-FRAME]` — LIVRÉ (lot 182, PR #913)
 
 Ticket d'origine tel qu'au moment de l'archivage :

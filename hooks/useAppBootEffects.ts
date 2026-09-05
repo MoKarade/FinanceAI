@@ -22,6 +22,7 @@ import { loadLockedProjection } from '../services/lockedProjectionStore';
 import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout, subscribeSyncNotice } from '../services/sync/syncOrchestrator';
 import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
+import { requestPersistentStorage } from '../services/storagePersistence';
 
 /** Tous les effets de boot d'App : handlers d'erreur, courbe verrouillée, service worker, purge
  *  persona, init sync Drive, filets migration/hydratation, provider marché, clés API chiffrées,
@@ -110,6 +111,11 @@ export function useAppBootEffects(): void {
                 showToast(`${purged} donnée(s) de test (persona) retirée(s) de tes vraies données (backup pris avant).`, 'info');
             }
         })();
+
+        // [STORAGE-PERSIST-REQUEST] Persistance du stockage : demandée UNE fois au boot, best-effort
+        // (jamais de throw), état lisible dans Réglages › Système & diagnostics. Sans elle, le coffre
+        // chiffré (IndexedDB + localStorage) est « best-effort » et évictable sous pression disque.
+        void requestPersistentStorage();
 
         // Sync Google Drive — inerte si VITE_GOOGLE_CLIENT_ID absent. Init + sync silencieuse au
         // boot (uniquement si déjà connecté), puis push debouncé sur chaque changement du store.

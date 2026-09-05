@@ -16,6 +16,17 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-05 — Lot 165 : l'efficacité du FVI score l'impôt À VIE — LES SIX DÉCISIONS SONT LIVRÉES
+> `[ENG-FVI-EFFICIENCY-ESTATE]` → livré (option a). Le leakage de l'efficacité passe de l'impôt
+> d'HORIZON à `lifetimeTaxTotal` (source unique : réglé + dette d'horizon + successoral) ; le
+> clamp [0,1] reste (SCORE), `expertMetrics.taxLeakage` reste une MESURE d'horizon (contrat
+> distinct, écrit dans le code). ⚠️ Le « re-base FVI massif » annoncé par le ticket : RÉFUTÉ par
+> la mesure — AUCUN test n'épinglait un FVI calculé (zéro re-base ; 2e fois que l'alarme de coût
+> d'un ticket s'effondre au re-comptage). 2 tests neufs, rouges sous perturbation (retour à
+> l'horizon seul). ⚠️ Faute de procédure : lot codé PENDANT que le gate du lot 164 tournait —
+> le verdict de ce gate est réputé suspect, la CI de #895 (arbre exact) fait foi et le gate du
+> lot 165 couvre l'union. Push sans leçon nouvelle (classes déjà consignées).
+
 > ## 🟦 Session 2026-09-05 — Lot 164 : la croissance des immeubles locatifs se règle PAR immeuble
 > `[ENG-PROPGROWTH-CONFIG-DEAD]` → livré selon la décision (option a). `RentalProperty.
 > propertyGrowthRate?` (additif, zéro migration), semé dans `RentalState.growthRatePct` avec le

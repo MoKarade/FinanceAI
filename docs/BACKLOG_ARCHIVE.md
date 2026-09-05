@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-PROPGROWTH-CONFIG-DEAD]` — LIVRÉ (lot 164, PR #895)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** ✅ **LIVRÉ au lot 164 (2026-09-05)** — `RentalProperty.propertyGrowthRate?` (taux PAR immeuble, défaut nommé `DEFAULT_RENTAL_GROWTH_PCT` = 3 écrit au semis, 0 explicite préservé), champ « Croissance %/an » dans le panneau des locatifs (vidé → undefined, 0 tapé → 0), lecteur config `effProj.propertyGrowthRate ?? 3` RETIRÉ du chemin locatif (le champ config n'a plus AUCUN lecteur — laissé dans le type pour les configs persistées). 3 tests moteur + 4 tests UI neufs, 2 perturbations séparées à rouges nommés. (S — ⚠️ **PRÉMISSE RE-RECENSÉE le 2026-09-04 : elle est
+  devenue FAUSSE**) — le ticket (2026-08-12) affirmait « lu par AUCUN code de prod ». Aujourd'hui
+  `projection.ts:1750` lit `effProj.propertyGrowthRate ?? 3` pour la croissance des **immeubles
+  LOCATIFS** (`processRentalMonth`) — un lecteur prod bien réel. Ce qui reste vrai : AUCUN
+  producteur (aucune UI n'écrit `projection.propertyGrowthRate`, aucun défaut dans `constants.ts`,
+  aucun scénario ne l'écrase) → les locatifs croissent toujours à 3 %/an, taux non réglable, et
+  `RentalProperty` n'a pas de champ de croissance propre. « Retirer » n'est donc plus un simple
+  nettoyage (il faut décider où vit le taux des locatifs) et « brancher » est une décision d'UI.
+  Options re-posées : (a) donner un `propertyGrowthRate?` à `RentalProperty` (cohérent avec les
+  buts immobiliers, saisie par bien) et retirer le champ config ; (b) exposer le champ config
+  comme réglage global des locatifs. Les deux changent ce que l'utilisateur voit → à trancher.
+  ✅ **Décision Marc 2026-09-04, LIVRÉE lot 164 (2026-09-05).** → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+
 ## 2026-09-05 — `[ENG-GOALSHORTFALLS-CHAMP-MORT]` — LIVRÉ (lot 163, PR #894)
 
 Ticket d'origine tel qu'au moment de l'archivage :

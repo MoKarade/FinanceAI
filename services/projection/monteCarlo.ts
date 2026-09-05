@@ -3,6 +3,7 @@
 // Pattern injection de dépendance: runScenario passé en argument pour
 // éviter dépendance circulaire avec projection.ts.
 
+import { lifetimeTaxTotal } from './lifetimeTax';
 import type { SimulationParams, AllocationStrategy, FutureScenarioType } from '../projection';
 import type { EngineOverrides } from './strategyConfig';
 import { logErrorThrottled } from '../errorLogger';
@@ -23,6 +24,8 @@ type RunScenarioFn = (
     /** [ENG-TTP-UNSETTLED-PROPAGATE] dette du dernier exercice non réglée à l'horizon (signée) —
      *  optionnel : le vrai moteur la fournit toujours, un fake de test peut l'omettre (→ 0). */
     unsettledTaxAtHorizon?: number;
+    /** [ENG-FVI-EFFICIENCY-ESTATE] impôt successoral — optionnel pour la même raison (fake → 0). */
+    totalEstateTax?: number;
     totalGrowth: number;
     totalExpenses: number;
     minNetWorth: number;
@@ -117,6 +120,9 @@ export function runMonteCarlo(
         totalExpenses: number;
         shortfallRate: number;
         estateNetWorth: number;
+        /** [ENG-FVI-EFFICIENCY-ESTATE] impôt successoral du run — l'efficacité du FVI score
+         *  désormais l'impôt À VIE (lifetimeTaxTotal), pas seulement l'horizon. */
+        totalEstateTax: number;
         // Tier 🟡 perf — on ne garde QUE la longueur (seul usage : nb de mois pour le SWR).
         // Les valeurs NetWorth sont déjà dans `netWorthByMonth` ; stocker le chartData complet
         // sur chaque run dupliquait ~nMonths objets × `iterations` (jusqu'à ~600k objets retenus).
@@ -144,6 +150,7 @@ export function runMonteCarlo(
             totalExpenses: result.totalExpenses,
             shortfallRate: result.shortfallRate,
             estateNetWorth: result.estateNetWorth,
+            totalEstateTax: result.totalEstateTax ?? 0,
             chartDataLength: result.chartData.length,
         });
     }
@@ -197,12 +204,15 @@ export function runMonteCarlo(
     const avgEfficiency = allRuns.reduce((acc, r) => {
         // [PROJ-TAXPAID-LABEL] Clamp [0,1] : `totalTaxesPaid` peut être NÉGATIF (année à gros
         // remboursement net) → sans plancher 0, leakage < 0 donnait une « efficacité » > 100 %.
-        // [ENG-TTP-UNSETTLED-PROPAGATE] impôt de l'HORIZON complet (réglé + dette du dernier
-        // exercice). L'impôt SUCCESSORAL n'y entre pas encore : décision A4-FVI en suspens —
-        // ticket [ENG-FVI-EFFICIENCY-ESTATE] (le clamp à 0 masque aussi le ttp négatif d'un
-        // salarié, même ticket).
-        const horizonTax = r.totalTaxesPaid + r.unsettledTaxAtHorizon;
-        const leakage = r.totalGrowth > 0 ? Math.min(1, Math.max(0, horizonTax / r.totalGrowth)) : 0.5;
+        // [ENG-FVI-EFFICIENCY-ESTATE] (décision Marc 2026-09-04, option a) L'efficacité score
+        // l'impôt À VIE — réglé du vivant + dette d'horizon + SUCCESSORAL — via la source unique
+        // `lifetimeTaxTotal` (jamais une somme recopiée : une formule money-critical recopiée
+        // diverge). Avant : l'impôt d'horizon seul, et le clamp à 0 affichait « 100 % » à presque
+        // tout salarié (ttp négatif du vivant, toute la facture à la liquidation) — un indicateur
+        // qui dit 100 % à tout le monde ne discrimine rien. Le clamp [0,1] RESTE : c'est un SCORE
+        // (l'expertMetrics.taxLeakage, lui, reste une MESURE d'horizon non plafonnée — autre
+        // question, autre contrat, cf. [PROJ-TAXPAID-LABEL]).
+        const leakage = r.totalGrowth > 0 ? Math.min(1, Math.max(0, lifetimeTaxTotal(r) / r.totalGrowth)) : 0.5;
         return acc + (1 - leakage);
     }, 0) / iterations;
     const avgLegacyRatio = allRuns.reduce((acc, r) => acc + Math.min(3, r.estateNetWorth / (startNW || 1)), 0) / iterations;

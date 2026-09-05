@@ -47,6 +47,7 @@
   FVI mesure autre chose. [Probable] Recommandation : (a) — un indicateur qui dit 100 % à presque
   tout le monde ne discrimine rien.
   ✅ **RÉPONDU 2026-09-04 (en session)** : (a) BRANCHER l'impôt à vie dans le calcul — re-base FVI massif assumé.
+  ✅ **LIVRÉE au lot 165 (2026-09-05)** — et le re-base « massif » s'est mesuré à ZÉRO test : aucun n'épinglait un FVI calculé. **Les SIX décisions du 2026-09-04 sont livrées.**
 - [x] **[DÉCISION — ENG-RANKING-MODULES-ORPHELINS]** (re-cadré revue #683) — `rankStrategies` n'a
   AUCUN appelant (alias vérifiés) : brancher ou retirer ? ⚠️ S'il est branché un jour, son score
   `balanced` compte l'impôt successoral DEUX fois (à corriger d'abord). [Probable] Recommandation :

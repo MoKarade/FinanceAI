@@ -39,14 +39,14 @@ const ARRAY_SLICES = [
     'categorizationRules',
 ] as const;
 
-export interface PersonaPurgeReport {
+interface PersonaPurgeReport {
     /** Nombre total d'items retirés (0 = état déjà propre). */
     removedTotal: number;
     /** Détail par tranche (uniquement les tranches touchées). */
     bySlice: Record<string, number>;
 }
 
-export interface SanitizeResult<T> {
+interface SanitizeResult<T> {
     state: T;
     report: PersonaPurgeReport;
 }

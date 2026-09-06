@@ -33,7 +33,7 @@ interface TermeFautif {
     valeur: unknown;
 }
 
-export interface CashLedgerResult {
+interface CashLedgerResult {
     /** Le cash dérivé. Identique à l'ancienne formule, à la trace près. */
     cash: number;
     /** Termes non finis écartés. Vide dans le cas SAIN (la quasi-totalité du temps). */

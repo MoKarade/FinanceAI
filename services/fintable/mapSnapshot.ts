@@ -91,7 +91,7 @@ export interface FintableMappingConfig {
     transferToleranceDays?: number;
 }
 
-export interface FintableMappingReport {
+interface FintableMappingReport {
     /** Transactions retenues, et pourquoi les autres ne le sont pas. */
     transactions: {
         mapped: number;
@@ -129,7 +129,7 @@ export interface FintableMappingReport {
     warnings: string[];
 }
 
-export interface FintableMappingResult {
+interface FintableMappingResult {
     payloads: DocumentPayload[];
     report: FintableMappingReport;
 }

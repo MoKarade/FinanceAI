@@ -39,7 +39,7 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 // « actuel » vit dans Configurations (ce que je POSSÈDE) et garde son sous-titre de photo.
 const PROJET_VIE_IDIOM = "Chaque projet d'achat déforme ta courbe Future";
 
-export interface RealEstateWorkspaceProps {
+interface RealEstateWorkspaceProps {
     variant: 'actuel' | 'projet';
     availableCash: number;
     /** Tranche complète du store — SEULE base des écritures (setAllGoals). */

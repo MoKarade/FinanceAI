@@ -10,7 +10,7 @@
 import type { Asset, AssetOwner, RegisteredAccountType } from '../../types';
 import { assetValueCad } from '../portfolio';
 
-export interface OwnerBreakdown {
+interface OwnerBreakdown {
     user1: number;
     user2: number;
     joint: number;

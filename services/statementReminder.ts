@@ -17,7 +17,7 @@ const VALID_ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-\d{2}/;
 /** On ne rappelle pas avant le 5 du mois (le relevé du mois précédent n'est pas toujours dispo avant). */
 export const STATEMENT_REMIND_AFTER_DAY = 5;
 
-export interface StatementReminderStatus {
+interface StatementReminderStatus {
     /** Afficher le rappel ? */
     shouldShow: boolean;
     /** Dernier mois ('YYYY-MM') avec au moins une transaction réelle, ou null si aucune. */

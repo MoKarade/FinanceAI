@@ -20,7 +20,7 @@
 import type { AgeCreditOptions } from './tax';
 import { calculateFiscalReport } from './tax';
 
-export interface NetModelResidual {
+interface NetModelResidual {
     /** Net annuel déclaré (netSalary × 12) — la grandeur que le moteur encaisse. */
     netDeclare: number;
     /** Net fiscal annuel du SALAIRE SEUL au brut saisi (assiette emploi = brut, aucun placement). */

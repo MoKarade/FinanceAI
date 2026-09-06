@@ -63,7 +63,7 @@ export function drawReviewSample(
     return pool.slice(0, Math.max(0, Math.floor(size)));
 }
 
-export interface ErrorRateEstimate {
+interface ErrorRateEstimate {
     /** Nombre de transactions jugées. */
     reviewed: number;
     /** Nombre jugées mal classées. */

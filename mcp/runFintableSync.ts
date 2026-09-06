@@ -32,7 +32,7 @@ import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
 import { logError } from '../services/errorLogger';
 
-export interface FintableSyncOptions {
+interface FintableSyncOptions {
     token: string;
     roles: FintableMappingConfig['roles'];
     /** Injectable pour les tests (défaut : nouveau `FintableClient`). */

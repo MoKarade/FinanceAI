@@ -14,13 +14,13 @@
 // On ne remonte que jusqu'au mois de la 1re transaction connue : avant, le solde est
 // inconnu (décision Marc : la VN passée démarre à la 1re transaction). PUR & testable.
 
-export interface CashHistoryPoint {
+interface CashHistoryPoint {
     /** Clé de mois 'YYYY-MM' (solde à la fin de ce mois). */
     month: string;
     cash: number;
 }
 
-export interface CashHistoryResult {
+interface CashHistoryResult {
     /** Du plus ancien (1re transaction) au plus récent mois passé. Vide si aucune transaction. */
     points: CashHistoryPoint[];
     /** Mois de la 1re transaction connue ('YYYY-MM'), ou null. */
@@ -115,7 +115,7 @@ export function reconstructCashHistory(
 // même courbe ne partagent pas leur base, ils divergent — finding financial-integrity 2026-07-24,
 // classe PH4D « calculs voisins, même base ». C'est la contrainte la plus importante de ce module.
 
-export interface CashHistoryDailyPoint {
+interface CashHistoryDailyPoint {
     /** Date 'YYYY-MM-DD' — solde à la FIN de ce jour. */
     date: string;
     cash: number;
@@ -125,7 +125,7 @@ export interface CashHistoryDailyPoint {
     isDated: boolean;
 }
 
-export interface CashHistoryDailyResult {
+interface CashHistoryDailyResult {
     /** Du plus ancien au plus récent jour passé. Vide si aucune transaction. */
     points: CashHistoryDailyPoint[];
     /** Date de la 1re transaction connue, ou null. */

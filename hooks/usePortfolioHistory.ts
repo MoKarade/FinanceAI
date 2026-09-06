@@ -18,7 +18,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { generateTestMarketData } from '../services/testFixtures';
 import { buildMarketData } from '../services/history/buildMarketData';
 
-export interface UsePortfolioHistoryResult {
+interface UsePortfolioHistoryResult {
     history: MarketDataPoint[];
     isLoading: boolean;
     error: Error | null;

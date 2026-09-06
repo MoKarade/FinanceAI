@@ -62,7 +62,7 @@ function writeLastAttempt(at: number): void {
     try { localStorage.setItem(ATTEMPT_KEY, String(at)); } catch { /* best-effort */ }
 }
 
-export type AutoSyncOutcome =
+type AutoSyncOutcome =
     | { ran: false; reason: 'no-token' | 'test-mode' | 'fresh' | 'cooldown' | 'in-flight' | 'error' }
     | { ran: true; report: FintableSyncReport };
 

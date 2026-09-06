@@ -102,7 +102,7 @@ export function buildFutureViewDetail(
     return d;
 }
 
-export interface FutureChip {
+interface FutureChip {
     label: string;
     prompt: string;
 }

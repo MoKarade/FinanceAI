@@ -21,9 +21,9 @@ import {
 // Gelé = ancré : le survol et les mousemove n'affectent plus la position. Seuls
 // les listeners `document` (Échap + clic-dehors) sont actifs, et UNIQUEMENT en gelé.
 
-export type ChartTooltipMode = 'idle' | 'hovering' | 'frozen';
+type ChartTooltipMode = 'idle' | 'hovering' | 'frozen';
 
-export interface UseChartTooltipOptions<P> {
+interface UseChartTooltipOptions<P> {
     /** Clé d'identité d'un point (ex. `monthIndex`) → déduplique les re-render au survol. */
     getKey: (point: P) => string | number;
     /** Conteneur du graphe : clic-dedans = re-fige (pas release) + cible de la restitution du focus. */
@@ -37,7 +37,7 @@ export interface UseChartTooltipOptions<P> {
     dockedRef?: React.RefObject<boolean>;
 }
 
-export interface ChartTooltip<P> {
+interface ChartTooltip<P> {
     mode: ChartTooltipMode;
     point: P | null;
     /** À poser sur l'élément portail du tooltip. */

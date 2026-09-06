@@ -18,7 +18,7 @@ const CELI_PAYEE = /\bCELI\b|\bTFSA\b/i;
 /** Seuil sous lequel on n'ennuie pas l'utilisateur (bruit : petits virements ponctuels). */
 export const CELI_NUDGE_MIN_TRANSFERRED = 1000;
 
-export interface CeliNudgeStatus {
+interface CeliNudgeStatus {
     /** Afficher le nudge ? (des virements CELI significatifs ET aucun avoir CELI enregistré). */
     shouldShow: boolean;
     /** Total (positif) viré vers le CELI d'après les transactions — CONTEXTE, jamais un solde. */

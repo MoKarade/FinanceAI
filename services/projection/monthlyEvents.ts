@@ -330,7 +330,7 @@ export function applyFinancialGoalDeadlines(
 
 // ── Stress test ───────────────────────────────────────────────────────────────
 
-export interface StressTestResult {
+interface StressTestResult {
     crashFactor: number;    // (1-drop) si mois du crash, sinon 1.0
     recoveryFactor: number; // (1+boost) si mois de reprise (sans crypto), sinon 1.0
     log: string | null;

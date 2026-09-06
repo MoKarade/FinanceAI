@@ -43,7 +43,7 @@ export const DEFAULT_RENTAL_AMORTIZATION_YEARS = 25;
 export const DEFAULT_RENTAL_GROWTH_PCT = 3;
 
 /** État MUTABLE d'un immeuble locatif au fil des mois (valeur et solde évoluent). */
-export interface RentalState {
+interface RentalState {
     id: string;
     /** Valeur marchande courante, croissant au taux immobilier. */
     currentValue: number;
@@ -125,7 +125,7 @@ export function initRentalStates(rentals: readonly RentalProperty[] | undefined)
     });
 }
 
-export interface RentalMonthResult {
+interface RentalMonthResult {
     /** Équité TOTALE des immeubles locatifs (valeur − hypothèque), déjà NETTE. */
     equity: number;
     /** Solde hypothécaire TOTAL restant. */

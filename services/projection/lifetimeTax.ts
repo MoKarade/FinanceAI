@@ -18,7 +18,7 @@
 // stratégie — écart mesuré 107 530 $ entre PRIO_REER et PRIO_CELI (relecture #681). La refonte
 // du compteur est un ticket séparé ; d'ici là, « total » signifie « total MODÉLISÉ ».
 
-export interface LifetimeTaxParts {
+interface LifetimeTaxParts {
     totalTaxesPaid?: number;
     unsettledTaxAtHorizon?: number;
     totalEstateTax?: number;

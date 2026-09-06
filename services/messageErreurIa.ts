@@ -21,7 +21,7 @@
 import { httpStatusOf } from './claude';
 
 /** Ce que l'utilisateur peut faire, dérivé de ce qui a réellement échoué. */
-export type CauseErreurIa =
+type CauseErreurIa =
     | 'cle-absente'      // aucune clé configurée : l'appel n'a même pas été tenté
     | 'cle-refusee'      // 401 / 403 : la clé existe et le service la rejette
     | 'quota'            // 429 : trop de requêtes, ou crédit épuisé

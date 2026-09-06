@@ -8,7 +8,7 @@
 // et le MONTANT reste une DONNÉE jusqu'au rendu (il finit masqué par le mode discret, donc il ne
 // s'interpole pas dans le libellé — `UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`).
 
-export interface AlerteObjectifsManques {
+interface AlerteObjectifsManques {
     /** Nombre d'objectifs touchés (≥ 1). */
     count: number;
     /** Manque cumulé en dollars (fini, ≥ 1 $ — le producteur arrondit au dollar). */

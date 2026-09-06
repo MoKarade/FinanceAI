@@ -4,20 +4,20 @@
 import type { Municipality } from '../types';
 import { formatCAD } from '../utils/format';
 
-export interface MortgageInput {
+interface MortgageInput {
   price: number;
   downPayment: number;
   rate: number;          // % annuel
   amortization: number;  // annees
 }
 
-export interface MortgagePayment {
+interface MortgagePayment {
   monthlyMortgage: number;
   monthlyInterest: number; // interet du premier mois
   totalMortgage: number;
 }
 
-export interface AmortizationInput extends MortgageInput {
+interface AmortizationInput extends MortgageInput {
   renewalRate?: number;       // % annuel, applique tous les 5 ans
   propertyGrowthRate?: number; // % par an
   initialRenovations?: number;
@@ -26,7 +26,7 @@ export interface AmortizationInput extends MortgageInput {
   startYear?: number;          // annee de depart pour calendarYear
 }
 
-export interface AmortizationYearPoint {
+interface AmortizationYearPoint {
   year: number;
   calendarYear: number;
   age: number;
@@ -41,13 +41,13 @@ export interface AmortizationYearPoint {
   RenosCumul: number;
 }
 
-export interface AmortizationResult {
+interface AmortizationResult {
   data: AmortizationYearPoint[];
   totalInterest: number;
   finalValue: number;
 }
 
-export interface PurchaseCostsInput {
+interface PurchaseCostsInput {
   price: number;
   downPayment: number;
   initialRenovations?: number;
@@ -57,7 +57,7 @@ export interface PurchaseCostsInput {
   municipality?: Municipality;
 }
 
-export interface PurchaseCosts {
+interface PurchaseCosts {
   welcomeTax: number;
   notaryFees: number;
   inspectionFees: number;
@@ -245,7 +245,7 @@ export const OSFI_MQR_BUFFER = 0.02;          // +2 points au-dessus du taux con
 export const OSFI_GDS_MAX = 0.39;             // Gross Debt Service max — 39% du revenu brut mensuel
 export const OSFI_TDS_MAX = 0.44;             // Total Debt Service max — 44%
 
-export interface B20StressTestInput {
+interface B20StressTestInput {
   /** Taux contractuel de l'hypothèque (% annuel, ex: 4.5 pour 4.5%) */
   contractRate: number;
   /** Montant emprunté (prix - mise de fonds) */
@@ -260,7 +260,7 @@ export interface B20StressTestInput {
   otherDebtMonthly?: number;
 }
 
-export interface B20StressTestResult {
+interface B20StressTestResult {
   /** Taux de qualification en DÉCIMAL (ex: 0.065 = 6.5%). Différent de B20StressTestInput.contractRate qui est en pourcentage. */
   qualifyingRate: number;
   qualifyingMonthlyPmt: number; // PMT mensuel calculé au qualifying rate
@@ -389,7 +389,7 @@ export const calculateMinDownPayment = (price: number): number => {
   return price * SCHL_MIN_DOWN_TIER3;
 };
 
-export interface MortgageValidationInput {
+interface MortgageValidationInput {
   price: number;
   downPayment: number;
   amortization: number;
@@ -399,7 +399,7 @@ export interface MortgageValidationInput {
   isNewConstruction?: boolean;
 }
 
-export interface MortgageValidationResult {
+interface MortgageValidationResult {
   valid: boolean;
   errors: string[];
   /** Ratio mise de fonds / prix (0-1). */
@@ -498,7 +498,7 @@ export const validateMortgageParameters = (input: MortgageValidationInput): Mort
 // https://www.schl-cmhc.gc.ca/buying/mortgage-loan-insurance
 // ============================================
 
-export interface SchlPremiumTier {
+interface SchlPremiumTier {
   maxLtv: number;     // 0-1 (ex: 0.65 pour LTV ≤ 65%)
   rate: number;       // 0-1 (ex: 0.006 pour 0.60%)
 }
@@ -526,14 +526,14 @@ export const calculateSchlPremiumRate = (ltv: number): number => {
   return 0;  // LTV > 95% : assurance non disponible
 };
 
-export interface SchlPremiumInput {
+interface SchlPremiumInput {
   price: number;
   downPayment: number;
   /** Premier acheteur : peut majorer ou exempter selon programme (non implémenté ici). */
   isFirstTimeBuyer?: boolean;
 }
 
-export interface SchlPremiumResult {
+interface SchlPremiumResult {
   ltv: number;
   rate: number;
   /** Prime à ajouter au principal du prêt (price - downPayment + premium). */

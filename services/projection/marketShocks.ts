@@ -15,7 +15,7 @@ export interface StressTestConfig {
     inflationShock: number;
 }
 
-export interface MarketRatesResult {
+interface MarketRatesResult {
     mcCeliRate: number;
     mcReerRate: number;
     mcNonRegRate: number;

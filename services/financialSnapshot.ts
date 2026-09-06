@@ -31,7 +31,7 @@ import {
  * Forme alignée sur `FinancialSnapshot` de `services/claude.ts` (entrée de
  * `getNextBestActions`). Conserver les deux en phase (test de compatibilité).
  */
-export interface FinancialSnapshot {
+interface FinancialSnapshot {
     netWorth: number;
     monthlyIncome: number;
     /** [INCOME-3WAY-SPLIT, audit 2026-07-16] Provenance du revenu : 'transactions' = moyenne RÉELLE

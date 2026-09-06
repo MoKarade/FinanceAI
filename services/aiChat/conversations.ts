@@ -17,7 +17,7 @@ import type { AiChatModelKey, AiConversation, AiMessage, AppState } from '../../
 import { DEFAULT_AI_CHAT_MODEL, resolveChatModelKey } from './models';
 
 /** Patch d'état à appliquer via setAppState (les 3 tranches concernées, toujours ensemble). */
-export interface ConversationsPatch {
+interface ConversationsPatch {
     aiConversation: AiMessage[];
     aiConversations: AiConversation[];
     activeAiConversationId: string | null;
@@ -50,7 +50,7 @@ export function conversationTitle(messages: AiMessage[]): string {
 }
 
 /** Résultat d'une transition : patch + ids de messages DÉFINITIVEMENT sortis (cap d'archives). */
-export interface ConversationsTransition {
+interface ConversationsTransition {
     patch: ConversationsPatch;
     /** Messages des conversations évincées par le plafond (nettoyage cache + fichiers Drive). */
     droppedMessageIds: string[];

@@ -92,7 +92,7 @@ function toMinimal(asset: Asset, priceHistoryOverride?: Array<{ date: string; pr
     };
 }
 
-export interface UsePastPortfolioHistoryResult extends PortfolioHistoryResult {
+interface UsePastPortfolioHistoryResult extends PortfolioHistoryResult {
     isLoading: boolean;
 }
 

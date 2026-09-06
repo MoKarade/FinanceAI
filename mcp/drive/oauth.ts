@@ -20,7 +20,7 @@ export const DRIVE_SCOPES = [
 /** fetch minimal injectable (compatible avec le fetch global Node ≥18). */
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
-export interface TokenResponse {
+interface TokenResponse {
     access_token: string;
     refresh_token?: string;
     expires_in: number;

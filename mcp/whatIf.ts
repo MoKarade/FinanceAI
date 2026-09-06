@@ -92,7 +92,7 @@ export type WhatIfChange =
         monthlyCharges?: number;
     };
 
-export interface WhatIfApplication {
+interface WhatIfApplication {
     /** Clone de l'état réel avec les changements appliqués (l'original n'est JAMAIS muté). */
     state: AppState;
     /** Délta à appliquer à l'épargne mensuelle dérivée (négatif = dépense en plus). */
@@ -405,7 +405,7 @@ export function buildWhatIfParams(
 
 // ── Séries annuelles (pour que Claude trace des graphiques EXACTS) ───────────
 
-export interface YearlyPoint {
+interface YearlyPoint {
     year: number | null;
     age: number | null;
     netWorth: number;
@@ -458,7 +458,7 @@ export function extractYearlySeries(chartData: readonly ProjectionChartPoint[]):
 
 // ── Comparaison base vs what-if ──────────────────────────────────────────────
 
-export interface HorizonDelta {
+interface HorizonDelta {
     afterYears: number;
     baseNetWorth: number;
     whatIfNetWorth: number;

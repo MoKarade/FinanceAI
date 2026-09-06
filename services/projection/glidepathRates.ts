@@ -28,7 +28,7 @@ export interface GlidepathCtx {
     usEquityDividendYield?: number;
 }
 
-export interface GlidepathRates {
+interface GlidepathRates {
     effectiveCeliRate: number;
     effectiveReerRate: number;
     effectiveNonRegRate: number;

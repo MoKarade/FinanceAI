@@ -51,7 +51,7 @@
 // il grandit, simplement à un endroit où on peut le payer.
 
 /** Un champ dont le TYPE est inexploitable, avec de quoi le nommer à l'écran ET le retrouver. */
-export interface ChampMalType {
+interface ChampMalType {
     /** Chemin technique complet, pour le journal et les tests (ex. `realEstateGoals[0].closingCosts`). */
     readonly chemin: string;
     /** La clé feuille — c'est elle qui décide, et c'est elle qu'on montre. */

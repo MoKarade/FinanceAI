@@ -16,7 +16,7 @@
 
 import type { ProjectionChartPoint } from './types';
 
-export interface DerivedMilestone {
+interface DerivedMilestone {
     monthIndex: number;
     year: number | undefined;
     age: number | undefined;

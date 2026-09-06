@@ -19,7 +19,7 @@
 
 import { importWithRetry } from '../../utils/lazyWithRetry';
 
-export type MarketDataModule = typeof import('./index');
+type MarketDataModule = typeof import('./index');
 
 let modPromise: Promise<MarketDataModule> | null = null;
 

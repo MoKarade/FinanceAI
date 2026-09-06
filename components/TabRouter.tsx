@@ -46,7 +46,7 @@ const TabLoader: React.FC = () => (
     </div>
 );
 
-export interface TabRouterProps {
+interface TabRouterProps {
     activeTab: Tab;
     state: AppState;
     setAppState: (partial: Partial<AppState>) => void;

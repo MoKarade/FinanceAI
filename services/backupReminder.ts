@@ -33,7 +33,7 @@ export const getLastBackupDate = (): Date | null => {
     }
 };
 
-export interface BackupNagStatus {
+interface BackupNagStatus {
     /** Afficher le rappel ? */
     shouldShow: boolean;
     /** Date du dernier backup, null si jamais fait. */

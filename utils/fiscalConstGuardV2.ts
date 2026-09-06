@@ -24,7 +24,7 @@
 import { stripComments } from './stripComments';
 
 /** Familles de tri — le classement est le cœur du ticket, pas le scan. */
-export type FiscalConstFamily =
+type FiscalConstFamily =
     /** Vrai paramètre fiscal ARC/RQ : DOIT finir dans `docs/FISCAL_REFERENCE.md`. */
     | 'fiscal'
     /** Heuristique de CONCEPTION (seuil de stratégie, pas de barème) : ne jamais « sourcer ». */
@@ -32,7 +32,7 @@ export type FiscalConstFamily =
     /** Structurel (index de mois, pas de solveur…) : hors périmètre fiscal. */
     | 'structural';
 
-export interface InventoryEntry {
+interface InventoryEntry {
     /** Chemin repo-relatif, séparateurs `/`. */
     file: string;
     /** Littéral tel qu'il apparaît, normalisé sans `_` (ex. `100000`). */
@@ -698,7 +698,7 @@ export const FISCAL_MODULES_HORS_PERIMETRE = [
  */
 const BENIGN = new Set(['0', '1', '2', '3', '4', '10', '12', '24', '100', '365', '1e-9', '1e-6']);
 
-export interface ConstHit {
+interface ConstHit {
     line: number;
     value: string;
     text: string;

@@ -28,7 +28,7 @@ interface AssetGrowth {
     pct: number;
 }
 
-export interface GrowthResult {
+interface GrowthResult {
     celi: AssetGrowth;
     celiapp: AssetGrowth;
     reer: AssetGrowth;

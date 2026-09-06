@@ -29,7 +29,7 @@ import type { FintableBrokerBalance, RegisteredAccountType } from '../../types';
 export type ReconcilableRegime = Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;
 
 /** Réconciliation d'UN panier fiscal : ce que dit le courtier vs ce que disent les titres saisis. */
-export interface RegimeReconciliation {
+interface RegimeReconciliation {
     regime: ReconcilableRegime;
     /** Somme des soldes courtier des comptes de ce régime — fait AUTORITÉ. */
     brokerTotalCad: number;
@@ -47,7 +47,7 @@ export interface RegimeReconciliation {
     observedAt: number | null;
 }
 
-export interface BrokerReconciliation {
+interface BrokerReconciliation {
     /** Un item par régime ayant au moins un compte courtier déclaré. Trié, déterministe. */
     regimes: RegimeReconciliation[];
     /** Comptes ignorés faute de régime déclaré — à SIGNALER, jamais à ranger d'office. */

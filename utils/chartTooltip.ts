@@ -115,7 +115,7 @@ export function resolvePointByX<T>(
     return best;
 }
 
-export interface ClampTooltipArgs {
+interface ClampTooltipArgs {
     cursorX: number;
     cursorY: number;
     tooltipWidth: number;

@@ -27,7 +27,7 @@ export type AssetClass =
 
 export type AccountType = 'CELI' | 'REER' | 'NonReg';
 
-export interface AssetLocationInput {
+interface AssetLocationInput {
     annualGrossIncome: number;
     /**
      * [ASSETLOC-YEAR-2026] Année fiscale du barème à consulter. **OBLIGATOIRE** — et c'est le
@@ -56,7 +56,7 @@ export interface AssetLocationInput {
     }>;
 }
 
-export interface AssetLocationRecommendation {
+interface AssetLocationRecommendation {
     holdingIndex: number;
     assetClass: AssetClass;
     amount: number;
@@ -66,7 +66,7 @@ export interface AssetLocationRecommendation {
     rationale: string;
 }
 
-export interface AssetLocationResult {
+interface AssetLocationResult {
     totalAnnualLoss: number;
     recommendations: AssetLocationRecommendation[];
     summary: string;

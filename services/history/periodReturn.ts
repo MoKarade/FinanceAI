@@ -59,7 +59,7 @@ export function isBenchmarkCandidate(symbol: string, name?: string): boolean {
  * % est un 0,00 % techniquement exact mais TROMPEUR (donnée figée ≠ marché plat) → `null` (« — » honnête).
  * Si UN SEUL des deux est synthétique, le mouvement est réel (prix figé vs prix réel) → on garde le %.
  */
-export interface SeriesEndpoints {
+interface SeriesEndpoints {
     /** Valeur de la borne PASSÉE et sa date (YYYY-MM-DD). */
     from: number;
     fromDate: string;

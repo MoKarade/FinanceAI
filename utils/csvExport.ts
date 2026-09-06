@@ -24,7 +24,7 @@ export function escapeCsvField(value: unknown): string {
     return `"${str.replace(/"/g, '""')}"`;
 }
 
-export interface CsvColumn<T> {
+interface CsvColumn<T> {
     header: string;
     accessor: (row: T) => unknown;
 }

@@ -57,7 +57,7 @@ export interface W5Containers {
  *  mutateur parce que sa destination dépend de la position dans la boucle (il est produit AVANT le
  *  bloc de janvier → tampon `grossIncomeEnAttenteByUser`, jamais l'accumulateur direct). Vaut zéro
  *  partout quand aucun revenu locatif n'a été publié ce mois-ci. */
-export interface W5Resultat {
+interface W5Resultat {
     rentalNoiMensuelParProprietaire: MontantsParProprietaire;
 }
 

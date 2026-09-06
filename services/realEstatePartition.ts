@@ -35,7 +35,7 @@
 import type { RealEstateGoal } from '../types';
 import { monthsSince } from './projection/pastPurchaseInit';
 
-export interface RealEstateGoalsPartition {
+interface RealEstateGoalsPartition {
     /** Biens détenus aujourd'hui (photo du présent — page Immobilier, destination Config). */
     actual: RealEstateGoal[];
     /** Projets d'achat futurs (plans — page Projets immo, destination Vie). */

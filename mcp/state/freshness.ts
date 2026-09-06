@@ -16,7 +16,7 @@
 // exact utilisé (fenêtre de quelques ms, même blob utilisateur → écart d'affichage négligeable,
 // jamais de chiffre $ faux). Un vrai per-call viendrait avec `[MCP-WRITE-VERSION-TOKEN]`.
 
-export interface StateFreshness {
+interface StateFreshness {
     /** Epoch ms de la dernière écriture du blob source (updatedAt de l'enveloppe Drive). */
     updatedAt: number | null;
     /** Étiquette de la source (diagnostic) — ex. « Google Drive ». */

@@ -96,7 +96,7 @@ export const construireAmortissement = (p: ParamsAmortissement): ResultatAmortis
     return { data, totalInterest: totalInterestPaid, finalValue: propertyValue };
 };
 
-export interface ParamsComparaisonScenarios {
+interface ParamsComparaisonScenarios {
     amortization: number;
     totalCashNeeded: number;
     /** Loyer mensuel de départ du scénario « Louer » (croît de 3 %/an dans la boucle, tel quel). */

@@ -21,7 +21,7 @@ import type { LigneScenario } from './calculsImmoLocaux';
  * appréciation) reste chez le parent : la carte-conseil IA en bas de page lit les mêmes valeurs.
  * La carte lit elle-même le store pour le mode discret et la navigation (aucune donnée nouvelle).
  */
-export interface ScenariosComparatifsCardProps {
+interface ScenariosComparatifsCardProps {
     activeGoal: RealEstateGoal;
     amortization: number;
     projectedEquityAtAmortEnd: number | null;

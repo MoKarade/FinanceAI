@@ -83,7 +83,7 @@ export interface JanuaryHelpers {
     calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, skipBreakdown?: boolean, ageOpts?: AgeCreditOptions, employmentIncome?: number, realDeflator?: number) => FiscalReport;
 }
 
-export interface JanuaryResult {
+interface JanuaryResult {
     // Reset
     accRetraitsReerYearReset: number;       // 0
     accRentesYearReset: number;              // 0

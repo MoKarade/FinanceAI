@@ -21,7 +21,7 @@ const TTL_PRESETS = {
     dividends: 6 * 60 * 60 * 1000,
 } as const;
 
-export type CacheBucket = keyof typeof TTL_PRESETS;
+type CacheBucket = keyof typeof TTL_PRESETS;
 
 const store = new Map<string, CachedEntry<unknown>>();
 let sweepScheduled = false;

@@ -20,7 +20,7 @@
 
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
-export interface OAuthConfig {
+interface OAuthConfig {
     /** Clé HMAC de signature des tokens (≥ 32 caractères). */
     signingKey: string;
     /** Clé d'accès de l'utilisateur (la « porte » mono-user). */
@@ -52,7 +52,7 @@ interface TokenPayload {
     jti: string;           // unicité
 }
 
-export interface TokenSet {
+interface TokenSet {
     access_token: string;
     token_type: 'Bearer';
     expires_in: number;    // secondes

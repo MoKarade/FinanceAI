@@ -260,7 +260,7 @@ export const parseBankCsv = (raw: string): ParsedBankCsv => {
 };
 
 /** Forme minimale d'une transaction extraite d'un relevé PDF/image (via IA). */
-export interface RawBankTxn {
+interface RawBankTxn {
     date: string;        // ISO YYYY-MM-DD
     description: string;
     amount: number;

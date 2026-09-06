@@ -15,14 +15,11 @@
 // ── Statut observable + abonnement (syncStatusStore) ─────────────────────────
 export { getSyncStatus, subscribeSyncStatus, subscribeSyncNotice, type SyncStatus, type SyncNotice } from './syncStatusStore';
 
-// ── Types partagés (syncTypes) ───────────────────────────────────────────────
-export type { ConflictSideCounts, ConflictSummary } from './syncTypes';
-
 // ── Snapshot local + helpers purs testables (syncSnapshot) ───────────────────
 export { stripApiKeys, computeIsEmpty, summarizeForConflict } from './syncSnapshot';
 
 // ── Push (syncPush) ──────────────────────────────────────────────────────────
-export { pushNow, schedulePush, flushPush, markApiKeysHydrated, type PushResult } from './syncPush';
+export { pushNow, schedulePush, flushPush, markApiKeysHydrated } from './syncPush';
 
 // ── Pull (syncPull) ──────────────────────────────────────────────────────────
 export { pullNow } from './syncPull';
@@ -52,6 +49,4 @@ export {
     setSyncPassphrase,
     clearSyncPassphrase,
     removeSyncPassphrase,
-    type SetPassphraseResult,
-    type RemovePassphraseResult,
 } from './syncPassphrase';

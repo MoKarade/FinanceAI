@@ -19,9 +19,9 @@
 import type { AppState, FintableSyncReport, Transaction } from '../../types';
 
 /** `never` = jamais synchronisé · `error` = la passe a échoué · `stale` = le flux est gelé. */
-export type SyncHealthStatus = 'ok' | 'stale' | 'error' | 'never';
+type SyncHealthStatus = 'ok' | 'stale' | 'error' | 'never';
 
-export interface SyncHealth {
+interface SyncHealth {
     status: SyncHealthStatus;
     /** Seuil de gel RETENU pour ce profil (jours) — adaptatif, exposé pour être auditable. */
     staleThresholdDays: number;

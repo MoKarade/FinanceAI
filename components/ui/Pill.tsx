@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 
-export interface PillOption<T extends string> {
+interface PillOption<T extends string> {
     value: T;
     label: React.ReactNode;
     icon?: React.ReactNode;

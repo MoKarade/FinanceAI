@@ -17,7 +17,7 @@
 // donnerait une somme qui ne correspond pas à la courbe. On les montre donc, en les marquant.
 import type { Transaction } from '../../types';
 
-export interface DayTransactionsResult {
+interface DayTransactionsResult {
     /** Transactions qui MEUVENT la courbe ce jour-là (base d'exclusion du registre). */
     readonly counted: ReadonlyArray<Transaction>;
     /** Doublons et virements internes : affichés, mais hors du calcul — chacun avec sa raison. */

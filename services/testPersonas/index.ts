@@ -14,8 +14,6 @@ import { buildJeuneCoupleDink } from './jeuneCoupleDink';
 import { buildAutonomeMonoparentale } from './autonomeMonoparentale';
 import { buildGillesActifDecaisse } from './gillesActifDecaisse';
 
-export type { TestPersona } from './types';
-
 export const DEFAULT_PERSONA_ID = 'couple-confort';
 
 export const TEST_PERSONAS: TestPersona[] = [

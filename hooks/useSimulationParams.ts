@@ -65,7 +65,7 @@ export function useTodayIsoLocal(): string {
     return useSyncExternalStore(_subscribeMonthEpoch, _getTodayIso, _getTodayIso);
 }
 
-export interface SimulationParamsBundle {
+interface SimulationParamsBundle {
     /** Entrée du moteur : `calculateFutureProjection(params, …)`. */
     params: SimulationParams;
     /** Reconstruction du portefeuille passé (sert aussi au préfixe « passé réel » du graphe). */

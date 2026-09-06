@@ -33,7 +33,7 @@ import { viewContextMatchesTab } from '../../services/aiChat/viewContext';
 import { buildFutureViewDetail, buildFutureChips } from '../../services/aiChat/futureViewContext';
 import { TAB_LABELS } from '../../constants';
 
-export type AiChatVariant = 'panel' | 'tab';
+type AiChatVariant = 'panel' | 'tab';
 
 const SUGGESTED_PROMPTS: Array<{ icon: IconName; label: string; prompt: string }> = [
     { icon: 'retirement', label: 'Quand retraite ?', prompt: "À quel âge puis-je raisonnablement prendre ma retraite selon mes finances actuelles ?" },

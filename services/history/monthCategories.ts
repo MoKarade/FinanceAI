@@ -22,7 +22,7 @@
 // mentait, et un commentaire faux sur une base de calcul se propage.
 import type { Transaction } from '../../types';
 
-export interface CategoryTotal {
+interface CategoryTotal {
     readonly categorie: string;
     /** Somme des SORTIES de la catégorie, en valeur POSITIVE (convention `Expenses` du moteur). */
     readonly montant: number;
@@ -30,7 +30,7 @@ export interface CategoryTotal {
     readonly nombre: number;
 }
 
-export interface MonthCategoriesResult {
+interface MonthCategoriesResult {
     /** Catégories de DÉPENSE, triées par montant décroissant (la plus lourde d'abord). */
     readonly depenses: ReadonlyArray<CategoryTotal>;
     /**

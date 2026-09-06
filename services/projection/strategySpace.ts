@@ -88,7 +88,7 @@ export function estimateRuntimeMs(nConfigs: number, iterations: number, costPerS
     return nConfigs * iterations * costPerSimMs;
 }
 
-export interface EngineArgs {
+interface EngineArgs {
     params: SimulationParams;
     strategy: AllocationStrategy;
     delayPensions: boolean;

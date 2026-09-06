@@ -24,7 +24,7 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISSED_KEY = 'pwa-install-dismissed:v1';
 const DISMISS_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
 
-export interface PwaInstallState {
+interface PwaInstallState {
     /** L'app est-elle installable (browser supporte + critères PWA OK + pas déjà installée) ? */
     canInstall: boolean;
     /** Déjà installée (chargée en mode standalone) ? */

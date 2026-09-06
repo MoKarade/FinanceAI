@@ -83,7 +83,7 @@ const DEFAULT_ACTIVITIES: ActivitiesLevel = 'legeres';
 const DEFAULT_UNI: UniversityType = 'uni_local';
 const DEFAULT_CAR: CarGift = 'non';
 
-export interface ChildCostBreakdown {
+interface ChildCostBreakdown {
     /** Dépenses récurrentes (couches, nourriture, vêtements). */
     base: number;
     /** Garderie, frais scolaires, activités. */

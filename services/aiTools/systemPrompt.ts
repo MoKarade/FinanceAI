@@ -47,7 +47,7 @@ OUTILS — Règles d'usage :
 }
 
 /** Bloc système du SDK Anthropic (sous-ensemble utilisé — évite d'importer le SDK ici). */
-export interface AgentSystemBlock {
+interface AgentSystemBlock {
     type: 'text';
     text: string;
     cache_control?: { type: 'ephemeral' };

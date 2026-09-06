@@ -56,7 +56,7 @@ export interface MerchantProfile {
 }
 
 /** Entrée minimale — volontairement structurelle (aucun type d'app importé). */
-export interface MerchantObservation {
+interface MerchantObservation {
     payee: string;
     /** Montant SIGNÉ ; seules les dépenses (négatives) comptent pour un profil d'abonnement. */
     amount: number;

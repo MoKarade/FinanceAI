@@ -11,7 +11,7 @@ import type { ResultatAmortissement } from './calculsImmoLocaux';
  * (lot 153). Purement présentationnel : toutes les données arrivent en props, la table locale
  * vient de `construireAmortissement` (calculsImmoLocaux).
  */
-export interface AmortissementCardsProps {
+interface AmortissementCardsProps {
     amortizationData: ResultatAmortissement;
     welcomeTax: number;
     notaryFees: number;

@@ -85,7 +85,7 @@ export function returnRatesForProfile(
 
 // Bibliothèque des leviers sélectionnables in-app. `values` = valeurs candidates ;
 // l'utilisateur en coche un sous-ensemble par lancement. `key` = champ de StrategyConfig.
-export interface LeverDef<K extends keyof StrategyConfig = keyof StrategyConfig> {
+interface LeverDef<K extends keyof StrategyConfig = keyof StrategyConfig> {
     key: K;
     label: string;
     /** Valeurs proposées + libellé court pour l'UI. */
@@ -219,7 +219,7 @@ export function leverValueLabel(key: keyof StrategyConfig, value: unknown): stri
 }
 
 /** État à écrire pour « appliquer » une StrategyConfig aux paramètres réels du Futur. */
-export interface AppliedSettings {
+interface AppliedSettings {
     projection: ProjectionConfig;
     retirementGoal: RetirementGoal;
     /** = withdrawalOrder ; sert à sélectionner le scénario correspondant dans l'UI. */

@@ -21,7 +21,7 @@ export interface AssetBreakdown {
   crypto: number;
 }
 
-export interface MonthlyBudgetAggregates {
+interface MonthlyBudgetAggregates {
   income: number;
   expenses: number;
   savings: number;

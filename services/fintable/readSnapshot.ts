@@ -24,7 +24,7 @@ import type { FintableClient } from './client';
 /** Taille de page — le maximum documenté (500) minimise les allers-retours sur un gros historique. */
 const PAGE_LIMIT = 500;
 
-export interface ReadSnapshotOptions {
+interface ReadSnapshotOptions {
     /** `YYYY-MM-DD` inclusif — borne basse des transactions. */
     dateFrom?: string;
     /** `YYYY-MM-DD` inclusif — borne haute des transactions. */

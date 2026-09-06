@@ -5,7 +5,7 @@
 
 import type { Asset, AssetPurchase } from '../types';
 
-export interface PurchaseStats {
+interface PurchaseStats {
     totalQuantity: number;
     /** Coût moyen pondéré par quantité (= dollar cost average) */
     averageCost: number;

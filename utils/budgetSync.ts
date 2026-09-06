@@ -180,7 +180,7 @@ export function computeMonthlyActualAverages(
     };
 }
 
-export interface BudgetSyncResult {
+interface BudgetSyncResult {
     items: BudgetCategory[];
     added: string[];
     removed: string[];
@@ -283,7 +283,7 @@ export function syncBudgetWithTransactionCategories(
     };
 }
 
-export interface LedgerRow {
+interface LedgerRow {
     category: string;
     byMonth: number[];
     total: number;
@@ -291,7 +291,7 @@ export interface LedgerRow {
     monthlyAverage: number;
 }
 
-export interface MonthlyLedger {
+interface MonthlyLedger {
     months: string[]; // « YYYY-MM », ancien → récent (dernier = mois COURANT, partiel)
     /** Lignes de DÉPENSES (catégories fournies = postes du budget), tri par total décroissant. */
     expenseRows: LedgerRow[];

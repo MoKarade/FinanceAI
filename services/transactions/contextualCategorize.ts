@@ -19,9 +19,9 @@
 import { ruleCategorizeDetailed, type RuleCategory } from '../import/categoryRules';
 import { profileForPayee, type MerchantProfile } from './merchantProfile';
 
-export type CategorizationSource = 'rule' | 'recurrence';
+type CategorizationSource = 'rule' | 'recurrence';
 
-export interface ContextualCategorization {
+interface ContextualCategorization {
     category: RuleCategory | null;
     /** `recurrence` = la catégorie vient d'être promue « Abonnements » par le profil du marchand. */
     source: CategorizationSource;

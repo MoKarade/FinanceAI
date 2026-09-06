@@ -56,7 +56,7 @@ export function addUsage(a: AiTokenUsage, b: AiTokenUsage): AiTokenUsage {
  * qui figent une année). C'est un INVENTAIRE qui porte la dette — et il doit décroître : un id daté
  * n'a rien à y faire, et le test le refuse.
  */
-export interface TarifModele {
+interface TarifModele {
     readonly input: number;
     readonly output: number;
     /** Date du relevé sur docs.claude.com/pricing — ce que l'app peut honnêtement affirmer. */

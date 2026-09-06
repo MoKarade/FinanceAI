@@ -290,7 +290,7 @@ export const saveApiKeys = async (keys: PersistedApiKeys): Promise<void> => {
  *  - 'decrypt_failed': blob présent mais clé IDB absente / blob altéré
  *                      → l'UI doit informer l'utilisateur de re-saisir ses clés
  */
-export type LoadApiKeysResult =
+type LoadApiKeysResult =
     | { status: 'ok'; keys: PersistedApiKeys }
     | { status: 'empty' }
     | { status: 'decrypt_failed' };

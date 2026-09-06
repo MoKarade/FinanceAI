@@ -21,7 +21,7 @@
 > « passer la fixture aux gardes de conservation ». Fixture hissée en `tests/helpers/menageProprietaire.ts` (depuis
 > deux copies identiques) ; cinq tests dans `projection.divorceConservation` : avec une hypothèque, la reconstruction
 > du patrimoine change de formule (`DettesNonImmo`, pas `DetteTotale`) — la contre-épreuve naïve mesure l'écart
-> (= l'hypothèque, 343 736 $). Ratios au divorce : hypothèque 0,4987, hors immo 0,4926. Perturbations : 1 et 6
+> (= l'hypothèque, 343 736 $). Ratios au divorce : hypothèque 0,4987, hors immo 0,4926. Perturbations : 2 et 10
 > rouges. Tests seuls : rien de servi ne change. Archive du lot 196.
 
 > ## 🟦 Session 2026-09-06 — Lot 196 : le flux du compte courant est publié dans le futur (`[ENG-LIQUID-FLUX-FORM]`)

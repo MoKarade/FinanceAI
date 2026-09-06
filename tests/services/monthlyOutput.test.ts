@@ -90,8 +90,6 @@ const makeCtx = (overrides: Partial<MonthlyOutputCtx> = {}): MonthlyOutputCtx =>
     withdrawalNonReg: 0,
     contribCrypto: 0,
     withdrawalCrypto: 0,
-    contribLiquid: 0,
-    withdrawalLiquid: 0,
     contribCELIAPP: 0,
     withdrawalCELIAPP: 0,
     contribREEE: 0,

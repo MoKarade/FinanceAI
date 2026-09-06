@@ -148,8 +148,6 @@ export interface MonthlyOutputCtx {
     arriveeMeltdownNonReg?: number;
     contribCrypto: number;
     withdrawalCrypto: number;
-    contribLiquid: number;
-    withdrawalLiquid: number;
     contribCELIAPP: number;
     withdrawalCELIAPP: number;
     contribREEE: number;
@@ -232,7 +230,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
         contribCELI, withdrawalCELI, contribREER, withdrawalREER,
         contribNonReg, withdrawalNonReg, arriveeMeltdownNonReg = 0, contribCrypto, withdrawalCrypto,
-        contribLiquid, withdrawalLiquid, contribCELIAPP, withdrawalCELIAPP,
+        contribCELIAPP, withdrawalCELIAPP,
         contribREEE, withdrawalREEE,
         growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
         growthPctCELI, growthPctREER, growthPctNonReg, growthPctCrypto, growthPctLiquid, growthPctCELIAPP, growthPctREEE,
@@ -354,7 +352,22 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         NetTransferREER: round2((contribREER - withdrawalREER)),
         NetTransferNonReg: round2((contribNonReg + arriveeMeltdownNonReg - withdrawalNonReg)),
         NetTransferCrypto: round2((contribCrypto - withdrawalCrypto)),
-        NetTransferLiquid: round2((contribLiquid - withdrawalLiquid)),
+        // [ENG-LIQUID-FLUX-FORM] Le flux du compte courant est DÉRIVÉ de son solde : tout ce qui a
+        // bougé ce mois-ci hors intérêts. Avant : `contribLiquid − withdrawalLiquid`, deux
+        // accumulateurs que seuls des chemins MARGINAUX alimentaient (immobilier, objectifs enfants,
+        // sauvetage de découvert) — le flux ORDINAIRE (paie encaissée, dépenses payées, cotisations
+        // sorties vers les placements, retraits arrivés) ne les touchait jamais, donc le champ valait
+        // 0 sur 361 points pendant que le solde bougeait (355 mois sur 360 en résiduel, pire
+        // 108 608 $). Le passé (`dailyPastLedger`) publie `income − expenses` : le même champ avait
+        // deux sens de part et d'autre d'aujourd'hui.
+        // ⚠️ Dérivé et non COMPOSÉ, à dessein : le liquide est mutée par ~30 sites dans cinq
+        // modules (cascade, immobilier, enfants, impôts, W5, divorce) ; en composer la somme
+        // reproduirait la classe `MODULE-ECRIT-HORS-CHECKLIST` au premier producteur oublié. Le
+        // sens du champ est celui du passé — « le mouvement du compte courant » — et l'identité
+        // `ΔLiquidités = MarketGrowthLiquid + NetTransferLiquid` tient par construction ; ce que
+        // le test verrouille, c'est qu'un mois ordinaire rend bien `NetSalary − Expenses −
+        // Σcotisations` (`tests/services/netTransferLiquidVide.test.ts`).
+        NetTransferLiquid: round2(liquid - prevLiquid - growthLiquid),
         NetTransferCELIAPP: round2((contribCELIAPP - withdrawalCELIAPP)),
         NetTransferREEE: round2((contribREEE - withdrawalREEE)),
         ExpenseInflationImpact: round2(monthlyExpenses * (simInflation / 100 / 12)),

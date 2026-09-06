@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-05 (Un huitième persona de test : « Gilles, 71 ans »)
+
+- **Ajouté** : dans Réglages → Mode test, le persona « Gilles, 71 ans » — seul, encore consultant à temps
+  partiel jusqu'à 76 ans, maison payée, gros REER et un compte non-enregistré. C'est le seul persona dont
+  les retraits FERR obligatoires commencent PENDANT qu'il travaille : il sert à vérifier l'impôt d'un
+  ménage actif qui décaisse (salaire, FERR et dividendes dans la même déclaration), un cas qu'aucun des
+  sept autres n'exerçait.
+
 ## [unreleased] — 2026-09-05 (Le Centre fiscal signale un taux de change estimé)
 
 - **Ajouté** : dans « Revenus & Déductions », la ligne « Invest. Non-Enregistrés » porte le badge

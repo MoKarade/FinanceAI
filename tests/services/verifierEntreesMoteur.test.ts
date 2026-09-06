@@ -31,9 +31,9 @@ const etatAvecProjection = (): AppState => {
 };
 
 describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entrée illisible', () => {
-    it('ne refuse RIEN sur les sept personas — le cas nominal reste calculable', () => {
+    it('ne refuse RIEN sur les huit personas — le cas nominal reste calculable', () => {
         // Anti-vacuité de la garde entière : si elle refusait un état sain, elle casserait l'app.
-        // Les sept sont balayés parce que « le persona par défaut passe » ne dit rien des autres.
+        // Les huit sont balayés parce que « le persona par défaut passe » ne dit rien des autres.
         // ⚠️ `projection` est AJOUTÉE à chaque persona, et c'est le cœur du contrôle depuis que le
         // scan porte sur les params complets : aucun persona ne porte `projection` (le store
         // l'apporte au montage), donc sans cette ligne ce test mesurait un objet plus ÉTROIT que la
@@ -45,7 +45,7 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entr�
             etat.projection = { ...INITIAL_PROJECTION } as AppState['projection'];
             return { id: p.id, refus: params(etat).entreesRefusees ?? [] };
         });
-        expect(refuses).toHaveLength(7);
+        expect(refuses).toHaveLength(8);
         expect(refuses.filter((r) => r.refus.length > 0)).toEqual([]);
     });
 

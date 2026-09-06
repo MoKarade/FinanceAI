@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[ENG-TTP-NEGATIF]` + `[A11Y-PRIVACY-ONBOARDING]` — CADUCS, MESURÉS (lot 194, PR #925)
+
+Tickets d'origine tels qu'au moment de l'archivage (fermés sans code : la mesure a montré que le défaut décrit n'atteint aucun écran) :
+
+- [x] **`[ENG-TTP-NEGATIF]`** ✅ **CADUQUE, MESURÉ au lot 194 (2026-09-05)** — le risque de libellé n'existe pas : **0 composant** lit `totalTaxesPaid` (grep `components/`), la surface MCP l'a déjà renommé `netTaxSettlements` (`[PROJ-TAXPAID-LABEL]`, `getProjection.spec.ts` / `simulateWhatIf.spec.ts`), et le seul « impôt à vie » affiché (`StrategyOptimizerPanel`) est `lifetimeTax` = impôt TOTAL modélisé (`[ENG-RANKTAX-ESTATE]`). Le fond (compteur négatif par construction) vit dans `[PROJ-TAXPAID-SOLDE-AVRIL]`, qui reste ouvert. Contexte d'origine : (S) — `totalTaxesPaid` ressort NÉGATIF pour salarié (compte seulement
+  débits du liquide, retenues à la source n'y transitent pas → seuls remboursements nets). Cohérent
+  avec contrat documenté, mais libellé à risque si l'UI affiche « Impôt à vie ». Jugement quantitatif
+  à financial-integrity.
+
+- [x] **`[A11Y-PRIVACY-ONBOARDING]`** ✅ **CADUQUE, MESURÉ au lot 194 (2026-09-05)** — masquer ces champs serait INERTE : `isPrivacyMode` est EXCLU de la persistance (`store/optionsPersistance.ts`, déstructuré hors de `persistable`), donc chaque chargement démarre hors mode discret ; et `Onboarding` n'est rendu que sous `isFirstLaunch` (`App.tsx`), sans aucune relance possible (grep : aucun `setIsFirstLaunch(true)` hors initialisation). L'onboarding ne peut donc jamais s'afficher en mode discret — `UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`, version « un masque sans état qui le déclenche ». À rouvrir si l'onboarding devient relançable. Contexte d'origine : (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
+  masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
+  discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
+
+
 ## 2026-09-05 — `[FX-BADGE-SURFACES-RESTANTES]` — LIVRÉ (lot 193, PR #924)
 
 Ticket d'origine tel qu'au moment de l'archivage :

@@ -2,7 +2,7 @@
 //
 // Registre des personas du mode test. Ordre = ordre d'affichage dans le menu.
 // Spectre couvert : seul/couple, fauché → moyen → aisé → riche, locataire/
-// proprio, enfants/non, immigré/natif, actif/pré-retraite.
+// proprio, enfants/non, immigré/natif, actif/pré-retraite/actif-qui-décaisse (71+).
 
 import type { TestPersona } from './types';
 import { buildCoupleConfort } from './coupleConfort';
@@ -12,6 +12,7 @@ import { buildCoupleDettes } from './coupleDettes';
 import { buildPreRetraiteRiche } from './preRetraiteRiche';
 import { buildJeuneCoupleDink } from './jeuneCoupleDink';
 import { buildAutonomeMonoparentale } from './autonomeMonoparentale';
+import { buildGillesActifDecaisse } from './gillesActifDecaisse';
 
 export type { TestPersona } from './types';
 
@@ -87,6 +88,17 @@ export const TEST_PERSONAS: TestPersona[] = [
             + 'sans REER d\'employeur (cotise elle-même). Teste le revenu irrégulier, le REER '
             + 'auto-cotisé et la situation monoparentale.',
         build: buildAutonomeMonoparentale,
+    },
+    {
+        id: 'gilles-actif-decaisse',
+        emoji: '🧓',
+        label: 'Gilles, 71 ans',
+        tagline: 'Seul, travaille encore à temps partiel, décaisse son REER',
+        description: 'Célibataire de 71 ans, consultant à temps partiel jusqu\'à 76 ans, maison payée, '
+            + 'gros REER (les retraits FERR obligatoires commencent à 72 ans PENDANT qu\'il travaille) '
+            + 'et un compte non-enregistré. Teste l\'impôt d\'un ménage ACTIF qui décaisse : salaire, '
+            + 'FERR et dividendes empilés dans la même déclaration.',
+        build: buildGillesActifDecaisse,
     },
 ];
 

@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-06 (Quatre boutons verts, violets et indigo un peu plus foncés pour rester lisibles)
+
+- **Corrigé** : les boutons « Enregistrer » d'une dette, « Sauvegarder » (Paramètres), « Ajouter » un aléa de vie et
+  le bouton indigo des transactions avaient un texte blanc sur un fond trop clair, au repos ou au survol (contraste
+  mesuré entre 2,3 et 4,5 pour un minimum de 4,5). Leurs teintes passent au cran supérieur de la même couleur ; le
+  contrôle automatique de contraste voit désormais toutes les couleurs standard de Tailwind, pas seulement celles du
+  projet.
+
 ## [unreleased] — 2026-09-06 (Le journal de décembre dit combien d'adultes paient la RAMQ et le FSS, dans la même unité que le total)
 
 - **Corrigé** : dans le détail d'un mois de décembre, les lignes « RAMQ médicaments » et « FSS » affichaient un

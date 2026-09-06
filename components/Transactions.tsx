@@ -603,7 +603,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             </select>
                             <button
                                 onClick={handleAddRule}
-                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-meta font-bold rounded-lg transition-colors"
+                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-meta font-bold rounded-lg transition-colors"
                             >
                                 + Ajouter
                             </button>

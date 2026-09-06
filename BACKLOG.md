@@ -238,41 +238,6 @@
   d'études est imposable dans les mains de l'ÉTUDIANT, pas du souscripteur. Le moteur le laisse à
   ~0 $ (réaliste : BPA + crédits de scolarité couvrent un étudiant sans autre revenu) mais c'est une
   hypothèse, PAS un calcul. Le coder exigerait un TROISIÈME contribuable dans le moteur.
-- [x] **`[FISC-CONST-ANCHOR-DEBT]`** ✅ **LIVRÉ EN ENTIER au lot 207 (2026-09-06) — les âges-seuils restants** : recensés sur source décommentée, **11 sites dans 4 modules** sous **SIX règles distinctes** pour quatre nombres — `18` en portait TROIS (droits CELI/CELIAPP/REER → `REGISTERED_PLAN_MIN_AGE` ; résidence PSV → `PSV_RESIDENCY_START_AGE` ; période cotisable RRQ → `RRQ_CONTRIBUTORY_START_AGE`), `71` DEUX (fermeture CELIAPP → `FHSA_MAX_HOLDER_AGE` ; REER→FERR → `RRSP_TO_RRIF_CONVERSION_AGE`, qui existait), `15` (→ `FHSA_MAX_PARTICIPATION_YEARS`), `75` (→ `PSV_BONUS_AGE`). Une constante PAR SENS, sourcée dans `FISCAL_REFERENCE` (CELIAPP fermeture, CELI 18 ans : source ARC relayée, canada.ca inaccessible depuis le conteneur le 2026-09-06 — dit tel quel dans la doc). 7 entrées d'inventaire du ratchet RÉSOLUES (retirées). **Six perturbations, six rouges** — dont trois qui étaient MUETTES sur les fixtures existantes (âges 40/75 loin de la borne 71, tolérances `> 0,8×`) : trois témoins ajoutés (cas-frontière 71/72, relation natif = arrivé à 18 > arrivé à 30, espion moteur sur `psvResidencyYears` = 48 pour un natif de 1960). L'item « `2026` taxJanuary » du reliquat n'existait plus (aucun littéral, aucune entrée) ; `70`/`75` de `helpers.ts` sont des paliers de courbes de MODÈLE (`design`), pas des règles. Bit-identique par construction (mêmes valeurs). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, DETTE révélée par le tri de `[FISC-CONST-GUARD-V2]`) —
-  l'inventaire du ratchet (`utils/fiscalConstGuardV2.ts`) classe **14 entrées en famille `fiscal`**
-  qui vivent en DUR dans le moteur sans ancre `FISCAL_REFERENCE`. Les ancrer une par une, et les
-  remplacer par un import depuis la source unique. Par ordre de gravité :
-  ✅ **3 ancrées le 2026-08-06 (PR #572)** — `0.18` (droits REER → `RRSP_ROOM_RATE`), `500` (arrondi
-  CELI → `CELI_LIMIT_ROUNDING`), `0.20` (plateau FERR → `RRIF_RATE_PLATEAU`) : sorties du moteur,
-  ancrées dans FISCAL_REFERENCE, importées depuis la source unique. Leurs entrées d'inventaire ont
-  été RETIRÉES (résolues, pas exemptées).
-  ✅ **+2 le 2026-08-06 (PR #573)** — `72` → `RRIF_FIRST_WITHDRAWAL_AGE` (il vivait en dur sur
-  taxJanuary ET taxDecember : la configuration JUMELLE exacte qui avait laissé survivre le `0.18`)
-  et `95` → `RRIF_PLATEAU_AGE` (seuil qui n'était porté par AUCUN littéral, seulement par l'absence
-  d'entrée dans la table).
-  ✅ **+ la tranche « 65 » et le « 72 » RRQ le 2026-09-04 (lot 152, PR #883)** — le « seul vrai
-  gain restant » du ticket, re-recensé sur source DÉCOMMENTÉE : **13 littéraux dans 5 modules**
-  (le ticket disait « 2 modules »). Quatre constantes nommées dans `utils/tax.ts` — un sens par
-  constante : `RRQ_STANDARD_START_AGE` (pivot des facteurs, défaut de départ, libellé « rentes
-  reportées », VAN succession), `PSV_ELIGIBILITY_AGE` (borne basse, pivot du report, fin
-  d'accumulation de résidence, VAN), `PENSION_SPLIT_MIN_AGE` (gate décembre — projection.ts ET
-  taxDecember, le vrai jumeau à risque de divergence), `RRQ_MAX_DEFERRAL_AGE` (72, setupSimulation)
-  — plus l'IMPORT d'`AGE_AMOUNT_FED_MIN_AGE` dans `mkAgeOpts`. 5 entrées d'inventaire RÉSOLUES
-  (l'anti-fantôme du ratchet les a nommées lui-même), l'entrée `projection.ts::65` requalifiée
-  (seul reste le défaut de saisie `targetAge || 65`, qu'on n'ancre pas). Perturbation : 65→66 sur
-  `RRQ_STANDARD_START_AGE` rougit `retirementIncome` ; valeur restaurée, tout vert.
-  **RESTENT (hygiène au fil de l'eau) :**
-  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS) — ⚠️ à REQUALIFIER : c'est un index
-    d'extrapolation, pas un paramètre ARC. Probablement `structural`, à trancher en le codant.
-  - Âges-seuils : `18` (CELI/CELIAPP + résidence PSV) · `71` (conversion REER→FERR — la constante
-    `RRSP_TO_RRIF_CONVERSION_AGE` existe, reste l'import aux sites littéraux s'il en reste) · `15`
-    (durée de vie CELIAPP) · `70` (report PSV max) · `75` (bonification PSV) · `39`/`40` (déjà
-    nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS → doc seulement).
-  ⚠️ **Rendement décroissant assumé** : ce qui reste est des âges-seuils déjà commentés et sourcés
-  sur place, sans jumeau multi-modules — de l'hygiène au fil de l'eau, pas un chantier.
-  ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
-  meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
-  qui polluerait FISCAL_REFERENCE avec des choix de conception.
 - [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
   datée en tête de `docs/BACKLOG_ARCHIVE.md`).
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
@@ -312,7 +277,7 @@
 
 ---
 
-- [ ] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** (S — ⚠️ **À MOITIÉ LIVRÉ, ne pas re-faire**) —
+- [x] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** ✅ **FINI, constaté au lot 208 (2026-09-06)** : ses deux volets sont livrés — `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` (#721, deux sites dans `projection.ts`) et `householdGross: grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual)` (lot 178, archivé). Le ticket ne portait plus que la description de son propre reliquat, déjà tranché et livré (`PM-STALE-BACKLOG`). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S — ⚠️ **À MOITIÉ LIVRÉ, ne pas re-faire**) —
   ⚠️ Ticket RE-MESURÉ le 2026-08-25 : le volet `grossAnnaBaseAnnual` est **FERMÉ** depuis
   `[REEE-CONGE-SANS-GARDE-SOLO]` (PR #721) — `services/projection.ts` porte
   `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` au bloc enfants, plus la porte
@@ -1068,7 +1033,7 @@
 
 ### 🔴 Interface — atteignabilité et clavier
 
-- [ ] **`[A11Y-CONTRAST-ANGLE-MORT-541]`** (M, ÉLEVÉ — **trouvé par Claude en recoupant deux rapports**)
+- [x] **`[A11Y-CONTRAST-ANGLE-MORT-541]`** ✅ **LIVRÉ au lot 208 (2026-09-06) — outil élargi, rejoué, offenders corrigés par MESURE** : re-mesuré **539 occurrences / 92 classes / 70 fichiers** (le ticket disait 541 / 65). (1) `scripts/lib/ctaContrast.ts` résout maintenant la palette Tailwind PAR DÉFAUT depuis `tailwindcss/colors` (source unique de ces hex, tokens du projet d'abord) ; en chemin, DEUX autres angles morts de l'extracteur : le texte de SURVOL (`hover:text-white`) n'était jamais apparié au fond de survol (faux offender violet-300 sur violet-600 = 3,09 alors que le blanc du survol vaut 5,70), et un bouton au repos TRANSLUCIDE (`bg-violet-600/20`) et au survol PLEIN était ignoré en entier. (2) Rejoué : **19 paires CTA** (8 avant) et une passe TEXTE neuve (179 classes par défaut lues, 102 combinaisons sur les 3 fonds) — **texte par défaut sur fond de page : 0 sous 4,5** (le seul candidat, `text-rose-700`, est sur son PROPRE fond blanc, 5,9 — un élément qui porte son fond n'est pas sur le fond de page) ; **CTA : 6 offenders réels dans 4 fichiers**, blanc sur `green-600` = 3,30 au repos (DebtManager, BackupPanel) et survols `green-500` 2,28 / `purple-500` 3,96 / `indigo-500` 4,47 (LifeEvents, Transactions). (3) Corrigés par mesure selon la décision Marc 2026-08-24 (« corriger, pas tolérer ») : `green-700`/`green-800` (5,02 / 7,13), `purple-700` (6,98), `indigo-700` (7,90). Garde `tests/a11y/ctaContrast.test.ts` +3 cas (résolveur par défaut, appariement du survol, passe texte avec anti-vacuité) ; quatre perturbations aux signatures distinctes. Reste hors périmètre, inchangé : `[A11Y-CTA-HORS-SCAN]` (tokens plats en fond, filtres CSS, fonds translucides). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, ÉLEVÉ — **trouvé par Claude en recoupant deux rapports**)
   — `scripts/check-contrast.ts` n'itère que sur la palette du projet (`COLORS` de
   `tailwind.config.js` : `ink`, `success`, `warning`, `danger`, `info`, `primary` — vérifié l:39-51).
   Or le code utilise **541 classes de couleurs Tailwind PAR DÉFAUT dans 65 fichiers** de

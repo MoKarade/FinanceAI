@@ -22,7 +22,7 @@
 // (protection nulle). On ne teste que les valeurs HEX opaques : les tokens `rgba(...)` (bg/border
 // translucides) exigeraient une composition sur le fond sous-jacent (hors périmètre de ce contrôle).
 import twConfig from '../tailwind.config.js';
-import { contrastRatio, extraireCtaPaires, isOpaqueHex, SEUIL_AA_LARGE, SEUIL_AA_NORMAL } from './lib/ctaContrast.ts';
+import { contrastRatio, extraireCtaPaires, extraireTextePaires, isOpaqueHex, SEUIL_AA_LARGE, SEUIL_AA_NORMAL } from './lib/ctaContrast.ts';
 
 const COLORS = (twConfig as { theme?: { extend?: { colors?: Record<string, unknown> } } })?.theme?.extend?.colors ?? {};
 
@@ -147,6 +147,23 @@ console.log(`\n- CTA conformes AA texte normal : ${ctaResults.length - ctaFailur
 if (ctaFailures.length > 0) {
     console.error(`\n❌ ${ctaFailures.length} CTA sous le seuil AA (${SEUIL_AA_NORMAL}) — corrige la teinte PAR MESURE (un shade hors palette est un no-op silencieux).`);
     ctaFailures.forEach(r => console.error(`   ${r.text} sur ${r.background} : ${r.ratio.toFixed(2)}`));
+    process.exit(1);
+}
+
+// [A11Y-CONTRAST-ANGLE-MORT-541] (lot 208) Troisième passe : le TEXTE de la palette Tailwind par défaut
+// (`text-amber-300`, `text-green-400`…) posé directement sur les fonds de page. La première passe ne
+// connaît que les tokens du projet ; 539 occurrences dans 70 fichiers lui échappaient.
+const { paires: textePaires, classesLues } = extraireTextePaires();
+if (classesLues < 30) {
+    console.error(`check-contrast: passe texte par défaut quasi vide (classes=${classesLues}) — le scan a-t-il cassé ?`);
+    process.exit(2);
+}
+const texteFailures = textePaires.filter((p) => p.ratio < SEUIL_AA_NORMAL);
+console.log(`\n## Texte de la palette par défaut sur les fonds de page (${textePaires.length} combinaisons, ${classesLues} classes lues)\n`);
+console.log(`- conformes AA texte normal : ${textePaires.length - texteFailures.length} / ${textePaires.length}`);
+if (texteFailures.length > 0) {
+    console.error(`\n❌ ${texteFailures.length} texte(s) par défaut sous le seuil AA sur un fond de page :`);
+    texteFailures.sort((a, b) => a.ratio - b.ratio).forEach((r) => console.error(`   ${r.text} sur ${r.bg} : ${r.ratio.toFixed(2)} (${r.sites.slice(0, 3).join(', ')})`));
     process.exit(1);
 }
 

@@ -323,7 +323,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     </select>
                                 </div>
                             )}
-                            <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold h-[42px]">Ajouter</button>
+                            <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded font-bold h-[42px]">Ajouter</button>
                             {eventError && <p className="lg:col-span-5 text-meta text-red-300 mt-1" role="alert">{eventError}</p>}
                         </div>
                     )}

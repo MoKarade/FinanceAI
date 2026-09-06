@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 208 : l'arbitre de contraste voit enfin la palette Tailwind par défaut (`[A11Y-CONTRAST-ANGLE-MORT-541]`, fini) + `[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]` fermé
+> 539 occurrences de la palette par défaut dans 70 fichiers n'étaient vues par aucune passe. Résolveur élargi depuis
+> `tailwindcss/colors`, deux autres angles morts de l'extracteur fermés en chemin (texte de survol non apparié, bouton
+> translucide au repos ignoré). Rejoué : 19 paires CTA (8 avant), passe texte neuve (0 offender) ; 6 boutons réels sous le
+> seuil dans 4 fichiers, corrigés par mesure (green-700/800, purple-700, indigo-700). Garde +3 cas, 4 perturbations.
+> Servi : couleurs de 4 boutons → déploiement à vérifier. Archive du lot 207.
+
 > ## 🟦 Session 2026-09-06 — Lot 207 : les âges-seuils restants ancrés, une constante PAR SENS (`[FISC-CONST-ANCHOR-DEBT]`, fini)
 > 11 sites / 4 modules, quatre nombres, SIX règles : `18` en portait trois (CELI/CELIAPP/REER, résidence PSV, cotisation RRQ),
 > `71` deux (fermeture CELIAPP ≠ REER→FERR). Six constantes nommées dans `utils/tax.ts` (+ `RRSP_TO_RRIF_CONVERSION_AGE`

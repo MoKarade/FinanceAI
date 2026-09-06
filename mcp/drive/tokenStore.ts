@@ -48,6 +48,3 @@ export async function loadCredentials(path: string = credentialsPath()): Promise
     }
 }
 
-export async function clearCredentials(path: string = credentialsPath()): Promise<void> {
-    try { await fs.unlink(path); } catch { /* déjà absent */ }
-}

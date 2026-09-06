@@ -43,7 +43,7 @@ const ConfigShape = z
  * que, s'ils sont présents, les champs cités soient du bon type (tableaux /
  * objet config). Les blobs partiels (persona, Drive) restent acceptés.
  */
-export const AppStateShape = z
+const AppStateShape = z
     .object({
         transactions: z.array(z.unknown()).optional(),
         assets: z.array(z.unknown()).optional(),

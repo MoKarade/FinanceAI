@@ -134,7 +134,7 @@ export interface RealEstateCtx {
 // downsizing (le reste finance un bien plus petit payé cash). HYPOTHÈSE DE MODÈLE (ni fiscale ni
 // sourcée) : ~40 % = vendre une maison et en racheter une à ~60 % de l'équité (ordre de grandeur
 // d'un downsizing réel maison → condo/plus petit). Le gain est EXEMPT d'impôt (résidence principale, ARC).
-export const DOWNSIZE_RELEASE_PCT = 0.4;
+const DOWNSIZE_RELEASE_PCT = 0.4;
 
 import { handleNonRegSale } from './portfolioOps';
 import { smithHelocAnnualRate } from './modelAssumptions';

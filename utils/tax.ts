@@ -37,20 +37,21 @@ export const BASIC_PERSONAL_AMOUNT_QC = 18952;
 // RRQ 2026 : 5,30 % base + 1,00 % volet 1 = 6,30 %. Le taux de base a été réduit
 // de 5,40 % à 5,30 % en 2026 (cotisation totale employé+employeur 10,8 % → 10,6 %).
 // Vérifié 2026-05 contre Revenu Québec / Retraite Québec.
-export const RRQ_RATE = 0.063;
+const RRQ_RATE = 0.063;
 export const RRQ_MPE = 74600;            // MGA 2026 (= YMPE RPC ; +4,6 % vs 71 300 $ en 2025)
-export const RRQ_EXEMPTION = 3500;
+const RRQ_EXEMPTION = 3500;
 export const RRQ_MAX = (RRQ_MPE - RRQ_EXEMPTION) * RRQ_RATE; // ≈ 4 479,30 $
 
-export const RRQ_PART2_RATE = 0.04;      // volet 2 (MGA → MGAS), inchangé
-export const RRQ_YAMPE = 85000;          // MGAS 2026 (2e plafond)
-export const RRQ_PART2_MAX = (RRQ_YAMPE - RRQ_MPE) * RRQ_PART2_RATE; // = 416 $
+const RRQ_PART2_RATE = 0.04;      // volet 2 (MGA → MGAS), inchangé
+const RRQ_YAMPE = 85000;          // MGAS 2026 (2e plafond)
+// Cotisation max du volet 2 = (RRQ_YAMPE − RRQ_MPE) × RRQ_PART2_RATE = 416 $ (2026) : dérivée, jamais lue
+// par le code (constante nommée retirée au lot 205 — la valeur reste documentée dans FISCAL_REFERENCE §RRQ).
 
-export const RQAP_RATE = 0.0043;
+const RQAP_RATE = 0.0043;
 export const RQAP_MAX_INCOME = 103000;
 export const RQAP_MAX = 442.90;
 
-export const AE_RATE_QC = 0.0130;
+const AE_RATE_QC = 0.0130;
 export const AE_MAX_INCOME = 68900;
 export const AE_MAX_QC = 895.70;
 
@@ -84,15 +85,15 @@ export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond a
 // retirementIncome.ts + setupSimulation.ts — audit fiscal-accuracy 2026-06).
 // Réf docs/FISCAL_REFERENCE.md §6. Retraite Québec (RRQ) + Service Canada (PSV).
 // ============================================
-export const RRQ_DEFERRAL_RATE_PER_MONTH = 0.007;  // +0,7 %/mois de report APRÈS 65 ans (RRQ)
-export const RRQ_EARLY_RATE_PER_MONTH = 0.006;     // −0,6 %/mois d'anticipation AVANT 65 ans (RRQ)
-export const PSV_DEFERRAL_RATE_PER_MONTH = 0.006;  // +0,6 %/mois de report APRÈS 65 ans (PSV/OAS)
+const RRQ_DEFERRAL_RATE_PER_MONTH = 0.007;  // +0,7 %/mois de report APRÈS 65 ans (RRQ)
+const RRQ_EARLY_RATE_PER_MONTH = 0.006;     // −0,6 %/mois d'anticipation AVANT 65 ans (RRQ)
+const PSV_DEFERRAL_RATE_PER_MONTH = 0.006;  // +0,6 %/mois de report APRÈS 65 ans (PSV/OAS)
 // Plafonds de report/anticipation (en MOIS depuis 65 ans). Réf docs/FISCAL_REFERENCE.md §6.
 // RRQ : report jusqu'à 72 ans (depuis le 1ᵉʳ janvier 2024) = 84 mois → max +58,8 %. Anticipation
 // jusqu'à 60 ans = 60 mois → −36 %. PSV : report jusqu'à 70 ans = 60 mois → max +36 % (pas d'anticipation).
-export const RRQ_DEFERRAL_MAX_MONTHS = 84;         // 65 → 72 ans
-export const PENSION_EARLY_MAX_MONTHS = 60;        // 65 → 60 ans (anticipation RRQ ; PSV ne s'anticipe pas)
-export const PSV_DEFERRAL_MAX_MONTHS = 60;         // 65 → 70 ans
+const RRQ_DEFERRAL_MAX_MONTHS = 84;         // 65 → 72 ans
+const PENSION_EARLY_MAX_MONTHS = 60;        // 65 → 60 ans (anticipation RRQ ; PSV ne s'anticipe pas)
+const PSV_DEFERRAL_MAX_MONTHS = 60;         // 65 → 70 ans
 export const PSV_BONUS_75_PLUS = 0.10;             // +10 % automatique dès 75 ans (PSV, depuis juillet 2022)
 
 // [FISC-CONST-ANCHOR-65] Les ÂGES eux-mêmes, jusque-là écrits en dur dans le moteur (le « 65 »
@@ -154,7 +155,7 @@ export const psvDeferralFactor = (monthsFrom65: number): number =>
 // Voir https://www.canada.ca/.../line-30100-amount.html
 export const AGE_AMOUNT_FED_2026 = 9208;                    // 9 028 (2025) × 1,02. Vérifié 2026-05 (Fidelity/ARC). L'ancien 8 966 indexait par erreur la base 2024.
 export const AGE_AMOUNT_FED_THRESHOLD_2026 = 46432;         // 45522 × 1.02
-export const AGE_AMOUNT_FED_REDUCTION_RATE = 0.15;
+const AGE_AMOUNT_FED_REDUCTION_RATE = 0.15;
 export const AGE_AMOUNT_FED_MIN_AGE = 65;
 
 // Crédit pour revenu de pension (ligne 31400). Source: ARC, montant fixe
@@ -178,8 +179,8 @@ export const QC_LINE_361_THRESHOLD_2026 = 42955;
 // réduction commune. MFQ fiche 110606 C.31 / Loi sur les impôts art. 752.0.7.4 a). Supplément monoparental
 // (2 681 $) NON modélisé (hors scope : exigerait childrenCount + réduction 1/12 par mois d'Allocation famille).
 export const LIVING_ALONE_AMOUNT_QC_2026 = 2172;
-export const QC_LINE_361_REDUCTION_RATE = 0.1875;           // 18.75% au-delà du seuil
-export const QC_LINE_361_MIN_AGE = 65;
+const QC_LINE_361_REDUCTION_RATE = 0.1875;           // 18.75% au-delà du seuil
+const QC_LINE_361_MIN_AGE = 65;
 
 // Taux du palier le plus bas QC pour crédits non-remboursables.
 export const QC_NONREFUNDABLE_RATE = 0.14;
@@ -318,19 +319,19 @@ export const RAMQ_EXEMPTION_COUPLE_2026 = 31610;
 // Bonus seuil selon enfants à charge — barème Annexe K 2026 (Revenu Québec).
 // Note: l'Annexe K s'arrête à "2 enfants ou plus" — pas de tranche additionnelle 3+.
 export const RAMQ_EXEMPTION_SINGLE_CHILD_1 = 4105;          // ajouté pour 1 enfant
-export const RAMQ_EXEMPTION_SINGLE_CHILD_2PLUS = 7895;      // total pour 2+ enfants
-export const RAMQ_EXEMPTION_COUPLE_CHILD_1 = 12110;
-export const RAMQ_EXEMPTION_COUPLE_CHILD_2PLUS = 16215;
+const RAMQ_EXEMPTION_SINGLE_CHILD_2PLUS = 7895;      // total pour 2+ enfants
+const RAMQ_EXEMPTION_COUPLE_CHILD_1 = 12110;
+const RAMQ_EXEMPTION_COUPLE_CHILD_2PLUS = 16215;
 
 // Paliers sur l'excès au-dessus du seuil
 export const RAMQ_BRACKET1_AMOUNT = 5000;
-export const RAMQ_BRACKET2_AMOUNT = 9600;       // jusqu'à 14 600$ d'excès total
+const RAMQ_BRACKET2_AMOUNT = 9600;       // jusqu'à 14 600$ d'excès total
 
 // Taux par adulte (single vs couple — par adulte du couple)
 export const RAMQ_RATE_SINGLE_BRACKET1 = 0.0765;
 export const RAMQ_RATE_SINGLE_BRACKET2 = 0.1148;
-export const RAMQ_RATE_COUPLE_BRACKET1 = 0.0384;
-export const RAMQ_RATE_COUPLE_BRACKET2 = 0.0575;
+const RAMQ_RATE_COUPLE_BRACKET1 = 0.0384;
+const RAMQ_RATE_COUPLE_BRACKET2 = 0.0575;
 
 // Prime maximale 2026
 export const RAMQ_MAX_PREMIUM_2026 = 766;
@@ -441,8 +442,8 @@ export const FSS_THRESHOLD_ZERO = 18500;       // pas de cotisation sous ce seui
 export const FSS_THRESHOLD_FLAT = 33500;       // début palier 150$ fixe (= ZERO + 15 000)
 export const FSS_THRESHOLD_RAMP = 64355;       // début palier 150$ + 1% (2026)
 export const FSS_THRESHOLD_MAX = 149355;       // début plafond 1 000$ (= RAMP + 85 000)
-export const FSS_RATE_TIER1 = 0.01;            // 1% sur première tranche progressive
-export const FSS_RATE_TIER2 = 0.01;            // 1% sur deuxième tranche progressive
+const FSS_RATE_TIER1 = 0.01;            // 1% sur première tranche progressive
+const FSS_RATE_TIER2 = 0.01;            // 1% sur deuxième tranche progressive
 export const FSS_FLAT_AMOUNT = 150;
 export const FSS_MAX_PREMIUM = 1000;
 
@@ -510,7 +511,7 @@ export const GIS_INCOME_THRESHOLD_COUPLE = 29760;     // revenu combiné
 export const GIS_CLAWBACK_RATE = 0.50;                // 50¢ par 1$ d'autre revenu
 /** Couple (les deux reçoivent la PSV) : 1 $ par 4 $ de revenu COMBINÉ pour CHAQUE conjoint.
  *  [FISC-GIS-COUPLE-RATE] — source relayée, cf. docs/FISCAL_REFERENCE.md §6.3. */
-export const GIS_CLAWBACK_RATE_COUPLE_PER_ADULT = 0.25;
+const GIS_CLAWBACK_RATE_COUPLE_PER_ADULT = 0.25;
 
 /**
  * Calcule le SRG mensuel pour un retraité 65+ recevant la PSV.

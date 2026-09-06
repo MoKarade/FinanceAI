@@ -53,7 +53,7 @@ type MeaningfulDataState = Partial<Record<DataArrayKey, unknown[]>> & {
  * (revue archi 2026-05-29). On EXCLUT `realEstateGoals`/`childGoals` : ils contiennent 1 entrée
  * par défaut → ne comptent pas comme « données saisies ».
  */
-export const DATA_ARRAY_KEYS = [
+const DATA_ARRAY_KEYS = [
     'transactions', 'assets', 'investmentTransactions', 'debts',
     'financialGoals', 'budgetItems', 'travelGoals', 'lifeEvents', 'insurancePolicies',
     'rentalProperties', 'privateBusinesses', 'charitableGoals',

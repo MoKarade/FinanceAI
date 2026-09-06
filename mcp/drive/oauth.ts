@@ -8,7 +8,7 @@
 // Le flux interactif (serveur loopback + ouverture navigateur) vit dans loopbackAuth.ts ; le stockage
 // du refresh token dans tokenStore.ts. Conçu pour Claude Desktop : le jeton reste sur la machine de Marc.
 
-export const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 export const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
 /** Scopes minimaux : dossier caché de l'app (PAS tout le Drive) + e-mail (identité). */

@@ -63,7 +63,7 @@ export const DEFAULT_STALE_TRANSACTION_DAYS = 7;
  */
 export const MIN_STALE_TRANSACTION_DAYS = 4;
 /** Plafond : au-delà, l'alerte arriverait trop tard quel que soit le profil. */
-export const MAX_STALE_TRANSACTION_DAYS = 14;
+const MAX_STALE_TRANSACTION_DAYS = 14;
 /**
  * Multiple appliqué au 90e PERCENTILE des écarts (pas à la médiane — panel #561). La médiane
  * écrase les creux légitimes : sur un profil semaine-seulement elle vaut 1 alors que les coupures
@@ -119,7 +119,7 @@ function txEpoch(t: Transaction): number | null {
  * de 7 jours ne l'aurait alerté qu'à J+8 — trop tard pour servir à quelque chose.
  */
 /** Écart p90 entre jours d'activité sur la fenêtre, ou `null` si l'échantillon est trop mince. */
-export function observedGapDays(
+function observedGapDays(
     transactions: readonly Transaction[] | undefined,
     nowMs: number,
 ): number | null {

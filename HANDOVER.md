@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 205 : 80 exports inutilisés → 0 (`[KNIP-UNUSED-EXPORTS-73]`, exports livrés ; types restants)
+> `knip` rejoué avant de coder (80 exports, 234 types — le ticket disait 73 / 209). Triage par site : 69 `export` retirés
+> (utilisés seulement chez eux), 3 ré-exports de barils, 6 morts supprimés dont deux crochets de test jamais appelés et
+> `RRQ_PART2_MAX` (dérivée, formule gardée dans FISCAL_REFERENCE). `npm run knip` : 0 export inutilisé ; typecheck vert ;
+> lint 18 avertissements, identique. Servi : code de production touché (mot-clé `export` retiré, 5 fonctions mortes
+> supprimées) → déploiement à vérifier. Reste : 234 types (triage à part) et Q13 (knip en CI ?). Archive du lot 204.
+
 > ## 🟦 Session 2026-09-06 — Lot 204 : `[AI-ONESHOT-NO-CACHE]` caduc, mesuré contre la doc Anthropic
 > Le ticket voulait autoriser `cache_control` sur le prompt système des appels one-shot. Mesuré : ce prompt fait ≈ 221 tokens
 > (774 caractères, + 168/295 pour paie et relevé) ; la doc « Prompt caching » relayée le 2026-09-06 fixe le minimum cacheable à

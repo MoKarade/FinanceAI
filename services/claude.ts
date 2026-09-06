@@ -313,13 +313,13 @@ export const isDefiniteTransfer = (payee: string, amount: number): boolean => {
 // horloge réelle.
 
 /** Essais TOTAUX par chunk (1 initial + 3 réessais). */
-export const CATEGORIZE_MAX_ATTEMPTS = 4;
+const CATEGORIZE_MAX_ATTEMPTS = 4;
 /** Base du backoff exponentiel : 1 s, 2 s, 4 s. */
 export const CATEGORIZE_BASE_BACKOFF_MS = 1_000;
 /** Cap d'une attente unique — parité `services/fintable/client.ts` (`MAX_RETRY_WAIT_MS`). */
 export const CATEGORIZE_MAX_BACKOFF_MS = 60_000;
 /** Pause ENTRE deux chunks qui appellent l'API : évite de déclencher le 429 en rafale. */
-export const CATEGORIZE_CHUNK_PACING_MS = 1_000;
+const CATEGORIZE_CHUNK_PACING_MS = 1_000;
 
 const defaultSleep = (ms: number): Promise<void> => new Promise<void>((r) => { setTimeout(r, ms); });
 

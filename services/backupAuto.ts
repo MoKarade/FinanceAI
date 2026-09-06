@@ -86,11 +86,11 @@ function getCurrentPayload(): string | null {
 // sans IndexedDB — la glue IDB n'a, elle, pas de logique propre.
 
 /** Chiffre un payload de backup (string JSON localStorage). */
-export const encryptBackupPayload = (key: CryptoKey, payload: string): Promise<string> =>
+const encryptBackupPayload = (key: CryptoKey, payload: string): Promise<string> =>
     encryptJson(key, payload);
 
 /** Déchiffre un payload de backup. Lève si clé incorrecte / blob altéré. */
-export const decryptBackupPayload = (key: CryptoKey, blob: string): Promise<string> =>
+const decryptBackupPayload = (key: CryptoKey, blob: string): Promise<string> =>
     decryptJson<string>(key, blob);
 
 export interface StoredPayload {

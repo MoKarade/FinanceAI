@@ -41,7 +41,7 @@ export {
 } from './syncLifecycle';
 
 // ── Déconnexion auto après inactivité (inactivityLogout) ─────────────────────
-export { startInactivityWatch, INACTIVITY_LIMIT_MS } from './inactivityLogout';
+export { startInactivityWatch } from './inactivityLogout';
 
 // ── Polling Drive (syncPolling) ──────────────────────────────────────────────
 export { startDrivePolling } from './syncPolling';

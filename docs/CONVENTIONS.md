@@ -12219,6 +12219,22 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 205 (2026-09-06) — un « triage S » de 73 items se re-mesure (80) et se PARTITIONNE avant de se coder ; et ce que knip compte se vérifie sur un cas
+
+`[KNIP-UNUSED-EXPORTS-73]` annonçait 73 exports et 209 types ; rejoué, 80 et 234 — un inventaire d'outil pourrit tout
+seul, comme un ticket de dépendances (`UN-TICKET-DE-DEPENDANCES-DECRIT-UN-ARBRE-QUI-BOUGE-TOUT-SEUL`). Le lot n'a été
+faisable qu'après une PARTITION mesurée par site (occurrences dans le fichier déclarant, `import` du nom ailleurs) :
+69 « utilisés seulement chez eux » (un mot-clé à retirer), 3 barils, 6 morts. ⚠️ Mon premier classement fabriquait une
+classe « importé par des tests » (5 items) — fausse : les tests importaient le MÊME NOM depuis le module SOURCE, jamais
+depuis le baril flaggé. knip compte bien les imports des tests (ils sont dans `project`) ; ce qu'il flagge est
+l'export PRÉCIS, pas le symbole. Vérifier ce qu'un outil compte sur UN cas avant de bâtir une classe dessus. ⚠️ Deux
+crochets « test-only » (`__reset…`) n'étaient appelés par aucun test : un outil de test sans test est du code mort
+qui porte le nom d'une précaution. ⚠️ Retirer un export peut laisser un IMPORT orphelin ailleurs dans le même fichier
+(`MASKED_AMOUNT_LABEL`) : le lint se compare AVANT/APRÈS en nombre d'avertissements, pas en « vert ». ⚠️ Et une
+constante fiscale DÉRIVÉE jamais lue (`RRQ_PART2_MAX`) ne se supprime pas sans reporter sa formule là où son nom
+était cité (`FISCAL_REFERENCE`), sinon la source de vérité pointe sur du vide
+(`RETIRER-UN-EXPORT-MORT-DEMANDE-DE-LIRE-CE-QUE-LA-DOC-EN-DIT`, appliqué).
+
 ### Variante notée au lot 204 (2026-09-06) — le chiffre qu'un ticket cite pour minimiser son défaut peut être la preuve de sa caducité
 
 `[AI-ONESHOT-NO-CACHE]` prescrivait d'ouvrir le type du prompt système pour y poser un `cache_control`, et notait « impact

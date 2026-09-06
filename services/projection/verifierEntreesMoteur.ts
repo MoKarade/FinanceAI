@@ -410,11 +410,6 @@ export function messageDeRefus(refus: ReadonlyArray<EntreeRefusee>): string {
  *  `HARDEN-NETWORTH-NAN` dont ce module reprend le patron. */
 const signaturesJournalisees = new Set<string>();
 
-/** Test-only : remet à zéro le throttle (isolation entre tests). */
-export function __resetJournalRefus(): void {
-    signaturesJournalisees.clear();
-}
-
 /**
  * Journalise un refus, UNE fois par signature.
  *

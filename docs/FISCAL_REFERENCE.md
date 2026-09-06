@@ -98,7 +98,7 @@
 | Cotisation max volet base+1 (`RRQ_MAX`) | **≈ 4 479,30 $** | (74 600 − 3 500) × 6,30 % |
 | Taux volet 2 (`RRQ_PART2_RATE`) | **4,00 %** | MGA → MGAS |
 | MGAS / YAMPE (`RRQ_YAMPE`) | **85 000 $** | 2e plafond |
-| Cotisation max volet 2 (`RRQ_PART2_MAX`) | **416 $** | (85 000 − 74 600) × 4 % |
+| Cotisation max volet 2 (dérivée : `(RRQ_YAMPE − RRQ_MPE) × RRQ_PART2_RATE`, plus de constante nommée depuis le lot 205) | **416 $** | (85 000 − 74 600) × 4 % |
 
 ### RQAP — Régime québécois d'assurance parentale
 | Constante | Valeur 2026 |

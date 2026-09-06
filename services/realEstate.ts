@@ -356,7 +356,7 @@ export const calculateB20StressTest = (input: B20StressTestInput): B20StressTest
 export const SCHL_PRICE_THRESHOLD_TIER1 = 500000;       // 5% sous ce seuil
 export const SCHL_PRICE_THRESHOLD_TIER2 = 1500000;      // 5%+10% jusqu'à ce seuil; 20%+ au-delà
 export const SCHL_MIN_DOWN_TIER1 = 0.05;
-export const SCHL_MIN_DOWN_TIER2 = 0.10;
+const SCHL_MIN_DOWN_TIER2 = 0.10;
 export const SCHL_MIN_DOWN_TIER3 = 0.20;
 export const SCHL_AMORT_MAX_INSURED_STANDARD = 25;       // ans
 export const SCHL_AMORT_MAX_INSURED_FTB_OR_NEW = 30;     // 1er acheteur OU résidence neuve (depuis août 2024)
@@ -590,17 +590,17 @@ export const calculateSchlPremium = (input: SchlPremiumInput): SchlPremiumResult
 //    suit le barème 2026 standard.
 // ============================================
 
-export const GST_RATE = 0.05;
-export const QST_RATE = 0.09975;
+const GST_RATE = 0.05;
+const QST_RATE = 0.09975;
 
 export const GST_REBATE_PRICE_FULL = 350000;    // jusqu'à ce prix : rebate plein
-export const GST_REBATE_PRICE_ZERO = 450000;    // au-delà : zéro rebate
-export const GST_REBATE_RATE_FULL = 0.36;       // 36% de la TPS payée
+const GST_REBATE_PRICE_ZERO = 450000;    // au-delà : zéro rebate
+const GST_REBATE_RATE_FULL = 0.36;       // 36% de la TPS payée
 export const GST_REBATE_MAX = GST_REBATE_PRICE_FULL * GST_RATE * GST_REBATE_RATE_FULL;  // 6 300$
 
 export const QST_REBATE_PRICE_FULL = 200000;
-export const QST_REBATE_PRICE_ZERO = 300000;
-export const QST_REBATE_RATE_FULL = 0.50;       // 50% de la TVQ payée
+const QST_REBATE_PRICE_ZERO = 300000;
+const QST_REBATE_RATE_FULL = 0.50;       // 50% de la TVQ payée
 export const QST_REBATE_MAX = QST_REBATE_PRICE_FULL * QST_RATE * QST_REBATE_RATE_FULL;  // ~9 975$
 
 /**

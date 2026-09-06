@@ -90,7 +90,7 @@ export const rentalStateId = (rp: Pick<RentalProperty, 'id'>): string => rp.id |
  * DÉDUIT de la base imposable du NOI, T4036) lisent la même formule — un `mortgage × taux / 12`
  * recopié chez l'un aurait divergé de l'autre au premier arrondi. Immeuble payé → 0.
  */
-export const rentalInterestOfMonth = (s: Pick<RentalState, 'mortgage' | 'ratePct'>): number =>
+const rentalInterestOfMonth = (s: Pick<RentalState, 'mortgage' | 'ratePct'>): number =>
     s.mortgage > 0 ? s.mortgage * (s.ratePct / 100 / 12) : 0;
 
 /**

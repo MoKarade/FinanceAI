@@ -14,7 +14,7 @@ import { logError, onLogEntry, __resetErrorThrottle } from '../../services/error
 // data-aware. Assez large pour un nom d'actif / payee / nom de projet normal (banques : < 60), mais
 // borne le flood de contexte par un champ malveillant. Le vrai rempart est le strip des caractères
 // d'injection/markup (cf sanitizePromptText) ; la borne n'est qu'une ceinture anti-flood.
-export const MCP_TEXT_MAX = 200;
+const MCP_TEXT_MAX = 200;
 
 // [MCP-PROMPT-SCRUB] Clés dont la VALEUR est du TEXTE LIBRE saisi/importé par l'utilisateur (nom
 // d'actif auto-rempli Finnhub, payee/catégorie extraits d'un relevé/PDF de courtage, nom de projet/

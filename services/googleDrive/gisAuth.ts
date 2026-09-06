@@ -46,7 +46,7 @@ export class AuthInteractionRequiredError extends Error {
         this.name = 'AuthInteractionRequiredError';
     }
 }
-export const DRIVE_SCOPES = [
+const DRIVE_SCOPES = [
     'https://www.googleapis.com/auth/drive.appdata',
     'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');

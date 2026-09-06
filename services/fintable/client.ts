@@ -18,7 +18,7 @@
 
 import { FintableError, type FintableErrorCode, type FtErrorBody } from './types';
 
-export const FINTABLE_API_BASE = 'https://fintable.io/api/v2';
+const FINTABLE_API_BASE = 'https://fintable.io/api/v2';
 
 /** Budget par requête. Généreux : une page de 500 transactions peut être lourde. */
 const DEFAULT_TIMEOUT_MS = 30_000;

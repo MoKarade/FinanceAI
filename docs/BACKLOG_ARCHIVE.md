@@ -10,6 +10,15 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[AI-ONESHOT-NO-CACHE]` — CADUC, MESURÉ contre la doc Anthropic (lot 204, PR #935)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[AI-ONESHOT-NO-CACHE]`** ✅ **CADUC, MESURÉ au lot 204 (2026-09-06)** : le correctif prescrit (`system: string | Array<block>` pour poser un `cache_control`) serait un NO-OP silencieux. Mesuré : `QUEBEC_FISCAL_CONTEXT` fait **774 caractères ≈ 221 tokens**, et les deux prompts système composés (paie, relevé) y ajoutent 168 et 295 caractères — or la longueur MINIMALE cacheable est de **4 096 tokens pour Haiku 4.5** (tous les one-shots sauf `chat`/`chatStream`) et **1 024 pour Sonnet 4.6**, et « un prompt plus court est traité SANS cache, sans erreur » (doc Anthropic « Prompt caching », relayée le 2026-09-06 : `platform.claude.com/docs/en/build-with-claude/prompt-caching`, tableau « minimum cacheable prompt length »). Le ticket avait raison sur la FORME (le type interdit le cache) et tort sur l'EFFET (le cache est impossible à cette taille, quelle que soit la forme) — le « ~190 tokens » qu'il annonçait était la preuve de sa propre caducité. La seule piste qui resterait est de cacher le bloc UTILISATEUR d'un « Régénérer » (mêmes données renvoyées dans les 5 minutes), à condition qu'il dépasse 4 096 tokens — hypothèse NON mesurée, pas de ticket : à mesurer d'abord sur un lot de transactions réel. Commentaire posé sur les signatures de `services/claude.ts` pour que le prochain lecteur ne re-tente pas l'union. Re-mesure : `node -e` sur la longueur de `QUEBEC_FISCAL_CONTEXT` (commande dans le commentaire). Contexte d'origine : (M) — `system` typé `string` nu → **aucun** appel one-shot ne peut
+  utiliser cache prompt (contrairement à `agentLoop.ts`). Impact faible (~190 tokens), mais boutons
+  « Régénérer » repaient plein tarif. **Correctif** : union `string | Array<block>` pour permettre
+  `cache_control`.
+
 ## 2026-09-06 — `[SYNC-PUSH-PULL-NO-UNIT-TEST]` — LIVRÉ, audité puis complété (lot 203, PR #934)
 
 Ticket d'origine tel qu'au moment de l'archivage :

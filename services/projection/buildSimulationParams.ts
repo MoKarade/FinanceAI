@@ -54,7 +54,7 @@ import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
  * hypothèque » n'est trouvée. Valeur historique de `FutureProjection.tsx`.
  */
-export const DEFAULT_RENT_EXPENSE = 1600;
+const DEFAULT_RENT_EXPENSE = 1600;
 
 /**
  * Entrée de l'adaptateur pur. Reprend, champ pour champ, ce que
@@ -134,7 +134,7 @@ export function computeBaseGrossAnnual(users: readonly User[], year: number = TA
  * Σ ((netSalary || salary) × 12) sur tous les utilisateurs. Réplique
  * `baseNetAnnual` (note : le fallback `salary` est historique).
  */
-export function computeBaseNetAnnual(users: readonly User[]): number {
+function computeBaseNetAnnual(users: readonly User[]): number {
     return (users ?? []).reduce((sum, u) => sum + ((u?.netSalary || u?.salary || 0) * 12), 0);
 }
 
@@ -143,7 +143,7 @@ export function computeBaseNetAnnual(users: readonly User[]): number {
  * hypothèque », normalisée en mensuel (Yearly /12, Weekly ×4.33). Défaut 1600.
  * Réplique exacte de `currentRentExpense` (FutureProjection.tsx).
  */
-export function computeCurrentRentExpense(budgetItems: readonly BudgetCategory[]): number {
+function computeCurrentRentExpense(budgetItems: readonly BudgetCategory[]): number {
     const rentItem = (budgetItems ?? []).find(
         (b) =>
             b.name.toLowerCase().includes('loyer') ||

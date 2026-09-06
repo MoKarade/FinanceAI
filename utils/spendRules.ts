@@ -8,7 +8,7 @@
 import type { Transaction } from '../types';
 
 /** Catégories de dépense JAMAIS transformées en poste de budget (statuts/mouvements). */
-export const NON_BUDGET_CATEGORIES = new Set([
+const NON_BUDGET_CATEGORIES = new Set([
     // Statuts « à classer » — même liste que STATUS_CATEGORIES (budgetSync) ; parité testée.
     'Uncategorized', 'Inconnu', 'Unknown', '', 'Non catégorisé',
     'Transfert', 'Investissement',
@@ -45,7 +45,7 @@ export const isCreditBack = (t: Transaction): boolean =>
  * Sans effet sur l'onglet Transactions ni sur le réel de `TaxCenter`, qui gardent l'assiette
  * complète et l'affirment.
  */
-export const HORS_COMPARAISON_BUDGET = new Set<string>(['Impôts']);
+const HORS_COMPARAISON_BUDGET = new Set<string>(['Impôts']);
 
 export const isHorsComparaisonBudget = (t: Transaction): boolean =>
     HORS_COMPARAISON_BUDGET.has(t.category ?? '');

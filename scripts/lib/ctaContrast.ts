@@ -19,7 +19,7 @@ export const SEUIL_AA_NORMAL = 4.5;
 /** WCAG AA — texte large (≥ 18px, ou ≥ 14px bold). */
 export const SEUIL_AA_LARGE = 3.0;
 
-export const COLORS = (twConfig as { theme?: { extend?: { colors?: Record<string, unknown> } } })?.theme?.extend?.colors ?? {};
+const COLORS = (twConfig as { theme?: { extend?: { colors?: Record<string, unknown> } } })?.theme?.extend?.colors ?? {};
 
 /** Vrai si une valeur de token est une couleur HEX opaque (`#rrggbb`) — seul cas testable ici. */
 export function isOpaqueHex(v: unknown): v is string {

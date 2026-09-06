@@ -35,7 +35,7 @@ const MONEY = /formatCAD|formatCompactCAD|formatCurrency|toLocaleString|\/\s*100
  * (trou réel, démontré par PoC à la revue #608). Seule une marque qui PROUVE la lecture du mode
  * discret est recevable ; c'est pourquoi les points d'appel écrivent le ternaire en clair.
  */
-const PRIVACY = /maskedTick\(|maskedTooltipValue\(|isPrivacyMode|privacyMode/;
+const PRIVACY = /maskedTick\(|isPrivacyMode|privacyMode/;
 /** Déclaration explicite d'un axe qui ne montre pas d'argent. */
 const NOT_MONEY_AXIS = /AXE-NON-MONETAIRE/;
 

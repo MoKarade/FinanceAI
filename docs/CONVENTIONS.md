@@ -12219,6 +12219,20 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 198 (2026-09-06) — « à mesurer avant de décider » se mesure sur le CHEMIN DE PRODUCTION, et un paramètre non câblé rend le second run muet
+
+Le ticket conditionnait la publication d'une sensibilité au coût d'un second run moteur. Mesuré comme la production
+l'appelle (MC 100 itérations) : 17 à 30 ms sur 674 à 939 ms, **+2,5 à 4,1 %** — la décision s'est prise sur ce
+rapport, pas sur « un run de plus » (qui, en déterministe pur, aurait doublé le coût et fait renoncer). Le
+dénominateur d'une mesure de coût est ce que l'utilisateur paie réellement. ⚠️ Deux pièges câblés dans le même
+geste : (1) le second run ne se lance que sur le chemin de production — `onlyStratTypes` désigne les appelants
+qui dichotomisent (`goalSeek`, 10 à 25 appels) ou ciblent (stress-test) et ne lisent pas la valeur ; leur faire
+payer le run aurait été un surcoût de 100 % pour rien, et un `null` honnête vaut mieux qu'un 0 ; (2) en mode
+« dépenses théoriques », le moteur lit `theoreticalExpenses` et pas `baseMonthlyExpenses` — réduire le second
+seul rend un delta exactement NUL, crédible, faux (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` : un paramètre non
+câblé rend la mesure muette). Le champ à réduire se trouve en lisant QUI le moteur consomme
+(`effectiveBaseExpenses`), et la garde tourne sur les DEUX modes.
+
 ### Variante notée au lot 197 (2026-09-06) — un ticket ARCHIVÉ peut rester ouvert au BACKLOG : grepper l'archive et `git log` avant de coder
 
 `[TEST-DIVORCE-SANS-IMMOBILIER]` figurait dans `docs/BACKLOG_ARCHIVE.md` (livré par #748, 4 tests) ET dans `BACKLOG.md`

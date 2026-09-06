@@ -323,6 +323,7 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
 - `totalTaxesPaid`, `totalGrowth`, `totalExpenses`
 - `minNetWorth`, `shortfallMonths`, `shortfallRate`
 - `gainVsAuto` (vs BASE)
+- `savingsSensitivity` (résultat global, `[BUDGET-SENSIBILITE-MOTEUR]`, lot 198) — `{ extraMonthlySavings: 100, deltaEstateNetWorth, deltaFinalNetWorth }` : second scénario BASE déterministe à dépenses − 100 $/mois (`theoreticalExpenses` en mode théorique), mêmes stratégie/report/leviers ; `null` sous `onlyStratTypes` (goal seek, stress-test) ou valeur non finie. Coût mesuré : +2,5 à 4,1 % d'une projection MC 100.
 
 ### Si Monte Carlo activé
 - `successRate` (%) — itérations qui ne finissent pas en faillite

@@ -705,7 +705,7 @@
 > nouveau producteur d'argent s'y confronte AVANT d'être livré. ⚠️ Cet en-tête annonçait encore
 > quatre défauts OUVERTS le 2026-09-02 — il envoyait chercher un point chaud déjà nettoyé.
 
-- [ ] **`[BUDGET-SENSIBILITE-MOTEUR]`** (M, FAIBLE — sorti du lot 89, MESURÉ) — la tuile
+- [x] **`[BUDGET-SENSIBILITE-MOTEUR]`** ✅ **LIVRÉ au lot 198 (2026-09-06)** — **coût mesuré AVANT de décider** : un second scénario BASE déterministe coûte 17 à 30 ms, soit **+2,5 à 4,1 %** d'une projection de production (MC 100 itérations, 674 à 939 ms, trois personas) → publié. `calculateFutureProjection` rend `savingsSensitivity` (`{ extraMonthlySavings: 100, deltaEstateNetWorth, deltaFinalNetWorth }`, mêmes stratégie/report/leviers que `resBase`, dépenses − 100 $/mois), `null` sous `onlyStratTypes` (goal seek dichotomise 10 à 25 fois, stress-test) et sur valeur non finie. ⚠️ Piège câblé : en mode « dépenses théoriques » c'est `theoreticalExpenses` qui est réduit (réduire `baseMonthlyExpenses` seul rendait un delta NUL crédible — perturbation mesurée). Budget LIT le champ : ligne « Sensibilité » sous la carte Impact à long terme (`PrivateAmount`) + carte « Sensibilité (moteur) » du contexte de chat, `null` → rien. Gardes : `tests/services/savingsSensitivity.test.ts` (4 : publié/fini/positif ; delta == projection(−100) − projection() ; mode théorique ; appel ciblé → null) et `budgetSensibiliteRetiree.test.tsx` INVERSÉ (5). Perturbations : mode théorique non câblé → 1 rouge ; second run à report de rentes différent → 1 rouge ; enveloppe `PrivateAmount` retirée → rouge. Mesuré sur 3 personas : +115 528 $ (couple-confort), +199 727 $ (lea-fauchee), +18 809 $ (pre-retraite-riche). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, FAIBLE — sorti du lot 89, MESURÉ) — la tuile
   « Sensibilité » de Budget a été SUPPRIMÉE (elle inventait le chiffre) ; la QUESTION qu'elle posait
   reste légitime : « si j'épargne 100 $/mois de plus, combien ça change à la fin ? ». Le moteur sait
   y répondre — `calculateFutureProjection` avec `baseMonthlyExpenses − 100` — mais **la vraie réponse
@@ -1358,15 +1358,6 @@
 
 #### MOYEN
 
-- [x] **`[TEST-DIVORCE-SANS-IMMOBILIER]`** ✅ **LIVRÉ en deux temps — #748 (2026-08-25, déjà ARCHIVÉ) + lot 197 (2026-09-06)**. ⚠️ Cette entrée était un DOUBLON PÉRIMÉ : le ticket figurait dans `docs/BACKLOG_ARCHIVE.md` depuis #748 (4 tests, `divorceImmobilier.test.ts`) et restait ouvert ici — classe `PM-STALE-BACKLOG`. Ce qui manquait réellement, c'est la moitié que le ticket nommait en dernier : « passer la fixture aux gardes de conservation existantes ». Livré au lot 197 : fixture hissée en `tests/helpers/menageProprietaire.ts` (`usersCouple`, `maisonDetenue()`, depuis ses DEUX copies identiques) et cinq tests dans `projection.divorceConservation.test.ts` — avec une hypothèque, la reconstruction du patrimoine CHANGE de formule (`Immobilier` est l'équité nette → soustraire `DettesNonImmo`, jamais `DetteTotale`) ; la garde d'origine, écrite sans maison, aurait été fausse sur cette fixture, et la contre-épreuve naïve le mesure (écart = l'hypothèque, 343 736 $). Ratios au divorce : hypothèque 0,4987, dettes hors immo 0,4926. Perturbations : hypothèque non partagée → 2 rouges (le ratio, et sous split 100 % une dette hors immo NÉGATIVE au mois 39 — l'état devient incohérent) ; fixture sans `isActive` → 10 rouges sur 3 suites. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, découvert en livrant `PMT-NON-PARTAGEE`) — **les 16
-  fixtures de divorce du dépôt portent `realEstateGoals: []`**. C'est ce qui explique que le
-  correctif de la mensualité n'ait re-basé AUCUN golden alors qu'il déplace des dizaines de milliers
-  de dollars. `tests/services/divorcePmtPartagee.test.ts` couvre désormais le croisement pour la
-  MENSUALITÉ ; tout le reste du partage (valeur, solde, équité, flux) reste non couvert sur un
-  ménage propriétaire. Fix : une fixture « divorce + maison détenue » réutilisable, et la passer aux
-  gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
-  bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
-  maison sans en avoir une.
 - [ ] **`[FISC-RAMQ-COUPLE-CAP]`** (S) — couple ne peut jamais atteindre prime RAMQ max 766 $ (tranche
   2 bornée 9 600 $ → 744 $ max possible). **Mesuré : célibataire 766 $, couple 744 $ constant.**
   Impact −22 $/adulte/an = ~1 300 $ / 30 ans retraite. Incohérence interne doc (prime max vs tranche

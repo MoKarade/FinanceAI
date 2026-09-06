@@ -705,16 +705,6 @@
 > nouveau producteur d'argent s'y confronte AVANT d'être livré. ⚠️ Cet en-tête annonçait encore
 > quatre défauts OUVERTS le 2026-09-02 — il envoyait chercher un point chaud déjà nettoyé.
 
-- [x] **`[BUDGET-SENSIBILITE-MOTEUR]`** ✅ **LIVRÉ au lot 198 (2026-09-06)** — **coût mesuré AVANT de décider** : un second scénario BASE déterministe coûte 17 à 30 ms, soit **+2,5 à 4,1 %** d'une projection de production (MC 100 itérations, 674 à 939 ms, trois personas) → publié. `calculateFutureProjection` rend `savingsSensitivity` (`{ extraMonthlySavings: 100, deltaEstateNetWorth, deltaFinalNetWorth }`, mêmes stratégie/report/leviers que `resBase`, dépenses − 100 $/mois), `null` sous `onlyStratTypes` (goal seek dichotomise 10 à 25 fois, stress-test) et sur valeur non finie. ⚠️ Piège câblé : en mode « dépenses théoriques » c'est `theoreticalExpenses` qui est réduit (réduire `baseMonthlyExpenses` seul rendait un delta NUL crédible — perturbation mesurée). Budget LIT le champ : ligne « Sensibilité » sous la carte Impact à long terme (`PrivateAmount`) + carte « Sensibilité (moteur) » du contexte de chat, `null` → rien. Gardes : `tests/services/savingsSensitivity.test.ts` (4 : publié/fini/positif ; delta == projection(−100) − projection() ; mode théorique ; appel ciblé → null) et `budgetSensibiliteRetiree.test.tsx` INVERSÉ (5). Perturbations : mode théorique non câblé → 1 rouge ; second run à report de rentes différent → 1 rouge ; enveloppe `PrivateAmount` retirée → rouge. Mesuré sur 3 personas : +115 528 $ (couple-confort), +199 727 $ (lea-fauchee), +18 809 $ (pre-retraite-riche). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, FAIBLE — sorti du lot 89, MESURÉ) — la tuile
-  « Sensibilité » de Budget a été SUPPRIMÉE (elle inventait le chiffre) ; la QUESTION qu'elle posait
-  reste légitime : « si j'épargne 100 $/mois de plus, combien ça change à la fin ? ». Le moteur sait
-  y répondre — `calculateFutureProjection` avec `baseMonthlyExpenses − 100` — mais **la vraie réponse
-  dépend du ménage**, et beaucoup : mesuré sur les 7 personas, de **18 495 $** (`pre-retraite-riche`)
-  à **307 118 $** (`lea-fauchee`), un rapport de **16,6×**. ⚠️ Le correctif n'est PAS de rappeler le
-  moteur depuis l'onglet Budget (une seconde simulation complète par rendu) : c'est de faire PUBLIER
-  la grandeur par la projection elle-même, à côté de `estateNetWorth`, pour que Budget la CONSOMME —
-  non-négociable « Future = source unique ». Coût réel : un second run moteur par projection, à
-  mesurer avant de décider (le harnais de perf existe).
 
 - [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** ✅ 2026-08-22 — les quatre nombres sont nommés et
   documentés dans `services/projection/modelAssumptions.ts` (un 4e site s'est ajouté au tri : le
@@ -1090,7 +1080,7 @@
   revoir si le cas se présente vraiment. Le raisonnement complet est dans
   `tests/components/backupSchemaTypes.test.ts`.
 
-- [ ] **`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`** (S, FAIBLE) — la garde de type du lot 41 ferme le canal
+- [x] **`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`** ✅ **LIVRÉ au lot 199 (2026-09-06)** — l'hypothèse est MESURÉE avant d'être fermée : `config.users[0].netSalary = true` → patrimoine successoral **−91,9 %** (9,74 M$ → 0,79 M$), `budgetItems[0].target = false` → −2,7 %, `debts[0].balance = true` → +0,2 %, **0 refus** à chaque fois (`couple-confort`, 40 ans). Fermé par le MÊME arbitrage que les textes : `CHAMPS_BOOLEENS` (`services/verifierTypesRestaures.ts`) dérivée du contrat (`types.ts`, 58 noms), du corps persisté du store et des états mesurés — troisième surface indispensable : les clés du `Record` `setupOptOut` (`children`, `debts`, `lifeProjects`, `realEstate`), invisibles au scan des types. Le parcours refuse désormais un booléen hors liste ; messages « du texte ou un booléen ». Test de limite « un booléen n'est jamais refusé » INVERSÉ en place ; 7 gardes neuves (refus au plus gros écart, `false` autant que `true`, valeur telle quelle, message, dérivation types.ts, dérivation store, clés du Record). Perturbations : branche booléenne retirée → 4 rouges ; clé déclarée retirée de la liste → 6 rouges (canari des personas + dérivation). ⚠️ Même limite structurelle que les textes : un booléen À LA PLACE d'un conteneur homonyme (`debts: true`) passe, la garde juge clé par clé. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE) — la garde de type du lot 41 ferme le canal
   mesuré (la CHAÎNE) mais pas son voisin : `true + 1 === 2`, donc un booléen dans un champ monétaire
   passerait encore. Le fermer demande une seconde liste — celle des champs booléens — qui n'a pas
   été mesurée, d'où le choix de le consigner plutôt que de le traiter à la va-vite. Aucun écart $

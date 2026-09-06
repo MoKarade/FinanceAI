@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-06 (Une sauvegarde qui met « vrai/faux » dans un montant est refusée)
+
+- **Corrigé** : la vérification qui refuse un texte dans un montant (au chargement, après une
+  synchronisation Drive et à l'import d'une sauvegarde) refuse aussi un booléen — jusqu'ici un « vrai »
+  dans le salaire net passait et faisait chuter la projection de plus de 90 % sans aucun message. Le
+  refus nomme le champ, rien n'est modifié.
+
 ## [unreleased] — 2026-09-06 (Budget : « 100 $/mois de plus, ça donne quoi à la fin ? » — répondu par la projection)
 
 - **Ajouté** : sous la carte « Impact à long terme » de l'onglet Budget, une ligne « Sensibilité » dit ce que

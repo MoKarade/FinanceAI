@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[BUDGET-SENSIBILITE-MOTEUR]` — LIVRÉ (lot 198, PR #929)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[BUDGET-SENSIBILITE-MOTEUR]`** ✅ **LIVRÉ au lot 198 (2026-09-06)** — **coût mesuré AVANT de décider** : un second scénario BASE déterministe coûte 17 à 30 ms, soit **+2,5 à 4,1 %** d'une projection de production (MC 100 itérations, 674 à 939 ms, trois personas) → publié. `calculateFutureProjection` rend `savingsSensitivity` (`{ extraMonthlySavings: 100, deltaEstateNetWorth, deltaFinalNetWorth }`, mêmes stratégie/report/leviers que `resBase`, dépenses − 100 $/mois), `null` sous `onlyStratTypes` (goal seek dichotomise 10 à 25 fois, stress-test) et sur valeur non finie. ⚠️ Piège câblé : en mode « dépenses théoriques » c'est `theoreticalExpenses` qui est réduit (réduire `baseMonthlyExpenses` seul rendait un delta NUL crédible — perturbation mesurée). Budget LIT le champ : ligne « Sensibilité » sous la carte Impact à long terme (`PrivateAmount`) + carte « Sensibilité (moteur) » du contexte de chat, `null` → rien. Gardes : `tests/services/savingsSensitivity.test.ts` (4 : publié/fini/positif ; delta == projection(−100) − projection() ; mode théorique ; appel ciblé → null) et `budgetSensibiliteRetiree.test.tsx` INVERSÉ (5). Perturbations : mode théorique non câblé → 1 rouge ; second run à report de rentes différent → 1 rouge ; enveloppe `PrivateAmount` retirée → rouge. Mesuré sur 3 personas : +115 528 $ (couple-confort), +199 727 $ (lea-fauchee), +18 809 $ (pre-retraite-riche). Contexte d'origine : (M, FAIBLE — sorti du lot 89, MESURÉ) — la tuile
+  « Sensibilité » de Budget a été SUPPRIMÉE (elle inventait le chiffre) ; la QUESTION qu'elle posait
+  reste légitime : « si j'épargne 100 $/mois de plus, combien ça change à la fin ? ». Le moteur sait
+  y répondre — `calculateFutureProjection` avec `baseMonthlyExpenses − 100` — mais **la vraie réponse
+  dépend du ménage**, et beaucoup : mesuré sur les 7 personas, de **18 495 $** (`pre-retraite-riche`)
+  à **307 118 $** (`lea-fauchee`), un rapport de **16,6×**. ⚠️ Le correctif n'est PAS de rappeler le
+  moteur depuis l'onglet Budget (une seconde simulation complète par rendu) : c'est de faire PUBLIER
+  la grandeur par la projection elle-même, à côté de `estateNetWorth`, pour que Budget la CONSOMME —
+  non-négociable « Future = source unique ». Coût réel : un second run moteur par projection, à
+  mesurer avant de décider (le harnais de perf existe).
+
+
 ## 2026-09-06 — `[TEST-DIVORCE-SANS-IMMOBILIER]` — moitié restante LIVRÉE (lot 197, PR #928)
 
 Entrée BACKLOG telle qu'au moment de l'archivage (le ticket avait DÉJÀ une entrée d'archive pour #748 : celle-ci porte la seconde moitié et le doublon périmé) :

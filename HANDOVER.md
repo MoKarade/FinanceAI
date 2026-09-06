@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 199 : un booléen dans un montant est refusé, comme une chaîne (`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`)
+> Le ticket disait « hypothèse, non mesurée ». Mesuré : `netSalary = true` → patrimoine successoral **−91,9 %**, 0 refus.
+> Fermé par le même arbitrage que les textes : `CHAMPS_BOOLEENS` dérivée du contrat (58 noms), du store et des états
+> mesurés (clés du `Record` `setupOptOut`, invisibles au scan des types) ; l'oubli coûte un faux refus bruyant attrapé
+> par la dérivation et le canari des personas. Test de limite inversé ; 7 gardes ; perturbations 4 et 6 rouges. Servi :
+> la garde tourne au boot, à la réhydratation et à l'import — un blob corrompu de cette façon est refusé au lieu de
+> fausser la projection → déploiement à vérifier. Archive du lot 198.
+
 > ## 🟦 Session 2026-09-06 — Lot 198 : le moteur répond « +100 $/mois d'épargne = +X $ à la fin » (`[BUDGET-SENSIBILITE-MOTEUR]`)
 > Coût mesuré avant de décider : un second scénario BASE déterministe = 17 à 30 ms, **+2,5 à 4,1 %** d'une projection de
 > production (MC 100) → publié. `ProjectionResult.savingsSensitivity` (mêmes stratégie/report que `resBase`, dépenses − 100),

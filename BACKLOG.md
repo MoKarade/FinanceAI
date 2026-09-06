@@ -1355,18 +1355,10 @@
 
 #### HIGH — Bloque la fiabilité des chiffres
 
-- [x] **`[ENG-LIQUID-FLUX-FORM]`** ✅ **LIVRÉ au lot 196 (2026-09-06)** — voir l'entrée RE-MESURÉE plus bas (même ID), qui porte la livraison. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
-  **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
-  **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au
-  mois 11). C'est pour ça qu'il est exclu du balayage de `divorceFluxPublie.test.ts` et absent des
-  `ACCOUNTS` de `projection.fluxForm.test.ts`. Fix : trouver les producteurs qui mutent `liquid` sans
-  alimenter `contribLiquid`/`withdrawalLiquid`, puis ajouter `Liquidites` aux deux gardes.
-  ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
-  (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
 
 #### MOYEN
 
-- [ ] **`[TEST-DIVORCE-SANS-IMMOBILIER]`** (S, découvert en livrant `PMT-NON-PARTAGEE`) — **les 16
+- [x] **`[TEST-DIVORCE-SANS-IMMOBILIER]`** ✅ **LIVRÉ en deux temps — #748 (2026-08-25, déjà ARCHIVÉ) + lot 197 (2026-09-06)**. ⚠️ Cette entrée était un DOUBLON PÉRIMÉ : le ticket figurait dans `docs/BACKLOG_ARCHIVE.md` depuis #748 (4 tests, `divorceImmobilier.test.ts`) et restait ouvert ici — classe `PM-STALE-BACKLOG`. Ce qui manquait réellement, c'est la moitié que le ticket nommait en dernier : « passer la fixture aux gardes de conservation existantes ». Livré au lot 197 : fixture hissée en `tests/helpers/menageProprietaire.ts` (`usersCouple`, `maisonDetenue()`, depuis ses DEUX copies identiques) et cinq tests dans `projection.divorceConservation.test.ts` — avec une hypothèque, la reconstruction du patrimoine CHANGE de formule (`Immobilier` est l'équité nette → soustraire `DettesNonImmo`, jamais `DetteTotale`) ; la garde d'origine, écrite sans maison, aurait été fausse sur cette fixture, et la contre-épreuve naïve le mesure (écart = l'hypothèque, 343 736 $). Ratios au divorce : hypothèque 0,4987, dettes hors immo 0,4926. Perturbations : hypothèque non partagée → 2 rouges (le ratio, et sous split 100 % une dette hors immo NÉGATIVE au mois 39 — l'état devient incohérent) ; fixture sans `isActive` → 10 rouges sur 3 suites. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, découvert en livrant `PMT-NON-PARTAGEE`) — **les 16
   fixtures de divorce du dépôt portent `realEstateGoals: []`**. C'est ce qui explique que le
   correctif de la mensualité n'ait re-basé AUCUN golden alors qu'il déplace des dizaines de milliers
   de dollars. `tests/services/divorcePmtPartagee.test.ts` couvre désormais le croisement pour la
@@ -1375,26 +1367,6 @@
   gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
   bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
   maison sans en avoir une.
-- [x] **`[ENG-LIQUID-FLUX-FORM]`** ✅ **LIVRÉ au lot 196 (2026-09-06)** — `NetTransferLiquid` est désormais **DÉRIVÉ du solde** (`liquid − prevLiquid − growthLiquid`, `monthlyOutput.ts`) : tout ce qui a bougé sur le compte courant hors intérêts — le sens que le PASSÉ (`dailyPastLedger` : `income − expenses`) donnait déjà au même champ. Dérivé et non composé, à dessein : ~30 sites dans cinq modules mutent le liquide, et en composer la somme reproduirait `MODULE-ECRIT-HORS-CHECKLIST` au premier producteur oublié. Mesuré après : **358 points sur 361** non nuls, résiduel de forme-flux **0 mois** (pire < 0,05 $, contre 355 mois et 108 608 $), et sur un mois ordinaire le flux publié == `NetSalary − Expenses − Σcotisations` sur 6 personas sur 8 (les 2 autres portent un paiement de dette / un coût d'enfant, qui SONT des mouvements du compte). Quatre surfaces mesurées sur les 8 personas : médiane du flux « Cash » annuel **79 à 496 $** (contre 13 k$ à 118 k$ pour les autres comptes) ; les pics sont des événements réels (arrivée du minimum FERR en janvier, balayage du surplus de départ au mois 0) ; le plan d'action gagne une ligne « Cash » au niveau racine (« Retire du Cash » −9 k$ à −38 k$ sur 40 ans, « Cotise au Cash » +265 k$ pour `couple-confort` dont le FERR reste au compte le dernier mois) — le texte « pourquoi » existait déjà, il était mort ; l'infobulle « Dépôts » devient le net du ménage (une cotisation sortie du cash et entrée au CELI s'annule). Test de limite `netTransferLiquidVide.test.ts` INVERSÉ en place avec son histoire ; `Liquidites` ENTRE dans les deux gardes de forme-flux (`projection.fluxForm`, `divorceFluxPublie`). Perturbation (champ remis à 0) → les trois gardes rougissent. Les deux entrées mortes (`contribLiquid`/`withdrawalLiquid`) retirées de `MonthlyOutputInputs`. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M → **RE-MESURÉ le 2026-08-25, bien plus large que ce que j'avais
-  écrit**) — j'avais routé ce ticket en disant « le compte Liquidités n'est pas conforme à la
-  forme-flux : 7 638,44 $ au mois 324, plus de petits résiduels ailleurs ». Ça décrivait un CAS
-  LIMITE. C'en est un autre : **`NetTransferLiquid` est non nul sur 0 des 361 points** — le champ est
-  CONSTAMMENT zéro. Donc **355 mois sur 360** portent un résiduel > 1 $, pire **108 608,35 $** (mois
-  360), cumul absolu **864 592,56 $**, sur une fixture ordinaire sans divorce ni stress-test.
-  **Cause** : `NetTransferLiquid = contribLiquid − withdrawalLiquid`, et ces accumulateurs ne sont
-  alimentés que par des chemins marginaux (immobilier, objectifs enfants, sauvetage de découvert). Le
-  flux ORDINAIRE — salaire net, dépenses, cotisations — ne les touche jamais. Vérifié : le résiduel
-  vaut EXACTEMENT `(NetSalary − Expenses) − Σcotisations`.
-  ⚠️ **Le même champ a DEUX sens** : `dailyPastLedger.ts` pose `NetTransferLiquid: income - expenses`
-  — le PASSÉ publie le vrai cashflow, le FUTUR publie zéro. **Quatre surfaces** le consomment :
-  `ProjectionExplains`, `ProjectionTooltip` (qui SOMME tous les `NetTransfer*` → total sous-estimé),
-  `FutureDetailModal` (« Cash (Coussin) ») et `yearlyActions` (« Cash »). La ligne de flux du cash
-  affiche donc 0 sur tout l'horizon futur pendant que le solde bouge.
-  **Fix** : aligner le futur sur le passé (la direction est déterminée). ⚠️ Fait passer une ligne
-  d'interface constamment nulle à ~10 k$/mois sur quatre surfaces, et `contribLiquid` traverse
-  `realEstateMonth` et les objectifs enfants → mesurer CHAQUE consommateur avant de livrer.
-  ⚠️ `tests/services/netTransferLiquidVide.test.ts` verrouille le contrat ACTUEL : au correctif, il
-  s'INVERSE là-bas (avec son histoire), il ne se supprime pas.
 - [ ] **`[FISC-RAMQ-COUPLE-CAP]`** (S) — couple ne peut jamais atteindre prime RAMQ max 766 $ (tranche
   2 bornée 9 600 $ → 744 $ max possible). **Mesuré : célibataire 766 $, couple 744 $ constant.**
   Impact −22 $/adulte/an = ~1 300 $ / 30 ans retraite. Incohérence interne doc (prime max vs tranche

@@ -17,6 +17,7 @@ import { __runScenarioForTests, type SimulationParams } from '../../services/pro
 import type { ProjectionChartPoint } from '../../services/projection';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal, User, Debt } from '../../types';
 import type { AllocationStrategy } from '../../services/projection/types';
+import { maisonDetenue } from '../helpers/menageProprietaire';
 
 const users = (age: number): User[] => ([
     { name: 'Marc', grossSalary: 8_200, netSalary: 5_620, color: '#10b981', age, birthYear: 2026 - age, canadaArrivalYear: 2026 - age, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
@@ -30,7 +31,7 @@ const debts: Debt[] = ([
     { id: 'd2', name: 'Étudiant', balance: 14_000, interestRate: 4.0, minimumPayment: 180, type: 'student' },
 ] as unknown as Debt[]);
 
-const params = (proj: Partial<ProjectionConfig>): SimulationParams => ({
+const params = (proj: Partial<ProjectionConfig>, avecMaison = false): SimulationParams => ({
     projection: {
         years: 12, returnRate: 6, inflationRate: 2, savingsMode: 'manual', manualContribution: 1_500,
         usePortfolioRate: false, returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 },
@@ -38,20 +39,22 @@ const params = (proj: Partial<ProjectionConfig>): SimulationParams => ({
     } as ProjectionConfig,
     calculatedStartingCash: 70_000,
     liveCSVBalances: { CELI: 50_000, CELIAPP: 0, REER: 90_000, NON_ENREG: 40_000, CRYPTO: 10_000, REEE: 0 },
-    realEstateGoals: [], debts, childGoals: [], travelGoals: [], lifeEvents: [],
+    // [TEST-DIVORCE-SANS-IMMOBILIER] `avecMaison` : la maison DÉTENUE (hypothèque comprise) entre
+    // dans le scénario — les 16 fixtures de divorce du dépôt n'en avaient aucune, cette garde incluse.
+    realEstateGoals: avecMaison ? [maisonDetenue()] : [], debts, childGoals: [], travelGoals: [], lifeEvents: [],
     retirementGoal: {
         targetAge: 62, targetMonthlyIncome: 5_000, governmentPension: 1_500,
         lifeExpectancy: 92, dbPensionMonthly: 0,
     } as unknown as RetirementGoal,
     config: { users: users(45), splitMode: '50/50' } as unknown as BudgetConfig,
-    baseGrossAnnual: 183_600, baseNetAnnual: 127_380, currentRentExpense: 1_800,
+    baseGrossAnnual: 183_600, baseNetAnnual: 127_380, currentRentExpense: avecMaison ? 0 : 1_800,
     baseMonthlyExpenses: 4_500, startYear: 2026, startMonth: 0,
 } as unknown as SimulationParams);
 
 /** Scénario MC avec points COMPLETS — c'est ce que `verboseMonthlyPoints` rend possible. */
-const runVerbose = (proj: Partial<ProjectionConfig>): ProjectionChartPoint[] => {
+const runVerbose = (proj: Partial<ProjectionConfig>, avecMaison = false): ProjectionChartPoint[] => {
     const r = __runScenarioForTests(
-        params(proj), 'AUTO_MARGINAL' as AllocationStrategy, true, false, 0, 'BASE', {},
+        params(proj, avecMaison), 'AUTO_MARGINAL' as AllocationStrategy, true, false, 0, 'BASE', {},
         { verboseMonthlyPoints: true },
     ) as unknown as { chartData: ProjectionChartPoint[] };
     return r.chartData;
@@ -144,6 +147,87 @@ describe('[ENG-DIVORCE-NO-CONSERVATION-GUARD] le splitter est enfin sous invaria
             expect(Number(p.DetteTotale) || 0, `dette NÉGATIVE au mois ${i} (actif fantôme)`)
                 .toBeGreaterThanOrEqual(0);
             expect(Number.isFinite(Number(p.NetWorth)), `NetWorth non fini au mois ${i}`).toBe(true);
+        }
+    });
+});
+
+// ── [TEST-DIVORCE-SANS-IMMOBILIER] les MÊMES invariants, avec une maison DÉTENUE ──────────────
+//
+// #748 a couvert le partage du bien lui-même (équité, dette, intérêt, mensualité). Restait la moitié
+// que le ticket nommait en dernier : « passer la fixture aux gardes de conservation existantes ».
+// Ce n'est pas une répétition : avec une hypothèque, la reconstruction du patrimoine CHANGE de
+// formule — `Immobilier` est l'ÉQUITÉ, déjà nette d'hypothèque, donc c'est `DettesNonImmo` qu'il
+// faut soustraire et jamais `DetteTotale` (`[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`). La garde
+// ci-dessus, écrite sans maison, soustrait `DetteTotale` : elle serait FAUSSE sur cette fixture, et
+// elle ne pouvait pas le savoir. Livré au lot 197 (2026-09-06).
+describe('[TEST-DIVORCE-SANS-IMMOBILIER] le splitter reste sous invariant avec une maison DÉTENUE', () => {
+    const DIVORCE_50 = { divorceEnabled: true, divorceAnnualProbability: 1, divorceSplitPct: 50 };
+    const num = (p: ProjectionChartPoint, k: string): number => Number((p as unknown as Record<string, unknown>)[k]) || 0;
+
+    it('la fixture MESURE bien quelque chose : maison, hypothèque, dettes hors immo, divorce', () => {
+        const data = runVerbose(DIVORCE_50, true);
+        const avant = data[11];
+        const apres = data[12];
+        expect(num(avant, 'Immobilier'), 'aucune équité : la maison n\'est pas dans le scénario').toBeGreaterThan(100_000);
+        expect(num(avant, 'DetteTotale') - num(avant, 'DettesNonImmo'), 'aucune hypothèque : la moitié qui change la formule est absente').toBeGreaterThan(100_000);
+        expect(num(avant, 'DettesNonImmo'), 'aucune dette hors immo : DettesNonImmo et DetteTotale seraient confondues').toBeGreaterThan(1_000);
+        expect(num(apres, 'Immobilier'), 'le divorce n\'a pas eu lieu').toBeLessThan(num(avant, 'Immobilier') * 0.6);
+    });
+
+    it('le patrimoine reste RECONSTRUCTIBLE — avec `DettesNonImmo`, pas `DetteTotale`', () => {
+        const data = runVerbose(DIVORCE_50, true);
+        let worst = 0;
+        let worstAt = -1;
+        let worstNaif = 0;
+        for (let i = 0; i < data.length; i++) {
+            const p = data[i];
+            const actifs = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'NonReg', 'Crypto', 'REEE', 'Immobilier']
+                .reduce((s, k) => s + num(p, k), 0);
+            const residual = Math.abs(actifs - num(p, 'DettesNonImmo') - num(p, 'NetWorth'));
+            const residualNaif = Math.abs(actifs - num(p, 'DetteTotale') - num(p, 'NetWorth'));
+            if (residual > worst) { worst = residual; worstAt = i; }
+            if (residualNaif > worstNaif) worstNaif = residualNaif;
+        }
+        expect(worst, `patrimoine non reconstructible au mois ${worstAt}`).toBeLessThan(1);
+        // Contre-épreuve : la formule SANS maison (soustraire `DetteTotale`) re-soustrait l'hypothèque
+        // d'une équité qui en est déjà nette — l'écart EST l'hypothèque. C'est ce qui prouve que
+        // cette fixture exerce bien la moitié que la garde d'origine ne voyait pas.
+        expect(worstNaif, 'la formule naïve tient : l\'hypothèque n\'est pas dans le scénario').toBeGreaterThan(100_000);
+    });
+
+    it('aucun compte ne devient NÉGATIF au passage du divorce', () => {
+        const data = runVerbose(DIVORCE_50, true);
+        for (let i = 0; i < data.length; i++) {
+            for (const k of ['CELI', 'CELIAPP', 'REER', 'NonReg', 'Crypto', 'REEE']) {
+                expect(num(data[i], k), `${k} négatif au mois ${i}`).toBeGreaterThanOrEqual(0);
+            }
+        }
+    });
+
+    it('au mois du divorce, hypothèque ET dettes hors immo suivent le même partage que les actifs', () => {
+        const data = runVerbose(DIVORCE_50, true);
+        const avant = data[11];
+        const apres = data[12];
+        const hypoAvant = num(avant, 'DetteTotale') - num(avant, 'DettesNonImmo');
+        const hypoApres = num(apres, 'DetteTotale') - num(apres, 'DettesNonImmo');
+        const ratioHypo = hypoApres / hypoAvant;
+        const ratioAutres = num(apres, 'DettesNonImmo') / num(avant, 'DettesNonImmo');
+        expect(hypoAvant, 'aucune hypothèque avant le divorce : la fixture ne mesure rien').toBeGreaterThan(100_000);
+        // Mesuré 2026-09-06 : hypothèque 343 736 $ → ratio 0,4987 (l'écart au 0,50 exact est le
+        // capital remboursé du mois) ; dettes hors immo 35 816 $ → ratio 0,4926 (cf. la garde sans
+        // maison, 0,4926 aussi). Fenêtres, jamais des égalités : le remboursement du mois bouge.
+        expect(ratioHypo, `l'hypothèque ne suit plus le partage (ratio ${ratioHypo.toFixed(4)})`).toBeGreaterThan(0.48);
+        expect(ratioHypo).toBeLessThan(0.52);
+        expect(ratioAutres, `les dettes hors immo ne suivent plus le partage (ratio ${ratioAutres.toFixed(4)})`).toBeGreaterThan(0.44);
+        expect(ratioAutres).toBeLessThan(0.56);
+    });
+
+    it('un split à 100 % ne fabrique NI actif fantôme NI dette négative, maison comprise', () => {
+        const data = runVerbose({ divorceEnabled: true, divorceAnnualProbability: 1, divorceSplitPct: 100 }, true);
+        for (let i = 0; i < data.length; i++) {
+            expect(num(data[i], 'DetteTotale'), `dette NÉGATIVE au mois ${i}`).toBeGreaterThanOrEqual(0);
+            expect(num(data[i], 'DettesNonImmo'), `dette hors immo NÉGATIVE au mois ${i}`).toBeGreaterThanOrEqual(0);
+            expect(Number.isFinite(num(data[i], 'NetWorth')), `NetWorth non fini au mois ${i}`).toBe(true);
         }
     });
 });

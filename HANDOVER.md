@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 197 : la garde de conservation du divorce voit une maison DÉTENUE (`[TEST-DIVORCE-SANS-IMMOBILIER]`)
+> Le ticket était ARCHIVÉ depuis #748 et encore ouvert au BACKLOG (doublon périmé) ; restait sa dernière moitié,
+> « passer la fixture aux gardes de conservation ». Fixture hissée en `tests/helpers/menageProprietaire.ts` (depuis
+> deux copies identiques) ; cinq tests dans `projection.divorceConservation` : avec une hypothèque, la reconstruction
+> du patrimoine change de formule (`DettesNonImmo`, pas `DetteTotale`) — la contre-épreuve naïve mesure l'écart
+> (= l'hypothèque, 343 736 $). Ratios au divorce : hypothèque 0,4987, hors immo 0,4926. Perturbations : 2 et 10
+> rouges. Tests seuls : rien de servi ne change. Archive du lot 196.
+
 > ## 🟦 Session 2026-09-06 — Lot 196 : le flux du compte courant est publié dans le futur (`[ENG-LIQUID-FLUX-FORM]`)
 > `NetTransferLiquid` valait 0 sur 361 points (deux accumulateurs marginaux) pendant que le solde bougeait — 355 mois
 > sur 360 en résiduel, pire 108 608 $. Désormais DÉRIVÉ du solde (`liquid − prevLiquid − growthLiquid`) : tout ce qui

@@ -20,21 +20,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
-import type { ProjectionConfig, BudgetConfig, RetirementGoal, RealEstateGoal, User } from '../../types';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
 import type { AllocationStrategy } from '../../services/projection/types';
-
-const users = (age: number): User[] => ([
-    { name: 'Marc', grossSalary: 8_200, netSalary: 5_620, color: '#10b981', age, birthYear: 2026 - age, canadaArrivalYear: 2026 - age, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
-    { name: 'Anna', grossSalary: 7_100, netSalary: 4_995, color: '#3b82f6', age, birthYear: 2026 - age, canadaArrivalYear: 2026 - age, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
-] as unknown as User[]);
+import { usersCouple, maisonDetenue } from '../helpers/menageProprietaire';
 
 /** Fixture RÉUTILISABLE « ménage propriétaire » — voir l'en-tête pour les deux pièges. */
-const maison: RealEstateGoal = {
-    id: 'p1', name: 'Maison', price: 500_000, downPayment: 100_000,
-    mortgageRate: 5, amortization: 25, purchaseDate: '2021-01-01', isActive: true, isOwned: true,
-    propertyGrowthRate: 3, isPrimaryResidence: true,
-} as unknown as RealEstateGoal;
-
 const params = (proj: Partial<ProjectionConfig>): SimulationParams => ({
     projection: {
         years: 15, returnRate: 6, inflationRate: 2, savingsMode: 'manual', manualContribution: 1_500,
@@ -45,9 +35,9 @@ const params = (proj: Partial<ProjectionConfig>): SimulationParams => ({
     liveCSVBalances: { CELI: 90_000, CELIAPP: 0, REER: 150_000, NON_ENREG: 40_000, CRYPTO: 0, REEE: 0 },
     // ⚠️ `debts: []` à dessein : sans autre dette, `DetteTotale` EST l'hypothèque (le point mensuel
     // ne publie pas de champ dédié). Le test d'anti-vacuité le vérifie plutôt que le supposer.
-    realEstateGoals: [maison], debts: [], childGoals: [], travelGoals: [], lifeEvents: [],
+    realEstateGoals: [maisonDetenue()], debts: [], childGoals: [], travelGoals: [], lifeEvents: [],
     retirementGoal: { targetAge: 62, targetMonthlyIncome: 5_000, governmentPension: 1_500, lifeExpectancy: 92, dbPensionMonthly: 0 } as unknown as RetirementGoal,
-    config: { users: users(45), splitMode: '50/50' } as unknown as BudgetConfig,
+    config: { users: usersCouple(45), splitMode: '50/50' } as unknown as BudgetConfig,
     baseGrossAnnual: 183_600, baseNetAnnual: 127_380, currentRentExpense: 0,
     baseMonthlyExpenses: 4_500, startYear: 2026, startMonth: 0,
 } as unknown as SimulationParams);

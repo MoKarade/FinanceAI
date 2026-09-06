@@ -10,6 +10,18 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[SYNC-PUSH-PULL-NO-UNIT-TEST]` — LIVRÉ, audité puis complété (lot 203, PR #934)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** ✅ **LIVRÉ au lot 203 (2026-09-06) — audité PUIS complété** : l'alarme « zéro test direct » était trop large — les suites `syncOrchestrator.*` ne mockent QUE la frontière (GIS, Drive, coffre, backup) et font tourner les VRAIS `pushNow`/`pullNow` ; couverture MESURÉE (`vitest --coverage` sur les 10 fichiers sync) : `syncPull.ts` **89 %** de lignes, `syncPush.ts` **80 %**. Ce qui n'avait AUCUN test, précisément : `schedulePush` en entier (le push automatique, debounce 8 s, re-test du conflit pendant l'attente, saut si rien n'a changé), la réentrance de `pushNow`, les trois raisons de refus, le chiffrement des clés qui échoue, et côté pull le blob `enc:true` sans ciphertext, le déchiffrement qui échoue hors mauvaise passphrase, le backup pré-restauration qui lève, les clés chiffrées sans `sub`. Livré : `tests/services/syncPushPull.direct.test.ts` (21 cas, faux timers pour le debounce, vrai chiffrement). Cinq perturbations du SOURCE aux signatures distinctes (verrou de réentrance, re-test du conflit, saut « rien n'a changé », contrôle du ciphertext absent, message générique) → 1 rouge chacune. Reste hors périmètre, dit tel quel : `syncPolling` (30 % de branches) et `syncLifecycle` (70 %). Contexte d'origine : (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
+  write direct `localStorage.setItem`) + 4 autres modules sync (`syncPassphrase`, `syncSnapshot`,
+  `syncMeta`, `syncPolling`, cumulé 886 lignes) **zéro test direct**. `syncOrchestrator` a des tests
+  EN INTÉGRATION. Un bug de merge/payload tronqué en sync conservation peut passer inaperçu.
+  **Correctif** : auditer d'abord ce que `syncOrchestrator*.test.ts` couvre réellement (mock vs
+  réel) ; ajouter tests directs `syncPush`/`syncPull` priorité (paths de conflit, payload
+  partiel/corrompu).
+
 ## 2026-09-06 — `[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]` + `[A11Y-ADDSTOCKFORM-LABELS]` — LIVRÉ / CADUC (lot 202, PR #933)
 
 Tickets d'origine tels qu'au moment de l'archivage :

@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 204 : `[AI-ONESHOT-NO-CACHE]` caduc, mesuré contre la doc Anthropic
+> Le ticket voulait autoriser `cache_control` sur le prompt système des appels one-shot. Mesuré : ce prompt fait ≈ 221 tokens
+> (774 caractères, + 168/295 pour paie et relevé) ; la doc « Prompt caching » relayée le 2026-09-06 fixe le minimum cacheable à
+> 4 096 tokens pour Haiku 4.5 et 1 024 pour Sonnet 4.6, et dit qu'un prompt plus court est traité sans cache, sans erreur. Le
+> correctif prescrit serait un no-op silencieux : commentaire posé sur les signatures de `services/claude.ts`, aucune ligne de
+> comportement changée. Rien de servi ne change. Archive du lot 203.
+
 > ## 🟦 Session 2026-09-06 — Lot 203 : tests directs de `syncPush`/`syncPull` — l'alarme re-mesurée, le trou réel fermé (`[SYNC-PUSH-PULL-NO-UNIT-TEST]`)
 > « Zéro test direct » était vrai à la lettre et faux comme alarme : les suites d'intégration font tourner les vrais
 > modules (seule la frontière est simulée) — 89 % / 80 % de lignes mesurés. Ce qui manquait vraiment : le push AUTOMATIQUE

@@ -12219,6 +12219,18 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 204 (2026-09-06) — le chiffre qu'un ticket cite pour minimiser son défaut peut être la preuve de sa caducité
+
+`[AI-ONESHOT-NO-CACHE]` prescrivait d'ouvrir le type du prompt système pour y poser un `cache_control`, et notait « impact
+faible (~190 tokens) ». Ce chiffre n'était pas une nuance, c'était la réfutation : le cache de prompt a une longueur MINIMALE
+(4 096 tokens pour Haiku 4.5, 1 024 pour Sonnet 4.6, doc relayée), et un bloc plus court est traité sans cache, sans erreur,
+sans rien dire — exactement la classe « une garde qui ne peut pas tirer » appliquée à une optimisation : on aurait livré un
+attribut, un type élargi et un test verts pour un mécanisme qui ne se déclenche jamais. Devant un ticket d'OPTIMISATION,
+chercher le SEUIL du mécanisme avant sa forme (taille minimale, fenêtre, quota) et le comparer à la mesure — ici 774 caractères
+contre 4 096 tokens, ordre de grandeur 20×. ⚠️ Corollaire : la source était joignable cette fois (`platform.claude.com`, après
+une redirection depuis `docs.claude.com`) ; consigner l'URL ET la date de relais, parce que ces minimums ont déjà changé d'une
+génération de modèles à l'autre (512 tokens sur la génération suivante) — la caducité est datée, pas définitive.
+
 ### Variante notée au lot 203 (2026-09-06) — « zéro test direct » se re-mesure en COUVERTURE avant de s'écrire en tests, et une fixture localStorage se sème APRÈS la mutation du store
 
 `[SYNC-PUSH-PULL-NO-UNIT-TEST]` comptait les fichiers qui IMPORTENT `syncPush`/`syncPull` (zéro) et en déduisait « un bug

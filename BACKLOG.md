@@ -943,21 +943,6 @@
   L'état actuel est BORNÉ par un test qui doit MOURIR au moment du correctif couplé
   (`tests/services/estateAgeCredits.test.ts`, cas « INVENTAIRE DE DETTE »).
 
-- [x] **`[FISC-LATENT-PENSION-CREDIT]`** ✅ **LIVRÉ EN ENTIER au lot 200 (2026-09-06) — la moitié FERR** : l'objection était une UNITÉ (cumul année-à-date) et la grandeur ANNUELLE existait déjà un module plus loin — `taxJanuary` fixe `ferrGrossByUser` (solde × facteur RRIF de l'âge) au 1er janvier pour l'année entière. Le moteur la retient (`ferrAnnualByUser`, ré-évaluée chaque janvier, zéro avant 72 ans) et la passe à `computeLatentTax` (`ferrAnnualPerUser`), déflatée comme la rente DB, en 3e argument de `eligiblePensionRealFor`. Mesuré (retraité seul 74 ans, REER 300 k$, sans DB) : impôt latent **+250,50 $ de dette en moins** (m30 et m60, le crédit fédéral perdu sur la base) ; avec DB 2 200 $/mois : **0 $** (plafond saturé) ; patrimoine successoral inchangé. Test d'inventaire du lot 86 INVERSÉ (+3 cas purs : gate 70/72, absent → bit-identique, déflation) ; garde de câblage par espion (`latentTaxFerrWiring.test.ts` : zéro avant 72, positif dès janvier, CONSTANT dans l'année — la propriété qui autorisait le câblage —, ré-évalué au janvier suivant, contrôle négatif sans REER). Perturbations : 3e argument à 0 → 2 rouges ; janvier ne ré-évalue plus → 3 rouges. Aucun golden déplacé (mesuré : les personas à FERR portent une rente DB qui sature le plafond). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE — **moitié DB livrée le 2026-09-02, lot 86**) —
-  ⬜ **RESTE la seule moitié FERR** (retraits ≥ 72 ans dans l'assiette du crédit), et elle est
-  **BLOQUÉE par une question d'UNITÉ**, pas par un oubli : la seule grandeur disponible côté impôt
-  latent est `accRetraitsReerYear`, un accumulateur **année-à-date** remis à zéro chaque janvier.
-  L'impôt latent se calcule à CHAQUE mois — le nourrir d'un cumul à date rendrait une valeur d'écran
-  dépendante du MOIS CALENDRIER de lancement, le défaut exact que `[ESTATE-NPV-07]` a mesuré à
-  210 997 $ d'amplitude sur son voisin. **Correctif** : produire une grandeur ANNUALISÉE de retraits
-  FERR par déclarant (comme `incomeRetirementDbPerUserMonthly` l'est pour la rente privée), puis la
-  passer en 3ᵉ argument de `eligiblePensionRealFor`.
-  ⚠️ **Portée réelle, mesurée** : le plafond du crédit est atteint dès **3 058 $/an** d'assiette
-  (ligne 361 QC ; 2 000 $ au fédéral) — une rente DB de 255 $/mois le sature. La moitié manquante ne
-  change donc RIEN pour un ménage qui touche une vraie rente d'employeur ; elle ne vaut que pour un
-  ménage sans rente privée qui décaisse un FERR. L'état actuel est BORNÉ par un test qui doit mourir
-  avec la dette (`tests/services/latentTaxPensionCredit.test.ts`, cas « INVENTAIRE DE DETTE »).
-
 
 - [ ] **`[ENG-RENTES-ACTIF-APRES-AGE-MAX-REPORT]`** (M, MOYEN — découvert au lot 195 en mesurant le persona « Gilles, 71 ans », MESURÉ) — **un ménage ACTIF ne touche AUCUNE rente RRQ/PSV tant que `isRetired` est faux**, quel que soit son âge : `computeRetirementIncome` n'est appelé que sous `if (isRetired)` (`services/projection.ts`, phase retraite), et `rrqStartAge`/`psvStartAge` ne sont lus que là. Or la PSV ne se reporte pas au-delà de **70 ans** ni la RRQ au-delà de **72** (`PSV_DEFERRED_START_AGE`, `RRQ_DEFERRED_START_AGE`) : un travailleur de 71-75 ans les REÇOIT obligatoirement. Mesuré sur Gilles (71 ans, `targetAge` 76, `governmentPension` 2 100 $/mois) : `IncomeRetirement` vaut **0 sur les 60 premiers mois**, premier versement au mois 60 (76 ans) — ≈ **126 k$ bruts** de rentes jamais versées ni imposées (avant impôt et récupération PSV, `[À vérifier]` en net). Population : quiconque saisit un `targetAge` > 70. ⚠️ Correctif non trivial : les rentes de la branche active doivent aussi entrer dans l'assiette de décembre (§1 actif) et dans la récupération PSV — grep les DEUX registres avant de câbler, comme pour les retraits REER actifs (`[REER-ACTIF-NON-RECONCILIE]`). Le `governmentPension` saisi est un AGRÉGAT RRQ+PSV : le découpage par âge de début est à décider (Marc). Non corrigé au lot 195 (hors périmètre, bug préexistant signalé).
 
@@ -1544,7 +1529,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
 > refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [ ] **`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`** (S, FAIBLE — **découvert en livrant
+- [x] **`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`** ✅ **CADUQUE, MESURÉ au lot 201 (2026-09-06) — garde de dérive posée** : scan de `components/` (label sans `htmlFor` n'enveloppant aucun contrôle, suivi d'un contrôle à `aria-label`) → **26 sites dans 9 fichiers** ; **20 paires IDENTIQUES** (à un emoji décoratif près, exclu à dessein du nom accessible), **4 délibérément descriptives** (« Champ : » → « Filtrer par champ modifié », visionneuses système), 2 non comparables (libellé dynamique / enveloppement). La précondition du ticket (« divergent déjà quelque part ») n'est PAS remplie : le balisage n'est pas touché (poser `htmlFor` et retirer l'`aria-label` sur 20 sites pour un défaut inexistant serait du scope). Ce qui est livré, c'est la garde contre la dérive que le ticket craignait : `tests/components/labelAriaCoherents.test.ts` (paires identiques, normalisation sur le SENS ; paires descriptives déclarées avec le mot que l'`aria-label` doit encore porter ; témoins nommés). Perturbations : aria-label d'un slider changé → 1 rouge ; aria-label descriptif qui perd son mot → 1 rouge. À rouvrir si une dérive rougit. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE — **découvert en livrant
   `[A11Y-LABELS-RESTE-DU-DEPOT]`** le 2026-08-30) — il reste dans `components/` des `<label>` qui
   n'ont ni `htmlFor` ni enveloppement alors que leur contrôle porte déjà un `aria-label`. **Ce n'est
   PAS un défaut WCAG** : le champ est nommé, la garde `controlAccessibleNameGuard` est verte, et

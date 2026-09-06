@@ -16,6 +16,11 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 201 : libellés visibles et `aria-label` — aucune dérive, garde posée (`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`, caduc)
+> Scan de `components/` : 26 sites / 9 fichiers, 20 paires identiques, 4 délibérément descriptives, 2 non comparables. La
+> précondition du ticket n'est pas remplie → balisage intact, garde de dérive livrée (`labelAriaCoherents.test.ts`, 2
+> perturbations rouges). Tests seuls : rien de servi ne change. Archive du lot 200.
+
 > ## 🟦 Session 2026-09-06 — Lot 200 : la moitié FERR du crédit de pension atteint l'impôt latent (`[FISC-LATENT-PENSION-CREDIT]`, fini)
 > L'objection du lot 86 était une UNITÉ (cumul année-à-date) ; la grandeur annuelle existait un module plus loin
 > (`taxJanuary.ferrGrossByUser`, fixé en janvier). Le moteur la retient (`ferrAnnualByUser`) et la passe à

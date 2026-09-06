@@ -12219,6 +12219,18 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 201 (2026-09-06) — un ticket qui pose sa propre précondition se solde par la MESURE de cette précondition, et la garde vaut plus que le correctif
+
+`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]` disait « à faire seulement si un scan prouve d'abord que les deux textes
+divergent déjà ». Mesuré : 26 sites, zéro dérive — les 4 seules différences sont voulues (un nom accessible plus
+descriptif qu'un libellé court). Le correctif prescrit (poser `htmlFor`, retirer l'`aria-label`, 20 sites) aurait
+été du scope pour un défaut inexistant. Ce qui vaut, c'est la RAISON du ticket — deux écritures du même texte
+peuvent diverger en silence — et ça se garde par un scan qui fige les paires identiques et déclare les paires
+descriptives AVEC le mot qu'elles doivent conserver (sinon l'exception devient un trou). ⚠️ Le premier jet du
+scan comptait « enveloppé » sur une fenêtre de 4 lignes : un `<label className="block">` qui enveloppe un
+`<select>` cinq lignes plus bas passait pour un offender — un recenseur se vérifie sur ce qu'il sort ET sur ce
+qu'il ne sort pas (`UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE`).
+
 ### Variante notée au lot 200 (2026-09-06) — une moitié « bloquée par une question d'unité » se débloque en demandant QUI calcule déjà la bonne unité
 
 Le lot 86 avait livré la moitié DB du crédit de pension dans l'impôt latent et ROUTÉ la moitié FERR avec une

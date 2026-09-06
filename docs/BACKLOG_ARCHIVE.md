@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[FISC-LATENT-PENSION-CREDIT]` — LIVRÉ EN ENTIER (lot 200, PR #931 ; moitié DB au lot 86)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-LATENT-PENSION-CREDIT]`** ✅ **LIVRÉ EN ENTIER au lot 200 (2026-09-06) — la moitié FERR** : l'objection était une UNITÉ (cumul année-à-date) et la grandeur ANNUELLE existait déjà un module plus loin — `taxJanuary` fixe `ferrGrossByUser` (solde × facteur RRIF de l'âge) au 1er janvier pour l'année entière. Le moteur la retient (`ferrAnnualByUser`, ré-évaluée chaque janvier, zéro avant 72 ans) et la passe à `computeLatentTax` (`ferrAnnualPerUser`), déflatée comme la rente DB, en 3e argument de `eligiblePensionRealFor`. Mesuré (retraité seul 74 ans, REER 300 k$, sans DB) : impôt latent **+250,50 $ de dette en moins** (m30 et m60, le crédit fédéral perdu sur la base) ; avec DB 2 200 $/mois : **0 $** (plafond saturé) ; patrimoine successoral inchangé. Test d'inventaire du lot 86 INVERSÉ (+3 cas purs : gate 70/72, absent → bit-identique, déflation) ; garde de câblage par espion (`latentTaxFerrWiring.test.ts` : zéro avant 72, positif dès janvier, CONSTANT dans l'année — la propriété qui autorisait le câblage —, ré-évalué au janvier suivant, contrôle négatif sans REER). Perturbations : 3e argument à 0 → 2 rouges ; janvier ne ré-évalue plus → 3 rouges. Aucun golden déplacé (mesuré : les personas à FERR portent une rente DB qui sature le plafond). Contexte d'origine : (XS, FAIBLE — **moitié DB livrée le 2026-09-02, lot 86**) —
+  ⬜ **RESTE la seule moitié FERR** (retraits ≥ 72 ans dans l'assiette du crédit), et elle est
+  **BLOQUÉE par une question d'UNITÉ**, pas par un oubli : la seule grandeur disponible côté impôt
+  latent est `accRetraitsReerYear`, un accumulateur **année-à-date** remis à zéro chaque janvier.
+  L'impôt latent se calcule à CHAQUE mois — le nourrir d'un cumul à date rendrait une valeur d'écran
+  dépendante du MOIS CALENDRIER de lancement, le défaut exact que `[ESTATE-NPV-07]` a mesuré à
+  210 997 $ d'amplitude sur son voisin. **Correctif** : produire une grandeur ANNUALISÉE de retraits
+  FERR par déclarant (comme `incomeRetirementDbPerUserMonthly` l'est pour la rente privée), puis la
+  passer en 3ᵉ argument de `eligiblePensionRealFor`.
+  ⚠️ **Portée réelle, mesurée** : le plafond du crédit est atteint dès **3 058 $/an** d'assiette
+  (ligne 361 QC ; 2 000 $ au fédéral) — une rente DB de 255 $/mois le sature. La moitié manquante ne
+  change donc RIEN pour un ménage qui touche une vraie rente d'employeur ; elle ne vaut que pour un
+  ménage sans rente privée qui décaisse un FERR. L'état actuel est BORNÉ par un test qui doit mourir
+  avec la dette (`tests/services/latentTaxPensionCredit.test.ts`, cas « INVENTAIRE DE DETTE »).
+
+
 ## 2026-09-06 — `[BACKUP-BOOLEEN-DANS-UN-MONTANT]` — LIVRÉ (lot 199, PR #930)
 
 Ticket d'origine tel qu'au moment de l'archivage :

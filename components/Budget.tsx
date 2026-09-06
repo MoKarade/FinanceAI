@@ -815,8 +815,12 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         // reste légitime et le moteur sait y répondre : elle est ROUTÉE en
         // `[BUDGET-SENSIBILITE-MOTEUR]` plutôt que devinée ici. La carte entière navigue déjà vers
         // l'onglet Futur, donc rien d'ATTEIGNABLE n'est perdu.
+        // [BUDGET-SENSIBILITE-MOTEUR] (lot 198) Le moteur y RÉPOND désormais : `savingsSensitivity` est
+        // un second scénario BASE (dépenses − 100 $/mois) calculé par la projection elle-même. Ici on
+        // le LIT, on ne le recalcule pas — `null` (appel ciblé, valeur non finie) → rien d'affiché.
         return {
             estateNetWorth: lastProjection.estateNetWorth ?? last?.NetWorth ?? 0,
+            savingsSensitivity: lastProjection.savingsSensitivity ?? null,
             finalYear: last?.year ?? new Date().getFullYear() + Math.round(horizonYears),
             horizonYears: Math.round(horizonYears),
             currentMonthlySavings: monthlyTotalSavings,
@@ -886,6 +890,14 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 value: formatCAD(projectionSummary.estateNetWorth), // MONTANT-HORS-ECRAN
                 note: `patrimoine successoral projeté en ${projectionSummary.finalYear} (horizon ${projectionSummary.horizonYears} ans), rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth) ; pour comparer avec get_projection, utiliser years=${projectionSummary.horizonYears}`,
             });
+            if (projectionSummary.savingsSensitivity) {
+                const sens = projectionSummary.savingsSensitivity;
+                cards.push({
+                    label: 'Sensibilité (moteur)',
+                    value: `${formatCAD(sens.extraMonthlySavings)}/mois d'épargne en plus → ${formatSigned(sens.deltaEstateNetWorth, { withCurrency: true })} de patrimoine successoral`, // MONTANT-HORS-ECRAN
+                    note: 'second scénario calculé par la PROJECTION (lastProjection.savingsSensitivity : mêmes hypothèses, dépenses réduites d\'autant) — pas une formule locale',
+                });
+            }
         }
         if (timeView === 'MONTH' && alerts.length > 0) {
             cards.push({
@@ -1136,6 +1148,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         <div className="text-tiny text-ink-400 mt-1">
                             Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
                         </div>
+                        {projectionSummary.savingsSensitivity && (
+                            <PrivateAmount as="div" className="text-tiny text-ink-300 mt-2">
+                                Sensibilité : {formatCAD(projectionSummary.savingsSensitivity.extraMonthlySavings)}/mois d'épargne en plus donnerait{' '}
+                                <span className="font-bold text-info-300">{formatSigned(projectionSummary.savingsSensitivity.deltaEstateNetWorth, { withCurrency: true })}</span>
+                                {' '}à la fin — calculé par la projection, pas par une formule.
+                            </PrivateAmount>
+                        )}
                     </div>
                 </button>
             )}

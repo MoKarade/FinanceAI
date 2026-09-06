@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 198 : le moteur répond « +100 $/mois d'épargne = +X $ à la fin » (`[BUDGET-SENSIBILITE-MOTEUR]`)
+> Coût mesuré avant de décider : un second scénario BASE déterministe = 17 à 30 ms, **+2,5 à 4,1 %** d'une projection de
+> production (MC 100) → publié. `ProjectionResult.savingsSensitivity` (mêmes stratégie/report que `resBase`, dépenses − 100),
+> `null` sous `onlyStratTypes` (goal seek, stress-test) ; en mode « dépenses théoriques » c'est `theoreticalExpenses` qui est
+> réduit (sinon delta nul crédible — perturbation mesurée). Budget LIT le champ (ligne sous « Impact à long terme » + carte du
+> contexte de chat), `null` → rien. Test d'inventaire du lot 89 INVERSÉ en place. Mesuré : +115 528 $ / +199 727 $ / +18 809 $
+> sur trois personas. Servi : Budget → déploiement à vérifier. Archive du lot 197.
+
 > ## 🟦 Session 2026-09-06 — Lot 197 : la garde de conservation du divorce voit une maison DÉTENUE (`[TEST-DIVORCE-SANS-IMMOBILIER]`)
 > Le ticket était ARCHIVÉ depuis #748 et encore ouvert au BACKLOG (doublon périmé) ; restait sa dernière moitié,
 > « passer la fixture aux gardes de conservation ». Fixture hissée en `tests/helpers/menageProprietaire.ts` (depuis

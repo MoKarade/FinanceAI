@@ -15,6 +15,7 @@ interface ProjectionResult {
   fvi: number | null;                     // Vitalité Financière
   fireNumber: number;                     // Patrimoine FIRE cible
   estateNetWorth: number;                 // Patrimoine final (héritage)
+  savingsSensitivity: { extraMonthlySavings: number; deltaEstateNetWorth: number; deltaFinalNetWorth: number } | null; // [BUDGET-SENSIBILITE-MOTEUR] +100 $/mois d'épargne ; null si non calculé (onlyStratTypes)
   strategyName: string;
   aiNote: string;
 }

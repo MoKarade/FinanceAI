@@ -39,9 +39,14 @@ const PERSONA_CIBLE = 'gilles-actif-decaisse';
 const spy = vi.mocked(processDecemberTaxFiling);
 
 interface Releve {
-    /** Décembres traversés (toutes stratégies confondues) — anti-vacuité du balayage. */
+    /** Décembres traversés (tous scénarios confondus) — anti-vacuité du balayage. */
     decembres: number;
-    /** Décembres où le ménage est ACTIF, retire du REER et détient du non-enregistré. */
+    /** ANNÉES distinctes où un décembre voit le ménage ACTIF, retirant du REER et détenant du
+     *  non-enregistré. ⚠️ Des années, pas des appels : depuis le lot 198, `calculateFutureProjection`
+     *  lance un SECOND scénario (la sensibilité à l'épargne, `savingsSensitivity`), et un compteur
+     *  d'appels a doublé (4 → 8) sans que rien du persona n'ait changé. Une garde qui compte les
+     *  appels d'un module partagé compte les RUNS, pas le fait qu'elle défend
+     *  (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`). */
     actifQuiDecaisse: number;
 }
 
@@ -52,14 +57,14 @@ function relever(personaId: string): Releve {
     spy.mockClear();
     calculateFutureProjection(params);
     let decembres = 0;
-    let actifQuiDecaisse = 0;
+    const annees = new Set<number>();
     for (const call of spy.mock.calls) {
         const [currentMonthIndex, ctx] = call as unknown as [number, DecemberContext];
         if (currentMonthIndex !== 11 || ctx.m === 0) continue;
         decembres++;
-        if (!ctx.isRetired && ctx.accRetraitsReerYear > 0 && ctx.nonReg > 0) actifQuiDecaisse++;
+        if (!ctx.isRetired && ctx.accRetraitsReerYear > 0 && ctx.nonReg > 0) annees.add(ctx.loopYear);
     }
-    return { decembres, actifQuiDecaisse };
+    return { decembres, actifQuiDecaisse: annees.size };
 }
 
 describe('[PERSONA-ACTIF-QUI-DECAISSE] « Gilles, 71 ans » exerce le décembre « actif + retraits REER + non-enregistré »', () => {
@@ -70,7 +75,7 @@ describe('[PERSONA-ACTIF-QUI-DECAISSE] « Gilles, 71 ans » exerce le décembre 
     it('Gilles traverse ce chemin à CHAQUE décembre actif après 72 ans (72 à 75 : quatre), sur la stratégie de base', () => {
         const r = relever(PERSONA_CIBLE);
         expect(r.decembres).toBeGreaterThan(0); // le moteur a bien atteint décembre
-        // Mesuré 2026-09-05 (horizon 40 ans, une stratégie) : 4 décembres, 2027 à 2030 — les années
+        // Mesuré 2026-09-05 (horizon 40 ans) : 4 ANNÉES, 2027 à 2030 — les années
         // des 72, 73, 74 et 75 ans, c'est-à-dire CHAQUE année active à partir du premier minimum
         // FERR (72) et jusqu'à l'arrêt de travail (targetAge 76). Épinglé EXACT, pas borné : un
         // 5e décembre voudrait dire que la retraite a reculé ou que le FERR a avancé — les deux

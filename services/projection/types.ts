@@ -190,6 +190,21 @@ export interface ProjectionResult {
     /** [PV-11a] — objectifs PARTIELLEMENT financés à leur deadline (drawn < visé) :
      *  count = nb d'occurrences, total = somme des manques ($). ≠ shortfallRate (cashflow). */
     goalShortfalls?: { count: number; total: number };
+    /** [BUDGET-SENSIBILITE-MOTEUR] « Si j'épargne X $/mois de plus, combien ça change à la fin ? »
+     *  — répondu par le MOTEUR (un second scénario BASE déterministe, dépenses − X), jamais par
+     *  une formule locale d'écran (la tuile de Budget inventait 145 648 $ pour tous les ménages ;
+     *  la vraie réponse va de 18 k$ à 307 k$ selon le persona). Coût mesuré : +2,5 à 4,1 % d'une
+     *  projection de production (MC 100 itérations). `null` = non calculé (appels ciblés
+     *  `onlyStratTypes` — goal seek, stress-test — ou valeur non finie) : un écran affiche alors
+     *  rien, jamais un 0. */
+    savingsSensitivity?: {
+        /** Épargne mensuelle supplémentaire simulée ($/mois). */
+        extraMonthlySavings: number;
+        /** Patrimoine successoral avec l'épargne en plus − sans. */
+        deltaEstateNetWorth: number;
+        /** Patrimoine en fin d'horizon avec l'épargne en plus − sans. */
+        deltaFinalNetWorth: number;
+    } | null;
     shortfallMonths?: number;
     shortfallRate?: number;
     fireNumber?: number;

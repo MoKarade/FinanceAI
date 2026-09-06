@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-06 (Budget : « 100 $/mois de plus, ça donne quoi à la fin ? » — répondu par la projection)
+
+- **Ajouté** : sous la carte « Impact à long terme » de l'onglet Budget, une ligne « Sensibilité » dit ce que
+  100 $/mois d'épargne en plus changeraient à ton patrimoine successoral. Le chiffre vient de la projection
+  elle-même (un second scénario, mêmes hypothèses, dépenses réduites d'autant) — pas d'une formule locale : la
+  tuile retirée en août donnait le même montant à tout le monde, celle-ci dépend de ta situation. Si la
+  projection ne l'a pas calculée, la ligne n'apparaît pas. Le contexte du chat reçoit la même carte, avec sa
+  provenance.
+
 ## [unreleased] — 2026-09-06 (Le mouvement de ton compte courant apparaît enfin dans le futur)
 
 - **Corrigé** : dans Futur, la ligne « transfert » / « Cash » des liquidités affichait 0 sur tout l'horizon

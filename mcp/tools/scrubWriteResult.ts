@@ -42,7 +42,7 @@ const scrubValue = (v: unknown): unknown => {
     return v;
 };
 
-export function scrubChangesForModel(changes: Change[]): Change[] {
+function scrubChangesForModel(changes: Change[]): Change[] {
     return changes.map((c) => ({
         field: sanitizePromptText(c.field, WRITE_TEXT_MAX),
         before: scrubValue(c.before),

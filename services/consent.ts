@@ -48,7 +48,7 @@ export const GTAG_SRC = 'https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1V
  * index.html) ; au premier « Accepter », on charge le tag ici — les événements
  * accumulés dans dataLayer par le stub (ga-init.js) sont alors rejoués par gtag.
  */
-export function ensureGtagLoaded(): void {
+function ensureGtagLoaded(): void {
     if (typeof document === 'undefined') return;
     if (document.querySelector('script[src^="https://www.googletagmanager.com/gtag/js"]')) return;
     const s = document.createElement('script');

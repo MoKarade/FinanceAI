@@ -14,7 +14,6 @@ import { matchTransactionToCategory, matchCategoryToName } from './budget';
 // Règles de dépense PARTAGÉES (module neutre : évite le cycle budgetSync ↔ budget).
 import { CREDIT_BACK_CATEGORIES, isCreditBack, isSpend, spendAmountOf, isHorsComparaisonBudget } from './spendRules';
 
-export { CREDIT_BACK_CATEGORIES, isSpend, spendAmountOf } from './spendRules';
 
 
 /**
@@ -24,7 +23,7 @@ export { CREDIT_BACK_CATEGORIES, isSpend, spendAmountOf } from './spendRules';
  * / mes fiches de paie, pas au chiffre d'onboarding », séparé en Salaire vs Revenus divers). On NE compte
  * PAS les autres positifs (remboursements, retours d'investissement…) comme du revenu de budget.
  */
-export const INCOME_CATEGORIES = { salary: 'Salaire', other: 'Revenus divers' } as const;
+const INCOME_CATEGORIES = { salary: 'Salaire', other: 'Revenus divers' } as const;
 const isIncome = (t: Transaction): boolean =>
     t.amount > 0 && !t.isTransfer && !t.isDuplicate &&
     (t.category === INCOME_CATEGORIES.salary || t.category === INCOME_CATEGORIES.other);

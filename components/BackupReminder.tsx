@@ -143,5 +143,4 @@ export const BackupReminder: React.FC<BackupReminderProps> = ({ onNavigateToSett
 };
 
 // Valeur exportée pour les tests.
-export { DISMISS_KEY };
 export type { BackupReminderProps };

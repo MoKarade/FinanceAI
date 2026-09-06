@@ -102,4 +102,3 @@ export const StatementReminder: React.FC = () => {
 };
 
 // Valeur exportée pour les tests.
-export { DISMISS_KEY };

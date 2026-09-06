@@ -38,14 +38,6 @@ function getWorker(): Worker | null {
     }
 }
 
-export function terminateProjectionWorker() {
-    if (_worker) {
-        _worker.terminate();
-        _worker = null;
-        _workerDead = false;
-    }
-}
-
 interface WorkerRequest {
     __requestId: number;
     params: SimulationParams;
@@ -103,7 +95,7 @@ export const PROJECTION_CANCELLED = '__PROJECTION_CANCELLED__';
  * les yeux de Marc ET dans la réponse servie au LLM. Un contrat qui exige un traitement chez
  * l'appelant doit lui donner de quoi le faire : ici `motif`, déjà prêt à afficher.
  */
-export class ProjectionEntreeRefuseeError extends Error {
+class ProjectionEntreeRefuseeError extends Error {
     constructor(public readonly motif: string) {
         super(motif);
         this.name = 'ProjectionEntreeRefuseeError';

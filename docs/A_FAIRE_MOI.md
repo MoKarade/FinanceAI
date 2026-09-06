@@ -1441,3 +1441,18 @@ au taux marginal du ménage.
 déduction — c'est une perte sèche mesurée, −2,8 k$ à −10 k$ de patrimoine sans un dollar d'impôt en
 moins.) [Recommandé : OUI — c'est la loi, et l'écart grandit avec l'horizon.]
 
+---
+
+## Question Q13 — `knip` en CI ? (2026-09-06, lot 205)
+
+**Le fait** : `[KNIP-UNUSED-EXPORTS-73]` disait 73 exports inutilisés ; rejoué, 80 — le compte a dérivé de 7 en
+trois semaines sans que personne ne le voie, parce que `npm run knip` n'est lancé par rien. Le lot 205 le ramène à 0.
+
+**Options** :
+1. Ajouter une étape `npm run knip` au workflow `ci.yml` (bloquante) — le compte ne peut plus redériver, mais un export
+   ajouté « pour plus tard » rougit la CI. [Recommandé : oui, en bloquant sur les EXPORTS seulement (`--exclude types`)
+   tant que les 234 types ne sont pas triés.]
+2. Non bloquante (avertissement) — le compte reste visible, personne ne le lit (une alarme permanente s'ignore).
+3. Rien — re-trier à la main de temps en temps.
+
+Je ne le fais pas seul : c'est une modification de la chaîne d'outils (règle CLAUDE.md §5).

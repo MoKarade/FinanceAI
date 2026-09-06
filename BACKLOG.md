@@ -1568,11 +1568,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `services/aiChat/models.ts` et `pricing.ts` (un suffixe de date, rien d'autre) et retirer les
   entrées correspondantes de `ALIAS_A_EPINGLER` — le test refuse un inventaire périmé, il guidera.
 
-- [x] **`[AI-ONESHOT-NO-CACHE]`** ✅ **CADUC, MESURÉ au lot 204 (2026-09-06)** : le correctif prescrit (`system: string | Array<block>` pour poser un `cache_control`) serait un NO-OP silencieux. Mesuré : `QUEBEC_FISCAL_CONTEXT` fait **774 caractères ≈ 221 tokens**, et les deux prompts système composés (paie, relevé) y ajoutent 168 et 295 caractères — or la longueur MINIMALE cacheable est de **4 096 tokens pour Haiku 4.5** (tous les one-shots sauf `chat`/`chatStream`) et **1 024 pour Sonnet 4.6**, et « un prompt plus court est traité SANS cache, sans erreur » (doc Anthropic « Prompt caching », relayée le 2026-09-06 : `platform.claude.com/docs/en/build-with-claude/prompt-caching`, tableau « minimum cacheable prompt length »). Le ticket avait raison sur la FORME (le type interdit le cache) et tort sur l'EFFET (le cache est impossible à cette taille, quelle que soit la forme) — le « ~190 tokens » qu'il annonçait était la preuve de sa propre caducité. La seule piste qui resterait est de cacher le bloc UTILISATEUR d'un « Régénérer » (mêmes données renvoyées dans les 5 minutes), à condition qu'il dépasse 4 096 tokens — hypothèse NON mesurée, pas de ticket : à mesurer d'abord sur un lot de transactions réel. Commentaire posé sur les signatures de `services/claude.ts` pour que le prochain lecteur ne re-tente pas l'union. Re-mesure : `node -e` sur la longueur de `QUEBEC_FISCAL_CONTEXT` (commande dans le commentaire). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M) — `system` typé `string` nu → **aucun** appel one-shot ne peut
-  utiliser cache prompt (contrairement à `agentLoop.ts`). Impact faible (~190 tokens), mais boutons
-  « Régénérer » repaient plein tarif. **Correctif** : union `string | Array<block>` pour permettre
-  `cache_control`.
-
 ### 🔴 Dette technique
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
@@ -1609,7 +1604,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   FutureProjection — extraire blocs purement calculatoires (agrégats budget, vérifier non-re-dérivés
   localement vs moteur), puis sous-vues JSX. Mesurer handlers (0 `useCallback` → risque re-création).
 
-- [ ] **`[KNIP-UNUSED-EXPORTS-73]`** (S triage) — **73 exports non-utilisés** + **209 types** exportés
+- [ ] **`[KNIP-UNUSED-EXPORTS-73]`** — ✅ **EXPORTS LIVRÉS au lot 205 (2026-09-06)** : `knip` rejoué AVANT de coder = **80** exports (pas 73) et **234** types (pas 209) ; triage par SITE, mesuré par occurrence dans le fichier déclarant et par `import` dans le dépôt : **69** utilisés seulement chez eux (mot-clé `export` retiré), **3** ré-exports de barils que personne n'importait par le baril (`budgetSync` → `spendRules` ×3 sur une ligne, `syncOrchestrator.INACTIVITY_LIMIT_MS`, `projection.decisiveLevers`), **6** MORTS supprimés (`clearCredentials`, `terminateProjectionWorker`, `maskedTooltipValue`, deux crochets de test `__reset…` qu'aucun test n'appelait, `RRQ_PART2_MAX` — valeur dérivée, gardée dans `FISCAL_REFERENCE` avec sa formule à la place du nom). `npm run knip` : **0 export inutilisé**, 0 erreur de typecheck, lint à 18 avertissements (identique avant/après ; 41 fichiers, +75/−104). ⬜ **RESTE : les 234 TYPES exportés inutilisés** (Props d'interfaces, types de hooks) — bénins, triage à part. ⬜ **Question Q13 (docs/A_FAIRE_MOI.md)** : ajouter `knip` à la CI pour que ce compte ne redérive pas (chaîne d'outils → décision Marc). Contexte d'origine : (S triage) — **73 exports non-utilisés** + **209 types** exportés
   inutilisés. Types bénins (aucun coût réel). Valeurs notables : `utils/tax.ts` **19 constantes RRQ/
   RQAP/AE/RAMQ/FSS** non-ré-exportées (probablement usage interne au fichier seulement). **Correctif** :
   triage item-par-item : retirer `export` si usage interne, supprimer si vraiment mort (l'exemple

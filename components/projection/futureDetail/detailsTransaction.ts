@@ -12,7 +12,7 @@ import type { Transaction } from '../../../types';
  * ligne ne dirait rien tout en noyant celles qui, elles, méritent l'œil.
  */
 /** En dessous, la catégorie proposée par l'IA mérite un coup d'œil. Échelle 0-100. */
-export const SEUIL_CONFIANCE_FAIBLE = 70;
+const SEUIL_CONFIANCE_FAIBLE = 70;
 
 export const detailsTransaction = (
     t: Transaction,

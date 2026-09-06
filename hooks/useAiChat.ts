@@ -47,7 +47,7 @@ import { pushAttachmentsToDrive, fetchAttachmentsFromDrive, deleteAttachmentsFro
 // tirerait le SDK dans le bundle de BOOT (règle CLAUDE.md) → on ne les charge qu'au 1er envoi.
 
 /** Libellés FR lisibles des tools pour les chips « a consulté : X ». */
-export const TOOL_LABELS: Record<string, string> = {
+const TOOL_LABELS: Record<string, string> = {
     get_financial_overview: 'Vue d\'ensemble',
     get_holdings: 'Placements',
     get_projection: 'Projection',

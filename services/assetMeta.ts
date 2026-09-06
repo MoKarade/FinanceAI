@@ -23,7 +23,7 @@ export interface AssetMeta {
 }
 
 /** Seed hardcodé — fallback quand marketData provider absent ou échoue. */
-export const ASSET_META: Record<string, AssetMeta> = {
+const ASSET_META: Record<string, AssetMeta> = {
   // US TECH / SEMI
   "NASDAQ:NVDA": { name: "Nvidia", sector: "Technologie", region: "USA", yield: 0.02, freq: 4, nextPayMonth: 3 },
   "NASDAQ:AVGO": { name: "Broadcom", sector: "Technologie", region: "USA", yield: 1.4, freq: 4, nextPayMonth: 3 },

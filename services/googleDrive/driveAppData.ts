@@ -45,7 +45,7 @@ const resolveFetch = (f?: FetchLike): FetchLike => {
  * que sur une erreur, pas sur un « busy » figé). [SYNC-FETCH-TIMEOUT] 2026-07-16. 20 s = marge large
  * pour une connexion lente réelle sans laisser l'utilisateur bloqué une minute.
  */
-export const DRIVE_FETCH_TIMEOUT_MS = 20_000;
+const DRIVE_FETCH_TIMEOUT_MS = 20_000;
 
 /**
  * Exécute `f(input, init)` PUIS la lecture du corps (`handler`) sous un MÊME budget de délai

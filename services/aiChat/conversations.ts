@@ -35,7 +35,7 @@ export const MAX_ARCHIVED_CONVERSATIONS = 30;
 type ConversationsState = Pick<AppState, 'aiConversation' | 'aiConversations' | 'activeAiConversationId' | 'aiChatModel'>;
 
 let _convSeq = 0;
-export const nextConversationId = (): string => `aiconv_${Date.now()}_${++_convSeq}`;
+const nextConversationId = (): string => `aiconv_${Date.now()}_${++_convSeq}`;
 
 /** Titre auto : première question de l'utilisateur, tronquée — sinon la date du premier message. */
 export function conversationTitle(messages: AiMessage[]): string {

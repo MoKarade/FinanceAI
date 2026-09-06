@@ -115,11 +115,6 @@ export interface DebtBalance extends DebtDates {
  *  même dette corrompue thrasherait le localStorage de `logError`. */
 const loggedNonFiniteDebtSignatures = new Set<string>();
 
-/** Test-only : remet à zéro le throttle ci-dessus (isolation entre tests, convention `__` du dépôt). */
-export function __resetNonFiniteDebtSignatureLog(): void {
-    loggedNonFiniteDebtSignatures.clear();
-}
-
 /**
  * Somme des soldes ACTUELS (bruts, `d.balance`) des dettes DÉJÀ ACTIVES AUJOURD'HUI (mois
  * `moisAujourdhui`) mais PAS ENCORE COMMENCÉES au mois ABSOLU `courant` — à SOUSTRAIRE d'un total

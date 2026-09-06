@@ -15,7 +15,7 @@
 import React from 'react';
 
 /** Le tiret cadratin (U+2014) que les helpers `format*` rendent pour une valeur non finie. */
-export const EMPTY_DASH = '—';
+const EMPTY_DASH = '—';
 /** Alternative lecteur d'écran de l'état « pas de donnée ». */
 export const NO_DATA_LABEL = 'Pas de donnée';
 

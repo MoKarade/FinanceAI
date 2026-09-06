@@ -45,9 +45,9 @@ export interface TxComparable {
 }
 
 /** Fenêtre de rapprochement pour un doublon INCERTAIN, en jours. Même valeur que `markDuplicates`. */
-export const FENETRE_INCERTAIN_JOURS = 5;
+const FENETRE_INCERTAIN_JOURS = 5;
 /** Écart de montant sous lequel deux transactions valent « le même montant » (arrondis de conversion). */
-export const TOLERANCE_MONTANT = 0.02;
+const TOLERANCE_MONTANT = 0.02;
 
 export interface PaireIncertaine<T extends TxComparable = TxComparable> {
     /** Transaction rapatriée, en attente de décision. */

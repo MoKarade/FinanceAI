@@ -10,15 +10,16 @@
 // Deux libellés distincts, volontairement :
 //  - AXE  → `***` : une graduation d'axe est un gabarit de 2-4 caractères ; « Montant masqué » y
 //    déborde et casse la mise en page (largeur d'axe figée par `width={...}`).
-//  - INFOBULLE → `MASKED_AMOUNT_LABEL` : même wording que `PrivateAmount`, lisible et annoncé
-//    identiquement au lecteur d'écran.
+//  - INFOBULLE → le libellé de `PrivateAmount` (`MASKED_AMOUNT_LABEL` de `privacyAria`), lisible et
+//    annoncé identiquement au lecteur d'écran — les infobulles l'obtiennent via `isPrivacyMode`
+//    directement ; l'enveloppe `maskedTooltipValue` de ce module n'a jamais eu de consommateur et a
+//    été retirée au lot 205.
 //
 // Garde de non-régression : `tests/components/chartPrivacyScan.test.ts` (scan de source — le seul
 // outil capable de voir une prop de graphique que le mock Recharts avale).
-import { MASKED_AMOUNT_LABEL } from './privacyAria';
 
 /** Substitut d'une graduation d'axe $ en mode discret (gabarit court, cf. en-tête). */
-export const MASKED_TICK_LABEL = '***';
+const MASKED_TICK_LABEL = '***';
 
 /**
  * Enveloppe un formateur de graduation d'axe MONÉTAIRE : en mode discret, l'axe ne dit RIEN
@@ -27,10 +28,6 @@ export const MASKED_TICK_LABEL = '***';
 export const maskedTick = <T,>(isPrivacyMode: boolean, format: (value: T) => string) =>
     (value: T): string => (isPrivacyMode ? MASKED_TICK_LABEL : format(value));
 
-/**
- * Enveloppe un formateur d'infobulle MONÉTAIRE (valeur seule). Pour une infobulle qui rend un
- * tuple `[valeur, nom]`, appeler ce helper sur la valeur uniquement — le nom de série n'est pas
- * une donnée privée.
- */
-export const maskedTooltipValue = <T,>(isPrivacyMode: boolean, format: (value: T) => string) =>
-    (value: T): string => (isPrivacyMode ? MASKED_AMOUNT_LABEL : format(value));
+// [KNIP-UNUSED-EXPORTS-73] (lot 205) `maskedTooltipValue` supprimé : zéro consommateur depuis sa naissance —
+// les infobulles passent par `maskedTick` ou par `isPrivacyMode` directement (les deux scans de vie
+// privée le vérifient).

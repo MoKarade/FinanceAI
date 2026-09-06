@@ -52,7 +52,6 @@ export type { StrategyConfig } from './projection/strategyConfig';
 export {
     rankConfigResults,
     explainWinner,
-    decisiveLevers,
     OBJECTIVE_LABELS,
     type ConfigRankingResult,
     type RankedConfig,

@@ -25,7 +25,7 @@ import { resolve } from 'node:path';
 const SOURCE = readFileSync(resolve(__dirname, '../../components/Investments.tsx'), 'utf8');
 
 /** Marques prouvant qu'un montant est rendu en tenant compte du mode discret. */
-const PROTEGE = /PrivateAmount|PrivateBlock|isPrivacyMode|maskedTick|maskedTooltipValue/;
+const PROTEGE = /PrivateAmount|PrivateBlock|isPrivacyMode|maskedTick/;
 
 /**
  * Chaque ligne qui AFFICHE un montant via `formatCAD`, avec son contexte immédiat.

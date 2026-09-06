@@ -82,13 +82,31 @@ describe('[FISC-LATENT-PENSION-CREDIT] câblage — on OBSERVE l\'argument', () 
         for (const o of vus) expect(o.eligiblePensionIncome).toBe(0);
     });
 
-    it('INVENTAIRE DE DETTE — la moitié FERR est ABSENTE, et ce test doit MOURIR quand elle arrivera', () => {
-        // L'assiette transmise est EXACTEMENT la rente DB : aucun autre terme ne s'y glisse. Le jour
-        // où la moitié FERR sera livrée (elle exige une grandeur annualisée, pas l'accumulateur
-        // année-à-date d'aujourd'hui), ce test rougira PAR CONCEPTION — il s'INVERSE alors, il ne se
-        // supprime pas (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
-        const vus = espionner(retraite({ ages: [75] })); // 75 > 72 : le gate FERR serait ouvert
+    it('INVERSÉ (lot 200) — la moitié FERR ARRIVE : à 75 ans, l\'assiette vaut rente DB + retraits FERR de l\'année', () => {
+        // Ce cas était l'INVENTAIRE DE DETTE du lot 86 : il affirmait que l'assiette vaut EXACTEMENT la
+        // rente DB, et devait mourir quand la moitié FERR arriverait. Elle est arrivée par
+        // `ferrAnnualPerUser` (retrait obligatoire de l'année, fixé en janvier — pas l'accumulateur
+        // année-à-date qui bloquait). Inversé ici même, avec son histoire
+        // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+        const vus = espionner(retraite({ ages: [75], ferrAnnualPerUser: [12000] }));
+        expect(vus.length).toBe(2);
+        for (const o of vus) expect(o.eligiblePensionIncome).toBe(2000 * 12 + 12000);
+    });
+
+    it('à 70 ans, les retraits FERR transmis ne comptent PAS (gate 72, dérivé de taxJanuary)', () => {
+        const vus = espionner(retraite({ ages: [70], ferrAnnualPerUser: [12000] }));
         for (const o of vus) expect(o.eligiblePensionIncome).toBe(2000 * 12);
+    });
+
+    it('sans `ferrAnnualPerUser`, l\'assiette reste la rente DB seule — bit-identique au lot 86', () => {
+        const vus = espionner(retraite({ ages: [75] }));
+        for (const o of vus) expect(o.eligiblePensionIncome).toBe(2000 * 12);
+    });
+
+    it('la moitié FERR est DÉFLATÉE comme la rente DB (dollars réels)', () => {
+        // m = 24 à 2 % : facteur 1,0404. Les deux moitiés sont divisées par le même facteur.
+        const vus = espionner(retraite({ ages: [75], m: 24, simInflation: 2, ferrAnnualPerUser: [10404] }));
+        for (const o of vus) expect(o.eligiblePensionIncome).toBeCloseTo(24000 / 1.0404 + 10000, 6);
     });
 });
 

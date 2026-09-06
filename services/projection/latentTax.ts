@@ -68,6 +68,18 @@ export interface LatentTaxCtx {
      * qui en résulte a déjà été corrigé une fois dans ce moteur (~250-680 $/an/personne).
      */
     dbPensionPerUserMonthly?: ReadonlyArray<number | undefined>;
+    /**
+     * [FISC-LATENT-PENSION-CREDIT] (lot 200) Retraits FERR obligatoires de l'ANNÉE de chaque
+     * déclarant, **annuels et NOMINAUX**, même ordre que `ages` — `ferrGrossByUser` de `taxJanuary`,
+     * fixé au 1er janvier et constant jusqu'au suivant. Seconde moitié de l'assiette du crédit pour
+     * revenu de retraite (gate 72 ans, dérivé de l'âge FERR du modèle, dans `pensionCredit.ts`).
+     *
+     * ABSENT ⇒ moitié FERR à zéro, c'est-à-dire le comportement d'avant, bit-identique.
+     * ⚠️ JAMAIS `accRetraitsReerYear` ici : c'est un cumul année-à-date remis à zéro en janvier, et
+     * l'impôt latent se calcule chaque mois — il rendrait l'écran dépendant du mois de lancement
+     * (`[ESTATE-NPV-07]` a mesuré 210 997 $ d'amplitude sur son voisin).
+     */
+    ferrAnnualPerUser?: ReadonlyArray<number | undefined>;
 }
 
 /**
@@ -82,7 +94,7 @@ export function computeLatentTax(
         m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
         reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain, enableMonteCarlo, ages,
-        dbPensionPerUserMonthly,
+        dbPensionPerUserMonthly, ferrAnnualPerUser,
     } = ctx;
 
     const yearsElapsed = Math.floor(m / 12);
@@ -117,12 +129,13 @@ export function computeLatentTax(
      *     le montant québécois de la ligne 361, lui, est testé au revenu — il survit sur la base et
      *     est écrasé par la liquidation, donc la bande incrémentale le facture.
      *
-     * ⚠️ La moitié FERR (retraits ≥ 72 ans) est **volontairement absente**, et la raison est
-     * STRUCTURELLE, pas un oubli : la seule grandeur disponible est `accRetraitsReerYear`, un
-     * accumulateur ANNÉE-À-DATE remis à zéro chaque janvier. L'impôt latent se calcule à CHAQUE
-     * mois : le nourrir d'un cumul à date rendrait une valeur d'écran dépendante du MOIS CALENDRIER
-     * de lancement de la simulation — le défaut exact que `[ESTATE-NPV-07]` a mesuré à 210 997 $
-     * d'amplitude sur son voisin. Elle est routée avec sa mesure plutôt que devinée.
+     * ⚠️ La moitié FERR (retraits ≥ 72 ans) a été **absente jusqu'au lot 200**, pour une raison
+     * STRUCTURELLE : la seule grandeur disponible était `accRetraitsReerYear`, un accumulateur
+     * ANNÉE-À-DATE remis à zéro chaque janvier, et l'impôt latent se calcule à CHAQUE mois — un
+     * cumul à date aurait rendu l'écran dépendant du MOIS CALENDRIER de lancement (le défaut que
+     * `[ESTATE-NPV-07]` a mesuré à 210 997 $ d'amplitude). Elle arrive désormais par
+     * `ferrAnnualPerUser` : le retrait obligatoire de l'ANNÉE, fixé en janvier par `taxJanuary`
+     * (solde × facteur RRIF de l'âge), constant jusqu'au janvier suivant.
      * ⚠️ Le plafond du crédit est atteint dès **3 058 $/an** d'assiette (ligne 361 QC ; 2 000 $ au
      * fédéral) : une rente DB de 255 $/mois suffit à le saturer, donc la moitié absente ne change
      * rien pour un ménage qui touche une vraie rente d'employeur.
@@ -131,6 +144,10 @@ export function computeLatentTax(
         const v = dbPensionPerUserMonthly?.[i];
         return Number.isFinite(v) ? ((v as number) * 12) / inflationFactor : 0;
     };
+    const ferrAnnuelReel = (i: number): number => {
+        const v = ferrAnnualPerUser?.[i];
+        return Number.isFinite(v) ? (v as number) / inflationFactor : 0;
+    };
     const impotSurNDeclarations = (revenuParDeclarant: number): number => {
         let total = 0;
         for (let i = 0; i < activeUsersCount; i++) {
@@ -138,8 +155,8 @@ export function computeLatentTax(
                 ? {
                     age: ages[i],
                     hasSpouse: activeUsersCount > 1,
-                    // 3e argument à ZÉRO = la moitié FERR, absente pour la raison ci-dessus.
-                    eligiblePensionIncome: eligiblePensionRealFor(ages[i], dbAnnuelReel(i), 0),
+                    // 3e argument : la moitié FERR, annuelle et déflatée comme la rente DB.
+                    eligiblePensionIncome: eligiblePensionRealFor(ages[i], dbAnnuelReel(i), ferrAnnuelReel(i)),
                 }
                 : undefined;
             total += calculateFiscalReport(revenuParDeclarant, 0, 0, loopYear, enableMonteCarlo,

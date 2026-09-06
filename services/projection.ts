@@ -482,6 +482,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // retrait). Invariant Σ == accRetraitsReerYear. Consommé par taxDecember (impôt par conjoint sur
     // les vrais retraits, au lieu du split 50/50). Reset chaque janvier comme l'accumulateur commun.
     let accRetraitsReerYearByUser: number[] = reerShares.map(() => 0);
+    // [FISC-LATENT-PENSION-CREDIT] (lot 200) Retraits FERR OBLIGATOIRES de l'ANNÉE par conjoint, en
+    // dollars NOMINAUX — la grandeur annualisée que l'impôt latent attendait. Elle est connue dès le
+    // 1er janvier (`taxJanuary` la calcule pour l'année entière : solde × facteur RRIF de l'âge) et
+    // reste CONSTANTE jusqu'au janvier suivant, donc l'impôt latent d'un mois ne dépend plus du mois
+    // calendaire de lancement — l'objection qui laissait cette moitié absente (`accRetraitsReerYear`
+    // est un cumul année-à-date). Zéro tant qu'aucun conjoint n'a atteint l'âge FERR.
+    let ferrAnnualByUser: number[] = reerShares.map(() => 0);
 
     const simSalaryGrowth = effProj.salaryGrowth ?? 2.5;
     const simEFMonths = effProj.emergencyFundMonths || 3;
@@ -1458,6 +1465,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 rrspRoom += janResult.rrspRoomDelta;
             }
             accGrossIncomeYearByUser = [0, 0];
+            // [FISC-LATENT-PENSION-CREDIT] Ré-évaluée CHAQUE janvier (y compris à zéro, quand le REER
+            // est épuisé) : c'est la valeur annuelle de l'année qui commence.
+            ferrAnnualByUser = reerShares.map((_, i) => {
+                const v = janResult.ferrGrossByUser?.[i];
+                return Number.isFinite(v) ? Math.max(0, v as number) : 0;
+            });
             // FERR
             if (janResult.ferrMandatoryGross > 0) {
                 taxOnRrif = janResult.ferrTaxOnRrif;
@@ -2412,11 +2425,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // divorce, il ne reste qu'une déclaration, donc qu'un âge.
                   ages: soloHousehold ? [age] : [age, ageSpouseProjete],
                   // [FISC-LATENT-PENSION-CREDIT] L'assiette du crédit pour revenu de retraite, par
-                  // la MÊME source unique que le dépôt de décembre. Seule la moitié DB voyage : la
-                  // moitié FERR n'existe ici que sous forme d'accumulateur année-à-date, et la
-                  // brancher rendrait une valeur d'écran dépendante du mois de lancement (raison
-                  // détaillée et mesurée dans `latentTax.ts`).
+                  // la MÊME source unique que le dépôt de décembre. Les DEUX moitiés voyagent depuis
+                  // le lot 200 : la rente DB (mensuelle nominale) et les retraits FERR de l'année
+                  // (`ferrAnnualByUser`, fixés en janvier — jamais l'accumulateur année-à-date, qui
+                  // rendrait l'écran dépendant du mois de lancement). Même effondrement solo que `ages`.
                   dbPensionPerUserMonthly: dbPerUserMonthly(),
+                  ferrAnnualPerUser: soloHousehold ? [ferrAnnualByUser[0]] : ferrAnnualByUser,
                   reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
                 calculateFiscalReport,
             );

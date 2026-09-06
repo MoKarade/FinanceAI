@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]` + `[A11Y-ADDSTOCKFORM-LABELS]` — LIVRÉ / CADUC (lot 202, PR #933)
+
+Tickets d'origine tels qu'au moment de l'archivage :
+
+- [x] **`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`** ✅ **LIVRÉ au lot 202 (2026-09-06)** : les deux lignes (`💊 RAMQ`, `🏥 FSS`) publient la part par adulte dans l'unité du TOTAL (nominale, celle qui entre dans `divers`) et NOMMENT le nombre d'adultes : « X/an (2 adultes × Y) » — la division que la phrase invite à faire rend désormais ce qu'elle promet. Mesuré (couple retraité, 64 k$ réels, facteur 1,5) : avant « 1 814 $/an (605 $/adulte) », après « 1 814 $/an (2 adultes × 907 $) ». Garde `tests/services/logRamqFssMemeUnite.test.ts` sur la RELATION (n × part = total, et total = `divers`), jamais sur un montant. Perturbations : ancien code → 2 rouges (relations) ; « les deux en réel » → 1 rouge (identité à `divers`). Contexte d'origine : (XS) — **défaut PRÉEXISTANT**, rendu plus
+  visible par le lot 101 (signalé, PAS corrigé — hors périmètre demandé) : `taxDecember.ts` journalise
+  `💊 RAMQ médicaments: <total>/an (<par adulte>/adulte)` où le total est en dollars **INFLATÉS** et
+  la part par adulte en dollars **RÉELS**. Les deux n'ont jamais été divisibles l'un par l'autre ;
+  depuis que les deux passent par `formatCAD`, ils se ressemblent typographiquement et le log invite
+  à faire la division. Idem FSS. **Correctif** : publier les deux dans la MÊME unité, ou nommer
+  l'unité dans la phrase.
+
+- [x] **`[A11Y-ADDSTOCKFORM-LABELS]`** ✅ **CADUC — DÉJÀ LIVRÉ au lot 51 (`[A11Y-LABELS-RESTE-DU-DEPOT]`, #777, 2026-09-01), constaté au lot 202 (2026-09-06)** : les 7 champs portent `htmlFor` + `id` depuis ce lot de CLASSE, qui n'a pas coché ce ticket de SITE (`PM-STALE-BACKLOG`). Clôture MESURÉE, pas lue : un cas dans `AddStockForm.test.tsx` atteint les 7 contrôles par leur libellé (`getByLabelText`, le nom ACCESSIBLE), perturbation « un `htmlFor` retiré » → rouge ; la garde de dépôt `controlAccessibleNameGuard` interdit déjà tout contrôle anonyme. Contexte d'origine : (S — routé revue #686, a11y-auditor LOW) —
+  `components/investments/AddStockForm.tsx` : 7 champs (Symbole/Ticker, Prix manuel, Date d'achat,
+  Quantité, Prix d'achat, + le `role="combobox"` de l'autocomplétion) n'ont AUCUNE association
+  label↔contrôle (ni `htmlFor`/`id`, ni `aria-label`/`aria-labelledby`) — un lecteur d'écran devine
+  le nom par proximité DOM, non fiable. Les 2 champs « Devise »/« Compte fiscal » ont été corrigés
+  en passant (revue #686, même patron `htmlFor`+`id`) ; ce ticket couvre le reste du formulaire.
+
 ## 2026-09-06 — `[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]` — CADUC, MESURÉ, garde de dérive posée (lot 201, PR #932)
 
 Ticket d'origine tel qu'au moment de l'archivage :

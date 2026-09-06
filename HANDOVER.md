@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 209 : `[VISION-NO-RETRY]` caduc, mesuré sur le vrai SDK
+> Le ticket voulait un backoff applicatif sur les six one-shots et les deux appels Vision. Mesuré sur `@anthropic-ai/sdk`
+> avec `fetch` seul simulé : le client de `makeClient` réessaie déjà (`maxRetries = 2`, 408/409/429/5xx + panne réseau,
+> `retry-after` honoré, backoff 0,5 → 8 s, signal d'abandon respecté). Garde de 7 cas sur le vrai module
+> (`claudeSdkRetryDefaut.test.ts`), perturbation `maxRetries: 0` → 5 rouges. Découvert en chemin, NON corrigé :
+> `categorizeBatch` empile sa propre politique sur celle du SDK (`[AI-CATEGORIZE-DOUBLE-RETRY]`, hypothèse). Tests et docs
+> seuls : rien de servi ne change. Archive du lot 208.
+
 > ## 🟦 Session 2026-09-06 — Lot 208 : l'arbitre de contraste voit enfin la palette Tailwind par défaut (`[A11Y-CONTRAST-ANGLE-MORT-541]`, fini) + `[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]` fermé
 > 539 occurrences de la palette par défaut dans 70 fichiers n'étaient vues par aucune passe. Résolveur élargi depuis
 > `tailwindcss/colors`, deux autres angles morts de l'extracteur fermés en chemin (texte de survol non apparié, bouton

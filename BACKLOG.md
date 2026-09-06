@@ -277,17 +277,6 @@
 
 ---
 
-- [x] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** ✅ **FINI, constaté au lot 208 (2026-09-06)** : ses deux volets sont livrés — `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` (#721, deux sites dans `projection.ts`) et `householdGross: grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual)` (lot 178, archivé). Le ticket ne portait plus que la description de son propre reliquat, déjà tranché et livré (`PM-STALE-BACKLOG`). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S — ⚠️ **À MOITIÉ LIVRÉ, ne pas re-faire**) —
-  ⚠️ Ticket RE-MESURÉ le 2026-08-25 : le volet `grossAnnaBaseAnnual` est **FERMÉ** depuis
-  `[REEE-CONGE-SANS-GARDE-SOLO]` (PR #721) — `services/projection.ts` porte
-  `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` au bloc enfants, plus la porte
-  `!isRetired`. Les ~36 000 $ de congé parental fantôme ne sont plus versés.
-  **RESTE** : `householdGross` est toujours la somme des DEUX salaires — délibérément, avec sa raison
-  écrite dans le code. Ce n'est PAS un oubli : baisser cette assiette ferait MONTER l'allocation d'un
-  parent seul (mesuré : 166 $ → 250 $/mois au mois 36), ce qui est une **règle à trancher**, pas un
-  correctif. Suivi en `[ENG-DIVORCE-ALLOC-ASSIETTE]` — tranché par Marc (14, « comme mesuré ») et
-  **LIVRÉ au lot 178** (2026-09-05, archivé) : l'assiette suit désormais `soloHousehold`.
-  ⚠️ Laisser ce ticket dans son état d'origine aurait fait re-livrer #721 (classe `PM-STALE-BACKLOG`).
 - [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS, **REQUALIFIÉ 2026-09-02 : design, pas conformité**)
   — ⚠️ **Ses chiffres sont JUSTES, re-mesurés** (composition alpha sur `surfaceHighlight #15181E`,
   palette Tailwind par défaut) : fond `bg-amber-500/10` → **1,17**, bordure `border-amber-500/30` →
@@ -1033,22 +1022,6 @@
 
 ### 🔴 Interface — atteignabilité et clavier
 
-- [x] **`[A11Y-CONTRAST-ANGLE-MORT-541]`** ✅ **LIVRÉ au lot 208 (2026-09-06) — outil élargi, rejoué, offenders corrigés par MESURE** : re-mesuré **539 occurrences / 92 classes / 70 fichiers** (le ticket disait 541 / 65). (1) `scripts/lib/ctaContrast.ts` résout maintenant la palette Tailwind PAR DÉFAUT depuis `tailwindcss/colors` (source unique de ces hex, tokens du projet d'abord) ; en chemin, DEUX autres angles morts de l'extracteur : le texte de SURVOL (`hover:text-white`) n'était jamais apparié au fond de survol (faux offender violet-300 sur violet-600 = 3,09 alors que le blanc du survol vaut 5,70), et un bouton au repos TRANSLUCIDE (`bg-violet-600/20`) et au survol PLEIN était ignoré en entier. (2) Rejoué : **19 paires CTA** (8 avant) et une passe TEXTE neuve (179 classes par défaut lues, 102 combinaisons sur les 3 fonds) — **texte par défaut sur fond de page : 0 sous 4,5** (le seul candidat, `text-rose-700`, est sur son PROPRE fond blanc, 5,9 — un élément qui porte son fond n'est pas sur le fond de page) ; **CTA : 6 offenders réels dans 4 fichiers**, blanc sur `green-600` = 3,30 au repos (DebtManager, BackupPanel) et survols `green-500` 2,28 / `purple-500` 3,96 / `indigo-500` 4,47 (LifeEvents, Transactions). (3) Corrigés par mesure selon la décision Marc 2026-08-24 (« corriger, pas tolérer ») : `green-700`/`green-800` (5,02 / 7,13), `purple-700` (6,98), `indigo-700` (7,90). Garde `tests/a11y/ctaContrast.test.ts` +3 cas (résolveur par défaut, appariement du survol, passe texte avec anti-vacuité) ; quatre perturbations aux signatures distinctes. Reste hors périmètre, inchangé : `[A11Y-CTA-HORS-SCAN]` (tokens plats en fond, filtres CSS, fonds translucides). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, ÉLEVÉ — **trouvé par Claude en recoupant deux rapports**)
-  — `scripts/check-contrast.ts` n'itère que sur la palette du projet (`COLORS` de
-  `tailwind.config.js` : `ink`, `success`, `warning`, `danger`, `info`, `primary` — vérifié l:39-51).
-  Or le code utilise **541 classes de couleurs Tailwind PAR DÉFAUT dans 65 fichiers** de
-  `components/` (`text-amber-300` ×44, `text-green-400` ×39, `text-red-300` ×37, `bg-green-500` ×25,
-  `text-emerald-300` ×24, `text-blue-300` ×21…). **Aucune n'est vue par l'arbitre.**
-  ⚠️ **Conséquence sur la lecture du reste de l'audit** : le « 60 combinaisons testées, 0 non
-  conforme » du rapport a11y est exact, mais il ne couvre que les tokens — il ne dit **rien** de ces
-  541 usages. Ce n'est pas un échec de contraste constaté (non mesuré, et on ne juge pas un contraste
-  à l'œil) : c'est un **angle mort de la garde**, plus large d'un ordre de grandeur que les 26 hex
-  ad-hoc de `[DETTE-COULEURS-ADHOC]`, qui n'en sont qu'un sous-ensemble.
-  Correctif, dans cet ordre : (1) étendre `check-contrast` aux couleurs Tailwind par défaut réellement
-  employées + aux CTA pleins (cf. `[A11Y-CONTRAST-TOOL-GAP-CTA]`), (2) **rejouer** l'outil, (3) le
-  périmètre de migration vers les tokens = les offenders qu'il révèle, pas une liste devinée
-  (règle « resserrer le scan-garde AVANT de coder le fix »). [MESURÉ pour l'angle mort ; échec de
-  contraste = NON MESURÉ]
 - [x] **`[A11Y-CONTRAST-TOOL-GAP-CTA]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `scripts/check-contrast.ts` ne teste que
   `text-{couleur}` sur les 3 fonds de page ; il ne teste **pas** les CTA pleins
   (`bg-{danger,info,warning,success}-600` + `text-white`, ex. `DebtManager.tsx:128`,
@@ -1100,10 +1073,11 @@
   réimplémente son parsing JSON (`match(/\[[\s\S]*\]/)` + `JSON.parse` + `.parse`) au lieu de
   `safeJsonValidate` (déjà testé pour les fences ```json et la prose autour). Un JSON malformé jette
   tout le texte streamé. [MESURÉ]
-- [ ] **`[VISION-NO-RETRY]`** (S, FAIBLE) — `analyzePayslip` / `analyzeBankStatement` (+ 4 autres)
+- [x] **`[VISION-NO-RETRY]`** ✅ **CADUC, MESURÉ au lot 209 (2026-09-06) — le réessai existe, il vit dans la BIBLIOTHÈQUE** : le ticket décrivait un manque de NOTRE code (« aucun backoff sur 429/5xx », « un 429 force un re-upload manuel complet ») sans regarder ce que fait la dépendance. Mesuré sur le VRAI `@anthropic-ai/sdk` (0.96.0, seul `fetch` simulé) : le client que `makeClient` construit — les six one-shots ET les deux appels Vision passent par lui — réessaie de lui-même avec **`maxRetries = 2`** (défaut du SDK, jamais forcé à 0 ici) sur **408 / 409 / 429 / 5xx et sur une panne de connexion**, honore `retry-after` (ou `retry-after-ms`), applique sinon un backoff 0,5 s → 8 s, et n'insiste pas sur un signal d'abandon (le timeout Vision de 90 s reste souverain). Un 429 sur l'upload d'un relevé est donc déjà rejoué deux fois avant d'atteindre l'écran. Garde `tests/services/claudeSdkRetryDefaut.test.ts` (7 cas sur le vrai module : `maxRetries` du client, 429→OK sur `chat`, 503→OK sur `analyzeBankStatement`, panne de connexion→OK sous faux timers, épuisement à exactement 1 + 2 appels, contrôles 401/400 non réessayés, signal abandonné → zéro appel) ; perturbation `maxRetries: 0` dans `makeClient` → 5 rouges. Ce que le ticket pouvait légitimement demander — plus de deux réessais, ou un message « nouvelle tentative… » pendant l'attente — n'est PAS livré : c'est une décision de produit et d'UX, pas un manque (hypothèse notée, `[AI-CATEGORIZE-DOUBLE-RETRY]`). Contexte d'origine : (S, FAIBLE) — `analyzePayslip` / `analyzeBankStatement` (+ 4 autres)
   n'ont aucun backoff sur 429/5xx (`services/claude.ts:941-994`, `1030-1096`) ; seul `categorizeBatch`
   a reçu ce traitement. Un 429 transitoire sur un upload de relevé force un re-upload manuel complet.
-  ⚠️ [HYPOTHÈSE] — le design actuel (erreur explicite + retry manuel) peut être un choix assumé.
+  ⚠️ [HYPOTHÈSE] — le design actuel (erreur explicite + retry manuel) peut être un choix assumé. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+- [ ] **`[AI-CATEGORIZE-DOUBLE-RETRY]`** (XS, FAIBLE — ⚠️ HYPOTHÈSE, découverte au lot 209, NON corrigée) — `categorizeBatch` empile SON réessai applicatif (`CATEGORIZE_MAX_ATTEMPTS = 4`, backoff 1 s → 60 s) sur celui du SDK (`maxRetries = 2`, 0,5 s → 8 s) : un chunk en 429 persistant coûte jusqu'à **4 × 3 = 12 requêtes réseau**, et le message de progression « essai 2/4 » compte les tentatives applicatives, pas les requêtes. Rien de faux à l'écran, mais deux politiques de réessai pour un même appel sont deux endroits qui divergent. À trancher : soit `maxRetries: 0` sur le client de `categorizeBatch` (sa politique est plus riche : `auth`/`fatal`/progression), soit supprimer la couche applicative au profit du SDK (`Retry-After` honoré des deux côtés). Mesure à faire AVANT : compter les requêtes réelles sur un 429 persistant (garde du lot 209 comme modèle, `fetch` simulé).
 
 ### 🔴 Sécurité / vie privée
 

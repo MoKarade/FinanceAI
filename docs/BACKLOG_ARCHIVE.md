@@ -10,6 +10,43 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[A11Y-CONTRAST-ANGLE-MORT-541]` — LIVRÉ (lot 208, PR #939)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[A11Y-CONTRAST-ANGLE-MORT-541]`** ✅ **LIVRÉ au lot 208 (2026-09-06) — outil élargi, rejoué, offenders corrigés par MESURE** : re-mesuré **539 occurrences / 92 classes / 70 fichiers** (le ticket disait 541 / 65). (1) `scripts/lib/ctaContrast.ts` résout maintenant la palette Tailwind PAR DÉFAUT depuis `tailwindcss/colors` (source unique de ces hex, tokens du projet d'abord) ; en chemin, DEUX autres angles morts de l'extracteur : le texte de SURVOL (`hover:text-white`) n'était jamais apparié au fond de survol (faux offender violet-300 sur violet-600 = 3,09 alors que le blanc du survol vaut 5,70), et un bouton au repos TRANSLUCIDE (`bg-violet-600/20`) et au survol PLEIN était ignoré en entier. (2) Rejoué : **19 paires CTA** (8 avant) et une passe TEXTE neuve (179 classes par défaut lues, 102 combinaisons sur les 3 fonds) — **texte par défaut sur fond de page : 0 sous 4,5** (le seul candidat, `text-rose-700`, est sur son PROPRE fond blanc, 5,9 — un élément qui porte son fond n'est pas sur le fond de page) ; **CTA : 6 offenders réels dans 4 fichiers**, blanc sur `green-600` = 3,30 au repos (DebtManager, BackupPanel) et survols `green-500` 2,28 / `purple-500` 3,96 / `indigo-500` 4,47 (LifeEvents, Transactions). (3) Corrigés par mesure selon la décision Marc 2026-08-24 (« corriger, pas tolérer ») : `green-700`/`green-800` (5,02 / 7,13), `purple-700` (6,98), `indigo-700` (7,90). Garde `tests/a11y/ctaContrast.test.ts` +3 cas (résolveur par défaut, appariement du survol, passe texte avec anti-vacuité) ; quatre perturbations aux signatures distinctes. Reste hors périmètre, inchangé : `[A11Y-CTA-HORS-SCAN]` (tokens plats en fond, filtres CSS, fonds translucides). Contexte d'origine : (M, ÉLEVÉ — **trouvé par Claude en recoupant deux rapports**)
+  — `scripts/check-contrast.ts` n'itère que sur la palette du projet (`COLORS` de
+  `tailwind.config.js` : `ink`, `success`, `warning`, `danger`, `info`, `primary` — vérifié l:39-51).
+  Or le code utilise **541 classes de couleurs Tailwind PAR DÉFAUT dans 65 fichiers** de
+  `components/` (`text-amber-300` ×44, `text-green-400` ×39, `text-red-300` ×37, `bg-green-500` ×25,
+  `text-emerald-300` ×24, `text-blue-300` ×21…). **Aucune n'est vue par l'arbitre.**
+  ⚠️ **Conséquence sur la lecture du reste de l'audit** : le « 60 combinaisons testées, 0 non
+  conforme » du rapport a11y est exact, mais il ne couvre que les tokens — il ne dit **rien** de ces
+  541 usages. Ce n'est pas un échec de contraste constaté (non mesuré, et on ne juge pas un contraste
+  à l'œil) : c'est un **angle mort de la garde**, plus large d'un ordre de grandeur que les 26 hex
+  ad-hoc de `[DETTE-COULEURS-ADHOC]`, qui n'en sont qu'un sous-ensemble.
+  Correctif, dans cet ordre : (1) étendre `check-contrast` aux couleurs Tailwind par défaut réellement
+  employées + aux CTA pleins (cf. `[A11Y-CONTRAST-TOOL-GAP-CTA]`), (2) **rejouer** l'outil, (3) le
+  périmètre de migration vers les tokens = les offenders qu'il révèle, pas une liste devinée
+  (règle « resserrer le scan-garde AVANT de coder le fix »). [MESURÉ pour l'angle mort ; échec de
+  contraste = NON MESURÉ]
+
+## 2026-09-06 — `[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]` — FERMÉ, constaté livré (lot 208, PR #939 ; volets #721 et lot 178)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** ✅ **FINI, constaté au lot 208 (2026-09-06)** : ses deux volets sont livrés — `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` (#721, deux sites dans `projection.ts`) et `householdGross: grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual)` (lot 178, archivé). Le ticket ne portait plus que la description de son propre reliquat, déjà tranché et livré (`PM-STALE-BACKLOG`). Contexte d'origine : (S — ⚠️ **À MOITIÉ LIVRÉ, ne pas re-faire**) —
+  ⚠️ Ticket RE-MESURÉ le 2026-08-25 : le volet `grossAnnaBaseAnnual` est **FERMÉ** depuis
+  `[REEE-CONGE-SANS-GARDE-SOLO]` (PR #721) — `services/projection.ts` porte
+  `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` au bloc enfants, plus la porte
+  `!isRetired`. Les ~36 000 $ de congé parental fantôme ne sont plus versés.
+  **RESTE** : `householdGross` est toujours la somme des DEUX salaires — délibérément, avec sa raison
+  écrite dans le code. Ce n'est PAS un oubli : baisser cette assiette ferait MONTER l'allocation d'un
+  parent seul (mesuré : 166 $ → 250 $/mois au mois 36), ce qui est une **règle à trancher**, pas un
+  correctif. Suivi en `[ENG-DIVORCE-ALLOC-ASSIETTE]` — tranché par Marc (14, « comme mesuré ») et
+  **LIVRÉ au lot 178** (2026-09-05, archivé) : l'assiette suit désormais `soloHousehold`.
+  ⚠️ Laisser ce ticket dans son état d'origine aurait fait re-livrer #721 (classe `PM-STALE-BACKLOG`).
+
 ## 2026-09-06 — `[FISC-CONST-ANCHOR-DEBT]` — LIVRÉ EN ENTIER (lot 207, PR #938 ; tranches précédentes #572, #573, #883)
 
 Ticket d'origine tel qu'au moment de l'archivage :

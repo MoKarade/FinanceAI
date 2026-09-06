@@ -10,6 +10,18 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[KNIP-UNUSED-EXPORTS-73]` — LIVRÉ EN ENTIER (exports au lot 205, PR #936 ; types au lot 206, PR #937)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[KNIP-UNUSED-EXPORTS-73]`** ✅ **LIVRÉ EN ENTIER — types au lot 206, exports au lot 205 (2026-09-06)**. Lot 206 : **234 types** exportés inutilisés → **0** : 219 déclarations dé-exportées (149 fichiers, utilisées seulement chez elles — Props de composants, types de hooks, types internes de services), 14 entrées de barils retirées (`projection.ts`, `syncOrchestrator.ts`, `testFixtures.ts`, `testPersonas/index.ts`, deux `export type { …Props }` de fin de fichier) et 2 types MORTS supprimés (`FtEnvelope`, `StorageKey`). `npm run knip` ne signale plus que **2 exports en double**, tous deux DÉLIBÉRÉS et laissés : `CATEGORIZE_MODEL_ID = MODEL_HAIKU` (nom de RÔLE : quel modèle catégorise, changeable sans toucher les appelants) et `_resetAttachmentDriveStoreForTests` (crochet de test nommé selon la convention `_…ForTests`). Typecheck vert, lint 18 avertissements identique. **Lot 205 (exports)** : `knip` rejoué AVANT de coder = **80** exports (pas 73) et **234** types (pas 209) ; triage par SITE, mesuré par occurrence dans le fichier déclarant et par `import` dans le dépôt : **69** utilisés seulement chez eux (mot-clé `export` retiré), **3** ré-exports de barils que personne n'importait par le baril (`budgetSync` → `spendRules` ×3 sur une ligne, `syncOrchestrator.INACTIVITY_LIMIT_MS`, `projection.decisiveLevers`), **6** MORTS supprimés (`clearCredentials`, `terminateProjectionWorker`, `maskedTooltipValue`, deux crochets de test `__reset…` qu'aucun test n'appelait, `RRQ_PART2_MAX` — valeur dérivée, gardée dans `FISCAL_REFERENCE` avec sa formule à la place du nom). `npm run knip` : **0 export inutilisé**, 0 erreur de typecheck, lint à 18 avertissements (identique avant/après ; 41 fichiers, +75/−104). ✅ Les 234 types : livrés au lot 206 (ci-dessus). ⬜ **Question Q13 (docs/A_FAIRE_MOI.md)** : ajouter `knip` à la CI pour que ce compte ne redérive pas (chaîne d'outils → décision Marc). Contexte d'origine : (S triage) — **73 exports non-utilisés** + **209 types** exportés
+  inutilisés. Types bénins (aucun coût réel). Valeurs notables : `utils/tax.ts` **19 constantes RRQ/
+  RQAP/AE/RAMQ/FSS** non-ré-exportées (probablement usage interne au fichier seulement). **Correctif** :
+  triage item-par-item : retirer `export` si usage interne, supprimer si vraiment mort (l'exemple
+  `calculateNetFromGross` a été traité au lot 73 — ⚠️ sa suppression a exigé de corriger d'abord une
+  citation de `docs/FISCAL_REFERENCE.md` : vérifier ce que la DOC dit d'un export avant de le retirer). Deux exports dupliqués détectés aussi (`resetAttachmentDriveMemos|_reset...`
+  + `compareLifeScenarios|optimizeDrawdownOrder`).
+
 ## 2026-09-06 — `[AI-ONESHOT-NO-CACHE]` — CADUC, MESURÉ contre la doc Anthropic (lot 204, PR #935)
 
 Ticket d'origine tel qu'au moment de l'archivage :

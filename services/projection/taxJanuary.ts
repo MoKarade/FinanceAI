@@ -2,8 +2,8 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { RRIF_FIRST_WITHDRAWAL_AGE, rrifRateForAge, projeterAuPatronMga } from './helpers';
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, LAST_KNOWN_RRSP_YEAR, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { RRIF_FIRST_WITHDRAWAL_AGE, RRSP_TO_RRIF_CONVERSION_AGE, rrifRateForAge, projeterAuPatronMga } from './helpers';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_MAX_PARTICIPATION_YEARS, FHSA_MAX_HOLDER_AGE, REGISTERED_PLAN_MIN_AGE, RRSP_ANNUAL_LIMITS, LAST_KNOWN_RRSP_YEAR, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 import { formatCAD } from '../../utils/format';
 
 // [ENG-GK-THRESHOLD-KNIFE] Bande de lissage du gel Guyton-Klinger — DESIGN (stabilité du modèle
@@ -131,7 +131,7 @@ function plafondCeliAnnuel(ctx: JanuaryContext, roomUsers: JanuaryContext['users
         const birthYear = u!.birthYear || (ctx.startYear - (u!.age || 30));
         const residencyStart = getResidencyStartYear(birthYear, u!.isImmigrant, u!.canadaArrivalYear);
         const ageThisYear = nextLoopYear - birthYear;
-        if (ageThisYear >= 18 && nextLoopYear >= residencyStart) {
+        if (ageThisYear >= REGISTERED_PLAN_MIN_AGE && nextLoopYear >= residencyStart) {
             totalCeliLimitThisYear += celiLimitThisYear;
         }
     });
@@ -154,14 +154,14 @@ function roulementFhsa(
         const residencyStart = getResidencyStartYear(birthYear, u.isImmigrant, u.canadaArrivalYear);
         const ageThisYear = nextLoopYear - birthYear;
         const isFirstBuyer = !u.hasOwnedPropertyLast4Years;
-        return ageThisYear >= 18 && ageThisYear < 71 && nextLoopYear >= residencyStart && isFirstBuyer;
+        return ageThisYear >= REGISTERED_PLAN_MIN_AGE && ageThisYear < FHSA_MAX_HOLDER_AGE && nextLoopYear >= residencyStart && isFirstBuyer;
     });
 
     const allUsersExceeded71 = roomUsers.every(u => {
         if (!u) return true;
         const birthYear = u.birthYear || (ctx.startYear - (u.age || 30));
         const ageThisYear = nextLoopYear - birthYear;
-        return ageThisYear >= 71;
+        return ageThisYear >= FHSA_MAX_HOLDER_AGE;
     });
 
     const yearsSinceOpening = nextLoopYear - ctx.celiappOpeningYear;
@@ -170,13 +170,13 @@ function roulementFhsa(
     let fhsaRoomNew = 0;
     let celiappTransferToReer = 0;
     const closureForcedBy71 = allUsersExceeded71;
-    if (anyUserEligibleFhsa && yearsSinceOpening < 15 && remainingLifetimeRoom > 0 && !closureForcedBy71) {
+    if (anyUserEligibleFhsa && yearsSinceOpening < FHSA_MAX_PARTICIPATION_YEARS && remainingLifetimeRoom > 0 && !closureForcedBy71) {
         const fhsaYearlyFixed = FHSA_ANNUAL_LIMIT_PER_USER * ctx.fhsaEligibleUsersCount;
         const unusedPrevious = ctx.fhsaRoomCurrent;
         const allowedCarryForward = Math.min(fhsaYearlyFixed, unusedPrevious);
         const newRoom = Math.min(remainingLifetimeRoom, fhsaYearlyFixed + allowedCarryForward);
         fhsaRoomNew = newRoom;
-    } else if ((yearsSinceOpening >= 15 || closureForcedBy71) && ctx.celiapp > 0) {
+    } else if ((yearsSinceOpening >= FHSA_MAX_PARTICIPATION_YEARS || closureForcedBy71) && ctx.celiapp > 0) {
         const reason = closureForcedBy71 ? "71 ans atteint" : "Fin des 15 ans";
         logs.push(`🏛️ CELIAPP: ${reason}. Transfert vers REER.`);
         celiappTransferToReer = ctx.celiapp;
@@ -370,8 +370,8 @@ export function processJanuaryReset(
         monthlyOasReduction: ctx.oasClawbackNextPeriod / 12,
         celiRoomDelta: totalCeliLimitThisYear,
         fhsaRoomNew,
-        rrspRoomDelta: ctx.age <= 71 ? newRrspRoom : 0,
-        rrspRoomReset: ctx.age > 71,
+        rrspRoomDelta: ctx.age <= RRSP_TO_RRIF_CONVERSION_AGE ? newRrspRoom : 0,
+        rrspRoomReset: ctx.age > RRSP_TO_RRIF_CONVERSION_AGE,
         celiappTransferToReer,
         ferrMandatoryGross,
         ferrGrossByUser,

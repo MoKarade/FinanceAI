@@ -2,7 +2,7 @@
 import { formatCAD } from '../utils/format';
 import type { EntreeRefusee } from './projection/verifierEntreesMoteur';
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, FinancialGoal } from '../types';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER, PSV_ELIGIBILITY_AGE, PENSION_SPLIT_MIN_AGE, RRQ_STANDARD_START_AGE } from '../utils/tax';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER, PSV_ELIGIBILITY_AGE, PSV_RESIDENCY_START_AGE, PENSION_SPLIT_MIN_AGE, RRQ_STANDARD_START_AGE } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError, logErrorThrottled } from './errorLogger';
@@ -356,7 +356,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     config.users.filter(u => u).forEach((u, idx) => {
         const birthYear = u.birthYear || (startYear - (u.age || 30));
         const residencyStart = getResidencyStartYear(birthYear, u.isImmigrant, u.canadaArrivalYear);
-        psvResidencyYears[idx] = Math.max(0, startYear - Math.max(residencyStart, birthYear + 18));
+        psvResidencyYears[idx] = Math.max(0, startYear - Math.max(residencyStart, birthYear + PSV_RESIDENCY_START_AGE));
     });
 
     // Cycle 22 split: scenario overrides (inflation + rates) → ./projection/setupSimulation
@@ -871,7 +871,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         config.users.filter(u => u).forEach((u, idx) => {
             const birthYear = u.birthYear || (startYear - (u.age || 30));
             const currentAgeUser = loopYear - birthYear;
-            if (currentAgeUser >= 18 && currentAgeUser < PSV_ELIGIBILITY_AGE) {
+            if (currentAgeUser >= PSV_RESIDENCY_START_AGE && currentAgeUser < PSV_ELIGIBILITY_AGE) {
                 psvResidencyYears[idx] += 1 / 12;
             }
         });

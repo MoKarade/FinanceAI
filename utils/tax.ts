@@ -78,6 +78,13 @@ export const OAS_CLAWBACK_THRESHOLD_2026 = 95323;           // Seuil récupérat
 export const OAS_CLAWBACK_RATE = 0.15;
 export const FHSA_LIFETIME_LIMIT_PER_USER = 40000;          // CELIAPP plafond à vie
 export const FHSA_ANNUAL_LIMIT_PER_USER = 8000;             // CELIAPP plafond annuel
+// [FISC-CONST-ANCHOR-DEBT] (lot 207) Fermeture OBLIGATOIRE du CELIAPP (ARC) : au 31 décembre de la 15ᵉ année
+// suivant l'ouverture, OU de l'année des 71 ans du titulaire — premier événement applicable (le
+// « 1 an après le premier retrait admissible » est modélisé par `hasPurchasedPrimary`). Le 71 COÏNCIDE
+// avec `RRSP_TO_RRIF_CONVERSION_AGE` sans être la même règle — ne jamais substituer.
+// Réf docs/FISCAL_REFERENCE.md « CELIAPP — fermeture ».
+export const FHSA_MAX_PARTICIPATION_YEARS = 15;
+export const FHSA_MAX_HOLDER_AGE = 71;
 
 // ============================================
 // REPORT / ANTICIPATION DES RENTES PUBLIQUES (RRQ / PSV)
@@ -95,6 +102,7 @@ const RRQ_DEFERRAL_MAX_MONTHS = 84;         // 65 → 72 ans
 const PENSION_EARLY_MAX_MONTHS = 60;        // 65 → 60 ans (anticipation RRQ ; PSV ne s'anticipe pas)
 const PSV_DEFERRAL_MAX_MONTHS = 60;         // 65 → 70 ans
 export const PSV_BONUS_75_PLUS = 0.10;             // +10 % automatique dès 75 ans (PSV, depuis juillet 2022)
+export const PSV_BONUS_AGE = 75;                   // âge de la bonification ci-dessus (Service Canada). [lot 207]
 
 // [FISC-CONST-ANCHOR-65] Les ÂGES eux-mêmes, jusque-là écrits en dur dans le moteur (le « 65 »
 // vivait dans 5 modules — le seul reste de l'inventaire du ratchet où deux copies pouvaient
@@ -116,6 +124,17 @@ export const PSV_ELIGIBILITY_AGE = 65;
  *  FISCAL_REFERENCE §9. Même nombre que le crédit d'âge (`AGE_AMOUNT_FED_MIN_AGE`), règle
  *  DISTINCTE. */
 export const PENSION_SPLIT_MIN_AGE = 65;
+// [FISC-CONST-ANCHOR-DEBT] (lot 207) Le « 18 » vivait dans QUATRE modules sous TROIS règles distinctes —
+// même nombre, trois constantes (leçon CLE-QUI-FUSIONNE-DEUX-SENS) :
+/** Âge à partir duquel les droits CELI s'accumulent (ARC) — le modèle y aligne aussi l'admissibilité
+ *  CELIAPP et l'ouverture des droits REER historiques (`setupSimulation`). Réf FISCAL_REFERENCE « CELI ». */
+export const REGISTERED_PLAN_MIN_AGE = 18;
+/** Âge à partir duquel la résidence au Canada COMPTE pour la PSV (Service Canada, « après 18 ans »).
+ *  Réf FISCAL_REFERENCE « Prorata RRQ / résidence PSV ». */
+export const PSV_RESIDENCY_START_AGE = 18;
+/** Début de la période COTISABLE à la RRQ (Retraite Québec) — base du modèle « 39 meilleures années ».
+ *  Réf FISCAL_REFERENCE « Prorata RRQ / résidence PSV ». */
+export const RRQ_CONTRIBUTORY_START_AGE = 18;
 
 // FA-8 (2026-06-11) — convention de MODÈLE (PAS une règle ARC/RQ) : split du champ AGRÉGÉ legacy
 // `RetirementGoal.governmentPension` (RRQ+PSV combinés) quand les champs précis

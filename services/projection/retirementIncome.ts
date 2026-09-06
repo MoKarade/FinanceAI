@@ -4,7 +4,7 @@
 // avec le total ET le split par source (Phase 3 Tier 3 — split pensions).
 
 import type { RetirementGoal, User } from '../../types';
-import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, getResidencyStartYear, RRQ_STANDARD_START_AGE, PSV_ELIGIBILITY_AGE } from '../../utils/tax';
+import { RRQ_MPE, calculateGISBenefit, rrqAdjustmentFactor, psvDeferralFactor, PSV_BONUS_75_PLUS, PSV_BONUS_AGE, RRQ_CONTRIBUTORY_START_AGE, CAPITAL_GAINS_INCLUSION_STANDARD, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, getResidencyStartYear, RRQ_STANDARD_START_AGE, PSV_ELIGIBILITY_AGE } from '../../utils/tax';
 import { projeterAuPatronMga } from './helpers';
 
 // Constantes RRQ/PSV 2026 (Retraite Québec + Service Canada) — règles documentées
@@ -267,7 +267,7 @@ function calculerPoidsParConjoint(
         // RRQ = années cotisées 18→retraite / 39 (modèle « 39 meilleures années », FISCAL_REFERENCE §6).
         const birthYearU = u.birthYear || (startYear - (u.age || 30));
         const residencyStartU = getResidencyStartYear(birthYearU, u.isImmigrant, u.canadaArrivalYear);
-        const arrivalAgeU = Math.max(18, residencyStartU - birthYearU);
+        const arrivalAgeU = Math.max(RRQ_CONTRIBUTORY_START_AGE, residencyStartU - birthYearU);
         const rrqResidenceProrataUser = Math.min(1, Math.max(0, retirementGoal.targetAge - arrivalAgeU) / RRQ_DENOMINATOR_YEARS);
         // Poids RRQ individuel = ratio gains/MGA × prorata de résidence (les deux PER-CONJOINT).
         const rrqWeightUser = rrqRatioUser * rrqResidenceProrataUser;
@@ -351,7 +351,7 @@ function calculerRrqPsvMensuels(p: {
     const survivorRrqFactor = survivorMode ? (1 - 0.5 + 0.5 * rrqSurvivorPct) : 1;
     const survivorPsvFactor = survivorMode ? 0.5 : 1;
     // Bonification automatique PSV +10% à partir de 75 ans (depuis juillet 2022) — évaluée per-conjoint.
-    const psv75BonusOf = (ageI: number): number => (ageI >= 75 ? (1 + PSV_BONUS_75_PLUS) : 1);
+    const psv75BonusOf = (ageI: number): number => (ageI >= PSV_BONUS_AGE ? (1 + PSV_BONUS_75_PLUS) : 1);
     if (survivorMode) {
         // SURVIVANT (1 contribuable = user0) : modèle FAMILIAL × facteur survivant INCHANGÉ (le gate utilise
         // l'âge du survivant ; la part du défunt est déjà modélisée par le facteur survivant). Le per-conjoint

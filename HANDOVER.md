@@ -16,6 +16,16 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 211 (docs) : le stock de tickets MESURÉS sans décision est épuisé — plan P6 posé à Marc
+> Après les lots 201–210 (PR #932 → #941, toutes mergées, Vercel READY sur chaque merge de code servi), il ne reste au
+> BACKLOG que des tickets qui attendent une DÉCISION (P1–P6, Q1–Q14, ESTATE-NPV ×3, `[ENG-RENTES…]` couplé à P5,
+> `[FISC-REEE-GRANT-CLAWBACK]` = plan P3, `[FISC-DEC-PSV…]` = Q11, `[A11Y-CTA-HORS-SCAN]`, `[DETTE-COULEURS-ADHOC]`),
+> une SOURCE inaccessible (`[FISC-RAMQ-COUPLE-CAP]`, `[FISC-FED-CREDITRATE-15]` — canada.ca / revenuquebec.ca /
+> laws-lois bloqués), des lots LARGES (T4, GODFILE ×3, CIX-*, `[CHART-COLOR-DUP]` re-mesuré M, `[PROJ-TAXPAID-SOLDE-AVRIL]`
+> qui touche une fonction objectif) ou des hypothèses notées pour ne pas être re-cherchées. `[FUTUR-ANNOTATIONS]` (A12
+> répondu) est le seul lot produit prêt : plan P6 / Q14 dans `docs/A_FAIRE_MOI.md`, pas codé sans OK. Rien de servi ne
+> change. Archive du lot 210. Reprise : lire `docs/A_FAIRE_MOI.md` après la ligne 1360 pour les réponses de Marc.
+
 > ## 🟦 Session 2026-09-06 — Lot 210 : un seul 15 % pour une seule grandeur légale (`[FISC-DON-FEDRATE-DUP]`, fini)
 > Le 1er palier fédéral du crédit pour dons et le taux des crédits non remboursables vivaient en deux copies de `0.15`.
 > La LIR 118.1(3) les définit par le même terme (« taux de base pour l'année ») : `DONATION_CREDIT_RATES.fed.first` lit

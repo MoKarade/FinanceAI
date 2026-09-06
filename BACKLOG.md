@@ -19,7 +19,7 @@
 
 ## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)
 
-- [ ] **`[FUTUR-ANNOTATIONS]`** (M — réponse A12 du 2026-09-05) — annoter la courbe Futur avec les événements
+- [ ] ⏸️ **`[FUTUR-ANNOTATIONS]`** (M — réponse A12 du 2026-09-05 ; **plan P6 / question Q14 dans `docs/A_FAIRE_MOI.md`, à valider avant de coder** — lot 211, 2026-09-06 : le moteur publie `isRetired`, `pensionRRQ`, `pensionPSV` et les séries par compte, mais PAS la bascule de stratégie par mois) — annoter la courbe Futur avec les événements
   cités : âge de retraite, épuisement d'un compte, début RRQ/PSV, bascule de stratégie — **en bref**
   (marqueur + libellé court), chaque type d'annotation **désactivable en décochant** (préférence
   persistée). Réutiliser le mécanisme des pastilles d'événements existant (rang après écrêtage, cf.
@@ -1272,15 +1272,6 @@
 
 #### LOW / FAIBLE
 
-- [x] **`[FISC-DON-FEDRATE-DUP]`** ✅ **LIVRÉ au lot 210 (2026-09-06) — une seule constante pour une seule grandeur légale** : `DONATION_CREDIT_RATES.fed.first` lit désormais `FED_NONREFUNDABLE_RATE` (`utils/tax.ts`) au lieu d'un second `0.15`. Le critère de dédup n'est pas « même chiffre » mais « même TERME statutaire » : la LIR 118.1(3) définit le taux du 1er palier des dons comme « le taux de base pour l'année » (LIR 248(1)), exactement ce que représente `FED_NONREFUNDABLE_RATE` — les trois autres paliers (29 %, 20 %, 24 %) n'ont pas de jumeau et restent des littéraux inventoriés. Entrée `donationCredit.ts::0.15` retirée du ratchet (sinon fantôme) ; note en FISCAL_REFERENCE §10 (citation LIR RELAYÉE : laws-lois.justice.gc.ca est `EGRESS_BLOCKED` depuis le conteneur, tenté le 2026-09-06). Garde : `tests/utils/donationCredit.test.ts` +1 cas (égalité + trois contrôles « pas un alias ») ; deux perturbations à gardes DISTINCTES — `first: 0.14` → l'égalité rougit (avec les trois ancres numériques du fichier) ; littéral `0.15` réintroduit → l'égalité reste verte (même valeur) et c'est le ratchet fiscal qui rougit (« constante NOUVELLE hors inventaire »). Valeur inchangée (0,15) : aucun golden ne bouge, bundle équivalent. Quand `[FISC-FED-CREDITRATE-15]` tranchera (C-4, 14,5 %/14 % + compensatoire), le crédit pour dons suivra sans seconde édition. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
-  dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et
-  `FED_NONREFUNDABLE_RATE = 0.15` (`utils/tax.ts`) sont **juridiquement la MÊME valeur** (le
-  « pourcentage approprié » = taux du palier le plus bas) mais vivent en DEUX copies. Or ce 0,15 est
-  déjà signalé en tête de FISCAL_REFERENCE comme **la seule valeur du doc sans source primaire**, dans
-  un contexte C-4 où le plus bas palier descend à 14,5 %/14 %. Impact borné (~1,67 $/an par point de
-  taux, le palier étant plafonné à 200 $) mais les deux copies dériveront à la prochaine MAJ.
-  **Correctif** : re-sourcer ARC d'abord, PUIS importer la constante unique — ou documenter en §10
-  pourquoi elles sont volontairement découplées. Ne rien changer sans la source.
 
 
 #### Divorce — reliquat MESURÉ par le panel de re-revue (PR #616)
@@ -1509,6 +1500,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 
 - [ ] **`[CHART-COLOR-DUP]`** (S — unifie `[CA-07]`, dont la **règle ESLint anti-régression** est
+  ⚠️ RE-MESURÉ le 2026-09-06 (lot 211) : **257 occurrences de hex dans 27 fichiers, 60 valeurs distinctes** (le ticket disait 212 dans 6+) ; 13 valeurs / 54 occurrences sont DÉJÀ des tokens de `tailwind.config.js`, 47 valeurs / 203 occurrences n'en sont pas (`#4f9d86` ×23, `#5b82bf` ×22, `#c2974f` ×19…). Aucun `constants/chartColors.ts` n'existe malgré l'archive de `[CA-07]`. Un module central qui garde les MÊMES hex est un pur réorganisation sans décision ; les MAPPER aux tokens change des couleurs (décision d'apparence, comme `[A11Y-CTA-HORS-SCAN]`) et la règle ESLint est une politique — ces deux volets se routent, le premier se livre. Taille réelle : M, pas S. Recensement : `grep -rhoE '#[0-9a-fA-F]{6}\b' components utils --include=*.tsx --include=*.ts | sort | uniq -c | sort -rn`.
   à reprendre : sans elle les hex reviennent) — Aucun module central de tokens couleurs graphiques. **212 hex
   littéraux** dans 6+ fichiers (FutureProjection, Retirement, Investments…), mêmes valeurs répétées
   (ex. `#ef4444` rouge alerte dans 6 fichiers). Un changement de teinte design system = grep-replace

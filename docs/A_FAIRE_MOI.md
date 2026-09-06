@@ -1456,3 +1456,39 @@ trois semaines sans que personne ne le voie, parce que `npm run knip` n'est lanc
 3. Rien — re-trier à la main de temps en temps.
 
 Je ne le fais pas seul : c'est une modification de la chaîne d'outils (règle CLAUDE.md §5).
+
+---
+
+## Plan P6 à valider — `[FUTUR-ANNOTATIONS]` (2026-09-06, lot 211)
+
+**Le fait en une phrase** : tu as répondu à A12 (2026-09-05) sur le QUOI — retraite, épuisement d'un compte,
+début RRQ/PSV, bascule de stratégie, en bref, chaque type désactivable. Le COMMENT est un lot M sur le
+fichier le plus lourd de l'app (`FutureProjection.tsx`) : je ne le code pas sans ton OK sur ce plan.
+
+**Ce que le moteur donne déjà** (recensé dans `docs/PROJECTION_OUTPUT_SCHEMA.md`) : `isRetired` par mois
+(→ « Retraite »), `pensionRRQ` et `pensionPSV` par mois (→ premier mois > 0 = « RRQ », « PSV »), les séries
+par compte (→ premier mois à 0 $ après avoir été > 0 = « REER épuisé », « CELI épuisé »…). **Ce qu'il ne
+donne PAS** : la bascule de stratégie — `strategyName` est publié UNE fois par simulation, pas par mois ;
+`AUTO_MARGINAL` bascule sans le dire. Il faudrait publier un champ mensuel (`strategyMode`), un ajout
+additif au schéma de sortie.
+
+**Plan proposé (deux lots)** :
+1. **Lot A — moteur (XS)** : publier `strategyMode` par point (additif, défaut = stratégie de la
+   simulation), garde par espion sur une fixture qui bascule (une fixture où `AUTO_MARGINAL` change
+   d'avis existe : celle de `UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, année 9).
+2. **Lot B — écran (M)** : un module PUR `utils/futureAnnotations.ts` dérive les annotations depuis
+   `chartData` (jamais un second calcul), testé type par type ; rendu par le mécanisme EXISTANT des
+   pastilles (`assignStackIndex` après écrêtage, `ClickableEventIcon`, `sampleEvenly`) avec une famille
+   « annotation » au-dessus de la courbe — pas de second mécanisme. Toggles : un petit menu
+   « Annotations » à côté de la légende, quatre cases, préférence persistée dans le store (champ optionnel
+   additif, aucun bump de schéma). Mode discret : les libellés ne portent aucun montant (« REER épuisé »,
+   jamais « REER à 0 $ »).
+3. Gardes : module pur (première occurrence seulement, rien si jamais ; contrôles par type), persistance du
+   toggle, nombre de pastilles rendues avant/après décochage, `aria-label` par annotation.
+
+**Question Q14** : OK pour ce plan ? Deux sous-questions :
+- Q14a — la bascule de stratégie exige le champ mensuel `strategyMode` (lot A) : OK, ou on livre les trois
+  autres types d'abord et la bascule ensuite ? [Recommandé : les trois d'abord — livrables sans toucher
+  au moteur.]
+- Q14b — où vivent les quatre cases : à côté de la légende du graphe [Recommandé], ou dans Réglages ?
+

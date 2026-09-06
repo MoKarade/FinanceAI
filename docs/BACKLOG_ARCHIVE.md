@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[FISC-DON-FEDRATE-DUP]` — LIVRÉ (lot 210, PR #941)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-DON-FEDRATE-DUP]`** ✅ **LIVRÉ au lot 210 (2026-09-06) — une seule constante pour une seule grandeur légale** : `DONATION_CREDIT_RATES.fed.first` lit désormais `FED_NONREFUNDABLE_RATE` (`utils/tax.ts`) au lieu d'un second `0.15`. Le critère de dédup n'est pas « même chiffre » mais « même TERME statutaire » : la LIR 118.1(3) définit le taux du 1er palier des dons comme « le taux de base pour l'année » (LIR 248(1)), exactement ce que représente `FED_NONREFUNDABLE_RATE` — les trois autres paliers (29 %, 20 %, 24 %) n'ont pas de jumeau et restent des littéraux inventoriés. Entrée `donationCredit.ts::0.15` retirée du ratchet (sinon fantôme) ; note en FISCAL_REFERENCE §10 (citation LIR RELAYÉE : laws-lois.justice.gc.ca est `EGRESS_BLOCKED` depuis le conteneur, tenté le 2026-09-06). Garde : `tests/utils/donationCredit.test.ts` +1 cas (égalité + trois contrôles « pas un alias ») ; deux perturbations à gardes DISTINCTES — `first: 0.14` → l'égalité rougit (avec les trois ancres numériques du fichier) ; littéral `0.15` réintroduit → l'égalité reste verte (même valeur) et c'est le ratchet fiscal qui rougit (« constante NOUVELLE hors inventaire »). Valeur inchangée (0,15) : aucun golden ne bouge, bundle équivalent. Quand `[FISC-FED-CREDITRATE-15]` tranchera (C-4, 14,5 %/14 % + compensatoire), le crédit pour dons suivra sans seconde édition. Contexte d'origine : (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
+  dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et
+  `FED_NONREFUNDABLE_RATE = 0.15` (`utils/tax.ts`) sont **juridiquement la MÊME valeur** (le
+  « pourcentage approprié » = taux du palier le plus bas) mais vivent en DEUX copies. Or ce 0,15 est
+  déjà signalé en tête de FISCAL_REFERENCE comme **la seule valeur du doc sans source primaire**, dans
+  un contexte C-4 où le plus bas palier descend à 14,5 %/14 %. Impact borné (~1,67 $/an par point de
+  taux, le palier étant plafonné à 200 $) mais les deux copies dériveront à la prochaine MAJ.
+  **Correctif** : re-sourcer ARC d'abord, PUIS importer la constante unique — ou documenter en §10
+  pourquoi elles sont volontairement découplées. Ne rien changer sans la source.
+
+
 ## 2026-09-06 — `[VISION-NO-RETRY]` — CADUC, MESURÉ sur le vrai SDK (lot 209, PR #940)
 
 Ticket d'origine tel qu'au moment de l'archivage :

@@ -2611,6 +2611,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 // conjoint (trySpouseMortality) n'est tirée que sous enableMonteCarlo. Ne pas utiliser hors tests.
 export const __runScenarioForTests = runScenario;
 
+/** [BUDGET-SENSIBILITE-MOTEUR] Épargne mensuelle supplémentaire simulée pour `savingsSensitivity`
+ *  — hypothèse de PRÉSENTATION (le « +100 $/mois » que la tuile de Budget posait déjà), pas une
+ *  constante fiscale : elle ne va pas dans FISCAL_REFERENCE. */
+export const SAVINGS_SENSITIVITY_MONTHLY = 100;
+
 export const calculateFutureProjection = (params: SimulationParams, runMC: boolean = false, selectedIdx: number = 0, onlyStratTypes?: string[]): ProjectionResult => {
     // G21 C5 — leviers « appliqués » depuis l'optimiseur (orthogonaux à l'axe
     // scénario). EngineOverrides threadés à TOUS les scénarios + bonus de rendement
@@ -2680,6 +2685,28 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     // pour un run stress-only, le panneau compare lui-même à lastProjection — gainVsAuto y
     // est relatif au 1er stress, à ignorer côté UI).
     const resBase = results[0];
+
+    // [BUDGET-SENSIBILITE-MOTEUR] Sensibilité à l'épargne : le MÊME scénario que `resBase` (même
+    // stratégie, même report de rentes, mêmes leviers), dépenses réduites de
+    // `SAVINGS_SENSITIVITY_MONTHLY`. Calculée seulement sur le chemin de PRODUCTION (pas
+    // d'`onlyStratTypes`) : goal seek dichotomise en appelant `['BASE']` 10 à 25 fois et le
+    // stress-test cible ses scénarios — leur ajouter un run doublerait leur coût pour une valeur
+    // qu'ils ne lisent pas. Coût mesuré sur le chemin de production (MC 100 itérations) : +2,5 à
+    // 4,1 %. ⚠️ En mode « dépenses théoriques », c'est `theoreticalExpenses` que le moteur lit
+    // (`effectiveBaseExpenses`) : réduire `baseMonthlyExpenses` seul rendrait un delta NUL et
+    // crédible — la classe « un paramètre non câblé rend la mesure MUETTE et fausse ».
+    let savingsSensitivity: ProjectionResult['savingsSensitivity'] = null;
+    if (!onlyStratTypes) {
+        const plus: SimulationParams = effectiveParams.projection.useTheoretical
+            ? { ...effectiveParams, projection: { ...effectiveParams.projection, theoreticalExpenses: Math.max(0, (effectiveParams.projection.theoreticalExpenses || 0) - SAVINGS_SENSITIVITY_MONTHLY) } }
+            : { ...effectiveParams, baseMonthlyExpenses: Math.max(0, effectiveParams.baseMonthlyExpenses - SAVINGS_SENSITIVITY_MONTHLY) };
+        const withExtra = runScenario(plus, selectedDef.strategy, false, selectedDef.delayPensions, 0, selectedDef.stratType, appliedOverrides);
+        const dEstate = (withExtra.estateNetWorth ?? NaN) - (resBase.estateNetWorth ?? NaN);
+        const dFinal = (withExtra.finalNetWorth ?? NaN) - (resBase.finalNetWorth ?? NaN);
+        savingsSensitivity = Number.isFinite(dEstate) && Number.isFinite(dFinal)
+            ? { extraMonthlySavings: SAVINGS_SENSITIVITY_MONTHLY, deltaEstateNetWorth: dEstate, deltaFinalNetWorth: dFinal }
+            : null;
+    }
 
     // V50: Stable indexing for the UI (we don't sort the main results array anymore)
     const sortedByEstate = [...results].sort((a, b) => (b.estateNetWorth ?? 0) - (a.estateNetWorth ?? 0));
@@ -2751,6 +2778,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         fvi,
         mcIterationsRun,
         expertMetrics: expertMetrics ?? undefined,
+        savingsSensitivity,
         allResults: results,
         bestStrategyIdx: results.indexOf(best)
     };

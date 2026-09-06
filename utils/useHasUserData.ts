@@ -15,7 +15,7 @@
 
 import { useFinanceStore } from '../store/useFinanceStore';
 
-export interface UserDataStatus {
+interface UserDataStatus {
     /** `true` si l'utilisateur a saisi au moins une donnée significative */
     hasData: boolean;
     /** Détail de chaque critère pour debug / messages contextuels */

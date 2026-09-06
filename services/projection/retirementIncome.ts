@@ -108,7 +108,7 @@ export interface RetirementIncomeCtx {
  * Les composantes non attribuables au modèle actuel (pension privée DB « cumulée
  * pour le couple », SRG calculé au niveau familial) sont réparties également.
  */
-export interface RetirementIncomePerUser {
+interface RetirementIncomePerUser {
     /** Revenu de retraite total de ce conjoint (rrq + psv + privée − part écrêtement). */
     total: number;
     /** RRQ attribuable à ce conjoint (selon SON ratio salaire/MGA et SA résidence). */
@@ -119,7 +119,7 @@ export interface RetirementIncomePerUser {
     privee: number;
 }
 
-export interface RetirementIncomeBreakdown {
+interface RetirementIncomeBreakdown {
     /** Revenu mensuel total après écrêtement PSV. = ce que retournait le legacy `number`. */
     total: number;
     /** Rentes RRQ (Régime de rentes du Québec / RPC). */

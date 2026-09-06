@@ -25,7 +25,7 @@ export interface TransferSuggestion {
     amount: number;
 }
 
-export interface TransferDetectionReport {
+interface TransferDetectionReport {
     /** Transactions nouvellement marquées `isTransfer` (paires prouvées). */
     markedCount: number;
     /** Paires prouvées dont les deux côtés étaient DÉJÀ marqués — rien à faire (idempotence). */
@@ -40,7 +40,7 @@ export interface TransferDetectionReport {
     interacExcludedCount: number;
 }
 
-export interface ApplyTransferDetectionResult {
+interface ApplyTransferDetectionResult {
     /** Nouveau tableau (référence inchangée si rien n'a bougé — évite un re-render inutile). */
     transactions: Transaction[];
     report: TransferDetectionReport;

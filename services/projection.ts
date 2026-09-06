@@ -47,17 +47,14 @@ import { computeMonthlyMarketRates, type StressTestConfig } from './projection/m
 import { computeEffectiveExpenseInflation } from './projection/monthlyCalcs';
 import { type AllocationStrategy, type FutureScenarioType, type ProjectionResult } from './projection/types';
 export type { AllocationStrategy, FutureScenarioType, ProjectionChartPoint, ProjectionResult } from './projection/types';
-export type { StrategySearchResult, ConfigResult, RunStrategySearchOptions } from './projection/strategySearch';
+export type { StrategySearchResult, ConfigResult } from './projection/strategySearch';
 export type { StrategyConfig } from './projection/strategyConfig';
 export {
     rankConfigResults,
     explainWinner,
     OBJECTIVE_LABELS,
-    type ConfigRankingResult,
     type RankedConfig,
-    type ScoreBreakdown,
     type OptimizeObjective,
-    type DecisiveLever,
 } from './projection/strategyConfigRanking';
 
 /** Balances en direct lues depuis les comptes (CSV ou saisie manuelle). */
@@ -131,7 +128,7 @@ export interface SimulationParams {
  * porte des LEVIERS de stratégie explorés par la recherche (`strategySpace`). Un drapeau de
  * diagnostic glissé là-dedans serait balayé comme s'il changeait le plan financier.
  */
-export interface ScenarioDiagnostics {
+interface ScenarioDiagnostics {
     /**
      * Émettre le point mensuel COMPLET même sous Monte-Carlo. **Tests uniquement.**
      * Sous MC, `buildMonthlyDataPoint` ne rend normalement que `{ NetWorth, monthIndex }` (perf).

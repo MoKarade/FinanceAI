@@ -5,7 +5,7 @@
 
 import type { Transaction } from '../types';
 
-export interface TransactionSearchFilters {
+interface TransactionSearchFilters {
     /** Texte libre : casse-insensible, cherché dans payee + category. */
     query?: string;
     /** Catégorie exacte (casse-insensible). */
@@ -24,7 +24,7 @@ export interface TransactionSearchFilters {
     includeDuplicates?: boolean;
 }
 
-export interface TransactionSearchResult {
+interface TransactionSearchResult {
     matches: Transaction[];
     count: number;
     /** Somme signée des montants filtrés. */

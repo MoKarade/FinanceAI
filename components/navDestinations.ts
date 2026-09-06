@@ -12,7 +12,7 @@ import type { IconName } from './ui/Icon';
  *   App.tsx). `Tab.TRAVEL`/`Tab.LIFE_EVENTS` restent des alias legacy de LIFE_PROJECTS
  *   (redirigés par TabRouter), donc absents ici aussi.
  */
-export interface NavDestination {
+interface NavDestination {
     id: 'FUTUR' | 'CONFIG' | 'VIE' | 'TRANSACTIONS' | 'ASSISTANT' | 'REGLAGES';
     label: string;
     icon: IconName;

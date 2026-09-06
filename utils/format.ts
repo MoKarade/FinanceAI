@@ -31,7 +31,7 @@ const FMT_NUM_2 = new Intl.NumberFormat(LOCALE, {
     maximumFractionDigits: 2,
 });
 
-export type Decimals = 0 | 2;
+type Decimals = 0 | 2;
 
 const isFiniteNumber = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 

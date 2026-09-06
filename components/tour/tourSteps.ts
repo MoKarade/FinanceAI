@@ -8,7 +8,7 @@
 
 import { Tab } from '../../types';
 
-export interface TourStep {
+interface TourStep {
   /** Onglet à ouvrir pour cette étape (null = carte centrée sans navigation). */
   tab: Tab | null;
   title: string;

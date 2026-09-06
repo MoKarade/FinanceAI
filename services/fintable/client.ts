@@ -27,7 +27,7 @@ const MAX_RETRIES = 3;
 /** Plafond d'attente sur un `Retry-After` — au-delà, on rend la main au cron plutôt que dormir. */
 const MAX_RETRY_WAIT_MS = 60_000;
 
-export interface FintableClientOptions {
+interface FintableClientOptions {
     token: string;
     baseUrl?: string;
     timeoutMs?: number;

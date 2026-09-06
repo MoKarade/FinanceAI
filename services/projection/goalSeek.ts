@@ -9,7 +9,7 @@
 import { formatCAD } from '../../utils/format';
 import { calculateFutureProjection, type SimulationParams } from '../projection';
 
-export interface GoalSeekResult {
+interface GoalSeekResult {
     found: boolean;
     value: number;                // valeur trouvée (épargne ou âge)
     iterations: number;

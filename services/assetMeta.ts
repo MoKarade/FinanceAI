@@ -13,7 +13,7 @@
 //   3. crypto (CoinGecko connu) → « Crypto »/« Global » par construction ;
 //   4. « Autre »/« Autre » honnête (et ÉDITABLE — plus une impasse).
 
-export interface AssetMeta {
+interface AssetMeta {
   sector: string;
   region: string;
   yield: number;
@@ -77,7 +77,7 @@ export function lookupSeedMeta(symbol: string): AssetMeta | undefined {
     return ASSET_META[symbol] ?? SEED_BY_NORMALIZED[toFinnhubSymbol(symbol).toUpperCase()];
 }
 
-export interface ResolvedAssetMeta {
+interface ResolvedAssetMeta {
     name: string;
     sector: string;
     region: string;

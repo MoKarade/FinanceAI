@@ -54,7 +54,7 @@ export interface MinimalPastTransaction {
  *  au BANDEAU de la vue au jour de le dire — le taire transformerait un décalage connu et mesurable
  *  en niveau « propre » que rien ne conteste. Le correctif de FOND (retrancher ces flux de l'ancre)
  *  touche `computeStartingCash`, donc le raccord au présent : plan-first, ticket au BACKLOG. */
-export interface DailyPastLedgerResult {
+interface DailyPastLedgerResult {
     rows: DailyPastRow[];
     /** Σ des flux datés au MOIS seul (comptés par l'ancre, plaçables nulle part). */
     undatedTotal: number;
@@ -122,7 +122,7 @@ export interface DailyPastRow {
     hasEstimatedPrice: boolean;
 }
 
-export interface BuildDailyPastInput {
+interface BuildDailyPastInput {
     /** Bornes de la fenêtre regardée (ISO). Le résultat est borné à `min(to, today)`. */
     from: string;
     to: string;

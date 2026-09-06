@@ -109,4 +109,3 @@ export const CeliAssetNudge: React.FC<CeliAssetNudgeProps> = ({ onAddAsset }) =>
 };
 
 // Valeur exportée pour les tests.
-export type { CeliAssetNudgeProps };

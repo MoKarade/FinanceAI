@@ -16,4 +16,3 @@ export { generateTestMarketData } from './testMarketData';
 
 // Re-export du registre pour un accès centralisé.
 export { TEST_PERSONAS, DEFAULT_PERSONA_ID, getPersonaById, getPersonaOrDefault } from './testPersonas';
-export type { TestPersona } from './testPersonas';

@@ -30,7 +30,7 @@ import type { Asset } from '../types';
 import type { Quote } from './marketData';
 import { logError } from './errorLogger';
 
-export interface PricePatch {
+interface PricePatch {
     currentPrice: number;
     priceUpdatedAt: number;
     /** Devise de l'actif AU MOMENT du quote (undefined = actif legacy sans devise). Revalidée à
@@ -71,7 +71,7 @@ export function marketTimestampOrNow(tsMs: number | undefined, nowMs: number): n
 
 export type PriceSkipReason = 'no-quote' | 'invalid-price' | 'currency-mismatch' | 'error';
 
-export interface PriceRefreshResult {
+interface PriceRefreshResult {
     /** Patches par symbole — à fusionner dans les assets COURANTS du store (prix CHANGÉS seulement). */
     patches: Map<string, PricePatch>;
     /** Symboles dont le prix a réellement changé. */

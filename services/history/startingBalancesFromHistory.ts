@@ -17,7 +17,7 @@
 
 import type { PortfolioHistoryPoint } from './reconstructPortfolioHistory';
 
-export interface StartingBalances {
+interface StartingBalances {
     CELI: number;
     CELIAPP: number;
     REER: number;

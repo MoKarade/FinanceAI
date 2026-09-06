@@ -19,7 +19,7 @@
 export const FIRE_LIFE_EVENT = 'Objectif FIRE Atteint 🔥';
 
 /** Sous-ensemble structurel d'un point de `chartData` nécessaire au jalon FIRE. */
-export interface FireMilestonePoint {
+interface FireMilestonePoint {
     NetWorth?: number;
     FireTarget?: number;
 }

@@ -11,7 +11,7 @@
 
 import type { Transaction } from '../../types';
 
-export interface PersonaTxProfile {
+interface PersonaTxProfile {
     /** Dépôts de paie versés ~bi-mensuellement (2× le net/quinzaine par mois). */
     incomes: Array<{ payee: string; netBiweekly: number }>;
     /** Logement mensuel (loyer ou hypothèque) — montant positif, généré négatif. */

@@ -68,7 +68,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
     );
 };
 
-export interface DrillDownCompteProps {
+interface DrillDownCompteProps {
     selected: AccountDef;
     point: ProjectionChartPoint;
     chartData: ProjectionChartPoint[];

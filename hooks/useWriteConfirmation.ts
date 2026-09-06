@@ -17,7 +17,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import type { WritePreview, WriteDecision } from '../services/aiTools/writeExecutor';
 import { useFinanceStore } from '../store/useFinanceStore';
 
-export interface WriteConfirmation {
+interface WriteConfirmation {
     /** Diff en attente du clic — `null` quand aucune écriture n'est suspendue. */
     pendingWrite: WritePreview | null;
     /** Passé à `executeWriteTool` : rend une promesse que le modal résout. */

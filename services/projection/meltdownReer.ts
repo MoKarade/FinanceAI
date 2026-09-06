@@ -61,7 +61,7 @@ export interface MeltdownCtx {
     realEstateEquity: number;
 }
 
-export interface MeltdownResult {
+interface MeltdownResult {
     reerDrawn: number;
     nonRegAdd: number;
     withholding: number;

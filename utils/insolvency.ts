@@ -9,7 +9,7 @@
 
 import type { ProjectionChartPoint } from '../services/projection/types';
 
-export interface InsolvencyPoint {
+interface InsolvencyPoint {
     /** Âge (de l'utilisateur principal) au premier mois où le patrimoine net passe sous 0.
      *  `null` si le point n'a pas d'âge (mode MC réduit) → le badge affiche alors un message générique. */
     age: number | null;

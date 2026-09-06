@@ -184,7 +184,7 @@ export const makeClient = async (apiKey: string, kind: 'text' | 'vision' = 'text
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export interface ChatMessage {
+interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
 }
@@ -341,7 +341,7 @@ export const httpStatusOf = (err: unknown): number | undefined => {
  *  - `fatal`     : 4xx de requête (400/404/413/422…) → rejouer le MÊME prompt redonnerait la même
  *                  erreur. Le chunk est abandonné, le batch continue (les suivants peuvent passer).
  */
-export type CategorizeErrorKind = 'retryable' | 'auth' | 'fatal';
+type CategorizeErrorKind = 'retryable' | 'auth' | 'fatal';
 
 export const classifyCategorizeError = (err: unknown): CategorizeErrorKind => {
     const status = httpStatusOf(err);
@@ -393,7 +393,7 @@ export const categorizeBackoffMs = (
 };
 
 /** Réglages injectables (tests : `sleep` synchrone → aucune attente réelle). */
-export interface CategorizeBatchDeps {
+interface CategorizeBatchDeps {
     sleep?: (ms: number) => Promise<void>;
     maxAttempts?: number;
     baseBackoffMs?: number;
@@ -859,7 +859,7 @@ const RebalanceJustificationSchema = z.object({
 });
 const RebalanceJustificationsSchema = z.array(RebalanceJustificationSchema);
 
-export type RebalanceJustification = z.infer<typeof RebalanceJustificationSchema>;
+type RebalanceJustification = z.infer<typeof RebalanceJustificationSchema>;
 
 export interface RebalanceActionInput {
     id: string;
@@ -922,7 +922,7 @@ RÉPONDS UNIQUEMENT par un JSON Array strict (pas de markdown) :
  * panne réseau en erreur non capturée. Le contrat d'erreur se décide, il ne se copie pas du voisin
  * (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
  */
-export type RebalanceJustificationsResult =
+type RebalanceJustificationsResult =
     | { readonly forme: 'ok'; readonly justifications: RebalanceJustification[] }
     /** Aucune clé configurée : l'appel n'a pas été tenté. */
     | { readonly forme: 'sans-cle' }
@@ -979,7 +979,7 @@ const PayslipSchema = z.object({
     rrspPeriod: z.number().nonnegative().finite(),
     frequency: z.enum(['Weekly', 'Bi-Weekly', 'Semi-Monthly', 'Monthly']),
 });
-export type PayslipData = z.infer<typeof PayslipSchema>;
+type PayslipData = z.infer<typeof PayslipSchema>;
 
 /**
  * Construit le bloc de contenu Anthropic pour un fichier uploadé (Vision) —
@@ -1077,7 +1077,7 @@ const BankTxnSchema = z.object({
     amount: z.number(),      // NÉGATIF = débit/retrait ; POSITIF = crédit/dépôt
 });
 const BankTxnArraySchema = z.array(BankTxnSchema);
-export type ExtractedBankTxn = z.infer<typeof BankTxnSchema>;
+type ExtractedBankTxn = z.infer<typeof BankTxnSchema>;
 
 /**
  * Nettoie + TRIE (chronologique croissant — « met dans l'ordre ») les transactions

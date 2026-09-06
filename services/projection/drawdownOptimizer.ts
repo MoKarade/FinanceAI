@@ -16,7 +16,7 @@ import { STRATEGY_DEFS } from './scenarios';
 import { calculateFutureProjection, type SimulationParams } from '../projection';
 import { logError } from '../errorLogger';
 
-export interface ScenarioComparison {
+interface ScenarioComparison {
     bestScenario: string;
     bestEstateNetWorth: number;
     results: Array<{

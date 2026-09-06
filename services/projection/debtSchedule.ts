@@ -29,14 +29,14 @@
 import { logError } from '../errorLogger';
 
 /** Ce que le moteur a besoin de savoir d'une dette pour décider de la servir ce mois-ci. */
-export interface DebtDates {
+interface DebtDates {
     /** Début du prêt / du bail (YYYY-MM-DD). Absent ⇒ la dette a toujours couru. */
     startDate?: string;
     /** Fin du terme / du bail (YYYY-MM-DD). Absent ⇒ on paie jusqu'à extinction (comportement d'avant). */
     termEndDate?: string;
 }
 
-export type DebtPhase =
+type DebtPhase =
     /** Pas encore commencée : aucun paiement, aucun intérêt, elle n'est pas encore au bilan. */
     | 'a-venir'
     /** En cours : on la sert normalement. */

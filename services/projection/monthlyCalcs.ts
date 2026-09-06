@@ -12,7 +12,7 @@
 // 1. Inflation des dépenses
 // ──────────────────────────────────────────────────────────────────────────────
 
-export interface ExpenseInflationConfig {
+interface ExpenseInflationConfig {
     usePerCategoryInflation?: boolean;
     inflationHousing?: number;
     inflationFood?: number;

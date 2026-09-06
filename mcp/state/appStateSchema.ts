@@ -62,7 +62,7 @@ const AppStateShape = z
     })
     .passthrough();
 
-export type AppStateShapeInput = z.infer<typeof AppStateShape>;
+type AppStateShapeInput = z.infer<typeof AppStateShape>;
 
 /**
  * Valide la forme d'un état chargé. Lève une Error au message clair (préfixe

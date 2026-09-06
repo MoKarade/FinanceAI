@@ -13,7 +13,7 @@
 
 import { encryptJson, decryptJson } from '../secureKeyStore';
 
-export interface ApiKeysPlain {
+interface ApiKeysPlain {
     anthropic: string;
     finnhub: string;
 }

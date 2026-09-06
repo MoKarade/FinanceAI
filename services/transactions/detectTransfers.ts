@@ -54,7 +54,7 @@ export interface TransferPair<Id> {
     confidence: TransferConfidence;
 }
 
-export interface DetectTransfersResult<Id> {
+interface DetectTransfersResult<Id> {
     /** Ids à marquer `isTransfer` AUTOMATIQUEMENT (les deux côtés de chaque paire prouvée). */
     confirmedIds: Set<Id>;
     /** Ids de paires PLAUSIBLES à faire confirmer par l'utilisateur — jamais marqués d'office. */
@@ -70,7 +70,7 @@ export interface DetectTransfersResult<Id> {
     };
 }
 
-export interface DetectTransfersOptions<Id> {
+interface DetectTransfersOptions<Id> {
     toleranceDays?: number;
     /**
      * Garde SUPPLÉMENTAIRE appliquée à chaque paire candidate (après les critères communs).

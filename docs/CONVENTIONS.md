@@ -12219,6 +12219,17 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 206 (2026-09-06) — un « doublon » signalé par un outil peut être un NOM DE RÔLE ; on ne le supprime pas au nom de l'hygiène
+
+À zéro export et zéro type inutilisés, `knip` ne laisse que deux « exports en double » : `CATEGORIZE_MODEL_ID = MODEL_HAIKU`
+et `_resetAttachmentDriveStoreForTests`. Le premier n'est pas une redondance mais une INDIRECTION nommée — « quel modèle
+catégorise ? » se change en une ligne sans toucher les appelants, exactement la raison d'être d'un alias que
+`UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM` n'interdit pas (elle vise les alias SANS raison, hérités). Le second
+suit la convention `_…ForTests` du dépôt. Devant un rapport d'outil à zéro, le reliquat se JUGE, il ne se rase pas : un compte
+ramené à zéro par suppression d'une indirection utile est une régression déguisée en propreté. ⚠️ Corollaire de méthode :
+dé-exporter un type utilisé dans la signature d'une fonction exportée est sûr ici parce que `tsconfig` n'émet pas de
+déclarations (`noEmit`) — avec `declaration: true`, TS refuserait (TS4058) ; la condition s'écrit, elle ne se suppose pas.
+
 ### Variante notée au lot 205 (2026-09-06) — un « triage S » de 73 items se re-mesure (80) et se PARTITIONNE avant de se coder ; et ce que knip compte se vérifie sur un cas
 
 `[KNIP-UNUSED-EXPORTS-73]` annonçait 73 exports et 209 types ; rejoué, 80 et 234 — un inventaire d'outil pourrit tout

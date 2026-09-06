@@ -93,7 +93,7 @@ const encryptBackupPayload = (key: CryptoKey, payload: string): Promise<string> 
 const decryptBackupPayload = (key: CryptoKey, blob: string): Promise<string> =>
     decryptJson<string>(key, blob);
 
-export interface StoredPayload {
+interface StoredPayload {
     payload: string;
     encrypted: boolean;
 }

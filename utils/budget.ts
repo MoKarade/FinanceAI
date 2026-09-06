@@ -86,7 +86,7 @@ export interface OrphanCategory {
     total: number;
 }
 
-export interface BudgetParity {
+interface BudgetParity {
     /** Total dépensé par poste (clé = `BudgetCategory.name`), sur la FENÊTRE. Exclut les orphelins. */
     actualsMap: Record<string, number>;
     /** Total dépensé sur la FENÊTRE, TOUTES dépenses (postes rapprochés + orphelins). Sert au KPI
@@ -200,7 +200,7 @@ export function resolveTransactionOwner(
     return null;
 }
 
-export interface ActualByOwner {
+interface ActualByOwner {
     /** Dépense réelle NETTE (`spendAmountOf`, pas une valeur absolue) imputée au conjoint 0. */
     owner0: number;
     /** Dépense réelle NETTE imputée au conjoint 1. */

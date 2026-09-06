@@ -33,7 +33,7 @@ export interface WritePreview {
 }
 
 export type WriteDecision = 'apply' | 'cancel';
-export type RequestConfirmation = (preview: WritePreview) => Promise<WriteDecision>;
+type RequestConfirmation = (preview: WritePreview) => Promise<WriteDecision>;
 
 export async function executeWriteTool(
     spec: AnyWriteToolSpec,

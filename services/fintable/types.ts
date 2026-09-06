@@ -24,13 +24,6 @@
 //      explicitement `pending=false` pour tout miroir. C'est non négociable ici : `applyDocument`
 //      déduplique mais ne supprime JAMAIS → une pending importée puis repostée = doublon À VIE.
 
-/** Enveloppe standard : `{data: …}`. Les listes de transactions portent en plus `next_cursor`. */
-export interface FtEnvelope<T> {
-    data: T;
-    next_cursor?: string | null;
-    snapshot_date?: string | null;
-}
-
 /** Erreur standard de l'API : `{error: {type, message}}` (une seule forme pour toute l'API). */
 export interface FtErrorBody {
     error?: { type?: string; message?: string; errors?: Record<string, string[]> };

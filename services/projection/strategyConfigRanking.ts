@@ -52,7 +52,7 @@ export interface RankedConfig {
     survived: boolean;
 }
 
-export interface ConfigRankingResult {
+interface ConfigRankingResult {
     /** Meilleur en premier. Survivants d'abord, puis non-survivants. */
     ranked: RankedConfig[];
     objective: OptimizeObjective;
@@ -62,7 +62,7 @@ export interface ConfigRankingResult {
     hasSurvivor: boolean;
 }
 
-export interface RankConfigOptions {
+interface RankConfigOptions {
     /** Taux de succès minimum (%) pour figurer au podium. Défaut 80. */
     survivalThreshold?: number;
 }
@@ -138,7 +138,7 @@ export function rankConfigResults(
 }
 
 /** Un levier qui diffère entre deux configs (les leviers « décisifs »). */
-export interface DecisiveLever {
+interface DecisiveLever {
     key: keyof StrategyConfig;
     label: string;
     winnerValue: string;

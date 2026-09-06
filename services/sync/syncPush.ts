@@ -19,7 +19,7 @@ import { handleError } from './syncErrors';
 import { logError } from '../errorLogger';
 
 /** Résultat d'un push — permet à l'UI d'être honnête (toast réel vs « rien à sauvegarder »). */
-export type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'error';
+type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'error';
 
 // D5 (anti-race) — les clés API sont hydratées de façon ASYNC depuis secureKeyStore au boot
 // (App.tsx). Tant que ce flag est faux, un push avec clés locales VIDES n'écrase PAS l'apiKeysEnc

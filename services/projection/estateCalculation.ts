@@ -129,7 +129,7 @@ export interface EstateCalcInputs {
     startingREEE: number;
 }
 
-export interface EstateResult {
+interface EstateResult {
     finalRawNetWorth: number;
     estateNetWorth: number;
     totalEstateTax: number;

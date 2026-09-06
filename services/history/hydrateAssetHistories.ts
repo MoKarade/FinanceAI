@@ -25,7 +25,7 @@ import type { ResultatHistorique } from '../marketData';
 import { causePermanente } from '../marketData/messageEchec';
 import type { MarketDataErrorCode } from '../marketData/types';
 
-export interface HydrateHistoryDeps {
+interface HydrateHistoryDeps {
     /**
      * Contrat façade : `[]` = vide VALIDE, `null` = ERREUR (chaîne entière en échec).
      * [MARKETDATA-HISTORY-CAUSE-PERDUE] La forme DÉTAILLÉE (`getHistoryDetaille`) est exigée, pas

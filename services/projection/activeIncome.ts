@@ -50,7 +50,7 @@ export interface ActiveIncomeCtx {
     calculateFiscalReport: FiscalReportFn;
 }
 
-export interface ActiveIncomeResult {
+interface ActiveIncomeResult {
     incomeMarc: number;
     incomeAnna: number;
     monthlyIncome: number;

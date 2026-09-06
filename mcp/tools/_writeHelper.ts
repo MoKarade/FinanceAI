@@ -16,7 +16,7 @@ import { sanitizePromptText } from '../../utils/promptSafety';
  *  `requireConfirm` est vrai et `confirmed` faux, le tool renvoie un APERÇU (diff avant→après) SANS écrire ;
  *  un 2ᵉ appel avec `confirm:true` persiste. La confirmation in-app passe, elle, par le modal `writeExecutor`
  *  (qui n'appelle PAS runApply) → chaque surface a sa propre confirmation native, pas de double-gate. */
-export interface RunApplyOptions {
+interface RunApplyOptions {
     requireConfirm?: boolean;
     confirmed?: boolean;
 }

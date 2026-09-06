@@ -19,9 +19,9 @@ const PRICE_RISE_THRESHOLD = 0.15;
 const MISSED_CYCLES_BEFORE_STALE = 2;
 const DAY_MS = 86_400_000;
 
-export type SubscriptionAlertKind = 'price_rise' | 'stopped';
+type SubscriptionAlertKind = 'price_rise' | 'stopped';
 
-export interface SubscriptionAlert {
+interface SubscriptionAlert {
     kind: SubscriptionAlertKind;
     /** Clé du marchand (identité du profil). */
     merchantKey: string;

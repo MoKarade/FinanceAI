@@ -16,7 +16,7 @@ import type { AssetProfile } from './marketData';
 import { resolveAssetMeta } from './assetMeta';
 import { logError } from './errorLogger';
 
-export interface ProfileSyncDeps {
+interface ProfileSyncDeps {
     getProfile: (symbol: string) => Promise<AssetProfile | null>;
     /** Un provider de PROFIL existe-t-il ? (pas de repli Yahoo ici — Finnhub seulement). */
     hasProvider?: (symbol: string) => boolean;
@@ -24,7 +24,7 @@ export interface ProfileSyncDeps {
     delayMs?: number;
 }
 
-export type ProfilePatch = { sector?: string; region?: string };
+type ProfilePatch = { sector?: string; region?: string };
 
 const DEFAULT_DELAY_MS = 2_500;
 

@@ -34,7 +34,7 @@ export const ACCOUNTS: AccountDef[] = [
 // conservation : espace_gagné(Y) = espace_dispo(fin Y) − espace_dispo(fin Y−1)
 // + cotisations(Y). L'espace dispo = Max (espace + solde) − solde. Capture aussi
 // le réajout d'espace CELI après retrait. Année 1 : pas de référence → gained=null.
-export interface RoomYear { year: number; gained: number | null; avail: number }
+interface RoomYear { year: number; gained: number | null; avail: number }
 export function computeRoomByYear(chartData: ProjectionChartPoint[], balanceKey: string, maxKey: string, contribKey: string): RoomYear[] {
     const byYear = new Map<number, { availLast: number; contribs: number }>();
     for (const d of chartData) {
@@ -66,7 +66,7 @@ export interface AccountPoint {
     hasDecomp: boolean;  // false pour l'Immobilier (pas de gain/flow émis)
 }
 
-export type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
+type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
 /**
  * [A11Y-PRIVACY-CHAINES-RESTANTES] `text` était une CHAÎNE qui portait le montant à l'intérieur
  * (« Rendement placements +1 200 $ »). Les deux surfaces qui l'affichent enveloppaient donc la
@@ -74,7 +74,7 @@ export type ReasonTone = 'pos' | 'neg' | 'in' | 'out';
  * comprise — et le FAIT disparaissait avec le chiffre. C'est l'autre moitié de la leçon du lot 56 :
  * garder le FAIT, taire le DÉTAIL. Le libellé et le montant sont donc séparés.
  */
-export interface MovementReason { icon: IconName; libelle: string; montant: number; tone: ReasonTone; }
+interface MovementReason { icon: IconName; libelle: string; montant: number; tone: ReasonTone; }
 
 export const fmtMoney = (n: number) => formatCAD(n);
 

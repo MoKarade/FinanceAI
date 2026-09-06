@@ -27,7 +27,7 @@ import {
 } from '../services/priceRefresh';
 import { getQuote, canAttemptQuote } from '../services/marketData';
 
-export interface PriceRefreshOutcome {
+interface PriceRefreshOutcome {
     /** Symboles dont le prix a réellement changé (et donc l'état réécrit). */
     refreshed: string[];
     /** Symboles quotés au même prix (aucun patch). */
@@ -39,7 +39,7 @@ export interface PriceRefreshOutcome {
 }
 
 /** Dépendances injectables (tests) ; défaut = source unique marketData (Finnhub/CoinGecko). */
-export type PriceRefreshServerDeps = Partial<Pick<PriceRefreshDeps, 'getQuote' | 'hasProvider' | 'sleep' | 'delayMs' | 'now'>>;
+type PriceRefreshServerDeps = Partial<Pick<PriceRefreshDeps, 'getQuote' | 'hasProvider' | 'sleep' | 'delayMs' | 'now'>>;
 
 /**
  * Rafraîchit les prix de l'état du store et réécrit Drive si (et seulement si) un cours a changé.

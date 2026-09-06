@@ -26,7 +26,7 @@ import { ageOptsForSalaryInversion, calculateGrossFromNet } from '../utils/tax';
 /** Le facteur de l'ancien repli — figé à jamais : il décrit un code MORT, il n'évolue pas. */
 export const LEGACY_GROSS_FACTOR = 1.35;
 
-export interface LegacySignatureUser {
+interface LegacySignatureUser {
     netSalary?: number;
     salary?: number;
     grossSalary?: number;

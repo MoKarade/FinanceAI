@@ -27,7 +27,7 @@ export const clampSplitPct = (pct: number): number => {
     return Math.min(100, Math.max(0, pct));
 };
 
-export interface StochasticContext {
+interface StochasticContext {
     m: number;
     currentMonthIndex: number;
     age: number;
@@ -37,7 +37,7 @@ export interface StochasticContext {
     rng: () => number;
 }
 
-export interface StochasticMutator {
+interface StochasticMutator {
     addLiquid: (amount: number) => void;
     addExpense: (amount: number) => void;
     logLife: (msg: string) => void;

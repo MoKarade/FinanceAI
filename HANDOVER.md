@@ -16,6 +16,12 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 206 : 234 types exportés inutilisés → 0 (`[KNIP-UNUSED-EXPORTS-73]`, fini)
+> Seconde moitié du triage knip, même méthode (relevé par site) : 219 déclarations dé-exportées dans 149 fichiers, 14 entrées
+> de barils retirées, 2 types morts supprimés (`FtEnvelope`, `StorageKey`). Un type dé-exporté dans une signature exportée
+> reste valide sans `declaration` (typecheck vert). `npm run knip` ne signale plus que 2 exports en double, délibérés (alias
+> de rôle `CATEGORIZE_MODEL_ID`, crochet `_…ForTests`). Types seuls : le bundle servi est identique — rien à vérifier.
+
 > ## 🟦 Session 2026-09-06 — Lot 205 : 80 exports inutilisés → 0 (`[KNIP-UNUSED-EXPORTS-73]`, exports livrés ; types restants)
 > `knip` rejoué avant de coder (80 exports, 234 types — le ticket disait 73 / 209). Triage par site : 69 `export` retirés
 > (utilisés seulement chez eux), 3 ré-exports de barils, 6 morts supprimés dont deux crochets de test jamais appelés et

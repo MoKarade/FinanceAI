@@ -43,7 +43,7 @@ export interface AgentClientLike {
     };
 }
 
-export interface AgentLoopOptions {
+interface AgentLoopOptions {
     apiKey: string;
     /** Fournit l'AppState — appelé UNE fois à l'entrée (snapshot cohérent pour tout l'envoi). */
     getState: StateProvider;
@@ -69,7 +69,7 @@ export interface AgentLoopOptions {
     client?: AgentClientLike;
 }
 
-export interface AgentLoopResult {
+interface AgentLoopResult {
     /** Texte assistant concaténé (la réponse finale ; les tours intermédiaires en font partie s'ils portaient du texte). */
     text: string;
     /** Noms des tools exécutés, dans l'ordre. */

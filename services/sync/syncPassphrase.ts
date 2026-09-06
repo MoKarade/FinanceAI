@@ -13,7 +13,7 @@ import { pushNow } from './syncPush';
 /** Longueur minimale de passphrase — DOIT rester alignée sur `checkPassphrase` de cloudBackup. */
 export const MIN_PASSPHRASE_LENGTH = 12;
 
-export type SetPassphraseResult = 'too-short' | 'set' | 'set-and-pulled';
+type SetPassphraseResult = 'too-short' | 'set' | 'set-and-pulled';
 
 /**
  * Active/définit la passphrase optionnelle de sync (D-3). Validée ici (≥12 caractères) pour un retour
@@ -52,7 +52,7 @@ export function clearSyncPassphrase(): void {
     setStatus({ passphraseActive: false });
 }
 
-export type RemovePassphraseResult = 'removed' | 'removed-and-republished';
+type RemovePassphraseResult = 'removed' | 'removed-and-republished';
 
 /**
  * RETIRE la passphrase ET re-publie aussitôt le coffre EN CLAIR (`enc:false`) si on est connecté et

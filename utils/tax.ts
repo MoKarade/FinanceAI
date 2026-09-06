@@ -336,7 +336,7 @@ const RAMQ_RATE_COUPLE_BRACKET2 = 0.0575;
 // Prime maximale 2026
 export const RAMQ_MAX_PREMIUM_2026 = 766;
 
-export interface RamqOptions {
+interface RamqOptions {
     /** Couple = seuils plus élevés et taux plus bas par adulte. */
     hasSpouse?: boolean;
     /** Nombre d'enfants à charge — relève le seuil d'exemption. */
@@ -1082,7 +1082,7 @@ export const calculateCapitalGainsTax = (realizedGain: number, marginalRate: num
     return realizedGain * CAPITAL_GAINS_INCLUSION_STANDARD * marginalRate;
 };
 
-export type DividendKind = 'eligible' | 'non-eligible';
+type DividendKind = 'eligible' | 'non-eligible';
 
 // Taux de majoration (gross-up) du dividende selon le type. Exposé pour permettre
 // au moteur de calculer le montant MAJORÉ à empiler progressivement (ITEM 2d) avec

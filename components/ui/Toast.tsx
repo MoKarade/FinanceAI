@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 // pour ce composant (1 usage isolé). Les animations sont maintenant dans
 // index.css (.animate-toast-in / .animate-toast-out).
 
-export interface ToastMessage {
+interface ToastMessage {
     id: string;
     message: string;
     type: 'success' | 'error' | 'info';

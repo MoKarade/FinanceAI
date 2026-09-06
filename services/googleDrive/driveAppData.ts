@@ -113,13 +113,13 @@ async function failFromResponse(res: Response): Promise<never> {
     throw new DriveError(`Drive a répondu ${res.status}${detail ? `: ${detail}` : ''}`, res.status);
 }
 
-export interface DriveFileRef {
+interface DriveFileRef {
     id: string;
     modifiedTime: string;
 }
 
 /** Réf enrichie (avec nom) pour lister des fichiers appData arbitraires (ex. backups .bak.json). */
-export interface AppDataFileRef extends DriveFileRef {
+interface AppDataFileRef extends DriveFileRef {
     name: string;
 }
 

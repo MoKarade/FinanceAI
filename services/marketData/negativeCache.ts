@@ -25,7 +25,7 @@
 // Stockage : localStorage sous une clé DÉDIÉE device-local (jamais dans `financeai-storage` →
 // jamais synchronisée Drive) ; repli mémoire hors navigateur (MCP/Node).
 
-export type NegativeKind = 'quote' | 'profile';
+type NegativeKind = 'quote' | 'profile';
 
 interface NegativeEntry {
     /** Échecs consécutifs (dans la fenêtre CONSEC_WINDOW_MS). */

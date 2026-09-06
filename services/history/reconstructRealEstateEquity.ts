@@ -13,7 +13,7 @@ import { runAmortization } from '../realEstate';
 import type { RealEstateGoal } from '../../types';
 
 /** Équité totale (toutes propriétés confondues) par année civile passée. */
-export type EquityByYear = Map<number, number>;
+type EquityByYear = Map<number, number>;
 
 const yearOf = (isoDate: string): number => parseInt(isoDate.slice(0, 4), 10);
 

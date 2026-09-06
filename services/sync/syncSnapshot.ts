@@ -74,7 +74,7 @@ export function summarizeForConflict(payload: unknown): ConflictSideCounts {
     return { assets: len(state?.assets), transactions: len(state?.transactions) };
 }
 
-export interface LocalPayload {
+interface LocalPayload {
     payload: unknown;
     apiKeys: ApiKeys;
     isEmpty: boolean;

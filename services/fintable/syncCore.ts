@@ -16,7 +16,7 @@ import type { AppState, Transaction } from '../../types';
 import { applyDocument, type DocumentPayload } from '../../mcp/ingest/applyDocument';
 import { deriveCutoverDate } from './deriveCutoverDate';
 
-export interface CutoverDecision {
+interface CutoverDecision {
     /** Date de bascule à passer au mapper (`transactionsAfter`), déjà plafonnée. */
     cutoverDateUsed: string | null;
     /** Avertissements destinés à l'humain — jamais un plafonnement silencieux. */
@@ -47,7 +47,7 @@ export function decideCutoverDate(
     return { cutoverDateUsed, warnings };
 }
 
-export interface AppliedPayloads {
+interface AppliedPayloads {
     nextState: AppState;
     /** Transactions RÉELLEMENT écrites — jamais la taille du payload (cf. `[FINTABLE-TXADDED-MENT]`). */
     transactionsAdded: number;

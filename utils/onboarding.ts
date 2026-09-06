@@ -10,7 +10,7 @@
  * Signaux de synchronisation qui prouvent que l'utilisateur a DÉJÀ un compte (donc : jamais
  * l'écran d'accueil, même si les données locales ne sont pas encore arrivées du Drive).
  */
-export interface OnboardingSyncSignals {
+interface OnboardingSyncSignals {
     /** Une méta Drive locale existe (un compte a déjà été connecté sur cet appareil). */
     connectedBefore?: boolean;
     /** Connecté au Drive dans cette session. */

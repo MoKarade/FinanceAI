@@ -69,7 +69,7 @@ export const MAX_STALE_DAYS = 3;
 
 const DAY_MS = 86_400_000;
 
-export interface VariationPlacements {
+interface VariationPlacements {
     /** Variation en DOLLARS canadiens (signée). */
     montantCad: number;
     /** Variation RELATIVE en pourcentage (signée), sur les MÊMES deux bornes que le montant. */
@@ -78,7 +78,7 @@ export interface VariationPlacements {
     depuis: string;
 }
 
-export interface PortfolioSessionMetrics {
+interface PortfolioSessionMetrics {
     /** Date (YYYY-MM-DD) de la séance de RÉFÉRENCE = dernier point daté de la série. */
     dateSeance: string;
     /** Valeur du portefeuille à `dateSeance`, en CAD. */

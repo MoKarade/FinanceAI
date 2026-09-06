@@ -10,7 +10,7 @@ import { formatCAD } from '../../utils/format';
 // quotidien, documentée « le 30 avril pour la régularisation annuelle »).
 const TAX_DUE_DAY = 30;
 
-export interface AprilSettlementResult {
+interface AprilSettlementResult {
     /** Total payé (positif) ou remboursé (négatif). 0 si rien à régler. */
     fluxImpots: number;
     taxPaidRevenu: number;

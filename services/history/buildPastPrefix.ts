@@ -32,7 +32,7 @@ import type { RealEstateGoal } from '../../types';
 // ⚠️ `type` alias (PAS `interface`) VOLONTAIRE : un object-literal type a une signature d'index
 // implicite → `PastPrefixPoint` reste assignable à `Record<string, unknown>` (le consommateur d'affichage
 // `displayData`/ChartDataTable l'exige). Un `interface` casserait ce typecheck (mergeable → pas d'index implicite).
-export type PastPrefixPoint = {
+type PastPrefixPoint = {
     monthIndex: number;
     year: number;
     dateLabel: string;
@@ -48,7 +48,7 @@ export type PastPrefixPoint = {
     isPast: boolean;
 };
 
-export interface BuildPastPrefixInput {
+interface BuildPastPrefixInput {
     pastHistoryPoints: ReadonlyArray<PortfolioHistoryPoint>;
     transactions: ReadonlyArray<{ date: string; amount: number; isDuplicate?: boolean; isTransfer?: boolean }>;
     calculatedStartingCash: number;
@@ -70,7 +70,7 @@ export interface BuildPastPrefixInput {
  *  SECONDE somme sur la même base d'exclusion, donc deux vérités qui divergent à la première
  *  évolution de la règle. Le compilateur a énuméré les seize sites d'appel — c'est exactement ce
  *  qu'on attend de lui. */
-export interface PastPrefixResult {
+interface PastPrefixResult {
     points: PastPrefixPoint[];
     /** [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Flux net du mois COURANT, défait par la reconstruction du
      *  cash pour produire le dernier point passé. Remonté tel quel depuis `reconstructCashHistory`. */

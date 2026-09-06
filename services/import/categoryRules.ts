@@ -160,7 +160,7 @@ const AMBIGUOUS_SUBSCRIPTION_RULES: ReadonlyArray<readonly [RegExp, RuleCategory
 ];
 
 /** Résultat détaillé d'une catégorisation par règles. */
-export interface RuleCategorization {
+interface RuleCategorization {
     /** Catégorie déterministe, `null` si aucune règle ne matche. */
     category: RuleCategory | null;
     /**

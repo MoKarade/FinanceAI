@@ -163,7 +163,7 @@ export interface ChildProcessCtx {
     childCustodyShare?: number;
 }
 
-export interface ChildTickResult {
+interface ChildTickResult {
     liquidDelta: number;
     /**
      * [ENG-DIVORCE-CHILDREN-REEE] `liquidDelta` VENTILÉ par CLÉ DE PARTAGE, parce que les deux

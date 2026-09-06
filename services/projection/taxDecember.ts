@@ -383,7 +383,7 @@ export interface DecemberHelpers {
     getDividendGrossUpRate: (kind?: 'eligible' | 'non-eligible') => number;
 }
 
-export interface DecemberResult {
+interface DecemberResult {
     /** Nouveau taxCurrentYear après régularisation (à passer en taxPreviousYear par le caller). */
     newTaxCurrentYear: { revenu: number; gains: number; divers: number; reer: number; donCredit: number };
     /** Logs à émettre. */

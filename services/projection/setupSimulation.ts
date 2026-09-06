@@ -32,7 +32,7 @@ export function buildSeededRng(
     return mulberry32(Math.abs(baseSeedNum) || 42);
 }
 
-export interface ContributionRoomResult {
+interface ContributionRoomResult {
     totalHistoricalCeliRoom: number;
     totalHistoricalRrspRoom: number;
     activeUsersCount: number;
@@ -84,7 +84,7 @@ export function computeHistoricalContributionRoom(
     return { totalHistoricalCeliRoom, totalHistoricalRrspRoom, activeUsersCount };
 }
 
-export interface RrqAdjustmentResult {
+interface RrqAdjustmentResult {
     effectivePensionStartAge: number;
     rrqAdjustmentFactor: number;
     rrqBasePension: number;
@@ -126,7 +126,7 @@ export function computeRrqAdjustment(
     };
 }
 
-export interface IncomeBaselineResult {
+interface IncomeBaselineResult {
     incomeMarcNetMonthly: number;
     incomeAnnaNetMonthly: number;
     grossMarcBaseAnnual: number;
@@ -187,7 +187,7 @@ export function computeIncomeBaseline(
     return { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual };
 }
 
-export interface ScenarioOverrideResult {
+interface ScenarioOverrideResult {
     simInflation: number;
     baseRates: { celi: number; reer: number; nonReg: number; crypto: number; cash: number };
 }

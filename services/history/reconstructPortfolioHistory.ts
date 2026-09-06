@@ -22,7 +22,7 @@ export interface MinimalAsset {
 }
 
 // Clés alignées sur le chartData de la projection (pour fusionner les axes en A3).
-export type AccountKey = 'CELI' | 'CELIAPP' | 'REER' | 'REEE' | 'NonReg' | 'Crypto';
+type AccountKey = 'CELI' | 'CELIAPP' | 'REER' | 'REEE' | 'NonReg' | 'Crypto';
 const ACCOUNT_KEYS: AccountKey[] = ['CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto'];
 
 const TYPE_TO_KEY: Record<RegisteredAccountType, AccountKey> = {
@@ -193,7 +193,7 @@ export function reconstructPortfolioHistory(
 // prix le plus vieux qui le compose — l'écran peut alors dire « reconstruit » au lieu de laisser
 // croire à une mesure quotidienne.
 
-export interface PortfolioHistoryDailyPoint {
+interface PortfolioHistoryDailyPoint {
     /** Date 'YYYY-MM-DD'. */
     date: string;
     CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number;

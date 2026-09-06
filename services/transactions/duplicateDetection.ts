@@ -52,7 +52,7 @@ export interface DuplicateGroup {
     datesDiffer: boolean;
 }
 
-export interface DetectDuplicatesOptions {
+interface DetectDuplicatesOptions {
     /**
      * Tolérance en JOURS sur l'écart de date (0 = date strictement identique). Utile car une même
      * dépense peut être datée du jour d'autorisation d'un côté et du jour de comptabilisation de

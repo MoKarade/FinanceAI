@@ -46,7 +46,7 @@ export interface TransferPair {
     amount: number;
 }
 
-export interface DetectTransfersResult {
+interface DetectTransfersResult {
     /** Ids de transactions à marquer `isTransfer` (les deux côtés de chaque paire). */
     transferIds: Set<string>;
     /** Paires reconnues — pour le rapport, jamais silencieuses. */

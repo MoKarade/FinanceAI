@@ -103,7 +103,7 @@ export interface BudgetConfig {
 }
 
 // Phase G.1 — onglet Documents global (PDF/Image avec IA extraction)
-export type DocumentCategory =
+type DocumentCategory =
   | 'PAYSLIP'        // fiche de paie
   | 'T4'             // relevé fiscal T4 / Relevé 1
   | 'BANK_STATEMENT' // relevé bancaire / brokerage

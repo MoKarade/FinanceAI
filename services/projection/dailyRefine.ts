@@ -50,7 +50,7 @@ export function daysInMonth(year: number, month: number): number {
 
 
 /** Une valeur mensuelle du moteur, réduite à ce dont le raffinement a besoin. */
-export interface MonthlyAnchor {
+interface MonthlyAnchor {
     monthIndex: number;
     year: number;
     /** Mois 0-based (comme `Date`). */

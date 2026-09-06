@@ -5,7 +5,7 @@
 
 import type { AllocationStrategy, FutureScenarioType } from '../projection';
 
-export interface ScenarioDefinition {
+interface ScenarioDefinition {
     stratType: FutureScenarioType;
     strategy: AllocationStrategy;
     strategyName: string;

@@ -20,10 +20,10 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { neutralizeFrameTags, sanitizePromptText } from '../../utils/promptSafety';
 import { logError } from '../errorLogger';
 
-export type AiAttachmentKind = 'image' | 'pdf' | 'text';
+type AiAttachmentKind = 'image' | 'pdf' | 'text';
 
 /** Métadonnées LÉGÈRES persistables dans le transcript (jamais les octets). */
-export interface AiAttachmentMeta {
+interface AiAttachmentMeta {
     name: string;
     kind: AiAttachmentKind;
     mimeType: string;
@@ -66,7 +66,7 @@ export const ATTACHMENT_ACCEPT = [
     ...IMAGE_MIMES, 'application/pdf', ...TEXT_MIMES, '.txt', '.csv', '.md', '.tsv', '.log',
 ].join(',');
 
-export type ClassifyResult =
+type ClassifyResult =
     | { ok: true; kind: AiAttachmentKind; mimeType: string }
     | { ok: false; reason: string };
 

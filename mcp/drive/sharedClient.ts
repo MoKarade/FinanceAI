@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export interface OAuthClient {
+interface OAuthClient {
     clientId: string;
     clientSecret: string;
 }

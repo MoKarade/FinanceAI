@@ -61,7 +61,7 @@ export function hexDeClasse(nom: string): string | null {
     return null;
 }
 
-export type PaireCta = { bg: string; text: string; bgHex: string; textHex: string; ratio: number; sites: string[] };
+type PaireCta = { bg: string; text: string; bgHex: string; textHex: string; ratio: number; sites: string[] };
 
 /** Marche récursive — `readdirSync(recursive)` (Node 18.17+), patron déjà employé par les gardes du dépôt. */
 function fichiersTsx(racine: string): string[] {

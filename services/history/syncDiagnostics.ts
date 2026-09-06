@@ -13,7 +13,7 @@ import type { HydrateHistoryResult } from './hydrateAssetHistories';
 import type { PriceSkipReason } from '../priceRefresh';
 import { logError } from '../errorLogger';
 
-export interface HistorySyncReport {
+interface HistorySyncReport {
     /** Epoch ms de la fin de l'hydratation. */
     at: number;
     /** Skips de la dernière passe (raisons + détails actionnables). */

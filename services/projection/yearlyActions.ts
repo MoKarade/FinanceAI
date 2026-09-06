@@ -18,7 +18,7 @@ export const ACTION_ACCOUNTS: Array<{ key: ActionAccountKey; label: string; fiel
     { key: 'Liquidites', label: 'Cash', field: 'NetTransferLiquid' },
 ];
 
-export interface YearlyAction {
+interface YearlyAction {
     year: number;
     age: number | null;
     isRetired: boolean;

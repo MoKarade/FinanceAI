@@ -46,7 +46,7 @@ import {
 
 // ── Classification des champs ────────────────────────────────────────────────────────────────
 
-export type FieldKind =
+type FieldKind =
     /** Solde / photo à un instant (« combien j'ai »). Interpolé de la fin du mois précédent à la
      *  fin de ce mois-ci. Le dernier jour vaut EXACTEMENT la valeur du moteur. */
     | 'stock'
@@ -128,7 +128,7 @@ export const FIELD_KIND: Readonly<Record<string, FieldKind>> = {
 
 // ── Cadences de répartition des flux ─────────────────────────────────────────────────────────
 
-export type FlowCadence =
+type FlowCadence =
     /** Aucune date connue : réparti également sur les jours du mois. */
     | 'uniform'
     /** Versé à chaque jour de paie (hebdomadaire, jeudi par défaut). */
@@ -176,7 +176,7 @@ export const FLOW_CADENCE: Readonly<Record<string, FlowCadence>> = {
  *  paiement de dette sort du compte (`Liquidites` baisse) mais ne change PAS le patrimoine net
  *  (la dette baisse d'autant) — les mélanger creusait un faux trou dans la valeur nette le jour de
  *  paie, aussitôt rebouché par l'étalement du résidu. */
-export interface DatedMonthContext {
+interface DatedMonthContext {
     /** Paie NETTE du ménage, versements hebdomadaires (positifs). */
     salary: DatedDelta[];
     /** Charges récurrentes détectées, à leur quantième (négatifs). */
@@ -190,7 +190,7 @@ export interface DatedMonthContext {
     nDays: number;
 }
 
-export interface DatedContextInput {
+interface DatedContextInput {
     recurring: ReadonlyArray<MinimalRecurring>;
     /** Net MENSUEL du ménage (le store le porte au mois — règle « unités argent »). */
     monthlyNetSalary: number;
@@ -372,7 +372,7 @@ export type DailyLedgerPoint = Partial<ProjectionChartPoint> & {
     isDailyPoint: true;
 };
 
-export interface BuildDailyLedgerInput {
+interface BuildDailyLedgerInput {
     /** Points MENSUELS consécutifs du moteur, triés par `monthIndex` croissant. Le PREMIER sert de
      *  valeur d'entrée et n'est pas rendu au jour (on n'invente pas le mois d'avant la fenêtre). */
     months: ReadonlyArray<ProjectionChartPoint>;

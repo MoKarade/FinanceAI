@@ -31,7 +31,7 @@ import type { RealEstateGoal } from '../../types';
 import { calculateSchlPremium, SCHL_AMORT_MAX_INSURED_STANDARD } from '../realEstate';
 import { logErrorThrottled } from '../errorLogger';
 
-export interface PastPurchaseState {
+interface PastPurchaseState {
     isBought: true;
     /** Valeur actuelle estimée (explicite si fournie, sinon price apprécié plafonné maxValue). */
     currentValue: number;

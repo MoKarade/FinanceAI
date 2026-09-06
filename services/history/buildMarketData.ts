@@ -58,7 +58,7 @@ export const BUCKET_OF: Record<RegisteredAccountType, 'TOTAL_CELI' | 'TOTAL_REER
     CRYPTO: 'TOTAL_CRYPTO',
 };
 
-export interface BuildMarketDataResult {
+interface BuildMarketDataResult {
     rows: MarketDataPoint[];
     /**
      * [HIST-COVERAGE-TOTAL] Titres détenus SANS le moindre historique de cours : pas de colonne

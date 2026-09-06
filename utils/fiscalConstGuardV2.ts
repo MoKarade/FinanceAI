@@ -61,12 +61,6 @@ interface InventoryEntry {
 // comportement attendu d'un registre censé décroître.
 export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/taxJanuary.ts ────────────────────────────────────────────────────
-    { file: 'services/projection/taxJanuary.ts', value: '18', family: 'fiscal',
-      reason: '[×2] Âge d’ouverture des droits CELI / admissibilité CELIAPP.' },
-    { file: 'services/projection/taxJanuary.ts', value: '71', family: 'fiscal',
-      reason: '[≠4] DEUX RÈGLES ARC distinctes sous la même clé — ma marque `[×4]` prétendait à tort qu’elles avaient le même sens. `closureForcedBy71` / éligibilité CELIAPP : fermeture obligatoire du CELIAPP/FHSA au 31 décembre de l’année des 71 ans (le commentaire du bloc FHSA cite l’audit §6.10). `rrspRoomDelta` / `rrspRoomReset` : arrêt de l’accumulation des droits REER et remise à zéro, corollaire de la conversion REER → FERR. Deux dispositions qui partagent un âge et peuvent bouger indépendamment.' },
-    { file: 'services/projection/taxJanuary.ts', value: '15', family: 'fiscal',
-      reason: '[×2] Durée de vie maximale du CELIAPP (15 ans depuis l’ouverture, ARC).' },
     { file: 'services/projection/taxJanuary.ts', value: '0.25', family: 'design',
       reason: 'PROXY de modèle : inverse l’impôt sur gains vers le gain BRUT en supposant un taux effectif de 25 % (inclusion 50 % × marginal 50 %). Combine un vrai paramètre et un marginal SUPPOSÉ → approximation, jamais un taux statutaire à sourcer.' },
     { file: 'services/projection/taxJanuary.ts', value: '0.06', family: 'design',
@@ -77,8 +71,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection.ts ──────────────────────────────────────────────────────────────
     // [FISC-GUARD-PROJECTION-TS] 37 littéraux, 20 clés. QUATRE sont de vraies bornes légales ; les
     // seize autres sont des défauts de saisie, des index ou des paramètres de SCÉNARIO.
-    { file: 'services/projection.ts', value: '18', family: 'fiscal',
-      reason: '[×2] Âge à partir duquel la résidence au Canada compte pour la PSV (L353 à l’initialisation, L840 dans la boucle annuelle). Même règle aux deux sites. Ancrée dans FISCAL_REFERENCE §PSV — « résidence au Canada après 18 ans » (PSV_MIN_RESIDENCY_YEARS).' },
     { file: 'services/projection.ts', value: '65', family: 'fiscal',
       reason: 'DÉFAUT DE SAISIE (`retirementGoal.targetAge || 65`), pas une règle fiscale : l’utilisateur choisit son âge de retraite — on ne l’ancre pas. ⚠️ Les TROIS autres sens que cette clé fusionnait ([≠4] historique) sont ANCRÉS depuis [FISC-CONST-ANCHOR-65] (lot 152) : résidence PSV → PSV_ELIGIBILITY_AGE, fractionnement décembre → PENSION_SPLIT_MIN_AGE, libellé « rentes reportées » → RRQ_STANDARD_START_AGE (utils/tax.ts).' },
     { file: 'services/projection.ts', value: '60', family: 'fiscal',
@@ -133,14 +125,10 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '[×2] Âge maximal de report de la rente RRQ (étendu de 70 à 72 en 2024), écrit DEUX fois : borne du clamp (`Math.min(72, …)`, visible depuis le 2026-08-22 seulement) et valeur de la stratégie de report optimal (`rrqStartAge = 72`). Même risque de divergence silencieuse que son jumeau PSV.' },
     // ⚠️ AJOUTÉES le 2026-08-22 ([FISC-GUARD-ARGUMENT] + [FISC-GUARD-BENIGN-60]) : révélées par
     // l’élargissement à la position d’ARGUMENT et par le retrait de `60` de BENIGN.
-    { file: 'services/projection/retirementIncome.ts', value: '18', family: 'fiscal',
-      reason: 'Âge de début de la période COTISABLE à la RRQ. Le modèle « 39 meilleures années » compte les années cotisées de 18 ans jusqu’à la retraite (FISCAL_REFERENCE §6) : ce 18 est le numérateur du prorata de résidence RRQ, `Math.max(18, residencyStartU - birthYearU)`. Barème légal, à ancrer §6 aux côtés de `RRQ_DENOMINATOR_YEARS` (39) qui est, lui, déjà nommé — c’est le déséquilibre qui rendait ce littéral suspect.' },
     { file: 'services/projection/retirementIncome.ts', value: '60', family: 'fiscal',
       reason: 'Borne LÉGALE basse d’anticipation de la rente RRQ : `Math.max(60, rrqStartAge ?? defaultStart)`. On ne peut pas demander sa rente avant 60 ans, et le facteur d’anticipation est calibré sur cette borne. Elle était doublement invisible — `60` était dans BENIGN, ET la valeur est en position d’argument : il a fallu les deux correctifs du même lot pour la voir.' },
     { file: 'services/projection/retirementIncome.ts', value: '1.0', family: 'structural',
       reason: '[≠2] DEUX plafonnements à 100 %, sans rapport entre eux. (a) `Math.min(1.0, currentGrossUser / rrqMpeProjected)` — le ratio gains/MGA ne dépasse pas 1, cotiser au-delà du maximum des gains admissibles n’augmente pas la rente. (b) `Math.min(1.0, residencyYears / PSV_FULL_RESIDENCY_YEARS)` — le prorata de résidence PSV plafonne à la pleine pension. Les DEUX bornes traduisent une règle, mais le nombre lui-même n’est qu’un plafond de fraction : aucune indexation ne le fera bouger.' },
-    { file: 'services/projection/retirementIncome.ts', value: '75', family: 'fiscal',
-      reason: 'Bonification de la PSV à compter de 75 ans.' },
     { file: 'services/projection/retirementIncome.ts', value: '39', family: 'fiscal',
       reason: 'RRQ_DENOMINATOR_YEARS — déjà une constante NOMMÉE, dénominateur du calcul de rente.' },
     { file: 'services/projection/retirementIncome.ts', value: '40', family: 'fiscal',
@@ -198,8 +186,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Graine par défaut du générateur pseudo-aléatoire (`mulberry32(... || 42)`). Aucun rapport avec la fiscalité.' },
     { file: 'services/projection/setupSimulation.ts', value: '30', family: 'structural',
       reason: 'Repli d’âge par défaut quand ni birthYear ni age ne sont saisis. Structurel.' },
-        { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
-      reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
     { file: 'services/projection/setupSimulation.ts', value: '1.02', family: 'design',
       reason: 'Dé-indexation du salaire à 2 %/an pour RECONSTITUER les salaires passés (`individualSalaryPortion / Math.pow(1.02, y)`) et en déduire les droits REER accumulés avant le début de la simulation. Hypothèse de carrière, pas un barème : le barème de cette même ligne, ce sont `RRSP_ROOM_RATE` et `RRSP_ANNUAL_LIMITS`, tous deux déjà nommés et ancrés. ⚠️ Ce 2 % est INDÉPENDANT de l’inflation saisie par l’utilisateur — un profil qui projette 4 % voit quand même son passé reconstruit à 2 %.' },
     { file: 'services/projection/setupSimulation.ts', value: '8000', family: 'design',

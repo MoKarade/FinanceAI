@@ -508,7 +508,7 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
 | RRQ — **report** après 65 (`rrqAdjustmentFactor`) | **+0,7 %/mois** | 65 → **72** (max +84 mois) | **1,588** à 72 ans (84 × 0,7 % = +58,8 %) | Retraite Québec |
 | RRQ — **anticipation** avant 65 (`rrqAdjustmentFactor`) | **−0,6 %/mois** | 60 → 65 (max −60 mois) | 0,64 à 60 ans (−36 %) | Retraite Québec |
 | PSV / OAS — **report** après 65 (`psvDeferralFactor`) | **+0,6 %/mois** | 65 → 70 (max +60 mois) | **1,36** à 70 ans (60 × 0,6 %) | Service Canada |
-| PSV / OAS — **bonus 75+** (`PSV_BONUS_75_PLUS`) | n/a | dès 75 ans | **+10 %** | Service Canada (depuis juillet 2022) |
+| PSV / OAS — **bonus 75+** (`PSV_BONUS_75_PLUS`, âge `PSV_BONUS_AGE`) | n/a | dès 75 ans | **+10 %** | Service Canada (depuis juillet 2022) |
 > **Report RRQ étendu à 72 ans** depuis le 1ᵉʳ janvier 2024 (avant : 70). Montants max 2026 (Retraite
 > Québec) : 60 ans **964,90 $/mois**, 65 ans **1 507,65 $**, 72 ans **2 394,15 $**. La PSV ne se reporte
 > pas au-delà de 70 ans et vaut 0 $ avant 65 ans.
@@ -522,7 +522,7 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
 ### Prorata RRQ / résidence PSV (`retirementIncome.ts`) — FA-8 (2026-06-11)
 - **RRQ — approximation de MODÈLE « 39 meilleures années »** (`RRQ_DENOMINATOR_YEARS = 39`) :
   la rente officielle = moyenne des gains ouvrant droit à pension AJUSTÉS sur la période cotisable
-  (18 ans → début de la rente, ≈ 47 ans à 65 ans), avec **retranchement de 15 % des mois les plus
+  (18 ans → début de la rente, ≈ 47 ans à 65 ans ; `RRQ_CONTRIBUTORY_START_AGE`), avec **retranchement de 15 % des mois les plus
   faibles** (Retraite Québec) ≈ conserver **39 années sur 47** (8 retirées). Le moteur approxime :
   `prorata = min(1, années au Canada entre max(18, arrivée) et targetAge / 39) × min(1, salaire/MGA)`
   — salaire courant et MGA projetés au MÊME facteur (inflation + 0,5 %/an), donc ratio
@@ -531,7 +531,7 @@ consommée par `services/projection/retirementIncome.ts` + `setupSimulation.ts`.
   gate `isImmigrant` — comme la PSV/CELI/REER) puis moyennés ; avant, la résidence venait de `users[0]`
   seul (faux pour un couple d'arrivées inégales). Un natif (`isImmigrant` faux) ⇒ arrivée = 18 ⇒ prorata plein.
 - **PSV — règle OFFICIELLE de résidence** (Service Canada) : admissible à partir de **10 ans** de
-  résidence au Canada après 18 ans (`PSV_MIN_RESIDENCY_YEARS`, versement au Canada) ; pension
+  résidence au Canada après 18 ans (`PSV_RESIDENCY_START_AGE`, `PSV_MIN_RESIDENCY_YEARS`, versement au Canada) ; pension
   **PLEINE à 40 ans** de résidence (`PSV_FULL_RESIDENCY_YEARS`) ; entre les deux, **prorata en
   40ᵉˢ** (`min(1, années/40)`). Moins de 10 ans → 0 $. Résidence saisie par utilisateur
   (`psvResidencyYears`, dérivée de `canadaArrivalYear` pour un immigrant).
@@ -909,10 +909,14 @@ pour minimiser l'impôt combiné (élection optionnelle).
 |---|---|---|
 | RAP (Régime accession propriété) | `RAP_LIMIT_PER_USER` | 60 000 $ / personne |
 | CELIAPP — plafond à vie | `FHSA_LIFETIME_LIMIT_PER_USER` | 40 000 $ / personne |
+| CELIAPP — fermeture obligatoire | `FHSA_MAX_PARTICIPATION_YEARS` = 15 · `FHSA_MAX_HOLDER_AGE` = 71 | au 31 décembre de la 15ᵉ année suivant l'ouverture OU de l'année des 71 ans (premier événement) — ARC « CELIAPP : fermeture du compte » ; source relayée par l'audit fiscal 2026-06-09 §6.10 (canada.ca inaccessible depuis le conteneur, tentative du 2026-09-06) ; ancré au lot 207 |
 | CELIAPP — plafond annuel | `FHSA_ANNUAL_LIMIT_PER_USER` | 8 000 $ / personne — le REPORT de droits **EST modélisé** (`taxJanuary.ts` : `allowedCarryForward = min(annuel, résiduel de l'an passé)`, plafond effectif 16 000 $/personne/an, conforme à l'ARC). ⚠️ **Note corrigée le 2026-08-19** : elle affirmait le contraire (« n'est PAS modélisé ») et interdisait de toucher au clamp — elle protégeait en fait un BUG, pas un choix. Le report existait bien, mais décembre remettait l'espace au plein annuel avant que janvier ne le lise, rendant le report toujours MAXIMAL (mesuré : 32 000 $/an pour un couple au lieu de 16 000 $, plafond à vie atteint en 3 ans au lieu de 5). Corrigé par `[CELIAPP-DOUBLE-RECHARGE]`. |
 | PBMA (palier de base montant ajusté) | `PBMA_THRESHOLD_PER_USER` | 17 183 $ |
 
 ### CELI — plafonds annuels (`CELI_ANNUAL_LIMITS`)
+> **Âge d'ouverture des droits : 18 ans** (`REGISTERED_PLAN_MIN_AGE`, ARC — les droits CELI s'accumulent à partir de
+> l'année des 18 ans ; le modèle y aligne l'admissibilité CELIAPP et l'ouverture des droits REER historiques). Ancré au
+> lot 207 ; source relayée (canada.ca inaccessible depuis le conteneur).
 2009-2012 : 5 000 · 2013-2014 : 5 500 · 2015 : 10 000 · 2016-2018 : 5 500 · 2019-2022 : 6 000 ·
 2023 : 6 500 · 2024-2026 : **7 000** · 2027-2030 : 7 500 (estimés, à confirmer au Budget).
 > **Implémentation** (`taxJanuary.ts`, FA-4 2026-06-09) : le moteur lit `CELI_ANNUAL_LIMITS` pour

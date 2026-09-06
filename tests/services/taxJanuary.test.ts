@@ -66,6 +66,18 @@ describe('processJanuaryReset — plafonds CELI / REER', () => {
         expect(old.rrspRoomReset).toBe(true);
         expect(old.rrspRoomDelta).toBe(0);
     });
+
+    it('BORNE EXACTE : 71 ans → droit encore positif, 72 ans → remis à zéro (ARC : conversion à la fin de l\'année des 71 ans)', () => {
+        // [FISC-CONST-ANCHOR-DEBT] (lot 207) Les âges 40/75 du cas précédent sont loin de la borne : une
+        // constante déplacée à 60 les laissait VERTS (mesuré). La borne s'écrit en LITTÉRAL ici — c'est le
+        // fait légal, pas la constante, que ce cas défend (`RRSP_TO_RRIF_CONVERSION_AGE`).
+        const a71 = processJanuaryReset(0, baseCtx({ age: 71 }), helpers)!;
+        expect(a71.rrspRoomReset).toBe(false);
+        expect(a71.rrspRoomDelta).toBeGreaterThan(0);
+        const a72 = processJanuaryReset(0, baseCtx({ age: 72 }), helpers)!;
+        expect(a72.rrspRoomReset).toBe(true);
+        expect(a72.rrspRoomDelta).toBe(0);
+    });
 });
 
 describe('processJanuaryReset — FERR (retrait minimum à 72+)', () => {

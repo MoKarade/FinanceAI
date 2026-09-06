@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 207 : les âges-seuils restants ancrés, une constante PAR SENS (`[FISC-CONST-ANCHOR-DEBT]`, fini)
+> 11 sites / 4 modules, quatre nombres, SIX règles : `18` en portait trois (CELI/CELIAPP/REER, résidence PSV, cotisation RRQ),
+> `71` deux (fermeture CELIAPP ≠ REER→FERR). Six constantes nommées dans `utils/tax.ts` (+ `RRSP_TO_RRIF_CONVERSION_AGE`
+> importé), sourcées dans FISCAL_REFERENCE ; 7 entrées de ratchet résolues. Six perturbations → six rouges, dont trois
+> témoins ajoutés parce que les fixtures existantes étaient muettes (borne 71/72, relation natif/immigrant, espion moteur
+> sur la résidence PSV). Valeurs inchangées : bundle équivalent, mais code servi touché → déploiement à vérifier. Archive du
+> lot 205-206 (`[KNIP-UNUSED-EXPORTS-73]`).
+
 > ## 🟦 Session 2026-09-06 — Lot 206 : 234 types exportés inutilisés → 0 (`[KNIP-UNUSED-EXPORTS-73]`, fini)
 > Seconde moitié du triage knip, même méthode (relevé par site) : 219 déclarations dé-exportées dans 149 fichiers, 14 entrées
 > de barils retirées, 2 types morts supprimés (`FtEnvelope`, `StorageKey`). Un type dé-exporté dans une signature exportée

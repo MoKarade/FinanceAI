@@ -12219,6 +12219,22 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 207 (2026-09-06) — un même nombre, TROIS règles : le « 18 » se nomme trois fois, et une perturbation muette se répare par un cas-frontière, pas en relâchant la preuve
+
+Le reliquat de `[FISC-CONST-ANCHOR-DEBT]` disait « âges-seuils 18/71/15/70/75, hygiène ». Recensé par SITE, le `18` portait
+trois règles de trois autorités (ARC : droits CELI/CELIAPP/REER ; Service Canada : résidence PSV ; Retraite Québec : période
+cotisable RRQ) et le `71` deux (fermeture CELIAPP ≠ conversion REER→FERR — l'inventaire du ratchet le savait, `[≠4]`). Une
+constante fourre-tout `AGE_18` aurait été la clé qui fusionne deux sens, version code (`CLE-QUI-FUSIONNE-DEUX-SENS`). ⚠️ Trois
+des six perturbations étaient MUETTES : déplacer 71→60 laissait vert un test qui compare 40 et 75 (loin de la borne), déplacer
+18→30 passait sous des `toBeGreaterThan(0,8×)`. Le silence disait « la fixture n'atteint pas la borne », pas « la constante
+ne pilote rien » (`UNE-PERTURBATION-MUETTE-DIT-LA-FIXTURE-NE-L-ATTEINT-PAS-AVANT…`) : la réponse est un cas-FRONTIÈRE écrit en
+littéral (71 → positif, 72 → zéro : c'est le fait légal qu'on défend, pas la constante), une RELATION (natif = arrivé à 18,
+> arrivé à 30) et un ESPION sur l'argument que le moteur remet (`psvResidencyYears` = 48). ⚠️ Et un reliquat de ticket peut
+nommer un site déjà disparu (« `2026` taxJanuary ») : zéro littéral, zéro entrée — on le dit, on ne le « traite » pas.
+⚠️ Deux sources (CELIAPP fermeture, CELI 18 ans) restent RELAYÉES : canada.ca est inaccessible depuis le conteneur, et la doc
+le dit à côté de la valeur plutôt que d'emprunter l'autorité des lignes voisines
+(`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`, appliqué).
+
 ### Variante notée au lot 206 (2026-09-06) — un « doublon » signalé par un outil peut être un NOM DE RÔLE ; on ne le supprime pas au nom de l'hygiène
 
 À zéro export et zéro type inutilisés, `knip` ne laisse que deux « exports en double » : `CATEGORIZE_MODEL_ID = MODEL_HAIKU`

@@ -543,3 +543,20 @@ describe('computeRetirementIncome — FISC-RRQ-PRORATA : prorata de résidence R
         expect(allNative.perUser[0].rrq).toBeCloseTo(allNative.perUser[1].rrq, 4); // salaires égaux → parts égales
     });
 });
+
+describe('[FISC-CONST-ANCHOR-DEBT] (lot 207) période cotisable RRQ : un natif compte depuis ses 18 ans', () => {
+    // Le prorata RRQ = années cotisées (arrivée → retraite) / 39. Pour un natif, l'arrivée est l'âge de
+    // majorité cotisable (`RRQ_CONTRIBUTORY_START_AGE`). La preuve est une RELATION : le natif touche
+    // exactement ce que touche un immigrant arrivé à 18 ans, et strictement plus qu'un arrivé à 30 ans
+    // — une constante déplacée à 30 rendrait les deux derniers ÉGAUX (mesuré : c'est ce qui rougit).
+    const natif: User = { ...baseUser, canadaArrivalYear: undefined, isImmigrant: false } as unknown as User;
+    const arrive = (age: number): User => ({ ...baseUser, isImmigrant: true, canadaArrivalYear: 1961 + age } as unknown as User);
+    const goal: RetirementGoal = { ...baseGoal, rrqEstimateMonthly: 1500, psvEstimateMonthly: 0 };
+    const total = (u: User) => computeRetirementIncome(baseCtx, goal, [u]).total;
+
+    it('natif == arrivé à 18 ans, et natif > arrivé à 30 ans', () => {
+        expect(total(natif)).toBeGreaterThan(0);
+        expect(total(natif)).toBeCloseTo(total(arrive(18)), 6);
+        expect(total(natif)).toBeGreaterThan(total(arrive(30)));
+    });
+});

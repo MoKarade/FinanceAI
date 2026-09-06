@@ -29,10 +29,15 @@
 //     donne un faux refus BRUYANT, que le canari de `tests/services/verifierTypesRestaures.test.ts`
 //     transforme en échec de CI avant qu'il n'atteigne qui que ce soit.
 //
-// ⚠️ CE QUE CE MODULE NE COUVRE PAS, et il faut le dire plutôt que de le laisser croire : le canal
-// mesuré est la CHAÎNE, et c'est lui qui est fermé. Un booléen dans un champ monétaire
-// (`true + 1 === 2`) passerait encore — le fermer demanderait une seconde liste, celle des champs
-// booléens, qui n'a pas été mesurée. Consigné au BACKLOG plutôt que traité à la va-vite.
+// ⚠️ [BACKUP-BOOLEEN-DANS-UN-MONTANT] (lot 199, 2026-09-06) Le second canal, resté ouvert jusque-là
+// « parce que sa liste n'avait pas été mesurée », est fermé par le même arbitrage : un BOOLÉEN dans
+// un champ monétaire (`true + 1 === 2`) traversait l'arithmétique comme une chaîne. MESURÉ sur
+// `couple-confort`, horizon 40 ans, 0 refus à chaque fois :
+//   · `config.users[0].netSalary = true` → patrimoine successoral **−91,9 %** (9,74 M$ → 0,79 M$) ;
+//   · `budgetItems[0].target = false` → **−2,7 %** ; `debts[0].balance = true` → +0,2 %.
+// La liste des champs BOOLÉENS (`CHAMPS_BOOLEENS`) se dérive comme celle des textes — du contrat
+// (`types.ts`, 58 noms), du corps du store et des états mesurés — et son oubli coûte la même chose :
+// un faux refus BRUYANT, attrapé par la garde de dérivation et le canari des huit personas.
 
 // ⚠️ COÛT, mesuré — et il est de nature OPPOSÉE à celui de la garde du moteur, qu'il ne faut pas
 // confondre avec elle. Celle du lot 38 scanne les `SimulationParams`, un objet BORNÉ (149 nœuds, que
@@ -146,10 +151,45 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Relève les valeurs textuelles présentes là où l'app attend autre chose qu'un texte.
+ * Les clés dont une valeur BOOLÉENNE est légitime. Tout le reste doit être un nombre, une chaîne
+ * (si la clé est dans `CHAMPS_TEXTE`), un objet ou `null`.
  *
- * Rendre un tableau VIDE signifie « rien à refuser » — vérifié sur 39 états légitimes (l'état
- * initial du store, les 7 personas, 31 dégradations dont les générateurs de `0/0`).
+ * ⚠️ DÉRIVATION, même méthode que `CHAMPS_TEXTE` (une liste écrite à la main est une liste inventée) :
+ *   1. les champs de `types.ts` déclarés `boolean` (58 noms, mesuré 2026-09-06) — le CONTRAT ;
+ *   2. le corps persisté de `FinanceState` (`projectionRunMC`, `isProjectionLocked`, `isTestMode`) ;
+ *   3. les clés portant réellement un booléen dans les états du dépôt (8 personas + état initial du
+ *      store, 20 noms) — c'est là que sortent les clés d'un `Record` (les `setupOptOut.<page>` :
+ *      `children`, `debts`, `lifeProjects`, `realEstate`), invisibles au scan des types, et
+ *      `isPrivacyMode` (exclu de la persistance, mais un vieux blob peut le porter).
+ * ⚠️ `debts` et `realEstate` sont AUSSI des clés de conteneur : un booléen À LA PLACE du tableau
+ * `debts` passerait cette garde — même limite structurelle (clé par clé) que la liste des textes.
+ */
+export const CHAMPS_BOOLEENS: ReadonlySet<string> = new Set([
+    // 1. types.ts
+    'appliedAssetLocation', 'appliedDebtFirst', 'appliedDownsize', 'appliedGainHarvesting',
+    'appliedPensionSplitting', 'appliedSkipRap', 'autoTarget', 'cashUpdated', 'ccpcSmallBizDeduction',
+    'completed', 'criticalIllnessEnabled', 'divorceEnabled', 'donateAppreciatedSecurities',
+    'enableRothLadder', 'enableSensitivityAnalysis', 'fxRatesEstimated', 'grossSalaryConfirmed',
+    'hasChildren', 'hasOwnedPropertyLast4Years', 'hasPrivateDrugInsurance', 'inheritanceEnabled',
+    'isActive', 'isAiProcessed', 'isDuplicate', 'isElectric', 'isFirstTimeBuyer', 'isImmigrant',
+    'isInterestDeductible', 'isNewConstruction', 'isOwned', 'isPhasedRetirement', 'isPrimaryResidence',
+    'isRented', 'isTransfer', 'isVariableRate', 'isVerified', 'jobLossEnabled', 'ltcEnabled',
+    'ltdEnabled', 'modelSurvivor', 'optimizeSourceDeductions', 'phasedRetirementEnabled',
+    'showTaxBracketBreakdown', 'snowbirdEnabled', 'stressTestEnabled', 'useHistoricalBootstrap',
+    'useManualBalances', 'usePerCategoryInflation', 'usePortfolioRate', 'useReerToCeliLadder',
+    'useSmileCurve', 'useSmithManoeuvre', 'useSpousalRrsp', 'useStochasticMortality', 'useTheoretical',
+    'useWebWorker', 'vehicleReplacementEnabled', 'wasBackfill',
+    // 2. corps du store
+    'projectionRunMC', 'isProjectionLocked', 'isTestMode', 'isPrivacyMode',
+    // 3. états mesurés — les clés du Record `setupOptOut`
+    'children', 'debts', 'lifeProjects', 'realEstate',
+]);
+
+/**
+ * Relève les valeurs TEXTUELLES et BOOLÉENNES présentes là où l'app attend autre chose.
+ *
+ * Rendre un tableau VIDE signifie « rien à refuser » — vérifié sur 40 états légitimes (l'état
+ * initial du store, les 8 personas, 31 dégradations dont les générateurs de `0/0`).
  */
 export function verifierTypesRestaures(racine: unknown): ChampMalType[] {
     const fautifs: ChampMalType[] = [];
@@ -166,6 +206,10 @@ function parcourir(
 ): void {
     if (typeof noeud === 'string') {
         if (!CHAMPS_TEXTE.has(cle)) acc.push({ chemin, cle, valeur: noeud });
+        return;
+    }
+    if (typeof noeud === 'boolean') {
+        if (!CHAMPS_BOOLEENS.has(cle)) acc.push({ chemin, cle, valeur: noeud });
         return;
     }
     if (noeud === null || typeof noeud !== 'object') return;
@@ -190,7 +234,7 @@ function parcourir(
 export function resumeTechniqueDesFautifs(fautifs: ReadonlyArray<ChampMalType>): string {
     const cites = fautifs.slice(0, PLAFOND_CITATIONS).map((f) => f.chemin).join(', ');
     const reste = fautifs.length - PLAFOND_CITATIONS;
-    return `${fautifs.length} champ(s) portent du texte là où un montant est attendu : ${cites}`
+    return `${fautifs.length} champ(s) portent du texte ou un booléen là où un montant est attendu : ${cites}`
         + (reste > 0 ? ` … +${reste}` : '');
 }
 
@@ -220,5 +264,5 @@ export function messageDeRefusTypes(fautifs: ReadonlyArray<ChampMalType>): strin
     const listeCourte = noms.slice(0, 3).join(', ');
     const reste = noms.length > 3 ? ` (et ${noms.length - 3} autre${noms.length - 3 > 1 ? 's' : ''})` : '';
     return `Restauration refusée : ${listeCourte}${reste} ${noms.length > 1 ? 'contiennent' : 'contient'} `
-        + 'du texte là où un montant est attendu. Le fichier est probablement corrompu — rien n\'a été modifié.';
+        + 'du texte ou un booléen là où un montant est attendu. Le fichier est probablement corrompu — rien n\'a été modifié.';
 }

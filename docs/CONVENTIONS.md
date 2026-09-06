@@ -12219,6 +12219,20 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 199 (2026-09-06) — un canal « consigné comme hypothèse » se mesure en trois lignes avant de rester ouvert
+
+`[BACKUP-BOOLEEN-DANS-UN-MONTANT]` était resté ouvert onze jours au motif que « sa liste n'a pas été mesurée » et
+que « aucun écart $ n'est constaté : c'est une hypothèse ». La mesure a pris trois mutations sur un persona :
+`netSalary = true` → **−91,9 %** de patrimoine successoral, 0 refus — le canal jumeau exact de la chaîne fermée au
+lot 41, avec le même mode « absorbé » (rien ne crie, tout est faux). Consigner une hypothèse au lieu de la mesurer
+n'est prudent que si la mesure est chère ; ici elle coûtait moins que le paragraphe qui l'ajournait. ⚠️ La liste des
+booléens a eu besoin d'une TROISIÈME surface que le scan du contrat ne peut pas voir : les clés d'un
+`Record<…, boolean>` (`setupOptOut.children`…) — la garde de dérivation lisait `setupOptOut` comme un champ booléen
+(faux positif) pendant que ses vraies clés ne figuraient nulle part (faux négatifs). Un `Record` se traite dans les
+deux sens : exclure sa clé du scan des types, et prendre ses clés réelles dans les états mesurés. ⚠️ Et le test de
+limite « ni null, ni booléen, ni nombre » utilisait une clé INVENTÉE (`actif`) : il affirmait « jamais refusé » sur
+un nom qui n'existe nulle part — inversé sur une clé déclarée (`isActive`), avec son histoire.
+
 ### Variante notée au lot 198 (2026-09-06) — « à mesurer avant de décider » se mesure sur le CHEMIN DE PRODUCTION, et un paramètre non câblé rend le second run muet
 
 Le ticket conditionnait la publication d'une sensibilité au coût d'un second run moteur. Mesuré comme la production

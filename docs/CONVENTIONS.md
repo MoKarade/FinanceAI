@@ -12219,6 +12219,22 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 209 (2026-09-06) — un ticket qui décrit un manque dans NOTRE code peut être comblé par la BIBLIOTHÈQUE : mesurer la dépendance avant d'écrire une couche
+
+`[VISION-NO-RETRY]` disait « aucun backoff sur 429/5xx » pour six appels et prescrivait de leur donner le traitement
+de `categorizeBatch`. Le ticket regardait `services/claude.ts` et y voyait, à raison, zéro boucle de réessai — mais le
+réessai n'est pas là : `@anthropic-ai/sdk` réessaie de lui-même (`maxRetries = 2`, 408/409/429/5xx + panne de
+connexion, `retry-after` honoré, backoff 0,5 → 8 s), et `makeClient` ne l'a jamais désactivé. Mesuré sur le vrai
+module avec `fetch` seul simulé : 429 → OK en deux requêtes, y compris sur l'upload Vision d'un relevé ; trois 429 →
+exactement trois requêtes ; 401 → une. Écrire la couche prescrite aurait produit ce que `categorizeBatch` a déjà sans
+le savoir : DEUX politiques empilées pour un même appel (jusqu'à 4 × 3 = 12 requêtes par chunk, noté
+`[AI-CATEGORIZE-DOUBLE-RETRY]`). Devant « X n'a pas Y », la première question n'est pas « où écrire Y ? » mais « qui,
+sous X, fait déjà Y ? » — et ça se lit dans le CODE de la dépendance (`client.js`, `shouldRetry`), pas dans son README.
+⚠️ La garde ancre le FAIT (un 429 est réessayé, un `maxRetries: 0` posé un jour rougit), jamais la forme du SDK ; et
+elle exerce le chemin que le ticket nommait (`analyzeBankStatement`, un vrai `File`), pas seulement `chat`. ⚠️ Le
+`retry-after: 0` rend le réessai instantané ; la panne de connexion passe par le backoff par défaut du SDK et donc par
+de faux timers — un test de backoff qui dort vraiment est un test que quelqu'un finit par désactiver.
+
 ### Variante notée au lot 208 (2026-09-06) — élargir un arbitre RÉVÈLE les angles morts de son extracteur, et un texte sur son PROPRE fond n'est pas sur le fond de page
 
 Résoudre la palette Tailwind par défaut dans `hexDeClasse` a fait sortir huit « offenders » — dont deux FAUX que le

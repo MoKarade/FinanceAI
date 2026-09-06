@@ -12219,6 +12219,21 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 202 (2026-09-06) — une phrase de journal qui met deux UNITÉS côte à côte invite à une division fausse, et un lot de CLASSE ferme des tickets de SITE sans les voir
+
+`💊 RAMQ médicaments: X/an (Y/adulte)` : X était nominal (ce qui entre dans `divers`), Y réel (la sortie brute du calcul sur
+un revenu déflaté). Depuis qu'ils passent tous deux par `formatCAD`, rien ne les distingue à l'œil, et la parenthèse INVITE
+à diviser — sur une année au facteur 1,5, X ÷ Y rendait 3 adultes pour un couple. Le correctif n'est pas « nommer l'unité »
+(personne ne lit une unité dans un journal) mais publier les deux dans l'unité de ce qui est PAYÉ et NOMMER le compte
+(« 2 adultes × 907 $ ») : la phrase affirme alors une identité vérifiable. ⚠️ La garde vise cette RELATION (n × part = total,
+et total = `divers`), jamais un montant (il s'indexe) — et il a fallu DEUX perturbations pour la prouver : l'ancien code
+rougit les relations, « les deux en RÉEL » les laisse vertes et ne rougit que l'identité à `divers`. Une garde d'unité a
+besoin d'un témoin qui fixe LAQUELLE. ⚠️ Même lot : `[A11Y-ADDSTOCKFORM-LABELS]` (7 champs sans nom, routé par la revue
+#686) était livré depuis le lot 51 (#777, un lot de CLASSE sur 40 champs / 16 fichiers) qui ne l'avait pas coché — cinq
+jours de ticket ouvert pour un défaut réparé (`PM-STALE-BACKLOG`, variante `UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`).
+Un lot de classe grep le BACKLOG sur les FICHIERS qu'il touche avant de pousser, pas seulement sur son ID ; et une clôture
+sans diff se PROUVE (un cas `getByLabelText` sur les 7 noms, rouge dès qu'un `htmlFor` saute), sinon c'est une lecture.
+
 ### Variante notée au lot 201 (2026-09-06) — un ticket qui pose sa propre précondition se solde par la MESURE de cette précondition, et la garde vaut plus que le correctif
 
 `[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]` disait « à faire seulement si un scan prouve d'abord que les deux textes

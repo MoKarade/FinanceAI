@@ -1373,7 +1373,7 @@
 > (axes et infobulles de graphiques, `[A11Y-PRIVACY-CHART-FORMATTER]`). Garde de non-régression :
 > `tests/components/chartPrivacyScan.test.ts`.
 
-- [ ] **`[A11Y-ADDSTOCKFORM-LABELS]`** (S — routé revue #686, a11y-auditor LOW) —
+- [x] **`[A11Y-ADDSTOCKFORM-LABELS]`** ✅ **CADUC — DÉJÀ LIVRÉ au lot 51 (`[A11Y-LABELS-RESTE-DU-DEPOT]`, #777, 2026-09-01), constaté au lot 202 (2026-09-06)** : les 7 champs portent `htmlFor` + `id` depuis ce lot de CLASSE, qui n'a pas coché ce ticket de SITE (`PM-STALE-BACKLOG`). Clôture MESURÉE, pas lue : un cas dans `AddStockForm.test.tsx` atteint les 7 contrôles par leur libellé (`getByLabelText`, le nom ACCESSIBLE), perturbation « un `htmlFor` retiré » → rouge ; la garde de dépôt `controlAccessibleNameGuard` interdit déjà tout contrôle anonyme. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S — routé revue #686, a11y-auditor LOW) —
   `components/investments/AddStockForm.tsx` : 7 champs (Symbole/Ticker, Prix manuel, Date d'achat,
   Quantité, Prix d'achat, + le `role="combobox"` de l'autocomplétion) n'ont AUCUNE association
   label↔contrôle (ni `htmlFor`/`id`, ni `aria-label`/`aria-labelledby`) — un lecteur d'écran devine
@@ -1529,19 +1529,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
 > refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [x] **`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`** ✅ **CADUQUE, MESURÉ au lot 201 (2026-09-06) — garde de dérive posée** : scan de `components/` (label sans `htmlFor` n'enveloppant aucun contrôle, suivi d'un contrôle à `aria-label`) → **26 sites dans 9 fichiers** ; **20 paires IDENTIQUES** (à un emoji décoratif près, exclu à dessein du nom accessible), **4 délibérément descriptives** (« Champ : » → « Filtrer par champ modifié », visionneuses système), 2 non comparables (libellé dynamique / enveloppement). La précondition du ticket (« divergent déjà quelque part ») n'est PAS remplie : le balisage n'est pas touché (poser `htmlFor` et retirer l'`aria-label` sur 20 sites pour un défaut inexistant serait du scope). Ce qui est livré, c'est la garde contre la dérive que le ticket craignait : `tests/components/labelAriaCoherents.test.ts` (paires identiques, normalisation sur le SENS ; paires descriptives déclarées avec le mot que l'`aria-label` doit encore porter ; témoins nommés). Perturbations : aria-label d'un slider changé → 1 rouge ; aria-label descriptif qui perd son mot → 1 rouge. À rouvrir si une dérive rougit. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE — **découvert en livrant
-  `[A11Y-LABELS-RESTE-DU-DEPOT]`** le 2026-08-30) — il reste dans `components/` des `<label>` qui
-  n'ont ni `htmlFor` ni enveloppement alors que leur contrôle porte déjà un `aria-label`. **Ce n'est
-  PAS un défaut WCAG** : le champ est nommé, la garde `controlAccessibleNameGuard` est verte, et
-  c'est bien pour ça que le lot ne les a pas touchés. Les 13 sliders de `ProjectionControls` en sont
-  le gros du contingent. Deux inconvénients réels, mais mineurs :
-  le libellé visible n'est **pas cliquable** (il n'agrandit pas la cible du curseur), et le texte
-  existe **en double** (`<span>Inflation</span>` d'un côté, `aria-label="Inflation"` de l'autre) —
-  deux écritures qui peuvent diverger en silence, exactement la famille `DOC-METRIQUE-RECOPIEE`.
-  ⚠️ Le correctif n'est pas mécanique : poser `htmlFor` **et retirer** l'`aria-label` devenu
-  redondant, sinon `aria-label` gagne et le `<label>` reste décoratif. À faire seulement si un
-  scan prouve d'abord que les deux textes divergent déjà quelque part. [Supposition] sur l'ampleur.
-
 - [ ] 🔴 **`[HYDRATATION-REFUS-TOUT-OU-RIEN]`** (S, **QUESTION POUR MARC** — née de l'incident du
   2026-09-01) — aujourd'hui, un SEUL champ inattendu dans l'état persisté fait échouer **toute** la
   réhydratation : `merge` lève, l'app s'ouvre vide, et l'utilisateur croit avoir tout perdu. Le blob
@@ -1597,7 +1584,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 
-- [ ] 🟡 **`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`** (XS) — **défaut PRÉEXISTANT**, rendu plus
+- [x] **`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`** ✅ **LIVRÉ au lot 202 (2026-09-06)** : les deux lignes (`💊 RAMQ`, `🏥 FSS`) publient la part par adulte dans l'unité du TOTAL (nominale, celle qui entre dans `divers`) et NOMMENT le nombre d'adultes : « X/an (2 adultes × Y) » — la division que la phrase invite à faire rend désormais ce qu'elle promet. Mesuré (couple retraité, 64 k$ réels, facteur 1,5) : avant « 1 814 $/an (605 $/adulte) », après « 1 814 $/an (2 adultes × 907 $) ». Garde `tests/services/logRamqFssMemeUnite.test.ts` sur la RELATION (n × part = total, et total = `divers`), jamais sur un montant. Perturbations : ancien code → 2 rouges (relations) ; « les deux en réel » → 1 rouge (identité à `divers`). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS) — **défaut PRÉEXISTANT**, rendu plus
   visible par le lot 101 (signalé, PAS corrigé — hors périmètre demandé) : `taxDecember.ts` journalise
   `💊 RAMQ médicaments: <total>/an (<par adulte>/adulte)` où le total est en dollars **INFLATÉS** et
   la part par adulte en dollars **RÉELS**. Les deux n'ont jamais été divisibles l'un par l'autre ;

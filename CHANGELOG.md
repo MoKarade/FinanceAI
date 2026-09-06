@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-06 (Le journal de décembre dit combien d'adultes paient la RAMQ et le FSS, dans la même unité que le total)
+
+- **Corrigé** : dans le détail d'un mois de décembre, les lignes « RAMQ médicaments » et « FSS » affichaient un
+  total et une part par adulte qui n'étaient pas dans la même unité (le total en dollars de l'année, la part
+  en dollars d'aujourd'hui) — diviser l'un par l'autre ne donnait pas le nombre d'adultes. Les deux lignes
+  écrivent maintenant « X $/an (2 adultes × Y $) », et Y × 2 fait X.
+
 ## [unreleased] — 2026-09-06 (L'impôt latent d'un retraité de 72 ans et plus compte ses retraits FERR dans le crédit de pension)
 
 - **Corrigé** : l'impôt latent (la dette fiscale future affichée avec ton patrimoine) ne comptait que ta

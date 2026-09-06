@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]` — CADUC, MESURÉ, garde de dérive posée (lot 201, PR #932)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`** ✅ **CADUQUE, MESURÉ au lot 201 (2026-09-06) — garde de dérive posée** : scan de `components/` (label sans `htmlFor` n'enveloppant aucun contrôle, suivi d'un contrôle à `aria-label`) → **26 sites dans 9 fichiers** ; **20 paires IDENTIQUES** (à un emoji décoratif près, exclu à dessein du nom accessible), **4 délibérément descriptives** (« Champ : » → « Filtrer par champ modifié », visionneuses système), 2 non comparables (libellé dynamique / enveloppement). La précondition du ticket (« divergent déjà quelque part ») n'est PAS remplie : le balisage n'est pas touché (poser `htmlFor` et retirer l'`aria-label` sur 20 sites pour un défaut inexistant serait du scope). Ce qui est livré, c'est la garde contre la dérive que le ticket craignait : `tests/components/labelAriaCoherents.test.ts` (paires identiques, normalisation sur le SENS ; paires descriptives déclarées avec le mot que l'`aria-label` doit encore porter ; témoins nommés). Perturbations : aria-label d'un slider changé → 1 rouge ; aria-label descriptif qui perd son mot → 1 rouge. À rouvrir si une dérive rougit. Contexte d'origine : (S, FAIBLE — **découvert en livrant
+  `[A11Y-LABELS-RESTE-DU-DEPOT]`** le 2026-08-30) — il reste dans `components/` des `<label>` qui
+  n'ont ni `htmlFor` ni enveloppement alors que leur contrôle porte déjà un `aria-label`. **Ce n'est
+  PAS un défaut WCAG** : le champ est nommé, la garde `controlAccessibleNameGuard` est verte, et
+  c'est bien pour ça que le lot ne les a pas touchés. Les 13 sliders de `ProjectionControls` en sont
+  le gros du contingent. Deux inconvénients réels, mais mineurs :
+  le libellé visible n'est **pas cliquable** (il n'agrandit pas la cible du curseur), et le texte
+  existe **en double** (`<span>Inflation</span>` d'un côté, `aria-label="Inflation"` de l'autre) —
+  deux écritures qui peuvent diverger en silence, exactement la famille `DOC-METRIQUE-RECOPIEE`.
+  ⚠️ Le correctif n'est pas mécanique : poser `htmlFor` **et retirer** l'`aria-label` devenu
+  redondant, sinon `aria-label` gagne et le `<label>` reste décoratif. À faire seulement si un
+  scan prouve d'abord que les deux textes divergent déjà quelque part. [Supposition] sur l'ampleur.
+
 ## 2026-09-06 — `[FISC-LATENT-PENSION-CREDIT]` — LIVRÉ EN ENTIER (lot 200, PR #931 ; moitié DB au lot 86)
 
 Ticket d'origine tel qu'au moment de l'archivage :

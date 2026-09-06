@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 200 : la moitié FERR du crédit de pension atteint l'impôt latent (`[FISC-LATENT-PENSION-CREDIT]`, fini)
+> L'objection du lot 86 était une UNITÉ (cumul année-à-date) ; la grandeur annuelle existait un module plus loin
+> (`taxJanuary.ferrGrossByUser`, fixé en janvier). Le moteur la retient (`ferrAnnualByUser`) et la passe à
+> `computeLatentTax` (`ferrAnnualPerUser`), déflatée comme la rente DB. Mesuré : +250,50 $ de dette latente en
+> moins pour un retraité 72+ sans rente DB (le crédit fédéral perdu sur la base), 0 $ avec une rente DB (plafond
+> saturé), patrimoine successoral inchangé. Inventaire du lot 86 inversé ; garde de câblage par espion (constant
+> dans l'année, ré-évalué en janvier). Servi : `ImpotLatent` affiché → déploiement à vérifier. Archive du lot 199.
+
 > ## 🟦 Session 2026-09-06 — Lot 199 : un booléen dans un montant est refusé, comme une chaîne (`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`)
 > Le ticket disait « hypothèse, non mesurée ». Mesuré : `netSalary = true` → patrimoine successoral **−91,9 %**, 0 refus.
 > Fermé par le même arbitrage que les textes : `CHAMPS_BOOLEENS` dérivée du contrat (58 noms), du store et des états

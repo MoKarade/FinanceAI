@@ -12219,6 +12219,20 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 200 (2026-09-06) — une moitié « bloquée par une question d'unité » se débloque en demandant QUI calcule déjà la bonne unité
+
+Le lot 86 avait livré la moitié DB du crédit de pension dans l'impôt latent et ROUTÉ la moitié FERR avec une
+raison exacte : la seule grandeur à portée était un cumul année-à-date, et l'impôt latent se calcule chaque
+mois. La raison était juste, la conclusion (« exige une grandeur annualisée à PRODUIRE ») non : `taxJanuary`
+produisait déjà le retrait obligatoire de l'ANNÉE par conjoint, au 1er janvier, dans le résultat même que la
+boucle consomme trois lignes plus bas. Il suffisait de le RETENIR dans une variable de boucle. Devant un
+blocage d'unité, grepper la grandeur dans l'unité voulue (ici : « annuel », « par conjoint ») avant d'écrire
+qu'il faut la fabriquer — un accumulateur et un montant fixé une fois par an cohabitent souvent dans la même
+boucle. ⚠️ La propriété qui autorisait le câblage — CONSTANT dans l'année — est celle que la garde de câblage
+asserte, pas la valeur : c'est elle qui distingue le bon registre du cumul à date. ⚠️ Et « aucun golden n'a
+bougé » est expliqué par le plafond : les personas à FERR portent une rente DB qui sature les 3 058 $/an, donc
+la moitié ajoutée y vaut exactement 0 — la mesure s'est faite sur une fixture SANS rente (+250,50 $).
+
 ### Variante notée au lot 199 (2026-09-06) — un canal « consigné comme hypothèse » se mesure en trois lignes avant de rester ouvert
 
 `[BACKUP-BOOLEEN-DANS-UN-MONTANT]` était resté ouvert onze jours au motif que « sa liste n'a pas été mesurée » et

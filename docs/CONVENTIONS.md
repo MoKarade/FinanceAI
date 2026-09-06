@@ -12219,6 +12219,26 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 196 (2026-09-06) — un flux DÉRIVÉ du solde rend l'identité tautologique : la garde qui compte est celle du SENS
+
+`NetTransferLiquid` était composé de deux accumulateurs (`contribLiquid − withdrawalLiquid`) que seuls des
+chemins marginaux alimentaient — la classe `MODULE-ECRIT-HORS-CHECKLIST` à l'état pur : ~30 sites dans cinq
+modules mutent le liquide, et chaque producteur ordinaire (paie, dépenses, cotisations) avait « oublié » le
+registre. Corriger en COMPOSANT (ajouter le registre à chaque site) aurait repayé le même défaut au prochain
+producteur. Le champ est donc DÉRIVÉ : `liquid − prevLiquid − growthLiquid`. ⚠️ Conséquence à écrire : la garde
+de forme-flux (`Δ = croissance + flux`) devient TAUTOLOGIQUE pour ce compte — verte quoi que vaille le solde.
+Ce qu'il faut alors garder, c'est le SENS du chiffre : sur un mois ordinaire, le flux publié vaut
+`NetSalary − Expenses − Σcotisations`, et il rougit si on re-branche les accumulateurs (0) ou si on oublie la
+croissance (écart = intérêts du mois). Quand un champ est dérivé, l'identité ne prouve rien ; c'est la
+comparaison à une grandeur INDÉPENDANTE qui le fait. ⚠️ Et « mois ordinaire » se MESURE : sur 8 personas, 6
+rendent l'égalité au cent, 2 non — parce qu'ils portent un paiement de dette ou un coût d'enfant, qui SONT des
+mouvements du compte. Un test écrit sur l'un de ces deux aurait « réfuté » un correctif juste.
+
+⚠️ Même lot : un champ constamment nul est un champ dont les CONSOMMATEURS n'ont jamais été vus tourner.
+Le plan d'action portait depuis toujours un texte « Tu puises dans tes liquidités — normal pour financer… »
+jamais affiché ; le rendre atteignable est une conséquence d'écran à MESURER (médiane annuelle 79 à 496 $,
+pics = FERR de janvier et balayage du mois 0), pas un effet de bord à découvrir en prod.
+
 ### Variante notée au lot 195 (2026-09-05) — une perturbation MUETTE sur une FIXTURE dit d'abord par quel AUTRE chemin elle atteint la condition
 
 Corollaire de `UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`, côté fixture. La garde du

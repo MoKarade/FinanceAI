@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-06 (Le mouvement de ton compte courant apparaît enfin dans le futur)
+
+- **Corrigé** : dans Futur, la ligne « transfert » / « Cash » des liquidités affichait 0 sur tout l'horizon
+  projeté pendant que le solde bougeait (seuls quelques mouvements exceptionnels y passaient). Elle montre
+  maintenant tout ce qui entre et sort de ton compte courant chaque mois, hors intérêts — comme le passé
+  le faisait déjà. Conséquences visibles : l'infobulle « Dépôts » devient le net réel de ton ménage (une
+  cotisation qui sort du compte et entre au CELI ne compte plus deux fois), le détail d'un mois et les
+  explications décomposent enfin les liquidités, et le plan d'action peut proposer « Retire du Cash » /
+  « Cotise au Cash » quand ton coussin bouge vraiment.
+
 ## [unreleased] — 2026-09-05 (Un huitième persona de test : « Gilles, 71 ans »)
 
 - **Ajouté** : dans Réglages → Mode test, le persona « Gilles, 71 ans » — seul, encore consultant à temps

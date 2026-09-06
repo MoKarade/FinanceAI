@@ -12219,6 +12219,21 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 208 (2026-09-06) — élargir un arbitre RÉVÈLE les angles morts de son extracteur, et un texte sur son PROPRE fond n'est pas sur le fond de page
+
+Résoudre la palette Tailwind par défaut dans `hexDeClasse` a fait sortir huit « offenders » — dont deux FAUX que le
+même extracteur fabriquait déjà pour les tokens du projet sans que personne ne le voie : il appariait le texte de
+REPOS au fond de SURVOL (`text-violet-300 … hover:bg-violet-600 hover:text-white` → 3,09, alors que le blanc du survol
+vaut 5,70), et il jetait en entier tout bouton dont le repos est translucide (`bg-violet-600/20`) même si son survol
+est plein. Un extracteur ne se juge pas sur les paires qu'il sort mais sur celles qu'il DEVRAIT sortir — élargir son
+vocabulaire est le moment où on le relit. ⚠️ Ma première mesure de la passe TEXTE listait `text-rose-700` à 2,83 sur
+le fond de page : il vit sur `bg-white` (5,9). Le filtre « a-t-il son propre fond ? » doit reconnaître les fonds SANS
+shade (`bg-white`, tokens plats), pas seulement `bg-x-600` — sinon la passe texte accuse un bouton blanc. ⚠️ Et le
+ticket disait « 541 classes dans 65 fichiers » : re-mesuré 539 / 92 classes / 70 fichiers — proche, mais un
+inventaire d'outil se re-mesure, il ne se recopie pas. La décision d'APPARENCE n'a pas été prise ici : elle l'avait
+été le 2026-08-24 (« corriger, pas tolérer », classe entière des CTA sous le seuil) — chercher la décision existante
+avant d'en router une nouvelle.
+
 ### Variante notée au lot 207 (2026-09-06) — un même nombre, TROIS règles : le « 18 » se nomme trois fois, et une perturbation muette se répare par un cas-frontière, pas en relâchant la preuve
 
 Le reliquat de `[FISC-CONST-ANCHOR-DEBT]` disait « âges-seuils 18/71/15/70/75, hygiène ». Recensé par SITE, le `18` portait

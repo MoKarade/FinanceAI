@@ -12,10 +12,11 @@
 // re-coder les couleurs ou le scan ici les ferait dériver en silence (leçon A11Y-CHECK-CONTRAST-DRIFT).
 import { describe, it, expect } from 'vitest';
 import {
-    contrastRatio, extraireCtaPaires, hexDeClasse, SEUIL_AA_NORMAL,
+    contrastRatio, extraireCtaPaires, extraireTextePaires, estFamilleParDefaut, hexDeClasse, SEUIL_AA_NORMAL,
 } from '../../scripts/lib/ctaContrast.ts';
 
 const { paires, attributsLus } = extraireCtaPaires();
+const texte = extraireTextePaires();
 
 describe('contraste WCAG AA des CTA pleins', () => {
     it('scanne un volume plausible de code peint (anti-vacuité)', () => {
@@ -39,6 +40,36 @@ describe('contraste WCAG AA des CTA pleins', () => {
         expect(hexDeClasse('dark')).toBe('#07090D');
         expect(hexDeClasse('danger-600')).toBe('#dc2626');
         expect(hexDeClasse('meta')).toBeNull(); // `text-meta` est une TAILLE de police, pas une couleur
+    });
+
+    it('[A11Y-CONTRAST-ANGLE-MORT-541] résout la palette Tailwind PAR DÉFAUT, tokens du projet d\'abord', () => {
+        // Avant le lot 208, `green-600` rendait `null` : un bouton `bg-green-600 text-white` (3,30) n'était
+        // jamais une paire — 539 occurrences de la palette par défaut dans 70 fichiers, invisibles.
+        expect(hexDeClasse('green-600')).toBe('#16a34a');
+        expect(hexDeClasse('indigo-500')).toBe('#6366f1');
+        expect(estFamilleParDefaut('green-600')).toBe(true);
+        expect(estFamilleParDefaut('danger-600')).toBe(false); // token du projet
+        expect(hexDeClasse('green-6000')).toBeNull();
+    });
+
+    it('au survol, le texte de SURVOL est apparié quand il existe (hover:text-*)', () => {
+        // Témoin réel : `Investments.tsx` peint `text-violet-300 … hover:bg-violet-600 hover:text-white`.
+        // Apparier le texte de REPOS au fond de survol fabriquait un faux offender (3,09) ; le blanc du
+        // survol vaut 5,70. Les deux assertions se perturbent séparément (retirer l'appariement → la 1re rougit).
+        expect(paires.some((p) => p.bg === 'hover:bg-violet-600' && p.text === 'hover:text-white')).toBe(true);
+        expect(paires.some((p) => p.bg === 'hover:bg-violet-600' && p.text === 'text-violet-300')).toBe(false);
+    });
+
+    it('[A11Y-CONTRAST-ANGLE-MORT-541] le texte de la palette par défaut sur les fonds de page : volume plausible, aucun sous le seuil', () => {
+        // Anti-vacuité : 38 classes distinctes mesurées le 2026-09-06 (114 combinaisons sur 3 fonds).
+        expect(texte.classesLues).toBeGreaterThan(30);
+        expect(texte.paires.length).toBeGreaterThan(60);
+        // Un élément qui porte son PROPRE fond n'est pas sur le fond de page : `bg-white text-rose-700`
+        // (SyncStatusBanner) vaut 5,9 sur son blanc et sortait à 2,83 sur `surfaceHighlight` avant ce filtre.
+        expect(texte.paires.some((p) => p.text === 'text-rose-700')).toBe(false);
+        const fautifs = texte.paires.filter((p) => p.ratio < SEUIL_AA_NORMAL)
+            .map((p) => `${p.text} sur ${p.bg} = ${p.ratio.toFixed(2)} (${p.sites.slice(0, 3).join(', ')})`);
+        expect(fautifs).toEqual([]);
     });
 
     it('sait détecter une paire non conforme (le seuil discrimine)', () => {

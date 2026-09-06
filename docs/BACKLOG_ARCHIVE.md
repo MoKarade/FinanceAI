@@ -10,6 +10,46 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[FISC-CONST-ANCHOR-DEBT]` — LIVRÉ EN ENTIER (lot 207, PR #938 ; tranches précédentes #572, #573, #883)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FISC-CONST-ANCHOR-DEBT]`** ✅ **LIVRÉ EN ENTIER au lot 207 (2026-09-06) — les âges-seuils restants** : recensés sur source décommentée, **11 sites dans 4 modules** sous **SIX règles distinctes** pour quatre nombres — `18` en portait TROIS (droits CELI/CELIAPP/REER → `REGISTERED_PLAN_MIN_AGE` ; résidence PSV → `PSV_RESIDENCY_START_AGE` ; période cotisable RRQ → `RRQ_CONTRIBUTORY_START_AGE`), `71` DEUX (fermeture CELIAPP → `FHSA_MAX_HOLDER_AGE` ; REER→FERR → `RRSP_TO_RRIF_CONVERSION_AGE`, qui existait), `15` (→ `FHSA_MAX_PARTICIPATION_YEARS`), `75` (→ `PSV_BONUS_AGE`). Une constante PAR SENS, sourcée dans `FISCAL_REFERENCE` (CELIAPP fermeture, CELI 18 ans : source ARC relayée, canada.ca inaccessible depuis le conteneur le 2026-09-06 — dit tel quel dans la doc). 7 entrées d'inventaire du ratchet RÉSOLUES (retirées). **Six perturbations, six rouges** — dont trois qui étaient MUETTES sur les fixtures existantes (âges 40/75 loin de la borne 71, tolérances `> 0,8×`) : trois témoins ajoutés (cas-frontière 71/72, relation natif = arrivé à 18 > arrivé à 30, espion moteur sur `psvResidencyYears` = 48 pour un natif de 1960). L'item « `2026` taxJanuary » du reliquat n'existait plus (aucun littéral, aucune entrée) ; `70`/`75` de `helpers.ts` sont des paliers de courbes de MODÈLE (`design`), pas des règles. Bit-identique par construction (mêmes valeurs). Contexte d'origine : (M, DETTE révélée par le tri de `[FISC-CONST-GUARD-V2]`) —
+  l'inventaire du ratchet (`utils/fiscalConstGuardV2.ts`) classe **14 entrées en famille `fiscal`**
+  qui vivent en DUR dans le moteur sans ancre `FISCAL_REFERENCE`. Les ancrer une par une, et les
+  remplacer par un import depuis la source unique. Par ordre de gravité :
+  ✅ **3 ancrées le 2026-08-06 (PR #572)** — `0.18` (droits REER → `RRSP_ROOM_RATE`), `500` (arrondi
+  CELI → `CELI_LIMIT_ROUNDING`), `0.20` (plateau FERR → `RRIF_RATE_PLATEAU`) : sorties du moteur,
+  ancrées dans FISCAL_REFERENCE, importées depuis la source unique. Leurs entrées d'inventaire ont
+  été RETIRÉES (résolues, pas exemptées).
+  ✅ **+2 le 2026-08-06 (PR #573)** — `72` → `RRIF_FIRST_WITHDRAWAL_AGE` (il vivait en dur sur
+  taxJanuary ET taxDecember : la configuration JUMELLE exacte qui avait laissé survivre le `0.18`)
+  et `95` → `RRIF_PLATEAU_AGE` (seuil qui n'était porté par AUCUN littéral, seulement par l'absence
+  d'entrée dans la table).
+  ✅ **+ la tranche « 65 » et le « 72 » RRQ le 2026-09-04 (lot 152, PR #883)** — le « seul vrai
+  gain restant » du ticket, re-recensé sur source DÉCOMMENTÉE : **13 littéraux dans 5 modules**
+  (le ticket disait « 2 modules »). Quatre constantes nommées dans `utils/tax.ts` — un sens par
+  constante : `RRQ_STANDARD_START_AGE` (pivot des facteurs, défaut de départ, libellé « rentes
+  reportées », VAN succession), `PSV_ELIGIBILITY_AGE` (borne basse, pivot du report, fin
+  d'accumulation de résidence, VAN), `PENSION_SPLIT_MIN_AGE` (gate décembre — projection.ts ET
+  taxDecember, le vrai jumeau à risque de divergence), `RRQ_MAX_DEFERRAL_AGE` (72, setupSimulation)
+  — plus l'IMPORT d'`AGE_AMOUNT_FED_MIN_AGE` dans `mkAgeOpts`. 5 entrées d'inventaire RÉSOLUES
+  (l'anti-fantôme du ratchet les a nommées lui-même), l'entrée `projection.ts::65` requalifiée
+  (seul reste le défaut de saisie `targetAge || 65`, qu'on n'ancre pas). Perturbation : 65→66 sur
+  `RRQ_STANDARD_START_AGE` rougit `retirementIncome` ; valeur restaurée, tout vert.
+  **RESTENT (hygiène au fil de l'eau) :**
+  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS) — ⚠️ à REQUALIFIER : c'est un index
+    d'extrapolation, pas un paramètre ARC. Probablement `structural`, à trancher en le codant.
+  - Âges-seuils : `18` (CELI/CELIAPP + résidence PSV) · `71` (conversion REER→FERR — la constante
+    `RRSP_TO_RRIF_CONVERSION_AGE` existe, reste l'import aux sites littéraux s'il en reste) · `15`
+    (durée de vie CELIAPP) · `70` (report PSV max) · `75` (bonification PSV) · `39`/`40` (déjà
+    nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS → doc seulement).
+  ⚠️ **Rendement décroissant assumé** : ce qui reste est des âges-seuils déjà commentés et sourcés
+  sur place, sans jumeau multi-modules — de l'hygiène au fil de l'eau, pas un chantier.
+  ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
+  meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
+  qui polluerait FISCAL_REFERENCE avec des choix de conception.
+
 ## 2026-09-06 — `[KNIP-UNUSED-EXPORTS-73]` — LIVRÉ EN ENTIER (exports au lot 205, PR #936 ; types au lot 206, PR #937)
 
 Ticket d'origine tel qu'au moment de l'archivage :

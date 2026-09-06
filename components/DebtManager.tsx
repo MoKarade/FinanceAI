@@ -203,7 +203,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                             </div>
                                             <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} />
                                             <div className="flex gap-2">
-                                                <button onClick={saveEdit} className="flex-1 bg-green-600 hover:bg-green-500 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>
+                                                <button onClick={saveEdit} className="flex-1 bg-green-700 hover:bg-green-800 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>
                                                 <button onClick={cancelEdit} className="flex-1 bg-white/10 hover:bg-white/20 text-white text-meta py-1.5 rounded focus-ring">Annuler</button>
                                             </div>
                                         </div>

@@ -459,7 +459,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             <div className="flex gap-3 flex-shrink-0">
               <button
                 onClick={handleExport}
-                className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
+                className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
               >
                 Exporter JSON
               </button>

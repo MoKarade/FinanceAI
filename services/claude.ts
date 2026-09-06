@@ -224,6 +224,17 @@ export function makeTimeoutSignal(externalSignal: AbortSignal | undefined, timeo
     };
 }
 
+// [AI-ONESHOT-NO-CACHE] (lot 204, 2026-09-06) — `system` reste un `string` NU, à dessein. Le ticket
+// voulait ouvrir le type (`string | Array<block>`) pour poser un `cache_control` sur le prompt système
+// des appels one-shot, comme `agentLoop.ts` le fait. Mesuré : `QUEBEC_FISCAL_CONTEXT` fait 774
+// caractères (≈ 221 tokens) et les deux variantes composées (paie, relevé) y ajoutent moins de 300
+// caractères — or la longueur MINIMALE cacheable est de 4 096 tokens pour Haiku 4.5 (tous les
+// one-shots sauf `chat`/`chatStream`) et 1 024 pour Sonnet 4.6, et « un prompt plus court est traité
+// sans cache, sans erreur » (doc Anthropic « Prompt caching », relayée le 2026-09-06 —
+// platform.claude.com/docs/en/build-with-claude/prompt-caching). Un `cache_control` ici serait un
+// no-op SILENCIEUX. Re-mesure avant de rouvrir :
+//   node -e "const s=require('fs').readFileSync('services/claude.ts','utf8');console.log(s.match(/export const QUEBEC_FISCAL_CONTEXT\\s*=\\s*\`([\\s\\S]*?)\`;/)[1].length)"
+// Le jour où ce prompt dépasse le minimum du modèle appelé, l'union redevient utile.
 export async function chat(
     messages: ChatMessage[],
     apiKey: string,

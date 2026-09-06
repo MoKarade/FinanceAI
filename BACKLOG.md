@@ -1568,7 +1568,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `services/aiChat/models.ts` et `pricing.ts` (un suffixe de date, rien d'autre) et retirer les
   entrées correspondantes de `ALIAS_A_EPINGLER` — le test refuse un inventaire périmé, il guidera.
 
-- [ ] **`[AI-ONESHOT-NO-CACHE]`** (M) — `system` typé `string` nu → **aucun** appel one-shot ne peut
+- [x] **`[AI-ONESHOT-NO-CACHE]`** ✅ **CADUC, MESURÉ au lot 204 (2026-09-06)** : le correctif prescrit (`system: string | Array<block>` pour poser un `cache_control`) serait un NO-OP silencieux. Mesuré : `QUEBEC_FISCAL_CONTEXT` fait **774 caractères ≈ 221 tokens**, et les deux prompts système composés (paie, relevé) y ajoutent 168 et 295 caractères — or la longueur MINIMALE cacheable est de **4 096 tokens pour Haiku 4.5** (tous les one-shots sauf `chat`/`chatStream`) et **1 024 pour Sonnet 4.6**, et « un prompt plus court est traité SANS cache, sans erreur » (doc Anthropic « Prompt caching », relayée le 2026-09-06 : `platform.claude.com/docs/en/build-with-claude/prompt-caching`, tableau « minimum cacheable prompt length »). Le ticket avait raison sur la FORME (le type interdit le cache) et tort sur l'EFFET (le cache est impossible à cette taille, quelle que soit la forme) — le « ~190 tokens » qu'il annonçait était la preuve de sa propre caducité. La seule piste qui resterait est de cacher le bloc UTILISATEUR d'un « Régénérer » (mêmes données renvoyées dans les 5 minutes), à condition qu'il dépasse 4 096 tokens — hypothèse NON mesurée, pas de ticket : à mesurer d'abord sur un lot de transactions réel. Commentaire posé sur les signatures de `services/claude.ts` pour que le prochain lecteur ne re-tente pas l'union. Re-mesure : `node -e` sur la longueur de `QUEBEC_FISCAL_CONTEXT` (commande dans le commentaire). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M) — `system` typé `string` nu → **aucun** appel one-shot ne peut
   utiliser cache prompt (contrairement à `agentLoop.ts`). Impact faible (~190 tokens), mais boutons
   « Régénérer » repaient plein tarif. **Correctif** : union `string | Array<block>` pour permettre
   `cache_control`.
@@ -1576,14 +1576,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 ### 🔴 Dette technique
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
-
-- [x] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** ✅ **LIVRÉ au lot 203 (2026-09-06) — audité PUIS complété** : l'alarme « zéro test direct » était trop large — les suites `syncOrchestrator.*` ne mockent QUE la frontière (GIS, Drive, coffre, backup) et font tourner les VRAIS `pushNow`/`pullNow` ; couverture MESURÉE (`vitest --coverage` sur les 10 fichiers sync) : `syncPull.ts` **89 %** de lignes, `syncPush.ts` **80 %**. Ce qui n'avait AUCUN test, précisément : `schedulePush` en entier (le push automatique, debounce 8 s, re-test du conflit pendant l'attente, saut si rien n'a changé), la réentrance de `pushNow`, les trois raisons de refus, le chiffrement des clés qui échoue, et côté pull le blob `enc:true` sans ciphertext, le déchiffrement qui échoue hors mauvaise passphrase, le backup pré-restauration qui lève, les clés chiffrées sans `sub`. Livré : `tests/services/syncPushPull.direct.test.ts` (21 cas, faux timers pour le debounce, vrai chiffrement). Cinq perturbations du SOURCE aux signatures distinctes (verrou de réentrance, re-test du conflit, saut « rien n'a changé », contrôle du ciphertext absent, message générique) → 1 rouge chacune. Reste hors périmètre, dit tel quel : `syncPolling` (30 % de branches) et `syncLifecycle` (70 %). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
-  write direct `localStorage.setItem`) + 4 autres modules sync (`syncPassphrase`, `syncSnapshot`,
-  `syncMeta`, `syncPolling`, cumulé 886 lignes) **zéro test direct**. `syncOrchestrator` a des tests
-  EN INTÉGRATION. Un bug de merge/payload tronqué en sync conservation peut passer inaperçu.
-  **Correctif** : auditer d'abord ce que `syncOrchestrator*.test.ts` couvre réellement (mock vs
-  réel) ; ajouter tests directs `syncPush`/`syncPull` priorité (paths de conflit, payload
-  partiel/corrompu).
 
 - [ ] **`[CHART-COLOR-DUP]`** (S — unifie `[CA-07]`, dont la **règle ESLint anti-régression** est
   à reprendre : sans elle les hex reviennent) — Aucun module central de tokens couleurs graphiques. **212 hex

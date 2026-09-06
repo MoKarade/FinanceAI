@@ -12233,6 +12233,14 @@ seul rend un delta exactement NUL, crédible, faux (`UN-RAPPORT-D-AGENT-N-EST-PA
 câblé rend la mesure muette). Le champ à réduire se trouve en lisant QUI le moteur consomme
 (`effectiveBaseExpenses`), et la garde tourne sur les DEUX modes.
 
+⚠️ Et le gate complet a rougi UN test, du lot 195 : la garde du persona « Gilles » comptait les APPELS de
+`processDecemberTaxFiling` (espion) et attendait exactement 4 — le second scénario en a fait 8, sans que
+rien du persona n'ait changé. Un compteur d'appels sur un module partagé compte les RUNS du moteur, pas
+le fait défendu ; il s'est retrouvé ancré sur la FORME (« une projection = un run »), qui vient de
+changer. Réécrit pour compter les ANNÉES distinctes — le fait — et resté à 4. **Ajouter un run moteur,
+c'est doubler tout compteur d'appels du dépôt** : grepper les espions sur `runScenario` et ses
+sous-modules avant de livrer un second run.
+
 ### Variante notée au lot 197 (2026-09-06) — un ticket ARCHIVÉ peut rester ouvert au BACKLOG : grepper l'archive et `git log` avant de coder
 
 `[TEST-DIVORCE-SANS-IMMOBILIER]` figurait dans `docs/BACKLOG_ARCHIVE.md` (livré par #748, 4 tests) ET dans `BACKLOG.md`

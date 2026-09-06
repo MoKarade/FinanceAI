@@ -435,12 +435,19 @@ les retraits FERR/RIF et rentes REER. Sont **EXCLUS** : RRQ, PSV, SRG, et les re
 > désormais dans `services/projection/pensionCredit.ts` (`eligiblePensionRealFor`, fonction PURE à
 > entrées explicites). Elle était une CLOSURE de `taxDecember`, donc inatteignable — c'est pour ça
 > que l'impôt latent avait été livré SANS crédit de pension au lot 84.
-> ⚠️ **L'impôt latent ne porte que la moitié DB de cette assiette**, et l'absence de la moitié FERR
-> est une question d'UNITÉ, pas un oubli : la seule grandeur dont il dispose est
-> `accRetraitsReerYear`, un accumulateur **année-à-date**, alors qu'il se calcule à chaque mois — la
-> brancher rendrait une valeur d'écran dépendante du mois de lancement de la simulation. Portée
-> mesurée de ce qui manque : **nulle dès 3 058 $/an d'assiette** (le plafond québécois, saturé par une
-> rente DB de 255 $/mois). Ticket `[FISC-LATENT-PENSION-CREDIT]`, réduit à cette moitié.
+> ⚠️ **L'impôt latent porte les DEUX moitiés de cette assiette depuis le lot 200 (2026-09-06).** La
+> moitié FERR avait été retenue pour une question d'UNITÉ : la seule grandeur alors transmise était
+> `accRetraitsReerYear`, un accumulateur **année-à-date**, alors que l'impôt latent se calcule à chaque
+> mois — la brancher aurait rendu l'écran dépendant du mois de lancement. La grandeur ANNUELLE
+> existait un module plus loin : `taxJanuary` fixe le retrait obligatoire de l'année par conjoint
+> (`ferrGrossByUser` = solde × facteur RRIF de l'âge) au 1er janvier ; le moteur le retient
+> (`ferrAnnualByUser`, constant jusqu'au janvier suivant) et le passe à `computeLatentTax`
+> (`ferrAnnualPerUser`), déflaté comme la rente DB. Mesuré (retraité seul de 74 ans, REER 300 k$, sans
+> rente DB) : impôt latent −113 764 → −113 514 $ (m30), −65 087 → −64 837 $ (m60) — **+250,50 $ de
+> dette en moins**, exactement le crédit fédéral perdu sur la base ; avec une rente DB de 2 200 $/mois,
+> **0 $** (plafond de 3 058 $/an saturé) ; patrimoine successoral inchangé (la liquidation au décès
+> a son propre calcul). Gardes : `tests/services/latentTaxPensionCredit.test.ts` (règle pure) et
+> `tests/services/latentTaxFerrWiring.test.ts` (câblage observé par espion).
 > ⚠️ **Sens de l'effet sur une BANDE incrémentale** : les deux crédits tirent en sens opposés. Le
 > fédéral (2 000 $, non testé au revenu) s'annule entre la base et la liquidation — sauf quand
 > l'impôt de base est déjà nul, où il est perdu sur la base et ne sert qu'à la liquidation (mesuré :

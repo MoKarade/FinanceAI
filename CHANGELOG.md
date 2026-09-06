@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-06 (L'impôt latent d'un retraité de 72 ans et plus compte ses retraits FERR dans le crédit de pension)
+
+- **Corrigé** : l'impôt latent (la dette fiscale future affichée avec ton patrimoine) ne comptait que ta
+  rente d'employeur dans le crédit pour revenu de retraite ; tes retraits FERR obligatoires y entrent
+  maintenant aussi, à partir de 72 ans. Effet mesuré : environ 250 $ de dette en moins pour un retraité
+  sans rente d'employeur, rien si tu en as une (le crédit est déjà au maximum).
+
 ## [unreleased] — 2026-09-06 (Une sauvegarde qui met « vrai/faux » dans un montant est refusée)
 
 - **Corrigé** : la vérification qui refuse un texte dans un montant (au chargement, après une

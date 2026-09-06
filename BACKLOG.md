@@ -943,7 +943,7 @@
   L'état actuel est BORNÉ par un test qui doit MOURIR au moment du correctif couplé
   (`tests/services/estateAgeCredits.test.ts`, cas « INVENTAIRE DE DETTE »).
 
-- [ ] **`[FISC-LATENT-PENSION-CREDIT]`** (XS, FAIBLE — **moitié DB livrée le 2026-09-02, lot 86**) —
+- [x] **`[FISC-LATENT-PENSION-CREDIT]`** ✅ **LIVRÉ EN ENTIER au lot 200 (2026-09-06) — la moitié FERR** : l'objection était une UNITÉ (cumul année-à-date) et la grandeur ANNUELLE existait déjà un module plus loin — `taxJanuary` fixe `ferrGrossByUser` (solde × facteur RRIF de l'âge) au 1er janvier pour l'année entière. Le moteur la retient (`ferrAnnualByUser`, ré-évaluée chaque janvier, zéro avant 72 ans) et la passe à `computeLatentTax` (`ferrAnnualPerUser`), déflatée comme la rente DB, en 3e argument de `eligiblePensionRealFor`. Mesuré (retraité seul 74 ans, REER 300 k$, sans DB) : impôt latent **+250,50 $ de dette en moins** (m30 et m60, le crédit fédéral perdu sur la base) ; avec DB 2 200 $/mois : **0 $** (plafond saturé) ; patrimoine successoral inchangé. Test d'inventaire du lot 86 INVERSÉ (+3 cas purs : gate 70/72, absent → bit-identique, déflation) ; garde de câblage par espion (`latentTaxFerrWiring.test.ts` : zéro avant 72, positif dès janvier, CONSTANT dans l'année — la propriété qui autorisait le câblage —, ré-évalué au janvier suivant, contrôle négatif sans REER). Perturbations : 3e argument à 0 → 2 rouges ; janvier ne ré-évalue plus → 3 rouges. Aucun golden déplacé (mesuré : les personas à FERR portent une rente DB qui sature le plafond). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE — **moitié DB livrée le 2026-09-02, lot 86**) —
   ⬜ **RESTE la seule moitié FERR** (retraits ≥ 72 ans dans l'assiette du crédit), et elle est
   **BLOQUÉE par une question d'UNITÉ**, pas par un oubli : la seule grandeur disponible côté impôt
   latent est `accRetraitsReerYear`, un accumulateur **année-à-date** remis à zéro chaque janvier.
@@ -1080,11 +1080,6 @@
   revoir si le cas se présente vraiment. Le raisonnement complet est dans
   `tests/components/backupSchemaTypes.test.ts`.
 
-- [x] **`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`** ✅ **LIVRÉ au lot 199 (2026-09-06)** — l'hypothèse est MESURÉE avant d'être fermée : `config.users[0].netSalary = true` → patrimoine successoral **−91,9 %** (9,74 M$ → 0,79 M$), `budgetItems[0].target = false` → −2,7 %, `debts[0].balance = true` → +0,2 %, **0 refus** à chaque fois (`couple-confort`, 40 ans). Fermé par le MÊME arbitrage que les textes : `CHAMPS_BOOLEENS` (`services/verifierTypesRestaures.ts`) dérivée du contrat (`types.ts`, 58 noms), du corps persisté du store et des états mesurés — troisième surface indispensable : les clés du `Record` `setupOptOut` (`children`, `debts`, `lifeProjects`, `realEstate`), invisibles au scan des types. Le parcours refuse désormais un booléen hors liste ; messages « du texte ou un booléen ». Test de limite « un booléen n'est jamais refusé » INVERSÉ en place ; 7 gardes neuves (refus au plus gros écart, `false` autant que `true`, valeur telle quelle, message, dérivation types.ts, dérivation store, clés du Record). Perturbations : branche booléenne retirée → 4 rouges ; clé déclarée retirée de la liste → 6 rouges (canari des personas + dérivation). ⚠️ Même limite structurelle que les textes : un booléen À LA PLACE d'un conteneur homonyme (`debts: true`) passe, la garde juge clé par clé. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, FAIBLE) — la garde de type du lot 41 ferme le canal
-  mesuré (la CHAÎNE) mais pas son voisin : `true + 1 === 2`, donc un booléen dans un champ monétaire
-  passerait encore. Le fermer demande une seconde liste — celle des champs booléens — qui n'a pas
-  été mesurée, d'où le choix de le consigner plutôt que de le traiter à la va-vite. Aucun écart $
-  mesuré à ce jour : c'est une hypothèse, pas un défaut constaté.
 
 ### 🔴 Interface — atteignabilité et clavier
 

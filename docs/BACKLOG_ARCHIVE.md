@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[BACKUP-BOOLEEN-DANS-UN-MONTANT]` — LIVRÉ (lot 199, PR #930)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`** ✅ **LIVRÉ au lot 199 (2026-09-06)** — l'hypothèse est MESURÉE avant d'être fermée : `config.users[0].netSalary = true` → patrimoine successoral **−91,9 %** (9,74 M$ → 0,79 M$), `budgetItems[0].target = false` → −2,7 %, `debts[0].balance = true` → +0,2 %, **0 refus** à chaque fois (`couple-confort`, 40 ans). Fermé par le MÊME arbitrage que les textes : `CHAMPS_BOOLEENS` (`services/verifierTypesRestaures.ts`) dérivée du contrat (`types.ts`, 58 noms), du corps persisté du store et des états mesurés — troisième surface indispensable : les clés du `Record` `setupOptOut` (`children`, `debts`, `lifeProjects`, `realEstate`), invisibles au scan des types. Le parcours refuse désormais un booléen hors liste ; messages « du texte ou un booléen ». Test de limite « un booléen n'est jamais refusé » INVERSÉ en place ; 7 gardes neuves (refus au plus gros écart, `false` autant que `true`, valeur telle quelle, message, dérivation types.ts, dérivation store, clés du Record). Perturbations : branche booléenne retirée → 4 rouges ; clé déclarée retirée de la liste → 6 rouges (canari des personas + dérivation). ⚠️ Même limite structurelle que les textes : un booléen À LA PLACE d'un conteneur homonyme (`debts: true`) passe, la garde juge clé par clé. Contexte d'origine : (S, FAIBLE) — la garde de type du lot 41 ferme le canal
+  mesuré (la CHAÎNE) mais pas son voisin : `true + 1 === 2`, donc un booléen dans un champ monétaire
+  passerait encore. Le fermer demande une seconde liste — celle des champs booléens — qui n'a pas
+  été mesurée, d'où le choix de le consigner plutôt que de le traiter à la va-vite. Aucun écart $
+  mesuré à ce jour : c'est une hypothèse, pas un défaut constaté.
+
+
 ## 2026-09-06 — `[BUDGET-SENSIBILITE-MOTEUR]` — LIVRÉ (lot 198, PR #929)
 
 Ticket d'origine tel qu'au moment de l'archivage :

@@ -12219,6 +12219,21 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 203 (2026-09-06) — « zéro test direct » se re-mesure en COUVERTURE avant de s'écrire en tests, et une fixture localStorage se sème APRÈS la mutation du store
+
+`[SYNC-PUSH-PULL-NO-UNIT-TEST]` comptait les fichiers qui IMPORTENT `syncPush`/`syncPull` (zéro) et en déduisait « un bug
+de payload tronqué peut passer inaperçu ». Or les suites `syncOrchestrator.*` font tourner les vrais modules en ne simulant
+que la frontière (GIS, Drive, coffre, backup) : `vitest --coverage` sur les dix fichiers sync donne 89 % / 80 % de lignes.
+Le compte des IMPORTS mesure une forme, la couverture mesure le fait — et elle rend la liste EXACTE de ce qui n'était tenu
+par rien : le push automatique en entier (`schedulePush`), jamais exercé alors qu'il part à chaque changement du store.
+Un lot « écrire des tests » commence par cette mesure, sinon il duplique ce qui existe et rate ce qui manque.
+⚠️ Corollaire de fixture : toute mutation du store (`setState`, `updateApiKeys`) RÉÉCRIT le blob persisté par le middleware
+`persist` — la fixture localStorage posée en `beforeEach` était effacée par un état par défaut VIDE, et `pushNow` rendait
+`skipped-empty` au lieu du chemin visé (3 cas rouges, tous pour cette raison). Le store se mute D'ABORD, le blob se sème
+ENSUITE. ⚠️ Corollaire d'espion : `vi.mock` partiel qui délègue à l'implémentation réelle par défaut (`mockImplementation`
+posée dans la factory) permet de faire échouer UNE étape (chiffrement des clés, déchiffrement du bundle) sans fausser le
+reste de la chaîne — le contrôle « chiffrement OK → clés en `apiKeysEnc` » passe par le vrai WebCrypto.
+
 ### Variante notée au lot 202 (2026-09-06) — une phrase de journal qui met deux UNITÉS côte à côte invite à une division fausse, et un lot de CLASSE ferme des tickets de SITE sans les voir
 
 `💊 RAMQ médicaments: X/an (Y/adulte)` : X était nominal (ce qui entre dans `divers`), Y réel (la sortie brute du calcul sur

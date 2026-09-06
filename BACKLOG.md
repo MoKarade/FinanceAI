@@ -1373,13 +1373,6 @@
 > (axes et infobulles de graphiques, `[A11Y-PRIVACY-CHART-FORMATTER]`). Garde de non-régression :
 > `tests/components/chartPrivacyScan.test.ts`.
 
-- [x] **`[A11Y-ADDSTOCKFORM-LABELS]`** ✅ **CADUC — DÉJÀ LIVRÉ au lot 51 (`[A11Y-LABELS-RESTE-DU-DEPOT]`, #777, 2026-09-01), constaté au lot 202 (2026-09-06)** : les 7 champs portent `htmlFor` + `id` depuis ce lot de CLASSE, qui n'a pas coché ce ticket de SITE (`PM-STALE-BACKLOG`). Clôture MESURÉE, pas lue : un cas dans `AddStockForm.test.tsx` atteint les 7 contrôles par leur libellé (`getByLabelText`, le nom ACCESSIBLE), perturbation « un `htmlFor` retiré » → rouge ; la garde de dépôt `controlAccessibleNameGuard` interdit déjà tout contrôle anonyme. → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S — routé revue #686, a11y-auditor LOW) —
-  `components/investments/AddStockForm.tsx` : 7 champs (Symbole/Ticker, Prix manuel, Date d'achat,
-  Quantité, Prix d'achat, + le `role="combobox"` de l'autocomplétion) n'ont AUCUNE association
-  label↔contrôle (ni `htmlFor`/`id`, ni `aria-label`/`aria-labelledby`) — un lecteur d'écran devine
-  le nom par proximité DOM, non fiable. Les 2 champs « Devise »/« Compte fiscal » ont été corrigés
-  en passant (revue #686, même patron `htmlFor`+`id`) ; ce ticket couvre le reste du formulaire.
-
 ### 🔴 `[PASSE-REEL-DETTE]` — le passé montre la dette actuelle depuis TOUJOURS (Marc, signalé 2×)
 
 > ⚠️ **Ces trois sous-tickets SONT le plan de `[DEBT-FROM-CONTRACT]`** (retour Marc 2026-08-12,
@@ -1584,14 +1577,7 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 
-- [x] **`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`** ✅ **LIVRÉ au lot 202 (2026-09-06)** : les deux lignes (`💊 RAMQ`, `🏥 FSS`) publient la part par adulte dans l'unité du TOTAL (nominale, celle qui entre dans `divers`) et NOMMENT le nombre d'adultes : « X/an (2 adultes × Y) » — la division que la phrase invite à faire rend désormais ce qu'elle promet. Mesuré (couple retraité, 64 k$ réels, facteur 1,5) : avant « 1 814 $/an (605 $/adulte) », après « 1 814 $/an (2 adultes × 907 $) ». Garde `tests/services/logRamqFssMemeUnite.test.ts` sur la RELATION (n × part = total, et total = `divers`), jamais sur un montant. Perturbations : ancien code → 2 rouges (relations) ; « les deux en réel » → 1 rouge (identité à `divers`). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS) — **défaut PRÉEXISTANT**, rendu plus
-  visible par le lot 101 (signalé, PAS corrigé — hors périmètre demandé) : `taxDecember.ts` journalise
-  `💊 RAMQ médicaments: <total>/an (<par adulte>/adulte)` où le total est en dollars **INFLATÉS** et
-  la part par adulte en dollars **RÉELS**. Les deux n'ont jamais été divisibles l'un par l'autre ;
-  depuis que les deux passent par `formatCAD`, ils se ressemblent typographiquement et le log invite
-  à faire la division. Idem FSS. **Correctif** : publier les deux dans la MÊME unité, ou nommer
-  l'unité dans la phrase.
-- [ ] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
+- [x] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** ✅ **LIVRÉ au lot 203 (2026-09-06) — audité PUIS complété** : l'alarme « zéro test direct » était trop large — les suites `syncOrchestrator.*` ne mockent QUE la frontière (GIS, Drive, coffre, backup) et font tourner les VRAIS `pushNow`/`pullNow` ; couverture MESURÉE (`vitest --coverage` sur les 10 fichiers sync) : `syncPull.ts` **89 %** de lignes, `syncPush.ts` **80 %**. Ce qui n'avait AUCUN test, précisément : `schedulePush` en entier (le push automatique, debounce 8 s, re-test du conflit pendant l'attente, saut si rien n'a changé), la réentrance de `pushNow`, les trois raisons de refus, le chiffrement des clés qui échoue, et côté pull le blob `enc:true` sans ciphertext, le déchiffrement qui échoue hors mauvaise passphrase, le backup pré-restauration qui lève, les clés chiffrées sans `sub`. Livré : `tests/services/syncPushPull.direct.test.ts` (21 cas, faux timers pour le debounce, vrai chiffrement). Cinq perturbations du SOURCE aux signatures distinctes (verrou de réentrance, re-test du conflit, saut « rien n'a changé », contrôle du ciphertext absent, message générique) → 1 rouge chacune. Reste hors périmètre, dit tel quel : `syncPolling` (30 % de branches) et `syncLifecycle` (70 %). → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
   write direct `localStorage.setItem`) + 4 autres modules sync (`syncPassphrase`, `syncSnapshot`,
   `syncMeta`, `syncPolling`, cumulé 886 lignes) **zéro test direct**. `syncOrchestrator` a des tests
   EN INTÉGRATION. Un bug de merge/payload tronqué en sync conservation peut passer inaperçu.

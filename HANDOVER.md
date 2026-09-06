@@ -16,6 +16,13 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 203 : tests directs de `syncPush`/`syncPull` — l'alarme re-mesurée, le trou réel fermé (`[SYNC-PUSH-PULL-NO-UNIT-TEST]`)
+> « Zéro test direct » était vrai à la lettre et faux comme alarme : les suites d'intégration font tourner les vrais
+> modules (seule la frontière est simulée) — 89 % / 80 % de lignes mesurés. Ce qui manquait vraiment : le push AUTOMATIQUE
+> (`schedulePush`, debounce 8 s, conflit survenu pendant l'attente, saut « rien n'a changé »), la réentrance de `pushNow`,
+> les refus nommés, le chiffrement des clés qui échoue, et quatre filets du pull. 21 cas, 5 perturbations du source à
+> 1 rouge chacune. Tests seuls : rien de servi ne change. Archive du lot 202.
+
 > ## 🟦 Session 2026-09-06 — Lot 202 : le journal RAMQ/FSS publie total et part par adulte dans la MÊME unité (`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`) + `[A11Y-ADDSTOCKFORM-LABELS]` caduc
 > Le journal de décembre écrivait « X/an (Y/adulte) » avec X nominal et Y réel : la division invitée ne rendait pas le
 > nombre d'adultes dès que l'année est indexée (mesuré : 605 $ affiché pour 907 $ payé par adulte, facteur 1,5). Les deux

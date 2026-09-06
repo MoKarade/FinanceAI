@@ -16,6 +16,15 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 196 : le flux du compte courant est publié dans le futur (`[ENG-LIQUID-FLUX-FORM]`)
+> `NetTransferLiquid` valait 0 sur 361 points (deux accumulateurs marginaux) pendant que le solde bougeait — 355 mois
+> sur 360 en résiduel, pire 108 608 $. Désormais DÉRIVÉ du solde (`liquid − prevLiquid − growthLiquid`) : tout ce qui
+> a bougé hors intérêts, le sens que le passé donnait déjà au même champ. Après : 358/361 non nuls, résiduel 0 mois,
+> mois ordinaire == `NetSalary − Expenses − Σcotisations`. Quatre surfaces mesurées sur 8 personas (médiane du flux
+> « Cash » annuel 79 à 496 $ ; pics = FERR de janvier, balayage du mois 0 ; le plan d'action gagne une ligne « Cash »
+> dont le « pourquoi » existait déjà). Test de limite INVERSÉ en place ; `Liquidites` entre dans les deux gardes de
+> forme-flux. Servi : Futur (infobulle, détail, explications, plan d'action) → déploiement à vérifier.
+
 > ## 🟦 Session 2026-09-05 — Lot 195 : persona « Gilles, 71 ans », le ménage ACTIF qui décaisse (`[PERSONA-ACTIF-QUI-DECAISSE]`)
 > Huitième persona du mode test : célibataire de 71 ans, consultant à temps partiel jusqu'à 76 ans, maison payée,
 > REER ~698 k$, non-enregistré ~197 k$, déficit mensuel voulu — le minimum FERR (72 ans) tombe PENDANT qu'il

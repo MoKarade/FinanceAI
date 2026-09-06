@@ -37,9 +37,11 @@
 // ── DEUX DÉFAUTS PRÉ-EXISTANTS DÉCOUVERTS EN MESURANT (hors périmètre, routés au BACKLOG) ───────
 //   • `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` : au mois 168, **9 092,54 $** passent du CELIAPP au REER
 //     sans qu'aucun des deux flux ne soit publié (le résiduel est le MÊME des deux côtés).
-//   • `[ENG-LIQUID-FLUX-FORM]` : le compte Liquidités n'est PAS conforme à la forme-flux en régime
+//   • `[ENG-LIQUID-FLUX-FORM]` : le compte Liquidités n'était PAS conforme à la forme-flux en régime
 //     ordinaire — **7 638,44 $** au mois 324, et de petits résiduels ailleurs. C'est pour ça qu'il
-//     n'entre pas dans le balayage « tout l'horizon » ci-dessous.
+//     n'entrait pas dans le balayage « tout l'horizon » ci-dessous. **LIVRÉ au lot 196 (2026-09-06)** :
+//     `NetTransferLiquid` est désormais dérivé du solde, et `Liquidites` est ENTRÉ dans les deux
+//     listes ci-dessous.
 // Aucun des deux n'est ASSERTÉ ici : figer leur montant rendrait rouge le correctif qui les règle.
 
 import { describe, it, expect } from 'vitest';
@@ -83,20 +85,19 @@ const FLUX: Record<string, string> = {
 /**
  * Les comptes que le callback de partage multiplie, dont le point publie un flux, ET qui sont
  * conformes à la forme-flux AU MOIS DU DIVORCE.
- * ⚠️ `Liquidites` en est ABSENT alors que le partage le touche bel et bien (résiduel mesuré
- * 12 492,83 $ avant correctif, 1 182,45 $ après — le correctif fait donc son travail). Ce qui reste
- * est `[ENG-LIQUID-FLUX-FORM]`, PRÉ-EXISTANT : le compte n'est pas conforme non plus SANS divorce
- * (50,85 $ au même mois, mesuré). L'y inclure ferait rougir cette garde pour un défaut qu'elle ne
- * corrige pas — et le déclarer ici vaut mieux qu'un périmètre borné en silence.
+ * ⚠️ `Liquidites` en a été ABSENT jusqu'au lot 196 alors que le partage le touche bel et bien
+ * (résiduel mesuré 12 492,83 $ avant le correctif du divorce, 1 182,45 $ après — puis 50,85 $ au
+ * même mois SANS divorce, le reliquat `[ENG-LIQUID-FLUX-FORM]`). Depuis que `NetTransferLiquid`
+ * est dérivé du solde (lot 196, 2026-09-06), le compte est conforme et il ENTRE dans la liste.
  */
-const COMPTES_PARTAGES = ['CELI', 'REER', 'Crypto', 'CELIAPP', 'REEE'] as const;
+const COMPTES_PARTAGES = ['CELI', 'REER', 'Crypto', 'CELIAPP', 'REEE', 'Liquidites'] as const;
 /**
  * Comptes conformes à la forme-flux sur TOUT l'horizon une fois le divorce publié — donc balayables
  * de bout en bout. `REER` et `CELIAPP` en sont absents à cause de `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]`
- * (mois 168), `Liquidites` à cause de `[ENG-LIQUID-FLUX-FORM]` : deux défauts PRÉ-EXISTANTS, mesurés
- * et routés, pas introduits ici.
+ * (mois 168) : défaut PRÉ-EXISTANT, mesuré et routé, pas introduit ici. `Liquidites` y est ENTRÉ au
+ * lot 196 (`[ENG-LIQUID-FLUX-FORM]` livré).
  */
-const COMPTES_PROPRES = ['CELI', 'Crypto', 'REEE'] as const;
+const COMPTES_PROPRES = ['CELI', 'Crypto', 'REEE', 'Liquidites'] as const;
 
 const M_DIVORCE = 12;
 /** Les champs du point sont arrondis au cent (`toFixed(2)`) : deux arrondis par compte et par mois. */

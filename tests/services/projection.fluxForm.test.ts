@@ -26,7 +26,17 @@ import type { ProjectionChartPoint } from '../../services/projection';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
 
 /** Comptes dont la variation DOIT être expliquée par `MarketGrowth<k>` + `NetTransfer<k>`. */
-const ACCOUNTS = ['CELI', 'REER', 'Crypto', 'NonReg'] as const;
+const ACCOUNTS = ['CELI', 'REER', 'Crypto', 'NonReg', 'Liquidites'] as const;
+/** Nom du solde dans le point → suffixe de ses flux. Ils DIFFÈRENT pour les liquidités. */
+const FLUX: Readonly<Record<string, string>> = { Liquidites: 'Liquid' };
+
+// [ENG-LIQUID-FLUX-FORM] `Liquidites` est entré dans cette liste au lot 196 (2026-09-06), le jour où
+// `NetTransferLiquid` a cessé d'être `contribLiquid − withdrawalLiquid` (deux accumulateurs que seuls
+// des chemins marginaux alimentaient : 0 sur 361 points, 355 mois sur 360 en résiduel, pire
+// 108 608 $) pour être DÉRIVÉ du solde (`liquid − prevLiquid − growthLiquid`). ⚠️ Pour ce compte,
+// l'identité tient donc PAR CONSTRUCTION : ce balayage prouve que le champ est bien publié sur les
+// mêmes points que les autres (et qu'aucun producteur ne mute le liquide APRÈS la croissance du
+// mois) ; le SENS du chiffre est gardé ailleurs (`netTransferLiquidVide.test.ts`).
 
 // [ENG-APRIL-REFUND-NONREG-UNPUBLISHED] `NonReg` est entré dans cette liste le 2026-08-19, une fois
 // son dernier producteur muet corrigé : `processAprilSettlement` réinvestissait le remboursement
@@ -119,7 +129,8 @@ const worstFluxResidual = (
         const cur = data[i] as unknown as Record<string, number>;
         for (const k of ACCOUNTS) {
             const delta = (Number(cur[k]) || 0) - (Number(prev[k]) || 0);
-            const explained = (Number(cur[`MarketGrowth${k}`]) || 0) + (Number(cur[`NetTransfer${k}`]) || 0);
+            const f = FLUX[k] ?? k;
+            const explained = (Number(cur[`MarketGrowth${f}`]) || 0) + (Number(cur[`NetTransfer${f}`]) || 0);
             const residual = Math.abs(delta - explained);
             if (residual > max) {
                 max = residual;

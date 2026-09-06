@@ -2474,7 +2474,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             taxPaidRevenu, taxPaidGains, taxPaidDivers, taxPaidREER, taxOnRrif,
             contribCELI, withdrawalCELI, contribREER, withdrawalREER,
             contribNonReg, withdrawalNonReg, arriveeMeltdownNonReg, contribCrypto, withdrawalCrypto,
-            contribLiquid, withdrawalLiquid, contribCELIAPP, withdrawalCELIAPP,
+            contribCELIAPP, withdrawalCELIAPP,
             contribREEE, withdrawalREEE,
             growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
             growthPctCELI, growthPctREER, growthPctNonReg, growthPctCrypto, growthPctLiquid, growthPctCELIAPP, growthPctREEE,

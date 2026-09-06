@@ -1,38 +1,37 @@
 // tests/services/netTransferLiquidVide.test.ts
 //
-// [ENG-LIQUID-FLUX-FORM] ⚠️ **`NetTransferLiquid` vaut TOUJOURS zéro dans le FUTUR.** Ce fichier ne
-// corrige rien : il MESURE le défaut, verrouille le contrat actuel pour qu'il ne dérive pas
-// davantage, et s'inversera le jour où le correctif sera décidé (`UN-TEST-DE-LIMITE-S-INVERSE`).
+// [ENG-LIQUID-FLUX-FORM] — TEST DE LIMITE **INVERSÉ** (lot 196, 2026-09-06).
 //
-// ── LE TICKET SOUS-ESTIMAIT LARGEMENT LE DÉFAUT ────────────────────────────────────────────────
-// Il annonçait « le compte Liquidités n'est pas conforme à la forme-flux : 7 638,44 $ au mois 324 ».
-// MESURÉ sur une fixture ordinaire de 30 ans, SANS divorce ni stress-test :
-//   • `NetTransferLiquid` est non nul sur **0 des 361 points** — le champ est CONSTAMMENT zéro ;
-//   • **355 mois sur 360** portent un résiduel de forme-flux > 1 $ ;
+// ⚠️ Il garde son nom (« Vide ») et son histoire : jusqu'au lot 196, `NetTransferLiquid` valait
+// TOUJOURS zéro dans le FUTUR, et ce fichier le MESURAIT sans le corriger — verrouillant le contrat
+// d'alors pour qu'il ne dérive pas davantage. Le correctif livré, chaque assertion s'est retournée
+// ICI MÊME (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`) : supprimé, il laisserait croire
+// que la limite n'a jamais existé — et rien n'empêcherait de re-brancher le champ sur les deux
+// accumulateurs marginaux « pour simplifier ».
+//
+// ── CE QUI ÉTAIT MESURÉ AVANT (fixture ordinaire de 30 ans, sans divorce ni stress-test) ─────
+//   • `NetTransferLiquid` non nul sur **0 des 361 points** — le champ était CONSTAMMENT zéro ;
+//   • **355 mois sur 360** portaient un résiduel de forme-flux > 1 $ ;
 //   • pire résiduel **108 608,35 $** (mois 360), cumul absolu **864 592,56 $**.
-// Ce n'est donc pas un cas limite : c'est TOUT le mouvement du compte courant qui n'est jamais publié.
+//   Ce n'était donc pas un cas limite : TOUT le mouvement du compte courant n'était jamais publié.
 //
-// ── LA CAUSE, LISIBLE DANS LE CODE ─────────────────────────────────────────────────────────────
-// `buildMonthlyDataPoint` calcule `NetTransferLiquid = contribLiquid − withdrawalLiquid`. Or ces
-// deux accumulateurs ne sont alimentés que par des chemins MARGINAUX (immobilier, objectifs enfants,
-// cascade de sauvetage de découvert) : le flux ORDINAIRE du ménage — salaire net encaissé, dépenses
-// payées, cotisations sorties vers les placements — ne les touche jamais.
-// VÉRIFIÉ à deux mois : le résiduel vaut EXACTEMENT `(NetSalary − Expenses) − Σcotisations`
-// (m=6 : −18,63 $ · m=120 : −30,00 $), c'est-à-dire le cashflow non publié.
+// ── LA CAUSE, ET LE CORRECTIF ──────────────────────────────────────────────────────────────────
+// `buildMonthlyDataPoint` calculait `NetTransferLiquid = contribLiquid − withdrawalLiquid`, deux
+// accumulateurs que seuls des chemins MARGINAUX alimentaient (immobilier, objectifs enfants, cascade
+// de sauvetage). Le flux ORDINAIRE — paie encaissée, dépenses payées, cotisations sorties vers les
+// placements — ne les touchait jamais. VÉRIFIÉ à deux mois : le résiduel valait EXACTEMENT
+// `(NetSalary − Expenses) − Σcotisations` (m=6 : −18,63 $ · m=120 : −30,00 $).
+// Depuis le lot 196, le champ est DÉRIVÉ du solde : `liquid − prevLiquid − growthLiquid` — tout ce
+// qui a bougé hors intérêts, le sens que le PASSÉ (`dailyPastLedger` : `income − expenses`) lui
+// donnait déjà. Dérivé et non composé, à dessein : ~30 sites dans cinq modules mutent le liquide.
 //
-// ── ⚠️ ET LE PASSÉ, LUI, LE PUBLIE ─────────────────────────────────────────────────────────────
-// `services/history/dailyPastLedger.ts` pose `NetTransferLiquid: income - expenses`. Le MÊME champ a
-// donc DEUX sens selon le côté de « aujourd'hui » : le vrai cashflow dans le passé, zéro dans le
-// futur. Quatre surfaces le consomment — `ProjectionExplains`, `ProjectionTooltip` (qui SOMME tous
-// les `NetTransfer*`), `FutureDetailModal` (« Cash (Coussin) ») et `yearlyActions` (« Cash ») : la
-// ligne de flux du cash affiche donc 0 sur tout l'horizon futur pendant que le solde bouge.
-//
-// ── POURQUOI CE LOT NE CORRIGE PAS ─────────────────────────────────────────────────────────────
-// La DIRECTION est déterminée (aligner le futur sur le passé : `income − expenses`), mais le
-// correctif fait passer une ligne d'interface constamment nulle à ~10 k$/mois sur quatre surfaces,
-// et `contribLiquid` traverse `realEstateMonth` et les objectifs enfants. Ça mérite son propre lot,
-// avec la mesure de chaque consommateur — pas un « pendant qu'on y est » au bout d'un lot de mesure.
-// Routé : `[ENG-LIQUID-FLUX-FORM]`.
+// ── CE QUE CE FICHIER PROUVE DÉSORMAIS ─────────────────────────────────────────────────────────
+//   1. le champ est publié (mesuré 2026-09-06 : **358 points sur 361** non nuls) ;
+//   2. l'identité `ΔLiquidités = MarketGrowthLiquid + NetTransferLiquid` tient à CHAQUE mois ;
+//   3. et surtout — parce que 2 tient par construction — qu'un mois ORDINAIRE rend bien le cashflow
+//      du ménage (`NetSalary − Expenses − Σcotisations`), la grandeur que l'utilisateur lit.
+// Quatre surfaces le consomment : `ProjectionExplains`, `ProjectionTooltip` (somme des `NetTransfer*`),
+// `FutureDetailModal` (« Cash (Coussin) ») et `yearlyActions` / plan d'action (« Cash »).
 
 import { describe, it, expect } from 'vitest';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
@@ -66,21 +65,18 @@ const run = () => (__runScenarioForTests(
 
 const n = (o: Record<string, number> | undefined, k: string): number => Number(o?.[k] ?? NaN);
 
-describe('[ENG-LIQUID-FLUX-FORM] le flux du compte courant n\'est jamais publié dans le futur', () => {
-    /**
-     * ⚠️ TEST DE LIMITE — il verrouille un DÉFAUT, pas une propriété souhaitable. Le jour où le
-     * correctif est livré, il doit être INVERSÉ ici même (avec son histoire), jamais supprimé :
-     * supprimé, il laisserait croire que la limite n'a jamais existé.
-     */
-    it('LIMITE CONNUE : `NetTransferLiquid` est nul sur TOUS les points de la projection', () => {
+describe('[ENG-LIQUID-FLUX-FORM] le flux du compte courant est publié dans le futur (limite INVERSÉE au lot 196)', () => {
+    it('INVERSÉ : `NetTransferLiquid` est non nul sur (presque) tous les points de la projection', () => {
         const cd = run();
         const nonNuls = cd.filter((p) => Math.abs(n(p, 'NetTransferLiquid')) > 0.005).length;
         expect(cd.length, 'projection vide : rien à mesurer').toBeGreaterThan(300);
-        expect(nonNuls, 'BONNE NOUVELLE : le flux du cash est enfin publié → INVERSER ce test (voir l\'en-tête)')
-            .toBe(0);
+        // Avant le lot 196 : 0. Mesuré après : 358 sur 361 (le point 0 n'a pas de mois précédent,
+        // deux mois de transition tombent sous le demi-cent).
+        expect(nonNuls, 'RÉGRESSION : le flux du cash a cessé d\'être publié (voir l\'en-tête)')
+            .toBeGreaterThan(300);
     });
 
-    it('la conséquence : le solde du cash bouge sans flux qui l\'explique, presque tous les mois', () => {
+    it('INVERSÉ : le solde du cash est EXPLIQUÉ par ses flux à chaque mois (résiduel nul)', () => {
         const cd = run();
         let mois = 0, pire = 0, ouPire = -1;
         for (let m = 1; m < cd.length; m++) {
@@ -89,32 +85,31 @@ describe('[ENG-LIQUID-FLUX-FORM] le flux du compte courant n\'est jamais publié
             if (Math.abs(res) > 1) mois++;
             if (Math.abs(res) > Math.abs(pire)) { pire = res; ouPire = m; }
         }
-        // Anti-vacuité : le compte est GARNI et il BOUGE — sinon « rien n'est expliqué » serait vrai
-        // pour la raison sans intérêt d'un compte vide.
-        // ⚠️ Vider `calculatedStartingCash` ne suffit PAS à produire ce cas (essayé) : le salaire
-        // regarnit le compte en quelques mois et les trois tests restent verts. Ce que ce plancher
-        // protège vraiment, c'est le SÉLECTEUR — vérifié en le pointant sur un champ inexistant,
-        // qui le fait rougir.
-        expect(n(cd[6], 'Liquidites'), 'compte courant vide : le défaut serait invisible').toBeGreaterThan(1_000);
-        // Mesuré : 355 mois sur 360, pire 108 608,35 $ au mois 360.
-        expect(mois, 'le défaut a changé d\'ampleur — re-mesurer avant de toucher au ticket').toBeGreaterThan(300);
-        expect(Math.abs(pire), `pire résiduel ${pire.toFixed(2)} $ au mois ${ouPire}`).toBeGreaterThan(10_000);
+        // Anti-vacuité : le compte est GARNI et il BOUGE — sinon « tout est expliqué » serait vrai
+        // pour la raison sans intérêt d'un compte vide (et le sélecteur, pointé sur un champ
+        // inexistant, rougit ici).
+        expect(n(cd[6], 'Liquidites'), 'compte courant vide : la garde serait vacueuse').toBeGreaterThan(1_000);
+        expect(cd.filter((p) => Math.abs(n(p, 'NetTransferLiquid')) > 1).length, 'aucun flux > 1 $ : rien à raccorder').toBeGreaterThan(100);
+        // Avant : 355 mois sur 360, pire 108 608,35 $ au mois 360. Après : 0 mois, pire < 0,05 $
+        // (trois arrondis au cent).
+        expect(mois, `résiduel de forme-flux réapparu (pire ${pire.toFixed(2)} $ au mois ${ouPire})`).toBe(0);
+        expect(Math.abs(pire), `pire résiduel ${pire.toFixed(2)} $ au mois ${ouPire}`).toBeLessThan(0.05);
     });
 
     /**
-     * La CAUSE, pas seulement le symptôme : le résiduel est exactement le cashflow du ménage
-     * (`NetSalary − Expenses − Σcotisations`). C'est cette égalité qui dit où le correctif doit
-     * brancher, et elle rougirait si le défaut venait d'ailleurs.
+     * La garde qui compte : l'identité ci-dessus tient PAR CONSTRUCTION (le champ est dérivé du
+     * solde), donc elle ne prouve pas que le chiffre a un SENS. Ce test-ci le prouve : sur un mois
+     * ordinaire, le flux publié est le cashflow du ménage — ce que le passé publie déjà, et ce que
+     * l'utilisateur lit sous « transfert » / « Cash ». Il rougit si le champ est re-branché sur
+     * `contribLiquid − withdrawalLiquid` (0) ou s'il oublie la croissance (écart = intérêts du mois).
      */
-    it('le résiduel EST le cashflow du ménage, pas un artefact d\'arrondi', () => {
+    it('INVERSÉ : sur un mois ordinaire, le flux publié EST le cashflow du ménage', () => {
         const cd = run();
         for (const m of [6, 120]) {
-            const delta = n(cd[m], 'Liquidites') - n(cd[m - 1], 'Liquidites');
-            const residuel = delta - (n(cd[m], 'MarketGrowthLiquid') + n(cd[m], 'NetTransferLiquid'));
             const cashflow = n(cd[m], 'NetSalary') - n(cd[m], 'Expenses')
                 - (n(cd[m], 'ContribCELI') + n(cd[m], 'ContribREER') + n(cd[m], 'ContribNonReg'));
-            expect(Math.abs(residuel), `résiduel nul au mois ${m} : ce mois ne mesure rien`).toBeGreaterThan(1);
-            expect(residuel, `au mois ${m}, le résiduel ne correspond pas au cashflow non publié`)
+            expect(Math.abs(cashflow), `cashflow nul au mois ${m} : ce mois ne mesure rien`).toBeGreaterThan(1);
+            expect(n(cd[m], 'NetTransferLiquid'), `au mois ${m}, le flux publié n'est pas le cashflow du ménage`)
                 .toBeCloseTo(cashflow, 1);
         }
     });

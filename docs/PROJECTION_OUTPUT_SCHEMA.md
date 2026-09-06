@@ -214,13 +214,21 @@ Note `[FISC-WHT-92PCT]` : en phase ACTIVE sans déductions, `AccruedTaxRevenu` v
 
 `ContribCELI`, `ContribREER`, `ContribNonReg`, `NetTransfer{CELI,REER,NonReg,Crypto,Liquid,CELIAPP,REEE}`.
 
-⚠️ **`NetTransfer<compte>` est le registre des TRANSFERTS** (`contrib − withdrawal`), lu par
+⚠️ **`NetTransfer<compte>` est le registre des TRANSFERTS** (`contrib − withdrawal` — sauf `NetTransferLiquid`, voir plus bas), lu par
 `computeYearlyActions` (« ce que tu dois déposer / retirer cette année »). Il est DISTINCT du
 registre d'AFFICHAGE du mois (`RetraitREER`, `RetraitCELI`) : **tout producteur qui mute un solde doit
 alimenter les DEUX**. Le retrait minimum FERR ne remplissait que le second — 131 566,62 $/an
 invisibles dans le plan d'actions (`[ENG-FERR-NETTRANSFER-MUET]`, 2026-08-19). L'invariant
 `tests/services/projection.fluxForm.test.ts` verrouille l'accord des deux registres, **y compris en
 phase de décaissement** (fixture 35 ans : elle DOIT atteindre la FERR à 72 ans).
+
+⚠️ **`NetTransferLiquid` fait exception depuis le lot 196 (`[ENG-LIQUID-FLUX-FORM]`, 2026-09-06)** : il est
+DÉRIVÉ du solde (`liquid − prevLiquid − growthLiquid`), c'est-à-dire tout ce qui a bougé sur le compte courant hors
+intérêts — le même sens que le passé (`income − expenses`). Avant, il valait `contribLiquid − withdrawalLiquid`, deux
+accumulateurs que seuls des chemins marginaux alimentaient : 0 sur 361 points pendant que le solde bougeait. Dérivé
+et non composé parce que ~30 sites dans cinq modules mutent le liquide ; l'identité de forme-flux tient donc par
+construction pour ce compte, et c'est `tests/services/netTransferLiquidVide.test.ts` qui garde son SENS (mois
+ordinaire == `NetSalary − Expenses − Σcotisations`).
 
 ⚠️ Côté per-conjoint, `withdrawalREER` alimente AUSSI `stepReerByUser`, qui répartit AU PRORATA. La
 FERR en est exclue (`ferrWithdrawalMois`) parce qu'elle a déjà été retirée de la part EXACTE de chaque

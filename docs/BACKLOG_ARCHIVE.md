@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-05 — `[PERSONA-ACTIF-QUI-DECAISSE]` — LIVRÉ (lot 195, PR #926)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[PERSONA-ACTIF-QUI-DECAISSE]`** ✅ **LIVRÉ au lot 195 (2026-09-05)** — huitième persona « Gilles, 71 ans » (`services/testPersonas/gillesActifDecaisse.ts`) : célibataire, consultant à temps partiel jusqu'à 76 ans, maison payée, REER ~698 k$, non-enregistré ~197 k$, budget en déficit voulu — le minimum FERR (72 ans) tombe PENDANT qu'il travaille. Garde `tests/services/personaActifQuiDecaisse.test.ts` : espion sur `processDecemberTaxFiling` (vrai moteur + vrai constructeur de paramètres) — **4 décembres** « actif + retraits REER + non-enregistré » (2027-2030, épinglé exact), **0** sur les sept autres (contrôle négatif, comme au lot 87). Perturbations : targetAge 71 → 0 ; condition sans `!isRetired` → contrôle rouge (21 / 15) ; `nonReg > 1e9` → 0 ; retirer le compte non-enregistré est MUET (la cascade réinvestit le surplus FERR en non-enregistré). Goldens déplacés : aucun (5 678 verts) — les suites qui bouclent sur les personas n'épinglent que des BORNES (fini, ∈ [0, 1], > 1 000 $), jamais une valeur ; +19 tests (3 de la garde + 16 itérations du nouveau persona dans les boucles existantes). Contexte d'origine : (S, FAIBLE — découvert en livrant le lot 87, MESURÉ) — **aucun
+  des 7 personas n'exerce jamais** le chemin « ménage ACTIF qui retire du REER ET détient du
+  non-enregistré » : compteur instrumenté dans `taxDecember`, **0 occurrence sur 7 personas × 40 ans**.
+  C'est pourtant un ménage plausible (un 70 ans qui travaille à temps partiel et décaisse), et c'est
+  la raison pour laquelle deux défauts money-critical du lot 87 ont pu vivre sans qu'aucun golden ne
+  bouge. **Correctif** : ajouter un persona (ou étendre `pre-retraite-riche`) avec `targetAge` ≥ 73,
+  des retraits REER et un solde non-enregistré. ⚠️ Ajouter un persona re-base des goldens : lot à
+  part, avec la mesure de ce qui bouge.
+
+
 ## 2026-09-05 — `[ENG-TTP-NEGATIF]` + `[A11Y-PRIVACY-ONBOARDING]` — CADUCS, MESURÉS (lot 194, PR #925)
 
 Tickets d'origine tels qu'au moment de l'archivage (fermés sans code : la mesure a montré que le défaut décrit n'atteint aucun écran) :

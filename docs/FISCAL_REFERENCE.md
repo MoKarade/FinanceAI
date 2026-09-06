@@ -1443,6 +1443,14 @@ choisir). Calcul cumulatif par tranche (style impôt).
 > Effectif = `féd × (1 − 16,5 %) + QC` → `0,15×0,835 + 0,20 = 32,525 %` et `0,29×0,835 + 0,24 = 48,215 %`.
 > Même traitement que le **CID** (`[FISC-DTC-ABATEMENT-ORDER]`, §7) : c'est le patron du dépôt pour
 > TOUT crédit non remboursable fédéral.
+> **`fed.first` n'est plus un littéral** (lot 210, 2026-09-06, `[FISC-DON-FEDRATE-DUP]`) :
+> `DONATION_CREDIT_RATES.fed.first` vaut `FED_NONREFUNDABLE_RATE` (§1, tableau des montants personnels de base), parce que la
+> LIR 118.1(3) définit le taux du 1er palier comme « le taux de base pour l'année » (LIR 248(1)) — la
+> même grandeur légale que celle des autres crédits non remboursables fédéraux. Le « 15 % » du tableau
+> est la valeur ACTUELLE de cette constante, pas une source distincte : quand `[FISC-FED-CREDITRATE-15]`
+> tranchera la valeur (C-4 : 14,5 % / 14 % + crédit compensatoire), le crédit pour dons suivra sans
+> seconde édition. Citation RELAYÉE : laws-lois.justice.gc.ca est inaccessible depuis le conteneur
+> (`EGRESS_BLOCKED`, tenté le 2026-09-06) — le terme statutaire vient de la lecture antérieure de la LIR.
 > Corrigé le **2026-08-13** (audit 2026-08-12). Avant : la part fédérale était comptée au taux plein
 > alors que le moteur la déduit d'un impôt DÉJÀ net d'abattement (`taxDecember` → `grossIncomeTax`,
 > issu de `calculateFiscalReport` où `fedTax -= abatement`). Surévaluation mesurée :

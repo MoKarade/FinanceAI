@@ -472,8 +472,9 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`ASSET_VOLATILITY.crypto` — écart-type annuel supposé de la crypto (50 %). Hypothèse de marché.' },
     { file: 'services/projection/helpers.ts', value: '0.03', family: 'design',
       reason: '`ASSET_VOLATILITY.cash` — écart-type annuel supposé des liquidités (3 %). Hypothèse de marché.' },
-    { file: 'utils/donationCredit.ts', value: '0.15', family: 'fiscal',
-      reason: '`DONATION_CREDIT_RATES.fed.first` — taux du crédit fédéral pour dons sur les premiers 200 $ (15 %). Barème ARC, ancré FISCAL_REFERENCE §10. ⚠️ Invisible au garde jusqu’au 2026-08-20 : une valeur de propriété d’objet n’était pas relevée.' },
+    // `utils/donationCredit.ts::0.15` — RETIRÉ au lot 210 (`[FISC-DON-FEDRATE-DUP]`) : `fed.first` lit
+    // désormais `FED_NONREFUNDABLE_RATE` (même grandeur légale, LIR 118.1(3)). Un littéral 0.15 qui
+    // reviendrait ici serait une constante NOUVELLE hors inventaire → ce ratchet rougit.
     { file: 'utils/donationCredit.ts', value: '0.29', family: 'fiscal',
       reason: '`DONATION_CREDIT_RATES.fed.excess` — taux du crédit fédéral pour dons au-delà de 200 $ (29 %). Barème ARC, ancré §10.' },
     { file: 'utils/donationCredit.ts', value: '0.20', family: 'fiscal',

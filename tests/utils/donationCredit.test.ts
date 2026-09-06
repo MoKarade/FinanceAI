@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeDonationCredit, DONATION_FIRST_TIER_CEILING, DONATION_CREDIT_RATES, FED_CREDIT_QC_EFFECTIVENESS } from '../../utils/donationCredit';
-import { QC_FEDERAL_ABATEMENT_RATE } from '../../utils/tax';
+import { QC_FEDERAL_ABATEMENT_RATE, FED_NONREFUNDABLE_RATE } from '../../utils/tax';
 
 // [FA-6] Crédit d'impôt non remboursable pour dons (féd + QC, par paliers).
 // Réf : docs/FISCAL_REFERENCE.md §10.
@@ -82,5 +82,20 @@ describe('computeDonationCredit — crédit dons par paliers (FA-6)', () => {
     it('monotone croissant avec le montant du don', () => {
         expect(computeDonationCredit(5000)).toBeGreaterThan(computeDonationCredit(1000));
         expect(computeDonationCredit(1000)).toBeGreaterThan(computeDonationCredit(200));
+    });
+});
+
+describe('[FISC-DON-FEDRATE-DUP] le 1er palier fédéral est la MÊME grandeur légale que FED_NONREFUNDABLE_RATE', () => {
+    it('DONATION_CREDIT_RATES.fed.first EST FED_NONREFUNDABLE_RATE (LIR 118.1(3) : « taux de base pour l’année »)', () => {
+        // Deux copies d'un même taux divergent à la première MAJ — et `[FISC-FED-CREDITRATE-15]` en prépare
+        // une (C-4). Cette garde ancre le FAIT : elle rougit si les deux valeurs DIVERGENT. Elle est aveugle
+        // à une copie littérale 0.15 (même valeur) — c'est le ratchet fiscal (`fiscalConstantsGuardV2`,
+        // « aucune constante fiscale NOUVELLE hors inventaire ») qui interdit ce retour, l'entrée
+        // `donationCredit.ts::0.15` ayant été retirée au lot 210. Deux gardes, deux perturbations.
+        expect(DONATION_CREDIT_RATES.fed.first).toBe(FED_NONREFUNDABLE_RATE);
+        // Contrôle : les trois autres paliers sont des barèmes à eux, pas des alias de ce taux.
+        expect(DONATION_CREDIT_RATES.fed.excess).not.toBe(FED_NONREFUNDABLE_RATE);
+        expect(DONATION_CREDIT_RATES.qc.first).not.toBe(FED_NONREFUNDABLE_RATE);
+        expect(DONATION_CREDIT_RATES.qc.excess).not.toBe(FED_NONREFUNDABLE_RATE);
     });
 });

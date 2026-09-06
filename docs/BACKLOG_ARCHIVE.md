@@ -10,6 +10,16 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[VISION-NO-RETRY]` — CADUC, MESURÉ sur le vrai SDK (lot 209, PR #940)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[VISION-NO-RETRY]`** ✅ **CADUC, MESURÉ au lot 209 (2026-09-06) — le réessai existe, il vit dans la BIBLIOTHÈQUE** : le ticket décrivait un manque de NOTRE code (« aucun backoff sur 429/5xx », « un 429 force un re-upload manuel complet ») sans regarder ce que fait la dépendance. Mesuré sur le VRAI `@anthropic-ai/sdk` (0.96.0, seul `fetch` simulé) : le client que `makeClient` construit — les six one-shots ET les deux appels Vision passent par lui — réessaie de lui-même avec **`maxRetries = 2`** (défaut du SDK, jamais forcé à 0 ici) sur **408 / 409 / 429 / 5xx et sur une panne de connexion**, honore `retry-after` (ou `retry-after-ms`), applique sinon un backoff 0,5 s → 8 s, et n'insiste pas sur un signal d'abandon (le timeout Vision de 90 s reste souverain). Un 429 sur l'upload d'un relevé est donc déjà rejoué deux fois avant d'atteindre l'écran. Garde `tests/services/claudeSdkRetryDefaut.test.ts` (7 cas sur le vrai module : `maxRetries` du client, 429→OK sur `chat`, 503→OK sur `analyzeBankStatement`, panne de connexion→OK sous faux timers, épuisement à exactement 1 + 2 appels, contrôles 401/400 non réessayés, signal abandonné → zéro appel) ; perturbation `maxRetries: 0` dans `makeClient` → 5 rouges. Ce que le ticket pouvait légitimement demander — plus de deux réessais, ou un message « nouvelle tentative… » pendant l'attente — n'est PAS livré : c'est une décision de produit et d'UX, pas un manque (hypothèse notée, `[AI-CATEGORIZE-DOUBLE-RETRY]`). Contexte d'origine : (S, FAIBLE) — `analyzePayslip` / `analyzeBankStatement` (+ 4 autres)
+  n'ont aucun backoff sur 429/5xx (`services/claude.ts:941-994`, `1030-1096`) ; seul `categorizeBatch`
+  a reçu ce traitement. Un 429 transitoire sur un upload de relevé force un re-upload manuel complet.
+  ⚠️ [HYPOTHÈSE] — le design actuel (erreur explicite + retry manuel) peut être un choix assumé.
+
+
 ## 2026-09-06 — `[A11Y-CONTRAST-ANGLE-MORT-541]` — LIVRÉ (lot 208, PR #939)
 
 Ticket d'origine tel qu'au moment de l'archivage :

@@ -12219,6 +12219,22 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 210 (2026-09-06) — deux copies d'un chiffre ne se fusionnent que si la LOI les nomme par le même terme, et une garde d'ÉGALITÉ est aveugle à une copie de même valeur
+
+`[FISC-DON-FEDRATE-DUP]` signalait deux `0.15` : le 1er palier du crédit pour dons et le taux des crédits non
+remboursables fédéraux. `AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE` demande de trouver ce qui est commun —
+ici ce n'est pas la valeur, c'est le TERME STATUTAIRE : la LIR 118.1(3) écrit « le taux de base pour l'année » (248(1)),
+la définition même de `FED_NONREFUNDABLE_RATE`. Les trois autres paliers du même objet (29 %, 20 %, 24 %) portent la
+même syntaxe et n'ont AUCUN jumeau légal : ils restent des littéraux. Le critère de dédup d'une constante fiscale
+est « même article de loi », jamais « même nombre ». ⚠️ Et le moment compte : `[FISC-FED-CREDITRATE-15]` prépare un
+changement de cette valeur (C-4) — dédupliquer AVANT, c'est faire atterrir le changement en un seul endroit ; après,
+c'est le trouver à deux. ⚠️ Corollaire de garde : `expect(a).toBe(b)` sur deux constantes de même valeur ne voit PAS
+le retour d'une copie littérale (0.15 === 0.15) — il ne rougit que sur une DIVERGENCE. Le retour du littéral est
+interdit par une autre garde, le ratchet fiscal (entrée retirée → « constante NOUVELLE hors inventaire »). Deux
+gardes, deux perturbations, et le test le dit dans son commentaire plutôt que de laisser croire qu'il couvre les
+deux. ⚠️ La citation de la LIR est RELAYÉE — laws-lois.justice.gc.ca est `EGRESS_BLOCKED` (tenté le 2026-09-06), et
+la doc le dit à côté de la phrase (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`, appliqué).
+
 ### Variante notée au lot 209 (2026-09-06) — un ticket qui décrit un manque dans NOTRE code peut être comblé par la BIBLIOTHÈQUE : mesurer la dépendance avant d'écrire une couche
 
 `[VISION-NO-RETRY]` disait « aucun backoff sur 429/5xx » pour six appels et prescrivait de leur donner le traitement

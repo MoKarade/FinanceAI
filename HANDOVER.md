@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 210 : un seul 15 % pour une seule grandeur légale (`[FISC-DON-FEDRATE-DUP]`, fini)
+> Le 1er palier fédéral du crédit pour dons et le taux des crédits non remboursables vivaient en deux copies de `0.15`.
+> La LIR 118.1(3) les définit par le même terme (« taux de base pour l'année ») : `DONATION_CREDIT_RATES.fed.first` lit
+> maintenant `FED_NONREFUNDABLE_RATE`, entrée de ratchet retirée, note en FISCAL_REFERENCE §10 (citation relayée, LIR
+> inaccessible depuis le conteneur). Garde +1 cas ; deux perturbations à gardes distinctes (égalité / ratchet). Valeur
+> inchangée : aucun golden ne bouge ; bundle équivalent, code servi touché → déploiement à vérifier. Quand
+> `[FISC-FED-CREDITRATE-15]` tranchera la valeur, les deux suivront d'un coup. Archive du lot 209.
+
 > ## 🟦 Session 2026-09-06 — Lot 209 : `[VISION-NO-RETRY]` caduc, mesuré sur le vrai SDK
 > Le ticket voulait un backoff applicatif sur les six one-shots et les deux appels Vision. Mesuré sur `@anthropic-ai/sdk`
 > avec `fetch` seul simulé : le client de `makeClient` réessaie déjà (`maxRetries = 2`, 408/409/429/5xx + panne réseau,

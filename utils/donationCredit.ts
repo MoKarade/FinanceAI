@@ -23,14 +23,21 @@
 //  - don de titres cotés en nature (inclusion du gain en capital 0 %) NON modélisé — `CharitableGoal`
 //    ne suit aucune base de coût ni valeur marchande des titres.
 
-import { QC_FEDERAL_ABATEMENT_RATE } from './tax';
+import { QC_FEDERAL_ABATEMENT_RATE, FED_NONREFUNDABLE_RATE } from './tax';
 
 /** Plafond du 1er palier (taux réduit), en dollars — fédéral ET Québec. */
 export const DONATION_FIRST_TIER_CEILING = 200;
 
 /** Taux du crédit par paliers (féd + QC), cf FISCAL_REFERENCE §10. */
+// [FISC-DON-FEDRATE-DUP] (lot 210, 2026-09-06) — le taux fédéral du 1er palier n'est PAS un chiffre
+// à lui : la LIR 118.1(3) le définit comme « le taux de base pour l'année » (LIR 248(1)), la MÊME
+// grandeur légale que celle des autres crédits non remboursables fédéraux (`FED_NONREFUNDABLE_RATE`,
+// `utils/tax.ts`). Deux copies de 0,15 auraient divergé à la première MAJ — et une MAJ est pendante
+// (`[FISC-FED-CREDITRATE-15]`, C-4 : 14,5 % / 14 % + crédit compensatoire). Une seule constante :
+// les deux bougent ensemble, ou pas du tout. Les trois autres paliers (29 %, 20 %, 24 %) sont des
+// barèmes À EUX, sans jumeau légal — ils restent des littéraux inventoriés par le ratchet fiscal.
 export const DONATION_CREDIT_RATES = {
-    fed: { first: 0.15, excess: 0.29 },
+    fed: { first: FED_NONREFUNDABLE_RATE, excess: 0.29 },
     qc: { first: 0.20, excess: 0.24 },
 } as const;
 

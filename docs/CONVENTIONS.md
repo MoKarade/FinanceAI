@@ -12219,6 +12219,21 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 197 (2026-09-06) — un ticket ARCHIVÉ peut rester ouvert au BACKLOG : grepper l'archive et `git log` avant de coder
+
+`[TEST-DIVORCE-SANS-IMMOBILIER]` figurait dans `docs/BACKLOG_ARCHIVE.md` (livré par #748, 4 tests) ET dans `BACKLOG.md`
+avec sa case vide — la refonte du 2026-07-31 avait nommé cette classe (`PM-STALE-BACKLOG`) pour les items faits
+sans case cochée ; en voici la variante « archivé ET encore ouvert », qui trompe davantage parce que l'archive
+semble régler la question. Avant de coder un ticket : `git log --oneline --grep=<ID>` et grep de l'archive. Ici le
+recensement a montré que #748 avait livré le partage du BIEN mais pas la dernière phrase du ticket (« passer la
+fixture aux gardes de conservation ») — et c'est précisément la phrase qui valait quelque chose : avec une
+hypothèque, la formule de reconstruction du patrimoine CHANGE (`Immobilier` est l'équité nette, donc on soustrait
+`DettesNonImmo` et jamais `DetteTotale`). La garde d'origine, écrite sans maison, aurait rougi sur cette fixture pour
+une raison qu'elle ne pouvait pas connaître. **Une garde écrite sur une fixture sans X ne dit rien de la formule
+sous X** — la contre-épreuve (la formule naïve, dont l'écart EST l'hypothèque) est ce qui prouve que la nouvelle
+fixture exerce bien la moitié manquante. ⚠️ Et une fixture « réutilisable » qui existe en deux copies identiques
+n'est pas réutilisable : la troisième copie est le moment de la hisser, pas d'en écrire une.
+
 ### Variante notée au lot 196 (2026-09-06) — un flux DÉRIVÉ du solde rend l'identité tautologique : la garde qui compte est celle du SENS
 
 `NetTransferLiquid` était composé de deux accumulateurs (`contribLiquid − withdrawalLiquid`) que seuls des

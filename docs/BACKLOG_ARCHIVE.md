@@ -10,6 +10,41 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-06 — `[ENG-LIQUID-FLUX-FORM]` — LIVRÉ (lot 196, PR #927)
+
+Ticket d'origine tel qu'au moment de l'archivage — il existait en DEUX entrées du même ID (la première du 2026-08-19, la seconde re-mesurée le 2026-08-25) :
+
+- [x] **`[ENG-LIQUID-FLUX-FORM]`** ✅ **LIVRÉ au lot 196 (2026-09-06)** — voir l'entrée RE-MESURÉE plus bas (même ID), qui porte la livraison. Contexte d'origine : (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
+  **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
+  **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au
+  mois 11). C'est pour ça qu'il est exclu du balayage de `divorceFluxPublie.test.ts` et absent des
+  `ACCOUNTS` de `projection.fluxForm.test.ts`. Fix : trouver les producteurs qui mutent `liquid` sans
+  alimenter `contribLiquid`/`withdrawalLiquid`, puis ajouter `Liquidites` aux deux gardes.
+  ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
+  (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
+
+- [x] **`[ENG-LIQUID-FLUX-FORM]`** ✅ **LIVRÉ au lot 196 (2026-09-06)** — `NetTransferLiquid` est désormais **DÉRIVÉ du solde** (`liquid − prevLiquid − growthLiquid`, `monthlyOutput.ts`) : tout ce qui a bougé sur le compte courant hors intérêts — le sens que le PASSÉ (`dailyPastLedger` : `income − expenses`) donnait déjà au même champ. Dérivé et non composé, à dessein : ~30 sites dans cinq modules mutent le liquide, et en composer la somme reproduirait `MODULE-ECRIT-HORS-CHECKLIST` au premier producteur oublié. Mesuré après : **358 points sur 361** non nuls, résiduel de forme-flux **0 mois** (pire < 0,05 $, contre 355 mois et 108 608 $), et sur un mois ordinaire le flux publié == `NetSalary − Expenses − Σcotisations` sur 6 personas sur 8 (les 2 autres portent un paiement de dette / un coût d'enfant, qui SONT des mouvements du compte). Quatre surfaces mesurées sur les 8 personas : médiane du flux « Cash » annuel **79 à 496 $** (contre 13 k$ à 118 k$ pour les autres comptes) ; les pics sont des événements réels (arrivée du minimum FERR en janvier, balayage du surplus de départ au mois 0) ; le plan d'action gagne une ligne « Cash » au niveau racine (« Retire du Cash » −9 k$ à −38 k$ sur 40 ans, « Cotise au Cash » +265 k$ pour `couple-confort` dont le FERR reste au compte le dernier mois) — le texte « pourquoi » existait déjà, il était mort ; l'infobulle « Dépôts » devient le net du ménage (une cotisation sortie du cash et entrée au CELI s'annule). Test de limite `netTransferLiquidVide.test.ts` INVERSÉ en place avec son histoire ; `Liquidites` ENTRE dans les deux gardes de forme-flux (`projection.fluxForm`, `divorceFluxPublie`). Perturbation (champ remis à 0) → les trois gardes rougissent. Les deux entrées mortes (`contribLiquid`/`withdrawalLiquid`) retirées de `MonthlyOutputInputs`. Contexte d'origine : (M → **RE-MESURÉ le 2026-08-25, bien plus large que ce que j'avais
+  écrit**) — j'avais routé ce ticket en disant « le compte Liquidités n'est pas conforme à la
+  forme-flux : 7 638,44 $ au mois 324, plus de petits résiduels ailleurs ». Ça décrivait un CAS
+  LIMITE. C'en est un autre : **`NetTransferLiquid` est non nul sur 0 des 361 points** — le champ est
+  CONSTAMMENT zéro. Donc **355 mois sur 360** portent un résiduel > 1 $, pire **108 608,35 $** (mois
+  360), cumul absolu **864 592,56 $**, sur une fixture ordinaire sans divorce ni stress-test.
+  **Cause** : `NetTransferLiquid = contribLiquid − withdrawalLiquid`, et ces accumulateurs ne sont
+  alimentés que par des chemins marginaux (immobilier, objectifs enfants, sauvetage de découvert). Le
+  flux ORDINAIRE — salaire net, dépenses, cotisations — ne les touche jamais. Vérifié : le résiduel
+  vaut EXACTEMENT `(NetSalary − Expenses) − Σcotisations`.
+  ⚠️ **Le même champ a DEUX sens** : `dailyPastLedger.ts` pose `NetTransferLiquid: income - expenses`
+  — le PASSÉ publie le vrai cashflow, le FUTUR publie zéro. **Quatre surfaces** le consomment :
+  `ProjectionExplains`, `ProjectionTooltip` (qui SOMME tous les `NetTransfer*` → total sous-estimé),
+  `FutureDetailModal` (« Cash (Coussin) ») et `yearlyActions` (« Cash »). La ligne de flux du cash
+  affiche donc 0 sur tout l'horizon futur pendant que le solde bouge.
+  **Fix** : aligner le futur sur le passé (la direction est déterminée). ⚠️ Fait passer une ligne
+  d'interface constamment nulle à ~10 k$/mois sur quatre surfaces, et `contribLiquid` traverse
+  `realEstateMonth` et les objectifs enfants → mesurer CHAQUE consommateur avant de livrer.
+  ⚠️ `tests/services/netTransferLiquidVide.test.ts` verrouille le contrat ACTUEL : au correctif, il
+  s'INVERSE là-bas (avec son histoire), il ne se supprime pas.
+
+
 ## 2026-09-05 — `[PERSONA-ACTIF-QUI-DECAISSE]` — LIVRÉ (lot 195, PR #926)
 
 Ticket d'origine tel qu'au moment de l'archivage :

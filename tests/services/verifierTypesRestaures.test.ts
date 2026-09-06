@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { verifierTypesRestaures, messageDeRefusTypes, resumeTechniqueDesFautifs, CHAMPS_TEXTE, LONGUEUR_MAX_DIAGNOSTIC } from '../../services/verifierTypesRestaures';
+import { verifierTypesRestaures, messageDeRefusTypes, resumeTechniqueDesFautifs, CHAMPS_TEXTE, CHAMPS_BOOLEENS, LONGUEUR_MAX_DIAGNOSTIC } from '../../services/verifierTypesRestaures';
 import { TEST_PERSONAS, getPersonaOrDefault } from '../../services/testPersonas';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { INITIAL_PROJECTION } from '../../constants';
@@ -293,8 +293,98 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         expect(verifierTypesRestaures({ balance: ['10000'] }).map((f) => f.chemin)).toEqual(['balance.0']);
     });
 
-    it('ne refuse ni `null`, ni un booléen, ni un nombre', () => {
-        expect(verifierTypesRestaures({ balance: null, actif: true, montant: 42 })).toEqual([]);
+    it('ne refuse ni `null`, ni un nombre, ni un booléen sur une clé DÉCLARÉE booléenne', () => {
+        // ⚠️ INVERSÉ au lot 199 : jusque-là ce cas passait `actif: true` — une clé inventée — et
+        // affirmait qu'un booléen n'est JAMAIS refusé. C'était le canal laissé ouvert
+        // (`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`), désormais fermé : un booléen n'est légitime que sur
+        // une clé de `CHAMPS_BOOLEENS`. La clé témoin devient `isActive`, déclarée dans `types.ts`.
+        expect(verifierTypesRestaures({ balance: null, isActive: true, montant: 42 })).toEqual([]);
+    });
+});
+
+describe('[BACKUP-BOOLEEN-DANS-UN-MONTANT] un booléen dans un montant est refusé (lot 199)', () => {
+    // `true + 1 === 2` : un booléen traverse l'arithmétique comme une chaîne, sans jamais devenir
+    // non fini. MESURÉ sur `couple-confort` (horizon 40 ans), 0 refus avant ce lot :
+    //   · `config.users[0].netSalary = true` → patrimoine successoral −91,9 % (9,74 M$ → 0,79 M$) ;
+    //   · `budgetItems[0].target = false` → −2,7 % ; `debts[0].balance = true` → +0,2 %.
+    it('refuse le canal au plus gros écart — le salaire net en booléen (−91,9 %)', () => {
+        const e = etat();
+        champ(e.config.users[0]).netSalary = true;
+        expect(verifierTypesRestaures(e).map((f) => f.chemin)).toContain('config.users.0.netSalary');
+    });
+
+    it('refuse `false` autant que `true`, et dans les conteneurs que le backup exporte', () => {
+        const cas: Array<[string, (e: AppState) => void]> = [
+            ['budgetItems.0.target', (e) => { champ(e.budgetItems[0]).target = false; }],
+            ['debts.0.balance', (e) => { champ(e.debts[0]).balance = true; }],
+            ['transactions.0.amount', (e) => { champ(e.transactions[0]).amount = true; }],
+            ['projection.inflationRate', (e) => { champ(e.projection).inflationRate = true; }],
+        ];
+        for (const [chemin, muter] of cas) {
+            const e = etat();
+            muter(e);
+            expect(verifierTypesRestaures(e).map((f) => f.chemin), chemin).toContain(chemin);
+        }
+    });
+
+    it('garde la valeur fautive TELLE QUELLE (`false` n\'est pas coercé en 0)', () => {
+        const fautifs = verifierTypesRestaures({ balance: false });
+        expect(fautifs[0].valeur).toBe(false);
+    });
+
+    it('le message nomme le canal : « du texte ou un booléen »', () => {
+        const e = etat();
+        champ(e.debts[0]).balance = true;
+        expect(messageDeRefusTypes(verifierTypesRestaures(e))).toContain('booléen');
+        expect(resumeTechniqueDesFautifs(verifierTypesRestaures(e))).toContain('booléen');
+    });
+
+    it('[garde de dérivation] tout champ BOOLÉEN de types.ts figure dans CHAMPS_BOOLEENS', () => {
+        // Même arbitrage que pour les textes : l'oubli d'un booléen déclaré est un faux refus BRUYANT,
+        // et c'est ce test qui le transforme en échec de CI avant qu'il ne vide l'app de quiconque.
+        const types = readFileSync(resolve(process.cwd(), 'types.ts'), 'utf8');
+        const booleens = new Set<string>();
+        for (const m of types.matchAll(/(?:^|(?<=[{;]))\s*(?:readonly\s+)?([A-Za-z_][\w]*)\??\s*:\s*([^;}]+)[;}]/gm)) {
+            const [, cle, brut] = m;
+            const type = brut.trim();
+            // ⚠️ Un `Record<…, boolean>` (`setupOptOut`) porte ses booléens sous SES clés, jamais sous la
+            // sienne : la clé du conteneur n'est pas un champ booléen. Ses clés réelles sont la 3e
+            // surface, mesurée sur les états du dépôt (voir le test suivant).
+            if (/Record</.test(type)) continue;
+            if (/\bboolean\b/.test(type)) booleens.add(cle);
+        }
+        expect(booleens.size).toBeGreaterThan(40); // mesuré : 58
+        expect(booleens.has('useTheoretical'), 'témoin : un booléen de ProjectionConfig doit être vu').toBe(true);
+        const manquants = [...booleens].filter((c) => !CHAMPS_BOOLEENS.has(c)).sort();
+        expect(manquants, 'champ BOOLÉEN de types.ts absent de CHAMPS_BOOLEENS : toute donnée réelle qui le porte VIDERA l\'app.').toEqual([]);
+    });
+
+    it('[garde de dérivation, 2e surface] tout champ booléen PERSISTÉ du store figure dans la liste', () => {
+        const fichier = readFileSync(resolve(process.cwd(), 'store/useFinanceStore.ts'), 'utf8');
+        const debut = fichier.indexOf('export interface FinanceState');
+        const fin = fichier.indexOf('\n}', debut);
+        expect(debut).toBeGreaterThan(0);
+        const store = fichier.slice(debut, fin);
+        const booleens = new Set<string>();
+        for (const m of store.matchAll(/(?:^|(?<=[{;]))\s*(?:readonly\s+)?([A-Za-z_][\w]*)\??\s*:\s*([^;}]+)[;}]/gm)) {
+            const [, cle, brut] = m;
+            const type = brut.trim();
+            if (!/\bboolean\b/.test(type)) continue;
+            const ligne = store.slice(store.lastIndexOf('\n', m.index) + 1, store.indexOf('\n', m.index));
+            if (/=>/.test(ligne) || type.startsWith('(')) continue; // une méthode n'est pas un champ persisté
+            booleens.add(cle);
+        }
+        expect(booleens.has('projectionRunMC'), 'témoin : un booléen du corps du store doit être vu').toBe(true);
+        const manquants = [...booleens].filter((c) => !CHAMPS_BOOLEENS.has(c)).sort();
+        expect(manquants, 'champ BOOLÉEN du store absent de CHAMPS_BOOLEENS : il videra l\'app au lancement.').toEqual([]);
+    });
+
+    it('[3e surface] les clés d\'un Record booléen (setupOptOut.<page>) — invisibles au scan des types — passent', () => {
+        // Mesuré sur les états du dépôt : `children`, `debts`, `lifeProjects`, `realEstate` portent
+        // un booléen sous `setupOptOut`. Un scan des TYPES ne les voit pas (clés d'un `Record`).
+        const e = etat();
+        (e as unknown as Record<string, unknown>).setupOptOut = { children: true, debts: false, lifeProjects: true, realEstate: true };
+        expect(verifierTypesRestaures(e).map((f) => f.chemin).filter((c) => c.startsWith('setupOptOut'))).toEqual([]);
     });
 });
 

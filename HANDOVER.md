@@ -16,6 +16,14 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-06 — Lot 202 : le journal RAMQ/FSS publie total et part par adulte dans la MÊME unité (`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`) + `[A11Y-ADDSTOCKFORM-LABELS]` caduc
+> Le journal de décembre écrivait « X/an (Y/adulte) » avec X nominal et Y réel : la division invitée ne rendait pas le
+> nombre d'adultes dès que l'année est indexée (mesuré : 605 $ affiché pour 907 $ payé par adulte, facteur 1,5). Les deux
+> lignes nomment maintenant le compte et publient la part dans l'unité du total. Garde sur la RELATION (n × part = total =
+> `divers`), 2 perturbations aux signatures distinctes. `[A11Y-ADDSTOCKFORM-LABELS]` : déjà livré au lot 51 (#777) sans être
+> coché — fermé par une MESURE (7 champs par `getByLabelText`, perturbation rouge). Servi : texte du journal de décembre
+> (FutureDetailModal) → déploiement à vérifier. Archive du lot 201.
+
 > ## 🟦 Session 2026-09-06 — Lot 201 : libellés visibles et `aria-label` — aucune dérive, garde posée (`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`, caduc)
 > Scan de `components/` : 26 sites / 9 fichiers, 20 paires identiques, 4 délibérément descriptives, 2 non comparables. La
 > précondition du ticket n'est pas remplie → balisage intact, garde de dérive livrée (`labelAriaCoherents.test.ts`, 2

@@ -267,3 +267,25 @@ describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais 
         expect(banner.textContent).toContain('231,40');
     });
 });
+
+describe('[A11Y-ADDSTOCKFORM-LABELS] chaque champ du formulaire a un nom accessible (fermé au lot 202, livré au lot 51 #777)', () => {
+    // Le ticket décrivait 7 champs sans association label/contrôle. Recensé au lot 202 : le lot 51
+    // (`[A11Y-LABELS-RESTE-DU-DEPOT]`) les avait TOUS associés (`htmlFor` + `id`) sans cocher ce
+    // ticket-ci — classe PM-STALE-BACKLOG. La garde de dépôt `controlAccessibleNameGuard` interdit déjà
+    // un contrôle anonyme ; ce cas fige le FAIT au niveau du rendu (le nom ACCESSIBLE, pas l'attribut),
+    // pour que la clôture du ticket soit une mesure et non une lecture.
+    it('les 7 champs sont atteignables par leur libellé, en mode manuel', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'xyz' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        const noms = [
+            /Symbole \/ Ticker/i, /Prix actuel par action/i, /Date d'achat/i, /Quantité/i,
+            /Prix d'achat par action/i, /Compte fiscal/i, /^Devise$/i,
+        ];
+        const controles = noms.map((n) => screen.getByLabelText(n));
+        expect(controles).toHaveLength(7);
+        for (const c of controles) expect(['INPUT', 'SELECT']).toContain(c.tagName);
+        // Le combobox d'autocomplétion EST le champ Symbole : un seul contrôle, nommé par son label.
+        expect(screen.getByRole('combobox', { name: /Symbole/i })).toBe(controles[0]);
+    });
+});

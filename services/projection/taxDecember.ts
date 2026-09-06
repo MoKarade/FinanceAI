@@ -908,7 +908,11 @@ export function processDecemberTaxFiling(
         const ramqTotal = ramqPerAdult * payingAdults * inflationFactor;
         if (ramqTotal > 0) {
             taxCurrent.divers += ramqTotal;
-            logs.push(`💊 RAMQ médicaments: ${formatCAD(Math.round(ramqTotal))}/an (${formatCAD(Math.round(ramqPerAdult))}/adulte)`);
+            // [LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE] la part par adulte se publie dans la MÊME unité
+            // que le total (nominale, celle de `divers`) — `ramqPerAdult` est en dollars RÉELS, et une
+            // phrase « X/an (Y/adulte) » qui mêle les deux invite à une division fausse. Le nombre de
+            // payeurs est nommé : c'est LUI que la division doit rendre.
+            logs.push(`💊 RAMQ médicaments: ${formatCAD(Math.round(ramqTotal))}/an (${payingAdults} adulte${payingAdults > 1 ? 's' : ''} × ${formatCAD(Math.round(ramqPerAdult * inflationFactor))})`);
         }
     }
 
@@ -946,7 +950,8 @@ export function processDecemberTaxFiling(
         const fssTotal = fssPerAdult * ctx.activeUsersCount * inflationFactor;
         if (fssTotal > 0) {
             taxCurrent.divers += fssTotal;
-            logs.push(`🏥 FSS (ligne 446): ${formatCAD(Math.round(fssTotal))}/an (${formatCAD(Math.round(fssPerAdult))}/adulte)`);
+            // [LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE] même unité que le total (voir la RAMQ ci-dessus).
+            logs.push(`🏥 FSS (ligne 446): ${formatCAD(Math.round(fssTotal))}/an (${ctx.activeUsersCount} adulte${ctx.activeUsersCount > 1 ? 's' : ''} × ${formatCAD(Math.round(fssPerAdult * inflationFactor))})`);
         }
     }
 

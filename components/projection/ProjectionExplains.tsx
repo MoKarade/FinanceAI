@@ -50,6 +50,11 @@ const ACCOUNTS: ReadonlyArray<AccountDef> = [
   { key: 'crypto', label: 'Crypto', balance: 'Crypto', growth: 'MarketGrowthCrypto', transfer: 'NetTransferCrypto' },
   { key: 'reee', label: 'REEE (études)', balance: 'REEE', contrib: 'ReeeContrib', growth: 'MarketGrowthREEE', payout: 'ReeePayout' },
   { key: 'immo', label: 'Immobilier', balance: 'Immobilier' },
+  // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214, revue) Compte STATIQUE comme l'immobilier : une valeur, aucun flux.
+  // Cette liste est INDÉPENDANTE de `comptes.ts` — un grep sur `Immobilier` l'avait manquée. ⚠️ Comme
+  // `immo`, cette ligne ne se REND que si le compte est mouvementé (`moved`), donc jamais aujourd'hui :
+  // elle est là pour que la liste reste complète le jour où les soldes seront rendus.
+  { key: 'entreprise', label: 'Entreprise privée', balance: 'Entreprise' },
   { key: 'dette', label: 'Dettes', balance: 'DetteTotale' },
 ];
 

@@ -300,6 +300,9 @@ const buildParams = (s: Scenario): SimulationParams => {
         lifeEvents: buildLifeEvents(s),
         vehicleReplacements: s.vehicle === null ? [] : [{ id: 'v0', cyclYears: s.vehicle.cyclYears, costEstimate: s.vehicle.cost }],
         majorRenovations: buildRenovations(s),
+        // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214, revue) Une entreprise privée un tirage sur trois — sinon `Entreprise`
+        // dans ASSET_KEYS est INERTE ici (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+        privateBusinesses: s.years % 3 === 0 ? [{ id: 'b0', name: 'CCPC', ownershipPct: 60, estimatedValue: 150_000 * (1 + (s.years % 5)) }] : [],
         retirementGoal: buildRetirement(s), config: buildConfig(s),
         baseGrossAnnual: (s.grossMarc + s.grossAnna) * 12,
         baseNetAnnual: (netMarc + netAnna) * 12,

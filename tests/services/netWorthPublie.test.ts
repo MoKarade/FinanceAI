@@ -20,6 +20,8 @@ import { NET_WORTH_SIGN, type NetWorthParts } from '../../services/projection/ne
 import { NET_WORTH_DAILY_ASSETS, FIELD_KIND } from '../../services/projection/dailyLedger';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
 import type { BudgetConfig, User } from '../../types';
+import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
+import { extractYearlySeries } from '../../mcp/whatIf';
 
 /** Terme du patrimoine → champ PUBLIÉ dans `chartData`. Les trois dettes sont sommées dans `DettesNonImmo`. */
 const PUBLIE_PAR_TERME: Record<keyof NetWorthParts, string> = {
@@ -114,11 +116,37 @@ describe('[ENG-W5-BUSINESS-NON-PUBLIE] les listes DÉRIVENT du sign-map, elles n
 
     it('CURVE_FIELDS (la vraie courbe, ventilation allégée) contient CHAQUE actif publié — sinon la recomposition au jour s’ABSTIENT en prod', () => {
         // `[CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD]` : le test ventile tout, la courbe passe `fields`.
-        const src = readFileSync(join(__dirname, '../../components/FutureProjection.tsx'), 'utf-8');
+        // ⚠️ Source DÉCOMMENTÉE (revue du lot 214) : le bloc `CURVE_FIELDS` porte un commentaire de sept lignes,
+        // et « `'Entreprise'` retirée du Set + mentionnée dans ce commentaire » laissait la garde VERTE —
+        // `UNE-GARDE-ECRITE-A-COTE-DE-SON-SUJET-LIT-SON-PROPRE-COMMENTAIRE`, re-commise par son auteur.
+        const brut = readFileSync(join(__dirname, '../../components/FutureProjection.tsx'), 'utf-8');
+        const src = stripCommentsJsx(brut);
+        expect(partDeCodeRestante(brut, src)).toBeGreaterThan(0.3); // anti-vacuité du décommentage (mesuré : fichier riche en prose)
         const bloc = src.match(/const CURVE_FIELDS[^=]*= new Set\(\[([\s\S]*?)\]\)/);
         if (!bloc) throw new Error('CURVE_FIELDS introuvable dans FutureProjection.tsx');
         const champs = new Set([...bloc[1].matchAll(/'([A-Za-z0-9]+)'/g)].map(m => m[1]));
+        expect(champs.size).toBeGreaterThan(10); // anti-vacuité : le Set a bien été lu
         for (const k of ACTIFS_PUBLIES) expect(champs.has(k), `${k} manque à CURVE_FIELDS`).toBe(true);
         expect(champs.has('DettesNonImmo')).toBe(true);
     });
 });
+
+describe('[ENG-W5-BUSINESS-NON-PUBLIE] le registre MCP (`extractYearlySeries`) somme aussi — un modèle ne voit pas le graphe', () => {
+    /** Champ publié → clé de la série annuelle servie par `get_projection` / `simulate_what_if`. */
+    const CLE_ANNUELLE: Record<string, string> = {
+        Liquidites: 'liquidites', CELI: 'celi', CELIAPP: 'celiapp', REER: 'reer', REEE: 'reee', NonReg: 'nonReg',
+        Crypto: 'crypto', Immobilier: 'immobilier', Entreprise: 'entreprise',
+    };
+    it('chaque actif publié a sa clé annuelle, et netWorth == Σ actifs − dettesNonImmo sur chaque point servi', () => {
+        const serie = extractYearlySeries(pts() as unknown as ProjectionChartPoint[]) as unknown as Record<string, number | null>[];
+        expect(serie.length).toBeGreaterThan(20);
+        for (const k of ACTIFS_PUBLIES) expect(CLE_ANNUELLE[k], `${k} n'a pas de clé annuelle déclarée`).toBeDefined();
+        for (const y of serie) {
+            const somme = ACTIFS_PUBLIES.reduce((s, k) => s + (y[CLE_ANNUELLE[k]] ?? 0), 0);
+            // Chaque terme est arrondi au dollar : ≤ 1 $ par terme.
+            expect(Math.abs((y.netWorth ?? 0) - (somme - (y.dettesNonImmo ?? 0)))).toBeLessThanOrEqual(ACTIFS_PUBLIES.length + 1);
+            expect(y.entreprise).toBe(900_000);
+        }
+    });
+});
+

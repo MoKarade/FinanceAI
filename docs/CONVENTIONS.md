@@ -12238,6 +12238,15 @@ conservation, elle prouve que zéro se conserve.** ⚠️ Corollaire de câblage
 promettait « valeur COURANTE, plate sur le passé » depuis août — le paramètre existait, le PRODUCTEUR non
 (`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`, encore) ; et la règle de calcul, dupliquée entre
 le moteur et l'écran, a été HISSÉE en source unique avant d'être appelée une seconde fois.
+⚠️⚠️ Et le panel a trouvé DEUX choses que le lot n'avait pas vues : (a) ma garde `CURVE_FIELDS` lisait la source
+BRUTE — « `'Entreprise'` retirée du Set + citée dans le commentaire du même bloc » la laissait VERTE ; c'est
+`UNE-GARDE-ECRITE-A-COTE-DE-SON-SUJET-LIT-SON-PROPRE-COMMENTAIRE`, écrite par moi, re-commise par moi, sur un bloc qui
+porte DÉJÀ sept lignes de commentaire : **un scan de source se lit décommenté dès la première ligne, pas après la
+première fois qu'on se fait avoir** ; (b) le registre MCP (`extractYearlySeries`) ne sommait pas non plus — le
+recensement des consommateurs s'était arrêté aux registres d'ÉCRAN ; un modèle ne voit pas le graphe, il ne peut
+que sommer. Et (c) **publier un actif rend VISIBLES les mutateurs qui l'oublient** : l'entreprise n'est pas partagée
+au divorce (jumeau exact de `[ENG-W5-RENTAL-OFFBALANCE]`, un mois après sa correction) — mesuré, routé à Marc (Q16),
+parce que le partage d'une société n'est pas un correctif mécanique au Québec.
 
 ### Variante notée au lot 213 (2026-09-07) — un test qui CERTIFIE un silence reste vert quand on le rend parlant, et un paramètre mort que les appelants NOURRISSENT a l'air vivant
 

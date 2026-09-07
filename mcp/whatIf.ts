@@ -418,6 +418,9 @@ interface YearlyPoint {
     crypto: number | null;
     reee: number | null;
     immobilier: number | null;
+    /** [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214, revue) Le 9e actif — sans lui, le modèle recevait une
+     *  ventilation qui ne sommait pas (écart = toute la valeur de l'entreprise), et il ne peut pas voir le graphe. */
+    entreprise: number | null;
     dettesNonImmo: number | null;
     detteTotale: number | null;
 }
@@ -449,6 +452,7 @@ export function extractYearlySeries(chartData: readonly ProjectionChartPoint[]):
             crypto: roundOrNull(p.Crypto),
             reee: roundOrNull(p.REEE),
             immobilier: roundOrNull(p.Immobilier),
+            entreprise: roundOrNull(p.Entreprise),
             dettesNonImmo: roundOrNull(p.DettesNonImmo),
             detteTotale: roundOrNull(p.DetteTotale),
         });

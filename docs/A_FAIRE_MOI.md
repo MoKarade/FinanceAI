@@ -1510,3 +1510,21 @@ l'import intelligent chaque fois que tu masques l'écran.
 - Q15c — **Masquer les montants** dans le prompt (libellés seuls) — ⚠️ la catégorisation perd un signal utile
   (un « TIM HORTONS 4,50 $ » et un « TIM HORTONS 450 $ » ne sont pas la même dépense).
 
+## Question Q16 — au divorce, l'entreprise privée se partage-t-elle ? (2026-09-07, lot 214)
+
+En publiant enfin la valeur de l'entreprise privée dans la courbe (lot 214), le panel a vu ce que personne ne pouvait
+voir avant : au DIVORCE, tous les actifs sont divisés selon `divorceSplitPct` (CELI, REER, immobilier, immeubles
+locatifs, dettes…) **sauf l'entreprise**, qui reste à 100 %. Mesuré : avec une entreprise de 900 000 $ et un partage à
+75 %, le patrimoine final est +900 000 $ par rapport au même scénario sans entreprise — partagée comme le reste, il
+resterait 225 000 $. Ce n'est pas un bug mécanique évident : au Québec, le patrimoine familial (partagé de droit)
+n'inclut PAS les actions d'une société ; ce qui en advient dépend du régime matrimonial (société d'acquêts : oui,
+séparation de biens : non) et de la convention entre conjoints.
+
+**Question Q16** : que fait le moteur au divorce avec la valeur d'une entreprise privée ?
+- Q16a — **La partager comme les autres actifs** (`× keep`), avec une note « société d'acquêts par défaut »
+  [Recommandé : cohérent avec tout le reste du partage, qui ne distingue pas non plus les biens propres ; la
+  simulation surestime aujourd'hui le patrimoine post-divorce de toute la valeur de l'entreprise].
+- Q16b — **La laisser intacte**, mais l'ÉCRIRE (commentaire + garde) : « l'entreprise est un bien propre »
+  [réaliste en séparation de biens, mais c'est le seul actif traité ainsi — l'incohérence resterait].
+- Q16c — **Un réglage par entreprise** (`partageableAuDivorce`, défaut = partagée) — S, une case de plus dans W5.7.
+

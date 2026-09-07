@@ -97,7 +97,7 @@ describe('[ENG-DIVORCE-NO-CONSERVATION-GUARD] le splitter est enfin sous invaria
             const p = data[i] as unknown as Record<string, number>;
             const actifs = (Number(p.Liquidites) || 0) + (Number(p.CELI) || 0) + (Number(p.CELIAPP) || 0)
                 + (Number(p.REER) || 0) + (Number(p.NonReg) || 0) + (Number(p.Crypto) || 0)
-                + (Number(p.REEE) || 0) + (Number(p.Immobilier) || 0);
+                + (Number(p.REEE) || 0) + (Number(p.Immobilier) || 0) + (Number(p.Entreprise) || 0);
             const residual = Math.abs(actifs - (Number(p.DetteTotale) || 0) - (Number(p.NetWorth) || 0));
             if (residual > worst) { worst = residual; worstAt = i; }
         }
@@ -181,7 +181,7 @@ describe('[TEST-DIVORCE-SANS-IMMOBILIER] le splitter reste sous invariant avec u
         let worstNaif = 0;
         for (let i = 0; i < data.length; i++) {
             const p = data[i];
-            const actifs = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'NonReg', 'Crypto', 'REEE', 'Immobilier']
+            const actifs = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'NonReg', 'Crypto', 'REEE', 'Immobilier', 'Entreprise']
                 .reduce((s, k) => s + num(p, k), 0);
             const residual = Math.abs(actifs - num(p, 'DettesNonImmo') - num(p, 'NetWorth'));
             const residualNaif = Math.abs(actifs - num(p, 'DetteTotale') - num(p, 'NetWorth'));

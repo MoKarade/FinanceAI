@@ -28,7 +28,10 @@
 > NetWorthParts, …>` → refus au typecheck), la liste quotidienne se DÉRIVE du sign-map, `CURVE_FIELDS` la contient.
 > `NetWorth` bit-identique avant/après. Cinq perturbations, dont la preuve que le harnais était AVEUGLE (fixture à 0
 > + champ absent → 22 verts). ⚠️ `bilanDuJour` lit la même liste que la recomposition : identité CIRCULAIRE pour un
-> actif absent — d'où la garde par la dent de scie (< 50 000 $). Lot 213 : Vercel READY sur `1030a2f9`. Code servi
+> actif absent — d'où la garde par la dent de scie (< 50 000 $). **Panel** : le registre MCP (`extractYearlySeries`) ne
+> sommait pas non plus → clé `entreprise` + garde ; ma garde `CURVE_FIELDS` lisait la source BRUTE (un commentaire la
+> satisfaisait — ma propre leçon, re-commise) → décommentée ; et un 🔴 PRÉ-EXISTANT rendu visible : **l'entreprise n'est
+> pas partagée au divorce** (mesuré : +900 000 $ de patrimoine final, chute identique avec ou sans) → décision Marc **Q16**. Lot 213 : Vercel READY sur `1030a2f9`. Code servi
 > → déploiement à vérifier. Reste : lot 215 (gate REER per-conjoint) et les tickets 🧭.
 
 > ## 🟦 Session 2026-09-07 — Lot 213 : les 16 correctifs XS/S SANS décision de l'audit n°4, livrés d'un coup

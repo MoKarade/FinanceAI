@@ -1551,6 +1551,10 @@ cassé → l'anti-vacuité rougit ; l'exemption retirée → le faux offender st
 
 ## 2026-09-03 — `[ENG-RANKING-ORDER-PIN]` — LIVRÉ (lot 116, PR #847)
 
+> ⚠️ **Audit 2026-09-07** : la garde `rankStrategiesOrdreComplet.test.ts` ET le module `rankStrategies` ont été retirés
+> VOLONTAIREMENT au lot 162 (PR #893, décision Marc, consignée dans `tests/services/projection.totalTaxesPaid.test.ts`).
+> Entrée **supersédée**, pas régressée : ne pas la lire comme une garde encore en place.
+
 L'ORDRE complet du classement de stratégies est épinglé sur les résultats RÉELS du moteur (cinq
 stratégies, quatre objectifs), pas seulement sur des scénarios synthétiques. `rankStrategies`
 normalise en min-max sur l'ensemble comparé : déplacer une grandeur d'un seul scénario change

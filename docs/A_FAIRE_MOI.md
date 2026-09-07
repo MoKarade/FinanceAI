@@ -1492,3 +1492,21 @@ additif au schéma de sortie.
   au moteur.]
 - Q14b — où vivent les quatre cases : à côté de la légende du graphe [Recommandé], ou dans Réglages ?
 
+## Question Q15 — fonctions IA « cœur » en mode discret (2026-09-07, audit, lot 212)
+
+L'audit 2026-09-07 a trouvé trois cartes de CONSEIL qui envoient des montants à l'assistant en mode discret ;
+elles sont couvertes par ta décision du 2026-09-05 (« masquer ») et se corrigent sans te redemander
+(`[AI-PRIVACY-CONSEILS-NON-GATES]`). Restent deux fonctions qui ne sont PAS des conseils : la **catégorisation
+automatique** des transactions (`categorizeBatch`) et la **détection d'abonnements** (`detectSubscriptionsAI`),
+déclenchées par un IMPORT, qui envoient les libellés ET les montants. Ta décision de septembre parlait de
+« l'assistant » ; ces deux-là sont le cœur de l'import, et les bloquer en mode discret revient à désactiver
+l'import intelligent chaque fois que tu masques l'écran.
+
+**Question Q15** : en mode discret, que font ces deux fonctions ?
+- Q15a — **Laisser passer avec une bannière** « des montants partent vers l'IA malgré le mode discret »
+  [Recommandé : le mode discret protège l'ÉCRAN d'un regard, pas la connexion à ton propre fournisseur IA ; bloquer
+  l'import rendrait le mode discret coûteux à activer, donc moins utilisé].
+- Q15b — **Bloquer** (même règle que les conseils : refus + message, l'import attend la sortie du mode discret).
+- Q15c — **Masquer les montants** dans le prompt (libellés seuls) — ⚠️ la catégorisation perd un signal utile
+  (un « TIM HORTONS 4,50 $ » et un « TIM HORTONS 450 $ » ne sont pas la même dépense).
+

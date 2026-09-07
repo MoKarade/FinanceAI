@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — audit financier complet, passe n°4] — 2026-09-07
+
+### Audit
+- **Audit financier récurrent (passe n°4)** — rapport daté `docs/AUDIT_FINANCIER_2026-09-07.md` (panel de 11 agents,
+  chaque chiffre re-mesuré). Cœur confirmé sain : 0 écart fiscal de valeur, conservation de l'argent à 0,02 $ sur plus
+  de 15 000 points, 0 vulnérabilité, les 10 findings de juillet fermés, et **233 des 239 corrections livrées depuis le
+  20 août encore en place**. Nouveaux findings routés au BACKLOG (rien de corrigé dans ce lot) : la valeur d'une
+  entreprise privée compte dans le patrimoine net mais n'apparaît dans aucune décomposition (la somme des composantes
+  ne fait pas le total) ; les droits REER d'un couple s'arrêtent à l'âge du premier conjoint seul ; un solde de dette
+  vidé s'enregistre et compte pour zéro sans avertissement (« Liberté dans 0,1 ans ») ; trois cartes de conseil IA
+  envoient encore des montants en mode discret ; un relevé trop long pour l'IA est annoncé « aucune transaction
+  reconnue ». Documentation : taux fédéral de 15 % marqué contesté, forfait de 45 % sur bonus/RSU documenté avec sa
+  table d'écart, comptes de tests et de modules rafraîchis.
+
 ## [unreleased] — 2026-09-06 (Quatre boutons verts, violets et indigo un peu plus foncés pour rester lisibles)
 
 - **Corrigé** : les boutons « Enregistrer » d'une dette, « Sauvegarder » (Paramètres), « Ajouter » un aléa de vie et

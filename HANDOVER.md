@@ -16,6 +16,22 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-07 — Lot 212 (docs) : AUDIT FINANCIER passe n°4 — cœur sain, 233/239 corrections tiennent, un CRITIQUE par OMISSION
+> Marc (« je ne peux pas agir pour le moment, fais tout ce que tu peux seul, lance une grosse analyse, check tous les
+> problèmes corrigés, mets à jour la doc ») → panel de 11 agents sur `3f657d7d`, chaque finding relu au `fichier:ligne`,
+> chaque chiffre publié RE-MESURÉ par moi. Rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`. Résultat : 0 écart fiscal de
+> valeur, conservation 0,02 $, sécurité 0 finding, 10/10 de juillet fermés, **233/239** corrections archivées encore en
+> place (1 régression mineure `PaireTexte`, 2 gardes disparues dont 1 supersession volontaire). MAIS : 🔴 la valeur
+> d'une **entreprise privée est dans `NetWorth` et publiée NULLE PART** (`NW − Σ actifs publiés + dettes` = 900 000 $
+> exactement, mesuré) ; 🟠 les **droits REER d'un couple sont fermés par l'âge du premier conjoint seul** (72/57 →
+> 0 $ + reset, mesuré) ; 🟠 solde de dette `NaN` accepté à l'édition et rabattu sur 0 sans trace (« Liberté dans
+> 0,1 ans ») ; 🟠 trois cartes de conseil hors de la décision « masquer » du 2026-09-05 ; 🟠 `stop_reason` jeté par
+> l'import Vision. 25 tickets au BACKLOG (section 🔬 en tête), Q15 posée (fonctions cœur en mode discret),
+> FISCAL_REFERENCE §1 requalifiée (15 % CONTESTÉ) + §9 (proxy 45 %, dividendes, PSV), comptes README/ARCHITECTURE/
+> PROJECTION rafraîchis, god-files re-mesurés. **Suite, sans Marc** : lot 213 = XS/S sans décision ; lot 214 = publier
+> `Entreprise` (ne déplace pas un dollar) ; lot 215 = gate REER per-conjoint (money-critical contenu, mesure avant/après).
+> Rien de servi ne change dans ce lot.
+
 > ## 🟦 Session 2026-09-06 — Lot 211 (docs) : le stock de tickets MESURÉS sans décision est épuisé — plan P6 posé à Marc
 > Après les lots 201–210 (PR #932 → #941, toutes mergées, Vercel READY sur chaque merge de code servi), il ne reste au
 > BACKLOG que des tickets qui attendent une DÉCISION (P1–P6, Q1–Q14, ESTATE-NPV ×3, `[ENG-RENTES…]` couplé à P5,

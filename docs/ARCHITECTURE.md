@@ -48,8 +48,8 @@ FinanceAI/
 │   ├── settings/            BackupPanel, ImportBankStatement
 │   └── retirement/          AssetLocationCard, GoalSeekerCard
 ├── services/                Logique métier pure (testable, sans React)
-│   ├── projection.ts        Orchestrateur (2 228 lignes, mesuré 2026-08-19)
-│   ├── projection/          50 sous-modules (split Phase 3, mesuré 2026-08-19)
+│   ├── projection.ts        Orchestrateur (2 806 lignes, mesuré 2026-09-07)
+│   ├── projection/          57 sous-modules (split Phase 3, mesuré 2026-09-07)
 │   ├── projection.worker.ts Worker MC
 │   ├── claude.ts            Wrapper Anthropic SDK
 │   ├── secureKeyStore.ts    AES-256-GCM + IndexedDB (clé device)

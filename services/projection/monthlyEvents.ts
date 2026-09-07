@@ -7,6 +7,14 @@ import { formatCAD } from '../../utils/format';
 import type { TravelGoal, LifeEvent, ProjectionConfig, FinancialGoal } from '../../types';
 import { logErrorThrottled } from '../errorLogger';
 
+/**
+ * [FISC-GUARD-SCOPE-MONTHLYEVENTS] (audit 2026-09-07) Produit NET d'une vente immobilière = 95 % de la
+ * valeur : 5 % de frais de disposition (courtage, notaire, quittance). Hypothèse de MODÈLE documentée
+ * `docs/FISCAL_REFERENCE.md` §8, pas un barème — elle vivait en deux `0.95` nus dans un module que le
+ * ratchet fiscal ne scannait pas. Sert au produit encaissé ET au gain en capital d'un locatif.
+ */
+export const REAL_ESTATE_SALE_NET_FACTOR = 0.95;
+
 // ── Voyages ──────────────────────────────────────────────────────────────────
 
 export function applyTravelExpenses(
@@ -219,7 +227,7 @@ export function applyLifeEvents(
                     ? propertiesState.find(p => p.id === e.propertyId && isSellable(p))
                     : propertiesState.find(isSellable);
                 if (soldProp) {
-                    const saleNet = soldProp.currentValue * 0.95 - soldProp.mortgage;
+                    const saleNet = soldProp.currentValue * REAL_ESTATE_SALE_NET_FACTOR - soldProp.mortgage;
                     // FISC-RE-SALE-RESIDUAL : PAS de `Math.max(0, …)`. Une vente quasi-underwater (hypothèque
                     // entre 95 % et 100 % de la valeur → les 5 % de frais poussent sous l'eau) produit un
                     // `saleNet` NÉGATIF : le déficit (frais > équité) doit être PORTÉ (il tombe dans le
@@ -236,7 +244,7 @@ export function applyLifeEvents(
                     // (vente à perte) donne un `rawGain` NÉGATIF : il doit être PORTÉ en banque de pertes
                     // (déductible des gains futurs), pas ignoré — d'où la suppression du `Math.max(0, …)`.
                     if (!soldProp.isPrimaryResidence) {
-                        const rawGain = soldProp.currentValue * 0.95 - (soldProp.cost ?? 0);
+                        const rawGain = soldProp.currentValue * REAL_ESTATE_SALE_NET_FACTOR - (soldProp.cost ?? 0);
                         const { bankedLoss, taxableGain } = state.realizeCapitalDisposition(rawGain);
                         if (taxableGain > 0) {
                             state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${formatCAD(Math.round(taxableGain))} — 50 % imposable`, dayOfIsoDate(e.date));

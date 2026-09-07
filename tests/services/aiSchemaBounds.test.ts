@@ -39,7 +39,7 @@ const ALLOWED = ['Épicerie', 'Transport', 'Autre'];
 /** La confiance RETENUE pour une transaction, après passage par le schéma réel. */
 const confidenceOf = async (raw: string): Promise<number | undefined> => {
     mocks.nextResponseText = raw;
-    const out = await categorizeBatch([tx(1, 'IGA DES SOURCES')], 'sk-test', [], ALLOWED);
+    const out = await categorizeBatch([tx(1, 'IGA DES SOURCES')], 'sk-test', ALLOWED);
     return out[0].confidence;
 };
 

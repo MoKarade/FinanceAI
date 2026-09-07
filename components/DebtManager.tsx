@@ -18,7 +18,7 @@ import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
 import { maskedTick } from '../utils/chartPrivacy';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
-import { DebtKindFields, refusOrigineIncoherente } from './debt/DebtKindFields';
+import { DebtKindFields, refusOrigineIncoherente, refusChampNonFini } from './debt/DebtKindFields';
 
 interface DebtManagerProps {
     debts: Debt[];
@@ -33,6 +33,10 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // à la ressaisir. Demande Marc 2026-08-19 — il ne pouvait pas corriger le début de son bail auto.
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draft, setDraft] = useState<Partial<Debt>>({});
+    // [DEBT-BALANCE-NAN-SILENCIEUX] Le refus d'une saisie non numérique est ANNONCÉ (région live
+    // montée en permanence, texte vidé quand tout va bien) — un `return` muet laissait croire que
+    // le clic n'avait rien fait, et un `NaN` enregistré ne se voyait plus nulle part.
+    const [refusSaisie, setRefusSaisie] = useState<string | null>(null);
     const [extraPayment, setExtraPayment] = useState(200);
     // [D6-PRIV-MONTANTS] focus du slider → étiquette révélée pendant l'ajustement seulement.
     const [extraSliderFocus, setExtraSliderFocus] = useState(false);
@@ -42,6 +46,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         // [DEBT-UI-PAR-TYPE] Même refus que l'écriture par l'assistant (`applyDocument`) : accepter
         // ici ce que le MCP rejette laisserait le moteur refuser la courbe EN SILENCE.
         if (refusOrigineIncoherente(newDebt.originalBalance, newDebt.balance)) return;
+        // [DEBT-BALANCE-NAN-SILENCIEUX] `balance > 0` refusait déjà un solde vidé, mais PAS un taux
+        // ni un minimum vidés — et l'édition (ci-dessous) ne refusait rien du tout.
+        const refus = refusChampNonFini(newDebt);
+        setRefusSaisie(refus);
+        if (refus) return;
         if (newDebt.name && newDebt.balance && newDebt.balance > 0) {
             setDebts([...debts, { ...newDebt, id: Date.now().toString() } as Debt]);
             setIsAdding(false);
@@ -52,7 +61,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const handleDelete = (id: string) => { setConfirmDeleteId(id); };
 
     const startEdit = (d: Debt) => { setEditingId(d.id); setDraft({ ...d }); setIsAdding(false); };
-    const cancelEdit = () => { setEditingId(null); setDraft({}); };
+    const cancelEdit = () => { setEditingId(null); setDraft({}); setRefusSaisie(null); };
     const saveEdit = () => {
         if (!editingId) return;
         // [DEBT-UI-PAR-TYPE] Cohérence du montant emprunté, sur les valeurs EFFECTIVES (brouillon
@@ -68,6 +77,10 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         const existante = debts.find(d => d.id === editingId);
         if (refusOrigineIncoherente(draft.originalBalance ?? existante?.originalBalance,
             draft.balance ?? existante?.balance)) return;
+        // [DEBT-BALANCE-NAN-SILENCIEUX] Jugé sur les valeurs EFFECTIVES (même fusion que l'écriture).
+        const refus = refusChampNonFini({ ...existante, ...draft });
+        setRefusSaisie(refus);
+        if (refus) return;
         // ⚠️ On fusionne sur la dette EXISTANTE (`{ ...d, ...draft }`) plutôt que de remplacer par le
         // brouillon : les champs que le formulaire ne montre pas (`kind`, `limit`, `rateProvider`,
         // `isInterestDeductible`…) survivraient sinon à peine à un clic sur « Enregistrer ».
@@ -107,7 +120,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
             if (month % 3 === 0 || monthlyBalanceTotal === 0) data.push({ month, balance: Math.round(monthlyBalanceTotal), interestAccumulated: Math.round(totalInterestPaid) });
             month++;
         }
-        return { chart: data, totalInterest: totalInterestPaid, months: month };
+        // [DEBT-BALANCE-NAN-SILENCIEUX] Un champ non fini (dette persistée avant le refus de saisie)
+        // rend `NaN > 0` faux dès le 1er mois : la boucle s'arrête et affichait « Liberté dans 0,1 ans »
+        // — mesuré. Une simulation qui ne peut pas tourner le DIT (« — »), elle n'invente pas une date.
+        const valide = debts.every(d => Number.isFinite(d.balance) && Number.isFinite(d.interestRate) && Number.isFinite(d.minimumPayment));
+        return { chart: data, totalInterest: totalInterestPaid, months: month, valide };
     }, [debts, extraPayment]);
 
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
@@ -177,6 +194,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     extinction. Avec une date de fin, il s'arrête à ce mois-là — et s'il reste un
                                     solde, il est signalé au lieu d'être effacé.
                                 </p>
+                                <p role="status" className="text-tiny text-danger-400 empty:hidden">{refusSaisie ?? ''}</p>
                                 <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-700 text-white text-meta font-bold py-2 rounded">Enregistrer</button>
                             </div>
                         )}
@@ -202,6 +220,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                 </label>
                                             </div>
                                             <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} />
+                                            <p role="status" className="text-tiny text-danger-400 empty:hidden">{refusSaisie ?? ''}</p>
                                             <div className="flex gap-2">
                                                 <button onClick={saveEdit} className="flex-1 bg-green-700 hover:bg-green-800 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>
                                                 <button onClick={cancelEdit} className="flex-1 bg-white/10 hover:bg-white/20 text-white text-meta py-1.5 rounded focus-ring">Annuler</button>
@@ -251,7 +270,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                 <div className="text-tiny text-ink-400 mt-1">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>). Total payé: <strong className="text-white"><PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>/mois</strong>.</div>
                             </div>
                             <div className="p-3 bg-white/5 rounded border border-white/10">
-                                <div className="flex justify-between items-center mb-1"><span className="text-meta text-ink-300">Liberté dans</span><span className="text-body font-bold text-white">{(simulation.months / 12).toFixed(1)} ans</span></div>
+                                <div className="flex justify-between items-center mb-1"><span className="text-meta text-ink-300">Liberté dans</span><span className="text-body font-bold text-white">{simulation.valide ? `${(simulation.months / 12).toFixed(1)} ans` : '—'}</span></div>
                                 <div className="flex justify-between items-center"><span className="text-meta text-ink-300">Intérêts évités</span><span className="text-body font-bold text-green-400">Calculé vs Min.</span></div>
                             </div>
                         </div>

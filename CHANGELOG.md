@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-07 (Seize petites corrections issues de l'audit : dettes, mode discret, import de relevé)
+
+- **Corrigé** : les trois cartes de conseil de l'IA (optimisation du couple, projet immobilier, justification du
+  rééquilibrage) envoyaient encore tes montants à l'assistant en mode discret. Elles refusent maintenant, avec le
+  même message que le diagnostic Budget : désactive le mode discret pour lancer l'analyse.
+- **Corrigé** : vider le solde, le taux ou le paiement minimum d'une dette puis « Enregistrer » enregistrait une valeur
+  qui n'était pas un nombre — le total dû tombait à 0 $ sans avertissement et l'onglet Dettes annonçait « Liberté dans
+  0,1 ans ». La saisie est refusée en l'expliquant ; une dette déjà enregistrée ainsi affiche « — » au lieu d'une
+  durée inventée, et l'anomalie est journalisée dans Diagnostic.
+- **Corrigé** : un relevé bancaire ou une fiche de paie trop longs pour l'IA étaient annoncés « aucune transaction
+  reconnue ». Le message dit maintenant que le document a été coupé et qu'il faut le réimporter en plusieurs parties.
+- **Amélioré** : deux textes très petits (« ou importer » à l'accueil, l'indice survol/molette du graphe Futur)
+  passent à un gris plus lisible (contraste AA) ; le donut du score de santé n'est plus lu par les lecteurs d'écran
+  (le score est déjà en texte) ; les échecs de sauvegarde chiffrée et d'import de positions courtier sont journalisés.
+
 ## [unreleased — audit financier complet, passe n°4] — 2026-09-07
 
 ### Audit

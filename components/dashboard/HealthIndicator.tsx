@@ -133,7 +133,9 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
             <div className="flex items-center gap-6">
                 {/* Donut chart SVG */}
                 <div className="relative shrink-0">
-                    <svg width="128" height="128" viewBox="0 0 128 128" className="transform -rotate-90">
+                    {/* [A11Y-HEALTH-DONUT-ARIA-HIDDEN] (audit 2026-09-07) Le score est déjà en texte à côté :
+                        le donut est décoratif pour un lecteur d'écran (1.1.1). */}
+                    <svg width="128" height="128" viewBox="0 0 128 128" className="transform -rotate-90" aria-hidden="true">
                         <circle
                             cx="64"
                             cy="64"

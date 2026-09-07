@@ -3,7 +3,7 @@ import { Icon, type IconName } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getRealEstateAdvice, type RealEstateContext, type RealEstateAdvice } from '../../services/claude';
-import { messageErreurIa } from '../../services/messageErreurIa';
+import { messageErreurIa, MESSAGE_IA_MODE_DISCRET } from '../../services/messageErreurIa';
 
 /**
  * Phase F.8 — Conseils IA Immobilier poussés.
@@ -35,6 +35,9 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
             setError(messageErreurIa(null, { cleAbsente: true }));
             return;
         }
+        // [AI-PRIVACY-CONSEILS-NON-GATES] (décision Marc 2026-09-05 : MASQUER — audit 2026-09-07) Prix, mise
+        // de fonds, mensualité et loyer partent en clair dans le prompt : en mode discret, rien ne part.
+        if (useFinanceStore.getState().isPrivacyMode) { setError(MESSAGE_IA_MODE_DISCRET); return; }
         setIsLoading(true);
         setError(null);
         try {

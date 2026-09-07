@@ -18,7 +18,13 @@
 // racontent pas pareil ; `fatal` ne dit rien d'utile à un humain. On dérive donc du MÊME statut
 // HTTP, pas d'une seconde lecture de l'erreur, et les deux fonctions restent distinctes parce
 // qu'elles répondent à deux questions distinctes.
-import { httpStatusOf } from './claude';
+import { httpStatusOf, VisionTronqueeError } from './claude';
+
+/** [AI-PRIVACY-CONSEILS-NON-GATES] (décision Marc 2026-09-05 : MASQUER — audit 2026-09-07) Le seul
+ *  texte du refus des trois cartes de conseil (couple, immobilier, rééquilibrage) en mode discret :
+ *  leur prompt porte des montants en clair (`promptCad`), il ne se construit même pas. */
+export const MESSAGE_IA_MODE_DISCRET =
+    'Mode discret actif : cette analyse enverrait tes montants à l’assistant. Désactive le mode discret pour la lancer.';
 
 /** Ce que l'utilisateur peut faire, dérivé de ce qui a réellement échoué. */
 type CauseErreurIa =
@@ -28,6 +34,7 @@ type CauseErreurIa =
     | 'reseau'           // aucun statut HTTP : coupure, DNS, timeout client
     | 'service'          // 5xx : c'est Anthropic qui est en panne, pas nous
     | 'requete'          // autre 4xx : la requête elle-même est refusée
+    | 'tronque'          // stop_reason max_tokens : le document a été LU puis COUPÉ (Vision)
     | 'annule';          // AbortError : l'utilisateur a fermé — ce n'est PAS une erreur
 
 const MESSAGES: Record<CauseErreurIa, string> = {
@@ -37,6 +44,7 @@ const MESSAGES: Record<CauseErreurIa, string> = {
     reseau: 'Connexion au service interrompue. Vérifie ton accès Internet, puis réessaie.',
     service: 'Le service Anthropic est momentanément indisponible. Réessaie dans quelques minutes.',
     requete: 'Le service a refusé la requête. Rien à corriger de ton côté — c\'est un défaut de l\'app.',
+    tronque: 'Le document est trop long pour être lu en une seule fois : il a été coupé avant la fin. Réimporte-le en plusieurs parties (une page ou un mois à la fois).',
     annule: '',
 };
 
@@ -54,6 +62,9 @@ const estAnnulation = (err: unknown): boolean => {
 export function causeErreurIa(err: unknown, opts: { cleAbsente?: boolean } = {}): CauseErreurIa {
     if (opts.cleAbsente) return 'cle-absente';
     if (estAnnulation(err)) return 'annule';
+    // [AI-STOPREASON-JETE] Une réponse TRONQUÉE n'a pas de statut HTTP d'erreur (200) : sans ce cas,
+    // elle tombait dans « réseau », ou pire, dans « aucune transaction reconnue » chez l'appelant.
+    if (err instanceof VisionTronqueeError) return 'tronque';
     const status = httpStatusOf(err);
     // ⚠️ `undefined` veut dire « pas de réponse HTTP du tout » — donc réseau. Le confondre avec un
     // 4xx enverrait vérifier une clé alors que rien n'a quitté la machine.

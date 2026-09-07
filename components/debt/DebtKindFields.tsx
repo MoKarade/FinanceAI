@@ -47,6 +47,26 @@ export const refusOrigineIncoherente = (
         + 'courbe de remboursement. Vérifie les deux chiffres sur ton contrat.';
 };
 
+/** [DEBT-BALANCE-NAN-SILENCIEUX] (audit 2026-09-07) Les trois champs numériques d'une dette. */
+export const CHAMPS_NUMERIQUES_DETTE = ['balance', 'interestRate', 'minimumPayment'] as const;
+const LIBELLE_CHAMP: Record<(typeof CHAMPS_NUMERIQUES_DETTE)[number], string> = {
+    balance: 'le solde', interestRate: 'le taux', minimumPayment: 'le paiement minimum',
+};
+
+/**
+ * [DEBT-BALANCE-NAN-SILENCIEUX] Message de refus quand un champ numérique de la dette n'est PAS un
+ * nombre fini, `null` sinon. Un champ vidé donne `parseFloat('') = NaN`, et un `NaN` traversait
+ * jusqu'au store : `computeTotalDebt` le rabattait sur 0 $ et la simulation locale s'arrêtait au
+ * premier mois (« Liberté dans 0,1 ans »). Un champ ABSENT (`undefined`, brouillon partiel) n'est
+ * pas refusé — c'est « pas renseigné », pas « pas un nombre ».
+ */
+export const refusChampNonFini = (d: Partial<Debt>): string | null => {
+    const fautifs = CHAMPS_NUMERIQUES_DETTE.filter(k => d[k] !== undefined && !Number.isFinite(d[k]));
+    if (fautifs.length === 0) return null;
+    return `Un champ vidé n'est pas un zéro : ${fautifs.map(k => LIBELLE_CHAMP[k]).join(', ')} doit être un nombre`
+        + ' (écris 0 si c\'est le cas).';
+};
+
 interface Props {
     valeur: Partial<Debt>;
     onChange: (patch: Partial<Debt>) => void;

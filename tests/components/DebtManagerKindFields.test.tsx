@@ -144,7 +144,9 @@ describe('[DEBT-UI-PAR-TYPE] l\'UI refuse ce que l\'assistant refuse', () => {
         fireEvent.change(screen.getByLabelText(/Solde de la dette/i), { target: { value: '18000' } });
         fireEvent.change(screen.getByLabelText(/Type de dette/i), { target: { value: 'auto' } });
         fireEvent.change(screen.getByLabelText(/Montant emprunté/i), { target: { value: '12000' } });
-        expect(screen.getByRole('status').textContent).toMatch(/inférieur au solde actuel/i);
+        // Depuis `[DEBT-BALANCE-NAN-SILENCIEUX]` (lot 213) le formulaire porte DEUX régions live (origine
+        // incohérente / champ non numérique) : on cherche celle qui porte le texte, pas « la » région.
+        expect(screen.getAllByRole('status').some(el => /inférieur au solde actuel/i.test(el.textContent ?? ''))).toBe(true);
         fireEvent.click(screen.getByRole('button', { name: /^Enregistrer$/i }));
         expect(lu()).toHaveLength(0); // rien n'a été écrit
     });

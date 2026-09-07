@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { messageErreurIa } from '../../services/messageErreurIa';
+import { messageErreurIa, MESSAGE_IA_MODE_DISCRET } from '../../services/messageErreurIa';
 import { getCoupleOptimizationStrategies, type CoupleOptimizationStrategy, type CoupleTaxContext } from '../../services/claude';
 import { formatCAD } from '../../utils/format';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -65,6 +65,10 @@ export const CoupleOptimizationCard: React.FC = () => {
 
     const handleGenerate = async () => {
         if (!apiKey) return;
+        // [AI-PRIVACY-CONSEILS-NON-GATES] (décision Marc 2026-09-05 : MASQUER — audit 2026-09-07) Le prompt
+        // porte le brut et le net des deux conjoints en clair : en mode discret, il ne se construit pas.
+        // Lu à l'instant du geste, comme le chokepoint du chat et le diagnostic Budget.
+        if (useFinanceStore.getState().isPrivacyMode) { setErreur(MESSAGE_IA_MODE_DISCRET); return; }
         setIsLoading(true);
         setErreur(null);
         // [COUPLE-CTX-FAKE-ZERO] ⚠️ PAS de `|| 0` ici. `promptCad` (services/claude.ts) rend

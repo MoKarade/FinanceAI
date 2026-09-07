@@ -383,7 +383,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
             await categorizeBatch(
                 targetTxs,
                 apiKey,
-                transactions,
                 availableCategories,
                 (count: number, total: number, msg: string, processedChunk: Transaction[]) => {
                     setProgressStatus({ current: count, total: total });

@@ -181,8 +181,11 @@ export const AGE_AMOUNT_FED_MIN_AGE = 65;
 // non indexé depuis 2006. Voir https://www.canada.ca/.../line-31400-pension-income-amount.html
 export const PENSION_INCOME_AMOUNT_FED = 2000;
 
-// Taux du palier le plus bas fédéral pour crédits non-remboursables (gelé à 15%
-// par l'ARC malgré la baisse du 1er palier à 14% en 2026 — politique C-4).
+// Taux des crédits non remboursables fédéraux. ⚠️ CONTESTÉ, pas sourcé : l'ancienne phrase « gelé à
+// 15 % par l'ARC malgré le 1er palier à 14 % (C-4) » n'avait aucune source primaire, et la recherche
+// relayée par Marc (2026-09-05) dit 14,5 % (2025) / 14 % (2026) + un crédit compensatoire 2025-2030.
+// La VALEUR ne bouge pas sans source (`[FISC-FED-CREDITRATE-15]`, FISCAL_REFERENCE §1) ; le crédit
+// pour dons (`DONATION_CREDIT_RATES.fed.first`) lit cette constante et suivra d'un coup.
 export const FED_NONREFUNDABLE_RATE = 0.15;
 
 // --- Provincial Québec ---

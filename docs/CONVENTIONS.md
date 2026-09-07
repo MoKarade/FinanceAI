@@ -12219,6 +12219,25 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 213 (2026-09-07) — un test qui CERTIFIE un silence reste vert quand on le rend parlant, et un paramètre mort que les appelants NOURRISSENT a l'air vivant
+
+Seize correctifs XS/S de l'audit n°4, livrés d'un coup parce qu'aucun n'attendait de décision. Deux choses
+mesurées en chemin. (1) `projection.moneyConservation.test.ts` asserait `computeTotalDebt([NaN]) === 0` — vrai
+AVANT le correctif (rabattu en silence) et vrai APRÈS (rabattu ET journalisé) : sous la perturbation « trace
+retirée », il est resté VERT pendant que la nouvelle garde de `portfolio.test.ts` rougissait. **Un test qui
+n'asserte que la valeur de repli certifie le silence : il ne rougit ni quand on le fait parler, ni quand on le
+fait taire.** Le test qui compte est celui qui asserte la TRACE, avec son contrôle (fini → rien) — sinon un espion
+jamais câblé donne le même vert. (2) `categorizeBatch(…, _history = [])` était un paramètre mort par son nom
+(`_`), mais `importReleveManuel` lui PASSAIT `withTransfers` : à ce site d'appel, rien ne dit que la valeur est
+jetée, et un lecteur qui part de l'appelant conclut « utilisé ». **Un paramètre se juge par ses LECTEURS dans la
+fonction, jamais par ce que les appelants y mettent** — et le retirer d'une signature positionnelle se prouve par
+le compilateur (7 sites énumérés), pas par grep. ⚠️ Corollaire de garde : ajouter une seconde région live
+(`role="status"`) dans un formulaire qui en avait une a fait rougir `getByRole('status')` d'un test voisin — une
+requête qui suppose « LA » région mesure une FORME (`UN-TEST-QUI-ROUGIT-SUR-UN-LOT-QUI-NE-TOUCHE-PAS-SON-OBJET`) ;
+on cherche la région qui PORTE le texte. ⚠️ Et `errorContent` préfixe « ⚠️ » : un attendu écrit de mémoire
+(`toBe('Le tool…')`) a rougi sur le préfixe, pas sur le fond — l'attendu d'un texte produit par un helper se lit
+dans le helper.
+
 ### Variante notée au lot 212 (2026-09-07) — une passe qui VÉRIFIE les corrigés trouve autre chose qu'une passe qui cherche des bugs, et un actif exact peut mentir par sa décomposition
 
 Audit financier n°4 (`docs/AUDIT_FINANCIER_2026-09-07.md`), premier à re-vérifier une par une les 239 corrections

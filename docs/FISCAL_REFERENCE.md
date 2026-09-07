@@ -1181,7 +1181,7 @@ exactes par `fiscal-accuracy`) :
   **downsizing** (`realEstateMonth.ts` : l'équité libérée n'incrémente PAS `accCapitalGainsYear`) → aucun
   impôt, aucun effet sur les assiettes de revenu (clawback PSV/SRG, FSS, RAMQ). Conforme.
 - **Gain OU perte en capital d'un LOCATIF (≠ RP) à la VENTE** (`monthlyEvents.applyLifeEvents`, RE-GAIN +
-  FISC-RE-CAPITAL-LOSS) : gain BRUT SIGNÉ = produit net (95 %) − coût d'achat, routé par la SOURCE UNIQUE
+  FISC-RE-CAPITAL-LOSS) : gain BRUT SIGNÉ = produit net (95 %, `REAL_ESTATE_SALE_NET_FACTOR` dans `monthlyEvents.ts` — nommé au lot 213, 5 % de frais de disposition : hypothèse de modèle, pas un barème) − coût d'achat, routé par la SOURCE UNIQUE
   `portfolioOps.applyCapitalDisposition` (partagée avec NonReg/crypto). Gain ≥ 0 → nette d'abord
   `capitalLossBank` puis alimente `accCapitalGainsYear` (50 % inclus en aval). **Perte < 0 → portée en
   `capitalLossBank`** (LIR 111(1)(b), déductible des gains FUTURS) — avant FISC-RE-CAPITAL-LOSS (2026-06-19)

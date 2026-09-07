@@ -225,6 +225,9 @@ describe('dailyLedger — invariants de raccord (moteur réel)', () => {
         'Liquidites', 'CELIAPP', 'NonReg', 'LiquidDebt', 'CELIAPPMax',
         'AccruedTaxRevenu', 'AccruedTaxGains', 'AccruedTaxDivers', 'AccruedTaxREER',
         'P10', 'P50', 'P90', 'lockedNetWorth',
+        // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) 0 dans cette fixture (aucune entreprise) : balayé à 900 000 $
+        // par `bilanQuotidien.test.ts`, où il est non nul — une garde ne couvre que ce que sa fixture rend non nul.
+        'Entreprise',
     ];
 
     it('ORDRE DE GRANDEUR ÉLARGI : aucun solde ne se met à valoir un 30e, sur TOUS les jours', () => {

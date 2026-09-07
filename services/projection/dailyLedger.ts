@@ -62,7 +62,7 @@ type FieldKind =
 export const FIELD_KIND: Readonly<Record<string, FieldKind>> = {
     // — Soldes et photos —
     Liquidites: 'stock', CELI: 'stock', CELIAPP: 'stock', REER: 'stock', REEE: 'stock',
-    NonReg: 'stock', Crypto: 'stock', Immobilier: 'stock',
+    NonReg: 'stock', Crypto: 'stock', Immobilier: 'stock', Entreprise: 'stock',
     DetteTotale: 'stock', DettesNonImmo: 'stock', LiquidDebt: 'stock',
     NetWorth: 'stock', realNetWorth: 'stock',
     ImpotLatent: 'stock', rapBalance: 'stock',
@@ -152,6 +152,9 @@ type FlowCadence =
  */
 export const NET_WORTH_DAILY_ASSETS: readonly string[] = [
     'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier',
+    // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) Absente jusque-là : la valeur ne revenait qu'à la borne
+    // mensuelle (dents de scie au jour). Garde : `netWorthPublie.test.ts` DÉRIVE cette liste du sign-map.
+    'Entreprise',
 ];
 
 export const FLOW_CADENCE: Readonly<Record<string, FlowCadence>> = {

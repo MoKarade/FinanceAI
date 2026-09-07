@@ -203,3 +203,27 @@ describe('[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE] le patrimoine au jour EST son bilan
         expect(verifies).toBeGreaterThan(40);   // non-vacuité : on a bien comparé des fins de mois
     });
 });
+
+describe('[ENG-W5-BUSINESS-NON-PUBLIE] avec une entreprise privée, le patrimoine au jour reste son bilan', () => {
+    // (lot 214) Avant : la valeur n'était dans aucun composant quotidien → le patrimoine au jour ne la
+    // retrouvait qu'à la borne mensuelle (dents de scie). Publiée en stock plat, elle est là chaque jour.
+    const ENTREPRISE = { id: 'b1', name: 'CCPC', ownershipPct: 100, estimatedValue: 900_000, retainedEarnings: 0 };
+    it('identité exacte tous les jours sauf le dernier du mois, et `Entreprise` = 900 000 chaque jour', () => {
+        const days = jours({ ...AVEC_DETTES, privateBusinesses: [ENTREPRISE] } as Partial<SimulationParams>);
+        expect(days.length).toBeGreaterThan(1000);
+        const pire = Math.max(...days.slice(0, -1).map((d, i) =>
+            days[i + 1]?.dayOfMonth === 1 ? 0 : Math.abs((Number(d.NetWorth) || 0) - bilanDuJour(d)),
+        ));
+        expect(pire).toBeLessThanOrEqual(0.005);
+        expect(new Set(days.map(d => d.Entreprise))).toEqual(new Set([900_000]));
+        // ⚠️ `bilanDuJour` lit `NET_WORTH_DAILY_ASSETS`, comme la recomposition : l'identité ci-dessus est
+        // CIRCULAIRE pour un actif absent de la liste (`UNE-GARDE-QUI-LIT-LA-TABLE-DE-CONFIG-EST-CIRCULAIRE`).
+        // Le symptôme non circulaire est la DENT DE SCIE : le dernier jour du mois porte la valeur du
+        // MOTEUR (entreprise incluse), la veille la recomposition — sans `Entreprise` dans la liste, le
+        // saut vaut toute la valeur (900 000 $). Mesuré sur cette fixture : le plus grand saut quotidien
+        // légitime reste sous 50 000 $ (mise de fonds comprise, l'équité compense le cash).
+        let pireSaut = 0;
+        for (let i = 1; i < days.length; i++) pireSaut = Math.max(pireSaut, Math.abs((Number(days[i].NetWorth) || 0) - (Number(days[i - 1].NetWorth) || 0)));
+        expect(pireSaut).toBeLessThan(50_000);
+    });
+});

@@ -55,6 +55,7 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
     { key: 'NonReg', label: 'Non-Enreg', color: '#c2974f', gainKey: 'MarketGrowthNonReg' },
     { key: 'Crypto', label: 'Crypto', color: '#9277bd', gainKey: 'MarketGrowthCrypto' },
     { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
+    { key: 'Entreprise', label: 'Entreprise privée', color: '#7fa86b' },
 ];
 
 /**

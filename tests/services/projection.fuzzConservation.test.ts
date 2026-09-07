@@ -65,7 +65,9 @@ const strictNum = (p: ProjectionChartPoint, key: keyof ProjectionChartPoint): nu
 };
 
 // Actifs affichés (Immobilier = équité DÉJÀ nette d'hypothèque). NetWorth = Σ − DettesNonImmo.
-const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier'] as const;
+// [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) `Entreprise` est le 9e actif : sans lui, l'identité était fausse de
+// toute la valeur de l'entreprise — et INVISIBLE tant que la seule fixture W5 posait `estimatedValue: 0`.
+const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier', 'Entreprise'] as const;
 // Actifs qui ne peuvent JAMAIS être négatifs (un découvert va en LiquidDebt, pas en actif négatif).
 // Immobilier EXCLU : l'équité peut être légitimement négative (immeuble sous l'eau).
 const NON_NEGATIVE_ASSETS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto'] as const;

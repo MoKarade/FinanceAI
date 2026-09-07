@@ -74,7 +74,7 @@ const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
 const RENDER_MAX_POINTS = 700;
 
 const CURVE_FIELDS: ReadonlySet<string> = new Set([
-    'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier',
+    'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier', 'Entreprise',
     'ImpotLatent', 'FluxImpots', 'P10', 'P50', 'P90', 'NetWorth', 'lockedNetWorth',
     // ⚠️ `DettesNonImmo` n'est TRACÉE par aucune aire : elle est ici parce que le patrimoine au
     // jour est RECOMPOSÉ (`NetWorth = Σ NET_WORTH_DAILY_ASSETS − DettesNonImmo`) et que la
@@ -104,6 +104,7 @@ import { resolvePointByX } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
+import { computePrivateBusinessValue } from '../services/projection/privateBusinessValue';
 import { mentionDettesPasse } from '../services/history/pastDebtNotice';
 import { mentionRaccord } from '../services/history/raccordNotice';
 import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
@@ -157,6 +158,7 @@ const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
     { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', shape: 'area' },
     { key: 'Crypto', label: 'Crypto', color: '#a855f7', shape: 'area' },
     { key: 'Immobilier', label: 'Équité Immo', color: '#ec4899', shape: 'area' },
+    { key: 'Entreprise', label: 'Entreprise privée', color: '#84cc16', shape: 'area' },
     { key: 'NetWorth', label: 'Valeur Nette', color: '#ffffff', shape: 'line' },
     { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
     { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
@@ -446,6 +448,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // DebtsAtMonth`/`...AtAbsoluteMonth` dans `buildPastPrefix`/`buildDailyPastLedger`) — jamais à
     // resommer le total en entier (cf commentaire dédié dans `debtSchedule.ts`).
     const storeDebts = useFinanceStore(s => s.debts) ?? EMPTY_DEBTS;
+    // [PAST-NW-BUSINESS-SANS-PRODUCTEUR] La valeur COURANTE des entreprises privées, portée PLATE sur
+    // tout le passé (même convention que l'immobilier reconstruit par paliers) — la JSDoc de
+    // `pastNetWorthAt` le promettait depuis août sans qu'aucun appelant ne la passe : marche de la
+    // valeur entière au raccord passé→futur. Même règle que le moteur (source unique).
+    const storePrivateBusinesses = useFinanceStore(s => s.privateBusinesses);
+    const privateBusinessValue = useMemo(() => computePrivateBusinessValue(storePrivateBusinesses), [storePrivateBusinesses]);
     useEffect(() => {
         if (debtAnomaly) {
             logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : DettesNonImmo (liveResults, repli chartData) non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
@@ -455,11 +463,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // (unit-testable, hors composant) → le câblage money-critical (buckets → helper, dette soustraite,
     // dates) se prouve sans rendre le composant. Vide → `EMPTY_ARRAY` (référence stable pour l'aval).
     const pastPrefix = useMemo(() => {
-        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts: storeDebts });
+        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts: storeDebts, privateBusinessValue });
         // [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Le lot 97 fait remonter `fluxPeriodeAnnulee` avec les
         // points : la marche au raccord de la vue par MOIS annule TOUT le mois courant.
         return { points: built.points.length ? built.points : EMPTY_ARRAY, fluxPeriodeAnnulee: built.fluxPeriodeAnnulee };
-    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts]);
+    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts, privateBusinessValue]);
     // Référence STABLE pour l'aval : `pastPrefix` est un objet neuf à chaque memo, mais ses POINTS
     // gardent `EMPTY_ARRAY` quand il n'y a pas de passé — c'est cette identité que les memos avals
     // comparent, et la casser rendrait tout le graphe à chaque rendu.
@@ -745,6 +753,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             { key: 'NonReg', label: 'Non-Enreg', format: money },
             { key: 'Crypto', label: 'Crypto', format: money },
             { key: 'Immobilier', label: 'Équité Immo', format: money },
+            { key: 'Entreprise', label: 'Entreprise privée', format: money },
         ];
     }, [isPrivacyMode]);
 
@@ -894,6 +903,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             equityByYear: reconstructRealEstateEquityByYear(realEstateGoals, startYear),
             currentDebtNonImmo,
             debts: storeDebts,
+            privateBusinessValue,
         });
         return {
             byDate: built.rows.length ? new Map(built.rows.map((r) => [r.date, r])) : null,
@@ -913,7 +923,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // jsp pourquoi »). Les deux points sont justes — c'est leur lecture qui manquait.
             fluxPeriodeAnnulee: built.fluxPeriodeAnnulee,
         };
-    }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo, storeDebts]);
+    }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo, storeDebts, privateBusinessValue]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
     // [PASSE-REEL-RACCORD-CHUTE] Le fait est dérivé du module qui le PRODUIT ; le composant ne
     // relit pas les transactions pour se faire une seconde opinion.
@@ -1852,6 +1862,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
                             {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
                             {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
+                            {/* [ENG-W5-BUSINESS-NON-PUBLIE] Sans cette aire, la pile des actifs restait SOUS la ligne de
+                                patrimoine de toute la valeur de l'entreprise — une décomposition qui ne somme pas. */}
+                            {isVisible('Entreprise') && <Area type="monotone" dataKey="Entreprise" stackId="1" stroke="#84cc16" fill="#84cc16" fillOpacity={0.3} name="Entreprise privée" isAnimationActive={false}/>}
 
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {/* [FUTUR-DAILY-NATIVE] `FluxImpots` n'existe sur les points quotidiens

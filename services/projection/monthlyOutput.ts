@@ -112,6 +112,11 @@ export interface MonthlyOutputCtx {
     // Immobilier / dettes
     rapRepaymentDueTotal: number;
     realEstateEquity: number;
+    /** [ENG-W5-BUSINESS-NON-PUBLIE] Valeur des entreprises privées (W5.7), DÉJÀ au prorata détenu.
+     *  Terme `+1` de `NET_WORTH_SIGN` depuis le 2026-08-19 — et publié NULLE PART jusqu'au lot 214 :
+     *  `NetWorth − Σ actifs publiés + DettesNonImmo` valait exactement cette valeur (900 000 $ mesurés
+     *  sur la fixture), sur 100 % des mois. Un actif qu'on n'écrit nulle part ne casse aucun bilan. */
+    privateBusinessValue: number;
     mortgageBalance: number;
     activeDebtsTotal: number;
     /** Découvert non couvert porté en dette [PV-6] — soustrait du patrimoine, désormais EXPOSÉ. */
@@ -224,6 +229,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         liquid, celi, celiapp, reer, reee, nonReg, crypto,
         retraitReerMois, retraitCeliMois, celiRoom, rrspRoom, fhsaRoom,
         rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
+        privateBusinessValue,
         liquidDebt, smithManoeuvreDebt,
         prevNW, prevCELI, prevREER, prevLiquid,
         impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,
@@ -291,6 +297,9 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         Crypto: round2(crypto),
         rapBalance: round2(rapRepaymentDueTotal),
         Immobilier: round2(realEstateEquity),
+        /** [ENG-W5-BUSINESS-NON-PUBLIE] Entreprises privées — le 9e actif du bilan. Garde :
+         *  `tests/services/netWorthPublie.test.ts` (chaque terme du sign-map a son champ publié). */
+        Entreprise: round2(privateBusinessValue),
         // Dette TOTALE affichée = hypothèque + prêts/cartes + découvert + HELOC Smith. Inclut
         // désormais liquidDebt + smithManoeuvreDebt : sans eux, un patrimoine net NÉGATIF
         // (découvert porté en dette) n'était EXPLIQUÉ par aucune ligne de l'UI (bug Marc 2026-06-16).

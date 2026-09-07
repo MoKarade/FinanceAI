@@ -110,6 +110,7 @@ export function mergeDailyRealPoint(
     }
     put(point, 'Liquidites', real.Liquidites);
     put(point, 'Immobilier', real.Immobilier);
+    put(point, 'Entreprise', real.Entreprise);
     put(point, 'DettesNonImmo', real.DettesNonImmo);
     put(point, 'NetWorth', real.NetWorth);
     put(point, 'Income', real.Income);

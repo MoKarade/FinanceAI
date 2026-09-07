@@ -307,6 +307,17 @@ describe('[FISC-RRSP-ROOM-GATE-MENAGE] le gate des droits REER est PER-CONJOINT 
         expect(r.rrspRoomDelta).toBe(0);
     });
 
+    it('conjoint saisi par ANNÉE DE NAISSANCE seule (sans `age`) : la branche `birthYear` du helper décide (revue)', () => {
+        // Perturbation mesurée par le panel : `birthYear` → `-Infinity` laissait 41 tests verts, alors que la
+        // branche est vivante dans la chaîne (conjoint par `birthYear` seul : droits année 5 0 → 531 092 $).
+        const r = processJanuaryReset(0, baseCtx({
+            age: 72, users: [{ birthYear: 1954 }, { birthYear: 1969 }], activeUsersCount: 2,
+            accGrossIncomeYearByUser: [0, 120_000], reerByUser: [50_000, 50_000],
+        }), helpers)!;
+        expect(r.rrspRoomReset).toBe(false);
+        expect(r.rrspRoomDelta).toBeCloseTo(21_600, 2);
+    });
+
     it('conjoint SANS âge connu : il ne pèse pas dans la décision (72 seul → remise à zéro, comme avant)', () => {
         const r = processJanuaryReset(0, baseCtx({
             age: 72, users: [{ birthYear: 1954 }, {}], activeUsersCount: 2,

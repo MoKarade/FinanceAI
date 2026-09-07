@@ -370,7 +370,10 @@ export function processJanuaryReset(
     const newRrspRoom = droitsReerAnnuels(ctx, roomUsers, nextLoopYear);
     const peutEncoreDetenirUnReer = roomUsers.some((u, i) => {
         if (!u) return false;
-        const a = ageCourantUtilisateur(ctx, i, u); // l'utilisateur de `roomUsers`, pas `ctx.users[i]` (revue)
+        // L'utilisateur de `roomUsers` est passé (i ≥ 1) ; le slot 0 lit `ctx.age` quoi qu'il arrive, et une
+        // liste vide rend « plus personne » → fermé. Les deux sont FAIL-CLOSED : aucun producteur ne passe un
+        // `roomUsers` qui ne commence pas par user0 (`slice(0, 1)` est le seul), écrit ici pour le prochain.
+        const a = ageCourantUtilisateur(ctx, i, u);
         return Number.isFinite(a) && a <= RRSP_TO_RRIF_CONVERSION_AGE;
     });
     const { ferrMandatoryGross, ferrGrossByUser, ferrTaxOnRrif, ferrLogMsg } = retraitFerrObligatoire(ctx, helpers);

@@ -99,7 +99,9 @@ const makeBrokeRetireeParams = (): SimulationParams => makeParams({
 const run = (p: SimulationParams): ProjectionResult => calculateFutureProjection(p);
 const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier'] as const;
+// [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) `Entreprise` est le 9e actif : sans lui, l'identité était fausse de
+// toute la valeur de l'entreprise — et INVISIBLE tant que la seule fixture W5 posait `estimatedValue: 0`.
+const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier', 'Entreprise'] as const;
 const shownAssets = (p: ProjectionChartPoint): number =>
     ASSET_KEYS.reduce((s, k) => s + num((p as Record<string, unknown>)[k]), 0);
 
@@ -158,8 +160,11 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
             projection: makeProjection({ propertyGrowthRate: 0 }),
             rentalProperties: [{ id: 'r1', name: 'Duplex', monthlyRent: 2_500, monthlyExpenses: 500,
                 vacancyPct: 5, purchasePrice: 0, currentValue: 0, mortgageBalance: 0 }],
+            // [HARNAIS-CONSERVATION-W5-VIDE] (lot 214) `estimatedValue: 0` rendait la classe « actif au
+            // patrimoine mais publié nulle part » INVISIBLE à ce harnais : à 900 000 $, INV-1 rougissait
+            // sur 100 % des points AVANT le correctif (mesuré), vert après.
             privateBusinesses: [{ id: 'b1', name: 'CCPC', annualDividend: 60_000, ownershipPct: 100,
-                estimatedValue: 0 }],
+                estimatedValue: 900_000 }],
         } as Partial<SimulationParams>)).chartData;
         // INV-2 : chaque mois reste expliqué — l'impôt forfaitaire sort par FluxImpots en avril,
         // le revenu entre par Income chaque mois, rien ne s'évapore entre les deux.

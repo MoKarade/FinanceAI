@@ -167,3 +167,33 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
         expect(detteDe(dec)).toBe(7_800);
     });
 });
+
+describe('[PAST-NW-BUSINESS-SANS-PRODUCTEUR] la valeur COURANTE d’une entreprise privée est portée PLATE sur le passé', () => {
+    // (audit 2026-09-07, lot 214) `pastNetWorthAt` acceptait la valeur depuis août — et aucun appelant ne
+    // la passait : le passé la mettait à 0, le premier mois futur la comptait en entier → MARCHE de la
+    // valeur au raccord. Le 5e argument existait ; c'est le PRODUCTEUR qui manquait.
+    const base = {
+        startYear: 2026, startMonth: 0, realEstateGoals: [],
+        transactions: [{ date: '2025-12-15', amount: -500 }], calculatedStartingCash: 3000,
+    };
+    const pts = [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })];
+
+    it('avec 900 000 $ : chaque point porte `Entreprise` et le patrimoine l’inclut (identité étendue)', () => {
+        const out = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }], privateBusinessValue: 900_000 }).points;
+        const last = out[out.length - 1];
+        expect(last.Entreprise).toBe(900_000);
+        expect(last.NetWorth).toBe(913_000); // 21 000 + 900 000 − 8 000
+        const cols = last.Liquidites + last.Immobilier + last.Entreprise + last.CELI + last.CELIAPP + last.REER + last.REEE + last.NonReg + last.Crypto;
+        expect(cols - 8_000).toBe(last.NetWorth);
+        // PLATE : tous les points passés portent la même valeur (aucun historique n'existe).
+        expect(new Set(out.map(p => p.Entreprise))).toEqual(new Set([900_000]));
+    });
+
+    it('contrôle — absent : `Entreprise` = 0 et NetWorth identique à l’ancien comportement', () => {
+        const sans = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }] }).points;
+        const zero = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }], privateBusinessValue: 0 }).points;
+        expect(sans[sans.length - 1].Entreprise).toBe(0);
+        expect(sans[sans.length - 1].NetWorth).toBe(13_000);
+        expect(zero.map(p => p.NetWorth)).toEqual(sans.map(p => p.NetWorth));
+    });
+});

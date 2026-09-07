@@ -12219,6 +12219,35 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 214 (2026-09-07) — un grand livre qui « tolère » un composant absent rend l'omission NORMALE, et une identité qui lit la même liste que la recomposition est circulaire
+
+Publication de la valeur d'entreprise privée (CRITIQUE de l'audit n°4). Trois choses mesurées. (1) La
+recomposition quotidienne écrit `if (!(key in cur)) continue` — « composant absent du moteur : normal ». C'est
+juste pour un compte que le moteur n'a pas ; c'est exactement ce qui rendait INVISIBLE un actif que le moteur
+AVAIT mais ne publiait pas. **Une tolérance écrite pour l'absence légitime couvre aussi l'absence fautive** ; la
+seule parade est de dériver la liste des composants de la SOURCE (le sign-map) plutôt que de la recopier —
+`netWorthPublie.test.ts` exige `NET_WORTH_DAILY_ASSETS == termes +1 de NET_WORTH_SIGN`, et le
+`Record<keyof NetWorthParts, string>` refuse au typecheck un dixième terme sans champ. (2) L'identité du grand
+livre quotidien (`bilanDuJour`) lit `NET_WORTH_DAILY_ASSETS`, la même liste que la recomposition : retirer
+`Entreprise` de la liste laissait l'identité VERTE (les deux côtés oubliaient la même chose) — circulaire, comme
+`UNE-GARDE-QUI-LIT-LA-TABLE-DE-CONFIG-EST-CIRCULAIRE`. Le symptôme NON circulaire est la dent de scie : le dernier
+jour du mois porte la valeur du MOTEUR, la veille la recomposition — saut mesuré **901 171 $**, borné à 50 000 $.
+(3) La preuve que le harnais était aveugle se fait en DEUX perturbations croisées : champ absent + fixture à 0 →
+22 verts ; champ absent + fixture à 900 000 → rouge sur 100 % des points. **Une fixture à zéro ne prouve pas la
+conservation, elle prouve que zéro se conserve.** ⚠️ Corollaire de câblage : la JSDoc de `pastNetWorthAt`
+promettait « valeur COURANTE, plate sur le passé » depuis août — le paramètre existait, le PRODUCTEUR non
+(`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`, encore) ; et la règle de calcul, dupliquée entre
+le moteur et l'écran, a été HISSÉE en source unique avant d'être appelée une seconde fois.
+⚠️⚠️ Et le panel a trouvé DEUX choses que le lot n'avait pas vues : (a) ma garde `CURVE_FIELDS` lisait la source
+BRUTE — « `'Entreprise'` retirée du Set + citée dans le commentaire du même bloc » la laissait VERTE ; c'est
+`UNE-GARDE-ECRITE-A-COTE-DE-SON-SUJET-LIT-SON-PROPRE-COMMENTAIRE`, écrite par moi, re-commise par moi, sur un bloc qui
+porte DÉJÀ sept lignes de commentaire : **un scan de source se lit décommenté dès la première ligne, pas après la
+première fois qu'on se fait avoir** ; (b) le registre MCP (`extractYearlySeries`) ne sommait pas non plus — le
+recensement des consommateurs s'était arrêté aux registres d'ÉCRAN ; un modèle ne voit pas le graphe, il ne peut
+que sommer. Et (c) **publier un actif rend VISIBLES les mutateurs qui l'oublient** : l'entreprise n'est pas partagée
+au divorce (jumeau exact de `[ENG-W5-RENTAL-OFFBALANCE]`, un mois après sa correction) — mesuré, routé à Marc (Q16),
+parce que le partage d'une société n'est pas un correctif mécanique au Québec.
+
 ### Variante notée au lot 213 (2026-09-07) — un test qui CERTIFIE un silence reste vert quand on le rend parlant, et un paramètre mort que les appelants NOURRISSENT a l'air vivant
 
 Seize correctifs XS/S de l'audit n°4, livrés d'un coup parce qu'aucun n'attendait de décision. Deux choses

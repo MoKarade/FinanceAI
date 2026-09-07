@@ -39,6 +39,7 @@ import { processRealEstate, type RealEstateState } from './projection/realEstate
 import { buildMonthlyDataPoint, estPointAllege } from './projection/monthlyOutput';
 import { FIRE_TARGET_MULTIPLE } from './projection/modelAssumptions';
 import { computeRawNetWorth } from './projection/netWorth';
+import { computePrivateBusinessValue } from './projection/privateBusinessValue';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
 import { handleNonRegSale as portfolioNonRegSale, handleCryptoSale as portfolioCryptoSale, applyCapitalDisposition } from './projection/portfolioOps';
@@ -229,13 +230,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
      * entreprise privée à un taux inventé serait de la donnée fabriquée — le manque est nommé au
      * BACKLOG plutôt que comblé au jugé.
      */
-    const privateBusinessValue = (privateBusinesses ?? []).reduce((sum, b) => {
-        const v = Number(b?.estimatedValue);
-        const pct = Number(b?.ownershipPct);
-        if (!Number.isFinite(v) || v <= 0) return sum;
-        const part = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 100;
-        return sum + v * (part / 100);
-    }, 0);
+    // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) La règle vit dans `privateBusinessValue.ts` — le passé
+    // l'applique aussi, et deux copies divergeraient en silence.
+    const privateBusinessValue = computePrivateBusinessValue(privateBusinesses);
     const rentalNames = (rentalProperties ?? []).map(rp => rp?.name || 'immeuble locatif');
 
     let propertiesState = activeRE.map(g => {
@@ -2478,6 +2475,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             liquid, celi, celiapp, reer, reee, nonReg, crypto,
             retraitReerMois, retraitCeliMois, celiRoom, rrspRoom, fhsaRoom,
             rapRepaymentDueTotal, realEstateEquity, mortgageBalance, activeDebtsTotal,
+            privateBusinessValue,
             liquidDebt, smithManoeuvreDebt,
             prevNW, prevCELI, prevREER, prevLiquid,
             impotLatent, fluxImpots, impotReerMois, impotSalaireMois, impotGainsMois, impotDiversMois,

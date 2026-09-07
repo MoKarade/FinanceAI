@@ -28,6 +28,7 @@ export const ACCOUNTS: AccountDef[] = [
     { key: 'NonReg', label: 'Non-Enregistré', color: '#c2974f', gainKey: 'MarketGrowthNonReg', flowKey: 'NetTransferNonReg' },
     { key: 'Crypto', label: 'Crypto', color: '#9277bd', gainKey: 'MarketGrowthCrypto', flowKey: 'NetTransferCrypto' },
     { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
+    { key: 'Entreprise', label: 'Entreprise privée', color: '#7fa86b' },
 ];
 
 // G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par

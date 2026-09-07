@@ -16,6 +16,24 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-07 — Lot 214 : l'entreprise privée est enfin PUBLIÉE (`[ENG-W5-BUSINESS-NON-PUBLIE]` 🔴 + 2), sans déplacer un dollar
+> Le CRITIQUE de l'audit n°4 : la valeur d'une entreprise privée comptait dans `NetWorth` depuis le 2026-08-19 et
+> n'existait dans AUCUN champ publié — identité `NW = Σ actifs − dettes` fausse de 900 000 $ sur 100 % des mois de la
+> fixture, dent de scie au jour (mesurée **901 171 $** entre la veille et le dernier jour du mois), marche au raccord
+> passé→futur. Livré : champ `Entreprise` (stock) dans `chartData`, `NET_WORTH_DAILY_ASSETS`, `FIELD_KIND`, `CURVE_FIELDS`,
+> aire empilée + infobulle + table + drill-down ; le passé (`buildPastPrefix`, `dailyPastLedger`) porte la valeur
+> COURANTE, plate, calculée par la source unique `computePrivateBusinessValue` (extraite de `projection.ts`) ; les trois
+> harnais de conservation comptent le 9e actif et la fixture W5 passe à 900 000 $. La garde qui manquait est
+> STRUCTURELLE (`netWorthPublie.test.ts`) : chaque terme de `NET_WORTH_SIGN` a un champ publié (`Record<keyof
+> NetWorthParts, …>` → refus au typecheck), la liste quotidienne se DÉRIVE du sign-map, `CURVE_FIELDS` la contient.
+> `NetWorth` bit-identique avant/après. Cinq perturbations, dont la preuve que le harnais était AVEUGLE (fixture à 0
+> + champ absent → 22 verts). ⚠️ `bilanDuJour` lit la même liste que la recomposition : identité CIRCULAIRE pour un
+> actif absent — d'où la garde par la dent de scie (< 50 000 $). **Panel** : le registre MCP (`extractYearlySeries`) ne
+> sommait pas non plus → clé `entreprise` + garde ; ma garde `CURVE_FIELDS` lisait la source BRUTE (un commentaire la
+> satisfaisait — ma propre leçon, re-commise) → décommentée ; et un 🔴 PRÉ-EXISTANT rendu visible : **l'entreprise n'est
+> pas partagée au divorce** (mesuré : +900 000 $ de patrimoine final, chute identique avec ou sans) → décision Marc **Q16**. Lot 213 : Vercel READY sur `1030a2f9`. Code servi
+> → déploiement à vérifier. Reste : lot 215 (gate REER per-conjoint) et les tickets 🧭.
+
 > ## 🟦 Session 2026-09-07 — Lot 213 : les 16 correctifs XS/S SANS décision de l'audit n°4, livrés d'un coup
 > Marc absent (« fais tout ce que tu peux seul ») : partition du rapport §10, première tranche. Servi : trois cartes de
 > conseil IA (couple, immobilier, rééquilibrage) refusent en mode discret avec le même message (décision « masquer »

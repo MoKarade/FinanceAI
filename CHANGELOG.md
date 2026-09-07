@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-07 (La valeur d'une entreprise privée apparaît enfin dans la décomposition du patrimoine)
+
+- **Corrigé** : depuis le 19 août, la valeur d'une entreprise privée (onglet Patrimoine élargi) comptait dans le
+  patrimoine net mais n'apparaissait dans aucune composante : la pile des actifs de la courbe Futur restait sous la
+  ligne de patrimoine de toute cette valeur, l'infobulle et la table ne la listaient pas, la vue au jour la faisait
+  disparaître puis réapparaître à chaque fin de mois, et le raccord entre le passé et le futur faisait une marche.
+  Une aire « Entreprise privée » (masquable comme les autres), une ligne d'infobulle et une colonne de table la
+  portent maintenant, constante sur l'horizon et sur le passé. Le patrimoine net lui-même ne change pas d'un dollar.
+
 ## [unreleased] — 2026-09-07 (Seize petites corrections issues de l'audit : dettes, mode discret, import de relevé)
 
 - **Corrigé** : les trois cartes de conseil de l'IA (optimisation du couple, projet immobilier, justification du

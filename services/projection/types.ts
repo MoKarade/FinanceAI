@@ -60,6 +60,9 @@ export interface ProjectionChartPoint {
     RetraitCELI?: number;
     rapBalance?: number;
     Immobilier?: number;
+    /** [ENG-W5-BUSINESS-NON-PUBLIE] Valeur des entreprises privées détenues (prorata), CONSTANTE sur
+     *  l'horizon. Terme `+1` du patrimoine : `NetWorth = Σ(actifs publiés, Entreprise incluse) − DettesNonImmo`. */
+    Entreprise?: number;
     DetteTotale?: number;
     /** [M5 audit 2026-06-17] Dettes NON immobilières = activeDebts + liquidDebt + smithManoeuvre
      *  (DetteTotale SANS l'hypothèque). `NetWorth = Σ(actifs affichés, dont Immobilier=équité nette)

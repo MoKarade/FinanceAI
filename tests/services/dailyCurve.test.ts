@@ -65,7 +65,7 @@ describe('mergeDailyRealPoint — fusion passé réel, no-fake par construction'
     const realRow = {
         date: firstDay.dayIso, isDated: true, labels: ['Paie'],
         priceAgeMaxDays: 2, hasEstimatedPrice: false,
-        Liquidites: 12_345, Immobilier: 150_000, DettesNonImmo: 5_000, NetWorth: 222_222,
+        Liquidites: 12_345, Immobilier: 150_000, Entreprise: 0, DettesNonImmo: 5_000, NetWorth: 222_222,
         Income: 2_000, Expenses: 100, Savings: 1_900, NetTransferLiquid: 1_900,
         CELI: 41_000, CELIAPP: 0, REER: 51_000, REEE: 0, NonReg: 0, Crypto: 0,
         deposits: { CELI: 10, CELIAPP: 0, REER: 20, REEE: 0, NonReg: 0, Crypto: 0 },
@@ -326,7 +326,7 @@ describe('[PASSE-REEL-1] une journée PASSÉE sans donnée réelle n\'est pas tr
     it('journée passée AVEC donnée réelle → tracée, avec les valeurs mesurées', () => {
         const byDate = new Map([[jour.dayIso, {
             date: jour.dayIso, Liquidites: 4242, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0,
-            Crypto: 0, Immobilier: 0, DettesNonImmo: 0, NetWorth: 4242, Income: 0, Expenses: 0,
+            Crypto: 0, Immobilier: 0, Entreprise: 0, DettesNonImmo: 0, NetWorth: 4242, Income: 0, Expenses: 0,
             Savings: 0, NetTransferLiquid: 0, deposits: {}, growth: {}, labels: [], isDated: true,
             priceAgeMaxDays: 0, hasEstimatedPrice: false,
         } as unknown as Parameters<typeof mergeDailyRealPoint>[3] extends ReadonlyMap<string, infer R> | null ? R : never]]);

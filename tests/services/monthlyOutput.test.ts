@@ -63,6 +63,7 @@ const makeCtx = (overrides: Partial<MonthlyOutputCtx> = {}): MonthlyOutputCtx =>
     fhsaRoom: 0,
     rapRepaymentDueTotal: 0,
     realEstateEquity: 0,
+    privateBusinessValue: 0,
     mortgageBalance: 0,
     activeDebtsTotal: 0,
     liquidDebt: 0,
@@ -157,18 +158,20 @@ describe('buildMonthlyDataPoint — mode déterministe : mappings dérivés', ()
         // ctx cohérent : rawNetWorth EST la somme des actifs moins les dettes hors-immo.
         const liquid = 10000, celi = 40000, celiapp = 5000, reer = 80000, reee = 12000, nonReg = 25000, crypto = 8000;
         const realEstateEquity = 150000; // équité déjà nette d’hypothèque
+        const privateBusinessValue = 900000; // [ENG-W5-BUSINESS-NON-PUBLIE] le 9e actif, publié `Entreprise`
         const activeDebtsTotal = 9000, liquidDebt = 0, smithManoeuvreDebt = 0;
-        const assetsSum = liquid + celi + celiapp + reer + reee + nonReg + crypto + realEstateEquity;
+        const assetsSum = liquid + celi + celiapp + reer + reee + nonReg + crypto + realEstateEquity + privateBusinessValue;
         const rawNetWorth = assetsSum - (activeDebtsTotal + liquidDebt + smithManoeuvreDebt);
         const point = buildMonthlyDataPoint(makeCtx({
-            liquid, celi, celiapp, reer, reee, nonReg, crypto, realEstateEquity,
+            liquid, celi, celiapp, reer, reee, nonReg, crypto, realEstateEquity, privateBusinessValue,
             activeDebtsTotal, liquidDebt, smithManoeuvreDebt, mortgageBalance: 200000, rawNetWorth,
         }));
         // `?? 0` : ces champs sont optionnels sur ProjectionChartPoint (absents en mode MC) ;
         // en mode déterministe ils sont tous définis — le `?? 0` satisfait tsc strict sans rien changer.
         const reconstructed =
             (point.Liquidites ?? 0) + (point.CELI ?? 0) + (point.CELIAPP ?? 0) + (point.REER ?? 0) + (point.REEE ?? 0) +
-            (point.NonReg ?? 0) + (point.Crypto ?? 0) + (point.Immobilier ?? 0) - (point.DettesNonImmo ?? 0);
+            (point.NonReg ?? 0) + (point.Crypto ?? 0) + (point.Immobilier ?? 0) + (point.Entreprise ?? 0) - (point.DettesNonImmo ?? 0);
+        expect(point.Entreprise).toBe(900000);
         expect(reconstructed).toBeCloseTo(point.NetWorth ?? 0, 2);
     });
 

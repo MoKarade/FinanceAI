@@ -247,3 +247,21 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
         expect(rows.some((r) => r.labels.includes('Sans jour'))).toBe(false);
     });
 });
+
+describe('[PAST-NW-BUSINESS-SANS-PRODUCTEUR] le grand livre du passé porte la valeur COURANTE de l’entreprise, plate', () => {
+    it('900 000 $ : chaque jour porte `Entreprise` et le patrimoine du jour l’inclut', () => {
+        const { rows } = buildDailyPastLedger({ ...base, privateBusinessValue: 900_000 });
+        expect(rows.length).toBeGreaterThan(0);
+        for (const r of rows) {
+            expect(r.Entreprise).toBe(900_000);
+            const somme = PAST_ACCOUNT_KEYS.reduce((s, k) => s + r[k], 0);
+            expect(r.NetWorth).toBe(Math.round(somme + r.Liquidites + r.Immobilier + r.Entreprise - r.DettesNonImmo));
+        }
+    });
+    it('contrôle — absent : `Entreprise` = 0 et NetWorth identique à l’ancien comportement', () => {
+        const sans = buildDailyPastLedger(base).rows;
+        const avec = buildDailyPastLedger({ ...base, privateBusinessValue: 900_000 }).rows;
+        expect(sans.every(r => r.Entreprise === 0)).toBe(true);
+        for (let i = 0; i < sans.length; i++) expect(avec[i].NetWorth - sans[i].NetWorth).toBe(900_000);
+    });
+});

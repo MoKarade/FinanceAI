@@ -67,7 +67,8 @@ gros. Il est donc **recomposé** après interpolation :
 NetWorth[jour] = Σ NET_WORTH_DAILY_ASSETS[jour] − DettesNonImmo[jour]
 ```
 
-- `NET_WORTH_DAILY_ASSETS` = `Liquidites, CELI, CELIAPP, REER, REEE, NonReg, Crypto, Immobilier`.
+- `NET_WORTH_DAILY_ASSETS` = `Liquidites, CELI, CELIAPP, REER, REEE, NonReg, Crypto, Immobilier, Entreprise`
+  (liste DÉRIVÉE des termes `+1` de `NET_WORTH_SIGN` — garde `tests/services/netWorthPublie.test.ts`, lot 214).
   `Immobilier` porte l'**équité NETTE** d'hypothèque → on retranche `DettesNonImmo`, **jamais**
   `DetteTotale` (ce serait un double comptage). Un test garde cette liste contre `FIELD_KIND`.
 - ⚠️ **Exception au DERNIER jour du mois** : la valeur du moteur prime et n'est pas recomposée. Le
@@ -96,6 +97,7 @@ aujourd'hui**, le point de la courbe est donc RECONSTRUIT et remplace le point v
 | `MarketGrowth<Compte>` | Δ solde − dépôts du jour = le mouvement de marché |
 | `NetWorth` | `computeRawNetWorth` (source unique) sur ces composantes − dettes |
 | `Immobilier` | équité par **année** (palier — l'amortissement n'est pas connu au jour) |
+| `Entreprise` | valeur **COURANTE** des entreprises privées, plate sur tout le passé (aucun historique n'existe — lot 214) |
 | `DettesNonImmo` | niveau **actuel** au mois d'aujourd'hui, figé en projection (Option A, `pastNetWorth.ts`). ⚠️ Au jour du **passé**, exclut les dettes n'ayant pas encore commencé (cf. `Debt.startDate`, [PASSE-REEL-DETTE-1] 2026-08-21). |
 
 ⚠️ Le point réel est construit **à partir de rien**, jamais par `{...projeté, ...réel}` : sinon des
@@ -150,7 +152,7 @@ Le point porte `dayIsReal`, `priceAgeMaxDays` et `hasEstimatedPrice` : l'infobul
 
 ### Balances de fin de mois ($)
 
-`Liquidites`, `CELI`, `CELIAPP`, `REER`, `REEE`, `NonReg`, `Crypto`, `Immobilier` (équité), `DetteTotale` (hypo + dettes), `DettesNonImmo` (dettes SANS hypothèque → `NetWorth = Σactifs − DettesNonImmo` tient même sous prêt, audit M5 2026-06-17), `LiquidDebt` (découvert porté en dette), `rapBalance`, `CELIMax`, `REERMax`.
+`Liquidites`, `CELI`, `CELIAPP`, `REER`, `REEE`, `NonReg`, `Crypto`, `Immobilier` (équité), `Entreprise` (valeur des entreprises privées au prorata détenu, constante — publiée au lot 214 : elle comptait dans `NetWorth` depuis le 2026-08-19 sans champ), `DetteTotale` (hypo + dettes), `DettesNonImmo` (dettes SANS hypothèque → `NetWorth = Σactifs − DettesNonImmo` tient même sous prêt, audit M5 2026-06-17), `LiquidDebt` (découvert porté en dette), `rapBalance`, `CELIMax`, `REERMax`.
 
 ### Variations mensuelles ($)
 

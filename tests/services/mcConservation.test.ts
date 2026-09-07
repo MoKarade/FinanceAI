@@ -72,7 +72,10 @@ const params = (): SimulationParams => ({
 } as unknown as SimulationParams);
 
 /** Actifs affichés. `Immobilier` = équité DÉJÀ nette d'hypothèque → on retranche `DettesNonImmo`. */
-const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier'] as const;
+// [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) `Entreprise` est le 9e actif : sans lui, l'identité était fausse de
+// toute la valeur de l'entreprise. ⚠️ ZÉRO dans CE fichier (aucune fixture Monte Carlo ne porte d'entreprise) :
+// l'entrée y est inerte, déclarée comme telle ; la discrimination vit dans `netWorthPublie.test.ts` et le fuzz.
+const ASSET_KEYS = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier', 'Entreprise'] as const;
 /** Un découvert va en `LiquidDebt`, jamais en actif négatif (INV-6). `Immobilier` exclu : l'équité
  *  peut légitimement passer sous l'eau. */
 const NON_NEGATIVE = ['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto'] as const;

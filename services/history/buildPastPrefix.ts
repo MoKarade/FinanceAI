@@ -38,6 +38,8 @@ type PastPrefixPoint = {
     dateLabel: string;
     Liquidites: number;
     Immobilier: number;
+    /** [PAST-NW-BUSINESS-SANS-PRODUCTEUR] Valeur COURANTE des entreprises privées, plate sur le passé. */
+    Entreprise: number;
     CELI: number;
     CELIAPP: number;
     REER: number;
@@ -60,6 +62,11 @@ interface BuildPastPrefixInput {
     /** Dettes hors hypothèque (store, tableau FRAIS — cf en-tête) : sert UNIQUEMENT à déterminer quelles
      *  dettes exclure de `currentDebtNonImmo` pour un mois passé où elles n'existaient pas encore. */
     debts: ReadonlyArray<DebtAmortissable>;
+    /** [PAST-NW-BUSINESS-SANS-PRODUCTEUR] Valeur COURANTE des entreprises privées (prorata), portée PLATE
+     *  sur tout le passé — même convention que l'immobilier reconstruit par paliers. Absent = 0 : la
+     *  JSDoc de `pastNetWorthAt` promettait cette valeur depuis août sans qu'aucun appelant ne la passe,
+     *  d'où une MARCHE de la valeur entière au raccord passé→futur. */
+    privateBusinessValue?: number;
 }
 
 /** Ce que `buildPastPrefix` rend : les points, PLUS ce que l'écran doit pouvoir DIRE à leur sujet.
@@ -83,7 +90,7 @@ interface PastPrefixResult {
  * `NetWorth = undefined` (no-fake : pas de fausse ligne à 0). `points` est vide si aucun passé connu.
  */
 export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
-    const { pastHistoryPoints, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts } = input;
+    const { pastHistoryPoints, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts, privateBusinessValue = 0 } = input;
 
     const miOf = (ym: string): number => {
         const [y, m] = ym.split('-').map(Number);
@@ -149,9 +156,10 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
             dateLabel: `${year}-${String(month).padStart(2, '0')}`,
             Liquidites: hasNW ? (cash ?? 0) : 0,
             Immobilier: immo,
+            Entreprise: privateBusinessValue,
             CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto,
             NetWorth: hasNW
-                ? pastNetWorthAt({ CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto }, cash ?? 0, immo, debtNonImmo)
+                ? pastNetWorthAt({ CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto }, cash ?? 0, immo, debtNonImmo, privateBusinessValue)
                 : undefined,
             isPast: true,
         });

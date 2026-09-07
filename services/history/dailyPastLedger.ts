@@ -85,6 +85,8 @@ export interface DailyPastRow {
     Liquidites: number;
     CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number;
     Immobilier: number;
+    /** [PAST-NW-BUSINESS-SANS-PRODUCTEUR] Valeur COURANTE des entreprises privées, plate sur le passé. */
+    Entreprise: number;
     DettesNonImmo: number;
     NetWorth: number;
     /** Entrées d'argent du jour (transactions positives). */
@@ -141,6 +143,9 @@ interface BuildDailyPastInput {
      *  MENSUEL, quelles dettes exclure de `currentDebtNonImmo` pour un jour où elles n'existaient
      *  pas encore (`sumNotYetStartedDebtsAtAbsoluteMonth`). */
     debts: ReadonlyArray<DebtAmortissable>;
+    /** [PAST-NW-BUSINESS-SANS-PRODUCTEUR] Valeur COURANTE des entreprises privées (prorata), PLATE sur
+     *  le passé (aucun historique n'existe). Absent = 0. */
+    privateBusinessValue?: number;
     /** Garde-fou de volume : au-delà, on ne reconstruit pas (le graphe ne va pas jusque-là). */
     maxDays?: number;
 }
@@ -211,7 +216,7 @@ export function depositsOnDay(
  * future) — l'appelant garde alors ce qu'il avait, plutôt qu'une ligne inventée.
  */
 export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedgerResult {
-    const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo, debts } = input;
+    const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo, debts, privateBusinessValue = 0 } = input;
     // ⚠️ [PASSE-REEL-CAP-400J] Défaut PARTAGÉ avec la reconstruction des placements. Deux `?? 400`
     // indépendants, c'était deux plafonds à faire évoluer ensemble — et donc un jour à désynchroniser.
     const maxDays = input.maxDays ?? MAX_DAILY_DAYS_DEFAULT;
@@ -318,6 +323,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
             Liquidites: c.cash,
             CELI: i.CELI, CELIAPP: i.CELIAPP, REER: i.REER, REEE: i.REEE, NonReg: i.NonReg, Crypto: i.Crypto,
             Immobilier: immo,
+            Entreprise: privateBusinessValue,
             DettesNonImmo: debtNonImmo,
             // SOURCE UNIQUE : `computeRawNetWorth` via le helper du passé — jamais une copie locale
             // de la formule. `Immobilier` est DÉJÀ net d'hypothèque (ne jamais re-soustraire).
@@ -326,11 +332,10 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
                 celi: i.CELI, celiapp: i.CELIAPP, reer: i.REER, nonReg: i.NonReg,
                 crypto: i.Crypto, reee: i.REEE,
                 realEstateEquity: immo,
-                // [ENG-W5-BUSINESS-OFFBALANCE] Le grand livre du PASSÉ ne reconstruit aucune
-                // entreprise privée : il n'y a ni cours, ni relevé, ni transaction d'où la tirer.
-                // 0 EXPLICITE plutôt qu'un champ oublié — le `Record` exhaustif de `NetWorthParts`
-                // force ce choix à être écrit, ce qui est exactement son rôle.
-                privateBusinessValue: 0,
+                // [PAST-NW-BUSINESS-SANS-PRODUCTEUR] (lot 214) Le passé ne RECONSTRUIT aucune entreprise
+                // privée (ni cours, ni relevé) : il porte la valeur COURANTE, plate — la même que le
+                // moteur au premier mois futur, sinon le raccord fait une marche de la valeur entière.
+                privateBusinessValue,
                 liquidDebt: 0, smithManoeuvreDebt: 0, activeDebtsTotal: debtNonImmo,
             })),
             Income: income,

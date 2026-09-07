@@ -23,9 +23,9 @@
 > mets à jour la doc »). Cœur sain : 0 écart fiscal de valeur, conservation 0,02 $, 233/239 corrections
 > archivées encore en place, 10/10 de juillet fermés. Chaque ticket ci-dessous a été relu au `fichier:ligne` et
 > ses chiffres re-mesurés par moi — jamais recopiés d'un agent. Lots proposés (rapport §10) : ✅ 213 = XS/S sans
-> décision (16 tickets livrés le 2026-09-07) · 214 = W5 publication · 215 = gate REER per-conjoint · le reste attend Marc.
+> décision (16 tickets livrés le 2026-09-07) · ✅ 214 = W5 publication (3 tickets, 2026-09-07) · 215 = gate REER per-conjoint · le reste attend Marc.
 
-- [ ] 🔴 **`[ENG-W5-BUSINESS-NON-PUBLIE]`** (M, CRITIQUE — sans décision, ne déplace PAS un dollar de `NetWorth`) —
+- [x] 🔴 **`[ENG-W5-BUSINESS-NON-PUBLIE]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — `Entreprise` publié par `monthlyOutput` (stock), `NET_WORTH_DAILY_ASSETS`, `FIELD_KIND`, `CURVE_FIELDS`, aire + infobulle + table + drill-down, source unique `computePrivateBusinessValue` ; garde structurelle `netWorthPublie.test.ts` (7 cas : chaque terme du sign-map a son champ, identité publiée < 0,1 $, liste quotidienne DÉRIVÉE du sign-map, `CURVE_FIELDS` ⊇ actifs publiés) ; `NetWorth` bit-identique. Perturbations : champ retiré → 6 rouges ; liste quotidienne sans `Entreprise` → 2 rouges (dérivation + dent de scie **901 171 $** mesurée) ; `CURVE_FIELDS` sans → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, CRITIQUE — sans décision, ne déplace PAS un dollar de `NetWorth`) —
   la valeur d'une entreprise privée (W5.7) est un terme de `computeRawNetWorth` (`services/projection/netWorth.ts:33,51,68`,
   `projection.ts:232,523,2506`) mais **aucun champ de `chartData` ne la porte** (`monthlyOutput.ts:293-301`) ;
   absente de `NET_WORTH_DAILY_ASSETS` (`dailyLedger.ts:153-155`) et des `ASSET_KEYS` des trois harnais de
@@ -39,13 +39,26 @@
   du harnais à `estimatedValue > 0` ; et la **garde structurelle qui manquait** : tout terme `+1`/`−1` de
   `NET_WORTH_SIGN` a un champ publié dans `chartData` (perturbation : retirer `Entreprise` de la sortie → rouge).
   Preuve de non-déplacement : `NetWorth` bit-identique avant/après sur les 7 personas.
-- [ ] 🟠 **`[PAST-NW-BUSINESS-SANS-PRODUCTEUR]`** (S, ÉLEVÉ — livrer AVEC le précédent) — `services/history/pastNetWorth.ts:61`
+- [ ] 🔴 **`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`** (S, CRITIQUE money-critical, 🧭 **décision Marc — Q16 dans `docs/A_FAIRE_MOI.md`** — trouvé par le panel du lot 214, PRÉ-EXISTANT depuis le 2026-08-19, rendu VISIBLE par la publication d'`Entreprise`) —
+  `services/projection.ts` calcule `privateBusinessValue` en `const` AVANT la boucle, et le partage du divorce
+  (`*= keep` sur `liquid`, `celi`, `celiapp`, `reer`, `nonReg`, `crypto`, `reee`, `realEstateEquity`, `mortgageBalance`,
+  les immeubles locatifs, `liquidDebt`, `smithManoeuvreDebt`…) ne la touche JAMAIS. **Mesuré par moi** (couple, divorce
+  certain au mois 12, `divorceSplitPct: 75`, entreprise 900 000 $) : chute du patrimoine au mois du divorce
+  **−284 706 $ AVEC comme SANS entreprise** ; `Entreprise` 900 000 → 900 000 (le CELI, lui, passe de 237 773 à 52 553) ;
+  `finalNetWorth` **+900 000 $** exactement par rapport au scénario sans entreprise — si elle était partagée comme les
+  autres actifs, il resterait 225 000 $. Même classe que `[ENG-W5-RENTAL-OFFBALANCE]` (immeubles oubliés au divorce,
+  corrigé le 2026-08-13) : le JUMEAU n'a pas été traité (`MODULE-ECRIT-HORS-CHECKLIST`). ⚠️ PAS un correctif mécanique :
+  au Québec, le patrimoine familial n'inclut pas les actions d'une société ; ce qui se partage (ou non) est une décision
+  produit → Q16. Une fois tranché : `let` muté `*= keep` (ou laissé intact, mais ÉCRIT comme tel) dans le callback de
+  partage, garde à `keep ≠ 0,5` (`UN-PARTAGE-A-50-POURCENT-NE-DISTINGUE-PAS-KEEP-DE-SON-COMPLEMENT`), et
+  `projection.divorceConservation.test.ts` (déjà à 9 actifs) avec une fixture qui porte une entreprise.
+- [x] 🟠 **`[PAST-NW-BUSINESS-SANS-PRODUCTEUR]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — `privateBusinessValue` porté dans `BuildPastPrefixInput` et `BuildDailyPastInput`, écrit aux deux sites (plate), `FutureProjection` le calcule depuis le store par la même règle que le moteur, `dailyCurve` recouvre `Entreprise` ; +2 cas `buildPastPrefix.test.ts`, +2 `dailyPastLedger.test.ts` ; perturbation (5e argument omis) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — livrer AVEC le précédent) — `services/history/pastNetWorth.ts:61`
   accepte `privateBusinessValue = 0` par défaut et son seul appelant `buildPastPrefix.ts:154` passe quatre
   arguments ; `dailyPastLedger.ts:333` écrit `privateBusinessValue: 0` en toutes lettres. La JSDoc promet « valeur
   COURANTE, plate sur le passé » : aucun producteur ne tient la promesse → marche de la valeur entière au raccord.
   **Correctif** : porter la valeur dans `BuildPastPrefixInput`, l'écrire aux DEUX sites (même convention = plate,
   intention écrite), garde « aucune marche au raccord » avec contrôle négatif (sans entreprise → inchangé).
-- [ ] 🟡 **`[HARNAIS-CONSERVATION-W5-VIDE]`** (XS, MOYEN — même lot) — la seule fixture W5 des harnais de
+- [x] 🟡 **`[HARNAIS-CONSERVATION-W5-VIDE]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — fixture à 900 000 $ ; PREUVE de discrimination : champ non publié + fixture à 0 → 22 verts (harnais AVEUGLE), champ non publié + fixture à 900 000 → INV-1 rouge sur 100 % des points → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN — même lot) — la seule fixture W5 des harnais de
   conservation pose `estimatedValue: 0` ; le fuzz ne sème jamais `privateBusinesses`. Passer à une valeur > 0 :
   le harnais DOIT rougir avant le correctif du ticket 🔴 (c'est la preuve de discrimination), vert après.
 - [ ] 🟠 **`[FISC-RRSP-ROOM-GATE-MENAGE]`** (S, ÉLEVÉ **money-critical**, contenu — sans décision produit) —

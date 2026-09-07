@@ -351,6 +351,20 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/activeIncome.ts', value: '99', family: 'structural',
       reason: '[×2] Sentinelle « pas de fin connue » pour les années de RSU restantes (`?? 99`), pour le 1er conjoint et pour le 2e. Valeur d’absence, pas un paramètre.' },
 
+    // ── services/projection/monthlyEvents.ts ─────────────────────────────────────────────────
+    { file: 'services/projection/monthlyEvents.ts', value: '0.95', family: 'design',
+      reason: '`REAL_ESTATE_SALE_NET_FACTOR` — produit net d’une vente immobilière = 95 % de la valeur (5 % de frais de disposition : courtage, notaire, quittance), hypothèse de MODÈLE documentée FISCAL_REFERENCE §8, nommée au lot 213 (elle vivait en deux littéraux nus). Sert au produit encaissé ET à l’assiette du gain en capital d’un locatif — un seul nom pour les deux, sinon ils divergent.' },
+    { file: 'services/projection/monthlyEvents.ts', value: '31', family: 'structural',
+      reason: 'Borne haute d’un jour du mois (`dayOfIsoDate` : 1 ≤ jour ≤ 31) — calendrier, pas un paramètre.' },
+    { file: 'services/projection/monthlyEvents.ts', value: '30', family: 'design',
+      reason: '[≠2] DEUX SENS, deux DÉFAUTS de saisie en pourcentage : (1) chute d’un événement de vie `KRACH` quand `impactPercent` est absent (`|| 30`) ; (2) chute du test de stress quand `stressTestDrop` est absent (`|| 30`). Deux replis d’ABSENCE, aucun barème ; ⚠️ un `0` explicite y est effacé (`||`), limite connue de ces deux champs.' },
+    { file: 'services/projection/monthlyEvents.ts', value: '0.5', family: 'structural',
+      reason: 'Tolérance d’arrondi (50 cents) pour décider qu’un tirage d’objectif est INCOMPLET (`effective − drawn > 0.5`) — évite de signaler un manque de 0,004 $ né d’un arrondi. Seuil technique, pas un montant.' },
+    { file: 'services/projection/monthlyEvents.ts', value: '5', family: 'design',
+      reason: 'Année par défaut du choc de marché du test de stress quand `stressTestYear` est absent (`|| 5`, en années depuis le départ). Repli de saisie, pas un paramètre légal.' },
+    { file: 'services/projection/monthlyEvents.ts', value: '0.9', family: 'design',
+      reason: 'Part de la chute RÉCUPÉRÉE sur la fenêtre de reprise du test de stress (`1 + (drop / recoveryMonths) × 0.9`) : le marché regagne 90 % du choc, pas 100 % — hypothèse de conception du stress test, réglable sciemment.' },
+
     // ── services/projection/assetLocation.ts ─────────────────────────────────────────────────
     { file: 'services/projection/assetLocation.ts', value: '0.60', family: 'design',
       reason: 'Taux effectif « dividende canadien éligible » estimé à 60 % du marginal (proxy majoration 1,38 + crédits), branche `ca-equity`. Hypothèse de modèle COMMENTÉE sur place (FA-8) — mais pas nommée : c’est un littéral nu dans un `return`. Module CONSULTATIF (perte d’allocation), pas le moteur : proxy assumé, pas un barème à sourcer.' },
@@ -604,6 +618,10 @@ export const FISCAL_MODULES = [
     'services/projection/w5Effects.ts',
     'services/projection/estateCalculation.ts',
     'services/projection/activeIncome.ts',
+    // ⚠️ AJOUTÉ le 2026-09-07 (`[FISC-GUARD-SCOPE-MONTHLYEVENTS]`, audit passe n°4) : le module portait
+    // deux `0.95` nus (produit net de vente, §8) et n'était ni scanné ni déclaré hors périmètre.
+    // Mesuré avant d'écrire : 8 littéraux → 7 clés (fichier, valeur), tous de conception.
+    'services/projection/monthlyEvents.ts',
     'services/projection/assetLocation.ts',
     'services/projection/cashflowAllocation.ts',
     'services/projection/glidepathRates.ts',
@@ -628,9 +646,10 @@ export const FISCAL_MODULES = [
  *   DÉSIGNÉES** du garde V1 (`TAX_SOURCE_FILES`), déjà ancrées dans `docs/FISCAL_REFERENCE.md` §1-3
  *   et §8. Les inventorier ici dupliquerait la référence en 108 entrées de bruit : leur littéral
  *   fiscal est *attendu*, c'est leur raison d'être. Les scanner INVERSERAIT le sens du garde.
- * - `services/projection.ts` (31) — orchestrateur : le travail fiscal est déjà dans les
- *   sous-modules scannés. **Trou connu et assumé** : un barème écrit directement dans la boucle y
- *   échapperait. Chiffré ici pour que le prochain sache ce qu'il achète en l'ajoutant.
+ * - `services/projection.ts` — était le dernier trou DÉCLARÉ (« le travail fiscal vit dans les
+ *   sous-modules ») ; **SCANNÉ depuis le 2026-09-01** (`[FISC-GUARD-PROJECTION-TS]`, voir
+ *   `FISCAL_MODULES`) : vrai des barèmes, faux des bornes d'âge décidées dans la boucle.
+ *   Cette ligne disait encore « trou connu et assumé » six jours après — audit 2026-09-07.
  * - `services/projection/historicalReturns.ts` (58), `services/pdfReport.ts` (61),
  *   `services/projection/monthlyCalcs.ts` (15), `services/testPersonas/*`, `services/fintable/*`,
  *   `services/marketData/*` — rendements de marché, mise en page, fixtures de démo, codes HTTP et

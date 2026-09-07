@@ -7,6 +7,7 @@ import { showToast } from '../ui/Toast';
 import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError } from '../../services/cloudBackup';
 import { markBackupDone } from '../../services/backupReminder';
 import { logAudit } from '../../services/auditLog';
+import { logError } from '../../services/errorLogger';
 import { MIN_PASSPHRASE_LENGTH } from '../../services/sync/syncOrchestrator';
 import { verifierTypesRestaures, messageDeRefusTypes } from '../../services/verifierTypesRestaures';
 
@@ -151,6 +152,8 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       setExportPassphraseConfirm('');
     } catch (e) {
       const msg = e instanceof CloudBackupError ? e.message : (e as Error).message;
+      // [IMPORT-BROKER-BACKUP-SANS-LOGERROR] (audit 2026-09-07) Toast ET journal : un toast s'efface.
+      logError({ source: 'storage', severity: 'error', message: 'Sauvegarde chiffrée : échec du chiffrement', error: e });
       showToast(`Echec chiffrement : ${msg}`, "error");
     } finally {
       setEncWorking(false);
@@ -183,6 +186,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
       setPendingRestoreData(parsed.data);
     } catch (e) {
       const msg = e instanceof CloudBackupError ? e.message : (e as Error).message;
+      logError({ source: 'storage', severity: 'error', message: 'Sauvegarde chiffrée : échec du déchiffrement ou de la lecture', error: e });
       showToast(`${msg}`, "error");
     } finally {
       setEncWorking(false);
@@ -209,6 +213,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
         setPendingRestoreData(parsed.data);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'inconnu';
+        logError({ source: 'storage', severity: 'error', message: 'Sauvegarde JSON : échec de lecture', error: err });
         showToast(`Echec lecture : ${msg}`, "error");
       }
     };

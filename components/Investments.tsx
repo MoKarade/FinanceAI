@@ -40,7 +40,7 @@ import { formatCAD, formatDate } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError } from '../services/errorLogger';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
-import { messageErreurIa } from '../services/messageErreurIa';
+import { messageErreurIa, MESSAGE_IA_MODE_DISCRET } from '../services/messageErreurIa';
 import { AddStockForm } from './investments/AddStockForm';
 import { showToast } from './ui/Toast';
 import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
@@ -1058,6 +1058,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <button
                                         type="button"
                                         onClick={async () => {
+                                            // [AI-PRIVACY-CONSEILS-NON-GATES] (décision Marc 2026-09-05 : MASQUER —
+                                            // audit 2026-09-07) Le prompt porte le Δ en dollars de chaque action.
+                                            if (useFinanceStore.getState().isPrivacyMode) {
+                                                setJustificationsError(MESSAGE_IA_MODE_DISCRET);
+                                                return;
+                                            }
                                             setIsFetchingJustifications(true);
                                             setJustificationsError(null);
                                             const inputs: RebalanceActionInput[] = rebalancingActions.map(a => ({

@@ -22,8 +22,8 @@
 > Passe n°4 (commit `3f657d7d`, demande Marc « lance une grosse analyse, check tous les problèmes corrigés et
 > mets à jour la doc »). Cœur sain : 0 écart fiscal de valeur, conservation 0,02 $, 233/239 corrections
 > archivées encore en place, 10/10 de juillet fermés. Chaque ticket ci-dessous a été relu au `fichier:ligne` et
-> ses chiffres re-mesurés par moi — jamais recopiés d'un agent. Lots proposés (rapport §10) : 213 = XS/S sans
-> décision · 214 = W5 publication · 215 = gate REER per-conjoint · le reste attend Marc.
+> ses chiffres re-mesurés par moi — jamais recopiés d'un agent. Lots proposés (rapport §10) : ✅ 213 = XS/S sans
+> décision (16 tickets livrés le 2026-09-07) · 214 = W5 publication · 215 = gate REER per-conjoint · le reste attend Marc.
 
 - [ ] 🔴 **`[ENG-W5-BUSINESS-NON-PUBLIE]`** (M, CRITIQUE — sans décision, ne déplace PAS un dollar de `NetWorth`) —
   la valeur d'une entreprise privée (W5.7) est un terme de `computeRawNetWorth` (`services/projection/netWorth.ts:33,51,68`,
@@ -59,7 +59,7 @@
   seulement si TOUS ont dépassé 71. Gardes : les trois cas ci-dessus + contrôle « même âge → inchangé ».
   ⚠️ Mesure avant/après sur un couple à ÉCART d'âge (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`) ;
   goldens rouges à LIRE un par un (pas re-baser).
-- [ ] 🟠 **`[DEBT-BALANCE-NAN-SILENCIEUX]`** (S, ÉLEVÉ — sans décision) — `components/DebtManager.tsx:56-78`
+- [x] 🟠 **`[DEBT-BALANCE-NAN-SILENCIEUX]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `computeTotalDebt` journalise (throttle par dette), `refusChampNonFini` refuse solde/taux/minimum non finis à l'ajout ET à l'édition (région live), la simulation affiche « — » au lieu de « 0,1 ans » ; 3 cas `portfolio.test.ts` + 6 cas `DebtManager.saisieNonFinie.test.tsx` ; perturbations : trace retirée → 2 rouges (et `moneyConservation` reste VERT : c'est bien la nouvelle garde qui discrimine), refus d'édition retiré → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — sans décision) — `components/DebtManager.tsx:56-78`
   (`saveEdit`) n'a que `refusOrigineIncoherente`, qui rend `null` pour un non-fini (`DebtKindFields.tsx:44`) :
   un solde VIDÉ (`parseFloat('')` = `NaN`, `:190`) s'enregistre ; `handleAdd` (`:41-50`) refuse `balance` mais
   pas `interestRate`/`minimumPayment` (`:155-159`). Puis `services/portfolio.ts:216-219` (`computeTotalDebt`)
@@ -71,7 +71,7 @@
   (`NaN > 0` est faux). **Correctif** : (a) `logErrorThrottled` dans `computeTotalDebt` ; (b) refus UI d'un champ
   non fini à l'ajout ET à l'édition ; (c) test INVERSÉ (le `NaN` est tracé) ; (d) « — » quand la simulation
   n'est pas finie.
-- [ ] 🟠 **`[AI-PRIVACY-CONSEILS-NON-GATES]`** (S, ÉLEVÉ — extension d'une décision PRISE, sans nouvelle décision) —
+- [x] 🟠 **`[AI-PRIVACY-CONSEILS-NON-GATES]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — garde à l'instant du geste dans les trois cartes (`MESSAGE_IA_MODE_DISCRET`, source unique dans `services/messageErreurIa.ts`) ; `conseilsIaModeDiscret.test.tsx` 3 × (mode discret → service jamais appelé + message ; contrôle mode normal → appelé) ; perturbation (garde du couple retirée) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — extension d'une décision PRISE, sans nouvelle décision) —
   la décision Marc 2026-09-05 « masquer : en mode discret, les montants ne partent pas non plus vers l'assistant »
   est appliquée au chat (`useAiChat.ts:171`), au diagnostic Budget (`BudgetAiModal.tsx:99`) et aux cartes de
   signaux — PAS aux trois cartes de conseil : `components/tax/CoupleOptimizationCard.tsx:90` (brut/net des deux
@@ -81,7 +81,7 @@
   scanne que `components/` et `promptCad` vit dans `services/claude.ts`. **Correctif** : la même PAIRE de gardes
   que `tests/components/budgetAiModalModeDiscret.test.tsx` (égress au service + ouvreur avec message), ×3, chacune
   avec son contrôle (mode normal → l'appel part).
-- [ ] 🟠 **`[AI-STOPREASON-JETE]`** (S, ÉLEVÉ — sans décision) — `services/claude.ts` ne lit `stop_reason` nulle part
+- [x] 🟠 **`[AI-STOPREASON-JETE]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `VisionTronqueeError` levée sur `stop_reason === 'max_tokens'` aux deux appels Vision, cause `tronque` dans `messageErreurIa` (« trop long … réimporte en plusieurs parties ») ; JUMELLE trouvée par la revue : `VisionReponseInvalideError` (JSON invalide ou `stop_reason: 'refusal'`) — l'`Error` nu d'avant tombait dans « réseau », donc « vérifie ton accès Internet » sur une requête qui avait abouti ; `claude.visionTronquee.test.ts` 7 cas sur le vrai module (SDK simulé) ; perturbation → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — sans décision) — `services/claude.ts` ne lit `stop_reason` nulle part
   (seul `services/aiTools/agentLoop.ts:289-301` le fait). `analyzeBankStatement` (non-stream, `max_tokens` 16 000)
   tronqué → JSON invalide → `[]` → `components/import/ImportBankStatement.tsx:64` « Aucune transaction reconnue » :
   FAUX, le relevé a été lu et coupé. **Correctif** : lire `response.stop_reason` aux deux appels Vision
@@ -100,30 +100,30 @@
   `(activeIncome.ts, 0.55)` FUSIONNÉE avec le taux AE 55 %, montant hors assiette de décembre et hors registres
   (`totalTaxesPaid` sous-compte). Reste : nommer la constante (clé de ratchet distincte, XS) ; passer par
   l'assiette réelle = déplace de l'argent → plan-first.
-- [ ] 🟡 **`[AITOOLS-DISPATCH-ERR-NON-SCRUB]`** (XS, MOYEN) — `services/aiTools/dispatch.ts:48` renvoie `err.message`
+- [x] 🟡 **`[AITOOLS-DISPATCH-ERR-NON-SCRUB]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `sanitizePromptText(…, 300)` ; `dispatchScrub.test.ts` 3 cas ; perturbation → 2 rouges → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `services/aiTools/dispatch.ts:48` renvoie `err.message`
   brut au modèle ; `agentLoop.ts:152` scrubbe déjà (`sanitizePromptText(…, 300)`). Même scrub.
 - [ ] 🟡 **`[AI-VISION-SANS-ANNULATION]`** (S, MOYEN, 🧭 UX) — `analyzePayslip`/`analyzeBankStatement` :
   `makeTimeoutSignal(undefined, 90_000)`, aucun `signal` en paramètre, pas de bouton Annuler pendant 90 s.
 - [ ] 🟡 **`[AI-CONSEILS-SANS-ANNULATION]`** (XS/carte, MOYEN, 🧭 UX) — les trois cartes de conseil
   (couple, immobilier, rééquilibrage) n'ont pas d'`AbortController` (25 s sans issue).
-- [ ] 🟡 **`[MCP-FIREAGE-DUP]`** (XS, MOYEN) — `mcp/tools/getRetirementOutlook.spec.ts:24-26` recopie `fireAgeOf`
+- [x] 🟡 **`[MCP-FIREAGE-DUP]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — copie retirée, import de `mcp/whatIf.ts` → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `mcp/tools/getRetirementOutlook.spec.ts:24-26` recopie `fireAgeOf`
   de `mcp/whatIf.ts:514-517` (déjà importé par `getProjection.spec.ts`, `simulateWhatIf.spec.ts`). Importer.
-- [ ] 🟡 **`[FISC-GUARD-SCOPE-MONTHLYEVENTS]`** (XS, MOYEN) — `services/projection/monthlyEvents.ts:222,239`
+- [x] 🟡 **`[FISC-GUARD-SCOPE-MONTHLYEVENTS]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `REAL_ESTATE_SALE_NET_FACTOR` (2 sites), module au périmètre du ratchet, 7 clés inventoriées (mesuré : 8 littéraux) ; perturbation (`0.93` nu) → ratchet rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `services/projection/monthlyEvents.ts:222,239`
   `* 0.95` (produit net d'une vente, coût de disposition documenté FISCAL_REFERENCE §8) sans constante nommée,
   dans un module ni dans `FISCAL_MODULES` ni dans `FISCAL_MODULES_HORS_PERIMETRE` (`fiscalConstGuardV2.ts`).
   Nommer (`REAL_ESTATE_SALE_NET_FACTOR`), ajouter le module au périmètre, entrée d'inventaire.
-- [ ] 🟡 **`[TEST-GAP-LIFETIMETAX]`** (XS, MOYEN) — `services/projection/lifetimeTax.ts` (35 lignes) est le seul des
+- [x] 🟡 **`[TEST-GAP-LIFETIMETAX]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `lifetimeTax.test.ts` 4 cas (somme, anti-vacuité par terme, non-finis, absent) ; perturbation (terme oublié) → 3 rouges → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `services/projection/lifetimeTax.ts` (35 lignes) est le seul des
   57 sous-modules sans import direct depuis `tests/` (mesuré 2026-09-07) ; consommé par `monteCarlo.ts` et
   `strategySearch.ts` (classement). Test direct : somme, terme non fini, `null`.
-- [ ] 🟡 **`[BUDGET-CATEGORY-INCOME-SIGN-GARDE-PERDUE]`** (XS, MOYEN) — le correctif #749 tient (`utils/budget.ts`
+- [x] 🟡 **`[BUDGET-CATEGORY-INCOME-SIGN-GARDE-PERDUE]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — 2 cas dans `budget.test.ts` (crédit sur un poste, par conjoint) ; perturbation (`Math.abs`) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — le correctif #749 tient (`utils/budget.ts`
   via `spendAmountOf`) mais ses tests vivaient dans `PlanningGoals.test.tsx`/`monthlyActuals.test.ts`, supprimés
   avec les Objectifs (lot 29, #755) : l'agrégation d'un CRÉDIT n'est plus assertée. Un cas dans
   `tests/utils/budget.test.ts` (remboursement positif dans `computeBudgetParity`/`computeActualByOwner`).
-- [ ] 🟢 **`[PROMPT-PALIERS-EN-DUR]`** (XS, FAIBLE) — `services/claude.ts:140` recopie les paliers 2026 dans le
+- [x] 🟢 **`[PROMPT-PALIERS-EN-DUR]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — taux dérivés de `FED_BRACKETS`/`QC_BRACKETS` ; `claude.promptPaliers.test.ts` 3 cas ; perturbation (15 en dur) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `services/claude.ts:140` recopie les paliers 2026 dans le
   prompt système (exacts aujourd'hui, hors ratchet) : dériver de `bracketsForYear()` ou déclarer au ratchet.
-- [ ] 🟢 **`[RATCHET-JSDOC-PERIME]`** (XS, FAIBLE) — `utils/fiscalConstGuardV2.ts:630-636` déclare encore
+- [x] 🟢 **`[RATCHET-JSDOC-PERIME]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — JSDoc réécrite (scanné depuis le 2026-09-01) → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `utils/fiscalConstGuardV2.ts:630-636` déclare encore
   `services/projection.ts` « trou connu et assumé » alors qu'il est scanné depuis le 2026-09-01.
-- [ ] 🟢 **`[FISC-FED-CREDITRATE-15-COMMENTAIRE]`** (XS, FAIBLE — docs §1 requalifiée au lot 212) — le commentaire
+- [x] 🟢 **`[FISC-FED-CREDITRATE-15-COMMENTAIRE]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — commentaire de `utils/tax.ts` requalifié CONTESTÉ, valeur inchangée → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE — docs §1 requalifiée au lot 212) — le commentaire
   `utils/tax.ts:184-186` affirme encore « gelé à 15 % par l'ARC … politique C-4 » sans source, contredit par la
   recherche relayée du 2026-09-05 (14,5 % / 14 % + compensatoire). Réécrire « CONTESTÉ, voir
   `[FISC-FED-CREDITRATE-15]` » — le chiffre ne bouge pas sans source.
@@ -132,17 +132,17 @@
   `projection/futureDetail/DrillDownCompte.tsx:212`, `FutureProjection.tsx:1804`), invisibles à
   `formatMonetaireSourceUnique` (motif exige `$`) ; mode discret OK (`maskedTick`). `formatCompactCAD` rend
   « 850 k$ » : re-mesurer la largeur d'axe (50 px) avant de migrer — un axe court peut être un choix.
-- [ ] 🟢 **`[KNIP-PAIRETEXTE-EXPORT]`** (XS, FAIBLE — seule régression des 239 corrigés) — `scripts/lib/ctaContrast.ts:180`
+- [x] 🟢 **`[KNIP-PAIRETEXTE-EXPORT]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — export retiré → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE — seule régression des 239 corrigés) — `scripts/lib/ctaContrast.ts:180`
   `PaireTexte` exporté sans consommateur (lot 208). Retirer l'export.
-- [ ] 🟢 **`[AI-CATEGORIZE-HISTORY-PARAM-MORT]`** (XS, FAIBLE) — `categorizeBatch(…, _history = [])`
+- [x] 🟢 **`[AI-CATEGORIZE-HISTORY-PARAM-MORT]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — paramètre retiré ; 2 appelants + 5 fichiers de test énumérés par le compilateur — `importReleveManuel` lui PASSAIT `withTransfers`, un paramètre mort que les appelants nourrissent a l'air vivant → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `categorizeBatch(…, _history = [])`
   (`services/claude.ts:407`) : paramètre jamais lu. Retirer (compilateur énumère les appelants).
-- [ ] 🟢 **`[IMPORT-BROKER-BACKUP-SANS-LOGERROR]`** (XS, FAIBLE) — `components/investments/ImportBrokerPositions.tsx:46`
+- [x] 🟢 **`[IMPORT-BROKER-BACKUP-SANS-LOGERROR]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `logError` aux 4 `catch` (source `storage`) → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `components/investments/ImportBrokerPositions.tsx:46`
   (`catch { setError(…) }`) et `components/settings/BackupPanel.tsx:152,184,210` : message à l'écran sans
   `logError` — une panne répétée n'apparaît dans aucun journal.
-- [ ] 🟢 **`[A11Y-INK500-TINY-X2]`** (XS, FAIBLE, WCAG 1.4.3) — `components/setup/PageSetupGate.tsx:284`
+- [x] 🟢 **`[A11Y-INK500-TINY-X2]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `text-ink-400` aux deux sites → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE, WCAG 1.4.3) — `components/setup/PageSetupGate.tsx:284`
   (« ou importer ») et `FutureProjection.tsx:1651` (indice survol/clic/molette) en `text-tiny text-ink-500` :
   `ink-500` mesure 3,86 à 4,33 (AA-large seulement), `ink-400` 5,90 à 6,62 → `text-ink-400`.
-- [ ] 🟢 **`[A11Y-HEALTH-DONUT-ARIA-HIDDEN]`** (XS, FAIBLE, WCAG 1.1.1) — `components/dashboard/HealthIndicator.tsx:136`
+- [x] 🟢 **`[A11Y-HEALTH-DONUT-ARIA-HIDDEN]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `aria-hidden` sur le `<svg>` → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE, WCAG 1.1.1) — `components/dashboard/HealthIndicator.tsx:136`
   `<svg>` du donut sans `aria-hidden` (le score est déjà en texte à côté).
 
 ## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)

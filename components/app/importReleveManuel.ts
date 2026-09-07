@@ -78,7 +78,7 @@ export async function importerReleveManuel(rawData: string, deps: DepsImportRele
             'Salaire', 'Autre', 'Transfert', 'Investissement', 'Remboursement',
             ...RULE_CATEGORIES,
         ]));
-        const classified = await categorizeBatch(toClassify, apiKey, withTransfers, allowed);
+        const classified = await categorizeBatch(toClassify, apiKey, allowed);
         const byId = new Map(classified.map(t => [t.id, t]));
         // Applique les catégories sur l'état FRAIS (et non le snapshot `deduped` capturé
         // avant l'await) → un edit utilisateur survenu pendant la classification n'est pas écrasé.

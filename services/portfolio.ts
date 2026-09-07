@@ -215,7 +215,21 @@ export const computeMonthlyBudgetAggregates = (
  */
 export const computeTotalDebt = (debts: Debt[]): number => {
   // [NAN-INPUT-HARDENING] `|| 0` rattrape déjà NaN (falsy) ; `Number.isFinite` couvre EN PLUS Infinity.
-  return (debts || []).reduce((sum, d) => sum + (Number.isFinite(d.balance) ? d.balance : 0), 0);
+  // [DEBT-BALANCE-NAN-SILENCIEUX] (audit 2026-09-07) Un solde non fini compte pour 0 $ — mais il est
+  // TRACÉ, comme `assetValueCad` et `computeCurrentLiquidity` plus bas dans ce même fichier
+  // (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`) : rabattu en silence, il donnait un « Total dû : 0 $ »
+  // crédible, un patrimoine surévalué et un prompt IA faux, sans rien à l'écran ni au journal.
+  // Throttlé par dette : une corruption PERSISTÉE se relit à chaque rendu.
+  return (debts || []).reduce((sum, d) => {
+    if (Number.isFinite(d.balance)) return sum + d.balance;
+    logErrorThrottled(`debt-balance-non-finite:${d.id ?? d.name ?? '?'}`, {
+      source: 'storage',
+      severity: 'warning',
+      message: `Dette « ${d.name ?? '?'} » : solde non fini (${String(d.balance)}) — compté 0 $ dans le total dû`,
+      context: { debtId: d.id ?? null },
+    });
+    return sum;
+  }, 0);
 };
 
 /**

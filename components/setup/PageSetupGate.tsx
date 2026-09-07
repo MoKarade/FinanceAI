@@ -280,7 +280,9 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
                         chemin ALTERNATIF à la saisie manuelle. Masquer le tout supprimait donc une
                         BIFURCATION, pas un ornement. Les filets restent cachés, le libellé nomme
                         maintenant le groupe qu'il introduit. */}
-                    <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-500">
+                    {/* [A11Y-INK500-TINY-X2] (audit 2026-09-07) `ink-500` mesure 3,86–4,33 sur les fonds de page
+                        (AA grand texte seulement) ; en `text-tiny`, c'est `ink-400` (5,90–6,62) qui passe 1.4.3. */}
+                    <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-400">
                         <span className="h-px flex-1 bg-white/10" aria-hidden="true" /> ou importer <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
                     </div>
                     <div role="group" aria-label="Ou importer">

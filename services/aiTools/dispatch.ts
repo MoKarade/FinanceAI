@@ -10,6 +10,7 @@ import { z } from 'zod';
 import type { StateProvider, ToolTextResult } from '../../mcp/tools/_dataAware';
 import { errorContent } from '../../mcp/tools/_dataAware';
 import { logError } from '../errorLogger';
+import { sanitizePromptText } from '../../utils/promptSafety';
 import type { AnyReadToolSpec } from '../../mcp/tools/_toolSpec';
 import { READ_SPECS_BY_NAME } from './registry';
 
@@ -45,6 +46,9 @@ export async function dispatchReadTool(
             message: `Chat in-app : le tool ${name} a levé une exception non gérée (ceinture dispatch).`,
             error: err instanceof Error ? err : new Error(String(err)),
         });
-        return errorContent(`Le tool ${name} a échoué. ${err instanceof Error ? err.message : String(err)}`);
+        // [AITOOLS-DISPATCH-ERR-NON-SCRUB] (audit 2026-09-07) Même scrub que l'écriture (`agentLoop`,
+        // finding #519) : `err.message` peut porter du texte MODÈLE ou utilisateur (nom de compte,
+        // libellé) — renvoyé brut, il rentre dans la conversation comme une instruction.
+        return errorContent(`Le tool ${name} a échoué. ${sanitizePromptText(err instanceof Error ? err.message : String(err), 300)}`);
     }
 }

@@ -51,7 +51,7 @@ describe('categorizeBatch — enforcement bout-en-bout (SDK mocké)', () => {
             { id: 99, category: 'Autre', isTransfer: false, confidence: 50 }, // id HALLUCINÉ
         ]);
 
-        const out = await categorizeBatch(input, 'fake-key', [], ALLOWED);
+        const out = await categorizeBatch(input, 'fake-key', ALLOWED);
         const byId = new Map(out.map(t => [t.id, t]));
 
         // Hors-liste : remap par règle déterministe (UBERTRIP → Transport), confiance 100 (règle).
@@ -76,7 +76,7 @@ describe('categorizeBatch — enforcement bout-en-bout (SDK mocké)', () => {
         mocks.nextResponseText = JSON.stringify([
             { id: 4, category: 'Transfert', isTransfer: false, confidence: 70 },
         ]);
-        const out = await categorizeBatch(input, 'fake-key', [], ALLOWED);
+        const out = await categorizeBatch(input, 'fake-key', ALLOWED);
         expect(out[0].category).toBe('Transfert');
         expect(out[0].isTransfer).toBe(true); // jamais « Transfert » avec isTransfer:false (Σ affiché)
     });
@@ -86,7 +86,7 @@ describe('categorizeBatch — enforcement bout-en-bout (SDK mocké)', () => {
         mocks.nextResponseText = JSON.stringify([
             { id: 5, category: 'Épicerie', isTransfer: false, confidence: 95 },
         ]);
-        const out = await categorizeBatch(input, 'fake-key', [], ALLOWED);
+        const out = await categorizeBatch(input, 'fake-key', ALLOWED);
         expect(out[0].category).toBe('Épicerie');
         const batchWarnings = mocks.logError.mock.calls
             .map(c => c[0]?.message ?? '')

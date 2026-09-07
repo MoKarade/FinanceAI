@@ -177,7 +177,7 @@ export function extraireCtaPaires(racines: string[] = [join(RACINE_DEPOT, 'compo
     return { paires: [...parCle.values()], attributsLus };
 }
 
-export type PaireTexte = { text: string; bg: string; textHex: string; bgHex: string; ratio: number; sites: string[] };
+type PaireTexte = { text: string; bg: string; textHex: string; bgHex: string; ratio: number; sites: string[] };
 
 /**
  * [A11Y-CONTRAST-ANGLE-MORT-541] (lot 208) Passe TEXTE de la palette par défaut : chaque `text-{famille}-{shade}`

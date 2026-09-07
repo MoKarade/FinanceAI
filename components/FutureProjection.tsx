@@ -1648,7 +1648,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             une copie sr-only mais le CONTENU de cet `aria-label`, qui n'énonçait que
                             des gestes de POINTEUR — inutilisables par qui ne pointe pas — sans jamais
                             nommer l'alternative textuelle qui existe pourtant juste après la courbe. */}
-                        <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
+                        <span className="text-tiny text-ink-400 hidden md:block" aria-hidden="true">
                             survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
                         </span>
                         {/* PH4-FUT « leviers-d'abord » — revenir au composeur de leviers (ré-optimiser).

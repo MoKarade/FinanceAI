@@ -9,6 +9,7 @@ import type { AppState } from '../../types';
 import { runProjectionAsync } from '../../services/projection/runAsync';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
+import { fireAgeOf } from '../whatIf';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
@@ -20,11 +21,8 @@ const inputSchema = {
 
 type Args = z.infer<z.ZodObject<typeof inputSchema>>;
 
-/** Âge au 1er mois où la valeur nette atteint la cible FIRE (sinon null). */
-function fireAgeOf(chartData: ProjectionChartPoint[]): number | null {
-    const d = chartData.find((p) => (p.FireTarget || 0) > 0 && (p.NetWorth || 0) >= (p.FireTarget || 0));
-    return d ? (d.age ?? null) : null;
-}
+// [MCP-FIREAGE-DUP] (audit 2026-09-07) `fireAgeOf` vit dans `mcp/whatIf.ts`, déjà importé par
+// `getProjection.spec.ts` et `simulateWhatIf.spec.ts` ; la copie textuelle d'ici a été retirée.
 
 /**
  * [MCP-RETIREMENT-VERDICT] — revenu de retraite mensuel MOYEN sur la 1re année de retraite,

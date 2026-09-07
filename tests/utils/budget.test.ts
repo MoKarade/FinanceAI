@@ -217,3 +217,29 @@ describe('[BUDGET-IMPOTS-HORS-COMPARAISON] computeBudgetParity — impôts hors 
         expect(p.totalSpent).toBe(1700);
     });
 });
+
+describe('[BUDGET-CATEGORY-INCOME-SIGN-GARDE-PERDUE] un CRÉDIT sur un poste se DÉDUIT, il ne s’additionne pas', () => {
+    // (audit 2026-09-07) Le correctif #749 (`spendAmountOf`, jamais `Math.abs`) tenait, mais ses tests
+    // vivaient dans `PlanningGoals.test.tsx` / `monthlyActuals.test.ts`, supprimés avec les Objectifs
+    // (lot 29, #755) : plus aucune assertion ne portait sur un montant POSITIF. Un retour à `Math.abs`
+    // aurait donc été vert partout — c'est exactement ce que ce cas interdit.
+    it('computeBudgetParity : un remboursement de 20 $ sur Épicerie ramène 50 $ dépensés à 30 $', () => {
+        const { actualsMap, totalSpent } = computeBudgetParity([
+            tx({ category: 'Épicerie', amount: -50 }),
+            tx({ category: 'Épicerie', amount: 20 }),
+        ], ITEMS);
+        expect(actualsMap['Épicerie']).toBe(30);
+        expect(totalSpent).toBe(30);
+    });
+
+    it('computeActualByOwner : le crédit se déduit aussi par conjoint (même règle de signe)', () => {
+        const items = [cat('Épicerie'), { ...cat('Resto perso'), type: 'Perso 1' } as BudgetCategory];
+        const r = computeActualByOwner([
+            tx({ category: 'Resto perso', amount: -80 }),
+            tx({ category: 'Resto perso', amount: 30 }),
+            tx({ category: 'Épicerie', amount: -50 }),
+        ], items);
+        expect(r.owner0).toBe(50);
+        expect(r.commun).toBe(50);
+    });
+});

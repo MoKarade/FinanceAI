@@ -125,7 +125,7 @@ describe('categorizeBatch — le comportement de bout en bout', () => {
     // ── LE test discriminant : il ÉCHOUE sans la boucle de réessai. ──
     it('un 429 transitoire est RATTRAPÉ : le chunk finit catégorisé, pas abandonné', async () => {
         mocks.behaviours = [apiError(429), apiError(429), null];   // 2 échecs puis succès
-        const out = await categorizeBatch([tx(1)], 'fake-key', [], ['Autre'], undefined, {
+        const out = await categorizeBatch([tx(1)], 'fake-key', ['Autre'], undefined, {
             sleep: fakeSleep, chunkPacingMs: 0,
         });
         expect(mocks.calls, 'aucun réessai — le chunk a été abandonné au 1er 429').toBe(3);
@@ -136,7 +136,7 @@ describe('categorizeBatch — le comportement de bout en bout', () => {
 
     it('essais ÉPUISÉS : les transactions reviennent inchangées, et c\'est TRACÉ', async () => {
         mocks.behaviours = [apiError(429), apiError(429), apiError(429), apiError(429)];
-        const out = await categorizeBatch([tx(1)], 'fake-key', [], ['Autre'], undefined, {
+        const out = await categorizeBatch([tx(1)], 'fake-key', ['Autre'], undefined, {
             sleep: fakeSleep, chunkPacingMs: 0,
         });
         expect(mocks.calls).toBe(4);
@@ -153,7 +153,7 @@ describe('categorizeBatch — le comportement de bout en bout', () => {
         // les réessais). Une clé refusée ne redevient pas valide entre deux chunks.
         const many = Array.from({ length: 120 }, (_, i) => tx(i + 1));
         mocks.behaviours = [apiError(401)];
-        const out = await categorizeBatch(many, 'fake-key', [], ['Autre'], undefined, {
+        const out = await categorizeBatch(many, 'fake-key', ['Autre'], undefined, {
             sleep: fakeSleep, chunkPacingMs: 0,
         });
         expect(mocks.calls, 'la clé refusée a quand même été retentée').toBe(1);
@@ -167,7 +167,7 @@ describe('categorizeBatch — le comportement de bout en bout', () => {
         // toutes ses chances — un défaut de requête n'est pas un défaut de compte.
         const many = Array.from({ length: 100 }, (_, i) => tx(i + 1));
         mocks.behaviours = [apiError(400), null];
-        const out = await categorizeBatch(many, 'fake-key', [], ['Autre'], undefined, {
+        const out = await categorizeBatch(many, 'fake-key', ['Autre'], undefined, {
             sleep: fakeSleep, chunkPacingMs: 0,
         });
         expect(mocks.calls, 'la 400 a été réessayée, ou le 2e chunk a été sauté').toBe(2);
@@ -177,7 +177,7 @@ describe('categorizeBatch — le comportement de bout en bout', () => {
     it('pacing entre chunks : appliqué ENTRE les appels, jamais avant le premier', async () => {
         const many = Array.from({ length: 100 }, (_, i) => tx(i + 1));   // 2 chunks
         mocks.behaviours = [null, null];
-        await categorizeBatch(many, 'fake-key', [], ['Autre'], undefined, {
+        await categorizeBatch(many, 'fake-key', ['Autre'], undefined, {
             sleep: fakeSleep, chunkPacingMs: 1_000,
         });
         expect(waits, 'une pause a été posée avant le 1er appel, ou après le dernier').toEqual([1_000]);
@@ -186,7 +186,7 @@ describe('categorizeBatch — le comportement de bout en bout', () => {
     it('le progrès annonce l\'attente : un import qui patiente ne doit pas paraître figé', async () => {
         mocks.behaviours = [apiError(429, { 'retry-after': '3' }), null];
         const messages: string[] = [];
-        await categorizeBatch([tx(1)], 'fake-key', [], ['Autre'],
+        await categorizeBatch([tx(1)], 'fake-key', ['Autre'],
             (_c, _t, msg) => { messages.push(msg); },
             { sleep: fakeSleep, chunkPacingMs: 0 },
         );

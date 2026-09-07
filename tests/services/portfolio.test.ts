@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { logErrorThrottled } from '../../services/errorLogger';
 import {
   computeAssetBreakdown,
   computeInvestmentsValue,
@@ -223,4 +224,35 @@ describe('hasForeignCurrencyAssets', () => {
     expect(hasForeignCurrencyAssets([])).toBe(false);
     expect(hasForeignCurrencyAssets([{ } as Asset])).toBe(false);
   });
+});
+
+// [DEBT-BALANCE-NAN-SILENCIEUX] (audit 2026-09-07) — spy PARTIEL sur le journal (le reste du module est réel).
+vi.mock('../../services/errorLogger', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../services/errorLogger')>();
+    return { ...actual, logErrorThrottled: vi.fn() };
+});
+
+describe('[DEBT-BALANCE-NAN-SILENCIEUX] computeTotalDebt TRACE un solde non fini au lieu de le taire', () => {
+    const debt = (balance: number, id = 'd1'): Debt =>
+        ({ id, name: 'Carte', balance, interestRate: 20, minimumPayment: 100, category: 'CreditCard' } as unknown as Debt);
+
+    beforeEach(() => { vi.mocked(logErrorThrottled).mockClear(); });
+
+    it('NaN → compté 0 $ ET journalisé (signature par dette)', () => {
+        expect(computeTotalDebt([debt(NaN), debt(500, 'd2')])).toBe(500);
+        expect(logErrorThrottled).toHaveBeenCalledTimes(1);
+        expect(logErrorThrottled).toHaveBeenCalledWith('debt-balance-non-finite:d1', expect.objectContaining({
+            source: 'storage', severity: 'warning', message: expect.stringMatching(/solde non fini/),
+        }));
+    });
+
+    it('Infinity aussi (la garde `|| 0` d’avant ne le rattrapait pas)', () => {
+        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)])).toBe(0);
+        expect(logErrorThrottled).toHaveBeenCalledTimes(1);
+    });
+
+    it('contrôle — des soldes finis ne journalisent RIEN (l’espion est câblé, et il se tait à bon escient)', () => {
+        expect(computeTotalDebt([debt(1_000), debt(0, 'd2')])).toBe(1_000);
+        expect(logErrorThrottled).not.toHaveBeenCalled();
+    });
 });

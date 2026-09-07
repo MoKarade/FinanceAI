@@ -16,6 +16,21 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-07 — Lot 213 : les 16 correctifs XS/S SANS décision de l'audit n°4, livrés d'un coup
+> Marc absent (« fais tout ce que tu peux seul ») : partition du rapport §10, première tranche. Servi : trois cartes de
+> conseil IA (couple, immobilier, rééquilibrage) refusent en mode discret avec le même message (décision « masquer »
+> du 2026-09-05 étendue, pas une nouvelle décision) ; un solde/taux/minimum de dette VIDÉ est refusé à l'ajout et à
+> l'édition, `computeTotalDebt` journalise un non-fini au lieu de le taire, la simulation dit « — » au lieu de « 0,1
+> ans » (et « — » sans dette) ; un relevé ou une paie coupés par `max_tokens` lèvent `VisionTronqueeError` et l'écran dit
+> « trop long » au lieu de « aucune transaction reconnue », et une réponse REÇUE mais inexploitable (JSON cassé, `refusal`)
+> lève `VisionReponseInvalideError` au lieu de tomber dans « vérifie ton accès Internet » (jumelle trouvée par la revue) ; `dispatch` scrubbe le message d'exception ; prompt système : paliers
+> dérivés de `utils/tax.ts` ; `REAL_ESTATE_SALE_NET_FACTOR` nommé et `monthlyEvents.ts` au périmètre du ratchet
+> (7 clés) ; `_history` retiré de `categorizeBatch` ; `logError` sur 4 `catch` ; 2 `ink-500` → `ink-400` ; donut
+> `aria-hidden`. Tests : +32 cas / +6 fichiers, 9 perturbations nommées, chacune rouge là où attendu — et
+> `moneyConservation` reste VERT sous `computeTotalDebt` muet (il certifiait le silence ; c'est la nouvelle garde qui
+> discrimine). Code servi → déploiement à vérifier. Reste de l'audit : lot 214 (publier `Entreprise`), lot 215 (gate
+> REER per-conjoint), et les tickets 🧭.
+
 > ## 🟦 Session 2026-09-07 — Lot 212 (docs) : AUDIT FINANCIER passe n°4 — cœur sain, 233/239 corrections tiennent, un CRITIQUE par OMISSION
 > Marc (« je ne peux pas agir pour le moment, fais tout ce que tu peux seul, lance une grosse analyse, check tous les
 > problèmes corrigés, mets à jour la doc ») → panel de 11 agents sur `3f657d7d`, chaque finding relu au `fichier:ligne`,

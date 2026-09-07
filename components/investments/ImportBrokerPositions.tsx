@@ -5,6 +5,7 @@ import { Icon } from '../ui/Icon';
 import { parseBrokerCsv, holdingsToAssets, type ParsedBrokerCsv } from '../../services/import/parseBrokerCsv';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import type { Asset } from '../../types';
+import { logError } from '../../services/errorLogger';
 
 /**
  * Import de positions courtier en lot (CSV) — Wealthsimple, Questrade, Disnat,
@@ -43,7 +44,12 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
 
     const handleFile = async (file: File) => {
         try { parse(await file.text()); }
-        catch { setError('Impossible de lire le fichier.'); }
+        catch (e) {
+            // [IMPORT-BROKER-BACKUP-SANS-LOGERROR] (audit 2026-09-07) Un échec répété n'apparaissait
+            // dans aucun journal : le message à l'écran disparaît avec l'écran.
+            logError({ source: 'storage', severity: 'warning', message: 'Import courtier : lecture du fichier échouée', error: e });
+            setError('Impossible de lire le fichier.');
+        }
     };
 
     const reset = () => { setPreview(null); setError(null); };

@@ -12239,6 +12239,14 @@ droit rendu n'est pas un gain, et publier le signe avec sa cause vaut mieux qu'u
 Σ PSV −97 899 $, Σ FluxImpots −41 819 $) — les retraits FERR obligatoires dès 72 ans gonflent le revenu net et
 déclenchent l'impôt de récupération. **Une cause qu'on écrit sans la mesurer est une hypothèse habillée en
 explication** : elle se mesure sur les registres publiés (Σ par champ), pas sur le mécanisme qu'on a en tête.
+⚠️⚠️ Et le RÉGIME d'une mesure fait partie de la mesure : mes chiffres (533 978 $, −10 046 $) tournaient en Monte
+Carlo graine 0 — le 3e argument de `__runScenarioForTests`, recopié d'une fixture voisine sans le lire — alors que le
+déterministe donne 531 092 $ et **−1 044 $**, dix fois moins sur le patrimoine. Même signe, même récit, mais un
+chiffre publié dans trois docs sans son régime est un chiffre qu'on ne peut pas reproduire
+(`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`, appliqué à moi : un argument positionnel se lit avant d'être recopié).
+⚠️ Et un script d'édition qui ÉCHOUE à mi-course laisse un état partiel que le commit suivant décrit comme complet :
+j'ai poussé `d9aafc5f` avec un message qui annonçait des docs non écrites — relire le DIFF du commit, pas l'intention
+(`UN-GIT-CHECKOUT-DE-MESURE…`, corollaire déjà noté, re-commis).
 ⚠️ Et « non mesuré, FAIBLE » sur un résiduel routé était une gravité DEVINÉE : le panel l'a estimé à +13,8 k$
 surévalués sur la fixture même du lot — un résiduel se route avec sa mesure ou avec la mention qu'il n'en a pas, et
 sans gravité.

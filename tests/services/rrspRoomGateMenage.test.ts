@@ -6,8 +6,11 @@
 // ⚠️ « Aucun golden n'a bougé » sur ce correctif est un résultat EXPLIQUÉ : aucune fixture du dépôt ne
 // portait un couple à écart d'âge dont le premier conjoint dépasse 71 ans pendant que l'autre travaille —
 // la contrainte ne saturait nulle part. Cette fixture la fait saturer. Mesuré AVANT / APRÈS (AUTO_MARGINAL) :
-// droits disponibles à l'année 5 : 0 $ / 533 978 $ ; à l'année 10 : 0 $ / 451 141 $ ; Σ cotisations REER
-// 208 798 $ / 469 782 $. On ancre la RELATION (droits > 0 après le passage à 72 ans), jamais les montants.
+// DÉTERMINISTE — droits disponibles à l'année 5 : 0 $ / 531 092 $ ; à l'année 10 : 0 $ / 441 827 $ ;
+// Σ cotisations REER 210 420 $ / 479 096 $ ; patrimoine final 714 087 → 713 043 $. En Monte Carlo (graine 0,
+// le 3e argument de `__runScenarioForTests`) : 533 978 / 451 141 / 469 782 $, patrimoine 673 441 → 663 395 $.
+// ⚠️ Le régime se NOMME avec la mesure : mes premiers chiffres publiés étaient ceux de la graine 0 sans le dire.
+// On ancre la RELATION (droits > 0 après le passage à 72 ans), jamais les montants.
 import { describe, it, expect } from 'vitest';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
 import type { BudgetConfig, User } from '../../types';
@@ -33,7 +36,8 @@ const params = (ages: [number, number]): SimulationParams => ({
 } as unknown as SimulationParams);
 
 const droitsDisponibles = (ages: [number, number], moisIndex: number): number => {
-    const r = __runScenarioForTests(params(ages), 'AUTO_MARGINAL' as never, true, false, 0, 'BASE', {}, { verboseMonthlyPoints: true });
+    // Déterministe (3e argument `enableMonteCarlo = false`) : une garde de chaîne se lit sans graine.
+    const r = __runScenarioForTests(params(ages), 'AUTO_MARGINAL' as never, false, false, 0, 'BASE', {}, { verboseMonthlyPoints: true });
     const p = (r.chartData as unknown as Array<Record<string, number>>)[moisIndex];
     return p.REERMax - p.REER;
 };

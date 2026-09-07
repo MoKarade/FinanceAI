@@ -12,10 +12,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   le ménage et effaçait les droits accumulés — même si l'autre conjoint, plus jeune, travaillait encore. Les droits
   suivent maintenant la règle réelle : ils naissent du revenu de chacun, et le ménage peut cotiser tant qu'un des deux a
   71 ans ou moins. Sur un couple de 68 et 53 ans, cela rend plus de 500 000 $ de droits disponibles à l'année 5 au
-  lieu de zéro ; un couple du même âge ne change pas. À noter : sur ce couple, utiliser ces droits fait BAISSER le
-  patrimoine final d'environ 10 000 $ — les retraits FERR obligatoires qui suivent déclenchent la récupération de la
-  pension de la Sécurité de la vieillesse (près de 98 000 $ de PSV en moins sur 25 ans) : un droit disponible n'est pas
-  un gain garanti, c'est la simulation qui le dit maintenant honnêtement.
+  lieu de zéro ; un couple du même âge ne change pas. À noter : sur ce couple, utiliser ces droits ne fait pas monter
+  le patrimoine final (−1 044 $) — les retraits FERR obligatoires qui suivent déclenchent la récupération de la pension
+  de la Sécurité de la vieillesse (113 449 $ de PSV en moins sur 25 ans, contre 34 220 $ d'impôt économisé) : un droit
+  disponible n'est pas un gain garanti, et la simulation le montre maintenant.
 
 ## [unreleased] — 2026-09-07 (La valeur d'une entreprise privée apparaît enfin dans la décomposition du patrimoine)
 

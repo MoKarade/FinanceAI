@@ -274,9 +274,9 @@ describe('[FISC-RRSP-ROOM-GATE-MENAGE] le gate des droits REER est PER-CONJOINT 
     // par conjoint. Règle ARC : les droits naissent du revenu gagné quel que soit l'âge ; on cotise à SON
     // REER jusqu'à la fin de l'année de ses 71 ans, puis à un REER de CONJOINT avec ses propres droits tant
     // que le conjoint a 71 ans ou moins. Le pool de ménage reste donc utilisable tant qu'UN conjoint peut
-    // détenir un REER. Mesuré AVANT (couple 68/53, conjoint 2 à 120 k$, 25 ans) : droits REER disponibles
-    // 0 $ dès l'année 5, Σ cotisations REER 208 798 $ ; APRÈS : 533 978 $ de droits à l'année 5,
-    // Σ cotisations 469 782 $. Fixtures à ÉCART d'âge non nul — à âges égaux, le défaut est invisible
+    // détenir un REER. Mesuré AVANT (couple 68/53, conjoint 2 à 120 k$, 25 ans, DÉTERMINISTE) : droits REER
+    // disponibles 0 $ dès l'année 5, Σ cotisations REER 210 420 $ ; APRÈS : 531 092 $ de droits à l'année 5,
+    // Σ cotisations 479 096 $. Fixtures à ÉCART d'âge non nul — à âges égaux, le défaut est invisible
     // (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`).
     const couple = (age0: number, age1: number, revenuUser1 = 120_000) => baseCtx({
         age: age0, users: [{ birthYear: 2026 - age0 }, { age: age1 }], activeUsersCount: 2,

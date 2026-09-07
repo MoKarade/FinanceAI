@@ -227,6 +227,23 @@ function droitsReerAnnuels(ctx: JanuaryContext, roomUsers: JanuaryContext['users
     return newRrspRoom;
 }
 
+/**
+ * Âge COURANT de l'utilisateur `i` cette année (source unique FERR + gate des droits REER).
+ * user0 : `ctx.age` est SON âge courant authoritative (= users[0].age + yearsElapsed côté moteur).
+ * Conjoint : `age` saisi + années écoulées, sinon repli depuis `birthYear` — un conjoint réel saisi par
+ * année de naissance (sans `age`) doit quand même déclencher SA FERR, sinon sa part REER ne se
+ * convertirait jamais (sous-imposition silencieuse). Ni l'un ni l'autre → `-Infinity` (jamais FERR ;
+ * et IGNORÉ par le gate des droits, qui ne décide que sur des âges connus).
+ */
+function ageCourantUtilisateur(ctx: JanuaryContext, i: number): number {
+    const yearsElapsed = Math.floor(ctx.m / 12);
+    if (i === 0) return ctx.age;
+    const u = ctx.users[i];
+    if (u?.age != null && Number.isFinite(u.age)) return u.age + yearsElapsed;
+    if (u?.birthYear != null && Number.isFinite(u.birthYear)) return (ctx.startYear + yearsElapsed) - u.birthYear;
+    return Number.NEGATIVE_INFINITY;
+}
+
 /** === 4. FERR — retrait minimum obligatoire (dès 72 ans), PER-CONJOINT === */
 function retraitFerrObligatoire(ctx: JanuaryContext, helpers: JanuaryHelpers): {
     ferrMandatoryGross: number; ferrGrossByUser: number[]; ferrTaxOnRrif: number; ferrLogMsg?: string;
@@ -245,19 +262,10 @@ function retraitFerrObligatoire(ctx: JanuaryContext, helpers: JanuaryHelpers): {
     // [ITEM-2C] PER-CONJOINT : chaque conjoint de 72+ convertit SA part REER (`reerByUser[i]`) au facteur
     // RRIF de SON âge. Avant : un âge MÉNAGE unique (user1) sur le pool entier → mauvais timing pour un
     // couple à écart d'âge. Défaut additif : âges égaux ⇒ Σ = `reer × rate` (identique à l'ancien calcul).
-    const yearsElapsed = Math.floor(ctx.m / 12);
-    const currentAgeOfUser = (i: number): number => {
-        // user0 : `ctx.age` est SON âge courant authoritative (= users[0].age + yearsElapsed côté moteur).
-        if (i === 0) return ctx.age;
-        const u = ctx.users[i];
-        if (u?.age != null && Number.isFinite(u.age)) return u.age + yearsElapsed;
-        // Repli depuis `birthYear` : un conjoint réel saisi par année de naissance (sans `age`) doit quand
-        // même déclencher SA FERR — sinon sa part REER ne se convertirait jamais (sous-imposition silencieuse).
-        if (u?.birthYear != null && Number.isFinite(u.birthYear)) return (ctx.startYear + yearsElapsed) - u.birthYear;
-        return Number.NEGATIVE_INFINITY; // conjoint sans âge ni année de naissance → jamais FERR
-    };
+    // [FISC-RRSP-ROOM-GATE-MENAGE] (lot 215) L'âge courant par conjoint est HISSÉ en helper de module
+    // (`ageCourantUtilisateur`) : le gate des droits REER en a besoin aussi, et une copie divergerait.
     for (let i = 0; i < ctx.reerByUser.length; i++) {
-        const ageI = currentAgeOfUser(i);
+        const ageI = ageCourantUtilisateur(ctx, i);
         if (ageI < RRIF_FIRST_WITHDRAWAL_AGE) continue;
         const rrifRateI = rrifRateForAge(ageI, helpers.RRIF_RATES);
         ferrGrossByUser[i] = Math.max(0, Number.isFinite(ctx.reerByUser[i]) ? ctx.reerByUser[i] : 0) * rrifRateI;
@@ -361,6 +369,11 @@ export function processJanuaryReset(
     const totalCeliLimitThisYear = plafondCeliAnnuel(ctx, roomUsers, nextLoopYear);
     const { fhsaRoomNew, celiappTransferToReer } = roulementFhsa(ctx, roomUsers, nextLoopYear, logs);
     const newRrspRoom = droitsReerAnnuels(ctx, roomUsers, nextLoopYear);
+    const peutEncoreDetenirUnReer = roomUsers.some((u, i) => {
+        if (!u) return false;
+        const a = ageCourantUtilisateur(ctx, i);
+        return Number.isFinite(a) && a <= RRSP_TO_RRIF_CONVERSION_AGE;
+    });
     const { ferrMandatoryGross, ferrGrossByUser, ferrTaxOnRrif, ferrLogMsg } = retraitFerrObligatoire(ctx, helpers);
     const { guytonKlingerIndexationFactor, newPrevPortfolioNW } = facteurGuytonKlinger(ctx, logs);
 
@@ -370,8 +383,18 @@ export function processJanuaryReset(
         monthlyOasReduction: ctx.oasClawbackNextPeriod / 12,
         celiRoomDelta: totalCeliLimitThisYear,
         fhsaRoomNew,
-        rrspRoomDelta: ctx.age <= RRSP_TO_RRIF_CONVERSION_AGE ? newRrspRoom : 0,
-        rrspRoomReset: ctx.age > RRSP_TO_RRIF_CONVERSION_AGE,
+        // [FISC-RRSP-ROOM-GATE-MENAGE] (audit 2026-09-07, lot 215) Le gate portait sur `ctx.age`, l'âge du
+        // PREMIER conjoint seul, alors que les droits sont calculés PAR conjoint trois lignes plus haut :
+        // à 72/57, le conjoint de 57 ans qui gagne 120 k$ ne générait plus aucun droit ET les droits
+        // accumulés étaient remis à zéro (mesuré : 21 600 $ → 0 $). Règle ARC : les droits naissent du
+        // revenu gagné quel que soit l'âge ; un particulier cotise à SON REER jusqu'à la fin de l'année de
+        // ses 71 ans, et peut ensuite cotiser à un REER de CONJOINT avec ses propres droits tant que le
+        // conjoint a 71 ans ou moins. Le pool `rrspRoom` est un pool de MÉNAGE : il reste utilisable tant
+        // qu'UN conjoint peut encore détenir un REER, et n'est remis à zéro que quand PLUS AUCUN ne le
+        // peut. Même classe que le gate FERR d'août (« valeur per-conjoint gardée par une grandeur de
+        // ménage »). Un conjoint sans âge connu ne pèse pas dans la décision.
+        rrspRoomDelta: peutEncoreDetenirUnReer ? newRrspRoom : 0,
+        rrspRoomReset: !peutEncoreDetenirUnReer,
         celiappTransferToReer,
         ferrMandatoryGross,
         ferrGrossByUser,

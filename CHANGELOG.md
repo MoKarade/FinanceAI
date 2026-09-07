@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-07 (Un couple à écart d'âge garde ses droits REER quand le premier conjoint passe 71 ans)
+
+- **Corrigé** : dès que le premier conjoint atteignait 72 ans, la projection cessait d'accorder des droits REER à tout
+  le ménage et effaçait les droits accumulés — même si l'autre conjoint, plus jeune, travaillait encore. Les droits
+  suivent maintenant la règle réelle : ils naissent du revenu de chacun, et le ménage peut cotiser tant qu'un des deux a
+  71 ans ou moins. Sur un couple de 68 et 53 ans, cela rend plus de 500 000 $ de droits disponibles à l'année 5 au
+  lieu de zéro ; un couple du même âge ne change pas.
+
 ## [unreleased] — 2026-09-07 (La valeur d'une entreprise privée apparaît enfin dans la décomposition du patrimoine)
 
 - **Corrigé** : depuis le 19 août, la valeur d'une entreprise privée (onglet Patrimoine élargi) comptait dans le

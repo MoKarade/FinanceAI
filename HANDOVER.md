@@ -16,6 +16,18 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-07 — Lot 215 : les droits REER d'un couple ne meurent plus avec l'âge du premier conjoint (`[FISC-RRSP-ROOM-GATE-MENAGE]`, money-critical, fini)
+> Le gate des droits REER lisait `ctx.age` (premier conjoint) : à 72/57, le conjoint actif ne générait plus rien et le
+> pool était remis à zéro. Règle ARC : les droits naissent du revenu gagné à tout âge, et un 72+ cotise à un REER de
+> CONJOINT avec ses propres droits — donc le pool reste ouvert tant qu'UN conjoint a ≤ 71 ans. ⚠️ La prescription de
+> l'audit (« ≤ 71 par `roomUser` ») aurait retiré les droits du conjoint de 73 ans dans 60/73 : fausse sur la loi,
+> re-dérivée avant de coder. `ageCourantUtilisateur` hissé en source unique (FERR + gate). Mesuré (68/53, 25 ans) :
+> droits à l'année 5 0 → 533 978 $, Σ cotisations REER 208 798 → 469 782 $, patrimoine final −10 046 $ (les droits
+> sont UTILISÉS, puis décaissés imposés) ; 60/73 et 55/55 bit-identiques ; aucun golden ne bouge (aucune fixture ne
+> saturait). Gardes : +6 unitaires, +1 fichier de chaîne sur `REERMax − REER` ; 2 perturbations rouges. Résiduel routé
+> (`[REER-CONJOINT-ATTRIBUTION-72]`). Lot 214 : Vercel READY sur `f55a90cd`. Code servi → déploiement à vérifier.
+> **Tout le stock sans décision de l'audit est livré** : reste Q15, Q16 et les tickets 🧭.
+
 > ## 🟦 Session 2026-09-07 — Lot 214 : l'entreprise privée est enfin PUBLIÉE (`[ENG-W5-BUSINESS-NON-PUBLIE]` 🔴 + 2), sans déplacer un dollar
 > Le CRITIQUE de l'audit n°4 : la valeur d'une entreprise privée comptait dans `NetWorth` depuis le 2026-08-19 et
 > n'existait dans AUCUN champ publié — identité `NW = Σ actifs − dettes` fausse de 900 000 $ sur 100 % des mois de la

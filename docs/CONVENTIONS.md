@@ -12219,6 +12219,38 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 215 (2026-09-07) — le remède d'un ticket d'audit se re-dérive de la LOI avant d'être codé, et « aucun golden n'a bougé » se lit comme « aucune fixture ne saturait »
+
+Le ticket `[FISC-RRSP-ROOM-GATE-MENAGE]` (écrit par moi, quatre heures plus tôt) prescrivait « borne ≤ 71 appliquée
+à CHAQUE `roomUser` ». C'était juste sur le défaut (le gate lisait l'âge du premier conjoint seul) et FAUX sur le
+remède : les droits REER naissent du revenu gagné à tout âge, et un particulier de 72 ans cotise à un REER de
+CONJOINT avec ses propres droits — le remède prescrit aurait retiré ses droits au conjoint de 73 ans du cas 60/73,
+qui était correct. La bonne règle pour un pool de MÉNAGE n'est pas « par personne » mais « tant qu'UNE personne peut
+encore détenir un REER ». **Un ticket écrit depuis le code décrit le code ; le remède se re-dérive depuis la règle,
+même quand le ticket est de la veille et de la même main** (jumeau de « le périmètre d'un ticket se recense »).
+⚠️ Et le gate complet est resté VERT à 5 797/5 797 sur un correctif money-critical : aucune fixture du dépôt ne
+portait un couple dont le premier conjoint dépasse 71 ans pendant que l'autre travaille — la contrainte ne saturait
+nulle part (`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, côté suite entière). D'où une garde de
+CHAÎNE sur la grandeur publiée (`REERMax − REER`) avec la fixture qui sature, et la RELATION ancrée (droits > 0
+après le passage à 72 ans), jamais le montant. ⚠️ Mesure de conduite : rendre des droits disponibles a fait BAISSER
+le patrimoine final (−10 046 $ sur la fixture) — la stratégie les utilise et le REER se décaisse imposé en FERR ; un
+droit rendu n'est pas un gain, et publier le signe avec sa cause vaut mieux qu'un « +X $ » attendu. ⚠️ Et ma cause
+était INCOMPLÈTE : le panel a mesuré que la moitié du signe vient de la RÉCUPÉRATION DE LA PSV (re-mesuré par moi :
+Σ PSV −97 899 $, Σ FluxImpots −41 819 $) — les retraits FERR obligatoires dès 72 ans gonflent le revenu net et
+déclenchent l'impôt de récupération. **Une cause qu'on écrit sans la mesurer est une hypothèse habillée en
+explication** : elle se mesure sur les registres publiés (Σ par champ), pas sur le mécanisme qu'on a en tête.
+⚠️⚠️ Et le RÉGIME d'une mesure fait partie de la mesure : mes chiffres (533 978 $, −10 046 $) tournaient en Monte
+Carlo graine 0 — le 3e argument de `__runScenarioForTests`, recopié d'une fixture voisine sans le lire — alors que le
+déterministe donne 531 092 $ et **−1 044 $**, dix fois moins sur le patrimoine. Même signe, même récit, mais un
+chiffre publié dans trois docs sans son régime est un chiffre qu'on ne peut pas reproduire
+(`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`, appliqué à moi : un argument positionnel se lit avant d'être recopié).
+⚠️ Et un script d'édition qui ÉCHOUE à mi-course laisse un état partiel que le commit suivant décrit comme complet :
+j'ai poussé `d9aafc5f` avec un message qui annonçait des docs non écrites — relire le DIFF du commit, pas l'intention
+(`UN-GIT-CHECKOUT-DE-MESURE…`, corollaire déjà noté, re-commis).
+⚠️ Et « non mesuré, FAIBLE » sur un résiduel routé était une gravité DEVINÉE : le panel l'a estimé à +13,8 k$
+surévalués sur la fixture même du lot — un résiduel se route avec sa mesure ou avec la mention qu'il n'en a pas, et
+sans gravité.
+
 ### Variante notée au lot 214 (2026-09-07) — un grand livre qui « tolère » un composant absent rend l'omission NORMALE, et une identité qui lit la même liste que la recomposition est circulaire
 
 Publication de la valeur d'entreprise privée (CRITIQUE de l'audit n°4). Trois choses mesurées. (1) La

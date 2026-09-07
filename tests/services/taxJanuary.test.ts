@@ -268,3 +268,71 @@ describe('[FISC-MARGINAL-SPACE] la retenue FERR reste dans l\'espace DÉFLATÉ �
         expect(args[7]).toBeCloseTo(Math.pow(1.03, 108 / 12), 10);         // …ET son déflateur (paire)
     });
 });
+
+describe('[FISC-RRSP-ROOM-GATE-MENAGE] le gate des droits REER est PER-CONJOINT (audit 2026-09-07, lot 215)', () => {
+    // Le gate portait sur `ctx.age` — l'âge du PREMIER conjoint seul — alors que les droits sont calculés
+    // par conjoint. Règle ARC : les droits naissent du revenu gagné quel que soit l'âge ; on cotise à SON
+    // REER jusqu'à la fin de l'année de ses 71 ans, puis à un REER de CONJOINT avec ses propres droits tant
+    // que le conjoint a 71 ans ou moins. Le pool de ménage reste donc utilisable tant qu'UN conjoint peut
+    // détenir un REER. Mesuré AVANT (couple 68/53, conjoint 2 à 120 k$, 25 ans, DÉTERMINISTE) : droits REER
+    // disponibles 0 $ dès l'année 5, Σ cotisations REER 210 420 $ ; APRÈS : 531 092 $ de droits à l'année 5,
+    // Σ cotisations 479 096 $. Fixtures à ÉCART d'âge non nul — à âges égaux, le défaut est invisible
+    // (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`).
+    const couple = (age0: number, age1: number, revenuUser1 = 120_000) => baseCtx({
+        age: age0, users: [{ birthYear: 2026 - age0 }, { age: age1 }], activeUsersCount: 2,
+        accGrossIncomeYearByUser: [0, revenuUser1], reerByUser: [50_000, 50_000],
+    });
+
+    it('72 / 57 : le conjoint de 57 ans génère ses droits et le pool N’EST PAS remis à zéro (le discriminant)', () => {
+        const r = processJanuaryReset(0, couple(72, 57), helpers)!;
+        expect(r.rrspRoomReset).toBe(false);
+        expect(r.rrspRoomDelta).toBeCloseTo(21_600, 2); // 120 000 × 18 % (mesuré : 0 $ AVANT)
+    });
+
+    it('71 / 56 : inchangé (le premier conjoint peut encore cotiser lui-même)', () => {
+        const r = processJanuaryReset(0, couple(71, 56), helpers)!;
+        expect(r.rrspRoomReset).toBe(false);
+        expect(r.rrspRoomDelta).toBeCloseTo(21_600, 2);
+    });
+
+    it('60 / 73 : inchangé — le conjoint de 73 ans génère des droits utilisables en REER de conjoint', () => {
+        const r = processJanuaryReset(0, couple(60, 73), helpers)!;
+        expect(r.rrspRoomReset).toBe(false);
+        expect(r.rrspRoomDelta).toBeCloseTo(21_600, 2);
+    });
+
+    it('72 / 73 : plus personne ne peut détenir un REER → aucun droit ET remise à zéro', () => {
+        const r = processJanuaryReset(0, couple(72, 73), helpers)!;
+        expect(r.rrspRoomReset).toBe(true);
+        expect(r.rrspRoomDelta).toBe(0);
+    });
+
+    it('conjoint saisi par ANNÉE DE NAISSANCE seule (sans `age`) : la branche `birthYear` du helper décide (revue)', () => {
+        // Perturbation mesurée par le panel : `birthYear` → `-Infinity` laissait 41 tests verts, alors que la
+        // branche est vivante dans la chaîne (conjoint par `birthYear` seul : droits année 5 0 → 531 092 $).
+        const r = processJanuaryReset(0, baseCtx({
+            age: 72, users: [{ birthYear: 1954 }, { birthYear: 1969 }], activeUsersCount: 2,
+            accGrossIncomeYearByUser: [0, 120_000], reerByUser: [50_000, 50_000],
+        }), helpers)!;
+        expect(r.rrspRoomReset).toBe(false);
+        expect(r.rrspRoomDelta).toBeCloseTo(21_600, 2);
+    });
+
+    it('conjoint SANS âge connu : il ne pèse pas dans la décision (72 seul → remise à zéro, comme avant)', () => {
+        const r = processJanuaryReset(0, baseCtx({
+            age: 72, users: [{ birthYear: 1954 }, {}], activeUsersCount: 2,
+            accGrossIncomeYearByUser: [0, 120_000], reerByUser: [50_000, 50_000],
+        }), helpers)!;
+        expect(r.rrspRoomReset).toBe(true);
+        expect(r.rrspRoomDelta).toBe(0);
+    });
+
+    it('contrôle — ménage à UNE tête (roomUsers raccourci après divorce) : l’âge du survivant décide seul', () => {
+        const r = processJanuaryReset(0, baseCtx({
+            age: 72, users: [{ birthYear: 1954 }, { age: 57 }], roomUsers: [{ birthYear: 1954 }],
+            activeUsersCount: 1, accGrossIncomeYearByUser: [0, 120_000], reerByUser: [50_000, 50_000],
+        }), helpers)!;
+        expect(r.rrspRoomReset).toBe(true);
+        expect(r.rrspRoomDelta).toBe(0);
+    });
+});

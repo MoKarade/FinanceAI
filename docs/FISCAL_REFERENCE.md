@@ -61,7 +61,7 @@
 ### Montants personnels de base (BPA, crédit non remboursable au taux le plus bas)
 | | Montant 2026 | Taux du crédit | Note |
 |---|---|---|---|
-| Fédéral (`BASIC_PERSONAL_AMOUNT_FED`) | **16 452 $** | **15 %** (`FED_NONREFUNDABLE_RATE`, gelé malgré le palier à 14 %) | BPA dégressif 16 452 → 14 829 $ haut revenu ; on retient le palier max (dégressivité non modélisée) |
+| Fédéral (`BASIC_PERSONAL_AMOUNT_FED`) | **16 452 $** | **15 %** (`FED_NONREFUNDABLE_RATE` — ⚠️ **CONTESTÉ** : l'affirmation « gelé malgré le palier à 14 % » n'a pas de source primaire et la recherche relayée par Marc le 2026-09-05 dit 14,5 % (2025) / 14 % (2026) + crédit compensatoire ; ticket `[FISC-FED-CREDITRATE-15]`, valeur inchangée tant que la source manque — audit 2026-09-07) | BPA dégressif 16 452 → 14 829 $ haut revenu ; on retient le palier max (dégressivité non modélisée) |
 | Québec (`BASIC_PERSONAL_AMOUNT_QC`) | **18 952 $** | **14 %** (`QC_NONREFUNDABLE_RATE`) | = 18 571 $ (2025) × 1,0205 |
 
 > Indexation 2026 : fédéral **+2,0 %**, Québec **+2,05 %**.
@@ -1277,6 +1277,34 @@ choisir). Calcul cumulatif par tranche (style impôt).
 ---
 
 ## 9. Limites connues (assumées, non-bugs)
+- **Proxy 45 % sur bonus, RSU et revenu d'appoint** (`services/projection/activeIncome.ts`, `(bonus + rsu + side) * 0.55`,
+  documenté par l'audit 2026-09-07) : ces revenus entrent dans le flux mensuel nets d'un forfait de 45 %, HORS
+  assiette de décembre et hors registres d'impôt (`totalTaxesPaid` ne compte pas cette part). Mesuré contre
+  l'impôt incrémental réel de `calculateFiscalReport` sur 10 000 $ de plus (2026, salaire seul) :
+
+  | Revenu de base | Impôt incrémental réel | Proxy 45 % | Écart proxy − réel |
+  |---|---|---|---|
+  | 40 000 $ | 2 569 $ (25,7 %) | 4 500 $ | +1 931 $ (sur-imposé) |
+  | 60 000 $ | 3 612 $ (36,1 %) | 4 500 $ | +888 $ |
+  | 100 000 $ | 3 678 $ (36,8 %) | 4 500 $ | +822 $ |
+  | 150 000 $ | 4 746 $ (47,5 %) | 4 500 $ | −246 $ (sous-imposé) |
+  | 250 000 $ | 5 047 $ (50,5 %) | 4 500 $ | −547 $ |
+
+  L'écart change de SIGNE entre 100 k$ et 150 k$ : un facteur plat est une sécante sur une relation progressive
+  (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`). Ce n'est PAS une valeur fiscale — ne pas l'« indexer » ni la
+  « re-sourcer » ; le seul vrai correctif passe par l'assiette réelle et déplace de l'argent
+  (`[FISC-PROXY-45-BONUS-RSU-NON-DOCUMENTE]`, plan-first). ⚠️ Sa clé de ratchet `(activeIncome.ts, 0.55)` fusionne
+  avec le taux de l'AE (55 %) : deux sens sous une clé.
+- **Dividendes dans l'onglet Impôts et `get_tax_situation`** (`services/taxEstimate.ts`) : les dividendes ESTIMÉS
+  (2 % du non-enregistré) y sont imposés comme du revenu ordinaire, alors que le moteur applique majoration + CID
+  (`calculateDividendTax`). Mesuré sur 10 000 $ de dividendes déterminés (2026) : ordinaire 2 569 / 3 678 / 5 047 $
+  contre 200 / 1 895 / 3 727 $ (bases 40 k / 100 k / 250 k$) — estimation CONSERVATRICE de 2 369 à 1 320 $.
+  Deux surfaces, deux chiffres : `[TAXESTIMATE-DIVIDENDES-ORDINAIRES]` (audit 2026-09-07).
+- **Seuil de récupération de la PSV indexé à `simInflation`** (`services/projection/taxDecember.ts`,
+  `OAS_CLAWBACK_THRESHOLD_2026 × (1 + simInflation)^(m/12)`) là où les paliers d'impôt sont indexés à 2 %/an
+  fixe : identique au réglage par défaut (2 %), divergent dès que l'inflation saisie s'en écarte (troisième
+  convention d'indexation du dépôt, après « 2 % fixe » et « réel »). Noté par l'audit 2026-09-07, non chiffré
+  ici ; à unifier le jour où l'indexation des paliers devient elle-même paramétrable.
 - **Seuils de la stratégie Meltdown REER = heuristiques de CONCEPTION, pas des valeurs fiscales**
   (`services/projection/meltdownReer.ts:9-13`, documenté `[MELTDOWN-THRESHOLDS-DOC]` 2026-08-12) :
   cibles de revenu brut à saturer par adulte (90 k / 140 k / 220 k$ selon le patrimoine, paliers

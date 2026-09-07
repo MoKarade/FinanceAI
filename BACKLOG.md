@@ -17,6 +17,134 @@
 
 ---
 
+## 🔬 Audit financier 2026-09-07 — findings VÉRIFIÉS et re-mesurés (rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`)
+
+> Passe n°4 (commit `3f657d7d`, demande Marc « lance une grosse analyse, check tous les problèmes corrigés et
+> mets à jour la doc »). Cœur sain : 0 écart fiscal de valeur, conservation 0,02 $, 233/239 corrections
+> archivées encore en place, 10/10 de juillet fermés. Chaque ticket ci-dessous a été relu au `fichier:ligne` et
+> ses chiffres re-mesurés par moi — jamais recopiés d'un agent. Lots proposés (rapport §10) : 213 = XS/S sans
+> décision · 214 = W5 publication · 215 = gate REER per-conjoint · le reste attend Marc.
+
+- [ ] 🔴 **`[ENG-W5-BUSINESS-NON-PUBLIE]`** (M, CRITIQUE — sans décision, ne déplace PAS un dollar de `NetWorth`) —
+  la valeur d'une entreprise privée (W5.7) est un terme de `computeRawNetWorth` (`services/projection/netWorth.ts:33,51,68`,
+  `projection.ts:232,523,2506`) mais **aucun champ de `chartData` ne la porte** (`monthlyOutput.ts:293-301`) ;
+  absente de `NET_WORTH_DAILY_ASSETS` (`dailyLedger.ts:153-155`) et des `ASSET_KEYS` des trois harnais de
+  conservation. **Mesuré** (fixture `w5OffBalance.test.ts`, `estimatedValue: 900 000`) :
+  `NetWorth − Σ 8 actifs publiés + DettesNonImmo` = **900 000 $ exactement** aux mois 0, 12, 120, 300 ; 0 $ sans
+  entreprise. Conséquences : décomposition du patrimoine qui ne somme pas, grand livre quotidien en dents de scie
+  (la valeur ne revient qu'à la borne mensuelle), marche au raccord passé→futur. Invisible aux 5 747 tests parce
+  qu'un invariant de cohérence ne voit pas ce qui est ABSENT et que la seule fixture W5 du harnais pose
+  `estimatedValue: 0` (`projection.moneyConservation.test.ts:162`). **Correctif** : publier `Entreprise` dans
+  `monthlyOutput` ; l'ajouter à `NET_WORTH_DAILY_ASSETS`, aux trois `ASSET_KEYS`, au `FIELD_KIND` (stock) ; fixture
+  du harnais à `estimatedValue > 0` ; et la **garde structurelle qui manquait** : tout terme `+1`/`−1` de
+  `NET_WORTH_SIGN` a un champ publié dans `chartData` (perturbation : retirer `Entreprise` de la sortie → rouge).
+  Preuve de non-déplacement : `NetWorth` bit-identique avant/après sur les 7 personas.
+- [ ] 🟠 **`[PAST-NW-BUSINESS-SANS-PRODUCTEUR]`** (S, ÉLEVÉ — livrer AVEC le précédent) — `services/history/pastNetWorth.ts:61`
+  accepte `privateBusinessValue = 0` par défaut et son seul appelant `buildPastPrefix.ts:154` passe quatre
+  arguments ; `dailyPastLedger.ts:333` écrit `privateBusinessValue: 0` en toutes lettres. La JSDoc promet « valeur
+  COURANTE, plate sur le passé » : aucun producteur ne tient la promesse → marche de la valeur entière au raccord.
+  **Correctif** : porter la valeur dans `BuildPastPrefixInput`, l'écrire aux DEUX sites (même convention = plate,
+  intention écrite), garde « aucune marche au raccord » avec contrôle négatif (sans entreprise → inchangé).
+- [ ] 🟡 **`[HARNAIS-CONSERVATION-W5-VIDE]`** (XS, MOYEN — même lot) — la seule fixture W5 des harnais de
+  conservation pose `estimatedValue: 0` ; le fuzz ne sème jamais `privateBusinesses`. Passer à une valeur > 0 :
+  le harnais DOIT rougir avant le correctif du ticket 🔴 (c'est la preuve de discrimination), vert après.
+- [ ] 🟠 **`[FISC-RRSP-ROOM-GATE-MENAGE]`** (S, ÉLEVÉ **money-critical**, contenu — sans décision produit) —
+  `services/projection/taxJanuary.ts:219-226` calcule les droits REER PAR conjoint (`roomUsers.reduce`), puis
+  `:373-374` les ferme par `ctx.age`, l'âge du PREMIER utilisateur seul (`rrspRoomDelta: ctx.age <= 71 ? … : 0`,
+  `rrspRoomReset: ctx.age > 71`). **Mesuré** (`processJanuaryReset`, conjoint 2 actif à 120 k$) : 71/56 →
+  21 600 $ ; **72/57 → 0 $ ET remise à zéro des droits accumulés** ; 60/73 → 21 600 $ (le conjoint de 73 ans
+  génère des droits qu'il ne peut plus cotiser). Atteignable : âge de retraite saisissable jusqu'à 75
+  (`RetirementSettingsCard.tsx:37`). Même classe que le gate FERR d'août (« valeur per-conjoint gardée par une
+  grandeur de MÉNAGE »). **Correctif** : borne `≤ 71` appliquée à CHAQUE `roomUser` dans la réduction ; reset
+  seulement si TOUS ont dépassé 71. Gardes : les trois cas ci-dessus + contrôle « même âge → inchangé ».
+  ⚠️ Mesure avant/après sur un couple à ÉCART d'âge (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`) ;
+  goldens rouges à LIRE un par un (pas re-baser).
+- [ ] 🟠 **`[DEBT-BALANCE-NAN-SILENCIEUX]`** (S, ÉLEVÉ — sans décision) — `components/DebtManager.tsx:56-78`
+  (`saveEdit`) n'a que `refusOrigineIncoherente`, qui rend `null` pour un non-fini (`DebtKindFields.tsx:44`) :
+  un solde VIDÉ (`parseFloat('')` = `NaN`, `:190`) s'enregistre ; `handleAdd` (`:41-50`) refuse `balance` mais
+  pas `interestRate`/`minimumPayment` (`:155-159`). Puis `services/portfolio.ts:216-219` (`computeTotalDebt`)
+  rabat le `NaN` sur 0 SANS trace — ses voisins `assetValueCad` et `computeCurrentLiquidity` ont le
+  `logErrorThrottled` (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). Cinq consommateurs (Total dû, `FutureHistorySection`,
+  `portfolio.ts:236`, `financialSnapshot.ts`, `healthScore.ts`). `projection.moneyConservation.test.ts:519-521`
+  CERTIFIE le silence (`toBe(0)` sans assertion de trace). **Mesuré** : un taux `NaN` affiche « Liberté dans
+  **0,1 ans** » (1,3 ans pour la même dette à 20 %) — la simulation locale (`:85-111`) s'arrête au 1er mois
+  (`NaN > 0` est faux). **Correctif** : (a) `logErrorThrottled` dans `computeTotalDebt` ; (b) refus UI d'un champ
+  non fini à l'ajout ET à l'édition ; (c) test INVERSÉ (le `NaN` est tracé) ; (d) « — » quand la simulation
+  n'est pas finie.
+- [ ] 🟠 **`[AI-PRIVACY-CONSEILS-NON-GATES]`** (S, ÉLEVÉ — extension d'une décision PRISE, sans nouvelle décision) —
+  la décision Marc 2026-09-05 « masquer : en mode discret, les montants ne partent pas non plus vers l'assistant »
+  est appliquée au chat (`useAiChat.ts:171`), au diagnostic Budget (`BudgetAiModal.tsx:99`) et aux cartes de
+  signaux — PAS aux trois cartes de conseil : `components/tax/CoupleOptimizationCard.tsx:90` (brut/net des deux
+  conjoints, prompt `services/claude.ts:798-800`), `components/realestate/RealEstateAdviceCard.tsx:41` (prix, mise
+  de fonds, mensualité, loyer, `claude.ts:719-724`), rééquilibrage `Investments.tsx:1071` (`Δ` en dollars,
+  `claude.ts:888`). 0 lecture de `isPrivacyMode` dans les deux cartes. Cause : `amountPrivacyScan.test.ts:82` ne
+  scanne que `components/` et `promptCad` vit dans `services/claude.ts`. **Correctif** : la même PAIRE de gardes
+  que `tests/components/budgetAiModalModeDiscret.test.tsx` (égress au service + ouvreur avec message), ×3, chacune
+  avec son contrôle (mode normal → l'appel part).
+- [ ] 🟠 **`[AI-STOPREASON-JETE]`** (S, ÉLEVÉ — sans décision) — `services/claude.ts` ne lit `stop_reason` nulle part
+  (seul `services/aiTools/agentLoop.ts:289-301` le fait). `analyzeBankStatement` (non-stream, `max_tokens` 16 000)
+  tronqué → JSON invalide → `[]` → `components/import/ImportBankStatement.tsx:64` « Aucune transaction reconnue » :
+  FAUX, le relevé a été lu et coupé. **Correctif** : lire `response.stop_reason` aux deux appels Vision
+  (`analyzePayslip`, `analyzeBankStatement`), rendre une cause `tronque`, message dédié à l'écran (« relevé trop
+  long, coupe-le en deux »). Garde : réponse simulée `stop_reason: 'max_tokens'` → cause `tronque`, pas `[]`.
+- [ ] 🟡 **`[TAXESTIMATE-DIVIDENDES-ORDINAIRES]`** (S, MOYEN, 🧭 sur quelle surface s'aligner) — `services/taxEstimate.ts:33-35`
+  estime les dividendes (2 % du non-enregistré) puis les impose comme du revenu ORDINAIRE dans l'onglet Impôts et
+  `get_tax_situation` ; le moteur passe par `calculateDividendTax` (majoration + CID). **Mesuré** sur 10 000 $
+  de dividendes déterminés : ordinaire 2 569 / 3 678 / 5 047 $ contre majoration + CID progressif 200 / 1 895 /
+  3 727 $ (bases 40 k / 100 k / 250 k$) — surestimation de 2 369 à 1 320 $. Conservateur, mais deux surfaces
+  donnent deux chiffres pour la même hypothèse.
+- [ ] 🟡 **`[FISC-PROXY-45-BONUS-RSU-NON-DOCUMENTE]`** (XS docs livrées au lot 212 · reste : XS ratchet + 🧭 assiette) —
+  `services/projection/activeIncome.ts:186-187` `(bonus + rsu + side) * 0.55` : proxy 45 % absent de
+  `FISCAL_REFERENCE.md` (table d'écart mesurée ajoutée en §9 au lot 212 : **+1 931 $** sur-imposé à 40 k$ …
+  **−547 $** sous-imposé à 250 k$ sur 10 000 $ — l'écart change de SIGNE, la FORME est fausse), clé de ratchet
+  `(activeIncome.ts, 0.55)` FUSIONNÉE avec le taux AE 55 %, montant hors assiette de décembre et hors registres
+  (`totalTaxesPaid` sous-compte). Reste : nommer la constante (clé de ratchet distincte, XS) ; passer par
+  l'assiette réelle = déplace de l'argent → plan-first.
+- [ ] 🟡 **`[AITOOLS-DISPATCH-ERR-NON-SCRUB]`** (XS, MOYEN) — `services/aiTools/dispatch.ts:48` renvoie `err.message`
+  brut au modèle ; `agentLoop.ts:152` scrubbe déjà (`sanitizePromptText(…, 300)`). Même scrub.
+- [ ] 🟡 **`[AI-VISION-SANS-ANNULATION]`** (S, MOYEN, 🧭 UX) — `analyzePayslip`/`analyzeBankStatement` :
+  `makeTimeoutSignal(undefined, 90_000)`, aucun `signal` en paramètre, pas de bouton Annuler pendant 90 s.
+- [ ] 🟡 **`[AI-CONSEILS-SANS-ANNULATION]`** (XS/carte, MOYEN, 🧭 UX) — les trois cartes de conseil
+  (couple, immobilier, rééquilibrage) n'ont pas d'`AbortController` (25 s sans issue).
+- [ ] 🟡 **`[MCP-FIREAGE-DUP]`** (XS, MOYEN) — `mcp/tools/getRetirementOutlook.spec.ts:24-26` recopie `fireAgeOf`
+  de `mcp/whatIf.ts:514-517` (déjà importé par `getProjection.spec.ts`, `simulateWhatIf.spec.ts`). Importer.
+- [ ] 🟡 **`[FISC-GUARD-SCOPE-MONTHLYEVENTS]`** (XS, MOYEN) — `services/projection/monthlyEvents.ts:222,239`
+  `* 0.95` (produit net d'une vente, coût de disposition documenté FISCAL_REFERENCE §8) sans constante nommée,
+  dans un module ni dans `FISCAL_MODULES` ni dans `FISCAL_MODULES_HORS_PERIMETRE` (`fiscalConstGuardV2.ts`).
+  Nommer (`REAL_ESTATE_SALE_NET_FACTOR`), ajouter le module au périmètre, entrée d'inventaire.
+- [ ] 🟡 **`[TEST-GAP-LIFETIMETAX]`** (XS, MOYEN) — `services/projection/lifetimeTax.ts` (35 lignes) est le seul des
+  57 sous-modules sans import direct depuis `tests/` (mesuré 2026-09-07) ; consommé par `monteCarlo.ts` et
+  `strategySearch.ts` (classement). Test direct : somme, terme non fini, `null`.
+- [ ] 🟡 **`[BUDGET-CATEGORY-INCOME-SIGN-GARDE-PERDUE]`** (XS, MOYEN) — le correctif #749 tient (`utils/budget.ts`
+  via `spendAmountOf`) mais ses tests vivaient dans `PlanningGoals.test.tsx`/`monthlyActuals.test.ts`, supprimés
+  avec les Objectifs (lot 29, #755) : l'agrégation d'un CRÉDIT n'est plus assertée. Un cas dans
+  `tests/utils/budget.test.ts` (remboursement positif dans `computeBudgetParity`/`computeActualByOwner`).
+- [ ] 🟢 **`[PROMPT-PALIERS-EN-DUR]`** (XS, FAIBLE) — `services/claude.ts:140` recopie les paliers 2026 dans le
+  prompt système (exacts aujourd'hui, hors ratchet) : dériver de `bracketsForYear()` ou déclarer au ratchet.
+- [ ] 🟢 **`[RATCHET-JSDOC-PERIME]`** (XS, FAIBLE) — `utils/fiscalConstGuardV2.ts:630-636` déclare encore
+  `services/projection.ts` « trou connu et assumé » alors qu'il est scanné depuis le 2026-09-01.
+- [ ] 🟢 **`[FISC-FED-CREDITRATE-15-COMMENTAIRE]`** (XS, FAIBLE — docs §1 requalifiée au lot 212) — le commentaire
+  `utils/tax.ts:184-186` affirme encore « gelé à 15 % par l'ARC … politique C-4 » sans source, contredit par la
+  recherche relayée du 2026-09-05 (14,5 % / 14 % + compensatoire). Réécrire « CONTESTÉ, voir
+  `[FISC-FED-CREDITRATE-15]` » — le chiffre ne bouge pas sans source.
+- [ ] 🟢 **`[FMT-COMPACT-AXE-A-LA-MAIN]`** (S, FAIBLE, 🧭 membre déviant possible) — 5 axes `${(v/1000).toFixed(0)}k`
+  sans `$` (`ChildPlanning.tsx:477,561`, `realestate/MultiPropertyComparison.tsx:107`,
+  `projection/futureDetail/DrillDownCompte.tsx:212`, `FutureProjection.tsx:1804`), invisibles à
+  `formatMonetaireSourceUnique` (motif exige `$`) ; mode discret OK (`maskedTick`). `formatCompactCAD` rend
+  « 850 k$ » : re-mesurer la largeur d'axe (50 px) avant de migrer — un axe court peut être un choix.
+- [ ] 🟢 **`[KNIP-PAIRETEXTE-EXPORT]`** (XS, FAIBLE — seule régression des 239 corrigés) — `scripts/lib/ctaContrast.ts:180`
+  `PaireTexte` exporté sans consommateur (lot 208). Retirer l'export.
+- [ ] 🟢 **`[AI-CATEGORIZE-HISTORY-PARAM-MORT]`** (XS, FAIBLE) — `categorizeBatch(…, _history = [])`
+  (`services/claude.ts:407`) : paramètre jamais lu. Retirer (compilateur énumère les appelants).
+- [ ] 🟢 **`[IMPORT-BROKER-BACKUP-SANS-LOGERROR]`** (XS, FAIBLE) — `components/investments/ImportBrokerPositions.tsx:46`
+  (`catch { setError(…) }`) et `components/settings/BackupPanel.tsx:152,184,210` : message à l'écran sans
+  `logError` — une panne répétée n'apparaît dans aucun journal.
+- [ ] 🟢 **`[A11Y-INK500-TINY-X2]`** (XS, FAIBLE, WCAG 1.4.3) — `components/setup/PageSetupGate.tsx:284`
+  (« ou importer ») et `FutureProjection.tsx:1651` (indice survol/clic/molette) en `text-tiny text-ink-500` :
+  `ink-500` mesure 3,86 à 4,33 (AA-large seulement), `ink-400` 5,90 à 6,62 → `text-ink-400`.
+- [ ] 🟢 **`[A11Y-HEALTH-DONUT-ARIA-HIDDEN]`** (XS, FAIBLE, WCAG 1.1.1) — `components/dashboard/HealthIndicator.tsx:136`
+  `<svg>` du donut sans `aria-hidden` (le score est déjà en texte à côté).
+
 ## 🟢 Décisions Marc du 2026-09-05 — tickets nés des réponses (détail des questions : `docs/A_FAIRE_MOI.md`)
 
 - [ ] ⏸️ **`[FUTUR-ANNOTATIONS]`** (M — réponse A12 du 2026-09-05 ; **plan P6 / question Q14 dans `docs/A_FAIRE_MOI.md`, à valider avant de coder** — lot 211, 2026-09-06 : le moteur publie `isRetired`, `pensionRRQ`, `pensionPSV` et les séries par compte, mais PAS la bascule de stratégie par mois) — annoter la courbe Futur avec les événements
@@ -1509,8 +1637,8 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 
 
 - [ ] **`[GODFILE-FUTUREPROJECTION]`** (L — unifie `[DETTE-GODFILE-FUTUREPROJECTION]` et la part
-  `FutureProjection` de l'ex-`[DETTE-GODFILES]`) — ⚠️ **taille re-mesurée le 2026-08-19 : 2 026
-  lignes**, pas 1 820 : le fichier a GROSSI de 12 % entre deux tickets qui le décrivaient. C'est la
+  `FutureProjection` de l'ex-`[DETTE-GODFILES]`) — ⚠️ **taille re-mesurée le 2026-09-07 : 2 207 lignes** (2 026 le
+  2026-08-19, pas 1 820 : le fichier a GROSSI de 12 % entre deux tickets qui le décrivaient. C'est la
   démonstration que l'agrégat périmé ne servait à rien.
   ⚠️ **À faire AVANT `[A11Y-SUBTABS-FUTUR]`**, qui est un second refactor du MÊME fichier : les
   mener en parallèle garantit un conflit sur le plus gros fichier du dépôt.
@@ -1521,13 +1649,13 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `hooks/useFutureEventMarkers.ts` ; (3) persistance vers `hooks/useHiddenSeries.ts` (pattern dupliqué
   ailleurs).
 
-- [ ] **`[GODFILE-INVESTMENTS]`** (L) — `Investments.tsx` **1 440 lignes**, 9 `useState`, 20 définitions
+- [ ] **`[GODFILE-INVESTMENTS]`** (L) — `Investments.tsx` **1 533 lignes** (mesuré 2026-09-07 ; 1 440 au ticket), 9 `useState`, 20 définitions
   locales. Combine probablement liste positions + comparaison + formulaires. Certains partiellement
   extraits (AddStockForm 475 l.). **Correctif** : identifier sous-sections quasi-autonomes (return
   imbriqués / commentaires section), extraire vers `components/investments/` style AddStockForm. Nécessite
   lecture préalable COMPLÈTE avant découpe.
 
-- [ ] **`[GODFILE-BUDGET]`** (L) — `Budget.tsx` **1 413 lignes**, 12 `useMemo`, 46 const/fonctions locales.
+- [ ] **`[GODFILE-BUDGET]`** (L) — `Budget.tsx` **1 569 lignes** (mesuré 2026-09-07 ; 1 413 au ticket), 12 `useMemo`, 46 const/fonctions locales.
   Contient sélection dates inline (violant `[UI-NO-INPUT-PRIMITIVE]`). **Correctif** : même méthode que
   FutureProjection — extraire blocs purement calculatoires (agrégats budget, vérifier non-re-dérivés
   localement vs moteur), puis sous-vues JSX. Mesurer handlers (0 `useCallback` → risque re-création).

@@ -12219,6 +12219,28 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot 212 (2026-09-07) — une passe qui VÉRIFIE les corrigés trouve autre chose qu'une passe qui cherche des bugs, et un actif exact peut mentir par sa décomposition
+
+Audit financier n°4 (`docs/AUDIT_FINANCIER_2026-09-07.md`), premier à re-vérifier une par une les 239 corrections
+archivées : 233 tiennent. Ce qui a lâché n'est PAS du code — ce sont des GARDES : une garde partie avec la feature
+qu'elle testait (`[BUDGET-CATEGORY-INCOME-SIGN]`, tests supprimés avec les Objectifs, correctif intact et plus
+asserté nulle part) et une garde retirée volontairement (`[ENG-RANKING-ORDER-PIN]`, lot 162), que l'archive
+présentait encore comme en place. **Un correctif survit à son test ; c'est le test qui meurt en silence** — la
+vérification des corrigés se fait donc en rejouant la GARDE, pas en relisant le site. Trois règles :
+(1) **une passe de vérification a sa propre récolte** : aucun des 11 agents « chercheurs » n'a vu ces deux gardes
+mortes, seuls les vérificateurs les ont vues — les deux protocoles ne se remplacent pas ; (2) quand une feature est
+retirée, **grep les tests qu'elle emportait pour ce qu'ils gardaient d'AUTRE** — un fichier de test porte souvent
+des assertions sur des modules voisins ; (3) une entrée d'archive supersédée s'ANNOTE (elle reste un récit), elle
+ne se supprime pas. ⚠️ Et le CRITIQUE de la passe est de la classe « un invariant ne voit pas ce qui est ABSENT »,
+payée en août sur ce MÊME actif (l'entreprise privée entrée au bilan) : le lot d'août a écrit la leçon dans son
+test, mis la valeur dans `NetWorth`, et n'a publié aucun champ — l'identité `NW = Σ actifs − dettes` est fausse
+de 900 000 $ sur 100 % des mois avec la fixture, et le harnais de conservation pose `estimatedValue: 0`. **Un
+terme ajouté à `NetWorthParts` a besoin de TROIS choses, pas une : le signe, le champ publié, et une fixture qui
+le rend non nul** ; la garde qui manque est structurelle (chaque terme du sign-map a un champ dans `chartData`).
+⚠️ Corollaire de conduite : sur une demande « fais tout seul », un audit produit une PARTITION (sans décision / ne
+déplace pas d'argent / money-critical contenu / décision Marc), pas une liste — c'est la partition qui dit ce qui
+se livre ce soir.
+
 ### Variante notée au lot 210 (2026-09-06) — deux copies d'un chiffre ne se fusionnent que si la LOI les nomme par le même terme, et une garde d'ÉGALITÉ est aveugle à une copie de même valeur
 
 `[FISC-DON-FEDRATE-DUP]` signalait deux `0.15` : le 1er palier du crédit pour dons et le taux des crédits non

@@ -23,7 +23,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
     },
 }));
 
-import { analyzeBankStatement, analyzePayslip, VisionTronqueeError } from '../../services/claude';
+import { analyzeBankStatement, analyzePayslip, VisionTronqueeError, VisionReponseInvalideError } from '../../services/claude';
 import { causeErreurIa, messageErreurIa } from '../../services/messageErreurIa';
 
 const releve = () => new File(['pdf'], 'releve.pdf', { type: 'application/pdf' });
@@ -55,6 +55,22 @@ describe('[AI-STOPREASON-JETE] une réponse Vision coupée sur max_tokens est un
     it('contrôle — end_turn avec un JSON invalide reste « aucune transaction » (ce cas-là est honnête)', async () => {
         mocks.nextText = 'pas du json';
         await expect(analyzeBankStatement(releve(), 'sk-test')).resolves.toEqual([]);
+    });
+
+    // Jumelle trouvée par la revue du lot 213 : une réponse REÇUE mais inexploitable (JSON cassé, refus du
+    // classificateur) levait un `Error` nu sans statut HTTP → classé « réseau » → « vérifie ton accès Internet ».
+    it('fiche de paie : JSON invalide → VisionReponseInvalideError, classée « réponse invalide », jamais « réseau »', async () => {
+        mocks.nextText = 'pas du json';
+        await expect(analyzePayslip(paie(), 'sk-test')).rejects.toBeInstanceOf(VisionReponseInvalideError);
+        const err = new VisionReponseInvalideError('JSON invalide');
+        expect(causeErreurIa(err)).toBe('reponse-invalide');
+        expect(messageErreurIa(err)).not.toMatch(/Internet/);
+    });
+
+    it('stop_reason refusal → VisionReponseInvalideError aux DEUX appels (le classificateur peut intervenir hors streaming)', async () => {
+        mocks.nextText = ''; mocks.nextStop = 'refusal';
+        await expect(analyzePayslip(paie(), 'sk-test')).rejects.toBeInstanceOf(VisionReponseInvalideError);
+        await expect(analyzeBankStatement(releve(), 'sk-test')).rejects.toBeInstanceOf(VisionReponseInvalideError);
     });
 
     it('l’écran peut NOMMER la cause : messageErreurIa dit « trop long », pas « réseau »', () => {

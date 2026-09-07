@@ -17,6 +17,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   durée inventée, et l'anomalie est journalisée dans Diagnostic.
 - **Corrigé** : un relevé bancaire ou une fiche de paie trop longs pour l'IA étaient annoncés « aucune transaction
   reconnue ». Le message dit maintenant que le document a été coupé et qu'il faut le réimporter en plusieurs parties.
+  Et une fiche de paie dont la réponse de l'IA était inexploitable envoyait « vérifie ton accès Internet » : le message
+  dit maintenant que le document est bien arrivé mais que la réponse ne l'est pas.
 - **Amélioré** : deux textes très petits (« ou importer » à l'accueil, l'indice survol/molette du graphe Futur)
   passent à un gris plus lisible (contraste AA) ; le donut du score de santé n'est plus lu par les lecteurs d'écran
   (le score est déjà en texte) ; les échecs de sauvegarde chiffrée et d'import de positions courtier sont journalisés.

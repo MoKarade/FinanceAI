@@ -21,8 +21,9 @@
 > conseil IA (couple, immobilier, rééquilibrage) refusent en mode discret avec le même message (décision « masquer »
 > du 2026-09-05 étendue, pas une nouvelle décision) ; un solde/taux/minimum de dette VIDÉ est refusé à l'ajout et à
 > l'édition, `computeTotalDebt` journalise un non-fini au lieu de le taire, la simulation dit « — » au lieu de « 0,1
-> ans » ; un relevé ou une paie coupés par `max_tokens` lèvent `VisionTronqueeError` et l'écran dit « trop long »
-> au lieu de « aucune transaction reconnue » ; `dispatch` scrubbe le message d'exception ; prompt système : paliers
+> ans » (et « — » sans dette) ; un relevé ou une paie coupés par `max_tokens` lèvent `VisionTronqueeError` et l'écran dit
+> « trop long » au lieu de « aucune transaction reconnue », et une réponse REÇUE mais inexploitable (JSON cassé, `refusal`)
+> lève `VisionReponseInvalideError` au lieu de tomber dans « vérifie ton accès Internet » (jumelle trouvée par la revue) ; `dispatch` scrubbe le message d'exception ; prompt système : paliers
 > dérivés de `utils/tax.ts` ; `REAL_ESTATE_SALE_NET_FACTOR` nommé et `monthlyEvents.ts` au périmètre du ratchet
 > (7 clés) ; `_history` retiré de `categorizeBatch` ; `logError` sur 4 `catch` ; 2 `ink-500` → `ink-400` ; donut
 > `aria-hidden`. Tests : +32 cas / +6 fichiers, 9 perturbations nommées, chacune rouge là où attendu — et

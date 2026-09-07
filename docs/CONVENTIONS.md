@@ -12236,7 +12236,11 @@ le compilateur (7 sites énumérés), pas par grep. ⚠️ Corollaire de garde :
 requête qui suppose « LA » région mesure une FORME (`UN-TEST-QUI-ROUGIT-SUR-UN-LOT-QUI-NE-TOUCHE-PAS-SON-OBJET`) ;
 on cherche la région qui PORTE le texte. ⚠️ Et `errorContent` préfixe « ⚠️ » : un attendu écrit de mémoire
 (`toBe('Le tool…')`) a rougi sur le préfixe, pas sur le fond — l'attendu d'un texte produit par un helper se lit
-dans le helper.
+dans le helper. ⚠️ Et la revue a trouvé la JUMELLE du correctif trois lignes plus bas : nommer la troncature
+(`stop_reason: 'max_tokens'`) laissait le JSON invalide et le `refusal` sur un `Error` nu classé « réseau » —
+**quand on nomme une cause, relire les autres sorties de la même fonction qui tombent encore dans le défaut**.
+Et un test de DÉRIVATION dont la valeur dérivée est égale au littéral qu'elle remplace ne prouve rien : la
+preuve fait BOUGER la source (`vi.doMock` du barème → le prompt change).
 
 ### Variante notée au lot 212 (2026-09-07) — une passe qui VÉRIFIE les corrigés trouve autre chose qu'une passe qui cherche des bugs, et un actif exact peut mentir par sa décomposition
 

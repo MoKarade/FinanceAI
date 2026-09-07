@@ -1029,6 +1029,19 @@ export class VisionTronqueeError extends Error {
     }
 }
 
+/**
+ * [AI-STOPREASON-JETE] Jumelle de la précédente (revue du lot 213) : la réponse est arrivée (HTTP 200) mais
+ * n'est PAS exploitable — JSON malformé, ou `stop_reason: 'refusal'` (classificateur de contenu). Sans classe
+ * dédiée, `analyzePayslip` levait un `Error` nu SANS statut HTTP, que `messageErreurIa` classait « réseau » :
+ * « vérifie ton accès Internet » sur une requête qui avait bel et bien abouti.
+ */
+export class VisionReponseInvalideError extends Error {
+    constructor(detail: string) {
+        super(`Réponse Vision reçue mais inexploitable : ${detail}.`);
+        this.name = 'VisionReponseInvalideError';
+    }
+}
+
 export const analyzePayslip = async (file: File, apiKey: string): Promise<PayslipData> => {
     if (!apiKey) throw new Error('Clé API Anthropic manquante.');
 
@@ -1074,13 +1087,14 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     }, { signal });
     cleanup();
     if (response.stop_reason === 'max_tokens') throw new VisionTronqueeError('fiche de paie');
+    if (response.stop_reason === 'refusal') throw new VisionReponseInvalideError('refus du classificateur de contenu');
 
     const text = response.content
         .flatMap(b => b.type === 'text' ? [b.text] : [])
         .join('');
     const validated = safeJsonValidate(text, PayslipSchema);
     if (!validated) {
-        throw new Error('Format JSON invalide retourné par Claude.');
+        throw new VisionReponseInvalideError('JSON invalide ou hors schéma');
     }
     return validated;
 };
@@ -1172,6 +1186,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict (aucun markdown, aucun commentaire
     }, { signal });
     cleanup();
     if (response.stop_reason === 'max_tokens') throw new VisionTronqueeError('relevé');
+    if (response.stop_reason === 'refusal') throw new VisionReponseInvalideError('refus du classificateur de contenu');
 
     const text = response.content
         .flatMap(b => b.type === 'text' ? [b.text] : [])

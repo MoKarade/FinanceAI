@@ -56,6 +56,21 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] à l’ÉDITION, un solde vidé ne s’e
     });
 });
 
+describe('[DEBT-BALANCE-NAN-SILENCIEUX] le refus est un ÉTAT qui se remet à zéro au changement de formulaire (revue du lot 213)', () => {
+    it('un refus à l’ajout ne s’affiche PAS sur une dette saine ouverte ensuite en édition', () => {
+        render(<DebtManager debts={[dette()]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }));
+        fireEvent.change(screen.getByLabelText('Nom de la dette'), { target: { value: 'Auto' } });
+        // Saisir PUIS vider : un champ déjà vide ne déclenche aucun changement (0 reste 0, pas NaN).
+        fireEvent.change(screen.getAllByLabelText('Solde de la dette (dollars)')[0], { target: { value: '5000' } });
+        fireEvent.change(screen.getAllByLabelText('Solde de la dette (dollars)')[0], { target: { value: '' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+        expect(screen.getAllByRole('status').some(el => /le solde doit être un nombre/.test(el.textContent ?? ''))).toBe(true);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        expect(screen.getAllByRole('status').some(el => /doit être un nombre/.test(el.textContent ?? ''))).toBe(false);
+    });
+});
+
 describe('[DEBT-BALANCE-NAN-SILENCIEUX] à l’AJOUT, un taux vidé est refusé (le solde l’était déjà)', () => {
     it('nom + solde valides, taux vidé → refus nommé, rien d’ajouté', () => {
         const setDebts = vi.fn();
@@ -74,6 +89,13 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] à l’AJOUT, un taux vidé est refusé 
 describe('[DEBT-BALANCE-NAN-SILENCIEUX] la simulation dit « — » quand une dette persistée n’est pas simulable', () => {
     it('taux NaN → « — », pas « 0,1 ans »', () => {
         render(<DebtManager debts={[dette({ interestRate: NaN })]} setDebts={vi.fn()} />);
+        const bloc = screen.getByText('Liberté dans').parentElement!;
+        expect(bloc.textContent).toContain('—');
+        expect(bloc.textContent).not.toMatch(/\d ans/);
+    });
+
+    it('sans aucune dette : « — », pas « 0.0 ans » (rien à simuler n’est pas une durée)', () => {
+        render(<DebtManager debts={[]} setDebts={vi.fn()} />);
         const bloc = screen.getByText('Liberté dans').parentElement!;
         expect(bloc.textContent).toContain('—');
         expect(bloc.textContent).not.toMatch(/\d ans/);

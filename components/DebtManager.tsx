@@ -45,7 +45,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const handleAdd = () => {
         // [DEBT-UI-PAR-TYPE] Même refus que l'écriture par l'assistant (`applyDocument`) : accepter
         // ici ce que le MCP rejette laisserait le moteur refuser la courbe EN SILENCE.
-        if (refusOrigineIncoherente(newDebt.originalBalance, newDebt.balance)) return;
+        if (refusOrigineIncoherente(newDebt.originalBalance, newDebt.balance)) { setRefusSaisie(null); return; }
         // [DEBT-BALANCE-NAN-SILENCIEUX] `balance > 0` refusait déjà un solde vidé, mais PAS un taux
         // ni un minimum vidés — et l'édition (ci-dessous) ne refusait rien du tout.
         const refus = refusChampNonFini(newDebt);
@@ -60,7 +60,10 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
 
     const handleDelete = (id: string) => { setConfirmDeleteId(id); };
 
-    const startEdit = (d: Debt) => { setEditingId(d.id); setDraft({ ...d }); setIsAdding(false); };
+    // Le refus est un ÉTAT (pas dérivé du brouillon) : il se REMET À ZÉRO à chaque changement de
+    // formulaire, sinon un message d'ajout périmé s'afficherait sur une dette saine ouverte en édition
+    // (revue du lot 213).
+    const startEdit = (d: Debt) => { setEditingId(d.id); setDraft({ ...d }); setIsAdding(false); setRefusSaisie(null); };
     const cancelEdit = () => { setEditingId(null); setDraft({}); setRefusSaisie(null); };
     const saveEdit = () => {
         if (!editingId) return;
@@ -76,7 +79,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         // mécanisme (`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`).
         const existante = debts.find(d => d.id === editingId);
         if (refusOrigineIncoherente(draft.originalBalance ?? existante?.originalBalance,
-            draft.balance ?? existante?.balance)) return;
+            draft.balance ?? existante?.balance)) { setRefusSaisie(null); return; }
         // [DEBT-BALANCE-NAN-SILENCIEUX] Jugé sur les valeurs EFFECTIVES (même fusion que l'écriture).
         const refus = refusChampNonFini({ ...existante, ...draft });
         setRefusSaisie(refus);
@@ -123,7 +126,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         // [DEBT-BALANCE-NAN-SILENCIEUX] Un champ non fini (dette persistée avant le refus de saisie)
         // rend `NaN > 0` faux dès le 1er mois : la boucle s'arrête et affichait « Liberté dans 0,1 ans »
         // — mesuré. Une simulation qui ne peut pas tourner le DIT (« — »), elle n'invente pas une date.
-        const valide = debts.every(d => Number.isFinite(d.balance) && Number.isFinite(d.interestRate) && Number.isFinite(d.minimumPayment));
+        // Et SANS dette, il n'y a rien à simuler : « 0,0 ans » était une durée inventée (`[].every` est vrai par vacuité).
+        const valide = debts.length > 0 && debts.every(d => Number.isFinite(d.balance) && Number.isFinite(d.interestRate) && Number.isFinite(d.minimumPayment));
         return { chart: data, totalInterest: totalInterestPaid, months: month, valide };
     }, [debts, extraPayment]);
 
@@ -164,7 +168,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
-                    <Card title="Vos Dettes" action={<button onClick={() => setIsAdding(!isAdding)} className="text-meta bg-white/10 px-2 py-1 rounded hover:bg-white/20">+ Ajouter</button>}>
+                    <Card title="Vos Dettes" action={<button onClick={() => { setIsAdding(!isAdding); setRefusSaisie(null); }} className="text-meta bg-white/10 px-2 py-1 rounded hover:bg-white/20">+ Ajouter</button>}>
                         {isAdding && (
                             <div className="mb-4 p-3 bg-white/5 rounded border border-white/10 space-y-2">
                                 <input aria-label="Nom de la dette" type="text" placeholder="Nom (ex: Visa)" className="w-full bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.name} onChange={e => setNewDebt({...newDebt, name: e.target.value})} />

@@ -235,10 +235,9 @@ function droitsReerAnnuels(ctx: JanuaryContext, roomUsers: JanuaryContext['users
  * convertirait jamais (sous-imposition silencieuse). Ni l'un ni l'autre → `-Infinity` (jamais FERR ;
  * et IGNORÉ par le gate des droits, qui ne décide que sur des âges connus).
  */
-function ageCourantUtilisateur(ctx: JanuaryContext, i: number): number {
+function ageCourantUtilisateur(ctx: JanuaryContext, i: number, u: JanuaryContext['users'][number] = ctx.users[i]): number {
     const yearsElapsed = Math.floor(ctx.m / 12);
     if (i === 0) return ctx.age;
-    const u = ctx.users[i];
     if (u?.age != null && Number.isFinite(u.age)) return u.age + yearsElapsed;
     if (u?.birthYear != null && Number.isFinite(u.birthYear)) return (ctx.startYear + yearsElapsed) - u.birthYear;
     return Number.NEGATIVE_INFINITY;
@@ -371,7 +370,7 @@ export function processJanuaryReset(
     const newRrspRoom = droitsReerAnnuels(ctx, roomUsers, nextLoopYear);
     const peutEncoreDetenirUnReer = roomUsers.some((u, i) => {
         if (!u) return false;
-        const a = ageCourantUtilisateur(ctx, i);
+        const a = ageCourantUtilisateur(ctx, i, u); // l'utilisateur de `roomUsers`, pas `ctx.users[i]` (revue)
         return Number.isFinite(a) && a <= RRSP_TO_RRIF_CONVERSION_AGE;
     });
     const { ferrMandatoryGross, ferrGrossByUser, ferrTaxOnRrif, ferrLogMsg } = retraitFerrObligatoire(ctx, helpers);
@@ -392,7 +391,10 @@ export function processJanuaryReset(
         // conjoint a 71 ans ou moins. Le pool `rrspRoom` est un pool de MÉNAGE : il reste utilisable tant
         // qu'UN conjoint peut encore détenir un REER, et n'est remis à zéro que quand PLUS AUCUN ne le
         // peut. Même classe que le gate FERR d'août (« valeur per-conjoint gardée par une grandeur de
-        // ménage »). Un conjoint sans âge connu ne pèse pas dans la décision.
+        // ménage »). Un conjoint sans âge connu ne pèse pas dans la décision. ⚠️ « Remise à zéro » est un
+        // RACCOURCI de modèle : en droit, les droits inutilisés se reportent indéfiniment — mais plus personne
+        // ne peut les utiliser, et aucun événement ne peut ajouter un conjoint plus jeune ; l'effet moteur est
+        // nul (vérifié par la revue : les trois lecteurs de `rrspRoom` sont des cotisations).
         rrspRoomDelta: peutEncoreDetenirUnReer ? newRrspRoom : 0,
         rrspRoomReset: !peutEncoreDetenirUnReer,
         celiappTransferToReer,

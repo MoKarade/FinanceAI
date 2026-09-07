@@ -907,11 +907,15 @@ pour minimiser l'impôt combiné (élection optionnelle).
 
 > **Droits REER et âge (lot 215, audit 2026-09-07)** — les droits de cotisation naissent du revenu gagné quel que soit
 > l'âge ; un particulier cotise à SON REER jusqu'au 31 décembre de l'année de ses 71 ans, puis peut cotiser à un REER de
-> CONJOINT avec ses propres droits tant que le conjoint a 71 ans ou moins (ARC, « Cotiser à un REER de conjoint » —
-> source RELAYÉE : canada.ca est `EGRESS_BLOCKED` depuis le conteneur, tenté le 2026-09-07). Le moteur porte un pool de
-> ménage `rrspRoom` : il reste alimenté tant qu'UN conjoint peut détenir un REER, et n'est remis à zéro que quand plus
-> aucun ne le peut (`taxJanuary.ts`, `peutEncoreDetenirUnReer`). Avant le lot 215, l'âge du PREMIER conjoint seul
-> fermait le pool — à 72/57 le conjoint actif perdait ses droits et le solde accumulé.
+> CONJOINT avec ses propres droits tant que le conjoint a 71 ans ou moins — **LIR 146(2)b.4)** (échéance du régime au
+> plus tard à la fin de l'année des 71 ans) et **LIR 146(5.1)** (déduction des primes versées au REER du conjoint) ;
+> page ARC « Cotiser à un REER de conjoint » en source RELAYÉE (canada.ca est `EGRESS_BLOCKED` depuis le conteneur,
+> 403 re-vérifié le 2026-09-07). Le moteur porte un pool de ménage `rrspRoom` : il reste alimenté tant qu'UN conjoint
+> peut détenir un REER, et devient INUTILISABLE (remis à zéro dans le modèle — en droit les droits se reportent, mais
+> plus personne ne peut s'en servir, effet moteur nul) quand plus aucun ne le peut (`taxJanuary.ts`,
+> `peutEncoreDetenirUnReer`). Avant le lot 215, l'âge du PREMIER conjoint seul fermait le pool — à 72/57 le conjoint
+> actif perdait ses droits et le solde accumulé. Revenu gagné : voir `[RRSP-EARNED-INCOME-LOYER-BRUT]` (BACKLOG) — le
+> loyer y entre BRUT alors que 146(1) retient le loyer NET.
 
 | Régime | Constante | Valeur |
 |---|---|---|

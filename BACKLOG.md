@@ -72,12 +72,25 @@
   seulement si TOUS ont dépassé 71. Gardes : les trois cas ci-dessus + contrôle « même âge → inchangé ».
   ⚠️ Mesure avant/après sur un couple à ÉCART d'âge (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`) ;
   goldens rouges à LIRE un par un (pas re-baser).
-- [ ] 🟢 **`[REER-CONJOINT-ATTRIBUTION-72]`** (S, FAIBLE — résiduel du lot 215) — quand un conjoint de 72 ans ou plus
+- [ ] 🟡 **`[REER-CONJOINT-ATTRIBUTION-72]`** (S, MOYEN — résiduel du lot 215, RECLASSÉ par la revue fiscale : estimation d'AGENT sur une copie patchée (attribution des cotisations aux seuls ≤ 71 ans) = **+13 789 $ (+2,1 %)** de patrimoine final surévalué sur la fixture 68/53, nul sans revenu gagné après 71 ans — [À vérifier] par une mesure à moi avant de coder) — quand un conjoint de 72 ans ou plus
   génère des droits (revenu gagné) et que le ménage cotise, le moteur verse dans le pool `reer` et le registre
   per-conjoint attribue la cotisation par `shares` (clé salariale), donc en partie au REER du conjoint de 72+ — qui ne
   peut plus en détenir. En droit, c'est une cotisation à un REER de CONJOINT : elle va au REER du plus jeune. Effet :
   conversion FERR trop tôt d'une part qui devrait vivre chez le plus jeune. Non mesuré (aucune fixture ne cotise avec
   un conjoint de 72+ actif) ; mesurer sur 60/73 avec cotisations avant de coder.
+- [ ] 🟡 **`[RRSP-EARNED-INCOME-LOYER-BRUT]`** (S, MOYEN, pré-existant — trouvé par la revue fiscale du lot 215) —
+  `services/projection/realEstateMonth.ts` (`ajouterParProprietaire(state.rentalEarnedParProprietaire, …, rentalIncome)`)
+  verse le loyer BRUT au revenu gagné pour les droits REER, alors que la LIR 146(1) retient le revenu de location NET
+  (intérêts, taxes, entretien déduits). Avant le lot 215 le pool était fermé dès 72 ans ; désormais un propriétaire de
+  72+ avec conjoint plus jeune accumule des droits sur une assiette surévaluée. Non mesuré. Correctif : passer le loyer
+  net des charges déjà calculées dans le même module (`immoCharges`, `immoInterest`) — vérifier d'abord que ces charges
+  sont bien celles du bien loué, pas de la résidence.
+- [ ] 🟡 **`[AGE-USER0-SANS-AGE-VAUT-30]`** (XS, MOYEN, pré-existant — revue fiscale du lot 215) — `services/projection.ts`
+  `const currentAge = user1?.age || 30` : un premier utilisateur saisi par `birthYear` SEUL (sans `age`) est traité à
+  30 ans pour toute la projection — donc gate des droits REER ouvert à vie, FERR jamais, PSV/RRQ décalés. Le conjoint,
+  lui, a un repli `birthYear` (`ageCourantUtilisateur`). Correctif : même repli pour user0 (`startYear − birthYear`),
+  et un `0`/`NaN` ne doit pas retomber sur 30 en silence (`||` efface la saisie). Vérifier d'abord quels producteurs
+  peuvent écrire un user sans `age` (onboarding, MCP, import).
 - [x] 🟠 **`[DEBT-BALANCE-NAN-SILENCIEUX]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `computeTotalDebt` journalise (throttle par dette), `refusChampNonFini` refuse solde/taux/minimum non finis à l'ajout ET à l'édition (région live), la simulation affiche « — » au lieu de « 0,1 ans » ; 3 cas `portfolio.test.ts` + 6 cas `DebtManager.saisieNonFinie.test.tsx` ; perturbations : trace retirée → 2 rouges (et `moneyConservation` reste VERT : c'est bien la nouvelle garde qui discrimine), refus d'édition retiré → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — sans décision) — `components/DebtManager.tsx:56-78`
   (`saveEdit`) n'a que `refusOrigineIncoherente`, qui rend `null` pour un non-fini (`DebtKindFields.tsx:44`) :
   un solde VIDÉ (`parseFloat('')` = `NaN`, `:190`) s'enregistre ; `handleAdd` (`:41-50`) refuse `balance` mais

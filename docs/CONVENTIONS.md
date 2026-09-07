@@ -12234,7 +12234,14 @@ nulle part (`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, côt�
 CHAÎNE sur la grandeur publiée (`REERMax − REER`) avec la fixture qui sature, et la RELATION ancrée (droits > 0
 après le passage à 72 ans), jamais le montant. ⚠️ Mesure de conduite : rendre des droits disponibles a fait BAISSER
 le patrimoine final (−10 046 $ sur la fixture) — la stratégie les utilise et le REER se décaisse imposé en FERR ; un
-droit rendu n'est pas un gain, et publier le signe avec sa cause vaut mieux qu'un « +X $ » attendu.
+droit rendu n'est pas un gain, et publier le signe avec sa cause vaut mieux qu'un « +X $ » attendu. ⚠️ Et ma cause
+était INCOMPLÈTE : le panel a mesuré que la moitié du signe vient de la RÉCUPÉRATION DE LA PSV (re-mesuré par moi :
+Σ PSV −97 899 $, Σ FluxImpots −41 819 $) — les retraits FERR obligatoires dès 72 ans gonflent le revenu net et
+déclenchent l'impôt de récupération. **Une cause qu'on écrit sans la mesurer est une hypothèse habillée en
+explication** : elle se mesure sur les registres publiés (Σ par champ), pas sur le mécanisme qu'on a en tête.
+⚠️ Et « non mesuré, FAIBLE » sur un résiduel routé était une gravité DEVINÉE : le panel l'a estimé à +13,8 k$
+surévalués sur la fixture même du lot — un résiduel se route avec sa mesure ou avec la mention qu'il n'en a pas, et
+sans gravité.
 
 ### Variante notée au lot 214 (2026-09-07) — un grand livre qui « tolère » un composant absent rend l'omission NORMALE, et une identité qui lit la même liste que la recomposition est circulaire
 

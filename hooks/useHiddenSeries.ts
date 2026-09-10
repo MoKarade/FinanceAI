@@ -1,8 +1,9 @@
 import { useState } from 'react';
 
 /**
- * [FUTUR-MOBILE-PR1] Extraction PURE de `components/FutureProjection.tsx:754-775` — aucun changement
- * de comportement, clé localStorage INCHANGÉE (`future:hiddenSeries:v1`). Un seul appelant aujourd'hui
+ * [FUTUR-MOBILE-PR1] Extraction PURE du state `hiddenSeries`/`isVisible`/`toggleSeries`/`showAllSeries`
+ * hors de `components/FutureProjection.tsx` — aucun changement de comportement, clé localStorage
+ * INCHANGÉE (`future:hiddenSeries:v1`). Un seul appelant aujourd'hui
  * (`FutureProjection`) ; la légende mobile (`[FUTUR-MOBILE-PR3]`) le consommera par PROPS, jamais par
  * un second appel du hook (une seule source de vérité pour les séries masquées).
  *

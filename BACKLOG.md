@@ -44,8 +44,9 @@
   `StrategyOptimizerPanel` (6 colonnes sans `overflow-x-auto`) — `scrollWidth` = 390 sur l'amorçage comme sur les 4
   sous-onglets. Aucun correctif à faire, la garde le tient → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [x] 🔧 **`[FUTUR-MOBILE-PR1]`** (S) ✅ **LIVRÉ (2026-09-10)** — extractions PURES sans changement de rendu :
-  `components/future/seriesConfig.tsx` (`FUTURE_LEGEND_ITEMS`, `LegendSwatch`, ex-l.141-178) et `hooks/useHiddenSeries.ts`
-  (ex-l.754-775, clé `future:hiddenSeries:v1` INCHANGÉE — copié-collé strict, aucune ligne réécrite). Les 6 tests qui
+  `components/future/seriesConfig.tsx` (`FUTURE_LEGEND_ITEMS`, `LegendSwatch`) et `hooks/useHiddenSeries.ts`
+  (`hiddenSeries`/`isVisible`/`toggleSeries`/`showAllSeries`, clé `future:hiddenSeries:v1` INCHANGÉE — copié-collé
+  strict, aucune ligne réécrite). Les 6 tests qui
   montent `FutureProjection` (`tests/components/FutureProjection.*.test.tsx`) rejoués explicitement : 19/19 verts, aucun
   contrat de mock élargi (les deux modules n'importent que `react`/`useState`, déjà présents). Typecheck + lint OK.
   → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.

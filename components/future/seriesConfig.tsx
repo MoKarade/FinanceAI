@@ -1,6 +1,7 @@
 /**
- * [FUTUR-MOBILE-PR1] Extraction PURE de `components/FutureProjection.tsx:141-178` — aucun changement
- * de comportement ni de rendu. Module autonome (pas d'état, pas de dépendance au composant) pour que
+ * [FUTUR-MOBILE-PR1] Extraction PURE de `FUTURE_LEGEND_ITEMS`/`LegendSwatch` hors de
+ * `components/FutureProjection.tsx` — aucun changement de comportement ni de rendu (une référence de
+ * ligne se périme au premier refactor, on nomme la construction : `UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`). Module autonome (pas d'état, pas de dépendance au composant) pour que
  * la légende mobile (`[FUTUR-MOBILE-PR3]`) puisse la réutiliser sans importer tout le god-file.
  *
  * G10 — Légende interactive : une seule source de vérité pour les chips ET les gardes de visibilité

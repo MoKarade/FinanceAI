@@ -13,6 +13,7 @@ const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistoryS
 import { FutureHealthSummary } from './future/FutureHealthSummary';
 import { FUTURE_LEGEND_ITEMS, LegendSwatch } from './future/seriesConfig';
 import { useHiddenSeries } from '../hooks/useHiddenSeries';
+import { FuturePeriodSelector } from './future/FuturePeriodSelector';
 import { TabPanel, tabId, panelId, clavierTablist } from './ui/SubTabs';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
@@ -1315,14 +1316,65 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     })();
     const todayPresetRange = centeredWindowRange(displayData.length, todayArrayIndex, 7);
 
+    // [FUTUR-MOBILE-PR2] Définie une seule fois : rendue soit une fois (desktop, tous sous-onglets ;
+    // mobile, sous-onglets Hypothèses/Plan/Historique), soit deux fois (mobile, sous-onglet Projection
+    // — avant ET après la courbe ne sont jamais VRAIS en même temps, cf les deux sites de rendu).
+    const kpiGrid = (
+        <StatGrid cols={4}>
+            <KPIStat
+                label="Objectif FIRE"
+                icon="🎯"
+                // ⚠️ MESURÉ : l'ancien format restait en « k$ » quel que soit l'ordre de grandeur — une cible
+                // FIRE de 1,25 M$ s'affichait « 1250k $ ». `formatCompactCAD` bascule en M$.
+                value={formatCompactCAD(fireNumber)}
+                sublabel="Règle des 4%"
+                privacy
+                variant="warning"
+            />
+            <KPIStat
+                // Le fallback (value ci-dessous) tombe sur finalNetWorth/fireNumber quand estateNetWorth=0 :
+                // dans ce cas le nombre N'INCLUT PAS les rentes → libellé neutre + pas de tooltip « avec rentes »
+                // (sinon le libellé mentirait, le bug même que R1 corrige). Sinon : successoral, avec rentes.
+                label={results?.estateNetWorth ? "Patrimoine successoral, avec rentes" : "Patrimoine projeté"}
+                tooltip={results?.estateNetWorth ? "Patrimoine au décès : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon." : undefined}
+                icon="💼"
+                // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
+                // silencieux du moteur), utiliser finalNetWorth puis fireNumber
+                // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
+                value={formatCompactCAD((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0)}
+                sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
+                privacy
+                variant="primary"
+            />
+            <KPIStat
+                label="Taux de succès"
+                icon="✓"
+                value={results?.successRate != null ? `${results.successRate}%` : '—'}
+                // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config
+                // vivante : `results` peut être GELÉ (curseur bougé sans relance), et lire la
+                // config faisait alors annoncer un nombre d'itérations qui n'avait pas servi.
+                // Résultat sans compte (MC non lancé, ou projection d'avant ce lot) → « Monte
+                // Carlo » SANS chiffre : un « — » honnête vaut mieux qu'un nombre crédible.
+                sublabel={mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}
+                variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
+            />
+            <KPIStat
+                label="Vitalité financière"
+                icon="🌡️"
+                value={results?.fvi != null ? `${results.fvi}/100` : '—'}
+                sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
+                variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
+            />
+        </StatGrid>
+    );
+
     return (
         <div className="space-y-6 animate-fade-in pb-24">
 
-            <PageHeader
-                icon="🔮"
-                title="Projection Future"
-                subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
-                badge={insolvency ? (
+            {/* [FUTUR-MOBILE-PR2] Badge et pill FACTORISÉS : mêmes éléments, un seul habillage choisi
+                selon la largeur — desktop INCHANGÉ (PageHeader reçoit exactement le même JSX qu'avant). */}
+            {(() => {
+                const insolvencyBadge = insolvency ? (
                     // role="status" (live polite) : le badge apparaît après le calcul de projection →
                     // annoncé au lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
                     <div role="status">
@@ -1332,8 +1384,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 : 'Plan insoutenable — capital épuisé'}
                         </Badge>
                     </div>
-                ) : undefined}
-                actions={
+                ) : undefined;
+                const dataModePill = (
                     <Pill
                         aria-label="Mode de données"
                         size="sm"
@@ -1344,63 +1396,42 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
                         ]}
                     />
+                );
+                if (isNarrowViewport) {
+                    // En-tête compact (≈40 px, décision Marc 2026-09-10) : titre court + pastille de
+                    // mode de données sur une ligne, badge d'insolvabilité s'il y a lieu.
+                    return (
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <h1 className="text-h1 text-ink-50 tracking-tight">Projection</h1>
+                                {insolvencyBadge}
+                            </div>
+                            {dataModePill}
+                        </div>
+                    );
                 }
-            />
+                return (
+                    <PageHeader
+                        icon="🔮"
+                        title="Projection Future"
+                        subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
+                        badge={insolvencyBadge}
+                        actions={dataModePill}
+                    />
+                );
+            })()}
 
             {/* [NAV-MERGE-SANTE-FUTUR] Résumé condensé, toujours visible (pas de gate curveVisible :
                 le score de santé ne dépend pas d'une projection calculée). */}
             <FutureHealthSummary />
 
             {/* Hero KPI strip — PH4 : caché tant que la projection n'est pas calculée explicitement
-                (cf revealedSig) ; sinon les chiffres projetés s'affichaient sans geste de l'utilisateur. */}
-            {curveVisible && (
-            <StatGrid cols={4}>
-                <KPIStat
-                    label="Objectif FIRE"
-                    icon="🎯"
-                    // ⚠️ MESURÉ : l'ancien format restait en « k$ » quel que soit l'ordre de grandeur — une cible
-                    // FIRE de 1,25 M$ s'affichait « 1250k $ ». `formatCompactCAD` bascule en M$.
-                    value={formatCompactCAD(fireNumber)}
-                    sublabel="Règle des 4%"
-                    privacy
-                    variant="warning"
-                />
-                <KPIStat
-                    // Le fallback (value ci-dessous) tombe sur finalNetWorth/fireNumber quand estateNetWorth=0 :
-                    // dans ce cas le nombre N'INCLUT PAS les rentes → libellé neutre + pas de tooltip « avec rentes »
-                    // (sinon le libellé mentirait, le bug même que R1 corrige). Sinon : successoral, avec rentes.
-                    label={results?.estateNetWorth ? "Patrimoine successoral, avec rentes" : "Patrimoine projeté"}
-                    tooltip={results?.estateNetWorth ? "Patrimoine au décès : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon." : undefined}
-                    icon="💼"
-                    // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
-                    // silencieux du moteur), utiliser finalNetWorth puis fireNumber
-                    // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
-                    value={formatCompactCAD((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0)}
-                    sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
-                    privacy
-                    variant="primary"
-                />
-                <KPIStat
-                    label="Taux de succès"
-                    icon="✓"
-                    value={results?.successRate != null ? `${results.successRate}%` : '—'}
-                    // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config
-                    // vivante : `results` peut être GELÉ (curseur bougé sans relance), et lire la
-                    // config faisait alors annoncer un nombre d'itérations qui n'avait pas servi.
-                    // Résultat sans compte (MC non lancé, ou projection d'avant ce lot) → « Monte
-                    // Carlo » SANS chiffre : un « — » honnête vaut mieux qu'un nombre crédible.
-                    sublabel={mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}
-                    variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
-                />
-                <KPIStat
-                    label="Vitalité financière"
-                    icon="🌡️"
-                    value={results?.fvi != null ? `${results.fvi}/100` : '—'}
-                    sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
-                    variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
-                />
-            </StatGrid>
-            )}
+                (cf revealedSig) ; sinon les chiffres projetés s'affichaient sans geste de l'utilisateur.
+                [FUTUR-MOBILE-PR2] Sur mobile, l'onglet Projection affiche la courbe AVANT ces KPI
+                (décision Marc) : `kpiGrid` (défini plus haut) est alors rendu une seconde fois, après
+                la courbe — jamais recalculé, la MÊME expression JSX. Sur desktop et sur les 3 autres
+                sous-onglets mobiles, rien ne change : cette position reste la SEULE où il s'affiche. */}
+            {curveVisible && !(isNarrowViewport && futureSubTab === 'graph') && kpiGrid}
             {/* PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection / Paramètres / Plan d'action */}
             {/* [A11Y-TABLIST-NO-PANEL] Ce bandeau garde son habillage (emoji, autres classes) mais
                 emprunte le MOTIF de `ui/SubTabs` : mêmes `id` d'onglet et de panneau, même clavier.
@@ -1559,41 +1590,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 ) : undefined}>
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                    <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
-                        {/* [FUTUR-DAILY-NATIVE] Le bouton « Jour » a disparu (la courbe est au jour à
-                            toute fenêtre) ; « Aujourd'hui » = preset de FENÊTRE autour du présent —
-                            seul chemin FOCUSABLE vers cette fenêtre (finding a11y #592). */}
-                        {todayPresetRange && (
-                            <button
-                                type="button"
-                                onClick={() => zoom.showRange(todayPresetRange[0], todayPresetRange[1])}
-                                title="Fenêtre d'environ 6 mois centrée sur aujourd'hui"
-                                className="px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
-                            >
-                                Aujourd'hui
-                            </button>
-                        )}
-                        {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => {
-                            const active = !!zoom.range && zoom.range[0] === 0 && zoom.range[1] === idxForYears(y);
-                            return (
-                                <button
-                                    key={y}
-                                    type="button"
-                                    onClick={() => zoom.showRange(0, idxForYears(y))}
-                                    className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    {y} ans
-                                </button>
-                            );
-                        })}
-                        <button
-                            type="button"
-                            onClick={zoom.reset}
-                            className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
-                        >
-                            Tout
-                        </button>
-                    </div>
+                    <FuturePeriodSelector
+                        variant={isNarrowViewport ? 'compact' : 'buttons'}
+                        zoom={zoom}
+                        todayPresetRange={todayPresetRange}
+                        idxForYears={idxForYears}
+                        lastMonthIndex={lastMonthIndex}
+                        onFullscreen={() => zoom.containerEl.current?.requestFullscreen?.()}
+                    />
                     <div className="flex items-center gap-2">
                         {/* [A11Y-CHART-HINT-HIDDEN] `aria-hidden` ASSUMÉ, et vérifié : cette phrase
                             est un DOUBLON visuel de l'`aria-label` du graphe (plus bas). L'exposer
@@ -1636,6 +1640,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 <span aria-hidden="true">🔒</span> Verrouiller
                             </button>
                         )}
+                        {!isNarrowViewport && (
                         <button
                             type="button"
                             onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
@@ -1644,6 +1649,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         >
                             ⛶ Plein écran
                         </button>
+                        )}
                     </div>
                 </div>
                 {/* [FUTUR-REAL-HISTORY] Note d'honnêteté sur le passé reconstruit : patrimoine net réel
@@ -2124,6 +2130,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 </div>
 
             </Card>
+            {/* [FUTUR-MOBILE-PR2] Même `kpiGrid` (défini une seule fois plus haut), rendu ICI en plus
+                sur mobile — la position du haut est désactivée pour ce sous-onglet exactement pendant
+                que celle-ci est active (jamais les deux à la fois, voir le commentaire au site du haut). */}
+            {isNarrowViewport && kpiGrid}
             </div>
             )}
 

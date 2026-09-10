@@ -12219,6 +12219,24 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10) — un élément non gaté par l'onglet actif se réordonne PAR SITE DE RENDU, jamais en place
+
+Avant de déplacer la grille KPI de Futur (« courbe d'abord, KPI dessous », décision Marc), lecture du JSX a montré
+qu'elle n'est PAS à l'intérieur d'un `TabPanel` : elle se rend entre l'en-tête et le bandeau des quatre sous-onglets,
+donc VISIBLE sur les quatre — Projection, Hypothèses, Plan d'action, Historique — dès qu'une projection existe.
+Un réordonnancement naïf « couper-coller sous la courbe » l'aurait fait disparaître des trois autres sous-onglets,
+un changement de comportement non demandé (Marc n'a parlé que de l'écran Projection). Correctif : la grille est
+définie UNE SEULE FOIS (`const kpiGrid = (...)`), et RENDUE à deux emplacements sous une garde qui s'exclut
+mutuellement (`!(isNarrowViewport && onglet === 'graph')` en haut, `isNarrowViewport` après la courbe) — jamais
+calculée deux fois, jamais visible deux fois. Preuve écrite dans un test dédié : compter les occurrences du libellé
+au lieu de supposer qu'« un seul site de rendu actif » suffit à le garantir.
+
+⚠️ Corollaire outillage : deux boutons distincts (« Aujourd'hui » de la légende, 36 px déjà connu, et « Aujourd'hui »
+du sélecteur de période, ≥ 44 px) partagent le MÊME nom accessible — un `getByRole('button', { name: "Aujourd'hui",
+exact: true })` de vérification ad hoc échoue en mode strict (deux correspondances) et un `.catch(() => false)`
+autour transforme cette ambiguïté en un « invisible » silencieux. Un script de vérification hors suite officielle
+n'est pas exempté de cette règle : il aurait fait conclure à tort que le bouton desktop avait disparu.
+
 ### Variante notée au lot PR0 de la refonte Futur mobile (2026-09-10) — un recenseur de cibles tactiles se règle sur ce que le DOM rend, pas sur ce que le CSS déclare
 
 Le cliquet des cibles < 44 px de `e2e/futureMobileFilet.spec.ts` a rendu **72** offenders à sa première mesure,

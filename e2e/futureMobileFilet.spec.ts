@@ -35,14 +35,13 @@ const LARGEUR = 390;
 const CIBLE_MIN = 44;
 
 /**
- * ⚠️ MESURÉ le 2026-09-10 sur `main` (7cb74e44), AVANT la refonte : nombre de contrôles interactifs
- * visibles de `<main>` dont AU MOINS UN axe est < 44 px, tous sous-onglets confondus, courbe révélée :
- * 65 dans les panneaux + 7 × 4 hors panneau (les 4 sous-onglets à 28 px, les 2 pilules Réel/Sandbox à
- * 24 px, l'aide « ? » de 16 px du résumé de santé — comptés à chaque sous-onglet puisque toujours rendus).
- * Le nombre s'obtient d'abord, l'assertion s'écrit ensuite (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
+ * ⚠️ MESURÉ le 2026-09-10 sur `main` (7cb74e44) : 93 (65 dans les panneaux + 7 × 4 hors panneau —
+ * détail dans BACKLOG.md). `[FUTUR-MOBILE-PR2]` a fait passer le bouton plein écran de 38 à 44 px
+ * sur mobile (le sélecteur de période devient un `<select>` déjà conforme) → **92**. Le nombre
+ * s'obtient d'abord, l'assertion s'écrit ensuite (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
  * Chaque PR de la refonte qui rétrécit la dette DOIT abaisser ce plafond ; à 0, inverser en règle.
  */
-const PLAFOND_CIBLES_TROP_PETITES = 93;
+const PLAFOND_CIBLES_TROP_PETITES = 92;
 
 async function ouvrirFutur(page: Page) {
   await page.addInitScript(scriptBypassOnboarding());

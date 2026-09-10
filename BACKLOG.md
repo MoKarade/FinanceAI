@@ -17,6 +17,64 @@
 
 ---
 
+## 📱 Refonte de l'onglet Futur pour le TÉLÉPHONE (Marc, 2026-09-10 — « actuellement c'est inutilisable »)
+
+> Cadrage fait le 2026-09-10 (`/new-feature` : product-manager → architect → 16 questions posées à Marc, toutes
+> répondues). Maquettes 390×844 : https://claude.ai/code/artifact/260843dd-1ee9-4a39-b1cb-ce4095c328ec
+> (sources : `scratchpad/futur-mobile/*.dc.html`, valeurs d'EXEMPLE). Décisions verrouillées :
+> [`docs/adr/0016-refonte-futur-mobile.md`](adr/0016-refonte-futur-mobile.md). **Direction A** (courbe d'abord,
+> sous-onglets conservés), adaptation EN PLACE du composant existant (pas de coquille mobile dédiée), **zéro
+> changement visuel desktop**, 6 PR incrémentales, filet d'abord, chaque PR livrée avec captures 390×844.
+> ⚠️ Ni `[GODFILE-FUTUREPROJECTION]` ni `[A11Y-SUBTABS-FUTUR]` ne sont pris ici : les extractions de ce chantier
+> sont des composants-FEUILLES purs (rendu desktop bit-identique), jamais l'arbre d'état ni les panneaux.
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR0]`** (S) ✅ **LIVRÉ (2026-09-10)** — le FILET avant tout changement : projet Playwright
+  `mobile-chrome` (390×844 tactile, specs « *Mobile* » seulement — pas de second passage complet), spec
+  `e2e/futureMobileFilet.spec.ts` : 4 sous-onglets atteignables au tap ET aux flèches, `scrollWidth ≤ 390` sur
+  les 4 + l'amorçage, et CLIQUET des cibles tactiles < 44 px mesurées PAR AXE sur tout `<main>`. ⚠️ **Mesuré sur
+  `main` (7cb74e44), courbe révélée : 93 cibles trop petites** = 65 dans les panneaux (Projection 19 : 16 pastilles de
+  légende 36 px + Verrouiller/Ré-optimiser/Plein écran 38 px · Hypothèses 16 : curseurs `h-1` de 4 px + select rejeu ·
+  Plan d'action 15 : 8 boutons « Pourquoi ? » de 14 px + 6 cases « Marquer comme fait » + champ de recherche 40 px ·
+  Historique 15 : pastilles 24 px) + 7 hors panneau comptés sous chacun des 4 sous-onglets (les 4 onglets à 28 px, les 2
+  pilules Réel/Sandbox à 24 px, l'aide « ? » de 16 px). Le plafond `PLAFOND_CIBLES_TROP_PETITES = 93` DESCEND à chaque PR
+  qui en corrige ; à 0, s'inverse en règle. Revues (code-reviewer, silent-failure-hunter) : recenseur élargi du panneau à
+  `<main>` (le bandeau d'onglets est un FRÈRE du panneau), « aucun tabpanel » lève au lieu d'entrer dans l'inventaire,
+  anti-vacuité PAR sous-onglet avec le sélecteur du recenseur, `sr-only` reconnu par sa CLASSE et non par sa taille.
+  ⚠️ Réfuté par la mesure : l'architecte annonçait un débordement horizontal probable de la table de
+  `StrategyOptimizerPanel` (6 colonnes sans `overflow-x-auto`) — `scrollWidth` = 390 sur l'amorçage comme sur les 4
+  sous-onglets. Aucun correctif à faire, la garde le tient → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+- [ ] 🔧 **`[FUTUR-MOBILE-PR1]`** (S) — extractions PURES sans changement de rendu : `components/future/seriesConfig.ts`
+  (`FUTURE_LEGEND_ITEMS`, `LegendSwatch`, l.144-178) et `hooks/useHiddenSeries.ts` (l.795-812, clé
+  `future:hiddenSeries:v1` INCHANGÉE). Preuve : HTML de la légende byte-identique avant/après ; rejouer explicitement les
+  6 tests qui montent `FutureProjection` (`tests/components/FutureProjection.*.test.tsx`) — un import statique neuf
+  élargit leur contrat de mock (`[NAV-MERGE-SANTE-FUTUR]`).
+- [ ] 🔧 **`[FUTUR-MOBILE-PR2]`** (M) — écran Projection mobile : en-tête compact (« Projection » + Réel/Sandbox, 40 px au
+  lieu de ~100), `FuturePeriodSelector` en **menu déroulant natif** (`<select>`, tous les présets dont « Aujourd'hui »
+  — c'est le SEUL chemin clavier vers la fenêtre centrée sur le présent, finding #592) + bouton plein écran, **courbe
+  d'abord puis KPI 2×2 compacts** (valeur 22 px, sous-titre court), horizon COMPLET (décision Marc : aucune fenêtre
+  mobile — `projection.years` et `zoom` intouchés). Desktop : mêmes composants, variante `inline`, rendu identique.
+  Tests : sélecteur mesuré ≥ 44 px par axe ; « Aujourd'hui » atteignable au clavier ; ordre courbe→KPI sur mobile ET
+  ordre inchangé sur desktop (contrôle négatif) ; plafond du cliquet abaissé d'autant.
+- [ ] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) — `FutureLegendDrawer` : sur mobile, tiroir « Séries » FERMÉ par défaut sous la
+  courbe, avec le compte « N visibles sur 16 » et les pastilles de couleur TOUJOURS visibles (le badge « Tout
+  réafficher (N masqués) » sort du tiroir — une série masquée dans une session passée doit rester découvrable) ;
+  chips ≥ 44 px par axe ; `aria-expanded` ; desktop inchangé (légende inline). Réutilise `useHiddenSeries` (PR1).
+- [ ] 🔧 **`[FUTUR-MOBILE-PR4]`** (M-L) — Hypothèses mobile : `ReturnRateField` = curseur + champ numérique SYNCHRONISÉ
+  (les deux sens testés : casser un `onChange` doit rougir) pour les 5 taux ET les facteurs macro ; ordre mobile
+  Mode → macro → rendements → sections repliées (inflation par poste, risques, rejeu, avancés) ; ordre desktop
+  INCHANGÉ (contrôle négatif) ; CTA « Recalculer la projection » COLLANT au-dessus de la nav (patron sticky-footer de
+  `ProjectionTooltip.tsx`), qui dit combien d'hypothèses ont changé — aucun calcul sans geste. ⚠️ `useTheoretical` →
+  `opacity-50 pointer-events-none` doit voyager en PROP à l'extraction (test : `useTheoretical=false` reste grisé).
+  ⚠️ « Valeur Max Maison » (`ProjectionControls.tsx:256`) se DÉPLACE tel quel (`PrivateAmount` + `formatCompactCAD`),
+  test mode discret sur le fragment isolé.
+- [ ] 🔧 **`[FUTUR-MOBILE-PR5]`** (M) — amorçage + Plan d'action + Historique + feuille du jour : leviers en puces
+  cochables 44 px + CTA 56 px « Chercher la meilleure stratégie » + lien « voir ma projection actuelle » +
+  stress-tests repliés ; Plan d'action : « Pourquoi ? » 14 px → 44 px, cases « Marquer comme fait » 44 px ; Historique :
+  pastilles 24 → 44 px ; feuille du jour aux 3/4 avec Veille/Lendemain, écart vs mois précédent (grandeur PUBLIÉE par
+  le moteur, jamais une soustraction locale), répartition par compte, « N événements ce mois-ci » (fait sans
+  détail, mode discret), bouton « Détail complet ». Candidat mesuré à qualifier : double `pb-24` (`Layout.tsx:492`
+  ET `FutureProjection.tsx:1376`) — corriger seulement si un critère d'acceptation le réclame, sinon ticket séparé.
+
 ## 🔬 Audit financier 2026-09-07 — findings VÉRIFIÉS et re-mesurés (rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`)
 
 > Passe n°4 (commit `3f657d7d`, demande Marc « lance une grosse analyse, check tous les problèmes corrigés et

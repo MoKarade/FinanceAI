@@ -16,6 +16,23 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
+> ## 🟦 Session 2026-09-10 — Refonte Futur MOBILE cadrée et lancée (`[FUTUR-MOBILE-PR0]` livré, PR1 → PR5 à suivre)
+> Marc : « full refonte de l'onglet futur pour le téléphone, actuellement c'est inutilisable ». Cadrage
+> `/new-feature` (product-manager → architect), six maquettes 390×844 publiées
+> (https://claude.ai/code/artifact/260843dd-1ee9-4a39-b1cb-ce4095c328ec — valeurs d'EXEMPLE), seize questions posées
+> et TOUTES répondues : direction A (courbe d'abord, sous-onglets conservés), en-tête compact, **horizon complet**
+> (pas de fenêtre mobile, contre ma reco), période en `<select>` natif, courbe avant les KPI, tiroir « Séries »,
+> feuille du jour aux 3/4, curseur + champ numérique, CTA « Recalculer » collant, amorçage en puces, **zéro changement
+> desktop**, six PR incrémentales filet d'abord, captures 390×844 dans chaque PR. Verrouillé dans
+> `docs/adr/0016-refonte-futur-mobile.md`, tickets `[FUTUR-MOBILE-PR0..5]` dans `BACKLOG.md`.
+> **PR0 livrée** : projet Playwright `mobile-chrome` (specs « *Mobile* » seulement), `e2e/futureMobileFilet.spec.ts`
+> (4 sous-onglets au tap et au clavier, `scrollWidth ≤ 390` partout — la prédiction de débordement de la table de
+> `StrategyOptimizerPanel` est RÉFUTÉE par la mesure —, cliquet des cibles < 44 px mesuré à **93** sur tout `<main>`,
+> par axe : 65 dans les panneaux + 7 hors panneau × 4 sous-onglets).
+> ⚠️ Archi retenue : adaptation EN PLACE avec composants-feuilles purs ; PAS de coquille `FutureMobile.tsx` (elle
+> dupliquerait l'arbre d'état) ; `[GODFILE-FUTUREPROJECTION]` et `[A11Y-SUBTABS-FUTUR]` restent hors périmètre.
+> **Suite proposée** : `[FUTUR-MOBILE-PR1]` (extractions pures `seriesConfig` + `useHiddenSeries`, rendu byte-identique).
+
 > ## 🟦 Session 2026-09-07 — Lot 215 : les droits REER d'un couple ne meurent plus avec l'âge du premier conjoint (`[FISC-RRSP-ROOM-GATE-MENAGE]`, money-critical, fini)
 > Le gate des droits REER lisait `ctx.age` (premier conjoint) : à 72/57, le conjoint actif ne générait plus rien et le
 > pool était remis à zéro. Règle ARC : les droits naissent du revenu gagné à tout âge, et un 72+ cotise à un REER de

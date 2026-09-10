@@ -27,6 +27,7 @@ conservés en 0001 et 0002.
 | [`0013-mode-discret-categories-masquees.md`](0013-mode-discret-categories-masquees.md) | ADR — Mode discret : les CATÉGORIES sont masquées aussi (2026-08-18) |
 | [`0014-sept-decisions-de-cadrage-2026-08-20.md`](0014-sept-decisions-de-cadrage-2026-08-20.md) | ADR — Sept décisions de cadrage en lot (Marc, 2026-08-20) |
 | [`0015-prestations-rqap-ae-rrq-hors-assiette.md`](0015-prestations-rqap-ae-rrq-hors-assiette.md) | ADR — Prestations RQAP/AE/RRQ : hors assiette de cotisation, imposables (Marc, 2026-08-20) |
+| [`0016-refonte-futur-mobile.md`](0016-refonte-futur-mobile.md) | ADR — Refonte de l'onglet Futur pour le téléphone : adaptation EN PLACE, direction « courbe d'abord » (Marc, 2026-09-10) |
 
 Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
 un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

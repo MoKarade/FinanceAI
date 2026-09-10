@@ -12219,6 +12219,29 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot PR0 de la refonte Futur mobile (2026-09-10) — un recenseur de cibles tactiles se règle sur ce que le DOM rend, pas sur ce que le CSS déclare
+
+Le cliquet des cibles < 44 px de `e2e/futureMobileFilet.spec.ts` a rendu **72** offenders à sa première mesure,
+**65** à la seconde — sans qu'une ligne de l'app ait changé. Les sept de différence étaient deux classes de faux
+positifs que seul le DOM montre : (1) les deux radios du mode de simulation sont en `sr-only`, donc rendues 1×1 px
+clippées — un contrôle que l'utilisateur ne touche jamais lui-même (c'est son `<label>` visible qui l'est) ; (2) les
+cinq pastilles d'événements ont un cercle SVG de rayon 22, dont `getBoundingClientRect` rend **43,99 px**, pas 44.
+Un seuil écrit `< 44` sans tolérance compte donc comme trop petite une cible dessinée exactement à la bonne taille.
+Règle : un recenseur géométrique exclut explicitement les contrôles clippés et tolère un demi-pixel — et il ÉCRIT ces
+deux exclusions avec leur mesure, sinon la prochaine session les prendra pour du laxisme. ⚠️ Puis la revue a montré que
+l'exclusion « ≤ 2 px » était un seuil de TAILLE déguisé en détection de `sr-only` : un vrai contrôle effondré à 2 px
+par un bug de grille en serait sorti au lieu d'être la pire ligne de l'inventaire. On reconnaît `sr-only` par sa
+CLASSE, jamais par sa taille. ⚠️ Et la PORTÉE du recenseur (le `tabpanel`) laissait hors mesure le bandeau des quatre
+sous-onglets — un FRÈRE du panneau, pas un descendant — alors que `[role="tab"]` figurait dans son propre sélecteur :
+le sélecteur savait chercher des onglets, la portée l'en empêchait. Élargi à `<main>` : **93** (65 + 7 × 4). Un
+recenseur se relit sur DEUX axes, ce qu'il cherche ET où il cherche. ⚠️ Symétrique
+utile : la même mesure a **réfuté** la prédiction de l'architecte (« la table de `StrategyOptimizerPanel` déborde
+probablement à 390 px ») — `scrollWidth` = 390 sur les cinq écrans. Une prédiction d'agent sur une géométrie n'entre
+au backlog qu'après avoir été rendue par un navigateur à la largeur visée (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`,
+appliqué au CSS). ⚠️ Et un plafond de cliquet posé « provisoirement à 999 » avant la mesure doit être REMPLACÉ dans
+le même fichier avant le commit : la seconde assertion (« dette < plafond − 3 → abaisse le plafond ») est ce qui
+l'a rendu impossible à oublier — c'est elle qui a rougi.
+
 ### Variante notée au lot 215 (2026-09-07) — le remède d'un ticket d'audit se re-dérive de la LOI avant d'être codé, et « aucun golden n'a bougé » se lit comme « aucune fixture ne saturait »
 
 Le ticket `[FISC-RRSP-ROOM-GATE-MENAGE]` (écrit par moi, quatre heures plus tôt) prescrivait « borne ≤ 71 appliquée

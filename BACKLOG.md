@@ -43,11 +43,13 @@
   ⚠️ Réfuté par la mesure : l'architecte annonçait un débordement horizontal probable de la table de
   `StrategyOptimizerPanel` (6 colonnes sans `overflow-x-auto`) — `scrollWidth` = 390 sur l'amorçage comme sur les 4
   sous-onglets. Aucun correctif à faire, la garde le tient → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
-- [ ] 🔧 **`[FUTUR-MOBILE-PR1]`** (S) — extractions PURES sans changement de rendu : `components/future/seriesConfig.ts`
-  (`FUTURE_LEGEND_ITEMS`, `LegendSwatch`, l.144-178) et `hooks/useHiddenSeries.ts` (l.795-812, clé
-  `future:hiddenSeries:v1` INCHANGÉE). Preuve : HTML de la légende byte-identique avant/après ; rejouer explicitement les
-  6 tests qui montent `FutureProjection` (`tests/components/FutureProjection.*.test.tsx`) — un import statique neuf
-  élargit leur contrat de mock (`[NAV-MERGE-SANTE-FUTUR]`).
+- [x] 🔧 **`[FUTUR-MOBILE-PR1]`** (S) ✅ **LIVRÉ (2026-09-10)** — extractions PURES sans changement de rendu :
+  `components/future/seriesConfig.tsx` (`FUTURE_LEGEND_ITEMS`, `LegendSwatch`) et `hooks/useHiddenSeries.ts`
+  (`hiddenSeries`/`isVisible`/`toggleSeries`/`showAllSeries`, clé `future:hiddenSeries:v1` INCHANGÉE — copié-collé
+  strict, aucune ligne réécrite). Les 6 tests qui
+  montent `FutureProjection` (`tests/components/FutureProjection.*.test.tsx`) rejoués explicitement : 19/19 verts, aucun
+  contrat de mock élargi (les deux modules n'importent que `react`/`useState`, déjà présents). Typecheck + lint OK.
+  → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] 🔧 **`[FUTUR-MOBILE-PR2]`** (M) — écran Projection mobile : en-tête compact (« Projection » + Réel/Sandbox, 40 px au
   lieu de ~100), `FuturePeriodSelector` en **menu déroulant natif** (`<select>`, tous les présets dont « Aujourd'hui »
   — c'est le SEUL chemin clavier vers la fenêtre centrée sur le présent, finding #592) + bouton plein écran, **courbe

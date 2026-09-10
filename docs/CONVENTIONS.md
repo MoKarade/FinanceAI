@@ -12227,8 +12227,14 @@ positifs que seul le DOM montre : (1) les deux radios du mode de simulation sont
 clippées — un contrôle que l'utilisateur ne touche jamais lui-même (c'est son `<label>` visible qui l'est) ; (2) les
 cinq pastilles d'événements ont un cercle SVG de rayon 22, dont `getBoundingClientRect` rend **43,99 px**, pas 44.
 Un seuil écrit `< 44` sans tolérance compte donc comme trop petite une cible dessinée exactement à la bonne taille.
-Règle : un recenseur géométrique exclut explicitement les contrôles clippés (≤ 2 px) et tolère un demi-pixel — et il
-ÉCRIT ces deux exclusions avec leur mesure, sinon la prochaine session les prendra pour du laxisme. ⚠️ Symétrique
+Règle : un recenseur géométrique exclut explicitement les contrôles clippés et tolère un demi-pixel — et il ÉCRIT ces
+deux exclusions avec leur mesure, sinon la prochaine session les prendra pour du laxisme. ⚠️ Puis la revue a montré que
+l'exclusion « ≤ 2 px » était un seuil de TAILLE déguisé en détection de `sr-only` : un vrai contrôle effondré à 2 px
+par un bug de grille en serait sorti au lieu d'être la pire ligne de l'inventaire. On reconnaît `sr-only` par sa
+CLASSE, jamais par sa taille. ⚠️ Et la PORTÉE du recenseur (le `tabpanel`) laissait hors mesure le bandeau des quatre
+sous-onglets — un FRÈRE du panneau, pas un descendant — alors que `[role="tab"]` figurait dans son propre sélecteur :
+le sélecteur savait chercher des onglets, la portée l'en empêchait. Élargi à `<main>` : **93** (65 + 7 × 4). Un
+recenseur se relit sur DEUX axes, ce qu'il cherche ET où il cherche. ⚠️ Symétrique
 utile : la même mesure a **réfuté** la prédiction de l'architecte (« la table de `StrategyOptimizerPanel` déborde
 probablement à 390 px ») — `scrollWidth` = 390 sur les cinq écrans. Une prédiction d'agent sur une géométrie n'entre
 au backlog qu'après avoir été rendue par un navigateur à la largeur visée (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`,

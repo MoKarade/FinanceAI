@@ -31,11 +31,15 @@
 - [x] 🔧 **`[FUTUR-MOBILE-PR0]`** (S) ✅ **LIVRÉ (2026-09-10)** — le FILET avant tout changement : projet Playwright
   `mobile-chrome` (390×844 tactile, specs « *Mobile* » seulement — pas de second passage complet), spec
   `e2e/futureMobileFilet.spec.ts` : 4 sous-onglets atteignables au tap ET aux flèches, `scrollWidth ≤ 390` sur
-  les 4 + l'amorçage, et CLIQUET des cibles tactiles < 44 px mesurées PAR AXE. ⚠️ **Mesuré sur `main`
-  (7cb74e44), courbe révélée : 65 cibles trop petites** (Projection 19 : 16 pastilles de légende 36 px + Verrouiller/
-  Ré-optimiser/Plein écran 38 px · Hypothèses 16 : curseurs `h-1` de 4 px + select rejeu · Plan d'action 15 : 8 boutons
-  « Pourquoi ? » de 14 px + 6 cases « Marquer comme fait » + champ de recherche 40 px · Historique 15 : pastilles 24 px).
-  Le plafond `PLAFOND_CIBLES_TROP_PETITES = 65` DESCEND à chaque PR qui en corrige ; à 0, s'inverse en règle.
+  les 4 + l'amorçage, et CLIQUET des cibles tactiles < 44 px mesurées PAR AXE sur tout `<main>`. ⚠️ **Mesuré sur
+  `main` (7cb74e44), courbe révélée : 93 cibles trop petites** = 65 dans les panneaux (Projection 19 : 16 pastilles de
+  légende 36 px + Verrouiller/Ré-optimiser/Plein écran 38 px · Hypothèses 16 : curseurs `h-1` de 4 px + select rejeu ·
+  Plan d'action 15 : 8 boutons « Pourquoi ? » de 14 px + 6 cases « Marquer comme fait » + champ de recherche 40 px ·
+  Historique 15 : pastilles 24 px) + 7 hors panneau comptés sous chacun des 4 sous-onglets (les 4 onglets à 28 px, les 2
+  pilules Réel/Sandbox à 24 px, l'aide « ? » de 16 px). Le plafond `PLAFOND_CIBLES_TROP_PETITES = 93` DESCEND à chaque PR
+  qui en corrige ; à 0, s'inverse en règle. Revues (code-reviewer, silent-failure-hunter) : recenseur élargi du panneau à
+  `<main>` (le bandeau d'onglets est un FRÈRE du panneau), « aucun tabpanel » lève au lieu d'entrer dans l'inventaire,
+  anti-vacuité PAR sous-onglet avec le sélecteur du recenseur, `sr-only` reconnu par sa CLASSE et non par sa taille.
   ⚠️ Réfuté par la mesure : l'architecte annonçait un débordement horizontal probable de la table de
   `StrategyOptimizerPanel` (6 colonnes sans `overflow-x-auto`) — `scrollWidth` = 390 sur l'amorçage comme sur les 4
   sous-onglets. Aucun correctif à faire, la garde le tient → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.

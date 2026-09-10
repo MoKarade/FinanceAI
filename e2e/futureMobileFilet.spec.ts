@@ -7,8 +7,8 @@
  *      tap ET au clavier (flèches du `tablist`), et chacun montre son panneau ;
  *   2. aucun sous-onglet ne provoque de défilement HORIZONTAL (`scrollWidth ≤ 390`) — avant ET après
  *      révélation de la courbe ;
- *   3. inventaire des cibles tactiles < 44 px, mesurées PAR AXE (jamais le max des deux, leçon
- *      `UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`).
+ *   3. inventaire des cibles tactiles < 44 px dans tout `<main>` (bandeau d'onglets, en-tête, KPI, panneau),
+ *      mesurées PAR AXE (jamais le max des deux, leçon `UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`).
  *
  * ⚠️ Le point 3 est un CLIQUET, pas une interdiction : la refonte n'a pas commencé, donc des cibles
  * trop petites EXISTENT aujourd'hui (voir `PLAFOND_CIBLES_TROP_PETITES`, mesuré et daté). Le cliquet
@@ -36,11 +36,13 @@ const CIBLE_MIN = 44;
 
 /**
  * ⚠️ MESURÉ le 2026-09-10 sur `main` (7cb74e44), AVANT la refonte : nombre de contrôles interactifs
- * visibles dont AU MOINS UN axe est < 44 px, tous sous-onglets confondus, courbe révélée. Le nombre
- * s'obtient d'abord, l'assertion s'écrit ensuite (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
+ * visibles de `<main>` dont AU MOINS UN axe est < 44 px, tous sous-onglets confondus, courbe révélée :
+ * 65 dans les panneaux + 7 × 4 hors panneau (les 4 sous-onglets à 28 px, les 2 pilules Réel/Sandbox à
+ * 24 px, l'aide « ? » de 16 px du résumé de santé — comptés à chaque sous-onglet puisque toujours rendus).
+ * Le nombre s'obtient d'abord, l'assertion s'écrit ensuite (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
  * Chaque PR de la refonte qui rétrécit la dette DOIT abaisser ce plafond ; à 0, inverser en règle.
  */
-const PLAFOND_CIBLES_TROP_PETITES = 65;
+const PLAFOND_CIBLES_TROP_PETITES = 93;
 
 async function ouvrirFutur(page: Page) {
   await page.addInitScript(scriptBypassOnboarding());
@@ -68,22 +70,29 @@ async function revelerCourbe(page: Page) {
   await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
+/** Sélecteur des contrôles interactifs — UNE seule écriture, partagée par le recenseur et son anti-vacuité. */
+const SELECTEUR_CONTROLES = 'button, a[href], input, select, textarea, [role="button"], [role="tab"], [role="switch"], [role="checkbox"], [role="slider"]';
+
 /**
- * Inventaire des contrôles interactifs VISIBLES du panneau actif dont un axe est < 44 px.
- * Mesure séparée largeur / hauteur — un `Math.max` verrait 44×22 comme 44×44.
+ * Inventaire des contrôles interactifs VISIBLES de l'onglet Futur dont un axe est < 44 px.
+ * Portée : tout `<main>` (bandeau de sous-onglets, en-tête, KPI ET panneau actif) — le bandeau est un
+ * FRÈRE du panneau, pas un descendant : borner au `tabpanel` laissait hors mesure le contrôle le plus
+ * touché de l'écran (revue silent-failure-hunter, PR0). Mesure séparée largeur / hauteur — un
+ * `Math.max` verrait 44×22 comme 44×44.
  */
 async function ciblesTropPetites(page: Page): Promise<string[]> {
-  return page.evaluate((min) => {
-    const panneau = document.querySelector('[role="tabpanel"]');
-    if (!panneau) return ['(aucun tabpanel)'];
-    const sel = 'button, a[href], input, select, textarea, [role="button"], [role="tab"], [role="switch"], [role="checkbox"], [role="slider"]';
+  return page.evaluate(({ min, sel }) => {
+    const racine = document.querySelector('main');
+    if (!racine) throw new Error('Aucun <main> : le recenseur ne peut rien mesurer');
+    if (!racine.querySelector('[role="tabpanel"]')) throw new Error('Aucun tabpanel rendu pour ce sous-onglet');
     const out: string[] = [];
-    for (const el of Array.from(panneau.querySelectorAll<HTMLElement>(sel))) {
+    for (const el of Array.from(racine.querySelectorAll<HTMLElement>(sel))) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue; // masqué ou hors flux
-      // `sr-only` (Tailwind) réduit un contrôle à 1×1 px clippé : il n'est PAS une cible tactile
-      // (le libellé visible qui l'enveloppe l'est) — mesuré : les deux radios du mode de simulation.
-      if (r.width <= 2 && r.height <= 2) continue;
+      // `sr-only` (Tailwind) : contrôle clippé à 1×1 px derrière un libellé VISIBLE qui le porte — ce n'est
+      // pas une cible tactile (mesuré : les deux radios du mode de simulation). Reconnu par sa CLASSE,
+      // jamais par sa taille : un vrai contrôle effondré à 2 px doit rester dans l'inventaire.
+      if (el.classList.contains('sr-only')) continue;
       if (el.closest('[hidden], [aria-hidden="true"]')) continue;
       if (getComputedStyle(el).visibility === 'hidden') continue;
       // Tolérance d'un demi-pixel : un rayon SVG de 22 rend 43,99 px, pas 44 (mesuré sur les
@@ -96,7 +105,12 @@ async function ciblesTropPetites(page: Page): Promise<string[]> {
       out.push(`${el.tagName.toLowerCase()} « ${nom} » ${Math.round(r.width)}×${Math.round(r.height)}`);
     }
     return out;
-  }, CIBLE_MIN);
+  }, { min: CIBLE_MIN, sel: SELECTEUR_CONTROLES });
+}
+
+/** Anti-vacuité du recenseur : combien de contrôles il VOIT dans `<main>` (même sélecteur). */
+async function nombreDeControles(page: Page): Promise<number> {
+  return page.evaluate((sel) => document.querySelector('main')?.querySelectorAll(sel).length ?? 0, SELECTEUR_CONTROLES);
 }
 
 test.describe('Futur mobile — filet PR0 (390×844)', () => {
@@ -156,11 +170,11 @@ test.describe('Futur mobile — filet PR0 (390×844)', () => {
       await onglet(page, nom).click();
       await expect(onglet(page, nom)).toHaveAttribute('aria-selected', 'true');
       await page.waitForTimeout(300);
+      // Anti-vacuité PAR sous-onglet, avec le sélecteur du recenseur : un panneau où il ne verrait rien
+      // rendrait « 0 offender » = « parfait » (mesuré : chaque sous-onglet expose > 5 contrôles).
+      expect(await nombreDeControles(page), `Le recenseur ne voit presque rien sous « ${nom} »`).toBeGreaterThan(5);
       for (const c of await ciblesTropPetites(page)) inventaire.push(`[${nom}] ${c}`);
     }
-    // Anti-vacuité : le recenseur doit VOIR des contrôles (un sélecteur cassé rendrait 0 = « parfait »).
-    const total = await page.evaluate(() => document.querySelectorAll('[role="tabpanel"] button, [role="tabpanel"] input').length);
-    expect(total).toBeGreaterThan(5);
     // L'inventaire complet est joint au rapport : c'est lui que chaque PR de la refonte consulte.
     await test.info().attach('cibles-trop-petites.txt', { body: inventaire.join('\n'), contentType: 'text/plain' });
     expect(inventaire.length, `Cibles < 44 px (${inventaire.length}) :\n${inventaire.join('\n')}`)

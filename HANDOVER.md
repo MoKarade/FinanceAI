@@ -27,7 +27,8 @@
 > `docs/adr/0016-refonte-futur-mobile.md`, tickets `[FUTUR-MOBILE-PR0..5]` dans `BACKLOG.md`.
 > **PR0 livrée** : projet Playwright `mobile-chrome` (specs « *Mobile* » seulement), `e2e/futureMobileFilet.spec.ts`
 > (4 sous-onglets au tap et au clavier, `scrollWidth ≤ 390` partout — la prédiction de débordement de la table de
-> `StrategyOptimizerPanel` est RÉFUTÉE par la mesure —, cliquet des cibles < 44 px mesuré à **65**, par axe).
+> `StrategyOptimizerPanel` est RÉFUTÉE par la mesure —, cliquet des cibles < 44 px mesuré à **93** sur tout `<main>`,
+> par axe : 65 dans les panneaux + 7 hors panneau × 4 sous-onglets).
 > ⚠️ Archi retenue : adaptation EN PLACE avec composants-feuilles purs ; PAS de coquille `FutureMobile.tsx` (elle
 > dupliquerait l'arbre d'état) ; `[GODFILE-FUTUREPROJECTION]` et `[A11Y-SUBTABS-FUTUR]` restent hors périmètre.
 > **Suite proposée** : `[FUTUR-MOBILE-PR1]` (extractions pures `seriesConfig` + `useHiddenSeries`, rendu byte-identique).

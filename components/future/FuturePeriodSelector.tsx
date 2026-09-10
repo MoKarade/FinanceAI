@@ -70,7 +70,7 @@ export const FuturePeriodSelector: React.FC<FuturePeriodSelectorProps> = ({
                     aria-label="Plein écran"
                     className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center text-lg rounded-xl text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
                 >
-                    ⛶
+                    <span aria-hidden="true">⛶</span>
                 </button>
             </div>
         );

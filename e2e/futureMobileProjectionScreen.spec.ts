@@ -23,11 +23,19 @@ async function ouvrirFuturEtReveler(page: Page) {
     await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
+/**
+ * [FUTUR-MOBILE-PR2, revue code-reviewer] Le PREMIER jet remontait deux `.locator('..')` depuis
+ * `.kpi-label` — ça n'atteint que `<div className="flex items-center justify-between">`
+ * (`components/ui/KPIStat.tsx:71-89`), qui contient le LABEL et l'icône, jamais la valeur : la
+ * valeur en dollars (`<div className="text-kpi …">`) et le sous-libellé sont des FRÈRES de ce
+ * conteneur, pas des descendants. Vérifié en lisant `KPIStat.tsx` : le libellé, la valeur et le
+ * sous-libellé sont trois enfants directs du conteneur `bg-surface/60 … rounded-card`, donc il
+ * faut TROIS remontées, pas deux. Avec deux, la garde money-critical comparait deux fois la MÊME
+ * chaîne statique (« Patrimoine successoral, avec rentes ») et restait verte quel que soit le
+ * montant réellement affiché — vacueuse pile sur le seul risque qu'elle devait couvrir.
+ */
 function kpiPatrimoineTexte(page: Page) {
-    // KPIStat rend le libellé dans `.kpi-label` puis la valeur juste après — on lit le conteneur
-    // entier (label + valeur + sous-libellé) pour capturer un éventuel écart sur N'IMPORTE lequel
-    // des trois, pas seulement la valeur en gros caractères.
-    return page.locator('.kpi-label', { hasText: 'Patrimoine' }).locator('..').locator('..').innerText();
+    return page.locator('.kpi-label', { hasText: 'Patrimoine' }).locator('../../..').innerText();
 }
 
 test.describe('Futur mobile — écran Projection (PR2)', () => {
@@ -38,6 +46,10 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await ouvrirFuturEtReveler(page);
         const desktop = await kpiPatrimoineTexte(page);
+        // Anti-vacuité : le conteneur doit VRAIMENT porter un montant (chiffres) — sinon un
+        // sélecteur cassé qui n'atteint que le libellé statique rendrait ce test vert à tort,
+        // exactement le défaut trouvé par la revue code-reviewer sur le premier jet.
+        expect(desktop, `Le conteneur lu ne contient aucun chiffre : ${desktop}`).toMatch(/\d/);
 
         // Rétrécir la MÊME page (pas un nouveau contexte) : si un correctif de ce lot avait touché
         // `projection.years` au lieu d'une simple fenêtre de vue, ce redimensionnement ferait diverger
@@ -45,6 +57,7 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.waitForTimeout(300); // laisse `useViewportBelowSm` (matchMedia réactif) se poser
         const mobile = await kpiPatrimoineTexte(page);
+        expect(mobile, `Le conteneur lu ne contient aucun chiffre : ${mobile}`).toMatch(/\d/);
 
         expect(mobile, 'Le patrimoine affiché doit être IDENTIQUE quelle que soit la largeur — seule la VUE change, jamais le calcul').toBe(desktop);
     });

@@ -72,6 +72,14 @@
   — le 5e (money-critical) est un invariant qui doit rester vert AVANT et APRÈS, ce n'est pas un défaut du test.
   Cliquet des cibles < 44 px : **93 → 92** (plein écran mobile 38 → 44 px), `PLAFOND_CIBLES_TROP_PETITES` mis à jour
   avec sa cause. Les 6 tests qui montent `FutureProjection` rejoués : 19/19 verts. 11/11 verts sur `mobile-chrome`.
+  ⚠️ **Revue code-reviewer, finding CRITIQUE corrigé** : la garde money-critical du 1er jet remontait DEUX
+  `.locator('..')` depuis `.kpi-label`, atteignant seulement `<div className="flex items-center justify-between">`
+  (`KPIStat.tsx`) — le label et l'icône, JAMAIS la valeur en dollars (un FRÈRE, pas un descendant). Le test
+  comparait deux fois la même chaîne statique et restait vert quel que soit le patrimoine réellement affiché,
+  exactement sur le seul risque qu'il devait couvrir. Mesuré : le sélecteur fautif rend « PATRIMOINE
+  SUCCESSORAL, AVEC RENTES\ni\n💼 » (aucun chiffre) contre « …9,73 M$\nFin de l'horizon (40 ans) » avec la 3ᵉ
+  remontée. Corrigé (`../../..`) + anti-vacuité (`toMatch(/\d/)` sur les deux lectures) — la garde discrimine
+  désormais réellement.
   → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) — `FutureLegendDrawer` : sur mobile, tiroir « Séries » FERMÉ par défaut sous la
   courbe, avec le compte « N visibles sur 16 » et les pastilles de couleur TOUJOURS visibles (le badge « Tout

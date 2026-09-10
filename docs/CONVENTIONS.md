@@ -12219,6 +12219,24 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, bis) — un `.locator('..')` compté à la main est une mesure d'ARBRE, pas d'intention
+
+La garde money-critical la plus importante de la PR2 (« le patrimoine affiché est identique à 390 px et
+1440 px ») était **vacueuse** : elle remontait deux `.locator('..')` depuis `.kpi-label`, en supposant que
+« label → parent → grand-parent » atteignait le conteneur de la carte KPI. Lu dans `components/ui/KPIStat.tsx` :
+le libellé vit dans `<div className="flex items-center justify-between">` (label + icône SEULEMENT), et la
+valeur en dollars est un FRÈRE de ce `<div>`, pas un descendant — il fallait TROIS remontées, pas deux. Le
+test comparait donc deux fois la chaîne statique du libellé, jamais le montant, et serait resté vert même si
+un correctif avait fait varier `finalNetWorth` selon la largeur d'écran — le seul défaut que cette garde
+existait pour attraper. Trouvé par une revue externe (`code-reviewer`), qui a vérifié la structure DOM par un
+VRAI rendu React Testing Library plutôt que par lecture du JSX seule — la bonne méthode, reproduite ensuite
+avec Playwright sur l'app réelle : l'ancien sélecteur rend « PATRIMOINE SUCCESSORAL, AVEC RENTES\ni\n💼 »
+(zéro chiffre), le nouveau « …9,73 M$\nFin de l'horizon (40 ans) ». Règle : un nombre de `.locator('..')`
+compté sur une lecture mentale du JSX est une supposition, pas une mesure — la vérifier sur le VRAI DOM rendu
+(ou, ici, directement en relisant le composant source qui les emboîte) avant de s'y fier pour un invariant
+money-critical. Anti-vacuité ajoutée (`toMatch(/\d/)` sur les deux lectures) : un sélecteur qui recommencerait
+à ne capter que le libellé ferait échouer le test pour la bonne raison, pas passer en silence.
+
 ### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10) — un élément non gaté par l'onglet actif se réordonne PAR SITE DE RENDU, jamais en place
 
 Avant de déplacer la grille KPI de Futur (« courbe d'abord, KPI dessous », décision Marc), lecture du JSX a montré

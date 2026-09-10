@@ -32,6 +32,9 @@
 > ⚠️ Archi retenue : adaptation EN PLACE avec composants-feuilles purs ; PAS de coquille `FutureMobile.tsx` (elle
 > dupliquerait l'arbre d'état) ; `[GODFILE-FUTUREPROJECTION]` et `[A11Y-SUBTABS-FUTUR]` restent hors périmètre.
 > **Suite proposée** : `[FUTUR-MOBILE-PR1]` (extractions pures `seriesConfig` + `useHiddenSeries`, rendu byte-identique).
+> **PR1 livrée** : extractions pures `components/future/seriesConfig.tsx` (légende) et `hooks/useHiddenSeries.ts`
+> (séries masquées, même clé localStorage) — copié-collé strict, rendu bit-identique, 19/19 tests `FutureProjection.*`
+> rejoués verts. **Suite proposée** : `[FUTUR-MOBILE-PR2]` (en-tête compact, `<select>` de période, courbe avant KPI).
 
 > ## 🟦 Session 2026-09-07 — Lot 215 : les droits REER d'un couple ne meurent plus avec l'âge du premier conjoint (`[FISC-RRSP-ROOM-GATE-MENAGE]`, money-critical, fini)
 > Le gate des droits REER lisait `ctx.age` (premier conjoint) : à 72/57, le conjoint actif ne générait plus rien et le

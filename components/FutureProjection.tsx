@@ -11,6 +11,8 @@ const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistoryS
 // [NAV-MERGE-SANTE-FUTUR] Résumé condensé de Santé, en tête de page — léger (pas de recharts),
 // import statique (pas de justification à le mettre derrière un lazy comme FutureHistorySection).
 import { FutureHealthSummary } from './future/FutureHealthSummary';
+import { FUTURE_LEGEND_ITEMS, LegendSwatch } from './future/seriesConfig';
+import { useHiddenSeries } from '../hooks/useHiddenSeries';
 import { TabPanel, tabId, panelId, clavierTablist } from './ui/SubTabs';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
@@ -137,45 +139,6 @@ import { addDay } from '../services/history/reconstructCashHistory';
 // survit au démontage/remontage de l'onglet → pas de réécriture IDB (~1-2 Mo chiffrés) à chaque
 // visite quand le moteur n'a pas republié. Volontairement PAS dans le store (pur détail d'I/O).
 let _lastSavedRevealedResults: ProjectionResult | null = null;
-
-// G10 — Légende interactive : une seule source de vérité pour les chips ET les
-// gardes de visibilité dans le graphique. `key` correspond au dataKey recharts
-// (ou à un groupe logique : 'montecarlo', 'events', 'fire', 'aujourdhui').
-type LegendShape = 'area' | 'line' | 'bar' | 'dashed' | 'dot';
-interface FutureLegendItem {
-    key: string;
-    label: string;
-    color: string;
-    shape: LegendShape;
-    mcOnly?: boolean; // n'apparaît que si Monte Carlo est activé
-}
-const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
-    { key: 'Liquidites', label: 'Cash', color: '#4b5563', shape: 'area' },
-    { key: 'CELI', label: 'CELI', color: '#10b981', shape: 'area' },
-    { key: 'CELIAPP', label: 'CELIAPP (FHSA)', color: '#2dd4bf', shape: 'area' },
-    { key: 'REER', label: 'REER', color: '#3b82f6', shape: 'area' },
-    { key: 'REEE', label: 'REEE', color: '#06b6d4', shape: 'area' },
-    { key: 'NonReg', label: 'Non-Enreg', color: '#f59e0b', shape: 'area' },
-    { key: 'Crypto', label: 'Crypto', color: '#a855f7', shape: 'area' },
-    { key: 'Immobilier', label: 'Équité Immo', color: '#ec4899', shape: 'area' },
-    { key: 'Entreprise', label: 'Entreprise privée', color: '#84cc16', shape: 'area' },
-    { key: 'NetWorth', label: 'Valeur Nette', color: '#ffffff', shape: 'line' },
-    { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
-    { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
-    { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#3b82f6', shape: 'dashed', mcOnly: true },
-    { key: 'events', label: 'Événements / icônes', color: '#e5e7eb', shape: 'dot' },
-    { key: 'fire', label: 'Objectif FIRE', color: '#f97316', shape: 'dashed' },
-    { key: 'aujourdhui', label: "Aujourd'hui", color: '#ffffff', shape: 'dashed' },
-];
-
-const LegendSwatch: React.FC<{ shape: LegendShape; color: string; dimmed?: boolean }> = ({ shape, color, dimmed }) => {
-    const style = { backgroundColor: color, opacity: dimmed ? 0.4 : 1 } as React.CSSProperties;
-    if (shape === 'line') return <span className="w-4 h-[3px] rounded-full shrink-0" style={style} aria-hidden="true" />;
-    if (shape === 'bar') return <span className="w-1.5 h-3 rounded-sm shrink-0" style={style} aria-hidden="true" />;
-    if (shape === 'dot') return <span className="w-2.5 h-2.5 rounded-full shrink-0" style={style} aria-hidden="true" />;
-    if (shape === 'dashed') return <span className="w-4 h-0 shrink-0 border-t-2 border-dashed" style={{ borderColor: color, opacity: dimmed ? 0.4 : 1 }} aria-hidden="true" />;
-    return <span className="w-3 h-3 rounded shrink-0" style={style} aria-hidden="true" />;
-};
 
 interface FutureProjectionProps {
   initialBalances: Record<string, number>;
@@ -789,28 +752,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
 
 
-    // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
-    // défaut « tout visible »), persistées en localStorage. Même convention que
-    // Dashboard (`dashboard:hiddenAccounts:v1`) : persistance dans le setter.
-    const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => {
-        try {
-            const raw = localStorage.getItem('future:hiddenSeries:v1');
-            return raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
-        } catch { return new Set<string>(); }
-    });
-    const isVisible = (key: string) => !hiddenSeries.has(key);
-    const toggleSeries = (key: string) => {
-        setHiddenSeries((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key); else next.add(key);
-            try { localStorage.setItem('future:hiddenSeries:v1', JSON.stringify([...next])); } catch {/* localStorage indispo */}
-            return next;
-        });
-    };
-    const showAllSeries = () => {
-        setHiddenSeries(new Set());
-        try { localStorage.setItem('future:hiddenSeries:v1', '[]'); } catch {/* localStorage indispo */}
-    };
+    // [FUTUR-MOBILE-PR1] Extrait vers hooks/useHiddenSeries.ts (même clé localStorage, comportement inchangé).
+    const { hiddenSeries, isVisible, toggleSeries, showAllSeries } = useHiddenSeries();
 
     // G12 — clic n'importe où sur le graphique → modale détail (pas seulement
     // sur une pastille d'événement). On résout le mois cliqué par GÉOMÉTRIE :

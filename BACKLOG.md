@@ -80,6 +80,13 @@
   SUCCESSORAL, AVEC RENTES\ni\n💼 » (aucun chiffre) contre « …9,73 M$\nFin de l'horizon (40 ans) » avec la 3ᵉ
   remontée. Corrigé (`../../..`) + anti-vacuité (`toMatch(/\d/)` sur les deux lectures) — la garde discrimine
   désormais réellement.
+  ⚠️ **RÉGRESSION trouvée en CI, PAS un flake** : `e2e/futurePinchZoom.spec.ts` échouait sur CE lot, pas à côté.
+  Ce fichier fixe son viewport à 390×844 (« le scénario mobile de Marc », `chromium` — PAS `mobile-chrome`), donc
+  `isNarrowViewport` (basé sur `matchMedia`, indifférent au projet Playwright) y bascule le sélecteur de période
+  en `<select>` — le bouton « Tout » que `toutIsActive()` cherchait n'existe plus à cette largeur. J'ai d'abord
+  cru à un flake préexistant (diagnostic FAUX, posté puis retiré en commentaire de PR) parce que le fichier n'est
+  pas dans le diff — mais un test peut être cassé par un changement de RENDU sans qu'une ligne du fichier ne
+  bouge. Corrigé : `toutIsActive()` détecte la variante montée (bouton OU `<select>`) au lieu d'en supposer une.
   → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) — `FutureLegendDrawer` : sur mobile, tiroir « Séries » FERMÉ par défaut sous la
   courbe, avec le compte « N visibles sur 16 » et les pastilles de couleur TOUJOURS visibles (le badge « Tout

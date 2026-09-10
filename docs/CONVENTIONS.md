@@ -12219,6 +12219,24 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, ter) — un fichier de test HORS DIFF peut casser sur un changement de RENDU, `git diff` ne le montre pas
+
+CI rougissait sur `e2e/futurePinchZoom.spec.ts`, un fichier que le diff de la PR2 ne touche pas — premier
+réflexe : « flake préexistant, hors périmètre », posté en commentaire de PR après l'avoir vu échouer
+IDENTIQUEMENT trois fois. **Faux**, et retiré : ce fichier fixe `viewport: { width: 390, height: 844 }` (« le
+scénario mobile de Marc », commentaire du fichier) sous le projet `chromium` — pas `mobile-chrome`. Or
+`isNarrowViewport` (`hooks/useViewportBelowSm.ts`) est un `matchMedia('(max-width: 639px)')` : il ne regarde
+QUE la largeur CSS, jamais le projet Playwright ni le drapeau `isMobile`/`hasTouch`. La PR2 avait donc basculé
+le sélecteur de période en `<select>` natif exactement dans ce fichier aussi, et le bouton « Tout » que
+`toutIsActive()` cherchait au clavier n'existait plus à 390 px — d'où un `getByRole('button', …)` qui attend
+indéfiniment jusqu'au timeout de 120 s, IDENTIQUE et reproductible, ce qui ressemble trait pour trait à un
+flake stable. Un `git diff --stat` ne montre QUE les fichiers modifiés ; il ne montre jamais les fichiers dont
+le comportement change parce qu'ils partagent une CONDITION avec un fichier modifié (ici : la même largeur de
+viewport). **Avant de déclarer un échec CI « hors périmètre », vérifier ce que le test observe, pas seulement
+s'il est dans le diff** — surtout un test lié à une largeur d'écran quand le lot change un comportement
+conditionné par la largeur d'écran. Corrigé : `toutIsActive()` détecte la variante RÉELLEMENT montée au lieu
+d'en supposer une, ce qui la rend robuste à toute variante future du même sélecteur.
+
 ### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, bis) — un `.locator('..')` compté à la main est une mesure d'ARBRE, pas d'intention
 
 La garde money-critical la plus importante de la PR2 (« le patrimoine affiché est identique à 390 px et

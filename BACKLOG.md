@@ -61,6 +61,24 @@
   après l'extraction — TOTAL inchangé, 24). Tests : 12 unitaires (ReturnRateField, FluxMensuelsFields,
   ValeurMaxMaisonField) + 5 e2e (`e2e/futureMobileHypotheses.spec.ts`, ordre + CTA + contrôles négatifs
   desktop) — 0 régression sur les e2e mobiles PR0-PR3 rejouées (12/12) + `futurePinchZoom.spec.ts` (2/2).
+- [ ] 🔧 **`[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]`** (XS) — 5 points mineurs relevés par les revues silent-failure-hunter/
+  a11y-auditor/code-reviewer de PR4, aucun bloquant, routés plutôt que corrigés hors périmètre : (1) `changedHypothesesCount`
+  compare par `JSON.stringify` — sensible à l'ordre des clés d'un objet imbriqué (`returnRates`), inatteignable aujourd'hui
+  (tous les producteurs respectent le même ordre littéral) mais sans filet si un futur producteur en change ; (2) un champ
+  composite (`returnRates`) ne compte que pour UNE hypothèse modifiée même si plusieurs sous-valeurs changent — choix
+  assumé, à documenter comme tel plutôt que découvert plus tard ; (3) `ReturnRateField` n'a pas de mécanisme de masquage
+  mode-discret (`isPrivacyMode`/`maskedSliderAria`), contrairement à `FluxMensuelsFields`/`ValeurMaxMaisonField` du même
+  lot — `ltcMonthlyCost` ($/mois) qui y passe désormais hérite silencieusement du même défaut PRÉ-EXISTANT que sur desktop
+  (`ProjectionControls.tsx:407-412`, jamais dans `PrivateAmount`) ; (4) `check-contrast` est aveugle aux classes passées en
+  template literal (`colorClassName`) et aux fonds `rgba` (`bg-black/30`) — trou d'outillage, contraste mesuré MANUELLEMENT
+  conforme (6,83–12,14:1) mais une future couleur mal choisie sur ce composant ne serait jamais détectée automatiquement ;
+  (5) `numberId` de `ReturnRateField` se dérive de `slugify(label)` sans vérification d'unicité — aucune collision
+  aujourd'hui (tous les libellés mobiles sont distincts), mais un `id` optionnel avec fallback silencieux est fragile.
+  ⚠️ Deux points PRÉ-EXISTANTS (non aggravés par PR4, juste étendus de 3 à 6 sections / repris tels quels) : les curseurs
+  `<input type="range">` n'ont pas de zone tactile ≥44 px garantie par CSS (seul le champ numérique jumeau l'a) — vaut un
+  ticket séparé puisque PR4 est justement la refonte tactile ; et les 6 `CollapsibleSection` de l'onglet Hypothèses mobile
+  sont en `headingLevel` par défaut (h3) directement sous le `<h1>` « Projection », sans `<h2>` intermédiaire (motif déjà
+  présent sur les 3 sections desktop, ce lot le double sur la surface mobile).
 - [ ] 🔧 **`[FUTUR-MOBILE-PR5]`** (M) — amorçage + Plan d'action + Historique + feuille du jour : leviers en puces
   cochables 44 px + CTA 56 px « Chercher la meilleure stratégie » + lien « voir ma projection actuelle » +
   stress-tests repliés ; Plan d'action : « Pourquoi ? » 14 px → 44 px, cases « Marquer comme fait » 44 px ; Historique :

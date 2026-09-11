@@ -645,9 +645,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
         if (baseline.maxValue !== realEstateGoals[0]?.maxValue) n++;
         return n;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hypothesesBaselineRef.current est lu
-    // intentionnellement sans déclencher de rendu ; le memo se réévalue déjà à chaque changement de
-    // `projection`/`realEstateGoals`, ce qui couvre tous les cas où la baseline vient de changer.
+    // hypothesesBaselineRef.current est un ref lu intentionnellement sans déclencher de rendu — la
+    // règle exhaustive-deps ne l'exige pas (les refs en sont exemptées) ; le memo se réévalue déjà
+    // à chaque changement de `projection`/`realEstateGoals`, ce qui couvre les cas où la baseline
+    // vient de changer.
     }, [projection, realEstateGoals]);
 
     // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons

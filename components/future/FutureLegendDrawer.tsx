@@ -6,8 +6,11 @@ import { FUTURE_LEGEND_ITEMS, LegendSwatch } from './seriesConfig';
  * de `hooks/useHiddenSeries.ts`, possédé par `FutureProjection` — ce composant ne détient QUE
  * l'état d'OUVERTURE du tiroir, jamais les séries masquées) :
  *
- * - `variant="inline"` (desktop, INCHANGÉ) : JSX byte-identique à l'ancien code de
- *   `FutureProjection.tsx` — extrait tel quel, zéro changement de rendu.
+ * - `variant="inline"` (desktop, INCHANGÉ) : mêmes classes, même contenu, même ordre visuel que
+ *   l'ancien code de `FutureProjection.tsx` — extrait presque tel quel (les classes de taille de
+ *   chip changent de POSITION dans la chaîne `className` du fait de la factorisation en
+ *   constantes, sans effet : l'ordre des classes n'affecte jamais le rendu). Rendu VISUEL
+ *   identique, revue code-reviewer, pas de « byte-identique » au sens strict de la chaîne.
  * - `variant="drawer"` (mobile, décision Marc 2026-09-10) : tiroir FERMÉ par défaut sous la
  *   courbe, avec le COMPTE des séries visibles et le badge « Tout réafficher » TOUJOURS visibles
  *   (risque MOYEN #7 de l'architecte : une série masquée lors d'une session passée doit rester
@@ -72,6 +75,7 @@ export const FutureLegendDrawer: React.FC<FutureLegendDrawerProps> = ({
         // tiroir (interdit en HTML, et le clic déclencherait les DEUX gestionnaires) : ce sont deux
         // boutons FRÈRES dans un conteneur non interactif.
         const visibles = items.filter((it) => isVisible(it.key)).length;
+        const resume = `${visibles} visible${visibles > 1 ? 's' : ''} sur ${items.length}`;
         return (
             <div className="mt-6 bg-black/20 rounded-xl border border-white/5">
                 <div className="flex items-center gap-2 px-4 py-2.5">
@@ -79,7 +83,8 @@ export const FutureLegendDrawer: React.FC<FutureLegendDrawerProps> = ({
                         type="button"
                         onClick={() => setOuvert((v) => !v)}
                         aria-expanded={ouvert}
-                        className="min-h-[44px] flex-1 flex items-center gap-2 text-left"
+                        aria-controls="future-legend-drawer-group"
+                        className="min-h-[44px] flex-1 flex items-center gap-2 text-left focus-ring"
                     >
                         <span className="text-tiny text-ink-300 font-semibold">
                             Séries · <span className="text-ink-100">{visibles} visible{visibles > 1 ? 's' : ''}</span> sur {items.length}
@@ -88,8 +93,12 @@ export const FutureLegendDrawer: React.FC<FutureLegendDrawerProps> = ({
                     </button>
                     {toutReafficher}
                 </div>
+                {/* Région live TOUJOURS montée (avant tout changement) : le compte est un texte
+                    STATIQUE dans le bouton, invisible aux lecteurs d'écran quand il varie sans
+                    renavigation — patron `COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`. */}
+                <span role="status" aria-live="polite" className="sr-only">{resume}</span>
                 {ouvert && (
-                    <div className="flex flex-wrap gap-2 px-4 pb-4" role="group" aria-label="Séries du graphique">
+                    <div id="future-legend-drawer-group" className="flex flex-wrap gap-2 px-4 pb-4" role="group" aria-label="Séries du graphique">
                         {chips}
                     </div>
                 )}
@@ -97,7 +106,7 @@ export const FutureLegendDrawer: React.FC<FutureLegendDrawerProps> = ({
         );
     }
 
-    // variant === 'inline' — desktop, JSX byte-identique à l'ancien code de FutureProjection.tsx.
+    // variant === 'inline' — desktop, rendu visuel identique à l'ancien code de FutureProjection.tsx.
     return (
         <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
             <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">

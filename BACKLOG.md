@@ -105,7 +105,22 @@
   sur l'ancien code (swap vers `origin/main`, restauré et vérifié par `cmp`) — le 3e (desktop) est vert des deux
   côtés par construction. Cliquet des cibles < 44 px : **92 → 76** (16 chips de légende plus comptées, cachées
   par défaut). Les 6 tests qui montent `FutureProjection` rejoués : 19/19 verts. 14/14 verts sur `mobile-chrome`.
+  ⚠️ Revue a11y : région live ajoutée pour le compte (`role="status"`, un texte qui varie sans renavigation doit
+  être annoncé), `aria-controls` posé entre le bouton et le groupe de chips, `focus-ring` ajouté au bouton de
+  bascule (oublié au 1er jet). Revue code-reviewer : le commentaire « JSX byte-identique » de la variante
+  desktop était inexact au sens strict (les classes de taille de chip changent de POSITION dans la chaîne,
+  sans effet visuel — l'ordre des classes n'affecte jamais le rendu) ; corrigé en « rendu visuel identique ».
   → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
+
+- [ ] 🔧 **`[A11Y-LEGEND-TOUTREAFFICHER-FOCUS-PERDU]`** (S) — DÉCOUVERT en revue a11y de PR3, PRÉ-EXISTANT (déjà
+  dans `origin/main` avant toute la refonte mobile, vérifié : `git show 8bc6faa7:components/FutureProjection.tsx`
+  portait déjà `showAllSeries` vidant `hiddenSeries`). Le bouton « Tout réafficher » (`FutureLegendDrawer.tsx`,
+  variantes `inline` ET `drawer`) se DÉMONTE à chaque clic (`hiddenSeries.size` retombe à 0, la condition
+  `hiddenSeries.size > 0 && (...)` rend `false`) — le focus clavier retombe sur `<body>`, perte de contexte pour
+  un utilisateur clavier/lecteur d'écran. Le MÊME fichier documente et corrige exactement ce mécanisme sur un
+  bouton voisin (`revealedRef.current?.focus()` après démontage du bouton Calculer, `FutureProjection.tsx:609`)
+  — le correctif est donc déjà connu : renvoyer le focus sur le bouton de bascule du tiroir (stable) après
+  `showAllSeries()`. Non corrigé dans PR3 (bug pré-existant, hors périmètre sans feu vert explicite).
 - [ ] 🔧 **`[FUTUR-MOBILE-PR4]`** (M-L) — Hypothèses mobile : `ReturnRateField` = curseur + champ numérique SYNCHRONISÉ
   (les deux sens testés : casser un `onChange` doit rougir) pour les 5 taux ET les facteurs macro ; ordre mobile
   Mode → macro → rendements → sections repliées (inflation par poste, risques, rejeu, avancés) ; ordre desktop

@@ -67,9 +67,9 @@ describe('[FUTUR-MOBILE-PR5] FutureDetailModal — desktop inchangé (contrôle 
         expect(dialog().firstElementChild?.className).not.toContain('rounded-t-2xl');
     });
 
-    it('aucun bouton « Détail complet », la liste COMPLÈTE des événements est affichée d\'entrée', () => {
+    it('aucun bouton « Tout afficher », la liste COMPLÈTE des événements est affichée d\'entrée', () => {
         rendre();
-        expect(screen.queryByRole('button', { name: 'Détail complet' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Tout afficher' })).toBeNull();
         expect(screen.getByText(/Diplôme/)).toBeInTheDocument();
         expect(screen.getByText(/Bonus/)).toBeInTheDocument();
         expect(screen.queryByText(/événements ce mois-ci/)).toBeNull();
@@ -109,23 +109,53 @@ describe('[FUTUR-MOBILE-PR5] FutureDetailModal — feuille 3/4 mobile', () => {
         expect(screen.getByText(/Cash \(Coussin\)/)).toBeInTheDocument();
     });
 
-    it('un bouton « Détail complet » (44 px) déplie la liste exhaustive des événements', () => {
+    it('un bouton « Tout afficher » (44 px, nom DISTINCT du bouton de l\'infobulle) déplie la liste exhaustive des événements', () => {
         stubViewport(true);
         rendre();
-        const btn = screen.getByRole('button', { name: 'Détail complet' });
+        const btn = screen.getByRole('button', { name: 'Tout afficher' });
         expect(btn.className).toContain('min-h-[44px]');
+        expect(btn).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(btn);
         expect(screen.getByText(/Diplôme/)).toBeInTheDocument();
         expect(screen.getByText(/Bonus/)).toBeInTheDocument();
         expect(screen.queryByText(/événements ce mois-ci/)).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Détail complet' })).toBeNull();
+        // Le bouton ne se démonte PAS (nom ET état basculent) : « Tout afficher » disparaît parce
+        // qu'il devient « Réduire », pas parce que le contrôle a été retiré du DOM.
+        expect(screen.queryByRole('button', { name: 'Tout afficher' })).toBeNull();
+        const reduire = screen.getByRole('button', { name: 'Réduire' });
+        expect(reduire).toHaveAttribute('aria-expanded', 'true');
     });
 
-    it('« Détail complet » révèle aussi la ventilation du jour (SectionVariationJour), repliée avant', () => {
+    // ⚠️ [a11y-auditor, revue de ce lot] Un bouton qui se DÉMONTE au clic éjecte le focus vers
+    // <body>, désarmant temporairement le piège à focus (aria-modal) de la modale. Le correctif
+    // est que le CONTRÔLE reste monté (aria-expanded + libellé qui bascule) — ce test vérifie
+    // que le focus clavier n'est JAMAIS perdu au clic, dans les deux sens (déplier ET replier).
+    it('le focus reste sur le bouton après le clic, dans les DEUX sens (jamais éjecté vers <body>)', () => {
+        stubViewport(true);
+        rendre();
+        const toutAfficher = screen.getByRole('button', { name: 'Tout afficher' });
+        toutAfficher.focus();
+        fireEvent.click(toutAfficher);
+        expect(document.activeElement).not.toBe(document.body);
+        const reduire = screen.getByRole('button', { name: 'Réduire' });
+        expect(document.activeElement).toBe(reduire);
+        fireEvent.click(reduire);
+        expect(document.activeElement).not.toBe(document.body);
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Tout afficher' }));
+    });
+
+    it('« Tout afficher » révèle aussi la ventilation du jour (SectionVariationJour), repliée avant', () => {
         stubViewport(true);
         rendre({ dayIso: '2026-02-10', variation, transactions: [] });
         expect(screen.queryByRole('button', { name: /Variation du patrimoine/ })).toBeNull();
-        fireEvent.click(screen.getByRole('button', { name: 'Détail complet' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Tout afficher' }));
         expect(screen.getByRole('button', { name: /Variation du patrimoine/ })).toBeInTheDocument();
+    });
+
+    it('SANS rien à cacher (pas d\'événement, pas de jour identifié) : aucun bouton « Tout afficher » mort', () => {
+        stubViewport(true);
+        const pointSansRien = { ...point, lifeEvents: [], flowEvents: [] } as unknown as ProjectionChartPoint;
+        render(<FutureDetailModal point={pointSansRien} chartData={[prevPoint, pointSansRien]} onClose={vi.fn()} />);
+        expect(screen.queryByRole('button', { name: 'Tout afficher' })).toBeNull();
     });
 });

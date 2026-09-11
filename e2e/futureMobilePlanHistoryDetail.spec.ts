@@ -136,7 +136,24 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
             if (await sheet.isVisible().catch(() => false)) break;
         }
         await expect(sheet).toBeVisible({ timeout: 5_000 });
+        // Bouton de L'INFOBULLE FIGÉE (« Détail complet → », inchangé) — pas celui de la modale,
+        // renommé « Tout afficher » pour éviter deux contrôles au même nom accessible.
         await sheet.getByRole('button', { name: /Détail complet/ }).click();
+        await expect(page.getByRole('dialog', { name: 'Détail du mois' })).toBeVisible({ timeout: 5_000 });
+    }
+
+    /**
+     * Ouvre la modale sur un point qui a RÉELLEMENT un événement (donc `hasHiddenDetail` vrai côté
+     * composant, cf. `FutureDetailModal.tsx`) — via une pastille d'événement plutôt qu'un tap au
+     * hasard sur la courbe. `[FUTUR-MOBILE-PR5]` a corrigé un bouton « Tout afficher » qui pouvait
+     * s'afficher SANS rien à déplier (mois futur sans événement) : un tap au hasard sur la courbe
+     * atterrit très souvent sur un tel mois, ce qui rendrait ce test non déterministe.
+     */
+    async function ouvrirDetailAvecEvenement(page: Page) {
+        await chartBox(page);
+        const pastille = page.getByRole('button', { name: /^Événement :/ }).first();
+        await expect(pastille).toBeVisible({ timeout: 10_000 });
+        await pastille.click();
         await expect(page.getByRole('dialog', { name: 'Détail du mois' })).toBeVisible({ timeout: 5_000 });
     }
 
@@ -157,13 +174,13 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
         expect(box.y + box.height).toBeGreaterThan(viewport.height - 4);
     });
 
-    test('[FUTUR-MOBILE-PR5] mobile : le bouton « Détail complet » de la feuille atteint 44 px', async ({ page }) => {
+    test('[FUTUR-MOBILE-PR5] mobile : le bouton « Tout afficher » de la feuille atteint 44 px', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFutur(page);
         await revelerCourbe(page);
-        await ouvrirDetailComplet(page);
+        await ouvrirDetailAvecEvenement(page);
 
-        const btn = page.getByRole('dialog', { name: 'Détail du mois' }).getByRole('button', { name: 'Détail complet' });
+        const btn = page.getByRole('dialog', { name: 'Détail du mois' }).getByRole('button', { name: 'Tout afficher' });
         await expect(btn).toBeVisible();
         const box = (await btn.boundingBox())!;
         expect(box.height).toBeGreaterThanOrEqual(TARGET);

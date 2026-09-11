@@ -161,6 +161,13 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 
     const fmt = (n: number) => formatCAD(n);
     const eventsCount = (point.lifeEvents?.length ?? 0) + (point.flowEvents?.length ?? 0);
+    // [FUTUR-MOBILE-PR5] Le bouton « Tout afficher » ne doit exister que s'il y a RÉELLEMENT
+    // quelque chose de plus à montrer — sinon c'est un bouton mort sur un mois futur sans
+    // événement (silent-failure-hunter, revue de ce lot).
+    const hasHiddenDetail = eventsCount > 0
+        || Boolean(monthIso && (catsDuMois.depenses.length > 0 || catsDuMois.sansCategorie > 0))
+        || Boolean(dayIso && variation)
+        || Boolean(dayIso && transactions);
 
     // Dette qui tire le patrimoine net SOUS la somme des actifs affichés = Σ(actifs affichés) −
     // NetWorth. C'est exactement prêts/cartes + découvert + HELOC. On N'inclut PAS l'hypothèque :
@@ -401,13 +408,23 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             </div>
                         )}
 
-                        {isNarrowViewport && !detailExpanded && (
+                        {/* [FUTUR-MOBILE-PR5] Nom DISTINCT du bouton « Détail complet → » de l'infobulle
+                            figée (qui OUVRE cette modale) : deux contrôles au même nom accessible
+                            annonceraient la même chose à un lecteur d'écran pour deux actions différentes
+                            (silent-failure-hunter, revue de ce lot).
+                            ⚠️ Le bouton ne se DÉMONTE JAMAIS (contrairement à un premier jet) : un bouton
+                            qui disparaît au clic éjecte le focus vers `<body>`, désarmant temporairement
+                            le piège à focus de la modale (a11y-auditor, mesuré par test). Même patron que
+                            « Pourquoi ? » du Plan d'action (`ActionPlanDrilldown.tsx`) : `aria-expanded` +
+                            libellé qui bascule, jamais un rendu conditionnel du CONTRÔLE lui-même. */}
+                        {isNarrowViewport && hasHiddenDetail && (
                             <button
                                 type="button"
-                                onClick={() => setDetailExpanded(true)}
+                                onClick={() => setDetailExpanded((o) => !o)}
+                                aria-expanded={detailExpanded}
                                 className="mt-3 w-full min-h-[44px] rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-tiny font-bold text-ink-200 focus-ring transition-colors"
                             >
-                                Détail complet
+                                {detailExpanded ? 'Réduire' : 'Tout afficher'}
                             </button>
                         )}
 

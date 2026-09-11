@@ -60,10 +60,14 @@ describe('[FUTUR-MOBILE-PR5] FutureHistorySection — cibles tactiles mobile', (
         expect(screen.getByTitle('Afficher la ligne Total').className).not.toContain('min-h-[44px]');
     });
 
-    it('mobile : les pastilles de compte ET « Total » atteignent min-h-[44px]', () => {
+    it('mobile : les pastilles de compte ET « Total » atteignent min-h-[44px] ET min-w-[44px] (les DEUX axes)', () => {
         stubViewport(true);
         render(<FutureHistorySection />);
-        expect(screen.getByRole('button', { name: 'LIQUIDITE' }).className).toContain('min-h-[44px]');
-        expect(screen.getByTitle('Afficher la ligne Total').className).toContain('min-h-[44px]');
+        const compte = screen.getByRole('button', { name: 'LIQUIDITE' });
+        expect(compte.className).toContain('min-h-[44px]');
+        expect(compte.className).toContain('min-w-[44px]');
+        const total = screen.getByTitle('Afficher la ligne Total');
+        expect(total.className).toContain('min-h-[44px]');
+        expect(total.className).toContain('min-w-[44px]');
     });
 });

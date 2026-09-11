@@ -6,7 +6,7 @@
 // on le stube explicitement pour chaque cas, et on réinitialise le singleton du hook entre les
 // deux (sinon le second test lirait le `matchMedia` du premier).
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ActionPlanDrilldown } from '../../../components/projection/ActionPlanDrilldown';
 import { _resetViewportMqlForTests } from '../../../hooks/useViewportBelowSm';
 
@@ -57,5 +57,20 @@ describe('[FUTUR-MOBILE-PR5] ActionPlanDrilldown — cibles tactiles mobile', ()
         // La case elle-même garde sa taille visuelle (14 px) — seule la zone cliquable grandit.
         expect(checkbox.className).toContain('h-3.5');
         expect(checkbox.className).toContain('w-3.5');
+    });
+
+    // ⚠️ [a11y-auditor, revue de ce lot] Une classe `min-h/min-w-[44px]` sur un `<span>` ne PROUVE
+    // rien : un `<span>` ne relaie pas le clic à son `<input>` descendant. Le conteneur doit être un
+    // `<label>` ET le clic dans la marge AJOUTÉE (hors des 14 px visuels de la case) doit réellement
+    // la cocher — sinon la correction WCAG 2.5.8 est un leurre.
+    it('mobile : le conteneur est un <label> et un clic dans la MARGE AJOUTÉE coche réellement la case', () => {
+        stubViewport(true);
+        render(<ActionPlanDrilldown chartData={chartData} />);
+        const checkbox = screen.getAllByRole('checkbox')[0] as HTMLInputElement;
+        const wrapper = checkbox.parentElement!;
+        expect(wrapper.tagName).toBe('LABEL');
+        expect(checkbox.checked).toBe(false);
+        fireEvent.click(wrapper); // le <label> lui-même, PAS l'input — c'est la marge des 44 px.
+        expect(checkbox.checked).toBe(true);
     });
 });

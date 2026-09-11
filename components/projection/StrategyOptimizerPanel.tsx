@@ -226,7 +226,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                                             onClick={() => toggleValue(lever.key, opt.value as never)}
                                             aria-pressed={active}
                                             className={`rounded-lg border px-2.5 py-1 text-tiny font-medium focus-ring transition-colors ${
-                                                isNarrowViewport ? 'min-h-[44px] inline-flex items-center' : ''
+                                                isNarrowViewport ? 'min-h-[44px] min-w-[44px] inline-flex items-center justify-center' : ''
                                             } ${
                                                 active
                                                     ? 'border-indigo-400 bg-indigo-500/30 text-white'

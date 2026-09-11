@@ -223,8 +223,8 @@ const FutureHistorySection: React.FC = () => {
                                 onClick={() => toggleAccount(key)}
                                 aria-pressed={!isHidden}
                                 title={isHidden ? `Afficher ${key}` : `Masquer ${key}`}
-                                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium border transition-colors focus-ring ${
-                                    isNarrowViewport ? 'min-h-[44px]' : ''
+                                className={`inline-flex items-center justify-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium border transition-colors focus-ring ${
+                                    isNarrowViewport ? 'min-h-[44px] min-w-[44px]' : ''
                                 } ${
                                     isHidden
                                         ? 'bg-white/[0.02] text-ink-400 border-white/5 hover:bg-white/5'
@@ -245,8 +245,8 @@ const FutureHistorySection: React.FC = () => {
                         onClick={toggleTotal}
                         aria-pressed={showTotalLine}
                         title={showTotalLine ? 'Masquer la ligne Total' : 'Afficher la ligne Total'}
-                        className={`ml-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-bold border transition-colors focus-ring ${
-                            isNarrowViewport ? 'min-h-[44px]' : ''
+                        className={`ml-2 inline-flex items-center justify-center gap-1.5 px-2 py-1 rounded-full text-tiny font-bold border transition-colors focus-ring ${
+                            isNarrowViewport ? 'min-h-[44px] min-w-[44px]' : ''
                         } ${
                             showTotalLine
                                 ? 'bg-white text-black border-white'

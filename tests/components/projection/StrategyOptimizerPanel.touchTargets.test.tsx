@@ -33,11 +33,12 @@ describe('[FUTUR-MOBILE-PR5] StrategyOptimizerPanel — cibles tactiles mobile',
         expect(cta.className).not.toContain('min-h-[56px]');
     });
 
-    it('mobile : un levier atteint min-h-[44px]', () => {
+    it('mobile : un levier atteint min-h-[44px] ET min-w-[44px] (les DEUX axes, jamais un seul)', () => {
         stubViewport(true);
         render(<StrategyOptimizerPanel params={params} />);
         const lever = screen.getAllByRole('button', { pressed: false })[0];
         expect(lever.className).toContain('min-h-[44px]');
+        expect(lever.className).toContain('min-w-[44px]');
     });
 
     it('mobile : le CTA « Trouver la meilleure stratégie » atteint min-h-[56px]', () => {

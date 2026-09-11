@@ -35,6 +35,7 @@
 > **PR1 livrée** : extractions pures `components/future/seriesConfig.tsx` (légende) et `hooks/useHiddenSeries.ts`
 > (séries masquées, même clé localStorage) — copié-collé strict, rendu bit-identique, 19/19 tests `FutureProjection.*`
 > rejoués verts. **Suite proposée** : `[FUTUR-MOBILE-PR2]` (en-tête compact, `<select>` de période, courbe avant KPI).
+> **PR2 livrée** : écran Projection mobile — en-tête compact, `FuturePeriodSelector` (nouveau, `components/future/FuturePeriodSelector.tsx`) en `<select>` natif sur mobile (desktop garde ses boutons byte-identiques), courbe avant les KPI sur mobile (desktop inchangé). Horizon INTACT (décision Marc) : garde money-critical dédiée (`e2e/futureMobileProjectionScreen.spec.ts`) prouvant le patrimoine affiché identique à 390 px et 1440 px sur la même page. Cliquet des cibles < 44 px : 93 → 92. **Suite proposée** : `[FUTUR-MOBILE-PR3]` (tiroir « Séries » replié sur mobile).
 
 > ## 🟦 Session 2026-09-07 — Lot 215 : les droits REER d'un couple ne meurent plus avec l'âge du premier conjoint (`[FISC-RRSP-ROOM-GATE-MENAGE]`, money-critical, fini)
 > Le gate des droits REER lisait `ctx.age` (premier conjoint) : à 72/57, le conjoint actif ne générait plus rien et le

@@ -12219,6 +12219,60 @@ d'un ternaire `isRetired ? … : …`, demander pour CHAQUE autre terme s'il app
 `accRentesYear` ne l'a pas été. Coût mesuré du trou : **−437 k$** de patrimoine surévalué à 30 ans
 pour un couple actif avec un condo loué 1 500 $/mois.
 
+### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, ter) — un fichier de test HORS DIFF peut casser sur un changement de RENDU, `git diff` ne le montre pas
+
+CI rougissait sur `e2e/futurePinchZoom.spec.ts`, un fichier que le diff de la PR2 ne touche pas — premier
+réflexe : « flake préexistant, hors périmètre », posté en commentaire de PR après l'avoir vu échouer
+IDENTIQUEMENT trois fois. **Faux**, et retiré : ce fichier fixe `viewport: { width: 390, height: 844 }` (« le
+scénario mobile de Marc », commentaire du fichier) sous le projet `chromium` — pas `mobile-chrome`. Or
+`isNarrowViewport` (`hooks/useViewportBelowSm.ts`) est un `matchMedia('(max-width: 639px)')` : il ne regarde
+QUE la largeur CSS, jamais le projet Playwright ni le drapeau `isMobile`/`hasTouch`. La PR2 avait donc basculé
+le sélecteur de période en `<select>` natif exactement dans ce fichier aussi, et le bouton « Tout » que
+`toutIsActive()` cherchait au clavier n'existait plus à 390 px — d'où un `getByRole('button', …)` qui attend
+indéfiniment jusqu'au timeout de 120 s, IDENTIQUE et reproductible, ce qui ressemble trait pour trait à un
+flake stable. Un `git diff --stat` ne montre QUE les fichiers modifiés ; il ne montre jamais les fichiers dont
+le comportement change parce qu'ils partagent une CONDITION avec un fichier modifié (ici : la même largeur de
+viewport). **Avant de déclarer un échec CI « hors périmètre », vérifier ce que le test observe, pas seulement
+s'il est dans le diff** — surtout un test lié à une largeur d'écran quand le lot change un comportement
+conditionné par la largeur d'écran. Corrigé : `toutIsActive()` détecte la variante RÉELLEMENT montée au lieu
+d'en supposer une, ce qui la rend robuste à toute variante future du même sélecteur.
+
+### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, bis) — un `.locator('..')` compté à la main est une mesure d'ARBRE, pas d'intention
+
+La garde money-critical la plus importante de la PR2 (« le patrimoine affiché est identique à 390 px et
+1440 px ») était **vacueuse** : elle remontait deux `.locator('..')` depuis `.kpi-label`, en supposant que
+« label → parent → grand-parent » atteignait le conteneur de la carte KPI. Lu dans `components/ui/KPIStat.tsx` :
+le libellé vit dans `<div className="flex items-center justify-between">` (label + icône SEULEMENT), et la
+valeur en dollars est un FRÈRE de ce `<div>`, pas un descendant — il fallait TROIS remontées, pas deux. Le
+test comparait donc deux fois la chaîne statique du libellé, jamais le montant, et serait resté vert même si
+un correctif avait fait varier `finalNetWorth` selon la largeur d'écran — le seul défaut que cette garde
+existait pour attraper. Trouvé par une revue externe (`code-reviewer`), qui a vérifié la structure DOM par un
+VRAI rendu React Testing Library plutôt que par lecture du JSX seule — la bonne méthode, reproduite ensuite
+avec Playwright sur l'app réelle : l'ancien sélecteur rend « PATRIMOINE SUCCESSORAL, AVEC RENTES\ni\n💼 »
+(zéro chiffre), le nouveau « …9,73 M$\nFin de l'horizon (40 ans) ». Règle : un nombre de `.locator('..')`
+compté sur une lecture mentale du JSX est une supposition, pas une mesure — la vérifier sur le VRAI DOM rendu
+(ou, ici, directement en relisant le composant source qui les emboîte) avant de s'y fier pour un invariant
+money-critical. Anti-vacuité ajoutée (`toMatch(/\d/)` sur les deux lectures) : un sélecteur qui recommencerait
+à ne capter que le libellé ferait échouer le test pour la bonne raison, pas passer en silence.
+
+### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10) — un élément non gaté par l'onglet actif se réordonne PAR SITE DE RENDU, jamais en place
+
+Avant de déplacer la grille KPI de Futur (« courbe d'abord, KPI dessous », décision Marc), lecture du JSX a montré
+qu'elle n'est PAS à l'intérieur d'un `TabPanel` : elle se rend entre l'en-tête et le bandeau des quatre sous-onglets,
+donc VISIBLE sur les quatre — Projection, Hypothèses, Plan d'action, Historique — dès qu'une projection existe.
+Un réordonnancement naïf « couper-coller sous la courbe » l'aurait fait disparaître des trois autres sous-onglets,
+un changement de comportement non demandé (Marc n'a parlé que de l'écran Projection). Correctif : la grille est
+définie UNE SEULE FOIS (`const kpiGrid = (...)`), et RENDUE à deux emplacements sous une garde qui s'exclut
+mutuellement (`!(isNarrowViewport && onglet === 'graph')` en haut, `isNarrowViewport` après la courbe) — jamais
+calculée deux fois, jamais visible deux fois. Preuve écrite dans un test dédié : compter les occurrences du libellé
+au lieu de supposer qu'« un seul site de rendu actif » suffit à le garantir.
+
+⚠️ Corollaire outillage : deux boutons distincts (« Aujourd'hui » de la légende, 36 px déjà connu, et « Aujourd'hui »
+du sélecteur de période, ≥ 44 px) partagent le MÊME nom accessible — un `getByRole('button', { name: "Aujourd'hui",
+exact: true })` de vérification ad hoc échoue en mode strict (deux correspondances) et un `.catch(() => false)`
+autour transforme cette ambiguïté en un « invisible » silencieux. Un script de vérification hors suite officielle
+n'est pas exempté de cette règle : il aurait fait conclure à tort que le bouton desktop avait disparu.
+
 ### Variante notée au lot PR0 de la refonte Futur mobile (2026-09-10) — un recenseur de cibles tactiles se règle sur ce que le DOM rend, pas sur ce que le CSS déclare
 
 Le cliquet des cibles < 44 px de `e2e/futureMobileFilet.spec.ts` a rendu **72** offenders à sa première mesure,

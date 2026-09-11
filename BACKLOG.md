@@ -50,13 +50,44 @@
   montent `FutureProjection` (`tests/components/FutureProjection.*.test.tsx`) rejoués explicitement : 19/19 verts, aucun
   contrat de mock élargi (les deux modules n'importent que `react`/`useState`, déjà présents). Typecheck + lint OK.
   → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
-- [ ] 🔧 **`[FUTUR-MOBILE-PR2]`** (M) — écran Projection mobile : en-tête compact (« Projection » + Réel/Sandbox, 40 px au
-  lieu de ~100), `FuturePeriodSelector` en **menu déroulant natif** (`<select>`, tous les présets dont « Aujourd'hui »
-  — c'est le SEUL chemin clavier vers la fenêtre centrée sur le présent, finding #592) + bouton plein écran, **courbe
-  d'abord puis KPI 2×2 compacts** (valeur 22 px, sous-titre court), horizon COMPLET (décision Marc : aucune fenêtre
-  mobile — `projection.years` et `zoom` intouchés). Desktop : mêmes composants, variante `inline`, rendu identique.
-  Tests : sélecteur mesuré ≥ 44 px par axe ; « Aujourd'hui » atteignable au clavier ; ordre courbe→KPI sur mobile ET
-  ordre inchangé sur desktop (contrôle négatif) ; plafond du cliquet abaissé d'autant.
+- [x] 🔧 **`[FUTUR-MOBILE-PR2]`** (M) ✅ **LIVRÉ (2026-09-10)** — écran Projection mobile :
+  - **En-tête compact** sur mobile (`h1` « Projection » + pastille Réel/Sandbox, une ligne) ; desktop garde
+    `PageHeader`/« Projection Future » **byte-identique** (badge et pastille factorisés en variables, mêmes
+    éléments JSX des deux côtés).
+  - `components/future/FuturePeriodSelector.tsx` (neuf) : variante `buttons` = JSX de l'ancien sélecteur copié SANS
+    RETOUCHE (desktop inchangé) ; variante `compact` (mobile) = `<select>` natif avec « Aujourd'hui » EN PREMIER
+    (seul chemin clavier vers la fenêtre centrée sur le présent, finding #592), les horizons filtrés et « Tout
+    l'horizon », plus un bouton plein écran 44×44 (le bouton desktop équivalent, 38 px, reste inchangé et n'apparaît
+    plus qu'à `!isNarrowViewport` — pas de doublon).
+  - **Courbe avant les KPI sur mobile** (décision Marc) : la grille `StatGrid` est définie UNE fois (`kpiGrid`) et
+    rendue soit en haut (desktop et 3 autres sous-onglets mobiles, comportement INCHANGÉ), soit après la courbe
+    (mobile, sous-onglet Projection uniquement) — jamais les deux à la fois.
+  - Horizon INTACT : aucun code de ce lot ne touche `projection.years` ni la fenêtre de zoom autrement que par un
+    geste utilisateur explicite (`zoom.showRange`/`zoom.reset`, mécanisme déjà existant).
+  Tests (`e2e/futureMobileProjectionScreen.spec.ts`, 5 cas) : patrimoine affiché IDENTIQUE à 390 px et 1440 px sur
+  la MÊME page (garde money-critical) ; sélecteur ≥ 44 px par axe, « Aujourd'hui » en premier et atteignable au
+  clavier ; plein écran 44×44 sans doublon ; ordre courbe→KPI sur mobile ET ordre inchangé sur desktop (contrôle
+  négatif, un seul « Objectif FIRE » visible à la fois) ; titre compact vs complet. **4 des 5 rougissent sur l'ancien
+  code** (vérifié par swap temporaire de `FutureProjection.tsx` vers `origin/main`, restauré et confirmé par `cmp`)
+  — le 5e (money-critical) est un invariant qui doit rester vert AVANT et APRÈS, ce n'est pas un défaut du test.
+  Cliquet des cibles < 44 px : **93 → 92** (plein écran mobile 38 → 44 px), `PLAFOND_CIBLES_TROP_PETITES` mis à jour
+  avec sa cause. Les 6 tests qui montent `FutureProjection` rejoués : 19/19 verts. 11/11 verts sur `mobile-chrome`.
+  ⚠️ **Revue code-reviewer, finding CRITIQUE corrigé** : la garde money-critical du 1er jet remontait DEUX
+  `.locator('..')` depuis `.kpi-label`, atteignant seulement `<div className="flex items-center justify-between">`
+  (`KPIStat.tsx`) — le label et l'icône, JAMAIS la valeur en dollars (un FRÈRE, pas un descendant). Le test
+  comparait deux fois la même chaîne statique et restait vert quel que soit le patrimoine réellement affiché,
+  exactement sur le seul risque qu'il devait couvrir. Mesuré : le sélecteur fautif rend « PATRIMOINE
+  SUCCESSORAL, AVEC RENTES\ni\n💼 » (aucun chiffre) contre « …9,73 M$\nFin de l'horizon (40 ans) » avec la 3ᵉ
+  remontée. Corrigé (`../../..`) + anti-vacuité (`toMatch(/\d/)` sur les deux lectures) — la garde discrimine
+  désormais réellement.
+  ⚠️ **RÉGRESSION trouvée en CI, PAS un flake** : `e2e/futurePinchZoom.spec.ts` échouait sur CE lot, pas à côté.
+  Ce fichier fixe son viewport à 390×844 (« le scénario mobile de Marc », `chromium` — PAS `mobile-chrome`), donc
+  `isNarrowViewport` (basé sur `matchMedia`, indifférent au projet Playwright) y bascule le sélecteur de période
+  en `<select>` — le bouton « Tout » que `toutIsActive()` cherchait n'existe plus à cette largeur. J'ai d'abord
+  cru à un flake préexistant (diagnostic FAUX, posté puis retiré en commentaire de PR) parce que le fichier n'est
+  pas dans le diff — mais un test peut être cassé par un changement de RENDU sans qu'une ligne du fichier ne
+  bouge. Corrigé : `toutIsActive()` détecte la variante montée (bouton OU `<select>`) au lieu d'en supposer une.
+  → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) — `FutureLegendDrawer` : sur mobile, tiroir « Séries » FERMÉ par défaut sous la
   courbe, avec le compte « N visibles sur 16 » et les pastilles de couleur TOUJOURS visibles (le badge « Tout
   réafficher (N masqués) » sort du tiroir — une série masquée dans une session passée doit rester découvrable) ;

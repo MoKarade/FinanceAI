@@ -40,11 +40,21 @@ async function chartBox(page: Page) {
   return box!;
 }
 
-/** Le préset « Tout » est actif (bg-primary) UNIQUEMENT en vue complète — c'est l'observable
- *  d'`isZoomed` côté écran, sans lire l'état React. */
-function toutIsActive(page: Page) {
-  return page.getByRole('button', { name: 'Tout', exact: true })
-    .evaluate((el) => el.className.includes('bg-primary'));
+/**
+ * Le préset « Tout » est actif UNIQUEMENT en vue complète — c'est l'observable d'`isZoomed` côté
+ * écran, sans lire l'état React. [FUTUR-MOBILE-PR2] À 390 px (le viewport de CE fichier — le
+ * scénario mobile de Marc), le sélecteur de période bascule en `<select>` natif : le bouton
+ * « Tout » n'existe plus, remplacé par l'option `value="all"`. Les DEUX variantes existent selon
+ * la largeur (`components/future/FuturePeriodSelector.tsx`) — vérifier laquelle est montée plutôt
+ * que d'en supposer une, sinon `getByRole('button', …)` attend indéfiniment un élément absent.
+ */
+async function toutIsActive(page: Page): Promise<boolean> {
+  const bouton = page.getByRole('button', { name: 'Tout', exact: true });
+  if (await bouton.count() > 0) {
+    return bouton.evaluate((el) => el.className.includes('bg-primary'));
+  }
+  const select = page.getByRole('combobox', { name: 'Période affichée' });
+  return select.evaluate((el) => (el as HTMLSelectElement).value === 'all');
 }
 
 /**

@@ -9,6 +9,7 @@ import { ACTION_ACCOUNTS } from '../../services/projection/yearlyActions';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { formatCAD } from '../../utils/format';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 
 interface ActionPlanDrilldownProps {
     chartData: Array<Record<string, unknown>>;
@@ -46,6 +47,9 @@ const FlowChips: React.FC<{ flows: PlanBucket['flows'] }> = ({ flows }) => {
  * creuse » : chaque niveau montre le net + les mouvements, le clic révèle le détail.
  */
 export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartData, strategyName }) => {
+    // [FUTUR-MOBILE-PR5] Cibles tactiles 44 px pour « Pourquoi ? » (14 px) et la case « Marquer
+    // comme fait » (14 px) — mobile UNIQUEMENT, desktop inchangé (mandat Marc #13).
+    const isNarrowViewport = useViewportBelowSm();
     const root = useMemo(() => buildRootBucket(chartData), [chartData]);
     // On stocke le chemin par IDs (stables) et on RE-DÉRIVE les buckets à chaque
     // rendu depuis chartData → toujours frais, robuste si le scénario change.
@@ -149,13 +153,20 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                             <li key={key} className="rounded-lg bg-white/[0.03] border border-white/5 px-2.5 py-2">
                                 <div className="flex items-start gap-2">
                                     {checkable ? (
-                                        <input
-                                            type="checkbox"
-                                            checked={isDone}
-                                            onChange={() => toggle(setDone, key)}
-                                            aria-label={`Marquer comme fait : ${item.text}`}
-                                            className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-success-500 focus-ring rounded"
-                                        />
+                                        // [FUTUR-MOBILE-PR5] `<label>` et NON `<span>` : un `<span>` ne relaie PAS le
+                                        // clic à son `<input>` descendant — vérifié par mesure (a11y-auditor de ce
+                                        // lot), un tap dans la marge ajoutée ne cochait RIEN. Le `<label>` le fait
+                                        // nativement, sans texte visible (le nom accessible reste l'`aria-label` de
+                                        // l'input).
+                                        <label className={isNarrowViewport ? 'flex items-center justify-center min-h-[44px] min-w-[44px] shrink-0 cursor-pointer' : 'mt-0.5 shrink-0 cursor-pointer'}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isDone}
+                                                onChange={() => toggle(setDone, key)}
+                                                aria-label={`Marquer comme fait : ${item.text}`}
+                                                className="h-3.5 w-3.5 cursor-pointer accent-success-500 focus-ring rounded"
+                                            />
+                                        </label>
                                     ) : (
                                         <span aria-hidden="true" className="mt-0.5 w-3.5 shrink-0 text-center text-ink-500">·</span>
                                     )}
@@ -174,7 +185,9 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                             type="button"
                                             onClick={() => toggle(setOpenWhy, key)}
                                             aria-expanded={whyOpen}
-                                            className="mt-1 inline-flex items-center gap-1 text-tiny text-primary/80 hover:text-primary focus-ring rounded"
+                                            className={`mt-1 inline-flex items-center gap-1 text-tiny text-primary/80 hover:text-primary focus-ring rounded ${
+                                                isNarrowViewport ? 'min-h-[44px]' : ''
+                                            }`}
                                         >
                                             Pourquoi&nbsp;? <span aria-hidden="true">{whyOpen ? '▾' : '▸'}</span>
                                         </button>

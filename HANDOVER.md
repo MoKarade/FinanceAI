@@ -16,7 +16,7 @@
 > - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
 >   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
 
-> ## 🟦 Session 2026-09-10 — Refonte Futur MOBILE cadrée et lancée (`[FUTUR-MOBILE-PR0]` livré, PR1 → PR5 à suivre)
+> ## 🟦 Session 2026-09-10/11 — Refonte Futur MOBILE : cadrée, lancée et TERMINÉE (`[FUTUR-MOBILE-PR0..5]`, 6/6 livrées)
 > Marc : « full refonte de l'onglet futur pour le téléphone, actuellement c'est inutilisable ». Cadrage
 > `/new-feature` (product-manager → architect), six maquettes 390×844 publiées
 > (https://claude.ai/code/artifact/260843dd-1ee9-4a39-b1cb-ce4095c328ec — valeurs d'EXEMPLE), seize questions posées
@@ -46,8 +46,17 @@
 > dernier calcul), clic = révèle + retourne à l'onglet Projection. `FluxMensuelsFields`/`ValeurMaxMaisonField`
 > extraits verbatim (`useTheoretical` voyage en PROP explicite). Bug de bouton imbriqué dans un `badge` de
 > `CollapsibleSection` trouvé et corrigé avant tout commit. Cliquet re-mesuré (10 nouveaux champs numériques
-> 64×22 px) → corrigé par `min-h-[44px]`, resté à 76. **Suite proposée** : `[FUTUR-MOBILE-PR5]` (amorçage, Plan
-> d'action, Historique, feuille du jour du détail).
+> 64×22 px) → corrigé par `min-h-[44px]`, resté à 76.
+> **PR5 livrée — 6/6, la refonte mobile de l'onglet Futur est TERMINÉE** : amorçage (leviers `min-h-[44px]`, CTA
+> `min-h-[56px]`, lien « voir directement » `min-h-[44px]`), Plan d'action (« Pourquoi ? » `min-h-[44px]`, case
+> « Marquer comme fait » enveloppée dans une cible 44×44 sans grossir la case), Historique (pastilles + « Total »
+> `min-h-[44px]`) — tous MOBILE UNIQUEMENT, desktop byte-identique. Feuille du jour (`FutureDetailModal.tsx`) :
+> dialogue centré → feuille ancrée en bas (`h-[75vh]`) sur mobile, contenu condensé d'entrée (Veille/Lendemain,
+> `diffNW` déjà publié par le moteur, comptes, « N événements ce mois-ci ») + bouton « Détail complet » qui
+> déplie la liste complète des événements/catégories/transactions (desktop inchangé, toujours tout affiché).
+> Ratchet `[FUTUR-MOBILE-PR0]` re-mesuré et ABAISSÉ (dette réduite par ce lot) : 76 → 59. Détail complet dans
+> `docs/BACKLOG_ARCHIVE.md` (PR4 et PR5). `[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]` et
+> `[A11Y-LEGEND-TOUTREAFFICHER-FOCUS-PERDU]` restent ouverts dans `BACKLOG.md`, hors périmètre de la refonte.
 
 > ## 🟦 Session 2026-09-07 — Lot 215 : les droits REER d'un couple ne meurent plus avec l'âge du premier conjoint (`[FISC-RRSP-ROOM-GATE-MENAGE]`, money-critical, fini)
 > Le gate des droits REER lisait `ctx.age` (premier conjoint) : à 72/57, le conjoint actif ne générait plus rien et le

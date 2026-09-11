@@ -37,30 +37,6 @@
   bouton voisin (`revealedRef.current?.focus()` après démontage du bouton Calculer, `FutureProjection.tsx:609`)
   — le correctif est donc déjà connu : renvoyer le focus sur le bouton de bascule du tiroir (stable) après
   `showAllSeries()`. Non corrigé dans PR3 (bug pré-existant, hors périmètre sans feu vert explicite).
-- [x] 🔧 **`[FUTUR-MOBILE-PR4]`** ✅ **LIVRÉ (2026-09-11, PR mergée sur `main`)** — Hypothèses mobile :
-  `ReturnRateField` (`components/projection/ReturnRateField.tsx`, neuf) = curseur + champ numérique SYNCHRONISÉ
-  (5 tests, les DEUX sens perturbés séparément) pour les 5 taux (CELI, Non-Enregistré/REER combiné, Crypto, Cash)
-  ET 8 facteurs macro (Horizon, Inflation, Hausse Salaire, Coussin, US-share, US-dividende, Coût soins LD,
-  inflation par poste) — MOBILE UNIQUEMENT (`ProjectionControlsMobile.tsx`, neuf), desktop garde ses
-  `<input type="range">` bruts INCHANGÉS dans `ProjectionControls.tsx` (mandat « zéro changement visuel desktop »,
-  vérifié par contrôle négatif e2e). Ordre mobile Mode → macro → rendements → 4 sections repliées DISTINCTES
-  (inflation par poste, risques & aléas, rejeu krach, avancés — combinées en UNE section « Risques & aléas » sur
-  desktop, inchangé). CTA « Recalculer la projection » COLLANT (`sticky bottom-[72px]`, au-dessus de la nav
-  72 px) sur l'onglet Hypothèses mobile UNIQUEMENT, affichant le compte d'hypothèses modifiées depuis le dernier
-  calcul (instantané pris à la transition `curveRevealed`, additif au mécanisme de révélation/gel existant —
-  AUCUNE branche touchée) ; clic = révèle + retourne à l'onglet Projection. `useTheoretical` voyage en PROP
-  explicite dans `FluxMensuelsFields` (extraction verbatim, 3 tests) ; « Valeur Max Maison » extrait verbatim
-  dans `ValeurMaxMaisonField` (`PrivateAmount` + `formatCompactCAD` inchangés, 4 tests mode discret sur le
-  fragment isolé). ⚠️ Bug auto-corrigé AVANT tout commit : le bouton « Auto (X%) » de la section mobile
-  « Rendements Estimés » était passé en `badge` de `CollapsibleSection` — ce prop se rend À L'INTÉRIEUR du
-  bouton d'accordéon (`CollapsibleSection.tsx:68`), donc bouton imbriqué dans bouton (HTML invalide, double
-  déclenchement) ; déplacé en CONTENU de section (frère). ⚠️ Ratchet `[FUTUR-MOBILE-PR0]` re-mesuré : les 10
-  nouveaux champs numériques `ReturnRateField` faisaient 64×22 px (hauteur < 44 px) — corrigé par `min-h-[44px]`
-  plutôt que d'élever le plafond ; cliquet resté à 76. `tests/components/labelAriaCoherents.test.ts` corrigé
-  (compte relocalisé de `ProjectionControls.tsx` seul vers la famille `ProjectionControls.tsx` + `macroFields/*`
-  après l'extraction — TOTAL inchangé, 24). Tests : 12 unitaires (ReturnRateField, FluxMensuelsFields,
-  ValeurMaxMaisonField) + 5 e2e (`e2e/futureMobileHypotheses.spec.ts`, ordre + CTA + contrôles négatifs
-  desktop) — 0 régression sur les e2e mobiles PR0-PR3 rejouées (12/12) + `futurePinchZoom.spec.ts` (2/2).
 - [ ] 🔧 **`[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]`** (XS) — 5 points mineurs relevés par les revues silent-failure-hunter/
   a11y-auditor/code-reviewer de PR4, aucun bloquant, routés plutôt que corrigés hors périmètre : (1) `changedHypothesesCount`
   compare par `JSON.stringify` — sensible à l'ordre des clés d'un objet imbriqué (`returnRates`), inatteignable aujourd'hui
@@ -79,13 +55,32 @@
   ticket séparé puisque PR4 est justement la refonte tactile ; et les 6 `CollapsibleSection` de l'onglet Hypothèses mobile
   sont en `headingLevel` par défaut (h3) directement sous le `<h1>` « Projection », sans `<h2>` intermédiaire (motif déjà
   présent sur les 3 sections desktop, ce lot le double sur la surface mobile).
-- [ ] 🔧 **`[FUTUR-MOBILE-PR5]`** (M) — amorçage + Plan d'action + Historique + feuille du jour : leviers en puces
-  cochables 44 px + CTA 56 px « Chercher la meilleure stratégie » + lien « voir ma projection actuelle » +
-  stress-tests repliés ; Plan d'action : « Pourquoi ? » 14 px → 44 px, cases « Marquer comme fait » 44 px ; Historique :
-  pastilles 24 → 44 px ; feuille du jour aux 3/4 avec Veille/Lendemain, écart vs mois précédent (grandeur PUBLIÉE par
-  le moteur, jamais une soustraction locale), répartition par compte, « N événements ce mois-ci » (fait sans
-  détail, mode discret), bouton « Détail complet ». Candidat mesuré à qualifier : double `pb-24` (`Layout.tsx:492`
-  ET `FutureProjection.tsx:1376`) — corriger seulement si un critère d'acceptation le réclame, sinon ticket séparé.
+- [x] 🔧 **`[FUTUR-MOBILE-PR5]`** ✅ **LIVRÉ (2026-09-11, PR mergée sur `main`)** — dernière PR de la refonte
+  mobile de l'onglet Futur (6/6). Amorçage (`StrategyOptimizerPanel.tsx`) : leviers en puces `min-h-[44px]`,
+  CTA « Trouver la meilleure stratégie » `min-h-[56px]`, lien « voir directement ta projection actuelle »
+  `min-h-[44px]` — MOBILE UNIQUEMENT (`useViewportBelowSm`), desktop inchangé. Plan d'action
+  (`ActionPlanDrilldown.tsx`) : « Pourquoi ? » 14 px → `min-h-[44px]` ; case « Marquer comme fait » enveloppée
+  dans un conteneur `min-h/min-w-[44px]` SANS grossir la case elle-même (14 px visuels conservés). Historique
+  (`FutureHistorySection.tsx`) : pastilles de compte + « Total » `min-h-[44px]`. Feuille du jour
+  (`FutureDetailModal.tsx`) : sur mobile, dialogue centré → feuille ancrée en bas (`h-[75vh]`, `rounded-t-2xl`,
+  poignée décorative) au lieu de `max-h-[90vh]` centré (desktop inchangé) ; contenu CONDENSÉ d'entrée (Veille/
+  Lendemain déjà existant, « Variation nette (mois) » = `point.diffNW` déjà PUBLIÉ par le moteur — AUCUNE
+  soustraction locale ajoutée —, répartition par compte déjà existante, « N événements ce mois-ci » remplace la
+  liste complète) ; bouton « Détail complet » (`min-h-[44px]`) déplie la liste exhaustive des événements +
+  catégories du mois + ventilation du jour + transactions, gardées inchangées sur desktop (`showFull` vaut
+  toujours `true` sans `matchMedia`, donc les 5 suites préexistantes de ce composant restent vertes SANS
+  modification). ⚠️ Le double `pb-24` (`Layout.tsx:492` + `FutureProjection.tsx:1414`, ligne du ticket 1376
+  périmée) est CONFIRMÉ empilé (192 px cumulés sous l'onglet Futur mobile) mais ne bloque AUCUN critère
+  d'acceptation de ce lot (la feuille du jour est en `position:fixed`, indifférente au padding d'un ancêtre) —
+  laissé tel quel, pas de ticket séparé ouvert faute d'un défaut concret à pointer. Ratchet
+  `[FUTUR-MOBILE-PR0]` re-mesuré (dette RÉDUITE par ce lot, pas grossie) : **76 → 59** (re-mesuré 2× à
+  l'identique), `PLAFOND_CIBLES_TROP_PETITES` abaissé dans la MÊME PR
+  (`UN-PLAFOND-DE-RATCHET-QUI-A-CESSE-DE-SUIVRE-SON-COMPTE-N-EST-PLUS-UNE-PROTECTION`). Tests : 16 unitaires
+  (FutureDetailModal feuille condensée + contrôle négatif desktop, ActionPlanDrilldown/StrategyOptimizerPanel/
+  FutureHistorySection cibles tactiles mobile vs desktop) + 6 e2e neufs
+  (`e2e/futureMobilePlanHistoryDetail.spec.ts`, mesure en PIXELS réels 390×844) — 0 régression sur les e2e
+  mobiles PR0-PR4 rejouées (19/19) + suite ciblée FutureDetailModal/FutureHistorySection/FutureProjection/a11y
+  (228/228). `[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]` reste ouvert, hors périmètre de ce lot.
 
 ## 🔬 Audit financier 2026-09-07 — findings VÉRIFIÉS et re-mesurés (rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`)
 

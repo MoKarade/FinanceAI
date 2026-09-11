@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-11 (L'onglet Futur est enfin utilisable au téléphone)
+
+- **Nouveau** : refonte complète de l'onglet Futur pour le téléphone (six livraisons successives). La courbe passe
+  avant les indicateurs, la légende des séries se replie dans un tiroir fermé par défaut, les hypothèses se règlent
+  au curseur ET au clavier (les deux restent synchronisés), et un bouton « Recalculer » reste visible au-dessus de
+  la navigation pendant qu'on ajuste. L'écran de départ (choix des leviers à explorer avant de lancer la recherche
+  de la meilleure stratégie), le Plan d'action (case à cocher et « Pourquoi ? ») et l'Historique (pastilles de
+  compte) ont tous des zones de clic assez grandes pour un doigt. Le détail d'un mois s'ouvre maintenant dans une
+  feuille qui glisse depuis le bas de l'écran, aux trois quarts de la hauteur : l'essentiel (comptes, variation du
+  mois, nombre d'événements) est visible tout de suite, un bouton « Détail complet » ouvre le reste. Rien ne change
+  sur ordinateur.
+
 ## [unreleased] — 2026-09-07 (Un couple à écart d'âge garde ses droits REER quand le premier conjoint passe 71 ans)
 
 - **Corrigé** : dès que le premier conjoint atteignait 72 ans, la projection cessait d'accorder des droits REER à tout

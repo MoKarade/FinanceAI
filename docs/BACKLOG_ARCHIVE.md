@@ -110,6 +110,41 @@ Ticket d'origine tel qu'au moment de l'archivage :
   desktop était inexact au sens strict (les classes de taille de chip changent de POSITION dans la chaîne,
   sans effet visuel — l'ordre des classes n'affecte jamais le rendu) ; corrigé en « rendu visuel identique ».
 
+## 2026-09-11 — `[FUTUR-MOBILE-PR4]` — LIVRÉ (PR #952)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR4]`** ✅ **LIVRÉ (2026-09-11, PR mergée sur `main`)** — Hypothèses mobile :
+  `ReturnRateField` (`components/projection/ReturnRateField.tsx`, neuf) = curseur + champ numérique SYNCHRONISÉ
+  (5 tests, les DEUX sens perturbés séparément) pour les 5 taux (CELI, Non-Enregistré/REER combiné, Crypto, Cash)
+  ET 8 facteurs macro (Horizon, Inflation, Hausse Salaire, Coussin, US-share, US-dividende, Coût soins LD,
+  inflation par poste) — MOBILE UNIQUEMENT (`ProjectionControlsMobile.tsx`, neuf), desktop garde ses
+  `<input type="range">` bruts INCHANGÉS dans `ProjectionControls.tsx` (mandat « zéro changement visuel desktop »,
+  vérifié par contrôle négatif e2e). Ordre mobile Mode → macro → rendements → 4 sections repliées DISTINCTES
+  (inflation par poste, risques & aléas, rejeu krach, avancés — combinées en UNE section « Risques & aléas » sur
+  desktop, inchangé). CTA « Recalculer la projection » COLLANT (`sticky bottom-[72px]`, au-dessus de la nav
+  72 px) sur l'onglet Hypothèses mobile UNIQUEMENT, affichant le compte d'hypothèses modifiées depuis le dernier
+  calcul (instantané pris à la transition `curveRevealed`, additif au mécanisme de révélation/gel existant —
+  AUCUNE branche touchée) ; clic = révèle + retourne à l'onglet Projection. `useTheoretical` voyage en PROP
+  explicite dans `FluxMensuelsFields` (extraction verbatim, 3 tests) ; « Valeur Max Maison » extrait verbatim
+  dans `ValeurMaxMaisonField` (`PrivateAmount` + `formatCompactCAD` inchangés, 4 tests mode discret sur le
+  fragment isolé). ⚠️ Bug auto-corrigé AVANT tout commit : le bouton « Auto (X%) » de la section mobile
+  « Rendements Estimés » était passé en `badge` de `CollapsibleSection` — ce prop se rend À L'INTÉRIEUR du
+  bouton d'accordéon (`CollapsibleSection.tsx:68`), donc bouton imbriqué dans bouton (HTML invalide, double
+  déclenchement) ; déplacé en CONTENU de section (frère). ⚠️ Ratchet `[FUTUR-MOBILE-PR0]` re-mesuré : les 10
+  nouveaux champs numériques `ReturnRateField` faisaient 64×22 px (hauteur < 44 px) — corrigé par `min-h-[44px]`
+  plutôt que d'élever le plafond ; cliquet resté à 76. `tests/components/labelAriaCoherents.test.ts` corrigé
+  (compte relocalisé de `ProjectionControls.tsx` seul vers la famille `ProjectionControls.tsx` + `macroFields/*`
+  après l'extraction — TOTAL inchangé, 24). Tests : 12 unitaires (ReturnRateField, FluxMensuelsFields,
+  ValeurMaxMaisonField) + 5 e2e (`e2e/futureMobileHypotheses.spec.ts`, ordre + CTA + contrôles négatifs
+  desktop) — 0 régression sur les e2e mobiles PR0-PR3 rejouées (12/12) + `futurePinchZoom.spec.ts` (2/2).
+  ⚠️ Deux régressions trouvées et corrigées AVANT merge (CI rouge, `commit 0387e3af`) : (1) `hypothesesBaselineRef`
+  en `useState`+`useEffect` ajoutait un rendu supplémentaire non mémoïsé qui corrompait la capture inter-rendus de
+  `tests/components/FutureProjection.eventStack.test.tsx` — corrigé en `useRef` (aucune mutation ne déclenche de
+  rendu) ; (2) deux `as unknown as Record<string, unknown>` dépassaient le ratchet `dailyCurveCastGuard.test.ts`
+  (exactement 2 `as unknown as` autorisés) — corrigé en typant via `Array<keyof ProjectionConfig>` (ne matche pas
+  le motif du ratchet). 7 points mineurs de revue (aucun bloquant) routés vers `[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]`.
+
 ## 2026-09-06 — `[FISC-DON-FEDRATE-DUP]` — LIVRÉ (lot 210, PR #941)
 
 Ticket d'origine tel qu'au moment de l'archivage :

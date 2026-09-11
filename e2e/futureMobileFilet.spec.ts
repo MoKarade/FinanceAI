@@ -37,11 +37,12 @@ const CIBLE_MIN = 44;
 /**
  * ⚠️ MESURÉ le 2026-09-10 sur `main` (7cb74e44) : 93 (65 dans les panneaux + 7 × 4 hors panneau —
  * détail dans BACKLOG.md). `[FUTUR-MOBILE-PR2]` a fait passer le bouton plein écran de 38 à 44 px
- * sur mobile (le sélecteur de période devient un `<select>` déjà conforme) → **92**. Le nombre
- * s'obtient d'abord, l'assertion s'écrit ensuite (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
+ * sur mobile → **92**. `[FUTUR-MOBILE-PR3]` a replié les 16 chips de légende dans un tiroir fermé
+ * par défaut (plus comptées tant qu'il n'est pas ouvert) → **76**. Le nombre s'obtient d'abord,
+ * l'assertion s'écrit ensuite (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
  * Chaque PR de la refonte qui rétrécit la dette DOIT abaisser ce plafond ; à 0, inverser en règle.
  */
-const PLAFOND_CIBLES_TROP_PETITES = 92;
+const PLAFOND_CIBLES_TROP_PETITES = 76;
 
 async function ouvrirFutur(page: Page) {
   await page.addInitScript(scriptBypassOnboarding());

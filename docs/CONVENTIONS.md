@@ -12237,6 +12237,26 @@ s'il est dans le diff** — surtout un test lié à une largeur d'écran quand l
 conditionné par la largeur d'écran. Corrigé : `toutIsActive()` détecte la variante RÉELLEMENT montée au lieu
 d'en supposer une, ce qui la rend robuste à toute variante future du même sélecteur.
 
+### Variante notée au lot PR3 de la refonte Futur mobile (2026-09-10) — un bouton imbriqué dans un bouton se prouve par un CLIC, jamais par une lecture du JSX
+
+Le premier jet du tiroir « Séries » mettait le bouton « Tout réafficher » DANS le bouton de bascule
+du tiroir (`<button onClick={toggle}>…{toutReafficher}…</button>`) — invalide en HTML (contenu
+interactif dans un `<button>`) et dangereux en pratique : un clic sur le bouton intérieur déclenche
+AUSSI le gestionnaire de l'extérieur (propagation), donc « Tout réafficher » referme le tiroir au
+lieu de laisser l'utilisateur voir ce qu'il vient de réafficher. Le typecheck et le lint ne voient
+rien (JSX valide du point de vue de React) ; seul un CLIC réel le révèle. Corrigé en sortant les deux
+boutons comme FRÈRES d'un conteneur non interactif, et le test qui a servi à le découvrir est resté
+dans la suite comme garde permanente : cliquer « Tout réafficher » doit laisser `aria-expanded="true"`.
+Règle : dès qu'un composant EXTRAIT combine plusieurs actions dans une même zone cliquable (bascule +
+action secondaire), le prouver par un CLIC sur l'action secondaire, jamais par une relecture du JSX.
+
+⚠️ Corollaire du même lot : `` `min-h-[${n}px]` `` (taille de chip choisie dynamiquement) est INVISIBLE
+au scanner JIT de Tailwind — il extrait des classes par regex sur le texte SOURCE du fichier, jamais
+en évaluant le JavaScript, donc une classe construite par interpolation de variable n'apparaît jamais
+dans le CSS généré au build (silencieux : aucune erreur, juste aucun effet visuel). Le motif sûr est
+un **ternaire entre deux chaînes littérales complètes** (`cond ? 'min-h-[44px]' : 'min-h-[36px]'`),
+déjà en usage ailleurs dans ce fichier — jamais une valeur numérique interpolée dans le nom de classe.
+
 ### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, bis) — un `.locator('..')` compté à la main est une mesure d'ARBRE, pas d'intention
 
 La garde money-critical la plus importante de la PR2 (« le patrimoine affiché est identique à 390 px et

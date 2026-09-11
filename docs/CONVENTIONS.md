@@ -12257,6 +12257,30 @@ dans le CSS généré au build (silencieux : aucune erreur, juste aucun effet vi
 un **ternaire entre deux chaînes littérales complètes** (`cond ? 'min-h-[44px]' : 'min-h-[36px]'`),
 déjà en usage ailleurs dans ce fichier — jamais une valeur numérique interpolée dans le nom de classe.
 
+### Variante notée au lot PR4 de la refonte Futur mobile (2026-09-11) — un bouton imbriqué se répète à chaque NOUVEAU point d'injection, pas seulement dans le JSX qu'on écrit soi-même
+
+PR3 avait déjà payé le piège « bouton dans un bouton » en écrivant DIRECTEMENT le JSX fautif. PR4 l'a
+recommis d'une façon plus discrète : passer un `<Button onClick={applyHistoricalRate}>Auto (…)</Button>`
+en prop `badge` de `CollapsibleSection` — un composant TIERS du dépôt, déjà en usage ailleurs, qui rend
+ce `badge` **à l'intérieur** de son propre bouton de bascule (`CollapsibleSection.tsx:68`, `{badge}`
+dans le `<button onClick={toggle}>`). Rien dans la signature du prop (`badge?: React.ReactNode`) ne dit
+qu'il atterrit dans une zone cliquable — c'est un fait qu'il faut lire dans l'IMPLÉMENTATION du
+composant qu'on invoque, pas dans son type. Trouvé et corrigé AVANT tout commit (rendu en CONTENU de
+section, frère du bouton d'accordéon, jamais un `badge`). **Généralisation** : chaque PRIMITIVE qui
+accepte un `ReactNode` (`badge`, `icon`, `action`, `subtitle`…) est un point d'injection potentiel de
+bouton imbriqué — avant d'y passer un élément interactif, lire où ce prop est réellement rendu dans le
+composant, pas seulement son nom.
+
+⚠️ Corollaire d'outillage : `tests/components/labelAriaCoherents.test.ts` (un scan qui compte les paires
+`<label>`/`aria-label` PAR FICHIER) a rougi après l'extraction VERBATIM de deux blocs de
+`ProjectionControls.tsx` vers `macroFields/FluxMensuelsFields.tsx` et `ValeurMaxMaisonField.tsx` — le
+TOTAL sur `components/` était inchangé (24), seule leur répartition par fichier avait bougé (10 → 9 dans
+`ProjectionControls.tsx`, 3 dans les deux nouveaux fichiers). Un seuil ancré sur un **chemin de fichier
+littéral** casse au premier refactor légitime qui déplace du code vers un fichier sœur. Corrigé en
+élargissant le filtre à la FAMILLE de fichiers (`ProjectionControls.tsx` + `macroFields/*`) plutôt qu'à
+un seul chemin — la phrase que le test protégeait (« les sliders de Hypothèses sont le gros du
+contingent ») portait sur une ZONE FONCTIONNELLE du dépôt, jamais sur l'emplacement exact d'un fichier.
+
 ### Variante notée au lot PR2 de la refonte Futur mobile (2026-09-10, bis) — un `.locator('..')` compté à la main est une mesure d'ARBRE, pas d'intention
 
 La garde money-critical la plus importante de la PR2 (« le patrimoine affiché est identique à 390 px et

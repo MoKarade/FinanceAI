@@ -609,6 +609,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!was && curveRevealed) revealedRef.current?.focus();
     }, [curveRevealed]);
 
+    // [FUTUR-MOBILE-PR4] Compte d'hypothèses modifiées pour le CTA collant de l'onglet Hypothèses
+    // mobile (« Recalculer (N modifiée·s) ») — capture un instantané des champs de l'onglet
+    // Hypothèses (`projection` + plafond immo) à CHAQUE transition vers `curveRevealed`, jamais
+    // ailleurs : c'est la SEULE définition de « depuis le dernier calcul » qui existe déjà dans ce
+    // composant (`isStale`), reconduite ici pour une grandeur COMPTÉE plutôt que booléenne. N'ajoute
+    // AUCUNE branche au mécanisme de révélation/gel existant (risque money-critical) — additif pur.
+    const [hypothesesBaseline, setHypothesesBaseline] = useState<{ projection: ProjectionConfig; maxValue: number | undefined } | null>(null);
+    useEffect(() => {
+        if (curveRevealed) setHypothesesBaseline({ projection, maxValue: realEstateGoals[0]?.maxValue });
+    }, [curveRevealed, projection, realEstateGoals]);
+    const changedHypothesesCount = useMemo(() => {
+        if (!hypothesesBaseline) return 0;
+        const before = hypothesesBaseline.projection as unknown as Record<string, unknown>;
+        const after = projection as unknown as Record<string, unknown>;
+        const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+        let n = 0;
+        for (const k of keys) {
+            if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) n++;
+        }
+        if (hypothesesBaseline.maxValue !== realEstateGoals[0]?.maxValue) n++;
+        return n;
+    }, [hypothesesBaseline, projection, realEstateGoals]);
+
     // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons
     // de gérer vit dans l'écran d'amorçage « leviers-d'abord » (StrategyOptimizerPanel).
 
@@ -1467,6 +1490,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <TabPanel idPrefix="futur" tab={futureSubTab} when className="space-y-6">
 
             {futureSubTab === 'params' && (
+            <>
             <ProjectionControls
                 projection={projection}
                 updateProj={updateProj}
@@ -1481,6 +1505,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 setRealEstateGoals={setRealEstateGoals}
                 config={config}
             />
+            {/* [FUTUR-MOBILE-PR4] CTA collant au-dessus de la nav mobile (décision Marc 2026-09-10) :
+                « aucun calcul sans geste » reste vrai — ce bouton est le SEUL chemin qui déclenche la
+                révélation depuis l'onglet Hypothèses sur téléphone, sans devoir changer d'onglet
+                d'abord. `changedHypothesesCount` (calculé plus haut, additif au mécanisme de
+                révélation/gel existant) dit CE QUI a changé depuis le dernier calcul. */}
+            {isNarrowViewport && (
+                <div className="sticky bottom-[72px] z-40 -mx-3 px-3 py-2.5 border-t border-white/10 bg-[#0d1118]/95 backdrop-blur-sm">
+                    <button
+                        type="button"
+                        onClick={() => { revealCurve(); setFutureSubTab('graph'); }}
+                        disabled={isComputing}
+                        aria-busy={isComputing}
+                        className="w-full min-h-[48px] rounded-card bg-primary text-dark font-bold text-body focus-ring disabled:opacity-50"
+                    >
+                        {isComputing
+                            ? 'Calcul en cours…'
+                            : changedHypothesesCount > 0
+                                ? `Recalculer la projection (${changedHypothesesCount} hypothèse${changedHypothesesCount > 1 ? 's' : ''} modifiée${changedHypothesesCount > 1 ? 's' : ''})`
+                                : 'Recalculer la projection'}
+                    </button>
+                </div>
+            )}
+            </>
             )}
 
             {/* Écran d'invite : tant que la courbe n'est pas révélée (jamais calculée OU entrées

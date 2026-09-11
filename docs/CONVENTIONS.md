@@ -12704,3 +12704,19 @@ pas `100 000 $` — la sérialisation HTML remplace U+00A0 par son entité. Ma n
 le caractère ; deux gardes rougissaient sur un rendu JUSTE. `textContent` rend le caractère, `innerHTML`
 l'entité : le normaliseur couvre les deux (`/&nbsp;|\u00a0|\u202f/g`), ou l'assertion lit `textContent`.
 
+
+### Variante notée au lot PR5 de la refonte Futur mobile (2026-09-11) — un sélecteur d'ATTRIBUT générique en e2e matche un contrôle HORS SUJET qui partage le même attribut
+
+Corollaire de `UNE-PROPRIETE-PAR-GROUPE-NE-SE-MESURE-PAS-SUR-L-ECRAN-ENTIER`, côté SÉLECTEUR plutôt que côté
+assertion : deux tests Playwright visant les puces de l'amorçage (`StrategyOptimizerPanel`) et de l'Historique
+(`FutureHistorySection`) ciblaient `page.locator('button[aria-pressed]').first()`. Sur la vraie page, le tout
+premier `aria-pressed` du DOM n'est ni un levier ni un compte — c'est le bouton « Mode Discret » de la nav
+globale, qui partage l'attribut sans avoir aucun rapport avec la zone testée. Résultat : `.first()` sélectionnait
+un élément HORS ÉCRAN (nav repliée) et les deux tests échouaient sur « hidden », pas sur une vraie régression de
+taille. Un sélecteur d'attribut nu (`[aria-pressed]`, `[aria-expanded]`) n'est jamais scopé à l'intention du
+test : soit viser le NOM ACCESSIBLE de l'élément (`getByRole('button', { name: '<libellé stable du levier>' })`,
+retrouvé dans `LEVER_LIBRARY`/le code source), soit scoper explicitement au conteneur voisin
+(`page.getByText('Affichage :').locator('..')` pour les chips d'Historique) avant d'y chercher un rôle.
+Symétrique de la leçon d'origine : là où elle portait sur l'ASSERTION (agréger tous les `aria-pressed` de
+l'écran masque ce qu'on veut isoler), celle-ci porte sur la CIBLE (un sélecteur non scopé RAMASSE un élément
+d'une autre zone qui porte le même attribut par coïncidence).

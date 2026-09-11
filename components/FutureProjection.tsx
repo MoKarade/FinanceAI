@@ -1583,7 +1583,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 onClick={revealCurve}
                                 disabled={isComputing}
                                 aria-busy={isComputing}
-                                className="text-tiny text-ink-400 hover:text-ink-200 underline focus-ring rounded disabled:opacity-50"
+                                className={`text-tiny text-ink-400 hover:text-ink-200 underline focus-ring rounded disabled:opacity-50 ${
+                                    isNarrowViewport ? 'min-h-[44px] inline-flex items-center' : ''
+                                }`}
                             >
                                 {isComputing ? 'Calcul en cours…' : 'ou vois directement ta projection actuelle (sans optimiser)'}
                             </button>

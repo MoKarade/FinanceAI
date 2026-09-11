@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { formatCAD } from '../../utils/format';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 import { splitEventIcon } from './ProjectionTooltip';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -80,6 +81,17 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 }) => {
     const [selected, setSelected] = useState<AccountDef | null>(null);
 
+    // [FUTUR-MOBILE-PR5] Sur téléphone, la modale devient une feuille aux 3/4 de l'écran :
+    // le contenu CONDENSÉ (comptes, variation nette du mois déjà publiée, nombre d'événements)
+    // reste visible d'entrée, le détail complet (catégories, ventilation du jour, transactions,
+    // liste exhaustive des événements) se déplie sur demande via `detailExpanded`. Sur desktop,
+    // `isNarrowViewport` est `false` ⇒ `showFull` vaut toujours `true` : AUCUN changement visuel
+    // (mandat Marc #13). Sans `matchMedia` (tests jsdom), le hook replie sur `false` — donc les
+    // suites existantes, qui ne mockent pas le viewport, continuent de voir le détail complet.
+    const isNarrowViewport = useViewportBelowSm();
+    const [detailExpanded, setDetailExpanded] = useState(false);
+    const showFull = !isNarrowViewport || detailExpanded;
+
     // [PASSE-REEL-TXN-DU-JOUR] Filtrage À LA DEMANDE. Le registre journalier couvre jusqu'à ~4 000
     // jours : y pré-indexer les transactions les garderait toutes en mémoire en permanence pour
     // n'en montrer qu'une journée. Ici, un balayage ponctuel sur une liste déjà chargée.
@@ -148,6 +160,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const totalComptes = ACCOUNTS.reduce((acc, a) => acc + (Number(point[a.key]) || 0), 0);
 
     const fmt = (n: number) => formatCAD(n);
+    const eventsCount = (point.lifeEvents?.length ?? 0) + (point.flowEvents?.length ?? 0);
 
     // Dette qui tire le patrimoine net SOUS la somme des actifs affichés = Σ(actifs affichés) −
     // NetWorth. C'est exactement prêts/cartes + découvert + HELOC. On N'inclut PAS l'hypothèque :
@@ -178,7 +191,9 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+            className={`fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex justify-center animate-fade-in ${
+                isNarrowViewport ? 'items-end' : 'items-center p-3 sm:p-6'
+            }`}
             onClick={onClose}
             role="dialog"
             aria-modal="true"
@@ -187,9 +202,16 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
             tabIndex={-1}
         >
             <div
-                className="bg-dark border border-white/15 rounded-2xl shadow-[0_20px_70px_rgba(0,0,0,0.85)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5"
+                className={`bg-dark border border-white/15 shadow-[0_20px_70px_rgba(0,0,0,0.85)] overflow-y-auto p-5 w-full ${
+                    isNarrowViewport ? 'rounded-t-2xl h-[75vh] max-h-[75vh]' : 'max-w-2xl rounded-2xl max-h-[90vh]'
+                }`}
                 onClick={(e) => e.stopPropagation()}
             >
+                {/* [FUTUR-MOBILE-PR5] Poignée de feuille — purement décorative (aria-hidden),
+                    renforce la perception « ça se glisse depuis le bas », mobile uniquement. */}
+                {isNarrowViewport && (
+                    <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" />
+                )}
                 {/* En-tête */}
                 <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-white/15">
                     <div>
@@ -356,18 +378,37 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         {((point.lifeEvents?.length ?? 0) > 0 || (point.flowEvents?.length ?? 0) > 0) && (
                             <div className="border-t border-white/10 pt-3">
                                 <div className="text-tiny uppercase tracking-widest text-yellow-500 font-bold mb-2">Événements ce mois</div>
-                                <ul className="space-y-1.5">
-                                    {[...(point.lifeEvents || []), ...(point.flowEvents || [])].map((e: string, i: number) => {
-                                        const { icon, text } = splitEventIcon(e);
-                                        return (
-                                            <li key={i} className="flex items-start gap-2 text-body text-ink-100">
-                                                <span className="shrink-0" aria-hidden="true">{icon}</span>
-                                                <span className="flex-1 break-words">{text}</span>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
+                                {showFull ? (
+                                    <ul className="space-y-1.5">
+                                        {[...(point.lifeEvents || []), ...(point.flowEvents || [])].map((e: string, i: number) => {
+                                            const { icon, text } = splitEventIcon(e);
+                                            return (
+                                                <li key={i} className="flex items-start gap-2 text-body text-ink-100">
+                                                    <span className="shrink-0" aria-hidden="true">{icon}</span>
+                                                    <span className="flex-1 break-words">{text}</span>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                ) : (
+                                    /* [FUTUR-MOBILE-PR5] Feuille condensée : le FAIT sans le détail —
+                                       même patron que ProjectionExplains (garde le fait, tait le montant),
+                                       ici appliqué au repli mobile plutôt qu'au mode discret. */
+                                    <p className="text-tiny text-ink-400 italic">
+                                        {eventsCount === 1 ? '1 événement ce mois-ci' : `${eventsCount} événements ce mois-ci`}
+                                    </p>
+                                )}
                             </div>
+                        )}
+
+                        {isNarrowViewport && !detailExpanded && (
+                            <button
+                                type="button"
+                                onClick={() => setDetailExpanded(true)}
+                                className="mt-3 w-full min-h-[44px] rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-tiny font-bold text-ink-200 focus-ring transition-colors"
+                            >
+                                Détail complet
+                            </button>
                         )}
 
                         {/* [PASSE-REEL-TXN-DU-JOUR] Les transactions de la journée — demande de Marc.
@@ -410,15 +451,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             L'alerte « à classer » s'éteignait exactement quand tout était à classer,
                             et le mois paraissait vide pendant que la courbe descendait
                             (`SILENCE-READS-AS-BROKEN`). */}
-                        {monthIso && (catsDuMois.depenses.length > 0 || catsDuMois.sansCategorie > 0) && (
+                        {showFull && monthIso && (catsDuMois.depenses.length > 0 || catsDuMois.sansCategorie > 0) && (
                             <SectionCategoriesMois catsDuMois={catsDuMois} />
                         )}
 
-                        {dayIso && variation && (
+                        {showFull && dayIso && variation && (
                             <SectionVariationJour variation={variation} />
                         )}
 
-                        {dayIso && transactions && (
+                        {showFull && dayIso && transactions && (
                             <SectionTransactionsDuJour
                                 dayIso={dayIso}
                                 txnsDuJour={txnsDuJour}

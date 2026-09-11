@@ -25,6 +25,7 @@ import { presentEquityOfGoal, monthsSince } from '../../services/projection/past
 import { reconstructRealEstateEquityByYear } from '../../services/history/reconstructRealEstateEquity';
 import { useSyncExternalStore } from 'react';
 import { getHistorySyncReport, subscribeHistorySyncReport, skipsActionnables } from '../../services/history/syncDiagnostics';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 
 // Même chunk lazy que sur l'ex-Accueil (recharts ≈ 445 KB via ZoomableTimeChart) : le
 // sous-onglet Historique ne paie le graphe qu'à l'affichage. lazyWithRetry = retry/reload
@@ -39,6 +40,9 @@ const COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8'
 
 const FutureHistorySection: React.FC = () => {
     const { t } = useTranslation();
+    // [FUTUR-MOBILE-PR5] Pastilles de légende (24 px) → 44 px — mobile UNIQUEMENT (desktop
+    // inchangé, mandat Marc #13).
+    const isNarrowViewport = useViewportBelowSm();
     const [timeRange, setTimeRange] = useState<TimeRange>('1M');
     const [customStart, setCustomStart] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
@@ -220,6 +224,8 @@ const FutureHistorySection: React.FC = () => {
                                 aria-pressed={!isHidden}
                                 title={isHidden ? `Afficher ${key}` : `Masquer ${key}`}
                                 className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-medium border transition-colors focus-ring ${
+                                    isNarrowViewport ? 'min-h-[44px]' : ''
+                                } ${
                                     isHidden
                                         ? 'bg-white/[0.02] text-ink-400 border-white/5 hover:bg-white/5'
                                         : 'bg-white/10 text-ink-100 border-white/15 hover:bg-white/15'
@@ -240,6 +246,8 @@ const FutureHistorySection: React.FC = () => {
                         aria-pressed={showTotalLine}
                         title={showTotalLine ? 'Masquer la ligne Total' : 'Afficher la ligne Total'}
                         className={`ml-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-tiny font-bold border transition-colors focus-ring ${
+                            isNarrowViewport ? 'min-h-[44px]' : ''
+                        } ${
                             showTotalLine
                                 ? 'bg-white text-black border-white'
                                 : 'bg-white/[0.02] text-ink-400 border-white/10 hover:bg-white/5'

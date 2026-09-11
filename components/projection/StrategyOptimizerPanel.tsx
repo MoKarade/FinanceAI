@@ -11,6 +11,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 import type { SimulationParams, ConfigResult } from '../../services/projection';
 import { formatCompactCAD } from '../../utils/format';
 import {
@@ -83,6 +84,9 @@ const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) 
 );
 
 export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => {
+    // [FUTUR-MOBILE-PR5] Leviers en puces + CTA 56 px — mobile UNIQUEMENT (desktop inchangé,
+    // mandat Marc #13).
+    const isNarrowViewport = useViewportBelowSm();
     const [applied, setApplied] = useState(false);
     const [composerOpen, setComposerOpen] = useState(true);
     const [selection, setSelection] = useState<LeverSelection>({});
@@ -222,6 +226,8 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                                             onClick={() => toggleValue(lever.key, opt.value as never)}
                                             aria-pressed={active}
                                             className={`rounded-lg border px-2.5 py-1 text-tiny font-medium focus-ring transition-colors ${
+                                                isNarrowViewport ? 'min-h-[44px] inline-flex items-center' : ''
+                                            } ${
                                                 active
                                                     ? 'border-indigo-400 bg-indigo-500/30 text-white'
                                                     : 'border-white/10 bg-white/5 text-ink-300 hover:bg-white/10'
@@ -253,7 +259,9 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                 <button
                     type="button"
                     onClick={run}
-                    className="mt-3 w-full rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 px-3 py-2 text-meta font-bold text-indigo-200 focus-ring transition-colors"
+                    className={`mt-3 w-full rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 px-3 py-2 text-meta font-bold text-indigo-200 focus-ring transition-colors ${
+                        isNarrowViewport ? 'min-h-[56px]' : ''
+                    }`}
                 >
                     {status === 'done' ? '↻ Relancer la recherche' : 'Trouver la meilleure stratégie'}
                 </button>

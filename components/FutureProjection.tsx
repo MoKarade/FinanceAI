@@ -11,7 +11,7 @@ const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistoryS
 // [NAV-MERGE-SANTE-FUTUR] Résumé condensé de Santé, en tête de page — léger (pas de recharts),
 // import statique (pas de justification à le mettre derrière un lazy comme FutureHistorySection).
 import { FutureHealthSummary } from './future/FutureHealthSummary';
-import { FUTURE_LEGEND_ITEMS, LegendSwatch } from './future/seriesConfig';
+import { FutureLegendDrawer } from './future/FutureLegendDrawer';
 import { useHiddenSeries } from '../hooks/useHiddenSeries';
 import { FuturePeriodSelector } from './future/FuturePeriodSelector';
 import { TabPanel, tabId, panelId, clavierTablist } from './ui/SubTabs';
@@ -2093,41 +2093,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     />
                 )}
 
-                {/* G10 — légende interactive : clic = afficher/masquer la série. */}
-                <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
-                    <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                        <span className="text-tiny text-ink-400 font-semibold uppercase tracking-wide">
-                            Légende — clique pour afficher / masquer
-                        </span>
-                        {hiddenSeries.size > 0 && (
-                            <button
-                                type="button"
-                                onClick={showAllSeries}
-                                className="text-tiny font-bold text-primary hover:underline focus-ring rounded px-1"
-                            >
-                                Tout réafficher ({hiddenSeries.size} masqué{hiddenSeries.size > 1 ? 's' : ''})
-                            </button>
-                        )}
-                    </div>
-                    <div className="flex flex-wrap gap-2" role="group" aria-label="Séries du graphique">
-                        {FUTURE_LEGEND_ITEMS.filter((it) => !it.mcOnly || runMC).map((it) => {
-                            const on = isVisible(it.key);
-                            return (
-                                <button
-                                    key={it.key}
-                                    type="button"
-                                    onClick={() => toggleSeries(it.key)}
-                                    aria-pressed={on}
-                                    title={on ? `Masquer ${it.label}` : `Afficher ${it.label}`}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 rounded-card text-tiny font-semibold border transition-colors focus-ring ${on ? 'bg-white/10 border-white/15 text-ink-100 hover:bg-white/15' : 'bg-transparent border-white/5 text-ink-400 line-through hover:text-ink-300'}`}
-                                >
-                                    <LegendSwatch shape={it.shape} color={it.color} dimmed={!on} />
-                                    {it.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                {/* [FUTUR-MOBILE-PR3] Légende extraite : inline sur desktop (rendu byte-identique),
+                    tiroir replié sur mobile — voir components/future/FutureLegendDrawer.tsx. */}
+                <FutureLegendDrawer
+                    runMC={runMC}
+                    hiddenSeries={hiddenSeries}
+                    isVisible={isVisible}
+                    toggleSeries={toggleSeries}
+                    showAllSeries={showAllSeries}
+                    variant={isNarrowViewport ? 'drawer' : 'inline'}
+                />
 
             </Card>
             {/* [FUTUR-MOBILE-PR2] Même `kpiGrid` (défini une seule fois plus haut), rendu ICI en plus

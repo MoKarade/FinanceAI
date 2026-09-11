@@ -88,10 +88,24 @@
   pas dans le diff — mais un test peut être cassé par un changement de RENDU sans qu'une ligne du fichier ne
   bouge. Corrigé : `toutIsActive()` détecte la variante montée (bouton OU `<select>`) au lieu d'en supposer une.
   → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
-- [ ] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) — `FutureLegendDrawer` : sur mobile, tiroir « Séries » FERMÉ par défaut sous la
-  courbe, avec le compte « N visibles sur 16 » et les pastilles de couleur TOUJOURS visibles (le badge « Tout
-  réafficher (N masqués) » sort du tiroir — une série masquée dans une session passée doit rester découvrable) ;
-  chips ≥ 44 px par axe ; `aria-expanded` ; desktop inchangé (légende inline). Réutilise `useHiddenSeries` (PR1).
+- [x] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) ✅ **LIVRÉ (2026-09-10)** — `components/future/FutureLegendDrawer.tsx`
+  (neuf) : variante `inline` (desktop, JSX byte-identique à l'ancien code) et `drawer` (mobile) — tiroir FERMÉ par
+  défaut sous la courbe, avec le compte « N visible(s) sur 16 » et le bouton « Tout réafficher (N masqués) »
+  TOUJOURS visibles hors du tiroir (une série masquée dans une session passée reste découvrable SANS l'ouvrir) ;
+  chips ≥ 44 px par axe une fois ouvert. Réutilise `useHiddenSeries`/`FUTURE_LEGEND_ITEMS`/`LegendSwatch` (PR1),
+  aucun second appel du hook (une seule source de vérité). ⚠️ **Bug trouvé et corrigé AVANT tout commit** : mon
+  premier jet imbriquait le bouton « Tout réafficher » DANS le bouton de bascule du tiroir (invalide en HTML,
+  les deux gestionnaires se déclenchent au clic) — corrigé en deux boutons FRÈRES dans un conteneur non
+  interactif ; le test qui l'a révélé (cliquer « Tout réafficher » doit laisser le tiroir OUVERT) est resté dans
+  la suite comme garde permanente. ⚠️ Second piège évité pendant l'écriture : `min-h-[${n}px]` construit par
+  interpolation n'est JAMAIS vu par le scanner JIT de Tailwind (la classe ne serait jamais générée au build) —
+  les deux tailles de chip sont deux classes LITTÉRALES complètes choisies par ternaire.
+  Tests (`e2e/futureMobileLegendDrawer.spec.ts`, 3 cas) : tiroir fermé + compte/badge lisibles sans l'ouvrir ;
+  chips ≥ 44 px + non-régression du bug de bouton imbriqué ; desktop inchangé (contrôle négatif). 2/3 rougissent
+  sur l'ancien code (swap vers `origin/main`, restauré et vérifié par `cmp`) — le 3e (desktop) est vert des deux
+  côtés par construction. Cliquet des cibles < 44 px : **92 → 76** (16 chips de légende plus comptées, cachées
+  par défaut). Les 6 tests qui montent `FutureProjection` rejoués : 19/19 verts. 14/14 verts sur `mobile-chrome`.
+  → à déménager vers BACKLOG_ARCHIVE à la prochaine PR.
 - [ ] 🔧 **`[FUTUR-MOBILE-PR4]`** (M-L) — Hypothèses mobile : `ReturnRateField` = curseur + champ numérique SYNCHRONISÉ
   (les deux sens testés : casser un `onChange` doit rougir) pour les 5 taux ET les facteurs macro ; ordre mobile
   Mode → macro → rendements → sections repliées (inflation par poste, risques, rejeu, avancés) ; ordre desktop

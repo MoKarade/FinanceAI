@@ -615,22 +615,40 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // ailleurs : c'est la SEULE définition de « depuis le dernier calcul » qui existe déjà dans ce
     // composant (`isStale`), reconduite ici pour une grandeur COMPTÉE plutôt que booléenne. N'ajoute
     // AUCUNE branche au mécanisme de révélation/gel existant (risque money-critical) — additif pur.
-    const [hypothesesBaseline, setHypothesesBaseline] = useState<{ projection: ProjectionConfig; maxValue: number | undefined } | null>(null);
+    //
+    // ⚠️ RÉGRESSION trouvée et corrigée AVANT push : un `useState` ici (au lieu d'une `ref`) ajoute
+    // un cycle de rendu supplémentaire à CHAQUE révélation — `tests/components/FutureProjection.
+    // eventStack.test.tsx` a rougi (rangs d'empilement des pastilles dupliqués : le mock de test
+    // capture `ReferenceDot` à CHAQUE rendu, et `shownLifeEvents`/`assignStackIndex` ne sont PAS
+    // mémoïsés plus bas dans ce fichier — un rendu de plus change ce qui est capturé). Prouvé par
+    // swap vers `origin/main` : le test passe SANS mon diff, échoue avec `useState`, repasse avec
+    // `useRef` (une mutation de ref ne planifie AUCUN rendu). Aucune fonctionnalité perdue : le
+    // badge se lit au prochain rendu normal (déclenché par la prochaine modification d'hypothèse),
+    // largement avant que l'utilisateur puisse agir.
+    const hypothesesBaselineRef = useRef<{ projection: ProjectionConfig; maxValue: number | undefined } | null>(null);
     useEffect(() => {
-        if (curveRevealed) setHypothesesBaseline({ projection, maxValue: realEstateGoals[0]?.maxValue });
+        if (curveRevealed) hypothesesBaselineRef.current = { projection, maxValue: realEstateGoals[0]?.maxValue };
     }, [curveRevealed, projection, realEstateGoals]);
     const changedHypothesesCount = useMemo(() => {
-        if (!hypothesesBaseline) return 0;
-        const before = hypothesesBaseline.projection as unknown as Record<string, unknown>;
-        const after = projection as unknown as Record<string, unknown>;
-        const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+        const baseline = hypothesesBaselineRef.current;
+        if (!baseline) return 0;
+        // ⚠️ [DETTE-CAST-DAILYCURVE] Pas de `as unknown as Record<string, unknown>` (ratchet à 2
+        // casts MAX dans ce fichier, réservés aux deux handlers recharts) : `Object.keys` rend déjà
+        // `string[]` sans cast, et l'indexation reste typée via `keyof ProjectionConfig`.
+        const keys = new Set<keyof ProjectionConfig>([
+            ...Object.keys(baseline.projection) as Array<keyof ProjectionConfig>,
+            ...Object.keys(projection) as Array<keyof ProjectionConfig>,
+        ]);
         let n = 0;
         for (const k of keys) {
-            if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) n++;
+            if (JSON.stringify(baseline.projection[k]) !== JSON.stringify(projection[k])) n++;
         }
-        if (hypothesesBaseline.maxValue !== realEstateGoals[0]?.maxValue) n++;
+        if (baseline.maxValue !== realEstateGoals[0]?.maxValue) n++;
         return n;
-    }, [hypothesesBaseline, projection, realEstateGoals]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hypothesesBaselineRef.current est lu
+    // intentionnellement sans déclencher de rendu ; le memo se réévalue déjà à chaque changement de
+    // `projection`/`realEstateGoals`, ce qui couvre tous les cas où la baseline vient de changer.
+    }, [projection, realEstateGoals]);
 
     // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons
     // de gérer vit dans l'écran d'amorçage « leviers-d'abord » (StrategyOptimizerPanel).

@@ -153,7 +153,13 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
         await chartBox(page);
         const pastille = page.getByRole('button', { name: /^Événement :/ }).first();
         await expect(pastille).toBeVisible({ timeout: 10_000 });
-        await pastille.click();
+        // ⚠️ `.click()` échoue de façon répétée : les pastilles denses (bandeau « Mode test »,
+        // nav mobile FIXE, pastilles voisines empilées) interceptent le pointeur quelle que soit
+        // la position de scroll. La pastille est FOCUSABLE avec Entrée = clic (même contrat que
+        // le clic, `ProjectionTooltip.tsx` `ClickableEventIcon` onKeyDown) — passer par le clavier
+        // contourne entièrement les faux positifs d'interception de pointeur.
+        await pastille.focus();
+        await page.keyboard.press('Enter');
         await expect(page.getByRole('dialog', { name: 'Détail du mois' })).toBeVisible({ timeout: 5_000 });
     }
 

@@ -7,9 +7,10 @@ import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { maskedSliderAria } from '../../utils/privacyAria';
-import { PrivateAmount } from '../ui/PrivateAmount';
-import { formatCompactCAD } from '../../utils/format';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
+import { FluxMensuelsFields } from './macroFields/FluxMensuelsFields';
+import { ValeurMaxMaisonField } from './macroFields/ValeurMaxMaisonField';
+import { ProjectionControlsMobile } from './ProjectionControlsMobile';
 
 interface LiveCSVBalances {
     CELI: number;
@@ -36,7 +37,10 @@ interface ProjectionControlsProps {
     config: BudgetConfig;
 }
 
-const STOCHASTIC_TOGGLES = [
+// [FUTUR-MOBILE-PR4] Exportés pour être réutilisés tels quels par `ProjectionControlsMobile`
+// (source unique — jamais recopiés, sinon les deux vues divergeraient en silence à la prochaine
+// valeur fiscale/config ajoutée ici).
+export const STOCHASTIC_TOGGLES = [
     { key: 'useStochasticMortality', label: 'Mortalité', title: "Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort." },
     { key: 'ltcEnabled', label: 'Soins LD', title: "Soins de longue durée (CHSLD/RPA). Probabilité croissante après 65 ans (1% → 25%/an)." },
     { key: 'jobLossEnabled', label: 'Perte emploi', title: "Perte d'emploi stochastique en MC. Probabilité annuelle ~3% (Stats Can). Pendant N mois, revenu du user principal = 55% (assurance-emploi)." },
@@ -49,7 +53,7 @@ const STOCHASTIC_TOGGLES = [
     { key: 'snowbirdEnabled', label: 'Snowbird', title: "Snowbird (4-6 mois en US/Mexique en hiver à la retraite). Surcoût mensuel ~1500$." },
 ] as const;
 
-const INFLATION_CATEGORIES = [
+export const INFLATION_CATEGORIES = [
     { key: 'inflationHousing',   label: 'Logement',   weight: 30, def: 4.0 },
     { key: 'inflationFood',      label: 'Alim.',      weight: 17, def: 3.5 },
     { key: 'inflationTransport', label: 'Transport',  weight: 15, def: 2.5 },
@@ -58,7 +62,7 @@ const INFLATION_CATEGORIES = [
     { key: 'inflationOther',     label: 'Autres',     weight: 27, def: 2.0 },
 ] as const;
 
-const REPLAY_OPTIONS = [
+export const REPLAY_OPTIONS = [
     { value: '',     label: '— Aucun (mode normal) —' },
     { value: '1929', label: '1929 — Grande Dépression' },
     { value: '1973', label: '1973 — Choc pétrolier + stagflation' },
@@ -82,7 +86,14 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     // [EP-1] les 10 toggles d'événements de vie sont cachés derrière un bouton « Activer des
     // aléas… » (révélés si déjà actifs) — ils noyaient l'onglet sous des contrôles rarement utilisés.
     const [showStochastic, setShowStochastic] = React.useState(activeStochasticCount > 0);
-    return (
+    // [FUTUR-MOBILE-PR4] Décision Marc 2026-09-10 : réorganisation COMPLÈTE de l'onglet Hypothèses
+    // sur mobile (curseur+champ, ordre Mode→macro→rendements→sections repliées). Zéro changement
+    // visuel desktop (mandat #13) : le JSX ci-dessous, sous ce `if`, n'est JAMAIS rendu à largeur
+    // desktop — la branche desktop plus bas reste EXACTEMENT celle d'avant ce lot.
+    const isNarrowViewport = useViewportBelowSm();
+    // [FUTUR-MOBILE-PR4] Bandeau Mode/Smile Curve PARTAGÉ (Marc : « Mode » vient en premier sur
+    // mobile ET desktop) — une seule expression JSX, jamais recopiée, rendue par les DEUX branches.
+    const modeToolbar = (
         <>
             {/* PH4-FUT « leviers-d'abord » — le sélecteur « stratégie de retrait » est RETIRÉ d'ici :
                 l'ordre de retrait est désormais un LEVIER (composeur en amont, withdrawalOrder), appliqué
@@ -159,7 +170,33 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 {/* [EP-9] badge décoratif « N événements actifs » retiré ici (redondant avec le
                     badge de la section « Risques & aléas » ci-dessous). */}
             </div>
-
+        </>
+    );
+    if (isNarrowViewport) {
+        return (
+            <>
+                {modeToolbar}
+                <ProjectionControlsMobile
+                    projection={projection}
+                    updateProj={updateProj}
+                    updateReturnRate={updateReturnRate}
+                    runMC={runMC}
+                    liveCSVBalances={liveCSVBalances}
+                    applyHistoricalRate={applyHistoricalRate}
+                    realEstateGoals={realEstateGoals}
+                    setRealEstateGoals={setRealEstateGoals}
+                    isPrivacyMode={isPrivacyMode}
+                    activeStochasticCount={activeStochasticCount}
+                    showStochastic={showStochastic}
+                    setShowStochastic={setShowStochastic}
+                    projAsMap={projAsMap}
+                />
+            </>
+        );
+    }
+    return (
+        <>
+            {modeToolbar}
             {/* §1 — Hypothèses macro (ouverte par défaut) */}
             <CollapsibleSection
                 title="Hypothèses macroéconomiques"
@@ -167,23 +204,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 defaultOpen={true}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="space-y-4">
-                        <h4 className={`text-tiny uppercase border-b pb-1 ${projection.useTheoretical ? 'text-secondary border-secondary/30' : 'text-success-400 border-success-border'}`}>Flux Mensuels</h4>
-                        <div className={!projection.useTheoretical ? 'opacity-50 pointer-events-none' : ''}>
-                            <label className="flex justify-between text-meta text-ink-300 mb-1">
-                                <span>Revenus (Net)</span>
-                                <PrivateAmount className="text-success-400 font-bold">{projection.theoreticalIncome || 8000}$</PrivateAmount>
-                            </label>
-                            <input type="range" aria-label="Revenus (Net)" min="2000" max="20000" step="100" value={projection.theoreticalIncome || 8000} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateProj('theoreticalIncome', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-success-500" />
-                        </div>
-                        <div className={!projection.useTheoretical ? 'opacity-50 pointer-events-none' : ''}>
-                            <label className="flex justify-between text-meta text-ink-300 mb-1">
-                                <span>Dépenses</span>
-                                <PrivateAmount className="text-danger-400 font-bold">{projection.theoreticalExpenses || 4000}$</PrivateAmount>
-                            </label>
-                            <input type="range" aria-label="Dépenses" min="1000" max="15000" step="100" value={projection.theoreticalExpenses || 4000} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateProj('theoreticalExpenses', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500" />
-                        </div>
-                    </div>
+                    <FluxMensuelsFields projection={projection} updateProj={updateProj} useTheoretical={!!projection.useTheoretical} isPrivacyMode={isPrivacyMode} />
 
                     <div className="space-y-4">
                         <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
@@ -250,20 +271,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             </label>
                             <input type="range" aria-label="Coussin de Sécurité" min="1" max="12" step="1" value={projection.emergencyFundMonths || 3} onChange={e => updateProj('emergencyFundMonths', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                         </div>
-                        <div>
-                            <label className="flex justify-between text-meta text-ink-300 mb-1">
-                                <span>Valeur Max Maison</span>
-                                <PrivateAmount className="text-pink-400 font-bold">{formatCompactCAD(realEstateGoals[0]?.maxValue || 1000000)}</PrivateAmount>
-                            </label>
-                            <input type="range" aria-label="Valeur Max Maison" min="300000" max="3000000" step="50000" value={realEstateGoals[0]?.maxValue || 1000000} {...maskedSliderAria(isPrivacyMode)} onChange={e => {
-                                const updated = [...realEstateGoals];
-                                if (updated[0]) {
-                                    updated[0] = { ...updated[0], maxValue: Number(e.target.value) };
-                                    setRealEstateGoals?.(updated);
-                                }
-                            }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-pink-500" />
-                            <p className="text-tiny text-ink-400 mt-1">Plafond de croissance immo.</p>
-                        </div>
+                        <ValeurMaxMaisonField realEstateGoals={realEstateGoals} setRealEstateGoals={setRealEstateGoals} isPrivacyMode={isPrivacyMode} />
                     </div>
                 </div>
             </CollapsibleSection>

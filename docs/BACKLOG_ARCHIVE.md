@@ -10,6 +10,106 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-10 — `[FUTUR-MOBILE-PR0]` — LIVRÉ (PR #948)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR0]`** (S) ✅ **LIVRÉ (2026-09-10)** — le FILET avant tout changement : projet Playwright
+  `mobile-chrome` (390×844 tactile, specs « *Mobile* » seulement — pas de second passage complet), spec
+  `e2e/futureMobileFilet.spec.ts` : 4 sous-onglets atteignables au tap ET aux flèches, `scrollWidth ≤ 390` sur
+  les 4 + l'amorçage, et CLIQUET des cibles tactiles < 44 px mesurées PAR AXE sur tout `<main>`. ⚠️ **Mesuré sur
+  `main` (7cb74e44), courbe révélée : 93 cibles trop petites** = 65 dans les panneaux (Projection 19 : 16 pastilles de
+  légende 36 px + Verrouiller/Ré-optimiser/Plein écran 38 px · Hypothèses 16 : curseurs `h-1` de 4 px + select rejeu ·
+  Plan d'action 15 : 8 boutons « Pourquoi ? » de 14 px + 6 cases « Marquer comme fait » + champ de recherche 40 px ·
+  Historique 15 : pastilles 24 px) + 7 hors panneau comptés sous chacun des 4 sous-onglets (les 4 onglets à 28 px, les 2
+  pilules Réel/Sandbox à 24 px, l'aide « ? » de 16 px). Le plafond `PLAFOND_CIBLES_TROP_PETITES = 93` DESCEND à chaque PR
+  qui en corrige ; à 0, s'inverse en règle. Revues (code-reviewer, silent-failure-hunter) : recenseur élargi du panneau à
+  `<main>` (le bandeau d'onglets est un FRÈRE du panneau), « aucun tabpanel » lève au lieu d'entrer dans l'inventaire,
+  anti-vacuité PAR sous-onglet avec le sélecteur du recenseur, `sr-only` reconnu par sa CLASSE et non par sa taille.
+  ⚠️ Réfuté par la mesure : l'architecte annonçait un débordement horizontal probable de la table de
+  `StrategyOptimizerPanel` (6 colonnes sans `overflow-x-auto`) — `scrollWidth` = 390 sur l'amorçage comme sur les 4
+  sous-onglets. Aucun correctif à faire, la garde le tient.
+
+## 2026-09-10 — `[FUTUR-MOBILE-PR1]` — LIVRÉ (PR #949)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR1]`** (S) ✅ **LIVRÉ (2026-09-10)** — extractions PURES sans changement de rendu :
+  `components/future/seriesConfig.tsx` (`FUTURE_LEGEND_ITEMS`, `LegendSwatch`) et `hooks/useHiddenSeries.ts`
+  (`hiddenSeries`/`isVisible`/`toggleSeries`/`showAllSeries`, clé `future:hiddenSeries:v1` INCHANGÉE — copié-collé
+  strict, aucune ligne réécrite). Les 6 tests qui
+  montent `FutureProjection` (`tests/components/FutureProjection.*.test.tsx`) rejoués explicitement : 19/19 verts, aucun
+  contrat de mock élargi (les deux modules n'importent que `react`/`useState`, déjà présents). Typecheck + lint OK.
+
+## 2026-09-10 — `[FUTUR-MOBILE-PR2]` — LIVRÉ (PR #950)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR2]`** (M) ✅ **LIVRÉ (2026-09-10)** — écran Projection mobile :
+  - **En-tête compact** sur mobile (`h1` « Projection » + pastille Réel/Sandbox, une ligne) ; desktop garde
+    `PageHeader`/« Projection Future » **byte-identique** (badge et pastille factorisés en variables, mêmes
+    éléments JSX des deux côtés).
+  - `components/future/FuturePeriodSelector.tsx` (neuf) : variante `buttons` = JSX de l'ancien sélecteur copié SANS
+    RETOUCHE (desktop inchangé) ; variante `compact` (mobile) = `<select>` natif avec « Aujourd'hui » EN PREMIER
+    (seul chemin clavier vers la fenêtre centrée sur le présent, finding #592), les horizons filtrés et « Tout
+    l'horizon », plus un bouton plein écran 44×44 (le bouton desktop équivalent, 38 px, reste inchangé et n'apparaît
+    plus qu'à `!isNarrowViewport` — pas de doublon).
+  - **Courbe avant les KPI sur mobile** (décision Marc) : la grille `StatGrid` est définie UNE fois (`kpiGrid`) et
+    rendue soit en haut (desktop et 3 autres sous-onglets mobiles, comportement INCHANGÉ), soit après la courbe
+    (mobile, sous-onglet Projection uniquement) — jamais les deux à la fois.
+  - Horizon INTACT : aucun code de ce lot ne touche `projection.years` ni la fenêtre de zoom autrement que par un
+    geste utilisateur explicite (`zoom.showRange`/`zoom.reset`, mécanisme déjà existant).
+  Tests (`e2e/futureMobileProjectionScreen.spec.ts`, 5 cas) : patrimoine affiché IDENTIQUE à 390 px et 1440 px sur
+  la MÊME page (garde money-critical) ; sélecteur ≥ 44 px par axe, « Aujourd'hui » en premier et atteignable au
+  clavier ; plein écran 44×44 sans doublon ; ordre courbe→KPI sur mobile ET ordre inchangé sur desktop (contrôle
+  négatif, un seul « Objectif FIRE » visible à la fois) ; titre compact vs complet. **4 des 5 rougissent sur l'ancien
+  code** (vérifié par swap temporaire de `FutureProjection.tsx` vers `origin/main`, restauré et confirmé par `cmp`)
+  — le 5e (money-critical) est un invariant qui doit rester vert AVANT et APRÈS, ce n'est pas un défaut du test.
+  Cliquet des cibles < 44 px : **93 → 92** (plein écran mobile 38 → 44 px), `PLAFOND_CIBLES_TROP_PETITES` mis à jour
+  avec sa cause. Les 6 tests qui montent `FutureProjection` rejoués : 19/19 verts. 11/11 verts sur `mobile-chrome`.
+  ⚠️ **Revue code-reviewer, finding CRITIQUE corrigé** : la garde money-critical du 1er jet remontait DEUX
+  `.locator('..')` depuis `.kpi-label`, atteignant seulement `<div className="flex items-center justify-between">`
+  (`KPIStat.tsx`) — le label et l'icône, JAMAIS la valeur en dollars (un FRÈRE, pas un descendant). Le test
+  comparait deux fois la même chaîne statique et restait vert quel que soit le patrimoine réellement affiché,
+  exactement sur le seul risque qu'il devait couvrir. Mesuré : le sélecteur fautif rend « PATRIMOINE
+  SUCCESSORAL, AVEC RENTES\ni\n💼 » (aucun chiffre) contre « …9,73 M$\nFin de l'horizon (40 ans) » avec la 3ᵉ
+  remontée. Corrigé (`../../..`) + anti-vacuité (`toMatch(/\d/)` sur les deux lectures) — la garde discrimine
+  désormais réellement.
+  ⚠️ **RÉGRESSION trouvée en CI, PAS un flake** : `e2e/futurePinchZoom.spec.ts` échouait sur CE lot, pas à côté.
+  Ce fichier fixe son viewport à 390×844 (« le scénario mobile de Marc », `chromium` — PAS `mobile-chrome`), donc
+  `isNarrowViewport` (basé sur `matchMedia`, indifférent au projet Playwright) y bascule le sélecteur de période
+  en `<select>` — le bouton « Tout » que `toutIsActive()` cherchait n'existe plus à cette largeur. J'ai d'abord
+  cru à un flake préexistant (diagnostic FAUX, posté puis retiré en commentaire de PR) parce que le fichier n'est
+  pas dans le diff — mais un test peut être cassé par un changement de RENDU sans qu'une ligne du fichier ne
+  bouge. Corrigé : `toutIsActive()` détecte la variante montée (bouton OU `<select>`) au lieu d'en supposer une.
+
+## 2026-09-10 — `[FUTUR-MOBILE-PR3]` — LIVRÉ (PR #951)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR3]`** (S-M) ✅ **LIVRÉ (2026-09-10)** — `components/future/FutureLegendDrawer.tsx`
+  (neuf) : variante `inline` (desktop, JSX byte-identique à l'ancien code) et `drawer` (mobile) — tiroir FERMÉ par
+  défaut sous la courbe, avec le compte « N visible(s) sur 16 » et le bouton « Tout réafficher (N masqués) »
+  TOUJOURS visibles hors du tiroir (une série masquée dans une session passée reste découvrable SANS l'ouvrir) ;
+  chips ≥ 44 px par axe une fois ouvert. Réutilise `useHiddenSeries`/`FUTURE_LEGEND_ITEMS`/`LegendSwatch` (PR1),
+  aucun second appel du hook (une seule source de vérité). ⚠️ **Bug trouvé et corrigé AVANT tout commit** : mon
+  premier jet imbriquait le bouton « Tout réafficher » DANS le bouton de bascule du tiroir (invalide en HTML,
+  les deux gestionnaires se déclenchent au clic) — corrigé en deux boutons FRÈRES dans un conteneur non
+  interactif ; le test qui l'a révélé (cliquer « Tout réafficher » doit laisser le tiroir OUVERT) est resté dans
+  la suite comme garde permanente. ⚠️ Second piège évité pendant l'écriture : `min-h-[${n}px]` construit par
+  interpolation n'est JAMAIS vu par le scanner JIT de Tailwind (la classe ne serait jamais générée au build) —
+  les deux tailles de chip sont deux classes LITTÉRALES complètes choisies par ternaire.
+  Tests (`e2e/futureMobileLegendDrawer.spec.ts`, 3 cas) : tiroir fermé + compte/badge lisibles sans l'ouvrir ;
+  chips ≥ 44 px + non-régression du bug de bouton imbriqué ; desktop inchangé (contrôle négatif). 2/3 rougissent
+  sur l'ancien code (swap vers `origin/main`, restauré et vérifié par `cmp`) — le 3e (desktop) est vert des deux
+  côtés par construction. Cliquet des cibles < 44 px : **92 → 76** (16 chips de légende plus comptées, cachées
+  par défaut). Les 6 tests qui montent `FutureProjection` rejoués : 19/19 verts. 14/14 verts sur `mobile-chrome`.
+  ⚠️ Revue a11y : région live ajoutée pour le compte (`role="status"`, un texte qui varie sans renavigation doit
+  être annoncé), `aria-controls` posé entre le bouton et le groupe de chips, `focus-ring` ajouté au bouton de
+  bascule (oublié au 1er jet). Revue code-reviewer : le commentaire « JSX byte-identique » de la variante
+  desktop était inexact au sens strict (les classes de taille de chip changent de POSITION dans la chaîne,
+  sans effet visuel — l'ordre des classes n'affecte jamais le rendu) ; corrigé en « rendu visuel identique ».
+
 ## 2026-09-06 — `[FISC-DON-FEDRATE-DUP]` — LIVRÉ (lot 210, PR #941)
 
 Ticket d'origine tel qu'au moment de l'archivage :

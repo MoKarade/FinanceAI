@@ -609,6 +609,48 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!was && curveRevealed) revealedRef.current?.focus();
     }, [curveRevealed]);
 
+    // [FUTUR-MOBILE-PR4] Compte d'hypothèses modifiées pour le CTA collant de l'onglet Hypothèses
+    // mobile (« Recalculer (N modifiée·s) ») — capture un instantané des champs de l'onglet
+    // Hypothèses (`projection` + plafond immo) à CHAQUE transition vers `curveRevealed`, jamais
+    // ailleurs : c'est la SEULE définition de « depuis le dernier calcul » qui existe déjà dans ce
+    // composant (`isStale`), reconduite ici pour une grandeur COMPTÉE plutôt que booléenne. N'ajoute
+    // AUCUNE branche au mécanisme de révélation/gel existant (risque money-critical) — additif pur.
+    //
+    // ⚠️ RÉGRESSION trouvée et corrigée AVANT push : un `useState` ici (au lieu d'une `ref`) ajoute
+    // un cycle de rendu supplémentaire à CHAQUE révélation — `tests/components/FutureProjection.
+    // eventStack.test.tsx` a rougi (rangs d'empilement des pastilles dupliqués : le mock de test
+    // capture `ReferenceDot` à CHAQUE rendu, et `shownLifeEvents`/`assignStackIndex` ne sont PAS
+    // mémoïsés plus bas dans ce fichier — un rendu de plus change ce qui est capturé). Prouvé par
+    // swap vers `origin/main` : le test passe SANS mon diff, échoue avec `useState`, repasse avec
+    // `useRef` (une mutation de ref ne planifie AUCUN rendu). Aucune fonctionnalité perdue : le
+    // badge se lit au prochain rendu normal (déclenché par la prochaine modification d'hypothèse),
+    // largement avant que l'utilisateur puisse agir.
+    const hypothesesBaselineRef = useRef<{ projection: ProjectionConfig; maxValue: number | undefined } | null>(null);
+    useEffect(() => {
+        if (curveRevealed) hypothesesBaselineRef.current = { projection, maxValue: realEstateGoals[0]?.maxValue };
+    }, [curveRevealed, projection, realEstateGoals]);
+    const changedHypothesesCount = useMemo(() => {
+        const baseline = hypothesesBaselineRef.current;
+        if (!baseline) return 0;
+        // ⚠️ [DETTE-CAST-DAILYCURVE] Pas de `as unknown as Record<string, unknown>` (ratchet à 2
+        // casts MAX dans ce fichier, réservés aux deux handlers recharts) : `Object.keys` rend déjà
+        // `string[]` sans cast, et l'indexation reste typée via `keyof ProjectionConfig`.
+        const keys = new Set<keyof ProjectionConfig>([
+            ...Object.keys(baseline.projection) as Array<keyof ProjectionConfig>,
+            ...Object.keys(projection) as Array<keyof ProjectionConfig>,
+        ]);
+        let n = 0;
+        for (const k of keys) {
+            if (JSON.stringify(baseline.projection[k]) !== JSON.stringify(projection[k])) n++;
+        }
+        if (baseline.maxValue !== realEstateGoals[0]?.maxValue) n++;
+        return n;
+    // hypothesesBaselineRef.current est un ref lu intentionnellement sans déclencher de rendu — la
+    // règle exhaustive-deps ne l'exige pas (les refs en sont exemptées) ; le memo se réévalue déjà
+    // à chaque changement de `projection`/`realEstateGoals`, ce qui couvre les cas où la baseline
+    // vient de changer.
+    }, [projection, realEstateGoals]);
+
     // [UI-SCEN] — bandeau « Verdict » et classement retirés : la comparaison des façons
     // de gérer vit dans l'écran d'amorçage « leviers-d'abord » (StrategyOptimizerPanel).
 
@@ -1467,6 +1509,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <TabPanel idPrefix="futur" tab={futureSubTab} when className="space-y-6">
 
             {futureSubTab === 'params' && (
+            <>
             <ProjectionControls
                 projection={projection}
                 updateProj={updateProj}
@@ -1481,6 +1524,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 setRealEstateGoals={setRealEstateGoals}
                 config={config}
             />
+            {/* [FUTUR-MOBILE-PR4] CTA collant au-dessus de la nav mobile (décision Marc 2026-09-10) :
+                « aucun calcul sans geste » reste vrai — ce bouton est le SEUL chemin qui déclenche la
+                révélation depuis l'onglet Hypothèses sur téléphone, sans devoir changer d'onglet
+                d'abord. `changedHypothesesCount` (calculé plus haut, additif au mécanisme de
+                révélation/gel existant) dit CE QUI a changé depuis le dernier calcul. */}
+            {isNarrowViewport && (
+                <div className="sticky bottom-[72px] z-40 -mx-3 px-3 py-2.5 border-t border-white/10 bg-[#0d1118]/95 backdrop-blur-sm">
+                    <button
+                        type="button"
+                        onClick={() => { revealCurve(); setFutureSubTab('graph'); }}
+                        disabled={isComputing}
+                        aria-busy={isComputing}
+                        className="w-full min-h-[48px] rounded-card bg-primary text-dark font-bold text-body focus-ring disabled:opacity-50"
+                    >
+                        {isComputing
+                            ? 'Calcul en cours…'
+                            : changedHypothesesCount > 0
+                                ? `Recalculer la projection (${changedHypothesesCount} hypothèse${changedHypothesesCount > 1 ? 's' : ''} modifiée${changedHypothesesCount > 1 ? 's' : ''})`
+                                : 'Recalculer la projection'}
+                    </button>
+                </div>
+            )}
+            </>
             )}
 
             {/* Écran d'invite : tant que la courbe n'est pas révélée (jamais calculée OU entrées

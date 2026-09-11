@@ -85,8 +85,16 @@ describe('[A11Y-LABELS-REDONDANTS-NON-ASSOCIES] un libellé visible et son aria-
     it('anti-vacuité : le recensement retrouve le contingent mesuré (témoins nommés)', () => {
         // Mesuré 2026-09-06 : 24 paires comparables + 2 non comparables (libellé dynamique / porté
         // par une autre ligne). Bornes larges : un site en plus ou en moins n'est pas une dérive.
+        //
+        // [FUTUR-MOBILE-PR4] Re-mesuré le 2026-09-11 après extraction VERBATIM de trois sliders
+        // (Revenus, Dépenses, Valeur Max Maison) hors de `ProjectionControls.tsx` vers
+        // `macroFields/FluxMensuelsFields.tsx` et `macroFields/ValeurMaxMaisonField.tsx` — TOTAL
+        // inchangé (24), la famille des trois fichiers en porte désormais 12 (9 + 2 + 1). Un compte
+        // borné à UN SEUL fichier romprait à chaque extraction légitime ; la famille est ce que la
+        // phrase « les sliders de ProjectionControls sont le gros du contingent » décrit réellement.
+        const familleHypotheses = paires.filter((p) => p.fichier.startsWith('projection/ProjectionControls') || p.fichier.startsWith('projection/macroFields/'));
         expect(paires.length).toBeGreaterThanOrEqual(20);
-        expect(paires.filter((p) => p.fichier === 'projection/ProjectionControls.tsx').length, 'les sliders de ProjectionControls sont le gros du contingent').toBeGreaterThanOrEqual(10);
+        expect(familleHypotheses.length, 'les sliders de l\'onglet Hypothèses (ProjectionControls + macroFields) sont le gros du contingent').toBeGreaterThanOrEqual(10);
         expect(paires.some((p) => p.libelle.includes('Part actions US')), 'témoin : le libellé à emoji doit être vu ET normalisé').toBe(true);
         expect(nonComparables, 'libellés dynamiques non comparables (mesuré : 1, la boucle INFLATION_CATEGORIES)').toBeLessThanOrEqual(3);
     });

@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-14 — Vérif mobile en direct + inventaire BACKLOG complet + 4 décisions Marc
+> Demande Marc : « va voir en direct sur mobile, fait-moi la liste de ce qu'il reste dans backlog et
+> pose toutes les questions pour decisions ». Réseau public bloqué depuis ce bac à sable (politique
+> réseau du conteneur) : le commit déployé (`06bef70`, confirmé identique à `origin/main`) a été
+> rejoué en LOCAL (`npm run dev` + Playwright Chromium, 390×844 tactile) — 4 captures de l'onglet
+> Futur mobile envoyées à Marc, rendu conforme. Inventaire : **113 tâches ouvertes** au BACKLOG,
+> réparties par section (détail dans le corps du message de session, pas recopié ici — un chiffre
+> qui varie à chaque push ROTE, cf §8 CLAUDE.md). ~30 questions de décision recensées
+> (`docs/A_FAIRE_MOI.md` + tickets 🧭 du BACKLOG) ; 4 posées en clic, **toutes répondues** :
+> - ✅ `[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]` (Q16) → partager comme le reste (`× keep`) — **LIVRÉ
+>   cette session** : `privateBusinessValue` `const`→`let`, garde `divorceBusinessShare.test.ts`
+>   (discriminant confirmé, écart mesuré 900 000 $ pile ramené à la part conservée 225 000 $).
+> - ✅ `[HYDRATATION-REFUS-TOUT-OU-RIEN]` → statu quo (tout-ou-rien conservé) — **fermé sans code**.
+> - ✅ `[ENG-LIQUIDDEBT-NEVER-REPAID]` → taux de découvert = carte de crédit ~19,99 % (choix Marc,
+>   PAS une source légale — à documenter en hypothèse assumée). **Reste un GO à obtenir** sur le
+>   plan d'implémentation (intérêt + remboursement prioritaire + alerte plan d'action) avant de
+>   toucher `cashflowAllocation.ts` (508 lignes, ordre des opérations = comportement) — plan posé
+>   dans `docs/A_FAIRE_MOI.md`.
+> - ✅ `[W5-RENTAL-DPA-ELECTION]` → option 3, élire AVEC vente et recapture. **Reste un GO** : ça
+>   exige de modéliser d'abord la vente d'un immeuble W5 (gain en capital, recapture) — chantier
+>   NEUF relevé de S à L, rien n'existe aujourd'hui pour ça. Plan en 5 étapes posé dans
+>   `docs/A_FAIRE_MOI.md`, alternative de repli proposée (option 1, zéro risque, en attendant).
+> **Suite proposée** : GO/NO-GO de Marc sur les deux plans ci-dessus ; sinon, prochaine session sur
+> les tickets déjà MESURÉS du BACKLOG qui n'attendent personne.
+
 > ## 🟢 Session 2026-09-03 — MARC A TRANCHÉ HUIT DÉCISIONS (+ deux sous-questions)
 > Toutes consignées dans `docs/A_FAIRE_MOI.md` (marquées ✅ RÉPONDU, énoncés d'origine conservés) et
 > converties en tickets actionnables dans `BACKLOG.md`. **Le backlog n'est plus bloqué.**

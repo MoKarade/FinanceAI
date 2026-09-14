@@ -4,6 +4,42 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-14 (fin) — Fintable importe le montant en DEVISE D'ORIGINE : +2 537 $ de dépenses fantômes
+> Marc : « fintable a importé des reals comme des CAD ». **Confirmé par la mesure, sur ses VRAIES
+> données** (serveur MCP joignable, `search_transactions`), en appariant une à une ses transactions
+> du voyage au Brésil à son relevé de carte — qui fait foi, lui, en CAD : **44 transactions,
+> 3 875,43 $ importés contre 1 338,12 $ facturés = +2 537,31 $ (+189,6 %)**.
+> ⚠️ Le défaut va dans les **DEUX sens** : 39 lignes BRL surévaluées (ratio 3,567–3,624) et **5 lignes
+> USD SOUS-évaluées** (1,417–1,427). Décrire ça comme « ça gonfle les dépenses » serait déjà faux.
+> ⚠️ **Contrôle négatif trouvé dans les mêmes données** : Netuno Tours, Farm Ipanema et Fresh E Good
+> tombent au CENT près — conversion au terminal (DCC), donc facturés en CAD d'origine. Le défaut suit
+> la devise d'ORIGINE, pas le pays : c'est ce qui rend l'heuristique géographique inutilisable.
+> **Cause** : Fintable étiquette `currency: "CAD"` (la devise du COMPTE) sur un montant qui est dans
+> la devise de la TRANSACTION. Le filtre `tx.currency !== baseCurrency` du mapper est donc
+> structurellement aveugle — il lit l'étiquette, jamais la valeur, et n'a jamais tiré une seule fois.
+> **Aucun correctif par le payload n'est possible** : `FtRawTransaction` ne porte ni montant facturé,
+> ni devise d'origine, ni taux. Seule piste : recouper avec le **SOLDE du compte**, que Fintable donne
+> bien en CAD. Ticket 🔴 `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, table de correction complète dans
+> `docs/A_FAIRE_MOI.md`.
+> ⚠️ **La donnée de Marc est fausse AUJOURD'HUI et je n'ai pas pu la réparer** : aucun outil MCP ne
+> modifie ni ne supprime une transaction (`apply_bank_statement` n'AJOUTE que, dédup sur
+> date+montant+marchand ⇒ ré-importer créerait un doublon). Le seul levier est `isDuplicate` (exclut
+> de TOUS les calculs), posé à la main dans l'écran Transactions. Migration de données réelles ⇒
+> **feu vert de Marc exigé**, demandé, pas encore obtenu.
+> ✅ **Paiement minimum de la carte = 10 $** (réponse de Marc). Avec le taux déjà tranché (19,99 %),
+> les trois champs requis par `applyDebt` pour CRÉER la dette sont enfin réunis.
+> 🧭 **Demande neuve de Marc, NON CADRÉE** : que la dette auto (« bZ », 50 000 $ à 5,69 %) démarre
+> pile à son premier paiement et décroisse à chaque virement Toyota, dans le PASSÉ comme dans le
+> FUTUR de la courbe. **Mesuré avant de poser les questions** : 7 versements de **234,67 $ à
+> Toyota Financial, hebdomadaires**, du **2026-07-28** au 2026-09-09 (≈ **1 016,90 $/mois**), précédés
+> de deux paiements au concessionnaire (Ste-Foy Toyota : 500 $ le 07-14, 779,79 $ le 07-20).
+> ⚠️ **Le mécanisme existe DÉJÀ et n'est pas câblé sur sa dette** : `Debt.startDate`,
+> `Debt.originalBalance`, `Debt.kind` et `Debt.termEndDate` sont tous saisissables dans
+> Réglages → Dettes, et `amortirDettePassee` reconstruit le solde mensuel du passé. Avant d'écrire une
+> ligne, vérifier si c'est une lacune de CONFIGURATION et non de code. ⚠️ Mais la moitié « décroît
+> avec chaque virement RÉEL » n'existe pas : le module reconstruit un échéancier THÉORIQUE
+> (`solde × (1+i) − paiement`), il ne lit aucune transaction.
+
 > ## 🟢 Session 2026-09-14 (suite) — LA cause des transactions de carte : un rôle SANS NOM débranche le compte
 > Marc, en fin de session : « j'ai toujours pas mes transactions des derniers jours avec ma carte de
 > crédit **et ça me demande encore de mettre la dette de carte de crédit dans dette mais je veux

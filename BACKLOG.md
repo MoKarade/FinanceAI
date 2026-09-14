@@ -657,6 +657,30 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
+- [ ] 🔴 **`[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`** (M, money-critical, **MESURÉ sur les VRAIES
+  données de Marc**) — Fintable livre le montant d'une transaction dans sa **devise d'ORIGINE** tout
+  en étiquetant `currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper
+  (`tx.currency.toUpperCase() !== baseCurrency` → `skippedForeignCurrency`) est donc **structurellement
+  aveugle** : il lit l'étiquette, jamais la valeur, et n'a jamais pu tirer une seule fois.
+  ⚠️ **MESURÉ** (voyage au Brésil de Marc, 44 transactions appariées une à une à son relevé de carte,
+  qui fait foi en CAD) : **3 875,43 $ importés contre 1 338,12 $ réellement facturés — +2 537,31 $,
+  soit +189,6 % de dépenses fantômes**. 39 transactions en BRL SURÉVALUÉES (ratio mesuré **3,567 à
+  3,624**) et 5 en USD **SOUS-évaluées** (ratio **1,417 à 1,427**) — le défaut va donc dans les DEUX
+  sens, et un « ça gonfle les dépenses » serait déjà une description fausse.
+  ⚠️ **Contrôle négatif dans les mêmes données** : 3 marchands brésiliens (Netuno Tours, Farm Ipanema,
+  Fresh E Good) tombent au CENT près sur le relevé — cohérent avec une conversion au terminal (DCC),
+  donc facturés en CAD à l'origine. Le défaut suit bien la devise d'ORIGINE, pas le pays.
+  ⚠️ **Aucun correctif par le contenu du payload n'est possible** : le schéma Fintable enregistré
+  (`FtRawTransaction`) ne porte ni montant facturé, ni devise d'origine, ni taux. Une heuristique sur
+  la `description` (« RIO DE JANEIRBRA ») est exclue — `TEXT-HEURISTIC-OVER-USER-TEXT`, et ici elle
+  piloterait un MONTANT. Le seul recoupement indépendant disponible est le **SOLDE du compte**, que
+  Fintable donne bien en CAD : la somme des transactions importées ne peut pas s'écarter durablement
+  du mouvement de solde. C'est la piste à cadrer.
+  ⚠️ **Dette de données** : les 44 transactions déjà importées sont fausses dans l'état de Marc. Il
+  n'existe **aucun outil MCP** qui modifie ou supprime une transaction existante (`apply_bank_statement`
+  ne fait qu'AJOUTER, avec dédup sur date+montant+marchand : ré-importer le bon montant créerait un
+  DOUBLON, pas une correction). Le seul levier est `isDuplicate`, qui exclut une ligne de TOUS les
+  calculs et se pose à la main dans l'écran Transactions. Procédure et décision dans `docs/A_FAIRE_MOI.md`.
 - [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **mesure à confirmer**) — le
   mapper suppose « solde de carte POSITIF = montant dû » (`const owed = Math.abs(account.balance)`,
   `mapSnapshot.ts`, commenté « un solde négatif signifie un crédit en ta faveur »). Marc, interrogé le

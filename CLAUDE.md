@@ -643,6 +643,21 @@ n'est pas réécrire un récit.
   « impossible depuis le conteneur » est peut-être à UNE question de distance
   (`UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE-REND-L-HYPOTHESE-INFALSIFIABLE`, 2026-09-14).
 
+- **Une garde qui lit une ÉTIQUETTE ne voit pas une valeur MAL étiquetée** : le filtre de devise du
+  mapper Fintable (`tx.currency !== baseCurrency`, compté et commenté) n'a **jamais tiré une seule
+  fois** — Fintable étiquette tout `currency: "CAD"` (la devise du COMPTE) sur un montant qui est dans
+  la devise de la TRANSACTION. Mesuré sur les vraies données de Marc contre son relevé de carte :
+  **44 transactions, +2 537,31 $ (+189,6 %)**. Avant d'écrire une garde d'étiquette, demander **qui
+  produit l'étiquette, et est-ce le même producteur que la valeur ?** — si non, elle est
+  structurellement aveugle et son compteur à zéro se lit « rien à signaler ». Le seul recoupement qui
+  vaut est une grandeur INDÉPENDANTE (ici le solde du compte, bien donné en CAD). ⚠️ Le défaut allait
+  dans les DEUX sens (39 BRL surévaluées ×3,6, **5 USD sous-évaluées** ×0,70) et ⚠️ le contrôle négatif
+  était DANS les données (3 marchands brésiliens justes au cent près — conversion au terminal), ce qui
+  réfute l'heuristique « le libellé dit BRA » : le défaut suit la devise d'ORIGINE, pas le pays.
+  ⚠️ Corollaire d'outillage : le MCP peut AJOUTER une transaction, jamais en corriger une — un import
+  qui écrit faux sans pouvoir se reprendre est une asymétrie à noter avant de promettre une réparation
+  (`UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE`, 2026-09-14).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

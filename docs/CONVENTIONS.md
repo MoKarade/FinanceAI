@@ -5637,6 +5637,54 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE` — 2026-09-14
+
+`mapFintableSnapshot` porte une garde de devise écrite avec soin, commentée, comptée
+(`skippedForeignCurrency`) et assortie d'un avertissement à l'utilisateur :
+
+```ts
+if (tx.currency.toUpperCase() !== baseCurrency) { skippedForeignCurrency++; continue; }
+```
+
+Elle n'a jamais tiré une seule fois. Non parce qu'elle est mal écrite, mais parce que Fintable
+étiquette **toutes** les transactions `currency: "CAD"` — la devise du COMPTE — sur un montant qui
+est, lui, dans la devise de la TRANSACTION. La garde interroge le seul champ qui ne varie pas.
+
+Mesuré sur les vraies données de Marc, en appariant une à une ses transactions d'un voyage au Brésil
+à son relevé de carte (qui fait foi, en CAD) : **44 transactions, 3 875,43 $ importés contre
+1 338,12 $ facturés — +2 537,31 $, soit +189,6 %**.
+
+**La règle** : une garde qui filtre sur une ÉTIQUETTE (devise, type, unité, `kind`, `source`) ne
+protège que si l'étiquette est produite par la même chose que la valeur. Quand elles viennent de deux
+niveaux différents — ici la valeur vient de la transaction, l'étiquette du compte — la garde est
+structurellement aveugle, et son compteur à zéro se lit comme « rien à signaler ». Avant d'écrire une
+garde d'étiquette, demander **qui produit l'étiquette, et est-ce le même producteur que la valeur ?**
+Le seul recoupement qui vaut est une grandeur INDÉPENDANTE (ici le solde du compte, que la même API
+donne bien en CAD), jamais un autre champ du même enregistrement.
+
+⚠️ **Le défaut allait dans les DEUX sens**, et le dire de travers aurait suffi à mal le classer :
+39 lignes en BRL SURÉVALUÉES (ratio mesuré 3,567 à 3,624) mais **5 lignes en USD SOUS-évaluées**
+(1,417 à 1,427). « Ça gonfle les dépenses » est une description fausse d'un défaut qui déplace les
+montants dans les deux directions.
+
+⚠️ **Le contrôle négatif était DANS les données, pas à fabriquer** : trois marchands brésiliens
+(Netuno Tours, Farm Ipanema, Fresh E Good) tombent au CENT près sur le relevé. Explication cohérente :
+conversion au terminal (DCC), donc facturés en CAD à l'origine. C'est ce contrôle qui réfute
+l'heuristique tentante — « le libellé dit BRA, donc c'est du réal » : le défaut suit la devise
+d'ORIGINE, pas le pays. Un scan sur la `description` aurait « corrigé » trois montants déjà justes
+(`TEXT-HEURISTIC-OVER-USER-TEXT`, cette fois sur un MONTANT).
+
+⚠️ **Et le correctif n'est pas dans le payload** : le schéma enregistré (`FtRawTransaction`) ne porte
+ni montant facturé, ni devise d'origine, ni taux. Devant une donnée fausse à la SOURCE et sans champ
+pour la détecter, la réponse n'est pas une meilleure lecture du même enregistrement — c'est un
+recoupement externe, ou un refus honnête. Écrire une conversion ici reviendrait à inventer un taux.
+
+⚠️ Corollaire d'OUTILLAGE, découvert en voulant réparer : le serveur MCP expose `search_transactions`
+(lecture) et `apply_bank_statement` (ajout, dédup sur date+montant+marchand) — **rien qui modifie ou
+supprime une transaction existante**. Un import qui peut écrire faux sans pouvoir se corriger est une
+asymétrie à part entière : le seul levier est `isDuplicate`, qui exclut de tous les calculs mais se
+pose à la main. À noter avant de promettre une réparation.
+
 ### `UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE-REND-L-HYPOTHESE-INFALSIFIABLE` — 2026-09-14
 
 `services/fintable/mapSnapshot.ts` lit le solde d'une carte de crédit ainsi :

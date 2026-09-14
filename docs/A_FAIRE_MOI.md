@@ -1659,10 +1659,18 @@ c'est une condition, pas une garantie, et elle doit être écrite dans un test.
   bloqué depuis ce conteneur (`EGRESS_BLOCKED` sur LégisQuébec). La consigner sans source lui donnerait
   l'autorité d'un texte de loi (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`).
 
-### La seule question qui reste
+### ✅ RÉPONDU par Marc le 2026-09-14 : paiement minimum = **10 $**
 
-**Quel paiement minimum ?** Soit le chiffre de ton relevé, soit une hypothèse assumée et **marquée comme
-telle à l'écran** — pas un chiffre glissé en silence dans la projection.
+Chiffre donné par Marc lui-même (son relevé), donc ni inventé ni « hypothèse de modèle » : il peut
+entrer tel quel dans `applyDebt`. Avec le taux déjà tranché (19,99 %), **les trois champs requis pour
+CRÉER la dette sont désormais disponibles** — il ne reste que le GO sur le plan en trois étapes
+ci-dessus, dont l'étape 1 (mesurer le signe) ne déplace aucun dollar.
+
+⚠️ Un paiement minimum de 10 $ sur une carte à 19,99 % n'éteint pratiquement jamais le solde : c'est
+le minimum CONTRACTUEL, pas le paiement réel de Marc (il vire de grosses sommes — 2 700 $ le
+2026-09-14). Si le moteur ne sert que 10 $/mois, la projection montrera une dette qui ne descend
+jamais. À trancher en même temps que le GO : sert-on le minimum contractuel (10 $) ou le paiement
+RÉEL observé dans les transactions ?
 
 ### En attendant, ça marche déjà
 
@@ -1670,3 +1678,89 @@ telle à l'écran** — pas un chiffre glissé en silence dans la projection.
 transactions de carte entrent dans le budget dès maintenant, sans aucune dette. Seul le solde de la
 carte n'est pas suivi — et vu le tableau ci-dessus, ne pas le suivre est aujourd'hui **plus juste** que
 le suivre.
+
+---
+
+## `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` — 44 transactions fausses dans ton état, +2 537,31 $ de dépenses fantômes
+
+**Statut : MESURÉ, DÉCISION DE RÉPARATION EN ATTENTE.** Rien n'a été écrit dans tes données.
+
+### Le défaut
+
+Fintable livre le montant dans la **devise d'ORIGINE** de la transaction, en l'étiquetant
+`currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper lit l'ÉTIQUETTE : il n'a donc
+jamais pu tirer. Ton relevé de carte, lui, fait foi — il est en CAD.
+
+Mesuré en appariant une à une tes transactions à ton relevé : **+2 537,31 $ (+189,6 %)**.
+39 en BRL surévaluées (ratio 3,567 à 3,624), **5 en USD SOUS-évaluées** (1,417 à 1,427) — le défaut
+va dans les DEUX sens. Contrôle négatif : Netuno Tours, Farm Ipanema et Fresh E Good tombent au cent
+près (conversion au terminal, donc facturés en CAD d'origine).
+
+### La table de correction
+
+| Marchand (tel qu'importé) | Date app | Importé | **Facturé CAD** | Écart |
+|---|---|---:|---:|---:|
+| Pura Chama Copacabana | 2026-08-31 | 342.61 $ | **94.66 $** | +247.95 $ |
+| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
+| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
+| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
+| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
+| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
+| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
+| Zigpay | 2026-08-31 | 56.00 $ | **15.48 $** | +40.52 $ |
+| Marieneluciados | 2026-08-31 | 24.00 $ | **6.63 $** | +17.37 $ |
+| Uber | 2026-08-31 | 69.96 $ | **19.33 $** | +50.63 $ |
+| Uber | 2026-08-31 | 9.76 $ | **2.70 $** | +7.06 $ |
+| Global Exchange | 2026-08-31 | 1112.56 $ | **307.40 $** | +805.16 $ |
+| Santos E Carvalho Come | 2026-08-31 | 17.00 $ | **4.70 $** | +12.30 $ |
+| Pindoramagestaoe | 2026-08-31 | 335.20 $ | **92.67 $** | +242.53 $ |
+| *TBC2 40 BAR MERKATO (Panama) | 2026-08-31 | 45.15 $ | **64.33 $** | -19.18 $ |
+| A.saily | 2026-08-31 | 13.99 $ | **19.96 $** | -5.97 $ |
+| Smartcar Mountain | 2026-09-01 | 7.84 $ | **11.18 $** | -3.34 $ |
+| Uber | 2026-09-01 | 26.66 $ | **7.37 $** | +19.29 $ |
+| Uber | 2026-09-01 | 17.00 $ | **4.70 $** | +12.30 $ |
+| Bruno William Boni Paraty | 2026-09-02 | 45.00 $ | **12.48 $** | +32.52 $ |
+| *JIM.COM* SANTINO CIPO | 2026-09-02 | 106.38 $ | **29.52 $** | +76.86 $ |
+| Uber | 2026-09-02 | 12.07 $ | **3.38 $** | +8.69 $ |
+| Uber | 2026-09-02 | 10.45 $ | **2.93 $** | +7.52 $ |
+| Marcosdebrito Angra Dos | 2026-09-04 | 10.00 $ | **2.80 $** | +7.20 $ |
+| Selmadossantosgar Angra | 2026-09-04 | 310.00 $ | **86.90 $** | +223.10 $ |
+| Mercadinho Portal Da I | 2026-09-04 | 15.00 $ | **4.20 $** | +10.80 $ |
+| Romulosilvamorais | 2026-09-04 | 200.00 $ | **56.06 $** | +143.94 $ |
+| Uber | 2026-09-08 | 29.94 $ | **8.35 $** | +21.59 $ |
+| Metro Rj Rio De | 2026-09-08 | 7.90 $ | **2.20 $** | +5.70 $ |
+| Metro Rj Rio De | 2026-09-08 | 7.90 $ | **2.20 $** | +5.70 $ |
+| Uber | 2026-09-08 | 26.93 $ | **7.51 $** | +19.42 $ |
+| Uber | 2026-09-08 | 39.95 $ | **11.14 $** | +28.81 $ |
+| Armazem San Thiago | 2026-09-08 | 226.60 $ | **62.73 $** | +163.87 $ |
+| Zona Sul | 2026-09-08 | 80.56 $ | **22.30 $** | +58.26 $ |
+| Confeitaria Bonis | 2026-09-08 | 29.00 $ | **8.03 $** | +20.97 $ |
+| Zona Sul | 2026-09-08 | 46.14 $ | **12.89 $** | +33.25 $ |
+| Pagte (BEE**PagTesouro) | 2026-09-08 | 168.10 $ | **46.98 $** | +121.12 $ |
+| Duty Free New Departur | 2026-09-10 | 126.35 $ | **179.04 $** | -52.69 $ |
+| Nescafe Galeao | 2026-09-10 | 111.31 $ | **31.05 $** | +80.26 $ |
+| *BRUTTITO TERMINAL | 2026-09-10 | 36.80 $ | **52.19 $** | -15.39 $ |
+| Uber | 2026-09-09 | 35.93 $ | **10.05 $** | +25.88 $ |
+| Sodexo | 2026-09-09 | 13.50 $ | **3.77 $** | +9.73 $ |
+| Sodexo | 2026-09-09 | 13.50 $ | **3.77 $** | +9.73 $ |
+| Uber | 2026-09-09 | 40.99 $ | **11.46 $** | +29.53 $ |
+| **TOTAL (44)** | | **3875.43 $** | **1338.12 $** | **+2537.31 $** |
+
+⚠️ **Cette table n'est PAS complète** : mes captures du relevé s'arrêtent au 08 SEP pour la partie
+facturée et ne montrent pas tout le 09-10 SEP. Au moins deux lignes de ton état (Uber −57,93 $ et
+Copa −70,00 $ du 2026-09-10) n'ont pas pu être appariées faute de la ligne de relevé correspondante.
+Une réparation COMPLÈTE exige le relevé complet.
+
+### Pourquoi je ne l'ai pas corrigée tout seul
+
+Il n'existe **aucun outil qui modifie ou supprime une transaction existante** : `apply_bank_statement`
+ne fait qu'AJOUTER, et sa dédup porte sur (date + montant + marchand) — ré-importer le bon montant
+ajouterait donc une SECONDE ligne au lieu de corriger la première, et doublerait la dépense.
+
+Le seul levier propre est `isDuplicate` : il exclut une ligne de **tous** les calculs (cash, budget,
+grand livre du passé), et c'est exactement ce à quoi il sert (« artefact d'import »). Il se pose à la
+main dans l'écran Transactions. La réparation complète est donc en deux temps — **marquer les 44
+lignes « doublon », puis ré-importer les montants du relevé** — et l'ordre compte : ajouter d'abord
+ferait doubler la dépense tant que le marquage n'est pas fait.
+
+C'est une migration de tes données financières RÉELLES : elle attend ton feu vert explicite.

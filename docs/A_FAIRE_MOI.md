@@ -1837,6 +1837,66 @@ Ta dette « bZ » porte **50 000 $ à 5,69 %**. Le contrat dit **48 405,23 $ de 
 dans ton bilan. Pour un bail c'est un choix défendable (tu ne possèdes pas le véhicule), mais c'en est
 un, et il doit être délibéré plutôt que subi.
 
+### ✅ TRANCHÉ par Marc le 2026-09-14, et ÉCRIT
+
+> « le bon prix est celui que je paie car j'ai des offres en plus, calcule combien ça fera en tout…
+> modifie le prêt par rapport au contrat »
+
+**Combien ça fera en tout** — au versement que tu paies réellement (234,67 $/semaine, 208 semaines) :
+
+| | |
+|---|---:|
+| Total des 208 versements | **48 811,36 $** |
+| (au contrat seul : 208 × 218,47 $) | 45 441,76 $ |
+| **Ce que tes options ajoutent sur le terme** | **+3 369,60 $** |
+| Déjà versé (7 semaines) | 1 642,69 $ |
+| Reste à verser (201 semaines) | **47 168,67 $** |
+| **+ si tu ACHÈTES le véhicule à la fin** (valeur résiduelle) | +17 746,40 $ |
+| **Total si tu achètes** | **66 557,76 $** |
+
+**Ce qui a été écrit dans ton état** (`apply_debt`, sauvegarde horodatée créée avant — réversible) :
+
+| Champ | Avant | Après |
+|---|---:|---:|
+| `balance` | 50 000,00 $ | **47 168,67 $** (versements restants au 2026-09-14) |
+| `interestRate` | 5,69 % | **0 %** |
+| `minimumPayment` | **220,00 $** | **1 016,90 $** (= 234,67 × 52 ÷ 12) |
+| `rateProvider` | — | Toyota Services Financiers |
+
+⚠️ **Pourquoi 0 % et pas les 6,59 % du contrat — c'est mesuré, pas un avis.** Le moteur amortit tout
+solde actif : `intérêt = solde × taux/12`, puis `solde += intérêt − paiement`. Or le solde que j'ai
+écrit est la **somme des versements restants**, et un versement de bail **contient déjà l'intérêt**.
+Ressaisir 6,59 % par-dessus le compte donc **deux fois** :
+
+| Taux saisi | Dette éteinte en | Total versé |
+|---|---:|---:|
+| **0 %** | **47 mois** (réel : 46,4) | **47 168,67 $** ✅ |
+| 6,59 % | 54 mois | 54 591,90 $ |
+
+Soit **+7 mois et +7 423 $ de versements que tu ne feras jamais**. Le 6,59 % reste consigné ici et au
+`BACKLOG` : il décrit le contrat, il n'a rien à faire dans un champ qui multiplie un solde déjà
+tout-compris.
+
+⚠️ **Ton paiement était à 220 $/mois dans l'app** pour une auto qui te coûte **1 016,90 $/mois** — le
+plus gros des quatre écarts, et il ne venait pas du contrat mais d'une vieille saisie. Effet mesuré
+dans l'app juste après l'écriture : patrimoine net **212 609 $ → 215 440 $**, dépenses mensuelles
+**3 718 $ → 4 554 $**, **cashflow mensuel 2 370 $ → 1 534 $**. Ta capacité d'épargne projetée était
+surévaluée de ~836 $/mois.
+
+### ⚠️ Ce qui RESTE à faire, et seulement dans l'écran (le MCP ne peut pas)
+
+Dans **Réglages → Dettes**, sur « bZ » :
+
+1. **Type** → « bail auto » (`auto-lease`). Sans ça, le moteur la traite comme un prêt ordinaire.
+2. **Date de début** → **2026-07-14** (date du contrat et de la livraison). Avant cette date, la dette
+   sort du bilan — sinon ton passé porte un bail que tu n'avais pas encore.
+3. **Date de fin de terme** → **2030-07-14** (48 mois). Le moteur cesse alors de payer, et s'il reste
+   un solde il le DIT au lieu de l'effacer.
+
+⚠️ Et la **valeur résiduelle de 17 746,40 $** n'existe nulle part dans le modèle : si tu comptes
+acheter le véhicule à la fin, c'est une décision à cadrer à part (ni `Debt` ni `Asset` ne portent
+aujourd'hui « rachat de bail »).
+
 ### ⚠️ Et je ne peux PAS tout écrire par le MCP
 
 `apply_debt` accepte `balance`, `interestRate`, `minimumPayment`, `category`, `amortizationYears`,

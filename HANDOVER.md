@@ -5,7 +5,24 @@
 > à la fin.
 >
 > ## 🔴 Session 2026-09-14 (fin+) — l'auto de Marc est un BAIL, et le moteur refuse d'amortir un bail
-> Ticket 🔴 `[DETTE-AUTO-BAIL-TOYOTA]`.
+> Ticket 🟠 `[DETTE-AUTO-BAIL-TOYOTA]`.
+> ✅ **BLOCAGE 1 TRANCHÉ ET ÉCRIT le 2026-09-14** — Marc : « le bon prix est celui que je paie car
+> j'ai des offres en plus ». Donc **234,67 $/sem**. Total du bail **48 811,36 $** (208 versements),
+> **66 557,76 $** avec rachat à la résiduelle. `apply_debt` a écrit : solde **50 000 → 47 168,67 $**,
+> paiement **220 → 1 016,90 $/mois**, taux **5,69 → 0 %**, prêteur renseigné (sauvegarde horodatée).
+> ⚠️ **Le 0 % est MESURÉ** : le moteur amortit tout solde actif sans égard au `kind`, et le solde
+> écrit est la somme des versements restants — qui contiennent déjà l'intérêt. Les 6,59 % du contrat
+> donneraient **54 mois / 54 591,90 $** contre **46,4 mois / 47 168,67 $** réels : **+7 423 $ de
+> versements fantômes**. Suivre « modifie par rapport au contrat » à la lettre les aurait inventés.
+> ⚠️ **Le plus gros écart n'était pas celui qu'on cherchait** : `minimumPayment` = **220 $/mois** pour
+> une auto à **1 016,90 $**. Mesuré après écriture : patrimoine 212 609 → 215 440 $, cashflow mensuel
+> **2 370 → 1 534 $**. Sa capacité d'épargne projetée était surévaluée de ~836 $/mois.
+> ⚠️ **RESTE, et seulement dans l'écran** : type `auto-lease`, début 2026-07-14, fin de terme
+> 2030-07-14 — `apply_debt` ne peut écrire aucun des trois. Et la **résiduelle (17 746,40 $)** n'a
+> aucun champ dans le modèle.
+> ⏳ **Les 44 transactions en devise** : Marc a dit « je marque en doublon ». Le marquage n'est PAS
+> vérifiable depuis le MCP (`search_transactions` ne filtre ni n'expose `isDuplicate`) → attendre sa
+> confirmation AVANT d'importer les bons montants, sinon la dépense est doublée le temps du marquage.
 > Marc a envoyé le contrat (photo) et demandé « retrouve toutes les infos, stocke-les, mets tout à
 > jour ». **Rien n'a été écrit dans ses données** : deux faits bloquent, et aucun n'était connu quand
 > il a répondu au menu.

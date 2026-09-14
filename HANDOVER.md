@@ -26,8 +26,41 @@
 > Un `debtName` hérité qui ne désigne plus rien reste affiché marqué **INTROUVABLE**.
 > ⚠️ **Reste ouvert** : le jeton du chemin SERVEUR (secret `financeai-fintable-token`) rend **401** —
 > il porte encore un des jetons révoqués le 2026-09-05. Le chemin NAVIGATEUR n'est pas touché.
-> ⚠️ **PR #954** (`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`) est verte 7/7 et `mergeable_state: clean`
-> mais reste en BROUILLON : la bascule brouillon→prêt est bloquée par le quota d'API GitHub.
+> ✅ **PR #954 MERGÉE** (squash sur `main`) après ~1 h 45 de blocage du quota GraphQL de GitHub sur
+> la bascule brouillon→prêt — les lectures et les commentaires REST passaient tout du long, seule
+> l'écriture `draft: false` était refusée. Aucun correctif de code : juste une attente.
+>
+> ## 🟦 Session 2026-09-14 — Vérif mobile en direct + inventaire BACKLOG complet + 4 décisions Marc
+> Demande Marc : « va voir en direct sur mobile, fait-moi la liste de ce qu'il reste dans backlog et
+> pose toutes les questions pour decisions ». Réseau public bloqué depuis ce bac à sable (politique
+> réseau du conteneur) : le commit déployé (`06bef70`, confirmé identique à `origin/main`) a été
+> rejoué en LOCAL (`npm run dev` + Playwright Chromium, 390×844 tactile) — 4 captures de l'onglet
+> Futur mobile envoyées à Marc, rendu conforme. Inventaire : **113 tâches ouvertes** au BACKLOG,
+> réparties par section (détail dans le corps du message de session, pas recopié ici — un chiffre
+> qui varie à chaque push ROTE, cf §8 CLAUDE.md). ~30 questions de décision recensées
+> (`docs/A_FAIRE_MOI.md` + tickets 🧭 du BACKLOG) ; 4 posées en clic, **toutes répondues** :
+> - ✅ `[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]` (Q16) → partager comme le reste (`× keep`) — **LIVRÉ
+>   cette session, PR #954, 2 commits** : `privateBusinessValue` `const`→`let` (valeur au bilan,
+>   écart 900 000 $ pile ramené à 225 000 $) ; puis, trouvé par 2 agents de revue INDÉPENDANTS avant
+>   merge, le dividende annuel de l'entreprise n'était PAS partagé non plus (`businessStates`, même
+>   patron que `rentalStates`) — le ménage restant touchait 100 % du dividende indéfiniment malgré
+>   une équité réduite. **Leçon** : `PARTAGER-LE-MONTANT-PAS-SES-REFLETS` a encore piégé un premier
+>   jet, deux fois en un an sur des actifs W5 différents (locatif en 2026-08, entreprise ici) — et un
+>   TROISIÈME cas du même patron (revenu locatif encaissé, pas seulement l'équité) a été TROUVÉ mais
+>   PAS corrigé, routé à `[ENG-DIVORCE-RENTAL-INCOME-UNSPLIT]`. Garde
+>   `divorceBusinessShare.test.ts` (6 cas), discriminants confirmés sur les deux commits.
+> - ✅ `[HYDRATATION-REFUS-TOUT-OU-RIEN]` → statu quo (tout-ou-rien conservé) — **fermé sans code**.
+> - ✅ `[ENG-LIQUIDDEBT-NEVER-REPAID]` → taux de découvert = carte de crédit ~19,99 % (choix Marc,
+>   PAS une source légale — à documenter en hypothèse assumée). **Reste un GO à obtenir** sur le
+>   plan d'implémentation (intérêt + remboursement prioritaire + alerte plan d'action) avant de
+>   toucher `cashflowAllocation.ts` (508 lignes, ordre des opérations = comportement) — plan posé
+>   dans `docs/A_FAIRE_MOI.md`.
+> - ✅ `[W5-RENTAL-DPA-ELECTION]` → option 3, élire AVEC vente et recapture. **Reste un GO** : ça
+>   exige de modéliser d'abord la vente d'un immeuble W5 (gain en capital, recapture) — chantier
+>   NEUF relevé de S à L, rien n'existe aujourd'hui pour ça. Plan en 5 étapes posé dans
+>   `docs/A_FAIRE_MOI.md`, alternative de repli proposée (option 1, zéro risque, en attendant).
+> **Suite proposée** : GO/NO-GO de Marc sur les deux plans ci-dessus ; sinon, prochaine session sur
+> les tickets déjà MESURÉS du BACKLOG qui n'attendent personne.
 
 > ## 🟢 Session 2026-09-03 — MARC A TRANCHÉ HUIT DÉCISIONS (+ deux sous-questions)
 > Toutes consignées dans `docs/A_FAIRE_MOI.md` (marquées ✅ RÉPONDU, énoncés d'origine conservés) et

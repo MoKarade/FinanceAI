@@ -1212,6 +1212,35 @@ git push origin --delete claude/children-reee-garde claude/eng-divorce-coherent 
 
 ## Décision produit + valeur à sourcer — `[ENG-LIQUIDDEBT-NEVER-REPAID]` (2026-08-19)
 
+> ✅ **RÉPONDU par Marc le 2026-09-14 (en clic)** : taux de découvert = **carte de crédit, ~19,99 %**.
+> ⚠️ [Certain] Ce n'est PAS une constante fiscale légale sourcée (ARC/RQ) — c'est un choix de Marc sur
+> SA situation. Je la documenterai dans `FISCAL_REFERENCE.md` §9 comme **hypothèse de modèle
+> assumée** (datée, avec sa justification), pas comme un chiffre sourcé — exactement la distinction
+> que `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE` impose.
+>
+> **Reste la 2ᵉ moitié de la question (jamais posée en clic)** : priorité de remboursement. Je
+> propose de trancher par la mesure plutôt que redemander — à 19,99 %, rembourser AVANT de cotiser
+> au CELI/REER est mathématiquement dominant dans quasi tous les cas (le rendement après impôt d'un
+> compte enregistré ne rivalise pas avec 19,99 % garanti) ; je pars donc sur **remboursement
+> prioritaire dès qu'un surplus existe, ET alerte dans le plan d'action** — les deux volets du
+> ticket d'origine, jamais contredits par la réponse sur le taux. **Je m'arrête avant de coder** :
+> ce module (`cashflowAllocation.ts`, 508 lignes, marqué « ORDRE des opérations = comportement,
+> preuve par empreinte ») est le cœur money-critical de la cascade de décaissement — un plan court
+> AVANT d'y toucher, pas une supposition. Plan proposé, posé à Marc dans la même session :
+> 1. **Intérêt mensuel** : `liquidDebt *= (1 + 0.1999/12)` dans la boucle principale, appliqué APRÈS
+>    tout remboursement du mois (jamais sur un solde déjà éteint) — mesuré sur le persona insolvable
+>    du ticket AVANT de livrer (556 k$ gelé devient combien à 10/20/30 ans avec intérêt seul, sans
+>    remboursement, pour chiffrer l'écart isolément).
+> 2. **Remboursement prioritaire** : nouvelle étape dans `cashflowAllocation.ts`, AVANT toute
+>    cotisation CELI/REER de surplus — rembourser `min(liquidDebt, surplus disponible)`, empreinte
+>    du module re-mesurée pour prouver que l'ORDRE des autres opérations ne bouge pas hors de ce cas.
+> 3. **Exposition** : `LiquidDebt > 0` déjà publié (`monthlyOutput.ts`) → un item d'alerte dans le
+>    plan d'action existant (`ActionPlanDrilldown`), pas un nouveau mécanisme.
+> 4. Gardes : discriminant `git stash` sur le persona insolvable (patrimoine change AVEC le
+>    correctif, identique SANS `liquidDebt > 0`) ; conservation (`moneyConservation`) rejouée sur
+>    les 7 personas ; contrôle négatif `liquidDebt === 0` → aucun remboursement inventé.
+> **Question posée à Marc** (voir fin de réponse) : GO sur ce plan tel quel, ou ajustement d'abord ?
+
 **Le problème, mesuré.** `liquidDebt` est le découvert que le moteur crée quand les liquidités
 passent sous zéro. Il ne fait que **croître** : jamais remboursé, même avec des millions en liquide,
 et **jamais porteur d'intérêt**.
@@ -1388,6 +1417,30 @@ Je ne tranche pas seul : (1) touche de l'argent, (2) touche des données persist
 
 ## `[W5-RENTAL-DPA-ELECTION]` — décision de Marc (2026-09-05)
 
+> ✅ **RÉPONDU par Marc le 2026-09-14 (en clic)** : **option 3 — élire AVEC vente et recapture.**
+> C'est le choix le plus complet et le plus coûteux à livrer : le ticket le disait lui-même
+> « exige d'abord de modéliser la vente d'un immeuble W5 (date, gain en capital, recapture) : un
+> lot M à part ». Rien n'existe aujourd'hui pour vendre un immeuble locatif dans le moteur — pas de
+> `LifeEvent` de disposition, pas de calcul de gain en capital sur un W5, pas de recapture de DPA.
+> **Je ne code pas sans un plan validé** : c'est un chantier nouveau (L), pas un correctif. Plan
+> proposé, posé à Marc dans la même session :
+> 1. **Modéliser la disposition d'un immeuble locatif** : un événement (date + prix de vente, ou
+>    « à la fin de l'horizon » par défaut) qui calcule le gain en capital (prix de vente − ACB,
+>    même mécanique que `RE-GAIN` pour les buts immobiliers) et l'ajoute à l'assiette imposable
+>    de l'année de vente.
+> 2. **DPA annuelle** : case à cocher par immeuble locatif + taux (défaut 4 %, catégorie 1, demi-année
+>    la 1ʳᵉ année), plafonnée pour ne jamais créer de perte (min avec le revenu locatif net avant DPA).
+>    `ccaTaken` (déjà dans le type, jamais lu) devient la source unique du solde cumulé.
+> 3. **Recapture à la vente** : `min(DPA cumulée, prix de vente − valeur nette comptable)` ajouté au
+>    revenu ordinaire de l'année de vente (LIR, la recapture n'est PAS un gain en capital).
+> 4. Docs : `FISCAL_REFERENCE.md` (méthode DPA + recapture, datée/sourcée), `PROJECTION.md`.
+> 5. Gardes : cas SANS élection (inchangé, contrôle négatif), cas AVEC élection sans vente (DPA
+>    réduit l'impôt courant, latent croît), cas AVEC vente (recapture imposée, impôt latent
+>    s'annule à ±arrondi près) — mesuré sur ≥3 horizons de vente (tôt/milieu/fin d'horizon).
+> **Question posée à Marc** (voir fin de réponse) : GO sur ce plan tel quel (chantier L, plusieurs
+> lots), ou préfère-t-il livrer d'abord l'option 1 (ne pas modéliser, le dire à l'écran — zéro
+> risque, quelques minutes) en attendant que le chantier de vente soit cadré à part ?
+
 **La question en une phrase** : veux-tu que la projection **élise la DPA** (la déduction pour
 amortissement d'un immeuble locatif) chaque année, et si oui, avec ou sans la reprise à la vente ?
 
@@ -1511,6 +1564,11 @@ l'import intelligent chaque fois que tu masques l'écran.
   (un « TIM HORTONS 4,50 $ » et un « TIM HORTONS 450 $ » ne sont pas la même dépense).
 
 ## Question Q16 — au divorce, l'entreprise privée se partage-t-elle ? (2026-09-07, lot 214)
+
+> ✅ **RÉPONDU par Marc le 2026-09-14 (en clic)** : **Q16a** — la partager comme le reste (`× keep`),
+> hypothèse « société d'acquêts par défaut ». **LIVRÉ le même jour** :
+> `[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`, `privateBusinessValue` (`let`) désormais `*= keep` au
+> divorce, garde `tests/services/divorceBusinessShare.test.ts` (discriminant confirmé).
 
 En publiant enfin la valeur de l'entreprise privée dans la courbe (lot 214), le panel a vu ce que personne ne pouvait
 voir avant : au DIVORCE, tous les actifs sont divisés selon `divorceSplitPct` (CELI, REER, immobilier, immeubles

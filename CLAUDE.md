@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 852 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 841 tests** Vitest
 (600 fichiers de test, mesuré le 2026-09-14). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -564,6 +564,11 @@ n'est pas réécrire un récit.
   forme normalisée (sinon on reconstruit le défaut un cran plus bas)
   (`UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE-JETTE-LA-PLUS-LENTE`,
   2026-09-14, détail `docs/CONVENTIONS.md`).
+- **Un choix multiple répond à la question posée, jamais aux questions qu'elle présuppose ou ouvre** :
+  poser des décisions en clic (`AskUserQuestion`) peut faire disparaître silencieusement une
+  SOUS-question du ticket source, ou masquer qu'une option choisie exige un chantier non cadré —
+  relire le ticket source (pas sa propre reformulation) avant de considérer le sujet clos
+  (`UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE`, 2026-09-14, détail `docs/CONVENTIONS.md`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

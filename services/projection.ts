@@ -232,7 +232,24 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
      */
     // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) La règle vit dans `privateBusinessValue.ts` — le passé
     // l'applique aussi, et deux copies divergeraient en silence.
-    const privateBusinessValue = computePrivateBusinessValue(privateBusinesses);
+    // ⚠️ [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE] `let`, pas `const` : DÉCISION MARC 2026-09-14 — au
+    // divorce, l'entreprise privée se partage COMME LE RESTE du patrimoine familial (même `keep`
+    // que `realEstateEquity` trois lignes plus bas dans la boucle), avec l'hypothèse « société
+    // d'acquêts par défaut » — le modèle ne distingue nulle part ailleurs les biens propres des
+    // biens communs (immobilier, REER, CELI…), donc traiter l'entreprise autrement aurait été la
+    // seule exception. Mesuré AVANT le correctif : entreprise à 900 000 $, partage à 75 % →
+    // patrimoine post-divorce surestimé de 900 000 $ pile (elle restait à 100 % pendant que tout le
+    // reste tombait à 25 %).
+    let privateBusinessValue = computePrivateBusinessValue(privateBusinesses);
+    // [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE] Copie MUTABLE, même patron que `rentalStates` deux lignes
+    // plus bas : `privateBusinesses` (le paramètre brut) alimente AUSSI le dividende mensuel dans
+    // `applyW5Effects` (`biz.ownershipPct`), un second registre du MÊME fait que `privateBusinessValue`
+    // (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`) — sans cette copie, le partage réduirait la VALEUR
+    // d'entreprise au bilan (ci-dessus) en laissant le ménage restant toucher et se faire imposer
+    // 100 % du dividende annuel indéfiniment. `businessStates` est ce que `applyW5Effects` consomme
+    // désormais (jamais `privateBusinesses` brut) ; son `ownershipPct` suit `*= keep` dans le callback
+    // de partage, exactement comme `rentalStates` suit `currentValue`/`mortgage`/`monthlyPayment`.
+    let businessStates = privateBusinesses.map(b => ({ ...b }));
     const rentalNames = (rentalProperties ?? []).map(rp => rp?.name || 'immeuble locatif');
 
     let propertiesState = activeRE.map(g => {
@@ -913,6 +930,24 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reee *= keep;
             realEstateEquity *= keep;
             mortgageBalance *= keep;
+            // [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE] Même traitement que `realEstateEquity` ci-dessus :
+            // une valeur de patrimoine SOMMÉE dans `computeRawNetWorth`, jamais un compte à
+            // mouvements mensuels — pas de registre `withdrawalXXX` à alimenter (elle n'en a jamais
+            // eu, `ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE` visait justement son absence de tout
+            // mécanisme). La cession de VALEUR n'est donc pas publiée dans un flux séparé, exactement
+            // comme pour l'équité immobilière.
+            privateBusinessValue *= keep;
+            // ⚠️ [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE, revue #954] `businessStates` PARTAGE le même
+            // fait que `privateBusinessValue` (la propriété de l'entreprise) mais alimente un AUTRE
+            // registre — le dividende mensuel encaissé et imposé dans `applyW5Effects`. Trouvé par
+            // deux revues indépendantes : sans cette ligne, le ménage restant continuait de toucher
+            // et de se faire imposer 100 % du dividende annuel de l'entreprise, indéfiniment, pendant
+            // que son équité au bilan tombait à `keep` — un même actif, deux registres, un seul
+            // partagé (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`). Mesuré (900 000 $, dividende
+            // 60 000 $/an, `keep` 0,25) : +5 000 $/mois de revenu non partagé, ≈ 405 000 $ composés
+            // sur les 9 années restantes d'un horizon de 10 ans — plus gros que la correction de
+            // valeur elle-même sur un horizon long.
+            businessStates = businessStates.map(b => ({ ...b, ownershipPct: b.ownershipPct * keep }));
             // ⚠️ [ENG-DIVORCE-SCALE-UNBOUGHT] `p.isBought` : on ne partage que les biens RÉELLEMENT
             // DÉTENUS. Pour un bien pas encore acheté, `currentValue` et `mortgage` ne sont pas des
             // actifs du couple — ce sont les PARAMÈTRES SEMÉS du futur achat (`price` et
@@ -1266,7 +1301,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // vaut exactement le `rm.interest` que `processRentalMonth` publiera pour ce mois.
                 rentalInterestMensuelParImmeuble: rentalInterestParImmeuble(rentalStates),
             },
-            { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses },
+            // [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE] `businessStates` (partagé au divorce), PAS
+            // `privateBusinesses` (le paramètre brut, jamais muté) : le dividende mensuel doit suivre
+            // la même part de propriété que l'équité au bilan.
+            { insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses: businessStates },
             {
                 addExpense: (amt) => { monthlyExpenses += amt; },
                 addIncome: (amt) => { monthlyIncome += amt; },

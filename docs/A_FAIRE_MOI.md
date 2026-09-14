@@ -1588,54 +1588,85 @@ séparation de biens : non) et de la convention entre conjoints.
 
 ---
 
-## `[FINTABLE-CARTE-DETTE-AUTO]` — créer la dette de carte automatiquement : deux chiffres manquants
+## `[FINTABLE-CARTE-DETTE-AUTO]` — la carte n'est pas une dette : c'est un solde à DEUX SENS
 
-**Statut : EN ATTENTE DE MARC.** Rien n'est codé.
+**Statut : PLAN POSÉ, EN ATTENTE DU GO DE MARC.** Rien n'est codé.
 
-**Ce qui est déjà décidé (2026-09-14, en clic)** : Marc veut que FinanceAI **crée la dette
-automatiquement** à partir du solde Fintable, plutôt que de l'ignorer. J'avais recommandé l'inverse ;
-sa réponse a divergé, ce qui est son droit — mais elle ouvre une SOUS-question que mon menu ne posait
-pas (c'est la récidive, le MÊME JOUR, de `UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE`).
+### Ce que Marc a tranché (2026-09-14, en clic)
 
-**Obstacle 1 — il manque deux chiffres, et `applyDebt` les exige.** Pour CRÉER une dette (et non
-seulement en mettre une à jour), `mcp/ingest/applyDocument/debt.ts` exige `balance + interestRate +
-minimumPayment`. Fintable ne fournit que le solde.
-- Le **taux** est déjà tranché : **19,99 %**, décision de Marc du même jour
-  (`[ENG-LIQUIDDEBT-NEVER-REPAID]` plus haut dans ce fichier). Réutilisable sans rien inventer.
-- Le **paiement minimum** n'a **aucun défaut dans le dépôt** — vérifié : il est saisi à la main
-  partout, et `debtAmortization` refuse d'amortir sans un `minimumPayment > 0`. En inventer un
-  (« 5 % du solde ») serait un chiffre non sourcé qui pilote l'amortissement de toute la projection.
-  ⚠️ La règle québécoise du paiement minimum existe bel et bien (LPC), mais je **n'ai pas pu la
-  citer** : accès réseau bloqué depuis ce conteneur. La consigner sans source lui donnerait
+1. **Créer la dette automatiquement** à partir du solde Fintable (contre ma recommandation).
+2. « **parfois mon crédit fait que j'ai de l'argent en plus et parfois de l'argent en moins** » — donc
+   le solde de cette carte **oscille des deux côtés de zéro par conception**, ce n'est pas un cas limite.
+3. Sur Fintable, devoir de l'argent s'affiche en **NÉGATIF** (`-500` pour 500 $ dus).
+4. Quand le solde est **en sa faveur**, il veut que le surplus **compte comme des liquidités** — et non
+   une dette à 0 $ (mon option recommandée). C'est le choix le plus exact et le plus coûteux ; il est
+   assumé, et il change le modèle : la carte cesse d'être « une dette » pour devenir un compte à solde
+   SIGNÉ, dont les deux moitiés vont dans deux registres différents.
+
+### ⚠️ Ce que la réponse n°3 révèle : le code suppose exactement l'INVERSE
+
+`services/fintable/mapSnapshot.ts` porte `const owed = Math.abs(account.balance)` avec, juste
+au-dessus, « un solde NÉGATIF signifie un crédit en ta faveur ». Sous la convention que Marc décrit,
+les deux cas sont **inversés** :
+
+| situation réelle | solde Fintable | ce que le code fait aujourd'hui |
+|---|---|---|
+| tu DOIS 500 $ | `-500` | dette de 500 $ ✅ …mais l'avertissement « **crédit en ta faveur** » se déclenche **à chaque passe**, sur le cas NOMINAL |
+| tu as 200 $ EN TROP | `+200` | **dette fantôme de 200 $**, **sans aucun avertissement** — patrimoine net faux de 400 $ (200 $ de dette inventée au lieu de 200 $ d'actif) |
+
+`Math.abs` sauve la grandeur du cas nominal **par accident**, et c'est exactement ce qui rendait le
+défaut invisible. Un avertissement qui parle sur le cas normal et se tait sur le cas anormal est pire
+qu'absent (classe « un avertissement PERMANENT est un avertissement mort »).
+
+⚠️ **Confiance** : `[À vérifier]`. Marc décrit ce que **l'écran** de Fintable affiche ; le champ
+`accounts[].balance` de l'API est lu tel quel par `services/fintable/decode.ts` (aucune transformation
+de signe), mais personne n'a encore comparé les deux sur une vraie passe. Le plan ci-dessous commence
+donc par une mesure, pas par un correctif. Le jeton serveur étant révoqué (401), cette mesure passe par
+le navigateur de Marc.
+
+### Plan proposé — trois étapes, la première ne déplace aucun dollar
+
+**Étape 1 — MESURER le signe (aucun changement de comportement).** Le rapport de synchro affiche déjà
+des avertissements ; y ajouter, pour chaque compte au rôle `debt`, le **signe** du solde reçu (jamais
+le montant : le rapport part aussi dans les journaux GitHub Actions en clair, cf. `[PR #531]`). Une
+passe de Marc tranche alors la table ci-dessus définitivement. Coût : quelques lignes, zéro risque.
+
+**Étape 2 — le solde signé va dans DEUX registres MUTUELLEMENT EXCLUSIFS.** Une fois le signe confirmé :
+
+- `dû = max(0, -solde)` → payload de dette (comme aujourd'hui, mais dérivé du bon sens) ;
+- `surplus = max(0, +solde)` → s'ajoute à la **cible de liquidités**, au même titre qu'un compte chèque.
+
+Les deux ne sont jamais non nuls ensemble : c'est un seul montant vu de deux côtés, et il doit être
+**partagé**, pas reflété (leçon `PARTAGER-LE-MONTANT-PAS-SES-REFLETS` — deux registres oubliés avaient
+coûté 75 957 $ d'écart). Quand la carte bascule d'un sens à l'autre, l'autre registre doit **retomber à
+zéro dans la même passe**, sinon le patrimoine compte deux fois.
+
+⚠️ **Obstacle mesuré sur ce chemin** : `mcp/ingest/applyDocument/cashBalance.ts` **refuse** une cible de
+liquidités négative (`doc.targetCad < 0` → `throw`), ce qui **rejette le payload entier**. Tant que le
+surplus de la carte est le seul terme ajouté, la cible reste positive (le compte chèque domine) — mais
+c'est une condition, pas une garantie, et elle doit être écrite dans un test.
+
+**Étape 3 — la création automatique de la dette.** Elle reste bloquée sur **un seul chiffre** :
+
+- Le **taux** est tranché : **19,99 %** (décision de Marc du même jour, `[ENG-LIQUIDDEBT-NEVER-REPAID]`
+  plus haut dans ce fichier).
+- Le **paiement minimum** n'a **aucun défaut dans le dépôt** — vérifié : il est saisi à la main partout,
+  et `debtAmortization` refuse d'amortir sans `minimumPayment > 0`. `applyDebt`
+  (`mcp/ingest/applyDocument/debt.ts`) exige les trois champs pour CRÉER (une mise à jour partielle n'en
+  exige aucun). En inventer un (« 5 % du solde ») serait un chiffre non sourcé qui pilote l'amortissement
+  de toute la projection.
+  ⚠️ La règle québécoise du paiement minimum existe (LPC), mais je **n'ai pas pu la citer** : accès réseau
+  bloqué depuis ce conteneur (`EGRESS_BLOCKED` sur LégisQuébec). La consigner sans source lui donnerait
   l'autorité d'un texte de loi (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`).
 
-**Obstacle 2 — le solde de TA carte peut être en crédit, et le mapper en ferait une dette.** Marc :
-« je vire souvent de l'argent dessus pour rembourser la dette / avoir de l'argent en rab dessus ».
-Or `services/fintable/mapSnapshot.ts` porte le solde en positif via `Math.abs(account.balance)` :
-un solde de **−200 $** (200 $ en trop EN TA FAVEUR) deviendrait une **dette de 200 $**. Sur un compte
-qui oscille autour de zéro, la création automatique fabriquerait des dettes fantômes à chaque passe.
-Le code AVERTIT déjà dans ce cas, mais il écrit quand même.
+### La seule question qui reste
 
-⚠️ **Précision de Marc, même jour** : « parfois mon crédit fait que j'ai de l'argent en plus et
-parfois de l'argent en moins ». Ce n'est donc pas un cas limite occasionnel — le solde de cette carte
-**oscille des deux côtés de zéro par conception**. Conséquence sur le cadrage : ce compte n'est pas
-une dette qui se rembourse, c'est un solde à DEUX SENS, et le modèle de FinanceAI n'a pas d'objet
-pour ça (`Debt.balance` est un montant dû, jamais négatif). Créer une dette automatiquement
-reviendrait à figer le mauvais sens une passe sur deux.
+**Quel paiement minimum ?** Soit le chiffre de ton relevé, soit une hypothèse assumée et **marquée comme
+telle à l'écran** — pas un chiffre glissé en silence dans la projection.
 
-⚠️ **Et une mesure manque avant toute décision** : personne n'a vérifié dans QUEL SENS Fintable
-publie le solde d'une carte. Le mapper suppose « positif = dû » et traite le négatif comme un crédit
-en faveur de Marc — hypothèse jamais confrontée à la vraie donnée. Si la convention de Fintable est
-l'inverse (passifs en négatif, usage courant), `Math.abs` sauve la grandeur par accident mais
-l'avertissement « crédit en ta faveur » se déclenche exactement à l'envers. La question qui tranche,
-et que seul Marc peut lire : **quand tu dois 500 $ sur la carte, Fintable affiche `500` ou `-500` ?**
+### En attendant, ça marche déjà
 
-**Questions à trancher avant de coder :**
-1. Quel **paiement minimum** ? (le chiffre de ton relevé, ou une hypothèse assumée et marquée comme
-   telle à l'écran — pas un chiffre glissé en silence dans la projection)
-2. Que faire quand le solde est **en ta faveur** ? Options : ne rien écrire ce mois-là (le plus
-   prudent), écrire une dette de 0 $, ou écrire un « avoir » — qui n'existe pas dans le modèle
-   aujourd'hui.
-
-**En attendant, ça marche déjà** : `[FINTABLE-CARTE-SANS-DETTE]` est livré, donc tes transactions de
-carte entrent dans le budget dès maintenant, sans aucune dette. Seul le solde dû n'est pas suivi.
+`[FINTABLE-CARTE-SANS-DETTE]` est livré et **en ligne** (PR #956, déploiement vérifié READY) : tes
+transactions de carte entrent dans le budget dès maintenant, sans aucune dette. Seul le solde de la
+carte n'est pas suivi — et vu le tableau ci-dessus, ne pas le suivre est aujourd'hui **plus juste** que
+le suivre.

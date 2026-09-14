@@ -631,6 +631,18 @@ n'est pas réécrire un récit.
   `--force`) (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE-QUE-L-ACTION-EST-ENCORE-NECESSAIRE`,
   2026-09-14).
 
+- **Une valeur absolue posée sur une convention de signe NON MESURÉE rend l'hypothèse infalsifiable** :
+  `Math.abs(account.balance)` sur un solde de carte Fintable rend le cas nominal juste **dans les deux
+  conventions** (devoir 500 $ donne 500 $, que le solde arrive en `500` ou en `-500`) — donc le commentaire
+  « positif = dû », jamais mesuré, ne pouvait pas être réfuté par ce qu'on regarde tous les jours. Seules
+  la branche RARE (un solde en crédit devient une **dette fantôme** du même montant) et un avertissement
+  qui parle sur le cas NORMAL le trahissent. Avant d'écrire `Math.abs` sur une donnée externe, demander
+  quelle observation distingue encore les deux conventions APRÈS l'appel. ⚠️ Et le vrai enseignement :
+  ce défaut n'est sorti d'aucune relecture, mais d'une **question posée à Marc** — j'avais écrit trois fois
+  que la mesure manquait sans jamais la demander à la seule personne qui pouvait la lire. Une mesure
+  « impossible depuis le conteneur » est peut-être à UNE question de distance
+  (`UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE-REND-L-HYPOTHESE-INFALSIFIABLE`, 2026-09-14).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

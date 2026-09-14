@@ -47,6 +47,23 @@
 > faux depuis 17:58. Elle n'a aucune PR et son contenu est superseded par la présente entrée.
 > **Supprimer la branche distante demande l'accord de Marc** (action destructive hors cycle), donc
 > elle est laissée en place et signalée ici.
+>
+> 🔴 **Trouvé en posant les questions, pas en lisant le code : le SIGNE du solde de carte est
+> peut-être inversé.** Marc, interrogé en clic : sur Fintable, devoir 500 $ s'affiche **`-500`**. Or
+> `mapSnapshot.ts` porte `const owed = Math.abs(account.balance)` et commente « un solde négatif
+> signifie un crédit en ta faveur » — l'inverse. Si c'est confirmé : un solde en CRÉDIT (`+200`)
+> devient une **dette fantôme de 200 $ sans le moindre avertissement** (patrimoine net faux de 400 $),
+> pendant que l'avertissement « crédit en ta faveur » se déclenche sur le cas NOMINAL à chaque passe.
+> `Math.abs` sauvait la grandeur du cas courant **par accident**, ce qui rendait l'hypothèse
+> infalsifiable. ⚠️ `[À vérifier]` — Marc décrit l'ÉCRAN, l'API est lue telle quelle par `decode.ts`
+> mais les deux n'ont jamais été comparés. Ticket 🔴 `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`, étape 1 =
+> publier le SIGNE (jamais le montant) dans le rapport de synchro. Aujourd'hui **inatteignable pour
+> Marc** : aucune de ses cartes n'a de `debtName`.
+> 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]` a maintenant un PLAN** (`docs/A_FAIRE_MOI.md`), en attente du GO.
+> Marc a choisi que le surplus de carte **compte comme des liquidités** — donc la carte devient un
+> compte à solde SIGNÉ dont les deux moitiés vont dans deux registres mutuellement exclusifs. Obstacle
+> mesuré : `applyCashBalance` REFUSE une cible négative et rejette alors le payload entier. Il manque
+> encore **un seul chiffre** : le paiement minimum.
 
 > ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
 > Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard

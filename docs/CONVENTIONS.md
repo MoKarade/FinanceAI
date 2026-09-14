@@ -5637,6 +5637,44 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE-REND-L-HYPOTHESE-INFALSIFIABLE` — 2026-09-14
+
+`services/fintable/mapSnapshot.ts` lit le solde d'une carte de crédit ainsi :
+
+```ts
+const owed = Math.abs(account.balance);
+if (account.balance < 0) { /* avertit : « crédit en ta faveur » */ }
+```
+
+Le commentaire au-dessus énonce une convention — « positif = montant dû, négatif = crédit en ta
+faveur » — que **personne n'a jamais mesurée** contre la vraie donnée. Interrogé, Marc répond que sur
+Fintable, devoir 500 $ s'affiche `-500` : l'inverse.
+
+Ce qui rend le cas intéressant n'est pas l'erreur, c'est **pourquoi elle était impossible à voir** :
+`Math.abs` rend le **cas nominal juste dans les deux hypothèses**. Devoir 500 $ donne une dette de
+500 $ que le solde arrive en `500` ou en `-500`. L'hypothèse ne pouvait donc pas être réfutée par la
+grandeur qu'on regarde tous les jours — seulement par la branche RARE (un solde en crédit, qui
+deviendrait une dette fantôme du même montant) et par un avertissement qui, sous la mauvaise
+convention, parle sur le cas normal et se tait sur l'anormal.
+
+**La règle** : une valeur absolue posée sur une grandeur dont la convention de signe n'a pas été
+MESURÉE ne « normalise » pas — elle **efface la mesure qui aurait tranché**. Avant d'écrire
+`Math.abs` sur une donnée externe, se demander quelle observation distinguerait encore les deux
+conventions après l'appel ; s'il n'en reste aucune sur le chemin courant, l'hypothèse est
+infalsifiable et doit être mesurée AVANT, pas commentée.
+
+⚠️ Corollaire de conduite, et c'est le vrai enseignement du lot : ce défaut n'est sorti d'aucune
+relecture de code — il est sorti d'une **question posée à l'utilisateur**. J'avais écrit trois fois
+dans le dépôt que la mesure manquait, sans jamais la demander à la seule personne qui pouvait la
+lire. Une mesure « impossible depuis le conteneur » (jeton serveur révoqué, réseau bloqué) n'est pas
+forcément impossible : elle est peut-être à **une question** de distance.
+
+⚠️ `[À vérifier]` assumé : Marc décrit ce que l'ÉCRAN de Fintable affiche ; `decode.ts` lit
+`accounts[].balance` sans transformation de signe, mais l'écran et l'API n'ont pas été comparés sur
+une vraie passe. L'étape 1 du plan est donc de PUBLIER le signe (jamais le montant : le rapport de
+synchro part aussi en clair dans les journaux GitHub Actions) et de laisser une passe trancher — une
+leçon dont la prémisse est encore une déclaration s'écrit avec son niveau de confiance.
+
 ### `UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE-QUE-L-ACTION-EST-ENCORE-NECESSAIRE` — 2026-09-14
 
 La PR #956 était verte des deux côtés (gate local et 7/7 en CI) mais en BROUILLON, et GitHub refuse

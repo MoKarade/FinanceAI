@@ -17,6 +17,36 @@
 
 ---
 
+## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
+
+- [x] 🔧 **`[HUB-V13]`** Contrat re-pinné sur `v1.3.0`, puis quatre champs neufs publiés.
+  **Fait le 14/09** (S).
+  · `primary` sur « Valeur nette » — le hub déduisait le gros chiffre de la position 0, ce qui
+    marchait tant que personne ne réordonnait la liste, alors que cet ordre est un arbitrage qui a
+    DÉJÀ changé une fois (les placements ont pris trois places).
+  · `recommendation` depuis `signals[0]`, **gratuitement** : `computeFinancialSignals` est déjà
+    appelé pour les alertes et rend ses signaux triés par priorité. Le `label` porte l'ACTION, le
+    `why` le constat. Un test analyse `mcp/financialSignals.ts` et exige une action pour CHAQUE
+    identifiant réel — un signal ajouté sans action publierait son constat comme un conseil.
+  · `details` : la fraîcheur DÉCOMPOSÉE (push Drive et clôture de marché, séparément) et la
+    ventilation des placements par compte, postes à zéro omis.
+  · `expectedMaxAgeSec` **dérivé de `MAX_STALE_DAYS + 1 j`, et volontairement LÂCHE** — voir le
+    `CLAUDE.md` §7. ⚠️ Ne pas le resserrer vers 6 h : `dataAsOf` mêle deux horloges, et un seuil
+    de 6 h crierait « figée » chaque fin de semaine alors que la bourse est fermée. Le contrôle
+    quotidien est `STALE_THRESHOLD_MS` → `status: 'degraded'`, qui existe déjà.
+  6 mutations jouées, 6 attrapées. 30 tests sur `hubSummary` (+13).
+- [ ] 🔧 **`[HUB-LIQ]`** Ventiler les LIQUIDITÉS par compte dans `details` (S). Prévu au plan du
+  jour, **écarté après lecture du code** : `computeCurrentLiquidity` délègue à `computeCashLedger`,
+  qui accumule un solde UNIQUE (`initialBalances` + transactions) sans clé de compte. Il n'existe
+  donc aucune ventilation à extraire — la publier demanderait un grand livre par compte, c'est-à-dire
+  du travail neuf et non demandé. La ventilation des PLACEMENTS (`computeAssetBreakdown`) a été
+  publiée à la place : elle existe déjà, elle est convertie en CAD, et c'est elle qui explique les
+  signaux d'espace CELI/REER.
+- [ ] 🔧 **`[HUB-RENDU]`** Le hub ne REND pas encore `details`, `primary` ni `recommendation` (son
+  lot 2). Rien à faire dans ce dépôt : entrée gardée pour que « publié » ne se lise pas « affiché ».
+
+---
+
 ## 📱 Refonte de l'onglet Futur pour le TÉLÉPHONE (Marc, 2026-09-10 — « actuellement c'est inutilisable »)
 
 > Cadrage fait le 2026-09-10 (`/new-feature` : product-manager → architect → 16 questions posées à Marc, toutes

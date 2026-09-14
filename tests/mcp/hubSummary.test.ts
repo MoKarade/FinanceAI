@@ -12,7 +12,15 @@ import type { ResolvedState } from '../../mcp/bootstrap';
 import { normalizeAppState, type StateSource } from '../../mcp/state/loadAppState';
 import { makeStateStore } from '../../mcp/state/stateStore';
 import { setStateFreshness, STALE_THRESHOLD_MS } from '../../mcp/state/freshness';
-import { buildHubSummary, errorHubSummary, HUB_APP } from '../../mcp/hubSummary';
+import {
+    AGE_MAX_ATTENDU_SEC,
+    buildHubSummary,
+    errorHubSummary,
+    HUB_APP,
+    recommandation,
+} from '../../mcp/hubSummary';
+import { computeFinancialSignals } from '../../mcp/financialSignals';
+import { MAX_STALE_DAYS } from '../../services/history/portfolioSessionMetrics';
 import { TEST_PERSONAS } from '../../services/testPersonas';
 
 const HUB_TOKEN = 'jeton-de-test-hub-0123456789';
@@ -267,5 +275,160 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
         setStateFreshness({ updatedAt: Date.parse('2026-08-17T09:00:00Z'), source: 'test' });
         const s2 = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
         expect(s2.dataAsOf).toBe(new Date(Date.parse('2026-08-17T09:00:00Z')).toISOString());
+    });
+});
+
+/* ---------- Contrat v1.3 : `primary`, `recommendation`, `details`, et le filet de fond ---------- */
+
+describe('contrat v1.3 — le chiffre de la carte et la recommandation', () => {
+    it('`primary` désigne la valeur nette, et une seule métrique le porte', () => {
+        // Le contrat refuse deux titres de carte. Jusqu'ici le hub déduisait le gros chiffre de la
+        // position 0 — ce qui marchait tant que personne ne réordonnait la liste, alors que cet
+        // ordre est un arbitrage qui a DÉJÀ changé une fois (les placements ont pris trois places).
+        const s = buildHubSummary(personaState());
+        const titres = s.metrics.filter((m) => m.primary);
+        expect(titres.map((m) => m.label)).toEqual(['Valeur nette']);
+        expect(() => validateSummary(s)).not.toThrow();
+    });
+
+    it('`recommendation` vient du signal le plus prioritaire, et dit une ACTION', () => {
+        const { signals } = computeFinancialSignals(personaState());
+        const s = buildHubSummary(personaState());
+        if (signals.length === 0) {
+            expect(s.recommendation).toBeUndefined();
+            return;
+        }
+        expect(s.recommendation).toBeDefined();
+        // Le `label` porte l'action, le `why` le constat : ce ne sont pas la même phrase. Recopier
+        // l'observation dans `label` produirait une « recommandation » qui ne recommande rien.
+        expect(s.recommendation!.label).not.toBe(signals[0]!.observation);
+        expect(s.recommendation!.why).toBe(
+            signals[0]!.observation.length <= 140
+                ? signals[0]!.observation
+                : s.recommendation!.why,
+        );
+        expect(s.recommendation!.label.length).toBeLessThanOrEqual(80);
+        expect(s.recommendation!.why!.length).toBeLessThanOrEqual(140);
+    });
+
+    it('aucun signal → aucune recommandation (jamais un conseil inventé)', () => {
+        expect(recommandation([])).toBeUndefined();
+    });
+
+    it("une observation trop longue est tronquée, jamais rejetée par le contrat", () => {
+        const reco = recommandation([
+            { id: 'inconnu_du_repli', priority: 'high', observation: 'O'.repeat(400) },
+        ]);
+        // Identifiant hors table : le repli publie l'observation tronquée plutôt que RIEN — c'est
+        // le test suivant qui empêche ce repli d'être le chemin normal.
+        expect(reco!.label.length).toBe(80);
+        expect(reco!.why!.length).toBe(140);
+        expect(reco!.label.endsWith('…')).toBe(true);
+    });
+
+    it('🔴 CHAQUE signal RÉEL du moteur a son action — un signal neuf ne tombe pas dans le repli', async () => {
+        // Deux sources, un test pour les tenir ensemble : on ANALYSE le fichier source des signaux
+        // plutôt que de faire confiance à la vigilance. Un `signals.push({ id: 'x' })` ajouté sans
+        // action publierait une observation comme « recommandation » — un constat déguisé en conseil.
+        // `import.meta.url` n'est pas un `file:` sous ce runner (Vitest sert les modules par
+        // HTTP) : on résout depuis la racine du projet, que Vitest fixe comme cwd.
+        const { readFileSync } = await import('node:fs');
+        const { resolve } = await import('node:path');
+        const src = readFileSync(resolve(process.cwd(), 'mcp/financialSignals.ts'), 'utf8');
+        const ids = [...src.matchAll(/signals\.push\(\{\s*[\s\S]{0,80}?id:\s*'([a-z0-9_]+)'/g)].map((m) => m[1]!);
+        // Un test d'exhaustivité qui ne trouve rien n'affirme rien : la borne basse garde le motif.
+        expect(ids.length).toBeGreaterThanOrEqual(5);
+        for (const id of ids) {
+            expect(recommandation([{ id, priority: 'high', observation: 'constat' }])!.label)
+                .not.toBe('constat');
+        }
+    });
+});
+
+describe('contrat v1.3 — le filet de fond, et pourquoi il est LÂCHE', () => {
+    it('`expectedMaxAgeSec` est DÉRIVÉ de MAX_STALE_DAYS, jamais choisi', () => {
+        setStateFreshness({ updatedAt: Date.now(), source: 'test' });
+        const s = buildHubSummary(personaState());
+        expect(s.expectedMaxAgeSec).toBe(AGE_MAX_ATTENDU_SEC);
+        expect(AGE_MAX_ATTENDU_SEC).toBe((MAX_STALE_DAYS + 1) * 86_400);
+    });
+
+    it("un seuil de 6 h aurait crié « figée » chaque fin de semaine — celui-ci ne le fait pas", () => {
+        // ⚠️ LE CŒUR DE LA DÉCISION. `dataAsOf` est le plus ANCIEN du push Drive et de la CLÔTURE
+        // de marché. Un seuil calé sur `STALE_THRESHOLD_MS` (6 h, le vrai contrôle quotidien)
+        // serait donc FAUX : le lundi matin, la dernière clôture a deux jours et demi et la bourse
+        // était simplement fermée. Le filet doit couvrir ce trou NORMAL.
+        const troisJoursEtDemi = 3.5 * 86_400;
+        expect(AGE_MAX_ATTENDU_SEC).toBeGreaterThan(troisJoursEtDemi);
+        expect(AGE_MAX_ATTENDU_SEC).toBeGreaterThan(STALE_THRESHOLD_MS / 1000);
+    });
+
+    it('aucun dataAsOf → aucun expectedMaxAgeSec (le contrat rejette un âge orphelin)', () => {
+        setStateFreshness({ updatedAt: null, source: null });
+        const s = buildHubSummary(normalizeAppState({ ...personaState(), assets: [] }));
+        if (s.dataAsOf === undefined) expect(s.expectedMaxAgeSec).toBeUndefined();
+        expect(() => validateSummary(s)).not.toThrow();
+    });
+});
+
+describe('contrat v1.3 — les sections de détail', () => {
+    it('la fraîcheur est DÉCOMPOSÉE : le push Drive et la clôture, séparément', () => {
+        // Un seul horodatage ne peut pas dire LAQUELLE des deux horloges est en retard, et c'est
+        // pourtant la première question quand un chiffre surprend.
+        setStateFreshness({ updatedAt: Date.now() - 90 * 60_000, source: 'Drive' });
+        const s = buildHubSummary(personaState());
+        const section = s.details?.find((d) => d.title === 'Fraîcheur des deux sources');
+        const synchro = section?.items.find((i) => i.label === 'Dernière synchro');
+        expect(synchro?.value).toBe('il y a 2 h');
+        expect(synchro?.severity).toBeUndefined();
+    });
+
+    it('au-delà du seuil de l\'app, la ligne de synchro passe en warn — le MÊME jugement', () => {
+        // DISCRIMINANT : la gravité suit `stale`, qui met aussi le summary en `degraded`. Un second
+        // seuil écrit ici pourrait dire « tout va bien » pendant que le statut dit l'inverse.
+        setStateFreshness({ updatedAt: Date.now() - STALE_THRESHOLD_MS - 60_000, source: 'Drive' });
+        const s = buildHubSummary(personaState());
+        expect(s.status).toBe('degraded');
+        const synchro = s.details?.[0]?.items.find((i) => i.label === 'Dernière synchro');
+        expect(synchro?.severity).toBe('warn');
+    });
+
+    it('les placements sont ventilés par compte, et les postes VIDES sont omis', () => {
+        // « REEE : 0 $ » affirmerait un compte vide là où il n'y a pas de compte — et le hub trie
+        // ses lignes, donc cinq zéros pousseraient dehors ce qui a de la valeur.
+        const s = buildHubSummary(personaState());
+        const section = s.details?.find((d) => d.title === 'Placements par compte');
+        if (section) {
+            for (const item of section.items) {
+                expect(item.value).not.toBe(0);
+                expect(item.format).toBe('currency');
+            }
+            expect(section.items.length).toBeGreaterThan(0);
+        }
+    });
+
+    it('aucun placement → aucune section de ventilation, jamais un encadré vide', () => {
+        const s = buildHubSummary(normalizeAppState({ ...personaState(), assets: [] }));
+        // `details` peut être ABSENT en entier (aucune section à publier) : « aucune section de
+        // ventilation » et « aucune section du tout » sont tous deux corrects ici.
+        expect(s.details?.some((d) => d.title === 'Placements par compte') ?? false).toBe(false);
+        expect(() => validateSummary(s)).not.toThrow();
+    });
+
+    it('les bornes du contrat tiennent sur toutes les sections', () => {
+        setStateFreshness({ updatedAt: Date.now(), source: 'Drive' });
+        const s = buildHubSummary(personaState());
+        expect((s.details ?? []).length).toBeLessThanOrEqual(6);
+        for (const section of s.details ?? []) {
+            expect(section.title.length).toBeLessThanOrEqual(40);
+            expect(section.items.length).toBeGreaterThan(0);
+            expect(section.items.length).toBeLessThanOrEqual(8);
+            const labels = section.items.map((i) => i.label);
+            expect(new Set(labels).size).toBe(labels.length);
+            for (const item of section.items) {
+                expect(item.label.length).toBeLessThanOrEqual(40);
+                if (item.hint !== undefined) expect(item.hint.length).toBeLessThanOrEqual(80);
+            }
+        }
     });
 });

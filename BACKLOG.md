@@ -605,6 +605,25 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
+- [x] 🔴 **`[FINTABLE-CARTE-SANS-DETTE]` — LIVRÉ le 2026-09-14** (M) — un rôle « Dette (carte) » au
+  `debtName` VIDE était OMIS de la table remise au mapper (`toMapperRoles`, `browserSync.ts`) : le
+  compte devenait « SANS RÔLE » et **100 % de ses transactions étaient jetées**, pendant que l'écran
+  de configuration affichait « Dette (carte) ». MESURÉ sur la vraie chaîne : AVEC nom **5/5**
+  importées, SANS nom **0/5** — identique à « aucun rôle du tout ». C'est la cause du « je reçois pas
+  mes transactions de carte » de Marc, PAS la bascule globale (qui reste un vrai défaut, ci-dessous).
+  Le nom vide a désormais un sens explicite (« importe les transactions, ne touche à aucun solde »),
+  accepté des DEUX côtés (navigateur + parseur serveur) et annoncé à l'écran avec sa contrepartie.
+- [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **DÉCISION MARC EN COURS**) — Marc a choisi « créer la
+  dette automatiquement » à partir du solde Fintable (2026-09-14, contre ma recommandation).
+  ⚠️ **Deux obstacles non résolus, tous deux mesurés — ne rien coder avant de les trancher** :
+  (1) Fintable ne fournit **ni taux ni paiement minimum**, et `applyDebt` exige `balance +
+  interestRate + minimumPayment` pour CRÉER une dette ; le taux 19,99 % est déjà tranché par Marc
+  (`docs/A_FAIRE_MOI.md`, même jour) mais **aucun défaut de paiement minimum n'existe dans le dépôt**
+  (vérifié : il est saisi à la main partout, et `debtAmortization` exige `> 0`). (2) Marc : « je vire
+  souvent de l'argent dessus … avoir de l'argent en rab » ⇒ son solde de carte passe en CRÉDIT, or
+  `mapSnapshot` fait `Math.abs(account.balance)` — un crédit de 200 $ deviendrait une **dette de
+  200 $**. Créer la dette automatiquement sur ce compte fabriquerait donc des dettes fantômes.
+  Détail et question posée dans `docs/A_FAIRE_MOI.md`.
 - [x] **`[FINTABLE-DEBTNAME-AUTO]` — LIVRÉ le 2026-09-14** (M) — le nom de la dette d'un compte
   carte de crédit ne se TAPE plus, il se CHOISIT dans une liste des dettes réelles, et il est
   PRÉ-SÉLECTIONNÉ depuis le libellé du compte. Demande Marc (2026-09-14) : « je veux pas avoir à

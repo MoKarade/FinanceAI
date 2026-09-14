@@ -57,7 +57,15 @@ export const FINTABLE_TAX_REGIMES: readonly FintableTaxRegime[] = ['CELI', 'REER
 export type FintableAccountRole =
     /** Compte courant / épargne → son solde entre dans les liquidités, ses transactions sont importées. */
     | { kind: 'cash' }
-    /** Carte de crédit → son solde met à jour une DETTE ; ses transactions sont des dépenses. */
+    /**
+     * Carte de crédit → ses transactions sont des dépenses, et son solde met à jour la DETTE
+     * `debtName`.
+     * ⚠️ [FINTABLE-CARTE-SANS-DETTE] `debtName` VIDE est un état LÉGITIME, pas une configuration
+     * inachevée : « importe les transactions, ne touche à aucun solde ». Demande de Marc
+     * (2026-09-14) — il veut ses dépenses de carte dans le budget sans avoir à créer une dette.
+     * Avant, un nom vide débranchait le compte ENTIER en amont (`toMapperRoles` l'omettait), donc
+     * 100 % de ses transactions étaient jetées comme « compte sans rôle » — mesuré 0/5.
+     */
     | { kind: 'debt'; debtName: string }
     /**
      * Compte de placement → son SOLDE fait autorité (positions hors de portée, cf FINTABLE-POSITIONS).
@@ -183,6 +191,20 @@ export function mapFintableSnapshot(
                 break;
             }
             case 'debt': {
+                // [FINTABLE-CARTE-SANS-DETTE] Nom VIDE = « importe les transactions, ne touche à
+                // aucun solde » — un choix explicite de l'utilisateur, pas une configuration à
+                // moitié faite. Le compte reste ROUTÉ (ses transactions passent le filtre du bas) ;
+                // seule la mise à jour du SOLDE est sautée, faute de dette à viser.
+                // ⚠️ L'avertissement est POSITIF (ce qui se passe), pas une plainte : le rôle est
+                // valide. Un « il manque le nom » ici enverrait corriger une configuration correcte.
+                if (role.debtName.trim() === '') {
+                    warnings.push(
+                        `Compte « ${account.label} » : ses transactions sont importées comme dépenses, `
+                        + 'mais AUCUN solde de dette n\'est mis à jour (aucune dette ne lui est associée). '
+                        + 'Ton patrimoine net ne tient donc pas compte de ce que tu dois sur cette carte.',
+                    );
+                    break;
+                }
                 if (account.balance === null) {
                     warnings.push(`Dette « ${role.debtName} » : solde absent chez Fintable → non mise à jour.`);
                     break;

@@ -173,13 +173,21 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         expect(r.report.error).toContain('store indisponible');
     });
 
-    it('une dette au rôle sans nom est ignorée sans faire échouer la passe', async () => {
+    // ⚠️ [FINTABLE-CARTE-SANS-DETTE] INVERSÉ le 2026-09-14, au même endroit et avec son histoire
+    // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`). Il asserait `accountsWithoutRole === 1`
+    // en appelant ça « signalé, pas avalé » — or « sans rôle » est exactement ce qui DÉBRANCHE un
+    // compte : ses transactions étaient toutes jetées, et l'écran de configuration affichait
+    // pourtant « Dette (carte) ». Le test verrouillait donc le défaut en croyant garder une
+    // protection. Un rôle « Dette » sans nom est désormais un rôle COMPLET : compte routé, solde
+    // non touché. La garde de bout en bout vit dans `carteSansDette.test.ts`.
+    it('une dette au rôle sans nom est ROUTÉE (transactions importées), sans faire échouer la passe', async () => {
         const roles = { acc_1: { kind: 'debt', debtName: '   ' } } as unknown as Record<string, FintableAccountRoleConfig>;
         const r = await runFintableBrowserSync(stateWith({ fintableRoles: roles }), 'jeton', {
             client: fakeClient([account()]), now,
         });
-        expect(r.report.error).toBeNull();          // la passe survit
-        expect(r.report.accountsWithoutRole).toBe(1); // et le compte est signalé, pas avalé
+        expect(r.report.error).toBeNull();            // la passe survit
+        expect(r.report.accountsWithoutRole).toBe(0); // et le compte n'est PLUS débranché
+        expect(r.report.debtsUpdated).toEqual([]);    // mais aucun solde de dette n'est écrit
     });
 });
 

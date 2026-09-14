@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 858 tests** Vitest
-(601 fichiers de test, mesuré le 2026-09-14). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 867 tests** Vitest
+(602 fichiers de test, mesuré le 2026-09-14). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -569,6 +569,29 @@ n'est pas réécrire un récit.
   SOUS-question du ticket source, ou masquer qu'une option choisie exige un chantier non cadré —
   relire le ticket source (pas sa propre reformulation) avant de considérer le sujet clos
   (`UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE`, 2026-09-14, détail `docs/CONVENTIONS.md`).
+- **Un champ VIDE qui débranche son objet ENTIER est un silence, pas une validation** : un rôle
+  Fintable « Dette » au `debtName` vide était OMIS de la table remise au mapper — geste censé
+  neutraliser la seule mise à jour du SOLDE, qui rendait en fait le compte « SANS RÔLE » et jetait
+  **toutes ses transactions**. Mesuré : avec nom **5/5** importées, sans nom **0/5**, identique à
+  « aucun rôle du tout ». ⚠️ Ce qui l'a rendu introuvable, c'est l'ÉCRAN : la carte affichait « Dette
+  (carte) », donc Marc voyait un rôle POSÉ pendant que le moteur voyait un compte INCONNU — et j'ai
+  produit un diagnostic entier sur un défaut voisin mais secondaire. **Quand l'utilisateur affirme
+  qu'une config est posée et que le moteur agit comme si elle ne l'était pas, soupçonner la
+  CONVERSION entre les deux avant la logique en aval.** ⚠️ Le correctif n'est pas d'EXIGER le champ
+  mais de lui DONNER un sens, accepté des deux orchestrateurs (un parseur serveur plus strict que
+  l'app fait échouer le cron sur une config que l'app juge valide). ⚠️ Deux tests de LIMITE
+  verrouillaient le défaut, dont un qui se croyait une protection (« le compte est signalé, pas
+  avalé » — or « sans rôle » EST ce qui l'avalait) : inversés au même endroit avec leur histoire.
+  ⚠️ Et **un libellé d'option vide dit si l'état est INACHEVÉ ou CHOISI** (« — choisir la dette — »
+  → « — aucune : importer seulement les transactions — »)
+  (`UN-CHAMP-VIDE-QUI-DEBRANCHE-SON-OBJET-ENTIER-EST-UN-SILENCE-PAS-UNE-VALIDATION`, 2026-09-14).
+- ⚠️ **Une réponse en TEXTE LIBRE apprend ce qu'aucune de mes options n'anticipait** : sur le même
+  lot, `UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE` a récidivé le MÊME JOUR où elle a
+  été écrite — l'option choisie par Marc exigeait deux chiffres que mon menu n'avait jamais mis sur
+  la table (`applyDebt` demande taux ET paiement minimum pour CRÉER ; Fintable n'en fournit aucun).
+  Puis sa réponse libre suivante a révélé un obstacle qu'aucune option ne couvrait : son solde de
+  carte passe en CRÉDIT, et `Math.abs` en ferait une DETTE du même montant. Quand la question porte
+  sur un COMPORTEMENT d'utilisateur, le menu borne ce qu'on peut découvrir.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

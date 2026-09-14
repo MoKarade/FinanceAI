@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-14 (Ta carte de crédit importe ses transactions SANS que tu aies à créer une dette)
+
+- **Corrigé (c'est le vrai coupable de tes transactions manquantes)** : quand tu déclarais un compte
+  comme « Dette (carte) » sans choisir de dette, FinanceAI le traitait comme un compte **dont tu
+  n'avais rien dit** — et jetait **100 % de ses transactions**. Pendant ce temps l'écran de réglages
+  affichait bien « Dette (carte) » : tu voyais un rôle posé, le moteur voyait un compte inconnu.
+  Mesuré : avec une dette associée, 5 transactions sur 5 entraient ; sans dette, **0 sur 5**.
+  Désormais « aucune dette » est un choix à part entière — tes achats de carte entrent dans le
+  budget comme des dépenses, et seul le solde dû n'est suivi nulle part. L'écran le dit en toutes
+  lettres, y compris la contrepartie : ton patrimoine net ne soustrait pas ce que tu dois sur la
+  carte.
+
+---
+
 ## [unreleased] — 2026-09-14 (La dette d'une carte de crédit se choisit, elle ne se tape plus)
 
 - **Corrigé** : dans Réglages → Sync bancaire Fintable, quand tu déclares qu'un compte est une carte

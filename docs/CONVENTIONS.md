@@ -5637,6 +5637,44 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE-QUE-L-ACTION-EST-ENCORE-NECESSAIRE` — 2026-09-14
+
+La PR #956 était verte des deux côtés (gate local et 7/7 en CI) mais en BROUILLON, et GitHub refuse
+de fusionner un brouillon (`405 Pull Request is still a draft`). Le passage brouillon → prêt est une
+mutation **GraphQL**, dont le quota du compte était épuisé. J'ai donc re-tenté : 17:40, 18:07, 18:37,
+19:07, 19:32 — cinq fois, **2 h 05**, toutes rendant « API rate limit already exceeded ».
+
+Marc avait fusionné la PR lui-même **à 17:58**, soit avant la deuxième tentative. **1 h 34 d'attente
+pour une action qui n'avait plus d'objet.**
+
+Le piège est dans ce que le message d'erreur PARLE : il décrit l'état de **mon appel** (quota), pas
+l'état de **la PR**. Un quota épuisé est parfaitement compatible avec « la chose est déjà faite »,
+« la chose est devenue impossible » et « la chose reste à faire » — il ne discrimine aucune des
+trois. Et relire l'objet ne coûtait rien : `pull_request_read` est du **REST**, jamais concerné par
+ce quota, et je l'avais appelé quelques minutes plus tôt.
+
+**La règle** : quand on re-tente une action bloquée, on relit l'**ÉTAT DE L'OBJET** à chaque essai,
+pas seulement l'action. Une boucle de réessai qui n'interroge que son propre verdict d'échec peut
+tourner indéfiniment sur un travail déjà accompli par quelqu'un d'autre. Corollaire de cadrage : sur
+un dépôt où Marc peut agir en parallèle, « personne d'autre n'a touché à ça » est une hypothèse, pas
+un fait — et c'est exactement l'hypothèse qu'un réessai silencieux reconduit sans jamais la tester.
+
+⚠️ **Le signal était passé sous mes yeux, et il est réutilisable** : un `git push` vers une branche
+poussée dix minutes plus tôt a répondu `* [new branch]`. Une branche distante qui redevient « neuve »
+a été SUPPRIMÉE entre-temps — et sur ce dépôt, la suppression d'une branche `claude/…` est
+précisément ce que fait un squash-merge. **`* [new branch]` sur une branche qu'on a déjà poussée se
+lit « ta PR a été fusionnée », pas « tout va bien ».**
+
+⚠️ **Et ce push a coûté un commit orphelin d'un genre nouveau.** La règle du dépôt connaissait le cas
+« commits poussés SANS PR = rien n'atterrit sur `main` ». Ici c'est l'image miroir : le push a
+**RESSUSCITÉ** la branche supprimée par le merge et y a posé un commit qui affirmait « la PR est verte
+mais bloquée en brouillon » — une phrase fausse depuis 1 h 30, écrite avec l'autorité d'un `HANDOVER`.
+Un commit rédigé pendant une attente décrit l'état au moment où on l'a rédigé ; si l'attente portait
+sur un fait extérieur, ce fait se RELIT avant d'écrire, jamais après. La réconciliation
+(`git checkout -B <branche> origin/main`) se fait alors sur une branche au NOM NEUF : réutiliser
+l'ancien nom exigerait un `--force`, c'est-à-dire l'action destructive que le cycle interdit sans
+l'accord de Marc.
+
 ### `UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT` — 2026-08-22
 
 Après un rebase, il fallait mettre à jour le compteur de tests de mon lot (4 648 → 4 653). Réflexe :

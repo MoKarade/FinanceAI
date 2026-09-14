@@ -627,34 +627,26 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
-- [x] 🔴 **`[FINTABLE-CARTE-SANS-DETTE]` — LIVRÉ le 2026-09-14** (M) — un rôle « Dette (carte) » au
-  `debtName` VIDE était OMIS de la table remise au mapper (`toMapperRoles`, `browserSync.ts`) : le
-  compte devenait « SANS RÔLE » et **100 % de ses transactions étaient jetées**, pendant que l'écran
-  de configuration affichait « Dette (carte) ». MESURÉ sur la vraie chaîne : AVEC nom **5/5**
-  importées, SANS nom **0/5** — identique à « aucun rôle du tout ». C'est la cause du « je reçois pas
-  mes transactions de carte » de Marc, PAS la bascule globale (qui reste un vrai défaut, ci-dessous).
-  Le nom vide a désormais un sens explicite (« importe les transactions, ne touche à aucun solde »),
-  accepté des DEUX côtés (navigateur + parseur serveur) et annoncé à l'écran avec sa contrepartie.
 - [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **DÉCISION MARC EN COURS**) — Marc a choisi « créer la
   dette automatiquement » à partir du solde Fintable (2026-09-14, contre ma recommandation).
-  ⚠️ **Deux obstacles non résolus, tous deux mesurés — ne rien coder avant de les trancher** :
+  ⚠️ **Trois obstacles non résolus — ne rien coder avant de les trancher** :
   (1) Fintable ne fournit **ni taux ni paiement minimum**, et `applyDebt` exige `balance +
   interestRate + minimumPayment` pour CRÉER une dette ; le taux 19,99 % est déjà tranché par Marc
   (`docs/A_FAIRE_MOI.md`, même jour) mais **aucun défaut de paiement minimum n'existe dans le dépôt**
-  (vérifié : il est saisi à la main partout, et `debtAmortization` exige `> 0`). (2) Marc : « je vire
-  souvent de l'argent dessus … avoir de l'argent en rab » ⇒ son solde de carte passe en CRÉDIT, or
-  `mapSnapshot` fait `Math.abs(account.balance)` — un crédit de 200 $ deviendrait une **dette de
-  200 $**. Créer la dette automatiquement sur ce compte fabriquerait donc des dettes fantômes.
-  Détail et question posée dans `docs/A_FAIRE_MOI.md`.
-- [x] **`[FINTABLE-DEBTNAME-AUTO]` — LIVRÉ le 2026-09-14** (M) — le nom de la dette d'un compte
-  carte de crédit ne se TAPE plus, il se CHOISIT dans une liste des dettes réelles, et il est
-  PRÉ-SÉLECTIONNÉ depuis le libellé du compte. Demande Marc (2026-09-14) : « je veux pas avoir à
-  donner exactement le nom dans dette, ça devrait être automatique ». Avant : un champ texte libre
-  intitulé « nom EXACT », comparé par `debtKey` (`trim().toLowerCase()`, **accents compris**) — une
-  faute de frappe gelait la mise à jour du solde, sans autre signal qu'un avertissement au fond du
-  rapport de sync. Nouveau module PUR `services/fintable/suggestDebtName.ts` (suggestion timide :
-  rien plutôt qu'au hasard, `null` sur une égalité de score), + un `debtName` hérité qui ne désigne
-  plus rien reste affiché marqué **INTROUVABLE** au lieu de disparaître en silence.
+  (vérifié : il est saisi à la main partout, et `debtAmortization` exige `> 0`).
+  (2) Marc, 2026-09-14 : « **parfois mon crédit fait que j'ai de l'argent en plus et parfois de
+  l'argent en moins** » — ce n'est donc pas un cas limite, le solde de cette carte **oscille des deux
+  côtés de zéro par conception**. Or `mapSnapshot` fait `Math.abs(account.balance)` : un crédit de
+  200 $ deviendrait une **dette de 200 $**. Ce compte n'est pas une dette qui se rembourse, c'est un
+  solde à DEUX SENS, et `Debt.balance` n'en porte qu'un — créer la dette automatiquement figerait le
+  mauvais sens une passe sur deux.
+  (3) ⚠️ **Une mesure manque avant toute décision** : le SENS dans lequel Fintable publie le solde
+  d'une carte n'a **jamais été confronté à la vraie donnée**. Le mapper SUPPOSE « positif = dû » et
+  traite le négatif comme un crédit en faveur de Marc ; si la convention est l'inverse (passifs en
+  négatif, usage courant), `Math.abs` sauve la grandeur par accident mais l'avertissement « crédit en
+  ta faveur » se déclenche exactement à l'envers. Seul Marc peut la lire : **quand tu dois 500 $ sur
+  la carte, Fintable affiche `500` ou `-500` ?**
+  Détail et questions posées dans `docs/A_FAIRE_MOI.md`.
 - [ ] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **EN ATTENTE DU
   GO de Marc**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
   la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même

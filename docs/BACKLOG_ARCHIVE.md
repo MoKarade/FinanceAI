@@ -10,6 +10,36 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-14 — `[FINTABLE-CARTE-SANS-DETTE]` — LIVRÉ (PR #956)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] 🔴 **`[FINTABLE-CARTE-SANS-DETTE]` — LIVRÉ le 2026-09-14** (M) — un rôle « Dette (carte) » au
+  `debtName` VIDE était OMIS de la table remise au mapper (`toMapperRoles`, `browserSync.ts`) : le
+  compte devenait « SANS RÔLE » et **100 % de ses transactions étaient jetées**, pendant que l'écran
+  de configuration affichait « Dette (carte) ». MESURÉ sur la vraie chaîne : AVEC nom **5/5**
+  importées, SANS nom **0/5** — identique à « aucun rôle du tout ». C'est la cause du « je reçois pas
+  mes transactions de carte » de Marc, PAS la bascule globale (qui reste un vrai défaut, ci-dessous).
+  Le nom vide a désormais un sens explicite (« importe les transactions, ne touche à aucun solde »),
+  accepté des DEUX côtés (navigateur + parseur serveur) et annoncé à l'écran avec sa contrepartie.
+
+Déploiement Vercel vérifié le jour même : `dpl_7cBueJV64rnu…`, cible `production`, état READY
+sur `e1b3afc5`.
+
+## 2026-09-14 — `[FINTABLE-DEBTNAME-AUTO]` — LIVRÉ (PR #955)
+
+Ticket d'origine tel qu'au moment de l'archivage :
+
+- [x] **`[FINTABLE-DEBTNAME-AUTO]` — LIVRÉ le 2026-09-14** (M) — le nom de la dette d'un compte
+  carte de crédit ne se TAPE plus, il se CHOISIT dans une liste des dettes réelles, et il est
+  PRÉ-SÉLECTIONNÉ depuis le libellé du compte. Demande Marc (2026-09-14) : « je veux pas avoir à
+  donner exactement le nom dans dette, ça devrait être automatique ». Avant : un champ texte libre
+  intitulé « nom EXACT », comparé par `debtKey` (`trim().toLowerCase()`, **accents compris**) — une
+  faute de frappe gelait la mise à jour du solde, sans autre signal qu'un avertissement au fond du
+  rapport de sync. Nouveau module PUR `services/fintable/suggestDebtName.ts` (suggestion timide :
+  rien plutôt qu'au hasard, `null` sur une égalité de score), + un `debtName` hérité qui ne désigne
+  plus rien reste affiché marqué **INTROUVABLE** au lieu de disparaître en silence.
+
 ## 2026-09-10 — `[FUTUR-MOBILE-PR0]` — LIVRÉ (PR #948)
 
 Ticket d'origine tel qu'au moment de l'archivage :

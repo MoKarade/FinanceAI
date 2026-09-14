@@ -82,6 +82,28 @@
   mobiles PR0-PR4 rejouées (19/19) + suite ciblée FutureDetailModal/FutureHistorySection/FutureProjection/a11y
   (228/228). `[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]` reste ouvert, hors périmètre de ce lot.
 
+## 🔒 Sécurité des dépendances
+
+- [x] 🔧 **`[SEC-HONO-PLANCHER]`** ✅ **LIVRÉ le 2026-09-14** — trois avis **modérés** sur
+  `hono`, dépendance **transitive** de production : GHSA-gqvv-2mrq-wpjv (`toSSG()` écrit
+  hors du répertoire de sortie — correctif incomplet de CVE-2026-39408),
+  GHSA-g6gw-c38x-mqfc (épuisement mémoire par imbrication en notation pointée dans
+  `parseBody()`), GHSA-crvj-82cr-hjcx (le parseur de requête lit les paramètres **après** le
+  fragment d'URL, d'où des différentiels de clé de cache et d'interprétation par un proxy).
+  Trouvés en vérifiant la constellation après une RCE critique sur Next ailleurs — FinanceAI
+  n'a **pas** de Next, donc pas cet avis-là.
+  ⚠️ **`npm audit fix` ÉCHOUE sur ce dépôt**, sur un bug interne de npm
+  (« Cannot read properties of null (reading 'edgesOut') »), **reproduit sur un arbre
+  fraîchement installé par `npm ci`**. Le plancher passe donc par `overrides` — pas par
+  commodité, parce que la commande automatique ne fonctionne pas ici.
+  Posé en `overrides` et NON en dépendance directe : ce dépôt n'importe pas `hono`, l'ajouter
+  aux `dependencies` laisserait croire le contraire. `hono` arrive par `@hono/node-server`
+  (`^4`) ET par `@modelcontextprotocol/sdk` (`^4.11.4`) — les deux acceptent `^4`, donc le
+  plancher les satisfait sans rien casser. Résolu en 4.13.7,
+  `npm audit --omit=dev` : 0 vulnérabilité.
+  État de la constellation au 14/09 : Hubperso ✅, CarAI ✅, JobAI ✅ (RCE Next critique),
+  BatchChef déjà sain, DriveAI sain, FinanceAI ✅ (celui-ci).
+
 ## 🔬 Audit financier 2026-09-07 — findings VÉRIFIÉS et re-mesurés (rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`)
 
 > Passe n°4 (commit `3f657d7d`, demande Marc « lance une grosse analyse, check tous les problèmes corrigés et

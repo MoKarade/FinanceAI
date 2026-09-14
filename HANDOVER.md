@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ PR #964 FUSIONNÉE et EN LIGNE — et ce que §6 ne peut PAS vérifier d'ici
+> Fusionnée à 22:16 UTC (squash, `af7388b1`). **Déploiement Vercel vérifié** :
+> `dpl_fsb5tSyKwXtRnRxrf8HUVzUYeNPo`, cible `production`, état **READY** sur `af7388b1`.
+> ⚠️ **La seconde moitié de §6 (« contrôler l'effet sur la réponse réelle ») est IMPOSSIBLE depuis le
+> conteneur**, mesuré plutôt que supposé : `finance.hubperso.com`, `hubperso.com` et `vercel.com`
+> rendent tous **403 au CONNECT** (refus de politique du proxy) quand `api.github.com` rend 200 ;
+> et l'URL `*.vercel.app` est derrière la protection Vercel (`302` vers `sso-api`, y compris via
+> `web_fetch_vercel_url`). Détail et conduite à tenir : `CLAUDE.md` §6. **Ne pas la retenter à
+> l'aveugle** — vérifier la CRÉATION du déploiement, et router à Marc tout contrôle qui exige de LIRE
+> la réponse servie.
+
 > ## 🔴 Session 2026-09-14 (fin++) — « j'arrive pas à les marquer en doublon » : le bouton n'existait pas
 > Ticket 🔧 `[TX-SELECTION-SANS-ACTION]`, **livré** (PR #964).
 > ✅ **Marc avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL point

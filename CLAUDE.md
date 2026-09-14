@@ -167,6 +167,27 @@ bloqué par CSP ne casse ni le build ni les tests.
 Corollaire : un merge qui ne change QUE de la doc n'a pas de déploiement à vérifier. Le dire
 plutôt que de laisser croire qu'on a vérifié.
 
+⚠️ **Et la seconde moitié (« contrôler l'effet sur la RÉPONSE réelle ») n'est PAS mesurable depuis ce
+conteneur** — mesuré le 2026-09-14, à ne pas retenter à l'aveugle :
+
+| hôte | verdict |
+|---|---|
+| `api.github.com` | **200** (autorisé) |
+| `finance.hubperso.com` | **403 au CONNECT** (refus de POLITIQUE du proxy, pas un DNS) |
+| `hubperso.com` | 403 au CONNECT |
+| `vercel.com` | 403 au CONNECT |
+
+L'URL `*.vercel.app` du déploiement ne sauve pas la mise : elle est derrière la **protection
+Vercel** et rend un `302` vers `vercel.com/sso-api` (vérifié par `web_fetch_vercel_url`, qui existe
+exactement pour ce cas et bute quand même sur le SSO).
+
+**Ce qui RESTE vérifiable, et c'est la moitié pour laquelle §6 a été écrite** : qu'un déploiement de
+production ait bien été **CRÉÉ** et soit `READY` sur le bon SHA (`mcp__Vercel__list_deployments`) —
+l'incident du 31/07/2026 était l'ABSENCE de déploiement, pas un contenu faux. Donc : vérifier la
+création + l'état, **dire** que la réponse servie n'a pas pu l'être et pourquoi, et router à Marc
+tout contrôle qui exige de LIRE la réponse (un en-tête CSP, notamment — lui seul peut le faire depuis
+son navigateur).
+
 ## 7. Intégration hub
 
 FinanceAI publie un résumé au **hub perso** (`hubperso.com`) — mais **pas** depuis Vercel : le

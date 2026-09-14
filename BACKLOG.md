@@ -627,26 +627,35 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
-- [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **DÉCISION MARC EN COURS**) — Marc a choisi « créer la
-  dette automatiquement » à partir du solde Fintable (2026-09-14, contre ma recommandation).
-  ⚠️ **Trois obstacles non résolus — ne rien coder avant de les trancher** :
-  (1) Fintable ne fournit **ni taux ni paiement minimum**, et `applyDebt` exige `balance +
-  interestRate + minimumPayment` pour CRÉER une dette ; le taux 19,99 % est déjà tranché par Marc
-  (`docs/A_FAIRE_MOI.md`, même jour) mais **aucun défaut de paiement minimum n'existe dans le dépôt**
-  (vérifié : il est saisi à la main partout, et `debtAmortization` exige `> 0`).
-  (2) Marc, 2026-09-14 : « **parfois mon crédit fait que j'ai de l'argent en plus et parfois de
-  l'argent en moins** » — ce n'est donc pas un cas limite, le solde de cette carte **oscille des deux
-  côtés de zéro par conception**. Or `mapSnapshot` fait `Math.abs(account.balance)` : un crédit de
-  200 $ deviendrait une **dette de 200 $**. Ce compte n'est pas une dette qui se rembourse, c'est un
-  solde à DEUX SENS, et `Debt.balance` n'en porte qu'un — créer la dette automatiquement figerait le
-  mauvais sens une passe sur deux.
-  (3) ⚠️ **Une mesure manque avant toute décision** : le SENS dans lequel Fintable publie le solde
-  d'une carte n'a **jamais été confronté à la vraie donnée**. Le mapper SUPPOSE « positif = dû » et
-  traite le négatif comme un crédit en faveur de Marc ; si la convention est l'inverse (passifs en
-  négatif, usage courant), `Math.abs` sauve la grandeur par accident mais l'avertissement « crédit en
-  ta faveur » se déclenche exactement à l'envers. Seul Marc peut la lire : **quand tu dois 500 $ sur
-  la carte, Fintable affiche `500` ou `-500` ?**
-  Détail et questions posées dans `docs/A_FAIRE_MOI.md`.
+- [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **mesure à confirmer**) — le
+  mapper suppose « solde de carte POSITIF = montant dû » (`const owed = Math.abs(account.balance)`,
+  `mapSnapshot.ts`, commenté « un solde négatif signifie un crédit en ta faveur »). Marc, interrogé le
+  2026-09-14 : sur Fintable, **devoir 500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si
+  confirmé : (a) tu DOIS 500 $ → la dette de 500 $ est juste (`Math.abs` sauve la grandeur **par
+  accident**) mais l'avertissement « crédit en ta faveur » se déclenche **à chaque passe, sur le cas
+  NOMINAL** — un avertissement permanent est un avertissement mort ; (b) tu as 200 $ EN TROP sur la
+  carte → **dette fantôme de 200 $, sans aucun avertissement**, patrimoine net faux de **400 $** (une
+  dette inventée au lieu d'un actif). ⚠️ `[À vérifier]` : Marc décrit l'ÉCRAN de Fintable ; le champ
+  `accounts[].balance` de l'API est lu tel quel par `decode.ts` (aucune transformation de signe) mais
+  les deux n'ont pas été comparés sur une vraie passe. **Étape 1 du plan : publier le SIGNE (jamais le
+  montant — le rapport part aussi en clair dans les journaux GitHub Actions) dans le rapport de synchro,
+  une passe de Marc tranche.** Aujourd'hui inatteignable pour lui : aucune de ses cartes n'a de
+  `debtName` (c'est tout l'objet de `[FINTABLE-CARTE-SANS-DETTE]`). Plan dans `docs/A_FAIRE_MOI.md`.
+- [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **PLAN POSÉ — EN ATTENTE DU GO DE MARC**) — la carte de
+  crédit n'est pas une dette : c'est un **solde à DEUX SENS**. Marc, 2026-09-14 : « parfois mon crédit
+  fait que j'ai de l'argent en plus et parfois de l'argent en moins », et il a choisi que le surplus
+  **compte comme des liquidités** (et non une dette à 0 $, que je recommandais) — choix assumé, le plus
+  exact et le plus coûteux : il fait de la carte un compte à solde SIGNÉ dont les deux moitiés vont dans
+  deux registres. Plan en trois étapes dans `docs/A_FAIRE_MOI.md` : (1) MESURER le signe sans rien
+  déplacer (cf. ticket ci-dessus) ; (2) `dû = max(0, −solde)` → dette, `surplus = max(0, +solde)` →
+  cible de liquidités, les deux **mutuellement exclusifs** et remis à zéro ensemble à chaque bascule
+  (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS` : deux registres oubliés avaient coûté 75 957 $) ; (3) la
+  création automatique. ⚠️ **Obstacle mesuré sur l'étape 2** : `applyCashBalance` **refuse** une cible
+  de liquidités négative (`targetCad < 0` → `throw`), ce qui **rejette le payload entier** — la cible
+  reste positive tant que le compte chèque domine, mais c'est une condition à écrire dans un test, pas
+  une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
+  CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
+  taux est déjà tranché (19,99 %).
 - [ ] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **EN ATTENTE DU
   GO de Marc**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
   la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même

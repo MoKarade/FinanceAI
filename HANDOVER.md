@@ -29,6 +29,24 @@
 > en rab ») ajoute un second obstacle MESURABLE : le mapper fait `Math.abs(solde)`, donc un solde en
 > CRÉDIT (de l'argent en trop sur la carte) deviendrait une DETTE du même montant. Détail dans
 > `docs/A_FAIRE_MOI.md`. Rien n'a été codé là-dessus.
+>
+> ✅ **PR #956 MERGÉE** (squash sur `main`, `e1b3afc5`) — **par Marc lui-même à 17:58 UTC**, pendant
+> que j'attendais le quota GraphQL pour la sortir du brouillon. Gate local vert avant le merge
+> (lint 0 erreur, **5 867 tests / 602 fichiers**, build OK) et **7/7 checks CI verts**.
+> **Déploiement Vercel VÉRIFIÉ** (§6 : ce lot change ce qui est servi) — `dpl_7cBueJV64rnu…`,
+> cible `production`, état **READY** sur `e1b3afc5` ; la production actuelle (`34639f03`, PR #957)
+> est elle aussi READY.
+> ⚠️ **1 h 34 d'attente pour rien, et la leçon est à moi** : le merge échouait en `405 … is still a
+> draft`, la sortie de brouillon est une mutation **GraphQL** au quota épuisé, et j'ai re-tenté cinq
+> fois sur 2 h sans jamais RELIRE l'état de la PR. Elle était fusionnée depuis la 2ᵉ tentative. Le
+> signal était pourtant passé sous les yeux : un `git push` de la même branche a répondu
+> `* [new branch]` — la branche distante avait été supprimée par le merge. Détail et règle dans
+> `docs/CONVENTIONS.md` (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE-QUE-L-ACTION-EST-ENCORE-NECESSAIRE`).
+> ⚠️ **Résidu à nettoyer** : ce `push` a RESSUSCITÉ la branche `claude/fintable-carte-sans-dette`
+> avec un commit orphelin (`51102ca2`) qui affirme « PR #956 verte mais bloquée en brouillon » —
+> faux depuis 17:58. Elle n'a aucune PR et son contenu est superseded par la présente entrée.
+> **Supprimer la branche distante demande l'accord de Marc** (action destructive hors cycle), donc
+> elle est laissée en place et signalée ici.
 
 > ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
 > Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard

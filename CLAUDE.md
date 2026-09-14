@@ -593,6 +593,19 @@ n'est pas réécrire un récit.
   carte passe en CRÉDIT, et `Math.abs` en ferait une DETTE du même montant. Quand la question porte
   sur un COMPORTEMENT d'utilisateur, le menu borne ce qu'on peut découvrir.
 
+- **Un blocage sur une ACTION ne prouve pas que l'action est encore nécessaire** : sortir la PR #956 du
+  brouillon était refusé par le quota GraphQL ; j'ai re-tenté cinq fois sur **2 h 05** alors que Marc
+  l'avait fusionnée lui-même **à 17:58**, avant la 2ᵉ tentative — **1 h 34 d'attente sans objet**. Un
+  message de quota décrit l'état de MON appel, pas celui de la PR, et il est compatible avec « déjà
+  fait », « devenu impossible » et « reste à faire » : on relit l'ÉTAT DE L'OBJET à chaque essai (ici
+  du REST, jamais concerné par ce quota). ⚠️ Le signal était passé sous mes yeux : un `git push` vers
+  une branche poussée 10 min plus tôt a répondu `* [new branch]` — **une branche distante qui redevient
+  « neuve » a été supprimée, donc la PR a été fusionnée**. ⚠️ Et ce push a ressuscité la branche avec un
+  commit orphelin affirmant du FAUX : un commit rédigé pendant une attente relit le fait extérieur AVANT
+  d'écrire, et la réconciliation se fait sur un nom de branche NEUF (réutiliser l'ancien exigerait un
+  `--force`) (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE-QUE-L-ACTION-EST-ENCORE-NECESSAIRE`,
+  2026-09-14).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

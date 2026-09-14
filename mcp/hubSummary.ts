@@ -13,8 +13,13 @@ import {
     type HubSummary,
 } from '@mokarade/hub-contract';
 import type { AppState } from '../types';
-import { computeFinancialSignals } from './financialSignals';
-import { computePortfolioSessionMetrics, libelleSeance } from '../services/history/portfolioSessionMetrics';
+import { computeFinancialSignals, type FinancialSignal } from './financialSignals';
+import {
+    MAX_STALE_DAYS,
+    computePortfolioSessionMetrics,
+    libelleSeance,
+} from '../services/history/portfolioSessionMetrics';
+import { computeAssetBreakdown } from '../services/portfolio';
 import { getStateFreshness, STALE_THRESHOLD_MS } from './state/freshness';
 
 /** Identité de l'app dans le widget du hub. */
@@ -27,6 +32,55 @@ export const HUB_APP: HubSummary['app'] = {
 
 const MAX_ALERT_LABEL = 80;
 const MAX_ALERTS = 10;
+/** Plafonds du contrat v1.3 : libellé d'une ligne de détail, sa précision, un `why`. */
+const MAX_DETAIL_LABEL = 40;
+const MAX_HINT = 80;
+const MAX_WHY = 140;
+
+/**
+ * Âge maximal ATTENDU de `dataAsOf`, publié au hub (`expectedMaxAgeSec`, contrat v1.3).
+ *
+ * ── CE QU'IL SURVEILLE, ET CE QU'IL NE SURVEILLE PAS ────────────────────────────────
+ *
+ * C'est un FILET DE FOND, pas le contrôle de fraîcheur quotidien — et il est important de ne pas
+ * confondre les deux, sous peine de le « resserrer » un jour et de rendre le hub bavard à tort.
+ *
+ * Le contrôle quotidien existe déjà et il est plus strict : au-delà de `STALE_THRESHOLD_MS`
+ * (6 h sans push Drive), ce summary passe en `status: 'degraded'` et porte une alerte. Le hub
+ * affiche cet état-là sans avoir besoin d'un seuil.
+ *
+ * Alors pourquoi un seuil malgré tout ? Parce que `dataAsOf` n'est PAS l'horodatage du push : c'est
+ * le plus ANCIEN du push et de la clôture de marché servie (voir plus bas). Un seuil de 6 h y
+ * serait donc FAUX — il crierait « donnée figée » chaque week-end, alors que la bourse est
+ * simplement fermée. Ce qu'un seuil peut attraper ici, c'est l'abandon : plus de push ET plus de
+ * séance pendant des jours.
+ *
+ * DÉRIVÉ de `MAX_STALE_DAYS`, jamais choisi : au-delà de ce retard, `computePortfolioSessionMetrics`
+ * REFUSE de publier la séance, donc `dataAsOf` retombe sur le seul push. Le +1 jour couvre
+ * l'horodatage de la clôture à la fin de sa journée UTC et la frontière du refus. Un seuil
+ * indépendant aurait dérivé au premier rajustement de `MAX_STALE_DAYS`, en silence.
+ */
+export const AGE_MAX_ATTENDU_SEC = (MAX_STALE_DAYS + 1) * 24 * 3600;
+
+/**
+ * L'ACTION que chaque signal recommande, par identifiant de signal.
+ *
+ * ⚠️ Ce n'est pas un doublon de `observation`. Un signal DÉCRIT (« 2 dettes à taux ≥ 8 % pour
+ * 12 400 $ ») ; une recommandation DIT QUOI FAIRE. Le contrat sépare d'ailleurs les deux : `label`
+ * porte l'action, `why` porte le constat. Recopier l'observation dans `label` produirait une
+ * « recommandation » qui ne recommande rien — et elle dépasserait les 80 caractères du contrat.
+ *
+ * Clé = `signal.id`, stable. `tests/mcp/hubSummary.test.ts` énumère les identifiants RÉELS de
+ * `mcp/financialSignals.ts` et exige que chacun ait son action : un signal ajouté sans action
+ * fait tomber le test, au lieu de retomber en silence sur le repli ci-dessous.
+ */
+const ACTION_PAR_SIGNAL: Record<string, string> = {
+    high_interest_debt: 'Rembourser les dettes à taux élevé en priorité',
+    negative_cashflow: 'Rétablir un cashflow mensuel positif',
+    thin_emergency_fund: "Regarnir le coussin d'urgence (3 mois de dépenses)",
+    unused_celi_room: "Utiliser l'espace CELI inexploité",
+    unused_reer_room: "Utiliser l'espace REER inexploité",
+};
 
 function clip(label: string): string {
     return label.length <= MAX_ALERT_LABEL ? label : `${label.slice(0, MAX_ALERT_LABEL - 1)}…`;
@@ -41,6 +95,42 @@ const ALERT_SEVERITY: Record<'high' | 'medium' | 'low', HubAlert['severity']> = 
 const OPEN_ACTION: HubSummary['actions'] = [
     { label: 'Ouvrir FinanceAI', kind: 'link', href: HUB_APP.url },
 ];
+
+/** Tronque en signalant la coupe : une valeur coupée en silence passe pour la valeur entière. */
+function borne(texte: string, max: number): string {
+    const t = texte.trim();
+    return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}\u2026`;
+}
+
+/** « il y a 12 min », « il y a 4 h », « il y a 3 j » — RELATIF, donc sans fuseau. */
+function ilYA(deltaMs: number): string {
+    const min = Math.max(0, Math.round(deltaMs / 60_000));
+    if (min < 60) return `il y a ${min} min`;
+    const h = Math.round(min / 60);
+    return h < 48 ? `il y a ${h} h` : `il y a ${Math.round(h / 24)} j`;
+}
+
+/**
+ * La recommandation du contrat v1.3, tirée du signal le PLUS PRIORITAIRE. PURE.
+ *
+ * `computeFinancialSignals` rend déjà ses signaux triés — dettes toxiques et cashflow négatif
+ * (`high`) avant coussin et espaces CELI/REER (`medium`). `signals[0]` est donc l'action la plus
+ * urgente, et elle ne coûte RIEN : la fonction est déjà appelée pour les alertes.
+ *
+ * `label` porte l'ACTION, `why` le constat. Le repli sur l'observation tronquée existe pour qu'un
+ * signal futur produise quand même une recommandation plutôt que rien ; c'est le test qui empêche
+ * ce repli d'être le chemin normal.
+ */
+export function recommandation(signals: readonly FinancialSignal[]): HubSummary['recommendation'] {
+    const premier = signals[0];
+    if (!premier) return undefined;
+    const action = ACTION_PAR_SIGNAL[premier.id];
+    return {
+        label: borne(action ?? premier.observation, MAX_ALERT_LABEL),
+        why: borne(premier.observation, MAX_WHY),
+        href: HUB_APP.url,
+    };
+}
 
 /** Résumé conforme au contrat, calculé sur l'état réel. */
 export function buildHubSummary(state: AppState, now: number = Date.now()): HubSummary {
@@ -70,6 +160,11 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
             label: 'Valeur nette',
             value: Math.round(overview.netWorth),
             format: 'currency',
+            // `primary` (contrat v1.3) désigne LE chiffre de la carte. Jusqu'ici le hub le
+            // déduisait de la position 0 — ce qui marchait tant que personne ne réordonnait
+            // cette liste, alors que le commentaire ci-dessous dit justement que l'ordre est un
+            // arbitrage qui a DÉJÀ changé une fois.
+            primary: true,
             // `trend` = variation RELATIVE signée en %, colorée par le hub. Celle des placements est
             // la seule variation QUOTIDIENNE honnête dont on dispose : les dettes sont figées et
             // l'immobilier bouge par palier ANNUEL dans la reconstruction du passé. On ne l'appose
@@ -140,6 +235,66 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
     const candidats = [freshness.updatedAt, seanceMs].filter((v): v is number => v != null && Number.isFinite(v));
     const dataAsOf = candidats.length > 0 ? new Date(Math.min(...candidats)).toISOString() : null;
 
+    // ── SECTIONS DE DÉTAIL (contrat v1.3) ───────────────────────────────────────────
+    //
+    // 1. LA FRAÎCHEUR, DÉCOMPOSÉE. `dataAsOf` est le plus ANCIEN de deux horloges qui n'ont pas
+    //    du tout la même cadence : le push Drive (quelques minutes quand l'app est ouverte) et la
+    //    clôture de marché (une fois par jour OUVRÉ). Un seul horodatage ne peut pas dire laquelle
+    //    des deux est en retard — et c'est pourtant la première question quand un chiffre surprend.
+    //    Les publier séparément coûte deux lignes et répond à la question.
+    // 2. LA VENTILATION DES PLACEMENTS, telle que `computeAssetBreakdown` la calcule déjà (source
+    //    unique, conversion FX incluse). C'est elle qui explique les signaux d'espace CELI/REER :
+    //    la recommandation dit « utiliser l'espace CELI », le détail montre ce qu'il y a dedans.
+    const details: NonNullable<HubSummary['details']> = [];
+    if (freshness.updatedAt != null || placements) {
+        const lignes: NonNullable<HubSummary['details']>[number]['items'] = [];
+        if (freshness.updatedAt != null) {
+            lignes.push({
+                label: 'Dernière synchro',
+                value: ilYA(Math.max(0, now - freshness.updatedAt)),
+                format: 'text',
+                // La gravité suit le seuil de l'app, jamais un second jugement : c'est le MÊME
+                // `stale` qui met le summary en `degraded` juste au-dessus.
+                ...(stale ? { severity: 'warn' as const } : {}),
+                hint: borne(`l'app pousse son état sur Drive ; périmé au-delà de ${Math.round(STALE_THRESHOLD_MS / 3_600_000)} h`, MAX_HINT),
+            });
+        }
+        if (placements) {
+            lignes.push({
+                label: 'Clôture de référence',
+                value: libelleSeance(placements.dateSeance),
+                format: 'text',
+                hint: borne(`la bourse ne cote pas la fin de semaine ; refusée au-delà de ${MAX_STALE_DAYS} j`, MAX_HINT),
+            });
+        }
+        if (lignes.length > 0) details.push({ title: 'Fraîcheur des deux sources', items: lignes });
+    }
+
+    const ventilation = computeAssetBreakdown(state.assets ?? [], state.fxRates ?? {});
+    const postes: [string, number][] = [
+        ['REER', ventilation.reer],
+        ['CELI', ventilation.celi],
+        ['REEE', ventilation.reee],
+        ['Non enregistré', ventilation.nonReg],
+        ['Crypto', ventilation.crypto],
+    ];
+    // ⚠️ Seuls les postes NON NULS. Publier « REEE : 0 $ » sur un compte qui n'existe pas
+    // affirmerait un compte vide là où il n'y a pas de compte — et le hub trie ses lignes, donc
+    // cinq zéros pousseraient dehors ce qui a de la valeur. Aucun poste ⇒ aucune section.
+    const garnis = postes.filter(([, v]) => Math.round(v) !== 0);
+    if (garnis.length > 0) {
+        details.push({
+            title: 'Placements par compte',
+            items: garnis.map(([label, valeur]) => ({
+                label: borne(label, MAX_DETAIL_LABEL),
+                value: Math.round(valeur),
+                format: 'currency' as const,
+            })),
+        });
+    }
+
+    const reco = recommandation(signals);
+
     return validateSummary({
         contractVersion: CONTRACT_VERSION,
         app: HUB_APP,
@@ -148,12 +303,18 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
         // pas l'instant du build. Quand on publie des chiffres de marché, la donnée la plus ANCIENNE
         // des deux gouverne : servir l'horodatage du push Drive pendant qu'on affiche la clôture de
         // l'avant-veille surestimerait la fraîcheur de ce qui est à l'écran.
-        ...(dataAsOf != null ? { dataAsOf } : {}),
+        // ⚠️ `expectedMaxAgeSec` ne se publie QU'AVEC `dataAsOf` — le contrat v1.3 rejette un âge
+        // attendu orphelin, et il a raison : un seuil sans horodatage à comparer donnerait la
+        // certitude d'être surveillé alors que rien ne le serait. C'est un FILET DE FOND (voir
+        // `AGE_MAX_ATTENDU_SEC`), pas le contrôle quotidien — celui-ci est `status: 'degraded'`.
+        ...(dataAsOf != null ? { dataAsOf, expectedMaxAgeSec: AGE_MAX_ATTENDU_SEC } : {}),
         status: stale ? 'degraded' : 'ok',
         metrics,
         alerts: alerts.slice(0, MAX_ALERTS),
         actions: OPEN_ACTION,
         usage: { cost: { amount: aiChatCostUsd, currency: 'USD', period: 'total' } },
+        ...(reco ? { recommendation: reco } : {}),
+        ...(details.length > 0 ? { details } : {}),
     });
 }
 

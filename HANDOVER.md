@@ -4,6 +4,33 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-14 (fin+) — l'auto de Marc est un BAIL, et le moteur refuse d'amortir un bail
+> Ticket 🔴 `[DETTE-AUTO-BAIL-TOYOTA]`.
+> Marc a envoyé le contrat (photo) et demandé « retrouve toutes les infos, stocke-les, mets tout à
+> jour ». **Rien n'a été écrit dans ses données** : deux faits bloquent, et aucun n'était connu quand
+> il a répondu au menu.
+> **Contrat LU et VÉRIFIÉ par l'arithmétique** (Ste-Foy Toyota, 2026-07-14) : coût capitalisé
+> **48 405,23 $**, **190,02 $/sem + 28,45 $ taxes = 218,47 $/sem**, terme **48 MOIS**, taux **6,59 %**,
+> résiduelle **17 746,40 $**, 28 000 km/an. Le terme en MOIS se PROUVE : sur 208 semaines le versé
+> avant taxes (39 524 $) colle à dépréciation + intérêt (39 378 $) à **+0,4 %**, contre **+18,9 %** à
+> 60 mois. Une lecture d'image se vérifie par le calcul — ici ça a tranché une ambiguïté réelle.
+> ⚠️ **BLOCAGE 1 — le réel ne colle pas au contrat** : prélèvements mesurés **234,67 $/semaine**
+> contre **218,47 $** au contrat (**+16,20 $/sem, +7,4 %, 842 $/an**). Le document s'intitule
+> « **Offre** de Location » : le bail signé a pu changer. Question posée, pas tranchée.
+> ⚠️ **BLOCAGE 2 — `KIND_AMORTISSANT['auto-lease'] = false`**, par décision ÉCRITE (« n'amortit pas un
+> SOLDE : bail, révolvant »). Sa demande reste légitime mais porte sur une autre grandeur —
+> **engagement restant** (versements restants × montant) ou **solde capitalisé qui descend vers la
+> RÉSIDUELLE**, jamais vers zéro. Les deux donnent un patrimoine net différent.
+> ⚠️ Sa saisie actuelle (**50 000 $ à 5,69 %**) ne figure nulle part au contrat, et son bilan ne porte
+> **aucun véhicule à l'actif**. ⚠️ Et `apply_debt` (MCP) ne peut écrire ni `kind`, ni `startDate`, ni
+> `originalBalance`, ni `termEndDate` — exactement les champs réclamés (ils existent dans l'UI).
+> ⚠️ **Dépôt PUBLIC** : NIV, adresse, téléphone, n° de contrat et nom du vendeur délibérément NON
+> consignés — aucune valeur de calcul, et un dépôt public n'est pas un classeur.
+> ✅ Marc a par ailleurs autorisé la correction des 44 transactions en devise (« tu corriges
+> directement toi ») — mais **aucun outil MCP ne modifie ni ne supprime une transaction**, donc la
+> procédure en deux temps de `docs/A_FAIRE_MOI.md` reste la seule voie propre. Élargir le MCP est du
+> code, en attente de GO.
+
 > ## 🔴 Session 2026-09-14 (fin) — Fintable importe le montant en DEVISE D'ORIGINE : +2 537 $ de dépenses fantômes
 > Marc : « fintable a importé des reals comme des CAD ». **Confirmé par la mesure, sur ses VRAIES
 > données** (serveur MCP joignable, `search_transactions`), en appariant une à une ses transactions

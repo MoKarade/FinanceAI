@@ -1764,3 +1764,83 @@ lignes « doublon », puis ré-importer les montants du relevé** — et l'ordre
 ferait doubler la dépense tant que le marquage n'est pas fait.
 
 C'est une migration de tes données financières RÉELLES : elle attend ton feu vert explicite.
+
+
+---
+
+## `[DETTE-AUTO-BAIL-TOYOTA]` — le contrat est un BAIL, pas un prêt : deux blocages avant d'écrire quoi que ce soit
+
+**Statut : CONTRAT LU ET VÉRIFIÉ, RIEN N'A ÉTÉ ÉCRIT DANS TES DONNÉES.** Deux faits changent la
+décision, et aucun des deux n'était connu quand tu as répondu au menu.
+
+### Ce que dit le contrat (Ste-Foy Toyota, 2026-07-14)
+
+Seuls les paramètres qui servent au MODÈLE sont consignés ici. ⚠️ **Le dépôt est PUBLIC** : le NIV,
+ton adresse, ton téléphone, le numéro de contrat et le nom du vendeur sont DÉLIBÉRÉMENT omis — ils
+n'ont aucune valeur de calcul et n'ont rien à faire dans un dépôt public.
+
+| Paramètre | Valeur au contrat |
+|---|---|
+| Nature | **Offre de LOCATION (bail)** — pas un prêt |
+| Véhicule | Toyota bZ XLE AWD 2026, neuf |
+| Date du contrat / livraison | **2026-07-14** |
+| Prix total | 59 467,33 $ |
+| Rabais manufacturier | −12 000,00 $ |
+| **Coût capitalisé** | **48 405,23 $** |
+| **Versement** | **190,02 $/semaine** + 28,45 $ de taxes = **218,47 $/semaine** |
+| **Terme** | **48 mois** |
+| **Taux** | **6,59 %** |
+| **Valeur résiduelle** | **17 746,40 $** |
+| Kilométrage | 28 000 km/an |
+| Institution | Toyota Services Financiers |
+
+**Lecture VÉRIFIÉE par l'arithmétique, pas seulement par l'œil** : 190,02 + 28,45 = 218,47 au cent
+près, et le terme de 48 **mois** se déduit du reste — sur 208 semaines, le versé avant taxes
+(39 524 $) colle à la dépréciation + intérêt attendue (39 378 $) à **+0,4 %**, alors qu'un terme de
+60 mois donnerait **+18,9 %**. Le « 48 » du contrat est donc bien en mois.
+
+### ⚠️ BLOCAGE 1 — ce que tu paies n'est PAS ce que dit le contrat
+
+- Contrat : **218,47 $/semaine**
+- Mesuré dans tes transactions (7 prélèvements « Toyota Financial », hebdomadaires, du 2026-07-28 au
+  2026-09-09) : **234,67 $/semaine**
+- Écart : **+16,20 $/semaine, soit +7,4 % et 842 $/an**
+
+Le document que tu m'as envoyé s'intitule « Contrat de Vente — **Offre** de Location » : c'est une
+OFFRE, et le bail signé a pu changer. Je ne choisis pas : **lequel des deux est la vérité ?** Un
+versement faux se propage à toute la projection, et le mensualiser donne 946,70 $ (contrat) contre
+1 016,90 $ (réel) — 70 $/mois d'écart sur 4 ans.
+
+### ⚠️ BLOCAGE 2 — un BAIL ne s'amortit pas, et le moteur le REFUSE exprès
+
+`services/projection/debtAmortization.ts` porte `KIND_AMORTISSANT['auto-lease'] = false`, avec sa
+raison écrite : « type de dette qui n'amortit pas un SOLDE (bail, révolvant, inconnu) ». Ce n'est pas
+un oubli, c'est une décision — et elle est juste : dans un bail tu ne rembourses pas un capital vers
+zéro, tu paies l'usage d'un véhicule que tu ne possèdes pas, jusqu'à une valeur résiduelle.
+
+Ta demande (« qu'elle diminue avec chaque virement ») reste parfaitement légitime — mais la grandeur
+qui décroît n'est pas la même :
+
+1. **L'engagement restant** = versements qui restent × montant. Décroît à chaque paiement, c'est ce
+   que tu dois encore contractuellement. Au 2026-09-14 : 7 versements faits sur 208.
+2. **Le solde capitalisé** = coût capitalisé qui descend vers la VALEUR RÉSIDUELLE (17 746,40 $), pas
+   vers zéro. C'est la vision comptable du bail.
+
+Les deux sont défendables et **ne donnent pas le même patrimoine net**. Il faut choisir.
+
+### ⚠️ Et ta saisie actuelle est fausse sur les deux chiffres
+
+Ta dette « bZ » porte **50 000 $ à 5,69 %**. Le contrat dit **48 405,23 $ de coût capitalisé à
+6,59 %**. Le 50 000 est un chiffre rond qui ne figure nulle part au contrat.
+⚠️ Et ton patrimoine net ne contient **aucun véhicule à l'actif** (31 984 + 230 624 − 50 000 =
+212 609 $, ce que l'app affiche) : tu portes donc une dette de 50 000 $ pour une auto qui n'existe pas
+dans ton bilan. Pour un bail c'est un choix défendable (tu ne possèdes pas le véhicule), mais c'en est
+un, et il doit être délibéré plutôt que subi.
+
+### ⚠️ Et je ne peux PAS tout écrire par le MCP
+
+`apply_debt` accepte `balance`, `interestRate`, `minimumPayment`, `category`, `amortizationYears`,
+`rateProvider` — mais **ni `kind`, ni `startDate`, ni `originalBalance`, ni `termEndDate`**. Or ce
+sont exactement les champs que réclame ta demande. Ils existent et sont saisissables **dans
+Réglages → Dettes** ; par le serveur MCP, ils sont hors de portée. Élargir `apply_debt` est du code,
+money-critical, et attend ton GO.

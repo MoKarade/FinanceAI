@@ -658,6 +658,22 @@ n'est pas réécrire un récit.
   qui écrit faux sans pouvoir se reprendre est une asymétrie à noter avant de promettre une réparation
   (`UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE`, 2026-09-14).
 
+- **Un MENU impose sa PRÉMISSE à la réponse** : j'ai posé quatre questions en clic sur « le prêt auto »
+  de Marc — date de début, montant EMPRUNTÉ, ce qui fait descendre la dette. Il a répondu aux trois.
+  Puis il a envoyé le contrat : c'est un **BAIL**. Aucune de mes questions n'était répondable (pas de
+  montant emprunté, pas de solde vers zéro mais vers une **valeur résiduelle**, et
+  `KIND_AMORTISSANT['auto-lease'] = false` — le moteur refuse d'amortir un bail, par décision écrite).
+  Un choix multiple ne transporte pas qu'une question : il transporte une prémisse que l'utilisateur
+  ne peut pas refuser. **Avant de poser un menu sur un objet du monde réel, demander de quelle NATURE
+  il est, ou réclamer le document.** ⚠️ Le mot qui réfutait tout mon cadrage était dans sa réponse
+  précédente — « regarde le contrat de **loc** ». ⚠️ Corollaire : **une lecture d'IMAGE se vérifie par
+  l'arithmétique** (« TERME 48 » = mois, pas semaines : +0,4 % d'écart contre +18,9 % à 60 mois ; et
+  190,02 + 28,45 = 218,47 au cent près valide la lecture elle-même). ⚠️ Et **le document reçu n'est pas
+  forcément celui qui s'applique** : contrat 218,47 $/sem contre **234,67 $** prélevés (+7,4 %,
+  842 $/an) — publier les DEUX avec leur écart. ⚠️ Et le dépôt est **PUBLIC** : NIV, adresse,
+  téléphone, n° de contrat n'ont aucune valeur de calcul et ne s'y écrivent pas
+  (`UN-MENU-IMPOSE-SA-PREMISSE-A-LA-REPONSE`, 2026-09-14).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

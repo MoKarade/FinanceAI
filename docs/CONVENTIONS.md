@@ -5637,6 +5637,50 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-MENU-IMPOSE-SA-PREMISSE-A-LA-REPONSE` — 2026-09-14
+
+J'ai posé à Marc quatre questions en clic sur sa dette auto : « le prêt doit démarrer quand ? »,
+« ce 50 000 $, c'est le montant EMPRUNTÉ ou le solde ? », « la dette doit descendre selon quoi ? ».
+Il a répondu aux trois. Puis il a envoyé le contrat : c'est un **BAIL** (« Offre de Location »),
+pas un prêt.
+
+Aucune de mes questions n'était répondable. Il n'y a pas de « montant emprunté » dans un bail, pas de
+solde qui descend vers zéro (il descend vers une **valeur résiduelle**, 17 746,40 $ ici), et le moteur
+REFUSE explicitement d'amortir un bail — `KIND_AMORTISSANT['auto-lease'] = false`, avec sa raison
+écrite dans le code. Marc a répondu de bonne foi *à l'intérieur* du cadre que je lui imposais, et ses
+réponses ne veulent rien dire hors de ce cadre.
+
+**La règle** : un choix multiple ne transporte pas qu'une question, il transporte une **PRÉMISSE** —
+et l'utilisateur n'a aucun moyen de la refuser, puisque la seule case libre est « Autre ». Avant de
+poser un menu sur un objet du monde réel (un contrat, un compte, un relevé), demander d'abord **de
+quelle NATURE est cet objet**, ou réclamer le document. Jumelle de
+`UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE` (2026-09-14, le même jour) : là le menu
+perdait une sous-question, ici il fabrique une réponse à une question qui n'existe pas.
+
+⚠️ **Le signal était sous mes yeux et je l'ai lu sans le voir** : sa réponse à « date de début »
+était « **regarde le contrat de loc** ». *Loc* = location. Le mot qui réfutait tout mon cadrage était
+dans sa réponse, trois secondes avant que j'aille chercher le contrat.
+
+⚠️ **Corollaire de MESURE — une lecture d'image se vérifie par l'arithmétique.** Le contrat porte
+« TERME 48 » à côté de « VERSEMENT … CHAQUE SEMAINE » : 48 semaines ou 48 mois ? Le calcul tranche
+sans ambiguïté — sur 208 semaines, le versé avant taxes (39 524 $) colle à la dépréciation + intérêt
+attendue (39 378 $) à **+0,4 %**, alors qu'un terme de 60 mois donne **+18,9 %**. Et le contrôle qui
+valide la lecture ELLE-MÊME est plus simple encore : 190,02 + 28,45 = 218,47 au cent près, exactement
+le « versement total » imprimé. Deux nombres lus séparément qui se recomposent en un troisième lu
+ailleurs, c'est une lecture PROUVÉE, pas devinée.
+
+⚠️ **Et le document qu'on vous envoie n'est pas forcément celui qui s'applique** : le contrat dit
+218,47 $/semaine, les prélèvements bancaires mesurés disent **234,67 $** — **+7,4 %, 842 $/an**. Le
+titre le laissait entendre (« **Offre** de Location »). Quand une pièce justificative et la réalité
+mesurée divergent, publier les DEUX avec leur écart, jamais en choisir une en silence : ici le choix
+vaut 70 $/mois sur quatre ans.
+
+⚠️ **Corollaire de VIE PRIVÉE, découvert en voulant consigner le contrat** : le dépôt FinanceAI est
+**PUBLIC** (`githubRepoVisibility: "public"`, lu dans les métadonnées de déploiement). Un contrat
+photographié porte NIV, adresse, téléphone, numéro de contrat, nom du vendeur — **aucune valeur de
+calcul**. Le tri se fait par la question « ce champ sert-il au MODÈLE ? », et il se fait AVANT
+d'écrire, pas dans une passe de nettoyage ultérieure — un commit se réécrit mal.
+
 ### `UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE` — 2026-09-14
 
 `mapFintableSnapshot` porte une garde de devise écrite avec soin, commentée, comptée

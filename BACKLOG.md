@@ -657,6 +657,29 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
+- [ ] 🔴 **`[DETTE-AUTO-BAIL-TOYOTA]`** (M, money-critical, **EN ATTENTE DE MARC — 2 blocages**) —
+  le véhicule de Marc est sous **BAIL** (« Offre de Location », Ste-Foy Toyota, 2026-07-14), pas sous
+  prêt. Contrat LU et vérifié par l'arithmétique : coût capitalisé **48 405,23 $**, **190,02 $/sem +
+  28,45 $ de taxes = 218,47 $/sem**, terme **48 MOIS**, taux **6,59 %**, valeur résiduelle
+  **17 746,40 $**, 28 000 km/an. ⚠️ Le terme est en MOIS et non en semaines : sur 208 semaines le versé
+  avant taxes (39 524 $) colle à dépréciation + intérêt (39 378 $) à **+0,4 %**, contre **+18,9 %** pour
+  un terme de 60 mois — vérification arithmétique, pas une lecture d'image.
+  ⚠️ **BLOCAGE 1** : ses prélèvements réels sont de **234,67 $/semaine** (7 mesurés, hebdomadaires,
+  du 2026-07-28 au 2026-09-09), soit **+16,20 $/sem, +7,4 %, 842 $/an** de plus que le contrat. Le
+  document est une OFFRE — le bail signé a pu changer. **Ne pas choisir à sa place** : 946,70 $/mois
+  contre 1 016,90 $/mois sur 4 ans.
+  ⚠️ **BLOCAGE 2** : `KIND_AMORTISSANT['auto-lease'] = false` — le moteur REFUSE d'amortir un bail,
+  **par décision écrite** (« n'amortit pas un SOLDE »). La demande de Marc (« qu'elle diminue à chaque
+  virement ») est légitime mais porte sur une AUTRE grandeur : soit l'**engagement restant**
+  (versements restants × montant), soit le **solde capitalisé** qui descend vers la **résiduelle**, pas
+  vers zéro. Les deux donnent un patrimoine net différent.
+  ⚠️ Sa saisie actuelle est fausse sur les deux chiffres (**50 000 $ à 5,69 %**, un rond qui ne figure
+  nulle part au contrat) et son bilan ne porte **aucun véhicule à l'actif** — défendable pour un bail,
+  mais c'est un choix à rendre délibéré.
+  ⚠️ `apply_debt` (MCP) ne peut écrire **ni `kind`, ni `startDate`, ni `originalBalance`, ni
+  `termEndDate`** — exactement les champs que la demande réclame. Ils existent dans Réglages → Dettes.
+  Détail et tableau du contrat dans `docs/A_FAIRE_MOI.md`. ⚠️ Dépôt PUBLIC : NIV, adresse, téléphone,
+  n° de contrat et nom du vendeur délibérément NON consignés.
 - [ ] 🔴 **`[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`** (M, money-critical, **MESURÉ sur les VRAIES
   données de Marc**) — Fintable livre le montant d'une transaction dans sa **devise d'ORIGINE** tout
   en étiquetant `currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper

@@ -12721,6 +12721,84 @@ Symétrique de la leçon d'origine : là où elle portait sur l'ASSERTION (agré
 l'écran masque ce qu'on veut isoler), celle-ci porte sur la CIBLE (un sélecteur non scopé RAMASSE un élément
 d'une autre zone qui porte le même attribut par coïncidence).
 
+---
+
+## `UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE-JETTE-LA-PLUS-LENTE` (2026-09-14)
+
+**Le symptôme rapporté** : Marc, 2026-09-14 — « on dirait que je reçois pas les transactions de carte
+de crédit avec Fintable ». Son dry-run prouve pourtant que Fintable en LIVRE **293** pour la
+Mastercard (fenêtre 2026-06-16 → 2026-09-10). Le blocage est donc en aval, chez nous.
+
+**Le mécanisme.** La sync Fintable se protège des doublons par une **bascule** : seules les
+transactions STRICTEMENT postérieures à `transactionsAfter` sont importées. Cette bascule est dérivée
+par `deriveCutoverDate`, dont l'en-tête l'écrit noir sur blanc : « la date de la transaction la plus
+RÉCENTE déjà connue dans FinanceAI, **tous comptes confondus** ». C'est exact, c'est délibéré, et
+c'est faux dès que deux comptes ne postent pas à la même vitesse :
+
+- le compte chèque poste le jour même → il pousse la bascule **chaque jour** ;
+- la carte de crédit poste avec quelques jours de décalage — et `pending: false` est FORCÉ par
+  contrat (`readSnapshot.ts`), donc on ne voit QUE les transactions déjà postées ;
+- la carte arrive donc toujours DERRIÈRE la bascule que le chèque vient d'avancer, et
+  `tx.date <= transactionsAfter` la jette. Chaque jour. Indéfiniment.
+
+**Mesuré**, 12 passes quotidiennes simulées (chèque à 0 jour de décalage, carte à 3) :
+**12/12 transactions de chèque reçues, 0/9 transactions de carte** — toutes écartées « avant la
+bascule ». **Contrôle négatif**, même scénario avec le décalage de la carte ramené à **0** :
+**12/12 carte reçues, 0 écartée**. Le décalage de postage EST la variable ; le mécanisme est prouvé
+dans les deux sens, pas seulement constaté.
+
+**La classe.** Une borne d'avancement (bascule, curseur, watermark, `updated_since`, « dernier id
+traité ») dérivée en AGRÉGEANT plusieurs sources suppose que les sources avancent ENSEMBLE. Dès
+qu'elles ont des latences différentes, la plus rapide pilote seule la borne et **la plus lente est
+famine** — silencieusement, parce que rien n'échoue : la borne a exactement le comportement pour
+lequel elle a été écrite. La question à poser devant toute borne partagée est : **« qu'est-ce qui la
+fait avancer, et est-ce la même chose que ce qu'elle protège ? »** Ici, c'est le chèque qui
+l'avançait et la carte qu'elle bloquait. La granularité de la borne doit être celle de la SOURCE.
+
+⚠️ **Un avertissement juste, au bon endroit, ne suffit pas.** Le défaut n'était pas muet : le mapper
+pousse « N transaction(s) plus ANCIENNES que la bascule ont été ignorées » à chaque passe — un
+correctif de panel (`[finding silent-failure #649]`) écrit précisément pour ça. Il a parlé tous les
+jours. Mais il décrit un incident PONCTUEL (« utilise Rattraper l'historique ») là où le défaut est
+PERMANENT : le rattrapage rapatrie le retard, puis la passe suivante rejette de nouveau la carte.
+Un avertissement qui propose un remède ponctuel à un défaut structurel **enseigne à l'ignorer** —
+même famille que `UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`, vu de l'autre bout : ce
+n'est pas sa fréquence qui le tue, c'est que suivre son conseil ne referme rien.
+
+⚠️ **Et le ticket voisin décrivait déjà la moitié du mécanisme sans voir l'autre.**
+`[FINTABLE-BACKFILL-HISTORY]` nomme `deriveCutoverDate`, explique que la bascule interdit tout
+rattrapage d'HISTORIQUE, et a été livré. Personne n'a demandé ce que la même bascule fait au
+COURANT. Une borne a deux effets — sur le passé (ce qu'on ne peut plus aller chercher) et sur le
+présent (ce qui n'entre jamais) — et un ticket qui n'en traite qu'un laisse l'autre intact sous un
+identifiant déjà coché.
+
+### Corollaire livré dans le même lot — `UN-NOM-A-RETAPER-EST-UNE-EGALITE-A-DEVINER`
+
+Marc, même échange : « je veux pas avoir à donner exactement le nom dans dette, ça devrait être
+automatique ». L'écran de configuration demandait le « nom EXACT de la dette telle qu'elle existe
+dans Réglages → Dettes », dans un champ **texte libre**, et `applyDebt` compare par `debtKey` =
+`trim().toLowerCase()` — **les accents comptent**. « Hypotheque Condo » ne vaut pas « Hypothèque
+Condo ». Un écran qui demande à l'humain de reproduire une clé d'appariement lui demande de deviner
+une égalité qu'il ne voit pas : la bonne forme est une LISTE qui ne peut émettre qu'une valeur
+existante. Signal réutilisable : **tout champ de saisie dont le libellé contient le mot « exact »
+est un appariement déguisé en formulaire.**
+
+⚠️ Deux pièges du remède, tous deux money-critical :
+1. **Une suggestion hardie écrit le solde sur la MAUVAISE dette.** D'où un matcher délibérément
+   timide : mots passe-partout d'un libellé bancaire écartés (« carte », « crédit », « compte » —
+   sans eux, « Carte de crédit Visa BNC » et « Carte de crédit Amex » s'apparient sur rien de
+   discriminant), et **égalité de score ⇒ `null`** : ambigu n'est pas probable.
+2. **La valeur rendue doit être le nom d'ORIGINE, jamais sa forme normalisée.** Le matcher CHERCHE
+   sans accents ; `applyDebt` VÉRIFIE avec. Rendre « hypotheque condo » reconstruirait le défaut
+   qu'on corrige, un cran plus bas — d'où une assertion dédiée. Symétriquement, le prédicat qui dit
+   à l'écran « ce nom correspond » (`debtNameExiste`) est aligné sur `debtKey`, accents COMPRIS :
+   plus permissif, il ferait afficher « ça correspond » sur un nom qu'`applyDebt` refuse.
+
+⚠️ Et un `debtName` hérité qui ne désigne plus aucune dette reste AFFICHÉ, marqué « INTROUVABLE ».
+Le retirer de la liste ferait disparaître de l'écran la cause exacte du solde qui ne se met plus à
+jour, en même temps que le symptôme — `UN-INVENTAIRE-DE-DETTE` appliqué à une valeur d'utilisateur.
+
+---
+
 ### `UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE` (2026-09-14)
 
 En reprenant `docs/A_FAIRE_MOI.md` pour poser « toutes les questions pour décisions » en un lot cliquable,

@@ -35,6 +35,23 @@ const ACCOUNTS = [
     { id: 'acc_2', label: 'Disnat L7B1', rawType: 'brokerage', currency: 'CAD', balance: 136863.18 },
 ];
 
+// [FINTABLE-DEBTNAME-AUTO] Le libellé Fintable (avec son numéro de compte) DIFFÈRE volontairement du
+// nom de la dette dans FinanceAI : c'est le cas réel de Marc, et c'est lui qui rendait la saisie
+// manuelle piégeuse. La suggestion doit franchir cet écart sans jamais inventer.
+const ACCOUNTS_AVEC_MC = [
+    ...ACCOUNTS,
+    { id: 'acc_mc', label: 'Desjardins Cash Back Mastercard 5020', rawType: 'credit', currency: 'CAD', balance: -842.11 },
+];
+
+const DETTE_MC = {
+    id: 'debt_mc', name: 'Desjardins Cash Back Mastercard', balance: 842.11,
+    interestRate: 19.99, minimumPayment: 25, category: 'CreditCard' as const,
+};
+const DETTE_HYPO = {
+    id: 'debt_hypo', name: 'Hypothèque Condo', balance: 280_000,
+    interestRate: 4.79, minimumPayment: 1_650, category: 'Other' as const,
+};
+
 beforeEach(() => {
     listMock.mockReset();
     syncMock.mockReset();
@@ -46,6 +63,9 @@ beforeEach(() => {
         fintableRoles: undefined,
         fintableSyncReport: undefined,
         isTestMode: false,
+        // [FINTABLE-DEBTNAME-AUTO] Remis à zéro entre les cas : la liste des dettes pilote désormais
+        // ce que la carte rend, donc un cas qui en pose contaminerait les suivants.
+        debts: [],
     });
 });
 
@@ -177,19 +197,80 @@ describe('FintableSyncCard — assignation des rôles', () => {
         expect(useFinanceStore.getState().fintableRoles?.acc_1).toBeUndefined();
     });
 
-    it('choisir « Dette » demande le nom EXACT et le persiste', async () => {
-        listMock.mockResolvedValue({ accounts: ACCOUNTS, error: null });
+    // ── [FINTABLE-DEBTNAME-AUTO] Le nom de dette ne se TAPE plus : il se CHOISIT. ──
+    // Marc, 2026-09-14 : « je veux pas avoir à donner exactement le nom dans dette, ça devrait être
+    // automatique ». Avant ce lot, un champ texte libre exigeait le nom au caractère près (accents
+    // compris, cf. `debtKey` d'`applyDebt`) — une faute de frappe gelait la mise à jour du solde.
+    it('choisir « Dette » PRÉ-SÉLECTIONNE la dette qui correspond au compte, et la persiste', async () => {
+        useFinanceStore.setState({ debts: [DETTE_MC, DETTE_HYPO] });
+        listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Compte chèque')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
 
-        fireEvent.change(screen.getByLabelText(/Rôle de Compte chèque/i), { target: { value: 'debt' } });
-        const nameInput = await screen.findByLabelText(/Nom EXACT de la dette/i);
-        fireEvent.change(nameInput, { target: { value: 'Desjardins Cash Back Mastercard' } });
+        // UN SEUL geste : déclarer que le compte est une dette. Rien à taper ensuite.
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
 
-        expect(useFinanceStore.getState().fintableRoles?.acc_1).toEqual({
+        expect(useFinanceStore.getState().fintableRoles?.acc_mc).toEqual({
             kind: 'debt', debtName: 'Desjardins Cash Back Mastercard',
         });
+        // Et le choix est VISIBLE/modifiable — une suggestion invisible serait de la donnée fabriquée.
+        const select = await screen.findByLabelText(/Dette correspondante/i);
+        expect((select as HTMLSelectElement).value).toBe('Desjardins Cash Back Mastercard');
+    });
+
+    it('la liste ne propose QUE des dettes existantes — donc un nom qu\'applyDebt accepte', async () => {
+        useFinanceStore.setState({ debts: [DETTE_MC, DETTE_HYPO] });
+        listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+
+        const select = await screen.findByLabelText(/Dette correspondante/i) as HTMLSelectElement;
+        const valeurs = Array.from(select.options).map((o) => o.value);
+        // Le placeholder vide, plus EXACTEMENT les deux dettes du store. Aucun nom libre possible.
+        expect(valeurs).toEqual(['', 'Desjardins Cash Back Mastercard', 'Hypothèque Condo']);
+        // Discriminant du lot : plus aucun champ où taper un nom à la main.
+        expect(screen.queryByLabelText(/Nom EXACT de la dette/i)).toBeNull();
+
+        // Changer de dette reste possible d'un clic.
+        fireEvent.change(select, { target: { value: 'Hypothèque Condo' } });
+        expect(useFinanceStore.getState().fintableRoles?.acc_mc).toEqual({
+            kind: 'debt', debtName: 'Hypothèque Condo',
+        });
+    });
+
+    it('un debtName HÉRITÉ qui ne désigne plus aucune dette est montré comme INTROUVABLE, pas effacé en silence', async () => {
+        // C'est l'état exact qui gelait le solde sans que rien ne le dise à l'écran : le retirer de
+        // la liste ferait disparaître la CAUSE en même temps que le symptôme.
+        useFinanceStore.setState({
+            debts: [DETTE_MC, DETTE_HYPO],
+            fintableRoles: { acc_mc: { kind: 'debt', debtName: 'Mastercard Desjardin' } },
+        });
+        listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
+
+        const select = await screen.findByLabelText(/Dette correspondante/i) as HTMLSelectElement;
+        expect(select.value).toBe('Mastercard Desjardin');
+        expect(screen.getByText(/INTROUVABLE dans Réglages/i)).toBeInTheDocument();
+        expect(screen.getByText(/son solde n'est PAS mis à jour/i)).toBeInTheDocument();
+    });
+
+    it('aucune dette dans FinanceAI : on le DIT au lieu d\'afficher une liste vide qui aurait l\'air de marcher', async () => {
+        useFinanceStore.setState({ debts: [] });
+        listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+
+        expect(await screen.findByText(/Aucune dette n'existe encore dans FinanceAI/i)).toBeInTheDocument();
+        // Pas de liste déroulante fantôme : il n'y a rien d'honnête à y mettre.
+        expect(screen.queryByLabelText(/Dette correspondante/i)).toBeNull();
+        // Et le rôle est bien posé, avec un nom VIDE plutôt qu'un nom inventé.
+        expect(useFinanceStore.getState().fintableRoles?.acc_mc).toEqual({ kind: 'debt', debtName: '' });
     });
 });
 

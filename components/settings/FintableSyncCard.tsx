@@ -26,9 +26,12 @@ import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
 import { acquireFintableSyncLock, releaseFintableSyncLock, withCrossTabLock } from '../../services/fintable/autoSync';
 // Pur et sans dépendance lourde (types seulement) — même statut que computeSyncHealth chez SyncStaleBanner.
 import { lastProductiveAtSuivant } from '../../services/fintable/syncHealth';
+// [FINTABLE-DEBTNAME-AUTO] Pur, sans dépendance lourde (types seulement) — même statut que
+// `lastProductiveAtSuivant` ci-dessus : aucun risque de tirer le mapper dans le bundle de boot.
+import { suggestDebtName, debtNameExiste } from '../../services/fintable/suggestDebtName';
 import { saveApiKeys } from '../../services/secureKeyStore';
 import { logError } from '../../services/errorLogger';
-import type { AppState, FintableAccountRoleConfig } from '../../types';
+import type { AppState, Debt, FintableAccountRoleConfig } from '../../types';
 
 /** Ce que l'écran de configuration a besoin de savoir d'un compte — jamais son solde. */
 interface SetupAccount {
@@ -54,6 +57,10 @@ const DEFAULT_REGIME = 'NON-ENREG' as const;
 // et cross-onglet) — une seule constante pour ne plus risquer de les faire diverger.
 const SYNC_BUSY_MESSAGE = 'Une synchronisation est déjà en cours — réessaie dans un instant.';
 
+/** Référence STABLE : un `?? []` en ligne fabriquerait un tableau neuf à chaque rendu (même piège
+ *  que `EMPTY_DEBTS` de `FutureProjection.tsx`, dont ce patron est repris tel quel). */
+const EMPTY_DEBTS: readonly Debt[] = [];
+
 function roleOf(roles: Record<string, FintableAccountRoleConfig> | undefined, id: string): FintableAccountRoleConfig | undefined {
     return roles?.[id];
 }
@@ -64,6 +71,9 @@ export const FintableSyncCard: React.FC = () => {
     const report = useFinanceStore((s) => s.fintableSyncReport);
     const setAppState = useFinanceStore((s) => s.setAppState);
     const isTestMode = useFinanceStore((s) => s.isTestMode);
+    // [FINTABLE-DEBTNAME-AUTO] Les dettes RÉELLES : elles peuplent la liste déroulante et nourrissent
+    // la suggestion. Lues du store plutôt que saisies — c'est tout l'objet du lot.
+    const debts = useFinanceStore((s) => s.debts) ?? EMPTY_DEBTS;
 
     const [token, setToken] = useState(apiKeys?.fintable ?? '');
     const [accounts, setAccounts] = useState<SetupAccount[] | null>(null);
@@ -466,7 +476,17 @@ export const FintableSyncCard: React.FC = () => {
                                                     onChange={(e) => {
                                                         const kind = e.target.value as RoleKind | '';
                                                         if (kind === '') return setRole(a.id, undefined);
-                                                        if (kind === 'debt') return setRole(a.id, { kind: 'debt', debtName: role?.kind === 'debt' ? role.debtName : '' });
+                                                        // [FINTABLE-DEBTNAME-AUTO] La dette est PRÉ-CHOISIE depuis le libellé du
+                                                        // compte (`suggestDebtName`, timide par conception : rien plutôt qu'au
+                                                        // hasard). Elle reste visible et modifiable dans la liste juste dessous —
+                                                        // une suggestion qu'on ne verrait pas serait de la donnée fabriquée.
+                                                        if (kind === 'debt') {
+                                                            const dejaChoisie = role?.kind === 'debt' ? role.debtName : '';
+                                                            return setRole(a.id, {
+                                                                kind: 'debt',
+                                                                debtName: dejaChoisie !== '' ? dejaChoisie : (suggestDebtName(a.label, debts) ?? ''),
+                                                            });
+                                                        }
                                                         if (kind === 'investment') return setRole(a.id, { kind: 'investment', taxRegime: DEFAULT_REGIME });
                                                         return setRole(a.id, { kind });
                                                     }}
@@ -480,19 +500,57 @@ export const FintableSyncCard: React.FC = () => {
                                             </div>
                                         </div>
 
+                                        {/* [FINTABLE-DEBTNAME-AUTO] Liste des dettes RÉELLES, plus un champ texte libre.
+                                            Marc, 2026-09-14 : « je veux pas avoir à donner exactement le nom dans dette ».
+                                            Le nom se tapait à la main et devait correspondre au caractère près (`debtKey`
+                                            d'`applyDebt` = `trim().toLowerCase()`, ACCENTS compris) — sinon la mise à jour
+                                            du solde était refusée, et le seul signal était un avertissement au fond du
+                                            rapport. Une liste déroulante ne peut émettre qu'un nom qui EXISTE. */}
                                         {role?.kind === 'debt' && (
                                             <div className="mt-2">
                                                 <label htmlFor={`debtname-${a.id}`} className="block text-tiny text-ink-400 mb-1">
-                                                    Nom EXACT de la dette telle qu'elle existe dans Réglages → Dettes
+                                                    Dette correspondante dans FinanceAI
                                                 </label>
-                                                <input
-                                                    id={`debtname-${a.id}`}
-                                                    type="text"
-                                                    value={role.debtName}
-                                                    onChange={(e) => setRole(a.id, { kind: 'debt', debtName: e.target.value })}
-                                                    className="w-full bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
-                                                    placeholder="Desjardins Cash Back Mastercard"
-                                                />
+                                                {debts.length === 0 ? (
+                                                    // ⚠️ Pas de liste vide qui aurait l'air fonctionnelle : Fintable ne fournit
+                                                    // ni taux ni paiement minimum, donc `applyDebt` REFUSE de créer la dette
+                                                    // plutôt que d'inventer un taux. La dette doit exister d'abord — on le dit.
+                                                    <p className="text-tiny text-warning-400">
+                                                        Aucune dette n'existe encore dans FinanceAI. Crée-la d'abord dans
+                                                        Réglages → Dettes (avec son taux et son paiement minimum) : Fintable ne
+                                                        fournit que le SOLDE, jamais le taux, donc il ne peut pas la créer à ta place.
+                                                    </p>
+                                                ) : (
+                                                    <>
+                                                        <select
+                                                            id={`debtname-${a.id}`}
+                                                            value={role.debtName}
+                                                            onChange={(e) => setRole(a.id, { kind: 'debt', debtName: e.target.value })}
+                                                            className="w-full bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
+                                                        >
+                                                            <option value="">— choisir la dette —</option>
+                                                            {debts.map((d) => (
+                                                                <option key={d.id} value={d.name}>{d.name}</option>
+                                                            ))}
+                                                            {/* ⚠️ Un `debtName` hérité qui ne désigne plus AUCUNE dette (dette
+                                                                renommée, supprimée, ou tapée avec une faute avant ce lot) reste
+                                                                affiché, marqué INTROUVABLE. Le retirer en silence de la liste
+                                                                ferait disparaître de l'écran la cause exacte du solde qui ne se
+                                                                met plus à jour — le défaut qu'on vient de corriger. */}
+                                                            {role.debtName !== '' && !debtNameExiste(role.debtName, debts) && (
+                                                                <option value={role.debtName}>
+                                                                    {role.debtName} — INTROUVABLE dans Réglages → Dettes
+                                                                </option>
+                                                            )}
+                                                        </select>
+                                                        {role.debtName !== '' && !debtNameExiste(role.debtName, debts) && (
+                                                            <p className="text-tiny text-warning-400 mt-1">
+                                                                Aucune dette ne porte ce nom : son solde n'est PAS mis à jour par la
+                                                                synchronisation. Choisis-en une dans la liste.
+                                                            </p>
+                                                        )}
+                                                    </>
+                                                )}
                                                 <p className="text-tiny text-ink-400 mt-1">
                                                     Seul le SOLDE est mis à jour — le taux et le paiement minimum restent les tiens.
                                                 </p>

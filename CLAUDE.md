@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 841 tests** Vitest
-(600 fichiers de test, mesuré le 2026-09-14). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 858 tests** Vitest
+(601 fichiers de test, mesuré le 2026-09-14). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -544,6 +544,26 @@ n'est pas réécrire un récit.
   phrase sort du JSX vers un module pur, son fait se dérive du module qui DÉCIDE (jamais d'une
   seconde lecture des champs), et une garde JUMELLE interdit de la recopier dans le rendu
   (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`, 2026-09-02).
+- **Une bascule GLOBALE sur des sources qui ne postent pas à la même vitesse jette la plus LENTE** :
+  la bascule anti-doublon Fintable est dérivée « tous comptes confondus » — le compte chèque, qui poste
+  le jour même, l'avance chaque jour ; la carte de crédit, qui poste avec quelques jours de retard (et
+  `pending: false` est FORCÉ par contrat), arrive toujours derrière et se fait jeter. Mesuré sur 12
+  passes : **12/12 chèque reçues, 0/9 carte** ; contrôle négatif à décalage NUL : **12/12 carte reçues,
+  0 écartée**. Toute borne d'avancement AGRÉGÉE (bascule, watermark, `updated_since`, dernier id
+  traité) suppose que les sources avancent ENSEMBLE — demander **ce qui la fait avancer, et si c'est
+  la même chose que ce qu'elle protège** ; sa granularité doit être celle de la SOURCE.
+  ⚠️ Un avertissement JUSTE parlait chaque jour, mais proposait un remède PONCTUEL (« rattrape
+  l'historique ») à un défaut PERMANENT : suivre son conseil ne referme rien, donc il enseigne à être
+  ignoré. ⚠️ Et le ticket voisin décrivait la moitié PASSÉ du mécanisme, cochée et livrée, sans jamais
+  demander ce que la même borne fait au PRÉSENT — une borne a deux effets, un ticket qui n'en traite
+  qu'un laisse l'autre intact sous un identifiant déjà coché. ⚠️ Corollaire du même lot : **tout champ
+  de saisie dont le libellé contient « exact » est un appariement déguisé en formulaire** — un nom de
+  dette à retaper, comparé accents COMPRIS (`debtKey`), est une égalité qu'on demande à l'humain de
+  deviner ; la forme juste est une LISTE qui ne peut émettre qu'une valeur existante, la suggestion
+  refuse de trancher une égalité de score, et la valeur RENDUE reste le nom d'origine et jamais sa
+  forme normalisée (sinon on reconstruit le défaut un cran plus bas)
+  (`UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE-JETTE-LA-PLUS-LENTE`,
+  2026-09-14, détail `docs/CONVENTIONS.md`).
 - **Un choix multiple répond à la question posée, jamais aux questions qu'elle présuppose ou ouvre** :
   poser des décisions en clic (`AskUserQuestion`) peut faire disparaître silencieusement une
   SOUS-question du ticket source, ou masquer qu'une option choisie exige un chantier non cadré —

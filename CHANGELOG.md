@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-14 (La dette d'une carte de crédit se choisit, elle ne se tape plus)
+
+- **Corrigé** : dans Réglages → Sync bancaire Fintable, quand tu déclares qu'un compte est une carte
+  de crédit, la dette correspondante est maintenant **choisie dans une liste de tes vraies dettes**
+  et **pré-sélectionnée automatiquement** à partir du nom du compte. Avant, il fallait retaper le nom
+  « EXACT » à la main : un accent ou une majuscule de différence et le solde de la carte cessait
+  simplement d'être mis à jour, sans que rien ne te le dise à l'écran. Si un nom enregistré autrefois
+  ne correspond plus à aucune dette (dette renommée ou supprimée), il reste affiché et marqué
+  **INTROUVABLE** plutôt que de disparaître en silence — c'est exactement l'information qui manquait.
+  Et s'il n'existe encore aucune dette dans FinanceAI, l'écran le dit au lieu d'afficher une liste
+  vide : Fintable ne fournit que le solde, jamais le taux, donc il ne peut pas créer la dette.
+
+---
+
 ## [unreleased] — 2026-09-11 (L'onglet Futur est enfin utilisable au téléphone)
 
 - **Nouveau** : refonte complète de l'onglet Futur pour le téléphone (six livraisons successives). La courbe passe

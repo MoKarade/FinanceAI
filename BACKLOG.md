@@ -574,6 +574,36 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
+- [x] **`[FINTABLE-DEBTNAME-AUTO]` — LIVRÉ le 2026-09-14** (M) — le nom de la dette d'un compte
+  carte de crédit ne se TAPE plus, il se CHOISIT dans une liste des dettes réelles, et il est
+  PRÉ-SÉLECTIONNÉ depuis le libellé du compte. Demande Marc (2026-09-14) : « je veux pas avoir à
+  donner exactement le nom dans dette, ça devrait être automatique ». Avant : un champ texte libre
+  intitulé « nom EXACT », comparé par `debtKey` (`trim().toLowerCase()`, **accents compris**) — une
+  faute de frappe gelait la mise à jour du solde, sans autre signal qu'un avertissement au fond du
+  rapport de sync. Nouveau module PUR `services/fintable/suggestDebtName.ts` (suggestion timide :
+  rien plutôt qu'au hasard, `null` sur une égalité de score), + un `debtName` hérité qui ne désigne
+  plus rien reste affiché marqué **INTROUVABLE** au lieu de disparaître en silence.
+- [ ] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **EN ATTENTE DU
+  GO de Marc**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
+  la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même
+  vitesse. Le compte chèque poste le jour même et pousse la bascule chaque jour ; la carte de crédit
+  poste avec quelques jours de retard (et `pending: false` est FORCÉ par contrat, donc seules les
+  transactions POSTÉES sont exposées) — elle arrive donc systématiquement DERRIÈRE la bascule que le
+  chèque vient d'avancer, et `tx.date <= transactionsAfter` la jette. **Chaque jour, indéfiniment.**
+  ⚠️ **MESURÉ** (12 passes quotidiennes, chèque sans décalage + carte à 3 jours de décalage) :
+  **12/12 transactions de chèque reçues, 0/9 transactions de carte** — les 9 écartées « avant la
+  bascule ». **Contrôle négatif** (même scénario, décalage de la carte ramené à **0 jour**) :
+  **12/12 carte reçues, 0 écartée**. Le décalage de postage EST la variable ; le mécanisme est prouvé
+  dans les deux sens. Explique le symptôme rapporté par Marc le 2026-09-14 (« je reçois pas les
+  transactions de carte de crédit ») alors que son dry-run prouve que Fintable en LIVRE 293.
+  ⚠️ Le rattrapage (`[FINTABLE-BACKFILL-HISTORY]`, déjà livré) ne referme rien durablement : dès la
+  passe suivante la carte se refait jeter — c'est un correctif ponctuel sur un défaut permanent.
+  Fix proposé : bascule **PAR COMPTE** — le max des dates déjà connues POUR CE COMPTE, la donnée
+  existe déjà (`Transaction.accountName`, persisté par transaction depuis `[TX-TRANSFERS]`, et écrit
+  par le mapper Fintable). Un compte jamais vu retombe sur la bascule globale (comportement
+  d'aujourd'hui) plutôt que sur `null`, sinon un compte nouvellement routé rapatrierait tout son
+  historique sans dédoublonnage. Touche `deriveCutoverDate` + `syncCore` + les DEUX orchestrateurs
+  (navigateur ET cron) → plan-first, gardes discriminantes exigées des deux côtés.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : Marc pense que son plan offre plus de 30 jours → à MESURER chez lui (`npm run fintable:dry -- --days 365`, compte de transactions rendues, montants masqués) ; je ne peux pas appeler fintable.io d'ici (403).
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,

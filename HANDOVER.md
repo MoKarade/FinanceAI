@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
+> Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard
+> (fenêtre 2026-06-16 → 2026-09-10) : le blocage est chez nous, en aval. **Cause** : la bascule
+> anti-doublon (`deriveCutoverDate`) est GLOBALE — « la transaction la plus récente, tous comptes
+> confondus ». Le compte chèque poste le jour même et avance la bascule chaque jour ; la carte poste
+> avec quelques jours de retard (`pending: false` FORCÉ par contrat ⇒ seules les transactions POSTÉES
+> sont exposées) → elle arrive toujours derrière et `tx.date <= transactionsAfter` la jette. **Chaque
+> jour, indéfiniment.** MESURÉ sur 12 passes simulées : **12/12 chèque reçues, 0/9 carte** ; contrôle
+> négatif à décalage NUL : **12/12 carte reçues**. Ticket 🔴 `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`
+> au `BACKLOG.md` — correctif proposé (bascule PAR COMPTE, la donnée existe déjà via
+> `Transaction.accountName`) **EN ATTENTE DU GO de Marc** : money-critical, touche les DEUX
+> orchestrateurs.
+> ⚠️ Le rattrapage `[FINTABLE-BACKFILL-HISTORY]` ne referme rien durablement : dès la passe suivante
+> la carte se refait jeter. ⚠️ L'avertissement « N transactions plus anciennes que la bascule » parlait
+> chaque jour — mais propose un remède PONCTUEL à un défaut PERMANENT.
+> **LIVRÉ dans la foulée** — `[FINTABLE-DEBTNAME-AUTO]` (demande Marc : « je veux pas avoir à donner
+> exactement le nom dans dette, ça devrait être automatique ») : le nom de dette d'un compte carte se
+> CHOISIT désormais dans la liste des dettes réelles et est PRÉ-SÉLECTIONNÉ depuis le libellé du
+> compte (`services/fintable/suggestDebtName.ts`, pur et timide — `null` sur une égalité de score).
+> Un `debtName` hérité qui ne désigne plus rien reste affiché marqué **INTROUVABLE**.
+> ⚠️ **Reste ouvert** : le jeton du chemin SERVEUR (secret `financeai-fintable-token`) rend **401** —
+> il porte encore un des jetons révoqués le 2026-09-05. Le chemin NAVIGATEUR n'est pas touché.
+> ⚠️ **PR #954** (`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`) est verte 7/7 et `mergeable_state: clean`
+> mais reste en BROUILLON : la bascule brouillon→prêt est bloquée par le quota d'API GitHub.
+
 > ## 🟢 Session 2026-09-03 — MARC A TRANCHÉ HUIT DÉCISIONS (+ deux sous-questions)
 > Toutes consignées dans `docs/A_FAIRE_MOI.md` (marquées ✅ RÉPONDU, énoncés d'origine conservés) et
 > converties en tickets actionnables dans `BACKLOG.md`. **Le backlog n'est plus bloqué.**

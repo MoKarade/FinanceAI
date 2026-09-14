@@ -718,6 +718,30 @@
   ne fait qu'AJOUTER, avec dédup sur date+montant+marchand : ré-importer le bon montant créerait un
   DOUBLON, pas une correction). Le seul levier est `isDuplicate`, qui exclut une ligne de TOUS les
   calculs et se pose à la main dans l'écran Transactions. Procédure et décision dans `docs/A_FAIRE_MOI.md`.
+  ✅ **Débloqué le 14/09 par `[TX-SELECTION-SANS-ACTION]`** : ce levier était INATTEIGNABLE pour cette
+  classe (voir ci-dessous) ; il l'est désormais en quatre gestes. Reste à Marc de neutraliser les 44,
+  puis j'importe les bons montants.
+- [x] 🔧 **`[TX-SELECTION-SANS-ACTION]`** (S, **MESURÉ**) — Marc : « j'arrive pas à les marquer en
+  doublon ». **Il avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL
+  point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par
+  `findDuplicateGroups`. Une ligne au montant faux est le doublon de **rien** — donc elle ne pouvait
+  apparaître dans aucun groupe, et la marque était inatteignable pour la CLASSE entière « ligne
+  unique dont le montant est faux ». Le seul levier par ligne qui restait était le ⇄ « virement »
+  (`toggleTransfer`), qui neutralise bien la ligne mais **étiquette une vraie dépense en virement
+  interne** — et qu'il aurait fallu cliquer **44 fois**.
+  ⚠️ La capacité existait déjà dans le modèle : `markTransactionsAsDuplicate` est **PUR** et accepte
+  n'importe quels ids ; la sélection multiple existait déjà dans l'écran (case par ligne, plage au
+  Maj-clic, « tout cocher » de la page). Il manquait le **FIL** entre les deux — variante de
+  `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` appliquée à un MUTATEUR, pas à un champ. Et la
+  sélection n'affichait AUCUN libellé disant ce qu'elle permettait : elle ne servait qu'à
+  re-catégoriser.
+  **Livré** : barre d'actions sur la sélection (« N sélectionnée(s) » · « Sélectionner les N
+  filtrées » · « Exclure des calculs » · « Désélectionner »). ⚠️ « Sélectionner les N **filtrées** »
+  et non « de la page » : la page fait 50 lignes et les 44 de Marc s'étalent au-delà — une sélection
+  bornée à la page laisserait le cas réel hors de portée. **Fait le 14/09** (PR #964).
+  ⚠️ **L'ADR 0009 §3 n'a PAS été rouverte**, et c'est le point : son repli (« le chemin sûr existant :
+  marquer `isDuplicate` ») était mesurément FERMÉ pour cette classe. Le correctif ouvre le repli
+  qu'elle nommait, au lieu de me donner le droit d'écrire sur une transaction existante.
 - [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **mesure à confirmer**) — le
   mapper suppose « solde de carte POSITIF = montant dû » (`const owed = Math.abs(account.balance)`,
   `mapSnapshot.ts`, commenté « un solde négatif signifie un crédit en ta faveur »). Marc, interrogé le

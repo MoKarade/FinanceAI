@@ -803,6 +803,59 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     </div>
                 </div>
 
+
+                {/* [TX-SELECTION-SANS-ACTION] La sélection multiple existait (case par ligne,
+                    plage au Maj-clic, « tout sélectionner » de la page) mais ne pouvait RIEN faire
+                    d'autre que re-catégoriser : aucun libellé ne disait ce qu'elle permettait, et
+                    aucune action d'exclusion ne s'y branchait. Or `markTransactionsAsDuplicate` est
+                    PUR et accepte n'importe quels ids — la capacité existait dans le modèle, il
+                    manquait le point d'entrée. Mesuré le 2026-09-14 : le SEUL chemin vers
+                    `isDuplicate` était `DuplicatesPanel`, qui n'affiche que les groupes trouvés par
+                    le DÉTECTEUR — donc une ligne au montant faux, doublon de RIEN, était
+                    définitivement inatteignable (44 lignes réelles dans ce cas).
+                    ⚠️ Le libellé dit l'EFFET (« exclure des calculs »), pas le nom du champ : la
+                    raison d'exclure n'est pas toujours un doublon. L'annulation reste celle qui
+                    existe déjà (« Annuler tous les marquages » du panneau Doublons). */}
+                {selectedIds.size > 0 && (
+                    <div
+                        role="region"
+                        aria-label="Actions sur la sélection"
+                        className="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-xl border border-primary/30 bg-primary/10"
+                    >
+                        <span className="text-meta font-bold text-ink-100">
+                            {selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+                        </span>
+                        {selectedIds.size < filteredTransactions.length && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedIds(new Set(filteredTransactions.map(t => t.id)))}
+                                className="touch-target px-3 py-1.5 rounded-full text-meta font-bold bg-white/5 border border-white/10 text-ink-200 hover:text-ink-50 transition-colors focus-ring"
+                            >
+                                Sélectionner les {filteredTransactions.length} filtrées
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => { handleMarkDuplicates([...selectedIds]); setSelectedIds(new Set()); }}
+                            title="Les lignes restent dans l'historique mais sortent du solde, du budget et des revenus. Réversible."
+                            className="touch-target px-3 py-1.5 rounded-full text-meta font-bold bg-warning-600 text-dark focus-ring"
+                        >
+                            Exclure des calculs
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedIds(new Set())}
+                            className="touch-target px-3 py-1.5 rounded-full text-meta bg-white/5 border border-white/10 text-ink-300 hover:text-ink-100 transition-colors focus-ring"
+                        >
+                            Désélectionner
+                        </button>
+                        <span className="text-meta text-ink-400 basis-full">
+                            Rien n&apos;est effacé : les lignes restent visibles, simplement hors du solde,
+                            du budget et des revenus. Annulable dans le panneau « Doublons ».
+                        </span>
+                    </div>
+                )}
+
                 {/* [REFONTE-NAV-L5] Empty state UNIQUE (desktop + mobile) : avant, seul le mobile
                     en avait un (le desktop montrait un tableau d'en-têtes vide). CTA honnête :
                     importer s'il n'y a AUCUNE transaction, réinitialiser si ce sont les filtres. */}

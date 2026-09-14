@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 867 tests** Vitest
-(602 fichiers de test, mesuré le 2026-09-14). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 884 tests** Vitest
+(603 fichiers de test, mesuré le 2026-09-14). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -687,6 +687,34 @@ n'est pas réécrire un récit.
   **220 $/mois** pour une auto à **1 016,90 $/mois** (cashflow affiché 2 370 → 1 534 $) — quand on
   ouvre un objet pour un champ, **relire tous ses champs**
   (`UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET-LE-COMPTE-DEUX-FOIS`, 2026-09-14).
+
+- **Le chemin de REPLI nommé par une décision se VÉRIFIE avant d'être offert** : l'ADR 0009 §3 diffère
+  un outil MCP d'écriture sur les transactions au motif que « le chemin sûr **existant** (marquer
+  `isDuplicate`/`isTransfer`) » suffit. J'ai demandé à Marc de marquer 44 lignes par cette voie — elle
+  n'existe PAS pour son cas : le seul point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne
+  rend que les groupes du DÉTECTEUR, et une ligne au montant faux est le doublon de RIEN. Une ADR est
+  verrouillée sur son ARBITRAGE, jamais sur l'état du produit qu'elle décrit en passant. ⚠️ Et la
+  mauvaise réponse était la plus tentante — l'ADR finit par « à réévaluer sur un besoin concret », le
+  besoin venait d'arriver, et rouvrir un droit d'écriture destructif était **inutile** : la capacité
+  existait (`markTransactionsAsDuplicate` est PUR et prend n'importe quels ids), il manquait le FIL vers
+  la sélection multiple déjà présente. **Avant de réclamer un droit nouveau, chercher le MUTATEUR qui
+  fait déjà le travail et regarder qui l'appelle** — variante de `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`
+  appliquée à un mutateur, plus discrète qu'elle (un champ absent se voit ; un mutateur au seul appelant
+  trop étroit a l'air branché). ⚠️ Le levier VOISIN qui « marche » n'est pas le bon : `isTransfer` a le
+  même effet que `isDuplicate` et une sémantique FAUSSE (une dépense réelle déclarée virement interne)
+  — ce qu'une marque AFFIRME survit au lot, pas son effet du jour. ⚠️ Une transaction COMPENSATOIRE
+  était un no-op déguisé, écarté par la mesure : un positif hors `{Salaire, Revenus divers}` et hors
+  `CREDIT_BACK_CATEGORIES` est IGNORÉ du budget, et en « Remboursement » le plancher `Math.max(0, …)`
+  l'absorbe — mais le CASH, lui, l'aurait vu (`computeCashLedger` ne filtre aucune catégorie) : **« est-ce
+  que ça marche ? » n'a pas de réponse hors d'un registre nommé**, et aucun outil ne défait un ajout.
+  ⚠️ Le dimensionnement se prend sur le cas RÉEL, pas sur la fixture : la case « tout sélectionner » ne
+  couvre que `paginatedTransactions` (50), d'où « Sélectionner les N **filtrées** »
+  (`LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT`, 2026-09-14).
+  ⚠️⚠️ **Un gate rouge se LOCALISE avant d'être expliqué** : `typecheck` rendait 26 erreurs sur un champ
+  `details` du contrat hub — `git stash` a montré **26 aussi sur `HEAD`**, donc pas mon lot ; cause
+  réelle, `package.json` épingle `hub-contract#v1.3.0` et `node_modules` portait encore **1.2.0**, jamais
+  réinstallé. Un re-pin n'est pas un re-pin tant que `npm install` n'a pas tourné (la CI fait `npm ci`,
+  le conteneur de dev non) — devant un rouge qui n'est pas à soi, soupçonner l'ARBRE INSTALLÉ avant le code.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

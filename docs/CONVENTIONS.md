@@ -5637,6 +5637,82 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT` — 2026-09-14
+
+Marc, trois mots : « j'arrive pas à les marquer en doublon ». J'avais passé le tour précédent à
+lui **demander** de marquer 44 transactions en doublon — l'étape dont dépendait tout le correctif
+du défaut de devise (`UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE`).
+
+**Il avait raison, et le bouton n'existait pas pour son cas.** Recensé dans le code : le SEUL point
+d'entrée vers `isDuplicate` dans l'app est `DuplicatesPanel`, qui ne rend QUE les groupes trouvés
+par le DÉTECTEUR (`findDuplicateGroups` : même montant, date proche). Or ses 44 lignes ne sont le
+doublon de **rien** — elles sont uniques, juste au mauvais montant. Elles ne pouvaient donc
+apparaître dans aucun groupe : la marque était inatteignable pour la CLASSE entière « ligne unique
+dont le montant est faux », pas seulement pour lui ce jour-là.
+
+**D'où venait la fausse certitude.** De l'ADR 0009 §3, qui diffère un outil MCP d'écriture sur les
+transactions en écrivant : « le **chemin sûr existant** (marquer `isDuplicate`/`isTransfer`) a une
+sémantique métier que l'IA ne doit pas deviner ». J'ai lu cette phrase comme un fait sur le
+produit. C'en est un sur la DÉCISION : elle dit pourquoi on n'ouvre pas la porte MCP, elle n'a
+jamais vérifié que la porte de secours qu'elle nomme est ouverte. **Le repli nommé par une
+décision est une affirmation sur le produit d'AUJOURD'HUI — il se mesure comme n'importe quelle
+autre, avant d'être offert à quelqu'un.** Une ADR est verrouillée sur son ARBITRAGE, jamais sur
+l'état du monde qu'elle décrit en passant.
+
+⚠️ **Et la mauvaise réponse était la plus tentante.** L'ADR finit par « À réévaluer sur un besoin
+concret de Marc » — le besoin concret venait d'arriver, l'invitation était écrite noir sur blanc,
+et j'allais poser à Marc la question « est-ce qu'on rouvre l'ADR pour que je puisse écrire sur tes
+transactions ? ». C'était la pire des trois options disponibles : la plus lourde (un outil
+destructif de plus, un serveur MCP à redémarrer), la plus risquée (le cash est DÉRIVÉ des
+transactions), et surtout **inutile** — parce que la capacité existait déjà. `markTransactionsAsDuplicate`
+est **PUR** et accepte n'importe quels ids ; la sélection multiple existait aussi (case par ligne,
+plage au Maj-clic). Il manquait le **FIL** entre les deux, et 53 lignes de JSX. Avant de demander
+un droit d'écriture nouveau, **chercher le mutateur qui fait déjà le travail et regarder qui
+l'appelle** : c'est la variante `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` appliquée à un
+MUTATEUR plutôt qu'à un champ, et elle est plus discrète — un champ absent de l'UI se voit, un
+mutateur dont l'unique appelant est trop étroit a l'air branché.
+
+⚠️ **Le levier voisin qui « marche » n'est pas le bon levier.** Le ⇄ « virement » (`toggleTransfer`)
+existe par ligne et neutralise bel et bien une ligne — `isTransfer` l'exclut du cash, des dépenses
+ET des revenus, exactement comme `isDuplicate`. Effet identique, **sémantique fausse** : il déclare
+qu'une vraie dépense au Brésil est un virement interne, ce qui ment au Budget et à toute lecture
+future de l'historique. Deux marques qui ont le même effet aujourd'hui ne sont pas
+interchangeables : ce qu'elles AFFIRMENT diffère, et c'est l'affirmation qui survit au lot.
+
+⚠️ **Une correction par transaction COMPENSATOIRE aurait été un no-op déguisé en correctif** —
+écarté par la MESURE, pas par le raisonnement. `computeMonthlyActualAverages` ne compte un montant
+POSITIF que dans deux cas : catégorie `Salaire`/`Revenus divers` (→ revenu), ou `isCreditBack`
+(catégorie ∈ `CREDIT_BACK_CATEGORIES`, qui ne contient QUE `'Remboursement'`). Un `+5,72 $` posé
+en « Transport » pour annuler un `−7,90 $` est **purement ignoré** ; en « Remboursement », le net
+du poste est planché par `Math.max(0, spent − credit)`, donc absorbé. Les deux voies laissent le
+budget exactement aussi faux, avec l'apparence d'une réparation. ⚠️ Nuance qui compte : le **cash**,
+lui, aurait bougé — `computeCashLedger` somme TOUTES les transactions sans filtre de catégorie
+(seuls `isDuplicate`/`isTransfer` excluent). Un même ajout corrige donc une grandeur et pas
+l'autre : **« est-ce que ça marche ? » n'a pas de réponse hors d'un registre nommé.** Et je ne peux
+pas défaire un ajout (aucun outil ne supprime une transaction) — une demi-correction irréversible
+était le pire résultat possible.
+
+⚠️ **Ce qui a permis la portée juste : mesurer l'UI, pas la supposer.** Trois faits comptés dans
+`components/Transactions.tsx` avant d'écrire une ligne — (1) la sélection multiple existe mais ne
+sert QU'à `handleAutoCategorizeAll` ; (2) `handleMarkTransfers` existe et n'est câblé qu'au
+`TransfersPanel`, donc lui aussi limité aux paires du détecteur ; (3) la case « tout sélectionner »
+de l'en-tête ne couvre que `paginatedTransactions` — **50 lignes**, alors que le cas réel en compte
+44 réparties sur plusieurs pages une fois l'historique complet. Sans ce troisième point, j'aurais
+livré un bouton qui ne résout pas le cas qui l'a fait naître : d'où « Sélectionner les N
+**filtrées** ». **Le dimensionnement d'un correctif d'UI se prend sur le cas RÉEL qui l'a
+déclenché, jamais sur la fixture à trois lignes du test.**
+
+⚠️ **Piège d'environnement, coûteux et parfaitement trompeur** : `npm run typecheck` rendait **26
+erreurs** dans `mcp/hubSummary.ts` et son test — un champ `details` « qui n'existe pas sur le type ».
+Rien à voir avec mon lot, et surtout rien à voir avec le CODE : `package.json` épingle
+`hub-contract#v1.3.0` depuis le matin, mais `node_modules` portait encore **1.2.0**, jamais
+réinstallé. Le `git stash` l'a tranché en dix secondes (**26 erreurs sur `HEAD` aussi**), et
+`npm install` les a toutes fait disparaître. **Un gate rouge se localise avant d'être expliqué :
+`git stash` dit s'il est à moi, et quand il ne l'est pas, soupçonner l'ARBRE INSTALLÉ avant le
+code.** Corollaire du jumeau `UN-TICKET-DE-DEPENDANCES-DECRIT-UN-ARBRE-QUI-BOUGE-TOUT-SEUL` : un
+re-pin dans `package.json` n'est pas un re-pin tant que `npm install` n'a pas tourné — la CI le
+voit (elle fait `npm ci`), le conteneur de dev non.
+
 ### `UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET-LE-COMPTE-DEUX-FOIS` — 2026-09-14
 
 Le bail auto de Marc devait entrer dans son état. Le moteur amortit **tout** solde actif de la même

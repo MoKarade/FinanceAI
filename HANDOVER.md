@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-14 (fin++) — « j'arrive pas à les marquer en doublon » : le bouton n'existait pas
+> Ticket 🔧 `[TX-SELECTION-SANS-ACTION]`, **livré** (PR #964).
+> ✅ **Marc avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL point
+> d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par
+> `findDuplicateGroups`. Ses 44 lignes du Brésil (montants en reals étiquetés CAD,
+> `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`) sont le doublon de **rien** — donc inatteignables, pour
+> la CLASSE entière « ligne unique au montant faux ». Le seul levier restant était le ⇄ « virement »,
+> qui neutralise bien mais **étiquette une vraie dépense en virement interne**, × 44 clics.
+> ✅ **Livré** : barre d'actions sur la sélection multiple (qui existait déjà et ne servait QU'à
+> re-catégoriser) → « N sélectionnée(s) » · « Sélectionner les N filtrées » · « Exclure des calculs »
+> · « Désélectionner ». 4 gardes, 3 perturbations séparées (chacune rougit UNIQUEMENT son test).
+> ⚠️ **L'ADR 0009 §3 n'a PAS été rouverte** — et c'est le point de la session. Elle diffère un outil
+> MCP d'écriture sur les transactions au motif que « le chemin sûr **existant** (marquer
+> `isDuplicate`) » suffit : ce repli était mesurément FERMÉ pour cette classe. J'allais demander à
+> Marc de rouvrir l'ADR ; inutile — `markTransactionsAsDuplicate` est PUR et prend n'importe quels
+> ids, il manquait 53 lignes de JSX. **Avant de réclamer un droit d'écriture, chercher le MUTATEUR
+> qui fait déjà le travail et regarder qui l'appelle.**
+> ⚠️ **« filtrées », pas « de la page »** : la case de l'en-tête ne couvre que `paginatedTransactions`
+> (50), et les 44 s'étalent au-delà — un bouton borné à la page n'aurait pas réglé le cas qui l'a
+> fait naître.
+> ⚠️ **Piège d'environnement** : `typecheck` rendait **26 erreurs** (champ `details` du contrat hub).
+> `git stash` → **26 sur `HEAD` aussi**, donc pas le lot. Cause : `package.json` épingle
+> `hub-contract#v1.3.0` et `node_modules` portait **1.2.0**, jamais réinstallé. `npm install` les a
+> toutes effacées. **Un re-pin n'est pas un re-pin tant que `npm install` n'a pas tourné** (la CI
+> fait `npm ci`, le conteneur non).
+> ⏳ **CE QUE J'ATTENDS DE MARC** : qu'il neutralise ses 44 lignes avec le nouveau bouton (procédure
+> pas-à-pas dans `docs/A_FAIRE_MOI.md`) — j'importe les bons montants (**1 338,12 $** au lieu de
+> **3 875,43 $**) dès qu'il le dit. Plus les 3 réglages du bail sur « bZ » (ci-dessous).
+
 > ## 🔴 Session 2026-09-14 (fin+) — l'auto de Marc est un BAIL, et le moteur refuse d'amortir un bail
 > Ticket 🟠 `[DETTE-AUTO-BAIL-TOYOTA]`.
 > ✅ **BLOCAGE 1 TRANCHÉ ET ÉCRIT le 2026-09-14** — Marc : « le bon prix est celui que je paie car

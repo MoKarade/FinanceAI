@@ -674,6 +674,20 @@ n'est pas réécrire un récit.
   téléphone, n° de contrat n'ont aucune valeur de calcul et ne s'y écrivent pas
   (`UN-MENU-IMPOSE-SA-PREMISSE-A-LA-REPONSE`, 2026-09-14).
 
+- **Un TAUX saisi sur un solde qui contient DÉJÀ l'intérêt le compte deux fois** : le moteur amortit
+  tout solde actif (`intérêt = solde × taux/12`) sans égard au `kind` — `KIND_AMORTISSANT` ne gouverne
+  que le PASSÉ. Pour le bail auto de Marc, écrire les 6,59 % du contrat sur un solde « somme des
+  versements restants » (tout-compris) donnait **54 mois et 54 591,90 $** contre **46,4 mois et
+  47 168,67 $** réels — **+7 mois, +7 423 $ de versements fantômes** ; à **0 %** : 47 mois, exact.
+  Avant d'écrire un taux dans un champ qui MULTIPLIE un solde, demander **ce que ce solde contient**
+  (capital restant → son taux ; somme des paiements, TTC, coût total → aucun). ⚠️ Corollaire de
+  conduite : l'instruction disait « par rapport au CONTRAT » et la suivre à la lettre inventait
+  7 423 $ — une consigne nomme un RÉSULTAT (« que mes comptes soient à jour »), pas une valeur de
+  champ. ⚠️ Et le plus gros écart n'était pas celui qu'on cherchait : le `minimumPayment` valait
+  **220 $/mois** pour une auto à **1 016,90 $/mois** (cashflow affiché 2 370 → 1 534 $) — quand on
+  ouvre un objet pour un champ, **relire tous ses champs**
+  (`UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET-LE-COMPTE-DEUX-FOIS`, 2026-09-14).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

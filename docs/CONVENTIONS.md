@@ -5637,6 +5637,45 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET-LE-COMPTE-DEUX-FOIS` — 2026-09-14
+
+Le bail auto de Marc devait entrer dans son état. Le moteur amortit **tout** solde actif de la même
+façon — `intérêt = solde × taux/12`, puis `solde += intérêt − paiement` — sans égard au `kind`
+(`KIND_AMORTISSANT` ne gouverne que la reconstruction du PASSÉ, pas le futur).
+
+Deux paramétrages étaient possibles, et l'instruction de Marc (« modifie le prêt **par rapport au
+contrat** ») pointait vers le mauvais :
+
+| Solde écrit | Taux | Éteinte en | Total versé |
+|---|---|---:|---:|
+| coût capitalisé (48 405,23 $) | 6,59 % (contrat) | 56 mois | — |
+| versements restants (47 168,67 $) | 6,59 % (contrat) | 54 mois | 54 591,90 $ |
+| **versements restants** | **0 %** | **47 mois** | **47 168,67 $** ✅ |
+
+Le reste réel du bail est de **46,4 mois** et **47 168,67 $**. Saisir le taux du contrat coûtait donc
+**+7 mois et +7 423 $ de versements fantômes**, parce qu'un versement de bail **contient déjà
+l'intérêt** : le solde « somme des versements restants » est tout-compris, et le multiplier par un
+taux compte l'intérêt une seconde fois.
+
+**La règle** : avant d'écrire un taux dans un champ qui MULTIPLIE un solde, demander **ce que ce solde
+contient**. Un solde « capital restant dû » veut son taux ; un solde « somme des paiements restants »,
+un solde TTC, un solde « coût total » n'en veulent aucun. Les deux se ressemblent à l'écran et ne
+diffèrent que par ce qui a déjà été incorporé — c'est la même famille que « unités argent » (mensuel
+contre annuel), sur l'axe de l'INTÉRÊT au lieu du temps.
+
+⚠️ **Corollaire de conduite** : suivre l'instruction à la lettre (« par rapport au contrat ») aurait
+inventé 7 423 $. Une consigne d'utilisateur nomme un RÉSULTAT (« que mes comptes soient à jour »),
+pas une valeur de champ — et quand la valeur littérale contredit le résultat, c'est le résultat qui
+gagne, en le DISANT. Ici le 6,59 % n'est pas perdu : il est consigné dans la doc, où il décrit le
+contrat sans piloter un calcul.
+
+⚠️ **Et le plus gros écart n'était pas celui qu'on cherchait** : le `minimumPayment` de cette dette
+valait **220 $/mois** pour un véhicule qui coûte **1 016,90 $/mois**. Ni le contrat ni la devise n'y
+étaient pour quelque chose — une vieille saisie. Mesuré juste après l'écriture : patrimoine net
+212 609 → 215 440 $, dépenses mensuelles 3 718 → 4 554 $, **cashflow 2 370 → 1 534 $**. Quand on
+ouvre un objet pour corriger un champ, **relire tous ses champs** : celui qui fait le plus de dégâts
+n'est pas forcément celui qui a motivé l'ouverture.
+
 ### `UN-MENU-IMPOSE-SA-PREMISSE-A-LA-REPONSE` — 2026-09-14
 
 J'ai posé à Marc quatre questions en clic sur sa dette auto : « le prêt doit démarrer quand ? »,

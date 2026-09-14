@@ -657,7 +657,7 @@
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : recherche relayée : **14,5 % (2025), 14 % (2026)** + un **crédit compensatoire** 2025-2030 qui garde 15 % pour la part des crédits au-delà du 1er palier (58 523 $ en 2026) — correctif à DEUX étages ; il MANQUE la formule exacte du compensatoire (capture ARC demandée).
   15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
   TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
-- [ ] 🔴 **`[DETTE-AUTO-BAIL-TOYOTA]`** (M, money-critical, **EN ATTENTE DE MARC — 2 blocages**) —
+- [ ] 🟠 **`[DETTE-AUTO-BAIL-TOYOTA]`** (M, money-critical, **BLOCAGE 1 TRANCHÉ ET ÉCRIT ; reste le type/les dates, saisissables dans l'écran**) —
   le véhicule de Marc est sous **BAIL** (« Offre de Location », Ste-Foy Toyota, 2026-07-14), pas sous
   prêt. Contrat LU et vérifié par l'arithmétique : coût capitalisé **48 405,23 $**, **190,02 $/sem +
   28,45 $ de taxes = 218,47 $/sem**, terme **48 MOIS**, taux **6,59 %**, valeur résiduelle
@@ -678,6 +678,20 @@
   mais c'est un choix à rendre délibéré.
   ⚠️ `apply_debt` (MCP) ne peut écrire **ni `kind`, ni `startDate`, ni `originalBalance`, ni
   `termEndDate`** — exactement les champs que la demande réclame. Ils existent dans Réglages → Dettes.
+  ✅ **TRANCHÉ 2026-09-14** : Marc confirme que **234,67 $/sem est la vérité** (« j'ai des offres en
+  plus ») — le contrat est bien une offre. **Total du bail : 48 811,36 $** sur 208 versements
+  (+3 369,60 $ au-dessus du contrat), **66 557,76 $** s'il rachète à la résiduelle. Écrit par
+  `apply_debt` (sauvegarde horodatée, réversible) : solde **50 000 → 47 168,67 $** (versements
+  restants), paiement **220 → 1 016,90 $/mois**, taux **5,69 → 0 %**, prêteur renseigné.
+  ⚠️ **0 % est MESURÉ, pas un avis** : le solde écrit est la somme des versements restants, qui
+  contiennent déjà l'intérêt ; ressaisir les 6,59 % du contrat donne **54 mois / 54 591,90 $** contre
+  **46,4 mois / 47 168,67 $** réels — **+7 mois et +7 423 $ de versements fantômes**.
+  ⚠️ **Le plus gros écart n'était pas le contrat** : `minimumPayment` valait **220 $/mois** pour une
+  auto à **1 016,90 $/mois**. Effet mesuré : patrimoine net 212 609 → 215 440 $, cashflow mensuel
+  **2 370 → 1 534 $**.
+  ⚠️ **RESTE** (hors de portée du MCP, à faire dans Réglages → Dettes) : type = **bail auto**, début
+  = **2026-07-14**, fin de terme = **2030-07-14**. Et la **valeur résiduelle de 17 746,40 $** n'existe
+  dans aucun champ du modèle — un rachat de bail reste à cadrer.
   Détail et tableau du contrat dans `docs/A_FAIRE_MOI.md`. ⚠️ Dépôt PUBLIC : NIV, adresse, téléphone,
   n° de contrat et nom du vendeur délibérément NON consignés.
 - [ ] 🔴 **`[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`** (M, money-critical, **MESURÉ sur les VRAIES

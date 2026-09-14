@@ -1616,6 +1616,20 @@ un solde de **−200 $** (200 $ en trop EN TA FAVEUR) deviendrait une **dette de
 qui oscille autour de zéro, la création automatique fabriquerait des dettes fantômes à chaque passe.
 Le code AVERTIT déjà dans ce cas, mais il écrit quand même.
 
+⚠️ **Précision de Marc, même jour** : « parfois mon crédit fait que j'ai de l'argent en plus et
+parfois de l'argent en moins ». Ce n'est donc pas un cas limite occasionnel — le solde de cette carte
+**oscille des deux côtés de zéro par conception**. Conséquence sur le cadrage : ce compte n'est pas
+une dette qui se rembourse, c'est un solde à DEUX SENS, et le modèle de FinanceAI n'a pas d'objet
+pour ça (`Debt.balance` est un montant dû, jamais négatif). Créer une dette automatiquement
+reviendrait à figer le mauvais sens une passe sur deux.
+
+⚠️ **Et une mesure manque avant toute décision** : personne n'a vérifié dans QUEL SENS Fintable
+publie le solde d'une carte. Le mapper suppose « positif = dû » et traite le négatif comme un crédit
+en faveur de Marc — hypothèse jamais confrontée à la vraie donnée. Si la convention de Fintable est
+l'inverse (passifs en négatif, usage courant), `Math.abs` sauve la grandeur par accident mais
+l'avertissement « crédit en ta faveur » se déclenche exactement à l'envers. La question qui tranche,
+et que seul Marc peut lire : **quand tu dois 500 $ sur la carte, Fintable affiche `500` ou `-500` ?**
+
 **Questions à trancher avant de coder :**
 1. Quel **paiement minimum** ? (le chiffre de ton relevé, ou une hypothèse assumée et marquée comme
    telle à l'écran — pas un chiffre glissé en silence dans la projection)

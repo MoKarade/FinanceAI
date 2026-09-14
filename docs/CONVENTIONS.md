@@ -5660,6 +5660,17 @@ doivent porter la valeur d'AUJOURD'HUI, et un remplacement global y est correct.
 « un fichier daté est un RÉCIT, pas une référence » se lit donc aussi dans ce sens : elle dit quoi
 mettre à jour, pas seulement quoi ne pas rafraîchir.
 
+⚠️ **Corollaire de TIMING, payé le 2026-09-14** : le corollaire ci-dessus dit *quelle* valeur doit
+porter un document sans date. Il ne dit pas *quand la mesurer*. Sur `[FINTABLE-CARTE-SANS-DETTE]`,
+un conflit de rebase portait sur cette même ligne d'en-tête de `CLAUDE.md` (deux nombres pour la même
+phrase, donc rien d'additif) — j'ai refusé de deviner, j'ai MESURÉ, et j'ai écrit **5 858 / 601**. Le
+nombre était juste… pour `main`, et mon propre lot ajoutait un fichier de test : au gate final,
+**5 867 / 602**. La mesure faite pour ARBITRER un conflit n'est pas la mesure qui va dans le document ;
+la seconde se prend sur l'état FINAL du lot, après la dernière édition. Repère mécanique : tout lot qui
+touche `tests/` périme le compteur qu'il vient lui-même d'écrire. Même famille que
+`COMMITTER-AVANT-TOUTE-ATTENTE-LONGUE-INCLUT-LE-GATE` — la valeur d'un document se fige au dernier
+moment du cycle, pas au moment où on l'a sous les yeux.
+
 ### `UN-TICKET-QUI-GROUPE-PAR-LA-SYNTAXE-GROUPE-DES-ENJEUX-INCOMPARABLES` — 2026-08-22
 
 `[CONSTANTES-MOTEUR-NON-SOURCEES]` était étiqueté **XS / FAIBLE** et décrivait « trois constantes

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 837 tests** Vitest
-(599 fichiers de test, mesuré le 2026-09-11). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 841 tests** Vitest
+(600 fichiers de test, mesuré le 2026-09-14). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -544,6 +544,11 @@ n'est pas réécrire un récit.
   phrase sort du JSX vers un module pur, son fait se dérive du module qui DÉCIDE (jamais d'une
   seconde lecture des champs), et une garde JUMELLE interdit de la recopier dans le rendu
   (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`, 2026-09-02).
+- **Un choix multiple répond à la question posée, jamais aux questions qu'elle présuppose ou ouvre** :
+  poser des décisions en clic (`AskUserQuestion`) peut faire disparaître silencieusement une
+  SOUS-question du ticket source, ou masquer qu'une option choisie exige un chantier non cadré —
+  relire le ticket source (pas sa propre reformulation) avant de considérer le sujet clos
+  (`UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE`, 2026-09-14, détail `docs/CONVENTIONS.md`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

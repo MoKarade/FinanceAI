@@ -12720,3 +12720,26 @@ retrouvé dans `LEVER_LIBRARY`/le code source), soit scoper explicitement au con
 Symétrique de la leçon d'origine : là où elle portait sur l'ASSERTION (agréger tous les `aria-pressed` de
 l'écran masque ce qu'on veut isoler), celle-ci porte sur la CIBLE (un sélecteur non scopé RAMASSE un élément
 d'une autre zone qui porte le même attribut par coïncidence).
+
+### `UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE` (2026-09-14)
+
+En reprenant `docs/A_FAIRE_MOI.md` pour poser « toutes les questions pour décisions » en un lot cliquable,
+`[ENG-LIQUIDDEBT-NEVER-REPAID]` portait DEUX questions dans le même ticket : (1) quel taux de découvert
+s'applique, et (2) une fois le taux connu, faut-il rembourser la dette EN PRIORITÉ avant de cotiser au
+CELI/REER, et faut-il l'exposer dans le plan d'action. Converti en un seul choix multiple à 3 options (les
+trois taux), la question (2) a **disparu silencieusement** — elle n'était portée par aucune option du menu,
+donc aucune réponse de Marc ne pouvait la couvrir. Je ne l'ai remarquée qu'en relisant le ticket d'origine
+APRÈS avoir reçu la réponse sur le taux, au moment de me demander « qu'est-ce qui reste à faire ». Le geste
+qui a sauvé le lot : ne jamais coder sur la SEULE réponse cliquée sans re-dérouler le ticket source en entier
+pour vérifier qu'aucune deuxième moitié n'a été laissée de côté par la forme du menu.
+
+⚠️ Corollaire découvert au même moment, sur un AUTRE ticket du même lot : le choix cliqué peut lui-même
+révéler un chantier NON CADRÉ. `[W5-RENTAL-DPA-ELECTION]` proposait trois options dont la troisième
+(« élire la DPA avec vente et recapture ») était, dans le texte même du ticket, annoncée comme exigeant
+« d'abord de modéliser la vente d'un immeuble W5 » — un chantier qui n'existe pas du tout dans le moteur
+(aucune disposition, aucun calcul de gain en capital sur un W5, aucune recapture). Le clic a bien répondu
+à la question posée ; il n'a pas, et ne pouvait pas, répondre à la question suivante (« ce chantier est-il
+cadré ? »). **Un choix multiple répond exactement à la question qu'il pose, jamais aux questions qu'elle
+présuppose ou qu'elle ouvre.** Devant une réponse en clic sur un sujet money-critical ou de gros chantier,
+la relire contre le TICKET SOURCE (pas contre sa propre reformulation en options) avant de considérer le
+sujet clos, et poser le plan-first qui reste dû plutôt que de coder sur l'élan de la réponse obtenue.

@@ -104,19 +104,23 @@
   du harnais à `estimatedValue > 0` ; et la **garde structurelle qui manquait** : tout terme `+1`/`−1` de
   `NET_WORTH_SIGN` a un champ publié dans `chartData` (perturbation : retirer `Entreprise` de la sortie → rouge).
   Preuve de non-déplacement : `NetWorth` bit-identique avant/après sur les 7 personas.
-- [ ] 🔴 **`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`** (S, CRITIQUE money-critical, 🧭 **décision Marc — Q16 dans `docs/A_FAIRE_MOI.md`** — trouvé par le panel du lot 214, PRÉ-EXISTANT depuis le 2026-08-19, rendu VISIBLE par la publication d'`Entreprise`) —
-  `services/projection.ts` calcule `privateBusinessValue` en `const` AVANT la boucle, et le partage du divorce
-  (`*= keep` sur `liquid`, `celi`, `celiapp`, `reer`, `nonReg`, `crypto`, `reee`, `realEstateEquity`, `mortgageBalance`,
-  les immeubles locatifs, `liquidDebt`, `smithManoeuvreDebt`…) ne la touche JAMAIS. **Mesuré par moi** (couple, divorce
-  certain au mois 12, `divorceSplitPct: 75`, entreprise 900 000 $) : chute du patrimoine au mois du divorce
-  **−284 706 $ AVEC comme SANS entreprise** ; `Entreprise` 900 000 → 900 000 (le CELI, lui, passe de 237 773 à 52 553) ;
-  `finalNetWorth` **+900 000 $** exactement par rapport au scénario sans entreprise — si elle était partagée comme les
-  autres actifs, il resterait 225 000 $. Même classe que `[ENG-W5-RENTAL-OFFBALANCE]` (immeubles oubliés au divorce,
-  corrigé le 2026-08-13) : le JUMEAU n'a pas été traité (`MODULE-ECRIT-HORS-CHECKLIST`). ⚠️ PAS un correctif mécanique :
-  au Québec, le patrimoine familial n'inclut pas les actions d'une société ; ce qui se partage (ou non) est une décision
-  produit → Q16. Une fois tranché : `let` muté `*= keep` (ou laissé intact, mais ÉCRIT comme tel) dans le callback de
-  partage, garde à `keep ≠ 0,5` (`UN-PARTAGE-A-50-POURCENT-NE-DISTINGUE-PAS-KEEP-DE-SON-COMPLEMENT`), et
-  `projection.divorceConservation.test.ts` (déjà à 9 actifs) avec une fixture qui porte une entreprise.
+- [x] 🔴 **`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`** ✅ **LIVRÉ le 2026-09-14** — DÉCISION Marc (Q16,
+  répondue en clic) : **partager comme le reste** (× `keep`), hypothèse « société d'acquêts par
+  défaut » — le modèle ne distingue nulle part ailleurs les biens propres. `privateBusinessValue`
+  passé de `const` à `let`, `*= keep` ajouté dans le callback de partage juste après
+  `realEstateEquity` (même traitement : valeur SOMMÉE dans `computeRawNetWorth`, pas un compte à
+  registre `withdrawalXXX`). Garde neuve `tests/services/divorceBusinessShare.test.ts` (4 cas,
+  discriminant à 75 % confirmé — 3/4 rouges sur `git stash` du fix, écart mesuré 900 000 $ pile) →
+  à déménager vers `BACKLOG_ARCHIVE.md` à la prochaine PR. Contexte d'origine (trouvé par le panel
+  du lot 214, PRÉ-EXISTANT depuis le 2026-08-19, rendu VISIBLE par la publication d'`Entreprise`) :
+  `services/projection.ts` calculait `privateBusinessValue` en `const` AVANT la boucle, et le
+  partage du divorce (`*= keep` sur `liquid`, `celi`, `celiapp`, `reer`, `nonReg`, `crypto`, `reee`,
+  `realEstateEquity`, `mortgageBalance`, les immeubles locatifs, `liquidDebt`, `smithManoeuvreDebt`…)
+  ne la touchait JAMAIS. Mesuré (couple, divorce certain au mois 12, `divorceSplitPct: 75`,
+  entreprise 900 000 $) : `Entreprise` 900 000 → 900 000, `finalNetWorth` **+900 000 $** exactement
+  par rapport au scénario sans entreprise — corrigé, l'écart tombe à 225 000 $ (la part conservée).
+  Même classe que `[ENG-W5-RENTAL-OFFBALANCE]` (immeubles oubliés au divorce, corrigé le 2026-08-13) :
+  le JUMEAU n'avait pas été traité (`MODULE-ECRIT-HORS-CHECKLIST`).
 - [x] 🟠 **`[PAST-NW-BUSINESS-SANS-PRODUCTEUR]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — `privateBusinessValue` porté dans `BuildPastPrefixInput` et `BuildDailyPastInput`, écrit aux deux sites (plate), `FutureProjection` le calcule depuis le store par la même règle que le moteur, `dailyCurve` recouvre `Entreprise` ; +2 cas `buildPastPrefix.test.ts`, +2 `dailyPastLedger.test.ts` ; perturbation (5e argument omis) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — livrer AVEC le précédent) — `services/history/pastNetWorth.ts:61`
   accepte `privateBusinessValue = 0` par défaut et son seul appelant `buildPastPrefix.ts:154` passe quatre
   arguments ; `dailyPastLedger.ts:333` écrit `privateBusinessValue: 0` en toutes lettres. La JSDoc promet « valeur
@@ -1173,8 +1177,10 @@
   (optimizeSourceDeductions) — la retenue absorbe les déductions REER strategy-dépendantes,
   écart mesuré 107 530 $ entre PRIO_REER et PRIO_CELI sur le même profil. [MESURÉ]
 
-- [ ] ⏸️ **`[W5-RENTAL-DPA-ELECTION]`** (S, MOYEN — découvert en livrant `[W5-RENTAL-INTERET-DPA]`, lot 188 ;
-  **DÉCISION MARC dans `docs/A_FAIRE_MOI.md`**) — la DPA (déduction pour amortissement, catégorie 1,
+- [ ] ⏸️ **`[W5-RENTAL-DPA-ELECTION]`** (relevé de **S à L** — la décision choisie l'exige, voir plus bas ;
+  découvert en livrant `[W5-RENTAL-INTERET-DPA]`, lot 188 ; **✅ DÉCISION MARC répondue le 2026-09-14
+  (en clic) : option 3, élire AVEC vente et recapture — plan-first posé dans `docs/A_FAIRE_MOI.md`,
+  GO en attente**) — la DPA (déduction pour amortissement, catégorie 1,
   4 %/an dégressif, règle de demi-année) n'est PAS modélisée : `RentalProperty.ccaTaken` est une DPA
   **CUMULÉE** saisie pour la recapture à la vente — or la vente n'est pas modélisée non plus, donc le
   champ n'a aucun lecteur (`UN-CHAMP-SANS-LECTEUR-NE-SE-CORRIGE-PAS-EN-LUI-DONNANT-UNE-SAISIE`). Élire la
@@ -1686,7 +1692,11 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
 > refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [ ] 🔴 **`[HYDRATATION-REFUS-TOUT-OU-RIEN]`** (S, **QUESTION POUR MARC** — née de l'incident du
+- [x] 🔴 **`[HYDRATATION-REFUS-TOUT-OU-RIEN]`** ✅ **RÉPONDU par Marc le 2026-09-14 (en clic) :
+  statu quo (option a)** — le tout-ou-rien est conservé, aucun code à changer ; le correctif déjà
+  livré (liste dérivée du contrat + CI qui rougit sur un oubli) rend le refus beaucoup plus rare, et
+  c'était jugé suffisant sans introduire de demi-état → à déménager vers `BACKLOG_ARCHIVE.md` à la
+  prochaine PR. Contexte d'origine (né de l'incident du
   2026-09-01) — aujourd'hui, un SEUL champ inattendu dans l'état persisté fait échouer **toute** la
   réhydratation : `merge` lève, l'app s'ouvre vide, et l'utilisateur croit avoir tout perdu. Le blob
   reste intact et la bannière le dit, mais l'écran vide parle plus fort que la bannière.

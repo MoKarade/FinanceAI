@@ -232,7 +232,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
      */
     // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) La règle vit dans `privateBusinessValue.ts` — le passé
     // l'applique aussi, et deux copies divergeraient en silence.
-    const privateBusinessValue = computePrivateBusinessValue(privateBusinesses);
+    // ⚠️ [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE] `let`, pas `const` : DÉCISION MARC 2026-09-14 — au
+    // divorce, l'entreprise privée se partage COMME LE RESTE du patrimoine familial (même `keep`
+    // que `realEstateEquity` trois lignes plus bas dans la boucle), avec l'hypothèse « société
+    // d'acquêts par défaut » — le modèle ne distingue nulle part ailleurs les biens propres des
+    // biens communs (immobilier, REER, CELI…), donc traiter l'entreprise autrement aurait été la
+    // seule exception. Mesuré AVANT le correctif : entreprise à 900 000 $, partage à 75 % →
+    // patrimoine post-divorce surestimé de 900 000 $ pile (elle restait à 100 % pendant que tout le
+    // reste tombait à 25 %).
+    let privateBusinessValue = computePrivateBusinessValue(privateBusinesses);
     const rentalNames = (rentalProperties ?? []).map(rp => rp?.name || 'immeuble locatif');
 
     let propertiesState = activeRE.map(g => {
@@ -913,6 +921,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reee *= keep;
             realEstateEquity *= keep;
             mortgageBalance *= keep;
+            // [ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE] Même traitement que `realEstateEquity` ci-dessus :
+            // une valeur de patrimoine SOMMÉE dans `computeRawNetWorth`, jamais un compte à
+            // mouvements mensuels — pas de registre `withdrawalXXX` à alimenter (elle n'en a jamais
+            // eu, `ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE` visait justement son absence de tout
+            // mécanisme). La cession n'est donc pas publiée dans un flux séparé, exactement comme
+            // pour l'équité immobilière.
+            privateBusinessValue *= keep;
             // ⚠️ [ENG-DIVORCE-SCALE-UNBOUGHT] `p.isBought` : on ne partage que les biens RÉELLEMENT
             // DÉTENUS. Pour un bien pas encore acheté, `currentValue` et `mortgage` ne sont pas des
             // actifs du couple — ce sont les PARAMÈTRES SEMÉS du futur achat (`price` et

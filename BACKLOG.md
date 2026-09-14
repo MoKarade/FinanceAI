@@ -104,14 +104,22 @@
   du harnais à `estimatedValue > 0` ; et la **garde structurelle qui manquait** : tout terme `+1`/`−1` de
   `NET_WORTH_SIGN` a un champ publié dans `chartData` (perturbation : retirer `Entreprise` de la sortie → rouge).
   Preuve de non-déplacement : `NetWorth` bit-identique avant/après sur les 7 personas.
-- [x] 🔴 **`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`** ✅ **LIVRÉ le 2026-09-14** — DÉCISION Marc (Q16,
-  répondue en clic) : **partager comme le reste** (× `keep`), hypothèse « société d'acquêts par
-  défaut » — le modèle ne distingue nulle part ailleurs les biens propres. `privateBusinessValue`
-  passé de `const` à `let`, `*= keep` ajouté dans le callback de partage juste après
-  `realEstateEquity` (même traitement : valeur SOMMÉE dans `computeRawNetWorth`, pas un compte à
-  registre `withdrawalXXX`). Garde neuve `tests/services/divorceBusinessShare.test.ts` (4 cas,
-  discriminant à 75 % confirmé — 3/4 rouges sur `git stash` du fix, écart mesuré 900 000 $ pile) →
-  à déménager vers `BACKLOG_ARCHIVE.md` à la prochaine PR. Contexte d'origine (trouvé par le panel
+- [x] 🔴 **`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`** ✅ **LIVRÉ le 2026-09-14 (PR #954, 2 commits)** —
+  DÉCISION Marc (Q16, répondue en clic) : **partager comme le reste** (× `keep`), hypothèse
+  « société d'acquêts par défaut » — le modèle ne distingue nulle part ailleurs les biens propres.
+  **Commit 1** : `privateBusinessValue` passé de `const` à `let`, `*= keep` ajouté dans le callback
+  de partage juste après `realEstateEquity` (même traitement : valeur SOMMÉE dans
+  `computeRawNetWorth`, pas un compte à registre `withdrawalXXX`). **Commit 2 (revue #954, trouvé
+  par 2 agents indépendants)** : le commit 1 partageait la VALEUR mais pas le REVENU — `applyW5Effects`
+  lisait le tableau brut `privateBusinesses` (jamais muté) pour le dividende mensuel via
+  `ownershipPct`, donc le ménage restant touchait et se faisait imposer 100 % du dividende annuel
+  indéfiniment pendant que son équité tombait à `keep` (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+  Corrigé par `businessStates` (copie mutable, même patron que `rentalStates`), `ownershipPct *= keep`
+  au divorce, `applyW5Effects` consomme désormais `businessStates`. Garde
+  `tests/services/divorceBusinessShare.test.ts` (6 cas : valeur ET dividende), discriminants
+  confirmés sur les DEUX commits séparément (`git stash`/`git apply -R`, écarts exacts mesurés :
+  900 000 $ pile pour la valeur, dividende 5 000 $ → 1 250 $/mois pour le revenu) → à déménager vers
+  `BACKLOG_ARCHIVE.md` à la prochaine PR. Contexte d'origine (trouvé par le panel
   du lot 214, PRÉ-EXISTANT depuis le 2026-08-19, rendu VISIBLE par la publication d'`Entreprise`) :
   `services/projection.ts` calculait `privateBusinessValue` en `const` AVANT la boucle, et le
   partage du divorce (`*= keep` sur `liquid`, `celi`, `celiapp`, `reer`, `nonReg`, `crypto`, `reee`,
@@ -121,6 +129,25 @@
   par rapport au scénario sans entreprise — corrigé, l'écart tombe à 225 000 $ (la part conservée).
   Même classe que `[ENG-W5-RENTAL-OFFBALANCE]` (immeubles oubliés au divorce, corrigé le 2026-08-13) :
   le JUMEAU n'avait pas été traité (`MODULE-ECRIT-HORS-CHECKLIST`).
+- [ ] 🟡 **`[ENG-DIVORCE-RENTAL-INCOME-UNSPLIT]`** (S, MOYEN money-critical, trouvé en revue de la PR
+  #954 par le silent-failure-hunter — même classe que le dividende d'entreprise ci-dessus, PAS
+  introduit par ce lot) — `applyW5Effects` calcule le NOI locatif encaissé/imposé depuis le tableau
+  BRUT `containers.rentalProperties` (`monthlyRent`, `monthlyExpenses`, `vacancyPct`), jamais depuis
+  `rentalStates` — la copie mutable qui, elle, EST partagée au divorce (`currentValue`, `mortgage`,
+  `monthlyPayment` `*= keep`, corrigé par `[ENG-W5-RENTAL-OFFBALANCE]` le 2026-08-13). Résultat : le
+  BILAN d'un immeuble locatif suit le partage, le LOYER NET encaissé et imposé ne le suit pas — le
+  ménage restant continue de toucher et payer l'impôt sur 100 % du loyer net indéfiniment. Même
+  correctif que `businessStates` ci-dessus : faire lire `applyW5Effects` sur une version scalée de
+  `monthlyRent`/`monthlyExpenses` (ou dériver le NOI depuis `rentalStates` si les deux registres
+  peuvent porter la même info), mesurer l'écart cumulé avant de livrer.
+- [ ] 🟢 **`[ENG-DIVORCE-CRYPTOACB-UNSPLIT]`** (XS, FAIBLE, trouvé en revue de la PR #954 par
+  financial-integrity, PAS introduit par ce lot) — `crypto *= keep` est appliqué au divorce
+  (`services/projection.ts`) mais `cryptoACB` (le prix de base pour le calcul du gain en capital à
+  la vente) ne l'est pas, contrairement à `nonRegACB` qui suit bien `nonReg *= keep` une ligne plus
+  haut. Le PBR crypto resterait au niveau d'avant-divorce sur une position réduite de moitié ou plus
+  — sous-estimation potentielle de l'impôt sur un retrait crypto post-divorce. Correctif suggéré :
+  `cryptoACB *= keep;` juste après `crypto *= keep;`, avec un test discriminant à écart d'âge/position
+  non nul (mesurer l'écart avant de livrer, comme pour tout correctif money-critical).
 - [x] 🟠 **`[PAST-NW-BUSINESS-SANS-PRODUCTEUR]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — `privateBusinessValue` porté dans `BuildPastPrefixInput` et `BuildDailyPastInput`, écrit aux deux sites (plate), `FutureProjection` le calcule depuis le store par la même règle que le moteur, `dailyCurve` recouvre `Entreprise` ; +2 cas `buildPastPrefix.test.ts`, +2 `dailyPastLedger.test.ts` ; perturbation (5e argument omis) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — livrer AVEC le précédent) — `services/history/pastNetWorth.ts:61`
   accepte `privateBusinessValue = 0` par défaut et son seul appelant `buildPastPrefix.ts:154` passe quatre
   arguments ; `dailyPastLedger.ts:333` écrit `privateBusinessValue: 0` en toutes lettres. La JSDoc promet « valeur

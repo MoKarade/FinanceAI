@@ -6,7 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-09-14 (Le partage au divorce oubliait l'entreprise privée)
+## [unreleased] — 2026-09-14 (Le partage au divorce oubliait l'entreprise privée — valeur ET dividende)
 
 - **Correction** : au divorce, la valeur d'une entreprise privée détenue (onglet Immobilier
   étendu, W5.7) est maintenant partagée entre les conjoints comme le reste du patrimoine
@@ -16,6 +16,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   divorce pouvait être surestimé de la valeur ENTIÈRE de l'entreprise. Hypothèse retenue :
   « société d'acquêts par défaut » (la simulation ne distingue nulle part ailleurs les biens
   propres des biens communs).
+- **Correction (même jour, trouvée en revue avant merge)** : le dividende annuel versé par
+  l'entreprise suit maintenant le même partage. Le premier correctif ne touchait que la valeur
+  affichée au bilan ; le conjoint restant continuait de toucher et de payer l'impôt sur 100 % du
+  dividende de l'entreprise, indéfiniment, même après avoir cédé une partie de sa propriété.
 
 ## [unreleased] — 2026-09-11 (L'onglet Futur est enfin utilisable au téléphone)
 

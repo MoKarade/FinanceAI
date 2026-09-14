@@ -14,8 +14,15 @@
 > qui varie à chaque push ROTE, cf §8 CLAUDE.md). ~30 questions de décision recensées
 > (`docs/A_FAIRE_MOI.md` + tickets 🧭 du BACKLOG) ; 4 posées en clic, **toutes répondues** :
 > - ✅ `[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]` (Q16) → partager comme le reste (`× keep`) — **LIVRÉ
->   cette session** : `privateBusinessValue` `const`→`let`, garde `divorceBusinessShare.test.ts`
->   (discriminant confirmé, écart mesuré 900 000 $ pile ramené à la part conservée 225 000 $).
+>   cette session, PR #954, 2 commits** : `privateBusinessValue` `const`→`let` (valeur au bilan,
+>   écart 900 000 $ pile ramené à 225 000 $) ; puis, trouvé par 2 agents de revue INDÉPENDANTS avant
+>   merge, le dividende annuel de l'entreprise n'était PAS partagé non plus (`businessStates`, même
+>   patron que `rentalStates`) — le ménage restant touchait 100 % du dividende indéfiniment malgré
+>   une équité réduite. **Leçon** : `PARTAGER-LE-MONTANT-PAS-SES-REFLETS` a encore piégé un premier
+>   jet, deux fois en un an sur des actifs W5 différents (locatif en 2026-08, entreprise ici) — et un
+>   TROISIÈME cas du même patron (revenu locatif encaissé, pas seulement l'équité) a été TROUVÉ mais
+>   PAS corrigé, routé à `[ENG-DIVORCE-RENTAL-INCOME-UNSPLIT]`. Garde
+>   `divorceBusinessShare.test.ts` (6 cas), discriminants confirmés sur les deux commits.
 > - ✅ `[HYDRATATION-REFUS-TOUT-OU-RIEN]` → statu quo (tout-ou-rien conservé) — **fermé sans code**.
 > - ✅ `[ENG-LIQUIDDEBT-NEVER-REPAID]` → taux de découvert = carte de crédit ~19,99 % (choix Marc,
 >   PAS une source légale — à documenter en hypothèse assumée). **Reste un GO à obtenir** sur le

@@ -4,6 +4,69 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-14 (fin+) — l'auto de Marc est un BAIL, et le moteur refuse d'amortir un bail
+> Ticket 🔴 `[DETTE-AUTO-BAIL-TOYOTA]`.
+> Marc a envoyé le contrat (photo) et demandé « retrouve toutes les infos, stocke-les, mets tout à
+> jour ». **Rien n'a été écrit dans ses données** : deux faits bloquent, et aucun n'était connu quand
+> il a répondu au menu.
+> **Contrat LU et VÉRIFIÉ par l'arithmétique** (Ste-Foy Toyota, 2026-07-14) : coût capitalisé
+> **48 405,23 $**, **190,02 $/sem + 28,45 $ taxes = 218,47 $/sem**, terme **48 MOIS**, taux **6,59 %**,
+> résiduelle **17 746,40 $**, 28 000 km/an. Le terme en MOIS se PROUVE : sur 208 semaines le versé
+> avant taxes (39 524 $) colle à dépréciation + intérêt (39 378 $) à **+0,4 %**, contre **+18,9 %** à
+> 60 mois. Une lecture d'image se vérifie par le calcul — ici ça a tranché une ambiguïté réelle.
+> ⚠️ **BLOCAGE 1 — le réel ne colle pas au contrat** : prélèvements mesurés **234,67 $/semaine**
+> contre **218,47 $** au contrat (**+16,20 $/sem, +7,4 %, 842 $/an**). Le document s'intitule
+> « **Offre** de Location » : le bail signé a pu changer. Question posée, pas tranchée.
+> ⚠️ **BLOCAGE 2 — `KIND_AMORTISSANT['auto-lease'] = false`**, par décision ÉCRITE (« n'amortit pas un
+> SOLDE : bail, révolvant »). Sa demande reste légitime mais porte sur une autre grandeur —
+> **engagement restant** (versements restants × montant) ou **solde capitalisé qui descend vers la
+> RÉSIDUELLE**, jamais vers zéro. Les deux donnent un patrimoine net différent.
+> ⚠️ Sa saisie actuelle (**50 000 $ à 5,69 %**) ne figure nulle part au contrat, et son bilan ne porte
+> **aucun véhicule à l'actif**. ⚠️ Et `apply_debt` (MCP) ne peut écrire ni `kind`, ni `startDate`, ni
+> `originalBalance`, ni `termEndDate` — exactement les champs réclamés (ils existent dans l'UI).
+> ⚠️ **Dépôt PUBLIC** : NIV, adresse, téléphone, n° de contrat et nom du vendeur délibérément NON
+> consignés — aucune valeur de calcul, et un dépôt public n'est pas un classeur.
+> ✅ Marc a par ailleurs autorisé la correction des 44 transactions en devise (« tu corriges
+> directement toi ») — mais **aucun outil MCP ne modifie ni ne supprime une transaction**, donc la
+> procédure en deux temps de `docs/A_FAIRE_MOI.md` reste la seule voie propre. Élargir le MCP est du
+> code, en attente de GO.
+
+> ## 🔴 Session 2026-09-14 (fin) — Fintable importe le montant en DEVISE D'ORIGINE : +2 537 $ de dépenses fantômes
+> Marc : « fintable a importé des reals comme des CAD ». **Confirmé par la mesure, sur ses VRAIES
+> données** (serveur MCP joignable, `search_transactions`), en appariant une à une ses transactions
+> du voyage au Brésil à son relevé de carte — qui fait foi, lui, en CAD : **44 transactions,
+> 3 875,43 $ importés contre 1 338,12 $ facturés = +2 537,31 $ (+189,6 %)**.
+> ⚠️ Le défaut va dans les **DEUX sens** : 39 lignes BRL surévaluées (ratio 3,567–3,624) et **5 lignes
+> USD SOUS-évaluées** (1,417–1,427). Décrire ça comme « ça gonfle les dépenses » serait déjà faux.
+> ⚠️ **Contrôle négatif trouvé dans les mêmes données** : Netuno Tours, Farm Ipanema et Fresh E Good
+> tombent au CENT près — conversion au terminal (DCC), donc facturés en CAD d'origine. Le défaut suit
+> la devise d'ORIGINE, pas le pays : c'est ce qui rend l'heuristique géographique inutilisable.
+> **Cause** : Fintable étiquette `currency: "CAD"` (la devise du COMPTE) sur un montant qui est dans
+> la devise de la TRANSACTION. Le filtre `tx.currency !== baseCurrency` du mapper est donc
+> structurellement aveugle — il lit l'étiquette, jamais la valeur, et n'a jamais tiré une seule fois.
+> **Aucun correctif par le payload n'est possible** : `FtRawTransaction` ne porte ni montant facturé,
+> ni devise d'origine, ni taux. Seule piste : recouper avec le **SOLDE du compte**, que Fintable donne
+> bien en CAD. Ticket 🔴 `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, table de correction complète dans
+> `docs/A_FAIRE_MOI.md`.
+> ⚠️ **La donnée de Marc est fausse AUJOURD'HUI et je n'ai pas pu la réparer** : aucun outil MCP ne
+> modifie ni ne supprime une transaction (`apply_bank_statement` n'AJOUTE que, dédup sur
+> date+montant+marchand ⇒ ré-importer créerait un doublon). Le seul levier est `isDuplicate` (exclut
+> de TOUS les calculs), posé à la main dans l'écran Transactions. Migration de données réelles ⇒
+> **feu vert de Marc exigé**, demandé, pas encore obtenu.
+> ✅ **Paiement minimum de la carte = 10 $** (réponse de Marc). Avec le taux déjà tranché (19,99 %),
+> les trois champs requis par `applyDebt` pour CRÉER la dette sont enfin réunis.
+> 🧭 **Demande neuve de Marc, NON CADRÉE** : que la dette auto (« bZ », 50 000 $ à 5,69 %) démarre
+> pile à son premier paiement et décroisse à chaque virement Toyota, dans le PASSÉ comme dans le
+> FUTUR de la courbe. **Mesuré avant de poser les questions** : 7 versements de **234,67 $ à
+> Toyota Financial, hebdomadaires**, du **2026-07-28** au 2026-09-09 (≈ **1 016,90 $/mois**), précédés
+> de deux paiements au concessionnaire (Ste-Foy Toyota : 500 $ le 07-14, 779,79 $ le 07-20).
+> ⚠️ **Le mécanisme existe DÉJÀ et n'est pas câblé sur sa dette** : `Debt.startDate`,
+> `Debt.originalBalance`, `Debt.kind` et `Debt.termEndDate` sont tous saisissables dans
+> Réglages → Dettes, et `amortirDettePassee` reconstruit le solde mensuel du passé. Avant d'écrire une
+> ligne, vérifier si c'est une lacune de CONFIGURATION et non de code. ⚠️ Mais la moitié « décroît
+> avec chaque virement RÉEL » n'existe pas : le module reconstruit un échéancier THÉORIQUE
+> (`solde × (1+i) − paiement`), il ne lit aucune transaction.
+
 > ## 🟢 Session 2026-09-14 (suite) — LA cause des transactions de carte : un rôle SANS NOM débranche le compte
 > Marc, en fin de session : « j'ai toujours pas mes transactions des derniers jours avec ma carte de
 > crédit **et ça me demande encore de mettre la dette de carte de crédit dans dette mais je veux

@@ -643,6 +643,37 @@ n'est pas réécrire un récit.
   « impossible depuis le conteneur » est peut-être à UNE question de distance
   (`UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE-REND-L-HYPOTHESE-INFALSIFIABLE`, 2026-09-14).
 
+- **Une garde qui lit une ÉTIQUETTE ne voit pas une valeur MAL étiquetée** : le filtre de devise du
+  mapper Fintable (`tx.currency !== baseCurrency`, compté et commenté) n'a **jamais tiré une seule
+  fois** — Fintable étiquette tout `currency: "CAD"` (la devise du COMPTE) sur un montant qui est dans
+  la devise de la TRANSACTION. Mesuré sur les vraies données de Marc contre son relevé de carte :
+  **44 transactions, +2 537,31 $ (+189,6 %)**. Avant d'écrire une garde d'étiquette, demander **qui
+  produit l'étiquette, et est-ce le même producteur que la valeur ?** — si non, elle est
+  structurellement aveugle et son compteur à zéro se lit « rien à signaler ». Le seul recoupement qui
+  vaut est une grandeur INDÉPENDANTE (ici le solde du compte, bien donné en CAD). ⚠️ Le défaut allait
+  dans les DEUX sens (39 BRL surévaluées ×3,6, **5 USD sous-évaluées** ×0,70) et ⚠️ le contrôle négatif
+  était DANS les données (3 marchands brésiliens justes au cent près — conversion au terminal), ce qui
+  réfute l'heuristique « le libellé dit BRA » : le défaut suit la devise d'ORIGINE, pas le pays.
+  ⚠️ Corollaire d'outillage : le MCP peut AJOUTER une transaction, jamais en corriger une — un import
+  qui écrit faux sans pouvoir se reprendre est une asymétrie à noter avant de promettre une réparation
+  (`UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE`, 2026-09-14).
+
+- **Un MENU impose sa PRÉMISSE à la réponse** : j'ai posé quatre questions en clic sur « le prêt auto »
+  de Marc — date de début, montant EMPRUNTÉ, ce qui fait descendre la dette. Il a répondu aux trois.
+  Puis il a envoyé le contrat : c'est un **BAIL**. Aucune de mes questions n'était répondable (pas de
+  montant emprunté, pas de solde vers zéro mais vers une **valeur résiduelle**, et
+  `KIND_AMORTISSANT['auto-lease'] = false` — le moteur refuse d'amortir un bail, par décision écrite).
+  Un choix multiple ne transporte pas qu'une question : il transporte une prémisse que l'utilisateur
+  ne peut pas refuser. **Avant de poser un menu sur un objet du monde réel, demander de quelle NATURE
+  il est, ou réclamer le document.** ⚠️ Le mot qui réfutait tout mon cadrage était dans sa réponse
+  précédente — « regarde le contrat de **loc** ». ⚠️ Corollaire : **une lecture d'IMAGE se vérifie par
+  l'arithmétique** (« TERME 48 » = mois, pas semaines : +0,4 % d'écart contre +18,9 % à 60 mois ; et
+  190,02 + 28,45 = 218,47 au cent près valide la lecture elle-même). ⚠️ Et **le document reçu n'est pas
+  forcément celui qui s'applique** : contrat 218,47 $/sem contre **234,67 $** prélevés (+7,4 %,
+  842 $/an) — publier les DEUX avec leur écart. ⚠️ Et le dépôt est **PUBLIC** : NIV, adresse,
+  téléphone, n° de contrat n'ont aucune valeur de calcul et ne s'y écrivent pas
+  (`UN-MENU-IMPOSE-SA-PREMISSE-A-LA-REPONSE`, 2026-09-14).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

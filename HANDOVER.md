@@ -29,6 +29,19 @@
 > en rab ») ajoute un second obstacle MESURABLE : le mapper fait `Math.abs(solde)`, donc un solde en
 > CRÉDIT (de l'argent en trop sur la carte) deviendrait une DETTE du même montant. Détail dans
 > `docs/A_FAIRE_MOI.md`. Rien n'a été codé là-dessus.
+>
+> ⏸️ **ÉTAT DE LA PR #956 au 2026-09-14 19:32 UTC — VERTE, mais BLOQUÉE EN BROUILLON.** Gate local
+> vert (lint 0 erreur, **5 867 tests / 602 fichiers**, build OK) ET **les 7 checks CI verts**
+> (dont « Lint / Typecheck / Tests / Build » et « E2E (Playwright / Chromium) »), head `8cf6bde3`.
+> Le merge est refusé par GitHub avec `405 Pull Request is still a draft`, et le passage
+> brouillon → prêt est une mutation **GraphQL** dont le quota est épuisé pour ce compte : cinq
+> tentatives réparties sur **2 h 05** (17:40 → 19:32 UTC) ont toutes rendu « API rate limit already
+> exceeded ». Même blocage que pour la PR #954 plus haut (~1 h 45 ce jour-là), en plus long.
+> **Reprise en DEUX appels, rien d'autre à refaire** : `update_pull_request(draft: false)` puis
+> `merge_pull_request(merge_method: 'squash')`. Ensuite seulement : réconciliation post-merge
+> (`git checkout -B claude/fintable-carte-sans-dette origin/main` après `git status --porcelain`
+> vide) et **vérification du déploiement Vercel** — ce lot change ce qui est SERVI, donc la CI verte
+> ne suffit pas (§6 du `CLAUDE.md`).
 
 > ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
 > Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard

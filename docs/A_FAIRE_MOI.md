@@ -1751,6 +1751,69 @@ facturée et ne montrent pas tout le 09-10 SEP. Au moins deux lignes de ton éta
 Copa −70,00 $ du 2026-09-10) n'ont pas pu être appariées faute de la ligne de relevé correspondante.
 Une réparation COMPLÈTE exige le relevé complet.
 
+### ⚠️ MESURÉ le 2026-09-14 : ce n'est PAS toi, le bouton n'existe pas pour ton cas
+
+Marc : « j'arrive pas à les marquer en doublon ». **Il a raison, et c'est structurel.** Le seul point
+d'entrée du marquage « doublon » dans l'app est `DuplicatesPanel`, et ce panneau n'affiche que les
+**groupes trouvés par le DÉTECTEUR** (`findDuplicateGroups` : même date/montant/marchand à une
+tolérance près). Ses 44 lignes du Brésil ne sont le doublon de **rien** — elles sont uniques, juste
+au mauvais montant. Elles n'apparaîtront donc **jamais** dans ce panneau. Il n'existe aucun autre
+chemin vers `isDuplicate` dans l'interface.
+
+**Le seul levier par ligne qui existe aujourd'hui** est le bouton ⇄ « virement » de la liste
+Transactions (`toggleTransfer`). Il neutralise bel et bien la ligne — `isTransfer` l'exclut du cash
+(`reconstructCashHistory`), des dépenses ET des revenus (`isSpend`, `isIncome`) — mais il **étiquette
+une vraie dépense comme un virement interne**, ce qui est faux, et il faut le faire **44 fois**.
+
+⚠️ **Et une correction par transaction COMPENSATOIRE est impossible** — vérifié dans le code, pas
+supposé. `computeMonthlyActualAverages` ne compte un montant POSITIF que dans deux cas : catégorie
+`Salaire`/`Revenus divers` (→ revenu), ou `isCreditBack` (catégorie ∈ `CREDIT_BACK_CATEGORIES`, qui
+ne contient QUE `'Remboursement'`). Un `+5,72 $` posé en « Transport » pour annuler un `−7,90 $`
+serait **purement ignoré** : ni revenu, ni réduction de dépense. Et en « Remboursement », le net du
+poste est planché à zéro (`Math.max(0, spent − credit)`), donc absorbé. Les deux voies donnent un
+**no-op qui a l'air d'un correctif** — le pire des résultats.
+
+### ⚠️ Le vrai blocage est une DÉCISION VERROUILLÉE, et sa prémisse est partiellement fausse
+
+`docs/adr/0009-suppressions-via-mcp-delete-item.md`, point 3 :
+
+> **Transactions : DIFFÉRÉ** (pas de `delete_transaction`). […] le chemin sûr existant (marquer
+> `isDuplicate`/`isTransfer`) a une sémantique métier que l'IA ne doit pas deviner. **À réévaluer sur
+> un besoin concret de Marc.**
+
+Deux choses :
+
+1. **Le besoin concret est arrivé** — c'est exactement le cas que l'ADR se réservait de réévaluer.
+2. **Son repli n'existe pas ici** : « le chemin sûr existant » suppose que `isDuplicate` est
+   atteignable. Pour une ligne qui n'est le doublon de rien, il ne l'est pas. L'ADR décrit une porte
+   de sortie qui, mesurée, est fermée pour cette classe de défaut.
+
+### ✅ LIVRÉ dans la foulée : le bouton existe maintenant (onglet Transactions)
+
+Je n'ai PAS rouvert l'ADR — inutile. La capacité existait déjà dans le modèle
+(`markTransactionsAsDuplicate` est une fonction PURE qui accepte n'importe quels ids), et la
+sélection multiple existait déjà dans l'écran (case à cocher par ligne, plage au Maj-clic). Il
+manquait seulement le FIL entre les deux : la sélection ne pouvait RIEN faire d'autre que
+re-catégoriser, et aucun libellé ne le disait.
+
+**Ce que tu fais maintenant, dans « Transactions » :**
+
+1. Filtre pour isoler les lignes à neutraliser (la recherche, ou le filtre par catégorie).
+2. Coche une ligne → une barre apparaît : « N sélectionnée(s) ».
+3. Clique **« Sélectionner les N filtrées »** — ça dépasse la page (tes 44 lignes s'étalent sur
+   plusieurs pages de 50, et la case « tout cocher » de l'en-tête ne couvre QUE la page courante).
+4. Clique **« Exclure des calculs »**.
+
+Les lignes restent visibles dans l'historique, mais sortent du solde, du budget et des revenus.
+**C'est réversible** : « Annuler tous les marquages » dans le panneau « Doublons ».
+
+Dis-moi quand c'est fait — j'importe les bons montants (1 338,12 $ au lieu de 3 875,43 $) dans la
+foulée, et ton solde redevient juste.
+
+⚠️ **L'ADR reste fermée, et c'est volontaire** : je ne me suis toujours pas donné le droit de
+modifier une transaction existante. Ce que ce lot corrige, c'est que TOI tu peux le faire en
+quatre gestes au lieu de 44 — et que la décision de neutraliser une ligne reste la tienne.
+
 ### Pourquoi je ne l'ai pas corrigée tout seul
 
 Il n'existe **aucun outil qui modifie ou supprime une transaction existante** : `apply_bank_statement`

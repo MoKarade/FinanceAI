@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-14 (Tu peux enfin sortir plusieurs transactions des calculs d'un seul coup)
+
+- **Ajouté (et c'était un vrai trou, pas un confort)** : quand tu coches des transactions dans la
+  liste, une barre d'actions apparaît — « N sélectionnée(s) », « Sélectionner les N filtrées »,
+  **« Exclure des calculs »**, « Désélectionner ». Les lignes exclues restent visibles dans ton
+  historique mais sortent du solde, du budget et des revenus. C'est réversible : « Annuler tous les
+  marquages » dans le panneau « Doublons ».
+- **Pourquoi** : tu as essayé de marquer en doublon les 44 transactions de ton voyage au Brésil
+  importées au mauvais montant, et tu n'y es pas arrivé. **Ce n'était pas toi.** Le seul endroit qui
+  permettait ce marquage était le panneau « Doublons », qui n'affiche que les groupes trouvés
+  automatiquement (même montant, dates proches). Tes 44 lignes ne sont le doublon de *rien* — elles
+  sont uniques, juste au mauvais prix : elles ne pouvaient donc apparaître nulle part. Le seul
+  bouton qui restait était ⇄ « virement », qui neutralise bien la ligne mais **déclare qu'une vraie
+  dépense est un virement interne** — et qu'il aurait fallu cliquer 44 fois.
+- **Note** : « Sélectionner les N **filtrées** » et non « de la page » — la liste s'affiche par 50 et
+  tes 44 lignes s'étalent au-delà, donc une sélection limitée à la page n'aurait pas réglé le cas qui
+  a fait naître ce bouton.
+
+---
+
 ## [unreleased] — 2026-09-14 (Ta carte de crédit importe ses transactions SANS que tu aies à créer une dette)
 
 - **Corrigé (c'est le vrai coupable de tes transactions manquantes)** : quand tu déclarais un compte

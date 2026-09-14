@@ -266,11 +266,35 @@ describe('FintableSyncCard — assignation des rôles', () => {
         await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
         fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
 
-        expect(await screen.findByText(/Aucune dette n'existe encore dans FinanceAI/i)).toBeInTheDocument();
-        // Pas de liste déroulante fantôme : il n'y a rien d'honnête à y mettre.
+        // ⚠️ [FINTABLE-CARTE-SANS-DETTE] Ce cas disait « crée d'abord une dette » — un cul-de-sac :
+        // Marc ne VEUT pas de dette pour sa carte, et sans dette le compte n'était pas routé du
+        // tout (100 % de ses transactions jetées, mesuré 0/5). L'écran décrit maintenant ce qui va
+        // RÉELLEMENT se passer, y compris la contrepartie.
+        expect(await screen.findByText(/transactions de ce compte sont importées comme dépenses/i)).toBeInTheDocument();
+        expect(screen.getByText(/patrimoine net ne le soustrait pas/i)).toBeInTheDocument();
+        // Pas de liste déroulante fantôme : il n'y a aucune dette à y mettre.
         expect(screen.queryByLabelText(/Dette correspondante/i)).toBeNull();
-        // Et le rôle est bien posé, avec un nom VIDE plutôt qu'un nom inventé.
+        // Et le rôle est bien posé, avec un nom VIDE — un choix complet, plus un nom manquant.
         expect(useFinanceStore.getState().fintableRoles?.acc_mc).toEqual({ kind: 'debt', debtName: '' });
+    });
+
+    it('avec des dettes, l\'option vide est un CHOIX nommé — « importer seulement les transactions »', async () => {
+        // L'ancien libellé « — choisir la dette — » se lisait comme « tu n'as pas fini ».
+        useFinanceStore.setState({ debts: [DETTE_HYPO] });
+        listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+
+        const select = await screen.findByLabelText(/Dette correspondante/i) as HTMLSelectElement;
+        expect(select.options[0].text).toMatch(/importer seulement les transactions/i);
+
+        // Et la phrase du bas suit ce que le rôle FAIT : sans dette choisie, aucun solde touché.
+        fireEvent.change(select, { target: { value: '' } });
+        expect(screen.getByText(/Aucun solde n'est touché/i)).toBeInTheDocument();
+        fireEvent.change(select, { target: { value: 'Hypothèque Condo' } });
+        expect(screen.getByText(/Seul le SOLDE est mis à jour/i)).toBeInTheDocument();
     });
 });
 

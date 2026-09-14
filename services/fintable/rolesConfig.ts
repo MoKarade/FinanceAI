@@ -39,11 +39,16 @@ export function parseRolesJson(raw: string): FintableMappingConfig['roles'] {
         } else if (kind === 'cash' || kind === 'ignore') {
             roles[id] = { kind };
         } else if (kind === 'debt') {
+            // [FINTABLE-CARTE-SANS-DETTE] `debtName` ABSENT ou VIDE est désormais légitime des DEUX
+            // côtés : « importe les transactions, ne touche à aucun solde ». Refuser ici pendant que
+            // le chemin navigateur l'accepte ferait exactement diverger les deux orchestrateurs —
+            // le défaut que `syncCore` a été créé pour rendre impossible. En revanche un debtName
+            // d'un autre TYPE reste une erreur de configuration, pas un choix.
             const debtName = (value as { debtName?: unknown }).debtName;
-            if (typeof debtName !== 'string' || debtName.trim() === '') {
-                throw new Error(`Rôles Fintable : le rôle « debt » du compte ${id} exige un "debtName" non vide.`);
+            if (debtName !== undefined && typeof debtName !== 'string') {
+                throw new Error(`Rôles Fintable : le "debtName" du compte ${id} doit être une chaîne (ou être absent).`);
             }
-            roles[id] = { kind: 'debt', debtName };
+            roles[id] = { kind: 'debt', debtName: (debtName ?? '').trim() };
         } else {
             throw new Error(`Rôles Fintable : rôle inconnu pour le compte ${id} (attendu : cash | debt | investment | ignore).`);
         }

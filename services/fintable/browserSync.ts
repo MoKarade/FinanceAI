@@ -139,11 +139,23 @@ function toMapperRoles(
     const out: Record<string, FintableAccountRole> = {};
     for (const [id, role] of Object.entries(roles ?? {})) {
         if (role?.kind === 'debt') {
-            // Une dette sans nom ne peut viser aucune dette existante → ignorée plutôt que de faire
-            // échouer toute la passe (l'UI l'empêche, mais un état ancien peut la porter).
-            if (typeof role.debtName === 'string' && role.debtName.trim() !== '') {
-                out[id] = { kind: 'debt', debtName: role.debtName };
-            }
+            // ⚠️⚠️ [FINTABLE-CARTE-SANS-DETTE] Un rôle « Dette » SANS nom est ROUTÉ, pas jeté.
+            //
+            // Avant : l'entrée était omise de `out` — donc `roleOf` rendait `null` et le mapper
+            // classait le compte « SANS RÔLE », jetant 100 % de ses transactions. MESURÉ sur le
+            // vrai mapper : rôle Dette AVEC nom → 5/5 transactions importées ; rôle Dette SANS nom
+            // → **0/5**, identique à « aucun rôle du tout ». Or l'écran de configuration, lui,
+            // affichait bien « Dette (carte) » — Marc voyait un rôle posé pendant que le moteur
+            // voyait un compte inconnu, et cherchait ses transactions manquantes ailleurs.
+            // C'est la classe `UN-CHAMP-LU-PAR-LE-MOTEUR-ET-JAMAIS-SAISI-EST-UN-CHIFFRE-FAUX` vue
+            // à l'envers : ici c'est un champ VIDE qui débranche un compte entier, en silence.
+            //
+            // Le nom vide a désormais un SENS explicite, et c'est la demande de Marc (2026-09-14 :
+            // « ça me demande encore de mettre la dette de carte de crédit dans dette mais je veux
+            // pas ») : **importer les transactions, ne toucher à aucun solde**. Les deux moitiés du
+            // rôle `debt` sont indépendantes dans le mapper — les transactions passent par le
+            // filtre du haut, le solde n'est écrit que s'il y a une dette à viser.
+            out[id] = { kind: 'debt', debtName: typeof role.debtName === 'string' ? role.debtName.trim() : '' };
         } else if (role?.kind === 'cash' || role?.kind === 'ignore') {
             out[id] = { kind: role.kind };
         } else if (role?.kind === 'investment') {

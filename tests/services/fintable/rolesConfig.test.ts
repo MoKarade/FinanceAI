@@ -49,11 +49,24 @@ describe('[TEST-GAP-ROLESCONFIG] parseRolesJson', () => {
             .toEqual({ a: { kind: 'investment' } });
     });
 
-    it('rôle « debt » sans debtName (absent, vide, espaces, non-string) ⇒ throw', () => {
-        for (const bad of [{}, { debtName: '' }, { debtName: '   ' }, { debtName: 42 }]) {
-            expect(() => parseRolesJson(JSON.stringify({ a: { kind: 'debt', ...bad } })))
-                .toThrowError(/debtName/);
+    // ⚠️ [FINTABLE-CARTE-SANS-DETTE] Ce test s'est INVERSÉ le 2026-09-14, il n'a pas été supprimé
+    // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`). Il affirmait « un rôle debt sans nom
+    // est REFUSÉ » — une limite réelle, posée quand `debtName` n'avait qu'un seul usage possible
+    // (viser une dette existante). Elle a fini par coûter cher : un nom vide faisait taire le
+    // compte ENTIER côté navigateur, donc 100 % des transactions de la carte de Marc étaient
+    // jetées en silence (mesuré 0/5). Le nom vide a désormais un SENS — « importe les
+    // transactions, ne touche à aucun solde » — et les deux chemins doivent l'accepter pareil.
+    // Le refus de TYPE, lui, reste : c'est une faute de configuration, pas un choix.
+    it('rôle « debt » sans debtName (absent, vide, espaces) ⇒ ACCEPTÉ, normalisé à la chaîne vide', () => {
+        for (const sansNom of [{}, { debtName: '' }, { debtName: '   ' }]) {
+            expect(parseRolesJson(JSON.stringify({ a: { kind: 'debt', ...sansNom } })))
+                .toEqual({ a: { kind: 'debt', debtName: '' } });
         }
+    });
+
+    it('rôle « debt » avec un debtName NON-STRING ⇒ throw (faute de config, pas un choix)', () => {
+        expect(() => parseRolesJson(JSON.stringify({ a: { kind: 'debt', debtName: 42 } })))
+            .toThrowError(/debtName/);
     });
 
     it('kind inconnu ou manquant ⇒ throw qui nomme le compte ET les kinds attendus', () => {

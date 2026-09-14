@@ -512,13 +512,16 @@ export const FintableSyncCard: React.FC = () => {
                                                     Dette correspondante dans FinanceAI
                                                 </label>
                                                 {debts.length === 0 ? (
-                                                    // ⚠️ Pas de liste vide qui aurait l'air fonctionnelle : Fintable ne fournit
-                                                    // ni taux ni paiement minimum, donc `applyDebt` REFUSE de créer la dette
-                                                    // plutôt que d'inventer un taux. La dette doit exister d'abord — on le dit.
-                                                    <p className="text-tiny text-warning-400">
-                                                        Aucune dette n'existe encore dans FinanceAI. Crée-la d'abord dans
-                                                        Réglages → Dettes (avec son taux et son paiement minimum) : Fintable ne
-                                                        fournit que le SOLDE, jamais le taux, donc il ne peut pas la créer à ta place.
+                                                    // ⚠️ [FINTABLE-CARTE-SANS-DETTE] Ce bloc DISAIT « crée d'abord une dette »,
+                                                    // ce qui était un cul-de-sac : Marc ne veut pas de dette pour sa carte
+                                                    // (2026-09-14), et sans dette le compte n'était pas routé du tout — 100 %
+                                                    // de ses transactions jetées en silence (mesuré 0/5). Le rôle est
+                                                    // désormais COMPLET sans dette ; on décrit ce qui va se passer.
+                                                    <p className="text-tiny text-ink-400">
+                                                        Aucune dette n'existe dans FinanceAI — ce n'est pas un problème :
+                                                        les transactions de ce compte sont importées comme dépenses.
+                                                        Seul le <strong>solde dû</strong> n'est suivi nulle part, donc ton
+                                                        patrimoine net ne le soustrait pas.
                                                     </p>
                                                 ) : (
                                                     <>
@@ -528,7 +531,10 @@ export const FintableSyncCard: React.FC = () => {
                                                             onChange={(e) => setRole(a.id, { kind: 'debt', debtName: e.target.value })}
                                                             className="w-full bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
                                                         >
-                                                            <option value="">— choisir la dette —</option>
+                                                            {/* [FINTABLE-CARTE-SANS-DETTE] L'option vide est un CHOIX nommé,
+                                                                pas un « tu n'as pas fini » : elle importe les transactions
+                                                                sans toucher au moindre solde. */}
+                                                            <option value="">— aucune : importer seulement les transactions —</option>
                                                             {debts.map((d) => (
                                                                 <option key={d.id} value={d.name}>{d.name}</option>
                                                             ))}
@@ -551,8 +557,14 @@ export const FintableSyncCard: React.FC = () => {
                                                         )}
                                                     </>
                                                 )}
+                                                {/* ⚠️ [FINTABLE-CARTE-SANS-DETTE] Cette phrase AFFIRMAIT « seul le solde est
+                                                    mis à jour » — devenu FAUX quand aucune dette n'est choisie, cas qui est
+                                                    désormais le plus courant. `UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-
+                                                    CE-QU-IL-AFFIRME` : le texte suit ce que le rôle FAIT réellement. */}
                                                 <p className="text-tiny text-ink-400 mt-1">
-                                                    Seul le SOLDE est mis à jour — le taux et le paiement minimum restent les tiens.
+                                                    {role.debtName === ''
+                                                        ? 'Les transactions de ce compte deviennent des dépenses. Aucun solde n\'est touché.'
+                                                        : 'Seul le SOLDE est mis à jour — le taux et le paiement minimum restent les tiens.'}
                                                 </p>
                                             </div>
                                         )}

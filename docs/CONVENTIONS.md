@@ -12821,3 +12821,77 @@ cadré ? »). **Un choix multiple répond exactement à la question qu'il pose, 
 présuppose ou qu'elle ouvre.** Devant une réponse en clic sur un sujet money-critical ou de gros chantier,
 la relire contre le TICKET SOURCE (pas contre sa propre reformulation en options) avant de considérer le
 sujet clos, et poser le plan-first qui reste dû plutôt que de coder sur l'élan de la réponse obtenue.
+
+---
+
+## `UN-CHAMP-VIDE-QUI-DEBRANCHE-SON-OBJET-ENTIER-EST-UN-SILENCE-PAS-UNE-VALIDATION` (2026-09-14)
+
+**Ce que Marc a dit** : « j'ai toujours pas mes transactions des derniers jours avec ma carte de
+crédit **et ça me demande encore de mettre la dette de carte de crédit dans dette mais je veux
+pas** ». Deux plaintes dans une phrase — et c'était **un seul défaut**.
+
+**Le mécanisme.** `toMapperRoles` (`browserSync.ts`) convertissait les rôles persistés vers la table
+remise au mapper. Pour un rôle `debt`, elle n'écrivait l'entrée que si `debtName` était non vide :
+
+    if (typeof role.debtName === 'string' && role.debtName.trim() !== '') { out[id] = … }
+
+Le commentaire disait « une dette sans nom ne peut viser aucune dette existante → ignorée plutôt que
+de faire échouer toute la passe », ce qui est vrai **du solde** et faux **du compte**. Omettre
+l'entrée ne désactive pas la moitié « solde » : elle rend `roleOf(id) === null`, donc le mapper
+classe le compte **SANS RÔLE** et jette **toutes ses transactions**. Un champ vide, censé neutraliser
+une sous-fonction, débranchait l'objet entier.
+
+**Mesuré** sur la vraie chaîne (transport simulé, mapper réel) : rôle Dette **avec** nom → **5/5**
+transactions importées ; rôle Dette **sans** nom → **0/5**, exactement comme « aucun rôle du tout ».
+
+⚠️ **Ce qui a rendu le défaut introuvable pendant des jours, c'est l'ÉCRAN.** La carte de
+configuration affichait « Dette (carte) » dans son menu déroulant : Marc voyait un rôle POSÉ — il me
+l'a dit en toutes lettres (« le rôle était déjà posé ») — pendant que le moteur voyait un compte
+INCONNU. J'ai cherché ailleurs à cause de ça, et j'ai produit un diagnostic entier (bascule globale)
+sur un défaut réel mais **secondaire**. Règle qui en sort : **quand l'utilisateur affirme qu'une
+configuration est posée et que le moteur se comporte comme si elle ne l'était pas, soupçonner
+d'abord la CONVERSION entre les deux, pas la logique en aval.** Le rôle affiché et le rôle appliqué
+sont deux objets distincts ; rien ne les confronte tant qu'on n'écrit pas la garde qui traverse.
+
+⚠️ **Deux tests de LIMITE verrouillaient le défaut, dont un qui se croyait une protection.**
+`browserSync.test.ts` asserait `accountsWithoutRole === 1` avec le commentaire « et le compte est
+signalé, pas avalé » — or « sans rôle » EST précisément ce qui l'avalait. Le test décrivait
+fidèlement le comportement et se trompait sur son SENS. Les deux se sont **inversés au même endroit
+avec leur histoire** (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`), jamais supprimés : c'est
+cette trace qui empêche de re-refuser le nom vide « pour valider proprement ».
+
+⚠️ **Le correctif n'est pas « exiger le nom », c'est lui DONNER un sens.** Un nom vide veut dire
+« importe les transactions, ne touche à aucun solde » — et il fallait l'accepter des DEUX côtés
+(navigateur ET `parseRolesJson` du serveur, qui le refusait par `throw`). Un parseur serveur plus
+strict que l'app fait échouer le cron au démarrage sur une configuration que l'app juge valide :
+c'est exactement la divergence que `syncCore` a été créé pour rendre impossible. Le refus de **TYPE**
+(`debtName: 42`), lui, reste — une faute de configuration n'est pas un choix.
+
+⚠️ Corollaire d'écran : la phrase du bas affirmait « Seul le SOLDE est mis à jour », devenue FAUSSE
+dans le cas qui est maintenant le plus courant. `UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-
+QU-IL-AFFIRME`, appliqué dans le même lot que le changement. Et l'option vide du menu est passée de
+« — choisir la dette — » (qui se lit « tu n'as pas fini ») à « — aucune : importer seulement les
+transactions — » : **un libellé d'option vide dit si l'état est INACHEVÉ ou CHOISI**.
+
+### Corollaire de conduite — le choix multiple a re-tronqué une question, le MÊME JOUR
+
+`UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE` a été écrite le matin ; elle a récidivé
+l'après-midi, sur moi. J'ai proposé trois options pour le solde de la carte ; Marc a choisi « créer
+la dette automatiquement » — celle que je déconseillais, et c'est son droit (une recommandation rend
+le choix rapide, elle ne le pré-décide pas). Mais l'option choisie **exigeait deux chiffres que mon
+menu n'avait jamais mis sur la table** : `applyDebt` demande `balance + interestRate +
+minimumPayment` pour CRÉER, et Fintable n'en fournit qu'un. Le taux existait (19,99 %, tranché par
+Marc le matin même) ; le paiement minimum n'a **aucun défaut dans le dépôt**, vérifié.
+
+⚠️ Et sa réponse SUIVANTE, en texte libre — « je vire souvent de l'argent dessus … avoir de l'argent
+en rab » — a fait apparaître un obstacle qu'aucune de mes options n'anticipait : `mapSnapshot` porte
+le solde en positif via `Math.abs`, donc un solde **en sa faveur** deviendrait une **dette du même
+montant**. Une réponse libre a appris davantage que les trois options que j'avais rédigées. Quand la
+question porte sur un comportement d'utilisateur (« comment paies-tu ? »), le menu contraint ce
+qu'on peut découvrir — laisser une porte ouverte au texte libre n'est pas une politesse, c'est la
+seule façon d'entendre le cas qu'on n'a pas imaginé.
+
+**Ce qui a été livré quand même** : la moitié qui ne déplace aucun argent (le routage des
+transactions), immédiatement utile à Marc. La moitié qui écrit un solde est ROUTÉE avec ses deux
+mesures, non codée (`UN-INVARIANT-JUSTE-PEUT-ETRE-AVEUGLE-A-UNE-STRATEGIE-ENTIERE`, corollaire de
+découpage : un lot se coupe à la frontière « ça déplace de l'argent / ça n'en déplace pas »).

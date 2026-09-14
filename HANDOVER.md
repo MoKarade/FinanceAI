@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-09-14 (suite) — LA cause des transactions de carte : un rôle SANS NOM débranche le compte
+> Marc, en fin de session : « j'ai toujours pas mes transactions des derniers jours avec ma carte de
+> crédit **et ça me demande encore de mettre la dette de carte de crédit dans dette mais je veux
+> pas** ». Les deux moitiés de sa phrase étaient LE MÊME défaut, et ce n'était PAS la bascule
+> globale diagnostiquée plus tôt : `toMapperRoles` (`browserSync.ts`) OMETTAIT de la table remise au
+> mapper tout rôle « Dette » au `debtName` vide → `roleOf` rendait `null` → compte classé **SANS
+> RÔLE** → 100 % de ses transactions jetées. MESURÉ sur la vraie chaîne : rôle Dette AVEC nom
+> → **5/5** importées ; SANS nom → **0/5**, identique à « aucun rôle du tout ».
+> ⚠️ Ce qui rendait le défaut introuvable : l'écran de configuration affichait « Dette (carte) ».
+> Marc voyait un rôle posé (il l'a dit : « le rôle était déjà posé ») pendant que le moteur voyait un
+> compte inconnu — et cherchait donc ailleurs.
+> **LIVRÉ** (`[FINTABLE-CARTE-SANS-DETTE]`) : un `debtName` vide est désormais un CHOIX complet —
+> « importe les transactions, ne touche à aucun solde ». Les deux orchestrateurs l'acceptent
+> (navigateur ET parseur serveur, sinon le cron refuserait une config que l'app juge valide), l'écran
+> nomme l'option (« — aucune : importer seulement les transactions — ») et ANNONCE la contrepartie
+> (patrimoine net qui ignore le solde dû). Deux tests de LIMITE se sont INVERSÉS au même endroit avec
+> leur histoire, au lieu d'être supprimés — dont un qui verrouillait le défaut en croyant garder une
+> protection (« le compte est signalé, pas avalé » : or « sans rôle » EST ce qui l'avalait).
+> ⚠️ **EN ATTENTE DE MARC** : il a choisi « créer la dette automatiquement » pour le solde de la
+> carte (contre ma recommandation, c'est son droit) — mais l'option ouvre une SOUS-question que mon
+> menu ne posait pas : Fintable ne fournit **ni le taux ni le paiement minimum**, et `applyDebt` exige
+> les deux pour CRÉER. Sa réponse suivante (« je vire souvent de l'argent dessus … avoir de l'argent
+> en rab ») ajoute un second obstacle MESURABLE : le mapper fait `Math.abs(solde)`, donc un solde en
+> CRÉDIT (de l'argent en trop sur la carte) deviendrait une DETTE du même montant. Détail dans
+> `docs/A_FAIRE_MOI.md`. Rien n'a été codé là-dessus.
+
 > ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
 > Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard
 > (fenêtre 2026-06-16 → 2026-09-10) : le blocage est chez nous, en aval. **Cause** : la bascule

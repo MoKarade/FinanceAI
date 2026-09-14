@@ -1586,3 +1586,42 @@ séparation de biens : non) et de la convention entre conjoints.
   [réaliste en séparation de biens, mais c'est le seul actif traité ainsi — l'incohérence resterait].
 - Q16c — **Un réglage par entreprise** (`partageableAuDivorce`, défaut = partagée) — S, une case de plus dans W5.7.
 
+---
+
+## `[FINTABLE-CARTE-DETTE-AUTO]` — créer la dette de carte automatiquement : deux chiffres manquants
+
+**Statut : EN ATTENTE DE MARC.** Rien n'est codé.
+
+**Ce qui est déjà décidé (2026-09-14, en clic)** : Marc veut que FinanceAI **crée la dette
+automatiquement** à partir du solde Fintable, plutôt que de l'ignorer. J'avais recommandé l'inverse ;
+sa réponse a divergé, ce qui est son droit — mais elle ouvre une SOUS-question que mon menu ne posait
+pas (c'est la récidive, le MÊME JOUR, de `UN-OUTIL-DE-CHOIX-MULTIPLE-TRONQUE-UNE-QUESTION-COMPOSEE`).
+
+**Obstacle 1 — il manque deux chiffres, et `applyDebt` les exige.** Pour CRÉER une dette (et non
+seulement en mettre une à jour), `mcp/ingest/applyDocument/debt.ts` exige `balance + interestRate +
+minimumPayment`. Fintable ne fournit que le solde.
+- Le **taux** est déjà tranché : **19,99 %**, décision de Marc du même jour
+  (`[ENG-LIQUIDDEBT-NEVER-REPAID]` plus haut dans ce fichier). Réutilisable sans rien inventer.
+- Le **paiement minimum** n'a **aucun défaut dans le dépôt** — vérifié : il est saisi à la main
+  partout, et `debtAmortization` refuse d'amortir sans un `minimumPayment > 0`. En inventer un
+  (« 5 % du solde ») serait un chiffre non sourcé qui pilote l'amortissement de toute la projection.
+  ⚠️ La règle québécoise du paiement minimum existe bel et bien (LPC), mais je **n'ai pas pu la
+  citer** : accès réseau bloqué depuis ce conteneur. La consigner sans source lui donnerait
+  l'autorité d'un texte de loi (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`).
+
+**Obstacle 2 — le solde de TA carte peut être en crédit, et le mapper en ferait une dette.** Marc :
+« je vire souvent de l'argent dessus pour rembourser la dette / avoir de l'argent en rab dessus ».
+Or `services/fintable/mapSnapshot.ts` porte le solde en positif via `Math.abs(account.balance)` :
+un solde de **−200 $** (200 $ en trop EN TA FAVEUR) deviendrait une **dette de 200 $**. Sur un compte
+qui oscille autour de zéro, la création automatique fabriquerait des dettes fantômes à chaque passe.
+Le code AVERTIT déjà dans ce cas, mais il écrit quand même.
+
+**Questions à trancher avant de coder :**
+1. Quel **paiement minimum** ? (le chiffre de ton relevé, ou une hypothèse assumée et marquée comme
+   telle à l'écran — pas un chiffre glissé en silence dans la projection)
+2. Que faire quand le solde est **en ta faveur** ? Options : ne rien écrire ce mois-là (le plus
+   prudent), écrire une dette de 0 $, ou écrire un « avoir » — qui n'existe pas dans le modèle
+   aujourd'hui.
+
+**En attendant, ça marche déjà** : `[FINTABLE-CARTE-SANS-DETTE]` est livré, donc tes transactions de
+carte entrent dans le budget dès maintenant, sans aucune dette. Seul le solde dû n'est pas suivi.

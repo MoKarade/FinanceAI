@@ -13443,3 +13443,54 @@ comme une décision, dans l'en-tête du test.
 **routé au BACKLOG, pas corrigé** (`[MCP-HTTP-ERR-MESSAGE]`) : la ligne est identique au caractère
 près dans les quatre routes du fichier, donc préexistante, et durcir la seule route du jour
 créerait l'incohérence inverse de celle qu'on corrige.
+
+## `UN-JOB-SKIPPED-EST-UN-SILENCE-QUI-RESSEMBLE-A-UN-SUCCES` (2026-09-15)
+
+**Mesuré, pas supposé.** Le `/hub/summary` servi par Cloud Run contenait encore
+« Investissements », « Dette totale » et « Espace CELI dispo » — le trio remplacé par les
+trois lignes de placements le **2026-08-19** (`b7c6e35`, `4ea10c4`). La révision en ligne
+était donc antérieure au 19/08, avec **177 commits** du serveur en attente.
+
+Et c'est bien Cloud Run que le hub interroge : l'app Vercel n'expose aucune route
+`/hub/summary` (`vercel.json` réécrit `/(.*)` vers `/index.html`), donc un appel à
+`finance.hubperso.com/hub/summary` rendrait du HTML et le widget afficherait « réponse
+invalide ». Il affichait `ok`. La déduction est fermée, pas probable.
+
+**La cause n'est pas un bug** : `deploy-mcp.yml` porte `if: vars.GCP_PROJECT_ID != ''`, et
+son propre en-tête annonçait « sinon no-op silencieux, pas d'échec rouge ». Un choix
+raisonnable quand le déploiement était manuel — et qui, sept semaines plus tard, cachait
+tout le travail non déployé derrière une coche verte. **Le HANDOVER le disait depuis le
+2026-07-30. Personne ne lit un HANDOVER quand rien n'est rouge.**
+
+### La règle
+
+**Un `if:` qui éteint un job de DÉPLOIEMENT doit allumer un job d'ALERTE.** Pas un
+avertissement, pas une ligne de log : un job qui ÉCHOUE. La garde de l'alerte s'écrit comme
+la négation exacte de celle du déploiement, et les deux partagent le même filtre de `paths` —
+deux listes séparées divergent, et c'est l'alerte qui finit par rater ce que le déploiement
+surveille.
+
+### Deux pièges évités en le construisant, et le second a failli passer
+
+1. **Le chiffre écrit en dur rotit.** « 177 commits » dans un message d'erreur serait faux la
+   semaine suivante. Le job MESURE à l'exécution (`git rev-list` depuis le dernier changement
+   de `MCP_SERVER_VERSION`), ce qui impose `fetch-depth: 0` — un clone superficiel
+   sous-estimerait la dette EN SILENCE, soit exactement le défaut qu'on corrige. Et quand le
+   repère est introuvable, le message dit « ampleur non mesurable » : une mesure impossible se
+   dit, elle ne se remplace pas par un zéro rassurant.
+
+2. ⚠️ **La sonde évidente ne pouvait pas tirer.** Le premier réflexe était de comparer le
+   `version` rendu par `/health` (non authentifié) à celui de `main` : élégant, sans secret,
+   et **incapable de détecter quoi que ce soit**. `MCP_SERVER_VERSION` vaut `0.11.0` depuis le
+   19/08 — il n'a pas bougé en 177 commits. Une sonde qui compare deux valeurs identiques par
+   construction est verte quoi qu'il arrive. Le job juge donc la CONFIGURATION (« rien ne peut
+   partir »), qui est toujours exacte, et non l'ÉTAT (« l'écart fait N jours »), qu'il ne sait
+   pas mesurer sans le jeton du hub. **Mesurer si la sonde peut échouer AVANT de l'écrire** —
+   c'est le même contrôle que la perturbation sur un test.
+
+### Le prix assumé
+
+L'alerte restera **rouge à chaque commit du serveur** tant que `GCP_PROJECT_ID` et les deux
+secrets ne sont pas posés. C'est voulu : à chaque fois, c'est VRAI — ce commit-là n'est pas
+déployé. Un rouge toujours juste et toujours actionnable n'est pas du bruit ; c'est une dette
+qu'on a cessé de pouvoir oublier. Le rouge disparaît en câblant la CI, pas en baissant le son.

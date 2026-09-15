@@ -19,6 +19,45 @@
 
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 
+- [x] 🔧 **`[MCP-DEPLOY-SILENCIEUX]`** Le serveur MCP n'était plus déployé depuis au moins
+  27 jours, et rien ne le disait. **Garde livrée le 15/09** (S) ; 👤 **le déploiement reste
+  à faire par Marc** (voir la dernière puce).
+  **CE QUI A ÉTÉ MESURÉ, pas supposé** — le hub reçoit un `/hub/summary` qui contient encore
+  « Investissements », « Dette totale » et « Espace CELI dispo », soit le trio remplacé par
+  les trois lignes de placements le **2026-08-19** (`b7c6e35`, `4ea10c4` — PR #657 et #660).
+  Donc la révision Cloud Run en ligne est ANTÉRIEURE au 19/08. Et c'est bien Cloud Run que le
+  hub interroge : l'app Vercel n'expose AUCUNE route `/hub/summary` (son `vercel.json`
+  réécrit `/(.*)` vers `/index.html`), donc un appel à `finance.hubperso.com/hub/summary`
+  rendrait du HTML et le widget afficherait « réponse invalide ». Il affiche `ok`.
+  **177 commits** touchant `mcp/`, `services/`, `utils/`, `types.ts`, `constants.ts` et le
+  `Dockerfile` sont en attente depuis `v0.11.0` (19/08), dont deux qui coûtent cher :
+  · `/vehicule/bail` — livré le 14/09 POUR une demande de Marc (« ce que j'ai payé par
+    rapport au prix total du prêt »), et donc indisponible à CarAI qui doit le consommer ;
+  · `/fintable-sync` — jamais exposé, constat déjà écrit dans le HANDOVER du **2026-07-30**.
+  **POURQUOI SEPT SEMAINES DE SILENCE** : `deploy-mcp.yml` porte `if: vars.GCP_PROJECT_ID
+  != ''`, jamais satisfait, donc le job est `skipped` à CHAQUE push. Un job ignoré ne réveille
+  personne, et la coche verte du push disait le contraire de la vérité. Le HANDOVER le disait ;
+  personne ne lit un HANDOVER quand rien n'est rouge.
+  **LIVRÉ** : un second job, `alerte-non-deploye`, dont la garde est la NÉGATION exacte de
+  celle du déploiement — l'un des deux tourne toujours, jamais les deux. Il ne déploie rien :
+  il REFUSE le vert. Son message MESURE la dette à l'exécution (`git rev-list` depuis le
+  dernier changement de `MCP_SERVER_VERSION`) plutôt que de porter un chiffre écrit en dur qui
+  rotirait — vérifié en exécutant le script extrait du YAML : « 177 commit(s) … (v0.11.0,
+  2026-08-19) », et la branche « ampleur non mesurable » exercée séparément.
+  ⚠️ **Il restera ROUGE à chaque commit du serveur tant que la CI n'est pas câblée, et c'est
+  assumé** : à chaque fois, c'est vrai — ce commit-là n'est pas déployé. Un rouge toujours
+  vrai et toujours actionnable n'est pas du bruit, c'est une dette qu'on ne peut plus oublier.
+  ⚠️ **Ce qu'il ne peut PAS faire** : détecter un écart ouvert APRÈS le 19/08 par la version.
+  `MCP_SERVER_VERSION` n'a pas bougé en 177 commits, donc comparer `/health` à `main` serait
+  une sonde incapable de tirer. Le job juge donc la CONFIGURATION (« rien ne peut partir »),
+  qui est toujours exacte, et non l'ÉTAT (« l'écart fait N jours »), qu'il ne sait pas mesurer
+  sans le jeton du hub.
+
+- [ ] 👤 **Déployer le serveur MCP** — décision de Marc (15/09) : `mcp/deploy.sh` à la main
+  maintenant. Les 177 commits partent d'un coup, dont `/vehicule/bail` que CarAI attend.
+  L'écart se recreusera au commit suivant tant que `GCP_PROJECT_ID` + `GCP_WIF_PROVIDER` +
+  `GCP_DEPLOY_SA` ne sont pas posés (`mcp/README.md` § Déploiement continu).
+
 - [x] 🔧 **`[HUB-V13]`** Contrat re-pinné sur `v1.3.0`, puis quatre champs neufs publiés.
   **Fait le 14/09** (S).
   · `primary` sur « Valeur nette » — le hub déduisait le gros chiffre de la position 0, ce qui

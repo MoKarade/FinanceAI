@@ -694,6 +694,34 @@
   dans aucun champ du modèle — un rachat de bail reste à cadrer.
   Détail et tableau du contrat dans `docs/A_FAIRE_MOI.md`. ⚠️ Dépôt PUBLIC : NIV, adresse, téléphone,
   n° de contrat et nom du vendeur délibérément NON consignés.
+- [ ] 🔴 **`[TX-DUPLICATES-BRUIT]`** (M, **MESURÉ sur 321 transactions RÉELLES de Marc**, 01/07 → 14/09)
+  — Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas
+  efficace ». **Il a raison, et le défaut est dans le DÉTECTEUR, pas dans son usage.**
+  Re-dérivable : `npx tsx scripts/mesureDoublons.ts <extrait.tsv>` (l'extrait vient du tool MCP
+  `search_transactions` ; il n'est PAS committé — dépôt PUBLIC).
+  ⚠️ **Ce qu'il propose aujourd'hui, par tolérance de date** :
+  · **0 j** (le défaut) — 5 groupes, **10 lignes**, 282,63 $ · **1 j** — 9 groupes, 14 lignes ·
+  **3 j** — 10 groupes, 16 lignes, 436,59 $.
+  ⚠️ **Et la moitié de ce qu'il propose est FAUX par construction.** `findDuplicateGroups` ignore le
+  marchand **par décision écrite** (« le libellé n'entre PAS dans le critère — c'est délibéré »),
+  pour attraper les doublons à deux sources. Mesuré, ça produit des COLLISIONS DE MONTANT : à 3 j il
+  groupe **`OnlyFans −100` ↔ `Bill payment /Carte de crédit −100` ↔ `Interac e-Transfer to /Maxime
+  −100`** — trois dépenses sans aucun rapport —, plus `Santos E Carvalho ↔ Uber` (−17) et
+  `Tim Hortons ↔ Cell To Singul` (−4,59). **3 collisions sur 10 groupes.**
+  ⚠️ **Le remède ne coûte RIEN à l'intention d'origine** : un marchand NORMALISÉ agressivement
+  (casse, accents, n° de succursale, ville, passerelle `GOOGLE *`) rapproche quand même les deux
+  sources — mesuré, `MCDONALD'S 40044` et `McDonald's` tombent tous deux sur `mcdonald s`, donc la
+  paire cross-source du 06→09/07 est CONSERVÉE pendant que **les 5 collisions disparaissent**
+  (`marchandNormalise`, déjà écrit et mesuré dans le script).
+  ⚠️⚠️ **Le plus gros groupe est probablement de l'ARGENT RÉEL** : `7× Metro Rj Rio De −7,90 le
+  2026-08-31`. À ~7,90 R$ le titre de métro de Rio, ce sont vraisemblablement **sept trajets réels**.
+  Le détecteur propose d'en marquer **six** — donc d'effacer de vraies dépenses de tous les calculs.
+  C'est le faux positif que l'en-tête du module dit craindre (« deux cafés identiques le même jour »)
+  et contre lequel il ne fait rien. **Rien ne doit être marqué automatiquement tant que ce cas n'est
+  pas tranché par Marc** — question posée le 15/09.
+  ⚠️ Et le détecteur est aussi **AVEUGLE là où il faudrait voir** : il exige le montant EXACT. Deux
+  imports du même achat à des montants différents (cf. `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, où
+  Fintable livre le montant en devise d'origine) ne peuvent JAMAIS être rapprochés.
 - [ ] 🔴 **`[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`** (M, money-critical, **MESURÉ sur les VRAIES
   données de Marc**) — Fintable livre le montant d'une transaction dans sa **devise d'ORIGINE** tout
   en étiquetant `currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper

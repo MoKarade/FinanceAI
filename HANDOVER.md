@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-15 — « beaucoup trop de doublons » : le détecteur est BRUYANT et AVEUGLE
+> Ticket 🔴 `[TX-DUPLICATES-BRUIT]`, **mesuré, pas encore corrigé** (question en attente chez Marc).
+> Mesuré sur **321 transactions réelles** (01/07 → 14/09, via le MCP) avec
+> `scripts/mesureDoublons.ts` (committé) : le détecteur propose **10 lignes à tolérance 0**, dont
+> **3 groupes sur 10 sont des COLLISIONS DE MONTANT** à tolérance 3 (`OnlyFans −100` ↔ un paiement
+> de carte ↔ un Interac). Cause : `findDuplicateGroups` **ignore le marchand par décision écrite**.
+> ⚠️ Le remède mesuré : un marchand NORMALISÉ agressivement retire les 5 collisions **sans perdre**
+> la paire cross-source `MCDONALD'S 40044` ↔ `McDonald's` (les deux → `mcdonald s`) — donc
+> l'intention d'origine de la décision est préservée. `marchandNormalise` est déjà écrit et mesuré
+> dans le script.
+> ⚠️⚠️ **NE RIEN MARQUER AUTOMATIQUEMENT** : le plus gros groupe est `7× Metro Rj Rio De −7,90` le
+> même jour — à ~7,90 R$ le titre de métro, ce sont vraisemblablement sept TRAJETS RÉELS, et le
+> détecteur propose d'en effacer six. Tant que Marc n'a pas tranché « même marchand + même montant +
+> même jour = doublon ou répétition réelle ? », tout marquage auto détruirait de l'argent réel.
+> ⏳ **EN ATTENTE DE MARC** : cette question, plus de savoir s'il voit ses doublons DANS le panneau
+> (qui proposerait du faux) ou DANS sa liste (que le panneau ne propose jamais).
+
 > ## ✅ PR #964 FUSIONNÉE et EN LIGNE — et ce que §6 ne peut PAS vérifier d'ici
 > Fusionnée à 22:16 UTC (squash, `af7388b1`). **Déploiement Vercel vérifié** :
 > `dpl_fsb5tSyKwXtRnRxrf8HUVzUYeNPo`, cible `production`, état **READY** sur `af7388b1`.

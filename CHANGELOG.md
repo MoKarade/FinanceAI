@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-15 (Le panneau « Doublons » te dit enfin combien il en trouve — et arrête de raconter n'importe quoi)
+
+- **Corrigé** : le détecteur de doublons groupait des dépenses qui n'ont **rien à voir** dès qu'elles
+  partageaient un montant rond. Mesuré sur tes vraies transactions : il mettait dans le même groupe
+  `OnlyFans −100 $`, un **paiement de carte de crédit −100 $** et un **Interac à Maxime −100 $** —
+  et il te proposait d'en effacer deux. Un groupe sur trois était de ce genre. Désormais il regarde
+  aussi le **marchand** : ces groupes-là restent affichés (au cas où), mais avec la mention
+  « marchands différents », et ils ne sont **plus cochés d'avance**.
+- **Ajouté** : le panneau « Doublons » **annonce maintenant ce qu'il a trouvé sans qu'on l'ouvre**
+  (« 3 détectés »). Tu disais voir tes doublons dans ta liste de transactions, jamais dans ce
+  panneau — c'est normal : replié, il ne disait rien, donc rien ne t'invitait à l'ouvrir.
+- **Ajouté** : les groupes sont classés du plus sûr au moins sûr (même marchand + même jour d'abord),
+  au lieu du plus gros montant d'abord. La première ligne est celle en laquelle tu peux avoir le plus
+  confiance.
+- **Note** : rien n'est marqué automatiquement, et ça ne changera pas. Sur tes sept lignes « Metro Rj
+  Rio De −7,90 $ » du même jour, tu m'as dit qu'il y en avait **deux vraies** — aucune règle ne peut
+  deviner ce « deux ». L'app propose, tu décoches ce qui est réel.
+
+---
+
 ## [unreleased] — 2026-09-14 (Tu peux enfin sortir plusieurs transactions des calculs d'un seul coup)
 
 - **Ajouté (et c'était un vrai trou, pas un confort)** : quand tu coches des transactions dans la

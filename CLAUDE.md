@@ -737,6 +737,32 @@ n'est pas réécrire un récit.
   réinstallé. Un re-pin n'est pas un re-pin tant que `npm install` n'a pas tourné (la CI fait `npm ci`,
   le conteneur de dev non) — devant un rouge qui n'est pas à soi, soupçonner l'ARBRE INSTALLÉ avant le code.
 
+- **Un signal ÉCARTÉ du critère doit quand même CLASSER le résultat** : le détecteur de doublons
+  ignore le marchand PAR DÉCISION ÉCRITE (« le libellé n'entre pas dans le critère, c'est délibéré »),
+  pour attraper les doublons nés de DEUX SOURCES d'import — raisonnement juste, mais le signal avait
+  été JETÉ au lieu d'être rétrogradé. Mesuré sur 321 transactions réelles de Marc : à 3 j de
+  tolérance il groupait `OnlyFans −100 $` avec un paiement de carte ET un Interac, **3 groupes sur
+  10** étant des collisions de montant rond. Le correctif ne renverse pas la décision, il déplace le
+  signal d'ÉTAGE : le marchand reste hors du REGROUPEMENT et sert au CLASSEMENT (haute/moyenne/faible),
+  seuls les deux premiers sont pré-cochés, rien n'est perdu. **Filtrer, regrouper, ordonner et
+  pré-sélectionner sont quatre décisions distinctes** — demander de laquelle le signal a été écarté.
+  ⚠️ **Le coût d'un faux positif n'est pas le faux positif, c'est l'abandon de tout l'outil** : un
+  panneau dont un tiers des propositions est absurde ne se fait pas trier, il se fait ignorer en bloc
+  — et les vrais doublons restent avec. ⚠️ Il était aussi MUET là où il fallait : replié, il
+  n'annonçait rien, alors que Marc voit ses doublons « dans ma liste ». **Une détection non ANNONCÉE
+  là où l'utilisateur regarde n'existe pas pour lui** ; le badge ne compte que les groupes à marchand
+  concordant, sinon on refait le tort qu'on corrige. ⚠️⚠️ Perturbation MUETTE = REDONDANCE, pas test
+  faible : retirer la règle des n° de succursale laissait `MCDONALD'S 40044` ↔ `McDonald's` vert
+  (`slice(0,2)` coupe avant le numéro) — le témoin discriminant est `MAXI 8676` ↔ `Maxi`. ⚠️ Et les
+  TROUS d'une clé approximative s'écrivent avec leur contrôle inverse (sinon une clé qui n'apparie
+  plus rien passe le test des trous)
+  (`UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT`, 2026-09-15).
+  ⚠️⚠️ **Deuxième réfutation d'affilée d'un menu par une réponse en TEXTE LIBRE** : sur `7× Metro Rj
+  −7,90 $` le même jour, j'ai proposé « sept vrais trajets » ou « six doublons » — Marc a répondu
+  **« 2 vrais achetés »**, ni l'un ni l'autre, et ma recommandation (vrais trajets, d'après le prix du
+  titre de métro) était FAUSSE. **Un menu binaire sur une QUANTITÉ force un faux dilemme** : la
+  question était « combien sur les sept ? ».
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

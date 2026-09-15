@@ -48,6 +48,23 @@ export interface DuplicateGroup {
      * SOURCES différentes (relevé PDF vs API), le cas que la dédup par `payee` ne peut pas voir.
      */
     payeesDiffer: boolean;
+    /**
+     * [TX-DUPLICATES-BRUIT] Confiance du groupe. MESURÉE sur 321 transactions réelles de Marc
+     * (01/07 → 14/09, `scripts/mesureDoublons.ts`) : le critère « montant + date » seul groupait
+     * `OnlyFans −100 $` avec un paiement de carte de crédit ET un Interac — 3 groupes sur 10 étaient
+     * des COLLISIONS DE MONTANT. Le libellé reste HORS du critère de REGROUPEMENT (sinon on reperd
+     * les doublons à deux sources, cf. le JSDoc de `findDuplicateGroups`), mais il CLASSE le
+     * résultat, et l'UI ne pré-coche que ce qui est `haute` ou `moyenne`.
+     *
+     * · `haute`   — même marchand normalisé ET même jour. C'est la signature mesurée chez Marc
+     *               (`7× Metro Rj Rio De −7,90` le 2026-08-31, dont il a confirmé que **2 seulement**
+     *               étaient de vrais achats).
+     * · `moyenne` — même marchand normalisé, dates proches mais différentes (autorisation vs
+     *               comptabilisation, ou deux sources d'import).
+     * · `faible`  — les marchands NE correspondent PAS. Presque toujours une collision de montant ;
+     *               gardé pour ne rien perdre, jamais proposé d'office.
+     */
+    confiance: 'haute' | 'moyenne' | 'faible';
     /** `true` si les dates ne sont pas toutes identiques (rapprochement à tolérance). */
     datesDiffer: boolean;
 }
@@ -75,6 +92,34 @@ function dayNumber(isoDate: string): number | null {
 
 function normalizePayee(payee: string): string {
     return payee.trim().toLowerCase();
+}
+
+/**
+ * [TX-DUPLICATES-BRUIT] Clé MARCHAND : normalisation agressive, pensée pour rapprocher les DEUX
+ * sources d'import réelles — le relevé en capitales avec n° de succursale (`MCDONALD'S 40044`) et
+ * le libellé nettoyé de Fintable (`McDonald's`). Mesuré : les deux rendent `mcdonald s`, donc la
+ * paire cross-source du 06→09/07 garde une confiance haute au lieu d'être noyée.
+ *
+ * ⚠️ Elle ne sert qu'à CLASSER, jamais à regrouper : elle est volontairement imparfaite
+ * (`UBER CANADA/UBEREATS` → `uber ubereats` ≠ `Uber Eats` → `uber eats`), et l'utiliser comme
+ * critère de regroupement perdrait en silence exactement les doublons à deux sources que le
+ * détecteur existe pour attraper. Un groupe qu'elle n'apparie pas descend en `faible` — il reste
+ * visible, il n'est simplement plus pré-coché.
+ */
+export function merchantKey(payee: string): string {
+    return payee
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[*#]/g, ' ')
+        // Passerelles de paiement : elles préfixent le VRAI marchand et ne l'identifient pas.
+        .replace(/\b(google|sq|sp|paypal|pp)\b/g, ' ')
+        // N° de succursale / de terminal : `MCDONALD'S 40044` et `MCDONALD'S 26033` sont le même
+        // enseigne pour ce classement.
+        .replace(/\b\d{3,}\b/g, ' ')
+        .replace(/\b(inc|ltd|llc|co|canada|quebec|qc|ns|halifax|montreal|rio|de|du|la|le|les)\b/g, ' ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim()
+        .split(' ').filter(Boolean).slice(0, 2).join(' ');
 }
 
 /**
@@ -132,8 +177,13 @@ export function findDuplicateGroups(
         flush();
     }
 
-    // Les plus gros montants d'abord : c'est là que le coût d'un doublon est le plus élevé.
-    return groups.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    // [TX-DUPLICATES-BRUIT] La CONFIANCE d'abord, le montant ensuite. Trier sur le seul montant
+    // plaçait une collision à 100 $ au-dessus d'un vrai doublon à 7,90 $ — et c'est la première
+    // ligne d'un panneau qui décide s'il est cru ou ignoré.
+    const rang = { haute: 0, moyenne: 1, faible: 2 } as const;
+    return groups.sort(
+        (a, b) => rang[a.confiance] - rang[b.confiance] || Math.abs(b.amount) - Math.abs(a.amount),
+    );
 }
 
 function buildGroup(amountCents: number, entries: Array<{ tx: Transaction; day: number }>): DuplicateGroup {
@@ -149,6 +199,11 @@ function buildGroup(amountCents: number, entries: Array<{ tx: Transaction; day: 
     const keepId = members[0].id;
     const payees = new Set(members.map((m) => normalizePayee(m.payee)));
     const dates = new Set(members.map((m) => m.date));
+    const marchands = new Set(members.map((m) => merchantKey(m.payee)));
+    const memeMarchand = marchands.size === 1 && [...marchands][0] !== '';
+    const confiance: DuplicateGroup['confiance'] = !memeMarchand
+        ? 'faible'
+        : dates.size === 1 ? 'haute' : 'moyenne';
     return {
         key: `${amountCents}|${members[0].date}|${keepId}`,
         amount: sorted[0].tx.amount,
@@ -157,6 +212,7 @@ function buildGroup(amountCents: number, entries: Array<{ tx: Transaction; day: 
         suggestedMarkIds: members.slice(1).map((m) => m.id),
         payeesDiffer: payees.size > 1,
         datesDiffer: dates.size > 1,
+        confiance,
     };
 }
 

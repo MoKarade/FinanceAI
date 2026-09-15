@@ -5637,6 +5637,65 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT` — 2026-09-15
+
+Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas
+efficace ». Mesuré sur **321 de ses transactions réelles** (01/07 → 14/09, lues par le MCP,
+re-dérivable par `scripts/mesureDoublons.ts`) : il avait raison, et pas là où je le croyais.
+
+`findDuplicateGroups` groupe sur « montant exact + dates proches » et **ignore le marchand PAR
+DÉCISION ÉCRITE** — « le libellé n'entre PAS dans le critère, c'est délibéré », parce qu'un doublon
+né de DEUX SOURCES d'import porte deux libellés et que la dédup par clé `date|montant|payee` le
+laisse justement passer. Le raisonnement est juste. Mais écarter un signal du CRITÈRE et le jeter
+complètement sont deux choses différentes, et c'est la seconde qui avait été faite.
+
+Mesuré, ça groupait à 3 jours de tolérance : **`OnlyFans −100 $` ↔ `Bill payment /Carte de crédit
+−100 $` ↔ `Interac e-Transfer to /Maxime −100 $`**, plus `Santos E Carvalho ↔ Uber` (−17) et
+`Tim Hortons ↔ Cell To Singul` (−4,59). **3 groupes sur 10.** Les montants ronds collisionnent : ils
+sont partagés par des dépenses qui n'ont rien à voir.
+
+**Le correctif ne renverse pas la décision, il déplace le signal d'ÉTAGE** : le marchand reste hors
+du regroupement (sinon on reperd les doublons à deux sources), mais il CLASSE le résultat —
+`haute` / `moyenne` / `faible` —, l'UI ne pré-coche que les deux premiers, et le tri met la confiance
+avant le montant. Rien n'est perdu : un groupe déclassé reste listé. **Devant un signal qu'une
+décision a écarté, demander de quel ÉTAGE elle l'a écarté** : filtrer, regrouper, ordonner et
+pré-sélectionner sont quatre décisions distinctes, et une seule était en cause.
+
+⚠️ **Le coût d'un faux positif n'est pas le faux positif : c'est l'abandon de tout l'outil.** Un
+panneau dont un tiers des propositions est manifestement absurde ne se fait pas « trier » — il se
+fait ignorer en bloc, et les VRAIS doublons restent avec. C'est exactement ce que décrivait « c'est
+vraiment pas efficace ». Un détecteur se juge sur ce qu'il fait faire, pas sur son rappel.
+
+⚠️ **Et il était aussi MUET là où il fallait qu'il parle** : replié, le panneau n'annonçait rien.
+Marc a répondu qu'il voit ses doublons « dans ma liste de transactions » — il n'avait donc aucune
+raison d'ouvrir le seul écran qui les lui aurait montrés. Une détection qui n'est pas ANNONCÉE là où
+l'utilisateur regarde n'existe pas pour lui. Le badge ne compte que les groupes à marchand
+concordant : un compteur gonflé par du faux referait le tort qu'on vient de corriger.
+
+⚠️⚠️ **Ma perturbation est restée MUETTE, et c'était une REDONDANCE, pas un test faible.** Retirer la
+règle qui efface les n° de succursale (`\d{3,}`) laissait mon témoin `MCDONALD'S 40044` ↔
+`McDonald's` **vert** : `slice(0, 2)` coupe déjà après « mcdonald s », donc le numéro ne tombe jamais
+dans la clé. Le témoin qui DISCRIMINE est celui où le numéro est dans les deux premiers jetons —
+`MAXI 8676` ↔ `Maxi`, deux vrais libellés de son état. **Un témoin doit exercer la règle qu'il
+prétend défendre, pas seulement la traverser** (récidive de
+`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`, cette fois sur une règle
+ANCIENNE dans une fonction neuve).
+
+⚠️ **Et les trous de la clé s'ÉCRIVENT** : elle rate `Maxi 8664 Baie` ↔ `Maxi` (la VILLE occupe le
+2ᵉ jeton) et `UBER CANADA/UBEREATS` ↔ `Uber Eats`. Ça ne coûte rien — elle CLASSE, elle ne regroupe
+pas, donc un trou vaut une confiance `faible`, jamais un doublon perdu. Un test les épingle, avec
+son contrôle inverse (trois appariements qui, eux, marchent) : sans lui, une clé qui ne rapprocherait
+plus JAMAIS rien passerait le test des trous.
+
+⚠️⚠️ **Ma question en clic a été réfutée par une réponse en TEXTE LIBRE, pour la deuxième fois.**
+J'avais proposé, sur les `7× Metro Rj Rio De −7,90 $` du même jour : « sept vrais trajets » ou « six
+doublons ». Marc a répondu **« 2 vrais achetés »** — ni l'un ni l'autre. Ma recommandation penchait
+franchement vers « vrais trajets » (à ~7,90 R$ le titre de métro, c'était le raisonnement) et elle
+était **fausse**. Un menu binaire sur une quantité force un faux dilemme : la bonne forme aurait été
+« combien sur les sept ? ». Corollaire livré : le panneau laisse décocher ligne par ligne, donc
+garder 2 sur 7 reste possible — mais la SUGGESTION par défaut (garder 1, marquer le reste) ne peut
+pas connaître ce nombre, et c'est pour ça que rien n'est marqué automatiquement.
+
 ### `LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT` — 2026-09-14
 
 Marc, trois mots : « j'arrive pas à les marquer en doublon ». J'avais passé le tour précédent à

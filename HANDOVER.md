@@ -4,7 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🔴 Session 2026-09-15 — « beaucoup trop de doublons » : le détecteur est BRUYANT et AVEUGLE
+> ## ✅ Session 2026-09-15 — « beaucoup trop de doublons » : mesuré, puis corrigé
+> Ticket 🔧 `[TX-DUPLICATES-BRUIT]`, **livré** (PR #966).
+> Mesuré sur **321 transactions réelles** (01/07 → 14/09, `scripts/mesureDoublons.ts`, committé) :
+> à 3 j de tolérance, **3 groupes sur 10** étaient des COLLISIONS DE MONTANT — `OnlyFans −100 $`
+> groupé avec un paiement de carte ET un Interac. Cause : `findDuplicateGroups` ignore le marchand
+> PAR DÉCISION ÉCRITE (pour attraper les doublons à deux sources) — raisonnement juste, mais le
+> signal était JETÉ au lieu d'être rétrogradé.
+> ✅ **Livré** : le marchand reste hors du REGROUPEMENT et sert au CLASSEMENT (`confiance`
+> haute/moyenne/faible) ; tri par confiance avant montant ; seuls `haute`/`moyenne` pré-cochés ; les
+> `faible` restent listés, marqués « marchands différents ». Plus un **badge « N détecté(s) » sur
+> l'en-tête REPLIÉ** — Marc voit ses doublons « dans ma liste », donc rien ne l'invitait à ouvrir le
+> panneau. 9 gardes, **5 perturbations séparées**, chacune ne rougissant que sa cible.
+> ⚠️ **Toujours AUCUN marquage automatique, et c'est mesuré** : sur les `7× Metro Rj Rio De −7,90 $`
+> du même jour, Marc a répondu **« 2 vrais achetés »** — 5 doublons sur 7, une proportion qu'aucune
+> heuristique ne devine. Ma question en clic proposait « 7 vrais » ou « 6 doublons » : les DEUX
+> étaient faux, et ma recommandation penchait vers le mauvais.
+> ⏳ **RESTE ouvert** : le détecteur exige le montant EXACT, donc il ne peut pas rapprocher deux
+> imports du même achat à des montants différents (le cas de `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`).
+> Élargir demande une mesure dédiée — à ouvrir si Marc constate qu'il en manque encore.
 > Ticket 🔴 `[TX-DUPLICATES-BRUIT]`, **mesuré, pas encore corrigé** (question en attente chez Marc).
 > Mesuré sur **321 transactions réelles** (01/07 → 14/09, via le MCP) avec
 > `scripts/mesureDoublons.ts` (committé) : le détecteur propose **10 lignes à tolérance 0**, dont

@@ -51,10 +51,30 @@ export const DuplicatesPanel: React.FC<Props> = ({
         [open, transactions, tolerance],
     );
 
-    // La sélection par défaut suit la suggestion, tant que l'utilisateur n'a rien touché.
+    // [TX-DUPLICATES-BRUIT] Compte annoncé sur l'en-tête REPLIÉ. Marc, le 2026-09-15 : il voit ses
+    // doublons « dans ma liste de transactions », jamais dans ce panneau — or le panneau ne disait
+    // RIEN tant qu'on ne l'ouvrait pas, donc rien n'invitait à l'ouvrir. On n'annonce que les
+    // groupes à marchand concordant : un badge gonflé par des collisions de montant ferait
+    // exactement le tort qu'on vient de corriger. Tolérance 0 (le défaut), et une seule passe par
+    // changement de `transactions` — la même complexité linéaire que l'ouverture du panneau.
+    const detectedCount = useMemo(
+        () => findDuplicateGroups(transactions, { dayToleranceDays: 0 })
+            .filter((g) => g.confiance !== 'faible')
+            .reduce((n, g) => n + g.suggestedMarkIds.length, 0),
+        [transactions],
+    );
+
+    // [TX-DUPLICATES-BRUIT] La sélection par défaut suit la suggestion — mais SEULEMENT pour les
+    // groupes dont le marchand concorde. Mesuré sur 321 transactions réelles de Marc : à 3 jours de
+    // tolérance, 3 groupes sur 10 étaient des COLLISIONS DE MONTANT (`OnlyFans −100 $` avec un
+    // paiement de carte et un Interac). Pré-cocher ça revenait à proposer d'effacer de l'argent
+    // réel en un clic — et un panneau dont un tiers des propositions est faux se fait ignorer en
+    // entier, ce qui est exactement ce que Marc a signalé le 2026-09-15.
     const effectiveSelected = useMemo(() => {
         if (dirty) return selected;
-        return new Set(groups.flatMap((g) => g.suggestedMarkIds));
+        return new Set(
+            groups.filter((g) => g.confiance !== 'faible').flatMap((g) => g.suggestedMarkIds),
+        );
     }, [dirty, selected, groups]);
 
     const summary = useMemo(() => summarizeDuplicates(groups), [groups]);
@@ -86,6 +106,11 @@ export const DuplicatesPanel: React.FC<Props> = ({
                 <span className="flex items-center gap-2">
                     <Icon name="actions" size={15} className="text-ink-400" />
                     Doublons
+                    {detectedCount > 0 && (
+                        <span className="bg-warning-500/20 text-warning-400 px-2 py-0.5 rounded-full">
+                            {detectedCount} détecté{detectedCount > 1 ? 's' : ''}
+                        </span>
+                    )}
                     {markedCount > 0 && (
                         <span className="bg-white/10 text-ink-300 px-2 py-0.5 rounded-full">
                             {markedCount} marqué{markedCount > 1 ? 's' : ''}
@@ -123,6 +148,15 @@ export const DuplicatesPanel: React.FC<Props> = ({
                         </p>
                     ) : (
                         <>
+                            {groups.some((g) => g.confiance === 'faible') && (
+                                <p className="text-meta text-ink-400">
+                                    {groups.filter((g) => g.confiance === 'faible').length} groupe
+                                    {groups.filter((g) => g.confiance === 'faible').length > 1 ? 's' : ''} ne
+                                    sont PAS pré-cochés : leurs marchands ne concordent pas, donc c&apos;est
+                                    presque toujours deux dépenses sans rapport qui font le même prix.
+                                    Ils restent listés, à toi de juger.
+                                </p>
+                            )}
                             <p className="text-meta text-ink-300">
                                 {summary.groupCount} groupe{summary.groupCount > 1 ? 's' : ''} ·{' '}
                                 {summary.redundantCount} ligne{summary.redundantCount > 1 ? 's' : ''} en trop ·{' '}
@@ -183,7 +217,17 @@ const GroupRow: React.FC<{
                 {formatCAD(group.amount)}
             </PrivateAmount>
             <span className="flex gap-1">
-                {group.payeesDiffer && (
+                {group.confiance === 'faible' && (
+                    <span className="text-meta text-ink-400" title="Les marchands ne concordent pas : probablement deux dépenses différentes qui font le même prix">
+                        marchands différents
+                    </span>
+                )}
+                {group.confiance === 'haute' && (
+                    <span className="text-meta text-warning-400" title="Même marchand, même jour, même montant">
+                        même marchand, même jour
+                    </span>
+                )}
+                {group.payeesDiffer && group.confiance !== 'faible' && (
                     <span className="text-meta text-warning-400" title="Les libellés diffèrent : probablement deux sources d'import">
                         libellés différents
                     </span>

@@ -22,27 +22,8 @@
 // de montant (deux dépenses sans rapport qui font le même prix), pas un doublon.
 
 import { readFileSync } from 'node:fs';
-import { findDuplicateGroups } from '../services/transactions/duplicateDetection';
+import { findDuplicateGroups, merchantKey } from '../services/transactions/duplicateDetection';
 import type { Transaction } from '../types';
-
-/**
- * Normalisation AGRESSIVE du marchand, pensée pour rapprocher les DEUX sources d'import de Marc :
- * le relevé en capitales avec n° de succursale (`MCDONALD'S 40044`) et le libellé nettoyé de
- * Fintable (`McDonald's`). C'est exactement le cas que le détecteur actuel ne peut pas exploiter,
- * puisqu'il ignore le marchand par conception.
- */
-export function marchandNormalise(payee: string): string {
-    return payee
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .replace(/[*#]/g, ' ')
-        .replace(/\b(google|sq|sp|paypal|pp)\b/g, ' ')
-        .replace(/\b\d{3,}\b/g, ' ')
-        .replace(/\b(inc|ltd|llc|co|canada|quebec|qc|ns|halifax|montreal|rio|de|du|la|le|les)\b/g, ' ')
-        .replace(/[^a-z0-9]+/g, ' ')
-        .trim()
-        .split(' ').filter(Boolean).slice(0, 2).join(' ');
-}
 
 function lireTsv(chemin: string): Transaction[] {
     const lignes = readFileSync(chemin, 'utf8').trim().split('\n').filter(Boolean);
@@ -71,21 +52,17 @@ function principal(): void {
 
         // La PARTITION qui compte : un groupe dont tous les membres partagent le marchand normalisé
         // est un candidat plausible ; un groupe qui mélange des marchands est une collision de montant.
-        const memeMarchand = groupes.filter(
-            (g) => new Set(g.members.map((m) => marchandNormalise(m.payee))).size === 1,
-        );
-        const collisions = groupes.filter(
-            (g) => new Set(g.members.map((m) => marchandNormalise(m.payee))).size > 1,
-        );
+        const memeMarchand = groupes.filter((g) => g.confiance !== 'faible');
+        const collisions = groupes.filter((g) => g.confiance === 'faible');
 
         console.log(`\n=== tolérance ${tolerance} j : ${groupes.length} groupes · ${lignesEnTrop} lignes proposées au marquage · ${enJeu.toFixed(2)} $ en jeu`);
-        console.log(`    plausibles (marchand unique) : ${memeMarchand.length}   ·   COLLISIONS de montant (marchands différents) : ${collisions.length}`);
+        console.log(`    plausibles (haute/moyenne) : ${memeMarchand.length}   ·   COLLISIONS de montant (marchands différents) : ${collisions.length}`);
         for (const g of collisions) {
             const noms = g.members.map((m) => `"${m.payee}"`).join(' ↔ ');
             console.log(`    ⚠️ collision ${g.amount} : ${noms}`);
         }
         for (const g of memeMarchand) {
-            console.log(`    · ${String(g.members.length).padStart(2)}× ${String(g.amount).padStart(9)} ${g.members[0].payee} (${g.members[0].date} → ${g.members[g.members.length - 1].date})`);
+            console.log(`    · [${g.confiance.padEnd(7)}] ${String(g.members.length).padStart(2)}× ${String(g.amount).padStart(9)} ${g.members[0].payee} (${g.members[0].date} → ${g.members[g.members.length - 1].date})`);
         }
     }
 }

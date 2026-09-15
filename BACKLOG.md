@@ -694,7 +694,7 @@
   dans aucun champ du modèle — un rachat de bail reste à cadrer.
   Détail et tableau du contrat dans `docs/A_FAIRE_MOI.md`. ⚠️ Dépôt PUBLIC : NIV, adresse, téléphone,
   n° de contrat et nom du vendeur délibérément NON consignés.
-- [ ] 🔴 **`[TX-DUPLICATES-BRUIT]`** (M, **MESURÉ sur 321 transactions RÉELLES de Marc**, 01/07 → 14/09)
+- [x] 🔧 **`[TX-DUPLICATES-BRUIT]`** (M, **MESURÉ sur 321 transactions RÉELLES de Marc**, 01/07 → 14/09) — **Fait le 15/09** (PR #966).
   — Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas
   efficace ». **Il a raison, et le défaut est dans le DÉTECTEUR, pas dans son usage.**
   Re-dérivable : `npx tsx scripts/mesureDoublons.ts <extrait.tsv>` (l'extrait vient du tool MCP
@@ -719,9 +719,21 @@
   C'est le faux positif que l'en-tête du module dit craindre (« deux cafés identiques le même jour »)
   et contre lequel il ne fait rien. **Rien ne doit être marqué automatiquement tant que ce cas n'est
   pas tranché par Marc** — question posée le 15/09.
-  ⚠️ Et le détecteur est aussi **AVEUGLE là où il faudrait voir** : il exige le montant EXACT. Deux
-  imports du même achat à des montants différents (cf. `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, où
-  Fintable livre le montant en devise d'origine) ne peuvent JAMAIS être rapprochés.
+  ✅ **LIVRÉ** : le marchand reste hors du REGROUPEMENT (la décision d'origine est intacte) et sert
+  désormais au CLASSEMENT — `confiance: haute | moyenne | faible`. Le tri met la confiance avant le
+  montant, l'UI ne pré-coche que `haute`/`moyenne`, les groupes `faible` restent LISTÉS avec la
+  mention « marchands différents ». Et le panneau REPLIÉ annonce enfin un badge « N détecté(s) » —
+  Marc voyait ses doublons « dans ma liste », donc rien ne l'invitait à ouvrir le seul écran qui les
+  montrait. 9 gardes, 5 perturbations séparées.
+  ⚠️ **RESTE ouvert, et c'est volontaire** — le détecteur est encore **AVEUGLE là où il faudrait
+  voir** : il exige le montant EXACT. Deux imports du même achat à des montants différents (cf.
+  `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, où Fintable livre le montant en devise d'origine) ne
+  peuvent JAMAIS être rapprochés. Élargir ce critère demande une mesure dédiée (le bruit explose) —
+  ticket à écrire si Marc constate qu'il en manque encore.
+  ⚠️ **Toujours AUCUN marquage automatique.** Marc, interrogé sur les `7× Metro Rj Rio De −7,90 $`
+  du même jour : **« 2 vrais achetés »** — donc 5 doublons sur 7, une proportion qu'aucune heuristique
+  ne peut deviner. La suggestion par défaut (garder le plus ancien) reste une PROPOSITION ; le
+  panneau laisse décocher ligne par ligne.
 - [ ] 🔴 **`[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`** (M, money-critical, **MESURÉ sur les VRAIES
   données de Marc**) — Fintable livre le montant d'une transaction dans sa **devise d'ORIGINE** tout
   en étiquetant `currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper

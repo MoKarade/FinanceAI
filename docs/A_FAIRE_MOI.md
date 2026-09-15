@@ -1683,6 +1683,8 @@ le suivre.
 
 ## `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` — 44 transactions fausses dans ton état, +2 537,31 $ de dépenses fantômes
 
+> ✅ **Réimport FAIT le 2026-09-15** (36 lignes, 1 067,03 $) — il reste **4 lignes à exclure par Marc**, détail au bas de cette section.
+
 **Statut : MESURÉ, DÉCISION DE RÉPARATION EN ATTENTE.** Rien n'a été écrit dans tes données.
 
 ### Le défaut
@@ -1827,6 +1829,54 @@ lignes « doublon », puis ré-importer les montants du relevé** — et l'ordre
 ferait doubler la dépense tant que le marquage n'est pas fait.
 
 C'est une migration de tes données financières RÉELLES : elle attend ton feu vert explicite.
+
+### ✅ RÉIMPORT FAIT le 2026-09-15 — 36 lignes, **1 067,03 $** (ton feu vert : « tu peux réimporter avec les bons montants »)
+
+Écrit dans ton état par `apply_bank_statement` (sauvegarde horodatée automatique avant écriture) :
+**36 transactions ajoutées, 0 doublon, 0 rejet.** Pas 44 lignes ni 1 338,12 $ — huit lignes du
+tableau ont été ÉCARTÉES, toutes dans le sens prudent (importer moins, jamais plus).
+
+**A. Quatre lignes dont l'original est encore ACTIF dans tes calculs** — mesuré le 2026-09-15 sur
+ton état (instantané Drive de 4 min) : elles ressortent d'une recherche qui EXCLUT les lignes
+marquées, donc elles ne sont pas marquées. Les réimporter aurait compté la dépense **deux fois**.
+
+| ligne | date | encore compté | montant réel | manque |
+|---|---|---:|---:|---:|
+| A.saily | 2026-08-31 | 13.99 $ | **19.96 $** | 5.97 $ |
+| Smartcar Mountain | 2026-09-01 | 7.84 $ | **11.18 $** | 3.34 $ |
+| Duty Free New Departur | 2026-09-10 | 126.35 $ | **179.04 $** | 52.69 $ |
+| *BRUTTITO TERMINAL 1 TOCUMEN 008 | 2026-09-10 | 36.80 $ | **52.19 $** | 15.39 $ |
+
+⚠️ **Ce qu'il te reste à faire, et c'est 4 clics** : dans « Transactions », coche ces quatre lignes,
+puis « Exclure des calculs ». Dis-le-moi et j'importe les quatre bons montants (**262,37 $**). Tant
+que ce n'est pas fait, ces quatre dépenses sont SOUS-évaluées de 77,39 $ au total.
+
+**B. Quatre billets de métro du 2026-08-31 n'ont pas été remis.** Tu avais répondu **« 2 vrais
+achetés »** sur ce groupe : le tableau en apparie 6, je n'en ai réimporté que **2** (2,18 $ chacun).
+Les **2** du 2026-09-08 sont conservées — ta réponse portait sur le groupe du 31 août, et le relevé
+les apparie séparément. Si eux aussi sont des doublons d'import, dis-le : 4,40 $ à exclure.
+
+**C. Trois libellés portent un suffixe `(2/2)`** — `Metro Rj Rio De` (31/08 et 08/09) et `Sodexo`
+(09/09). Ce sont deux dépenses RÉELLES identiques le même jour, et la dédup de l'import jette la
+seconde dès que date + montant + marchand coïncident (elle le dit elle-même : « doublon SUSPECT au
+sein du même lot »). Le suffixe est la seule façon de conserver les deux montants sans toucher à un
+seul chiffre. Tu peux le retirer à la main si ça te gêne.
+
+**D. Huit lignes sont en « Non catégorisé »** — Marieneluciados, Pindoramagestaoe, Bruno William
+Boni Paraty, JIM.COM SANTINO CIPO, Marcosdebrito, Selmadossantosgar, Romulosilvamorais, Pagte. Ce
+sont des prestataires brésiliens que je ne peux pas identifier ; leur inventer une catégorie aurait
+été une affirmation, pas une donnée. ⚠️ Et `Metro Rj Rio De` a reçu **Transport** en dur : la règle
+d'import lit `\bMETRO\b` et l'aurait classé **Épicerie** (le supermarché québécois), ce qu'un
+billet de métro de Rio n'est pas.
+
+**E. Aucun nom de compte** n'est attaché à ces 36 lignes — je n'ai pas de quoi lire le libellé exact
+de ta carte, et en inventer un serait faux. Ça ne change **aucun** calcul (`computeCashLedger` ne
+lit pas le compte), seulement l'affichage.
+
+⚠️ **Le tableau reste incomplet** (voir l'avertissement plus haut) : mes captures du relevé
+s'arrêtent au 08 SEP. Les deux lignes du 2026-09-10 jamais appariées (Uber −57,93 $, Copa −70,00 $)
+sont **exclues** de tes calculs et n'ont donc **pas** de remplaçante — cette dépense-là manque
+entièrement tant que je n'ai pas la fin du relevé.
 
 
 ---

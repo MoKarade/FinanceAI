@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-15 (tes dépenses du Brésil sont enfin aux vrais montants)
+
+- **Réparé, dans tes données** : les 44 transactions de ton voyage étaient importées dans la devise
+  d'ORIGINE (réaux, dollars US) et comptées comme des dollars canadiens. Tu les avais exclues des
+  calculs ; **36 lignes ont été réimportées aux montants de ton relevé, pour 1 067,03 $** au lieu
+  des 3 875,43 $ d'origine.
+- **Pourquoi 36 et pas 44** : **quatre** dépenses n'avaient jamais été exclues (elles étaient
+  SOUS-évaluées, donc elles ne ressemblaient pas au problème qu'on cherchait) — les réimporter les
+  aurait comptées deux fois ; et **quatre** billets de métro du 31 août étaient des doublons
+  d'import, comme tu l'avais dit. Les quatre premières attendent quatre clics de ta part, et la
+  marche à suivre est écrite dans `docs/A_FAIRE_MOI.md`.
+- **Trois libellés portent `(2/2)`** : deux vrais achats identiques le même jour (métro, Sodexo) se
+  font sinon avaler par la protection anti-doublon de l'import. Aucun montant n'a été modifié pour
+  autant — c'est le libellé qui distingue, jamais le chiffre.
+- **Ce qui n'est PAS réglé** : l'import Fintable continue de livrer les montants en devise
+  d'origine. C'est la prochaine fois que tu voyages que ça recommencera — le correctif de fond reste
+  au backlog.
+
+---
+
 ## [unreleased] — 2026-09-15 (CarAI peut enfin te dire où tu en es dans ton bail)
 
 - **Ajouté** : un nouvel accès `GET /vehicule/bail` sur ton serveur FinanceAI, pour **CarAI**

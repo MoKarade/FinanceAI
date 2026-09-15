@@ -5637,6 +5637,62 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT` — 2026-09-15
+
+Marc : « tu peux réimporter avec les bons montants ». Le dépôt portait le document qu'il fallait —
+une table de 44 lignes appariées une à une à son relevé de carte (3 875,43 $ importés contre
+1 338,12 $ facturés), écrite la veille, avec ses montants au cent près. Exécuter la demande à la
+lettre revenait à relire cette table et à la pousser telle quelle.
+
+**C'eût été faux de 262,37 $, dans le pire sens qui soit** : la réparation supposait que les 44
+originaux soient EXCLUS des calculs (`isDuplicate`) avant d'écrire leurs remplaçants. Mesuré sur
+l'état réel avant d'écrire — `search_transactions` EXCLUT par construction les lignes marquées, donc
+**ce qu'elle RENVOIE n'est pas marqué** — quatre originaux du tableau y figuraient encore :
+`A.saily` 13,99 $, `Smartcar Mountain` 7,84 $, `Duty Free New Departur` 126,35 $,
+`*BRUTTITO TERMINAL` 36,80 $. Les réimporter aurait compté ces quatre dépenses **deux fois**.
+
+⚠️ **Et ces quatre-là ne sont pas un tirage au hasard : ce sont quatre des cinq lignes en USD,
+c'est-à-dire les SOUS-évaluées.** Le diagnostic titrait « +2 537,31 $ de dépenses fantômes » ; qui
+parcourt son écran en cherchant des montants gonflés ne s'arrête pas sur un 13,99 $ d'abonnement.
+**Le libellé d'un défaut oriente le geste de qui le répare** — quand un défaut va dans les DEUX
+sens, la moitié qui contredit le titre est celle qui se fait sauter.
+
+**La règle** : un lot qui ÉCRIT dans les données réelles ne se dimensionne jamais sur le document
+qui décrit le défaut, si daté et si mesuré soit-il. Le document dit ce qui ÉTAIT vrai ; l'état dit
+ce qui l'est. La question à poser avant d'écrire n'est pas « qu'est-ce que le tableau prescrit ? »
+mais « quelle PRÉCONDITION ce tableau suppose, et est-elle vraie ligne par ligne, maintenant ? ».
+Ici la précondition n'était pas une propriété globale (« Marc a fait le marquage ») mais une
+propriété **par ligne** — et elle était vraie 40 fois sur 44.
+
+⚠️ **Corollaire de conduite : la moitié qu'on ne peut pas prouver se ROUTE, elle ne se livre pas.**
+36 lignes écrites, 4 suspendues à quatre clics de Marc, avec leur tableau et leur montant. Livrer
+les 44 « pour finir le travail » aurait donné un état plus faux qu'avant sur ces quatre lignes,
+sans qu'aucun écran ne le dise.
+
+⚠️ **Corollaire d'outillage : une dédup INTRA-LOT jette deux dépenses RÉELLES identiques, et le
+code le dit déjà.** `applyBankStatement` refuse deux lignes du même lot partageant
+`date|montant|marchand` et compte le cas séparément sous « doublon(s) SUSPECT(s) au sein du même
+lot (vérifier s'il s'agit de dépenses distinctes) » — un commentaire y mesure même le coût :
+« 3 cafés à 4,25 $, 1 seul écrit, 8,50 $ perdus en silence ». Trois de mes lignes tombaient dedans
+(deux billets de métro le même jour, deux Sodexo). Les montants ne se touchent JAMAIS pour
+contourner une clé : c'est le LIBELLÉ qui porte la désambiguïsation (`… (2/2)`), parce qu'un
+libellé est de la description et un montant est un fait. ⚠️ Le champ qui aurait court-circuité la
+dédup (`callerClassified`) existe — et n'est pas exposé au schéma MCP : une porte interne n'est pas
+une porte disponible, ça se vérifie dans le SCHÉMA et pas dans le code du module.
+
+⚠️ **Corollaire de catégorisation : une règle écrite pour un marché local est FAUSSE hors de ce
+marché.** `categoryRules.ts` classe `\bMETRO\b` en « Épicerie » — juste au Québec (la chaîne de
+supermarchés), faux pour les billets de métro de Rio, que l'import aurait rangés en épicerie sans
+rien signaler. Là où j'étais sûr, j'ai passé la catégorie en dur ; sur huit prestataires brésiliens
+non identifiables, j'ai laissé « Non catégorisé » plutôt que d'inventer — une catégorie devinée est
+une affirmation, et elle se lit comme une donnée.
+
+⚠️ **Et une déclaration de l'utilisateur sur SA réalité bat un appariement automatique** : sur les
+six billets de métro du 31 août, Marc avait répondu « 2 vrais achetés » — j'en ai remis deux, pas
+six, alors que le tableau les appariait tous les six. Un appariement sur des montants IDENTIQUES
+n'est pas une preuve d'existence : il apparie ce qu'il trouve. En revanche sa réponse portait sur
+« le même jour » : les deux lignes du 08/09 ont été conservées, et la question lui est reposée.
+
 ### `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE` — 2026-09-15
 
 Marc, quelques minutes après avoir exclu des calculs ses 44 lignes du Brésil — **ce que je lui avais

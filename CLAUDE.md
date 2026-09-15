@@ -799,6 +799,27 @@ n'est pas réécrire un récit.
   devant « mes données ont disparu », l'arbitre est le CODE QUI ÉCRIT, pas un instantané dont on n'a
   pas lu la date (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, 2026-09-15).
 
+- **Un import de CORRECTION se mesure contre l'ÉTAT RÉEL, pas contre le document qui le décrit** :
+  la table des 44 lignes du Brésil (3 875,43 $ importés / 1 338,12 $ facturés), écrite la veille et
+  exacte au cent près, supposait une PRÉCONDITION — que chaque original soit exclu des calculs. Elle
+  était vraie **40 fois sur 44** : mesuré avant d'écrire (`search_transactions` EXCLUT les lignes
+  marquées, donc **ce qu'elle RENVOIE n'est pas marqué**), quatre originaux étaient encore actifs et
+  les réimporter aurait compté la dépense DEUX fois (262,37 $). ⚠️ Et ces quatre-là sont quatre des
+  cinq lignes en USD — les **SOUS-évaluées** : **le libellé d'un défaut oriente le geste de qui le
+  répare**, et quand un défaut va dans les deux sens, c'est la moitié qui contredit le titre
+  (« +2 537,31 $ de dépenses fantômes ») qui se fait sauter. La précondition d'un lot d'écriture se
+  vérifie **par ligne**, jamais comme une propriété globale ; la moitié non prouvable se ROUTE
+  (36 écrites, 4 suspendues à 4 clics de Marc). ⚠️ Corollaires : la dédup **INTRA-LOT** de
+  `applyBankStatement` jette deux dépenses RÉELLES identiques et le code le dit déjà (« doublon
+  SUSPECT au sein du même lot », coût mesuré en commentaire) — on désambiguïse le **LIBELLÉ**
+  (`… (2/2)`), jamais le montant, et la porte qui court-circuiterait la dédup (`callerClassified`)
+  existe sans être exposée au SCHÉMA MCP ; une règle de catégorisation écrite pour un marché local
+  est fausse hors de ce marché (`\bMETRO\b` → « Épicerie » aurait rangé les billets de métro de Rio
+  à l'épicerie) ; et **une déclaration de l'utilisateur sur SA réalité bat un appariement
+  automatique** (« 2 vrais achetés » contre six lignes appariées par montant identique)
+  (`UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT`,
+  2026-09-15).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

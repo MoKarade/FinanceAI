@@ -732,8 +732,15 @@
   DOUBLON, pas une correction). Le seul levier est `isDuplicate`, qui exclut une ligne de TOUS les
   calculs et se pose à la main dans l'écran Transactions. Procédure et décision dans `docs/A_FAIRE_MOI.md`.
   ✅ **Débloqué le 14/09 par `[TX-SELECTION-SANS-ACTION]`** : ce levier était INATTEIGNABLE pour cette
-  classe (voir ci-dessous) ; il l'est désormais en quatre gestes. Reste à Marc de neutraliser les 44,
-  puis j'importe les bons montants.
+  classe (voir ci-dessous) ; il l'est désormais en quatre gestes.
+  ✅ **Dette de DONNÉES réparée le 15/09** (feu vert de Marc) : **36 lignes réimportées, 1 067,03 $**
+  aux montants du relevé. ⚠️ Ce n'est pas 44 ni 1 338,12 $, et l'écart est une MESURE, pas un
+  arrondi : **4 originaux n'avaient jamais été exclus** (`A.saily`, `Smartcar Mountain`,
+  `Duty Free New Departur`, `*BRUTTITO TERMINAL` — tous les quatre SOUS-évalués, donc invisibles à
+  qui cherchait des dépenses gonflées), et les réimporter aurait compté la dépense DEUX fois ;
+  **4 billets de métro** du 31/08 sont des doublons d'import confirmés par Marc (« 2 vrais achetés »).
+  Reste 262,37 $ suspendus à 4 clics de Marc — procédure au bas de `docs/A_FAIRE_MOI.md`.
+  ⚠️ **La dette de CODE reste entière** : le mapper importe toujours le montant en devise d'origine.
 - [x] 🔧 **`[TX-SELECTION-SANS-ACTION]`** (S, **MESURÉ**) — Marc : « j'arrive pas à les marquer en
   doublon ». **Il avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL
   point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par

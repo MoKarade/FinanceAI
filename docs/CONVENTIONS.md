@@ -5696,6 +5696,43 @@ franchement vers « vrais trajets » (à ~7,90 R$ le titre de métro, c'était l
 garder 2 sur 7 reste possible — mais la SUGGESTION par défaut (garder 1, marquer le reste) ne peut
 pas connaître ce nombre, et c'est pour ça que rien n'est marqué automatiquement.
 
+⚠️⚠️ **Le CANAL d'un mouvement n'est pas son MARCHAND, et une clé tronquée les confond — trouvé
+par le panel de revue APRÈS que le lot ait été jugé fini, gate vert et CI verte.** La clé gardait les
+**deux premiers jetons** du libellé. Or les deux formats les plus courants d'un relevé bancaire
+québécois placent le bénéficiaire en **troisième** position : mesuré sur le vrai code,
+`Interac e-Transfer to /Maxime /` et `… /Julie /` rendaient tous deux `interac e`,
+`Bill payment - Hydro Quebec` et `… Bell Canada` tous deux `bill payment`, `Ch 4521` et `Ch 9981`
+tous deux `ch`. Donc **deux virements Interac réels et distincts** au même montant le même jour
+sortaient en confiance `haute` et **pré-cochés** — exactement la régression money-critical que ce lot
+existait pour empêcher, réintroduite une marche plus bas. Le correctif est le même geste que pour les
+passerelles de paiement (`GOOGLE *`, `SQ *`) : retirer les jetons de CANAL (chèque, Interac, virement,
+paiement de facture, retrait, prélèvement) **avant** la troncature, ce qui fait remonter le
+bénéficiaire (`maxime`, `hydro`) — et une clé devenue VIDE (un n° de chèque ne nomme personne) vaut
+« je ne sais pas », donc `faible`. **Devant une clé qui tronque, demander quels libellés du domaine
+mettent l'information discriminante APRÈS la troncature.** La garde d'accompagnement a besoin de son
+anti-vacuité : sans l'assertion « le bénéficiaire est bien RÉVÉLÉ » (`… → 'maxime'`), un retrait qui
+effacerait TOUT satisferait les trois assertions « restent `faible` » sans rien prouver.
+
+⚠️ **Et j'ai exporté un second `merchantKey` alors qu'un `merchantKey` existait déjà** dans
+`services/transactions/merchantProfile.ts`, consommé par `Planning.tsx` et le moteur de récurrences.
+Deux contrats différents sous un seul nom : la sienne jette tout jeton non purement alphabétique
+(elle identifie un ABONNEMENT), la mienne connaît les passerelles de paiement et les jetons de canal
+(elle CLASSE un groupe de doublons). Elles ne sont pas interchangeables — mais un même nom pour deux
+contrats rend le code introuvable par un seul `grep`, la panne décrite par
+`UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM`, ici commise dans l'autre sens (deux
+fonctions, un nom, au lieu d'une fonction, deux noms). Renommée `cleMarchandPourConfiance`, avec le
+pourquoi de la NON-réutilisation écrit dans son JSDoc. La règle « grep le CONCEPT, pas le symbole »
+avant d'écrire un utilitaire vaut aussi — et surtout — quand on est sûr d'inventer quelque chose de neuf.
+
+⚠️ **Une valeur par défaut recopiée à deux endroits redevient deux valeurs** : le badge de l'en-tête
+replié comptait à tolérance `0` pendant que le panneau, lui, laissait l'utilisateur choisir ±1 ou ±3.
+Un badge qui ne compte pas ce que le panneau montrera affirme un chiffre que ses sources ne donnent
+pas. Les deux lisent désormais la même constante — et la portée étroite est **assumée et ÉCRITE**
+(dans le `title` du badge, gardé par un test) plutôt qu'élargie : à ±1 jour, deux achats RÉCURRENTS
+identiques deux jours de suite deviendraient pré-cochés, et `isDuplicate` retire de l'argent réel du
+solde, du budget et des revenus. **Élargir un compteur et élargir ce qu'on pré-coche sont deux
+décisions distinctes** ; quand on ne peut pas faire la première sans la seconde, on dit sa portée.
+
 ### `LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT` — 2026-09-14
 
 Marc, trois mots : « j'arrive pas à les marquer en doublon ». J'avais passé le tour précédent à

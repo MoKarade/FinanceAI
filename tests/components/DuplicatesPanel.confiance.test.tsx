@@ -78,4 +78,20 @@ describe('[TX-DUPLICATES-BRUIT] le panneau annonce, et ne pré-coche que ce qui 
         expect(idsMetro).toContain(ids[0]);
         expect(idsCollision).not.toContain(ids[0]);
     });
+
+    it('le badge DIT sa portée : il ne promet pas de compter au-delà du même jour', () => {
+        // ⚠️ Le badge est figé sur la tolérance d'OUVERTURE du panneau (0 = même jour), alors que
+        // le panneau propose ±1 et ±3. Élargir le badge sans élargir le pré-cochage le ferait
+        // annoncer des groupes que le panneau ne montre pas ; élargir les deux pré-cocherait deux
+        // achats RÉCURRENTS identiques à un jour d'écart — de l'argent réel retiré du solde. Donc
+        // on garde la portée étroite et on l'ÉCRIT, plutôt que de laisser croire à l'exhaustivité
+        // (`UN-ECRAN-NE-PEUT-AFFIRMER-QUE-CE-QUE-SES-SOURCES-LUI-DONNENT`).
+        const { container } = render(
+            <DuplicatesPanel transactions={jeuMixte()} onMarkDuplicates={vi.fn()}
+                markedCount={0} onUnmarkAll={vi.fn()} />,
+        );
+        const badge = within(container).getByText(/détecté/);
+        expect(badge.getAttribute('title')).toContain('Même jour');
+        expect(badge.getAttribute('title')).toContain('marchand concordant');
+    });
 });

@@ -20,6 +20,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Ajouté** : les groupes sont classés du plus sûr au moins sûr (même marchand + même jour d'abord),
   au lieu du plus gros montant d'abord. La première ligne est celle en laquelle tu peux avoir le plus
   confiance.
+- **Corrigé (2ᵉ passe, trouvé par la revue)** : la reconnaissance du marchand s'arrêtait aux deux
+  premiers mots du libellé — or « Interac e-Transfer to /**Maxime** » et « Bill payment - **Hydro** »
+  mettent le vrai destinataire en troisième. Résultat : **deux virements Interac à deux personnes
+  différentes**, même montant, même jour, étaient présentés comme un doublon sûr et **cochés
+  d'avance**. Corrigé — le mot qui compte est maintenant celui du destinataire, et un numéro de
+  chèque (qui ne nomme personne) ne suffit plus à rapprocher quoi que ce soit.
 - **Note** : rien n'est marqué automatiquement, et ça ne changera pas. Sur tes sept lignes « Metro Rj
   Rio De −7,90 $ » du même jour, tu m'as dit qu'il y en avait **deux vraies** — aucune règle ne peut
   deviner ce « deux ». L'app propose, tu décoches ce qui est réel.

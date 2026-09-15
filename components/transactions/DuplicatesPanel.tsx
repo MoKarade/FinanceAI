@@ -36,11 +36,27 @@ const TOLERANCES: Array<{ value: number; label: string }> = [
     { value: 3, label: '± 3 jours' },
 ];
 
+/**
+ * [TX-DUPLICATES-BRUIT] Tolérance du panneau à l'ouverture ET du badge de l'en-tête replié —
+ * SOURCE UNIQUE, délibérément. Les deux ont divergé au 1er jet de ce lot (badge figé à 0, panneau
+ * réglable) : un badge qui ne compte pas ce que le panneau montrera affirme un chiffre que ses
+ * sources ne donnent pas. Valeur 0 (même jour) assumée : c'est la seule où « même marchand, même
+ * montant au cent » suffit à pré-cocher sans risque — à ±1 jour, deux achats RÉCURRENTS identiques
+ * deux jours de suite (le café de Marc à 7,90 $) deviendraient pré-cochés, et `isDuplicate` retire
+ * de l'argent réel du solde, du budget et des revenus. L'élargissement reste à UN clic dans le
+ * panneau ; le badge dit sa portée dans son `title`.
+ */
+const TOLERANCE_PAR_DEFAUT = 0;
+
+/** Libellé de la tolérance par défaut, DÉRIVÉ de `TOLERANCES` — jamais recopié, jamais par index. */
+const LIBELLE_TOLERANCE_PAR_DEFAUT =
+    TOLERANCES.find((t) => t.value === TOLERANCE_PAR_DEFAUT)?.label ?? `± ${TOLERANCE_PAR_DEFAUT} jour(s)`;
+
 export const DuplicatesPanel: React.FC<Props> = ({
     transactions, onMarkDuplicates, markedCount, onUnmarkAll,
 }) => {
     const [open, setOpen] = useState(false);
-    const [tolerance, setTolerance] = useState(0);
+    const [tolerance, setTolerance] = useState(TOLERANCE_PAR_DEFAUT);
     /** Ids cochés pour marquage. Pré-remplis avec la suggestion, modifiables. */
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [dirty, setDirty] = useState(false);
@@ -55,10 +71,11 @@ export const DuplicatesPanel: React.FC<Props> = ({
     // doublons « dans ma liste de transactions », jamais dans ce panneau — or le panneau ne disait
     // RIEN tant qu'on ne l'ouvrait pas, donc rien n'invitait à l'ouvrir. On n'annonce que les
     // groupes à marchand concordant : un badge gonflé par des collisions de montant ferait
-    // exactement le tort qu'on vient de corriger. Tolérance 0 (le défaut), et une seule passe par
-    // changement de `transactions` — la même complexité linéaire que l'ouverture du panneau.
+    // exactement le tort qu'on vient de corriger. Tolérance = `TOLERANCE_PAR_DEFAUT`, la MÊME que
+    // le panneau à l'ouverture (cf. sa justification), et une seule passe par changement de
+    // `transactions` — la même complexité linéaire que l'ouverture du panneau.
     const detectedCount = useMemo(
-        () => findDuplicateGroups(transactions, { dayToleranceDays: 0 })
+        () => findDuplicateGroups(transactions, { dayToleranceDays: TOLERANCE_PAR_DEFAUT })
             .filter((g) => g.confiance !== 'faible')
             .reduce((n, g) => n + g.suggestedMarkIds.length, 0),
         [transactions],
@@ -107,7 +124,10 @@ export const DuplicatesPanel: React.FC<Props> = ({
                     <Icon name="actions" size={15} className="text-ink-400" />
                     Doublons
                     {detectedCount > 0 && (
-                        <span className="bg-warning-500/20 text-warning-400 px-2 py-0.5 rounded-full">
+                        <span
+                            className="bg-warning-500/20 text-warning-400 px-2 py-0.5 rounded-full"
+                            title={`${LIBELLE_TOLERANCE_PAR_DEFAUT} et marchand concordant. Ouvre le panneau pour élargir l'écart de date toléré.`}
+                        >
                             {detectedCount} détecté{detectedCount > 1 ? 's' : ''}
                         </span>
                     )}

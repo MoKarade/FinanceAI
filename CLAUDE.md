@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 893 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 895 tests** Vitest
 (605 fichiers de test, mesuré le 2026-09-15). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -757,6 +757,19 @@ n'est pas réécrire un récit.
   TROUS d'une clé approximative s'écrivent avec leur contrôle inverse (sinon une clé qui n'apparie
   plus rien passe le test des trous)
   (`UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT`, 2026-09-15).
+  ⚠️⚠️ **Le CANAL d'un mouvement n'est pas son MARCHAND** — trouvé par le panel APRÈS gate ET CI
+  verts : la clé gardait les DEUX premiers jetons, or les deux formats les plus courants d'un relevé
+  québécois mettent le bénéficiaire en TROISIÈME (`Interac e-Transfer to /Maxime /` et `… /Julie /`
+  → tous deux `interac e` ; `Bill payment - Hydro` et `… Bell` → `bill payment` ; `Ch 4521` et
+  `Ch 9981` → `ch`). Deux virements RÉELS au même montant le même jour sortaient donc `haute` et
+  **pré-cochés** : la régression money-critical que le lot existait pour empêcher, réintroduite une
+  marche plus bas. **Devant une clé qui TRONQUE, demander quels libellés du domaine placent
+  l'information discriminante APRÈS la troncature.** ⚠️ Et j'ai exporté un 2ᵉ `merchantKey` alors
+  qu'un homonyme au contrat DIFFÉRENT existait (`merchantProfile.ts`, consommé par `Planning.tsx`) —
+  « grep le CONCEPT, pas le symbole » vaut surtout quand on est sûr d'inventer du neuf. ⚠️ Et une
+  valeur par défaut recopiée (badge à tolérance 0 / panneau réglable) redevient deux valeurs :
+  **élargir un COMPTEUR et élargir ce qu'on PRÉ-COCHE sont deux décisions distinctes** — quand on ne
+  peut pas faire la première sans la seconde, on écrit sa portée au lieu de l'élargir.
   ⚠️⚠️ **Deuxième réfutation d'affilée d'un menu par une réponse en TEXTE LIBRE** : sur `7× Metro Rj
   −7,90 $` le même jour, j'ai proposé « sept vrais trajets » ou « six doublons » — Marc a répondu
   **« 2 vrais achetés »**, ni l'un ni l'autre, et ma recommandation (vrais trajets, d'après le prix du

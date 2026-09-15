@@ -15,7 +15,16 @@
 > haute/moyenne/faible) ; tri par confiance avant montant ; seuls `haute`/`moyenne` pré-cochés ; les
 > `faible` restent listés, marqués « marchands différents ». Plus un **badge « N détecté(s) » sur
 > l'en-tête REPLIÉ** — Marc voit ses doublons « dans ma liste », donc rien ne l'invitait à ouvrir le
-> panneau. 9 gardes, **5 perturbations séparées**, chacune ne rougissant que sa cible.
+> panneau. 12 gardes, **8 perturbations séparées**, chacune ne rougissant que sa cible.
+> ⚠️ **2ᵉ passe, imposée par le panel de revue APRÈS gate ET CI verts** : la clé marchand gardait les
+> DEUX premiers jetons, or `Interac e-Transfer to /Maxime /` et `Bill payment - Hydro` mettent le
+> bénéficiaire en TROISIÈME → `interac e` / `bill payment` pour TOUT LE MONDE, donc deux virements
+> RÉELS et distincts au même montant le même jour ressortaient `haute` et **pré-cochés**. Corrigé en
+> retirant les jetons de CANAL avant la troncature (même geste que pour `GOOGLE *`) ; clé vide =
+> `faible`. Renommée `cleMarchandPourConfiance` — un `merchantKey` au contrat DIFFÉRENT existait déjà
+> dans `merchantProfile.ts`. Badge et panneau lisent désormais la même `TOLERANCE_PAR_DEFAUT`, et le
+> badge ÉCRIT sa portée (« Même jour ») plutôt que de l'élargir (à ±1 j, deux achats récurrents
+> identiques deux jours de suite deviendraient pré-cochés).
 > ⚠️ **Toujours AUCUN marquage automatique, et c'est mesuré** : sur les `7× Metro Rj Rio De −7,90 $`
 > du même jour, Marc a répondu **« 2 vrais achetés »** — 5 doublons sur 7, une proportion qu'aucune
 > heuristique ne devine. Ma question en clic proposait « 7 vrais » ou « 6 doublons » : les DEUX

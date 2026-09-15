@@ -22,7 +22,7 @@
 // de montant (deux dépenses sans rapport qui font le même prix), pas un doublon.
 
 import { readFileSync } from 'node:fs';
-import { findDuplicateGroups, merchantKey } from '../services/transactions/duplicateDetection';
+import { findDuplicateGroups, cleMarchandPourConfiance as merchantKey } from '../services/transactions/duplicateDetection';
 import type { Transaction } from '../types';
 
 function lireTsv(chemin: string): Transaction[] {

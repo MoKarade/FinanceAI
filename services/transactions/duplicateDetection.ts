@@ -95,31 +95,57 @@ function normalizePayee(payee: string): string {
 }
 
 /**
- * [TX-DUPLICATES-BRUIT] Clé MARCHAND : normalisation agressive, pensée pour rapprocher les DEUX
- * sources d'import réelles — le relevé en capitales avec n° de succursale (`MCDONALD'S 40044`) et
- * le libellé nettoyé de Fintable (`McDonald's`). Mesuré : les deux rendent `mcdonald s`, donc la
- * paire cross-source du 06→09/07 garde une confiance haute au lieu d'être noyée.
+ * Jetons qui n'identifient AUCUN marchand : ils décrivent le CANAL du mouvement (chèque, virement,
+ * paiement de facture) et préfixent le bénéficiaire réel, exactement comme les passerelles de
+ * paiement. Mesuré le 2026-09-15 sur la vraie forme des libellés bancaires québécois : sans ce
+ * retrait, `Interac e-Transfer to /Maxime /` et `… /Julie /` rendaient tous deux `interac e`,
+ * `Bill payment - Hydro Quebec` et `… Bell Canada` tous deux `bill payment`, `Ch 4521` et
+ * `Ch 9981` tous deux `ch` — donc DEUX virements distincts au même montant le même jour étaient
+ * classés `haute` et PRÉ-COCHÉS. C'est la régression money-critical que ce lot corrige, une marche
+ * plus bas : `isDuplicate` retire la ligne du solde, du budget ET des revenus.
+ */
+const JETONS_CANAL = /\b(interac|virement|transfert|transfer|cheque|chq|ch|paiement|payment|bill|facture|retrait|depot|prelevement|preauth|preautorise|to|from|au|aux|and|the)\b/g;
+
+/**
+ * [TX-DUPLICATES-BRUIT] Clé MARCHAND servant à CLASSER un groupe de doublons candidats.
+ *
+ * ⚠️ Homonyme volontairement écarté : `merchantProfile.merchantKey` existe et fait un AUTRE
+ * travail — identifier un abonnement récurrent, en jetant tout jeton non purement alphabétique.
+ * Elle ne connaît ni les passerelles de paiement (`GOOGLE *Cell to Singul` ≠ `Cell To Singul`,
+ * mesuré) ni les jetons de canal ci-dessus. Les deux fonctions ne sont pas interchangeables, d'où
+ * un nom distinct plutôt qu'un second `merchantKey` exporté : un même nom pour deux contrats rend
+ * le code introuvable par un seul grep (`UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM`).
+ *
+ * Normalisation agressive, pensée pour rapprocher les DEUX sources d'import réelles — le relevé en
+ * capitales avec n° de succursale (`MCDONALD'S 40044`) et le libellé nettoyé de Fintable
+ * (`McDonald's`). Mesuré : les deux rendent `mcdonald`, donc la paire cross-source du 06→09/07
+ * garde une confiance haute au lieu d'être noyée.
  *
  * ⚠️ Elle ne sert qu'à CLASSER, jamais à regrouper : elle est volontairement imparfaite
  * (`UBER CANADA/UBEREATS` → `uber ubereats` ≠ `Uber Eats` → `uber eats`), et l'utiliser comme
  * critère de regroupement perdrait en silence exactement les doublons à deux sources que le
  * détecteur existe pour attraper. Un groupe qu'elle n'apparie pas descend en `faible` — il reste
- * visible, il n'est simplement plus pré-coché.
+ * visible, il n'est simplement plus pré-coché. Une clé VIDE (il ne restait que du canal, comme
+ * `Ch 4521`) vaut « je ne sais pas » et descend donc aussi en `faible`.
  */
-export function merchantKey(payee: string): string {
+export function cleMarchandPourConfiance(payee: string): string {
     return payee
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .replace(/[*#]/g, ' ')
         // Passerelles de paiement : elles préfixent le VRAI marchand et ne l'identifient pas.
         .replace(/\b(google|sq|sp|paypal|pp)\b/g, ' ')
-        // N° de succursale / de terminal : `MCDONALD'S 40044` et `MCDONALD'S 26033` sont le même
+        // Canal du mouvement (chèque, Interac, paiement de facture) : même raison, cf. JETONS_CANAL.
+        .replace(JETONS_CANAL, ' ')
+        // N° de succursale / de terminal : `MCDONALD'S 40044` et `MCDONALD'S 26033` sont la même
         // enseigne pour ce classement.
         .replace(/\b\d{3,}\b/g, ' ')
         .replace(/\b(inc|ltd|llc|co|canada|quebec|qc|ns|halifax|montreal|rio|de|du|la|le|les)\b/g, ' ')
         .replace(/[^a-z0-9]+/g, ' ')
         .trim()
-        .split(' ').filter(Boolean).slice(0, 2).join(' ');
+        // Un jeton d'UN caractère ne nomme aucun marchand (l'apostrophe de `McDonald's`, le `e` de
+        // `e-Transfer`) et occuperait une des deux places retenues.
+        .split(' ').filter((t) => t.length > 1).slice(0, 2).join(' ');
 }
 
 /**
@@ -199,7 +225,7 @@ function buildGroup(amountCents: number, entries: Array<{ tx: Transaction; day: 
     const keepId = members[0].id;
     const payees = new Set(members.map((m) => normalizePayee(m.payee)));
     const dates = new Set(members.map((m) => m.date));
-    const marchands = new Set(members.map((m) => merchantKey(m.payee)));
+    const marchands = new Set(members.map((m) => cleMarchandPourConfiance(m.payee)));
     const memeMarchand = marchands.size === 1 && [...marchands][0] !== '';
     const confiance: DuplicateGroup['confiance'] = !memeMarchand
         ? 'faible'

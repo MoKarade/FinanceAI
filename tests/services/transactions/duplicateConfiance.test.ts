@@ -11,15 +11,18 @@
  *
  * Le libellé reste HORS du critère de REGROUPEMENT — c'est la décision d'origine, et elle vise un
  * vrai cas (un doublon né de deux sources d'import porte deux libellés). Ce qui change, c'est qu'il
- * CLASSE le résultat : `merchantKey` normalise assez fort pour que `MCDONALD'S 40044` (relevé) et
- * `McDonald's` (Fintable) tombent tous deux sur `mcdonald s`, donc la paire cross-source garde une
+ * CLASSE le résultat : `cleMarchandPourConfiance` normalise assez fort pour que `MCDONALD'S 40044` (relevé) et
+ * `McDonald's` (Fintable) tombent tous deux sur `mcdonald`, donc la paire cross-source garde une
  * confiance élevée pendant que les collisions descendent en `faible`.
  *
  * ⚠️ Les fixtures ci-dessous sont les VRAIS libellés et montants de ces collisions — c'est le seul
  * moyen que la garde échoue si la normalisation cesse de les distinguer.
  */
 import { describe, it, expect } from 'vitest';
-import { findDuplicateGroups, merchantKey } from '../../../services/transactions/duplicateDetection';
+import {
+    findDuplicateGroups,
+    cleMarchandPourConfiance as cleMarchand,
+} from '../../../services/transactions/duplicateDetection';
 import type { Transaction } from '../../../types';
 
 let prochainId = 1;
@@ -66,13 +69,13 @@ describe('[TX-DUPLICATES-BRUIT] la confiance sépare les vrais doublons des coll
         ];
         const groupes = findDuplicateGroups(txs, { dayToleranceDays: 3 });
 
-        expect(merchantKey("MCDONALD'S 40044")).toBe(merchantKey("McDonald's"));
+        expect(cleMarchand("MCDONALD'S 40044")).toBe(cleMarchand("McDonald's"));
         // ⚠️ Le témoin ci-dessus est REDONDANT et c'est mesuré : retirer la règle qui efface les
-        // n° de succursale le laisse VERT, parce que `slice(0, 2)` coupe déjà après « mcdonald s ».
+        // n° de succursale le laisse VERT, parce que `slice(0, 2)` coupe déjà après « mcdonald ».
         // Le témoin qui DISCRIMINE vraiment est un marchand dont le numéro tombe dans les deux
         // premiers jetons — `MAXI 8676` (relevé) contre `Maxi` (Fintable), deux vrais libellés de
         // l'état de Marc. Sans la règle, `maxi 8676` ≠ `maxi` et le rapprochement est perdu.
-        expect(merchantKey('MAXI 8676')).toBe(merchantKey('Maxi'));
+        expect(cleMarchand('MAXI 8676')).toBe(cleMarchand('Maxi'));
         expect(groupes).toHaveLength(1);
         expect(groupes[0].confiance).toBe('moyenne'); // même marchand, dates différentes
     });
@@ -93,19 +96,61 @@ describe('[TX-DUPLICATES-BRUIT] la confiance sépare les vrais doublons des coll
 
     it('la clé marchand est DÉLIBÉRÉMENT imparfaite, et ses trous sont écrits', () => {
         // ⚠️ Ce test ne défend pas une qualité : il EMPÊCHE de croire que la clé apparie tout.
-        // Elle CLASSE, elle ne regroupe pas (cf. le JSDoc de `merchantKey`) — un trou coûte une
+        // Elle CLASSE, elle ne regroupe pas (cf. son JSDoc) — un trou coûte une
         // confiance `faible`, jamais un doublon perdu, puisque le groupe reste listé.
         // Mesuré sur les vrais libellés de Marc :
-        expect(merchantKey('Maxi 8664 Baie')).toBe('maxi baie');   // la VILLE reste dans les 2 jetons
-        expect(merchantKey('Maxi')).toBe('maxi');                  // donc ces deux-là ne s'apparient PAS
-        expect(merchantKey('UBER CANADA/UBEREATS')).toBe('uber ubereats');
-        expect(merchantKey('Uber Eats')).toBe('uber eats');        // ni ceux-là
+        expect(cleMarchand('Maxi 8664 Baie')).toBe('maxi baie');   // la VILLE reste dans les 2 jetons
+        expect(cleMarchand('Maxi')).toBe('maxi');                  // donc ces deux-là ne s'apparient PAS
+        expect(cleMarchand('UBER CANADA/UBEREATS')).toBe('uber ubereats');
+        expect(cleMarchand('Uber Eats')).toBe('uber eats');        // ni ceux-là
 
         // Et ce qu'elle apparie bien, elle l'apparie pour de vrai — sinon le test ci-dessus
         // serait satisfait par une clé qui ne rapproche JAMAIS rien.
-        expect(merchantKey('COUCHE-TARD 1141 QUEBEC QC')).toBe(merchantKey('COUCHE-TARD 1141'));
-        expect(merchantKey('METRO FERLAND DU MARAI')).toBe(merchantKey('Metro Ferland Du Marai'));
-        expect(merchantKey('GOOGLE *Cell to Singul')).toBe(merchantKey('Cell To Singul Halifax Ns'));
+        expect(cleMarchand('COUCHE-TARD 1141 QUEBEC QC')).toBe(cleMarchand('COUCHE-TARD 1141'));
+        expect(cleMarchand('METRO FERLAND DU MARAI')).toBe(cleMarchand('Metro Ferland Du Marai'));
+        expect(cleMarchand('GOOGLE *Cell to Singul')).toBe(cleMarchand('Cell To Singul Halifax Ns'));
+    });
+
+    it('CANAL ≠ MARCHAND : deux virements/chèques distincts au même montant restent `faible`', () => {
+        // ⚠️ Trouvé par le panel de revue APRÈS le 1er jet de ce lot, et mesuré sur le vrai code :
+        // `slice(0, 2)` ne gardait que les deux premiers jetons, donc pour les deux formats de
+        // libellé les plus courants d'un relevé québécois — « Interac e-Transfer to /<personne> »
+        // et « Bill payment - <fournisseur> » — le BÉNÉFICIAIRE (3ᵉ jeton) était systématiquement
+        // coupé : `interac e` et `bill payment` pour tout le monde. Deux virements RÉELS et
+        // DISTINCTS au même montant le même jour sortaient donc en `haute`, PRÉ-COCHÉS — soit
+        // exactement la régression money-critical que ce lot prétend corriger, réintroduite une
+        // marche plus bas (`isDuplicate` retire la ligne du solde, du budget ET des revenus).
+        const virements = [
+            tx('2026-07-10', -100, 'Interac e-Transfer to /Maxime /'),
+            tx('2026-07-10', -100, 'Interac e-Transfer to /Julie /'),
+        ];
+        expect(findDuplicateGroups(virements, { dayToleranceDays: 0 })[0].confiance).toBe('faible');
+
+        const factures = [
+            tx('2026-07-10', -250, 'Bill payment - Hydro Quebec'),
+            tx('2026-07-10', -250, 'Bill payment - Bell Canada'),
+        ];
+        expect(findDuplicateGroups(factures, { dayToleranceDays: 0 })[0].confiance).toBe('faible');
+
+        // Un CHÈQUE ne porte aucun marchand du tout : la clé est VIDE, ce qui vaut « je ne sais
+        // pas » et descend aussi en `faible` — jamais en `haute` par un « ch » partagé.
+        expect(cleMarchand('Ch 4521')).toBe('');
+        expect(cleMarchand('CHQ 5678')).toBe('');
+        const cheques = [
+            tx('2026-07-10', -300, 'Ch 4521'),
+            tx('2026-07-10', -300, 'Ch 9981'),
+        ];
+        expect(findDuplicateGroups(cheques, { dayToleranceDays: 0 })[0].confiance).toBe('faible');
+
+        // ANTI-VACUITÉ du retrait de canal : il doit RÉVÉLER le bénéficiaire, pas tout effacer —
+        // sinon « tout devient faible » passerait les trois assertions ci-dessus sans rien prouver.
+        expect(cleMarchand('Interac e-Transfer to /Maxime /')).toBe('maxime');
+        expect(cleMarchand('Bill payment - Hydro Quebec')).toBe('hydro');
+        const memeBeneficiaire = [
+            tx('2026-07-10', -100, 'Interac e-Transfer to /Maxime /'),
+            tx('2026-07-10', -100, 'VIREMENT INTERAC Maxime'),
+        ];
+        expect(findDuplicateGroups(memeBeneficiaire, { dayToleranceDays: 0 })[0].confiance).toBe('haute');
     });
 
     it('ANTI-VACUITÉ : sans collision, aucun groupe n\'est déclassé', () => {
@@ -117,6 +162,6 @@ describe('[TX-DUPLICATES-BRUIT] la confiance sépare les vrais doublons des coll
         ];
         const groupes = findDuplicateGroups(txs, { dayToleranceDays: 0 });
         expect(groupes[0].confiance).toBe('haute');
-        expect(merchantKey('Sodexo')).not.toBe(merchantKey('Uber'));
+        expect(cleMarchand('Sodexo')).not.toBe(cleMarchand('Uber'));
     });
 });

@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-15 (CarAI peut enfin te dire où tu en es dans ton bail)
+
+- **Ajouté** : un nouvel accès `GET /vehicule/bail` sur ton serveur FinanceAI, pour **CarAI**
+  seulement. Elle connaissait les termes de ton bail (dates, kilométrage) mais **aucun montant** :
+  ni mensualité, ni solde. Elle peut maintenant les lire ici, et afficher « ce que j'ai payé sur le
+  prix total » dans son bandeau d'accueil.
+- **Ce qui sort** : UNE dette — celle du véhicule. Son nom, son solde, sa mensualité, son taux, et
+  les deux dates si elles sont renseignées. **Rien d'autre** : ni ton patrimoine, ni tes autres
+  dettes, ni tes transactions.
+- **Un jeton à part, exprès** : `FINANCEAI_VEHICULE_TOKEN`, **différent** de celui du hub. Réutiliser
+  celui du hub aurait évité une variable à poser — mais il ouvre ta valeur nette et ton cashflow, et
+  CarAI n'a besoin que d'une mensualité. Tant que la variable n'est pas posée, l'accès **n'existe
+  pas** (404) et CarAI affiche « non configuré » plutôt qu'un chiffre.
+- **Si tu as deux véhicules** : l'accès **refuse de choisir** et te dit lesquels. Publier la mauvaise
+  dette mettrait un montant faux — et parfaitement crédible — sur ton écran d'accueil.
+- **Ce que FinanceAI ne sait pas, il le DIT** : un champ absent revient vide *et* nommé, pour que
+  CarAI s'abstienne au lieu de deviner.
+
+---
+
 ## [unreleased] — 2026-09-15 (Le panneau « Doublons » te dit enfin combien il en trouve — et arrête de raconter n'importe quoi)
 
 - **Corrigé** : le détecteur de doublons groupait des dépenses qui n'ont **rien à voir** dès qu'elles

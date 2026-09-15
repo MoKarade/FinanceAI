@@ -13285,3 +13285,31 @@ seule façon d'entendre le cas qu'on n'a pas imaginé.
 transactions), immédiatement utile à Marc. La moitié qui écrit un solde est ROUTÉE avec ses deux
 mesures, non codée (`UN-INVARIANT-JUSTE-PEUT-ETRE-AVEUGLE-A-UNE-STRATEGIE-ENTIERE`, corollaire de
 découpage : un lot se coupe à la frontière « ça déplace de l'argent / ça n'en déplace pas »).
+
+## `UNE-FIXTURE-DONT-L-ID-EST-UN-ID-DE-PERSONA-EST-UNE-FIXTURE-VIDE` (2026-09-15)
+
+En écrivant le test de bout en bout de `GET /vehicule/bail` (`[VEHICULE-BAIL]`), la route a répondu
+**404 « aucune dette de véhicule »** sur une fixture qui en portait pourtant une, bien formée,
+`category: 'Car'`. Le module pur passait ses 14 tests sur la MÊME dette. Mesuré en interrogeant le
+store directement : `store.get()` rendait **`debts: []`**.
+
+La cause n'est pas le code testé : `makeStateStore` DÉSINFECTE ce qu'il lit
+(`sanitizePersonaArtifacts`, `[PERSONA-PURGE]`), et l'id de ma fixture — `'d1'` — figure dans
+`PERSONA_EXACT_IDS` (`services/testPersonas/artifactIds.ts`). Le sanitizer a fait exactement son
+travail : il a retiré ce qu'il prend pour un résidu de persona de test. **C'est la fixture qui
+mentait, pas la garde.**
+
+Le fichier le dit d'ailleurs en toutes lettres, dans son en-tête : « toute NOUVELLE surface qui crée
+des ids doit garder la convention horodatée/préfixée — **jamais d'id court générique (`b1`, `d1`,
+`tr-1`, `fg-1`…)** ». Je l'ai lu APRÈS avoir perdu vingt minutes à soupçonner le schéma de chargement.
+
+⚠️ **Ce qui rend ce piège coûteux est son ASYMÉTRIE.** Ici il a produit un ROUGE, parce que
+j'assertais une PRÉSENCE. Une assertion d'**ABSENCE** — « cette dette ne doit pas être publiée »,
+« aucune alerte ne sort », « le total reste nul » — serait passée **VERTE sur une collection vidée**,
+donc vacueuse, sans que rien ne le signale. La règle générale : **tout test qui passe par le STORE
+(et non par le module pur) doit poser des ids conformes à la convention réelle**, et une assertion
+d'absence sur une collection chargée par le store exige d'abord de prouver que la collection est
+NON VIDE.
+
+Famille : `UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE` — même mécanisme (la donnée
+n'arrive jamais), autre porte (là c'était le typage, ici c'est une purge légitime).

@@ -40,7 +40,7 @@ import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { parseRolesJson } from '../services/fintable/rolesConfig';
 import { BodyTooLargeError, readBody, sendJson, sendRpcError } from './http/plomberie';
 import { handleOAuth } from './http/oauth';
-import { handleFintableSync, handleHubSummary, handleRefresh } from './http/routesPlanifiees';
+import { handleFintableSync, handleHubSummary, handleRefresh, handleVehiculeBail } from './http/routesPlanifiees';
 
 /** Délai de grâce de l'arrêt : au-delà, fermeture FORCÉE des connexions (sinon une requête en vol
  *  suspendue bloque `server.close()` à jamais → SIGKILL Cloud Run — prouvé par le panel 2026-07-13). */
@@ -82,6 +82,13 @@ export interface HttpServerOptions {
      *  `fintableSyncSecret` pour que la route fasse quoi que ce soit d'utile (sans rôles, le mapper
      *  n'a rien à mapper — pas une erreur de démarrage, juste une sync qui ne trouve aucun compte connu). */
     fintableToken?: string;
+    /** [VEHICULE-BAIL] secret de CarAI : si présent, GET /vehicule/bail est exposé (Authorization:
+     *  Bearer, 401 sinon). Absent = route désactivée. DISTINCT de `hubToken` À DESSEIN — celui-ci
+     *  n'ouvre QUE la dette du véhicule, là où le jeton du hub ouvre la valeur nette. */
+    vehiculeSecret?: string;
+    /** [VEHICULE-BAIL] nom EXACT de la dette à publier, quand plusieurs véhicules coexistent.
+     *  Absent = sélection par kind/catégorie, et refus 409 si elle est ambiguë. */
+    vehiculeNomDette?: string;
     fintableRoles?: FintableMappingConfig['roles'];
 }
 
@@ -232,6 +239,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         ...(options.hubToken ? ['/hub/summary'] : []),
         ...(options.refreshSecret ? ['/refresh'] : []),
         ...(options.fintableSyncSecret ? ['/fintable-sync'] : []),
+        ...(options.vehiculeSecret ? ['/vehicule/bail'] : []),
     ];
 
     const server = createHttpServer((req, res) => {
@@ -250,6 +258,10 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         }
         if (url === '/fintable-sync' && options.fintableSyncSecret) {
             handleFintableSync(req, res, state.store, options.fintableSyncSecret, options.fintableToken, options.fintableRoles);
+            return;
+        }
+        if (url === '/vehicule/bail' && options.vehiculeSecret) {
+            handleVehiculeBail(req, res, state.store, options.vehiculeSecret, options.vehiculeNomDette);
             return;
         }
         if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
@@ -399,6 +411,16 @@ if (isDirectRun) {
             console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_FINTABLE_SYNC_SECRET trop court (< 16 caractères).');
             process.exit(1);
         }
+        // [VEHICULE-BAIL] secret de CarAI (GET /vehicule/bail) : optionnel (route désactivée sans
+        // lui), mais jamais faible. DISTINCT de FINANCEAI_HUB_TOKEN : celui-ci n'ouvre que la dette
+        // du véhicule, là où le jeton du hub ouvre la valeur nette et le cashflow.
+        const vehiculeSecret = process.env.FINANCEAI_VEHICULE_TOKEN;
+        if (vehiculeSecret !== undefined && vehiculeSecret.length < 16) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_VEHICULE_TOKEN trop court (< 16 caractères).');
+            process.exit(1);
+        }
+        const vehiculeNomDette = process.env.FINANCEAI_VEHICULE_DETTE;
+
         const fintableToken = process.env.FINTABLE_TOKEN;
         let fintableRoles: FintableMappingConfig['roles'] | undefined;
         if (fintableSyncSecret) {
@@ -429,7 +451,7 @@ if (isDirectRun) {
         const state = await resolveState(process.argv[2]);
         const running = await startHttpServer({
             port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken, refreshSecret, finnhubKey,
-            fintableSyncSecret, fintableToken, fintableRoles,
+            fintableSyncSecret, fintableToken, fintableRoles, vehiculeSecret, vehiculeNomDette,
         });
 
         console.error(`[FinanceAI MCP http] v${MCP_SERVER_VERSION} — écoute http://${host}:${running.port}/mcp (santé : /health)`);
@@ -446,6 +468,9 @@ if (isDirectRun) {
         console.error(fintableSyncSecret
             ? `[FinanceAI MCP http] Sync Fintable planifiée : POST /fintable-sync ACTIF (Bearer exigé)${fintableToken ? '' : ' — SANS FINTABLE_TOKEN : chaque appel échouera 503'}${fintableRoles ? '' : ' — SANS rôles de comptes (FINTABLE_ROLES_JSON absent) : aucun compte ne sera reconnu'}.`
             : '[FinanceAI MCP http] Sync Fintable planifiée : /fintable-sync désactivé (FINANCEAI_FINTABLE_SYNC_SECRET absent).');
+        console.error(vehiculeSecret
+            ? `[FinanceAI MCP http] Bail du véhicule : GET /vehicule/bail ACTIF (Bearer exigé)${vehiculeNomDette ? ` — dette « ${vehiculeNomDette} »` : ' — dette choisie par kind/catégorie'}.`
+            : '[FinanceAI MCP http] Bail du véhicule : /vehicule/bail désactivé (FINANCEAI_VEHICULE_TOKEN absent).');
         if (isLoopback) {
             console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');
         } else if (!auth) {

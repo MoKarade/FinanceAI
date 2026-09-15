@@ -8,6 +8,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { HUB_TOKEN_HEADER, serveSummary } from '@mokarade/hub-contract/endpoint';
 import type { ResolvedState } from '../bootstrap';
 import { buildHubSummary, errorHubSummary } from '../hubSummary';
+import { bailVehicule } from '../vehiculeBail';
+import { getStateFreshness } from '../state/freshness';
 import { runPriceRefresh } from '../refreshPrices';
 import { runFintableSync } from '../runFintableSync';
 import { FintableClient } from '../../services/fintable/client';
@@ -134,4 +136,65 @@ export const handleHubSummary = (req: IncomingMessage, res: ServerResponse, stor
         res.writeHead(status, headers);
         res.end(body);
     });
+};
+
+
+// [VEHICULE-BAIL] GET /vehicule/bail — ce que FinanceAI sait du bail du véhicule, pour CarAI.
+//
+// POURQUOI UN SECRET DÉDIÉ, et pas `FINANCEAI_HUB_TOKEN`. Réutiliser le jeton du hub aurait
+// évité une variable à poser — mais il ouvre `/hub/summary`, donc la valeur nette, le cashflow
+// et les liquidités. Le donner à CarAI pour qu'elle lise UNE mensualité, c'est lui donner tout
+// le reste. Le dépôt a déjà tranché ce même arbitrage entre `/refresh` et `/fintable-sync`
+// (« secrets DISTINCTS — périmètres différents, rotation indépendante ») : on le suit.
+//
+// ⚠️ La route n'est CÂBLÉE que si le secret existe (voir `mcp/http.ts`) : sans lui, l'URL n'existe
+// pas du tout — 404, plus discret qu'un 503 qui confirmerait le endpoint à qui le sonde.
+//
+// Réponses : 200 { ok:true, bail } ; 401 jeton absent/faux ; 404 aucune dette de véhicule ;
+// 409 plusieurs candidates (on REFUSE de choisir — publier la mauvaise dette mettrait un montant
+// faux et crédible sur l'écran d'accueil de CarAI) ; 503 état illisible. Toujours `no-store` :
+// un solde est un instantané.
+export const handleVehiculeBail = (
+    req: IncomingMessage, res: ServerResponse, store: StoreEtat, vehiculeSecret: string,
+    nomDette: string | undefined,
+): void => {
+    if (req.method !== 'GET') {
+        sendJson(res, 405, { error: 'GET uniquement.' }, HUB_NO_STORE);
+        return;
+    }
+    const header = req.headers.authorization;
+    const provided = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : '';
+    if (!provided || !hubTokensMatch(provided, vehiculeSecret)) {
+        sendJson(res, 401, { error: 'Authorization: Bearer absent ou invalide.' }, HUB_NO_STORE);
+        return;
+    }
+    store
+        .get()
+        .then((appState) => {
+            const resultat = bailVehicule(appState, {
+                nomVoulu: nomDette ?? null,
+                dataAsOf: getStateFreshness().updatedAt,
+            });
+            if (resultat.statut === 'introuvable') {
+                sendJson(res, 404, { ok: false, statut: 'introuvable', raison: resultat.raison }, HUB_NO_STORE);
+                return;
+            }
+            if (resultat.statut === 'ambigu') {
+                sendJson(res, 409, {
+                    ok: false, statut: 'ambigu', candidates: resultat.candidates,
+                    raison: 'Plusieurs dettes de véhicule : nommer celle qui compte dans FINANCEAI_VEHICULE_DETTE.',
+                }, HUB_NO_STORE);
+                return;
+            }
+            sendJson(res, 200, { ok: true, statut: 'trouve', bail: resultat.bail }, HUB_NO_STORE);
+        })
+        .catch((err: unknown) => {
+            const reason = err instanceof Error ? err.message : String(err);
+            console.error('[FinanceAI MCP http] /vehicule/bail : état indisponible —', reason);
+            // 503 et NON 200 : contrairement au summary du hub (dont le contrat porte un
+            // `status: "error"` que le widget sait afficher), il n'existe ici aucune forme
+            // « panne » — un 200 obligerait CarAI à deviner, et un montant absent se lirait
+            // comme un bail à zéro.
+            sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
+        });
 };

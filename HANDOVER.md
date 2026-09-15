@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-15 (2) — `GET /vehicule/bail` : FinanceAI parle à CarAI
+> Ticket `[VEHICULE-BAIL]`, **livré**. ADR [`0017`](docs/adr/0017-endpoint-bail-vehicule-pour-carai.md).
+> CarAI affiche « payé vs total du bail » et ne connaît **aucun dollar** : les montants vivent ici.
+> `/hub/summary` ne peut pas les porter (six métriques) et le hub ne relaie pas d'app à app.
+> ✅ **Livré** : `mcp/vehiculeBail.ts` (PUR), route `GET /vehicule/bail` (Bearer, 401/404/405/409/503,
+> `no-store`), secret **DÉDIÉ** `FINANCEAI_VEHICULE_TOKEN` (jamais celui du hub — il ouvrirait la
+> valeur nette pour lire une mensualité ; même arbitrage que `/refresh` vs `/fintable-sync`).
+> **21 tests, 7 perturbations, 7 rouges.**
+> ⚠️ **DEUX GESTES DE MARC RESTENT**, sinon la route n'existe pas et CarAI dit « non configuré » :
+> poser `FINANCEAI_VEHICULE_TOKEN` (≥ 16 caractères) sur le PC qui fait tourner le serveur MCP, la
+> même valeur côté CarAI sur Vercel, puis **redémarrer le serveur MCP**.
+> ⚠️ **Leçon payée** : ma fixture de test portait `id: 'd1'` — un id de PERSONA DE TEST que le store
+> PURGE à la lecture. `store.get()` rendait `debts: []` et la route répondait 404 sur une fixture qui
+> « avait » une dette. Détail et portée dans `docs/CONVENTIONS.md`
+> (`UNE-FIXTURE-DONT-L-ID-EST-UN-ID-DE-PERSONA-EST-UNE-FIXTURE-VIDE`).
+>
 > ## ✅ Session 2026-09-15 — « beaucoup trop de doublons » : mesuré, puis corrigé
 > Ticket 🔧 `[TX-DUPLICATES-BRUIT]`, **livré** (PR #966).
 > Mesuré sur **321 transactions réelles** (01/07 → 14/09, `scripts/mesureDoublons.ts`, committé) :

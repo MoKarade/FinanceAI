@@ -832,6 +832,12 @@ n'est pas réécrire un récit.
   **REQUIS** : optionnel, ses lecteurs écriraient `?? []` et « pas regardé » redeviendrait
   indiscernable de « rien ». ⚠️ Un avertissement qui parlerait à chaque passe ne se corrige pas par
   un seuil mais en TRANCHANT les champs cités (consommés, ou écartés sciemment avec leur raison).
+  ⚠️⚠️ **Un champ requis ne protège que là où le type est VÉRIFIÉ** : `tsc` a énuméré deux fixtures
+  et en a laissé une troisième, close par `as never` — qui fait taire le compilateur sur l'objet
+  ENTIER, pas sur un champ. Trois rouges à l'EXÉCUTION, gate complet, pas au typecheck ; et la
+  réponse n'est jamais de rendre le lecteur tolérant (`?.length` réintroduirait le `?? []` interdit).
+  ⚠️ Rouge trouvé de justesse : j'avais lancé le gate avec `| tail -8`, qui coupe le nom des fichiers
+  en échec (`UN-TAIL-SUR-LA-SORTIE-D-UN-REBASE-CACHE-DES-CONFLITS`, re-payée sur une suite de tests).
   ⚠️ Et **avant d'écrire un détecteur, demander quel défaut CONNU le ferait crier tous les jours** :
   le recoupement par le SOLDE est juste, mais tant que `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`
   jette les transactions de la carte, il naîtrait mort — l'ordre entre deux tickets décide de

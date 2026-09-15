@@ -5683,6 +5683,20 @@ un montant ni le jeton. Et livrer en parallèle le mécanisme qui rendra la mêm
 automatiquement à la prochaine passe : une question qu'on doit poser à un humain une fois est
 acceptable, la reposer à chaque incident ne l'est pas.
 
+⚠️⚠️ **Un champ REQUIS ne protège que là où le type est VÉRIFIÉ, et le gate l'a prouvé une heure
+plus tard** : `tsc` a bien énuméré deux fixtures à corriger — et en a laissé une TROISIÈME, parce
+qu'elle se termine par `as never`. Le `as` ne fait pas qu'aider le compilateur à se taire sur un
+champ : il le fait taire sur l'objet ENTIER, donc la fixture a continué de compiler tout en rendant
+`undefined` là où le code lit `.length`. Trois tests rouges, pas au typecheck mais à l'exécution.
+Deux conséquences : le typecheck vert ne dit rien des fixtures qui se sont exemptées elles-mêmes, et
+la réponse à ce rouge n'est SURTOUT pas de rendre le lecteur tolérant (`?.length`) — ce serait
+réintroduire, une marche plus bas, le `?? []` que le champ requis existe pour interdire. On corrige
+la fixture, et on écrit dans la fixture pourquoi elle avait échappé.
+⚠️ Et **le rouge a failli rester introuvable par ma propre faute** : j'avais lancé le gate avec
+`| tail -8`, donc les noms des fichiers en échec étaient coupés — `UN-TAIL-SUR-LA-SORTIE-D-UN-REBASE-CACHE-DES-CONFLITS`
+re-payée sur une suite de tests. Une sortie de gate se FILTRE (`grep -E "FAIL|Tests"`), jamais ne se
+coupe par le haut.
+
 ⚠️ **Le recoupement qui paraît évident a un PRÉREQUIS qui le rendrait mort-né** : le solde du compte
 est la seule grandeur indépendante fiable (mesuré : c'est lui qui était juste), et comparer Δsolde à
 la somme des transactions se calcule DANS la passe, sans rien persister. Mais

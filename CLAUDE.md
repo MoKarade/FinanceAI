@@ -211,6 +211,11 @@ données financières ne quittent pas la machine de Marc, donc le résumé se ca
 - **Période et devise** : le hub somme **par période** et refuse de fusionner « cumulé » avec
   « ce mois-ci ». Une app qui publierait `mois` se retrouverait seule dans sa colonne et casserait
   le total pour tout le monde.
+- ⚠️ **`GET /vehicule/bail` n'est PAS le hub** : c'est le seul endroit où FinanceAI parle à une
+  autre app (CarAI), sous un secret **dédié** (`FINANCEAI_VEHICULE_TOKEN`, jamais celui du hub — il
+  ouvrirait la valeur nette pour lire une mensualité). Il rend UNE dette, nomme ce que l'état ne
+  porte pas, et **refuse 409** plutôt que de choisir entre deux véhicules. ADR 0017, détail dans
+  `mcp/README.md`.
 - **Contrat pinné sur le tag `v1.3.0`** depuis le 14/09/2026. ⚠️ Re-pinner n'est pas optionnel
   pour consommer un champ neuf : Zod STRIPPE les clés inconnues, donc sur un pin antérieur
   `validateSummary` retire `expectedMaxAgeSec`, `details`, `primary` et `recommendation` **en

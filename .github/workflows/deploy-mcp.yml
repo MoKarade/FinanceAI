@@ -8,8 +8,23 @@
 #   - vars    GCP_PROJECT_ID (+ optionnels GCP_REGION, MCP_SERVICE_NAME, MCP_MIN_INSTANCES)
 #   - secrets GCP_WIF_PROVIDER (projects/…/workloadIdentityPools/…/providers/…),
 #             GCP_DEPLOY_SA (compte de service déployeur : run.admin + iam.serviceAccountUser + secretAccessor sur les 3 secrets)
-# Si Marc préfère le déploiement MANUEL (mcp/deploy.sh), ce workflow reste ignoré tant
+# Si Marc préfère le déploiement MANUEL (mcp/deploy.sh), le job `deploy` reste ignoré tant
 # que GCP_PROJECT_ID n'est pas défini (garde `if` ci-dessous).
+#
+# ⚠️ MAIS CE SILENCE A COÛTÉ AU MOINS 27 JOURS DE TRAVAIL NON DÉPLOYÉ, ET IL A FALLU LE
+# CHERCHER POUR LE VOIR. Mesuré le 2026-09-15 : le `/hub/summary` servi par Cloud Run
+# contenait encore « Investissements », « Dette totale » et « Espace CELI dispo » — le trio
+# remplacé par les trois lignes de placements le 2026-08-19 (b7c6e35 et 4ea10c4). Donc la
+# révision en ligne était antérieure au 19/08, avec 177 commits touchant le serveur en
+# attente, dont `/vehicule/bail` (livré la veille pour une demande de Marc) et
+# `/fintable-sync` (jamais exposé, constat du HANDOVER du 2026-07-30).
+#
+# Le HANDOVER le disait depuis SEPT SEMAINES. Personne ne l'a lu, parce que rien n'était
+# rouge : un job `skipped` ne réveille personne, et la coche verte du push disait le
+# contraire de la vérité.
+#
+# D'où le second job ci-dessous. Il ne déploie rien — il REFUSE de laisser un commit du
+# serveur passer en vert alors qu'aucun déploiement ne peut partir.
 
 name: Deploy MCP (Cloud Run)
 
@@ -61,3 +76,53 @@ jobs:
           SERVICE: ${{ vars.MCP_SERVICE_NAME || 'financeai-mcp' }}
           MIN_INSTANCES: ${{ vars.MCP_MIN_INSTANCES || '0' }}
         run: bash mcp/deploy.sh
+
+  # ── LE SILENCE DEVIENT BRUYANT ──────────────────────────────────────────────────────
+  #
+  # Exactement complémentaire du job `deploy` : sa garde est la NÉGATION de la sienne, donc
+  # l'un des deux tourne toujours et jamais les deux. Il partage aussi le même filtre de
+  # `paths` — s'il avait le sien, les deux listes divergeraient et l'alerte finirait par
+  # rater les chemins que le déploiement surveille.
+  #
+  # ⚠️ IL RESTERA ROUGE À CHAQUE COMMIT DU SERVEUR TANT QUE LA CI N'EST PAS CÂBLÉE, et
+  # c'est assumé : à chaque fois, c'est VRAI. Ce commit-là n'est pas déployé. Le rouge se
+  # ferme de deux façons — poser `GCP_PROJECT_ID` + les deux secrets (le job disparaît), ou
+  # déployer à la main (le rouge reste, mais il dit une dette réelle et non une panne).
+  # Un rouge toujours vrai et toujours actionnable n'est pas du bruit ; c'est une dette
+  # qu'on a cessé de pouvoir oublier.
+  alerte-non-deploye:
+    name: Le serveur a changé et RIEN ne peut le déployer
+    if: ${{ vars.GCP_PROJECT_ID == '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Historique COMPLET : le message mesure l'ampleur de la dette, et un clone
+          # superficiel la sous-estimerait silencieusement — le défaut même qu'on corrige.
+          fetch-depth: 0
+
+      - name: Mesurer la dette et échouer
+        run: |
+          set -euo pipefail
+
+          # Dernier commit ayant bougé MCP_SERVER_VERSION : c'est le repère le plus proche
+          # d'une « release » que ce dépôt possède. Faute de mieux, on borne par là.
+          repere=$(git log -1 --format=%H -S 'MCP_SERVER_VERSION =' -- mcp/bootstrap.ts || true)
+          version=$(sed -n "s/.*MCP_SERVER_VERSION = '\([^']*\)'.*/\1/p" mcp/bootstrap.ts)
+
+          if [ -n "$repere" ]; then
+            retard=$(git rev-list --count "${repere}..HEAD" -- mcp/ services/ utils/ types.ts constants.ts Dockerfile)
+            depuis=$(git log -1 --format=%ad --date=short "$repere")
+            mesure="${retard} commit(s) touchant le serveur depuis le dernier changement de version (v${version}, ${depuis})"
+          else
+            # On ne prétend pas savoir : une mesure impossible se dit, elle ne se remplace
+            # pas par un zéro rassurant.
+            mesure="ampleur non mesurable (repère de version introuvable)"
+          fi
+
+          echo "::error title=Serveur MCP non déployé::Ce commit touche le serveur MCP et AUCUN déploiement ne peut partir : la variable de dépôt GCP_PROJECT_ID n'est pas définie, donc le job « deploy » est ignoré. ${mesure}. Deux issues : poser GCP_PROJECT_ID + les secrets GCP_WIF_PROVIDER et GCP_DEPLOY_SA (cf mcp/README.md § Déploiement continu) pour que chaque push se déploie, ou lancer mcp/deploy.sh à la main maintenant."
+          exit 1

@@ -480,6 +480,39 @@ Décision et alternatives rejetées : [`docs/adr/0017`](../docs/adr/0017-endpoin
   choisir, parce que publier la mauvaise dette mettrait un montant faux et *crédible* sur l'écran
   d'accueil de CarAI ; `503` si l'état est illisible.
 
+### Activer sur Cloud Run
+
+⚠️ **Cette route est restée 404 en production du 15/09 jusqu'à ce que ce bloc existe.** Le
+handler, ses deux fichiers de tests et la doc ci-dessus étaient là ; `mcp/deploy.sh` ne montait
+simplement pas le secret, donc `FINANCEAI_VEHICULE_TOKEN` était absent du service et la route
+n'était jamais câblée. **Rien n'était rouge** : un 404 est la réponse NORMALE d'une route
+volontairement désactivée, donc son absence ressemblait à un choix. `tests/mcp/deploySecretsCables.test.ts`
+interdit désormais de relire une variable dans `mcp/http.ts` sans la câbler ici.
+
+⚠️ **Ne pas poser la variable à la main dans la console** : `--set-secrets` et `--set-env-vars`
+REMPLACENT l'existant, donc le prochain déploiement l'effacerait sans bruit.
+
+```bash
+# 1. Le secret (≥16 caractères — le serveur refuse de démarrer sous ce seuil)
+openssl rand -base64 24 | tr -d '\n' | gcloud secrets create financeai-vehicule-token \
+  --project "$PROJECT_ID" --data-file=-
+
+# 2. Le compte de service de Cloud Run doit pouvoir le lire
+gcloud secrets add-iam-policy-binding financeai-vehicule-token --project "$PROJECT_ID" \
+  --member "serviceAccount:$(gcloud projects describe "$PROJECT_ID" --format 'value(projectNumber)')-compute@developer.gserviceaccount.com" \
+  --role roles/secretmanager.secretAccessor
+
+# 3. (optionnel) Nommer la dette exacte si plusieurs véhicules coexistent
+#    Sans lui, la route choisit par kind/catégorie et REFUSE (409) s'il y a plusieurs candidates.
+printf 'bZ' | gcloud secrets create financeai-vehicule-dette --project "$PROJECT_ID" --data-file=-
+
+# 4. Redéployer — le script annonce « GET /vehicule/bail ACTIF »
+PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
+```
+
+Puis, côté CarAI : `FINANCEAI_BAIL_URL=<url-du-service>/vehicule/bail` et
+`FINANCEAI_BAIL_TOKEN=<la-même-valeur-qu'au-point-1>`.
+
 Test manuel (curl) :
 
 ```bash

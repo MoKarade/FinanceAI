@@ -6,12 +6,24 @@
 # Prérequis (À FAIRE UNE FOIS par Marc — cf mcp/README.md § « Déployer sur Cloud Run ») :
 #   - projet GCP + `gcloud` authentifié (`gcloud auth login`, `gcloud config set project <PROJET>`) ;
 #   - API activées : run, secretmanager, cloudbuild, artifactregistry ;
-#   - 3 secrets créés dans Secret Manager :
+#   - 3 secrets OBLIGATOIRES créés dans Secret Manager :
 #       financeai-oauth-signing-key   (≥32 octets aléatoires)
 #       financeai-access-key          (≥16 octets aléatoires — TA clé d'accès)
 #       financeai-google-refresh      (JSON des identifiants Drive : cf `npm run mcp:auth` puis copier ~/.financeai-mcp/credentials.json)
-#   - le compte de service Cloud Run a `roles/secretmanager.secretAccessor` sur LES 3 secrets
+#   - le compte de service Cloud Run a `roles/secretmanager.secretAccessor` sur CES 3 secrets
 #     (les 2 clés OAuth sont montées en variables d'env ; le refresh Google est lu à l'exécution).
+#
+# Secrets OPTIONNELS — chacun ACTIVE une route, et son absence la laisse désactivée (le script
+# le dit à chaque déploiement) : financeai-hub-token, financeai-refresh-secret,
+# financeai-finnhub-key, financeai-fintable-{sync-secret,token,roles-json},
+# financeai-vehicule-{token,dette}.
+#
+# ⚠️ CE SCRIPT EST LE SEUL ENDROIT OÙ LE CÂBLAGE SURVIT. `--set-secrets` et `--set-env-vars`
+# REMPLACENT l'existant : une variable posée à la main dans la console est effacée au
+# déploiement suivant, sans bruit. Et une variable que `mcp/http.ts` lit sans qu'elle soit
+# montée ici donne une route ABSENTE du service alors que le code, les tests et la doc
+# existent — vécu sur /vehicule/bail, 404 en production pendant que tout avait l'air vert.
+# `tests/mcp/deploySecretsCables.test.ts` interdit désormais cet écart.
 #
 # Usage : PROJECT_ID=mon-projet ./mcp/deploy.sh
 set -euo pipefail
@@ -85,6 +97,32 @@ if gcloud secrets describe financeai-fintable-sync-secret --project "$PROJECT_ID
 else
   echo "  Fintable : secret financeai-fintable-sync-secret absent → POST /fintable-sync désactivé."
   echo "             Pour l'activer : crée les 3 secrets (sync-secret + token + roles-json) puis redéploie."
+fi
+
+# [VEHICULE-BAIL] GET /vehicule/bail — ce que FinanceAI sait du bail du véhicule, lu par CarAI
+# (ADR 0017). OPTIONNEL, même logique que les précédents.
+#
+# ⚠️ CETTE ROUTE A ÉTÉ ÉCRITE, TESTÉE, DOCUMENTÉE — ET INJOIGNABLE EN PRODUCTION. Le code
+# ne câble la route que si `FINANCEAI_VEHICULE_TOKEN` existe (cf `mcp/http.ts`), et ce script
+# ne le montait pas : le service déployé répondait donc 404 sur une URL que CarAI interrogeait
+# déjà. Rien n'était rouge — un 404 est exactement ce que la route est CENSÉE rendre quand elle
+# est volontairement désactivée, donc son absence ressemblait à un choix.
+#
+# ⚠️ Et poser la variable à la main dans la console NE MARCHE PAS DURABLEMENT : `--set-secrets`
+# et `--set-env-vars` REMPLACENT l'existant à chaque déploiement (cf le commentaire du bloc
+# `SECRETS` plus haut). Le seul endroit où ce câblage survit est ici.
+if gcloud secrets describe financeai-vehicule-token --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS="${SECRETS},FINANCEAI_VEHICULE_TOKEN=financeai-vehicule-token:latest"
+  echo "  Véhicule : secret financeai-vehicule-token trouvé → GET /vehicule/bail ACTIF."
+  # Nomme la dette qui compte quand plusieurs véhicules coexistent. Sans lui la route choisit
+  # par `kind`/catégorie, et REFUSE (409) s'il y a plusieurs candidates — elle ne devine pas.
+  if gcloud secrets describe financeai-vehicule-dette --project "$PROJECT_ID" >/dev/null 2>&1; then
+    SECRETS="${SECRETS},FINANCEAI_VEHICULE_DETTE=financeai-vehicule-dette:latest"
+    echo "             Dette nommée par financeai-vehicule-dette."
+  fi
+else
+  echo "  Véhicule : secret financeai-vehicule-token absent → GET /vehicule/bail désactivé (404)."
+  echo "             Pour l'activer : crée le secret puis redéploie (cf mcp/README.md § Bail du véhicule)."
 fi
 
 gcloud run deploy "$SERVICE" \

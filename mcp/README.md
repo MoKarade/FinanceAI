@@ -447,6 +447,46 @@ PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
 Rotation : `gcloud secrets versions add financeai-refresh-secret --data-file=-`, mets à jour
 le secret GitHub `FINANCEAI_REFRESH_SECRET`, puis redéploie.
 
+## Bail du véhicule — GET /vehicule/bail (VEHICULE-BAIL)
+
+Le seul endroit où FinanceAI parle à une AUTRE app que le hub, et il est volontairement minuscule.
+Décision et alternatives rejetées : [`docs/adr/0017`](../docs/adr/0017-endpoint-bail-vehicule-pour-carai.md).
+
+- **Pourquoi** : CarAI affiche « ce que j'ai payé sur le prix total du bail » dans son bandeau
+  d'accueil. Elle connaît les TERMES du bail (dates, durée, kilométrage) et **aucun dollar** ; la
+  mensualité et le solde vivent ici. `/hub/summary` ne peut pas les porter (six métriques, et le
+  bail d'une voiture n'a pas sa place sur la carte financière), et le hub ne relaie pas d'app à app
+  (il est **générique par le contrat**).
+- **Ce que ça rend** : UNE dette — celle du véhicule. `{ nom, devise, solde, mensualite,
+  tauxAnnuelPourcent, montantOrigine, debut, finTerme, champsAbsents[], dataAsOf }`. Rien d'autre :
+  ni patrimoine, ni autres dettes, ni transactions.
+  ⚠️ Tout champ que l'état ne porte pas est `null` **et nommé dans `champsAbsents`** — le
+  consommateur s'abstient au lieu de deviner si un `null` veut dire « zéro » ou « je ne sais pas ».
+  ⚠️ `montantOrigine` n'est PAS le total qui sera versé dès que le taux est non nul : le total versé
+  est `mensualite × durée`. Il sert de CONTRÔLE de cohérence, jamais de numérateur.
+- **Quelle dette** : `kind: 'auto-lease'`, sinon `kind: 'auto'`, sinon `category: 'Car'`.
+  ⚠️ Le repli par catégorie n'est pas un raffinement, c'est **le chemin réel** : aucun producteur
+  n'écrit `kind` (l'outil MCP `apply_debt` ne l'expose pas). Sélectionner sur le seul `kind` ne
+  trouverait rien chez un utilisateur réel.
+- **Activation** : définir `FINANCEAI_VEHICULE_TOKEN` (≥16 caractères — refus de démarrer sinon),
+  **DISTINCT de `FINANCEAI_HUB_TOKEN`** : celui-ci n'ouvre que la dette du véhicule, là où le jeton
+  du hub ouvre la valeur nette et le cashflow. Sans la variable, la route n'existe pas (404).
+  `FINANCEAI_VEHICULE_DETTE` (optionnel) nomme la dette exacte quand plusieurs véhicules coexistent.
+- **Auth** : header `Authorization: Bearer <secret>`, comparaison en temps constant, **401** si
+  absent ou invalide. **405** hors GET. Réponse toujours `Cache-Control: no-store` — un solde est un
+  instantané.
+- **Réponses** : `200 { ok:true, statut:"trouve", bail }` ; `404 { statut:"introuvable" }` si aucune
+  dette de véhicule ; **`409 { statut:"ambigu", candidates:[…] }`** si plusieurs — on REFUSE de
+  choisir, parce que publier la mauvaise dette mettrait un montant faux et *crédible* sur l'écran
+  d'accueil de CarAI ; `503` si l'état est illisible.
+
+Test manuel (curl) :
+
+```bash
+curl -sS "$MCP_URL/vehicule/bail" -H "Authorization: Bearer $FINANCEAI_VEHICULE_TOKEN"
+# → {"ok":true,"statut":"trouve","bail":{"nom":"bZ","solde":47169,"mensualite":1017,…}}
+```
+
 ## Sync Fintable planifiée — POST /fintable-sync (FINTABLE-3)
 
 Même besoin que le refresh de prix, mais pour les **transactions bancaires, soldes liquides et

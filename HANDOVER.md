@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-15 (3) — réimport des 44 lignes du Brésil aux bons montants
+> Ticket 🔴 `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, **dette de DONNÉES réparée** (la dette de CODE
+> reste entière : le mapper importe toujours la devise d'origine).
+> Marc : « tu peux réimporter avec les bons montants ». **36 lignes écrites, 1 067,03 $**, via
+> `apply_bank_statement` (0 doublon, 0 rejet, sauvegarde horodatée automatique).
+> ⚠️ **Pas 44 lignes ni 1 338,12 $, et l'écart est une MESURE** : `search_transactions` EXCLUT les
+> lignes marquées, donc ce qu'elle RENVOIE n'est pas marqué — et elle renvoyait encore quatre
+> originaux du tableau (`A.saily` 13,99 · `Smartcar Mountain` 7,84 · `Duty Free` 126,35 ·
+> `*BRUTTITO TERMINAL` 36,80). Les réimporter aurait compté la dépense DEUX fois. Les quatre sont
+> précisément des lignes **SOUS-évaluées** (USD) : elles ne ressemblaient pas au défaut qu'on
+> cherchait. **262,37 $ suspendus à 4 clics de Marc** (procédure au bas de `docs/A_FAIRE_MOI.md`).
+> ⚠️ Quatre billets de métro du 31/08 écartés — Marc avait répondu « 2 vrais achetés » ; les 2 du
+> 08/09 sont conservés (autre jour, appariés séparément au relevé).
+> ⚠️ Trois libellés suffixés `(2/2)` : la dédup INTRA-LOT d'`applyBankStatement` jette la seconde de
+> deux lignes identiques (date+montant+marchand) — et le code dit lui-même que ce cas désigne
+> d'ordinaire deux vraies dépenses. Le suffixe conserve les deux montants sans en toucher un seul.
+> ⚠️ `Metro Rj Rio De` a reçu `Transport` EN DUR : la règle d'import lit `\bMETRO\b` → « Épicerie »
+> (le supermarché québécois). Une règle de catégorisation écrite pour un marché local est fausse
+> hors de ce marché.
+> ⚠️ Leçon : `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT`
+> (`docs/CONVENTIONS.md`).
+>
 > ## 🔴 Session 2026-09-15 (suite) — « je vois plus aucune transactions du bresil »
 > Ticket 🔴 `[TX-EXCLUES-INTROUVABLES]`, **livré** (PR #968).
 > Marc l'a signalé après avoir exclu ses 44 lignes du Brésil — **ce que je lui avais demandé de

@@ -36,11 +36,27 @@ const TOLERANCES: Array<{ value: number; label: string }> = [
     { value: 3, label: '± 3 jours' },
 ];
 
+/**
+ * [TX-DUPLICATES-BRUIT] Tolérance du panneau à l'ouverture ET du badge de l'en-tête replié —
+ * SOURCE UNIQUE, délibérément. Les deux ont divergé au 1er jet de ce lot (badge figé à 0, panneau
+ * réglable) : un badge qui ne compte pas ce que le panneau montrera affirme un chiffre que ses
+ * sources ne donnent pas. Valeur 0 (même jour) assumée : c'est la seule où « même marchand, même
+ * montant au cent » suffit à pré-cocher sans risque — à ±1 jour, deux achats RÉCURRENTS identiques
+ * deux jours de suite (le café de Marc à 7,90 $) deviendraient pré-cochés, et `isDuplicate` retire
+ * de l'argent réel du solde, du budget et des revenus. L'élargissement reste à UN clic dans le
+ * panneau ; le badge dit sa portée dans son `title`.
+ */
+const TOLERANCE_PAR_DEFAUT = 0;
+
+/** Libellé de la tolérance par défaut, DÉRIVÉ de `TOLERANCES` — jamais recopié, jamais par index. */
+const LIBELLE_TOLERANCE_PAR_DEFAUT =
+    TOLERANCES.find((t) => t.value === TOLERANCE_PAR_DEFAUT)?.label ?? `± ${TOLERANCE_PAR_DEFAUT} jour(s)`;
+
 export const DuplicatesPanel: React.FC<Props> = ({
     transactions, onMarkDuplicates, markedCount, onUnmarkAll,
 }) => {
     const [open, setOpen] = useState(false);
-    const [tolerance, setTolerance] = useState(0);
+    const [tolerance, setTolerance] = useState(TOLERANCE_PAR_DEFAUT);
     /** Ids cochés pour marquage. Pré-remplis avec la suggestion, modifiables. */
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [dirty, setDirty] = useState(false);
@@ -51,10 +67,31 @@ export const DuplicatesPanel: React.FC<Props> = ({
         [open, transactions, tolerance],
     );
 
-    // La sélection par défaut suit la suggestion, tant que l'utilisateur n'a rien touché.
+    // [TX-DUPLICATES-BRUIT] Compte annoncé sur l'en-tête REPLIÉ. Marc, le 2026-09-15 : il voit ses
+    // doublons « dans ma liste de transactions », jamais dans ce panneau — or le panneau ne disait
+    // RIEN tant qu'on ne l'ouvrait pas, donc rien n'invitait à l'ouvrir. On n'annonce que les
+    // groupes à marchand concordant : un badge gonflé par des collisions de montant ferait
+    // exactement le tort qu'on vient de corriger. Tolérance = `TOLERANCE_PAR_DEFAUT`, la MÊME que
+    // le panneau à l'ouverture (cf. sa justification), et une seule passe par changement de
+    // `transactions` — la même complexité linéaire que l'ouverture du panneau.
+    const detectedCount = useMemo(
+        () => findDuplicateGroups(transactions, { dayToleranceDays: TOLERANCE_PAR_DEFAUT })
+            .filter((g) => g.confiance !== 'faible')
+            .reduce((n, g) => n + g.suggestedMarkIds.length, 0),
+        [transactions],
+    );
+
+    // [TX-DUPLICATES-BRUIT] La sélection par défaut suit la suggestion — mais SEULEMENT pour les
+    // groupes dont le marchand concorde. Mesuré sur 321 transactions réelles de Marc : à 3 jours de
+    // tolérance, 3 groupes sur 10 étaient des COLLISIONS DE MONTANT (`OnlyFans −100 $` avec un
+    // paiement de carte et un Interac). Pré-cocher ça revenait à proposer d'effacer de l'argent
+    // réel en un clic — et un panneau dont un tiers des propositions est faux se fait ignorer en
+    // entier, ce qui est exactement ce que Marc a signalé le 2026-09-15.
     const effectiveSelected = useMemo(() => {
         if (dirty) return selected;
-        return new Set(groups.flatMap((g) => g.suggestedMarkIds));
+        return new Set(
+            groups.filter((g) => g.confiance !== 'faible').flatMap((g) => g.suggestedMarkIds),
+        );
     }, [dirty, selected, groups]);
 
     const summary = useMemo(() => summarizeDuplicates(groups), [groups]);
@@ -86,6 +123,14 @@ export const DuplicatesPanel: React.FC<Props> = ({
                 <span className="flex items-center gap-2">
                     <Icon name="actions" size={15} className="text-ink-400" />
                     Doublons
+                    {detectedCount > 0 && (
+                        <span
+                            className="bg-warning-500/20 text-warning-400 px-2 py-0.5 rounded-full"
+                            title={`${LIBELLE_TOLERANCE_PAR_DEFAUT} et marchand concordant. Ouvre le panneau pour élargir l'écart de date toléré.`}
+                        >
+                            {detectedCount} détecté{detectedCount > 1 ? 's' : ''}
+                        </span>
+                    )}
                     {markedCount > 0 && (
                         <span className="bg-white/10 text-ink-300 px-2 py-0.5 rounded-full">
                             {markedCount} marqué{markedCount > 1 ? 's' : ''}
@@ -123,6 +168,15 @@ export const DuplicatesPanel: React.FC<Props> = ({
                         </p>
                     ) : (
                         <>
+                            {groups.some((g) => g.confiance === 'faible') && (
+                                <p className="text-meta text-ink-400">
+                                    {groups.filter((g) => g.confiance === 'faible').length} groupe
+                                    {groups.filter((g) => g.confiance === 'faible').length > 1 ? 's' : ''} ne
+                                    sont PAS pré-cochés : leurs marchands ne concordent pas, donc c&apos;est
+                                    presque toujours deux dépenses sans rapport qui font le même prix.
+                                    Ils restent listés, à toi de juger.
+                                </p>
+                            )}
                             <p className="text-meta text-ink-300">
                                 {summary.groupCount} groupe{summary.groupCount > 1 ? 's' : ''} ·{' '}
                                 {summary.redundantCount} ligne{summary.redundantCount > 1 ? 's' : ''} en trop ·{' '}
@@ -183,7 +237,17 @@ const GroupRow: React.FC<{
                 {formatCAD(group.amount)}
             </PrivateAmount>
             <span className="flex gap-1">
-                {group.payeesDiffer && (
+                {group.confiance === 'faible' && (
+                    <span className="text-meta text-ink-400" title="Les marchands ne concordent pas : probablement deux dépenses différentes qui font le même prix">
+                        marchands différents
+                    </span>
+                )}
+                {group.confiance === 'haute' && (
+                    <span className="text-meta text-warning-400" title="Même marchand, même jour, même montant">
+                        même marchand, même jour
+                    </span>
+                )}
+                {group.payeesDiffer && group.confiance !== 'faible' && (
                     <span className="text-meta text-warning-400" title="Les libellés diffèrent : probablement deux sources d'import">
                         libellés différents
                     </span>

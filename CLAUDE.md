@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 884 tests** Vitest
-(603 fichiers de test, mesuré le 2026-09-14). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 895 tests** Vitest
+(605 fichiers de test, mesuré le 2026-09-15). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -736,6 +736,45 @@ n'est pas réécrire un récit.
   réelle, `package.json` épingle `hub-contract#v1.3.0` et `node_modules` portait encore **1.2.0**, jamais
   réinstallé. Un re-pin n'est pas un re-pin tant que `npm install` n'a pas tourné (la CI fait `npm ci`,
   le conteneur de dev non) — devant un rouge qui n'est pas à soi, soupçonner l'ARBRE INSTALLÉ avant le code.
+
+- **Un signal ÉCARTÉ du critère doit quand même CLASSER le résultat** : le détecteur de doublons
+  ignore le marchand PAR DÉCISION ÉCRITE (« le libellé n'entre pas dans le critère, c'est délibéré »),
+  pour attraper les doublons nés de DEUX SOURCES d'import — raisonnement juste, mais le signal avait
+  été JETÉ au lieu d'être rétrogradé. Mesuré sur 321 transactions réelles de Marc : à 3 j de
+  tolérance il groupait `OnlyFans −100 $` avec un paiement de carte ET un Interac, **3 groupes sur
+  10** étant des collisions de montant rond. Le correctif ne renverse pas la décision, il déplace le
+  signal d'ÉTAGE : le marchand reste hors du REGROUPEMENT et sert au CLASSEMENT (haute/moyenne/faible),
+  seuls les deux premiers sont pré-cochés, rien n'est perdu. **Filtrer, regrouper, ordonner et
+  pré-sélectionner sont quatre décisions distinctes** — demander de laquelle le signal a été écarté.
+  ⚠️ **Le coût d'un faux positif n'est pas le faux positif, c'est l'abandon de tout l'outil** : un
+  panneau dont un tiers des propositions est absurde ne se fait pas trier, il se fait ignorer en bloc
+  — et les vrais doublons restent avec. ⚠️ Il était aussi MUET là où il fallait : replié, il
+  n'annonçait rien, alors que Marc voit ses doublons « dans ma liste ». **Une détection non ANNONCÉE
+  là où l'utilisateur regarde n'existe pas pour lui** ; le badge ne compte que les groupes à marchand
+  concordant, sinon on refait le tort qu'on corrige. ⚠️⚠️ Perturbation MUETTE = REDONDANCE, pas test
+  faible : retirer la règle des n° de succursale laissait `MCDONALD'S 40044` ↔ `McDonald's` vert
+  (`slice(0,2)` coupe avant le numéro) — le témoin discriminant est `MAXI 8676` ↔ `Maxi`. ⚠️ Et les
+  TROUS d'une clé approximative s'écrivent avec leur contrôle inverse (sinon une clé qui n'apparie
+  plus rien passe le test des trous)
+  (`UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT`, 2026-09-15).
+  ⚠️⚠️ **Le CANAL d'un mouvement n'est pas son MARCHAND** — trouvé par le panel APRÈS gate ET CI
+  verts : la clé gardait les DEUX premiers jetons, or les deux formats les plus courants d'un relevé
+  québécois mettent le bénéficiaire en TROISIÈME (`Interac e-Transfer to /Maxime /` et `… /Julie /`
+  → tous deux `interac e` ; `Bill payment - Hydro` et `… Bell` → `bill payment` ; `Ch 4521` et
+  `Ch 9981` → `ch`). Deux virements RÉELS au même montant le même jour sortaient donc `haute` et
+  **pré-cochés** : la régression money-critical que le lot existait pour empêcher, réintroduite une
+  marche plus bas. **Devant une clé qui TRONQUE, demander quels libellés du domaine placent
+  l'information discriminante APRÈS la troncature.** ⚠️ Et j'ai exporté un 2ᵉ `merchantKey` alors
+  qu'un homonyme au contrat DIFFÉRENT existait (`merchantProfile.ts`, consommé par `Planning.tsx`) —
+  « grep le CONCEPT, pas le symbole » vaut surtout quand on est sûr d'inventer du neuf. ⚠️ Et une
+  valeur par défaut recopiée (badge à tolérance 0 / panneau réglable) redevient deux valeurs :
+  **élargir un COMPTEUR et élargir ce qu'on PRÉ-COCHE sont deux décisions distinctes** — quand on ne
+  peut pas faire la première sans la seconde, on écrit sa portée au lieu de l'élargir.
+  ⚠️⚠️ **Deuxième réfutation d'affilée d'un menu par une réponse en TEXTE LIBRE** : sur `7× Metro Rj
+  −7,90 $` le même jour, j'ai proposé « sept vrais trajets » ou « six doublons » — Marc a répondu
+  **« 2 vrais achetés »**, ni l'un ni l'autre, et ma recommandation (vrais trajets, d'après le prix du
+  titre de métro) était FAUSSE. **Un menu binaire sur une QUANTITÉ force un faux dilemme** : la
+  question était « combien sur les sept ? ».
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

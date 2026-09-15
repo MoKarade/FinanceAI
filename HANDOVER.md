@@ -4,6 +4,50 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-15 — « beaucoup trop de doublons » : mesuré, puis corrigé
+> Ticket 🔧 `[TX-DUPLICATES-BRUIT]`, **livré** (PR #966).
+> Mesuré sur **321 transactions réelles** (01/07 → 14/09, `scripts/mesureDoublons.ts`, committé) :
+> à 3 j de tolérance, **3 groupes sur 10** étaient des COLLISIONS DE MONTANT — `OnlyFans −100 $`
+> groupé avec un paiement de carte ET un Interac. Cause : `findDuplicateGroups` ignore le marchand
+> PAR DÉCISION ÉCRITE (pour attraper les doublons à deux sources) — raisonnement juste, mais le
+> signal était JETÉ au lieu d'être rétrogradé.
+> ✅ **Livré** : le marchand reste hors du REGROUPEMENT et sert au CLASSEMENT (`confiance`
+> haute/moyenne/faible) ; tri par confiance avant montant ; seuls `haute`/`moyenne` pré-cochés ; les
+> `faible` restent listés, marqués « marchands différents ». Plus un **badge « N détecté(s) » sur
+> l'en-tête REPLIÉ** — Marc voit ses doublons « dans ma liste », donc rien ne l'invitait à ouvrir le
+> panneau. 12 gardes, **8 perturbations séparées**, chacune ne rougissant que sa cible.
+> ⚠️ **2ᵉ passe, imposée par le panel de revue APRÈS gate ET CI verts** : la clé marchand gardait les
+> DEUX premiers jetons, or `Interac e-Transfer to /Maxime /` et `Bill payment - Hydro` mettent le
+> bénéficiaire en TROISIÈME → `interac e` / `bill payment` pour TOUT LE MONDE, donc deux virements
+> RÉELS et distincts au même montant le même jour ressortaient `haute` et **pré-cochés**. Corrigé en
+> retirant les jetons de CANAL avant la troncature (même geste que pour `GOOGLE *`) ; clé vide =
+> `faible`. Renommée `cleMarchandPourConfiance` — un `merchantKey` au contrat DIFFÉRENT existait déjà
+> dans `merchantProfile.ts`. Badge et panneau lisent désormais la même `TOLERANCE_PAR_DEFAUT`, et le
+> badge ÉCRIT sa portée (« Même jour ») plutôt que de l'élargir (à ±1 j, deux achats récurrents
+> identiques deux jours de suite deviendraient pré-cochés).
+> ⚠️ **Toujours AUCUN marquage automatique, et c'est mesuré** : sur les `7× Metro Rj Rio De −7,90 $`
+> du même jour, Marc a répondu **« 2 vrais achetés »** — 5 doublons sur 7, une proportion qu'aucune
+> heuristique ne devine. Ma question en clic proposait « 7 vrais » ou « 6 doublons » : les DEUX
+> étaient faux, et ma recommandation penchait vers le mauvais.
+> ⏳ **RESTE ouvert** : le détecteur exige le montant EXACT, donc il ne peut pas rapprocher deux
+> imports du même achat à des montants différents (le cas de `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`).
+> Élargir demande une mesure dédiée — à ouvrir si Marc constate qu'il en manque encore.
+> Ticket 🔴 `[TX-DUPLICATES-BRUIT]`, **mesuré, pas encore corrigé** (question en attente chez Marc).
+> Mesuré sur **321 transactions réelles** (01/07 → 14/09, via le MCP) avec
+> `scripts/mesureDoublons.ts` (committé) : le détecteur propose **10 lignes à tolérance 0**, dont
+> **3 groupes sur 10 sont des COLLISIONS DE MONTANT** à tolérance 3 (`OnlyFans −100` ↔ un paiement
+> de carte ↔ un Interac). Cause : `findDuplicateGroups` **ignore le marchand par décision écrite**.
+> ⚠️ Le remède mesuré : un marchand NORMALISÉ agressivement retire les 5 collisions **sans perdre**
+> la paire cross-source `MCDONALD'S 40044` ↔ `McDonald's` (les deux → `mcdonald s`) — donc
+> l'intention d'origine de la décision est préservée. `marchandNormalise` est déjà écrit et mesuré
+> dans le script.
+> ⚠️⚠️ **NE RIEN MARQUER AUTOMATIQUEMENT** : le plus gros groupe est `7× Metro Rj Rio De −7,90` le
+> même jour — à ~7,90 R$ le titre de métro, ce sont vraisemblablement sept TRAJETS RÉELS, et le
+> détecteur propose d'en effacer six. Tant que Marc n'a pas tranché « même marchand + même montant +
+> même jour = doublon ou répétition réelle ? », tout marquage auto détruirait de l'argent réel.
+> ⏳ **EN ATTENTE DE MARC** : cette question, plus de savoir s'il voit ses doublons DANS le panneau
+> (qui proposerait du faux) ou DANS sa liste (que le panneau ne propose jamais).
+
 > ## ✅ PR #964 FUSIONNÉE et EN LIGNE — et ce que §6 ne peut PAS vérifier d'ici
 > Fusionnée à 22:16 UTC (squash, `af7388b1`). **Déploiement Vercel vérifié** :
 > `dpl_fsb5tSyKwXtRnRxrf8HUVzUYeNPo`, cible `production`, état **READY** sur `af7388b1`.

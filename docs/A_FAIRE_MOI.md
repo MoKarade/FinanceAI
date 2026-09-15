@@ -1898,9 +1898,13 @@ conteneur (403 au CONNECT, et `EGRESS_BLOCKED` via l'outil de récupération web
 
    ```bash
    curl -s -H "Authorization: Bearer $FINTABLE_TOKEN" \
-     "https://fintable.io/api/v2/transactions?limit=1&pending=false" \
+     "https://fintable.io/api/v2/transactions?limit=1&pending=0" \
      | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const t=(JSON.parse(s).data||[])[0]||{};console.log(Object.keys(t).sort().join('\n'))})"
    ```
+
+   (⚠️ `pending=0` et non `pending=false` : l'API est derrière Laravel, qui refuse la chaîne
+   « false » dans une query string — le client du dépôt encode déjà 1/0 pour cette raison,
+   commentaire `[FINTABLE-BOOL-QUERY]` à l'appui.)
 
    Colle-moi la liste. Si elle contient un `iso_currency_code`, un `original_amount`, un
    `unofficial_currency_code` ou équivalent, **le correctif devient exact** et je le livre.

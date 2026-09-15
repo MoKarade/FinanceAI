@@ -5637,6 +5637,49 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE` — 2026-09-15
+
+Marc, quelques minutes après avoir exclu des calculs ses 44 lignes du Brésil — **ce que je lui avais
+demandé de faire** : « je vois plus aucune transactions du bresil ».
+
+**Rien n'était perdu**, et c'est prouvé par le CODE, pas par un instantané : `markTransactionsAsDuplicate`
+est PUR et ne fait que poser `isDuplicate: true`. Mais `Transactions.tsx` masque les lignes marquées
+(`if (!showDuplicates && t.isDuplicate) return false`), et `showDuplicates` est un **état de COMPOSANT**
+(`useState(false)`) dont le **seul** `setShowDuplicates(true)` vivait dans `handleMarkDuplicates`.
+Mesuré sur le code d'avant : **2 occurrences** du setter dans tout le fichier — sa déclaration et cet
+appel. Donc l'affichage s'ouvrait à l'instant du marquage, puis **retombait au premier remontage**, et
+**aucun geste ne pouvait le rallumer**. Le seul recours était « Annuler tous les marquages » : il fait
+revenir les lignes en **défaisant le travail**, ce qui n'est pas la même chose que les montrer.
+
+**La règle** : un état qui RETIRE des éléments de l'écran doit avoir un contrôle qui le rallume, et le
+compte de ce qu'il retire doit être annoncé **là où le retrait a lieu**. Le compte existait déjà
+(`markedCount`), mais il était passé au panneau « Doublons », **replié par défaut** — il n'atteignait
+donc pas quelqu'un qui regarde sa liste. Un écran qui masque sans dire ce qu'il masque est
+**indiscernable d'une perte de données** pour celui qui le regarde, et c'est exactement le mot que Marc
+a employé. Variante de `UX-UNREACHABLE-FEATURE` appliquée non pas à une fonction mais à un **retour en
+arrière** : ce qui était inatteignable ici, ce n'était pas une capacité, c'était l'état PRÉCÉDENT.
+
+⚠️ **Le vrai enseignement est de conduite, pas de code.** J'avais vérifié — et écrit une leçon entière
+là-dessus le 14/09 (`LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT`) — que
+Marc pouvait **MARQUER** ses 44 lignes. Je n'ai jamais vérifié qu'il pourrait les **REVOIR**. Un chemin
+qu'on demande à quelqu'un d'emprunter se vérifie **dans les deux sens** : aller *et* retour. La même
+leçon, payée deux fois en deux jours, un cran plus loin à chaque fois.
+
+⚠️ **Une mesure sur un instantané PÉRIMÉ ne répond pas à la question du jour.** Mon premier réflexe a
+été d'interroger le MCP pour prouver que les transactions existaient encore — il a bien rendu
+`Farm Ipanema`, mais sur un état Drive **vieux de 18 h**, donc antérieur au clic de Marc. Ça ne prouvait
+rien de ce qui venait de se passer. Ce qui a tranché est le CODE, qui lui est à jour : le marquage ne
+supprime rien, le filtre masque, le setter n'a que deux sites. **Devant « mes données ont disparu »,
+l'arbitre est le code qui écrit, pas un instantané dont on n'a pas vérifié la date**
+(`AUDIT-SUR-TREE-PERIME`, appliqué aux DONNÉES au lieu du code).
+
+⚠️ **Garde** : les trois scans de source prouvent la présence des jetons (dont « le setter a désormais
+**3** sites, et le troisième est une BASCULE »), mais c'est la garde **comportementale** qui porte le
+fait — monter l'écran avec une transaction DÉJÀ exclue, ce qui reproduit exactement le remontage, puis
+vérifier que la ligne est masquée, que le compte est annoncé, et que le clic la RAMÈNE **puis la
+remasque**. Un bouton qui n'allume que dans un sens recrée la trappe un cran plus loin. Son anti-vacuité
+est le cas sans aucune exclusion : sans lui, un bouton rendu en PERMANENCE passerait tout le reste.
+
 ### `UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT` — 2026-09-15
 
 Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas

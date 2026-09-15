@@ -776,6 +776,31 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         >
                             A Verifier
                         </button>
+                        {/* [TX-EXCLUES-INTROUVABLES] Marc, le 2026-09-15 : « je vois plus aucune
+                            transactions du bresil » — après avoir exclu ses 44 lignes du voyage,
+                            comme je le lui avais demandé. Rien n'était perdu : `showDuplicates`
+                            est un état de COMPOSANT, remis à `false` à chaque montage, et son seul
+                            `setShowDuplicates(true)` vivait dans `handleMarkDuplicates`. Donc au
+                            rechargement les lignes exclues disparaissaient de la liste et AUCUN
+                            geste ne pouvait les rappeler — le seul recours était « Annuler tous
+                            les marquages », qui défait le travail au lieu de le montrer. Un état
+                            qu'aucun contrôle ne peut rallumer n'est pas un filtre, c'est une
+                            trappe (classe UX-UNREACHABLE-FEATURE). Le compte est TOUJOURS annoncé
+                            dès qu'il y a une exclusion : un écran qui masque doit dire ce qu'il
+                            masque, sinon il laisse croire à une perte de données. */}
+                        {markedDuplicateCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => { setShowDuplicates(p => !p); setCurrentPage(1); }}
+                                aria-pressed={showDuplicates}
+                                title={showDuplicates
+                                    ? 'Masquer à nouveau les transactions exclues des calculs'
+                                    : 'Ces transactions existent toujours : elles sont seulement exclues des calculs et cachées de la liste'}
+                                className={`touch-target inline-flex items-center px-3 py-1.5 rounded-full text-meta font-bold transition-all border whitespace-nowrap ${showDuplicates ? 'bg-warning-500/20 border-warning-500 text-warning-400' : 'bg-white/5 border-white/10 text-ink-300'}`}
+                            >
+                                {markedDuplicateCount} exclue{markedDuplicateCount > 1 ? 's' : ''} — {showDuplicates ? 'masquer' : 'afficher'}
+                            </button>
+                        )}
                         <select
                             aria-label="Filtre par categorie"
                             className={`appearance-none px-4 py-1.5 rounded-full text-meta font-medium border transition-colors max-w-[150px] truncate ${selectedCategory !== 'All' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-ink-200'}`}

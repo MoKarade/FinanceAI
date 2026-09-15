@@ -10,6 +10,49 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+### 2026-09-15 — `[TX-DUPLICATES-BRUIT]` (PR #966, mergé, déployé `dpl_5w9Xnh1g…` READY)
+
+- [x] 🔧 **`[TX-DUPLICATES-BRUIT]`** (M, **MESURÉ sur 321 transactions RÉELLES de Marc**, 01/07 → 14/09) — **Fait le 15/09** (PR #966).
+  — Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas
+  efficace ». **Il a raison, et le défaut est dans le DÉTECTEUR, pas dans son usage.**
+  Re-dérivable : `npx tsx scripts/mesureDoublons.ts <extrait.tsv>` (l'extrait vient du tool MCP
+  `search_transactions` ; il n'est PAS committé — dépôt PUBLIC).
+  ⚠️ **Ce qu'il propose aujourd'hui, par tolérance de date** :
+  · **0 j** (le défaut) — 5 groupes, **10 lignes**, 282,63 $ · **1 j** — 9 groupes, 14 lignes ·
+  **3 j** — 10 groupes, 16 lignes, 436,59 $.
+  ⚠️ **Et la moitié de ce qu'il propose est FAUX par construction.** `findDuplicateGroups` ignore le
+  marchand **par décision écrite** (« le libellé n'entre PAS dans le critère — c'est délibéré »),
+  pour attraper les doublons à deux sources. Mesuré, ça produit des COLLISIONS DE MONTANT : à 3 j il
+  groupe **`OnlyFans −100` ↔ `Bill payment /Carte de crédit −100` ↔ `Interac e-Transfer to /Maxime
+  −100`** — trois dépenses sans aucun rapport —, plus `Santos E Carvalho ↔ Uber` (−17) et
+  `Tim Hortons ↔ Cell To Singul` (−4,59). **3 collisions sur 10 groupes.**
+  ⚠️ **Le remède ne coûte RIEN à l'intention d'origine** : un marchand NORMALISÉ agressivement
+  (casse, accents, n° de succursale, ville, passerelle `GOOGLE *`) rapproche quand même les deux
+  sources — mesuré, `MCDONALD'S 40044` et `McDonald's` tombent tous deux sur `mcdonald s`, donc la
+  paire cross-source du 06→09/07 est CONSERVÉE pendant que **les 5 collisions disparaissent**
+  (`marchandNormalise`, déjà écrit et mesuré dans le script).
+  ⚠️⚠️ **Le plus gros groupe est probablement de l'ARGENT RÉEL** : `7× Metro Rj Rio De −7,90 le
+  2026-08-31`. À ~7,90 R$ le titre de métro de Rio, ce sont vraisemblablement **sept trajets réels**.
+  Le détecteur propose d'en marquer **six** — donc d'effacer de vraies dépenses de tous les calculs.
+  C'est le faux positif que l'en-tête du module dit craindre (« deux cafés identiques le même jour »)
+  et contre lequel il ne fait rien. **Rien ne doit être marqué automatiquement tant que ce cas n'est
+  pas tranché par Marc** — question posée le 15/09.
+  ✅ **LIVRÉ** : le marchand reste hors du REGROUPEMENT (la décision d'origine est intacte) et sert
+  désormais au CLASSEMENT — `confiance: haute | moyenne | faible`. Le tri met la confiance avant le
+  montant, l'UI ne pré-coche que `haute`/`moyenne`, les groupes `faible` restent LISTÉS avec la
+  mention « marchands différents ». Et le panneau REPLIÉ annonce enfin un badge « N détecté(s) » —
+  Marc voyait ses doublons « dans ma liste », donc rien ne l'invitait à ouvrir le seul écran qui les
+  montrait. 9 gardes, 5 perturbations séparées.
+  ⚠️ **RESTE ouvert, et c'est volontaire** — le détecteur est encore **AVEUGLE là où il faudrait
+  voir** : il exige le montant EXACT. Deux imports du même achat à des montants différents (cf.
+  `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, où Fintable livre le montant en devise d'origine) ne
+  peuvent JAMAIS être rapprochés. Élargir ce critère demande une mesure dédiée (le bruit explose) —
+  ticket à écrire si Marc constate qu'il en manque encore.
+  ⚠️ **Toujours AUCUN marquage automatique.** Marc, interrogé sur les `7× Metro Rj Rio De −7,90 $`
+  du même jour : **« 2 vrais achetés »** — donc 5 doublons sur 7, une proportion qu'aucune heuristique
+  ne peut deviner. La suggestion par défaut (garder le plus ancien) reste une PROPOSITION ; le
+  panneau laisse décocher ligne par ligne.
+
 ## 2026-09-14 — `[FINTABLE-CARTE-SANS-DETTE]` — LIVRÉ (PR #956)
 
 Ticket d'origine tel qu'au moment de l'archivage :

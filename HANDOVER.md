@@ -19,6 +19,16 @@
 > PURGE à la lecture. `store.get()` rendait `debts: []` et la route répondait 404 sur une fixture qui
 > « avait » une dette. Détail et portée dans `docs/CONVENTIONS.md`
 > (`UNE-FIXTURE-DONT-L-ID-EST-UN-ID-DE-PERSONA-EST-UNE-FIXTURE-VIDE`).
+> ⚠️ **Revue de sécurité passée sur le diff — UN correctif, UN routage.** Aucun 🔴, aucun 🟠.
+> • **Corrigé** : le log de démarrage interpolait le NOM de la dette EN CLAIR, alors que le fichier
+>   voisin (`mcp/bootstrap.ts`) porte la convention `[MCP-CLOUDRUN-DEPLOY-LOGS]` et masque l'email
+>   Drive au domaine seul. Il dit maintenant seulement que la variable est POSÉE. Garde neuve :
+>   `tests/mcp/logDemarrageSansIdentifiant.test.ts` (2 perturbations, 2 rouges séparés).
+>   Aucun test ne lisait ce fichier — un log n'est le sujet d'aucun test, d'où le corollaire dans
+>   `docs/CONVENTIONS.md`.
+> • **Routé, PAS corrigé** : `err.message` brut rendu à l'appelant authentifié. La ligne est
+>   identique au caractère près dans les QUATRE routes du fichier — préexistant, et durcir la seule
+>   route du jour créerait l'incohérence inverse. BACKLOG `[MCP-HTTP-ERR-MESSAGE]`.
 >
 > ## ✅ Session 2026-09-15 — « beaucoup trop de doublons » : mesuré, puis corrigé
 > Ticket 🔧 `[TX-DUPLICATES-BRUIT]`, **livré** (PR #966).

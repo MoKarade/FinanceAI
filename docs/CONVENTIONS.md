@@ -13313,3 +13313,34 @@ NON VIDE.
 
 Famille : `UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE` — même mécanisme (la donnée
 n'arrive jamais), autre porte (là c'était le typage, ici c'est une purge légitime).
+
+### ⚠️ Corollaire du même lot — **un LOG DE DÉMARRAGE n'est le sujet d'aucun test, donc son seul signal est le VOISINAGE**
+
+Le gate était vert (5 916 tests), les sept checks de CI aussi, et le lot publiait quand même le NOM
+de la dette de Marc en clair dans le log de démarrage du serveur MCP (`mcp/http.ts`). Ce n'est pas un
+secret, mais c'est un nom **qu'il choisit** — donc il peut porter un numéro de contrat — et il part
+vers Cloud Logging sur le chemin Cloud Run.
+
+Ce qui l'a trouvé : une **revue de sécurité lancée sur le diff**, pas une garde. Et la cause est une
+récidive nette de `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : le fichier VOISIN, `mcp/bootstrap.ts`,
+porte la convention **en toutes lettres avec son ID de lot** — `[MCP-CLOUDRUN-DEPLOY-LOGS] jamais
+l'email complet dans les logs` — et masque l'email Drive au domaine seul. Le patron existait, à un
+fichier de distance, commenté, et je ne l'ai pas cherché.
+
+**Ce que ce cas ajoute à la leçon parente** : un log n'a **aucun** test qui le lise — ni unitaire
+(personne n'asserte une chaîne de démarrage), ni de bout en bout (le serveur démarre avant que le
+test n'observe quoi que ce soit). Pour tout ce qui SORT sans passer par une réponse HTTP (log,
+télémétrie, message d'exception, nom de fichier écrit sur disque), la question à se poser n'est pas
+« quel test le couvre ? » mais **« qu'est-ce que le fichier d'à côté masque, et pourquoi ? »**.
+
+⚠️ La garde posée (`tests/mcp/logDemarrageSansIdentifiant.test.ts`) ancre le FAIT (« la valeur ne
+sort pas »), jamais la forme du message. Et sa **troisième assertion a été RETIRÉE après mesure** :
+« le log nomme encore la variable » était satisfaite par le `process.env.FINANCEAI_VEHICULE_DETTE` de
+la lecture d'environnement, à cinquante lignes de là — elle ne discriminait rien. Une garde qui ne
+peut pas tirer n'est pas une protection ; la décision qu'elle prétendait tenir est restée, écrite
+comme une décision, dans l'en-tête du test.
+
+⚠️ Le second finding de la même revue — `err.message` brut rendu à l'appelant authentifié — a été
+**routé au BACKLOG, pas corrigé** (`[MCP-HTTP-ERR-MESSAGE]`) : la ligne est identique au caractère
+près dans les quatre routes du fichier, donc préexistante, et durcir la seule route du jour
+créerait l'incohérence inverse de celle qu'on corrige.

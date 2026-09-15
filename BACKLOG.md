@@ -1040,6 +1040,19 @@
 
 ## 🧱 Dette technique
 
+- [ ] 🔧 **`[MCP-HTTP-ERR-MESSAGE]`** (S) — les **QUATRE** routes de
+  `mcp/http/routesPlanifiees.ts` renvoient `err.message` BRUT à l'appelant authentifié
+  (`handleRefresh`, `handleFintableSync`, `handleVehiculeBail` — **la même ligne au caractère
+  près dans les trois**, `sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE)` — plus
+  l'équivalent tronqué de `handleHubSummary` via `errorHubSummary`). **Découverte par la revue sécurité du lot
+  `[VEHICULE-BAIL]` (15/09), PR #967 — préexistant, PAS causé par ce lot.** Tracé : les erreurs nommées de la chaîne d'état
+  sont des phrases françaises fixes, sans secret ; le seul détail opérationnel est une panne
+  OAuth `invalid_grant` (`mcp/drive/tokenProvider.ts`) qui interpole `backend.description` — un
+  chemin local en dev, ou le **NOM** d'un secret Google Secret Manager en prod, jamais sa valeur,
+  et seulement APRÈS la garde d'auth. ⚠️ **Se fait sur les QUATRE handlers ENSEMBLE** (message
+  générique en réponse, détail complet dans `console.error`) : durcir `/vehicule/bail` seule
+  créerait l'incohérence inverse de celle qu'on corrige.
+
 - [ ] **`[FUTUR-STACK-ZOOM-AWARE]`** (M, cosmétique — reliquat RE-CADRÉ de `[FUTUR-DAILY-STACK-X]`,
   livré #724) — séparer horizontalement deux pastilles du même mois posées à des jours différents
   n'est LÉGITIME qu'en vue zoomée, et cette information n'existe pas là où le rang est calculé.

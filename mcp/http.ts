@@ -469,7 +469,7 @@ if (isDirectRun) {
             ? `[FinanceAI MCP http] Sync Fintable planifiée : POST /fintable-sync ACTIF (Bearer exigé)${fintableToken ? '' : ' — SANS FINTABLE_TOKEN : chaque appel échouera 503'}${fintableRoles ? '' : ' — SANS rôles de comptes (FINTABLE_ROLES_JSON absent) : aucun compte ne sera reconnu'}.`
             : '[FinanceAI MCP http] Sync Fintable planifiée : /fintable-sync désactivé (FINANCEAI_FINTABLE_SYNC_SECRET absent).');
         console.error(vehiculeSecret
-            ? `[FinanceAI MCP http] Bail du véhicule : GET /vehicule/bail ACTIF (Bearer exigé)${vehiculeNomDette ? ` — dette « ${vehiculeNomDette} »` : ' — dette choisie par kind/catégorie'}.`
+            ? `[FinanceAI MCP http] Bail du véhicule : GET /vehicule/bail ACTIF (Bearer exigé)${vehiculeNomDette ? ' — dette nommée par FINANCEAI_VEHICULE_DETTE' : ' — dette choisie par kind/catégorie'}.`
             : '[FinanceAI MCP http] Bail du véhicule : /vehicule/bail désactivé (FINANCEAI_VEHICULE_TOKEN absent).');
         if (isLoopback) {
             console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');

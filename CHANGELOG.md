@@ -23,6 +23,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   dette mettrait un montant faux — et parfaitement crédible — sur ton écran d'accueil.
 - **Ce que FinanceAI ne sait pas, il le DIT** : un champ absent revient vide *et* nommé, pour que
   CarAI s'abstienne au lieu de deviner.
+- **Le nom de ta dette ne part plus dans les journaux.** Au démarrage, le serveur écrivait
+  `dette « … »` en clair — or ce nom, c'est toi qui le choisis, et il pourrait porter un numéro
+  de contrat. Il dit maintenant seulement que la variable est POSÉE. Trouvé par la revue de
+  sécurité du lot, pas par les tests : aucun d'eux ne lisait ce message-là.
 
 ---
 

@@ -118,7 +118,7 @@ describe('appariement UN POUR UN', () => {
 describe('intégration au mapper — le paiement sort des dépenses du Budget', () => {
     function snap(transactions: FintableTransaction[]): FintableSnapshot {
         return {
-            readAt: 0, holdings: [], holdingsSkipped: [], transactions,
+            readAt: 0, holdings: [], holdingsSkipped: [], unknownTransactionKeys: [], transactions,
             accounts: [
                 { id: 'cash1', connectionId: 'c', label: 'PCA', rawType: 'depository / checking', currency: 'CAD', balance: 1000, balanceAvailable: null, lastTxDate: null, enabled: true },
                 { id: 'card', connectionId: 'c', label: 'Mastercard', rawType: 'credit / credit card', currency: 'CAD', balance: 380, balanceAvailable: null, lastTxDate: null, enabled: true },

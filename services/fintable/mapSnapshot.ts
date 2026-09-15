@@ -27,6 +27,7 @@
 // ont le rôle `investment` : leur solde sert de valeur de RÉFÉRENCE du courtier, pas de source.
 
 import type { BankStatementPayload, CashBalancePayload, DebtPayload, DocumentPayload } from '../../mcp/ingest/applyDocument';
+import { MAX_CLES_CITEES } from './decode';
 import type { FintableSnapshot, FintableTransaction } from './types';
 import { detectInternalTransfers, type TransferPair } from './detectTransfers';
 
@@ -361,6 +362,24 @@ export function mapFintableSnapshot(
             `${skippedInvestmentAccount} transaction(s) écartée(s) car rattachée(s) à un compte de `
             + 'PLACEMENT (seul le solde du courtier fait autorité pour ces comptes). Si l\u2019un d\u2019eux '
             + 'est en réalité un compte de liquidités, corrige son rôle dans Réglages.',
+        );
+    }
+
+    // [FINTABLE-CHAMPS-INCONNUS] L'API envoie des champs hors contrat — ils sont JETÉS au décodage.
+    // ⚠️ Cet avertissement doit rester RARE pour rester lu : le vocabulaire d'une API ne bouge qu'à
+    // une version près. S'il parle à chaque passe, ce n'est pas le seuil qu'il faut monter — ce sont
+    // les champs cités qu'il faut trancher : consommés (→ `decodeTransaction`) ou écartés SCIEMMENT
+    // (→ `CLES_TRANSACTION_DECLAREES`, avec la raison). Un avertissement permanent est un
+    // avertissement mort, et celui-ci porte la question qui a coûté 2 537,31 $.
+    if (snapshot.unknownTransactionKeys.length > 0) {
+        const cites = snapshot.unknownTransactionKeys.slice(0, MAX_CLES_CITEES);
+        const reste = snapshot.unknownTransactionKeys.length - cites.length;
+        warnings.push(
+            `L'API Fintable envoie ${snapshot.unknownTransactionKeys.length} champ(s) de transaction `
+            + `hors de notre contrat, donc IGNORÉ(S) à l'import : ${cites.join(', ')}`
+            + `${reste > 0 ? ` (+${reste} autre(s))` : ''}. À vérifier : l'un d'eux dit-il la devise `
+            + 'RÉELLE de la transaction ? Le montant importé est dans la devise d\'ORIGINE alors que '
+            + '« currency » porte toujours celle du compte — c\'est ce qui a rendu 44 dépenses fausses.',
         );
     }
 

@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-15 (savoir ce que la banque nous envoie et qu'on jetait)
+
+- **Pourquoi** : tes 44 dépenses du Brésil étaient fausses parce que le montant arrive dans la
+  devise du PAYS pendant que l'étiquette dit « CAD ». La vraie question était : *est-ce que
+  Fintable nous donne, ailleurs dans la même ligne, de quoi corriger ?* Personne ne pouvait
+  répondre — l'import recopie les champs qu'il connaît et **jette le reste sans le dire**, et la
+  liste de ce qu'il connaît a été écrite d'après la documentation, pas d'après ce qui arrive.
+- **Ce qui change** : chaque synchronisation compare maintenant ce que l'API envoie à ce qu'on
+  sait lire, et **nomme les champs ignorés** dans le rapport. S'il y a là une devise réelle, on le
+  saura à la prochaine passe au lieu de le découvrir sur un relevé de carte.
+- **Ça ne bloque rien** : un champ inconnu n'est pas une erreur, aucune transaction n'est refusée.
+  C'est un inventaire, pas un videur.
+- **Ce qui n'est PAS réglé** : les montants en devise étrangère restent faux à l'import. Le
+  correctif dépend de ce que cette mesure va montrer — la marche à suivre est dans
+  `docs/A_FAIRE_MOI.md`.
+
+---
+
 ## [unreleased] — 2026-09-15 (tes dépenses du Brésil sont enfin aux vrais montants)
 
 - **Réparé, dans tes données** : les 44 transactions de ton voyage étaient importées dans la devise

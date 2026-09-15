@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 923 tests** Vitest
-(609 fichiers de test, mesuré le 2026-09-15). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 934 tests** Vitest
+(610 fichiers de test, mesuré le 2026-09-15). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -819,6 +819,24 @@ n'est pas réécrire un récit.
   automatique** (« 2 vrais achetés » contre six lignes appariées par montant identique)
   (`UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT`,
   2026-09-15).
+
+- **Un décodeur qui reconstruit CHAMP PAR CHAMP jette en silence ce qu'il ne connaît pas** :
+  `decodeTransaction` décode l'API Fintable « telle que DOCUMENTÉE » — donc tout champ hors
+  contrat n'est ni refusé, ni journalisé, ni compté : **il n'existe pas**, et un type TypeScript
+  disparaît à l'exécution. D'où une question sans réponse possible pendant que 44 montants étaient
+  faux : « l'API dit-elle la devise RÉELLE quelque part ? ». Le piège est une **symétrie
+  manquante** — un décodeur strict protège contre la donnée ABSENTE ou ILLISIBLE (règle écrite et
+  tenue ici) et en RIEN contre la donnée PRÉSENTE non déclarée, le risque opposé, qui ne casse
+  jamais rien. La parade n'est pas une validation (refuser ferait échouer l'import au premier
+  enrichissement du fournisseur) mais un **INVENTAIRE publié**. ⚠️ Le champ qui le porte est
+  **REQUIS** : optionnel, ses lecteurs écriraient `?? []` et « pas regardé » redeviendrait
+  indiscernable de « rien ». ⚠️ Un avertissement qui parlerait à chaque passe ne se corrige pas par
+  un seuil mais en TRANCHANT les champs cités (consommés, ou écartés sciemment avec leur raison).
+  ⚠️ Et **avant d'écrire un détecteur, demander quel défaut CONNU le ferait crier tous les jours** :
+  le recoupement par le SOLDE est juste, mais tant que `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`
+  jette les transactions de la carte, il naîtrait mort — l'ordre entre deux tickets décide de
+  l'utilité du second
+  (`UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS`, 2026-09-15).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

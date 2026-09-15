@@ -5637,6 +5637,60 @@ même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
 
+### `UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS` — 2026-09-15
+
+Marc, après la réparation des 44 dépenses du Brésil : « faudra qu'on fasse en sorte que ce problème
+n'arrive pas ». La première question du correctif n'est pas *comment convertir* mais **est-ce que
+l'API nous donne de quoi le faire** — et elle était SANS RÉPONSE POSSIBLE.
+
+`decodeTransaction` est un décodeur STRICT, écrit à la main, qui reconstruit la transaction champ
+par champ à partir de `FtRawTransaction`. Ce contrat porte en tête, en toutes lettres, qu'il décrit
+l'API « **telle que DOCUMENTÉE** ». Donc : ce que l'API envoie en plus n'est pas refusé, pas
+journalisé, pas compté — **il n'existe pas**. Un type TypeScript disparaît à l'exécution ; aucun
+`grep`, aucun test et aucune revue ne peut dire ce qu'un payload contenait et qu'on a laissé
+tomber.
+
+**Le piège est une SYMÉTRIE MANQUANTE.** Un décodeur strict protège magnifiquement contre la donnée
+ABSENTE ou ILLISIBLE (ici : « une valeur monétaire non finie ne devient JAMAIS 0 en silence »,
+règle écrite et tenue). Il ne protège en RIEN contre la donnée **PRÉSENTE et non déclarée** — le
+risque exactement opposé, dont personne ne parle parce qu'il ne casse jamais rien. Deux risques,
+un seul traité, et c'est le second qui a laissé 2 537,31 $ de dépenses fantômes sans diagnostic.
+
+**La parade n'est pas une validation, c'est un INVENTAIRE.** Une clé inconnue n'est pas une erreur :
+la refuser ferait échouer l'import au premier enrichissement du fournisseur — le remède pire que le
+mal. Elle se NOMME : `clesInconnues` (pure, union triée, bornée par le vocabulaire de l'API et non
+par la taille de la page), publiée sur le snapshot et remontée au rapport que l'app ET le MCP lisent
+déjà.
+
+⚠️ **Le champ est REQUIS, et c'est le cœur de la leçon** : le rendre optionnel ferait écrire `?? []`
+chez ses lecteurs, donc « on n'a pas regardé » deviendrait indiscernable de « il n'y a rien » — la
+forme EXACTE du défaut qu'il existe pour éliminer. Le compilateur a énuméré les deux sites à
+corriger, ce qu'un champ optionnel n'aurait jamais fait
+(`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`, appliqué à un champ de lecture).
+
+⚠️ **Un avertissement qui parle à chaque passe est mort, et la réponse n'est pas de monter un
+seuil** : si les champs cités reviennent, c'est qu'ils doivent être TRANCHÉS — consommés par le
+décodeur, ou écartés SCIEMMENT dans la liste avec leur raison. Le vocabulaire d'une API ne bouge
+qu'à une version près : correctement tenu, cet avertissement est rare par construction. C'est écrit
+dans le code, à l'endroit où quelqu'un sera tenté de le faire taire.
+
+⚠️ **La mesure décisive était à UNE question de distance, et c'est la deuxième fois en deux jours.**
+`fintable.io` rend 403 au CONNECT depuis ce conteneur (et `EGRESS_BLOCKED` via l'outil web), donc je
+ne peux ni lire la doc ni interroger l'API. Mais le serveur MCP de Marc a le jeton. La règle
+(`UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE…`) tient : **consigner la tentative
+avec sa cause, puis DEMANDER** — avec une commande prête qui ne sort que des NOMS de champs, jamais
+un montant ni le jeton. Et livrer en parallèle le mécanisme qui rendra la même mesure
+automatiquement à la prochaine passe : une question qu'on doit poser à un humain une fois est
+acceptable, la reposer à chaque incident ne l'est pas.
+
+⚠️ **Le recoupement qui paraît évident a un PRÉREQUIS qui le rendrait mort-né** : le solde du compte
+est la seule grandeur indépendante fiable (mesuré : c'est lui qui était juste), et comparer Δsolde à
+la somme des transactions se calcule DANS la passe, sans rien persister. Mais
+`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` jette encore les transactions de la carte : l'écart
+serait permanent, donc l'alarme naîtrait morte. **Avant d'écrire un détecteur, demander quel défaut
+CONNU le ferait crier tous les jours** — l'ordre entre deux tickets peut être ce qui décide de
+l'utilité du second.
+
 ### `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT` — 2026-09-15
 
 Marc : « tu peux réimporter avec les bons montants ». Le dépôt portait le document qu'il fallait —

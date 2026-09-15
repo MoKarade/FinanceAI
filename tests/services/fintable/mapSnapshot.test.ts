@@ -22,7 +22,8 @@ function tx(over: Partial<FintableTransaction> = {}): FintableTransaction {
 
 function snap(over: Partial<FintableSnapshot> = {}): FintableSnapshot {
     return {
-        readAt: 0, accounts: [account()], holdings: [], transactions: [tx()], holdingsSkipped: [], ...over,
+        readAt: 0, accounts: [account()], holdings: [], transactions: [tx()], holdingsSkipped: [],
+        unknownTransactionKeys: [], ...over,
     };
 }
 

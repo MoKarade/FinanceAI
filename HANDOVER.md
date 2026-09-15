@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-15 (4) — `[FINTABLE-CHAMPS-INCONNUS]` : savoir ce que le décodeur JETTE
+> Marc : « faudra qu'on fasse en sorte que ce problème n'arrive pas ». **Volet 1 livré** — ce n'est
+> PAS le correctif du montant, c'est la condition pour savoir s'il est possible.
+> `decodeTransaction` reconstruit la transaction champ par champ à partir de `FtRawTransaction`,
+> **un contrat écrit d'après la DOC et jamais d'après un payload observé** : tout champ hors
+> contrat disparaissait sans trace, donc « l'API dit-elle la devise RÉELLE quelque part ? » n'avait
+> aucune réponse possible — pendant que 44 montants étaient faux.
+> ✅ Livré : `clesInconnues` (pure), `unknownTransactionKeys` sur `FintableSnapshot` (**REQUIS** —
+> optionnel aurait fait écrire `?? []`, donc « pas regardé » indiscernable de « rien »), et
+> l'avertissement nominatif dans le rapport de sync (app + MCP). **11 gardes, 3 perturbations
+> séparées** (lecteur débranché → 1 rouge · avertissement retiré → 2 · clé retirée de l'inventaire
+> → 6, dont la garde de dérivation liste ↔ type).
+> ⚠️ **Mesure IMPOSSIBLE depuis le conteneur, et elle commande la suite** : `fintable.io` rend 403
+> au CONNECT (`EGRESS_BLOCKED` aussi via WebFetch). Les pages publiques de couverture nomment
+> **PLAID** et **FINICITY** — chez Plaid une transaction porte `iso_currency_code`. Si un champ de
+> ce type arrive, le correctif devient EXACT. Question + commande posées à Marc dans
+> `docs/A_FAIRE_MOI.md`.
+> ⚠️ **Le recoupement par le SOLDE** (la seule grandeur indépendante, bien donnée en CAD) est la
+> piste de secours, mais il exige `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` d'abord : tant
+> que la bascule jette les transactions de la carte, l'écart est permanent et l'alarme naît morte.
+> ⚠️ Leçon : `UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS`
+> (`docs/CONVENTIONS.md`).
+>
 > ## 🔴 Session 2026-09-15 (3) — réimport des 44 lignes du Brésil aux bons montants
 > Ticket 🔴 `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, **dette de DONNÉES réparée** (la dette de CODE
 > reste entière : le mapper importe toujours la devise d'origine).

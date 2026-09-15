@@ -32,6 +32,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-15 (Le panneau « Doublons » te dit enfin combien il en trouve — et arrête de raconter n'importe quoi)
 
+- **Corrigé (signalé par toi, le jour même)** : « je vois plus aucune transactions du Brésil ».
+  **Rien n'était perdu** — exclure des calculs ne supprime jamais rien, ça pose juste une marque.
+  Mais la liste cachait les lignes exclues **et plus aucun bouton ne permettait de les revoir** :
+  l'affichage se rouvrait au moment du marquage, puis retombait au premier rechargement de la page.
+  Le seul recours était « Annuler tous les marquages », qui aurait défait ton travail. Il y a
+  maintenant un bouton **« N exclues — afficher »** dans la barre de filtres, visible dès qu'il y a
+  une exclusion : tu vois combien sont cachées, et tu les rappelles d'un clic.
+
 - **Corrigé** : le détecteur de doublons groupait des dépenses qui n'ont **rien à voir** dès qu'elles
   partageaient un montant rond. Mesuré sur tes vraies transactions : il mettait dans le même groupe
   `OnlyFans −100 $`, un **paiement de carte de crédit −100 $** et un **Interac à Maxime −100 $** —

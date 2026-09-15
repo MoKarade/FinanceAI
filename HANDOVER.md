@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-09-15 (suite) — « je vois plus aucune transactions du bresil »
+> Ticket 🔴 `[TX-EXCLUES-INTROUVABLES]`, **livré** (PR #968).
+> Marc l'a signalé après avoir exclu ses 44 lignes du Brésil — **ce que je lui avais demandé de
+> faire**. Aucune donnée perdue (`markTransactionsAsDuplicate` est PUR, aucune suppression), mais
+> `showDuplicates` est un `useState(false)` de `Transactions.tsx` et son SEUL `setShowDuplicates(true)`
+> vivait dans `handleMarkDuplicates` : **2 occurrences** du setter dans tout le fichier, mesuré.
+> Donc au rechargement les exclues disparaissaient et AUCUN contrôle ne pouvait les rappeler — le
+> seul recours, « Annuler tous les marquages », défait le travail au lieu de le montrer.
+> ✅ Livré : bouton « N exclue(s) — afficher / masquer » dans la barre de filtres, rendu dès qu'il y
+> a une exclusion. 5 gardes (3 scans + 1 garde comportementale au REMONTAGE + son anti-vacuité),
+> 3 perturbations séparées.
+> ⚠️ **Classe à retenir** : j'avais vérifié que Marc pouvait MARQUER, jamais qu'il pourrait REVOIR.
+> Un chemin de repli se vérifie dans les DEUX sens (`LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION…`,
+> payée une seconde fois un cran plus loin).
+>
 > ## ✅ Session 2026-09-15 (2) — `GET /vehicule/bail` : FinanceAI parle à CarAI
 > Ticket `[VEHICULE-BAIL]`, **livré**. ADR [`0017`](docs/adr/0017-endpoint-bail-vehicule-pour-carai.md).
 > CarAI affiche « payé vs total du bail » et ne connaît **aucun dollar** : les montants vivent ici.

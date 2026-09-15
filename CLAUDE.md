@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 918 tests** Vitest
-(608 fichiers de test, mesuré le 2026-09-15). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 923 tests** Vitest
+(609 fichiers de test, mesuré le 2026-09-15). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -780,6 +780,24 @@ n'est pas réécrire un récit.
   **« 2 vrais achetés »**, ni l'un ni l'autre, et ma recommandation (vrais trajets, d'après le prix du
   titre de métro) était FAUSSE. **Un menu binaire sur une QUANTITÉ force un faux dilemme** : la
   question était « combien sur les sept ? ».
+
+
+- **Un ÉTAT DE FILTRAGE sans contrôle qui le RALLUME est une trappe** : Marc, après avoir exclu des
+  calculs ses 44 lignes du Brésil — *ce que je lui avais demandé de faire* — « je vois plus aucune
+  transactions du bresil ». Rien de perdu (le marquage est PUR, aucune suppression), mais
+  `showDuplicates` est un `useState(false)` dont le SEUL `setShowDuplicates(true)` vivait dans le
+  gestionnaire de marquage : **2 occurrences** du setter dans tout le fichier, mesuré. L'affichage
+  s'ouvrait au marquage puis retombait au premier remontage, et **aucun geste ne pouvait le
+  rallumer** — le seul recours, « Annuler tous les marquages », DÉFAIT le travail au lieu de le
+  montrer. **Un état qui retire des éléments de l'écran doit avoir son contrôle de retour, et le
+  compte de ce qu'il retire s'annonce LÀ OÙ le retrait a lieu** (`markedCount` existait, mais dans un
+  panneau REPLIÉ par défaut). Un écran qui masque sans le dire est indiscernable d'une perte de
+  données. ⚠️ **Le vrai enseignement est de conduite** : j'avais vérifié qu'il pouvait MARQUER, jamais
+  qu'il pourrait REVOIR — `LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION…` re-payée en deux jours, faute
+  d'avoir vérifié l'ALLER **et** le RETOUR. ⚠️ Et ma 1re mesure (« les lignes existent-elles
+  encore ? », via le MCP) portait sur un instantané Drive vieux de **18 h**, donc antérieur au clic :
+  devant « mes données ont disparu », l'arbitre est le CODE QUI ÉCRIT, pas un instantané dont on n'a
+  pas lu la date (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, 2026-09-15).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

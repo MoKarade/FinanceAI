@@ -1878,6 +1878,44 @@ s'arrêtent au 08 SEP. Les deux lignes du 2026-09-10 jamais appariées (Uber −
 sont **exclues** de tes calculs et n'ont donc **pas** de remplaçante — cette dépense-là manque
 entièrement tant que je n'ai pas la fin du relevé.
 
+### 🧭 La mesure qui décide de la SUITE — 30 secondes, et je ne peux pas la prendre
+
+Tu as demandé que « ce problème n'arrive pas ». Pour le corriger **exactement**, il faut savoir si
+l'API Fintable dit quelque part la devise RÉELLE d'une transaction. Notre contrat
+(`FtRawTransaction`) a été écrit d'après la **documentation**, jamais d'après une réponse observée,
+et le décodeur **jette en silence** tout champ qu'il ne connaît pas — donc la question n'avait
+jusqu'ici aucune réponse possible.
+
+⚠️ **Je ne peux pas la poser moi-même** : `fintable.io` est refusé par le proxy sortant de mon
+conteneur (403 au CONNECT, et `EGRESS_BLOCKED` via l'outil de récupération web — mesuré le
+2026-09-15, à ne pas retenter à l'aveugle). Ce qu'on sait des pages publiques : Fintable relaie
+**Plaid** et **Finicity**, et chez Plaid une transaction porte `iso_currency_code`.
+
+**Deux façons d'obtenir la réponse — la seconde ne te demande rien :**
+
+1. **Tout de suite**, sur le PC qui fait tourner le serveur MCP (la commande n'affiche QUE des noms
+   de champs — aucun montant, aucun marchand, et le jeton n'est jamais écrit) :
+
+   ```bash
+   curl -s -H "Authorization: Bearer $FINTABLE_TOKEN" \
+     "https://fintable.io/api/v2/transactions?limit=1&pending=0" \
+     | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const t=(JSON.parse(s).data||[])[0]||{};console.log(Object.keys(t).sort().join('\n'))})"
+   ```
+
+   (⚠️ `pending=0` et non `pending=false` : l'API est derrière Laravel, qui refuse la chaîne
+   « false » dans une query string — le client du dépôt encode déjà 1/0 pour cette raison,
+   commentaire `[FINTABLE-BOOL-QUERY]` à l'appui.)
+
+   Colle-moi la liste. Si elle contient un `iso_currency_code`, un `original_amount`, un
+   `unofficial_currency_code` ou équivalent, **le correctif devient exact** et je le livre.
+
+2. **Sans rien faire** : la prochaine synchronisation te le dira toute seule. Le rapport porte
+   maintenant un avertissement qui **nomme** les champs reçus et ignorés. S'il ne dit rien, c'est
+   une mesure aussi : l'API n'envoie rien hors contrat, et il faudra passer par le recoupement de
+   SOLDE (la seule autre grandeur fiable, bien donnée en CAD) — qui exige d'abord de corriger la
+   bascule qui jette les transactions de ta carte.
+
+
 
 ---
 

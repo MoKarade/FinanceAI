@@ -780,6 +780,21 @@
   **4 billets de métro** du 31/08 sont des doublons d'import confirmés par Marc (« 2 vrais achetés »).
   Reste 262,37 $ suspendus à 4 clics de Marc — procédure au bas de `docs/A_FAIRE_MOI.md`.
   ⚠️ **La dette de CODE reste entière** : le mapper importe toujours le montant en devise d'origine.
+  ✅ **Volet PRÉVENTION livré le 15/09 (`[FINTABLE-CHAMPS-INCONNUS]`)** — pas le correctif du
+  montant, la condition pour savoir s'il est possible : `decodeTransaction` reconstruit la
+  transaction CHAMP PAR CHAMP, donc **tout ce que l'API envoie hors de `FtRawTransaction` était jeté
+  sans trace** — et ce contrat a été écrit d'après la DOC, jamais d'après un payload observé.
+  Personne ne pouvait donc répondre à « l'API dit-elle la devise RÉELLE quelque part ? ». Le
+  snapshot publie désormais `unknownTransactionKeys` (union triée, champ REQUIS) et le rapport de
+  sync le DIT, en nommant les champs. 11 gardes, 3 perturbations séparées.
+  ⚠️ **Prochain pas, et il dépend d'une mesure que je ne peux pas prendre** : la doc Fintable est
+  inatteignable depuis le conteneur (403 au CONNECT, `EGRESS_BLOCKED` sur `fintable.io`) et les
+  pages publiques de couverture montrent **PLAID** et **FINICITY** comme providers — chez Plaid une
+  transaction porte `iso_currency_code`. Si un champ de ce genre arrive, le correctif devient EXACT.
+  Question posée à Marc dans `docs/A_FAIRE_MOI.md` (une commande, ou la prochaine passe de sync).
+  ⚠️ **Le recoupement par le SOLDE** (seule grandeur indépendante, bien donnée en CAD) reste la
+  piste de secours — mais il EXIGE `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` d'abord : tant
+  que la bascule jette les transactions de la carte, l'écart serait permanent, donc l'alarme morte.
 - [x] 🔧 **`[TX-SELECTION-SANS-ACTION]`** (S, **MESURÉ**) — Marc : « j'arrive pas à les marquer en
   doublon ». **Il avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL
   point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par

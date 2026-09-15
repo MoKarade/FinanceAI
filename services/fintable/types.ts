@@ -140,6 +140,16 @@ export interface FintableSnapshot {
     transactions: FintableTransaction[];
     /** Comptes dont la lecture des positions a échoué — jamais silencieux (cf. HIST-MULTI-PROVIDER). */
     holdingsSkipped: Array<{ accountId: string; reason: string }>;
+    /**
+     * [FINTABLE-CHAMPS-INCONNUS] Noms des champs que l'API a envoyés sur les transactions et que le
+     * décodeur JETTE (union triée sur toute la page, jamais une liste par transaction).
+     *
+     * ⚠️ REQUIS, pas optionnel : le rendre facultatif ferait écrire `?? []` chez ses lecteurs, donc
+     * « on n'a pas regardé » deviendrait indiscernable de « il n'y a rien » — la forme exacte du
+     * défaut que ce champ existe pour éliminer. Vide = l'API n'envoie rien hors contrat, et c'est
+     * une MESURE, pas un défaut.
+     */
+    unknownTransactionKeys: string[];
 }
 
 /** Code d'erreur typé — distingue le TRANSITOIRE du CONFIRMÉ (classe QUOTE-ERRKIND). */

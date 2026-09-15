@@ -134,6 +134,52 @@ export function decodeHolding(
     };
 }
 
+/**
+ * [FINTABLE-CHAMPS-INCONNUS] Clés d'une transaction que notre CONTRAT déclare (`FtRawTransaction`).
+ *
+ * ⚠️ Pourquoi cette liste existe, et pourquoi elle est LITTÉRALE : `FtRawTransaction` a été écrit
+ * d'après la DOC de l'API, jamais d'après un payload observé — et `decodeTransaction` reconstruit
+ * l'objet champ par champ, donc **tout ce que l'API envoie en plus est jeté sans trace**. C'est
+ * exactement le trou par lequel est passé `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` : le montant
+ * arrive dans la devise d'ORIGINE (mesuré : +2 537,31 $ sur 44 transactions au Brésil) pendant que
+ * `currency` porte la devise du COMPTE, et personne ne pouvait dire si l'API fournissait, ailleurs
+ * dans le même objet, de quoi le corriger. Un type TypeScript disparaît à l'exécution : seule une
+ * liste de chaînes peut répondre à « qu'est-ce qu'on jette ? ». Elle est tenue alignée sur le type
+ * par `tests/services/fintable/champsInconnus.test.ts`, qui la DÉRIVE du source de `types.ts`.
+ *
+ * ⚠️ Ce n'est PAS une liste blanche de sécurité : une clé inconnue n'est jamais une erreur, elle ne
+ * fait rien refuser. C'est un INVENTAIRE — il rend visible ce que le décodeur ignore.
+ */
+export const CLES_TRANSACTION_DECLAREES: readonly string[] = [
+    'id', 'account_id', 'date', 'datetime', 'auth_date', 'amount', 'currency', 'description',
+    'merchant', 'pending', 'category', 'category_manual_override', 'created_at', 'updated_at',
+];
+
+/** Nombre maximal de noms cités dans un avertissement — le COMPTE, lui, est toujours exact. */
+export const MAX_CLES_CITEES = 12;
+
+/**
+ * Union TRIÉE des clés présentes dans les payloads bruts et absentes de `declarees`.
+ *
+ * Pure, tolérante (une entrée non-objet est ignorée : le décodeur, lui, la refusera avec un message
+ * qui nomme son index) et bornée par construction — le résultat a la taille du VOCABULAIRE de
+ * l'API, jamais celle de la page de transactions.
+ */
+export function clesInconnues(
+    raws: readonly unknown[],
+    declarees: readonly string[] = CLES_TRANSACTION_DECLAREES,
+): string[] {
+    const connues = new Set(declarees);
+    const vues = new Set<string>();
+    for (const raw of raws) {
+        if (!isRecord(raw)) continue;
+        for (const cle of Object.keys(raw)) {
+            if (!connues.has(cle)) vues.add(cle);
+        }
+    }
+    return [...vues].sort();
+}
+
 export function decodeTransaction(raw: unknown, index: number): FintableTransaction {
     if (!isRecord(raw)) {
         throw new FintableError(`transactions[${index}] : objet attendu, reçu ${describe(raw)}.`, 'MALFORMED');

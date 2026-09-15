@@ -158,6 +158,10 @@ describe('[FINTABLE-RATTRAPAGE] les écartées ont une VOIX, pas seulement un co
         readAt: Date.parse('2026-08-18T12:00:00Z'),
         accounts: [{ id: 'acc_1', connectionId: 'conn_1', name: 'Chèque', type: 'depository', currency: 'CAD', balance: 1500, cashBalance: null, debt: null }],
         holdings: [], holdingsSkipped: [],
+        // [FINTABLE-CHAMPS-INCONNUS] Le `as never` ci-dessous fait TAIRE le compilateur : c'est ce
+        // qui a laissé cette fixture derrière quand le champ est devenu requis (deux autres sites
+        // ont bien été énumérés par `tsc`). Un champ requis ne protège que là où le type est vérifié.
+        unknownTransactionKeys: [],
         transactions: dates.map((d, i) => ({
             id: `tx_${i}`, accountId: 'acc_1', date: d, amount: -20, currency: 'CAD',
             description: `Achat ${i}`, pending: false,

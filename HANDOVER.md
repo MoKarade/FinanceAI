@@ -4,6 +4,33 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-16 (soir) — **REVUE PANEL : 6 défauts RÉELS dans mon propre lot**
+> Quatre agents sur le diff. Le typecheck, le lint, **321 tests ciblés verts** et mes **8
+> perturbations** n'avaient rien vu. Troisième lot d'affilée où le panel bat les deux gates.
+> 🔴 **Le pire** : `DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 »), **toujours
+> présent**, avec `fxRatesEstimated` qui existe pour le dire. Je publiais ce repli comme AUTORITÉ —
+> exactement le piège que l'en-tête de mon lot prétendait éviter, un cran plus bas : **1,40 est pire
+> que 1:1 parce qu'il est plus crédible, donc moins réfutable**. Et ma branche « taux absent » était
+> **quasi inatteignable** pour USD/EUR. ✅ Corrigé : taux ESTIMÉ = traité comme absent.
+> 🔴 **Données bancaires réelles visibles en mode démo** : `setChampsInconnus` était appelé AVANT le
+> contrôle `isTestMode`, alors que `setIncertaines` est APRÈS — le commentaire qui explique cet ordre
+> était déjà là, trois lignes plus haut. ✅ Déplacé + réinitialisé en tête de passe.
+> 🟠 **Ma garde de non-fuite était VACUEUSE** : la regex d'espaces était `/ | /g`, de l'**ASCII pur**,
+> donc une transformation IDENTITÉ. 3ᵉ fois pour ce dépôt, 2ᵉ fois que je l'écris après l'avoir
+> documentée. ✅ Corrigée + **anti-vacuité du NORMALISATEUR lui-même**.
+> 🟠 **Un avertissement devenu FAUX** : « conversion non implémentée → IGNORÉ » sur le site
+> `investment`. ⚠️ Contrôle du panel : les 2 autres occurrences du même libellé restent VRAIES — **1
+> site sur 3**. ✅ Le mapper étant PUR (il ne voit ni taux ni drapeau), il décrit ce qu'il SAIT.
+> 🟠 **Remède qui nomme la mauvaise cause** (carte compact) : envoyait déclarer un régime fiscal à
+> quelqu'un dont le seul problème est un taux inconnu. ✅ Remède DÉRIVÉ de la cause unique réelle.
+> 🟡 **Trou de chaîne service→composant** sur `missingRate` : aucun test ne posait le champ dans le
+> composant. ✅ 4 gardes neuves, 2 perturbations (3 rouges / 1 rouge).
+> 🟡 **Mon commentaire affirmait une capacité INEXISTANTE** (`soldesDetteSignes` « seule trace pour
+> re-vérifier ») — le champ n'atteint aucun rapport. ✅ Corrigé, et routé.
+> ⏸️ **2 tickets routés avec leur mesure** : `[FINTABLE-ECART-FANTOME-DEUX-DATES-DE-TAUX]` (écart
+> inventé **2 000–4 000 $** mesuré, OUVERT par ce lot, borné à la carte, atténué par le durcissement)
+> et `[FINTABLE-SIGNE-RECIDIVE-NON-DETECTEE]`.
+>
 > ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` LIVRÉ (3ᵉ des 3 GO)
 > `echantillonsClesInconnues` (pure, bornée 2× : clés ET nombre/longueur des exemples) publie les
 > VALEURS des champs hors contrat sur le SEUL écran de Marc (carte « Sync Fintable »).

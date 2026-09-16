@@ -214,7 +214,10 @@ export const FintableSyncCard: React.FC = () => {
         // ⚠️ [finding silent-failure #649] RÉINITIALISÉE à chaque passe. Sans ça, une liste chargée
         // restait affichée indéfiniment — y compris après un échec, et y compris si Marc basculait
         // ensuite en mode démo pour montrer son écran à quelqu'un.
-        setBusy('syncing'); setError(null); setNotice(null); setIncertaines([]);
+        // ⚠ [revue panel] `setChampsInconnus([])` ici AUSSI : sans ça, un lot de mémos bancaires
+        // RÉELS d'une passe précédente restait affiché indéfiniment — y compris après un passage
+        // en mode démo, où le bouton est désactivé et où aucun geste ne pouvait plus l'effacer.
+        setBusy('syncing'); setError(null); setNotice(null); setIncertaines([]); setChampsInconnus([]);
         await persistToken(); // ceinture : idem handleTest
         try {
             const { runFintableBrowserSync } = await importWithRetry(
@@ -237,7 +240,6 @@ export const FintableSyncCard: React.FC = () => {
             const douteusesSures = douteuses ?? [];
             // ⚠️ Même lecture DÉFENSIVE, même raison : un mock de test ou un appelant plus ancien
             // rend un résultat sans ce champ neuf, et `undefined.length` casserait TOUTE la carte.
-            setChampsInconnus(echantillonsChampsInconnus ?? []);
             // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
             // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
             // ⚠️ [finding silent-failure #649] LE TEST PASSE AVANT `setIncertaines`, et ce n'est pas
@@ -251,6 +253,13 @@ export const FintableSyncCard: React.FC = () => {
                 return;
             }
             setIncertaines(douteusesSures);
+            // ⚠⚠ [revue panel] APRÈS le contrôle de mode démo, pour la raison écrite juste au-dessus,
+            // et elle vaut ENCORE PLUS ici : ces échantillons sont des extraits BRUTS de mémos
+            // bancaires (un nom, un numéro de chèque). Mon premier jet les posait AVANT le
+            // contrôle — les vraies données de Marc restaient donc affichées dans une session
+            // persona, sous un message affirmant « rien n'a été écrit ». Le commentaire qui
+            // explique cet ordre était déjà là, trois lignes plus haut.
+            setChampsInconnus(echantillonsChampsInconnus ?? []);
             if (statePatch === null) {
                 // Échec : on écrit LE RAPPORT seul (pour que la carte de diagnostic le montre), et
                 // surtout AUCUN contenu — `statePatch: null` signifie « rien d'exploitable ».
@@ -403,9 +412,21 @@ export const FintableSyncCard: React.FC = () => {
                         <ul className="space-y-1">
                             {champsInconnus.map((c) => (
                                 <li key={c.cle} className="text-tiny text-ink-300">
+                                    {/* Le NOM du champ reste en clair : il est déjà publié dans le
+                                        rapport de synchro, donc le masquer ici ne protégerait rien.
+                                        ⚠️ La VALEUR, elle, est masquée en mode discret — un mémo
+                                        bancaire peut porter le nom d'un TIERS, un numéro de chèque
+                                        ou une adresse. Le dépôt masque déjà le nom d'un MARCHAND
+                                        pour cette raison (`[PRIV-PAYEE-MODE-DISCRET]`, décision
+                                        Marc 2026-08-17 : « donnée personnelle au sens de la Loi 25
+                                        même sans le montant à côté ») — un mémo l'est a fortiori.
+                                        Sa réponse « à l'écran seulement » tranchait « rapport public
+                                        vs écran », jamais « et en mode discret sur cet écran ? ». */}
                                     <span className="font-mono text-ink-100">{c.cle}</span>
                                     {' — '}
-                                    <span className="text-ink-400">{c.exemples.join(' · ')}</span>
+                                    <PrivateText quoi="memo" className="text-ink-400">
+                                        {c.exemples.join(' · ')}
+                                    </PrivateText>
                                 </li>
                             ))}
                         </ul>

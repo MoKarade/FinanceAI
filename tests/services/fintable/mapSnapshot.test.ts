@@ -110,7 +110,15 @@ describe('rôles de compte — jamais devinés', () => {
         const usd = mapFintableSnapshot(snap({
             accounts: [account({ id: 'a', label: 'Compte USD', rawType: 'brokerage', balance: 10_000, currency: 'USD' })],
         }), { roles: { a: { kind: 'investment', taxRegime: 'NON-ENREG' } }, transactionsAfter: '2026-07-01' });
-        expect(usd.report.warnings.some((w) => w.includes('conversion non') && w.includes('Compte USD'))).toBe(true);
+        // ⚠️ Le TEXTE a changé le 2026-09-16 : « conversion non implémentée → IGNORÉ » est devenu
+        // faux le jour où la conversion est devenue possible. Le test vise donc le FAIT qu'il
+        // défend — le compte en devise est SIGNALÉ, nommément — et non la formulation d'alors
+        // (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`).
+        expect(usd.report.warnings.some((w) => w.includes('Compte USD') && w.includes('USD'))).toBe(true);
+        // …et il ne PROMET plus une issue qu'il ne connaît pas : le mapper est pur, il ne voit ni
+        // les taux ni `fxRatesEstimated`, donc il ne peut pas dire « ignoré » ni « converti ».
+        const msg = usd.report.warnings.find((w) => w.includes('Compte USD')) ?? '';
+        expect(msg).not.toContain('IGNORÉ');
 
         const noBal = mapFintableSnapshot(snap({
             accounts: [account({ id: 'b', label: 'Compte muet', rawType: 'brokerage', balance: null })],

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 998 tests** Vitest
-(614 fichiers de test, mesuré le 2026-09-16 ; +3 signe de carte, +5 Disnat, +11 champs inconnus). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 010 tests** Vitest
+(614 fichiers de test, mesuré le 2026-09-16 ; +3 signe de carte, +5 Disnat, +11 champs inconnus, +12 revue panel). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -979,6 +979,24 @@ n'est pas réécrire un récit.
   évidente : elle exige que le rapport NOMME encore le champ, sinon « aucune valeur » serait vrai d'un
   rapport vide, d'un client en panne ou d'un inventaire débranché
   (`UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE`).
+
+- **Un repli PLUS CRÉDIBLE est MOINS réfutable** : le lot s'ouvrait sur « ne pas convertir avec
+  `toCurrencyFactor`, son repli 1:1 rendrait 72 040 USD = 72 040 CAD » — et retombait dans le piège un
+  cran plus bas, parce que `DEFAULT_FX_RATES` porte **`USD: 1.40`** (« approximation Q1 2026 »),
+  TOUJOURS présent, avec `fxRatesEstimated` qui existe exactement pour le dire. La question n'est pas
+  « ce repli est-il grossier ? » mais **« qu'est-ce qui, dans le RÉSULTAT, permettrait encore de savoir
+  que c'est un repli ? »** — réponse « rien » ⇒ il faut le DRAPEAU, pas un meilleur chiffre. ⚠️ Corollaire
+  mesuré : la branche « taux absent » était **quasi inatteignable** pour USD/EUR, les deux seules devises
+  du type — une garde dont le chemin nominal ne passe jamais
+  (`UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE`).
+  ⚠️⚠️ **Et une garde écrite CONTRE un piège connu le recommet** : trois défauts du même lot étaient des
+  re-commissions de mes propres leçons, dont une écrite **le jour même** — regex d'espaces `/ | /g` en
+  ASCII PUR (donc identité, garde de non-fuite VACUEUSE, 3ᵉ fois pour ce dépôt), compteur « + N autre(s) »
+  oublié sur une troncature ALPHABÉTIQUE (le champ révélateur pouvait tomber au-delà du 12ᵉ), et un
+  `continue` qui refaisait le trou que le lot bouchait. **La leçon protège l'endroit où elle a été écrite,
+  pas la classe** : elle se vérifie par une PERTURBATION à l'endroit neuf, jamais par la conviction de la
+  connaître — d'où une anti-vacuité du NORMALISATEUR lui-même, pas seulement de son sujet
+  (`UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

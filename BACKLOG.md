@@ -982,6 +982,35 @@
   ⚠️ **Les deux moitiés se livrent ensemble, et la seconde d'abord** : implémenter la conversion sans
   réparer la liste laisserait la classe entière ouverte pour le prochain compte en devise ; réparer
   la liste seule est déjà utile et ne déplace rien.
+- [ ] 🟠 **`[FINTABLE-ECART-FANTOME-DEUX-DATES-DE-TAUX]`** (M, money-critical, **DÉCOUVERT au panel
+  du 2026-09-16, OUVERT PAR CE LOT — mesuré, borné, non corrigé**) — le solde courtier converti est
+  FIGÉ au taux de l'écriture (`toPersistableBrokerBalances`), tandis que l'autre côté de la
+  réconciliation (`holdingsCadByRegime` → `assetValueCad`) est recalculé au taux COURANT à chaque
+  rendu. `gapCad` compare donc deux dates de taux, et invente un écart là où il n'y en a pas.
+  **MESURÉ par le panel** (72 040 USD au courtier, titres strictement équivalents, écart VRAI = 0) :
+  taux identique → **0,00 $** (contrôle négatif) ; 1,37 → 1,42 → **−3 602 $** ; 1,37 → 1,32 →
+  **+3 602 $**. ⚠️ **Borné à la carte de réconciliation** : l'énumération complète des lecteurs de
+  `fintableBrokerBalances` ne donne qu'UN consommateur de production, et ni le patrimoine net ni la
+  projection ne le lisent. Pas un dollar faux au bilan — un écart inventé sur l'écran dont c'est la
+  seule raison d'être, qui pousserait Marc à « corriger » des titres corrects.
+  ⚠️ **Atténué dans l'immédiat** par le durcissement du même panel : un taux ESTIMÉ
+  (`fxRatesEstimated`, le cas par DÉFAUT) ne convertit plus du tout, donc l'écart fantôme ne peut
+  naître que sur des taux réels. Il n'est pas fermé pour autant.
+  **Correctif** : persister le taux et sa date avec le solde (`rateUsed`, `rateAt`) et convertir les
+  DEUX côtés au même taux — ou ne pas figer du tout (persister la devise native et convertir au
+  rendu). Le second est plus juste et plus simple, mais `balanceCad` cesse alors d'être un nom
+  honnête : c'est une décision de contrat, pas un correctif mécanique.
+- [ ] 🟡 **`[FINTABLE-SIGNE-RECIDIVE-NON-DETECTEE]`** (S, **DÉCOUVERT au panel du 2026-09-16**) —
+  `soldesDetteSignes` est calculé par le mapper et lu par PERSONNE en production : `FintableSyncReport`
+  ne déclare pas ce champ, et les deux orchestrateurs construisent leur rapport champ par champ sans
+  le recopier. ⚠️ Mon commentaire affirmait qu'il est « la seule trace qui permettra de re-vérifier la
+  convention si Fintable change d'avis » — **faux**, corrigé dans le même lot : écrire une capacité
+  inexistante dans un commentaire est le défaut que ce lot dénonce, commis dans le lot qui le corrige.
+  ⚠️ L'information UTILISATEUR, elle, atteint bien l'écran (« EN TA FAVEUR », « carte soldée ») : ce
+  qui manque est la détection AUTOMATIQUE d'une récidive, pas l'information de Marc.
+  **Décision requise avant de câbler** : le rapport part en clair dans un journal PUBLIC. Publier des
+  signes quotidiennement pour une détection sans consommateur est un coût de vie privée sans
+  contrepartie — d'où le routage plutôt que le câblage.
 - [x] 🟡 **`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]`** (S, ✅ **LIVRÉ le 2026-09-16**) —
   `echantillonsClesInconnues` (pure, bornée deux fois : nombre de clés ET nombre/longueur des
   exemples) publie les VALEURS des champs hors contrat sur le seul écran de Marc.

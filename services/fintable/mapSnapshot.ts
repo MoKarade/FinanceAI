@@ -329,9 +329,26 @@ export function mapFintableSnapshot(
                         + 'courtier ne peut pas faire autorité pour ce compte (tes titres saisis restent utilisés).',
                     );
                 } else if (account.currency.toUpperCase() !== baseCurrency) {
+                    // ⚠️ [revue panel] Ce message affirmait « conversion non implémentée → IGNORÉ ».
+                    // `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` a rendu la conversion POSSIBLE, donc la
+                    // phrase pouvait devenir fausse — Système & diagnostics aurait dit « ignoré »
+                    // pendant que l'écran Investissements l'affichait COMPTÉ
+                    // (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`, re-payée).
+                    //
+                    // ⚠️ Le mapper ne PEUT pas trancher : il ne voit ni les taux ni `fxRatesEstimated`
+                    // (fonction PURE, sans état). Il décrit donc ce qu'il SAIT — la devise n'est pas
+                    // convertie ICI — et renvoie à la surface qui, elle, connaît l'issue. Affirmer
+                    // moins mais juste vaut mieux qu'affirmer plus et faux.
+                    //
+                    // ⚠️ Contrôle fait : les deux autres occurrences de ce libellé (branches `cash`
+                    // et `debt`) restent VRAIES — ni l'une ni l'autre n'est convertie. Un seul site
+                    // sur trois était périmé, et le corriger en bloc aurait rendu les deux autres
+                    // vagues.
                     warnings.push(
-                        `Placement « ${account.label} » est en ${account.currency} : conversion non `
-                        + 'implémentée → montant du courtier IGNORÉ pour ce compte (tes titres saisis restent utilisés).',
+                        `Placement « ${account.label} » est en ${account.currency} : son solde n'entre `
+                        + 'pas tel quel dans tes liquidités. Il est converti en CAD seulement si un taux '
+                        + 'de change RÉEL est disponible — sinon le compte est listé, non converti, dans '
+                        + 'la carte de réconciliation des placements. Tes titres saisis restent utilisés.',
                     );
                 } else if (role.taxRegime === undefined) {
                     // Enregistré quand même (affichage/référence), mais l'écart ne sera pas ventilé :
@@ -366,9 +383,19 @@ export function mapFintableSnapshot(
     // Le laisser parler après sa réponse en aurait fait un avertissement PERMANENT, donc mort
     // (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
     //
-    // `soldesDetteSignes` RESTE publié : structuré, muet, sans montant — c'est un diagnostic que le
-    // rapport peut rendre sans rien affirmer, et la seule trace qui permettra de re-vérifier la
-    // convention si Fintable change d'avis. Ce qui meurt est le MESSAGE, pas la mesure.
+    // `soldesDetteSignes` RESTE calculé : structuré, muet, sans montant.
+    //
+    // ⚠️ CORRECTION [revue panel, même lot] : ma première rédaction affirmait qu'il est « la seule
+    // trace qui permettra de re-vérifier la convention si Fintable change d'avis ». **C'est FAUX**,
+    // et vérifié : `FintableSyncReport` ne déclare pas ce champ, et les deux orchestrateurs
+    // construisent leur rapport champ par champ sans jamais le recopier — il ne sort donc pas de ce
+    // module. Écrire une capacité inexistante dans un commentaire est le défaut que ce lot même
+    // dénonce (« un commentaire inversé est pire qu'absent : il dispense de mesurer »), commis dans
+    // le lot qui le corrige.
+    // Ce qu'il EST réellement : la sortie d'une fonction pure, verrouillée par ses tests unitaires,
+    // prête à être câblée le jour où une détection automatique de récidive sera décidée — décision
+    // qui n'est pas gratuite, puisque le rapport part dans un journal PUBLIC. Routé au BACKLOG sous
+    // `[FINTABLE-SIGNE-RECIDIVE-NON-DETECTEE]` plutôt que câblé ici sans consommateur.
 
     if (accountsWithoutRole.length > 0) {
         warnings.push(

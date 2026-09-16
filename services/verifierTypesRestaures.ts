@@ -130,6 +130,15 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     'fintable', 'fintableRoles', 'frequency', 'historySymbol',
     'icon', 'id', 'image', 'industry',
     'insurer', 'kind', 'label', 'lastDate',
+    // ⚠️⚠️ [FINTABLE-DISNAT-USD-SOLDE-IGNORE] `missingRate` : la devise d'un compte courtier dont le
+    // taux manquait à l'écriture. Champ TEXTUEL et PERSISTÉ (`FintableBrokerBalance`), donc sans
+    // cette entrée la première synchro portant un compte en devise étrangère ferait ÉCHOUER la
+    // réhydratation et VIDERAIT l'app — l'incident du 2026-09-01, deux vagues
+    // (`UN-FAUX-REFUS-QUI-VIDE-L-ECRAN-EST-INDISCERNABLE-D-UNE-PERTE-DE-DONNEES`).
+    // C'est la garde de DÉRIVATION écrite après la seconde vague qui l'a attrapée ici, pas moi :
+    // elle dérive la liste de `types.ts` au lieu des états observés, et c'est exactement le cas
+    // qu'elle existe pour couvrir.
+    'missingRate',
     // [FINTABLE-INVESTMENTS-MUET] `comptesSansPositions` (le tableau lui-même, dont la présence est
     // testée par clé) et `reason` (le motif lisible de chaque compte sans positions). `accountId` et
     // `label` figurent déjà plus bas. ⚠️ Ces trois clés arrivent dans un champ PERSISTÉ

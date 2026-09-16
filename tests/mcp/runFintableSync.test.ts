@@ -307,16 +307,15 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
     // solde LÉGITIME chez Fintable, mais `applyDocument` le juge « aberrant » pour une dette (design
     // volontaire, cf applyDebt). Avant le fix, ce rejet AVORTAIT toute la boucle avant `store.save` —
     // aucun payload, même valide (transactions, cash), n'était écrit tant que la carte restait à 0 $.
-    it('une dette à solde 0 (rejetée) devient un AVERTISSEMENT — transaction + cash restent appliqués', async () => {
-        const state = baseState({ transactions: [] });
-        const { store, saved } = makeStore(state);
-        const client = {
+    /** Fabrique un client qui rend un compte cash + une carte au solde donné, et 1 transaction. */
+    function clientAvecCarte(soldeCarte: string) {
+        return {
             get: vi.fn(async (path: string) => {
                 if (path === '/accounts') {
                     return {
                         data: [
                             { id: 'acc_cash', connection_id: 'conn_1', name: 'PCA', type: 'depository', currency: 'CAD', balance: '1000.00', enabled: true },
-                            { id: 'acc_visa', connection_id: 'conn_1', name: 'Visa', type: 'credit', currency: 'CAD', balance: '0.00', enabled: true },
+                            { id: 'acc_visa', connection_id: 'conn_1', name: 'Visa', type: 'credit', currency: 'CAD', balance: soldeCarte, enabled: true },
                         ],
                         nextCursor: null, snapshotDate: null,
                     };
@@ -328,11 +327,27 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
                 { id: 'tx1', account_id: 'acc_cash', date: '2026-07-15', amount: '-50.00', currency: 'CAD', description: 'Test' },
             ])),
         } as unknown as FintableClient;
+    }
+
+    const ROLES = { acc_cash: { kind: 'cash' as const }, acc_visa: { kind: 'debt' as const, debtName: 'Visa Card' } };
+
+    // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] La CAUSE de rejet a changé le 2026-09-16, et le test
+    // a suivi — il n'a pas été re-basé. Avant, la carte à `0.00` produisait un payload que
+    // `applyDebt` refusait (`balance <= 0`) : c'était la cause de rejet la plus simple sous la main.
+    // Le mapper s'abstient désormais d'émettre ce payload — un « Payload NON appliqué » cryptique
+    // sur un état parfaitement NORMAL (carte remboursée) est remplacé par une phrase vraie.
+    //
+    // Retirer l'assertion aurait rendu ce test VACUEUX : sans payload rejeté, il ne teste plus
+    // l'isolation qu'il porte dans son titre (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
+    // Il lui faut donc une cause de rejet RÉELLE : une carte à découvert (`-379.99`, donc une vraie
+    // dette sous la convention mesurée) vers une dette qui n'existe pas encore dans l'état —
+    // `applyDebt` exige alors taux ET paiement minimum pour CRÉER, que le mapper ne fournit jamais.
+    it('un payload dette REJETÉ devient un AVERTISSEMENT — transaction + cash restent appliqués', async () => {
+        const state = baseState({ transactions: [], debts: [] }); // ← « Visa Card » n'existe pas
+        const { store, saved } = makeStore(state);
 
         const report = await runFintableSync(store, {
-            token: 't',
-            roles: { acc_cash: { kind: 'cash' }, acc_visa: { kind: 'debt', debtName: 'Visa Card' } },
-            client,
+            token: 't', roles: ROLES, client: clientAvecCarte('-379.99'),
         });
 
         expect(report.error).toBeNull();
@@ -343,6 +358,28 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
         expect(report.cashUpdated).toBe(true);
         expect(saved).toHaveLength(1);
         expect(saved[0].transactions).toHaveLength(1);
+    });
+
+    it('carte SOLDÉE : plus aucun payload rejeté, un message VRAI à la place — et rien d\'autre ne bouge', async () => {
+        // L'inversion de l'assertion ci-dessus, au même endroit, avec son histoire : ce que le lot
+        // change est que ce cas ne produit PLUS d'échec. Le reste du contrat est identique.
+        const state = baseState({ transactions: [], debts: [] });
+        const { store, saved } = makeStore(state);
+
+        const report = await runFintableSync(store, {
+            token: 't', roles: ROLES, client: clientAvecCarte('0.00'),
+        });
+
+        expect(report.error).toBeNull();
+        expect(report.debtsUpdated).toEqual([]);
+        // Plus de « Payload NON appliqué » : rien n'a été tenté, donc rien n'a échoué.
+        expect(report.warnings.some((w) => w.includes('Payload « debt » NON appliqué'))).toBe(false);
+        // …mais l'abstention est DITE, sinon elle serait indiscernable d'une mise à jour réussie.
+        expect(report.warnings.some((w) => w.includes('carte soldée') && w.includes('Visa Card'))).toBe(true);
+        // Et le reste de la passe est inchangé — c'est ce que l'isolation garantissait déjà.
+        expect(report.transactionsAdded).toBe(1);
+        expect(report.cashUpdated).toBe(true);
+        expect(saved).toHaveLength(1);
     });
 });
 

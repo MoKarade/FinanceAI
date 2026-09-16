@@ -223,3 +223,54 @@ describe('garde de parité : la graphie du régime ne doit JAMAIS diverger de l\
         expect(fromApp).toEqual(regimes);
     });
 });
+
+// ── [revue panel] Un REPLI EN DUR n'est pas un taux CONNU ───────────────────────────────────────
+//
+// ⚠️⚠️ Le défaut que ces gardes ferment est celui que l'en-tête du lot prétendait éviter, repayé un
+// cran plus bas. `DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 ») et est TOUJOURS
+// présent dans l'état, avec `fxRatesEstimated: true` pour le dire. Sans consulter ce drapeau, la
+// conversion publiait 1,40 comme AUTORITÉ sur le total d'un compte — plus crédible que le repli 1:1
+// qu'on avait su refuser, donc MOINS réfutable. Et la branche `missingRate` devenait quasi
+// inatteignable pour USD/EUR, les deux seules devises étrangères du type : une garde qui ne peut
+// presque pas tirer.
+
+describe('[revue panel] un taux ESTIMÉ ne fait pas autorité sur un solde de courtier', () => {
+    const rawUsd = { accountId: 'acc-1', label: 'Disnat', currency: 'USD', balance: 1_000 };
+
+    it('taux ESTIMÉ → traité comme absent : le compte est NOMMÉ, jamais converti', () => {
+        const out = toPersistableBrokerBalances([rawUsd], AT, 'CAD', { USD: 1.40 }, true);
+        expect(out[0].missingRate).toBe('USD');
+        expect(out[0].balanceCad).toBe(0);
+    });
+
+    it('taux RÉEL → converti, comme avant', () => {
+        // Contrôle négatif du précédent : sans lui, un module qui refuserait TOUJOURS de convertir
+        // passerait le test ci-dessus.
+        const out = toPersistableBrokerBalances([rawUsd], AT, 'CAD', { USD: 1.40 }, false);
+        expect(out[0].missingRate).toBeUndefined();
+        expect(out[0].balanceCad).toBeCloseTo(1_400, 6);
+    });
+
+    it('un compte en CAD ne voit rien changer, estimé ou non', () => {
+        // Le drapeau ne doit toucher QUE la conversion : un solde déjà dans la devise de base n'a
+        // aucun taux à appliquer, donc aucune raison d'être écarté.
+        const rawCad = { accountId: 'acc-1', label: 'Disnat', currency: 'CAD', balance: 1_000 };
+        const estime = toPersistableBrokerBalances([rawCad], AT, 'CAD', { USD: 1.40 }, true);
+        const reel = toPersistableBrokerBalances([rawCad], AT, 'CAD', { USD: 1.40 }, false);
+        expect(estime).toEqual(reel);
+        expect(estime[0].balanceCad).toBe(1_000);
+        expect(estime[0].missingRate).toBeUndefined();
+    });
+
+    it('DÉBORDEMENT : le compte est ROUTÉ vers la liste, jamais abandonné sans trace', () => {
+        // ⚠️ Un `continue` ici le ferait retomber dans le trou que ce lot vient de boucher : absent
+        // des TROIS listes d'écartés, donc invisible — le défaut exact que `missingRateAccountLabels`
+        // existe pour empêcher, réintroduit par sa propre réparation.
+        const enorme = { accountId: 'acc-1', label: 'Disnat', currency: 'USD', balance: 1e308 };
+        const out = toPersistableBrokerBalances([enorme], AT, 'CAD', { USD: 1e10 }, false);
+        expect(out).toHaveLength(1);
+        expect(out[0].missingRate).toBe('USD');
+        const reco = reconcileBrokerBalances(out, {});
+        expect(reco.missingRateAccountLabels).toEqual(['Disnat (USD)']);
+    });
+});

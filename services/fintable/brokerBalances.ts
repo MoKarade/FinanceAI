@@ -208,6 +208,22 @@ export function toPersistableBrokerBalances(
     at: number,
     baseCurrency = 'CAD',
     fxRates?: Record<string, number>,
+    /**
+     * ⚠️⚠️ [revue panel] `true` = les taux viennent de `DEFAULT_FX_RATES`, un REPLI EN DUR
+     * (`USD: 1.40`, commenté « approximation Q1 2026 »), pas d'une lecture de marché.
+     *
+     * Sans ce paramètre, ce module traitait 1,40 comme un « taux connu » et publiait la conversion
+     * comme AUTORITÉ sur le total du compte. C'est exactement le piège que l'en-tête de ce lot
+     * prétend éviter (`UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE`), repayé un
+     * cran plus bas : ce n'est plus 1:1, c'est 1,40 — **plus crédible, donc moins réfutable**.
+     * Et `fxRatesEstimated` existe précisément pour ça (`[FX-FALLBACK-SILENCIEUX]`), disponible aux
+     * deux sites d'appel ; ne pas le consulter était le défaut, pas l'absence d'information.
+     *
+     * Un taux estimé est donc traité comme ABSENT : le compte est NOMMÉ (ce qui répond au besoin —
+     * il n'est plus invisible) mais jamais converti. Un montant faux et crédible serait pire que
+     * l'omission qu'on corrige.
+     */
+    fxRatesEstimated = false,
 ): FintableBrokerBalance[] {
     const base = baseCurrency.toUpperCase();
     const stamp = Number.isFinite(at) ? at : 0;
@@ -237,11 +253,19 @@ export function toPersistableBrokerBalances(
         let missingRate = '';
         if (devise && devise !== base) {
             const taux = fxRates?.[devise];
-            if (typeof taux === 'number' && Number.isFinite(taux) && taux > 0) {
-                balanceCad = amount * taux;
-                // Un produit fini d'entrées finies peut déborder (`1e308 * 2`) : la garde vaut aussi
-                // après la multiplication, sinon on persisterait `Infinity` comme une autorité.
-                if (!Number.isFinite(balanceCad)) continue;
+            const tauxUtilisable = !fxRatesEstimated
+                && typeof taux === 'number' && Number.isFinite(taux) && taux > 0;
+            if (tauxUtilisable) {
+                balanceCad = amount * (taux as number);
+                // Un produit fini d'entrées finies peut déborder (`1e308 * 2`).
+                // ⚠️ [revue panel] Un `continue` ici ferait retomber le compte dans le trou que ce
+                // lot vient de boucher : absent des TROIS listes, donc invisible sans trace. On le
+                // route vers `missingRate` — on ne sait pas le convertir, c'est exactement ce que
+                // cette liste veut dire.
+                if (!Number.isFinite(balanceCad)) {
+                    balanceCad = 0;
+                    missingRate = devise;
+                }
             } else {
                 // Le compte est quand même ÉMIS — c'est tout l'objet du lot : il doit être NOMMÉ là
                 // où Marc regarde ses placements. `balanceCad: 0` ne signifie rien et n'est jamais

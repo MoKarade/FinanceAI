@@ -14068,3 +14068,54 @@ perdu la fonctionnalité qu'on protège.
 ⚠️ Et le résultat NÉGATIF se publiera autant que le positif : si `external_memo` ne porte pas la
 devise, le dire FERME la piste. Sans ça, la prochaine session la retente à l'aveugle ou la déclare
 impossible — les deux ont déjà coûté des livraisons (`DOC-STALE-IMPOSSIBILITY`).
+
+---
+
+## `UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE` (2026-09-16, revue panel)
+
+Le lot `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` s'ouvre sur une leçon fière :
+`UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE` — ne pas convertir avec
+`toCurrencyFactor`, dont le repli 1:1 donnerait 72 040 « CAD » pour 72 040 USD. Le correctif
+interroge donc le taux explicitement. **Et il retombe dans le même piège un cran plus bas** :
+`DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 »), il est **toujours présent** dans
+l'état, et `fxRatesEstimated: true` existe précisément pour le dire (`[FX-FALLBACK-SILENCIEUX]`).
+Sans consulter ce drapeau, le code traitait 1,40 comme un « taux connu » et publiait la conversion
+comme AUTORITÉ.
+
+**1,40 est pire que 1:1, parce qu'il est plus crédible.** Un total sous-évalué de 30 % avec un
+facteur 1 finit par se voir ; un total converti à un taux plausible mais périmé ne se voit jamais.
+La question à poser n'est pas « ce repli est-il grossier ? » mais **« qu'est-ce qui, dans le
+résultat, permettrait encore de savoir que c'est un repli ? »** — et quand la réponse est « rien »,
+il faut le drapeau, pas un meilleur chiffre.
+
+⚠️ **Corollaire mesuré** : la branche « taux absent », écrite comme le filet du lot, était **quasi
+inatteignable** pour USD et EUR — les deux seules devises étrangères du type — puisque la table de
+repli les porte toujours. Une garde dont le chemin nominal ne passe jamais est une garde qui ne
+peut pas tirer, et son compteur à zéro se lit « rien à signaler ».
+
+### `UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET` (même revue)
+
+Trois défauts de ce lot sont des re-commissions de leçons que j'avais moi-même écrites, parfois le
+jour même :
+
+1. **La regex de normalisation d'espaces était `/ | /g` — de l'ASCII pur**, donc une transformation
+   IDENTITÉ. La garde de non-fuite qu'elle alimente était **vacueuse** : un `formatCAD` interpolé
+   demain produirait une insécable que `.not.toContain('8 642')` ne verrait jamais. C'est la
+   troisième fois pour ce dépôt, et la deuxième où je l'écris après l'avoir documentée. Parade
+   ajoutée : **une anti-vacuité du NORMALISATEUR lui-même** (`chiffres('8 642')` doit rendre
+   `'8 642'`), pas seulement de son sujet.
+2. **Le compteur « + N autre(s) » manquait** sur la nouvelle troncature, alors que le lot précédent
+   l'avait ajouté quatre heures plus tôt sur l'avertissement voisin, avec la phrase « borné et
+   tronqué en silence sont indiscernables ». Aggravant ici : l'ordre est ALPHABÉTIQUE, donc le champ
+   qui porte la devise pouvait tomber au-delà du 12ᵉ sans que personne ne le sache.
+3. **Un `continue` sur débordement** faisait retomber le compte dans le trou que le lot venait de
+   boucher : absent des trois listes d'écartés, donc invisible sans trace.
+
+Ce que ça enseigne n'est pas « relire mes leçons » — je les avais relues. C'est que **la leçon
+protège l'endroit où elle a été écrite, pas la classe**. Elle se vérifie par une PERTURBATION à
+l'endroit neuf, jamais par la conviction de la connaître.
+
+⚠️ Et les quatre agents du panel ont trouvé **six défauts réels** que le typecheck, le lint, 321
+tests ciblés verts et mes huit perturbations n'avaient pas vus — dont deux qui atteignaient
+l'utilisateur (données bancaires réelles affichées en mode démo ; remède qui envoie corriger la
+mauvaise chose). Troisième lot d'affilée où le panel bat les deux gates.

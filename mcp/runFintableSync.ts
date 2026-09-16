@@ -174,7 +174,7 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
                 ...applied.nextState,
                 fintableSyncReport: report,
                 // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Même source de taux que le chemin navigateur.
-                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at, 'CAD', base.fxRates),
+                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at, 'CAD', base.fxRates, base.fxRatesEstimated === true),
             }, baseVersion);
             return report;
         };

@@ -61,10 +61,27 @@ describe('echantillonsClesInconnues', () => {
         expect(e.exemples).toHaveLength(2);
     });
 
-    it('BORNE le nombre de clés, comme l\'inventaire des noms', () => {
+    it('BORNE le nombre de clés ET ANNONCE la troncature — jamais en silence', () => {
+        // ⚠️ [revue panel] « Borné » et « tronqué en silence » sont indiscernables sans ce compte.
+        // Le risque est concret : l'ordre est ALPHABÉTIQUE, donc si le champ qui porte la devise
+        // tombait au-delà du 12ᵉ, Marc ne le verrait pas — et rien ne le lui dirait.
         const trop: Record<string, unknown> = {};
         for (let i = 0; i < MAX_CLES_CITEES + 5; i++) trop[`inconnu_${String(i).padStart(2, '0')}`] = `v${i}`;
-        expect(echantillonsClesInconnues([brut(trop)])).toHaveLength(MAX_CLES_CITEES);
+        const out = echantillonsClesInconnues([brut(trop)]);
+
+        const cites = out.filter((e) => e.exemples.length > 0);
+        expect(cites).toHaveLength(MAX_CLES_CITEES);
+        // La sentinelle porte le COMPTE de ce qui manque, et aucune valeur.
+        const sentinelle = out.find((e) => e.exemples.length === 0);
+        expect(sentinelle?.cle).toBe('(+ 5 autre(s) non cité(s))');
+    });
+
+    it('PAS de sentinelle quand rien n\'est tronqué — elle affirmerait une perte inexistante', () => {
+        // Contrôle négatif : sans lui, une sentinelle posée systématiquement passerait le test
+        // ci-dessus et mentirait dans le cas NORMAL, qui est celui que Marc voit tous les jours.
+        const out = echantillonsClesInconnues([brut({ external_memo: MEMO_TEMOIN })]);
+        expect(out.every((e) => e.exemples.length > 0)).toBe(true);
+        expect(out.some((e) => e.cle.includes('autre(s)'))).toBe(false);
     });
 
     it('ignore `null`, `undefined` et le vide : les citer ferait croire à un champ REMPLI', () => {

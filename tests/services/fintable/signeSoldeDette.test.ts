@@ -131,7 +131,23 @@ describe('le signe est publié pour TOUT compte au rôle « dette »', () => {
 // est la RÈGLE.
 
 describe('aucun avertissement du bloc « dette » ne publie un MONTANT', () => {
-    const chiffres = (w: string) => w.replace(/ | /g, ' ');
+    // ⚠⚠ [revue panel] Ce motif était écrit `/ | /g` — de l'ASCII PUR, donc une alternance de
+    // deux fois « un espace ordinaire » : une transformation IDENTITÉ. La garde de non-fuite
+    // qu'il alimente était donc VACUEUSE — un `formatCAD` interpolé demain aurait produit
+    // « 8\u00a0642 » (insécable) que `.not.toContain('8 642')` (ordinaire) n'aurait jamais vu.
+    // TROISIÈME fois que ce dépôt paie ce piège, et la deuxième fois que je l'écris après
+    // l'avoir documenté moi-même (`UN-INVENTAIRE-QUI-ATTEINT-ZERO-S-INVERSE-EN-REGLE`).
+    // La classe de caractères ci-dessous contient l'INSÉCABLE (U+00A0) et la FINE insécable
+    // (U+202F), les deux séparateurs que `Intl` peut produire en fr-CA.
+    const chiffres = (w: string) => w.replace(/[\u00a0\u202f]/g, ' ');
+
+    it('le normalisateur d\'espaces FAIT quelque chose — sinon toute la section est vacueuse', () => {
+        // ⚠️ Anti-vacuité du NORMALISATEUR, pas du sujet. Sans ce cas, un motif redevenu ASCII pur
+        // (l'erreur commise ici) rendrait les gardes ci-dessous silencieusement inopérantes, et
+        // elles passeraient au vert exactement comme aujourd'hui.
+        expect(chiffres('8\u00a0642,17')).toBe('8 642,17');
+        expect(chiffres('8\u202f642,17')).toBe('8 642,17');
+    });
 
     for (const [nom, solde, extrait] of [
         ['en crédit (en ta faveur)', -MONTANT_TEMOIN, 'EN TA FAVEUR'],

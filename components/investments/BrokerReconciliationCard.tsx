@@ -76,6 +76,25 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
     const excludedCount = reco.unassignedAccountLabels.length + reco.unreadableAccountLabels.length
         + reco.missingRateAccountLabels.length;
 
+    /**
+     * ⚠️ [revue panel] La cause UNIQUE d'exclusion, quand il n'y en a qu'une — pour que le remède
+     * affiché soit celui du vrai problème.
+     *
+     * Le message compact nommait « régime non déclaré ou solde illisible » et prescrivait le remède
+     * de la première ; depuis que `excludedCount` compte aussi les comptes sans taux, il pouvait
+     * envoyer déclarer un régime fiscal à quelqu'un dont le seul problème est un taux pas encore
+     * connu. « Un diagnostic qui nomme la mauvaise cause envoie corriger la mauvaise chose » — ce
+     * que le test de ce lot énonce côté service, et que cette branche d'écran avait oublié.
+     *
+     * `null` = plusieurs causes coexistent : on ne prescrit alors AUCUN remède particulier et on
+     * renvoie au détail, plutôt que d'en choisir un au hasard.
+     */
+    const causeUnique: 'taux' | 'regime' | 'illisible' | null =
+        reco.missingRateAccountLabels.length === excludedCount ? 'taux'
+            : reco.unassignedAccountLabels.length === excludedCount ? 'regime'
+                : reco.unreadableAccountLabels.length === excludedCount ? 'illisible'
+                    : null;
+
     if (variant === 'compact') {
         // [Panel #543, CRITIQUE] AUCUN panier réconcilié mais des comptes existent (tous non
         // déclarés/illisibles) : rendre « 0 $ » avec l'autorité du mot « courtier » remplacerait des
@@ -84,10 +103,25 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
         if (reco.regimes.length === 0) {
             return (
                 <Card className="bg-white/[0.03] border-white/10">
+                    {/* ⚠️ [revue panel] Ce message nommait DEUX causes (« régime non déclaré ou solde
+                        illisible ») et prescrivait le remède de la première. Depuis qu'`excludedCount`
+                        compte AUSSI les comptes sans taux de change, il pouvait envoyer déclarer un
+                        régime fiscal à quelqu'un dont le seul problème est un taux pas encore connu —
+                        « un diagnostic qui nomme la mauvaise cause envoie corriger la mauvaise chose »,
+                        exactement ce que le test de ce même lot énonce côté service, oublié ici.
+                        Le remède est donc DÉRIVÉ de la cause réelle, jamais écrit en dur. */}
                     <div className="text-meta text-warning-400" role="status">
                         <span className="font-bold">{excludedCount} compte{excludedCount > 1 ? 's' : ''} courtier (Fintable)</span>{' '}
-                        sans régime fiscal déclaré ou au solde illisible — total non affichable.
-                        Déclare-les dans Réglages → Sync bancaire Fintable.
+                        {causeUnique === 'taux'
+                            ? 'en devise étrangère, sans taux de change connu — total non affichable. '
+                              + 'Le taux arrive avec la prochaine mise à jour des cours ; rien à corriger de ton côté.'
+                            : causeUnique === 'regime'
+                                ? 'sans régime fiscal déclaré — total non affichable. '
+                                  + 'Déclare-les dans Réglages → Sync bancaire Fintable.'
+                                : causeUnique === 'illisible'
+                                    ? 'au solde illisible — total non affichable. Relance une synchronisation.'
+                                    : 'hors réconciliation, pour plusieurs raisons — total non affichable. '
+                                      + 'Ouvre l\'onglet Investissements pour le détail par compte.'}
                     </div>
                 </Card>
             );

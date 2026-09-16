@@ -795,6 +795,10 @@
   ⚠️ **Le recoupement par le SOLDE** (seule grandeur indépendante, bien donnée en CAD) reste la
   piste de secours — mais il EXIGE `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` d'abord : tant
   que la bascule jette les transactions de la carte, l'écart serait permanent, donc l'alarme morte.
+  ✅ **Ce prérequis est livré le 2026-09-16** — ⚠️ mais il n'est EFFECTIF pour un compte qu'une fois
+  ce compte connu sous son libellé (sinon il reste sur le repli global). Avant d'écrire le
+  recoupement par le solde, **vérifier que le rapport de sync ne nomme plus la carte** : sinon
+  l'alarme naîtrait morte pour la même raison, une marche plus bas.
 - [x] 🔧 **`[TX-SELECTION-SANS-ACTION]`** (S, **MESURÉ**) — Marc : « j'arrive pas à les marquer en
   doublon ». **Il avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL
   point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par
@@ -816,6 +820,18 @@
   ⚠️ **L'ADR 0009 §3 n'a PAS été rouverte**, et c'est le point : son repli (« le chemin sûr existant :
   marquer `isDuplicate` ») était mesurément FERMÉ pour cette classe. Le correctif ouvre le repli
   qu'elle nommait, au lieu de me donner le droit d'écrire sur une transaction existante.
+- [ ] 🟡 **`[E2E-CIBLE-44-SOUS-PIXEL]`** (XS, **MESURÉ, découvert en passant sur la PR #974**) — six
+  assertions E2E comparent une `boundingBox()` de Playwright à la borne WCAG **exacte** `>= 44`
+  (`e2e/futureMobileProjectionScreen.spec.ts`, `e2e/futureMobileLegendDrawer.spec.ts` — recensé, pas
+  cité). Or une boîte de rendu est FRACTIONNAIRE : mesuré en CI le 2026-09-16,
+  **`43.99999237060547`** contre `>= 44`, soit un écart de **7,6 × 10⁻⁶ px**. Le même check était
+  VERT sur le head précédent, dont l'unique écart était une ligne de `CLAUDE.md` : c'est donc une
+  variance de rendu du runner, pas une régression. ⚠️ Le correctif n'est PAS de baisser l'exigence
+  (44 px est une règle WCAG, et une garde qui descend sous sa règle ne garde plus rien) : c'est de
+  comparer la grandeur ARRONDIE, ou d'admettre un ε explicite et commenté. ⚠️ Et il se fait sur les
+  SIX sites, pas sur celui qui a rougi — les cinq autres portent le même défaut et n'ont pas encore
+  eu la malchance de tomber du mauvais côté. Non corrigé dans #974 : défaut préexistant, sans rapport
+  avec le lot, et le corriger aurait élargi la PR.
 - [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **mesure à confirmer**) — le
   mapper suppose « solde de carte POSITIF = montant dû » (`const owed = Math.abs(account.balance)`,
   `mapSnapshot.ts`, commenté « un solde négatif signifie un crédit en ta faveur »). Marc, interrogé le
@@ -845,8 +861,8 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
-- [ ] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **EN ATTENTE DU
-  GO de Marc**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
+- [x] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **FAIT le
+  2026-09-16**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
   la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même
   vitesse. Le compte chèque poste le jour même et pousse la bascule chaque jour ; la carte de crédit
   poste avec quelques jours de retard (et `pending: false` est FORCÉ par contrat, donc seules les
@@ -866,6 +882,27 @@
   d'aujourd'hui) plutôt que sur `null`, sinon un compte nouvellement routé rapatrierait tout son
   historique sans dédoublonnage. Touche `deriveCutoverDate` + `syncCore` + les DEUX orchestrateurs
   (navigateur ET cron) → plan-first, gardes discriminantes exigées des deux côtés.
+  ✅ **LIVRÉ le 2026-09-16** — et la mesure a corrigé **le remède que ce ticket prescrivait** :
+  `deriveCutoverDatesByAccount` + `cutoverByAccount` (plafonné par compte) + `transactionsAfterByAccount`
+  au mapper + **`requestDateFrom`** (la borne de la REQUÊTE devient la plus ANCIENNE des bornes —
+  sans elle l'API ne rend même pas les lignes du compte lent et tout le reste est INERTE). Câblé et
+  gardé dans les deux orchestrateurs. 17 gardes, 5 perturbations séparées.
+  ⚠️⚠️ **Le repli prescrit ci-dessus (« compte jamais vu → bascule globale ») est un INTERBLOCAGE**,
+  mesuré : le compte lent ne peut jamais poser sa PREMIÈRE transaction, donc sa borne reste absente
+  pour toujours. **0/9 avant · 0/9 avec le repli seul · 9/9 dès qu'une transaction de la carte est
+  connue sous son libellé** (contrôle négatif à décalage nul : 12/12 partout). Le repli est GARDÉ —
+  l'ouvrir à `null` rapatrierait l'historique sans dédoublonnage, et rejouerait les 44 lignes du
+  Brésil aux MAUVAIS montants (`applyBankStatement` déduplique par `date|montant|payee`, or les
+  montants ont été corrigés à la main le 15/09) — mais il est désormais **NOMMÉ** dans le rapport
+  de sync, avec le seul geste qui débloque : « Rattraper l'historique », UNE fois.
+  ⚠️⚠️⚠️ **Le panel a trouvé TROIS défauts APRÈS gate vert et CI verte, tous à moi** — dont un
+  money-critical : une borne par compte ne voit que les lignes portant SON libellé, donc reculer
+  sous la date de lignes entrées par un autre canal (CSV `'Importé'`, MCP sans `accountName`, sync
+  d'avant le 05/09) faisait ÉCRIRE des doublons que la bascule globale bloquait — **3 écrits,
+  mesuré sur `applyPayloadsIsolated`**. Corrigé par un PLANCHER dérivé (date la plus récente des
+  lignes rattachables à aucun compte routé), calculé après la lecture du snapshot. Les deux autres :
+  clé normalisée d'un seul côté (interblocage PERMANENT sur un libellé espacé, 0/9 même après
+  rattrapage) et compte non listé par l'API jamais nommé. 28 gardes, 8 perturbations séparées.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : Marc pense que son plan offre plus de 30 jours → à MESURER chez lui (`npm run fintable:dry -- --days 365`, compte de transactions rendues, montants masqués) ; je ne peux pas appeler fintable.io d'ici (403).
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,

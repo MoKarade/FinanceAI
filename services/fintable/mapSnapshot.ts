@@ -27,6 +27,7 @@
 // ont le rôle `investment` : leur solde sert de valeur de RÉFÉRENCE du courtier, pas de source.
 
 import type { BankStatementPayload, CashBalancePayload, DebtPayload, DocumentPayload } from '../../mcp/ingest/applyDocument';
+import { cleCompte } from './deriveCutoverDate';
 import { MAX_CLES_CITEES } from './decode';
 import type { FintableSnapshot, FintableTransaction } from './types';
 import { detectInternalTransfers, type TransferPair } from './detectTransfers';
@@ -89,6 +90,22 @@ export interface FintableMappingConfig {
      * aucune borne (à n'utiliser que sur un état vierge — sinon doublons, cf. piège n°1).
      */
     transactionsAfter: string | null;
+    /**
+     * [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Bascule PAR COMPTE, clé = LIBELLÉ du compte
+     * (`FintableAccount.label`, qui est aussi ce qui est persisté dans `Transaction.accountName`).
+     *
+     * ⚠️ POURQUOI : les comptes ne postent pas à la même vitesse. Le compte chèque poste le jour
+     * même et pousse la bascule commune chaque jour ; la carte de crédit poste quelques jours plus
+     * tard et arrive donc TOUJOURS derrière cette borne — elle se fait jeter chaque jour,
+     * indéfiniment. MESURÉ sur 12 passes quotidiennes (carte à 3 jours de décalage) :
+     * **12/12 chèque reçues, 0/9 carte** ; contrôle négatif à décalage NUL : **12/12 carte reçues**.
+     *
+     * ⚠️ Un libellé ABSENT de cette carte retombe sur `transactionsAfter` (la borne globale), jamais
+     * sur `null` : un compte nouvellement routé rapatrierait sinon tout son historique sans
+     * dédoublonnage. Ce repli est SÛR mais il ne répare rien pour ce compte-là — c'est pour ça que
+     * le rapport le NOMME (voir `skippedBeforeCutover`) au lieu de le laisser muet.
+     */
+    transactionsAfterByAccount?: Record<string, string>;
     /** Devise de l'app. Toute transaction dans une AUTRE devise est écartée et signalée. */
     baseCurrency?: string;
     /**
@@ -307,14 +324,38 @@ export function mapFintableSnapshot(
     let skippedForeignCurrency = 0;
     let skippedUnroutedAccount = 0;
     let skippedInvestmentAccount = 0;
+    /** [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Comptes qui PERDENT des transactions alors
+     *  qu'ils sont encore sur la borne GLOBALE, faute d'avoir jamais été vus sous leur libellé.
+     *  C'est la seule population pour laquelle le défaut est encore ouvert : la nommer est ce qui
+     *  la distingue d'un compte simplement à jour. */
+    const comptesSurReplGlobal = new Set<string>();
+    /** Transactions d'un compte que `/accounts` ne liste plus (cf. le bloc du filtre). */
+    let skippedCompteNonListe = 0;
+    const parCompte = config.transactionsAfterByAccount ?? {};
 
     for (const tx of snapshot.transactions) {
         const role = roleOf(tx.accountId);
         if (role === null) { skippedUnroutedAccount++; continue; }
         if (role.kind === 'investment' || role.kind === 'ignore') { skippedInvestmentAccount++; continue; }
+        // [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] La borne de CE compte, sinon la globale.
+        const libelle = accountLabelById.get(tx.accountId);
+        // ⚠️ [revue #974] `cleCompte` des DEUX côtés : la carte est INDEXÉE par le libellé ébarbé
+        // (`deriveCutoverDatesByAccount`), donc la relire avec le libellé brut ne retrouverait jamais
+        // un compte dont le nom porte une espace de bord — mesuré 0/9 même après rattrapage.
+        const borneCompte = libelle !== undefined ? parCompte[cleCompte(libelle)] : undefined;
+        const borne = borneCompte ?? config.transactionsAfter;
         // Comparaison lexicographique valide sur `YYYY-MM-DD` (format vérifié au décodage).
-        if (config.transactionsAfter !== null && tx.date <= config.transactionsAfter) {
+        if (borne !== null && tx.date <= borne) {
             skippedBeforeCutover++;
+            if (borneCompte === undefined) {
+                // ⚠️ [revue #974] Un compte que l'API ne LISTE plus (désactivé, ré-auth partielle)
+                // n'a pas de libellé ici — et il est condamné à la borne globale POUR TOUJOURS,
+                // puisque `accountName` ne lui sera jamais attaché non plus. Le compter à part
+                // plutôt que de le laisser disparaître dans le total : un compte structurellement
+                // bloqué qu'aucun message ne nomme est le silence que ce lot existe pour fermer.
+                if (libelle !== undefined) comptesSurReplGlobal.add(libelle);
+                else skippedCompteNonListe++;
+            }
             continue;
         }
         if (tx.currency.toUpperCase() !== baseCurrency) { skippedForeignCurrency++; continue; }
@@ -350,6 +391,32 @@ export function mapFintableSnapshot(
             `${skippedBeforeCutover} transaction(s) plus ANCIENNES que la bascule (${config.transactionsAfter}) `
             + 'ont été ignorées : la synchronisation ne remonte jamais avant ta transaction la plus '
             + 'récente. Utilise « Rattraper l\u2019historique » dans Réglages pour les récupérer.',
+        );
+    }
+
+    // ⚠️ [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Le repli sur la borne GLOBALE est sûr, et il
+    // ne répare rien pour un compte qui poste en retard : tant qu'aucune de ses transactions n'est
+    // connue sous son libellé, sa borne reste celle que le compte le plus RAPIDE vient d'avancer —
+    // donc il se refait jeter à chaque passe, indéfiniment. Mesuré : 0/9 dans cet état, 9/9 dès
+    // qu'UNE seule de ses transactions est connue. Ce message ne parle donc QUE des comptes qui
+    // perdent réellement quelque chose (un avertissement permanent est un avertissement mort), et il
+    // nomme le seul geste qui débloque : un rattrapage, UNE fois.
+    if (skippedCompteNonListe > 0) {
+        warnings.push(
+            `${skippedCompteNonListe} transaction(s) rattachée(s) à un compte que l\u2019API ne liste `
+            + 'PLUS (désactivé, ou ré-authentification à refaire) : il reste sur la bascule commune et '
+            + 'ne pourra jamais avoir la sienne tant qu\u2019il n\u2019est pas relisté. Réactive-le chez '
+            + 'Fintable, ou retire son rôle dans Réglages.',
+        );
+    }
+
+    if (comptesSurReplGlobal.size > 0) {
+        warnings.push(
+            `Compte(s) en retard de postage sans historique connu : ${[...comptesSurReplGlobal].sort().join(', ')}. `
+            + 'Leurs transactions arrivent APRÈS la bascule avancée par les comptes qui postent le jour '
+            + 'même, donc elles seront écartées à CHAQUE passe tant que ce compte n\u2019aura pas une seule '
+            + 'transaction connue sous son nom. Lance « Rattraper l\u2019historique » dans Réglages UNE fois '
+            + 'pour l\u2019amorcer — ensuite la bascule de ce compte avance toute seule.',
         );
     }
 

@@ -26,7 +26,7 @@ import { readFintableSnapshot } from '../services/fintable/readSnapshot';
 import { comptesSansPositionsDuSnapshot } from '../services/fintable/comptesSansPositions';
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { toPersistableBrokerBalances } from '../services/fintable/brokerBalances';
-import { decideCutoverDate, applyPayloadsIsolated } from '../services/fintable/syncCore';
+import { decideCutoverDate, requestDateFrom, bornesEffectivesParCompte, libellesRoutes, plancherNonAttribuable, applyPayloadsIsolated } from '../services/fintable/syncCore';
 import { lastProductiveAtSuivant } from '../services/fintable/syncHealth';
 import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
@@ -109,13 +109,24 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             // Filtre grossier côté API (réduit la page) ; la borne EXACTE (stricte) est appliquée
             // par le mapper via `transactionsAfter` — les deux se recoupent, aucun risque à ce que
             // l'API soit inclusive du jour de bascule.
-            dateFrom: cutoverDateUsed ?? undefined,
+            // ⚠️ [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] La borne de la REQUÊTE est la plus
+            // ANCIENNE des bornes par compte : sans ça l'API ne rend même pas les lignes du compte
+            // qui poste en retard, et le filtre par compte du mapper n'aurait rien à laisser passer.
+            dateFrom: requestDateFrom(cutover) ?? undefined,
             dateTo: todayStr,
         });
+
+        // ⚠️ [revue #974] Même plancher que le chemin navigateur, calculé APRÈS la lecture pour la
+        // même raison : il faut les libellés réellement routés.
+        const bornesEffectives = bornesEffectivesParCompte(
+            cutover.cutoverByAccount,
+            plancherNonAttribuable(state.transactions, libellesRoutes(snapshot.accounts.map((a) => a.label))),
+        );
 
         const { payloads, report: mapReport } = mapFintableSnapshot(snapshot, {
             roles: opts.roles,
             transactionsAfter: cutoverDateUsed,
+            transactionsAfterByAccount: bornesEffectives,
         });
 
         /**

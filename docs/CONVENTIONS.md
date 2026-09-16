@@ -13562,3 +13562,178 @@ L'alerte restera **rouge à chaque commit du serveur** tant que `GCP_PROJECT_ID`
 secrets ne sont pas posés. C'est voulu : à chaque fois, c'est VRAI — ce commit-là n'est pas
 déployé. Un rouge toujours juste et toujours actionnable n'est pas du bruit ; c'est une dette
 qu'on a cessé de pouvoir oublier. Le rouge disparaît en câblant la CI, pas en baissant le son.
+
+---
+
+## `LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT` (2026-09-16)
+
+`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` portait un défaut **mesuré et exact** et un
+remède **inerte**. Les deux avaient été écrits dans la même passe, par moi, et seul le premier avait
+été vérifié.
+
+### Le défaut, re-mesuré : exact
+
+La bascule anti-doublon (`deriveCutoverDate`) rend UNE date « tous comptes confondus ». Le compte
+chèque poste le jour même et l'avance chaque jour ; la carte de crédit poste quelques jours plus
+tard (et `pending: false` est FORCÉ par contrat, donc seules les transactions POSTÉES sont exposées)
+— elle arrive donc toujours derrière une borne que le chèque vient de déplacer, et
+`tx.date <= transactionsAfter` la jette. **Chaque jour, indéfiniment.**
+
+Simulation de 12 passes quotidiennes sur les VRAIS modules (`decideCutoverDate` + `mapFintableSnapshot`) :
+
+| scénario | chèque | carte |
+|---|---|---|
+| bascule globale (code d'avant), carte à 3 j de décalage | 12/12 | **0/9** |
+| bascule globale, décalage NUL — *contrôle négatif* | 12/12 | **12/12** |
+
+Le décalage de postage EST la variable : le mécanisme est prouvé dans les deux sens.
+
+### Le remède prescrit : un INTERBLOCAGE, mesuré
+
+Le ticket prescrivait : bascule par compte, et « un compte jamais vu retombe sur la bascule globale
+(comportement d'aujourd'hui) plutôt que sur `null`, sinon un compte nouvellement routé rapatrierait
+tout son historique sans dédoublonnage ». La prudence est juste. **L'effet est nul :**
+
+| scénario (12 passes, décalage 3 j) | chèque | carte |
+|---|---|---|
+| par compte, repli global, carte **jamais vue** | 12/12 | **0/9** ⟵ identique au défaut |
+| par compte, carte **déjà vue une fois** | 12/12 | **9/9** |
+| par compte, repli `null` | 12/12 | 9/9 *(mais rapatrie tout)* |
+
+La carte ne peut **jamais** poser sa première transaction — elle est jetée par la borne globale —
+donc sa borne par compte reste absente pour toujours, donc le repli s'applique pour toujours. Le
+remède se mord la queue, et rien dans sa formulation ne le laissait voir.
+
+**Règle** : le REMÈDE d'un ticket se re-mesure exactement comme son DÉFAUT. Un défaut décrit un
+mécanisme observé ; un remède décrit un mécanisme **imaginé**, et c'est celui-là qu'on livre. Le
+ticket qui écrit « fix proposé : … » a fait la moitié du travail de mesure.
+
+### Ce qui a été livré, et pourquoi pas le repli `null`
+
+Le repli global est GARDÉ. L'ouvrir à `null` aurait un coût CONCRET, pas théorique :
+`applyBankStatement` déduplique par `date|montant|payee`, or les 44 lignes du Brésil ont été
+corrigées À LA MAIN la veille (montants changés, libellés suffixés) — une passe non bornée les
+rejouerait donc aux **mauvais** montants sans qu'aucune dédup ne les reconnaisse. La leçon
+`UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL` d'hier devient ici une contrainte de
+conception, un jour plus tard.
+
+Le correctif rend donc le repli **VISIBLE** au lieu de l'ouvrir : le rapport de sync NOMME les
+comptes qui perdent des transactions alors qu'ils sont encore sur la borne globale, et renvoie vers
+« Rattraper l'historique » — qui existe, qui classe les doublons (`classerRattrapage`), et qu'une
+seule passe suffit à débloquer (mesuré : 9/9 ensuite). ⚠️ L'avertissement ne parle QUE des comptes
+qui perdent réellement quelque chose : un avertissement permanent est un avertissement mort.
+
+### ⚠️ La moitié sans laquelle tout le reste est inerte : la borne de la REQUÊTE
+
+`dateFrom` est un filtre côté API. Laissé à la bascule globale, **l'API ne rend même pas les lignes
+du compte lent** — le filtre par compte du mapper n'a alors rien à laisser passer. C'est
+`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` dans sa forme la plus pure : tous les tests du mapper
+seraient verts, et la production inchangée. D'où `requestDateFrom` (la plus ANCIENNE des bornes
+effectives), câblé dans les DEUX orchestrateurs et gardé des deux côtés par une garde qui
+**OBSERVE** la requête remise au client au lieu de la reconstruire.
+
+⚠️ Un compte absent de la carte n'élargit PAS la fenêtre (il retombe sur la globale) : seuls les
+comptes déjà vus peuvent la reculer, et seulement jusqu'à leur propre dernière transaction connue.
+La fenêtre reste bornée par la DONNÉE, jamais par une constante choisie.
+
+### Corollaires
+
+- ⚠️ **Le plafonnement se recopie sur chaque borne.** Une transaction mal datée sur la carte gèlerait
+  la carte SEULE — plus discret que le gel global, puisque les autres comptes continuent d'arriver
+  et que rien n'a l'air cassé.
+- ⚠️ **La clé de la carte est le LIBELLÉ, pas l'identifiant Fintable** : `Transaction.accountName`
+  est le seul identifiant de compte persisté côté app. Conséquence assumée et écrite : le mapper
+  n'écrit `accountName` que depuis le 2026-09-05, et un import CSV sans colonne de compte n'en a
+  pas — ces lignes comptent dans la bascule GLOBALE et dans aucune borne de compte. Une borne fondée
+  sur « je ne sais pas de quel compte ça vient » serait une borne inventée.
+### ⚠️⚠️ Ce que le panel a trouvé APRÈS gate vert ET CI verte : une clé normalisée d'UN SEUL côté
+
+Deux agents indépendants ont relevé le même défaut, et il était **à moi**. `deriveCutoverDatesByAccount`
+construisait la carte en TRIMMANT le libellé ; `mapSnapshot` la relisait avec le libellé BRUT — et
+rien ne trimme `label` au décodage (`requireString` ne trimme pas). Un compte dont le nom porte une
+espace de bord avait donc **deux clés pour un même compte** : sa borne restait introuvable à chaque
+passe.
+
+Mesuré sur les 12 passes, et c'est la mesure qui tranche :
+
+| libellé | carte jamais vue | carte **déjà vue** |
+|---|---|---|
+| `'Carte'` | 0/9 | **9/9** |
+| `' Carte'` | 0/9 | **0/9** |
+
+La seconde ligne est le vrai coût : l'interblocage **ne se refermait JAMAIS**, alors que
+l'avertissement que ce lot venait d'écrire prescrit « Rattraper l'historique, UNE fois ». Le lot
+fabriquait donc exactement ce qu'il prétendait corriger — un remède PONCTUEL contre un défaut
+PERMANENT, qui enseigne à être ignoré. Avec un libellé propre, tout était vert.
+
+**Règle** : une clé d'indexation se NORMALISE dans une source unique appelée aux DEUX bouts
+(écriture et lecture). Un `.trim()` recopié d'un seul côté est indétectable par tous les tests dont
+les fixtures ont des libellés propres — et les fixtures ont toujours des libellés propres.
+
+⚠️ **Trim SEULEMENT.** Rabattre la casse ou les accents « pour être sûr » échangerait une borne
+introuvable contre une borne PARTAGÉE entre deux comptes distincts — c'est-à-dire le défaut
+d'origine, un cran plus bas. Le contrôle inverse est dans la garde (`Carte` / `carte` / `Cârte`
+restent trois clés).
+
+⚠️ Et ce qui est PERSISTÉ reste le libellé BRUT : c'est ce que l'utilisateur voit et la clé d'autres
+consommateurs (`applyTransferDetection`). Seule l'INDEXATION est normalisée.
+
+### ⚠️⚠️⚠️ Le troisième, et le seul qui pouvait COÛTER de l'argent : une borne par compte ne voit
+que ce qui porte son libellé
+
+Un troisième agent a trouvé ce que les deux autres avaient manqué, et c'est le plus cher :
+**la bascule par compte pouvait faire ÉCRIRE des doublons que la bascule globale bloquait.**
+
+La borne d'un compte est dérivée des seules lignes dont `accountName` vaut exactement son libellé.
+Or le même compte réel a des lignes entrées par d'AUTRES canaux :
+- import CSV → `accountName = colonne || 'Importé'` (`parseBankCsv.ts`, vérifié) ;
+- `apply_bank_statement` du MCP → `accountName` est **optionnel** (vérifié au schéma) ;
+- toute sync Fintable antérieure au 2026-09-05 → aucun `accountName`.
+
+Ces lignes AVANÇAIENT la bascule globale, donc elles protégeaient. Reculer la borne d'un compte
+sous leur date rouvre la fenêtre sur des transactions DÉJÀ présentes — et la dédup ne rattrape rien :
+sa clé est `date|round(montant×100)|payee` (vérifié), or c'est justement le **payee** qui diffère
+entre une saisie à la main et ce que Fintable livre.
+
+MESURÉ sur les vrais modules (`mapFintableSnapshot` + `applyPayloadsIsolated`, donc ce qui est
+réellement ÉCRIT) : carte dont la dernière ligne étiquetée date du 09-05, trois dépenses réécrites à
+la main les 09-08/09-10/09-12 sans `accountName` → **3 doublons écrits sans le plancher, 0 avec**.
+
+⚠️ Et le cas n'était pas théorique : les **36 lignes du Brésil réécrites la veille** l'ont été sans
+`accountName` et avec des montants CORRIGÉS — donc une clé différente des originaux. Le lot pouvait
+refabriquer les dépenses fantômes qu'il avait fallu deux jours pour retirer.
+
+**Le correctif est un PLANCHER DÉRIVÉ, jamais une constante** : la borne d'un compte est relevée à la
+date la plus récente parmi les lignes qu'on ne peut rattacher à AUCUN compte routé (`accountName`
+absent, ou libellé d'aucun compte de la passe). Une ligne portant le libellé d'un AUTRE compte routé
+n'y entre pas — elle appartient à celui-là. Le « global − N jours » qu'on est tenté d'écrire aurait
+été un chiffre inventé, et il n'aurait rien garanti au-delà de N.
+
+⚠️ Il se calcule **après** la lecture du snapshot (il faut les libellés routés), alors que la
+bascule, elle, se calcule avant (sa sortie borne la requête). Deux moments, deux rôles.
+⚠️ Prix assumé et mesuré : sur un état dont l'historique récent est peu étiqueté, le plancher rend
+le comportement d'AVANT ce lot — le bénéfice ne peut pas être payé par un doublon. Il est figé dans
+le passé, donc il se dissout à mesure que les dates avancent. Contrôle négatif dans la garde :
+historique entièrement étiqueté → plancher `null`, bénéfice intact.
+⚠️ **Le panel a battu le gate ET la CI, trois fois de suite, sur le même lot.** Aucune fixture ne
+pouvait voir ces défauts : elles ont des libellés propres, un historique complet et un seul canal
+d'import. C'est le cas de figure exact où « tout est vert » ne mesure que la propreté des fixtures.
+
+### ⚠️ Le second trou : un compte que l'API ne LISTE plus
+
+`readFintableSnapshot` filtre les comptes désactivés. Leurs transactions peuvent quand même arriver,
+et elles n'ont alors **aucun libellé** ici : elles tombaient sur la borne globale **sans être
+nommées** (la condition `libelle !== undefined` les excluait de l'avertissement), donc dans le seul
+compteur agrégé. Un compte structurellement condamné à la borne commune — `accountName` ne lui sera
+jamais attaché non plus — et qu'aucun message ne nomme, c'est précisément le silence que ce lot
+existait pour fermer. Il a désormais son propre avertissement, avec sa vraie cause (« réactive-le, ou
+retire son rôle ») plutôt que celle du compte sans historique, qui serait fausse.
+
+⚠️ **Hypothèse figée plutôt que laissée implicite** : `FintableAccount.label` (`display_name ?? name`)
+n'est garanti unique par RIEN. Deux comptes homonymes partagent leur borne, qui vaut le MAX des deux :
+jamais trop basse (donc **pas** de doublon, pas de double-comptage), mais trop haute pour le plus lent
+— le bénéfice du lot est NUL pour ce cas. Une garde le fige au lieu de le laisser se redécouvrir.
+
+- ⚠️ **En rattrapage, les bornes par compte tombent AVEC la globale.** En laisser une seule
+  filtrerait l'historique qu'on vient justement d'aller chercher — le défaut que
+  `[FINTABLE-RATTRAPAGE]` avait déjà payé une fois sur la paire `dateFrom`/`transactionsAfter`.

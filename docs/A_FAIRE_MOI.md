@@ -2094,3 +2094,17 @@ dans ton cas précis ça rejouerait les **44 lignes du Brésil aux MAUVAIS monta
 de corriger : la protection anti-doublon compare date + **montant** + marchand, donc elle ne
 reconnaîtrait pas les lignes corrigées. « Rattraper l'historique », lui, passe par un classement des
 doublons avec arbitrage — c'est le bon outil, et il existe déjà.
+
+### ⚠️ Et une nuance ajoutée après relecture (elle peut retarder l'effet chez toi)
+
+Le repère d'un compte ne « voit » que les lignes portant SON nom de compte. Tes lignes saisies à la
+main — dont les **36 du Brésil réécrites le 15 septembre** — n'en portent aucun. Or ce sont elles qui
+t'empêchaient jusqu'ici qu'une dépense déjà connue soit réimportée.
+
+Sans précaution, le nouveau repère les aurait **réimportées aux montants d'origine** (donc faux), la
+protection anti-doublon ne les reconnaissant pas puisqu'elle compare le libellé, que j'ai modifié.
+Mesuré : **3 doublons écrits**. C'est refabriquer exactement ce qu'on venait d'enlever.
+
+Donc : le repère d'un compte ne recule jamais au-delà de ta dernière ligne « sans compte ». Tant que
+celle-ci est récente (le 10 septembre pour le Brésil), le gain reste partiel pour la carte — et il
+se rétablit **tout seul** à mesure que les jours passent, sans rien faire de ta part.

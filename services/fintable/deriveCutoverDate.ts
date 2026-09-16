@@ -92,3 +92,48 @@ export function deriveCutoverDatesByAccount(
     }
     return parCompte;
 }
+
+/**
+ * [revue #974] PLANCHER des bornes par compte : la date la plus récente parmi les transactions
+ * qu'on ne peut RATTACHER À AUCUN compte routé.
+ *
+ * ⚠️⚠️ C'est la garantie que la bascule par compte détruisait sans le dire. La borne d'un compte ne
+ * voit QUE les lignes portant exactement son libellé. Or le même compte réel peut avoir des lignes
+ * entrées par un AUTRE canal :
+ *   - import CSV → `accountName` = une colonne du fichier, ou le littéral `'Importé'`
+ *     (`parseBankCsv.ts`) ;
+ *   - `apply_bank_statement` du MCP → `accountName` est OPTIONNEL, donc souvent absent ;
+ *   - toute sync Fintable antérieure au 2026-09-05 → aucun `accountName`.
+ * Ces lignes AVANÇAIENT la bascule globale, donc elles protégeaient. Reculer la borne d'un compte
+ * sous leur date rouvre la fenêtre sur des transactions DÉJÀ présentes sous un autre libellé — et
+ * la dédup de `applyBankStatement` ne les reconnaît pas : sa clé est `date|montant|payee`, or c'est
+ * justement le `payee` qui diffère entre un relevé saisi à la main et ce que Fintable livre.
+ * C'est le PIÈGE N°1 de `mapSnapshot.ts` (« pas de recouvrement = pas de dépendance à la dédup »),
+ * que le premier jet de ce lot annulait en silence.
+ *
+ * ⚠️ Cas CONCRET et daté : les 36 lignes du Brésil réécrites à la main le 2026-09-15 l'ont été SANS
+ * `accountName` et avec des montants CORRIGÉS — donc une clé de dédup différente des originaux.
+ * Sans ce plancher, une borne de carte antérieure au 2026-09-10 les aurait fait revenir aux MAUVAIS
+ * montants, c'est-à-dire refabriquer les dépenses fantômes qu'on venait de retirer.
+ *
+ * ⚠️ Une ligne portant le libellé d'un AUTRE compte routé n'entre PAS dans le plancher : elle
+ * appartient à ce compte-là, pas à celui-ci. C'est ce qui garde le bénéfice du lot quand tout
+ * l'historique est correctement étiqueté — plancher `null`, bornes par compte pleinement utilisées.
+ *
+ * ⚠️ Aucune constante choisie : le plancher est DÉRIVÉ de la donnée. Un « global − N jours » aurait
+ * été un chiffre inventé, et il n'aurait garanti rien au-delà de N.
+ */
+export function plancherNonAttribuable(
+    transactions: readonly Transaction[] | undefined,
+    libellesRoutes: ReadonlySet<string>,
+): string | null {
+    let max: string | null = null;
+    for (const t of transactions ?? []) {
+        if (!t || typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(t.date)) continue;
+        const compte = cleCompte(t.accountName);
+        if (compte !== '' && libellesRoutes.has(compte)) continue; // attribuée à un compte routé
+        const day = t.date.slice(0, 10);
+        if (max === null || day > max) max = day;
+    }
+    return max;
+}

@@ -26,7 +26,7 @@ import { readFintableSnapshot } from '../services/fintable/readSnapshot';
 import { comptesSansPositionsDuSnapshot } from '../services/fintable/comptesSansPositions';
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { toPersistableBrokerBalances } from '../services/fintable/brokerBalances';
-import { decideCutoverDate, requestDateFrom, applyPayloadsIsolated } from '../services/fintable/syncCore';
+import { decideCutoverDate, requestDateFrom, bornesEffectivesParCompte, libellesRoutes, plancherNonAttribuable, applyPayloadsIsolated } from '../services/fintable/syncCore';
 import { lastProductiveAtSuivant } from '../services/fintable/syncHealth';
 import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
@@ -116,10 +116,17 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             dateTo: todayStr,
         });
 
+        // ⚠️ [revue #974] Même plancher que le chemin navigateur, calculé APRÈS la lecture pour la
+        // même raison : il faut les libellés réellement routés.
+        const bornesEffectives = bornesEffectivesParCompte(
+            cutover.cutoverByAccount,
+            plancherNonAttribuable(state.transactions, libellesRoutes(snapshot.accounts.map((a) => a.label))),
+        );
+
         const { payloads, report: mapReport } = mapFintableSnapshot(snapshot, {
             roles: opts.roles,
             transactionsAfter: cutoverDateUsed,
-            transactionsAfterByAccount: cutover.cutoverByAccount,
+            transactionsAfterByAccount: bornesEffectives,
         });
 
         /**

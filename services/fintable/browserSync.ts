@@ -41,7 +41,7 @@ import { readFintableSnapshot } from './readSnapshot';
 import { comptesSansPositionsDuSnapshot } from './comptesSansPositions';
 import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
-import { decideCutoverDate, requestDateFrom, applyPayloadsIsolated } from './syncCore';
+import { decideCutoverDate, requestDateFrom, bornesEffectivesParCompte, libellesRoutes, plancherNonAttribuable, applyPayloadsIsolated } from './syncCore';
 import { classerRattrapage, type ClassementRattrapage, type PaireIncertaine } from './backfillDedup';
 import { referenceDeltaPatch } from './applyStatePatch';
 import { toPersistableBrokerBalances } from './brokerBalances';
@@ -252,6 +252,14 @@ export async function runFintableBrowserSync(
             : (requestDateFrom(cutover) ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10));
         const snapshot = await readFintableSnapshot(client, { dateFrom, dateTo: todayStr });
 
+        // ⚠️ [revue #974] Le PLANCHER se calcule ici et pas plus tôt : il faut les libellés
+        // RÉELLEMENT routés pour savoir quelles lignes du store ne sont rattachables à aucun compte
+        // — et ce sont elles qui protégeaient avant ce lot (voir `plancherNonAttribuable`).
+        const bornesEffectives = bornesEffectivesParCompte(
+            cutover.cutoverByAccount,
+            plancherNonAttribuable(state.transactions, libellesRoutes(snapshot.accounts.map((a) => a.label))),
+        );
+
         // ⚠️ [finding code-reviewer, PR #566] Les RÔLES viennent de `state` (pré-fetch), pas de
         // l'état frais — écart ASSUMÉ et borné, nommé plutôt que laissé en résiduel silencieux :
         // réassigner un rôle de compte pendant les quelques secondes de réseau ferait classer ce
@@ -268,7 +276,7 @@ export async function runFintableBrowserSync(
             // ⚠️ En RATTRAPAGE, les bornes par compte tombent avec la globale : `classerRattrapage`
             // devient l'arbitre du recouvrement. En laisser une seule filtrerait l'historique qu'on
             // vient justement d'aller chercher.
-            ...(opts.backfill ? {} : { transactionsAfterByAccount: cutover.cutoverByAccount }),
+            ...(opts.backfill ? {} : { transactionsAfterByAccount: bornesEffectives }),
         });
 
         // [FINTABLE-SYNC-STALE-BASE] Base RELUE ici, après le réseau — voir `getFreshState`.

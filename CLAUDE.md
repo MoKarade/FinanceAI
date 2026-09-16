@@ -870,7 +870,19 @@ n'est pas réécrire un récit.
   recopié d'un seul côté est invisible à toute fixture au libellé propre — et les fixtures ont toujours
   des libellés propres. ⚠️ Trim SEULEMENT : rabattre casse/accents échangerait une borne introuvable
   contre une borne PARTAGÉE entre comptes distincts, soit le défaut d'origine un cran plus bas
-  (`LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT`, 2026-09-16).
+  ⚠️⚠️⚠️ **Et le 3ᵉ défaut trouvé par le panel est le seul qui coûtait de l'argent** : une borne PAR
+  COMPTE ne voit que les lignes portant SON libellé, alors que les mêmes dépenses entrées par un
+  autre canal (CSV → `'Importé'`, `apply_bank_statement` où `accountName` est OPTIONNEL, toute sync
+  d'avant le 2026-09-05) avançaient la bascule GLOBALE — donc protégeaient. Reculer sous leur date
+  rouvre la fenêtre, et la dédup ne rattrape rien puisque sa clé contient le `payee`, justement ce
+  qui diffère entre une saisie à la main et ce que l'API livre. **Mesuré sur ce qui est ÉCRIT :
+  3 doublons sans plancher, 0 avec.** Le cas n'était pas théorique — les 36 lignes du Brésil
+  réécrites la VEILLE, sans `accountName` et à montants corrigés, auraient pu revenir fausses.
+  Le correctif est un plancher **DÉRIVÉ** (la date la plus récente des lignes rattachables à aucun
+  compte routé), jamais un « global − N jours » inventé ; il se calcule APRÈS la lecture du snapshot
+  parce qu'il faut les libellés routés. ⚠️ **Le panel a battu le gate ET la CI trois fois sur ce même
+  lot** : aucune fixture ne pouvait voir ces défauts — libellés propres, historique complet, un seul
+  canal d'import (`LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT`, 2026-09-16).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

@@ -883,6 +883,14 @@
   Brésil aux MAUVAIS montants (`applyBankStatement` déduplique par `date|montant|payee`, or les
   montants ont été corrigés à la main le 15/09) — mais il est désormais **NOMMÉ** dans le rapport
   de sync, avec le seul geste qui débloque : « Rattraper l'historique », UNE fois.
+  ⚠️⚠️⚠️ **Le panel a trouvé TROIS défauts APRÈS gate vert et CI verte, tous à moi** — dont un
+  money-critical : une borne par compte ne voit que les lignes portant SON libellé, donc reculer
+  sous la date de lignes entrées par un autre canal (CSV `'Importé'`, MCP sans `accountName`, sync
+  d'avant le 05/09) faisait ÉCRIRE des doublons que la bascule globale bloquait — **3 écrits,
+  mesuré sur `applyPayloadsIsolated`**. Corrigé par un PLANCHER dérivé (date la plus récente des
+  lignes rattachables à aucun compte routé), calculé après la lecture du snapshot. Les deux autres :
+  clé normalisée d'un seul côté (interblocage PERMANENT sur un libellé espacé, 0/9 même après
+  rattrapage) et compte non listé par l'API jamais nommé. 28 gardes, 8 perturbations séparées.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : Marc pense que son plan offre plus de 30 jours → à MESURER chez lui (`npm run fintable:dry -- --days 365`, compte de transactions rendues, montants masqués) ; je ne peux pas appeler fintable.io d'ici (403).
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,

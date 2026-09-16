@@ -14,7 +14,7 @@
 
 import type { AppState, Transaction } from '../../types';
 import { applyDocument, type DocumentPayload } from '../../mcp/ingest/applyDocument';
-import { deriveCutoverDate, deriveCutoverDatesByAccount } from './deriveCutoverDate';
+import { deriveCutoverDate, deriveCutoverDatesByAccount, plancherNonAttribuable, cleCompte } from './deriveCutoverDate';
 
 interface CutoverDecision {
     /** Date de bascule à passer au mapper (`transactionsAfter`), déjà plafonnée. */
@@ -76,6 +76,35 @@ export function decideCutoverDate(
  * fenêtre. Seuls les comptes DÉJÀ vus peuvent la reculer, et seulement jusqu'à leur propre dernière
  * transaction connue — la fenêtre reste bornée par la donnée, jamais par une constante choisie.
  */
+/**
+ * [revue #974] Bornes par compte EFFECTIVES : chacune relevée au PLANCHER des lignes qu'on ne peut
+ * rattacher à aucun compte routé (voir `plancherNonAttribuable`).
+ *
+ * Se calcule APRÈS la lecture du snapshot, parce qu'il faut connaître les libellés réellement
+ * routés pour savoir ce qui est « non attribuable ». `decideCutoverDate`, lui, tourne AVANT (sa
+ * sortie sert à borner la requête).
+ *
+ * ⚠️ Un compte dont la borne tombe au niveau du plancher retrouve exactement le comportement
+ * d'avant ce lot — c'est voulu : le bénéfice ne peut pas être payé par un doublon.
+ */
+export function bornesEffectivesParCompte(
+    cutoverByAccount: Readonly<Record<string, string>>,
+    plancher: string | null,
+): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [compte, date] of Object.entries(cutoverByAccount)) {
+        out[compte] = plancher !== null && plancher > date ? plancher : date;
+    }
+    return out;
+}
+
+/** Libellés des comptes que la passe courante ROUTE réellement (clé normalisée). */
+export function libellesRoutes(labels: readonly string[]): ReadonlySet<string> {
+    return new Set(labels.map((l) => cleCompte(l)).filter((l) => l !== ''));
+}
+
+export { plancherNonAttribuable };
+
 export function requestDateFrom(decision: CutoverDecision): string | null {
     if (decision.cutoverDateUsed === null) return null;
     let min = decision.cutoverDateUsed;

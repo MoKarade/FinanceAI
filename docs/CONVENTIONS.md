@@ -13678,6 +13678,47 @@ restent trois clés).
 ⚠️ Et ce qui est PERSISTÉ reste le libellé BRUT : c'est ce que l'utilisateur voit et la clé d'autres
 consommateurs (`applyTransferDetection`). Seule l'INDEXATION est normalisée.
 
+### ⚠️⚠️⚠️ Le troisième, et le seul qui pouvait COÛTER de l'argent : une borne par compte ne voit
+que ce qui porte son libellé
+
+Un troisième agent a trouvé ce que les deux autres avaient manqué, et c'est le plus cher :
+**la bascule par compte pouvait faire ÉCRIRE des doublons que la bascule globale bloquait.**
+
+La borne d'un compte est dérivée des seules lignes dont `accountName` vaut exactement son libellé.
+Or le même compte réel a des lignes entrées par d'AUTRES canaux :
+- import CSV → `accountName = colonne || 'Importé'` (`parseBankCsv.ts`, vérifié) ;
+- `apply_bank_statement` du MCP → `accountName` est **optionnel** (vérifié au schéma) ;
+- toute sync Fintable antérieure au 2026-09-05 → aucun `accountName`.
+
+Ces lignes AVANÇAIENT la bascule globale, donc elles protégeaient. Reculer la borne d'un compte
+sous leur date rouvre la fenêtre sur des transactions DÉJÀ présentes — et la dédup ne rattrape rien :
+sa clé est `date|round(montant×100)|payee` (vérifié), or c'est justement le **payee** qui diffère
+entre une saisie à la main et ce que Fintable livre.
+
+MESURÉ sur les vrais modules (`mapFintableSnapshot` + `applyPayloadsIsolated`, donc ce qui est
+réellement ÉCRIT) : carte dont la dernière ligne étiquetée date du 09-05, trois dépenses réécrites à
+la main les 09-08/09-10/09-12 sans `accountName` → **3 doublons écrits sans le plancher, 0 avec**.
+
+⚠️ Et le cas n'était pas théorique : les **36 lignes du Brésil réécrites la veille** l'ont été sans
+`accountName` et avec des montants CORRIGÉS — donc une clé différente des originaux. Le lot pouvait
+refabriquer les dépenses fantômes qu'il avait fallu deux jours pour retirer.
+
+**Le correctif est un PLANCHER DÉRIVÉ, jamais une constante** : la borne d'un compte est relevée à la
+date la plus récente parmi les lignes qu'on ne peut rattacher à AUCUN compte routé (`accountName`
+absent, ou libellé d'aucun compte de la passe). Une ligne portant le libellé d'un AUTRE compte routé
+n'y entre pas — elle appartient à celui-là. Le « global − N jours » qu'on est tenté d'écrire aurait
+été un chiffre inventé, et il n'aurait rien garanti au-delà de N.
+
+⚠️ Il se calcule **après** la lecture du snapshot (il faut les libellés routés), alors que la
+bascule, elle, se calcule avant (sa sortie borne la requête). Deux moments, deux rôles.
+⚠️ Prix assumé et mesuré : sur un état dont l'historique récent est peu étiqueté, le plancher rend
+le comportement d'AVANT ce lot — le bénéfice ne peut pas être payé par un doublon. Il est figé dans
+le passé, donc il se dissout à mesure que les dates avancent. Contrôle négatif dans la garde :
+historique entièrement étiqueté → plancher `null`, bénéfice intact.
+⚠️ **Le panel a battu le gate ET la CI, trois fois de suite, sur le même lot.** Aucune fixture ne
+pouvait voir ces défauts : elles ont des libellés propres, un historique complet et un seul canal
+d'import. C'est le cas de figure exact où « tout est vert » ne mesure que la propreté des fixtures.
+
 ### ⚠️ Le second trou : un compte que l'API ne LISTE plus
 
 `readFintableSnapshot` filtre les comptes désactivés. Leurs transactions peuvent quand même arriver,

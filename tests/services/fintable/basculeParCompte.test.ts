@@ -13,7 +13,10 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { deriveCutoverDatesByAccount } from '../../../services/fintable/deriveCutoverDate';
-import { decideCutoverDate, requestDateFrom } from '../../../services/fintable/syncCore';
+import {
+    decideCutoverDate, requestDateFrom, bornesEffectivesParCompte, libellesRoutes,
+    plancherNonAttribuable, applyPayloadsIsolated,
+} from '../../../services/fintable/syncCore';
 import { mapFintableSnapshot, type FintableAccountRole } from '../../../services/fintable/mapSnapshot';
 import { runFintableBrowserSync } from '../../../services/fintable/browserSync';
 import type { FintableClient } from '../../../services/fintable/client';
@@ -386,5 +389,142 @@ describe('HYPOTHÈSE FIGÉE : un libellé = un compte', () => {
         ]);
         expect(m.get('Mastercard')).toBe('2026-09-15');
         expect(m.size).toBe(1);
+    });
+});
+
+// ── 8. ⚠️⚠️ Le PLANCHER : la garantie que la bascule par compte détruisait en silence ────────────
+
+describe('plancherNonAttribuable — une borne par compte ne peut pas payer son gain en DOUBLONS', () => {
+    // La borne d'un compte ne voit QUE les lignes portant exactement son libellé. Les mêmes
+    // dépenses entrées par un AUTRE canal (CSV → `'Importé'` ; `apply_bank_statement` sans
+    // `accountName` ; toute sync d'avant le 2026-09-05) avançaient la bascule GLOBALE, donc elles
+    // protégeaient. Reculer la borne sous leur date rouvre la fenêtre — et la dédup ne rattrape
+    // rien, sa clé étant `date|montant|payee`, or c'est le PAYEE qui diffère entre une saisie à la
+    // main et ce que Fintable livre.
+
+    /** L'état de Marc en miniature : la carte a 3 dépenses réécrites à la main, SANS compte. */
+    function etatAvecSaisieManuelle(): Transaction[] {
+        return [
+            tx('2026-09-15', CHEQUE.label),
+            tx('2026-09-05', CARTE.label),
+            // Réécrites à la main (montants corrigés, libellé différent) — aucun `accountName`.
+            { id: 91, date: '2026-09-08', payee: 'SAISIE MAIN A', amount: -12.5, category: 'x', status: 'processed' } as Transaction,
+            { id: 92, date: '2026-09-10', payee: 'SAISIE MAIN B', amount: -30.2, category: 'x', status: 'processed' } as Transaction,
+            { id: 93, date: '2026-09-12', payee: 'SAISIE MAIN C', amount: -7.9, category: 'x', status: 'processed' } as Transaction,
+        ];
+    }
+
+    /** Ce que Fintable re-livre pour la carte : MÊMES dépenses, libellé de l'API. */
+    const RELIVRE = [
+        { id: 'f1', accountId: CARTE.id, date: '2026-09-08' },
+        { id: 'f2', accountId: CARTE.id, date: '2026-09-10' },
+        { id: 'f3', accountId: CARTE.id, date: '2026-09-12' },
+    ];
+
+    function ecrites(bornes: Record<string, string>): number {
+        const etat = etatAvecSaisieManuelle();
+        const { payloads } = mapFintableSnapshot(snapshot(RELIVRE), {
+            roles: ROLES,
+            transactionsAfter: decideCutoverDate(etat, '2026-09-16').cutoverDateUsed,
+            transactionsAfterByAccount: bornes,
+        });
+        const base = { transactions: etat, initialBalances: {}, debts: [] } as unknown as AppState;
+        const { transactionsAdded } = applyPayloadsIsolated(base, payloads);
+        return transactionsAdded;
+    }
+
+    it('⚠️ SANS plancher, la borne par compte fait ÉCRIRE des doublons que la bascule globale bloquait', () => {
+        // Témoin du défaut. La borne de la carte (2026-09-05) est ANTÉRIEURE aux trois saisies
+        // manuelles : les trois repassent, avec un libellé différent, donc la dédup ne les voit pas.
+        const brutes = decideCutoverDate(etatAvecSaisieManuelle(), '2026-09-16').cutoverByAccount;
+        expect(brutes[CARTE.label]).toBe('2026-09-05');
+        expect(ecrites(brutes)).toBe(3);
+    });
+
+    it('AVEC le plancher, plus aucun doublon — la garantie d\'avant est rendue', () => {
+        const etat = etatAvecSaisieManuelle();
+        const plancher = plancherNonAttribuable(etat, libellesRoutes([CHEQUE.label, CARTE.label]));
+        expect(plancher).toBe('2026-09-12'); // la plus récente saisie non attribuable
+        const effectives = bornesEffectivesParCompte(
+            decideCutoverDate(etat, '2026-09-16').cutoverByAccount, plancher,
+        );
+        expect(effectives[CARTE.label]).toBe('2026-09-12'); // relevée au plancher
+        expect(ecrites(effectives)).toBe(0);
+    });
+
+    it('CONTRÔLE NÉGATIF : historique entièrement étiqueté → plancher null, bénéfice INTACT', () => {
+        // Sans quoi le plancher aurait pu annuler tout le lot sans qu'on le voie.
+        const etat = [tx('2026-09-15', CHEQUE.label), tx('2026-09-05', CARTE.label)];
+        const plancher = plancherNonAttribuable(etat, libellesRoutes([CHEQUE.label, CARTE.label]));
+        expect(plancher).toBeNull();
+        const brutes = decideCutoverDate(etat, '2026-09-16').cutoverByAccount;
+        expect(bornesEffectivesParCompte(brutes, plancher)).toEqual(brutes);
+    });
+
+    it('une ligne étiquetée d\'un AUTRE compte ROUTÉ n\'entre pas dans le plancher', () => {
+        // Elle appartient à ce compte-là : la compter ici relèverait la borne de tous les autres
+        // pour rien, et le lot n'aurait plus aucun effet dès qu'un compte rapide existe.
+        const etat = [tx('2026-09-15', CHEQUE.label), tx('2026-09-05', CARTE.label)];
+        expect(plancherNonAttribuable(etat, libellesRoutes([CHEQUE.label, CARTE.label]))).toBeNull();
+        // …mais si ce libellé n'est PLUS routé, elle redevient non attribuable.
+        expect(plancherNonAttribuable(etat, libellesRoutes([CARTE.label]))).toBe('2026-09-15');
+    });
+
+    it('un libellé FANTÔME (« Importé » du parseur CSV) compte comme non attribuable', () => {
+        // `parseBankCsv` écrit `accountName = colonne || 'Importé'` : ce n'est le libellé d'aucun
+        // compte Fintable, donc ces lignes peuvent appartenir à n'importe lequel.
+        const etat = [
+            tx('2026-09-05', CARTE.label),
+            { id: 94, date: '2026-09-11', payee: 'csv', amount: -5, category: 'x', status: 'processed', accountName: 'Importé' } as Transaction,
+        ];
+        expect(plancherNonAttribuable(etat, libellesRoutes([CHEQUE.label, CARTE.label]))).toBe('2026-09-11');
+    });
+});
+
+// ── 9. Le plancher est-il CÂBLÉ ? (sinon il est juste une fonction pure sans effet) ──────────────
+
+describe('browserSync applique le plancher, il ne se contente pas de l\'exporter', () => {
+    it('ne réimporte PAS une dépense déjà saisie à la main sous un autre libellé', async () => {
+        // ⚠️ Garde de CHAÎNE : les fonctions pures ci-dessus peuvent être justes et n'être appelées
+        // nulle part — c'est exactement le trou que ce lot a déjà payé une fois sur `dateFrom`.
+        const client = {
+            get: vi.fn(async (path: string) => {
+                if (path === '/accounts') {
+                    return {
+                        data: [{
+                            id: CARTE.id, connection_id: 'c', name: CARTE.label, display_name: null,
+                            type: 'credit / credit card', currency: 'CAD', balance: '100.00',
+                            balance_available: null, sync_start_date: null, last_tx_date: null, enabled: true,
+                        }],
+                        nextCursor: null, snapshotDate: null,
+                    };
+                }
+                return { data: [], nextCursor: null, snapshotDate: null };
+            }),
+            getAllPages: vi.fn(async (path: string) => (path === '/transactions'
+                ? [{
+                    id: 'f1', account_id: CARTE.id, date: '2026-09-12', amount: '-7.90',
+                    currency: 'CAD', description: 'METRO PLUS', merchant: 'Metro', pending: false,
+                    category: null, updated_at: null,
+                }]
+                : [])),
+        } as unknown as FintableClient;
+
+        const state = {
+            transactions: [
+                tx('2026-09-05', CARTE.label),
+                // Saisie manuelle du MÊME achat, libellé et montant corrigés → clé de dédup autre.
+                { id: 93, date: '2026-09-12', payee: 'SAISIE MAIN C', amount: -2.2, category: 'x', status: 'processed' } as Transaction,
+            ],
+            fintableRoles: { [CARTE.id]: { kind: 'debt', debtName: '' } },
+            initialBalances: {}, debts: [],
+        } as unknown as AppState;
+
+        const { report } = await runFintableBrowserSync(state, 'jeton-de-test', {
+            client, now: () => Date.parse('2026-09-16T12:00:00Z'),
+        });
+
+        // Sans le plancher, la borne de la carte vaudrait 2026-09-05 et cette ligne serait écrite.
+        expect(report.transactionsAdded).toBe(0);
     });
 });

@@ -25,6 +25,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'historique » (Réglages), à lancer UNE fois : ensuite son repère avance tout seul. On ne le fait
   pas automatiquement parce que ça rapatrierait tout son historique sans le passer au
   dédoublonnage — exactement ce que le rattrapage, lui, sait faire.
+- ⚠️ **Un garde-fou ajouté après relecture, et il t'explique un effet possible** : le repère d'un
+  compte ne « voit » que les lignes portant son nom. Or tes dépenses saisies à la main (ou importées
+  par fichier, ou entrées avant le 5 septembre) ne portent aucun nom de compte — et ce sont elles qui
+  te protégeaient d'un ré-import. Sans précaution, le nouveau repère pouvait **réimporter des
+  dépenses que tu avais déjà**, avec un libellé un peu différent, donc sans que la protection
+  anti-doublon les reconnaisse : mesuré, **3 doublons écrits**. C'est exactement ce qui serait arrivé
+  à tes 36 lignes du Brésil corrigées la veille.
+  Le repère d'un compte ne recule donc jamais plus loin que ta dernière ligne « sans compte ».
+  Conséquence : tant que cette ligne est récente, le gain est partiel pour ce compte — et il se
+  rétablit tout seul à mesure que les jours passent.
 
 ---
 

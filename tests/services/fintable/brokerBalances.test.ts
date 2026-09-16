@@ -139,8 +139,67 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
         expect(toPersistableBrokerBalances([raw({ balance: null })], AT)).toEqual([]);
     });
 
-    it('ÉCARTE une devise ≠ CAD (additionner sans conversion donnerait un total FAUX)', () => {
-        expect(toPersistableBrokerBalances([raw({ currency: 'USD' })], AT)).toEqual([]);
+    // ── [FINTABLE-DISNAT-USD-SOLDE-IGNORE] TEST DE LIMITE **INVERSÉ** le 2026-09-16 ──────────────
+    // Il affirmait « ÉCARTE une devise ≠ CAD » et c'était juste tant qu'aucune conversion n'existait.
+    // Mais cet écartement se faisait AVANT la persistance, donc avant la seule liste qui recense les
+    // comptes écartés : « Disnat (L7B1) » n'apparaissait ni réconcilié ni signalé sur l'écran
+    // Investissements — ABSENT, ce qui est indiscernable d'un compte qui n'existe pas.
+    // La limite est levée là où on peut la lever (taux connu → conversion) et RENDUE VISIBLE là où
+    // on ne peut pas (taux absent → signal). Inversé au même endroit, jamais supprimé, pour que la
+    // trace de la question survive (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+
+    it('CONVERTIT une devise ≠ CAD quand le taux est connu (avant : le compte était jeté)', () => {
+        const out = toPersistableBrokerBalances([raw({ currency: 'USD' })], AT, 'CAD', { USD: 1.37 });
+        expect(out).toHaveLength(1);
+        expect(out[0].balanceCad).toBeCloseTo(1_370, 6);
+        // Aucun signal : le compte est une autorité normale, il n'a rien à annoncer.
+        expect(out[0].missingRate).toBeUndefined();
+    });
+
+    it('taux ABSENT : le compte est ÉMIS avec `missingRate` — nommé, jamais converti au hasard', () => {
+        // ⚠️ Le cœur de l'arbitrage : `toCurrencyFactor` replierait sur 1:1 et persisterait 1 000
+        // « CAD » pour 1 000 USD — faux d'environ 30 %, et présenté comme le total du compte. Une
+        // valeur fausse crédible est pire que l'omission qu'on corrige.
+        const out = toPersistableBrokerBalances([raw({ currency: 'USD' })], AT, 'CAD', {});
+        expect(out).toHaveLength(1);
+        expect(out[0].missingRate).toBe('USD');
+        // `balanceCad` ne signifie RIEN ici, et aucune somme ne doit le lire : c'est
+        // `reconcileBrokerBalances` qui détourne l'entrée avant tout calcul (test ci-dessous).
+        expect(out[0].balanceCad).toBe(0);
+    });
+
+    it('taux ABSENT : le compte est DÉTOURNÉ avant toute somme, pas compté pour 0 $', () => {
+        // ⚠️ LA garde de l'ordre des vérifications. Si `missingRate` n'était pas testé EN PREMIER,
+        // l'entrée descendrait jusqu'à la garde de finitude, passerait (0 est fini), et serait
+        // additionnée à zéro dans son panier : le compte disparaîtrait du total sans laisser de
+        // trace — exactement le défaut que la liste des écartés existe pour empêcher.
+        const out = toPersistableBrokerBalances(
+            [raw({ currency: 'USD', taxRegime: 'CELI' })], AT, 'CAD', {},
+        );
+        const reco = reconcileBrokerBalances(out, { CELI: 500 });
+        expect(reco.missingRateAccountLabels).toEqual(['Disnat (USD)']);
+        // Ni dans les régimes, ni dans les DEUX autres causes d'écartement : un diagnostic qui
+        // nommerait la mauvaise cause enverrait corriger la mauvaise chose.
+        expect(reco.regimes).toEqual([]);
+        expect(reco.unreadableAccountLabels).toEqual([]);
+        expect(reco.unassignedAccountLabels).toEqual([]);
+        expect(reco.brokerTotalCad).toBe(0);
+    });
+
+    it('un taux ABERRANT (zéro, négatif, non fini) est traité comme ABSENT, jamais appliqué', () => {
+        // Un taux 0 donnerait 0 $ — le « 0 crédible » que tout ce module refuse par conception.
+        for (const taux of [0, -1.37, Number.NaN, Number.POSITIVE_INFINITY]) {
+            const out = toPersistableBrokerBalances([raw({ currency: 'USD' })], AT, 'CAD', { USD: taux });
+            expect(out[0]?.missingRate).toBe('USD');
+        }
+    });
+
+    it('CONTRÔLE NÉGATIF : un compte déjà en CAD ne voit rien changer, taux ou pas', () => {
+        // Sans lui, « la conversion marche » serait indiscernable de « tout passe par la conversion ».
+        const sansTaux = toPersistableBrokerBalances([raw()], AT, 'CAD', {});
+        const avecTaux = toPersistableBrokerBalances([raw()], AT, 'CAD', { USD: 1.37 });
+        expect(sansTaux).toEqual([{ accountId: 'acc-1', label: 'Disnat', balanceCad: 1_000, at: AT }]);
+        expect(avecTaux).toEqual(sansTaux);
     });
 
     it('garde le compte sans régime (affichable) mais SANS inventer de taxRegime', () => {

@@ -60,6 +60,22 @@ interface BrokerReconciliation {
      * (`toPersistableBrokerBalances` ne persiste que du fini), mais un état ne se suppose pas.
      */
     unreadableAccountLabels: string[];
+    /**
+     * [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Comptes écartés faute de TAUX DE CHANGE — `« Disnat (L7B1) »
+     * (USD)`. Troisième cause d'écartement, et la seule qui n'était recensée NULLE PART : le filtre
+     * de devise vit dans `toPersistableBrokerBalances`, donc un cran AVANT la persistance, donc ces
+     * comptes n'entraient jamais dans `balances` et ne pouvaient figurer ni ici ni dans
+     * `unreadableAccountLabels`. La liste des écartés existait — elle connaissait deux causes sur
+     * trois, et son compteur à zéro sur la troisième se lisait « rien à signaler »
+     * (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+     *
+     * ⚠️ Le compte reste ÉCARTÉ, et c'est délibéré : convertir avec le repli 1:1 de
+     * `toCurrencyFactor` donnerait 72 040 « CAD » pour 72 040 USD — une valeur fausse d'environ 30 %
+     * présentée comme AUTORITÉ, donc pire que l'omission qu'on corrige
+     * (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). Un taux CONNU convertit ; un
+     * taux absent écarte et le DIT.
+     */
+    missingRateAccountLabels: string[];
     /** Somme des soldes courtier de tous les régimes réconciliés. */
     brokerTotalCad: number;
     /** Somme des écarts. Peut être négatif. */
@@ -90,6 +106,7 @@ export function reconcileBrokerBalances(
 ): BrokerReconciliation {
     const empty: BrokerReconciliation = {
         regimes: [], unassignedAccountLabels: [], unreadableAccountLabels: [],
+        missingRateAccountLabels: [],
         brokerTotalCad: 0, totalGapCad: 0,
     };
     if (!Array.isArray(balances) || balances.length === 0) return empty;
@@ -98,8 +115,19 @@ export function reconcileBrokerBalances(
     const byRegime = new Map<ReconcilableRegime, { total: number; labels: string[]; observedAt: number | null }>();
     const unassignedAccountLabels: string[] = [];
     const unreadableAccountLabels: string[] = [];
+    const missingRateAccountLabels: string[] = [];
 
     for (const b of balances) {
+        // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] EN PREMIER, avant toute autre garde. Une entrée
+        // `missingRate` porte `balanceCad: 0` qui ne signifie RIEN : la laisser descendre la
+        // classerait « solde lisible » et l'additionnerait à zéro dans son panier — un compte
+        // effacé du total sans trace, exactement le défaut que la liste des écartés existe pour
+        // empêcher. L'ordre des gardes EST le correctif.
+        const missingRate = typeof b?.missingRate === 'string' ? b.missingRate.trim() : '';
+        if (missingRate) {
+            missingRateAccountLabels.push(`${String(b?.label ?? '(compte sans nom)')} (${missingRate})`);
+            continue;
+        }
         // Même garde null-explicite qu'à l'écriture : `balanceCad` est typé `number`, mais cet état
         // vient du Drive et n'est validé par AUCUN schéma Zod (champ additif) — une copie ancienne
         // ou corrompue peut porter un `null` que le typage ne voit pas (cf. carte UI durcie, PR #531).
@@ -159,6 +187,7 @@ export function reconcileBrokerBalances(
         regimes,
         unassignedAccountLabels,
         unreadableAccountLabels,
+        missingRateAccountLabels,
         brokerTotalCad: regimes.reduce((s, r) => s + r.brokerTotalCad, 0),
         totalGapCad: regimes.reduce((s, r) => s + r.gapCad, 0),
     };
@@ -178,6 +207,7 @@ export function toPersistableBrokerBalances(
     }[],
     at: number,
     baseCurrency = 'CAD',
+    fxRates?: Record<string, number>,
 ): FintableBrokerBalance[] {
     const base = baseCurrency.toUpperCase();
     const stamp = Number.isFinite(at) ? at : 0;
@@ -191,11 +221,40 @@ export function toPersistableBrokerBalances(
         if (rawBalance === null || rawBalance === undefined) continue;
         const amount = Number(rawBalance);
         if (!Number.isFinite(amount)) continue;
-        if (String(b?.currency ?? '').toUpperCase() !== base) continue;
+        // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Avant le 2026-09-16, ce `continue` jetait le compte en
+        // devise étrangère — et le jetait AVANT la persistance, donc avant la seule liste qui
+        // recense les écartés : « Disnat (L7B1) » n'apparaissait ni réconcilié, ni signalé, il était
+        // simplement ABSENT de l'écran Investissements et de l'Accueil.
+        //
+        // ⚠️ La conversion N'EST PAS faite par `toCurrencyFactor` : ce helper replie sur 1:1 quand
+        // le taux manque, ce qui est le bon comportement pour un AFFICHAGE d'actif (montrer quelque
+        // chose + journaliser) et le pire pour une AUTORITÉ — 72 040 USD deviendraient 72 040 « CAD »,
+        // faux d'environ 30 %, présentés comme le total du compte
+        // (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). On interroge donc le taux
+        // EXPLICITEMENT, et son absence produit un signal, jamais un nombre.
+        const devise = String(b?.currency ?? '').toUpperCase();
+        let balanceCad = amount;
+        let missingRate = '';
+        if (devise && devise !== base) {
+            const taux = fxRates?.[devise];
+            if (typeof taux === 'number' && Number.isFinite(taux) && taux > 0) {
+                balanceCad = amount * taux;
+                // Un produit fini d'entrées finies peut déborder (`1e308 * 2`) : la garde vaut aussi
+                // après la multiplication, sinon on persisterait `Infinity` comme une autorité.
+                if (!Number.isFinite(balanceCad)) continue;
+            } else {
+                // Le compte est quand même ÉMIS — c'est tout l'objet du lot : il doit être NOMMÉ là
+                // où Marc regarde ses placements. `balanceCad: 0` ne signifie rien et n'est jamais
+                // lu : `reconcileBrokerBalances` détourne `missingRate` avant toute somme.
+                balanceCad = 0;
+                missingRate = devise;
+            }
+        }
         out.push({
             accountId: String(b.accountId),
             label: String(b.label ?? ''),
-            balanceCad: amount,
+            balanceCad,
+            ...(missingRate ? { missingRate } : {}),
             ...(isReconcilable(b.taxRegime) ? { taxRegime: b.taxRegime } : {}),
             at: stamp,
         });

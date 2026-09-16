@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (ton compte Disnat en USD réapparaît dans tes placements)
+
+- **Le problème que tu ne pouvais pas voir** : « Disnat (L7B1) » est en USD, et son montant était
+  ignoré à chaque synchro. L'avertissement existait — mais dans *Système & diagnostics*, pas sur
+  l'écran **Investissements** ni sur l'**Accueil**. Là où tu regardes tes placements, le compte
+  n'était ni réconcilié ni signalé : simplement **absent**, ce qui ressemble à un compte qui
+  n'existe pas.
+- **Ce qui change** : son solde est maintenant **converti en dollars canadiens** au taux du moment
+  et entre normalement dans la réconciliation avec tes titres saisis.
+- **Si le taux de change manque**, le compte n'est pas converti au hasard — il est **nommé à
+  l'écran**, avec la raison. Un taux 1:1 appliqué par défaut aurait affiché 72 040 $ pour
+  72 040 US$ : un montant faux d'environ 30 %, présenté comme exact. Mieux vaut le dire que le
+  deviner.
+- Tes titres saisis à la main restent utilisés dans tous les cas.
+
+---
+
 ## [unreleased] — 2026-09-16 (ta carte en crédit ne fabrique plus de dette)
 
 - **Ce qui change** : le calcul suit maintenant la convention que ta réponse a établie. Un solde

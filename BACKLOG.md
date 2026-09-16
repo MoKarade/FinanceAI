@@ -935,8 +935,26 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
-- [ ] 🟠 **`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`** (M, money-critical, **GO DE MARC le 2026-09-16 :
-  « prioritaire »**) — le compte courtier « Disnat (L7B1) » est en **USD** et le mapper ne sait pas
+- [x] 🟠 **`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-16**) —
+  conversion à l'écriture quand le taux est CONNU, signal nommé quand il ne l'est pas, et la
+  troisième cause d'écartement enfin recensée là où Marc regarde ses placements.
+  ⚠️⚠️ **L'ORDRE que j'avais annoncé à Marc s'est révélé FAUX à la mesure, et je l'ai dit.** J'avais
+  proposé « réparer la liste d'abord, convertir ensuite » — mais les deux sont INDISSOCIABLES :
+  la liste ne peut pas voir ces comptes (le filtre de devise vit AVANT la persistance), et la
+  conversion ne peut pas être inconditionnelle (sans taux, il faut bien écarter ET le dire). Un
+  découpage annoncé se re-mesure comme un périmètre.
+  ⚠️ **Le piège évité, et c'est l'arbitrage du lot** : `toCurrencyFactor` (la source unique FX)
+  replie sur **1:1** quand le taux manque — bon comportement pour un AFFICHAGE d'actif (montrer +
+  journaliser), le PIRE pour une AUTORITÉ : 72 040 USD deviendraient 72 040 « CAD », faux d'environ
+  30 % et présentés comme le total du compte (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
+  Le taux est donc interrogé EXPLICITEMENT ; 0, négatif et non fini comptent comme absent.
+  ⚠️ **L'ordre des gardes EST le correctif** : une entrée `missingRate` porte `balanceCad: 0` qui ne
+  signifie rien. Testée après la garde de finitude, elle passerait (0 est fini) et serait additionnée
+  à zéro — le compte disparaîtrait du total sans trace, exactement ce que la liste des écartés existe
+  pour empêcher. Perturbation dédiée, 1 rouge.
+  **19 gardes** (14 → 19), **3 perturbations aux signatures distinctes** : retour au `continue` →
+  4 rouges ; ordre des gardes inversé → 1 ; taux aberrant appliqué → 1. Contrôle négatif (compte déjà
+  en CAD, avec et sans taux : sorties identiques) vert partout. Contexte d'origine : — le compte courtier « Disnat (L7B1) » est en **USD** et le mapper ne sait pas
   convertir : son montant est **IGNORÉ à chaque passe** (avertissement publié, donc pas silencieux
   — mais faux par omission). Les titres saisis à la main servent de repli. ⚠️ Le remède se mesure
   comme le défaut : `assetValueCad` porte déjà la conversion (source unique, garde

@@ -13976,3 +13976,55 @@ qui la débusque est : *combien de chemins mènent à « écarté », et la list
 ⚠️ Corollaire de SURFACE : l'écart est bien annoncé — dans `report.warnings`, donc **Système &
 diagnostics**. Pas sur l'écran Investissements, ni sur l'Accueil, c'est-à-dire pas là où l'utilisateur
 regarde ses placements. Deux surfaces, une seule parle, et c'est l'autre qu'il ouvre.
+
+---
+
+## `UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE` (2026-09-16)
+
+`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` : le compte courtier USD de Marc était IGNORÉ à chaque passe
+(avertissement honnête, donc pas silencieux — mais faux par omission). Le remède évident était
+d'appeler `assetValueCad` / `toCurrencyFactor`, **la source unique FX du dépôt**, protégée par sa
+propre garde (`assetFxGuard`). C'était le piège.
+
+`toCurrencyFactor` **replie sur 1:1** quand le taux manque, et le journalise. C'est le bon
+comportement pour ce qu'il sert : un ACTIF affiché, où montrer une valeur sous-évaluée assortie
+d'une trace vaut mieux que faire disparaître la ligne. Appliqué au **solde du courtier**, le même
+repli donne 72 040 « CAD » pour 72 040 USD — faux d'environ 30 %, et présenté comme **l'autorité**
+sur le total du compte (« le montant du courtier fait autorité », choix Marc écrit dans le module).
+Le correctif aurait été pire que le défaut sur exactement la branche qu'il prétendait réparer.
+
+**Avant de réutiliser une source unique, lire son mode DÉGRADÉ, pas seulement son calcul.** Un
+helper partagé encode un arbitrage — ici « montrer quelque chose plutôt que rien » — et cet
+arbitrage voyage avec lui chez tous ses appelants, y compris ceux dont l'enjeu est l'inverse. Ce
+n'est pas une raison de ne pas partager : c'est une raison de demander *quel est le coût d'être
+approximativement faux ici ?* La réponse était « un montant crédible et faux », donc le taux est
+interrogé **explicitement**, et `0`, négatif et non fini comptent comme absent.
+
+⚠️ **L'ORDRE DES GARDES EST LE CORRECTIF.** Une entrée « taux manquant » porte `balanceCad: 0`, qui
+ne signifie rien et n'existe que pour que le compte soit NOMMÉ. Testée *après* la garde de finitude,
+elle passe (0 est fini), entre dans son panier fiscal et s'additionne à zéro : le compte disparaît
+du total sans laisser de trace — exactement le défaut que la liste des écartés existe pour
+empêcher, réintroduit par la réparation. La garde a donc une perturbation à elle (la déplacer d'un
+cran → 1 rouge), parce que rien dans le TYPE ne dit qu'un champ doit être lu en premier.
+
+⚠️ **Et la troisième cause d'écartement n'était recensée nulle part.** `unreadableAccountLabels`
+existe précisément pour qu'« un compte écarté ne disparaisse JAMAIS en silence » — son commentaire
+cite le finding qui l'a fait naître. Mais le filtre de devise vivait dans
+`toPersistableBrokerBalances`, un cran **avant** la persistance : ces comptes n'entraient jamais
+dans `balances`, donc jamais dans la liste. **Elle connaissait deux causes sur trois, et son
+compteur à zéro sur la troisième se lisait « rien à signaler »** (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`,
+appliqué à l'ÉTAGE plutôt qu'au critère). La question qui la débusque : *combien de chemins mènent
+à « écarté », et la liste en connaît-elle combien ?*
+
+⚠️ **Corollaire de SURFACE, et c'est ce que Marc voyait** : l'écart était bien annoncé — dans
+`report.warnings`, donc **Système & diagnostics**. Pas sur l'écran Investissements, ni sur
+l'Accueil. Deux surfaces, une seule parle, et c'est l'autre qu'il ouvre pour regarder ses
+placements. *Une détection non ANNONCÉE là où l'utilisateur regarde n'existe pas pour lui.*
+
+⚠️ **Un DÉCOUPAGE annoncé se re-mesure comme un périmètre.** J'avais proposé à Marc « réparer la
+liste d'abord, convertir ensuite », et il avait dit oui. Mesuré en écrivant : les deux moitiés sont
+indissociables — la liste ne peut pas voir des comptes filtrés avant elle, et la conversion ne peut
+pas être inconditionnelle. Livrer la première seule aurait produit une liste structurellement vide,
+c'est-à-dire une protection qui ne peut pas tirer. Un ordre d'exécution annoncé est une hypothèse
+sur le code, pas une décision de produit : quand la mesure le réfute, on le dit et on livre le lot
+entier plutôt que la moitié qu'on avait promise.

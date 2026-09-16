@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 982 tests** Vitest
-(613 fichiers de test, mesuré le 2026-09-16 ; +3 nets au lot du signe de carte). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 987 tests** Vitest
+(613 fichiers de test, mesuré le 2026-09-16 ; +3 au lot du signe de carte, +5 au lot Disnat). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -944,6 +944,27 @@ n'est pas réécrire un récit.
   n'y touche — et il est **asymétrique** : ici il faisait renoncer à un import légitime (visible), dans
   l'autre sens il ferait compter une dépense **deux fois**, sans rien de rouge
   (`UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE`).
+
+- **Un repli BON pour un AFFICHAGE est le PIRE pour une AUTORITÉ** : le solde courtier USD devait être
+  converti, et le remède évident était `toCurrencyFactor` — **la source unique FX**, gardée par
+  `assetFxGuard`. Elle replie sur **1:1** quand le taux manque, ce qui est juste pour un ACTIF affiché
+  (montrer + journaliser) et catastrophique pour un total qui « fait autorité » : 72 040 USD →
+  72 040 « CAD », faux d'environ 30 % et crédible. **Avant de réutiliser une source unique, lire son
+  mode DÉGRADÉ, pas seulement son calcul** — un helper partagé encode un arbitrage qui voyage chez
+  tous ses appelants, y compris ceux dont l'enjeu est l'inverse. D'où un taux interrogé EXPLICITEMENT
+  (`0`, négatif et non fini = absent). ⚠️ **L'ORDRE DES GARDES EST le correctif** : une entrée « taux
+  manquant » porte `balanceCad: 0` qui ne signifie rien ; testée APRÈS la garde de finitude elle passe
+  (0 est fini) et s'additionne à zéro — le compte disparaît du total sans trace. Rien dans le TYPE ne
+  dit qu'un champ doit être lu en premier, donc la garde a sa perturbation à elle. ⚠️ Et la 3ᵉ cause
+  d'écartement n'était recensée NULLE PART : la liste des écartés existe pour qu'« un compte ne
+  disparaisse jamais en silence », mais le filtre de devise vivait un ÉTAGE au-dessus d'elle — deux
+  causes sur trois, et son compteur à zéro sur la troisième se lisait « rien à signaler »
+  (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` appliqué à l'ÉTAGE). ⚠️ Corollaire de SURFACE : l'écart
+  ÉTAIT annoncé — dans Système & diagnostics, pas sur l'écran Investissements que Marc ouvre pour
+  regarder ses placements. ⚠️ Et **un DÉCOUPAGE annoncé se re-mesure comme un périmètre** : « réparer
+  la liste d'abord, convertir ensuite » a été approuvé par Marc puis réfuté par la mesure (les deux
+  moitiés sont indissociables) — le dire et livrer entier, plutôt que la moitié promise
+  (`UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

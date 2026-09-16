@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` LIVRÉ (2ᵉ des 3 GO)
+> Conversion à l'écriture quand le taux est CONNU ; signal nommé quand il ne l'est pas ; la 3ᵉ cause
+> d'écartement enfin recensée **là où Marc regarde ses placements** (carte Investissements + Accueil).
+> ⚠️⚠️ **Le remède ÉVIDENT était le piège** : `toCurrencyFactor` (source unique FX, gardée par
+> `assetFxGuard`) replie sur **1:1** sans taux — juste pour un ACTIF affiché, catastrophique pour un
+> total qui « fait autorité » (72 040 USD → 72 040 « CAD », faux d'≈30 %, crédible). Taux interrogé
+> EXPLICITEMENT ; `0`, négatif et non fini = absent.
+> ⚠️ **L'ordre des gardes EST le correctif** : `missingRate` porte `balanceCad: 0` qui ne signifie
+> rien ; testé APRÈS la finitude il passe (0 est fini) et s'additionne à zéro → compte effacé du
+> total sans trace. Perturbation dédiée → 1 rouge.
+> ⚠️ La liste des écartés connaissait **2 causes sur 3** : le filtre de devise vivait un ÉTAGE
+> au-dessus d'elle, donc son compteur à zéro se lisait « rien à signaler ».
+> ⚠️ **J'ai annoncé un DÉCOUPAGE que la mesure a réfuté** (« la liste d'abord, la conversion
+> ensuite ») : les deux moitiés sont indissociables. Dit à Marc, lot livré entier.
+> **19 gardes** (14 → 19), 3 perturbations distinctes : `continue` restauré → 4 rouges ; ordre des
+> gardes → 1 ; taux aberrant → 1. Contrôle négatif (compte CAD, avec/sans taux) vert partout.
+>
 > ## ✅ Session 2026-09-16 (soir) — **CORRECTIF DU SIGNE LIVRÉ** (Marc : « ok pour tout »)
 > `owed = Math.max(0, −solde)` remplace `Math.abs` ; le commentaire inversé est corrigé ;
 > l'avertissement de mesure est MORT (garde INVERSÉE au même endroit, jamais supprimée).

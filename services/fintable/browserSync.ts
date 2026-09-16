@@ -341,7 +341,9 @@ export async function runFintableBrowserSync(
             statePatch: referenceDeltaPatch(baseState, {
                 ...nextState,
                 fintableSyncReport: report,
-                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at),
+                // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Les taux viennent de l'état : un compte en devise
+                // étrangère est CONVERTI quand son taux est connu, et SIGNALÉ sinon (jamais replié 1:1).
+                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at, 'CAD', baseState.fxRates),
             }),
         };
     } catch (err) {

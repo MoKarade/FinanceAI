@@ -23,6 +23,8 @@ import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, mark
 import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
 import { requestPersistentStorage } from '../services/storagePersistence';
+import { doitEcrireTauxFx } from '../services/fx/provenance';
+import { etatFxPourComparaison } from '../services/fx/selecteurs';
 
 /** Tous les effets de boot d'App : handlers d'erreur, courbe verrouillée, service worker, purge
  *  persona, init sync Drive, filets migration/hydratation, provider marché, clés API chiffrées,
@@ -283,15 +285,19 @@ export function useAppBootEffects(): void {
 
     // Taux FX au boot (une fois). Le sélecteur capture les valeurs du PREMIER rendu — même
     // sémantique que dans App (effet à deps vides sur la closure du montage).
-    const fxRates = useFinanceStore((s) => s.fxRates);
     const updateFxRates = useFinanceStore((s) => s.updateFxRates);
+    const fxEtat = useFinanceStore(etatFxPourComparaison);
     useEffect(() => {
         const doUpdateFxRates = async () => {
             try {
                 const rates = await fetchFxRates();
-                if (fxRates.USD !== rates.USD || fxRates.EUR !== rates.EUR) {
-                    updateFxRates(rates);
-                }
+                // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] La condition d'écriture ne compare plus SEULEMENT les
+                // valeurs. Elle vivait ici, en ligne, et elle était fausse pour une raison qu'aucun
+                // test ne pouvait voir depuis ce fichier : la Banque du Canada ne publie qu'un jour
+                // OUVRÉ, donc « même taux qu'hier » est le cas normal — une lecture réussie ne
+                // rafraîchissait alors ni la fraîcheur, ni la cause, ni la date de tentative.
+                // La décision est maintenant PURE et testée (`doitEcrireTauxFx`).
+                if (doitEcrireTauxFx(fxEtat, rates)) updateFxRates(rates);
             } catch (e) {
                 logError({ source: 'network', severity: 'warning', message: 'Mise à jour des taux FX impossible (taux de repli utilisés)', error: e });
             }

@@ -6,6 +6,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (tes taux de change n'étaient JAMAIS arrivés — et Fintable fait enfin autorité)
+
+- **Ce qui a été mesuré sur TES données** : NVDA, 90 × 214,40 USD, affiché 27 014 $ → facteur
+  **1,4000** pile. GBS.PA, 115 × 343,67 EUR, affiché 58 097 $ → **1,4700** pile. Ce sont les taux
+  écrits en dur dans le code (« approximation Q1 2026 »), pas ceux de la Banque du Canada. Et tes
+  **douze** positions sont en USD ou en EUR, aucune en CAD : la totalité de la valeur de tes
+  placements reposait sur un chiffre inventé. C'était aussi la vraie raison pour laquelle ton compte
+  Disnat en USD n'était pas converti hier.
+- **Ce qui change — un RECOURS, là où il n'y en avait aucun.** Réglages → Système & diagnostics :
+  un bouton **« Réessayer maintenant »**, un diagnostic qui nomme la cause de l'échec (réseau,
+  erreur du serveur, série absente…), et un champ pour **saisir le taux toi-même**. Un taux que tu
+  saisis convertit tes avoirs, et l'app continue de dire qu'il vient de toi.
+- **Le total de ton courtier fait maintenant autorité sur AUJOURD'HUI**, et donc sur le point de
+  départ de ta projection — pas seulement dans la carte d'écart. Ta demande du 30 juillet n'était
+  livrée qu'à moitié. L'écart avec tes titres saisis reste affiché à part, jamais noyé.
+  ⚠️ Le passé, lui, reste reconstruit à partir de tes titres : d'où une **marche possible au
+  raccord** sur la courbe Futur, expliquée en toutes lettres sous le graphe.
+- **L'historique du courtier commence à s'accumuler** (une lecture par compte et par jour, 24 mois).
+  ⚠️ Ça ne change **rien aujourd'hui ni sur le passé déjà vécu** : l'instantané était écrasé à chaque
+  passe, donc « ce que Fintable disait le 3 mars » n'existe nulle part et ne peut pas être
+  reconstruit. Ce lot fait exister la donnée à partir de maintenant.
+- **Ce que j'attends de toi** : ouvre Réglages → Système & diagnostics et dis-moi ce que raconte la
+  carte « Taux de change ». Je ne peux pas le mesurer d'ici — la Banque du Canada est bloquée depuis
+  mon conteneur.
+
+---
+
 ## [unreleased] — 2026-09-16 (tu peux enfin voir ce que Fintable envoie et qu'on ignore)
 
 - **Pourquoi** : l'import te disait déjà que 5 champs arrivent et sont ignorés — mais seulement

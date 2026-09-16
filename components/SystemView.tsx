@@ -13,6 +13,8 @@ import { TAX_BASE_YEAR, FED_BRACKETS, BASIC_PERSONAL_AMOUNT_FED } from '../utils
 import { logError } from '../services/errorLogger';
 import { getStoragePersistence, queryStoragePersisted, libellePersistance, type EtatPersistance } from '../services/storagePersistence';
 import { formatRelative } from '../utils/relativeTime';
+import { FxRatesCard } from './settings/FxRatesCard';
+import { fxSourceEffective } from '../services/fx/provenance';
 
 interface SystemViewProps {
     state: AppState;
@@ -98,12 +100,16 @@ const computeDiagnostics = (state: AppState, persistance: EtatPersistance): LogL
     });
 
     const fxAge = state.fxRates.lastFetched ?? 0;
+    // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] La ligne affirmait « (BdC, …) » quelle que soit la provenance —
+    // donc elle attribuait à la Banque du Canada le repli en dur du dépôt, dans la page même où on
+    // vient chercher la vérité technique. La provenance se LIT maintenant, elle ne se suppose plus.
+    const fxSource = fxSourceEffective(state);
     lines.push({
         text: stamp(
             `FX_API: USD=${state.fxRates.USD.toFixed(4)} · EUR=${state.fxRates.EUR.toFixed(4)} ` +
-            `(BdC, ${formatRelative(fxAge)})`
+            `(${fxSource}, ${fxAge === 0 ? 'jamais lu' : formatRelative(fxAge)})`
         ),
-        level: fxAge === 0 ? 'warn' : 'info',
+        level: fxSource === 'api' ? 'info' : 'warn',
     });
 
     const hasAnthropic = !!state.apiKeys.anthropic;
@@ -264,6 +270,13 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                             <div className="text-xl font-bold text-white">{state.financialGoals.length}</div>
                         </Card>
                     </div>
+
+                    {/* [FX-TAUX-JAMAIS-ARRIVES] Provenance du taux de change + les deux gestes
+                        pour en sortir (relancer la lecture, ou saisir le taux). Ici et pas sur
+                        Investissements : le badge `FxEstimateBadge` reste posé LÀ OÙ Marc regarde
+                        ses placements et NOMME désormais ce chemin — un signal à un endroit, une
+                        action à un autre, mais le premier dit où aller. */}
+                    <FxRatesCard />
 
                     {/* [FINTABLE-3] Rapport de la dernière passe de sync serveur (cron quotidien) — VISIBLE
                         dans l'app sans notification proactive (choix Marc). Zéro montant $ dans ce rapport

@@ -1,0 +1,164 @@
+// tests/services/fx/provenance.test.ts
+//
+// [FX-TAUX-JAMAIS-ARRIVES] La provenance du taux de change, et la décision d'écriture.
+//
+// CE QUE CE FICHIER DÉFEND, et pourquoi ça vaut un fichier : l'état RÉEL de Marc a été mesuré le
+// 2026-09-16 (via le serveur MCP, instantané Drive) — ses douze positions sont en USD ou en EUR,
+// AUCUNE en CAD, et les facteurs appliqués valaient 1,4000 et 1,4700 au dix-millième, soit
+// `DEFAULT_FX_RATES` au caractère près. Toute la valeur de ses placements reposait sur un chiffre
+// écrit en dur, et rien ne pouvait le faire changer : la lecture automatique ne tourne qu'au
+// démarrage, et sa condition d'écriture ne regardait QUE la valeur.
+
+import { describe, it, expect } from 'vitest';
+import {
+    fxSourceEffective, fxCauseEffective, fxFaitAutorite, libelleSourceFx, messageCauseFx,
+    doitEcrireTauxFx, DELAI_RAFRAICHISSEMENT_FX_MS,
+    type LectureFx,
+} from '../../../services/fx/provenance';
+
+const lecture = (p: Partial<LectureFx> = {}): LectureFx => ({
+    USD: 1.38, EUR: 1.45, lastFetched: 1_000_000, source: 'api', cause: 'ok', attemptAt: 1_000_000,
+    ...p,
+});
+
+describe('fxSourceEffective — rétrocompatibilité', () => {
+    it('lit le champ explicite quand il est présent et valide', () => {
+        expect(fxSourceEffective({ fxRatesSource: 'manuel' })).toBe('manuel');
+        expect(fxSourceEffective({ fxRatesSource: 'api' })).toBe('api');
+        expect(fxSourceEffective({ fxRatesSource: 'repli' })).toBe('repli');
+    });
+
+    it('retombe sur l\'ANCIENNE lecture quand le champ est absent — un état d\'avant ce lot', () => {
+        // ⚠️ C'est la propriété qui rend le champ additif SÛR : sans elle, tout état écrit avant ce
+        // lot serait classé « je ne sais pas » et perdrait la conversion de ses avoirs étrangers.
+        expect(fxSourceEffective({ fxRatesEstimated: true })).toBe('repli');
+        expect(fxSourceEffective({ fxRatesEstimated: false })).toBe('api');
+        expect(fxSourceEffective({ fxRates: { lastFetched: 0 } })).toBe('repli');
+        expect(fxSourceEffective({ fxRates: { lastFetched: 12345 } })).toBe('api');
+        expect(fxSourceEffective(undefined)).toBe('repli');
+    });
+
+    it('REFUSE une valeur inconnue venue du Drive plutôt que de la propager', () => {
+        // L'état vient d'un blob que rien ne valide (aucun schéma Zod sur ce champ additif).
+        expect(fxSourceEffective({ fxRatesSource: 'bidon', fxRatesEstimated: true })).toBe('repli');
+        expect(fxSourceEffective({ fxRatesSource: 'API' })).toBe('repli'); // la casse n'est pas tolérée
+    });
+});
+
+describe('fxCauseEffective', () => {
+    it('valide la valeur et retombe sur « jamais tenté »', () => {
+        expect(fxCauseEffective({ fxLastAttemptCause: 'reseau' })).toBe('reseau');
+        expect(fxCauseEffective({ fxLastAttemptCause: 'inventé' })).toBe('jamais-tente');
+        expect(fxCauseEffective(undefined)).toBe('jamais-tente');
+    });
+});
+
+describe('fxFaitAutorite — qui a le droit d\'écrire un total de compte', () => {
+    it('un taux de marché ET un taux saisi par Marc convertissent ; le repli en dur, non', () => {
+        // ⚠️ C'EST LA RAISON D'ÊTRE des trois valeurs. Un booléen forcerait à ranger « manuel » avec
+        // l'un des deux : avec `api` il passerait pour une lecture de marché, avec `repli` il ne
+        // convertirait pas — donc le recours demandé par Marc serait sans effet.
+        expect(fxFaitAutorite('api')).toBe(true);
+        expect(fxFaitAutorite('manuel')).toBe(true);
+        expect(fxFaitAutorite('repli')).toBe(false);
+    });
+});
+
+describe('libellés', () => {
+    it('nomme la provenance sans jamais dire « Banque du Canada » pour un repli', () => {
+        // Le diagnostic technique affirmait « (BdC, …) » quelle que soit la provenance : il
+        // attribuait le littéral du dépôt à la Banque du Canada, dans la page où on vient
+        // justement chercher la vérité.
+        expect(libelleSourceFx('api')).toContain('Banque du Canada');
+        expect(libelleSourceFx('manuel')).not.toContain('Banque du Canada');
+        expect(libelleSourceFx('repli')).not.toContain('Banque du Canada');
+    });
+
+    it('aucun message ne PROMET que ça se réglera tout seul', () => {
+        // `UN-MESSAGE-QUI-PROMET-UNE-RESOLUTION-AUTOMATIQUE-EST-UNE-AFFIRMATION-SUR-L-AVENIR` :
+        // avant ce lot la lecture ne tournait qu'une fois au démarrage, donc « réessaie plus tard »
+        // aurait été faux pour TOUTES les causes à la fois.
+        const causes = ['ok', 'partiel', 'reseau', 'http', 'reponse-illisible', 'manuel', 'jamais-tente'] as const;
+        for (const c of causes) {
+            const m = messageCauseFx(c);
+            expect(m.length).toBeGreaterThan(10);
+            expect(m.toLowerCase()).not.toMatch(/automatiquement|réessaie plus tard|prochain démarrage/);
+        }
+    });
+});
+
+describe('doitEcrireTauxFx — LE défaut mesuré', () => {
+    const etat = {
+        fxRates: { USD: 1.38, EUR: 1.45, lastFetched: 1_000_000 },
+        fxRatesSource: 'api',
+        fxLastAttemptCause: 'ok',
+        fxLastAttemptAt: 1_000_000,
+    };
+
+    it('écrit quand une valeur a changé (le SEUL cas que l\'ancienne condition couvrait)', () => {
+        expect(doitEcrireTauxFx(etat, lecture({ USD: 1.39 }))).toBe(true);
+        expect(doitEcrireTauxFx(etat, lecture({ EUR: 1.46 }))).toBe(true);
+    });
+
+    it('N\'ÉCRIT PAS quand rien n\'a bougé et que la lecture est récente', () => {
+        // Contrôle négatif : sans lui, on pousserait l'état entier vers le Drive à chaque démarrage.
+        expect(doitEcrireTauxFx(etat, lecture({ lastFetched: 1_000_001, attemptAt: 1_000_001 }))).toBe(false);
+    });
+
+    it('⚠️ ÉCRIT quand la VALEUR est identique mais que la lecture a VIEILLI — le défaut', () => {
+        // La Banque du Canada ne publie qu'un jour OUVRÉ : « même taux qu'hier » est le cas NORMAL.
+        // L'ancienne condition (`USD !== USD || EUR !== EUR`) ne rafraîchissait alors NI la
+        // fraîcheur, NI la cause, NI la date de tentative — sur une donnée pourtant à jour.
+        const plusTard = 1_000_000 + DELAI_RAFRAICHISSEMENT_FX_MS + 1;
+        expect(doitEcrireTauxFx(etat, lecture({ lastFetched: plusTard, attemptAt: plusTard }))).toBe(true);
+    });
+
+    it('ÉCRIT quand la PROVENANCE change, à valeur identique', () => {
+        // Un taux saisi à la main puis retrouvé chez la BdC au même centième reste une information.
+        const manuel = { ...etat, fxRatesSource: 'manuel', fxLastAttemptCause: 'manuel' };
+        expect(doitEcrireTauxFx(manuel, lecture())).toBe(true);
+    });
+
+    it('ÉCRIT quand la CAUSE change, à valeur et provenance identiques', () => {
+        // « essayé, réseau coupé » ne se déduit d'aucun autre champ : sans écriture, « on a essayé »
+        // reste indiscernable de « on n'a jamais essayé ».
+        expect(doitEcrireTauxFx(etat, lecture({ cause: 'partiel' }))).toBe(true);
+    });
+
+    it('ÉCRIT sur un état VIDE (premier démarrage)', () => {
+        expect(doitEcrireTauxFx(undefined, lecture())).toBe(true);
+        expect(doitEcrireTauxFx({}, lecture())).toBe(true);
+    });
+});
+
+// ⚠️⚠️ CE BLOC DÉFEND UNE RÉGRESSION QUE J'AVAIS INTRODUITE, et qu'un test EXISTANT a trouvée.
+//
+// Mon premier jet écrivait `fxRatesSource: 'repli'` dans l'état PAR DÉFAUT, au motif qu'une
+// provenance explicite vaut mieux qu'une absence. Or `merge` de zustand superpose le blob persisté
+// sur cet objet CLÉ PAR CLÉ : un blob écrit AVANT ce lot ne porte pas la clé, elle serait donc
+// restée à `'repli'` alors que l'utilisateur a de VRAIS taux. Son compte courtier en devise
+// étrangère aurait cessé d'être converti le jour du déploiement — l'exact contraire du lot.
+//
+// La leçon n'est pas « ne pas poser de valeur par défaut » mais : **une valeur posée dans l'objet
+// que `merge` prend pour BASE ne peut pas être contredite par un état ancien, elle le recouvre.**
+describe('rétrocompatibilité de l\'état PERSISTÉ — le piège du défaut qui recouvre', () => {
+    it('l\'état par défaut ne DÉCLARE PAS la provenance (sinon il recouvre les blobs anciens)', async () => {
+        const { buildDefaultAppState } = await import('../../../mcp/state/appStateDefaults');
+        const { initialState } = await import('../../../store/etatParDefaut');
+        // La clé doit être ABSENTE, pas juste `undefined` à la lecture : c'est la présence de la
+        // clé dans la base de `merge` qui décide.
+        expect(Object.prototype.hasOwnProperty.call(buildDefaultAppState(), 'fxRatesSource')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(initialState, 'fxRatesSource')).toBe(false);
+        // Et l'état NEUF reste bien « repli » — via `fxRatesEstimated`, qui suffit.
+        expect(fxSourceEffective(buildDefaultAppState())).toBe('repli');
+    });
+
+    it('un état d\'AVANT ce lot, avec de VRAIS taux, reste « api » après fusion sur les défauts', async () => {
+        const { buildDefaultAppState } = await import('../../../mcp/state/appStateDefaults');
+        // Ce que `merge` produit : les défauts, recouverts clé par clé par le blob ancien.
+        const ancien = { fxRates: { USD: 1.3845, EUR: 1.4512, CAD: 1, lastFetched: 1_700_000_000 }, fxRatesEstimated: false };
+        const fusionne = { ...buildDefaultAppState(), ...ancien };
+        expect(fxSourceEffective(fusionne)).toBe('api');
+        expect(fxFaitAutorite(fxSourceEffective(fusionne))).toBe(true);
+    });
+});

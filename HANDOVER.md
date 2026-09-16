@@ -4,6 +4,33 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-16 (fin de soirée) — **les taux FX n'étaient JAMAIS arrivés**
+> Marc : « faut bien convertir en cad ce qui est en usd ». Mesuré sur son état RÉEL via le MCP :
+> **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au caractère près — et ses **12**
+> positions sont en USD ou EUR, **aucune** en CAD. 100 % des 231 882 $ affichés reposaient sur un
+> chiffre en dur, et c'était la vraie cause du Disnat USD non converti du lot précédent.
+> ✅ **Lot A** — provenance à 3 états (`api`/`manuel`/`repli`), bouton « Réessayer maintenant »
+> (avec `force` : sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
+> diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, et la condition d'écriture
+> du démarrage sortie en fonction PURE (elle ne comparait que les VALEURS, or la BdC ne publie qu'un
+> jour ouvré).
+> ✅ **Lot B** — le total du courtier fait autorité sur `liveCSVBalances`, donc sur le mois 0 du
+> moteur ET le départ de la courbe. Mesuré : un écart de 31 882 $ vaut **+42 338 / +56 097 /
+> +98 482 $** à 5, 10, 20 ans. La marche au raccord est NOMMÉE sous le graphe.
+> ✅ **Lot C** — l'historique courtier s'accumule (1/compte/jour, 24 mois). Ne change rien
+> aujourd'hui ; c'est écrit à l'écran.
+> ⚠️⚠️ **Régression que J'AVAIS introduite, trouvée par un test d'un AUTRE lot** : `fxRatesSource:
+> 'repli'` dans l'état PAR DÉFAUT. `merge` superpose clé par clé — un blob d'avant le lot aurait
+> gardé `'repli'` alors que l'utilisateur a de vrais taux, et son compte étranger aurait cessé
+> d'être converti au déploiement. ✅ Clé retirée des défauts + garde sur la PRÉSENCE de la clé.
+> ⚠️ Garde REDONDANTE démasquée par perturbation (12/12 verts sans elle) : les deux refus de
+> l'historique ont été réunis au même endroit.
+> 👤 **Chez Marc** : ouvrir Réglages → Système & diagnostics et dire ce que raconte la carte « Taux
+> de change ». `www.bankofcanada.ca` est **403 au CONNECT** depuis le conteneur (§6).
+> ⏸️ **Routé, non fait** (choix explicite de Marc) : `[FX-PASSE-TAUX-PLAT]` — la courbe convertit
+> TOUS les points passés au taux d'aujourd'hui, et `Asset.priceHistory[].fxRate` existe dans le type
+> sans être ni écrit ni lu par personne.
+>
 > ## ⚠️⚠️ Session 2026-09-16 (soir) — **REVUE PANEL : 6 défauts RÉELS dans mon propre lot**
 > Quatre agents sur le diff. Le typecheck, le lint, **321 tests ciblés verts** et mes **8
 > perturbations** n'avaient rien vu. Troisième lot d'affilée où le panel bat les deux gates.

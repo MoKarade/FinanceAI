@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 010 tests** Vitest
-(614 fichiers de test, mesuré le 2026-09-16 ; +3 signe de carte, +5 Disnat, +11 champs inconnus, +12 revue panel). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 073 tests** Vitest
+(620 fichiers de test, mesuré le 2026-09-16 ; +15 provenance FX, +8 lecture BdC, +11 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -997,6 +997,32 @@ n'est pas réécrire un récit.
   pas la classe** : elle se vérifie par une PERTURBATION à l'endroit neuf, jamais par la conviction de la
   connaître — d'où une anti-vacuité du NORMALISATEUR lui-même, pas seulement de son sujet
   (`UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET`).
+
+- **Une valeur PAR DÉFAUT ne peut pas être contredite par un état ANCIEN** : j'ai écrit
+  `fxRatesSource: 'repli'` dans l'état initial en croyant bien faire (« une provenance explicite vaut
+  mieux qu'une absence »). `merge` de zustand superpose le blob persisté sur cet objet **clé par
+  clé** — un blob d'AVANT le lot ne porte pas la clé neuve, elle serait donc restée à `'repli'`
+  pendant que le reste de l'état dit `fxRatesEstimated: false` : le compte courtier en devise
+  étrangère de Marc aurait CESSÉ d'être converti le jour du déploiement, l'exact contraire du lot.
+  **Un champ additif optionnel ne coûte aucune migration À CONDITION de rester ABSENT des défauts** ;
+  dès qu'il y a une valeur, il n'est plus additif. Le test qui tranche porte sur la PRÉSENCE DE LA
+  CLÉ (`hasOwnProperty`), jamais sur sa valeur — `toBeUndefined()` est satisfait par les deux mondes.
+  ⚠️ C'est un test écrit par un AUTRE lot qui l'a trouvé. ⚠️ Corollaire : quand deux champs répondent
+  à la même question, le mutateur les tient cohérents PAR CONSTRUCTION (un appelant qui ne passe que
+  l'ancien laissait l'état porter deux réponses, et le lecteur suivait la périmée).
+  ⚠️⚠️ **Mesure d'origine** : les 12 positions de Marc sont en USD ou EUR, AUCUNE en CAD, et les
+  facteurs appliqués valaient **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au
+  caractère près. 100 % des 231 882 $ affichés reposaient sur un chiffre écrit en dur, et c'était
+  la vraie cause du compte USD non converti. ⚠️ Un **avertissement sans recours** (le badge « taux
+  estimés ») ne change rien : la lecture ne tournait qu'au démarrage, aucun bouton, aucun champ —
+  et un bouton sans `force` aurait rendu le cache de 24 h, donc un no-op déguisé. ⚠️ Un succès
+  **PARTIEL** n'est pas une lecture de marché (un des deux chiffres est le littéral du dépôt).
+  ⚠️ « Même taux qu'hier » est le cas NORMAL — la BdC ne publie qu'un jour OUVRÉ —, donc une
+  condition d'écriture qui ne compare que les VALEURS fige la fraîcheur sur une donnée à jour.
+  ⚠️ Mesuré côté moteur : un écart de 31 882 $ au point de départ vaut **+42 338 $ / +56 097 $ /
+  +98 482 $** à 5, 10 et 20 ans — le POURCENTAGE baisse (9,53 → 5,66 %) pendant que le FACTEUR monte
+  (×1,33 → ×3,09) ; publier l'un sans l'autre raconte deux histoires opposées
+  (`UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN`, 2026-09-16).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

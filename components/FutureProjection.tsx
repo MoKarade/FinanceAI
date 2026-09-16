@@ -212,7 +212,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // avec le moteur app-level (hooks/useSimulationParams). `params` sert ICI uniquement aux outils
     // EN AMONT (écran d'amorçage « leviers-d'abord » : StrategyOptimizerPanel + StressTestPanel) ; le calcul de
     // la courbe principale, lui, est fait par ProjectionEngine et lu via store.lastProjection.
-    const { params, pastHistory, liveCSVBalances, calculatedStartingCash, startYear, startMonth, todayMonthIndex } = useSimulationParams(calculatedMonthlySavings);
+    const {
+        params, pastHistory, liveCSVBalances, calculatedStartingCash,
+        startYear, startMonth, todayMonthIndex, mentionAutoriteCourtier,
+    } = useSimulationParams(calculatedMonthlySavings);
 
     const applyHistoricalRate = () => {
         if (liveCSVBalances.historicalRate > 0) {
@@ -1944,6 +1947,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     note de méthodologie compacte + les avertissements d'honnêteté conditionnels.
                     Le repli mensuel (ventilation impossible : < 2 mois à valeur nette finie) est
                     signalé, jamais silencieux. */}
+                {/* [FINTABLE-AUTORITE-AUJOURDHUI] La SECONDE cause possible de marche au raccord,
+                    et elle est neuve : aujourd'hui part du total du COURTIER pendant que le passé
+                    reste reconstruit à partir des titres saisis. Sans cette phrase, la marche se
+                    lirait comme un bug — c'est ce que `mentionRaccord` a déjà appris à ce graphe.
+                    ⚠️ Bloc À PART, et pas dans les paragraphes voisins : ceux-là sont gouvernés par
+                    `isDailyCurve`, alors que cette marche existe dans les DEUX modes. Un signal
+                    logé sous la condition d'un autre signal n'est visible que la moitié du temps. */}
+                {mentionAutoriteCourtier && (
+                    <p role="status" className="mt-2 rounded-card border border-white/10 bg-white/5 px-3 py-2 text-tiny text-ink-200">
+                        {mentionAutoriteCourtier}
+                    </p>
+                )}
                 {!isDailyCurve && (
                     <p role="status" className="mt-2 rounded-card border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-tiny text-ink-200">
                         <strong className="text-amber-300">Courbe au mois (repli)</strong> — la valeur nette

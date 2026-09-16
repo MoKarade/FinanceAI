@@ -17,6 +17,9 @@ import type { Transaction } from '../types';
 import { usePastPortfolioHistory } from './usePastPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
 import { todayIsoLocal } from '../services/projection/dailyRefine';
+import { appliquerAutoriteCourtier, mentionAutoriteCourtier } from '../services/fintable/autoriteCourtier';
+import { reconcileBrokerBalances } from '../services/fintable/brokerBalances';
+import { holdingsCadByRegime } from '../services/fintable/holdingsByRegime';
 
 const EMPTY_ARRAY: never[] = [];
 
@@ -72,6 +75,11 @@ interface SimulationParamsBundle {
     pastHistory: ReturnType<typeof usePastPortfolioHistory>;
     /** Soldes de placement de DÉPART (continuité passé↔futur au mois 0). */
     liveCSVBalances: ReturnType<typeof deriveStartingBalancesFromHistory>;
+    /** [FINTABLE-AUTORITE-AUJOURDHUI] La phrase qui explique la marche au raccord, ou `''`.
+     *  Remontée jusqu'ici plutôt que recalculée dans le composant : le FAIT vient du module qui
+     *  DÉCIDE, jamais d'une seconde lecture des mêmes champs
+     *  (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`). */
+    mentionAutoriteCourtier: string;
     /** Cash de départ reconstitué (soldes initiaux + flux de transactions). */
     calculatedStartingCash: number;
     startYear: number;
@@ -120,9 +128,34 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
     // A1/A3 — soldes de DÉPART dérivés de la même reconstruction que la courbe passée
     // (continuité passé↔futur au mois 0 : le futur démarre sur le portefeuille réel).
     const pastHistory = usePastPortfolioHistory();
-    const liveCSVBalances = useMemo(
+    const soldesReconstruits = useMemo(
         () => deriveStartingBalancesFromHistory(pastHistory.points),
         [pastHistory.points],
+    );
+
+    // [FINTABLE-AUTORITE-AUJOURDHUI] Le total du COURTIER fait autorité sur le point de départ.
+    //
+    // ⚠️ C'est LE point d'injection : `liveCSVBalances` est à la fois le mois 0 du moteur et le
+    // point sur lequel la courbe Futur démarre. Le poser ailleurs (dans un composant, dans une
+    // carte) aurait donné une valeur affichée qui ne correspond à aucun calcul — la classe
+    // `UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE`, prise à l'envers.
+    //
+    // ⚠️ Rendu IDENTIQUE quand il n'y a rien à appliquer (pas de synchro Fintable, aucun régime
+    // déclaré, total non fini) : pour qui n'utilise pas la synchro, ce lot ne déplace pas un dollar.
+    const brokerBalances = useFinanceStore((s) => s.fintableBrokerBalances);
+    const assetsPourRegime = useFinanceStore((s) => s.assets);
+    const fxPourRegime = useFinanceStore((s) => s.fxRates);
+    const autorite = useMemo(
+        () => appliquerAutoriteCourtier(
+            soldesReconstruits,
+            reconcileBrokerBalances(brokerBalances, holdingsCadByRegime(assetsPourRegime, fxPourRegime)),
+        ),
+        [soldesReconstruits, brokerBalances, assetsPourRegime, fxPourRegime],
+    );
+    const liveCSVBalances = autorite.soldes;
+    const mentionAutorite = useMemo(
+        () => mentionAutoriteCourtier(autorite.ecartTotal, autorite.regimesAppliques),
+        [autorite],
     );
 
     // [CASH-NAN-SILENT] SOURCE UNIQUE (`services/startingCash.ts`). C'est CETTE copie que consomme
@@ -180,5 +213,9 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         privateBusinesses,
     }), [projection, calculatedStartingCash, ledgerCash.termesFautifs, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth]);
 
-    return { params, pastHistory, liveCSVBalances, calculatedStartingCash, startYear, startMonth, todayMonthIndex };
+    return {
+        params, pastHistory, liveCSVBalances, calculatedStartingCash,
+        startYear, startMonth, todayMonthIndex,
+        mentionAutoriteCourtier: mentionAutorite,
+    };
 }

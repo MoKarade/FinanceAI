@@ -14119,3 +14119,149 @@ l'endroit neuf, jamais par la conviction de la connaître.
 tests ciblés verts et mes huit perturbations n'avaient pas vus — dont deux qui atteignaient
 l'utilisateur (données bancaires réelles affichées en mode démo ; remède qui envoie corriger la
 mauvaise chose). Troisième lot d'affilée où le panel bat les deux gates.
+
+---
+
+## `UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN` (2026-09-16)
+
+**Le fait mesuré, avant tout le reste.** Marc : « les valeurs de aujd et du passé devraient être
+celles de fintable à ce moment […] faut bien convertir en cad ce qui est en usd ». Mesuré sur son
+état RÉEL (lu par le serveur MCP, instantané Drive de 19:51) :
+
+| position | quantité × prix natif | valeur CAD publiée | facteur implicite |
+|---|---|---|---|
+| NVDA | 90 × 214,40 USD = 19 296 USD | 27 014 | **1,4000** |
+| GBS.PA | 115 × 343,67 EUR = 39 522,05 EUR | 58 097 | **1,4700** |
+
+1,4000 et 1,4700 au dix-millième, c'est-à-dire `DEFAULT_FX_RATES` **au caractère près**
+(« approximation Q1 2026 »). Et ses **douze** positions sont en USD ou en EUR, **aucune** en CAD :
+100 % des 231 882 $ de placements affichés reposaient sur un chiffre écrit en dur. C'était aussi la
+vraie raison pour laquelle son compte courtier USD n'était pas converti — le lot de la veille avait
+correctement refusé de convertir avec un taux non fiable, sans que personne n'aille voir POURQUOI le
+taux n'était pas fiable.
+
+### 1. La leçon principale — un défaut posé dans la BASE d'un `merge` recouvre l'existant
+
+J'ai écrit `fxRatesSource: 'repli'` dans l'état PAR DÉFAUT, avec un commentaire qui en faisait une
+vertu (« une provenance explicite vaut mieux qu'une absence »). C'était une **régression**, et c'est
+un test ÉCRIT PAR UN AUTRE LOT qui l'a trouvée.
+
+`merge` de zustand superpose le blob persisté sur l'objet par défaut **clé par clé**. Un blob écrit
+AVANT le lot ne porte pas la clé neuve : elle reste donc à la valeur du défaut, **quoi que dise le
+reste de l'état**. Concrètement, un utilisateur dont le navigateur a de VRAIS taux
+(`fxRatesEstimated: false`, `lastFetched > 0`) aurait été classé « repli » le jour du déploiement —
+et son compte en devise étrangère aurait CESSÉ d'être converti. L'exact contraire du lot.
+
+> **Un champ additif optionnel ne coûte aucune migration — à condition de rester ABSENT des
+> défauts.** Dès qu'on lui donne une valeur par défaut, il cesse d'être additif : il devient une
+> affirmation que l'état ancien ne peut pas contredire.
+
+Le test qui règle la question est celui de la **PRÉSENCE DE LA CLÉ**, pas de sa valeur :
+`hasOwnProperty(defaut, 'fxRatesSource') === false`. Un `toBeUndefined()` serait satisfait par les
+deux mondes.
+
+⚠️ Corollaire d'écriture : si deux champs répondent à la même question (`fxRatesEstimated` et
+`fxRatesSource`), le mutateur doit les tenir **cohérents par construction**. Un appelant qui ne
+passe que l'ancien laissait sinon l'état porter deux réponses contradictoires, et le lecteur — qui
+préfère le champ explicite — suivait la périmée.
+
+### 2. Un booléen qui doit porter TROIS faits ne se répare pas en le renommant
+
+`fxRatesEstimated` recouvre « du marché » contre « repli en dur ». Marc a demandé un troisième cas —
+un taux qu'il SAISIT quand la Banque du Canada reste injoignable — et aucun rangement n'était bon :
+avec `true` il ne convertirait pas (donc le recours serait sans effet), avec `false` il passerait
+pour une lecture de marché. La provenance devient donc une valeur à trois états, et la question
+qu'on lui pose est nommée : *ce taux a-t-il le droit d'écrire un total de compte ?*
+
+### 3. Un avertissement sans recours apprend à être ignoré
+
+Le badge « Taux de change estimés » était posé sur l'écran Investissements, exact, et **là où Marc
+regarde**. Il n'a rien changé pendant des mois parce que **rien dans l'app ne pouvait le résoudre** :
+la lecture automatique ne tourne qu'au démarrage, il n'existait aucun bouton pour la relancer ni
+aucun champ pour poser un taux. Même classe que
+`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, appliquée à un diagnostic :
+l'ALLER était livré, le RETOUR n'existait pas.
+
+⚠️ Et le bouton ne suffit pas : `fetchFxRates` a un cache de 24 h. Sans `force`, « Réessayer
+maintenant » aurait rendu le cache sans rien tenter — un no-op déguisé, exactement ce que le lot
+prétendait corriger.
+
+### 4. Quatre pannes qui rendaient le même silence
+
+Coupure réseau, 4xx/5xx, réponse vide et repli PARTIEL sortaient toutes par le bas de la même
+fonction, indistinctes. Le `if (response.ok)` n'avait même pas de `else` : un 503 tombait dans le
+`catch` du réseau. Un écran ne peut affirmer que ce que ses sources lui donnent
+(`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`).
+
+⚠️ Et un succès **PARTIEL** n'est pas une lecture de marché : au moins un des deux chiffres est le
+littéral du dépôt. Le classer `api` redonnerait au taux inventé l'autorité qu'on vient de lui
+retirer — le piège de `UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE`, une marche plus bas.
+
+### 5. « Même taux qu'hier » est le cas NORMAL, pas une anomalie
+
+La condition d'écriture du démarrage était `if (fxRates.USD !== rates.USD || fxRates.EUR !== rates.EUR)`.
+Or la Banque du Canada ne publie qu'un jour **ouvré** : une lecture parfaitement réussie un lundi ne
+rafraîchissait alors NI la fraîcheur, NI la cause, NI la date de tentative. La décision est sortie
+en fonction PURE et testée — c'est là qu'elle vivait, en ligne, invisible à tout test.
+
+### 6. `fintableBrokerBalances` avait UN SEUL consommateur
+
+Recensé : `BrokerReconciliationCard`. La carte affirmait « le total de chaque panier est celui de
+ton courtier (il fait autorité) » depuis le 2026-07-30 — vrai de la CARTE, faux de l'APP : le
+patrimoine, la courbe et le mois 0 du moteur sommaient tous les titres saisis à la main. Rien ne
+pouvait rougir, aucun test ne juge ce qu'un écran PROMET
+(`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`).
+
+Le point d'injection est UNIQUE — `deriveStartingBalancesFromHistory` → `liveCSVBalances` — et c'est
+ce qui rend le correctif faisable sans dispersion : il alimente à la fois le mois 0 du moteur et le
+point de départ de la courbe. **Mesuré**, un écart de 31 882 $ au départ (rendement 6 %) :
+
+| horizon | patrimoine sans | avec | écart | facteur |
+|---|---|---|---|---|
+| 5 ans | 444 150 $ | 486 488 $ | **+42 338 $** (+9,53 %) | ×1,33 |
+| 10 ans | 715 952 $ | 772 049 $ | **+56 097 $** (+7,84 %) | ×1,76 |
+| 20 ans | 1 740 602 $ | 1 839 084 $ | **+98 482 $** (+5,66 %) | ×3,09 |
+
+⚠️ Le POURCENTAGE baisse pendant que le FACTEUR monte : l'écart compose, mais la base grossit plus
+vite encore grâce aux cotisations. Publier l'un sans l'autre raconterait deux histoires opposées.
+
+⚠️ `historicalRate` n'est PAS recalculé, et ce n'est pas un oubli : c'est un RENDEMENT mesuré sur la
+série des prix des titres. Le total du courtier contient aussi les liquidités du compte et les
+positions que Fintable ne détaille pas — l'y mêler remplacerait un chiffre imparfait par un chiffre
+faux (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
+
+### 7. « Le passé selon Fintable » n'était pas récupérable, et il fallait le DIRE
+
+`fintableBrokerBalances` est un instantané **écrasé** à chaque passe, avec un seul horodatage. La
+demande de Marc (« les valeurs du passé devraient être celles de fintable à ce moment ») portait sur
+une donnée qui n'a jamais été conservée : au mieux on commence à l'accumuler. Le lot livre donc le
+PRODUCTEUR qui manquait — et l'écran dit que ça ne change rien aujourd'hui, plutôt que de laisser
+croire le contraire.
+
+⚠️ Deux limites de NATURES différentes, et elles ne font pas doublon : la rétention se fie aux
+**horodatages**, qui viennent d'une source externe (une horloge décalée et elle ne borne plus rien) ;
+le plafond d'entrées ne s'y fie pas.
+
+### 8. Une garde redondante ne peut pas TIRER — mesuré, pas déduit
+
+Mon premier jet refusait les dates illisibles à l'entrée ET re-filtrait la rétention plus bas sur le
+`at` brut. Perturbation posée (le refus retiré) : **12 tests sur 12 restaient verts**, parce que
+`NaN >= limite` est faux et que le filtre rattrapait en silence. La garde avait le nom d'une
+protection sans pouvoir se déclencher (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
+Les deux décisions ont été réunies au même endroit, sur la date DÉJÀ analysée — la perturbation
+rougit maintenant.
+
+⚠️ Et une perturbation muette accuse d'abord **la perturbation**, ensuite la fixture, et seulement en
+dernier la garde : mon premier essai n'avait rien remplacé du tout (un `\n` mangé par le shell), et
+j'ai failli conclure « redondant » sur un essai qui n'avait pas eu lieu. Le contrôle est
+d'AFFIRMER le nombre d'occurrences remplacées avant de lire le verdict.
+
+### 9. Ce que le lot n'a PAS fait, et pourquoi c'est écrit
+
+- **La cause de l'échec chez Marc n'est pas mesurable d'ici** : `www.bankofcanada.ca` répond **403 au
+  CONNECT** depuis ce conteneur (refus de POLITIQUE du proxy, comme `vercel.com` et
+  `finance.hubperso.com` — §6). Le diagnostic est donc livré pour qu'il le lise, pas déduit.
+- **Le passé convertit TOUS ses points au taux d'AUJOURD'HUI, à plat** — et le champ prévu pour ça
+  (`Asset.priceHistory[].fxRate`) existe dans le type sans être ni écrit ni lu par personne (grep :
+  0 occurrence en production). Routé sous `[FX-PASSE-TAUX-PLAT]` : Marc a explicitement choisi
+  l'accumulation de l'historique Fintable plutôt que ce correctif-là.

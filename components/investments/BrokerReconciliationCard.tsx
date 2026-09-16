@@ -21,6 +21,7 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { reconcileBrokerBalances, type ReconcilableRegime } from '../../services/fintable/brokerBalances';
 import { holdingsCadByRegime } from '../../services/fintable/holdingsByRegime';
+import { profondeurEnJours } from '../../services/fintable/brokerHistory';
 import { formatCAD, formatSigned } from '../../utils/format';
 import { formatRelative } from '../../utils/relativeTime';
 
@@ -45,6 +46,7 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
     const balances = useFinanceStore((s) => s.fintableBrokerBalances);
     const assets = useFinanceStore((s) => s.assets);
     const fxRates = useFinanceStore((s) => s.fxRates);
+    const profondeurHistorique = useFinanceStore((s) => profondeurEnJours(s.fintableBrokerHistory));
 
     const reco = useMemo(
         () => reconcileBrokerBalances(balances, holdingsCadByRegime(assets, fxRates)),
@@ -164,6 +166,32 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
                     Le total de chaque panier est celui de ton <strong>courtier</strong> (il fait autorité).
                     L&apos;écart avec la somme de tes titres saisis est affiché tel quel — Fintable ne
                     fournit pas les positions, seulement le total du compte.
+                </p>
+                {/* [FINTABLE-AUTORITE-AUJOURDHUI] Cette carte DISAIT « il fait autorité » depuis le
+                    2026-07-30 alors que rien, dans tout le dépôt, ne lisait ces totaux hors d'ici :
+                    le patrimoine et la projection sommaient les titres saisis. La phrase était vraie
+                    de la CARTE et fausse de l'APP — et rien ne pouvait rougir, puisqu'aucun test ne
+                    juge ce qu'un écran promet (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-
+                    QU-IL-AFFIRME`). Elle est maintenant vraie des deux, et le dire ICI est ce qui
+                    rend la marche au raccord de la courbe Futur compréhensible. */}
+                {/* [FINTABLE-HISTORIQUE-COURTIER] Dire ce qui se CONSTRUIT, sans promettre ce qui
+                    n'existe pas encore. L'instantané était écrasé à chaque passe : « le passé selon
+                    Fintable » n'était pas récupérable, et ça ne le devient qu'avec de la profondeur.
+                    Annoncer « historique disponible » aujourd'hui serait faux ; ne rien dire ferait
+                    croire que rien n'a été fait. */}
+                {profondeurHistorique > 0 && (
+                    <p className="text-meta text-ink-400">
+                        Historique conservé : <strong>{profondeurHistorique}</strong> jour
+                        {profondeurHistorique > 1 ? 's' : ''} de lectures. Il s&apos;accumule à chaque
+                        synchro et ne sert encore à aucun graphe — c&apos;est la donnée qui manquait
+                        pour que le passé puisse un jour venir de ton courtier.
+                    </p>
+                )}
+                <p className="text-meta text-ink-400">
+                    Ces totaux servent aussi de <strong>point de départ à ta projection</strong> :
+                    le futur part de ce que dit ton courtier, pas de la somme de tes titres. Le passé,
+                    lui, reste reconstruit à partir des titres — d&apos;où une marche possible au
+                    raccord sur la courbe Futur.
                 </p>
 
                 <ul className="space-y-2">

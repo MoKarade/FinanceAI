@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (tu peux enfin voir ce que Fintable envoie et qu'on ignore)
+
+- **Pourquoi** : l'import te disait déjà que 5 champs arrivent et sont ignorés — mais seulement
+  leurs NOMS. Un nom ne dit pas si un champ sert. Celui qui compte est `external_memo` : du texte
+  libre, là où certaines banques écrivent « USD 4.40 @ 1.37 ». C'est la seule piste pour corriger à
+  la source les montants étrangers qui ont faussé 44 de tes dépenses.
+- **Ce qui change** : après une synchro manuelle, la carte « Sync Fintable » (Réglages) montre
+  quelques **valeurs d'exemple** pour chacun de ces champs.
+- ⚠️ **Affiché là, et nulle part ailleurs** : jamais dans le rapport de synchro, qui est archivé en
+  clair dans un journal public — un mémo bancaire peut contenir un nom ou une adresse. La synchro
+  automatique du serveur n'a même pas de quoi les transmettre.
+- **Ce que j'attends de toi** : si l'un de ces exemples contient une devise ou un taux, dis-le-moi.
+  Si aucun ne le fait, dis-le aussi — ça ferme la piste au lieu de la laisser se faire retenter.
+
+---
+
 ## [unreleased] — 2026-09-16 (ton compte Disnat en USD réapparaît dans tes placements)
 
 - **Le problème que tu ne pouvais pas voir** : « Disnat (L7B1) » est en USD, et son montant était

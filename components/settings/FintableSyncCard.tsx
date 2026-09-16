@@ -188,6 +188,15 @@ export const FintableSyncCard: React.FC = () => {
      */
     const [incertaines, setIncertaines] = useState<Array<{ entrante: { date: string; payee: string; amount: number }; existante: { date: string; payee: string; amount: number }; ecartJours: number }>>([]);
 
+    /**
+     * [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] Échantillon des champs hors contrat de la dernière passe.
+     *
+     * ⚠️ Même statut que `incertaines` : état de TRAVAIL, jamais persisté, jamais dans le rapport —
+     * ce dernier part en clair dans les journaux GitHub Actions d'un dépôt PUBLIC. Ici, c'est
+     * l'écran de Marc, sur sa machine, et c'est le seul endroit où ces valeurs sont montrées.
+     */
+    const [champsInconnus, setChampsInconnus] = useState<Array<{ cle: string; exemples: string[] }>>([]);
+
     const handleSync = async (backfill = false) => withCrossTabLock(async () => {
         // [Finding code-reviewer #545, CRITIQUE] Verrou PARTAGÉ avec la sync AUTO : sans lui, une
         // passe manuelle lancée pendant la passe auto (fenêtre réseau de plusieurs secondes)
@@ -217,7 +226,7 @@ export const FintableSyncCard: React.FC = () => {
             // La fenêtre qui compte est CLIC→ÉCRITURE (le fetch réseau, plusieurs secondes) : c'est
             // `getFreshState` qui la ferme, en relisant le store juste avant l'application.
             const current = useFinanceStore.getState() as unknown as AppState;
-            const { report: fresh, statePatch, incertaines: douteuses } = await runFintableBrowserSync(current, token, {
+            const { report: fresh, statePatch, incertaines: douteuses, echantillonsChampsInconnus } = await runFintableBrowserSync(current, token, {
                 getFreshState: () => useFinanceStore.getState() as unknown as AppState,
                 backfill,
             });
@@ -226,6 +235,9 @@ export const FintableSyncCard: React.FC = () => {
             // TOUTE la carte de réglages, pas seulement la liste. Un champ additif ne doit jamais
             // pouvoir casser l'écran qui l'affiche.
             const douteusesSures = douteuses ?? [];
+            // ⚠️ Même lecture DÉFENSIVE, même raison : un mock de test ou un appelant plus ancien
+            // rend un résultat sans ce champ neuf, et `undefined.length` casserait TOUTE la carte.
+            setChampsInconnus(echantillonsChampsInconnus ?? []);
             // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
             // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
             // ⚠️ [finding silent-failure #649] LE TEST PASSE AVANT `setIncertaines`, et ce n'est pas
@@ -372,6 +384,33 @@ export const FintableSyncCard: React.FC = () => {
                     exactement ce contre quoi la bascule protégeait. Neutralisées par défaut : mieux
                     vaut un doublon caché et récupérable qu'un doublon qui fausse le budget en
                     silence. Marc tranche depuis l'onglet Transactions. */}
+                {/* [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] La seule surface où ces valeurs apparaissent.
+                    Le rapport de synchro NOMME déjà ces champs ; il ne peut pas montrer ce qu'ils
+                    CONTIENNENT, parce qu'il part en clair dans un journal public. Un nom dit qu'un
+                    champ existe, une valeur dit s'il sert — et la question ouverte est : « l'API
+                    dit-elle la devise RÉELLE quelque part ? ». */}
+                {champsInconnus.length > 0 && (
+                    <div className="rounded-card border border-ink-700 bg-ink-900/40 p-3 space-y-2">
+                        <div className="text-meta font-bold text-ink-200">
+                            {champsInconnus.length} champ(s) que Fintable envoie et que l'import ignore
+                        </div>
+                        <p className="text-tiny text-ink-400 leading-snug">
+                            Affiché <strong className="text-ink-200">ici seulement</strong> — jamais dans le
+                            rapport, qui est archivé en clair. Si l'un d'eux contient une devise ou un taux
+                            (par exemple <span className="font-mono">USD 4.40 @ 1.37</span>), dis-le-moi :
+                            c'est ce qui permettrait de corriger les montants étrangers à la source.
+                        </p>
+                        <ul className="space-y-1">
+                            {champsInconnus.map((c) => (
+                                <li key={c.cle} className="text-tiny text-ink-300">
+                                    <span className="font-mono text-ink-100">{c.cle}</span>
+                                    {' — '}
+                                    <span className="text-ink-400">{c.exemples.join(' · ')}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 {incertaines.length > 0 && (
                     <div className="rounded-card border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
                         <div className="text-meta font-bold text-amber-300">

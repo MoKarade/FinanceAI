@@ -14028,3 +14028,43 @@ pas être inconditionnelle. Livrer la première seule aurait produit une liste s
 c'est-à-dire une protection qui ne peut pas tirer. Un ordre d'exécution annoncé est une hypothèse
 sur le code, pas une décision de produit : quand la mesure le réfute, on le dit et on livre le lot
 entier plutôt que la moitié qu'on avait promise.
+
+---
+
+## `UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE` (2026-09-16)
+
+`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` devait montrer le CONTENU des champs que l'API Fintable
+envoie hors contrat — `external_memo` est du texte libre, et c'est la seule piste connue pour savoir
+si l'API dit quelque part la devise réelle d'une transaction. Marc a tranché : « oui, à l'écran
+seulement ». La difficulté n'était pas de produire l'échantillon, c'était de garantir qu'il n'aille
+nulle part ailleurs : le rapport de synchro est rendu sans gate de mode discret **et** `cat`é en
+clair dans les journaux GitHub Actions d'un dépôt **public**.
+
+La réponse facile était un commentaire — « ⚠️ ne jamais recopier ceci dans `report.warnings` ». Le
+dépôt sait déjà ce que ça vaut : `UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`.
+La réponse tenue est **structurelle** : l'échantillon voyage par le RETOUR de
+`runFintableBrowserSync`, jamais par le rapport ni par le patch persisté, et **le chemin CRON ne
+rend pas ce champ du tout**. Du côté qui publie dans un journal public, la fuite n'est pas
+interdite : elle est **impossible à écrire**, parce que le contrat de retour ne la porte pas. Une
+règle qu'un futur lot devrait se rappeler de respecter est une règle qui sera oubliée ; une règle
+que le compilateur ou la forme du code rend inexprimable ne l'est pas.
+
+⚠️ **Le patron était déjà là, et il portait sa justification écrite** : `incertaines`, dans le même
+type de retour, est annoté « état de TRAVAIL, jamais persisté ». `COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`
+dit de copier celui qui explique POURQUOI il est comme il est — c'est exactement ce qui distingue un
+voisin bien conçu d'un voisin qui a eu de la chance.
+
+⚠️ **La garde vise le rapport SÉRIALISÉ ENTIER, pas `warnings`.** Asserter sur le champ qu'on
+soupçonne aujourd'hui protège de la fuite qu'on imagine ; sérialiser tout l'objet protège aussi de
+celle qu'un champ ajouté demain introduirait sans que personne y pense. La perturbation qui la
+prouve est la fuite exacte — recopier les valeurs dans `warnings` — et elle rougit DEUX fois, sur le
+rapport et sur le patch, parce que le rapport est lui-même persisté.
+
+⚠️ **Anti-vacuité obligatoire et non évidente ici** : la garde exige que le rapport NOMME encore
+`external_memo`. Sans elle, « la valeur n'apparaît nulle part » serait tout aussi vrai d'un rapport
+vide, d'un client en panne ou d'un inventaire débranché — trois façons de passer au vert en ayant
+perdu la fonctionnalité qu'on protège.
+
+⚠️ Et le résultat NÉGATIF se publiera autant que le positif : si `external_memo` ne porte pas la
+devise, le dire FERME la piste. Sans ça, la prochaine session la retente à l'aveugle ou la déclare
+impossible — les deux ont déjà coûté des livraisons (`DOC-STALE-IMPOSSIBILITY`).

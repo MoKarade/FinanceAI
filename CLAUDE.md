@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 987 tests** Vitest
-(613 fichiers de test, mesuré le 2026-09-16 ; +3 au lot du signe de carte, +5 au lot Disnat). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 998 tests** Vitest
+(614 fichiers de test, mesuré le 2026-09-16 ; +3 signe de carte, +5 Disnat, +11 champs inconnus). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -965,6 +965,20 @@ n'est pas réécrire un récit.
   la liste d'abord, convertir ensuite » a été approuvé par Marc puis réfuté par la mesure (les deux
   moitiés sont indissociables) — le dire et livrer entier, plutôt que la moitié promise
   (`UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE`).
+
+- **Une contrainte de VIE PRIVÉE se tient par l'ARCHITECTURE, pas par un commentaire** : montrer le
+  contenu des champs hors contrat de Fintable (`external_memo`, seule piste pour la devise réelle)
+  devait rester sur le seul écran de Marc — le rapport de synchro part sans gate de mode discret ET
+  `cat`é en clair dans un journal GitHub **public**. Un « ⚠️ ne jamais recopier ceci » aurait été une
+  règle à se rappeler ; la réponse tenue est que l'échantillon voyage par le RETOUR de
+  `runFintableBrowserSync` (jamais le rapport, jamais le patch) et que **le chemin CRON ne rend pas ce
+  champ du tout** : du côté qui publie, la fuite est **inexprimable**, pas interdite. ⚠️ Le patron
+  existait, annoté (`incertaines`, « jamais persisté ») — `COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`
+  vaut surtout quand le voisin explique POURQUOI. ⚠️ La garde vise le rapport **sérialisé entier**, pas
+  `warnings` : ça couvre aussi le champ qu'un lot futur ajoutera sans y penser. ⚠️ Anti-vacuité non
+  évidente : elle exige que le rapport NOMME encore le champ, sinon « aucune valeur » serait vrai d'un
+  rapport vide, d'un client en panne ou d'un inventaire débranché
+  (`UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

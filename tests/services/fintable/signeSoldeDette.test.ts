@@ -44,7 +44,7 @@ function snapshot(balance: number | null, currency = 'CAD'): FintableSnapshot {
             id: CARTE.id, connectionId: 'c', label: CARTE.label, rawType: 'credit',
             currency, balance, balanceAvailable: null, lastTxDate: null, enabled: true,
         }],
-        holdings: [], holdingsSkipped: [], unknownTransactionKeys: [], transactions: [],
+        holdings: [], holdingsSkipped: [], unknownTransactionKeys: [], unknownTransactionSamples: [], transactions: [],
     };
 }
 

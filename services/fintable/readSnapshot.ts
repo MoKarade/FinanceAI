@@ -18,7 +18,7 @@ import {
     type FintableSnapshot,
     type FintableTransaction,
 } from './types';
-import { clesInconnues, decodeAccount, decodeHolding, decodeTransaction } from './decode';
+import { clesInconnues, echantillonsClesInconnues, decodeAccount, decodeHolding, decodeTransaction } from './decode';
 import type { FintableClient } from './client';
 
 /** Taille de page — le maximum documenté (500) minimise les allers-retours sur un gros historique. */
@@ -98,7 +98,7 @@ export async function readFintableSnapshot(
     if (opts.skipTransactions) {
         // Sortie ANTICIPÉE explicite : rendre un tableau vide sans appeler l'API. Ne jamais laisser
         // croire « aucune transaction chez Fintable » — c'est l'appelant qui a demandé à ne pas lire.
-        return { readAt, accounts, holdings, transactions: [], holdingsSkipped, unknownTransactionKeys: [] };
+        return { readAt, accounts, holdings, transactions: [], holdingsSkipped, unknownTransactionKeys: [], unknownTransactionSamples: [] };
     }
 
     const txQuery: Record<string, string | number | boolean | undefined> = {
@@ -117,6 +117,9 @@ export async function readFintableSnapshot(
     // [FINTABLE-CHAMPS-INCONNUS] Se calcule sur le payload BRUT, donc ICI : `transactions` est déjà
     // reconstruit champ par champ et ne porte plus rien de ce qu'on veut inventorier.
     const unknownTransactionKeys = clesInconnues(rawTx);
+    // [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] Même payload BRUT, même raison d'être ici : les valeurs
+    // ont disparu une ligne plus haut. ⚠️ Ne JAMAIS recopier vers le rapport (journal public).
+    const unknownTransactionSamples = echantillonsClesInconnues(rawTx);
 
-    return { readAt, accounts, holdings, transactions, holdingsSkipped, unknownTransactionKeys };
+    return { readAt, accounts, holdings, transactions, holdingsSkipped, unknownTransactionKeys, unknownTransactionSamples };
 }

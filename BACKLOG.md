@@ -982,8 +982,23 @@
   ⚠️ **Les deux moitiés se livrent ensemble, et la seconde d'abord** : implémenter la conversion sans
   réparer la liste laisserait la classe entière ouverte pour le prochain compte en devise ; réparer
   la liste seule est déjà utile et ne déplace rien.
-- [ ] 🟡 **`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]`** (S, **GO DE MARC le 2026-09-16 : « oui, à
-  l'écran seulement »**) — l'inventaire des champs hors contrat, livré par
+- [x] 🟡 **`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]`** (S, ✅ **LIVRÉ le 2026-09-16**) —
+  `echantillonsClesInconnues` (pure, bornée deux fois : nombre de clés ET nombre/longueur des
+  exemples) publie les VALEURS des champs hors contrat sur le seul écran de Marc.
+  ⚠️⚠️ **La contrainte de vie privée a dicté l'ARCHITECTURE, pas un commentaire** : l'échantillon
+  voyage par le RETOUR de `runFintableBrowserSync` (comme `incertaines`, qui portait déjà ce patron
+  avec sa justification écrite), jamais par `report` ni par le patch persisté. Et le chemin CRON —
+  celui dont le résultat est `cat`é dans un journal PUBLIC — **ne rend pas ce champ du tout** : la
+  fuite y est structurellement impossible, pas interdite par vigilance. Une garde le vérifie sur le
+  rapport SÉRIALISÉ ENTIER (pas seulement `warnings`), donc un champ ajouté demain est couvert sans
+  qu'on y pense.
+  **11 gardes, 2 perturbations** : la fuite EXACTE (valeur recopiée dans `warnings`) → 2 rouges
+  (rapport ET patch) ; câblage mort (échantillon jamais rempli) → 1 rouge. Anti-vacuité partout : la
+  garde exige que le rapport NOMME encore le champ, sinon « aucune valeur » serait indiscernable de
+  « aucun rapport ». ⏸️ **Reste la question elle-même** : si `external_memo` porte la devise, le
+  correctif de `[FINTABLE-DEVISE-MAL-ETIQUETEE]` devient possible à la SOURCE. La réponse est chez
+  Marc, à sa prochaine synchro. Si le champ ne la porte PAS, le résultat NÉGATIF se publie aussi —
+  il ferme la piste au lieu de la laisser se faire retenter à l'aveugle. Contexte d'origine : — l'inventaire des champs hors contrat, livré par
   `[FINTABLE-DECODEUR-CHAMPS-INCONNUS]`, a fait son travail dès sa première passe réelle : il nomme
   **5 champs** que l'API envoie et que le décodeur jette — `account_owner`, `check_num`, `ext_id`,
   `external_memo`, `previous_ext_id`. Aucun ne s'appelle « devise », mais **`external_memo` est du

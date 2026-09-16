@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` LIVRÉ (3ᵉ des 3 GO)
+> `echantillonsClesInconnues` (pure, bornée 2× : clés ET nombre/longueur des exemples) publie les
+> VALEURS des champs hors contrat sur le SEUL écran de Marc (carte « Sync Fintable »).
+> ⚠️⚠️ **La contrainte de vie privée a dicté l'ARCHITECTURE** : l'échantillon voyage par le RETOUR de
+> `runFintableBrowserSync` (patron de `incertaines`, qui portait déjà sa justification écrite),
+> jamais par `report` ni le patch. Et le chemin CRON — dont le résultat est `cat`é dans un journal
+> PUBLIC — **ne rend pas ce champ du tout** : la fuite y est inexprimable, pas interdite.
+> La garde vise le rapport **SÉRIALISÉ ENTIER**, donc un champ ajouté demain est couvert sans qu'on
+> y pense ; anti-vacuité = le rapport doit NOMMER encore `external_memo`.
+> **11 gardes, 2 perturbations** : fuite exacte (valeur dans `warnings`) → 2 rouges (rapport ET
+> patch) ; câblage mort → 1 rouge.
+> ⏸️ **La question reste ouverte et elle est chez Marc** : à sa prochaine synchro manuelle, regarder
+> si un exemple contient une devise/un taux. **Réponse NÉGATIVE à publier aussi** — elle ferme la
+> piste au lieu de la laisser se faire retenter à l'aveugle (`DOC-STALE-IMPOSSIBILITY`).
+>
 > ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` LIVRÉ (2ᵉ des 3 GO)
 > Conversion à l'écriture quand le taux est CONNU ; signal nommé quand il ne l'est pas ; la 3ᵉ cause
 > d'écartement enfin recensée **là où Marc regarde ses placements** (carte Investissements + Accueil).

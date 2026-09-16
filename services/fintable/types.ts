@@ -24,6 +24,8 @@
 //      explicitement `pending=false` pour tout miroir. C'est non négociable ici : `applyDocument`
 //      déduplique mais ne supprime JAMAIS → une pending importée puis repostée = doublon À VIE.
 
+import type { EchantillonCleInconnue } from './decode';
+
 /** Erreur standard de l'API : `{error: {type, message}}` (une seule forme pour toute l'API). */
 export interface FtErrorBody {
     error?: { type?: string; message?: string; errors?: Record<string, string[]> };
@@ -150,6 +152,24 @@ export interface FintableSnapshot {
      * une MESURE, pas un défaut.
      */
     unknownTransactionKeys: string[];
+    /**
+     * [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] Les mêmes champs, avec un ÉCHANTILLON de leurs VALEURS.
+     *
+     * Un NOM dit qu'un champ existe ; seule une VALEUR dit s'il sert. `external_memo` est du texte
+     * libre — c'est là que des banques écrivent « USD 4.40 @ 1.37 », la seule piste connue pour
+     * corriger `[FINTABLE-DEVISE-MAL-ETIQUETEE]` à la source.
+     *
+     * ⚠️⚠️ **NE DOIT JAMAIS ÊTRE RECOPIÉ DANS `report.warnings` NI DANS AUCUN CHAMP DU RAPPORT.**
+     * Le rapport est rendu sans gate de mode discret ET `cat`é en clair dans les journaux GitHub
+     * Actions d'un dépôt PUBLIC. Ce champ vit dans le SNAPSHOT (jamais sérialisé vers l'extérieur)
+     * et n'atteint l'écran que par le retour du chemin NAVIGATEUR — le cron ne le rend pas du tout,
+     * ce qui rend la fuite structurellement impossible de ce côté. Décision de Marc (2026-09-16) :
+     * « oui, à l'écran seulement ». Une garde de test verrouille la séparation.
+     *
+     * REQUIS pour la même raison que `unknownTransactionKeys` : optionnel, ses lecteurs écriraient
+     * `?? []` et « pas regardé » redeviendrait indiscernable de « rien ».
+     */
+    unknownTransactionSamples: EchantillonCleInconnue[];
 }
 
 /** Code d'erreur typé — distingue le TRANSITOIRE du CONFIRMÉ (classe QUOTE-ERRKIND). */

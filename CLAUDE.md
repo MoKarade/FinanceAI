@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 089 tests** Vitest
-(621 fichiers de test, mesuré le 2026-09-16 ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation, +2 mocks complets). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 091 tests** Vitest
+(621 fichiers de test, MESURÉ par la suite complète le 2026-09-16 (744 s) ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation, +2 mocks complets). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,

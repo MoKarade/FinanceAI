@@ -861,7 +861,16 @@ n'est pas réécrire un récit.
   compte lent et le filtre du mapper n'a rien à laisser passer — `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`
   dans sa forme pure. ⚠️ La clé de la bascule par compte est le LIBELLÉ (`accountName`), donc tout ce
   qui précède le 2026-09-05 et tout import CSV sans colonne de compte n'y entre pas — c'est écrit
-  plutôt que deviné (`LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT`, 2026-09-16).
+  plutôt que deviné. ⚠️⚠️ **Et le panel a trouvé, APRÈS gate vert ET CI verte, que je normalisais la
+  clé d'UN SEUL côté** : la carte était indexée sur le libellé TRIMMÉ et relue sur le libellé BRUT
+  (rien ne trimme `label` au décodage). Un compte au nom espacé avait donc deux clés — mesuré
+  **9/9 avec `'Carte'` contre 0/9 avec `' Carte'`, même une fois la carte connue** : l'interblocage ne
+  se refermait JAMAIS et l'avertissement que ce lot venait d'écrire prescrivait un rattrapage SANS
+  EFFET. Une clé d'indexation se normalise dans une SOURCE UNIQUE appelée aux deux bouts ; un `trim()`
+  recopié d'un seul côté est invisible à toute fixture au libellé propre — et les fixtures ont toujours
+  des libellés propres. ⚠️ Trim SEULEMENT : rabattre casse/accents échangerait une borne introuvable
+  contre une borne PARTAGÉE entre comptes distincts, soit le défaut d'origine un cran plus bas
+  (`LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT`, 2026-09-16).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

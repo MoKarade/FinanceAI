@@ -27,6 +27,7 @@
 // ont le rôle `investment` : leur solde sert de valeur de RÉFÉRENCE du courtier, pas de source.
 
 import type { BankStatementPayload, CashBalancePayload, DebtPayload, DocumentPayload } from '../../mcp/ingest/applyDocument';
+import { cleCompte } from './deriveCutoverDate';
 import { MAX_CLES_CITEES } from './decode';
 import type { FintableSnapshot, FintableTransaction } from './types';
 import { detectInternalTransfers, type TransferPair } from './detectTransfers';
@@ -328,6 +329,8 @@ export function mapFintableSnapshot(
      *  C'est la seule population pour laquelle le défaut est encore ouvert : la nommer est ce qui
      *  la distingue d'un compte simplement à jour. */
     const comptesSurReplGlobal = new Set<string>();
+    /** Transactions d'un compte que `/accounts` ne liste plus (cf. le bloc du filtre). */
+    let skippedCompteNonListe = 0;
     const parCompte = config.transactionsAfterByAccount ?? {};
 
     for (const tx of snapshot.transactions) {
@@ -336,12 +339,23 @@ export function mapFintableSnapshot(
         if (role.kind === 'investment' || role.kind === 'ignore') { skippedInvestmentAccount++; continue; }
         // [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] La borne de CE compte, sinon la globale.
         const libelle = accountLabelById.get(tx.accountId);
-        const borneCompte = libelle !== undefined ? parCompte[libelle] : undefined;
+        // ⚠️ [revue #974] `cleCompte` des DEUX côtés : la carte est INDEXÉE par le libellé ébarbé
+        // (`deriveCutoverDatesByAccount`), donc la relire avec le libellé brut ne retrouverait jamais
+        // un compte dont le nom porte une espace de bord — mesuré 0/9 même après rattrapage.
+        const borneCompte = libelle !== undefined ? parCompte[cleCompte(libelle)] : undefined;
         const borne = borneCompte ?? config.transactionsAfter;
         // Comparaison lexicographique valide sur `YYYY-MM-DD` (format vérifié au décodage).
         if (borne !== null && tx.date <= borne) {
             skippedBeforeCutover++;
-            if (borneCompte === undefined && libelle !== undefined) comptesSurReplGlobal.add(libelle);
+            if (borneCompte === undefined) {
+                // ⚠️ [revue #974] Un compte que l'API ne LISTE plus (désactivé, ré-auth partielle)
+                // n'a pas de libellé ici — et il est condamné à la borne globale POUR TOUJOURS,
+                // puisque `accountName` ne lui sera jamais attaché non plus. Le compter à part
+                // plutôt que de le laisser disparaître dans le total : un compte structurellement
+                // bloqué qu'aucun message ne nomme est le silence que ce lot existe pour fermer.
+                if (libelle !== undefined) comptesSurReplGlobal.add(libelle);
+                else skippedCompteNonListe++;
+            }
             continue;
         }
         if (tx.currency.toUpperCase() !== baseCurrency) { skippedForeignCurrency++; continue; }
@@ -387,6 +401,15 @@ export function mapFintableSnapshot(
     // qu'UNE seule de ses transactions est connue. Ce message ne parle donc QUE des comptes qui
     // perdent réellement quelque chose (un avertissement permanent est un avertissement mort), et il
     // nomme le seul geste qui débloque : un rattrapage, UNE fois.
+    if (skippedCompteNonListe > 0) {
+        warnings.push(
+            `${skippedCompteNonListe} transaction(s) rattachée(s) à un compte que l\u2019API ne liste `
+            + 'PLUS (désactivé, ou ré-authentification à refaire) : il reste sur la bascule commune et '
+            + 'ne pourra jamais avoir la sienne tant qu\u2019il n\u2019est pas relisté. Réactive-le chez '
+            + 'Fintable, ou retire son rôle dans Réglages.',
+        );
+    }
+
     if (comptesSurReplGlobal.size > 0) {
         warnings.push(
             `Compte(s) en retard de postage sans historique connu : ${[...comptesSurReplGlobal].sort().join(', ')}. `

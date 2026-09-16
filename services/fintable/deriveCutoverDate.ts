@@ -55,13 +55,36 @@ export function deriveCutoverDate(transactions: readonly Transaction[]): string 
  * compte, est donc invisible ici. C'est voulu : une borne fondée sur « je ne sais pas de quel compte
  * ça vient » serait une borne inventée.
  */
+/**
+ * SOURCE UNIQUE de la clé d'indexation par compte : le libellé, ÉBARBÉ de ses espaces de bord.
+ *
+ * ⚠️ [revue #974] Pourquoi une fonction et pas un `.trim()` recopié : le premier jet trimmait à
+ * l'ÉCRITURE de la carte (ici) et PAS à sa LECTURE (`mapSnapshot`), or rien ne trimme `label` au
+ * décodage (`requireString` ne trimme pas). Un libellé qui porte une espace donnait donc deux clés
+ * différentes pour le même compte — la borne de ce compte restait introuvable à CHAQUE passe.
+ * MESURÉ sur 12 passes (carte à 3 j de décalage) : libellé propre **9/9** une fois la carte connue,
+ * libellé `" Carte"` **0/9 même une fois la carte connue** — l'interblocage ne se referme JAMAIS, et
+ * l'avertissement aurait prescrit un « Rattraper l'historique » sans effet. Un remède PONCTUEL
+ * contre un défaut PERMANENT enseigne à être ignoré.
+ *
+ * ⚠️ Trim SEULEMENT. Rabattre la casse ou les accents FUSIONNERAIT des comptes réellement distincts
+ * (« Compte A » / « compte a ») : ce serait échanger une borne introuvable contre une borne
+ * partagée, c'est-à-dire un compte lent qui hérite à nouveau de la borne d'un compte rapide.
+ * ⚠️ Ce qui est PERSISTÉ dans `Transaction.accountName` reste le libellé BRUT : c'est ce que
+ * l'utilisateur voit, et c'est aussi la clé d'autres consommateurs (`applyTransferDetection`).
+ * Seule l'INDEXATION est normalisée.
+ */
+export function cleCompte(libelle: string | undefined | null): string {
+    return typeof libelle === 'string' ? libelle.trim() : '';
+}
+
 export function deriveCutoverDatesByAccount(
     transactions: readonly Transaction[] | undefined,
 ): Map<string, string> {
     const parCompte = new Map<string, string>();
     for (const t of transactions ?? []) {
         if (!t || typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(t.date)) continue;
-        const compte = typeof t.accountName === 'string' ? t.accountName.trim() : '';
+        const compte = cleCompte(t.accountName);
         if (compte === '') continue;
         const day = t.date.slice(0, 10);
         const prec = parCompte.get(compte);

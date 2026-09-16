@@ -13646,6 +13646,53 @@ La fenêtre reste bornée par la DONNÉE, jamais par une constante choisie.
   n'écrit `accountName` que depuis le 2026-09-05, et un import CSV sans colonne de compte n'en a
   pas — ces lignes comptent dans la bascule GLOBALE et dans aucune borne de compte. Une borne fondée
   sur « je ne sais pas de quel compte ça vient » serait une borne inventée.
+### ⚠️⚠️ Ce que le panel a trouvé APRÈS gate vert ET CI verte : une clé normalisée d'UN SEUL côté
+
+Deux agents indépendants ont relevé le même défaut, et il était **à moi**. `deriveCutoverDatesByAccount`
+construisait la carte en TRIMMANT le libellé ; `mapSnapshot` la relisait avec le libellé BRUT — et
+rien ne trimme `label` au décodage (`requireString` ne trimme pas). Un compte dont le nom porte une
+espace de bord avait donc **deux clés pour un même compte** : sa borne restait introuvable à chaque
+passe.
+
+Mesuré sur les 12 passes, et c'est la mesure qui tranche :
+
+| libellé | carte jamais vue | carte **déjà vue** |
+|---|---|---|
+| `'Carte'` | 0/9 | **9/9** |
+| `' Carte'` | 0/9 | **0/9** |
+
+La seconde ligne est le vrai coût : l'interblocage **ne se refermait JAMAIS**, alors que
+l'avertissement que ce lot venait d'écrire prescrit « Rattraper l'historique, UNE fois ». Le lot
+fabriquait donc exactement ce qu'il prétendait corriger — un remède PONCTUEL contre un défaut
+PERMANENT, qui enseigne à être ignoré. Avec un libellé propre, tout était vert.
+
+**Règle** : une clé d'indexation se NORMALISE dans une source unique appelée aux DEUX bouts
+(écriture et lecture). Un `.trim()` recopié d'un seul côté est indétectable par tous les tests dont
+les fixtures ont des libellés propres — et les fixtures ont toujours des libellés propres.
+
+⚠️ **Trim SEULEMENT.** Rabattre la casse ou les accents « pour être sûr » échangerait une borne
+introuvable contre une borne PARTAGÉE entre deux comptes distincts — c'est-à-dire le défaut
+d'origine, un cran plus bas. Le contrôle inverse est dans la garde (`Carte` / `carte` / `Cârte`
+restent trois clés).
+
+⚠️ Et ce qui est PERSISTÉ reste le libellé BRUT : c'est ce que l'utilisateur voit et la clé d'autres
+consommateurs (`applyTransferDetection`). Seule l'INDEXATION est normalisée.
+
+### ⚠️ Le second trou : un compte que l'API ne LISTE plus
+
+`readFintableSnapshot` filtre les comptes désactivés. Leurs transactions peuvent quand même arriver,
+et elles n'ont alors **aucun libellé** ici : elles tombaient sur la borne globale **sans être
+nommées** (la condition `libelle !== undefined` les excluait de l'avertissement), donc dans le seul
+compteur agrégé. Un compte structurellement condamné à la borne commune — `accountName` ne lui sera
+jamais attaché non plus — et qu'aucun message ne nomme, c'est précisément le silence que ce lot
+existait pour fermer. Il a désormais son propre avertissement, avec sa vraie cause (« réactive-le, ou
+retire son rôle ») plutôt que celle du compte sans historique, qui serait fausse.
+
+⚠️ **Hypothèse figée plutôt que laissée implicite** : `FintableAccount.label` (`display_name ?? name`)
+n'est garanti unique par RIEN. Deux comptes homonymes partagent leur borne, qui vaut le MAX des deux :
+jamais trop basse (donc **pas** de doublon, pas de double-comptage), mais trop haute pour le plus lent
+— le bénéfice du lot est NUL pour ce cas. Une garde le fige au lieu de le laisser se redécouvrir.
+
 - ⚠️ **En rattrapage, les bornes par compte tombent AVEC la globale.** En laisser une seule
   filtrerait l'historique qu'on vient justement d'aller chercher — le défaut que
   `[FINTABLE-RATTRAPAGE]` avait déjà payé une fois sur la paire `dateFrom`/`transactionsAfter`.

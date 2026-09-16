@@ -97,10 +97,13 @@ describe('requestDateFrom — la moitié sans laquelle le reste est INERTE', () 
 
 // ── 3. Le mapper : le filtre par compte, et ce qu'il DIT ─────────────────────────────────────────
 
-function snapshot(transactions: { id: string; accountId: string; date: string }[]): FintableSnapshot {
+function snapshot(
+    transactions: { id: string; accountId: string; date: string }[],
+    labelCarte: string = CARTE.label,
+): FintableSnapshot {
     return {
         readAt: 0,
-        accounts: [CHEQUE, CARTE].map((a) => ({
+        accounts: [{ ...CHEQUE }, { ...CARTE, label: labelCarte }].map((a) => ({
             id: a.id, connectionId: 'c', label: a.label, rawType: 'x', currency: 'CAD',
             balance: 100, balanceAvailable: null, lastTxDate: null, enabled: true,
         })),
@@ -171,7 +174,8 @@ describe('mapFintableSnapshot — le compte lent n\'est plus jeté par la borne 
 
 interface Poste { id: string; accountId: string; date: string; disponibleLe: string }
 
-function simuler(opts: { lagCarte: number; parCompte: boolean; carteDejaVue: boolean }) {
+function simuler(opts: { lagCarte: number; parCompte: boolean; carteDejaVue: boolean; labelCarte?: string }) {
+    const labelCarte = opts.labelCarte ?? CARTE.label;
     const N_JOURS = 12;
     const postes: Poste[] = [];
     for (let i = 0; i < N_JOURS; i++) {
@@ -180,7 +184,7 @@ function simuler(opts: { lagCarte: number; parCompte: boolean; carteDejaVue: boo
     }
 
     let etat: Transaction[] = opts.carteDejaVue
-        ? [tx(jour(-1), CHEQUE.label), tx(jour(-1 - opts.lagCarte), CARTE.label)]
+        ? [tx(jour(-1), CHEQUE.label), tx(jour(-1 - opts.lagCarte), labelCarte)]
         : [];
     const dejaLa = etat.length;
 
@@ -190,7 +194,7 @@ function simuler(opts: { lagCarte: number; parCompte: boolean; carteDejaVue: boo
         // La REQUÊTE : le filtre grossier côté API, tel que les orchestrateurs le posent.
         const dateFrom = opts.parCompte ? requestDateFrom(decision) : decision.cutoverDateUsed;
         const dispo = postes.filter((p) => p.disponibleLe <= aujourd && (dateFrom === null || p.date >= dateFrom));
-        const { payloads } = mapFintableSnapshot(snapshot(dispo), {
+        const { payloads } = mapFintableSnapshot(snapshot(dispo, labelCarte), {
             roles: ROLES,
             transactionsAfter: decision.cutoverDateUsed,
             ...(opts.parCompte ? { transactionsAfterByAccount: decision.cutoverByAccount } : {}),
@@ -206,7 +210,7 @@ function simuler(opts: { lagCarte: number; parCompte: boolean; carteDejaVue: boo
     const ecrites = etat.slice(dejaLa);
     return {
         cheque: ecrites.filter((t) => t.accountName === CHEQUE.label).length,
-        carte: ecrites.filter((t) => t.accountName === CARTE.label).length,
+        carte: ecrites.filter((t) => t.accountName === labelCarte).length,
         attenduCarte: N_JOURS - opts.lagCarte,
     };
 }
@@ -307,5 +311,80 @@ describe('runFintableSync (cron) — la borne de la REQUÊTE recule aussi', () =
 
         const q = vuQuery.find((x) => 'date_from' in x);
         expect(q?.date_from).toBe('2026-09-10');
+    });
+});
+
+
+// ── 7. Ce que la revue du panel a trouvé, et que j'avais introduit ──────────────────────────────
+
+describe('la clé d\'indexation est la MÊME des deux côtés', () => {
+    it('un libellé qui porte une espace de bord est quand même reconnu', () => {
+        // ⚠️ Mon premier jet trimmait à l'ÉCRITURE de la carte et pas à sa LECTURE. Rien ne trimme
+        // `label` au décodage, donc un compte nommé « Carte » avec une espace avait DEUX clés :
+        // sa borne restait introuvable, à chaque passe.
+        const r = mapFintableSnapshot(snapshot(LOT, ' Carte'), {
+            roles: ROLES,
+            transactionsAfter: '2026-09-15',
+            transactionsAfterByAccount: { 'Chèque': '2026-09-15', Carte: '2026-09-12' },
+        });
+        expect(payeesRetenues(r)).toEqual(['crt_retard']);
+        expect(r.report.warnings.some((x: string) => x.includes('retard de postage'))).toBe(false);
+    });
+
+    it('⚠️ MESURE : avec un libellé espacé, l\'interblocage ne se refermait JAMAIS', () => {
+        // C'est LA garde de ce correctif : avant, `carteDejaVue: true` rendait 0/9 avec un libellé
+        // espacé (contre 9/9 avec un libellé propre) — donc le « Rattraper l'historique » que
+        // l'avertissement prescrit n'aurait rien réparé, jamais. Un remède PONCTUEL contre un
+        // défaut PERMANENT enseigne à être ignoré.
+        const r = simuler({ lagCarte: 3, parCompte: true, carteDejaVue: true, labelCarte: ' Carte' });
+        expect(r.cheque).toBe(12);
+        expect(r.carte).toBe(9);
+    });
+
+    it('⚠️ le trim NE fusionne PAS deux comptes réellement distincts (casse et accents intacts)', () => {
+        // Contrôle inverse : rabattre la casse ou les accents échangerait une borne introuvable
+        // contre une borne PARTAGÉE — c'est-à-dire le défaut d'origine, un cran plus bas.
+        const m = deriveCutoverDatesByAccount([
+            tx('2026-09-10', 'Carte'), tx('2026-09-15', 'carte'), tx('2026-09-14', 'Cârte'),
+        ]);
+        expect([...m.keys()].sort()).toEqual(['Carte', 'Cârte', 'carte']);
+    });
+});
+
+describe('un compte que l\'API ne LISTE plus n\'est pas avalé par le total', () => {
+    it('est compté et NOMMÉ comme tel, pas confondu avec un compte sans historique', () => {
+        // Un compte désactivé chez Fintable sort de `/accounts` mais ses transactions peuvent encore
+        // arriver : il n'a alors aucun libellé ici, donc il est condamné à la bascule globale POUR
+        // TOUJOURS (`accountName` ne lui sera jamais attaché non plus). Sans ce message, il
+        // disparaissait dans le compteur agrégé.
+        const snap = snapshot(LOT);
+        snap.accounts = snap.accounts.filter((a) => a.id !== CARTE.id); // l'API ne le liste plus
+        const r = mapFintableSnapshot(snap, {
+            roles: ROLES,
+            transactionsAfter: '2026-09-15',
+            transactionsAfterByAccount: { 'Chèque': '2026-09-15' },
+        });
+        const w = r.report.warnings.find((x: string) => x.includes('ne liste'));
+        expect(w).toBeDefined();
+        expect(w).toContain('1 transaction(s)');
+        // Et il n'est PAS annoncé comme « sans historique connu » : la cause serait fausse, donc
+        // le remède prescrit aussi.
+        expect(r.report.warnings.some((x: string) => x.includes('retard de postage'))).toBe(false);
+    });
+});
+
+describe('HYPOTHÈSE FIGÉE : un libellé = un compte', () => {
+    it('deux comptes au MÊME libellé partagent une borne — jamais un doublon, mais aucun gain', () => {
+        // `FintableAccount.label` (`display_name ?? name`) n'est garanti unique par RIEN. Deux
+        // comptes homonymes partagent donc leur borne, qui vaut le MAX des deux. Conséquence
+        // mesurée ici : elle ne peut pas être TROP BASSE (donc pas de doublon, pas de
+        // double-comptage budgétaire), mais elle reste trop HAUTE pour le plus lent des deux —
+        // le bénéfice du lot est NUL pour ce cas. Écrit plutôt que laissé implicite.
+        const m = deriveCutoverDatesByAccount([
+            tx('2026-09-15', 'Mastercard'), // compte A, rapide
+            tx('2026-09-10', 'Mastercard'), // compte B, lent — même libellé
+        ]);
+        expect(m.get('Mastercard')).toBe('2026-09-15');
+        expect(m.size).toBe(1);
     });
 });

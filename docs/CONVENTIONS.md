@@ -13837,3 +13837,46 @@ un workflow élargirait la PR).
 porté comme un montant dû » est vrai d'un compte qui a un nom de dette et **FAUX** d'un compte au nom
 vide — or les deux lisent le même message. Une phrase vraie « en général » dans un avertissement
 partagé est une phrase fausse pour la moitié de ses lecteurs.
+
+---
+
+## `QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE` (2026-09-16)
+
+**Le fait.** Sur `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`, le travail était fini, commité et poussé.
+La CI faisait tourner `Lint / Typecheck / Tests / Build` — **exactement le gate de §5** — sur le
+commit exact. J'ai quand même lancé le gate local EN PARALLÈLE et attendu son verdict, tour après
+tour, pendant des dizaines de tours, sur un conteneur que le panel de cinq agents saturait déjà.
+Marc a fini par écrire : **« tu ne fais que d'attendre »**. Il avait raison, et rien n'était bloqué
+par autre chose que moi.
+
+**La règle.** `COMMITTER-AVANT-TOUTE-ATTENTE-LONGUE-INCLUT-LE-GATE` dit de committer AVANT de lancer
+le gate complet. Elle ne dit pas de le lancer DEUX FOIS. Une fois le lot poussé :
+
+| ce qui reste à vérifier | qui l'exécute | conclusion |
+|---|---|---|
+| lint · typecheck · tests · build sur le commit poussé | **la CI**, sur le SHA exact | elle est l'arbitre — l'attendre suffit |
+| les gardes NEUVES du lot, avant de committer | moi, en ciblé | rapide, et c'est ce qui autorise le commit |
+| ce que la CI ne porte PAS (déploiement, réponse servie) | moi, après merge (§6) | irremplaçable |
+
+Donc : **vérifs CIBLÉES → commit → push → et l'arbitre devient la CI.** Relancer le gate complet en
+local après le push n'ajoute aucune information sur le même arbre — il ne fait que dupliquer un
+calcul de ~20 min en concurrence CPU avec le reste, et il m'a servi d'excuse pour ne pas avancer.
+
+⚠️ **Le signal de dérive n'est pas la durée, c'est la RÉPÉTITION d'un tour sans effet.** Un tour qui
+ne fait que relire un fichier de sortie et redire « j'attends » ne produit rien. Deux d'affilée
+peuvent se justifier ; dix disent que j'attends la mauvaise chose. La question à se poser est :
+**« qu'est-ce que ce verdict va changer à ce que je fais ensuite ? »** — si la réponse est « rien,
+parce que la CI le donnera de toute façon et que je ne peux pas merger avant elle », il ne faut pas
+l'attendre.
+
+⚠️ **Corollaire mesuré sur le même épisode : je déduisais le temps écoulé du NOMBRE de cycles
+d'attente, pas de l'horloge.** J'ai écrit à Marc que la CI était « figée depuis ~100 minutes »
+(classe d'incident réelle et documentée en §9 sur l'installation Playwright, donc plausible). `date`
+disait **17:33** pour une CI démarrée à 17:25 : **8 minutes**. L'E2E a d'ailleurs fini vert en 5 min.
+Une durée s'AFFIRME depuis `date`, jamais depuis une impression de longueur — et un diagnostic
+d'infra emprunte sa crédibilité à un incident passé, ce qui le rend d'autant plus facile à publier
+faux.
+
+⚠️ **Et ce qui a réellement trouvé les défauts de ce lot, ce n'est aucun des deux gates** : c'est le
+panel (un montant publié faux de 2×, une liste non bornée, deux découvertes préexistantes). Le temps
+passé à attendre un gate en double est du temps qui n'allait pas là où la valeur était.

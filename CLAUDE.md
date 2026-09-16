@@ -906,6 +906,19 @@ n'est pas réécrire un récit.
   dont la moitié n'existe pas** — demander quelle part de l'écart le correctif FERME avant d'écrire
   son impact (`UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`, 2026-09-16).
 
+- **Quand la CI exécute le MÊME gate, elle est l'ARBITRE** : le lot était poussé, la CI faisait
+  tourner `Lint / Typecheck / Tests / Build` sur le SHA exact, et j'ai quand même lancé le gate local
+  en parallèle puis attendu son verdict pendant des dizaines de tours — jusqu'à ce que Marc écrive
+  « tu ne fais que d'attendre ». `COMMITTER-AVANT-TOUTE-ATTENTE-LONGUE-INCLUT-LE-GATE` dit de
+  committer AVANT le gate, pas de le lancer DEUX fois. Ordre juste : **vérifs CIBLÉES → commit →
+  push → la CI devient l'arbitre** ; il ne me reste que ce qu'elle ne porte pas (§6 : déploiement).
+  ⚠️ Le signal de dérive n'est pas la DURÉE mais la RÉPÉTITION d'un tour sans effet — la question est
+  « qu'est-ce que ce verdict va changer à ce que je fais ensuite ? ». ⚠️ Et je déduisais le temps
+  écoulé du NOMBRE de cycles d'attente : j'ai publié « CI figée depuis ~100 min » (classe d'incident
+  réelle, donc plausible) alors que `date` disait **8 minutes**. Une durée s'affirme depuis
+  l'HORLOGE. ⚠️ Ce qui a trouvé les défauts du lot, ce n'est ni l'un ni l'autre gate : c'est le panel
+  (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`, 2026-09-16).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

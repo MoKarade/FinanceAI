@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ ÉTAT AU 2026-09-16 22:02 UTC — PR #978 **MERGÉE ET DÉPLOYÉE**
+> Squash sur `main` = **`e71a0359`**. CI verte sur le SHA exact (lint · typecheck · **6 091 tests**
+> · build · E2E Playwright). Déploiement de production **`dpl_FNfnnRMQ…` READY** sur `e71a0359`,
+> aliasé sur `finance.hubperso.com`.
+> ⚠️ **La seconde moitié de §6 n'a PAS pu être faite** : contrôler l'effet sur la RÉPONSE servie
+> exige de LIRE la réponse, et `vercel.com` comme `finance.hubperso.com` répondent **403 au CONNECT**
+> depuis ce conteneur. Ce qui est vérifié est la CRÉATION du déploiement et son état, pas ce qui est
+> servi. Le contrôle visuel (le bouton « Réessayer maintenant » des Réglages) revient à Marc.
+> 📦 Les cinq items finis des PR #977/#978 ont été déménagés vers `docs/BACKLOG_ARCHIVE.md` ; les
+> quatre découvertes du panel restent OUVERTES dans `BACKLOG.md`.
+>
 > ## ⚠️⚠️ Session 2026-09-16 (nuit) — **REVUE PANEL : 8 défauts réels, dont 3 rouges**
 > Quatrième lot d'affilée où le panel bat le gate ET la CI. Cette fois il a trouvé ce qui vidait le
 > lot de son sens.

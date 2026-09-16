@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-16 (soir) — **CORRECTIF DU SIGNE LIVRÉ** (Marc : « ok pour tout »)
+> `owed = Math.max(0, −solde)` remplace `Math.abs` ; le commentaire inversé est corrigé ;
+> l'avertissement de mesure est MORT (garde INVERSÉE au même endroit, jamais supprimée).
+> Une carte en CRÉDIT ne fabrique plus de dette fantôme ; une carte à ZÉRO n'émet plus un payload
+> que `applyDebt` rejette — elle DIT que la dette garde sa valeur d'hier (moitié visible de
+> `[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`).
+> **17 gardes, 3 perturbations aux signatures DISTINCTES** : `Math.abs` restauré → **1 rouge**, et
+> lui seul (perturbation chirurgicale) ; montant interpolé → **3 rouges** (producteur + les DEUX
+> orchestrateurs : la chaîne est prouvée) ; zéro qui n'abandonne plus → **2 rouges**.
+> ⚠️ **Le `surplus` n'alimente PAS les liquidités** — étape 2 de `[FINTABLE-CARTE-DETTE-AUTO]`, qui
+> bute sur `applyCashBalance` (refus d'une cible négative). Écrit dans le code ET dans le message
+> rendu à Marc, plutôt que livré à moitié.
+> ⚠️ Piège commis DANS ma propre garde : compter par sous-chaîne nue (`Dette acc_1`) comptait aussi
+> `Dette acc_10` — un PRÉFIXE, donc un rouge sur du code sain. Délimité par les guillemets que le
+> message écrit lui-même.
+>
 > ## ✅ Session 2026-09-16 (soir) — **MESURE OBTENUE** : Fintable écrit `négatif = dû`
 > Marc a lancé la synchro, puis répondu. Rapport : « Desjardins Cash Back Mastercard (5020) →
 > **positif** » ; Marc : **« c'est en ma faveur »**. L'hypothèse du code (« positif = montant DÛ »,

@@ -832,8 +832,19 @@
   SIX sites, pas sur celui qui a rougi — les cinq autres portent le même défaut et n'ont pas encore
   eu la malchance de tomber du mauvais côté. Non corrigé dans #974 : défaut préexistant, sans rapport
   avec le lot, et le corriger aurait élargi la PR.
-- [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **ÉTAPE 1 LIVRÉE + MESURE
-  OBTENUE le 2026-09-16 — reste le correctif, cadré par l'étape 2**) — le mapper suppose « solde de carte POSITIF =
+- [x] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, ✅ **CORRECTIF LIVRÉ le
+  2026-09-16**) — `owed = Math.max(0, −solde)` remplace `Math.abs`, le commentaire inversé est
+  corrigé, et l'avertissement de mesure est MORT (sa garde INVERSÉE au même endroit). Une carte en
+  CRÉDIT ne fabrique plus de dette fantôme ; une carte à ZÉRO n'émet plus un payload que `applyDebt`
+  rejette, elle DIT que la dette garde sa valeur précédente. 17 gardes, **3 perturbations aux
+  signatures DISTINCTES** : `Math.abs` restauré → 1 rouge (la dette fantôme, et elle SEULE) ; montant
+  interpolé → 3 rouges (producteur + les DEUX orchestrateurs, donc la chaîne est prouvée) ; zéro qui
+  n'abandonne plus → 2 rouges. ⚠️ Le `surplus` n'alimente PAS encore les liquidités — c'est l'étape 2
+  de `[FINTABLE-CARTE-DETTE-AUTO]`, qui bute sur `applyCashBalance` (refus d'une cible négative) :
+  dit dans le code et dans le message, plutôt que fait à moitié. ⚠️ Piège commis DANS ma propre
+  garde : compter les citations par sous-chaîne nue (`Dette acc_1`) comptait aussi `Dette acc_10` —
+  un PRÉFIXE. Délimité par les guillemets que le message écrit lui-même
+  (`UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE`). Contexte d'origine : — le mapper suppose « solde de carte POSITIF =
   montant dû » (`const owed = Math.abs(account.balance)`, `mapSnapshot.ts`, commenté « un solde
   négatif signifie un crédit en ta faveur »). Marc, interrogé le 2026-09-14 : sur Fintable, **devoir
   500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si confirmé : (a) tu DOIS 500 $ → la dette
@@ -894,8 +905,12 @@
   chaque carte **quotidienne et inconditionnelle** — il n'ouvre pas la classe, il l'alimente.
   **Deux moitiés distinctes** : (a) corriger le commentaire mensonger et décider ce que le workflow
   a le droit de `cat`er ; (b) passer `report.warnings` au mode discret dans `SystemView`.
-- [ ] 🟡 **`[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`** (S, money-critical, **DÉCOUVERT au panel
-  de la PR #975, préexistant**) — une carte **remboursée à zéro** donne `owed = 0`, or `applyDebt`
+- [ ] 🟡 **`[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`** (S, money-critical, **MOITIÉ VISIBLE
+  LIVRÉE le 2026-09-16 — reste la moitié qui CORRIGE**) ✅ Le mapper n'émet plus le payload voué au
+  rejet : il s'abstient et **DIT** que la dette garde sa valeur précédente, en nommant le compte. Un
+  « Payload non appliqué » cryptique sur un état parfaitement NORMAL est remplacé par une phrase
+  vraie. ⏸️ **Reste le vrai correctif** : ramener la dette à zéro exige un canal que l'app n'a pas
+  (`applyDebt` refuse `<= 0`) — c'est une décision produit, pas un oubli. Contexte d'origine : — une carte **remboursée à zéro** donne `owed = 0`, or `applyDebt`
   refuse tout solde `<= 0` (`mcp/ingest/applyDocument/debt.ts:50`) et **rejette le payload** : la
   dette garde donc la valeur de la veille, et le patrimoine net porte une dette déjà payée jusqu'au
   prochain solde non nul. Pas silencieux (`syncCore.ts:221` pousse un avertissement), mais faux.

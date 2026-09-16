@@ -163,7 +163,12 @@ describe('dette carte de crédit', () => {
         roles: { acc_mc: { kind: 'debt', debtName: 'Desjardins Cash Back Mastercard' } },
         transactionsAfter: '2026-07-01',
     };
-    const card = account({ id: 'acc_mc', label: 'Desjardins Cash Back Mastercard', rawType: 'credit / credit card', balance: 379.99 });
+    // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Le SIGNE de cette fixture a changé le 2026-09-16, et
+    // ce n'est pas une re-base : il encodait une HYPOTHÈSE (« positif = montant dû »), jamais
+    // mesurée, que la première passe réelle a RÉFUTÉE. Rapport : « → positif » ; Marc : « c'est en
+    // ma faveur ». Devoir 379,99 $ arrive donc en **−379,99** chez Fintable.
+    // La valeur absolue est inchangée : ce qui bouge est la convention, pas le montant observé.
+    const card = account({ id: 'acc_mc', label: 'Desjardins Cash Back Mastercard', rawType: 'credit / credit card', balance: -379.99 });
 
     it('émet une mise à jour de SOLDE seulement (ni taux ni paiement minimum inventés)', () => {
         const r = mapFintableSnapshot(snap({ accounts: [card], transactions: [] }), cardCfg);
@@ -174,17 +179,21 @@ describe('dette carte de crédit', () => {
         expect(r.report.warnings.some((w) => w.includes('doivent déjà exister'))).toBe(true);
     });
 
-    it('un solde de carte NÉGATIF (crédit en ta faveur) ne devient pas une dette négative', () => {
-        // Une dette négative gonflerait le patrimoine au lieu de le réduire.
-        const r = mapFintableSnapshot(snap({ accounts: [account({ ...card, balance: -50 })], transactions: [] }), cardCfg);
-        expect(r.report.debts).toEqual([{ name: 'Desjardins Cash Back Mastercard', balanceCad: 50 }]);
-        const negWarning = r.report.warnings.find((w) => w.includes('négatif'));
-        expect(negWarning).toBeDefined();
+    it('un solde de carte POSITIF (crédit en ta faveur) ne devient AUCUNE dette', () => {
+        // ⚠️ TEST DE LIMITE **INVERSÉ** le 2026-09-16, pas supprimé — `UN-TEST-DE-LIMITE-S-INVERSE`.
+        // Il affirmait « un solde NÉGATIF est un crédit en ta faveur » et acceptait qu'il devienne
+        // une dette de 50 $ via `Math.abs`. La mesure a retourné la convention : c'est le solde
+        // POSITIF qui est le crédit, et `Math.abs` en faisait une **dette fantôme** du même montant.
+        // Le fait défendu à l'origine reste entier — « une dette négative gonflerait le patrimoine
+        // au lieu de le réduire » — mais la valeur qui l'exerce a changé de côté.
+        const r = mapFintableSnapshot(snap({ accounts: [account({ ...card, balance: 50 })], transactions: [] }), cardCfg);
+        expect(r.report.debts).toEqual([]);
+        const credWarning = r.report.warnings.find((w) => w.includes('EN TA FAVEUR'));
+        expect(credWarning).toBeDefined();
         // ⚠️ [finding panel, PR #531] ce warning finit dans FintableSyncReport.warnings, rendu SANS gate
         // mode discret dans SystemView.tsx ET dumpé en clair dans les logs GitHub Actions (fintable-sync.yml)
-        // — le montant ($50) ne doit JAMAIS y être interpolé, même si le vrai solde (`report.debts[0]
-        // .balanceCad`) reste, lui, correctement gardé par le mode discret dans Réglages → Dettes.
-        expect(negWarning).not.toMatch(/\b50\b/);
+        // — le montant ($50) ne doit JAMAIS y être interpolé. Règle inchangée, message différent.
+        expect(credWarning).not.toMatch(/\b50\b/);
     });
 
     it('les transactions de la carte SONT importées (ce sont des dépenses)', () => {
@@ -250,7 +259,11 @@ describe('scénario réel de Marc (6 comptes, mesuré 2026-07-29)', () => {
             account({ id: 'sv', label: 'TS1 Savings Account', rawType: 'depository / savings', balance: 30000 }),
             account({ id: 'shr', label: 'SHR Qualifying share', rawType: 'investment / rrsp', balance: 5 }),
             account({ id: 'ch', label: 'PCA Everyday', rawType: 'depository / checking', balance: 8066.18 }),
-            account({ id: 'mc', label: 'Desjardins Cash Back Mastercard', rawType: 'credit / credit card', balance: 379.99 }),
+            // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Signe corrigé le 2026-09-16 : ce relevé a été
+            // transcrit avant toute mesure de la convention Fintable, donc son `+379,99` reflétait
+            // la lecture d'un RELEVÉ (« solde dû »), pas ce que l'API envoie. Mesuré depuis :
+            // devoir de l'argent arrive en négatif. Le montant observé est inchangé.
+            account({ id: 'mc', label: 'Desjardins Cash Back Mastercard', rawType: 'credit / credit card', balance: -379.99 }),
         ];
         const r = mapFintableSnapshot(snap({ accounts, transactions: [] }), {
             roles: {

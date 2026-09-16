@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (ta carte en crédit ne fabrique plus de dette)
+
+- **Ce qui change** : le calcul suit maintenant la convention que ta réponse a établie. Un solde
+  **négatif** (tu dois) met la dette à jour ; un solde **positif** (en ta faveur) n'en crée plus
+  aucune — avant, la valeur absolue en faisait une dette du même montant.
+- **Une carte remboursée à zéro ne produit plus un message incompréhensible** : au lieu d'un
+  « Payload non appliqué », le rapport dit en clair que la dette garde sa valeur précédente et
+  pourquoi FinanceAI ne peut pas encore la ramener à zéro.
+- **Le message « Mesure en cours » a disparu** : il avait une durée de vie bornée, sa mesure est
+  faite. Un avertissement qui parle pour toujours est un avertissement qu'on cesse de lire.
+- ⚠️ **Ton crédit ne compte pas encore dans tes liquidités.** C'est l'étape suivante, et elle bute
+  sur une contrainte réelle (l'app refuse une cible de liquidités négative). Le rapport te le dit
+  plutôt que de faire les choses à moitié.
+
+---
+
 ## [unreleased] — 2026-09-16 (réponse reçue : ta carte est en TA faveur — et tes 4 dépenses de voyage sont corrigées)
 
 - **Ta réponse a tranché.** Le rapport de synchro a affiché « Desjardins Cash Back Mastercard (5020)

@@ -832,20 +832,28 @@
   SIX sites, pas sur celui qui a rougi — les cinq autres portent le même défaut et n'ont pas encore
   eu la malchance de tomber du mauvais côté. Non corrigé dans #974 : défaut préexistant, sans rapport
   avec le lot, et le corriger aurait élargi la PR.
-- [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **mesure à confirmer**) — le
-  mapper suppose « solde de carte POSITIF = montant dû » (`const owed = Math.abs(account.balance)`,
-  `mapSnapshot.ts`, commenté « un solde négatif signifie un crédit en ta faveur »). Marc, interrogé le
-  2026-09-14 : sur Fintable, **devoir 500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si
-  confirmé : (a) tu DOIS 500 $ → la dette de 500 $ est juste (`Math.abs` sauve la grandeur **par
-  accident**) mais l'avertissement « crédit en ta faveur » se déclenche **à chaque passe, sur le cas
-  NOMINAL** — un avertissement permanent est un avertissement mort ; (b) tu as 200 $ EN TROP sur la
-  carte → **dette fantôme de 200 $, sans aucun avertissement**, patrimoine net faux de **400 $** (une
-  dette inventée au lieu d'un actif). ⚠️ `[À vérifier]` : Marc décrit l'ÉCRAN de Fintable ; le champ
-  `accounts[].balance` de l'API est lu tel quel par `decode.ts` (aucune transformation de signe) mais
-  les deux n'ont pas été comparés sur une vraie passe. **Étape 1 du plan : publier le SIGNE (jamais le
-  montant — le rapport part aussi en clair dans les journaux GitHub Actions) dans le rapport de synchro,
-  une passe de Marc tranche.** Aujourd'hui inatteignable pour lui : aucune de ses cartes n'a de
-  `debtName` (c'est tout l'objet de `[FINTABLE-CARTE-SANS-DETTE]`). Plan dans `docs/A_FAIRE_MOI.md`.
+- [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **ÉTAPE 1 LIVRÉE le
+  2026-09-16 — EN ATTENTE DE LA RÉPONSE DE MARC**) — le mapper suppose « solde de carte POSITIF =
+  montant dû » (`const owed = Math.abs(account.balance)`, `mapSnapshot.ts`, commenté « un solde
+  négatif signifie un crédit en ta faveur »). Marc, interrogé le 2026-09-14 : sur Fintable, **devoir
+  500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si confirmé : (a) tu DOIS 500 $ → la dette
+  est juste (`Math.abs` sauve la grandeur **par accident**) mais l'avertissement « crédit en ta
+  faveur » se déclenche **à chaque passe, sur le cas NOMINAL** ; (b) tu as 200 $ EN TROP → **dette
+  fantôme de 200 $, sans aucun avertissement**, patrimoine net faux de **400 $**.
+  ✅ **Étape 1 livrée** : `signeSolde` (fonction pure, 4 états — `absent` couvre le `NaN`, jamais
+  rabattu sur `zéro`), `soldesDetteSignes` au rapport du mapper, et UN avertissement agrégé qui
+  publie **le SIGNE, jamais le MONTANT** (le rapport est `cat`é en clair dans les journaux GitHub
+  Actions, cf. PR #531). Câblé et gardé dans les DEUX orchestrateurs. **Aucun dollar ne bouge.**
+  ⚠️⚠️ **La PRÉCONDITION du ticket était FAUSSE** : il annonçait la mesure « inatteignable pour Marc :
+  aucune de ses cartes n'a de `debtName` (c'est tout l'objet de `[FINTABLE-CARTE-SANS-DETTE]`) ».
+  Re-mesuré sur le code réel : faux depuis **PR #956** — le ticket CITÉ avait été livré deux jours
+  plus tôt, et un `debtName` vide est désormais un état légitime qui laisse le compte ROUTÉ. Son
+  compte atteint bien `case 'debt'` ; il en sort trois lignes plus bas. La prémisse réfutée n'a pas
+  annulé le lot, elle en a fixé la seule contrainte : publier le signe **AVANT toutes les sorties du
+  bloc**. Leçon `UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`.
+  ⏸️ **Reste** : la réponse de Marc (une passe suffit) → puis étape 2, `docs/A_FAIRE_MOI.md`. Le
+  garde-fou `signeSoldeDette.test.ts` porte la consigne de RETRAIT de l'avertissement de mesure, à
+  INVERSER et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
 - [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **PLAN POSÉ — EN ATTENTE DU GO DE MARC**) — la carte de
   crédit n'est pas une dette : c'est un **solde à DEUX SENS**. Marc, 2026-09-14 : « parfois mon crédit
   fait que j'ai de l'argent en plus et parfois de l'argent en moins », et il a choisi que le surplus

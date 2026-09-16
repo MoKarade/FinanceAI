@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-16 — `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` étape 1 : MESURER le signe
+> Marc : « fais la suite maintenant ». Le mapper porte `const owed = Math.abs(account.balance)` sous
+> le commentaire « un solde négatif signifie un crédit en ta faveur » ; Marc décrit l'INVERSE
+> (`-500` = 500 $ dus). `Math.abs` rend le cas nominal juste **dans les deux conventions**, donc
+> l'hypothèse est infalsifiable sans une mesure.
+> ✅ Livré : `signeSolde` (fonction pure, 4 états — `absent` couvre le `NaN`), `soldesDetteSignes`
+> au rapport du mapper, et UN avertissement agrégé qui publie **le SIGNE, jamais le MONTANT** (le
+> rapport est `cat`é en clair dans les journaux GitHub Actions). **Aucun dollar ne bouge** :
+> `Math.abs` est intact, c'est l'étape 2 qui le changera.
+> ⚠️⚠️ **La PRÉCONDITION du ticket était fausse, et elle a dicté toute la conception** : « mesure
+> inatteignable pour Marc, aucune de ses cartes n'a de `debtName` » — re-mesuré sur le code réel,
+> c'est faux depuis `[FINTABLE-CARTE-SANS-DETTE]` (PR #956, deux jours plus tôt, le ticket QUE CE
+> TICKET CITE). Son compte atteint bien `case 'debt'`, il en sort trois lignes plus bas. D'où la
+> seule contrainte du lot : publier le signe **AVANT toutes les sorties du bloc** (nom vide, solde
+> absent, devise étrangère) — sinon la mesure reste inatteignable pour la seule personne qui peut la
+> lire. La prémisse réfutée n'a pas annulé le travail, elle l'a FAÇONNÉ
+> (`UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`).
+> **13 gardes, 5 perturbations séparées** (publication avant les sorties · montant interpolé · `NaN`
+> rabattu sur zéro · `-0` · publication pour TOUT compte) — chacune rougit sur les bons tests, dont
+> le contrôle négatif « aucun compte dette → aucune entrée ».
+> ⚠️ **Reste à Marc** : lire le signe au prochain rapport et répondre — c'est la seule mesure qui
+> manque. Détail dans `docs/A_FAIRE_MOI.md`.
+>
 > ## 🟦 Session 2026-09-16 — `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` : bascule PAR COMPTE
 > Marc : « go ». La bascule anti-doublon était dérivée « tous comptes confondus » : le chèque poste
 > le jour même et l'avance chaque jour, la carte poste 3 jours plus tard et arrive donc TOUJOURS

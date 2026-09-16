@@ -11,6 +11,16 @@
 //
 // `null` = état vierge (aucune transaction) → le mapper avertit alors qu'aucun recouvrement n'est
 // possible à vérifier, comme documenté dans mapSnapshot.ts.
+//
+// ⚠️ [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Ce module porte désormais DEUX dérivations, et
+// l'en-tête ci-dessus ne décrit que la PREMIÈRE :
+//   - `deriveCutoverDate`           — la borne GLOBALE, « tous comptes confondus ». Elle reste le
+//     REPLI d'un compte dont aucune transaction n'est connue sous son libellé, et la seule que
+//     voient les transactions sans `accountName`.
+//   - `deriveCutoverDatesByAccount` — la borne PAR COMPTE, qui est celle qui s'applique dès qu'elle
+//     existe. Voir son propre en-tête pour la mesure (12/12 chèque, 0/9 carte sans elle).
+// Les deux coexistent PAR CONCEPTION : remplacer la globale par la carte par compte ouvrirait la
+// fenêtre d'un compte inconnu à tout son historique, sans dédoublonnage.
 
 import type { Transaction } from '../../types';
 

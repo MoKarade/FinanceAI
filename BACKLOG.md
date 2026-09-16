@@ -820,6 +820,18 @@
   ⚠️ **L'ADR 0009 §3 n'a PAS été rouverte**, et c'est le point : son repli (« le chemin sûr existant :
   marquer `isDuplicate` ») était mesurément FERMÉ pour cette classe. Le correctif ouvre le repli
   qu'elle nommait, au lieu de me donner le droit d'écrire sur une transaction existante.
+- [ ] 🟡 **`[E2E-CIBLE-44-SOUS-PIXEL]`** (XS, **MESURÉ, découvert en passant sur la PR #974**) — six
+  assertions E2E comparent une `boundingBox()` de Playwright à la borne WCAG **exacte** `>= 44`
+  (`e2e/futureMobileProjectionScreen.spec.ts`, `e2e/futureMobileLegendDrawer.spec.ts` — recensé, pas
+  cité). Or une boîte de rendu est FRACTIONNAIRE : mesuré en CI le 2026-09-16,
+  **`43.99999237060547`** contre `>= 44`, soit un écart de **7,6 × 10⁻⁶ px**. Le même check était
+  VERT sur le head précédent, dont l'unique écart était une ligne de `CLAUDE.md` : c'est donc une
+  variance de rendu du runner, pas une régression. ⚠️ Le correctif n'est PAS de baisser l'exigence
+  (44 px est une règle WCAG, et une garde qui descend sous sa règle ne garde plus rien) : c'est de
+  comparer la grandeur ARRONDIE, ou d'admettre un ε explicite et commenté. ⚠️ Et il se fait sur les
+  SIX sites, pas sur celui qui a rougi — les cinq autres portent le même défaut et n'ont pas encore
+  eu la malchance de tomber du mauvais côté. Non corrigé dans #974 : défaut préexistant, sans rapport
+  avec le lot, et le corriger aurait élargi la PR.
 - [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **mesure à confirmer**) — le
   mapper suppose « solde de carte POSITIF = montant dû » (`const owed = Math.abs(account.balance)`,
   `mapSnapshot.ts`, commenté « un solde négatif signifie un crédit en ta faveur »). Marc, interrogé le

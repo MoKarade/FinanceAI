@@ -13941,3 +13941,38 @@ partout, et un recensement écrit avant l'import devient faux sans que personne 
 est **asymétrique** : ici il faisait renoncer à un import légitime (coût visible, 11,18 $ manquants) ;
 dans l'autre sens — conclure « 0 résultat donc marquée » sur un marchand dont la ligne n'a simplement
 jamais existé — il ferait **compter une dépense deux fois**, sans rien de rouge nulle part.
+
+
+### `AVANT-DE-DEMANDER-CE-QU-UNE-VALEUR-CONTIENT-DEMANDER-QUI-LA-LIT` (2026-09-16, même journée)
+
+Marc ayant répondu « prioritaire » sur `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`, j'avais préparé une
+question : *ce solde courtier contient quoi — la valeur marchande du compte, ou les liquidités
+seules ?* — au motif que l'écraser sur une grandeur différente des titres saisis ferait un **double
+comptage**. La crainte était raisonnable et la question, mesurée avant d'être posée, **inutile** :
+`fintableBrokerBalances` n'a **qu'un seul lecteur**, `BrokerReconciliationCard`. Il ne pilote aucun
+calcul — `computeRawNetWorth` et la projection lisent `assets`. Le solde courtier est une
+**référence de comparaison**, et l'écart est affiché en ligne explicite. Il n'y avait rien à
+doubler.
+
+**Avant de demander à l'utilisateur ce qu'une valeur CONTIENT, demander au code QUI la LIT.** La
+première question coûte un aller-retour et le crédit qui va avec ; la seconde est un grep. Et elles
+ne sont pas symétriques : `UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE` enseignait
+qu'une mesure impossible depuis le conteneur est parfois à **une question de distance** — le
+symétrique est qu'une question posée à l'utilisateur est parfois à **un grep de distance**. Ce qui
+départage est ce qu'on cherche : une convention EXTÉRIEURE (comment un fournisseur écrit un signe)
+ne se trouve que chez lui ; un usage INTERNE (qui consomme ce champ) est toujours dans le dépôt.
+
+⚠️ **Et le recensement a rendu autre chose que ce qu'il cherchait — plus grave que le ticket.** Un
+compte en devise étrangère est écarté par `toPersistableBrokerBalances` (`if (currency !== base)
+continue`) **avant** la persistance, donc il n'entre jamais dans `balances`, donc jamais dans
+`unreadableAccountLabels`. Or cette liste existe précisément pour qu'« un compte écarté ne
+disparaisse JAMAIS en silence » — son commentaire cite le finding qui l'a fait naître. **Elle
+recense deux des trois causes d'écartement et ignore la troisième, parce que la troisième est
+filtrée un étage plus haut.** Une garde d'exhaustivité posée au mauvais étage a l'apparence exacte
+d'une garde qui marche : elle tire sur les cas qu'elle voit, et son compteur à zéro sur les autres
+se lit « rien à signaler ». Variante de `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`, et la question
+qui la débusque est : *combien de chemins mènent à « écarté », et la liste en connaît-elle combien ?*
+
+⚠️ Corollaire de SURFACE : l'écart est bien annoncé — dans `report.warnings`, donc **Système &
+diagnostics**. Pas sur l'écran Investissements, ni sur l'Accueil, c'est-à-dire pas là où l'utilisateur
+regarde ses placements. Deux surfaces, une seule parle, et c'est l'autre qu'il ouvre.

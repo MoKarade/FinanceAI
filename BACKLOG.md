@@ -926,10 +926,29 @@
   — mais faux par omission). Les titres saisis à la main servent de repli. ⚠️ Le remède se mesure
   comme le défaut : `assetValueCad` porte déjà la conversion (source unique, garde
   `tests/services/assetFxGuard.test.ts`) — c'est du **câblage**, pas un mécanisme neuf. ⚠️ Avant de
-  livrer, demander **ce que ce solde contient** (valeur marchande du compte ? liquidités seules ?) :
-  l'écraser sur une grandeur qui n'est pas la même que les titres saisis ferait un double comptage,
-  variante de `UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET`. ⚠️ Et le contrôle négatif
-  est obligatoire : un compte déjà en CAD ne doit rien voir changer.
+  livrer, demander **ce que ce solde contient**… ⚠️⚠️ **QUESTION RETIRÉE — la réponse était dans le
+  code, pas chez Marc** (mesuré le 2026-09-16, avant de la lui poser) : `fintableBrokerBalances` n'a
+  **qu'un seul lecteur**, `BrokerReconciliationCard`. Il ne pilote **aucun calcul** —
+  `computeRawNetWorth` et la projection lisent `assets`, jamais ce solde. **Le double comptage que je
+  craignais n'existe pas** : le solde courtier sert de RÉFÉRENCE de comparaison, et l'écart avec les
+  titres saisis est matérialisé en ligne explicite (« écart non ventilé »). Avant de demander à
+  l'utilisateur ce qu'une valeur contient, demander **qui la LIT** — ici la question posée aurait
+  coûté un aller-retour pour rien (variante de `UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE`).
+  ⚠️ Le contrôle négatif reste obligatoire : un compte déjà en CAD ne doit rien voir changer.
+  ⚠️⚠️ **DÉCOUVERTE du même recensement, préexistante et plus grave que le ticket** : un compte en
+  devise étrangère est écarté par `toPersistableBrokerBalances` (`if (currency !== base) continue`)
+  **AVANT** la persistance — donc il n'entre jamais dans `balances`, donc **jamais** dans
+  `unreadableAccountLabels` ni `unassignedAccountLabels`. Or c'est exactement la liste écrite pour
+  qu'« un compte écarté ne disparaisse JAMAIS en silence » (son commentaire cite le finding
+  silent-failure-hunter de la PR #534). **Elle recense deux des trois causes d'écartement et ignore
+  la troisième** — `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`. Conséquence : sur l'écran
+  Investissements ET sur l'Accueil, Disnat n'apparaît ni réconcilié, ni signalé — il est **absent**.
+  L'avertissement existe, mais dans `report.warnings`, c'est-à-dire **Système & diagnostics** — pas
+  là où Marc regarde ses placements (`UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT`,
+  corollaire « une détection non ANNONCÉE là où l'utilisateur regarde n'existe pas pour lui »).
+  ⚠️ **Les deux moitiés se livrent ensemble, et la seconde d'abord** : implémenter la conversion sans
+  réparer la liste laisserait la classe entière ouverte pour le prochain compte en devise ; réparer
+  la liste seule est déjà utile et ne déplace rien.
 - [ ] 🟡 **`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]`** (S, **GO DE MARC le 2026-09-16 : « oui, à
   l'écran seulement »**) — l'inventaire des champs hors contrat, livré par
   `[FINTABLE-DECODEUR-CHAMPS-INCONNUS]`, a fait son travail dès sa première passe réelle : il nomme

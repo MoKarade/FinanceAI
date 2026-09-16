@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 966 tests** Vitest
-(612 fichiers de test, mesuré le 2026-09-16). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 979 tests** Vitest
+(613 fichiers de test, mesuré le 2026-09-16). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -899,7 +899,12 @@ n'est pas réécrire un récit.
   valeur la plus CRÉDIBLE, donc la pire) ; le SIGNE se publie, **jamais le montant** (rapport rendu
   sans gate de mode discret ET `cat`é en clair dans les journaux GitHub Actions, dépôt PUBLIC) ; et
   un avertissement de MESURE porte sa consigne de retrait dans une garde, à INVERSER et non à
-  supprimer (`UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`, 2026-09-16).
+  supprimer. ⚠️⚠️ **Le panel a corrigé un CHIFFRE que j'avais publié** : « patrimoine net faux de
+  400 $ » pour une carte à 200 $ en crédit — l'écart RÉPARABLE par le signe est **200 $**, l'autre
+  moitié n'étant représentable par aucune convention (`applyDebt` refuse un solde `<= 0`, donc pas
+  de canal pour une carte en crédit). **Annoncer 2C quand seul C est réparable promet une réparation
+  dont la moitié n'existe pas** — demander quelle part de l'écart le correctif FERME avant d'écrire
+  son impact (`UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`, 2026-09-16).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

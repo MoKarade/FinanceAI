@@ -1612,7 +1612,13 @@ les deux cas sont **inversés** :
 | situation réelle | solde Fintable | ce que le code fait aujourd'hui |
 |---|---|---|
 | tu DOIS 500 $ | `-500` | dette de 500 $ ✅ …mais l'avertissement « **crédit en ta faveur** » se déclenche **à chaque passe**, sur le cas NOMINAL |
-| tu as 200 $ EN TROP | `+200` | **dette fantôme de 200 $**, **sans aucun avertissement** — patrimoine net faux de 400 $ (200 $ de dette inventée au lieu de 200 $ d'actif) |
+| tu as 200 $ EN TROP | `+200` | **dette fantôme de 200 $**, **sans aucun avertissement** |
+
+⚠️ **Correction du 2026-09-16** : ce tableau annonçait « patrimoine net faux de 400 $ ». C'est
+**200 $**, pas 400 $. La dette inventée (200 $) se corrigera avec le signe ; les 200 $ que
+l'émetteur te doit, eux, ne sont représentables **par aucune convention** aujourd'hui —
+`applyDebt` refuse un solde négatif ou nul, donc l'app n'a aucun endroit où mettre une carte
+en crédit. C'est une décision de l'étape 2, pas un effet du signe.
 
 `Math.abs` sauve la grandeur du cas nominal **par accident**, et c'est exactement ce qui rendait le
 défaut invisible. Un avertissement qui parle sur le cas normal et se tait sur le cas anormal est pire

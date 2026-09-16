@@ -530,8 +530,12 @@ Cloud Run, lit Fintable, et écrit dans Drive — 100 % en arrière-plan.
   vers des documents FinanceAI via le mapper PARTAGÉ (`services/fintable/mapSnapshot.ts` — même
   logique que `npm run fintable:dry`), les applique (`applyDocument`), et RÉÉCRIT le blob Drive
   avec la garde OCC (`save(next, version)`). La date de bascule anti-doublon (transactions déjà
-  connues vs nouvelles) est **DÉRIVÉE à chaque passe** depuis l'état réel (`deriveCutoverDate`) —
-  aucune date figée à maintenir. Un rapport (`AppState.fintableSyncReport`) est **TOUJOURS écrit**
+  connues vs nouvelles) est **DÉRIVÉE à chaque passe** depuis l'état réel — aucune date figée à
+  maintenir. Depuis le 2026-09-16, DEUX dérivations coexistent et c'est délibéré :
+  `deriveCutoverDatesByAccount` donne sa borne à CHAQUE compte (sans quoi le compte qui poste le
+  plus vite avance la borne des autres et les fait jeter), `deriveCutoverDate` reste la borne
+  GLOBALE de repli pour un compte encore jamais vu sous son libellé. Un rapport
+  (`AppState.fintableSyncReport`) est **TOUJOURS écrit**
   (succès ou échec) : comptes vus, tx ajoutées, virements internes détectés, cash/dettes mis à
   jour, avertissements, erreur — visible dans l'app (Réglages), sans notification proactive
   (choix Marc). Ne touche QUE ce que le mapper produit : budgets, dettes saisies

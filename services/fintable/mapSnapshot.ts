@@ -334,7 +334,14 @@ export function mapFintableSnapshot(
     // un montant dû » est vrai d'un compte qui a un nom de dette, FAUX d'un compte au nom vide, et
     // les deux lisent le même message.
     if (soldesDetteSignes.length > 0) {
-        const liste = soldesDetteSignes.map((s) => `« ${s.label} » → ${s.signe}`).join(', ');
+        // ⚠️ [revue panel] BORNÉ, comme `unknownTransactionKeys` 150 lignes plus bas : ce fichier
+        // a déjà sa constante pour exactement ce motif. Un `join` non borné produit un
+        // avertissement illisible dès qu'il y a beaucoup de comptes — et cet avertissement part
+        // dans un journal PUBLIC.
+        const cites = soldesDetteSignes.slice(0, MAX_CLES_CITEES);
+        const reste = soldesDetteSignes.length - cites.length;
+        const liste = cites.map((x) => `« ${x.label} » → ${x.signe}`).join(', ')
+            + (reste > 0 ? ` (+ ${reste} autre(s))` : '');
         warnings.push(
             `Mesure en cours — signe du solde reçu de Fintable pour tes cartes/dettes (le MONTANT n'est `
             + `jamais écrit ici) : ${liste}. Dis-moi si, à cette date, tu DOIS de l'argent sur ces comptes `

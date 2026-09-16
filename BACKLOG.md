@@ -839,7 +839,14 @@
   500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si confirmé : (a) tu DOIS 500 $ → la dette
   est juste (`Math.abs` sauve la grandeur **par accident**) mais l'avertissement « crédit en ta
   faveur » se déclenche **à chaque passe, sur le cas NOMINAL** ; (b) tu as 200 $ EN TROP → **dette
-  fantôme de 200 $, sans aucun avertissement**, patrimoine net faux de **400 $**.
+  fantôme de 200 $, sans aucun avertissement**.
+  ⚠️ **Le « patrimoine net faux de 400 $ » que ce ticket annonçait est SURESTIMÉ — mesuré le
+  2026-09-16 : l'écart réparable est de 200 $, pas 400 $.** La dette inventée (200 $) se corrige
+  par le signe ; la créance de 200 $ envers l'émetteur, elle, n'est représentable par AUCUNE
+  convention — `applyDebt` refuse tout solde `<= 0` (`mcp/ingest/applyDocument/debt.ts:50`), donc
+  l'app n'a aujourd'hui aucun canal pour une carte en crédit. Annoncer 400 $ promettait une
+  réparation dont la moitié n'existe pas (classe `UN-TICKET-QUI-N-ANNONCE-QU-UN-MONTANT-NE-DIT-PAS-SA-GRAVITE`,
+  vue à l'envers : ici le montant SUR-promet).
   ✅ **Étape 1 livrée** : `signeSolde` (fonction pure, 4 états — `absent` couvre le `NaN`, jamais
   rabattu sur `zéro`), `soldesDetteSignes` au rapport du mapper, et UN avertissement agrégé qui
   publie **le SIGNE, jamais le MONTANT** (le rapport est `cat`é en clair dans les journaux GitHub
@@ -854,6 +861,31 @@
   ⏸️ **Reste** : la réponse de Marc (une passe suffit) → puis étape 2, `docs/A_FAIRE_MOI.md`. Le
   garde-fou `signeSoldeDette.test.ts` porte la consigne de RETRAIT de l'avertissement de mesure, à
   INVERSER et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+- [ ] 🟠 **`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`** (M, vie privée, **DÉCOUVERT au
+  panel de la PR #975, préexistant — NON corrigé dans ce lot**) — `.github/workflows/fintable-sync.yml`
+  fait `cat /tmp/fintable_sync_out`, donc le corps JSON complet de `/fintable-sync`
+  (`{ ok: true, report }`) atterrit en clair dans les journaux GitHub Actions d'un dépôt **PUBLIC**.
+  Le commentaire du workflow juste au-dessus affirme « peut contenir des COMPTEURS … mais **jamais de
+  montant ni de libellé** » : **vérifié, c'est FAUX**, et ça l'était avant ce lot —
+  `cashAnchorDelta` est un montant, `debtsUpdated` des noms de dettes, `comptesSansPositions[].label`
+  des libellés, et 15 sites de `mapSnapshot.ts` interpolent `account.label`/`role.debtName` dans les
+  avertissements ; un payload de dette rejeté pousse même `formatCAD(...)` dans `warnings`
+  (`applyDocument/debt.ts:110-112` → `syncCore.ts:221`). Le commentaire est donc un **alibi** : il
+  fait croire à une garantie qui n'existe pas. ⚠️ Même surface côté app : `SystemView.tsx:348` rend
+  `report.warnings` **sans gate de mode discret** (classe `DECISION-PRIVACY-UNE-SEULE-SORTIE`).
+  ⚠️ Ce lot-ci retient délibérément le montant du solde, mais rend la publication du LIBELLÉ de
+  chaque carte **quotidienne et inconditionnelle** — il n'ouvre pas la classe, il l'alimente.
+  **Deux moitiés distinctes** : (a) corriger le commentaire mensonger et décider ce que le workflow
+  a le droit de `cat`er ; (b) passer `report.warnings` au mode discret dans `SystemView`.
+- [ ] 🟡 **`[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`** (S, money-critical, **DÉCOUVERT au panel
+  de la PR #975, préexistant**) — une carte **remboursée à zéro** donne `owed = 0`, or `applyDebt`
+  refuse tout solde `<= 0` (`mcp/ingest/applyDocument/debt.ts:50`) et **rejette le payload** : la
+  dette garde donc la valeur de la veille, et le patrimoine net porte une dette déjà payée jusqu'au
+  prochain solde non nul. Pas silencieux (`syncCore.ts:221` pousse un avertissement), mais faux.
+  ⚠️ C'est exactement la branche que `signeSolde` étiquette `'zéro'` : si la mesure de
+  `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` rapporte `'zéro'`, l'étape 2 doit savoir que ce chemin ne
+  met déjà **rien** à jour. ⚠️ Même refus (`<= 0`) : l'app n'a **aucun canal** pour une carte en
+  CRÉDIT — c'est ce qui borne à 200 $ (et non 400 $) l'écart réparable du ticket ci-dessus.
 - [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **PLAN POSÉ — EN ATTENTE DU GO DE MARC**) — la carte de
   crédit n'est pas une dette : c'est un **solde à DEUX SENS**. Marc, 2026-09-14 : « parfois mon crédit
   fait que j'ai de l'argent en plus et parfois de l'argent en moins », et il a choisi que le surplus

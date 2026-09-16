@@ -24,6 +24,16 @@
 > **13 gardes, 5 perturbations séparées** (publication avant les sorties · montant interpolé · `NaN`
 > rabattu sur zéro · `-0` · publication pour TOUT compte) — chacune rougit sur les bons tests, dont
 > le contrôle négatif « aucun compte dette → aucune entrée ».
+> ⚠️⚠️ **Le panel a corrigé un chiffre que j'avais publié** : « patrimoine net faux de 400 $ » pour
+> une carte à 200 $ en crédit. L'écart RÉPARABLE par le signe est **200 $** — les 200 $ que
+> l'émetteur doit ne sont représentables par AUCUNE convention (`applyDebt` refuse un solde `<= 0`).
+> Corrigé dans `BACKLOG.md` et `docs/A_FAIRE_MOI.md`. Il a aussi borné la liste de libellés du
+> nouvel avertissement (`MAX_CLES_CITEES`, déjà importé dans le fichier) — 14ᵉ garde, 2 perturbations.
+> ⚠️ **Deux découvertes PRÉEXISTANTES routées**, non corrigées ici :
+> `[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]` (le workflow `cat`e le rapport dans un journal
+> PUBLIC en affirmant « jamais de montant ni de libellé » — faux, vérifié : 15 sites interpolent déjà
+> `account.label`) et `[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]` (`owed = 0` → payload rejeté →
+> la dette garde la valeur de la veille).
 > ⚠️ **Reste à Marc** : lire le signe au prochain rapport et répondre — c'est la seule mesure qui
 > manque. Détail dans `docs/A_FAIRE_MOI.md`.
 >

@@ -24,6 +24,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn() }));
 import { readFileSync } from 'node:fs';
 import { mapFintableSnapshot, signeSolde, type FintableAccountRole } from '../../../services/fintable/mapSnapshot';
+import { MAX_CLES_CITEES } from '../../../services/fintable/decode';
 import { runFintableBrowserSync } from '../../../services/fintable/browserSync';
 import { runFintableSync } from '../../../mcp/runFintableSync';
 import type { StateStore } from '../../../mcp/state/stateStore';
@@ -168,6 +169,35 @@ describe('le rapport publie le SIGNE, jamais le MONTANT', () => {
         ]);
         expect(r.warnings.filter((w) => w.includes('signe du solde'))).toHaveLength(1);
         expect(r.warnings.find((w) => w.includes('signe du solde'))).toContain('« Visa » → positif');
+    });
+
+    it('la liste de libellés est BORNÉE — un avertissement illisible part dans un journal public', () => {
+        // ⚠️ [revue panel] Mon premier jet faisait `.map(...).join(', ')` sans borne, alors que ce
+        // MÊME fichier borne exactement ce motif pour les clés inconnues (`MAX_CLES_CITEES`, 150
+        // lignes plus bas). Un `join` non borné n'est pas qu'inesthétique : cet avertissement est
+        // rendu dans SystemView ET `cat`é en clair dans les journaux GitHub Actions d'un dépôt
+        // PUBLIC — plus il est long, plus il publie de libellés de comptes d'un coup.
+        const N = MAX_CLES_CITEES + 3;
+        const comptes = Array.from({ length: N }, (_, i) => ({
+            id: `acc_${i}`, connectionId: 'c', label: `Carte ${i}`, rawType: 'credit',
+            currency: 'CAD', balance: -100, balanceAvailable: null, lastTxDate: null, enabled: true,
+        }));
+        const roles: Record<string, FintableAccountRole> = {};
+        for (const c of comptes) roles[c.id] = { kind: 'debt', debtName: '' };
+
+        const r = mapFintableSnapshot({ ...snapshot(-100), accounts: comptes }, {
+            roles, transactionsAfter: null,
+        }).report;
+
+        // Le champ STRUCTURÉ garde tout le monde : c'est l'AFFICHAGE qui est borné, pas la mesure.
+        expect(r.soldesDetteSignes).toHaveLength(N);
+        const w = r.warnings.find((x) => x.includes('signe du solde'));
+        expect(w).toBeDefined();
+        expect(w).toContain(`Carte ${MAX_CLES_CITEES - 1}`);
+        // Le 13ᵉ n'est pas cité, et son absence est ANNONCÉE — sinon « borné » et « tronqué en
+        // silence » sont indiscernables.
+        expect(w).not.toContain(`Carte ${MAX_CLES_CITEES}`);
+        expect(w).toContain('+ 3 autre(s)');
     });
 });
 

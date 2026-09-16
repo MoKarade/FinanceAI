@@ -13793,6 +13793,46 @@ survit à sa mesure devient PERMANENT, donc mort — exactement ce que ce ticket
 « crédit en ta faveur ». Le test porte la consigne de retrait, à **INVERSER** au moment de l'étape 2
 et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
 
+⚠️⚠️ **Le panel a corrigé un CHIFFRE que j'avais publié, et c'est le vrai coût du lot.** Le ticket —
+puis mes docs, qui le recopiaient — annonçaient « patrimoine net faux de **400 $** » pour une carte
+à 200 $ en crédit : 200 $ de dette inventée *plus* 200 $ d'actif manquant. Re-mesuré sur le code :
+l'écart **réparable par la correction de signe** est **200 $**. Les 200 $ que l'émetteur doit ne sont
+représentables par **aucune** convention aujourd'hui — `applyDebt` refuse tout solde `<= 0`
+(`mcp/ingest/applyDocument/debt.ts:50`), donc l'app n'a pas d'endroit où mettre une carte en crédit.
+**Annoncer 2C quand seul C est réparable promet une réparation dont la moitié n'existe pas** : c'est
+`UN-TICKET-QUI-N-ANNONCE-QU-UN-MONTANT-NE-DIT-PAS-SA-GRAVITE` vu à l'envers — là le montant
+SOUS-estimait, ici il SUR-promet. Avant d'écrire l'impact d'un correctif, demander **quelle part de
+cet écart le correctif peut effectivement fermer**, et nommer le reste comme une décision distincte.
+⚠️ Corollaire découvert au même endroit : ce même `<= 0` fait qu'une carte **remboursée à zéro**
+rejette son payload et **garde la dette de la veille** — routé sous
+`[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`. C'est exactement la branche que `signeSolde`
+étiquette `'zéro'`.
+
+⚠️ **Et « aucune grandeur indépendante ne tranche » est une conclusion MESURÉE, pas un aveu.** Cinq
+candidats ont été écartés un par un, et le plus instructif est la réconciliation Δsolde vs Σtx : elle
+serait décisive (Δb = −Σtx sous une convention, +Σtx sous l'autre) — sauf que le solde SIGNÉ n'est
+persisté nulle part, seul `Math.abs` atteint l'état, et **l'abs efface le discriminant
+symétriquement** (`Δ|b| = −Σtx` dans les deux). Le sentier persisté est donc aveugle **pour
+exactement la raison qui rend le cas nominal ambigu**. Le signe des TRANSACTIONS ne sauve pas non
+plus : un agrégateur normalise les deux conventions indépendamment (Plaid fait le couple inverse).
+La leçon `UNE-MESURE-IMPOSSIBLE-DEPUIS-LE-CONTENEUR-EST-PEUT-ETRE-A-UNE-QUESTION-DE-DISTANCE` reste
+donc la bonne réponse ici — mais c'est l'épuisement des candidats qui l'établit, pas l'intuition.
+
+⚠️ **Un `join` non borné dans un message qui part en journal PUBLIC.** Mon premier jet concaténait
+tous les libellés de comptes `debt` — alors que le MÊME fichier borne exactement ce motif 150 lignes
+plus bas (`MAX_CLES_CITEES`, déjà importé). Le champ STRUCTURÉ garde tout le monde, c'est l'AFFICHAGE
+qui se borne, et la troncature s'ANNONCE (`+ N autre(s)`) : « borné » et « tronqué en silence » sont
+sinon indiscernables. Deux perturbations le prouvent (borne retirée · annonce retirée).
+
+⚠️ **Le lot rend une fuite préexistante quotidienne, et ça se dit.** Le corps du rapport est `cat`é
+en clair dans les journaux GitHub Actions d'un dépôt PUBLIC, et le commentaire du workflow affirme
+« jamais de montant ni de libellé » — **faux avant ce lot** (15 sites interpolent déjà
+`account.label`/`role.debtName`, `cashAnchorDelta` est un montant). Ce lot ne crée pas la classe,
+mais il fait partir un libellé de carte à CHAQUE passe. Un commentaire qui promet une garantie
+inexistante est pire qu'absent : il sert d'alibi à qui vient après. Routé sous
+`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`, pas corrigé ici (défaut antérieur, et toucher
+un workflow élargirait la PR).
+
 ⚠️ **Et le message n'énonce QUE le fait et la question, pas la conséquence.** « Un solde positif est
 porté comme un montant dû » est vrai d'un compte qui a un nom de dette et **FAUX** d'un compte au nom
 vide — or les deux lisent le même message. Une phrase vraie « en général » dans un avertissement

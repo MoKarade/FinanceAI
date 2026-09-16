@@ -923,8 +923,23 @@ export interface FintableBrokerBalance {
   accountId: string;
   /** Libellé lisible, AFFICHAGE seulement (peut changer côté banque sans rien casser). */
   label: string;
-  /** Solde en CAD. Toujours fini : un compte au solde illisible ou en devise ≠ CAD n'est pas émis. */
+  /**
+   * Solde en CAD. Toujours fini.
+   * ⚠️ [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Depuis le 2026-09-16, un compte en devise étrangère EST
+   * émis quand son taux de change est connu : le solde est alors converti à l'écriture, au taux du
+   * moment, et c'est un vrai CAD. Quand le taux MANQUE, l'entrée est quand même émise mais porte
+   * `missingRate` — c'est le seul cas où `balanceCad` vaut `0` sans rien signifier, et
+   * `reconcileBrokerBalances` détourne ces entrées AVANT toute somme. Le `0` n'est donc jamais lu ;
+   * l'entrée existe uniquement pour que le compte soit NOMMÉ là où Marc regarde ses placements.
+   */
   balanceCad: number;
+  /**
+   * Devise dont le taux manquait à l'écriture — l'entrée est un SIGNAL, pas une valeur.
+   * Sa présence est testée avant toute autre garde : sans ça, le `balanceCad: 0` qui l'accompagne
+   * serait lu comme un solde réel, ou son absence classerait le compte « illisible » — un
+   * diagnostic faux qui enverrait corriger la mauvaise chose.
+   */
+  missingRate?: string;
   /** Régime fiscal DÉCLARÉ par Marc. Absent = écart non ventilable → affiché mais hors projection.
    *  Valeurs = sous-ensemble EXACT de `RegisteredAccountType` (aucune graphie parallèle). */
   taxRegime?: Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;

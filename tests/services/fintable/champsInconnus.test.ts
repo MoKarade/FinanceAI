@@ -160,7 +160,7 @@ describe('le rapport de synchronisation le DIT', () => {
     function snap(unknownTransactionKeys: string[]): FintableSnapshot {
         return {
             readAt: 0, accounts: [], holdings: [], transactions: [], holdingsSkipped: [],
-            unknownTransactionKeys,
+            unknownTransactionKeys, unknownTransactionSamples: [],
         };
     }
     const CONFIG = { roles: {}, transactionsAfter: null };

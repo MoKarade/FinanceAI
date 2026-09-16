@@ -75,6 +75,21 @@ export const rowControlLabel = (
  */
 export const MASKED_CATEGORY_LABEL = 'Catégorie masquée';
 
+/**
+ * [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] Libellé annoncé à la place d'une VALEUR de champ bancaire
+ * hors contrat (`external_memo`, `check_num`…).
+ *
+ * ⚠️ Même raisonnement que `MASKED_PAYEE_LABEL`, un cran PLUS sensible : un mémo bancaire peut
+ * porter le nom d'un TIERS, un numéro de chèque ou une adresse — pas seulement une habitude de
+ * l'utilisateur. Si le dépôt masque déjà « pharmacie X » parce que c'est de la donnée personnelle
+ * au sens de la Loi 25 même sans montant (décision Marc 2026-08-17), un mémo l'est a fortiori.
+ *
+ * ⚠️ Pourquoi un libellé À LUI et non `MASKED_PAYEE_LABEL` : annoncer « Marchand masqué » sur un
+ * mémo serait une AFFIRMATION FAUSSE à l'oreille — exactement le défaut qui a fait naître la prop
+ * `quoi` de `PrivateText` quand `[PRIV-CATEGORIE-MASQUEE]` l'a réutilisée.
+ */
+export const MASKED_MEMO_LABEL = 'Valeur masquée';
+
 /** Catégorie pour un ATTRIBUT (`title`, `aria-label`). Le texte VISIBLE passe par `<PrivateText>`. */
 export const maskCategory = (categorie: string | null | undefined, isPrivacyMode: boolean): string =>
     isPrivacyMode ? MASKED_CATEGORY_LABEL : (categorie || '');

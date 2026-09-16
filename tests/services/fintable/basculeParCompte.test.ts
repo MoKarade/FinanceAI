@@ -110,7 +110,7 @@ function snapshot(
             id: a.id, connectionId: 'c', label: a.label, rawType: 'x', currency: 'CAD',
             balance: 100, balanceAvailable: null, lastTxDate: null, enabled: true,
         })),
-        holdings: [], holdingsSkipped: [], unknownTransactionKeys: [],
+        holdings: [], holdingsSkipped: [], unknownTransactionKeys: [], unknownTransactionSamples: [],
         transactions: transactions.map((t) => ({
             id: t.id, accountId: t.accountId, date: t.date, amount: -10, currency: 'CAD',
             description: t.id, merchant: null, categoryName: null, updatedAt: null,

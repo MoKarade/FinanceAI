@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 979 tests** Vitest
-(613 fichiers de test, mesuré le 2026-09-16). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 010 tests** Vitest
+(614 fichiers de test, mesuré le 2026-09-16 ; +3 signe de carte, +5 Disnat, +11 champs inconnus, +12 revue panel). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -918,6 +918,85 @@ n'est pas réécrire un récit.
   réelle, donc plausible) alors que `date` disait **8 minutes**. Une durée s'affirme depuis
   l'HORLOGE. ⚠️ Ce qui a trouvé les défauts du lot, ce n'est ni l'un ni l'autre gate : c'est le panel
   (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`, 2026-09-16).
+
+- **Une SEULE observation dans la branche RARE tranche ce que mille passes NOMINALES ne peuvent pas** :
+  `mapSnapshot.ts` affirmait sans mesure « solde de carte positif = montant DÛ ». Première passe réelle
+  de l'étape 1 : **« → positif »**, et Marc : **« c'est en ma faveur »** — hypothèse RÉFUTÉE, Fintable
+  écrit `négatif = dû`. Ce qui compte n'est pas la convention mais **pourquoi une observation a suffi** :
+  sous `Math.abs`, le cas nominal est structurellement indiscernable (`|−500| = |+500|`), donc ce qu'on
+  regarde tous les jours n'apprend RIEN — c'est ce qui a laissé le commentaire faux survivre. Devant une
+  hypothèse non mesurée, ne pas chercher « plus de données » mais **la branche où les hypothèses
+  divergent**, et ne demander que celle-là. ⚠️ Portée : une réfutation n'est pas une preuve — la mesure
+  tue « positif = dû », elle est seulement *compatible* avec « négatif = dû » ; ce qui autorise à avancer
+  est qu'aucune décision n'attend la moitié manquante (le plan de l'étape 2 était déjà écrit dans ce sens,
+  donc la mesure le CONFIRME — et **une mesure qui confirme se publie autant qu'une réfutation**).
+  ⚠️ Un défaut RÉEL et un défaut ATTEINT sont deux états distincts : aucune dette n'étant associée à cette
+  carte, la dette fantôme de 200 $ n'a **jamais été écrite** — le dire, plutôt qu'annoncer un patrimoine
+  faux. ⚠️ Et ce qui reste faux après la mesure est le **COMMENTAIRE** (« un solde négatif signifie un
+  crédit en ta faveur ») : inversé dans du money-critical, il est pire qu'absent — il dispense de mesurer
+  (`UNE-SEULE-OBSERVATION-DANS-LA-BRANCHE-RARE-TRANCHE-CE-QUE-MILLE-PASSES-NOMINALES-NE-PEUVENT-PAS`).
+  ⚠️⚠️ Corollaire du même lot : **une recherche par MARCHAND ne prouve rien sur une LIGNE**. Vérifiant
+  par ligne que les quatre originaux étaient bien exclus, `Smartcar Mountain` RESSORTAIT — mais au
+  `2026-08-06` pour `−4,40 $`, quand la ligne visée est du `2026-09-01` pour `7,84 $` : deux transactions
+  distinctes du même marchand, la seconde arrivée le jour même avec le rattrapage d'historique. L'identité
+  d'une transaction est le couple **(date, montant)** ; le marchand n'est qu'un filtre. Le piège naît
+  quand un import vient d'élargir l'historique — un recensement écrit avant devient faux sans que personne
+  n'y touche — et il est **asymétrique** : ici il faisait renoncer à un import légitime (visible), dans
+  l'autre sens il ferait compter une dépense **deux fois**, sans rien de rouge
+  (`UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE`).
+
+- **Un repli BON pour un AFFICHAGE est le PIRE pour une AUTORITÉ** : le solde courtier USD devait être
+  converti, et le remède évident était `toCurrencyFactor` — **la source unique FX**, gardée par
+  `assetFxGuard`. Elle replie sur **1:1** quand le taux manque, ce qui est juste pour un ACTIF affiché
+  (montrer + journaliser) et catastrophique pour un total qui « fait autorité » : 72 040 USD →
+  72 040 « CAD », faux d'environ 30 % et crédible. **Avant de réutiliser une source unique, lire son
+  mode DÉGRADÉ, pas seulement son calcul** — un helper partagé encode un arbitrage qui voyage chez
+  tous ses appelants, y compris ceux dont l'enjeu est l'inverse. D'où un taux interrogé EXPLICITEMENT
+  (`0`, négatif et non fini = absent). ⚠️ **L'ORDRE DES GARDES EST le correctif** : une entrée « taux
+  manquant » porte `balanceCad: 0` qui ne signifie rien ; testée APRÈS la garde de finitude elle passe
+  (0 est fini) et s'additionne à zéro — le compte disparaît du total sans trace. Rien dans le TYPE ne
+  dit qu'un champ doit être lu en premier, donc la garde a sa perturbation à elle. ⚠️ Et la 3ᵉ cause
+  d'écartement n'était recensée NULLE PART : la liste des écartés existe pour qu'« un compte ne
+  disparaisse jamais en silence », mais le filtre de devise vivait un ÉTAGE au-dessus d'elle — deux
+  causes sur trois, et son compteur à zéro sur la troisième se lisait « rien à signaler »
+  (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` appliqué à l'ÉTAGE). ⚠️ Corollaire de SURFACE : l'écart
+  ÉTAIT annoncé — dans Système & diagnostics, pas sur l'écran Investissements que Marc ouvre pour
+  regarder ses placements. ⚠️ Et **un DÉCOUPAGE annoncé se re-mesure comme un périmètre** : « réparer
+  la liste d'abord, convertir ensuite » a été approuvé par Marc puis réfuté par la mesure (les deux
+  moitiés sont indissociables) — le dire et livrer entier, plutôt que la moitié promise
+  (`UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE`).
+
+- **Une contrainte de VIE PRIVÉE se tient par l'ARCHITECTURE, pas par un commentaire** : montrer le
+  contenu des champs hors contrat de Fintable (`external_memo`, seule piste pour la devise réelle)
+  devait rester sur le seul écran de Marc — le rapport de synchro part sans gate de mode discret ET
+  `cat`é en clair dans un journal GitHub **public**. Un « ⚠️ ne jamais recopier ceci » aurait été une
+  règle à se rappeler ; la réponse tenue est que l'échantillon voyage par le RETOUR de
+  `runFintableBrowserSync` (jamais le rapport, jamais le patch) et que **le chemin CRON ne rend pas ce
+  champ du tout** : du côté qui publie, la fuite est **inexprimable**, pas interdite. ⚠️ Le patron
+  existait, annoté (`incertaines`, « jamais persisté ») — `COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`
+  vaut surtout quand le voisin explique POURQUOI. ⚠️ La garde vise le rapport **sérialisé entier**, pas
+  `warnings` : ça couvre aussi le champ qu'un lot futur ajoutera sans y penser. ⚠️ Anti-vacuité non
+  évidente : elle exige que le rapport NOMME encore le champ, sinon « aucune valeur » serait vrai d'un
+  rapport vide, d'un client en panne ou d'un inventaire débranché
+  (`UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE`).
+
+- **Un repli PLUS CRÉDIBLE est MOINS réfutable** : le lot s'ouvrait sur « ne pas convertir avec
+  `toCurrencyFactor`, son repli 1:1 rendrait 72 040 USD = 72 040 CAD » — et retombait dans le piège un
+  cran plus bas, parce que `DEFAULT_FX_RATES` porte **`USD: 1.40`** (« approximation Q1 2026 »),
+  TOUJOURS présent, avec `fxRatesEstimated` qui existe exactement pour le dire. La question n'est pas
+  « ce repli est-il grossier ? » mais **« qu'est-ce qui, dans le RÉSULTAT, permettrait encore de savoir
+  que c'est un repli ? »** — réponse « rien » ⇒ il faut le DRAPEAU, pas un meilleur chiffre. ⚠️ Corollaire
+  mesuré : la branche « taux absent » était **quasi inatteignable** pour USD/EUR, les deux seules devises
+  du type — une garde dont le chemin nominal ne passe jamais
+  (`UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE`).
+  ⚠️⚠️ **Et une garde écrite CONTRE un piège connu le recommet** : trois défauts du même lot étaient des
+  re-commissions de mes propres leçons, dont une écrite **le jour même** — regex d'espaces `/ | /g` en
+  ASCII PUR (donc identité, garde de non-fuite VACUEUSE, 3ᵉ fois pour ce dépôt), compteur « + N autre(s) »
+  oublié sur une troncature ALPHABÉTIQUE (le champ révélateur pouvait tomber au-delà du 12ᵉ), et un
+  `continue` qui refaisait le trou que le lot bouchait. **La leçon protège l'endroit où elle a été écrite,
+  pas la classe** : elle se vérifie par une PERTURBATION à l'endroit neuf, jamais par la conviction de la
+  connaître — d'où une anti-vacuité du NORMALISATEUR lui-même, pas seulement de son sujet
+  (`UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

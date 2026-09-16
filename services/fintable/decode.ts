@@ -180,6 +180,78 @@ export function clesInconnues(
     return [...vues].sort();
 }
 
+/** Un champ hors contrat, avec quelques VALEURS observées — pour trancher s'il sert à quelque chose. */
+export interface EchantillonCleInconnue {
+    cle: string;
+    /** Valeurs observées, TRONQUÉES et bornées. Jamais l'ensemble : c'est un échantillon, pas un dump. */
+    exemples: string[];
+}
+
+/** Longueur max d'une valeur citée. Un mémo bancaire peut porter un nom complet ou une adresse. */
+const MAX_LONGUEUR_EXEMPLE = 48;
+/** Exemples par clé. Deux suffisent à voir un FORMAT ; davantage est de la donnée personnelle en plus. */
+const MAX_EXEMPLES_PAR_CLE = 2;
+
+/**
+ * [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] Échantillon des VALEURS des champs hors contrat.
+ *
+ * `clesInconnues` rend les NOMS — assez pour savoir qu'un champ existe, pas pour savoir s'il sert.
+ * La question ouverte pendant que 44 montants étaient faux était : « l'API dit-elle la devise RÉELLE
+ * quelque part ? ». Aucun des 5 champs ne s'appelle « currency », mais `external_memo` est du texte
+ * libre — c'est là que des banques écrivent « USD 4.40 @ 1.37 ». Un nom ne peut pas répondre ; une
+ * valeur, oui.
+ *
+ * ⚠️⚠️ **CETTE SORTIE NE DOIT JAMAIS ENTRER DANS `report.warnings`.** Le rapport de synchro est rendu
+ * dans `SystemView` SANS gate de mode discret ET `cat`é en clair dans les journaux GitHub Actions
+ * d'un dépôt **PUBLIC** (`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`). Un mémo bancaire peut
+ * porter un nom, un numéro de chèque, une adresse. Décision de Marc (2026-09-16) : « oui, à l'écran
+ * seulement ». Une garde de test vérifie cette séparation — elle n'est pas laissée à la vigilance.
+ *
+ * Bornée DEUX fois (nombre de clés, nombre et longueur des exemples) : la taille du résultat suit le
+ * VOCABULAIRE de l'API, jamais le volume de la page.
+ */
+export function echantillonsClesInconnues(
+    raws: readonly unknown[],
+    declarees: readonly string[] = CLES_TRANSACTION_DECLAREES,
+    maxCles: number = MAX_CLES_CITEES,
+): EchantillonCleInconnue[] {
+    const connues = new Set(declarees);
+    const parCle = new Map<string, string[]>();
+    for (const raw of raws) {
+        if (!isRecord(raw)) continue;
+        for (const [cle, valeur] of Object.entries(raw)) {
+            if (connues.has(cle)) continue;
+            const deja = parCle.get(cle) ?? [];
+            if (deja.length >= MAX_EXEMPLES_PAR_CLE) continue;
+            // `null`/`undefined` sont des NON-valeurs : les citer ferait croire à un champ rempli.
+            if (valeur === null || valeur === undefined) continue;
+            const brut = typeof valeur === 'object' ? JSON.stringify(valeur) : String(valeur);
+            const texte = brut.length > MAX_LONGUEUR_EXEMPLE
+                ? `${brut.slice(0, MAX_LONGUEUR_EXEMPLE)}…`
+                : brut;
+            if (texte.trim() === '') continue;
+            if (deja.includes(texte)) continue;
+            deja.push(texte);
+            parCle.set(cle, deja);
+        }
+    }
+    // ⚠️ [revue panel] La troncature est ANNONCÉE, comme chez le jumeau `clesInconnues` : sans ça,
+    // « borné » et « tronqué en silence » sont indiscernables — et le risque est concret ici, parce
+    // que l'ordre est ALPHABÉTIQUE : si le champ qui porte la devise tombait au-delà du 12ᵉ, Marc ne
+    // le verrait pas, et rien ne le lui dirait. Même défaut que celui corrigé sur l'avertissement du
+    // signe au lot précédent, re-commis quatre heures plus tard.
+    const toutes = [...parCle.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    const limite = Math.max(0, maxCles);
+    const cites = toutes.slice(0, limite).map(([cle, exemples]) => ({ cle, exemples }));
+    const reste = toutes.length - cites.length;
+    if (reste > 0) {
+        // Entrée SENTINELLE : elle ne porte aucune valeur, seulement le COMPTE de ce qui manque.
+        // Un nom de champ y serait une valeur citée de plus, donc hors budget de troncature.
+        cites.push({ cle: `(+ ${reste} autre(s) non cité(s))`, exemples: [] });
+    }
+    return cites;
+}
+
 export function decodeTransaction(raw: unknown, index: number): FintableTransaction {
     if (!isRecord(raw)) {
         throw new FintableError(`transactions[${index}] : objet attendu, reçu ${describe(raw)}.`, 'MALFORMED');

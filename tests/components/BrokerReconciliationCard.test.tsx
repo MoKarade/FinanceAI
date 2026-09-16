@@ -126,3 +126,61 @@ describe('BrokerReconciliationCard — mode discret (Loi 25)', () => {
         expect(screen.getAllByText('•••').length).toBeGreaterThan(0);
     });
 });
+
+// ── [FINTABLE-DISNAT-USD-SOLDE-IGNORE] La CHAÎNE service → composant ────────────────────────────
+//
+// ⚠️ [revue panel] Le service était bien couvert (`brokerBalances.test.ts`), le composant aussi —
+// mais le CHAÎNON ne l'était pas : aucun test ne posait un `fintableBrokerBalances` portant
+// `missingRate`. C'est exactement le trou où « un trou entre deux moitiés testées n'appartient à
+// personne » : le lot pouvait être vert de bout en bout et ne rien changer à l'écran.
+
+describe('[FINTABLE-DISNAT-USD-SOLDE-IGNORE] un compte sans taux est NOMMÉ là où Marc regarde', () => {
+    const SANS_TAUX: FintableBrokerBalance[] = [
+        { accountId: 'acc_usd', label: 'Disnat (L7B1)', balanceCad: 0, missingRate: 'USD', taxRegime: 'NON-ENREG', at: Date.now() },
+    ];
+
+    it('variante FULL : le compte est nommé, la raison est dite, et AUCUN 0 $ n\'est affiché', () => {
+        useFinanceStore.setState({ fintableBrokerBalances: SANS_TAUX, assets: [ASSET] } as never);
+        const { container } = render(<BrokerReconciliationCard variant="full" />);
+        const texte = textOf(container as HTMLElement);
+        expect(texte).toContain('Disnat (L7B1) (USD)');
+        expect(texte).toContain('Taux de change inconnu');
+        // ⚠️ LA garde du chaînon : le `balanceCad: 0` de l'entrée ne doit JAMAIS être affiché comme
+        // un total — il ne signifie rien. Un « 0 $ » ici serait le no-fake-data violé.
+        expect(texte).not.toMatch(/\b0 \$/);
+    });
+
+    it('variante FULL : la carte se RÉVEILLE pour ce seul motif (sinon écran muet)', () => {
+        // Contrôle du ship-dark : un utilisateur dont TOUS les comptes sont en devise verrait
+        // l'écran vide — la panne la plus silencieuse possible.
+        useFinanceStore.setState({ fintableBrokerBalances: SANS_TAUX, assets: [] } as never);
+        const { container } = render(<BrokerReconciliationCard variant="full" />);
+        expect(container.textContent ?? '').not.toBe('');
+    });
+
+    it('variante COMPACT : le remède nommé est celui de la VRAIE cause, pas le régime fiscal', () => {
+        // ⚠️ Le défaut que le panel a trouvé : envoyer déclarer un régime fiscal à quelqu'un dont
+        // le seul problème est un taux de change pas encore connu.
+        useFinanceStore.setState({ fintableBrokerBalances: SANS_TAUX, assets: [] } as never);
+        const { container } = render(<BrokerReconciliationCard variant="compact" />);
+        const texte = textOf(container as HTMLElement);
+        expect(texte).toContain('taux de change');
+        expect(texte).not.toContain('régime fiscal');
+    });
+
+    it('CONTRÔLE NÉGATIF : deux causes DIFFÉRENTES → aucun remède particulier n\'est prescrit', () => {
+        // Sans lui, « le bon remède s'affiche » serait indiscernable de « un remède s'affiche
+        // toujours » — et prescrire au hasard est précisément le défaut corrigé.
+        useFinanceStore.setState({
+            fintableBrokerBalances: [
+                SANS_TAUX[0],
+                { accountId: 'acc_x', label: 'Compte mystère', balanceCad: 5_000, at: Date.now() },
+            ],
+            assets: [],
+        } as never);
+        const { container } = render(<BrokerReconciliationCard variant="compact" />);
+        const texte = textOf(container as HTMLElement);
+        expect(texte).toContain('plusieurs raisons');
+        expect(texte).not.toContain('Le taux arrive');
+    });
+});

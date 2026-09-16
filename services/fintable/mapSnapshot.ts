@@ -268,21 +268,53 @@ export function mapFintableSnapshot(
                     );
                     break;
                 }
-                // Un solde de carte de crédit se lit « montant DÛ » : on le porte en positif, comme
-                // `Debt.balance`. Un solde négatif signifie un crédit en ta faveur (paiement en trop) —
-                // le porter tel quel donnerait une dette NÉGATIVE qui gonflerait le patrimoine.
-                const owed = Math.abs(account.balance);
-                if (account.balance < 0) {
-                    // ⚠️ Le MONTANT n'est PAS interpolé ici (finding panel, PR #531) : ce warning finit
-                    // dans FintableSyncReport.warnings, rendu sans gate mode discret dans SystemView.tsx
-                    // ET dumpé en clair dans les logs GitHub Actions (fintable-sync.yml, `cat` du corps) —
-                    // une surface plus persistante que l'app. Le vrai montant est déjà visible, gardé par
-                    // le mode discret, dans Réglages → Dettes (via `debts.push({..., balanceCad: owed})`
-                    // ci-dessous) : pas besoin de le répéter ici en clair.
+                // [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] ⚠️ CONVENTION MESURÉE le 2026-09-16, plus
+                // supposée : `négatif = tu DOIS`, `positif = c'est en ta faveur`. Le rapport de
+                // l'étape 1 a publié « → positif » pour la carte de Marc, et Marc a répondu « c'est
+                // en ma faveur ». Le commentaire précédent affirmait l'INVERSE (« un solde négatif
+                // signifie un crédit en ta faveur »), écrit sans mesure et jamais réfutable :
+                // `Math.abs` rend le cas NOMINAL juste dans les DEUX conventions (`|−500| = |+500|`),
+                // donc ce qu'on regarde tous les jours n'apprend rien. Seule la branche RARE — la
+                // carte en CRÉDIT — les sépare, et c'est elle qui fabriquait une dette FANTÔME du
+                // montant du crédit (`UNE-SEULE-OBSERVATION-DANS-LA-BRANCHE-RARE-TRANCHE-…`).
+                //
+                // Les deux moitiés du solde signé sont MUTUELLEMENT EXCLUSIVES par construction —
+                // un seul montant vu de deux côtés, jamais reflété deux fois
+                // (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+                const owed = Math.max(0, -account.balance);
+                const surplus = Math.max(0, account.balance);
+                if (surplus > 0) {
+                    // ⚠️ Le MONTANT n'est PAS interpolé (finding panel, PR #531) : ce warning finit
+                    // dans FintableSyncReport.warnings, rendu sans gate mode discret dans SystemView
+                    // ET `cat`é en clair dans les journaux GitHub Actions d'un dépôt PUBLIC —
+                    // une surface plus persistante que l'app.
+                    //
+                    // ⚠️ Pourquoi ce compte n'alimente PAS les liquidités ici : porter le surplus à
+                    // la cible de cash est l'étape 2 de `[FINTABLE-CARTE-DETTE-AUTO]`, et elle bute
+                    // sur une contrainte mesurée — `applyCashBalance` REJETTE le payload entier si
+                    // la cible passe sous zéro. Émettre la moitié « surplus » sans sa garde
+                    // déplacerait de l'argent sur une branche non testée. Dit, plutôt que fait.
                     warnings.push(
-                        `Dette « ${role.debtName} » : solde négatif chez Fintable (crédit en ta faveur) `
-                        + '→ interprété comme un montant dû (positif). Vérifie dans Réglages → Dettes.',
+                        `Dette « ${role.debtName} » : le solde est EN TA FAVEUR chez Fintable `
+                        + '(crédit, pas une dette). La dette n\'est donc pas mise à jour — elle garde '
+                        + 'sa valeur précédente. Ce crédit ne compte pas encore dans tes liquidités.',
                     );
+                }
+                if (owed <= 0) {
+                    // [FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER] Carte soldée ou en crédit :
+                    // `applyDebt` REFUSE tout solde `<= 0` (`applyDocument/debt.ts`) et rejette le
+                    // payload. L'émettre quand même produirait un « Payload non appliqué » cryptique
+                    // pour un état parfaitement NORMAL. On s'abstient, et on DIT ce que ça implique :
+                    // la dette conserve la valeur de la veille. Le corriger vraiment (porter la dette
+                    // à zéro) exige un canal que l'app n'a pas — c'est le ticket dédié.
+                    if (surplus === 0) {
+                        warnings.push(
+                            `Dette « ${role.debtName} » : solde à ZÉRO chez Fintable (carte soldée) → `
+                            + 'non mise à jour, elle garde sa valeur précédente. FinanceAI n\'a pas '
+                            + 'aujourd\'hui de canal pour ramener une dette à zéro.',
+                        );
+                    }
+                    break;
                 }
                 debts.push({ name: role.debtName, balanceCad: owed });
                 break;
@@ -297,9 +329,26 @@ export function mapFintableSnapshot(
                         + 'courtier ne peut pas faire autorité pour ce compte (tes titres saisis restent utilisés).',
                     );
                 } else if (account.currency.toUpperCase() !== baseCurrency) {
+                    // ⚠️ [revue panel] Ce message affirmait « conversion non implémentée → IGNORÉ ».
+                    // `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` a rendu la conversion POSSIBLE, donc la
+                    // phrase pouvait devenir fausse — Système & diagnostics aurait dit « ignoré »
+                    // pendant que l'écran Investissements l'affichait COMPTÉ
+                    // (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`, re-payée).
+                    //
+                    // ⚠️ Le mapper ne PEUT pas trancher : il ne voit ni les taux ni `fxRatesEstimated`
+                    // (fonction PURE, sans état). Il décrit donc ce qu'il SAIT — la devise n'est pas
+                    // convertie ICI — et renvoie à la surface qui, elle, connaît l'issue. Affirmer
+                    // moins mais juste vaut mieux qu'affirmer plus et faux.
+                    //
+                    // ⚠️ Contrôle fait : les deux autres occurrences de ce libellé (branches `cash`
+                    // et `debt`) restent VRAIES — ni l'une ni l'autre n'est convertie. Un seul site
+                    // sur trois était périmé, et le corriger en bloc aurait rendu les deux autres
+                    // vagues.
                     warnings.push(
-                        `Placement « ${account.label} » est en ${account.currency} : conversion non `
-                        + 'implémentée → montant du courtier IGNORÉ pour ce compte (tes titres saisis restent utilisés).',
+                        `Placement « ${account.label} » est en ${account.currency} : son solde n'entre `
+                        + 'pas tel quel dans tes liquidités. Il est converti en CAD seulement si un taux '
+                        + 'de change RÉEL est disponible — sinon le compte est listé, non converti, dans '
+                        + 'la carte de réconciliation des placements. Tes titres saisis restent utilisés.',
                     );
                 } else if (role.taxRegime === undefined) {
                     // Enregistré quand même (affichage/référence), mais l'écart ne sera pas ventilé :
@@ -328,27 +377,25 @@ export function mapFintableSnapshot(
         }
     }
 
-    // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Avertissement de MESURE, à durée de vie bornée : il
-    // meurt à l'étape 2 du plan (`docs/A_FAIRE_MOI.md`), quand la convention de signe est fixée. Il
-    // n'énonce QUE le fait et la question — pas la conséquence : « un solde positif est porté comme
-    // un montant dû » est vrai d'un compte qui a un nom de dette, FAUX d'un compte au nom vide, et
-    // les deux lisent le même message.
-    if (soldesDetteSignes.length > 0) {
-        // ⚠️ [revue panel] BORNÉ, comme `unknownTransactionKeys` 150 lignes plus bas : ce fichier
-        // a déjà sa constante pour exactement ce motif. Un `join` non borné produit un
-        // avertissement illisible dès qu'il y a beaucoup de comptes — et cet avertissement part
-        // dans un journal PUBLIC.
-        const cites = soldesDetteSignes.slice(0, MAX_CLES_CITEES);
-        const reste = soldesDetteSignes.length - cites.length;
-        const liste = cites.map((x) => `« ${x.label} » → ${x.signe}`).join(', ')
-            + (reste > 0 ? ` (+ ${reste} autre(s))` : '');
-        warnings.push(
-            `Mesure en cours — signe du solde reçu de Fintable pour tes cartes/dettes (le MONTANT n'est `
-            + `jamais écrit ici) : ${liste}. Dis-moi si, à cette date, tu DOIS de l'argent sur ces comptes `
-            + 'ou si le solde est en ta faveur : c\'est la seule mesure qui manque pour savoir dans quel '
-            + 'sens Fintable écrit un solde de carte.',
-        );
-    }
+    // ✅ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] L'avertissement de MESURE a été RETIRÉ le 2026-09-16 :
+    // il avait une durée de vie bornée par conception, et sa mesure est faite. Rapport du jour :
+    // « → positif » ; Marc : « c'est en ma faveur ». Convention établie — `négatif = dû`.
+    // Le laisser parler après sa réponse en aurait fait un avertissement PERMANENT, donc mort
+    // (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
+    //
+    // `soldesDetteSignes` RESTE calculé : structuré, muet, sans montant.
+    //
+    // ⚠️ CORRECTION [revue panel, même lot] : ma première rédaction affirmait qu'il est « la seule
+    // trace qui permettra de re-vérifier la convention si Fintable change d'avis ». **C'est FAUX**,
+    // et vérifié : `FintableSyncReport` ne déclare pas ce champ, et les deux orchestrateurs
+    // construisent leur rapport champ par champ sans jamais le recopier — il ne sort donc pas de ce
+    // module. Écrire une capacité inexistante dans un commentaire est le défaut que ce lot même
+    // dénonce (« un commentaire inversé est pire qu'absent : il dispense de mesurer »), commis dans
+    // le lot qui le corrige.
+    // Ce qu'il EST réellement : la sortie d'une fonction pure, verrouillée par ses tests unitaires,
+    // prête à être câblée le jour où une détection automatique de récidive sera décidée — décision
+    // qui n'est pas gratuite, puisque le rapport part dans un journal PUBLIC. Routé au BACKLOG sous
+    // `[FINTABLE-SIGNE-RECIDIVE-NON-DETECTEE]` plutôt que câblé ici sans consommateur.
 
     if (accountsWithoutRole.length > 0) {
         warnings.push(

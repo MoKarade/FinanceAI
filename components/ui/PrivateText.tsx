@@ -12,7 +12,18 @@
 // zéro fuite). Un flou CSS aurait laissé la chaîne lisible dans le HTML.
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { MASKED_PAYEE_LABEL, MASKED_CATEGORY_LABEL } from '../../utils/privacyAria';
+import { MASKED_PAYEE_LABEL, MASKED_CATEGORY_LABEL, MASKED_MEMO_LABEL } from '../../utils/privacyAria';
+
+/**
+ * Table EXHAUSTIVE des libellés annoncés. `Record<…>` sur l'union : ajouter un membre sans son
+ * libellé est une erreur de COMPILATION, pas une annonce muette et fausse — c'est précisément ce
+ * que la prop `quoi` existe pour empêcher.
+ */
+const LIBELLE_MASQUE: Record<'marchand' | 'categorie' | 'memo', string> = {
+    marchand: MASKED_PAYEE_LABEL,
+    categorie: MASKED_CATEGORY_LABEL,
+    memo: MASKED_MEMO_LABEL,
+};
 
 export const PrivateText: React.FC<{
     children: React.ReactNode;
@@ -27,7 +38,7 @@ export const PrivateText: React.FC<{
      * l'oreille — et sur une colonne entière. Typée en union fermée pour qu'un oubli de valeur
      * soit une erreur de compilation plutôt qu'une annonce muette et fausse.
      */
-    quoi?: 'marchand' | 'categorie';
+    quoi?: 'marchand' | 'categorie' | 'memo';
 }> = ({ children, className = '', as = 'span', title, quoi = 'marchand' }) => {
     const isPrivacy = useFinanceStore((s) => s.isPrivacyMode);
     const Tag = as;
@@ -35,7 +46,7 @@ export const PrivateText: React.FC<{
         return (
             <Tag className={className}>
                 <span aria-hidden="true" className="select-none tracking-widest">•••</span>
-                <span className="sr-only">{quoi === 'categorie' ? MASKED_CATEGORY_LABEL : MASKED_PAYEE_LABEL}</span>
+                <span className="sr-only">{LIBELLE_MASQUE[quoi]}</span>
             </Tag>
         );
     }

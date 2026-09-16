@@ -13880,3 +13880,242 @@ faux.
 ⚠️ **Et ce qui a réellement trouvé les défauts de ce lot, ce n'est aucun des deux gates** : c'est le
 panel (un montant publié faux de 2×, une liste non bornée, deux découvertes préexistantes). Le temps
 passé à attendre un gate en double est du temps qui n'allait pas là où la valeur était.
+
+---
+
+## `UNE-SEULE-OBSERVATION-DANS-LA-BRANCHE-RARE-TRANCHE-CE-QUE-MILLE-PASSES-NOMINALES-NE-PEUVENT-PAS` (2026-09-16)
+
+`mapSnapshot.ts` portait, depuis toujours et sans mesure, « un solde de carte de crédit se lit
+*montant DÛ* : on le porte en positif », avec `const owed = Math.abs(account.balance)`. L'étape 1 de
+`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` a publié le SIGNE (jamais le montant) et la première passe
+réelle a rendu **`« Desjardins Cash Back Mastercard (5020) » → positif`**. Marc, interrogé sur cette
+passe : **« c'est en ma faveur »**. L'hypothèse est **RÉFUTÉE** : Fintable écrit `négatif = dû`.
+
+**Ce que l'épisode enseigne n'est pas la convention, c'est POURQUOI une seule observation a suffi.**
+Sous `Math.abs`, le cas NOMINAL est **structurellement indiscernable** : devoir 500 $ donne 500 $ que
+le solde arrive en `+500` ou en `−500`. Mille passes normales — c'est-à-dire tout ce qu'on regarde
+tous les jours — n'auraient jamais rien appris, et c'est exactement ce qui a permis au commentaire
+faux de survivre. Seule la branche RARE (la carte en CRÉDIT) sépare les deux hypothèses, et le
+verdict y est brutal : sous la mauvaise convention, elle fabrique une **dette fantôme** du montant du
+crédit. **Devant une hypothèse non mesurée, ne pas chercher « plus de données » : chercher la branche
+où les hypothèses divergent, et ne demander QUE celle-là.** Ici la question tenait en une phrase.
+
+⚠️ **Portée exacte de ce qu'une réfutation prouve.** La mesure tue « positif = dû ». Elle est
+*compatible* avec « négatif = dû » sans le démontrer positivement — il faudrait pour ça une passe où
+l'utilisateur doit effectivement de l'argent. Écrire « la convention est établie » sans cette nuance
+transformerait une réfutation en preuve. Ce qui autorise quand même à avancer, c'est qu'aucune
+décision n'attend la moitié manquante : le plan de l'étape 2 (`dû = max(0, −solde)`) était **déjà
+écrit dans ce sens**, donc la mesure le CONFIRME. Et **une mesure qui confirme se publie autant
+qu'une réfutation** — après une série de tickets réfutés, l'attente de réfutation devient elle-même
+un biais (`NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR`).
+
+⚠️ **Le défaut n'avait encore rien coûté, et il fallait le dire.** Aucune dette n'est associée à
+cette carte (`[FINTABLE-CARTE-SANS-DETTE]` : `debtName` vide = « importe les transactions, ne touche
+à aucun solde »), donc la dette fantôme de 200 $ n'a **jamais été écrite**. Annoncer un patrimoine
+faux aurait été aussi inexact que de taire le mécanisme : un défaut RÉEL et un défaut ATTEINT sont
+deux états distincts, et seul le second se chiffre.
+
+⚠️ **Ce qui reste faux après une mesure, c'est le COMMENTAIRE.** Le `Math.abs` est protégé par
+l'absence de dette ; la phrase « un solde négatif signifie un crédit en ta faveur » est, elle,
+activement trompeuse et se lit comme un fait établi dans du code money-critical. Un commentaire
+inversé est plus dangereux qu'un commentaire absent — il dispense la prochaine session de mesurer.
+
+### `UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE` (même lot)
+
+`UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL` impose de vérifier la précondition **par
+ligne** : les quatre originaux devaient être exclus des calculs avant d'importer leurs montants
+corrigés. Vérification faite — `A.saily`, `Duty Free New Departur` et `*BRUTTITO TERMINAL` ne
+ressortent plus de `search_transactions`, qui EXCLUT les lignes marquées. Mais `Smartcar Mountain`,
+elle, **ressortait**.
+
+Lu vite, ça disait « pas marquée → ne pas réimporter, suspendre 11,18 $ ». Lu correctement, la ligne
+rendue était du **`2026-08-06` pour `−4,40 $`**, quand celle à corriger est du **`2026-09-01` pour
+`7,84 $`** : **deux transactions distinctes chez le même marchand**, la seconde arrivée le jour même
+avec le rattrapage d'historique. La précondition était remplie ; c'est ma lecture qui ne l'était pas.
+
+**Une recherche par MARCHAND répond à « ce marchand a-t-il des lignes actives ? », jamais à « CETTE
+ligne est-elle encore active ? ».** L'identité d'une transaction est le couple (date, montant) — le
+marchand n'est qu'un filtre. Le piège se referme précisément quand un lot d'import vient d'élargir
+l'historique : un marchand récurrent (abonnement, épicerie, transport) a soudain des homonymes
+partout, et un recensement écrit avant l'import devient faux sans que personne n'y touche. ⚠️ Et il
+est **asymétrique** : ici il faisait renoncer à un import légitime (coût visible, 11,18 $ manquants) ;
+dans l'autre sens — conclure « 0 résultat donc marquée » sur un marchand dont la ligne n'a simplement
+jamais existé — il ferait **compter une dépense deux fois**, sans rien de rouge nulle part.
+
+
+### `AVANT-DE-DEMANDER-CE-QU-UNE-VALEUR-CONTIENT-DEMANDER-QUI-LA-LIT` (2026-09-16, même journée)
+
+Marc ayant répondu « prioritaire » sur `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`, j'avais préparé une
+question : *ce solde courtier contient quoi — la valeur marchande du compte, ou les liquidités
+seules ?* — au motif que l'écraser sur une grandeur différente des titres saisis ferait un **double
+comptage**. La crainte était raisonnable et la question, mesurée avant d'être posée, **inutile** :
+`fintableBrokerBalances` n'a **qu'un seul lecteur**, `BrokerReconciliationCard`. Il ne pilote aucun
+calcul — `computeRawNetWorth` et la projection lisent `assets`. Le solde courtier est une
+**référence de comparaison**, et l'écart est affiché en ligne explicite. Il n'y avait rien à
+doubler.
+
+**Avant de demander à l'utilisateur ce qu'une valeur CONTIENT, demander au code QUI la LIT.** La
+première question coûte un aller-retour et le crédit qui va avec ; la seconde est un grep. Et elles
+ne sont pas symétriques : `UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE` enseignait
+qu'une mesure impossible depuis le conteneur est parfois à **une question de distance** — le
+symétrique est qu'une question posée à l'utilisateur est parfois à **un grep de distance**. Ce qui
+départage est ce qu'on cherche : une convention EXTÉRIEURE (comment un fournisseur écrit un signe)
+ne se trouve que chez lui ; un usage INTERNE (qui consomme ce champ) est toujours dans le dépôt.
+
+⚠️ **Et le recensement a rendu autre chose que ce qu'il cherchait — plus grave que le ticket.** Un
+compte en devise étrangère est écarté par `toPersistableBrokerBalances` (`if (currency !== base)
+continue`) **avant** la persistance, donc il n'entre jamais dans `balances`, donc jamais dans
+`unreadableAccountLabels`. Or cette liste existe précisément pour qu'« un compte écarté ne
+disparaisse JAMAIS en silence » — son commentaire cite le finding qui l'a fait naître. **Elle
+recense deux des trois causes d'écartement et ignore la troisième, parce que la troisième est
+filtrée un étage plus haut.** Une garde d'exhaustivité posée au mauvais étage a l'apparence exacte
+d'une garde qui marche : elle tire sur les cas qu'elle voit, et son compteur à zéro sur les autres
+se lit « rien à signaler ». Variante de `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`, et la question
+qui la débusque est : *combien de chemins mènent à « écarté », et la liste en connaît-elle combien ?*
+
+⚠️ Corollaire de SURFACE : l'écart est bien annoncé — dans `report.warnings`, donc **Système &
+diagnostics**. Pas sur l'écran Investissements, ni sur l'Accueil, c'est-à-dire pas là où l'utilisateur
+regarde ses placements. Deux surfaces, une seule parle, et c'est l'autre qu'il ouvre.
+
+---
+
+## `UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE` (2026-09-16)
+
+`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` : le compte courtier USD de Marc était IGNORÉ à chaque passe
+(avertissement honnête, donc pas silencieux — mais faux par omission). Le remède évident était
+d'appeler `assetValueCad` / `toCurrencyFactor`, **la source unique FX du dépôt**, protégée par sa
+propre garde (`assetFxGuard`). C'était le piège.
+
+`toCurrencyFactor` **replie sur 1:1** quand le taux manque, et le journalise. C'est le bon
+comportement pour ce qu'il sert : un ACTIF affiché, où montrer une valeur sous-évaluée assortie
+d'une trace vaut mieux que faire disparaître la ligne. Appliqué au **solde du courtier**, le même
+repli donne 72 040 « CAD » pour 72 040 USD — faux d'environ 30 %, et présenté comme **l'autorité**
+sur le total du compte (« le montant du courtier fait autorité », choix Marc écrit dans le module).
+Le correctif aurait été pire que le défaut sur exactement la branche qu'il prétendait réparer.
+
+**Avant de réutiliser une source unique, lire son mode DÉGRADÉ, pas seulement son calcul.** Un
+helper partagé encode un arbitrage — ici « montrer quelque chose plutôt que rien » — et cet
+arbitrage voyage avec lui chez tous ses appelants, y compris ceux dont l'enjeu est l'inverse. Ce
+n'est pas une raison de ne pas partager : c'est une raison de demander *quel est le coût d'être
+approximativement faux ici ?* La réponse était « un montant crédible et faux », donc le taux est
+interrogé **explicitement**, et `0`, négatif et non fini comptent comme absent.
+
+⚠️ **L'ORDRE DES GARDES EST LE CORRECTIF.** Une entrée « taux manquant » porte `balanceCad: 0`, qui
+ne signifie rien et n'existe que pour que le compte soit NOMMÉ. Testée *après* la garde de finitude,
+elle passe (0 est fini), entre dans son panier fiscal et s'additionne à zéro : le compte disparaît
+du total sans laisser de trace — exactement le défaut que la liste des écartés existe pour
+empêcher, réintroduit par la réparation. La garde a donc une perturbation à elle (la déplacer d'un
+cran → 1 rouge), parce que rien dans le TYPE ne dit qu'un champ doit être lu en premier.
+
+⚠️ **Et la troisième cause d'écartement n'était recensée nulle part.** `unreadableAccountLabels`
+existe précisément pour qu'« un compte écarté ne disparaisse JAMAIS en silence » — son commentaire
+cite le finding qui l'a fait naître. Mais le filtre de devise vivait dans
+`toPersistableBrokerBalances`, un cran **avant** la persistance : ces comptes n'entraient jamais
+dans `balances`, donc jamais dans la liste. **Elle connaissait deux causes sur trois, et son
+compteur à zéro sur la troisième se lisait « rien à signaler »** (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`,
+appliqué à l'ÉTAGE plutôt qu'au critère). La question qui la débusque : *combien de chemins mènent
+à « écarté », et la liste en connaît-elle combien ?*
+
+⚠️ **Corollaire de SURFACE, et c'est ce que Marc voyait** : l'écart était bien annoncé — dans
+`report.warnings`, donc **Système & diagnostics**. Pas sur l'écran Investissements, ni sur
+l'Accueil. Deux surfaces, une seule parle, et c'est l'autre qu'il ouvre pour regarder ses
+placements. *Une détection non ANNONCÉE là où l'utilisateur regarde n'existe pas pour lui.*
+
+⚠️ **Un DÉCOUPAGE annoncé se re-mesure comme un périmètre.** J'avais proposé à Marc « réparer la
+liste d'abord, convertir ensuite », et il avait dit oui. Mesuré en écrivant : les deux moitiés sont
+indissociables — la liste ne peut pas voir des comptes filtrés avant elle, et la conversion ne peut
+pas être inconditionnelle. Livrer la première seule aurait produit une liste structurellement vide,
+c'est-à-dire une protection qui ne peut pas tirer. Un ordre d'exécution annoncé est une hypothèse
+sur le code, pas une décision de produit : quand la mesure le réfute, on le dit et on livre le lot
+entier plutôt que la moitié qu'on avait promise.
+
+---
+
+## `UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE` (2026-09-16)
+
+`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` devait montrer le CONTENU des champs que l'API Fintable
+envoie hors contrat — `external_memo` est du texte libre, et c'est la seule piste connue pour savoir
+si l'API dit quelque part la devise réelle d'une transaction. Marc a tranché : « oui, à l'écran
+seulement ». La difficulté n'était pas de produire l'échantillon, c'était de garantir qu'il n'aille
+nulle part ailleurs : le rapport de synchro est rendu sans gate de mode discret **et** `cat`é en
+clair dans les journaux GitHub Actions d'un dépôt **public**.
+
+La réponse facile était un commentaire — « ⚠️ ne jamais recopier ceci dans `report.warnings` ». Le
+dépôt sait déjà ce que ça vaut : `UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`.
+La réponse tenue est **structurelle** : l'échantillon voyage par le RETOUR de
+`runFintableBrowserSync`, jamais par le rapport ni par le patch persisté, et **le chemin CRON ne
+rend pas ce champ du tout**. Du côté qui publie dans un journal public, la fuite n'est pas
+interdite : elle est **impossible à écrire**, parce que le contrat de retour ne la porte pas. Une
+règle qu'un futur lot devrait se rappeler de respecter est une règle qui sera oubliée ; une règle
+que le compilateur ou la forme du code rend inexprimable ne l'est pas.
+
+⚠️ **Le patron était déjà là, et il portait sa justification écrite** : `incertaines`, dans le même
+type de retour, est annoté « état de TRAVAIL, jamais persisté ». `COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`
+dit de copier celui qui explique POURQUOI il est comme il est — c'est exactement ce qui distingue un
+voisin bien conçu d'un voisin qui a eu de la chance.
+
+⚠️ **La garde vise le rapport SÉRIALISÉ ENTIER, pas `warnings`.** Asserter sur le champ qu'on
+soupçonne aujourd'hui protège de la fuite qu'on imagine ; sérialiser tout l'objet protège aussi de
+celle qu'un champ ajouté demain introduirait sans que personne y pense. La perturbation qui la
+prouve est la fuite exacte — recopier les valeurs dans `warnings` — et elle rougit DEUX fois, sur le
+rapport et sur le patch, parce que le rapport est lui-même persisté.
+
+⚠️ **Anti-vacuité obligatoire et non évidente ici** : la garde exige que le rapport NOMME encore
+`external_memo`. Sans elle, « la valeur n'apparaît nulle part » serait tout aussi vrai d'un rapport
+vide, d'un client en panne ou d'un inventaire débranché — trois façons de passer au vert en ayant
+perdu la fonctionnalité qu'on protège.
+
+⚠️ Et le résultat NÉGATIF se publiera autant que le positif : si `external_memo` ne porte pas la
+devise, le dire FERME la piste. Sans ça, la prochaine session la retente à l'aveugle ou la déclare
+impossible — les deux ont déjà coûté des livraisons (`DOC-STALE-IMPOSSIBILITY`).
+
+---
+
+## `UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE` (2026-09-16, revue panel)
+
+Le lot `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` s'ouvre sur une leçon fière :
+`UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE` — ne pas convertir avec
+`toCurrencyFactor`, dont le repli 1:1 donnerait 72 040 « CAD » pour 72 040 USD. Le correctif
+interroge donc le taux explicitement. **Et il retombe dans le même piège un cran plus bas** :
+`DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 »), il est **toujours présent** dans
+l'état, et `fxRatesEstimated: true` existe précisément pour le dire (`[FX-FALLBACK-SILENCIEUX]`).
+Sans consulter ce drapeau, le code traitait 1,40 comme un « taux connu » et publiait la conversion
+comme AUTORITÉ.
+
+**1,40 est pire que 1:1, parce qu'il est plus crédible.** Un total sous-évalué de 30 % avec un
+facteur 1 finit par se voir ; un total converti à un taux plausible mais périmé ne se voit jamais.
+La question à poser n'est pas « ce repli est-il grossier ? » mais **« qu'est-ce qui, dans le
+résultat, permettrait encore de savoir que c'est un repli ? »** — et quand la réponse est « rien »,
+il faut le drapeau, pas un meilleur chiffre.
+
+⚠️ **Corollaire mesuré** : la branche « taux absent », écrite comme le filet du lot, était **quasi
+inatteignable** pour USD et EUR — les deux seules devises étrangères du type — puisque la table de
+repli les porte toujours. Une garde dont le chemin nominal ne passe jamais est une garde qui ne
+peut pas tirer, et son compteur à zéro se lit « rien à signaler ».
+
+### `UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET` (même revue)
+
+Trois défauts de ce lot sont des re-commissions de leçons que j'avais moi-même écrites, parfois le
+jour même :
+
+1. **La regex de normalisation d'espaces était `/ | /g` — de l'ASCII pur**, donc une transformation
+   IDENTITÉ. La garde de non-fuite qu'elle alimente était **vacueuse** : un `formatCAD` interpolé
+   demain produirait une insécable que `.not.toContain('8 642')` ne verrait jamais. C'est la
+   troisième fois pour ce dépôt, et la deuxième où je l'écris après l'avoir documentée. Parade
+   ajoutée : **une anti-vacuité du NORMALISATEUR lui-même** (`chiffres('8 642')` doit rendre
+   `'8 642'`), pas seulement de son sujet.
+2. **Le compteur « + N autre(s) » manquait** sur la nouvelle troncature, alors que le lot précédent
+   l'avait ajouté quatre heures plus tôt sur l'avertissement voisin, avec la phrase « borné et
+   tronqué en silence sont indiscernables ». Aggravant ici : l'ordre est ALPHABÉTIQUE, donc le champ
+   qui porte la devise pouvait tomber au-delà du 12ᵉ sans que personne ne le sache.
+3. **Un `continue` sur débordement** faisait retomber le compte dans le trou que le lot venait de
+   boucher : absent des trois listes d'écartés, donc invisible sans trace.
+
+Ce que ça enseigne n'est pas « relire mes leçons » — je les avais relues. C'est que **la leçon
+protège l'endroit où elle a été écrite, pas la classe**. Elle se vérifie par une PERTURBATION à
+l'endroit neuf, jamais par la conviction de la connaître.
+
+⚠️ Et les quatre agents du panel ont trouvé **six défauts réels** que le typecheck, le lint, 321
+tests ciblés verts et mes huit perturbations n'avaient pas vus — dont deux qui atteignaient
+l'utilisateur (données bancaires réelles affichées en mode démo ; remède qui envoie corriger la
+mauvaise chose). Troisième lot d'affilée où le panel bat les deux gates.

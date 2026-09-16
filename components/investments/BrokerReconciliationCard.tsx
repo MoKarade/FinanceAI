@@ -54,7 +54,11 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
     // Rien de réconciliable ET rien à signaler → ship dark (sync jamais passée, ou tout illisible
     // serait quand même signalé ci-dessous via unreadable/unassigned).
     if (reco.regimes.length === 0 && reco.unassignedAccountLabels.length === 0
-        && reco.unreadableAccountLabels.length === 0) return null;
+        && reco.unreadableAccountLabels.length === 0
+        // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Un compte écarté faute de taux DOIT pouvoir réveiller
+        // la carte à lui seul : sinon un utilisateur dont TOUS les comptes sont en devise verrait
+        // l'écran muet — la panne la plus silencieuse possible.
+        && reco.missingRateAccountLabels.length === 0) return null;
 
     // Fraîcheur GLOBALE = la plus ancienne de tous les paniers (même règle que par panier : ne rien
     // promettre de plus frais que le compte le plus vieux). `null` (= inconnue) tant qu'aucun panier
@@ -69,7 +73,27 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
     // Comptes EXCLUS du total (régime non déclaré / solde illisible) : le total qui les omet doit le
     // DIRE, sur les deux variantes — un agrégat amputé en silence est un chiffre faux affiché avec
     // assurance (classe HIST-COVERAGE-TOTAL ; finding convergent des 3 agents du panel #543).
-    const excludedCount = reco.unassignedAccountLabels.length + reco.unreadableAccountLabels.length;
+    const excludedCount = reco.unassignedAccountLabels.length + reco.unreadableAccountLabels.length
+        + reco.missingRateAccountLabels.length;
+
+    /**
+     * ⚠️ [revue panel] La cause UNIQUE d'exclusion, quand il n'y en a qu'une — pour que le remède
+     * affiché soit celui du vrai problème.
+     *
+     * Le message compact nommait « régime non déclaré ou solde illisible » et prescrivait le remède
+     * de la première ; depuis que `excludedCount` compte aussi les comptes sans taux, il pouvait
+     * envoyer déclarer un régime fiscal à quelqu'un dont le seul problème est un taux pas encore
+     * connu. « Un diagnostic qui nomme la mauvaise cause envoie corriger la mauvaise chose » — ce
+     * que le test de ce lot énonce côté service, et que cette branche d'écran avait oublié.
+     *
+     * `null` = plusieurs causes coexistent : on ne prescrit alors AUCUN remède particulier et on
+     * renvoie au détail, plutôt que d'en choisir un au hasard.
+     */
+    const causeUnique: 'taux' | 'regime' | 'illisible' | null =
+        reco.missingRateAccountLabels.length === excludedCount ? 'taux'
+            : reco.unassignedAccountLabels.length === excludedCount ? 'regime'
+                : reco.unreadableAccountLabels.length === excludedCount ? 'illisible'
+                    : null;
 
     if (variant === 'compact') {
         // [Panel #543, CRITIQUE] AUCUN panier réconcilié mais des comptes existent (tous non
@@ -79,10 +103,25 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
         if (reco.regimes.length === 0) {
             return (
                 <Card className="bg-white/[0.03] border-white/10">
+                    {/* ⚠️ [revue panel] Ce message nommait DEUX causes (« régime non déclaré ou solde
+                        illisible ») et prescrivait le remède de la première. Depuis qu'`excludedCount`
+                        compte AUSSI les comptes sans taux de change, il pouvait envoyer déclarer un
+                        régime fiscal à quelqu'un dont le seul problème est un taux pas encore connu —
+                        « un diagnostic qui nomme la mauvaise cause envoie corriger la mauvaise chose »,
+                        exactement ce que le test de ce même lot énonce côté service, oublié ici.
+                        Le remède est donc DÉRIVÉ de la cause réelle, jamais écrit en dur. */}
                     <div className="text-meta text-warning-400" role="status">
                         <span className="font-bold">{excludedCount} compte{excludedCount > 1 ? 's' : ''} courtier (Fintable)</span>{' '}
-                        sans régime fiscal déclaré ou au solde illisible — total non affichable.
-                        Déclare-les dans Réglages → Sync bancaire Fintable.
+                        {causeUnique === 'taux'
+                            ? 'en devise étrangère, sans taux de change connu — total non affichable. '
+                              + 'Le taux arrive avec la prochaine mise à jour des cours ; rien à corriger de ton côté.'
+                            : causeUnique === 'regime'
+                                ? 'sans régime fiscal déclaré — total non affichable. '
+                                  + 'Déclare-les dans Réglages → Sync bancaire Fintable.'
+                                : causeUnique === 'illisible'
+                                    ? 'au solde illisible — total non affichable. Relance une synchronisation.'
+                                    : 'hors réconciliation, pour plusieurs raisons — total non affichable. '
+                                      + 'Ouvre l\'onglet Investissements pour le détail par compte.'}
                     </div>
                 </Card>
             );
@@ -169,6 +208,20 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
                     <p role="alert" className="text-meta text-danger-400 bg-danger-500/10 border border-danger-500/20 rounded-card px-3 py-2">
                         Solde illisible pour : {reco.unreadableAccountLabels.join(', ')} — écarté des totaux
                         (aucun 0 inventé). Relance une synchronisation.
+                    </p>
+                )}
+                {/* [FINTABLE-DISNAT-USD-SOLDE-IGNORE] La TROISIÈME cause d'écartement, qui n'était
+                    recensée nulle part : le filtre de devise vit un cran avant la persistance, donc
+                    ces comptes n'entraient dans AUCUNE des deux listes ci-dessus. L'avertissement
+                    existait — dans le rapport de synchro, c'est-à-dire Système & diagnostics : pas
+                    ici, pas là où on regarde ses placements. Une détection non annoncée là où
+                    l'utilisateur regarde n'existe pas pour lui. */}
+                {reco.missingRateAccountLabels.length > 0 && (
+                    <p role="status" className="text-meta text-warning-400 bg-warning-500/10 border border-warning-500/20 rounded-card px-3 py-2">
+                        Taux de change inconnu pour : {reco.missingRateAccountLabels.join(', ')} — leur
+                        solde est écarté des totaux plutôt que converti au hasard (un taux 1:1 donnerait
+                        un montant faux présenté comme exact). Les titres que tu as saisis restent
+                        utilisés. Le taux arrive avec la prochaine mise à jour des cours.
                     </p>
                 )}
             </div>

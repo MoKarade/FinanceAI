@@ -1630,25 +1630,37 @@ de signe), mais personne n'a encore comparé les deux sur une vraie passe. Le pl
 donc par une mesure, pas par un correctif. Le jeton serveur étant révoqué (401), cette mesure passe par
 le navigateur de Marc.
 
-### ✅ ÉTAPE 1 LIVRÉE le 2026-09-16 — **une question pour toi, une seule fois**
+### ✅ ÉTAPE 1 LIVRÉE le 2026-09-16 — **MESURE OBTENUE le jour même**
 
-À ta prochaine synchro Fintable, ouvre **Système & diagnostics → carte « Sync Fintable »**. Tu y
-verras une ligne du genre :
+Le rapport de synchro du 2026-09-16 a publié :
 
-> Mesure en cours — signe du solde reçu de Fintable pour tes cartes/dettes (le MONTANT n'est jamais
-> écrit ici) : « Desjardins Cash Back Mastercard » → négatif. …
+> « Desjardins Cash Back Mastercard (5020) » → **positif**
 
-**Ce que j'ai besoin de savoir** : à cette date-là, est-ce que tu **DOIS** de l'argent sur cette
-carte, ou est-ce que le solde est **en ta faveur** ? C'est tout. Ta réponse fixe la convention de
-signe de Fintable, et c'est la seule chose qui manque pour l'étape 2.
+Marc, interrogé sur cette passe : **« c'est en ma faveur »**.
 
-⚠️ Le montant n'est volontairement PAS affiché : ce rapport part aussi en clair dans les journaux
-GitHub Actions, et le dépôt est public. Le signe suffit à trancher ; le montant n'ajoute rien et ne
-se retire plus une fois écrit.
+**La convention de Fintable est donc établie : `négatif = tu DOIS`, `positif = c'est en ta faveur`.**
 
-⚠️ **Rien n'a bougé d'un dollar** : `Math.abs` est toujours en place, la dette vaut toujours la
-valeur absolue du solde. C'est l'étape 2 qui change ça, une fois ta réponse reçue. Et le message
-disparaîtra à ce moment-là — un avertissement qui parle pour toujours est un avertissement mort.
+⚠️ **Une seule observation a suffi, et ce n'est pas un coup de chance — c'est la SEULE qui pouvait
+trancher.** Dans le cas nominal (Marc doit de l'argent), les deux conventions rendent le MÊME
+résultat : `Math.abs(−500)` et `Math.abs(+500)` valent tous les deux 500, donc mille passes
+normales n'auraient jamais rien appris. C'est la branche RARE — la carte en crédit — qui sépare les
+deux hypothèses, et c'est exactement celle-là qui s'est présentée. L'hypothèse « positif = dû »,
+écrite en commentaire dans le code depuis toujours et jamais mesurée, est **réfutée**.
+
+⚠️ **Nuance honnête** : cette mesure réfute « positif = dû » de façon décisive. Elle est *compatible*
+avec « négatif = dû » sans le prouver positivement — il faudrait pour ça une seconde passe où Marc
+doit effectivement de l'argent et où le solde arrive en négatif. Aucune décision ne l'attend : le
+plan de l'étape 2 (`dû = max(0, −solde)`) est déjà écrit dans ce sens, et il est confirmé.
+
+✅ **Bonne nouvelle : rien n'est faux aujourd'hui dans ton patrimoine net.** Aucune dette n'est
+associée à cette carte (`Dettes mises à jour : aucune`), donc la dette fantôme de 200 $ que le
+`Math.abs` aurait fabriquée n'a **jamais été écrite**. Le défaut est réel et il n'a pas encore
+coûté un dollar.
+
+⚠️ **Ce qui reste faux, c'est le COMMENTAIRE** : `mapSnapshot.ts` affirme encore « un solde négatif
+signifie un crédit en ta faveur », soit l'inverse de la mesure. Un commentaire faux dans du code
+money-critical est un piège pour la prochaine session — il se corrige avec l'étape 2, dans le même
+lot que le `Math.abs` qu'il explique.
 
 ### Plan proposé — trois étapes, la première ne déplace aucun dollar
 
@@ -1881,9 +1893,20 @@ marquées, donc elles ne sont pas marquées. Les réimporter aurait compté la d
 | Duty Free New Departur | 2026-09-10 | 126.35 $ | **179.04 $** | 52.69 $ |
 | *BRUTTITO TERMINAL 1 TOCUMEN 008 | 2026-09-10 | 36.80 $ | **52.19 $** | 15.39 $ |
 
-⚠️ **Ce qu'il te reste à faire, et c'est 4 clics** : dans « Transactions », coche ces quatre lignes,
-puis « Exclure des calculs ». Dis-le-moi et j'importe les quatre bons montants (**262,37 $**). Tant
-que ce n'est pas fait, ces quatre dépenses sont SOUS-évaluées de 77,39 $ au total.
+✅ **FAIT le 2026-09-16.** Marc a exclu les quatre lignes, et les quatre bons montants ont été
+importés (**262,37 $**, 4 ajoutées / 0 rejet, sauvegarde `…2026-09-16T18-20-27-514Z.bak.json`).
+La précondition a été vérifiée **par ligne**, jamais comme propriété globale : `A.saily`,
+`Duty Free New Departur` et `*BRUTTITO TERMINAL` ne ressortent plus d'une recherche qui EXCLUT les
+lignes marquées → elles sont bien exclues.
+
+⚠️ **Et `Smartcar Mountain` a failli me faire suspendre un import parfaitement légitime** : elle
+RESSORTAIT de la recherche. Mais à `2026-08-06` pour `−4,40 $`, alors que la ligne à corriger est du
+`2026-09-01` pour `7,84 $` — **deux transactions différentes chez le même marchand**, la seconde
+arrivée avec le rattrapage d'historique du jour. Une recherche par MARCHAND ne dit rien d'une LIGNE :
+c'est le couple (date, montant) qui identifie. Lue trop vite, elle aurait suspendu 11,18 $ au motif
+d'un doublon qui n'existait pas.
+
+Ces quatre dépenses ne sont donc plus sous-évaluées de 77,39 $.
 
 **B. Quatre billets de métro du 2026-08-31 n'ont pas été remis.** Tu avais répondu **« 2 vrais
 achetés »** sur ce groupe : le tableau en apparie 6, je n'en ai réimporté que **2** (2,18 $ chacun).

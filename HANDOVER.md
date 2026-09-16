@@ -4,6 +4,111 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-16 (soir) — **REVUE PANEL : 6 défauts RÉELS dans mon propre lot**
+> Quatre agents sur le diff. Le typecheck, le lint, **321 tests ciblés verts** et mes **8
+> perturbations** n'avaient rien vu. Troisième lot d'affilée où le panel bat les deux gates.
+> 🔴 **Le pire** : `DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 »), **toujours
+> présent**, avec `fxRatesEstimated` qui existe pour le dire. Je publiais ce repli comme AUTORITÉ —
+> exactement le piège que l'en-tête de mon lot prétendait éviter, un cran plus bas : **1,40 est pire
+> que 1:1 parce qu'il est plus crédible, donc moins réfutable**. Et ma branche « taux absent » était
+> **quasi inatteignable** pour USD/EUR. ✅ Corrigé : taux ESTIMÉ = traité comme absent.
+> 🔴 **Données bancaires réelles visibles en mode démo** : `setChampsInconnus` était appelé AVANT le
+> contrôle `isTestMode`, alors que `setIncertaines` est APRÈS — le commentaire qui explique cet ordre
+> était déjà là, trois lignes plus haut. ✅ Déplacé + réinitialisé en tête de passe.
+> 🟠 **Ma garde de non-fuite était VACUEUSE** : la regex d'espaces était `/ | /g`, de l'**ASCII pur**,
+> donc une transformation IDENTITÉ. 3ᵉ fois pour ce dépôt, 2ᵉ fois que je l'écris après l'avoir
+> documentée. ✅ Corrigée + **anti-vacuité du NORMALISATEUR lui-même**.
+> 🟠 **Un avertissement devenu FAUX** : « conversion non implémentée → IGNORÉ » sur le site
+> `investment`. ⚠️ Contrôle du panel : les 2 autres occurrences du même libellé restent VRAIES — **1
+> site sur 3**. ✅ Le mapper étant PUR (il ne voit ni taux ni drapeau), il décrit ce qu'il SAIT.
+> 🟠 **Remède qui nomme la mauvaise cause** (carte compact) : envoyait déclarer un régime fiscal à
+> quelqu'un dont le seul problème est un taux inconnu. ✅ Remède DÉRIVÉ de la cause unique réelle.
+> 🟡 **Trou de chaîne service→composant** sur `missingRate` : aucun test ne posait le champ dans le
+> composant. ✅ 4 gardes neuves, 2 perturbations (3 rouges / 1 rouge).
+> 🟡 **Mon commentaire affirmait une capacité INEXISTANTE** (`soldesDetteSignes` « seule trace pour
+> re-vérifier ») — le champ n'atteint aucun rapport. ✅ Corrigé, et routé.
+> ⏸️ **2 tickets routés avec leur mesure** : `[FINTABLE-ECART-FANTOME-DEUX-DATES-DE-TAUX]` (écart
+> inventé **2 000–4 000 $** mesuré, OUVERT par ce lot, borné à la carte, atténué par le durcissement)
+> et `[FINTABLE-SIGNE-RECIDIVE-NON-DETECTEE]`.
+>
+> ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` LIVRÉ (3ᵉ des 3 GO)
+> `echantillonsClesInconnues` (pure, bornée 2× : clés ET nombre/longueur des exemples) publie les
+> VALEURS des champs hors contrat sur le SEUL écran de Marc (carte « Sync Fintable »).
+> ⚠️⚠️ **La contrainte de vie privée a dicté l'ARCHITECTURE** : l'échantillon voyage par le RETOUR de
+> `runFintableBrowserSync` (patron de `incertaines`, qui portait déjà sa justification écrite),
+> jamais par `report` ni le patch. Et le chemin CRON — dont le résultat est `cat`é dans un journal
+> PUBLIC — **ne rend pas ce champ du tout** : la fuite y est inexprimable, pas interdite.
+> La garde vise le rapport **SÉRIALISÉ ENTIER**, donc un champ ajouté demain est couvert sans qu'on
+> y pense ; anti-vacuité = le rapport doit NOMMER encore `external_memo`.
+> **11 gardes, 2 perturbations** : fuite exacte (valeur dans `warnings`) → 2 rouges (rapport ET
+> patch) ; câblage mort → 1 rouge.
+> ⏸️ **La question reste ouverte et elle est chez Marc** : à sa prochaine synchro manuelle, regarder
+> si un exemple contient une devise/un taux. **Réponse NÉGATIVE à publier aussi** — elle ferme la
+> piste au lieu de la laisser se faire retenter à l'aveugle (`DOC-STALE-IMPOSSIBILITY`).
+>
+> ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` LIVRÉ (2ᵉ des 3 GO)
+> Conversion à l'écriture quand le taux est CONNU ; signal nommé quand il ne l'est pas ; la 3ᵉ cause
+> d'écartement enfin recensée **là où Marc regarde ses placements** (carte Investissements + Accueil).
+> ⚠️⚠️ **Le remède ÉVIDENT était le piège** : `toCurrencyFactor` (source unique FX, gardée par
+> `assetFxGuard`) replie sur **1:1** sans taux — juste pour un ACTIF affiché, catastrophique pour un
+> total qui « fait autorité » (72 040 USD → 72 040 « CAD », faux d'≈30 %, crédible). Taux interrogé
+> EXPLICITEMENT ; `0`, négatif et non fini = absent.
+> ⚠️ **L'ordre des gardes EST le correctif** : `missingRate` porte `balanceCad: 0` qui ne signifie
+> rien ; testé APRÈS la finitude il passe (0 est fini) et s'additionne à zéro → compte effacé du
+> total sans trace. Perturbation dédiée → 1 rouge.
+> ⚠️ La liste des écartés connaissait **2 causes sur 3** : le filtre de devise vivait un ÉTAGE
+> au-dessus d'elle, donc son compteur à zéro se lisait « rien à signaler ».
+> ⚠️ **J'ai annoncé un DÉCOUPAGE que la mesure a réfuté** (« la liste d'abord, la conversion
+> ensuite ») : les deux moitiés sont indissociables. Dit à Marc, lot livré entier.
+> **19 gardes** (14 → 19), 3 perturbations distinctes : `continue` restauré → 4 rouges ; ordre des
+> gardes → 1 ; taux aberrant → 1. Contrôle négatif (compte CAD, avec/sans taux) vert partout.
+>
+> ## ✅ Session 2026-09-16 (soir) — **CORRECTIF DU SIGNE LIVRÉ** (Marc : « ok pour tout »)
+> `owed = Math.max(0, −solde)` remplace `Math.abs` ; le commentaire inversé est corrigé ;
+> l'avertissement de mesure est MORT (garde INVERSÉE au même endroit, jamais supprimée).
+> Une carte en CRÉDIT ne fabrique plus de dette fantôme ; une carte à ZÉRO n'émet plus un payload
+> que `applyDebt` rejette — elle DIT que la dette garde sa valeur d'hier (moitié visible de
+> `[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`).
+> **17 gardes, 3 perturbations aux signatures DISTINCTES** : `Math.abs` restauré → **1 rouge**, et
+> lui seul (perturbation chirurgicale) ; montant interpolé → **3 rouges** (producteur + les DEUX
+> orchestrateurs : la chaîne est prouvée) ; zéro qui n'abandonne plus → **2 rouges**.
+> ⚠️ **Le `surplus` n'alimente PAS les liquidités** — étape 2 de `[FINTABLE-CARTE-DETTE-AUTO]`, qui
+> bute sur `applyCashBalance` (refus d'une cible négative). Écrit dans le code ET dans le message
+> rendu à Marc, plutôt que livré à moitié.
+> ⚠️ Piège commis DANS ma propre garde : compter par sous-chaîne nue (`Dette acc_1`) comptait aussi
+> `Dette acc_10` — un PRÉFIXE, donc un rouge sur du code sain. Délimité par les guillemets que le
+> message écrit lui-même.
+>
+> ## ✅ Session 2026-09-16 (soir) — **MESURE OBTENUE** : Fintable écrit `négatif = dû`
+> Marc a lancé la synchro, puis répondu. Rapport : « Desjardins Cash Back Mastercard (5020) →
+> **positif** » ; Marc : **« c'est en ma faveur »**. L'hypothèse du code (« positif = montant DÛ »,
+> commentée dans `mapSnapshot.ts` et jamais mesurée) est **RÉFUTÉE**. L'étape 1 a fait exactement ce
+> pour quoi elle a été écrite, dès sa première passe réelle.
+> ⚠️ **Portée** : la mesure TUE « positif = dû » ; elle est seulement *compatible* avec « négatif =
+> dû » (il faudrait une passe où Marc doit de l'argent pour le prouver positivement). Aucune décision
+> n'attend ça — le plan de `[FINTABLE-CARTE-DETTE-AUTO]` étape 2 (`dû = max(0, −solde)`) était **déjà
+> écrit dans ce sens**, donc la mesure le CONFIRME. Rien à recadrer.
+> ✅ **Aucun dollar n'est faux aujourd'hui** : aucune dette n'est associée à cette carte, donc la
+> dette fantôme de 200 $ n'a jamais été écrite. Défaut RÉEL ≠ défaut ATTEINT.
+> ✅ **Import de correction livré** : les 4 originaux sous-évalués exclus par Marc, les 4 bons
+> montants importés (**262,37 $**, 4 ajoutées / 0 rejet). Précondition vérifiée **PAR LIGNE**.
+> ⚠️⚠️ **`Smartcar Mountain` RESSORTAIT de la recherche** — mais au `2026-08-06` pour `−4,40 $`, quand
+> la ligne visée est du `2026-09-01` pour `7,84 $` : deux transactions distinctes du même marchand, la
+> seconde arrivée le jour même avec le rattrapage d'historique. Lue vite, elle faisait suspendre un
+> import légitime (`UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE`).
+> ✅✅ **Le plancher dérivé de la bascule a passé son premier VRAI test** : « Rattraper l'historique »
+> a ajouté **1 478 transactions** sur un état NON vierge (588 d'avant juillet 2025). Mesuré après
+> coup : les deux `Sodexo` réécrites à la main la veille sont intactes, leurs originaux à 13,50 $ ne
+> sont pas revenus, **0 doublon** sur les 36 lignes du Brésil. Une mesure qui confirme se publie.
+> ⚠️ **Marc a fermé un risque** : aucun voyage hors Canada avant sept. 2026 → le défaut de devise ne
+> touche que les 44 lignes déjà traitées ; les 1 478 lignes rattrapées ne sont pas concernées.
+> 🧭 **DEUX GO DE MARC, non commencés — plan d'abord** : `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`
+> (« prioritaire ») et `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` (« oui, à l'écran seulement » — jamais
+> dans `report.warnings`, le rapport part dans un journal PUBLIC).
+> ⏸️ **Reste sur le signe** : `owed` dérivé du SIGNE au lieu de `Math.abs`, le **commentaire inversé**
+> de `mapSnapshot.ts:271-273`, et l'arrêt de l'avertissement de mesure (garde à INVERSER, pas à
+> supprimer). Money-critical → plan + OK de Marc.
+>
 > ## 🟦 Session 2026-09-16 — `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` étape 1 : MESURER le signe
 > Marc : « fais la suite maintenant ». Le mapper porte `const owed = Math.abs(account.balance)` sous
 > le commentaire « un solde négatif signifie un crédit en ta faveur » ; Marc décrit l'INVERSE

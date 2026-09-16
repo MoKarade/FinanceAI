@@ -6,6 +6,79 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (tu peux enfin voir ce que Fintable envoie et qu'on ignore)
+
+- **Pourquoi** : l'import te disait déjà que 5 champs arrivent et sont ignorés — mais seulement
+  leurs NOMS. Un nom ne dit pas si un champ sert. Celui qui compte est `external_memo` : du texte
+  libre, là où certaines banques écrivent « USD 4.40 @ 1.37 ». C'est la seule piste pour corriger à
+  la source les montants étrangers qui ont faussé 44 de tes dépenses.
+- **Ce qui change** : après une synchro manuelle, la carte « Sync Fintable » (Réglages) montre
+  quelques **valeurs d'exemple** pour chacun de ces champs.
+- ⚠️ **Affiché là, et nulle part ailleurs** : jamais dans le rapport de synchro, qui est archivé en
+  clair dans un journal public — un mémo bancaire peut contenir un nom ou une adresse. La synchro
+  automatique du serveur n'a même pas de quoi les transmettre.
+- **Ce que j'attends de toi** : si l'un de ces exemples contient une devise ou un taux, dis-le-moi.
+  Si aucun ne le fait, dis-le aussi — ça ferme la piste au lieu de la laisser se faire retenter.
+
+---
+
+## [unreleased] — 2026-09-16 (ton compte Disnat en USD réapparaît dans tes placements)
+
+- **Le problème que tu ne pouvais pas voir** : « Disnat (L7B1) » est en USD, et son montant était
+  ignoré à chaque synchro. L'avertissement existait — mais dans *Système & diagnostics*, pas sur
+  l'écran **Investissements** ni sur l'**Accueil**. Là où tu regardes tes placements, le compte
+  n'était ni réconcilié ni signalé : simplement **absent**, ce qui ressemble à un compte qui
+  n'existe pas.
+- **Ce qui change** : son solde est maintenant **converti en dollars canadiens** au taux du moment
+  et entre normalement dans la réconciliation avec tes titres saisis.
+- **Si le taux de change manque**, le compte n'est pas converti au hasard — il est **nommé à
+  l'écran**, avec la raison. Un taux 1:1 appliqué par défaut aurait affiché 72 040 $ pour
+  72 040 US$ : un montant faux d'environ 30 %, présenté comme exact. Mieux vaut le dire que le
+  deviner.
+- Tes titres saisis à la main restent utilisés dans tous les cas.
+
+---
+
+## [unreleased] — 2026-09-16 (ta carte en crédit ne fabrique plus de dette)
+
+- **Ce qui change** : le calcul suit maintenant la convention que ta réponse a établie. Un solde
+  **négatif** (tu dois) met la dette à jour ; un solde **positif** (en ta faveur) n'en crée plus
+  aucune — avant, la valeur absolue en faisait une dette du même montant.
+- **Une carte remboursée à zéro ne produit plus un message incompréhensible** : au lieu d'un
+  « Payload non appliqué », le rapport dit en clair que la dette garde sa valeur précédente et
+  pourquoi FinanceAI ne peut pas encore la ramener à zéro.
+- **Le message « Mesure en cours » a disparu** : il avait une durée de vie bornée, sa mesure est
+  faite. Un avertissement qui parle pour toujours est un avertissement qu'on cesse de lire.
+- ⚠️ **Ton crédit ne compte pas encore dans tes liquidités.** C'est l'étape suivante, et elle bute
+  sur une contrainte réelle (l'app refuse une cible de liquidités négative). Le rapport te le dit
+  plutôt que de faire les choses à moitié.
+
+---
+
+## [unreleased] — 2026-09-16 (réponse reçue : ta carte est en TA faveur — et tes 4 dépenses de voyage sont corrigées)
+
+- **Ta réponse a tranché.** Le rapport de synchro a affiché « Desjardins Cash Back Mastercard (5020)
+  → **positif** », et tu m'as dit : **« c'est en ma faveur »**. La convention de Fintable est donc
+  `négatif = tu dois`, `positif = c'est en ta faveur` — exactement l'inverse de ce que le code
+  supposait depuis toujours.
+- **Une seule passe a suffi, et ce n'est pas de la chance** : tant que ta carte est simplement à
+  découvert, les deux hypothèses donnent le même chiffre (la valeur absolue les confond). C'est le cas
+  rare — la carte en crédit — qui les sépare, et c'est celui qui s'est présenté.
+- ✅ **Rien n'est faux dans ton patrimoine net aujourd'hui** : aucune dette n'est associée à cette
+  carte, donc la dette inventée de 200 $ n'a jamais été écrite. Le défaut est réel, il n'a pas encore
+  coûté un dollar.
+- **Tes 4 dépenses de voyage sont réparées** : tu as exclu les quatre originaux sous-évalués, j'ai
+  importé les bons montants (**262,37 $**, 4 ajoutées, 0 rejet, sauvegarde horodatée avant écriture).
+  Ces dépenses ne sont plus sous-comptées de 77,39 $.
+- ✅ **Le correctif de la bascule anti-doublon a passé son premier vrai test.** Ton « Rattraper
+  l'historique » a ajouté **1 478 transactions** sur un état qui n'était pas vierge — exactement le
+  scénario risqué. Vérifié après coup : les lignes du Brésil réécrites à la main la veille sont
+  **intactes**, leurs originaux ne sont pas revenus, **0 doublon**.
+- **Ce qui reste** : le correctif du signe lui-même (le calcul et le commentaire, qui affirme encore
+  l'inverse) est un lot de code money-critical — plan d'abord, ton OK ensuite.
+
+---
+
 ## [unreleased] — 2026-09-16 (une question à te poser : dans quel sens Fintable écrit un solde de carte ?)
 
 - **Pourquoi** : tu m'as dit le 14 septembre que sur Fintable, devoir 500 $ s'affiche **`-500`**. Le

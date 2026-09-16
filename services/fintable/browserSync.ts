@@ -41,6 +41,7 @@ import { readFintableSnapshot } from './readSnapshot';
 import { comptesSansPositionsDuSnapshot } from './comptesSansPositions';
 import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
+import type { EchantillonCleInconnue } from './decode';
 import { decideCutoverDate, requestDateFrom, bornesEffectivesParCompte, libellesRoutes, plancherNonAttribuable, applyPayloadsIsolated } from './syncCore';
 import { classerRattrapage, type ClassementRattrapage, type PaireIncertaine } from './backfillDedup';
 import { referenceDeltaPatch } from './applyStatePatch';
@@ -79,6 +80,17 @@ export interface BrowserSyncResult {
      * de la passe, et les entrantes sont déjà neutralisées si Marc ne fait rien.
      */
     incertaines: PaireIncertaine[];
+    /**
+     * [FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE] Échantillon des VALEURS des champs hors contrat.
+     *
+     * ⚠️⚠️ **JAMAIS persisté, JAMAIS dans `report`.** Le rapport est rendu sans gate de mode discret
+     * ET `cat`é en clair dans les journaux GitHub Actions d'un dépôt PUBLIC ; un mémo bancaire peut
+     * porter un nom ou une adresse. Ce champ voyage par le RETOUR de cette fonction — comme
+     * `incertaines` juste au-dessus, et pour la même raison — et le chemin CRON ne le rend pas du
+     * tout : de ce côté, la fuite est structurellement impossible plutôt qu'interdite par
+     * convention. Décision de Marc (2026-09-16) : « oui, à l'écran seulement ».
+     */
+    echantillonsChampsInconnus: EchantillonCleInconnue[];
 }
 
 export interface BrowserSyncOptions {
@@ -219,7 +231,7 @@ export async function runFintableBrowserSync(
     });
 
     if (typeof token !== 'string' || token.trim() === '') {
-        return { report: emptyReport(null, 'Jeton Fintable absent — ajoute-le dans Réglages.'), statePatch: null, incertaines: [] };
+        return { report: emptyReport(null, 'Jeton Fintable absent — ajoute-le dans Réglages.'), statePatch: null, incertaines: [], echantillonsChampsInconnus: [] };
     }
 
     let cutoverDateUsed: string | null = null;
@@ -338,10 +350,14 @@ export async function runFintableBrowserSync(
         return {
             report,
             incertaines: rattrapage?.incertaines ?? [],
+            // ⚠️ Hors du `report` DÉLIBÉRÉMENT (cf. le champ du type) : à l'écran seulement.
+            echantillonsChampsInconnus: snapshot.unknownTransactionSamples,
             statePatch: referenceDeltaPatch(baseState, {
                 ...nextState,
                 fintableSyncReport: report,
-                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at),
+                // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Les taux viennent de l'état : un compte en devise
+                // étrangère est CONVERTI quand son taux est connu, et SIGNALÉ sinon (jamais replié 1:1).
+                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at, 'CAD', baseState.fxRates, baseState.fxRatesEstimated === true),
             }),
         };
     } catch (err) {
@@ -352,6 +368,8 @@ export async function runFintableBrowserSync(
         });
         // Rapport d'échec RENDU (pas persisté ici) : c'est l'appelant qui décide d'écrire, pour ne
         // jamais laisser un état à moitié appliqué. `statePatch: null` = « n'écris rien du contenu ».
-        return { report: emptyReport(cutoverDateUsed, describeError(err)), statePatch: null, incertaines: [] };
+        // Sur ÉCHEC, pas d'échantillon : une passe qui n'a rien lu n'a rien observé. Publier une
+        // liste vide ici est une MESURE (« rien vu »), pas un défaut de câblage.
+        return { report: emptyReport(cutoverDateUsed, describeError(err)), statePatch: null, incertaines: [], echantillonsChampsInconnus: [] };
     }
 }

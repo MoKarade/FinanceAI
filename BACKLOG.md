@@ -795,6 +795,10 @@
   ⚠️ **Le recoupement par le SOLDE** (seule grandeur indépendante, bien donnée en CAD) reste la
   piste de secours — mais il EXIGE `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` d'abord : tant
   que la bascule jette les transactions de la carte, l'écart serait permanent, donc l'alarme morte.
+  ✅ **Ce prérequis est livré le 2026-09-16** — ⚠️ mais il n'est EFFECTIF pour un compte qu'une fois
+  ce compte connu sous son libellé (sinon il reste sur le repli global). Avant d'écrire le
+  recoupement par le solde, **vérifier que le rapport de sync ne nomme plus la carte** : sinon
+  l'alarme naîtrait morte pour la même raison, une marche plus bas.
 - [x] 🔧 **`[TX-SELECTION-SANS-ACTION]`** (S, **MESURÉ**) — Marc : « j'arrive pas à les marquer en
   doublon ». **Il avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL
   point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par
@@ -845,8 +849,8 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
-- [ ] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **EN ATTENTE DU
-  GO de Marc**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
+- [x] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **FAIT le
+  2026-09-16**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
   la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même
   vitesse. Le compte chèque poste le jour même et pousse la bascule chaque jour ; la carte de crédit
   poste avec quelques jours de retard (et `pending: false` est FORCÉ par contrat, donc seules les
@@ -866,6 +870,19 @@
   d'aujourd'hui) plutôt que sur `null`, sinon un compte nouvellement routé rapatrierait tout son
   historique sans dédoublonnage. Touche `deriveCutoverDate` + `syncCore` + les DEUX orchestrateurs
   (navigateur ET cron) → plan-first, gardes discriminantes exigées des deux côtés.
+  ✅ **LIVRÉ le 2026-09-16** — et la mesure a corrigé **le remède que ce ticket prescrivait** :
+  `deriveCutoverDatesByAccount` + `cutoverByAccount` (plafonné par compte) + `transactionsAfterByAccount`
+  au mapper + **`requestDateFrom`** (la borne de la REQUÊTE devient la plus ANCIENNE des bornes —
+  sans elle l'API ne rend même pas les lignes du compte lent et tout le reste est INERTE). Câblé et
+  gardé dans les deux orchestrateurs. 17 gardes, 5 perturbations séparées.
+  ⚠️⚠️ **Le repli prescrit ci-dessus (« compte jamais vu → bascule globale ») est un INTERBLOCAGE**,
+  mesuré : le compte lent ne peut jamais poser sa PREMIÈRE transaction, donc sa borne reste absente
+  pour toujours. **0/9 avant · 0/9 avec le repli seul · 9/9 dès qu'une transaction de la carte est
+  connue sous son libellé** (contrôle négatif à décalage nul : 12/12 partout). Le repli est GARDÉ —
+  l'ouvrir à `null` rapatrierait l'historique sans dédoublonnage, et rejouerait les 44 lignes du
+  Brésil aux MAUVAIS montants (`applyBankStatement` déduplique par `date|montant|payee`, or les
+  montants ont été corrigés à la main le 15/09) — mais il est désormais **NOMMÉ** dans le rapport
+  de sync, avec le seul geste qui débloque : « Rattraper l'historique », UNE fois.
 - [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
   ✅ **DÉCISION Marc 2026-09-05 (en session)** : Marc pense que son plan offre plus de 30 jours → à MESURER chez lui (`npm run fintable:dry -- --days 365`, compte de transactions rendues, montants masqués) ; je ne peux pas appeler fintable.io d'ici (403).
   payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,

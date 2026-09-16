@@ -2055,3 +2055,42 @@ aujourd'hui « rachat de bail »).
 sont exactement les champs que réclame ta demande. Ils existent et sont saisissables **dans
 Réglages → Dettes** ; par le serveur MCP, ils sont hors de portée. Élargir `apply_debt` est du code,
 money-critical, et attend ton GO.
+
+---
+
+## 🔴 2026-09-16 — UN clic, et tes transactions de carte de crédit recommencent à rentrer
+
+**Le défaut est corrigé dans le code** (`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`), mais il
+te reste peut-être **une seule action**, et la synchro te dira si elle te concerne.
+
+### Ce qui se passait
+
+L'import gardait UN seul repère « ne rien reprendre avant ma transaction la plus récente », tous
+comptes confondus. Ton compte chèque affiche ses opérations le jour même et poussait ce repère
+chaque jour ; ta carte les affiche ~3 jours plus tard, donc elle arrivait **toujours derrière** et
+se faisait écarter. Mesuré sur 12 passes quotidiennes simulées : **12 transactions de chèque sur 12
+reçues, 0 de carte sur 9**. Contrôle : avec une carte qui afficherait le jour même, **12 sur 12**.
+
+Désormais **chaque compte a son propre repère**. Mesuré après correctif : **9 sur 9**.
+
+### ⚠️ L'action, si la synchro nomme ta carte
+
+Un compte dont **aucune** transaction n'est encore identifiée à son nom n'a pas de repère à lui : il
+reste sur l'ancien, donc il continue d'être écarté. Le rapport de synchro le dit maintenant en
+toutes lettres, par exemple :
+
+> Compte(s) en retard de postage sans historique connu : **Mastercard**. […] Lance « Rattraper
+> l'historique » dans Réglages UNE fois pour l'amorcer.
+
+Si tu vois ce message : **Réglages → Rattraper l'historique**, une seule fois. Ensuite le repère de
+ce compte avance tout seul et le message disparaît.
+
+Si tu ne le vois pas, il n'y a rien à faire — ta carte est déjà connue et le correctif agit seul.
+
+### Pourquoi je ne le fais pas automatiquement
+
+Ouvrir la fenêtre d'un compte inconnu rapatrierait **tout son historique sans dédoublonnage** — et
+dans ton cas précis ça rejouerait les **44 lignes du Brésil aux MAUVAIS montants**, ceux qu'on vient
+de corriger : la protection anti-doublon compare date + **montant** + marchand, donc elle ne
+reconnaîtrait pas les lignes corrigées. « Rattraper l'historique », lui, passe par un classement des
+doublons avec arbitrage — c'est le bon outil, et il existe déjà.

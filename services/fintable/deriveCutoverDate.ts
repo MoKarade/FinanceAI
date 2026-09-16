@@ -23,3 +23,39 @@ export function deriveCutoverDate(transactions: readonly Transaction[]): string 
     }
     return max;
 }
+
+/**
+ * [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Bascule PAR COMPTE — le max des dates connues
+ * POUR CE COMPTE, indexé par `Transaction.accountName` (le seul identifiant de compte persisté).
+ *
+ * ⚠️ POURQUOI la bascule globale ne suffit pas, MESURÉ (12 passes quotidiennes, chèque sans décalage
+ * de postage + carte à 3 jours) : **12/12 transactions de chèque reçues, 0/9 de carte**. Le compte
+ * chèque poste le jour même et pousse la borne commune chaque jour ; la carte poste en retard et
+ * arrive donc TOUJOURS derrière une borne que le chèque vient d'avancer — `tx.date <= bascule` la
+ * jette, chaque jour, indéfiniment. Contrôle négatif (décalage de la carte ramené à 0 jour) :
+ * **12/12 reçues, 0 écartée** — le décalage de postage EST la variable.
+ *
+ * ⚠️ Une borne d'avancement AGRÉGÉE suppose que les sources avancent ENSEMBLE. Sa granularité doit
+ * être celle de la SOURCE : c'est la leçon
+ * `UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE-JETTE-LA-PLUS-LENTE`.
+ *
+ * ⚠️ Une transaction SANS `accountName` n'entre dans AUCUNE borne de compte : elle continue de
+ * compter dans `deriveCutoverDate` (globale), qui reste le repli. Le mapper Fintable n'écrit
+ * `accountName` que depuis le 2026-09-05 — tout ce qui précède, et tout import CSV sans colonne de
+ * compte, est donc invisible ici. C'est voulu : une borne fondée sur « je ne sais pas de quel compte
+ * ça vient » serait une borne inventée.
+ */
+export function deriveCutoverDatesByAccount(
+    transactions: readonly Transaction[] | undefined,
+): Map<string, string> {
+    const parCompte = new Map<string, string>();
+    for (const t of transactions ?? []) {
+        if (!t || typeof t.date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(t.date)) continue;
+        const compte = typeof t.accountName === 'string' ? t.accountName.trim() : '';
+        if (compte === '') continue;
+        const day = t.date.slice(0, 10);
+        const prec = parCompte.get(compte);
+        if (prec === undefined || day > prec) parCompte.set(compte, day);
+    }
+    return parCompte;
+}

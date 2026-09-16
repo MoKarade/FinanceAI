@@ -844,6 +844,25 @@ n'est pas réécrire un récit.
   l'utilité du second
   (`UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS`, 2026-09-15).
 
+- **Le REMÈDE prescrit par un ticket se mesure comme son DÉFAUT** :
+  `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` portait un défaut exact (bascule anti-doublon
+  « tous comptes confondus » : le chèque poste le jour même et l'avance, la carte poste 3 j plus tard
+  et se fait jeter — mesuré **12/12 chèque, 0/9 carte** ; contrôle négatif à décalage nul **12/12**)
+  et un remède **INERTE** : « un compte jamais vu retombe sur la bascule globale » est un
+  INTERBLOCAGE — la carte ne peut jamais poser sa PREMIÈRE transaction, donc sa borne reste absente
+  pour toujours (**0/9 aussi**, mesuré ; **9/9** dès qu'une seule transaction de la carte est connue
+  sous son libellé). Un défaut décrit un mécanisme OBSERVÉ, un remède un mécanisme IMAGINÉ — et
+  c'est le second qu'on livre. ⚠️ Le repli est quand même GARDÉ, pour une raison concrète et
+  datable : l'ouvrir à `null` rejouerait les 44 lignes du Brésil aux MAUVAIS montants, corrigés à la
+  main la veille (la dédup compare `date|montant|payee`) — la parade est de le rendre VISIBLE
+  (avertissement qui NOMME les comptes concernés, et ne parle que de ceux qui perdent vraiment
+  quelque chose), pas de l'ouvrir. ⚠️⚠️ Et **la moitié sans laquelle tout le reste est inerte** est
+  la borne de la REQUÊTE (`dateFrom`) : laissée à la globale, l'API ne rend même pas les lignes du
+  compte lent et le filtre du mapper n'a rien à laisser passer — `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`
+  dans sa forme pure. ⚠️ La clé de la bascule par compte est le LIBELLÉ (`accountName`), donc tout ce
+  qui précède le 2026-09-05 et tout import CSV sans colonne de compte n'y entre pas — c'est écrit
+  plutôt que deviné (`LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT`, 2026-09-16).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-16 — `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` : bascule PAR COMPTE
+> Marc : « go ». La bascule anti-doublon était dérivée « tous comptes confondus » : le chèque poste
+> le jour même et l'avance chaque jour, la carte poste 3 jours plus tard et arrive donc TOUJOURS
+> derrière — jetée, chaque jour, indéfiniment.
+> ✅ Livré : `deriveCutoverDatesByAccount` (clé = `Transaction.accountName`), `cutoverByAccount` sur
+> `decideCutoverDate` (plafonné par compte comme la globale), `transactionsAfterByAccount` au mapper,
+> et **`requestDateFrom`** — la borne de la REQUÊTE devient la plus ANCIENNE des bornes, sans quoi
+> l'API ne rend même pas les lignes du compte lent et le filtre du mapper est inerte
+> (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). Câblé dans les DEUX orchestrateurs, gardé des deux côtés.
+> **17 gardes, 5 perturbations séparées** (mapper · requête navigateur · requête cron ·
+> `requestDateFrom` · avertissement) — chacune rougit seule.
+> ⚠️⚠️ **Le remède PRESCRIT par le ticket était INERTE, et c'est la mesure qui l'a dit** : « un compte
+> jamais vu retombe sur la bascule globale » est un INTERBLOCAGE — la carte ne peut jamais poser sa
+> première transaction, donc sa borne reste absente pour toujours. Mesuré : **0/9 avant, 0/9 avec le
+> repli prescrit, 9/9 dès qu'UNE transaction de la carte est connue sous son libellé.** Le repli est
+> gardé (l'ouvrir rapatrierait l'historique sans dédoublonnage — et rejouerait les 44 lignes du Brésil
+> aux MAUVAIS montants, corrigés à la main la veille) mais il est désormais **NOMMÉ** dans le rapport,
+> avec le seul geste qui débloque : « Rattraper l'historique », UNE fois.
+> ⚠️ **Reste à Marc** : lancer ce rattrapage une fois si le rapport nomme sa carte.
+> ⚠️ Leçon : `LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT` (`docs/CONVENTIONS.md`).
+>
 > ## 🟦 Session 2026-09-15 (4) — `[FINTABLE-CHAMPS-INCONNUS]` : savoir ce que le décodeur JETTE
 > Marc : « faudra qu'on fasse en sorte que ce problème n'arrive pas ». **Volet 1 livré** — ce n'est
 > PAS le correctif du montant, c'est la condition pour savoir s'il est possible.

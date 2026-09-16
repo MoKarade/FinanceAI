@@ -41,7 +41,7 @@ import { readFintableSnapshot } from './readSnapshot';
 import { comptesSansPositionsDuSnapshot } from './comptesSansPositions';
 import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
-import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
+import { decideCutoverDate, requestDateFrom, applyPayloadsIsolated } from './syncCore';
 import { classerRattrapage, type ClassementRattrapage, type PaireIncertaine } from './backfillDedup';
 import { referenceDeltaPatch } from './applyStatePatch';
 import { toPersistableBrokerBalances } from './brokerBalances';
@@ -243,9 +243,13 @@ export async function runFintableBrowserSync(
         // ⚠️ [FINTABLE-RATTRAPAGE] En rattrapage, `dateFrom` est VOLONTAIREMENT absent : Marc a
         // demandé « tout ce que Fintable a ». C'est cette borne qui l'empêchait de récupérer son
         // historique — la lever EST la demande, pas un effet de bord.
+        // ⚠️ [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Hors rattrapage, la borne est la plus
+        // ANCIENNE des bornes par compte (`requestDateFrom`) et non la globale : sinon l'API ne rend
+        // même pas les lignes du compte qui poste en retard, et le filtre par compte du mapper
+        // n'aurait rien à laisser passer — correctif vert en test, mort en production.
         const dateFrom = opts.backfill
             ? undefined
-            : (cutoverDateUsed ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10));
+            : (requestDateFrom(cutover) ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10));
         const snapshot = await readFintableSnapshot(client, { dateFrom, dateTo: todayStr });
 
         // ⚠️ [finding code-reviewer, PR #566] Les RÔLES viennent de `state` (pré-fetch), pas de
@@ -261,6 +265,10 @@ export async function runFintableBrowserSync(
             // bornes — requête ET mapper — doivent tomber ENSEMBLE ; n'en lever qu'une donnerait un
             // rattrapage qui télécharge tout et n'en garde rien, en silence.
             transactionsAfter: opts.backfill ? null : cutoverDateUsed,
+            // ⚠️ En RATTRAPAGE, les bornes par compte tombent avec la globale : `classerRattrapage`
+            // devient l'arbitre du recouvrement. En laisser une seule filtrerait l'historique qu'on
+            // vient justement d'aller chercher.
+            ...(opts.backfill ? {} : { transactionsAfterByAccount: cutover.cutoverByAccount }),
         });
 
         // [FINTABLE-SYNC-STALE-BASE] Base RELUE ici, après le réseau — voir `getFreshState`.

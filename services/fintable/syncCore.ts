@@ -14,11 +14,18 @@
 
 import type { AppState, Transaction } from '../../types';
 import { applyDocument, type DocumentPayload } from '../../mcp/ingest/applyDocument';
-import { deriveCutoverDate } from './deriveCutoverDate';
+import { deriveCutoverDate, deriveCutoverDatesByAccount } from './deriveCutoverDate';
 
 interface CutoverDecision {
     /** Date de bascule à passer au mapper (`transactionsAfter`), déjà plafonnée. */
     cutoverDateUsed: string | null;
+    /**
+     * [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Bascule PAR COMPTE (clé = `accountName`),
+     * plafonnée elle aussi. Un compte ABSENT de cette carte n'a aucune transaction connue sous son
+     * libellé : il retombe sur `cutoverDateUsed` — comportement d'aujourd'hui, jamais `null` (qui
+     * rapatrierait tout son historique sans dédoublonnage).
+     */
+    cutoverByAccount: Record<string, string>;
     /** Avertissements destinés à l'humain — jamais un plafonnement silencieux. */
     warnings: string[];
 }
@@ -30,6 +37,12 @@ interface CutoverDecision {
  * pré-datée) pousserait la bascule EN AVANT de la date réelle → le mapper filtrerait TOUTES les
  * transactions Fintable comme « avant la bascule », CHAQUE JOUR, sans aucun signal (`ok:true,
  * transactionsAdded:0` indéfiniment). Le plafonnement est TRACÉ (no silent caps), pas juste appliqué.
+ *
+ * ⚠️ [FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT] Le MÊME plafonnement s'applique à chaque borne
+ * PAR COMPTE : une transaction mal datée sur la carte gèlerait la carte seule, ce qui est encore plus
+ * discret que le gel global (les autres comptes continuent d'arriver, donc rien n'a l'air cassé).
+ * Le plafonnement par compte est SILENCIEUX à dessein — le cas global est déjà annoncé et répéter le
+ * même avertissement par compte ferait du bruit sur un incident unique.
  */
 export function decideCutoverDate(
     transactions: readonly Transaction[] | undefined,
@@ -44,7 +57,32 @@ export function decideCutoverDate(
         );
         cutoverDateUsed = todayStr;
     }
-    return { cutoverDateUsed, warnings };
+    const cutoverByAccount: Record<string, string> = {};
+    for (const [compte, date] of deriveCutoverDatesByAccount(transactions)) {
+        cutoverByAccount[compte] = date > todayStr ? todayStr : date;
+    }
+    return { cutoverDateUsed, cutoverByAccount, warnings };
+}
+
+/**
+ * Borne à donner à la REQUÊTE (`dateFrom`) : la plus ANCIENNE des bornes effectives.
+ *
+ * ⚠️ C'est la MOITIÉ SANS LAQUELLE LE RESTE EST INERTE. `dateFrom` est un filtre côté API : laissé
+ * à la bascule globale, l'API ne rend même pas les lignes du compte lent, et le filtre par compte du
+ * mapper n'a alors rien à laisser passer — un correctif vert en test et mort en production
+ * (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). Les deux bornes se déplacent ENSEMBLE ou pas du tout.
+ *
+ * ⚠️ Un compte absent de `cutoverByAccount` retombe sur la borne globale : il n'élargit donc PAS la
+ * fenêtre. Seuls les comptes DÉJÀ vus peuvent la reculer, et seulement jusqu'à leur propre dernière
+ * transaction connue — la fenêtre reste bornée par la donnée, jamais par une constante choisie.
+ */
+export function requestDateFrom(decision: CutoverDecision): string | null {
+    if (decision.cutoverDateUsed === null) return null;
+    let min = decision.cutoverDateUsed;
+    for (const date of Object.values(decision.cutoverByAccount)) {
+        if (date < min) min = date;
+    }
+    return min;
 }
 
 interface AppliedPayloads {

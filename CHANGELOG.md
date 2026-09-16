@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (tes transactions de carte de crédit arrêtent de se faire jeter)
+
+- **Pourquoi** : tu disais « je reçois pas les transactions de carte de crédit » alors que Fintable
+  en livrait bien. La cause : l'import garde UNE seule date de repère — « ne rien reprendre avant ma
+  transaction la plus récente » — tous comptes confondus. Or ton compte chèque affiche ses
+  opérations le jour même et pousse ce repère chaque jour, pendant que ta carte les affiche trois
+  jours plus tard. Elle arrivait donc TOUJOURS derrière le repère que le chèque venait d'avancer,
+  et se faisait écarter. **Chaque jour, indéfiniment.**
+- **Mesuré** sur 12 passes quotidiennes simulées : **12 transactions de chèque sur 12 reçues, 0 de
+  carte sur 9**. Même scénario avec une carte qui afficherait le jour même : **12 sur 12 reçues** —
+  c'est bien le délai d'affichage qui fait tout.
+- **Ce qui change** : chaque compte a désormais SON propre repère. La carte n'hérite plus de celui
+  du chèque. Mesuré après correctif : **9 sur 9**.
+- ⚠️ **Il te reste peut-être un clic à faire, et le rapport de synchro te le dira** : un compte dont
+  aucune transaction n'est encore identifiée à son nom n'a pas de repère à lui et reste sur
+  l'ancien — sûr, mais sans effet pour lui. Le rapport le NOMME et te renvoie vers « Rattraper
+  l'historique » (Réglages), à lancer UNE fois : ensuite son repère avance tout seul. On ne le fait
+  pas automatiquement parce que ça rapatrierait tout son historique sans le passer au
+  dédoublonnage — exactement ce que le rattrapage, lui, sait faire.
+
+---
+
 ## [unreleased] — 2026-09-15 (savoir ce que la banque nous envoie et qu'on jetait)
 
 - **Pourquoi** : tes 44 dépenses du Brésil étaient fausses parce que le montant arrive dans la

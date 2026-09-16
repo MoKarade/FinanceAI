@@ -935,30 +935,6 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
-- [x] 🔴 **`[FX-TAUX-JAMAIS-ARRIVES]`** (L, money-critical, ✅ **LIVRÉ le 2026-09-16**) — les taux de
-  change de l'état de Marc étaient les REPLIS EN DUR. **Mesuré sur ses vraies données** (MCP,
-  instantané Drive) : NVDA 90 × 214,40 USD → 27 014 $ = facteur **1,4000** pile ; GBS.PA
-  115 × 343,67 EUR → 58 097 $ = **1,4700** pile, soit `DEFAULT_FX_RATES` au caractère près. Ses
-  **12** positions sont en USD ou EUR, **aucune** en CAD ⇒ 100 % des 231 882 $ affichés reposaient
-  sur un chiffre inventé, et c'était la vraie cause du Disnat USD non converti la veille.
-  **Livré** : provenance à trois états (`api` / `manuel` / `repli`), bouton « Réessayer maintenant »
-  (avec `force` — sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
-  diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, condition d'écriture du
-  démarrage sortie en fonction PURE. ⚠️ **La cause de l'échec chez Marc n'est PAS mesurable d'ici**
-  (`www.bankofcanada.ca` : 403 au CONNECT, cf. §6) → routé à `docs/A_FAIRE_MOI.md`.
-- [x] 🔴 **`[FINTABLE-AUTORITE-AUJOURDHUI]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-16**) — la
-  demande de Marc du 2026-07-30 (« je veux que dans investissements ça utilise exactement le montant
-  que j'ai dans Fintable ») n'était livrée qu'à MOITIÉ : recensé, `fintableBrokerBalances` n'avait
-  qu'UN consommateur, `BrokerReconciliationCard`. Le patrimoine, la courbe et le mois 0 du moteur
-  sommaient tous les titres saisis. Point d'injection UNIQUE : `deriveStartingBalancesFromHistory`
-  → `liveCSVBalances`. **Mesuré** (écart de 31 882 $ au départ, rendement 6 %) : **+42 338 $** à
-  5 ans, **+56 097 $** à 10, **+98 482 $** à 20 — le pourcentage BAISSE (9,53 → 5,66 %) pendant que
-  le facteur MONTE (×1,33 → ×3,09). ⚠️ `historicalRate` n'est pas recalculé (c'est un RENDEMENT).
-- [x] 🟡 **`[FINTABLE-HISTORIQUE-COURTIER]`** (M, ✅ **LIVRÉ le 2026-09-16**) — `fintableBrokerBalances`
-  était un instantané ÉCRASÉ à chaque passe : « ce que Fintable disait le 3 mars » n'existait nulle
-  part. Une entrée par compte et par jour, rétention 24 mois + plafond dur (deux limites de NATURES
-  différentes : la rétention se fie à des horodatages EXTERNES). ⚠️ **Ne change RIEN aujourd'hui ni
-  sur le passé déjà vécu** — c'est écrit à l'écran plutôt que laissé à découvrir.
 - [ ] 🟠 **`[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`** (M, money-critical, **DÉCOUVERT au panel du
   2026-09-16, décision produit requise**) — la base de comparaison replie **CELIAPP sur CELI** et
   **REEE sur REER** (`BUCKET_OF`, « même famille fiscale », décision écrite), pendant que les soldes
@@ -991,53 +967,6 @@
   La Banque du Canada publie ses séries DATÉES et le domaine est déjà autorisé par la CSP.
   ⚠️ Marc a choisi l'accumulation de l'historique Fintable plutôt que ce correctif-là : le reprendre
   demande son GO, pas une décision de reprise de session.
-- [x] 🟠 **`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-16**) —
-  conversion à l'écriture quand le taux est CONNU, signal nommé quand il ne l'est pas, et la
-  troisième cause d'écartement enfin recensée là où Marc regarde ses placements.
-  ⚠️⚠️ **L'ORDRE que j'avais annoncé à Marc s'est révélé FAUX à la mesure, et je l'ai dit.** J'avais
-  proposé « réparer la liste d'abord, convertir ensuite » — mais les deux sont INDISSOCIABLES :
-  la liste ne peut pas voir ces comptes (le filtre de devise vit AVANT la persistance), et la
-  conversion ne peut pas être inconditionnelle (sans taux, il faut bien écarter ET le dire). Un
-  découpage annoncé se re-mesure comme un périmètre.
-  ⚠️ **Le piège évité, et c'est l'arbitrage du lot** : `toCurrencyFactor` (la source unique FX)
-  replie sur **1:1** quand le taux manque — bon comportement pour un AFFICHAGE d'actif (montrer +
-  journaliser), le PIRE pour une AUTORITÉ : 72 040 USD deviendraient 72 040 « CAD », faux d'environ
-  30 % et présentés comme le total du compte (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
-  Le taux est donc interrogé EXPLICITEMENT ; 0, négatif et non fini comptent comme absent.
-  ⚠️ **L'ordre des gardes EST le correctif** : une entrée `missingRate` porte `balanceCad: 0` qui ne
-  signifie rien. Testée après la garde de finitude, elle passerait (0 est fini) et serait additionnée
-  à zéro — le compte disparaîtrait du total sans trace, exactement ce que la liste des écartés existe
-  pour empêcher. Perturbation dédiée, 1 rouge.
-  **19 gardes** (14 → 19), **3 perturbations aux signatures distinctes** : retour au `continue` →
-  4 rouges ; ordre des gardes inversé → 1 ; taux aberrant appliqué → 1. Contrôle négatif (compte déjà
-  en CAD, avec et sans taux : sorties identiques) vert partout. Contexte d'origine : — le compte courtier « Disnat (L7B1) » est en **USD** et le mapper ne sait pas
-  convertir : son montant est **IGNORÉ à chaque passe** (avertissement publié, donc pas silencieux
-  — mais faux par omission). Les titres saisis à la main servent de repli. ⚠️ Le remède se mesure
-  comme le défaut : `assetValueCad` porte déjà la conversion (source unique, garde
-  `tests/services/assetFxGuard.test.ts`) — c'est du **câblage**, pas un mécanisme neuf. ⚠️ Avant de
-  livrer, demander **ce que ce solde contient**… ⚠️⚠️ **QUESTION RETIRÉE — la réponse était dans le
-  code, pas chez Marc** (mesuré le 2026-09-16, avant de la lui poser) : `fintableBrokerBalances` n'a
-  **qu'un seul lecteur**, `BrokerReconciliationCard`. Il ne pilote **aucun calcul** —
-  `computeRawNetWorth` et la projection lisent `assets`, jamais ce solde. **Le double comptage que je
-  craignais n'existe pas** : le solde courtier sert de RÉFÉRENCE de comparaison, et l'écart avec les
-  titres saisis est matérialisé en ligne explicite (« écart non ventilé »). Avant de demander à
-  l'utilisateur ce qu'une valeur contient, demander **qui la LIT** — ici la question posée aurait
-  coûté un aller-retour pour rien (variante de `UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE`).
-  ⚠️ Le contrôle négatif reste obligatoire : un compte déjà en CAD ne doit rien voir changer.
-  ⚠️⚠️ **DÉCOUVERTE du même recensement, préexistante et plus grave que le ticket** : un compte en
-  devise étrangère est écarté par `toPersistableBrokerBalances` (`if (currency !== base) continue`)
-  **AVANT** la persistance — donc il n'entre jamais dans `balances`, donc **jamais** dans
-  `unreadableAccountLabels` ni `unassignedAccountLabels`. Or c'est exactement la liste écrite pour
-  qu'« un compte écarté ne disparaisse JAMAIS en silence » (son commentaire cite le finding
-  silent-failure-hunter de la PR #534). **Elle recense deux des trois causes d'écartement et ignore
-  la troisième** — `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`. Conséquence : sur l'écran
-  Investissements ET sur l'Accueil, Disnat n'apparaît ni réconcilié, ni signalé — il est **absent**.
-  L'avertissement existe, mais dans `report.warnings`, c'est-à-dire **Système & diagnostics** — pas
-  là où Marc regarde ses placements (`UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT`,
-  corollaire « une détection non ANNONCÉE là où l'utilisateur regarde n'existe pas pour lui »).
-  ⚠️ **Les deux moitiés se livrent ensemble, et la seconde d'abord** : implémenter la conversion sans
-  réparer la liste laisserait la classe entière ouverte pour le prochain compte en devise ; réparer
-  la liste seule est déjà utile et ne déplace rien.
 - [ ] 🟠 **`[FINTABLE-ECART-FANTOME-DEUX-DATES-DE-TAUX]`** (M, money-critical, **DÉCOUVERT au panel
   du 2026-09-16, OUVERT PAR CE LOT — mesuré, borné, non corrigé**) — le solde courtier converti est
   FIGÉ au taux de l'écriture (`toPersistableBrokerBalances`), tandis que l'autre côté de la
@@ -1067,34 +996,6 @@
   **Décision requise avant de câbler** : le rapport part en clair dans un journal PUBLIC. Publier des
   signes quotidiennement pour une détection sans consommateur est un coût de vie privée sans
   contrepartie — d'où le routage plutôt que le câblage.
-- [x] 🟡 **`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]`** (S, ✅ **LIVRÉ le 2026-09-16**) —
-  `echantillonsClesInconnues` (pure, bornée deux fois : nombre de clés ET nombre/longueur des
-  exemples) publie les VALEURS des champs hors contrat sur le seul écran de Marc.
-  ⚠️⚠️ **La contrainte de vie privée a dicté l'ARCHITECTURE, pas un commentaire** : l'échantillon
-  voyage par le RETOUR de `runFintableBrowserSync` (comme `incertaines`, qui portait déjà ce patron
-  avec sa justification écrite), jamais par `report` ni par le patch persisté. Et le chemin CRON —
-  celui dont le résultat est `cat`é dans un journal PUBLIC — **ne rend pas ce champ du tout** : la
-  fuite y est structurellement impossible, pas interdite par vigilance. Une garde le vérifie sur le
-  rapport SÉRIALISÉ ENTIER (pas seulement `warnings`), donc un champ ajouté demain est couvert sans
-  qu'on y pense.
-  **11 gardes, 2 perturbations** : la fuite EXACTE (valeur recopiée dans `warnings`) → 2 rouges
-  (rapport ET patch) ; câblage mort (échantillon jamais rempli) → 1 rouge. Anti-vacuité partout : la
-  garde exige que le rapport NOMME encore le champ, sinon « aucune valeur » serait indiscernable de
-  « aucun rapport ». ⏸️ **Reste la question elle-même** : si `external_memo` porte la devise, le
-  correctif de `[FINTABLE-DEVISE-MAL-ETIQUETEE]` devient possible à la SOURCE. La réponse est chez
-  Marc, à sa prochaine synchro. Si le champ ne la porte PAS, le résultat NÉGATIF se publie aussi —
-  il ferme la piste au lieu de la laisser se faire retenter à l'aveugle. Contexte d'origine : — l'inventaire des champs hors contrat, livré par
-  `[FINTABLE-DECODEUR-CHAMPS-INCONNUS]`, a fait son travail dès sa première passe réelle : il nomme
-  **5 champs** que l'API envoie et que le décodeur jette — `account_owner`, `check_num`, `ext_id`,
-  `external_memo`, `previous_ext_id`. Aucun ne s'appelle « devise », mais **`external_memo` est du
-  texte libre**, et c'est là que des banques écrivent la conversion (« USD 4.40 @ 1.37 »). C'est la
-  **seule piste connue** pour corriger `[FINTABLE-DEVISE-MAL-ETIQUETEE]` à la SOURCE au lieu de
-  réparer à la main. ⚠️⚠️ **Contrainte de vie privée, non négociable** : le contenu s'affiche
-  **uniquement à l'écran** de l'app, JAMAIS dans `report.warnings` — ce rapport est `cat`é en clair
-  dans les journaux GitHub Actions d'un dépôt **PUBLIC** (`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`),
-  et un mémo bancaire peut porter un nom, un numéro de chèque ou une adresse. ⚠️ Si le champ ne
-  porte PAS la devise, le résultat NÉGATIF se publie aussi : il ferme la piste au lieu de la laisser
-  se faire retenter à l'aveugle à chaque session.
 - [x] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **FAIT le
   2026-09-16 — et VALIDÉ EN PRODUCTION le jour même**)
   ✅✅ **Le plancher dérivé a été mis à l'épreuve pour de vrai, quelques heures après le merge.** Marc

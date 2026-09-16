@@ -13880,3 +13880,64 @@ faux.
 ⚠️ **Et ce qui a réellement trouvé les défauts de ce lot, ce n'est aucun des deux gates** : c'est le
 panel (un montant publié faux de 2×, une liste non bornée, deux découvertes préexistantes). Le temps
 passé à attendre un gate en double est du temps qui n'allait pas là où la valeur était.
+
+---
+
+## `UNE-SEULE-OBSERVATION-DANS-LA-BRANCHE-RARE-TRANCHE-CE-QUE-MILLE-PASSES-NOMINALES-NE-PEUVENT-PAS` (2026-09-16)
+
+`mapSnapshot.ts` portait, depuis toujours et sans mesure, « un solde de carte de crédit se lit
+*montant DÛ* : on le porte en positif », avec `const owed = Math.abs(account.balance)`. L'étape 1 de
+`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` a publié le SIGNE (jamais le montant) et la première passe
+réelle a rendu **`« Desjardins Cash Back Mastercard (5020) » → positif`**. Marc, interrogé sur cette
+passe : **« c'est en ma faveur »**. L'hypothèse est **RÉFUTÉE** : Fintable écrit `négatif = dû`.
+
+**Ce que l'épisode enseigne n'est pas la convention, c'est POURQUOI une seule observation a suffi.**
+Sous `Math.abs`, le cas NOMINAL est **structurellement indiscernable** : devoir 500 $ donne 500 $ que
+le solde arrive en `+500` ou en `−500`. Mille passes normales — c'est-à-dire tout ce qu'on regarde
+tous les jours — n'auraient jamais rien appris, et c'est exactement ce qui a permis au commentaire
+faux de survivre. Seule la branche RARE (la carte en CRÉDIT) sépare les deux hypothèses, et le
+verdict y est brutal : sous la mauvaise convention, elle fabrique une **dette fantôme** du montant du
+crédit. **Devant une hypothèse non mesurée, ne pas chercher « plus de données » : chercher la branche
+où les hypothèses divergent, et ne demander QUE celle-là.** Ici la question tenait en une phrase.
+
+⚠️ **Portée exacte de ce qu'une réfutation prouve.** La mesure tue « positif = dû ». Elle est
+*compatible* avec « négatif = dû » sans le démontrer positivement — il faudrait pour ça une passe où
+l'utilisateur doit effectivement de l'argent. Écrire « la convention est établie » sans cette nuance
+transformerait une réfutation en preuve. Ce qui autorise quand même à avancer, c'est qu'aucune
+décision n'attend la moitié manquante : le plan de l'étape 2 (`dû = max(0, −solde)`) était **déjà
+écrit dans ce sens**, donc la mesure le CONFIRME. Et **une mesure qui confirme se publie autant
+qu'une réfutation** — après une série de tickets réfutés, l'attente de réfutation devient elle-même
+un biais (`NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR`).
+
+⚠️ **Le défaut n'avait encore rien coûté, et il fallait le dire.** Aucune dette n'est associée à
+cette carte (`[FINTABLE-CARTE-SANS-DETTE]` : `debtName` vide = « importe les transactions, ne touche
+à aucun solde »), donc la dette fantôme de 200 $ n'a **jamais été écrite**. Annoncer un patrimoine
+faux aurait été aussi inexact que de taire le mécanisme : un défaut RÉEL et un défaut ATTEINT sont
+deux états distincts, et seul le second se chiffre.
+
+⚠️ **Ce qui reste faux après une mesure, c'est le COMMENTAIRE.** Le `Math.abs` est protégé par
+l'absence de dette ; la phrase « un solde négatif signifie un crédit en ta faveur » est, elle,
+activement trompeuse et se lit comme un fait établi dans du code money-critical. Un commentaire
+inversé est plus dangereux qu'un commentaire absent — il dispense la prochaine session de mesurer.
+
+### `UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE` (même lot)
+
+`UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL` impose de vérifier la précondition **par
+ligne** : les quatre originaux devaient être exclus des calculs avant d'importer leurs montants
+corrigés. Vérification faite — `A.saily`, `Duty Free New Departur` et `*BRUTTITO TERMINAL` ne
+ressortent plus de `search_transactions`, qui EXCLUT les lignes marquées. Mais `Smartcar Mountain`,
+elle, **ressortait**.
+
+Lu vite, ça disait « pas marquée → ne pas réimporter, suspendre 11,18 $ ». Lu correctement, la ligne
+rendue était du **`2026-08-06` pour `−4,40 $`**, quand celle à corriger est du **`2026-09-01` pour
+`7,84 $`** : **deux transactions distinctes chez le même marchand**, la seconde arrivée le jour même
+avec le rattrapage d'historique. La précondition était remplie ; c'est ma lecture qui ne l'était pas.
+
+**Une recherche par MARCHAND répond à « ce marchand a-t-il des lignes actives ? », jamais à « CETTE
+ligne est-elle encore active ? ».** L'identité d'une transaction est le couple (date, montant) — le
+marchand n'est qu'un filtre. Le piège se referme précisément quand un lot d'import vient d'élargir
+l'historique : un marchand récurrent (abonnement, épicerie, transport) a soudain des homonymes
+partout, et un recensement écrit avant l'import devient faux sans que personne n'y touche. ⚠️ Et il
+est **asymétrique** : ici il faisait renoncer à un import légitime (coût visible, 11,18 $ manquants) ;
+dans l'autre sens — conclure « 0 résultat donc marquée » sur un marchand dont la ligne n'a simplement
+jamais existé — il ferait **compter une dépense deux fois**, sans rien de rouge nulle part.

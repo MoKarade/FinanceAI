@@ -6,6 +6,30 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (réponse reçue : ta carte est en TA faveur — et tes 4 dépenses de voyage sont corrigées)
+
+- **Ta réponse a tranché.** Le rapport de synchro a affiché « Desjardins Cash Back Mastercard (5020)
+  → **positif** », et tu m'as dit : **« c'est en ma faveur »**. La convention de Fintable est donc
+  `négatif = tu dois`, `positif = c'est en ta faveur` — exactement l'inverse de ce que le code
+  supposait depuis toujours.
+- **Une seule passe a suffi, et ce n'est pas de la chance** : tant que ta carte est simplement à
+  découvert, les deux hypothèses donnent le même chiffre (la valeur absolue les confond). C'est le cas
+  rare — la carte en crédit — qui les sépare, et c'est celui qui s'est présenté.
+- ✅ **Rien n'est faux dans ton patrimoine net aujourd'hui** : aucune dette n'est associée à cette
+  carte, donc la dette inventée de 200 $ n'a jamais été écrite. Le défaut est réel, il n'a pas encore
+  coûté un dollar.
+- **Tes 4 dépenses de voyage sont réparées** : tu as exclu les quatre originaux sous-évalués, j'ai
+  importé les bons montants (**262,37 $**, 4 ajoutées, 0 rejet, sauvegarde horodatée avant écriture).
+  Ces dépenses ne sont plus sous-comptées de 77,39 $.
+- ✅ **Le correctif de la bascule anti-doublon a passé son premier vrai test.** Ton « Rattraper
+  l'historique » a ajouté **1 478 transactions** sur un état qui n'était pas vierge — exactement le
+  scénario risqué. Vérifié après coup : les lignes du Brésil réécrites à la main la veille sont
+  **intactes**, leurs originaux ne sont pas revenus, **0 doublon**.
+- **Ce qui reste** : le correctif du signe lui-même (le calcul et le commentaire, qui affirme encore
+  l'inverse) est un lot de code money-critical — plan d'abord, ton OK ensuite.
+
+---
+
 ## [unreleased] — 2026-09-16 (une question à te poser : dans quel sens Fintable écrit un solde de carte ?)
 
 - **Pourquoi** : tu m'as dit le 14 septembre que sur Fintable, devoir 500 $ s'affiche **`-500`**. Le

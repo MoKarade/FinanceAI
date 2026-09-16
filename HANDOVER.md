@@ -4,6 +4,36 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-16 (soir) — **MESURE OBTENUE** : Fintable écrit `négatif = dû`
+> Marc a lancé la synchro, puis répondu. Rapport : « Desjardins Cash Back Mastercard (5020) →
+> **positif** » ; Marc : **« c'est en ma faveur »**. L'hypothèse du code (« positif = montant DÛ »,
+> commentée dans `mapSnapshot.ts` et jamais mesurée) est **RÉFUTÉE**. L'étape 1 a fait exactement ce
+> pour quoi elle a été écrite, dès sa première passe réelle.
+> ⚠️ **Portée** : la mesure TUE « positif = dû » ; elle est seulement *compatible* avec « négatif =
+> dû » (il faudrait une passe où Marc doit de l'argent pour le prouver positivement). Aucune décision
+> n'attend ça — le plan de `[FINTABLE-CARTE-DETTE-AUTO]` étape 2 (`dû = max(0, −solde)`) était **déjà
+> écrit dans ce sens**, donc la mesure le CONFIRME. Rien à recadrer.
+> ✅ **Aucun dollar n'est faux aujourd'hui** : aucune dette n'est associée à cette carte, donc la
+> dette fantôme de 200 $ n'a jamais été écrite. Défaut RÉEL ≠ défaut ATTEINT.
+> ✅ **Import de correction livré** : les 4 originaux sous-évalués exclus par Marc, les 4 bons
+> montants importés (**262,37 $**, 4 ajoutées / 0 rejet). Précondition vérifiée **PAR LIGNE**.
+> ⚠️⚠️ **`Smartcar Mountain` RESSORTAIT de la recherche** — mais au `2026-08-06` pour `−4,40 $`, quand
+> la ligne visée est du `2026-09-01` pour `7,84 $` : deux transactions distinctes du même marchand, la
+> seconde arrivée le jour même avec le rattrapage d'historique. Lue vite, elle faisait suspendre un
+> import légitime (`UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE`).
+> ✅✅ **Le plancher dérivé de la bascule a passé son premier VRAI test** : « Rattraper l'historique »
+> a ajouté **1 478 transactions** sur un état NON vierge (588 d'avant juillet 2025). Mesuré après
+> coup : les deux `Sodexo` réécrites à la main la veille sont intactes, leurs originaux à 13,50 $ ne
+> sont pas revenus, **0 doublon** sur les 36 lignes du Brésil. Une mesure qui confirme se publie.
+> ⚠️ **Marc a fermé un risque** : aucun voyage hors Canada avant sept. 2026 → le défaut de devise ne
+> touche que les 44 lignes déjà traitées ; les 1 478 lignes rattrapées ne sont pas concernées.
+> 🧭 **DEUX GO DE MARC, non commencés — plan d'abord** : `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`
+> (« prioritaire ») et `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` (« oui, à l'écran seulement » — jamais
+> dans `report.warnings`, le rapport part dans un journal PUBLIC).
+> ⏸️ **Reste sur le signe** : `owed` dérivé du SIGNE au lieu de `Math.abs`, le **commentaire inversé**
+> de `mapSnapshot.ts:271-273`, et l'arrêt de l'avertissement de mesure (garde à INVERSER, pas à
+> supprimer). Money-critical → plan + OK de Marc.
+>
 > ## 🟦 Session 2026-09-16 — `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` étape 1 : MESURER le signe
 > Marc : « fais la suite maintenant ». Le mapper porte `const owed = Math.abs(account.balance)` sous
 > le commentaire « un solde négatif signifie un crédit en ta faveur » ; Marc décrit l'INVERSE

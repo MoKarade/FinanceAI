@@ -919,6 +919,32 @@ n'est pas réécrire un récit.
   l'HORLOGE. ⚠️ Ce qui a trouvé les défauts du lot, ce n'est ni l'un ni l'autre gate : c'est le panel
   (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`, 2026-09-16).
 
+- **Une SEULE observation dans la branche RARE tranche ce que mille passes NOMINALES ne peuvent pas** :
+  `mapSnapshot.ts` affirmait sans mesure « solde de carte positif = montant DÛ ». Première passe réelle
+  de l'étape 1 : **« → positif »**, et Marc : **« c'est en ma faveur »** — hypothèse RÉFUTÉE, Fintable
+  écrit `négatif = dû`. Ce qui compte n'est pas la convention mais **pourquoi une observation a suffi** :
+  sous `Math.abs`, le cas nominal est structurellement indiscernable (`|−500| = |+500|`), donc ce qu'on
+  regarde tous les jours n'apprend RIEN — c'est ce qui a laissé le commentaire faux survivre. Devant une
+  hypothèse non mesurée, ne pas chercher « plus de données » mais **la branche où les hypothèses
+  divergent**, et ne demander que celle-là. ⚠️ Portée : une réfutation n'est pas une preuve — la mesure
+  tue « positif = dû », elle est seulement *compatible* avec « négatif = dû » ; ce qui autorise à avancer
+  est qu'aucune décision n'attend la moitié manquante (le plan de l'étape 2 était déjà écrit dans ce sens,
+  donc la mesure le CONFIRME — et **une mesure qui confirme se publie autant qu'une réfutation**).
+  ⚠️ Un défaut RÉEL et un défaut ATTEINT sont deux états distincts : aucune dette n'étant associée à cette
+  carte, la dette fantôme de 200 $ n'a **jamais été écrite** — le dire, plutôt qu'annoncer un patrimoine
+  faux. ⚠️ Et ce qui reste faux après la mesure est le **COMMENTAIRE** (« un solde négatif signifie un
+  crédit en ta faveur ») : inversé dans du money-critical, il est pire qu'absent — il dispense de mesurer
+  (`UNE-SEULE-OBSERVATION-DANS-LA-BRANCHE-RARE-TRANCHE-CE-QUE-MILLE-PASSES-NOMINALES-NE-PEUVENT-PAS`).
+  ⚠️⚠️ Corollaire du même lot : **une recherche par MARCHAND ne prouve rien sur une LIGNE**. Vérifiant
+  par ligne que les quatre originaux étaient bien exclus, `Smartcar Mountain` RESSORTAIT — mais au
+  `2026-08-06` pour `−4,40 $`, quand la ligne visée est du `2026-09-01` pour `7,84 $` : deux transactions
+  distinctes du même marchand, la seconde arrivée le jour même avec le rattrapage d'historique. L'identité
+  d'une transaction est le couple **(date, montant)** ; le marchand n'est qu'un filtre. Le piège naît
+  quand un import vient d'élargir l'historique — un recensement écrit avant devient faux sans que personne
+  n'y touche — et il est **asymétrique** : ici il faisait renoncer à un import légitime (visible), dans
+  l'autre sens il ferait compter une dépense **deux fois**, sans rien de rouge
+  (`UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

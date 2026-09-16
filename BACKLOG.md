@@ -832,8 +832,8 @@
   SIX sites, pas sur celui qui a rougi — les cinq autres portent le même défaut et n'ont pas encore
   eu la malchance de tomber du mauvais côté. Non corrigé dans #974 : défaut préexistant, sans rapport
   avec le lot, et le corriger aurait élargi la PR.
-- [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **ÉTAPE 1 LIVRÉE le
-  2026-09-16 — EN ATTENTE DE LA RÉPONSE DE MARC**) — le mapper suppose « solde de carte POSITIF =
+- [ ] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, **ÉTAPE 1 LIVRÉE + MESURE
+  OBTENUE le 2026-09-16 — reste le correctif, cadré par l'étape 2**) — le mapper suppose « solde de carte POSITIF =
   montant dû » (`const owed = Math.abs(account.balance)`, `mapSnapshot.ts`, commenté « un solde
   négatif signifie un crédit en ta faveur »). Marc, interrogé le 2026-09-14 : sur Fintable, **devoir
   500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si confirmé : (a) tu DOIS 500 $ → la dette
@@ -858,9 +858,26 @@
   compte atteint bien `case 'debt'` ; il en sort trois lignes plus bas. La prémisse réfutée n'a pas
   annulé le lot, elle en a fixé la seule contrainte : publier le signe **AVANT toutes les sorties du
   bloc**. Leçon `UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`.
-  ⏸️ **Reste** : la réponse de Marc (une passe suffit) → puis étape 2, `docs/A_FAIRE_MOI.md`. Le
-  garde-fou `signeSoldeDette.test.ts` porte la consigne de RETRAIT de l'avertissement de mesure, à
-  INVERSER et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+  ✅✅ **MESURE OBTENUE le 2026-09-16, à la première passe.** Rapport publié : « Desjardins Cash
+  Back Mastercard (5020) » → **positif**. Marc, sur cette passe : **« c'est en ma faveur »**. La
+  convention de Fintable est donc **`négatif = dû`, `positif = en ta faveur`** — l'hypothèse écrite
+  en commentaire depuis toujours (« positif = montant DÛ ») est **RÉFUTÉE**.
+  ⚠️ **Une seule observation a suffi parce que c'est la seule qui pouvait trancher** : sous
+  `Math.abs`, le cas NOMINAL rend le même résultat dans les deux conventions (`|−500| = |+500|`),
+  donc mille passes normales n'apprennent rien. Seule la branche RARE (carte en CRÉDIT) les sépare,
+  et c'est celle qui s'est présentée. ⚠️ Portée exacte : la mesure **réfute** « positif = dû » ;
+  elle est *compatible* avec « négatif = dû » sans le prouver positivement (il faudrait une passe
+  où Marc doit de l'argent). Aucune décision n'attend ça — le plan de `[FINTABLE-CARTE-DETTE-AUTO]`
+  étape 2 est **déjà écrit dans ce sens** (`dû = max(0, −solde)`) : la mesure le CONFIRME au lieu
+  de le casser, et une mesure qui confirme se publie autant qu'une réfutation.
+  ✅ **Aucun dollar n'est faux aujourd'hui** : aucune dette n'est associée à cette carte (rapport :
+  « Dettes mises à jour : aucune »), donc la dette fantôme de 200 $ n'a **jamais été écrite**.
+  ⏸️ **Reste, et c'est un lot de CODE money-critical (plan + GO de Marc)** : (a) `owed` dérivé du
+  SIGNE et non de `Math.abs` ; (b) le **commentaire de `mapSnapshot.ts:271-273` est FAUX** (« un
+  solde négatif signifie un crédit en ta faveur ») — un commentaire inversé dans du money-critical
+  est un piège pour la prochaine session ; (c) l'avertissement de mesure doit **cesser** (il a fait
+  son travail ; permanent, il deviendrait mort) et le garde-fou `signeSoldeDette.test.ts` porte sa
+  consigne de RETRAIT, à INVERSER et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
 - [ ] 🟠 **`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`** (M, vie privée, **DÉCOUVERT au
   panel de la PR #975, préexistant — NON corrigé dans ce lot**) — `.github/workflows/fintable-sync.yml`
   fait `cat /tmp/fintable_sync_out`, donc le corps JSON complet de `/fintable-sync`
@@ -886,7 +903,9 @@
   `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` rapporte `'zéro'`, l'étape 2 doit savoir que ce chemin ne
   met déjà **rien** à jour. ⚠️ Même refus (`<= 0`) : l'app n'a **aucun canal** pour une carte en
   CRÉDIT — c'est ce qui borne à 200 $ (et non 400 $) l'écart réparable du ticket ci-dessus.
-- [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **PLAN POSÉ — EN ATTENTE DU GO DE MARC**) — la carte de
+- [ ] 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]`** (M, **PLAN POSÉ ET CONFIRMÉ PAR LA MESURE du 2026-09-16
+  — EN ATTENTE DU GO DE MARC**) ⚠️ Le plan ci-dessous suppose `négatif = dû` : c'est **exactement ce
+  que la mesure a établi** (cf. `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`). Rien à recadrer. — la carte de
   crédit n'est pas une dette : c'est un **solde à DEUX SENS**. Marc, 2026-09-14 : « parfois mon crédit
   fait que j'ai de l'argent en plus et parfois de l'argent en moins », et il a choisi que le surplus
   **compte comme des liquidités** (et non une dette à 0 $, que je recommandais) — choix assumé, le plus
@@ -901,8 +920,42 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
+- [ ] 🟠 **`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`** (M, money-critical, **GO DE MARC le 2026-09-16 :
+  « prioritaire »**) — le compte courtier « Disnat (L7B1) » est en **USD** et le mapper ne sait pas
+  convertir : son montant est **IGNORÉ à chaque passe** (avertissement publié, donc pas silencieux
+  — mais faux par omission). Les titres saisis à la main servent de repli. ⚠️ Le remède se mesure
+  comme le défaut : `assetValueCad` porte déjà la conversion (source unique, garde
+  `tests/services/assetFxGuard.test.ts`) — c'est du **câblage**, pas un mécanisme neuf. ⚠️ Avant de
+  livrer, demander **ce que ce solde contient** (valeur marchande du compte ? liquidités seules ?) :
+  l'écraser sur une grandeur qui n'est pas la même que les titres saisis ferait un double comptage,
+  variante de `UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET`. ⚠️ Et le contrôle négatif
+  est obligatoire : un compte déjà en CAD ne doit rien voir changer.
+- [ ] 🟡 **`[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]`** (S, **GO DE MARC le 2026-09-16 : « oui, à
+  l'écran seulement »**) — l'inventaire des champs hors contrat, livré par
+  `[FINTABLE-DECODEUR-CHAMPS-INCONNUS]`, a fait son travail dès sa première passe réelle : il nomme
+  **5 champs** que l'API envoie et que le décodeur jette — `account_owner`, `check_num`, `ext_id`,
+  `external_memo`, `previous_ext_id`. Aucun ne s'appelle « devise », mais **`external_memo` est du
+  texte libre**, et c'est là que des banques écrivent la conversion (« USD 4.40 @ 1.37 »). C'est la
+  **seule piste connue** pour corriger `[FINTABLE-DEVISE-MAL-ETIQUETEE]` à la SOURCE au lieu de
+  réparer à la main. ⚠️⚠️ **Contrainte de vie privée, non négociable** : le contenu s'affiche
+  **uniquement à l'écran** de l'app, JAMAIS dans `report.warnings` — ce rapport est `cat`é en clair
+  dans les journaux GitHub Actions d'un dépôt **PUBLIC** (`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`),
+  et un mémo bancaire peut porter un nom, un numéro de chèque ou une adresse. ⚠️ Si le champ ne
+  porte PAS la devise, le résultat NÉGATIF se publie aussi : il ferme la piste au lieu de la laisser
+  se faire retenter à l'aveugle à chaque session.
 - [x] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **FAIT le
-  2026-09-16**) — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
+  2026-09-16 — et VALIDÉ EN PRODUCTION le jour même**)
+  ✅✅ **Le plancher dérivé a été mis à l'épreuve pour de vrai, quelques heures après le merge.** Marc
+  a lancé « Rattraper l'historique » sur un état **NON vierge** : **1 478 transactions ajoutées**,
+  dont 588 antérieures à juillet 2025 (7 597 → 7 601 lignes après l'import de correction du même
+  jour). C'est exactement le scénario que le panel avait nommé comme le seul coûteux — reculer sous
+  la date des lignes entrées par un AUTRE canal peut les rejouer en double, et la dédup ne rattrape
+  rien puisque sa clé contient le `payee`, justement ce qui diffère. **Mesuré après coup sur l'état
+  réel** : les deux `Sodexo` du 2026-09-09 réécrites À LA MAIN la veille (3,77 $ chacune, dont une
+  désambiguïsée `(2/2)`) sont **intactes**, et leurs originaux à 13,50 $ ne sont **pas revenus**.
+  **0 doublon sur les 36 lignes du Brésil.** Le cas n'était pas théorique : il s'est produit, et la
+  protection a tenu. Une mesure qui CONFIRME se publie autant qu'une réfutation.
+  Contexte d'origine — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
   la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même
   vitesse. Le compte chèque poste le jour même et pousse la bascule chaque jour ; la carte de crédit
   poste avec quelques jours de retard (et `pending: false` est FORCÉ par contrat, donc seules les

@@ -21,7 +21,7 @@
 // C'est ce qu'assertent les gardes de non-fuite, avec leur perturbation.
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 import { readFileSync } from 'node:fs';
 import { mapFintableSnapshot, signeSolde, type FintableAccountRole } from '../../../services/fintable/mapSnapshot';
 import { MAX_CLES_CITEES } from '../../../services/fintable/decode';

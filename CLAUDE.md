@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 087 tests** Vitest
-(620 fichiers de test, mesuré le 2026-09-16 ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 089 tests** Vitest
+(621 fichiers de test, mesuré le 2026-09-16 ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation, +2 mocks complets). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1041,6 +1041,21 @@ n'est pas réécrire un récit.
   `useShallow` depuis la RACINE, re-rend toute l'app à chaque écriture du store — le correctif n'est
   pas `useShallow` mais `getState()` dans l'effet, qui ne s'abonne à rien
   (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
+
+- ⚠️ **Un import statique ajouté dans la COUCHE SERVICES casse les mocks de tous les tests qui
+  montent un composant** (2ᵉ occurrence, 2026-09-16, trouvée par la CI) : `useSimulationParams` s'est
+  mis à importer `holdingsCadByRegime`, qui importe `logErrorThrottled` — et les tests qui montent
+  `ProjectionEngine` mockaient `errorLogger` avec le seul `logError`, contrat parfaitement valide la
+  veille. Ils ont tous explosé alors qu'aucun d'eux ne parle de journalisation : **le contrat qu'un
+  test déclare n'est pas celui qu'il utilise, c'est celui de tout le graphe d'imports sous lui.**
+  ⚠️ La garde ne liste PAS les fichiers qui plantent (cette liste change à chaque import ajouté
+  ailleurs) : elle exige la surface COMPLÈTE de tout mock à fabrique littérale. ⚠️ Et son PÉRIMÈTRE
+  a dû être resserré après un premier jet faux — balayer toute la production exigeait aussi
+  `installGlobalErrorHandlers`/`getErrors`/`clearErrors`, soit **203 « fautifs »** dont aucun ne
+  pouvait causer la panne : ces fonctions ne sont appelées que par `App` et le visualiseur, jamais
+  par une dépendance profonde. Le périmètre qui compte est la couche que **tout montage traîne
+  derrière lui sans le savoir** — mesuré : `services/` n'importe que la paire fautive
+  (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUS-LES-MONTAGES`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

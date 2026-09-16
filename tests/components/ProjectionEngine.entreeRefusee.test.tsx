@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, act } from '@testing-library/react';
 
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 vi.mock('../../services/projection/runAsync', async (importOriginal) => {
     const reel = await importOriginal<typeof import('../../services/projection/runAsync')>();
     return { ...reel, runProjectionAsync: vi.fn(reel.runProjectionAsync) };

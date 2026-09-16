@@ -26,7 +26,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
         };
     },
 }));
-vi.mock('../../services/errorLogger', () => ({ logError: mocks.logError }));
+vi.mock('../../services/errorLogger', () => ({ logError: mocks.logError, logErrorThrottled: vi.fn(), }));
 
 import { getRebalanceJustifications } from '../../services/claude';
 

@@ -68,8 +68,7 @@ vi.mock('../../services/backupAuto', () => ({
 // Le logger écrit dans localStorage (best-effort) : on le mocke pour ne pas polluer le storage qu'on
 // nettoie entre tests, et pour vérifier qu'un échec de sync est bien journalisé sans être relancé.
 vi.mock('../../services/errorLogger', () => ({
-    logError: (...args: unknown[]) => logErrorMock(...args),
-}));
+    logError: (...args: unknown[]) => logErrorMock(...args), logErrorThrottled: vi.fn(), }));
 
 // Importé APRÈS les mocks (vi.mock est hoisté, donc OK).
 import {

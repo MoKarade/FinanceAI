@@ -18,7 +18,7 @@
 // correcte (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 import { runFintableBrowserSync } from '../../../services/fintable/browserSync';
 import { parseRolesJson } from '../../../services/fintable/rolesConfig';
 import type { AppState, FintableAccountRoleConfig } from '../../../types';

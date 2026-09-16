@@ -4,7 +4,7 @@ import { webcrypto } from 'node:crypto';
 // SF-1 — on vérifie que les échecs IndexedDB ne sont plus avalés silencieusement
 // (console.warn invisible en prod sans backend) mais journalisés via le logger
 // borné (errorLogger), SANS changer le contrat de retour (null/[]/false/void).
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 import { logError } from '../../services/errorLogger';
 
 // IndexedDB n'est pas dispo en jsdom → les tests « glue » stubent via

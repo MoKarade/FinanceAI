@@ -24,8 +24,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 }));
 
 vi.mock('../../services/errorLogger', () => ({
-    logError: mocks.logError,
-}));
+    logError: mocks.logError, logErrorThrottled: vi.fn(), }));
 
 import { categorizeBatch } from '../../services/claude';
 

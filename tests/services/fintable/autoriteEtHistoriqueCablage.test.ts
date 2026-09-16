@@ -18,7 +18,7 @@ import { FintableClient } from '../../../services/fintable/client';
 import { buildDefaultAppState } from '../../../mcp/state/appStateDefaults';
 import type { AppState, FintableAccountRoleConfig, FintableBrokerBalance } from '../../../types';
 
-vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 const NOW = Date.parse('2026-09-16T12:00:00Z');
 const HIER = Date.parse('2026-09-15T12:00:00Z');

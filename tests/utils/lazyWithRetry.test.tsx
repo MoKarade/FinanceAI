@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { installPreloadErrorReload, importWithRetry, IMPORT_STALL_TIMEOUT_MS } from '../../utils/lazyWithRetry';
 
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 import { logError } from '../../services/errorLogger';
 
 const RELOAD_FLAG_KEY = 'financeai:chunkReloaded:v1';

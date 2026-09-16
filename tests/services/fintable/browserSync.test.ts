@@ -13,7 +13,7 @@ import { buildDefaultAppState } from '../../../mcp/state/appStateDefaults';
 import type { AppState, FintableAccountRoleConfig } from '../../../types';
 import type { FintableAccountRole } from '../../../services/fintable/mapSnapshot';
 
-vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 const NOW = Date.parse('2026-07-30T12:00:00Z');
 const now = () => NOW;

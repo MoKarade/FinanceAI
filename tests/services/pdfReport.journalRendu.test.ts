@@ -49,7 +49,7 @@ vi.mock('jspdf', () => {
 
 // Le chemin d'ÉCHEC (repli impression navigateur) passe par logError — l'espionner prouve que le
 // rendu nominal n'emprunte JAMAIS le catch, sans dépendre de `window` (environnement node).
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 const UTILISATEUR_FISCAL = (nom: string, brut: number) => ({
     name: nom, grossAnnual: brut, netAnnual: brut * 0.7, federalTax: brut * 0.15,

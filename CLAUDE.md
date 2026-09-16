@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 966 tests** Vitest
-(612 fichiers de test, mesuré le 2026-09-16). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 979 tests** Vitest
+(613 fichiers de test, mesuré le 2026-09-16). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -883,6 +883,28 @@ n'est pas réécrire un récit.
   parce qu'il faut les libellés routés. ⚠️ **Le panel a battu le gate ET la CI trois fois sur ce même
   lot** : aucune fixture ne pouvait voir ces défauts — libellés propres, historique complet, un seul
   canal d'import (`LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT`, 2026-09-16).
+
+- **Une PRÉCONDITION citée par un ticket vieillit plus vite que son DÉFAUT** :
+  `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` finissait par « mesure inatteignable pour Marc : aucune de ses
+  cartes n'a de `debtName` (c'est tout l'objet de `[FINTABLE-CARTE-SANS-DETTE]`) » — phrase qui décide
+  si on PREND le lot, et **fausse depuis PR #956, livrée deux jours plus tôt par le ticket qu'elle
+  CITE**. Un défaut décrit un MÉCANISME (périmé seulement par un correctif, visible) ; une précondition
+  décrit l'ÉTAT d'un autre travail, périmé par **n'importe quel merge**, sans que personne ne touche au
+  ticket. « Le périmètre d'un ticket se RECENSE » vaut donc surtout pour ses BLOCAGES — et le signal
+  le plus fort est qu'une précondition NOMME un autre ticket. ⚠️ **La prémisse réfutée n'a pas annulé
+  le lot, elle l'a FAÇONNÉ** : puisque le compte atteint bien `case 'debt'` et en sort trois lignes
+  plus bas, publier le signe à l'endroit NATUREL (à côté du `Math.abs` dont on parle) l'aurait laissé
+  inatteignable pour la seule personne qui peut le lire — d'où « avant TOUTES les sorties du bloc »,
+  perturbation à 7 rouges sur 13. ⚠️ `absent` couvre le `NaN`, jamais `zéro` (« carte soldée » est la
+  valeur la plus CRÉDIBLE, donc la pire) ; le SIGNE se publie, **jamais le montant** (rapport rendu
+  sans gate de mode discret ET `cat`é en clair dans les journaux GitHub Actions, dépôt PUBLIC) ; et
+  un avertissement de MESURE porte sa consigne de retrait dans une garde, à INVERSER et non à
+  supprimer. ⚠️⚠️ **Le panel a corrigé un CHIFFRE que j'avais publié** : « patrimoine net faux de
+  400 $ » pour une carte à 200 $ en crédit — l'écart RÉPARABLE par le signe est **200 $**, l'autre
+  moitié n'étant représentable par aucune convention (`applyDebt` refuse un solde `<= 0`, donc pas
+  de canal pour une carte en crédit). **Annoncer 2C quand seul C est réparable promet une réparation
+  dont la moitié n'existe pas** — demander quelle part de l'écart le correctif FERME avant d'écrire
+  son impact (`UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`, 2026-09-16).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

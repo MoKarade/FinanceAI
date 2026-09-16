@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (une question à te poser : dans quel sens Fintable écrit un solde de carte ?)
+
+- **Pourquoi** : tu m'as dit le 14 septembre que sur Fintable, devoir 500 $ s'affiche **`-500`**. Le
+  code suppose l'inverse depuis toujours (« un solde négatif signifie un crédit en ta faveur »), et
+  il prend la valeur absolue — donc le cas courant tombe juste **par accident**, pendant que le cas
+  rare (un solde en TA faveur) deviendrait une dette inventée du même montant. Tant que la convention
+  n'est pas mesurée, l'hypothèse est infalsifiable : les deux sens donnent le même résultat sur ce
+  qu'on regarde tous les jours.
+- **Ce qui change** : rien ne bouge d'un dollar. Le rapport de synchro (Système & diagnostics → carte
+  « Sync Fintable ») affiche désormais, pour chaque carte, **le SIGNE du solde reçu — jamais le
+  montant**, parce que ce rapport part aussi en clair dans les journaux GitHub Actions.
+- ⚠️ **Une question pour toi, une seule fois** : à la prochaine synchro, regarde le signe affiché et
+  dis-moi si, à cette date, tu DOIS de l'argent sur cette carte ou si le solde est en ta faveur. Ta
+  réponse fixe la convention — et débloque l'étape suivante (le solde de carte porté au patrimoine
+  dans les deux sens).
+- Le message disparaîtra une fois la convention fixée : un avertissement qui parle pour toujours est
+  un avertissement mort.
+
+---
+
 ## [unreleased] — 2026-09-16 (tes transactions de carte de crédit arrêtent de se faire jeter)
 
 - **Pourquoi** : tu disais « je reçois pas les transactions de carte de crédit » alors que Fintable

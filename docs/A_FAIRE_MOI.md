@@ -1612,7 +1612,13 @@ les deux cas sont **inversés** :
 | situation réelle | solde Fintable | ce que le code fait aujourd'hui |
 |---|---|---|
 | tu DOIS 500 $ | `-500` | dette de 500 $ ✅ …mais l'avertissement « **crédit en ta faveur** » se déclenche **à chaque passe**, sur le cas NOMINAL |
-| tu as 200 $ EN TROP | `+200` | **dette fantôme de 200 $**, **sans aucun avertissement** — patrimoine net faux de 400 $ (200 $ de dette inventée au lieu de 200 $ d'actif) |
+| tu as 200 $ EN TROP | `+200` | **dette fantôme de 200 $**, **sans aucun avertissement** |
+
+⚠️ **Correction du 2026-09-16** : ce tableau annonçait « patrimoine net faux de 400 $ ». C'est
+**200 $**, pas 400 $. La dette inventée (200 $) se corrigera avec le signe ; les 200 $ que
+l'émetteur te doit, eux, ne sont représentables **par aucune convention** aujourd'hui —
+`applyDebt` refuse un solde négatif ou nul, donc l'app n'a aucun endroit où mettre une carte
+en crédit. C'est une décision de l'étape 2, pas un effet du signe.
 
 `Math.abs` sauve la grandeur du cas nominal **par accident**, et c'est exactement ce qui rendait le
 défaut invisible. Un avertissement qui parle sur le cas normal et se tait sur le cas anormal est pire
@@ -1623,6 +1629,26 @@ qu'absent (classe « un avertissement PERMANENT est un avertissement mort »).
 de signe), mais personne n'a encore comparé les deux sur une vraie passe. Le plan ci-dessous commence
 donc par une mesure, pas par un correctif. Le jeton serveur étant révoqué (401), cette mesure passe par
 le navigateur de Marc.
+
+### ✅ ÉTAPE 1 LIVRÉE le 2026-09-16 — **une question pour toi, une seule fois**
+
+À ta prochaine synchro Fintable, ouvre **Système & diagnostics → carte « Sync Fintable »**. Tu y
+verras une ligne du genre :
+
+> Mesure en cours — signe du solde reçu de Fintable pour tes cartes/dettes (le MONTANT n'est jamais
+> écrit ici) : « Desjardins Cash Back Mastercard » → négatif. …
+
+**Ce que j'ai besoin de savoir** : à cette date-là, est-ce que tu **DOIS** de l'argent sur cette
+carte, ou est-ce que le solde est **en ta faveur** ? C'est tout. Ta réponse fixe la convention de
+signe de Fintable, et c'est la seule chose qui manque pour l'étape 2.
+
+⚠️ Le montant n'est volontairement PAS affiché : ce rapport part aussi en clair dans les journaux
+GitHub Actions, et le dépôt est public. Le signe suffit à trancher ; le montant n'ajoute rien et ne
+se retire plus une fois écrit.
+
+⚠️ **Rien n'a bougé d'un dollar** : `Math.abs` est toujours en place, la dette vaut toujours la
+valeur absolue du solde. C'est l'étape 2 qui change ça, une fois ta réponse reçue. Et le message
+disparaîtra à ce moment-là — un avertissement qui parle pour toujours est un avertissement mort.
 
 ### Plan proposé — trois étapes, la première ne déplace aucun dollar
 
@@ -1671,6 +1697,14 @@ le minimum CONTRACTUEL, pas le paiement réel de Marc (il vire de grosses sommes
 2026-09-14). Si le moteur ne sert que 10 $/mois, la projection montrera une dette qui ne descend
 jamais. À trancher en même temps que le GO : sert-on le minimum contractuel (10 $) ou le paiement
 RÉEL observé dans les transactions ?
+
+### ⚠️ Correction : « la mesure était inatteignable » était FAUX
+
+Le ticket affirmait que tu ne pourrais pas faire cette mesure « faute de `debtName` sur tes cartes ».
+Re-vérifié sur le code réel le 2026-09-16 : c'est faux **depuis PR #956** — un nom de dette vide
+laisse désormais le compte ROUTÉ, il arrive bien dans le bloc qui lit le solde et n'en ressort que
+trois lignes plus bas. La mesure était donc à quelques lignes de distance, pas hors de portée. C'est
+cette vérification qui a fixé la seule contrainte du lot : publier le signe **avant** ces sorties.
 
 ### En attendant, ça marche déjà
 

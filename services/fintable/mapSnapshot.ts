@@ -55,6 +55,27 @@ export type FintableTaxRegime = 'CELI' | 'REER' | 'NON-ENREG';
  */
 export const FINTABLE_TAX_REGIMES: readonly FintableTaxRegime[] = ['CELI', 'REER', 'NON-ENREG'];
 
+/**
+ * [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Signe d'un solde de compte au rôle `debt` — **jamais son
+ * montant**.
+ *
+ * ⚠️ Le rapport de synchro finit dans `SystemView` SANS gate de mode discret ET `cat`é en clair dans
+ * les journaux GitHub Actions (`fintable-sync.yml`) — une surface plus persistante que l'app. Le
+ * signe suffit à trancher la convention ; le montant n'ajoute rien et ne se retire plus une fois
+ * écrit (finding panel PR #531).
+ *
+ * `'absent'` couvre le solde manquant ET le non fini : un `NaN` n'est pas un zéro, et le rabattre
+ * sur `'zéro'` affirmerait une mesure qu'on n'a pas (§1 no-fake-data).
+ */
+export type SigneSoldeDette = 'négatif' | 'positif' | 'zéro' | 'absent';
+
+export function signeSolde(balance: number | null | undefined): SigneSoldeDette {
+    if (typeof balance !== 'number' || !Number.isFinite(balance)) return 'absent';
+    if (balance < 0) return 'négatif';
+    if (balance > 0) return 'positif';
+    return 'zéro';
+}
+
 /** Rôle d'un compte Fintable dans FinanceAI. Toujours EXPLICITE (cf. piège n°2). */
 export type FintableAccountRole =
     /** Compte courant / épargne → son solde entre dans les liquidités, ses transactions sont importées. */
@@ -133,6 +154,13 @@ interface FintableMappingReport {
     /** Dettes mises à jour (nom → solde dû). */
     debts: Array<{ name: string; balanceCad: number }>;
     /**
+     * [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Le SIGNE du solde reçu pour chaque compte au rôle `debt`,
+     * sans le montant. Publié pour TOUS ces comptes, y compris ceux qui n'aboutissent à aucun payload
+     * (nom de dette vide, solde absent, devise étrangère) : c'est justement la configuration de Marc,
+     * et la mesure serait inatteignable pour lui si elle vivait après ces sorties.
+     */
+    soldesDetteSignes: Array<{ label: string; signe: SigneSoldeDette }>;
+    /**
      * Comptes de placement : le solde du COURTIER, qui fait autorité sur le total du compte (choix
      * Marc 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable »). Jamais converti en
      * titres : Fintable ne rend pas les positions (FINTABLE-POSITIONS, limite produit mesurée).
@@ -182,6 +210,7 @@ export function mapFintableSnapshot(
     const cashAccountsMissingBalance: string[] = [];
     const investmentBalances: FintableMappingReport['investmentBalances'] = [];
     const debts: FintableMappingReport['debts'] = [];
+    const soldesDetteSignes: FintableMappingReport['soldesDetteSignes'] = [];
     let cashTotal = 0;
     let cashAccountCount = 0;
 
@@ -209,6 +238,12 @@ export function mapFintableSnapshot(
                 break;
             }
             case 'debt': {
+                // [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] AVANT toute sortie de ce bloc. Le ticket
+                // affirmait la mesure « inatteignable » pour Marc faute de `debtName` — re-mesuré
+                // sur le code réel : son compte atteint bien ce `case` depuis [FINTABLE-CARTE-SANS-DETTE]
+                // (PR #956), il sort trois lignes plus bas. Publier ici, et seulement ici, rend la
+                // mesure atteignable dès la prochaine passe, sans rien déplacer.
+                soldesDetteSignes.push({ label: account.label, signe: signeSolde(account.balance) });
                 // [FINTABLE-CARTE-SANS-DETTE] Nom VIDE = « importe les transactions, ne touche à
                 // aucun solde » — un choix explicite de l'utilisateur, pas une configuration à
                 // moitié faite. Le compte reste ROUTÉ (ses transactions passent le filtre du bas) ;
@@ -291,6 +326,28 @@ export function mapFintableSnapshot(
             case 'ignore':
                 break;
         }
+    }
+
+    // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Avertissement de MESURE, à durée de vie bornée : il
+    // meurt à l'étape 2 du plan (`docs/A_FAIRE_MOI.md`), quand la convention de signe est fixée. Il
+    // n'énonce QUE le fait et la question — pas la conséquence : « un solde positif est porté comme
+    // un montant dû » est vrai d'un compte qui a un nom de dette, FAUX d'un compte au nom vide, et
+    // les deux lisent le même message.
+    if (soldesDetteSignes.length > 0) {
+        // ⚠️ [revue panel] BORNÉ, comme `unknownTransactionKeys` 150 lignes plus bas : ce fichier
+        // a déjà sa constante pour exactement ce motif. Un `join` non borné produit un
+        // avertissement illisible dès qu'il y a beaucoup de comptes — et cet avertissement part
+        // dans un journal PUBLIC.
+        const cites = soldesDetteSignes.slice(0, MAX_CLES_CITEES);
+        const reste = soldesDetteSignes.length - cites.length;
+        const liste = cites.map((x) => `« ${x.label} » → ${x.signe}`).join(', ')
+            + (reste > 0 ? ` (+ ${reste} autre(s))` : '');
+        warnings.push(
+            `Mesure en cours — signe du solde reçu de Fintable pour tes cartes/dettes (le MONTANT n'est `
+            + `jamais écrit ici) : ${liste}. Dis-moi si, à cette date, tu DOIS de l'argent sur ces comptes `
+            + 'ou si le solde est en ta faveur : c\'est la seule mesure qui manque pour savoir dans quel '
+            + 'sens Fintable écrit un solde de carte.',
+        );
     }
 
     if (accountsWithoutRole.length > 0) {
@@ -508,6 +565,7 @@ export function mapFintableSnapshot(
             cashTargetCad,
             cashAccountsMissingBalance,
             debts,
+            soldesDetteSignes,
             investmentBalances,
             accountsWithoutRole,
             transferPairs,

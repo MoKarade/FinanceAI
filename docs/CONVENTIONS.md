@@ -13737,3 +13737,103 @@ jamais trop basse (donc **pas** de doublon, pas de double-comptage), mais trop h
 - ⚠️ **En rattrapage, les bornes par compte tombent AVEC la globale.** En laisser une seule
   filtrerait l'historique qu'on vient justement d'aller chercher — le défaut que
   `[FINTABLE-RATTRAPAGE]` avait déjà payé une fois sur la paire `dateFrom`/`transactionsAfter`.
+
+---
+
+## `UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT` (2026-09-16)
+
+**Le fait.** `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` décrivait un défaut exact — le mapper porte
+`const owed = Math.abs(account.balance)` sous « un solde NÉGATIF signifie un crédit en ta faveur »,
+alors que Marc décrit l'inverse (`-500` = 500 $ dus) — et se terminait par une phrase de BLOCAGE :
+
+> « Aujourd'hui inatteignable pour lui : aucune de ses cartes n'a de `debtName` (c'est tout l'objet
+> de `[FINTABLE-CARTE-SANS-DETTE]`). »
+
+Prise pour argent comptant, cette phrase route l'étape 1 à Marc comme impossible, ou la fait
+dépendre d'un autre lot. **Re-mesurée sur le code réel : elle est FAUSSE depuis PR #956** — livrée
+**deux jours plus tôt**, par le ticket que celui-ci CITE. Un `debtName` vide y est devenu un état
+légitime (« importe les transactions, ne touche à aucun solde ») qui laisse le compte **routé** :
+il atteint bien `case 'debt'`, il en sort trois lignes plus bas sur le nom vide.
+
+**La règle.** Un ticket porte deux natures d'affirmation, et elles ne vieillissent pas à la même
+vitesse :
+
+| nature | ce qu'elle décrit | ce qui la périme |
+|---|---|---|
+| le DÉFAUT | un MÉCANISME (`Math.abs` sur une convention non mesurée) | un correctif de ce mécanisme — rare, et visible |
+| la PRÉCONDITION | l'ÉTAT d'un autre travail (« bloqué par X », « inatteignable tant que Y ») | **n'importe quel merge**, sans que personne ne touche au ticket |
+
+C'est la seconde qui décide si on PREND le lot, et c'est celle que personne ne relit. La règle du
+dépôt « le périmètre d'un ticket se RECENSE, il ne se cite pas » vaut donc **aussi, et surtout, pour
+ses BLOCAGES** — et le signal le plus fort est qu'une précondition NOMME un autre ticket : elle est
+alors, par construction, une photo de l'état d'un travail qui avance.
+
+**Le corollaire qui compte.** La prémisse réfutée n'a pas annulé le lot, elle l'a **FAÇONNÉ**. Si le
+compte de Marc atteint `case 'debt'` puis en sort sur le nom vide, alors publier le signe après cette
+sortie — l'endroit naturel, à côté de `Math.abs` dont on parle — laisse la mesure inatteignable pour
+**la seule personne qui peut la lire**. D'où la seule contrainte de conception : publier le signe
+**AVANT toutes les sorties du bloc** (nom vide, solde absent, devise étrangère). La garde principale
+du lot est exactement ce cas, et sa perturbation (déplacer la publication d'une seule ligne plus bas)
+rougit 7 tests sur 13.
+
+**Ce que le lot publie, et ce qu'il ne publie pas.** Le rapport de synchro est rendu dans
+`SystemView` **sans gate de mode discret** ET `cat`é en clair dans les journaux GitHub Actions
+(`fintable-sync.yml`), sur un dépôt **public**. Le SIGNE suffit à trancher la convention ; le MONTANT
+n'ajoute rien et ne se retire plus une fois écrit. Deux gardes l'assertent, sur la valeur brute ET sur
+sa forme formatée — avec normalisation de l'insécable, sans quoi un attendu négatif écrit avec une
+espace ordinaire ne matche RIEN et la garde est vacueuse.
+
+⚠️ **`absent` couvre le `NaN`, jamais `zéro`.** Rabattre un non-fini sur `'zéro'` afficherait
+« carte soldée » — la valeur la plus CRÉDIBLE, donc la pire (§1 no-fake-data : « un 0 $ crédible est
+pire qu'un « — » honnête »). Et `-0` reste `'zéro'` : le code est déjà juste (`-0 < 0` est faux),
+mais rien ne l'affirmait, et réécrire le prédicat avec `Object.is` le retournerait en silence.
+
+⚠️ **L'avertissement de mesure est TEMPORAIRE, et ça s'écrit dans une garde.** Un avertissement qui
+survit à sa mesure devient PERMANENT, donc mort — exactement ce que ce ticket reproche au message
+« crédit en ta faveur ». Le test porte la consigne de retrait, à **INVERSER** au moment de l'étape 2
+et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+
+⚠️⚠️ **Le panel a corrigé un CHIFFRE que j'avais publié, et c'est le vrai coût du lot.** Le ticket —
+puis mes docs, qui le recopiaient — annonçaient « patrimoine net faux de **400 $** » pour une carte
+à 200 $ en crédit : 200 $ de dette inventée *plus* 200 $ d'actif manquant. Re-mesuré sur le code :
+l'écart **réparable par la correction de signe** est **200 $**. Les 200 $ que l'émetteur doit ne sont
+représentables par **aucune** convention aujourd'hui — `applyDebt` refuse tout solde `<= 0`
+(`mcp/ingest/applyDocument/debt.ts:50`), donc l'app n'a pas d'endroit où mettre une carte en crédit.
+**Annoncer 2C quand seul C est réparable promet une réparation dont la moitié n'existe pas** : c'est
+`UN-TICKET-QUI-N-ANNONCE-QU-UN-MONTANT-NE-DIT-PAS-SA-GRAVITE` vu à l'envers — là le montant
+SOUS-estimait, ici il SUR-promet. Avant d'écrire l'impact d'un correctif, demander **quelle part de
+cet écart le correctif peut effectivement fermer**, et nommer le reste comme une décision distincte.
+⚠️ Corollaire découvert au même endroit : ce même `<= 0` fait qu'une carte **remboursée à zéro**
+rejette son payload et **garde la dette de la veille** — routé sous
+`[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`. C'est exactement la branche que `signeSolde`
+étiquette `'zéro'`.
+
+⚠️ **Et « aucune grandeur indépendante ne tranche » est une conclusion MESURÉE, pas un aveu.** Cinq
+candidats ont été écartés un par un, et le plus instructif est la réconciliation Δsolde vs Σtx : elle
+serait décisive (Δb = −Σtx sous une convention, +Σtx sous l'autre) — sauf que le solde SIGNÉ n'est
+persisté nulle part, seul `Math.abs` atteint l'état, et **l'abs efface le discriminant
+symétriquement** (`Δ|b| = −Σtx` dans les deux). Le sentier persisté est donc aveugle **pour
+exactement la raison qui rend le cas nominal ambigu**. Le signe des TRANSACTIONS ne sauve pas non
+plus : un agrégateur normalise les deux conventions indépendamment (Plaid fait le couple inverse).
+La leçon `UNE-MESURE-IMPOSSIBLE-DEPUIS-LE-CONTENEUR-EST-PEUT-ETRE-A-UNE-QUESTION-DE-DISTANCE` reste
+donc la bonne réponse ici — mais c'est l'épuisement des candidats qui l'établit, pas l'intuition.
+
+⚠️ **Un `join` non borné dans un message qui part en journal PUBLIC.** Mon premier jet concaténait
+tous les libellés de comptes `debt` — alors que le MÊME fichier borne exactement ce motif 150 lignes
+plus bas (`MAX_CLES_CITEES`, déjà importé). Le champ STRUCTURÉ garde tout le monde, c'est l'AFFICHAGE
+qui se borne, et la troncature s'ANNONCE (`+ N autre(s)`) : « borné » et « tronqué en silence » sont
+sinon indiscernables. Deux perturbations le prouvent (borne retirée · annonce retirée).
+
+⚠️ **Le lot rend une fuite préexistante quotidienne, et ça se dit.** Le corps du rapport est `cat`é
+en clair dans les journaux GitHub Actions d'un dépôt PUBLIC, et le commentaire du workflow affirme
+« jamais de montant ni de libellé » — **faux avant ce lot** (15 sites interpolent déjà
+`account.label`/`role.debtName`, `cashAnchorDelta` est un montant). Ce lot ne crée pas la classe,
+mais il fait partir un libellé de carte à CHAQUE passe. Un commentaire qui promet une garantie
+inexistante est pire qu'absent : il sert d'alibi à qui vient après. Routé sous
+`[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]`, pas corrigé ici (défaut antérieur, et toucher
+un workflow élargirait la PR).
+
+⚠️ **Et le message n'énonce QUE le fait et la question, pas la conséquence.** « Un solde positif est
+porté comme un montant dû » est vrai d'un compte qui a un nom de dette et **FAUX** d'un compte au nom
+vide — or les deux lisent le même message. Une phrase vraie « en général » dans un avertissement
+partagé est une phrase fausse pour la moitié de ses lecteurs.

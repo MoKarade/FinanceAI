@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     accumulerHistoriqueCourtier, profondeurEnJours, jourUtc,
-    RETENTION_HISTORIQUE_MOIS, PLAFOND_ENTREES_HISTORIQUE,
+    RETENTION_HISTORIQUE_JOURS, PLAFOND_ENTREES_HISTORIQUE,
 } from '../../../services/fintable/brokerHistory';
 import type { FintableBrokerBalance } from '../../../types';
 
@@ -77,7 +77,7 @@ describe('accumulation', () => {
     });
 
     it('purge au-delà de la rétention', () => {
-        const vieux = lig({ at: T0 - (RETENTION_HISTORIQUE_MOIS * 30 + 5) * JOUR });
+        const vieux = lig({ at: T0 - (RETENTION_HISTORIQUE_JOURS + 5) * JOUR });
         const recent = lig({ at: T0 - 10 * JOUR });
         const out = accumulerHistoriqueCourtier([vieux, recent], [], T0);
         expect(out).toHaveLength(1);

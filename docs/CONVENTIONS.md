@@ -14265,3 +14265,67 @@ d'AFFIRMER le nombre d'occurrences remplacées avant de lire le verdict.
   (`Asset.priceHistory[].fxRate`) existe dans le type sans être ni écrit ni lu par personne (grep :
   0 occurrence en production). Routé sous `[FX-PASSE-TAUX-PLAT]` : Marc a explicitement choisi
   l'accumulation de l'historique Fintable plutôt que ce correctif-là.
+
+
+### 10. REVUE PANEL — huit défauts réels dans ce lot, dont deux qui coûtaient de l'argent
+
+Le typecheck, le lint, **63 tests neufs**, **14 perturbations** et la CI n'avaient rien vu. Quatrième
+lot d'affilée où le panel bat les deux gates — et cette fois il a trouvé la chose qui vidait le lot
+de son sens.
+
+**🔴 Un total courtier AMPUTÉ écrasait le panier ENTIER.** `reconcileBrokerBalances` écarte un compte
+dont le taux manque, dont le solde est illisible ou dont le régime n'est pas déclaré — trois listes
+existent pour qu'aucun ne disparaisse en silence. Mais `brokerTotalCad` est alors la somme des SEULS
+comptes retenus, et `appliquerAutoriteCourtier` ne voyait pas ces listes. Mesuré sur la chaîne
+réelle : Disnat CAD 30 000 $ + Disnat USD 72 040 $ écarté faute de taux — **exactement l'état de
+Marc tant que ses taux viennent du repli** — donnait un mois 0 à **30 000 $ au lieu de 231 882 $**.
+La garde d'identité que j'avais écrite ne tenait que dans le cas TOUT-ou-RIEN ; le cas partiel, le
+plus probable, passait. **Un total partiel n'est pas une autorité dégradée, c'est un faux.**
+
+**🔴 Une base de FAMILLE écrite dans un panier ÉTROIT.** `holdingsCadByRegime` replie CELIAPP sur
+CELI et REEE sur REER (décision écrite, « même famille fiscale ») pendant que
+`deriveStartingBalancesFromHistory` les garde SÉPARÉS. Écrire le total « CELI » — comparé à
+CELI + CELIAPP — dans le seul panier `CELI` compte le CELIAPP **deux fois** : 91 500 $ pour 66 500 $
+réels. ⚠️ Le défaut vit dans l'ASYMÉTRIE entre deux modules : aucun des deux n'est faux tout seul.
+Et mon propre test **inscrivait la prémisse fausse** (« CELIAPP / REEE ne sont pas réconciliables »),
+vraie de la DÉCLARATION, fausse de la BASE DE COMPARAISON. Refusé plutôt que corrigé d'office : mettre
+le jumeau à zéro rangerait de l'argent CELIAPP dans le CELI, donc changerait son **régime fiscal** —
+une décision produit, routée.
+
+**🔴 Le recours n'aurait vécu qu'UNE session.** La saisie manuelle n'écrit pas le cache local ; au
+redémarrage suivant, si la Banque du Canada est toujours injoignable — la situation *exacte* qui l'a
+motivée — `fetchFxRates` rend le repli, les valeurs diffèrent, et l'état était écrasé : **1,3650 →
+1,4000**. D'où la règle : **une lecture SANS autorité ne remplace jamais un taux QUI EN A** ; elle
+pose seulement le diagnostic. Trois états (`rien` / `diagnostic` / `tout`) au lieu d'un booléen,
+parce qu'un échec doit quand même laisser sa trace.
+
+**🟠 Un sélecteur Zustand qui reconstruit un objet, sans `useShallow`.** Mon propre commentaire
+disait « à consommer via `useShallow` », et je l'ai consommé sans. Le hook est appelé depuis la
+RACINE : toute l'app se serait re-rendue à chaque écriture du store, y compris à chaque tick du Monte
+Carlo — la cascade que le sélecteur d'`App.tsx` exclut délibérément. **Le correctif n'est pas
+`useShallow` mais `getState()` dans l'effet** : ne pas s'abonner du tout est plus simple ET plus
+juste (on lit la valeur du moment de la lecture, pas du montage).
+
+**🟠 Une seule surface oubliée fait mentir la promesse des autres.** L'écran promet « il convertira
+tes avoirs — et l'app continuera de dire qu'il vient de toi ». Le **PDF exporté**, seul consommateur
+non migré, affichait « Taux de change estimés (**non récupérés**) » sur un taux que Marc venait de
+saisir.
+
+**🟠 Deux classes de couleur qui n'existent pas.** `text-warning-300` / `text-danger-300` : la palette
+s'arrête à `400`. No-op **silencieux** — le tout premier piège de la section « UI / Tailwind » de ce
+dépôt, écrit par moi, commis deux fois dans le même fichier.
+
+**🟠 L'erreur de saisie n'était pas ANNONCÉE.** Peinte seulement : au clavier et au lecteur d'écran,
+cliquer « Appliquer » avec une saisie invalide ne produisait **rien**. La fonctionnalité que cette
+carte AJOUTE était muette précisément pour qui n'a qu'elle comme recours.
+
+**🟠 Deux réponses à une seule question.** Le serveur MCP (`get_projection`, `simulate_what_if`) passe
+par `buildSimulationParamsFromState`, que je n'avais pas touché : il aurait répondu sur un mois 0
+différent de l'écran, pour le même état. ⚠️ Le test de parité hook↔fonction pure ne pouvait pas le
+voir — **aucun persona ne porte de solde courtier Fintable**, donc la parité restait vraie par
+vacuité (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+
+⚠️⚠️ **Et j'avais SUR-AFFIRMÉ dans le CHANGELOG** : « le total du courtier fait autorité sur
+aujourd'hui » laisse entendre le patrimoine net affiché, qui somme toujours les titres saisis. Seul
+le point de DÉPART de la projection est corrigé. Corrigé dans la note de version — une affirmation
+publiée se répare là où elle a été publiée.

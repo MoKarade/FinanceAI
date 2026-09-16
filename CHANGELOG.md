@@ -18,11 +18,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   un bouton **« Réessayer maintenant »**, un diagnostic qui nomme la cause de l'échec (réseau,
   erreur du serveur, série absente…), et un champ pour **saisir le taux toi-même**. Un taux que tu
   saisis convertit tes avoirs, et l'app continue de dire qu'il vient de toi.
-- **Le total de ton courtier fait maintenant autorité sur AUJOURD'HUI**, et donc sur le point de
-  départ de ta projection — pas seulement dans la carte d'écart. Ta demande du 30 juillet n'était
-  livrée qu'à moitié. L'écart avec tes titres saisis reste affiché à part, jamais noyé.
-  ⚠️ Le passé, lui, reste reconstruit à partir de tes titres : d'où une **marche possible au
-  raccord** sur la courbe Futur, expliquée en toutes lettres sous le graphe.
+- **Le total de ton courtier pilote maintenant le POINT DE DÉPART de ta projection** — dans l'app
+  ET dans l'assistant, pour qu'ils ne répondent pas deux choses différentes. Ta demande du 30
+  juillet n'était livrée qu'à moitié : ces totaux ne servaient qu'à la carte d'écart.
+  ⚠️ **Ce n'est PAS encore le patrimoine net affiché** sur l'Accueil et Investissements, qui somme
+  toujours tes titres saisis. Je l'avais écrit trop large dans une première version de cette note.
+  ⚠️ Le passé reste reconstruit à partir de tes titres : d'où une **marche possible au raccord** sur
+  la courbe Futur, expliquée en toutes lettres sous le graphe.
+  ⚠️ **Et tant qu'un de tes comptes courtier est écarté** (taux inconnu, régime non déclaré), ces
+  totaux ne pilotent RIEN : un total amputé d'un compte remplacerait la valeur complète. La carte
+  « Comptes courtier » le dit, à côté de la liste des comptes concernés.
 - **L'historique du courtier commence à s'accumuler** (une lecture par compte et par jour, 24 mois).
   ⚠️ Ça ne change **rien aujourd'hui ni sur le passé déjà vécu** : l'instantané était écrasé à chaque
   passe, donc « ce que Fintable disait le 3 mars » n'existe nulle part et ne peut pas être

@@ -21,15 +21,19 @@
 // contient pas.
 
 import type { FintableBrokerBalance } from '../../types';
+import { logErrorThrottled } from '../errorLogger';
 
 /**
- * Profondeur conservée. Valeur par DÉFAUT annoncée à Marc au cadrage (2026-09-16).
+ * Profondeur conservée : 730 JOURS (deux ans). Valeur annoncée à Marc au cadrage (2026-09-16).
+ *
+ * ⚠️ Comptée en JOURS et non en « mois de 30 jours » : `24 * 30` fait 720 j, soit 23,7 mois — un
+ * écart silencieux entre ce que la constante s'appelle et ce qu'elle fait.
  *
  * ⚠️ Cet historique voyage dans CHAQUE push Drive, avec tout l'état. Une rétention non bornée
  * ferait grossir indéfiniment un blob qui est déjà la chose la plus lourde que l'app synchronise —
  * et le coût ne se verrait qu'une fois le quota atteint, c'est-à-dire trop tard.
  */
-export const RETENTION_HISTORIQUE_MOIS = 24;
+export const RETENTION_HISTORIQUE_JOURS = 730; // 24 mois comptés en JOURS (2 ans), pas en mois de 30 j
 
 /**
  * Plafond DUR du nombre d'entrées, indépendant de la rétention en mois.
@@ -76,7 +80,7 @@ export function accumulerHistoriqueCourtier(
     const parCle = new Map<string, FintableBrokerBalance>();
 
     const limite = Number.isFinite(maintenant)
-        ? maintenant - RETENTION_HISTORIQUE_MOIS * 30 * JOUR_MS
+        ? maintenant - RETENTION_HISTORIQUE_JOURS * JOUR_MS
         : Number.NEGATIVE_INFINITY;
 
     // ⚠️ UN SEUL point de refus, et c'est délibéré. Mon premier jet refusait les dates illisibles ici
@@ -86,12 +90,25 @@ export function accumulerHistoriqueCourtier(
     // (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`) — mesuré par perturbation, pas
     // déduit. Les deux décisions vivent donc au même endroit, sur la date DÉJÀ analysée.
     const poser = (e: FintableBrokerBalance | undefined) => {
-        if (!e || typeof e !== 'object') return;
+        if (!e || typeof e !== 'object') return;   // absence : silence LÉGITIME
         const jour = jourUtc(e.at);
-        if (jour === null) return;              // indatable → n'entre pas dans un historique
-        if (Number(e.at) < limite) return;      // hors rétention
         const id = String(e.accountId ?? '');
-        if (id === '') return;
+        if (jour === null || id === '') {
+            // ⚠️ `at` et `accountId` sont REQUIS par le type — il n'existe aucun cas légitime
+            // « ce compte n'a jamais eu d'id ». Une entrée PRÉSENTE mais illisible vient donc d'un
+            // état Drive corrompu (champ additif, aucun schéma Zod), et disparaîtrait à CHAQUE
+            // synchro future en faisant baisser la profondeur affichée sans que rien ne l'explique.
+            // Le module SŒUR du même lot (`reconcileBrokerBalances`) trace exactement cette classe
+            // de corruption ; l'asymétrie était le signal (finding silent-failure-hunter, #978).
+            // `logErrorThrottled` : un historique corrompu porterait des centaines d'entrées.
+            logErrorThrottled('brokerHistory:entree-illisible', {
+                source: 'storage',
+                severity: 'warning',
+                message: 'Entrée d\'historique courtier écartée (date ou identifiant de compte illisible)',
+            });
+            return;
+        }
+        if (Number(e.at) < limite) return;      // hors rétention : silence LÉGITIME
         parCle.set(`${id}|${jour}`, e);
     };
 

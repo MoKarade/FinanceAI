@@ -132,3 +132,108 @@ describe('mentionAutoriteCourtier — la marche au raccord, NOMMÉE', () => {
         }
     });
 });
+
+// ⚠️⚠️ CE BLOC DÉFEND CONTRE LE DÉFAUT LE PLUS CHER DU LOT, trouvé par le panel APRÈS la CI verte.
+//
+// `reconcileBrokerBalances` ÉCARTE un compte dont le taux manque, dont le solde est illisible ou
+// dont le régime n'est pas déclaré — trois listes existent pour qu'aucun ne disparaisse en silence.
+// Mais `brokerTotalCad` est alors la somme des SEULS comptes retenus. Tant que ce total ne servait
+// qu'à une carte d'écart, ça ne coûtait rien ; depuis que le mois 0 de la projection le consomme,
+// un total AMPUTÉ écrase la valeur reconstruite COMPLÈTE.
+//
+// Mesuré sur la chaîne réelle : Disnat CAD 30 000 $ + Disnat USD 72 040 $ écarté faute de taux —
+// c'est-à-dire EXACTEMENT l'état de Marc tant que ses taux viennent du repli — donnait un mois 0
+// à 30 000 $ au lieu de 231 882 $. Un total partiel n'est pas une autorité dégradée : c'est un faux.
+describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
+    const avecUnCompteEcarte = (over: Partial<ReconciliationLue> = {}): ReconciliationLue => ({
+        regimes: [
+            { regime: 'NON-ENREG', brokerTotalCad: 30_000, holdingsValueCad: 231_882, accountLabels: ['Disnat CAD'] },
+        ],
+        ...over,
+    });
+
+    it('REFUSE le régime dont un compte a été écarté, et DIT pourquoi', () => {
+        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte({ incompleteRegimes: ['NON-ENREG'] }));
+        expect(r.soldes.NON_ENREG).toBe(200_000);        // la valeur reconstruite est CONSERVÉE
+        expect(r.regimesAppliques).toEqual([]);
+        expect(r.regimesRefuses).toEqual([{ regime: 'NON-ENREG', raison: 'total-partiel' }]);
+        expect(r.ecartTotal).toBe(0);
+    });
+
+    it('REFUSE TOUT quand un compte écarté n\'est rattachable à aucun panier', () => {
+        // On ignore alors QUEL panier est amputé : le patrimoine de ce compte vit quelque part dans
+        // la reconstruction, et n'importe lequel peut être celui-là.
+        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte({ hasUnplaceableAccount: true }));
+        expect(r.regimesAppliques).toEqual([]);
+        expect(r.regimesRefuses).toEqual([{ regime: 'NON-ENREG', raison: 'compte-non-placable' }]);
+    });
+
+    it('CONTRÔLE NÉGATIF — rien d\'écarté : le régime est appliqué normalement', () => {
+        // Sans lui, « on refuse les totaux amputés » serait indiscernable de « on ne fait plus rien ».
+        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte());
+        expect(r.soldes.NON_ENREG).toBe(30_000);
+        expect(r.regimesAppliques).toEqual(['NON-ENREG']);
+        expect(r.regimesRefuses).toEqual([]);
+    });
+
+    it('un régime SAIN reste appliqué même quand un AUTRE est amputé', () => {
+        const r = appliquerAutoriteCourtier(soldes(), {
+            regimes: [
+                { regime: 'CELI', brokerTotalCad: 12_500, holdingsValueCad: 10_000, accountLabels: ['a'] },
+                { regime: 'NON-ENREG', brokerTotalCad: 30_000, holdingsValueCad: 200_000, accountLabels: ['b'] },
+            ],
+            incompleteRegimes: ['NON-ENREG'],
+        });
+        expect(r.soldes.CELI).toBe(12_500);
+        expect(r.soldes.NON_ENREG).toBe(200_000);
+        expect(r.regimesAppliques).toEqual(['CELI']);
+    });
+});
+
+// ⚠️⚠️ ET LE PLUS DISCRET : une asymétrie entre DEUX modules, invisible à la lecture de l'un seul.
+//
+// La base de comparaison (`holdingsCadByRegime` → `BUCKET_OF`) REPLIE CELIAPP sur CELI et REEE sur
+// REER (« même famille fiscale », décision écrite), pendant que `deriveStartingBalancesFromHistory`
+// les garde SÉPARÉS. Écrire le total courtier « CELI » — comparé à CELI + CELIAPP — dans le seul
+// panier `CELI` pendant que `CELIAPP` conserve sa valeur compte le CELIAPP DEUX FOIS.
+// Mesuré : CELI 41 000 + CELIAPP 25 500 déclarés `CELI` chez le courtier rendaient 91 500 $ pour
+// 66 500 $ réels.
+describe('⚠️ base de FAMILLE écrite dans un panier ÉTROIT', () => {
+    it('REFUSE CELI tant que CELIAPP porte une valeur', () => {
+        const r = appliquerAutoriteCourtier(
+            soldes({ CELI: 41_000, CELIAPP: 25_500 }),
+            { regimes: [{ regime: 'CELI', brokerTotalCad: 66_500, holdingsValueCad: 66_500, accountLabels: ['a'] }] },
+        );
+        expect(r.soldes.CELI).toBe(41_000);
+        expect(r.soldes.CELIAPP).toBe(25_500);
+        expect(r.regimesRefuses).toEqual([{ regime: 'CELI', raison: 'famille-mixte' }]);
+    });
+
+    it('REFUSE REER tant que REEE porte une valeur', () => {
+        const r = appliquerAutoriteCourtier(
+            soldes({ REER: 101_000, REEE: 30_500 }),
+            { regimes: [{ regime: 'REER', brokerTotalCad: 131_500, holdingsValueCad: 131_500, accountLabels: ['a'] }] },
+        );
+        expect(r.soldes.REER).toBe(101_000);
+        expect(r.regimesRefuses).toEqual([{ regime: 'REER', raison: 'famille-mixte' }]);
+    });
+
+    it('CONTRÔLE NÉGATIF — jumeau à ZÉRO : CELI est appliqué', () => {
+        const r = appliquerAutoriteCourtier(
+            soldes({ CELI: 41_000, CELIAPP: 0 }),
+            { regimes: [{ regime: 'CELI', brokerTotalCad: 66_500, holdingsValueCad: 41_000, accountLabels: ['a'] }] },
+        );
+        expect(r.soldes.CELI).toBe(66_500);
+        expect(r.regimesAppliques).toEqual(['CELI']);
+    });
+
+    it('CONTRÔLE NÉGATIF — NON-ENREG n\'a pas de jumeau : jamais refusé pour cette raison', () => {
+        // `NonReg` est large des DEUX côtés (MARGE et AUTRE y tombent aussi), donc cohérent.
+        const r = appliquerAutoriteCourtier(
+            soldes({ CELIAPP: 25_500, REEE: 30_500 }),
+            { regimes: [{ regime: 'NON-ENREG', brokerTotalCad: 231_882, holdingsValueCad: 200_000, accountLabels: ['a'] }] },
+        );
+        expect(r.soldes.NON_ENREG).toBe(231_882);
+        expect(r.regimesAppliques).toEqual(['NON-ENREG']);
+    });
+});

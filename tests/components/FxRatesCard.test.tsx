@@ -109,7 +109,13 @@ describe('la saisie manuelle', () => {
 
         expect(useFinanceStore.getState().fxRates.USD).toBe(1.40); // inchangé
         expect(useFinanceStore.getState().fxRatesSource).toBe('repli');
-        expect(await screen.findByText(/^EUR :/)).toBeTruthy();
+        // ⚠️ DEUX nœuds portent le message, et c'est voulu : le paragraphe d'erreur (visible) et la
+        // région live (annoncée). Peint SEULEMENT, il n'existait pas pour un lecteur d'écran — donc
+        // la fonctionnalité que cette carte ajoute était muette au clavier, exactement pour qui
+        // n'a qu'elle comme recours (finding a11y, panel #978).
+        const noeuds = await screen.findAllByText(/^EUR :/);
+        expect(noeuds.length).toBe(2);
+        expect(screen.getByRole('status').textContent).toMatch(/^EUR :/);
     });
 });
 

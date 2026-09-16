@@ -10,6 +10,7 @@ import { showToast } from '../ui/Toast';
 import { logError } from '../../services/errorLogger';
 import { isFxRatesEstimated, hasForeignCurrencyAssets } from '../../services/portfolio';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { fxSourceEffective, fxFaitAutorite } from '../../services/fx/provenance';
 
 /** Champs d'état réellement lus par l'export (le sélecteur d'App les porte tous). */
 type EtatPourPdf = Pick<AppState,
@@ -68,8 +69,13 @@ export async function genererRapportPdfEcran({ state, globalNetWorth, calculated
             fiscal: buildFiscalSummary(state),
             holdings: buildHoldingsRows(state),
             // [FX-FALLBACK-SILENCIEUX] : note sous « Total placements » quand le
-            // taux vient du repli en dur ET qu'un avoir est en devise étrangère.
-            fxRatesEstimated: isFxRatesEstimated(state.fxRates, state.fxRatesEstimated) && hasForeignCurrencyAssets(state.assets),
+            // taux ne vient pas de la Banque du Canada ET qu'un avoir est en devise étrangère.
+            // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] La note est déclenchée par la PROVENANCE, et la
+            // provenance est TRANSMISE : sans elle, le PDF affirmait « taux non récupérés » sur un
+            // taux que Marc venait de saisir lui-même — la seule surface qui n'avait pas été
+            // migrée, et donc la seule qui faisait mentir la promesse de l'écran.
+            fxRatesEstimated: !fxFaitAutorite(fxSourceEffective(state)) && hasForeignCurrencyAssets(state.assets),
+            fxSource: fxSourceEffective(state),
             debtsDetail: buildDebtsRows(state),
             goalsDetail: buildGoalsRows(state),
             // PDF Futur — comparaison scénarios (allResults depuis lastProjection)

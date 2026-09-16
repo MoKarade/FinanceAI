@@ -142,7 +142,12 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
             const obs = data?.observations?.[0];
 
             if (!obs) {
+                // ⚠️ Symétrique de la branche `!response.ok` trois lignes plus haut, qui loggue :
+                // une réponse 200 au format cassé est une anomalie de MÊME gravité. Sans trace, elle
+                // n'existe que si Marc ouvre la carte FX au bon moment — au démarrage, rien n'en
+                // reste (finding silent-failure-hunter, panel #978).
                 cause = 'reponse-illisible';
+                logError({ source: 'network', severity: 'warning', message: 'Taux FX — réponse de la Banque du Canada sans observation exploitable' });
             } else {
                 // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
                 // CORROMPU (0/NaN/texte) → ce dernier est loggué au lieu d'être masqué par le repli.
@@ -198,6 +203,14 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
         try {
             const parsed = JSON.parse(lastKnown);
             const hydrate = normaliserCache(parsed);
+            // ⚠️ Un cache PRÉSENT mais illisible n'est pas la même chose qu'un cache ABSENT : c'est
+            // une corruption, et c'est précisément la question qu'un diagnostic futur posera
+            // (« pourquoi le taux est-il resté en repli ? »). Sans cette trace, « jamais
+            // synchronisé » et « cache corrompu » sont indiscernables — le dernier recours avant le
+            // littéral en dur, c'est-à-dire le mécanisme même que ce lot corrige.
+            if (hydrate === null) {
+                logError({ source: 'storage', severity: 'warning', message: 'Cache des taux FX corrompu — repli sur les valeurs par défaut' });
+            }
             // ⚠️ La PROVENANCE reste celle du cache (un taux d'hier lu chez la BdC reste un taux de
             // la BdC), mais la CAUSE est celle de la tentative qui vient d'échouer : sinon le
             // diagnostic affirmerait « tout va bien » pendant que plus rien ne passe.
@@ -222,6 +235,8 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
  * l'état persisté : une même règle de rétrocompatibilité, écrite une fois, appliquée aux deux
  * surfaces qui la subissent.
  */
+const CAUSES_CACHE: readonly string[] = ['ok', 'partiel', 'reseau', 'http', 'reponse-illisible', 'manuel', 'jamais-tente'];
+
 function normaliserCache(parsed: unknown): ResultatTauxFx | null {
     const p = parsed as Partial<ResultatTauxFx> | null;
     if (!p || typeof p.USD !== 'number' || typeof p.EUR !== 'number' || typeof p.CAD !== 'number') return null;
@@ -230,7 +245,13 @@ function normaliserCache(parsed: unknown): ResultatTauxFx | null {
     const source: FxSource = p.source === 'api' || p.source === 'manuel' || p.source === 'repli'
         ? p.source
         : (estimated ? 'repli' : 'api');
-    const cause: FxCause = typeof p.cause === 'string' ? (p.cause as FxCause) : (estimated ? 'partiel' : 'ok');
+    // ⚠️ La cause est VALIDÉE comme la source : un cast laissait entrer n'importe quelle chaîne,
+    // et une cause inconnue fait écrire l'état à CHAQUE démarrage (elle ne correspond jamais à
+    // l'existante). Symétrie exigée par `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`.
+    const causeBrute = p.cause as string | undefined;
+    const cause: FxCause = typeof causeBrute === 'string' && CAUSES_CACHE.includes(causeBrute)
+        ? (causeBrute as FxCause)
+        : (estimated ? 'partiel' : 'ok');
     const lastFetched = Number.isFinite(Number(p.lastFetched)) ? Number(p.lastFetched) : 0;
     return {
         USD: p.USD, EUR: p.EUR, CAD: p.CAD,

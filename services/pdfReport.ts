@@ -107,6 +107,12 @@ export interface ReportData {
      *  repli en dur (jamais récupéré) — ajoute une note sous le total des placements. `undefined`/
      *  `false` = rien n'est ajouté (rétrocompat des appelants qui ne le fournissent pas). */
     fxRatesEstimated?: boolean;
+    /** ⚠️ [FX-TAUX-JAMAIS-ARRIVES] PROVENANCE du taux, quand l'appelant la connaît.
+     *  `fxRatesEstimated` ci-dessus ne distingue pas « repli en dur » de « saisi par Marc » — donc
+     *  après une saisie manuelle le PDF affirmait « taux non récupérés », alors que l'écran promet
+     *  en toutes lettres « l'app continuera de dire qu'il vient de toi ». Une surface oubliée fait
+     *  mentir la promesse des autres. Absent ⇒ ancien libellé, rétrocompat à l'octet près. */
+    fxSource?: 'api' | 'manuel' | 'repli';
     debtsDetail?: DebtRow[];
     goalsDetail?: GoalRow[];
     // PDF Futur — comparaison de scénarios de projection
@@ -487,9 +493,13 @@ function rendrePagePlacements(ctx: ContexteRenduPdf, data: ReportData): void {
             doc.setFontSize(7);
             doc.setTextColor(...gray);
             doc.text(
-                isFr
-                    ? 'Taux de change estimés (non récupérés) — total en devise étrangère approximatif.'
-                    : 'Estimated exchange rates (not fetched) — foreign-currency total is approximate.',
+                data.fxSource === 'manuel'
+                    ? (isFr
+                        ? 'Taux de change saisis à la main — total en devise étrangère selon tes taux.'
+                        : 'Manually entered exchange rates — foreign-currency total uses your rates.')
+                    : (isFr
+                        ? 'Taux de change estimés (non récupérés) — total en devise étrangère approximatif.'
+                        : 'Estimated exchange rates (not fetched) — foreign-currency total is approximate.'),
                 20, ctx.y,
             );
         }

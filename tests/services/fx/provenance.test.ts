@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     fxSourceEffective, fxCauseEffective, fxFaitAutorite, libelleSourceFx, messageCauseFx,
-    doitEcrireTauxFx, DELAI_RAFRAICHISSEMENT_FX_MS,
+    decisionEcritureFx, DELAI_RAFRAICHISSEMENT_FX_MS,
     type LectureFx,
 } from '../../../services/fx/provenance';
 
@@ -87,7 +87,7 @@ describe('libellés', () => {
     });
 });
 
-describe('doitEcrireTauxFx — LE défaut mesuré', () => {
+describe('decisionEcritureFx — LE défaut mesuré', () => {
     const etat = {
         fxRates: { USD: 1.38, EUR: 1.45, lastFetched: 1_000_000 },
         fxRatesSource: 'api',
@@ -95,39 +95,87 @@ describe('doitEcrireTauxFx — LE défaut mesuré', () => {
         fxLastAttemptAt: 1_000_000,
     };
 
-    it('écrit quand une valeur a changé (le SEUL cas que l\'ancienne condition couvrait)', () => {
-        expect(doitEcrireTauxFx(etat, lecture({ USD: 1.39 }))).toBe(true);
-        expect(doitEcrireTauxFx(etat, lecture({ EUR: 1.46 }))).toBe(true);
+    it('écrit TOUT quand une valeur a changé (le SEUL cas que l\'ancienne condition couvrait)', () => {
+        expect(decisionEcritureFx(etat, lecture({ USD: 1.39 }))).toBe('tout');
+        expect(decisionEcritureFx(etat, lecture({ EUR: 1.46 }))).toBe('tout');
     });
 
-    it('N\'ÉCRIT PAS quand rien n\'a bougé et que la lecture est récente', () => {
+    it('N\'ÉCRIT RIEN quand rien n\'a bougé et que la lecture est récente', () => {
         // Contrôle négatif : sans lui, on pousserait l'état entier vers le Drive à chaque démarrage.
-        expect(doitEcrireTauxFx(etat, lecture({ lastFetched: 1_000_001, attemptAt: 1_000_001 }))).toBe(false);
+        expect(decisionEcritureFx(etat, lecture({ lastFetched: 1_000_001, attemptAt: 1_000_001 }))).toBe('rien');
     });
 
-    it('⚠️ ÉCRIT quand la VALEUR est identique mais que la lecture a VIEILLI — le défaut', () => {
-        // La Banque du Canada ne publie qu'un jour OUVRÉ : « même taux qu'hier » est le cas NORMAL.
-        // L'ancienne condition (`USD !== USD || EUR !== EUR`) ne rafraîchissait alors NI la
-        // fraîcheur, NI la cause, NI la date de tentative — sur une donnée pourtant à jour.
+    it('⚠️ écrit quand la VALEUR est identique mais que la lecture a VIEILLI — le défaut', () => {
+        // La Banque du Canada ne publie qu'un jour OUVRÉ : « même taux qu'hier » est le cas normal.
+        // L'ancienne condition (`USD !== USD || EUR !== EUR`) ne rafraîchissait alors ni la
+        // fraîcheur, ni la cause, ni la date de tentative — sur une donnée pourtant à jour.
         const plusTard = 1_000_000 + DELAI_RAFRAICHISSEMENT_FX_MS + 1;
-        expect(doitEcrireTauxFx(etat, lecture({ lastFetched: plusTard, attemptAt: plusTard }))).toBe(true);
+        expect(decisionEcritureFx(etat, lecture({ lastFetched: plusTard, attemptAt: plusTard }))).toBe('tout');
     });
 
-    it('ÉCRIT quand la PROVENANCE change, à valeur identique', () => {
-        // Un taux saisi à la main puis retrouvé chez la BdC au même centième reste une information.
+    it('écrit quand la PROVENANCE change, à valeur identique', () => {
         const manuel = { ...etat, fxRatesSource: 'manuel', fxLastAttemptCause: 'manuel' };
-        expect(doitEcrireTauxFx(manuel, lecture())).toBe(true);
+        // ⚠️ Une lecture `api` a AUTORITÉ, donc elle a le droit de remplacer une saisie manuelle :
+        // c'est le sens de la reprise en main quand la Banque du Canada répond à nouveau.
+        expect(decisionEcritureFx(manuel, lecture({ source: 'api' }))).toBe('tout');
     });
 
-    it('ÉCRIT quand la CAUSE change, à valeur et provenance identiques', () => {
-        // « essayé, réseau coupé » ne se déduit d'aucun autre champ : sans écriture, « on a essayé »
-        // reste indiscernable de « on n'a jamais essayé ».
-        expect(doitEcrireTauxFx(etat, lecture({ cause: 'partiel' }))).toBe(true);
+    it('écrit quand la CAUSE change, à valeur et provenance identiques', () => {
+        expect(decisionEcritureFx(etat, lecture({ cause: 'partiel' }))).toBe('tout');
     });
 
-    it('ÉCRIT sur un état VIDE (premier démarrage)', () => {
-        expect(doitEcrireTauxFx(undefined, lecture())).toBe(true);
-        expect(doitEcrireTauxFx({}, lecture())).toBe(true);
+    it('écrit sur un état VIDE (premier démarrage)', () => {
+        expect(decisionEcritureFx(undefined, lecture())).toBe('tout');
+        expect(decisionEcritureFx({}, lecture())).toBe('tout');
+    });
+});
+
+// ⚠️⚠️ CE BLOC DÉFEND LE RECOURS LUI-MÊME, et il a fallu une MESURE pour le voir.
+//
+// Marc saisit son taux à la main précisément parce que la Banque du Canada ne répond pas. À la
+// réouverture suivante, le démarrage rappelle `fetchFxRates` : elle échoue encore (même panne) et
+// rend le repli en dur `1,40`. Les valeurs DIFFÉRANT de sa saisie `1,3650`, l'ancienne condition
+// écrivait — et la saisie disparaissait. Le recours que tout ce lot existe pour offrir n'aurait
+// vécu que le temps d'UNE session, et rien n'aurait été rouge.
+//
+// La règle est posée sur l'AUTORITÉ, pas sur le mot « manuel » : un taux `api` déjà persisté subit
+// exactement le même sort quand le cache local a été vidé.
+describe('⚠️ une lecture SANS autorité ne remplace JAMAIS un taux qui en a', () => {
+    const apresSaisie = {
+        fxRates: { USD: 1.3650, EUR: 1.5520, lastFetched: 0 },
+        fxRatesEstimated: true,
+        fxRatesSource: 'manuel',
+        fxLastAttemptCause: 'manuel',
+        fxLastAttemptAt: 1_000,
+    };
+    const repli = lecture({ USD: 1.40, EUR: 1.47, lastFetched: 0, source: 'repli', cause: 'reseau', attemptAt: 2_000 });
+
+    it('le repli ne fait que poser le DIAGNOSTIC — les taux de Marc sont conservés', () => {
+        expect(decisionEcritureFx(apresSaisie, repli)).toBe('diagnostic');
+    });
+
+    it('même protection pour un taux `api` persisté quand le cache local a été vidé', () => {
+        const persisteApi = {
+            fxRates: { USD: 1.3845, EUR: 1.4512, lastFetched: 1_700_000_000 },
+            fxRatesEstimated: false,
+            fxRatesSource: 'api',
+            fxLastAttemptCause: 'ok',
+            fxLastAttemptAt: 1_700_000_000,
+        };
+        expect(decisionEcritureFx(persisteApi, repli)).toBe('diagnostic');
+    });
+
+    it('CONTRÔLE NÉGATIF — quand l\'état n\'a PAS d\'autorité, le repli écrit normalement', () => {
+        // Sans ce cas, « le repli n'écrase rien » serait indiscernable de « le repli n'écrit jamais »,
+        // et un premier démarrage hors ligne ne poserait aucun taux du tout.
+        const sansAutorite = { fxRates: { USD: 1.30, EUR: 1.40, lastFetched: 0 }, fxRatesEstimated: true };
+        expect(decisionEcritureFx(sansAutorite, repli)).toBe('tout');
+    });
+
+    it('et le diagnostic ne se réécrit pas en boucle quand il n\'apprend rien', () => {
+        // Deuxième démarrage de suite, même panne, même instant : plus rien à dire.
+        const dejaVu = { ...apresSaisie, fxLastAttemptCause: 'reseau', fxLastAttemptAt: 2_000 };
+        expect(decisionEcritureFx(dejaVu, repli)).toBe('rien');
     });
 });
 

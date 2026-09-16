@@ -49,6 +49,9 @@ import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
+import { appliquerAutoriteCourtier } from '../fintable/autoriteCourtier';
+import { reconcileBrokerBalances } from '../fintable/brokerBalances';
+import { holdingsCadByRegime } from '../fintable/holdingsByRegime';
 
 /**
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
@@ -326,7 +329,18 @@ export function deriveSimulationInputsFromState(
     return {
         projection: state.projection,
         config: state.config,
-        liveCSVBalances: derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
+        // ⚠️⚠️ [FINTABLE-AUTORITE-AUJOURDHUI] La MÊME autorité que le chemin React, au MÊME endroit
+        // logique. Sans ça, le serveur MCP (`get_projection`, `simulate_what_if`) répondrait sur un
+        // mois 0 différent de celui de l'écran, pour le même état : deux réponses à une seule
+        // question, ce qui est pire que la question non répondue. Le test de parité hook↔fonction
+        // pure ne l'aurait pas vu — aucun persona ne porte de solde courtier Fintable.
+        liveCSVBalances: appliquerAutoriteCourtier(
+            derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
+            reconcileBrokerBalances(
+                state.fintableBrokerBalances,
+                holdingsCadByRegime(state.assets ?? [], state.fxRates ?? {}),
+            ),
+        ).soldes,
         // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ Le ledger DÉTAILLÉ, comme dans le hook. Sans lui,
         // le chemin MCP restait nu sur le canal cash alors que le chemin navigateur était protégé :
         // mesuré, `initialBalances.CELI = NaN` passait sans refus et rendait 7 082 228 $ au lieu de

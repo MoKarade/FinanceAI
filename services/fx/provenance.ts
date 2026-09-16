@@ -163,22 +163,51 @@ export interface EtatFxCompare extends EtatFxMinimal {
     fxLastAttemptAt?: number | undefined;
 }
 
+/** Ce qu'il faut écrire dans l'état à la suite d'une lecture. */
+export type DecisionEcritureFx =
+    /** Rien : ni les taux ni le diagnostic n'apprennent quoi que ce soit de neuf. */
+    | 'rien'
+    /** Le DIAGNOSTIC seulement (cause + instant de la tentative). Les TAUX ne bougent pas. */
+    | 'diagnostic'
+    /** Tout : les taux, la provenance et le diagnostic. */
+    | 'tout';
+
 /**
- * Faut-il écrire cette lecture dans l'état ?
+ * Que faut-il écrire ?
  *
- * PURE et testable, parce que c'est ICI que vivait le défaut : écrire à chaque démarrage pousserait
- * l'état vers le Drive sans raison, ne jamais écrire fige la fraîcheur. La règle est donc « écrire
- * quand quelque chose qu'un écran AFFICHE a changé » — la valeur, la provenance, la cause, ou
- * l'ancienneté de la dernière tentative.
+ * ⚠️⚠️ LA RÈGLE QUI COMPTE, ET ELLE A ÉTÉ MESURÉE : **une lecture SANS autorité ne remplace jamais
+ * un taux QUI EN A.** Sans elle, le recours que tout ce lot existe pour offrir s'effaçait au
+ * redémarrage suivant : Marc saisit son taux (1,3650), la Banque du Canada reste injoignable — ce
+ * qui est EXACTEMENT la situation où il l'a saisi — et le démarrage rappelait `fetchFxRates`, qui
+ * rend alors le repli en dur (1,40). Les valeurs DIFFÉRANT, l'ancienne condition écrivait, et la
+ * saisie disparaissait. Mesuré : `manuel 1,3650` → `repli 1,40`, à chaque ouverture de l'app.
+ *
+ * ⚠️ Le même piège vaut pour un taux `api` déjà persisté quand le cache local a été vidé :
+ * `fetchFxRates` ne peut plus proposer son dernier taux réel et retombe sur le littéral du dépôt.
+ * La garde est donc posée sur l'AUTORITÉ, pas sur le mot « manuel ».
+ *
+ * ⚠️ Mais l'échec DOIT quand même laisser une trace, sinon « essayé, réseau coupé » redevient
+ * indiscernable de « jamais tenté » — d'où un troisième état, `'diagnostic'`, au lieu d'un booléen.
+ * C'est la même leçon que `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`,
+ * appliquée ici à la DÉCISION plutôt qu'à la donnée.
  */
-export function doitEcrireTauxFx(prev: EtatFxCompare | undefined, res: LectureFx): boolean {
-    if (res.USD !== prev?.fxRates?.USD || res.EUR !== prev?.fxRates?.EUR) return true;
-    if (res.source !== fxSourceEffective(prev)) return true;
-    if (res.cause !== fxCauseEffective(prev)) return true;
-    // Un SUCCÈS dont la valeur n'a pas bougé rafraîchit quand même la fraîcheur (cf. le délai).
-    if (res.lastFetched > 0 && res.lastFetched - (prev?.fxRates?.lastFetched ?? 0) > DELAI_RAFRAICHISSEMENT_FX_MS) return true;
-    // Un ÉCHEC est une information : « essayé il y a 2 min, réseau coupé » ne se déduit d'aucun
-    // autre champ, et sans lui « on a essayé » reste indiscernable de « on n'a jamais essayé ».
-    if (res.attemptAt - (prev?.fxLastAttemptAt ?? 0) > DELAI_RAFRAICHISSEMENT_FX_MS) return true;
-    return false;
+export function decisionEcritureFx(prev: EtatFxCompare | undefined, res: LectureFx): DecisionEcritureFx {
+    const sourcePrecedente = fxSourceEffective(prev);
+    const peutRemplacer = fxFaitAutorite(res.source) || !fxFaitAutorite(sourcePrecedente);
+
+    if (peutRemplacer) {
+        if (res.USD !== prev?.fxRates?.USD || res.EUR !== prev?.fxRates?.EUR) return 'tout';
+        if (res.source !== sourcePrecedente) return 'tout';
+        // Un SUCCÈS dont la valeur n'a pas bougé rafraîchit quand même la fraîcheur (cf. le délai).
+        if (res.lastFetched > 0
+            && res.lastFetched - (prev?.fxRates?.lastFetched ?? 0) > DELAI_RAFRAICHISSEMENT_FX_MS) return 'tout';
+    }
+
+    // Reste le DIAGNOSTIC. Un échec est une information : « essayé il y a 2 min, réseau coupé » ne
+    // se déduit d'aucun autre champ.
+    if (res.cause !== fxCauseEffective(prev)) return peutRemplacer ? 'tout' : 'diagnostic';
+    if (res.attemptAt - (prev?.fxLastAttemptAt ?? 0) > DELAI_RAFRAICHISSEMENT_FX_MS) {
+        return peutRemplacer ? 'tout' : 'diagnostic';
+    }
+    return 'rien';
 }

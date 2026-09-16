@@ -193,6 +193,20 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
                     lui, reste reconstruit à partir des titres — d&apos;où une marche possible au
                     raccord sur la courbe Futur.
                 </p>
+                {/* ⚠️⚠️ Un REFUS que personne ne nomme est un silence. Dès qu'un compte est écarté,
+                    le total d'un panier n'est plus qu'une PARTIE de ce panier : l'appliquer au
+                    départ de la projection écraserait la valeur reconstruite complète (mesuré :
+                    30 000 $ au lieu de 231 882 $ quand le compte USD est écarté faute de taux —
+                    c'est-à-dire le cas de Marc tant que ses taux viennent du repli). On refuse, et
+                    on le DIT ici, à côté de la liste des comptes écartés qui en donne la cause. */}
+                {(reco.incompleteRegimes.length > 0 || reco.hasUnplaceableAccount) && (
+                    <p role="status" className="text-meta text-warning-400">
+                        Tant qu&apos;un compte ci-dessous est écarté, ces totaux ne pilotent
+                        <strong> pas </strong> le départ de ta projection : un total amputé d&apos;un
+                        compte remplacerait la valeur reconstruite complète. La projection continue
+                        de partir de tes titres saisis.
+                    </p>
+                )}
 
                 <ul className="space-y-2">
                     {reco.regimes.map((r) => (

@@ -959,6 +959,29 @@
   part. Une entrée par compte et par jour, rétention 24 mois + plafond dur (deux limites de NATURES
   différentes : la rétention se fie à des horodatages EXTERNES). ⚠️ **Ne change RIEN aujourd'hui ni
   sur le passé déjà vécu** — c'est écrit à l'écran plutôt que laissé à découvrir.
+- [ ] 🟠 **`[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`** (M, money-critical, **DÉCOUVERT au panel du
+  2026-09-16, décision produit requise**) — la base de comparaison replie **CELIAPP sur CELI** et
+  **REEE sur REER** (`BUCKET_OF`, « même famille fiscale », décision écrite), pendant que les soldes
+  de départ les gardent SÉPARÉS. Écrire le total courtier « CELI » — comparé à CELI + CELIAPP — dans
+  le seul panier `CELI` compterait le CELIAPP **deux fois** (mesuré : 91 500 $ pour 66 500 $ réels).
+  ⚠️ **Le lot REFUSE d'appliquer ces paniers** tant que le jumeau porte une valeur : c'est sûr, mais
+  ça prive Marc de l'autorité sur ses CELI/REER dès qu'il a un CELIAPP ou un REEE.
+  🧭 **Décision Marc** : (a) mettre le jumeau à zéro en appliquant la famille — mais ça range de
+  l'argent CELIAPP dans le CELI, donc ça change son **régime fiscal**, pas un arrondi ; (b) cesser de
+  replier côté comparaison — mais l'écart affiché par la carte change aussi ; (c) demander un rôle
+  Fintable par régime FIN (l'UI n'en offre que trois). Les deux moitiés sont liées.
+- [ ] 🟡 **`[PROJ-DEUX-MOIS-ZERO]`** (S, **DÉCOUVERT au panel du 2026-09-16**) — `Retirement.tsx`
+  construit un **second** `liveCSVBalances` qui ne passe PAS par l'autorité du courtier : le
+  chercheur d'objectif de l'écran Retraite démarre donc d'un mois 0 différent de la courbe Futur, de
+  l'écart exact. Divergence **préexistante**, ÉLARGIE par le lot d'autorité. ⚠️ Et le patrimoine net
+  de l'Accueil / Investissements somme toujours les titres saisis — la demande du 30/07 reste à
+  moitié livrée, ce que la note de version DIT maintenant au lieu de le laisser croire.
+- [ ] 🟡 **`[GARDE-FUTURESEED-PERIMEE]`** (XS, **DÉCOUVERT au panel du 2026-09-16**) —
+  `tests/services/futureSeedContinuity.test.ts` affirme « ce test exerce EXACTEMENT la fonction que
+  le composant exécute désormais ». C'est devenu FAUX : le composant exécute maintenant
+  `appliquerAutoriteCourtier(deriveStartingBalancesFromHistory(...), …)`. La garde anti-falaise ne
+  couvre plus le point d'injection (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`). Corriger la
+  PHRASE ou étendre la garde — mais ne pas la laisser affirmer ce qu'elle ne fait plus.
 - [ ] 🟠 **`[FX-PASSE-TAUX-PLAT]`** (M, money-critical, **DÉCOUVERT le 2026-09-16, routé sur choix
   explicite de Marc**) — `reconstructPortfolioHistory` convertit **TOUS** les points passés au taux
   d'AUJOURD'HUI (`fxToCad(a.currency, fx)`, un facteur unique), donc la courbe du passé est fausse de

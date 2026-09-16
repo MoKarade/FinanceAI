@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 073 tests** Vitest
-(620 fichiers de test, mesuré le 2026-09-16 ; +15 provenance FX, +8 lecture BdC, +11 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 087 tests** Vitest
+(620 fichiers de test, mesuré le 2026-09-16 ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1023,6 +1023,24 @@ n'est pas réécrire un récit.
   +98 482 $** à 5, 10 et 20 ans — le POURCENTAGE baisse (9,53 → 5,66 %) pendant que le FACTEUR monte
   (×1,33 → ×3,09) ; publier l'un sans l'autre raconte deux histoires opposées
   (`UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN`, 2026-09-16).
+
+- ⚠️⚠️ **Un total AMPUTÉ n'est pas une autorité dégradée, c'est un FAUX** (panel, 2026-09-16) :
+  `reconcileBrokerBalances` écarte un compte sans taux / illisible / sans régime — trois listes
+  existent pour qu'aucun ne disparaisse en silence — mais le total du panier devient alors la somme
+  des SEULS comptes retenus, et le consommateur ne voyait pas ces listes. Mesuré : 30 000 $ au lieu
+  de **231 882 $** au mois 0, sur l'état réel de Marc. **Ma garde d'identité ne tenait que dans le cas
+  TOUT-ou-RIEN** ; le cas PARTIEL — le plus probable — passait. Devant une agrégation qui EXCLUT des
+  membres, demander : *le consommateur sait-il qu'il en manque ?* ⚠️ Jumeau du même lot, plus discret
+  encore : la base de comparaison REPLIE CELIAPP sur CELI (décision écrite) pendant que les soldes de
+  départ les gardent SÉPARÉS — le défaut vit dans l'**ASYMÉTRIE entre deux modules**, aucun des deux
+  n'étant faux tout seul, et **mon test inscrivait la prémisse fausse**. ⚠️ Et le remède évident
+  (mettre le jumeau à zéro) changerait le RÉGIME FISCAL de l'argent : refusé et routé, pas corrigé
+  d'office. ⚠️ Le MCP passait par un SECOND constructeur de paramètres que je n'avais pas touché —
+  deux réponses à une seule question — et le test de parité ne pouvait pas le voir, aucun persona ne
+  portant de solde courtier. ⚠️ Enfin : un sélecteur Zustand qui reconstruit un objet, consommé sans
+  `useShallow` depuis la RACINE, re-rend toute l'app à chaque écriture du store — le correctif n'est
+  pas `useShallow` mais `getState()` dans l'effet, qui ne s'abonne à rien
+  (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

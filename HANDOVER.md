@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-16 (nuit) — **REVUE PANEL : 8 défauts réels, dont 3 rouges**
+> Quatrième lot d'affilée où le panel bat le gate ET la CI. Cette fois il a trouvé ce qui vidait le
+> lot de son sens.
+> 🔴 **Un total courtier AMPUTÉ écrasait le panier ENTIER** : un compte écarté (taux inconnu, régime
+> non déclaré) sort du total, et j'appliquais ce total partiel au mois 0. Mesuré sur l'état RÉEL de
+> Marc : **30 000 $ au lieu de 231 882 $**. Ma garde d'identité ne tenait que dans le cas
+> TOUT-ou-RIEN. ✅ Refus explicite + raison rendue + dit à l'écran.
+> 🔴 **Base de FAMILLE dans un panier ÉTROIT** : CELIAPP replié sur CELI côté comparaison, séparé
+> côté soldes → **+25 000 $** comptés deux fois. ✅ Refusé (pas corrigé d'office : mettre le jumeau à
+> zéro changerait le régime FISCAL de l'argent) → `[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`, 🧭 Marc.
+> 🔴 **Le recours n'aurait vécu qu'UNE session** : au redémarrage, le repli écrasait la saisie
+> manuelle (1,3650 → 1,4000). ✅ Une lecture SANS autorité ne remplace plus jamais un taux qui en a.
+> 🟠 Sélecteur Zustand reconstruisant un objet, consommé sans `useShallow` **depuis la racine** →
+> toute l'app re-rendue à chaque écriture du store. ✅ `getState()` dans l'effet, zéro abonnement.
+> 🟠 **Le PDF** (seule surface non migrée) affirmait « taux non récupérés » sur un taux saisi par Marc.
+> 🟠 `text-warning-300` / `text-danger-300` n'existent pas dans la palette — no-op SILENCIEUX, le tout
+> premier piège de la section UI de ce dépôt, commis deux fois dans le même fichier neuf.
+> 🟠 L'erreur de saisie n'était **pas annoncée** : muette au lecteur d'écran, dans la carte qui sert
+> justement de seul recours.
+> 🟠 **Le MCP** passait par un second constructeur de paramètres → deux réponses à une seule question.
+> ✅ Même autorité des deux côtés.
+> ⚠️ **J'avais SUR-AFFIRMÉ dans le CHANGELOG** (« fait autorité sur aujourd'hui » ⊃ le patrimoine net
+> affiché, qui somme toujours les titres saisis). Corrigé là où c'était publié.
+> ⏸️ Routé : `[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`, `[PROJ-DEUX-MOIS-ZERO]`,
+> `[GARDE-FUTURESEED-PERIMEE]`, `[FX-PASSE-TAUX-PLAT]`.
+>
 > ## ⚠️⚠️ Session 2026-09-16 (fin de soirée) — **les taux FX n'étaient JAMAIS arrivés**
 > Marc : « faut bien convertir en cad ce qui est en usd ». Mesuré sur son état RÉEL via le MCP :
 > **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au caractère près — et ses **12**

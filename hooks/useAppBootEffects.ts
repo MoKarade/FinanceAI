@@ -23,8 +23,7 @@ import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, mark
 import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
 import { requestPersistentStorage } from '../services/storagePersistence';
-import { doitEcrireTauxFx } from '../services/fx/provenance';
-import { etatFxPourComparaison } from '../services/fx/selecteurs';
+import { decisionEcritureFx, fxSourceEffective } from '../services/fx/provenance';
 
 /** Tous les effets de boot d'App : handlers d'erreur, courbe verrouillée, service worker, purge
  *  persona, init sync Drive, filets migration/hydratation, provider marché, clés API chiffrées,
@@ -283,21 +282,47 @@ export function useAppBootEffects(): void {
         return () => { cancelled = true; clearTimeout(timer); };
     }, [fintableToken]);
 
-    // Taux FX au boot (une fois). Le sélecteur capture les valeurs du PREMIER rendu — même
-    // sémantique que dans App (effet à deps vides sur la closure du montage).
+    // Taux FX au boot (une fois). L'état FX est lu DANS l'effet (`getState`), sans abonnement :
+    // voir le commentaire ci-dessous, c'est la différence entre « lire une fois » et « re-rendre
+    // toute l'app à chaque écriture du store ».
     const updateFxRates = useFinanceStore((s) => s.updateFxRates);
-    const fxEtat = useFinanceStore(etatFxPourComparaison);
     useEffect(() => {
         const doUpdateFxRates = async () => {
             try {
+                // ⚠️⚠️ `getState()` et PAS un sélecteur. Mon premier jet faisait
+                // `useFinanceStore(etatFxPourComparaison)` — un sélecteur qui RECONSTRUIT un objet,
+                // donc jamais égal par référence, donc « changé » à CHAQUE écriture du store. Ce
+                // hook est appelé depuis `App`, la racine : toute l'app se serait re-rendue à
+                // chaque tick de la projection Monte Carlo, ré-introduisant exactement la cascade
+                // que le sélecteur d'`App.tsx` exclut délibérément. Lire l'état au moment de
+                // l'effet est plus simple ET plus juste (c'est la valeur du moment de la lecture,
+                // pas celle du montage) — et ça ne s'abonne à rien.
+                const fxEtat = useFinanceStore.getState();
                 const rates = await fetchFxRates();
                 // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] La condition d'écriture ne compare plus SEULEMENT les
                 // valeurs. Elle vivait ici, en ligne, et elle était fausse pour une raison qu'aucun
                 // test ne pouvait voir depuis ce fichier : la Banque du Canada ne publie qu'un jour
                 // OUVRÉ, donc « même taux qu'hier » est le cas normal — une lecture réussie ne
                 // rafraîchissait alors ni la fraîcheur, ni la cause, ni la date de tentative.
-                // La décision est maintenant PURE et testée (`doitEcrireTauxFx`).
-                if (doitEcrireTauxFx(fxEtat, rates)) updateFxRates(rates);
+                // La décision est maintenant PURE et testée (`decisionEcritureFx`).
+                const quoi = decisionEcritureFx(fxEtat, rates);
+                if (quoi === 'tout') {
+                    updateFxRates(rates);
+                } else if (quoi === 'diagnostic') {
+                    // ⚠️ Une lecture SANS autorité n'écrase pas un taux qui en a. On ne garde que la
+                    // trace de la tentative : sinon la saisie manuelle de Marc — faite justement
+                    // parce que la Banque du Canada ne répond pas — serait remplacée par le repli en
+                    // dur à la PREMIÈRE réouverture de l'app, et le recours n'existerait que le temps
+                    // d'une session.
+                    updateFxRates({
+                        USD: fxEtat.fxRates.USD, EUR: fxEtat.fxRates.EUR, CAD: fxEtat.fxRates.CAD,
+                        lastFetched: fxEtat.fxRates.lastFetched,
+                        estimated: fxEtat.fxRatesEstimated,
+                        source: fxSourceEffective(fxEtat),
+                        cause: rates.cause,
+                        attemptAt: rates.attemptAt,
+                    });
+                }
             } catch (e) {
                 logError({ source: 'network', severity: 'warning', message: 'Mise à jour des taux FX impossible (taux de repli utilisés)', error: e });
             }

@@ -21,6 +21,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { fetchFxRates } from '../../services/finance';
+import { logError } from '../../services/errorLogger';
 import { formatRelative } from '../../utils/relativeTime';
 import {
     fxSourceEffective, fxCauseEffective, libelleSourceFx, messageCauseFx, fxFaitAutorite,
@@ -81,6 +82,10 @@ export const FxRatesCard: React.FC = () => {
         } catch (e) {
             // La fonction encode déjà ses échecs dans son retour ; un rejet ici serait un défaut de
             // programmation, pas une panne réseau — on le DIT plutôt que de l'avaler.
+            // ⚠️ Et on le TRACE : le texte de la région live est transitoire (il disparaît au
+            // prochain rendu), donc sans journal durable ce défaut-là n'existerait que le temps
+            // où Marc regarde l'écran.
+            logError({ source: 'ui', severity: 'error', message: 'fetchFxRates a rejeté de façon inattendue', error: e });
             setAnnonce(`La lecture n'a pas pu être lancée : ${e instanceof Error ? e.message : 'cause inconnue'}.`);
         } finally {
             setEnCours(false);
@@ -90,8 +95,12 @@ export const FxRatesCard: React.FC = () => {
     const appliquerSaisie = () => {
         const usd = lireTauxSaisi(saisieUsd);
         const eur = lireTauxSaisi(saisieEur);
-        if ('erreur' in usd) { setErreurSaisie(`USD : ${usd.erreur}`); return; }
-        if ('erreur' in eur) { setErreurSaisie(`EUR : ${eur.erreur}`); return; }
+        // ⚠️ Le message d'erreur passe AUSSI par la région live. Peint seulement, il n'existait pas
+        // pour un lecteur d'écran : le focus reste sur le bouton et rien n'est lu — donc la
+        // fonctionnalité que cette carte AJOUTE était inutilisable au clavier, précisément pour
+        // quelqu'un à qui elle sert de seul recours.
+        if ('erreur' in usd) { const m = `USD : ${usd.erreur}`; setErreurSaisie(m); setAnnonce(m); return; }
+        if ('erreur' in eur) { const m = `EUR : ${eur.erreur}`; setErreurSaisie(m); setAnnonce(m); return; }
         setErreurSaisie('');
         updateFxRates({
             USD: usd.valeur, EUR: eur.valeur, CAD: 1,
@@ -131,7 +140,7 @@ export const FxRatesCard: React.FC = () => {
                 </p>
 
                 {!autorite && (
-                    <p className="text-meta text-warning-300">
+                    <p className="text-meta text-warning-400">
                         Tant que le taux vient du repli écrit dans le code, il convertit ce qui est
                         AFFICHÉ mais il n'a pas le droit d'écrire un total de compte : un compte
                         courtier en devise étrangère reste nommé et non converti.
@@ -139,7 +148,7 @@ export const FxRatesCard: React.FC = () => {
                 )}
 
                 <div>
-                    <Button variant="ghost" size="sm" onClick={reessayer} loading={enCours} disabled={enCours}>
+                    <Button variant="ghost" size="sm" className="touch-target" onClick={reessayer} loading={enCours} disabled={enCours}>
                         Réessayer maintenant
                     </Button>
                 </div>
@@ -178,12 +187,12 @@ export const FxRatesCard: React.FC = () => {
                                 className="w-28 font-mono"
                             />
                         </div>
-                        <Button variant="outline" size="sm" onClick={appliquerSaisie}>
+                        <Button variant="outline" size="sm" className="touch-target" onClick={appliquerSaisie}>
                             Appliquer ces taux
                         </Button>
                     </div>
                     {erreurSaisie !== '' && (
-                        <p className="text-meta text-danger-300 mt-2">{erreurSaisie}</p>
+                        <p className="text-meta text-danger-400 mt-2">{erreurSaisie}</p>
                     )}
                 </div>
 

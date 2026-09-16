@@ -9,6 +9,7 @@ import { initialState } from './etatParDefaut';
 import { migratePersistedState } from './migrationsPersistees';
 import { creerActionsModeTest } from './actionsModeTest';
 import { fusionnerEtatPersiste, surRehydratation, extrairePersistable } from './optionsPersistance';
+import type { FxSource, FxCause } from '../services/fx/provenance';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -88,7 +89,15 @@ export interface FinanceState extends AppState {
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
     clearPendingFocus: () => void;
-    updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number; estimated?: boolean }) => void;
+    updateFxRates: (rates: {
+        USD: number; EUR: number; CAD: number; lastFetched?: number; estimated?: boolean;
+        /** [FX-TAUX-JAMAIS-ARRIVES] provenance du taux (`services/fx/provenance.ts`). */
+        source?: FxSource;
+        /** résultat de la tentative qui a produit ce taux. */
+        cause?: FxCause;
+        /** epoch ms de cette tentative, réussie ou non. */
+        attemptAt?: number;
+    }) => void;
     updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
@@ -167,11 +176,24 @@ export const useFinanceStore = create<FinanceState>()(
                 });
             },
             clearPendingFocus: () => set({ pendingFocus: null }),
-            updateFxRates: ({ estimated, ...rates }) => set((prev) => ({
+            updateFxRates: ({ estimated, source, cause, attemptAt, ...rates }) => set((prev) => ({
                 // [FX-FALLBACK-SILENCIEUX] `estimated` vit SIBLING de fxRates (jamais dans l'objet
                 // lui-même — il resterait un Record<string, number> pour ses ~13 consommateurs).
+                // [FX-TAUX-JAMAIS-ARRIVES] `source`/`cause`/`attemptAt` sont SIBLING pour la même
+                // raison, et TOUS optionnels : un appelant qui n'en passe aucun (état ancien, test
+                // écrit avant ce lot) laisse l'existant intact plutôt que de l'effacer.
                 fxRates: { ...prev.fxRates, ...rates },
                 fxRatesEstimated: estimated ?? prev.fxRatesEstimated,
+                // ⚠️ Quand un appelant ne donne QUE `estimated` (l'ancienne signature), on DÉRIVE la
+                // provenance au lieu de garder l'ancienne : sinon l'état porterait deux réponses
+                // contradictoires à la même question, et `fxSourceEffective` — qui préfère le champ
+                // explicite — suivrait la périmée. Un seul écrivain, donc aucune contradiction
+                // exprimable (`UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`,
+                // pris par l'autre bout : séparer deux faits impose de les tenir cohérents).
+                fxRatesSource: source
+                    ?? (estimated === undefined ? prev.fxRatesSource : (estimated ? 'repli' : 'api')),
+                fxLastAttemptCause: cause ?? prev.fxLastAttemptCause,
+                fxLastAttemptAt: attemptAt ?? prev.fxLastAttemptAt,
             })),
             updateApiKeys: (keys) => set((prev) => ({
                 apiKeys: { ...prev.apiKeys, ...keys }

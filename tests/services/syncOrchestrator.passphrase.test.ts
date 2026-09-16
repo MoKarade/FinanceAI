@@ -72,8 +72,7 @@ vi.mock('../../services/backupAuto', () => ({
 
 // Logger mocké : ne pas polluer le storage qu'on nettoie + vérifier les avertissements (échec gracieux).
 vi.mock('../../services/errorLogger', () => ({
-    logError: (...args: unknown[]) => logErrorMock(...args),
-}));
+    logError: (...args: unknown[]) => logErrorMock(...args), logErrorThrottled: vi.fn(), }));
 
 // Importé APRÈS les mocks (vi.mock hoisté).
 import {

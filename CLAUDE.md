@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 010 tests** Vitest
-(614 fichiers de test, mesuré le 2026-09-16 ; +3 signe de carte, +5 Disnat, +11 champs inconnus, +12 revue panel). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 091 tests** Vitest
+(621 fichiers de test, MESURÉ par la suite complète le 2026-09-16 (744 s) ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation, +2 mocks complets). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -997,6 +997,65 @@ n'est pas réécrire un récit.
   pas la classe** : elle se vérifie par une PERTURBATION à l'endroit neuf, jamais par la conviction de la
   connaître — d'où une anti-vacuité du NORMALISATEUR lui-même, pas seulement de son sujet
   (`UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET`).
+
+- **Une valeur PAR DÉFAUT ne peut pas être contredite par un état ANCIEN** : j'ai écrit
+  `fxRatesSource: 'repli'` dans l'état initial en croyant bien faire (« une provenance explicite vaut
+  mieux qu'une absence »). `merge` de zustand superpose le blob persisté sur cet objet **clé par
+  clé** — un blob d'AVANT le lot ne porte pas la clé neuve, elle serait donc restée à `'repli'`
+  pendant que le reste de l'état dit `fxRatesEstimated: false` : le compte courtier en devise
+  étrangère de Marc aurait CESSÉ d'être converti le jour du déploiement, l'exact contraire du lot.
+  **Un champ additif optionnel ne coûte aucune migration À CONDITION de rester ABSENT des défauts** ;
+  dès qu'il y a une valeur, il n'est plus additif. Le test qui tranche porte sur la PRÉSENCE DE LA
+  CLÉ (`hasOwnProperty`), jamais sur sa valeur — `toBeUndefined()` est satisfait par les deux mondes.
+  ⚠️ C'est un test écrit par un AUTRE lot qui l'a trouvé. ⚠️ Corollaire : quand deux champs répondent
+  à la même question, le mutateur les tient cohérents PAR CONSTRUCTION (un appelant qui ne passe que
+  l'ancien laissait l'état porter deux réponses, et le lecteur suivait la périmée).
+  ⚠️⚠️ **Mesure d'origine** : les 12 positions de Marc sont en USD ou EUR, AUCUNE en CAD, et les
+  facteurs appliqués valaient **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au
+  caractère près. 100 % des 231 882 $ affichés reposaient sur un chiffre écrit en dur, et c'était
+  la vraie cause du compte USD non converti. ⚠️ Un **avertissement sans recours** (le badge « taux
+  estimés ») ne change rien : la lecture ne tournait qu'au démarrage, aucun bouton, aucun champ —
+  et un bouton sans `force` aurait rendu le cache de 24 h, donc un no-op déguisé. ⚠️ Un succès
+  **PARTIEL** n'est pas une lecture de marché (un des deux chiffres est le littéral du dépôt).
+  ⚠️ « Même taux qu'hier » est le cas NORMAL — la BdC ne publie qu'un jour OUVRÉ —, donc une
+  condition d'écriture qui ne compare que les VALEURS fige la fraîcheur sur une donnée à jour.
+  ⚠️ Mesuré côté moteur : un écart de 31 882 $ au point de départ vaut **+42 338 $ / +56 097 $ /
+  +98 482 $** à 5, 10 et 20 ans — le POURCENTAGE baisse (9,53 → 5,66 %) pendant que le FACTEUR monte
+  (×1,33 → ×3,09) ; publier l'un sans l'autre raconte deux histoires opposées
+  (`UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN`, 2026-09-16).
+
+- ⚠️⚠️ **Un total AMPUTÉ n'est pas une autorité dégradée, c'est un FAUX** (panel, 2026-09-16) :
+  `reconcileBrokerBalances` écarte un compte sans taux / illisible / sans régime — trois listes
+  existent pour qu'aucun ne disparaisse en silence — mais le total du panier devient alors la somme
+  des SEULS comptes retenus, et le consommateur ne voyait pas ces listes. Mesuré : 30 000 $ au lieu
+  de **231 882 $** au mois 0, sur l'état réel de Marc. **Ma garde d'identité ne tenait que dans le cas
+  TOUT-ou-RIEN** ; le cas PARTIEL — le plus probable — passait. Devant une agrégation qui EXCLUT des
+  membres, demander : *le consommateur sait-il qu'il en manque ?* ⚠️ Jumeau du même lot, plus discret
+  encore : la base de comparaison REPLIE CELIAPP sur CELI (décision écrite) pendant que les soldes de
+  départ les gardent SÉPARÉS — le défaut vit dans l'**ASYMÉTRIE entre deux modules**, aucun des deux
+  n'étant faux tout seul, et **mon test inscrivait la prémisse fausse**. ⚠️ Et le remède évident
+  (mettre le jumeau à zéro) changerait le RÉGIME FISCAL de l'argent : refusé et routé, pas corrigé
+  d'office. ⚠️ Le MCP passait par un SECOND constructeur de paramètres que je n'avais pas touché —
+  deux réponses à une seule question — et le test de parité ne pouvait pas le voir, aucun persona ne
+  portant de solde courtier. ⚠️ Enfin : un sélecteur Zustand qui reconstruit un objet, consommé sans
+  `useShallow` depuis la RACINE, re-rend toute l'app à chaque écriture du store — le correctif n'est
+  pas `useShallow` mais `getState()` dans l'effet, qui ne s'abonne à rien
+  (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
+
+- ⚠️ **Un import statique ajouté dans la COUCHE SERVICES casse les mocks de tous les tests qui
+  montent un composant** (2ᵉ occurrence, 2026-09-16, trouvée par la CI) : `useSimulationParams` s'est
+  mis à importer `holdingsCadByRegime`, qui importe `logErrorThrottled` — et les tests qui montent
+  `ProjectionEngine` mockaient `errorLogger` avec le seul `logError`, contrat parfaitement valide la
+  veille. Ils ont tous explosé alors qu'aucun d'eux ne parle de journalisation : **le contrat qu'un
+  test déclare n'est pas celui qu'il utilise, c'est celui de tout le graphe d'imports sous lui.**
+  ⚠️ La garde ne liste PAS les fichiers qui plantent (cette liste change à chaque import ajouté
+  ailleurs) : elle exige la surface COMPLÈTE de tout mock à fabrique littérale. ⚠️ Et son PÉRIMÈTRE
+  a dû être resserré après un premier jet faux — balayer toute la production exigeait aussi
+  `installGlobalErrorHandlers`/`getErrors`/`clearErrors`, soit **203 « fautifs »** dont aucun ne
+  pouvait causer la panne : ces fonctions ne sont appelées que par `App` et le visualiseur, jamais
+  par une dépendance profonde. Le périmètre qui compte est la couche que **tout montage traîne
+  derrière lui sans le savoir** — mesuré : `services/` n'importe que la paire fautive
+  (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUS-LES-MONTAGES`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

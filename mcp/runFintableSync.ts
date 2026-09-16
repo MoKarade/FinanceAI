@@ -31,6 +31,8 @@ import { lastProductiveAtSuivant } from '../services/fintable/syncHealth';
 import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
 import { logError } from '../services/errorLogger';
+import { fxSourceEffective, fxFaitAutorite } from '../services/fx/provenance';
+import { accumulerHistoriqueCourtier } from '../services/fintable/brokerHistory';
 
 interface FintableSyncOptions {
     token: string;
@@ -170,11 +172,24 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             // Marc). Écrits même si la liste est VIDE : une liste vide signifie « le courtier n'a
             // rien dit d'exploitable cette passe », ce qui doit EFFACER une valeur d'hier devenue
             // fausse plutôt que la laisser traîner (une autorité périmée est pire qu'une absence).
+            // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Même source de taux que le chemin navigateur.
+            // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] Ce chemin est un CRON : il ne lit jamais la Banque du
+            // Canada (`fetchFxRates` ne tourne qu'au démarrage de l'app). Il hérite donc de la
+            // provenance écrite par le navigateur — et si elle dit « repli », il refuse de convertir,
+            // exactement comme l'app. Un serveur qui déciderait autrement fabriquerait deux vérités.
+            const soldesCourtier = toPersistableBrokerBalances(
+                mapReport.investmentBalances, report.at, 'CAD',
+                base.fxRates, !fxFaitAutorite(fxSourceEffective(base)),
+            );
             await store.save({
                 ...applied.nextState,
                 fintableSyncReport: report,
-                // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Même source de taux que le chemin navigateur.
-                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at, 'CAD', base.fxRates, base.fxRatesEstimated === true),
+                fintableBrokerBalances: soldesCourtier,
+                // [FINTABLE-HISTORIQUE-COURTIER] La lecture du jour REJOINT l'historique au lieu de
+                // l'écraser. Écrit ici, au même endroit que l'instantané, parce que les deux doivent
+                // venir de la MÊME lecture : les dériver de deux appels laisserait l'un des deux en
+                // retard d'une passe, sans que rien ne le signale.
+                fintableBrokerHistory: accumulerHistoriqueCourtier(base.fintableBrokerHistory, soldesCourtier, report.at),
             }, baseVersion);
             return report;
         };

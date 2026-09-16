@@ -6,6 +6,38 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-16 (tes taux de change n'étaient JAMAIS arrivés — et Fintable fait enfin autorité)
+
+- **Ce qui a été mesuré sur TES données** : NVDA, 90 × 214,40 USD, affiché 27 014 $ → facteur
+  **1,4000** pile. GBS.PA, 115 × 343,67 EUR, affiché 58 097 $ → **1,4700** pile. Ce sont les taux
+  écrits en dur dans le code (« approximation Q1 2026 »), pas ceux de la Banque du Canada. Et tes
+  **douze** positions sont en USD ou en EUR, aucune en CAD : la totalité de la valeur de tes
+  placements reposait sur un chiffre inventé. C'était aussi la vraie raison pour laquelle ton compte
+  Disnat en USD n'était pas converti hier.
+- **Ce qui change — un RECOURS, là où il n'y en avait aucun.** Réglages → Système & diagnostics :
+  un bouton **« Réessayer maintenant »**, un diagnostic qui nomme la cause de l'échec (réseau,
+  erreur du serveur, série absente…), et un champ pour **saisir le taux toi-même**. Un taux que tu
+  saisis convertit tes avoirs, et l'app continue de dire qu'il vient de toi.
+- **Le total de ton courtier pilote maintenant le POINT DE DÉPART de ta projection** — dans l'app
+  ET dans l'assistant, pour qu'ils ne répondent pas deux choses différentes. Ta demande du 30
+  juillet n'était livrée qu'à moitié : ces totaux ne servaient qu'à la carte d'écart.
+  ⚠️ **Ce n'est PAS encore le patrimoine net affiché** sur l'Accueil et Investissements, qui somme
+  toujours tes titres saisis. Je l'avais écrit trop large dans une première version de cette note.
+  ⚠️ Le passé reste reconstruit à partir de tes titres : d'où une **marche possible au raccord** sur
+  la courbe Futur, expliquée en toutes lettres sous le graphe.
+  ⚠️ **Et tant qu'un de tes comptes courtier est écarté** (taux inconnu, régime non déclaré), ces
+  totaux ne pilotent RIEN : un total amputé d'un compte remplacerait la valeur complète. La carte
+  « Comptes courtier » le dit, à côté de la liste des comptes concernés.
+- **L'historique du courtier commence à s'accumuler** (une lecture par compte et par jour, 24 mois).
+  ⚠️ Ça ne change **rien aujourd'hui ni sur le passé déjà vécu** : l'instantané était écrasé à chaque
+  passe, donc « ce que Fintable disait le 3 mars » n'existe nulle part et ne peut pas être
+  reconstruit. Ce lot fait exister la donnée à partir de maintenant.
+- **Ce que j'attends de toi** : ouvre Réglages → Système & diagnostics et dis-moi ce que raconte la
+  carte « Taux de change ». Je ne peux pas le mesurer d'ici — la Banque du Canada est bloquée depuis
+  mon conteneur.
+
+---
+
 ## [unreleased] — 2026-09-16 (tu peux enfin voir ce que Fintable envoie et qu'on ignore)
 
 - **Pourquoi** : l'import te disait déjà que 5 champs arrivent et sont ignorés — mais seulement

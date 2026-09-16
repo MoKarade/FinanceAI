@@ -146,6 +146,13 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // réhydratation impossible et VIDERAIT l'écran de Marc — le mode de panne exact de l'incident du
     // 2026-09-01, attrapé ici par la garde de dérivation née de cet incident.
     'comptesSansPositions', 'reason',
+    // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] `fxRatesSource` (`'api' | 'manuel' | 'repli'`) et
+    // `fxLastAttemptCause` (le résultat de la dernière lecture). Deux clés TEXTUELLES et PERSISTÉES
+    // de plus, donc deux occasions de plus de vider l'app au lancement si on les oublie : c'est la
+    // QUATRIÈME fois que ce lot-ci passe par là (`accountId`/`debtName`/`missingRate` avant elles).
+    // La garde de dérivation les aurait attrapées — elles sont écrites ici AVANT qu'elle rougisse,
+    // parce qu'un filet n'est pas une excuse pour sauter le geste qu'il rattrape.
+    'fxRatesSource', 'fxLastAttemptCause',
     'mimeType', 'model', 'municipality', 'name',
     'nature', 'nextDividendDate', 'notes', 'originalCategory',
     'owner', 'pattern', 'payee', 'priceHistory',
@@ -190,6 +197,15 @@ export const CHAMPS_BOOLEENS: ReadonlySet<string> = new Set([
     'useWebWorker', 'vehicleReplacementEnabled', 'wasBackfill',
     // 2. corps du store
     'projectionRunMC', 'isProjectionLocked', 'isTestMode', 'isPrivacyMode',
+    // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] `estimated` est apparu ici SANS qu'aucun champ persisté ne soit
+    // ajouté : il vit dans la SIGNATURE de `updateFxRates`, et il y vivait déjà — c'est sa mise en
+    // forme sur plusieurs lignes qui l'a rendu visible à l'extracteur, jusque-là ancré sur des
+    // formes qu'il avait croisées (même classe que l'incident `debtName`, deuxième vague du
+    // 2026-09-01). La bonne réponse n'est PAS de remettre la signature sur une ligne pour le
+    // cacher : un nom qu'on soustrait à sa garde reste un nom qu'elle devra reconnaître le jour où
+    // il sera vraiment persisté. Et il l'est déjà ailleurs — le cache local `fx_rates_cache` porte
+    // exactement cette clé.
+    'estimated',
     // 3. états mesurés — les clés du Record `setupOptOut`
     'children', 'debts', 'lifeProjects', 'realEstate',
 ]);

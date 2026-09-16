@@ -21,7 +21,7 @@ vi.mock('../../services/fintable/browserSync', () => ({
     runFintableBrowserSync: (...a: unknown[]) => syncMock(...a),
 }));
 const logErrorMock = vi.fn();
-vi.mock('../../services/errorLogger', () => ({ logError: (...a: unknown[]) => logErrorMock(...a) }));
+vi.mock('../../services/errorLogger', () => ({ logError: (...a: unknown[]) => logErrorMock(...a), logErrorThrottled: vi.fn(), }));
 
 // [FINTABLE-TOKEN-PERSIST] Coffre chiffré mocké : ces tests verrouillent que le jeton est bien
 // ÉCRIT dans secureKeyStore (incident 2026-08-05 : il ne l'était jamais → perdu à chaque reload).

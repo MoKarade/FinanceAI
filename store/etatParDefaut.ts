@@ -85,6 +85,19 @@ const DEFAULT_APP_STATE: AppState = {
     apiKeys: { anthropic: '', finnhub: '' },
     fxRates: DEFAULT_FX_RATES,
     fxRatesEstimated: true, // [FX-FALLBACK-SILENCIEUX] DEFAULT_FX_RATES est un repli en dur.
+    // ⚠️⚠️ [FX-TAUX-JAMAIS-ARRIVES] `fxRatesSource` est DÉLIBÉRÉMENT ABSENT de l'état initial.
+    // Mon premier jet y écrivait `'repli'`, au motif qu'une provenance explicite vaut mieux
+    // qu'une absence. C'était une RÉGRESSION, et un test existant l'a trouvée : `merge` de
+    // zustand superpose le blob persisté sur CET objet, CLÉ PAR CLÉ. Un blob écrit AVANT ce
+    // lot ne porte pas la clé — elle serait donc restée à `'repli'` alors que l'utilisateur a
+    // de VRAIS taux (`fxRatesEstimated: false`, `lastFetched > 0`). Résultat : son compte
+    // courtier en devise étrangère aurait CESSÉ d'être converti le jour du déploiement,
+    // c'est-à-dire l'exact contraire de ce que ce lot corrige.
+    // Laissée absente, la clé fait retomber `fxSourceEffective` sur l'ancienne lecture — la
+    // rétrocompatibilité écrite pour ça. `fxRatesEstimated: true` ci-dessus dit déjà « repli »
+    // pour un état NEUF, sans jamais pouvoir contredire un état ANCIEN.
+    fxLastAttemptCause: 'jamais-tente',
+    fxLastAttemptAt: 0,
     lastUpdate: Date.now(),
     categorizationRules: [],
     aiConversation: [],
@@ -115,6 +128,7 @@ const DEFAULT_APP_STATE: AppState = {
     // [FINTABLE-6] MÊME raison que ci-dessus : soldes RÉELS des comptes de placement de Marc — la
     // donnée la plus sensible du lot. Présent explicitement pour être purgé au switch de persona.
     fintableBrokerBalances: undefined,
+    fintableBrokerHistory: undefined,
     // [FINTABLE-7] Rôles assignés depuis Réglages. Présent explicitement (même raison) : la liste
     // des comptes réels de Marc n'a rien à faire dans une démo persona.
     fintableRoles: undefined,
@@ -253,6 +267,12 @@ export const getInitialStateWithMigration = (): AppState => {
             // [FX-FALLBACK-SILENCIEUX] Cette migration LEGACY (pré-persist Zustand) n'a aucune
             // source pour ce nouveau champ — `true` est le même défaut neutre que DEFAULT_APP_STATE.
             fxRatesEstimated: true,
+            // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] `fxRatesSource` reste ABSENT ici AUSSI, et pour la même
+            // raison qu'au-dessus : cet objet sert de base à `merge`, donc une valeur écrite ici
+            // ne peut pas être contredite par un blob ancien — elle le RECOUVRE. Le seul champ
+            // qu'on pose est la cause, qui est exacte : ce chemin n'a jamais tenté de lecture.
+            fxLastAttemptCause: 'jamais-tente',
+            fxLastAttemptAt: 0,
             lastUpdate: Date.now(),
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             aiConversation: [],

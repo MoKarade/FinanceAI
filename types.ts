@@ -851,6 +851,22 @@ export interface AppState {
    *  partialize allow-all — absent (état antérieur) → `isFxRatesEstimated` retombe sur
    *  `fxRates.lastFetched === 0`, rétrocompat bit-identique. */
   fxRatesEstimated?: boolean;
+  /** [FX-TAUX-JAMAIS-ARRIVES] D'OÙ vient le taux appliqué : `'api'` | `'manuel'` | `'repli'`.
+   *  Remplace la LECTURE de `fxRatesEstimated`, qui reste écrit pour les états anciens et pour
+   *  les consommateurs qui ne posent qu'une question binaire. Trois valeurs parce que Marc a
+   *  demandé un recours SAISI À LA MAIN : un booléen ne peut pas le distinguer d'un repli en dur
+   *  sans soit lui refuser la conversion, soit le faire passer pour une lecture de marché.
+   *  ADDITIF optionnel — absent ⇒ `fxSourceEffective` retombe sur l'ancienne lecture, à l'octet
+   *  près (`services/fx/provenance.ts`). ⚠️ TEXTUEL ET PERSISTÉ : toute clé de cette nature doit
+   *  figurer dans `CHAMPS_TEXTE` (`services/verifierTypesRestaures.ts`), sinon la réhydratation
+   *  échoue et l'app se VIDE au lancement — incident du 2026-09-01, trois vagues. */
+  fxRatesSource?: 'api' | 'manuel' | 'repli';
+  /** Epoch ms de la DERNIÈRE tentative de lecture (réussie ou non). Distinct de
+   *  `fxRates.lastFetched`, qui ne date que les SUCCÈS : sans ce champ, « on a essayé et ça a
+   *  échoué » est indiscernable de « on n'a jamais essayé », et le diagnostic ne peut rien dire. */
+  fxLastAttemptAt?: number;
+  /** Résultat de cette tentative (`FxCause`). ⚠️ TEXTUEL ET PERSISTÉ — cf. `fxRatesSource`. */
+  fxLastAttemptCause?: string;
   lastUpdate: number;
   categorizationRules: CategorizationRule[];
   aiConversation: AiMessage[];
@@ -891,6 +907,14 @@ export interface AppState {
    *  AUTORITÉ sur le total de chaque compte (choix Marc 2026-07-30). ADDITIF optionnel (absent = jamais
    *  synchronisé → l'app retombe sur la somme des titres saisis, comportement d'avant). */
   fintableBrokerBalances?: FintableBrokerBalance[];
+  /** [FINTABLE-HISTORIQUE-COURTIER] Les lectures PASSÉES du courtier, une par compte et par jour.
+   *  `fintableBrokerBalances` ci-dessus est un INSTANTANÉ écrasé à chaque passe : sans ce champ,
+   *  « ce que Fintable disait le 3 mars » n'existe nulle part et ne peut pas être reconstruit.
+   *  ⚠️ Ce champ ne change RIEN aujourd'hui — il se remplit à partir de maintenant, et il faudra
+   *  de la profondeur avant qu'un écran puisse s'en servir. Rétention et plafond :
+   *  `services/fintable/brokerHistory.ts`. ADDITIF optionnel — aucun bump de schéma (rien à
+   *  restructurer dans l'existant). */
+  fintableBrokerHistory?: FintableBrokerBalance[];
   /** [FINTABLE-7] Rôle de chaque compte Fintable, assigné DANS L'APP (Réglages) — remplace le
    *  fichier `.fintable-roles.json` que Marc devait écrire à la main puis pousser en secret GCP.
    *  Clé = id de compte Fintable (stable). Un compte absent d'ici est SIGNALÉ, jamais deviné. */

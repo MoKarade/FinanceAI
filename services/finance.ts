@@ -5,6 +5,7 @@
 // services/marketData/.
 
 import { logError } from './errorLogger';
+import type { FxSource, FxCause } from './fx/provenance';
 
 export interface MarketDataPoint {
     date: string;
@@ -15,7 +16,7 @@ export interface MarketDataPoint {
 const FETCH_TIMEOUT_MS = 12000; // 12 secondes max
 
 // Taux de change mis en cache localement
-let cachedFxRates: { USD: number; EUR: number; CAD: number; lastFetched: number; estimated: boolean } | null = null;
+let cachedFxRates: ResultatTauxFx | null = null;
 
 // --- Wrapper localStorage tolerant aux environnements sans Web Storage ---
 // Le module est importe par App (browser) et potentiellement par le MCP server (Node).
@@ -69,39 +70,85 @@ const fetchWithTimeout = async (url: string, timeoutMs: number = FETCH_TIMEOUT_M
  * Cache 24h pour eviter trop de requetes.
  * Fallback sur les valeurs stockees en cas d'echec.
  */
-export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: number; lastFetched: number; estimated: boolean }> => {
+export interface ResultatTauxFx {
+    USD: number;
+    EUR: number;
+    CAD: number;
+    /** Epoch ms du dernier SUCCÈS (0 = jamais). Ne date PAS les échecs — d'où `attemptAt` ci-dessous. */
+    lastFetched: number;
+    /** Conservé pour les états et consommateurs antérieurs ; `source` est la lecture qui décide. */
+    estimated: boolean;
+    /** [FX-TAUX-JAMAIS-ARRIVES] D'où vient CE taux (`services/fx/provenance.ts`). */
+    source: FxSource;
+    /** Ce que cette tentative a donné. */
+    cause: FxCause;
+    /** Epoch ms de CETTE tentative, réussie ou non. */
+    attemptAt: number;
+}
+
+/**
+ * Recupere les taux de change depuis la Banque du Canada (API officielle, gratuite).
+ * Cache 24h pour eviter trop de requetes.
+ * Fallback sur les valeurs stockees en cas d'echec.
+ *
+ * ⚠️ [FX-TAUX-JAMAIS-ARRIVES] `force: true` COURT-CIRCUITE les deux caches. Sans ça, le bouton
+ * « Réessayer maintenant » serait un no-op déguisé pendant 24 h : il rendrait le cache et Marc
+ * verrait le même « taux estimés » sans le moindre signe que rien n'a été tenté. Un recours qui
+ * ne peut pas s'exercer n'est pas un recours.
+ */
+export const fetchFxRates = async (options?: { force?: boolean }): Promise<ResultatTauxFx> => {
     const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 heures
     const now = Date.now();
+    const force = options?.force === true;
 
     // Verifier le cache en memoire (toujours dispo, browser + Node)
-    if (cachedFxRates && (now - cachedFxRates.lastFetched) < CACHE_DURATION_MS) {
+    if (!force && cachedFxRates && (now - cachedFxRates.lastFetched) < CACHE_DURATION_MS) {
         return cachedFxRates;
     }
 
     // Verifier le cache persistant si localStorage existe (browser uniquement)
-    const stored = safeGetItem('fx_rates_cache');
-    if (stored) {
-        try {
-            const parsed = JSON.parse(stored);
-            if (parsed && (now - (parsed.lastFetched || 0)) < CACHE_DURATION_MS) {
-                cachedFxRates = parsed;
-                return parsed;
-            }
-        } catch { /* JSON corrompu : on continue le fetch */ }
+    if (!force) {
+        const stored = safeGetItem('fx_rates_cache');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (parsed && (now - (parsed.lastFetched || 0)) < CACHE_DURATION_MS) {
+                    const hydrate = normaliserCache(parsed);
+                    if (hydrate) {
+                        cachedFxRates = hydrate;
+                        return hydrate;
+                    }
+                }
+            } catch { /* JSON corrompu : on continue le fetch */ }
+        }
     }
 
     // Fetch depuis la Banque du Canada
     // API: /valet/observations/GROUPE/json?recent=1
     // Series: FXUSDCAD (USD/CAD) et FXEURCAD (EUR/CAD)
+    let cause: FxCause = 'reseau';
     try {
         const BDC_URL = "https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=1";
         const response = await fetchWithTimeout(BDC_URL, 8000);
 
-        if (response.ok) {
+        if (!response.ok) {
+            // ⚠️ Avant ce lot, un 4xx/5xx tombait dans le MÊME silence qu'une coupure réseau : le
+            // `if (response.ok)` sans `else` laissait sortir la fonction par le repli du bas, sans
+            // rien écrire. Deux pannes qui ne se corrigent pas pareil rendaient le même « estimé ».
+            cause = 'http';
+            logError({ source: 'network', severity: 'warning', message: `Taux FX — la Banque du Canada a répondu ${response.status}`, context: { status: String(response.status) } });
+        } else {
             const data = await response.json();
             const obs = data?.observations?.[0];
 
-            if (obs) {
+            if (!obs) {
+                // ⚠️ Symétrique de la branche `!response.ok` trois lignes plus haut, qui loggue :
+                // une réponse 200 au format cassé est une anomalie de MÊME gravité. Sans trace, elle
+                // n'existe que si Marc ouvre la carte FX au bon moment — au démarrage, rien n'en
+                // reste (finding silent-failure-hunter, panel #978).
+                cause = 'reponse-illisible';
+                logError({ source: 'network', severity: 'warning', message: 'Taux FX — réponse de la Banque du Canada sans observation exploitable' });
+            } else {
                 // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
                 // CORROMPU (0/NaN/texte) → ce dernier est loggué au lieu d'être masqué par le repli.
                 // [FX-FALLBACK-SILENCIEUX] Un succès GLOBAL du fetch (obs présent) peut cacher un
@@ -119,7 +166,18 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
                 const usdCad = parseRate(obs?.FXUSDCAD?.v, 1.40, 'USD/CAD');
                 const eurCad = parseRate(obs?.FXEURCAD?.v, 1.47, 'EUR/CAD');
 
-                const rates = { USD: usdCad, EUR: eurCad, CAD: 1.00, lastFetched: now, estimated: anyFallback };
+                cause = anyFallback ? 'partiel' : 'ok';
+                const rates: ResultatTauxFx = {
+                    USD: usdCad, EUR: eurCad, CAD: 1.00,
+                    lastFetched: now,
+                    estimated: anyFallback,
+                    // ⚠️ Un succès PARTIEL n'est pas une lecture de marché : au moins un des deux
+                    // chiffres est le littéral du dépôt. Le classer `'api'` rendrait au taux inventé
+                    // l'autorité d'écrire un total de compte — exactement ce que ce lot corrige.
+                    source: anyFallback ? 'repli' : 'api',
+                    cause,
+                    attemptAt: now,
+                };
                 cachedFxRates = rates;
 
                 // Persistance dans localStorage si disponible (no-op en Node)
@@ -132,6 +190,7 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
             }
         }
     } catch (e) {
+        cause = 'reseau';
         logError({ source: 'network', severity: 'warning', message: 'Taux FX (Banque du Canada) indisponibles — fallback cache/défaut', error: e });
     }
 
@@ -143,17 +202,63 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
     if (lastKnown) {
         try {
             const parsed = JSON.parse(lastKnown);
-            if (parsed && typeof parsed.USD === 'number' && typeof parsed.EUR === 'number' && typeof parsed.CAD === 'number') {
-                return parsed; // périmé mais réel
+            const hydrate = normaliserCache(parsed);
+            // ⚠️ Un cache PRÉSENT mais illisible n'est pas la même chose qu'un cache ABSENT : c'est
+            // une corruption, et c'est précisément la question qu'un diagnostic futur posera
+            // (« pourquoi le taux est-il resté en repli ? »). Sans cette trace, « jamais
+            // synchronisé » et « cache corrompu » sont indiscernables — le dernier recours avant le
+            // littéral en dur, c'est-à-dire le mécanisme même que ce lot corrige.
+            if (hydrate === null) {
+                logError({ source: 'storage', severity: 'warning', message: 'Cache des taux FX corrompu — repli sur les valeurs par défaut' });
             }
+            // ⚠️ La PROVENANCE reste celle du cache (un taux d'hier lu chez la BdC reste un taux de
+            // la BdC), mais la CAUSE est celle de la tentative qui vient d'échouer : sinon le
+            // diagnostic affirmerait « tout va bien » pendant que plus rien ne passe.
+            if (hydrate) return { ...hydrate, cause, attemptAt: now };
         } catch { /* cache corrompu : on tombe sur les défauts */ }
     }
 
     // Dernier recours : défauts approximatifs. `lastFetched: 0` = signal « jamais récupéré »
-    // (contrat qu'un futur badge UI « taux estimé » pourra détecter).
-    const fallback = { USD: 1.40, EUR: 1.47, CAD: 1.00, lastFetched: 0, estimated: true };
-    return fallback;
+    // (contrat que le badge UI « taux estimé » détecte).
+    return {
+        USD: 1.40, EUR: 1.47, CAD: 1.00,
+        lastFetched: 0, estimated: true, source: 'repli', cause, attemptAt: now,
+    };
 };
+
+/**
+ * Relit une entrée de cache en lui redonnant sa provenance.
+ *
+ * ⚠️ Les entrées écrites AVANT ce lot ne portent ni `source` ni `cause` — les lire comme
+ * `undefined` ferait retomber tout le diagnostic sur « jamais tenté » alors qu'un vrai taux de
+ * marché est là. On DÉRIVE donc de `estimated`, exactement comme le fait `fxSourceEffective` pour
+ * l'état persisté : une même règle de rétrocompatibilité, écrite une fois, appliquée aux deux
+ * surfaces qui la subissent.
+ */
+const CAUSES_CACHE: readonly string[] = ['ok', 'partiel', 'reseau', 'http', 'reponse-illisible', 'manuel', 'jamais-tente'];
+
+function normaliserCache(parsed: unknown): ResultatTauxFx | null {
+    const p = parsed as Partial<ResultatTauxFx> | null;
+    if (!p || typeof p.USD !== 'number' || typeof p.EUR !== 'number' || typeof p.CAD !== 'number') return null;
+    if (!Number.isFinite(p.USD) || !Number.isFinite(p.EUR) || p.USD <= 0 || p.EUR <= 0) return null;
+    const estimated = p.estimated === true;
+    const source: FxSource = p.source === 'api' || p.source === 'manuel' || p.source === 'repli'
+        ? p.source
+        : (estimated ? 'repli' : 'api');
+    // ⚠️ La cause est VALIDÉE comme la source : un cast laissait entrer n'importe quelle chaîne,
+    // et une cause inconnue fait écrire l'état à CHAQUE démarrage (elle ne correspond jamais à
+    // l'existante). Symétrie exigée par `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`.
+    const causeBrute = p.cause as string | undefined;
+    const cause: FxCause = typeof causeBrute === 'string' && CAUSES_CACHE.includes(causeBrute)
+        ? (causeBrute as FxCause)
+        : (estimated ? 'partiel' : 'ok');
+    const lastFetched = Number.isFinite(Number(p.lastFetched)) ? Number(p.lastFetched) : 0;
+    return {
+        USD: p.USD, EUR: p.EUR, CAD: p.CAD,
+        lastFetched, estimated, source, cause,
+        attemptAt: Number.isFinite(Number(p.attemptAt)) ? Number(p.attemptAt) : lastFetched,
+    };
+}
 
 // [PORTFOLIO-HISTORY 2026-07-22] Les STUBS `fetchPortfolioHistory`/`fetchAssetHistory` (Google Sheet
 // legacy supprimé → toujours []) sont RETIRÉS : ils rendaient tous les graphes de cours VIDES en

@@ -274,3 +274,53 @@ describe('[revue panel] un taux ESTIMÉ ne fait pas autorité sur un solde de co
         expect(reco.missingRateAccountLabels).toEqual(['Disnat (USD)']);
     });
 });
+
+// ⚠️⚠️ [FINTABLE-AUTORITE-PARTIELLE] Les trois listes d'écartés existaient pour qu'« un compte ne
+// disparaisse jamais en silence ». Il manquait la question suivante : QUEL PANIER un écarté
+// ampute-t-il ? Tant que ces totaux ne servaient qu'à une carte d'écart, personne n'avait besoin de
+// la réponse. Depuis que le mois 0 de la projection les consomme, un total amputé est un FAUX.
+describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé', () => {
+    const brut = (o: Partial<FintableBrokerBalance> = {}): FintableBrokerBalance =>
+        ({ accountId: 'x', label: 'Disnat', balanceCad: 30_000, taxRegime: 'NON-ENREG', at: AT, ...o });
+
+    it('un compte écarté faute de TAUX marque son régime INCOMPLET quand un autre survit', () => {
+        const r = reconcileBrokerBalances([
+            brut({ accountId: 'cad', balanceCad: 30_000 }),
+            brut({ accountId: 'usd', balanceCad: 0, missingRate: 'USD' }),
+        ], { 'NON-ENREG': 231_882 });
+        expect(r.regimes[0].brokerTotalCad).toBe(30_000);   // le total EST amputé…
+        expect(r.incompleteRegimes).toEqual(['NON-ENREG']); // …et c'est DIT
+        expect(r.hasUnplaceableAccount).toBe(false);
+    });
+
+    it('un solde ILLISIBLE marque aussi son régime incomplet', () => {
+        const r = reconcileBrokerBalances([
+            brut({ accountId: 'a', balanceCad: 30_000 }),
+            brut({ accountId: 'b', balanceCad: Number.NaN }),
+        ], { 'NON-ENREG': 100_000 });
+        expect(r.incompleteRegimes).toEqual(['NON-ENREG']);
+    });
+
+    it('un compte SANS régime déclaré est « non plaçable » — il peut amputer n\'importe quel panier', () => {
+        const r = reconcileBrokerBalances([
+            brut({ accountId: 'a', balanceCad: 80_000 }),
+            brut({ accountId: 'b', balanceCad: 60_000, taxRegime: undefined }),
+        ], { 'NON-ENREG': 140_000 });
+        expect(r.hasUnplaceableAccount).toBe(true);
+    });
+
+    it('CONTRÔLE NÉGATIF — aucun écarté : les deux signaux restent vides', () => {
+        const r = reconcileBrokerBalances([brut()], { 'NON-ENREG': 30_000 });
+        expect(r.incompleteRegimes).toEqual([]);
+        expect(r.hasUnplaceableAccount).toBe(false);
+    });
+
+    it('CONTRÔLE NÉGATIF — TOUS les comptes du régime écartés : rien à refuser, rien à signaler', () => {
+        // Le régime n'apparaît pas dans `regimes`, donc `appliquerAutoriteCourtier` ne peut rien
+        // lui appliquer : le marquer « incomplet » ferait parler d'un panier qui n'existe pas.
+        const r = reconcileBrokerBalances([brut({ balanceCad: 0, missingRate: 'USD' })], { 'NON-ENREG': 100_000 });
+        expect(r.regimes).toEqual([]);
+        expect(r.incompleteRegimes).toEqual([]);
+        expect(r.missingRateAccountLabels).toHaveLength(1);
+    });
+});

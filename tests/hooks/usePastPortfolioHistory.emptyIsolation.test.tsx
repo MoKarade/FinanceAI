@@ -16,7 +16,7 @@ vi.mock('../../services/marketData', () => ({
     getHistory: vi.fn().mockResolvedValue([]),
     configureMarketDataProvider: vi.fn(),
 }));
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 import { usePastPortfolioHistory, _resetPastHistoryFetchCache } from '../../hooks/usePastPortfolioHistory';
 import { useFinanceStore } from '../../store/useFinanceStore';

@@ -4,6 +4,59 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-16 (nuit) — **REVUE PANEL : 8 défauts réels, dont 3 rouges**
+> Quatrième lot d'affilée où le panel bat le gate ET la CI. Cette fois il a trouvé ce qui vidait le
+> lot de son sens.
+> 🔴 **Un total courtier AMPUTÉ écrasait le panier ENTIER** : un compte écarté (taux inconnu, régime
+> non déclaré) sort du total, et j'appliquais ce total partiel au mois 0. Mesuré sur l'état RÉEL de
+> Marc : **30 000 $ au lieu de 231 882 $**. Ma garde d'identité ne tenait que dans le cas
+> TOUT-ou-RIEN. ✅ Refus explicite + raison rendue + dit à l'écran.
+> 🔴 **Base de FAMILLE dans un panier ÉTROIT** : CELIAPP replié sur CELI côté comparaison, séparé
+> côté soldes → **+25 000 $** comptés deux fois. ✅ Refusé (pas corrigé d'office : mettre le jumeau à
+> zéro changerait le régime FISCAL de l'argent) → `[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`, 🧭 Marc.
+> 🔴 **Le recours n'aurait vécu qu'UNE session** : au redémarrage, le repli écrasait la saisie
+> manuelle (1,3650 → 1,4000). ✅ Une lecture SANS autorité ne remplace plus jamais un taux qui en a.
+> 🟠 Sélecteur Zustand reconstruisant un objet, consommé sans `useShallow` **depuis la racine** →
+> toute l'app re-rendue à chaque écriture du store. ✅ `getState()` dans l'effet, zéro abonnement.
+> 🟠 **Le PDF** (seule surface non migrée) affirmait « taux non récupérés » sur un taux saisi par Marc.
+> 🟠 `text-warning-300` / `text-danger-300` n'existent pas dans la palette — no-op SILENCIEUX, le tout
+> premier piège de la section UI de ce dépôt, commis deux fois dans le même fichier neuf.
+> 🟠 L'erreur de saisie n'était **pas annoncée** : muette au lecteur d'écran, dans la carte qui sert
+> justement de seul recours.
+> 🟠 **Le MCP** passait par un second constructeur de paramètres → deux réponses à une seule question.
+> ✅ Même autorité des deux côtés.
+> ⚠️ **J'avais SUR-AFFIRMÉ dans le CHANGELOG** (« fait autorité sur aujourd'hui » ⊃ le patrimoine net
+> affiché, qui somme toujours les titres saisis). Corrigé là où c'était publié.
+> ⏸️ Routé : `[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`, `[PROJ-DEUX-MOIS-ZERO]`,
+> `[GARDE-FUTURESEED-PERIMEE]`, `[FX-PASSE-TAUX-PLAT]`.
+>
+> ## ⚠️⚠️ Session 2026-09-16 (fin de soirée) — **les taux FX n'étaient JAMAIS arrivés**
+> Marc : « faut bien convertir en cad ce qui est en usd ». Mesuré sur son état RÉEL via le MCP :
+> **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au caractère près — et ses **12**
+> positions sont en USD ou EUR, **aucune** en CAD. 100 % des 231 882 $ affichés reposaient sur un
+> chiffre en dur, et c'était la vraie cause du Disnat USD non converti du lot précédent.
+> ✅ **Lot A** — provenance à 3 états (`api`/`manuel`/`repli`), bouton « Réessayer maintenant »
+> (avec `force` : sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
+> diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, et la condition d'écriture
+> du démarrage sortie en fonction PURE (elle ne comparait que les VALEURS, or la BdC ne publie qu'un
+> jour ouvré).
+> ✅ **Lot B** — le total du courtier fait autorité sur `liveCSVBalances`, donc sur le mois 0 du
+> moteur ET le départ de la courbe. Mesuré : un écart de 31 882 $ vaut **+42 338 / +56 097 /
+> +98 482 $** à 5, 10, 20 ans. La marche au raccord est NOMMÉE sous le graphe.
+> ✅ **Lot C** — l'historique courtier s'accumule (1/compte/jour, 24 mois). Ne change rien
+> aujourd'hui ; c'est écrit à l'écran.
+> ⚠️⚠️ **Régression que J'AVAIS introduite, trouvée par un test d'un AUTRE lot** : `fxRatesSource:
+> 'repli'` dans l'état PAR DÉFAUT. `merge` superpose clé par clé — un blob d'avant le lot aurait
+> gardé `'repli'` alors que l'utilisateur a de vrais taux, et son compte étranger aurait cessé
+> d'être converti au déploiement. ✅ Clé retirée des défauts + garde sur la PRÉSENCE de la clé.
+> ⚠️ Garde REDONDANTE démasquée par perturbation (12/12 verts sans elle) : les deux refus de
+> l'historique ont été réunis au même endroit.
+> 👤 **Chez Marc** : ouvrir Réglages → Système & diagnostics et dire ce que raconte la carte « Taux
+> de change ». `www.bankofcanada.ca` est **403 au CONNECT** depuis le conteneur (§6).
+> ⏸️ **Routé, non fait** (choix explicite de Marc) : `[FX-PASSE-TAUX-PLAT]` — la courbe convertit
+> TOUS les points passés au taux d'aujourd'hui, et `Asset.priceHistory[].fxRate` existe dans le type
+> sans être ni écrit ni lu par personne.
+>
 > ## ⚠️⚠️ Session 2026-09-16 (soir) — **REVUE PANEL : 6 défauts RÉELS dans mon propre lot**
 > Quatre agents sur le diff. Le typecheck, le lint, **321 tests ciblés verts** et mes **8
 > perturbations** n'avaient rien vu. Troisième lot d'affilée où le panel bat les deux gates.

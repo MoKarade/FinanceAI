@@ -76,6 +76,27 @@ interface BrokerReconciliation {
      * taux absent écarte et le DIT.
      */
     missingRateAccountLabels: string[];
+    /**
+     * ⚠️⚠️ [FINTABLE-AUTORITE-PARTIELLE] Régimes dont AU MOINS UN compte a été écarté (taux inconnu
+     * ou solde illisible) alors qu'un autre compte du MÊME régime a survécu.
+     *
+     * `brokerTotalCad` de ces régimes est alors un total AMPUTÉ : il fait autorité sur une PARTIE
+     * du panier et se présente comme le tout. Tant que personne ne lisait ces totaux hors de la
+     * carte d'écart, ça ne coûtait rien. Depuis que le mois 0 de la projection les consomme, un
+     * panier partiel ÉCRASE la valeur reconstruite complète — mesuré sur la chaîne réelle :
+     * Disnat CAD 30 000 $ + Disnat USD 72 040 $ écarté faute de taux (exactement l'état de Marc
+     * quand ses taux viennent du repli) donne un mois 0 à **30 000 $** au lieu de 231 882 $.
+     *
+     * Le champ existe pour que `appliquerAutoriteCourtier` REFUSE ces régimes, au lieu de les
+     * appliquer à moitié. Un total partiel n'est pas une autorité dégradée : c'est un faux.
+     */
+    incompleteRegimes: ReconcilableRegime[];
+    /**
+     * ⚠️ Au moins un compte écarté SANS régime exploitable — on ne peut donc pas savoir quel panier
+     * il ampute. Tout le patrimoine de ce compte vit quelque part dans la reconstruction, et
+     * n'importe quel panier peut être celui-là : aucune autorité n'est applicable.
+     */
+    hasUnplaceableAccount: boolean;
     /** Somme des soldes courtier de tous les régimes réconciliés. */
     brokerTotalCad: number;
     /** Somme des écarts. Peut être négatif. */
@@ -106,7 +127,7 @@ export function reconcileBrokerBalances(
 ): BrokerReconciliation {
     const empty: BrokerReconciliation = {
         regimes: [], unassignedAccountLabels: [], unreadableAccountLabels: [],
-        missingRateAccountLabels: [],
+        missingRateAccountLabels: [], incompleteRegimes: [], hasUnplaceableAccount: false,
         brokerTotalCad: 0, totalGapCad: 0,
     };
     if (!Array.isArray(balances) || balances.length === 0) return empty;
@@ -116,6 +137,15 @@ export function reconcileBrokerBalances(
     const unassignedAccountLabels: string[] = [];
     const unreadableAccountLabels: string[] = [];
     const missingRateAccountLabels: string[] = [];
+    // [FINTABLE-AUTORITE-PARTIELLE] On NOTE le régime de chaque compte écarté : c'est la seule
+    // façon de savoir quel panier se retrouve amputé. Un écarté sans régime exploitable les
+    // ampute tous potentiellement, d'où le drapeau séparé.
+    const regimesAmputes = new Set<ReconcilableRegime>();
+    let hasUnplaceableAccount = false;
+    const noterEcarte = (b: { taxRegime?: unknown }) => {
+        if (isReconcilable(b?.taxRegime)) regimesAmputes.add(b.taxRegime);
+        else hasUnplaceableAccount = true;
+    };
 
     for (const b of balances) {
         // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] EN PREMIER, avant toute autre garde. Une entrée
@@ -126,6 +156,7 @@ export function reconcileBrokerBalances(
         const missingRate = typeof b?.missingRate === 'string' ? b.missingRate.trim() : '';
         if (missingRate) {
             missingRateAccountLabels.push(`${String(b?.label ?? '(compte sans nom)')} (${missingRate})`);
+            noterEcarte(b);
             continue;
         }
         // Même garde null-explicite qu'à l'écriture : `balanceCad` est typé `number`, mais cet état
@@ -136,11 +167,13 @@ export function reconcileBrokerBalances(
             // Solde illisible → écarté, mais JAMAIS en silence : sans cette liste, un compte
             // disparaissait du panier sans trace (finding silent-failure-hunter, PR #534).
             unreadableAccountLabels.push(String(b?.label ?? '(compte sans nom)'));
+            noterEcarte(b);
             continue;
         }
         const amount = Number(rawBalance);
         if (!isReconcilable(b?.taxRegime)) {
             unassignedAccountLabels.push(String(b?.label ?? '(compte sans nom)'));
+            hasUnplaceableAccount = true;
             continue;
         }
         const rawAt = b?.at as number | null | undefined;
@@ -188,6 +221,10 @@ export function reconcileBrokerBalances(
         unassignedAccountLabels,
         unreadableAccountLabels,
         missingRateAccountLabels,
+        // Un régime n'est « incomplet » que s'il a AUSSI un compte retenu : quand tous ses comptes
+        // sont écartés il n'apparaît pas dans `regimes`, donc il n'y a rien à refuser.
+        incompleteRegimes: RECONCILABLE.filter((r) => regimesAmputes.has(r) && byRegime.has(r)),
+        hasUnplaceableAccount,
         brokerTotalCad: regimes.reduce((s, r) => s + r.brokerTotalCad, 0),
         totalGapCad: regimes.reduce((s, r) => s + r.gapCad, 0),
     };

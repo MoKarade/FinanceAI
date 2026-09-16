@@ -43,6 +43,19 @@ export function buildDefaultAppState(): AppState {
         apiKeys: { anthropic: '', finnhub: '' },
         fxRates: DEFAULT_FX_RATES,
         fxRatesEstimated: true, // [FX-FALLBACK-SILENCIEUX] DEFAULT_FX_RATES est un repli en dur.
+        // ⚠️⚠️ [FX-TAUX-JAMAIS-ARRIVES] `fxRatesSource` est DÉLIBÉRÉMENT ABSENT de l'état initial.
+        // Mon premier jet y écrivait `'repli'`, au motif qu'une provenance explicite vaut mieux
+        // qu'une absence. C'était une RÉGRESSION, et un test existant l'a trouvée : `merge` de
+        // zustand superpose le blob persisté sur CET objet, CLÉ PAR CLÉ. Un blob écrit AVANT ce
+        // lot ne porte pas la clé — elle serait donc restée à `'repli'` alors que l'utilisateur a
+        // de VRAIS taux (`fxRatesEstimated: false`, `lastFetched > 0`). Résultat : son compte
+        // courtier en devise étrangère aurait CESSÉ d'être converti le jour du déploiement,
+        // c'est-à-dire l'exact contraire de ce que ce lot corrige.
+        // Laissée absente, la clé fait retomber `fxSourceEffective` sur l'ancienne lecture — la
+        // rétrocompatibilité écrite pour ça. `fxRatesEstimated: true` ci-dessus dit déjà « repli »
+        // pour un état NEUF, sans jamais pouvoir contredire un état ANCIEN.
+        fxLastAttemptCause: 'jamais-tente',
+        fxLastAttemptAt: 0,
         lastUpdate: Date.now(),
         categorizationRules: [],
         aiConversation: [],
@@ -65,6 +78,7 @@ export function buildDefaultAppState(): AppState {
         categoryReview: undefined,
         fintableSyncReport: undefined,
         fintableBrokerBalances: undefined,
+        fintableBrokerHistory: undefined,
         fintableRoles: undefined,
     };
 }

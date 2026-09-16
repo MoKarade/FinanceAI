@@ -10,7 +10,7 @@ vi.mock('../../services/marketData', () => ({
     getHistory: vi.fn().mockResolvedValue([{ date: '2025-01-02', close: 100 }]),
     configureMarketDataProvider: vi.fn(),
 }));
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 import { usePastPortfolioHistory, _resetPastHistoryFetchCache } from '../../hooks/usePastPortfolioHistory';
 import { getHistory } from '../../services/marketData';

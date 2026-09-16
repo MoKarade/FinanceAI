@@ -5,6 +5,22 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤 **[MESURE — FX-TAUX-JAMAIS-ARRIVES]** (2026-09-16) — **ouvre Réglages → Système &
+  diagnostics, carte « Taux de change », et dis-moi ce qu'elle raconte.**
+  **Ce qui est déjà mesuré** : ton état porte les taux ÉCRITS EN DUR dans le code (facteurs
+  **1,4000** pour l'USD et **1,4700** pour l'EUR, au dix-millième — `DEFAULT_FX_RATES`,
+  « approximation Q1 2026 »). Tes 12 positions sont toutes en USD ou EUR, donc **100 %** de la
+  valeur de tes placements en dépend. La lecture de la Banque du Canada n'a donc **jamais** abouti
+  chez toi, ou son résultat n'a jamais été écrit.
+  **Pourquoi je ne peux pas aller plus loin d'ici** : `www.bankofcanada.ca` répond **403 au CONNECT**
+  depuis mon conteneur (refus de POLITIQUE du proxy, comme `vercel.com` et `finance.hubperso.com`,
+  cf. `CLAUDE.md` §6). Je ne peux ni tester la requête, ni voir ce que ton navigateur reçoit.
+  **Deux gestes, dans cet ordre** : (1) clique **« Réessayer maintenant »** et lis la phrase de
+  diagnostic — elle nomme la cause (réseau / erreur du serveur / réponse vide / série manquante) ;
+  (2) si ça ne passe toujours pas, **saisis les deux taux à la main** dans la même carte. Ils
+  convertiront tes avoirs, et l'app continuera d'afficher qu'ils viennent de toi.
+  ⚠️ Tant que le taux vient du repli, un compte courtier en devise étrangère reste **nommé et non
+  converti** : c'est délibéré — un montant faux et crédible serait pire que l'omission.
 - [x] **[DÉCISION — ENG-MELTDOWN-JAMBE-ARRIVEE, reste]** (2026-09-04, lot 157) — la jambe
   d'arrivée du meltdown REER→non-enregistré est maintenant AFFICHÉE (fait, sans déplacer
   d'argent). Reste la vraie question : l'argent arrivé en COURS de mois doit-il toucher un mois

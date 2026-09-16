@@ -74,8 +74,7 @@ vi.mock('../../services/backupAuto', () => ({
 }));
 
 vi.mock('../../services/errorLogger', () => ({
-    logError: (...args: unknown[]) => logErrorMock(...args),
-}));
+    logError: (...args: unknown[]) => logErrorMock(...args), logErrorThrottled: vi.fn(), }));
 
 // Chiffrement des clés (push) et déchiffrement du bundle (pull) : VRAIES implémentations par défaut,
 // remplaçables par cas pour faire ÉCHOUER une étape précise sans toucher au reste de la chaîne.

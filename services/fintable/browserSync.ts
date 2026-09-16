@@ -46,9 +46,11 @@ import { decideCutoverDate, requestDateFrom, bornesEffectivesParCompte, libelles
 import { classerRattrapage, type ClassementRattrapage, type PaireIncertaine } from './backfillDedup';
 import { referenceDeltaPatch } from './applyStatePatch';
 import { toPersistableBrokerBalances } from './brokerBalances';
+import { accumulerHistoriqueCourtier } from './brokerHistory';
 import { lastProductiveAtSuivant } from './syncHealth';
 import { FintableError } from './types';
 import { logError } from '../errorLogger';
+import { fxSourceEffective, fxFaitAutorite } from '../fx/provenance';
 
 /** Base same-origin. Le proxy réécrit vers `https://fintable.io/api/v2`. */
 export const FINTABLE_BROWSER_BASE = '/api/fintable';
@@ -344,6 +346,16 @@ export async function runFintableBrowserSync(
             error: null,
         };
 
+        // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Les taux viennent de l'état : un compte en devise
+        // étrangère est CONVERTI quand son taux est connu, et SIGNALÉ sinon (jamais replié 1:1).
+        // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] « Connu » ne veut plus dire « présent » : `DEFAULT_FX_RATES`
+        // est TOUJOURS présent (`USD: 1.40`). C'est la PROVENANCE qui décide, et un repli en dur
+        // n'a pas le droit d'écrire un total de compte.
+        const soldesCourtier = toPersistableBrokerBalances(
+            mapReport.investmentBalances, report.at, 'CAD',
+            baseState.fxRates, !fxFaitAutorite(fxSourceEffective(baseState)),
+        );
+
         // Delta par IDENTITÉ DE RÉFÉRENCE contre `baseState` — la base RÉELLE de l'application.
         // Le helper porte le pourquoi du delta (`applyStatePatch.ts`) ; ce qui se joue ici est le
         // choix de la BASE, et c'est précisément ce que [FINTABLE-SYNC-STALE-BASE] corrige.
@@ -355,9 +367,12 @@ export async function runFintableBrowserSync(
             statePatch: referenceDeltaPatch(baseState, {
                 ...nextState,
                 fintableSyncReport: report,
-                // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Les taux viennent de l'état : un compte en devise
-                // étrangère est CONVERTI quand son taux est connu, et SIGNALÉ sinon (jamais replié 1:1).
-                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at, 'CAD', baseState.fxRates, baseState.fxRatesEstimated === true),
+                fintableBrokerBalances: soldesCourtier,
+                // [FINTABLE-HISTORIQUE-COURTIER] La lecture du jour REJOINT l'historique au lieu de
+                // l'écraser. Écrit ici, au même endroit que l'instantané, parce que les deux doivent
+                // venir de la MÊME lecture : les dériver de deux appels laisserait l'un des deux en
+                // retard d'une passe, sans que rien ne le signale.
+                fintableBrokerHistory: accumulerHistoriqueCourtier(baseState.fintableBrokerHistory, soldesCourtier, report.at),
             }),
         };
     } catch (err) {

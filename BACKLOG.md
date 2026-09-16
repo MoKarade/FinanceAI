@@ -935,6 +935,62 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
+- [x] 🔴 **`[FX-TAUX-JAMAIS-ARRIVES]`** (L, money-critical, ✅ **LIVRÉ le 2026-09-16**) — les taux de
+  change de l'état de Marc étaient les REPLIS EN DUR. **Mesuré sur ses vraies données** (MCP,
+  instantané Drive) : NVDA 90 × 214,40 USD → 27 014 $ = facteur **1,4000** pile ; GBS.PA
+  115 × 343,67 EUR → 58 097 $ = **1,4700** pile, soit `DEFAULT_FX_RATES` au caractère près. Ses
+  **12** positions sont en USD ou EUR, **aucune** en CAD ⇒ 100 % des 231 882 $ affichés reposaient
+  sur un chiffre inventé, et c'était la vraie cause du Disnat USD non converti la veille.
+  **Livré** : provenance à trois états (`api` / `manuel` / `repli`), bouton « Réessayer maintenant »
+  (avec `force` — sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
+  diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, condition d'écriture du
+  démarrage sortie en fonction PURE. ⚠️ **La cause de l'échec chez Marc n'est PAS mesurable d'ici**
+  (`www.bankofcanada.ca` : 403 au CONNECT, cf. §6) → routé à `docs/A_FAIRE_MOI.md`.
+- [x] 🔴 **`[FINTABLE-AUTORITE-AUJOURDHUI]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-16**) — la
+  demande de Marc du 2026-07-30 (« je veux que dans investissements ça utilise exactement le montant
+  que j'ai dans Fintable ») n'était livrée qu'à MOITIÉ : recensé, `fintableBrokerBalances` n'avait
+  qu'UN consommateur, `BrokerReconciliationCard`. Le patrimoine, la courbe et le mois 0 du moteur
+  sommaient tous les titres saisis. Point d'injection UNIQUE : `deriveStartingBalancesFromHistory`
+  → `liveCSVBalances`. **Mesuré** (écart de 31 882 $ au départ, rendement 6 %) : **+42 338 $** à
+  5 ans, **+56 097 $** à 10, **+98 482 $** à 20 — le pourcentage BAISSE (9,53 → 5,66 %) pendant que
+  le facteur MONTE (×1,33 → ×3,09). ⚠️ `historicalRate` n'est pas recalculé (c'est un RENDEMENT).
+- [x] 🟡 **`[FINTABLE-HISTORIQUE-COURTIER]`** (M, ✅ **LIVRÉ le 2026-09-16**) — `fintableBrokerBalances`
+  était un instantané ÉCRASÉ à chaque passe : « ce que Fintable disait le 3 mars » n'existait nulle
+  part. Une entrée par compte et par jour, rétention 24 mois + plafond dur (deux limites de NATURES
+  différentes : la rétention se fie à des horodatages EXTERNES). ⚠️ **Ne change RIEN aujourd'hui ni
+  sur le passé déjà vécu** — c'est écrit à l'écran plutôt que laissé à découvrir.
+- [ ] 🟠 **`[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`** (M, money-critical, **DÉCOUVERT au panel du
+  2026-09-16, décision produit requise**) — la base de comparaison replie **CELIAPP sur CELI** et
+  **REEE sur REER** (`BUCKET_OF`, « même famille fiscale », décision écrite), pendant que les soldes
+  de départ les gardent SÉPARÉS. Écrire le total courtier « CELI » — comparé à CELI + CELIAPP — dans
+  le seul panier `CELI` compterait le CELIAPP **deux fois** (mesuré : 91 500 $ pour 66 500 $ réels).
+  ⚠️ **Le lot REFUSE d'appliquer ces paniers** tant que le jumeau porte une valeur : c'est sûr, mais
+  ça prive Marc de l'autorité sur ses CELI/REER dès qu'il a un CELIAPP ou un REEE.
+  🧭 **Décision Marc** : (a) mettre le jumeau à zéro en appliquant la famille — mais ça range de
+  l'argent CELIAPP dans le CELI, donc ça change son **régime fiscal**, pas un arrondi ; (b) cesser de
+  replier côté comparaison — mais l'écart affiché par la carte change aussi ; (c) demander un rôle
+  Fintable par régime FIN (l'UI n'en offre que trois). Les deux moitiés sont liées.
+- [ ] 🟡 **`[PROJ-DEUX-MOIS-ZERO]`** (S, **DÉCOUVERT au panel du 2026-09-16**) — `Retirement.tsx`
+  construit un **second** `liveCSVBalances` qui ne passe PAS par l'autorité du courtier : le
+  chercheur d'objectif de l'écran Retraite démarre donc d'un mois 0 différent de la courbe Futur, de
+  l'écart exact. Divergence **préexistante**, ÉLARGIE par le lot d'autorité. ⚠️ Et le patrimoine net
+  de l'Accueil / Investissements somme toujours les titres saisis — la demande du 30/07 reste à
+  moitié livrée, ce que la note de version DIT maintenant au lieu de le laisser croire.
+- [ ] 🟡 **`[GARDE-FUTURESEED-PERIMEE]`** (XS, **DÉCOUVERT au panel du 2026-09-16**) —
+  `tests/services/futureSeedContinuity.test.ts` affirme « ce test exerce EXACTEMENT la fonction que
+  le composant exécute désormais ». C'est devenu FAUX : le composant exécute maintenant
+  `appliquerAutoriteCourtier(deriveStartingBalancesFromHistory(...), …)`. La garde anti-falaise ne
+  couvre plus le point d'injection (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`). Corriger la
+  PHRASE ou étendre la garde — mais ne pas la laisser affirmer ce qu'elle ne fait plus.
+- [ ] 🟠 **`[FX-PASSE-TAUX-PLAT]`** (M, money-critical, **DÉCOUVERT le 2026-09-16, routé sur choix
+  explicite de Marc**) — `reconstructPortfolioHistory` convertit **TOUS** les points passés au taux
+  d'AUJOURD'HUI (`fxToCad(a.currency, fx)`, un facteur unique), donc la courbe du passé est fausse de
+  tout ce que le change a bougé — et repose en plus sur le repli en dur tant que `[FX-TAUX-JAMAIS-ARRIVES]`
+  n'a pas abouti chez Marc. ⚠️ **Le champ prévu pour ça EXISTE et n'est ni écrit ni lu par personne** :
+  `Asset.priceHistory[].fxRate` (grep : 0 occurrence en production) — `UN-CHAMP-TYPE-SANS-PRODUCTEUR`.
+  La Banque du Canada publie ses séries DATÉES et le domaine est déjà autorisé par la CSP.
+  ⚠️ Marc a choisi l'accumulation de l'historique Fintable plutôt que ce correctif-là : le reprendre
+  demande son GO, pas une décision de reprise de session.
 - [x] 🟠 **`[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-16**) —
   conversion à l'écriture quand le taux est CONNU, signal nommé quand il ne l'est pas, et la
   troisième cause d'écartement enfin recensée là où Marc regarde ses placements.

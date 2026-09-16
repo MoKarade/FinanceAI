@@ -5,7 +5,7 @@ import { logError } from '../../services/errorLogger';
 // SF-2 — une vraie erreur de cours (réseau/AUTH/rate limit) ne doit plus être avalée
 // en console.warn (invisible en prod) mais journalisée ; un NOT_FOUND (crypto inconnue)
 // reste un cas légitime → PAS de log.
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 const jsonRes = (body: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,

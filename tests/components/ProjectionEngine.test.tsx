@@ -8,7 +8,7 @@ import { Tab } from '../../types';
 
 // Le moteur est headless (rend null) et lit/écrit le store : pas de provider requis.
 // errorLogger n'est sollicité qu'en cas de crash — muet ici (persona valide).
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 describe('ProjectionEngine (PH2-c) — moteur app-level, source unique', () => {
     afterEach(() => cleanup());

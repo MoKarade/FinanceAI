@@ -31,7 +31,7 @@ vi.mock('recharts', async () => {
         XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
     };
 });
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 const idbMocks = vi.hoisted(() => ({
     loadRevealed: vi.fn<() => Promise<LoadLockedResult>>(async () => ({ status: 'empty' as const })),
     saveRevealed: vi.fn(async () => true),

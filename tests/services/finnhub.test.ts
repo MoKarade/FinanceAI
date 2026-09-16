@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { FinnhubProvider, toFinnhubSymbol } from '../../services/marketData/providers/finnhub';
 
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 const res = (body: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,

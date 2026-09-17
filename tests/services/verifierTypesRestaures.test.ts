@@ -191,6 +191,34 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         // d'ici est un refus garanti chez qui utilise la fonctionnalité correspondante.
         const types = readFileSync(resolve(process.cwd(), 'types.ts'), 'utf8');
         const textuels = new Set<string>();
+        // ⚠️⚠️ TROISIÈME ÉLARGISSEMENT (2026-09-17) : les ALIAS NOMMÉS. Un champ déclaré
+        // `paymentFrequency?: PaymentFrequency` n'est ni `string` ni une union de littéraux ÉCRITE
+        // EN LIGNE — le scan ne le voyait donc pas, et la garde est restée verte pendant que le
+        // champ, tout neuf, manquait à `CHAMPS_TEXTE`. Mesuré : NEUF champs de `types.ts` ne sont
+        // visibles QUE par un alias ; huit figuraient dans la liste par ACCIDENT (via la source
+        // « états du dépôt »), et c'est exactement pourquoi personne ne l'avait remarqué — un champ
+        // qu'aucun état ne porte encore est structurellement le premier à tomber.
+        //
+        // Deux formes d'alias textuel, les deux employées par le dépôt :
+        //   export type DebtKind = typeof DEBT_KINDS[number];   (tableau `as const` de littéraux)
+        //   export type LifeEventType = 'a' | 'b' | …;          (union directe)
+        const aliasTextuels = new Set<string>();
+        for (const m of types.matchAll(/export\s+type\s+([A-Za-z_]\w*)\s*=\s*([^;]+);/g)) {
+            const [, nom, brut] = m;
+            const t = brut.trim().replace(/\s*\n\s*/g, ' ');
+            if (/^'[^']*'(\s*\|\s*'[^']*')*$/.test(t)) { aliasTextuels.add(nom); continue; }
+            const tab = t.match(/^typeof\s+([A-Za-z_]\w*)\s*\[\s*number\s*\]$/);
+            if (!tab) continue;
+            const decl = types.match(new RegExp(`export\\s+const\\s+${tab[1]}\\s*(?::[^=]+)?=\\s*\\[([^\\]]*)\\]\\s*as\\s+const`));
+            // Le tableau ne doit contenir QUE des littéraux de chaîne : un tableau de nombres
+            // rendrait l'alias numérique, et l'inclure élargirait la liste sans raison.
+            if (decl && /^[\s'",\w-]*$/.test(decl[1]) && /'/.test(decl[1])) aliasTextuels.add(nom);
+        }
+        // Anti-vacuité de l'élargissement lui-même : sans ça, une regex cassée rendrait un ensemble
+        // VIDE et le scan retomberait en silence sur son ancienne portée — le défaut qu'on corrige.
+        expect(aliasTextuels.size, 'les alias textuels de types.ts doivent être résolus').toBeGreaterThan(5);
+        expect(aliasTextuels.has('PaymentFrequency'), 'témoin : alias dérivé d\'un tableau `as const`').toBe(true);
+        expect(aliasTextuels.has('LifeEventType'), 'témoin : alias écrit en union directe').toBe(true);
         // ⚠️ Un champ ne commence pas toujours une LIGNE. Le premier jet ancrait sur `^`, donc il
         // ratait tout littéral de type en ligne — `| { kind: 'debt'; debtName: string }`. C'est ce
         // trou qui a vidé l'app une seconde fois. Le nom se reconnaît désormais aussi APRÈS un `{`
@@ -203,7 +231,8 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
             // ses valeurs ne sont jamais jugées sous cette clé. Sans cette exclusion, la garde
             // réclamerait `initialBalances` et `investmentTargetPcts` — deux faux positifs mesurés.
             const sansIndex = type.replace(/Record<\s*string\s*,/g, 'Record<K,');
-            if (/\bstring\b/.test(sansIndex) || /^'[^']*'(\s*\|\s*'[^']*')+$/.test(sansIndex)) textuels.add(cle);
+            const parAlias = [...aliasTextuels].some((a) => new RegExp(`\\b${a}\\b`).test(sansIndex));
+            if (/\bstring\b/.test(sansIndex) || /^'[^']*'(\s*\|\s*'[^']*')+$/.test(sansIndex) || parAlias) textuels.add(cle);
         }
         // Anti-vacuité : le contrat EN A, et en nombre — sinon « aucun manquant » ne dirait rien.
         expect(textuels.size).toBeGreaterThan(50);
@@ -212,6 +241,10 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         // ligne. Ancré sur `^`, le scan ne le voyait pas — le témoin échoue alors, au lieu de
         // laisser croire qu'il n'y avait rien à trouver.
         expect(textuels.has('debtName'), 'témoin : un champ déclaré dans un littéral EN LIGNE doit être vu').toBe(true);
+        // ⚠️ TROISIÈME témoin, celui de la vague du 2026-09-17 : un champ dont le type est un ALIAS
+        // NOMMÉ. Sans résolution des alias, le scan ne le voit pas et « aucun manquant » ne veut
+        // plus rien dire — c'est le silence exact qui a laissé passer le champ.
+        expect(textuels.has('paymentFrequency'), 'témoin : un champ typé par un ALIAS doit être vu').toBe(true);
 
         const manquants = [...textuels].filter((c) => !CHAMPS_TEXTE.has(c)).sort();
         expect(

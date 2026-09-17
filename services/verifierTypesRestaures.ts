@@ -118,6 +118,18 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // clés vues, zéro perdue) : un recenseur ancré sur la FORME du code ne couvre que les formes
     // qu'il a croisées en l'écrivant.
     'debtName',
+    // ⚠️⚠️ TROISIÈME VAGUE DU MÊME INCIDENT (2026-09-17), et le trou était encore dans le RECENSEUR.
+    // `paymentFrequency` (cadence des prélèvements d'une dette) est déclaré `paymentFrequency?:
+    // PaymentFrequency` — un ALIAS NOMMÉ. L'extracteur ne reconnaissait que `string` et les unions
+    // de littéraux écrites EN LIGNE, donc il ne l'a pas vu : la garde de dérivation est restée
+    // VERTE pendant que Marc enregistrait « Hebdomadaire » sur son bail, ce qui aurait vidé son app
+    // au rechargement suivant. Mesuré : NEUF champs de `types.ts` ne sont visibles QUE par un alias
+    // (`accountType`, `aiChatModel`, `kind`, `model`, `municipality`, `owner`, `paymentFrequency`,
+    // `taxRegime`, `type`) — huit y figuraient par ACCIDENT, via la source « états du dépôt ». Un
+    // champ NEUF, qu'aucun état ne porte encore, n'a pas cette chance : c'est structurellement le
+    // premier à tomber. Le correctif qui compte n'est donc pas cette ligne-ci mais la résolution des
+    // alias dans l'extracteur de la garde de dérivation.
+    'paymentFrequency',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

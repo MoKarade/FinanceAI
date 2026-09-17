@@ -1086,6 +1086,18 @@
   soit **−13 838 $ (−5,6 %)** au point de départ de toute la projection. ⚠️ Le correctif re-basera
   des goldens (il déplace le mois 0) : plan-first. ⚠️ Et il faut décider ce que devient un titre
   périmé SANS quote fraîche — l'omettre au mois 0 rejouerait `[HUB-TOTAL-AMPUTE]` un cran plus bas.
+  ⚠️⚠️ **LE REMÈDE ÉVIDENT EST FAUX POUR LE PASSÉ PROFOND — mesuré le 2026-09-17 EN LE CÂBLANT.**
+  Borner la péremption à TOUTE date ferait retomber un titre à l'historique interrompu sur son
+  `currentPrice`, c'est-à-dire appliquer le prix D'AUJOURD'HUI à une date PASSÉE : la courbe du passé
+  serait réécrite au prix du jour. Pour une date passée, le dernier close connu EST la meilleure
+  estimation — le report indéfini y est JUSTE. Le défaut est donc plus ÉTROIT que ce ticket ne le
+  disait : il porte sur le **DERNIER point** (celui qui sert de mois 0), où un close périmé est
+  préféré à une cotation FRAÎCHE qui existe. C'est là, et seulement là, qu'il faut préférer
+  `currentPrice` — en faisant baisser `coverage` en conséquence, pour que l'avertissement
+  « partiellement estimé » puisse enfin tirer.
+  ⚠️ Et deux philosophies de péremption coexistent dans le dépôt : `buildMarketData` borne à toutes
+  les dates ET OMET au-delà ; la reconstruction reporte indéfiniment. Les aligner est une DÉCISION
+  (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`), pas un nettoyage.
 - [ ] 🟠 **`[FX-AUTORITE-SANS-FRAICHEUR]`** (M, money-critical, **DÉCOUVERT au panel du 2026-09-17**)
   — `fxFaitAutorite(source)` ne lit QUE la provenance : ni `fxRates.lastFetched`, ni
   `fxObservationDate`. Le lot `[FX-OBSERVATION-COHORTE]` vient d'inventer la notion « trop vieux

@@ -16,9 +16,9 @@
 // la même vérité qu'un calcul.
 
 import React from 'react';
-import { KIND_AMORTISSANT } from '../../services/projection/debtAmortization';
+import { KIND_AMORTISSANT, KIND_VERSEMENTS_FIXES } from '../../services/projection/debtAmortization';
 import { DEBT_KIND_OPTIONS } from './debtKindLabels';
-import type { Debt, DebtKind } from '../../types';
+import type { Debt, DebtKind, PaymentFrequency } from '../../types';
 
 /** Champ numérique VIDE ⇒ `undefined`, jamais `0` ni `NaN`. « Pas renseigné » n'est pas « zéro » :
  *  un `0` réveillerait un refus pour la mauvaise raison, et un `NaN` traverserait jusqu'au moteur. */
@@ -67,6 +67,16 @@ export const refusChampNonFini = (d: Partial<Debt>): string | null => {
         + ' (écris 0 si c\'est le cas).';
 };
 
+/** [DEBT-CADENCE-REELLE] Les cadences offertes, dans l'ordre où un prêteur les propose.
+ *  ⚠️ `monthly` est la valeur par DÉFAUT du menu (et l'absence du champ veut dire la même chose) :
+ *  il n'y a donc pas d'état « pas encore choisi » à distinguer de « mensuel », et c'est voulu — un
+ *  libellé d'option vide dirait que l'état est INACHEVÉ alors qu'il est parfaitement défini. */
+const CADENCE_OPTIONS: ReadonlyArray<{ value: PaymentFrequency; label: string }> = [
+    { value: 'monthly', label: 'Mensuel' },
+    { value: 'biweekly', label: 'Aux deux semaines' },
+    { value: 'weekly', label: 'Hebdomadaire' },
+];
+
 interface Props {
     valeur: Partial<Debt>;
     onChange: (patch: Partial<Debt>) => void;
@@ -77,9 +87,15 @@ interface Props {
 export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe }) => {
     const kind = valeur.kind;
     const amortissable = kind != null && KIND_AMORTISSANT[kind];
+    // ⚠️ [DEBT-CADENCE-REELLE] Même règle que le montant emprunté : la condition vient de la table
+    // que le MOTEUR consulte (`KIND_VERSEMENTS_FIXES`), jamais d'une liste recopiée. Un champ
+    // visible pour un type que le moteur ignore ferait saisir un réglage SANS EFFET, et rien ne le
+    // dirait — c'est le défaut `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` pris par l'autre bout.
+    const versementsFixes = kind != null && KIND_VERSEMENTS_FIXES[kind];
     const refus = refusOrigineIncoherente(valeur.originalBalance, valeur.balance);
     const idKind = `debt-kind-${idSuffixe}`;
     const idOrigine = `debt-original-${idSuffixe}`;
+    const idCadence = `debt-cadence-${idSuffixe}`;
 
     return (
         <div className="space-y-2">
@@ -115,6 +131,27 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe })
                     Le montant écrit sur ton contrat de prêt. Il fait apparaître ta dette qui diminue dans
                     la partie passée du graphe Futur. Laisse vide si tu ne l'as pas sous la main : la dette
                     reste alors à son niveau actuel, sans rien d'inventé.
+                </p>
+            )}
+            {versementsFixes && (
+                <label htmlFor={idCadence} className="flex flex-col gap-1 text-tiny text-ink-400">
+                    Cadence des prélèvements
+                    <select
+                        id={idCadence}
+                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                        value={valeur.paymentFrequency ?? 'monthly'}
+                        onChange={e => onChange({ paymentFrequency: e.target.value as PaymentFrequency })}
+                    >
+                        {CADENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                </label>
+            )}
+            {versementsFixes && (
+                <p className="text-tiny text-ink-400">
+                    À quelle fréquence l'argent sort vraiment de ton compte. Le montant reste celui que
+                    tu as saisi en paiement MENSUEL — c'est seulement la date des marches qui change dans
+                    la partie passée du graphe Futur : ta dette baisse à chaque prélèvement, au lieu
+                    d'une seule fois par mois.
                 </p>
             )}
             {/* Le refus est ANNONCÉ (région live montée en permanence, texte vidé quand tout va bien) :

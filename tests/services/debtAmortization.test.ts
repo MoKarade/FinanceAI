@@ -10,7 +10,7 @@
 //   3. elle décroît, et le recalage reste dans une bande plausible.
 import { describe, it, expect } from 'vitest';
 import {
-    amortirDettePassee, supplementAmortiAuMoisAbsolu,
+    amortirDettePassee, supplementAmortiAuMoisAbsolu, prepareSupplementAmortiParJour,
     KIND_AMORTISSANT, KIND_VERSEMENTS_FIXES, RECALAGE_MIN, RECALAGE_MAX,
     type EntreeAmortissement, type ResultatAmortissement, type CauseNonAmortissable,
 } from '../../services/projection/debtAmortization';
@@ -306,5 +306,112 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
         expect(supp).toBeCloseTo(1016.90, 6);
         // Et au mois d'aujourd'hui, EXACTEMENT zéro — l'invariant de raccord.
         expect(supplementAmortiAuMoisAbsolu([{ ...bail(), id: 'bail', name: 'bZ' } as never], AUJOURDHUI, AUJOURDHUI, AUJ_ISO)).toBe(0);
+    });
+});
+
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────────
+   [DEBT-CADENCE-REELLE] LA CADENCE RÉELLE DES PRÉLÈVEMENTS
+
+   Marc, 2026-09-17 : « la dette descend, mais elle devrait descendre à chaque paiement à Toyota,
+   pas une fois par mois ». Son bail est prélevé toutes les SEMAINES ; le passé reconstruit ne
+   produisait qu'un point par mois, donc une marche mensuelle.
+
+   Ce que ces gardes défendent :
+     1. la marche tombe aux VRAIES dates de prélèvement, et vaut le versement réel ;
+     2. la courbe au MOIS et la courbe au JOUR ne peuvent pas diverger (la première est DÉRIVÉE de
+        la grille de la seconde) — c'est le point qui compte le plus, parce qu'une asymétrie entre
+        deux modules dont aucun n'est faux tout seul ne rougit nulle part ;
+     3. sans cadence déclarée, RIEN ne change (non-régression stricte).
+   ──────────────────────────────────────────────────────────────────────────────────────────────── */
+
+describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () => {
+    /** Le bail RÉEL de Marc : 234,67 $/semaine, soit 1 016,90 $/mois. Le jour d'aujourd'hui est
+     *  cohérent avec `AUJOURDHUI` (septembre 2026) et tombe 57 jours après le début — donc 8
+     *  prélèvements écoulés, un compte qu'on peut refaire à la main. */
+    const bailHebdo = (o: Partial<EntreeAmortissement> = {}): EntreeAmortissement =>
+        bail({ paymentFrequency: 'weekly', ...o });
+    const VERSEMENT = 1016.90 * 12 / 52;   // 234,67 $ — le prélèvement réel, au cent près
+    const JOUR = '2026-09-15';
+
+    const parJour = (d: EntreeAmortissement, jour: string): number =>
+        prepareSupplementAmortiParJour([{ ...d, id: 'bail', name: 'bZ' } as never], AUJOURDHUI, JOUR)(jour);
+
+    it('le versement DÉRIVÉ vaut le prélèvement réel de Marc, au cent près', () => {
+        // Anti-vacuité de tout ce qui suit : si la dérivation était fausse, chaque marche le serait,
+        // et les tests de pente passeraient quand même (ils comparent des marches entre elles).
+        expect(VERSEMENT).toBeCloseTo(234.67, 2);
+    });
+
+    it('la marche tombe aux dates de PRÉLÈVEMENT, pas au changement de mois', () => {
+        const d = bailHebdo();
+        // Début 2026-07-20 ⇒ prélèvements les 20/07, 27/07, 03/08… Entre deux prélèvements, le
+        // supplément est CONSTANT ; il augmente d'exactement un versement quand on recule d'un cran.
+        const veille = parJour(d, '2026-09-13');
+        const jourDePrelevement = parJour(d, '2026-09-14'); // lundi, 8 × 7 j après le 20/07
+        expect(veille - jourDePrelevement).toBeCloseTo(VERSEMENT, 6);
+        // ... et à l'intérieur d'une semaine, rien ne bouge (ce n'est pas une interpolation).
+        expect(parJour(d, '2026-09-10')).toBeCloseTo(veille, 6);
+        expect(parJour(d, '2026-09-11')).toBeCloseTo(veille, 6);
+    });
+
+    it('AUJOURD\'HUI le supplément est EXACTEMENT nul — l\'ancre tient avec la grille', () => {
+        expect(parJour(bailHebdo(), JOUR)).toBe(0);
+    });
+
+    it('au début du bail, on devait 8 versements de plus — le compte se refait à la main', () => {
+        // Du 2026-07-20 au 2026-09-15 : 57 jours, soit 8 prélèvements (le 20/07 lui-même exclu,
+        // même convention que la forme mensuelle).
+        expect(parJour(bailHebdo(), '2026-07-20')).toBeCloseTo(VERSEMENT * 8, 6);
+    });
+
+    it('⚠️ LA GARDE DU LOT : la courbe au MOIS et la courbe au JOUR disent la MÊME chose', () => {
+        // Le point du mois `m` vaut le solde au 1er de ce mois (ou au début du bail pour le mois de
+        // départ). Si les deux registres calculaient chacun de leur côté, ils divergeraient de
+        // jusqu'à un mois de versements SANS que rien ne rougisse.
+        const d = bailHebdo();
+        const r = amortirDettePassee(d, AUJOURDHUI, JOUR);
+        if (r.forme !== 'ok') throw new Error(`bail hebdo refusé : ${r.cause}`);
+        expect(r.grilleVersements?.pasJours).toBe(7);
+        const echantillon: Record<number, string> = {
+            [mois(2026, 6)]: '2026-07-20',   // mois de DÉBUT : la dette n'existe pas avant le 20
+            [mois(2026, 7)]: '2026-08-01',
+            [mois(2026, 8)]: '2026-09-01',
+        };
+        for (const [moisAbs, jour] of Object.entries(echantillon)) {
+            const index = Number(moisAbs) - r.premierMoisAbsolu;
+            expect(r.soldes[index] - d.balance, `mois ${moisAbs}`).toBeCloseTo(parJour(d, jour), 6);
+        }
+        // Anti-vacuité : les trois points sont DISTINCTS (sinon l'égalité serait triviale).
+        expect(new Set(r.soldes.map(v => Math.round(v * 100))).size).toBe(3);
+    });
+
+    it('SANS cadence déclarée, RIEN ne change — non-régression stricte, et c\'est le contrôle négatif', () => {
+        const mensuel = bail();                       // aucune `paymentFrequency`
+        const r = amortirDettePassee(mensuel, AUJOURDHUI, JOUR);
+        if (r.forme !== 'ok') throw new Error('bail mensuel refusé');
+        expect(r.grilleVersements).toBeUndefined();
+        // Le supplément au JOUR retombe sur le palier MENSUEL : deux jours du même mois, même valeur.
+        expect(parJour(mensuel, '2026-08-01')).toBeCloseTo(parJour(mensuel, '2026-08-28'), 6);
+        // Et il vaut un versement MENSUEL par mois écoulé, comme avant ce lot.
+        expect(parJour(mensuel, '2026-08-15')).toBeCloseTo(1016.90, 6);
+        // ⚠️ Le contraste EST la mesure : à cadence hebdo, les deux mêmes jours DIFFÈRENT.
+        expect(parJour(bailHebdo(), '2026-08-01')).not.toBeCloseTo(parJour(bailHebdo(), '2026-08-28'), 2);
+    });
+
+    it('la cadence est IGNORÉE par la forme à intérêt — le champ ne promet rien qu\'il ne tienne', () => {
+        // `DebtKindFields` ne montre le menu que si `KIND_VERSEMENTS_FIXES[kind]`. Si le moteur
+        // consommait quand même le champ ailleurs, un réglage invisible changerait un calcul.
+        const sans = amortirDettePassee(pret(), AUJOURDHUI, JOUR);
+        const avec = amortirDettePassee(pret({ paymentFrequency: 'weekly' }), AUJOURDHUI, JOUR);
+        expect(avec).toEqual(sans);
+    });
+
+    it('cadence AUX DEUX SEMAINES : 14 jours de pas, et le versement suit', () => {
+        const d = bailHebdo({ paymentFrequency: 'biweekly' });
+        const r = amortirDettePassee(d, AUJOURDHUI, JOUR);
+        if (r.forme !== 'ok') throw new Error('bail bimensuel refusé');
+        expect(r.grilleVersements?.pasJours).toBe(14);
+        expect(r.grilleVersements?.versement).toBeCloseTo(1016.90 * 12 / 26, 6);
     });
 });

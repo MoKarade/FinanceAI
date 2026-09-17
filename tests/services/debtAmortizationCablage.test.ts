@@ -166,6 +166,31 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la courbe QUOTIDIENNE porte la même corre
         expect(corrections[0]).toBeGreaterThan(0);
     });
 
+    it('[DEBT-CADENCE-REELLE] un bail HEBDO descend au JOUR DU PRÉLÈVEMENT — la chaîne complète', () => {
+        // ⚠️ LA GARDE QUI TRAVERSE : registre au jour ← service ← champ du store. Sans elle, le
+        // correctif pourrait être juste dans le module et INERTE sur la courbe que Marc regarde
+        // (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). La fenêtre du 01 au 05 novembre 2025 contient
+        // le prélèvement du 03 (début du bail le 2025-10-06, + 4 × 7 j).
+        const bailHebdo: DebtAmortissable = {
+            balance: 18000, kind: 'auto-lease', startDate: '2025-10-06',
+            interestRate: 0, minimumPayment: 1016.90, paymentFrequency: 'weekly',
+        };
+        const sansCadence: DebtAmortissable = { ...bailHebdo, paymentFrequency: undefined };
+        const hebdo = buildDailyPastLedger({ ...baseDaily, debts: [bailHebdo] });
+        const mensuel = buildDailyPastLedger({ ...baseDaily, debts: [sansCadence] });
+        expect(hebdo.rows.length, 'anti-vacuité : le registre doit produire des jours').toBeGreaterThan(2);
+
+        // CONTRÔLE NÉGATIF d'abord : sans cadence, tous les jours du mois portent la MÊME dette.
+        expect(new Set(mensuel.rows.map(r => r.DettesNonImmo)).size).toBe(1);
+
+        // Avec la cadence, la dette CHANGE à l'intérieur du mois — et exactement une fois, au 03.
+        const parJour = new Map(hebdo.rows.map(r => [r.date, r.DettesNonImmo]));
+        expect(parJour.get('2025-11-01')).toBe(parJour.get('2025-11-02'));
+        expect(parJour.get('2025-11-03')).toBe(parJour.get('2025-11-04'));
+        const marche = (parJour.get('2025-11-02') ?? 0) - (parJour.get('2025-11-03') ?? 0);
+        expect(marche).toBeCloseTo(1016.90 * 12 / 52, 2);   // 234,67 $, le prélèvement réel
+    });
+
     it('un BAIL ne bouge pas non plus au jour — même refus, même raison', () => {
         const sans = buildDailyPastLedger({ ...baseDaily, debts: [{ ...bail, originalBalance: undefined }] });
         const avec = buildDailyPastLedger({ ...baseDaily, debts: [bail] });

@@ -2,7 +2,7 @@
 // [GODFILE-APPLYDOCUMENT] Contrat d'ingestion (payloads + résultat) — extrait du monolithe.
 // La façade `mcp/ingest/applyDocument.ts` ré-exporte tout : les consommateurs ne changent pas.
 
-import type { AppState, Asset, Debt, DebtKind } from '../../../types';
+import type { AppState, Asset, Debt, DebtKind, PaymentFrequency } from '../../../types';
 
 /** Fiche de paie — valeurs ANNUELLES (Claude multiplie période × fréquence). */
 export interface PayslipPayload {
@@ -135,6 +135,8 @@ export interface DebtPayload {
      *  dans `docs/adr/0012-…`, section « RENVERSEMENT du 2026-09-02 »). Absent ⇒ comportement
      *  historique exact. */
     originalBalance?: number;
+    /** [DEBT-CADENCE-REELLE] Cadence RÉELLE des prélèvements (versements fixes). Absente ⇒ mensuel. */
+    paymentFrequency?: PaymentFrequency;
 }
 
 /** [MCP-DIRECT-EDIT] Ajustement DIRECT du solde de liquidités (cash) à une cible. Le cash n'est PAS un

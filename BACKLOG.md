@@ -1032,6 +1032,25 @@
       c'est un arbitrage de frontière de bundle, pas un détail d'import.**
     - ⚠️ `holdingsCadByRegime` n'est PAS un substitut : il replie CELIAPP sur CELI et REEE sur REER,
       alors que les soldes de départ les gardent séparés — asymétrie déjà connue et routée.
+    - ⚠️⚠️ **OBSTACLE D'ORDONNANCEMENT, trouvé le 2026-09-17 en câblant : cette étape DÉPEND de
+      `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`.** `appliquerAutoriteCourtier` s'applique aux soldes issus de
+      la RECONSTRUCTION (derniers closes datés, sans borne d'âge), alors que l'Accueil affiche
+      `computeInvestmentsValue` (prix COURANTS). Les deux bases diffèrent de **13 838 $** sur l'état
+      réel. Conséquence : brancher l'Accueil sur la sortie de l'autorité ferait TOMBER son chiffre de
+      245 687 $ à ~231 849 $ partout où Fintable ne s'applique pas — on importerait le défaut des
+      clôtures périmées sur l'écran d'accueil pour régler un problème de cohérence. **Le gain de
+      cohérence coûterait une régression de justesse.**
+      Deux ordres possibles, à trancher : (a) corriger d'abord `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` pour
+      que la reconstruction et les prix courants coïncident, puis brancher — ordre PRÉFÉRÉ, une seule
+      base ensuite ; (b) faire porter l'autorité sur `holdingsCadByRegime` (base prix courants), ce
+      qui oblige à réimplémenter les REFUS de `appliquerAutoriteCourtier` sur cette base — donc deux
+      règles pour une question, ce que le reste de ce ticket interdit.
+    - 📏 **Périmètre RECENSÉ (mesuré, pas estimé)** : « partout » vaut **4 sites** —
+      `services/financialSnapshot.ts` (×2 : patrimoine net et `investments`, donc Accueil + hub +
+      MCP), `utils/useDerivedFinancials.ts` (écrans de l'app), `utils/healthScore.ts`.
+      ⚠️ `healthScore` ne reçoit que `(assets, fxRates)`, pas l'état : le brancher élargirait sa
+      signature. Comme il produit un SCORE et non un montant que Marc compare, il peut rester sur la
+      somme des titres — mais il faut l'ÉCRIRE, sinon c'est une incohérence de plus, silencieuse.
   - [ ] **Étape 4 — variations** (séance, 7 j, 30 j) : elles restent calculées sur NOTRE
     reconstruction (Fintable n'a aucun historique), avec leur base NOMMÉE à l'écran — sinon deux
     chiffres voisins ne se recomposent pas et rien ne le dit.

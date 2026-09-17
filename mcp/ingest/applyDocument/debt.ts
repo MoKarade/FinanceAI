@@ -6,6 +6,7 @@ import { DEBT_KINDS } from '../../../types';
 import type { AppState, Debt } from '../../../types';
 import { isValidIsoDate } from '../../../utils/isoDate';
 import { formatCAD } from '../../../utils/format';
+import { todayIsoLocal } from '../../../services/projection/dailyRefine';
 import type { ApplyResult, Change, DebtPayload } from './types';
 import { MAX_DEBT_BALANCE, MAX_INTEREST_RATE, MAX_MONTHLY_PAYMENT, plausible } from './commun';
 
@@ -116,6 +117,9 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         // Un champ ABSENT est laissé intact (mise à jour partielle) — et donc jamais EFFAÇABLE via
         // ce tool une fois posé (choix assumé, style additif : effacer = geste UI DebtManager).
         const d = debts[existingIdx];
+        // [DETTE-SOLDE-INSTANTANE-FIGE] Lu AVANT la première écriture : c'est lui qui dit si le
+        // solde a VRAIMENT bougé, et donc s'il y a une nouvelle observation à dater.
+        const soldeAvant = d.balance;
         const apply = (field: keyof Debt, after: unknown): void => {
             const before = d[field];
             if (before === after || after == null) return;
@@ -133,6 +137,15 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         apply('termEndDate', doc.termEndDate);
         apply('originalBalance', doc.originalBalance);
         apply('paymentFrequency', doc.paymentFrequency);
+        // [DETTE-SOLDE-INSTANTANE-FIGE] Un solde qui CHANGE est une observation neuve : on la date.
+        // Un solde RÉÉCRIT À L'IDENTIQUE n'en est pas une — ce chemin est appelé par le cron Fintable
+        // chaque jour avec ce que porte le snapshot, sans rien qui prouve qu'il vient d'être relu.
+        // Le dater quand même affirmerait qu'un instantané ancien a été re-observé, et ferait
+        // compter la dette comme « mise à jour » à chaque passe (`debtsUpdated`, affiché dans
+        // SystemView) — la faute exacte de `[FINTABLE-TXADDED-MENT]`, qui ment le plus fort dans le
+        // cas NOMINAL. Même refus, et pour la même raison, qu'une mise à jour qui ne touche pas au
+        // solde (un renommage, une date de terme).
+        if (doc.balance != null && doc.balance !== soldeAvant) apply('balanceAsOf', todayIsoLocal());
         const nextState: AppState = { ...state, debts, lastUpdate: Date.now() };
         const summary = changes.length
             ? `Dette « ${d.name} » mise à jour : ${changes.length} champ(s).`
@@ -163,6 +176,9 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         ...(doc.termEndDate != null ? { termEndDate: doc.termEndDate } : {}),
         ...(doc.originalBalance != null ? { originalBalance: doc.originalBalance } : {}),
         ...(doc.paymentFrequency != null ? { paymentFrequency: doc.paymentFrequency } : {}),
+        // [DETTE-SOLDE-INSTANTANE-FIGE] `balance` est REQUIS à l'ajout (garde juste au-dessus), donc
+        // le solde d'une dette neuve est toujours daté — pas de cas « instantané sans date » créé ici.
+        balanceAsOf: todayIsoLocal(),
     };
     debts.push(newDebt);
     changes.push({

@@ -14,12 +14,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'écran serait revenu **vide** — rien n'aurait été perdu (ta sauvegarde et Drive restaient
   intacts), mais c'est indiscernable d'une perte de données. Corrigé, et la garde qui devait
   l'empêcher a été réparée : elle ne savait pas lire un champ dont le type porte un nom.
-- **Ta dette ne descend pas quand tu paies, et on sait pourquoi.** Mesuré sur tes vrais prélèvements
-  Toyota : le solde enregistré (47 169 $) vaut **après 7 versements**, alors que tu en as fait **8**
-  — il te reste **46 934,00 $**, pas 47 169 $. Le solde est un instantané figé, sans date, que rien
-  n'avance : l'écart grandit de 234,67 $ par semaine. La **cadence hebdomadaire, elle, fonctionne**
-  (montant et nombre de marches exacts, vérifiés contre tes 8 prélèvements). Le correctif attend ta
-  décision — il change ce que tous les écrans lisent comme dette.
+- **Ta dette ne descendait pas quand tu payais — corrigé.** Mesuré sur tes vrais prélèvements
+  Toyota : le solde enregistré (47 168,67 $) valait **après 7 versements** alors que tu en avais fait
+  **8** ; il te restait **46 934,00 $**. Le solde était un instantané figé, sans date, que rien
+  n'avançait : l'écart grandissait de 234,67 $ **par semaine**. Désormais l'app **date** le solde au
+  moment où tu l'enregistres et en déduit les prélèvements survenus depuis — le « Total dû », la
+  valeur nette, la Santé financière, le graphe Futur et la carte du hub affichent tous le solde
+  d'**aujourd'hui**. Ton solde a été corrigé à 46 934,00 $ dans la foulée.
+  ⚠️ Ça ne concerne QUE les dettes à versements fixes sans intérêt dont la cadence est connue (ton
+  bail). Une carte de crédit ou une hypothèque ne se devine pas à partir d'une date : elles ne
+  bougent pas d'un cent.
+  ⚠️ **À faire une fois** : ouvre ta dette « bZ » et clique « Enregistrer ». C'est ce geste qui pose
+  la date de départ — sans lui, le solde reste au chiffre corrigé mais cessera d'avancer tout seul.
+  ⚠️ Et la synchro Fintable ne déclarera pas tes dettes « mises à jour » chaque jour pour
+  rien : la date ne se repose que lorsque le solde CHANGE vraiment.
 - **Ta dette descendait une fois par mois.** Toi : « elle devrait descendre à chaque paiement à
   Toyota, pas une fois par mois ». Exact — le passé reconstruit ne produisait qu'un point par mois.
   Une dette à versements fixes peut maintenant déclarer sa **cadence réelle** (hebdomadaire, aux deux

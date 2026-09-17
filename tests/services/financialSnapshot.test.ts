@@ -16,7 +16,7 @@ function state(id: string) {
 
 describe('buildFinancialSnapshot', () => {
     it('Karim (aisé, solo) — patrimoine net > 0, CELI/REER reflètent les actifs', () => {
-        const snap = buildFinancialSnapshot(state('karim-immigre'));
+        const snap = buildFinancialSnapshot(state('karim-immigre'), null);
         expect(snap.netWorth).toBeGreaterThan(0);
         expect(snap.celiBalance).toBeGreaterThan(15000);
         expect(snap.reerBalance).toBeGreaterThan(12000);
@@ -26,7 +26,7 @@ describe('buildFinancialSnapshot', () => {
     });
 
     it('Couple confort — coupleMode=true (2e utilisateur nommé)', () => {
-        const snap = buildFinancialSnapshot(state('couple-confort'));
+        const snap = buildFinancialSnapshot(state('couple-confort'), null);
         expect(snap.coupleMode).toBe(true);
     });
 
@@ -44,7 +44,7 @@ describe('buildFinancialSnapshot', () => {
             // positif NON-revenu → exclu
             { id: -103, date: d, payee: 'Magasin', amount: 500, category: 'Remboursement', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
         ];
-        const snap = buildFinancialSnapshot(base);
+        const snap = buildFinancialSnapshot(base, null);
         expect(snap.monthlyIncome).toBe(2300);           // réel, remboursement exclu — PAS 4000 ni 2800
         expect(snap.monthlyIncomeSource).toBe('transactions');
     });
@@ -53,13 +53,13 @@ describe('buildFinancialSnapshot', () => {
         const base = state('karim-immigre');
         base.config.users[0] = { ...base.config.users[0], netSalary: 4000 };
         base.transactions = []; // aucun historique → le déclaré est le seul chiffre honnête
-        const snap = buildFinancialSnapshot(base);
+        const snap = buildFinancialSnapshot(base, null);
         expect(snap.monthlyIncome).toBe(4000);
         expect(snap.monthlyIncomeSource).toBe('declared'); // le prompt IA étiquette « (salaire déclaré) »
     });
 
     it('projectedNetWorth20y est repris des options si fourni', () => {
-        const snap = buildFinancialSnapshot(state('karim-immigre'), { projectedNetWorth20y: 123456 });
+        const snap = buildFinancialSnapshot(state('karim-immigre'), null, { projectedNetWorth20y: 123456 });
         expect(snap.projectedNetWorth20y).toBe(123456);
     });
 
@@ -81,14 +81,14 @@ describe('buildFinancialOverview', () => {
             { id: -112, date: d, payee: 'Interac', amount: 300, category: 'Revenus divers', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
         ];
         base.budgetItems = [];
-        const o = buildFinancialOverview(base);
+        const o = buildFinancialOverview(base, null);
         expect(o.monthlyIncome).toBe(2300);
         expect(o.monthlyExpenses).toBe(0);
         expect(o.monthlyCashflow).toBe(2300); // = max(0, monthlyIncome − monthlyExpenses), PAS 4000
     });
 
     it('agrège liquidités + placements + comptes + cashflow + dette', () => {
-        const o = buildFinancialOverview(state('couple-dettes'));
+        const o = buildFinancialOverview(state('couple-dettes'), null);
         expect(o.currency).toBe('CAD');
         expect(o.totalDebt).toBeGreaterThan(0); // persona endetté
         expect(o.netWorth).toBeCloseTo(o.investments + o.liquidity - o.totalDebt, 2);

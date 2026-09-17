@@ -13,6 +13,7 @@
 // enfiler à travers FutureProjection. Chargé en lazy depuis FutureProjection → hors du boot.
 
 import React, { useMemo, useState, Suspense } from 'react';
+import { useTodayIsoLocal } from '../../hooks/useSimulationParams';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../ui/Card';
 import { Skeleton } from '../ui/Skeleton';
@@ -40,6 +41,8 @@ const COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8'
 
 const FutureHistorySection: React.FC = () => {
     const { t } = useTranslation();
+    // [DETTE-SOLDE-INSTANTANE-FIGE] Le jour LOCAL : un solde de dette DATÉ se ramène à aujourd'hui.
+    const todayIso = useTodayIsoLocal();
     // [FUTUR-MOBILE-PR5] Pastilles de légende (24 px) → 44 px — mobile UNIQUEMENT (desktop
     // inchangé, mandat Marc #13).
     const isNarrowViewport = useViewportBelowSm();
@@ -126,7 +129,7 @@ const FutureHistorySection: React.FC = () => {
         const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals);
         const nowYearImmo = new Date().getFullYear();
         // [DASH-NW-DUP] source unique gardée NaN/Infinity.
-        const currentDebts = computeTotalDebt(debts ?? []);
+        const currentDebts = computeTotalDebt(debts ?? [], todayIso);
 
         const hist = marketData.map(row => {
             const rowDateStr = row.date as string;
@@ -186,7 +189,7 @@ const FutureHistorySection: React.FC = () => {
         ])).filter(k => lastPoint[k] !== 0);
 
         return { unifiedHistory: filteredHist, accountKeys: combinedKeys };
-    }, [marketData, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals]);
+    }, [marketData, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals, todayIso]);
 
     return (
         <Card title={t('dashboard.detailed_evolution')} className="w-full min-h-[450px]"

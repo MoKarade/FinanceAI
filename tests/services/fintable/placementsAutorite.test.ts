@@ -133,7 +133,7 @@ describe('la vue d\'ensemble se RECOMPOSE — ce que Marc a vu échouer sur la c
             debts: [{ id: 'd1', name: 'x', balance: 2_000, interestRate: 5, minimumPayment: 100, category: 'Other' }],
             fintableBrokerBalances: [compte({ balanceCad: 31_000 })],
         });
-        const o = buildFinancialOverview(e);
+        const o = buildFinancialOverview(e, null);
         // Anti-vacuité : l'autorité DÉPLACE bien le chiffre (sinon l'identité serait celle d'avant).
         expect(o.investments).toBe(31_000);
         expect(o.investments).not.toBe(computeInvestmentsValue(e.assets ?? [], FX, 0));
@@ -142,7 +142,7 @@ describe('la vue d\'ensemble se RECOMPOSE — ce que Marc a vu échouer sur la c
 
     it('CONTRÔLE NÉGATIF — sans synchro, la vue d\'ensemble est INCHANGÉE', () => {
         const e = etat({ initialBalances: { Compte: 5_000 }, transactions: [], debts: [] });
-        const o = buildFinancialOverview(e);
+        const o = buildFinancialOverview(e, null);
         expect(o.investments).toBe(20_000);
         expect(o.netWorth).toBe(25_000);
     });

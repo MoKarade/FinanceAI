@@ -19,7 +19,13 @@
 
 ## 🚗 Dette — le solde stocké est un instantané SANS DATE (17/09/2026, signalé par Marc)
 
-- [ ] 🧭 **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (M) Marc : « ça devrait enlever de la dette le montant
+- [x] 🔧 **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (M) **LIVRÉ le 17/09/2026** (OK explicite de Marc :
+  « oui vas-y, écris 46 934,00 $ et livre le correctif »). Champ `Debt.balanceAsOf` + source unique
+  `soldeDetteAujourdhui` + porte IDEMPOTENTE `dettesAuSoldeDuJour` au point de passage unique vers le
+  moteur ; `computeTotalDebt` et `buildFinancialSnapshot` prennent le JOUR en paramètre **REQUIS**
+  (26 sites énumérés par le compilateur). Solde réel écrit à **46 934,00 $** via `apply_debt` — et
+  la valeur d'avant rendue par l'outil, **47 168,67 $**, confirme au cent près la déduction faite
+  sans jamais l'avoir lue. Marc : « ça devrait enlever de la dette le montant
   que je paye quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
   **MESURÉ sur son état réel** (synchro Drive du 2026-09-17 21:42, transactions + `get_holdings`) :
   · ses prélèvements RÉELS sont `Toyota Financial −234,67 $` les **28 juil., 5, 11, 18, 25 août,
@@ -45,8 +51,9 @@
   ⚠️ **Alternative MESURÉE et ÉCARTÉE** : recalculer le solde depuis la fin du terme (`versement ×
   prélèvements restants`) rend **47 403 $** au lieu de 46 934 $ — le comptage de jours sur 4 ans
   dérive de 2 versements. Le solde saisi reste le meilleur FAIT ; il lui manque seulement sa date.
-  ⚠️ **Amorçage** : le solde actuel n'ayant pas de date, il faut l'écrire une fois à **46 934,00 $**
-  (écriture sur les données réelles ⇒ demande explicite de Marc requise).
+  ⚠️ **Amorçage — reste UN geste à Marc** : le serveur MCP servi étant périmé (`[HUB-MCP-PERIME]`),
+  l'écriture du 17/09 n'a pas pu être estampillée. Ouvrir la dette « bZ » dans l'app et cliquer
+  « Enregistrer » pose `balanceAsOf` — sans ce geste le solde reste JUSTE mais cesse d'avancer seul.
 
 ---
 

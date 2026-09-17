@@ -195,6 +195,8 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         [monthEpoch],
     );
 
+    const todayIsoPourDettes = useTodayIsoLocal();
+
     const todayMonthIndex = useMemo(() => {
         const now = new Date();
         return Math.max(0, (now.getFullYear() - startYear) * 12 + (now.getMonth() - startMonth));
@@ -209,6 +211,10 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         termesFautifsCash: ledgerCash.termesFautifs,
         realEstateGoals,
         debts,
+        // [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR, pas seulement le mois : un solde DATÉ se ramène à
+        // aujourd'hui au prélèvement près. Même horloge partagée que `startYear`/`startMonth`
+        // (`useTodayIsoLocal` lit le même store externe), donc aucune seconde source de temps.
+        aujourdhuiIso: todayIsoPourDettes,
         childGoals,
         travelGoals,
         lifeEvents,
@@ -224,7 +230,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         charitableGoals,
         rentalProperties,
         privateBusinesses,
-    }), [projection, calculatedStartingCash, ledgerCash.termesFautifs, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth]);
+    }), [projection, calculatedStartingCash, ledgerCash.termesFautifs, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth, todayIsoPourDettes]);
 
     return {
         params, pastHistory, liveCSVBalances, calculatedStartingCash,

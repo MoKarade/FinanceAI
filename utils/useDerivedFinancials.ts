@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
 import { assetValueCad, computePresentNetWorth } from '../services/portfolio';
 import { placementsFaisantAutorite } from '../services/fintable/placementsAutorite';
+import { useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { isSavingsNature } from './budget';
 
 interface DerivedFinancials {
@@ -19,6 +20,9 @@ interface DerivedFinancials {
  * depuis App.tsx (state au 28/05/2026).
  */
 export function useDerivedFinancials(state: AppState): DerivedFinancials {
+    // [DETTE-SOLDE-INSTANTANE-FIGE] Le jour LOCAL, source unique partagée avec le graphe Futur —
+    // le solde d'une dette datée se déduit au JOUR, pas au mois.
+    const todayIso = useTodayIsoLocal();
     const baseGrossAnnual = useMemo(
         () => state.config.users.reduce((sum, u) => sum + ((u.grossSalary || 0) * 12), 0),
         [state.config.users],
@@ -38,8 +42,8 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         [state.assets, state.fxRates, state.fxRatesSource, state.fxRatesEstimated, state.fintableBrokerBalances],
     );
     const globalNetWorth = useMemo(
-        () => computePresentNetWorth(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart),
-        [state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart],
+        () => computePresentNetWorth(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart, todayIso),
+        [state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart, todayIso],
     );
 
     const calculatedMonthlySavings = useMemo(() => {

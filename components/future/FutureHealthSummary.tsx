@@ -14,6 +14,7 @@ import type { RecurringItem } from '../../types';
 import { Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { useAutoritePlacements } from '../../hooks/useEcartAutoritePlacements';
+import { useTodayIsoLocal } from '../../hooks/useSimulationParams';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { normalizeHealthWeights } from '../../utils/healthWeights';
@@ -40,11 +41,13 @@ export const FutureHealthSummary: React.FC = () => {
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
     // [FINTABLE-AUTORITE-PARTOUT étape 3] Le patrimoine noté ici est celui que Marc voit ailleurs.
     const { ecart: ecartAutoritePlacements } = useAutoritePlacements();
+    // [DETTE-SOLDE-INSTANTANE-FIGE] Même jour que l'Accueil : le total dû noté ici est celui affiché.
+    const todayIso = useTodayIsoLocal();
 
     const weights = useMemo(() => normalizeHealthWeights(storedWeights), [storedWeights]);
     const metrics = useMemo(
-        () => computeHealthMetrics({ config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, fxRates, projectionFireTarget, ecartAutoritePlacements }),
-        [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget, fxRates, ecartAutoritePlacements],
+        () => computeHealthMetrics({ config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, fxRates, projectionFireTarget, ecartAutoritePlacements, aujourdhuiIso: todayIso }),
+        [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget, fxRates, ecartAutoritePlacements, todayIso],
     );
     const totalScore = useMemo(() => computeHealthTotalScore(metrics, weights), [metrics, weights]);
 

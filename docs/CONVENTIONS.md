@@ -14842,3 +14842,93 @@ titres à côté d'un voisin affichant l'autorité — c'est-à-dire la situatio
 (12 345 contre 20 000) : à bases égales, « les deux donnent le total du courtier » serait vrai par
 accident et ne prouverait rien. Et la garde la plus parlante est celle que Marc a vue échouer :
 `valeur nette = liquidités + placements − dettes` sur la vue d'ensemble.
+
+
+### Lot du 2026-09-17 — un solde stocké est un INSTANTANÉ, pas une mesure du jour
+
+`UN-SOLDE-STOCKE-SANS-DATE-EST-UN-INSTANTANE-QUE-RIEN-N-AVANCE`
+
+Marc : « j'ai mis la dette à hebdomadaire mais ça devrait enlever de la dette le montant que je paye
+quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
+
+**La cadence livrée trois heures plus tôt n'était pas en cause.** Vérifiée contre ses vrais
+prélèvements (`Toyota Financial −234,67 $`, huit lignes dans ses transactions) à dix dates : montant
+exact au cent, et **nombre de marches juste partout** — écart 0 $. Seul subsiste un décalage de
+PHASE d'un jour (la grille part de `startDate`, le premier prélèvement réel tombe huit jours plus
+tard), invisible à l'échelle d'un graphe.
+
+Le défaut était ailleurs, et l'arithmétique l'a nommé sans ambiguïté :
+
+```
+47 168,67 ÷ 234,67 = 201,0000 versements restants, EXACTEMENT
+201 + 7 = 208 = le bail complet (48 811,36 $)
+⇒ le solde stocké vaut après SEPT prélèvements. Il y en a eu HUIT.
+⇒ il reste 200 versements = 46 934,00 $
+```
+
+`Debt.balance` est un **instantané sans date, et rien ne l'avance**. Marc payait, l'écran ne bougeait
+pas, et l'écart grandissait d'un versement **par semaine**. Le défaut n'est pas dans le calcul : il
+est dans ce que le champ PRÉTEND être. Un solde nommé « solde actuel » est lu comme une mesure du
+jour par tous ses consommateurs, alors que c'est la trace d'une saisie dont personne n'a noté la
+date.
+
+**Le correctif est donc une DATE, pas un meilleur calcul** (`balanceAsOf`), estampillée
+automatiquement à l'écriture — demander la date à l'utilisateur reviendrait à lui demander de se
+souvenir du jour où il a tapé un chiffre. La correction ne s'applique que là où le solde du jour se
+DÉDUIT sans rien inventer : versements fixes, taux NUL, cadence connue. Partout ailleurs, le champ
+est inerte et le comportement reste bit-à-bit celui d'avant.
+
+⚠️ **L'alternative évidente a été mesurée et ÉCARTÉE.** Recalculer le solde depuis la fin du terme
+(`versement × prélèvements restants`) semble supprimer le besoin de date : mesuré, ça rend
+**47 403 $** au lieu de 46 934 $ — le comptage de jours sur quatre ans dérive de **deux** versements.
+Le solde saisi reste le meilleur FAIT du dossier ; il lui manque seulement son horodatage. Une
+reconstruction qui remplace un fait par une dérivation doit être mesurée CONTRE ce fait, pas adoptée
+parce qu'elle est plus élégante.
+
+⚠️ **L'idempotence est une GARANTIE, pas une coïncidence.** La porte du moteur (`dettesAuSoldeDuJour`)
+rend chaque dette corrigée avec `balanceAsOf` à AUJOURD'HUI : une seconde application ne trouve plus
+aucun prélèvement postérieur. Sans ça, un lot futur qui rappellerait la porte — ou passerait la liste
+corrigée à `amortirDettePassee` — déduirait les versements DEUX fois, et la dette serait fausse dans
+l'AUTRE sens, sans que rien ne rougisse. Toute correction appliquée « au passage » sur une liste qui
+circule doit porter en elle-même la preuve qu'elle a déjà eu lieu.
+
+⚠️ **Ma propre garde a réfuté ma propre prémisse, et c'est le seul rouge du lot.** J'avais écrit
+« le dernier point de la série du passé ÉGALE le solde d'aujourd'hui ». Faux par conception : le
+point du mois `m` vaut le solde au PREMIER JOUR de ce mois, donc le dernier point mensuel portait
+**47 403,34** contre 46 934,00 — les deux prélèvements du mois en cours. Le raccord se lit au JOUR,
+où il est exact (supplément NUL à aujourd'hui). Une garde écrite d'après ce qu'on croit savoir d'un
+module qu'on vient d'écrire vaut une relecture de ce module.
+
+⚠️ **Le champ est TEXTUEL, et il est entré dans `CHAMPS_TEXTE` dans le MÊME geste que sa déclaration**
+— pas après, pas en comptant sur la garde de dérivation. C'est la leçon
+`UN-CHAMP-DECLARE-PAR-UN-ALIAS-EST-INVISIBLE-AU-RECENSEUR-QUI-LIT-DES-FORMES`, écrite deux heures
+plus tôt le même jour, appliquée au moment où elle sert : la garde est le FILET, pas le processus.
+
+⚠️ **Et la déduction a été confirmée au cent par une observation indépendante** : l'écriture MCP a
+rendu `before: 47168.67`, valeur que j'avais dérivée de `201 × 234,67` sans jamais l'avoir lue
+(l'app n'expose que l'arrondi, 47 169 $). Une déduction arithmétique EXACTE — un quotient entier à
+quatre décimales — est une mesure, pas une estimation ; mais c'est l'observation qui l'a close.
+
+⚠️⚠️ **Et la CI a trouvé la suite : une ESTAMPILLE technique alimente un COMPTEUR humain.**
+`apply_debt` datait le solde dès que le payload en portait un, **même réécrit à l'identique**. Or
+`debtsUpdated` — affiché dans SystemView (« Dettes mises à jour : … ») — se dérive des `changes`
+écrits : le cron Fintable, qui rappelle ce chemin **chaque jour** avec ce que porte le snapshot,
+aurait listé la dette comme « mise à jour » à chaque passe, pour un champ que Marc ne voit nulle
+part. C'est exactement la faute de `[FINTABLE-TXADDED-MENT]` (« un compteur montré à l'humain se
+dérive de ce qui a été ÉCRIT »), réintroduite par le bas : un champ de MÉTADONNÉE est une écriture
+pour le compteur et un non-événement pour l'utilisateur. C'est un test écrit par un AUTRE lot, un an
+de contexte plus loin, qui l'a arrêté — le mien ne pouvait pas le voir, aucune de mes gardes ne
+regardait un compteur.
+
+Le correctif ne désarme pas le compteur (l'exclure ferait taire le prochain champ technique ajouté
+sans y penser) : il **refuse la date**. Une date ne se pose que sur une OBSERVATION, et un solde
+réécrit à l'identique n'en est pas une — rien, dans ce chemin automatisé, ne prouve qu'il vient
+d'être relu plutôt que re-envoyé. La règle devient donc la même des deux côtés : on date un solde
+qui CHANGE, jamais une mise à jour qui ne touche pas au solde (renommage, date de terme) **ni une
+réécriture identique**. Le chemin UI garde son estampillage inconditionnel, et c'est juste : Marc
+qui ouvre le formulaire et clique « Enregistrer » EST l'observation.
+
+⚠️ Corollaire de conduite : **un lot qui ajoute un champ écrit automatiquement doit demander qui
+COMPTE les écritures**, pas seulement qui les lit. La question « qui lit ce champ ? » rendait
+« personne » — vrai, et sans rapport : le compteur ne lit pas le champ, il compte le fait qu'on
+l'ait écrit.

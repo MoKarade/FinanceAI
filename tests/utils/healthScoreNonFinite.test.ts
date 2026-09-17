@@ -35,6 +35,7 @@ function inputs(overrides: Partial<HealthScoreInputs> = {}): HealthScoreInputs {
         config: { users: [{ name: 'Moi', netSalary: 5000 }] } as unknown as HealthScoreInputs['config'],
         budgetItems: [{ id: 'b1', name: 'Loyer', target: 1500, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' }] as unknown as HealthScoreInputs['budgetItems'],
         debts: [],
+        aujourdhuiIso: null,
         assets: [],
         initialBalances: { LIQUIDITE: 20000 },
         transactions: [],

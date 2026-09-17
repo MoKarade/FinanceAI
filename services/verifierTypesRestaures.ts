@@ -130,6 +130,13 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // premier à tomber. Le correctif qui compte n'est donc pas cette ligne-ci mais la résolution des
     // alias dans l'extracteur de la garde de dérivation.
     'paymentFrequency',
+    // [DETTE-SOLDE-INSTANTANE-FIGE] Date de l'instantané du solde d'une dette (YYYY-MM-DD).
+    // Ajouté ICI, dans le MÊME lot que le champ — c'est précisément ce que les trois vagues ont
+    // coûté : un champ textuel neuf qu'aucun état du dépôt ne porte encore est structurellement le
+    // premier à faire lever `merge`, donc à vider l'écran. La garde de dérivation le voit (forme
+    // `?: string`, la plus banale), mais on ne compte pas sur elle pour un champ qu'on introduit
+    // soi-même : la liste se met à jour à l'écriture, la garde est le FILET.
+    'balanceAsOf',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

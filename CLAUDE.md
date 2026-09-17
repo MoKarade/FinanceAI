@@ -1211,6 +1211,20 @@ n'est pas réécrire un récit.
   ⚠️ Anti-vacuité : rendre les deux bases volontairement DIFFÉRENTES — à bases égales, « les deux
   donnent le total du courtier » est vrai par accident
   (`CE-QUI-SE-PARTAGE-EST-LA-DECISION-JAMAIS-LA-BASE`).
+- ⚠️⚠️ **Un champ déclaré par un ALIAS est invisible au recenseur qui lit des FORMES** (2026-09-17,
+  TROISIÈME vague du faux refus qui VIDE l'app) : `debts[].paymentFrequency`, livré par mon propre
+  lot une heure plus tôt, n'était pas dans `CHAMPS_TEXTE` — et la garde de dérivation élargie DEUX
+  fois le 1er septembre pour empêcher exactement ça est restée VERTE. Son extracteur ne reconnaît
+  que `: string` et les unions de littéraux écrites SUR PLACE ; `paymentFrequency?: PaymentFrequency`
+  est un alias NOMMÉ, donc un simple identifiant au point de déclaration. Mesuré après correction :
+  **neuf** champs du contrat ne sont textuels que par un alias, huit couverts par accident.
+  ⚠️⚠️ Trois élargissements, trois formes jamais croisées : **élargir encore le motif n'est pas la
+  leçon** — un recenseur ancré sur la FORME n'a pas de borne. Ce qui borne est une anti-vacuité sur
+  l'EXTRACTEUR lui-même (plancher sur le nombre d'alias reconnus + témoins nommés), sans quoi
+  « aucun champ manquant » est aussi vrai d'un extracteur cassé que d'une liste complète — l'état
+  dans lequel la garde a passé seize jours. ⚠️ Corollaire de conduite : **le lot qui ajoute un champ
+  au contrat persisté doit demander sous quelle FORME il le déclare**, la garde lisant des formes et
+  non des sens (`UN-CHAMP-DECLARE-PAR-UN-ALIAS-EST-INVISIBLE-AU-RECENSEUR-QUI-LIT-DES-FORMES`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

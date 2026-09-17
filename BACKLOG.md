@@ -17,6 +17,39 @@
 
 ---
 
+## 🚗 Dette — le solde stocké est un instantané SANS DATE (17/09/2026, signalé par Marc)
+
+- [ ] 🧭 **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (M) Marc : « ça devrait enlever de la dette le montant
+  que je paye quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
+  **MESURÉ sur son état réel** (synchro Drive du 2026-09-17 21:42, transactions + `get_holdings`) :
+  · ses prélèvements RÉELS sont `Toyota Financial −234,67 $` les **28 juil., 5, 11, 18, 25 août,
+    1er, 9 et 15 sept.** = **8 versements** ;
+  · `47 169 ÷ 234,67 = 201,0000` versements restants **exactement**, et `201 + 7 = 208` = le bail
+    complet (48 811,36 $) — donc le solde stocké vaut **après 7 prélèvements**, c'est-à-dire avant
+    celui du 15 septembre ;
+  · 8 ont eu lieu ⇒ il reste **200** ⇒ **46 934,00 $**. L'app affiche **47 169 $**.
+  **Écart : 234,67 $ aujourd'hui, et il grandit d'un versement par SEMAINE.**
+  **La cadence hebdo livrée n'est PAS en cause** : vérifiée contre les vrais prélèvements à
+  10 dates, le montant de la marche est exact (234,67 $) et le NOMBRE de marches est juste partout
+  (écart 0 $) ; seul reste un décalage de **phase d'un jour** sur la marche du 15 sept. (la grille
+  part de `startDate`, le 1er prélèvement réel est 8 jours plus tard) — invisible à l'écran.
+  **CAUSE** : `Debt.balance` est un instantané figé, sans date de saisie, et rien ne l'avance. La
+  grille reconstruit le passé **en partant** du solde d'aujourd'hui — elle suppose que le solde
+  stocké EST celui d'aujourd'hui.
+  **CORRECTIF PROPOSÉ (attend l'OK de Marc — il change ce que TOUS les écrans lisent comme dette)** :
+  champ additif `Debt.balanceAsOf` (date de l'instantané), **estampillé automatiquement** à chaque
+  écriture du solde (formulaire + `apply_debt`), puis une source unique `soldeDetteAujourdhui(dette,
+  aujourdhui)` qui descend le solde de tous les prélèvements survenus depuis. Rayon d'action mesuré :
+  **exactement le bail** — la correction ne s'applique qu'à `KIND_VERSEMENTS_FIXES` + taux 0 +
+  cadence sous-mensuelle, et une dette sans `balanceAsOf` ne bouge pas d'un cent.
+  ⚠️ **Alternative MESURÉE et ÉCARTÉE** : recalculer le solde depuis la fin du terme (`versement ×
+  prélèvements restants`) rend **47 403 $** au lieu de 46 934 $ — le comptage de jours sur 4 ans
+  dérive de 2 versements. Le solde saisi reste le meilleur FAIT ; il lui manque seulement sa date.
+  ⚠️ **Amorçage** : le solde actuel n'ayant pas de date, il faut l'écrire une fois à **46 934,00 $**
+  (écriture sur les données réelles ⇒ demande explicite de Marc requise).
+
+---
+
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 
 - [x] 🔧 **`[MCP-DEPLOY-SILENCIEUX]`** Le serveur MCP n'était plus déployé depuis au moins

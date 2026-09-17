@@ -31,6 +31,33 @@
 > 📏 **Suite COMPLÈTE mesurée** : 625 fichiers, **6 183 tests**, exit 0, 660 s (2026-09-17 21:18 UTC).
 > `typecheck` OK, `lint` 0 erreur.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **3ᵉ vague du faux refus qui VIDE l'app + mesure de la dette**
+> 🔎 **`[HYDRAT-ALIAS-INVISIBLE]`** (PR #984, mergée 22:06, déploiement Vercel `dpl_CBNJCm…` READY sur
+> le SHA) — `debts[].paymentFrequency`, livré UNE HEURE plus tôt par `[DEBT-CADENCE-REELLE]`, n'était
+> pas dans `CHAMPS_TEXTE` : `merge` levait et l'app se réhydratait VIDE dès que Marc enregistrait
+> « Hebdomadaire ». La garde de dérivation, élargie DEUX fois le 01/09 pour empêcher exactement ça,
+> est restée verte — son extracteur ne reconnaît que `: string` et les unions écrites SUR PLACE, or
+> le champ passe par un **alias nommé**. Mesuré : **9** champs du contrat ne sont textuels que par un
+> alias, 8 couverts par accident. L'extracteur résout désormais les alias (union directe **et**
+> `typeof <TABLE>[number]` sur un `as const`), avec un plancher sur le nombre d'alias reconnus +
+> témoins nommés — sans quoi « aucun manquant » est aussi vrai d'un extracteur cassé.
+> ⚠️ Leçon `UN-CHAMP-DECLARE-PAR-UN-ALIAS-EST-INVISIBLE-AU-RECENSEUR-QUI-LIT-DES-FORMES` :
+> **élargir encore le motif n'est pas la leçon** (3 élargissements, 3 formes jamais croisées) — ce
+> qui borne est une anti-vacuité sur l'EXTRACTEUR, pas sur son sujet.
+>
+> 📏 **MESURE pour Marc, publiée sans correctif** (il a posé la question, le correctif attend son OK) :
+> · **Valeur nette vraie = 229 243 $**, l'app dit 229 008 $. Liquidités 30 387 et placements 245 790
+>   sont JUSTES (les 12 positions resomment à 245 790 ; facteur EUR **1,6073**, donc le correctif FX
+>   est bien en service). Le seul chiffre faux est la dette.
+> · **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (BACKLOG, 🧭) — `47 169 ÷ 234,67 = 201,0000` exactement, et
+>   201 + 7 = 208 = le bail complet ⇒ le solde stocké vaut après **7** prélèvements ; il y en a eu
+>   **8** ⇒ **46 934,00 $**. Écart 234,67 $, +1 versement par SEMAINE. La cadence hebdo n'est PAS en
+>   cause (montant et nombre de marches exacts sur 10 dates ; reste 1 jour de phase, invisible).
+> · **`[HUB-MCP-PERIME]`** (`docs/A_FAIRE_MOI.md`, 👤) — la carte du hub rend encore le libellé daté
+>   et les deux métriques de variation SUPPRIMÉES par #983 : le binaire Cloud Run servi est antérieur.
+>   Les 220 106 $ (vs 245 790) viennent de `[HUB-TOTAL-AMPUTE]` (#981), pas déployé non plus.
+>   Un seul geste : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh`.
+>
 > ## ⚠️ Session 2026-09-17 (suite) — **le gate local ne tourne PAS sur ce chemin**
 > `commit-gate.mjs` est un `PreToolUse` Bash qui lit `git diff --cached`. Chaîner
 > `git add && git commit` en UN SEUL appel (ce que la §3 prescrit) laisse l'index VIDE quand le hook

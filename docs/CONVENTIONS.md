@@ -14680,3 +14680,123 @@ RÉELLE du bail de Marc (`2026-07-20`) contre un `AUJ` figé au **2026-01** dans
 Le refus `donnees-manquantes` était parfaitement JUSTE (on ne reconstruit pas un passé antérieur au
 début du prêt), et j'ai failli le lire comme un défaut de la chaîne MCP. **Une date de fixture se lit
 relativement à l'horloge du fichier, jamais recopiée du monde réel.**
+
+---
+
+## `UN-LIBELLE-DE-METRIQUE-EST-UNE-CLE-CHEZ-SON-CONSOMMATEUR` (2026-09-17)
+
+Marc, capture à l'appui : la carte hub de FinanceAI affichait **« −430,6 % sur 7 j »** sous
+« Variation de la séance », **« −908,4 % sur 7 j »** sous « Variation 7 jours », et **« pas encore
+d'historique »** sous « Placements » — *tout en publiant une valeur juste au-dessus*.
+
+**Ce qui a tranché n'est ni une relecture ni un raisonnement : c'est la LECTURE DU CONSOMMATEUR.**
+Le dépôt `Hubperso` a été attaché à la session et lu. `app/app/[id]/page.tsx` fait, pour CHAQUE
+métrique publiée, `serieMetrique(historique, metrique.label)` puis `variation(...)` =
+`(apres.v − avant.v) / avant.v` sur 7 jours. Deux conséquences qu'aucune relecture de FinanceAI seul
+ne pouvait produire :
+
+1. **Le libellé est la CLÉ de l'historique.** `Placements (${libelleSeance(dateSeance)})` changeait à
+   chaque séance : la série repartait de zéro tous les jours, donc la petite courbe restait vide et
+   la ligne disait « pas encore d'historique » **à perpétuité**. Un libellé qui contient une donnée
+   n'est pas un libellé : c'est une clé jetable.
+2. **Une grandeur qui EST une variation se fait re-dériver.** Sur « Variation de la séance », la base
+   de la dérivation est petite et change de signe. Le chiffre n'est pas faux, il est
+   INEXPLOITABLE (`UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`).
+
+Le contrat n'a **aucun moyen** de dire « ne dérive pas celle-ci » — donc la correction n'est pas un
+drapeau à demander, c'est de ne pas publier ces grandeurs **là**. Elles vivent dans `details`, rendu
+tel quel (valeur, `trend` publié, `hint`), sans série ni évolution dérivée. Rien n'est perdu : le %
+de la séance reste le `trend` de « Placements », un NIVEAU — la seule des deux dont une évolution sur
+7 jours veut dire quelque chose.
+
+> **Avant de publier une métrique vers un consommateur qu'on ne contrôle pas, demander ce qu'il FAIT
+> du champ — et le lire, pas le supposer.** Ici : ce qu'il indexe (le libellé) et ce qu'il dérive (la
+> valeur). Les deux défauts étaient invisibles de ce côté-ci du contrat.
+
+⚠️ La garde porte le FAIT, pas la forme : deux builds qui ne diffèrent QUE par la date de clôture
+doivent rendre les MÊMES libellés de métriques. Sa perturbation est exactement de remettre la date
+dans le libellé. Anti-vacuité : les deux builds publient bien des placements, et à des dates
+**distinctes** (lues dans `details` → « Clôture de référence ») — sinon « mêmes libellés » serait
+vrai de deux cartes vides.
+
+---
+
+## `UNE-REGLE-SUR-LA-PRECISION-DE-LA-DONNEE-SE-PERIME-QUAND-LA-DONNEE-GAGNE-EN-PRECISION` (2026-09-17)
+
+Marc, le jour même où sa dette a cessé d'être plate : **« elle devrait descendre à chaque paiement à
+Toyota, pas une fois par mois »**.
+
+`dailyPastLedger` portait un commentaire JUSTE et daté : *« Palier MENSUEL comme le premier — le
+service d'amortissement ne produit qu'un point par mois : interpoler au jour fabriquerait une
+précision que la donnée n'a pas (un prêt ne bouge qu'aux dates de paiement) »*. Le raisonnement est
+exact **tant que les dates de paiement sont inconnues**. Or rien n'empêchait de les connaître : un
+bail à taux nul est prélevé à date fixe, et c'est le cas le plus EXACT à reconstruire de tout le
+module. La règle ne protégeait plus d'une invention, elle interdisait une mesure.
+
+> **Une prudence se relit quand la donnée change de finesse.** Le test qui tranche : *cette règle dit-elle
+> « on ne SAIT pas », ou « on ne saura jamais » ?* La première se périme dès qu'un champ l'apprend.
+
+Ce que le lot a livré : `Debt.paymentFrequency` (`weekly` | `biweekly` | `monthly`, absent ⇒ mensuel,
+donc rétrocompatible bit-à-bit), le versement de la période **DÉRIVÉ** de `minimumPayment` (× 12 / 52
+— une seconde saisie aurait divergé), et une grille de prélèvements en jours, tout en UTC.
+
+⚠️⚠️ **LA SÉRIE MENSUELLE EST DÉRIVÉE DE LA GRILLE, jamais calculée à côté.** C'est le point de
+conception, et il ne se voit pas dans le résultat : `buildPastPrefix` raisonne au MOIS,
+`dailyPastLedger` au JOUR. Deux calculs indépendants du même solde auraient divergé de jusqu'à un
+mois de versements — sans que rien ne rougisse nulle part, puisque aucun des deux n'est faux tout
+seul. C'est la classe `UN-TOTAL-AMPUTE…` et `UNE-REGLE-ECRITE-SUR-UN-OBJET-DU-MONDE-REEL…`, payée
+deux fois ce mois-ci. La garde du lot est donc l'ÉGALITÉ des deux registres aux points de raccord,
+et sa perturbation est exactement « rendre la série mensuelle à son ancienne formule ».
+
+⚠️ Le JOUR d'aujourd'hui est devenu un paramètre **REQUIS** (`string | null`) de tout ce chemin —
+`amortirDettePassee`, les quatre `supplement*`, `compterDettesAmorties`, `mentionDettesPasse`,
+`BuildPastPrefixInput`. Optionnel, il aurait laissé la courbe au MOIS retomber en silence sur le
+palier pendant que celle au JOUR descendrait : le défaut que le lot existe pour éviter, réintroduit
+par la porte de compatibilité. Le compilateur a énuméré les 60 sites.
+
+⚠️ Le versement dérivé vaut **234,67 $** au cent près — le prélèvement réel de Marc. Prendre
+`365,25 / 7 = 52,18` périodes/an rendrait le total ANNUEL exact et chaque MARCHE fausse ; on préfère
+la marche, puisque c'est elle qui est observable sur un relevé. Écart assumé et écrit : ~0,35 %/an.
+
+---
+
+## `CE-QUI-SE-PARTAGE-EST-LA-DECISION-JAMAIS-LA-BASE` (2026-09-17)
+
+Demande de Marc : *« je veux que toutes les valeurs soient cohérentes de partout entre elles, et que
+ce soit la valeur Fintable, car la plus fiable »*. Quatre producteurs répondaient à « combien valent
+mes placements ? », un seul consultait le courtier.
+
+La conception approuvée était `placements = Σ titres + écart_moteur`, présentée comme une IDENTITÉ.
+Elle est **subtilement fausse**, et exactement là où ce chantier fait mal : `écart_moteur` est mesuré
+sur la base du MOTEUR (reconstruction DATÉE, `holdingsAt`), `Σ titres` sur celle de l'ÉCRAN
+(`quantity` courante). Ce n'est une identité que si les deux bases coïncident — la seule hypothèse
+que personne n'avait mesurée. Un `quantity` désynchronisé de la somme de ses achats importe la
+divergence dans le chiffre de l'Accueil, en silence et sans rien de non fini.
+
+Le module d'autorité faisait **deux choses qu'on confond parce qu'elles sortent de la même fonction** :
+il DÉCIDE quels paniers sont repris au courtier, et il CALCULE un écart sur la base qu'on lui donne.
+
+> **Seule la décision doit être unique.** Chaque surface applique la MÊME liste de paniers à SA
+> PROPRE base. Un panier repris vaut alors exactement le total du courtier des deux côtés — donc
+> l'écran et le moteur ne peuvent plus diverger dessus — et un panier refusé garde de chaque côté la
+> base que son écran affiche déjà. Variante de
+> `AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS` : la vitesse se
+> partage, l'ancre non.
+
+⚠️⚠️ **Et cette séparation a démasqué une garde qui ne pouvait pas tirer.** Le refus `famille-mixte`
+(« ne pas écrire un total courtier annoncé CELI quand un CELIAPP bien réel vit à côté » — mesuré
+91 500 $ affichés pour 66 500 $ réels) se lisait dans les SOLDES passés en entrée. Il répondait donc
+sur la base du moteur ; côté écran, dont la base replie CELIAPP sur CELI par construction
+(`BUCKET_OF`), l'entrée n'existe jamais et le test est faux **par construction**. La question « le
+CELIAPP porte-t-il quelque chose ? » est un **FAIT sur les avoirs**, pas sur une base : calculée une
+fois, passée aux deux. En prime strictement plus sûre — un CELIAPP dont tous les titres sont écartés
+de la reconstruction valait `0` dans les soldes, et le refus n'y tirait pas non plus.
+
+⚠️ La correction est un paramètre **REQUIS** de `computeInvestmentsValue`/`computeGrossAssets`/
+`computePresentNetWorth`. Optionnelle, chaque appelant oublié aurait continué d'afficher la somme des
+titres à côté d'un voisin affichant l'autorité — c'est-à-dire la situation qu'on répare.
+
+⚠️ L'anti-vacuité de la garde principale est de rendre les deux bases **volontairement DIFFÉRENTES**
+(12 345 contre 20 000) : à bases égales, « les deux donnent le total du courtier » serait vrai par
+accident et ne prouverait rien. Et la garde la plus parlante est celle que Marc a vue échouer :
+`valeur nette = liquidités + placements − dettes` sur la vue d'ensemble.

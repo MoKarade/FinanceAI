@@ -24,6 +24,7 @@
 // écart dans le mauvais panier fausserait l'impôt de toute la projection, pas seulement un affichage.
 
 import type { FintableBrokerBalance, RegisteredAccountType } from '../../types';
+import { fxFaitAutorite, fxSourceEffective, type EtatFxMinimal } from '../fx/provenance';
 
 /** Régimes réconciliables. Sous-ensemble EXACT de `RegisteredAccountType` (zéro graphie parallèle). */
 export type ReconcilableRegime = Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;
@@ -109,6 +110,92 @@ function isReconcilable(v: unknown): v is ReconcilableRegime {
     return typeof v === 'string' && (RECONCILABLE as readonly string[]).includes(v);
 }
 
+
+/**
+ * Taux courants dérivés de l'état, en UN seul endroit.
+ *
+ * ⚠️ La question n'est pas « `fxRatesEstimated` est-il vrai ? » mais « ce taux a-t-il le droit
+ * d'écrire un total de compte ? » — et la réponse canonique du dépôt est `fxFaitAutorite`, qui
+ * accepte aussi les taux SAISIS À LA MAIN par Marc. Lire le booléen directement aurait refusé sa
+ * saisie, c'est-à-dire précisément le recours prévu quand la Banque du Canada ne répond pas.
+ * ⚠️ Un helper plutôt que trois copies : les trois appelants auraient divergé
+ * (`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`).
+ */
+export function tauxCourantsDepuisEtat(
+    etat: (EtatFxMinimal & { fxRates?: Record<string, number> }) | undefined,
+): TauxCourants {
+    return {
+        rates: etat?.fxRates,
+        estimated: !fxFaitAutorite(fxSourceEffective(etat)),
+    };
+}
+
+/** Taux COURANTS remis au lecteur — jamais ceux du moment de la synchro. */
+export interface TauxCourants {
+    rates: Record<string, number> | undefined;
+    /**
+     * `true` = les taux viennent de `DEFAULT_FX_RATES`, un repli EN DUR. Un taux estimé est traité
+     * comme ABSENT : le compte est NOMMÉ mais jamais converti (`UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE`
+     * — 1,40 est plus crédible que 1:1, donc plus dangereux pour une autorité).
+     */
+    estimated: boolean;
+    /** Devise de référence. `'CAD'` par défaut ; jamais devinée ailleurs. */
+    baseCurrency?: string;
+}
+
+/** Ce que vaut une entrée courtier À LA LECTURE. */
+export type SoldeCourtierRelu =
+    | { statut: 'ok'; montantCad: number; reconverti: boolean }
+    | { statut: 'taux-manquant'; devise: string }
+    | { statut: 'illisible' };
+
+/**
+ * [FINTABLE-AUTORITE-PARTOUT étape 0] Relit une entrée courtier AU TAUX DU JOUR.
+ *
+ * ⚠️ LE DÉFAUT QUE ÇA CORRIGE. La conversion était faite à l'ÉCRITURE et persistée : un compte en
+ * devise étrangère synchronisé pendant que les taux étaient au repli restait écarté
+ * (`missingRate`) jusqu'à la synchro SUIVANTE, même une fois les vrais taux obtenus — et son
+ * panier fiscal restait amputé, donc l'autorité courtier refusée en entier. Mesuré le 2026-09-17 :
+ * ≈ 100 872 $ hors du panier NON-ENREG pour cette seule raison.
+ *
+ * ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF. Le montant NATIF gagne sur tout le reste, y compris sur
+ * un `missingRate` persisté : ce drapeau décrit ce qu'on savait AU MOMENT DE LA SYNCHRO, pas ce
+ * qu'on sait maintenant. Le tester d'abord (comportement d'avant) rendrait la reconversion
+ * inatteignable exactement dans le cas qui l'a motivée.
+ *
+ * ⚠️ Rétrocompatible par construction : une entrée écrite avant ce lot ne porte pas `amountNative`,
+ * on retombe alors sur `balanceCad` et son `missingRate` — la valeur convertie à SA date. Ce n'est
+ * pas idéal, c'est honnête : on n'a pas le montant natif, donc on ne peut rien reconvertir.
+ */
+export function relireSoldeCourtier(
+    b: Partial<FintableBrokerBalance> | undefined,
+    fx: TauxCourants,
+): SoldeCourtierRelu {
+    const base = String(fx?.baseCurrency ?? 'CAD').toUpperCase();
+    const devise = String(b?.currency ?? '').trim().toUpperCase();
+    const natif = Number(b?.amountNative);
+
+    if (devise && Number.isFinite(natif)) {
+        if (devise === base) return { statut: 'ok', montantCad: natif, reconverti: false };
+        const taux = fx?.rates?.[devise];
+        const utilisable = !fx?.estimated && typeof taux === 'number' && Number.isFinite(taux) && taux > 0;
+        if (!utilisable) return { statut: 'taux-manquant', devise };
+        const montantCad = natif * (taux as number);
+        // Un produit fini d'entrées finies peut déborder : on ne publie pas un Infinity en autorité.
+        if (!Number.isFinite(montantCad)) return { statut: 'taux-manquant', devise };
+        return { statut: 'ok', montantCad, reconverti: true };
+    }
+
+    // ── Entrée ANCIENNE (pas de montant natif) : comportement d'avant, à l'identique.
+    const missingRate = typeof b?.missingRate === 'string' ? b.missingRate.trim() : '';
+    if (missingRate) return { statut: 'taux-manquant', devise: missingRate };
+    const rawBalance = b?.balanceCad as number | null | undefined;
+    if (rawBalance === null || rawBalance === undefined || !Number.isFinite(Number(rawBalance))) {
+        return { statut: 'illisible' };
+    }
+    return { statut: 'ok', montantCad: Number(rawBalance), reconverti: false };
+}
+
 /**
  * Réconcilie les soldes courtier avec la valeur des titres saisis, PAR RÉGIME FISCAL.
  *
@@ -124,6 +211,12 @@ function isReconcilable(v: unknown): v is ReconcilableRegime {
 export function reconcileBrokerBalances(
     balances: readonly FintableBrokerBalance[] | undefined,
     holdingsByRegime: Readonly<Partial<Record<ReconcilableRegime, number>>>,
+    /**
+     * [FINTABLE-AUTORITE-PARTOUT étape 0] Taux COURANTS, pour reconvertir les montants natifs.
+     * ⚠️ REQUIS : optionnel, un appelant l'aurait oublié et serait retombé sans bruit sur les
+     * valeurs figées à la synchro — le défaut même que ce lot ferme. Le compilateur énumère.
+     */
+    fx: TauxCourants,
 ): BrokerReconciliation {
     const empty: BrokerReconciliation = {
         regimes: [], unassignedAccountLabels: [], unreadableAccountLabels: [],
@@ -153,24 +246,21 @@ export function reconcileBrokerBalances(
         // classerait « solde lisible » et l'additionnerait à zéro dans son panier — un compte
         // effacé du total sans trace, exactement le défaut que la liste des écartés existe pour
         // empêcher. L'ordre des gardes EST le correctif.
-        const missingRate = typeof b?.missingRate === 'string' ? b.missingRate.trim() : '';
-        if (missingRate) {
-            missingRateAccountLabels.push(`${String(b?.label ?? '(compte sans nom)')} (${missingRate})`);
+        // [FINTABLE-AUTORITE-PARTOUT étape 0] La lecture se fait AU TAUX DU JOUR (cf.
+        // `relireSoldeCourtier`) : un compte écarté faute de taux à la synchro redevient
+        // convertible dès que le vrai taux est connu, sans attendre la synchro suivante.
+        const relu = relireSoldeCourtier(b, fx);
+        if (relu.statut === 'taux-manquant') {
+            missingRateAccountLabels.push(`${String(b?.label ?? '(compte sans nom)')} (${relu.devise})`);
             noterEcarte(b);
             continue;
         }
-        // Même garde null-explicite qu'à l'écriture : `balanceCad` est typé `number`, mais cet état
-        // vient du Drive et n'est validé par AUCUN schéma Zod (champ additif) — une copie ancienne
-        // ou corrompue peut porter un `null` que le typage ne voit pas (cf. carte UI durcie, PR #531).
-        const rawBalance = b?.balanceCad as number | null | undefined;
-        if (rawBalance === null || rawBalance === undefined || !Number.isFinite(Number(rawBalance))) {
-            // Solde illisible → écarté, mais JAMAIS en silence : sans cette liste, un compte
-            // disparaissait du panier sans trace (finding silent-failure-hunter, PR #534).
+        if (relu.statut === 'illisible') {
             unreadableAccountLabels.push(String(b?.label ?? '(compte sans nom)'));
             noterEcarte(b);
             continue;
         }
-        const amount = Number(rawBalance);
+        const amount = relu.montantCad;
         if (!isReconcilable(b?.taxRegime)) {
             unassignedAccountLabels.push(String(b?.label ?? '(compte sans nom)'));
             hasUnplaceableAccount = true;
@@ -315,6 +405,14 @@ export function toPersistableBrokerBalances(
             accountId: String(b.accountId),
             label: String(b.label ?? ''),
             balanceCad,
+            // [FINTABLE-AUTORITE-PARTOUT étape 0] On persiste le FAIT (montant natif + devise) en
+            // plus de son reflet daté. `balanceCad` reste écrit tel quel — il sert aux entrées
+            // d'historique déjà en place et aux lecteurs qui ne savent pas reconvertir.
+            // ⚠️ Écrit MÊME quand la conversion a réussi : sinon la reconversion ne serait possible
+            // que pour les comptes qui ont échoué, et un taux corrigé après coup ne rattraperait
+            // jamais un compte converti au mauvais taux.
+            ...(Number.isFinite(amount) ? { amountNative: amount } : {}),
+            ...(devise ? { currency: devise } : {}),
             ...(missingRate ? { missingRate } : {}),
             ...(isReconcilable(b.taxRegime) ? { taxRegime: b.taxRegime } : {}),
             at: stamp,

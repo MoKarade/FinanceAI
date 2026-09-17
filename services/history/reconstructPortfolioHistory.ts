@@ -19,6 +19,14 @@ export interface MinimalAsset {
     dateBought?: string; // fallback si purchases absent
     purchases?: MinimalPurchase[];
     priceHistory?: MinimalPricePoint[]; // prix natif daté (close Finnhub)
+    /**
+     * [FUTUR-MOIS0-CLOTURE-SANS-AGE] Epoch ms de la dernière mise à jour de `currentPrice`.
+     *
+     * ⚠️ Sans lui, « préférer une cotation FRAÎCHE à une clôture périmée » n'est pas vérifiable :
+     * on remplacerait un chiffre vieux par un autre chiffre vieux. Le champ existe sur `Asset`
+     * depuis toujours ; c'est le mapper qui ne le transmettait pas.
+     */
+    priceUpdatedAt?: number;
 }
 
 // Clés alignées sur le chartData de la projection (pour fusionner les axes en A3).
@@ -69,6 +77,14 @@ export function holdingsAt(asset: MinimalAsset, t: string): number {
     if (asset.dateBought) return asset.dateBought <= t ? asset.quantity : 0;
     return asset.quantity; // pas de date connue → supposé détenu sur toute la fenêtre
 }
+
+/**
+ * Au-delà de ce retard entre le dernier close connu et la date t, le prix est PÉRIMÉ.
+ *
+ * ⚠️ Défini ICI, avec `priceAt` qui l'applique, et importé par `buildMarketData` : la valeur y était
+ * écrite une seconde fois, et deux constantes qui doivent être égales finissent par diverger.
+ */
+export const STALE_PRICE_DAYS = 7;
 
 // Prix natif à la date t : dernier point d'historique ≤ t. Renvoie null si aucun
 // (→ le caller retombe sur le prix actuel et marque l'estimation).
@@ -121,6 +137,9 @@ export function reconstructPortfolioHistory(
     if (!first) return { points: [], coverage: 1, firstDate: null };
 
     const today = opts?.today ?? new Date();
+    // Même horloge que `today` : un second `Date.now()` ferait diverger la borne de fraîcheur du
+    // dernier mois calculé, et rendrait les tests non déterministes.
+    const nowMs = today.getTime();
     const maxMonths = opts?.maxMonths ?? 600;
     const firstDate = new Date(`${first}T00:00:00Z`);
 
@@ -145,13 +164,52 @@ export function reconstructPortfolioHistory(
             const qty = holdingsAt(a, t);
             if (qty === 0) continue;
             const histPrice = priceAt(a, t);
-            const price = histPrice ?? a.currentPrice ?? 0;
+            let price = histPrice ?? a.currentPrice ?? 0;
+            let prixReel = histPrice !== null;
+            // [FUTUR-MOIS0-CLOTURE-SANS-AGE] AU DERNIER POINT SEULEMENT — celui qui sert de mois 0
+            // au moteur et de raccord à la courbe Futur.
+            //
+            // ⚠️ POURQUOI PAS À TOUTES LES DATES. Borner la péremption partout ferait retomber un
+            // titre à l'historique interrompu sur son `currentPrice`, donc appliquer le prix
+            // D'AUJOURD'HUI à une date PASSÉE : la courbe du passé serait réécrite au prix du jour.
+            // Pour une date passée, le dernier close connu EST la meilleure estimation. Le défaut
+            // ne vit qu'ici, où une clôture périmée était préférée à une cotation FRAÎCHE qui
+            // existe. Mesuré sur l'état réel : mois 0 à 231 849 $ contre 245 687 $ de titres au
+            // prix courant, soit −13 838 $ (−5,6 %) au départ de TOUTE la projection.
+            //
+            // ⚠️ La fraîcheur est VÉRIFIÉE (`priceUpdatedAt`), jamais supposée : sans ça on
+            // remplacerait un chiffre vieux par un autre chiffre vieux.
+            if (isFinal && histPrice !== null) {
+                // ⚠️ La péremption se mesure contre AUJOURD'HUI, jamais contre `t`. Le dernier `t`
+                // est la FIN DU MOIS COURANT, donc jusqu'à ~30 jours dans le futur : jugé depuis
+                // lui, un close d'hier paraîtrait périmé et la substitution tirerait sur des
+                // données parfaitement fraîches. Attrapé par le contrôle négatif « clôture
+                // RÉCENTE », qui rougissait avant cette ligne.
+                const dernierClose = (a.priceHistory ?? []).reduce<string | null>(
+                    (best, p) => (p.date <= t && (!best || p.date > best) ? p.date : best), null);
+                const ageClose = dernierClose === null
+                    ? Number.POSITIVE_INFINITY
+                    : (nowMs - Date.parse(`${dernierClose}T00:00:00Z`)) / 86_400_000;
+                const closePerime = ageClose > STALE_PRICE_DAYS;
+                const coteFraiche = Number.isFinite(a.currentPrice) && (a.currentPrice ?? 0) > 0
+                    && typeof a.priceUpdatedAt === 'number'
+                    && Number.isFinite(a.priceUpdatedAt)
+                    && nowMs - a.priceUpdatedAt <= STALE_PRICE_DAYS * 86_400_000;
+                if (closePerime && coteFraiche) {
+                    price = a.currentPrice;
+                    // ⚠️ Et ce n'est PAS un « vrai prix » au sens de `coverage` : c'est une
+                    // ESTIMATION au prix du jour. Le compter comme réel laissait `coverage ≈ 1,0`,
+                    // donc l'avertissement « partiellement estimé » ne tirait JAMAIS — le cas RARE
+                    // (aucun historique) était couvert, le cas COURANT (flux interrompu) non.
+                    prixReel = false;
+                }
+            }
             const valueCad = qty * price * fxToCad(a.currency, fx);
             const key = a.accountType ? TYPE_TO_KEY[a.accountType] : 'NonReg';
             acc[key] += valueCad;
             if (isFinal) {
                 valueTotalFinal += valueCad;
-                if (histPrice !== null) valueWithRealPrice += valueCad;
+                if (prixReel) valueWithRealPrice += valueCad;
             }
         }
         // ⚠️ [NAMING-INVESTED 2026-08-11] Renommé `NetWorth` → `InvestedValue`, aligné sur la version

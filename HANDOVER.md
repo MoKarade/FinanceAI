@@ -4,6 +4,101 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[HUB-REFUS-4-SANS-DIAGNOSTIC]` LIVRÉ**
+> Conséquence DIRECTE du refus du total amputé livré le matin : la carte du hub peut perdre ses
+> trois lignes de placements, et le faisait SANS un mot — indiscernable d'une panne.
+> 🔎 Cause : `computePortfolioSessionMetrics` rendait `null` pour CINQ situations distinctes.
+> ✅ Union `ok`/`refus` (le refus porte sa cause ET les symboles fautifs) + section hub « Pourquoi
+> les placements manquent ». Le compilateur a énuméré les sites ; 15 appels de test passent par un
+> helper qui restaure la sémantique d'avant, pour que les cas anciens testent toujours la même chose.
+> ⚠️ On publie le FAIT et les SYMBOLES, jamais un montant.
+> 📏 48 tests verts sur la surface ; 2 perturbations séparées (section retirée → 1 rouge ; cause
+> rendue générique → 2 rouges, le service ET le hub, ce qui prouve le fil entre les deux).
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]` LIVRÉ (version étroite)**
+> Le mois 0 du moteur préférait une CLÔTURE périmée à une COTATION fraîche : **231 849 $ contre
+> 245 687 $**, soit **−13 838 $ (−5,6 %)** au départ de toute projection.
+> ⚠️⚠️ **Le remède que j'avais écrit le matin même était FAUX** : borner la péremption à TOUTE date
+> aurait réécrit la courbe du PASSÉ au prix du jour. Pour une date passée, le dernier close connu
+> est la meilleure estimation. Livré au DERNIER point seulement, et un test verrouille que le passé
+> ne bouge pas.
+> ⚠️ La péremption se mesure contre AUJOURD'HUI, pas contre `t` : le dernier `t` est la fin du mois
+> courant (~30 j dans le futur), donc jugé depuis lui un close d'hier paraissait périmé. **Attrapé
+> par un contrôle négatif**, pas par une relecture.
+> ⚠️ Fraîcheur VÉRIFIÉE (`priceUpdatedAt`) : sans ça on remplace un chiffre vieux par un autre.
+> Champ neuf de `MinimalAsset` ⇒ **DEUX mappers** à compléter (hook + chemin état-pur/MCP).
+> ⚠️⚠️ **« Aucun golden n'a bougé » est EXPLIQUÉ** : aucun persona ni fixture ne porte
+> `priceUpdatedAt` (mesuré). Zéro rouge mesure l'absence de couverture. D'où une garde qui TRAVERSE
+> jusqu'au mois 0, perturbée sur le mapper.
+> ⏭️ Débloque `[FINTABLE-AUTORITE-PARTOUT]` étape 3, qui en dépendait.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-INVISIBLE-INFOBULLE]`**
+> Marc a d'abord signalé « un bug : −50 k au 01/07 ». Ce n'en était pas un — c'est son BAIL AUTO
+> (47 169 $) qui entre au bilan : une dette à `startDate` est retirée du patrimoine tant qu'elle n'a
+> pas commencé (`dailyPastLedger.ts`), et le moteur compare des MOIS, donc un début au 20 juillet
+> apparaît au 1er. Confirmé par lui. ⚠️ **Aucune transaction de cet ordre n'existe autour du 1er
+> juillet** — vérifié avant de conclure, ce qui a écarté la piste évidente.
+> 🔎 Le VRAI défaut est celui qu'il a signalé ensuite : « je le vois nulle part, pas sur l'infobulle
+> ou quoi ». `TOOLTIP_ACCOUNTS` ne liste que des comptes POSITIFS : 260 898 $ d'actifs affichés pour
+> 214 918 $ de valeur nette, et rien pour les 45 980 $ d'écart.
+> ✅ Ligne « Dettes (hors hypothèque) » signée, rendue seulement s'il y a une dette. Dérivation
+> EXTRAITE du « Détail complet » (`detteReductrice`) et partagée, jamais recopiée ; par SOUSTRACTION
+> et non depuis `DettesNonImmo` (pas publié sur toutes les courbes).
+> ⚠️ **Troisième instance de la même famille dans la journée** (carte du hub, tuile « Variation
+> 30 j », infobulle) : deux chiffres d'un même écran qui ne se recomposent pas.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 0 LIVRÉE**
+> Demande Marc : « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce
+> soit la valeur Fintable, car la plus fiable ». Plan complet dans `BACKLOG.md` (5 étapes).
+> ✅ **Étape 0** : le montant NATIF (`amountNative` + `currency`) est persisté à côté de son reflet
+> converti, et `relireSoldeCourtier` reconvertit **au taux du jour**. Avant, la conversion était
+> faite À L'ÉCRITURE et figée : le compte Disnat en USD, synchronisé pendant le repli des taux,
+> restait écarté jusqu'à la synchro suivante — **≈ 100 872 $** hors du panier NON-ENREG, donc
+> autorité courtier refusée en entier.
+> ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le natif gagne sur un `missingRate` PERSISTÉ (qui décrit
+> ce qu'on savait à la synchro, pas ce qu'on sait maintenant). ⚠️ `estimated` vient de
+> `fxFaitAutorite`, jamais du booléen `fxRatesEstimated` — sinon les taux SAISIS À LA MAIN de Marc
+> seraient refusés, or c'est le recours prévu. ⚠️ Signature de `reconcileBrokerBalances` élargie et
+> le 3ᵉ paramètre REQUIS : le compilateur a énuméré 3 sites de prod + 18 de test.
+> 📏 430 tests verts sur la surface ; 2 tests de LIMITE inversés au même endroit avec leur histoire ;
+> perturbation (reconversion débranchée) → 1 rouge, le bon.
+> ⏭️ **Restent les étapes 1 à 4** (source unique « dernière valeur Fintable connue », les deux
+> garde-fous — 48 h dérivé du cron, seuil d'écart À MESURER —, branchement des écrans, variations).
+>
+> ## ⚠️⚠️ Session 2026-09-17 (suite) — **`[HUB-TOTAL-AMPUTE]` : le hub publiait un total amputé**
+> Marc : « corrige sur hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil
+> pas équivalent à ce que j'ai sur Fintable ». Mesuré sur ses captures — **quatre** producteurs :
+> Accueil **245 687 $** · Fintable réel **242 287 $** · Futur mois 0 **231 849 $** · hubperso
+> **217 767 $**.
+> 🔎 Cause de l'écart hubperso : `buildMarketData` laisse tomber (`continue`) un titre DÉTENU dont
+> la queue de chandelles est périmée > 7 j sans quote fraîche. Le `TOTAL` reste fini et plausible,
+> simplement AMPUTÉ — les trois refus de `computePortfolioSessionMetrics` jugent la fraîcheur et le
+> figement, jamais le PÉRIMÈTRE. **L'inventaire qui le disait existait** (`staleTailSymbols`, finding
+> silent-failure #493, avec son commentaire) : le consommateur faisait `const { rows } = …`.
+> ✅ `omittedKeys` (`[date, symbole]`, à TOUTE date — `staleTailSymbols` ne couvre que `lastAxisDate`,
+> donc jamais la borne passée d'une variation) + **refus 4** : séance amputée → rien n'est publié ;
+> borne amputée → variation refusée. 3 gardes, 2 perturbations séparées (1 rouge chacune, le bon).
+> 📏 **−27 920 $ (−11,4 %)** sur le total publié, et « Variation 7 jours **+38,2 %** » qui n'était
+> qu'une DISPARITION relue comme un gain. Contradiction interne à la carte :
+> 227 388 − 28 870 + 47 169 = **245 687** ≠ 217 767.
+> ⚠️ **Effet visible à surveiller** : tant qu'un titre manque, la carte du hub perd ses trois lignes
+> de placements (arbitrage des trois autres refus : publier MOINS, jamais autre chose).
+> 🔎 **Découverte de chemin** : `Disnat (L7B1)` est en **USD** chez Fintable (`$` vs `C$`) — le compte
+> nommé en commentaire dans `brokerBalances.ts`. Écarté faute de taux à la dernière synchro (antérieure
+> au correctif FX) ⇒ panier NON-ENREG amputé ⇒ autorité courtier NON appliquée.
+> ⚠️⚠️ **2ᵉ passe — le panel a battu le gate ET la CI, 6ᵉ lot d'affilée.** (a) Mon inventaire couvrait
+> **2 chemins sur 3** pendant que le commit affirmait « les DEUX chemins sont tracés » : le manquant
+> est qu'un titre SANS historique n'entre au TOTAL que s'il est détenu AUJOURD'HUI — vendu, il
+> compte zéro sur TOUT son passé. (b) Même amputation chez un consommateur VIVANT et visible :
+> `useNetWorthVariation` (tuile « Variation 30 j » du bandeau Futur) sommait les buckets `TOTAL_*`
+> aux deux bornes sans lire l'inventaire. Dépendance rendue **REQUISE** (compilateur → 4 sites).
+> (c) Codec `[date, symbole]` extrait en source unique (`encodeOmittedKey` / `datesAmputeesDepuis`).
+> 📏 3 perturbations séparées de plus, 1 rouge chacune ; contrôles négatifs partout (portefeuille
+> sain → 0 omission ; date amputée hors des bornes → tuile publiée).
+> ⏭️ **Suite chiffrée et NON faite** : `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` — le mois 0 appelle
+> `priceAt(a, t)` **sans `maxStaleDays`** (seul écran du dépôt dans ce cas) ⇒ **−13 838 $ (−5,6 %)**
+> au point de départ de la projection. Re-basera des goldens ⇒ plan-first.
+>
 > ## ⚠️⚠️ Session 2026-09-17 — **`[FX-OBSERVATION-COHORTE]` : on lisait `observations[0]`**
 > Marc a cliqué « Réessayer maintenant » (la carte livrée la veille), lu « au moins une des deux
 > séries était absente », puis **ouvert l'URL de l'API et envoyé la réponse**. Elle tranche :

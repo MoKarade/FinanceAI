@@ -951,6 +951,172 @@
   publiée à l'écran**, tenue cohérente avec la provenance PAR CONSTRUCTION dans `updateFxRates`.
   ⚠️ Les trois fixtures FX du dépôt étaient écrites à la main et encodaient la forme supposée : la
   garde part désormais de la réponse RÉELLE (`tests/fixtures/bdcFxRatesDaily.json`).
+- [x] 🔴 **`[HUB-TOTAL-AMPUTE]`** (M, money-critical) — livré le 2026-09-17. Marc : « corrige sur
+  hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil pas équivalent à ce
+  que j'ai sur Fintable ». `buildMarketData` laisse tomber (`continue`) un titre DÉTENU dont la
+  queue de chandelles est périmée de plus de 7 j sans quote fraîche : le `TOTAL` reste fini et
+  plausible, simplement AMPUTÉ, et aucun des trois refus de `computePortfolioSessionMetrics` ne le
+  voyait (ils jugent la fraîcheur et le figement, jamais le PÉRIMÈTRE).
+  📏 **Mesuré sur l'état réel** : hubperso publiait **217 767 $** quand la somme des titres valait
+  **245 687 $** — **−27 920 $ (−11,4 %)** —, sur la MÊME carte qu'une valeur nette qui, elle, les
+  comptait (227 388 − 28 870 + 47 169 = 245 687). Et « Variation 7 jours **+38,2 %** » : un titre
+  absent de la borne passée et présent à la borne récente, lu comme un gain de 60 229 $.
+  ✅ `omittedKeys` (`[date, symbole]`, peuplé à TOUTE date — `staleTailSymbols` ne couvre que
+  `lastAxisDate`, donc jamais la borne passée d'une variation) + **refus 4** : séance amputée → on
+  ne publie rien ; borne amputée → variation refusée. Trois gardes, deux perturbations séparées
+  (1 rouge chacune, le bon).
+  ⚠️ **Conséquence visible** : tant qu'un titre manque, la carte du hub perd ses trois lignes de
+  placements. C'est l'arbitrage des trois autres refus — on publie MOINS, jamais autre chose.
+- [x] 🟠 **`[DETTE-INVISIBLE-INFOBULLE]`** (S) — livré le 2026-09-17, signalé par Marc. La
+  répartition « Par compte » de l'infobulle Futur ne listait que des comptes POSITIFS : 260 898 $
+  d'actifs affichés pour 214 918 $ de valeur nette, et aucune ligne pour les 45 980 $ d'écart (son
+  bail auto). ✅ Ligne « Dettes (hors hypothèque) » signée, conditionnelle ; dérivation extraite du
+  « Détail complet » et PARTAGÉE (`detteReductrice`), par soustraction `Σ actifs − NetWorth` et non
+  depuis `DettesNonImmo` (pas publié sur toutes les courbes). 3 gardes dont 2 contrôles négatifs.
+- [ ] 🔴 **`[FINTABLE-AUTORITE-PARTOUT]`** (L, money-critical, **DEMANDE MARC 2026-09-17**) —
+  « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce soit la valeur
+  Fintable, car la plus fiable ». Aujourd'hui QUATRE producteurs répondent à « combien valent mes
+  placements ? » (mesuré : Accueil 245 687 $ · Fintable réel 242 287 $ · Futur mois 0 231 849 $ ·
+  hub 217 767 $), et un seul consulte Fintable (`appliquerAutoriteCourtier`, uniquement le mois 0).
+  **Réponses de cadrage de Marc** : total incomplet → *« si trop gros écart, marquer qu'il y a une
+  erreur d'import ; si pas trop long, dernière valeur Fintable affichée »* ; variations → *« garder
+  l'historique nous »*.
+  - [x] **Étape 0 — PRÉREQUIS.** ✅ Livré le 2026-09-17. Le montant NATIF (`amountNative` +
+    `currency`) est désormais persisté à côté de son reflet converti, et la lecture
+    (`relireSoldeCourtier`) reconvertit **au taux du jour**. Un compte écarté faute de taux à la
+    synchro redevient convertible dès que le vrai taux est connu, sans attendre la synchro suivante.
+    ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le montant natif gagne sur un `missingRate` PERSISTÉ,
+    qui décrit ce qu'on savait à la synchro et non ce qu'on sait maintenant ; le tester d'abord
+    aurait rendu la reconversion inatteignable dans le cas exact qui l'a motivée. ⚠️ `estimated` est
+    dérivé de `fxFaitAutorite` (source unique) et non du booléen `fxRatesEstimated` : lire le booléen
+    aurait refusé les taux SAISIS À LA MAIN par Marc, c'est-à-dire le recours prévu quand la Banque
+    du Canada ne répond pas. ⚠️ Deux tests de LIMITE inversés au même endroit avec leur histoire.
+    Recoupe `[FX-CARTE-ECART-DIRE-LA-RESYNCHRO]`, qui devient sans objet pour le CALCUL (reste la
+    phrase à l'écran).
+  - [ ] **Étape 1 — source unique.** Un module qui rend la **dernière valeur Fintable connue** —
+    lue dans `fintableBrokerHistory` (déjà produit, daté, par compte et par jour, 730 j de rétention,
+    branché sur les DEUX chemins de synchro), **jamais l'instantané écrasé** — avec sa DATE et son
+    ÉCART contre la somme des titres. ⚠️ Le producteur existe et son en-tête dit lui-même « ce lot ne
+    change rien aujourd'hui » : c'est le CONSOMMATEUR qui manque, et c'est exactement la demande.
+  - [ ] **Étape 2 — les deux garde-fous demandés.** (a) *« pas trop long »* → **48 h**, DÉRIVÉ : le
+    cron Fintable tourne tous les jours à 10 h UTC (`.github/workflows/fintable-sync.yml`), donc
+    au-delà de 48 h la synchro a échoué au moins deux fois. (b) *« trop gros écart → erreur
+    d'import »* → seuil **À MESURER AVANT D'ÊTRE ÉCRIT** : une seule observation (1,4 %, 3 400 $ le
+    2026-09-17) n'est pas une distribution. Le dériver de la volatilité quotidienne réelle du
+    portefeuille de Marc, calculable depuis sa propre reconstruction — un seuil au jugé crierait un
+    jour de marché agité, ou jamais (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
+  - [ ] **Étape 3 — brancher** Accueil/Investissements, valeur nette, hub et MCP sur cette source
+    unique. Le mois 0 du Futur y est déjà : ne pas créer une SECONDE règle à côté.
+    **CONCEPTION RÉSOLUE le 2026-09-17, à implémenter telle quelle :**
+    - Le point d'injection est `computeInvestmentsValue` (`services/portfolio.ts`), et c'est une
+      BONNE nouvelle : `computePresentNetWorth`, `computeGrossAssets` et `buildFinancialOverview`
+      l'appellent tous les trois. Les brancher déplace donc le chiffre « Investissements » ET la
+      valeur nette **ensemble** — sans recréer la contradiction interne à la carte du hub qui a
+      ouvert cette session.
+    - **La formule est une identité, pas une nouvelle règle** : `placements_autorité =
+      Σ titres + écart_appliqué`. En effet `écart = Σ(total courtier − titres)` sur les seuls
+      paniers repris, donc `Σ titres + écart = titres_des_paniers_NON_repris + courtier_des_repris`.
+      C'est exactement ce que le mois 0 calcule déjà.
+    - ⚠️ **Prendre l'écart de `appliquerAutoriteCourtier` (`ecartTotal`), JAMAIS `reco.totalGapCad`.**
+      Les deux se ressemblent et diffèrent : `appliquerAutoriteCourtier` REFUSE certains paniers
+      (`famille-mixte`, `total-partiel`…). Utiliser le second donnerait deux réponses à une seule
+      question — l'écran et le moteur divergeraient, ce que le commentaire de `buildSimulationParams`
+      interdit en toutes lettres.
+    - ⚠️ **OBSTACLE À TRANCHER AVANT DE CODER** : `appliquerAutoriteCourtier` a besoin des soldes
+      PAR PANIER, produits par `derivePortfolioStartingBalances` — qui vit dans
+      `services/projection/buildSimulationParams.ts`. L'importer depuis `financialSnapshot.ts`
+      tirerait le constructeur de paramètres de projection dans le chemin de l'ACCUEIL, donc dans le
+      bundle de boot (règle §2 du `CLAUDE.md`). Deux issues : (a) extraire
+      `derivePortfolioStartingBalances` dans son propre petit module et le ré-exporter pour
+      compatibilité ; (b) mesurer le coût réel avant de décider. **Ne pas trancher ça à la va-vite :
+      c'est un arbitrage de frontière de bundle, pas un détail d'import.**
+    - ⚠️ `holdingsCadByRegime` n'est PAS un substitut : il replie CELIAPP sur CELI et REEE sur REER,
+      alors que les soldes de départ les gardent séparés — asymétrie déjà connue et routée.
+    - ⚠️⚠️ **OBSTACLE D'ORDONNANCEMENT, trouvé le 2026-09-17 en câblant : cette étape DÉPEND de
+      `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`.** `appliquerAutoriteCourtier` s'applique aux soldes issus de
+      la RECONSTRUCTION (derniers closes datés, sans borne d'âge), alors que l'Accueil affiche
+      `computeInvestmentsValue` (prix COURANTS). Les deux bases diffèrent de **13 838 $** sur l'état
+      réel. Conséquence : brancher l'Accueil sur la sortie de l'autorité ferait TOMBER son chiffre de
+      245 687 $ à ~231 849 $ partout où Fintable ne s'applique pas — on importerait le défaut des
+      clôtures périmées sur l'écran d'accueil pour régler un problème de cohérence. **Le gain de
+      cohérence coûterait une régression de justesse.**
+      Deux ordres possibles, à trancher : (a) corriger d'abord `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` pour
+      que la reconstruction et les prix courants coïncident, puis brancher — ordre PRÉFÉRÉ, une seule
+      base ensuite ; (b) faire porter l'autorité sur `holdingsCadByRegime` (base prix courants), ce
+      qui oblige à réimplémenter les REFUS de `appliquerAutoriteCourtier` sur cette base — donc deux
+      règles pour une question, ce que le reste de ce ticket interdit.
+    - 📏 **Périmètre RECENSÉ (mesuré, pas estimé)** : « partout » vaut **4 sites** —
+      `services/financialSnapshot.ts` (×2 : patrimoine net et `investments`, donc Accueil + hub +
+      MCP), `utils/useDerivedFinancials.ts` (écrans de l'app), `utils/healthScore.ts`.
+      ⚠️ `healthScore` ne reçoit que `(assets, fxRates)`, pas l'état : le brancher élargirait sa
+      signature. Comme il produit un SCORE et non un montant que Marc compare, il peut rester sur la
+      somme des titres — mais il faut l'ÉCRIRE, sinon c'est une incohérence de plus, silencieuse.
+  - [ ] **Étape 4 — variations** (séance, 7 j, 30 j) : elles restent calculées sur NOTRE
+    reconstruction (Fintable n'a aucun historique), avec leur base NOMMÉE à l'écran — sinon deux
+    chiffres voisins ne se recomposent pas et rien ne le dit.
+  - ⚠️ **Contrainte de source, irréductible** : Fintable rend le TOTAL d'un compte, jamais ses
+    positions. La liste des titres continuera de sommer à autre chose ; l'écart s'AFFICHE, jamais ne
+    se lisse — lisser fabriquerait un portefeuille que Marc n'a pas.
+  - ⚠️ **Le passé reste reconstruit** à partir des titres (aucun historique Fintable avant le
+    2026-09-16) : la marche au raccord est déjà nommée par `mentionAutoriteCourtier`.
+- [x] 🟡 **`[HUB-REFUS-4-SANS-DIAGNOSTIC]`** ✅ LIVRÉ le 2026-09-17 (demande Marc). Le refus porte
+  désormais sa CAUSE : `computePortfolioSessionMetrics` rendait `null` pour CINQ situations, donc le
+  hub ne pouvait rien dire d'autre que rien (`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`).
+  Union `ok`/`refus` + section « Pourquoi les placements manquent » qui NOMME les titres écartés.
+  ⚠️ On publie le fait et les symboles, jamais un montant — s'il y avait un montant digne de foi, il
+  n'y aurait pas de refus. ⚠️ `inventaire-illisible` reste sans test, et c'est ÉCRIT : la branche est
+  structurellement inatteignable de l'extérieur (les clés sont fabriquées par `encodeOmittedKey`) —
+  un filet pour un futur changement de format, pas une fixture absurde. ⚠️ Contrôle négatif : quand
+  les placements sortent, la section n'existe PAS.
+- [ ] 🟡 ~~`[HUB-REFUS-4-SANS-DIAGNOSTIC]`~~ *(entrée d'origine, conservée pour l'historique)* (XS, **DÉCOUVERT au panel du 2026-09-17**) — quand le
+  refus 4 s'active, la carte du hub perd ses trois lignes de placements sans dire QUEL titre est en
+  cause ni depuis quand. L'app le dit déjà (`HistoryCoverageNote` depuis `staleTailSymbols`), le hub
+  non. Piste : publier le ou les symboles responsables dans `details`, le champ qui porte déjà la
+  fraîcheur décomposée. Un silence actionnable vaut mieux qu'un silence mystérieux.
+- [ ] 🟡 **`[HIST-CREUX-EN-MILIEU-DE-SERIE]`** (S, **DÉCOUVERT au panel du 2026-09-17**) — les graphes
+  « Performance comparée » et « Évolution détaillée » peuvent afficher un CREUX à une date
+  intermédiaire (trou > 7 j dans l'historique d'un titre au milieu de la série), que l'utilisateur
+  lit comme une vraie baisse de marché. `omittedKeys` est désormais exposé par `usePortfolioHistory`,
+  mais `HistoryCoverageNote` ne liste que les symboles en QUEUE — jamais les dates amputées en
+  milieu de série. Correctif : une note jumelle qui nomme ces dates.
+- [x] 🟠 **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`** ✅ LIVRÉ le 2026-09-17, dans la version ÉTROITE
+  (dernier point seulement — le remède large aurait réécrit le passé au prix du jour, cf. plus bas).
+  La fraîcheur de la cotation est VÉRIFIÉE (`priceUpdatedAt`, transmis par les DEUX mappers), et un
+  prix substitué ne compte plus comme « vrai prix » : `coverage` baisse, donc l'avertissement
+  « partiellement estimé » peut enfin tirer. ⚠️ La péremption se mesure contre AUJOURD'HUI, jamais
+  contre `t` (le dernier `t` est la FIN du mois courant, donc jusqu'à ~30 j dans le futur — jugé
+  depuis lui, un close d'hier paraissait périmé). Attrapé par un contrôle négatif. ⚠️ **Aucun golden
+  n'a bougé, et c'est EXPLIQUÉ** : mesuré, aucun persona ni fixture du dépôt ne porte
+  `priceUpdatedAt` — zéro rouge mesure l'absence de COUVERTURE, pas l'absence d'effet. D'où une
+  garde qui TRAVERSE jusqu'au mois 0. Détail historique ci-dessous.
+- [ ] 🟠 ~~`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`~~ *(entrée d'origine, conservée pour son historique)* (M, money-critical, **MESURÉ le 2026-09-17**) — le
+  mois 0 de la projection (`reconstructPortfolioHistory` → `deriveStartingBalancesFromHistory` →
+  `liveCSVBalances`) appelle `priceAt(a, t)` **sans `maxStaleDays`**, là où `buildMarketData` passe
+  **7**. C'est le seul écran du dépôt qui accepte une clôture d'un âge QUELCONQUE comme valeur du
+  jour, et il ne retombe sur `currentPrice` que si le titre n'a AUCUN historique. Mesuré sur l'état
+  ⚠️⚠️ **Enrichi par le panel du 2026-09-17** : le défaut n'est pas seulement le prix périmé, c'est
+  que **rien ne le signale**. `priceAt` sans borne rend `histPrice !== null` même pour un close
+  vieux de plusieurs années, donc cette valeur compte dans `valueWithRealPrice` et **`coverage`
+  reste ≈ 1,0** — l'avertissement « partiellement estimé aux prix actuels » (affiché sous
+  `coverage < 0,99`) ne tire JAMAIS. Le cas RARE (aucun historique) est couvert, le cas COURANT (flux
+  de prix interrompu) est traité comme sain. Même défaut dans `reconstructPortfolioHistoryDaily`,
+  qui alimente le patrimoine net du PASSÉ à l'écran.
+  réel : Futur au 17/09 = **231 849 $** de placements contre **245 687 $** de titres au prix live,
+  soit **−13 838 $ (−5,6 %)** au point de départ de toute la projection. ⚠️ Le correctif re-basera
+  des goldens (il déplace le mois 0) : plan-first. ⚠️ Et il faut décider ce que devient un titre
+  périmé SANS quote fraîche — l'omettre au mois 0 rejouerait `[HUB-TOTAL-AMPUTE]` un cran plus bas.
+  ⚠️⚠️ **LE REMÈDE ÉVIDENT EST FAUX POUR LE PASSÉ PROFOND — mesuré le 2026-09-17 EN LE CÂBLANT.**
+  Borner la péremption à TOUTE date ferait retomber un titre à l'historique interrompu sur son
+  `currentPrice`, c'est-à-dire appliquer le prix D'AUJOURD'HUI à une date PASSÉE : la courbe du passé
+  serait réécrite au prix du jour. Pour une date passée, le dernier close connu EST la meilleure
+  estimation — le report indéfini y est JUSTE. Le défaut est donc plus ÉTROIT que ce ticket ne le
+  disait : il porte sur le **DERNIER point** (celui qui sert de mois 0), où un close périmé est
+  préféré à une cotation FRAÎCHE qui existe. C'est là, et seulement là, qu'il faut préférer
+  `currentPrice` — en faisant baisser `coverage` en conséquence, pour que l'avertissement
+  « partiellement estimé » puisse enfin tirer.
+  ⚠️ Et deux philosophies de péremption coexistent dans le dépôt : `buildMarketData` borne à toutes
+  les dates ET OMET au-delà ; la reconstruction reporte indéfiniment. Les aligner est une DÉCISION
+  (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`), pas un nettoyage.
 - [ ] 🟠 **`[FX-AUTORITE-SANS-FRAICHEUR]`** (M, money-critical, **DÉCOUVERT au panel du 2026-09-17**)
   — `fxFaitAutorite(source)` ne lit QUE la provenance : ni `fxRates.lastFetched`, ni
   `fxObservationDate`. Le lot `[FX-OBSERVATION-COHORTE]` vient d'inventer la notion « trop vieux

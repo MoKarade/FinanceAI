@@ -56,7 +56,7 @@ const compute = (
     rows: MarketDataPoint[],
     transactions: Transaction[] = [],
     initialBalances: Record<string, number> = {},
-) => computeNetWorthVariation(rows, transactions, initialBalances, 30, NOW);
+) => computeNetWorthVariation(rows, transactions, initialBalances, new Set<string>(), 30, NOW);
 
 beforeEach(() => {
     logSpy.mockClear();
@@ -125,7 +125,7 @@ describe('computeNetWorthVariation — calcul (liquide + placements)', () => {
                 { date: iso(25, jan), TOTAL_CELI: 500 }, // 16 décembre 2026
                 { date: iso(2, jan), TOTAL_CELI: 500 },  // 8 janvier 2027
             ],
-            [], { Compte: 1000 }, 30, jan,
+            [], { Compte: 1000 }, new Set<string>(), 30, jan,
         );
         expect(res).not.toBeNull();
         expect(res!.diff).toBeCloseTo(0, 6);
@@ -148,7 +148,7 @@ describe('computeNetWorthVariation — spanDays (étendue réelle des données)'
                 { date: iso(15, midnight), TOTAL_CELI: 120 },
                 { date: iso(0, midnight), TOTAL_CELI: 150 },
             ],
-            [], { Compte: 1000 }, 30, midnight,
+            [], { Compte: 1000 }, new Set<string>(), 30, midnight,
         );
         expect(res!.spanDays).toBe(30);
     });
@@ -200,5 +200,47 @@ describe('computeNetWorthVariation — no-fake-data et silent-failure (#601)', (
         // Sans amorçage : rc[NouveauCompte] undefined à la 1re borne → NaN → null. Ici : 0 → 500.
         expect(res).not.toBeNull();
         expect(res!.diff).toBeCloseTo(500, 6);
+    });
+});
+
+describe('[HUB-TOTAL-AMPUTE] une borne qui ne compte pas tous les titres', () => {
+    /**
+     * Même défaut que celui trouvé au hub (« Variation 7 jours +38,2 % ») : un titre absent du
+     * TOTAL à une borne et présent à l'autre produit une variation de 30 jours qui n'est qu'une
+     * DISPARITION. La tuile est la plus visible du bandeau Futur — elle se tait plutôt que de
+     * mentir. Trouvé par le panel APRÈS gate vert et CI verte sur le lot voisin.
+     */
+    const AVEC = [row(10, { TOTAL_CELI: 100 }), row(1, { TOTAL_CELI: 150 })];
+    const cle = (d: string, sym: string) => JSON.stringify([d, sym]);
+
+    const computeAvecInventaire = (omis: Set<string>) =>
+        computeNetWorthVariation(AVEC, [], { Compte: 1000 }, omis, 30, NOW);
+
+    it('ANTI-VACUITÉ : sans inventaire, cette fixture publie bien une variation', () => {
+        // Sans ce cas, les `toBeNull()` ci-dessous seraient satisfaits par une fixture inerte.
+        expect(computeAvecInventaire(new Set())).not.toBeNull();
+    });
+
+    it('borne de FIN amputée → tuile muette + journalisée', () => {
+        expect(computeAvecInventaire(new Set([cle(iso(1), 'XEQT.TO')]))).toBeNull();
+        expect(logSpy).toHaveBeenCalledWith(
+            'useNetWorthVariation:total-ampute',
+            expect.objectContaining({ severity: 'warning' }),
+        );
+    });
+
+    it('borne de DÉBUT amputée → tuile muette', () => {
+        expect(computeAvecInventaire(new Set([cle(iso(10), 'XEQT.TO')]))).toBeNull();
+    });
+
+    it("CONTRÔLE NÉGATIF : une date amputée HORS des bornes ne muselle pas la tuile", () => {
+        // Sans ce cas, la garde pourrait refuser dès que l'inventaire est non vide — elle
+        // musellerait la tuile pour un trou sans rapport avec les deux nombres comparés.
+        expect(computeAvecInventaire(new Set([cle(iso(200), 'XEQT.TO')]))).not.toBeNull();
+        expect(logSpy).not.toHaveBeenCalledWith('useNetWorthVariation:total-ampute', expect.anything());
+    });
+
+    it('clé illisible → refus, jamais « supposé sain »', () => {
+        expect(computeAvecInventaire(new Set(['pas du JSON']))).toBeNull();
     });
 });

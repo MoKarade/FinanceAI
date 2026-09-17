@@ -249,3 +249,40 @@ describe('ClickableEventIcon — clavier (A11Y-FUTUR-MILESTONES-KEYBOARD)', () =
         expect(container.querySelector('g[role="button"]')!.getAttribute('aria-label')).toBe('Événement : Jalon');
     });
 });
+
+describe("[DETTE-INVISIBLE-INFOBULLE] la dette qui manquait à la répartition", () => {
+    // Marc, 2026-09-17 : « je le vois nulle part dans le passé, pas sur l'infobulle ou quoi ».
+    // Son bail auto entre au bilan et le patrimoine net baisse d'autant, sans qu'aucune ligne ne
+    // l'explique : la répartition ne listait QUE des comptes positifs. Fixture = ses vrais chiffres.
+    const SON_POINT = {
+        Liquidites: 29_049, CELI: 15_639, REER: 17_709, NonReg: 198_501,
+        NetWorth: 214_918,
+    } as Partial<ProjectionChartPoint>;
+    // 29 049 + 15 639 + 17 709 + 198 501 = 260 898 ; 260 898 − 214 918 = 45 980.
+    const sansEspaces = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ');
+
+    it('affiche la dette, signée, et les chiffres se recomposent enfin', () => {
+        renderTip(SON_POINT);
+        const ligne = screen.getByText(/Dettes \(hors hypothèque\)/).closest('div')?.parentElement;
+        expect(ligne).toBeTruthy();
+        // ⚠️ `formatCAD` sépare les milliers par une INSÉCABLE : une assertion écrite avec une
+        // espace ordinaire serait vacueuse.
+        expect(sansEspaces(ligne?.textContent)).toContain('45 980');
+        // Le signe dit que le terme se SOUSTRAIT — sans lui, la ligne se lirait comme un actif.
+        expect(sansEspaces(ligne?.textContent)).toContain('−');
+    });
+
+    it("CONTRÔLE NÉGATIF : sans dette, aucune ligne inventée", () => {
+        // Sans ce cas, une ligne affichée EN PERMANENCE (« Dettes : 0 $ ») passerait le test
+        // ci-dessus — et afficherait un zéro crédible là où il n'y a rien, ce que le dépôt refuse.
+        renderTip({ Liquidites: 10_000, NetWorth: 10_000 });
+        expect(screen.queryByText(/Dettes \(hors hypothèque\)/)).toBeNull();
+    });
+
+    it("l'hypothèque n'est PAS recomptée : Immobilier est déjà l'équité nette", () => {
+        // Équité immo 100 000 (déjà nette d'hypothèque) + cash 10 000, patrimoine net 110 000 :
+        // il n'y a RIEN à soustraire. Si la ligne apparaissait, elle compterait l'hypothèque deux fois.
+        renderTip({ Liquidites: 10_000, Immobilier: 100_000, NetWorth: 110_000 });
+        expect(screen.queryByText(/Dettes \(hors hypothèque\)/)).toBeNull();
+    });
+});

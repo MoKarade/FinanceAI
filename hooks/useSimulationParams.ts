@@ -18,7 +18,7 @@ import { usePastPortfolioHistory } from './usePastPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
 import { todayIsoLocal } from '../services/projection/dailyRefine';
 import { appliquerAutoriteCourtier, mentionAutoriteCourtier } from '../services/fintable/autoriteCourtier';
-import { reconcileBrokerBalances } from '../services/fintable/brokerBalances';
+import { tauxCourantsDepuisEtat, reconcileBrokerBalances } from '../services/fintable/brokerBalances';
 import { holdingsCadByRegime } from '../services/fintable/holdingsByRegime';
 
 const EMPTY_ARRAY: never[] = [];
@@ -145,12 +145,21 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
     const brokerBalances = useFinanceStore((s) => s.fintableBrokerBalances);
     const assetsPourRegime = useFinanceStore((s) => s.assets);
     const fxPourRegime = useFinanceStore((s) => s.fxRates);
+    const fxSourcePourRegime = useFinanceStore((s) => s.fxRatesSource);
+    const fxEstimePourRegime = useFinanceStore((s) => s.fxRatesEstimated);
     const autorite = useMemo(
         () => appliquerAutoriteCourtier(
             soldesReconstruits,
-            reconcileBrokerBalances(brokerBalances, holdingsCadByRegime(assetsPourRegime, fxPourRegime)),
+            // [FINTABLE-AUTORITE-PARTOUT étape 0] Reconversion AU TAUX DU JOUR : un compte en
+            // devise étrangère écarté faute de taux à la synchro redevient convertible dès que le
+            // vrai taux est connu, sans attendre la synchro suivante.
+            reconcileBrokerBalances(
+                brokerBalances,
+                holdingsCadByRegime(assetsPourRegime, fxPourRegime),
+                tauxCourantsDepuisEtat({ fxRates: fxPourRegime, fxRatesSource: fxSourcePourRegime, fxRatesEstimated: fxEstimePourRegime }),
+            ),
         ),
-        [soldesReconstruits, brokerBalances, assetsPourRegime, fxPourRegime],
+        [soldesReconstruits, brokerBalances, assetsPourRegime, fxPourRegime, fxSourcePourRegime, fxEstimePourRegime],
     );
     const liveCSVBalances = autorite.soldes;
     const mentionAutorite = useMemo(

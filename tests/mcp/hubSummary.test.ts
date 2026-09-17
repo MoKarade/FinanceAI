@@ -432,3 +432,58 @@ describe('contrat v1.3 — les sections de détail', () => {
         }
     });
 });
+
+describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] la carte dit POURQUOI elle perd ses placements', () => {
+    const MAINTENANT_R = Date.parse('2026-08-19T18:00:00Z');
+
+    const titreR = (jours: number, dernierJour: number, over: Record<string, unknown> = {}) => ({
+        symbol: 'XEQT.TO', quantity: 1, currency: 'CAD' as const, currentPrice: 100 + jours - 1,
+        name: 'XEQT', performance: 0, dateBought: '2026-08-01',
+        purchases: [{ date: '2026-08-01', quantity: 1, price: 100 }],
+        priceHistory: Array.from({ length: jours }, (_, i) => ({
+            date: `2026-08-${String(dernierJour - jours + 1 + i).padStart(2, '0')}`,
+            price: 100 + i,
+        })),
+        accountType: 'NON-ENREG' as const,
+        ...over,
+    });
+
+    /** Compagnon détenu dont l'historique s'arrête tôt : absent du TOTAL de la séance. */
+    const compagnonR = {
+        symbol: 'GBS.PA', quantity: 1, currency: 'CAD' as const, currentPrice: 500,
+        name: 'Compagnon', performance: 0, dateBought: '2026-08-05',
+        purchases: [{ date: '2026-08-05', quantity: 1, price: 500 }],
+        priceHistory: [{ date: '2026-08-05', price: 500 }, { date: '2026-08-06', price: 500 }],
+        accountType: 'NON-ENREG' as const,
+    };
+
+    it('total amputé : la section existe, NOMME le titre, et aucune ligne de placements ne sort', () => {
+        // C'est la situation réelle de Marc : le hub publiait 217 767 $ au lieu de 245 687 $. Depuis
+        // le refus du total amputé, la carte se TAIT — et sans cette section, ce silence serait
+        // indiscernable d'une panne.
+        const s = buildHubSummary({
+            ...personaState(),
+            assets: [titreR(14, 18), compagnonR],
+            fxRates: { USD: 1.35, EUR: 1.45 },
+        } as never, MAINTENANT_R);
+
+        expect(s.metrics.some((m) => m.label.startsWith('Placements'))).toBe(false);
+        const section = (s.details ?? []).find((d) => d.title === 'Pourquoi les placements manquent');
+        expect(section).toBeTruthy();
+        expect(String(section?.items[0]?.value)).toContain('GBS.PA');
+        expect(section?.items[0]?.severity).toBe('warn');
+    });
+
+    it("CONTRÔLE NÉGATIF : quand les placements sortent, la section n'existe PAS", () => {
+        // Sans ce cas, une section publiée EN PERMANENCE passerait le test ci-dessus — et le hub
+        // expliquerait une absence qui n'existe pas.
+        const s = buildHubSummary({
+            ...personaState(),
+            assets: [titreR(14, 18)],
+            fxRates: { USD: 1.35, EUR: 1.45 },
+        } as never, MAINTENANT_R);
+
+        expect(s.metrics.some((m) => m.label.startsWith('Placements'))).toBe(true);
+        expect((s.details ?? []).some((d) => d.title === 'Pourquoi les placements manquent')).toBe(false);
+    });
+});

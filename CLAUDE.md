@@ -2,7 +2,7 @@
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
 assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 112 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation). Tout en français.
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche, +6 cause du refus au hub). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1079,6 +1079,45 @@ n'est pas réécrire un récit.
   pas celui de Marc — la bonne question est la plus étroite qui départage (« le texte `FXUSDCAD`
   apparaît-il ? »), pas « envoie-moi tout »
   (`UN-INDEX-SUR-UNE-LISTE-GROUPEE-PAR-COHORTE-NE-DESIGNE-RIEN`).
+
+- ⚠️⚠️ **Un INVENTAIRE n'est une protection que pour qui le LIT** (2026-09-17) : `buildMarketData`
+  laisse tomber un titre détenu dont la queue de chandelles est périmée sans quote fraîche — le
+  `TOTAL` reste fini et plausible, simplement AMPUTÉ. L'inventaire qui le dit (`staleTailSymbols`)
+  existait depuis un finding CRITIQUE, avec son commentaire ; `computePortfolioSessionMetrics`,
+  écrit plus tard, faisait `const { rows } = buildMarketData(…)`. Mesuré sur l'état réel : hubperso
+  publiait **217 767 $** contre **245 687 $** de titres (−27 920 $, −11,4 %), sur la MÊME carte
+  qu'une valeur nette qui, elle, les comptait (227 388 − 28 870 + 47 169 = 245 687 — **quand deux
+  chiffres d'une carte ne se recomposent pas, c'est une mesure**). ⚠️ Et une **DISPARITION se lit
+  comme une variation** : « Variation 7 jours **+38,2 %** » = un titre absent de la borne passée,
+  présent à la borne récente. Une variation ne se compare qu'entre deux totaux portant les MÊMES
+  membres. ⚠️ L'inventaire existant ne COUVRAIT pas le besoin (`staleTailSymbols` n'est peuplé qu'à
+  `lastAxisDate`, jamais à la borne passée) : avant de brancher une liste, vérifier sa portée, pas
+  seulement son existence. ⚠️ Deux chemins vers le même effet (queue périmée, valeur non finie) : en
+  tracer un seul laisse le compteur à zéro sur l'autre. ⚠️ Remède = le REFUS, pas un meilleur nombre
+  ⚠️⚠️ **Et le panel a trouvé, APRÈS gate vert ET CI verte, que mon inventaire en couvrait DEUX
+  chemins sur TROIS** — pendant que mon message de commit affirmait « les DEUX chemins sont
+  tracés ». Le manquant est le plus discret : un titre SANS historique n'est admis au TOTAL que
+  s'il est détenu AUJOURD'HUI, donc un titre VENDU depuis contribue zéro à **tout son passé**, y
+  compris les dates où il était détenu. Écrire « les deux chemins » au lieu de les COMPTER est la
+  même faute que l'inventaire corrige. ⚠️ Le panel a aussi trouvé la même amputation chez un
+  consommateur vivant et VISIBLE : la tuile « Variation 30 j » du bandeau Futur
+  (`useNetWorthVariation`) sommait les buckets `TOTAL_*` aux deux bornes sans jamais lire
+  l'inventaire — la dépendance a donc été rendue **REQUISE** et placée avant les paramètres à
+  défaut, pour que le compilateur énumère les sites au lieu de laisser la production reprendre la
+  version muette (`UN-INVENTAIRE-N-EST-UNE-PROTECTION-QUE-POUR-QUI-LE-LIT`).
+
+- ⚠️ **Une répartition qui ne liste que les termes POSITIFS ne recompose pas le total qu'elle
+  explique** (2026-09-17, signalé par Marc) : la répartition « Par compte » de l'infobulle Futur
+  n'avait aucune ligne de DETTE — 260 898 $ d'actifs affichés pour 214 918 $ de valeur nette, et
+  rien pour les 45 980 $ manquants. Marc : « je le vois nulle part dans le passé, pas sur l'infobulle
+  ou quoi ». **Troisième instance de la même famille dans la même journée** (carte du hub, tuile
+  « Variation 30 j », infobulle) : *quand deux chiffres d'un même écran ne se recomposent pas, c'est
+  une mesure, pas une impression* — faire l'arithmétique de l'écran avant de chercher ailleurs.
+  ⚠️ La dérivation existait déjà dans le « Détail complet », née d'un bug de Marc en 2026-06 : elle a
+  été EXTRAITE et partagée, jamais recopiée. ⚠️ Et elle se dérive par SOUSTRACTION
+  (`Σ actifs − NetWorth`), jamais du champ moteur `DettesNonImmo`, qui n'est pas publié sur toutes
+  les courbes — l'identité, elle, tient sur tout point
+  (`UNE-REPARTITION-QUI-NE-LISTE-QUE-LES-TERMES-POSITIFS-NE-RECOMPOSE-PAS-SON-TOTAL`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

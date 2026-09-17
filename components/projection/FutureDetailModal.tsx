@@ -11,7 +11,7 @@ import { transactionsOnDay } from '../../services/history/dayTransactions';
 import { type DayVariationResult } from '../../services/history/dayVariation';
 import { monthCategories } from '../../services/history/monthCategories';
 import type { Transaction } from '../../types';
-import { ACCOUNTS, type AccountDef } from './futureDetail/comptes';
+import { ACCOUNTS, detteReductrice, type AccountDef } from './futureDetail/comptes';
 import { DrillDownCompte } from './futureDetail/DrillDownCompte';
 import { SectionCategoriesMois } from './futureDetail/SectionCategoriesMois';
 import { SectionVariationJour } from './futureDetail/SectionVariationJour';
@@ -174,8 +174,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     // « Immobilier » est déjà l'équité NETTE (valeur − hypothèque), donc l'hypothèque y est déjà
     // déduite. Cette quantité est RECONSTRUCTION-FIDÈLE : NetWorth = Σ(actifs) − reducingDebt, toujours
     // (sans cette ligne, un patrimoine net NÉGATIF n'était expliqué par AUCUN élément — bug Marc 2026-06-16).
+    // [DETTE-INVISIBLE-INFOBULLE] Dérivation PARTAGÉE avec l'infobulle (`detteReductrice`) : la
+    // recopier ici et là donnerait deux dérivations d'une même vérité.
     const shownAssetsSum = ACCOUNTS.reduce((s, a) => s + (Number(point[a.key]) || 0), 0);
-    const reducingDebt = Math.max(0, shownAssetsSum - (Number(point.NetWorth) || 0));
+    const reducingDebt = detteReductrice(point as unknown as Record<string, unknown>, ACCOUNTS.map((a) => a.key));
     const liquidDebt = Number(point.LiquidDebt) || 0;          // part « découvert » (liquidité à sec)
     const otherReducingDebt = Math.max(0, reducingDebt - liquidDebt); // prêts/cartes + HELOC
 

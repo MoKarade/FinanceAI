@@ -37,6 +37,7 @@ import { useMemo } from 'react';
 import type { MarketDataPoint } from '../services/finance';
 import type { Transaction } from '../types';
 import { usePortfolioHistory } from './usePortfolioHistory';
+import { datesAmputeesDepuis } from '../services/history/buildMarketData';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { logErrorThrottled } from '../services/errorLogger';
 
@@ -70,6 +71,13 @@ export function computeNetWorthVariation(
     rows: ReadonlyArray<MarketDataPoint>,
     transactions: ReadonlyArray<Transaction>,
     initialBalances: Record<string, number>,
+    /**
+     * [HUB-TOTAL-AMPUTE] Inventaire des `[date, symbole]` absents du TOTAL (`buildMarketData`).
+     *
+     * ⚠️ REQUIS, et placé AVANT les paramètres à défaut : optionnel, la production aurait pu
+     * l'oublier et reprendre la version muette en silence. Ici le compilateur énumère chaque site.
+     */
+    omittedKeys: ReadonlySet<string>,
     windowDays: number = 30,
     now: Date = new Date(),
 ): NetWorthVariation | null {
@@ -94,6 +102,8 @@ export function computeNetWorthVariation(
     let txIdx = 0;
     const totals: number[] = [];
     let firstUsedMs = 0;
+    let firstUsedDate = '';
+    let lastUsedDate = '';
     let lastUsedMs = 0;
     for (const row of rows) {
         const rowDate = new Date(row.date);
@@ -123,13 +133,29 @@ export function computeNetWorthVariation(
             + (Number(row['TOTAL_REER']) || 0)
             + (Number(row['TOTAL_NON-ENREG']) || 0)
             + (Number(row['TOTAL_CRYPTO']) || 0);
-        if (totals.length === 0) firstUsedMs = rowDate.getTime();
+        if (totals.length === 0) { firstUsedMs = rowDate.getTime(); firstUsedDate = String(row.date ?? ''); }
         lastUsedMs = rowDate.getTime();
+        lastUsedDate = String(row.date ?? '');
         totals.push(total);
     }
 
     // Couverture insuffisante : état NORMAL (portefeuille jeune) → null silencieux.
     if (totals.length < 2) return null;
+
+    // [HUB-TOTAL-AMPUTE — panel] Une BORNE amputée fabrique une variation à partir d'une
+    // DISPARITION. Même défaut que celui trouvé au hub (« Variation 7 jours +38,2 % ») : un titre
+    // absent du TOTAL à une borne et présent à l'autre produit un gain ou une perte de 30 jours
+    // plausible, affiché dans la tuile la plus visible du bandeau Futur, sans aucun signal.
+    // Une variation ne se compare qu'entre deux totaux portant les MÊMES titres.
+    const datesAmputees = datesAmputeesDepuis(omittedKeys);
+    if (datesAmputees === null || datesAmputees.has(firstUsedDate) || datesAmputees.has(lastUsedDate)) {
+        logErrorThrottled('useNetWorthVariation:total-ampute', {
+            source: 'ui', severity: 'warning',
+            message: 'Variation liquide + placements : une borne ne compte pas tous les titres détenus — tuile muette plutôt que variation fantôme',
+            context: { cleIllisible: datesAmputees === null, debut: firstUsedDate, fin: lastUsedDate },
+        });
+        return null;
+    }
     const start = totals[0];
     const end = totals[totals.length - 1];
     // Borne non finie : donnée CORROMPUE (solde initial non fini) → null LOGGUÉ, un retour
@@ -154,13 +180,13 @@ export const VARIATION_WINDOW_DAYS = 30;
 /** Fenêtre FIXE de 30 jours (tuile du bandeau KPI). Sources : store + usePortfolioHistory —
  *  les MÊMES que l'ex-Accueil (l'AppState de App.tsx est une vue du store, pas une copie). */
 export function useNetWorthVariation(): NetWorthVariation | null {
-    const { history } = usePortfolioHistory();
+    const { history, omittedKeys } = usePortfolioHistory();
     const transactions = useFinanceStore(s => s.transactions);
     const initialBalances = useFinanceStore(s => s.initialBalances);
 
     return useMemo(
         () => computeNetWorthVariation(
-            history, transactions, initialBalances as Record<string, number>, VARIATION_WINDOW_DAYS),
-        [history, transactions, initialBalances],
+            history, transactions, initialBalances as Record<string, number>, omittedKeys, VARIATION_WINDOW_DAYS),
+        [history, transactions, initialBalances, omittedKeys],
     );
 }

@@ -6,6 +6,105 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (quand la carte du hub se tait, elle dit pourquoi)
+
+- **Suite directe du correctif de ce matin.** Depuis que le hub refuse de publier un total de
+  placements incomplet, ta carte peut perdre ses trois lignes — et jusqu'ici, sans un mot. Une carte
+  qui se vide sans explication ressemble à une panne.
+- **Ce qui change** : une section **« Pourquoi les placements manquent »** apparaît, avec la raison
+  et, quand il y en a, **le nom du ou des titres** en cause. Quatre cas distincts : des titres hors
+  du total, une clôture de référence trop ancienne, pas assez de données de cours, ou un inventaire
+  illisible.
+- **Pourquoi c'était muet** : la fonction qui calcule ces lignes répondait « rien » pour **cinq
+  situations différentes**. Le hub ne pouvait donc rien dire d'autre que rien. Elle répond désormais
+  avec sa cause.
+- ⚠️ On publie le **fait** et les **noms de titres**, jamais un montant : s'il y avait un montant
+  digne de foi à publier, il n'y aurait pas de refus.
+
+---
+
+## [unreleased] — 2026-09-17 (ta projection ne démarre plus sur des cours périmés)
+
+- **Ton onglet Futur partait de 231 849 $ quand tes titres en valaient 245 687 $** — **13 838 $**
+  d'écart, au point de départ de TOUTES tes projections. La cause : pour le point « aujourd'hui »,
+  l'app préférait la dernière **clôture enregistrée** à la **cotation du jour**, même quand cette
+  clôture avait des semaines et que la cotation était fraîche.
+- **Ce qui change** : au dernier point seulement, une clôture de plus de 7 jours cède la place à la
+  cotation du jour — **à condition que celle-ci soit vraiment fraîche**, ce qui est désormais
+  vérifié et non supposé.
+- ⚠️ **Ton passé n'est pas réécrit**, et c'est le point le plus important. La correction « évidente »
+  aurait appliqué le prix d'aujourd'hui à des dates passées. Pour une date passée, le dernier cours
+  connu reste la bonne estimation. Un test verrouille ça.
+- **Effet de bord utile** : l'avertissement « partiellement estimé aux prix actuels » pouvait ne
+  jamais s'afficher, parce qu'un cours vieux de plusieurs années comptait comme un « vrai » cours.
+  Il se déclenche maintenant quand il doit.
+
+---
+
+## [unreleased] — 2026-09-17 (la dette manquait à l'infobulle)
+
+- **Tu as demandé où était ta dette auto dans le passé : elle n'était nulle part.** La répartition
+  « Par compte » de l'infobulle ne listait que des comptes **positifs**. Quand ton bail entre au
+  bilan, ta valeur nette baisse de 47 169 $ — et aucune ligne ne l'expliquait.
+- **Concrètement** : sur ton point du 17/09, l'infobulle montrait 29 049 + 15 639 + 17 709 +
+  198 501 = **260 898 $** d'actifs pour une valeur nette de **214 918 $**. Impossible de retrouver
+  les 45 980 $ qui manquaient.
+- **Ce qui change** : une ligne **« Dettes (hors hypothèque) »** apparaît, en rouge et signée, et les
+  chiffres se recomposent enfin. Elle n'apparaît que s'il y a vraiment une dette — pas de « 0 $ »
+  affiché pour rien.
+- ⚠️ **L'hypothèque n'y est pas, et c'est voulu** : la ligne « Immobilier » est déjà ton équité
+  NETTE. L'ajouter la compterait deux fois.
+- Le « Détail complet » le disait déjà — mais à un clic de là, et tu regardais l'infobulle.
+
+---
+
+## [unreleased] — 2026-09-17 (ton compte en dollars US rentre enfin dans le total)
+
+- **Le blocage était dans la conversion, et il était figé.** Ton solde courtier était converti en
+  dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte Disnat en USD a
+  été synchronisé pendant que les taux étaient au repli : il a donc été mis de côté « faute de taux
+  fiable », et il le restait **jusqu'à la synchro suivante**, même une fois les vrais taux obtenus.
+  Résultat : environ **100 872 $** hors du panier, et le total de ton courtier refusé en entier.
+- **Ce qui change** : l'app enregistre désormais le montant dans sa **devise d'origine** à côté du
+  montant converti, et refait la conversion **au taux du jour** à chaque lecture. Un compte écarté
+  faute de taux redevient utilisable dès que le bon taux arrive — sans rien attendre.
+- ⚠️ Un taux **estimé** (le repli écrit en dur dans l'app) n'a toujours pas le droit de servir de
+  total de compte. Tes taux **saisis à la main**, eux, l'ont : c'est le recours prévu quand la Banque
+  du Canada ne répond pas, et le refuser aurait supprimé ce recours.
+- C'est l'**étape 0** du chantier « une seule valeur partout, celle de Fintable » que tu as demandé.
+  Sans elle, brancher Fintable en autorité aurait retiré ces 100 872 $ de tous tes écrans.
+
+---
+
+## [unreleased] — 2026-09-17 (tes trois montants ne parlaient pas des mêmes titres)
+
+- **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit **245 687 $**,
+  ton courtier Fintable **242 287 $** (une fois le compte Disnat converti — il est en **dollars US**,
+  Fintable écrit `$` et non `C$`), l'onglet Futur **231 849 $**, et hubperso **217 767 $**. Quatre
+  chiffres pour une seule question.
+- **Le bon chiffre est celui de l'Accueil** : il tombe à 1,4 % du total réel de ton courtier. Les
+  autres sont en retard, pour deux raisons différentes.
+- **Celle de hubperso est réparée ici.** Quand les cours d'un titre cessent d'arriver, l'app le
+  retirait purement et simplement du total sans le dire — et le total restait un nombre crédible.
+  Il te manquait **27 920 $**, sur la même carte qu'une valeur nette qui, elle, les comptait. C'est
+  aussi ce qui fabriquait le « **+38,2 % sur 7 jours** » : pas un gain, un titre qui réapparaît.
+- **Ce qui change à l'écran** : tant qu'un titre manque à l'appel, la carte du hub **n'affiche plus
+  du tout** ses trois lignes de placements, au lieu d'afficher un montant faux. L'app, elle, te
+  nomme les titres concernés sur l'écran Investissements. Mieux vaut une case vide qu'un chiffre
+  auquel tu ne peux pas te fier.
+- **Le panel a trouvé le même défaut dans l'app, pas seulement au hub.** La tuile « Variation 30 j »
+  du bandeau Futur comparait elle aussi deux totaux qui ne comptaient pas les mêmes titres : un titre
+  qui disparaît puis réapparaît y fabriquait un gain ou une perte de 30 jours, sans le moindre
+  signal. Elle se tait désormais plutôt que de mentir.
+- **Et mon premier correctif ne couvrait que deux cas sur trois.** Le troisième est le plus
+  discret : un titre sans historique de cours n'entrait dans le total que s'il était détenu
+  *aujourd'hui* — donc un titre que tu as vendu comptait pour zéro sur **tout son passé**.
+- ⚠️ **Ce qui reste** : l'écart du Futur (**−13 838 $**) a une autre cause — cet écran accepte une
+  clôture de n'importe quel âge comme valeur du jour. C'est noté, chiffré, et ça touche le point de
+  départ de toute ta projection : je te le présenterai avant d'y toucher.
+
+---
+
 ## [unreleased] — 2026-09-17 (la cause était chez nous : on lisait la mauvaise ligne de la Banque du Canada)
 
 - **Tu as trouvé la cause en deux clics.** Le diagnostic disait « au moins une des deux séries était

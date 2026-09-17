@@ -22,6 +22,20 @@ import type { Asset } from '../../types';
  * défaut, pour Recharts) ferait de « 7 jours » un « 7 + step jours » en silence.
  */
 
+/**
+ * [HUB-REFUS-4-SANS-DIAGNOSTIC] `computePortfolioSessionMetrics` rend désormais une UNION
+ * (`ok` + métriques, ou `refus` + sa cause) : elle répondait `null` pour cinq situations
+ * différentes, donc le hub ne pouvait rien dire d'autre que rien.
+ *
+ * Ce helper rend « les métriques ou `null` » — la sémantique d'AVANT — pour que les cas écrits
+ * avant l'union continuent de tester exactement ce qu'ils testaient. Les cas qui portent sur la
+ * CAUSE, eux, lisent l'union directement (describe dédié, plus bas).
+ */
+const mesurer = (...args: Parameters<typeof computePortfolioSessionMetrics>) => {
+    const r = computePortfolioSessionMetrics(...args);
+    return r.statut === 'ok' ? r.metriques : null;
+};
+
 const FX = { USD: 1.35, EUR: 1.45 };
 
 /** Horloge FIXE : sans elle, « périmé » dépendrait du jour où la CI tourne. */
@@ -47,7 +61,7 @@ const SERIE_QUOTIDIENNE = Array.from({ length: 14 }, (_, i) => ({
 
 describe('[HUB-PLACEMENTS-SEANCE] ce qui est publiable', () => {
     it('séance et semaine : montant $ et % viennent des MÊMES deux bornes', () => {
-        const m = computePortfolioSessionMetrics([titre(SERIE_QUOTIDIENNE)], FX, { nowMs: MAINTENANT });
+        const m = mesurer([titre(SERIE_QUOTIDIENNE)], FX, { nowMs: MAINTENANT });
         expect(m).not.toBeNull();
 
         expect(m!.dateSeance).toBe('2026-08-18');
@@ -74,7 +88,7 @@ describe('[HUB-PLACEMENTS-SEANCE] ce qui est publiable', () => {
 
     it('une baisse est rendue NÉGATIVE des deux côtés (pas de valeur absolue)', () => {
         const baisse = SERIE_QUOTIDIENNE.map((p, i) => ({ ...p, price: 120 - i }));
-        const m = computePortfolioSessionMetrics([titre(baisse)], FX, { nowMs: MAINTENANT });
+        const m = mesurer([titre(baisse)], FX, { nowMs: MAINTENANT });
         expect(m!.seance!.montantCad).toBeLessThan(0);
         expect(m!.seance!.pct).toBeLessThan(0);
         expect(m!.semaine!.montantCad).toBeLessThan(0);
@@ -90,12 +104,12 @@ describe('[HUB-PLACEMENTS-SEANCE] ce qui est publiable', () => {
 
 describe('[HUB-PLACEMENTS-SEANCE] les REFUS — c’est là que se joue le no-fake-data', () => {
     it('REFUS 1 — aucun actif, ou un seul point daté : null, jamais 0', () => {
-        expect(computePortfolioSessionMetrics([], FX, { nowMs: MAINTENANT })).toBeNull();
-        expect(computePortfolioSessionMetrics(undefined, FX, { nowMs: MAINTENANT })).toBeNull();
+        expect(mesurer([], FX, { nowMs: MAINTENANT })).toBeNull();
+        expect(mesurer(undefined, FX, { nowMs: MAINTENANT })).toBeNull();
 
         // Un seul point : il y a une VALEUR, il n'y a pas de variation. Publier « 0 % » dirait
         // « journée stable » alors qu'on n'a simplement rien à comparer.
-        const unSeulPoint = computePortfolioSessionMetrics(
+        const unSeulPoint = mesurer(
             [titre([{ date: jour('2026-08-18'), price: 100 }])], FX, { nowMs: MAINTENANT },
         );
         expect(unSeulPoint).toBeNull();
@@ -108,7 +122,7 @@ describe('[HUB-PLACEMENTS-SEANCE] les REFUS — c’est là que se joue le no-fa
         const vieille = Array.from({ length: 5 }, (_, i) => ({
             date: `2026-08-${String(4 + i).padStart(2, '0')}`, price: 100 + i,
         })); // dernier point : 2026-08-08, soit 11 jours avant le 19
-        expect(computePortfolioSessionMetrics([titre(vieille)], FX, { nowMs: MAINTENANT })).toBeNull();
+        expect(mesurer([titre(vieille)], FX, { nowMs: MAINTENANT })).toBeNull();
 
         // La FRONTIÈRE, des deux côtés — sans ça, le seuil pourrait être décalé d'un jour sans
         // qu'aucun test ne bronche. `MAX_STALE_DAYS` = 3 jours civils.
@@ -120,10 +134,10 @@ describe('[HUB-PLACEMENTS-SEANCE] les REFUS — c’est là que se joue le no-fa
             }));
         };
         // 2026-08-16 → 3 jours civils avant le 19 : ACCEPTÉ (pile au seuil).
-        expect(computePortfolioSessionMetrics([titre(serieFinissantLe('2026-08-16'))], FX, { nowMs: MAINTENANT }))
+        expect(mesurer([titre(serieFinissantLe('2026-08-16'))], FX, { nowMs: MAINTENANT }))
             .not.toBeNull();
         // 2026-08-15 → 4 jours : REFUSÉ.
-        expect(computePortfolioSessionMetrics([titre(serieFinissantLe('2026-08-15'))], FX, { nowMs: MAINTENANT }))
+        expect(mesurer([titre(serieFinissantLe('2026-08-15'))], FX, { nowMs: MAINTENANT }))
             .toBeNull();
         expect(MAX_STALE_DAYS).toBe(3);
     });
@@ -150,7 +164,7 @@ describe('[HUB-PLACEMENTS-SEANCE] les REFUS — c’est là que se joue le no-fa
             dateBought: '2026-09-15',
         });
 
-        const m = computePortfolioSessionMetrics([FIGE, AXE], FX, { nowMs: MAINTENANT });
+        const m = mesurer([FIGE, AXE], FX, { nowMs: MAINTENANT });
 
         // Non-vacuité en trois temps : la série va bien jusqu'au 18 (donc le refus « périmé » n'a
         // pas frappé), le total est non nul (FIGE compte vraiment), et AXE ne porte pas de colonne.
@@ -173,7 +187,7 @@ describe('[HUB-PLACEMENTS-SEANCE] les REFUS — c’est là que se joue le no-fa
         );
         const REEL = titre(SERIE_QUOTIDIENNE, { symbol: 'REEL' });
 
-        const m = computePortfolioSessionMetrics([FIGE, REEL], FX, { nowMs: MAINTENANT });
+        const m = mesurer([FIGE, REEL], FX, { nowMs: MAINTENANT });
         expect(m).not.toBeNull();
         expect(m!.seance).not.toBeNull();
         expect(m!.seance!.montantCad).toBe(1);   // REEL : 113 − 112 ; FIGE est plat des deux côtés
@@ -187,7 +201,7 @@ describe('[HUB-PLACEMENTS-SEANCE] les REFUS — c’est là que se joue le no-fa
             { date: '2026-08-17', price: 100 },
             { date: '2026-08-18', price: 104 },
         ];
-        const m = computePortfolioSessionMetrics([titre(courte)], FX, { nowMs: MAINTENANT });
+        const m = mesurer([titre(courte)], FX, { nowMs: MAINTENANT });
         expect(m).not.toBeNull();
         expect(m!.seance).not.toBeNull();
         expect(m!.seance!.montantCad).toBe(4);
@@ -216,7 +230,7 @@ describe('[HUB-PLACEMENTS-SEANCE] le piège de couplage : la décimation', () =>
             date: new Date(t0 - (NB_JOURS - 1 - i) * 86_400_000).toISOString().slice(0, 10),
             price: 100 + i * 0.01,
         }));
-        const m = computePortfolioSessionMetrics([titre(longue)], FX, { nowMs: MAINTENANT });
+        const m = mesurer([titre(longue)], FX, { nowMs: MAINTENANT });
 
         expect(m).not.toBeNull();
         expect(m!.dateSeance).toBe('2026-08-18');
@@ -231,4 +245,152 @@ describe('[HUB-PLACEMENTS-SEANCE] le piège de couplage : la décimation', () =>
         expect(m!.semaine!.depuis, 'la borne 7 j n’est pas à 7 jours : la série a été décimée')
             .toBe('2026-08-11');
     });
+});
+
+describe('[HUB-TOTAL-AMPUTE] refus 4 — un titre DÉTENU absent du TOTAL', () => {
+    /**
+     * Le défaut RÉEL, mesuré le 2026-09-17 sur l'état de Marc : hubperso publiait
+     * « Placements 217 767 $ » quand la somme des titres valait 245 687 $ (−27 920 $, −11,4 %), et
+     * « Variation 7 jours +38,2 % » — un titre absent du total sept jours plus tôt, présent
+     * aujourd'hui, se lit comme un gain de 60 229 $.
+     *
+     * Mécanisme : `buildMarketData` LAISSE TOMBER un titre dont la queue de candles est périmée
+     * (> 7 j) sans quote fraîche pour la raccorder. Le `TOTAL` reste fini et plausible — donc aucun
+     * des trois refus existants ne le voit. Ils jugent la fraîcheur et le figement, jamais le
+     * PÉRIMÈTRE (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
+     *
+     * ⚠️ Le compagnon porte `priceUpdatedAt` ABSENT : c'est ce qui rend sa quote non fraîche, donc
+     * ce qui déclenche l'omission plutôt que le raccord au prix courant (refus 3). Les deux chemins
+     * se ressemblent dans le code et n'ont pas le même remède — si on lui donnait une quote fraîche,
+     * cette fixture testerait le refus 3 sans le dire.
+     */
+    const compagnon = (history: Array<{ date: string; price: number }>): Asset => ({
+        symbol: 'GBS.PA', quantity: 1, currency: 'CAD', currentPrice: 500,
+        name: 'Compagnon', performance: 0, dateBought: history[0].date,
+        purchases: [{ date: history[0].date, quantity: 1, price: history[0].price }],
+        priceHistory: history,
+        accountType: 'NON-ENREG',
+    } as Asset);
+
+    const QUOTIDIEN_500 = Array.from({ length: 14 }, (_, i) => ({
+        date: `2026-08-${String(5 + i).padStart(2, '0')}`,
+        price: 500,
+    }));
+
+    it("séance amputée → on ne publie RIEN (ni valeur, ni variation)", () => {
+        // Historique du compagnon arrêté au 2026-08-06 : au 08-18 il a 12 jours de retard (> 7),
+        // aucune quote fraîche → absent du TOTAL de la séance.
+        const m = mesurer(
+            [titre(SERIE_QUOTIDIENNE), compagnon(QUOTIDIEN_500.slice(0, 2))],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(m).toBeNull();
+    });
+
+    it("ANTI-VACUITÉ : la MÊME fixture, historique complet, publie bien quelque chose", () => {
+        // Sans ce cas, le `toBeNull()` ci-dessus serait satisfait par n'importe quelle fixture
+        // cassée — il prouverait « rien ne sort », pas « le refus 4 a tiré ».
+        const m = mesurer(
+            [titre(SERIE_QUOTIDIENNE), compagnon(QUOTIDIEN_500)],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(m).not.toBeNull();
+        // 113 (XEQT) + 500 (compagnon) : le compagnon COMPTE, c'est tout l'enjeu.
+        expect(m!.valeurCad).toBe(613);
+        expect(m!.semaine).not.toBeNull();
+    });
+
+    it("borne PASSÉE amputée → la semaine est refusée, la séance survit", () => {
+        // Trou du 08-02 au 08-15. Au 08-11 (borne des 7 jours) le dernier close du compagnon a
+        // 9 jours → omis. Au 08-17 et au 08-18 il a ses closes → présent.
+        // C'est exactement la forme du « +38,2 % » : une DISPARITION lue comme une variation.
+        const troue = [
+            { date: '2026-08-02', price: 500 },
+            { date: '2026-08-15', price: 500 },
+            { date: '2026-08-16', price: 500 },
+            { date: '2026-08-17', price: 500 },
+            { date: '2026-08-18', price: 500 },
+        ];
+        const m = mesurer(
+            [titre(SERIE_QUOTIDIENNE), compagnon(troue)],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(m).not.toBeNull();
+        expect(m!.valeurCad).toBe(613);
+        // La séance (08-17 → 08-18) porte les deux titres aux deux bornes : elle reste publiable.
+        expect(m!.seance).not.toBeNull();
+        // La semaine compare 08-11 (compagnon ABSENT) à 08-18 (compagnon PRÉSENT) : refusée.
+        expect(m!.semaine).toBeNull();
+    });
+});
+
+describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] le refus porte sa CAUSE', () => {
+    /**
+     * Avant ce lot, `null` recouvrait CINQ situations : le hub perdait ses trois lignes de
+     * placements sans pouvoir dire pourquoi, et un silence inexplicable se lit comme une panne.
+     * C'était une conséquence DIRECTE du refus du total amputé livré le matin même — sur l'état
+     * réel de Marc, un titre était bel et bien écarté (217 767 $ publiés contre 245 687 $).
+     */
+    const compagnon = (history: Array<{ date: string; price: number }>): Asset => ({
+        symbol: 'GBS.PA', quantity: 1, currency: 'CAD', currentPrice: 500,
+        name: 'Compagnon', performance: 0, dateBought: history[0].date,
+        purchases: [{ date: history[0].date, quantity: 1, price: history[0].price }],
+        priceHistory: history,
+        accountType: 'NON-ENREG',
+    } as Asset);
+
+    it('total amputé → la cause ET les titres fautifs, nommés', () => {
+        const r = computePortfolioSessionMetrics(
+            [titre(SERIE_QUOTIDIENNE), compagnon([{ date: '2026-08-05', price: 500 }, { date: '2026-08-06', price: 500 }])],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(r.statut).toBe('refus');
+        if (r.statut !== 'refus') throw new Error('refus attendu');
+        expect(r.refus.raison).toBe('total-ampute');
+        if (r.refus.raison !== 'total-ampute') throw new Error('total-ampute attendu');
+        // NOMMER le coupable est tout l'objet du lot : « la carte est vide » sans coupable est
+        // indiscernable d'une panne.
+        expect(r.refus.symboles).toContain('GBS.PA');
+        // ⚠️ CONTRÔLE : le titre SAIN n'est pas accusé — un diagnostic qui accuse tout le monde
+        // n'en est pas un.
+        expect(r.refus.symboles).not.toContain('XEQT.TO');
+        expect(r.refus.dateSeance).toBe('2026-08-18');
+    });
+
+    it('référence périmée → la cause, la date et son ÂGE', () => {
+        // La série s'arrête le 2026-08-18 ; on regarde bien plus tard.
+        const r = computePortfolioSessionMetrics([titre(SERIE_QUOTIDIENNE)], FX, {
+            nowMs: Date.parse('2026-09-01T18:00:00Z'),
+        });
+        expect(r.statut).toBe('refus');
+        if (r.statut !== 'refus') throw new Error('refus attendu');
+        expect(r.refus.raison).toBe('reference-perimee');
+        if (r.refus.raison !== 'reference-perimee') throw new Error('reference-perimee attendu');
+        expect(r.refus.dateSeance).toBe('2026-08-18');
+        expect(r.refus.ageJours).toBe(14);
+    });
+
+    it('série trop courte → une cause DISTINCTE des deux autres', () => {
+        // Sans cette distinction, le hub dirait « des titres manquent » sur un portefeuille neuf —
+        // un diagnostic faux envoie corriger la mauvaise chose.
+        const r = computePortfolioSessionMetrics([], FX, { nowMs: MAINTENANT });
+        expect(r.statut).toBe('refus');
+        if (r.statut !== 'refus') throw new Error('refus attendu');
+        expect(r.refus.raison).toBe('serie-inexploitable');
+    });
+
+    it("ANTI-VACUITÉ : un portefeuille sain rend bien `ok`, jamais un refus", () => {
+        // Sans ce cas, une fonction qui refuserait TOUJOURS passerait les trois tests ci-dessus.
+        const r = computePortfolioSessionMetrics([titre(SERIE_QUOTIDIENNE)], FX, { nowMs: MAINTENANT });
+        expect(r.statut).toBe('ok');
+    });
+
+    // ⚠️ `inventaire-illisible` n'a PAS de test : `omittedKeys` est construit par
+    // `buildMarketData` avec `encodeOmittedKey`, donc une clé illisible est structurellement
+    // inatteignable depuis l'extérieur. La branche existe comme filet pour un futur changement de
+    // format — l'écrire ici vaut mieux que fabriquer une fixture absurde qui n'exercerait rien.
 });

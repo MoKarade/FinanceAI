@@ -283,3 +283,67 @@ describe('historyKeyMatchesSymbol (matching exact, jamais includes)', () => {
         expect(historyKeyMatchesSymbol('V', 'VFV.TO')).toBe(false);
     });
 });
+
+describe("[HUB-TOTAL-AMPUTE] omittedKeys — les TROIS chemins d'amputation du TOTAL", () => {
+    // Trouvés par le panel APRÈS gate vert et CI verte : mon premier jet en traçait DEUX sur trois,
+    // et le commentaire du code affirmait « les deux chemins ». Un inventaire qui n'en couvre qu'une
+    // partie a un compteur à zéro sur le reste, qui se lit « rien à signaler »
+    // (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+    const cle = (d: string, sym: string) => JSON.stringify([d, sym]);
+
+    /** Porteur de l'axe des dates : un titre sain, à l'historique quotidien complet. */
+    const porteur = mk({
+        symbol: 'AXE', quantity: 1, currentPrice: 100, accountType: 'NON-ENREG',
+        dateBought: '2026-01-01',
+        purchases: [{ date: '2026-01-01', quantity: 1, price: 100 }],
+        priceHistory: [
+            { date: '2026-01-01', price: 100 },
+            { date: '2026-01-02', price: 100 },
+            { date: '2026-01-03', price: 100 },
+        ],
+    });
+
+    it("3ᵉ chemin : un titre SANS historique, VENDU depuis, est absent du TOTAL de tout son passé", () => {
+        // `flatOnly` n'admet un titre sans historique que s'il est détenu AUJOURD'HUI. Vendu, il
+        // contribue zéro à TOUTES les dates — y compris celles où il était bel et bien détenu.
+        const vendu = mk({
+            symbol: 'VENDU', quantity: 0, currentPrice: 50, accountType: 'NON-ENREG',
+            dateBought: '2026-01-01', priceHistory: [],
+            purchases: [
+                { date: '2026-01-01', quantity: 1, price: 50 },
+                { date: '2026-01-03', quantity: -1, price: 50 },
+            ],
+        });
+        const { omittedKeys } = buildMarketData([porteur, vendu], FX, { nowMs: Date.parse('2026-01-03T12:00:00Z') });
+        // Détenu le 01 et le 02 (vendu le 03) → son absence du TOTAL y est TRACÉE.
+        expect(omittedKeys.has(cle('2026-01-02', 'VENDU'))).toBe(true);
+        // Contrôle négatif : le porteur, lui, compte partout — un inventaire qui accuse tout le
+        // monde ne distingue rien.
+        expect(omittedKeys.has(cle('2026-01-02', 'AXE'))).toBe(false);
+    });
+
+    it('2ᵉ chemin : une valeur non finie (débordement) retire le titre du TOTAL et le trace', () => {
+        // « Un produit fini d'entrées finies peut déborder » — le code le dit, rien ne le testait.
+        const deborde = mk({
+            symbol: 'OVER', quantity: 100, currentPrice: 1e308, accountType: 'NON-ENREG',
+            dateBought: '2026-01-01',
+            purchases: [{ date: '2026-01-01', quantity: 100, price: 1e308 }],
+            priceHistory: [
+                { date: '2026-01-01', price: 1e308 },
+                { date: '2026-01-02', price: 1e308 },
+                { date: '2026-01-03', price: 1e308 },
+            ],
+        });
+        const { omittedKeys } = buildMarketData([porteur, deborde], FX, { nowMs: Date.parse('2026-01-03T12:00:00Z') });
+        expect(omittedKeys.has(cle('2026-01-02', 'OVER'))).toBe(true);
+        expect(omittedKeys.has(cle('2026-01-02', 'AXE'))).toBe(false);
+    });
+
+    it("ANTI-VACUITÉ : un portefeuille entièrement sain ne trace AUCUNE omission", () => {
+        // Sans ce cas, un `omittedKeys` qui accuserait tout le monde passerait les deux tests
+        // ci-dessus — et muselerait la carte du hub en permanence.
+        const { omittedKeys, rows } = buildMarketData([porteur], FX, { nowMs: Date.parse('2026-01-03T12:00:00Z') });
+        expect(rows.length).toBeGreaterThan(1);
+        expect(omittedKeys.size).toBe(0);
+    });
+});

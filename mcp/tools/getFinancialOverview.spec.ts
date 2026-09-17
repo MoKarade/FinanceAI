@@ -4,6 +4,7 @@
 
 import type { AppState } from '../../types';
 import { buildFinancialOverview } from '../../services/financialSnapshot';
+import { todayIsoLocal } from '../../services/projection/dailyRefine';
 import { syncHealthFromState } from '../../services/fintable/syncHealth';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
@@ -23,7 +24,9 @@ export const getFinancialOverviewSpec = {
         'jours ; `reason` nomme déjà la cause probable.' + CLAUSE_DONNEES_TOOL,
     inputSchema: {},
     handler: async (_args, getState) => withState(getState, (state: AppState) => {
-        const o = buildFinancialOverview(state);
+        // [DETTE-SOLDE-INSTANTANE-FIGE] L'horloge est lue ICI, à la frontière du serveur : le total
+        // dû publié est celui d'AUJOURD'HUI, pas l'instantané enregistré.
+        const o = buildFinancialOverview(state, todayIsoLocal());
         return jsonContent({
             currency: o.currency,
             netWorth: Math.round(o.netWorth),

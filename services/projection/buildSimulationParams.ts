@@ -17,6 +17,8 @@
 // et un test de PARITÉ verrouille l'égalité.
 
 import { verifierEntreesMoteur } from './verifierEntreesMoteur';
+import { dettesAuSoldeDuJour } from './debtAmortization';
+import { todayIsoLocal } from './dailyRefine';
 import type {
     BudgetConfig,
     BudgetCategory,
@@ -81,6 +83,11 @@ export interface BuildSimulationParamsInputs {
     termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }>;
     realEstateGoals: RealEstateGoal[];
     debts: Debt[];
+    /** [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR d'aujourd'hui (ISO). **REQUIS** : c'est ici, au point
+     *  de passage UNIQUE vers le moteur, que les soldes DATÉS sont ramenés à aujourd'hui. Optionnel,
+     *  la projection serait repartie du solde figé pendant que l'écran affiche celui du jour — la
+     *  contradiction exacte que ce lot corrige. `null` = jour inconnu ⇒ aucune correction. */
+    aujourdhuiIso: string | null;
     childGoals: ChildGoal[];
     travelGoals: TravelGoal[];
     lifeEvents: LifeEvent[];
@@ -208,7 +215,9 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
         calculatedStartingCash: inputs.calculatedStartingCash,
         liveCSVBalances: inputs.liveCSVBalances,
         realEstateGoals: (inputs.realEstateGoals ?? []).filter(Boolean),
-        debts: inputs.debts ?? [],
+        // [DETTE-SOLDE-INSTANTANE-FIGE] Le moteur ne connaît pas `balanceAsOf` : il reçoit des
+        // soldes d'AUJOURD'HUI. Une seule porte, donc une seule vérité côté projection.
+        debts: dettesAuSoldeDuJour(inputs.debts ?? [], inputs.aujourdhuiIso),
         childGoals: (inputs.childGoals ?? []).filter(Boolean),
         travelGoals: inputs.travelGoals ?? [],
         lifeEvents: inputs.lifeEvents ?? [],
@@ -332,6 +341,9 @@ export function deriveSimulationInputsFromState(
         })(),
         realEstateGoals: state.realEstateGoals ?? [],
         debts: state.debts ?? [],
+        // [DETTE-SOLDE-INSTANTANE-FIGE] L'horloge est déjà lue ici (`now`, cinq lignes plus haut,
+        // pour `startYear`/`startMonth`) : on en dérive le JOUR, au lieu d'en introduire une seconde.
+        aujourdhuiIso: todayIsoLocal(now),
         childGoals: state.childGoals ?? [],
         travelGoals: state.travelGoals ?? [],
         lifeEvents: state.lifeEvents ?? [],

@@ -522,9 +522,9 @@ describe('[NAN-INPUT-HARDENING] un input non fini (NaN/Infinity) ne se propage j
         ({ id: 'x', name: 'd', balance, interestRate: 0, minimumPayment: 0, category: 'Car' } as unknown as Debt);
 
     it('computeTotalDebt : un solde Infinity → 0 (`|| 0` ne le rattrapait pas) ; NaN aussi ; le fini est sommé', () => {
-        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)])).toBe(0); // discriminant : `Infinity||0`=Infinity
-        expect(computeTotalDebt([debt(Number.NaN)])).toBe(0);
-        expect(computeTotalDebt([debt(1000), debt(Number.NaN)])).toBe(1000); // seul le fini compte
+        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)], null)).toBe(0); // discriminant : `Infinity||0`=Infinity
+        expect(computeTotalDebt([debt(Number.NaN)], null)).toBe(0);
+        expect(computeTotalDebt([debt(1000), debt(Number.NaN)], null)).toBe(1000); // seul le fini compte
     });
 
     it('applyMidMonthGrowth : un solde de départ/fin non fini → résultat neutre fini (jamais croissance NaN)', () => {

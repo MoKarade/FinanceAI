@@ -122,6 +122,7 @@ describe('Lot 0 — parité buildSimulationParams vs chemin React', () => {
         const inputs: BuildSimulationParamsInputs = {
             projection: state.projection,
             config: state.config,
+            aujourdhuiIso: null,
             liveCSVBalances: derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
             calculatedStartingCash: computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []),
             realEstateGoals: state.realEstateGoals ?? [],

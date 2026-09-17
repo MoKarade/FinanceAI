@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 183 tests** Vitest
-(625 fichiers de test, MESURÉ par la suite complète le 2026-09-17 à 21:18 UTC (660 s, exit 0) — le lot du jour ajoute +2 libellé de métrique stable et variations hors carte, +8 cadence réelle des prélèvements, +1 traversée jusqu'au registre au jour, +8 autorité courtier côté écran). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 195 tests** Vitest
+(626 fichiers de test, base MESURÉE par la suite complète le 2026-09-17 à 21:18 UTC (660 s, exit 0 — 6 183) + **12** gardes du solde de dette ramené à aujourd'hui, lancées en ciblé (vertes, 3 rouges sur perturbation)). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1225,6 +1225,27 @@ n'est pas réécrire un récit.
   dans lequel la garde a passé seize jours. ⚠️ Corollaire de conduite : **le lot qui ajoute un champ
   au contrat persisté doit demander sous quelle FORME il le déclare**, la garde lisant des formes et
   non des sens (`UN-CHAMP-DECLARE-PAR-UN-ALIAS-EST-INVISIBLE-AU-RECENSEUR-QUI-LIT-DES-FORMES`).
+- ⚠️⚠️ **Un solde STOCKÉ sans date est un instantané que rien n'avance** (2026-09-17, signalé par
+  Marc : « ça devrait enlever de la dette le montant que je paye quand je le paye »). La cadence
+  hebdo livrée trois heures plus tôt n'était PAS en cause — vérifiée contre ses vrais prélèvements à
+  dix dates, montant exact et nombre de marches juste partout. L'arithmétique a nommé le vrai
+  défaut : `47 168,67 ÷ 234,67 = 201,0000` versements restants EXACTEMENT, et `201 + 7 = 208` = le
+  bail complet ⇒ le solde valait après SEPT prélèvements quand il y en avait eu HUIT. `Debt.balance`
+  est lu par tous ses consommateurs comme une mesure du JOUR alors que c'est la trace d'une saisie
+  sans horodatage : l'écart grandissait de 234,67 $ **par semaine**. **Le correctif est une DATE
+  (`balanceAsOf`), estampillée à l'écriture — pas un meilleur calcul.**
+  ⚠️ L'alternative évidente (recalculer depuis la fin du terme) a été MESURÉE et écartée : 47 403 $
+  au lieu de 46 934 $, le comptage de jours sur 4 ans dérive de deux versements. Une reconstruction
+  qui remplace un FAIT par une dérivation se mesure CONTRE ce fait.
+  ⚠️ **L'idempotence est une GARANTIE, pas une coïncidence** : la porte du moteur rend la dette
+  corrigée AVEC la date du jour, sinon un lot futur qui la rappellerait déduirait deux fois — faux
+  dans l'autre sens, sans rien de rouge. Une correction appliquée « au passage » sur une liste qui
+  circule porte en elle la preuve qu'elle a déjà eu lieu.
+  ⚠️ Ma propre garde a réfuté ma prémisse (le dernier point MENSUEL n'est pas le solde d'aujourd'hui
+  — c'est le solde au 1er du mois : 47 403,34 contre 46 934,00) ; le raccord se lit au JOUR.
+  ⚠️ Et le champ textuel est entré dans `CHAMPS_TEXTE` dans le MÊME geste que sa déclaration — la
+  leçon d'il y a deux heures appliquée là où elle sert : la garde est le FILET, pas le processus
+  (`UN-SOLDE-STOCKE-SANS-DATE-EST-UN-INSTANTANE-QUE-RIEN-N-AVANCE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

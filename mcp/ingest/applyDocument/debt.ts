@@ -6,6 +6,7 @@ import { DEBT_KINDS } from '../../../types';
 import type { AppState, Debt } from '../../../types';
 import { isValidIsoDate } from '../../../utils/isoDate';
 import { formatCAD } from '../../../utils/format';
+import { todayIsoLocal } from '../../../services/projection/dailyRefine';
 import type { ApplyResult, Change, DebtPayload } from './types';
 import { MAX_DEBT_BALANCE, MAX_INTEREST_RATE, MAX_MONTHLY_PAYMENT, plausible } from './commun';
 
@@ -133,6 +134,11 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         apply('termEndDate', doc.termEndDate);
         apply('originalBalance', doc.originalBalance);
         apply('paymentFrequency', doc.paymentFrequency);
+        // [DETTE-SOLDE-INSTANTANE-FIGE] Un solde ÉCRIT est vrai AUJOURD'HUI : on le DATE, et
+        // SEULEMENT lui. Estampiller une mise à jour qui ne touche pas le solde (un renommage, une
+        // date de terme) affirmerait qu'un instantané ancien vient d'être relu — le rendant figé
+        // pour de bon, exactement le défaut qu'on corrige.
+        if (doc.balance != null) apply('balanceAsOf', todayIsoLocal());
         const nextState: AppState = { ...state, debts, lastUpdate: Date.now() };
         const summary = changes.length
             ? `Dette « ${d.name} » mise à jour : ${changes.length} champ(s).`
@@ -163,6 +169,9 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         ...(doc.termEndDate != null ? { termEndDate: doc.termEndDate } : {}),
         ...(doc.originalBalance != null ? { originalBalance: doc.originalBalance } : {}),
         ...(doc.paymentFrequency != null ? { paymentFrequency: doc.paymentFrequency } : {}),
+        // [DETTE-SOLDE-INSTANTANE-FIGE] `balance` est REQUIS à l'ajout (garde juste au-dessus), donc
+        // le solde d'une dette neuve est toujours daté — pas de cas « instantané sans date » créé ici.
+        balanceAsOf: todayIsoLocal(),
     };
     debts.push(newDebt);
     changes.push({

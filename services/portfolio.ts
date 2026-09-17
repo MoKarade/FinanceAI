@@ -12,6 +12,7 @@ import type {
 import { isSavingsNature } from '../utils/budget';
 import { logErrorThrottled } from './errorLogger';
 import { computeCashLedger } from './startingCash';
+import { soldeDetteAujourdhui } from './projection/debtAmortization';
 
 export interface AssetBreakdown {
   reer: number;
@@ -229,9 +230,21 @@ export const computeMonthlyBudgetAggregates = (
 };
 
 /**
- * Total des dettes (soldes positifs dus).
+ * Total des dettes (soldes positifs dus), **au solde d'AUJOURD'HUI**.
+ *
+ * ⚠️ [DETTE-SOLDE-INSTANTANE-FIGE] `d.balance` est un INSTANTANÉ, pas une mesure du jour. Quand il
+ * porte une date (`balanceAsOf`) et que la dette est à versements fixes à taux nul, les
+ * prélèvements survenus depuis sont déduits par `soldeDetteAujourdhui` — la source unique partagée
+ * avec la reconstruction du passé, pour que le chiffre affiché et la courbe ne décrivent pas deux
+ * dettes. Toute autre dette rend exactement `d.balance`, comportement d'avant ce lot.
  */
-export const computeTotalDebt = (debts: Debt[]): number => {
+export const computeTotalDebt = (
+  debts: Debt[],
+  /** Le JOUR d'aujourd'hui (ISO). **REQUIS** : optionnel, la production serait retombée en silence
+   *  sur le solde figé, et c'est précisément le défaut qu'on corrige. `null` = « jour inconnu » ⇒
+   *  aucune correction, réponse explicite et légitime. */
+  aujourdhuiIso: string | null,
+): number => {
   // [NAN-INPUT-HARDENING] `|| 0` rattrape déjà NaN (falsy) ; `Number.isFinite` couvre EN PLUS Infinity.
   // [DEBT-BALANCE-NAN-SILENCIEUX] (audit 2026-09-07) Un solde non fini compte pour 0 $ — mais il est
   // TRACÉ, comme `assetValueCad` et `computeCurrentLiquidity` plus bas dans ce même fichier
@@ -239,7 +252,7 @@ export const computeTotalDebt = (debts: Debt[]): number => {
   // crédible, un patrimoine surévalué et un prompt IA faux, sans rien à l'écran ni au journal.
   // Throttlé par dette : une corruption PERSISTÉE se relit à chaque rendu.
   return (debts || []).reduce((sum, d) => {
-    if (Number.isFinite(d.balance)) return sum + d.balance;
+    if (Number.isFinite(d.balance)) return sum + soldeDetteAujourdhui(d, aujourdhuiIso);
     logErrorThrottled(`debt-balance-non-finite:${d.id ?? d.name ?? '?'}`, {
       source: 'storage',
       severity: 'warning',
@@ -265,7 +278,9 @@ export const computePresentNetWorth = (
   debts: Debt[],
   /** Cf. `computeInvestmentsValue`. */
   ecartAutorite: number,
+  /** Cf. `computeTotalDebt` — REQUIS pour la même raison. */
+  aujourdhuiIso: string | null,
 ): number => {
   return computeGrossAssets(initialBalances, transactions, assets, fxRates, ecartAutorite)
-       - computeTotalDebt(debts);
+       - computeTotalDebt(debts, aujourdhuiIso);
 };

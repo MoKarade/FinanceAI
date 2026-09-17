@@ -84,6 +84,11 @@ export interface FinancialOverview extends FinancialSnapshot {
  */
 export function buildFinancialSnapshot(
     state: AppState,
+    /** [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR d'aujourd'hui (ISO). **REQUIS** et placé AVANT `opts` :
+     *  ce snapshot alimente la carte du hub, la vue d'ensemble MCP et les prompts IA — trois
+     *  surfaces qui affirmeraient un total de dettes périmé. `null` = jour inconnu (aucune
+     *  correction), réponse explicite. */
+    aujourdhuiIso: string | null,
     opts?: { projectedNetWorth20y?: number },
 ): FinancialSnapshot {
     const fx = state.fxRates ?? {};
@@ -96,7 +101,7 @@ export function buildFinancialSnapshot(
     // (Les intermédiaires investments/liquidity/totalDebt ont été absorbés par computePresentNetWorth —
     // locales mortes retirées, audit 2026-07-16.)
     // Source unique du NW présent (parité Dashboard/IA/moteur garantie par construction).
-    const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? [], autorite.ecart);
+    const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? [], autorite.ecart, aujourdhuiIso);
 
     const users = state.config?.users ?? [];
     // [INCOME-3WAY-SPLIT, audit 2026-07-16] Revenu = moyenne RÉELLE des transactions (paie + divers,
@@ -149,9 +154,11 @@ export function buildFinancialSnapshot(
  */
 export function buildFinancialOverview(
     state: AppState,
+    /** Cf. `buildFinancialSnapshot` — REQUIS, et transmis tel quel. */
+    aujourdhuiIso: string | null,
     opts?: { projectedNetWorth20y?: number },
 ): FinancialOverview {
-    const snapshot = buildFinancialSnapshot(state, opts);
+    const snapshot = buildFinancialSnapshot(state, aujourdhuiIso, opts);
     const fx = state.fxRates ?? {};
     const assets = state.assets ?? [];
 
@@ -168,7 +175,7 @@ export function buildFinancialOverview(
         // l'ancien `budget.savings` restait sur Σ netSalary : `monthlyIncome − monthlyExpenses`
         // dans le même payload ne redonnait pas monthlyCashflow (contradiction interne pour l'IA).
         monthlyCashflow: Math.max(0, snapshot.monthlyIncome - snapshot.monthlyExpenses),
-        totalDebt: computeTotalDebt(state.debts ?? []),
+        totalDebt: computeTotalDebt(state.debts ?? [], aujourdhuiIso),
         userCount: (state.config?.users ?? []).filter((u) => u && (u.name || u.grossSalary)).length,
     };
 }

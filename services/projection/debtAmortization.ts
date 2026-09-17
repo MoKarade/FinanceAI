@@ -147,6 +147,9 @@ export interface EntreeAmortissement {
     /** [DEBT-CADENCE-REELLE] Cadence RÉELLE des prélèvements. Absente ⇒ mensuelle. N'a d'effet que
      *  sur les dettes à VERSEMENTS FIXES : la forme par intérêt n'a pas de grille en jours ici. */
     paymentFrequency?: PaymentFrequency;
+    /** [DETTE-SOLDE-INSTANTANE-FIGE] Date à laquelle `balance` était vrai. Absente ⇒ `balance` est
+     *  pris pour le solde d'AUJOURD'HUI, comportement d'avant ce lot. Cf. `soldeDetteAujourdhui`. */
+    balanceAsOf?: string;
 }
 
 // ⚠️ `interestRate`/`minimumPayment` sont OPTIONNELS alors que le calcul en a absolument besoin —
@@ -227,6 +230,16 @@ export type ResultatAmortissement =
         facteurRecalage: number;
         /** Paiement mensuel qui relie exactement le montant emprunté au solde actuel. */
         paiementResolu: number;
+        /** [DETTE-SOLDE-INSTANTANE-FIGE] Solde d'AUJOURD'HUI — le dernier point de `soldes`, et
+         *  l'ANCRE contre laquelle tout supplément se mesure.
+         *
+         *  ⚠️ Ce n'est PAS toujours `dette.balance`. Quand le solde stocké porte une date
+         *  (`balanceAsOf`) antérieure à aujourd'hui et que la dette est à versements fixes à taux
+         *  nul, les prélèvements survenus depuis sont déduits : le solde stocké est un INSTANTANÉ,
+         *  pas une mesure du jour. Les consommateurs doivent donc soustraire CE champ, jamais
+         *  `dette.balance` — sinon le supplément est décalé de toute la dérive et le
+         *  `Math.max(0, …)` la rabat silencieusement à zéro. */
+        soldeAujourdhui: number;
         /** [DEBT-CADENCE-REELLE] GRILLE des prélèvements, présente UNIQUEMENT pour une dette à
          *  versements fixes dont la cadence est SOUS-MENSUELLE (hebdo, aux deux semaines).
          *
@@ -356,7 +369,7 @@ export function amortirDettePassee(
     // Prêt commencé ce mois-ci (ou terme d'un seul mois) : aucun pas d'amortissement à décrire.
     // La courbe est le solde réel, plate — pas un refus, il n'y a simplement rien à reconstruire.
     if (nbPas === 0) {
-        return { forme: 'ok', soldes: Array(moisAbsoluCourant - debut + 1).fill(balance), premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment };
+        return { forme: 'ok', soldes: Array(moisAbsoluCourant - debut + 1).fill(balance), premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment, soldeAujourdhui: balance };
     }
 
     const paiementResolu = paiementQuiRelie(originalBalance, balance, i, nbPas);
@@ -387,7 +400,7 @@ export function amortirDettePassee(
     // Après un terme échu, le solde résiduel reste au bilan, PLAT — comme dans le moteur.
     for (let m = finPaiement + 1; m <= moisAbsoluCourant; m++) soldes.push(balance);
 
-    return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage, paiementResolu };
+    return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage, paiementResolu, soldeAujourdhui: balance };
 }
 
 /**
@@ -460,13 +473,17 @@ function amortirVersementsFixes(
     const grille = construireGrille(dette, finPaiement, moisAbsoluCourant, minimumPayment, aujourdhuiIso);
     if (grille) {
         const aujourdhuiMs = jourMs(aujourdhuiIso)!;   // non nul par construction de `construireGrille`
+        // [DETTE-SOLDE-INSTANTANE-FIGE] La série part de l'ANCRE, pas du solde STOCKÉ. Les deux
+        // coïncident tant que le solde n'est pas daté ; dès qu'il l'est, l'ancre est le solde
+        // d'aujourd'hui et le solde stocké n'est plus qu'un point de départ historique.
+        const ancre = ancreCorrigee(dette, grille, aujourdhuiMs);
         const soldes: number[] = [];
         for (let m = debut; m <= moisAbsoluCourant; m++) {
             const premierDuMois = Date.UTC(Math.floor(m / 12), m % 12, 1);
             const echantillon = Math.max(premierDuMois, grille.premierMs);
-            soldes.push(balance + grille.versement * nbVersementsApres(grille, echantillon, aujourdhuiMs));
+            soldes.push(ancre + grille.versement * nbVersementsApres(grille, echantillon, aujourdhuiMs));
         }
-        return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment, grilleVersements: grille };
+        return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment, grilleVersements: grille, soldeAujourdhui: ancre };
     }
 
     const soldes: number[] = [];
@@ -479,7 +496,7 @@ function amortirVersementsFixes(
     // `facteurRecalage: 1` n'est pas un remplissage : rien n'est recalé ici, le versement SAISI est
     // exactement celui qui sert. C'est la différence de fond avec la forme par intérêt, où le
     // paiement est RÉSOLU pour relier deux bouts connus.
-    return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment };
+    return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment, soldeAujourdhui: balance };
 }
 
 /**
@@ -513,6 +530,115 @@ function construireGrille(
         ? Date.UTC(Math.floor((finPaiement + 1) / 12), (finPaiement + 1) % 12, 1) - 1
         : null;
     return { premierMs, pasJours, versement, finMs };
+}
+
+/**
+ * [DETTE-SOLDE-INSTANTANE-FIGE] Le solde stocké RAMENÉ à aujourd'hui, à partir d'une grille déjà
+ * construite. Formule UNIQUE du lot : `soldeDetteAujourdhui` et `amortirVersementsFixes` l'appellent
+ * tous les deux plutôt que de la recopier — deux écritures d'une même correction d'argent divergent
+ * à la première retouche, et aucune des deux n'est fausse toute seule.
+ *
+ * `balanceAsOf` ABSENT ⇒ on rend le solde stocké tel quel : c'est le comportement d'avant ce lot,
+ * et c'est la seule réponse honnête. Une date de saisie inconnue ne se devine pas — la supposer
+ * égale à aujourd'hui serait affirmer que l'utilisateur vient de relire son relevé.
+ */
+function ancreCorrigee(
+    dette: Readonly<EntreeAmortissement>,
+    grille: GrilleVersements | null,
+    aujourdhuiMs: number | null,
+): number {
+    const brut = dette.balance;
+    if (!grille || aujourdhuiMs === null || !fini(brut)) return brut;
+    const depuis = jourMs(dette.balanceAsOf);
+    if (depuis === null || aujourdhuiMs <= depuis) return brut;
+    const verses = grille.versement * nbVersementsApres(grille, depuis, aujourdhuiMs);
+    // Plancher à 0 : un instantané très ancien pourrait « payer » plus que le solde. Ça ne
+    // fabrique pas de patrimoine (une dette éteinte vaut zéro, elle ne devient pas un actif), et
+    // la borne de TERME de la grille empêche déjà ce cas sur toute dette correctement datée.
+    return Math.max(0, brut - verses);
+}
+
+/**
+ * La grille de prélèvements d'une dette, construite SANS passer par la reconstruction du passé.
+ *
+ * ⚠️ Elle rejoue les mêmes conditions d'éligibilité que `amortirVersementsFixes` (versements fixes,
+ * taux NUL, versement positif, dates exploitables) parce qu'elles décident la même chose : ce solde
+ * est-il déductible sans rien inventer ? Ce qui ne doit pas être recopié — la construction de la
+ * grille elle-même et la correction du solde — ne l'est pas : `construireGrille` et `ancreCorrigee`
+ * restent les sources uniques.
+ */
+function grillePourDette(
+    dette: Readonly<EntreeAmortissement>,
+    aujourdhuiIso: string | null,
+): GrilleVersements | null {
+    const kind = dette.kind;
+    if (!kind || !KIND_VERSEMENTS_FIXES[kind]) return null;
+    const { interestRate, minimumPayment } = dette;
+    // Taux NON NUL ⇒ on ignore ce que le solde contient (capital restant ? tout-compris ?), donc on
+    // ne le corrige pas — même refus que `amortirVersementsFixes`, pour la même raison.
+    if (interestRate !== 0 || minimumPayment === undefined || !fini(minimumPayment) || minimumPayment <= 0) return null;
+    const debut = moisAbsolu(dette.startDate);
+    const moisAujourdhui = moisAbsolu(aujourdhuiIso ?? undefined);
+    if (debut === null || moisAujourdhui === null || moisAujourdhui < debut) return null;
+    const finTerme = moisAbsolu(dette.termEndDate);
+    const finPaiement = finTerme !== null && finTerme < moisAujourdhui ? finTerme : moisAujourdhui;
+    if (finPaiement < debut) return null;
+    return construireGrille(dette, finPaiement, moisAujourdhui, minimumPayment, aujourdhuiIso);
+}
+
+/**
+ * [DETTE-SOLDE-INSTANTANE-FIGE] **LE SOLDE RÉEL D'AUJOURD'HUI d'une dette. Source unique.**
+ *
+ * Marc, 2026-09-17 : « ça devrait enlever de la dette le montant que je paye quand je le paye et ce
+ * n'est pas le cas ». Mesuré sur son bail : le solde stocké valait après SEPT prélèvements alors
+ * qu'il en avait fait HUIT — 234,67 $ de trop, et l'écart grandissait d'un versement par SEMAINE,
+ * parce que `Debt.balance` est un instantané que rien n'avance.
+ *
+ * Cette fonction ne corrige QUE là où le solde d'aujourd'hui se DÉDUIT sans rien inventer : dette à
+ * versements fixes, taux NUL (donc chaque versement retire exactement son montant), cadence connue,
+ * dates exploitables, et un `balanceAsOf` ANTÉRIEUR à aujourd'hui. Dès qu'une de ces conditions
+ * manque, elle rend le solde stocké **tel quel** — donc le comportement d'avant ce lot, bit-à-bit,
+ * pour toute autre dette du dépôt.
+ *
+ * ⚠️ Elle ne remplace PAS `amortirDettePassee` : celle-ci reconstruit une SÉRIE, celle-là donne UN
+ * point. Les deux partagent la même ancre (`ancreCorrigee`), ce qui est exactement ce qui interdit
+ * au chiffre affiché et à la courbe de décrire deux dettes.
+ */
+export function soldeDetteAujourdhui(
+    dette: Readonly<EntreeAmortissement>,
+    /** Le JOUR d'aujourd'hui (ISO), REQUIS. `null` = « je ne connais pas le jour » ⇒ aucune
+     *  correction, jamais une lecture de l'horloge ici (la fonction doit rester déterministe). */
+    aujourdhuiIso: string | null,
+): number {
+    return ancreCorrigee(dette, grillePourDette(dette, aujourdhuiIso), jourMs(aujourdhuiIso));
+}
+
+/**
+ * [DETTE-SOLDE-INSTANTANE-FIGE] La liste des dettes RAMENÉE au solde d'aujourd'hui.
+ *
+ * C'est la porte du MOTEUR : `buildSimulationParams` l'applique une fois, au point de passage
+ * UNIQUE vers la projection. Le moteur n'a donc rien à savoir de `balanceAsOf` — il reçoit des
+ * soldes du jour, comme il l'a toujours cru.
+ *
+ * ⚠️ **IDEMPOTENTE, et c'est une garantie, pas une coïncidence.** Une dette corrigée ressort avec
+ * `balanceAsOf` posé à AUJOURD'HUI : une seconde application ne trouve plus aucun prélèvement
+ * postérieur et rend la même liste. Sans ça, un lot futur qui rappellerait cette fonction — ou
+ * passerait la liste corrigée à `amortirDettePassee` — déduirait les versements DEUX fois, et la
+ * dette serait fausse dans l'autre sens sans que rien ne rougisse.
+ *
+ * ⚠️ L'IDENTITÉ des objets non corrigés est PRÉSERVÉE (`d` rendu tel quel, pas une copie) : cette
+ * liste traverse des `useMemo` et des sélecteurs Zustand, et recopier chaque dette ferait re-rendre
+ * tout ce qui en dépend à chaque appel.
+ */
+export function dettesAuSoldeDuJour<T extends EntreeAmortissement>(
+    dettes: ReadonlyArray<T> | null | undefined,
+    aujourdhuiIso: string | null,
+): T[] {
+    return (dettes ?? []).filter(d => !!d).map((d) => {
+        const solde = soldeDetteAujourdhui(d, aujourdhuiIso);
+        if (solde === d.balance) return d;
+        return { ...d, balance: solde, balanceAsOf: aujourdhuiIso ?? undefined };
+    });
 }
 
 /**
@@ -569,7 +695,7 @@ export function prepareSupplementAmortiAbsolu(
         if (r.forme !== 'ok') return somme;
         const index = courant - r.premierMoisAbsolu;
         if (index < 0 || index >= r.soldes.length) return somme;
-        return somme + Math.max(0, r.soldes[index] - dette.balance);
+        return somme + Math.max(0, r.soldes[index] - r.soldeAujourdhui);
     }, 0);
 }
 
@@ -612,7 +738,7 @@ export function prepareSupplementAmortiParJour(
         if (mois === null) return somme;
         const index = mois - r.premierMoisAbsolu;
         if (index < 0 || index >= r.soldes.length) return somme;
-        return somme + Math.max(0, r.soldes[index] - dette.balance);
+        return somme + Math.max(0, r.soldes[index] - r.soldeAujourdhui);
     }, 0);
 }
 
@@ -667,8 +793,11 @@ export function compterDettesAmorties(
         // mois-ci rend une série plate sur le solde réel : `forme === 'ok'` et pourtant zéro
         // supplément partout — annoncer « dettes amorties » y serait faux. On exige donc que le
         // premier point dépasse le solde d'aujourd'hui, c'est-à-dire la condition MÊME qui rend le
-        // supplément non nul (`Math.max(0, soldes[i] − balance)`), pas un proxy.
-        if (r.forme === 'ok' && r.soldes[0] > d.balance) amorties++;
+        // supplément non nul (`Math.max(0, soldes[i] − soldeAujourdhui)`), pas un proxy.
+        // ⚠️ [DETTE-SOLDE-INSTANTANE-FIGE] `r.soldeAujourdhui`, jamais `d.balance` : sur un solde
+        // DATÉ les deux diffèrent, et comparer au stocké ferait compter « amortie » une dette dont
+        // la seule décroissance est la dérive de l'instantané.
+        if (r.forme === 'ok' && r.soldes[0] > r.soldeAujourdhui) amorties++;
     }
     return { amorties, total: liste.length };
 }

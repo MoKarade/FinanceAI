@@ -650,6 +650,29 @@ export interface Debt {
    *  ⇒ mensuelle (comportement d'avant, bit-à-bit). N'a d'effet QUE sur les dettes à versements
    *  fixes : une dette qui amortit de l'intérêt n'a pas de grille en jours dans ce modèle. */
   paymentFrequency?: PaymentFrequency;
+  /** [DETTE-SOLDE-INSTANTANE-FIGE] DATE à laquelle `balance` était vrai (YYYY-MM-DD).
+   *
+   *  ⚠️ **Sans elle, `balance` est un instantané SANS DATE, et rien ne l'avance.** Mesuré le
+   *  2026-09-17 sur le bail de Marc : le solde stocké (47 168,67 $) valait après SEPT prélèvements
+   *  alors qu'il en avait fait HUIT — 234,67 $ de trop, et l'écart grandissait d'un versement par
+   *  SEMAINE. Il payait, l'écran ne bougeait pas.
+   *
+   *  Ce champ n'a d'effet que là où le solde d'aujourd'hui est DÉDUCTIBLE sans rien inventer :
+   *  dette à versements fixes, taux NUL, cadence sous-mensuelle connue (cf.
+   *  `soldeDetteAujourdhui`). Partout ailleurs il est inerte — un solde de carte de crédit ou
+   *  d'hypothèque ne se devine pas à partir d'une date.
+   *
+   *  ⚠️ Champ ADDITIF optionnel : **absent ⇒ comportement d'avant, bit-à-bit**. Il doit le rester —
+   *  lui donner une valeur par DÉFAUT le rendrait non additif et un blob persisté ANTÉRIEUR ne
+   *  pourrait plus la contredire (`UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN`).
+   *  Il est ESTAMPILLÉ automatiquement à chaque écriture du solde (mutateur du store, `apply_debt`) :
+   *  demander une date à l'utilisateur serait lui demander de se souvenir du jour où il a tapé un
+   *  chiffre.
+   *
+   *  ⚠️ C'est un champ TEXTUEL : il DOIT figurer dans `CHAMPS_TEXTE`
+   *  (`services/verifierTypesRestaures.ts`), sans quoi l'app se réhydrate VIDE — trois vagues déjà
+   *  payées, dont une sur `paymentFrequency`, la ligne juste au-dessus. */
+  balanceAsOf?: string;
   rateProvider?: string;           // institution prêteuse
   isInterestDeductible?: boolean;  // intérêt sur prêt placement / Smith Manoeuvre
 }

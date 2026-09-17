@@ -89,8 +89,8 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
     it('PARITÉ NW : (cash moteur + portefeuille moteur − dettes) ≡ computePresentNetWorth', () => {
         const moteurNW = computeStartingCash(initialBalances, transactions)
             + sumBalances(derivePortfolioStartingBalances(assets, FX))
-            - computeTotalDebt(debts);
-        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, debts, 0);
+            - computeTotalDebt(debts, null);
+        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, debts, 0, null);
         // Discriminant : si la valorisation portefeuille divergeait, l'écart sauterait (≫ 1 $).
         expect(moteurNW).toBeCloseTo(presentNW, 0);
     });
@@ -99,8 +99,8 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         const fx2 = { CAD: 1, USD: 2, EUR: 1.5 };
         const moteurNW = computeStartingCash(initialBalances, transactions)
             + sumBalances(derivePortfolioStartingBalances(assets, fx2))
-            - computeTotalDebt(debts);
-        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, fx2, debts, 0);
+            - computeTotalDebt(debts, null);
+        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, fx2, debts, 0, null);
         expect(moteurNW).toBeCloseTo(presentNW, 0);
     });
 
@@ -111,7 +111,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         // Dettes AUX DEUX côtés (intérêt 0 + paiement 0 → aucun flux au mois 0) : couvre la soustraction
         // des dettes END-TO-END (la surface exacte du bug MONEY-PHANTOM : dettes non soustraites → NW gonflé).
         const e2eDebts: Debt[] = [{ id: 'ed', name: 'Prêt', balance: 18_000, interestRate: 0, minimumPayment: 0, category: 'Personal' } as Debt];
-        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, e2eDebts, 0);
+        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, e2eDebts, 0, null);
         expect(presentNW).toBeGreaterThan(1_000); // non-vacuité
         const projection: ProjectionConfig = {
             years: 1, returnRate: 0, inflationRate: 0, savingsMode: 'manual', manualContribution: 0,

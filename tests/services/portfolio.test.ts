@@ -102,22 +102,22 @@ describe('computePresentNetWorth (source unique du NW présent)', () => {
   const assets: Asset[] = [makeAsset({ quantity: 10, currentPrice: 100, currency: 'CAD' })]; // 1000 cash + 1000 inv = 2000 brut
 
   it('sans dettes → = actifs bruts', () => {
-    expect(computePresentNetWorth(initial, txs, assets, FX, [], 0)).toBe(2000);
+    expect(computePresentNetWorth(initial, txs, assets, FX, [], 0, null)).toBe(2000);
   });
 
   it('persona ENDETTÉ : NW = actifs bruts − dettes (le bug H1 était l\'omission des dettes)', () => {
     const debts: Debt[] = [{ balance: 500 } as Debt, { balance: 300 } as Debt];
     // Discriminant : 2000 (brut) − 800 (dettes) = 1200. Le code bogué donnait 2000.
-    expect(computePresentNetWorth(initial, txs, assets, FX, debts, 0)).toBe(1200);
-    expect(computePresentNetWorth(initial, txs, assets, FX, debts, 0))
+    expect(computePresentNetWorth(initial, txs, assets, FX, debts, 0, null)).toBe(1200);
+    expect(computePresentNetWorth(initial, txs, assets, FX, debts, 0, null))
       .toBeLessThan(computeGrossAssets(initial, txs, assets, FX, 0));
   });
 
   it('applique les fxRates FOURNIS sur une devise étrangère (pas de taux en dur — AI-CTX-FX)', () => {
     const usdAssets: Asset[] = [makeAsset({ quantity: 10, currentPrice: 100, currency: 'USD' })]; // 1000 USD
     // 1000 cash + 1000 USD × 1.38 = 2380. Le NW SUIT le taux fourni → aucun 1.38/1.50 figé possible.
-    expect(computePresentNetWorth(initial, txs, usdAssets, FX, [], 0)).toBe(2380);
-    expect(computePresentNetWorth(initial, txs, usdAssets, { CAD: 1, USD: 2 }, [], 0)).toBe(3000);
+    expect(computePresentNetWorth(initial, txs, usdAssets, FX, [], 0, null)).toBe(2380);
+    expect(computePresentNetWorth(initial, txs, usdAssets, { CAD: 1, USD: 2 }, [], 0, null)).toBe(3000);
   });
 });
 
@@ -171,12 +171,12 @@ describe('computeTotalDebt', () => {
       { name: 'Carte', balance: 2000 } as Debt,
       { name: 'Pret', balance: 15000 } as Debt,
     ];
-    expect(computeTotalDebt(debts)).toBe(17000);
+    expect(computeTotalDebt(debts, null)).toBe(17000);
   });
 
   it('renvoie 0 pour un tableau vide ou indefini', () => {
-    expect(computeTotalDebt([])).toBe(0);
-    expect(computeTotalDebt(undefined as unknown as Debt[])).toBe(0);
+    expect(computeTotalDebt([], null)).toBe(0);
+    expect(computeTotalDebt(undefined as unknown as Debt[], null)).toBe(0);
   });
 });
 
@@ -239,7 +239,7 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] computeTotalDebt TRACE un solde non fini
     beforeEach(() => { vi.mocked(logErrorThrottled).mockClear(); });
 
     it('NaN → compté 0 $ ET journalisé (signature par dette)', () => {
-        expect(computeTotalDebt([debt(NaN), debt(500, 'd2')])).toBe(500);
+        expect(computeTotalDebt([debt(NaN), debt(500, 'd2')], null)).toBe(500);
         expect(logErrorThrottled).toHaveBeenCalledTimes(1);
         expect(logErrorThrottled).toHaveBeenCalledWith('debt-balance-non-finite:d1', expect.objectContaining({
             source: 'storage', severity: 'warning', message: expect.stringMatching(/solde non fini/),
@@ -247,12 +247,12 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] computeTotalDebt TRACE un solde non fini
     });
 
     it('Infinity aussi (la garde `|| 0` d’avant ne le rattrapait pas)', () => {
-        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)])).toBe(0);
+        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)], null)).toBe(0);
         expect(logErrorThrottled).toHaveBeenCalledTimes(1);
     });
 
     it('contrôle — des soldes finis ne journalisent RIEN (l’espion est câblé, et il se tait à bon escient)', () => {
-        expect(computeTotalDebt([debt(1_000), debt(0, 'd2')])).toBe(1_000);
+        expect(computeTotalDebt([debt(1_000), debt(0, 'd2')], null)).toBe(1_000);
         expect(logErrorThrottled).not.toHaveBeenCalled();
     });
 });

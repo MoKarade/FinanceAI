@@ -8,6 +8,7 @@ import { formatCAD } from '../utils/format';
 import { buildFinancialOverview, type FinancialOverview } from '../services/financialSnapshot';
 import { computeHistoricalContributionRoom } from '../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../services/portfolio';
+import { todayIsoLocal } from '../services/projection/dailyRefine';
 import { computeBaseGrossAnnual } from '../services/projection/buildSimulationParams';
 
 export interface FinancialSignal {
@@ -28,8 +29,12 @@ export interface FinancialSignals {
 export function computeFinancialSignals(
     state: AppState,
     year: number = new Date().getFullYear(),
+    /** [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR d'aujourd'hui (ISO). Défaut lu à l'horloge — c'est la
+     *  FRONTIÈRE du serveur MCP, exactement comme `year` juste au-dessus ; les modules PURS en aval
+     *  le reçoivent en argument et restent déterministes. */
+    aujourdhuiIso: string | null = todayIsoLocal(),
 ): FinancialSignals {
-    const overview = buildFinancialOverview(state);
+    const overview = buildFinancialOverview(state, aujourdhuiIso);
     const users = (state.config?.users ?? []) as unknown as User[];
     const activeUsers = users.filter((u) => u && (u.grossSalary || u.netSalary));
     // [GROSSFROMNET-ANNEE-FIGEE] même barème que les droits REER calculés juste en dessous.

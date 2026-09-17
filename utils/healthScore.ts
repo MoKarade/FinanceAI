@@ -132,10 +132,14 @@ export interface HealthScoreInputs {
      *  `placementsFaisantAutorite`. REQUISE : sans elle, la Santé financière noterait un patrimoine
      *  différent de celui affiché deux écrans plus loin — le défaut exact que ce chantier répare. */
     ecartAutoritePlacements: number;
+    /** [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR d'aujourd'hui (ISO). REQUIS pour la même raison que
+     *  `ecartAutoritePlacements` juste au-dessus : sans lui, la Santé financière noterait un total
+     *  de dettes FIGÉ pendant que l'Accueil affiche le solde du jour. `null` = jour inconnu. */
+    aujourdhuiIso: string | null;
 }
 
 export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow[] {
-    const { config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, fxRates, projectionFireTarget, ecartAutoritePlacements } = inputs;
+    const { config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, fxRates, projectionFireTarget, ecartAutoritePlacements, aujourdhuiIso } = inputs;
 
     // [INCOME-PROVENANCE] Revenus mensuels = config.users[].netSalary UNIQUEMENT (mensuel dans
     // le store) — c'est la valeur écrite par la fiche de paie (TaxCenter « Calcul rapide » ou
@@ -158,7 +162,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     // Liquidités = cash de TOUS les comptes, via la source unique computeCurrentLiquidity.
     const liquidity = computeCurrentLiquidity(initialBalances, transactions);
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
-    const totalDebts = computeTotalDebt(debts || []);
+    const totalDebts = computeTotalDebt(debts || [], aujourdhuiIso);
     // [ASSET-FX-DISPLAY] valeur CAD via la source unique (prix natifs × FX).
     const investmentValue = computeInvestmentsValue(assets || [], fxRates, ecartAutoritePlacements);
     // Patrimoine = placements + liquidités (la liquidité inclut déjà tout le cash : CELI, REER, comptes courants…).

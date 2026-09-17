@@ -8,6 +8,8 @@ import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
+import { useTodayIsoLocal } from '../hooks/useSimulationParams';
+import { soldeDetteAujourdhui } from '../services/projection/debtAmortization';
 import { computeTotalDebt } from '../services/portfolio';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -26,6 +28,7 @@ interface DebtManagerProps {
 }
 
 export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => {
+    const todayIso = useTodayIsoLocal();
     const [isAdding, setIsAdding] = useState(false);
     const [newDebt, setNewDebt] = useState<Partial<Debt>>({ name: '', balance: 0, interestRate: 0, minimumPayment: 0, category: 'CreditCard' });
     // [DETTE-DATES] Édition d'une dette EXISTANTE. Avant ce lot il n'y avait que « Ajouter » et
@@ -52,7 +55,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         setRefusSaisie(refus);
         if (refus) return;
         if (newDebt.name && newDebt.balance && newDebt.balance > 0) {
-            setDebts([...debts, { ...newDebt, id: Date.now().toString() } as Debt]);
+            // [DETTE-SOLDE-INSTANTANE-FIGE] Le solde qu'on vient de taper est vrai AUJOURD'HUI —
+            // on le DATE, au lieu de laisser un instantané sans date que rien n'avancera jamais.
+            setDebts([...debts, { ...newDebt, id: Date.now().toString(), balanceAsOf: todayIso } as Debt]);
             setIsAdding(false);
             setNewDebt({ name: '', balance: 0, interestRate: 0, minimumPayment: 0, category: 'CreditCard' });
         }
@@ -63,7 +68,16 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // Le refus est un ÉTAT (pas dérivé du brouillon) : il se REMET À ZÉRO à chaque changement de
     // formulaire, sinon un message d'ajout périmé s'afficherait sur une dette saine ouverte en édition
     // (revue du lot 213).
-    const startEdit = (d: Debt) => { setEditingId(d.id); setDraft({ ...d }); setIsAdding(false); setRefusSaisie(null); };
+    // [DETTE-SOLDE-INSTANTANE-FIGE] Le formulaire s'ouvre sur le solde d'AUJOURD'HUI, pas sur
+    // l'instantané enregistré : montrer le stocké pendant que le badge « Total dû » affiche le
+    // corrigé mettrait deux chiffres différents pour la même dette sur le même écran — la classe de
+    // défaut que ce chantier répare. Les deux coïncident tant que rien n'a dérivé.
+    const startEdit = (d: Debt) => {
+        setEditingId(d.id);
+        setDraft({ ...d, balance: soldeDetteAujourdhui(d, todayIso) });
+        setIsAdding(false);
+        setRefusSaisie(null);
+    };
     const cancelEdit = () => { setEditingId(null); setDraft({}); setRefusSaisie(null); };
     const saveEdit = () => {
         if (!editingId) return;
@@ -87,7 +101,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         // ⚠️ On fusionne sur la dette EXISTANTE (`{ ...d, ...draft }`) plutôt que de remplacer par le
         // brouillon : les champs que le formulaire ne montre pas (`kind`, `limit`, `rateProvider`,
         // `isInterestDeductible`…) survivraient sinon à peine à un clic sur « Enregistrer ».
-        setDebts(debts.map(d => (d.id === editingId ? ({ ...d, ...draft, id: d.id } as Debt) : d)));
+        // [DETTE-SOLDE-INSTANTANE-FIGE] On estampille à CHAQUE enregistrement, sans condition : le
+        // brouillon porte le solde d'aujourd'hui par construction (`startEdit` ci-dessus), qu'il ait
+        // été retapé ou seulement corrigé à l'ouverture. Ne dater que les soldes MODIFIÉS laisserait
+        // un « Enregistrer » sur un autre champ re-figer la dérive déjà absorbée à l'écran.
+        setDebts(debts.map(d => (d.id === editingId ? ({ ...d, ...draft, id: d.id, balanceAsOf: todayIso } as Debt) : d)));
         cancelEdit();
     };
 
@@ -132,9 +150,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     }, [debts, extraPayment]);
 
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
-    const totalDebt = computeTotalDebt(debts);
+    const totalDebt = computeTotalDebt(debts, todayIso);
     const totalMinPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
+    // [DETTE-SOLDE-INSTANTANE-FIGE] Le jour LOCAL : le « Total dû » affiche le solde d'AUJOURD'HUI,
+    // pas l'instantané enregistré.
     // G7a — zoom molette / pan sur la courbe d'extinction (x = mois).
     const zoom = useTimeChartZoom(simulation.chart);
 

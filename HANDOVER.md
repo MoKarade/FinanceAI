@@ -31,6 +31,32 @@
 > 📏 **Suite COMPLÈTE mesurée** : 625 fichiers, **6 183 tests**, exit 0, 660 s (2026-09-17 21:18 UTC).
 > `typecheck` OK, `lint` 0 erreur.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-SOLDE-INSTANTANE-FIGE]` livré (OK explicite de Marc)**
+> 🔎 Marc : « ça devrait enlever de la dette le montant que je paye quand je le paye ». La cadence
+> hebdo n'était PAS en cause (vérifiée contre ses vrais prélèvements à 10 dates : montant exact,
+> nombre de marches juste partout). Le défaut est que `Debt.balance` est un **instantané sans date**
+> que rien n'avance : `47 168,67 ÷ 234,67 = 201,0000` versements restants EXACTEMENT, `201 + 7 = 208`
+> = le bail complet ⇒ le solde valait après SEPT prélèvements quand il y en avait eu HUIT. Écart
+> 234,67 $, +1 versement **par semaine**.
+> 🔧 **Livré** : `Debt.balanceAsOf` (additif, absent ⇒ comportement d'avant bit-à-bit) ; source unique
+> `soldeDetteAujourdhui` partagée par le chiffre ET la courbe ; porte **IDEMPOTENTE**
+> `dettesAuSoldeDuJour` au point de passage UNIQUE vers le moteur (`buildSimulationParams`) ;
+> `computeTotalDebt` / `computePresentNetWorth` / `buildFinancialSnapshot` / `HealthScoreInputs` /
+> `BuildSimulationParamsInputs` prennent le JOUR en paramètre **REQUIS** — 26 sites énumérés par le
+> compilateur. Estampillage automatique à l'écriture : formulaire `DebtManager` (ajout ET édition,
+> le formulaire s'ouvrant sur le solde CORRIGÉ) et `apply_debt` (seulement quand le solde est écrit).
+> ⚠️ `balanceAsOf` est TEXTUEL ⇒ ajouté à `CHAMPS_TEXTE` dans le MÊME geste que sa déclaration.
+> 📏 **12 gardes neuves**, 3 rouges sur perturbation (les 9 contrôles négatifs restent verts, c'est
+> la signature attendue). 140 tests des fichiers impactés verts. `typecheck` 0 erreur.
+> ⚠️ **Écriture sur les données RÉELLES de Marc** (demande explicite) : solde du bail porté à
+> **46 934,00 $** via `apply_debt` — et le `before: 47168.67` rendu par l'outil confirme au cent près
+> la déduction faite sans jamais l'avoir lue.
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir la dette « bZ » et cliquer « Enregistrer » — c'est ce geste
+> qui pose `balanceAsOf` (le MCP servi est périmé, cf. `[HUB-MCP-PERIME]`, donc l'écriture du jour
+> n'a pas pu être estampillée). Sans lui le solde reste JUSTE mais cesse d'avancer seul.
+> ⚠️ Le décalage de PHASE d'un jour sur la marche (grille ancrée sur `startDate`, 1er prélèvement
+> réel 8 jours plus tard) est CONNU, mesuré, et invisible à l'écran — non corrigé délibérément.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **3ᵉ vague du faux refus qui VIDE l'app + mesure de la dette**
 > 🔎 **`[HYDRAT-ALIAS-INVISIBLE]`** (PR #984, mergée 22:06, déploiement Vercel `dpl_CBNJCm…` READY sur
 > le SHA) — `debts[].paymentFrequency`, livré UNE HEURE plus tôt par `[DEBT-CADENCE-REELLE]`, n'était

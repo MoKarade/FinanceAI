@@ -867,6 +867,13 @@ export interface AppState {
   fxLastAttemptAt?: number;
   /** Résultat de cette tentative (`FxCause`). ⚠️ TEXTUEL ET PERSISTÉ — cf. `fxRatesSource`. */
   fxLastAttemptCause?: string;
+  /** [FX-OBSERVATION-COHORTE] Date (`YYYY-MM-DD`) de l'observation de la Banque du Canada d'où
+   *  viennent les DEUX taux en vigueur. Publiée UNIQUEMENT quand `fxRatesSource === 'api'` : c'est
+   *  le seul cas où une date unique décrit les deux chiffres. Sans elle, une observation de 2019
+   *  est indiscernable de celle du jour — le défaut qui a fait servir le littéral du dépôt pendant
+   *  des mois. ADDITIF optionnel, donc ABSENT des défauts (un blob ancien ne le porte pas et
+   *  `merge` superpose clé par clé). ⚠️ TEXTUEL ET PERSISTÉ — cf. `fxRatesSource`. */
+  fxObservationDate?: string;
   lastUpdate: number;
   categorizationRules: CategorizationRule[];
   aiConversation: AiMessage[];

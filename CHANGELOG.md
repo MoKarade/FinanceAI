@@ -6,6 +6,37 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (la cause était chez nous : on lisait la mauvaise ligne de la Banque du Canada)
+
+- **Tu as trouvé la cause en deux clics.** Le diagnostic disait « au moins une des deux séries était
+  absente », et la réponse de l'API que tu m'as envoyée l'explique : sa PREMIÈRE ligne est la
+  dernière valeur du **dong vietnamien**, une série arrêtée fin **2019**. Les taux USD et EUR
+  vivaient dans la ligne SUIVANTE. Le code lisait la première, ne trouvait ni l'un ni l'autre, et
+  retombait sur les deux chiffres écrits en dur. La Banque du Canada n'a jamais eu de problème.
+- **Ce que ça te coûtait, mesuré sur tes vraies positions** : l'USD de repli (1,4000) était presque
+  juste — le vrai taux du 16/09 est **1,3947**, soit −0,38 %. Mais l'EUR de repli (1,4700) est faux
+  de **+9,34 %** : le vrai est **1,6073**. Sur ta seule position GBS.PA, ça fait **+5 426 $** de
+  valeur qui n'était pas comptée. Tes douze positions sont toutes en USD ou EUR.
+- **Ce qui change** : l'app cherche désormais chaque série là où elle se trouve, et **refuse** une
+  valeur publiée il y a plus de dix jours (une série abandonnée n'est pas « le taux du jour »). La
+  carte « Taux de change » affiche en plus **la date de l'observation** d'où viennent tes taux —
+  c'est ce chiffre qui manquait pour que le problème se voie.
+- ⚠️ **Ce qui va changer ENSUITE, et pas au moment que tu crois.** Dès que tes taux seront réels,
+  ton compte Disnat en USD cessera d'être « écarté faute de taux » : il sera converti, il rentrera
+  dans le total qui fait autorité, et **le point de départ de ta projection changera**. Mais le
+  déclencheur n'est pas le déploiement — c'est ta **prochaine synchro Fintable** : la conversion est
+  faite au moment de la synchro et le résultat est enregistré tel quel. Tant que tu n'as pas
+  resynchronisé, rien ne bouge.
+- ⚠️ **Le bouton « Réessayer maintenant » ne peut plus effacer tes taux.** Il écrivait sans
+  condition : sur des taux que tu avais saisis à la main, un seul clic pendant une panne les
+  remplaçait par ceux du code. Maintenant, une lecture ratée laisse sa trace (tu vois que le clic a
+  eu lieu) sans toucher à tes valeurs.
+- ⚠️ **Ce que je n'ai pas pu vérifier** : que ça marche chez toi. L'hôte de la Banque du Canada est
+  refusé depuis mon conteneur. Un dernier clic sur « Réessayer maintenant » après le déploiement le
+  confirmera — c'est noté dans `docs/A_FAIRE_MOI.md`.
+
+---
+
 ## [unreleased] — 2026-09-16 (tes taux de change n'étaient JAMAIS arrivés — et Fintable fait enfin autorité)
 
 - **Ce qui a été mesuré sur TES données** : NVDA, 90 × 214,40 USD, affiché 27 014 $ → facteur

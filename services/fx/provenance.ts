@@ -32,6 +32,11 @@ export type FxCause =
     | 'ok'
     /** Requête réussie mais AU MOINS une des deux séries manquait ou était illisible. */
     | 'partiel'
+    /** [FX-OBSERVATION-COHORTE] La série existe et se lit, mais sa dernière publication est trop
+     *  vieille pour être « le taux courant » (série arrêtée, ou publication interrompue). Distincte
+     *  de `'partiel'` : une série ABSENTE et une série FIGÉE ne se corrigent pas pareil, et c'est
+     *  précisément la confusion qui a fait chercher la panne du mauvais côté le 2026-09-16. */
+    | 'perimee'
     /** La requête n'est jamais partie ou n'est jamais revenue (réseau, CSP, délai dépassé). */
     | 'reseau'
     /** Le serveur a répondu autre chose qu'un succès. */
@@ -46,8 +51,20 @@ export type FxCause =
 /** Les valeurs acceptées, pour valider un état venu du Drive qu'aucun schéma Zod ne contrôle. */
 const SOURCES: readonly FxSource[] = ['api', 'manuel', 'repli'];
 const CAUSES: readonly FxCause[] = [
-    'ok', 'partiel', 'reseau', 'http', 'reponse-illisible', 'manuel', 'jamais-tente',
+    'ok', 'partiel', 'perimee', 'reseau', 'http', 'reponse-illisible', 'manuel', 'jamais-tente',
 ];
+
+/**
+ * Cette chaîne est-elle une `FxCause` connue ?
+ *
+ * ⚠️ EXPORTÉ parce que `services/finance.ts` en tenait une COPIE (`CAUSES_CACHE`) pour valider le
+ * cache local : ajouter `'perimee'` demandait d'éditer DEUX listes, et celle qu'on oublie ne rougit
+ * nulle part — elle rejette silencieusement une cause légitime, ce qui fait réécrire l'état à chaque
+ * démarrage. `UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`.
+ */
+export function estFxCause(brut: unknown): brut is FxCause {
+    return typeof brut === 'string' && (CAUSES as readonly string[]).includes(brut);
+}
 
 /** Forme MINIMALE lue ici — jamais `AppState` en entier (ce module sert aussi au serveur MCP). */
 export interface EtatFxMinimal {
@@ -78,9 +95,7 @@ export function fxSourceEffective(etat: EtatFxMinimal | undefined): FxSource {
 /** Cause de la dernière tentative, validée. Inconnue ou absente ⇒ `jamais-tente`. */
 export function fxCauseEffective(etat: EtatFxMinimal | undefined): FxCause {
     const brut = etat?.fxLastAttemptCause;
-    if (typeof brut === 'string' && (CAUSES as readonly string[]).includes(brut)) {
-        return brut as FxCause;
-    }
+    if (estFxCause(brut)) return brut;
     return 'jamais-tente';
 }
 
@@ -120,6 +135,10 @@ export function messageCauseFx(cause: FxCause): string {
         case 'partiel':
             return 'La Banque du Canada a répondu, mais au moins une des deux séries (USD ou EUR) '
                 + 'était absente ou illisible : ce taux-là vient du repli.';
+        case 'perimee':
+            return 'La Banque du Canada a répondu, mais la dernière valeur publiée pour au moins '
+                + 'une des deux séries est trop ancienne pour être le taux du jour : ce taux-là '
+                + 'vient du repli.';
         case 'reseau':
             return 'La requête vers la Banque du Canada n\'est pas revenue (réseau coupé, délai '
                 + 'dépassé, ou blocage du navigateur).';

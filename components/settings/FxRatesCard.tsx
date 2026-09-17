@@ -25,6 +25,7 @@ import { logError } from '../../services/errorLogger';
 import { formatRelative } from '../../utils/relativeTime';
 import {
     fxSourceEffective, fxCauseEffective, libelleSourceFx, messageCauseFx, fxFaitAutorite,
+    decisionEcritureFx,
 } from '../../services/fx/provenance';
 
 /**
@@ -54,6 +55,7 @@ export const FxRatesCard: React.FC = () => {
     const source = useFinanceStore(fxSourceEffective);
     const cause = useFinanceStore(fxCauseEffective);
     const lastAttemptAt = useFinanceStore((s) => s.fxLastAttemptAt ?? 0);
+    const observationDate = useFinanceStore((s) => s.fxObservationDate);
     const updateFxRates = useFinanceStore((s) => s.updateFxRates);
 
     const [enCours, setEnCours] = useState(false);
@@ -72,13 +74,34 @@ export const FxRatesCard: React.FC = () => {
             // `force` COURT-CIRCUITE le cache de 24 h. Sans lui le bouton rendrait la valeur en
             // cache sans rien tenter, et Marc verrait le même écran sans savoir que rien n'a bougé.
             const res = await fetchFxRates({ force: true });
-            // ⚠️ Écriture INCONDITIONNELLE ici, contrairement au démarrage : un geste explicite doit
-            // laisser une trace même quand le résultat est identique, sinon « j'ai cliqué » et « je
-            // n'ai pas cliqué » produisent le même état et le bouton a l'air cassé.
-            updateFxRates(res);
-            setAnnonce(res.source === 'api'
+            // ⚠️⚠️ CE BOUTON ÉCRIVAIT SANS CONDITION, ET IL DÉTRUISAIT LE RECOURS QU'IL SERT.
+            // Mesuré (revue panel du 2026-09-17, défaut né avec la carte au lot précédent) : sur un
+            // état `manuel` (Marc a saisi 1,3947 / 1,6073 parce que la Banque du Canada ne répondait
+            // pas), UN clic pendant que la panne dure rendait `repli 1,40 / 1,47` — sa saisie
+            // effacée. Et il n'y faut même pas de panne réseau : une seule série FIGÉE suffit à
+            // ramener un état `api` au littéral du dépôt.
+            // La décision PURE existait déjà et est testée pour exactement ça — le bouton ne la
+            // contournait que pour garder sa trace. Il l'obtient autrement : sur `'diagnostic'`, on
+            // écrit la cause et l'instant de la tentative (donc « j'ai cliqué » ≠ « je n'ai pas
+            // cliqué »), sans jamais toucher aux taux. L'état est relu ICI, après l'attente.
+            const avant = useFinanceStore.getState();
+            const quoi = decisionEcritureFx(avant, res);
+            if (quoi === 'tout') {
+                updateFxRates(res);
+            } else {
+                updateFxRates({
+                    USD: avant.fxRates.USD, EUR: avant.fxRates.EUR, CAD: avant.fxRates.CAD,
+                    lastFetched: avant.fxRates.lastFetched,
+                    estimated: avant.fxRatesEstimated,
+                    source: fxSourceEffective(avant),
+                    cause: res.cause,
+                    attemptAt: res.attemptAt,
+                    observationDate: avant.fxObservationDate,
+                });
+            }
+            setAnnonce(quoi === 'tout' && res.source === 'api'
                 ? `Taux lus chez la Banque du Canada : USD ${res.USD.toFixed(4)}, EUR ${res.EUR.toFixed(4)}.`
-                : `Lecture sans succès. ${messageCauseFx(res.cause)}`);
+                : `Lecture sans succès, tes taux actuels sont conservés. ${messageCauseFx(res.cause)}`);
         } catch (e) {
             // La fonction encode déjà ses échecs dans son retour ; un rejet ici serait un défaut de
             // programmation, pas une panne réseau — on le DIT plutôt que de l'avaler.
@@ -138,6 +161,18 @@ export const FxRatesCard: React.FC = () => {
                         : 'Aucune lecture réussie à ce jour.'}
                     {lastAttemptAt > 0 ? ` Dernière tentative ${formatRelative(lastAttemptAt)}.` : ''}
                 </p>
+
+                {/* ⚠️ [FX-OBSERVATION-COHORTE] LA DATE DE L'OBSERVATION, pas celle de la lecture.
+                    Les deux diffèrent : la Banque du Canada ne publie qu'un jour OUVRÉ, donc une
+                    lecture d'aujourd'hui rend normalement la valeur d'hier. Et surtout, c'est ce
+                    chiffre qui manquait : le taux servi venait d'une observation de 2019 (série
+                    abandonnée) sans que rien à l'écran ne puisse le dire. */}
+                {observationDate !== undefined && observationDate !== '' && (
+                    <p className="text-meta text-ink-300">
+                        Valeur publiée par la Banque du Canada le{' '}
+                        <span className="font-mono text-ink-100">{observationDate}</span>.
+                    </p>
+                )}
 
                 {!autorite && (
                     <p className="text-meta text-warning-400">

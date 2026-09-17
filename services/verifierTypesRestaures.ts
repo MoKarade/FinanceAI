@@ -152,7 +152,15 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // QUATRIÈME fois que ce lot-ci passe par là (`accountId`/`debtName`/`missingRate` avant elles).
     // La garde de dérivation les aurait attrapées — elles sont écrites ici AVANT qu'elle rougisse,
     // parce qu'un filet n'est pas une excuse pour sauter le geste qu'il rattrape.
-    'fxRatesSource', 'fxLastAttemptCause',
+    // ⚠️ [FX-OBSERVATION-COHORTE] `fxObservationDate` s'y ajoute (la date de l'observation BdC).
+    'fxRatesSource', 'fxLastAttemptCause', 'fxObservationDate',
+    // ⚠️ `observationDate` (sans préfixe) est le MÊME concept vu par la garde de dérivation : il
+    // vit dans la SIGNATURE de `updateFxRates`, sur sa propre ligne, donc le filtre « la ligne
+    // contient `=>` » ne le voit pas comme une méthode. Même situation que `estimated` dans
+    // `CHAMPS_BOOLEENS`, et même réponse : on le DÉCLARE au lieu de le soustraire à sa garde en
+    // recompactant la signature. Il est d'ailleurs persisté pour de vrai — le cache local
+    // `fx_rates_cache` porte exactement cette clé (`ResultatTauxFx.observationDate`).
+    'observationDate',
     'mimeType', 'model', 'municipality', 'name',
     'nature', 'nextDividendDate', 'notes', 'originalCategory',
     'owner', 'pattern', 'payee', 'priceHistory',

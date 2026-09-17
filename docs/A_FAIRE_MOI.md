@@ -5,8 +5,14 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
-- [ ] 👤 **[MESURE — FX-TAUX-JAMAIS-ARRIVES]** (2026-09-16) — **ouvre Réglages → Système &
-  diagnostics, carte « Taux de change », et dis-moi ce qu'elle raconte.**
+- [x] 👤 **[MESURE — FX-TAUX-JAMAIS-ARRIVES]** (2026-09-16) — ✅ **FAITE le 2026-09-17, et elle a
+  donné la cause.** Marc a cliqué, lu le diagnostic (« au moins une des deux séries était absente »)
+  puis ouvert l'URL de l'API : `observations[0]` est la dernière valeur du **dong vietnamien**, série
+  abandonnée fin **2019**, et les séries vivantes étaient dans l'entrée SUIVANTE. Le code lisait
+  l'index zéro. Corrigé par `[FX-OBSERVATION-COHORTE]`. Le texte d'origine est conservé ci-dessous —
+  il dit ce qu'on savait AVANT la mesure.
+  **~~ouvre Réglages → Système & diagnostics, carte « Taux de change », et dis-moi ce qu'elle
+  raconte.~~**
   **Ce qui est déjà mesuré** : ton état porte les taux ÉCRITS EN DUR dans le code (facteurs
   **1,4000** pour l'USD et **1,4700** pour l'EUR, au dix-millième — `DEFAULT_FX_RATES`,
   « approximation Q1 2026 »). Tes 12 positions sont toutes en USD ou EUR, donc **100 %** de la
@@ -21,6 +27,15 @@
   convertiront tes avoirs, et l'app continuera d'afficher qu'ils viennent de toi.
   ⚠️ Tant que le taux vient du repli, un compte courtier en devise étrangère reste **nommé et non
   converti** : c'est délibéré — un montant faux et crédible serait pire que l'omission.
+- [ ] 👤 **[VÉRIF — FX-OBSERVATION-COHORTE]** (2026-09-17) — **une fois le déploiement passé, rouvre
+  la carte « Taux de change » et clique « Réessayer maintenant » une dernière fois.**
+  Attendu : le badge passe à **« Taux Banque du Canada »**, les chiffres deviennent **1,3947** (USD)
+  et **1,6073** (EUR) — ou les valeurs du jour —, et une ligne neuve annonce **« Valeur publiée par
+  la Banque du Canada le AAAA-MM-JJ »**. ⚠️ Je ne peux pas le vérifier d'ici : l'hôte est refusé au
+  CONNECT depuis mon conteneur, et l'URL Vercel est derrière le SSO (`CLAUDE.md` §6).
+  ⚠️ **Ne recopie plus les 1,4000 / 1,4700 dans les champs de saisie** — ce sont les valeurs de repli
+  affichées en exemple ; les saisir les ferait passer pour un taux que tu assumes, avec le droit
+  d'écrire un total de compte. Si tu saisis, saisis un taux lu ailleurs.
 - [x] **[DÉCISION — ENG-MELTDOWN-JAMBE-ARRIVEE, reste]** (2026-09-04, lot 157) — la jambe
   d'arrivée du meltdown REER→non-enregistré est maintenant AFFICHÉE (fait, sans déplacer
   d'argent). Reste la vraie question : l'argent arrivé en COURS de mois doit-il toucher un mois

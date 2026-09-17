@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 091 tests** Vitest
-(621 fichiers de test, MESURÉ par la suite complète le 2026-09-16 (744 s) ; +19 provenance FX, +8 lecture BdC, +19 autorité courtier, +12 historique courtier, +7 câblage, +10 carte FX, +5 amputation, +2 mocks complets). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 112 tests** Vitest
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1056,6 +1056,29 @@ n'est pas réécrire un récit.
   par une dépendance profonde. Le périmètre qui compte est la couche que **tout montage traîne
   derrière lui sans le savoir** — mesuré : `services/` n'importe que la paire fautive
   (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUS-LES-MONTAGES`).
+
+- ⚠️⚠️ **Un INDEX sur une liste GROUPÉE PAR COHORTE ne désigne rien** (2026-09-17) :
+  `services/finance.ts` lisait `observations[0]` de la Banque du Canada. Sur un **groupe**,
+  `recent=1` rend la dernière observation de **chaque série**, groupée par cohorte — la réponse
+  réelle commence par `{ d: "2019-12-31", FXVNDCAD: … }`, une série **abandonnée**, et les taux
+  vivaient dans l'entrée suivante. Les deux replis tiraient donc ENSEMBLE : mesuré, USD 1,4000 contre
+  **1,3947** (−0,38 %) mais EUR 1,4700 contre **1,6073** (**+9,34 %**, +5 426 $ sur une seule
+  position). Prendre `[1]` serait le même défaut d'un cran : c'est l'entrée **qui contient la
+  série**, et la plus récente, qu'il faut retenir. ⚠️ **Aucun test ne pouvait le voir** — les trois
+  fixtures FX étaient écrites à la main et encodaient la forme supposée ; deux n'avaient même pas le
+  champ `d`, que l'API rend TOUJOURS. La garde part maintenant de la réponse RÉELLE, avec une
+  anti-vacuité qui exige que `observations[0]` ne porte NI USD NI EUR. ⚠️ **Le chiffre qui manquait
+  n'était pas un taux mais une DATE** : rien à l'écran ne distinguait une observation de 2019 de
+  celle du jour (`UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE` appliqué à la fraîcheur) — d'où
+  `fxObservationDate`, publiée SEULEMENT quand les deux séries ont été lues, et un refus au-delà de
+  10 jours (seuil DÉRIVÉ : **5 j** de fermeture légitime — 4 écrit sans mesure, corrigé par la
+  revue —, 140 j pour la plus proche série morte).
+  ⚠️ **Un lot qui ajoute une contrainte de FRAÎCHEUR doit relire toutes les fixtures à date figée** :
+  le helper voisin portait `d: '2026-09-16'` et serait devenu rouge tout seul dix jours plus tard.
+  ⚠️ Et la mesure était **à une question de distance**, 2ᵉ fois : « 403 au CONNECT » décrit MON accès,
+  pas celui de Marc — la bonne question est la plus étroite qui départage (« le texte `FXUSDCAD`
+  apparaît-il ? »), pas « envoie-moi tout »
+  (`UN-INDEX-SUR-UNE-LISTE-GROUPEE-PAR-COHORTE-NE-DESIGNE-RIEN`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

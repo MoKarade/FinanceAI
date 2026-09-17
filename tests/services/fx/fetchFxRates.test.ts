@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 import { fetchFxRates } from '../../../services/finance';
+import { logError } from '../../../services/errorLogger';
 
 // ⚠️ La date de l'observation est celle du JOUR de l'exécution, jamais une date figée.
 // [FX-OBSERVATION-COHORTE] a introduit un refus des observations trop vieilles : une fixture datée
@@ -35,6 +36,10 @@ function reponse(body: unknown, ok = true, status = 200): Response {
 beforeEach(() => {
     try { localStorage.clear(); } catch { /* environnement sans Web Storage */ }
     vi.restoreAllMocks();
+    // ⚠️ `restoreAllMocks` ne vide PAS l'historique d'un `vi.fn()` créé par la fabrique de
+    // `vi.mock` : les appels s'accumulent d'un cas à l'autre, et un compte d'appels devient faux
+    // sans que rien ne le signale (mesuré : 3 au lieu de 2).
+    vi.mocked(logError).mockClear();
 });
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -117,5 +122,32 @@ describe('repli sur le cache — la provenance survit, la CAUSE est celle du jou
         expect(r.USD).toBe(1.3845);      // on préfère un vrai taux périmé à un chiffre inventé
         expect(r.source).toBe('api');    // sa PROVENANCE n'a pas changé
         expect(r.cause).toBe('reseau');  // mais le diagnostic ne dit pas « tout va bien »
+    });
+});
+
+// [FX-OBSERVATION-COHORTE, revue panel 2026-09-17] Une série ABSENTE de TOUTE la réponse.
+describe('la disparition d\'une série ne se fait pas en silence', () => {
+    it('⚠️ USD et EUR absents du groupe entier → deux traces, pas un repli muet', async () => {
+        // `lireSerieBdc` balaie TOUT le tableau : `'absente'` veut donc dire « aucune observation du
+        // groupe ne porte cette série ». Pour les deux piliers de `FX_RATES_DAILY`, publiés chaque
+        // jour ouvré, c'est un changement de schéma chez la Banque du Canada — pas un silence
+        // normal. Sans trace, l'app repasserait sur 1,40 / 1,47 exactement comme avant ce lot.
+        vi.stubGlobal('fetch', vi.fn(async () => reponse({
+            observations: [{ d: aujourdHui(), FXGBPCAD: { v: '1.8743' } }],
+        })));
+        const r = await fetchFxRates({ force: true });
+        expect(r.USD).toBe(1.40);
+        expect(r.EUR).toBe(1.47);
+        expect(r.source).toBe('repli');
+
+        const messages = vi.mocked(logError).mock.calls.map((c) => String(c[0]?.message));
+        expect(messages.filter((m) => /absent de TOUTE la réponse/.test(m))).toHaveLength(2);
+    });
+
+    it('contrôle négatif : les deux séries lues → aucune trace de ce genre', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => reponse(obs('1.3947', '1.6073'))));
+        await fetchFxRates({ force: true });
+        const messages = vi.mocked(logError).mock.calls.map((c) => String(c[0]?.message));
+        expect(messages.filter((m) => /absent de TOUTE la réponse/.test(m))).toHaveLength(0);
     });
 });

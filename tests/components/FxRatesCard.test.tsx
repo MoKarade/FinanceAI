@@ -140,3 +140,73 @@ describe('accessibilité et honnêteté de l\'écran', () => {
         expect(screen.queryByText(/n'a pas le droit d'écrire un total de compte/i)).toBeNull();
     });
 });
+
+// ⚠️⚠️ [FX-OBSERVATION-COHORTE, revue panel 2026-09-17] LE BOUTON DÉTRUISAIT LE RECOURS QU'IL SERT.
+//
+// Le gestionnaire écrivait le résultat SANS CONDITION, court-circuitant `decisionEcritureFx` — la
+// décision pure écrite pour ce cas exact et testée pour lui. Sur un état qui FAIT AUTORITÉ, un seul
+// clic pendant une panne ramenait le littéral du dépôt.
+//
+// ⚠️ Pourquoi la garde d'à côté ne pouvait pas le voir : elle part de `etatRepli`, un état SANS
+// autorité ET aux mêmes valeurs 1,40 / 1,47 que le repli rendu par le mock. Le défaut y est
+// structurellement indiscernable (`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`).
+describe('un clic ne peut pas détruire un taux qui fait autorité', () => {
+    const etatManuel = {
+        fxRates: { USD: 1.3947, EUR: 1.6073, CAD: 1, lastFetched: 0 },
+        fxRatesEstimated: true,
+        fxRatesSource: 'manuel' as const,
+        fxLastAttemptCause: 'manuel',
+        fxLastAttemptAt: Date.parse('2026-09-17T09:00:00Z'),
+        fxObservationDate: undefined,
+    };
+
+    it('lecture en ÉCHEC sur un état « manuel » → les taux saisis SURVIVENT', async () => {
+        useFinanceStore.setState(etatManuel);
+        fetchFxRatesMock.mockResolvedValue({
+            USD: 1.40, EUR: 1.47, CAD: 1, lastFetched: 0,
+            estimated: true, source: 'repli', cause: 'reseau', attemptAt: Date.now(),
+        });
+        render(<FxRatesCard />);
+        await userEvent.click(screen.getByRole('button', { name: /Réessayer maintenant/i }));
+
+        await waitFor(() => {
+            expect(useFinanceStore.getState().fxLastAttemptCause).toBe('reseau');
+        });
+        const apres = useFinanceStore.getState();
+        expect(apres.fxRates.USD).toBe(1.3947);
+        expect(apres.fxRates.EUR).toBe(1.6073);
+        expect(apres.fxRatesSource).toBe('manuel');
+    });
+
+    it('…et le clic laisse quand même sa TRACE (sinon le bouton aurait l\'air cassé)', async () => {
+        useFinanceStore.setState({ ...etatManuel, fxLastAttemptAt: 1 });
+        fetchFxRatesMock.mockResolvedValue({
+            USD: 1.40, EUR: 1.47, CAD: 1, lastFetched: 0,
+            estimated: true, source: 'repli', cause: 'http', attemptAt: 987_654_321,
+        });
+        render(<FxRatesCard />);
+        await userEvent.click(screen.getByRole('button', { name: /Réessayer maintenant/i }));
+
+        await waitFor(() => {
+            expect(useFinanceStore.getState().fxLastAttemptAt).toBe(987_654_321);
+        });
+        expect(useFinanceStore.getState().fxLastAttemptCause).toBe('http');
+    });
+
+    it('contrôle négatif : une lecture RÉUSSIE écrit bien, elle (sinon la garde bloquerait tout)', async () => {
+        useFinanceStore.setState(etatRepli);
+        fetchFxRatesMock.mockResolvedValue({
+            USD: 1.3947, EUR: 1.6073, CAD: 1, lastFetched: Date.now(),
+            estimated: false, source: 'api', cause: 'ok', attemptAt: Date.now(),
+            observationDate: '2026-09-16',
+        });
+        render(<FxRatesCard />);
+        await userEvent.click(screen.getByRole('button', { name: /Réessayer maintenant/i }));
+
+        await waitFor(() => {
+            expect(useFinanceStore.getState().fxRates.EUR).toBe(1.6073);
+        });
+        expect(useFinanceStore.getState().fxRatesSource).toBe('api');
+        expect(useFinanceStore.getState().fxObservationDate).toBe('2026-09-16');
+    });
+});

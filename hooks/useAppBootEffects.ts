@@ -297,8 +297,15 @@ export function useAppBootEffects(): void {
                 // que le sélecteur d'`App.tsx` exclut délibérément. Lire l'état au moment de
                 // l'effet est plus simple ET plus juste (c'est la valeur du moment de la lecture,
                 // pas celle du montage) — et ça ne s'abonne à rien.
-                const fxEtat = useFinanceStore.getState();
                 const rates = await fetchFxRates();
+                // ⚠️ L'état est relu APRÈS l'attente, jamais avant. Le lire d'abord figeait une
+                // photo vieille de la durée du réseau (jusqu'à 8 s) : si Marc saisit son taux à la
+                // main pendant ce temps — le cas EXACT où la saisie sert, puisqu'elle sert quand la
+                // Banque du Canada ne répond pas —, la branche `'diagnostic'` réécrivait par-dessus
+                // les valeurs d'AVANT sa saisie, sans erreur ni notification. Sa saisie disparaissait
+                // en silence (revue panel du 2026-09-17 ; défaut né au lot précédent, élargi ici en
+                // ajoutant `observationDate` à la même photo figée).
+                const fxEtat = useFinanceStore.getState();
                 // ⚠️ [FX-TAUX-JAMAIS-ARRIVES] La condition d'écriture ne compare plus SEULEMENT les
                 // valeurs. Elle vivait ici, en ligne, et elle était fausse pour une raison qu'aucun
                 // test ne pouvait voir depuis ce fichier : la Banque du Canada ne publie qu'un jour

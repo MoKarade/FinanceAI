@@ -202,8 +202,16 @@ export const useFinanceStore = create<FinanceState>()(
                 // observation derrière lui — garder l'ancienne date daterait le littéral du dépôt.
                 // Aucun appelant ne peut donc se tromper : c'est le mutateur qui tient les deux
                 // champs cohérents (même geste que pour `fxRatesSource` ci-dessus).
+                // ⚠️ Et quand l'appelant ne parle PAS de provenance (ancienne signature), la date
+                // ne survit que si les TAUX n'ont pas bougé. Mon commentaire affirmait « aucun
+                // appelant ne peut donc se tromper » — mesuré par la revue, c'était FAUX de ce
+                // chemin-là : `{ USD: 1.55, EUR: 1.80 }` sans `source` laissait la date de la
+                // veille DATER des taux neufs. Aucun appelant de production ne l'emprunte
+                // aujourd'hui, ce qui est précisément ce qui dispense de vérifier.
                 fxObservationDate: source === undefined
-                    ? prev.fxObservationDate
+                    ? ((rates.USD !== prev.fxRates.USD || rates.EUR !== prev.fxRates.EUR)
+                        ? undefined
+                        : prev.fxObservationDate)
                     : (source === 'api' ? observationDate : undefined),
             })),
             updateApiKeys: (keys) => set((prev) => ({

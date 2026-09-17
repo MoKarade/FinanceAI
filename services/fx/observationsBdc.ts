@@ -36,12 +36,23 @@
  * Âge maximal, en jours, d'une observation encore acceptée comme « le taux courant ».
  *
  * ⚠️ DÉRIVÉ, PAS INVENTÉ (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`) :
- *  · la Banque du Canada publie chaque jour OUVRÉ ; la plus longue interruption légitime est un
- *    week-end doublé de deux jours fériés consécutifs (25 et 26 décembre), soit **4 jours** ;
+ *  · la Banque du Canada publie chaque jour OUVRÉ ; la plus longue interruption légitime vaut
+ *    **5 jours** — RE-MESURÉE sur les onze prochaines fins d'année après qu'une revue eut relevé
+ *    que j'avais écrit « 4 » sans la calculer : `2026-12-24 → 2026-12-29` (Noël, lendemain de Noël
+ *    et leurs reports, encadrés par une fin de semaine), cas qui revient 7 années sur 11 ;
  *  · dans la réponse réelle du 2026-09-16, les séries VIVANTES ont 0 jour d'âge, et les séries
  *    ABANDONNÉES en ont **140** (RUB/SAR, 2026-04-30) et **2 452** (VND, 2019-12-31).
- * 10 jours laissent donc plus du double de la marge légitime tout en restant 14 fois sous le plus
- * proche cas réel à rejeter. Aucun jour de l'intervalle [5 ; 139] ne changerait le verdict.
+ * 10 jours valent donc EXACTEMENT le double de la marge légitime — pas « plus du double », comme je
+ * l'avais écrit — tout en restant 14 fois sous le plus proche cas réel à rejeter. L'intervalle
+ * [5 ; 139] donne le même verdict, mais 5 y est à marge NULLE (âge 5, seuil 5 : `5 > 5` est faux) :
+ * c'est la raison de ne pas descendre jusque-là.
+ *
+ * ⚠️ CE SEUIL PORTE DEUX QUESTIONS, et une seule est mesurée ici. « Cette série est-elle morte ? »
+ * (VND 2 452 j, RUB/SAR 140 j) — 10 jours y répondent parfaitement. « Ce taux a-t-il le droit
+ * d'écrire un total de compte ? » est une AUTRE question, à laquelle 10 jours ne répondent pas :
+ * USD/CAD bouge couramment de 1 à 2 % en dix jours. Tant que les deux partagent ce seuil, une
+ * valeur vieille de dix jours obtient l'autorité pleine — c'est écrit plutôt que découvert
+ * (`[FX-AUTORITE-SANS-FRAICHEUR]`, routé au BACKLOG).
  */
 export const AGE_MAX_OBSERVATION_JOURS = 10;
 
@@ -49,8 +60,12 @@ const MS_PAR_JOUR = 24 * 60 * 60 * 1000;
 
 /** Ce qu'une série vaut dans une réponse donnée. */
 export type LectureSerie =
-    /** Valeur lue, avec la DATE de l'observation d'où elle vient. */
-    | { statut: 'ok'; valeur: number; date: string; ageJours: number }
+    /** Valeur lue, avec la DATE de l'observation d'où elle vient.
+     *  ⚠️ `anomalie` est renseignée quand une observation PLUS RÉCENTE que celle retenue était
+     *  illisible : le taux servi reste juste (on est retombé sur le jour d'avant), mais l'anomalie
+     *  du jour ne doit pas disparaître du diagnostic — c'est toute la raison d'être de ce module
+     *  (revue panel du 2026-09-17). */
+    | { statut: 'ok'; valeur: number; date: string; ageJours: number; anomalie?: { brut: string; date: string } }
     /** Aucune observation ne porte cette série. */
     | { statut: 'absente' }
     /** La série est là, mais sa valeur (ou la date qui la porte) ne peut pas être lue. */
@@ -110,7 +125,7 @@ export function lireSerieBdc(observations: unknown, serie: string, maintenant: n
     if (!Array.isArray(observations)) return { statut: 'absente' };
 
     let meilleure: { t: number; date: string; valeur: number } | null = null;
-    let illisible: string | null = null;
+    let illisible: { brut: string; t: number; date: string } | null = null;
 
     for (const obs of observations) {
         if (obs === null || typeof obs !== 'object') continue;
@@ -122,17 +137,31 @@ export function lireSerieBdc(observations: unknown, serie: string, maintenant: n
         // anomalie — on passe à l'observation suivante sans rien signaler.
         if (brut === undefined || brut === null || String(brut).trim() === '') continue;
 
-        const valeur = parseFloat(String(brut));
-        if (!Number.isFinite(valeur) || valeur <= 0) {
-            illisible = String(brut).slice(0, 24);
-            continue;
-        }
         const t = jourUtcDepuisD(ligne.d);
-        if (t === null) {
-            illisible = String(ligne.d ?? '(date absente)').slice(0, 24);
+        const dateLisible = t === null ? '(date illisible)' : String(ligne.d);
+        const tAnomalie = t ?? -Infinity;
+        // Ce qui rend CETTE observation inutilisable, s'il y a lieu. ⚠️ Écrit hors d'une fermeture :
+        // `tsc` ne voit pas une affectation faite dans une lambda et réduirait `illisible` à `never`.
+        let raison: string | null = null;
+
+        const valeur = parseFloat(String(brut));
+        if (!Number.isFinite(valeur) || valeur <= 0) raison = String(brut);
+        else if (t === null) raison = String(ligne.d ?? '(date absente)');
+        // ⚠️ Une observation datée dans le FUTUR passerait pour fraîche (`Math.max(0, …)` rabat son
+        // âge à 0) sans laisser la moindre trace — exactement le contraire de ce que ce module
+        // existe pour faire. La tolérance d'UN jour absorbe une horloge locale en retard de
+        // quelques heures autour de minuit UTC, cas banal et parfaitement sain ; au-delà, la date
+        // ne décrit plus rien de publiable (revue panel du 2026-09-17).
+        else if (t - maintenant > MS_PAR_JOUR) raison = `futur:${dateLisible}`;
+
+        if (raison !== null) {
+            // On garde l'anomalie la plus RÉCENTE : c'est celle qui décrit l'état du jour.
+            if (illisible === null || tAnomalie > illisible.t) {
+                illisible = { brut: raison.slice(0, 24), t: tAnomalie, date: dateLisible };
+            }
             continue;
         }
-        if (meilleure === null || t > meilleure.t) {
+        if (t !== null && (meilleure === null || t > meilleure.t)) {
             meilleure = { t, date: String(ligne.d), valeur };
         }
     }
@@ -142,8 +171,15 @@ export function lireSerieBdc(observations: unknown, serie: string, maintenant: n
         if (ageJours > AGE_MAX_OBSERVATION_JOURS) {
             return { statut: 'perimee', date: meilleure.date, ageJours };
         }
-        return { statut: 'ok', valeur: meilleure.valeur, date: meilleure.date, ageJours };
+        // ⚠️ Le repli sur une observation plus ancienne SAUVE le taux, il n'efface pas l'anomalie.
+        const plusRecenteEtIllisible = illisible !== null && illisible.t > meilleure.t
+            ? { brut: illisible.brut, date: illisible.date }
+            : undefined;
+        return {
+            statut: 'ok', valeur: meilleure.valeur, date: meilleure.date, ageJours,
+            ...(plusRecenteEtIllisible === undefined ? {} : { anomalie: plusRecenteEtIllisible }),
+        };
     }
-    if (illisible !== null) return { statut: 'illisible', brut: illisible };
+    if (illisible !== null) return { statut: 'illisible', brut: illisible.brut };
     return { statut: 'absente' };
 }

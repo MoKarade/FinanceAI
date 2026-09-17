@@ -1071,7 +1071,8 @@ n'est pas réécrire un récit.
   n'était pas un taux mais une DATE** : rien à l'écran ne distinguait une observation de 2019 de
   celle du jour (`UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE` appliqué à la fraîcheur) — d'où
   `fxObservationDate`, publiée SEULEMENT quand les deux séries ont été lues, et un refus au-delà de
-  10 jours (seuil DÉRIVÉ : 4 j de fermeture légitime, 140 j pour la plus proche série morte).
+  10 jours (seuil DÉRIVÉ : **5 j** de fermeture légitime — 4 écrit sans mesure, corrigé par la
+  revue —, 140 j pour la plus proche série morte).
   ⚠️ **Un lot qui ajoute une contrainte de FRAÎCHEUR doit relire toutes les fixtures à date figée** :
   le helper voisin portait `d: '2026-09-16'` et serait devenu rouge tout seul dix jours plus tard.
   ⚠️ Et la mesure était **à une question de distance**, 2ᵉ fois : « 403 au CONNECT » décrit MON accès,

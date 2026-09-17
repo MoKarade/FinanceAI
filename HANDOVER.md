@@ -11,7 +11,7 @@
 > Sur un GROUPE, `recent=1` rend la dernière observation de **chaque série**, groupée par COHORTE :
 > l'index zéro ne désigne rien. `FXUSDCAD`/`FXEURCAD` étaient dans l'entrée suivante.
 > ✅ Lecture **par série** (`services/fx/observationsBdc.ts`, pur, partagé navigateur + MCP), refus
-> d'une observation de plus de **10 jours** (seuil DÉRIVÉ : 4 j de fermeture légitime maximum, 140 j
+> d'une observation de plus de **10 jours** (seuil DÉRIVÉ : **5 j** de fermeture légitime, 140 j
 > pour la plus proche série abandonnée de la vraie réponse), cause `'perimee'` distincte de
 > `'partiel'`, et **la date de l'observation affichée** — le chiffre dont l'absence a laissé servir
 > un taux de 2019 comme celui du jour.

@@ -49,10 +49,15 @@ describe('lecture par SÉRIE sur la réponse réelle', () => {
 
     it('⚠️ et surtout : ce ne sont PAS les valeurs de repli du dépôt', () => {
         // Le défaut servait 1,4000 / 1,4700 (`DEFAULT_FX_RATES`). L'écart EUR mesuré est de +9,34 %.
+        // ⚠️ Écrit d'abord `expect(eur.statut === 'ok' && eur.valeur).not.toBe(1.47)` : VACUEUX —
+        // dès que le statut n'est plus `'ok'`, l'expression vaut `false`, et `false !== 1.47` passe
+        // toujours. Une régression qui change le STATUT serait donc invisible ici.
         const eur = lireSerieBdc(reponseReelle.observations, 'FXEURCAD', LENDEMAIN);
-        expect(eur.statut === 'ok' && eur.valeur).not.toBe(1.47);
+        expect(eur).toMatchObject({ statut: 'ok' });
+        expect((eur as { valeur: number }).valeur).not.toBe(1.47);
         const usd = lireSerieBdc(reponseReelle.observations, 'FXUSDCAD', LENDEMAIN);
-        expect(usd.statut === 'ok' && usd.valeur).not.toBe(1.40);
+        expect(usd).toMatchObject({ statut: 'ok' });
+        expect((usd as { valeur: number }).valeur).not.toBe(1.40);
     });
 
     it('une série ABANDONNÉE est refusée pour son ÂGE, pas lue comme le taux du jour', () => {
@@ -111,12 +116,62 @@ describe('cas limites', () => {
         expect(lireSerieBdc([null, 3, 'x'], 'FXUSDCAD', LENDEMAIN).statut).toBe('absente');
     });
 
+    it('⚠️ le seuil DÉPASSE strictement la plus longue interruption légitime (5 jours)', () => {
+        // ⚠️ Perturbation MUETTE démasquée : le test de borne ci-dessous DÉRIVE ses dates du seuil,
+        // donc il reste vert quelle que soit sa valeur — il défend le comportement à la frontière,
+        // pas le choix du nombre. Rien n'épinglait donc le fait qui compte.
+        // La Banque du Canada peut cesser de publier 5 jours d'affilée (mesuré sur onze fins
+        // d'année : `2026-12-24 → 2026-12-29`, cas qui revient 7 fois sur 11). À 5, la marge est
+        // NULLE (`5 > 5` est faux) : la moindre journée de plus ferait refuser un taux parfaitement
+        // valide et replierait sur le littéral du dépôt — le défaut que ce lot vient de fermer.
+        // On ancre la RELATION, jamais la valeur : monter le seuil reste libre, le descendre non.
+        expect(AGE_MAX_OBSERVATION_JOURS).toBeGreaterThan(5);
+    });
+
     it('le seuil d\'âge est une BORNE : à la limite on accepte, un jour de plus on refuse', () => {
         const base = Date.UTC(2026, 8, 16);
         const pile = base + AGE_MAX_OBSERVATION_JOURS * 86400000;
         const unDePlus = pile + 86400000;
         expect(lireSerieBdc([{ d: '2026-09-16', FXUSDCAD: { v: '1.39' } }], 'FXUSDCAD', pile).statut).toBe('ok');
         expect(lireSerieBdc([{ d: '2026-09-16', FXUSDCAD: { v: '1.39' } }], 'FXUSDCAD', unDePlus).statut).toBe('perimee');
+    });
+});
+
+describe('les anomalies trouvées par le panel du 2026-09-17', () => {
+    it('une observation PLUS RÉCENTE et illisible ne disparaît pas quand on retombe sur la veille', () => {
+        // Le taux servi reste JUSTE — c'est précisément ce qui rendait l'anomalie invisible.
+        const obs = [
+            { d: '2026-09-15', FXUSDCAD: { v: '1.3900' } },
+            { d: '2026-09-16', FXUSDCAD: { v: 'N/A' } },
+        ];
+        const r = lireSerieBdc(obs, 'FXUSDCAD', LENDEMAIN);
+        expect(r).toMatchObject({ statut: 'ok', valeur: 1.39, date: '2026-09-15' });
+        expect(r.statut === 'ok' && r.anomalie).toEqual({ brut: 'N/A', date: '2026-09-16' });
+    });
+
+    it('contrôle négatif : une anomalie PLUS ANCIENNE que la valeur retenue ne remonte pas', () => {
+        const obs = [
+            { d: '2026-09-15', FXUSDCAD: { v: 'N/A' } },
+            { d: '2026-09-16', FXUSDCAD: { v: '1.3947' } },
+        ];
+        const r = lireSerieBdc(obs, 'FXUSDCAD', LENDEMAIN);
+        expect(r).toMatchObject({ statut: 'ok', valeur: 1.3947 });
+        expect(r.statut === 'ok' && r.anomalie).toBeUndefined();
+    });
+
+    it('⚠️ une observation datée dans le FUTUR ne passe pas pour fraîche', () => {
+        // `Math.max(0, …)` rabattait son âge à 0, donc `'ok'`, sans la moindre trace.
+        const dansUnMois = new Date(LENDEMAIN + 30 * 86400000).toISOString().slice(0, 10);
+        const r = lireSerieBdc([{ d: dansUnMois, FXUSDCAD: { v: '9.99' } }], 'FXUSDCAD', LENDEMAIN);
+        expect(r.statut).toBe('illisible');
+    });
+
+    it('…mais une horloge locale en retard de quelques heures reste ACCEPTÉE (tolérance d\'un jour)', () => {
+        // Autour de minuit UTC, une horloge qui retarde rend l'observation du jour « future » de
+        // quelques heures : la refuser priverait l'utilisateur d'un taux parfaitement valide.
+        const presqueMinuit = Date.UTC(2026, 8, 16) - 3 * 3600000;
+        const r = lireSerieBdc([{ d: '2026-09-16', FXUSDCAD: { v: '1.3947' } }], 'FXUSDCAD', presqueMinuit);
+        expect(r).toMatchObject({ statut: 'ok', valeur: 1.3947 });
     });
 });
 

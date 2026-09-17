@@ -253,9 +253,13 @@ describe('la date d\'observation suit la provenance, par CONSTRUCTION', () => {
         });
         expect(useFinanceStore.getState().fxObservationDate).toBe('2026-09-16');
 
-        // Appelant à l'ANCIENNE signature (aucun `source`) : il ne sait rien de la date, donc il
-        // n'a pas à trancher — l'existant reste.
+        // Appelant à l'ANCIENNE signature (aucun `source`) et taux INCHANGÉS : l'existant reste.
         useFinanceStore.getState().updateFxRates({ USD: 1.3947, EUR: 1.6073, CAD: 1 });
         expect(useFinanceStore.getState().fxObservationDate).toBe('2026-09-16');
+
+        // ⚠️ …mais si ce même appelant CHANGE les taux, la date ne les décrit plus : elle tombe.
+        // Trouvé par la revue du 2026-09-17, contre un commentaire qui promettait le contraire.
+        useFinanceStore.getState().updateFxRates({ USD: 1.55, EUR: 1.80, CAD: 1 });
+        expect(useFinanceStore.getState().fxObservationDate).toBeUndefined();
     });
 });

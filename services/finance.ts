@@ -170,11 +170,30 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
                 // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
                 // CORROMPU ou FIGÉ → ces deux-là sont loggués au lieu d'être masqués par le repli.
                 const resoudre = (lecture: LectureSerie, repli: number, label: string): number => {
-                    if (lecture.statut === 'ok') return lecture.valeur;
+                    if (lecture.statut === 'ok') {
+                        // ⚠️ Le taux est JUSTE (repli sur une observation plus ancienne), mais une
+                        // observation PLUS RÉCENTE était illisible : sans cette ligne, l'anomalie du
+                        // jour disparaît du diagnostic alors que ce module existe pour la nommer.
+                        if (lecture.anomalie !== undefined) {
+                            logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} — l'observation du ${lecture.anomalie.date} est illisible, valeur du ${lecture.date} utilisée`, context: { brut: lecture.anomalie.brut } });
+                        }
+                        return lecture.valeur;
+                    }
                     if (lecture.statut === 'illisible') {
                         logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} corrompu ou illisible — repli sur ${repli}`, context: { brut: lecture.brut } });
                     } else if (lecture.statut === 'perimee') {
                         logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} figé depuis ${lecture.ageJours} jours — repli sur ${repli}`, context: { derniereObservation: lecture.date } });
+                    } else {
+                        // ⚠️ `'absente'` EST une anomalie POUR CES DEUX SÉRIES-LÀ (revue panel du
+                        // 2026-09-17). Ailleurs, une série sans valeur publiée ce jour-là est un
+                        // silence normal — mais `lireSerieBdc` balaie TOUT le tableau, donc
+                        // `'absente'` veut dire « aucune observation du groupe ne la porte ».
+                        // USD/CAD et EUR/CAD sont les deux piliers de `FX_RATES_DAILY`, publiés
+                        // chaque jour ouvré : leur disparition serait un changement de schéma chez
+                        // la Banque du Canada. Sans cette trace, l'app repasserait EN SILENCE sur
+                        // 1,40 / 1,47 — exactement la classe de défaut que ce lot vient de fermer,
+                        // revenue sous une forme structurelle au lieu d'un mauvais index.
+                        logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} absent de TOUTE la réponse de la Banque du Canada — repli sur ${repli}`, context: { serie: label } });
                     }
                     return repli;
                 };

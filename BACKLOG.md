@@ -967,6 +967,12 @@
   (1 rouge chacune, le bon).
   ⚠️ **Conséquence visible** : tant qu'un titre manque, la carte du hub perd ses trois lignes de
   placements. C'est l'arbitrage des trois autres refus — on publie MOINS, jamais autre chose.
+- [x] 🟠 **`[DETTE-INVISIBLE-INFOBULLE]`** (S) — livré le 2026-09-17, signalé par Marc. La
+  répartition « Par compte » de l'infobulle Futur ne listait que des comptes POSITIFS : 260 898 $
+  d'actifs affichés pour 214 918 $ de valeur nette, et aucune ligne pour les 45 980 $ d'écart (son
+  bail auto). ✅ Ligne « Dettes (hors hypothèque) » signée, conditionnelle ; dérivation extraite du
+  « Détail complet » et PARTAGÉE (`detteReductrice`), par soustraction `Σ actifs − NetWorth` et non
+  depuis `DettesNonImmo` (pas publié sur toutes les courbes). 3 gardes dont 2 contrôles négatifs.
 - [ ] 🔴 **`[FINTABLE-AUTORITE-PARTOUT]`** (L, money-critical, **DEMANDE MARC 2026-09-17**) —
   « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce soit la valeur
   Fintable, car la plus fiable ». Aujourd'hui QUATRE producteurs répondent à « combien valent mes

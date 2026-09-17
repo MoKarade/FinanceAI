@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-INVISIBLE-INFOBULLE]`**
+> Marc a d'abord signalé « un bug : −50 k au 01/07 ». Ce n'en était pas un — c'est son BAIL AUTO
+> (47 169 $) qui entre au bilan : une dette à `startDate` est retirée du patrimoine tant qu'elle n'a
+> pas commencé (`dailyPastLedger.ts`), et le moteur compare des MOIS, donc un début au 20 juillet
+> apparaît au 1er. Confirmé par lui. ⚠️ **Aucune transaction de cet ordre n'existe autour du 1er
+> juillet** — vérifié avant de conclure, ce qui a écarté la piste évidente.
+> 🔎 Le VRAI défaut est celui qu'il a signalé ensuite : « je le vois nulle part, pas sur l'infobulle
+> ou quoi ». `TOOLTIP_ACCOUNTS` ne liste que des comptes POSITIFS : 260 898 $ d'actifs affichés pour
+> 214 918 $ de valeur nette, et rien pour les 45 980 $ d'écart.
+> ✅ Ligne « Dettes (hors hypothèque) » signée, rendue seulement s'il y a une dette. Dérivation
+> EXTRAITE du « Détail complet » (`detteReductrice`) et partagée, jamais recopiée ; par SOUSTRACTION
+> et non depuis `DettesNonImmo` (pas publié sur toutes les courbes).
+> ⚠️ **Troisième instance de la même famille dans la journée** (carte du hub, tuile « Variation
+> 30 j », infobulle) : deux chiffres d'un même écran qui ne se recomposent pas.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 0 LIVRÉE**
 > Demande Marc : « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce
 > soit la valeur Fintable, car la plus fiable ». Plan complet dans `BACKLOG.md` (5 étapes).

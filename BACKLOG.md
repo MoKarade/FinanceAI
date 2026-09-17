@@ -1001,6 +1001,31 @@
     jour de marché agité, ou jamais (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
   - [ ] **Étape 3 — brancher** Accueil/Investissements, valeur nette, hub et MCP sur cette source
     unique. Le mois 0 du Futur y est déjà : ne pas créer une SECONDE règle à côté.
+    **CONCEPTION RÉSOLUE le 2026-09-17, à implémenter telle quelle :**
+    - Le point d'injection est `computeInvestmentsValue` (`services/portfolio.ts`), et c'est une
+      BONNE nouvelle : `computePresentNetWorth`, `computeGrossAssets` et `buildFinancialOverview`
+      l'appellent tous les trois. Les brancher déplace donc le chiffre « Investissements » ET la
+      valeur nette **ensemble** — sans recréer la contradiction interne à la carte du hub qui a
+      ouvert cette session.
+    - **La formule est une identité, pas une nouvelle règle** : `placements_autorité =
+      Σ titres + écart_appliqué`. En effet `écart = Σ(total courtier − titres)` sur les seuls
+      paniers repris, donc `Σ titres + écart = titres_des_paniers_NON_repris + courtier_des_repris`.
+      C'est exactement ce que le mois 0 calcule déjà.
+    - ⚠️ **Prendre l'écart de `appliquerAutoriteCourtier` (`ecartTotal`), JAMAIS `reco.totalGapCad`.**
+      Les deux se ressemblent et diffèrent : `appliquerAutoriteCourtier` REFUSE certains paniers
+      (`famille-mixte`, `total-partiel`…). Utiliser le second donnerait deux réponses à une seule
+      question — l'écran et le moteur divergeraient, ce que le commentaire de `buildSimulationParams`
+      interdit en toutes lettres.
+    - ⚠️ **OBSTACLE À TRANCHER AVANT DE CODER** : `appliquerAutoriteCourtier` a besoin des soldes
+      PAR PANIER, produits par `derivePortfolioStartingBalances` — qui vit dans
+      `services/projection/buildSimulationParams.ts`. L'importer depuis `financialSnapshot.ts`
+      tirerait le constructeur de paramètres de projection dans le chemin de l'ACCUEIL, donc dans le
+      bundle de boot (règle §2 du `CLAUDE.md`). Deux issues : (a) extraire
+      `derivePortfolioStartingBalances` dans son propre petit module et le ré-exporter pour
+      compatibilité ; (b) mesurer le coût réel avant de décider. **Ne pas trancher ça à la va-vite :
+      c'est un arbitrage de frontière de bundle, pas un détail d'import.**
+    - ⚠️ `holdingsCadByRegime` n'est PAS un substitut : il replie CELIAPP sur CELI et REEE sur REER,
+      alors que les soldes de départ les gardent séparés — asymétrie déjà connue et routée.
   - [ ] **Étape 4 — variations** (séance, 7 j, 30 j) : elles restent calculées sur NOTRE
     reconstruction (Fintable n'a aucun historique), avec leur base NOMMÉE à l'écran — sinon deux
     chiffres voisins ne se recomposent pas et rien ne le dit.

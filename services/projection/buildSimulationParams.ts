@@ -40,12 +40,7 @@ import type {
     AppState,
 } from '../../types';
 import type { SimulationParams, LiveCSVBalances } from '../projection';
-import {
-    reconstructPortfolioHistory,
-    type MinimalAsset,
-} from '../history/reconstructPortfolioHistory';
-import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFromHistory';
-import { getEffectivePurchases } from '../../utils/assetPurchases';
+import { derivePortfolioStartingBalances } from './startingBalancesFromAssets';
 import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
@@ -180,32 +175,11 @@ export function computeStartingCash(
     return computeCashLedger(initialBalances, transactions);
 }
 
-/**
- * Dérive les soldes de placement de départ (`liveCSVBalances`) PUREMENT depuis
- * les avoirs, en réutilisant EXACTEMENT la même chaîne que le composant via le
- * hook `usePastPortfolioHistory` : `reconstructPortfolioHistory` (passé réel
- * des comptes) → `deriveStartingBalancesFromHistory` (dernier point = solde
- * actuel). En contexte hors-DOM (MCP), aucun enrichissement réseau (Finnhub)
- * n'a lieu : la reconstruction part du `priceHistory` présent dans les avoirs,
- * comme en mode test du composant.
- */
-export function derivePortfolioStartingBalances(
-    assets: readonly Asset[],
-    fxRates: Record<string, number>,
-): LiveCSVBalances {
-    const minimal: MinimalAsset[] = (assets ?? []).map((a) => ({
-        symbol: a.symbol,
-        quantity: a.quantity || 0,
-        currency: a.currency || 'CAD',
-        currentPrice: a.currentPrice || 0,
-        accountType: a.accountType,
-        dateBought: a.dateBought,
-        purchases: getEffectivePurchases(a),
-        priceHistory: (a.priceHistory || []).map((p) => ({ date: p.date, price: p.price })),
-    }));
-    const history = reconstructPortfolioHistory(minimal, fxRates ?? {});
-    return deriveStartingBalancesFromHistory(history.points);
-}
+// [FINTABLE-AUTORITE-PARTOUT étape 3] `derivePortfolioStartingBalances` a DÉMÉNAGÉ dans son propre
+// module : la vue d'ensemble (donc l'Accueil) en a désormais besoin, et importer CE fichier aurait
+// tiré `verifierEntreesMoteur` + les barèmes fiscaux dans le bundle de boot. Ré-exportée ici pour
+// qu'aucun appelant ne change et qu'il n'existe toujours qu'UNE définition.
+export { derivePortfolioStartingBalances } from './startingBalancesFromAssets';
 
 /**
  * ADAPTATEUR PUR — assemble les `SimulationParams` à partir d'`inputs` déjà

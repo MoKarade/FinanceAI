@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ✅ Session 2026-09-17 (suite) — **PR #981 FUSIONNÉE (`b7634f46`) et DÉPLOYÉE**
+> Six lots d'un coup (`[HUB-TOTAL-AMPUTE]`, revue panel, `[FINTABLE-AUTORITE-PARTOUT]` étape 0,
+> `[DETTE-INVISIBLE-INFOBULLE]`, `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`, `[HUB-REFUS-4-SANS-DIAGNOSTIC]`).
+> 📏 Les 7 checks verts sur le head, dont les deux requis. Déploiement Vercel de production **CRÉÉ et
+> `READY`** sur le SHA fusionné (`dpl_GWJtAcs…`) — §6 satisfaite pour la moitié vérifiable d'ici ; la
+> RÉPONSE servie reste illisible depuis ce conteneur (403 au CONNECT).
+> ⚠️ **RESTE À FAIRE PAR MARC** : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh`. Le `/hub/summary`
+> vit dans le serveur MCP auto-hébergé, PAS sur Vercel — sans ça hubperso sert encore l'ancien code,
+> donc le total amputé. (Le job « Deploy MCP » rouge est une ALARME volontaire, pas une panne.)
+> ⚠️ Après le squash-merge, GitHub a supprimé la branche : `git checkout -B claude/progress-check-yua8yy
+> origin/main` suffit, et **il n'y a rien à pousser** — un push ressusciterait la branche avec un
+> commit orphelin (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE…`).
+>
+> ## 🔎 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 3 : conception CORRIGÉE**
+> Les deux obstacles bloquants sont LEVÉS par la PR #981 (module extrait, mois 0 corrigé). En
+> re-lisant le code avant de coder, la formule approuvée s'est révélée subtilement FAUSSE :
+> `Σ titres + écart_moteur` mélange DEUX bases (quantité DATÉE côté moteur, `a.quantity` côté
+> Accueil) et n'est une identité que si elles coïncident — la seule hypothèse jamais mesurée.
+> ✅ La forme juste **partage la DÉCISION, jamais la BASE** : une seule autorité décide quels paniers
+> sont repris, et chaque écran applique cette liste à SA propre base.
+> ⚠️⚠️ Et ça CONDAMNE l'option « rejouer l'autorité sur `holdingsCadByRegime` » pour une raison plus
+> forte que « deux règles » : sur cette base, `BUCKET_OF` replie CELIAPP→CELI et REEE→REER, donc le
+> refus `famille-mixte` est **structurellement inatteignable** — l'écran APPLIQUERAIT un panier que le
+> moteur REFUSE (double comptage du CELIAPP, mesuré 91 500 $ pour 66 500 $).
+> 📏 Mesure restante, désormais facile : les prix étant alignés, tout écart entre
+> `computeInvestmentsValue` et `Σ derivePortfolioStartingBalances` est EXACTEMENT la divergence de
+> quantité. Repère du jour : `get_holdings` = **245 687 $**, 12 positions, 100 % NON-ENREG.
+> Détail complet dans `BACKLOG.md`.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[HUB-REFUS-4-SANS-DIAGNOSTIC]` LIVRÉ**
 > Conséquence DIRECTE du refus du total amputé livré le matin : la carte du hub peut perdre ses
 > trois lignes de placements, et le faisait SANS un mot — indiscernable d'une panne.

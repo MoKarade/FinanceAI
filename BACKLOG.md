@@ -1032,6 +1032,47 @@
       c'est un arbitrage de frontière de bundle, pas un détail d'import.**
     - ⚠️ `holdingsCadByRegime` n'est PAS un substitut : il replie CELIAPP sur CELI et REEE sur REER,
       alors que les soldes de départ les gardent séparés — asymétrie déjà connue et routée.
+    - ⚠️⚠️ **CORRECTION DE LA CONCEPTION, 2026-09-17 (après le merge de la PR #981) : la formule
+      « Σ titres + écart_moteur » est SUBTILEMENT FAUSSE, et elle l'est exactement là où ce ticket
+      fait mal.** `écart_moteur` est mesuré sur la base du MOTEUR (`derivePortfolioStartingBalances`,
+      détention DATÉE via `holdingsAt`) ; `Σ titres` est la base de l'ACCUEIL (`computeInvestmentsValue`,
+      `a.quantity` courante). Additionner l'un à l'autre n'est une identité que si les deux bases
+      coïncident — la seule hypothèse que personne n'a mesurée. Dès qu'un titre a un `quantity`
+      désynchronisé de la somme de ses achats, l'écart importe la divergence dans le chiffre de
+      l'Accueil, en silence et sans rien de non fini.
+    - ✅ **LA FORME JUSTE : partager la DÉCISION, jamais la BASE.** `appliquerAutoriteCourtier` fait
+      DEUX choses qu'on confond parce qu'elles sortent de la même fonction : (1) elle DÉCIDE quels
+      paniers sont repris (`regimesAppliques` / `regimesRefuses`), (2) elle CALCULE un écart sur la
+      base qu'on lui a donnée. Seule la (1) doit être unique. L'Accueil doit donc faire
+      `Σ titres + Σ_{régime ∈ regimesAppliques} (brokerTotalCad[régime] − holdingsCadByRegime[régime])`,
+      c'est-à-dire appliquer la MÊME liste de paniers à sa PROPRE base. Un panier repris vaut alors
+      exactement le total du courtier des deux côtés — donc l'écran et le moteur ne peuvent plus
+      diverger sur un panier repris —, et un panier refusé garde de chaque côté la base que son écran
+      affiche déjà. Variante de `AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`
+      (la vitesse se partage, l'ancre non).
+    - ⚠️⚠️ **Et c'est ce qui CONDAMNE l'option (b) ci-dessous, par une raison plus forte que « deux
+      règles » : sur la base de l'Accueil, le refus `famille-mixte` est STRUCTURELLEMENT
+      INATTEIGNABLE.** `holdingsCadByRegime` dérive de `BUCKET_OF`, qui replie CELIAPP→`TOTAL_CELI`
+      et REEE→`TOTAL_REER` ; les jumeaux n'existent donc jamais comme entrées séparées, et le test
+      `Number(sortie['CELIAPP'] ?? 0) !== 0` est faux par construction. Ré-appliquer l'autorité sur
+      cette base ferait donc APPLIQUER à l'écran un panier que le moteur REFUSE — le double comptage
+      du CELIAPP (mesuré 91 500 $ pour 66 500 $ réels) réintroduit sur l'Accueil, pendant que le
+      moteur, lui, refuse correctement. Une garde qui ne peut pas TIRER, au sens exact de
+      `UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION` — à prouver par perturbation avant
+      de livrer.
+    - ✅ **Les DEUX obstacles bloquants sont LEVÉS** (PR #981, `b7634f46`) : (a) le bundle —
+      `derivePortfolioStartingBalances` vit désormais dans `services/projection/startingBalancesFromAssets.ts`
+      (dépendances légères, ré-exporté depuis `buildSimulationParams` pour compatibilité) ;
+      (b) l'ordonnancement — `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` est corrigé, donc la reconstruction et
+      les prix courants ne diffèrent plus par une clôture périmée.
+    - 📏 **LA MESURE QUI RESTE, et elle est maintenant FACILE** : le correctif du mois 0 ayant aligné
+      les PRIX, tout écart résiduel entre `computeInvestmentsValue(assets, fx)` et
+      `Σ derivePortfolioStartingBalances(assets, fx)` est **exactement** la divergence de QUANTITÉ
+      (`a.quantity` contre la somme des achats). À mesurer sur l'état RÉEL de Marc avant de livrer —
+      pas sur une fixture, qui aura toujours les deux en phase. Point de repère du 2026-09-17 :
+      `get_holdings` rend **245 687 $**, 12 positions, **100 % NON-ENREG** (aucun CELI, aucun crypto)
+      — donc sur SON état le refus `famille-mixte` n'est pas atteignable non plus, et la mesure porte
+      sur un seul panier.
     - ⚠️⚠️ **OBSTACLE D'ORDONNANCEMENT, trouvé le 2026-09-17 en câblant : cette étape DÉPEND de
       `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`.** `appliquerAutoriteCourtier` s'applique aux soldes issus de
       la RECONSTRUCTION (derniers closes datés, sans borne d'âge), alors que l'Accueil affiche

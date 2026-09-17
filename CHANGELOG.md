@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (ta dette baisse enfin dans le passé, et la courbe cesse d'afficher des prix d'il y a deux mois)
+
+- **Ta dette ne bougeait pas dans le passé.** Toi : « ça devrait diminuer avec ce que je paie chaque
+  semaine ; pour tout mon passé elle est à la même valeur, elle diminue que dans mon futur ». C'était
+  exact, et c'était une règle écrite dans le code : le passé refusait d'amortir un **bail**, alors que
+  le futur, lui, fait descendre toute dette active sans regarder son type. Les deux bouts décrivaient
+  deux dettes différentes.
+- **Ce qui change** : un bail décroît maintenant **aussi dans le passé**, d'exactement un versement
+  par mois depuis sa date de début. Rien n'est deviné — la courbe est ancrée sur ton solde actuel et
+  sur le versement que tu as saisi. Et si le taux n'est pas nul, on **refuse** au lieu d'inventer :
+  sur un solde « somme des versements restants », un taux compterait l'intérêt deux fois.
+- **La courbe affichait des prix vieux de 55 jours.** Le badge « prix J−55 » le disait déjà. Le
+  correctif de ce matin ne touchait que la courbe au MOIS ; celle que tu regardes, au JOUR, passe par
+  un second calcul qui gardait ses vieilles clôtures — d'où **233 618 $** de titres affichés contre
+  **245 771 $** au prix courant. Le dernier point prend désormais la cotation du jour quand elle est
+  fraîche, et le badge disparaît. **Le passé, lui, ne bouge pas** : y coller le prix d'aujourd'hui
+  réécrirait ton histoire.
+
 ## [unreleased] — 2026-09-17 (quand la carte du hub se tait, elle dit pourquoi)
 
 - **Suite directe du correctif de ce matin.** Depuis que le hub refuse de publier un total de

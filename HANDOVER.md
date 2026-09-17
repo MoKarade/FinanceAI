@@ -4,6 +4,61 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️ Session 2026-09-17 (suite) — **le gate local ne tourne PAS sur ce chemin**
+> `commit-gate.mjs` est un `PreToolUse` Bash qui lit `git diff --cached`. Chaîner
+> `git add && git commit` en UN SEUL appel (ce que la §3 prescrit) laisse l'index VIDE quand le hook
+> s'exécute : mes commits reviennent en quelques secondes alors que le gate dure ~13 min.
+> ⚠️ **Conséquence à ne pas oublier : la CI est le SEUL gate sur ce chemin.** Ne plus écrire « gate
+> complet passé au commit » dans un message de commit ou un corps de PR sans l'avoir vu tourner.
+> 🔎 C'est ce trou qui a laissé passer un test de limite non inversé (`tests/mcp/…`), attrapé par la CI.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[DEBT-BAIL-PASSE-PLAT]` + `[PASSE-JOUR-CLOTURE-PERIMEE]`**
+> Deux défauts signalés par Marc à l'écran, deux producteurs oubliés.
+> 🔎 **La dette figée dans le passé** : `KIND_AMORTISSANT['auto-lease'] = false` refusait d'amortir un
+> bail, pendant que la boucle du FUTUR amortit toute dette active **sans lire `kind`**. Sa seule dette
+> est un bail à **47 169 $ et 0 %** (mesuré MCP) ⇒ plate derrière, décroissante devant.
+> ✅ Nouvelle famille `KIND_VERSEMENTS_FIXES` + forme **LINÉAIRE** : `solde(t) = solde + versement ×
+> mois`. Ancrée sur deux faits SAISIS, aucun `originalBalance` requis (le champ est caché pour un bail
+> — la précondition était inatteignable). Taux non nul ⇒ **refus nommé**, jamais une courbe plausible.
+> ⚠️ La justification d'origine était juste, et périmée par **mon propre lot du 14/09** qui a fait du
+> solde une « somme des versements restants ».
+> 🔎 **« prix J−55 »** : le correctif du matin ne touchait que la boucle MENSUELLE ; la courbe au JOUR
+> gardait ses clôtures périmées (**233 618 $** contre **245 771 $**). Source unique
+> `cotationFraicheSubstituable` appelée par les DEUX producteurs.
+> ⚠️ L'écart de fraîcheur est en valeur ABSOLUE : signé, il réécrivait une fenêtre historique au prix
+> du jour.
+> 📏 99 tests verts sur la surface ; perturbations SÉPARÉES (famille du bail → 8 rouges ; substitution
+> quotidienne débranchée → 1 ; `Math.abs` retiré → 1, l'autre). Test de limite INVERSÉ en place.
+>
+> ## ✅ Session 2026-09-17 (suite) — **PR #981 FUSIONNÉE (`b7634f46`) et DÉPLOYÉE**
+> Six lots d'un coup (`[HUB-TOTAL-AMPUTE]`, revue panel, `[FINTABLE-AUTORITE-PARTOUT]` étape 0,
+> `[DETTE-INVISIBLE-INFOBULLE]`, `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`, `[HUB-REFUS-4-SANS-DIAGNOSTIC]`).
+> 📏 Les 7 checks verts sur le head, dont les deux requis. Déploiement Vercel de production **CRÉÉ et
+> `READY`** sur le SHA fusionné (`dpl_GWJtAcs…`) — §6 satisfaite pour la moitié vérifiable d'ici ; la
+> RÉPONSE servie reste illisible depuis ce conteneur (403 au CONNECT).
+> ⚠️ **RESTE À FAIRE PAR MARC** : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh`. Le `/hub/summary`
+> vit dans le serveur MCP auto-hébergé, PAS sur Vercel — sans ça hubperso sert encore l'ancien code,
+> donc le total amputé. (Le job « Deploy MCP » rouge est une ALARME volontaire, pas une panne.)
+> ⚠️ Après le squash-merge, GitHub a supprimé la branche : `git checkout -B claude/progress-check-yua8yy
+> origin/main` suffit, et **il n'y a rien à pousser** — un push ressusciterait la branche avec un
+> commit orphelin (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE…`).
+>
+> ## 🔎 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 3 : conception CORRIGÉE**
+> Les deux obstacles bloquants sont LEVÉS par la PR #981 (module extrait, mois 0 corrigé). En
+> re-lisant le code avant de coder, la formule approuvée s'est révélée subtilement FAUSSE :
+> `Σ titres + écart_moteur` mélange DEUX bases (quantité DATÉE côté moteur, `a.quantity` côté
+> Accueil) et n'est une identité que si elles coïncident — la seule hypothèse jamais mesurée.
+> ✅ La forme juste **partage la DÉCISION, jamais la BASE** : une seule autorité décide quels paniers
+> sont repris, et chaque écran applique cette liste à SA propre base.
+> ⚠️⚠️ Et ça CONDAMNE l'option « rejouer l'autorité sur `holdingsCadByRegime` » pour une raison plus
+> forte que « deux règles » : sur cette base, `BUCKET_OF` replie CELIAPP→CELI et REEE→REER, donc le
+> refus `famille-mixte` est **structurellement inatteignable** — l'écran APPLIQUERAIT un panier que le
+> moteur REFUSE (double comptage du CELIAPP, mesuré 91 500 $ pour 66 500 $).
+> 📏 Mesure restante, désormais facile : les prix étant alignés, tout écart entre
+> `computeInvestmentsValue` et `Σ derivePortfolioStartingBalances` est EXACTEMENT la divergence de
+> quantité. Repère du jour : `get_holdings` = **245 687 $**, 12 positions, 100 % NON-ENREG.
+> Détail complet dans `BACKLOG.md`.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[HUB-REFUS-4-SANS-DIAGNOSTIC]` LIVRÉ**
 > Conséquence DIRECTE du refus du total amputé livré le matin : la carte du hub peut perdre ses
 > trois lignes de placements, et le faisait SANS un mot — indiscernable d'une panne.

@@ -14562,3 +14562,121 @@ l'attente — et la décision aussi, sinon elle tranche sur un état qui n'exist
 réels, le compte courtier en devise étrangère cesse d'être écarté, donc le **mois 0 de la projection
 change**. Mais pas au déploiement — à la **prochaine synchro Fintable**, la conversion étant faite et
 persistée au moment de la synchro. Dit au CHANGELOG plutôt que découvert.
+
+---
+
+## `UNE-REGLE-ECRITE-SUR-UN-OBJET-DU-MONDE-REEL-SE-PERIME-QUAND-SA-REPRESENTATION-CHANGE` (2026-09-17)
+
+**Le signalement.** Marc : « LA DETTE ça marche pas, ça devrait diminuer avec ce que je paie chaque
+semaine, pourtant pour tout mon passé elle est à la même valeur, elle diminue que dans mon futur ».
+
+**Le mécanisme, mesuré des deux côtés.** `services/projection/debtAmortization.ts` portait
+`KIND_AMORTISSANT['auto-lease'] = false`, avec cette justification : *« un bail n'amortit pas un
+solde, c'est un loyer sur un terme fixe (c'est le cas réel de Marc) »*. En face, la boucle du FUTUR
+(`services/projection.ts`, bloc « DETTES ») amortit **toute** dette `phase === 'active' && balance > 0`
+**sans jamais lire `kind`**. Passé et futur décrivaient donc deux dettes différentes — exactement ce
+que l'en-tête du module dit vouloir éviter (« sinon passé et futur décrivent deux prêts »).
+
+**Ce qui rend la leçon générale.** La justification était JUSTE au moment où elle a été écrite, pour
+un bail modélisé comme un LOYER. Elle est devenue fausse le **2026-09-14**, par un lot que j'ai livré
+moi-même (`UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET-LE-COMPTE-DEUX-FOIS`) : ce lot a
+fait du `balance` de ce bail la **somme des versements restants**, avec un taux forcé à **0**. À taux
+nul sur un solde tout-compris, chaque versement retire exactement son montant — c'est le cas le plus
+simple et le plus EXACT à reconstruire, pas celui qu'il faut refuser.
+
+> **Après avoir changé ce qu'un champ REPRÉSENTE, grepper toutes les règles qui décidaient quelque
+> chose d'après le `kind` de cet objet.** Elles parlent de l'ancien objet, et rien ne rougit.
+
+**La boucle fermée, qui a failli faire renoncer.** Le remède évident — basculer la table à `true` —
+n'aurait rien changé : `amortirDettePassee` exige `originalBalance`, et `DebtKindFields` n'affiche ce
+champ **que si** `KIND_AMORTISSANT[kind]`. Personne n'a donc jamais pu le saisir pour un bail. C'est
+`CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` appliqué à la **précondition d'un correctif**. D'où une
+seconde famille, `KIND_VERSEMENTS_FIXES`, et une forme **LINÉAIRE** qui n'a besoin d'aucun montant
+d'origine : `solde(t) = solde_actuel + versement × (mois restants)`, ancrée sur deux faits SAISIS.
+
+**Ce qui est refusé, et pourquoi c'est la garde qui compte.** Un taux **non nul** sur un solde de bail
+signifie qu'on ignore ce que ce solde contient (versements restants ? capital restant ?) : cause
+dédiée `taux-sur-solde-tout-compris`, tracée. Une courbe plausible et fausse est pire que pas de
+courbe — et le coût du mauvais choix a déjà été mesuré : **+7 423 $ de versements fantômes**.
+
+**Le plancher du futur n'est pas recopié**, délibérément : le moteur force
+`max(minimumPayment, intérêt + solde/300)` pour qu'une dette à paiement dérisoire finisse par
+s'éteindre. À taux nul avec un versement positif elle s'éteint toujours ; appliquer ce plancher au
+PASSÉ inventerait des versements jamais faits. La divergence résiduelle est bornée et écrite.
+
+⚠️ **Le test de limite s'est INVERSÉ au même endroit**, son titre compris — il s'appelait « un BAIL et
+les révolvants ne s'amortissent pas — c'est le cas réel de Marc » et affirmait
+`kind-non-amortissant` pour `auto-lease`. Ce qui reste vrai des révolvants n'a pas bougé, et c'est
+tout l'intérêt de garder l'assertion là plutôt que de la supprimer.
+
+⚠️ **Deux COMMENTAIRES sont devenus faux** et ont été réécrits dans le même commit : celui de
+`KIND_AMORTISSANT` (« `auto-lease` est délibérément FAUX ») et celui de `pastDebtNotice` (« un bail à
+côté d'un prêt auto est exactement la situation de Marc », qui n'illustrait plus le cas mixte). Un
+exemple périmé dans un commentaire se lit comme un fait.
+
+---
+
+## `CORRIGER-UN-PRODUCTEUR-N-EST-PAS-CORRIGER-LA-CLASSE` (2026-09-17)
+
+**Le même jour, le même défaut, l'autre producteur.** Le matin, `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` a
+fait préférer une cotation FRAÎCHE à une clôture PÉRIMÉE — **dans la boucle mensuelle**. La courbe
+que Marc regarde passe par `reconstructPortfolioHistoryDaily`, producteur DISTINCT du même registre,
+et gardait ses clôtures périmées. Mesuré sur son écran : dernier point à **233 618 $** de titres
+contre **245 771 $** au prix courant (≈ 12 100 $), sous un badge « **prix J−55** » qui NOMMAIT la
+cause sans que rien ne la corrige.
+
+C'est `MODULE-ECRIT-HORS-CHECKLIST` re-payée : *corriger « le producteur X a oublié Y » exige
+d'énumérer TOUS les producteurs, pas seulement celui du ticket.* Et le remède n'est pas une seconde
+copie de la règle mais une **source unique** — `cotationFraicheSubstituable`, appelée par les deux.
+
+⚠️ **Un écart SIGNÉ accepte tout ce qui est « dans le futur ».** La condition de fraîcheur était
+`refMs − priceUpdatedAt <= seuil` : dès que `refMs` est ANCIEN (un appelant qui demande une fenêtre
+historique), la différence est négative, donc « fraîche », donc la cotation d'aujourd'hui réécrit un
+point vieux de deux mois. La garde est en **valeur absolue**, et elle a sa perturbation à elle.
+
+⚠️ **Une cotation substituée ne doit plus compter dans l'âge PUBLIÉ.** Sinon le badge « prix J−55 »
+survit à son objet : un avertissement qui n'a plus de cause est un avertissement qui apprend à être
+ignoré (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
+
+⚠️ **Corollaire de DIAGNOSTIC — 4ᵉ instance en deux jours.** *Quand deux chiffres d'un même écran ne
+se recomposent pas, c'est une mesure.* Ici l'inverse a servi : les DEUX cartes se recomposaient
+chacune (`28 870 + 233 618 − 46 152 = 216 336` côté Futur ; `245 771 + 28 870 − 47 169 = 227 472`
+côté hub), ce qui a immédiatement localisé l'écart **entre les deux bases de placement** au lieu de
+le faire chercher dans une addition. Faire l'arithmétique de l'écran est la première mesure, pas la
+dernière.
+
+---
+
+## `LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS` (2026-09-17)
+
+**Ce qui s'est passé.** Le lot `[DEBT-BAIL-PASSE-PLAT]` fait s'amortir un bail dans le passé. J'ai
+inversé le test de limite qui affirmait le contraire — **dans le fichier du module**
+(`tests/services/debtAmortization.test.ts`) — puis poussé. La CI a rougi sur un **troisième site** :
+`tests/mcp/applyDebtOriginalBalance.test.ts`, qui affirmait exactement la même chose depuis le
+chemin d'import MCP (« un BAIL importé avec son montant reste PLAT — le cas réel de Marc »).
+
+La règle existait déjà, écrite dans `CLAUDE.md` : *« après un correctif qui change un comportement,
+grep les assertions qui épinglent l'ANCIEN avant de pousser »*. Ce qui manquait n'était pas la règle
+mais sa **PORTÉE** : j'avais regardé le fichier de tests du module, pas `tests/`.
+
+> Le grep juste porte sur la **CAUSE** rendue (`kind-non-amortissant`) et sur le **nom du `kind`**
+> (`auto-lease`), dans **tout** `tests/`. Rejoué correctement, il sort 1 assertion à inverser **et
+> 2 commentaires devenus faux** — dont un qui décrivait encore « le cas réel de Marc ».
+
+⚠️⚠️ **Et le gate local ne l'a pas vu parce qu'il n'a pas tourné du tout.**
+`scripts/hooks/commit-gate.mjs` est un hook `PreToolUse` sur Bash : il lit la commande, et si elle
+contient `git commit`, il consulte `git diff --cached --name-only` pour choisir les tests à lancer.
+Or le `CLAUDE.md` §3 prescrit de chaîner `git add && git commit && git push` dans **un seul appel**
+— et au moment où le hook s'exécute, le `git add` de cette même commande n'a pas encore tourné :
+l'index est **VIDE**. Mesuré autrement : les commits de cette session reviennent en quelques
+secondes, alors que le gate complet dure ~13 minutes.
+
+Les deux règles du dépôt se contredisent donc, et le coût est double : le gate ne protège rien sur
+ce chemin, **et** on écrit « gate complet passé au commit » dans des messages de commit et des corps
+de PR où c'est FAUX. Sur ce chemin, **la CI est le seul gate** — c'est ce qu'il faut écrire.
+
+⚠️ Corollaire de fixture, trouvé en écrivant la garde de traversée : mon premier jet portait la date
+RÉELLE du bail de Marc (`2026-07-20`) contre un `AUJ` figé au **2026-01** dans ce fichier de tests.
+Le refus `donnees-manquantes` était parfaitement JUSTE (on ne reconstruit pas un passé antérieur au
+début du prêt), et j'ai failli le lire comme un défaut de la chaîne MCP. **Une date de fixture se lit
+relativement à l'horloge du fichier, jamais recopiée du monde réel.**

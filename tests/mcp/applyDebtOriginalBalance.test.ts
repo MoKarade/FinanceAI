@@ -169,9 +169,40 @@ describe('[DEBT-MCP-ORIGINALBALANCE] ATTEIGNABILITÉ — du payload MCP jusqu\'�
         expect(supplementAmortiAuMoisAbsolu([d], moisAbsolu('2024-01-15') as number, AUJ)).toBe(0);
     });
 
-    it('un BAIL importé avec son montant reste PLAT — le cas réel de Marc', () => {
+    it('un BAIL à TAUX NON NUL est refusé — mais plus pour la raison qu\'on croyait', () => {
+        // ⚠️ TEST DE LIMITE INVERSÉ (2026-09-17, [DEBT-BAIL-PASSE-PLAT]). Il s'intitulait « un BAIL
+        // importé avec son montant reste PLAT — le cas réel de Marc » et exigeait
+        // `kind-non-amortissant`. Depuis que le bail a sa propre forme (LINÉAIRE,
+        // `KIND_VERSEMENTS_FIXES`), ce n'est plus son TYPE qui le refuse ici mais son TAUX : la
+        // fixture porte 5 %, et un taux non nul sur un solde de bail veut dire qu'on ignore ce que
+        // ce solde contient. Le refus est donc toujours là, et il dit maintenant quelque chose
+        // d'ACTIONNABLE. ⚠️ Ce test a été trouvé par la CI, pas par moi : le grep des assertions
+        // qui épinglent l'ancien fait n'avait couvert que le fichier du module.
         const d = ajoute(pretAuto({ debtKind: 'auto-lease' }));
         expect(d.originalBalance).toBe(30000); // le champ est bien écrit…
-        expect(amortirDettePassee(d, AUJ)).toEqual({ forme: 'inapplicable', cause: 'kind-non-amortissant' });
+        expect(amortirDettePassee(d, AUJ)).toEqual({ forme: 'inapplicable', cause: 'taux-sur-solde-tout-compris' });
+    });
+
+    it('un BAIL à TAUX NUL importé par le MCP s\'amortit — la chaîne complète, pas le module seul', () => {
+        // La garde qui TRAVERSE : payload MCP → `applyDocument` → `amortirDettePassee`. Sans elle,
+        // le correctif pourrait être juste dans le module et INERTE pour la seule voie d'import
+        // automatisée (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`).
+        const d = ajoute(pretAuto({
+            debtKind: 'auto-lease', interestRate: 0, balance: 47169, minimumPayment: 1000,
+            // ⚠️ La date de début doit précéder `AUJ` (figé au 2026-01 dans ce fichier) : mon 1er
+            // jet portait la date RÉELLE du bail de Marc (2026-07) et rendait `donnees-manquantes`
+            // — un refus JUSTE que j'ai failli lire comme un défaut de la chaîne MCP.
+            originalBalance: undefined, startDate: '2025-07-20',
+        }));
+        expect(d.kind).toBe('auto-lease');
+        const r = amortirDettePassee(d, AUJ);
+        if (r.forme !== 'ok') throw new Error(`bail à taux nul refusé par la chaîne MCP : ${r.cause}`);
+        // La PENTE est le fait : un versement par mois, ni plus ni moins.
+        for (let k = 1; k < r.soldes.length; k++) {
+            expect(r.soldes[k - 1] - r.soldes[k]).toBeCloseTo(1000, 6);
+        }
+        expect(r.soldes[r.soldes.length - 1]).toBe(47169); // l'ANCRE : le solde saisi, exactement
+        // Anti-vacuité : la série couvre bien plusieurs mois, sinon la boucle ci-dessus ne teste rien.
+        expect(r.soldes.length).toBeGreaterThan(1);
     });
 });

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 112 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche, +6 cause du refus au hub). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 125 tests** Vitest
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche, +6 cause du refus au hub, +7 bail amorti dans le passé, +5 clôture périmée au JOUR, +1 bail à taux nul par la chaîne MCP). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1118,6 +1118,62 @@ n'est pas réécrire un récit.
   (`Σ actifs − NetWorth`), jamais du champ moteur `DettesNonImmo`, qui n'est pas publié sur toutes
   les courbes — l'identité, elle, tient sur tout point
   (`UNE-REPARTITION-QUI-NE-LISTE-QUE-LES-TERMES-POSITIFS-NE-RECOMPOSE-PAS-SON-TOTAL`).
+
+- ⚠️⚠️ **Une règle écrite sur un objet du MONDE RÉEL se périme quand la REPRÉSENTATION de cet objet
+  change** (2026-09-17, signalé par Marc : « la dette ça marche pas, ça devrait diminuer avec ce que
+  je paie chaque semaine ; pour tout mon passé elle est à la même valeur, elle diminue que dans mon
+  futur »). `KIND_AMORTISSANT['auto-lease'] = false` portait une justification JUSTE — « un bail
+  n'amortit pas un solde, c'est un loyer sur un terme fixe » — devenue FAUSSE le jour où, **par mon
+  propre lot du 2026-09-14**, le solde de ce bail est devenu la *somme des versements restants* à
+  taux **0**. À taux nul, chaque versement retire exactement son montant : c'est le cas le plus
+  EXACT à reconstruire, pas celui qu'il faut refuser. **Après avoir changé ce qu'un champ
+  REPRÉSENTE, grepper les règles qui décidaient quelque chose d'après son `kind`** — elles parlent
+  de l'ancien objet. ⚠️ L'asymétrie était mesurable des deux côtés : la boucle du FUTUR amortit toute
+  dette active **sans jamais lire `kind`**, donc passé et futur décrivaient deux dettes — ce que le
+  module dit en toutes lettres vouloir éviter. ⚠️ Et la boucle était FERMÉE : `DebtKindFields`
+  n'affiche le champ « montant emprunté » que si `KIND_AMORTISSANT[kind]`, donc même en basculant la
+  table la donnée aurait manqué — d'où une forme LINÉAIRE qui n'en a pas besoin
+  (`CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` appliqué à une PRÉCONDITION de correctif). ⚠️ Le test
+  de limite s'est INVERSÉ au même endroit, titre compris (« c'est le cas réel de Marc »), et deux
+  COMMENTAIRES devenus faux ont été réécrits — un exemple périmé se lit comme un fait
+  (`UNE-REGLE-ECRITE-SUR-UN-OBJET-DU-MONDE-REEL-SE-PERIME-QUAND-SA-REPRESENTATION-CHANGE`).
+- ⚠️⚠️ **Corriger UN producteur n'est pas corriger la CLASSE — et c'est l'utilisateur qui l'a vu, pas
+  le gate** (2026-09-17, même journée que le correctif d'origine) : `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`
+  substituait une cotation fraîche à une clôture périmée dans la boucle MENSUELLE. La courbe que Marc
+  regarde passe par `reconstructPortfolioHistoryDaily`, producteur DISTINCT, resté avec ses clôtures
+  périmées : **233 618 $** de titres au dernier point contre **245 771 $** au prix courant (≈ 12 100 $),
+  sous un badge « **prix J−55** » qui NOMMAIT la cause sans que rien ne la corrige. `MODULE-ECRIT-HORS-CHECKLIST`
+  re-payée : énumérer TOUS les producteurs d'un registre, jamais celui du ticket. Le remède est une
+  SOURCE UNIQUE (`cotationFraicheSubstituable`) appelée par les deux, pas une seconde copie de la règle.
+  ⚠️ **Un écart SIGNÉ accepte tout ce qui est « dans le futur »** : `refMs − priceUpdatedAt <= seuil`
+  est vrai dès que `refMs` est ANCIEN, donc une fenêtre historique se faisait réécrire au prix du jour
+  — la garde est en valeur ABSOLUE, et elle a sa perturbation à elle. ⚠️ Et une cotation substituée ne
+  doit plus compter dans l'âge publié, sinon le badge d'avertissement survit à son objet.
+  ⚠️ Corollaire de DIAGNOSTIC, 4ᵉ instance en deux jours : **quand deux chiffres d'un même écran ne se
+  recomposent pas, c'est une mesure** — ici les DEUX cartes se recomposaient chacune (28 870 + 233 618
+  − 46 152 = 216 336 ; 245 771 + 28 870 − 47 169 = 227 472), ce qui a localisé l'écart entre les deux
+  BASES au lieu de le chercher dans une addition
+  (`CORRIGER-UN-PRODUCTEUR-N-EST-PAS-CORRIGER-LA-CLASSE`).
+
+- ⚠️⚠️ **Le grep des assertions qui épinglent l'ANCIEN fait se fait sur TOUT `tests/`, jamais sur le
+  fichier du module** (2026-09-17, trouvé par la CI) : après avoir inversé le test de limite du bail
+  dans `tests/services/debtAmortization.test.ts`, j'ai poussé — et la CI a rougi sur un TROISIÈME
+  site, `tests/mcp/applyDebtOriginalBalance.test.ts`, qui affirmait la même chose depuis le chemin
+  d'import MCP. La règle existait déjà dans ce fichier (« après un correctif qui change un
+  comportement, grep les assertions qui épinglent l'ANCIEN avant de pousser ») ; ce qui manquait est
+  sa PORTÉE. Le grep juste est sur la CAUSE et sur le nom du `kind`, dans tout `tests/` — il a alors
+  sorti 1 assertion à inverser **et 2 commentaires devenus faux**.
+  ⚠️⚠️ **Et le gate local ne l'a pas vu parce qu'il n'a PAS TOURNÉ** : `scripts/hooks/commit-gate.mjs`
+  est un `PreToolUse` sur Bash qui lit `git diff --cached`. Chaîner `git add && git commit` dans UN
+  SEUL appel — ce que la §3 prescrit — laisse l'index VIDE au moment où le hook s'exécute. Mesuré
+  autrement : mes commits de la session sont revenus en quelques secondes alors que le gate complet
+  dure ~13 min. **Ne plus écrire « gate complet passé au commit » sans l'avoir vu tourner** : sur ce
+  chemin, la CI est le SEUL gate, et le dire change ce qu'on promet dans un corps de PR.
+  ⚠️ Corollaire de fixture : mon 1er jet de la garde de traversée portait la date RÉELLE du bail
+  (2026-07) contre un `AUJ` figé au **2026-01** dans ce fichier — refus `donnees-manquantes`
+  parfaitement JUSTE, que j'ai failli lire comme un défaut de la chaîne MCP. Une date de fixture se
+  lit RELATIVEMENT à l'horloge du fichier, jamais recopiée du monde réel
+  (`LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

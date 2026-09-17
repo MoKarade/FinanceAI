@@ -28,7 +28,11 @@ const pretAuto: DebtAmortissable = {
     balance: 18000, originalBalance: 30000, kind: 'auto',
     startDate: '2024-01-15', interestRate: 5, minimumPayment: 560,
 };
-/** Le cas RÉEL de Marc : un bail. Aucune courbe d'amortissement ne le décrit. */
+/** Un bail à TAUX NON NUL : refusé, et depuis le 2026-09-17 pour la cause `taux-sur-solde-tout-compris`
+ *  (un solde de bail est tout-compris ; un taux dessus compterait l'intérêt deux fois). ⚠️ L'ancien
+ *  commentaire disait « aucune courbe d'amortissement ne le décrit » — FAUX depuis que le bail a sa
+ *  forme LINÉAIRE. Ce qui reste vrai, et ce que ce fichier mesure, c'est que le supplément reste NUL
+ *  quand la dette est refusée, quelle que soit la cause. */
 const bail: DebtAmortissable = {
     balance: 18000, originalBalance: 30000, kind: 'auto-lease',
     startDate: '2024-01-15', interestRate: 5, minimumPayment: 560,

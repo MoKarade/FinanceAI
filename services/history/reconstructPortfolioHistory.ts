@@ -86,6 +86,42 @@ export function holdingsAt(asset: MinimalAsset, t: string): number {
  */
 export const STALE_PRICE_DAYS = 7;
 
+/**
+ * [FUTUR-MOIS0-CLOTURE-SANS-AGE] SOURCE UNIQUE du fait « ici, une cotation FRAÎCHE remplace une
+ * clôture PÉRIMÉE ». Rend le prix à substituer, ou `null` quand il ne faut rien substituer.
+ *
+ * ⚠️⚠️ ELLE EXISTE PARCE QUE LA RÈGLE A ÉTÉ ÉCRITE DEUX FOIS, ET LA SECONDE MANQUAIT. Le correctif
+ * du 2026-09-17 n'a d'abord touché que la boucle MENSUELLE ; la reconstruction QUOTIDIENNE
+ * (`reconstructPortfolioHistoryDaily`), producteur DISTINCT, gardait ses clôtures périmées. Marc l'a
+ * vu à l'écran : le dernier point du passé affichait **233 618 $** de titres contre **245 771 $** au
+ * prix courant (≈ 12 100 $), avec le badge « prix J−55 » qui nommait la cause sans que rien ne la
+ * corrige. Classe `MODULE-ECRIT-HORS-CHECKLIST` : corriger « le producteur X a oublié Y » exige
+ * d'énumérer TOUS les producteurs.
+ *
+ * ⚠️ `refMs` est l'instant de RÉFÉRENCE, jamais la date du point. La boucle mensuelle finit à la fin
+ * du mois COURANT (jusqu'à ~30 j dans le futur) : jugée depuis elle, une clôture d'hier paraîtrait
+ * périmée. La boucle quotidienne finit sur `to`, que l'appelant pose à aujourd'hui.
+ *
+ * ⚠️ L'écart se mesure en VALEUR ABSOLUE. Un `refMs - priceUpdatedAt` signé accepte tout ce qui est
+ * « dans le futur » : il suffisait qu'un appelant demande une fenêtre se terminant dans le PASSÉ
+ * pour que la cotation d'aujourd'hui soit jugée fraîche et réécrive une date ancienne.
+ */
+export function cotationFraicheSubstituable(
+    a: Pick<MinimalAsset, 'currentPrice' | 'priceUpdatedAt'>,
+    dernierCloseIso: string | null,
+    refMs: number,
+): number | null {
+    const closeMs = dernierCloseIso === null ? NaN : Date.parse(`${dernierCloseIso}T00:00:00Z`);
+    const ageClose = Number.isFinite(closeMs) ? (refMs - closeMs) / 86_400_000 : Number.POSITIVE_INFINITY;
+    if (!(ageClose > STALE_PRICE_DAYS)) return null;      // la clôture est encore bonne : on n'y touche pas
+    const prix = a.currentPrice;
+    if (typeof prix !== 'number' || !Number.isFinite(prix) || prix <= 0) return null;
+    const maj = a.priceUpdatedAt;
+    if (typeof maj !== 'number' || !Number.isFinite(maj)) return null;
+    if (Math.abs(refMs - maj) > STALE_PRICE_DAYS * 86_400_000) return null;
+    return prix;
+}
+
 // Prix natif à la date t : dernier point d'historique ≤ t. Renvoie null si aucun
 // (→ le caller retombe sur le prix actuel et marque l'estimation).
 // `maxStaleDays` (optionnel — buildMarketData passe 7) : au-delà de ce retard entre le close
@@ -187,16 +223,9 @@ export function reconstructPortfolioHistory(
                 // RÉCENTE », qui rougissait avant cette ligne.
                 const dernierClose = (a.priceHistory ?? []).reduce<string | null>(
                     (best, p) => (p.date <= t && (!best || p.date > best) ? p.date : best), null);
-                const ageClose = dernierClose === null
-                    ? Number.POSITIVE_INFINITY
-                    : (nowMs - Date.parse(`${dernierClose}T00:00:00Z`)) / 86_400_000;
-                const closePerime = ageClose > STALE_PRICE_DAYS;
-                const coteFraiche = Number.isFinite(a.currentPrice) && (a.currentPrice ?? 0) > 0
-                    && typeof a.priceUpdatedAt === 'number'
-                    && Number.isFinite(a.priceUpdatedAt)
-                    && nowMs - a.priceUpdatedAt <= STALE_PRICE_DAYS * 86_400_000;
-                if (closePerime && coteFraiche) {
-                    price = a.currentPrice;
+                const substitut = cotationFraicheSubstituable(a, dernierClose, nowMs);
+                if (substitut !== null) {
+                    price = substitut;
                     // ⚠️ Et ce n'est PAS un « vrai prix » au sens de `coverage` : c'est une
                     // ESTIMATION au prix du jour. Le compter comme réel laissait `coverage ≈ 1,0`,
                     // donc l'avertissement « partiellement estimé » ne tirait JAMAIS — le cas RARE
@@ -358,8 +387,15 @@ export function reconstructPortfolioHistoryDaily(
         taux: fxToCad(a.currency, fx),
     }));
 
+    // [FUTUR-MOIS0-CLOTURE-SANS-AGE] Le DERNIER jour de la série, connu AVANT la boucle — c'est le
+    // seul où une clôture périmée doit céder la place à une cotation fraîche. Le calculer après coup
+    // exigerait un second passage ; le déduire dans la boucle exigerait de comparer à `end` ET au
+    // plafond `maxDays`, deux conditions qui divergent dès que la fenêtre est tronquée.
+    const dernierMs = Math.min(end, start + (maxDays - 1) * DAY_MS_H);
+
     for (let ms = start; ms <= end && out.length < maxDays; ms += DAY_MS_H) {
         const t = new Date(ms).toISOString().slice(0, 10);
+        const estDernierJour = ms === dernierMs;
         const acc: Record<AccountKey, number> = { CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0 };
         let ageMax = 0;
         let estimated = false;
@@ -379,13 +415,23 @@ export function reconstructPortfolioHistoryDaily(
 
             while (c.i + 1 < c.hist.length && c.hist[c.i + 1].date <= t) c.i++;
             const best = c.i >= 0 ? c.hist[c.i] : null;
+            // [FUTUR-MOIS0-CLOTURE-SANS-AGE] MÊME règle que la boucle mensuelle, par la MÊME
+            // fonction — au DERNIER jour seulement. Sur une date passée, le dernier close connu
+            // reste la meilleure estimation ; y coller le prix d'aujourd'hui réécrirait l'histoire.
+            const substitut = best !== null && estDernierJour
+                ? cotationFraicheSubstituable(a, best.date, ms)
+                : null;
             if (best === null) {
                 estimated = true;
-            } else {
+            } else if (substitut === null) {
                 const age = Math.max(0, Math.round((ms - Date.parse(`${best.date}T00:00:00Z`)) / DAY_MS_H));
                 if (age > ageMax) ageMax = age;
             }
-            const price = best ? best.price : (a.currentPrice ?? 0);
+            // ⚠️ Une cotation substituée ne compte PAS dans `priceAgeMaxDays` : elle DATE de ce
+            // jour-là (sa fraîcheur vient d'être vérifiée). L'y compter laisserait le badge
+            // « prix J−55 » affiché sur un point désormais valorisé au prix du jour — un
+            // avertissement qui n'a plus d'objet, donc un avertissement qui apprend à être ignoré.
+            const price = substitut !== null ? substitut : (best ? best.price : (a.currentPrice ?? 0));
             acc[c.cle] += qty * price * c.taux;
         }
 

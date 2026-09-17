@@ -187,30 +187,20 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
 
     if (placements) {
         metrics.push({
-            label: `Placements (${libelleSeance(placements.dateSeance)})`,
+            // ⚠️⚠️ [HUB-METRIQUE-LIBELLE-EST-UNE-CLE] LIBELLÉ STABLE, et ce n'est pas cosmétique :
+            // côté hub, le libellé est la CLÉ de l'historique de la métrique (`serieMetrique(
+            // historique, metrique.label)` dans `app/app/[id]/page.tsx`, mesuré en lisant le dépôt
+            // Hubperso). Ce libellé portait la date de la clôture — `Placements (16 sept.)` —, donc
+            // il CHANGEAIT à chaque séance : la série repartait de zéro chaque jour, la sparkline
+            // restait vide et la ligne affichait « pas encore d'historique » à perpétuité, sous une
+            // valeur pourtant publiée. C'est ce que Marc voyait (capture du 2026-09-17).
+            // La date n'est pas perdue : elle vit dans `details` → « Clôture de référence », qui est
+            // l'endroit prévu pour qualifier une valeur sans en changer l'identité.
+            label: 'Placements',
             value: Math.round(placements.valeurCad),
             format: 'currency',
             ...(placements.seance ? { trend: placements.seance.pct } : {}),
         });
-        if (placements.seance) {
-            // ⚠️ Le hub formate `currency` en fr-CA : un négatif porte « − », un positif n'a PAS de
-            // « + ». Le libellé doit donc suffire à dire qu'on lit une VARIATION, sans quoi
-            // « 1 240 $ » se lirait comme un solde.
-            metrics.push({
-                label: 'Variation de la séance',
-                value: Math.round(placements.seance.montantCad),
-                format: 'currency',
-                trend: placements.seance.pct,
-            });
-        }
-        if (placements.semaine) {
-            metrics.push({
-                label: 'Variation 7 jours',
-                value: Math.round(placements.semaine.montantCad),
-                format: 'currency',
-                trend: placements.semaine.pct,
-            });
-        }
     }
 
     const alerts: HubAlert[] = [];
@@ -273,6 +263,43 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
             });
         }
         if (lignes.length > 0) details.push({ title: 'Fraîcheur des deux sources', items: lignes });
+    }
+
+    // ── LES VARIATIONS, EN DÉTAIL ET JAMAIS EN MÉTRIQUE ─────────────────────────────
+    //
+    // ⚠️⚠️ [HUB-SPARKLINE-VARIATION-DE-VARIATION] « Variation de la séance » et « Variation 7 jours »
+    // ÉTAIENT publiées comme métriques. Or le hub dérive, pour CHAQUE métrique, l'évolution de sa
+    // VALEUR sur 7 jours : `(apres.v − avant.v) / avant.v` (`lib/historique.ts`, rendu par la page
+    // de détail). Sur une grandeur qui EST déjà une variation, cette base est petite et change de
+    // signe — d'où les « −430,6 % sur 7 j » et « −908,4 % sur 7 j » de la capture de Marc. Le
+    // chiffre n'est pas faux, il est INEXPLOITABLE (`UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`).
+    //
+    // Le contrat n'a aucun moyen de dire « ne dérive pas celle-ci » : la correction est donc de ne
+    // pas les publier LÀ. Une ligne de `details` est rendue telle quelle — valeur, `trend` publié,
+    // `hint` —, sans série ni évolution dérivée (vérifié dans le dépôt Hubperso). Rien n'est perdu :
+    // le % de la séance reste le `trend` de « Placements », qui est un NIVEAU, donc la seule des
+    // deux dont une évolution sur 7 jours veut dire quelque chose.
+    if (placements && (placements.seance || placements.semaine)) {
+        const lignes: NonNullable<HubSummary['details']>[number]['items'] = [];
+        if (placements.seance) {
+            lignes.push({
+                label: 'Variation de la séance',
+                value: Math.round(placements.seance.montantCad),
+                format: 'currency',
+                trend: placements.seance.pct,
+                hint: borne(`clôture du ${libelleSeance(placements.dateSeance)} contre la précédente`, MAX_HINT),
+            });
+        }
+        if (placements.semaine) {
+            lignes.push({
+                label: 'Variation 7 jours',
+                value: Math.round(placements.semaine.montantCad),
+                format: 'currency',
+                trend: placements.semaine.pct,
+                hint: borne('même panier de titres aux deux bornes, sinon la variation est refusée', MAX_HINT),
+            });
+        }
+        details.push({ title: 'Variation des placements', items: lignes });
     }
 
     // [HUB-REFUS-4-SANS-DIAGNOSTIC] Quand les placements ne sont PAS publiables, dire pourquoi.

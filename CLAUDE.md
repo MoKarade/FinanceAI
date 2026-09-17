@@ -2227,9 +2227,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   nommait trois dont **deux déjà corrigés**. La réduction est tentante parce qu'elle simplifie le
   code de la garde ; elle change la GRANDEUR mesurée. Signal : une garde dont le sujet a plusieurs
   dimensions (px×px, min/max, avant/après) et qui rend un seul nombre
-  (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`). Corollaire d'outillage :
-  `enable_pr_auto_merge` **ne déclenche pas** sur ce dépôt — deux PR (#791, #792) sont restées
-  ouvertes en `mergeable_state: clean` avec les six checks verts ; fusionner à la main dès le vert.
+  (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`). ⚠️ Corollaire d'outillage
+  **PÉRIMÉ le 2026-09-17, re-mesuré** : il disait « `enable_pr_auto_merge` ne déclenche pas sur ce
+  dépôt » (deux PR restées ouvertes en `mergeable_state: clean`). La PR #982 a été armée à 19:51 et
+  s'est fusionnée SEULE à 20:20, dès le second check requis vert, sans aucun geste. Le constat
+  décrivait donc un ÉTAT (checks requis absents ou non rattachés), pas une propriété du dépôt — et un
+  état se re-mesure (`DOC-STALE-IMPOSSIBILITY`, la 2ᵉ fois qu'un « ça ne marche pas ici » écrit par
+  moi se révèle faux). Ce qui reste vrai : le check E2E n'apparaît pas dans `pull_request_read
+  get_status`, il se lit par `actions_list`.
 - Une garde qui ne lit que l'état de **REPOS** ne couvre que cet état : au sens WCAG, le texte d'un
   bouton SURVOLÉ est du texte. Et « corriger » avec un mécanisme que la garde ne sait pas lire
   (`hover:brightness-110`, mesuré 4,44) déplace le défaut hors du radar au lieu de le régler.

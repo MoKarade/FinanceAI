@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
 import { assetValueCad, computePresentNetWorth } from '../services/portfolio';
+import { placementsFaisantAutorite } from '../services/fintable/placementsAutorite';
 import { isSavingsNature } from './budget';
 
 interface DerivedFinancials {
@@ -25,9 +26,20 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
 
     // [NW-UI-DEBT] Source unique du NW présent : soustrait les dettes (avant : cash+investments
     // SANS dettes → Dashboard gonflé vs moteur/IA). `computePresentNetWorth` = pendant de `computeRawNetWorth`.
+    // [FINTABLE-AUTORITE-PARTOUT étape 3] L'autorité du courtier, lue UNE fois pour l'écran. Quand
+    // il n'y a pas de synchro Fintable, `ecart` vaut 0 et rien ne bouge — identité stricte.
+    // ⚠️ Dépendances ÉNUMÉRÉES, pas `[state]` : ce hook est appelé au niveau App, et dépendre de
+    // l'objet d'état entier referait la réconciliation à CHAQUE écriture du store, où qu'elle
+    // porte (une frappe dans le budget, un toast). Même défaut que le sélecteur mesuré au lot
+    // précédent, à un étage près.
+    const autoritePlacements = useMemo(
+        () => placementsFaisantAutorite(state),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` n'est lu que par ces cinq champs.
+        [state.assets, state.fxRates, state.fxRatesSource, state.fxRatesEstimated, state.fintableBrokerBalances],
+    );
     const globalNetWorth = useMemo(
-        () => computePresentNetWorth(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts),
-        [state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts],
+        () => computePresentNetWorth(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart),
+        [state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart],
     );
 
     const calculatedMonthlySavings = useMemo(() => {

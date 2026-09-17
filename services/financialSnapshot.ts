@@ -19,13 +19,13 @@ import { computeMonthlyActualAverages } from '../utils/budgetSync';
 import { isCoupleMode } from './couple/netWorthByOwner';
 import {
     computeAssetBreakdown,
-    computeInvestmentsValue,
     computeCurrentLiquidity,
     computeMonthlyBudgetAggregates,
     computeTotalDebt,
     computePresentNetWorth,
     type AssetBreakdown,
 } from './portfolio';
+import { placementsFaisantAutorite } from './fintable/placementsAutorite';
 
 /**
  * Forme alignée sur `FinancialSnapshot` de `services/claude.ts` (entrée de
@@ -89,10 +89,14 @@ export function buildFinancialSnapshot(
     const fx = state.fxRates ?? {};
     const assets = state.assets ?? [];
     const breakdown = computeAssetBreakdown(assets, fx);
+    // [FINTABLE-AUTORITE-PARTOUT étape 3] UNE seule lecture de l'autorité courtier, partagée par le
+    // patrimoine net ci-dessous et par `investments` de la vue d'ensemble : les dissocier
+    // recréerait la contradiction interne à la carte du hub qui a ouvert ce chantier.
+    const autorite = placementsFaisantAutorite(state);
     // (Les intermédiaires investments/liquidity/totalDebt ont été absorbés par computePresentNetWorth —
     // locales mortes retirées, audit 2026-07-16.)
     // Source unique du NW présent (parité Dashboard/IA/moteur garantie par construction).
-    const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? []);
+    const netWorth = computePresentNetWorth(state.initialBalances ?? {}, state.transactions ?? [], assets, fx, state.debts ?? [], autorite.ecart);
 
     const users = state.config?.users ?? [];
     // [INCOME-3WAY-SPLIT, audit 2026-07-16] Revenu = moyenne RÉELLE des transactions (paie + divers,
@@ -155,7 +159,10 @@ export function buildFinancialOverview(
         ...snapshot,
         currency: 'CAD',
         liquidity: computeCurrentLiquidity(state.initialBalances ?? {}, state.transactions ?? []),
-        investments: computeInvestmentsValue(assets, fx),
+        // ⚠️ La MÊME autorité que le patrimoine net du snapshot (recalculée depuis le même état, donc
+        // le même résultat) : c'est ce qui garantit que `netWorth − liquidity + totalDebt` redonne
+        // `investments` sur la carte du hub. Deux lectures d'un état pur, une seule vérité.
+        investments: placementsFaisantAutorite(state).valeur,
         accounts: computeAssetBreakdown(assets, fx),
         // Cashflow sur la MÊME base de revenu que snapshot.monthlyIncome (réelle, repli déclaré) —
         // l'ancien `budget.savings` restait sur Σ netSalary : `monthlyIncome − monthlyExpenses`

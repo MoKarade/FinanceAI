@@ -25,6 +25,7 @@ import { assetValueCad } from '../portfolio';
 import { BUCKET_OF } from '../history/buildMarketData';
 import { logErrorThrottled } from '../errorLogger';
 import type { ReconcilableRegime } from './brokerBalances';
+import type { JumeauxPorteurs } from './autoriteCourtier';
 
 /** Bucket historique → panier réconciliable (`null` = hors réconciliation, ex. crypto). */
 const REGIME_OF_BUCKET: Record<(typeof BUCKET_OF)[keyof typeof BUCKET_OF], ReconcilableRegime | null> = {
@@ -64,4 +65,37 @@ export function holdingsCadByRegime(
         out[regime] = (out[regime] ?? 0) + v;
     }
     return out;
+}
+
+/**
+ * [FINTABLE-AUTORITE-PARTOUT étape 3] Les paniers JUMEAUX qui PORTENT vraiment de la valeur.
+ *
+ * ⚠️ POURQUOI CE N'EST PAS UNE LECTURE D'UNE BASE DE CALCUL. Le refus `famille-mixte` existe parce
+ * qu'un total courtier annoncé « CELI » ne peut pas s'écrire sur le panier CELI quand un CELIAPP
+ * bien réel vit à côté (mesuré : 91 500 $ affichés pour 66 500 $ réels). Tant que ce test se
+ * lisait dans les soldes de DÉPART, il répondait sur la base du moteur — donc l'écran, dont la
+ * base replie CELIAPP sur CELI (`BUCKET_OF`, juste au-dessus), n'aurait JAMAIS pu le faire tirer.
+ * Une garde structurellement inatteignable n'est pas une protection.
+ *
+ * La question « le CELIAPP porte-t-il quelque chose ? » est un FAIT sur les avoirs : elle se
+ * calcule une fois, ici, et se passe aux deux surfaces. Elle est en prime plus sûre que l'ancienne
+ * lecture — un CELIAPP dont tous les titres sont écartés de la reconstruction valait `0` dans les
+ * soldes, et le refus ne pouvait pas tirer non plus.
+ *
+ * ⚠️ `> 0` et non « il existe un actif de ce type » : un titre soldé (quantité 0) ne rend pas le
+ * panier mixte, et le compter ferait refuser un total courtier parfaitement applicable.
+ */
+export function jumeauxPorteursDepuisActifs(
+    assets: readonly Asset[] | undefined,
+    fxRates: Record<string, number> | undefined,
+): JumeauxPorteurs {
+    let CELIAPP = false;
+    let REEE = false;
+    for (const a of assets ?? []) {
+        const type = a.accountType;
+        if (type !== 'CELIAPP' && type !== 'REEE') continue;
+        if (!(assetValueCad(a, fxRates) > 0)) continue;
+        if (type === 'CELIAPP') CELIAPP = true; else REEE = true;
+    }
+    return { CELIAPP, REEE };
 }

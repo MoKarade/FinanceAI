@@ -46,7 +46,7 @@ import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
 import { appliquerAutoriteCourtier } from '../fintable/autoriteCourtier';
 import { tauxCourantsDepuisEtat, reconcileBrokerBalances } from '../fintable/brokerBalances';
-import { holdingsCadByRegime } from '../fintable/holdingsByRegime';
+import { holdingsCadByRegime, jumeauxPorteursDepuisActifs } from '../fintable/holdingsByRegime';
 
 /**
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
@@ -317,6 +317,8 @@ export function deriveSimulationInputsFromState(
                 // à une seule question seraient pires que la question non répondue.
                 tauxCourantsDepuisEtat(state),
             ),
+            // [FINTABLE-AUTORITE-PARTOUT étape 3] Même fait, même source que le chemin React.
+            jumeauxPorteursDepuisActifs(state.assets ?? [], state.fxRates ?? {}),
         ).soldes,
         // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ Le ledger DÉTAILLÉ, comme dans le hook. Sans lui,
         // le chemin MCP restait nu sur le canal cash alors que le chemin navigateur était protégé :

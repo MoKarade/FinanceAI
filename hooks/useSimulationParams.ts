@@ -19,7 +19,7 @@ import { deriveStartingBalancesFromHistory } from '../services/history/startingB
 import { todayIsoLocal } from '../services/projection/dailyRefine';
 import { appliquerAutoriteCourtier, mentionAutoriteCourtier } from '../services/fintable/autoriteCourtier';
 import { tauxCourantsDepuisEtat, reconcileBrokerBalances } from '../services/fintable/brokerBalances';
-import { holdingsCadByRegime } from '../services/fintable/holdingsByRegime';
+import { holdingsCadByRegime, jumeauxPorteursDepuisActifs } from '../services/fintable/holdingsByRegime';
 
 const EMPTY_ARRAY: never[] = [];
 
@@ -158,6 +158,10 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
                 holdingsCadByRegime(assetsPourRegime, fxPourRegime),
                 tauxCourantsDepuisEtat({ fxRates: fxPourRegime, fxRatesSource: fxSourcePourRegime, fxRatesEstimated: fxEstimePourRegime }),
             ),
+            // [FINTABLE-AUTORITE-PARTOUT étape 3] Le fait « le jumeau porte-t-il quelque chose ? »
+            // vient des AVOIRS, plus des soldes de départ : lu dans une base de calcul, le refus
+            // `famille-mixte` répondait sur la base du moteur et ne pouvait pas tirer côté écran.
+            jumeauxPorteursDepuisActifs(assetsPourRegime, fxPourRegime),
         ),
         [soldesReconstruits, brokerBalances, assetsPourRegime, fxPourRegime, fxSourcePourRegime, fxEstimePourRegime],
     );

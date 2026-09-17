@@ -76,7 +76,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         // Le cœur du risque : la reconstruction d'historique (moteur) doit donner la même valeur CAD
         // que la valorisation point-par-point (NW présent). Divergence = NW présent ≠ départ moteur.
         const moteur = sumBalances(derivePortfolioStartingBalances(assets, FX));
-        const present = computeInvestmentsValue(assets, FX);
+        const present = computeInvestmentsValue(assets, FX, 0);
         expect(present).toBeGreaterThan(1_000); // non-vacuité : la fixture a de vrais placements (≠ 0≡0)
         expect(moteur).toBeCloseTo(present, 0);
     });
@@ -90,7 +90,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         const moteurNW = computeStartingCash(initialBalances, transactions)
             + sumBalances(derivePortfolioStartingBalances(assets, FX))
             - computeTotalDebt(debts);
-        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, debts);
+        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, debts, 0);
         // Discriminant : si la valorisation portefeuille divergeait, l'écart sauterait (≫ 1 $).
         expect(moteurNW).toBeCloseTo(presentNW, 0);
     });
@@ -100,7 +100,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         const moteurNW = computeStartingCash(initialBalances, transactions)
             + sumBalances(derivePortfolioStartingBalances(assets, fx2))
             - computeTotalDebt(debts);
-        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, fx2, debts);
+        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, fx2, debts, 0);
         expect(moteurNW).toBeCloseTo(presentNW, 0);
     });
 
@@ -111,7 +111,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         // Dettes AUX DEUX côtés (intérêt 0 + paiement 0 → aucun flux au mois 0) : couvre la soustraction
         // des dettes END-TO-END (la surface exacte du bug MONEY-PHANTOM : dettes non soustraites → NW gonflé).
         const e2eDebts: Debt[] = [{ id: 'ed', name: 'Prêt', balance: 18_000, interestRate: 0, minimumPayment: 0, category: 'Personal' } as Debt];
-        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, e2eDebts);
+        const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, e2eDebts, 0);
         expect(presentNW).toBeGreaterThan(1_000); // non-vacuité
         const projection: ProjectionConfig = {
             years: 1, returnRate: 0, inflationRate: 0, savingsMode: 'manual', manualContribution: 0,

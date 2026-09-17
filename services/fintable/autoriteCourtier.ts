@@ -104,6 +104,79 @@ const JUMEAU_DE_FAMILLE: Readonly<Partial<Record<ReconcilableRegime, 'CELIAPP' |
 };
 
 /**
+ * Les paniers JUMEAUX qui PORTENT de la valeur, comme un FAIT sur les avoirs — pas comme une
+ * lecture d'une base de calcul.
+ *
+ * ⚠️⚠️ POURQUOI CE N'EST PLUS LU DANS `soldes` (étape 3, 2026-09-17). La décision « reprend-on ce
+ * panier au courtier ? » doit être UNE, parce que deux surfaces l'appliquent : le moteur (base =
+ * reconstruction datée) et l'écran (base = prix courants). Tant qu'elle se lisait dans `soldes`,
+ * chaque surface répondait sur SA base — donc potentiellement deux réponses à une seule question,
+ * exactement ce que tout ce chantier existe pour supprimer. La question « le CELIAPP porte-t-il
+ * quelque chose ? » est un fait sur les AVOIRS, pas sur une base : elle se calcule une fois et se
+ * passe aux deux.
+ *
+ * ⚠️ Et c'est aussi STRICTEMENT PLUS SÛR que la lecture d'avant. Un CELIAPP dont tous les titres
+ * sont écartés de la reconstruction (queue de chandelles périmée) valait `0` dans `soldes` : le
+ * refus ne pouvait pas TIRER, et le total courtier « CELI » s'écrivait par-dessus un CELIAPP bien
+ * réel. Le fait, lui, reste vrai (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
+ */
+export interface JumeauxPorteurs {
+    CELIAPP: boolean;
+    REEE: boolean;
+}
+
+/** Aucun jumeau ne porte rien — pour les appelants dont l'état ne connaît ni CELIAPP ni REEE. */
+export const AUCUN_JUMEAU: JumeauxPorteurs = { CELIAPP: false, REEE: false };
+
+/**
+ * LA décision : quels paniers sont repris au courtier, et pourquoi les autres ne le sont pas.
+ *
+ * Pure, sans base de calcul — c'est tout l'intérêt. `appliquerAutoriteCourtier` (moteur) et
+ * `placementsFaisantAutorite` (écran) l'appellent tous les deux et appliquent ensuite la MÊME
+ * liste à LEUR base. Ce qui se partage est la DÉCISION, jamais la BASE
+ * (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`).
+ */
+export function decideRegimesRepris(
+    reconciliation: ReconciliationLue | undefined,
+    jumeaux: JumeauxPorteurs,
+): { appliques: ReconcilableRegime[]; refuses: Array<{ regime: ReconcilableRegime; raison: RaisonRefus }> } {
+    const regimes = reconciliation?.regimes ?? [];
+    const appliques: ReconcilableRegime[] = [];
+    const refuses: Array<{ regime: ReconcilableRegime; raison: RaisonRefus }> = [];
+    if (regimes.length === 0) return { appliques, refuses };
+
+    const incomplets = new Set(reconciliation?.incompleteRegimes ?? []);
+    const nonPlacable = reconciliation?.hasUnplaceableAccount === true;
+
+    for (const r of regimes) {
+        if (CLE_PAR_REGIME[r.regime] === undefined) continue;
+
+        // ⚠️⚠️ TROIS REFUS AVANT TOUTE ÉCRITURE, et ils viennent d'une mesure sur la chaîne réelle.
+        // Un total courtier AMPUTÉ (un compte du régime écarté, un autre retenu) écrasait la valeur
+        // reconstruite COMPLÈTE : Disnat CAD 30 000 $ + Disnat USD 72 040 $ sans taux donnait un
+        // mois 0 à 30 000 $ au lieu de 231 882 $. C'est exactement l'état de Marc tant que ses taux
+        // viennent du repli — le cas le plus probable, pas un cas limite.
+        if (nonPlacable) { refuses.push({ regime: r.regime, raison: 'compte-non-placable' }); continue; }
+        if (incomplets.has(r.regime)) { refuses.push({ regime: r.regime, raison: 'total-partiel' }); continue; }
+        const jumeau = JUMEAU_DE_FAMILLE[r.regime];
+        if (jumeau !== undefined && jumeaux[jumeau]) {
+            refuses.push({ regime: r.regime, raison: 'famille-mixte' });
+            continue;
+        }
+        // Un total non fini n'est PAS rabattu sur 0 : un 0 crédible effacerait tout un panier du
+        // patrimoine sans un mot (no-fake-data). Le refus est une DONNÉE rendue à l'appelant, pas
+        // un silence — c'est ce qui le distingue d'un `continue` muet. Rare mais PAS mort : une
+        // somme de termes finis peut déborder.
+        if (!Number.isFinite(Number(r.brokerTotalCad))) {
+            refuses.push({ regime: r.regime, raison: 'total-illisible' });
+            continue;
+        }
+        appliques.push(r.regime);
+    }
+    return { appliques, refuses };
+}
+
+/**
  * Remplace, panier par panier, la valeur reconstruite par le total du courtier.
  *
  * ⚠️ IDENTITÉ STRICTE quand il n'y a rien à appliquer. Un état sans Fintable, un régime non déclaré,
@@ -119,55 +192,27 @@ const JUMEAU_DE_FAMILLE: Readonly<Partial<Record<ReconcilableRegime, 'CELIAPP' |
 export function appliquerAutoriteCourtier<T extends SoldesDepart>(
     soldes: T,
     reconciliation: ReconciliationLue | undefined,
+    jumeaux: JumeauxPorteurs,
 ): ResultatAutorite<T> {
-    const regimes = reconciliation?.regimes ?? [];
-    if (regimes.length === 0) return { soldes, ecartTotal: 0, regimesAppliques: [], regimesRefuses: [] };
+    const { appliques, refuses } = decideRegimesRepris(reconciliation, jumeaux);
+    if (appliques.length === 0) return { soldes, ecartTotal: 0, regimesAppliques: [], regimesRefuses: refuses };
 
-    const incomplets = new Set(reconciliation?.incompleteRegimes ?? []);
-    const nonPlacable = reconciliation?.hasUnplaceableAccount === true;
+    const totauxParRegime = new Map<ReconcilableRegime, number>();
+    for (const r of reconciliation?.regimes ?? []) totauxParRegime.set(r.regime, Number(r.brokerTotalCad));
 
     const sortie: T = { ...soldes };
-    const regimesAppliques: ReconcilableRegime[] = [];
-    const regimesRefuses: Array<{ regime: ReconcilableRegime; raison: RaisonRefus }> = [];
     let ecartTotal = 0;
-
-    for (const r of regimes) {
-        const cle = CLE_PAR_REGIME[r.regime];
-        if (cle === undefined) continue;
-
-        // ⚠️⚠️ TROIS REFUS AVANT TOUTE ÉCRITURE, et ils viennent d'une mesure sur la chaîne réelle.
-        // Un total courtier AMPUTÉ (un compte du régime écarté, un autre retenu) écrasait la valeur
-        // reconstruite COMPLÈTE : Disnat CAD 30 000 $ + Disnat USD 72 040 $ sans taux donnait un
-        // mois 0 à 30 000 $ au lieu de 231 882 $. C'est exactement l'état de Marc tant que ses taux
-        // viennent du repli — le cas le plus probable, pas un cas limite.
-        if (nonPlacable) { regimesRefuses.push({ regime: r.regime, raison: 'compte-non-placable' }); continue; }
-        if (incomplets.has(r.regime)) { regimesRefuses.push({ regime: r.regime, raison: 'total-partiel' }); continue; }
-        const jumeau = JUMEAU_DE_FAMILLE[r.regime];
-        if (jumeau !== undefined && Number(sortie[jumeau] ?? 0) !== 0) {
-            regimesRefuses.push({ regime: r.regime, raison: 'famille-mixte' });
-            continue;
-        }
-
-        const total = Number(r.brokerTotalCad);
-        // Un total non fini n'est PAS rabattu sur 0 : un 0 crédible effacerait tout un panier du
-        // patrimoine sans un mot (no-fake-data). On laisse la valeur reconstruite et on n'ajoute
-        // pas ce régime à la liste des appliqués — donc rien ne prétend qu'il vient du courtier.
-        if (!Number.isFinite(total)) {
-            // ⚠️ Le refus est une DONNÉE rendue à l'appelant, pas un silence : c'est ce qui
-            // distingue cette branche d'un `continue` muet (le panel l'avait relevée comme une
-            // garde qui ne peut pas se signaler). Elle est rare mais PAS morte — une somme de
-            // termes finis peut déborder.
-            regimesRefuses.push({ regime: r.regime, raison: 'total-illisible' });
-            continue;
-        }
+    for (const regime of appliques) {
+        const cle = CLE_PAR_REGIME[regime];
+        const total = totauxParRegime.get(regime);
+        // `decideRegimesRepris` a déjà écarté les totaux non finis ; la garde reste pour que le
+        // type soit honnête, et parce qu'un appelant futur pourrait passer une autre liste.
+        if (total === undefined || !Number.isFinite(total)) continue;
         const avant = Number(sortie[cle] ?? 0);
         const base = Number.isFinite(avant) ? avant : 0;
         sortie[cle] = total;
         ecartTotal += total - base;
-        regimesAppliques.push(r.regime);
     }
-
-    if (regimesAppliques.length === 0) return { soldes, ecartTotal: 0, regimesAppliques: [], regimesRefuses };
 
     // Le TOTAL n'est recomposé que s'il EXISTE en entrée : l'ajouter là où l'appelant ne le produit
     // pas fabriquerait un champ que personne n'a demandé, et que rien ne tiendrait à jour ensuite.
@@ -176,7 +221,7 @@ export function appliquerAutoriteCourtier<T extends SoldesDepart>(
             + sortie.NON_ENREG + sortie.CRYPTO;
     }
 
-    return { soldes: sortie, ecartTotal, regimesAppliques, regimesRefuses };
+    return { soldes: sortie, ecartTotal, regimesAppliques: appliques, regimesRefuses: refuses };
 }
 
 /**

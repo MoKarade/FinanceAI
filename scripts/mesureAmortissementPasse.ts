@@ -46,6 +46,9 @@ const invPoint = (date: string, celi: number): PortfolioHistoryPoint =>
 const base = {
     startYear: SCENARIO.startYear,
     startMonth: SCENARIO.startMonth,
+    // [DEBT-CADENCE-REELLE] Le jour d'aujourd'hui, requis. Ce scénario n'a pas de cadence
+    // sous-mensuelle, donc il ne change rien à la mesure — mais il doit tomber dans le mois 0.
+    todayIso: `${SCENARIO.startYear}-${String(SCENARIO.startMonth + 1).padStart(2, '0')}-15`,
     realEstateGoals: [],
     transactions: [SCENARIO.premiereTransaction],
     calculatedStartingCash: SCENARIO.calculatedStartingCash,

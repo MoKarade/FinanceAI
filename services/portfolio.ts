@@ -127,12 +127,26 @@ export const computeAssetBreakdown = (
 
 /**
  * Valeur totale des investissements en CAD (somme de tous les comptes).
+ *
+ * ⚠️ [FINTABLE-AUTORITE-PARTOUT étape 3] `ecartAutorite` est la correction du COURTIER : ce que
+ * Fintable dit de plus (ou de moins) que les titres saisis, sur les seuls paniers REPRIS. Il est
+ * calculé par `placementsFaisantAutorite` (`services/fintable/placementsAutorite.ts`), qui partage
+ * sa DÉCISION avec le mois 0 du moteur — jamais recalculé ici.
+ *
+ * ⚠️ REQUIS, jamais optionnel. Optionnel, chaque appelant oublié aurait continué d'afficher la
+ * somme des titres pendant que ses voisins affichent l'autorité : c'est exactement la situation
+ * qu'on répare (quatre producteurs, quatre réponses). `0` est une réponse explicite et légitime —
+ * elle veut dire « aucune autorité à appliquer », et c'est ce que rend `placementsFaisantAutorite`
+ * quand il n'y a pas de synchro. Le compilateur énumère les sites : c'est voulu.
  */
 export const computeInvestmentsValue = (
   assets: Asset[],
   fxRates: Record<string, number>,
+  ecartAutorite: number,
 ): number => {
-  return assets.reduce((sum, a) => sum + assetValueCad(a, fxRates), 0);
+  const base = assets.reduce((sum, a) => sum + assetValueCad(a, fxRates), 0);
+  // Une correction non finie ne devient JAMAIS un total non fini : on garde la base, honnête.
+  return Number.isFinite(ecartAutorite) ? base + ecartAutorite : base;
 };
 
 /**
@@ -160,9 +174,13 @@ export const computeGrossAssets = (
   transactions: Transaction[],
   assets: Asset[],
   fxRates: Record<string, number>,
+  /** Cf. `computeInvestmentsValue` : la correction du courtier, REQUISE pour que la valeur nette
+   *  et le chiffre « Investissements » bougent ENSEMBLE. Les dissocier recréerait la contradiction
+   *  interne à la carte du hub qui a ouvert ce chantier. */
+  ecartAutorite: number,
 ): number => {
   return computeCurrentLiquidity(initialBalances, transactions)
-       + computeInvestmentsValue(assets, fxRates);
+       + computeInvestmentsValue(assets, fxRates, ecartAutorite);
 };
 
 /**
@@ -245,7 +263,9 @@ export const computePresentNetWorth = (
   assets: Asset[],
   fxRates: Record<string, number>,
   debts: Debt[],
+  /** Cf. `computeInvestmentsValue`. */
+  ecartAutorite: number,
 ): number => {
-  return computeGrossAssets(initialBalances, transactions, assets, fxRates)
+  return computeGrossAssets(initialBalances, transactions, assets, fxRates, ecartAutorite)
        - computeTotalDebt(debts);
 };

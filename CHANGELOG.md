@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (ta dette baisse à chaque paiement, la carte du hub redevient lisible, et tes placements disent la même chose partout)
+
+- **Ta dette descendait une fois par mois.** Toi : « elle devrait descendre à chaque paiement à
+  Toyota, pas une fois par mois ». Exact — le passé reconstruit ne produisait qu'un point par mois.
+  Une dette à versements fixes peut maintenant déclarer sa **cadence réelle** (hebdomadaire, aux deux
+  semaines, mensuelle) dans le formulaire de dette, et la courbe descend **au jour du prélèvement**,
+  du montant réellement prélevé (234,67 $/semaine pour ton bail). Le montant que tu saisis reste le
+  paiement MENSUEL : c'est seulement la date des marches qui change.
+  ⚠️ **À faire une fois** : ouvrir ta dette « bZ » et choisir « Hebdomadaire ». Sans ça, rien ne
+  bouge — on ne devine pas la fréquence à ta place.
+- **La carte du hub affichait « −430,6 % sur 7 j ».** Deux causes, toutes deux de notre côté.
+  D'abord, le libellé « Placements (16 sept.) » changeait chaque jour : le hub garde l'historique
+  d'une métrique **par son libellé**, donc la petite courbe repartait de zéro tous les jours et
+  affichait « pas encore d'historique » sous une valeur pourtant publiée. Le libellé est maintenant
+  stable, la date reste dans le détail. Ensuite, on publiait « Variation de la séance » comme une
+  métrique — et le hub calcule l'évolution sur 7 jours de **chaque** métrique, donc il calculait la
+  variation d'une variation. Ces deux lignes vivent désormais dans le détail, avec leur période
+  écrite à côté ; le pourcentage du jour reste sur « Placements », où il veut dire quelque chose.
+- **Tes placements ne disaient plus la même chose selon l'écran.** Toi : « je veux que toutes les
+  valeurs soient cohérentes de partout entre elles, et que ce soit la valeur Fintable ». L'Accueil,
+  la valeur nette, la Santé financière, la vue d'ensemble et la carte du hub consultent maintenant
+  **la même décision** que la projection : quels comptes sont repris au courtier, et lesquels ne le
+  sont pas (total incomplet, famille mixte). Chaque écran l'applique à sa propre base, donc un compte
+  repris vaut exactement le total du courtier **partout**, et la carte du hub se recompose enfin
+  (valeur nette = liquidités + placements − dettes).
+
+---
+
 ## [unreleased] — 2026-09-17 (ta dette baisse enfin dans le passé, et la courbe cesse d'afficher des prix d'il y a deux mois)
 
 - **Ta dette ne bougeait pas dans le passé.** Toi : « ça devrait diminuer avec ce que je paie chaque

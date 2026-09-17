@@ -12,7 +12,7 @@
 // (→ simulate_what_if).
 
 import { z } from 'zod';
-import { DEBT_KINDS } from '../../types';
+import { DEBT_KINDS, PAYMENT_FREQUENCIES } from '../../types';
 import { isValidIsoDate } from '../../utils/isoDate';
 import type { WriteToolSpec } from './_toolSpec';
 
@@ -55,6 +55,13 @@ const inputSchema = {
             + "dette qui a grossi n'a pas de profil d'amortissement) et se LIT sur le contrat — ne "
             + "l'estime JAMAIS à partir du solde, du taux ou de la mensualité : un montant inventé "
             + "produirait une courbe crédible et fausse."),
+    paymentFrequency: z.enum(PAYMENT_FREQUENCIES).optional()
+        .describe("CADENCE RÉELLE des prélèvements d'une dette à versements FIXES (bail auto) : "
+            + "`weekly`, `biweekly` ou `monthly`. ⚠️ Elle ne change PAS le montant dû : "
+            + "`minimumPayment` reste le paiement MENSUEL, et le versement de la période s'en "
+            + "déduit. Ce qu'elle change, c'est QUAND la dette descend dans le passé du graphe "
+            + "Futur — à chaque prélèvement au lieu d'une marche par mois. Ne la fournis que si "
+            + "l'utilisateur ou le contrat l'indique ; absente ⇒ mensuel, comme avant ce champ."),
     termEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidIsoDate, {
         message: 'Date calendaire invalide (ex. mois > 12 ou jour hors du mois) — pas seulement le format.',
     }).optional()

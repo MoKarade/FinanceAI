@@ -204,38 +204,82 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
         fxRates: { USD: 1.35, EUR: 1.45 },
     });
 
-    it('publie 6 métriques ordonnées, la valeur nette en tête et sa tendance du jour', () => {
+    // ⚠️⚠️ TEST DE LIMITE INVERSÉ le 2026-09-17 (`[HUB-METRIQUE-LIBELLE-EST-UNE-CLE]` +
+    // `[HUB-SPARKLINE-VARIATION-DE-VARIATION]`), pas supprimé — son histoire est ce qui empêche de
+    // re-faire le chemin inverse « pour que la carte en montre plus ».
+    // Il affirmait « publie 6 métriques » dont `Placements (séance du 18 août)`, `Variation de la
+    // séance` et `Variation 7 jours`, et son commentaire disait « le libellé porte la DATE » comme
+    // une qualité. Mesuré en LISANT le hub (dépôt Hubperso) : le libellé est la CLÉ de l'historique
+    // (`serieMetrique(historique, metrique.label)`), et le hub dérive l'évolution 7 j de la VALEUR
+    // de chaque métrique. Donc un libellé daté remet la série à zéro chaque séance (« pas encore
+    // d'historique » à perpétuité), et une métrique qui EST une variation se fait re-dériver
+    // (« −430,6 % sur 7 j » chez Marc). Les deux faits sont morts, la limite reste écrite ici.
+    it('publie 4 métriques à libellé STABLE — les variations ont quitté la carte', () => {
         const s = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
-        expect(s.metrics).toHaveLength(6);   // le PLAFOND du contrat, exactement
+        expect(s.metrics).toHaveLength(4);
 
-        // L'ordre est un arbitrage : le hub rend la PREMIÈRE en gros.
+        // L'ordre est un arbitrage : le hub rend la PREMIÈRE en gros (à défaut de `primary`).
         expect(s.metrics.map((m) => m.label)).toEqual([
             'Valeur nette',
             'Cashflow mensuel',
             'Liquidités',
-            'Placements (séance du 18 août)',
-            'Variation de la séance',
-            'Variation 7 jours',
+            'Placements',
         ]);
 
-        // Les trois sortantes ne doivent PLUS être là (sinon on dépasserait 6 et le contrat casserait).
+        // Les trois sortantes du lot [HUB-PLACEMENTS-SEANCE] ne REVIENNENT pas : deux places se
+        // sont libérées, ce n'est pas une invitation à recomposer la carte.
         for (const parti of ['Investissements', 'Dette totale', 'Espace CELI dispo']) {
             expect(s.metrics.some((m) => m.label === parti), `${parti} aurait dû sortir`).toBe(false);
         }
 
-        // Le libellé porte la DATE — jamais « aujourd'hui » (les marchés ferment, et l'historique
-        // daté n'avance que quand l'app navigateur s'ouvre).
-        expect(s.metrics.some((m) => /aujourd/i.test(m.label))).toBe(false);
-
-        // Montants et tendances : 113 la veille de rien, +1 $ sur la séance, +7 $ sur 7 jours.
+        // Montants et tendances : 113 au dernier close, +1 $ sur la séance.
         const parLabel = Object.fromEntries(s.metrics.map((m) => [m.label, m]));
-        expect(parLabel['Placements (séance du 18 août)'].value).toBe(113);
-        expect(parLabel['Variation de la séance'].value).toBe(1);
-        expect(parLabel['Variation 7 jours'].value).toBe(7);
+        expect(parLabel['Placements'].value).toBe(113);
         expect(parLabel['Valeur nette'].trend).toBeCloseTo((1 / 112) * 100, 2);
-        expect(parLabel['Variation de la séance'].trend).toBeCloseTo((1 / 112) * 100, 2);
+        expect(parLabel['Placements'].trend).toBeCloseTo((1 / 112) * 100, 2);
 
         // Tout doit rester conforme au contrat — c'est le hub qui valide, on ne triche pas.
+        expect(() => validateSummary(s as never)).not.toThrow();
+    });
+
+    it('[HUB-METRIQUE-LIBELLE-EST-UNE-CLE] deux séances DIFFÉRENTES, les mêmes libellés', () => {
+        // LA garde du lot, et elle porte le FAIT (« un libellé de métrique ne dépend pas de la
+        // donnée »), pas la forme du libellé : sa perturbation est exactement de remettre la date
+        // dedans. Deux états qui ne diffèrent QUE par la date de clôture.
+        const a = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
+        const b = buildHubSummary(avecPlacements(14, 17) as never, MAINTENANT);
+
+        // Anti-vacuité : les deux builds publient bien des placements, et à des DATES distinctes —
+        // sinon « mêmes libellés » serait vrai de deux cartes vides.
+        expect(a.metrics.some((m) => m.label === 'Placements')).toBe(true);
+        expect(b.metrics.some((m) => m.label === 'Placements')).toBe(true);
+        const dateDe = (s: ReturnType<typeof buildHubSummary>) =>
+            s.details?.find((d) => d.title === 'Fraîcheur des deux sources')
+                ?.items.find((i) => i.label === 'Clôture de référence')?.value;
+        expect(dateDe(a)).toBe('séance du 18 août');
+        expect(dateDe(b)).toBe('séance du 17 août');
+        expect(dateDe(a)).not.toBe(dateDe(b));
+
+        expect(a.metrics.map((m) => m.label)).toEqual(b.metrics.map((m) => m.label));
+    });
+
+    it('[HUB-SPARKLINE-VARIATION-DE-VARIATION] les variations vivent dans `details`, jamais en métrique', () => {
+        const s = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
+
+        // Le hub ne dérive AUCUNE évolution d'une ligne de `details` : c'est ce qui rend l'endroit
+        // sûr pour une grandeur qui est déjà une variation.
+        expect(s.metrics.some((m) => /^Variation/.test(m.label))).toBe(false);
+
+        const section = s.details?.find((d) => d.title === 'Variation des placements');
+        expect(section, 'la section de variation doit exister quand la séance est publiable').toBeTruthy();
+        const parLabel = Object.fromEntries((section?.items ?? []).map((i) => [i.label, i]));
+        expect(parLabel['Variation de la séance'].value).toBe(1);
+        expect(parLabel['Variation de la séance'].trend).toBeCloseTo((1 / 112) * 100, 2);
+        expect(parLabel['Variation 7 jours'].value).toBe(7);
+        // La DATE de la séance n'est pas perdue en quittant le libellé de la métrique : elle
+        // qualifie la ligne par son `hint`, le champ prévu pour ça.
+        expect(parLabel['Variation de la séance'].hint).toContain('séance du 18 août');
+
         expect(() => validateSummary(s as never)).not.toThrow();
     });
 
@@ -248,6 +292,9 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
         // lirait « journée stable » alors qu'on ne sait simplement pas.
         expect(s.metrics.some((m) => /placement|variation/i.test(m.label))).toBe(false);
         expect(s.metrics[0].trend).toBeUndefined();
+        // Et la section de détail des variations n'apparaît pas non plus — le silence est le même
+        // des deux côtés, sinon la carte dirait « rien » pendant que le détail dirait « 0 $ ».
+        expect(s.details?.some((d) => d.title === 'Variation des placements') ?? false).toBe(false);
 
         // Et les trois sortantes ne REVIENNENT pas : une carte dont la composition change selon la
         // fraîcheur des cours serait illisible.
@@ -258,10 +305,12 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
     it('semaine incalculable : la séance seule est publiée (refus indépendants)', () => {
         const s = buildHubSummary(avecPlacements(2, 18) as never, MAINTENANT);
         expect(s.metrics.map((m) => m.label)).toEqual([
-            'Valeur nette', 'Cashflow mensuel', 'Liquidités',
-            'Placements (séance du 18 août)', 'Variation de la séance',
+            'Valeur nette', 'Cashflow mensuel', 'Liquidités', 'Placements',
         ]);
-        expect(s.metrics.some((m) => m.label === 'Variation 7 jours')).toBe(false);
+        // Les deux refus restent INDÉPENDANTS — ça se lit maintenant dans `details` : la séance y
+        // figure, la semaine non.
+        const section = s.details?.find((d) => d.title === 'Variation des placements');
+        expect(section?.items.map((i) => i.label)).toEqual(['Variation de la séance']);
     });
 
     it('dataAsOf reflète la donnée la plus ANCIENNE, pas l\'instant du build', () => {

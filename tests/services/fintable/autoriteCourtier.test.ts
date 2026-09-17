@@ -8,8 +8,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-    appliquerAutoriteCourtier, mentionAutoriteCourtier,
-    type SoldesDepart, type ReconciliationLue,
+    appliquerAutoriteCourtier, mentionAutoriteCourtier, AUCUN_JUMEAU,
+    type SoldesDepart, type ReconciliationLue, type JumeauxPorteurs,
 } from '../../../services/fintable/autoriteCourtier';
 
 const soldes = (p: Partial<SoldesDepart> = {}): SoldesDepart => ({
@@ -20,10 +20,15 @@ const soldes = (p: Partial<SoldesDepart> = {}): SoldesDepart => ({
 
 const reco = (regimes: ReconciliationLue['regimes']): ReconciliationLue => ({ regimes });
 
+/** [FINTABLE-AUTORITE-PARTOUT étape 3] Les jumeaux sont désormais un ARGUMENT, plus une lecture des
+ *  soldes : le fait « le CELIAPP porte-t-il quelque chose ? » porte sur les AVOIRS, pas sur une base
+ *  de calcul. Par défaut aucun ne porte rien — le cas de la grande majorité des états. */
+const jumeaux = (p: Partial<JumeauxPorteurs> = {}): JumeauxPorteurs => ({ ...AUCUN_JUMEAU, ...p });
+
 describe('identité — le cas de qui n\'utilise pas Fintable', () => {
     it('rend l\'OBJET D\'ENTRÉE quand il n\'y a aucun régime réconcilié', () => {
         const entree = soldes();
-        const r = appliquerAutoriteCourtier(entree, reco([]));
+        const r = appliquerAutoriteCourtier(entree, reco([]), AUCUN_JUMEAU);
         // Identité de RÉFÉRENCE, pas seulement d'égalité : les consommateurs sont des `useMemo`
         // dont les dépendances comparent les références. Reconstruire un objet identique ferait
         // recalculer toute la projection à chaque rendu, sans qu'aucun chiffre ne bouge.
@@ -34,7 +39,7 @@ describe('identité — le cas de qui n\'utilise pas Fintable', () => {
 
     it('rend l\'objet d\'entrée quand la réconciliation est absente', () => {
         const entree = soldes();
-        expect(appliquerAutoriteCourtier(entree, undefined).soldes).toBe(entree);
+        expect(appliquerAutoriteCourtier(entree, undefined, AUCUN_JUMEAU).soldes).toBe(entree);
     });
 });
 
@@ -42,7 +47,7 @@ describe('autorité appliquée', () => {
     it('remplace le panier par le total du courtier et RECALCULE le total', () => {
         const r = appliquerAutoriteCourtier(soldes(), reco([
             { regime: 'NON-ENREG', brokerTotalCad: 231_882, holdingsValueCad: 200_000, accountLabels: ['Disnat'] },
-        ]));
+        ]), AUCUN_JUMEAU);
         expect(r.soldes.NON_ENREG).toBe(231_882);
         expect(r.ecartTotal).toBe(31_882);
         // Le TOTAL est la somme des six paniers — jamais l'ancien total plus l'écart, qui
@@ -55,7 +60,7 @@ describe('autorité appliquée', () => {
         const r = appliquerAutoriteCourtier(soldes(), reco([
             { regime: 'CELI', brokerTotalCad: 12_500, holdingsValueCad: 10_000, accountLabels: ['WS CELI'] },
             { regime: 'REER', brokerTotalCad: 48_000, holdingsValueCad: 50_000, accountLabels: ['WS REER'] },
-        ]));
+        ]), AUCUN_JUMEAU);
         expect(r.soldes.CELI).toBe(12_500);
         expect(r.soldes.REER).toBe(48_000);
         // CELIAPP / REEE / CRYPTO ne sont pas réconciliables — Fintable ne déclare pas ces régimes.
@@ -67,7 +72,7 @@ describe('autorité appliquée', () => {
     it('un écart NÉGATIF est appliqué tel quel (le courtier peut dire MOINS)', () => {
         const r = appliquerAutoriteCourtier(soldes(), reco([
             { regime: 'NON-ENREG', brokerTotalCad: 180_000, holdingsValueCad: 200_000, accountLabels: ['D'] },
-        ]));
+        ]), AUCUN_JUMEAU);
         expect(r.soldes.NON_ENREG).toBe(180_000);
         expect(r.ecartTotal).toBe(-20_000);
     });
@@ -78,7 +83,7 @@ describe('autorité appliquée', () => {
         // un chiffre faux (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
         const r = appliquerAutoriteCourtier(soldes({ historicalRate: 7.5 }), reco([
             { regime: 'NON-ENREG', brokerTotalCad: 999_999, holdingsValueCad: 200_000, accountLabels: ['D'] },
-        ]));
+        ]), AUCUN_JUMEAU);
         expect(r.soldes.historicalRate).toBe(7.5);
     });
 });
@@ -88,7 +93,7 @@ describe('robustesse — un total non fini ne devient JAMAIS un 0 crédible', ()
         for (const mauvais of [Number.NaN, Number.POSITIVE_INFINITY, undefined as unknown as number]) {
             const r = appliquerAutoriteCourtier(soldes(), reco([
                 { regime: 'NON-ENREG', brokerTotalCad: mauvais, holdingsValueCad: 200_000, accountLabels: ['D'] },
-            ]));
+            ]), AUCUN_JUMEAU);
             // no-fake-data : 0 $ effacerait tout un panier du patrimoine sans un mot.
             expect(r.soldes.NON_ENREG).toBe(200_000);
             expect(r.regimesAppliques).toEqual([]);
@@ -100,7 +105,7 @@ describe('robustesse — un total non fini ne devient JAMAIS un 0 crédible', ()
         const r = appliquerAutoriteCourtier(soldes(), reco([
             { regime: 'CELI', brokerTotalCad: 12_500, holdingsValueCad: 10_000, accountLabels: ['a'] },
             { regime: 'REER', brokerTotalCad: Number.NaN, holdingsValueCad: 50_000, accountLabels: ['b'] },
-        ]));
+        ]), AUCUN_JUMEAU);
         expect(r.soldes.CELI).toBe(12_500);
         expect(r.soldes.REER).toBe(50_000);
         expect(r.regimesAppliques).toEqual(['CELI']);
@@ -153,7 +158,7 @@ describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
     });
 
     it('REFUSE le régime dont un compte a été écarté, et DIT pourquoi', () => {
-        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte({ incompleteRegimes: ['NON-ENREG'] }));
+        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte({ incompleteRegimes: ['NON-ENREG'] }), AUCUN_JUMEAU);
         expect(r.soldes.NON_ENREG).toBe(200_000);        // la valeur reconstruite est CONSERVÉE
         expect(r.regimesAppliques).toEqual([]);
         expect(r.regimesRefuses).toEqual([{ regime: 'NON-ENREG', raison: 'total-partiel' }]);
@@ -163,14 +168,14 @@ describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
     it('REFUSE TOUT quand un compte écarté n\'est rattachable à aucun panier', () => {
         // On ignore alors QUEL panier est amputé : le patrimoine de ce compte vit quelque part dans
         // la reconstruction, et n'importe lequel peut être celui-là.
-        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte({ hasUnplaceableAccount: true }));
+        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte({ hasUnplaceableAccount: true }), AUCUN_JUMEAU);
         expect(r.regimesAppliques).toEqual([]);
         expect(r.regimesRefuses).toEqual([{ regime: 'NON-ENREG', raison: 'compte-non-placable' }]);
     });
 
     it('CONTRÔLE NÉGATIF — rien d\'écarté : le régime est appliqué normalement', () => {
         // Sans lui, « on refuse les totaux amputés » serait indiscernable de « on ne fait plus rien ».
-        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte());
+        const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte(), AUCUN_JUMEAU);
         expect(r.soldes.NON_ENREG).toBe(30_000);
         expect(r.regimesAppliques).toEqual(['NON-ENREG']);
         expect(r.regimesRefuses).toEqual([]);
@@ -183,7 +188,7 @@ describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
                 { regime: 'NON-ENREG', brokerTotalCad: 30_000, holdingsValueCad: 200_000, accountLabels: ['b'] },
             ],
             incompleteRegimes: ['NON-ENREG'],
-        });
+        }, AUCUN_JUMEAU);
         expect(r.soldes.CELI).toBe(12_500);
         expect(r.soldes.NON_ENREG).toBe(200_000);
         expect(r.regimesAppliques).toEqual(['CELI']);
@@ -198,11 +203,20 @@ describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
 // panier `CELI` pendant que `CELIAPP` conserve sa valeur compte le CELIAPP DEUX FOIS.
 // Mesuré : CELI 41 000 + CELIAPP 25 500 déclarés `CELI` chez le courtier rendaient 91 500 $ pour
 // 66 500 $ réels.
+//
+// ⚠️⚠️ CE QUI A CHANGÉ LE 2026-09-17 (`[FINTABLE-AUTORITE-PARTOUT]` étape 3), et pourquoi ces tests
+// sont INVERSÉS au même endroit plutôt que réécrits ailleurs : le fait « le jumeau porte-t-il une
+// valeur ? » se lisait dans les SOLDES passés en entrée. Il est devenu un ARGUMENT. Ce n'est pas
+// cosmétique — lu dans une base de calcul, ce refus répondait sur la base du MOTEUR, et l'écran
+// (dont la base replie CELIAPP sur CELI par construction) n'aurait JAMAIS pu le faire tirer : une
+// garde structurellement inatteignable n'est pas une protection. Il est en prime plus sûr : un
+// CELIAPP dont tous les titres sont écartés de la reconstruction valait `0` dans les soldes.
 describe('⚠️ base de FAMILLE écrite dans un panier ÉTROIT', () => {
     it('REFUSE CELI tant que CELIAPP porte une valeur', () => {
         const r = appliquerAutoriteCourtier(
             soldes({ CELI: 41_000, CELIAPP: 25_500 }),
             { regimes: [{ regime: 'CELI', brokerTotalCad: 66_500, holdingsValueCad: 66_500, accountLabels: ['a'] }] },
+            jumeaux({ CELIAPP: true }),
         );
         expect(r.soldes.CELI).toBe(41_000);
         expect(r.soldes.CELIAPP).toBe(25_500);
@@ -213,15 +227,31 @@ describe('⚠️ base de FAMILLE écrite dans un panier ÉTROIT', () => {
         const r = appliquerAutoriteCourtier(
             soldes({ REER: 101_000, REEE: 30_500 }),
             { regimes: [{ regime: 'REER', brokerTotalCad: 131_500, holdingsValueCad: 131_500, accountLabels: ['a'] }] },
+            jumeaux({ REEE: true }),
         );
         expect(r.soldes.REER).toBe(101_000);
         expect(r.regimesRefuses).toEqual([{ regime: 'REER', raison: 'famille-mixte' }]);
     });
 
-    it('CONTRÔLE NÉGATIF — jumeau à ZÉRO : CELI est appliqué', () => {
+    it('⚠️ LE CAS QUE L\'ANCIENNE FORME NE POUVAIT PAS VOIR : jumeau à ZÉRO dans les soldes, mais RÉEL', () => {
+        // Un CELIAPP dont tous les titres sont écartés de la reconstruction (queue de chandelles
+        // périmée) vaut `0` dans `soldes` — l'ancien test `sortie['CELIAPP'] !== 0` était donc FAUX
+        // et le total courtier « CELI » s'écrivait par-dessus un CELIAPP bien réel. C'est le fait,
+        // pas la base, qui tranche maintenant.
+        const r = appliquerAutoriteCourtier(
+            soldes({ CELI: 41_000, CELIAPP: 0 }),
+            { regimes: [{ regime: 'CELI', brokerTotalCad: 66_500, holdingsValueCad: 66_500, accountLabels: ['a'] }] },
+            jumeaux({ CELIAPP: true }),
+        );
+        expect(r.soldes.CELI).toBe(41_000);
+        expect(r.regimesRefuses).toEqual([{ regime: 'CELI', raison: 'famille-mixte' }]);
+    });
+
+    it('CONTRÔLE NÉGATIF — aucun jumeau ne porte rien : CELI est appliqué', () => {
         const r = appliquerAutoriteCourtier(
             soldes({ CELI: 41_000, CELIAPP: 0 }),
             { regimes: [{ regime: 'CELI', brokerTotalCad: 66_500, holdingsValueCad: 41_000, accountLabels: ['a'] }] },
+            AUCUN_JUMEAU,
         );
         expect(r.soldes.CELI).toBe(66_500);
         expect(r.regimesAppliques).toEqual(['CELI']);
@@ -232,6 +262,7 @@ describe('⚠️ base de FAMILLE écrite dans un panier ÉTROIT', () => {
         const r = appliquerAutoriteCourtier(
             soldes({ CELIAPP: 25_500, REEE: 30_500 }),
             { regimes: [{ regime: 'NON-ENREG', brokerTotalCad: 231_882, holdingsValueCad: 200_000, accountLabels: ['a'] }] },
+            jumeaux({ CELIAPP: true, REEE: true }),
         );
         expect(r.soldes.NON_ENREG).toBe(231_882);
         expect(r.regimesAppliques).toEqual(['NON-ENREG']);

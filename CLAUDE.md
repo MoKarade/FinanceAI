@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 125 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche, +6 cause du refus au hub, +7 bail amorti dans le passé, +5 clôture périmée au JOUR, +1 bail à taux nul par la chaîne MCP). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 183 tests** Vitest
+(625 fichiers de test, MESURÉ par la suite complète le 2026-09-17 à 21:18 UTC (660 s, exit 0) — le lot du jour ajoute +2 libellé de métrique stable et variations hors carte, +8 cadence réelle des prélèvements, +1 traversée jusqu'au registre au jour, +8 autorité courtier côté écran). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1175,6 +1175,43 @@ n'est pas réécrire un récit.
   lit RELATIVEMENT à l'horloge du fichier, jamais recopiée du monde réel
   (`LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS`).
 
+- ⚠️⚠️ **Un LIBELLÉ de métrique est une CLÉ chez son consommateur** (2026-09-17, signalé par Marc) :
+  la carte hub affichait « −430,6 % sur 7 j » sous « Variation de la séance » et « pas encore
+  d'historique » sous « Placements », au-dessus d'une valeur pourtant publiée. Mesuré en **LISANT le
+  dépôt Hubperso** (attaché à la session) : le hub indexe l'historique d'une métrique **par son
+  libellé** et dérive l'évolution 7 j de sa **VALEUR**. Donc `Placements (16 sept.)` remettait la
+  série à zéro chaque séance, et publier une variation comme métrique faisait calculer une variation
+  de variation (base petite, changeant de signe). Le contrat n'a aucun moyen de dire « ne dérive pas
+  celle-ci » : la correction est de ne pas publier ces grandeurs **là** (`details` est rendu tel
+  quel). **Avant de publier vers un consommateur qu'on ne contrôle pas, LIRE ce qu'il fait du champ
+  — ce qu'il indexe et ce qu'il dérive.** ⚠️ La garde porte le FAIT : deux builds qui ne diffèrent que
+  par la date rendent les MÊMES libellés (`UN-LIBELLE-DE-METRIQUE-EST-UNE-CLE-CHEZ-SON-CONSOMMATEUR`).
+- ⚠️⚠️ **Une règle sur la PRÉCISION de la donnée se périme quand la donnée gagne en précision**
+  (2026-09-17, signalé par Marc : « elle devrait descendre à chaque paiement à Toyota, pas une fois
+  par mois ») : `dailyPastLedger` tenait un palier MENSUEL avec une justification exacte — « interpoler
+  au jour fabriquerait une précision que la donnée n'a pas ». Vraie tant que les dates de prélèvement
+  sont INCONNUES ; un bail à taux nul est prélevé à date fixe, et c'est le cas le plus exact du
+  module. Test qui tranche : *cette règle dit-elle « on ne SAIT pas » ou « on ne saura jamais » ?*
+  ⚠️⚠️ **La série MENSUELLE est DÉRIVÉE de la grille en JOURS**, jamais calculée à côté : deux calculs
+  indépendants du même solde divergent de jusqu'à un mois de versements sans que rien ne rougisse,
+  aucun des deux n'étant faux tout seul. ⚠️ Le JOUR d'aujourd'hui est rendu **REQUIS** sur tout le
+  chemin (60 sites) — optionnel, la courbe au mois serait retombée en silence sur le palier.
+  ⚠️ Le versement se DÉRIVE de `minimumPayment` (×12/52 = 234,67 $, le prélèvement réel) : prendre
+  52,18 périodes/an rendrait le total annuel exact et chaque MARCHE fausse, or c'est la marche qui
+  est observable (`UNE-REGLE-SUR-LA-PRECISION-DE-LA-DONNEE-SE-PERIME-QUAND-LA-DONNEE-GAGNE-EN-PRECISION`).
+- ⚠️⚠️ **Ce qui se partage est la DÉCISION, jamais la BASE** (2026-09-17) : la conception approuvée
+  de `[FINTABLE-AUTORITE-PARTOUT]` — `placements = Σ titres + écart_moteur` — était présentée comme
+  une identité et ne l'est que si les deux bases coïncident (l'écart est mesuré sur la détention
+  DATÉE, la somme sur les quantités COURANTES). Un module d'autorité fait DEUX choses qu'on confond
+  parce qu'elles sortent de la même fonction : il DÉCIDE quels paniers sont repris, et il CALCULE un
+  écart sur la base qu'on lui donne. Seule la première est unique ; chaque surface applique la même
+  liste à SA base. ⚠️ La séparation a démasqué une garde qui **ne pouvait pas tirer** : le refus
+  `famille-mixte` se lisait dans les soldes, donc il était faux PAR CONSTRUCTION côté écran (dont la
+  base replie CELIAPP sur CELI). Un fait sur les AVOIRS se calcule une fois et se passe aux deux.
+  ⚠️ Anti-vacuité : rendre les deux bases volontairement DIFFÉRENTES — à bases égales, « les deux
+  donnent le total du courtier » est vrai par accident
+  (`CE-QUI-SE-PARTAGE-EST-LA-DECISION-JAMAIS-LA-BASE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même
@@ -2227,9 +2264,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   nommait trois dont **deux déjà corrigés**. La réduction est tentante parce qu'elle simplifie le
   code de la garde ; elle change la GRANDEUR mesurée. Signal : une garde dont le sujet a plusieurs
   dimensions (px×px, min/max, avant/après) et qui rend un seul nombre
-  (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`). Corollaire d'outillage :
-  `enable_pr_auto_merge` **ne déclenche pas** sur ce dépôt — deux PR (#791, #792) sont restées
-  ouvertes en `mergeable_state: clean` avec les six checks verts ; fusionner à la main dès le vert.
+  (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`). ⚠️ Corollaire d'outillage
+  **PÉRIMÉ le 2026-09-17, re-mesuré** : il disait « `enable_pr_auto_merge` ne déclenche pas sur ce
+  dépôt » (deux PR restées ouvertes en `mergeable_state: clean`). La PR #982 a été armée à 19:51 et
+  s'est fusionnée SEULE à 20:20, dès le second check requis vert, sans aucun geste. Le constat
+  décrivait donc un ÉTAT (checks requis absents ou non rattachés), pas une propriété du dépôt — et un
+  état se re-mesure (`DOC-STALE-IMPOSSIBILITY`, la 2ᵉ fois qu'un « ça ne marche pas ici » écrit par
+  moi se révèle faux). Ce qui reste vrai : le check E2E n'apparaît pas dans `pull_request_read
+  get_status`, il se lit par `actions_list`.
 - Une garde qui ne lit que l'état de **REPOS** ne couvre que cet état : au sens WCAG, le texte d'un
   bouton SURVOLÉ est du texte. Et « corriger » avec un mécanisme que la garde ne sait pas lire
   (`hover:brightness-110`, mesuré 4,44) déplace le défaut hors du radar au lieu de le régler.

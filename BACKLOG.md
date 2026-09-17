@@ -973,7 +973,7 @@
   bail auto). ✅ Ligne « Dettes (hors hypothèque) » signée, conditionnelle ; dérivation extraite du
   « Détail complet » et PARTAGÉE (`detteReductrice`), par soustraction `Σ actifs − NetWorth` et non
   depuis `DettesNonImmo` (pas publié sur toutes les courbes). 3 gardes dont 2 contrôles négatifs.
-- [ ] 🟠 **`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`** (S, signalé par Marc 2026-09-17, capture) — les
+- [x] 🟠 **`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`** ✅ Livré le 2026-09-17. Mesuré en LISANT le dépôt Hubperso : le hub dérive l'évolution 7 j de la VALEUR de chaque métrique, et indexe l'historique par le LIBELLÉ. D'où DEUX défauts, tous deux de notre côté — un libellé daté (`Placements (16 sept.)`) remettait la série à zéro chaque séance (« pas encore d'historique » à perpétuité sous une valeur publiée), et publier une variation comme métrique donnait « −430,6 % sur 7 j ». Libellé stabilisé, variations déplacées dans `details` (rendu sans série dérivée). Le ticket d'origine disait — les
   sparklines de la carte hub affichent **« −430,6 % sur 7 j »** sous « Variation de la séance » et
   **« −908,4 % sur 7 j »** sous « Variation 7 jours ». Ce sont des variations **d'une variation** :
   une grandeur qui change de SIGNE n'a pas de pourcentage d'évolution qui veuille dire quelque chose
@@ -983,6 +983,13 @@
   lesquelles sont des NIVEAUX (où le % a un sens) — la correction est probablement de ne pas publier
   de `trend` pour les premières, pas de borner l'affichage. ⚠️ La même carte affiche « pas encore
   d'historique » sous Placements **tout en publiant une valeur** : à trancher dans le même lot.
+
+- [ ] 🟡 **`[DEBT-CADENCE-FUTUR-MENSUEL]`** (XS, noté 2026-09-17) — `[DEBT-CADENCE-REELLE]` fait
+  descendre la dette au JOUR du prélèvement dans le PASSÉ ; la boucle du FUTUR, elle, paie une fois
+  par mois (`effectiveMinimum`). Sans conséquence sur la courbe (le futur est mensuel de bout en
+  bout) et aucun dollar ne bouge — mais l'asymétrie est ÉCRITE ici plutôt que découverte plus tard.
+  ⚠️ Ne PAS « corriger » sans mesurer : passer le futur au jour multiplierait par ~30 le coût de la
+  boucle pour un gain d'affichage nul.
 
 - [ ] 🔴 **`[FINTABLE-AUTORITE-PARTOUT]`** (L, money-critical, **DEMANDE MARC 2026-09-17**) —
   « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce soit la valeur
@@ -1016,7 +1023,14 @@
     2026-09-17) n'est pas une distribution. Le dériver de la volatilité quotidienne réelle du
     portefeuille de Marc, calculable depuis sa propre reconstruction — un seuil au jugé crierait un
     jour de marché agité, ou jamais (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
-  - [ ] **Étape 3 — brancher** Accueil/Investissements, valeur nette, hub et MCP sur cette source
+  - [x] **Étape 3 — brancher** ✅ Livré le 2026-09-17, sur la forme CORRIGÉE (partager la DÉCISION,
+    jamais la BASE). `decideRegimesRepris` extraite et partagée ; `placementsFaisantAutorite`
+    l'applique à la base de l'ÉCRAN ; `jumeauxPorteursDepuisActifs` rend le refus `famille-mixte`
+    atteignable des deux côtés. Branché sur `computeInvestmentsValue`/`computeGrossAssets`/
+    `computePresentNetWorth` (paramètre REQUIS, 19 sites énumérés par le compilateur). La vue
+    d'ensemble se recompose : valeur nette = liquidités + placements − dettes.
+    ⚠️ Reste de l'ancienne rédaction, conservée parce qu'elle explique POURQUOI la forme a changé :
+  - [ ] ~~**Étape 3 (rédaction d'origine)** — brancher~~ Accueil/Investissements, valeur nette, hub et MCP sur cette source
     unique. Le mois 0 du Futur y est déjà : ne pas créer une SECONDE règle à côté.
     **CONCEPTION RÉSOLUE le 2026-09-17, à implémenter telle quelle :**
     - Le point d'injection est `computeInvestmentsValue` (`services/portfolio.ts`), et c'est une

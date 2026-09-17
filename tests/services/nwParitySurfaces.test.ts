@@ -49,7 +49,7 @@ const state = normalizeAppState({
 });
 
 describe('[NW-PARITY-SURFACES-TEST] conventions équité immo explicites par surface', () => {
-    const present = computePresentNetWorth({ Compte: 10_000 }, [], [asset], FX, debts); // 25 000 hors immo
+    const present = computePresentNetWorth({ Compte: 10_000 }, [], [asset], FX, debts, 0); // 25 000 hors immo
     const equity = presentEquityOfGoal(ownedHome, 12);
 
     it('non-vacuité : le persona a une vraie dette ET une vraie équité immo', () => {

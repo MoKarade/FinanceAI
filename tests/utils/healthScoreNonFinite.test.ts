@@ -45,6 +45,7 @@ function inputs(overrides: Partial<HealthScoreInputs> = {}): HealthScoreInputs {
         subscriptions: [{ id: 's1', name: 'Netflix', yearlyCost: 240 }, { id: 's2', name: 'Gym', yearlyCost: 900 }] as unknown as HealthScoreInputs['subscriptions'],
         fxRates: { USD: 1.35 },
         projectionFireTarget: 1_000_000,
+        ecartAutoritePlacements: 0,
         ...overrides,
     };
 }

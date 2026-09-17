@@ -132,6 +132,7 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         apply('startDate', doc.startDate);
         apply('termEndDate', doc.termEndDate);
         apply('originalBalance', doc.originalBalance);
+        apply('paymentFrequency', doc.paymentFrequency);
         const nextState: AppState = { ...state, debts, lastUpdate: Date.now() };
         const summary = changes.length
             ? `Dette « ${d.name} » mise à jour : ${changes.length} champ(s).`
@@ -161,6 +162,7 @@ export function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         ...(doc.startDate != null ? { startDate: doc.startDate } : {}),
         ...(doc.termEndDate != null ? { termEndDate: doc.termEndDate } : {}),
         ...(doc.originalBalance != null ? { originalBalance: doc.originalBalance } : {}),
+        ...(doc.paymentFrequency != null ? { paymentFrequency: doc.paymentFrequency } : {}),
     };
     debts.push(newDebt);
     changes.push({

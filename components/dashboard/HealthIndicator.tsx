@@ -9,6 +9,7 @@ import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { useAutoritePlacements } from '../../hooks/useEcartAutoritePlacements';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 
 /**
@@ -72,10 +73,12 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // Centralisation : FireTarget vient de la projection si disponible
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
+    // [FINTABLE-AUTORITE-PARTOUT étape 3] Le patrimoine noté ici est celui que Marc voit ailleurs.
+    const { ecart: ecartAutoritePlacements } = useAutoritePlacements();
 
     const metrics = useMemo<HealthMetricRow[]>(
-        () => computeHealthMetrics({ config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, fxRates, projectionFireTarget }),
-        [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget, fxRates],
+        () => computeHealthMetrics({ config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, fxRates, projectionFireTarget, ecartAutoritePlacements }),
+        [config, budgetItems, debts, assets, initialBalances, transactions, subscriptions, projectionFireTarget, fxRates, ecartAutoritePlacements],
     );
 
     const totalScore = useMemo(() => computeHealthTotalScore(metrics, weights), [metrics, weights]);

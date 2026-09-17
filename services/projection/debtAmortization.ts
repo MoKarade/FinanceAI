@@ -31,7 +31,7 @@
 // Fonction PURE, sans dépendance au moteur — comme `debtSchedule.ts`, dont elle réutilise
 // `moisAbsolu` plutôt que de re-dériver un index de mois.
 
-import type { DebtKind } from '../../types';
+import { JOURS_PAR_CADENCE, type DebtKind, type PaymentFrequency } from '../../types';
 import { moisAbsolu, moisDeSimulation, type DebtBalance } from './debtSchedule';
 import { logError } from '../errorLogger';
 
@@ -144,6 +144,9 @@ export interface EntreeAmortissement {
      *  même règle que le moteur (`[DETTE-DATES]`), sinon passé et futur décrivent deux prêts. */
     termEndDate?: string;
     kind?: DebtKind;
+    /** [DEBT-CADENCE-REELLE] Cadence RÉELLE des prélèvements. Absente ⇒ mensuelle. N'a d'effet que
+     *  sur les dettes à VERSEMENTS FIXES : la forme par intérêt n'a pas de grille en jours ici. */
+    paymentFrequency?: PaymentFrequency;
 }
 
 // ⚠️ `interestRate`/`minimumPayment` sont OPTIONNELS alors que le calcul en a absolument besoin —
@@ -153,6 +156,63 @@ export interface EntreeAmortissement {
 // vit donc à la FRONTIÈRE, où elle est vérifiée ET NOMMÉE (`donnees-manquantes`), plutôt que dans
 // une signature que l'appelant contournerait avec des zéros — un `0 %` inventé produirait une
 // courbe plate crédible, exactement ce que le no-fake-data interdit.
+
+/** [DEBT-CADENCE-REELLE] Les prélèvements RÉELS d'une dette à versements fixes, en jours.
+ *
+ * `premierMs` est l'horodatage UTC du PREMIER prélèvement (le début du bail) ; les suivants tombent
+ * tous les `pasJours`. `finMs` borne la grille (fin de terme échue), `null` quand rien ne la borne
+ * avant aujourd'hui. `versement` est le montant d'UNE période, dérivé du paiement MENSUEL saisi.
+ */
+export interface GrilleVersements {
+    premierMs: number;
+    pasJours: number;
+    versement: number;
+    finMs: number | null;
+}
+
+const JOUR_MS = 86_400_000;
+
+/**
+ * Nombre de prélèvements par an, par cadence — 52 et 26, les cadences réelles d'un prêteur.
+ *
+ * ⚠️ MESURE, pas convention arbitraire : le bail de Marc est prélevé 234,67 $ par semaine et son
+ * `minimumPayment` mensuel vaut 1 016,90 $, soit exactement `234,67 × 52 / 12`. Diviser par 52
+ * rend donc le versement RÉEL au cent près — c'est la marche que Marc voit sur son compte. Prendre
+ * `365,25 / 7 = 52,18` rendrait le total ANNUEL exact et chaque marche fausse ; on préfère la
+ * marche, puisque c'est elle qui est observable. Écart assumé et borné : une grille de 7 jours
+ * porte ~52,18 dates par année civile, donc ~0,35 %/an de versements en plus que les 52 déclarés —
+ * invisible sur les quelques mois que le passé reconstruit, et la courbe reste ANCRÉE au cent près
+ * sur le solde d'aujourd'hui de toute façon.
+ */
+const PERIODES_PAR_AN: Readonly<Record<'weekly' | 'biweekly', number>> = { weekly: 52, biweekly: 26 };
+
+/** Horodatage UTC du jour ISO, ou `null`. Tout est en UTC ici : une grille en jours n'a pas à
+ *  dépendre du fuseau de qui regarde (`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`). */
+export function jourMs(dateIso: string | undefined | null): number | null {
+    if (typeof dateIso !== 'string' || dateIso.length < 10) return null;
+    const ms = Date.parse(`${dateIso.slice(0, 10)}T00:00:00Z`);
+    return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Combien de prélèvements de la grille tombent STRICTEMENT APRÈS `apresMs` et au plus tard `jusquMs`.
+ *
+ * C'est toute la mécanique du supplément : à une date passée, on devait `solde_actuel + versement ×
+ * (nombre de prélèvements effectués depuis)`. Le prélèvement qui tombe EXACTEMENT sur la date
+ * regardée n'est pas compté — à ce moment-là il n'était pas encore prélevé, et c'est la même
+ * convention que la forme mensuelle (le mois de début porte encore tous ses versements).
+ */
+export function nbVersementsApres(grille: GrilleVersements, apresMs: number, jusquMs: number): number {
+    const fin = grille.finMs !== null && grille.finMs < jusquMs ? grille.finMs : jusquMs;
+    if (!Number.isFinite(apresMs) || !Number.isFinite(fin) || fin <= apresMs) return 0;
+    const pas = grille.pasJours * JOUR_MS;
+    if (!(pas > 0)) return 0;
+    // Premier indice dont la date est strictement après `apresMs` ; jamais négatif (une date
+    // antérieure au début du bail voit TOUS les prélèvements, à commencer par le premier).
+    const kMin = Math.max(0, Math.floor((apresMs - grille.premierMs) / pas) + 1);
+    const kMax = Math.floor((fin - grille.premierMs) / pas);
+    return Math.max(0, kMax - kMin + 1);
+}
 
 export type ResultatAmortissement =
     | {
@@ -167,6 +227,16 @@ export type ResultatAmortissement =
         facteurRecalage: number;
         /** Paiement mensuel qui relie exactement le montant emprunté au solde actuel. */
         paiementResolu: number;
+        /** [DEBT-CADENCE-REELLE] GRILLE des prélèvements, présente UNIQUEMENT pour une dette à
+         *  versements fixes dont la cadence est SOUS-MENSUELLE (hebdo, aux deux semaines).
+         *
+         *  ⚠️ Elle n'est pas une seconde vérité à côté de `soldes` : `soldes` en est DÉRIVÉ (voir
+         *  `amortirVersementsFixes`), exactement pour que la courbe au MOIS et la courbe au JOUR ne
+         *  puissent pas décrire deux dettes — l'asymétrie entre deux modules est la classe de défaut
+         *  que `UN-TOTAL-AMPUTE…` et `UNE-REGLE-ECRITE-SUR-UN-OBJET-DU-MONDE-REEL…` ont déjà coûtée.
+         *  Absente ⇒ la cadence est mensuelle et le jour n'apporte aucune précision : le
+         *  consommateur au jour retombe sur le palier mensuel, comportement d'avant ce lot. */
+        grilleVersements?: GrilleVersements;
     }
     | { forme: 'inapplicable'; cause: CauseNonAmortissable };
 
@@ -226,11 +296,18 @@ function tracerDetteSuspecte(dette: Readonly<EntreeAmortissement & { id?: string
 export function amortirDettePassee(
     dette: Readonly<EntreeAmortissement>,
     moisAbsoluCourant: number,
+    /** [DEBT-CADENCE-REELLE] Le JOUR d'aujourd'hui (ISO). REQUIS, jamais optionnel : une grille de
+     *  prélèvements en jours a besoin d'un point d'arrivée au jour, et une porte optionnelle
+     *  laisserait la production reprendre la version au MOIS en silence — c'est exactement comme ça
+     *  que la courbe au jour et la courbe au mois se mettraient à décrire deux dettes. `null` est
+     *  une réponse légitime et explicite (« je ne connais pas le jour ») : la cadence sous-mensuelle
+     *  est alors ignorée et on retombe sur le palier mensuel d'avant ce lot. */
+    aujourdhuiIso: string | null,
 ): ResultatAmortissement {
     const kind = dette.kind;
     // ⚠️ L'AIGUILLAGE AVANT TOUT LE RESTE. Deux familles de remboursement, deux formes, une seule
     // réponse par dette (les tables sont disjointes, et un test l'exige).
-    if (kind && KIND_VERSEMENTS_FIXES[kind]) return amortirVersementsFixes(dette, moisAbsoluCourant);
+    if (kind && KIND_VERSEMENTS_FIXES[kind]) return amortirVersementsFixes(dette, moisAbsoluCourant, aujourdhuiIso);
     if (!kind || !KIND_AMORTISSANT[kind]) return { forme: 'inapplicable', cause: 'kind-non-amortissant' };
 
     const debut = moisAbsolu(dette.startDate);
@@ -334,6 +411,7 @@ export function amortirDettePassee(
 function amortirVersementsFixes(
     dette: Readonly<EntreeAmortissement>,
     moisAbsoluCourant: number,
+    aujourdhuiIso: string | null,
 ): ResultatAmortissement {
     const debut = moisAbsolu(dette.startDate);
     if (debut === null || !fini(moisAbsoluCourant) || moisAbsoluCourant < debut) {
@@ -366,6 +444,31 @@ function amortirVersementsFixes(
     }
 
     const nbPas = finPaiement - debut;
+
+    // ── [DEBT-CADENCE-REELLE] LA GRILLE, QUAND ELLE EXISTE ──────────────────────────────────────
+    //
+    // Marc paie son bail TOUTES LES SEMAINES et voyait une marche MENSUELLE : « ça devrait descendre
+    // à chaque paiement à Toyota, pas une fois par mois ». À taux nul sur un solde tout-compris, la
+    // date de chaque prélèvement est CONNUE (début du bail + k × pas), donc la marche mensuelle
+    // n'était pas une prudence — c'était une perte de précision que la donnée avait déjà.
+    //
+    // ⚠️ LA SÉRIE MENSUELLE EN EST DÉRIVÉE, elle n'est pas calculée à côté. C'est le point qui
+    // empêche `buildPastPrefix` (au mois) et `dailyPastLedger` (au jour) de décrire deux dettes —
+    // l'asymétrie entre deux modules dont aucun n'est faux tout seul est une classe de défaut déjà
+    // payée deux fois dans ce dépôt. Le point du mois `m` vaut le solde au PREMIER JOUR de ce mois
+    // (ou au début du bail pour le mois de départ : avant, la dette n'existe pas).
+    const grille = construireGrille(dette, finPaiement, moisAbsoluCourant, minimumPayment, aujourdhuiIso);
+    if (grille) {
+        const aujourdhuiMs = jourMs(aujourdhuiIso)!;   // non nul par construction de `construireGrille`
+        const soldes: number[] = [];
+        for (let m = debut; m <= moisAbsoluCourant; m++) {
+            const premierDuMois = Date.UTC(Math.floor(m / 12), m % 12, 1);
+            const echantillon = Math.max(premierDuMois, grille.premierMs);
+            soldes.push(balance + grille.versement * nbVersementsApres(grille, echantillon, aujourdhuiMs));
+        }
+        return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment, grilleVersements: grille };
+    }
+
     const soldes: number[] = [];
     // De `debut` à `finPaiement` : on REMONTE le temps depuis le solde d'aujourd'hui, un versement
     // par mois. Le dernier pas payé vaut `balance` EXACTEMENT (invariant de raccord).
@@ -377,6 +480,39 @@ function amortirVersementsFixes(
     // exactement celui qui sert. C'est la différence de fond avec la forme par intérêt, où le
     // paiement est RÉSOLU pour relier deux bouts connus.
     return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment };
+}
+
+/**
+ * La grille de prélèvements d'une dette à versements fixes — ou `null` quand il n'y a pas de quoi
+ * en bâtir une, auquel cas on garde le palier MENSUEL d'avant ce lot (aucune régression possible).
+ *
+ * ⚠️ LE VERSEMENT DE LA PÉRIODE SE DÉRIVE du paiement MENSUEL saisi (`× 12 / périodes par an`) : une
+ * seconde saisie aurait divergé de la première à la première correction, et c'est `minimumPayment`
+ * qui fait autorité partout ailleurs (store, moteur du futur, cashflow). Une seule vérité.
+ */
+function construireGrille(
+    dette: Readonly<EntreeAmortissement>,
+    finPaiement: number,
+    moisAbsoluCourant: number,
+    minimumPayment: number,
+    aujourdhuiIso: string | null,
+): GrilleVersements | null {
+    const cadence = dette.paymentFrequency;
+    if (cadence !== 'weekly' && cadence !== 'biweekly') return null;
+    const premierMs = jourMs(dette.startDate);
+    const aujourdhuiMs = jourMs(aujourdhuiIso);
+    if (premierMs === null || aujourdhuiMs === null || aujourdhuiMs < premierMs) return null;
+    const pasJours = JOURS_PAR_CADENCE[cadence];
+    const versement = minimumPayment * 12 / PERIODES_PAR_AN[cadence];
+    if (!fini(versement) || versement <= 0) return null;
+    // Borne de terme : le mois `finPaiement` est le DERNIER payé (`[DETTE-DATES]`, le mois de
+    // `termEndDate` est INCLUS), donc la grille s'arrête à la FIN de ce mois — pas au jour de
+    // `termEndDate`, qui n'a aucune raison d'être un jour de prélèvement. `null` quand rien ne borne
+    // avant aujourd'hui : c'est `nbVersementsApres` qui plafonne alors à la date demandée.
+    const finMs = finPaiement < moisAbsoluCourant
+        ? Date.UTC(Math.floor((finPaiement + 1) / 12), (finPaiement + 1) % 12, 1) - 1
+        : null;
+    return { premierMs, pasJours, versement, finMs };
 }
 
 /**
@@ -419,6 +555,7 @@ export interface DebtAmortissable extends DebtBalance, EntreeAmortissement {}
 export function prepareSupplementAmortiAbsolu(
     dettes: ReadonlyArray<DebtAmortissable> | null | undefined,
     moisAujourdhui: number,
+    aujourdhuiIso: string | null,
 ): (courant: number) => number {
     // ⚠️ `amortirDettePassee` reconstruit la série ENTIÈRE (du début du prêt à aujourd'hui) et ne
     // dépend PAS du mois interrogé. L'appeler dans la boucle des mois — pire, dans celle des JOURS,
@@ -427,7 +564,7 @@ export function prepareSupplementAmortiAbsolu(
     // (donc à chaque ajout de transaction). On paie la série UNE fois, la boucle ne fait plus
     // qu'indexer. Aucun cache, aucune identité de tableau à surveiller : c'est l'APPELANT qui hisse
     // la préparation hors de sa boucle, et le typecheck l'y oblige.
-    const prepares = (dettes ?? []).filter(d => !!d).map(dette => ({ dette, r: amortirDettePassee(dette, moisAujourdhui) }));
+    const prepares = (dettes ?? []).filter(d => !!d).map(dette => ({ dette, r: amortirDettePassee(dette, moisAujourdhui, aujourdhuiIso) }));
     return (courant: number): number => prepares.reduce((somme, { dette, r }) => {
         if (r.forme !== 'ok') return somme;
         const index = courant - r.premierMoisAbsolu;
@@ -442,8 +579,41 @@ export function supplementAmortiAuMoisAbsolu(
     dettes: ReadonlyArray<DebtAmortissable> | null | undefined,
     courant: number,
     moisAujourdhui: number,
+    aujourdhuiIso: string | null,
 ): number {
-    return prepareSupplementAmortiAbsolu(dettes, moisAujourdhui)(courant);
+    return prepareSupplementAmortiAbsolu(dettes, moisAujourdhui, aujourdhuiIso)(courant);
+}
+
+/**
+ * [DEBT-CADENCE-REELLE] Supplément de dette au JOUR — la variante du registre quotidien.
+ *
+ * ⚠️ Elle ne double PAS la variante mensuelle : pour toute dette sans grille (c'est-à-dire tout ce
+ * qui existait avant ce lot), elle rend EXACTEMENT le palier mensuel, en indexant la même série.
+ * Seule une dette à versements fixes et à cadence sous-mensuelle descend au jour de son
+ * prélèvement — et sa série mensuelle est dérivée de la MÊME grille, donc les deux registres ne
+ * peuvent pas diverger.
+ */
+export function prepareSupplementAmortiParJour(
+    dettes: ReadonlyArray<DebtAmortissable> | null | undefined,
+    moisAujourdhui: number,
+    aujourdhuiIso: string | null,
+): (jourIso: string) => number {
+    const aujourdhuiMs = jourMs(aujourdhuiIso);
+    const prepares = (dettes ?? []).filter(d => !!d).map(dette => ({ dette, r: amortirDettePassee(dette, moisAujourdhui, aujourdhuiIso) }));
+    return (jourIso: string): number => prepares.reduce((somme, { dette, r }) => {
+        if (r.forme !== 'ok') return somme;
+        const grille = r.grilleVersements;
+        if (grille && aujourdhuiMs !== null) {
+            const ms = jourMs(jourIso);
+            if (ms === null) return somme;
+            return somme + Math.max(0, grille.versement * nbVersementsApres(grille, ms, aujourdhuiMs));
+        }
+        const mois = moisAbsolu(jourIso);
+        if (mois === null) return somme;
+        const index = mois - r.premierMoisAbsolu;
+        if (index < 0 || index >= r.soldes.length) return somme;
+        return somme + Math.max(0, r.soldes[index] - dette.balance);
+    }, 0);
 }
 
 /** Comme `supplementAmortiAuMoisAbsolu`, mais au mois `m` de la simulation — même paire de variantes
@@ -453,8 +623,9 @@ export function prepareSupplementAmortiAuMois(
     dettes: ReadonlyArray<DebtAmortissable> | null | undefined,
     startYear: number,
     startMonth: number,
+    aujourdhuiIso: string | null,
 ): (m: number) => number {
-    const auMoisAbsolu = prepareSupplementAmortiAbsolu(dettes, startYear * 12 + startMonth);
+    const auMoisAbsolu = prepareSupplementAmortiAbsolu(dettes, startYear * 12 + startMonth, aujourdhuiIso);
     return (m: number): number => {
         const { annee, mois } = moisDeSimulation(startYear, startMonth, m);
         return auMoisAbsolu(annee * 12 + mois);
@@ -467,8 +638,9 @@ export function supplementAmortiAuMois(
     startYear: number,
     startMonth: number,
     m: number,
+    aujourdhuiIso: string | null,
 ): number {
-    return prepareSupplementAmortiAuMois(dettes, startYear, startMonth)(m);
+    return prepareSupplementAmortiAuMois(dettes, startYear, startMonth, aujourdhuiIso)(m);
 }
 
 /** Combien de dettes reçoivent RÉELLEMENT une courbe d'amortissement, sur combien de dettes en tout.
@@ -485,11 +657,12 @@ export function supplementAmortiAuMois(
 export function compterDettesAmorties(
     dettes: ReadonlyArray<DebtAmortissable> | null | undefined,
     moisAujourdhui: number,
+    aujourdhuiIso: string | null,
 ): { amorties: number; total: number } {
     const liste = (dettes ?? []).filter(d => !!d);
     let amorties = 0;
     for (const d of liste) {
-        const r = amortirDettePassee(d, moisAujourdhui);
+        const r = amortirDettePassee(d, moisAujourdhui, aujourdhuiIso);
         // ⚠️ « Le modèle est CONSTRUCTIBLE » n'est pas « la courbe BOUGE ». Un prêt commencé ce
         // mois-ci rend une série plate sur le solde réel : `forme === 'ok'` et pourtant zéro
         // supplément partout — annoncer « dettes amorties » y serait faux. On exige donc que le

@@ -4,6 +4,33 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **cadence des dettes, carte du hub, `[FINTABLE-AUTORITE-PARTOUT]` étape 3**
+> Trois lots, trois demandes de Marc dans le même message.
+> 🔎 **`[DEBT-CADENCE-REELLE]`** — « elle devrait descendre à chaque paiement à Toyota, pas une fois
+> par mois ». Nouveau champ `Debt.paymentFrequency` (absent ⇒ mensuel, rétrocompatible bit-à-bit),
+> saisissable dans le formulaire pour les types à versements fixes, accepté par `apply_debt`. Le
+> versement de la période se DÉRIVE de `minimumPayment` (× 12 / 52) — une seule saisie.
+> ⚠️ **La série MENSUELLE est dérivée de la grille en JOURS**, pas calculée à côté : c'est ce qui
+> interdit à `buildPastPrefix` et `dailyPastLedger` de décrire deux dettes. Le JOUR d'aujourd'hui est
+> devenu un paramètre **REQUIS** de tout ce chemin (60 sites énumérés par le compilateur).
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir la dette « bZ » et choisir « Hebdomadaire ». Le champ ne se
+> devine pas, et sans lui la courbe garde son palier mensuel.
+> 🔎 **`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`** — mesuré en LISANT le dépôt Hubperso (attaché à la
+> session) : `app/app/[id]/page.tsx` dérive l'évolution 7 j de la VALEUR de chaque métrique, et
+> `serieMetrique` indexe l'historique **par le LIBELLÉ**. Donc (1) `Placements (16 sept.)` remettait
+> la série à zéro chaque séance — « pas encore d'historique » à perpétuité —, et (2) publier une
+> variation comme métrique donnait « −430,6 % sur 7 j ». Libellé stabilisé, variations déplacées dans
+> `details` (rendu sans série dérivée, vérifié dans le code du hub).
+> 🔎 **`[FINTABLE-AUTORITE-PARTOUT]` étape 3** — la décision « quels paniers sont repris au courtier »
+> est extraite (`decideRegimesRepris`) et partagée ; chaque surface l'applique à SA base. Le refus
+> `famille-mixte` devient un FAIT sur les avoirs (`jumeauxPorteursDepuisActifs`) : lu dans les soldes,
+> il était STRUCTURELLEMENT inatteignable côté écran. Branché sur `computeInvestmentsValue` /
+> `computeGrossAssets` / `computePresentNetWorth` — Accueil, valeur nette, Santé financière, vue
+> d'ensemble MCP et hub bougent ensemble. Correction rendue REQUISE (19 sites).
+> 📏 Perturbations séparées pour chaque garde ; 4 tests de limite inversés en place avec leur histoire.
+> 📏 **Suite COMPLÈTE mesurée** : 625 fichiers, **6 183 tests**, exit 0, 660 s (2026-09-17 21:18 UTC).
+> `typecheck` OK, `lint` 0 erreur.
+>
 > ## ⚠️ Session 2026-09-17 (suite) — **le gate local ne tourne PAS sur ce chemin**
 > `commit-gate.mjs` est un `PreToolUse` Bash qui lit `git diff --cached`. Chaîner
 > `git add && git commit` en UN SEUL appel (ce que la §3 prescrit) laisse l'index VIDE quand le hook

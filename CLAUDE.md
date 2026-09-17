@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 195 tests** Vitest
-(626 fichiers de test, base MESURÉE par la suite complète le 2026-09-17 à 21:18 UTC (660 s, exit 0 — 6 183) + **12** gardes du solde de dette ramené à aujourd'hui, lancées en ciblé (vertes, 3 rouges sur perturbation)). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 199 tests** Vitest
+(626 fichiers de test, base MESURÉE par la CI complète le 2026-09-17 à 22:51 UTC (773 s — 6 195) + **4** gardes de l'estampille du solde, lancées en ciblé (vertes, 2 rouges sur perturbation)). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1244,7 +1244,16 @@ n'est pas réécrire un récit.
   ⚠️ Ma propre garde a réfuté ma prémisse (le dernier point MENSUEL n'est pas le solde d'aujourd'hui
   — c'est le solde au 1er du mois : 47 403,34 contre 46 934,00) ; le raccord se lit au JOUR.
   ⚠️ Et le champ textuel est entré dans `CHAMPS_TEXTE` dans le MÊME geste que sa déclaration — la
-  leçon d'il y a deux heures appliquée là où elle sert : la garde est le FILET, pas le processus
+  leçon d'il y a deux heures appliquée là où elle sert : la garde est le FILET, pas le processus.
+  ⚠️⚠️ **Et la CI a trouvé la suite : une ESTAMPILLE technique alimente un COMPTEUR humain.** Dater
+  le solde dès que le payload en porte un — **même réécrit à l'identique** — faisait lister la dette
+  dans `debtsUpdated` (affiché dans SystemView) à CHAQUE passe du cron Fintable, pour un champ que
+  Marc ne voit nulle part : `[FINTABLE-TXADDED-MENT]` réintroduite par le bas, un an de contexte plus
+  loin, arrêtée par un test écrit par un AUTRE lot. Le correctif ne désarme pas le compteur (ça
+  ferait taire le prochain champ technique) : il **refuse la date** — une date se pose sur une
+  OBSERVATION, et une réécriture identique n'en est pas une. **Un lot qui ajoute un champ écrit
+  automatiquement doit demander qui COMPTE les écritures, pas seulement qui les LIT** : « qui lit ce
+  champ ? » rendait « personne », vrai et sans rapport
   (`UN-SOLDE-STOCKE-SANS-DATE-EST-UN-INSTANTANE-QUE-RIEN-N-AVANCE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.

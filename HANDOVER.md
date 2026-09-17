@@ -56,6 +56,15 @@
 > n'a pas pu être estampillée). Sans lui le solde reste JUSTE mais cesse d'avancer seul.
 > ⚠️ Le décalage de PHASE d'un jour sur la marche (grille ancrée sur `startDate`, 1er prélèvement
 > réel 8 jours plus tard) est CONNU, mesuré, et invisible à l'écran — non corrigé délibérément.
+> 🔴 **CI ROUGE sur la PR #986, corrigée dans le même lot** : `apply_debt` datait le solde même
+> RÉÉCRIT À L'IDENTIQUE, donc le cron Fintable aurait listé la dette dans `debtsUpdated` (affiché
+> dans SystemView) à CHAQUE passe — `[FINTABLE-TXADDED-MENT]` réintroduite par le bas, arrêtée par un
+> test écrit par un AUTRE lot. La date se pose désormais sur une OBSERVATION seulement : solde qui
+> CHANGE, jamais une réécriture identique ni une mise à jour hors solde. Le chemin UI garde son
+> estampillage inconditionnel (un clic sur « Enregistrer » EST l'observation). **+4 gardes**, 2 rouges
+> sur perturbation. `typecheck` 0 erreur, `lint` 0 erreur.
+> 📏 **Suite COMPLÈTE mesurée par la CI** : 626 fichiers, **6 195 tests**, 773 s (2026-09-17 22:51 UTC)
+> — plus les 4 gardes de ce correctif ⇒ **6 199**.
 >
 > ## 🟦 Session 2026-09-17 (suite) — **3ᵉ vague du faux refus qui VIDE l'app + mesure de la dette**
 > 🔎 **`[HYDRAT-ALIAS-INVISIBLE]`** (PR #984, mergée 22:06, déploiement Vercel `dpl_CBNJCm…` READY sur

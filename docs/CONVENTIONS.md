@@ -14908,3 +14908,27 @@ plus tôt le même jour, appliquée au moment où elle sert : la garde est le FI
 rendu `before: 47168.67`, valeur que j'avais dérivée de `201 × 234,67` sans jamais l'avoir lue
 (l'app n'expose que l'arrondi, 47 169 $). Une déduction arithmétique EXACTE — un quotient entier à
 quatre décimales — est une mesure, pas une estimation ; mais c'est l'observation qui l'a close.
+
+⚠️⚠️ **Et la CI a trouvé la suite : une ESTAMPILLE technique alimente un COMPTEUR humain.**
+`apply_debt` datait le solde dès que le payload en portait un, **même réécrit à l'identique**. Or
+`debtsUpdated` — affiché dans SystemView (« Dettes mises à jour : … ») — se dérive des `changes`
+écrits : le cron Fintable, qui rappelle ce chemin **chaque jour** avec ce que porte le snapshot,
+aurait listé la dette comme « mise à jour » à chaque passe, pour un champ que Marc ne voit nulle
+part. C'est exactement la faute de `[FINTABLE-TXADDED-MENT]` (« un compteur montré à l'humain se
+dérive de ce qui a été ÉCRIT »), réintroduite par le bas : un champ de MÉTADONNÉE est une écriture
+pour le compteur et un non-événement pour l'utilisateur. C'est un test écrit par un AUTRE lot, un an
+de contexte plus loin, qui l'a arrêté — le mien ne pouvait pas le voir, aucune de mes gardes ne
+regardait un compteur.
+
+Le correctif ne désarme pas le compteur (l'exclure ferait taire le prochain champ technique ajouté
+sans y penser) : il **refuse la date**. Une date ne se pose que sur une OBSERVATION, et un solde
+réécrit à l'identique n'en est pas une — rien, dans ce chemin automatisé, ne prouve qu'il vient
+d'être relu plutôt que re-envoyé. La règle devient donc la même des deux côtés : on date un solde
+qui CHANGE, jamais une mise à jour qui ne touche pas au solde (renommage, date de terme) **ni une
+réécriture identique**. Le chemin UI garde son estampillage inconditionnel, et c'est juste : Marc
+qui ouvre le formulaire et clique « Enregistrer » EST l'observation.
+
+⚠️ Corollaire de conduite : **un lot qui ajoute un champ écrit automatiquement doit demander qui
+COMPTE les écritures**, pas seulement qui les lit. La question « qui lit ce champ ? » rendait
+« personne » — vrai, et sans rapport : le compteur ne lit pas le champ, il compte le fait qu'on
+l'ait écrit.

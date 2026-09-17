@@ -26,6 +26,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   bougent pas d'un cent.
   ⚠️ **À faire une fois** : ouvre ta dette « bZ » et clique « Enregistrer ». C'est ce geste qui pose
   la date de départ — sans lui, le solde reste au chiffre corrigé mais cessera d'avancer tout seul.
+  ⚠️ Et la synchro Fintable ne déclarera pas tes dettes « mises à jour » chaque jour pour
+  rien : la date ne se repose que lorsque le solde CHANGE vraiment.
 - **Ta dette descendait une fois par mois.** Toi : « elle devrait descendre à chaque paiement à
   Toyota, pas une fois par mois ». Exact — le passé reconstruit ne produisait qu'un point par mois.
   Une dette à versements fixes peut maintenant déclarer sa **cadence réelle** (hebdomadaire, aux deux

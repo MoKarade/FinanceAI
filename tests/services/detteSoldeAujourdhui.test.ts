@@ -17,6 +17,9 @@ import type { Debt } from '../../types';
 import { soldeDetteAujourdhui, dettesAuSoldeDuJour, amortirDettePassee, prepareSupplementAmortiParJour } from '../../services/projection/debtAmortization';
 import { computeTotalDebt } from '../../services/portfolio';
 import { CHAMPS_TEXTE } from '../../services/verifierTypesRestaures';
+import { applyDocument } from '../../mcp/ingest/applyDocument';
+import { todayIsoLocal } from '../../services/projection/dailyRefine';
+import type { AppState } from '../../types';
 
 /** Le bail de Marc, tel qu'il est saisi. Solde = somme des versements RESTANTS, taux 0. */
 const BAIL: Debt = {
@@ -139,5 +142,45 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] le champ est TEXTUEL — un oubli VIDE l
         // faire lever `merge`, donc à vider l'écran. La garde de dérivation est le FILET ; cette
         // assertion-ci dit que le lot qui INTRODUIT le champ ne compte pas dessus.
         expect(CHAMPS_TEXTE.has('balanceAsOf')).toBe(true);
+    });
+});
+
+describe('[DETTE-SOLDE-INSTANTANE-FIGE] la DATE se pose sur une OBSERVATION, pas sur une réécriture', () => {
+    it('un solde qui CHANGE est daté du jour', () => {
+        const etat = { debts: [{ ...BAIL, balanceAsOf: '2026-09-09' }] } as unknown as AppState;
+        const res = applyDocument(etat, { kind: 'debt', name: 'bZ', balance: 46_700 });
+        const d = (res.nextState.debts ?? [])[0];
+        expect(d.balance).toBe(46_700);
+        expect(d.balanceAsOf).toBe(todayIsoLocal());
+    });
+
+    it('un solde RÉÉCRIT À L’IDENTIQUE ne se re-date pas, et ne compte pas comme une mise à jour', () => {
+        // ⚠️ C'est le cas NOMINAL du cron Fintable : il rappelle ce chemin chaque jour avec ce que
+        // porte le snapshot. Re-dater affirmerait qu'un instantané ancien vient d'être relu — et
+        // ferait lister la dette dans `debtsUpdated` (affiché dans SystemView) à CHAQUE passe, la
+        // faute exacte que `[FINTABLE-TXADDED-MENT]` a corrigée ailleurs.
+        const etat = { debts: [{ ...BAIL, balanceAsOf: '2026-09-09' }] } as unknown as AppState;
+        const res = applyDocument(etat, { kind: 'debt', name: 'bZ', balance: BAIL.balance });
+        expect((res.nextState.debts ?? [])[0].balanceAsOf).toBe('2026-09-09');
+        expect(res.changes).toEqual([]);
+    });
+
+    it('une mise à jour qui ne TOUCHE PAS au solde ne le re-date pas non plus', () => {
+        // Un renommage, une date de terme : la dette change, l'observation du solde non.
+        const etat = { debts: [{ ...BAIL, balanceAsOf: '2026-09-09' }] } as unknown as AppState;
+        const res = applyDocument(etat, { kind: 'debt', name: 'bZ', minimumPayment: 1_020 });
+        const d = (res.nextState.debts ?? [])[0];
+        expect(d.minimumPayment).toBe(1_020);
+        expect(d.balanceAsOf).toBe('2026-09-09');
+        // ⚠️ Anti-vacuité : la passe doit VRAIMENT écrire, sinon « la date n'a pas bougé » serait
+        // satisfait par un chemin qui n'écrit jamais rien.
+        expect(res.changes.length).toBe(1);
+    });
+
+    it('une dette AJOUTÉE porte la date du jour (son solde est neuf par construction)', () => {
+        const res = applyDocument({ debts: [] } as unknown as AppState, {
+            kind: 'debt', name: 'Prêt perso', balance: 5_000, interestRate: 8, minimumPayment: 200,
+        });
+        expect((res.nextState.debts ?? [])[0].balanceAsOf).toBe(todayIsoLocal());
     });
 });

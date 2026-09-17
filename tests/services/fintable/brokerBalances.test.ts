@@ -11,7 +11,19 @@ import {
     toPersistableBrokerBalances,
     type ReconcilableRegime,
 } from '../../../services/fintable/brokerBalances';
+
+
 import type { FintableBrokerBalance, RegisteredAccountType } from '../../../types';
+
+/**
+ * [FINTABLE-AUTORITE-PARTOUT étape 0] Taux COURANTS remis au lecteur.
+ *
+ * `estimated: false` = ces taux ont le droit d'écrire un total de compte. Les cas de ce fichier
+ * portent des entrées SANS `amountNative` (écrites avant le lot), donc rien n'est reconverti et
+ * leurs attendus sont inchangés — c'est voulu : la rétrocompatibilité est ce qu'ils vérifient.
+ * Les cas de RECONVERSION vivent dans leur propre describe, plus bas.
+ */
+const TAUX_TEST = { rates: { USD: 1.40, EUR: 1.60 }, estimated: false };
 
 const AT = 1_770_000_000_000;
 
@@ -21,7 +33,7 @@ function bal(over: Partial<FintableBrokerBalance> = {}): FintableBrokerBalance {
 
 describe('reconcileBrokerBalances — autorité + écart', () => {
     it('l\'écart matérialise la différence : Σ titres + écart == total courtier (reconstructible)', () => {
-        const r = reconcileBrokerBalances([bal({ balanceCad: 152_340 })], { 'NON-ENREG': 148_900 });
+        const r = reconcileBrokerBalances([bal({ balanceCad: 152_340 })], { 'NON-ENREG': 148_900 }, TAUX_TEST);
         expect(r.regimes).toHaveLength(1);
         const [reg] = r.regimes;
         expect(reg.brokerTotalCad).toBe(152_340);
@@ -39,6 +51,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
                 bal({ accountId: 'b', label: 'Disnat L7A3', balanceCad: 50_000 }),
             ],
             { 'NON-ENREG': 140_000 },
+        TAUX_TEST,
         );
         expect(r.regimes).toHaveLength(1);
         expect(r.regimes[0].brokerTotalCad).toBe(150_000);
@@ -53,6 +66,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
                 bal({ accountId: 'b', taxRegime: 'REER', balanceCad: 90_000 }),
             ],
             { CELI: 39_000, REER: 91_000 },
+        TAUX_TEST,
         );
         expect(r.regimes.map((x) => x.regime)).toEqual(['CELI', 'REER']); // ordre FIXE, déterministe
         expect(r.regimes.find((x) => x.regime === 'CELI')?.gapCad).toBe(1_000);
@@ -64,6 +78,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
         const r = reconcileBrokerBalances(
             [bal({ taxRegime: undefined, label: 'Compte mystère' })],
             { 'NON-ENREG': 0 },
+        TAUX_TEST,
         );
         expect(r.regimes).toHaveLength(0); // ← surtout PAS rangé au hasard
         expect(r.unassignedAccountLabels).toEqual(['Compte mystère']);
@@ -73,7 +88,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
     it('un solde NON FINI est ignoré, jamais rabattu sur 0 (un 0 crédible effacerait le compte)', () => {
         const nan = bal({ balanceCad: Number.NaN });
         const inf = bal({ accountId: 'b', balanceCad: Number.POSITIVE_INFINITY });
-        const r = reconcileBrokerBalances([nan, inf], { 'NON-ENREG': 10_000 });
+        const r = reconcileBrokerBalances([nan, inf], { 'NON-ENREG': 10_000 }, TAUX_TEST);
         expect(r.regimes).toHaveLength(0);
         expect(r.brokerTotalCad).toBe(0);
         // Discriminant : si on rabattait sur 0, on aurait un régime avec un écart de −10 000 $
@@ -82,12 +97,12 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
     });
 
     it('aucun solde courtier → réconciliation vide (l\'app garde son calcul d\'avant)', () => {
-        expect(reconcileBrokerBalances(undefined, { CELI: 5 }).regimes).toHaveLength(0);
-        expect(reconcileBrokerBalances([], { CELI: 5 }).brokerTotalCad).toBe(0);
+        expect(reconcileBrokerBalances(undefined, { CELI: 5 }, TAUX_TEST).regimes).toHaveLength(0);
+        expect(reconcileBrokerBalances([], { CELI: 5 }, TAUX_TEST).brokerTotalCad).toBe(0);
     });
 
     it('titres non finis ou absents en face → écart == total courtier (honnête, pas NaN)', () => {
-        const r = reconcileBrokerBalances([bal({ balanceCad: 1_000 })], { 'NON-ENREG': Number.NaN });
+        const r = reconcileBrokerBalances([bal({ balanceCad: 1_000 })], { 'NON-ENREG': Number.NaN }, TAUX_TEST);
         expect(r.regimes[0].holdingsValueCad).toBe(0);
         expect(r.regimes[0].gapCad).toBe(1_000);
         expect(Number.isFinite(r.totalGapCad)).toBe(true);
@@ -98,6 +113,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
         const r = reconcileBrokerBalances(
             [bal({ accountId: 'a', at: AT }), bal({ accountId: 'b', at: vieux })],
             { 'NON-ENREG': 0 },
+        TAUX_TEST,
         );
         expect(r.regimes[0].observedAt).toBe(vieux);
     });
@@ -107,7 +123,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
     // alors qu'une part de son montant était d'âge inconnu. Sur-promesse de fraîcheur.
     it('un compte SANS horodatage rend la fraîcheur du panier INCONNUE (null), jamais « aujourd\'hui »', () => {
         const sansDate = { ...bal({ accountId: 'a' }), at: undefined } as unknown as FintableBrokerBalance;
-        const r = reconcileBrokerBalances([sansDate, bal({ accountId: 'b', at: AT })], { 'NON-ENREG': 0 });
+        const r = reconcileBrokerBalances([sansDate, bal({ accountId: 'b', at: AT })], { 'NON-ENREG': 0 }, TAUX_TEST);
         expect(r.regimes[0].observedAt).toBeNull();
         // Discriminant : l'ancien code rendait AT (« à jour ») — la valeur la plus flatteuse.
         expect(r.regimes[0].observedAt).not.toBe(AT);
@@ -119,7 +135,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
     // (aucun schéma Zod ne valide ce champ additif) disparaissait du panier SANS aucune trace.
     it('un solde ILLISIBLE est listé dans `unreadableAccountLabels`, pas avalé en silence', () => {
         const corrompu = { ...bal({ label: 'Compte corrompu' }), balanceCad: null } as unknown as FintableBrokerBalance;
-        const r = reconcileBrokerBalances([corrompu, bal({ accountId: 'b', balanceCad: 5_000 })], { 'NON-ENREG': 0 });
+        const r = reconcileBrokerBalances([corrompu, bal({ accountId: 'b', balanceCad: 5_000 })], { 'NON-ENREG': 0 }, TAUX_TEST);
         expect(r.unreadableAccountLabels).toEqual(['Compte corrompu']);
         expect(r.brokerTotalCad).toBe(5_000); // le compte lisible passe normalement
     });
@@ -132,7 +148,12 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
 
     it('garde un solde CAD lisible, avec son horodatage et son régime', () => {
         const out = toPersistableBrokerBalances([raw({ taxRegime: 'CELI' })], AT);
-        expect(out).toEqual([{ accountId: 'acc-1', label: 'Disnat', balanceCad: 1_000, taxRegime: 'CELI', at: AT }]);
+        // [FINTABLE-AUTORITE-PARTOUT étape 0] `amountNative` + `currency` s'ajoutent : le FAIT est
+        // persisté à côté de son reflet daté, pour pouvoir reconvertir plus tard au taux du jour.
+        expect(out).toEqual([{
+            accountId: 'acc-1', label: 'Disnat', balanceCad: 1_000,
+            amountNative: 1_000, currency: 'CAD', taxRegime: 'CELI', at: AT,
+        }]);
     });
 
     it('ÉCARTE un solde absent (null) — jamais converti en 0', () => {
@@ -176,7 +197,16 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
         const out = toPersistableBrokerBalances(
             [raw({ currency: 'USD', taxRegime: 'CELI' })], AT, 'CAD', {},
         );
-        const reco = reconcileBrokerBalances(out, { CELI: 500 });
+        // ── TEST DE LIMITE **INVERSÉ** le 2026-09-17 ([FINTABLE-AUTORITE-PARTOUT étape 0]) ──────
+        // Il lisait `missingRate` persisté comme un verdict DÉFINITIF, et c'était juste tant que
+        // la conversion se faisait à l'écriture : le compte restait écarté jusqu'à la synchro
+        // SUIVANTE, même une fois les vrais taux obtenus. Mesuré sur l'état réel de Marc le
+        // 2026-09-17 : ≈ 100 872 $ hors du panier NON-ENREG pour cette seule raison, donc autorité
+        // courtier refusée en entier. Désormais le drapeau décrit ce qu'on savait À LA SYNCHRO,
+        // et c'est la lecture DU JOUR qui tranche. Inversé au même endroit, jamais supprimé
+        // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+        const tauxToujoursInconnus = { rates: {}, estimated: false };
+        const reco = reconcileBrokerBalances(out, { CELI: 500 }, tauxToujoursInconnus);
         expect(reco.missingRateAccountLabels).toEqual(['Disnat (USD)']);
         // Ni dans les régimes, ni dans les DEUX autres causes d'écartement : un diagnostic qui
         // nommerait la mauvaise cause enverrait corriger la mauvaise chose.
@@ -184,6 +214,16 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
         expect(reco.unreadableAccountLabels).toEqual([]);
         expect(reco.unassignedAccountLabels).toEqual([]);
         expect(reco.brokerTotalCad).toBe(0);
+
+        // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui est neuve : le MÊME état persisté, relu avec un taux
+        // désormais connu, est CONVERTI — plus besoin d'attendre la synchro suivante.
+        const reconverti = reconcileBrokerBalances(out, { CELI: 500 }, { rates: { USD: 1.40 }, estimated: false });
+        expect(reconverti.missingRateAccountLabels).toEqual([]);
+        expect(reconverti.brokerTotalCad).toBe(1_400);
+
+        // ⚠️ CONTRÔLE : un taux ESTIMÉ (repli en dur) n'a PAS le droit d'écrire un total de compte.
+        const estimeSeul = reconcileBrokerBalances(out, { CELI: 500 }, { rates: { USD: 1.40 }, estimated: true });
+        expect(estimeSeul.missingRateAccountLabels).toEqual(['Disnat (USD)']);
     });
 
     it('un taux ABERRANT (zéro, négatif, non fini) est traité comme ABSENT, jamais appliqué', () => {
@@ -198,7 +238,10 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
         // Sans lui, « la conversion marche » serait indiscernable de « tout passe par la conversion ».
         const sansTaux = toPersistableBrokerBalances([raw()], AT, 'CAD', {});
         const avecTaux = toPersistableBrokerBalances([raw()], AT, 'CAD', { USD: 1.37 });
-        expect(sansTaux).toEqual([{ accountId: 'acc-1', label: 'Disnat', balanceCad: 1_000, at: AT }]);
+        expect(sansTaux).toEqual([{
+            accountId: 'acc-1', label: 'Disnat', balanceCad: 1_000,
+            amountNative: 1_000, currency: 'CAD', at: AT,
+        }]);
         expect(avecTaux).toEqual(sansTaux);
     });
 
@@ -270,7 +313,11 @@ describe('[revue panel] un taux ESTIMÉ ne fait pas autorité sur un solde de co
         const out = toPersistableBrokerBalances([enorme], AT, 'CAD', { USD: 1e10 }, false);
         expect(out).toHaveLength(1);
         expect(out[0].missingRate).toBe('USD');
-        const reco = reconcileBrokerBalances(out, {});
+        // ⚠️ Le débordement est une propriété du taux APPLIQUÉ, donc de celui du JOUR depuis
+        // l'étape 0 : relu avec 1,40 ce montant redevient fini (1,4e308 < MAX_VALUE) et le compte
+        // est converti. C'est correct — et ça prouve au passage que la reconversion tire vraiment.
+        // La garde porte donc sur un taux qui déborde ENCORE aujourd'hui.
+        const reco = reconcileBrokerBalances(out, {}, { rates: { USD: 1e10 }, estimated: false });
         expect(reco.missingRateAccountLabels).toEqual(['Disnat (USD)']);
     });
 });
@@ -287,7 +334,7 @@ describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé'
         const r = reconcileBrokerBalances([
             brut({ accountId: 'cad', balanceCad: 30_000 }),
             brut({ accountId: 'usd', balanceCad: 0, missingRate: 'USD' }),
-        ], { 'NON-ENREG': 231_882 });
+        ], { 'NON-ENREG': 231_882 }, TAUX_TEST);
         expect(r.regimes[0].brokerTotalCad).toBe(30_000);   // le total EST amputé…
         expect(r.incompleteRegimes).toEqual(['NON-ENREG']); // …et c'est DIT
         expect(r.hasUnplaceableAccount).toBe(false);
@@ -297,7 +344,7 @@ describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé'
         const r = reconcileBrokerBalances([
             brut({ accountId: 'a', balanceCad: 30_000 }),
             brut({ accountId: 'b', balanceCad: Number.NaN }),
-        ], { 'NON-ENREG': 100_000 });
+        ], { 'NON-ENREG': 100_000 }, TAUX_TEST);
         expect(r.incompleteRegimes).toEqual(['NON-ENREG']);
     });
 
@@ -305,12 +352,12 @@ describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé'
         const r = reconcileBrokerBalances([
             brut({ accountId: 'a', balanceCad: 80_000 }),
             brut({ accountId: 'b', balanceCad: 60_000, taxRegime: undefined }),
-        ], { 'NON-ENREG': 140_000 });
+        ], { 'NON-ENREG': 140_000 }, TAUX_TEST);
         expect(r.hasUnplaceableAccount).toBe(true);
     });
 
     it('CONTRÔLE NÉGATIF — aucun écarté : les deux signaux restent vides', () => {
-        const r = reconcileBrokerBalances([brut()], { 'NON-ENREG': 30_000 });
+        const r = reconcileBrokerBalances([brut()], { 'NON-ENREG': 30_000 }, TAUX_TEST);
         expect(r.incompleteRegimes).toEqual([]);
         expect(r.hasUnplaceableAccount).toBe(false);
     });
@@ -318,7 +365,7 @@ describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé'
     it('CONTRÔLE NÉGATIF — TOUS les comptes du régime écartés : rien à refuser, rien à signaler', () => {
         // Le régime n'apparaît pas dans `regimes`, donc `appliquerAutoriteCourtier` ne peut rien
         // lui appliquer : le marquer « incomplet » ferait parler d'un panier qui n'existe pas.
-        const r = reconcileBrokerBalances([brut({ balanceCad: 0, missingRate: 'USD' })], { 'NON-ENREG': 100_000 });
+        const r = reconcileBrokerBalances([brut({ balanceCad: 0, missingRate: 'USD' })], { 'NON-ENREG': 100_000 }, TAUX_TEST);
         expect(r.regimes).toEqual([]);
         expect(r.incompleteRegimes).toEqual([]);
         expect(r.missingRateAccountLabels).toHaveLength(1);

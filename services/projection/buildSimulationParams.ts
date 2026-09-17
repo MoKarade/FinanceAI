@@ -50,7 +50,7 @@ import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from 
 import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
 import { appliquerAutoriteCourtier } from '../fintable/autoriteCourtier';
-import { reconcileBrokerBalances } from '../fintable/brokerBalances';
+import { tauxCourantsDepuisEtat, reconcileBrokerBalances } from '../fintable/brokerBalances';
 import { holdingsCadByRegime } from '../fintable/holdingsByRegime';
 
 /**
@@ -339,6 +339,9 @@ export function deriveSimulationInputsFromState(
             reconcileBrokerBalances(
                 state.fintableBrokerBalances,
                 holdingsCadByRegime(state.assets ?? [], state.fxRates ?? {}),
+                // [FINTABLE-AUTORITE-PARTOUT étape 0] Même reconversion que l'écran : deux réponses
+                // à une seule question seraient pires que la question non répondue.
+                tauxCourantsDepuisEtat(state),
             ),
         ).soldes,
         // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ Le ledger DÉTAILLÉ, comme dans le hook. Sans lui,

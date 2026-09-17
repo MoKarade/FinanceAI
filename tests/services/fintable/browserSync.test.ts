@@ -76,8 +76,13 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         expect(r.statePatch).not.toBeNull();
         expect(r.report.accountsSeen).toBe(2);
         expect(r.report.accountsWithoutRole).toBe(0);
+        // [FINTABLE-AUTORITE-PARTOUT étape 0] `amountNative` + `currency` s'ajoutent : le montant
+        // NATIF est persisté à côté de son reflet converti, pour pouvoir reconvertir au taux du jour.
         expect(r.statePatch?.fintableBrokerBalances).toEqual([
-            { accountId: 'acc_2', label: 'Disnat', balanceCad: 136863.18, taxRegime: 'NON-ENREG', at: NOW },
+            {
+                accountId: 'acc_2', label: 'Disnat', balanceCad: 136863.18,
+                amountNative: 136863.18, currency: 'CAD', taxRegime: 'NON-ENREG', at: NOW,
+            },
         ]);
         // Le rapport voyage dans l'état → la carte de diagnostic affiche la même chose que le cron.
         expect(r.statePatch?.fintableSyncReport?.at).toBe(NOW);

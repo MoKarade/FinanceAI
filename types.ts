@@ -974,6 +974,24 @@ export interface FintableBrokerBalance {
   /** Régime fiscal DÉCLARÉ par Marc. Absent = écart non ventilable → affiché mais hors projection.
    *  Valeurs = sous-ensemble EXACT de `RegisteredAccountType` (aucune graphie parallèle). */
   taxRegime?: Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;
+  /**
+   * [FINTABLE-AUTORITE-PARTOUT étape 0] Montant dans la devise NATIVE du compte, tel que lu chez le
+   * courtier — le FAIT, dont `balanceCad` n'est qu'un reflet daté.
+   *
+   * ⚠️ POURQUOI IL EXISTE. `balanceCad` est converti À L'ÉCRITURE, au taux du moment, et persisté.
+   * Un compte en devise étrangère synchronisé pendant que les taux étaient au repli restait donc
+   * faux — ou ÉCARTÉ (`missingRate`) — jusqu'à la synchro SUIVANTE, même une fois les vrais taux
+   * obtenus. Mesuré le 2026-09-17 : le compte Disnat en USD (≈ 72 325 US) était écarté, donc le
+   * panier NON-ENREG amputé d'environ 100 872 $, donc l'autorité courtier refusée en entier.
+   * Garder le montant natif permet de reconvertir À LA LECTURE, au taux du jour.
+   *
+   * ⚠️ OPTIONNEL, et il doit le rester : champ ADDITIF, donc aucune migration de schéma (règle du
+   * dépôt). Une entrée écrite avant ce lot ne le porte pas — le lecteur retombe alors sur
+   * `balanceCad` et le dit, plutôt que de traiter l'absence comme un zéro.
+   */
+  amountNative?: number;
+  /** Devise de `amountNative` (ISO, majuscules). Sans elle, le montant natif n'est pas convertible. */
+  currency?: string;
   /** Epoch ms de la lecture — permet d'afficher honnêtement la fraîcheur (« vu il y a 3 jours »). */
   at: number;
 }

@@ -975,10 +975,18 @@
   **Réponses de cadrage de Marc** : total incomplet → *« si trop gros écart, marquer qu'il y a une
   erreur d'import ; si pas trop long, dernière valeur Fintable affichée »* ; variations → *« garder
   l'historique nous »*.
-  - [ ] **Étape 0 — PRÉREQUIS.** Reconvertir le solde courtier aux taux COURANTS au lieu de la
-    valeur figée à la synchro (`toPersistableBrokerBalances` convertit et persiste `balanceCad`).
-    Sans elle, le compte Disnat en USD reste « écarté faute de taux » et passer Fintable en autorité
-    RETIRE ≈ 100 872 $ de tous les écrans. Recoupe `[FX-CARTE-ECART-DIRE-LA-RESYNCHRO]`.
+  - [x] **Étape 0 — PRÉREQUIS.** ✅ Livré le 2026-09-17. Le montant NATIF (`amountNative` +
+    `currency`) est désormais persisté à côté de son reflet converti, et la lecture
+    (`relireSoldeCourtier`) reconvertit **au taux du jour**. Un compte écarté faute de taux à la
+    synchro redevient convertible dès que le vrai taux est connu, sans attendre la synchro suivante.
+    ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le montant natif gagne sur un `missingRate` PERSISTÉ,
+    qui décrit ce qu'on savait à la synchro et non ce qu'on sait maintenant ; le tester d'abord
+    aurait rendu la reconversion inatteignable dans le cas exact qui l'a motivée. ⚠️ `estimated` est
+    dérivé de `fxFaitAutorite` (source unique) et non du booléen `fxRatesEstimated` : lire le booléen
+    aurait refusé les taux SAISIS À LA MAIN par Marc, c'est-à-dire le recours prévu quand la Banque
+    du Canada ne répond pas. ⚠️ Deux tests de LIMITE inversés au même endroit avec leur histoire.
+    Recoupe `[FX-CARTE-ECART-DIRE-LA-RESYNCHRO]`, qui devient sans objet pour le CALCUL (reste la
+    phrase à l'écran).
   - [ ] **Étape 1 — source unique.** Un module qui rend la **dernière valeur Fintable connue** —
     lue dans `fintableBrokerHistory` (déjà produit, daté, par compte et par jour, 730 j de rétention,
     branché sur les DEUX chemins de synchro), **jamais l'instantané écrasé** — avec sa DATE et son

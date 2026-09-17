@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 0 LIVRÉE**
+> Demande Marc : « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce
+> soit la valeur Fintable, car la plus fiable ». Plan complet dans `BACKLOG.md` (5 étapes).
+> ✅ **Étape 0** : le montant NATIF (`amountNative` + `currency`) est persisté à côté de son reflet
+> converti, et `relireSoldeCourtier` reconvertit **au taux du jour**. Avant, la conversion était
+> faite À L'ÉCRITURE et figée : le compte Disnat en USD, synchronisé pendant le repli des taux,
+> restait écarté jusqu'à la synchro suivante — **≈ 100 872 $** hors du panier NON-ENREG, donc
+> autorité courtier refusée en entier.
+> ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le natif gagne sur un `missingRate` PERSISTÉ (qui décrit
+> ce qu'on savait à la synchro, pas ce qu'on sait maintenant). ⚠️ `estimated` vient de
+> `fxFaitAutorite`, jamais du booléen `fxRatesEstimated` — sinon les taux SAISIS À LA MAIN de Marc
+> seraient refusés, or c'est le recours prévu. ⚠️ Signature de `reconcileBrokerBalances` élargie et
+> le 3ᵉ paramètre REQUIS : le compilateur a énuméré 3 sites de prod + 18 de test.
+> 📏 430 tests verts sur la surface ; 2 tests de LIMITE inversés au même endroit avec leur histoire ;
+> perturbation (reconversion débranchée) → 1 rouge, le bon.
+> ⏭️ **Restent les étapes 1 à 4** (source unique « dernière valeur Fintable connue », les deux
+> garde-fous — 48 h dérivé du cron, seuil d'écart À MESURER —, branchement des écrans, variations).
+>
 > ## ⚠️⚠️ Session 2026-09-17 (suite) — **`[HUB-TOTAL-AMPUTE]` : le hub publiait un total amputé**
 > Marc : « corrige sur hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil
 > pas équivalent à ce que j'ai sur Fintable ». Mesuré sur ses captures — **quatre** producteurs :

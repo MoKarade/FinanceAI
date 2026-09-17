@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (ton compte en dollars US rentre enfin dans le total)
+
+- **Le blocage était dans la conversion, et il était figé.** Ton solde courtier était converti en
+  dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte Disnat en USD a
+  été synchronisé pendant que les taux étaient au repli : il a donc été mis de côté « faute de taux
+  fiable », et il le restait **jusqu'à la synchro suivante**, même une fois les vrais taux obtenus.
+  Résultat : environ **100 872 $** hors du panier, et le total de ton courtier refusé en entier.
+- **Ce qui change** : l'app enregistre désormais le montant dans sa **devise d'origine** à côté du
+  montant converti, et refait la conversion **au taux du jour** à chaque lecture. Un compte écarté
+  faute de taux redevient utilisable dès que le bon taux arrive — sans rien attendre.
+- ⚠️ Un taux **estimé** (le repli écrit en dur dans l'app) n'a toujours pas le droit de servir de
+  total de compte. Tes taux **saisis à la main**, eux, l'ont : c'est le recours prévu quand la Banque
+  du Canada ne répond pas, et le refuser aurait supprimé ce recours.
+- C'est l'**étape 0** du chantier « une seule valeur partout, celle de Fintable » que tu as demandé.
+  Sans elle, brancher Fintable en autorité aurait retiré ces 100 872 $ de tous tes écrans.
+
+---
+
 ## [unreleased] — 2026-09-17 (tes trois montants ne parlaient pas des mêmes titres)
 
 - **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit **245 687 $**,

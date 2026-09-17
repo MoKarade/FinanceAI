@@ -19,7 +19,7 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { reconcileBrokerBalances, type ReconcilableRegime } from '../../services/fintable/brokerBalances';
+import { tauxCourantsDepuisEtat, reconcileBrokerBalances, type ReconcilableRegime } from '../../services/fintable/brokerBalances';
 import { holdingsCadByRegime } from '../../services/fintable/holdingsByRegime';
 import { profondeurEnJours } from '../../services/fintable/brokerHistory';
 import { formatCAD, formatSigned } from '../../utils/format';
@@ -46,11 +46,18 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
     const balances = useFinanceStore((s) => s.fintableBrokerBalances);
     const assets = useFinanceStore((s) => s.assets);
     const fxRates = useFinanceStore((s) => s.fxRates);
+    const fxSource = useFinanceStore((s) => s.fxRatesSource);
+    const fxEstime = useFinanceStore((s) => s.fxRatesEstimated);
     const profondeurHistorique = useFinanceStore((s) => profondeurEnJours(s.fintableBrokerHistory));
 
+    // [FINTABLE-AUTORITE-PARTOUT étape 0] Les taux du JOUR, pas ceux figés à la synchro.
     const reco = useMemo(
-        () => reconcileBrokerBalances(balances, holdingsCadByRegime(assets, fxRates)),
-        [balances, assets, fxRates],
+        () => reconcileBrokerBalances(
+            balances,
+            holdingsCadByRegime(assets, fxRates),
+            tauxCourantsDepuisEtat({ fxRates, fxRatesSource: fxSource, fxRatesEstimated: fxEstime }),
+        ),
+        [balances, assets, fxRates, fxSource, fxEstime],
     );
 
     // Rien de réconciliable ET rien à signaler → ship dark (sync jamais passée, ou tout illisible

@@ -967,6 +967,40 @@
   (1 rouge chacune, le bon).
   ⚠️ **Conséquence visible** : tant qu'un titre manque, la carte du hub perd ses trois lignes de
   placements. C'est l'arbitrage des trois autres refus — on publie MOINS, jamais autre chose.
+- [ ] 🔴 **`[FINTABLE-AUTORITE-PARTOUT]`** (L, money-critical, **DEMANDE MARC 2026-09-17**) —
+  « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce soit la valeur
+  Fintable, car la plus fiable ». Aujourd'hui QUATRE producteurs répondent à « combien valent mes
+  placements ? » (mesuré : Accueil 245 687 $ · Fintable réel 242 287 $ · Futur mois 0 231 849 $ ·
+  hub 217 767 $), et un seul consulte Fintable (`appliquerAutoriteCourtier`, uniquement le mois 0).
+  **Réponses de cadrage de Marc** : total incomplet → *« si trop gros écart, marquer qu'il y a une
+  erreur d'import ; si pas trop long, dernière valeur Fintable affichée »* ; variations → *« garder
+  l'historique nous »*.
+  - [ ] **Étape 0 — PRÉREQUIS.** Reconvertir le solde courtier aux taux COURANTS au lieu de la
+    valeur figée à la synchro (`toPersistableBrokerBalances` convertit et persiste `balanceCad`).
+    Sans elle, le compte Disnat en USD reste « écarté faute de taux » et passer Fintable en autorité
+    RETIRE ≈ 100 872 $ de tous les écrans. Recoupe `[FX-CARTE-ECART-DIRE-LA-RESYNCHRO]`.
+  - [ ] **Étape 1 — source unique.** Un module qui rend la **dernière valeur Fintable connue** —
+    lue dans `fintableBrokerHistory` (déjà produit, daté, par compte et par jour, 730 j de rétention,
+    branché sur les DEUX chemins de synchro), **jamais l'instantané écrasé** — avec sa DATE et son
+    ÉCART contre la somme des titres. ⚠️ Le producteur existe et son en-tête dit lui-même « ce lot ne
+    change rien aujourd'hui » : c'est le CONSOMMATEUR qui manque, et c'est exactement la demande.
+  - [ ] **Étape 2 — les deux garde-fous demandés.** (a) *« pas trop long »* → **48 h**, DÉRIVÉ : le
+    cron Fintable tourne tous les jours à 10 h UTC (`.github/workflows/fintable-sync.yml`), donc
+    au-delà de 48 h la synchro a échoué au moins deux fois. (b) *« trop gros écart → erreur
+    d'import »* → seuil **À MESURER AVANT D'ÊTRE ÉCRIT** : une seule observation (1,4 %, 3 400 $ le
+    2026-09-17) n'est pas une distribution. Le dériver de la volatilité quotidienne réelle du
+    portefeuille de Marc, calculable depuis sa propre reconstruction — un seuil au jugé crierait un
+    jour de marché agité, ou jamais (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
+  - [ ] **Étape 3 — brancher** Accueil/Investissements, valeur nette, hub et MCP sur cette source
+    unique. Le mois 0 du Futur y est déjà : ne pas créer une SECONDE règle à côté.
+  - [ ] **Étape 4 — variations** (séance, 7 j, 30 j) : elles restent calculées sur NOTRE
+    reconstruction (Fintable n'a aucun historique), avec leur base NOMMÉE à l'écran — sinon deux
+    chiffres voisins ne se recomposent pas et rien ne le dit.
+  - ⚠️ **Contrainte de source, irréductible** : Fintable rend le TOTAL d'un compte, jamais ses
+    positions. La liste des titres continuera de sommer à autre chose ; l'écart s'AFFICHE, jamais ne
+    se lisse — lisser fabriquerait un portefeuille que Marc n'a pas.
+  - ⚠️ **Le passé reste reconstruit** à partir des titres (aucun historique Fintable avant le
+    2026-09-16) : la marche au raccord est déjà nommée par `mentionAutoriteCourtier`.
 - [ ] 🟡 **`[HUB-REFUS-4-SANS-DIAGNOSTIC]`** (XS, **DÉCOUVERT au panel du 2026-09-17**) — quand le
   refus 4 s'active, la carte du hub perd ses trois lignes de placements sans dire QUEL titre est en
   cause ni depuis quand. L'app le dit déjà (`HistoryCoverageNote` depuis `staleTailSymbols`), le hub

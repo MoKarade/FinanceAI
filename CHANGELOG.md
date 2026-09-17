@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (la dette manquait à l'infobulle)
+
+- **Tu as demandé où était ta dette auto dans le passé : elle n'était nulle part.** La répartition
+  « Par compte » de l'infobulle ne listait que des comptes **positifs**. Quand ton bail entre au
+  bilan, ta valeur nette baisse de 47 169 $ — et aucune ligne ne l'expliquait.
+- **Concrètement** : sur ton point du 17/09, l'infobulle montrait 29 049 + 15 639 + 17 709 +
+  198 501 = **260 898 $** d'actifs pour une valeur nette de **214 918 $**. Impossible de retrouver
+  les 45 980 $ qui manquaient.
+- **Ce qui change** : une ligne **« Dettes (hors hypothèque) »** apparaît, en rouge et signée, et les
+  chiffres se recomposent enfin. Elle n'apparaît que s'il y a vraiment une dette — pas de « 0 $ »
+  affiché pour rien.
+- ⚠️ **L'hypothèque n'y est pas, et c'est voulu** : la ligne « Immobilier » est déjà ton équité
+  NETTE. L'ajouter la compterait deux fois.
+- Le « Détail complet » le disait déjà — mais à un clic de là, et tu regardais l'infobulle.
+
+---
+
 ## [unreleased] — 2026-09-17 (ton compte en dollars US rentre enfin dans le total)
 
 - **Le blocage était dans la conversion, et il était figé.** Ton solde courtier était converti en

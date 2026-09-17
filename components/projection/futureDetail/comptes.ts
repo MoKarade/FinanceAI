@@ -31,6 +31,36 @@ export const ACCOUNTS: AccountDef[] = [
     { key: 'Entreprise', label: 'Entreprise privée', color: '#7fa86b' },
 ];
 
+/**
+ * [DETTE-INVISIBLE-INFOBULLE] La dette qui tire le patrimoine net SOUS la somme des actifs affichés.
+ *
+ * Marc, 2026-09-17 : « je le vois nulle part dans le passé, pas sur l'infobulle ou quoi ». Son bail
+ * auto (47 169 $) entre au bilan en juillet — le patrimoine net baisse d'autant, et AUCUNE ligne de
+ * l'infobulle ne l'explique : elle ne liste que des comptes POSITIFS. Les chiffres affichés ne se
+ * recomposent donc pas (260 898 $ d'actifs pour 214 918 $ de patrimoine net), et rien ne dit
+ * pourquoi — la même classe de défaut que la carte du hub corrigée le matin même.
+ *
+ * ⚠️ DÉRIVÉE PAR SOUSTRACTION, jamais lue dans `DettesNonImmo`, et c'est délibéré : ce champ du
+ * moteur n'est pas publié sur toutes les courbes (il manquait à `CURVE_FIELDS` —
+ * `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). L'identité `NetWorth = Σ(actifs publiés) − dette`, elle,
+ * tient sur TOUT point, passé reconstruit compris.
+ *
+ * ⚠️ L'HYPOTHÈQUE N'Y EST PAS : « Immobilier » est déjà l'équité NETTE (valeur − hypothèque). Elle
+ * y serait comptée deux fois. Ce qui reste = prêts, cartes, découvert, marge.
+ *
+ * ⚠️ Extrait de `FutureDetailModal` (où il est né du bug Marc du 2026-06-16, « un patrimoine net
+ * négatif n'était expliqué par AUCUN élément ») pour être PARTAGÉ avec l'infobulle : le recopier
+ * aurait donné deux dérivations d'une même vérité, qui divergent au premier changement
+ * (`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`).
+ */
+export function detteReductrice(
+    point: Record<string, unknown>,
+    clesActifsAffiches: readonly string[],
+): number {
+    const sommeActifs = clesActifsAffiches.reduce((s, k) => s + (Number(point[k]) || 0), 0);
+    return Math.max(0, sommeActifs - (Number(point.NetWorth) || 0));
+}
+
 // G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par
 // conservation : espace_gagné(Y) = espace_dispo(fin Y) − espace_dispo(fin Y−1)
 // + cotisations(Y). L'espace dispo = Max (espace + solde) − solde. Capture aussi

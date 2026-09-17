@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { detteReductrice } from './futureDetail/comptes';
 // [PRIV-PAYEE-MODE-DISCRET] Le NOM du marchand est de la donnée personnelle : « pharmacie X, le 3 »
 // dit déjà beaucoup, même sans le montant à côté. Décision Marc 2026-08-17.
 import { PrivateText } from '../ui/PrivateText';
@@ -154,6 +155,15 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     const accounts = TOOLTIP_ACCOUNTS
         .map((a) => ({ ...a, value: (data[a.key] as number | undefined) || 0, gain: a.gainKey ? ((data[a.gainKey] as number | undefined) || 0) : 0 }))
         .filter((a) => a.value !== 0);
+    // [DETTE-INVISIBLE-INFOBULLE] Marc, 2026-09-17 : « je le vois nulle part dans le passé, pas sur
+    // l'infobulle ou quoi ». La liste ci-dessus ne contient que des comptes POSITIFS : quand son
+    // bail auto entre au bilan, le patrimoine net baisse et RIEN ne l'explique ici. Les chiffres
+    // affichés ne se recomposaient pas, et le seul endroit qui le disait était le « Détail complet »,
+    // à un clic de là. Même dérivation que lui — partagée, jamais recopiée.
+    const detteReduc = detteReductrice(
+        data as unknown as Record<string, unknown>,
+        TOOLTIP_ACCOUNTS.map((a) => a.key),
+    );
 
     return (
         /* [FUTUR-INFOBULLE-EPUREE] `w-80` (320 px), pas `w-72` — et la largeur est aussi une
@@ -272,7 +282,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
             )}
 
             {/* Répartition par compte : valeur + rendement du mois (G14) */}
-            {accounts.length > 0 && (
+            {(accounts.length > 0 || detteReduc > 0.5) && (
                 <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-meta border border-white/10 mb-2.5">
                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1" title={`Valeur de chaque compte, et à droite son rendement ${isDailyPoint ? 'du jour' : 'du mois'}`}>Par compte</div>
                     {accounts.map((a) => (
@@ -289,6 +299,20 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                             </span>
                         </div>
                     ))}
+                    {/* [DETTE-INVISIBLE-INFOBULLE] Le terme NÉGATIF, sans lequel la liste ne
+                        recompose pas le patrimoine net affiché plus haut. Seuil à 0,50 $ : en
+                        dessous, c'est un résidu d'arrondi, pas une dette. */}
+                    {detteReduc > 0.5 && (
+                        <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-1 mt-1">
+                            <span className="flex items-center gap-1.5 text-ink-200 min-w-0">
+                                <span className="w-2 h-2 rounded-full shrink-0 bg-danger-400" />
+                                <span className="truncate" title="Prêts, cartes, marge et découvert. L'hypothèque n'y est pas : la ligne Immobilier est déjà l'équité nette.">Dettes (hors hypothèque)</span>
+                            </span>
+                            <span className="flex items-center gap-1.5 shrink-0 font-mono">
+                                <PrivateAmount className="text-danger-400">−{fmt(detteReduc)}</PrivateAmount>
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 

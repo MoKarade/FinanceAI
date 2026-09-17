@@ -2,7 +2,7 @@
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
 assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 112 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins). Tout en français.
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1105,6 +1105,19 @@ n'est pas réécrire un récit.
   l'inventaire — la dépendance a donc été rendue **REQUISE** et placée avant les paramètres à
   défaut, pour que le compilateur énumère les sites au lieu de laisser la production reprendre la
   version muette (`UN-INVENTAIRE-N-EST-UNE-PROTECTION-QUE-POUR-QUI-LE-LIT`).
+
+- ⚠️ **Une répartition qui ne liste que les termes POSITIFS ne recompose pas le total qu'elle
+  explique** (2026-09-17, signalé par Marc) : la répartition « Par compte » de l'infobulle Futur
+  n'avait aucune ligne de DETTE — 260 898 $ d'actifs affichés pour 214 918 $ de valeur nette, et
+  rien pour les 45 980 $ manquants. Marc : « je le vois nulle part dans le passé, pas sur l'infobulle
+  ou quoi ». **Troisième instance de la même famille dans la même journée** (carte du hub, tuile
+  « Variation 30 j », infobulle) : *quand deux chiffres d'un même écran ne se recomposent pas, c'est
+  une mesure, pas une impression* — faire l'arithmétique de l'écran avant de chercher ailleurs.
+  ⚠️ La dérivation existait déjà dans le « Détail complet », née d'un bug de Marc en 2026-06 : elle a
+  été EXTRAITE et partagée, jamais recopiée. ⚠️ Et elle se dérive par SOUSTRACTION
+  (`Σ actifs − NetWorth`), jamais du champ moteur `DettesNonImmo`, qui n'est pas publié sur toutes
+  les courbes — l'identité, elle, tient sur tout point
+  (`UNE-REPARTITION-QUI-NE-LISTE-QUE-LES-TERMES-POSITIFS-NE-RECOMPOSE-PAS-SON-TOTAL`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

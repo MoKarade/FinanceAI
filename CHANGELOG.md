@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (tes trois montants ne parlaient pas des mêmes titres)
+
+- **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit **245 687 $**,
+  ton courtier Fintable **242 287 $** (une fois le compte Disnat converti — il est en **dollars US**,
+  Fintable écrit `$` et non `C$`), l'onglet Futur **231 849 $**, et hubperso **217 767 $**. Quatre
+  chiffres pour une seule question.
+- **Le bon chiffre est celui de l'Accueil** : il tombe à 1,4 % du total réel de ton courtier. Les
+  autres sont en retard, pour deux raisons différentes.
+- **Celle de hubperso est réparée ici.** Quand les cours d'un titre cessent d'arriver, l'app le
+  retirait purement et simplement du total sans le dire — et le total restait un nombre crédible.
+  Il te manquait **27 920 $**, sur la même carte qu'une valeur nette qui, elle, les comptait. C'est
+  aussi ce qui fabriquait le « **+38,2 % sur 7 jours** » : pas un gain, un titre qui réapparaît.
+- **Ce qui change à l'écran** : tant qu'un titre manque à l'appel, la carte du hub **n'affiche plus
+  du tout** ses trois lignes de placements, au lieu d'afficher un montant faux. L'app, elle, te
+  nomme les titres concernés sur l'écran Investissements. Mieux vaut une case vide qu'un chiffre
+  auquel tu ne peux pas te fier.
+- ⚠️ **Ce qui reste** : l'écart du Futur (**−13 838 $**) a une autre cause — cet écran accepte une
+  clôture de n'importe quel âge comme valeur du jour. C'est noté, chiffré, et ça touche le point de
+  départ de toute ta projection : je te le présenterai avant d'y toucher.
+
+---
+
 ## [unreleased] — 2026-09-17 (la cause était chez nous : on lisait la mauvaise ligne de la Banque du Canada)
 
 - **Tu as trouvé la cause en deux clics.** Le diagnostic disait « au moins une des deux séries était

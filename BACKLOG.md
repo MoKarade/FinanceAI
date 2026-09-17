@@ -951,6 +951,31 @@
   publiée à l'écran**, tenue cohérente avec la provenance PAR CONSTRUCTION dans `updateFxRates`.
   ⚠️ Les trois fixtures FX du dépôt étaient écrites à la main et encodaient la forme supposée : la
   garde part désormais de la réponse RÉELLE (`tests/fixtures/bdcFxRatesDaily.json`).
+- [x] 🔴 **`[HUB-TOTAL-AMPUTE]`** (M, money-critical) — livré le 2026-09-17. Marc : « corrige sur
+  hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil pas équivalent à ce
+  que j'ai sur Fintable ». `buildMarketData` laisse tomber (`continue`) un titre DÉTENU dont la
+  queue de chandelles est périmée de plus de 7 j sans quote fraîche : le `TOTAL` reste fini et
+  plausible, simplement AMPUTÉ, et aucun des trois refus de `computePortfolioSessionMetrics` ne le
+  voyait (ils jugent la fraîcheur et le figement, jamais le PÉRIMÈTRE).
+  📏 **Mesuré sur l'état réel** : hubperso publiait **217 767 $** quand la somme des titres valait
+  **245 687 $** — **−27 920 $ (−11,4 %)** —, sur la MÊME carte qu'une valeur nette qui, elle, les
+  comptait (227 388 − 28 870 + 47 169 = 245 687). Et « Variation 7 jours **+38,2 %** » : un titre
+  absent de la borne passée et présent à la borne récente, lu comme un gain de 60 229 $.
+  ✅ `omittedKeys` (`[date, symbole]`, peuplé à TOUTE date — `staleTailSymbols` ne couvre que
+  `lastAxisDate`, donc jamais la borne passée d'une variation) + **refus 4** : séance amputée → on
+  ne publie rien ; borne amputée → variation refusée. Trois gardes, deux perturbations séparées
+  (1 rouge chacune, le bon).
+  ⚠️ **Conséquence visible** : tant qu'un titre manque, la carte du hub perd ses trois lignes de
+  placements. C'est l'arbitrage des trois autres refus — on publie MOINS, jamais autre chose.
+- [ ] 🟠 **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`** (M, money-critical, **MESURÉ le 2026-09-17**) — le
+  mois 0 de la projection (`reconstructPortfolioHistory` → `deriveStartingBalancesFromHistory` →
+  `liveCSVBalances`) appelle `priceAt(a, t)` **sans `maxStaleDays`**, là où `buildMarketData` passe
+  **7**. C'est le seul écran du dépôt qui accepte une clôture d'un âge QUELCONQUE comme valeur du
+  jour, et il ne retombe sur `currentPrice` que si le titre n'a AUCUN historique. Mesuré sur l'état
+  réel : Futur au 17/09 = **231 849 $** de placements contre **245 687 $** de titres au prix live,
+  soit **−13 838 $ (−5,6 %)** au point de départ de toute la projection. ⚠️ Le correctif re-basera
+  des goldens (il déplace le mois 0) : plan-first. ⚠️ Et il faut décider ce que devient un titre
+  périmé SANS quote fraîche — l'omettre au mois 0 rejouerait `[HUB-TOTAL-AMPUTE]` un cran plus bas.
 - [ ] 🟠 **`[FX-AUTORITE-SANS-FRAICHEUR]`** (M, money-critical, **DÉCOUVERT au panel du 2026-09-17**)
   — `fxFaitAutorite(source)` ne lit QUE la provenance : ni `fxRates.lastFetched`, ni
   `fxObservationDate`. Le lot `[FX-OBSERVATION-COHORTE]` vient d'inventer la notion « trop vieux

@@ -91,6 +91,23 @@ interface BuildMarketDataResult {
      * baseline sont synthétiques. Scope PER-SYMBOLE (les agrégats TOTAL/buckets mêlent réel+synthétique).
      */
     syntheticTailKeys: Set<string>;
+    /**
+     * [HUB-TOTAL-AMPUTE] Clés `JSON.stringify([date, symbol])` d'un titre DÉTENU (`qty > 0`) à cette
+     * date mais ABSENT du `TOTAL` de sa ligne — queue d'historique périmée sans quote fraîche pour la
+     * raccorder, ou valeur non finie.
+     *
+     * ⚠️ Pourquoi un SECOND inventaire alors que `staleTailSymbols` existe : celui-là ne couvre que
+     * `lastAxisDate` (son contrat, lu par `usePortfolioHistory` pour une bannière). Un consommateur
+     * qui compare DEUX dates — `computePortfolioSessionMetrics` et sa variation 7 jours — a besoin de
+     * savoir si l'une ou l'autre borne est amputée, et la borne passée n'est jamais `lastAxisDate`.
+     * Sans ça, la DISPARITION d'un titre entre les deux bornes se publie comme une variation de
+     * marché (mesuré le 2026-09-17 sur l'état réel : « Variation 7 jours +38,2 % », et un total
+     * publié au hub inférieur de 27 920 $ à la somme des titres).
+     *
+     * `UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX` : la liste existe pour qu'aucun
+     * compte ne disparaisse en silence — encore faut-il que le consommateur la LISE.
+     */
+    omittedKeys: Set<string>;
 }
 
 /** Au-delà de ce retard entre le dernier close connu et la date t, le prix est PÉRIMÉ (pas de forward-fill). */
@@ -155,7 +172,7 @@ export function buildMarketData(
     const nowMs = opts?.nowMs ?? Date.now();
     const todayStr = new Date(nowMs).toISOString().slice(0, 10);
     const held = (assets || []).filter((a) => a.symbol && ((a.quantity || 0) !== 0 || (a.purchases?.length ?? 0) > 0));
-    if (held.length === 0) return { rows: [], noHistorySymbols: [], partialHistorySymbols: [], staleTailSymbols: [], syntheticTailKeys: new Set() };
+    if (held.length === 0) return { rows: [], noHistorySymbols: [], partialHistorySymbols: [], staleTailSymbols: [], syntheticTailKeys: new Set(), omittedKeys: new Set() };
 
     // Entrées minimales (mêmes conventions que la reconstruction du Futur : purchases effectifs,
     // priceHistory natif). Un actif sans le MOINDRE point d'historique n'a pas de colonne mais
@@ -215,7 +232,7 @@ export function buildMarketData(
     }
     const noHistorySymbols: BuildMarketDataResult['noHistorySymbols'] =
         [...noHistoryValue.entries()].map(([symbol, valueCad]) => ({ symbol, valueCad: Number(valueCad.toFixed(2)) }));
-    if (withHistory.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [], syntheticTailKeys: new Set() };
+    if (withHistory.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [], syntheticTailKeys: new Set(), omittedKeys: new Set() };
 
     // Axe des dates = UNION des dates d'historique, bornée à partir du 1er achat GLOBAL connu
     // (« depuis que je les ai ») — les titres SANS historique comptent aussi pour cette borne.
@@ -231,12 +248,14 @@ export function buildMarketData(
         }
     }
     const dates = [...dateSet].sort();
-    if (dates.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [], syntheticTailKeys: new Set() };
+    if (dates.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [], syntheticTailKeys: new Set(), omittedKeys: new Set() };
 
     const lastAxisDate = dates[dates.length - 1];
     const staleTailSymbols: BuildMarketDataResult['staleTailSymbols'] = [];
     // [PERF-STALE-TAIL-ZERO] `JSON.stringify([date, symbol])` raccordés au prix courant (candles KO, quote fraîche).
     const syntheticTailKeys = new Set<string>();
+    // [HUB-TOTAL-AMPUTE] Titres détenus mais ABSENTS du TOTAL, à TOUTE date (cf. interface).
+    const omittedKeys = new Set<string>();
     const rows: MarketDataPoint[] = dates.map((t) => {
         const row: MarketDataPoint = { date: t };
         let total = 0;
@@ -272,11 +291,20 @@ export function buildMarketData(
                     if (t === lastAxisDate && !staleTailSymbols.some((s) => s.symbol === minimal.symbol)) {
                         staleTailSymbols.push({ symbol: minimal.symbol, lastKnownDate: lastCloseDate });
                     }
+                    // [HUB-TOTAL-AMPUTE] `staleTailSymbols` ne parle QUE de `lastAxisDate` ; ce
+                    // `continue` ampute le TOTAL à N'IMPORTE QUELLE date, y compris la borne passée
+                    // d'une variation 7 jours. On trace donc l'omission à sa date.
+                    omittedKeys.add(JSON.stringify([t, minimal.symbol]));
                     continue;
                 }
             }
             const valueCad = qty * price * toCurrencyFactor(fxRates, minimal.currency);
-            if (!Number.isFinite(valueCad)) continue;
+            if (!Number.isFinite(valueCad)) {
+                // [HUB-TOTAL-AMPUTE] Second chemin vers le MÊME effet : le titre est détenu et ne
+                // compte pas. Un inventaire qui n'en couvre qu'un des deux se lit « rien à signaler ».
+                omittedKeys.add(JSON.stringify([t, minimal.symbol]));
+                continue;
+            }
             const v = Number(valueCad.toFixed(2));
             bySymbol[minimal.symbol] = (bySymbol[minimal.symbol] ?? 0) + v;
             total += v;
@@ -302,5 +330,5 @@ export function buildMarketData(
         return row;
     });
 
-    return { rows: downsample(rows, maxPoints), noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys };
+    return { rows: downsample(rows, maxPoints), noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys, omittedKeys };
 }

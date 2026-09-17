@@ -14332,6 +14332,69 @@ publiée se répare là où elle a été publiée.
 
 ---
 
+## `UN-INVENTAIRE-N-EST-UNE-PROTECTION-QUE-POUR-QUI-LE-LIT` (2026-09-17)
+
+**Le fait.** Marc : « corrige sur hubperso, j'ai pas le même montant que dans l'onglet Futur, et
+c'est pareil pas équivalent à ce que j'ai sur Fintable ». Mesuré sur ses trois captures :
+
+| source | placements | écart vs somme des titres |
+|---|---|---|
+| Accueil / MCP (prix live × taux corrigés) | **245 687 $** | — |
+| Fintable réel (72 325,21 **US** × 1,3947 + 141 414,85 CA) | **242 287 $** | −3 400 $ (−1,4 %) |
+| Futur, mois 0 | **231 849 $** | −13 838 $ (−5,6 %) |
+| hubperso, « Placements (séance du 16 septembre) » | **217 767 $** | −27 920 $ (−11,4 %) |
+
+**La cause n'était pas le change.** `buildMarketData` LAISSE TOMBER (`continue`) un titre détenu
+dont la queue de chandelles est périmée de plus de 7 jours sans quote fraîche pour la raccorder. Le
+`TOTAL` reste **fini et plausible**, simplement amputé — donc aucun des trois refus de
+`computePortfolioSessionMetrics` ne le voyait : ils jugent la FRAÎCHEUR et le FIGEMENT, jamais le
+PÉRIMÈTRE.
+
+**Et l'inventaire existait déjà.** `staleTailSymbols` porte, depuis le finding silent-failure #493,
+le commentaire « sans ce signal, on reproduisait en silence le trou même que ce module corrige
+(TOTAL amputé sans avertissement) ». `computePortfolioSessionMetrics`, écrit PLUS TARD, déstructure
+`const { rows } = buildMarketData(…)` — il ne le lit pas. **Une liste écrite pour qu'aucun membre ne
+disparaisse en silence ne protège que les consommateurs qui la lisent** ; pour tous les autres elle
+est un commentaire. C'est `UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX` (écrite la
+veille) re-payée un module plus loin, et le signal qu'elle est là est mécanique : **un
+`const { rows } = …` qui ignore les autres champs du résultat**.
+
+⚠️ **Le contrat de l'inventaire ne couvrait pas le consommateur.** `staleTailSymbols` n'est peuplé
+qu'à `lastAxisDate` — c'est son contrat, écrit pour une bannière. Un consommateur qui compare DEUX
+dates (la variation 7 jours) a besoin de la borne PASSÉE, qui n'est jamais `lastAxisDate`. Avant de
+brancher un inventaire existant, vérifier qu'il couvre les dates/clés dont on a besoin, pas seulement
+qu'il existe : d'où `omittedKeys`, peuplé à TOUTE date, à côté de son jumeau `syntheticTailKeys`.
+
+⚠️ **Une DISPARITION se lit comme une variation.** hubperso publiait « Variation 7 jours :
++60 229 $, **+38,2 %** » — un portefeuille ne fait pas +38 % en une semaine. Un titre absent du total
+il y a sept jours et présent aujourd'hui produit exactement ce chiffre, arithmétiquement juste et
+sémantiquement faux. **Une variation ne se compare qu'entre deux totaux portant les MÊMES membres** ;
+la contradiction était sur la même page, le hub calculant de son côté « +5,5 % sur 7 j » à partir de
+son propre historique des valeurs publiées.
+
+⚠️ **Deux chemins vers le même effet, un seul tracé = « rien à signaler ».** L'omission par queue
+périmée et l'omission par valeur non finie amputent identiquement le `TOTAL`. N'en tracer qu'un
+laisse le compteur à zéro sur l'autre (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` appliqué au
+chemin plutôt qu'à l'étage).
+
+⚠️ **La carte se contredisait toute seule, et c'est ça qui l'a rendue trouvable.** Sa valeur nette
+(227 388 $) CONTIENT 245 687 $ de placements — 227 388 − 28 870 + 47 169 = 245 687 — pendant que la
+ligne juste en dessous en annonçait 217 767 $. Deux totaux inconciliables à trois centimètres l'un de
+l'autre. Quand deux chiffres d'une même carte ne se recomposent pas, c'est une mesure, pas une
+impression : **faire l'arithmétique de la carte avant de chercher ailleurs**.
+
+⚠️ **Le remède est le REFUS, pas un meilleur nombre.** Publier « moins bien » aurait été publier un
+faux ; on publie MOINS. La carte perd ses trois lignes de placements tant qu'un titre manque — et
+l'app, elle, nomme les titres fautifs par `staleTailSymbols`. Même arbitrage que les trois refus
+existants, écrit à côté d'eux.
+
+⚠️ **Découverte de chemin, pas du lot** : `Disnat (L7B1)` est libellé **en USD** dans Fintable (`$`
+contre `C$` pour les comptes canadiens) — le compte que le code nomme déjà en commentaire
+(« 72 040 USD deviendraient 72 040 CAD, faux d'environ 30 % »). Comme la dernière synchro Fintable
+précédait le correctif des taux, il a été écarté faute de taux fiable, le panier NON-ENREG s'est
+retrouvé amputé, et l'autorité courtier ne s'est pas appliquée. Le montant lu à l'écran (`$` vs `C$`)
+valait toutes les hypothèses.
+
 ## `UN-INDEX-SUR-UNE-LISTE-GROUPEE-PAR-COHORTE-NE-DESIGNE-RIEN` (2026-09-17)
 
 `[FX-OBSERVATION-COHORTE]`. La cause RACINE du lot de la veille, et elle était chez nous.

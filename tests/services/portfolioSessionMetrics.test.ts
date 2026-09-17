@@ -232,3 +232,83 @@ describe('[HUB-PLACEMENTS-SEANCE] le piège de couplage : la décimation', () =>
             .toBe('2026-08-11');
     });
 });
+
+describe('[HUB-TOTAL-AMPUTE] refus 4 — un titre DÉTENU absent du TOTAL', () => {
+    /**
+     * Le défaut RÉEL, mesuré le 2026-09-17 sur l'état de Marc : hubperso publiait
+     * « Placements 217 767 $ » quand la somme des titres valait 245 687 $ (−27 920 $, −11,4 %), et
+     * « Variation 7 jours +38,2 % » — un titre absent du total sept jours plus tôt, présent
+     * aujourd'hui, se lit comme un gain de 60 229 $.
+     *
+     * Mécanisme : `buildMarketData` LAISSE TOMBER un titre dont la queue de candles est périmée
+     * (> 7 j) sans quote fraîche pour la raccorder. Le `TOTAL` reste fini et plausible — donc aucun
+     * des trois refus existants ne le voit. Ils jugent la fraîcheur et le figement, jamais le
+     * PÉRIMÈTRE (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
+     *
+     * ⚠️ Le compagnon porte `priceUpdatedAt` ABSENT : c'est ce qui rend sa quote non fraîche, donc
+     * ce qui déclenche l'omission plutôt que le raccord au prix courant (refus 3). Les deux chemins
+     * se ressemblent dans le code et n'ont pas le même remède — si on lui donnait une quote fraîche,
+     * cette fixture testerait le refus 3 sans le dire.
+     */
+    const compagnon = (history: Array<{ date: string; price: number }>): Asset => ({
+        symbol: 'GBS.PA', quantity: 1, currency: 'CAD', currentPrice: 500,
+        name: 'Compagnon', performance: 0, dateBought: history[0].date,
+        purchases: [{ date: history[0].date, quantity: 1, price: history[0].price }],
+        priceHistory: history,
+        accountType: 'NON-ENREG',
+    } as Asset);
+
+    const QUOTIDIEN_500 = Array.from({ length: 14 }, (_, i) => ({
+        date: `2026-08-${String(5 + i).padStart(2, '0')}`,
+        price: 500,
+    }));
+
+    it("séance amputée → on ne publie RIEN (ni valeur, ni variation)", () => {
+        // Historique du compagnon arrêté au 2026-08-06 : au 08-18 il a 12 jours de retard (> 7),
+        // aucune quote fraîche → absent du TOTAL de la séance.
+        const m = computePortfolioSessionMetrics(
+            [titre(SERIE_QUOTIDIENNE), compagnon(QUOTIDIEN_500.slice(0, 2))],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(m).toBeNull();
+    });
+
+    it("ANTI-VACUITÉ : la MÊME fixture, historique complet, publie bien quelque chose", () => {
+        // Sans ce cas, le `toBeNull()` ci-dessus serait satisfait par n'importe quelle fixture
+        // cassée — il prouverait « rien ne sort », pas « le refus 4 a tiré ».
+        const m = computePortfolioSessionMetrics(
+            [titre(SERIE_QUOTIDIENNE), compagnon(QUOTIDIEN_500)],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(m).not.toBeNull();
+        // 113 (XEQT) + 500 (compagnon) : le compagnon COMPTE, c'est tout l'enjeu.
+        expect(m!.valeurCad).toBe(613);
+        expect(m!.semaine).not.toBeNull();
+    });
+
+    it("borne PASSÉE amputée → la semaine est refusée, la séance survit", () => {
+        // Trou du 08-02 au 08-15. Au 08-11 (borne des 7 jours) le dernier close du compagnon a
+        // 9 jours → omis. Au 08-17 et au 08-18 il a ses closes → présent.
+        // C'est exactement la forme du « +38,2 % » : une DISPARITION lue comme une variation.
+        const troue = [
+            { date: '2026-08-02', price: 500 },
+            { date: '2026-08-15', price: 500 },
+            { date: '2026-08-16', price: 500 },
+            { date: '2026-08-17', price: 500 },
+            { date: '2026-08-18', price: 500 },
+        ];
+        const m = computePortfolioSessionMetrics(
+            [titre(SERIE_QUOTIDIENNE), compagnon(troue)],
+            FX,
+            { nowMs: MAINTENANT },
+        );
+        expect(m).not.toBeNull();
+        expect(m!.valeurCad).toBe(613);
+        // La séance (08-17 → 08-18) porte les deux titres aux deux bornes : elle reste publiable.
+        expect(m!.seance).not.toBeNull();
+        // La semaine compare 08-11 (compagnon ABSENT) à 08-18 (compagnon PRÉSENT) : refusée.
+        expect(m!.semaine).toBeNull();
+    });
+});

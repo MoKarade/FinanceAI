@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-17 (suite) — **`[HUB-TOTAL-AMPUTE]` : le hub publiait un total amputé**
+> Marc : « corrige sur hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil
+> pas équivalent à ce que j'ai sur Fintable ». Mesuré sur ses captures — **quatre** producteurs :
+> Accueil **245 687 $** · Fintable réel **242 287 $** · Futur mois 0 **231 849 $** · hubperso
+> **217 767 $**.
+> 🔎 Cause de l'écart hubperso : `buildMarketData` laisse tomber (`continue`) un titre DÉTENU dont
+> la queue de chandelles est périmée > 7 j sans quote fraîche. Le `TOTAL` reste fini et plausible,
+> simplement AMPUTÉ — les trois refus de `computePortfolioSessionMetrics` jugent la fraîcheur et le
+> figement, jamais le PÉRIMÈTRE. **L'inventaire qui le disait existait** (`staleTailSymbols`, finding
+> silent-failure #493, avec son commentaire) : le consommateur faisait `const { rows } = …`.
+> ✅ `omittedKeys` (`[date, symbole]`, à TOUTE date — `staleTailSymbols` ne couvre que `lastAxisDate`,
+> donc jamais la borne passée d'une variation) + **refus 4** : séance amputée → rien n'est publié ;
+> borne amputée → variation refusée. 3 gardes, 2 perturbations séparées (1 rouge chacune, le bon).
+> 📏 **−27 920 $ (−11,4 %)** sur le total publié, et « Variation 7 jours **+38,2 %** » qui n'était
+> qu'une DISPARITION relue comme un gain. Contradiction interne à la carte :
+> 227 388 − 28 870 + 47 169 = **245 687** ≠ 217 767.
+> ⚠️ **Effet visible à surveiller** : tant qu'un titre manque, la carte du hub perd ses trois lignes
+> de placements (arbitrage des trois autres refus : publier MOINS, jamais autre chose).
+> 🔎 **Découverte de chemin** : `Disnat (L7B1)` est en **USD** chez Fintable (`$` vs `C$`) — le compte
+> nommé en commentaire dans `brokerBalances.ts`. Écarté faute de taux à la dernière synchro (antérieure
+> au correctif FX) ⇒ panier NON-ENREG amputé ⇒ autorité courtier NON appliquée.
+> ⏭️ **Suite chiffrée et NON faite** : `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` — le mois 0 appelle
+> `priceAt(a, t)` **sans `maxStaleDays`** (seul écran du dépôt dans ce cas) ⇒ **−13 838 $ (−5,6 %)**
+> au point de départ de la projection. Re-basera des goldens ⇒ plan-first.
+>
 > ## ⚠️⚠️ Session 2026-09-17 — **`[FX-OBSERVATION-COHORTE]` : on lisait `observations[0]`**
 > Marc a cliqué « Réessayer maintenant » (la carte livrée la veille), lu « au moins une des deux
 > séries était absente », puis **ouvert l'URL de l'API et envoyé la réponse**. Elle tranche :

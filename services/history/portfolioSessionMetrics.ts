@@ -20,7 +20,7 @@
 // `refDate` et l'appelant construit un libellé qui porte la date. Le hub affiche ce qu'on lui donne :
 // c'est ici que se joue l'honnêteté, pas à l'écran.
 //
-// ═══ LES TROIS REFUS (chacun a son test) ═══
+// ═══ LES QUATRE REFUS (chacun a son test) ═══
 //
 //  1. **Série absente ou trop courte** (< 2 points datés) → `null`. Aucun titre avec historique,
 //     ou un seul point : il n'y a pas de variation, il y a une valeur.
@@ -50,7 +50,14 @@
 //     une, le mouvement est réel et on garde le chiffre — même arbitrage que `seriesReturnPct` au
 //     niveau du titre. Sur une série quotidienne normale, la règle ne se déclenche jamais.
 //
-// ⚠️ Et un quatrième refus IMPLICITE, qui est un piège de couplage : `buildMarketData` DÉCIME sa
+//  4. **TOTAL AMPUTÉ** — un titre DÉTENU (`qty > 0`) absent du `TOTAL` d'une des bornes → `null`.
+//     Arrivé le 2026-09-17, après les trois autres, et il ne juge ni la fraîcheur ni le figement :
+//     il juge le PÉRIMÈTRE. `buildMarketData` laisse tomber un titre dont la queue de candles est
+//     périmée sans quote fraîche ; le total reste fini et plausible, simplement FAUX. Il le trace
+//     désormais dans `omittedKeys`, à TOUTE date — `staleTailSymbols` ne couvrait que la dernière,
+//     donc jamais la borne passée d'une variation. Détail et mesure au point « REFUS 4 » du corps.
+//
+// ⚠️ Et un refus IMPLICITE de plus, qui est un piège de couplage : `buildMarketData` DÉCIME sa
 // sortie à 500 points par défaut (pour Recharts). La décimation préserve délibérément les DEUX
 // derniers points — donc « 24H » survit — mais PAS la densité au-delà : la baseline « 7 jours »
 // serait alors choisie parmi des points espacés de `step` jours, et « 7 jours » vaudrait en réalité
@@ -106,10 +113,25 @@ export function computePortfolioSessionMetrics(
     // ⚠️ Série ENTIÈRE : voir la note de couplage en tête de fichier (la décimation fausserait 7 j).
     // ⚠️ On n'utilise PAS `syntheticTailKeys` : voir le point (b) de l'en-tête — il rate le report
     // de prix, qui est le cas courant. La règle de refus n°3 se lit dans `priceHistory`.
-    const { rows } = buildMarketData(assets ?? [], fxRates, {
+    const { rows, omittedKeys } = buildMarketData(assets ?? [], fxRates, {
         maxPoints: Number.POSITIVE_INFINITY,
         nowMs,
     });
+
+    // [HUB-TOTAL-AMPUTE] Dates dont le TOTAL est AMPUTÉ d'au moins un titre détenu (cf. refus 4).
+    // `omittedKeys` porte `[date, symbole]` ; ici seule la DATE compte — qui manque se lit dans
+    // `staleTailSymbols`, que la bannière de l'app affiche déjà.
+    const datesAmputees = new Set<string>();
+    for (const cle of omittedKeys) {
+        try {
+            const [date] = JSON.parse(cle) as [string, string];
+            if (typeof date === 'string' && date) datesAmputees.add(date);
+        } catch {
+            // Une clé illisible ne doit pas faire passer une date amputée pour saine : on ne peut
+            // pas la rattacher à une date, donc on ne peut plus affirmer qu'AUCUNE ne l'est.
+            return null;
+        }
+    }
 
     // Refus 1 — pas de quoi parler de variation.
     if (rows.length < 2) return null;
@@ -118,6 +140,22 @@ export function computePortfolioSessionMetrics(
     const dateSeance = String(derniere.date ?? '');
     const valeurCad = Number(derniere[TOTAL_KEY]);
     if (!dateSeance || !Number.isFinite(valeurCad) || valeurCad <= 0) return null;
+
+    // ═══ REFUS 4 — TOTAL AMPUTÉ ═══ (ajouté le 2026-09-17, [HUB-TOTAL-AMPUTE])
+    //
+    // Les trois refus ci-dessus jugent la FRAÎCHEUR et le FIGEMENT de la série. Aucun ne voit un
+    // titre DÉTENU qui ne compte pas : `buildMarketData` le laisse tomber (`continue`) quand sa
+    // queue de candles est périmée sans quote fraîche pour la raccorder. Le `TOTAL` reste un nombre
+    // fini, plausible, simplement FAUX — et c'est ce nombre que le hub imprimait sous « Placements ».
+    //
+    // Mesuré sur l'état réel de Marc le 2026-09-17 : hubperso publiait **217 767 $** pendant que la
+    // somme des titres valait **245 687 $** — 27 920 $ (11,4 %) absents, sur la MÊME carte que la
+    // valeur nette, qui elle les comptait. Deux totaux inconciliables côte à côte.
+    //
+    // ⚠️ On ne publie pas « moins bien », on ne publie PAS : un total amputé n'est pas une autorité
+    // dégradée, c'est un faux (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
+    // Même arbitrage que les trois autres refus : mieux vaut une carte muette qu'un chiffre crédible.
+    if (datesAmputees.has(dateSeance)) return null;
 
     // Refus 2 — référence périmée. On compare des DATES civiles (minuit UTC), pas des instants :
     // « 3 jours » doit vouloir dire 3 changements de date, pas 72 h glissantes.
@@ -153,6 +191,12 @@ export function computePortfolioSessionMetrics(
     const variation = (periode: '24H' | '7D'): VariationPlacements | null => {
         const b = seriesReturnEndpoints(rows, TOTAL_KEY, periode);
         if (b === null) return null;
+        // [HUB-TOTAL-AMPUTE] Une borne amputée fabrique une variation à partir d'une DISPARITION.
+        // ⚠️ `dateSeance` est déjà refusée plus haut, mais la borne PASSÉE ne l'est jamais — et c'est
+        // elle qui produisait « Variation 7 jours : +38,2 % » : un titre absent du total il y a 7
+        // jours, présent aujourd'hui, se lit comme un gain de 60 229 $. Une variation ne se compare
+        // qu'entre deux totaux portant les MÊMES titres.
+        if (datesAmputees.has(b.fromDate) || datesAmputees.has(b.toDate)) return null;
         if (dateEntierementFigee(b.fromDate) && dateEntierementFigee(b.toDate)) return null;
         // ⚠️ `seriesReturnEndpoints` garantit déjà `from > 0` ; on garde la lecture stricte pour que
         // le montant et le % viennent LITTÉRALEMENT des mêmes deux nombres.

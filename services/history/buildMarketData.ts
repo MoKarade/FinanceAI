@@ -143,6 +143,29 @@ export function datesAmputeesDepuis(omittedKeys: ReadonlySet<string>): Set<strin
     return dates;
 }
 
+/**
+ * [HUB-REFUS-4-SANS-DIAGNOSTIC] Les symboles absents du TOTAL à une date donnée.
+ *
+ * Même inventaire, autre question : `datesAmputeesDepuis` répond « cette date est-elle amputée ? »,
+ * celle-ci répond « PAR QUI ? ». Sans elle, un refus ne peut nommer personne — et un silence qu'on
+ * ne peut pas expliquer se lit comme une panne.
+ *
+ * Rend `null` si une clé est illisible : même arbitrage que sa jumelle, on ne suppose pas « sain ».
+ */
+export function symbolesAmputesA(omittedKeys: ReadonlySet<string>, date: string): string[] | null {
+    const out: string[] = [];
+    for (const cle of omittedKeys) {
+        try {
+            const [d, symbole] = JSON.parse(cle) as [string, string];
+            if (typeof d !== 'string' || typeof symbole !== 'string') return null;
+            if (d === date && symbole && !out.includes(symbole)) out.push(symbole);
+        } catch {
+            return null;
+        }
+    }
+    return out.sort();
+}
+
 // [FUTUR-MOIS0-CLOTURE-SANS-AGE] `STALE_PRICE_DAYS` est désormais IMPORTÉ de
 // `reconstructPortfolioHistory`, où vit `priceAt` qui l'applique : la valeur était écrite deux fois,
 // et deux constantes qui doivent être égales finissent par diverger.

@@ -65,7 +65,7 @@
 // (`maxPoints: Number.POSITIVE_INFINITY`). Un test verrouille ce point précis.
 
 import type { Asset } from '../../types';
-import { buildMarketData, datesAmputeesDepuis } from './buildMarketData';
+import { buildMarketData, datesAmputeesDepuis, symbolesAmputesA } from './buildMarketData';
 import { seriesReturnEndpoints } from './periodReturn';
 
 /** Clé de la série TOTALE (valeur du portefeuille en CAD) dans les lignes de `buildMarketData`. */
@@ -97,6 +97,30 @@ interface PortfolioSessionMetrics {
 }
 
 /**
+ * [HUB-REFUS-4-SANS-DIAGNOSTIC] POURQUOI rien n'est publiable.
+ *
+ * ⚠️ Cette fonction rendait `null` pour CINQ situations différentes : série trop courte, référence
+ * périmée, bornes figées, total amputé, inventaire illisible. Le consommateur ne pouvait donc rien
+ * dire d'autre que rien — et une carte qui se vide sans un mot est indiscernable d'une panne
+ * (`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`).
+ *
+ * Le refus porte désormais sa cause ET ses coupables quand il en a.
+ */
+export type RefusPlacements =
+    /** Moins de deux points datés, ou dernière ligne inexploitable : il n'y a pas de variation. */
+    | { raison: 'serie-inexploitable' }
+    /** La clôture de référence est plus vieille que `maxStaleDays`. */
+    | { raison: 'reference-perimee'; dateSeance: string; ageJours: number }
+    /** Des titres DÉTENUS ne comptent pas dans le total de la séance — il est donc FAUX, pas dégradé. */
+    | { raison: 'total-ampute'; dateSeance: string; symboles: string[] }
+    /** Une clé de l'inventaire est illisible : on ne peut plus affirmer qu'aucune date n'est amputée. */
+    | { raison: 'inventaire-illisible' };
+
+export type ResultatPlacements =
+    | { statut: 'ok'; metriques: PortfolioSessionMetrics }
+    | { statut: 'refus'; refus: RefusPlacements };
+
+/**
  * Variation des placements sur la dernière séance et sur 7 jours, ou `null` si la donnée ne permet
  * pas de l'affirmer. **`null` n'est pas un échec : c'est le comportement correct** — le hub
  * n'affiche que ce qu'il reçoit, donc omettre la métrique est la seule façon honnête de dire
@@ -106,7 +130,7 @@ export function computePortfolioSessionMetrics(
     assets: Asset[] | undefined,
     fxRates: Record<string, number> | undefined,
     opts?: { nowMs?: number; maxStaleDays?: number },
-): PortfolioSessionMetrics | null {
+): ResultatPlacements {
     const nowMs = opts?.nowMs ?? Date.now();
     const maxStaleDays = opts?.maxStaleDays ?? MAX_STALE_DAYS;
 
@@ -123,15 +147,15 @@ export function computePortfolioSessionMetrics(
     // côté casse l'autre en silence. `null` = au moins une clé illisible ⇒ on ne peut plus
     // affirmer qu'aucune date n'est amputée ⇒ refus, jamais « supposé sain ».
     const datesAmputees = datesAmputeesDepuis(omittedKeys);
-    if (datesAmputees === null) return null;
+    if (datesAmputees === null) return { statut: 'refus', refus: { raison: 'inventaire-illisible' } };
 
     // Refus 1 — pas de quoi parler de variation.
-    if (rows.length < 2) return null;
+    if (rows.length < 2) return { statut: 'refus', refus: { raison: 'serie-inexploitable' } };
 
     const derniere = rows[rows.length - 1];
     const dateSeance = String(derniere.date ?? '');
     const valeurCad = Number(derniere[TOTAL_KEY]);
-    if (!dateSeance || !Number.isFinite(valeurCad) || valeurCad <= 0) return null;
+    if (!dateSeance || !Number.isFinite(valeurCad) || valeurCad <= 0) return { statut: 'refus', refus: { raison: 'serie-inexploitable' } };
 
     // ═══ REFUS 4 — TOTAL AMPUTÉ ═══ (ajouté le 2026-09-17, [HUB-TOTAL-AMPUTE])
     //
@@ -147,14 +171,22 @@ export function computePortfolioSessionMetrics(
     // ⚠️ On ne publie pas « moins bien », on ne publie PAS : un total amputé n'est pas une autorité
     // dégradée, c'est un faux (`UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX`).
     // Même arbitrage que les trois autres refus : mieux vaut une carte muette qu'un chiffre crédible.
-    if (datesAmputees.has(dateSeance)) return null;
+    if (datesAmputees.has(dateSeance)) {
+        // On NOMME les titres : « la carte est vide » sans coupable se lit comme une panne.
+        const symboles = symbolesAmputesA(omittedKeys, dateSeance);
+        if (symboles === null) return { statut: 'refus', refus: { raison: 'inventaire-illisible' } };
+        return { statut: 'refus', refus: { raison: 'total-ampute', dateSeance, symboles } };
+    }
 
     // Refus 2 — référence périmée. On compare des DATES civiles (minuit UTC), pas des instants :
     // « 3 jours » doit vouloir dire 3 changements de date, pas 72 h glissantes.
     const tSeance = Date.parse(`${dateSeance}T00:00:00Z`);
-    if (!Number.isFinite(tSeance)) return null;
+    if (!Number.isFinite(tSeance)) return { statut: 'refus', refus: { raison: 'serie-inexploitable' } };
     const aujourdhui = Date.parse(`${new Date(nowMs).toISOString().slice(0, 10)}T00:00:00Z`);
-    if ((aujourdhui - tSeance) / DAY_MS > maxStaleDays) return null;
+    const ageJours = Math.round((aujourdhui - tSeance) / DAY_MS);
+    if (ageJours > maxStaleDays) {
+        return { statut: 'refus', refus: { raison: 'reference-perimee', dateSeance, ageJours } };
+    }
 
     // Refus 3 — dates auxquelles chaque titre porteur de colonne avait une VRAIE clôture.
     // Lu dans `priceHistory` (la source), pas dans un sous-produit de `buildMarketData` : c'est ce
@@ -201,10 +233,13 @@ export function computePortfolioSessionMetrics(
     };
 
     return {
-        dateSeance,
-        valeurCad: Number(valeurCad.toFixed(2)),
-        seance: variation('24H'),
-        semaine: variation('7D'),
+        statut: 'ok',
+        metriques: {
+            dateSeance,
+            valeurCad: Number(valeurCad.toFixed(2)),
+            seance: variation('24H'),
+            semaine: variation('7D'),
+        },
     };
 }
 

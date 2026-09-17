@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[HUB-REFUS-4-SANS-DIAGNOSTIC]` LIVRÉ**
+> Conséquence DIRECTE du refus du total amputé livré le matin : la carte du hub peut perdre ses
+> trois lignes de placements, et le faisait SANS un mot — indiscernable d'une panne.
+> 🔎 Cause : `computePortfolioSessionMetrics` rendait `null` pour CINQ situations distinctes.
+> ✅ Union `ok`/`refus` (le refus porte sa cause ET les symboles fautifs) + section hub « Pourquoi
+> les placements manquent ». Le compilateur a énuméré les sites ; 15 appels de test passent par un
+> helper qui restaure la sémantique d'avant, pour que les cas anciens testent toujours la même chose.
+> ⚠️ On publie le FAIT et les SYMBOLES, jamais un montant.
+> 📏 48 tests verts sur la surface ; 2 perturbations séparées (section retirée → 1 rouge ; cause
+> rendue générique → 2 rouges, le service ET le hub, ce qui prouve le fil entre les deux).
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]` LIVRÉ (version étroite)**
 > Le mois 0 du moteur préférait une CLÔTURE périmée à une COTATION fraîche : **231 849 $ contre
 > 245 687 $**, soit **−13 838 $ (−5,6 %)** au départ de toute projection.

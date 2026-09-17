@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (quand la carte du hub se tait, elle dit pourquoi)
+
+- **Suite directe du correctif de ce matin.** Depuis que le hub refuse de publier un total de
+  placements incomplet, ta carte peut perdre ses trois lignes — et jusqu'ici, sans un mot. Une carte
+  qui se vide sans explication ressemble à une panne.
+- **Ce qui change** : une section **« Pourquoi les placements manquent »** apparaît, avec la raison
+  et, quand il y en a, **le nom du ou des titres** en cause. Quatre cas distincts : des titres hors
+  du total, une clôture de référence trop ancienne, pas assez de données de cours, ou un inventaire
+  illisible.
+- **Pourquoi c'était muet** : la fonction qui calcule ces lignes répondait « rien » pour **cinq
+  situations différentes**. Le hub ne pouvait donc rien dire d'autre que rien. Elle répond désormais
+  avec sa cause.
+- ⚠️ On publie le **fait** et les **noms de titres**, jamais un montant : s'il y avait un montant
+  digne de foi à publier, il n'y aurait pas de refus.
+
+---
+
 ## [unreleased] — 2026-09-17 (ta projection ne démarre plus sur des cours périmés)
 
 - **Ton onglet Futur partait de 231 849 $ quand tes titres en valaient 245 687 $** — **13 838 $**

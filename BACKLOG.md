@@ -1059,7 +1059,16 @@
     se lisse — lisser fabriquerait un portefeuille que Marc n'a pas.
   - ⚠️ **Le passé reste reconstruit** à partir des titres (aucun historique Fintable avant le
     2026-09-16) : la marche au raccord est déjà nommée par `mentionAutoriteCourtier`.
-- [ ] 🟡 **`[HUB-REFUS-4-SANS-DIAGNOSTIC]`** (XS, **DÉCOUVERT au panel du 2026-09-17**) — quand le
+- [x] 🟡 **`[HUB-REFUS-4-SANS-DIAGNOSTIC]`** ✅ LIVRÉ le 2026-09-17 (demande Marc). Le refus porte
+  désormais sa CAUSE : `computePortfolioSessionMetrics` rendait `null` pour CINQ situations, donc le
+  hub ne pouvait rien dire d'autre que rien (`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`).
+  Union `ok`/`refus` + section « Pourquoi les placements manquent » qui NOMME les titres écartés.
+  ⚠️ On publie le fait et les symboles, jamais un montant — s'il y avait un montant digne de foi, il
+  n'y aurait pas de refus. ⚠️ `inventaire-illisible` reste sans test, et c'est ÉCRIT : la branche est
+  structurellement inatteignable de l'extérieur (les clés sont fabriquées par `encodeOmittedKey`) —
+  un filet pour un futur changement de format, pas une fixture absurde. ⚠️ Contrôle négatif : quand
+  les placements sortent, la section n'existe PAS.
+- [ ] 🟡 ~~`[HUB-REFUS-4-SANS-DIAGNOSTIC]`~~ *(entrée d'origine, conservée pour l'historique)* (XS, **DÉCOUVERT au panel du 2026-09-17**) — quand le
   refus 4 s'active, la carte du hub perd ses trois lignes de placements sans dire QUEL titre est en
   cause ni depuis quand. L'app le dit déjà (`HistoryCoverageNote` depuis `staleTailSymbols`), le hub
   non. Piste : publier le ou les symboles responsables dans `details`, le champ qui porte déjà la

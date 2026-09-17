@@ -145,7 +145,12 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
     // [HUB-PLACEMENTS-SEANCE] Variation des placements — `null` si la donnée ne permet pas de
     // l'affirmer (série absente, séance de référence périmée, bornes synthétiques). Voir
     // `services/history/portfolioSessionMetrics.ts` pour les trois refus.
-    const placements = computePortfolioSessionMetrics(state.assets, state.fxRates, { nowMs: now });
+    // [HUB-REFUS-4-SANS-DIAGNOSTIC] Le résultat porte désormais sa CAUSE quand il refuse : une
+    // carte qui perd ses trois lignes sans un mot est indiscernable d'une panne. `placements` garde
+    // exactement la sémantique d'avant (métriques ou rien), `refusPlacements` porte le pourquoi.
+    const resultatPlacements = computePortfolioSessionMetrics(state.assets, state.fxRates, { nowMs: now });
+    const placements = resultatPlacements.statut === 'ok' ? resultatPlacements.metriques : null;
+    const refusPlacements = resultatPlacements.statut === 'refus' ? resultatPlacements.refus : null;
 
     // ⚠️ SIX métriques MAXIMUM (contrat du hub), et la PREMIÈRE est rendue en gros. L'ordre est
     // donc un arbitrage, pas une liste. Les trois lignes de placements prennent la place de
@@ -268,6 +273,54 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
             });
         }
         if (lignes.length > 0) details.push({ title: 'Fraîcheur des deux sources', items: lignes });
+    }
+
+    // [HUB-REFUS-4-SANS-DIAGNOSTIC] Quand les placements ne sont PAS publiables, dire pourquoi.
+    //
+    // ⚠️ Sans cette section, la carte perd ses trois lignes et ne dit rien — or l'app, elle, nomme
+    // déjà les titres fautifs (`staleTailSymbols` → bannière de l'écran Investissements). Le hub
+    // avait l'information et la jetait : un silence qu'on ne peut pas expliquer se lit comme une
+    // panne, et c'est ce que le refus du total amputé allait produire chez Marc.
+    //
+    // ⚠️ On publie le FAIT et les SYMBOLES, jamais un montant : il n'y a précisément aucun montant
+    // digne de foi à publier — c'est tout l'objet du refus.
+    if (refusPlacements) {
+        const item = (value: string, hint: string) => ([{
+            label: 'Placements non publiés',
+            value: borne(value, MAX_DETAIL_LABEL),
+            format: 'text' as const,
+            severity: 'warn' as const,
+            hint: borne(hint, MAX_HINT),
+        }]);
+        let lignes: NonNullable<HubSummary['details']>[number]['items'];
+        switch (refusPlacements.raison) {
+            case 'total-ampute':
+                lignes = item(
+                    refusPlacements.symboles.length > 0
+                        ? `${refusPlacements.symboles.length} titre(s) hors du total : ${refusPlacements.symboles.join(', ')}`
+                        : 'des titres détenus ne comptent pas dans le total',
+                    'cours trop anciens et pas de cotation fraîche pour les remplacer ; un total incomplet serait faux, pas approximatif',
+                );
+                break;
+            case 'reference-perimee':
+                lignes = item(
+                    `dernière clôture le ${refusPlacements.dateSeance} (${refusPlacements.ageJours} j)`,
+                    "l'historique daté n'avance que quand l'app s'ouvre ; au-delà du seuil ce n'est plus une séance",
+                );
+                break;
+            case 'inventaire-illisible':
+                lignes = item(
+                    'inventaire des titres écartés illisible',
+                    'impossible d\'affirmer que le total est complet — on refuse plutôt que de supposer',
+                );
+                break;
+            default:
+                lignes = item(
+                    'pas assez de données de cours',
+                    'moins de deux clôtures exploitables : il y a une valeur, pas une variation',
+                );
+        }
+        details.push({ title: 'Pourquoi les placements manquent', items: lignes });
     }
 
     const ventilation = computeAssetBreakdown(state.assets ?? [], state.fxRates ?? {});

@@ -10236,6 +10236,48 @@ surface RÉELLE de l'utilisateur, pas seulement sur celle qu'on vient de compren
 rôles de comptes Fintable ; aucun état du dépôt n'en portait — exactement la même cécité que la
 première vague, sur un champ voisin. Après avoir corrigé un oubli de liste blanche, la question
 suivante est « quelle AUTRE surface de cet utilisateur n'est portée par aucune fixture ? ».
+**Troisième vague, seize jours plus tard — le champ était déclaré par un ALIAS**
+(`UN-CHAMP-DECLARE-PAR-UN-ALIAS-EST-INVISIBLE-AU-RECENSEUR-QUI-LIT-DES-FORMES`, 2026-09-17)
+
+L'app s'est vidée une **troisième** fois, sur `debts[].paymentFrequency` — un champ livré par
+**mon propre lot une heure plus tôt** (`[DEBT-CADENCE-REELLE]`). La garde de dérivation, élargie
+deux fois le 1er septembre exactement pour empêcher ça, est restée VERTE.
+
+Son extracteur ne reconnaît comme textuel que `: string` et les unions de littéraux **écrites sur
+place**. Le champ est déclaré ainsi :
+
+```ts
+export const PAYMENT_FREQUENCIES = ['weekly', 'biweekly', 'monthly'] as const;
+export type PaymentFrequency = typeof PAYMENT_FREQUENCIES[number];
+// …
+paymentFrequency?: PaymentFrequency;
+```
+
+Le type est bien une union de chaînes, mais il est **NOMMÉ** : au point de déclaration du champ,
+l'extracteur ne voit qu'un identifiant qui ne ressemble ni à `string` ni à `'a' | 'b'`. Mesuré après
+correction (résolution des alias textuels nommés — union directe **et** `typeof <TABLEAU>[number]`
+sur un `as const` de chaînes) : **neuf** champs du contrat ne sont textuels que par un alias, dont
+huit n'étaient couverts que par accident.
+
+Ce que cette vague ajoute aux deux précédentes, c'est qu'**élargir encore le motif n'est pas la
+leçon**. Trois élargissements, trois formes jamais croisées : un recenseur ancré sur la FORME n'a
+pas de borne, et la question « ai-je vu toutes les formes ? » n'a pas de réponse. Ce qui borne, c'est
+une **anti-vacuité sur l'extracteur LUI-MÊME** — un plancher sur le nombre d'alias qu'il reconnaît,
+plus des témoins nommés (`PaymentFrequency`, `LifeEventType`) : sans ça, « aucun champ manquant »
+est aussi vrai d'un extracteur cassé que d'une liste complète, et c'est précisément l'état dans
+lequel la garde a passé seize jours.
+
+⚠️ Corollaire de conduite, et c'est le plus cher : **le lot qui ajoute un champ au contrat persisté
+doit demander sous quelle FORME il le déclare**, parce que la garde qui le protège lit des formes et
+non des sens. J'ai introduit l'alias et le champ dans le même lot, une heure avant la panne — donc
+la seule personne qui pouvait voir le risque, c'était moi, au moment de choisir `PaymentFrequency`
+plutôt qu'une union écrite sur place.
+
+⚠️ Et le gate local n'a **pas** tourné sur le correctif (`commit-gate` est un `PreToolUse` qui lit
+`git diff --cached`, vide quand `git add && git commit` sont chaînés en un seul appel — cf.
+`LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS`). Sur ce chemin la CI est le
+seul gate, et ça change ce qu'un corps de PR a le droit de promettre.
+
 
 
 ### Lot 63 (2026-09-01) — une garde qui réduit deux dimensions à une mesure le mauvais objet

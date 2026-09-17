@@ -27,6 +27,26 @@
   convertiront tes avoirs, et l'app continuera d'afficher qu'ils viennent de toi.
   ⚠️ Tant que le taux vient du repli, un compte courtier en devise étrangère reste **nommé et non
   converti** : c'est délibéré — un montant faux et crédible serait pire que l'omission.
+- [ ] 👤 **[DÉPLOIEMENT — HUB-MCP-PERIME]** (2026-09-17) — **lance
+  `PROJECT_ID=financeai-497112 ./mcp/deploy.sh`.** Trois chiffres faux sur ta carte du hub partent
+  ensemble avec ce seul geste.
+  **PREUVE que le serveur servi est PÉRIMÉ, pas cassé** : ta capture du 17 sept. 17 h 38 affiche
+  encore le libellé daté « PLACEMENTS (SÉANCE DU 17 SEPTEMBRE) » et les métriques « Variation de la
+  séance » / « Variation 7 jours ». Ces trois choses ont été **supprimées du code** par la PR #983,
+  mergée le 2026-09-17 à 21:32 UTC. Un binaire qui les rend encore est donc antérieur.
+  **Ce que le redéploiement corrige** :
+  · **220 106 $** au lieu de **245 790 $** sous « Placements » (écart **25 684 $**) — total amputé
+    des titres à queue de chandelles périmée, corrigé par `[HUB-TOTAL-AMPUTE]` (PR #981) ;
+  · « −457,9 % sur 7 j » et « −110,6 % sur 7 j » — le hub dérive l'évolution 7 j de **chaque**
+    métrique, donc publier une variation lui faisait calculer une variation de variation
+    (`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`, PR #983) ;
+  · « pas encore d'historique » sous une valeur pourtant publiée — le hub indexe la série **par le
+    libellé**, et « Placements (16 sept.) » changeait de clé chaque séance (même PR).
+  ⚠️ La carte « Cohérence » ne peut pas le voir : elle compare ce que le hub déclare à ce que l'app
+  publie, et les deux lisent le **même** vieux serveur.
+  ⚠️ Rappel `[MCP-DEPLOY-SILENCIEUX]` : `deploy-mcp.yml` reste gardé par `vars.GCP_PROJECT_ID != ''`,
+  jamais satisfait — le job est `skipped` à chaque push, donc aucun push ne déploiera jamais le MCP
+  tant que la variable n'est pas posée dans les réglages du dépôt.
 - [ ] 👤 **[VÉRIF — FX-OBSERVATION-COHORTE]** (2026-09-17) — **une fois le déploiement passé, rouvre
   la carte « Taux de change » et clique « Réessayer maintenant » une dernière fois.**
   Attendu : le badge passe à **« Taux Banque du Canada »**, les chiffres deviennent **1,3947** (USD)

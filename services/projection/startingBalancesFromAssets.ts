@@ -43,6 +43,10 @@ export function derivePortfolioStartingBalances(
         accountType: a.accountType,
         dateBought: a.dateBought,
         purchases: getEffectivePurchases(a),
+        // [FUTUR-MOIS0-CLOTURE-SANS-AGE] Cf. le mapper jumeau de `usePastPortfolioHistory` : deux
+        // chemins vers la même reconstruction, donc DEUX mappers à compléter. N'en faire qu'un
+        // laisserait le moteur (et le MCP) sur l'ancien comportement, en silence.
+        priceUpdatedAt: a.priceUpdatedAt,
         priceHistory: (a.priceHistory || []).map((p) => ({ date: p.date, price: p.price })),
     }));
     const history = reconstructPortfolioHistory(minimal, fxRates ?? {});

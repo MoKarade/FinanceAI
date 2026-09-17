@@ -87,6 +87,10 @@ function toMinimal(asset: Asset, priceHistoryOverride?: Array<{ date: string; pr
         accountType: asset.accountType,
         dateBought: asset.dateBought,
         purchases: getEffectivePurchases(asset),
+        // [FUTUR-MOIS0-CLOTURE-SANS-AGE] Sans ce champ, « préférer une cotation FRAÎCHE à une
+        // clôture périmée » est INVÉRIFIABLE au dernier point : le correctif serait vert en test et
+        // INERTE en prod (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`).
+        priceUpdatedAt: asset.priceUpdatedAt,
         priceHistory: priceHistoryOverride
             ?? (asset.priceHistory || []).map((p) => ({ date: p.date, price: p.price })),
     };

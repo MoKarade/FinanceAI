@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]` LIVRÉ (version étroite)**
+> Le mois 0 du moteur préférait une CLÔTURE périmée à une COTATION fraîche : **231 849 $ contre
+> 245 687 $**, soit **−13 838 $ (−5,6 %)** au départ de toute projection.
+> ⚠️⚠️ **Le remède que j'avais écrit le matin même était FAUX** : borner la péremption à TOUTE date
+> aurait réécrit la courbe du PASSÉ au prix du jour. Pour une date passée, le dernier close connu
+> est la meilleure estimation. Livré au DERNIER point seulement, et un test verrouille que le passé
+> ne bouge pas.
+> ⚠️ La péremption se mesure contre AUJOURD'HUI, pas contre `t` : le dernier `t` est la fin du mois
+> courant (~30 j dans le futur), donc jugé depuis lui un close d'hier paraissait périmé. **Attrapé
+> par un contrôle négatif**, pas par une relecture.
+> ⚠️ Fraîcheur VÉRIFIÉE (`priceUpdatedAt`) : sans ça on remplace un chiffre vieux par un autre.
+> Champ neuf de `MinimalAsset` ⇒ **DEUX mappers** à compléter (hook + chemin état-pur/MCP).
+> ⚠️⚠️ **« Aucun golden n'a bougé » est EXPLIQUÉ** : aucun persona ni fixture ne porte
+> `priceUpdatedAt` (mesuré). Zéro rouge mesure l'absence de couverture. D'où une garde qui TRAVERSE
+> jusqu'au mois 0, perturbée sur le mapper.
+> ⏭️ Débloque `[FINTABLE-AUTORITE-PARTOUT]` étape 3, qui en dépendait.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-INVISIBLE-INFOBULLE]`**
 > Marc a d'abord signalé « un bug : −50 k au 01/07 ». Ce n'en était pas un — c'est son BAIL AUTO
 > (47 169 $) qui entre au bilan : une dette à `startDate` est retirée du patrimoine tant qu'elle n'a

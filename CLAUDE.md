@@ -2,7 +2,7 @@
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
 assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 112 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle). Tout en français.
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,

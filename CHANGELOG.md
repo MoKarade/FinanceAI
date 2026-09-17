@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-17 (ta projection ne démarre plus sur des cours périmés)
+
+- **Ton onglet Futur partait de 231 849 $ quand tes titres en valaient 245 687 $** — **13 838 $**
+  d'écart, au point de départ de TOUTES tes projections. La cause : pour le point « aujourd'hui »,
+  l'app préférait la dernière **clôture enregistrée** à la **cotation du jour**, même quand cette
+  clôture avait des semaines et que la cotation était fraîche.
+- **Ce qui change** : au dernier point seulement, une clôture de plus de 7 jours cède la place à la
+  cotation du jour — **à condition que celle-ci soit vraiment fraîche**, ce qui est désormais
+  vérifié et non supposé.
+- ⚠️ **Ton passé n'est pas réécrit**, et c'est le point le plus important. La correction « évidente »
+  aurait appliqué le prix d'aujourd'hui à des dates passées. Pour une date passée, le dernier cours
+  connu reste la bonne estimation. Un test verrouille ça.
+- **Effet de bord utile** : l'avertissement « partiellement estimé aux prix actuels » pouvait ne
+  jamais s'afficher, parce qu'un cours vieux de plusieurs années comptait comme un « vrai » cours.
+  Il se déclenche maintenant quand il doit.
+
+---
+
 ## [unreleased] — 2026-09-17 (la dette manquait à l'infobulle)
 
 - **Tu as demandé où était ta dette auto dans le passé : elle n'était nulle part.** La répartition

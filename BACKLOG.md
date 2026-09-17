@@ -1070,7 +1070,17 @@
   lit comme une vraie baisse de marché. `omittedKeys` est désormais exposé par `usePortfolioHistory`,
   mais `HistoryCoverageNote` ne liste que les symboles en QUEUE — jamais les dates amputées en
   milieu de série. Correctif : une note jumelle qui nomme ces dates.
-- [ ] 🟠 **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`** (M, money-critical, **MESURÉ le 2026-09-17**) — le
+- [x] 🟠 **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`** ✅ LIVRÉ le 2026-09-17, dans la version ÉTROITE
+  (dernier point seulement — le remède large aurait réécrit le passé au prix du jour, cf. plus bas).
+  La fraîcheur de la cotation est VÉRIFIÉE (`priceUpdatedAt`, transmis par les DEUX mappers), et un
+  prix substitué ne compte plus comme « vrai prix » : `coverage` baisse, donc l'avertissement
+  « partiellement estimé » peut enfin tirer. ⚠️ La péremption se mesure contre AUJOURD'HUI, jamais
+  contre `t` (le dernier `t` est la FIN du mois courant, donc jusqu'à ~30 j dans le futur — jugé
+  depuis lui, un close d'hier paraissait périmé). Attrapé par un contrôle négatif. ⚠️ **Aucun golden
+  n'a bougé, et c'est EXPLIQUÉ** : mesuré, aucun persona ni fixture du dépôt ne porte
+  `priceUpdatedAt` — zéro rouge mesure l'absence de COUVERTURE, pas l'absence d'effet. D'où une
+  garde qui TRAVERSE jusqu'au mois 0. Détail historique ci-dessous.
+- [ ] 🟠 ~~`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`~~ *(entrée d'origine, conservée pour son historique)* (M, money-critical, **MESURÉ le 2026-09-17**) — le
   mois 0 de la projection (`reconstructPortfolioHistory` → `deriveStartingBalancesFromHistory` →
   `liveCSVBalances`) appelle `priceAt(a, t)` **sans `maxStaleDays`**, là où `buildMarketData` passe
   **7**. C'est le seul écran du dépôt qui accepte une clôture d'un âge QUELCONQUE comme valeur du

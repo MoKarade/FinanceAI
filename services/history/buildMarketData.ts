@@ -41,6 +41,7 @@
 import type { Asset, RegisteredAccountType } from '../../types';
 import type { MarketDataPoint } from '../finance';
 import { holdingsAt, priceAt, type MinimalAsset } from './reconstructPortfolioHistory';
+import { STALE_PRICE_DAYS } from './reconstructPortfolioHistory';
 import { toCurrencyFactor } from '../portfolio';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 
@@ -142,8 +143,9 @@ export function datesAmputeesDepuis(omittedKeys: ReadonlySet<string>): Set<strin
     return dates;
 }
 
-/** Au-delà de ce retard entre le dernier close connu et la date t, le prix est PÉRIMÉ (pas de forward-fill). */
-const STALE_PRICE_DAYS = 7;
+// [FUTUR-MOIS0-CLOTURE-SANS-AGE] `STALE_PRICE_DAYS` est désormais IMPORTÉ de
+// `reconstructPortfolioHistory`, où vit `priceAt` qui l'applique : la valeur était écrite deux fois,
+// et deux constantes qui doivent être égales finissent par diverger.
 /** Tolérance avant de déclarer un historique « partiel » vs le 1er achat (week-ends/fériés). */
 const PARTIAL_WINDOW_TOLERANCE_DAYS = 7;
 

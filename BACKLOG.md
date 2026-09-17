@@ -967,11 +967,29 @@
   (1 rouge chacune, le bon).
   ⚠️ **Conséquence visible** : tant qu'un titre manque, la carte du hub perd ses trois lignes de
   placements. C'est l'arbitrage des trois autres refus — on publie MOINS, jamais autre chose.
+- [ ] 🟡 **`[HUB-REFUS-4-SANS-DIAGNOSTIC]`** (XS, **DÉCOUVERT au panel du 2026-09-17**) — quand le
+  refus 4 s'active, la carte du hub perd ses trois lignes de placements sans dire QUEL titre est en
+  cause ni depuis quand. L'app le dit déjà (`HistoryCoverageNote` depuis `staleTailSymbols`), le hub
+  non. Piste : publier le ou les symboles responsables dans `details`, le champ qui porte déjà la
+  fraîcheur décomposée. Un silence actionnable vaut mieux qu'un silence mystérieux.
+- [ ] 🟡 **`[HIST-CREUX-EN-MILIEU-DE-SERIE]`** (S, **DÉCOUVERT au panel du 2026-09-17**) — les graphes
+  « Performance comparée » et « Évolution détaillée » peuvent afficher un CREUX à une date
+  intermédiaire (trou > 7 j dans l'historique d'un titre au milieu de la série), que l'utilisateur
+  lit comme une vraie baisse de marché. `omittedKeys` est désormais exposé par `usePortfolioHistory`,
+  mais `HistoryCoverageNote` ne liste que les symboles en QUEUE — jamais les dates amputées en
+  milieu de série. Correctif : une note jumelle qui nomme ces dates.
 - [ ] 🟠 **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`** (M, money-critical, **MESURÉ le 2026-09-17**) — le
   mois 0 de la projection (`reconstructPortfolioHistory` → `deriveStartingBalancesFromHistory` →
   `liveCSVBalances`) appelle `priceAt(a, t)` **sans `maxStaleDays`**, là où `buildMarketData` passe
   **7**. C'est le seul écran du dépôt qui accepte une clôture d'un âge QUELCONQUE comme valeur du
   jour, et il ne retombe sur `currentPrice` que si le titre n'a AUCUN historique. Mesuré sur l'état
+  ⚠️⚠️ **Enrichi par le panel du 2026-09-17** : le défaut n'est pas seulement le prix périmé, c'est
+  que **rien ne le signale**. `priceAt` sans borne rend `histPrice !== null` même pour un close
+  vieux de plusieurs années, donc cette valeur compte dans `valueWithRealPrice` et **`coverage`
+  reste ≈ 1,0** — l'avertissement « partiellement estimé aux prix actuels » (affiché sous
+  `coverage < 0,99`) ne tire JAMAIS. Le cas RARE (aucun historique) est couvert, le cas COURANT (flux
+  de prix interrompu) est traité comme sain. Même défaut dans `reconstructPortfolioHistoryDaily`,
+  qui alimente le patrimoine net du PASSÉ à l'écran.
   réel : Futur au 17/09 = **231 849 $** de placements contre **245 687 $** de titres au prix live,
   soit **−13 838 $ (−5,6 %)** au point de départ de toute la projection. ⚠️ Le correctif re-basera
   des goldens (il déplace le mois 0) : plan-first. ⚠️ Et il faut décider ce que devient un titre

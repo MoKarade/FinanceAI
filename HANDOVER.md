@@ -25,6 +25,15 @@
 > 🔎 **Découverte de chemin** : `Disnat (L7B1)` est en **USD** chez Fintable (`$` vs `C$`) — le compte
 > nommé en commentaire dans `brokerBalances.ts`. Écarté faute de taux à la dernière synchro (antérieure
 > au correctif FX) ⇒ panier NON-ENREG amputé ⇒ autorité courtier NON appliquée.
+> ⚠️⚠️ **2ᵉ passe — le panel a battu le gate ET la CI, 6ᵉ lot d'affilée.** (a) Mon inventaire couvrait
+> **2 chemins sur 3** pendant que le commit affirmait « les DEUX chemins sont tracés » : le manquant
+> est qu'un titre SANS historique n'entre au TOTAL que s'il est détenu AUJOURD'HUI — vendu, il
+> compte zéro sur TOUT son passé. (b) Même amputation chez un consommateur VIVANT et visible :
+> `useNetWorthVariation` (tuile « Variation 30 j » du bandeau Futur) sommait les buckets `TOTAL_*`
+> aux deux bornes sans lire l'inventaire. Dépendance rendue **REQUISE** (compilateur → 4 sites).
+> (c) Codec `[date, symbole]` extrait en source unique (`encodeOmittedKey` / `datesAmputeesDepuis`).
+> 📏 3 perturbations séparées de plus, 1 rouge chacune ; contrôles négatifs partout (portefeuille
+> sain → 0 omission ; date amputée hors des bornes → tuile publiée).
 > ⏭️ **Suite chiffrée et NON faite** : `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` — le mois 0 appelle
 > `priceAt(a, t)` **sans `maxStaleDays`** (seul écran du dépôt dans ce cas) ⇒ **−13 838 $ (−5,6 %)**
 > au point de départ de la projection. Re-basera des goldens ⇒ plan-first.

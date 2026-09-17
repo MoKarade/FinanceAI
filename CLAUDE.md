@@ -2,7 +2,7 @@
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
 assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 112 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +3 refus du total amputé). Tout en français.
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1094,7 +1094,17 @@ n'est pas réécrire un récit.
   `lastAxisDate`, jamais à la borne passée) : avant de brancher une liste, vérifier sa portée, pas
   seulement son existence. ⚠️ Deux chemins vers le même effet (queue périmée, valeur non finie) : en
   tracer un seul laisse le compteur à zéro sur l'autre. ⚠️ Remède = le REFUS, pas un meilleur nombre
-  (`UN-INVENTAIRE-N-EST-UNE-PROTECTION-QUE-POUR-QUI-LE-LIT`).
+  ⚠️⚠️ **Et le panel a trouvé, APRÈS gate vert ET CI verte, que mon inventaire en couvrait DEUX
+  chemins sur TROIS** — pendant que mon message de commit affirmait « les DEUX chemins sont
+  tracés ». Le manquant est le plus discret : un titre SANS historique n'est admis au TOTAL que
+  s'il est détenu AUJOURD'HUI, donc un titre VENDU depuis contribue zéro à **tout son passé**, y
+  compris les dates où il était détenu. Écrire « les deux chemins » au lieu de les COMPTER est la
+  même faute que l'inventaire corrige. ⚠️ Le panel a aussi trouvé la même amputation chez un
+  consommateur vivant et VISIBLE : la tuile « Variation 30 j » du bandeau Futur
+  (`useNetWorthVariation`) sommait les buckets `TOTAL_*` aux deux bornes sans jamais lire
+  l'inventaire — la dépendance a donc été rendue **REQUISE** et placée avant les paramètres à
+  défaut, pour que le compilateur énumère les sites au lieu de laisser la production reprendre la
+  version muette (`UN-INVENTAIRE-N-EST-UNE-PROTECTION-QUE-POUR-QUI-LE-LIT`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

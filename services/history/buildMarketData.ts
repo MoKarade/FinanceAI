@@ -110,6 +110,38 @@ interface BuildMarketDataResult {
     omittedKeys: Set<string>;
 }
 
+/**
+ * [HUB-TOTAL-AMPUTE] Codec de `omittedKeys`. SOURCE UNIQUE des deux bouts.
+ *
+ * ⚠️ Le format était encodé ici et décodé dans `portfolioSessionMetrics.ts`, sans rien pour les
+ * tenir ensemble : ajouter un 3ᵉ élément au tuple aurait laissé le décodeur lire `[date]` et
+ * ignorer le reste EN SILENCE (`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`).
+ * ⚠️ `syntheticTailKeys` garde SON propre `JSON.stringify` : c'est un autre inventaire, avec
+ * d'autres consommateurs — les fusionner ferait dépendre deux contrats l'un de l'autre.
+ */
+export const encodeOmittedKey = (date: string, symbol: string): string => JSON.stringify([date, symbol]);
+
+/**
+ * Dates dont le `TOTAL` est AMPUTÉ d'au moins un titre détenu.
+ *
+ * Rend `null` si une clé est illisible : on ne peut plus affirmer qu'AUCUNE date ne l'est, et
+ * supposer « sain » est exactement ce que cet inventaire existe pour empêcher. L'appelant décide
+ * quoi faire d'un `null` (les deux le traitent comme un refus).
+ */
+export function datesAmputeesDepuis(omittedKeys: ReadonlySet<string>): Set<string> | null {
+    const dates = new Set<string>();
+    for (const cle of omittedKeys) {
+        try {
+            const [date] = JSON.parse(cle) as [string, string];
+            if (typeof date !== 'string' || !date) return null;
+            dates.add(date);
+        } catch {
+            return null;
+        }
+    }
+    return dates;
+}
+
 /** Au-delà de ce retard entre le dernier close connu et la date t, le prix est PÉRIMÉ (pas de forward-fill). */
 const STALE_PRICE_DAYS = 7;
 /** Tolérance avant de déclarer un historique « partiel » vs le 1er achat (week-ends/fériés). */
@@ -187,6 +219,9 @@ export function buildMarketData(
     }
     const withHistory: HistEntry[] = [];
     const flatOnly: Array<{ minimal: MinimalAsset; firstPurchase: string | null }> = [];
+    /** [HUB-TOTAL-AMPUTE] Titres sans historique ÉCARTÉS du TOTAL : leur détention passée est
+     *  quand même relue date par date, pour que leur absence soit TRACÉE et non subie. */
+    const flatExclus: Array<{ minimal: MinimalAsset }> = [];
     const noHistoryValue = new Map<string, number>(); // agrégé par symbole (multi-comptes)
     const partialHistorySymbols: BuildMarketDataResult['partialHistorySymbols'] = [];
     for (const a of held) {
@@ -215,6 +250,15 @@ export function buildMarketData(
             noHistoryValue.set(a.symbol,
                 (noHistoryValue.get(a.symbol) ?? 0) + (Number.isFinite(flatValue) ? flatValue : 0));
             if (Number.isFinite(flatValue) && flatValue > 0) flatOnly.push({ minimal, firstPurchase });
+            // [HUB-TOTAL-AMPUTE — panel] TROISIÈME chemin d'amputation, et le plus discret : ce
+            // titre n'a AUCUN historique, et son admission au TOTAL se décide sur sa détention
+            // D'AUJOURD'HUI (`qtyNow`) et son prix COURANT. Écarté ici, il contribue zéro à TOUTES
+            // les dates — y compris celles où il était bel et bien détenu (titre vendu depuis, ou
+            // `currentPrice` invalide). C'est la même « disparition lue comme une variation » que
+            // ce lot ferme pour les titres AVEC historique, et mon premier jet ne la traçait pas :
+            // le commentaire « les DEUX chemins sont tracés » en comptait deux sur trois
+            // (`UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-RECOMMET`).
+            else flatExclus.push({ minimal });
             continue;
         }
         const historyStart = hist.reduce((min, p) => (p.date < min ? p.date : min), hist[0].date);
@@ -294,7 +338,7 @@ export function buildMarketData(
                     // [HUB-TOTAL-AMPUTE] `staleTailSymbols` ne parle QUE de `lastAxisDate` ; ce
                     // `continue` ampute le TOTAL à N'IMPORTE QUELLE date, y compris la borne passée
                     // d'une variation 7 jours. On trace donc l'omission à sa date.
-                    omittedKeys.add(JSON.stringify([t, minimal.symbol]));
+                    omittedKeys.add(encodeOmittedKey(t, minimal.symbol));
                     continue;
                 }
             }
@@ -302,7 +346,7 @@ export function buildMarketData(
             if (!Number.isFinite(valueCad)) {
                 // [HUB-TOTAL-AMPUTE] Second chemin vers le MÊME effet : le titre est détenu et ne
                 // compte pas. Un inventaire qui n'en couvre qu'un des deux se lit « rien à signaler ».
-                omittedKeys.add(JSON.stringify([t, minimal.symbol]));
+                omittedKeys.add(encodeOmittedKey(t, minimal.symbol));
                 continue;
             }
             const v = Number(valueCad.toFixed(2));
@@ -317,10 +361,19 @@ export function buildMarketData(
             const qty = holdingsAt(minimal, t);
             if (qty <= 0) continue;
             const valueCad = qty * minimal.currentPrice * toCurrencyFactor(fxRates, minimal.currency);
-            if (!Number.isFinite(valueCad) || valueCad <= 0) continue;
+            if (!Number.isFinite(valueCad) || valueCad <= 0) {
+                // Détenu à cette date et ne comptant pas : même effet que les deux autres chemins.
+                omittedKeys.add(encodeOmittedKey(t, minimal.symbol));
+                continue;
+            }
             const v = Number(valueCad.toFixed(2));
             total += v;
             buckets[BUCKET_OF[minimal.accountType ?? 'NON-ENREG']] += v;
+        }
+        // [HUB-TOTAL-AMPUTE — panel] Les écartés : détenus à `t`, absents du TOTAL, donc tracés.
+        // `qty <= 0` n'est PAS une amputation — le titre n'était simplement pas détenu ce jour-là.
+        for (const { minimal } of flatExclus) {
+            if (holdingsAt(minimal, t) > 0) omittedKeys.add(encodeOmittedKey(t, minimal.symbol));
         }
         for (const [k, v] of Object.entries(bySymbol)) row[k] = Number(v.toFixed(2));
         for (const [k, v] of Object.entries(buckets)) {

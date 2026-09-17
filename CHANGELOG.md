@@ -22,6 +22,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   du tout** ses trois lignes de placements, au lieu d'afficher un montant faux. L'app, elle, te
   nomme les titres concernés sur l'écran Investissements. Mieux vaut une case vide qu'un chiffre
   auquel tu ne peux pas te fier.
+- **Le panel a trouvé le même défaut dans l'app, pas seulement au hub.** La tuile « Variation 30 j »
+  du bandeau Futur comparait elle aussi deux totaux qui ne comptaient pas les mêmes titres : un titre
+  qui disparaît puis réapparaît y fabriquait un gain ou une perte de 30 jours, sans le moindre
+  signal. Elle se tait désormais plutôt que de mentir.
+- **Et mon premier correctif ne couvrait que deux cas sur trois.** Le troisième est le plus
+  discret : un titre sans historique de cours n'entrait dans le total que s'il était détenu
+  *aujourd'hui* — donc un titre que tu as vendu comptait pour zéro sur **tout son passé**.
 - ⚠️ **Ce qui reste** : l'écart du Futur (**−13 838 $**) a une autre cause — cet écran accepte une
   clôture de n'importe quel âge comme valeur du jour. C'est noté, chiffré, et ça touche le point de
   départ de toute ta projection : je te le présenterai avant d'y toucher.

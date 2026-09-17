@@ -30,6 +30,10 @@ interface UsePortfolioHistoryResult {
     partialHistorySymbols: Array<{ symbol: string; historyStart: string }>;
     /** Symboles à queue d'historique PÉRIMÉE sans quote fraîche : absents du total des derniers jours. */
     staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
+    /** [HUB-TOTAL-AMPUTE] Clés `[date, symbole]` d'un titre DÉTENU absent du `TOTAL` de cette date.
+     *  À TOUTE date, contrairement à `staleTailSymbols` qui ne couvre que la dernière — donc le
+     *  seul inventaire utilisable par un consommateur qui compare DEUX dates. */
+    omittedKeys: Set<string>;
     /** [PERF-STALE-TAIL-ZERO] Clés `JSON.stringify([date, symbol])` raccordées au prix courant (candles
      *  KO, quote fraîche) → `seriesReturnPct` rend « — » plutôt qu'un 0 % trompeur si latest ET baseline
      *  le sont. Sérialisation JSON (pas `date|symbol`) : un symbole manuel peut contenir « | ». */
@@ -52,10 +56,17 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 partialHistorySymbols: [],
                 staleTailSymbols: [],
                 syntheticTailKeys: new Set(),
+                omittedKeys: new Set(),
             };
         }
-        const { rows, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys } = buildMarketData(assets, fxRates as Record<string, number>);
-        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys };
+        // [HUB-TOTAL-AMPUTE] `omittedKeys` est EXPOSÉ : un inventaire que le hook garde pour lui
+        // ne protège personne — c'est le défaut exact que ce lot a trouvé un étage plus haut
+        // (`UN-INVENTAIRE-N-EST-UNE-PROTECTION-QUE-POUR-QUI-LE-LIT`). ⚠️ Ici `buildMarketData` est
+        // appelé SANS `maxPoints`, donc `rows` est décimé (500 points) alors que `omittedKeys` ne
+        // l'est pas : c'est sans danger, l'inventaire reste un SUR-ensemble des dates des lignes
+        // (`downsample` ne fait que SÉLECTIONNER des lignes existantes, il n'en fabrique aucune).
+        const { rows, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys, omittedKeys } = buildMarketData(assets, fxRates as Record<string, number>);
+        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys, omittedKeys };
     }, [isTestMode, assets, initialBalances, fxRates]);
 
     return result;

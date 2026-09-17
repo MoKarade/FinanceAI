@@ -65,7 +65,7 @@
 // (`maxPoints: Number.POSITIVE_INFINITY`). Un test verrouille ce point précis.
 
 import type { Asset } from '../../types';
-import { buildMarketData } from './buildMarketData';
+import { buildMarketData, datesAmputeesDepuis } from './buildMarketData';
 import { seriesReturnEndpoints } from './periodReturn';
 
 /** Clé de la série TOTALE (valeur du portefeuille en CAD) dans les lignes de `buildMarketData`. */
@@ -119,19 +119,11 @@ export function computePortfolioSessionMetrics(
     });
 
     // [HUB-TOTAL-AMPUTE] Dates dont le TOTAL est AMPUTÉ d'au moins un titre détenu (cf. refus 4).
-    // `omittedKeys` porte `[date, symbole]` ; ici seule la DATE compte — qui manque se lit dans
-    // `staleTailSymbols`, que la bannière de l'app affiche déjà.
-    const datesAmputees = new Set<string>();
-    for (const cle of omittedKeys) {
-        try {
-            const [date] = JSON.parse(cle) as [string, string];
-            if (typeof date === 'string' && date) datesAmputees.add(date);
-        } catch {
-            // Une clé illisible ne doit pas faire passer une date amputée pour saine : on ne peut
-            // pas la rattacher à une date, donc on ne peut plus affirmer qu'AUCUNE ne l'est.
-            return null;
-        }
-    }
+    // Le décodage vit avec l'encodage (`datesAmputeesDepuis`), sinon un changement de format d'un
+    // côté casse l'autre en silence. `null` = au moins une clé illisible ⇒ on ne peut plus
+    // affirmer qu'aucune date n'est amputée ⇒ refus, jamais « supposé sain ».
+    const datesAmputees = datesAmputeesDepuis(omittedKeys);
+    if (datesAmputees === null) return null;
 
     // Refus 1 — pas de quoi parler de variation.
     if (rows.length < 2) return null;

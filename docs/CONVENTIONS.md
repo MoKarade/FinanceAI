@@ -14388,6 +14388,21 @@ faux ; on publie MOINS. La carte perd ses trois lignes de placements tant qu'un 
 l'app, elle, nomme les titres fautifs par `staleTailSymbols`. Même arbitrage que les trois refus
 existants, écrit à côté d'eux.
 
+⚠️⚠️ **Et le panel, APRÈS gate vert ET CI verte, a montré que mon inventaire couvrait DEUX chemins
+sur TROIS** — pendant que mon message de commit affirmait « les DEUX chemins d'omission sont tracés ».
+Le manquant est le plus discret : un titre SANS aucun historique n'est admis au TOTAL que s'il est
+détenu **aujourd'hui** (`qtyNow > 0`) ; vendu depuis, il contribue zéro à **toutes** les dates, y
+compris celles où il était détenu. **Écrire « les deux chemins » au lieu de les COMPTER est la faute
+même que l'inventaire corrige** — un compteur à zéro sur un chemin non tracé se lit « rien à
+signaler ». La parade est mécanique : chaque `continue` d'une boucle qui construit un agrégat est un
+chemin d'amputation candidat ; on les ÉNUMÈRE, on ne les résume pas.
+
+⚠️ **Le même défaut vivait chez un consommateur VISIBLE, pas seulement au hub** : `useNetWorthVariation`
+(tuile « Variation 30 j » du bandeau Futur) sommait les buckets `TOTAL_*` aux deux bornes d'une
+fenêtre glissante sans jamais lire l'inventaire. La dépendance a donc été rendue **REQUISE** et
+placée AVANT les paramètres à défaut — optionnelle, la production aurait pu l'oublier et reprendre
+la version muette en silence ; requise, le compilateur énumère les sites (4 ici).
+
 ⚠️ **Découverte de chemin, pas du lot** : `Disnat (L7B1)` est libellé **en USD** dans Fintable (`$`
 contre `C$` pour les comptes canadiens) — le compte que le code nomme déjà en commentaire
 (« 72 040 USD deviendraient 72 040 CAD, faux d'environ 30 % »). Comme la dernière synchro Fintable

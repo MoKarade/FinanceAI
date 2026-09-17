@@ -973,6 +973,17 @@
   bail auto). ✅ Ligne « Dettes (hors hypothèque) » signée, conditionnelle ; dérivation extraite du
   « Détail complet » et PARTAGÉE (`detteReductrice`), par soustraction `Σ actifs − NetWorth` et non
   depuis `DettesNonImmo` (pas publié sur toutes les courbes). 3 gardes dont 2 contrôles négatifs.
+- [ ] 🟠 **`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`** (S, signalé par Marc 2026-09-17, capture) — les
+  sparklines de la carte hub affichent **« −430,6 % sur 7 j »** sous « Variation de la séance » et
+  **« −908,4 % sur 7 j »** sous « Variation 7 jours ». Ce sont des variations **d'une variation** :
+  une grandeur qui change de SIGNE n'a pas de pourcentage d'évolution qui veuille dire quelque chose
+  (diviser par une base proche de zéro, ou négative, produit ces nombres). Même famille que
+  `UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE` : le chiffre n'est pas faux, il est **inexploitable**.
+  ⚠️ Recenser d'abord QUELLES métriques sont des variations (donc sans % d'évolution légitime) et
+  lesquelles sont des NIVEAUX (où le % a un sens) — la correction est probablement de ne pas publier
+  de `trend` pour les premières, pas de borner l'affichage. ⚠️ La même carte affiche « pas encore
+  d'historique » sous Placements **tout en publiant une valeur** : à trancher dans le même lot.
+
 - [ ] 🔴 **`[FINTABLE-AUTORITE-PARTOUT]`** (L, money-critical, **DEMANDE MARC 2026-09-17**) —
   « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce soit la valeur
   Fintable, car la plus fiable ». Aujourd'hui QUATRE producteurs répondent à « combien valent mes

@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-17 (suite) — **`[DEBT-BAIL-PASSE-PLAT]` + `[PASSE-JOUR-CLOTURE-PERIMEE]`**
+> Deux défauts signalés par Marc à l'écran, deux producteurs oubliés.
+> 🔎 **La dette figée dans le passé** : `KIND_AMORTISSANT['auto-lease'] = false` refusait d'amortir un
+> bail, pendant que la boucle du FUTUR amortit toute dette active **sans lire `kind`**. Sa seule dette
+> est un bail à **47 169 $ et 0 %** (mesuré MCP) ⇒ plate derrière, décroissante devant.
+> ✅ Nouvelle famille `KIND_VERSEMENTS_FIXES` + forme **LINÉAIRE** : `solde(t) = solde + versement ×
+> mois`. Ancrée sur deux faits SAISIS, aucun `originalBalance` requis (le champ est caché pour un bail
+> — la précondition était inatteignable). Taux non nul ⇒ **refus nommé**, jamais une courbe plausible.
+> ⚠️ La justification d'origine était juste, et périmée par **mon propre lot du 14/09** qui a fait du
+> solde une « somme des versements restants ».
+> 🔎 **« prix J−55 »** : le correctif du matin ne touchait que la boucle MENSUELLE ; la courbe au JOUR
+> gardait ses clôtures périmées (**233 618 $** contre **245 771 $**). Source unique
+> `cotationFraicheSubstituable` appelée par les DEUX producteurs.
+> ⚠️ L'écart de fraîcheur est en valeur ABSOLUE : signé, il réécrivait une fenêtre historique au prix
+> du jour.
+> 📏 99 tests verts sur la surface ; perturbations SÉPARÉES (famille du bail → 8 rouges ; substitution
+> quotidienne débranchée → 1 ; `Math.abs` retiré → 1, l'autre). Test de limite INVERSÉ en place.
+>
 > ## ✅ Session 2026-09-17 (suite) — **PR #981 FUSIONNÉE (`b7634f46`) et DÉPLOYÉE**
 > Six lots d'un coup (`[HUB-TOTAL-AMPUTE]`, revue panel, `[FINTABLE-AUTORITE-PARTOUT]` étape 0,
 > `[DETTE-INVISIBLE-INFOBULLE]`, `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`, `[HUB-REFUS-4-SANS-DIAGNOSTIC]`).

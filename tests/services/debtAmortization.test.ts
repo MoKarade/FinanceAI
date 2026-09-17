@@ -10,7 +10,8 @@
 //   3. elle décroît, et le recalage reste dans une bande plausible.
 import { describe, it, expect } from 'vitest';
 import {
-    amortirDettePassee, KIND_AMORTISSANT, RECALAGE_MIN, RECALAGE_MAX,
+    amortirDettePassee, supplementAmortiAuMoisAbsolu,
+    KIND_AMORTISSANT, KIND_VERSEMENTS_FIXES, RECALAGE_MIN, RECALAGE_MAX,
     type EntreeAmortissement, type ResultatAmortissement, type CauseNonAmortissable,
 } from '../../services/projection/debtAmortization';
 import { DEBT_KINDS } from '../../types';
@@ -44,13 +45,25 @@ describe('[DEBT-AMORTIZATION] la table des types amortissants force une décisio
         }
     });
 
-    it('un BAIL et les révolvants ne s\'amortissent pas — c\'est le cas réel de Marc', () => {
-        // `auto-lease` : un bail est un loyer sur un terme, pas un solde qui fond. `heloc`,
-        // `margin`, `credit-card` : le solde monte et descend au gré de l'usage.
-        for (const k of ['auto-lease', 'heloc', 'margin', 'credit-card', 'other'] as const) {
+    it('les RÉVOLVANTS ne s\'amortissent pas — et le BAIL a changé de famille, pas disparu', () => {
+        // ⚠️ TEST DE LIMITE INVERSÉ (2026-09-17, `UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+        // Il s'intitulait « un BAIL et les révolvants ne s'amortissent pas — c'est le cas réel de
+        // Marc » et exigeait `kind-non-amortissant` pour `auto-lease`. Marc : « la dette ça marche
+        // pas, ça devrait diminuer avec ce que je paie chaque semaine ; pour tout mon passé elle
+        // est à la même valeur, elle diminue que dans mon futur ». Le constat était exact et
+        // l'asymétrie mesurable : le FUTUR amortit sans lire `kind`. Le bail n'a pas cessé d'être
+        // un bail — il est passé à la forme LINÉAIRE (`KIND_VERSEMENTS_FIXES`), qui décrit ce que
+        // son solde est vraiment devenu : une somme de versements restants, à taux nul.
+        // Ce qui reste vrai des révolvants n'a pas bougé d'un iota, et c'est tout l'objet de garder
+        // l'assertion ICI plutôt que de la supprimer.
+        for (const k of ['heloc', 'margin', 'credit-card', 'other'] as const) {
             expect(KIND_AMORTISSANT[k], k).toBe(false);
+            expect(KIND_VERSEMENTS_FIXES[k], k).toBe(false);
             refus(amortirDettePassee(pret({ kind: k }), AUJOURDHUI), 'kind-non-amortissant');
         }
+        // Le bail : hors de la famille « amorti par intérêt », DANS la famille « versements fixes ».
+        expect(KIND_AMORTISSANT['auto-lease']).toBe(false);
+        expect(KIND_VERSEMENTS_FIXES['auto-lease']).toBe(true);
         // Contre-témoin : sans lui, une table entièrement à `false` passerait ce test.
         for (const k of ['mortgage', 'auto', 'student-federal', 'student-quebec', 'personal', 'spouse-loan'] as const) {
             expect(KIND_AMORTISSANT[k], k).toBe(true);
@@ -194,5 +207,101 @@ describe('[DEBT-AMORTIZATION] la courbe rendue', () => {
         const r = amortirDettePassee(pret({ originalBalance: 20000, balance: 20000, interestRate: 12, minimumPayment: 100 }), AUJOURDHUI);
         expect(r.forme).toBe('inapplicable');
         if (r.forme === 'inapplicable') expect(r.cause).toBe('jamais-decroissant');
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// [DEBT-BAIL-PASSE-PLAT] Le bail à VERSEMENTS FIXES — demande de Marc du 2026-09-17.
+//
+// Le défaut, mesuré dans le code des deux côtés : la boucle du FUTUR (`services/projection.ts`,
+// bloc « DETTES ») amortit toute dette active SANS lire `kind` ; le PASSÉ refusait `auto-lease`.
+// Sa seule dette réelle est un bail à 47 169 $ et **0 %** (mesuré par le MCP le 2026-09-17), donc
+// il voyait une dette parfaitement plate derrière lui et décroissante devant.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Bail auto tel que Marc le saisit : solde = somme des versements RESTANTS, taux 0, versement réel. */
+const bail = (o: Partial<EntreeAmortissement> = {}): EntreeAmortissement => ({
+    balance: 47169,
+    interestRate: 0,
+    minimumPayment: 1016.90,
+    startDate: '2026-07-20',
+    kind: 'auto-lease',
+    ...o,
+});
+
+describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dans le passé', () => {
+    it('les deux familles sont DISJOINTES — une dette ne peut pas avoir deux réponses', () => {
+        // Sans ça, `amortirDettePassee` aurait deux formes possibles pour le même `kind` et
+        // l'aiguillage deviendrait un ordre de lignes, pas une décision.
+        for (const k of DEBT_KINDS) {
+            expect(typeof KIND_VERSEMENTS_FIXES[k], `type non tranché : ${k}`).toBe('boolean');
+            expect(KIND_AMORTISSANT[k] && KIND_VERSEMENTS_FIXES[k], `${k} dans les DEUX familles`).toBe(false);
+        }
+        // Anti-vacuité : la disjonction serait trivialement vraie d'une table entièrement à `false`.
+        expect(DEBT_KINDS.filter(k => KIND_VERSEMENTS_FIXES[k]).length).toBeGreaterThan(0);
+    });
+
+    it('la série remonte d\'EXACTEMENT un versement par mois et atterrit sur le solde réel', () => {
+        // ⚠️ DISCRIMINANT : sur le code d'avant, ce cas rendait `kind-non-amortissant`.
+        const r = amortirDettePassee(bail(), AUJOURDHUI);
+        if (r.forme !== 'ok') throw new Error(`bail refusé : ${r.cause}`);
+        // Début en juillet 2026, « aujourd'hui » en septembre 2026 ⇒ 3 points (juillet, août, sept.).
+        expect(r.premierMoisAbsolu).toBe(mois(2026, 6));
+        expect(r.soldes).toHaveLength(3);
+        // L'ANCRE : le dernier point vaut le solde saisi, au centime.
+        expect(r.soldes[r.soldes.length - 1]).toBe(47169);
+        // La PENTE : un versement par mois, ni plus ni moins. C'est la relation, pas une valeur de
+        // fixture — elle survit à tout changement de solde ou de date.
+        for (let k = 1; k < r.soldes.length; k++) {
+            expect(r.soldes[k - 1] - r.soldes[k]).toBeCloseTo(1016.90, 6);
+        }
+        // Rien n'est RECALÉ : le versement saisi est exactement celui qui sert.
+        expect(r.facteurRecalage).toBe(1);
+        expect(r.paiementResolu).toBe(1016.90);
+    });
+
+    it('le PASSÉ et le FUTUR décrivent le même bail — même pas, en sens inverse', () => {
+        // Le moteur fait `balance + intérêt − paiement` avec intérêt = 0, donc −paiement par mois.
+        // Le passé doit remonter du MÊME pas : sinon la courbe fait une marche au raccord.
+        const r = amortirDettePassee(bail(), AUJOURDHUI);
+        if (r.forme !== 'ok') throw new Error('bail refusé');
+        const pasPasse = r.soldes[r.soldes.length - 2] - r.soldes[r.soldes.length - 1];
+        const pasFutur = Math.max(1016.90, 0 + 47169 / 300); // `effectiveMinimum` du moteur, taux nul
+        expect(pasPasse).toBeCloseTo(pasFutur, 6);
+    });
+
+    it('un taux NON NUL est REFUSÉ — on ne sait plus ce que le solde contient', () => {
+        // Contrôle NÉGATIF, et c'est la garde qui compte le plus : écrire le taux du contrat sur un
+        // solde tout-compris comptait l'intérêt DEUX fois (+7 423 $ mesurés le 2026-09-14). Une
+        // courbe plausible et fausse est pire que pas de courbe.
+        refus(amortirDettePassee(bail({ interestRate: 6.59 }), AUJOURDHUI), 'taux-sur-solde-tout-compris');
+    });
+
+    it('sans date de début ou sans versement, on REFUSE au lieu de deviner', () => {
+        refus(amortirDettePassee(bail({ startDate: undefined }), AUJOURDHUI), 'donnees-manquantes');
+        refus(amortirDettePassee(bail({ minimumPayment: undefined }), AUJOURDHUI), 'donnees-manquantes');
+        refus(amortirDettePassee(bail({ interestRate: undefined }), AUJOURDHUI), 'donnees-manquantes');
+        // Un versement PRÉSENT mais hors domaine est une corruption, pas une absence.
+        refus(amortirDettePassee(bail({ minimumPayment: 0 }), AUJOURDHUI), 'donnees-invalides');
+    });
+
+    it('après la fin du terme, le résiduel reste PLAT — aucun versement fantôme', () => {
+        // Même règle que la forme par intérêt et que le moteur : on cesse de payer, on n'efface pas.
+        const r = amortirDettePassee(bail({ startDate: '2022-01-15', termEndDate: '2025-01-15' }), AUJOURDHUI);
+        if (r.forme !== 'ok') throw new Error(`bail à terme échu refusé : ${r.cause}`);
+        const finTerme = mois(2025, 0) - r.premierMoisAbsolu;
+        for (let k = finTerme; k < r.soldes.length; k++) expect(r.soldes[k]).toBe(47169);
+        // Anti-vacuité : il reste bien des mois après le terme, et la partie AVANT décroît vraiment.
+        expect(r.soldes.length - 1 - finTerme).toBeGreaterThan(12);
+        expect(r.soldes[0]).toBeGreaterThan(47169);
+    });
+
+    it('le SUPPLÉMENT rendu aux registres du passé vaut un versement au mois précédent', () => {
+        // La garde qui TRAVERSE : ce que les deux registres du passé consomment réellement, pas la
+        // série interne. Un supplément nul ici voudrait dire « la correction n'atteint pas l'écran ».
+        const supp = supplementAmortiAuMoisAbsolu([{ ...bail(), id: 'bail', name: 'bZ' } as never], AUJOURDHUI - 1, AUJOURDHUI);
+        expect(supp).toBeCloseTo(1016.90, 6);
+        // Et au mois d'aujourd'hui, EXACTEMENT zéro — l'invariant de raccord.
+        expect(supplementAmortiAuMoisAbsolu([{ ...bail(), id: 'bail', name: 'bZ' } as never], AUJOURDHUI, AUJOURDHUI)).toBe(0);
     });
 });

@@ -43,10 +43,12 @@ import { logError } from '../errorLogger';
  * silencieusement rangé parmi les non-amortissants — un défaut par omission, la forme d'erreur que
  * ce dépôt paie le plus cher.
  *
- * `auto-lease` est délibérément FAUX : un bail n'amortit pas un solde, c'est un loyer sur un terme
- * fixe (c'est le cas réel de Marc, et `debtSchedule.ts` le documente déjà). `heloc`, `margin`,
- * `credit-card` sont révolvants : leur solde monte et descend au gré de l'usage, aucune courbe
- * d'amortissement ne le décrit. `other` est inconnu par construction.
+ * `auto-lease` est FAUX ICI, et ça ne veut plus dire « ne bouge pas » : depuis le 2026-09-17 il est
+ * VRAI dans `KIND_VERSEMENTS_FIXES` (forme LINÉAIRE, plus bas). Un bail n'amortit pas un solde PAR
+ * L'INTÉRÊT — cette table-ci ne décrit que ça. `heloc`, `margin`, `credit-card` sont révolvants :
+ * leur solde monte et descend au gré de l'usage, aucune courbe d'amortissement ne le décrit.
+ * `other` est inconnu par construction. ⚠️ Lire cette table SEULE fait conclure à tort qu'un bail
+ * reste plat dans le passé : la question « cette dette décroît-elle ? » se pose aux DEUX tables.
  */
 export const KIND_AMORTISSANT: Readonly<Record<DebtKind, boolean>> = {
     mortgage: true,
@@ -56,6 +58,45 @@ export const KIND_AMORTISSANT: Readonly<Record<DebtKind, boolean>> = {
     personal: true,
     'spouse-loan': true,
     'auto-lease': false,
+    heloc: false,
+    margin: false,
+    'credit-card': false,
+    other: false,
+};
+
+/**
+ * Quels types de dette se remboursent par des VERSEMENTS FIXES sur un solde qui contient DÉJÀ tout
+ * ce qu'il y a à payer ?
+ *
+ * ⚠️⚠️ POURQUOI CETTE SECONDE TABLE EXISTE (demande de Marc, 2026-09-17 : « la dette ça marche pas,
+ * ça devrait diminuer avec ce que je paie chaque semaine ; pour tout mon passé elle est à la même
+ * valeur, elle diminue que dans mon futur »). Le constat était EXACT, et l'asymétrie est mesurable
+ * dans le code : la boucle du FUTUR (`services/projection.ts`, bloc « DETTES ») amortit toute dette
+ * `phase === 'active' && balance > 0` **sans jamais lire `kind`**, pendant que le PASSÉ refusait
+ * `auto-lease` via `KIND_AMORTISSANT`. Passé et futur décrivaient donc deux dettes différentes —
+ * exactement ce que ce module dit vouloir éviter.
+ *
+ * ⚠️ La justification d'origine (« un bail n'amortit pas un solde, c'est un loyer sur un terme
+ * fixe ») était juste pour un bail modélisé comme un LOYER. Elle est devenue fausse pour la façon
+ * dont ce bail est SAISI depuis le 2026-09-14 : son `balance` est la **somme des versements
+ * restants** et son taux est **0** (cf. la leçon `UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET`
+ * — y écrire le taux du contrat comptait l'intérêt DEUX fois, +7 423 $ de versements fantômes).
+ * Sur un solde tout-compris à taux nul, chaque versement retire EXACTEMENT son montant : c'est le
+ * cas le plus simple et le plus EXACT à reconstruire, pas une devinette.
+ *
+ * ⚠️ Table EXHAUSTIVE, même raison que sa jumelle : ajouter un `kind` casse le typecheck ici tant
+ * que personne n'a tranché son cas. Les deux tables sont DISJOINTES par construction (un test
+ * l'exige) : un `kind` ne peut pas être à la fois « amorti par intérêt » et « à versements fixes »,
+ * sinon `amortirDettePassee` aurait deux réponses pour une question.
+ */
+export const KIND_VERSEMENTS_FIXES: Readonly<Record<DebtKind, boolean>> = {
+    'auto-lease': true,
+    mortgage: false,
+    auto: false,
+    'student-federal': false,
+    'student-quebec': false,
+    personal: false,
+    'spouse-loan': false,
     heloc: false,
     margin: false,
     'credit-card': false,
@@ -81,7 +122,12 @@ export type CauseNonAmortissable =
     /** Le prêt ne se rembourse jamais (paiement ≤ intérêt sur le principal) : aucune courbe
      *  DÉCROISSANTE ne relie les deux bouts. Le moteur, lui, force un plancher d'amortissement —
      *  le passé refuse plutôt que de décrire un autre prêt que le futur. */
-    | 'jamais-decroissant';
+    | 'jamais-decroissant'
+    /** Versements fixes (bail) mais taux NON NUL : on ne sait plus ce que le solde contient. Un
+     *  solde « somme des versements restants » est tout-compris — lui appliquer un taux compterait
+     *  l'intérêt deux fois. Un taux non nul dit que le solde est peut-être du CAPITAL restant, et
+     *  ce module refuse de choisir entre deux lectures d'un même nombre. */
+    | 'taux-sur-solde-tout-compris';
 
 export interface EntreeAmortissement {
     /** Solde d'ORIGINE du prêt (montant emprunté). Absent ⇒ rien à amortir. */
@@ -182,6 +228,9 @@ export function amortirDettePassee(
     moisAbsoluCourant: number,
 ): ResultatAmortissement {
     const kind = dette.kind;
+    // ⚠️ L'AIGUILLAGE AVANT TOUT LE RESTE. Deux familles de remboursement, deux formes, une seule
+    // réponse par dette (les tables sont disjointes, et un test l'exige).
+    if (kind && KIND_VERSEMENTS_FIXES[kind]) return amortirVersementsFixes(dette, moisAbsoluCourant);
     if (!kind || !KIND_AMORTISSANT[kind]) return { forme: 'inapplicable', cause: 'kind-non-amortissant' };
 
     const debut = moisAbsolu(dette.startDate);
@@ -262,6 +311,72 @@ export function amortirDettePassee(
     for (let m = finPaiement + 1; m <= moisAbsoluCourant; m++) soldes.push(balance);
 
     return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage, paiementResolu };
+}
+
+/**
+ * Reconstruit le solde MENSUEL d'une dette à VERSEMENTS FIXES (bail) — la forme LINÉAIRE.
+ *
+ * ⚠️ AUCUN `originalBalance` REQUIS, et ce n'est pas un relâchement : à taux nul sur un solde
+ * tout-compris, `solde(t) = solde_actuel + paiement × (mois restants entre t et aujourd'hui)`. La
+ * courbe est ancrée sur DEUX faits saisis — le solde d'aujourd'hui et le versement — plus la date
+ * de début. Rien n'est deviné. Exiger en plus le montant d'origine aurait rendu la correction
+ * INATTEIGNABLE : `DebtKindFields` ne montre ce champ que si `KIND_AMORTISSANT[kind]`, donc
+ * personne n'a jamais pu le saisir pour un bail (`CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`).
+ *
+ * ⚠️ LE PLANCHER DU FUTUR N'EST PAS RECOPIÉ ICI, délibérément. Le moteur force
+ * `max(minimumPayment, intérêt + solde/300)` pour qu'une dette à paiement dérisoire finisse par
+ * s'éteindre. À taux NUL avec un versement strictement positif, elle s'éteint toujours : le
+ * plancher ne protège de rien, et l'appliquer au PASSÉ inventerait des versements que l'utilisateur
+ * n'a jamais faits. Conséquence assumée et bornée : si `minimumPayment < balance/300`, le futur
+ * descend plus vite que ce que le passé remonte — on décrit alors ce qui a été PAYÉ, pas ce que le
+ * garde-fou du moteur imposerait.
+ */
+function amortirVersementsFixes(
+    dette: Readonly<EntreeAmortissement>,
+    moisAbsoluCourant: number,
+): ResultatAmortissement {
+    const debut = moisAbsolu(dette.startDate);
+    if (debut === null || !fini(moisAbsoluCourant) || moisAbsoluCourant < debut) {
+        return { forme: 'inapplicable', cause: 'donnees-manquantes' };
+    }
+    const { balance, interestRate, minimumPayment } = dette;
+    // ABSENT ≠ CORROMPU, même partage que la forme par intérêt : un champ jamais saisi est le cas
+    // nominal et reste muet ; un champ présent mais hors domaine est tracé.
+    if (interestRate === undefined || minimumPayment === undefined) {
+        return { forme: 'inapplicable', cause: 'donnees-manquantes' };
+    }
+    if (!fini(balance) || !fini(interestRate) || !fini(minimumPayment) || balance < 0 || minimumPayment <= 0) {
+        tracerDetteSuspecte(dette, 'champ non fini ou hors domaine (solde, taux, versement)');
+        return { forme: 'inapplicable', cause: 'donnees-invalides' };
+    }
+    // ⚠️ Le REFUS qui protège du double comptage. Un taux non nul sur un solde de bail signifie
+    // qu'on ignore ce que ce solde contient — refuser vaut mieux qu'une courbe plausible et fausse.
+    if (interestRate !== 0) {
+        tracerDetteSuspecte(dette, 'versements fixes avec un taux NON NUL — solde tout-compris ou capital restant ? refus');
+        return { forme: 'inapplicable', cause: 'taux-sur-solde-tout-compris' };
+    }
+
+    // [DETTE-DATES] Même borne que la forme par intérêt et que le moteur : après le terme, on cesse
+    // de payer et le résiduel reste au bilan, PLAT.
+    const finTerme = moisAbsolu(dette.termEndDate);
+    const finPaiement = finTerme !== null && finTerme < moisAbsoluCourant ? finTerme : moisAbsoluCourant;
+    if (finPaiement < debut) {
+        tracerDetteSuspecte(dette, 'fin de terme ANTÉRIEURE au début du bail');
+        return { forme: 'inapplicable', cause: 'donnees-invalides' };
+    }
+
+    const nbPas = finPaiement - debut;
+    const soldes: number[] = [];
+    // De `debut` à `finPaiement` : on REMONTE le temps depuis le solde d'aujourd'hui, un versement
+    // par mois. Le dernier pas payé vaut `balance` EXACTEMENT (invariant de raccord).
+    for (let k = 0; k < nbPas; k++) soldes.push(balance + minimumPayment * (nbPas - k));
+    soldes.push(balance);
+    for (let m = finPaiement + 1; m <= moisAbsoluCourant; m++) soldes.push(balance);
+
+    // `facteurRecalage: 1` n'est pas un remplissage : rien n'est recalé ici, le versement SAISI est
+    // exactement celui qui sert. C'est la différence de fond avec la forme par intérêt, où le
+    // paiement est RÉSOLU pour relier deux bouts connus.
+    return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment };
 }
 
 /**

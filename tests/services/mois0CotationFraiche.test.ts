@@ -13,6 +13,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     reconstructPortfolioHistory,
+    reconstructPortfolioHistoryDaily,
     STALE_PRICE_DAYS,
     type MinimalAsset,
 } from '../../services/history/reconstructPortfolioHistory';
@@ -116,5 +117,67 @@ describe('[FUTUR-MOIS0-CLOTURE-SANS-AGE] la garde qui TRAVERSE — jusqu\'au moi
         const soldes = derivePortfolioStartingBalances([actif], FX);
         // 200 = la cotation fraîche. 150 = la clôture d'il y a 30 jours (comportement d'avant).
         expect(soldes.NON_ENREG).toBeCloseTo(200, 2);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// [PASSE-JOUR-CLOTURE-PERIMEE] Le MÊME défaut chez le SECOND producteur — trouvé par Marc.
+//
+// Le correctif ci-dessus ne touchait que la boucle MENSUELLE. La courbe que Marc regarde (le
+// registre au JOUR) passe par `reconstructPortfolioHistoryDaily`, un producteur distinct, et
+// gardait ses clôtures périmées : dernier point à **233 618 $** de titres contre **245 771 $** au
+// prix courant, avec le badge « prix J−55 » qui nommait la cause sans que rien ne la corrige.
+// Classe `MODULE-ECRIT-HORS-CHECKLIST` : énumérer TOUS les producteurs, jamais celui du ticket.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+describe('[PASSE-JOUR-CLOTURE-PERIMEE] la reconstruction au JOUR applique la même règle', () => {
+    const serie = (a: MinimalAsset, jours = 10) =>
+        reconstructPortfolioHistoryDaily([a], FX, jour(jours), jour(0));
+
+    it('le DERNIER jour prend la cotation fraîche, et le badge d\'âge retombe à 0', () => {
+        // ⚠️ DISCRIMINANT : sur le code d'avant, le dernier jour valait 150 (close d'il y a 30 j)
+        // et `priceAgeMaxDays` valait 30 — exactement le « prix J−55 » que Marc voyait.
+        const pts = serie(titre({ priceUpdatedAt: AUJOURDHUI.getTime() - MS_JOUR }));
+        const dernierPt = pts[pts.length - 1];
+        expect(Number(dernierPt.NonReg)).toBeCloseTo(200, 2);
+        expect(dernierPt.priceAgeMaxDays).toBe(0);
+    });
+
+    it('LE PASSÉ N\'EST PAS RÉÉCRIT : les jours antérieurs gardent leur clôture périmée', () => {
+        // Le contrôle qui compte le plus : substituer partout appliquerait le prix du JOUR à des
+        // dates passées. Chaque jour sauf le dernier reste à 150, avec son âge qui grandit.
+        const pts = serie(titre({ priceUpdatedAt: AUJOURDHUI.getTime() - MS_JOUR }));
+        expect(pts.length).toBeGreaterThan(5);
+        for (let k = 0; k < pts.length - 1; k++) {
+            expect(Number(pts[k].NonReg), pts[k].date).toBeCloseTo(150, 2);
+            expect(pts[k].priceAgeMaxDays, pts[k].date).toBeGreaterThan(STALE_PRICE_DAYS);
+        }
+    });
+
+    it('CONTRÔLE NÉGATIF : clôture RÉCENTE → la cotation ne gagne pas, même au dernier jour', () => {
+        const recent = titre({
+            priceUpdatedAt: AUJOURDHUI.getTime(),
+            priceHistory: [{ date: jour(400), price: 100 }, { date: jour(1), price: 150 }],
+        });
+        const pts = serie(recent);
+        expect(Number(pts[pts.length - 1].NonReg)).toBeCloseTo(150, 2);
+    });
+
+    it('CONTRÔLE NÉGATIF : sans `priceUpdatedAt`, on garde la clôture périmée', () => {
+        const pts = serie(titre());
+        expect(Number(pts[pts.length - 1].NonReg)).toBeCloseTo(150, 2);
+        expect(pts[pts.length - 1].priceAgeMaxDays).toBeGreaterThan(STALE_PRICE_DAYS);
+    });
+
+    it('une fenêtre qui se termine dans le PASSÉ ne se fait pas réécrire au prix du jour', () => {
+        // ⚠️ La garde en VALEUR ABSOLUE. Un écart SIGNÉ (`ref - priceUpdatedAt`) est négatif ici,
+        // donc « ≤ seuil » était vrai : la cotation d'aujourd'hui aurait valorisé un dernier point
+        // vieux de 60 jours. C'est le cas d'un appelant qui demande une fenêtre historique.
+        const a = titre({ priceUpdatedAt: AUJOURDHUI.getTime() });
+        const pts = reconstructPortfolioHistoryDaily([a], FX, jour(70), jour(60));
+        // 100 = le close de J−400, le seul ANTÉRIEUR à J−60 (celui de J−30 est postérieur). Ce qui
+        // compte est que ce ne soit PAS 200 : la cotation du jour n'a rien à faire sur ce point.
+        expect(Number(pts[pts.length - 1].NonReg)).toBeCloseTo(100, 2);
+        expect(Number(pts[pts.length - 1].NonReg)).not.toBeCloseTo(200, 2);
     });
 });

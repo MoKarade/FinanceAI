@@ -26,8 +26,11 @@ export function mentionDettesPasse(
     if (!(dettePubliee > 0)) return '';
     const { amorties, total } = compterDettesAmorties(dettes, moisAujourdhui);
     if (amorties === 0) return 'dettes au niveau actuel';
-    // Le cas MIXTE se nomme : un bail à côté d'un prêt auto est exactement la situation de Marc, et
-    // annoncer « dettes amorties » y serait faux pour la moitié de la somme affichée.
+    // Le cas MIXTE se nomme : annoncer « dettes amorties » serait faux pour la part de la somme
+    // affichée qui reste figée (un révolvant à côté d'un prêt, une dette sans date de début).
+    // ⚠️ L'exemple d'origine — « un bail à côté d'un prêt auto » — a été retiré le 2026-09-17 : un
+    // bail S'AMORTIT désormais (forme LINÉAIRE, `KIND_VERSEMENTS_FIXES`), donc il n'illustrait plus
+    // le cas mixte. Un exemple périmé dans un commentaire se lit comme un fait.
     if (amorties < total) return 'dettes partiellement amorties';
     return 'dettes amorties depuis leur date de début';
 }

@@ -409,16 +409,36 @@ export interface ProjectionConfig {
 // ────────────────────────────────────────────────────────────────────
 // W5.3 — Dettes étendues (HELOC, cartes, étudiants, auto, perso, marge)
 // ────────────────────────────────────────────────────────────────────
-/** ⚠️ `auto-lease` (BAIL) n'est PAS `auto` (prêt) : un bail ne s'amortit pas, c'est un loyer sur un
- *  terme fixe puis on rend le véhicule (ou on le rachète). Le distinguer permet de dire la vérité
- *  dans l'UI et de ne pas présenter un « solde » de bail comme une dette qui s'éteint toute seule
- *  (demande Marc 2026-08-19). */
+/** ⚠️ `auto-lease` (BAIL) n'est PAS `auto` (prêt) : un bail ne rembourse pas un CAPITAL avec des
+ *  intérêts, c'est un loyer sur un terme fixe puis on rend le véhicule (ou on le rachète). Le
+ *  distinguer permet de dire la vérité dans l'UI (demande Marc 2026-08-19).
+ *  ⚠️ Corrigé le 2026-09-17 : ce commentaire disait « un bail ne s'amortit pas », ce qui est devenu
+ *  FAUX le jour où le solde d'un bail est devenu la SOMME DES VERSEMENTS RESTANTS à taux 0 — chaque
+ *  versement en retire alors exactement son montant. Il ne s'amortit pas par INTÉRÊT ; il décroît
+ *  linéairement, et c'est `KIND_VERSEMENTS_FIXES` qui le dit. */
 /** [DEBT-MCP-PARITE] Source UNIQUE des valeurs de `DebtKind` (tableau `as const`, le type est
  *  DÉRIVÉ dessous) — un `kind` MCP/import re-codé en dur ailleurs dérive en silence (piège
  *  indexé au CLAUDE.md) ; ce tableau se réutilise tel quel côté runtime (Zod `z.enum`, garde
  *  `applyDebt`) au lieu d'être retapé. */
 export const DEBT_KINDS = ['mortgage', 'heloc', 'auto', 'auto-lease', 'student-federal', 'student-quebec', 'credit-card', 'personal', 'margin', 'spouse-loan', 'other'] as const;
 export type DebtKind = typeof DEBT_KINDS[number];
+
+/** [DEBT-CADENCE-REELLE] CADENCE réelle des prélèvements d'une dette à versements FIXES.
+ *
+ * ⚠️ Elle ne change PAS ce qui est dû : `minimumPayment` reste MENSUEL partout (contrat du store et
+ * du moteur), et le versement de la période s'en DÉRIVE (`minimumPayment × 12 / périodes par an`).
+ * Une seule saisie, une seule source — deux montants indépendants auraient divergé.
+ *
+ * Ce qu'elle change, c'est QUAND le solde descend dans le passé reconstruit : Marc paie son bail
+ * TOUTES LES SEMAINES et voyait une marche mensuelle (« ça devrait descendre à chaque paiement à
+ * Toyota, pas une fois par mois »). Absente ⇒ mensuelle, donc rétrocompatible bit-à-bit : aucune
+ * dette existante ne change de courbe. Champ ADDITIF optionnel, aucune migration de schéma. */
+export const PAYMENT_FREQUENCIES = ['weekly', 'biweekly', 'monthly'] as const;
+export type PaymentFrequency = typeof PAYMENT_FREQUENCIES[number];
+/** Nombre de JOURS entre deux prélèvements, pour les cadences sous-mensuelles. Le mensuel n'y
+ *  figure pas : il n'a pas de pas en jours (les mois n'ont pas la même longueur), il garde la
+ *  forme par MOIS ABSOLU qui existait avant ce lot. */
+export const JOURS_PAR_CADENCE: Readonly<Record<'weekly' | 'biweekly', number>> = { weekly: 7, biweekly: 14 };
 
 // ────────────────────────────────────────────────────────────────────
 // W5.4 — Assurances
@@ -626,6 +646,10 @@ export interface Debt {
    *  payer — et si le solde n'est pas nul, il le LAISSE au bilan avec une alerte plutôt que de
    *  l'effacer (décision Marc 2026-08-19). Absent ⇒ on paie jusqu'à extinction. */
   termEndDate?: string;
+  /** [DEBT-CADENCE-REELLE] Cadence RÉELLE des prélèvements (bail, prêt à versements fixes). Absente
+   *  ⇒ mensuelle (comportement d'avant, bit-à-bit). N'a d'effet QUE sur les dettes à versements
+   *  fixes : une dette qui amortit de l'intérêt n'a pas de grille en jours dans ce modèle. */
+  paymentFrequency?: PaymentFrequency;
   rateProvider?: string;           // institution prêteuse
   isInterestDeductible?: boolean;  // intérêt sur prêt placement / Smith Manoeuvre
 }

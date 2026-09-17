@@ -16,15 +16,19 @@ import { compterDettesAmorties, type DebtAmortissable } from '../projection/debt
  * @param dettes           dettes hors hypothèque du store (tableau FRAIS).
  * @param moisAujourdhui   mois absolu du mois 0 de la projection (`startYear × 12 + startMonth`).
  * @param dettePubliee     total des dettes hors hypothèque publié par le moteur au mois 0.
+ * @param aujourdhuiIso    le JOUR d'aujourd'hui — le verdict doit être rendu par le MÊME appel que
+ *                         le calcul, sinon la phrase pourrait qualifier une autre courbe que celle
+ *                         qui est tracée (`[DEBT-CADENCE-REELLE]`).
  * @returns le fragment à concaténer au bandeau, `''` quand il n'y a rien à dire (aucune dette).
  */
 export function mentionDettesPasse(
     dettes: ReadonlyArray<DebtAmortissable> | null | undefined,
     moisAujourdhui: number,
     dettePubliee: number,
+    aujourdhuiIso: string | null,
 ): string {
     if (!(dettePubliee > 0)) return '';
-    const { amorties, total } = compterDettesAmorties(dettes, moisAujourdhui);
+    const { amorties, total } = compterDettesAmorties(dettes, moisAujourdhui, aujourdhuiIso);
     if (amorties === 0) return 'dettes au niveau actuel';
     // Le cas MIXTE se nomme : annoncer « dettes amorties » serait faux pour la part de la somme
     // affichée qui reste figée (un révolvant à côté d'un prêt, une dette sans date de début).

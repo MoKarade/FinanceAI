@@ -57,6 +57,14 @@ interface BuildPastPrefixInput {
     realEstateGoals: ReadonlyArray<RealEstateGoal>;
     startYear: number;
     startMonth: number;
+    /** [DEBT-CADENCE-REELLE] Le JOUR d'aujourd'hui (ISO, doit tomber dans `startYear/startMonth`).
+     *  REQUIS et non optionnel : une dette à cadence sous-mensuelle a besoin d'un point d'arrivée au
+     *  JOUR, et sa série mensuelle en est DÉRIVÉE. Une porte optionnelle aurait laissé cette courbe
+     *  au mois retomber sur le palier mensuel pendant que le registre au jour, lui, descendrait à
+     *  chaque prélèvement — deux modules décrivant la même dette différemment, la classe de défaut
+     *  que ce lot existe pour ne pas créer. `null` est une réponse explicite (« jour inconnu »).
+     *  Le compilateur énumère les sites d'appel : c'est voulu. */
+    todayIso: string | null;
     /** Dette hors hypothèque au niveau actuel (`DettesNonImmo` du moteur, valeur FRAÎCHE — cf en-tête). */
     currentDebtNonImmo: number;
     /** Dettes hors hypothèque (store, tableau FRAIS — cf en-tête) : sert UNIQUEMENT à déterminer quelles
@@ -90,7 +98,7 @@ interface PastPrefixResult {
  * `NetWorth = undefined` (no-fake : pas de fausse ligne à 0). `points` est vide si aucun passé connu.
  */
 export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
-    const { pastHistoryPoints, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts, privateBusinessValue = 0 } = input;
+    const { pastHistoryPoints, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, todayIso, currentDebtNonImmo, debts, privateBusinessValue = 0 } = input;
 
     const miOf = (ym: string): number => {
         const [y, m] = ym.split('-').map(Number);
@@ -119,7 +127,7 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
 
     // [DEBT-AMORTIZATION-CABLAGE] Séries d'amortissement calculées UNE fois pour toutes les dettes,
     // hors de la boucle : la fonction préparée ne fait plus qu'indexer (cf. son commentaire).
-    const supplementAu = prepareSupplementAmortiAuMois(debts, startYear, startMonth);
+    const supplementAu = prepareSupplementAmortiAuMois(debts, startYear, startMonth, todayIso);
 
     const out: PastPrefixPoint[] = [];
     let lastInv: PortfolioHistoryPoint | null = null;

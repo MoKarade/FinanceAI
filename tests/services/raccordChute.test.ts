@@ -286,6 +286,7 @@ describe('[PASSE-REEL-RACCORD-CHUTE-MENSUEL] le fait traverse `buildPastPrefix`'
         // `buildPastPrefix` rendait un tableau NU : c'est ce fil manquant qui avait fait router le
         // ticket au lot 96. Sans cette assertion, le correctif serait vert en test et INERTE en prod.
         const res = buildPastPrefix({
+            todayIso: null,
             pastHistoryPoints: [invPoint('2026-06-30'), invPoint('2026-07-31')],
             transactions: [
                 { date: '2026-06-15', amount: 1_000 },

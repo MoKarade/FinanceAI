@@ -14,6 +14,10 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
     // startYear/startMonth = janvier 2026 (mois 0). '2025-12' → mi=-1, '2025-11' → mi=-2.
     const base = {
         startYear: 2026, startMonth: 0,
+        // [DEBT-CADENCE-REELLE] Le JOUR d'aujourd'hui, désormais requis : il doit tomber dans le
+        // mois 0 (janvier 2026), sinon la courbe au mois et le registre au jour parleraient de
+        // deux « aujourd'hui » différents.
+        todayIso: '2026-01-15',
         realEstateGoals: [],
         // 1 vraie transaction en 2025-12 → firstMonth = 2025-12 (firstTxnMi = -1).
         transactions: [{ date: '2025-12-15', amount: -500 }],
@@ -173,7 +177,7 @@ describe('[PAST-NW-BUSINESS-SANS-PRODUCTEUR] la valeur COURANTE d’une entrepri
     // la passait : le passé la mettait à 0, le premier mois futur la comptait en entier → MARCHE de la
     // valeur au raccord. Le 5e argument existait ; c'est le PRODUCTEUR qui manquait.
     const base = {
-        startYear: 2026, startMonth: 0, realEstateGoals: [],
+        startYear: 2026, startMonth: 0, realEstateGoals: [], todayIso: '2026-01-15',
         transactions: [{ date: '2025-12-15', amount: -500 }], calculatedStartingCash: 3000,
     };
     const pts = [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })];

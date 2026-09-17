@@ -140,10 +140,12 @@ describe('[DEBT-MCP-ORIGINALBALANCE] ATTEIGNABILITÉ — du payload MCP jusqu\'�
     // n'était couvert par AUCUN test, parce que chaque moitié était testée chez elle. On part donc du
     // payload et on va jusqu'au supplément de dette, sans reconstruire un seul maillon.
     const AUJ = moisAbsolu('2026-01-15') as number;
+    /** [DEBT-CADENCE-REELLE] Le JOUR correspondant, requis depuis ce lot. Il DOIT tomber dans `AUJ`. */
+    const AUJ_ISO = '2026-01-15';
 
     it('une dette importée par MCP reçoit VRAIMENT une courbe d\'amortissement', () => {
         const d = ajoute(pretAuto());
-        const r = amortirDettePassee(d, AUJ);
+        const r = amortirDettePassee(d, AUJ, AUJ_ISO);
         expect(r.forme).toBe('ok');
         // Et elle atterrit EXACTEMENT sur le solde réel : c'est le raccord au présent.
         if (r.forme !== 'ok') throw new Error('inatteignable');
@@ -153,20 +155,20 @@ describe('[DEBT-MCP-ORIGINALBALANCE] ATTEIGNABILITÉ — du payload MCP jusqu\'�
     it('le passé doit PLUS, et le supplément décroît vers aujourd\'hui', () => {
         const d = ajoute(pretAuto());
         const debut = moisAbsolu('2024-01-15') as number;
-        const supDebut = supplementAmortiAuMoisAbsolu([d], debut, AUJ);
-        const supRecent = supplementAmortiAuMoisAbsolu([d], AUJ - 1, AUJ);
+        const supDebut = supplementAmortiAuMoisAbsolu([d], debut, AUJ, AUJ_ISO);
+        const supRecent = supplementAmortiAuMoisAbsolu([d], AUJ - 1, AUJ, AUJ_ISO);
         expect(supDebut).toBeGreaterThan(5000);   // anti-vacuité : l'effet est SUBSTANTIEL
         expect(supRecent).toBeGreaterThan(0);
         expect(supRecent).toBeLessThan(supDebut);
-        expect(supplementAmortiAuMoisAbsolu([d], AUJ, AUJ)).toBe(0); // raccord exact
+        expect(supplementAmortiAuMoisAbsolu([d], AUJ, AUJ, AUJ_ISO)).toBe(0); // raccord exact
     });
 
     it('SANS le champ, la même dette reste PLATE — c\'est bien lui qui débloque, rien d\'autre', () => {
         // Contrôle indispensable : sans lui, la garde ci-dessus passerait aussi si un autre champ
         // (ajouté par `[DEBT-MCP-PARITE]`) suffisait déjà, et le lot ne prouverait rien.
         const d = ajoute(pretAuto({ originalBalance: undefined }));
-        expect(amortirDettePassee(d, AUJ)).toEqual({ forme: 'inapplicable', cause: 'donnees-manquantes' });
-        expect(supplementAmortiAuMoisAbsolu([d], moisAbsolu('2024-01-15') as number, AUJ)).toBe(0);
+        expect(amortirDettePassee(d, AUJ, AUJ_ISO)).toEqual({ forme: 'inapplicable', cause: 'donnees-manquantes' });
+        expect(supplementAmortiAuMoisAbsolu([d], moisAbsolu('2024-01-15') as number, AUJ, AUJ_ISO)).toBe(0);
     });
 
     it('un BAIL à TAUX NON NUL est refusé — mais plus pour la raison qu\'on croyait', () => {
@@ -180,7 +182,7 @@ describe('[DEBT-MCP-ORIGINALBALANCE] ATTEIGNABILITÉ — du payload MCP jusqu\'�
         // qui épinglent l'ancien fait n'avait couvert que le fichier du module.
         const d = ajoute(pretAuto({ debtKind: 'auto-lease' }));
         expect(d.originalBalance).toBe(30000); // le champ est bien écrit…
-        expect(amortirDettePassee(d, AUJ)).toEqual({ forme: 'inapplicable', cause: 'taux-sur-solde-tout-compris' });
+        expect(amortirDettePassee(d, AUJ, AUJ_ISO)).toEqual({ forme: 'inapplicable', cause: 'taux-sur-solde-tout-compris' });
     });
 
     it('un BAIL à TAUX NUL importé par le MCP s\'amortit — la chaîne complète, pas le module seul', () => {
@@ -195,7 +197,7 @@ describe('[DEBT-MCP-ORIGINALBALANCE] ATTEIGNABILITÉ — du payload MCP jusqu\'�
             originalBalance: undefined, startDate: '2025-07-20',
         }));
         expect(d.kind).toBe('auto-lease');
-        const r = amortirDettePassee(d, AUJ);
+        const r = amortirDettePassee(d, AUJ, AUJ_ISO);
         if (r.forme !== 'ok') throw new Error(`bail à taux nul refusé par la chaîne MCP : ${r.cause}`);
         // La PENTE est le fait : un versement par mois, ni plus ni moins.
         for (let k = 1; k < r.soldes.length; k++) {

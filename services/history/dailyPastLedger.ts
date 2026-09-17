@@ -29,7 +29,7 @@
 
 import { computeRawNetWorth } from '../projection/netWorth';
 import { moisAbsolu, sumNotYetStartedDebtsAtAbsoluteMonth } from '../projection/debtSchedule';
-import { prepareSupplementAmortiAbsolu, type DebtAmortissable } from '../projection/debtAmortization';
+import { prepareSupplementAmortiParJour, type DebtAmortissable } from '../projection/debtAmortization';
 import { reconstructCashHistoryDaily } from './reconstructCashHistory';
 import { reconstructPortfolioHistoryDaily, MAX_DAILY_DAYS_DEFAULT, type MinimalAsset } from './reconstructPortfolioHistory';
 
@@ -228,7 +228,10 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     const moisAujourdhui = moisAbsolu(today) ?? Number.POSITIVE_INFINITY;
     // [DEBT-AMORTIZATION-CABLAGE] Préparé UNE fois : la boucle au JOUR va jusqu'à 4 000 itérations,
     // et reconstruire la série d'un prêt de 25 ans à chacune coûtait des millions d'opérations.
-    const supplementAuMois = prepareSupplementAmortiAbsolu(debts, moisAujourdhui);
+    // [DEBT-CADENCE-REELLE] Variante au JOUR : pour tout ce qui existait avant ce lot elle rend
+    // EXACTEMENT le palier mensuel d'avant (même série, même index) ; seule une dette à versements
+    // fixes et à cadence sous-mensuelle descend au jour de son prélèvement.
+    const supplementAuJour = prepareSupplementAmortiParJour(debts, moisAujourdhui, today);
 
     // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
@@ -309,14 +312,16 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         // `currentDebtNonImmo` inchangé. `Math.max(0, …)` : voir le commentaire de
         // `sumNotYetStartedDebtsAtAbsoluteMonth` (le delta utilise le solde BRUT contre un total
         // post-amortissement — borne le résidu, une dette n'étant jamais négative).
-        // [DEBT-AMORTIZATION-CABLAGE] SECOND delta, additif : ce qu'on devait EN PLUS à ce mois-là.
-        // Palier MENSUEL comme le premier — `moisAbsolu` ignore le jour, et le service d'amortissement
-        // ne produit qu'un point par mois : interpoler au jour fabriquerait une précision que la
-        // donnée n'a pas (un prêt ne bouge qu'aux dates de paiement).
+        // [DEBT-AMORTIZATION-CABLAGE] SECOND delta, additif : ce qu'on devait EN PLUS à ce jour-là.
+        // ⚠️ [DEBT-CADENCE-REELLE] Palier MENSUEL par DÉFAUT — et c'est toujours la bonne réponse
+        // quand on ignore les dates de prélèvement : interpoler fabriquerait une précision que la
+        // donnée n'a pas. Mais quand la dette DÉCLARE sa cadence (bail prélevé chaque semaine), les
+        // dates SONT connues et la marche mensuelle n'était plus une prudence, c'était une perte :
+        // Marc voyait sa dette baisser une fois par mois alors que Toyota prélève tous les lundis.
         const moisDuJour = moisAbsolu(date) ?? Number.POSITIVE_INFINITY;
         const debtNonImmo = Math.max(0, currentDebtNonImmo
             - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisDuJour, moisAujourdhui)
-            + supplementAuMois(moisDuJour));
+            + supplementAuJour(date));
 
         out.push({
             date,

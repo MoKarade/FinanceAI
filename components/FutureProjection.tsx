@@ -426,15 +426,24 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : DettesNonImmo (liveResults, repli chartData) non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
         }
     }, [debtAnomaly, rawDebtNonImmo]);
+    // [FUTUR-DAILY-ROLLOVER] Aujourd'hui, RÉACTIF au passage de jour (demande Marc 2026-08-12 :
+    // « ça doit se mettre à jour à chaque jour pour le passé »). Figé au montage, une app laissée
+    // ouverte gardait la frontière réel/projeté au jour de l'ouverture — les jours écoulés
+    // restaient « projetés ». Toute la chaîne aval (passé réel, série quotidienne, ancrages) dépend
+    // de cette valeur : quand le jour change, elle se reconstruit d'elle-même.
+    const todayIso = useTodayIsoLocal();
+    // ⚠️ HISSÉ au-dessus de `pastPrefix` le 2026-09-17 (`[DEBT-CADENCE-REELLE]`) : la courbe au MOIS
+    // consomme désormais le JOUR d'aujourd'hui, comme la courbe au jour. Un `const` lu avant sa
+    // déclaration aurait planté au montage — le déplacer était le correctif, pas une duplication.
     // [FUTUR-HIST-WIRING-TEST] Assemblage du segment passé extrait en fonction PURE `buildPastPrefix`
     // (unit-testable, hors composant) → le câblage money-critical (buckets → helper, dette soustraite,
     // dates) se prouve sans rendre le composant. Vide → `EMPTY_ARRAY` (référence stable pour l'aval).
     const pastPrefix = useMemo(() => {
-        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts: storeDebts, privateBusinessValue });
+        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, todayIso, currentDebtNonImmo, debts: storeDebts, privateBusinessValue });
         // [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Le lot 97 fait remonter `fluxPeriodeAnnulee` avec les
         // points : la marche au raccord de la vue par MOIS annule TOUT le mois courant.
         return { points: built.points.length ? built.points : EMPTY_ARRAY, fluxPeriodeAnnulee: built.fluxPeriodeAnnulee };
-    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts, privateBusinessValue]);
+    }, [pastHistory.points, startYear, startMonth, todayIso, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts, privateBusinessValue]);
     // Référence STABLE pour l'aval : `pastPrefix` est un objet neuf à chaque memo, mais ses POINTS
     // gardent `EMPTY_ARRAY` quand il n'y a pas de passé — c'est cette identité que les memos avals
     // comparent, et la casser rendrait tout le graphe à chaque rendu.
@@ -443,8 +452,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // [DEBT-AMORTIZATION-CABLAGE] Ce que le bandeau peut HONNÊTEMENT affirmer des dettes du passé.
     // Le fait vient du service qui décide de l'amortissement, pas d'une seconde lecture des champs.
     const mentionDettes = useMemo(
-        () => mentionDettesPasse(storeDebts, startYear * 12 + startMonth, currentDebtNonImmo),
-        [storeDebts, startYear, startMonth, currentDebtNonImmo],
+        () => mentionDettesPasse(storeDebts, startYear * 12 + startMonth, currentDebtNonImmo, todayIso),
+        [storeDebts, startYear, startMonth, currentDebtNonImmo, todayIso],
     );
     // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
     const lockedByMonth = useMemo(
@@ -692,12 +701,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         () => finiteAnchorRun(displayData as ProjectionChartPoint[], startYear, startMonth),
         [displayData, startYear, startMonth],
     );
-    // [FUTUR-DAILY-ROLLOVER] Aujourd'hui, RÉACTIF au passage de jour (demande Marc 2026-08-12 :
-    // « ça doit se mettre à jour à chaque jour pour le passé »). Figé au montage, une app laissée
-    // ouverte gardait la frontière réel/projeté au jour de l'ouverture — les jours écoulés
-    // restaient « projetés ». Toute la chaîne aval (passé réel, série quotidienne, ancrages) dépend
-    // de cette valeur : quand le jour change, elle se reconstruit d'elle-même.
-    const todayIso = useTodayIsoLocal();
     // [FUTUR-DAILY-ROLLOVER] Abscisse FRACTIONNAIRE d'aujourd'hui : sur une courbe au jour, poser
     // « Aujourd'hui » et la fin de la bande « Passé réel » à l'ENTIER du mois les décalait de
     // jusqu'à 30 jours du vrai jour courant. `null` (date imparsable) ⇒ repli sur l'ancrage mensuel.

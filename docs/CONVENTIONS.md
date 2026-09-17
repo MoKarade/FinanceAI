@@ -14329,3 +14329,100 @@ vacuité (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
 aujourd'hui » laisse entendre le patrimoine net affiché, qui somme toujours les titres saisis. Seul
 le point de DÉPART de la projection est corrigé. Corrigé dans la note de version — une affirmation
 publiée se répare là où elle a été publiée.
+
+---
+
+## `UN-INDEX-SUR-UNE-LISTE-GROUPEE-PAR-COHORTE-NE-DESIGNE-RIEN` (2026-09-17)
+
+`[FX-OBSERVATION-COHORTE]`. La cause RACINE du lot de la veille, et elle était chez nous.
+
+### 1. Le défaut, et la mesure qui l'a donné
+
+`services/finance.ts` lisait `data?.observations?.[0]`. Voici les trois premières entrées de la
+réponse RÉELLE de la Banque du Canada, telle que Marc l'a ouverte dans son navigateur :
+
+| index | `d` | contenu |
+|---|---|---|
+| **`[0]`** | **2019-12-31** | `FXVNDCAD` seule — le **dong vietnamien**, série abandonnée |
+| `[1]` | **2026-09-16** | les 24 séries vivantes, dont `FXUSDCAD` et `FXEURCAD` |
+| `[2]` | 2026-04-30 | `FXRUBCAD`, `FXSARCAD` — abandonnées aussi |
+
+Sur un **groupe**, `recent=1` ne rend pas « la dernière journée » : il rend **la dernière observation
+de chaque série**, et la liste est groupée par COHORTE, pas triée par date. `observations[0]` était
+donc le dernier jour d'une série arrêtée sept ans plus tôt — sans `FXUSDCAD` ni `FXEURCAD`, donc les
+deux replis tiraient ENSEMBLE, à chaque lecture, depuis toujours.
+
+**Ce que ça coûtait**, mesuré sur les positions réelles :
+
+| | repli en dur | vrai taux (16/09) | écart |
+|---|---|---|---|
+| USD → CAD | 1,4000 | **1,3947** | −0,38 % |
+| EUR → CAD | 1,4700 | **1,6073** | **+9,34 %** |
+
+Soit **−102 $** sur NVDA et **+5 426 $** sur GBS.PA, deux des douze positions — toutes en USD ou EUR.
+
+⚠️ **La leçon n'est pas « il fallait prendre `[1]` »** : ce serait le même défaut décalé d'un cran.
+Un INDEX sur une liste groupée par cohorte ne désigne rien. C'est la SÉRIE qu'on cherche, donc c'est
+l'entrée QUI LA CONTIENT qu'il faut retenir, et la plus récente d'entre elles.
+
+### 2. Pourquoi aucun test ne pouvait le voir
+
+Les trois fixtures FX du dépôt écrivaient `observations: [{ FXUSDCAD: { v: '…' } }]` **à la main** :
+elles encodaient la forme qu'on CROYAIT avoir. Quand c'est cette croyance qui est fausse, un test ne
+fait que la confirmer — `UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`, re-payée. La garde de
+ce lot part de la réponse RÉELLE, enregistrée (`tests/fixtures/bdcFxRatesDaily.json`), et son
+anti-vacuité asserte que `observations[0]` **ne porte ni USD ni EUR** : sans ça, tout le fichier
+pourrait passer sur une réponse ordinaire et ne rien prouver du piège.
+
+⚠️ **Deux de ces fixtures n'avaient AUCUN champ `d`** — impossible dans une vraie réponse (`d` est la
+dimension du groupe, présente dans les trois observations). Une fixture à qui il manque un champ que
+l'API rend TOUJOURS ne teste pas ce qu'elle prétend : variante de
+`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`, appliquée à une omission.
+
+### 3. Le chiffre qui manquait n'était pas un taux, c'était une DATE
+
+Rien à l'écran ne pouvait dire de QUAND venait le taux servi. Une observation de 2019 y était
+strictement indiscernable de celle du jour — c'est ce qui a laissé le défaut vivre. La carte publie
+maintenant `fxObservationDate`, et le moteur **refuse** une observation de plus de
+`AGE_MAX_OBSERVATION_JOURS`. Même famille que `UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE` : la
+question n'est pas « ce chiffre est-il bon ? » mais **« qu'est-ce qui, dans le résultat, permettrait
+encore de savoir qu'il ne l'est pas ? »**
+
+⚠️ Le seuil est **DÉRIVÉ, pas inventé** (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`) :
+la plus longue interruption légitime de publication est de 4 jours (week-end + 25 et 26 décembre),
+et les séries abandonnées de la vraie réponse ont 140 et 2 452 jours. **10** laisse plus du double
+de la marge légitime en restant 14 fois sous le plus proche cas à rejeter ; tout l'intervalle
+[5 ; 139] donnerait le même verdict, et c'est écrit à côté du seuil.
+
+⚠️ **Et une date publiée ne vaut que si elle décrit TOUT ce qu'elle date** : elle n'est écrite que
+quand les DEUX séries ont été lues. Sur un repli partiel, un des deux chiffres est le littéral du
+dépôt — une date unique le ferait passer pour une valeur publiée ce jour-là. La règle est écrite une
+fois et tenue aux deux endroits (`fetchFxRates` la calcule, `updateFxRates` la DÉRIVE de la
+provenance), donc aucun appelant ne peut se tromper.
+
+### 4. Une fixture DATÉE en dur devient une bombe le jour où un seuil d'âge existe
+
+Le helper du fichier de test voisin posait `d: '2026-09-16'`. Avec le refus des observations vieilles
+de plus de dix jours, il serait devenu rouge **tout seul** dix jours plus tard, sans qu'une ligne de
+code ait changé. Corrigé en dérivant la date du jour d'exécution. Symétrique de
+`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`, corollaire de test : **un lot qui ajoute une contrainte de
+FRAÎCHEUR doit relire toutes les fixtures qui portent une date figée.** Inversement, la garde qui part
+de la réponse RÉELLE, elle, **fige son horloge** (`vi.setSystemTime`) : une réponse enregistrée est un
+document daté, pas une donnée du jour.
+
+### 5. La leçon de conduite — la mesure était à UNE question de distance, pour la deuxième fois
+
+J'ai écrit trois fois que la cause n'était « pas mesurable depuis le conteneur »
+(`www.bankofcanada.ca` : 403 au CONNECT, re-vérifié). C'est vrai de MOI, pas de Marc : il a ouvert
+l'URL et collé la réponse. C'est exactement le corollaire de
+`UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE-REND-L-HYPOTHESE-INFALSIFIABLE`, payé
+une seconde fois — et cette fois la question à poser était **la plus étroite possible** : « le texte
+`FXUSDCAD` apparaît-il ? », pas « envoie-moi tout ». Une mesure déclarée impossible se re-formule en
+la plus petite observation qui départage les hypothèses, puis se DEMANDE.
+
+⚠️ Corollaire d'écran, trouvé en route et **non corrigé** : le champ de saisie manuelle affiche en
+`placeholder` la valeur COURANTE — donc, en situation de repli, exactement `1.4000` / `1.4700`. Les
+retaper blanchirait le littéral du dépôt en taux « manuel », qui a le droit d'écrire un total de
+compte. Les champs sont vides et refusent une saisie vide, donc rien n'est cassé ; mais un écran qui
+propose en exemple la valeur dont il faut sortir travaille contre son propre but
+(`[FX-PLACEHOLDER-PROPOSE-LE-REPLI]`, routé).

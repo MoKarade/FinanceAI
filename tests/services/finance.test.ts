@@ -12,6 +12,13 @@ beforeEach(() => {
     vi.resetModules();
 });
 
+
+// ⚠️ [FX-OBSERVATION-COHORTE] Toute observation de la Banque du Canada porte son champ `d` — c'est
+// la dimension du groupe. Ces fixtures l'omettaient, ce qui ne ressemblait à AUCUNE réponse réelle,
+// et le lot qui apprend à choisir l'observation par sa DATE rendait donc « non datable » ce que le
+// test croyait lisible. La date est celle du jour : figée, elle deviendrait périmée toute seule.
+const jourBdc = () => new Date().toISOString().slice(0, 10);
+
 describe('fetchFxRates', () => {
     it('retourne les taux par défaut en cas d\'échec réseau', async () => {
         // Arrange — mock fetch pour simuler une erreur réseau
@@ -74,7 +81,7 @@ describe('fetchFxRates', () => {
         localStorage.clear();
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
-            json: async () => ({ observations: [{ FXUSDCAD: { v: '0' }, FXEURCAD: { v: 'abc' } }] }),
+            json: async () => ({ observations: [{ d: jourBdc(), FXUSDCAD: { v: '0' }, FXEURCAD: { v: 'abc' } }] }),
         });
         vi.stubGlobal('fetch', fetchMock);
 
@@ -96,6 +103,7 @@ describe('fetchFxRates', () => {
             ok: true,
             json: async () => ({
                 observations: [{
+                    d: jourBdc(),
                     FXUSDCAD: { v: '1.3800' },
                     FXEURCAD: { v: '1.5000' },
                 }],
@@ -128,7 +136,7 @@ describe('fetchFxRates', () => {
         localStorage.clear();
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
-            json: async () => ({ observations: [{ FXUSDCAD: { v: '1.3800' } /* EUR absent */ }] }),
+            json: async () => ({ observations: [{ d: jourBdc(), FXUSDCAD: { v: '1.3800' } /* EUR absent */ }] }),
         });
         vi.stubGlobal('fetch', fetchMock);
 

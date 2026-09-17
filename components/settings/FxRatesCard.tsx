@@ -54,6 +54,7 @@ export const FxRatesCard: React.FC = () => {
     const source = useFinanceStore(fxSourceEffective);
     const cause = useFinanceStore(fxCauseEffective);
     const lastAttemptAt = useFinanceStore((s) => s.fxLastAttemptAt ?? 0);
+    const observationDate = useFinanceStore((s) => s.fxObservationDate);
     const updateFxRates = useFinanceStore((s) => s.updateFxRates);
 
     const [enCours, setEnCours] = useState(false);
@@ -138,6 +139,18 @@ export const FxRatesCard: React.FC = () => {
                         : 'Aucune lecture réussie à ce jour.'}
                     {lastAttemptAt > 0 ? ` Dernière tentative ${formatRelative(lastAttemptAt)}.` : ''}
                 </p>
+
+                {/* ⚠️ [FX-OBSERVATION-COHORTE] LA DATE DE L'OBSERVATION, pas celle de la lecture.
+                    Les deux diffèrent : la Banque du Canada ne publie qu'un jour OUVRÉ, donc une
+                    lecture d'aujourd'hui rend normalement la valeur d'hier. Et surtout, c'est ce
+                    chiffre qui manquait : le taux servi venait d'une observation de 2019 (série
+                    abandonnée) sans que rien à l'écran ne puisse le dire. */}
+                {observationDate !== undefined && observationDate !== '' && (
+                    <p className="text-meta text-ink-300">
+                        Valeur publiée par la Banque du Canada le{' '}
+                        <span className="font-mono text-ink-100">{observationDate}</span>.
+                    </p>
+                )}
 
                 {!autorite && (
                     <p className="text-meta text-warning-400">

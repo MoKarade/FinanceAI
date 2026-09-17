@@ -321,6 +321,11 @@ export function useAppBootEffects(): void {
                         source: fxSourceEffective(fxEtat),
                         cause: rates.cause,
                         attemptAt: rates.attemptAt,
+                        // ⚠️ La date de l'observation est REPASSÉE telle quelle : ce chemin ne
+                        // touche pas aux taux, donc il ne doit pas toucher à ce qui les date. Sans
+                        // elle, le mutateur la CLASSERAIT comme une écriture neuve et l'effacerait
+                        // (il dérive la date de la provenance — cf. `updateFxRates`).
+                        observationDate: fxEtat.fxObservationDate,
                     });
                 }
             } catch (e) {

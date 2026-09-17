@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️⚠️ Session 2026-09-17 — **`[FX-OBSERVATION-COHORTE]` : on lisait `observations[0]`**
+> Marc a cliqué « Réessayer maintenant » (la carte livrée la veille), lu « au moins une des deux
+> séries était absente », puis **ouvert l'URL de l'API et envoyé la réponse**. Elle tranche :
+> `observations[0]` = `{ d: "2019-12-31", FXVNDCAD: … }` — le **dong vietnamien**, série abandonnée.
+> Sur un GROUPE, `recent=1` rend la dernière observation de **chaque série**, groupée par COHORTE :
+> l'index zéro ne désigne rien. `FXUSDCAD`/`FXEURCAD` étaient dans l'entrée suivante.
+> ✅ Lecture **par série** (`services/fx/observationsBdc.ts`, pur, partagé navigateur + MCP), refus
+> d'une observation de plus de **10 jours** (seuil DÉRIVÉ : 4 j de fermeture légitime maximum, 140 j
+> pour la plus proche série abandonnée de la vraie réponse), cause `'perimee'` distincte de
+> `'partiel'`, et **la date de l'observation affichée** — le chiffre dont l'absence a laissé servir
+> un taux de 2019 comme celui du jour.
+> 📏 **Mesuré** : USD repli 1,4000 contre **1,3947** réel (−0,38 %) ; EUR repli 1,4700 contre
+> **1,6073** (**+9,34 %**) → **+5 426 $** sur la seule position GBS.PA.
+> ⚠️ **Les trois fixtures FX du dépôt étaient écrites À LA MAIN** et encodaient la forme qu'on
+> croyait avoir : elles ne pouvaient que confirmer l'erreur. La garde part maintenant de la réponse
+> RÉELLE (`tests/fixtures/bdcFxRatesDaily.json`).
+> ⚠️ Deux de ces fixtures n'avaient **aucun champ `d`** — impossible dans une vraie réponse. Complété,
+> et daté du JOUR : une date figée serait devenue périmée toute seule (bombe).
+> 👤 **Reste chez Marc** : un clic de confirmation après déploiement (`docs/A_FAIRE_MOI.md`).
+>
 > ## ✅ ÉTAT AU 2026-09-16 22:02 UTC — PR #978 **MERGÉE ET DÉPLOYÉE**
 > Squash sur `main` = **`e71a0359`**. CI verte sur le SHA exact (lint · typecheck · **6 091 tests**
 > · build · E2E Playwright). Déploiement de production **`dpl_FNfnnRMQ…` READY** sur `e71a0359`,

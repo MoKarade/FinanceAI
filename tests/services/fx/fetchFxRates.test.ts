@@ -13,9 +13,16 @@ vi.mock('../../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThr
 
 import { fetchFxRates } from '../../../services/finance';
 
+// ⚠️ La date de l'observation est celle du JOUR de l'exécution, jamais une date figée.
+// [FX-OBSERVATION-COHORTE] a introduit un refus des observations trop vieilles : une fixture datée
+// « 2026-09-16 » en dur serait devenue PÉRIMÉE toute seule au bout de dix jours, donc une bombe à
+// retardement — rouge garanti sans qu'une ligne de code ait changé
+// (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`, corollaire de test).
+const aujourdHui = () => new Date().toISOString().slice(0, 10);
+
 const obs = (usd?: unknown, eur?: unknown) => ({
     observations: [{
-        d: '2026-09-16',
+        d: aujourdHui(),
         ...(usd === undefined ? {} : { FXUSDCAD: { v: usd } }),
         ...(eur === undefined ? {} : { FXEURCAD: { v: eur } }),
     }],

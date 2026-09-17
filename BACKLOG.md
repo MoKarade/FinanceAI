@@ -935,6 +935,30 @@
   une garantie. ⚠️ **Il manque encore UN chiffre** : le paiement minimum, qu'`applyDebt` exige pour
   CRÉER une dette et dont **aucun défaut n'existe dans le dépôt** (`debtAmortization` exige `> 0`) ; le
   taux est déjà tranché (19,99 %).
+- [x] 🔴 **`[FX-OBSERVATION-COHORTE]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-17**) — la cause
+  RACINE de `[FX-TAUX-JAMAIS-ARRIVES]`, trouvée par une mesure de Marc (il a ouvert l'URL de l'API
+  et envoyé la réponse). `services/finance.ts` lisait `data.observations[0]` ; sur un **groupe**,
+  `recent=1` rend la dernière observation de **chaque série**, groupée par COHORTE — la réponse
+  réelle du 2026-09-16 commence par `{ d: "2019-12-31", FXVNDCAD: … }` (dong vietnamien, série
+  abandonnée), et `FXUSDCAD`/`FXEURCAD` vivaient dans l'entrée SUIVANTE. Les deux replis tiraient
+  donc ENSEMBLE, à chaque lecture, depuis toujours. **Mesuré** : USD 1,4000 (repli) contre **1,3947**
+  réel = −0,38 % ; EUR 1,4700 contre **1,6073** = **+9,34 %**, soit **+5 426 $** sur la seule
+  position GBS.PA de Marc — et ses 12 positions sont toutes en USD ou EUR.
+  **Livré** : `services/fx/observationsBdc.ts` (pur, partagé navigateur + MCP) choisit l'observation
+  **par SÉRIE** et la plus récente ; refus d'une observation de plus de **10 jours** (seuil DÉRIVÉ —
+  4 j de fermeture légitime au maximum, contre 140 j et 2 452 j pour les séries abandonnées de la
+  vraie réponse) ; cause `'perimee'` distincte de `'partiel'` ; et **la date de l'observation
+  publiée à l'écran**, tenue cohérente avec la provenance PAR CONSTRUCTION dans `updateFxRates`.
+  ⚠️ Les trois fixtures FX du dépôt étaient écrites à la main et encodaient la forme supposée : la
+  garde part désormais de la réponse RÉELLE (`tests/fixtures/bdcFxRatesDaily.json`).
+- [ ] 🟡 **`[FX-PLACEHOLDER-PROPOSE-LE-REPLI]`** (XS, **DÉCOUVERT le 2026-09-17**) — le champ de
+  saisie manuelle de `FxRatesCard` affiche en `placeholder` la valeur COURANTE, donc **exactement
+  `1.4000` / `1.4700`** quand le taux vient du repli — c'est-à-dire précisément la situation où la
+  saisie sert. Les retaper blanchirait le littéral du dépôt en taux `'manuel'`, qui a le droit
+  d'écrire un total de compte (`fxFaitAutorite`). ⚠️ **Rien n'est cassé aujourd'hui** : les champs
+  sont vides et `lireTauxSaisi('')` refuse, donc il faut un geste délibéré. Mais un écran qui propose
+  en exemple la valeur dont il faut sortir travaille contre son propre but. Piste : ne mettre le
+  `placeholder` que quand la source FAIT AUTORITÉ, sinon un exemple neutre (`ex. 1,3850`).
 - [ ] 🟠 **`[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`** (M, money-critical, **DÉCOUVERT au panel du
   2026-09-16, décision produit requise**) — la base de comparaison replie **CELIAPP sur CELI** et
   **REEE sur REER** (`BUCKET_OF`, « même famille fiscale », décision écrite), pendant que les soldes

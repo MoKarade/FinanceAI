@@ -210,3 +210,52 @@ describe('rétrocompatibilité de l\'état PERSISTÉ — le piège du défaut qu
         expect(fxFaitAutorite(fxSourceEffective(fusionne))).toBe(true);
     });
 });
+
+// [FX-OBSERVATION-COHORTE] La DATE de l'observation : elle vit à côté des taux, donc elle subit
+// exactement les deux mêmes pièges — le défaut qui recouvre, et le champ qu'un appelant oublie.
+describe('la date d\'observation suit la provenance, par CONSTRUCTION', () => {
+    it('elle est ABSENTE des défauts (même raison que la provenance)', async () => {
+        const { buildDefaultAppState } = await import('../../../mcp/state/appStateDefaults');
+        const { initialState } = await import('../../../store/etatParDefaut');
+        expect(Object.prototype.hasOwnProperty.call(buildDefaultAppState(), 'fxObservationDate')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(initialState, 'fxObservationDate')).toBe(false);
+    });
+
+    it('elle est déclarée TEXTUELLE et PERSISTÉE (sinon la réhydratation VIDE l\'app)', async () => {
+        // Incident du 2026-09-01, trois vagues : une clé textuelle persistée absente de la liste
+        // fait lever `merge`, donc l'app s'ouvre vide avec un blob pourtant intact.
+        const { CHAMPS_TEXTE } = await import('../../../services/verifierTypesRestaures');
+        expect(CHAMPS_TEXTE).toContain('fxObservationDate');
+    });
+
+    it('⚠️ un taux SAISI ou de REPLI efface la date : il n\'a aucune observation derrière lui', async () => {
+        const { useFinanceStore } = await import('../../../store/useFinanceStore');
+        const set = useFinanceStore.setState;
+
+        set({ fxObservationDate: '2026-09-16', fxRatesSource: 'api' });
+        useFinanceStore.getState().updateFxRates({
+            USD: 1.365, EUR: 1.6, CAD: 1, source: 'manuel', cause: 'manuel', attemptAt: 1,
+        });
+        expect(useFinanceStore.getState().fxObservationDate).toBeUndefined();
+
+        set({ fxObservationDate: '2026-09-16', fxRatesSource: 'api' });
+        useFinanceStore.getState().updateFxRates({
+            USD: 1.4, EUR: 1.47, CAD: 1, source: 'repli', cause: 'reseau', attemptAt: 2,
+        });
+        expect(useFinanceStore.getState().fxObservationDate).toBeUndefined();
+    });
+
+    it('une lecture « api » la pose, et un appelant qui ne parle PAS de provenance ne l\'efface pas', async () => {
+        const { useFinanceStore } = await import('../../../store/useFinanceStore');
+        useFinanceStore.getState().updateFxRates({
+            USD: 1.3947, EUR: 1.6073, CAD: 1, source: 'api', cause: 'ok', attemptAt: 3,
+            observationDate: '2026-09-16',
+        });
+        expect(useFinanceStore.getState().fxObservationDate).toBe('2026-09-16');
+
+        // Appelant à l'ANCIENNE signature (aucun `source`) : il ne sait rien de la date, donc il
+        // n'a pas à trancher — l'existant reste.
+        useFinanceStore.getState().updateFxRates({ USD: 1.3947, EUR: 1.6073, CAD: 1 });
+        expect(useFinanceStore.getState().fxObservationDate).toBe('2026-09-16');
+    });
+});

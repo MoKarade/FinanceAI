@@ -5,7 +5,10 @@
 // services/marketData/.
 
 import { logError } from './errorLogger';
+import { estFxCause } from './fx/provenance';
 import type { FxSource, FxCause } from './fx/provenance';
+import { lireSerieBdc } from './fx/observationsBdc';
+import type { LectureSerie } from './fx/observationsBdc';
 
 export interface MarketDataPoint {
     date: string;
@@ -84,6 +87,11 @@ export interface ResultatTauxFx {
     cause: FxCause;
     /** Epoch ms de CETTE tentative, réussie ou non. */
     attemptAt: number;
+    /** [FX-OBSERVATION-COHORTE] Date (`YYYY-MM-DD`) de l'observation d'où vient le taux — la plus
+     *  ANCIENNE des deux séries réellement lues. ABSENTE quand rien n'a pu être lu : sans elle, une
+     *  observation de 2019 est indiscernable de celle du jour, et c'est exactement ce qui a permis
+     *  de servir le littéral du dépôt pendant des mois. */
+    observationDate?: string;
 }
 
 /**
@@ -139,9 +147,9 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
             logError({ source: 'network', severity: 'warning', message: `Taux FX — la Banque du Canada a répondu ${response.status}`, context: { status: String(response.status) } });
         } else {
             const data = await response.json();
-            const obs = data?.observations?.[0];
+            const observations = (data as { observations?: unknown } | null)?.observations;
 
-            if (!obs) {
+            if (!Array.isArray(observations) || observations.length === 0) {
                 // ⚠️ Symétrique de la branche `!response.ok` trois lignes plus haut, qui loggue :
                 // une réponse 200 au format cassé est une anomalie de MÊME gravité. Sans trace, elle
                 // n'existe que si Marc ouvre la carte FX au bon moment — au démarrage, rien n'en
@@ -149,24 +157,52 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
                 cause = 'reponse-illisible';
                 logError({ source: 'network', severity: 'warning', message: 'Taux FX — réponse de la Banque du Canada sans observation exploitable' });
             } else {
-                // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
-                // CORROMPU (0/NaN/texte) → ce dernier est loggué au lieu d'être masqué par le repli.
-                // [FX-FALLBACK-SILENCIEUX] Un succès GLOBAL du fetch (obs présent) peut cacher un
-                // repli PAR SÉRIE (une des deux absente/corrompue) — `estimated` le fait remonter,
-                // ce que `lastFetched > 0` seul ne pouvait pas voir (revue #686, mesuré).
-                let anyFallback = false;
-                const parseRate = (raw: unknown, fallback: number, label: string): number => {
-                    if (raw === undefined || raw === null || String(raw).trim() === '') { anyFallback = true; return fallback; } // absent : normal
-                    const v = parseFloat(String(raw));
-                    if (Number.isFinite(v) && v > 0) return v;
-                    anyFallback = true;
-                    logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} corrompu — repli sur ${fallback}`, context: { raw: String(raw).slice(0, 24) } });
-                    return fallback;
-                };
-                const usdCad = parseRate(obs?.FXUSDCAD?.v, 1.40, 'USD/CAD');
-                const eurCad = parseRate(obs?.FXEURCAD?.v, 1.47, 'EUR/CAD');
+                // ⚠️⚠️ [FX-OBSERVATION-COHORTE] ON NE LIT PLUS `observations[0]`. Sur un GROUPE,
+                // `recent=1` rend la dernière observation de CHAQUE série, groupée par COHORTE : la
+                // réponse réelle du 2026-09-16 commence par `{ d: "2019-12-31", FXVNDCAD: … }` — le
+                // dong vietnamien, série abandonnée. Les deux séries qui nous intéressent vivaient
+                // dans l'entrée SUIVANTE, donc les deux replis tiraient ensemble et l'app servait
+                // 1,4000 / 1,4700, le littéral du dépôt (mesuré : EUR faux de +9,34 %).
+                // Détail, mesures et seuil : `services/fx/observationsBdc.ts`.
+                const usd = lireSerieBdc(observations, 'FXUSDCAD', now);
+                const eur = lireSerieBdc(observations, 'FXEURCAD', now);
 
-                cause = anyFallback ? 'partiel' : 'ok';
+                // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
+                // CORROMPU ou FIGÉ → ces deux-là sont loggués au lieu d'être masqués par le repli.
+                const resoudre = (lecture: LectureSerie, repli: number, label: string): number => {
+                    if (lecture.statut === 'ok') return lecture.valeur;
+                    if (lecture.statut === 'illisible') {
+                        logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} corrompu ou illisible — repli sur ${repli}`, context: { brut: lecture.brut } });
+                    } else if (lecture.statut === 'perimee') {
+                        logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} figé depuis ${lecture.ageJours} jours — repli sur ${repli}`, context: { derniereObservation: lecture.date } });
+                    }
+                    return repli;
+                };
+                const usdCad = resoudre(usd, 1.40, 'USD/CAD');
+                const eurCad = resoudre(eur, 1.47, 'EUR/CAD');
+
+                // [FX-FALLBACK-SILENCIEUX] Un succès GLOBAL du fetch peut cacher un repli PAR SÉRIE
+                // — `estimated` le fait remonter, ce que `lastFetched > 0` seul ne voyait pas.
+                const anyFallback = usd.statut !== 'ok' || eur.statut !== 'ok';
+                // ⚠️ `'perimee'` PRIME sur `'partiel'` quand les deux coexistent : c'est le
+                // diagnostic le plus SPÉCIFIQUE, et celui qui a manqué le 2026-09-16 — « au moins
+                // une série absente » a envoyé chercher la panne du côté de la Banque du Canada.
+                cause = !anyFallback ? 'ok'
+                    : (usd.statut === 'perimee' || eur.statut === 'perimee') ? 'perimee'
+                    : 'partiel';
+
+                // ⚠️ UNE SEULE RÈGLE, ICI ET DANS LE STORE : la date n'est publiée que si les DEUX
+                // séries ont été lues. Elle décrit la PAIRE affichée — sur un repli partiel, un des
+                // deux chiffres est le littéral du dépôt, et une date unique le ferait passer pour
+                // une valeur publiée ce jour-là (§1 no-fake-data). Et surtout jamais `now` : ce
+                // serait dater le repli de l'instant où on a renoncé à le remplacer.
+                // Quand les deux sont lues à des jours DIFFÉRENTS (une série sans valeur publiée ce
+                // jour-là), on garde la plus ANCIENNE : un couple de taux n'est pas plus frais que
+                // son maillon le plus vieux.
+                const observationDate = usd.statut === 'ok' && eur.statut === 'ok'
+                    ? [usd.date, eur.date].sort()[0]
+                    : undefined;
+
                 const rates: ResultatTauxFx = {
                     USD: usdCad, EUR: eurCad, CAD: 1.00,
                     lastFetched: now,
@@ -177,6 +213,7 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
                     source: anyFallback ? 'repli' : 'api',
                     cause,
                     attemptAt: now,
+                    ...(observationDate === undefined ? {} : { observationDate }),
                 };
                 cachedFxRates = rates;
 
@@ -185,7 +222,7 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
 
                 // Confirmation de mise à jour des taux : log informatif, pas une erreur.
                 // eslint-disable-next-line no-console
-                console.log(`Taux FX mis a jour (Banque du Canada): USD=${usdCad.toFixed(4)}, EUR=${eurCad.toFixed(4)}`);
+                console.log(`Taux FX mis a jour (Banque du Canada): USD=${usdCad.toFixed(4)}, EUR=${eurCad.toFixed(4)}, observation=${observationDate ?? 'aucune'}`);
                 return rates;
             }
         }
@@ -235,8 +272,6 @@ export const fetchFxRates = async (options?: { force?: boolean }): Promise<Resul
  * l'état persisté : une même règle de rétrocompatibilité, écrite une fois, appliquée aux deux
  * surfaces qui la subissent.
  */
-const CAUSES_CACHE: readonly string[] = ['ok', 'partiel', 'reseau', 'http', 'reponse-illisible', 'manuel', 'jamais-tente'];
-
 function normaliserCache(parsed: unknown): ResultatTauxFx | null {
     const p = parsed as Partial<ResultatTauxFx> | null;
     if (!p || typeof p.USD !== 'number' || typeof p.EUR !== 'number' || typeof p.CAD !== 'number') return null;
@@ -248,15 +283,21 @@ function normaliserCache(parsed: unknown): ResultatTauxFx | null {
     // ⚠️ La cause est VALIDÉE comme la source : un cast laissait entrer n'importe quelle chaîne,
     // et une cause inconnue fait écrire l'état à CHAQUE démarrage (elle ne correspond jamais à
     // l'existante). Symétrie exigée par `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`.
-    const causeBrute = p.cause as string | undefined;
-    const cause: FxCause = typeof causeBrute === 'string' && CAUSES_CACHE.includes(causeBrute)
-        ? (causeBrute as FxCause)
-        : (estimated ? 'partiel' : 'ok');
+    // ⚠️ Le prédicat vient de `provenance.ts` et n'est PLUS recopié ici : la copie locale a failli
+    // survivre à l'ajout de `'perimee'`, et une cause légitime rejetée fait réécrire l'état à
+    // CHAQUE démarrage (elle ne correspond jamais à l'existante).
+    const causeBrute = p.cause;
+    const cause: FxCause = estFxCause(causeBrute) ? causeBrute : (estimated ? 'partiel' : 'ok');
     const lastFetched = Number.isFinite(Number(p.lastFetched)) ? Number(p.lastFetched) : 0;
     return {
         USD: p.USD, EUR: p.EUR, CAD: p.CAD,
         lastFetched, estimated, source, cause,
         attemptAt: Number.isFinite(Number(p.attemptAt)) ? Number(p.attemptAt) : lastFetched,
+        // Champ ADDITIF : une entrée de cache d'avant ce lot ne le porte pas, et il doit rester
+        // ABSENT plutôt que de recevoir une date inventée.
+        ...(typeof p.observationDate === 'string' && p.observationDate !== ''
+            ? { observationDate: p.observationDate }
+            : {}),
     };
 }
 

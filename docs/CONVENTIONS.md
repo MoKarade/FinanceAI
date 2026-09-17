@@ -14644,3 +14644,39 @@ chacune (`28 870 + 233 618 − 46 152 = 216 336` côté Futur ; `245 771 + 28 87
 côté hub), ce qui a immédiatement localisé l'écart **entre les deux bases de placement** au lieu de
 le faire chercher dans une addition. Faire l'arithmétique de l'écran est la première mesure, pas la
 dernière.
+
+---
+
+## `LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS` (2026-09-17)
+
+**Ce qui s'est passé.** Le lot `[DEBT-BAIL-PASSE-PLAT]` fait s'amortir un bail dans le passé. J'ai
+inversé le test de limite qui affirmait le contraire — **dans le fichier du module**
+(`tests/services/debtAmortization.test.ts`) — puis poussé. La CI a rougi sur un **troisième site** :
+`tests/mcp/applyDebtOriginalBalance.test.ts`, qui affirmait exactement la même chose depuis le
+chemin d'import MCP (« un BAIL importé avec son montant reste PLAT — le cas réel de Marc »).
+
+La règle existait déjà, écrite dans `CLAUDE.md` : *« après un correctif qui change un comportement,
+grep les assertions qui épinglent l'ANCIEN avant de pousser »*. Ce qui manquait n'était pas la règle
+mais sa **PORTÉE** : j'avais regardé le fichier de tests du module, pas `tests/`.
+
+> Le grep juste porte sur la **CAUSE** rendue (`kind-non-amortissant`) et sur le **nom du `kind`**
+> (`auto-lease`), dans **tout** `tests/`. Rejoué correctement, il sort 1 assertion à inverser **et
+> 2 commentaires devenus faux** — dont un qui décrivait encore « le cas réel de Marc ».
+
+⚠️⚠️ **Et le gate local ne l'a pas vu parce qu'il n'a pas tourné du tout.**
+`scripts/hooks/commit-gate.mjs` est un hook `PreToolUse` sur Bash : il lit la commande, et si elle
+contient `git commit`, il consulte `git diff --cached --name-only` pour choisir les tests à lancer.
+Or le `CLAUDE.md` §3 prescrit de chaîner `git add && git commit && git push` dans **un seul appel**
+— et au moment où le hook s'exécute, le `git add` de cette même commande n'a pas encore tourné :
+l'index est **VIDE**. Mesuré autrement : les commits de cette session reviennent en quelques
+secondes, alors que le gate complet dure ~13 minutes.
+
+Les deux règles du dépôt se contredisent donc, et le coût est double : le gate ne protège rien sur
+ce chemin, **et** on écrit « gate complet passé au commit » dans des messages de commit et des corps
+de PR où c'est FAUX. Sur ce chemin, **la CI est le seul gate** — c'est ce qu'il faut écrire.
+
+⚠️ Corollaire de fixture, trouvé en écrivant la garde de traversée : mon premier jet portait la date
+RÉELLE du bail de Marc (`2026-07-20`) contre un `AUJ` figé au **2026-01** dans ce fichier de tests.
+Le refus `donnees-manquantes` était parfaitement JUSTE (on ne reconstruit pas un passé antérieur au
+début du prêt), et j'ai failli le lire comme un défaut de la chaîne MCP. **Une date de fixture se lit
+relativement à l'horloge du fichier, jamais recopiée du monde réel.**

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 124 tests** Vitest
-(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche, +6 cause du refus au hub, +7 bail amorti dans le passé, +5 clôture périmée au JOUR). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 125 tests** Vitest
+(622 fichiers de test, MESURÉ par la suite complète le 2026-09-17 (623 s, exit 0) ; +17 lecture par cohorte, +4 date d'observation, +11 total amputé et ses trois chemins, +3 dette dans l'infobulle, +6 mois 0 sur cotation fraîche, +6 cause du refus au hub, +7 bail amorti dans le passé, +5 clôture périmée au JOUR, +1 bail à taux nul par la chaîne MCP). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1154,6 +1154,26 @@ n'est pas réécrire un récit.
   − 46 152 = 216 336 ; 245 771 + 28 870 − 47 169 = 227 472), ce qui a localisé l'écart entre les deux
   BASES au lieu de le chercher dans une addition
   (`CORRIGER-UN-PRODUCTEUR-N-EST-PAS-CORRIGER-LA-CLASSE`).
+
+- ⚠️⚠️ **Le grep des assertions qui épinglent l'ANCIEN fait se fait sur TOUT `tests/`, jamais sur le
+  fichier du module** (2026-09-17, trouvé par la CI) : après avoir inversé le test de limite du bail
+  dans `tests/services/debtAmortization.test.ts`, j'ai poussé — et la CI a rougi sur un TROISIÈME
+  site, `tests/mcp/applyDebtOriginalBalance.test.ts`, qui affirmait la même chose depuis le chemin
+  d'import MCP. La règle existait déjà dans ce fichier (« après un correctif qui change un
+  comportement, grep les assertions qui épinglent l'ANCIEN avant de pousser ») ; ce qui manquait est
+  sa PORTÉE. Le grep juste est sur la CAUSE et sur le nom du `kind`, dans tout `tests/` — il a alors
+  sorti 1 assertion à inverser **et 2 commentaires devenus faux**.
+  ⚠️⚠️ **Et le gate local ne l'a pas vu parce qu'il n'a PAS TOURNÉ** : `scripts/hooks/commit-gate.mjs`
+  est un `PreToolUse` sur Bash qui lit `git diff --cached`. Chaîner `git add && git commit` dans UN
+  SEUL appel — ce que la §3 prescrit — laisse l'index VIDE au moment où le hook s'exécute. Mesuré
+  autrement : mes commits de la session sont revenus en quelques secondes alors que le gate complet
+  dure ~13 min. **Ne plus écrire « gate complet passé au commit » sans l'avoir vu tourner** : sur ce
+  chemin, la CI est le SEUL gate, et le dire change ce qu'on promet dans un corps de PR.
+  ⚠️ Corollaire de fixture : mon 1er jet de la garde de traversée portait la date RÉELLE du bail
+  (2026-07) contre un `AUJ` figé au **2026-01** dans ce fichier — refus `donnees-manquantes`
+  parfaitement JUSTE, que j'ai failli lire comme un défaut de la chaîne MCP. Une date de fixture se
+  lit RELATIVEMENT à l'horloge du fichier, jamais recopiée du monde réel
+  (`LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

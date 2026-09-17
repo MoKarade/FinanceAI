@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚠️ Session 2026-09-17 (suite) — **le gate local ne tourne PAS sur ce chemin**
+> `commit-gate.mjs` est un `PreToolUse` Bash qui lit `git diff --cached`. Chaîner
+> `git add && git commit` en UN SEUL appel (ce que la §3 prescrit) laisse l'index VIDE quand le hook
+> s'exécute : mes commits reviennent en quelques secondes alors que le gate dure ~13 min.
+> ⚠️ **Conséquence à ne pas oublier : la CI est le SEUL gate sur ce chemin.** Ne plus écrire « gate
+> complet passé au commit » dans un message de commit ou un corps de PR sans l'avoir vu tourner.
+> 🔎 C'est ce trou qui a laissé passer un test de limite non inversé (`tests/mcp/…`), attrapé par la CI.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[DEBT-BAIL-PASSE-PLAT]` + `[PASSE-JOUR-CLOTURE-PERIMEE]`**
 > Deux défauts signalés par Marc à l'écran, deux producteurs oubliés.
 > 🔎 **La dette figée dans le passé** : `KIND_AMORTISSANT['auto-lease'] = false` refusait d'amortir un

@@ -18,6 +18,19 @@
 > ⚠️ **Conséquence assumée** : avant le plus ancien virement importé, la dette reste PLATE.
 > ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir « bZ », choisir « Toyota Financial » dans « Virements qui
 > remboursent cette dette », Enregistrer. Le lien ne se devine pas.
+> ⚠️⚠️ **Le PANEL a trouvé SEPT défauts après un gate vert ET une CI verte**, tous corrigés dans le
+> même lot, tous mesurés : `isTransfer` inclus côté dette et exclu côté cash → **1 877,36 $ de
+> patrimoine CRÉÉ** (décision à moi, RÉFUTÉE par la conservation, test de limite INVERSÉ) ;
+> `startDate` et `minimumPayment` exigés par la série et pas par le solde du jour → deux registres,
+> deux dettes ; pas de borne de TERME sur les virements → **−2 581,37 $** sur un bail éteint ; le
+> plancher `Math.max(0,…)` effaçait la dette à **0,00 $** sur un lien vers un marchand fréquent —
+> et la liste propose les plus fréquents EN PREMIER ; la carte de dette, le simulateur et `topDebts`
+> du payload MCP montraient encore le solde brut à côté du corrigé ; deux dettes liées au même
+> marchand déduisaient chacune la totalité. **Aucune de mes 22 gardes ne pouvait les voir** : ma
+> fixture décrivait le cas nominal (bail en cours, daté, bon marchand).
+> ⚠️ Cinq trouvailles MESURÉES et NON corrigées (hors périmètre), routées au BACKLOG : PDF au solde
+> brut, série mensuelle du passé qui mêle deux instants (**pré-existant, prouvé**), transaction
+> post-datée, transaction datée au mois seul, résidu `paymentPayee` invisible.
 > ⚠️ Toujours en attente : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`).
 >
 > ## 🟦 Session 2026-09-17 (suite) — **cadence des dettes, carte du hub, `[FINTABLE-AUTORITE-PARTOUT]` étape 3**

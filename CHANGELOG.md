@@ -26,6 +26,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Le formulaire dit ce qui se passe.** Sous le solde : « Enregistré le 18 septembre 2026 ·
   2 virements à « Toyota Financial » depuis, le dernier le 15 septembre — déjà déduits ci-dessus. »
   Et si le marchand choisi ne verse rien, il te le dit en clair au lieu de rester muet.
+- ⚠️ **Si tu marques un paiement « virement interne », il ne fait plus baisser la dette.** C'est
+  voulu, et c'est une correction : l'app enlève déjà ces lignes de tes liquidités, donc les compter
+  quand même du côté de la dette faisait MONTER ta valeur nette de 234,67 $ à chaque paiement marqué
+  (1 877 $ mesuré sur huit, ~12 200 $/an) — de l'argent qui n'existe pas. Maintenant les deux côtés
+  traitent la même transaction pareil, et le formulaire te dit quand plus rien n'est déduit.
+- **L'app refuse plutôt que d'effacer ta dette.** Si les virements du marchand choisi dépassent le
+  solde enregistré (mauvais marchand, ou solde jamais ré-enregistré), rien n'est déduit et le
+  formulaire te le dit. Avant ce garde-fou, un lien vers un marchand très fréquent — et la liste
+  propose les plus fréquents EN PREMIER — ramenait la dette à **0 $** sous un message rassurant.
+- **Un bail terminé ne descend plus.** Si tu remplaces un véhicule chez le même prêteur, les
+  virements du NOUVEAU bail ne s'appliquent plus à l'ancien solde résiduel (mesuré : 2 581 $
+  effacés à tort).
+- **Un seul chiffre par dette à l'écran.** La ligne de chaque dette, le simulateur « Liberté dans
+  X ans » et le résumé envoyé à l'assistant affichaient encore le solde enregistré pendant que le
+  badge « Total dû », lui, descendait. Tout passe maintenant par la même source.
 - **À faire par toi** : ouvrir la dette « bZ » et choisir le marchand. Le lien ne se devine pas.
 
 ---

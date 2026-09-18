@@ -1288,6 +1288,29 @@ n'est pas réécrire un récit.
   partage `clePayee` avec le matcher. ⚠️ La conséquence assumée (avant le plus ancien virement
   importé, la courbe est PLATE) se DIT à l'écran, sinon elle est indiscernable d'un bug
   (`UN-MODELE-QUI-S-ACCORDE-AVEC-LA-MESURE-LA-OU-ON-REGARDE-RESTE-UN-MODELE`).
+  ⚠️⚠️ **Et le PANEL a trouvé SEPT défauts de plus, après gate vert ET CI verte.** Cause unique et
+  réutilisable : **ma fixture décrivait le cas NOMINAL** (bail en cours, daté, bon marchand, paiement
+  saisi). (a) **Deux registres n'ont pas le droit de filtrer différemment la MÊME transaction** : le
+  cash exclut `isTransfer`, ma dette l'incluait « délibérément » — mesuré **1 877,36 $ de patrimoine
+  CRÉÉ** (+234,67 $/semaine), `isDuplicate` servant de contrôle conservé. `ΔNW == ΔΣactifs − ΔΣdettes`
+  tranche ce qu'un raisonnement ne pouvait pas trancher, et l'arbitrage « silencieux contre visible »
+  avait été fait à l'envers. (b) **Quand on retire une exigence d'une garde, réexaminer CHAQUE autre
+  au même critère** : j'ai libéré `minimumPayment` et laissé `startDate`, donc le solde du jour
+  déduisait pendant que la série refusait — passé **1 878 $ trop haut** puis chute sans cause, sous un
+  écran qui affirmait « suit-les-virements ». (c) **Remplacer un mécanisme, c'est hériter de ses
+  BORNES ou les perdre** : sans la borne de TERME, un bail ÉTEINT descendait sur les virements du bail
+  REMPLAÇANT (même prêteur, même libellé) — **−2 581,37 $**. (d) **Un plancher dont la justification
+  cite une garde qu'on vient de retirer est muet** : `Math.max(0,…)` rendait **0,00 $** sur un lien
+  vers un marchand fréquent, sans alerte — et le piège était dans mon TRI, qui met le plus fréquent
+  EN PREMIER. Remède = le REFUS nommé. (e) **« Une seule source » se compte par SURFACE** : carte de
+  dette, simulateur et `topDebts` du payload MCP lisaient encore le brut — et le correctif évident
+  était faux, la liste corrigée ré-estampille et fait perdre la vraie date. (f) Un appariement PAR
+  DETTE n'a pas d'exclusivité (**3 285,38 $ pour 1 642,69 $ versés**). (g) Un trou de TYPE
+  (`payee` non déclaré chez un seul des deux jumeaux) n'a pas besoin d'être un bug du jour.
+  ⚠️ Corollaire de conduite, le plus cher : **un `git add -A` adopte le travail des agents** — une doc
+  réécrite avec un mécanisme INVENTÉ et un fichier de mesure avec son `console.log` sont partis dans
+  un commit poussé. `UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` vaut pour les FICHIERS qu'on ramasse,
+  pas seulement pour les chiffres qu'on recopie.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

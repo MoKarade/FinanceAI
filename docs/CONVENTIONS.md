@@ -15060,3 +15060,78 @@ champ sur un `{ ...d }`, donc `paymentPayee` survit à une passe du cron Fintabl
 CRÉATION, lui, reconstruit l'objet. Un lot futur qui déplacerait l'un vers l'autre effacerait le
 lien de Marc **sans rien de rouge et sans rien à l'écran** — la dette cesserait simplement de
 descendre. Une garde le fige.
+
+### Suite du même lot — ce que le PANEL a trouvé après un gate vert ET une CI verte
+
+Sept défauts, aucun visible par mes vingt-deux gardes. La raison est une seule et elle se réutilise :
+**ma fixture décrivait le cas NOMINAL** — un bail en cours, correctement daté, lié au bon marchand,
+avec un paiement mensuel saisi. Chacun des sept vit dans une case que cette fixture ne pouvait pas
+atteindre.
+
+⚠️⚠️ **Deux registres n'ont pas le droit de filtrer différemment la MÊME transaction.** J'avais
+écrit, testé et justifié que `isTransfer` ne devait PAS exclure un virement (« un remboursement de
+dette EST économiquement un virement ; l'exclure ferait cesser la déduction le jour où Marc classe
+ses paiements, en silence »). Le raisonnement est juste sur son objet et **faux sur le patrimoine
+net** : le registre du CASH exclut `isTransfer` partout, donc une dette qui l'inclut descend sans
+que l'actif descende. Mesuré : **−25 291,31 $ au lieu de −27 168,67 $, soit 1 877,36 $ CRÉÉS**, et
+234,67 $ de plus par semaine (≈ 12 203 $/an). `isDuplicate` marqué servait de contrôle et conservait
+au cent près. `ΔNW == ΔΣactifs − ΔΣdettes` tranche le débat que le raisonnement ne pouvait pas
+trancher. ⚠️ Et l'arbitrage « silencieux contre visible » avait été fait à l'envers : le coût de
+l'ALIGNEMENT est visible (la dette cesse de descendre, et l'écran le nomme), celui du défaut ne
+l'était nulle part. Le test de limite a été INVERSÉ au même endroit, avec son histoire.
+
+⚠️⚠️ **Quand on retire une exigence d'une garde, réexaminer CHAQUE autre exigence au même critère.**
+La branche « virements réels » n'a besoin ni de `minimumPayment`, ni de cadence, ni de `startDate` —
+un virement porte sa date et son montant. J'ai retiré la première de la garde d'entrée et laissé les
+deux autres : `soldeDetteAujourdhui` (qui ne les lit pas) déduisait pendant que la série du passé
+refusait `donnees-manquantes`. Mesuré : passé **PLAT** pendant que le cash descend des mêmes
+1 877,36 $ ⇒ valeur nette passée **1 878 $ trop haute**, puis CHUTE vers aujourd'hui sans cause,
+sous un écran qui affirmait « suit-les-virements » pour une courbe qui ne suivait rien. Le champ est
+un `<input type="date">` **optionnel** : le cas s'atteint en un clic. C'est le jumeau exact de
+`UN-ACCUMULATEUR-ANNUEL-SE-JUGE-SUR-SA-POSITION-PAR-RAPPORT-A-SON-RESET` (« chercher le jumeau AVANT
+de déplacer quoi que ce soit »), payé dans l'autre sens.
+
+⚠️⚠️ **Remplacer un mécanisme, c'est hériter de ses BORNES — ou les perdre.** La grille modélisée
+portait `finMs` (fin du mois de `termEndDate`) ; la source « virements » ne filtrait que le FUTUR.
+Un bail ÉTEINT dont le prêteur prélève toujours — le cas d'un bail REMPLACÉ chez le même prêteur,
+donc le MÊME libellé de marchand — continuait de descendre : **−2 581,37 $** sur un résiduel de
+5 000 $, pendant que la grille restait plate. C'est l'ASYMÉTRIE entre les deux sources qui a
+démasqué le trou, pas la lecture du code. Avant de substituer une source à une autre, **énumérer ce
+que l'ancienne REFUSAIT**, pas seulement ce qu'elle calculait.
+
+⚠️⚠️ **Un plancher dont la justification cite une garde qu'on vient de retirer est un plancher
+muet.** `Math.max(0, brut − verses)` portait « la borne de TERME de la grille empêche déjà ce cas » —
+vrai de la grille, faux des virements. Mesuré sur un lien vers un marchand à 400 sorties : solde du
+jour **0,00 $**, 47 168,67 $ effacés, **sans alerte** et sous une phrase rassurante (« 51 virements
+depuis, déjà déduits »). ⚠️ Le piège était dans mon propre TRI : `marchandsCandidats` classe par
+fréquence DÉCROISSANTE, donc l'option la plus dangereuse est la PREMIÈRE de la liste. Le remède
+n'est pas un meilleur nombre mais un **REFUS** nommé (`virements-incoherents`) : un total amputé
+n'est pas une autorité dégradée, c'est un FAUX.
+
+⚠️ **« Une seule source » se compte par SURFACE, pas par module.** `computeTotalDebt` passait par la
+source unique ; la carte de chaque dette, le simulateur d'extinction et `topDebts` du payload MCP
+lisaient `d.balance` BRUT. Deux chiffres de la même dette sur le même écran — et, pour le MCP, dans
+le MÊME JSON, celui que l'assistant répète à Marc comme un fait. ⚠️ **Et le correctif évident était
+faux** : rendre la liste corrigée (`dettesAuSoldeDuJour`) fait perdre la VRAIE estampille, puisque
+cette fonction ré-estampille à aujourd'hui pour être idempotente — le formulaire annonçait alors
+« aucun virement depuis » sur la dette qui venait d'en déduire huit. La liste garde les objets du
+STORE, et chaque MONTANT passe par la source unique. Deux tests ont rougi avant que je le voie.
+
+⚠️ **Un appariement PAR DETTE n'a pas d'exclusivité.** Deux dettes liées au même marchand déduisent
+chacune la TOTALITÉ des virements : mesuré, **3 285,38 $ retirés pour 1 642,69 $ réellement versés**.
+Le lien ne se pose qu'à un endroit (la liste offerte) : l'y empêcher l'empêche partout.
+
+⚠️ **Un trou de TYPE n'a pas besoin d'être un bug du jour pour mériter d'être bouché.**
+`BuildPastPrefixInput.transactions` ne déclarait pas `payee` là où son jumeau le déclarait. `tsc`
+restait vert (le seul appelant passe des objets plus riches), mais rien n'EXIGEAIT que le champ
+survive : un appelant futur bâtissant la liste d'après le contrat aurait fait taire l'appariement en
+silence (mesuré : **−1 877,00 $** au premier mois). **L'asymétrie entre deux jumeaux est le signal.**
+
+⚠️ Corollaire de CONDUITE, et c'est peut-être le plus cher du lot : **un `git add -A` adopte le
+travail des agents**. Un rapport d'agent a réécrit `docs/PROJECTION.md` en y inventant un mécanisme
+(« le FUTUR dérive une cadence des virements réels » — la boucle du futur ne lit ni `kind`, ni
+`paymentFrequency`, ni `paymentPayee`), et un fichier de mesure ad hoc s'est retrouvé commité dans
+`tests/` avec son `console.log`. Les deux sont partis dans un commit poussé.
+`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` ne vaut pas que pour les CHIFFRES qu'on recopie : elle
+vaut pour les FICHIERS qu'on ramasse. Relire `git status` avant `git add -A` quand des agents
+tournent — ou committer par chemins nommés.

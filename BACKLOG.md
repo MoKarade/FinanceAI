@@ -51,6 +51,56 @@
 
 ---
 
+## 💸 Reste du panel `[DETTE-VIREMENTS-REELS]` (18/09/2026) — mesuré, NON corrigé (hors périmètre)
+
+- [ ] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **le rapport PDF ne se recompose pas avec lui-même.**
+  `components/app/exportPdfEcran.ts` somme `state.debts.reduce((s, d) => s + d.balance, 0)` et
+  `services/pdfReport.ts` remplit chaque ligne (`balance`, `monthsToZero`) depuis `d.balance` —
+  aucun des deux ne passe par `soldeDetteAujourdhui`. Le même document affiche pourtant un
+  patrimoine net CORRECT (il vient de `computePresentNetWorth`, corrigé). **Mesuré sur le bail de
+  Marc : PDF 47 168,67 $ contre écran 45 525,98 $, soit 1 642,69 $, +234,67 $ par semaine.**
+  Un document exporté et partagé où `actifs − dettes ≠ valeur nette`, sans avertissement.
+  ⚠️ Pré-existant (`[DETTE-SOLDE-INSTANTANE-FIGE]`, 17/09) ; `[DETTE-VIREMENTS-REELS]` en élargit
+  la magnitude, il ne le crée pas. Routé plutôt que corrigé : deux fichiers qu'aucun des deux lots
+  ne touche.
+
+- [ ] 🔧 **`[PASSE-MOIS-DEUX-INSTANTS]`** (M) — **la série MENSUELLE du passé mêle la fin d'un mois
+  et le début d'un autre.** `services/history/buildPastPrefix.ts` : `cashByMi` porte le cash à la
+  **FIN** du mois (contrat de `reconstructCashHistory`) pendant que le supplément de dette porte le
+  solde au **1er** du mois (`amortirVersementsFixes` échantillonne `premierDuMois`). **Mesuré au
+  point `2026-08` : liquidités 20 469,34 $ (= cash au 1er septembre) contre dette 46 699,33 $
+  (= dette au 1er août) — un mois d'écart.** Chaque point mensuel du passé sous-estime donc la
+  valeur nette d'environ un mois de versements (**≈ 1 016,90 $** ici), et le raccord passé→futur
+  montre une marche de 938,69 $ que `fluxPeriodeAnnulee` (469,34 $) n'explique pas.
+  ⚠️ **PRÉ-EXISTANT, prouvé** : rejoué avec la grille modélisée (donc sans `paymentPayee`, le
+  comportement d'avant le lot), les valeurs sont IDENTIQUES — cohérent avec la bit-identité mesurée
+  sur les huit personas. La série au JOUR, elle, est exacte. ⚠️ Avant de « corriger », trancher
+  lequel des deux instants la série mensuelle PROMET : déplacer l'un sans l'autre ne fait que
+  changer de côté l'écart d'un mois.
+
+- [ ] 🔧 **`[DETTE-TX-POSTDATEE-ASYMETRIE]`** (S) — miroir, beaucoup plus petit, du défaut
+  `isTransfer` corrigé dans le lot : `paiementsReelsDette` REFUSE une transaction datée APRÈS
+  aujourd'hui (justifié : elle ne décrit pas un solde du jour) pendant que `computeCashLedger`, lui,
+  la compte sans regarder la date. **Mesuré : valeur nette 234,67 $ trop BASSE par transaction
+  post-datée.** Le correctif n'est pas forcément côté dette — c'est l'ASYMÉTRIE qui est le défaut, et
+  c'est peut-être le cash qui a tort.
+
+- [ ] 🔧 **`[DETTE-TX-DATEE-AU-MOIS-JETEE]`** (S) — une transaction datée au MOIS seul
+  (`2026-09`) est écartée des virements par `jourMs` (qui exige ≥ 10 caractères) **sans compteur ni
+  avertissement**, alors que le registre du cash les COMPTE et les ANNONCE (`undatedTotal`, affiché
+  dans le bandeau de la vue au jour). **Mesuré : 234,67 $ de dette non déduite par occurrence** ⇒
+  patrimoine sous-évalué. Le remède est un compteur PUBLIÉ (même patron qu'`undatedTotal`), pas un
+  `continue` muet — refuser en silence est le mode de panne que ce dépôt a déjà payé trois fois.
+
+- [ ] 🔧 **`[DETTE-PAYEE-RESIDU-INVISIBLE]`** (XS) — changer le `kind` d'une dette liée, ou lui
+  donner un taux non nul, MASQUE le sélecteur de marchand sans effacer `paymentPayee` : le champ
+  survit à l'enregistrement (`saveEdit` fusionne `{...d, ...draft}`), reste invisible, et le lien se
+  réactive en silence si le taux revient à zéro. Effet conservateur aujourd'hui (aucune déduction
+  n'a lieu), donc XS — mais un champ posé qu'aucun écran ne montre est exactement ce que
+  `[DETTE-BALANCEASOF-INVISIBLE]` a coûté la veille.
+
+---
+
 ## ♿ Trouvé par le panel du lot `[DETTE-VIREMENTS-REELS]` (18/09/2026) — RE-MESURÉ avant d'être écrit
 
 - [ ] 🔧 **`[CONTRAST-SCAN-CLASSNAME-CALCULE]`** (M) — **le scan de contraste ne voit que les

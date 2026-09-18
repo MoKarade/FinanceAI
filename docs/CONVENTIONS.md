@@ -15641,3 +15641,171 @@ changer le seuil déplace encore de l'argent, donc c'est une décision produit.
 **⚠️ Une fixture sans non-enregistré ne peut pas voir ce défaut** : l'appel de marge ne vend que s'il
 y a quelque chose à vendre (`state.nonReg > 0`). À zéro, le mécanisme existe et reste strictement
 invisible — c'est écrit dans la fixture de la garde, à côté du montant.
+
+---
+
+## `UN-CORRECTIF-DONT-LE-COMMENTAIRE-CONTIENT-LE-MOTIF-FAUSSE-SON-PROPRE-RECENSEMENT` (2026-09-18)
+
+Le lot L2 de l'audit du 18/09 pose `persist-credentials: false` sur les étapes
+`actions/checkout`, avec un commentaire qui EXPLIQUE pourquoi — et ce commentaire nomme
+`actions/checkout`. La commande de recensement du document de passation,
+`grep -rho "actions/checkout" .github/workflows | wc -l`, est alors passée de **6 à 10**
+pour quatre corrections appliquées : elle comptait ses propres commentaires.
+
+⚠️ **Le sens de l'erreur est le pire des deux.** Un compteur qui sous-estime laisse du
+travail ; celui-là SUR-estime, donc il ressemble à une régression — on croit avoir ajouté
+des checkout en en corrigeant. Et surtout, il fait mentir la commande que le document de
+passation donne comme preuve de fin de lot : appliquer le correctif rend la vérification
+fausse.
+
+**Le geste** : recenser sur la FORME SYNTAXIQUE, pas sur la mention —
+`grep -rhoE '^\s*uses:\s*actions/checkout'`. Un commentaire ne commence jamais par `uses:`.
+Même piège, mesuré dans le même lot, sur `--ignore-scripts` : 6 occurrences pour 5 commandes
+d'installation, la sixième étant le commentaire du Dockerfile.
+
+**Classe générale** : dès qu'un correctif documente sa propre raison, le motif recensé
+apparaît dans le commentaire. Toute commande de comptage écrite AVANT le correctif doit être
+re-vérifiée APRÈS, ou ancrée sur une forme que la prose ne peut pas produire. C'est le
+voisin de `LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS` et de
+`SCAN-QUI-MATCHE-LA-PROSE` — sauf qu'ici le scanner et l'auteur du bruit sont le même lot.
+
+### Lot du 2026-09-18 — audit : L1, L5b, L2 sur FinanceAI
+
+**L1 — `sanitizeContext` : Aikido surestimait ET le défaut était réel.** Sévérité 75, la plus
+haute du scan, annoncée comme « change le comportement de l'application ». Faux : `out` est un
+objet neuf, `Object.prototype` n'est jamais touché — un cas du test le mesure et **borne** le
+signalement. Mais `Object.entries()` REND bien `__proto__` quand l'objet vient d'un
+`JSON.parse` (propriété propre, contrairement à un littéral), et l'affectation sur `{}`
+déclenchait le setter hérité : le prototype de `out` était remplacé, `JSON.stringify`
+n'énumère pas un prototype, **l'entrée de journal perdait la clé en silence**.
+`Object.create(null)` corrige les quatre niveaux d'un coup.
+
+⚠️ **Une fixture écrite à la main ne discrimine pas** : `{ __proto__: … }` en littéral ne crée
+aucune propriété propre, donc le cas ne se produit jamais. Il faut un `JSON.parse` RÉEL, et le
+test en fait son premier cas d'anti-vacuité — sans lui, les cinq autres passeraient en ne
+vérifiant rien (`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`). Perturbation
+jouée : 3 des 6 cas rougissent sur `const out = {}`.
+
+**L5b — la racine n'était pas « Sonar se trompe », c'était une COLLISION de sens.** Les 19
+`typescript:S2187` BLOCKER portaient sur `mcp/tools/*.spec.ts` : mesuré, **zéro** test dedans,
+et `vitest.config.ts` ne collecte que `tests/**/*.test.{ts,tsx}`. Ce sont des schémas d'outil
+MCP. Mais `.spec.ts` désigne AUSSI de vrais tests Playwright dans `e2e/` — une extension, deux
+sens, dans le même dépôt : la détection automatique de SonarCloud ne pouvait pas trancher.
+
+⚠️ **Mon propre grep a menti d'abord** : « 16 des 19 contiennent des tests » venait de
+`\b(describe|it|test)\s*\(`, qui matche le `.describe()` de **Zod** — huit fois dans un seul
+fichier. Le compte réel est 0, obtenu en ancrant sur le début de ligne.
+
+Arbitrage de Marc : **configurer plutôt que renommer** (19 fichiers et 43 imports réécrits sur
+un dépôt money-critical, pour zéro changement de comportement). D'où `.sonarcloud.properties`
+avec `sonar.tests=tests,e2e`.
+
+⚠️⚠️ **ET LE CORRECTIF EST UNE HYPOTHÈSE JUSQU'À LA PROCHAINE ANALYSE.** Aucun workflow ne
+lance sonar ⇒ analyse AUTOMATIQUE de SonarCloud, qui lit `.sonarcloud.properties` et **non**
+`sonar-project.properties` (ce dernier est pour le scanner CLI). Se tromper de nom produit un
+fichier qui ne fait rien, en silence. La preuve n'est pas dans le commit : elle est la
+DISPARITION des 19 `S2187` au prochain passage. Écrit dans le fichier lui-même.
+
+**L2 — `--ignore-scripts` se MESURE, il ne se raisonne pas.** Le document de passation
+avertissait qu'un `--ignore-scripts` à l'aveugle casse la CI (Playwright, esbuild). Mesuré
+plutôt que supposé : le binaire d'esbuild vient de `@esbuild/linux-x64`, une dépendance
+**optionnelle** que npm installe indépendamment des scripts — son `postinstall` ne fait qu'une
+vérification. Preuve : `npm ci --ignore-scripts` dans un dossier neuf, puis
+`esbuild --version` → 0.28.1 et une transpilation réelle, puis `node_modules` échangé dans le
+dépôt et **`npm run typecheck` + `npm run build` verts**. Playwright reçoit son navigateur du
+`npx playwright install --with-deps chromium` explicite qui suit déjà.
+
+⚠️ **Les comptes du document ne tenaient pas tous, et c'est pour ça qu'il dit de re-mesurer** :
+`githubactions:S6505` était annoncé à « 7 occurrences de `npm ci` » dans les workflows — il y
+en a **zéro**, les workflows utilisent `npm install` ; le seul `npm ci` est dans le
+`Dockerfile`. `S8543 × 7` (version non figée d'un `npm install -g`) → **zéro** `npm install -g`
+dans ce dépôt. `S7637 × 3` en revanche tenait exactement : trois actions tierces sur un tag
+mutable, épinglées au SHA **résolu par `git ls-remote refs/tags/<tag>`** — jamais inventé, un
+SHA faux casse le run au milieu.
+
+⚠️ `refresh-screenshots.yml` est le SEUL checkout de ce dépôt qui garde le jeton, et il porte
+désormais `persist-credentials: true` **explicite** : il fait `git push` + `gh pr create`. Sans
+l'intention écrite, quelqu'un poserait `false` par cohérence avec les cinq autres et casserait
+le push, avec une erreur d'authentification à l'autre bout du job.
+
+---
+
+## `UN-RECENSEMENT-ANCRE-SUR-NPM-CI-NE-VOIT-PAS-NPX` (2026-09-18, lot L2 de l'audit)
+
+Le lot L2 posait `--ignore-scripts` sur les installs de workflow, pour que les scripts
+d'installation d'un paquet cessent de s'exécuter sur un runner qui porte les secrets. Recensement
+fait sur `npm ci` et `npm install`, sept sites trouvés et corrigés ici, compte rejoué, lot déclaré
+fini.
+
+**Il restait trois `npx`** : `npx playwright install --with-deps chromium` dans `ci.yml` (job
+`e2e`) et dans `refresh-screenshots.yml`, plus `npx playwright test e2e/screenshots.spec.ts
+--update-snapshots`. `npx` télécharge le paquet depuis le registre quand il ne le trouve pas
+localement **et exécute ses scripts de cycle de vie** — la surface qu'on vient de fermer à
+l'étape d'installation, rouverte une étape plus bas, sur une version que le lockfile ne gouverne
+pas (le registre sert la dernière). ⚠️ Et `refresh-screenshots.yml` est précisément le workflow
+qui garde son jeton (`persist-credentials: true`, il pousse) : c'est le pire endroit du dépôt
+pour laisser une installation non gouvernée.
+
+**Ce n'est pas mon recensement qui l'a trouvé**, c'est le rapport SonarCloud d'un AUTRE dépôt du
+parc, qui le disait dans des termes où je ne cherchais pas — « "npx" can install packages
+on-demand and run their lifecycle scripts », plus « Define exact package version ». La requête
+élargie sur les huit dépôts a alors sorti **8 sites** hors de la requête initiale : 3 ici, 5 chez
+JobAI.
+
+**Le correctif est `npx --no-install`** : le binaire vient de `node_modules/.bin`, donc de la
+version qu'épingle le lockfile, et npx échoue franchement s'il manque au lieu d'aller le
+chercher. Mesuré avant d'être posé : `npx --no-install playwright --version` rend
+« Version 1.60.0 », et `@playwright/test` est bien une devDependency.
+
+⚠️ **Le drapeau exige que l'étape d'installation vive dans le MÊME job**, sinon il transforme un
+téléchargement silencieux en échec de CI. Vérifié job par job avant de le poser : `quality`,
+`e2e` et `refresh` font tous leur `npm install --ignore-scripts` avant leurs `npx`.
+
+**La règle** : un recensement de commandes d'installation s'énumère par ce qu'elles FONT
+(installer un paquet, exécuter un binaire qui peut s'installer), jamais par le nom de l'une
+d'elles. C'est `UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`
+appliqué non plus à un extracteur de code mais à une **requête de recensement** — d'où l'absence
+de ligne d'index neuve en §9 du `CLAUDE.md` : la classe y figure déjà, c'est sa quatrième forme.
+
+⚠️ Deuxième enseignement, de méthode : le signal est venu d'un scanner branché sur un dépôt
+VOISIN. Le parc partage ses formes de workflow ; un constat d'outil sur l'un vaut la peine d'être
+rejoué sur les huit, y compris quand le dépôt visé n'a pas ce scanner.
+
+---
+
+## `UN-MANIFESTE-PEUT-ANNONCER-UNE-TAILLE-QUE-LE-FICHIER-N-A-PAS` (2026-09-18)
+
+Le manifeste PWA de ce dépôt déclarait UNE icône, en SVG, `sizes: "any"`, `purpose: "any
+maskable"` — et l'app n'était donc pas installable sur Android : Chrome fabrique un WebAPK et lui
+faut une icône **raster** d'au moins 192 px. Le défaut est de la famille la plus coûteuse à
+trouver : **rien ne casse**. Pas d'erreur, pas de console rouge, l'app s'ouvre parfaitement dans
+un onglet — il manque seulement l'entrée de menu « Installer l'application », que personne ne va
+chercher quand elle est absente.
+
+**Ce que la garde doit lire, et c'est le vrai enseignement** : `sizes` est une DÉCLARATION, pas
+une mesure. Un manifeste qui annonce `512x512` en servant un PNG de 192 est faux, et Chrome croit
+le FICHIER. La garde relit donc les dimensions dans l'en-tête **IHDR** du PNG (13 octets après la
+signature, aucun outil requis) et les compare au champ — `tests/pwaManifest.test.ts`, perturbation
+n° 2 sur les quatre. Une garde qui n'aurait relu que le manifeste aurait certifié le mensonge.
+
+⚠️ **Une icône non conçue pour le masque, déclarée `maskable`, se fait ROGNER les bords** par
+l'icône adaptative d'Android : elle s'affiche, simplement coupée. C'est pour ça que la maskable est
+un fichier DISTINCT (glyphe ramené à ~66 % dans la zone sûre) et que la garde exige que son `src`
+diffère de celui des icônes `any` — le raccourci « une seule image pour les deux rôles » est
+exactement le défaut qu'on trouve chez le voisin MemoryAI.
+
+⚠️ **Anti-vacuité du GÉNÉRATEUR, pas seulement de la garde** : les PNG sont rendus depuis le SVG
+existant par `sharp` (librsvg), et le SVG porte du TEXTE (`font-family="Arial"`). Sans police
+substituable, le rendu aurait donné un carré vert uni — une icône parfaitement affichable et
+muette. Le script compte donc les pixels blancs et refuse en dessous d'un plancher ; mesuré 7,4 %
+de blanc sur les icônes `any` et 3,8 % sur la maskable (glyphe plus petit, c'est attendu).
+Liberation Sans, présente dans le conteneur, est métriquement identique à Arial.
+
+⚠️ Et la CSP a été **lue avant** d'ajouter les fichiers, parce qu'elle est *enforced* ici :
+`default-src 'self'` couvre le manifeste (il n'y a pas de `manifest-src`, donc c'est le repli qui
+s'applique) et `img-src 'self' data: blob: https:` couvre les PNG. Zéro ligne de `vercel.json` à
+changer — mesuré, pas supposé, parce qu'une icône bloquée par la CSP ne casse ni le build ni les
+tests.
+
+---
+

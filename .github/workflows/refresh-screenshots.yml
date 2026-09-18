@@ -25,6 +25,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # [CI-PERSIST-CREDS] `true` EXPLICITE, et c'est le seul de ce dépôt.
+          #
+          # Ce job POUSSE : `git push -u origin "$BRANCH"` puis `gh pr create` (l. 59-61).
+          # Il a donc besoin du GITHUB_TOKEN laissé dans la config git par le checkout.
+          # L'écrire noir sur blanc plutôt que de compter sur le défaut a deux effets : la
+          # règle `AIK_yaml_actions_checkout_persist_credentials` ne le re-signale plus, et
+          # la prochaine session lit l'INTENTION au lieu de devoir la deviner — sans ça,
+          # quelqu'un poserait `false` par cohérence avec les cinq autres et casserait le
+          # push, avec une erreur d'authentification à l'autre bout du job.
+          persist-credentials: true
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -32,13 +43,21 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --ignore-scripts
 
       - name: Install Playwright Chromium + deps système
-        run: npx playwright install --with-deps chromium
+        # [CI-NPX-NO-INSTALL] `--no-install` : sans lui, `npx` TÉLÉCHARGE le paquet depuis le
+        # registre quand il ne le trouve pas localement, puis exécute ses scripts de cycle de vie
+        # — la surface que `--ignore-scripts` ferme à l'étape d'installation, rouverte ici, et sur
+        # une version NON figée (le registre sert la dernière). Avec le drapeau, npx n'utilise que
+        # le binaire de `node_modules/.bin`, donc la version qu'épingle le lockfile, et échoue
+        # franchement s'il manque au lieu d'aller le chercher. Mesuré le 18/09 : `npx --no-install playwright --version` rend « Version 1.60.0 », le binaire local (`@playwright/test` est une devDependency).
+        # ⚠️ Vérifié aussi que l'étape d'installation vit dans le MÊME job — sans elle, le drapeau
+        # transformerait un téléchargement silencieux en échec.
+        run: npx --no-install playwright install --with-deps chromium
 
       - name: Régénérer les baselines (screenshots.spec.ts uniquement)
-        run: npx playwright test e2e/screenshots.spec.ts --update-snapshots
+        run: npx --no-install playwright test e2e/screenshots.spec.ts --update-snapshots
 
       - name: Configurer git
         run: |

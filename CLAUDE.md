@@ -1340,6 +1340,22 @@ n'est pas réécrire un récit.
   quand le champ manque : `0` dirait « aucune dette », la valeur la plus crédible donc la pire
   (`UNE-PREMISSE-VISUELLE-DE-L-UTILISATEUR-SE-MESURE-AVANT-D-ETRE-SUIVIE`).
 
+- ⚠️⚠️ **Une APOSTROPHE française est un délimiteur de chaîne** (2026-09-18, `SCAN-QUI-MATCHE-LA-PROSE`
+  re-payée sur une garde ANTÉRIEURE à la règle) : le scan qui extrait `CURVE_FIELDS` du source de
+  `FutureProjection.tsx` relevait tout ce qui est entre `'`. Une simple ligne de COMMENTAIRE ajoutée
+  au bloc (« sa raison d'**être** ») a décalé toutes les paires suivantes et fait accuser
+  `DettesNonImmo` d'être ABSENTE de la liste — alors qu'elle y est, intacte, ligne suivante. Le bloc
+  est presque entièrement du commentaire français : une bombe amorcée depuis son écriture, que
+  n'importe quel lot pouvait faire sauter sans toucher au code, et dont le correctif « évident »
+  (rajouter le champ) l'aurait mis en double. Le geste n'est pas de compter les apostrophes, c'est
+  `stripCommentsJsx`. ⚠️ Et mon seuil d'anti-vacuité recopié était faux au 1er essai (2ᵉ fois pour
+  cette classe) : `> 0.5` est le seuil d'un scan de DÉPÔT ; ce fichier est à **0,455** de code
+  mesuré — plus qu'à moitié commentaire par conception. Seuil re-mesuré, MESURE écrite à côté, plus
+  une anti-vacuité sans seuil (jeton de code présent / jeton de prose absent). ⚠️ Deux perturbations
+  de sens OPPOSÉ : champ retiré → rouge, commentaire à apostrophe impaire → vert — réparer un faux
+  positif sans prouver que le vrai positif survit, c'est désarmer la garde
+  (`UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

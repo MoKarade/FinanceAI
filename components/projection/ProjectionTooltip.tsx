@@ -318,7 +318,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
 
             {/* U4 — Tous les événements du mois, pas juste le premier.
                 Avant : seul events[0] affiché + « +N ». Maintenant : liste
-                complète (le tooltip est déjà scrollable max-h-[480px]).
+                complète (le tooltip est déjà scrollable max-h-[560px]).
                 Chaque ligne a son icône dédié via splitEventIcon. */}
             {events.length > 0 && (
                 <div className="mb-2.5 space-y-1">
@@ -456,7 +456,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 cliquable que figé (le tooltip de survol est `pointer-events:none`). */}
             {frozen ? (
                 /* ⚠️ [FUTUR-TOOLTIP-STICKY-ACTIONS 2026-08-12] Pied COLLANT, et ce n'est pas du
-                   style : l'infobulle défile en interne (`max-h-[480px] overflow-y-auto`) et avec
+                   style : l'infobulle défile en interne (`max-h-[560px] overflow-y-auto`) et avec
                    des données réelles (bloc impôts + par-compte + événements) le pied dépassait le
                    pli — Marc ne VOYAIT pas « Voir ce mois jour par jour » alors qu'il était rendu
                    (capture 2026-08-12, infobulle coupée). L'e2e ne l'a jamais attrapé : Playwright

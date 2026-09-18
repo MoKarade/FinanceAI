@@ -15208,3 +15208,41 @@ lot futur re-fondre les deux en changeant la forme, et réciproquement.
 signifierait « aucune dette » — la valeur la plus CRÉDIBLE, donc la pire (`no-fake-data` appliqué à
 un point de courbe). ⚠️ Et le retour a dû normaliser `-0` : `v === 0 ? 0 : -v`, sinon `toBe(0)`
 rougit sur une dette éteinte, `-0` et `0` étant distincts pour `Object.is`.
+
+---
+
+## `UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE` (2026-09-18)
+
+**Le fait.** `tests/services/bilanQuotidien.test.ts` extrait le set `CURVE_FIELDS` du source de
+`FutureProjection.tsx` en relevant tout ce qui est entre apostrophes simples. J'ai ajouté **une
+ligne de commentaire** à ce bloc — « sa vraie raison d'être dans ce set… » — et le test a rougi en
+affirmant que `DettesNonImmo` était **ABSENTE** de `CURVE_FIELDS`. Elle y était, intacte, à la ligne
+suivante.
+
+**Le mécanisme.** L'apostrophe française et le délimiteur de chaîne JavaScript sont le **même
+caractère**. Un commentaire portant un nombre **IMPAIR** d'apostrophes décale toutes les paires qui
+suivent : le scan ne relève plus des littéraux mais des tranches de prose. Le bloc `CURVE_FIELDS`
+est presque entièrement du commentaire français — une bombe amorcée depuis le jour où il a été
+écrit, que n'importe quel lot pouvait faire sauter sans toucher au code.
+
+**Pourquoi c'est pire qu'un faux positif ordinaire.** Le message accusait un champ money-critical
+d'être absent d'une liste où il est. Un scan qui accuse le code d'après la PROSE qui l'entoure
+envoie corriger ce qui va bien — et le correctif « évident » (rajouter le champ) l'aurait mis en
+double sans rien régler.
+
+**La règle, déjà écrite, encore non tenue.** `SCAN-QUI-MATCHE-LA-PROSE` dit depuis longtemps que
+**toute** assertion de compte ou d'absence sur du source lit la source **DÉCOMMENTÉE**. Cette garde
+est antérieure et n'avait jamais été reprise. Le geste n'est pas de compter les apostrophes : c'est
+`stripCommentsJsx` (la source unique), point.
+
+⚠️ **Et le seuil d'anti-vacuité recopié était FAUX au premier essai**, deuxième fois pour cette
+classe : `partDeCodeRestante > 0.5` est le seuil d'un scan de **DÉPÔT** (agrégé sur des centaines de
+fichiers). Mesuré sur `FutureProjection.tsx` : **0,455** — il est à plus de la moitié commentaire
+par conception, et le 0,5 l'a déclaré VIDE. Seuil re-mesuré à 0,35, **la mesure écrite à côté avec
+sa date**, et doublé d'une anti-vacuité qui ne dépend d'aucun seuil : un jeton de vrai code
+(`RENDER_MAX_POINTS`) doit survivre, un jeton de PROSE (« patrimoine faux et crédible ») doit
+disparaître — un décommenteur cassé dans un sens ou dans l'autre rougit alors.
+
+⚠️ Deux perturbations **de sens opposé** prouvent la réparation : retirer `DettesNonImmo` → rouge
+(la garde tire encore) ; ajouter un commentaire à apostrophe impaire → **vert** (le faux positif a
+disparu). Réparer un faux positif sans prouver que le vrai positif survit, c'est désarmer la garde.

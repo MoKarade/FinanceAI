@@ -134,7 +134,29 @@ function sanitizeContext(value: unknown, depth = 0): unknown {
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
     if (Array.isArray(value)) return value.slice(0, 10).map(v => sanitizeContext(v, depth + 1));
     if (typeof value === 'object') {
-        const out: Record<string, unknown> = {};
+        // [SANITIZE-PROTO] `Object.create(null)` et NON `{}` — la différence est observable.
+        //
+        // `Object.entries()` REND une clé `__proto__` quand l'objet vient d'un `JSON.parse` :
+        // `JSON.parse('{"__proto__":{…}}')` crée une propriété PROPRE, contrairement à un
+        // littéral où `__proto__` est l'accesseur d'`Object.prototype`. Ce dépôt a deux
+        // sources de ce genre, documentées sous `[BACKUP-SCHEMA-NON-TYPE]` : le backup JSON
+        // et le blob `financeai-storage`.
+        //
+        // Avec `{}`, l'affectation `out['__proto__'] = …` déclenche le SETTER hérité et
+        // remplace le prototype de `out` au lieu d'y créer une propriété. `JSON.stringify`
+        // n'énumère pas un prototype ⇒ **l'entrée de journal perdait la clé en silence**.
+        // Sans prototype, l'affectation crée une propriété propre et la clé survit.
+        //
+        // ⚠️ CE QUE CE N'EST PAS : une pollution d'`Object.prototype`. `out` est un objet
+        // neuf, jamais la cible globale — le signalement Aikido (sévérité 75,
+        // `AIK_js_prototype_pollution_recursive_func_call`) annonce « change le comportement
+        // de l'application », et c'est FAUX ici. L'effet réel est borné à cet objet, et
+        // `tests/services/errorLoggerProto.test.ts` mesure les deux faits séparément.
+        //
+        // Aval vérifié : `JSON.stringify` fonctionne sur un objet sans prototype, et les deux
+        // seuls autres usages sont un `console.*` (qui l'affiche `[Object: null prototype]`
+        // sous Node — cosmétique) et les écouteurs éphémères, tous internes au dépôt.
+        const out = Object.create(null) as Record<string, unknown>;
         for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
             if (SENSITIVE_KEY_PATTERNS.test(k)) {
                 out[k] = '[redacted]';

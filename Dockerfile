@@ -19,7 +19,13 @@ WORKDIR /app
 # vit dans les devDeps → requis au BUILD ; l'install doit rester HORS NODE_ENV=production
 # (sinon npm saute les devDeps). Manifeste + lockfile d'abord = cache de couche.
 COPY package.json package-lock.json ./
-RUN npm ci --include=dev --no-audit --no-fund
+# [CI-IGNORE-SCRIPTS] `--ignore-scripts` : un script d'installation de paquet s'exécute
+# avec les droits du build. MESURÉ avant d'être posé — et c'est le piège de ce lot : le
+# binaire d'esbuild vient de `@esbuild/linux-x64`, une dépendance OPTIONNELLE que npm
+# installe indépendamment des scripts ; son `postinstall` ne fait qu'une vérification.
+# Vérifié le 18/09 sur ce lockfile : `esbuild --version` rend 0.28.1 et transpile, puis
+# `npm run typecheck` et `npm run build` passent sur un `node_modules` installé ainsi.
+RUN npm ci --include=dev --no-audit --no-fund --ignore-scripts
 
 # Code du serveur (fermeture d'import : moteur + adaptateurs + tools + types racine).
 COPY tsconfig.json ./

@@ -15580,3 +15580,89 @@ dette).
 
 **Fichiers.** `tests/backlogArchivageDesCoches.test.ts` (4 cas) · `BACKLOG.md` 2 874 → 1 815 lignes ·
 `docs/BACKLOG_ARCHIVE.md` +1 144 lignes.
+
+---
+
+## `UN-CORRECTIF-DONT-LE-COMMENTAIRE-CONTIENT-LE-MOTIF-FAUSSE-SON-PROPRE-RECENSEMENT` (2026-09-18)
+
+Le lot L2 de l'audit du 18/09 pose `persist-credentials: false` sur les étapes
+`actions/checkout`, avec un commentaire qui EXPLIQUE pourquoi — et ce commentaire nomme
+`actions/checkout`. La commande de recensement du document de passation,
+`grep -rho "actions/checkout" .github/workflows | wc -l`, est alors passée de **6 à 10**
+pour quatre corrections appliquées : elle comptait ses propres commentaires.
+
+⚠️ **Le sens de l'erreur est le pire des deux.** Un compteur qui sous-estime laisse du
+travail ; celui-là SUR-estime, donc il ressemble à une régression — on croit avoir ajouté
+des checkout en en corrigeant. Et surtout, il fait mentir la commande que le document de
+passation donne comme preuve de fin de lot : appliquer le correctif rend la vérification
+fausse.
+
+**Le geste** : recenser sur la FORME SYNTAXIQUE, pas sur la mention —
+`grep -rhoE '^\s*uses:\s*actions/checkout'`. Un commentaire ne commence jamais par `uses:`.
+Même piège, mesuré dans le même lot, sur `--ignore-scripts` : 6 occurrences pour 5 commandes
+d'installation, la sixième étant le commentaire du Dockerfile.
+
+**Classe générale** : dès qu'un correctif documente sa propre raison, le motif recensé
+apparaît dans le commentaire. Toute commande de comptage écrite AVANT le correctif doit être
+re-vérifiée APRÈS, ou ancrée sur une forme que la prose ne peut pas produire. C'est le
+voisin de `LE-GREP-DES-ASSERTIONS-QUI-EPINGLENT-L-ANCIEN-SE-FAIT-SUR-TOUT-TESTS` et de
+`SCAN-QUI-MATCHE-LA-PROSE` — sauf qu'ici le scanner et l'auteur du bruit sont le même lot.
+
+### Lot du 2026-09-18 — audit : L1, L5b, L2 sur FinanceAI
+
+**L1 — `sanitizeContext` : Aikido surestimait ET le défaut était réel.** Sévérité 75, la plus
+haute du scan, annoncée comme « change le comportement de l'application ». Faux : `out` est un
+objet neuf, `Object.prototype` n'est jamais touché — un cas du test le mesure et **borne** le
+signalement. Mais `Object.entries()` REND bien `__proto__` quand l'objet vient d'un
+`JSON.parse` (propriété propre, contrairement à un littéral), et l'affectation sur `{}`
+déclenchait le setter hérité : le prototype de `out` était remplacé, `JSON.stringify`
+n'énumère pas un prototype, **l'entrée de journal perdait la clé en silence**.
+`Object.create(null)` corrige les quatre niveaux d'un coup.
+
+⚠️ **Une fixture écrite à la main ne discrimine pas** : `{ __proto__: … }` en littéral ne crée
+aucune propriété propre, donc le cas ne se produit jamais. Il faut un `JSON.parse` RÉEL, et le
+test en fait son premier cas d'anti-vacuité — sans lui, les cinq autres passeraient en ne
+vérifiant rien (`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`). Perturbation
+jouée : 3 des 6 cas rougissent sur `const out = {}`.
+
+**L5b — la racine n'était pas « Sonar se trompe », c'était une COLLISION de sens.** Les 19
+`typescript:S2187` BLOCKER portaient sur `mcp/tools/*.spec.ts` : mesuré, **zéro** test dedans,
+et `vitest.config.ts` ne collecte que `tests/**/*.test.{ts,tsx}`. Ce sont des schémas d'outil
+MCP. Mais `.spec.ts` désigne AUSSI de vrais tests Playwright dans `e2e/` — une extension, deux
+sens, dans le même dépôt : la détection automatique de SonarCloud ne pouvait pas trancher.
+
+⚠️ **Mon propre grep a menti d'abord** : « 16 des 19 contiennent des tests » venait de
+`\b(describe|it|test)\s*\(`, qui matche le `.describe()` de **Zod** — huit fois dans un seul
+fichier. Le compte réel est 0, obtenu en ancrant sur le début de ligne.
+
+Arbitrage de Marc : **configurer plutôt que renommer** (19 fichiers et 43 imports réécrits sur
+un dépôt money-critical, pour zéro changement de comportement). D'où `.sonarcloud.properties`
+avec `sonar.tests=tests,e2e`.
+
+⚠️⚠️ **ET LE CORRECTIF EST UNE HYPOTHÈSE JUSQU'À LA PROCHAINE ANALYSE.** Aucun workflow ne
+lance sonar ⇒ analyse AUTOMATIQUE de SonarCloud, qui lit `.sonarcloud.properties` et **non**
+`sonar-project.properties` (ce dernier est pour le scanner CLI). Se tromper de nom produit un
+fichier qui ne fait rien, en silence. La preuve n'est pas dans le commit : elle est la
+DISPARITION des 19 `S2187` au prochain passage. Écrit dans le fichier lui-même.
+
+**L2 — `--ignore-scripts` se MESURE, il ne se raisonne pas.** Le document de passation
+avertissait qu'un `--ignore-scripts` à l'aveugle casse la CI (Playwright, esbuild). Mesuré
+plutôt que supposé : le binaire d'esbuild vient de `@esbuild/linux-x64`, une dépendance
+**optionnelle** que npm installe indépendamment des scripts — son `postinstall` ne fait qu'une
+vérification. Preuve : `npm ci --ignore-scripts` dans un dossier neuf, puis
+`esbuild --version` → 0.28.1 et une transpilation réelle, puis `node_modules` échangé dans le
+dépôt et **`npm run typecheck` + `npm run build` verts**. Playwright reçoit son navigateur du
+`npx playwright install --with-deps chromium` explicite qui suit déjà.
+
+⚠️ **Les comptes du document ne tenaient pas tous, et c'est pour ça qu'il dit de re-mesurer** :
+`githubactions:S6505` était annoncé à « 7 occurrences de `npm ci` » dans les workflows — il y
+en a **zéro**, les workflows utilisent `npm install` ; le seul `npm ci` est dans le
+`Dockerfile`. `S8543 × 7` (version non figée d'un `npm install -g`) → **zéro** `npm install -g`
+dans ce dépôt. `S7637 × 3` en revanche tenait exactement : trois actions tierces sur un tag
+mutable, épinglées au SHA **résolu par `git ls-remote refs/tags/<tag>`** — jamais inventé, un
+SHA faux casse le run au milieu.
+
+⚠️ `refresh-screenshots.yml` est le SEUL checkout de ce dépôt qui garde le jeton, et il porte
+désormais `persist-credentials: true` **explicite** : il fait `git push` + `gh pr create`. Sans
+l'intention écrite, quelqu'un poserait `false` par cohérence avec les cinq autres et casserait
+le push, avec une erreur d'authentification à l'autre bout du job.

@@ -25,6 +25,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # [CI-PERSIST-CREDS] `true` EXPLICITE, et c'est le seul de ce dépôt.
+          #
+          # Ce job POUSSE : `git push -u origin "$BRANCH"` puis `gh pr create` (l. 59-61).
+          # Il a donc besoin du GITHUB_TOKEN laissé dans la config git par le checkout.
+          # L'écrire noir sur blanc plutôt que de compter sur le défaut a deux effets : la
+          # règle `AIK_yaml_actions_checkout_persist_credentials` ne le re-signale plus, et
+          # la prochaine session lit l'INTENTION au lieu de devoir la deviner — sans ça,
+          # quelqu'un poserait `false` par cohérence avec les cinq autres et casserait le
+          # push, avec une erreur d'authentification à l'autre bout du job.
+          persist-credentials: true
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -32,7 +43,7 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --ignore-scripts
 
       - name: Install Playwright Chromium + deps système
         run: npx playwright install --with-deps chromium

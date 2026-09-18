@@ -223,6 +223,39 @@
   sont en `headingLevel` par défaut (h3) directement sous le `<h1>` « Projection », sans `<h2>` intermédiaire (motif déjà
   présent sur les 3 sections desktop, ce lot le double sur la surface mobile).
 
+## 🔗 Chaîne de build — audit du 2026-09-18 (`REMEDIATION_AUDIT_2026-09-18.md`)
+
+- [x] **`[AUDIT-L1]` `sanitizeContext` perdait la clé `__proto__` d'un `JSON.parse`.** Livré le
+  18/09. Aikido sévérité 75, mais son annonce « change le comportement de l'application » est
+  FAUSSE — aucune pollution d'`Object.prototype`, et un cas du test le mesure pour borner le
+  signalement. Le défaut réel : l'affectation sur `{}` remplaçait le prototype, donc
+  `JSON.stringify` n'énumérait plus la clé et l'entrée de journal la perdait en silence.
+- [x] **`[AUDIT-L5B]` 19 `typescript:S2187` BLOCKER sur `mcp/tools/*.spec.ts`.** Livré le 18/09
+  par `.sonarcloud.properties` (`sonar.tests=tests,e2e`), sur arbitrage de Marc : configurer
+  plutôt que renommer 19 fichiers et 43 imports. ⚠️ **La preuve n'est PAS dans le commit** —
+  elle est la disparition des 19 au prochain passage de l'analyse automatique. Si elles sont
+  toujours là, le nom du fichier est le premier suspect (`.sonarcloud.properties` pour
+  l'analyse automatique, `sonar-project.properties` pour le scanner CLI).
+- [x] **`[AUDIT-L2]` La chaîne de build de FinanceAI.** Livré le 18/09 : les 6 `actions/checkout`
+  portent un `persist-credentials` explicite (5 `false`, 1 `true` documenté sur
+  `refresh-screenshots.yml` qui POUSSE), les 5 commandes d'installation ont `--ignore-scripts`
+  (mesuré sans danger : esbuild tient, typecheck et build verts), et les 3 actions tierces sont
+  épinglées au SHA résolu depuis leur dépôt distant.
+- [ ] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S). `DriveAI` 6
+  checkout, `Hubperso` 5, `JobAI` 3, `CarAI` 3, `hub-contract` 2, `batchchef-` 2, `MemoryAI` 2 —
+  23 étapes, aucune avec `persist-credentials` au 18/09. Plus `npm ci` sans `--ignore-scripts`.
+  ⚠️ Mesurer par dépôt quels workflows POUSSENT avant d'éditer, et re-mesurer les comptes : sur
+  FinanceAI, deux des trois comptes du document (S6505 × 7, S8543 × 7) valaient **zéro**.
+- [ ] 🔧 **`[CI-LOCKFILE-PERIME]` `ci.yml:33` affirme « pas de package-lock.json commité dans ce
+  repo » — c'est FAUX** (S). Découvert en passant le 18/09, non corrigé : hors périmètre.
+  Le lockfile EST commité (`npm ci` fonctionne sur un clone neuf, et le `Dockerfile` le copie).
+  Conséquences de la phrase périmée : `cache: 'npm'` reste désactivé sans raison, et les quatre
+  workflows utilisent `npm install` là où `npm ci` serait déterministe. ⚠️ Un commentaire qu'on
+  sait faux cesse d'être lu comme une information — c'est la même mécanique que
+  `UNE-REGLE-ECRITE-SUR-UN-OBJET-DU-MONDE-REEL-SE-PERIME-QUAND-SA-REPRESENTATION-CHANGE`.
+
+---
+
 ## 🔬 Audit financier 2026-09-07 — findings VÉRIFIÉS et re-mesurés (rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`)
 
 > Passe n°4 (commit `3f657d7d`, demande Marc « lance une grosse analyse, check tous les problèmes corrigés et

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { readCodeOnly } from '../helpers/source';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import { buildDailyLedger, NET_WORTH_DAILY_ASSETS, FIELD_KIND } from '../../services/projection/dailyLedger';

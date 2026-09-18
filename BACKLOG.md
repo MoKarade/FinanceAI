@@ -17,72 +17,39 @@
 
 ---
 
-## 🚗 Dette — le solde stocké est un instantané SANS DATE (17/09/2026, signalé par Marc)
+## 🚗 Dette — elle suit maintenant les VRAIS virements (18/09/2026, demandé par Marc)
 
-- [x] 🔧 **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (M) **LIVRÉ le 17/09/2026** (OK explicite de Marc :
-  « oui vas-y, écris 46 934,00 $ et livre le correctif »). Champ `Debt.balanceAsOf` + source unique
-  `soldeDetteAujourdhui` + porte IDEMPOTENTE `dettesAuSoldeDuJour` au point de passage unique vers le
-  moteur ; `computeTotalDebt` et `buildFinancialSnapshot` prennent le JOUR en paramètre **REQUIS**
-  (26 sites énumérés par le compilateur). Solde réel écrit à **46 934,00 $** via `apply_debt` — et
-  la valeur d'avant rendue par l'outil, **47 168,67 $**, confirme au cent près la déduction faite
-  sans jamais l'avoir lue. Marc : « ça devrait enlever de la dette le montant
-  que je paye quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
-  **MESURÉ sur son état réel** (synchro Drive du 2026-09-17 21:42, transactions + `get_holdings`) :
-  · ses prélèvements RÉELS sont `Toyota Financial −234,67 $` les **28 juil., 5, 11, 18, 25 août,
-    1er, 9 et 15 sept.** = **8 versements** ;
-  · `47 169 ÷ 234,67 = 201,0000` versements restants **exactement**, et `201 + 7 = 208` = le bail
-    complet (48 811,36 $) — donc le solde stocké vaut **après 7 prélèvements**, c'est-à-dire avant
-    celui du 15 septembre ;
-  · 8 ont eu lieu ⇒ il reste **200** ⇒ **46 934,00 $**. L'app affiche **47 169 $**.
-  **Écart : 234,67 $ aujourd'hui, et il grandit d'un versement par SEMAINE.**
-  **La cadence hebdo livrée n'est PAS en cause** : vérifiée contre les vrais prélèvements à
-  10 dates, le montant de la marche est exact (234,67 $) et le NOMBRE de marches est juste partout
-  (écart 0 $) ; seul reste un décalage de **phase d'un jour** sur la marche du 15 sept. (la grille
-  part de `startDate`, le 1er prélèvement réel est 8 jours plus tard) — invisible à l'écran.
-  **CAUSE** : `Debt.balance` est un instantané figé, sans date de saisie, et rien ne l'avance. La
-  grille reconstruit le passé **en partant** du solde d'aujourd'hui — elle suppose que le solde
-  stocké EST celui d'aujourd'hui.
-  **CORRECTIF PROPOSÉ (attend l'OK de Marc — il change ce que TOUS les écrans lisent comme dette)** :
-  champ additif `Debt.balanceAsOf` (date de l'instantané), **estampillé automatiquement** à chaque
-  écriture du solde (formulaire + `apply_debt`), puis une source unique `soldeDetteAujourdhui(dette,
-  aujourdhui)` qui descend le solde de tous les prélèvements survenus depuis. Rayon d'action mesuré :
-  **exactement le bail** — la correction ne s'applique qu'à `KIND_VERSEMENTS_FIXES` + taux 0 +
-  cadence sous-mensuelle, et une dette sans `balanceAsOf` ne bouge pas d'un cent.
-  ⚠️ **Alternative MESURÉE et ÉCARTÉE** : recalculer le solde depuis la fin du terme (`versement ×
-  prélèvements restants`) rend **47 403 $** au lieu de 46 934 $ — le comptage de jours sur 4 ans
-  dérive de 2 versements. Le solde saisi reste le meilleur FAIT ; il lui manque seulement sa date.
-  ⚠️ **Amorçage — reste UN geste à Marc** : le serveur MCP servi étant périmé (`[HUB-MCP-PERIME]`),
-  l'écriture du 17/09 n'a pas pu être estampillée. Ouvrir la dette « bZ » dans l'app et cliquer
-  « Enregistrer » pose `balanceAsOf` — sans ce geste le solde reste JUSTE mais cesse d'avancer seul.
+- [x] 🔧 **`[DETTE-VIREMENTS-REELS]`** (M) **LIVRÉ le 18/09/2026** (demande de Marc :
+  « ca marfhe pas pour la dette je vais faire simple pour toi je veux que chaque fois que je paie
+  toyota ca enleve ca de la dette, faut que ma dette soit lié a chaque fois que je fais un virement
+  du bon montant a toyota » ; sémantique choisie par lui en clic : **« suivre les vrais virements,
+  point »** — la dette ne descend QUE sur un virement réellement importé, aucun chiffre inventé).
+  **CE QUI EXISTAIT ET POURQUOI ÇA NE SUFFISAIT PAS** : le passé du bail descendait par une GRILLE
+  MODÉLISÉE (`startDate` + k × cadence, versement dérivé de `minimumPayment`). C'est un modèle : il
+  continue de descendre les semaines où rien n'a été prélevé, et il place des versements que les
+  transactions ne connaissent pas.
+  **MESURÉ sur ses vraies transactions** (8 × `Toyota Financial` −234,67 $ les 28 juil., 5, 11, 18,
+  25 août, 1er, 9 et 15 sept.) : série au mois **48 811,36 | 48 576,69 | 47 403,34** (virements
+  réels) contre **49 046,02 | 48 576,68 | 47 403,34** (grille). L'écart est concentré en JUILLET —
+  **234,66 $**, soit exactement un versement que le modèle inventait ; août et septembre coïncident
+  au cent près. Un modèle qui s'accorde avec la mesure là où on regarde reste un modèle.
+  **CONTRÔLE NÉGATIF, dans les données** : `Ste Foy Toyota Quebec` −500,00 $ et −779,79 $ (le
+  CONCESSIONNAIRE, juillet) — un appariement lâche (« le libellé contient toyota ») aurait retiré
+  **1 279,79 $** de la dette pour des achats qui n'en remboursent rien. L'appariement est EXACT.
+  **LIVRÉ** : champ `Debt.paymentPayee` (choisi dans une LISTE de marchands, jamais retapé, et
+  déclaré dans `CHAMPS_TEXTE` du même geste) ; `sourceVersements` devient la décision UNIQUE
+  « d'où viennent les versements » (virements réels **>** grille) ; une dette liée ne retombe
+  JAMAIS sur la grille, pas même en repli ; `transactions` devient **REQUIS** sur toute la chaîne
+  (solde du jour, série au mois et au jour, porte du moteur, total dû, bandeau) — 94 sites énumérés
+  par le compilateur.
+  ⚠️ **CONSÉQUENCE ASSUMÉE, et elle est écrite à l'écran** : avant le plus ancien virement importé
+  (28 juillet pour Marc, alors que le bail commence le 14), la dette reste PLATE. L'app ne sait rien
+  de ce qui a été payé avant que ses transactions ne commencent — c'est le prix exact de « aucun
+  chiffre inventé, jamais ».
+  ⚠️ **RESTE UN GESTE À MARC** : ouvrir la dette « bZ », choisir « Toyota Financial » dans
+  « Virements qui remboursent cette dette », puis Enregistrer. Le lien ne se devine pas.
 
 ---
-
-- [x] 🔧 **`[DETTE-BALANCEASOF-INVISIBLE]`** (S) **LIVRÉ le 18/09/2026** (OK explicite de Marc :
-  « oui affiche la date dans le formulaire ») — **la date du solde n'était AFFICHÉE nulle part, donc
-  ni Marc ni moi ne pouvons vérifier qu'elle est posée.** Mesuré le 18/09/2026, quand Marc a demandé
-  « vérifie que la date est posée » après avoir cliqué « Enregistrer » sur son bail : **aucune des
-  trois voies ne répond.** (a) `grep balanceAsOf components/ hooks/ utils/` → **2 écritures, 0 lecture**
-  (`DebtManager.tsx:60` et `:108`) : rien ne le rend à l'écran. (b) Le MCP reconstruit `topDebts` champ
-  par champ (`name`/`balance`/`rate`) et le binaire Cloud Run servi est antérieur au champ
-  (`[HUB-MCP-PERIME]`) — **structurellement** aveugle. (c) Le snapshot Drive vit dans
-  l'`appDataFolder` (`syncLifecycle.ts`), invisible au connecteur Drive (deux syntaxes de requête
-  refusées). ⚠️ Et la valeur ne discrimine pas : sans prélèvement depuis l'estampille, le solde est
-  **identique** dans les deux mondes — même cécité structurelle que `Math.abs` sur une convention de
-  signe. La seule preuve comportementale arrive au prélèvement SUIVANT (~22/09), soit quatre jours
-  après le geste qu'on lui a demandé. **C'est le trou de mon propre lot `[DETTE-SOLDE-INSTANTANE-FIGE]`** :
-  j'ai vérifié qu'il pouvait POSER la date, jamais qu'il pourrait la VOIR
-  (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, re-payée : l'aller sans le
-  retour). **Correctif** : afficher la date sous le solde dans `DebtManager` (« solde au 18 sept. »),
-  pour les dettes qui la portent — et un état explicite quand elle manque, puisque « absente » veut
-  dire « ce solde ne bouge plus tout seul », exactement l'information qui manquait ici. ⚠️ Ne PAS la
-  rendre saisissable : elle vaut parce qu'elle est estampillée à l'écriture, une date tapée à la main
-  rouvrirait le défaut d'origine.
-  **LIVRÉ** : `statutSoldeDette` (le module qui DÉCIDE rend les trois formes — `suit-les-versements`
-  / `date-figee` / `jamais-date`), `phraseStatutSolde` qui traduit sans décider, et une ligne sous le
-  champ « Solde » du formulaire d'édition. ⚠️ **Marc a choisi « formulaire seulement », contre ma
-  recommandation** (liste + formulaire) : une recommandation sert à rendre le choix rapide, pas à le
-  pré-décider. ⚠️ Et le correctif que J'AVAIS prescrit la veille était incohérent avec son écran —
-  voir la leçon du jour dans `docs/CONVENTIONS.md`.
 
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 

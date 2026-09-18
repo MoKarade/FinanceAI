@@ -6,6 +6,30 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (ta dette suit tes vrais virements à Toyota)
+
+- **Ta dette baisse maintenant quand TU paies, pas quand un modèle le suppose.** Tu peux relier une
+  dette au marchand de tes virements : ouvre la dette, choisis « Toyota Financial » dans
+  « Virements qui remboursent cette dette », enregistre. À partir de là, chaque virement importé
+  retire de la dette **le montant réellement prélevé, le jour où il l'a été** — plus aucune marche
+  supposée.
+  ⚠️ **Là où aucun virement n'est connu, la dette ne bouge pas.** Tes transactions commencent le
+  28 juillet, ton bail le 14 : avant le 28, la courbe reste plate. C'est voulu — c'est le prix de
+  « aucun chiffre inventé ». Tu avais choisi cette option contre l'autre (compléter les trous avec
+  des versements supposés).
+  Ce que ça change, mesuré sur tes vrais prélèvements : en **juillet**, l'ancienne courbe plaçait un
+  versement de plus que ce que tes transactions connaissent (**234,66 $** d'écart) ; en août et en
+  septembre, les deux coïncident au cent près. Un modèle juste la plupart du temps reste un modèle.
+- **Le bon Toyota, et lui seul.** Tes deux achats chez `Ste Foy Toyota Quebec` (−500,00 $ et
+  −779,79 $ en juillet) sont le **concessionnaire**, pas le financement : ils ne touchent pas à ta
+  dette. Une recherche approximative sur « toyota » en aurait retiré **1 279,79 $** à tort.
+- **Le formulaire dit ce qui se passe.** Sous le solde : « Enregistré le 18 septembre 2026 ·
+  2 virements à « Toyota Financial » depuis, le dernier le 15 septembre — déjà déduits ci-dessus. »
+  Et si le marchand choisi ne verse rien, il te le dit en clair au lieu de rester muet.
+- **À faire par toi** : ouvrir la dette « bZ » et choisir le marchand. Le lien ne se devine pas.
+
+---
+
 ## [unreleased] — 2026-09-17 (ta dette baisse à chaque paiement, la carte du hub redevient lisible, et tes placements disent la même chose partout)
 
 - **🔴 Ton app se serait vidée à ton prochain rechargement.** Le champ « Cadence des prélèvements »

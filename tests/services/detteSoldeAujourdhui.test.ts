@@ -135,6 +135,25 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] la porte du moteur est IDEMPOTENTE', () 
     });
 });
 
+describe('[DETTE-VIREMENTS-REELS] le lien vers un marchand survit aux écritures automatiques', () => {
+    it('une mise à jour MCP du solde PRÉSERVE `paymentPayee` — sinon le cron l’effacerait en silence', () => {
+        // ⚠️ Le chemin de MISE À JOUR patche champ par champ sur un `{ ...d }` ; le chemin de
+        // CRÉATION, lui, reconstruit l'objet. Un lot futur qui déplacerait l'un vers l'autre
+        // effacerait le lien de Marc à la première passe du cron Fintable, sans rien de rouge et
+        // sans rien à l'écran : la dette cesserait simplement de descendre
+        // (`UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS`).
+        const lie = { ...BAIL, paymentPayee: 'Toyota Financial' };
+        const etat = { debts: [lie] } as unknown as AppState;
+        const res = applyDocument(etat, { kind: 'debt', name: 'bZ', balance: 46_700 });
+        expect(res.isError ?? false).toBe(false);
+        expect(res.nextState?.debts?.[0]?.paymentPayee).toBe('Toyota Financial');
+    });
+
+    it('`paymentPayee` figure dans `CHAMPS_TEXTE` — sans quoi l’app se réhydrate VIDE', () => {
+        expect(CHAMPS_TEXTE.has('paymentPayee')).toBe(true);
+    });
+});
+
 describe('[DETTE-SOLDE-INSTANTANE-FIGE] le champ est TEXTUEL — un oubli VIDE l’app', () => {
     it('`balanceAsOf` figure dans `CHAMPS_TEXTE`', () => {
         // Troisième vague payée le jour même sur `paymentFrequency`, la ligne voisine : un champ

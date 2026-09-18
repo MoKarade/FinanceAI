@@ -14980,3 +14980,83 @@ plutôt qu'une troisième copie muette (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI
 formes. Re-tester `kind`/`interestRate` dans le JSX ferait diverger ce que l'écran AFFIRME de ce que
 le calcul FAIT, et une garde de scan l'interdit — lue sur la source DÉCOMMENTÉE, puisque le
 commentaire qui explique le patron nomme forcément ces champs.
+
+---
+
+## `UN-MODELE-QUI-S-ACCORDE-AVEC-LA-MESURE-LA-OU-ON-REGARDE-RESTE-UN-MODELE`
+
+*(2026-09-18, `[DETTE-VIREMENTS-REELS]`, demandé par Marc)*
+
+Marc : « ca marfhe pas pour la dette je vais faire simple pour toi je veux que chaque fois que je
+paie toyota ca enleve ca de la dette, faut que ma dette soit lié a chaque fois que je fais un
+virement du bon montant a toyota ».
+
+Le passé de son bail descendait par une **GRILLE MODÉLISÉE** : `startDate` + k × cadence, versement
+dérivé de `minimumPayment × 12 / 52`. Livrée la veille, juste, testée, et **elle ne mesurait rien** —
+elle continue de descendre les semaines où rien n'a été prélevé, et elle place des versements que
+les transactions ne connaissent pas.
+
+**Ce qui rend ce défaut invisible n'est pas qu'il soit petit, c'est qu'il soit LOCALISÉ.** Mesuré
+sur ses huit vrais prélèvements (`Toyota Financial −234,67 $`, 28 juil. → 15 sept.) :
+
+| point du mois | virements RÉELS | grille MODÉLISÉE | écart |
+|---|---|---|---|
+| juillet   | 48 811,36 $ | 49 046,02 $ | **234,66 $** |
+| août      | 48 576,69 $ | 48 576,68 $ | 0,01 $ |
+| septembre | 47 403,34 $ | 47 403,34 $ | 0,00 $ |
+
+Deux points sur trois coïncident **au cent près**. Le modèle a raison partout où le regard tombe
+naturellement — le présent, le mois dernier — et se trompe d'un versement entier au point le plus
+ANCIEN, là où rien ne le conteste. C'est la même forme que `UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`
+(le biais s'accumule là où on ne mesure pas) et que `UNE-VALEUR-ABSOLUE-SUR-UNE-CONVENTION-DE-SIGNE-NON-MESUREE`
+(le cas nominal est structurellement incapable de réfuter l'hypothèse). **Test qui tranche :
+la donnée RÉELLE existe-t-elle quelque part ? Si oui, le modèle n'est pas une prudence, c'est une
+perte de précision que la donnée avait déjà.**
+
+### Ce qui a été livré, et les quatre pièges du chemin
+
+⚠️ **Le repli vers le mécanisme qu'on REMPLACE est une régression silencieuse par le bas.** La
+tentation était d'écrire « virements si disponibles, sinon la grille ». Une dette liée à un marchand
+serait alors retombée sur la descente modélisée à la première condition manquante (jour inconnu,
+transactions vides), c'est-à-dire exactement le comportement que le lot existait pour remplacer, et
+sans rien de visible — `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` dans sa forme pure. D'où le champ
+`lieeAUnPayee` : une dette liée qui ne peut pas lire ses virements reste **PLATE**, jamais modélisée.
+La perturbation de cette garde (retirer la branche plate) rougit 1 test sur 22.
+
+⚠️ **Le CONTRÔLE NÉGATIF était DANS les données, et il valait 1 279,79 $.** À côté des huit
+`Toyota Financial`, Marc a deux lignes `Ste Foy Toyota Quebec` (−500,00 $ et −779,79 $) : le
+CONCESSIONNAIRE, pas le financement. Un appariement lâche — « le libellé contient toyota », la forme
+qu'on écrit sans y penser — aurait retiré ces 1 279,79 $ de sa dette. Aux yeux d'un humain pressé,
+c'est le même marchand ; c'est exactement pourquoi aucun cas nominal ne l'aurait révélé.
+L'appariement est donc **EXACT**, et la perturbation qui le relâche rougit **10 tests sur 22**.
+
+⚠️ **Le lien se CHOISIT dans une liste, il ne se tape pas.** Un champ « nom exact du marchand » est
+un appariement déguisé en formulaire : Marc devrait deviner une égalité de chaîne, accents et
+espaces compris, et un caractère de travers rendrait la dette muette sans rien dire (corollaire déjà
+payé sur `debtKey` de Fintable). La liste (`marchandsCandidats`) et le matcher partagent `clePayee`,
+la MÊME clé — normaliser d'un seul côté est invisible à toute fixture au libellé propre, et les
+fixtures ont toujours des libellés propres. ⚠️ Corollaire de mesure : perturber le seul
+`marchandsCandidats` laisse la garde VERTE, parce que le matcher normalise déjà ses deux côtés — la
+**redondance est écrite dans le test** plutôt que masquée par une assertion renforcée
+(`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`). Ce qui la fait rougir, c'est
+de dénormaliser le matcher côté DETTE.
+
+⚠️ **La conséquence assumée se DIT à l'écran, sinon elle est indiscernable d'un bug.** Avant le plus
+ancien virement importé (28 juillet, alors que le bail commence le 14), la courbe reste PLATE :
+l'app ne sait rien de ce qui a été payé avant que ses transactions ne commencent. Marc l'a choisi
+explicitement (« suivre les vrais virements, point »), et la phrase du formulaire compte les
+virements déduits et nomme le dernier jour — un écran qui masque sans le dire est indiscernable
+d'une perte de données (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`).
+
+⚠️ **Et `transactions` est devenu REQUIS sur toute la chaîne** (94 sites énumérés par le
+compilateur) : solde du jour, série au mois, série au jour, porte du moteur, total dû, bandeau du
+Futur. Troisième fois que ce dépôt paie ce geste (`aujourdhuiIso` deux fois la veille), et pour la
+même raison : un paramètre optionnel laisse la production reprendre la version muette en silence.
+La CONTREPARTIE est réelle — la moitié de la churn est mécanique en test — et elle est moins chère
+qu'un canal money-critical rouvert sans rien de rouge.
+
+⚠️ Corollaire de survie du champ : le chemin de MISE À JOUR de `applyDocument` patche champ par
+champ sur un `{ ...d }`, donc `paymentPayee` survit à une passe du cron Fintable ; le chemin de
+CRÉATION, lui, reconstruit l'objet. Un lot futur qui déplacerait l'un vers l'autre effacerait le
+lien de Marc **sans rien de rouge et sans rien à l'écran** — la dette cesserait simplement de
+descendre. Une garde le fige.

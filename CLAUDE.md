@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 211 tests** Vitest
-(627 fichiers de test, base MESURÉE par la CI complète le 2026-09-17 à 22:51 UTC (773 s — 6 195) + **4** gardes de l'estampille du solde + **12** gardes de la date AFFICHÉE, lancées en ciblé (vertes, 3 perturbations séparées à 2 rouges chacune)). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 239 tests** Vitest
+(628 fichiers de test, base MESURÉE par la CI complète le 2026-09-17 à 22:51 UTC (773 s — 6 195) + **4** gardes de l'estampille du solde + **12** gardes de la date AFFICHÉE + **28** gardes des virements réels, lancées en ciblé (vertes, 5 perturbations séparées : 10 / 1 / 1 / 1 / 1 rouge)). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1270,6 +1270,24 @@ n'est pas réécrire un récit.
   pour une date qui AFFIRME). ⚠️ Et Marc a divergé de ma recommandation — une recommandation rend le
   choix rapide, elle ne le pré-décide pas
   (`UN-CORRECTIF-PRESCRIT-SE-REMESURE-CONTRE-L-ECRAN-QUI-DOIT-LE-PORTER`).
+
+- ⚠️⚠️ **Un MODÈLE qui s'accorde avec la MESURE là où on regarde reste un modèle** (2026-09-18, Marc :
+  « je veux que chaque fois que je paie toyota ca enleve ca de la dette »). Le passé du bail
+  descendait par une GRILLE modélisée (`startDate` + k × cadence) : juste, testée, livrée la veille,
+  et elle continue de descendre les semaines où RIEN n'a été prélevé. Mesuré contre ses huit vrais
+  virements : **234,66 $ d'écart en JUILLET** (un versement que le modèle inventait) et **0,01 $ /
+  0,00 $** en août et septembre — deux points sur trois coïncident au cent près, et l'erreur est
+  concentrée au point le plus ANCIEN, là où rien ne la conteste. **Devant un modèle, demander si la
+  donnée RÉELLE existe quelque part** : si oui, ce n'est pas une prudence, c'est une précision
+  qu'on jette. ⚠️ Le repli vers le mécanisme qu'on REMPLACE est une régression silencieuse par le
+  bas : « virements si disponibles, sinon la grille » aurait rendu le lot inerte à la première
+  condition manquante — une dette liée reste PLATE, jamais modélisée. ⚠️ Le CONTRÔLE NÉGATIF était
+  DANS les données et valait **1 279,79 $** (deux achats chez le CONCESSIONNAIRE `Ste Foy Toyota
+  Quebec`, que « le libellé contient toyota » aurait déduits d'une dette). ⚠️ Le lien se CHOISIT
+  dans une liste — un champ « nom exact » est un appariement déguisé en formulaire — et la liste
+  partage `clePayee` avec le matcher. ⚠️ La conséquence assumée (avant le plus ancien virement
+  importé, la courbe est PLATE) se DIT à l'écran, sinon elle est indiscernable d'un bug
+  (`UN-MODELE-QUI-S-ACCORDE-AVEC-LA-MESURE-LA-OU-ON-REGARDE-RESTE-UN-MODELE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

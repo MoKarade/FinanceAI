@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-18 (suite) — **la dette suit les VRAIS virements**
+> 🔎 **`[DETTE-VIREMENTS-REELS]`** — Marc : « chaque fois que je paie toyota ca enleve ca de la
+> dette ». Champ `Debt.paymentPayee` (le marchand, CHOISI dans une liste) ; `sourceVersements`
+> devient la décision UNIQUE « d'où viennent les versements », et les virements RÉELS battent la
+> grille modélisée. Une dette liée ne retombe **jamais** sur la grille, pas même en repli.
+> `transactions` est devenu **REQUIS** sur toute la chaîne (94 sites énumérés par le compilateur).
+> **Mesuré** : série au mois 48 811,36 | 48 576,69 | 47 403,34 (virements) contre
+> 49 046,02 | 48 576,68 | 47 403,34 (grille) — l'écart est **concentré en juillet** (234,66 $, un
+> versement que le modèle inventait), août et septembre coïncident au cent près.
+> **Contrôle négatif DANS les données** : `Ste Foy Toyota Quebec` (−500,00 $, −779,79 $) est le
+> concessionnaire — appariement EXACT, sinon 1 279,79 $ retirés à tort.
+> ⚠️ **Conséquence assumée** : avant le plus ancien virement importé, la dette reste PLATE.
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir « bZ », choisir « Toyota Financial » dans « Virements qui
+> remboursent cette dette », Enregistrer. Le lien ne se devine pas.
+> ⚠️ Toujours en attente : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`).
+>
 > ## 🟦 Session 2026-09-17 (suite) — **cadence des dettes, carte du hub, `[FINTABLE-AUTORITE-PARTOUT]` étape 3**
 > Trois lots, trois demandes de Marc dans le même message.
 > 🔎 **`[DEBT-CADENCE-REELLE]`** — « elle devrait descendre à chaque paiement à Toyota, pas une fois

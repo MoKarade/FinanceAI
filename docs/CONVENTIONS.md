@@ -15642,6 +15642,52 @@ changer le seuil déplace encore de l'argent, donc c'est une décision produit.
 y a quelque chose à vendre (`state.nonReg > 0`). À zéro, le mécanisme existe et reste strictement
 invisible — c'est écrit dans la fixture de la garde, à côté du montant.
 
+**⚠️⚠️ TROIS CHOSES QUE J'AI PUBLIÉES SUR CE LOT ÉTAIENT FAUSSES, et le panel les a toutes trouvées
+APRÈS le merge.** Elles se corrigent ici parce qu'un chiffre publié dans le dépôt se lit comme un
+fait :
+
+1. **« LE correctif qui discrimine est le plafond `Math.min` »** — faux au grain près. Perturbations
+   séparées, une par écriture : `Math.min` seul retiré → **4 verts** ; `Math.max(0, …)` seul retiré →
+   **4 verts** ; les DEUX retirées → **2 rouges** ; garde d'entrée `smithManoeuvreDebt > 0` retirée →
+   **4 verts**. Les trois écritures sont **mutuellement redondantes** : n'importe laquelle suffit,
+   aucune ne discrimine seule. **Quand plusieurs gestes protègent le même fait, il faut perturber
+   CHACUN séparément avant d'en désigner un** — et le panel lui-même s'est trompé ici (il concluait
+   « seul le plafond répare », ce que la perturbation de `Math.max` réfute).
+
+2. **Le SIGNE de l'écart dépend du CHEMIN du moteur, et j'ai publié celui que l'app n'emprunte pas.**
+   Le 3ᵉ argument positionnel de `runScenario` est `enableMonteCarlo`, **défaut `false`** ; ma garde
+   passait `true`. Mesuré sur la MÊME fixture, avant → après :
+
+   | chemin | sans levier Smith | avec levier Smith |
+   |---|---|---|
+   | Monte-Carlo (ce que j'ai publié) | 1 832 835 → 1 839 046 (**+6 211 $**) | 1 816 056 → 1 776 477 (**−39 579 $**) |
+   | **Déterministe** (ce que `calculateFutureProjection` publie) | 2 685 446 → 2 770 425 (**+84 979 $**) | 2 772 237 → 2 780 254 (**+8 017 $**) |
+
+   J'avais EXPLIQUÉ le signe négatif comme une propriété de la branche Smith (« on cesse d'effacer
+   une dette de levier par un remboursement fantôme ») : l'explication est plausible et la
+   généralisation est fausse — sur le chemin que Marc voit, la même branche MONTE. C'est
+   `LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-D-UN-ECART-DE-TAUX` appliqué au CHEMIN : un signe qui
+   s'inverse ne dit rien de la justesse du correctif, ce qui tranche est le FAIT commun aux deux
+   (zéro dette négative). ⚠️ Corollaire de couverture, plus grave que le récit : **une garde qui
+   n'exerce qu'un chemin que l'application n'emprunte pas par défaut est une protection pour
+   personne** — la garde couvre désormais les deux, et le chemin déterministe portait bien le défaut
+   (227/241 points négatifs sans levier, 94/241 avec).
+
+3. **Un chiffre VRAI rangé sous la mauvaise cause reste un chiffre faux.** Le `CHANGELOG` — le
+   document qui parle à Marc — rangeait « ton CELI de 48 656 $ à 1 991 $ » sous « ce que ça
+   faussait ». Re-mesuré sur la fixture : le CELI est **identique au dollar** avant et après, sur les
+   deux chemins. Ce qui le vide est la **cascade de mise de fonds** (`remainingShortfall > 0 &&
+   state.celi > 0`), que ce lot ne touche pas. Co-occurrence dans la même année, pas attribution —
+   et la moitié qui ÉTAIT attribuable (le non-enregistré) était SOUS-estimée : il était à **zéro sur
+   toute la fenêtre**, pas seulement en baisse.
+
+**⚠️ Et un finding résiduel de la MÊME CLASSE que le défaut corrigé**, routé plutôt que livré
+(`[SMITH-MARGE-BIEN-QUELCONQUE]`) : le bloc vit DANS la boucle sur les biens et compare une marge de
+MÉNAGE au LTV du bien COURANT, locatif compris. Mesuré **−27 010 $ sur 30 ans** sur un dossier
+mixte, avec ses deux contrôles négatifs (RP seule et plex seul : bit-identiques). **Corriger une
+instance ne corrige pas la classe** — la question à reposer après chaque correctif de portée est :
+*le sujet de cette condition a-t-il la même granularité que la boucle qui l'entoure ?*
+
 ---
 
 ## `UNE-LECON-CITEE-EN-TETE-D-UN-FICHIER-NE-PROTEGE-PAS-CE-FICHIER` (2026-09-18)

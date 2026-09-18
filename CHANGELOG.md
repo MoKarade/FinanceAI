@@ -18,7 +18,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Ce que ça faussait, mesuré sur ta vraie projection** : dette à **−88 234 $** l'année de l'achat,
   **−98 560 $** pendant cinq ans, puis remontée jusqu'à **+159 370 $**. Une dette négative est
   soustraite de ta valeur nette, donc elle la **gonflait** d'autant. Et dans la même année, tes
-  placements non enregistrés passaient de 194 681 $ à 91 922 $, ton CELI de 48 656 $ à 1 991 $.
+  placements non enregistrés passaient de 194 681 $ à 91 922 $.
+- ⚠️ **Correction de ce que je t'ai écrit plus tôt** : j'avais rangé dans la même liste la chute de
+  ton CELI (48 656 → 1 991 $). Re-mesuré : **ce n'est pas ce défaut-là qui la cause** — le CELI est
+  identique au dollar avant et après le correctif. Ce qui vide ton CELI cette année-là, c'est la
+  **mise de fonds** de la maison, qui pioche dedans quand le comptant ne suffit pas. Les deux
+  arrivent la même année, mais l'un n'explique pas l'autre. Ta valeur nette et ta dette, elles, sont
+  bel et bien corrigées.
 - **Corrigé** : on ne rembourse jamais plus que ce que la marge porte réellement, et une marge jamais
   prise ne peut pas être appelée.
 - ⚠️ **Une question reste pour toi** : ce fameux seuil de 65 % compare la marge **plus** l'hypothèque

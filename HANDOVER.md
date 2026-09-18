@@ -33,7 +33,24 @@
 > de la valeur, alors qu'au Canada ce 65 % borne la portion MARGE d'un ré-avançable (le total étant
 > plutôt borné à 80 %). Le correctif rend le défaut inoffensif ; changer le seuil déplace encore de
 > l'argent, donc c'est une décision de Marc.
-> 📌 `services/projection/realEstateMonth.ts` · `tests/services/smithMargeSansDette.test.ts` (3 cas).
+> 📌 `services/projection/realEstateMonth.ts` · `tests/services/smithMargeSansDette.test.ts` (4 cas).
+>
+> ⚠️⚠️ **APRÈS LE MERGE (PR #994), le panel a réfuté TROIS choses que j'avais publiées sur ce lot** —
+> corrigées dans `docs/CONVENTIONS.md`, le `CHANGELOG` et le commentaire du module :
+> (1) « LE correctif qui discrimine est le plafond `Math.min` » — perturbations séparées :
+> `Math.min` seul → 4 verts, `Math.max(0,…)` seul → 4 verts, les DEUX → 2 rouges. Les trois
+> écritures sont **mutuellement redondantes**, aucune ne discrimine seule (le panel se trompait
+> aussi, il disait « seul le plafond répare »).
+> (2) Le SIGNE dépend du CHEMIN : ma garde passait `enableMonteCarlo = true`, or le DÉFAUT est
+> `false` et c'est ce chemin-là que l'app publie. Avec Smith : **−39 579 $** en Monte-Carlo mais
+> **+8 017 $** en déterministe. **Une garde qui n'exerce qu'un chemin non emprunté ne protège
+> personne** → la garde couvre désormais les deux (le déterministe portait bien le défaut :
+> 227/241 points négatifs).
+> (3) Le `CHANGELOG` attribuait au défaut la chute du CELI de Marc (48 656 → 1 991 $) : re-mesuré,
+> le CELI est **identique au dollar** avant/après — c'est la cascade de MISE DE FONDS qui le vide.
+> 🧭 **ROUTÉ** : `[SMITH-MARGE-BIEN-QUELCONQUE]` — le bloc compare une marge de MÉNAGE au LTV de
+> CHAQUE bien, locatif compris ; **−27 010 $ sur 30 ans** mesuré sur un dossier mixte, avec ses deux
+> contrôles négatifs. Même classe que le défaut corrigé, un cran plus haut.
 >
 > ## 🟦 Session 2026-09-18 (suite 4 bis) — **la liste des marchands se CHERCHE**
 > 🔎 **`[DETTE-MARCHAND-RECHERCHE]`** — Marc : « je vois pas toyota dans la liste ». MESURÉ avant de

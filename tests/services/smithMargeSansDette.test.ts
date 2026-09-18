@@ -55,8 +55,19 @@ const params = (smith: boolean): SimulationParams => ({
     baseMonthlyExpenses: 3_000, startYear: 2026, startMonth: 0,
 } as unknown as SimulationParams);
 
-const run = (smith: boolean) => __runScenarioForTests(
-    params(smith), 'AUTO_MARGINAL' as AllocationStrategy, true, false, 0, 'BASE', {},
+/**
+ * ⚠️⚠️ LES DEUX CHEMINS, et c'est un TROU DE COUVERTURE corrigé après coup : le 3ᵉ argument
+ * positionnel est `enableMonteCarlo`, et son DÉFAUT est `false`. Le 1er jet de cette garde passait
+ * `true` — elle ne protégeait donc que le chemin Monte-Carlo, pendant que `calculateFutureProjection`
+ * publie le chemin DÉTERMINISTE, celui que Marc voit. Une garde qui teste un chemin que l'app
+ * n'emprunte pas par défaut est une protection pour personne.
+ *
+ * ⚠️ Et le SIGNE de l'écart DIFFÈRE entre les deux (mesuré, cf. l'en-tête de `realEstateMonth.ts`) :
+ * publier une seule des deux mesures raconte une histoire path-dépendante comme si elle était
+ * générale — ce que le 1er message de commit a fait.
+ */
+const run = (smith: boolean, monteCarlo = true) => __runScenarioForTests(
+    params(smith), 'AUTO_MARGINAL' as AllocationStrategy, monteCarlo, false, 0, 'BASE', {},
     { verboseMonthlyPoints: true },
 ) as unknown as { chartData: Array<Record<string, number>> };
 
@@ -88,6 +99,24 @@ describe('[SMITH-MARGE-SANS-DETTE] une dette publiée ne peut pas être négativ
             + `${Math.min(...dettes, 0).toFixed(2)} $. Une dette négative est soustraite d'un `
             + 'patrimoine net, donc elle le GONFLE du même montant.',
         ).toBe(0);
+    });
+
+    it('CHEMIN DÉTERMINISTE (celui que l’app publie) : aucune dette négative non plus', () => {
+        // ⚠️ Ce cas existe parce que le 1er jet de cette garde ne couvrait QUE le Monte-Carlo.
+        // Mesuré sur le code d'AVANT, chemin déterministe : `DettesNonImmo` min **−51 776,75 $**,
+        // négative sur **227 des 241 points** sans levier et **94 sur 241** avec — donc le défaut
+        // était bien là aussi, et personne ne le gardait.
+        for (const smith of [false, true]) {
+            const { chartData } = run(smith, false);
+            const dettes = serie(chartData, 'DettesNonImmo');
+            expect(dettes.length, 'le champ est bien publié').toBeGreaterThan(12);
+            const negatifs = dettes.filter(v => v < -0.01);
+            expect(
+                negatifs.length,
+                `chemin déterministe, smith=${smith} : dette NÉGATIVE sur ${negatifs.length} point(s), `
+                + `la pire à ${Math.min(...dettes, 0).toFixed(2)} $.`,
+            ).toBe(0);
+        }
     });
 
     it('AVEC levier Smith : l’appel de marge peut tirer, mais jamais sous zéro', () => {

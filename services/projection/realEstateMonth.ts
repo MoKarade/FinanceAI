@@ -506,30 +506,56 @@ export function processRealEstate(
             // et comme `DettesNonImmo = activeDebts + liquidDebt + smithManoeuvreDebt`, la dette
             // PUBLIÉE devenait négative, donc le patrimoine net FAUX À LA HAUSSE du même montant.
             //
-            // LE CORRECTIF QUI DISCRIMINE est le PLAFOND : `Math.min(…, smithManoeuvreDebt)` puis
-            // `Math.max(0, …)` — on ne rembourse jamais plus que ce que la marge PORTE.
-            // ⚠️ La garde d'entrée `smithManoeuvreDebt > 0` est REDONDANTE, et c'est MESURÉ, pas
-            // supposé : la retirer laisse les trois gardes de `tests/services/smithMargeSansDette.test.ts`
-            // VERTES, parce que le plafond rend alors `aRembourser = 0` et que le `if` suivant coupe.
-            // Elle est gardée parce qu'elle ÉNONCE l'intention — une marge jamais tirée ne peut pas
-            // être appelée — mais elle ne répare rien aujourd'hui, et l'écrire évite de croire qu'on
-            // a deux protections là où il n'y en a qu'une.
+            // LE CORRECTIF est « on ne rembourse jamais plus que ce que la marge PORTE », et il est
+            // écrit DEUX fois : `Math.min(…, smithManoeuvreDebt)` en entrée, `Math.max(0, …)` en
+            // sortie.
+            // ⚠️⚠️ AUCUNE des deux n'est SEULE discriminante, et c'est MESURÉ par TROIS perturbations
+            // séparées sur `tests/services/smithMargeSansDette.test.ts` (2026-09-18) :
+            //   • `Math.min` seul retiré  → **4 verts** (le `Math.max` rabat déjà)
+            //   • `Math.max` seul retiré  → **4 verts** (le `Math.min` a déjà borné)
+            //   • les DEUX retirées       → **2 rouges** (= le comportement d'avant)
+            //   • garde d'entrée `smithManoeuvreDebt > 0` retirée → **4 verts**
+            // Les trois écritures sont donc MUTUELLEMENT REDONDANTES : n'importe laquelle suffit.
+            // ⚠️ Le 1er message de commit de ce lot affirmait « LE correctif qui discrimine est le
+            // plafond `Math.min` » — c'était FAUX au grain près, et personne ne l'aurait su sans
+            // perturber CHAQUE écriture séparément. Une perturbation muette mesure d'abord la
+            // REDONDANCE ; quand trois gestes protègent le même fait, aucun ne « discrimine » et
+            // l'écrire au singulier fait croire à une chaîne de sécurité qui n'existe pas.
+            // Elles sont TOUTES gardées : elles ÉNONCENT l'intention à trois endroits où un lot futur
+            // pourrait toucher (la condition, l'entrée, la sortie).
             //
             // MESURÉ sur la projection réelle de Marc (MCP, 20 ans) AVANT correctif : `dettesNonImmo`
             // tombe à **−88 234 $** l'année de l'achat, plafonne à **−98 560 $** pendant cinq ans,
             // puis remonte jusqu'à **+159 370 $** — une « dette » négative pendant douze ans. Et la
             // vente forcée qui la creuse est visible dans la même série : le non-enregistré passe de
-            // **194 681 $ à 91 922 $** et le CELI de **48 656 $ à 1 991 $** l'année de l'achat.
+            // **194 681 $ à 91 922 $**.
+            // ⚠️ La 1re version de ce commentaire rangeait sous le même « ce que ça faussait » une
+            // chute du CELI (48 656 → 1 991 $). RE-MESURÉ sur la fixture, avant → après : le CELI est
+            // **identique au dollar sur les deux chemins du moteur** — le mécanisme qui le vide est
+            // la CASCADE DE MISE DE FONDS (`remainingShortfall > 0 && state.celi > 0`, plus haut dans
+            // ce fichier), que ce lot ne touche pas. Co-occurrence dans la même année, pas
+            // attribution : un chiffre vrai rangé sous la mauvaise cause reste un chiffre faux.
             //
-            // MESURÉ sur la fixture de la garde (maison 480 000 $, 20 % de mise), avant → après :
-            //   • sans levier Smith : `DettesNonImmo` min **−51 777 $ → 0**, négative sur **227 des
-            //     241 points → 0**, et le non-enregistré cesse d'être LIQUIDÉ (min **0 $ → 16 130 $**).
-            //     Patrimoine final 1 832 835 → **1 839 046 $**.
-            //   • avec levier Smith : mêmes 0 négatifs, et patrimoine final 1 816 056 → **1 776 477 $**,
-            //     soit **−39 579 $**. ⚠️ Le SIGNE diffère entre les deux branches, et c'est attendu :
-            //     sans Smith le correctif rend un portefeuille qu'on liquidait pour rien ; avec Smith
-            //     il cesse d'effacer une dette de levier par un remboursement fantôme. Publier une
-            //     seule des deux mesures raconterait la moitié de l'histoire.
+            // MESURÉ sur la fixture de la garde (maison 480 000 $, 20 % de mise), avant → après.
+            // ⚠️⚠️ LE 3ᵉ ARGUMENT DE `runScenario` EST `enableMonteCarlo`, ET SON DÉFAUT EST `false` —
+            // donc `calculateFutureProjection`, ce que Marc VOIT, emprunte le chemin DÉTERMINISTE.
+            // Les deux chemins sont publiés ici parce que le SIGNE de l'écart n'est pas le même :
+            //   |                | sans levier Smith        | avec levier Smith        |
+            //   | Monte-Carlo    | 1 832 835 → 1 839 046 $  | 1 816 056 → 1 776 477 $  |
+            //   |                | **+6 211 $**             | **−39 579 $**            |
+            //   | DÉTERMINISTE   | 2 685 446 → 2 770 425 $  | 2 772 237 → 2 780 254 $  |
+            //   |                | **+84 979 $**            | **+8 017 $**             |
+            // Communs aux deux chemins, et c'est ça le FAIT du lot : `DettesNonImmo` min
+            // **−51 776,75 $ → 0**, négative sur **227 des 241 points → 0** sans levier (**94 → 0**
+            // avec), et le non-enregistré cesse d'être LIQUIDÉ (il était à **0 $ sur toute la fenêtre
+            // de l'achat**).
+            // ⚠️ Le 1er message de ce lot expliquait le signe NÉGATIF comme une propriété de la
+            // branche Smith (« on cesse d'effacer une dette de levier par un remboursement
+            // fantôme ») : l'explication est plausible et la généralisation est FAUSSE — sur le
+            // chemin que l'app publie, la même branche MONTE de 8 017 $. Un signe qui dépend du
+            // chemin ne dit rien de la justesse du correctif (`LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-
+            // D-UN-ECART-DE-TAUX`, ici appliqué au chemin plutôt qu'au taux) : ce qui tranche est
+            // l'ABSENCE de dette négative, identique partout.
             //
             // ⚠️ Ce qui n'est PAS corrigé ici et qui reste une question de MODÈLE : le seuil de 65 %
             // compare `marge + hypothèque` à la valeur du bien. Au Canada, le 65 % borne la portion

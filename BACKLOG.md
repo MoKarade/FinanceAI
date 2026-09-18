@@ -152,6 +152,24 @@
   l'est pas — une clé de RECHERCHE (rabat casse et accents) et une clé d'APPARIEMENT (`clePayee`,
   `trim()` seul) ne doivent surtout PAS fusionner, et c'est écrit dans les deux en-têtes.
 
+- [ ] 🧭 **`[SMITH-MARGE-BIEN-QUELCONQUE]`** (S, **décision Marc**, money-critical) — même famille
+  que `[SMITH-MARGE-SANS-DETTE]`, trouvée par le panel sur le lot qui le corrigeait : **la portée du
+  bloc est plus large que celle de son sujet**. `state.smithManoeuvreDebt` est un registre de
+  MÉNAGE — il n'est créé que sur la résidence principale (`useSmithManoeuvre && goal.isPrimaryResidence`)
+  — mais l'appel de marge vit DANS la boucle sur les biens et le compare au `mortgage`/`currentValue`
+  du bien COURANT. Un immeuble locatif à fort levier déclenche donc un appel de marge sur une marge
+  hypothéquée par la résidence principale.
+  **Mesuré** (RP 480 000 $ à 40 % de mise + plex 400 000 $ à 10 % acheté en 2029, Smith ON,
+  croissance 0 %, 30 ans) : 1er appel au **mois de l'achat du PLEX** (m=38) contre m=122 si le bloc
+  est restreint à la résidence principale ; 225 appels contre 192 ; patrimoine final
+  **7 971 024 $ contre 7 998 034 $** — **−27 010 $ sur 30 ans**. ⚠️ Deux contrôles négatifs : RP
+  SEULE et plex SEUL sont **bit-identiques** entre les deux versions, donc l'écart ne touche que le
+  dossier MIXTE.
+  Correctif candidat : ajouter `goal.isPrimaryResidence` à la condition — c'est la garde que le bloc
+  voisin porte déjà. ⚠️ **Ça déplace de l'argent** → décision, à prendre avec `[SMITH-LTV-SEUIL-65]`
+  (les deux portent sur la même formule). ⚠️ Aucun test ne nomme l'appel de marge hors la garde de
+  `[SMITH-MARGE-SANS-DETTE]` : couverture actuelle nulle sur ce chemin.
+
 - [ ] 🧭 **`[SMITH-LTV-SEUIL-65]`** (S, **décision Marc**, money-critical) — né du correctif
   `[SMITH-MARGE-SANS-DETTE]`. L'appel de marge compare **`marge Smith + hypothèque`** à **65 % de la
   valeur du bien**. Au Canada, le 65 % borne la portion **MARGE** d'un prêt ré-avançable ; le TOTAL

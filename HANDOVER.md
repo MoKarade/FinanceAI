@@ -4,6 +4,47 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-18 (suite 5) — **une marge jamais tirée était appelée, et rendait la dette NÉGATIVE**
+> 🔎 **`[SMITH-MARGE-SANS-DETTE]`** — signalé par Marc : « la dette ne s'arrête pas, ça me met 112k à
+> 44 ans ». Son bail auto n'y était pour rien (éteint en ~46 mois). Le bloc « LTV margin call » de
+> `realEstateMonth.ts` vivait **HORS** du `if (useSmithManoeuvre)` qui le précède, donc s'exécutait
+> pour TOUTE propriété — et sa condition (`marge + hypothèque > 65 % de la valeur`) est vraie **à
+> l'achat** pour toute hypothèque à moins de 35 % de mise. Le montant vendu était soustrait d'un
+> `smithManoeuvreDebt` à ZÉRO → **dette négative**, donc patrimoine net gonflé d'autant.
+> **MESURÉ sur sa projection réelle (MCP, 20 ans)** : `dettesNonImmo` **−88 234 $** l'année de
+> l'achat, **−98 560 $** cinq ans durant, puis **+159 370 $** — négative sur douze ans. Vente forcée
+> visible dans la même série : non-enregistré **194 681 → 91 922 $**, CELI **48 656 → 1 991 $**.
+> **MESURÉ sur la fixture de la garde**, avant → après : sans levier **−51 777 $ → 0**, négative sur
+> **227/241 points → 0/241**, non-enregistré plus liquidé (min **0 → 16 130 $**), patrimoine final
+> 1 832 835 → **1 839 046 $** ; avec levier, patrimoine final 1 816 056 → **1 776 477 $** (**−39 579 $**).
+> ⚠️ **Le SIGNE diffère entre les deux branches**, et c'est attendu : sans Smith on rend un
+> portefeuille liquidé pour rien, avec Smith on cesse d'effacer une dette de levier par un
+> remboursement fantôme. Publier une seule des deux mesures raconterait la moitié de l'histoire.
+> ⚠️⚠️ **Le correctif qui DISCRIMINE est le PLAFOND** (`Math.min(…, smithManoeuvreDebt)`), pas la
+> garde d'entrée : retirer `smithManoeuvreDebt > 0` laisse les trois gardes VERTES (mesuré), parce
+> que le plafond rend alors `aRembourser = 0`. Elle est conservée parce qu'elle ÉNONCE l'intention,
+> et **écrite comme redondante** — croire qu'on a deux protections là où il n'y en a qu'une est
+> précisément ce que `UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE` interdit.
+> ⚠️⚠️ **`tests/services` : 4 023 tests VERTS, aucun golden déplacé — et c'est un résultat à
+> EXPLIQUER, pas un feu vert.** Ça mesure qu'**aucune fixture du dépôt** ne combinait un achat de
+> résidence principale à plus de 65 % de LTV AVEC un non-enregistré non nul : le chemin de l'appel
+> de marge n'était couvert par **aucun** test (vérifié : zéro fichier de test le nommait).
+> 🧭 **Routé, pas tranché — `[SMITH-LTV-SEUIL-65]`** : le seuil compare `marge + hypothèque` à 65 %
+> de la valeur, alors qu'au Canada ce 65 % borne la portion MARGE d'un ré-avançable (le total étant
+> plutôt borné à 80 %). Le correctif rend le défaut inoffensif ; changer le seuil déplace encore de
+> l'argent, donc c'est une décision de Marc.
+> 📌 `services/projection/realEstateMonth.ts` · `tests/services/smithMargeSansDette.test.ts` (3 cas).
+>
+> ## 🟦 Session 2026-09-18 (suite 4 bis) — **la liste des marchands se CHERCHE**
+> 🔎 **`[DETTE-MARCHAND-RECHERCHE]`** — Marc : « je vois pas toyota dans la liste ». MESURÉ avant de
+> toucher au code : `Toyota Financial` y ÉTAIT, sous le libellé exact « Toyota Financial (8) ». Mais
+> le `<select>` offrait TOUT marchand ayant une sortie d'argent — **1 879 sorties**, triées par
+> FRÉQUENCE, `Tim Hortons` **218 fois** contre **8**. Un tri par fréquence enterre par construction
+> ce qu'on cherche. Remplacé par un champ de recherche (casse et accents ignorés pour TROUVER,
+> jamais pour APPARIER — `clePayee` reste un `trim()`), la liste restant la SEULE émettrice de
+> valeur. Trois perturbations séparées. ⚠️ Pas d'état replié : un champ qui se referme rend le lien
+> invisible au montage suivant.
+
 > ## 🟦 Session 2026-09-18 (suite 4) — **le BACKLOG ne gardait plus que le vivant que sur le papier**
 > ✅ **PR #992 fusionnée** (18:38 UTC), déploiement Vercel de PRODUCTION `dpl_9C7EhC3J…` **READY**
 > sur `069effd3`. ⚠️ La RÉPONSE servie n'a pas pu être contrôlée depuis ce conteneur : `vercel.com`

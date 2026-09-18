@@ -6,6 +6,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (ta dette ne devient plus négative, et tes placements ne sont plus vendus de force)
+
+- **Le problème que tu as vu** : « la dette ne s'arrête pas, ça me met 112k à 44 ans ». Ton bail auto
+  n'y était pour rien — il s'éteint bien en un peu moins de quatre ans.
+- **La vraie cause** : un « appel de marge », qui n'a de sens que si tu utilises le levier Smith
+  (emprunter sur ta maison pour investir), s'exécutait pour **n'importe quelle** propriété. Comme une
+  hypothèque ordinaire dépasse 65 % de la valeur de la maison dès le premier jour, il se déclenchait
+  **à l'achat**, vendait tes placements non enregistrés pour rembourser une marge **que tu n'as jamais
+  prise**, et rendait ta dette **négative**.
+- **Ce que ça faussait, mesuré sur ta vraie projection** : dette à **−88 234 $** l'année de l'achat,
+  **−98 560 $** pendant cinq ans, puis remontée jusqu'à **+159 370 $**. Une dette négative est
+  soustraite de ta valeur nette, donc elle la **gonflait** d'autant. Et dans la même année, tes
+  placements non enregistrés passaient de 194 681 $ à 91 922 $, ton CELI de 48 656 $ à 1 991 $.
+- **Corrigé** : on ne rembourse jamais plus que ce que la marge porte réellement, et une marge jamais
+  prise ne peut pas être appelée.
+- ⚠️ **Une question reste pour toi** : ce fameux seuil de 65 % compare la marge **plus** l'hypothèque
+  à la valeur de la maison. Au Canada, ce 65 % borne plutôt la seule portion marge. Je te poserai la
+  question — la changer déplacerait encore des chiffres.
+
+---
+
 ## [unreleased] — 2026-09-18 (rangement interne : le backlog ne garde plus que ce qui reste à faire)
 
 - **Aucun changement visible dans l'app.** C'est du rangement dans les documents de suivi.

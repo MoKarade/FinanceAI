@@ -93,6 +93,15 @@
   soit l'absenter (comme pour un jour sans veille connue, déjà fait), soit la nommer pour ce
   qu'elle est. Aucun chiffre ne se lisse.
 
+- [ ] 🧭 **`[SMITH-LTV-SEUIL-65]`** (S, **décision Marc**, money-critical) — né du correctif
+  `[SMITH-MARGE-SANS-DETTE]`. L'appel de marge compare **`marge Smith + hypothèque`** à **65 % de la
+  valeur du bien**. Au Canada, le 65 % borne la portion **MARGE** d'un prêt ré-avançable ; le TOTAL
+  (marge + hypothèque) est plutôt borné à **80 %**. Les deux règles ne se confondent pas, et celle
+  qui est codée déclenche l'appel dès qu'on a moins de 35 % de mise de fonds — c'est-à-dire presque
+  toujours. ⚠️ Le correctif livré rend le défaut INOFFENSIF (on ne rembourse plus que ce que la marge
+  porte) mais ne tranche PAS le seuil : changer la formule déplace encore de l'argent, donc c'est une
+  décision, pas un correctif. À poser à Marc avec les deux formulations et leur mesure.
+
 ## 💸 Reste du panel `[DETTE-VIREMENTS-REELS]` (18/09/2026) — mesuré, NON corrigé (hors périmètre)
 
 - [ ] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **le rapport PDF ne se recompose pas avec lui-même.**

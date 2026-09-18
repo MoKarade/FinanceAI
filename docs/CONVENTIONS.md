@@ -15580,3 +15580,64 @@ dette).
 
 **Fichiers.** `tests/backlogArchivageDesCoches.test.ts` (4 cas) · `BACKLOG.md` 2 874 → 1 815 lignes ·
 `docs/BACKLOG_ARCHIVE.md` +1 144 lignes.
+
+
+---
+
+## `UN-BLOC-HORS-DE-SA-GARDE-S-EXECUTE-POUR-TOUT-LE-MONDE` (2026-09-18)
+
+**Le fait.** Marc : « la dette ne s'arrête pas, ça me met 112k à 44 ans ». Sa seule dette est un bail
+auto de 46 934 $ à taux 0, éteint en ~46 mois — donc le symptôme ne pouvait pas venir d'elle.
+`realEstateMonth.ts` porte un bloc « LTV margin call » écrit **juste sous** le
+`if (useSmithManoeuvre && …)` qui le précède, et **en dehors** de ses accolades. Il s'exécutait donc
+pour TOUTE propriété. Sa condition — `smithManoeuvreDebt + mortgage > currentValue * 0.65` — est
+vraie **dès l'achat** pour toute hypothèque à moins de 35 % de mise de fonds, c'est-à-dire presque
+toujours. Le montant vendu était ensuite soustrait d'un `smithManoeuvreDebt` à **zéro**, qui passait
+négatif d'autant — et comme `DettesNonImmo = activeDebts + liquidDebt + smithManoeuvreDebt`, la
+dette **publiée** devenait négative, donc le patrimoine net **faux à la hausse** du même montant.
+
+**Ce qu'il faut en retenir.** Une garde `if` ne protège que ce qu'elle **contient**. Le voisinage
+visuel — un bloc qui suit immédiatement, indenté pareil, qui parle du même sujet et porte le nom de
+la fonctionnalité dans son commentaire (« LTV margin call (Smith Manoeuvre) ») — **ressemble** à du
+code gardé sans l'être. Devant un bloc dont le commentaire nomme une option, demander : *est-il
+DANS le `if` de cette option, ou seulement à côté ?* Et le test qui tranche est une exécution avec
+l'option **désactivée**.
+
+**⚠️ La condition d'un garde-fou se lit sur la population qu'elle ATTEINT, pas sur son intention.**
+« marge + hypothèque > 65 % de la valeur » se lit comme un cas limite ; mesuré, c'est le cas
+**ordinaire** (une mise de fonds de 20 % donne 80 %). Un seuil qui se déclenche presque toujours
+n'est pas un garde-fou, c'est un chemin nominal — et il faut le traiter comme tel.
+
+**⚠️ Le correctif qui DISCRIMINE n'était pas celui que j'annonçais.** J'avais écrit « deux gardes,
+chacune répare un défaut distinct » : l'entrée (`smithManoeuvreDebt > 0`) et le plafond
+(`Math.min(…, smithManoeuvreDebt)`). Perturbation faite séparément : **retirer l'entrée laisse les
+trois gardes VERTES** — le plafond rend alors `aRembourser = 0`, et le `if` suivant coupe. Seul le
+plafond répare. L'entrée est conservée parce qu'elle ÉNONCE l'intention (une marge jamais tirée ne
+peut pas être appelée), mais elle est **écrite comme redondante** dans le code et dans le test :
+croire qu'on a deux protections là où il n'y en a qu'une est exactement ce que
+`UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE` interdit. Une perturbation
+muette accuse d'abord la REDONDANCE, pas la faiblesse du test.
+
+**⚠️⚠️ « Aucun golden n'a bougé » : 4 023 tests de `tests/services` verts, et c'est une MESURE.**
+Sur un correctif qui déplace le patrimoine final de **+6 211 $** ou **−39 579 $** selon la branche,
+zéro rouge PROUVE qu'aucune fixture du dépôt ne combinait un achat de résidence principale à plus de
+65 % de LTV **avec** un non-enregistré non nul — vérifié par ailleurs : **aucun fichier de test ne
+nommait l'appel de marge**. Un chemin atteint par tout dossier avec une maison n'était couvert par
+rien.
+
+**⚠️ Le SIGNE diffère selon la branche, et publier une seule mesure raconte la moitié de l'histoire.**
+Mesuré sur la fixture de la garde, avant → après :
+- **sans** levier Smith : `DettesNonImmo` min **−51 777 $ → 0**, négative sur **227 des 241 points →
+  0**, non-enregistré plus liquidé (min **0 $ → 16 130 $**), patrimoine final **+6 211 $** ;
+- **avec** levier Smith : mêmes 0 négatifs, patrimoine final **−39 579 $**.
+Sans Smith le correctif REND un portefeuille qu'on liquidait pour rien ; avec Smith il CESSE
+d'effacer une dette de levier par un remboursement fantôme. Les deux sont justes, et opposés.
+
+**⚠️ Ce qui n'est pas corrigé est ROUTÉ, pas tranché** (`[SMITH-LTV-SEUIL-65]`) : le seuil compare
+`marge + hypothèque` à 65 % de la valeur, alors qu'au Canada ce 65 % borne la portion **marge** d'un
+prêt ré-avançable (le total étant plutôt borné à 80 %). Le correctif rend le défaut inoffensif ;
+changer le seuil déplace encore de l'argent, donc c'est une décision produit.
+
+**⚠️ Une fixture sans non-enregistré ne peut pas voir ce défaut** : l'appel de marge ne vend que s'il
+y a quelque chose à vendre (`state.nonReg > 0`). À zéro, le mécanisme existe et reste strictement
+invisible — c'est écrit dans la fixture de la garde, à côté du montant.

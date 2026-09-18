@@ -15296,3 +15296,37 @@ de boucle qui le vérifie a sa propre anti-vacuité (elle est vraie d'une liste 
 `BACKLOG.md` mais manqué `docs/PROJECTION_OUTPUT_SCHEMA.md`, le document de CONTRAT, qui décrivait
 encore « le plafond d'affichage à 6 » retiré par le même lot. Les docs de contrat ne sont pas dans
 le réflexe parce qu'on ne les édite presque jamais — c'est exactement pourquoi elles pourrissent.
+
+---
+
+## `UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-DE-GARDES` (2026-09-18)
+
+**Le fait.** Le lot précédent a été refusé par le contrôle de qualité de la CI : **3,3 % de
+duplication sur le code neuf** (seuil ≤ 3 %). Les deux blocs dupliqués étaient à moi, et le second
+est le plus instructif : j'avais écrit **deux fois** un lecteur de source décommentée avec son
+anti-vacuité — une fois dans `bilanQuotidien.test.ts`, une fois dans la garde a11y neuve.
+
+`tests/helpers/source.ts` **exportait déjà** `readCodeOnly(path, witness, minCodeRatio)`, qui fait
+exactement ça : décommenter, exiger une part de code non blanc, exiger un témoin de vrai code. Son
+en-tête porte la leçon `GUARD-STRIPCOMMENTS-DUPLIQUE` — « le dépôt avait déjà SIX décommenteurs,
+aucun exporté ». Je l'ai re-commise **dans la session même où je venais de réparer un de ces
+scans**, et deux fois de suite.
+
+**La leçon.** « Grep le CONCEPT, pas le symbole » est écrite depuis longtemps ; ce qui manquait est
+le DÉCLENCHEUR. Le voici : **quand on s'apprête à écrire une garde, chercher d'abord dans
+`tests/helpers/`** — une garde a presque toujours besoin de ce qu'une autre garde a déjà eu besoin,
+et le premier réflexe est d'écrire les quinze lignes plutôt que de chercher les trois mots.
+
+⚠️ **C'est un contrôle de DUPLICATION qui l'a dit, pas une relecture.** Aucun humain et aucun panel
+n'avait signalé les deux copies : elles sont justes, commentées, et chacune se lit très bien
+isolément. Une duplication ne se voit qu'à l'échelle du DIFF, ce qui est précisément la portée d'un
+gate automatique — l'inverse d'un panel, qui juge chaque fichier pour ce qu'il affirme.
+
+⚠️ Le seuil recopié reste FAUX au premier essai (3ᵉ fois pour cette classe) : `readCodeOnly` prend
+`minCodeRatio` en argument, et le 0,2 par défaut ne vaut pas pour `FutureProjection.tsx` (0,455
+mesuré). Le SEUIL voyage avec l'appelant, le MÉCANISME avec le helper.
+
+⚠️ Et ce qui reste chez l'appelant est ce que le helper ne porte PAS : le **second témoin**, un
+jeton de PROSE qui doit avoir disparu. Sans lui, un décommenteur qui ne décommenterait rien
+passerait la part de code et le témoin de code. Partager un helper n'est pas partager toutes ses
+assertions — chaque garde garde celles qui lui appartiennent.

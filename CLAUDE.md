@@ -1375,6 +1375,18 @@ n'est pas réécrire un récit.
   document de CONTRAT — on ne l'édite presque jamais, c'est exactement pour ça qu'il pourrit
   (`UN-LOT-QUI-AJOUTE-UNE-SERIE-DOIT-L-AJOUTER-PARTOUT-OU-LE-GRAPHE-EST-REPRESENTE`).
 
+- ⚠️⚠️ **Avant d'écrire une garde, chercher dans `tests/helpers/`** (2026-09-18, signalé par le
+  contrôle de DUPLICATION de la CI — 3,3 % sur le code neuf, seuil 3 %) : j'avais réécrit **deux
+  fois**, dans la même session, un lecteur de source décommentée avec son anti-vacuité, alors que
+  `readCodeOnly` existait et l'EXPORTAIT — son en-tête portant justement la leçon
+  `GUARD-STRIPCOMMENTS-DUPLIQUE` (« six décommenteurs, aucun exporté »). « Grep le CONCEPT, pas le
+  symbole » était écrite ; ce qui manquait est le DÉCLENCHEUR, et le voici. ⚠️ **C'est un gate
+  automatique qui l'a vu, pas un panel** : les deux copies sont justes et se lisent bien isolément —
+  une duplication n'existe qu'à l'échelle du DIFF. ⚠️ Le SEUIL voyage avec l'appelant (0,35 ici,
+  contre 0,2 par défaut), le MÉCANISME avec le helper ; et ce qui reste chez l'appelant est ce que
+  le helper ne porte pas — partager un helper n'est pas partager toutes ses assertions
+  (`UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-DE-GARDES`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

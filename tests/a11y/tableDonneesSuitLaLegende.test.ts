@@ -15,23 +15,24 @@
  * est le même caractère qu'un délimiteur de chaîne, et ce bloc est très commenté).
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
+import { readCodeOnly } from '../helpers/source';
 import { FUTURE_LEGEND_ITEMS } from '../../components/future/seriesConfig';
 
 const SOURCE = join(__dirname, '../../components/FutureProjection.tsx');
 
 /** Les `key` du tableau rendu par le `useMemo<ChartDataColumn[]>`, lues dans la source décommentée. */
 function colonnesDeLaTable(): string[] {
-    const brut = readFileSync(SOURCE, 'utf-8');
-    const src = stripCommentsJsx(brut);
-    // Anti-vacuité du décommentage. Seuil MESURÉ le 2026-09-18 sur ce fichier : 0,455 de code
-    // (il est plus qu'à moitié commentaire par conception) — le 0,5 d'un scan de DÉPÔT le
-    // déclarerait VIDE (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
-    expect(partDeCodeRestante(brut, src)).toBeGreaterThan(0.35);
-    // Anti-vacuité sans seuil : un jeton de vrai code survit, un jeton de PROSE disparaît.
-    expect(src).toContain('RENDER_MAX_POINTS');
+    // ⚠️ `readCodeOnly` (`tests/helpers/source.ts`) EXISTAIT déjà et fait exactement ce travail :
+    // décommenter, puis prouver que le décommentage n'a pas tout mangé (part de code non blanc +
+    // un témoin de vrai code). L'avoir réécrit à la main ici était `GUARD-STRIPCOMMENTS-DUPLIQUE`
+    // re-commise — signalée par le contrôle de DUPLICATION de la CI, pas par une relecture.
+    // ⚠️ Seuil 0,35 et non le 0,2 par défaut : MESURÉ le 2026-09-18, ce fichier est à **0,455** de
+    // code, plus qu'à moitié commentaire par conception
+    // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
+    const src = readCodeOnly(SOURCE, 'RENDER_MAX_POINTS', 0.35);
+    // Le SECOND témoin, celui que `readCodeOnly` ne porte pas : un jeton de PROSE doit avoir
+    // DISPARU. Sans lui, un décommenteur qui ne décommente rien passerait les deux autres.
     expect(src).not.toContain('alternative texte à la courbe');
 
     const bloc = src.match(/useMemo<ChartDataColumn\[\]>\(\(\) => \{([\s\S]*?)\n {4}\}, \[/);

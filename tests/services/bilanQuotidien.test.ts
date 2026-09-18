@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
+import { readCodeOnly } from '../helpers/source';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
@@ -152,18 +152,18 @@ describe('[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE] le patrimoine au jour EST son bilan
     // suivante. Un scan qui accuse le code d'après la PROSE qui l'entoure est pire qu'absent : il
     // envoie corriger ce qui va bien.
     const curveFieldsDuComposant = (): Set<string> => {
-        const brut = readFileSync(join(__dirname, '../../components/FutureProjection.tsx'), 'utf-8');
-        const src = stripCommentsJsx(brut);
-        // Anti-vacuité du DÉCOMMENTAGE lui-même : s'il avalait le fichier, « le champ est absent »
-        // deviendrait vrai de rien du tout.
-        // ⚠️ Le seuil appartient à la PORTÉE qu'il mesure, pas à la garde dont on le copie : le
-        // 0,5 canonique est celui d'un scan de DÉPÔT (agrégé sur des centaines de fichiers).
-        // `FutureProjection.tsx` est à **0,455 de code MESURÉ le 2026-09-18** — il est plus qu'à
-        // moitié commentaire par conception, et le 0,5 recopié l'a déclaré vide.
-        expect(partDeCodeRestante(brut, src)).toBeGreaterThan(0.35);
-        // Et l'anti-vacuité qui ne dépend d'aucun seuil : un jeton de VRAI code survit, un jeton
-        // de PROSE disparaît. Un décommenteur cassé dans un sens ou dans l'autre rougit ici.
-        expect(src).toContain('RENDER_MAX_POINTS');
+        // ⚠️ Lecture via `readCodeOnly` (`tests/helpers/source.ts`), qui EXISTAIT déjà et fait
+        // exactement ce travail : décommenter, puis prouver que le décommentage n'a pas tout mangé
+        // (part de code non blanc + un témoin de vrai code). Mon 1er jet l'avait réécrit à la main,
+        // DEUX fois — `GUARD-STRIPCOMMENTS-DUPLIQUE` re-commise dans la session même où je venais de
+        // l'écrire, et c'est le contrôle de DUPLICATION de la CI qui l'a dit.
+        // **Grep le CONCEPT, pas le symbole.**
+        // ⚠️ Seuil 0,35 et non le 0,2 par défaut : MESURÉ le 2026-09-18, `FutureProjection.tsx` est
+        // à **0,455** de code — plus qu'à moitié commentaire par conception
+        // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
+        const src = readCodeOnly(join(__dirname, '../../components/FutureProjection.tsx'), 'RENDER_MAX_POINTS', 0.35);
+        // Le SECOND témoin, celui que `readCodeOnly` ne porte pas : un jeton de PROSE doit avoir
+        // DISPARU. Sans lui, un décommenteur qui ne décommente rien passerait les deux autres.
         expect(src).not.toContain('patrimoine faux et crédible');
         const bloc = src.match(/const CURVE_FIELDS[^=]*= new Set\(\[([\s\S]*?)\]\)/);
         if (!bloc) throw new Error('CURVE_FIELDS introuvable dans FutureProjection.tsx');

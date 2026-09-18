@@ -52,7 +52,17 @@ type PastPrefixPoint = {
 
 interface BuildPastPrefixInput {
     pastHistoryPoints: ReadonlyArray<PortfolioHistoryPoint>;
-    transactions: ReadonlyArray<{ date: string; amount: number; isDuplicate?: boolean; isTransfer?: boolean }>;
+    /** ⚠️ [DETTE-VIREMENTS-REELS] `payee` EST dans ce contrat, et son absence était un trou de
+     *  TYPE, pas un bug du jour : ces transactions sont passées telles quelles à
+     *  `prepareSupplementAmortiAuMois`, qui apparie les virements d'une dette liée PAR le marchand.
+     *  Le seul appelant passe aujourd'hui de vrais `Transaction` (où `payee` est requis), donc
+     *  `tsc` restait vert — mais rien n'EXIGEAIT que le champ survive : un appelant futur qui
+     *  construirait cette liste d'après le type déclaré ferait taire l'appariement EN SILENCE, et
+     *  la courbe au MOIS redeviendrait plate pendant que le badge et la courbe au JOUR, eux,
+     *  descendraient. Son jumeau `MinimalPastTransaction` (`dailyPastLedger`) le déclarait, lui :
+     *  c'est l'ASYMÉTRIE entre les deux qui était le signal. Mesuré, la divergence vaut
+     *  −1 877,00 $ au premier mois sur la fixture du bail. */
+    transactions: ReadonlyArray<{ date: string; amount: number; payee?: string; isDuplicate?: boolean; isTransfer?: boolean }>;
     calculatedStartingCash: number;
     realEstateGoals: ReadonlyArray<RealEstateGoal>;
     startYear: number;

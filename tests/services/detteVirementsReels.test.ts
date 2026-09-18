@@ -79,12 +79,40 @@ describe('[DETTE-VIREMENTS-REELS] l’appariement du marchand', () => {
         expect(p!.length).toBe(VERSEMENTS.length);
     });
 
-    it('un virement marqué VIREMENT INTERNE compte quand même — un remboursement EN est un', () => {
-        // ⚠️ Décision écrite, et son contraire serait un piège : exclure `isTransfer` ferait cesser
-        // la déduction le jour où Marc classe ses paiements Toyota, en silence.
+    it('un virement marqué VIREMENT INTERNE ne compte PAS — sinon on fabrique du patrimoine', () => {
+        // ⚠️⚠️ **CE TEST AFFIRMAIT L'INVERSE, et la mesure l'a réfuté.** Il portait « un
+        // remboursement EN est un » et gardait les lignes marquées `isTransfer`, au motif que le
+        // cash et la dette répondent à deux questions distinctes. Faux pour le PATRIMOINE NET : le
+        // registre du cash EXCLUT `isTransfer` partout, donc une dette qui l'inclut descend sans
+        // que l'actif descende. Mesuré sur ces huit virements — **−25 291,31 $ au lieu de
+        // −27 168,67 $, soit 1 877,36 $ CRÉÉS**, et 234,67 $ de plus par semaine. Le test est
+        // INVERSÉ au même endroit avec son histoire, jamais supprimé : c'est cette trace qui
+        // empêche de re-tenter l'inclusion « pour que la dette continue de descendre ».
         const classes = TX.map(t => ({ ...t, isTransfer: true }));
         const p = paiementsReelsDette(LIE, classes, Date.parse(`${AUJ}T00:00:00Z`));
-        expect(p!.length).toBe(VERSEMENTS.length);
+        expect(p!.length).toBe(0);
+        // …et le marchand n'est même plus OFFERT : ce qui est proposé doit être appariable.
+        expect(marchandsCandidats(classes).some(m => m.payee === 'Toyota Financial')).toBe(false);
+    });
+
+    it('CONSERVATION — marquer ses virements ne CRÉE pas de patrimoine', () => {
+        // L'invariant qui a tranché, écrit ici pour qu'il tranche encore : le patrimoine net doit
+        // être le MÊME que la ligne soit marquée ou non, parce que les deux registres l'écartent
+        // ensemble. `isDuplicate` est le contrôle — il conservait déjà.
+        const nw = (tx: MouvementDette[]): number =>
+            20_000 - tx.filter(t => !t.isDuplicate && !t.isTransfer).reduce((s2, t) => s2 + Math.abs(t.amount), 0)
+            - soldeDetteAujourdhui({ ...LIE, balanceAsOf: '2026-07-24' }, AUJ, tx);
+        // ⚠️ SEULES les lignes du financement sont marquées : marquer AUSSI les deux achats chez le
+        // concessionnaire les retirerait du cash sans rien changer à la dette (ils n'y entrent
+        // jamais), et le test mesurerait ce déplacement-là — 1 279,79 $, mesuré, pour rien.
+        const marque = (f: Partial<MouvementDette>) =>
+            TX.map(t => (t.payee === 'Toyota Financial' ? { ...t, ...f } : t));
+        const normal = nw(TX);
+        expect(nw(marque({ isTransfer: true }))).toBeCloseTo(normal, 2);
+        expect(nw(marque({ isDuplicate: true }))).toBeCloseTo(normal, 2);
+        // ⚠️ Anti-vacuité : la fixture doit VRAIMENT faire descendre la dette, sinon les trois
+        // mondes sont égaux parce que rien ne se passe.
+        expect(soldeDetteAujourdhui({ ...LIE, balanceAsOf: '2026-07-24' }, AUJ, TX)).toBeLessThan(46_934);
     });
 
     it('un encaissement (montant POSITIF) et un virement POST-DATÉ ne comptent pas', () => {
@@ -274,5 +302,108 @@ describe('[DETTE-VIREMENTS-REELS] la liste offerte au lien vient de la MÊME cl�
             const p = paiementsReelsDette({ ...GRILLE, paymentPayee: m.payee }, espaces, Date.parse(`${AUJ}T00:00:00Z`));
             expect(p!.length).toBe(m.nb);
         }
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Gardes nées du PANEL, APRÈS un gate vert et une CI verte sur le premier jet. Chacune porte sa
+// MESURE : le panel a trouvé ce qu'aucune de mes 22 gardes ne pouvait voir, parce que ma fixture
+// décrivait un bail EN COURS, correctement daté, lié au bon marchand — le cas nominal.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+describe('[DETTE-VIREMENTS-REELS] les BORNES que la grille avait et que les virements n’avaient pas', () => {
+    /** Un bail ÉTEINT le 2026-06-30 dont il reste 5 000 $, et dont le prêteur prélève TOUJOURS
+     *  234,67 $/semaine — le cas réel d'un bail REMPLACÉ chez le même prêteur : même libellé de
+     *  marchand, autre dette. */
+    const TERMINE: EntreeAmortissement = {
+        kind: 'auto-lease', balance: 5_000, interestRate: 0, minimumPayment: 1_016.90,
+        startDate: '2022-07-01', termEndDate: '2026-06-30', paymentFrequency: 'weekly', balanceAsOf: '2026-06-30',
+    };
+    const APRES: MouvementDette[] = ['2026-07-07', '2026-07-14', '2026-07-21', '2026-07-28', '2026-08-04',
+        '2026-08-11', '2026-08-18', '2026-08-25', '2026-09-01', '2026-09-08', '2026-09-15']
+        .map(date => ({ date, payee: 'Toyota Financial', amount: -MONTANT }));
+
+    it('après la FIN DU TERME, aucun virement ne descend plus la dette — comme la grille', () => {
+        // ⚠️ Mesuré AVANT la borne : solde du jour **2 418,63 $** au lieu de 5 000 $, soit
+        // −2 581,37 $ de dette effacée, croissant de 234,67 $/semaine — pendant que la GRILLE, elle,
+        // restait plate à 5 000 $. C'est l'asymétrie entre les deux sources qui a démasqué le trou
+        // (`EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`).
+        const lie = { ...TERMINE, paymentPayee: 'Toyota Financial' };
+        expect(soldeDetteAujourdhui(lie, AUJ, APRES)).toBeCloseTo(5_000, 2);
+        const r = amortirDettePassee(lie, MOIS, AUJ, APRES);
+        expect(r.forme).toBe('ok');
+        if (r.forme === 'ok') expect(new Set(r.soldes.slice(-3).map(v => v.toFixed(2))).size).toBe(1);
+        // CONTRÔLE : la grille modélisée rendait déjà ce résultat — les deux sources s'accordent.
+        expect(soldeDetteAujourdhui(TERMINE, AUJ, APRES)).toBeCloseTo(5_000, 2);
+    });
+
+    it('une dette PAS ENCORE COMMENCÉE n’est pas descendue non plus', () => {
+        // Elle ne contribue pas à `currentDebtNonImmo` (cf. `sumNotYetStartedDebts…`) : la corriger
+        // ferait diverger deux registres du même solde.
+        const futur = { ...LIE, startDate: '2027-01-01', termEndDate: '2031-01-01', balanceAsOf: '2026-09-01' };
+        expect(soldeDetteAujourdhui(futur, AUJ, TX)).toBeCloseTo(46_934, 2);
+        // CONTRÔLE : la même dette, commencée, EST corrigée.
+        expect(soldeDetteAujourdhui({ ...LIE, balanceAsOf: '2026-09-01' }, AUJ, TX)).toBeLessThan(46_934);
+    });
+
+    it('des virements qui DÉPASSENT le solde enregistré sont REFUSÉS, jamais rabattus à zéro', () => {
+        // ⚠️ Mesuré AVANT le refus, sur un lien vers une épicerie à 400 sorties : `Math.max(0, …)`
+        // rendait **0,00 $** — 47 168,67 $ effacés sous une phrase rassurante et SANS alerte. Le
+        // piège était dans le tri de la liste offerte : `marchandsCandidats` classe par fréquence
+        // DÉCROISSANTE, donc l'option la plus dangereuse est la PREMIÈRE.
+        const beaucoup: MouvementDette[] = Array.from({ length: 400 }, (_, i) => ({
+            date: `2026-0${1 + Math.floor(i / 60) % 9}-${String(1 + i % 28).padStart(2, '0')}`,
+            payee: 'Épicerie', amount: -120,
+        }));
+        const malLie = { ...LIE, paymentPayee: 'Épicerie', balanceAsOf: '2025-09-20' };
+        expect(soldeDetteAujourdhui(malLie, AUJ, beaucoup)).toBeCloseTo(46_934, 2);
+        const s = statutSoldeDette(malLie, AUJ, beaucoup);
+        expect(s.forme).toBe('virements-incoherents');
+        if (s.forme === 'virements-incoherents') {
+            expect(s.payee).toBe('Épicerie');
+            expect(s.nbDeduits).toBeGreaterThan(0);
+        }
+        // CONTRÔLE NÉGATIF : le vrai lien, lui, n'est pas refusé.
+        expect(statutSoldeDette({ ...LIE, balanceAsOf: '2026-09-02' }, AUJ, TX).forme).toBe('suit-les-virements');
+    });
+});
+
+describe('[DETTE-VIREMENTS-REELS] une dette LIÉE n’a pas besoin du paiement mensuel', () => {
+    it('sans `minimumPayment`, le solde du jour ET la série disent la MÊME chose', () => {
+        // ⚠️ Mesuré : la série REFUSAIT tout (`donnees-manquantes`) pendant que `soldeDetteAujourdhui`
+        // déduisait les virements — donc le formulaire annonçait « déjà déduit » et le bandeau du
+        // Futur « dettes au niveau actuel », pour la MÊME dette. Le cas est atteignable : le bouton
+        // « Ajouter » ne vérifie que `balance > 0`, et `apply_debt` ne borne pas ce champ.
+        const sansPaiement = { ...LIE, minimumPayment: undefined, balanceAsOf: '2026-09-02' } as EntreeAmortissement;
+        const attendu = 46_934 - MONTANT * 2;
+        expect(soldeDetteAujourdhui(sansPaiement, AUJ, TX)).toBeCloseTo(attendu, 2);
+        const r = amortirDettePassee(sansPaiement, MOIS, AUJ, TX);
+        expect(r.forme).toBe('ok');
+        if (r.forme === 'ok') expect(r.soldeAujourdhui).toBeCloseTo(attendu, 2);
+        // CONTRÔLE : sans lien, `minimumPayment` reste indispensable — la grille en a besoin.
+        const grilleSansPaiement = { ...GRILLE, minimumPayment: undefined } as EntreeAmortissement;
+        expect(amortirDettePassee(grilleSansPaiement, MOIS, AUJ, TX).forme).toBe('inapplicable');
+    });
+});
+
+describe('[DETTE-VIREMENTS-REELS] sans date de DÉBUT, la série part du premier virement CONNU', () => {
+    it('le solde du jour et la série du passé décrivent la MÊME dette', () => {
+        // ⚠️ Mesuré AVANT : `soldeDetteAujourdhui` déduisait (il ne lit pas `startDate`) pendant que
+        // la série refusait `donnees-manquantes` — le passé restait PLAT pendant que le cash
+        // descendait, donc la valeur nette passée était **1 878 $ trop haute** puis chutait vers
+        // aujourd'hui sans cause. `startDate` est un champ de formulaire OPTIONNEL : un clic suffit.
+        const sansDebut = { ...LIE, startDate: undefined, balanceAsOf: '2026-07-24' } as EntreeAmortissement;
+        const attendu = 46_934 - MONTANT * VERSEMENTS.length;
+        expect(soldeDetteAujourdhui(sansDebut, AUJ, TX)).toBeCloseTo(attendu, 2);
+        const r = amortirDettePassee(sansDebut, MOIS, AUJ, TX);
+        expect(r.forme).toBe('ok');
+        if (r.forme === 'ok') {
+            expect(r.soldeAujourdhui).toBeCloseTo(attendu, 2);
+            // La série commence au mois du PREMIER virement (juillet), pas à un mois inventé.
+            expect(r.premierMoisAbsolu).toBe(2026 * 12 + 6);
+        }
+        // CONTRÔLE : sans lien ET sans date de début, la grille refuse toujours — elle en a besoin.
+        expect(amortirDettePassee({ ...GRILLE, startDate: undefined } as EntreeAmortissement, MOIS, AUJ, TX).forme)
+            .toBe('inapplicable');
     });
 });

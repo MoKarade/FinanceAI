@@ -251,6 +251,9 @@ export interface MouvementDette {
     payee?: string;
     amount: number;
     isDuplicate?: boolean;
+    /** ⚠️ EXCLUT, exactement comme dans le registre du CASH. Voir `paiementsReelsDette` : deux
+     *  registres qui filtrent différemment la même transaction fabriquent du patrimoine net. */
+    isTransfer?: boolean;
 }
 
 /** Un versement RÉEL : sa date (UTC) et son montant POSITIF (ce qui a été retiré de la dette). */
@@ -291,21 +294,37 @@ export function clePayee(brut: unknown): string {
  *   · la ligne n'est pas marquée DOUBLON : un doublon est un artefact d'import, le compter
  *     retirerait deux fois le même versement — money-critical, dans le mauvais sens.
  *
- * ⚠️ `isTransfer` n'exclut PAS, délibérément. Un remboursement de dette EST économiquement un
- * virement (le cash sort, la dette baisse) et c'est exactement ce qu'un utilisateur soigneux
- * marquerait ; l'exclure ferait cesser la déduction le jour où Marc classe ses paiements Toyota, en
- * silence. Le registre du cash et celui de la dette répondent à deux questions distinctes.
+ * ⚠️⚠️ **`isTransfer` EXCLUT — et cette ligne dit l'inverse de ce que j'avais écrit et testé.**
+ * Mon premier jet gardait les lignes marquées « virement interne », au motif que « le registre du
+ * cash et celui de la dette répondent à deux questions distinctes ». **La conservation de l'argent
+ * a réfuté ce raisonnement** : le cash EXCLUT `isTransfer` partout (`startingCash`,
+ * `reconstructCashHistory`, `dailyPastLedger`), donc une dette qui, elle, l'inclut fait DESCENDRE le
+ * passif sans faire descendre l'actif — mesuré sur huit virements marqués, **patrimoine net
+ * −25 291,31 $ au lieu de −27 168,67 $, soit 1 877,36 $ CRÉÉS**, et 234,67 $ de plus par semaine
+ * (≈ 12 203 $/an sur ce bail). `isDuplicate` marqué sert de contrôle : conservé au cent près.
+ * Pour un PATRIMOINE NET, les deux registres n'ont pas le droit de traiter la même transaction
+ * différemment — `ΔNW == ΔΣactifs − ΔΣdettes` l'exige.
+ * ⚠️ Le coût de l'alignement est VISIBLE et celui du défaut était SILENCIEUX : marquer ses paiements
+ * « virement interne » fait maintenant cesser la déduction, et l'écran le NOMME
+ * (`lie-sans-virement` / le compte à zéro). Un argent créé, lui, n'apparaît nulle part.
  */
 export function paiementsReelsDette(
     dette: Readonly<EntreeAmortissement>,
     transactions: ReadonlyArray<MouvementDette> | null | undefined,
+    /** Borne HAUTE : aujourd'hui, ou la fin du TERME quand il est échu — la plus ANCIENNE des deux.
+     *  ⚠️ Sans la borne de terme, un bail ÉTEINT continuait de descendre sur des virements qui n'en
+     *  remboursent plus rien : mesuré **−2 581,37 $** sur un résiduel de 5 000 $ dont le prêteur
+     *  prélève encore 234,67 $/semaine (le cas n'est pas théorique — remplacer un bail chez le même
+     *  prêteur garde le MÊME libellé de marchand). La branche GRILLE portait déjà cette borne
+     *  (`construireGrille`/`finMs`) et restait plate à 5 000 $ : c'est l'asymétrie entre les deux
+     *  sources qui a démasqué le trou (`EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`). */
     jusquMs: number | null,
 ): PaiementReel[] | null {
     const cible = clePayee(dette.paymentPayee);
     if (cible === '') return null;
     const out: PaiementReel[] = [];
     for (const t of transactions ?? []) {
-        if (!t || t.isDuplicate) continue;
+        if (!t || t.isDuplicate || t.isTransfer) continue;
         if (clePayee(t.payee) !== cible) continue;
         const montant = Number(t.amount);
         if (!fini(montant) || montant >= 0) continue;
@@ -330,7 +349,11 @@ export function paiementsReelsDette(
 export type SourceVersements =
     | { forme: 'grille'; grille: GrilleVersements }
     | { forme: 'virements'; paiements: readonly PaiementReel[] }
-    | { forme: 'aucune'; lieeAUnPayee: boolean };
+    /** `incoherents` : la dette NOMME un marchand, ses virements ont été lus, et leur somme depuis
+     *  l'estampille DÉPASSE le solde enregistré. Distingué de `aucune` parce que l'écran n'a pas la
+     *  même chose à dire — ici il y a un geste à faire (revoir le marchand, ou ré-enregistrer le
+     *  solde), là il n'y a rien à corriger. */
+    | { forme: 'aucune'; lieeAUnPayee: boolean; incoherents?: { payee: string; nb: number } };
 
 /** Σ des versements tombant STRICTEMENT après `apresMs` et au plus tard `jusquMs`.
  *  Même convention que `nbVersementsApres`, et pour la même raison : le versement qui tombe
@@ -368,7 +391,9 @@ export function marchandsCandidats(
 ): Array<{ payee: string; nb: number }> {
     const compte = new Map<string, number>();
     for (const t of transactions ?? []) {
-        if (!t || t.isDuplicate) continue;
+        // Même filtre que `paiementsReelsDette`, au caractère près : un marchand offert dont les
+        // lignes seraient toutes écartées à l'appariement serait une promesse vide.
+        if (!t || t.isDuplicate || t.isTransfer) continue;
         const cle = clePayee(t.payee);
         if (cle === '') continue;
         const montant = Number(t.amount);
@@ -604,17 +629,42 @@ function amortirVersementsFixes(
     aujourdhuiIso: string | null,
     transactions: ReadonlyArray<MouvementDette> | null | undefined,
 ): ResultatAmortissement {
-    const debut = moisAbsolu(dette.startDate);
+    // ⚠️⚠️ [DETTE-VIREMENTS-REELS] `startDate` n'est REQUISE que par la grille. Une dette LIÉE sans
+    // date de début fait partir la série du PREMIER VIREMENT CONNU — un FAIT, pas une devinette.
+    // Sans ça, `soldeDetteAujourdhui` déduisait les virements (il ne lit pas `startDate`) pendant
+    // que cette fonction refusait tout : mesuré, le passé restait PLAT à 45 291,31 $ alors que le
+    // cash descendait des mêmes 1 877,36 $, donc la valeur nette du passé était **1 878 $ trop
+    // haute** puis CHUTAIT vers aujourd'hui sans aucune cause — et l'écran affirmait
+    // « suit-les-virements » pour une courbe qui ne suivait rien. C'est le JUMEAU exact de
+    // l'asymétrie `minimumPayment` corrigée trois lignes plus bas : j'avais réparé l'une et laissé
+    // l'autre (`quand on retire un terme d'une somme, réexaminer CHAQUE autre terme au même critère`).
+    // `startDate` est un champ de formulaire OPTIONNEL : le cas s'atteint en un clic.
+    const debutSaisi = moisAbsolu(dette.startDate);
+    const premierVirement = debutSaisi !== null ? null : (() => {
+        const p = paiementsReelsDette(dette, transactions, jourMs(aujourdhuiIso));
+        return p && p.length > 0 ? moisAbsolu(new Date(p[0].ms).toISOString().slice(0, 10)) : null;
+    })();
+    const debut = debutSaisi ?? premierVirement;
     if (debut === null || !fini(moisAbsoluCourant) || moisAbsoluCourant < debut) {
         return { forme: 'inapplicable', cause: 'donnees-manquantes' };
     }
     const { balance, interestRate, minimumPayment } = dette;
+    // ⚠️⚠️ [DETTE-VIREMENTS-REELS] `minimumPayment` n'est exigé que par la GRILLE. Un virement porte
+    // sa DATE et son MONTANT : une dette LIÉE n'en a aucun besoin, et l'exiger quand même faisait
+    // diverger deux lectures du même fait — `soldeDetteAujourdhui` (qui passe par
+    // `sourceVersements`, sans cette contrainte) déduisait les virements pendant que cette
+    // fonction-ci refusait TOUT, laissant la courbe du passé PLATE et le bandeau annoncer « dettes
+    // au niveau actuel » pour la dette même dont le formulaire dit « déjà déduit ». Le cas est
+    // atteignable : le bouton « Ajouter » ne vérifie que `balance > 0`, et `apply_debt` ne borne pas
+    // `minimumPayment`. Les DEUX chemins lisent donc désormais la même règle.
+    const lieAUnMarchand = clePayee(dette.paymentPayee) !== '';
     // ABSENT ≠ CORROMPU, même partage que la forme par intérêt : un champ jamais saisi est le cas
     // nominal et reste muet ; un champ présent mais hors domaine est tracé.
-    if (interestRate === undefined || minimumPayment === undefined) {
+    if (interestRate === undefined || (!lieAUnMarchand && minimumPayment === undefined)) {
         return { forme: 'inapplicable', cause: 'donnees-manquantes' };
     }
-    if (!fini(balance) || !fini(interestRate) || !fini(minimumPayment) || balance < 0 || minimumPayment <= 0) {
+    if (!fini(balance) || !fini(interestRate) || balance < 0
+        || (!lieAUnMarchand && (!fini(minimumPayment) || minimumPayment! <= 0))) {
         tracerDetteSuspecte(dette, 'champ non fini ou hors domaine (solde, taux, versement)');
         return { forme: 'inapplicable', cause: 'donnees-invalides' };
     }
@@ -669,7 +719,7 @@ function amortirVersementsFixes(
             soldes.push(ancre + verseEntre(source, echantillon, aujourdhuiMs));
         }
         const grilleVersements = source.forme === 'grille' ? source.grille : undefined;
-        return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment, grilleVersements, versements: source, soldeAujourdhui: ancre };
+        return { forme: 'ok', soldes, premierMoisAbsolu: debut, facteurRecalage: 1, paiementResolu: minimumPayment ?? 0, grilleVersements, versements: source, soldeAujourdhui: ancre };
     }
 
     // ⚠️ [DETTE-VIREMENTS-REELS] Une dette LIÉE à un marchand ne retombe JAMAIS sur la descente
@@ -682,10 +732,19 @@ function amortirVersementsFixes(
             soldes: Array(moisAbsoluCourant - debut + 1).fill(balance),
             premierMoisAbsolu: debut,
             facteurRecalage: 1,
-            paiementResolu: minimumPayment,
+            paiementResolu: minimumPayment ?? 0,
             versements: source,
             soldeAujourdhui: balance,
         };
+    }
+
+    // ⚠️ Ce repli MENSUEL est le chemin d'avant ce lot, et il n'est atteignable que pour une dette
+    // NON liée : une dette liée est déjà repartie plus haut (branche `lieeAUnPayee`). D'où la
+    // garantie que `minimumPayment` est ici défini et positif — la garde d'entrée l'exige pour ce
+    // cas précis. On l'ÉCRIT plutôt que de l'affirmer : le compilateur ne peut pas la déduire, et un
+    // lot futur qui déplacerait le retour d'au-dessus la casserait en silence.
+    if (minimumPayment === undefined || !fini(minimumPayment) || minimumPayment <= 0) {
+        return { forme: 'inapplicable', cause: 'donnees-manquantes' };
     }
 
     const soldes: number[] = [];
@@ -800,8 +859,43 @@ function sourceVersements(
         // sa DATE et son MONTANT. C'est la simplification de fond du lot — là où la grille avait
         // besoin de trois paramètres pour DEVINER les marches, les virements les donnent.
         if (aujourdhuiMs === null) return RIEN;
-        const paiements = paiementsReelsDette(dette, transactions, aujourdhuiMs);
-        return paiements === null ? RIEN : { forme: 'virements', paiements };
+        // [DETTE-DATES] Une dette qui n'a PAS ENCORE commencé ne peut avoir reçu aucun versement —
+        // et elle ne contribue pas non plus à `currentDebtNonImmo` (cf. `sumNotYetStartedDebts…`),
+        // donc la corriger ferait diverger deux registres du même solde. `startDate` ABSENTE reste
+        // acceptée : elle veut dire « cette dette a toujours couru » (rétrocompat voulue).
+        const debutMois = moisAbsolu(dette.startDate);
+        const moisAuj = moisAbsolu(aujourdhuiIso ?? undefined);
+        if (debutMois !== null && moisAuj !== null && moisAuj < debutMois) return RIEN;
+        // [DETTE-DATES] Après la fin du terme, on cesse de payer et le résiduel reste au bilan —
+        // même règle que la grille et que le moteur. La borne est la FIN DU MOIS de `termEndDate`
+        // (ce mois est INCLUS, il porte le dernier versement), jamais le jour lui-même, qui n'a
+        // aucune raison d'être une date de prélèvement.
+        const finTerme = moisAbsolu(dette.termEndDate);
+        const finMoisTerme = finTerme === null
+            ? null
+            : Date.UTC(Math.floor((finTerme + 1) / 12), (finTerme + 1) % 12, 1) - 1;
+        const borne = finMoisTerme !== null && finMoisTerme < aujourdhuiMs ? finMoisTerme : aujourdhuiMs;
+        const paiements = paiementsReelsDette(dette, transactions, borne);
+        if (paiements === null) return RIEN;
+        // ⚠️⚠️ LE REFUS QUI REMPLACE UN PLANCHER DEVENU MUET. Si les virements retenus depuis
+        // l'estampille dépassent le solde enregistré, ils ne décrivent pas cette dette : le lien
+        // pointe le mauvais marchand, ou le solde n'a jamais été ré-enregistré. `Math.max(0, …)`
+        // rendait alors **0,00 $** — mesuré sur un lien vers une épicerie à 400 sorties : 47 168,67 $
+        // effacés, sous une phrase RASSURANTE et sans alerte. Un total amputé n'est pas une autorité
+        // dégradée, c'est un FAUX : on REFUSE la correction (le solde stocké reste), on le TRACE, et
+        // `statutSoldeDette` le dit à l'écran.
+        const depuis = jourMs(dette.balanceAsOf);
+        if (depuis !== null && fini(dette.balance)) {
+            let verses = 0;
+            for (const pa of paiements) if (pa.ms > depuis && pa.ms <= aujourdhuiMs) verses += pa.montant;
+            if (verses > dette.balance) {
+                const payee = clePayee(dette.paymentPayee);
+                tracerDetteSuspecte(dette, `virements de « ${payee} » supérieurs au solde enregistré — lien ou estampille à revoir`);
+                const nb = paiements.filter(pa => pa.ms > depuis && pa.ms <= aujourdhuiMs).length;
+                return { forme: 'aucune', lieeAUnPayee: true, incoherents: { payee, nb } };
+            }
+        }
+        return { forme: 'virements', paiements };
     }
 
     if (minimumPayment === undefined || !fini(minimumPayment) || minimumPayment <= 0) return RIEN;
@@ -895,6 +989,11 @@ export type StatutSoldeDette =
      *  un marchand qui ne verse rien. Distinct de « lié, mais rien depuis l'estampille », qui est le
      *  cas NORMAL le lendemain d'un enregistrement. */
     | { forme: 'lie-sans-virement'; payee: string }
+    /** [DETTE-VIREMENTS-REELS] Lié, des virements existent, et leur somme depuis l'estampille
+     *  DÉPASSE le solde enregistré : ils ne décrivent pas cette dette. La correction est REFUSÉE
+     *  (le solde stocké reste) plutôt que rabattue à zéro — un total amputé n'est pas une autorité
+     *  dégradée, c'est un FAUX. C'est le seul autre état qui appelle un geste. */
+    | { forme: 'virements-incoherents'; payee: string; nbDeduits: number }
     | { forme: 'date-figee'; dateIso: string }
     | { forme: 'jamais-date' };
 
@@ -911,6 +1010,9 @@ export function statutSoldeDette(
     // ⚠️ Un lien vers un marchand SANS virement se dit AVANT toute question de date : c'est un lien
     // qui ne peut rien produire, et aucune date ne le sauverait.
     if (source.forme === 'virements' && source.paiements.length === 0) return { forme: 'lie-sans-virement', payee };
+    if (source.forme === 'aucune' && source.incoherents) {
+        return { forme: 'virements-incoherents', payee: source.incoherents.payee, nbDeduits: source.incoherents.nb };
+    }
     const dateIso = dette.balanceAsOf;
     // `jourMs` rejette aussi bien l'absence que l'illisible : une date qu'on ne sait pas lire ne
     // vaut pas mieux qu'une date absente, et prétendre le contraire daterait un solde au hasard.

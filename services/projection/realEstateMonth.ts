@@ -494,11 +494,55 @@ export function processRealEstate(
             }
 
             // LTV margin call (Smith Manoeuvre)
-            if (state.smithManoeuvreDebt + pState.mortgage > pState.currentValue * 0.65) {
+            //
+            // ⚠️⚠️ [SMITH-MARGE-SANS-DETTE] Signalé par Marc le 2026-09-18 : « la dette ne s'arrête
+            // pas, ça me met 112k à 44 ans ». Sa seule dette est un bail auto éteint en ~46 mois.
+            //
+            // LE DÉFAUT : ce bloc vivait HORS du `if (useSmithManoeuvre)` juste au-dessus, donc il
+            // s'exécutait pour TOUTE propriété. Or une hypothèque ordinaire dépasse 65 % de la valeur
+            // du bien dès le premier jour (il faudrait 35 % de mise de fonds pour y échapper) : la
+            // condition était vraie À L'ACHAT, **sans le moindre levier Smith**. Le montant vendu
+            // était alors soustrait d'un `smithManoeuvreDebt` à ZÉRO, qui passait négatif d'autant —
+            // et comme `DettesNonImmo = activeDebts + liquidDebt + smithManoeuvreDebt`, la dette
+            // PUBLIÉE devenait négative, donc le patrimoine net FAUX À LA HAUSSE du même montant.
+            //
+            // LE CORRECTIF QUI DISCRIMINE est le PLAFOND : `Math.min(…, smithManoeuvreDebt)` puis
+            // `Math.max(0, …)` — on ne rembourse jamais plus que ce que la marge PORTE.
+            // ⚠️ La garde d'entrée `smithManoeuvreDebt > 0` est REDONDANTE, et c'est MESURÉ, pas
+            // supposé : la retirer laisse les trois gardes de `tests/services/smithMargeSansDette.test.ts`
+            // VERTES, parce que le plafond rend alors `aRembourser = 0` et que le `if` suivant coupe.
+            // Elle est gardée parce qu'elle ÉNONCE l'intention — une marge jamais tirée ne peut pas
+            // être appelée — mais elle ne répare rien aujourd'hui, et l'écrire évite de croire qu'on
+            // a deux protections là où il n'y en a qu'une.
+            //
+            // MESURÉ sur la projection réelle de Marc (MCP, 20 ans) AVANT correctif : `dettesNonImmo`
+            // tombe à **−88 234 $** l'année de l'achat, plafonne à **−98 560 $** pendant cinq ans,
+            // puis remonte jusqu'à **+159 370 $** — une « dette » négative pendant douze ans. Et la
+            // vente forcée qui la creuse est visible dans la même série : le non-enregistré passe de
+            // **194 681 $ à 91 922 $** et le CELI de **48 656 $ à 1 991 $** l'année de l'achat.
+            //
+            // MESURÉ sur la fixture de la garde (maison 480 000 $, 20 % de mise), avant → après :
+            //   • sans levier Smith : `DettesNonImmo` min **−51 777 $ → 0**, négative sur **227 des
+            //     241 points → 0**, et le non-enregistré cesse d'être LIQUIDÉ (min **0 $ → 16 130 $**).
+            //     Patrimoine final 1 832 835 → **1 839 046 $**.
+            //   • avec levier Smith : mêmes 0 négatifs, et patrimoine final 1 816 056 → **1 776 477 $**,
+            //     soit **−39 579 $**. ⚠️ Le SIGNE diffère entre les deux branches, et c'est attendu :
+            //     sans Smith le correctif rend un portefeuille qu'on liquidait pour rien ; avec Smith
+            //     il cesse d'effacer une dette de levier par un remboursement fantôme. Publier une
+            //     seule des deux mesures raconterait la moitié de l'histoire.
+            //
+            // ⚠️ Ce qui n'est PAS corrigé ici et qui reste une question de MODÈLE : le seuil de 65 %
+            // compare `marge + hypothèque` à la valeur du bien. Au Canada, le 65 % borne la portion
+            // MARGE d'un prêt ré-avançable (le total marge + hypothèque étant plutôt borné à 80 %) —
+            // les deux ne se confondent pas. Changer ce seuil déplace de l'argent : c'est une
+            // décision, elle est routée, pas prise ici.
+            if (state.smithManoeuvreDebt > 0
+                && state.smithManoeuvreDebt + pState.mortgage > pState.currentValue * 0.65) {
                 const surplusMarginCall = (state.smithManoeuvreDebt + pState.mortgage) - (pState.currentValue * 0.65);
-                if (surplusMarginCall > 0 && state.nonReg > 0) {
-                    const call = handleNonRegSale(state, surplusMarginCall);
-                    state.smithManoeuvreDebt -= call;
+                const aRembourser = Math.min(surplusMarginCall, state.smithManoeuvreDebt);
+                if (aRembourser > 0 && state.nonReg > 0) {
+                    const call = handleNonRegSale(state, aRembourser);
+                    state.smithManoeuvreDebt = Math.max(0, state.smithManoeuvreDebt - call);
                     state.flowEventLogs.push(`🚨 Appel de marge : vente forcée de ${formatCAD(Math.round(call))} (compte non-enregistré)`);
                 }
             }

@@ -18,6 +18,7 @@
 import React from 'react';
 import { KIND_AMORTISSANT, KIND_VERSEMENTS_FIXES, clePayee } from '../../services/projection/debtAmortization';
 import { DEBT_KIND_OPTIONS } from './debtKindLabels';
+import { ChampMarchandLie } from './ChampMarchandLie';
 import type { Debt, DebtKind, PaymentFrequency } from '../../types';
 
 /** Champ numérique VIDE ⇒ `undefined`, jamais `0` ni `NaN`. « Pas renseigné » n'est pas « zéro » :
@@ -145,29 +146,17 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, m
                 </p>
             )}
             {peutSuivreDesVirements && (
-                <label htmlFor={idMarchand} className="flex flex-col gap-1 text-tiny text-ink-400">
-                    Virements qui remboursent cette dette
-                    <select
-                        id={idMarchand}
-                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
-                        value={lie}
-                        onChange={e => onChange({ paymentPayee: e.target.value || undefined })}
-                    >
-                        {/* ⚠️ Le libellé de l'option vide dit si l'état est INACHEVÉ ou CHOISI : ici
-                            « aucun lien » est un état parfaitement défini (la dette suit alors la
-                            cadence saisie), pas un formulaire à finir. */}
-                        <option value="">— aucun : suivre la cadence saisie ci-dessous —</option>
-                        {/* Le marchand DÉJÀ lié figure toujours dans la liste, même si plus aucune
-                            transaction ne le porte : sans lui, ouvrir le formulaire effacerait le
-                            lien en silence au premier changement. */}
-                        {lie !== '' && !marchands.some(m => m.payee === lie) && (
-                            <option value={lie}>{lie} (aucun virement trouvé)</option>
-                        )}
-                        {marchands.map(m => (
-                            <option key={m.payee} value={m.payee}>{m.payee} ({m.nb})</option>
-                        ))}
-                    </select>
-                </label>
+                /* ⚠️ [DETTE-MARCHAND-RECHERCHE] Une liste qui se CHERCHE, plus un menu déroulant.
+                   Mesuré sur les vraies transactions de Marc : 1 879 sorties d'argent, `Tim Hortons`
+                   218 fois contre 8 pour le marchand cherché — trié par fréquence, ce qu'on cherche
+                   est enterré par construction. L'émission de valeur n'a PAS bougé : seule une ligne
+                   existante peut poser `paymentPayee`. */
+                <ChampMarchandLie
+                    id={idMarchand}
+                    lie={lie}
+                    marchands={marchands}
+                    onChoisir={payee => onChange({ paymentPayee: payee })}
+                />
             )}
             {peutSuivreDesVirements && (
                 <p className="text-tiny text-ink-400">

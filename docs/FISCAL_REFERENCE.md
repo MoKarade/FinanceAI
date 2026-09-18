@@ -1280,11 +1280,33 @@ choisir). Calcul cumulatif par tranche (style impôt).
   modifié plusieurs fois — implémentation conservatrice, barème courant à la saisie).
 
 ### Marge réavançable / Smith Manoeuvre (`realEstateMonth.ts`)
-- Plafond HELOC : `dette Smith + hypothèque ≤ 65 % de la valeur` (**LTV 65 %**, plafond B-20 de la
-  portion réavançable) ; l'excédent déclenche un **margin call** (remboursement forcé).
-- Hypothèse de modèle (PAS une constante fiscale) : **taux HELOC 5 %/an** en dur
-  (`realEstateMonth.ts:336`) — à paramétrer un jour si besoin (reste OUVERT, non couvert par le
-  lot FA-8 2026-06-11 — cf BACKLOG).
+- Plafond HELOC, **tel que le code le calcule** : `dette Smith + hypothèque ≤ 65 % de la valeur` ;
+  l'excédent déclenche un **margin call** — vente forcée de non-enregistré, dont le produit rembourse
+  la marge.
+  - ⚠️ **Le remboursement est PLAFONNÉ par ce que la marge PORTE** depuis `[SMITH-MARGE-SANS-DETTE]`
+    (2026-09-18) : `Math.min(excédent, dette Smith)`, puis `Math.max(0, …)`. Sans ce plafond, le bloc
+    — écrit HORS du `if (useSmithManoeuvre)` — s'exécutait pour **toute** propriété (une mise de fonds
+    de 20 % donne déjà 80 % de LTV) et soustrayait la vente d'une dette Smith à **zéro**, qui passait
+    négative : `DettesNonImmo` négative, donc patrimoine net faux **à la hausse**. Mesuré sur un
+    dossier réel : `dettesNonImmo` à **−88 234 $** l'année de l'achat, plateau **−98 560 $** cinq ans.
+  - ⚠️⚠️ **La formule ci-dessus et sa justification usuelle ne disent PAS la même chose, et ce
+    document ne tranche pas.** Le 65 % de la ligne directrice B-20 borne la portion **réavançable**
+    d'un prêt (le total marge + hypothèque étant plutôt borné à 80 %) — or le code compare la SOMME
+    des deux à 65 %. Ce qui est écrit ici décrit donc le MODÈLE du moteur, pas une règle citée : la
+    version antérieure de cette ligne accolait la formule du code à la justification B-20 comme si
+    l'une découlait de l'autre, ce qui donnait à une hypothèse de modèle l'autorité d'un texte
+    réglementaire. **Décision ouverte, à Marc : `[SMITH-LTV-SEUIL-65]` dans `BACKLOG.md`** — la
+    changer déplace de l'argent.
+- Hypothèse de modèle (PAS une constante fiscale) : le **taux de la marge SUIT l'hypothèque** —
+  `smithHelocAnnualRate` (`services/projection/modelAssumptions.ts`) rend `max(3 %, taux du prêt +
+  2 points)`.
+  - ⚠️ **Cette ligne affirmait « taux HELOC 5 %/an **en dur** (`realEstateMonth.ts:336`) » jusqu'au
+    2026-09-18** — fausse sur les trois plans depuis `[SMITH-HELOC-TAUX-FIGE]` (2026-08-24) : le
+    littéral a quitté le fichier, le taux n'est plus figé, et le numéro de ligne ne pointait plus
+    rien (`UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`). Un lecteur de la source de vérité en
+    concluait que le levier Smith est évalué à 5 % quel que soit le marché — exactement le biais que
+    ce lot-là avait corrigé. Trouvé par le panel, un mois après coup, dans la ligne VOISINE de celle
+    qu'un autre lot venait de réécrire.
 
 ---
 

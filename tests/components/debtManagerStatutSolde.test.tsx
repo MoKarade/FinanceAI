@@ -17,7 +17,7 @@ process.env.TZ = 'America/Montreal';
 
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { DebtManager, phraseStatutSolde } from '../../components/DebtManager';
 import { statutSoldeDette } from '../../services/projection/debtAmortization';
 import { formatIsoDay } from '../../utils/format';
@@ -170,22 +170,79 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         expect(p.textContent).toContain('Marchand Inexistant');
     });
 
+    /** Les marchands OFFERTS, dans l'ordre affiché. La ligne « aucun lien » est hors liste : elle
+     *  ne passe pas par le filtre, donc elle n'a pas sa place dans un inventaire des candidats. */
+    const marchandsOfferts = (): string[] =>
+        within(screen.getByRole('listbox', { name: /Marchands à lier/i }))
+            .getAllByRole('option')
+            .map(o => o.textContent ?? '')
+            .filter(txt => !txt.includes('aucun'))
+            .map(txt => txt.replace(/\s*\(\d+\)\s*✓?\s*$/, '').trim());
+
     it('le sélecteur de marchand N’EXISTE que là où il produit quelque chose (taux nul + versements fixes)', () => {
+        // ⚠️ [DETTE-MARCHAND-RECHERCHE] Ce n'était plus un `<select>` depuis que la liste a dépassé
+        // l'écran : 1 879 sorties d'argent chez Marc, `Tim Hortons` 218 fois contre 8 pour le
+        // marchand cherché, trié par fréquence — « je vois pas toyota dans la liste ». Ce que la
+        // garde défend n'a pas bougé (mêmes candidats, même ordre, aucun montant) ; seule la FORME
+        // du contrôle a changé, donc le test la suit au lieu d'ancrer `<option>`.
         poserTransactions(TX);
         const { unmount } = render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
-        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
         // La liste vient de `marchandsCandidats` : les deux marchands, le plus fréquent en tête.
-        expect([...select.options].map(o => o.value)).toEqual(['', 'Toyota Financial', 'Ste Foy Toyota Quebec']);
-        // ⚠️ Aucun MONTANT dans un `<option>` : `PrivateAmount` ne peut pas l'envelopper, donc il
-        // serait lisible en mode discret. Un COMPTE, lui, ne dit rien de ce que Marc possède.
-        expect(select.textContent).not.toMatch(/\$/);
+        expect(marchandsOfferts()).toEqual(['Toyota Financial', 'Ste Foy Toyota Quebec']);
+        // ⚠️ Aucun MONTANT dans la liste : `PrivateAmount` ne peut pas envelopper une ligne d'option,
+        // donc il serait lisible en mode discret. Un COMPTE, lui, ne dit rien de ce que Marc possède.
+        expect(screen.getByRole('listbox', { name: /Marchands à lier/i }).textContent).not.toMatch(/\$/);
         unmount();
 
         // CONTRÔLE NÉGATIF : à taux NON NUL, la déduction serait fausse — le champ disparaît.
         render(<DebtManager debts={[BAIL({ interestRate: 6.59, balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
         expect(screen.queryByLabelText(/Virements qui remboursent/i)).toBeNull();
+    });
+
+    it('la RECHERCHE réduit la liste, et « aucun lien » reste atteignable quel que soit le filtre', () => {
+        // ⚠️ C'est le défaut que ce lot corrige, pris par l'autre bout : une liste triée par
+        // FRÉQUENCE enterre ce qu'on cherche dès qu'elle dépasse l'écran. La recherche ne doit
+        // jamais pouvoir CACHER la sortie (« aucun lien ») — sinon on remplace « introuvable » par
+        // « inatteignable ».
+        poserTransactions(TX);
+        render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        expect(marchandsOfferts()).toHaveLength(2);
+
+        // Casse ET accents ignorés pour CHERCHER — jamais pour apparier (`clePayee` reste un trim).
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'ste foy' } });
+        expect(marchandsOfferts()).toEqual(['Ste Foy Toyota Quebec']);
+        expect(screen.getByRole('option', { name: /aucun/i })).toBeTruthy();
+
+        // Une requête sans résultat ne laisse PAS croire que la liste est vide : le compte le dit.
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'zzzz' } });
+        expect(marchandsOfferts()).toEqual([]);
+        // ⚠️ Interrogé par son TEXTE puis vérifié sur son rôle : l'écran porte plusieurs régions
+        // live, donc `getByRole('status')` seul est ambigu — et c'est le FAIT (le compte est
+        // annoncé, et il est annoncé à voix haute) qui compte, pas la position du nœud.
+        const compteur = screen.getByText(/0 sur 2 marchands/);
+        expect(compteur.getAttribute('role')).toBe('status');
+    });
+
+    it('seul un CLIC sur une ligne existante pose le lien — taper ne pose RIEN', () => {
+        // ⚠️ Un champ « nom exact du marchand » est un appariement déguisé en formulaire : il
+        // demande de deviner une égalité de chaîne, et un caractère de travers rend la dette muette
+        // sans rien dire. La recherche FILTRE ce qui est offert, elle ne fabrique pas de valeur.
+        poserTransactions(TX);
+        const setDebts = vi.fn();
+        render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={setDebts} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'Toyota Financial' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+        expect(setDebts.mock.calls.at(-1)?.[0][0].paymentPayee).toBeUndefined();
+
+        // Contrôle POSITIF : le même libellé, CHOISI dans la liste, pose bien le lien.
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        fireEvent.click(screen.getByRole('button', { name: /^Toyota Financial/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+        expect(setDebts.mock.calls.at(-1)?.[0][0].paymentPayee).toBe('Toyota Financial');
     });
 
     it('un marchand LIÉ À UNE AUTRE DETTE disparaît de la liste — sinon il est déduit DEUX fois', () => {
@@ -198,11 +255,10 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         const celleCi = BAIL({ id: 'bail', balanceAsOf: ilYA(9) } as Partial<Debt>);
         render(<DebtManager debts={[celleCi, autre]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getAllByRole('button', { name: 'Modifier' })[0]);
-        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
-        expect([...select.options].map(o => o.value)).not.toContain('Toyota Financial');
+        expect(marchandsOfferts()).not.toContain('Toyota Financial');
         // ⚠️ Anti-vacuité : le marchand NON pris reste offert, sinon « absent » serait vrai d'une
         // liste vide ou d'un sélecteur cassé.
-        expect([...select.options].map(o => o.value)).toContain('Ste Foy Toyota Quebec');
+        expect(marchandsOfferts()).toContain('Ste Foy Toyota Quebec');
     });
 
     it('des virements qui DÉPASSENT le solde annoncent le refus, et alertent', () => {
@@ -226,8 +282,10 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         const dette = BAIL({ balanceAsOf: ilYA(9), paymentPayee: 'Marchand Disparu' } as Partial<Debt>);
         render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
-        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
-        expect(select.value).toBe('Marchand Disparu');
+        // Il est OFFERT (donc re-choisissable) ET marqué comme le choix courant — sans les deux,
+        // le formulaire effacerait le lien en silence au premier changement.
+        expect(marchandsOfferts()).toContain('Marchand Disparu');
+        expect(screen.getByRole('option', { name: /^Marchand Disparu/ }).getAttribute('aria-selected')).toBe('true');
     });
 });
 

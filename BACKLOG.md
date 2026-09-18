@@ -65,6 +65,34 @@
 
 ---
 
+- [ ] 🔧 **`[PANNEAU-VARIATION-RACCORD-PASSE-FUTUR]`** (S) — **signalé par Marc le 18/09/2026**
+  (« explique-moi le rendement pour cette journée »), sur une capture du panneau du jour.
+  **L'arithmétique de l'écran ne se recompose pas** : « Variation du jour **+5 930 $** » contre
+  « Dépôts **−34 $** » + « Rendement **+52 $** » = **+18 $**. Écart **5 912 $**, sur la donnée la
+  plus regardée du panneau.
+  ✅ Ce qui EST cohérent, vérifié sur la même capture : les comptes recomposent la valeur nette au
+  dollar près (29 843 + 16 559 + 18 751 + 208 057 − 46 328 = 226 882), et les badges « +N » par
+  compte somment exactement le rendement (+2 +3 +4 +43 = +52) — normal, `SectionValeurNette` et
+  `SectionComptes` lisent les MÊMES champs `MarketGrowth*`.
+  **MÉCANISME [Probable]** : `recomputeDailyDiffs` (`services/projection/dailyCurve.ts`) pose
+  `diffNW = NetWorth(jour) − NetWorth(veille)` dès que les deux points sont CALENDAIREMENT
+  contigus — `isCalendarYesterday` ne compare que les DATES, jamais la NATURE des deux points. Or
+  le 18/09 est le premier jour **PROJETÉ** (badge à l'écran) et le 17/09 le dernier jour **RÉEL**
+  (`lastTransactionDate` du MCP). La marche du RACCORD passé → futur est donc présentée comme une
+  « variation du jour ». Les deux valeurs sont probablement EXACTES chacune ; c'est le LIBELLÉ qui
+  est faux sur ce point précis.
+  ⚠️ Même famille que `[PASSE-REEL-RACCORD-CHUTE]` et `UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE` (la
+  « chute de 10k »), mais en sens INVERSE — et le correctif d'alors était une PHRASE, pas un
+  lissage : lisser afficherait une valeur nette jamais eue.
+  **À MESURER avant de corriger** : relire les deux points 17/09 et 18/09 et décomposer l'écart
+  (bases de prix différentes ? clôture périmée contre prix courant ? un flux du jour défait par le
+  dernier point du passé ?). `CORRIGER-UN-PRODUCTEUR-N-EST-PAS-CORRIGER-LA-CLASSE` : le raccord a
+  déjà coûté ≈ 12 100 $ d'écart de base entre `reconstructPortfolioHistoryDaily` et la boucle
+  mensuelle le 17/09.
+  **REMÈDE PRESSENTI** : ne pas nommer « Variation du jour » une marche qui traverse le raccord —
+  soit l'absenter (comme pour un jour sans veille connue, déjà fait), soit la nommer pour ce
+  qu'elle est. Aucun chiffre ne se lisse.
+
 ## 💸 Reste du panel `[DETTE-VIREMENTS-REELS]` (18/09/2026) — mesuré, NON corrigé (hors périmètre)
 
 - [ ] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **le rapport PDF ne se recompose pas avec lui-même.**

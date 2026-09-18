@@ -51,6 +51,56 @@
 
 ---
 
+## ♿ Trouvé par le panel du lot `[DETTE-VIREMENTS-REELS]` (18/09/2026) — RE-MESURÉ avant d'être écrit
+
+- [ ] 🔧 **`[CONTRAST-SCAN-CLASSNAME-CALCULE]`** (M) — **le scan de contraste ne voit que les
+  `className="…"` LITTÉRAUX, et son angle mort couvre 130 sites.** Il est DÉCLARÉ en tête de
+  `scripts/lib/ctaContrast.ts` (« ⚠️ ANGLE MORT ASSUMÉ ») — donc il se lit comme un détail déjà
+  tranché, et personne n'en avait jamais mesuré la TAILLE (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+  **MESURÉ le 18/09/2026** : `130 sites dans 48 fichiers` de `components/` portent un token de
+  couleur (`text-…-400`, `bg-…-600`…) à l'intérieur d'un `className={…}` calculé. Aucun n'entre
+  dans l'inventaire de `npm run check-contrast`, qui rend pourtant `exit 0`.
+  ⚠️ **Le remède évident est presque INERTE, et c'est le point du ticket** : « étendre le scan aux
+  ternaires de deux chaînes littérales complètes » (ce que le panel proposait) couvre **7 sites sur
+  130**, soit 5 %. Re-mesuré autrement : si le scan récolte TOUT fragment littéral de l'expression
+  (chaînes `'…'`/`"…"` **et** le texte brut d'un gabarit hors des `${…}`), il couvre **127 sites sur
+  130** — les 3 restants construisent le nom de classe par interpolation
+  (`FutureProjection.tsx`, `Layout.tsx`, `ui/Toast.tsx`) et resteront hors de portée, à déclarer.
+  ⚠️ **Rejouer l'outil élargi AVANT de croire qu'il n'y a rien** : les offenders révélés sont le vrai
+  périmètre, et ils n'ont aucune raison de ressembler à ce ticket-ci.
+  · *Déclencheur de ce ticket* : la phrase de statut du solde dans `DebtManager` (la ligne qui
+    choisit entre `text-amber-400` et `text-ink-400` selon `alerte`), mesurée À LA MAIN faute d'outil — **10,43** sur le fond réel `#1a1a1a` et **11,94** sur `bg-dark`
+    pour `amber-400`, **5,78** / **6,62** pour `ink-400` : les quatre passent AA largement, donc le
+    lot n'a PAS de défaut de contraste. C'est l'outil qui ne pouvait pas le dire.
+
+- [ ] 🔧 **`[A11Y-DETTE-CIBLES-TACTILES]`** (S) — **aucun champ du formulaire de dette n'atteint
+  44 px de haut**, et ce n'est pas une régression du lot. Mesuré : les `<input>`/`<select>` de
+  `DebtManager.tsx` et `DebtKindFields.tsx` font ≈ **26 px** (`text-meta` 16 px + `py-1` 8 px +
+  2 px de bordures), soit **−41 %** du seuil WCAG 2.5.5. La LARGEUR n'est pas en cause (le
+  `<label className="flex flex-col">` étire les champs bien au-delà de 44 px) — mesurer par AXE,
+  jamais en agrégat (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`).
+  `.touch-target` (44×44, `index.css`) existe et sert dans `Investments`, `Planning`,
+  `Transactions`, `budget/BudgetGroupTable` — **jamais** dans ces deux fichiers, sans justification
+  écrite. ⚠️ Le correctif cohérent porte sur le formulaire ENTIER : ne corriger que les deux champs
+  neufs créerait une incohérence visuelle sans raison écrite.
+
+- [ ] 🔧 **`[A11Y-DETTE-FOCUS-EDITION]`** (S) — `startEdit` (`DebtManager.tsx`) insère le panneau
+  d'édition sans y déplacer le focus. Pour un utilisateur clavier ou lecteur d'écran, la branche
+  ALERTE de `phraseStatutSolde` (« Solde jamais daté… », « Vérifie le marchand choisi ») n'est donc
+  pas garantie d'être annoncée à l'ouverture : il faut naviguer jusqu'à elle. Pré-existant (le
+  panneau date de `[DETTE-DATES]`), révélé par le lot qui a donné à cette ligne quelque chose
+  d'important à dire. ⚠️ `tabIndex = -1` sur le conteneur est obligatoire : `focus()` sur un `<div>`
+  non focalisable est un no-op SILENCIEUX, et le test interroge `document.activeElement`, jamais la
+  présence de l'appel.
+  ⚠️ **Ce qui a été EXAMINÉ et n'est PAS un défaut**, écrit pour qu'on ne le reprenne pas : la phrase
+  de `phraseStatutSolde` **ne doit pas** devenir une région live. Elle se calcule sur la dette
+  PERSISTÉE, pas sur le brouillon — elle ne réagit à aucune saisie dans ce formulaire, et ne peut
+  changer qu'à une synchro en arrière-plan. L'annoncer interromprait la frappe pour un contenu
+  descriptif. Le `role="status"` du refus de saisie, lui, réagit DIRECTEMENT à l'utilisateur : c'est
+  ça, un message de statut au sens WCAG 4.1.3.
+
+---
+
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 
 - [x] 🔧 **`[MCP-DEPLOY-SILENCIEUX]`** Le serveur MCP n'était plus déployé depuis au moins

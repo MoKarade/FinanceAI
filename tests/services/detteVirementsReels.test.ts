@@ -190,6 +190,7 @@ describe('[DETTE-VIREMENTS-REELS] la série du passé suit les virements, pas un
 
 describe('[DETTE-VIREMENTS-REELS] le JOUR et le MOIS décrivent la MÊME dette', () => {
     const auJour = prepareSupplementAmortiParJour([LIE as never], MOIS, AUJ, TX);
+    const auJourAncre = prepareSupplementAmortiParJour([{ ...LIE, balanceAsOf: '2026-07-24' } as never], MOIS, AUJ, TX);
 
     it('le supplément descend le JOUR du virement, pas le 1er du mois', () => {
         // Mesuré : la marche tombe entre le 8 et le 9 septembre (virement du 09-09), puis entre le
@@ -206,6 +207,17 @@ describe('[DETTE-VIREMENTS-REELS] le JOUR et le MOIS décrivent la MÊME dette',
         expect(auJour('2026-07-27')).toBeCloseTo(MONTANT * 8, 2);
         expect(auJour('2026-07-01')).toBeCloseTo(MONTANT * 8, 2);
         expect(auJour('2026-07-28')).toBeCloseTo(MONTANT * 7, 2);
+    });
+
+    it('RACCORD — au dernier point, la courbe au JOUR vaut EXACTEMENT le badge « Total dû »', () => {
+        // ⚠️ C'est l'identité que Marc VOIT : le chiffre en haut de l'écran et le bout de la courbe.
+        // Le supplément d'aujourd'hui doit être exactement ZÉRO, pas « presque » — sinon les deux
+        // surfaces décrivent deux dettes, et l'écart est invisible tant qu'on ne les soustrait pas.
+        const ancre = soldeDetteAujourdhui({ ...LIE, balanceAsOf: '2026-07-24' }, AUJ, TX);
+        expect(auJourAncre(AUJ)).toBe(0);
+        // …et la MARCHE du dernier virement est bien là, la veille : anti-vacuité du raccord, sinon
+        // « zéro aujourd'hui » serait vrai d'une courbe qui ne bouge jamais.
+        expect(ancre + auJourAncre('2026-09-14') - (ancre + auJourAncre('2026-09-16'))).toBeCloseTo(MONTANT, 2);
     });
 
     it('la série MENSUELLE est DÉRIVÉE de la même source : les deux registres se recomposent', () => {

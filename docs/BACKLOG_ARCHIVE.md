@@ -10,6 +10,81 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+### 2026-09-18 — la dette datée, puis rendue lisible (PR #986 et #987, mergés, gate vert)
+
+Les deux lots qui ont précédé `[DETTE-VIREMENTS-REELS]`. Ils restent la RAISON pour laquelle le
+solde de Marc porte une date : sans `balanceAsOf`, aucun virement ne saurait lesquels sont déjà
+compris dans le solde enregistré.
+
+## 🚗 Dette — le solde stocké est un instantané SANS DATE (17/09/2026, signalé par Marc)
+
+- [x] 🔧 **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (M) **LIVRÉ le 17/09/2026** (OK explicite de Marc :
+  « oui vas-y, écris 46 934,00 $ et livre le correctif »). Champ `Debt.balanceAsOf` + source unique
+  `soldeDetteAujourdhui` + porte IDEMPOTENTE `dettesAuSoldeDuJour` au point de passage unique vers le
+  moteur ; `computeTotalDebt` et `buildFinancialSnapshot` prennent le JOUR en paramètre **REQUIS**
+  (26 sites énumérés par le compilateur). Solde réel écrit à **46 934,00 $** via `apply_debt` — et
+  la valeur d'avant rendue par l'outil, **47 168,67 $**, confirme au cent près la déduction faite
+  sans jamais l'avoir lue. Marc : « ça devrait enlever de la dette le montant
+  que je paye quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
+  **MESURÉ sur son état réel** (synchro Drive du 2026-09-17 21:42, transactions + `get_holdings`) :
+  · ses prélèvements RÉELS sont `Toyota Financial −234,67 $` les **28 juil., 5, 11, 18, 25 août,
+    1er, 9 et 15 sept.** = **8 versements** ;
+  · `47 169 ÷ 234,67 = 201,0000` versements restants **exactement**, et `201 + 7 = 208` = le bail
+    complet (48 811,36 $) — donc le solde stocké vaut **après 7 prélèvements**, c'est-à-dire avant
+    celui du 15 septembre ;
+  · 8 ont eu lieu ⇒ il reste **200** ⇒ **46 934,00 $**. L'app affiche **47 169 $**.
+  **Écart : 234,67 $ aujourd'hui, et il grandit d'un versement par SEMAINE.**
+  **La cadence hebdo livrée n'est PAS en cause** : vérifiée contre les vrais prélèvements à
+  10 dates, le montant de la marche est exact (234,67 $) et le NOMBRE de marches est juste partout
+  (écart 0 $) ; seul reste un décalage de **phase d'un jour** sur la marche du 15 sept. (la grille
+  part de `startDate`, le 1er prélèvement réel est 8 jours plus tard) — invisible à l'écran.
+  **CAUSE** : `Debt.balance` est un instantané figé, sans date de saisie, et rien ne l'avance. La
+  grille reconstruit le passé **en partant** du solde d'aujourd'hui — elle suppose que le solde
+  stocké EST celui d'aujourd'hui.
+  **CORRECTIF PROPOSÉ (attend l'OK de Marc — il change ce que TOUS les écrans lisent comme dette)** :
+  champ additif `Debt.balanceAsOf` (date de l'instantané), **estampillé automatiquement** à chaque
+  écriture du solde (formulaire + `apply_debt`), puis une source unique `soldeDetteAujourdhui(dette,
+  aujourdhui)` qui descend le solde de tous les prélèvements survenus depuis. Rayon d'action mesuré :
+  **exactement le bail** — la correction ne s'applique qu'à `KIND_VERSEMENTS_FIXES` + taux 0 +
+  cadence sous-mensuelle, et une dette sans `balanceAsOf` ne bouge pas d'un cent.
+  ⚠️ **Alternative MESURÉE et ÉCARTÉE** : recalculer le solde depuis la fin du terme (`versement ×
+  prélèvements restants`) rend **47 403 $** au lieu de 46 934 $ — le comptage de jours sur 4 ans
+  dérive de 2 versements. Le solde saisi reste le meilleur FAIT ; il lui manque seulement sa date.
+  ⚠️ **Amorçage — reste UN geste à Marc** : le serveur MCP servi étant périmé (`[HUB-MCP-PERIME]`),
+  l'écriture du 17/09 n'a pas pu être estampillée. Ouvrir la dette « bZ » dans l'app et cliquer
+  « Enregistrer » pose `balanceAsOf` — sans ce geste le solde reste JUSTE mais cesse d'avancer seul.
+
+---
+
+- [x] 🔧 **`[DETTE-BALANCEASOF-INVISIBLE]`** (S) **LIVRÉ le 18/09/2026** (OK explicite de Marc :
+  « oui affiche la date dans le formulaire ») — **la date du solde n'était AFFICHÉE nulle part, donc
+  ni Marc ni moi ne pouvons vérifier qu'elle est posée.** Mesuré le 18/09/2026, quand Marc a demandé
+  « vérifie que la date est posée » après avoir cliqué « Enregistrer » sur son bail : **aucune des
+  trois voies ne répond.** (a) `grep balanceAsOf components/ hooks/ utils/` → **2 écritures, 0 lecture**
+  (`DebtManager.tsx:60` et `:108`) : rien ne le rend à l'écran. (b) Le MCP reconstruit `topDebts` champ
+  par champ (`name`/`balance`/`rate`) et le binaire Cloud Run servi est antérieur au champ
+  (`[HUB-MCP-PERIME]`) — **structurellement** aveugle. (c) Le snapshot Drive vit dans
+  l'`appDataFolder` (`syncLifecycle.ts`), invisible au connecteur Drive (deux syntaxes de requête
+  refusées). ⚠️ Et la valeur ne discrimine pas : sans prélèvement depuis l'estampille, le solde est
+  **identique** dans les deux mondes — même cécité structurelle que `Math.abs` sur une convention de
+  signe. La seule preuve comportementale arrive au prélèvement SUIVANT (~22/09), soit quatre jours
+  après le geste qu'on lui a demandé. **C'est le trou de mon propre lot `[DETTE-SOLDE-INSTANTANE-FIGE]`** :
+  j'ai vérifié qu'il pouvait POSER la date, jamais qu'il pourrait la VOIR
+  (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, re-payée : l'aller sans le
+  retour). **Correctif** : afficher la date sous le solde dans `DebtManager` (« solde au 18 sept. »),
+  pour les dettes qui la portent — et un état explicite quand elle manque, puisque « absente » veut
+  dire « ce solde ne bouge plus tout seul », exactement l'information qui manquait ici. ⚠️ Ne PAS la
+  rendre saisissable : elle vaut parce qu'elle est estampillée à l'écriture, une date tapée à la main
+  rouvrirait le défaut d'origine.
+  **LIVRÉ** : `statutSoldeDette` (le module qui DÉCIDE rend les trois formes — `suit-les-versements`
+  / `date-figee` / `jamais-date`), `phraseStatutSolde` qui traduit sans décider, et une ligne sous le
+  champ « Solde » du formulaire d'édition. ⚠️ **Marc a choisi « formulaire seulement », contre ma
+  recommandation** (liste + formulaire) : une recommandation sert à rendre le choix rapide, pas à le
+  pré-décider. ⚠️ Et le correctif que J'AVAIS prescrit la veille était incohérent avec son écran —
+  voir la leçon du jour dans `docs/CONVENTIONS.md`.
+
+---
+
 ### 2026-09-16 — lot FX + autorité Fintable (PR #977 et #978, mergés, gate vert)
 
 > Cinq items finis et validés, retirés de `BACKLOG.md` le 2026-09-16 après le merge de la PR #978

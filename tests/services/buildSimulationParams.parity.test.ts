@@ -123,6 +123,8 @@ describe('Lot 0 — parité buildSimulationParams vs chemin React', () => {
             projection: state.projection,
             config: state.config,
             aujourdhuiIso: null,
+        // [DETTE-VIREMENTS-REELS] Les virements réels, REQUIS à la frontière du moteur.
+        transactions: [],
             liveCSVBalances: derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
             calculatedStartingCash: computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []),
             realEstateGoals: state.realEstateGoals ?? [],

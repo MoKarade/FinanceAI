@@ -129,7 +129,7 @@ const FutureHistorySection: React.FC = () => {
         const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals);
         const nowYearImmo = new Date().getFullYear();
         // [DASH-NW-DUP] source unique gardée NaN/Infinity.
-        const currentDebts = computeTotalDebt(debts ?? [], todayIso);
+        const currentDebts = computeTotalDebt(debts ?? [], todayIso, transactions);
 
         const hist = marketData.map(row => {
             const rowDateStr = row.date as string;

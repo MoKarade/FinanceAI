@@ -4,6 +4,37 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-18 (suite) — **la dette suit les VRAIS virements**
+> 🔎 **`[DETTE-VIREMENTS-REELS]`** — Marc : « chaque fois que je paie toyota ca enleve ca de la
+> dette ». Champ `Debt.paymentPayee` (le marchand, CHOISI dans une liste) ; `sourceVersements`
+> devient la décision UNIQUE « d'où viennent les versements », et les virements RÉELS battent la
+> grille modélisée. Une dette liée ne retombe **jamais** sur la grille, pas même en repli.
+> `transactions` est devenu **REQUIS** sur toute la chaîne (94 sites énumérés par le compilateur).
+> **Mesuré** : série au mois 48 811,36 | 48 576,69 | 47 403,34 (virements) contre
+> 49 046,02 | 48 576,68 | 47 403,34 (grille) — l'écart est **concentré en juillet** (234,66 $, un
+> versement que le modèle inventait), août et septembre coïncident au cent près.
+> **Contrôle négatif DANS les données** : `Ste Foy Toyota Quebec` (−500,00 $, −779,79 $) est le
+> concessionnaire — appariement EXACT, sinon 1 279,79 $ retirés à tort.
+> ⚠️ **Conséquence assumée** : avant le plus ancien virement importé, la dette reste PLATE.
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir « bZ », choisir « Toyota Financial » dans « Virements qui
+> remboursent cette dette », Enregistrer. Le lien ne se devine pas.
+> ⚠️⚠️ **Le PANEL a trouvé SEPT défauts après un gate vert ET une CI verte**, tous corrigés dans le
+> même lot, tous mesurés : `isTransfer` inclus côté dette et exclu côté cash → **1 877,36 $ de
+> patrimoine CRÉÉ** (décision à moi, RÉFUTÉE par la conservation, test de limite INVERSÉ) ;
+> `startDate` et `minimumPayment` exigés par la série et pas par le solde du jour → deux registres,
+> deux dettes ; pas de borne de TERME sur les virements → **−2 581,37 $** sur un bail éteint ; le
+> plancher `Math.max(0,…)` effaçait la dette à **0,00 $** sur un lien vers un marchand fréquent —
+> et la liste propose les plus fréquents EN PREMIER ; la carte de dette, le simulateur et `topDebts`
+> du payload MCP montraient encore le solde brut à côté du corrigé ; deux dettes liées au même
+> marchand déduisaient chacune la totalité. **Aucune de mes 22 gardes ne pouvait les voir** : ma
+> fixture décrivait le cas nominal (bail en cours, daté, bon marchand).
+> ⚠️ Cinq trouvailles MESURÉES et NON corrigées (hors périmètre), routées au BACKLOG : PDF au solde
+> brut, série mensuelle du passé qui mêle deux instants (**pré-existant, prouvé**), transaction
+> post-datée, transaction datée au mois seul, résidu `paymentPayee` invisible.
+> ✅ Suite complète MESURÉE le 18/09 à 15:31 UTC sur `7a2aa60b` : **629 fichiers, 6 248 tests, tous
+> verts** en 982 s. +3 gardes ciblées depuis ⇒ **6 251**.
+> ⚠️ Toujours en attente : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`).
+>
 > ## 🟦 Session 2026-09-17 (suite) — **cadence des dettes, carte du hub, `[FINTABLE-AUTORITE-PARTOUT]` étape 3**
 > Trois lots, trois demandes de Marc dans le même message.
 > 🔎 **`[DEBT-CADENCE-REELLE]`** — « elle devrait descendre à chaque paiement à Toyota, pas une fois

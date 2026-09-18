@@ -23,6 +23,7 @@ import { statutSoldeDette } from '../../services/projection/debtAmortization';
 import { formatIsoDay } from '../../utils/format';
 import { todayIsoLocal } from '../../services/projection/dailyRefine';
 import type { Debt } from '../../types';
+import { useFinanceStore } from '../../store/useFinanceStore';
 
 vi.mock('recharts', async () => {
     const R = await import('react');
@@ -53,28 +54,28 @@ const BAIL = (over: Partial<Debt> = {}): Debt =>
 
 describe('[DETTE-BALANCEASOF-INVISIBLE] `statutSoldeDette` — trois formes EXCLUSIVES', () => {
     it('daté ET auto-avançant → `suit-les-versements`, et la date rendue est celle qui est STOCKÉE', () => {
-        const statut = statutSoldeDette(BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>), AUJ);
+        const statut = statutSoldeDette(BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>), AUJ, []);
         expect(statut.forme).toBe('suit-les-versements');
         // ⚠️ Anti-vacuité : la forme seule ne prouve rien si la date rendue vient d'ailleurs.
-        if (statut.forme !== 'jamais-date') expect(statut.dateIso).toBe(ilYA(9));
+        if (statut.forme === 'suit-les-versements') expect(statut.dateIso).toBe(ilYA(9));
     });
 
     it('SANS date → `jamais-date` : c’est le cas que Marc ne pouvait pas voir', () => {
-        expect(statutSoldeDette(BAIL(), AUJ).forme).toBe('jamais-date');
+        expect(statutSoldeDette(BAIL(), AUJ, []).forme).toBe('jamais-date');
     });
 
     it('date ILLISIBLE → `jamais-date` aussi : une date qu’on ne sait pas lire ne vaut pas mieux qu’une absente', () => {
-        expect(statutSoldeDette(BAIL({ balanceAsOf: 'bientôt' } as Partial<Debt>), AUJ).forme).toBe('jamais-date');
+        expect(statutSoldeDette(BAIL({ balanceAsOf: 'bientôt' } as Partial<Debt>), AUJ, []).forme).toBe('jamais-date');
     });
 
     it('CONTRÔLE NÉGATIF — une carte de crédit datée → `date-figee` (rien ne la fait avancer)', () => {
         const carte = BAIL({ kind: 'credit-card', balanceAsOf: ilYA(9) } as Partial<Debt>);
-        expect(statutSoldeDette(carte, AUJ).forme).toBe('date-figee');
+        expect(statutSoldeDette(carte, AUJ, []).forme).toBe('date-figee');
     });
 
     it('CONTRÔLE NÉGATIF — un TAUX non nul → `date-figee` : on ignore ce que le solde contient', () => {
         const avecTaux = BAIL({ interestRate: 6.59, balanceAsOf: ilYA(9) } as Partial<Debt>);
-        expect(statutSoldeDette(avecTaux, AUJ).forme).toBe('date-figee');
+        expect(statutSoldeDette(avecTaux, AUJ, []).forme).toBe('date-figee');
     });
 });
 
@@ -129,6 +130,104 @@ describe('[DETTE-BALANCEASOF-INVISIBLE] le formulaire d’édition REND la phras
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
         expect(screen.getByText(new RegExp(formatIsoDay(ilYA(9))))).toBeTruthy();
         expect(screen.queryByText(/jamais daté/i)).toBeNull();
+    });
+});
+
+describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, et offre le lien', () => {
+    /** Les vrais virements de Marc, ramenés à l'horloge du fichier : une date figée deviendrait
+     *  postérieure à `AUJ` un jour ou l'autre, et le cas cesserait de mesurer quoi que ce soit. */
+    const TX = [
+        { id: 1, date: ilYA(9), payee: 'Toyota Financial', amount: -234.67, category: 'Transport', status: 'processed' },
+        { id: 2, date: ilYA(3), payee: 'Toyota Financial', amount: -234.67, category: 'Transport', status: 'processed' },
+        { id: 3, date: ilYA(60), payee: 'Ste Foy Toyota Quebec', amount: -779.79, category: 'Transport', status: 'processed' },
+    ];
+    const poserTransactions = (txs: unknown[]): void => {
+        useFinanceStore.setState({ transactions: txs as never });
+    };
+    afterEach(() => poserTransactions([]));
+
+    it('lié à un marchand, la phrase COMPTE les virements déduits et nomme le dernier jour', () => {
+        poserTransactions(TX);
+        const dette = BAIL({ balanceAsOf: ilYA(20), paymentPayee: 'Toyota Financial' } as Partial<Debt>);
+        render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        // ⚠️ Le sélecteur vise la PHRASE, pas « le texte Toyota Financial » : ce libellé figure aussi
+        // dans les `<option>` du menu de liaison, et un `getByText` large y trouverait deux nœuds.
+        const p = screen.getByText(/virements à « Toyota Financial » depuis/);
+        expect(p.textContent).toContain('2 virements');
+        expect(p.textContent).toContain(formatIsoDay(ilYA(3)));
+        // ⚠️ Le CONCESSIONNAIRE n'entre pas dans le compte : « 3 virements » serait le signe que
+        // l'appariement s'est relâché quelque part entre le module et l'écran.
+        expect(p.textContent).not.toContain('3 virement');
+    });
+
+    it('lié à un marchand qui ne verse RIEN → la phrase alerte et nomme le marchand', () => {
+        poserTransactions(TX);
+        const dette = BAIL({ balanceAsOf: ilYA(20), paymentPayee: 'Marchand Inexistant' } as Partial<Debt>);
+        render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        const p = screen.getByText(/aucun virement de ce marchand/i);
+        expect(p.textContent).toContain('Marchand Inexistant');
+    });
+
+    it('le sélecteur de marchand N’EXISTE que là où il produit quelque chose (taux nul + versements fixes)', () => {
+        poserTransactions(TX);
+        const { unmount } = render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
+        // La liste vient de `marchandsCandidats` : les deux marchands, le plus fréquent en tête.
+        expect([...select.options].map(o => o.value)).toEqual(['', 'Toyota Financial', 'Ste Foy Toyota Quebec']);
+        // ⚠️ Aucun MONTANT dans un `<option>` : `PrivateAmount` ne peut pas l'envelopper, donc il
+        // serait lisible en mode discret. Un COMPTE, lui, ne dit rien de ce que Marc possède.
+        expect(select.textContent).not.toMatch(/\$/);
+        unmount();
+
+        // CONTRÔLE NÉGATIF : à taux NON NUL, la déduction serait fausse — le champ disparaît.
+        render(<DebtManager debts={[BAIL({ interestRate: 6.59, balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        expect(screen.queryByLabelText(/Virements qui remboursent/i)).toBeNull();
+    });
+
+    it('un marchand LIÉ À UNE AUTRE DETTE disparaît de la liste — sinon il est déduit DEUX fois', () => {
+        // ⚠️ `paiementsReelsDette` travaille par dette : deux dettes liées au même marchand
+        // déduiraient CHACUNE la totalité des virements. Mesuré sur deux dettes et 7 virements
+        // (1 642,69 $ réellement versés) : 3 285,38 $ retirés du total dû. La liste est le SEUL
+        // endroit où ce lien se pose — l'empêcher ici l'empêche partout.
+        poserTransactions(TX);
+        const autre = BAIL({ id: 'autre', name: 'autre bail', balanceAsOf: ilYA(9), paymentPayee: 'Toyota Financial' } as Partial<Debt>);
+        const celleCi = BAIL({ id: 'bail', balanceAsOf: ilYA(9) } as Partial<Debt>);
+        render(<DebtManager debts={[celleCi, autre]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getAllByRole('button', { name: 'Modifier' })[0]);
+        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
+        expect([...select.options].map(o => o.value)).not.toContain('Toyota Financial');
+        // ⚠️ Anti-vacuité : le marchand NON pris reste offert, sinon « absent » serait vrai d'une
+        // liste vide ou d'un sélecteur cassé.
+        expect([...select.options].map(o => o.value)).toContain('Ste Foy Toyota Quebec');
+    });
+
+    it('des virements qui DÉPASSENT le solde annoncent le refus, et alertent', () => {
+        // Le remplaçant du plancher `Math.max(0, …)` : mesuré, il rendait 0,00 $ sous une phrase
+        // rassurante. L'écran doit maintenant NOMMER le refus et le marchand en cause.
+        poserTransactions([
+            ...TX,
+            ...Array.from({ length: 300 }, (_, i) => ({ id: 100 + i, date: ilYA(1 + i % 300), payee: 'Épicerie', amount: -400, category: 'Épicerie', status: 'processed' })),
+        ]);
+        const dette = BAIL({ balanceAsOf: ilYA(300), paymentPayee: 'Épicerie' } as Partial<Debt>);
+        render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        const p = screen.getByText(/dépassent le solde enregistré/i);
+        expect(p.textContent).toContain('Épicerie');
+        expect(p.className).toContain('amber');
+    });
+
+    it('le marchand DÉJÀ lié reste dans la liste même si plus aucune transaction ne le porte', () => {
+        // Sans ça, ouvrir le formulaire effacerait le lien en silence au premier changement.
+        poserTransactions(TX);
+        const dette = BAIL({ balanceAsOf: ilYA(9), paymentPayee: 'Marchand Disparu' } as Partial<Debt>);
+        render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
+        expect(select.value).toBe('Marchand Disparu');
     });
 });
 

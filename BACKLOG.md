@@ -17,72 +17,139 @@
 
 ---
 
-## 🚗 Dette — le solde stocké est un instantané SANS DATE (17/09/2026, signalé par Marc)
+## 🚗 Dette — elle suit maintenant les VRAIS virements (18/09/2026, demandé par Marc)
 
-- [x] 🔧 **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (M) **LIVRÉ le 17/09/2026** (OK explicite de Marc :
-  « oui vas-y, écris 46 934,00 $ et livre le correctif »). Champ `Debt.balanceAsOf` + source unique
-  `soldeDetteAujourdhui` + porte IDEMPOTENTE `dettesAuSoldeDuJour` au point de passage unique vers le
-  moteur ; `computeTotalDebt` et `buildFinancialSnapshot` prennent le JOUR en paramètre **REQUIS**
-  (26 sites énumérés par le compilateur). Solde réel écrit à **46 934,00 $** via `apply_debt` — et
-  la valeur d'avant rendue par l'outil, **47 168,67 $**, confirme au cent près la déduction faite
-  sans jamais l'avoir lue. Marc : « ça devrait enlever de la dette le montant
-  que je paye quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
-  **MESURÉ sur son état réel** (synchro Drive du 2026-09-17 21:42, transactions + `get_holdings`) :
-  · ses prélèvements RÉELS sont `Toyota Financial −234,67 $` les **28 juil., 5, 11, 18, 25 août,
-    1er, 9 et 15 sept.** = **8 versements** ;
-  · `47 169 ÷ 234,67 = 201,0000` versements restants **exactement**, et `201 + 7 = 208` = le bail
-    complet (48 811,36 $) — donc le solde stocké vaut **après 7 prélèvements**, c'est-à-dire avant
-    celui du 15 septembre ;
-  · 8 ont eu lieu ⇒ il reste **200** ⇒ **46 934,00 $**. L'app affiche **47 169 $**.
-  **Écart : 234,67 $ aujourd'hui, et il grandit d'un versement par SEMAINE.**
-  **La cadence hebdo livrée n'est PAS en cause** : vérifiée contre les vrais prélèvements à
-  10 dates, le montant de la marche est exact (234,67 $) et le NOMBRE de marches est juste partout
-  (écart 0 $) ; seul reste un décalage de **phase d'un jour** sur la marche du 15 sept. (la grille
-  part de `startDate`, le 1er prélèvement réel est 8 jours plus tard) — invisible à l'écran.
-  **CAUSE** : `Debt.balance` est un instantané figé, sans date de saisie, et rien ne l'avance. La
-  grille reconstruit le passé **en partant** du solde d'aujourd'hui — elle suppose que le solde
-  stocké EST celui d'aujourd'hui.
-  **CORRECTIF PROPOSÉ (attend l'OK de Marc — il change ce que TOUS les écrans lisent comme dette)** :
-  champ additif `Debt.balanceAsOf` (date de l'instantané), **estampillé automatiquement** à chaque
-  écriture du solde (formulaire + `apply_debt`), puis une source unique `soldeDetteAujourdhui(dette,
-  aujourdhui)` qui descend le solde de tous les prélèvements survenus depuis. Rayon d'action mesuré :
-  **exactement le bail** — la correction ne s'applique qu'à `KIND_VERSEMENTS_FIXES` + taux 0 +
-  cadence sous-mensuelle, et une dette sans `balanceAsOf` ne bouge pas d'un cent.
-  ⚠️ **Alternative MESURÉE et ÉCARTÉE** : recalculer le solde depuis la fin du terme (`versement ×
-  prélèvements restants`) rend **47 403 $** au lieu de 46 934 $ — le comptage de jours sur 4 ans
-  dérive de 2 versements. Le solde saisi reste le meilleur FAIT ; il lui manque seulement sa date.
-  ⚠️ **Amorçage — reste UN geste à Marc** : le serveur MCP servi étant périmé (`[HUB-MCP-PERIME]`),
-  l'écriture du 17/09 n'a pas pu être estampillée. Ouvrir la dette « bZ » dans l'app et cliquer
-  « Enregistrer » pose `balanceAsOf` — sans ce geste le solde reste JUSTE mais cesse d'avancer seul.
+- [x] 🔧 **`[DETTE-VIREMENTS-REELS]`** (M) **LIVRÉ le 18/09/2026** (demande de Marc :
+  « ca marfhe pas pour la dette je vais faire simple pour toi je veux que chaque fois que je paie
+  toyota ca enleve ca de la dette, faut que ma dette soit lié a chaque fois que je fais un virement
+  du bon montant a toyota » ; sémantique choisie par lui en clic : **« suivre les vrais virements,
+  point »** — la dette ne descend QUE sur un virement réellement importé, aucun chiffre inventé).
+  **CE QUI EXISTAIT ET POURQUOI ÇA NE SUFFISAIT PAS** : le passé du bail descendait par une GRILLE
+  MODÉLISÉE (`startDate` + k × cadence, versement dérivé de `minimumPayment`). C'est un modèle : il
+  continue de descendre les semaines où rien n'a été prélevé, et il place des versements que les
+  transactions ne connaissent pas.
+  **MESURÉ sur ses vraies transactions** (8 × `Toyota Financial` −234,67 $ les 28 juil., 5, 11, 18,
+  25 août, 1er, 9 et 15 sept.) : série au mois **48 811,36 | 48 576,69 | 47 403,34** (virements
+  réels) contre **49 046,02 | 48 576,68 | 47 403,34** (grille). L'écart est concentré en JUILLET —
+  **234,66 $**, soit exactement un versement que le modèle inventait ; août et septembre coïncident
+  au cent près. Un modèle qui s'accorde avec la mesure là où on regarde reste un modèle.
+  **CONTRÔLE NÉGATIF, dans les données** : `Ste Foy Toyota Quebec` −500,00 $ et −779,79 $ (le
+  CONCESSIONNAIRE, juillet) — un appariement lâche (« le libellé contient toyota ») aurait retiré
+  **1 279,79 $** de la dette pour des achats qui n'en remboursent rien. L'appariement est EXACT.
+  **LIVRÉ** : champ `Debt.paymentPayee` (choisi dans une LISTE de marchands, jamais retapé, et
+  déclaré dans `CHAMPS_TEXTE` du même geste) ; `sourceVersements` devient la décision UNIQUE
+  « d'où viennent les versements » (virements réels **>** grille) ; une dette liée ne retombe
+  JAMAIS sur la grille, pas même en repli ; `transactions` devient **REQUIS** sur toute la chaîne
+  (solde du jour, série au mois et au jour, porte du moteur, total dû, bandeau) — 94 sites énumérés
+  par le compilateur.
+  ⚠️ **CONSÉQUENCE ASSUMÉE, et elle est écrite à l'écran** : avant le plus ancien virement importé
+  (28 juillet pour Marc, alors que le bail commence le 14), la dette reste PLATE. L'app ne sait rien
+  de ce qui a été payé avant que ses transactions ne commencent — c'est le prix exact de « aucun
+  chiffre inventé, jamais ».
+  ⚠️ **RESTE UN GESTE À MARC** : ouvrir la dette « bZ », choisir « Toyota Financial » dans
+  « Virements qui remboursent cette dette », puis Enregistrer. Le lien ne se devine pas.
 
 ---
 
-- [x] 🔧 **`[DETTE-BALANCEASOF-INVISIBLE]`** (S) **LIVRÉ le 18/09/2026** (OK explicite de Marc :
-  « oui affiche la date dans le formulaire ») — **la date du solde n'était AFFICHÉE nulle part, donc
-  ni Marc ni moi ne pouvons vérifier qu'elle est posée.** Mesuré le 18/09/2026, quand Marc a demandé
-  « vérifie que la date est posée » après avoir cliqué « Enregistrer » sur son bail : **aucune des
-  trois voies ne répond.** (a) `grep balanceAsOf components/ hooks/ utils/` → **2 écritures, 0 lecture**
-  (`DebtManager.tsx:60` et `:108`) : rien ne le rend à l'écran. (b) Le MCP reconstruit `topDebts` champ
-  par champ (`name`/`balance`/`rate`) et le binaire Cloud Run servi est antérieur au champ
-  (`[HUB-MCP-PERIME]`) — **structurellement** aveugle. (c) Le snapshot Drive vit dans
-  l'`appDataFolder` (`syncLifecycle.ts`), invisible au connecteur Drive (deux syntaxes de requête
-  refusées). ⚠️ Et la valeur ne discrimine pas : sans prélèvement depuis l'estampille, le solde est
-  **identique** dans les deux mondes — même cécité structurelle que `Math.abs` sur une convention de
-  signe. La seule preuve comportementale arrive au prélèvement SUIVANT (~22/09), soit quatre jours
-  après le geste qu'on lui a demandé. **C'est le trou de mon propre lot `[DETTE-SOLDE-INSTANTANE-FIGE]`** :
-  j'ai vérifié qu'il pouvait POSER la date, jamais qu'il pourrait la VOIR
-  (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, re-payée : l'aller sans le
-  retour). **Correctif** : afficher la date sous le solde dans `DebtManager` (« solde au 18 sept. »),
-  pour les dettes qui la portent — et un état explicite quand elle manque, puisque « absente » veut
-  dire « ce solde ne bouge plus tout seul », exactement l'information qui manquait ici. ⚠️ Ne PAS la
-  rendre saisissable : elle vaut parce qu'elle est estampillée à l'écriture, une date tapée à la main
-  rouvrirait le défaut d'origine.
-  **LIVRÉ** : `statutSoldeDette` (le module qui DÉCIDE rend les trois formes — `suit-les-versements`
-  / `date-figee` / `jamais-date`), `phraseStatutSolde` qui traduit sans décider, et une ligne sous le
-  champ « Solde » du formulaire d'édition. ⚠️ **Marc a choisi « formulaire seulement », contre ma
-  recommandation** (liste + formulaire) : une recommandation sert à rendre le choix rapide, pas à le
-  pré-décider. ⚠️ Et le correctif que J'AVAIS prescrit la veille était incohérent avec son écran —
-  voir la leçon du jour dans `docs/CONVENTIONS.md`.
+## 💸 Reste du panel `[DETTE-VIREMENTS-REELS]` (18/09/2026) — mesuré, NON corrigé (hors périmètre)
+
+- [ ] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **le rapport PDF ne se recompose pas avec lui-même.**
+  `components/app/exportPdfEcran.ts` somme `state.debts.reduce((s, d) => s + d.balance, 0)` et
+  `services/pdfReport.ts` remplit chaque ligne (`balance`, `monthsToZero`) depuis `d.balance` —
+  aucun des deux ne passe par `soldeDetteAujourdhui`. Le même document affiche pourtant un
+  patrimoine net CORRECT (il vient de `computePresentNetWorth`, corrigé). **Mesuré sur le bail de
+  Marc : PDF 47 168,67 $ contre écran 45 525,98 $, soit 1 642,69 $, +234,67 $ par semaine.**
+  Un document exporté et partagé où `actifs − dettes ≠ valeur nette`, sans avertissement.
+  ⚠️ Pré-existant (`[DETTE-SOLDE-INSTANTANE-FIGE]`, 17/09) ; `[DETTE-VIREMENTS-REELS]` en élargit
+  la magnitude, il ne le crée pas. Routé plutôt que corrigé : deux fichiers qu'aucun des deux lots
+  ne touche.
+
+- [ ] 🔧 **`[PASSE-MOIS-DEUX-INSTANTS]`** (M) — **la série MENSUELLE du passé mêle la fin d'un mois
+  et le début d'un autre.** `services/history/buildPastPrefix.ts` : `cashByMi` porte le cash à la
+  **FIN** du mois (contrat de `reconstructCashHistory`) pendant que le supplément de dette porte le
+  solde au **1er** du mois (`amortirVersementsFixes` échantillonne `premierDuMois`). **Mesuré au
+  point `2026-08` : liquidités 20 469,34 $ (= cash au 1er septembre) contre dette 46 699,33 $
+  (= dette au 1er août) — un mois d'écart.** Chaque point mensuel du passé sous-estime donc la
+  valeur nette d'environ un mois de versements (**≈ 1 016,90 $** ici), et le raccord passé→futur
+  montre une marche de 938,69 $ que `fluxPeriodeAnnulee` (469,34 $) n'explique pas.
+  ⚠️ **PRÉ-EXISTANT, prouvé** : rejoué avec la grille modélisée (donc sans `paymentPayee`, le
+  comportement d'avant le lot), les valeurs sont IDENTIQUES — cohérent avec la bit-identité mesurée
+  sur les huit personas. La série au JOUR, elle, est exacte. ⚠️ Avant de « corriger », trancher
+  lequel des deux instants la série mensuelle PROMET : déplacer l'un sans l'autre ne fait que
+  changer de côté l'écart d'un mois.
+
+- [ ] 🔧 **`[DETTE-TX-POSTDATEE-ASYMETRIE]`** (S) — miroir, beaucoup plus petit, du défaut
+  `isTransfer` corrigé dans le lot : `paiementsReelsDette` REFUSE une transaction datée APRÈS
+  aujourd'hui (justifié : elle ne décrit pas un solde du jour) pendant que `computeCashLedger`, lui,
+  la compte sans regarder la date. **Mesuré : valeur nette 234,67 $ trop BASSE par transaction
+  post-datée.** Le correctif n'est pas forcément côté dette — c'est l'ASYMÉTRIE qui est le défaut, et
+  c'est peut-être le cash qui a tort.
+
+- [ ] 🔧 **`[DETTE-TX-DATEE-AU-MOIS-JETEE]`** (S) — une transaction datée au MOIS seul
+  (`2026-09`) est écartée des virements par `jourMs` (qui exige ≥ 10 caractères) **sans compteur ni
+  avertissement**, alors que le registre du cash les COMPTE et les ANNONCE (`undatedTotal`, affiché
+  dans le bandeau de la vue au jour). **Mesuré : 234,67 $ de dette non déduite par occurrence** ⇒
+  patrimoine sous-évalué. Le remède est un compteur PUBLIÉ (même patron qu'`undatedTotal`), pas un
+  `continue` muet — refuser en silence est le mode de panne que ce dépôt a déjà payé trois fois.
+
+- [ ] 🔧 **`[DETTE-PAYEE-RESIDU-INVISIBLE]`** (XS) — changer le `kind` d'une dette liée, ou lui
+  donner un taux non nul, MASQUE le sélecteur de marchand sans effacer `paymentPayee` : le champ
+  survit à l'enregistrement (`saveEdit` fusionne `{...d, ...draft}`), reste invisible, et le lien se
+  réactive en silence si le taux revient à zéro. Effet conservateur aujourd'hui (aucune déduction
+  n'a lieu), donc XS — mais un champ posé qu'aucun écran ne montre est exactement ce que
+  `[DETTE-BALANCEASOF-INVISIBLE]` a coûté la veille.
+
+---
+
+## ♿ Trouvé par le panel du lot `[DETTE-VIREMENTS-REELS]` (18/09/2026) — RE-MESURÉ avant d'être écrit
+
+- [ ] 🔧 **`[CONTRAST-SCAN-CLASSNAME-CALCULE]`** (M) — **le scan de contraste ne voit que les
+  `className="…"` LITTÉRAUX, et son angle mort couvre 130 sites.** Il est DÉCLARÉ en tête de
+  `scripts/lib/ctaContrast.ts` (« ⚠️ ANGLE MORT ASSUMÉ ») — donc il se lit comme un détail déjà
+  tranché, et personne n'en avait jamais mesuré la TAILLE (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+  **MESURÉ le 18/09/2026** : `130 sites dans 48 fichiers` de `components/` portent un token de
+  couleur (`text-…-400`, `bg-…-600`…) à l'intérieur d'un `className={…}` calculé. Aucun n'entre
+  dans l'inventaire de `npm run check-contrast`, qui rend pourtant `exit 0`.
+  ⚠️ **Le remède évident est presque INERTE, et c'est le point du ticket** : « étendre le scan aux
+  ternaires de deux chaînes littérales complètes » (ce que le panel proposait) couvre **7 sites sur
+  130**, soit 5 %. Re-mesuré autrement : si le scan récolte TOUT fragment littéral de l'expression
+  (chaînes `'…'`/`"…"` **et** le texte brut d'un gabarit hors des `${…}`), il couvre **127 sites sur
+  130** — les 3 restants construisent le nom de classe par interpolation
+  (`FutureProjection.tsx`, `Layout.tsx`, `ui/Toast.tsx`) et resteront hors de portée, à déclarer.
+  ⚠️ **Rejouer l'outil élargi AVANT de croire qu'il n'y a rien** : les offenders révélés sont le vrai
+  périmètre, et ils n'ont aucune raison de ressembler à ce ticket-ci.
+  · *Déclencheur de ce ticket* : la phrase de statut du solde dans `DebtManager` (la ligne qui
+    choisit entre `text-amber-400` et `text-ink-400` selon `alerte`), mesurée À LA MAIN faute d'outil — **10,43** sur le fond réel `#1a1a1a` et **11,94** sur `bg-dark`
+    pour `amber-400`, **5,78** / **6,62** pour `ink-400` : les quatre passent AA largement, donc le
+    lot n'a PAS de défaut de contraste. C'est l'outil qui ne pouvait pas le dire.
+
+- [ ] 🔧 **`[A11Y-DETTE-CIBLES-TACTILES]`** (S) — **aucun champ du formulaire de dette n'atteint
+  44 px de haut**, et ce n'est pas une régression du lot. Mesuré : les `<input>`/`<select>` de
+  `DebtManager.tsx` et `DebtKindFields.tsx` font ≈ **26 px** (`text-meta` 16 px + `py-1` 8 px +
+  2 px de bordures), soit **−41 %** du seuil WCAG 2.5.5. La LARGEUR n'est pas en cause (le
+  `<label className="flex flex-col">` étire les champs bien au-delà de 44 px) — mesurer par AXE,
+  jamais en agrégat (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`).
+  `.touch-target` (44×44, `index.css`) existe et sert dans `Investments`, `Planning`,
+  `Transactions`, `budget/BudgetGroupTable` — **jamais** dans ces deux fichiers, sans justification
+  écrite. ⚠️ Le correctif cohérent porte sur le formulaire ENTIER : ne corriger que les deux champs
+  neufs créerait une incohérence visuelle sans raison écrite.
+
+- [ ] 🔧 **`[A11Y-DETTE-FOCUS-EDITION]`** (S) — `startEdit` (`DebtManager.tsx`) insère le panneau
+  d'édition sans y déplacer le focus. Pour un utilisateur clavier ou lecteur d'écran, la branche
+  ALERTE de `phraseStatutSolde` (« Solde jamais daté… », « Vérifie le marchand choisi ») n'est donc
+  pas garantie d'être annoncée à l'ouverture : il faut naviguer jusqu'à elle. Pré-existant (le
+  panneau date de `[DETTE-DATES]`), révélé par le lot qui a donné à cette ligne quelque chose
+  d'important à dire. ⚠️ `tabIndex = -1` sur le conteneur est obligatoire : `focus()` sur un `<div>`
+  non focalisable est un no-op SILENCIEUX, et le test interroge `document.activeElement`, jamais la
+  présence de l'appel.
+  ⚠️ **Ce qui a été EXAMINÉ et n'est PAS un défaut**, écrit pour qu'on ne le reprenne pas : la phrase
+  de `phraseStatutSolde` **ne doit pas** devenir une région live. Elle se calcule sur la dette
+  PERSISTÉE, pas sur le brouillon — elle ne réagit à aucune saisie dans ce formulaire, et ne peut
+  changer qu'à une synchro en arrière-plan. L'annoncer interromprait la frappe pour un contenu
+  descriptif. Le `role="status"` du refus de saisie, lui, réagit DIRECTEMENT à l'utilisateur : c'est
+  ça, un message de statut au sens WCAG 4.1.3.
+
+---
 
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 

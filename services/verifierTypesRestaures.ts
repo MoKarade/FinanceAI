@@ -137,6 +137,12 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // `?: string`, la plus banale), mais on ne compte pas sur elle pour un champ qu'on introduit
     // soi-même : la liste se met à jour à l'écriture, la garde est le FILET.
     'balanceAsOf',
+    // [DETTE-VIREMENTS-REELS] Libellé du marchand dont les virements font baisser une dette.
+    // Même geste, même raison que `balanceAsOf` et `paymentFrequency` juste au-dessus : un champ
+    // textuel neuf qu'aucun état du dépôt ne porte encore est structurellement le PREMIER à faire
+    // lever `merge`, donc à vider l'écran de Marc au rechargement suivant. Écrit ICI, dans le même
+    // geste que sa déclaration dans `types.ts` — la garde de dérivation est le FILET, pas le processus.
+    'paymentPayee',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

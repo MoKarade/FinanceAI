@@ -89,7 +89,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
     it('PARITÉ NW : (cash moteur + portefeuille moteur − dettes) ≡ computePresentNetWorth', () => {
         const moteurNW = computeStartingCash(initialBalances, transactions)
             + sumBalances(derivePortfolioStartingBalances(assets, FX))
-            - computeTotalDebt(debts, null);
+            - computeTotalDebt(debts, null, []);
         const presentNW = computePresentNetWorth(initialBalances, transactions, assets, FX, debts, 0, null);
         // Discriminant : si la valorisation portefeuille divergeait, l'écart sauterait (≫ 1 $).
         expect(moteurNW).toBeCloseTo(presentNW, 0);
@@ -99,7 +99,7 @@ describe('[NW-PARITY-INVARIANT] NW présent (UI) ≡ NW de départ du moteur', (
         const fx2 = { CAD: 1, USD: 2, EUR: 1.5 };
         const moteurNW = computeStartingCash(initialBalances, transactions)
             + sumBalances(derivePortfolioStartingBalances(assets, fx2))
-            - computeTotalDebt(debts, null);
+            - computeTotalDebt(debts, null, []);
         const presentNW = computePresentNetWorth(initialBalances, transactions, assets, fx2, debts, 0, null);
         expect(moteurNW).toBeCloseTo(presentNW, 0);
     });

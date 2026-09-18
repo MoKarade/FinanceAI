@@ -452,8 +452,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // [DEBT-AMORTIZATION-CABLAGE] Ce que le bandeau peut HONNÊTEMENT affirmer des dettes du passé.
     // Le fait vient du service qui décide de l'amortissement, pas d'une seconde lecture des champs.
     const mentionDettes = useMemo(
-        () => mentionDettesPasse(storeDebts, startYear * 12 + startMonth, currentDebtNonImmo, todayIso),
-        [storeDebts, startYear, startMonth, currentDebtNonImmo, todayIso],
+        () => mentionDettesPasse(storeDebts, startYear * 12 + startMonth, currentDebtNonImmo, todayIso, transactions),
+        [storeDebts, startYear, startMonth, currentDebtNonImmo, todayIso, transactions],
     );
     // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
     const lockedByMonth = useMemo(

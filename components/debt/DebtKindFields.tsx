@@ -16,7 +16,7 @@
 // la même vérité qu'un calcul.
 
 import React from 'react';
-import { KIND_AMORTISSANT, KIND_VERSEMENTS_FIXES } from '../../services/projection/debtAmortization';
+import { KIND_AMORTISSANT, KIND_VERSEMENTS_FIXES, clePayee } from '../../services/projection/debtAmortization';
 import { DEBT_KIND_OPTIONS } from './debtKindLabels';
 import type { Debt, DebtKind, PaymentFrequency } from '../../types';
 
@@ -82,9 +82,13 @@ interface Props {
     onChange: (patch: Partial<Debt>) => void;
     /** Suffixe d'identifiant : les deux formulaires coexistent dans le DOM, leurs `id` doivent différer. */
     idSuffixe: string;
+    /** [DETTE-VIREMENTS-REELS] Les marchands qu'on peut LIER à cette dette, déjà comptés et triés
+     *  par `marchandsCandidats`. Le composant ne les dérive pas lui-même : la liste se calcule une
+     *  fois pour les deux formulaires, et elle vient de la MÊME clé que l'appariement. */
+    marchands: ReadonlyArray<{ payee: string; nb: number }>;
 }
 
-export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe }) => {
+export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, marchands }) => {
     const kind = valeur.kind;
     const amortissable = kind != null && KIND_AMORTISSANT[kind];
     // ⚠️ [DEBT-CADENCE-REELLE] Même règle que le montant emprunté : la condition vient de la table
@@ -92,10 +96,17 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe })
     // visible pour un type que le moteur ignore ferait saisir un réglage SANS EFFET, et rien ne le
     // dirait — c'est le défaut `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` pris par l'autre bout.
     const versementsFixes = kind != null && KIND_VERSEMENTS_FIXES[kind];
+    // ⚠️ [DETTE-VIREMENTS-REELS] Le lien vers un marchand ne s'affiche QUE là où il PRODUIT quelque
+    // chose : versements fixes ET taux nul, les deux conditions que `sourceVersements` exige. Le
+    // montrer ailleurs ferait choisir un marchand sans effet, et rien ne le dirait — c'est le défaut
+    // `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` pris par l'autre bout, déjà payé dans ce fichier.
+    const peutSuivreDesVirements = versementsFixes && valeur.interestRate === 0;
+    const lie = clePayee(valeur.paymentPayee);
     const refus = refusOrigineIncoherente(valeur.originalBalance, valeur.balance);
     const idKind = `debt-kind-${idSuffixe}`;
     const idOrigine = `debt-original-${idSuffixe}`;
     const idCadence = `debt-cadence-${idSuffixe}`;
+    const idMarchand = `debt-marchand-${idSuffixe}`;
 
     return (
         <div className="space-y-2">
@@ -133,7 +144,40 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe })
                     reste alors à son niveau actuel, sans rien d'inventé.
                 </p>
             )}
-            {versementsFixes && (
+            {peutSuivreDesVirements && (
+                <label htmlFor={idMarchand} className="flex flex-col gap-1 text-tiny text-ink-400">
+                    Virements qui remboursent cette dette
+                    <select
+                        id={idMarchand}
+                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                        value={lie}
+                        onChange={e => onChange({ paymentPayee: e.target.value || undefined })}
+                    >
+                        {/* ⚠️ Le libellé de l'option vide dit si l'état est INACHEVÉ ou CHOISI : ici
+                            « aucun lien » est un état parfaitement défini (la dette suit alors la
+                            cadence saisie), pas un formulaire à finir. */}
+                        <option value="">— aucun : suivre la cadence saisie ci-dessous —</option>
+                        {/* Le marchand DÉJÀ lié figure toujours dans la liste, même si plus aucune
+                            transaction ne le porte : sans lui, ouvrir le formulaire effacerait le
+                            lien en silence au premier changement. */}
+                        {lie !== '' && !marchands.some(m => m.payee === lie) && (
+                            <option value={lie}>{lie} (aucun virement trouvé)</option>
+                        )}
+                        {marchands.map(m => (
+                            <option key={m.payee} value={m.payee}>{m.payee} ({m.nb})</option>
+                        ))}
+                    </select>
+                </label>
+            )}
+            {peutSuivreDesVirements && (
+                <p className="text-tiny text-ink-400">
+                    Choisis le marchand exact de tes virements : la dette baissera alors du montant
+                    RÉELLEMENT prélevé, le jour où il l'a été. Là où aucun virement n'est connu, elle
+                    reste au même niveau — rien n'est inventé. Sans lien, la dette descend selon la
+                    cadence saisie ci-dessous, à un rythme SUPPOSÉ.
+                </p>
+            )}
+            {versementsFixes && lie === '' && (
                 <label htmlFor={idCadence} className="flex flex-col gap-1 text-tiny text-ink-400">
                     Cadence des prélèvements
                     <select
@@ -146,7 +190,7 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe })
                     </select>
                 </label>
             )}
-            {versementsFixes && (
+            {versementsFixes && lie === '' && (
                 <p className="text-tiny text-ink-400">
                     À quelle fréquence l'argent sort vraiment de ton compte. Le montant reste celui que
                     tu as saisi en paiement MENSUEL — c'est seulement la date des marches qui change dans

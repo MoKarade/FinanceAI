@@ -83,6 +83,11 @@ export interface BuildSimulationParamsInputs {
     termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }>;
     realEstateGoals: RealEstateGoal[];
     debts: Debt[];
+    /** [DETTE-VIREMENTS-REELS] Les transactions RÉELLES. **REQUISES** : une dette liée à un marchand
+     *  (`Debt.paymentPayee`) descend sur ses VIREMENTS, et c'est ici, au point de passage UNIQUE
+     *  vers le moteur, que son solde est ramené à aujourd'hui. Optionnel, la projection serait
+     *  repartie d'un solde figé pendant que l'écran affiche celui du jour. */
+    transactions: readonly Transaction[];
     /** [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR d'aujourd'hui (ISO). **REQUIS** : c'est ici, au point
      *  de passage UNIQUE vers le moteur, que les soldes DATÉS sont ramenés à aujourd'hui. Optionnel,
      *  la projection serait repartie du solde figé pendant que l'écran affiche celui du jour — la
@@ -217,7 +222,7 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
         realEstateGoals: (inputs.realEstateGoals ?? []).filter(Boolean),
         // [DETTE-SOLDE-INSTANTANE-FIGE] Le moteur ne connaît pas `balanceAsOf` : il reçoit des
         // soldes d'AUJOURD'HUI. Une seule porte, donc une seule vérité côté projection.
-        debts: dettesAuSoldeDuJour(inputs.debts ?? [], inputs.aujourdhuiIso),
+        debts: dettesAuSoldeDuJour(inputs.debts ?? [], inputs.aujourdhuiIso, inputs.transactions),
         childGoals: (inputs.childGoals ?? []).filter(Boolean),
         travelGoals: inputs.travelGoals ?? [],
         lifeEvents: inputs.lifeEvents ?? [],
@@ -341,6 +346,8 @@ export function deriveSimulationInputsFromState(
         })(),
         realEstateGoals: state.realEstateGoals ?? [],
         debts: state.debts ?? [],
+        // [DETTE-VIREMENTS-REELS] Les virements qui remboursent une dette liée à un marchand.
+        transactions: (state.transactions ?? []) as Transaction[],
         // [DETTE-SOLDE-INSTANTANE-FIGE] L'horloge est déjà lue ici (`now`, cinq lignes plus haut,
         // pour `startYear`/`startMonth`) : on en dérive le JOUR, au lieu d'en introduire une seconde.
         aujourdhuiIso: todayIsoLocal(now),

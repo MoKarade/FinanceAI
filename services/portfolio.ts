@@ -244,6 +244,11 @@ export const computeTotalDebt = (
    *  sur le solde figé, et c'est précisément le défaut qu'on corrige. `null` = « jour inconnu » ⇒
    *  aucune correction, réponse explicite et légitime. */
   aujourdhuiIso: string | null,
+  /** [DETTE-VIREMENTS-REELS] Les transactions RÉELLES, **REQUISES** pour la même raison
+   *  qu'`aujourdhuiIso` : une dette liée à un marchand (`Debt.paymentPayee`) ne descend que sur ses
+   *  VIREMENTS, et sans eux le total affiché serait figé au dernier solde enregistré pendant que la
+   *  courbe, elle, descend. `[]` est une réponse explicite (« aucune transaction »). */
+  transactions: ReadonlyArray<Transaction> | null | undefined,
 ): number => {
   // [NAN-INPUT-HARDENING] `|| 0` rattrape déjà NaN (falsy) ; `Number.isFinite` couvre EN PLUS Infinity.
   // [DEBT-BALANCE-NAN-SILENCIEUX] (audit 2026-09-07) Un solde non fini compte pour 0 $ — mais il est
@@ -252,7 +257,7 @@ export const computeTotalDebt = (
   // crédible, un patrimoine surévalué et un prompt IA faux, sans rien à l'écran ni au journal.
   // Throttlé par dette : une corruption PERSISTÉE se relit à chaque rendu.
   return (debts || []).reduce((sum, d) => {
-    if (Number.isFinite(d.balance)) return sum + soldeDetteAujourdhui(d, aujourdhuiIso);
+    if (Number.isFinite(d.balance)) return sum + soldeDetteAujourdhui(d, aujourdhuiIso, transactions);
     logErrorThrottled(`debt-balance-non-finite:${d.id ?? d.name ?? '?'}`, {
       source: 'storage',
       severity: 'warning',
@@ -282,5 +287,5 @@ export const computePresentNetWorth = (
   aujourdhuiIso: string | null,
 ): number => {
   return computeGrossAssets(initialBalances, transactions, assets, fxRates, ecartAutorite)
-       - computeTotalDebt(debts, aujourdhuiIso);
+       - computeTotalDebt(debts, aujourdhuiIso, transactions);
 };

@@ -6,6 +6,45 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (ta dette suit tes vrais virements à Toyota)
+
+- **Ta dette baisse maintenant quand TU paies, pas quand un modèle le suppose.** Tu peux relier une
+  dette au marchand de tes virements : ouvre la dette, choisis « Toyota Financial » dans
+  « Virements qui remboursent cette dette », enregistre. À partir de là, chaque virement importé
+  retire de la dette **le montant réellement prélevé, le jour où il l'a été** — plus aucune marche
+  supposée.
+  ⚠️ **Là où aucun virement n'est connu, la dette ne bouge pas.** Tes transactions commencent le
+  28 juillet, ton bail le 14 : avant le 28, la courbe reste plate. C'est voulu — c'est le prix de
+  « aucun chiffre inventé ». Tu avais choisi cette option contre l'autre (compléter les trous avec
+  des versements supposés).
+  Ce que ça change, mesuré sur tes vrais prélèvements : en **juillet**, l'ancienne courbe plaçait un
+  versement de plus que ce que tes transactions connaissent (**234,66 $** d'écart) ; en août et en
+  septembre, les deux coïncident au cent près. Un modèle juste la plupart du temps reste un modèle.
+- **Le bon Toyota, et lui seul.** Tes deux achats chez `Ste Foy Toyota Quebec` (−500,00 $ et
+  −779,79 $ en juillet) sont le **concessionnaire**, pas le financement : ils ne touchent pas à ta
+  dette. Une recherche approximative sur « toyota » en aurait retiré **1 279,79 $** à tort.
+- **Le formulaire dit ce qui se passe.** Sous le solde : « Enregistré le 18 septembre 2026 ·
+  2 virements à « Toyota Financial » depuis, le dernier le 15 septembre — déjà déduits ci-dessus. »
+  Et si le marchand choisi ne verse rien, il te le dit en clair au lieu de rester muet.
+- ⚠️ **Si tu marques un paiement « virement interne », il ne fait plus baisser la dette.** C'est
+  voulu, et c'est une correction : l'app enlève déjà ces lignes de tes liquidités, donc les compter
+  quand même du côté de la dette faisait MONTER ta valeur nette de 234,67 $ à chaque paiement marqué
+  (1 877 $ mesuré sur huit, ~12 200 $/an) — de l'argent qui n'existe pas. Maintenant les deux côtés
+  traitent la même transaction pareil, et le formulaire te dit quand plus rien n'est déduit.
+- **L'app refuse plutôt que d'effacer ta dette.** Si les virements du marchand choisi dépassent le
+  solde enregistré (mauvais marchand, ou solde jamais ré-enregistré), rien n'est déduit et le
+  formulaire te le dit. Avant ce garde-fou, un lien vers un marchand très fréquent — et la liste
+  propose les plus fréquents EN PREMIER — ramenait la dette à **0 $** sous un message rassurant.
+- **Un bail terminé ne descend plus.** Si tu remplaces un véhicule chez le même prêteur, les
+  virements du NOUVEAU bail ne s'appliquent plus à l'ancien solde résiduel (mesuré : 2 581 $
+  effacés à tort).
+- **Un seul chiffre par dette à l'écran.** La ligne de chaque dette, le simulateur « Liberté dans
+  X ans » et le résumé envoyé à l'assistant affichaient encore le solde enregistré pendant que le
+  badge « Total dû », lui, descendait. Tout passe maintenant par la même source.
+- **À faire par toi** : ouvrir la dette « bZ » et choisir le marchand. Le lien ne se devine pas.
+
+---
+
 ## [unreleased] — 2026-09-17 (ta dette baisse à chaque paiement, la carte du hub redevient lisible, et tes placements disent la même chose partout)
 
 - **🔴 Ton app se serait vidée à ton prochain rechargement.** Le champ « Cadence des prélèvements »

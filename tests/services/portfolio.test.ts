@@ -171,12 +171,12 @@ describe('computeTotalDebt', () => {
       { name: 'Carte', balance: 2000 } as Debt,
       { name: 'Pret', balance: 15000 } as Debt,
     ];
-    expect(computeTotalDebt(debts, null)).toBe(17000);
+    expect(computeTotalDebt(debts, null, [])).toBe(17000);
   });
 
   it('renvoie 0 pour un tableau vide ou indefini', () => {
-    expect(computeTotalDebt([], null)).toBe(0);
-    expect(computeTotalDebt(undefined as unknown as Debt[], null)).toBe(0);
+    expect(computeTotalDebt([], null, [])).toBe(0);
+    expect(computeTotalDebt(undefined as unknown as Debt[], null, [])).toBe(0);
   });
 });
 
@@ -239,7 +239,7 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] computeTotalDebt TRACE un solde non fini
     beforeEach(() => { vi.mocked(logErrorThrottled).mockClear(); });
 
     it('NaN → compté 0 $ ET journalisé (signature par dette)', () => {
-        expect(computeTotalDebt([debt(NaN), debt(500, 'd2')], null)).toBe(500);
+        expect(computeTotalDebt([debt(NaN), debt(500, 'd2')], null, [])).toBe(500);
         expect(logErrorThrottled).toHaveBeenCalledTimes(1);
         expect(logErrorThrottled).toHaveBeenCalledWith('debt-balance-non-finite:d1', expect.objectContaining({
             source: 'storage', severity: 'warning', message: expect.stringMatching(/solde non fini/),
@@ -247,12 +247,12 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] computeTotalDebt TRACE un solde non fini
     });
 
     it('Infinity aussi (la garde `|| 0` d’avant ne le rattrapait pas)', () => {
-        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)], null)).toBe(0);
+        expect(computeTotalDebt([debt(Number.POSITIVE_INFINITY)], null, [])).toBe(0);
         expect(logErrorThrottled).toHaveBeenCalledTimes(1);
     });
 
     it('contrôle — des soldes finis ne journalisent RIEN (l’espion est câblé, et il se tait à bon escient)', () => {
-        expect(computeTotalDebt([debt(1_000), debt(0, 'd2')], null)).toBe(1_000);
+        expect(computeTotalDebt([debt(1_000), debt(0, 'd2')], null, [])).toBe(1_000);
         expect(logErrorThrottled).not.toHaveBeenCalled();
     });
 });

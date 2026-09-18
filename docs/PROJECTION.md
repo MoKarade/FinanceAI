@@ -138,6 +138,20 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
 - Si surplus disponible, attaque la dette au taux le plus élevé.
 - Intérêts capitalisés mensuellement.
 
+⚠️ **Cette boucle du FUTUR ne lit ni `kind`, ni `paymentFrequency`, ni `paymentPayee`** — elle
+amortit tout solde actif au rythme MENSUEL, et `[DETTE-VIREMENTS-REELS]` (2026-09-18) **n'y change
+rien**. Ce que ce lot change est en AMONT et en AVAL :
+- **En amont** : le `balance` remis au moteur est celui d'**AUJOURD'HUI**, pas l'instantané stocké
+  (`dettesAuSoldeDuJour`, point de passage unique dans `buildSimulationParams`). Pour une dette
+  **liée** à un marchand (`Debt.paymentPayee`), « aujourd'hui » se déduit des **virements RÉELS**
+  survenus depuis `balanceAsOf` — d'où `transactions`, devenu un champ **REQUIS** des entrées du
+  moteur.
+- **En parallèle** : la reconstruction du **PASSÉ**
+  (`buildPastPrefix` au mois, `dailyPastLedger` au jour) descend, pour une dette liée, sur ces mêmes
+  virements réels — date et montant de la transaction — au lieu d'une grille modélisée. Une dette
+  liée ne retombe **JAMAIS** sur cette grille, et là où aucun virement n'est connu son solde reste
+  **PLAT** : l'app ne devine pas ce qui a été payé avant que ses transactions ne commencent.
+
 ### Phase 6 — Immobilier
 
 Pour chaque `RealEstateGoal` actif :

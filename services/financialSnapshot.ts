@@ -26,6 +26,7 @@ import {
     type AssetBreakdown,
 } from './portfolio';
 import { placementsFaisantAutorite } from './fintable/placementsAutorite';
+import { soldeDetteAujourdhui } from './projection/debtAmortization';
 
 /**
  * Forme alignée sur `FinancialSnapshot` de `services/claude.ts` (entrée de
@@ -130,7 +131,12 @@ export function buildFinancialSnapshot(
         retirementAge: state.retirementGoal?.targetAge || 65,
         topDebts: (state.debts ?? [])
             .slice(0, 3)
-            .map((d) => ({ name: d.name, balance: d.balance, rate: d.interestRate })),
+            // ⚠️ [DETTE-VIREMENTS-REELS] Le solde du JOUR, comme `totalDebt` huit lignes plus haut.
+            // Lire `d.balance` brut ici mettait DEUX chiffres contradictoires de la même dette dans
+            // le MÊME payload MCP — et c'est l'assistant qui répétait le plus faux des deux à Marc
+            // comme un fait. Quand deux chiffres d'une même carte ne se recomposent pas, c'est une
+            // mesure : ici ils ne se recomposaient pas, et personne ne pouvait le voir.
+            .map((d) => ({ name: d.name, balance: soldeDetteAujourdhui(d, aujourdhuiIso, state.transactions ?? []), rate: d.interestRate })),
         activeGoals: (state.financialGoals ?? [])
             .filter((g) => !g.completed)
             .slice(0, 3)
@@ -175,7 +181,7 @@ export function buildFinancialOverview(
         // l'ancien `budget.savings` restait sur Σ netSalary : `monthlyIncome − monthlyExpenses`
         // dans le même payload ne redonnait pas monthlyCashflow (contradiction interne pour l'IA).
         monthlyCashflow: Math.max(0, snapshot.monthlyIncome - snapshot.monthlyExpenses),
-        totalDebt: computeTotalDebt(state.debts ?? [], aujourdhuiIso),
+        totalDebt: computeTotalDebt(state.debts ?? [], aujourdhuiIso, state.transactions ?? []),
         userCount: (state.config?.users ?? []).filter((u) => u && (u.name || u.grossSalary)).length,
     };
 }

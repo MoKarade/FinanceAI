@@ -10,7 +10,7 @@
 // (`compterDettesAmorties` → `amortirDettePassee`), jamais d'une relecture des champs de la dette.
 // Deux lectures indépendantes du même fait divergent toujours (`TEXT-HEURISTIC-OVER-USER-TEXT`).
 
-import { compterDettesAmorties, type DebtAmortissable } from '../projection/debtAmortization';
+import { compterDettesAmorties, type DebtAmortissable, type MouvementDette } from '../projection/debtAmortization';
 
 /**
  * @param dettes           dettes hors hypothèque du store (tableau FRAIS).
@@ -19,6 +19,9 @@ import { compterDettesAmorties, type DebtAmortissable } from '../projection/debt
  * @param aujourdhuiIso    le JOUR d'aujourd'hui — le verdict doit être rendu par le MÊME appel que
  *                         le calcul, sinon la phrase pourrait qualifier une autre courbe que celle
  *                         qui est tracée (`[DEBT-CADENCE-REELLE]`).
+ * @param transactions     [DETTE-VIREMENTS-REELS] les transactions réelles — une dette liée à un
+ *                         marchand ne descend que sur ses virements, et le verdict doit venir du
+ *                         MÊME appel que le calcul.
  * @returns le fragment à concaténer au bandeau, `''` quand il n'y a rien à dire (aucune dette).
  */
 export function mentionDettesPasse(
@@ -26,9 +29,10 @@ export function mentionDettesPasse(
     moisAujourdhui: number,
     dettePubliee: number,
     aujourdhuiIso: string | null,
+    transactions: ReadonlyArray<MouvementDette> | null | undefined,
 ): string {
     if (!(dettePubliee > 0)) return '';
-    const { amorties, total } = compterDettesAmorties(dettes, moisAujourdhui, aujourdhuiIso);
+    const { amorties, total } = compterDettesAmorties(dettes, moisAujourdhui, aujourdhuiIso, transactions);
     if (amorties === 0) return 'dettes au niveau actuel';
     // Le cas MIXTE se nomme : annoncer « dettes amorties » serait faux pour la part de la somme
     // affichée qui reste figée (un révolvant à côté d'un prêt, une dette sans date de début).

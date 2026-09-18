@@ -9,7 +9,7 @@ import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { useTodayIsoLocal } from '../hooks/useSimulationParams';
-import { soldeDetteAujourdhui, statutSoldeDette, type StatutSoldeDette } from '../services/projection/debtAmortization';
+import { soldeDetteAujourdhui, statutSoldeDette, marchandsCandidats, dettesAuSoldeDuJour, clePayee, type StatutSoldeDette } from '../services/projection/debtAmortization';
 import { computeTotalDebt } from '../services/portfolio';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -36,6 +36,34 @@ import { DebtKindFields, refusOrigineIncoherente, refusChampNonFini } from './de
  */
 export function phraseStatutSolde(statut: StatutSoldeDette): { texte: string; alerte: boolean } {
     switch (statut.forme) {
+        case 'suit-les-virements':
+            // [DETTE-VIREMENTS-REELS] Le cas de Marc. `nbDeduits === 0` n'est PAS une alerte : c'est
+            // l'état NORMAL le lendemain d'un enregistrement — rien n'a encore été prélevé depuis.
+            // Dire « aucun virement » sur un ton d'alarme apprendrait à ignorer le message.
+            return statut.nbDeduits === 0
+                ? {
+                    texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · lié à « ${statut.payee} » : aucun virement depuis, le solde ne bougera qu’au prochain.`,
+                    alerte: false,
+                }
+                : {
+                    texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · ${statut.nbDeduits} virement${statut.nbDeduits > 1 ? 's' : ''} à « ${statut.payee} » depuis`
+                        + `${statut.dernierIso ? `, le dernier le ${formatIsoDay(statut.dernierIso)}` : ''} — déjà déduit${statut.nbDeduits > 1 ? 's' : ''} ci-dessus.`,
+                    alerte: false,
+                };
+        case 'virements-incoherents':
+            // Les virements dépassent le solde enregistré : ils ne décrivent pas cette dette. La
+            // correction est REFUSÉE — mieux vaut le solde enregistré, honnête, qu'un 0 $ crédible.
+            return {
+                texte: `${statut.nbDeduits} virements à « ${statut.payee} » dépassent le solde enregistré : rien n’est déduit. Vérifie le marchand choisi, ou ré-enregistre le solde.`,
+                alerte: true,
+            };
+        case 'lie-sans-virement':
+            // Un lien qui ne peut RIEN produire : aucune date ne le sauverait, et la dette restera
+            // au même niveau tant qu'il pointe un marchand qui ne verse rien.
+            return {
+                texte: `Lié à « ${statut.payee} » · aucun virement de ce marchand dans tes transactions : la dette ne bougera pas. Vérifie le marchand choisi.`,
+                alerte: true,
+            };
         case 'suit-les-versements':
             return {
                 texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · les versements prélevés depuis sont déjà déduits ci-dessus.`,
@@ -63,6 +91,34 @@ interface DebtManagerProps {
 
 export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => {
     const todayIso = useTodayIsoLocal();
+    // [DETTE-VIREMENTS-REELS] Les virements réels : c'est eux qui font baisser une dette liée à un
+    // marchand. Lus du store ici plutôt que reçus en prop — `DebtManager` y lit déjà `isPrivacyMode`,
+    // et ajouter une prop obligerait tous ses montages à la fournir sans rien y gagner.
+    const transactions = useFinanceStore(s => s.transactions);
+    // La liste offerte au lien, calculée UNE fois pour les deux formulaires (ajout et édition).
+    // ⚠️ Les marchands DÉJÀ liés à une AUTRE dette en sont retirés : `paiementsReelsDette` travaille
+    // par dette, donc deux dettes liées au même marchand déduiraient CHACUNE la totalité des
+    // virements. Mesuré sur deux dettes et 7 virements (1 642,69 $ réellement versés) : 3 285,38 $
+    // retirés du total dû, soit exactement deux fois trop. La liste est le SEUL endroit où ce lien
+    // se pose : l'empêcher ici l'empêche partout.
+    const marchands = useMemo(() => marchandsCandidats(transactions), [transactions]);
+    // ⚠️⚠️ [DETTE-VIREMENTS-REELS] **UNE SEULE liste de dettes pour tout ce que cet écran MONTRE.**
+    // Le badge « Total dû » passait par `computeTotalDebt` (corrigé) pendant que la carte de chaque
+    // dette et le simulateur d'extinction lisaient `d.balance` BRUT : deux chiffres de la même
+    // dette sur le même écran, l'écart grandissant d'un virement par semaine sans qu'aucun ne soit
+    // rouge. `dettesAuSoldeDuJour` PRÉSERVE l'identité des objets non corrigés, donc cette
+    // mémoïsation ne coûte aucun re-rendu — et elle évite de refaire le balayage des transactions
+    // à chaque mouvement du curseur « paiement supplémentaire ».
+    // ⚠️ Les MUTATEURS (`saveEdit`, suppression) continuent d'opérer sur `debts`, la liste du
+    // STORE : écrire la liste corrigée persisterait une déduction déjà faite, donc la compterait
+    // deux fois au chargement suivant.
+    // ⚠️⚠️ Et le RENDU de la liste aussi, mesuré : `dettesAuSoldeDuJour` ré-estampille les dettes
+    // qu'elle corrige à AUJOURD'HUI (c'est ce qui la rend idempotente). Rendre la liste corrigée
+    // faisait donc dire au formulaire « aucun virement depuis » sur la dette même qui venait d'en
+    // déduire huit — la date VRAIE, celle que `statutSoldeDette` doit lire, n'existe plus que dans
+    // `debts`. La liste garde donc les objets du store, et chaque MONTANT passe par la source
+    // unique. Deux tests ont rougi là-dessus avant que je le voie.
+    const dettesAuJour = useMemo(() => dettesAuSoldeDuJour(debts, todayIso, transactions), [debts, todayIso, transactions]);
     const [isAdding, setIsAdding] = useState(false);
     const [newDebt, setNewDebt] = useState<Partial<Debt>>({ name: '', balance: 0, interestRate: 0, minimumPayment: 0, category: 'CreditCard' });
     // [DETTE-DATES] Édition d'une dette EXISTANTE. Avant ce lot il n'y avait que « Ajouter » et
@@ -70,6 +126,12 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // à la ressaisir. Demande Marc 2026-08-19 — il ne pouvait pas corriger le début de son bail auto.
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draft, setDraft] = useState<Partial<Debt>>({});
+
+    const marchandsLibres = useMemo(() => {
+        const pris = new Set(debts.filter(d => d.id !== editingId).map(d => clePayee(d.paymentPayee)).filter(p => p !== ''));
+        return marchands.filter(m => !pris.has(m.payee));
+    }, [marchands, debts, editingId]);
+
     // [DEBT-BALANCE-NAN-SILENCIEUX] Le refus d'une saisie non numérique est ANNONCÉ (région live
     // montée en permanence, texte vidé quand tout va bien) — un `return` muet laissait croire que
     // le clic n'avait rien fait, et un `NaN` enregistré ne se voyait plus nulle part.
@@ -108,7 +170,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // défaut que ce chantier répare. Les deux coïncident tant que rien n'a dérivé.
     const startEdit = (d: Debt) => {
         setEditingId(d.id);
-        setDraft({ ...d, balance: soldeDetteAujourdhui(d, todayIso) });
+        setDraft({ ...d, balance: soldeDetteAujourdhui(d, todayIso, transactions) });
         setIsAdding(false);
         setRefusSaisie(null);
     };
@@ -152,7 +214,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
 
     const simulation = useMemo(() => {
         const data = [];
-        let activeDebts = debts.map(d => ({ ...d }));
+        let activeDebts = dettesAuJour.map(d => ({ ...d }));
         let totalInterestPaid = 0;
         let month = 0;
         const maxMonths = 120;
@@ -179,12 +241,12 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         // rend `NaN > 0` faux dès le 1er mois : la boucle s'arrête et affichait « Liberté dans 0,1 ans »
         // — mesuré. Une simulation qui ne peut pas tourner le DIT (« — »), elle n'invente pas une date.
         // Et SANS dette, il n'y a rien à simuler : « 0,0 ans » était une durée inventée (`[].every` est vrai par vacuité).
-        const valide = debts.length > 0 && debts.every(d => Number.isFinite(d.balance) && Number.isFinite(d.interestRate) && Number.isFinite(d.minimumPayment));
+        const valide = dettesAuJour.length > 0 && dettesAuJour.every(d => Number.isFinite(d.balance) && Number.isFinite(d.interestRate) && Number.isFinite(d.minimumPayment));
         return { chart: data, totalInterest: totalInterestPaid, months: month, valide };
-    }, [debts, extraPayment]);
+    }, [dettesAuJour, extraPayment]);
 
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
-    const totalDebt = computeTotalDebt(debts, todayIso);
+    const totalDebt = useMemo(() => computeTotalDebt(debts, todayIso, transactions), [debts, todayIso, transactions]);
     const totalMinPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
     // [DETTE-SOLDE-INSTANTANE-FIGE] Le jour LOCAL : le « Total dû » affiche le solde d'AUJOURD'HUI,
@@ -246,7 +308,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                         <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.termEndDate ?? ''} onChange={e => setNewDebt({...newDebt, termEndDate: e.target.value || undefined})} />
                                     </label>
                                 </div>
-                                <DebtKindFields valeur={newDebt} onChange={patch => setNewDebt({ ...newDebt, ...patch })} idSuffixe="ajout" />
+                                <DebtKindFields valeur={newDebt} onChange={patch => setNewDebt({ ...newDebt, ...patch })} idSuffixe="ajout" marchands={marchandsLibres} />
                                 <p className="text-tiny text-ink-400">
                                     Laisse vide si tu ne sais pas : sans date de fin, le paiement continue jusqu'à
                                     extinction. Avec une date de fin, il s'arrête à ce mois-là — et s'il reste un
@@ -267,7 +329,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                 <input aria-label="Taux d'intérêt (pourcentage)" type="number" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.interestRate ?? ''} onChange={e => setDraft({ ...draft, interestRate: parseFloat(e.target.value) })} />
                                             </div>
                                             {(() => {
-                                                const { texte, alerte } = phraseStatutSolde(statutSoldeDette(d, todayIso));
+                                                const { texte, alerte } = phraseStatutSolde(statutSoldeDette(d, todayIso, transactions));
                                                 return <p className={`text-tiny ${alerte ? 'text-amber-400' : 'text-ink-400'}`}>{texte}</p>;
                                             })()}
                                             <input aria-label="Paiement minimum mensuel (dollars)" type="number" className="w-full bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.minimumPayment ?? ''} onChange={e => setDraft({ ...draft, minimumPayment: parseFloat(e.target.value) })} />
@@ -281,7 +343,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                     <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.termEndDate ?? ''} onChange={e => setDraft({ ...draft, termEndDate: e.target.value || undefined })} />
                                                 </label>
                                             </div>
-                                            <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} />
+                                            <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} marchands={marchandsLibres} />
                                             <p role="status" className="text-tiny text-danger-400 empty:hidden">{refusSaisie ?? ''}</p>
                                             <div className="flex gap-2">
                                                 <button onClick={saveEdit} className="flex-1 bg-green-700 hover:bg-green-800 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>
@@ -304,7 +366,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                 )}
                                             </div>
                                             <div className="text-right">
-                                                <PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</PrivateAmount>
+                                                <PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(soldeDetteAujourdhui(d, todayIso, transactions))}</PrivateAmount>
                                                 <div className="flex gap-2 justify-end">
                                                     <button onClick={() => startEdit(d)} className="text-tiny text-ink-400 hover:text-white md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Modifier</button>
                                                     <button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button>

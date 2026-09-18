@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 211 tests** Vitest
-(627 fichiers de test, base MESURÉE par la CI complète le 2026-09-17 à 22:51 UTC (773 s — 6 195) + **4** gardes de l'estampille du solde + **12** gardes de la date AFFICHÉE, lancées en ciblé (vertes, 3 perturbations séparées à 2 rouges chacune)). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 251 tests** Vitest
+(629 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes ajoutées depuis, lancées en ciblé : 2 à l'écran (marchand déjà lié, refus annoncé) et 1 de RACCORD (badge = dernier point de la courbe). Huit perturbations SÉPARÉES sur ce lot : 10 / 3 / 2 / 1 / 1 / 1 / 1 / 1 rouge). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1270,6 +1270,47 @@ n'est pas réécrire un récit.
   pour une date qui AFFIRME). ⚠️ Et Marc a divergé de ma recommandation — une recommandation rend le
   choix rapide, elle ne le pré-décide pas
   (`UN-CORRECTIF-PRESCRIT-SE-REMESURE-CONTRE-L-ECRAN-QUI-DOIT-LE-PORTER`).
+
+- ⚠️⚠️ **Un MODÈLE qui s'accorde avec la MESURE là où on regarde reste un modèle** (2026-09-18, Marc :
+  « je veux que chaque fois que je paie toyota ca enleve ca de la dette »). Le passé du bail
+  descendait par une GRILLE modélisée (`startDate` + k × cadence) : juste, testée, livrée la veille,
+  et elle continue de descendre les semaines où RIEN n'a été prélevé. Mesuré contre ses huit vrais
+  virements : **234,66 $ d'écart en JUILLET** (un versement que le modèle inventait) et **0,01 $ /
+  0,00 $** en août et septembre — deux points sur trois coïncident au cent près, et l'erreur est
+  concentrée au point le plus ANCIEN, là où rien ne la conteste. **Devant un modèle, demander si la
+  donnée RÉELLE existe quelque part** : si oui, ce n'est pas une prudence, c'est une précision
+  qu'on jette. ⚠️ Le repli vers le mécanisme qu'on REMPLACE est une régression silencieuse par le
+  bas : « virements si disponibles, sinon la grille » aurait rendu le lot inerte à la première
+  condition manquante — une dette liée reste PLATE, jamais modélisée. ⚠️ Le CONTRÔLE NÉGATIF était
+  DANS les données et valait **1 279,79 $** (deux achats chez le CONCESSIONNAIRE `Ste Foy Toyota
+  Quebec`, que « le libellé contient toyota » aurait déduits d'une dette). ⚠️ Le lien se CHOISIT
+  dans une liste — un champ « nom exact » est un appariement déguisé en formulaire — et la liste
+  partage `clePayee` avec le matcher. ⚠️ La conséquence assumée (avant le plus ancien virement
+  importé, la courbe est PLATE) se DIT à l'écran, sinon elle est indiscernable d'un bug
+  (`UN-MODELE-QUI-S-ACCORDE-AVEC-LA-MESURE-LA-OU-ON-REGARDE-RESTE-UN-MODELE`).
+  ⚠️⚠️ **Et le PANEL a trouvé SEPT défauts de plus, après gate vert ET CI verte.** Cause unique et
+  réutilisable : **ma fixture décrivait le cas NOMINAL** (bail en cours, daté, bon marchand, paiement
+  saisi). (a) **Deux registres n'ont pas le droit de filtrer différemment la MÊME transaction** : le
+  cash exclut `isTransfer`, ma dette l'incluait « délibérément » — mesuré **1 877,36 $ de patrimoine
+  CRÉÉ** (+234,67 $/semaine), `isDuplicate` servant de contrôle conservé. `ΔNW == ΔΣactifs − ΔΣdettes`
+  tranche ce qu'un raisonnement ne pouvait pas trancher, et l'arbitrage « silencieux contre visible »
+  avait été fait à l'envers. (b) **Quand on retire une exigence d'une garde, réexaminer CHAQUE autre
+  au même critère** : j'ai libéré `minimumPayment` et laissé `startDate`, donc le solde du jour
+  déduisait pendant que la série refusait — passé **1 878 $ trop haut** puis chute sans cause, sous un
+  écran qui affirmait « suit-les-virements ». (c) **Remplacer un mécanisme, c'est hériter de ses
+  BORNES ou les perdre** : sans la borne de TERME, un bail ÉTEINT descendait sur les virements du bail
+  REMPLAÇANT (même prêteur, même libellé) — **−2 581,37 $**. (d) **Un plancher dont la justification
+  cite une garde qu'on vient de retirer est muet** : `Math.max(0,…)` rendait **0,00 $** sur un lien
+  vers un marchand fréquent, sans alerte — et le piège était dans mon TRI, qui met le plus fréquent
+  EN PREMIER. Remède = le REFUS nommé. (e) **« Une seule source » se compte par SURFACE** : carte de
+  dette, simulateur et `topDebts` du payload MCP lisaient encore le brut — et le correctif évident
+  était faux, la liste corrigée ré-estampille et fait perdre la vraie date. (f) Un appariement PAR
+  DETTE n'a pas d'exclusivité (**3 285,38 $ pour 1 642,69 $ versés**). (g) Un trou de TYPE
+  (`payee` non déclaré chez un seul des deux jumeaux) n'a pas besoin d'être un bug du jour.
+  ⚠️ Corollaire de conduite, le plus cher : **un `git add -A` adopte le travail des agents** — une doc
+  réécrite avec un mécanisme INVENTÉ et un fichier de mesure avec son `console.log` sont partis dans
+  un commit poussé. `UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` vaut pour les FICHIERS qu'on ramasse,
+  pas seulement pour les chiffres qu'on recopie.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

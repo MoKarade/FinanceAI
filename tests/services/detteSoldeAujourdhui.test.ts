@@ -35,7 +35,7 @@ const VERSEMENT = 234.67;
 describe('[DETTE-SOLDE-INSTANTANE-FIGE] le solde stocké est un INSTANTANÉ, pas une mesure du jour', () => {
     it('le cas RÉEL de Marc : instantané du 9 sept. → un prélèvement déduit au 17 sept.', () => {
         const date = { ...BAIL, balanceAsOf: '2026-09-09' };
-        const solde = soldeDetteAujourdhui(date, AUJ);
+        const solde = soldeDetteAujourdhui(date, AUJ, []);
         // 47 168,67 − 234,67 = 46 934,00 — les 200 versements qui restent vraiment.
         expect(solde).toBeCloseTo(46_934.00, 2);
         // ⚠️ ANTI-VACUITÉ : la correction doit VALOIR quelque chose. Sans elle, cette assertion
@@ -47,11 +47,11 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] le solde stocké est un INSTANTANÉ, pas
         // La MÊME dette, au même jour : seul `balanceAsOf` change. Une date de saisie inconnue ne se
         // devine pas — la supposer égale à aujourd'hui serait affirmer que Marc vient de relire son
         // relevé, et la supposer ancienne inventerait des versements.
-        expect(soldeDetteAujourdhui(BAIL, AUJ)).toBe(BAIL.balance);
+        expect(soldeDetteAujourdhui(BAIL, AUJ, [])).toBe(BAIL.balance);
     });
 
     it('CONTRÔLE NÉGATIF — jour inconnu (`null`) : aucune correction, jamais une lecture d’horloge', () => {
-        expect(soldeDetteAujourdhui({ ...BAIL, balanceAsOf: '2026-09-09' }, null)).toBe(BAIL.balance);
+        expect(soldeDetteAujourdhui({ ...BAIL, balanceAsOf: '2026-09-09' }, null, [])).toBe(BAIL.balance);
     });
 
     it('la correction ne FUITE pas vers les autres dettes : carte de crédit et hypothèque intactes', () => {
@@ -59,7 +59,7 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] le solde stocké est un INSTANTANÉ, pas
         // l'intérêt. Les dater ne doit RIEN changer — sinon le lot fabriquerait des chiffres.
         for (const kind of ['credit-card', 'mortgage', 'personal', 'heloc'] as const) {
             const d = { ...BAIL, kind, balanceAsOf: '2026-09-09' } as Debt;
-            expect(soldeDetteAujourdhui(d, AUJ), `kind=${kind}`).toBe(BAIL.balance);
+            expect(soldeDetteAujourdhui(d, AUJ, []), `kind=${kind}`).toBe(BAIL.balance);
         }
     });
 
@@ -67,18 +67,18 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] le solde stocké est un INSTANTANÉ, pas
         // Même refus que `amortirVersementsFixes` : sur un solde tout-compris, appliquer un taux
         // compterait l'intérêt deux fois (`UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET`).
         const d = { ...BAIL, interestRate: 6.59, balanceAsOf: '2026-09-09' };
-        expect(soldeDetteAujourdhui(d, AUJ)).toBe(BAIL.balance);
+        expect(soldeDetteAujourdhui(d, AUJ, [])).toBe(BAIL.balance);
     });
 
     it('une cadence MENSUELLE (ou absente) n’a pas de grille en jours : solde inchangé', () => {
-        expect(soldeDetteAujourdhui({ ...BAIL, paymentFrequency: 'monthly', balanceAsOf: '2026-09-09' }, AUJ)).toBe(BAIL.balance);
+        expect(soldeDetteAujourdhui({ ...BAIL, paymentFrequency: 'monthly', balanceAsOf: '2026-09-09' }, AUJ, [])).toBe(BAIL.balance);
         const { paymentFrequency: _ignore, ...sansCadence } = BAIL;
-        expect(soldeDetteAujourdhui({ ...sansCadence, balanceAsOf: '2026-09-09' } as Debt, AUJ)).toBe(BAIL.balance);
+        expect(soldeDetteAujourdhui({ ...sansCadence, balanceAsOf: '2026-09-09' } as Debt, AUJ, [])).toBe(BAIL.balance);
     });
 
     it('un instantané POSTÉRIEUR à aujourd’hui ne remonte pas le solde', () => {
         // Sens unique : on déduit ce qui a été payé DEPUIS, jamais on ne « rembobine ».
-        expect(soldeDetteAujourdhui({ ...BAIL, balanceAsOf: '2026-12-01' }, AUJ)).toBe(BAIL.balance);
+        expect(soldeDetteAujourdhui({ ...BAIL, balanceAsOf: '2026-12-01' }, AUJ, [])).toBe(BAIL.balance);
     });
 });
 
@@ -87,16 +87,16 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] une seule ancre pour le chiffre ET pour 
         // C'est l'invariant qui interdit au « Total dû » et au graphe Futur de décrire deux dettes —
         // la classe de défaut que ce chantier répare (`CE-QUI-SE-PARTAGE-EST-LA-DECISION…`).
         const d = { ...BAIL, balanceAsOf: '2026-09-09' };
-        const r = amortirDettePassee(d, 2026 * 12 + 8, AUJ);
+        const r = amortirDettePassee(d, 2026 * 12 + 8, AUJ, []);
         expect(r.forme).toBe('ok');
         if (r.forme !== 'ok') return;
-        expect(r.soldeAujourdhui).toBeCloseTo(soldeDetteAujourdhui(d, AUJ), 6);
+        expect(r.soldeAujourdhui).toBeCloseTo(soldeDetteAujourdhui(d, AUJ, []), 6);
 
         // ⚠️ Le DERNIER point MENSUEL n'est PAS le solde d'aujourd'hui : par conception, le point du
         // mois `m` vaut le solde au PREMIER JOUR de ce mois. Mon premier jet l'a affirmé et cette
         // garde l'a réfuté (47 403,34 contre 46 934,00 — deux prélèvements du mois en cours).
         // Le raccord se lit donc au JOUR, où il est exact : à AUJOURD'HUI, supplément NUL.
-        const auJour = prepareSupplementAmortiParJour([d], 2026 * 12 + 8, AUJ);
+        const auJour = prepareSupplementAmortiParJour([d], 2026 * 12 + 8, AUJ, []);
         expect(auJour(AUJ)).toBeCloseTo(0, 6);
         // Et la veille du prélèvement du 14 : on devait EXACTEMENT un versement de plus.
         expect(auJour('2026-09-09')).toBeCloseTo(VERSEMENT, 2);
@@ -107,9 +107,9 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] une seule ancre pour le chiffre ET pour 
 
     it('`computeTotalDebt` publie le solde du JOUR, pas l’instantané', () => {
         const dettes = [{ ...BAIL, balanceAsOf: '2026-09-09' }];
-        expect(computeTotalDebt(dettes, AUJ)).toBeCloseTo(46_934.00, 2);
+        expect(computeTotalDebt(dettes, AUJ, [])).toBeCloseTo(46_934.00, 2);
         // Le même appel sans jour connu rend l'instantané — la porte est explicite, pas silencieuse.
-        expect(computeTotalDebt(dettes, null)).toBeCloseTo(BAIL.balance, 2);
+        expect(computeTotalDebt(dettes, null, [])).toBeCloseTo(BAIL.balance, 2);
     });
 });
 
@@ -118,8 +118,8 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] la porte du moteur est IDEMPOTENTE', () 
         // ⚠️ Sans cette garantie, un lot futur qui rappellerait la porte — ou passerait la liste
         // corrigée à `amortirDettePassee` — déduirait les versements DEUX fois, et la dette serait
         // fausse dans l'autre sens sans que rien ne rougisse.
-        const une = dettesAuSoldeDuJour([{ ...BAIL, balanceAsOf: '2026-09-09' }], AUJ);
-        const deux = dettesAuSoldeDuJour(une, AUJ);
+        const une = dettesAuSoldeDuJour([{ ...BAIL, balanceAsOf: '2026-09-09' }], AUJ, []);
+        const deux = dettesAuSoldeDuJour(une, AUJ, []);
         expect(une[0].balance).toBeCloseTo(46_934.00, 2);
         expect(deux[0].balance).toBeCloseTo(une[0].balance, 6);
         // La dette corrigée porte la date du jour : c'est CE champ qui rend la seconde passe inerte.
@@ -130,8 +130,30 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] la porte du moteur est IDEMPOTENTE', () 
         // Cette liste traverse des `useMemo` et des sélecteurs Zustand : recopier chaque dette
         // ferait re-rendre tout ce qui en dépend à chaque appel.
         const intacte = { ...BAIL };
-        const rendu = dettesAuSoldeDuJour([intacte], AUJ);
+        const rendu = dettesAuSoldeDuJour([intacte], AUJ, []);
         expect(rendu[0]).toBe(intacte);
+    });
+});
+
+describe('[DETTE-VIREMENTS-REELS] le lien vers un marchand survit aux écritures automatiques', () => {
+    it('une mise à jour MCP du solde PRÉSERVE `paymentPayee` — sinon le cron l’effacerait en silence', () => {
+        // ⚠️ Le chemin de MISE À JOUR patche champ par champ sur un `{ ...d }` ; le chemin de
+        // CRÉATION, lui, reconstruit l'objet. Un lot futur qui déplacerait l'un vers l'autre
+        // effacerait le lien de Marc à la première passe du cron Fintable, sans rien de rouge et
+        // sans rien à l'écran : la dette cesserait simplement de descendre
+        // (`UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS`).
+        const lie = { ...BAIL, paymentPayee: 'Toyota Financial' };
+        const etat = { debts: [lie] } as unknown as AppState;
+        const res = applyDocument(etat, { kind: 'debt', name: 'bZ', balance: 46_700 });
+        const d = (res.nextState.debts ?? [])[0];
+        // Anti-vacuité : la passe doit VRAIMENT avoir écrit le solde, sinon « le lien survit »
+        // serait satisfait par un chemin qui n'a rien fait.
+        expect(d.balance).toBe(46_700);
+        expect(d.paymentPayee).toBe('Toyota Financial');
+    });
+
+    it('`paymentPayee` figure dans `CHAMPS_TEXTE` — sans quoi l’app se réhydrate VIDE', () => {
+        expect(CHAMPS_TEXTE.has('paymentPayee')).toBe(true);
     });
 });
 

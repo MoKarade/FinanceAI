@@ -31,6 +31,8 @@
 > ⚠️ Cinq trouvailles MESURÉES et NON corrigées (hors périmètre), routées au BACKLOG : PDF au solde
 > brut, série mensuelle du passé qui mêle deux instants (**pré-existant, prouvé**), transaction
 > post-datée, transaction datée au mois seul, résidu `paymentPayee` invisible.
+> ✅ Suite complète MESURÉE le 18/09 à 15:31 UTC sur `7a2aa60b` : **629 fichiers, 6 248 tests, tous
+> verts** en 982 s. +3 gardes ciblées depuis ⇒ **6 251**.
 > ⚠️ Toujours en attente : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`).
 >
 > ## 🟦 Session 2026-09-17 (suite) — **cadence des dettes, carte du hub, `[FINTABLE-AUTORITE-PARTOUT]` étape 3**

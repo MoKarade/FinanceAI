@@ -52,6 +52,22 @@
 > CHAQUE bien, locatif compris ; **−27 010 $ sur 30 ans** mesuré sur un dossier mixte, avec ses deux
 > contrôles négatifs. Même classe que le défaut corrigé, un cran plus haut.
 >
+> ## 🔴 Session 2026-09-18 (suite 6) — **DEUX MERGES SANS DÉPLOIEMENT : ce qui est sur `main` n'est PAS en ligne**
+> ⚠️⚠️ **À lire avant de juger l'état de l'app.** `38162e50` (PR #994) et `ebe74ef3` (PR #995) sont
+> fusionnés sur `main`, CI verte — et **aucun des deux n'a de déploiement de production**, ni
+> `QUEUED`, ni `BUILDING`, ni `ERROR`, ni `CANCELED`. Le dernier build servi date de `68cd1734`
+> (PR #991), lui-même resté **43 min en file** avant de passer. Les onze déploiements précédents de
+> la journée ont leur enregistrement créé **dans les secondes** qui suivent le merge : un
+> enregistrement absent 58 min après n'est pas de la lenteur.
+> ⚠️ Écarté par la mesure : `vercel.json` porte `git.deploymentEnabled { "claude/*": false }`, qui ne
+> vise PAS `main`.
+> 👤 **Routé à Marc** — `[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]` dans `docs/A_FAIRE_MOI.md` : le
+> `Redeploy` depuis le tableau de bord Vercel, que je ne peux pas faire d'ici (403 au CONNECT sur
+> `vercel.com`, SSO sur `*.vercel.app` — §6). Aucun déploiement lancé de ma propre initiative
+> pendant un incident de file : j'empilerais au lieu de débloquer.
+> 📌 Tant que ce n'est pas réglé, **tout ce que les sections ci-dessous décrivent est vrai du code,
+> pas de ce que Marc voit.**
+
 > ## 🟦 Session 2026-09-18 (suite 4 bis) — **la liste des marchands se CHERCHE**
 > 🔎 **`[DETTE-MARCHAND-RECHERCHE]`** — Marc : « je vois pas toyota dans la liste ». MESURÉ avant de
 > toucher au code : `Toyota Financial` y ÉTAIT, sous le libellé exact « Toyota Financial (8) ». Mais

@@ -5,9 +5,21 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
-- [ ] 👤🔴 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18, URGENT) — **deux merges
-  d'affilée sur `main` n'ont produit AUCUN déploiement de production.** Le site sert donc encore la
-  version d'avant tes deux correctifs de dette.
+- [x] 👤 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18) — ✅ **RÉSOLU TOUT SEUL le jour
+  même, à 21:47 UTC : NE FAIS RIEN.** Vercel a rattrapé au troisième push — le merge de la PR #996
+  (`d66fe5be`, tête de `main`, qui porte LES TROIS lots) a déclenché un déploiement de production
+  passé **`READY`**, et une reprise tardive de `ebe74ef3` (PR #995) s'est lancée dans la foulée.
+  Le `Redeploy` demandé ci-dessous **n'a plus lieu d'être**.
+  ⚠️ **Pourquoi cette entrée est cochée et non supprimée** : un routage périmé qui envoie l'humain
+  faire un geste inutile est aussi nuisible qu'un blocage non signalé (`DOC-STALE-IMPOSSIBILITY`) —
+  et le RÉCIT, lui, vaut d'être gardé : c'est la deuxième fois que ce dépôt voit la même panne, et
+  les deux fois elle s'est résolue « au push suivant ». Le texte d'origine est conservé tel quel
+  ci-dessous : il dit ce qu'on savait AVANT le rattrapage.
+  ⚠️ **Ce qui reste à toi, et à toi seul** : ouvrir l'app et vérifier que ta courbe de dette ne
+  descend plus sous zéro. La réponse SERVIE n'est pas lisible depuis mon conteneur.
+
+  **~~[texte d'origine, 21:38 UTC] deux merges d'affilée sur `main` n'ont produit AUCUN déploiement
+  de production.~~** Le site servait alors encore la version d'avant tes deux correctifs de dette.
   **Mesuré** (`mcp__Vercel__list_deployments`, cible `production`) :
   | commit | PR | fusionné | déploiement |
   |---|---|---|---|
@@ -19,7 +31,7 @@
   absent 58 minutes après le merge n'est donc pas de la lenteur.
   **Écarté par la mesure** : `vercel.json` porte bien `git.deploymentEnabled { "claude/*": false }`,
   mais ça ne vise **pas** `main` — ce n'est pas la configuration qui saute ces commits.
-  **Le geste, que toi seul peux faire** : ouvre le tableau de bord Vercel du projet `finance-ai` →
+  **~~Le geste, que toi seul peux faire~~ (PLUS NÉCESSAIRE — gardé pour la prochaine fois)** : ouvre le tableau de bord Vercel du projet `finance-ai` →
   onglet *Deployments* → bouton **Redeploy** sur le dernier déploiement de production, **en cochant
   « use existing Build Cache: off »**, ou *Settings → Git* → **Redeploy** le dernier commit de `main`
   (`ebe74ef3`). Si le bouton n'apparaît pas, c'est que l'intégration GitHub a décroché : *Settings →

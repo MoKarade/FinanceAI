@@ -52,21 +52,29 @@
 > CHAQUE bien, locatif compris ; **−27 010 $ sur 30 ans** mesuré sur un dossier mixte, avec ses deux
 > contrôles négatifs. Même classe que le défaut corrigé, un cran plus haut.
 >
-> ## 🔴 Session 2026-09-18 (suite 6) — **DEUX MERGES SANS DÉPLOIEMENT : ce qui est sur `main` n'est PAS en ligne**
-> ⚠️⚠️ **À lire avant de juger l'état de l'app.** `38162e50` (PR #994) et `ebe74ef3` (PR #995) sont
-> fusionnés sur `main`, CI verte — et **aucun des deux n'a de déploiement de production**, ni
-> `QUEUED`, ni `BUILDING`, ni `ERROR`, ni `CANCELED`. Le dernier build servi date de `68cd1734`
-> (PR #991), lui-même resté **43 min en file** avant de passer. Les onze déploiements précédents de
-> la journée ont leur enregistrement créé **dans les secondes** qui suivent le merge : un
-> enregistrement absent 58 min après n'est pas de la lenteur.
+> ## ✅ Session 2026-09-18 (suite 6) — **Vercel a manqué DEUX merges, puis rattrapé au TROISIÈME**
+> **RÉSOLU à 21:47 UTC — rien à faire.** Chronologie mesurée, gardée parce que c'est la 2ᵉ fois que
+> ce dépôt voit cette panne et que les deux fois elle s'est résolue de la même façon :
+> | commit | PR | fusionné | déploiement de production |
+> |---|---|---|---|
+> | `68cd1734` | #991 | 20:07 | créé à 20:07:16, **`QUEUED` 43 min**, puis `READY` |
+> | `38162e50` | #994 | 20:38 | **aucun enregistrement**, 58 min plus tard |
+> | `ebe74ef3` | #995 | 21:36 | aucun — puis **repris tardivement à 21:50** |
+> | `d66fe5be` | #996 | 21:47 | créé **dans la seconde**, `READY` — porte LES TROIS lots |
+> ⚠️ « Aucun » était MESURÉ, pas déduit : filtré sur `QUEUED,BUILDING,ERROR,CANCELED` → zéro, et
+> `since` = 20:23 → zéro. Les onze déploiements précédents de la journée ont leur enregistrement créé
+> **dans les secondes** qui suivent le merge — 58 min d'absence n'est pas de la lenteur.
 > ⚠️ Écarté par la mesure : `vercel.json` porte `git.deploymentEnabled { "claude/*": false }`, qui ne
-> vise PAS `main`.
-> 👤 **Routé à Marc** — `[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]` dans `docs/A_FAIRE_MOI.md` : le
-> `Redeploy` depuis le tableau de bord Vercel, que je ne peux pas faire d'ici (403 au CONNECT sur
-> `vercel.com`, SSO sur `*.vercel.app` — §6). Aucun déploiement lancé de ma propre initiative
-> pendant un incident de file : j'empilerais au lieu de débloquer.
-> 📌 Tant que ce n'est pas réglé, **tout ce que les sections ci-dessous décrivent est vrai du code,
-> pas de ce que Marc voit.**
+> vise PAS `main`. Ce n'était pas la configuration.
+> ⚠️ **Ce que le rattrapage APPREND, et qui vaut pour la prochaine fois** : le remède n'est pas un
+> `Redeploy` manuel mais **un push de plus sur `main`** — exactement ce que DriveAI et JobAI ont
+> vécu le 31/07/2026, pendant que Hubperso et BatchChef, qui n'ont pas eu de push suivant, sont
+> restés CINQ JOURS sans déploiement. **Ne pas forcer un déploiement pendant que la file est en
+> panne** : on empile au lieu de débloquer.
+> ⚠️ Le routage vers Marc (`docs/A_FAIRE_MOI.md`) a été COCHÉ plutôt que supprimé : un routage périmé
+> qui envoie l'humain faire un geste inutile est aussi nuisible qu'un blocage non signalé.
+> 📌 La seule moitié de §6 qui reste est celle de Marc : la réponse SERVIE n'est pas lisible depuis ce
+> conteneur (403 au CONNECT sur `vercel.com` et `finance.hubperso.com`, SSO sur `*.vercel.app`).
 
 > ## 🟦 Session 2026-09-18 (suite 4 bis) — **la liste des marchands se CHERCHE**
 > 🔎 **`[DETTE-MARCHAND-RECHERCHE]`** — Marc : « je vois pas toyota dans la liste ». MESURÉ avant de

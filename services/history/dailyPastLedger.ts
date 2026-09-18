@@ -231,7 +231,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     // [DEBT-CADENCE-REELLE] Variante au JOUR : pour tout ce qui existait avant ce lot elle rend
     // EXACTEMENT le palier mensuel d'avant (même série, même index) ; seule une dette à versements
     // fixes et à cadence sous-mensuelle descend au jour de son prélèvement.
-    const supplementAuJour = prepareSupplementAmortiParJour(debts, moisAujourdhui, today);
+    const supplementAuJour = prepareSupplementAmortiParJour(debts, moisAujourdhui, today, transactions);
 
     // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS

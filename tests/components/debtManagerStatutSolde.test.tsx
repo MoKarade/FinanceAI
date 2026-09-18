@@ -53,28 +53,28 @@ const BAIL = (over: Partial<Debt> = {}): Debt =>
 
 describe('[DETTE-BALANCEASOF-INVISIBLE] `statutSoldeDette` — trois formes EXCLUSIVES', () => {
     it('daté ET auto-avançant → `suit-les-versements`, et la date rendue est celle qui est STOCKÉE', () => {
-        const statut = statutSoldeDette(BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>), AUJ);
+        const statut = statutSoldeDette(BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>), AUJ, []);
         expect(statut.forme).toBe('suit-les-versements');
         // ⚠️ Anti-vacuité : la forme seule ne prouve rien si la date rendue vient d'ailleurs.
-        if (statut.forme !== 'jamais-date') expect(statut.dateIso).toBe(ilYA(9));
+        if (statut.forme === 'suit-les-versements') expect(statut.dateIso).toBe(ilYA(9));
     });
 
     it('SANS date → `jamais-date` : c’est le cas que Marc ne pouvait pas voir', () => {
-        expect(statutSoldeDette(BAIL(), AUJ).forme).toBe('jamais-date');
+        expect(statutSoldeDette(BAIL(), AUJ, []).forme).toBe('jamais-date');
     });
 
     it('date ILLISIBLE → `jamais-date` aussi : une date qu’on ne sait pas lire ne vaut pas mieux qu’une absente', () => {
-        expect(statutSoldeDette(BAIL({ balanceAsOf: 'bientôt' } as Partial<Debt>), AUJ).forme).toBe('jamais-date');
+        expect(statutSoldeDette(BAIL({ balanceAsOf: 'bientôt' } as Partial<Debt>), AUJ, []).forme).toBe('jamais-date');
     });
 
     it('CONTRÔLE NÉGATIF — une carte de crédit datée → `date-figee` (rien ne la fait avancer)', () => {
         const carte = BAIL({ kind: 'credit-card', balanceAsOf: ilYA(9) } as Partial<Debt>);
-        expect(statutSoldeDette(carte, AUJ).forme).toBe('date-figee');
+        expect(statutSoldeDette(carte, AUJ, []).forme).toBe('date-figee');
     });
 
     it('CONTRÔLE NÉGATIF — un TAUX non nul → `date-figee` : on ignore ce que le solde contient', () => {
         const avecTaux = BAIL({ interestRate: 6.59, balanceAsOf: ilYA(9) } as Partial<Debt>);
-        expect(statutSoldeDette(avecTaux, AUJ).forme).toBe('date-figee');
+        expect(statutSoldeDette(avecTaux, AUJ, []).forme).toBe('date-figee');
     });
 });
 

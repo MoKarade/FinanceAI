@@ -673,6 +673,28 @@ export interface Debt {
    *  (`services/verifierTypesRestaures.ts`), sans quoi l'app se réhydrate VIDE — trois vagues déjà
    *  payées, dont une sur `paymentFrequency`, la ligne juste au-dessus. */
   balanceAsOf?: string;
+  /** [DETTE-VIREMENTS-REELS] Libellé EXACT du marchand dont les VIREMENTS font baisser cette dette.
+   *
+   *  Demande de Marc, 2026-09-18 : « je veux que chaque fois que je paie toyota ça enlève ça de la
+   *  dette, faut que ma dette soit liée à chaque fois que je fais un virement du bon montant à
+   *  toyota ». Sémantique qu'il a CHOISIE (« suivre les vrais virements, point ») : la dette ne
+   *  descend QUE sur un virement RÉELLEMENT importé, du montant RÉELLEMENT prélevé. Aucune marche
+   *  modélisée, jamais — là où aucun virement n'est connu, la dette reste au même niveau.
+   *
+   *  ⚠️ Ce champ REMPLACE la grille modélisée (`GrilleVersements`, dérivée de `startDate` +
+   *  `paymentFrequency`) : les deux ne coexistent pas sur une même dette, sinon le même solde aurait
+   *  deux histoires. Renseigné ⇒ les virements gagnent ; absent ⇒ comportement d'avant ce lot.
+   *
+   *  ⚠️ Il n'a d'effet que là où un versement retire EXACTEMENT son montant : dette à versements
+   *  fixes (`KIND_VERSEMENTS_FIXES`) à taux NUL. Sur un prêt qui porte de l'intérêt, une partie du
+   *  versement paie l'intérêt et la déduction serait fausse — le module refuse plutôt que de deviner.
+   *
+   *  ⚠️ C'est un champ TEXTUEL : il DOIT figurer dans `CHAMPS_TEXTE`
+   *  (`services/verifierTypesRestaures.ts`), sinon l'app se réhydrate VIDE. Et il est choisi dans une
+   *  LISTE de marchands existants, jamais retapé : un nom « exact » à saisir à la main est un
+   *  appariement déguisé en formulaire
+   *  (`UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE…`, corollaire). */
+  paymentPayee?: string;
   rateProvider?: string;           // institution prêteuse
   isInterestDeductible?: boolean;  // intérêt sur prêt placement / Smith Manoeuvre
 }

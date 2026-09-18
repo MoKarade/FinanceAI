@@ -127,7 +127,7 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
 
     // [DEBT-AMORTIZATION-CABLAGE] Séries d'amortissement calculées UNE fois pour toutes les dettes,
     // hors de la boucle : la fonction préparée ne fait plus qu'indexer (cf. son commentaire).
-    const supplementAu = prepareSupplementAmortiAuMois(debts, startYear, startMonth, todayIso);
+    const supplementAu = prepareSupplementAmortiAuMois(debts, startYear, startMonth, todayIso, transactions);
 
     const out: PastPrefixPoint[] = [];
     let lastInv: PortfolioHistoryPoint | null = null;

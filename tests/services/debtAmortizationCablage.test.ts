@@ -59,8 +59,8 @@ describe('[DEBT-AMORTIZATION-CABLAGE] le raccord au présent', () => {
         // C'est l'invariant numéro un de tout le passé reconstruit : le bug « MONEY-PHANTOM » que
         // `pastNetWorthAt` existe pour empêcher. Le recalage du service garantit que la courbe
         // atterrit sur le solde réel ; ce test le vérifie DU CÔTÉ DU REGISTRE.
-        expect(supplementAmortiAuMoisAbsolu([pretAuto], AUJOURDHUI, AUJOURDHUI, AUJ_ISO)).toBe(0);
-        expect(supplementAmortiAuMois([pretAuto], 2026, 0, 0, AUJ_ISO)).toBe(0);
+        expect(supplementAmortiAuMoisAbsolu([pretAuto], AUJOURDHUI, AUJOURDHUI, AUJ_ISO, [])).toBe(0);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 0, 0, AUJ_ISO, [])).toBe(0);
     });
 
     it('le supplément DÉCROÎT en approchant d\'aujourd\'hui, et reste positif', () => {
@@ -68,7 +68,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] le raccord au présent', () => {
         // qui remonte — c'est-à-dire un emprunt.
         let precedent = Number.POSITIVE_INFINITY;
         for (let m = mois(2024, 0); m <= AUJOURDHUI; m++) {
-            const s = supplementAmortiAuMoisAbsolu([pretAuto], m, AUJOURDHUI, AUJ_ISO);
+            const s = supplementAmortiAuMoisAbsolu([pretAuto], m, AUJOURDHUI, AUJ_ISO, []);
             expect(s, `mois ${m}`).toBeGreaterThanOrEqual(0);
             expect(s, `mois ${m}`).toBeLessThan(precedent);
             precedent = s;
@@ -76,7 +76,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] le raccord au présent', () => {
         // Anti-vacuité : au tout début, le supplément doit être SUBSTANTIEL (sinon la boucle
         // ci-dessus serait satisfaite par une suite de zéros décroissants... qui n'existe pas,
         // mais le lecteur ne devrait pas avoir à le déduire).
-        expect(supplementAmortiAuMoisAbsolu([pretAuto], mois(2024, 0), AUJOURDHUI, AUJ_ISO)).toBeGreaterThan(5000);
+        expect(supplementAmortiAuMoisAbsolu([pretAuto], mois(2024, 0), AUJOURDHUI, AUJ_ISO, [])).toBeGreaterThan(5000);
     });
 });
 
@@ -86,13 +86,13 @@ describe('[DEBT-AMORTIZATION-CABLAGE] les deux corrections de dette sont DISJOIN
         // mois où elle n'existait pas. Le service refuse avant `startDate` (cause
         // `donnees-manquantes`), donc le supplément vaut 0 — et c'est ce qui rend l'addition sûre.
         const avantDebut = -25; // décembre 2023, le prêt commence en janvier 2024
-        expect(supplementAmortiAuMois([pretAuto], 2026, 0, avantDebut, AUJ_ISO)).toBe(0);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 0, avantDebut, AUJ_ISO, [])).toBe(0);
         expect(sumNotYetStartedDebtsAtMonth([pretAuto], 2026, 0, avantDebut)).toBe(18000);
     });
 
     it('après le début : le supplément agit, l\'autre delta est nul', () => {
         const apresDebut = -12; // janvier 2025
-        expect(supplementAmortiAuMois([pretAuto], 2026, 0, apresDebut, AUJ_ISO)).toBeGreaterThan(0);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 0, apresDebut, AUJ_ISO, [])).toBeGreaterThan(0);
         expect(sumNotYetStartedDebtsAtMonth([pretAuto], 2026, 0, apresDebut)).toBe(0);
     });
 });
@@ -208,18 +208,18 @@ describe('[DEBT-AMORTIZATION-CABLAGE] le bandeau dit ce que la courbe montre', (
     const AUJ = 2026 * 12 + 0;
 
     it('aucune dette publiée : rien à dire', () => {
-        expect(mentionDettesPasse([pretAuto], AUJ, 0, '2026-01-15')).toBe('');
+        expect(mentionDettesPasse([pretAuto], AUJ, 0, '2026-01-15', [])).toBe('');
     });
 
     it('que des dettes qui n\'amortissent pas : la phrase d\'avant, inchangée', () => {
-        expect(mentionDettesPasse([bail], AUJ, 18000, '2026-01-15')).toBe('dettes au niveau actuel');
+        expect(mentionDettesPasse([bail], AUJ, 18000, '2026-01-15', [])).toBe('dettes au niveau actuel');
         // Même verdict SANS le montant emprunté : c'est le cas de tout utilisateur qui ne l'a pas.
-        expect(mentionDettesPasse([{ ...pretAuto, originalBalance: undefined }], AUJ, 18000, '2026-01-15'))
+        expect(mentionDettesPasse([{ ...pretAuto, originalBalance: undefined }], AUJ, 18000, '2026-01-15', []))
             .toBe('dettes au niveau actuel');
     });
 
     it('que des dettes amorties : la phrase le dit', () => {
-        expect(mentionDettesPasse([pretAuto], AUJ, 18000, '2026-01-15')).toBe('dettes amorties depuis leur date de début');
+        expect(mentionDettesPasse([pretAuto], AUJ, 18000, '2026-01-15', [])).toBe('dettes amorties depuis leur date de début');
     });
 
     it('un modèle CONSTRUCTIBLE mais PLAT ne compte pas comme amorti', () => {
@@ -228,14 +228,14 @@ describe('[DEBT-AMORTIZATION-CABLAGE] le bandeau dit ce que la courbe montre', (
         // « dettes amorties » serait faux. Le compteur porte la condition qui rend le supplément
         // non nul, pas le simple fait que le modèle se construise.
         const toutNeuf: DebtAmortissable = { ...pretAuto, startDate: '2026-01-10', originalBalance: 18000, balance: 18000 };
-        expect(supplementAmortiAuMois([toutNeuf], 2026, 0, 0, AUJ_ISO)).toBe(0);
-        expect(mentionDettesPasse([toutNeuf], AUJ, 18000, '2026-01-15')).toBe('dettes au niveau actuel');
+        expect(supplementAmortiAuMois([toutNeuf], 2026, 0, 0, AUJ_ISO, [])).toBe(0);
+        expect(mentionDettesPasse([toutNeuf], AUJ, 18000, '2026-01-15', [])).toBe('dettes au niveau actuel');
     });
 
     it('MIXTE — le cas réel de Marc (un bail À CÔTÉ d\'un prêt) se nomme', () => {
         // « dettes amorties » serait faux pour la moitié de la somme affichée, et « niveau actuel »
         // pour l'autre. Les deux formulations simples mentent ; c'est pour ça que le cas existe.
-        expect(mentionDettesPasse([bail, pretAuto], AUJ, 36000, '2026-01-15')).toBe('dettes partiellement amorties');
+        expect(mentionDettesPasse([bail, pretAuto], AUJ, 36000, '2026-01-15', [])).toBe('dettes partiellement amorties');
     });
 
     it('le composant CONSOMME cette source, il ne réécrit pas la phrase', () => {
@@ -270,7 +270,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la série est payée UNE fois, pas à chaq
             balance: 18000, kind: 'auto', startDate: '2024-01-15', interestRate: 5, minimumPayment: 560,
             get originalBalance() { lectures++; return 30000; },
         };
-        const au = prepareSupplementAmortiAbsolu([espionne], AUJOURDHUI, AUJ_ISO);
+        const au = prepareSupplementAmortiAbsolu([espionne], AUJOURDHUI, AUJ_ISO, []);
         const apresPreparation = lectures;
         for (let m = mois(2024, 0); m <= AUJOURDHUI; m++) au(m);
 
@@ -278,7 +278,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la série est payée UNE fois, pas à chaq
         expect(lectures, '25 interrogations ne doivent RIEN recalculer').toBe(apresPreparation);
         // Anti-vacuité : sans cette assertion, un `au()` qui rendrait 0 sans jamais rien lire
         // satisferait la précédente. La valeur doit rester celle du chemin non préparé.
-        expect(au(mois(2024, 0))).toBe(supplementAmortiAuMoisAbsolu([{ ...espionne, originalBalance: 30000 }], mois(2024, 0), AUJOURDHUI, AUJ_ISO));
+        expect(au(mois(2024, 0))).toBe(supplementAmortiAuMoisAbsolu([{ ...espionne, originalBalance: 30000 }], mois(2024, 0), AUJOURDHUI, AUJ_ISO, []));
         expect(au(mois(2024, 0))).toBeGreaterThan(5000);
     });
 });
@@ -289,7 +289,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] absence et corruption ne se confondent pas
     // voisin (`sumNotYetStartedDebtsAtAbsoluteMonth`, appelé sur la même ligne chez les deux
     // appelants) journalisait déjà ce cas — ne pas le faire ici serait le patron appliqué à côté.
     const cause = (d: DebtAmortissable): string => {
-        const r = amortirDettePassee(d, AUJOURDHUI, AUJ_ISO);
+        const r = amortirDettePassee(d, AUJOURDHUI, AUJ_ISO, []);
         return r.forme === 'ok' ? 'ok' : r.cause;
     };
 
@@ -316,11 +316,11 @@ describe('[DEBT-AMORTIZATION-CABLAGE] les frontières du repère de mois', () =>
         // `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` : tous les autres cas du fichier utilisent
         // `startMonth: 0`, la seule valeur où un « + startMonth » oublié serait invisible.
         // Projection démarrant en SEPTEMBRE 2026 : le mois de simulation −20 est janvier 2025.
-        const attendu = supplementAmortiAuMoisAbsolu([pretAuto], mois(2025, 0), mois(2026, 8), '2026-09-15');
-        expect(supplementAmortiAuMois([pretAuto], 2026, 8, -20, '2026-09-15')).toBe(attendu);
+        const attendu = supplementAmortiAuMoisAbsolu([pretAuto], mois(2025, 0), mois(2026, 8), '2026-09-15', []);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 8, -20, '2026-09-15', [])).toBe(attendu);
         expect(attendu).toBeGreaterThan(0);
         // Et le raccord vaut toujours EXACTEMENT zéro, quel que soit le mois de départ.
-        expect(supplementAmortiAuMois([pretAuto], 2026, 8, 0, '2026-09-15')).toBe(0);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 8, 0, '2026-09-15', [])).toBe(0);
     });
 
     it('AU MOIS DE BASCULE (le `startDate` lui-même), une seule des deux corrections agit', () => {
@@ -328,9 +328,9 @@ describe('[DEBT-AMORTIZATION-CABLAGE] les frontières du repère de mois', () =>
         // c'est pourtant le seul mois où un double comptage pourrait exister.
         const bascule = -24; // janvier 2024 = le mois du `startDate` du prêt
         expect(sumNotYetStartedDebtsAtMonth([pretAuto], 2026, 0, bascule)).toBe(0);
-        expect(supplementAmortiAuMois([pretAuto], 2026, 0, bascule, AUJ_ISO)).toBeGreaterThan(0);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 0, bascule, AUJ_ISO, [])).toBeGreaterThan(0);
         // Le mois JUSTE avant : l'exact miroir, jamais les deux ensemble.
         expect(sumNotYetStartedDebtsAtMonth([pretAuto], 2026, 0, bascule - 1)).toBe(18000);
-        expect(supplementAmortiAuMois([pretAuto], 2026, 0, bascule - 1, AUJ_ISO)).toBe(0);
+        expect(supplementAmortiAuMois([pretAuto], 2026, 0, bascule - 1, AUJ_ISO, [])).toBe(0);
     });
 });

@@ -9,7 +9,7 @@ import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { useTodayIsoLocal } from '../hooks/useSimulationParams';
-import { soldeDetteAujourdhui, statutSoldeDette, type StatutSoldeDette } from '../services/projection/debtAmortization';
+import { soldeDetteAujourdhui, statutSoldeDette, marchandsCandidats, type StatutSoldeDette } from '../services/projection/debtAmortization';
 import { computeTotalDebt } from '../services/portfolio';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -36,6 +36,27 @@ import { DebtKindFields, refusOrigineIncoherente, refusChampNonFini } from './de
  */
 export function phraseStatutSolde(statut: StatutSoldeDette): { texte: string; alerte: boolean } {
     switch (statut.forme) {
+        case 'suit-les-virements':
+            // [DETTE-VIREMENTS-REELS] Le cas de Marc. `nbDeduits === 0` n'est PAS une alerte : c'est
+            // l'état NORMAL le lendemain d'un enregistrement — rien n'a encore été prélevé depuis.
+            // Dire « aucun virement » sur un ton d'alarme apprendrait à ignorer le message.
+            return statut.nbDeduits === 0
+                ? {
+                    texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · lié à « ${statut.payee} » : aucun virement depuis, le solde ne bougera qu’au prochain.`,
+                    alerte: false,
+                }
+                : {
+                    texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · ${statut.nbDeduits} virement${statut.nbDeduits > 1 ? 's' : ''} à « ${statut.payee} » depuis`
+                        + `${statut.dernierIso ? `, le dernier le ${formatIsoDay(statut.dernierIso)}` : ''} — déjà déduit${statut.nbDeduits > 1 ? 's' : ''} ci-dessus.`,
+                    alerte: false,
+                };
+        case 'lie-sans-virement':
+            // Un lien qui ne peut RIEN produire : aucune date ne le sauverait, et la dette restera
+            // au même niveau tant qu'il pointe un marchand qui ne verse rien.
+            return {
+                texte: `Lié à « ${statut.payee} » · aucun virement de ce marchand dans tes transactions : la dette ne bougera pas. Vérifie le marchand choisi.`,
+                alerte: true,
+            };
         case 'suit-les-versements':
             return {
                 texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · les versements prélevés depuis sont déjà déduits ci-dessus.`,
@@ -63,6 +84,12 @@ interface DebtManagerProps {
 
 export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => {
     const todayIso = useTodayIsoLocal();
+    // [DETTE-VIREMENTS-REELS] Les virements réels : c'est eux qui font baisser une dette liée à un
+    // marchand. Lus du store ici plutôt que reçus en prop — `DebtManager` y lit déjà `isPrivacyMode`,
+    // et ajouter une prop obligerait tous ses montages à la fournir sans rien y gagner.
+    const transactions = useFinanceStore(s => s.transactions);
+    // La liste offerte au lien, calculée UNE fois pour les deux formulaires (ajout et édition).
+    const marchands = useMemo(() => marchandsCandidats(transactions), [transactions]);
     const [isAdding, setIsAdding] = useState(false);
     const [newDebt, setNewDebt] = useState<Partial<Debt>>({ name: '', balance: 0, interestRate: 0, minimumPayment: 0, category: 'CreditCard' });
     // [DETTE-DATES] Édition d'une dette EXISTANTE. Avant ce lot il n'y avait que « Ajouter » et
@@ -108,7 +135,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // défaut que ce chantier répare. Les deux coïncident tant que rien n'a dérivé.
     const startEdit = (d: Debt) => {
         setEditingId(d.id);
-        setDraft({ ...d, balance: soldeDetteAujourdhui(d, todayIso) });
+        setDraft({ ...d, balance: soldeDetteAujourdhui(d, todayIso, transactions) });
         setIsAdding(false);
         setRefusSaisie(null);
     };
@@ -184,7 +211,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     }, [debts, extraPayment]);
 
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
-    const totalDebt = computeTotalDebt(debts, todayIso);
+    const totalDebt = computeTotalDebt(debts, todayIso, transactions);
     const totalMinPayment = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
     // [DETTE-SOLDE-INSTANTANE-FIGE] Le jour LOCAL : le « Total dû » affiche le solde d'AUJOURD'HUI,
@@ -246,7 +273,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                         <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.termEndDate ?? ''} onChange={e => setNewDebt({...newDebt, termEndDate: e.target.value || undefined})} />
                                     </label>
                                 </div>
-                                <DebtKindFields valeur={newDebt} onChange={patch => setNewDebt({ ...newDebt, ...patch })} idSuffixe="ajout" />
+                                <DebtKindFields valeur={newDebt} onChange={patch => setNewDebt({ ...newDebt, ...patch })} idSuffixe="ajout" marchands={marchands} />
                                 <p className="text-tiny text-ink-400">
                                     Laisse vide si tu ne sais pas : sans date de fin, le paiement continue jusqu'à
                                     extinction. Avec une date de fin, il s'arrête à ce mois-là — et s'il reste un
@@ -267,7 +294,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                 <input aria-label="Taux d'intérêt (pourcentage)" type="number" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.interestRate ?? ''} onChange={e => setDraft({ ...draft, interestRate: parseFloat(e.target.value) })} />
                                             </div>
                                             {(() => {
-                                                const { texte, alerte } = phraseStatutSolde(statutSoldeDette(d, todayIso));
+                                                const { texte, alerte } = phraseStatutSolde(statutSoldeDette(d, todayIso, transactions));
                                                 return <p className={`text-tiny ${alerte ? 'text-amber-400' : 'text-ink-400'}`}>{texte}</p>;
                                             })()}
                                             <input aria-label="Paiement minimum mensuel (dollars)" type="number" className="w-full bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.minimumPayment ?? ''} onChange={e => setDraft({ ...draft, minimumPayment: parseFloat(e.target.value) })} />
@@ -281,7 +308,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                     <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.termEndDate ?? ''} onChange={e => setDraft({ ...draft, termEndDate: e.target.value || undefined })} />
                                                 </label>
                                             </div>
-                                            <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} />
+                                            <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} marchands={marchands} />
                                             <p role="status" className="text-tiny text-danger-400 empty:hidden">{refusSaisie ?? ''}</p>
                                             <div className="flex gap-2">
                                                 <button onClick={saveEdit} className="flex-1 bg-green-700 hover:bg-green-800 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>

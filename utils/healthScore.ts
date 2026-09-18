@@ -162,7 +162,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     // Liquidités = cash de TOUS les comptes, via la source unique computeCurrentLiquidity.
     const liquidity = computeCurrentLiquidity(initialBalances, transactions);
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
-    const totalDebts = computeTotalDebt(debts || [], aujourdhuiIso);
+    const totalDebts = computeTotalDebt(debts || [], aujourdhuiIso, transactions || []);
     // [ASSET-FX-DISPLAY] valeur CAD via la source unique (prix natifs × FX).
     const investmentValue = computeInvestmentsValue(assets || [], fxRates, ecartAutoritePlacements);
     // Patrimoine = placements + liquidités (la liquidité inclut déjà tout le cash : CELI, REER, comptes courants…).

@@ -175,7 +175,7 @@ export function buildFinancialOverview(
         // l'ancien `budget.savings` restait sur Σ netSalary : `monthlyIncome − monthlyExpenses`
         // dans le même payload ne redonnait pas monthlyCashflow (contradiction interne pour l'IA).
         monthlyCashflow: Math.max(0, snapshot.monthlyIncome - snapshot.monthlyExpenses),
-        totalDebt: computeTotalDebt(state.debts ?? [], aujourdhuiIso),
+        totalDebt: computeTotalDebt(state.debts ?? [], aujourdhuiIso, state.transactions ?? []),
         userCount: (state.config?.users ?? []).filter((u) => u && (u.name || u.grossSalary)).length,
     };
 }

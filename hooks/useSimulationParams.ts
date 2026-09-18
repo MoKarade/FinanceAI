@@ -211,6 +211,8 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         termesFautifsCash: ledgerCash.termesFautifs,
         realEstateGoals,
         debts,
+        // [DETTE-VIREMENTS-REELS] Les virements qui remboursent une dette liée à un marchand.
+        transactions: transactions as Transaction[],
         // [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR, pas seulement le mois : un solde DATÉ se ramène à
         // aujourd'hui au prélèvement près. Même horloge partagée que `startYear`/`startMonth`
         // (`useTodayIsoLocal` lit le même store externe), donc aucune seconde source de temps.
@@ -230,7 +232,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         charitableGoals,
         rentalProperties,
         privateBusinesses,
-    }), [projection, calculatedStartingCash, ledgerCash.termesFautifs, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth, todayIsoPourDettes]);
+    }), [projection, calculatedStartingCash, ledgerCash.termesFautifs, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth, todayIsoPourDettes, transactions]);
 
     return {
         params, pastHistory, liveCSVBalances, calculatedStartingCash,

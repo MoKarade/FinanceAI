@@ -56,9 +56,33 @@ export const ACCOUNTS: AccountDef[] = [
 export function detteReductrice(
     point: Record<string, unknown>,
     clesActifsAffiches: readonly string[],
-): number {
-    const sommeActifs = clesActifsAffiches.reduce((s, k) => s + (Number(point[k]) || 0), 0);
-    return Math.max(0, sommeActifs - (Number(point.NetWorth) || 0));
+): number | null {
+    // ⚠️ [INFOBULLE-DETTE-NW-NON-FINI] `Number(point.NetWorth) || 0` rabattait un `NaN` ou un
+    // `Infinity` sur ZÉRO — et la soustraction rendait alors la somme TOTALE des actifs, affichée
+    // sous le libellé « Dettes (hors hypothèque) ». Un patrimoine corrompu ne produisait donc pas
+    // un écran vide mais un montant de dette FAUX ET CRÉDIBLE, sans trace, dans les deux surfaces
+    // qui appellent cette fonction. Le repli le plus plausible est le pire (§1, no-fake-data).
+    //
+    // ⚠️ LE CORRECTIF EST LE TYPE, pas un meilleur nombre : `number | null` fait ÉNUMÉRER les
+    // consommateurs par le compilateur. Les deux gatent sur `> 0.5`, ce qui masque `null` en
+    // silence — un retour numérique « prudent » les aurait laissés muets exactement là où il faut
+    // parler (`UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE`).
+    const nw = Number(point.NetWorth);
+    if (!Number.isFinite(nw)) return null;
+    // ⚠️ L'AUTRE MOITIÉ, et elle est plus discrète : une clé d'actif PRÉSENTE mais non finie rend la
+    // SOMME amputée, donc la soustraction fausse — dans l'autre sens (une dette SURÉVALUÉE du
+    // montant du compte illisible). `|| 0` l'absorbait aussi silencieusement que pour la valeur
+    // nette. ⚠️ Une clé ABSENTE reste légitime : ça veut dire « pas de compte de ce type », pas
+    // « donnée perdue » — c'est la distinction `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`.
+    let sommeActifs = 0;
+    for (const k of clesActifsAffiches) {
+        const v = point[k];
+        if (v === undefined || v === null) continue;
+        const n = Number(v);
+        if (!Number.isFinite(n)) return null;
+        sommeActifs += n;
+    }
+    return Math.max(0, sommeActifs - nw);
 }
 
 // G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par

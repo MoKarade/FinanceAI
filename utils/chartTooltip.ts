@@ -1,17 +1,15 @@
-// [R3] Tooltip figeable du graphe Futur — utilitaires PURS (testables sans React
-// ni Recharts). La logique de positionnement et de résolution du point cliqué est
-// isolée ici pour deux raisons : (1) la tester en isolation, (2) éviter de la
-// dupliquer entre le clic conteneur (géométrie) et le hook de positionnement.
-
-/**
- * Largeur connue du tooltip (`w-80` = 320px dans ExpertTooltip).
- *
- * ⚠️ [FUTUR-INFOBULLE-EPUREE] Cette constante DUPLIQUE une classe Tailwind : elle sert à borner la
- * position au viewport, et rien au runtime ne les confronte. Élargir la classe sans elle donne une
- * infobulle qui déborde du bord droit — silencieusement, sur le seul écran où ça se voit (petit
- * portable). Garde qui les confronte : `tests/components/tooltipLargeur.test.ts`.
- */
-export const TOOLTIP_WIDTH = 320;
+// Utilitaires PURS des graphes (testables sans React ni Recharts) : le style partagé des
+// infobulles Recharts, et la résolution du point de données sous un clic ou une abscisse.
+//
+// ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] TOUT LE POSITIONNEMENT A ÉTÉ RETIRÉ D'ICI — `TOOLTIP_WIDTH`,
+// les deux décalages, la marge et `clampTooltipPosition`. Ils servaient à placer l'infobulle
+// FLOTTANTE du graphe Futur près du curseur sans qu'elle soit coupée par un bord d'écran. Cette
+// infobulle n'existe plus : son contenu est rendu par le PANNEAU FIXE sous le graphe, qui vit dans
+// le flux du document et n'a donc ni largeur de chrome, ni position à calculer. Les garder aurait
+// laissé un système complet sans consommateur, et surtout une DESCRIPTION d'un comportement que
+// l'app n'a plus — ce qu'un prochain lot aurait lu comme un fait
+// (`DOC-STALE-IMPOSSIBILITY`). La RÈGLE qu'ils portaient (ne pas reposer une largeur de chrome en
+// dur) est reprise, inversée, par `tests/components/tooltipLargeur.test.ts`.
 
 /**
  * [DETTE-CHART-THEME-DUP] Style unique des infobulles Recharts (`contentStyle`).
@@ -41,13 +39,6 @@ export const CHART_TOOLTIP_STYLE = {
 
 /** Style des LIGNES de l'infobulle — Recharts ne fait pas hériter la couleur du conteneur. */
 export const CHART_TOOLTIP_ITEM_STYLE = { color: '#e2e8f0' } as const;
-
-/** Décalage horizontal du tooltip vs le curseur (à droite). */
-export const TOOLTIP_OFFSET_X = 16;
-/** Décalage vertical du tooltip vs le curseur (légèrement au-dessus). */
-export const TOOLTIP_OFFSET_Y = -24;
-/** Marge minimale entre le tooltip et le bord du viewport. */
-export const TOOLTIP_MARGIN = 8;
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 const clamp01 = (v: number): number => clamp(v, 0, 1);
@@ -113,28 +104,4 @@ export function resolvePointByX<T>(
         if (dist < bestDist) { bestDist = dist; best = d; }
     }
     return best;
-}
-
-interface ClampTooltipArgs {
-    cursorX: number;
-    cursorY: number;
-    tooltipWidth: number;
-    tooltipHeight: number;
-    viewportWidth: number;
-    viewportHeight: number;
-    offsetX: number;
-    offsetY: number;
-    margin: number;
-}
-
-/**
- * Positionne le tooltip `position:fixed` près du curseur, borné au viewport
- * (jamais coupé par un bord). Si le viewport est plus petit que le tooltip, on
- * colle à la marge (le `max(margin, …)` empêche une borne haute < borne basse).
- */
-export function clampTooltipPosition(args: ClampTooltipArgs): { left: number; top: number } {
-    const { cursorX, cursorY, tooltipWidth, tooltipHeight, viewportWidth, viewportHeight, offsetX, offsetY, margin } = args;
-    const left = clamp(cursorX + offsetX, margin, Math.max(margin, viewportWidth - tooltipWidth - margin));
-    const top = clamp(cursorY + offsetY, margin, Math.max(margin, viewportHeight - tooltipHeight - margin));
-    return { left, top };
 }

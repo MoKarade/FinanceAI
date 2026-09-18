@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useChartTooltipPosition } from '../../hooks/useChartTooltipPosition';
+import { useSelectionJour } from '../../hooks/useSelectionJour';
+
+// ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] Ce fichier gardait `useChartTooltipPosition`, qui faisait DEUX
+// choses : cette machine d'état (survol → aperçu, clic → épingle, Échap / clic-dehors → relâche) et
+// le POSITIONNEMENT de l'infobulle flottante. L'infobulle a disparu au profit du panneau fixe sous
+// le graphe ; la machine d'état, elle, est exactement ce que Marc a choisi et n'a pas bougé d'un
+// cran. Les gardes de positionnement ont donc été retirées AVEC leur sujet — pas des protections
+// perdues, des protections sans objet —, et celles de la machine d'état sont reprises telles
+// quelles : c'est le seul moyen de prouver qu'un déménagement n'a rien changé au comportement.
 
 // Points de test minimaux : la clé d'identité = `m`.
 interface P { m: number }
@@ -18,9 +26,9 @@ afterEach(() => {
     containerEl.remove();
 });
 
-const setup = () => renderHook(() => useChartTooltipPosition<P>({ getKey, containerRef }));
+const setup = () => renderHook(() => useSelectionJour<P>({ getKey, containerRef }));
 
-describe('useChartTooltipPosition — machine d\'état', () => {
+describe('useSelectionJour — machine d\'état', () => {
     it('état initial : idle, aucun point', () => {
         const { result } = setup();
         expect(result.current.mode).toBe('idle');
@@ -91,7 +99,7 @@ describe('useChartTooltipPosition — machine d\'état', () => {
     });
 });
 
-describe('useChartTooltipPosition — listeners document (gelé seulement)', () => {
+describe('useSelectionJour — listeners document (épinglé seulement)', () => {
     it('Échap en gelé → libère', () => {
         const { result } = setup();
         act(() => result.current.freezeOn({ m: 1 }));
@@ -127,43 +135,10 @@ describe('useChartTooltipPosition — listeners document (gelé seulement)', () 
         const { result } = setup();
         const tipEl = document.createElement('div');
         document.body.appendChild(tipEl);
-        result.current.tooltipRef.current = tipEl;
+        result.current.panneauRef.current = tipEl;
         act(() => result.current.freezeOn({ m: 1 }));
         act(() => { tipEl.dispatchEvent(new Event('pointerdown', { bubbles: true })); });
         expect(result.current.mode).toBe('frozen');
         tipEl.remove();
-    });
-});
-
-describe('useChartTooltipPosition — positionnement', () => {
-    const attachTip = (result: { current: { tooltipRef: React.RefObject<HTMLDivElement | null> } }) => {
-        const tip = document.createElement('div');
-        Object.defineProperty(tip, 'offsetHeight', { value: 200, configurable: true });
-        document.body.appendChild(tip);
-        result.current.tooltipRef.current = tip;
-        return tip;
-    };
-
-    it('en survol, onPointerMove positionne le tooltip (left/top mutés)', () => {
-        const { result } = setup();
-        const tip = attachTip(result);
-        act(() => result.current.onHoverPoint({ m: 1 }));
-        act(() => result.current.onPointerMove(400, 300));
-        // viewport jsdom 1024×768 : 400+16=416, 300−24=276 (dans les bornes).
-        expect(tip.style.left).toBe('416px');
-        expect(tip.style.top).toBe('276px');
-        tip.remove();
-    });
-
-    it('GELÉ : onPointerMove NE déplace PLUS le tooltip (ancré au point de figeage)', () => {
-        const { result } = setup();
-        const tip = attachTip(result);
-        act(() => result.current.onHoverPoint({ m: 1 }));
-        act(() => result.current.onPointerMove(400, 300));
-        act(() => result.current.freezeOn(null)); // fige à 416/276
-        act(() => result.current.onPointerMove(700, 700)); // ignoré en gelé
-        expect(tip.style.left).toBe('416px');
-        expect(tip.style.top).toBe('276px');
-        tip.remove();
     });
 });

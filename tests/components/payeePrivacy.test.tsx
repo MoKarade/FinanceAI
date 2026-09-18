@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { ExpertTooltip } from '../../components/projection/ProjectionTooltip';
+import { renderPanneauJour } from '../helpers/panneauJour';
 import { PrivateText } from '../../components/ui/PrivateText';
 import { maskPayee, rowControlLabel, MASKED_PAYEE_LABEL } from '../../utils/privacyAria';
 import type { ProjectionChartPoint } from '../../services/projection/types';
@@ -108,13 +108,13 @@ describe('[PRIV-PAYEE-MODE-DISCRET] l’infobulle du jour ne laisse rien filtrer
 
     it('mode discret : le marchand n’est ni dans le texte ni dans un attribut', () => {
         privacy(true);
-        render(<ExpertTooltip data={jour()} />);
+        renderPanneauJour(jour());
         // `innerHTML` : couvre le texte ET les attributs (title, aria-label) d'un seul coup.
         expect(document.body.innerHTML).not.toContain(MARCHAND);
     });
 
     it('hors mode discret : le marchand est bien lisible', () => {
-        render(<ExpertTooltip data={jour()} />);
+        renderPanneauJour(jour());
         expect(document.body.textContent).toContain(MARCHAND);
     });
 
@@ -134,12 +134,12 @@ describe('[PRIV-PAYEE-MODE-DISCRET] l’infobulle du jour ne laisse rien filtrer
 
     it('jour FUTUR (repli sur `dayLabels`) : le marchand est masqué aussi', () => {
         privacy(true);
-        render(<ExpertTooltip data={jourFutur()} />);
+        renderPanneauJour(jourFutur());
         expect(document.body.innerHTML).not.toContain(MARCHAND);
     });
 
     it('jour FUTUR hors mode discret : le libellé reste lisible', () => {
-        render(<ExpertTooltip data={jourFutur()} />);
+        renderPanneauJour(jourFutur());
         expect(document.body.textContent).toContain(MARCHAND);
     });
 });

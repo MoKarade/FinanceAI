@@ -1,13 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-    resolvePointFromClick,
-    resolvePointByX,
-    clampTooltipPosition,
-    TOOLTIP_WIDTH,
-    TOOLTIP_OFFSET_X,
-    TOOLTIP_OFFSET_Y,
-    TOOLTIP_MARGIN,
-} from '../../utils/chartTooltip';
+import { resolvePointFromClick, resolvePointByX } from '../../utils/chartTooltip';
 
 describe('resolvePointFromClick — résolution géométrique du point cliqué', () => {
     const data = [{ m: 0 }, { m: 1 }, { m: 2 }, { m: 3 }, { m: 4 }]; // 5 points
@@ -40,48 +32,17 @@ describe('resolvePointFromClick — résolution géométrique du point cliqué',
     });
 });
 
-describe('clampTooltipPosition — positionnement borné au viewport', () => {
-    const base = {
-        tooltipWidth: TOOLTIP_WIDTH,
-        tooltipHeight: 200,
-        viewportWidth: 1200,
-        viewportHeight: 800,
-        offsetX: TOOLTIP_OFFSET_X,
-        offsetY: TOOLTIP_OFFSET_Y,
-        margin: TOOLTIP_MARGIN,
-    };
-
-    it('cas nominal : décalage appliqué (droite + légèrement au-dessus)', () => {
-        const { left, top } = clampTooltipPosition({ ...base, cursorX: 400, cursorY: 300 });
-        expect(left).toBe(400 + TOOLTIP_OFFSET_X);
-        expect(top).toBe(300 + TOOLTIP_OFFSET_Y);
-    });
-
-    it('curseur près du bord DROIT : le tooltip ne déborde pas', () => {
-        const { left } = clampTooltipPosition({ ...base, cursorX: 1190, cursorY: 300 });
-        expect(left).toBe(base.viewportWidth - TOOLTIP_WIDTH - TOOLTIP_MARGIN);
-        expect(left + TOOLTIP_WIDTH).toBeLessThanOrEqual(base.viewportWidth - TOOLTIP_MARGIN);
-    });
-
-    it('curseur près du bord BAS : le tooltip ne déborde pas', () => {
-        const { top } = clampTooltipPosition({ ...base, cursorX: 400, cursorY: 795 });
-        expect(top).toBe(base.viewportHeight - base.tooltipHeight - TOOLTIP_MARGIN);
-    });
-
-    it('curseur en haut à gauche : borné à la marge minimale', () => {
-        const { left, top } = clampTooltipPosition({ ...base, cursorX: 0, cursorY: 0 });
-        expect(left).toBe(TOOLTIP_OFFSET_X); // 0 + 16 = 16 (> marge → conservé)
-        expect(top).toBe(TOOLTIP_MARGIN);    // 0 − 24 = −24 → clampé à la marge (8)
-    });
-
-    it('viewport plus petit que le tooltip : on colle à la marge (pas de borne incohérente)', () => {
-        const { left, top } = clampTooltipPosition({
-            ...base, cursorX: 50, cursorY: 50, viewportWidth: 100, viewportHeight: 100,
-        });
-        expect(left).toBe(TOOLTIP_MARGIN);
-        expect(top).toBe(TOOLTIP_MARGIN);
-    });
-});
+// ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] Le bloc `clampTooltipPosition` a été RETIRÉ D'ICI avec son
+// sujet : il bornait la position de l'infobulle FLOTTANTE au viewport, et cette infobulle n'existe
+// plus (son contenu est rendu par le panneau fixe sous le graphe, dans le flux du document). Ce ne
+// sont pas des protections perdues mais des protections SANS OBJET — la règle qu'elles servaient
+// (« ne pas reposer une largeur de chrome en dur ») est reprise, INVERSÉE, par
+// `tests/components/tooltipLargeur.test.ts`.
+//
+// ⚠️ Et la première version de ce retrait avait emporté AUSSI le bloc `resolvePointByX`, qui suit
+// et qui garde du code bien vivant (le clic sur la courbe Futur). C'est le LINT qui l'a vu — import
+// devenu inutilisé —, pas moi : `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`, et la
+// question qui l'aurait évité est « qu'est-ce qui n'existe QUE là ? ».
 
 // [FUTUR-DAILY lot B étape 2] Résolution par VALEUR D'ABSCISSE.
 //

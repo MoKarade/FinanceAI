@@ -1,8 +1,12 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 262 tests** Vitest
-(631 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes du lot `[DETTE-VIREMENTS-REELS]` + **11** gardes des lots `[FUTUR-COURBE-DETTE]` / `[FUTUR-MOUVEMENTS-TOUS]` et de leurs deux correctifs de panel (2 fichiers neufs), toutes lancées en ciblé et vertes ; sept perturbations SÉPARÉES, chacune ne touchant que sa cible, dont trois de sens OPPOSÉ. Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 315 tests** Vitest
+(637 fichiers de test — base **MESURÉE par la CI** le 2026-09-18 sur `4a74bf1f` : 6 258 tests /
+631 fichiers, puis + 39 gardes du lot `[FUTUR-PANNEAU-FIXE]` (5 fichiers) + 18 des correctifs de
+son panel (1 fichier). ⚠️ Le total n'a PAS été re-mesuré en local — c'est la CI qui exécute la
+suite complète (§5). Treize perturbations SÉPARÉES, chacune ne touchant que sa cible, dont deux de
+sens OPPOSÉ. Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1387,6 +1391,67 @@ n'est pas réécrire un récit.
   le helper ne porte pas — partager un helper n'est pas partager toutes ses assertions
   (`UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-DE-GARDES`).
 
+- ⚠️⚠️ **Un IRRITANT peut être STRUCTUREL à la forme choisie, donc non réglable par un réglage**
+  (2026-09-18, `[FUTUR-PANNEAU-FIXE]`) : Marc a coché « elle disparaît / bouge quand je veux la
+  lire » à propos de l'infobulle du graphe Futur. C'est ce que fait N'IMPORTE QUEL objet qui suit le
+  curseur — pour aller le lire, il faut bouger la souris, et la bouger le change. Aucune taille,
+  aucun délai, aucun « gel au clic » ne le corrige vraiment (le gel existait déjà) : seul l'ENDROIT
+  où l'objet vit le corrige. **Devant un irritant d'interface, demander s'il décrit un RÉGLAGE ou
+  une CONSÉQUENCE de la forme** — la seconde ne se règle qu'en changeant de forme.
+  ⚠️ **Déplacer une surface crée un ÉTAT qui n'existait pas** : l'infobulle n'existait que pendant un
+  survol ou un gel ; un panneau FIXE est toujours là et doit montrer quelque chose AU REPOS. Cet
+  état ne se devine pas — il se demande (Marc : « aujourd'hui »), et il s'ÉCRIT à l'écran, parce que
+  « aujourd'hui », « aperçu » et « épinglé » se ressemblent et ne veulent pas dire la même chose.
+  ⚠️ **Un état qui retire l'utilisateur du défaut doit avoir son geste de RETOUR, visible** —
+  `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE` appliqué à une sélection :
+  « Échap » n'existe pas au doigt, d'où un bouton qui n'apparaît que quand il y a quelque chose à
+  défaire.
+  ⚠️ **Ce qui meurt avec une surface est plus gros que la surface** : `useChartTooltipPosition`
+  faisait DEUX choses (machine d'état + placement flottant). La première a déménagé intacte, la
+  seconde n'avait plus d'objet — bornage au viewport, mesure de hauteur, mutation de `left`/`top` au
+  mousemove, bottom sheet, remontage à la rotation, plus `clampTooltipPosition` et ses quatre
+  constantes. Les garder aurait laissé une DESCRIPTION d'un comportement que l'app n'a plus, qu'un
+  prochain lot lirait comme un fait (`DOC-STALE-IMPOSSIBILITY`).
+  ⚠️⚠️ **Et c'est le LINT qui a trouvé le vrai défaut du lot** : en retirant le bloc de tests du
+  positionnement, j'avais emporté AUSSI le bloc suivant, `resolvePointByX` — douze assertions sur du
+  code bien vivant (le clic sur la courbe). Aucun test n'a rougi (ils avaient disparu) ; le signal
+  était un IMPORT devenu inutilisé, et il n'est visible que si on compare le COMPTE d'avertissements
+  à la base (32 → 36), jamais la ligne « 0 errors »
+  (`UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`, dont la question — « qu'est-ce qui
+  n'existe QUE là ? » — l'aurait évité).
+  ⚠️ **Un menu borne ce qu'on peut découvrir** (3ᵉ fois) : mes trois options pour choisir un jour au
+  doigt ont TOUTES été refusées, et Marc a demandé d'autres propositions plutôt que d'en prendre une.
+  La réponse retenue — flèches à PAS RÉGLABLE — était dans la deuxième vague. Quand la question porte
+  sur un GESTE d'utilisateur, prévoir que le premier menu ne contienne pas la réponse.
+  ⚠️ Et une contrainte préexistante a rattrapé mes trois libellés d'un coup : le plafond de prose de
+  `[FUTUR-INFOBULLE-EPUREE]` (45 caractères) — le geste juste est de DIRE l'état, pas de l'expliquer
+  (`UN-IRRITANT-PEUT-ETRE-STRUCTUREL-A-LA-FORME-CHOISIE`).
+
+- ⚠️⚠️ **Un test qui vise une SURFACE par son chemin de fichier, ou un nœud par sa PRÉSENCE, se
+  périme au premier déménagement** (2026-09-18, onze rouges de CI sur `[FUTUR-PANNEAU-FIXE]`, tous
+  invisibles au gate ciblé) : (1) une garde scannait `ProjectionTooltip.tsx` pour y trouver trois
+  champs de revenu — le fichier existe toujours, il ne rend plus que du SVG ; (2) **dix tests E2E**
+  visaient `[data-frozen-tooltip]`, et le remplacement n'est PAS un renommage : le panneau est
+  TOUJOURS présent, donc chercher sa présence ne prouve plus rien. Ce qui s'observe est l'ÉTAT
+  (`data-jour-epingle`), et « relâché » ne se lit plus par `toBeHidden` mais par la disparition de
+  l'ATTRIBUT. ⚠️ Deux de ces specs faisaient déjà `toHaveCount(0)` sur l'ancien sélecteur : elles
+  étaient devenues **vertes pour la mauvaise raison**, vraies d'un nœud qui n'existe plus du tout —
+  une garde d'ABSENCE survit à la disparition de son sujet sans rien dire. ⚠️ Et une garde e2e
+  interdisant tout bouton nommé « Jour » a rougi sur un contrôle sans rapport (le réglage de pas du
+  panneau) : portée RESSERRÉE plutôt que contrôle renommé, la garde reste entière là où le chemin
+  retiré réapparaîtrait.
+  ⚠️⚠️ Corollaires du panel du même lot, tous des CLASSES : **remplacer un mécanisme, c'est hériter
+  de ses garanties ou les perdre** — ici une mémoïsation, invisible à tous les tests (un littéral
+  recréé à chaque rendu invalidait un `useMemo` O(n)) ; **ce qu'un lot périme n'est pas seulement ce
+  qui est AFFICHÉ mais ce qui est ANNONCÉ** (l'`aria-label` du graphe décrivait encore l'infobulle) ;
+  **un même geste servi identiquement pour deux MODALITÉS en sacrifie une** (`preventScroll` est juste
+  à la souris et pose le focus dans un panneau hors écran au clavier — jsdom ne fait pas de mise en
+  page, donc aucune fixture ne pouvait le voir) ; **deux affirmations contradictoires sur la même
+  valeur au même écran sont pires que chacune séparément** (« Valeur nette 0 $ » à côté de « valeur
+  nette illisible » — le `|| 0` court-circuitait le « — » que `formatCAD` sait déjà rendre) ; et
+  **une phrase de COUVERTURE se vérifie comme un chiffre** (« déjà testée chez elle » était faux :
+  aucun test n'importait le module) (`UN-TEST-QUI-VISE-UNE-SURFACE-PAR-SON-CHEMIN-SE-PERIME`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même
@@ -1980,9 +2045,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ne se copie pas d'une couleur à l'autre.
 - Vérifier qu'une classe est générée : build **propre** (`rm -rf dist`) avant de grep le CSS.
 - Un outil-garde à valeurs **re-codées en dur** dérive en silence → importer la source unique.
-- Une **constante JS qui duplique une valeur de style** (`TOOLTIP_WIDTH` vs la classe `w-80`) n'est
-  confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
-  constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
+- Une **constante JS qui duplique une valeur de style** n'est confrontée par RIEN au runtime : la
+  garde lit la CLASSE (la vérité peinte) et la compare à la constante — l'inverse serait circulaire
+  (`STYLE-CONST-DUPLIQUEE`). ⚠️ L'exemple d'origine (`TOOLTIP_WIDTH` vs `w-80`) n'existe PLUS depuis
+  `[FUTUR-PANNEAU-FIXE]` : l'infobulle flottante a été remplacée par un panneau dans le flux du
+  document, qui n'a pas de largeur de chrome. La RÈGLE reste ; sa garde a été inversée en place
+  (`tests/components/tooltipLargeur.test.ts` affirme désormais le fait qui la rend caduque).
   ⚠️ Corollaire de cadrage (2026-08-25) : avant d'extraire une source unique de style, se demander
   **d'où sort la valeur qu'on canonise**. Les 14 infobulles Recharts portaient 9 styles et SIX fonds,
   dont deux BLANCS dans une app sombre — et aucun des six n'existait dans `tailwind.config.js`.

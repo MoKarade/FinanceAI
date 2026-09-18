@@ -159,7 +159,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
      */
     const totalComptes = ACCOUNTS.reduce((acc, a) => acc + (Number(point[a.key]) || 0), 0);
 
-    const fmt = (n: number) => formatCAD(n);
+    // ⚠️ NON FINI ⇒ « — », jamais « 0 $ » : `formatCAD` sait déjà le faire, c'était le `|| 0` de
+    // l'appelant qui l'empêchait. Sans ça, l'en-tête annonçait « Valeur nette 0 $ » pendant que le
+    // bandeau ci-dessous disait que la dette n'était pas calculable faute de valeur nette lisible.
+    const fmt = (n: unknown) => formatCAD(n);
     const eventsCount = (point.lifeEvents?.length ?? 0) + (point.flowEvents?.length ?? 0);
     // [FUTUR-MOBILE-PR5] Le bouton « Tout afficher » ne doit exister que s'il y a RÉELLEMENT
     // quelque chose de plus à montrer — sinon c'est un bouton mort sur un mois futur sans
@@ -177,9 +180,17 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     // [DETTE-INVISIBLE-INFOBULLE] Dérivation PARTAGÉE avec l'infobulle (`detteReductrice`) : la
     // recopier ici et là donnerait deux dérivations d'une même vérité.
     const shownAssetsSum = ACCOUNTS.reduce((s, a) => s + (Number(point[a.key]) || 0), 0);
+    // ⚠️ [INFOBULLE-DETTE-NW-NON-FINI] `null` = patrimoine net NON FINI, donc écart incalculable.
+    // Avant, un `NaN` était rabattu sur zéro et la soustraction rendait la somme TOTALE des actifs
+    // sous le libellé « Dettes » — un montant faux et parfaitement crédible. Le bloc ci-dessous ne
+    // se rend plus du tout dans ce cas, et le REFUS est dit à l'écran (cf. plus bas).
     const reducingDebt = detteReductrice(point as unknown as Record<string, unknown>, ACCOUNTS.map((a) => a.key));
+    const detteCalculable = reducingDebt !== null;
     const liquidDebt = Number(point.LiquidDebt) || 0;          // part « découvert » (liquidité à sec)
-    const otherReducingDebt = Math.max(0, reducingDebt - liquidDebt); // prêts/cartes + HELOC
+    // ⚠️ `?? 0` ÉVITÉ : ce lot vient de condamner exactement ce repli crédible trois lignes plus
+    // haut. `detteCalculable` fait foi, et `0` ici n'est jamais lu comme une mesure — c'est la
+    // valeur d'une branche que le rendu n'emprunte pas.
+    const otherReducingDebt = detteCalculable ? Math.max(0, reducingDebt - liquidDebt) : 0; // prêts/cartes + HELOC
 
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);
     // [REVENUS-NON-VENTILES-AFFICHAGE] `Income` contient AUSSI le revenu locatif, les prestations
@@ -261,7 +272,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                     </div>
                     <div className="text-right">
                         <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">Valeur nette</div>
-                        <PrivateAmount as="div" className="text-2xl font-black text-white font-mono leading-none mt-0.5">{fmt(point.NetWorth || 0)}</PrivateAmount>
+                        <PrivateAmount as="div" className="text-2xl font-black text-white font-mono leading-none mt-0.5">{fmt(point.NetWorth)}</PrivateAmount>
                     </div>
                     <button
                         type="button"
@@ -332,7 +343,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         </div>
 
                         {/* Dettes — explique un patrimoine net négatif (sinon invisible) */}
-                        {reducingDebt > 0.5 && (
+                        {detteCalculable && reducingDebt > 0.5 && (
                             <div className="mb-5">
                                 <div className="text-tiny uppercase tracking-widest text-danger-400/80 font-bold mb-2">
                                     Dettes
@@ -358,6 +369,17 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         </p>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* ⚠️ [INFOBULLE-DETTE-NW-NON-FINI] Le REFUS se dit. Sans cette ligne, un
+                            patrimoine net corrompu rendait un « Détail complet » dont les comptes ne
+                            recomposent rien, sans que l'écran l'avoue — exactement le silence qui a
+                            fait naître la ligne de dette (bug Marc 2026-06-16). */}
+                        {!detteCalculable && (
+                            <div className="mb-5 p-2.5 rounded-xl bg-amber-500/[0.06] border border-amber-500/25 text-tiny text-amber-300/90">
+                                Dette non calculable sur ce point — la valeur nette n’y est pas exploitable, donc
+                                l’écart entre la somme des comptes et elle ne veut rien dire.
                             </div>
                         )}
 

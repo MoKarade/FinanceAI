@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { createPortal } from 'react-dom';
 import { Card } from './ui/Card';
 import { Skeleton } from './ui/Skeleton';
 // [REFONTE-NAV-L2b] Sous-onglet « Historique » (évolution passée par compte, ex-Accueil) —
@@ -99,12 +98,15 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
  *  plus diverger sans casser le typecheck. `Partial<>` reste la clé : un champ que le mois n'émet
  *  pas doit s'afficher « — », jamais « 0 $ ». */
 import { Tab as TabEnum } from '../types';
-import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { PanneauJour } from './projection/PanneauJour';
 import { detteSousZero, COULEUR_DETTE } from './future/detteSerie';
 import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
-import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
+import { useSelectionJour } from '../hooks/useSelectionJour';
+import { choisirJourAffiche } from './future/jourAffiche';
+import { indexAujourdhui, indexApresPas, PAS_PAR_DEFAUT, type PasNavigation } from './future/panneauPas';
 import { resolvePointByX } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationParams';
@@ -823,34 +825,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const lastHoverPointRef = useRef<ProjectionChartPoint | null>(null);
     const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
-    // [R3] Tooltip FIGEABLE : survol = suit la souris (portail, pointer-events:none) ;
-    // clic = FIGE (devient ancré, scrollable, interactif) ; Échap / clic-dehors libère.
-    // Le moteur d'état + le positionnement vivent dans le hook ; ici on ne fait que
-    // l'alimenter (point survolé via Recharts, position via mousemove) et router le clic.
-    // [FUTUR-MOBILE-LAYOUT] Sur téléphone, l'infobulle FIGÉE devient un BOTTOM SHEET pleine
-    // largeur : la boîte flottante de 288 px recouvrait la moitié de l'écran en la laissant
-    // illisible (retour Marc « trop cramped »). `dockedRef` débraye le positionnement impératif
-    // du hook (le sheet est ancré par CSS) — assigné après coup car il dépend de tooltip.mode.
+    // [FUTUR-PANNEAU-FIXE] SÉLECTION d'un jour : survol = aperçu, clic = ÉPINGLE, Échap /
+    // clic-dehors = relâche (retour à aujourd'hui). Le contenu est rendu par le PANNEAU FIXE sous
+    // le graphe — plus aucune infobulle ne suit le curseur.
+    //
+    // ⚠️ Tout le POSITIONNEMENT a disparu avec elle (bornage au viewport, mesure de hauteur,
+    // mutation de `left`/`top` au mousemove, bottom sheet sur téléphone, remontage à la rotation) :
+    // un panneau dans le flux du document n'a ni bord d'écran à éviter ni position à recalculer.
+    // C'est aussi ce qui règle l'irritant n°1 de Marc — « elle disparaît / bouge quand je veux la
+    // lire » est STRUCTUREL à un objet qui suit le curseur.
     const isNarrowViewport = useViewportBelowSm();
-    const tooltipDockedRef = useRef(false);
-    const tooltip = useChartTooltipPosition<ProjectionChartPoint>({
+    const selection = useSelectionJour<ProjectionChartPoint>({
         getKey: (p) => p.monthIndex,
         containerRef: zoom.containerEl,
-        dockedRef: tooltipDockedRef,
     });
-    const tooltipIsSheet = isNarrowViewport && tooltip.mode === 'frozen';
-    tooltipDockedRef.current = tooltipIsSheet;
-
-    // Rotation/redimensionnement traversant 640px pendant un point FIGÉ : le portail est REMONTÉ
-    // (key sheet/float) — le nouveau nœud flottant naît au style JSX (0,0) et l'effet interne du
-    // hook ne se redéclenche pas (point/mode inchangés). Repositionner (no-op côté sheet, ancré
-    // CSS) et refocus (le nœud qui portait le focus a été détruit → focus tombé sur body).
-    const { mode: tooltipMode, reposition: tooltipReposition, tooltipRef: tooltipNodeRef } = tooltip;
-    useEffect(() => {
-        if (tooltipMode !== 'frozen') return;
-        tooltipReposition();
-        tooltipNodeRef.current?.focus();
-    }, [tooltipIsSheet, tooltipMode, tooltipReposition, tooltipNodeRef]);
 
     // [REFONTE-NAV-L6a] Publication du contexte d'écran « Futur » pour l'assistant (chat panneau
     // ouvert par-dessus cet onglet — patron CHAT-PAGE-CONTEXT, scope-guard + purge mode discret à
@@ -859,7 +847,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // JAMAIS un recalcul côté UI. Courbe non visible (gate d'amorçage) → détail « sans
     // projection » : le prompt l'avoue, zéro chiffre (no-fake-data).
     // Point sélectionné = modal détail ouvert, sinon infobulle FIGÉE (dernière sélection active).
-    const selectedCurvePoint = detailPoint ?? (tooltip.mode === 'frozen' ? tooltip.point : null);
+    const selectedCurvePoint = detailPoint ?? (selection.mode === 'frozen' ? selection.point : null);
     const futureViewDetail = useMemo(
         () => buildFutureViewDetail(curveVisible ? results : null, selectedCurvePoint),
         [curveVisible, results, selectedCurvePoint],
@@ -1137,25 +1125,60 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // au jour, centrée là où l'utilisateur venait de cliquer, N'EXISTE PLUS : la courbe est au jour
     // PARTOUT ([FUTUR-DAILY-NATIVE]) — le clic sélectionne directement le jour, sans étape.
 
-    // [FUTUR-DAILY-SELECT-STEP] Depuis un point QUOTIDIEN figé : figer la veille / le lendemain sans
-    // re-viser au pixel (à ~150 jours affichés, un jour ≈ 6 px — mesuré ; en vue 30 ans, ~0,3 px).
-    // Fonctionne aussi au DOIGT, où le zoom molette n'existe pas. La recherche se fait par VALEUR
-    // d'abscisse dans la série rendue (les jours ne sont pas régulièrement espacés — même raison
-    // que resolvePointByX).
+    // [FUTUR-PANNEAU-FIXE] L'ANCRE du panneau : aujourd'hui. C'est ce qu'il montre au repos —
+    // ni survol, ni épingle — choix de Marc en clic. La règle (« premier point d'abscisse ≥ 0,
+    // sinon le dernier ») vit dans `indexAujourdhui`, PARTAGÉE avec le geste clavier du graphe :
+    // écrites deux fois, les deux auraient fini par désigner deux jours différents.
+    // ⚠️ `enrichDailyPoint` : la série de la courbe est LÉGÈRE (seuls les champs tracés) — le
+    // panneau décrit toujours la version COMPLÈTE du jour.
+    const idxAncre = useMemo(() => indexAujourdhui(selectSeries), [selectSeries]);
+    const pointAncre = useMemo(() => {
+        const brut = idxAncre === -1 ? null : selectSeries[idxAncre];
+        return brut ? (enrichDailyPoint(brut) ?? brut) : null;
+    }, [idxAncre, selectSeries, enrichDailyPoint]);
+    // ⚠️ `useMemo` OBLIGATOIRE, et ce n'est pas une micro-optimisation : `choisirJourAffiche` rend un
+    // littéral NEUF à chaque appel, donc sans lui `idxAffiche` (un `useMemo` qui en dépend) se
+    // recalculerait à CHAQUE rendu de cet écran — un `findIndex` sur `selectSeries`, la tranche NON
+    // décimée, qui peut compter des milliers de points. Le code retiré mémoïsait correctement sur
+    // des dépendances primitives ; le reproduire en moins bien aurait été une régression payée par
+    // le jank d'un écran qui se re-rend à chaque écriture du store.
+    const jourAffiche = useMemo(
+        () => choisirJourAffiche(selection.mode, selection.point, pointAncre),
+        [selection.mode, selection.point, pointAncre],
+    );
+
+    // [FUTUR-DAILY-SELECT-STEP] Veille / lendemain sans re-viser au pixel (à ~150 jours affichés,
+    // un jour ≈ 6 px — mesuré ; en vue 30 ans, ~0,3 px). Indispensable au DOIGT, où le zoom molette
+    // n'existe pas et où un mois vaut ≈ 0,7 px à l'horizon par défaut.
+    // ⚠️ L'index part du jour AFFICHÉ, pas du jour épinglé : au repos le panneau montre aujourd'hui,
+    // et les flèches doivent marcher DE LÀ. Se caler sur l'épingle les aurait laissées inertes tant
+    // que rien n'est épinglé — c'est-à-dire à l'ouverture de l'écran, le seul moment garanti.
     // ⚠️ `selectSeries` (tranche COMPLÈTE) et non `chartSeries` (décimée) : les flèches avancent
-    // d'exactement UN jour, y compris ceux que le tracé décimé ne rend pas.
-    const frozenSeriesIdx = useMemo(() => {
-        if (tooltip.mode !== 'frozen' || !tooltip.point) return -1;
-        const x = tooltip.point.monthIndex;
+    // d'exactement un pas, y compris sur les jours que le tracé décimé ne rend pas.
+    const [pasNavigation, setPasNavigation] = useState<PasNavigation>(PAS_PAR_DEFAUT);
+    const idxAffiche = useMemo(() => {
+        if (!jourAffiche) return -1;
+        const x = jourAffiche.point.monthIndex;
         return selectSeries.findIndex((d) => d.monthIndex === x);
-    }, [tooltip.mode, tooltip.point, selectSeries]);
-    const stepDay = useCallback((dir: -1 | 1) => {
-        if (frozenSeriesIdx === -1) return;
-        const next = selectSeries[frozenSeriesIdx + dir];
-        // ⚠️ `enrichDailyPoint` : la série de la courbe est LÉGÈRE (champs tracés) — l'infobulle
-        // fige toujours le point COMPLET du jour.
-        if (next) tooltip.freezeOn(enrichDailyPoint(next) ?? next);
-    }, [frozenSeriesIdx, selectSeries, tooltip, enrichDailyPoint]);
+    }, [jourAffiche, selectSeries]);
+    // ⚠️ Mémoïsé pour la même raison que `idxAffiche` : sur un pas « mois » ou « année »,
+    // `indexApresPas` balaie la série jusqu'au bord dans la direction demandée. Écrits INLINE dans
+    // le JSX, ces deux appels faisaient deux balayages O(n) de plus à chaque rendu — et un bouton
+    // désactivé ne vaut pas qu'on rescanne des milliers de points pour l'apprendre.
+    const bornesPas = useMemo(() => ({
+        prev: idxAffiche !== -1 && indexApresPas(selectSeries, idxAffiche, -1, pasNavigation) !== -1,
+        next: idxAffiche !== -1 && indexApresPas(selectSeries, idxAffiche, 1, pasNavigation) !== -1,
+    }), [idxAffiche, selectSeries, pasNavigation]);
+
+    const stepJour = useCallback((dir: -1 | 1, pas: PasNavigation) => {
+        if (idxAffiche === -1) return;
+        const suivant = indexApresPas(selectSeries, idxAffiche, dir, pas);
+        if (suivant === -1) return;
+        const pt = selectSeries[suivant];
+        // ⚠️ Une navigation aux flèches ÉPINGLE : c'est un geste explicite, et sans l'épingle le
+        // survol suivant écraserait le jour qu'on vient de choisir.
+        selection.freezeOn(enrichDailyPoint(pt) ?? pt);
+    }, [idxAffiche, selectSeries, selection, enrichDailyPoint]);
 
     /**
      * [FUTUR-DETAIL-STEP-DAY] Ouvre le panneau de détail SUR un point donné.
@@ -1258,7 +1281,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             (p) => p.monthIndex,
         ) ?? lastHoverPointRef.current; // repli : dernier point survolé
         // ⚠️ Le point de la série est LÉGER (champs de la courbe) : on fige sa version COMPLÈTE.
-        if (point) tooltip.freezeOn(enrichDailyPoint(point) ?? point);
+        if (point) selection.freezeOn(enrichDailyPoint(point) ?? point);
     };
 
     // [D6-GRAPH] Sélection d'un jour AU CLAVIER. Le seul chaînon qui manquait : une fois un jour
@@ -1273,8 +1296,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (selectSeries.length === 0) return;
         const idxAujourdhui = selectSeries.findIndex((p) => p.monthIndex >= 0);
         const point = selectSeries[idxAujourdhui === -1 ? selectSeries.length - 1 : idxAujourdhui];
-        if (point) tooltip.freezeOn(enrichDailyPoint(point) ?? point);
-    }, [selectSeries, tooltip, enrichDailyPoint]);
+        // ⚠️ `parClavier` : le panneau est SOUS le graphe et peut être hors écran. À la souris on ne
+        // veut surtout pas faire défiler (l'utilisateur regarde la courbe qu'il vient de cliquer) ;
+        // au clavier, c'est l'inverse — sans défilement, le focus se pose dans un panneau invisible.
+        if (point) selection.freezeOn(enrichDailyPoint(point) ?? point, { parClavier: true });
+    }, [selectSeries, selection, enrichDailyPoint]);
     // ⚠️ Le prédicat des touches vit dans `utils/chartKeyboardSelect.ts` — PAS inline : ce fichier
     // rend un tablist, et la garde tablistMotifUniqueGuard interdit ici tout littéral de flèche
     // (le clavier des bandeaux vit dans SubTabs ; celui du graphe n'est pas un bandeau).
@@ -1764,7 +1790,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     {...zoom.handlers}
                     onPointerDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
                     onPointerUp={handleChartContainerClick}
-                    onPointerMove={(e) => tooltip.onPointerMove(e.clientX, e.clientY)}
                     // [D6-GRAPH] tabIndex 0 (était -1) : le conteneur entre dans l'ordre de
                     // tabulation — c'est LE point d'entrée clavier du geste « figer un jour ».
                     // Le hook comptait déjà sur sa focusabilité pour restituer le focus.
@@ -1772,7 +1797,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onKeyDown={handleChartKeyDown}
                     className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
-                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Les mêmes données sont lisibles sous la courbe, sous forme de tableau et de liste de jalons. À la souris : clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = figer le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans l'infobulle, Échap = relâcher."
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Le détail du jour visé est décrit dans le panneau situé juste sous la courbe ; les mêmes données sont aussi lisibles sous forme de tableau et de liste de jalons. À la souris : survol = aperçu, clic = épingle le jour dans le panneau, molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = épingle le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans le panneau, Échap = relâche."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
@@ -1799,9 +1824,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 // l'infobulle reçoit sa version COMPLÈTE, ventilée à la demande et cachée
                                 // par mois (~10 ms la 1re entrée dans un mois, 0 ensuite).
                                 const p = s?.activePayload?.[0]?.payload;
-                                if (p) { const full = enrichDailyPoint(p) ?? p; lastHoverPointRef.current = full; tooltip.onHoverPoint(full); }
+                                if (p) { const full = enrichDailyPoint(p) ?? p; lastHoverPointRef.current = full; selection.onHoverPoint(full); }
                             }) as unknown as (nextState: unknown, event: unknown) => void}
-                            onMouseLeave={(() => tooltip.onChartLeave()) as unknown as () => void}
+                            onMouseLeave={(() => selection.onChartLeave()) as unknown as () => void}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
@@ -1960,6 +1985,33 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                      )}
                 </div>
 
+                {/* [FUTUR-PANNEAU-FIXE] Le panneau du jour, dans le FLUX du document, immédiatement
+                    sous le graphe — demande de Marc en texte libre : « j'aimerais que ce soit un
+                    panneau fixe en dessous du graphe et pareil sur le téléphone ».
+                    ⚠️ Le graphe GARDE sa taille (choix de Marc en clic) : c'est la PAGE qui défile
+                    pour atteindre le panneau. L'alternative — rétrécir le graphe pour tout faire
+                    tenir — aurait réglé le défilement en abîmant ce qu'on vient regarder. */}
+                <PanneauJour
+                    data={jourAffiche?.point ?? null}
+                    origine={jourAffiche?.origine ?? 'ancre'}
+                    userName1={config.users[0]?.name}
+                    userName2={config.users[1]?.name}
+                    onOpenDetail={() => {
+                        // Le jour se lit sur le point D'ORIGINE, avant que `detailPointFor` ne le
+                        // rebase sur son mois hôte. Le trio (point, jour, mois) est posé par
+                        // `ouvrirDetailSur` — un seul endroit, partagé avec les flèches du panneau
+                        // de détail lui-même.
+                        ouvrirDetailSur(jourAffiche?.point ?? null);
+                    }}
+                    onStep={stepJour}
+                    pas={pasNavigation}
+                    onPasChange={setPasNavigation}
+                    canStepPrev={bornesPas.prev}
+                    canStepNext={bornesPas.next}
+                    onRelease={selection.release}
+                    panneauRef={selection.panneauRef}
+                />
+
                 {/* [FUTUR-DAILY-NATIVE] La courbe est au jour PARTOUT — la bannière est devenue une
                     note de méthodologie compacte + les avertissements d'honnêteté conditionnels.
                     Le repli mensuel (ventilation impossible : < 2 mois à valeur nette finie) est
@@ -2104,85 +2156,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ul>
                 )}
 
-                {/* [R3] Tooltip portail : survol (pointer-events:none, suit la souris) ou
-                    figé (pointer-events:auto, scrollable, ancré, focusable). Positionné par
-                    le hook (left/top mutés directement). z-290 < modale z-300. */}
-                {tooltip.point && tooltip.mode !== 'idle' && createPortal(
-                    <div
-                        // ⚠️ key : flottant et sheet écrivent des left/top DIFFÉRENTS (impératif vs
-                        // JSX) sur le même nœud — le remount garantit un style vierge au basculement.
-                        key={tooltipIsSheet ? 'sheet' : 'float'}
-                        ref={tooltip.tooltipRef}
-                        style={tooltipIsSheet
-                            ? { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 290, pointerEvents: 'auto' }
-                            : { position: 'fixed', top: 0, left: 0, zIndex: 290, pointerEvents: tooltip.mode === 'frozen' ? 'auto' : 'none' }}
-                        tabIndex={tooltip.mode === 'frozen' ? -1 : undefined}
-                        data-frozen-tooltip={tooltip.mode === 'frozen' ? '' : undefined}
-                        role={tooltip.mode === 'frozen' ? 'dialog' : undefined}
-                        aria-modal={tooltip.mode === 'frozen' ? true : undefined}
-                        // Piège de focus minimal (panel #597) : figé = modal (Échap/clic-dehors/
-                        // Fermer libèrent) — sans piège, Tab sortait vers des contrôles recouverts
-                        // par le sheet plein écran, sans indication. aria-modal l'ANNONCE, le
-                        // piège le GARANTIT — l'un sans l'autre mentirait au lecteur d'écran.
-                        onKeyDown={tooltip.mode === 'frozen' ? (e) => {
-                            if (e.key !== 'Tab') return;
-                            const root = tooltip.tooltipRef.current;
-                            if (!root) return;
-                            const focusables = root.querySelectorAll<HTMLElement>(
-                                'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-                            );
-                            if (focusables.length === 0) return;
-                            const first = focusables[0];
-                            const last = focusables[focusables.length - 1];
-                            if (e.shiftKey && (document.activeElement === first || document.activeElement === root)) {
-                                e.preventDefault();
-                                last.focus();
-                            } else if (!e.shiftKey && document.activeElement === last) {
-                                e.preventDefault();
-                                first.focus();
-                            }
-                        } : undefined}
-                        aria-label={tooltip.mode === 'frozen'
-                            ? (tooltipIsSheet
-                                ? "Infobulle figée du point projeté — bouton Fermer en bas"
-                                : "Infobulle figée du point projeté — Échap pour fermer")
-                            : undefined}
-                    >
-                        <ExpertTooltip
-                            data={tooltip.point}
-                            userName1={config.users[0]?.name}
-                            userName2={config.users[1]?.name}
-                            frozen={tooltip.mode === 'frozen'}
-                            onOpenDetail={() => {
-                                // Le jour se lit sur le point D'ORIGINE, avant que `detailPointFor`
-                                // ne le rebase sur son mois hôte.
-                                // ⚠️ [PASSE-REEL-TXN-JOUR-VIDE] `dayIsReal` est OBLIGATOIRE ici, et ce
-                                // n'est pas une ceinture-bretelles : `dayIso` est posé sur TOUT point
-                                // quotidien, futur compris (`mergeDailyRealPoint` fait `{ ...d }` sur
-                                // la branche projetée, et `d` le porte déjà). Sans ce filtre, cliquer
-                                // un jour FUTUR affichait « aucun mouvement ce jour-là » — une
-                                // affirmation de MESURE sur du projeté, exactement le faux que la
-                                // section évite déjà pour un point mensuel.
-                                // Ça ne se voyait pas avant l'état vide : la liste étant toujours
-                                // vide dans le futur, la section ne se rendait simplement pas.
-                                // `dayIsReal` n'est posé que par la branche RÉELLE de
-                                // `mergeDailyRealPoint` (unique occurrence du dépôt), et le mois
-                                // ANCRE y passe aussi via `realOnlyMonthPoints` : couverture
-                                // complète, sans exclure les jours réels du premier mois.
-                                // [FUTUR-DETAIL-CATEGORIES-MOIS + FUTUR-DETAIL-STEP-DAY] Le trio
-                                // (point, jour, mois) est posé par `ouvrirDetailSur` — un seul
-                                // endroit, partagé avec les flèches Veille/Lendemain du panneau.
-                                ouvrirDetailSur(tooltip.point);
-                            }}
-                            onStepDay={stepDay}
-                            canStepPrev={frozenSeriesIdx > 0}
-                            canStepNext={frozenSeriesIdx !== -1 && frozenSeriesIdx < selectSeries.length - 1}
-                            sheet={tooltipIsSheet}
-                            onClose={tooltip.release}
-                        />
-                    </div>,
-                    document.body,
-                )}
 
                 {detailPoint && (
                     <FutureDetailModal

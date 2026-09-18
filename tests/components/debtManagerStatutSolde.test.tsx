@@ -188,6 +188,38 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         expect(screen.queryByLabelText(/Virements qui remboursent/i)).toBeNull();
     });
 
+    it('un marchand LIÉ À UNE AUTRE DETTE disparaît de la liste — sinon il est déduit DEUX fois', () => {
+        // ⚠️ `paiementsReelsDette` travaille par dette : deux dettes liées au même marchand
+        // déduiraient CHACUNE la totalité des virements. Mesuré sur deux dettes et 7 virements
+        // (1 642,69 $ réellement versés) : 3 285,38 $ retirés du total dû. La liste est le SEUL
+        // endroit où ce lien se pose — l'empêcher ici l'empêche partout.
+        poserTransactions(TX);
+        const autre = BAIL({ id: 'autre', name: 'autre bail', balanceAsOf: ilYA(9), paymentPayee: 'Toyota Financial' } as Partial<Debt>);
+        const celleCi = BAIL({ id: 'bail', balanceAsOf: ilYA(9) } as Partial<Debt>);
+        render(<DebtManager debts={[celleCi, autre]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getAllByRole('button', { name: 'Modifier' })[0]);
+        const select = screen.getByLabelText(/Virements qui remboursent/i) as HTMLSelectElement;
+        expect([...select.options].map(o => o.value)).not.toContain('Toyota Financial');
+        // ⚠️ Anti-vacuité : le marchand NON pris reste offert, sinon « absent » serait vrai d'une
+        // liste vide ou d'un sélecteur cassé.
+        expect([...select.options].map(o => o.value)).toContain('Ste Foy Toyota Quebec');
+    });
+
+    it('des virements qui DÉPASSENT le solde annoncent le refus, et alertent', () => {
+        // Le remplaçant du plancher `Math.max(0, …)` : mesuré, il rendait 0,00 $ sous une phrase
+        // rassurante. L'écran doit maintenant NOMMER le refus et le marchand en cause.
+        poserTransactions([
+            ...TX,
+            ...Array.from({ length: 300 }, (_, i) => ({ id: 100 + i, date: ilYA(1 + i % 300), payee: 'Épicerie', amount: -400, category: 'Épicerie', status: 'processed' })),
+        ]);
+        const dette = BAIL({ balanceAsOf: ilYA(300), paymentPayee: 'Épicerie' } as Partial<Debt>);
+        render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+        const p = screen.getByText(/dépassent le solde enregistré/i);
+        expect(p.textContent).toContain('Épicerie');
+        expect(p.className).toContain('amber');
+    });
+
     it('le marchand DÉJÀ lié reste dans la liste même si plus aucune transaction ne le porte', () => {
         // Sans ça, ouvrir le formulaire effacerait le lien en silence au premier changement.
         poserTransactions(TX);

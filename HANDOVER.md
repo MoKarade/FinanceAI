@@ -4,6 +4,36 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-18 (suite 4) — **le BACKLOG ne gardait plus que le vivant que sur le papier**
+> ✅ **PR #992 fusionnée** (18:38 UTC), déploiement Vercel de PRODUCTION `dpl_9C7EhC3J…` **READY**
+> sur `069effd3`. ⚠️ La RÉPONSE servie n'a pas pu être contrôlée depuis ce conteneur : `vercel.com`
+> et `finance.hubperso.com` rendent **403 au CONNECT** (refus de politique du proxy), et l'URL
+> `*.vercel.app` est derrière le SSO Vercel — §6 du `CLAUDE.md`. Ce lot ne change que de la doc et
+> un test : il n'a **rien à déployer**.
+> 🔎 **`[BACKLOG-COCHES-ACCUMULES]`** — la règle « un item coché + mergé + gate vert DÉMÉNAGE vers
+> `docs/BACKLOG_ARCHIVE.md` au plus tard à la PR suivante » est écrite depuis le 2026-07-31 et avait
+> dérivé sans que rien ne rougisse. **MESURÉ juste après le merge** : **91** items cochés
+> cohabitaient avec **151** vivants — et **20** d'entre eux portaient dans leur PROPRE texte
+> « → à déménager vers BACKLOG_ARCHIVE à la prochaine PR ». Les 91 sont déménagés, avec leur section
+> d'origine ; deux sections entières (`🚗 Dette — les VRAIS virements`, `🔒 Sécurité des
+> dépendances`) n'avaient plus aucune tâche vivante et sont parties entières.
+> ⚠️ **Rien n'a été réécrit** : `git diff --numstat` sur l'archive rend **1144 insertions / 0
+> suppression**, et aucune ligne du backlog d'origine n'est introuvable dans l'un des deux fichiers.
+> Un item archivé est un RÉCIT daté — le rafraîchir effacerait ce qui était vrai à sa date
+> (`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT`).
+> ⚠️⚠️ **La garde est un PLAFOND, pas « zéro coché »** : la règle AUTORISE de cocher dans la PR qui
+> livre et n'exige l'archivage qu'à la PR SUIVANTE — une garde à zéro rendrait le geste prescrit
+> impossible. Ce qu'on interdit est l'ACCUMULATION. Le plafond est **MESURÉ** (14 derniers merges de
+> `origin/main` : maximum **4** coches par PR ⇒ plafond **6**), et la commande de re-mesure est
+> écrite dans le fichier plutôt que son seul résultat — un chiffre périmé se lit comme un fait, une
+> commande périmée échoue bruyamment.
+> ⚠️ La seconde assertion ne dépend d'AUCUN plafond : un item qui écrit lui-même que son archivage
+> est dû est en retard par ses propres mots, qu'il soit seul ou quatre-vingt-onzième.
+> ✅ **Trois perturbations SÉPARÉES**, chacune ne touchant que sa cible : backlog d'avant le ménage
+> → 2 rouges (accumulation + dette déclarée) · **un seul** item coché SOUS le plafond mais portant
+> la phrase → 1 rouge, la seconde assertion seule · fichier vidé → l'anti-vacuité seule.
+> 📌 `tests/backlogArchivageDesCoches.test.ts` (4 cas) · `BACKLOG.md` 2874 → 1815 lignes.
+
 > ## 🟦 Session 2026-09-18 (suite 3) — **le détail du jour devient un PANNEAU FIXE**
 > 🔎 **`[FUTUR-PANNEAU-FIXE]`** — l'infobulle flottante du graphe Futur est REMPLACÉE par un
 > panneau dans le flux du document, sous le graphe. Demande de Marc en texte libre, puis cadrée en

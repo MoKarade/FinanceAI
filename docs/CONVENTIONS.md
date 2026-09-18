@@ -15505,3 +15505,78 @@ ne se voient qu'à l'exécution d'une suite complète :
 défauts de plus dont deux qu'aucun test ne pouvait voir. Ce n'est pas un argument pour lancer plus
 de choses — c'est un argument pour **ne pas confondre « mes gardes sont vertes » avec « le lot est
 bon »** : mes gardes ne connaissent que ce que j'ai pensé à garder.
+
+---
+
+## `UNE-REGLE-DE-TENUE-SANS-GARDE-DERIVE-SANS-QUE-RIEN-NE-ROUGISSE` (2026-09-18)
+
+**Le fait.** La règle « un item coché + validé (mergé sur `main`, gate vert) DÉMÉNAGE vers
+`docs/BACKLOG_ARCHIVE.md`, au plus tard à la PR suivante » est écrite dans `CLAUDE.md` §3 et dans
+l'en-tête de `BACKLOG.md` **depuis le 2026-07-31**, en toutes lettres, sous le titre « Convention
+(règles Marc, NON négociables) ». Mesuré le 2026-09-18, juste après le merge de la PR #992 :
+**91 items cochés** cohabitaient avec **151 vivants**, et **20 d'entre eux** portaient dans leur
+PROPRE texte la phrase « → à déménager vers BACKLOG_ARCHIVE à la prochaine PR ». Vingt sessions
+successives ont donc écrit *elles-mêmes* que l'archivage était dû, puis sont passées à autre chose.
+
+**Ce qu'il faut en retenir.** Une règle de TENUE (archiver, cocher, dater, retirer une exemption
+morte) se distingue d'une règle de CODE par ceci : sa transgression ne produit **aucun symptôme**.
+Le dépôt compile, la CI est verte, l'app fonctionne, et le seul dégât — un document qui trompe la
+prochaine reprise de session sur ce qui reste à faire — n'est visible que pour qui lit le document
+en entier, ce que personne ne fait. **La bonne question devant une règle de tenue n'est pas « est-ce
+que je l'applique ? » mais « qu'est-ce qui rougirait si je ne l'appliquais pas ? »** — et si la
+réponse est « rien », la règle n'est pas une règle, c'est une intention.
+
+**⚠️ La garde d'une règle qui autorise un état TRANSITOIRE est un PLAFOND, jamais un zéro.** Le
+réflexe — « aucun item coché dans `BACKLOG.md` » — aurait rendu **impossible** le geste que la même
+règle prescrit trois lignes plus haut : « cocher les items livrés dans la PR même ». L'archivage
+n'est dû qu'à la PR SUIVANTE, donc l'état « coché mais pas encore archivé » est légitime pendant
+exactement un lot. Ce qu'on interdit n'est pas la coche, c'est l'**ACCUMULATION**. Avant d'écrire
+une garde, relire la règle jusqu'au bout : celle-ci porte une tolérance, et une garde qui l'ignore
+sera contournée au premier lot — donc désarmée pour de bon.
+
+**⚠️ Le plafond se MESURE** (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`). Combien de
+coches un lot légitime pose-t-il ? Sur les 14 derniers merges de `origin/main` (2026-09-14 →
+2026-09-18) : 2 · 4 · 1 · 1 · 1 · 0 · 0 · 1 · 0 · 4 · 1 · 0 · 3 · 3 — **maximum 4**. Plafond posé à
+**6** = ce maximum plus deux, pour qu'un lot un peu plus large ne rougisse pas le jour où il livre.
+Et c'est la **COMMANDE** de re-mesure qui est écrite dans le fichier, pas seulement son résultat :
+un chiffre périmé se lit comme un fait, une commande périmée échoue bruyamment
+(`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`).
+
+**⚠️ Une seconde assertion qui ne dépend d'AUCUN seuil.** Un item coché qui écrit lui-même
+« à déménager vers BACKLOG_ARCHIVE » est en retard **par ses propres mots**, qu'il soit seul ou
+quatre-vingt-onzième. Elle est plus forte que le plafond là où le plafond est faible (un unique item
+oublié pendant six mois passe le plafond), et elle n'a pas de chiffre à défendre. Mesuré : 20 avant,
+0 après. C'est la preuve de perturbation n°2 ci-dessous qui montre qu'elle est INDÉPENDANTE — un
+seul item, sous le plafond, la fait rougir seule.
+
+**⚠️ Un déménagement de masse se prouve par CONSERVATION, jamais par relecture.** 1 059 lignes ont
+changé de fichier. Les deux contrôles qui valent :
+`git diff --numstat docs/BACKLOG_ARCHIVE.md` → **1144 insertions / 0 suppression** (rien
+d'historique n'a été touché), et un script qui vérifie que **chaque ligne non vide** du backlog
+d'origine se retrouve dans l'un des deux fichiers → **0 perdue**. ⚠️ Mon premier jet avait collapsé
+les lignes vides sur TOUT le fichier d'archive (47 endroits) : correct au mot près, et pourtant une
+réécriture d'un RÉCIT daté — refait par insertion pure
+(`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT`).
+
+**⚠️ Une section dont plus aucune tâche n'est vivante n'est pas une section vide, c'est une section
+finie.** Deux d'entre elles (`🚗 Dette — elle suit maintenant les VRAIS virements`,
+`🔒 Sécurité des dépendances`) sont parties ENTIÈRES, titre et prose d'introduction comprises :
+laisser le titre aurait annoncé un chantier sans travail — exactement la dérive que
+`PM-STALE-BACKLOG` décrit. Le critère est mécanique et se calcule : `done > 0 && todo == 0`.
+
+**Anti-vacuité.** « 0 item coché » est aussi vrai d'un `BACKLOG.md` vide, renommé ou introuvable que
+d'un backlog bien tenu — l'état dans lequel un ratchet cesse de protéger sans le dire. La garde
+exige donc d'abord que le fichier porte **> 50 items vivants** et **> 10 sections**, puis que les
+deux détecteurs reconnaissent leurs témoins (deux coches réelles, deux formulations de la dette) et
+rejettent leurs contre-témoins (un item vivant, une sous-puce indentée — la compter doublerait le
+total au premier item détaillé —, et la PROSE de la convention qui ÉNONCE la règle sans être une
+dette).
+
+**Perturbations (trois, SÉPARÉES, chacune ne touchant que sa cible).**
+1. `BACKLOG.md` d'avant le ménage → **2 rouges** : accumulation ET dette déclarée.
+2. Un **seul** item coché, donc SOUS le plafond, mais portant la phrase → **1 rouge**, la seconde
+   assertion seule : elle ne dépend pas du seuil.
+3. Fichier réduit à son titre → **1 rouge**, l'anti-vacuité seule.
+
+**Fichiers.** `tests/backlogArchivageDesCoches.test.ts` (4 cas) · `BACKLOG.md` 2 874 → 1 815 lignes ·
+`docs/BACKLOG_ARCHIVE.md` +1 144 lignes.

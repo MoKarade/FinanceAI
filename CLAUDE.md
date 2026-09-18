@@ -1452,6 +1452,26 @@ n'est pas réécrire un récit.
   **une phrase de COUVERTURE se vérifie comme un chiffre** (« déjà testée chez elle » était faux :
   aucun test n'importait le module) (`UN-TEST-QUI-VISE-UNE-SURFACE-PAR-SON-CHEMIN-SE-PERIME`).
 
+- ⚠️⚠️ **Une règle de TENUE sans garde dérive sans que rien ne rougisse** (2026-09-18) : « un item
+  coché + mergé + gate vert DÉMÉNAGE vers `BACKLOG_ARCHIVE.md`, au plus tard à la PR suivante » est
+  écrite depuis le 2026-07-31, sous le titre « NON négociables ». Mesuré après le merge de #992 :
+  **91 cochés contre 151 vivants**, dont **20 portant dans leur PROPRE texte « → à déménager vers
+  BACKLOG_ARCHIVE à la prochaine PR »**. Sa transgression n'a AUCUN symptôme — la CI est verte,
+  l'app marche, et le seul dégât (un document qui trompe la reprise de session) n'est visible que
+  pour qui lit le document entier. Devant une règle de tenue, demander non pas « est-ce que je
+  l'applique ? » mais **« qu'est-ce qui rougirait si je ne l'appliquais pas ? »**.
+  ⚠️⚠️ **La garde d'une règle qui autorise un état TRANSITOIRE est un PLAFOND, jamais un zéro** :
+  « aucun coché » aurait rendu impossible le geste que la même règle prescrit trois lignes plus haut
+  (« cocher dans la PR même »). Ce qu'on interdit est l'ACCUMULATION — et le plafond se MESURE
+  (14 derniers merges : maximum **4** coches par PR ⇒ plafond **6**), avec la COMMANDE de re-mesure
+  écrite à côté plutôt que son seul résultat. ⚠️ La seconde assertion ne dépend d'aucun seuil : un
+  item qui déclare lui-même sa dette est en retard par ses propres mots (perturbation à **un seul**
+  item, sous le plafond → elle rougit seule). ⚠️ Un déménagement de masse se prouve par
+  CONSERVATION, jamais par relecture : **1 144 insertions / 0 suppression** dans l'archive, 0 ligne
+  introuvable — et mon 1er jet avait collapsé les lignes vides de TOUT le fichier d'archive, correct
+  au mot près et pourtant une réécriture d'un récit daté
+  (`UNE-REGLE-DE-TENUE-SANS-GARDE-DERIVE-SANS-QUE-RIEN-NE-ROUGISSE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

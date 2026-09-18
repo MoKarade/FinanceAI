@@ -10,6 +10,1150 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-18 — Ménage : 91 items cochés déménagés depuis `BACKLOG.md`
+
+Retirés de `BACKLOG.md` parce qu'ils étaient **cochés, mergés et gate vert**. La règle du dépôt
+dit « au plus tard à la PR suivante » ; elle avait dérivé — **91** items cochés cohabitaient avec
+**151** vivants, et **vingt d'entre eux portaient dans leur propre texte « → à déménager vers
+BACKLOG_ARCHIVE à la prochaine PR »**. Un backlog qui mélange fait et à-faire trompe la reprise de
+session (classe `PM-STALE-BACKLOG`, nommée dans `CLAUDE.md`).
+
+⚠️ **Rien n'a été réécrit** : chaque item arrive avec le texte exact qu'il portait, sous le titre de
+la section d'où il vient. Un item archivé est un RÉCIT daté — le rafraîchir effacerait ce qui était
+vrai à sa date.
+
+### 📈 Infobulle et courbes du Futur (18/09/2026, demandé par Marc)
+
+- [x] 🔧 **`[FUTUR-COURBE-DETTE]`** (S) **LIVRÉ le 18/09/2026** — la dette hors hypothèque
+  (`DettesNonImmo`, déjà publiée par le moteur ET par la reconstruction du passé) devient une série
+  du graphe, tracée **NÉGATIVE** (aire orange `#ea580c` sous zéro), avec son entrée de légende.
+  ⚠️ **La prémisse de Marc a été MESURÉE avant d'être suivie** : « il y a bien une courbe rouge en
+  dessous de zéro donc je veux que ce soit celle-ci qui continue si c'est bien celle de la dette ».
+  Ce n'en était pas : cette courbe est `ImpotLatent`. La suivre aurait fait passer un impôt
+  hypothétique pour sa dette réelle. Couleur ET forme distinctes, verrouillées par test.
+  ⚠️ `detteSousZero` rend `null` (jamais `0`) quand le champ est absent ou non fini — `0` se lirait
+  « aucune dette », la valeur la plus crédible donc la pire.
+
+- [x] 🔧 **`[FUTUR-MOUVEMENTS-TOUS]`** (S) **LIVRÉ le 18/09/2026** — le plafond de 6 mouvements par
+  journée est retiré. **Mesuré sur les vraies transactions de Marc** (1er août → 18 septembre) :
+  9 journées dépassaient 6, la pire le 31 août avec 18 mouvements (12 cachés), et la liste gardait
+  les six PREMIERS rencontrés, pas les plus gros — Anthropic (−321,93 $) et Global Exchange
+  (−307,40 $) étaient cachés pendant qu'un « Frais de service » de 15,95 $ restait affiché.
+  Le conteneur de l'infobulle défile déjà (`max-h` + `overflow-y-auto`) : aucune place à gagner.
+  Le test de limite du plafond est **INVERSÉ** au même endroit, avec sa mesure.
+  ⚠️ `movementsTotal` survit : il compte AUSSI les transactions sans description, donc
+  « +N autres » ne parle plus que d'elles.
+
+- [x] 🔧 **`[INFOBULLE-DETTE-NW-NON-FINI]`** (S) **LIVRÉ le 18/09/2026, avec `[FUTUR-PANNEAU-FIXE]`**
+  — routé la veille comme « préexistant, hors périmètre », corrigé ici parce qu'il est devenu du
+  chemin **NOMINAL** : la colonne « Par compte » du panneau consomme `detteReductrice`.
+  Le défaut : `Number(point.NetWorth) || 0` rabattait un `NaN`/`Infinity` sur **zéro**, et la
+  soustraction rendait alors la somme **TOTALE des actifs** sous le libellé « Dettes (hors
+  hypothèque) » — un chiffre faux et parfaitement crédible, dans les deux surfaces, sans trace.
+  **Correctif = le TYPE** (`number | null`), qui a fait ÉNUMÉRER les deux consommateurs par le
+  compilateur : tous deux gataient sur `> 0.5` et auraient masqué `null` en silence.
+  ⚠️ **Les DEUX moitiés sont fermées**, et la seconde est plus discrète : une clé d'actif PRÉSENTE
+  mais non finie rend la SOMME amputée, donc la dette **surévaluée** du montant du compte illisible
+  — l'erreur va dans l'autre sens. Une clé ABSENTE reste légitime (« pas de compte de ce type »,
+  pas « donnée perdue »).
+  Le REFUS est **dit à l'écran** dans les deux surfaces, jamais une ligne silencieusement masquée.
+  ⚠️ Poser le `logError` DANS `comptes.ts` élargirait le contrat de mock de tous les tests qui
+  montent `FutureProjection` (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK…`,
+  2 occurrences) — à mesurer avant, pas à supposer.
+  ⚠️ Jumeau FAIBLE, à décider dans le même lot : `detteSousZero`
+  (`components/future/detteSerie.ts`) ne distingue pas non plus « absent » (silence LÉGITIME) de
+  « présent mais non fini » (corruption, à tracer) — mais son échec est SÛR (trou visuel honnête,
+  jamais un chiffre faux), donc il ne justifie pas à lui seul un lot.
+
+- [x] 🔧 **`[FUTUR-COURBE-DETTE-PREFIXE-PASSE]`** (S) **LIVRÉ le 18/09/2026** — trouvé par le panel
+  APRÈS un gate ciblé vert : `buildPastPrefix` CALCULAIT la dette du mois (avec tout son gating par
+  `startDate` et par l'amortissement) et ne la PUBLIAIT pas — elle ne servait qu'à produire
+  `NetWorth`. Le jour où la dette est devenue une COURBE, ce producteur est devenu le seul du passé
+  à ne rien publier, donc `detteSousZero` y lisait `undefined` : **trou silencieux dans la courbe,
+  indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir**. Chemin étroit mais
+  réel (repli MENSUEL, et le tout premier point d'ancrage de la courbe quotidienne). Garde de
+  TRAVERSÉE (producteur → `detteSousZero`) + contrôle négatif (patrimoine inconnu ⇒ aucune dette
+  affirmée). La grandeur publiée est la MÊME variable que celle retranchée du patrimoine, jamais une
+  seconde dérivation.
+
+- [x] 🔧 **`[FUTUR-COURBE-DETTE-TABLE-A11Y]`** (S) **LIVRÉ le 18/09/2026** — la table de données
+  `sr-only` (alternative texte au graphe, dont l'`aria-label` promet « les mêmes données ») n'avait
+  pas reçu la colonne de la nouvelle série : un utilisateur de lecteur d'écran obtenait une table où
+  la valeur nette ne se RECOMPOSE PAS par somme des comptes. Garde **DÉRIVÉE** de
+  `FUTURE_LEGEND_ITEMS` (toute série en AIRE doit avoir sa colonne) — une garde qui recopierait
+  `dataColumns` serait circulaire et ne verrait aucun oubli.
+
+- [x] 🔧 **`[FUTUR-PANNEAU-FIXE]`** (L) **LIVRÉ le 18/09/2026** — l'infobulle flottante est
+  remplacée par un **panneau FIXE sous le graphe**, choix de Marc en clic et en texte libre :
+  « j'aimerais que ce soit un panneau fixe en dessous du graphe et pareil sur le téléphone mais je
+  veux que ça reste lisible. Je veux pouvoir choisir le lendemain ou la veille ».
+  **Cadré avec lui, en trois lots de questions** : colonnes sur PC / onglets sur téléphone · le
+  graphe garde sa taille (la page défile) · état initial **aujourd'hui** · ordre **net → flux →
+  comptes → mouvements** · survol = aperçu, clic = épingle · l'infobulle flottante disparaît · sur
+  téléphone, **flèches à PAS RÉGLABLE (jour / mois / année)** — les trois premières propositions
+  (tape + flèches, curseur sous le graphe, flèches seules) ont toutes été refusées.
+  ⚠️ Marc a coché les QUATRE irritants **et** les quatre « ce que je regarde en premier » : le
+  problème était l'**ORGANISATION**, pas le volume — **aucune section n'a été supprimée**.
+  ⚠️ L'irritant n°1 (« elle disparaît / bouge quand je veux la lire ») est STRUCTUREL à un objet
+  qui suit le curseur : pour lire une infobulle il faut bouger la souris vers elle, et la bouger la
+  change. Seul l'endroit où elle vit le corrige.
+  **TROIS états, pas deux** : l'infobulle n'existait que pendant un survol ou un gel ; un panneau
+  fixe est toujours là et a besoin d'un troisième état — ce qu'il montre au repos.
+  `choisirJourAffiche` en fait une fonction pure (épingle > survol > ancre) et l'ORIGINE est écrite
+  à l'écran.
+
+### 🚗 Dette — elle suit maintenant les VRAIS virements (18/09/2026, demandé par Marc)
+
+- [x] 🔧 **`[DETTE-VIREMENTS-REELS]`** (M) **LIVRÉ le 18/09/2026** (demande de Marc :
+  « ca marfhe pas pour la dette je vais faire simple pour toi je veux que chaque fois que je paie
+  toyota ca enleve ca de la dette, faut que ma dette soit lié a chaque fois que je fais un virement
+  du bon montant a toyota » ; sémantique choisie par lui en clic : **« suivre les vrais virements,
+  point »** — la dette ne descend QUE sur un virement réellement importé, aucun chiffre inventé).
+  **CE QUI EXISTAIT ET POURQUOI ÇA NE SUFFISAIT PAS** : le passé du bail descendait par une GRILLE
+  MODÉLISÉE (`startDate` + k × cadence, versement dérivé de `minimumPayment`). C'est un modèle : il
+  continue de descendre les semaines où rien n'a été prélevé, et il place des versements que les
+  transactions ne connaissent pas.
+  **MESURÉ sur ses vraies transactions** (8 × `Toyota Financial` −234,67 $ les 28 juil., 5, 11, 18,
+  25 août, 1er, 9 et 15 sept.) : série au mois **48 811,36 | 48 576,69 | 47 403,34** (virements
+  réels) contre **49 046,02 | 48 576,68 | 47 403,34** (grille). L'écart est concentré en JUILLET —
+  **234,66 $**, soit exactement un versement que le modèle inventait ; août et septembre coïncident
+  au cent près. Un modèle qui s'accorde avec la mesure là où on regarde reste un modèle.
+  **CONTRÔLE NÉGATIF, dans les données** : `Ste Foy Toyota Quebec` −500,00 $ et −779,79 $ (le
+  CONCESSIONNAIRE, juillet) — un appariement lâche (« le libellé contient toyota ») aurait retiré
+  **1 279,79 $** de la dette pour des achats qui n'en remboursent rien. L'appariement est EXACT.
+  **LIVRÉ** : champ `Debt.paymentPayee` (choisi dans une LISTE de marchands, jamais retapé, et
+  déclaré dans `CHAMPS_TEXTE` du même geste) ; `sourceVersements` devient la décision UNIQUE
+  « d'où viennent les versements » (virements réels **>** grille) ; une dette liée ne retombe
+  JAMAIS sur la grille, pas même en repli ; `transactions` devient **REQUIS** sur toute la chaîne
+  (solde du jour, série au mois et au jour, porte du moteur, total dû, bandeau) — 94 sites énumérés
+  par le compilateur.
+  ⚠️ **CONSÉQUENCE ASSUMÉE, et elle est écrite à l'écran** : avant le plus ancien virement importé
+  (28 juillet pour Marc, alors que le bail commence le 14), la dette reste PLATE. L'app ne sait rien
+  de ce qui a été payé avant que ses transactions ne commencent — c'est le prix exact de « aucun
+  chiffre inventé, jamais ».
+  ⚠️ **RESTE UN GESTE À MARC** : ouvrir la dette « bZ », choisir « Toyota Financial » dans
+  « Virements qui remboursent cette dette », puis Enregistrer. Le lien ne se devine pas.
+
+### 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
+
+- [x] 🔧 **`[MCP-DEPLOY-SILENCIEUX]`** Le serveur MCP n'était plus déployé depuis au moins
+  27 jours, et rien ne le disait. **Garde livrée le 15/09** (S) ; 👤 **le déploiement reste
+  à faire par Marc** (voir la dernière puce).
+  **CE QUI A ÉTÉ MESURÉ, pas supposé** — le hub reçoit un `/hub/summary` qui contient encore
+  « Investissements », « Dette totale » et « Espace CELI dispo », soit le trio remplacé par
+  les trois lignes de placements le **2026-08-19** (`b7c6e35`, `4ea10c4` — PR #657 et #660).
+  Donc la révision Cloud Run en ligne est ANTÉRIEURE au 19/08. Et c'est bien Cloud Run que le
+  hub interroge : l'app Vercel n'expose AUCUNE route `/hub/summary` (son `vercel.json`
+  réécrit `/(.*)` vers `/index.html`), donc un appel à `finance.hubperso.com/hub/summary`
+  rendrait du HTML et le widget afficherait « réponse invalide ». Il affiche `ok`.
+  **177 commits** touchant `mcp/`, `services/`, `utils/`, `types.ts`, `constants.ts` et le
+  `Dockerfile` sont en attente depuis `v0.11.0` (19/08), dont deux qui coûtent cher :
+  · `/vehicule/bail` — livré le 14/09 POUR une demande de Marc (« ce que j'ai payé par
+    rapport au prix total du prêt »), et donc indisponible à CarAI qui doit le consommer ;
+  · `/fintable-sync` — jamais exposé, constat déjà écrit dans le HANDOVER du **2026-07-30**.
+  **POURQUOI SEPT SEMAINES DE SILENCE** : `deploy-mcp.yml` porte `if: vars.GCP_PROJECT_ID
+  != ''`, jamais satisfait, donc le job est `skipped` à CHAQUE push. Un job ignoré ne réveille
+  personne, et la coche verte du push disait le contraire de la vérité. Le HANDOVER le disait ;
+  personne ne lit un HANDOVER quand rien n'est rouge.
+  **LIVRÉ** : un second job, `alerte-non-deploye`, dont la garde est la NÉGATION exacte de
+  celle du déploiement — l'un des deux tourne toujours, jamais les deux. Il ne déploie rien :
+  il REFUSE le vert. Son message MESURE la dette à l'exécution (`git rev-list` depuis le
+  dernier changement de `MCP_SERVER_VERSION`) plutôt que de porter un chiffre écrit en dur qui
+  rotirait — vérifié en exécutant le script extrait du YAML : « 177 commit(s) … (v0.11.0,
+  2026-08-19) », et la branche « ampleur non mesurable » exercée séparément.
+  ⚠️ **Il restera ROUGE à chaque commit du serveur tant que la CI n'est pas câblée, et c'est
+  assumé** : à chaque fois, c'est vrai — ce commit-là n'est pas déployé. Un rouge toujours
+  vrai et toujours actionnable n'est pas du bruit, c'est une dette qu'on ne peut plus oublier.
+  ⚠️ **Ce qu'il ne peut PAS faire** : détecter un écart ouvert APRÈS le 19/08 par la version.
+  `MCP_SERVER_VERSION` n'a pas bougé en 177 commits, donc comparer `/health` à `main` serait
+  une sonde incapable de tirer. Le job juge donc la CONFIGURATION (« rien ne peut partir »),
+  qui est toujours exacte, et non l'ÉTAT (« l'écart fait N jours »), qu'il ne sait pas mesurer
+  sans le jeton du hub.
+
+- [x] 🔧 **`[HUB-V13]`** Contrat re-pinné sur `v1.3.0`, puis quatre champs neufs publiés.
+  **Fait le 14/09** (S).
+  · `primary` sur « Valeur nette » — le hub déduisait le gros chiffre de la position 0, ce qui
+    marchait tant que personne ne réordonnait la liste, alors que cet ordre est un arbitrage qui a
+    DÉJÀ changé une fois (les placements ont pris trois places).
+  · `recommendation` depuis `signals[0]`, **gratuitement** : `computeFinancialSignals` est déjà
+    appelé pour les alertes et rend ses signaux triés par priorité. Le `label` porte l'ACTION, le
+    `why` le constat. Un test analyse `mcp/financialSignals.ts` et exige une action pour CHAQUE
+    identifiant réel — un signal ajouté sans action publierait son constat comme un conseil.
+  · `details` : la fraîcheur DÉCOMPOSÉE (push Drive et clôture de marché, séparément) et la
+    ventilation des placements par compte, postes à zéro omis.
+  · `expectedMaxAgeSec` **dérivé de `MAX_STALE_DAYS + 1 j`, et volontairement LÂCHE** — voir le
+    `CLAUDE.md` §7. ⚠️ Ne pas le resserrer vers 6 h : `dataAsOf` mêle deux horloges, et un seuil
+    de 6 h crierait « figée » chaque fin de semaine alors que la bourse est fermée. Le contrôle
+    quotidien est `STALE_THRESHOLD_MS` → `status: 'degraded'`, qui existe déjà.
+  6 mutations jouées, 6 attrapées. 30 tests sur `hubSummary` (+13).
+
+### 📱 Refonte de l'onglet Futur pour le TÉLÉPHONE (Marc, 2026-09-10 — « actuellement c'est inutilisable »)
+
+- [x] 🔧 **`[FUTUR-MOBILE-PR5]`** ✅ **LIVRÉ (2026-09-11, PR mergée sur `main`)** — dernière PR de la refonte
+  mobile de l'onglet Futur (6/6). Amorçage (`StrategyOptimizerPanel.tsx`) : leviers en puces `min-h-[44px]`,
+  CTA « Trouver la meilleure stratégie » `min-h-[56px]`, lien « voir directement ta projection actuelle »
+  `min-h-[44px]` — MOBILE UNIQUEMENT (`useViewportBelowSm`), desktop inchangé. Plan d'action
+  (`ActionPlanDrilldown.tsx`) : « Pourquoi ? » 14 px → `min-h-[44px]` ; case « Marquer comme fait » enveloppée
+  dans un conteneur `min-h/min-w-[44px]` SANS grossir la case elle-même (14 px visuels conservés). Historique
+  (`FutureHistorySection.tsx`) : pastilles de compte + « Total » `min-h-[44px]`. Feuille du jour
+  (`FutureDetailModal.tsx`) : sur mobile, dialogue centré → feuille ancrée en bas (`h-[75vh]`, `rounded-t-2xl`,
+  poignée décorative) au lieu de `max-h-[90vh]` centré (desktop inchangé) ; contenu CONDENSÉ d'entrée (Veille/
+  Lendemain déjà existant, « Variation nette (mois) » = `point.diffNW` déjà PUBLIÉ par le moteur — AUCUNE
+  soustraction locale ajoutée —, répartition par compte déjà existante, « N événements ce mois-ci » remplace la
+  liste complète) ; bouton « Détail complet » (`min-h-[44px]`) déplie la liste exhaustive des événements +
+  catégories du mois + ventilation du jour + transactions, gardées inchangées sur desktop (`showFull` vaut
+  toujours `true` sans `matchMedia`, donc les 5 suites préexistantes de ce composant restent vertes SANS
+  modification). ⚠️ Le double `pb-24` (`Layout.tsx:492` + `FutureProjection.tsx:1414`, ligne du ticket 1376
+  périmée) est CONFIRMÉ empilé (192 px cumulés sous l'onglet Futur mobile) mais ne bloque AUCUN critère
+  d'acceptation de ce lot (la feuille du jour est en `position:fixed`, indifférente au padding d'un ancêtre) —
+  laissé tel quel, pas de ticket séparé ouvert faute d'un défaut concret à pointer. Ratchet
+  `[FUTUR-MOBILE-PR0]` re-mesuré (dette RÉDUITE par ce lot, pas grossie) : **76 → 59** (re-mesuré 2× à
+  l'identique), `PLAFOND_CIBLES_TROP_PETITES` abaissé dans la MÊME PR
+  (`UN-PLAFOND-DE-RATCHET-QUI-A-CESSE-DE-SUIVRE-SON-COMPTE-N-EST-PLUS-UNE-PROTECTION`). Tests : 16 unitaires
+  (FutureDetailModal feuille condensée + contrôle négatif desktop, ActionPlanDrilldown/StrategyOptimizerPanel/
+  FutureHistorySection cibles tactiles mobile vs desktop) + 6 e2e neufs
+  (`e2e/futureMobilePlanHistoryDetail.spec.ts`, mesure en PIXELS réels 390×844) — 0 régression sur les e2e
+  mobiles PR0-PR4 rejouées (19/19) + suite ciblée FutureDetailModal/FutureHistorySection/FutureProjection/a11y
+  (228/228). `[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]` reste ouvert, hors périmètre de ce lot.
+
+### 🔒 Sécurité des dépendances
+
+- [x] 🔧 **`[SEC-HONO-PLANCHER]`** ✅ **LIVRÉ le 2026-09-14** — trois avis **modérés** sur
+  `hono`, dépendance **transitive** de production : GHSA-gqvv-2mrq-wpjv (`toSSG()` écrit
+  hors du répertoire de sortie — correctif incomplet de CVE-2026-39408),
+  GHSA-g6gw-c38x-mqfc (épuisement mémoire par imbrication en notation pointée dans
+  `parseBody()`), GHSA-crvj-82cr-hjcx (le parseur de requête lit les paramètres **après** le
+  fragment d'URL, d'où des différentiels de clé de cache et d'interprétation par un proxy).
+  Trouvés en vérifiant la constellation après une RCE critique sur Next ailleurs — FinanceAI
+  n'a **pas** de Next, donc pas cet avis-là.
+  ⚠️ **`npm audit fix` ÉCHOUE sur ce dépôt**, sur un bug interne de npm
+  (« Cannot read properties of null (reading 'edgesOut') »), **reproduit sur un arbre
+  fraîchement installé par `npm ci`**. Le plancher passe donc par `overrides` — pas par
+  commodité, parce que la commande automatique ne fonctionne pas ici.
+  Posé en `overrides` et NON en dépendance directe : ce dépôt n'importe pas `hono`, l'ajouter
+  aux `dependencies` laisserait croire le contraire. `hono` arrive par `@hono/node-server`
+  (`^4`) ET par `@modelcontextprotocol/sdk` (`^4.11.4`) — les deux acceptent `^4`, donc le
+  plancher les satisfait sans rien casser. Résolu en 4.13.7,
+  `npm audit --omit=dev` : 0 vulnérabilité.
+  État de la constellation au 14/09 : Hubperso ✅, CarAI ✅, JobAI ✅ (RCE Next critique),
+  BatchChef déjà sain, DriveAI sain, FinanceAI ✅ (celui-ci).
+
+### 🔬 Audit financier 2026-09-07 — findings VÉRIFIÉS et re-mesurés (rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`)
+
+- [x] 🔴 **`[ENG-W5-BUSINESS-NON-PUBLIE]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — `Entreprise` publié par `monthlyOutput` (stock), `NET_WORTH_DAILY_ASSETS`, `FIELD_KIND`, `CURVE_FIELDS`, aire + infobulle + table + drill-down, source unique `computePrivateBusinessValue` ; garde structurelle `netWorthPublie.test.ts` (7 cas : chaque terme du sign-map a son champ, identité publiée < 0,1 $, liste quotidienne DÉRIVÉE du sign-map, `CURVE_FIELDS` ⊇ actifs publiés) ; `NetWorth` bit-identique. Perturbations : champ retiré → 6 rouges ; liste quotidienne sans `Entreprise` → 2 rouges (dérivation + dent de scie **901 171 $** mesurée) ; `CURVE_FIELDS` sans → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (M, CRITIQUE — sans décision, ne déplace PAS un dollar de `NetWorth`) —
+  la valeur d'une entreprise privée (W5.7) est un terme de `computeRawNetWorth` (`services/projection/netWorth.ts:33,51,68`,
+  `projection.ts:232,523,2506`) mais **aucun champ de `chartData` ne la porte** (`monthlyOutput.ts:293-301`) ;
+  absente de `NET_WORTH_DAILY_ASSETS` (`dailyLedger.ts:153-155`) et des `ASSET_KEYS` des trois harnais de
+  conservation. **Mesuré** (fixture `w5OffBalance.test.ts`, `estimatedValue: 900 000`) :
+  `NetWorth − Σ 8 actifs publiés + DettesNonImmo` = **900 000 $ exactement** aux mois 0, 12, 120, 300 ; 0 $ sans
+  entreprise. Conséquences : décomposition du patrimoine qui ne somme pas, grand livre quotidien en dents de scie
+  (la valeur ne revient qu'à la borne mensuelle), marche au raccord passé→futur. Invisible aux 5 747 tests parce
+  qu'un invariant de cohérence ne voit pas ce qui est ABSENT et que la seule fixture W5 du harnais pose
+  `estimatedValue: 0` (`projection.moneyConservation.test.ts:162`). **Correctif** : publier `Entreprise` dans
+  `monthlyOutput` ; l'ajouter à `NET_WORTH_DAILY_ASSETS`, aux trois `ASSET_KEYS`, au `FIELD_KIND` (stock) ; fixture
+  du harnais à `estimatedValue > 0` ; et la **garde structurelle qui manquait** : tout terme `+1`/`−1` de
+  `NET_WORTH_SIGN` a un champ publié dans `chartData` (perturbation : retirer `Entreprise` de la sortie → rouge).
+  Preuve de non-déplacement : `NetWorth` bit-identique avant/après sur les 7 personas.
+
+- [x] 🔴 **`[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`** ✅ **LIVRÉ le 2026-09-14 (PR #954, 2 commits)** —
+  DÉCISION Marc (Q16, répondue en clic) : **partager comme le reste** (× `keep`), hypothèse
+  « société d'acquêts par défaut » — le modèle ne distingue nulle part ailleurs les biens propres.
+  **Commit 1** : `privateBusinessValue` passé de `const` à `let`, `*= keep` ajouté dans le callback
+  de partage juste après `realEstateEquity` (même traitement : valeur SOMMÉE dans
+  `computeRawNetWorth`, pas un compte à registre `withdrawalXXX`). **Commit 2 (revue #954, trouvé
+  par 2 agents indépendants)** : le commit 1 partageait la VALEUR mais pas le REVENU — `applyW5Effects`
+  lisait le tableau brut `privateBusinesses` (jamais muté) pour le dividende mensuel via
+  `ownershipPct`, donc le ménage restant touchait et se faisait imposer 100 % du dividende annuel
+  indéfiniment pendant que son équité tombait à `keep` (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+  Corrigé par `businessStates` (copie mutable, même patron que `rentalStates`), `ownershipPct *= keep`
+  au divorce, `applyW5Effects` consomme désormais `businessStates`. Garde
+  `tests/services/divorceBusinessShare.test.ts` (6 cas : valeur ET dividende), discriminants
+  confirmés sur les DEUX commits séparément (`git stash`/`git apply -R`, écarts exacts mesurés :
+  900 000 $ pile pour la valeur, dividende 5 000 $ → 1 250 $/mois pour le revenu) → à déménager vers
+  `BACKLOG_ARCHIVE.md` à la prochaine PR. Contexte d'origine (trouvé par le panel
+  du lot 214, PRÉ-EXISTANT depuis le 2026-08-19, rendu VISIBLE par la publication d'`Entreprise`) :
+  `services/projection.ts` calculait `privateBusinessValue` en `const` AVANT la boucle, et le
+  partage du divorce (`*= keep` sur `liquid`, `celi`, `celiapp`, `reer`, `nonReg`, `crypto`, `reee`,
+  `realEstateEquity`, `mortgageBalance`, les immeubles locatifs, `liquidDebt`, `smithManoeuvreDebt`…)
+  ne la touchait JAMAIS. Mesuré (couple, divorce certain au mois 12, `divorceSplitPct: 75`,
+  entreprise 900 000 $) : `Entreprise` 900 000 → 900 000, `finalNetWorth` **+900 000 $** exactement
+  par rapport au scénario sans entreprise — corrigé, l'écart tombe à 225 000 $ (la part conservée).
+  Même classe que `[ENG-W5-RENTAL-OFFBALANCE]` (immeubles oubliés au divorce, corrigé le 2026-08-13) :
+  le JUMEAU n'avait pas été traité (`MODULE-ECRIT-HORS-CHECKLIST`).
+
+- [x] 🟠 **`[PAST-NW-BUSINESS-SANS-PRODUCTEUR]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — `privateBusinessValue` porté dans `BuildPastPrefixInput` et `BuildDailyPastInput`, écrit aux deux sites (plate), `FutureProjection` le calcule depuis le store par la même règle que le moteur, `dailyCurve` recouvre `Entreprise` ; +2 cas `buildPastPrefix.test.ts`, +2 `dailyPastLedger.test.ts` ; perturbation (5e argument omis) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — livrer AVEC le précédent) — `services/history/pastNetWorth.ts:61`
+  accepte `privateBusinessValue = 0` par défaut et son seul appelant `buildPastPrefix.ts:154` passe quatre
+  arguments ; `dailyPastLedger.ts:333` écrit `privateBusinessValue: 0` en toutes lettres. La JSDoc promet « valeur
+  COURANTE, plate sur le passé » : aucun producteur ne tient la promesse → marche de la valeur entière au raccord.
+  **Correctif** : porter la valeur dans `BuildPastPrefixInput`, l'écrire aux DEUX sites (même convention = plate,
+  intention écrite), garde « aucune marche au raccord » avec contrôle négatif (sans entreprise → inchangé).
+
+- [x] 🟡 **`[HARNAIS-CONSERVATION-W5-VIDE]`** ✅ **LIVRÉ au lot 214 (2026-09-07)** — fixture à 900 000 $ ; PREUVE de discrimination : champ non publié + fixture à 0 → 22 verts (harnais AVEUGLE), champ non publié + fixture à 900 000 → INV-1 rouge sur 100 % des points → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN — même lot) — la seule fixture W5 des harnais de
+  conservation pose `estimatedValue: 0` ; le fuzz ne sème jamais `privateBusinesses`. Passer à une valeur > 0 :
+  le harnais DOIT rougir avant le correctif du ticket 🔴 (c'est la preuve de discrimination), vert après.
+
+- [x] 🟠 **`[FISC-RRSP-ROOM-GATE-MENAGE]`** ✅ **LIVRÉ au lot 215 (2026-09-07)** — le pool de droits REER reste utilisable tant qu'UN conjoint peut encore détenir un REER (≤ 71 ans), et n'est remis à zéro que quand plus aucun ne le peut ; l'âge courant par conjoint est HISSÉ en helper de module (`ageCourantUtilisateur`, source unique avec le gate FERR). ⚠️ Le correctif prescrit par l'audit (« borne ≤ 71 appliquée à CHAQUE `roomUser` ») était FAUX sur la loi : les droits naissent du revenu gagné quel que soit l'âge, et un particulier de 72+ cotise à un REER de CONJOINT avec ses propres droits — le cas 60/73 reste donc à 21 600 $ (inchangé), seul 72/57 change (0 $ + reset → 21 600 $, pas de reset). **Mesuré** (couple 68/53, conjoint 2 à 120 k$, 25 ans, AUTO_MARGINAL, DÉTERMINISTE) : droits disponibles à l'année 5 **0 $ → 531 092 $**, Σ cotisations REER 210 420 → 479 096 $, patrimoine final 714 087 → 713 043 $ (−1 044 $) ; Σ PSV 316 184 → 202 735 $ (**−113 449 $ de récupération**), Σ FluxImpots 2 040 → −32 180 $ — la stratégie utilise les droits, les retraits FERR obligatoires gonflent le revenu et la PSV est récupérée : un droit rendu disponible n'est pas un gain. En Monte Carlo graine 0 (mes premiers chiffres, régime non nommé) : 533 978 $ / 469 782 $ / 673 441 → 663 395 $. 60/73 et 55/55 **bit-identiques** ; 8 personas bit-identiques sauf `REERMax` de `couple-confort` à 50 ans (droits, pas un dollar de patrimoine). Gardes : 6 cas unitaires (`taxJanuary.test.ts`, dont conjoint sans âge ignoré et ménage à une tête) + garde de CHAÎNE `rrspRoomGateMenage.test.ts` sur `REERMax − REER` ; perturbations (gate remis sur `ctx.age`) → 1 rouge unitaire (le discriminant seul), 1 rouge chaîne. « Aucun golden n'a bougé » EXPLIQUÉ : aucune fixture du dépôt ne faisait saturer la contrainte. Résiduel noté : une cotisation faite avec les droits d'un conjoint de 72+ est attribuée par `shares` au registre per-conjoint, pas au REER de conjoint du plus jeune → `[REER-CONJOINT-ATTRIBUTION-72]` → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ **money-critical**, contenu — sans décision produit) —
+  `services/projection/taxJanuary.ts:219-226` calcule les droits REER PAR conjoint (`roomUsers.reduce`), puis
+  `:373-374` les ferme par `ctx.age`, l'âge du PREMIER utilisateur seul (`rrspRoomDelta: ctx.age <= 71 ? … : 0`,
+  `rrspRoomReset: ctx.age > 71`). **Mesuré** (`processJanuaryReset`, conjoint 2 actif à 120 k$) : 71/56 →
+  21 600 $ ; **72/57 → 0 $ ET remise à zéro des droits accumulés** ; 60/73 → 21 600 $ (le conjoint de 73 ans
+  génère des droits qu'il ne peut plus cotiser). Atteignable : âge de retraite saisissable jusqu'à 75
+  (`RetirementSettingsCard.tsx:37`). Même classe que le gate FERR d'août (« valeur per-conjoint gardée par une
+  grandeur de MÉNAGE »). **Correctif** : borne `≤ 71` appliquée à CHAQUE `roomUser` dans la réduction ; reset
+  seulement si TOUS ont dépassé 71. Gardes : les trois cas ci-dessus + contrôle « même âge → inchangé ».
+  ⚠️ Mesure avant/après sur un couple à ÉCART d'âge (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`) ;
+  goldens rouges à LIRE un par un (pas re-baser).
+
+- [x] 🟠 **`[DEBT-BALANCE-NAN-SILENCIEUX]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `computeTotalDebt` journalise (throttle par dette), `refusChampNonFini` refuse solde/taux/minimum non finis à l'ajout ET à l'édition (région live), la simulation affiche « — » au lieu de « 0,1 ans » ; 3 cas `portfolio.test.ts` + 6 cas `DebtManager.saisieNonFinie.test.tsx` ; perturbations : trace retirée → 2 rouges (et `moneyConservation` reste VERT : c'est bien la nouvelle garde qui discrimine), refus d'édition retiré → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — sans décision) — `components/DebtManager.tsx:56-78`
+  (`saveEdit`) n'a que `refusOrigineIncoherente`, qui rend `null` pour un non-fini (`DebtKindFields.tsx:44`) :
+  un solde VIDÉ (`parseFloat('')` = `NaN`, `:190`) s'enregistre ; `handleAdd` (`:41-50`) refuse `balance` mais
+  pas `interestRate`/`minimumPayment` (`:155-159`). Puis `services/portfolio.ts:216-219` (`computeTotalDebt`)
+  rabat le `NaN` sur 0 SANS trace — ses voisins `assetValueCad` et `computeCurrentLiquidity` ont le
+  `logErrorThrottled` (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). Cinq consommateurs (Total dû, `FutureHistorySection`,
+  `portfolio.ts:236`, `financialSnapshot.ts`, `healthScore.ts`). `projection.moneyConservation.test.ts:519-521`
+  CERTIFIE le silence (`toBe(0)` sans assertion de trace). **Mesuré** : un taux `NaN` affiche « Liberté dans
+  **0,1 ans** » (1,3 ans pour la même dette à 20 %) — la simulation locale (`:85-111`) s'arrête au 1er mois
+  (`NaN > 0` est faux). **Correctif** : (a) `logErrorThrottled` dans `computeTotalDebt` ; (b) refus UI d'un champ
+  non fini à l'ajout ET à l'édition ; (c) test INVERSÉ (le `NaN` est tracé) ; (d) « — » quand la simulation
+  n'est pas finie.
+
+- [x] 🟠 **`[AI-PRIVACY-CONSEILS-NON-GATES]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — garde à l'instant du geste dans les trois cartes (`MESSAGE_IA_MODE_DISCRET`, source unique dans `services/messageErreurIa.ts`) ; `conseilsIaModeDiscret.test.tsx` 3 × (mode discret → service jamais appelé + message ; contrôle mode normal → appelé) ; perturbation (garde du couple retirée) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — extension d'une décision PRISE, sans nouvelle décision) —
+  la décision Marc 2026-09-05 « masquer : en mode discret, les montants ne partent pas non plus vers l'assistant »
+  est appliquée au chat (`useAiChat.ts:171`), au diagnostic Budget (`BudgetAiModal.tsx:99`) et aux cartes de
+  signaux — PAS aux trois cartes de conseil : `components/tax/CoupleOptimizationCard.tsx:90` (brut/net des deux
+  conjoints, prompt `services/claude.ts:798-800`), `components/realestate/RealEstateAdviceCard.tsx:41` (prix, mise
+  de fonds, mensualité, loyer, `claude.ts:719-724`), rééquilibrage `Investments.tsx:1071` (`Δ` en dollars,
+  `claude.ts:888`). 0 lecture de `isPrivacyMode` dans les deux cartes. Cause : `amountPrivacyScan.test.ts:82` ne
+  scanne que `components/` et `promptCad` vit dans `services/claude.ts`. **Correctif** : la même PAIRE de gardes
+  que `tests/components/budgetAiModalModeDiscret.test.tsx` (égress au service + ouvreur avec message), ×3, chacune
+  avec son contrôle (mode normal → l'appel part).
+
+- [x] 🟠 **`[AI-STOPREASON-JETE]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `VisionTronqueeError` levée sur `stop_reason === 'max_tokens'` aux deux appels Vision, cause `tronque` dans `messageErreurIa` (« trop long … réimporte en plusieurs parties ») ; JUMELLE trouvée par la revue : `VisionReponseInvalideError` (JSON invalide ou `stop_reason: 'refusal'`) — l'`Error` nu d'avant tombait dans « réseau », donc « vérifie ton accès Internet » sur une requête qui avait abouti ; `claude.visionTronquee.test.ts` 7 cas sur le vrai module (SDK simulé) ; perturbation → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (S, ÉLEVÉ — sans décision) — `services/claude.ts` ne lit `stop_reason` nulle part
+  (seul `services/aiTools/agentLoop.ts:289-301` le fait). `analyzeBankStatement` (non-stream, `max_tokens` 16 000)
+  tronqué → JSON invalide → `[]` → `components/import/ImportBankStatement.tsx:64` « Aucune transaction reconnue » :
+  FAUX, le relevé a été lu et coupé. **Correctif** : lire `response.stop_reason` aux deux appels Vision
+  (`analyzePayslip`, `analyzeBankStatement`), rendre une cause `tronque`, message dédié à l'écran (« relevé trop
+  long, coupe-le en deux »). Garde : réponse simulée `stop_reason: 'max_tokens'` → cause `tronque`, pas `[]`.
+
+- [x] 🟡 **`[AITOOLS-DISPATCH-ERR-NON-SCRUB]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `sanitizePromptText(…, 300)` ; `dispatchScrub.test.ts` 3 cas ; perturbation → 2 rouges → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `services/aiTools/dispatch.ts:48` renvoie `err.message`
+  brut au modèle ; `agentLoop.ts:152` scrubbe déjà (`sanitizePromptText(…, 300)`). Même scrub.
+
+- [x] 🟡 **`[MCP-FIREAGE-DUP]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — copie retirée, import de `mcp/whatIf.ts` → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `mcp/tools/getRetirementOutlook.spec.ts:24-26` recopie `fireAgeOf`
+  de `mcp/whatIf.ts:514-517` (déjà importé par `getProjection.spec.ts`, `simulateWhatIf.spec.ts`). Importer.
+
+- [x] 🟡 **`[FISC-GUARD-SCOPE-MONTHLYEVENTS]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `REAL_ESTATE_SALE_NET_FACTOR` (2 sites), module au périmètre du ratchet, 7 clés inventoriées (mesuré : 8 littéraux) ; perturbation (`0.93` nu) → ratchet rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `services/projection/monthlyEvents.ts:222,239`
+  `* 0.95` (produit net d'une vente, coût de disposition documenté FISCAL_REFERENCE §8) sans constante nommée,
+  dans un module ni dans `FISCAL_MODULES` ni dans `FISCAL_MODULES_HORS_PERIMETRE` (`fiscalConstGuardV2.ts`).
+  Nommer (`REAL_ESTATE_SALE_NET_FACTOR`), ajouter le module au périmètre, entrée d'inventaire.
+
+- [x] 🟡 **`[TEST-GAP-LIFETIMETAX]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `lifetimeTax.test.ts` 4 cas (somme, anti-vacuité par terme, non-finis, absent) ; perturbation (terme oublié) → 3 rouges → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — `services/projection/lifetimeTax.ts` (35 lignes) est le seul des
+  57 sous-modules sans import direct depuis `tests/` (mesuré 2026-09-07) ; consommé par `monteCarlo.ts` et
+  `strategySearch.ts` (classement). Test direct : somme, terme non fini, `null`.
+
+- [x] 🟡 **`[BUDGET-CATEGORY-INCOME-SIGN-GARDE-PERDUE]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — 2 cas dans `budget.test.ts` (crédit sur un poste, par conjoint) ; perturbation (`Math.abs`) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, MOYEN) — le correctif #749 tient (`utils/budget.ts`
+  via `spendAmountOf`) mais ses tests vivaient dans `PlanningGoals.test.tsx`/`monthlyActuals.test.ts`, supprimés
+  avec les Objectifs (lot 29, #755) : l'agrégation d'un CRÉDIT n'est plus assertée. Un cas dans
+  `tests/utils/budget.test.ts` (remboursement positif dans `computeBudgetParity`/`computeActualByOwner`).
+
+- [x] 🟢 **`[PROMPT-PALIERS-EN-DUR]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — taux dérivés de `FED_BRACKETS`/`QC_BRACKETS` ; `claude.promptPaliers.test.ts` 3 cas ; perturbation (15 en dur) → 1 rouge → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `services/claude.ts:140` recopie les paliers 2026 dans le
+  prompt système (exacts aujourd'hui, hors ratchet) : dériver de `bracketsForYear()` ou déclarer au ratchet.
+
+- [x] 🟢 **`[RATCHET-JSDOC-PERIME]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — JSDoc réécrite (scanné depuis le 2026-09-01) → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `utils/fiscalConstGuardV2.ts:630-636` déclare encore
+  `services/projection.ts` « trou connu et assumé » alors qu'il est scanné depuis le 2026-09-01.
+
+- [x] 🟢 **`[FISC-FED-CREDITRATE-15-COMMENTAIRE]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — commentaire de `utils/tax.ts` requalifié CONTESTÉ, valeur inchangée → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE — docs §1 requalifiée au lot 212) — le commentaire
+  `utils/tax.ts:184-186` affirme encore « gelé à 15 % par l'ARC … politique C-4 » sans source, contredit par la
+  recherche relayée du 2026-09-05 (14,5 % / 14 % + compensatoire). Réécrire « CONTESTÉ, voir
+  `[FISC-FED-CREDITRATE-15]` » — le chiffre ne bouge pas sans source.
+
+- [x] 🟢 **`[KNIP-PAIRETEXTE-EXPORT]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — export retiré → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE — seule régression des 239 corrigés) — `scripts/lib/ctaContrast.ts:180`
+  `PaireTexte` exporté sans consommateur (lot 208). Retirer l'export.
+
+- [x] 🟢 **`[AI-CATEGORIZE-HISTORY-PARAM-MORT]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — paramètre retiré ; 2 appelants + 5 fichiers de test énumérés par le compilateur — `importReleveManuel` lui PASSAIT `withTransfers`, un paramètre mort que les appelants nourrissent a l'air vivant → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `categorizeBatch(…, _history = [])`
+  (`services/claude.ts:407`) : paramètre jamais lu. Retirer (compilateur énumère les appelants).
+
+- [x] 🟢 **`[IMPORT-BROKER-BACKUP-SANS-LOGERROR]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `logError` aux 4 `catch` (source `storage`) → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE) — `components/investments/ImportBrokerPositions.tsx:46`
+  (`catch { setError(…) }`) et `components/settings/BackupPanel.tsx:152,184,210` : message à l'écran sans
+  `logError` — une panne répétée n'apparaît dans aucun journal.
+
+- [x] 🟢 **`[A11Y-INK500-TINY-X2]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `text-ink-400` aux deux sites → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE, WCAG 1.4.3) — `components/setup/PageSetupGate.tsx:284`
+  (« ou importer ») et `FutureProjection.tsx:1651` (indice survol/clic/molette) en `text-tiny text-ink-500` :
+  `ink-500` mesure 3,86 à 4,33 (AA-large seulement), `ink-400` 5,90 à 6,62 → `text-ink-400`.
+
+- [x] 🟢 **`[A11Y-HEALTH-DONUT-ARIA-HIDDEN]`** ✅ **LIVRÉ au lot 213 (2026-09-07)** — `aria-hidden` sur le `<svg>` → à déménager vers BACKLOG_ARCHIVE à la prochaine PR. Contexte d'origine : (XS, FAIBLE, WCAG 1.1.1) — `components/dashboard/HealthIndicator.tsx:136`
+  `<svg>` du donut sans `aria-hidden` (le score est déjà en texte à côté).
+
+### 🎯 PLAN VERS ZÉRO (analyse PM du 2026-08-19 — demande Marc : « fais tout jusqu'à ce que le backlog soit fini »)
+
+- [x] **Vague 0 — Ménage** (2026-08-19, sans code) : 14 doublons fermés, `[DEBT-FROM-CONTRACT]` et
+  `[PASSE-REEL-DETTE-*]` confirmés VIVANTS contre l'avis du PM (`docs/adr/` précisé).
+
+- [x] **Vague 6 — Performance** ✅ **SOLDÉE le 2026-09-04** : ✅ `[PERF-ENGINE-DATELABEL-INTL]` +
+  ✅ `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (2026-08-21) · ✅ `[PERF-MARKETDATA-DYNIMPORT-INERTE]`
+  (lot 133) · ✅ `[PERF-ENGINE-TOFIXED-ROUND]` (lot 131, fuzz ~1M valeurs). Reste de perf ailleurs :
+  `[PERF-BOOT]` (différé sciemment, provider-aware).
+
+### Plan d'exécution (vagues — PM + analyses code/fiscal 2026-07-31)
+
+- [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
+  datée en tête de `docs/BACKLOG_ARCHIVE.md`).
+
+- [x] **V3' — Nettoyage décidé** ✅ **SOLDÉ le 2026-09-04 (lot 128)** — tout était déjà réglé ou
+  l'est maintenant : `futureProvince`/`futureProvinceMoveYear` RETIRÉS et `rsuYearsRemaining` doté
+  de son éditeur (PR #729, `[PH3-c-bis]` — le « retire » initial de Marc a été supersédé par la
+  mesure : le champ était LU par le moteur, +1,38 M$ de patrimoine fantôme sans lui) ;
+  SEC-DRIVE-ENCRYPT-DEFAULT fermé (`[Q-DRIVE-ENCRYPT]`, Marc : « non ») ; .mcpb fermé ;
+  `[DETTE-RE-SALE-PURGE]` livré au lot 128.
+
+- [x] ~~**`[ENG-GK-THRESHOLD-KNIFE]`**~~ ✅ **LIVRÉ 2026-08-21** (bande de lissage −4 %/−6 % —
+  détail : section datée en tête de `docs/BACKLOG_ARCHIVE.md`, réf PR au merge).
+
+- [x] ~~**`[FISC-DIV-DERIVED-BASES]`**~~ ✅ **LIVRÉ 2026-08-21** (FSS +70 $/ménage, récupération
+  PSV +1 552,50 $/an mesurés — détail en tête d'archive, réf PR au merge). Le voisin **clamp du
+  CID** reste OUVERT et documenté (mesuré 0 $ avant comme après sur le profil du panel) :
+
+- [x] ~~**`[FISC-BAND-AGE-CREDITS]`**~~ ✅ **DOUBLON — LIVRÉ par #676** (`[FISC-TAXDEC-INCR]`,
+  2026-08-20) : mêmes bandes §2/§3 sans ageOpts, mêmes chiffres (675,56 $ à 60 k$). Le panel #564
+  et le triage 2026-06-16 avaient nommé le même défaut sous deux IDs. Constaté au lot vague 1b.
+  ⚠️ Non introduit par #564 (identique sur origin/main). Fix : passer `ageOpts` aux deux bornes —
+  attention, ça re-basera des goldens retraités (mesurer avant).
+
+- [x] ~~**`[FISC-PENSION-CREDIT-REAL]`**~~ ✅ **LIVRÉ 2026-08-20** (détail : section datée en
+  tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
+
+- [x] 🔴 **`[TX-EXCLUES-INTROUVABLES]`** (S, **signalé par Marc le 15/09**) — **Fait le 15/09** (PR #967).
+  — Marc, juste après avoir exclu des calculs ses 44 lignes du Brésil comme je le lui avais
+  demandé : **« je vois plus aucune transactions du bresil »**. Rien n'était perdu — le marquage
+  est PUR et ne fait que poser un drapeau — mais `showDuplicates` est un état de COMPOSANT
+  (`useState(false)`), donc remis à faux à chaque montage, et son **seul** `setShowDuplicates(true)`
+  vivait dans `handleMarkDuplicates`. Mesuré sur le code d'avant : **2 occurrences** de
+  `setShowDuplicates` dans tout le fichier — la déclaration et cet appel. Donc au rechargement les
+  lignes exclues disparaissaient de la liste et **aucun geste ne pouvait les rappeler** ; le seul
+  recours était « Annuler tous les marquages », qui DÉFAIT le travail au lieu de le montrer.
+  ✅ Livré : bouton **« N exclue(s) — afficher / masquer »** dans la barre de filtres, rendu dès
+  qu'il y a une exclusion. Un écran qui masque doit DIRE ce qu'il masque, sinon il est
+  indiscernable d'une perte de données.
+
+- [x] 🔧 **`[TX-SELECTION-SANS-ACTION]`** (S, **MESURÉ**) — Marc : « j'arrive pas à les marquer en
+  doublon ». **Il avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL
+  point d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par
+  `findDuplicateGroups`. Une ligne au montant faux est le doublon de **rien** — donc elle ne pouvait
+  apparaître dans aucun groupe, et la marque était inatteignable pour la CLASSE entière « ligne
+  unique dont le montant est faux ». Le seul levier par ligne qui restait était le ⇄ « virement »
+  (`toggleTransfer`), qui neutralise bien la ligne mais **étiquette une vraie dépense en virement
+  interne** — et qu'il aurait fallu cliquer **44 fois**.
+  ⚠️ La capacité existait déjà dans le modèle : `markTransactionsAsDuplicate` est **PUR** et accepte
+  n'importe quels ids ; la sélection multiple existait déjà dans l'écran (case par ligne, plage au
+  Maj-clic, « tout cocher » de la page). Il manquait le **FIL** entre les deux — variante de
+  `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` appliquée à un MUTATEUR, pas à un champ. Et la
+  sélection n'affichait AUCUN libellé disant ce qu'elle permettait : elle ne servait qu'à
+  re-catégoriser.
+  **Livré** : barre d'actions sur la sélection (« N sélectionnée(s) » · « Sélectionner les N
+  filtrées » · « Exclure des calculs » · « Désélectionner »). ⚠️ « Sélectionner les N **filtrées** »
+  et non « de la page » : la page fait 50 lignes et les 44 de Marc s'étalent au-delà — une sélection
+  bornée à la page laisserait le cas réel hors de portée. **Fait le 14/09** (PR #964).
+  ⚠️ **L'ADR 0009 §3 n'a PAS été rouverte**, et c'est le point : son repli (« le chemin sûr existant :
+  marquer `isDuplicate` ») était mesurément FERMÉ pour cette classe. Le correctif ouvre le repli
+  qu'elle nommait, au lieu de me donner le droit d'écrire sur une transaction existante.
+
+- [x] 🔴 **`[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`** (S, money-critical, ✅ **CORRECTIF LIVRÉ le
+  2026-09-16**) — `owed = Math.max(0, −solde)` remplace `Math.abs`, le commentaire inversé est
+  corrigé, et l'avertissement de mesure est MORT (sa garde INVERSÉE au même endroit). Une carte en
+  CRÉDIT ne fabrique plus de dette fantôme ; une carte à ZÉRO n'émet plus un payload que `applyDebt`
+  rejette, elle DIT que la dette garde sa valeur précédente. 17 gardes, **3 perturbations aux
+  signatures DISTINCTES** : `Math.abs` restauré → 1 rouge (la dette fantôme, et elle SEULE) ; montant
+  interpolé → 3 rouges (producteur + les DEUX orchestrateurs, donc la chaîne est prouvée) ; zéro qui
+  n'abandonne plus → 2 rouges. ⚠️ Le `surplus` n'alimente PAS encore les liquidités — c'est l'étape 2
+  de `[FINTABLE-CARTE-DETTE-AUTO]`, qui bute sur `applyCashBalance` (refus d'une cible négative) :
+  dit dans le code et dans le message, plutôt que fait à moitié. ⚠️ Piège commis DANS ma propre
+  garde : compter les citations par sous-chaîne nue (`Dette acc_1`) comptait aussi `Dette acc_10` —
+  un PRÉFIXE. Délimité par les guillemets que le message écrit lui-même
+  (`UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE`). Contexte d'origine : — le mapper suppose « solde de carte POSITIF =
+  montant dû » (`const owed = Math.abs(account.balance)`, `mapSnapshot.ts`, commenté « un solde
+  négatif signifie un crédit en ta faveur »). Marc, interrogé le 2026-09-14 : sur Fintable, **devoir
+  500 $ s'affiche `-500`** — soit l'inverse. Conséquences, si confirmé : (a) tu DOIS 500 $ → la dette
+  est juste (`Math.abs` sauve la grandeur **par accident**) mais l'avertissement « crédit en ta
+  faveur » se déclenche **à chaque passe, sur le cas NOMINAL** ; (b) tu as 200 $ EN TROP → **dette
+  fantôme de 200 $, sans aucun avertissement**.
+  ⚠️ **Le « patrimoine net faux de 400 $ » que ce ticket annonçait est SURESTIMÉ — mesuré le
+  2026-09-16 : l'écart réparable est de 200 $, pas 400 $.** La dette inventée (200 $) se corrige
+  par le signe ; la créance de 200 $ envers l'émetteur, elle, n'est représentable par AUCUNE
+  convention — `applyDebt` refuse tout solde `<= 0` (`mcp/ingest/applyDocument/debt.ts:50`), donc
+  l'app n'a aujourd'hui aucun canal pour une carte en crédit. Annoncer 400 $ promettait une
+  réparation dont la moitié n'existe pas (classe `UN-TICKET-QUI-N-ANNONCE-QU-UN-MONTANT-NE-DIT-PAS-SA-GRAVITE`,
+  vue à l'envers : ici le montant SUR-promet).
+  ✅ **Étape 1 livrée** : `signeSolde` (fonction pure, 4 états — `absent` couvre le `NaN`, jamais
+  rabattu sur `zéro`), `soldesDetteSignes` au rapport du mapper, et UN avertissement agrégé qui
+  publie **le SIGNE, jamais le MONTANT** (le rapport est `cat`é en clair dans les journaux GitHub
+  Actions, cf. PR #531). Câblé et gardé dans les DEUX orchestrateurs. **Aucun dollar ne bouge.**
+  ⚠️⚠️ **La PRÉCONDITION du ticket était FAUSSE** : il annonçait la mesure « inatteignable pour Marc :
+  aucune de ses cartes n'a de `debtName` (c'est tout l'objet de `[FINTABLE-CARTE-SANS-DETTE]`) ».
+  Re-mesuré sur le code réel : faux depuis **PR #956** — le ticket CITÉ avait été livré deux jours
+  plus tôt, et un `debtName` vide est désormais un état légitime qui laisse le compte ROUTÉ. Son
+  compte atteint bien `case 'debt'` ; il en sort trois lignes plus bas. La prémisse réfutée n'a pas
+  annulé le lot, elle en a fixé la seule contrainte : publier le signe **AVANT toutes les sorties du
+  bloc**. Leçon `UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`.
+  ✅✅ **MESURE OBTENUE le 2026-09-16, à la première passe.** Rapport publié : « Desjardins Cash
+  Back Mastercard (5020) » → **positif**. Marc, sur cette passe : **« c'est en ma faveur »**. La
+  convention de Fintable est donc **`négatif = dû`, `positif = en ta faveur`** — l'hypothèse écrite
+  en commentaire depuis toujours (« positif = montant DÛ ») est **RÉFUTÉE**.
+  ⚠️ **Une seule observation a suffi parce que c'est la seule qui pouvait trancher** : sous
+  `Math.abs`, le cas NOMINAL rend le même résultat dans les deux conventions (`|−500| = |+500|`),
+  donc mille passes normales n'apprennent rien. Seule la branche RARE (carte en CRÉDIT) les sépare,
+  et c'est celle qui s'est présentée. ⚠️ Portée exacte : la mesure **réfute** « positif = dû » ;
+  elle est *compatible* avec « négatif = dû » sans le prouver positivement (il faudrait une passe
+  où Marc doit de l'argent). Aucune décision n'attend ça — le plan de `[FINTABLE-CARTE-DETTE-AUTO]`
+  étape 2 est **déjà écrit dans ce sens** (`dû = max(0, −solde)`) : la mesure le CONFIRME au lieu
+  de le casser, et une mesure qui confirme se publie autant qu'une réfutation.
+  ✅ **Aucun dollar n'est faux aujourd'hui** : aucune dette n'est associée à cette carte (rapport :
+  « Dettes mises à jour : aucune »), donc la dette fantôme de 200 $ n'a **jamais été écrite**.
+  ⏸️ **Reste, et c'est un lot de CODE money-critical (plan + GO de Marc)** : (a) `owed` dérivé du
+  SIGNE et non de `Math.abs` ; (b) le **commentaire de `mapSnapshot.ts:271-273` est FAUX** (« un
+  solde négatif signifie un crédit en ta faveur ») — un commentaire inversé dans du money-critical
+  est un piège pour la prochaine session ; (c) l'avertissement de mesure doit **cesser** (il a fait
+  son travail ; permanent, il deviendrait mort) et le garde-fou `signeSoldeDette.test.ts` porte sa
+  consigne de RETRAIT, à INVERSER et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
+
+- [x] 🔴 **`[FX-OBSERVATION-COHORTE]`** (M, money-critical, ✅ **LIVRÉ le 2026-09-17**) — la cause
+  RACINE de `[FX-TAUX-JAMAIS-ARRIVES]`, trouvée par une mesure de Marc (il a ouvert l'URL de l'API
+  et envoyé la réponse). `services/finance.ts` lisait `data.observations[0]` ; sur un **groupe**,
+  `recent=1` rend la dernière observation de **chaque série**, groupée par COHORTE — la réponse
+  réelle du 2026-09-16 commence par `{ d: "2019-12-31", FXVNDCAD: … }` (dong vietnamien, série
+  abandonnée), et `FXUSDCAD`/`FXEURCAD` vivaient dans l'entrée SUIVANTE. Les deux replis tiraient
+  donc ENSEMBLE, à chaque lecture, depuis toujours. **Mesuré** : USD 1,4000 (repli) contre **1,3947**
+  réel = −0,38 % ; EUR 1,4700 contre **1,6073** = **+9,34 %**, soit **+5 426 $** sur la seule
+  position GBS.PA de Marc — et ses 12 positions sont toutes en USD ou EUR.
+  **Livré** : `services/fx/observationsBdc.ts` (pur, partagé navigateur + MCP) choisit l'observation
+  **par SÉRIE** et la plus récente ; refus d'une observation de plus de **10 jours** (seuil DÉRIVÉ —
+  **5 j** de fermeture légitime au maximum, contre 140 j et 2 452 j pour les séries abandonnées de la
+  vraie réponse) ; cause `'perimee'` distincte de `'partiel'` ; et **la date de l'observation
+  publiée à l'écran**, tenue cohérente avec la provenance PAR CONSTRUCTION dans `updateFxRates`.
+  ⚠️ Les trois fixtures FX du dépôt étaient écrites à la main et encodaient la forme supposée : la
+  garde part désormais de la réponse RÉELLE (`tests/fixtures/bdcFxRatesDaily.json`).
+
+- [x] 🔴 **`[HUB-TOTAL-AMPUTE]`** (M, money-critical) — livré le 2026-09-17. Marc : « corrige sur
+  hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil pas équivalent à ce
+  que j'ai sur Fintable ». `buildMarketData` laisse tomber (`continue`) un titre DÉTENU dont la
+  queue de chandelles est périmée de plus de 7 j sans quote fraîche : le `TOTAL` reste fini et
+  plausible, simplement AMPUTÉ, et aucun des trois refus de `computePortfolioSessionMetrics` ne le
+  voyait (ils jugent la fraîcheur et le figement, jamais le PÉRIMÈTRE).
+  📏 **Mesuré sur l'état réel** : hubperso publiait **217 767 $** quand la somme des titres valait
+  **245 687 $** — **−27 920 $ (−11,4 %)** —, sur la MÊME carte qu'une valeur nette qui, elle, les
+  comptait (227 388 − 28 870 + 47 169 = 245 687). Et « Variation 7 jours **+38,2 %** » : un titre
+  absent de la borne passée et présent à la borne récente, lu comme un gain de 60 229 $.
+  ✅ `omittedKeys` (`[date, symbole]`, peuplé à TOUTE date — `staleTailSymbols` ne couvre que
+  `lastAxisDate`, donc jamais la borne passée d'une variation) + **refus 4** : séance amputée → on
+  ne publie rien ; borne amputée → variation refusée. Trois gardes, deux perturbations séparées
+  (1 rouge chacune, le bon).
+  ⚠️ **Conséquence visible** : tant qu'un titre manque, la carte du hub perd ses trois lignes de
+  placements. C'est l'arbitrage des trois autres refus — on publie MOINS, jamais autre chose.
+
+- [x] 🟠 **`[DETTE-INVISIBLE-INFOBULLE]`** (S) — livré le 2026-09-17, signalé par Marc. La
+  répartition « Par compte » de l'infobulle Futur ne listait que des comptes POSITIFS : 260 898 $
+  d'actifs affichés pour 214 918 $ de valeur nette, et aucune ligne pour les 45 980 $ d'écart (son
+  bail auto). ✅ Ligne « Dettes (hors hypothèque) » signée, conditionnelle ; dérivation extraite du
+  « Détail complet » et PARTAGÉE (`detteReductrice`), par soustraction `Σ actifs − NetWorth` et non
+  depuis `DettesNonImmo` (pas publié sur toutes les courbes). 3 gardes dont 2 contrôles négatifs.
+
+- [x] 🟠 **`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`** ✅ Livré le 2026-09-17. Mesuré en LISANT le dépôt Hubperso : le hub dérive l'évolution 7 j de la VALEUR de chaque métrique, et indexe l'historique par le LIBELLÉ. D'où DEUX défauts, tous deux de notre côté — un libellé daté (`Placements (16 sept.)`) remettait la série à zéro chaque séance (« pas encore d'historique » à perpétuité sous une valeur publiée), et publier une variation comme métrique donnait « −430,6 % sur 7 j ». Libellé stabilisé, variations déplacées dans `details` (rendu sans série dérivée). Le ticket d'origine disait — les
+  sparklines de la carte hub affichent **« −430,6 % sur 7 j »** sous « Variation de la séance » et
+  **« −908,4 % sur 7 j »** sous « Variation 7 jours ». Ce sont des variations **d'une variation** :
+  une grandeur qui change de SIGNE n'a pas de pourcentage d'évolution qui veuille dire quelque chose
+  (diviser par une base proche de zéro, ou négative, produit ces nombres). Même famille que
+  `UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE` : le chiffre n'est pas faux, il est **inexploitable**.
+  ⚠️ Recenser d'abord QUELLES métriques sont des variations (donc sans % d'évolution légitime) et
+  lesquelles sont des NIVEAUX (où le % a un sens) — la correction est probablement de ne pas publier
+  de `trend` pour les premières, pas de borner l'affichage. ⚠️ La même carte affiche « pas encore
+  d'historique » sous Placements **tout en publiant une valeur** : à trancher dans le même lot.
+
+- [x] 🟡 **`[HUB-REFUS-4-SANS-DIAGNOSTIC]`** ✅ LIVRÉ le 2026-09-17 (demande Marc). Le refus porte
+  désormais sa CAUSE : `computePortfolioSessionMetrics` rendait `null` pour CINQ situations, donc le
+  hub ne pouvait rien dire d'autre que rien (`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`).
+  Union `ok`/`refus` + section « Pourquoi les placements manquent » qui NOMME les titres écartés.
+  ⚠️ On publie le fait et les symboles, jamais un montant — s'il y avait un montant digne de foi, il
+  n'y aurait pas de refus. ⚠️ `inventaire-illisible` reste sans test, et c'est ÉCRIT : la branche est
+  structurellement inatteignable de l'extérieur (les clés sont fabriquées par `encodeOmittedKey`) —
+  un filet pour un futur changement de format, pas une fixture absurde. ⚠️ Contrôle négatif : quand
+  les placements sortent, la section n'existe PAS.
+
+- [x] 🟠 **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]`** ✅ LIVRÉ le 2026-09-17, dans la version ÉTROITE
+  (dernier point seulement — le remède large aurait réécrit le passé au prix du jour, cf. plus bas).
+  La fraîcheur de la cotation est VÉRIFIÉE (`priceUpdatedAt`, transmis par les DEUX mappers), et un
+  prix substitué ne compte plus comme « vrai prix » : `coverage` baisse, donc l'avertissement
+  « partiellement estimé » peut enfin tirer. ⚠️ La péremption se mesure contre AUJOURD'HUI, jamais
+  contre `t` (le dernier `t` est la FIN du mois courant, donc jusqu'à ~30 j dans le futur — jugé
+  depuis lui, un close d'hier paraissait périmé). Attrapé par un contrôle négatif. ⚠️ **Aucun golden
+  n'a bougé, et c'est EXPLIQUÉ** : mesuré, aucun persona ni fixture du dépôt ne porte
+  `priceUpdatedAt` — zéro rouge mesure l'absence de COUVERTURE, pas l'absence d'effet. D'où une
+  garde qui TRAVERSE jusqu'au mois 0. Détail historique ci-dessous.
+
+- [x] 🔴 **`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`** (M, money-critical, **FAIT le
+  2026-09-16 — et VALIDÉ EN PRODUCTION le jour même**)
+  ✅✅ **Le plancher dérivé a été mis à l'épreuve pour de vrai, quelques heures après le merge.** Marc
+  a lancé « Rattraper l'historique » sur un état **NON vierge** : **1 478 transactions ajoutées**,
+  dont 588 antérieures à juillet 2025 (7 597 → 7 601 lignes après l'import de correction du même
+  jour). C'est exactement le scénario que le panel avait nommé comme le seul coûteux — reculer sous
+  la date des lignes entrées par un AUTRE canal peut les rejouer en double, et la dédup ne rattrape
+  rien puisque sa clé contient le `payee`, justement ce qui diffère. **Mesuré après coup sur l'état
+  réel** : les deux `Sodexo` du 2026-09-09 réécrites À LA MAIN la veille (3,77 $ chacune, dont une
+  désambiguïsée `(2/2)`) sont **intactes**, et leurs originaux à 13,50 $ ne sont **pas revenus**.
+  **0 doublon sur les 36 lignes du Brésil.** Le cas n'était pas théorique : il s'est produit, et la
+  protection a tenu. Une mesure qui CONFIRME se publie autant qu'une réfutation.
+  Contexte d'origine — la bascule anti-doublon est GLOBALE (`deriveCutoverDate` : date de la transaction
+  la plus récente, **tous comptes confondus**) alors que les comptes ne postent PAS à la même
+  vitesse. Le compte chèque poste le jour même et pousse la bascule chaque jour ; la carte de crédit
+  poste avec quelques jours de retard (et `pending: false` est FORCÉ par contrat, donc seules les
+  transactions POSTÉES sont exposées) — elle arrive donc systématiquement DERRIÈRE la bascule que le
+  chèque vient d'avancer, et `tx.date <= transactionsAfter` la jette. **Chaque jour, indéfiniment.**
+  ⚠️ **MESURÉ** (12 passes quotidiennes, chèque sans décalage + carte à 3 jours de décalage) :
+  **12/12 transactions de chèque reçues, 0/9 transactions de carte** — les 9 écartées « avant la
+  bascule ». **Contrôle négatif** (même scénario, décalage de la carte ramené à **0 jour**) :
+  **12/12 carte reçues, 0 écartée**. Le décalage de postage EST la variable ; le mécanisme est prouvé
+  dans les deux sens. Explique le symptôme rapporté par Marc le 2026-09-14 (« je reçois pas les
+  transactions de carte de crédit ») alors que son dry-run prouve que Fintable en LIVRE 293.
+  ⚠️ Le rattrapage (`[FINTABLE-BACKFILL-HISTORY]`, déjà livré) ne referme rien durablement : dès la
+  passe suivante la carte se refait jeter — c'est un correctif ponctuel sur un défaut permanent.
+  Fix proposé : bascule **PAR COMPTE** — le max des dates déjà connues POUR CE COMPTE, la donnée
+  existe déjà (`Transaction.accountName`, persisté par transaction depuis `[TX-TRANSFERS]`, et écrit
+  par le mapper Fintable). Un compte jamais vu retombe sur la bascule globale (comportement
+  d'aujourd'hui) plutôt que sur `null`, sinon un compte nouvellement routé rapatrierait tout son
+  historique sans dédoublonnage. Touche `deriveCutoverDate` + `syncCore` + les DEUX orchestrateurs
+  (navigateur ET cron) → plan-first, gardes discriminantes exigées des deux côtés.
+  ✅ **LIVRÉ le 2026-09-16** — et la mesure a corrigé **le remède que ce ticket prescrivait** :
+  `deriveCutoverDatesByAccount` + `cutoverByAccount` (plafonné par compte) + `transactionsAfterByAccount`
+  au mapper + **`requestDateFrom`** (la borne de la REQUÊTE devient la plus ANCIENNE des bornes —
+  sans elle l'API ne rend même pas les lignes du compte lent et tout le reste est INERTE). Câblé et
+  gardé dans les deux orchestrateurs. 17 gardes, 5 perturbations séparées.
+  ⚠️⚠️ **Le repli prescrit ci-dessus (« compte jamais vu → bascule globale ») est un INTERBLOCAGE**,
+  mesuré : le compte lent ne peut jamais poser sa PREMIÈRE transaction, donc sa borne reste absente
+  pour toujours. **0/9 avant · 0/9 avec le repli seul · 9/9 dès qu'une transaction de la carte est
+  connue sous son libellé** (contrôle négatif à décalage nul : 12/12 partout). Le repli est GARDÉ —
+  l'ouvrir à `null` rapatrierait l'historique sans dédoublonnage, et rejouerait les 44 lignes du
+  Brésil aux MAUVAIS montants (`applyBankStatement` déduplique par `date|montant|payee`, or les
+  montants ont été corrigés à la main le 15/09) — mais il est désormais **NOMMÉ** dans le rapport
+  de sync, avec le seul geste qui débloque : « Rattraper l'historique », UNE fois.
+  ⚠️⚠️⚠️ **Le panel a trouvé TROIS défauts APRÈS gate vert et CI verte, tous à moi** — dont un
+  money-critical : une borne par compte ne voit que les lignes portant SON libellé, donc reculer
+  sous la date de lignes entrées par un autre canal (CSV `'Importé'`, MCP sans `accountName`, sync
+  d'avant le 05/09) faisait ÉCRIRE des doublons que la bascule globale bloquait — **3 écrits,
+  mesuré sur `applyPayloadsIsolated`**. Corrigé par un PLANCHER dérivé (date la plus récente des
+  lignes rattachables à aucun compte routé), calculé après la lecture du snapshot. Les deux autres :
+  clé normalisée d'un seul côté (interblocage PERMANENT sur un libellé espacé, 0/9 même après
+  rattrapage) et compte non listé par l'API jamais nommé. 28 gardes, 8 perturbations séparées.
+
+### 📈 Investissements & historique
+
+- [x] 🔴 **`[FINTABLE-INVESTMENTS-MUET]` — LIVRÉ le 2026-09-03** (PR #830), voir
+  `docs/BACKLOG_ARCHIVE.md`. `services/fintable/comptesSansPositions.ts` traduit `holdingsSkipped`
+  en `FintableSyncReport.comptesSansPositions` (identité + LIBELLÉ humain + raison) ; les DEUX
+  chemins de sync le remplissent depuis cette source unique, et `FintableSyncCard` ÉNUMÈRE la cause
+  au lieu de la compter. Aucun montant, aucune promesse de guérison automatique.
+
+### 🧱 Dette technique
+
+- [x] **Godfiles (V11)** — ✅ **FAMILLE COMPLÈTE le 2026-09-04** :
+  ✅ `[GODFILE-STORE]` fait le 2026-09-04 (lot 158, PR #889) — `useFinanceStore.ts` re-mesuré
+  **783 l.** → façade de **207** : `etatParDefaut.ts` (défauts + migration legacy `app_*` +
+  `initialState` calculé LÀ, une seule exécution), `migrationsPersistees.ts` (v1→v7),
+  `actionsModeTest.ts` (créateur, mêmes fermetures set/get), `optionsPersistance.ts`
+  (merge/filet/partialize + statut d'hydratation). **Zéro migration** : nom, version (7) et forme
+  persistée inchangés — prouvé par EMPREINTE (sha256 de la sortie de `partialize` triée, clés,
+  version, nom : identiques avant/après). Le risque du ticket était la persistance : la CONFIG
+  persist reste dans la façade, à côté du create().
+  ✅ `[GODFILE-FUTUREDETAILMODAL]` fait le 2026-09-04 (lot 154, PR #885) — re-mesuré **1 142 l.**
+  (le « 606 » du ticket décrivait un état d'avant) → **445** : `futureDetail/comptes.ts` (ACCOUNTS,
+  espace par année, explainMovement — pur), `detailsTransaction.ts`, `DrillDownCompte.tsx` (la vue
+  compte entière avec ses dérivations, tooltip DÉCLARÉ dedans — exigence de `chartPrivacyScan`),
+  et les trois sections (catégories du mois, variation du jour avec son pli persisté, transactions
+  du jour). Conditions d'affichage et leurs justifications restées chez le parent.
+  ✅ `[GODFILE-REALESTATE-CMP]` fait le 2026-09-04 (lot 153, PR #884) — le ticket disait
+  « RealEstate.tsx 624 » mais ce fichier était déjà une façade de 29 l. ; le vrai godfile était
+  `components/realestate/RealEstateWorkspace.tsx` (912 l.), redescendu à 661 en extrayant
+  `calculsImmoLocaux.ts` (amortissement local + comparaison Acheter-vs-Louer, fonctions pures),
+  `ScenariosComparatifsCard.tsx` et `AmortissementCards.tsx` (extraction verbatim ; l'état des
+  curseurs reste chez le parent — la carte-conseil IA lit les mêmes valeurs).
+
+- [x] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) ✅ fait le 2026-09-04 (lot 156,
+  PR #887) — `ui/Input` (variants compact/large + accents, classes ÉCRITES EN ENTIER), `ui/Select`,
+  `ui/Field` (paire label↔id écrite une fois, id toujours EXPLICITE). Périmètre RE-CENSÉ (les
+  comptes du ticket étaient périmés) : APP 26 réels migrés (le « 27e » était un commentaire —
+  prose), Onboarding 8 (dont 6 en Field), ProjectionControls 1 select (les 13 sliders = autre
+  famille). EXCLUSIONS déclarées : PatrimoineExtended reste tel quel (grille dense hétérogène —
+  col-span/px-0.5/text-tiny par cellule, une primitive y dégraderait) ; la prop « erreur » du
+  ticket N'EST PAS livrée (aucun site migré n'affiche d'erreur aujourd'hui — un prop sans
+  producteur est une intention jamais livrée) ; unification VISUELLE des trois densités non faite
+  (changement visible = décision produit, pas un refactor). (≡ CA-08.)
+
+- [x] **`[ENG-RAMQ-FIELDS]`** ✅ fait le 2026-09-04 (lot 155, PR #886) — `User.hasPrivateDrugInsurance`
+  + case par personne (Profil → Options fiscales) + `ramqExemptAdultsCount` PAR ADULTE dans
+  taxDecember (Annexe K : chaque conjoint calcule SA prime ; le drapeau de ménage `ramqExempt`
+  reste accepté, le compte fin prime). Recensé : la bascule de MÉNAGE existait déjà — le manque
+  était la granularité par adulte ET le producteur du champ. Reste routé (préexistant, hors
+  périmètre) : `childrenCount` approximé via `childGoals.length` (TODO `User.dependentChildrenCount`
+  dans projection.ts, inchangé).
+
+### Audit de santé 2026-08-19 (panel de 9 agents, demandé par Marc)
+
+- [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** ✅ 2026-08-22 — les quatre nombres sont nommés et
+  documentés dans `services/projection/modelAssumptions.ts` (un 4e site s'est ajouté au tri : le
+  multiple 25× existait en DEUX copies anonymes, `projection.ts` et `monthlyOutput.ts`). ⚠️ Ils
+  n'ont PAS été rangés dans `FISCAL_REFERENCE.md` : ce sont des hypothèses de MODÈLE, qu'aucune
+  autorité ne publie — les y mettre leur prêterait l'autorité d'un texte de loi. ⚠️ Le tri a montré
+  que le ticket groupait des enjeux **incomparables** : les deux tickets ci-dessous en sortent.
+
+- [x] **`[SMITH-HELOC-TAUX-FIGE]`** ✅ 2026-08-24 — **décision Marc : « la marge suit l'hypothèque ».**
+  Le taux de la marge du levier Smith n'est plus un littéral figé à 5 % : `smithHelocAnnualRate(goal.mortgageRate)`
+  rend `hypothèque + 2 points`, avec un plancher à 3 %.
+  ⚠️ **Ce n'est pas un chiffre d'affichage** : `useSmithManoeuvre` est dans l'espace de recherche de
+  stratégies, donc ce taux décide de ce que l'app RECOMMANDE. Le 5 % figé pouvait passer SOUS le taux
+  du prêt — une marge révolvante moins chère que le prêt de premier rang qu'elle accompagne, ce qui
+  est impossible en pratique et flatteur dans le modèle, **précisément quand les taux montent et que
+  le levier devient dangereux**.
+  **Effet MESURÉ** (30 ans, célibataire 8 000 $/mois, maison 500 k$, rendement 6 %), gain du levier :
+  hypothèque 3 % → **+639 889 $ inchangé** (la marge y vaut 5 %, comme avant : non-régression) ;
+  hypothèque 5 % → **+489 760 $ → +413 769 $** ; hypothèque 8 % → **+275 001 $ → +32 263 $**, soit
+  **242 738 $ d'avantage fantôme retirés** au taux le plus élevé.
+  ⚠️ **La DIRECTION est structurelle, la MAGNITUDE est une hypothèse** : les 2 points ne sont pas un
+  écart de marché relevé quelque part, et le module le dit — le documenter comme un « prime + 0,5 »
+  fabriquerait la source qu'on prétend citer.
+  7 tests neufs, **3 perturbations prouvées rouges**. **Deux gardes existantes ont rougi, comme elles
+  devaient** : ma garde de LIMITE de `[CONSTANTES-MOTEUR-NON-SOURCEES]` (« l'intérêt ne suit PAS le
+  taux ») — **INVERSÉE plutôt que supprimée**, un test de limite qui disparaît laisse croire que la
+  limite n'a jamais existé — et le test voisin de `realEstateMonth`, dont la fixture à
+  `mortgageRate: 5` coïncidait exactement avec l'ancien taux figé et ne pouvait donc RIEN discriminer.
+  Elle discrimine maintenant. ⚠️ Aucun golden n'a bougé, et c'est EXPLIQUÉ : `useSmithManoeuvre` est
+  faux par défaut et seuls 2 fichiers de test l'activent — aucun golden ne l'exerce.
+
+- [x] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** ✅ 2026-08-22 — **NON reproduit** (8 exécutions vertes sur
+  le même commit : 5 en isolation, 3 suites complètes). Le ticket supposait « ORDRE ou PARALLÉLISME » ;
+  les mesures réfutent les deux, et toutes les autres explications faciles :
+  · le RNG du Monte-Carlo est **entièrement graine** (`buildSeededRng(scenarioType, strategy, iterIndex)`,
+    aucun `Math.random`) et **aucun `new Date()`/`Date.now()` n'existe dans la chaîne** → immunisé aux
+    faux timers comme à l'ordre des fichiers ;
+  · `vitest.config.ts` pose `fileParallelism: false` → il n'y a **pas** de parallélisme de fichiers, et
+    **mesuré**, la durée des 3 tests dans la SUITE COMPLÈTE (2 289 / 1 888 / 1 343 ms) est la même
+    qu'en isolation (2 400 / 1 838 / 1 417 ms) : **aucun effet de charge**, donc pas un dépassement de
+    délai ;
+  · la marge de l'assertion est **énorme** — mesuré `perte = 1,132` contre un seuil de 0,5, le scénario
+    divorcé finissant à **−644 980 $** contre 4 885 681 $ sans divorce : aucun tremblement numérique ne
+    peut la franchir.
+  **Reste UN mécanisme possible, et il était réel** : une grandeur ABSENTE. `P50` est annulable côté
+  moteur (`d.P50 = mcResult.p50Data[i] ?? null`) et le helper la convertissait en `NaN` en silence —
+  `expect(NaN).toBeGreaterThan(0.5)` échoue alors avec un message qui **accuse le moteur d'un défaut
+  d'argent inexistant**. Violation de `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon pourtant
+  déjà indexée. **Livré** : le helper EXIGE la mesure avant de comparer. Perturbation (P50 forcé à
+  `null`) : l'ancien helper rendait « expected NaN to be greater than 0.5 », le nouveau rend « P50
+  ABSENT du dernier point ». La tolérance n'a PAS été élargie.
+
+- [x] **`[ASSETLOC-INCLUSION-RECOPIEE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+  `services/projection/assetLocation.ts:117` écrit `return marginalRate * 0.5` : le taux d'inclusion
+  des gains en capital **recopié en dur**. C'est le SEUL site du dépôt à le faire — `latentTax`,
+  `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate` et `projection.ts` importent
+  tous `CAPITAL_GAINS_INCLUSION_STANDARD` (vérifié par grep). Il était invisible parce que `0.5`
+  figurait dans le `BENIGN` du garde. **Correctif** : importer la source unique. Rétrocompat
+  bit-identique tant que le taux vaut 50 %, et c'est justement l'intérêt : le jour où il change,
+  ce site suivra.
+
+- [x] **`[ASSETLOC-YEAR-2026]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
+  `services/projection/assetLocation.ts:135` lit le taux marginal avec une année fiscale de repli
+  **écrite en dur à 2026**. En 2027 le module consultatif lira un barème périmé sans rien dire.
+  **Correctif** : reprendre l'année courante du moteur plutôt qu'un littéral.
+
+- [x] **`[FISC-GUARD-ARGUMENT]`** + **`[FISC-GUARD-BENIGN-60]`** ✅ 2026-08-22 (livrés ENSEMBLE, le
+  ticket l'exigeait : le `60` de la RRQ était caché DEUX fois, par l'exemption ET par la position).
+  ⚠️ **L'arbitrage du ticket était FAUX, et son inverse aussi.** Le ticket annonçait « ~1 clé fiscale
+  pour ~15 de bruit ». RE-MESURÉ : le motif large `/[(,]$/` sort **26 clés neuves dont 16 fiscales**
+  — ce qui semble renverser l'arbitrage. Mais 14 de ces 16 sont les **âges** de la table FERR, dont
+  le fait est DÉJÀ porté par les 24 entrées de **taux** (`RRIF_RATES[73]` etc.) : des clés fiscales
+  qui n'ajoutent **aucune protection**. Le motif retenu, `/\w\($/` (1er argument d'un APPEL), sort
+  **11 clés + 3 comptes** et attrape **les DEUX barèmes réellement neufs** — l'âge 18 de début de la
+  période cotisable RRQ et la borne 60 d'anticipation — soit **100 % de la protection pour 42 % des
+  entrées**. Il évite en prime un faux positif que le motif large importait : « (18 ans) » dans un
+  MESSAGE utilisateur de `childrenReee.ts` (`SCAN-QUI-MATCHE-LA-PROSE`, cette fois dans un littéral
+  de chaîne — hors de portée de `stripComments`). 3 tests neufs, **3 perturbations prouvées rouges**.
+
+- [x] **`[TAXBRACKETVIZ-ANNEE]`** ✅ 2026-08-22 — paire recâblée : `TaxBracketViz` reçoit désormais
+  une année **REQUISE** (aucun défaut : un `= 2026` se périme en silence, et lire l'horloge dans le
+  composant en ferait une bombe au 1er janvier), et l'utilise pour les **barres ET le total**.
+  Nouvel export `bracketsForYear` dans `utils/tax.ts`, qui lit `getIndexedBracketsForYear` — la
+  source dont `calculateFiscalReport` tire son impôt, jamais une ré-indexation recopiée.
+  Côté `Retirement`, une SEULE lecture d'horloge alimente maintenant le brut déduit et les paliers.
+  ⚠️ **Le chiffre du ticket était faux, et sa nature aussi.** Il annonçait « 333 $ sur 86 968 (0,4 %)
+  dès 2027 — visuellement invisible, d'où FAIBLE ». RE-MESURÉ sur l'impôt total : **+212 $ (1,0 %)
+  en 2027, +874 $ (4,4 %) en 2030, +2 069 $ (11,1 %) en 2035** à 86 968 $ de brut ; **+5 095 $ à
+  200 000 $ en 2035**. Ce n'est pas un biais FIXE : il COMPOSE à ~2 %/an, comme l'indexation qu'il
+  ignore. À dix ans l'impôt affiché est surévalué de plus de 11 %.
+  6 tests neufs, **3 perturbations prouvées rouges** — dont les DEUX demi-correctifs que le ticket
+  interdisait à juste titre (barres figées + total indexé, et l'inverse), chacun produisant une
+  incohérence visible entre des barres et la somme affichée juste en dessous.
+
+- [x] **`[GROSSFROMNET-CREDITS-65]`** ✅ 2026-08-24 — **décision Marc : tout câbler, moteur inclus.**
+  `calculateGrossFromNet` accepte désormais `ageOpts` (optionnel, défaut NEUTRE), et les **quatre**
+  appelants de production le passent PAR UTILISATEUR via la source unique
+  `ageOptsForSalaryInversion` — `Retirement`, `TaxCenter` (aux **DEUX bouts** de son aller-retour),
+  `buildSimulationParams`, et le socle `computeIncomeBaseline`, dont le type `users` a dû être élargi
+  pour recevoir `age`/`birthYear`.
+  ✅ **Les chiffres du ticket étaient EXACTS** au dollar près (+1 904 $ à 36 k$ de net, +1 018 $ à
+  48 k$, +391 $ à 60 k$) — j'ai failli le déclarer faux en mesurant côté BRUT alors qu'il annonçait,
+  et NOMMAIT, un écart en NET. Leçon écrite.
+  Mesures ajoutées : côté brut l'écart atteint **+3 041 $ à 30 k$ de net (6,7 % du net)** et
+  **disparaît au-dessus de ~80 k$** — le défaut mordait surtout EN BAS de l'échelle. Le cas COUPLE
+  diffère du SOLO (+2 527 $ contre +3 004 $ à 36 k$) : `hasSpouse` est dérivé du nombre d'ACTIFS, pas
+  de `users.length`, sinon un ménage dont le second membre n'a aucun revenu serait sur-crédité.
+  Contre-épreuve à 64 ans : écart exactement 0.
+  ⚠️ **AUCUN golden n'a bougé — et c'est EXPLIQUÉ, pas constaté** : l'effet exige les DEUX conditions
+  à la fois (65 ans et plus **ET** aucun brut saisi), or les fixtures de goldens ont toutes un brut.
+  Un test dédié construit ce profil pour prouver que le câblage moteur n'est pas inerte, et un autre
+  vérifie qu'un 66 ans AVEC brut saisi n'est pas touché.
+  10 tests neufs, **3 perturbations prouvées rouges** (paramètre non transmis · socle moteur muet ·
+  `hasSpouse` figé). Un 11e test existant a rougi : ma propre garde de `[TAXBRACKETVIZ-ANNEE]`,
+  ancrée sur l'ARITÉ de l'appel — resserrée sur le FAIT qu'elle défend.
+
+- [x] **`[JOBLOSS-DUREE-N-PLUS-1]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
+  **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
+  6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
+
+- [x] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** ✅ CONSIGNÉ 2026-08-22 (FISCAL_REFERENCE §4 + garde ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #676, financial-integrity F6) —
+  branche ACTIVE : `incomeForGains` est le salaire BRUT alors que le §4 accorde le crédit d'âge sur
+  le taxable NET des déductions (REER/FHSA). Un travailleur 65+ qui cotise voit l'érosion de sa
+  bande calculée depuis une base plus haute que celle du crédit → sous-facturation bornée
+  (~1 153 $/adulte/an max). Population marginale ; incohérence née de #676 (avant, la bande active
+  ne portait aucun crédit). Documenter en limite assumée OU aligner la base. [MESURÉ borné]
+
+- [x] **`[TAXDEC-SPLIT-EGAL-VS-PERUSER]`** ✅ CONSIGNÉ 2026-08-22 (FISCAL_REFERENCE §4 + garde ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #676, financial-integrity F5) — le
+  crédit d'âge FÉDÉRAL s'érode sur le revenu individuel : le bloc §6 le calcule sur
+  `taxableRealByUser[i]` (asymétrique si `usePerUser`), la bande sur `incomeForGains / N` (moyen).
+  Pour un couple 90/10, crédit accordé et crédit érodé ne se chaînent pas. Approximation
+  PRÉ-EXISTANTE des paliers étendue aux crédits — signe dépendant du profil : consigner comme
+  limite assumée (FISCAL_REFERENCE §4), ne PAS « corriger » à l'aveugle. [À consigner]
+
+- [x] **`[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — revue #676, silent-failure-hunter,
+  HORS diff : préexistant) — `services/secureKeyStore.ts:252-253` : à la sauvegarde de clés,
+  `existing?.status === 'ok'` traite `decrypt_failed` (coffre corrompu → champs device-local
+  `fintable` NON préservés) exactement comme `empty` (rien à préserver), sans trace. Classe
+  `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` : `empty` est légitime, `decrypt_failed` mérite un
+  `logError`. Le `.catch(() => null)` externe est mort (la fonction encode l'erreur dans son
+  retour — `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`). [VÉRIFIÉ dans le code par la revue]
+
+- [x] **`[W5-DOUBLE-SAISIE-LOCATIF]`** ✅ LIVRÉ 2026-08-22 (note UX aux DEUX écrans ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue 2026-08-20) — rien n'empêche de saisir
+  le MÊME immeuble comme `realEstateGoal` avec `rentalIncomeMonthly` (imposé via `accRentesYear` en
+  décembre) ET comme `rentalProperty` W5 (imposé par le forfait) → double comptage du revenu et
+  double imposition par deux mécanismes distincts. Garde de saisie ou note UX. [À vérifier]
+
+- [x] **`[ENV-NODE-NON-DECLARE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
+  la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
+  (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node
+  **22**. **Conséquence MESURÉE le 2026-08-19** : `globSync` (`node:fs`, Node 22+) a donné un gate
+  local VERT et une CI ROUGE sur le même commit (`TypeError: globSync is not a function`, PR #665).
+  Rien n'avertit à l'écriture. **Correctif** : `engines: { node: '20.x' }` + `.nvmrc`, et faire
+  pointer les workflows dessus plutôt que de répéter le littéral (`DOC-METRIQUE-RECOPIEE` appliqué à
+  une version). ⚠️ Modification de chaîne d'outils → **valider avec Marc avant** : un `engines`
+  strict peut casser un `npm install` local sur une autre machine. [MESURÉ]
+
+### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
+
+### 🔴 Argent — valeurs fausses ou silencieuses
+
+- [x] **`[A11Y-CONTRAST-TOOL-GAP-CTA]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `scripts/check-contrast.ts` ne teste que
+  `text-{couleur}` sur les 3 fonds de page ; il ne teste **pas** les CTA pleins
+  (`bg-{danger,info,warning,success}-600` + `text-white`, ex. `DebtManager.tsx:128`,
+  `TaxCenter.tsx:342`). C'est un **trou de couverture de l'outil-arbitre**, pas un échec constaté
+  (non mesuré, et on ne juge pas un contraste à l'œil). Correctif : étendre le script, puis rejouer.
+
+- [x] **`[A11Y-PCT-NOT-MASKED]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `components/investments/NetWorthByOwnerCard.tsx:66` :
+  le montant par personne passe par `PrivateAmount` mais le **pourcentage** juste à côté non, alors
+  que `FutureKpiStrip` traite explicitement un `%` comme une donnée financière à masquer. Un % de
+  répartition entre conjoints reste une info relationnelle. [MESURÉ]
+
+- [x] **`[AI-UNBOUNDED-CONFIDENCE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, ÉLEVÉ) — `CategorizeItemSchema` / `SubscriptionItemSchema`
+  / `CoupleOptimizationStrategySchema` valident `confidence`, `averageAmount`, `dayOfMonth`,
+  `yearlyCost` avec `z.number()` **nu** (`services/claude.ts:60-76`), alors que `PayslipSchema` a été
+  durci (`.positive().finite()`) pour exactement ce risque. Une confiance hallucinée traverse
+  `safeJsonValidate` et s'affiche verbatim (`components/Transactions.tsx:893-894`, 985-986) :
+  « Confiance: 9999 % ». Correctif : `.min(0).max(100)` sur `confidence`, `.nonnegative().finite()`
+  sur les montants, + clamp défensif à l'affichage. [MESURÉ, reconfirmé par Claude]
+
+- [x] **`[BUDGET-AI-WRONG-MODEL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — coût ; unifie `[AI-BUDGETMODAL-MODEL-COST]`) — `components/budget/BudgetAiModal.tsx:68-72`
+  appelle `chatStream` **sans `model`** → retombe sur `MODEL_SONNET` (`services/claude.ts:261`). Or
+  les 4 surfaces de même nature (rééquilibrage, abonnements, conseil immo, optimisation couple)
+  passent toutes Haiku explicitement. Seule surface Haiku-éligible qui paie le tarif Sonnet, sur la
+  clé BYOK de Marc. Correctif : passer `model: MODEL_HAIKU`. [MESURÉ, reconfirmé par Claude]
+
+- [x] **`[TX-STALE-MODEL-LABEL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `components/Transactions.tsx:376` affiche
+  « Modele: Claude Sonnet 4.6 » pendant la catégorisation, alors que `categorizeBatch` utilise
+  `MODEL_HAIKU` (`services/claude.ts:481`). Étiquette jamais mise à jour lors de la bascule.
+  Correctif : dériver le libellé de la table `services/aiChat/models.ts`. [MESURÉ, reconfirmé]
+
+- [x] **`[REBALANCE-SILENT-FAIL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — `components/Investments.tsx:1024-1039` :
+  `getRebalanceJustifications` rend `[]` sur erreur, et le composant ne pose **aucun** état d'erreur
+  — contrairement à `CoupleOptimizationCard` / `RealEstateAdviceCard` qui font
+  `if (result.length === 0) setHasError(true)`. Un 429 se lit « l'IA n'avait rien à dire ».
+  Correctif : répliquer le pattern `hasError`. [MESURÉ]
+
+- [x] **`[BUDGET-AI-DUP-PARSING]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `components/budget/BudgetAiModal.tsx:78-86`
+  réimplémente son parsing JSON (`match(/\[[\s\S]*\]/)` + `JSON.parse` + `.parse`) au lieu de
+  `safeJsonValidate` (déjà testé pour les fences ```json et la prose autour). Un JSON malformé jette
+  tout le texte streamé. [MESURÉ]
+
+- [x] **`[PERF-ENGINE-DATELABEL-INTL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, CRITIQUE) — `currentLoopDate.toLocaleString('fr-CA',
+  { month: 'short' })` appelé **sans formatter mis en cache**, à chaque mois de chaque run
+  (`services/projection/monthlyOutput.ts:209`). **Mesuré : 79,4 µs/appel** contre **0,82 µs** avec une
+  instance `Intl.DateTimeFormat` réutilisée (~97×) et 0,023 µs avec une table précalculée → **~45 ms
+  par run déterministe** pour ce seul point, sur un chemin qui tourne à chaque debounce de saisie
+  (300 ms) dans l'onglet Futur.
+  ⚠️ **Le correctif existe déjà 200 lignes plus loin dans le même moteur** : `dailyLedger.ts:396-401`
+  construit `WEEKDAY_SHORT_FR` « UNE fois » avec le commentaire « mesuré ~800 ms pour 11 000 jours ».
+  Le jour de la semaine a été traité, **le mois a été oublié**. Correctif : table de 12 libellés
+  construite par `toLocaleString` (même source, pas de liste re-codée qui dériverait du locale).
+  Sortie strictement identique → zéro risque money/fiscal. [MESURÉ, précédent vérifié par Claude]
+
+- [x] **`[PERF-ENGINE-ISOSTRING-HOTLOOP]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — `computeIncomeLossFactor` fait
+  `toISOString().substring(0,7).split('-')` **inconditionnellement** à chaque mois, même sans aucun
+  événement `PERTE_EMPLOI`/`SABBATIQUE`/`ACCIDENT` (`services/projection/monthlyEvents.ts:78-79`).
+  **Mesuré : 1,096 µs/appel** contre **0,046 µs** avec
+  `getUTCFullYear()*12 + getUTCMonth()` (~24×, valeur numérique identique). Gain ≈ **500 ms sur une
+  recherche de stratégie à 1 000 itérations**, ≈ 50 ms sur un run MC à 100. [MESURÉ]
+
+- [x] **`[DETTE-KNIP-API-ENTRY]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — unifie `[KNIP-EDGE-FALSE-POSITIVE]`) — `knip.json` ne déclare pas `api/**/*.ts` en entry
+  point → `api/claude/[...path].ts` (fonction Vercel Edge, routée par la plateforme) ressort en
+  « fichier inutilisé » alors qu'il est en PROD. Le faux positif aveugle aussi le scan sur du vrai
+  code mort futur dans `api/`. Correctif : ajouter `"api/**/*.ts"` à `entry`. [MESURÉ]
+
+- [x] **`[DETTE-KNIP-ADMZIP]`** ✅ 2026-08-24 — **knip avait raison**, et la cause est instruite.
+  Le paquet `adm-zip` LUI-MÊME est bien vivant : `mcp/pack.mjs` l'importe, et le script `mcp:pack`
+  l'exécute. Mais ce consommateur est un fichier **`.mjs`**, et `tsconfig.json` pose `allowJs: true`
+  **sans `checkJs`** — le fichier est donc inclus mais **jamais typé**. `@types/adm-zip` fournissait
+  ses déclarations à personne. Vérifié par l'expérience plutôt que par lecture : retrait du paquet →
+  **`npm run typecheck` reste VERT**, et knip ne signale plus **aucune** dépendance inutilisée.
+  Le runtime est intact (`import('adm-zip')` résout, `node --check mcp/pack.mjs` passe).
+  ⚠️ **Aucune garde ajoutée, et c'est délibéré** : si quelqu'un importe un jour `adm-zip` depuis un
+  fichier **TypeScript**, `tsc` échouera de lui-même sur la déclaration manquante. La garde existe
+  déjà, c'est le typecheck (`AVANT-D-AJOUTER-LA-GARDE-VERIFIER-QU-ELLE-N-EXISTE-PAS-DEJA`).
+
+### ✅ Documentation — **SECTION VIDE, tout est livré** *(en-tête conservé pour l'historique des liens ; son titre affirmait au PRÉSENT que « la doc a décroché du code », sans un seul item dessous — vérifié vide depuis au moins #674)*
+
+### ✅ Vérifié SAIN par le panel (ne pas re-lever sans nouvelle preuve)
+
+- **Sécurité** : aucun secret en dur (code, CI, `.env.example`) ; coffre AES-256-GCM à clé de device
+  non-extractible en IDB, `apiKeys` exclu du `partialize` ; backup PBKDF2-SHA256 600k ; jeton Fintable
+  device-local ; CSP sans `unsafe-eval`/`unsafe-inline`, `frame-ancestors 'none'` ; zéro `innerHTML`
+  hors tests ; MCP HTTP en `timingSafeEqual` + OAuth 2.1/PKCE + anti-DNS-rebinding ; `errorLogger`
+  scrube montants ET secrets avant persistance ET avant `console.*`.
+- **Mode discret** : 94 tests de garde verts. PDF **et** CSV refusent de générer ; le contexte écran
+  envoyé au LLM est coupé à la source ; les `tickFormatter`/`formatter` Recharts sont couverts.
+- **a11y mesuré** : `check-contrast` = 60 combinaisons de TOKENS, **0 non conforme**, 9 en AA-large
+  seulement (⚠️ périmètre limité — cf. `[A11Y-CONTRAST-ANGLE-MORT-541]`) —
+  toutes vérifiées comme décoratives ou disabled (`ink-500`), `danger-600`/`info-600` n'existent en
+  `text-*` nulle part. **Aucun shade hors palette.** 17/17 tests axe-core verts, zéro violation
+  serious/critical. Modale : piège de focus, restauration, `Escape`, bouton 44×44. Sidebar hover-only
+  déjà corrigée (`[D6-KBD]`). Un seul `<h1>` par écran rendu. `prefers-reduced-motion` global.
+- **IA** : `promptCad`/`roundToHundred` empêchent structurellement le faux `0 $` ; anti-injection
+  systématique (`wrapUserData`, `sanitizePromptText`) ; `agentLoop` à cap de tours, snapshot figé,
+  distinction annulation/troncature/refus ; `apiKeys` exclu du snapshot d'état ; consentement explicite
+  avant tout envoi Vision ; cache de prompt Anthropic correctement posé.
+- **Fiscalité, mesurée par script** : **0 écart sur 66 constantes** entre `utils/tax.ts` et
+  `docs/FISCAL_REFERENCE.md` (paliers féd/QC, BPA, RRQ/RQAP/AE, RAMQ 12 valeurs, FSS 8 valeurs, SRG,
+  PSV/clawback, crédits 65+/ligne 361, retenues REER, CELI/REER, abattement 16,5 %). Mécanique
+  d'impôt **recalculée à la main, exacte au cent** à 100 k$ (fédéral 11 880,55 $ / QC 13 629,47 $ /
+  RRQ 4 895,30 $ / RQAP 430,00 $ / AE 895,70 $). Table FERR : 24 facteurs conformes, plateau 20 % à
+  95+. Immobilier : taxe de bienvenue 500 k$ = 5 885 $ Montréal / 5 610,50 $ reste du QC, SCHL,
+  OSFI, TPS/TVQ tous conformes. REEE : SCEE et IQEE conformes. Gardes de constantes 43/43 vertes.
+- **Unités salaires** : les **40** consommateurs de `grossSalary`/`netSalary` relus un par un — le
+  `×12` est correct partout où c'est annuel, le mensuel conservé là où c'est mensuel. Seule anomalie :
+  la prop morte `[RETIREMENT-GROSSINCOME-DEAD]` ci-dessus.
+- **Devises** : `assetFxGuard` vert, `assetValueCad`/`toCurrencyFactor` systématiques sur les 20 sites
+  UI qui somment des actifs. Aucune somme `quantity × currentPrice` sans FX hors allowlist.
+- **Divisions et arrondis** : `activeUsersCount` forcé ≥ 1, gardes `!(total > 0)` sur chaque quotient,
+  `Number.isFinite` en entrée de toutes les fonctions fiscales. Les `toFixed(2)` ne touchent que les
+  séries de SORTIE, jamais les soldes internes — pas d'accumulation d'erreur.
+- **Conservation, mesurée en DOLLARS sur 12 scénarios** (socle, dettes, enfants+REEE, achat de
+  résidence, locatif+vente, voyages, héritage, rénovation, véhicule cyclique, krach, retraité,
+  divorce MC), 30 à 60 ans : forme-BILAN `NetWorth == Σactifs − DettesNonImmo` **max 0,02 $** ;
+  forme-FLUX **max 0,02 $/mois, Σ 0,41 $ sur 481 mois**. Hypothèque jamais double-comptée
+  (`min(DetteTotale − DettesNonImmo) = 0,00 $`). Per-conjoint REER : **0,00 $**.
+  `totalTaxesPaid == Σ FluxImpots` : **0,00–0,01 $**. `Savings` au jour `== Income − Expenses` sur
+  1 795 jours : **0,00 $**.
+- **Divorce sous Monte Carlo** (split 50 %, 25 ans) : bilan max 0,02 $, et les espaces
+  CELI/REER/CELIAPP suivent bien `taxFilers` (CELIAPPMax 32 000 → 16 000).
+- **Source unique du patrimoine net** : grep exhaustif → 5 appelants de `computeRawNetWorth`,
+  **0 copie locale de la formule**, `realEstateEquity` jamais re-soustrait.
+- **Grand livre quotidien** : mesuré SANS consulter `FIELD_KIND` (donc non circulaire) sur 60 mois ×
+  tous champs → **0 champ ne raccordant ni en stock ni en flux**, 0 champ moteur absent de la table.
+  (La COUVERTURE de la garde reste étroite, cf. `[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`.)
+- **Robustesse NaN/Infinity** : INV-8 vert, aucun NaN propagé sur les 12 scénarios.
+- **Retenue REER** : créditée exactement UNE fois (décembre soustrait, avril débite) — pas de double
+  comptage. C'est l'absence de la contrepartie (l'assiette) qui pose problème, pas la retenue.
+- **Moteur** : `services/projection*` n'importe **jamais** le store ni `components/` — le cœur
+  money-critical est structurellement propre. Migrations v1→v7 chaînées, échec de réhydratation
+  TRACÉ et visible plutôt qu'avalé.
+- **Bundle de boot** : rien à corriger. Build PROPRE + `grep modulepreload dist/index.html` confirme
+  que recharts (404,61 ko), jspdf (399,38 ko) et le SDK Anthropic (125,28 ko) sont **hors boot** —
+  seules des chaînes de caractères les référencent dans le chunk d'entrée, pas leur code. Aucun
+  `manualChunk` piégé en EAGER. Boot réel : ~540,9 ko brut / ~177,3 ko gzip.
+- **Recherche de stratégie** : architecture déjà mature — pool de workers dimensionné sur
+  `hardwareConcurrency`, budget adaptatif borné [60,400] itérations, estimation calibrée à 8 ms/sim
+  (pas le défaut optimiste de 2 ms). Le `structuredClone` de 8,4 ms à la frontière worker est mitigé
+  par le debounce de 300 ms déjà en place.
+- **Structure plate** : tient à cette taille (sous-dossiers par domaine déjà en place) — aucune
+  restructuration à chiffrer. Le problème n'est pas la topologie.
+
+### ❌ RÉFUTÉS par Claude (ne pas re-créer de ticket)
+
+- **`calculateDetailedTax` « code mort »** : FAUX — la fonction **est appelée** (`utils/tax.ts:803` et
+  `814`). `knip` signalait l'`export` superflu, pas la fonction. L'agent a confondu les deux.
+- **`calculateNetFromGross` mort** : vrai. Traité au lot 73 (`[DEAD-CALCNETFROMGROSS]`, PR #803) —
+  fonction retirée, et la citation de `docs/FISCAL_REFERENCE.md` qui la présentait comme « la source
+  unique de conversion brut→net du dépôt » corrigée : elle n'avait aucun appelant.
+- **`expect(x).toBeDefined()` « tests vacueux »** (56 occurrences / 30 fichiers) : inspection par
+  échantillon → presque tous suivent le patron légitime « garde d'existence avant assertion réelle »
+  (`find(...)` puis `expect(x!.valeur).toBe(...)`). Pas un item.
+- **`components/Settings.tsx` god-file** : périmé — refactoré à 208 lignes (orchestrateur de 6
+  sous-onglets), documenté dans `docs/adr/`.
+- **`as any` / `@ts-ignore` en prod** : quasi absents (0 `as any` hors tests, 2 `@ts-expect-error`
+  tous deux dans des tests).
+- Faux positifs `knip` vérifiés : `encryptBackupPayload`/`decryptBackupPayload` (usage interne),
+  `investmentTargetPcts` (round-trip réel), `propertyGrowthRate` (correctement câblé),
+  `fiscalConstGuardV2.ts`, `transactionsSearch.ts` (testés indirectement).
+- **Sidebar hover-only** : déjà corrigée, ne pas re-signaler.
+
+### Audit complet 2026-08-12 (panel de 9 agents)
+
+- [x] ~~🔴 `[PASSE-REEL-DETTE-2]`~~ — **CADUC le 2026-09-03** (lot 96) : c'était un POINTEUR vers
+  `[DEBT-AMORTIZATION]`, dont il ne restait que `originalBalance?: number`. Vérifié sur `types.ts` :
+  le champ existe depuis le lot 91.
+
+- [x] ~~🔴 `[PASSE-REEL-DETTE-3]`~~ — **CADUC le 2026-09-03** (lot 96) : « l'import PDF ne capte ni
+  les dates ni `originalBalance` ». Vérifié sur `mcp/ingest/applyDocument.ts` : `DebtPayload` porte
+  `startDate`, `termEndDate` (`[DEBT-MCP-PARITE]`, 2026-08-21) et `originalBalance` (lot 93).
+
+### 🔴 `[DEBT-AMORTIZATION]` — courbe d'amortissement du passé + refonte onglet Dette (Marc, 2026-08-21)
+
+> Marc a demandé le fix `[PASSE-REEL-DETTE-1]` (dette absente avant sa date de début), puis en
+> creusant a demandé PLUS : une vraie courbe décroissante dans le passé (« chaque semaine je dois
+> un peu moins »), pas juste un niveau figé. **Ceci INVERSE explicitement la Décision 2 de
+> `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`** (« aucun amortissement rétroactif,
+> aucune saisie demandée ») — confirmé par Marc en connaissance de cause après rappel du contexte
+> (« Je confirme, je veux la courbe malgré le coût supplémentaire »). ⚠️ À documenter dans l'ADR
+> comme une inversion CONSCIENTE, pas un oubli, dès que ce chantier avance.
+
+- [x] 🔴 **`[DEBT-MCP-PARITE]`** — ✅ **LIVRÉ 2026-08-21** (PR #? — à compléter au merge), voir
+  `docs/BACKLOG_ARCHIVE.md`. `debtKind`/`startDate`/`termEndDate` câblés dans l'import PDF et le
+  tool MCP direct ; description du tool corrigée.
+
+- [x] 🔴 **`[DEBT-AMORTIZATION]` — LOT 1/2 LIVRÉ le 2026-09-02** (PR #821), découpage demandé par
+  Marc (« je te montre le résultat du lot 1 avant d'engager le lot 2 »). Livré : `Debt.originalBalance?`
+  (additif, aucune migration) + le service PUR `services/projection/debtAmortization.ts` + 13 gardes.
+  **Rien n'est branché : la courbe du passé ne bouge pas encore.**
+
+- [x] 🔴 **`[DEBT-AMORTIZATION-CABLAGE]` — LOT 2/2 LIVRÉ le 2026-09-02** (PR #822), voir
+  `docs/BACKLOG_ARCHIVE.md`. Delta additif câblé dans `buildPastPrefix`/`dailyPastLedger`, bandeau
+  du graphe corrigé, ADR 0012 annoté, mesure reproductible committée
+  (`npx tsx scripts/mesureAmortissementPasse.ts`).
+
+- [x] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]` — LIVRÉ le 2026-09-02** (PR #823), voir
+  `docs/BACKLOG_ARCHIVE.md`. `originalBalance` câblé dans le schéma Zod du tool `apply_debt` ET dans
+  `applyDocument` (import PDF compris, qui ne passe pas par Zod) : bornes métier, refus
+  `originalBalance < balance` jugé sur les valeurs EFFECTIVES après fusion, et une garde
+  d'ATTEIGNABILITÉ bout-en-bout (payload MCP → dette écrite → courbe du passé non plate).
+  La courbe du lot 92 est désormais atteignable par extraction de contrat.
+
+- [x] ~~🟠 `[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`~~ — **CADUQUE, RÉFUTÉ le 2026-09-02** au
+  re-recensement (lot 93). Je l'avais écrit la veille, en regardant la couche que je venais de
+  changer — le neuvième périmètre de ticket faux d'affilée, et cette fois de ma main.
+  **Ce que dit le code** : `DettesNonImmo = activeDebtsTotal + liquidDebt + smithManoeuvreDebt`, et
+  ce qu'il EXCLUT est `mortgageBalance`, l'hypothèque des BIENS (`realEstateGoals`), déjà nettée dans
+  `Immobilier`. « Hors hypothèque » ne veut donc pas dire « aucune dette de `kind: 'mortgage'` » :
+  `Debt` n'a AUCUN champ de liaison à un bien (vérifié — `propertyId` appartient à `LifeEvent`, pas à
+  `Debt`), donc une dette hypothécaire saisie dans la liste n'est nettée par RIEN d'autre. La compter
+  est correct, et l'amortir dans le passé l'est aussi — une hypothèque s'amortit.
+  ⚠️ **Les deux correctifs que le ticket proposait étaient des régressions money-critical** :
+  exclure ce `kind` de `sumActiveDebts` ferait DISPARAÎTRE une vraie dette du bilan (classe
+  `EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`), et le refuser à l'ingestion retirerait une
+  classification légitime que `Debt.amortizationYears` documente explicitement (« pour auto,
+  hypothécaire »). Le double comptage réel — saisir la MÊME hypothèque dans la liste de dettes ET
+  dans un bien — est un problème de SAISIE, antérieur à tout ce chantier et inchangé par lui.
+
+- [x] 🟡 **`[DEBT-UI-PAR-TYPE]` — LIVRÉ le 2026-09-02** (PR #824), voir `docs/BACKLOG_ARCHIVE.md`.
+  Sélecteur `kind` (11 valeurs, libellés en `Record<DebtKind, string>` exhaustif) + `originalBalance`
+  affiché SEULEMENT pour les types que `KIND_AMORTISSANT` déclare amortissants, dans les DEUX
+  formulaires jumeaux. L'UI refuse désormais exactement ce que l'assistant refuse.
+  ⚠️ **Périmètre RÉDUIT par rapport au ticket, avec sa raison** : le ticket prescrivait un découpage
+  en `LoanForm.tsx`/`LeaseForm.tsx`. Recensé, `DebtManager.tsx` fait **279 lignes** et ses deux
+  formulaires partagent nom/solde/taux/paiement/dates — deux composants auraient DUPLIQUÉ ces champs
+  au lieu d'un seul, soit le défaut à éviter en plus gros. Extrait la PAIRE qui manquait
+  (`components/debt/DebtKindFields.tsx`), pas le formulaire.
+
+- [x] ~~🟡 `[DEBT-UI-CHAMPS-RESTANTS]`~~ — **REMÈDE RÉFUTÉ le 2026-09-03** (lot 95, PR #825).
+  Le ticket demandait d'ajouter `limit`, `amortizationYears` et `isInterestDeductible` au formulaire.
+  **Mesuré, aucun des trois n'est LU par quoi que ce soit** : zéro accès à `<dette>.limit`, zéro à
+  `<dette>.isInterestDeductible` (le champ n'existe QUE dans `types.ts`), et les trois accès à
+  `.amortizationYears` en production portent sur d'AUTRES objets — `rp.` (`RentalProperty`, un
+  immeuble locatif), `ctx.` (l'hypothèque du ménage dans un prompt IA) et `doc.` (le payload MCP, qui
+  ÉCRIT). Leur donner une saisie aurait fabriqué trois champs dont le remplissage ne change rien :
+  une interface qui promet un effet qu'elle n'a pas. Image MIROIR de
+  `UN-CHAMP-TYPE-SANS-PRODUCTEUR` — ici il y a des producteurs et zéro consommateur.
+  ⚠️ Livré à la place : `tests/services/debtChampsSansLecteur.test.ts`, un inventaire qui **sait
+  mourir** (il rougit dès qu'un vrai lecteur apparaît et exige alors qu'on retire son entrée).
+
+- [x] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]` — LIVRÉ le 2026-09-03** (PR #826), voir
+  `docs/BACKLOG_ARCHIVE.md`. La marche au raccord est désormais DITE sous le graphe, jamais lissée.
+  `reconstructCashHistoryDaily` publie `fluxPeriodeAnnulee` (le flux du jour qu'elle vient de
+  défaire), le registre au jour le remonte, et `services/history/raccordNotice.ts` en fait une
+  phrase — sans montant, pour qu'elle survive au mode discret.
+
+- [x] 🟠 **`[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — LIVRÉ le 2026-09-03** (PR #827), voir
+  `docs/BACKLOG_ARCHIVE.md`. `reconstructCashHistory` publie `fluxPeriodeAnnulee` (tout le mois
+  courant), `buildPastPrefix` le remonte — son retour passe d'un tableau nu à
+  `{ points, fluxPeriodeAnnulee }`, seize sites énumérés par le compilateur —, et la mention est
+  GATÉE sur la vue au jour : quand la reconstruction quotidienne est en place, c'est la marche du
+  JOUR que Marc voit, et la phrase mensuelle décrirait un raccord absent de l'écran.
+### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
+
+> Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE
+> visés par #608 sont couverts et gardés par test. Le trou restant est d'une autre nature : **#608 a
+> traité l'affichage, jamais la SAISIE**. Les formulaires natifs de Réglages/Profil affichent les
+> données les plus sensibles de l'app — salaire des deux conjoints, soldes réels par compte,
+> assurances, immeubles locatifs, société — en `<input type="number" value={…}>` non masqué, quel que
+> soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
+> ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
+> fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
+>
+> ⚠️ **Prérequis LEVÉ par `[A11Y-PRIVACY-SALAIRE]`** (2026-08-14) : la primitive volait le NOM
+> ACCESSIBLE du champ qu'elle masquait (`aria-label` en dur, prioritaire sur `<label htmlFor>` ET
+> sur l'`aria-label` du champ). Tous les champs masqués d'un formulaire annonçaient donc le même
+> nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
+> refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
+
+- [x] 🔴 **`[HYDRATATION-REFUS-TOUT-OU-RIEN]`** ✅ **RÉPONDU par Marc le 2026-09-14 (en clic) :
+  statu quo (option a)** — le tout-ou-rien est conservé, aucun code à changer ; le correctif déjà
+  livré (liste dérivée du contrat + CI qui rougit sur un oubli) rend le refus beaucoup plus rare, et
+  c'était jugé suffisant sans introduire de demi-état → à déménager vers `BACKLOG_ARCHIVE.md` à la
+  prochaine PR. Contexte d'origine (né de l'incident du
+  2026-09-01) — aujourd'hui, un SEUL champ inattendu dans l'état persisté fait échouer **toute** la
+  réhydratation : `merge` lève, l'app s'ouvre vide, et l'utilisateur croit avoir tout perdu. Le blob
+  reste intact et la bannière le dit, mais l'écran vide parle plus fort que la bannière.
+  L'arbitrage du 2026-08-29 (« refuser et nommer, jamais coercer ») reste bon pour un **montant** :
+  hydrater à moitié un état money-critical produirait des chiffres que personne n'a saisis. Il l'est
+  beaucoup moins pour un **identifiant** — refuser tout le patrimoine parce qu'un `accountId` est
+  une chaîne est disproportionné.
+  ⚠️ Trois options, aucune évidente, et c'est pourquoi c'est une QUESTION et pas une tâche :
+  · **(a) statu quo** — le correctif du jour rend le refus beaucoup plus rare (liste dérivée du
+    contrat, CI qui rougit) ; on garde le tout-ou-rien, simple et sans demi-état.
+  · **(b) refus PAR CHAMP** — n'écarter que le champ fautif et hydrater le reste. Simple à dire,
+    mais il faut décider ce que devient l'objet amputé : une transaction sans `amount` n'est pas
+    « presque bonne ».
+  · **(c) refus SÉLECTIF par nature du champ** — bloquer sur un champ monétaire, tolérer et
+    journaliser sur un identifiant. Le plus proche de l'intention, mais il faut la liste des champs
+    monétaires, qui n'existe pas encore (celle des champs TEXTE a été choisie exprès à sa place).
+  Ne rien coder avant la réponse de Marc.
+
+### 🔴 Performance
+
+> Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.
+> Le coût dominant = volume itérations (mois × MC × configs), pas un algorithme mal choisi.
+
+---
+
 ### 2026-09-18 — la dette datée, puis rendue lisible (PR #986 et #987, mergés, gate vert)
 
 Les deux lots qui ont précédé `[DETTE-VIREMENTS-REELS]`. Ils restent la RAISON pour laquelle le

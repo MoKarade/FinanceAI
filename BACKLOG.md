@@ -57,6 +57,26 @@
 
 ---
 
+- [ ] 🔧 **`[DETTE-BALANCEASOF-INVISIBLE]`** (S) — **la date du solde n'est AFFICHÉE nulle part, donc
+  ni Marc ni moi ne pouvons vérifier qu'elle est posée.** Mesuré le 18/09/2026, quand Marc a demandé
+  « vérifie que la date est posée » après avoir cliqué « Enregistrer » sur son bail : **aucune des
+  trois voies ne répond.** (a) `grep balanceAsOf components/ hooks/ utils/` → **2 écritures, 0 lecture**
+  (`DebtManager.tsx:60` et `:108`) : rien ne le rend à l'écran. (b) Le MCP reconstruit `topDebts` champ
+  par champ (`name`/`balance`/`rate`) et le binaire Cloud Run servi est antérieur au champ
+  (`[HUB-MCP-PERIME]`) — **structurellement** aveugle. (c) Le snapshot Drive vit dans
+  l'`appDataFolder` (`syncLifecycle.ts`), invisible au connecteur Drive (deux syntaxes de requête
+  refusées). ⚠️ Et la valeur ne discrimine pas : sans prélèvement depuis l'estampille, le solde est
+  **identique** dans les deux mondes — même cécité structurelle que `Math.abs` sur une convention de
+  signe. La seule preuve comportementale arrive au prélèvement SUIVANT (~22/09), soit quatre jours
+  après le geste qu'on lui a demandé. **C'est le trou de mon propre lot `[DETTE-SOLDE-INSTANTANE-FIGE]`** :
+  j'ai vérifié qu'il pouvait POSER la date, jamais qu'il pourrait la VOIR
+  (`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`, re-payée : l'aller sans le
+  retour). **Correctif** : afficher la date sous le solde dans `DebtManager` (« solde au 18 sept. »),
+  pour les dettes qui la portent — et un état explicite quand elle manque, puisque « absente » veut
+  dire « ce solde ne bouge plus tout seul », exactement l'information qui manquait ici. ⚠️ Ne PAS la
+  rendre saisissable : elle vaut parce qu'elle est estampillée à l'écriture, une date tapée à la main
+  rouvrirait le défaut d'origine.
+
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 
 - [x] 🔧 **`[MCP-DEPLOY-SILENCIEUX]`** Le serveur MCP n'était plus déployé depuis au moins

@@ -28,6 +28,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   la date de départ — sans lui, le solde reste au chiffre corrigé mais cessera d'avancer tout seul.
   ⚠️ Et la synchro Fintable ne déclarera pas tes dettes « mises à jour » chaque jour pour
   rien : la date ne se repose que lorsque le solde CHANGE vraiment.
+- **Tu vois maintenant si le solde d'une dette est daté.** Tu m'avais demandé « vérifie que la date
+  est posée » — je n'ai pas pu : rien à l'écran ne la montrait. En ouvrant ta dette, une ligne sous
+  le champ « Solde » dit désormais où elle en est : *« Enregistré le 18 septembre 2026 · les
+  versements prélevés depuis sont déjà déduits »*, ou en ambre *« Solde jamais daté · il ne bougera
+  pas tout seul »* — le cas qui appelle un clic sur « Enregistrer ».
+  ⚠️ Pour une carte ou une hypothèque, la ligne dit franchement que le solde **ne se déduit pas tout
+  seul** : seule une dette à versements fixes sans intérêt peut être avancée sans rien inventer.
 - **Ta dette descendait une fois par mois.** Toi : « elle devrait descendre à chaque paiement à
   Toyota, pas une fois par mois ». Exact — le passé reconstruit ne produisait qu'un point par mois.
   Une dette à versements fixes peut maintenant déclarer sa **cadence réelle** (hebdomadaire, aux deux

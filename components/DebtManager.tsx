@@ -9,7 +9,7 @@ import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { useTodayIsoLocal } from '../hooks/useSimulationParams';
-import { soldeDetteAujourdhui } from '../services/projection/debtAmortization';
+import { soldeDetteAujourdhui, statutSoldeDette, type StatutSoldeDette } from '../services/projection/debtAmortization';
 import { computeTotalDebt } from '../services/portfolio';
 import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -19,8 +19,42 @@ import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
 import { maskedTick } from '../utils/chartPrivacy';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatIsoDay } from '../utils/format';
 import { DebtKindFields, refusOrigineIncoherente, refusChampNonFini } from './debt/DebtKindFields';
+
+/**
+ * [DETTE-BALANCEASOF-INVISIBLE] Ce que le formulaire a le droit de DIRE du solde enregistré.
+ *
+ * ⚠️ Ce mapper ne DÉCIDE rien : il traduit les trois formes rendues par `statutSoldeDette`, le
+ * module qui porte les conditions. Re-tester ici `kind`/`interestRate`/`startDate` ferait diverger
+ * ce que l'écran AFFIRME de ce que le calcul FAIT — `tests/components/debtManagerStatutSolde.test.tsx`
+ * l'interdit par un scan.
+ *
+ * ⚠️ Aucune de ces phrases ne porte de MONTANT : le champ « Solde » juste au-dessus affiche déjà la
+ * valeur ramenée à aujourd'hui (`startEdit`), donc répéter un chiffre ici mettrait deux montants de
+ * la même dette sur le même écran — et un texte sans montant n'a rien à masquer en mode discret.
+ */
+export function phraseStatutSolde(statut: StatutSoldeDette): { texte: string; alerte: boolean } {
+    switch (statut.forme) {
+        case 'suit-les-versements':
+            return {
+                texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · les versements prélevés depuis sont déjà déduits ci-dessus.`,
+                alerte: false,
+            };
+        case 'date-figee':
+            return {
+                texte: `Enregistré le ${formatIsoDay(statut.dateIso)} · ce solde ne se déduit pas tout seul.`,
+                alerte: false,
+            };
+        case 'jamais-date':
+            // LE cas que Marc ne pouvait pas voir, et le seul qui appelle un geste : sans date, le
+            // solde est l'instantané figé du défaut d'origine.
+            return {
+                texte: 'Solde jamais daté · il ne bougera pas tout seul. « Enregistrer » posera la date d’aujourd’hui.',
+                alerte: true,
+            };
+    }
+}
 
 interface DebtManagerProps {
     debts: Debt[];
@@ -232,6 +266,10 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                                 <input aria-label="Solde de la dette (dollars)" type="number" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.balance ?? ''} onChange={e => setDraft({ ...draft, balance: parseFloat(e.target.value) })} />
                                                 <input aria-label="Taux d'intérêt (pourcentage)" type="number" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.interestRate ?? ''} onChange={e => setDraft({ ...draft, interestRate: parseFloat(e.target.value) })} />
                                             </div>
+                                            {(() => {
+                                                const { texte, alerte } = phraseStatutSolde(statutSoldeDette(d, todayIso));
+                                                return <p className={`text-tiny ${alerte ? 'text-amber-400' : 'text-ink-400'}`}>{texte}</p>;
+                                            })()}
                                             <input aria-label="Paiement minimum mensuel (dollars)" type="number" className="w-full bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.minimumPayment ?? ''} onChange={e => setDraft({ ...draft, minimumPayment: parseFloat(e.target.value) })} />
                                             <div className="grid grid-cols-2 gap-2">
                                                 <label className="flex flex-col gap-1 text-tiny text-ink-400">

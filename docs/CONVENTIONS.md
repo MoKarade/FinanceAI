@@ -14932,3 +14932,51 @@ qui ouvre le formulaire et clique « Enregistrer » EST l'observation.
 COMPTE les écritures**, pas seulement qui les lit. La question « qui lit ce champ ? » rendait
 « personne » — vrai, et sans rapport : le compteur ne lit pas le champ, il compte le fait qu'on
 l'ait écrit.
+
+### Lot du 2026-09-18 — un correctif PRESCRIT se re-mesure contre l'écran qui doit le porter
+
+`UN-CORRECTIF-PRESCRIT-SE-REMESURE-CONTRE-L-ECRAN-QUI-DOIT-LE-PORTER`
+
+La veille, j'avais écrit le ticket moi-même : « afficher la date **sous le solde** dans
+`DebtManager` ». Marc a dit oui. En ouvrant le fichier : **le formulaire n'affiche pas le solde
+stocké** — `startEdit` le remplace par `soldeDetteAujourdhui(d, todayIso)`, c'est-à-dire la valeur
+déjà ramenée à aujourd'hui, et un commentaire du lot précédent explique pourquoi (montrer
+l'instantané pendant que le badge « Total dû » affiche le corrigé mettrait deux chiffres de la même
+dette sur le même écran). Écrire « solde au 9 sept. » à côté d'un champ qui montre la valeur du 18
+aurait donc **contredit le champ juste au-dessus**.
+
+C'est `UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE` (le remède prescrit est
+inapplicable tel quel) avec une aggravation : **le ticket était le mien, écrit trois heures plus
+tôt, et l'OK de Marc portait sur MA formulation.** Un ticket écrit en regardant un défaut n'a pas
+regardé l'écran qui portera son correctif — « le périmètre d'un ticket se RECENSE » vaut donc aussi
+pour son REMÈDE, et l'auteur du ticket n'est pas une exception (neuvième périmètre faux d'affilée,
+déjà noté : ce qui pourrit n'est pas l'âge mais le fait d'avoir regardé autre chose que le code).
+
+⚠️ **La question a été posée, et Marc a divergé de ma recommandation** (je proposais liste +
+formulaire, il a répondu « formulaire seulement »). La recommandation sert à rendre le choix rapide,
+pas à le pré-décider — troisième divergence consignée. Ce qui a été livré est donc son choix, et la
+ligne du formulaire parle de ce que l'enregistrement VA POSER plutôt que de prétendre décrire un
+solde stocké que le champ ne montre pas.
+
+⚠️⚠️ **Le vrai piège du lot est le FUSEAU, et la CI ne pouvait pas le voir.** Le réflexe était
+`formatDate(dette.balanceAsOf)` — or `new Date('2026-09-18')` est parsé à **minuit UTC**, donc relu
+en heure locale dans un fuseau NÉGATIF il redevient la veille : **mesuré, « 17 septembre 2026 » à
+Montréal contre « 18 septembre 2026 » construit en heure locale**. Un solde estampillé le 18 se
+serait affiché « 17 » chez Marc — sur l'écran même qui existe pour le rassurer sur cette date. Le
+conteneur tourne en UTC, où les deux variantes coïncident **toujours** : la garde force donc
+`process.env.TZ` sur un fuseau négatif AVANT le premier formatage, avec une **anti-vacuité du fuseau
+lui-même** (si le `TZ` n'avait pas pris, le test passerait pour la mauvaise raison)
+(`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`, re-payée sur un AFFICHAGE).
+
+⚠️ Le concept existait (`parseLocalDateStr` dans `Budget.tsx`, annoté de sa propre mesure
+« TZ=America/Toronto : 2026-08-01 redevient le 31 juillet ») mais son **CONTRAT diffère** : son repli
+retombe sur AUJOURD'HUI, ce qui est juste pour une fenêtre d'affichage et interdit pour une date qui
+AFFIRME quand un solde a été relevé (`no-fake-data` : « — », jamais un jour inventé). D'où un
+`formatIsoDay` dans la source unique des dates plutôt qu'un import de l'existant — et surtout
+plutôt qu'une troisième copie muette (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`).
+
+⚠️ Le statut se dérive **dans le module qui DÉCIDE** (`statutSoldeDette`, qui délègue à
+`grillePourDette` — les quatre conditions sont déjà là) et le rendu ne fait que TRADUIRE trois
+formes. Re-tester `kind`/`interestRate` dans le JSX ferait diverger ce que l'écran AFFIRME de ce que
+le calcul FAIT, et une garde de scan l'interdit — lue sur la source DÉCOMMENTÉE, puisque le
+commentaire qui explique le patron nomme forcément ces champs.

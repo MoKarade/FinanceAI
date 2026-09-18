@@ -614,6 +614,49 @@ export function soldeDetteAujourdhui(
 }
 
 /**
+ * [DETTE-BALANCEASOF-INVISIBLE] **Ce qu'un écran a le DROIT d'affirmer sur le solde d'une dette.**
+ *
+ * Marc, 2026-09-18, après avoir fait le geste que je lui avais demandé : « vérifie que la date est
+ * posée ». Personne ne pouvait : `balanceAsOf` avait DEUX écritures et ZÉRO lecture dans tout
+ * `components/`. Un champ qu'on demande à l'utilisateur de poser et qu'aucun écran ne rend est
+ * indiscernable d'un champ qui n'existe pas.
+ *
+ * ⚠️ Le statut se DÉRIVE ICI, dans le module qui DÉCIDE — jamais d'une seconde lecture des champs
+ * côté rendu. `grillePourDette` porte déjà les quatre conditions (versements fixes, taux NUL,
+ * cadence connue, dates exploitables) ; les recopier dans le JSX ferait diverger ce que l'écran
+ * AFFIRME de ce que le calcul FAIT, exactement la classe que ce chantier répare
+ * (`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`). Une garde de scan interdit
+ * cette recopie.
+ *
+ * Les trois formes sont EXCLUSIVES et se lisent comme des promesses distinctes :
+ * · `suit-les-versements` — daté ET auto-avançant : les prélèvements depuis `dateIso` sont déduits ;
+ * · `date-figee` — daté, mais rien ne le fait bouger (mauvais `kind`, taux non nul, cadence absente,
+ *   dette pas encore commencée). La date reste un FAIT utile (« saisi ce jour-là »), pas une promesse ;
+ * · `jamais-date` — aucune date : le solde est l'instantané figé du défaut d'origine.
+ *
+ * ⚠️ `aujourdhuiIso` est REQUIS et NON annulable, contrairement à `soldeDetteAujourdhui` : il n'y a
+ * pas de quatrième forme « je ne sais pas quel jour on est » à inventer pour un écran, et un
+ * paramètre annulable aurait forcé le rendu à choisir un repli — donc à affirmer quelque chose.
+ */
+export type StatutSoldeDette =
+    | { forme: 'suit-les-versements'; dateIso: string }
+    | { forme: 'date-figee'; dateIso: string }
+    | { forme: 'jamais-date' };
+
+export function statutSoldeDette(
+    dette: Readonly<EntreeAmortissement>,
+    aujourdhuiIso: string,
+): StatutSoldeDette {
+    const dateIso = dette.balanceAsOf;
+    // `jourMs` rejette aussi bien l'absence que l'illisible : une date qu'on ne sait pas lire ne
+    // vaut pas mieux qu'une date absente, et prétendre le contraire daterait un solde au hasard.
+    if (typeof dateIso !== 'string' || jourMs(dateIso) === null) return { forme: 'jamais-date' };
+    return grillePourDette(dette, aujourdhuiIso) !== null
+        ? { forme: 'suit-les-versements', dateIso }
+        : { forme: 'date-figee', dateIso };
+}
+
+/**
  * [DETTE-SOLDE-INSTANTANE-FIGE] La liste des dettes RAMENÉE au solde d'aujourd'hui.
  *
  * C'est la porte du MOTEUR : `buildSimulationParams` l'applique une fois, au point de passage

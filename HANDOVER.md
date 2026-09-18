@@ -31,6 +31,30 @@
 > 📏 **Suite COMPLÈTE mesurée** : 625 fichiers, **6 183 tests**, exit 0, 660 s (2026-09-17 21:18 UTC).
 > `typecheck` OK, `lint` 0 erreur.
 >
+> ## 🟦 Session 2026-09-18 — **`[DETTE-BALANCEASOF-INVISIBLE]` livré (OK explicite de Marc)**
+> 🔎 Marc, après avoir fait le geste demandé : « vérifie que la date est posée ». **Impossible** —
+> `balanceAsOf` avait 2 écritures et 0 lecture dans `components/`, le MCP servi précède le champ, et
+> le snapshot Drive vit dans l'`appDataFolder` (invisible au connecteur). La VALEUR ne discrimine pas
+> non plus (sans prélèvement depuis l'estampille, le solde est identique des deux côtés).
+> 🔧 **Livré** : `statutSoldeDette` — le module qui DÉCIDE rend trois formes exclusives
+> (`suit-les-versements` / `date-figee` / `jamais-date`, dérivées de `grillePourDette`) ;
+> `phraseStatutSolde` TRADUIT sans décider ; une ligne sous le champ « Solde » du formulaire
+> d'édition, en ambre pour le seul cas qui appelle un geste. Plus `formatIsoDay` dans `utils/format`.
+> ⚠️ **Marc a choisi « formulaire seulement », CONTRE ma recommandation** (liste + formulaire).
+> ⚠️ **Le correctif que j'avais PRESCRIT la veille était incohérent avec son écran** : le formulaire
+> n'affiche pas le solde stocké mais celui ramené à aujourd'hui (`startEdit`) — la phrase prescrite
+> aurait contredit le champ au-dessus. Leçon du jour dans `docs/CONVENTIONS.md`.
+> ⚠️⚠️ **Piège FUSEAU, invisible à la CI** : `formatDate(iso)` parse à minuit UTC ⇒ affiche la VEILLE
+> en fuseau négatif (mesuré : « 17 septembre » contre « 18 » à Montréal). La garde force
+> `process.env.TZ` avant le 1er formatage, avec anti-vacuité du fuseau lui-même.
+> 📏 **12 gardes neuves**, **3 perturbations SÉPARÉES** à 2 rouges ciblés chacune (format / décision /
+> rendu), les autres restant vertes. 153 tests des 9 fichiers impactés verts. `typecheck` 0 erreur,
+> `lint` 0 erreur. Compteur : 6 199 + 12 = **6 211**.
+> ⚠️ **RESTE À MARC** : la ligne de console qui dit si `balanceAsOf` est posée sur « bZ » (s'il répond
+> `undefined`, son onglet servait l'ancien build au clic → Ctrl+Shift+R puis re-cliquer), et
+> `PROJECT_ID=financeai-497112 ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`). La preuve comportementale
+> définitive arrive à son prélèvement du ~22/09 : le « Total dû » passera seul à 46 699,33 $.
+>
 > ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-SOLDE-INSTANTANE-FIGE]` livré (OK explicite de Marc)**
 > 🔎 Marc : « ça devrait enlever de la dette le montant que je paye quand je le paye ». La cadence
 > hebdo n'était PAS en cause (vérifiée contre ses vrais prélèvements à 10 dates : montant exact,

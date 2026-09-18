@@ -768,6 +768,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             { key: 'Crypto', label: 'Crypto', format: money },
             { key: 'Immobilier', label: 'Équité Immo', format: money },
             { key: 'Entreprise', label: 'Entreprise privée', format: money },
+            // ⚠️ [FUTUR-COURBE-DETTE 2026-09-18] La dette EST une colonne, parce que le graphe l'a
+            // désormais comme série ET parce que l'`aria-label` du conteneur promet en toutes
+            // lettres « les mêmes données ». Sans elle, un utilisateur de lecteur d'écran obtient
+            // une table où la valeur nette ne se RECOMPOSE PAS par somme des comptes — le défaut
+            // corrigé la veille dans l'infobulle, laissé intact dans son alternative texte.
+            { key: 'DettesNonImmo', label: 'Dettes (hors hypothèque)', format: money },
         ];
     }, [isPrivacyMode]);
 

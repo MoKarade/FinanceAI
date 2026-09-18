@@ -22,6 +22,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   affiché. Le panneau défilait déjà : la place n'était pas la contrainte, le plafond l'était.
 - **« +N autres » ne parle plus que des transactions sans description.** C'est ce qu'il aurait
   toujours dû dire : ces lignes-là ont bougé ton solde mais n'ont aucun nom à afficher.
+- **Et la courbe de dette ne saute plus de trous.** Dans certains cas — historique court, zoom très
+  serré, ou le tout premier mois connu — le passé se reconstruit par un autre chemin, qui calculait
+  bien ta dette mais ne la transmettait pas au graphe : la courbe s'y interrompait **sans rien
+  dire**, ce qui ressemble exactement à « aucune dette ». Corrigé.
+- **Si tu utilises un lecteur d'écran**, le tableau proposé sous le graphe contient maintenant la
+  dette lui aussi. Sans elle, ta valeur nette ne s'expliquait plus par la somme des colonnes.
 
 ---
 

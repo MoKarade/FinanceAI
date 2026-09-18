@@ -21,7 +21,18 @@
 > déjà (`max-h` + `overflow-y-auto`) : la place n'était pas la contrainte.
 > Le test de limite du plafond est **INVERSÉ** au même endroit, avec sa mesure. « +N autres » ne
 > parle plus que des transactions SANS description — ce qu'il aurait toujours dû dire.
-> ✅ Ciblé : `npm run typecheck` vert (VU), `lint` 0 erreur, 15 tests des deux lots verts.
+> ⚠️⚠️ **Le PANEL a trouvé DEUX défauts ÉLEVÉS après un gate ciblé vert, tous deux corrigés dans le
+> même lot** : (1) `buildPastPrefix` CALCULAIT la dette du mois et ne la PUBLIAIT pas — donc la
+> courbe neuve avait un **trou silencieux** sur le repli MENSUEL et sur le premier point d'ancrage,
+> indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir ; (2) la table de
+> données `sr-only` (dont l'`aria-label` promet « les mêmes données ») n'avait pas la colonne de la
+> nouvelle série — la valeur nette n'y était plus recomposable par somme des comptes. **Les deux
+> sont la même classe** : un lot qui ajoute une série ne l'a pas ajoutée PARTOUT où le graphe est
+> représenté. Plus un document de contrat périmé (`PROJECTION_OUTPUT_SCHEMA.md` décrivait encore le
+> plafond de 6).
+> ✅ Ciblé : `npm run typecheck` vert (VU), `lint` 0 erreur, 88 tests des surfaces touchées verts.
+> Sept perturbations SÉPARÉES au total, dont trois de sens OPPOSÉ (un faux positif doit disparaître
+> SANS que le vrai positif meure). Compteur : **6 262** (631 fichiers).
 > Perturbations SÉPARÉES : dette dessinée POSITIVE → 1 rouge · dette à la couleur de l'impôt latent
 > → 1 rouge · champ absent dessiné à zéro → 1 rouge · plafond de 6 rétabli → 2 rouges (et
 > uniquement les deux assertions visées). Compteur : 6 251 → **6 257** (630 fichiers).

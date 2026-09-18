@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 257 tests** Vitest
-(630 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes du lot `[DETTE-VIREMENTS-REELS]` + **6** gardes des lots `[FUTUR-COURBE-DETTE]` / `[FUTUR-MOUVEMENTS-TOUS]` (1 fichier neuf), toutes lancées en ciblé et vertes ; quatre perturbations SÉPARÉES sur ce dernier lot : 1 / 1 / 1 / 2 rouges). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 262 tests** Vitest
+(631 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes du lot `[DETTE-VIREMENTS-REELS]` + **11** gardes des lots `[FUTUR-COURBE-DETTE]` / `[FUTUR-MOUVEMENTS-TOUS]` et de leurs deux correctifs de panel (2 fichiers neufs), toutes lancées en ciblé et vertes ; sept perturbations SÉPARÉES, chacune ne touchant que sa cible, dont trois de sens OPPOSÉ. Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1355,6 +1355,25 @@ n'est pas réécrire un récit.
   de sens OPPOSÉ : champ retiré → rouge, commentaire à apostrophe impaire → vert — réparer un faux
   positif sans prouver que le vrai positif survit, c'est désarmer la garde
   (`UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE`).
+
+- ⚠️⚠️ **Un lot qui ajoute une SÉRIE doit l'ajouter PARTOUT où le graphe est représenté** (2026-09-18,
+  DEUX findings ÉLEVÉS du panel après un gate ciblé vert, et c'est le même défaut vu de deux côtés) :
+  (1) `buildPastPrefix` CALCULAIT la dette du mois avec tout son gating et ne la PUBLIAIT pas — elle
+  ne servait qu'à produire `NetWorth` —, donc la courbe neuve avait un **trou SILENCIEUX** sur le
+  repli mensuel et sur le premier point d'ancrage, indiscernable d'une dette à zéro, exactement là où
+  Marc avait demandé à la voir ; (2) la table de données `sr-only`, dont l'`aria-label` promet « les
+  mêmes données », a une liste de colonnes écrite À LA MAIN où la série n'est pas entrée — la valeur
+  nette n'y était plus recomposable par somme des comptes. **Une série n'est pas un `<Area>`** : c'est
+  un champ qui doit exister chez TOUS les producteurs de ces points, et une ligne dans TOUTES les
+  représentations du graphe (légende, infobulle, détail, table accessible, PDF) — les énumérer.
+  ⚠️ Le signal était lisible : le jumeau `dailyPastLedger` publiait le champ depuis toujours — ce
+  n'est pas l'absence qui se voit, c'est l'**ASYMÉTRIE entre deux producteurs du même registre**, et
+  le producteur oublié est celui qu'on n'emprunte PAS dans le cas nominal. ⚠️ La garde de la table est
+  **DÉRIVÉE** de la légende, jamais recopiée de `dataColumns` (une copie serait CIRCULAIRE et ne
+  verrait aucun oubli), et le champ publié est la MÊME VARIABLE que celle retranchée du patrimoine.
+  ⚠️ Et le lot avait mis à jour quatre documents mais manqué `PROJECTION_OUTPUT_SCHEMA.md`, le
+  document de CONTRAT — on ne l'édite presque jamais, c'est exactement pour ça qu'il pourrit
+  (`UN-LOT-QUI-AJOUTE-UNE-SERIE-DOIT-L-AJOUTER-PARTOUT-OU-LE-GRAPHE-EST-REPRESENTE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

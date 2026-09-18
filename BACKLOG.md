@@ -66,6 +66,23 @@
   « présent mais non fini » (corruption, à tracer) — mais son échec est SÛR (trou visuel honnête,
   jamais un chiffre faux), donc il ne justifie pas à lui seul un lot.
 
+- [x] 🔧 **`[FUTUR-COURBE-DETTE-PREFIXE-PASSE]`** (S) **LIVRÉ le 18/09/2026** — trouvé par le panel
+  APRÈS un gate ciblé vert : `buildPastPrefix` CALCULAIT la dette du mois (avec tout son gating par
+  `startDate` et par l'amortissement) et ne la PUBLIAIT pas — elle ne servait qu'à produire
+  `NetWorth`. Le jour où la dette est devenue une COURBE, ce producteur est devenu le seul du passé
+  à ne rien publier, donc `detteSousZero` y lisait `undefined` : **trou silencieux dans la courbe,
+  indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir**. Chemin étroit mais
+  réel (repli MENSUEL, et le tout premier point d'ancrage de la courbe quotidienne). Garde de
+  TRAVERSÉE (producteur → `detteSousZero`) + contrôle négatif (patrimoine inconnu ⇒ aucune dette
+  affirmée). La grandeur publiée est la MÊME variable que celle retranchée du patrimoine, jamais une
+  seconde dérivation.
+- [x] 🔧 **`[FUTUR-COURBE-DETTE-TABLE-A11Y]`** (S) **LIVRÉ le 18/09/2026** — la table de données
+  `sr-only` (alternative texte au graphe, dont l'`aria-label` promet « les mêmes données ») n'avait
+  pas reçu la colonne de la nouvelle série : un utilisateur de lecteur d'écran obtenait une table où
+  la valeur nette ne se RECOMPOSE PAS par somme des comptes. Garde **DÉRIVÉE** de
+  `FUTURE_LEGEND_ITEMS` (toute série en AIRE doit avoir sa colonne) — une garde qui recopierait
+  `dataColumns` serait circulaire et ne verrait aucun oubli.
+
 - [ ] 🔧 **`[FUTUR-COURBE-DETTE-RENDU-NON-GARDE]`** (XS) — angle mort ASSUMÉ de
   `tests/components/futureCourbeDette.test.ts` : elle teste le module `detteSerie` et la config de
   légende, **jamais le rendu Recharts réel**. Un `connectNulls` retiré par erreur sur l'`<Area>` de

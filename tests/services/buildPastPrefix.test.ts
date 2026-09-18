@@ -201,3 +201,68 @@ describe('[PAST-NW-BUSINESS-SANS-PRODUCTEUR] la valeur COURANTE d’une entrepri
         expect(zero.map(p => p.NetWorth)).toEqual(sans.map(p => p.NetWorth));
     });
 });
+
+/**
+ * [FUTUR-COURBE-DETTE 2026-09-18] La dette du PRÉFIXE PASSÉ arrive jusqu'à la courbe.
+ *
+ * ⚠️ Garde de TRAVERSÉE, écrite après un finding du panel : `buildPastPrefix` CALCULAIT déjà
+ * `debtNonImmo` (avec tout son gating) et ne le PUBLIAIT pas — il ne servait qu'à produire
+ * `NetWorth`. Le jour où la dette est devenue une courbe, ce producteur est devenu le seul du
+ * passé à ne rien publier, donc `detteSousZero` y lisait `undefined` et rendait `null` : un TROU
+ * silencieux, indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir.
+ *
+ * Le test part du producteur et va jusqu'à la fonction que l'aire consomme — sans reconstruire
+ * aucun maillon (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
+ */
+describe('[FUTUR-COURBE-DETTE] le préfixe passé publie sa dette, et la courbe la voit', () => {
+    const base = {
+        startYear: 2026, startMonth: 0, todayIso: '2026-01-15',
+        realEstateGoals: [],
+        transactions: [{ date: '2025-12-15', amount: -500 }],
+        calculatedStartingCash: 3000,
+    };
+
+    it('publie `DettesNonImmo`, et c\'est la MÊME grandeur que celle retranchée du patrimoine', () => {
+        const out = buildPastPrefix({
+            ...base,
+            pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })],
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
+        }).points;
+        const last = out[out.length - 1];
+        // Sur le code d'avant : `undefined` (le champ n'existait pas).
+        expect(last.DettesNonImmo).toBe(8_000);
+        // ⚠️ L'assertion qui compte n'est pas la valeur mais l'IDENTITÉ : une seconde dérivation
+        // divergerait au premier lot qui touche à l'une des deux.
+        const cols = last.Liquidites + last.Immobilier + last.Entreprise
+            + last.CELI + last.CELIAPP + last.REER + last.REEE + last.NonReg + last.Crypto;
+        expect(cols - last.DettesNonImmo!).toBe(last.NetWorth);
+    });
+
+    it('la courbe la TRACE : `detteSousZero` rend le NÉGATIF, jamais `null`', async () => {
+        const { detteSousZero } = await import('../../components/future/detteSerie');
+        const out = buildPastPrefix({
+            ...base,
+            pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000 })],
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
+        }).points;
+        const last = out[out.length - 1];
+        // Sur le code d'avant : `null` — l'aire s'interrompait ici sans rien dire.
+        expect(detteSousZero(last)).toBe(-8_000);
+    });
+
+    it('[contrôle négatif] un point sans patrimoine connu n\'affirme AUCUNE dette', () => {
+        // `hasNW` faux : aucune transaction, donc pas d'ancre de cash — le point existe mais on ne
+        // sait rien de lui. Publier un montant là serait un chiffre crédible sans mesure derrière.
+        const out = buildPastPrefix({
+            ...base,
+            transactions: [],
+            pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000 })],
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
+        }).points;
+        for (const p of out) {
+            if (p.NetWorth === undefined) expect(p.DettesNonImmo).toBeUndefined();
+        }
+        // ⚠️ Anti-vacuité : la boucle ci-dessus est vraie d'une liste vide.
+        expect(out.some((p) => p.NetWorth === undefined)).toBe(true);
+    });
+});

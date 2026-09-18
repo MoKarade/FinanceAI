@@ -15246,3 +15246,53 @@ disparaître — un décommenteur cassé dans un sens ou dans l'autre rougit alo
 ⚠️ Deux perturbations **de sens opposé** prouvent la réparation : retirer `DettesNonImmo` → rouge
 (la garde tire encore) ; ajouter un commentaire à apostrophe impaire → **vert** (le faux positif a
 disparu). Réparer un faux positif sans prouver que le vrai positif survit, c'est désarmer la garde.
+
+---
+
+## `UN-LOT-QUI-AJOUTE-UNE-SERIE-DOIT-L-AJOUTER-PARTOUT-OU-LE-GRAPHE-EST-REPRESENTE` (2026-09-18)
+
+**Le fait.** Le lot `[FUTUR-COURBE-DETTE]` ajoutait une série au graphe Futur. Gate ciblé vert,
+cinq gardes neuves, trois perturbations séparées — et le panel a trouvé **deux défauts ÉLEVÉS**,
+qui sont le même défaut vu de deux côtés.
+
+1. **Le producteur qui calcule sans publier.** `buildPastPrefix` dérivait déjà `debtNonImmo`, avec
+   tout son gating (`startDate`, amortissement), et s'en servait **uniquement** pour produire
+   `NetWorth` — le champ n'était ni dans son type ni dans l'objet poussé. `detteSousZero` y lisait
+   donc `undefined` et rendait `null` : **un trou silencieux dans la courbe**, sur le repli MENSUEL
+   et sur le premier point d'ancrage de la courbe quotidienne. Indiscernable d'une dette à zéro, et
+   exactement à l'endroit que le lot existait pour remplir.
+2. **La représentation qu'on oublie parce qu'on ne la regarde pas.** La table de données `sr-only`
+   est l'alternative texte du graphe, et l'`aria-label` du conteneur promet en toutes lettres « les
+   mêmes données ». Sa liste de colonnes est écrite À LA MAIN : la nouvelle série n'y est pas entrée,
+   donc un utilisateur de lecteur d'écran obtenait une table où **la valeur nette ne se recompose
+   plus** par somme des comptes — le défaut corrigé la veille dans l'infobulle
+   (`UNE-REPARTITION-QUI-NE-LISTE-QUE-LES-TERMES-POSITIFS…`), laissé intact un cran à côté.
+
+**La leçon.** Une série n'est pas un `<Area>`. C'est un CHAMP qui doit exister sur tout point, chez
+**tous** les producteurs, et une LIGNE dans toutes les représentations du graphe. Après avoir ajouté
+une série, énumérer : quels producteurs fabriquent les points de cette courbe (ici deux : le
+quotidien et le repli mensuel), et par quelles surfaces ce graphe est aussi rendu (légende,
+infobulle, détail complet, table accessible, PDF). `MODULE-ECRIT-HORS-CHECKLIST` appliquée à une
+série d'affichage — et le producteur oublié est celui qu'on n'emprunte **pas** dans le cas nominal.
+
+⚠️ **Le signal était dans le code** : le jumeau `dailyPastLedger` publiait le champ depuis toujours.
+Ce n'est pas l'absence qui est lisible, c'est l'**ASYMÉTRIE entre deux producteurs du même
+registre** — aucun des deux n'étant faux tout seul.
+
+⚠️ **La garde de la table est DÉRIVÉE, jamais recopiée** : « toute série en AIRE de
+`FUTURE_LEGEND_ITEMS` a sa colonne ». Une garde qui recopierait la liste des colonnes serait
+CIRCULAIRE et ne pourrait voir aucun oubli — même famille que « une garde qui lit la table de config
+pour choisir quoi vérifier ».
+
+⚠️ **Et la grandeur publiée est la MÊME VARIABLE** que celle retranchée du patrimoine, pas un second
+calcul : deux dérivations du même solde divergent au premier lot qui touche à l'une des deux, et
+aucune n'est fausse toute seule (`UNE-REGLE-SUR-LA-PRECISION…`, même piège).
+
+⚠️ Contrôle négatif obligatoire : sur un point dont le patrimoine est INCONNU, le champ reste
+`undefined`. Publier un montant là serait un chiffre crédible sans mesure derrière — et l'assertion
+de boucle qui le vérifie a sa propre anti-vacuité (elle est vraie d'une liste vide).
+
+⚠️ Corollaire de DOC : le lot avait mis à jour `CLAUDE.md`, `CHANGELOG.md`, `HANDOVER.md` et
+`BACKLOG.md` mais manqué `docs/PROJECTION_OUTPUT_SCHEMA.md`, le document de CONTRAT, qui décrivait
+encore « le plafond d'affichage à 6 » retiré par le même lot. Les docs de contrat ne sont pas dans
+le réflexe parce qu'on ne les édite presque jamais — c'est exactement pourquoi elles pourrissent.

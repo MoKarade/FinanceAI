@@ -47,6 +47,20 @@ type PastPrefixPoint = {
     NonReg: number;
     Crypto: number;
     NetWorth: number | undefined;
+    /**
+     * [FUTUR-COURBE-DETTE 2026-09-18] Dette hors hypothèque du mois — PUBLIÉE, plus seulement
+     * consommée.
+     *
+     * ⚠️ Elle était déjà CALCULÉE ici (`debtNonImmo`, avec tout son gating par `startDate` et par
+     * l'amortissement) et servait uniquement à produire `NetWorth`. Le jour où la dette est devenue
+     * une COURBE, ce producteur est devenu le seul du passé à ne pas la publier — donc
+     * `detteSousZero` y lisait `undefined` et rendait `null` : un TROU silencieux dans la courbe,
+     * exactement là où Marc a demandé à la voir, et indiscernable d'une dette à zéro.
+     * Le jumeau `dailyPastLedger` la publie depuis toujours ; c'est l'ASYMÉTRIE qui était le défaut.
+     * ⚠️ `undefined` quand le patrimoine lui-même est inconnu (`hasNW` faux) : affirmer une dette
+     * sur un point dont on ne sait rien serait un chiffre crédible sans mesure derrière.
+     */
+    DettesNonImmo: number | undefined;
     isPast: boolean;
 };
 
@@ -179,6 +193,10 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
             NetWorth: hasNW
                 ? pastNetWorthAt({ CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto }, cash ?? 0, immo, debtNonImmo, privateBusinessValue)
                 : undefined,
+            // ⚠️ MÊME grandeur que celle passée à `pastNetWorthAt` juste au-dessus, jamais une
+            // seconde dérivation : deux calculs du même solde divergent au premier lot qui touche
+            // à l'un des deux, et aucun des deux n'est faux tout seul.
+            DettesNonImmo: hasNW ? debtNonImmo : undefined,
             isPast: true,
         });
     }

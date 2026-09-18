@@ -145,8 +145,11 @@ describe('[DETTE-VIREMENTS-REELS] le lien vers un marchand survit aux écritures
         const lie = { ...BAIL, paymentPayee: 'Toyota Financial' };
         const etat = { debts: [lie] } as unknown as AppState;
         const res = applyDocument(etat, { kind: 'debt', name: 'bZ', balance: 46_700 });
-        expect(res.isError ?? false).toBe(false);
-        expect(res.nextState?.debts?.[0]?.paymentPayee).toBe('Toyota Financial');
+        const d = (res.nextState.debts ?? [])[0];
+        // Anti-vacuité : la passe doit VRAIMENT avoir écrit le solde, sinon « le lien survit »
+        // serait satisfait par un chemin qui n'a rien fait.
+        expect(d.balance).toBe(46_700);
+        expect(d.paymentPayee).toBe('Toyota Financial');
     });
 
     it('`paymentPayee` figure dans `CHAMPS_TEXTE` — sans quoi l’app se réhydrate VIDE', () => {

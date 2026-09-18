@@ -134,9 +134,17 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
 ### Phase 5 — Dettes
 
 - Itère sur les dettes actives, payées dans l'ordre **taux décroissant** (avalanche method).
-- Paiement minimum mensuel = `monthlyPayment` configuré.
-- Si surplus disponible, attaque la dette au taux le plus élevé.
-- Intérêts capitalisés mensuellement.
+- **Dettes LIÉES à un marchand** (`Debt.paymentPayee` non vide, ex. « Toyota Financial ») :
+  - **Passé** : descend sur les **transactions RÉELLES** (virements identifiés comme remboursement à ce marchand), pas sur `monthlyPayment`.
+  - **Futur** : cadence dérivée de ces virements réels (ex. « hebdomadaire » si les prélèvements arrivent chaque semaine).
+  - Si **aucun virement réel** avant aujourd'hui : solde reste PLAT (pas d'amortissement modélisé).
+  - Une dette liée ne retombe **JAMAIS** sur la grille de `monthlyPayment`, même en cas d'absence de virement.
+  - ⚠️ **REQUIS** : les transactions doivent être passées en entrée du moteur (`buildSimulationParams.transactions`, cf `[DETTE-VIREMENTS-REELS]` 2026-09-18).
+- **Dettes NON LIÉES** (pas de marchand, ou `paymentPayee` vide) :
+  - Paiement minimum mensuel = `monthlyPayment` configuré (ou `paymentFrequency` si elle dépasse le mois).
+  - Si surplus disponible, attaque la dette au taux le plus élevé (avalanche method).
+- **Intérêts capitalisés mensuellement** sur tout type de dette.
+- ⚠️ **Ordonnancement du futur** : seul le **surplus** attaque les dettes (après paiements minimum). Les transactions réelles du passé ne COMMANDENT pas le paiement futur — la grille ou le surplus le font.
 
 ### Phase 6 — Immobilier
 

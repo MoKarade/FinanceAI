@@ -59,7 +59,7 @@
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.7",
-    "adm-zip": "^0.6.0",
+    "adm-zip": "^0.6.1",
     "autoprefixer": "^10.4.0",
     "axe-core": "^4.11.4",
     "esbuild": "0.28.1",
@@ -74,7 +74,7 @@
     "tsx": "^4.19.0",
     "typescript": "~5.8.2",
     "vite": "^8.0.16",
-    "vitest": "^4.1.7",
+    "vitest": "^5.0.0",
     "vitest-axe": "^0.1.0"
   },
   "//overrides": "Plancher de sécurité sur une dépendance TRANSITIVE, jamais redescendu : hono >= 4.13.5 ferme GHSA-gqvv-2mrq-wpjv (toSSG écrit hors du répertoire de sortie), GHSA-g6gw-c38x-mqfc (épuisement mémoire par imbrication en notation pointée dans parseBody) et GHSA-crvj-82cr-hjcx (le parseur de requête lit les paramètres APRÈS le fragment d'URL, d'où des différentiels de clé de cache et d'interprétation par un proxy). hono arrive par @hono/node-server (^4) ET par @modelcontextprotocol/sdk (^4.11.4) : les deux acceptent ^4, donc le plancher les satisfait sans rien casser. Passé par overrides et NON par une dépendance directe, parce que ce dépôt n'importe pas hono — l'ajouter aux dependencies laisserait croire le contraire. `npm audit fix` échoue ici sur un bug interne de npm (« Cannot read properties of null (reading 'edgesOut') »), reproduit sur un arbre fraîchement installé : ce plancher est la parade, pas un contournement de commodité.",

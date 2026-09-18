@@ -15709,3 +15709,42 @@ de ligne d'index neuve en §9 du `CLAUDE.md` : la classe y figure déjà, c'est 
 ⚠️ Deuxième enseignement, de méthode : le signal est venu d'un scanner branché sur un dépôt
 VOISIN. Le parc partage ses formes de workflow ; un constat d'outil sur l'un vaut la peine d'être
 rejoué sur les huit, y compris quand le dépôt visé n'a pas ce scanner.
+
+---
+
+## `UN-MANIFESTE-PEUT-ANNONCER-UNE-TAILLE-QUE-LE-FICHIER-N-A-PAS` (2026-09-18)
+
+Le manifeste PWA de ce dépôt déclarait UNE icône, en SVG, `sizes: "any"`, `purpose: "any
+maskable"` — et l'app n'était donc pas installable sur Android : Chrome fabrique un WebAPK et lui
+faut une icône **raster** d'au moins 192 px. Le défaut est de la famille la plus coûteuse à
+trouver : **rien ne casse**. Pas d'erreur, pas de console rouge, l'app s'ouvre parfaitement dans
+un onglet — il manque seulement l'entrée de menu « Installer l'application », que personne ne va
+chercher quand elle est absente.
+
+**Ce que la garde doit lire, et c'est le vrai enseignement** : `sizes` est une DÉCLARATION, pas
+une mesure. Un manifeste qui annonce `512x512` en servant un PNG de 192 est faux, et Chrome croit
+le FICHIER. La garde relit donc les dimensions dans l'en-tête **IHDR** du PNG (13 octets après la
+signature, aucun outil requis) et les compare au champ — `tests/pwaManifest.test.ts`, perturbation
+n° 2 sur les quatre. Une garde qui n'aurait relu que le manifeste aurait certifié le mensonge.
+
+⚠️ **Une icône non conçue pour le masque, déclarée `maskable`, se fait ROGNER les bords** par
+l'icône adaptative d'Android : elle s'affiche, simplement coupée. C'est pour ça que la maskable est
+un fichier DISTINCT (glyphe ramené à ~66 % dans la zone sûre) et que la garde exige que son `src`
+diffère de celui des icônes `any` — le raccourci « une seule image pour les deux rôles » est
+exactement le défaut qu'on trouve chez le voisin MemoryAI.
+
+⚠️ **Anti-vacuité du GÉNÉRATEUR, pas seulement de la garde** : les PNG sont rendus depuis le SVG
+existant par `sharp` (librsvg), et le SVG porte du TEXTE (`font-family="Arial"`). Sans police
+substituable, le rendu aurait donné un carré vert uni — une icône parfaitement affichable et
+muette. Le script compte donc les pixels blancs et refuse en dessous d'un plancher ; mesuré 7,4 %
+de blanc sur les icônes `any` et 3,8 % sur la maskable (glyphe plus petit, c'est attendu).
+Liberation Sans, présente dans le conteneur, est métriquement identique à Arial.
+
+⚠️ Et la CSP a été **lue avant** d'ajouter les fichiers, parce qu'elle est *enforced* ici :
+`default-src 'self'` couvre le manifeste (il n'y a pas de `manifest-src`, donc c'est le repli qui
+s'applique) et `img-src 'self' data: blob: https:` couvre les PNG. Zéro ligne de `vercel.json` à
+changer — mesuré, pas supposé, parce qu'une icône bloquée par la CSP ne casse ni le build ni les
+tests.
+
+---
+

@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (rangement interne : le backlog ne garde plus que ce qui reste à faire)
+
+- **Aucun changement visible dans l'app.** C'est du rangement dans les documents de suivi.
+- **Le `BACKLOG.md` mélangeait le fait et l'à-faire** : 91 tâches déjà terminées y traînaient à côté
+  de 151 encore ouvertes. La règle qui dit de les déplacer vers l'archive existe depuis fin juillet ;
+  elle n'était surveillée par rien, donc elle a glissé. Les 91 sont parties dans
+  `docs/BACKLOG_ARCHIVE.md`, avec leur texte intact — rien n'a été réécrit ni résumé.
+- **Et cette fois un test le surveille** : il refuse que les tâches terminées s'accumulent à nouveau,
+  tout en laissant le droit de cocher ce qu'une livraison vient de finir.
+
+---
+
 ## [unreleased] — 2026-09-18 (le détail du jour ne fuit plus sous ta souris)
 
 - **L'infobulle qui suivait ton curseur est remplacée par un panneau FIXE, sous le graphe.** C'est

@@ -1,12 +1,15 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 315 tests** Vitest
-(637 fichiers de test — base **MESURÉE par la CI** le 2026-09-18 sur `4a74bf1f` : 6 258 tests /
-631 fichiers, puis + 39 gardes du lot `[FUTUR-PANNEAU-FIXE]` (5 fichiers) + 18 des correctifs de
-son panel (1 fichier). ⚠️ Le total n'a PAS été re-mesuré en local — c'est la CI qui exécute la
-suite complète (§5). Treize perturbations SÉPARÉES, chacune ne touchant que sa cible, dont deux de
-sens OPPOSÉ. Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 319 tests** Vitest
+(638 fichiers de test — **MESURÉ en local**, suite complète verte, le 2026-09-18 sur `cc0aa63c`
+(`npm run test`, 979 s). ⚠️ Une suite lancée pendant qu'on modifie `BACKLOG.md` ne mesure rien :
+deux gardes lisent ce fichier à l'EXÉCUTION — une première mesure a été jetée pour ça.
+⚠️ Et le log du job CI n'est pas téléchargeable depuis ce conteneur (403 au CONNECT sur le blob
+Azure ; `get_job_logs` ne rend que ~3,5 Ko de queue, donc jamais le résumé Vitest) : le compteur se
+mesure EN LOCAL, une fois l'arbre figé. Mesure qui CONFIRME, publiée comme telle : le total DÉRIVÉ
+que portait cet en-tête pour `069effd3` — 6 315 / 637 — était exact au test près (6 319 − 4 gardes
+neuves, 638 − 1 fichier neuf). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1451,6 +1454,26 @@ n'est pas réécrire un récit.
   nette illisible » — le `|| 0` court-circuitait le « — » que `formatCAD` sait déjà rendre) ; et
   **une phrase de COUVERTURE se vérifie comme un chiffre** (« déjà testée chez elle » était faux :
   aucun test n'importait le module) (`UN-TEST-QUI-VISE-UNE-SURFACE-PAR-SON-CHEMIN-SE-PERIME`).
+
+- ⚠️⚠️ **Une règle de TENUE sans garde dérive sans que rien ne rougisse** (2026-09-18) : « un item
+  coché + mergé + gate vert DÉMÉNAGE vers `BACKLOG_ARCHIVE.md`, au plus tard à la PR suivante » est
+  écrite depuis le 2026-07-31, sous le titre « NON négociables ». Mesuré après le merge de #992 :
+  **91 cochés contre 151 vivants**, dont **20 portant dans leur PROPRE texte « → à déménager vers
+  BACKLOG_ARCHIVE à la prochaine PR »**. Sa transgression n'a AUCUN symptôme — la CI est verte,
+  l'app marche, et le seul dégât (un document qui trompe la reprise de session) n'est visible que
+  pour qui lit le document entier. Devant une règle de tenue, demander non pas « est-ce que je
+  l'applique ? » mais **« qu'est-ce qui rougirait si je ne l'appliquais pas ? »**.
+  ⚠️⚠️ **La garde d'une règle qui autorise un état TRANSITOIRE est un PLAFOND, jamais un zéro** :
+  « aucun coché » aurait rendu impossible le geste que la même règle prescrit trois lignes plus haut
+  (« cocher dans la PR même »). Ce qu'on interdit est l'ACCUMULATION — et le plafond se MESURE
+  (14 derniers merges : maximum **4** coches par PR ⇒ plafond **6**), avec la COMMANDE de re-mesure
+  écrite à côté plutôt que son seul résultat. ⚠️ La seconde assertion ne dépend d'aucun seuil : un
+  item qui déclare lui-même sa dette est en retard par ses propres mots (perturbation à **un seul**
+  item, sous le plafond → elle rougit seule). ⚠️ Un déménagement de masse se prouve par
+  CONSERVATION, jamais par relecture : **1 144 insertions / 0 suppression** dans l'archive, 0 ligne
+  introuvable — et mon 1er jet avait collapsé les lignes vides de TOUT le fichier d'archive, correct
+  au mot près et pourtant une réécriture d'un récit daté
+  (`UNE-REGLE-DE-TENUE-SANS-GARDE-DERIVE-SANS-QUE-RIEN-NE-ROUGISSE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

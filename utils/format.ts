@@ -94,6 +94,28 @@ export function formatDate(
 }
 
 /**
+ * [DETTE-BALANCEASOF-INVISIBLE] Formate un JOUR ISO `YYYY-MM-DD` (« 18 septembre 2026 »).
+ *
+ * ⚠️ NE PAS remplacer par `formatDate(iso)` : `new Date('2026-09-18')` est parsé comme MINUIT UTC,
+ * donc relu en heure locale dans un fuseau NÉGATIF il redevient la VEILLE — un solde estampillé le
+ * 18 s'afficherait « 17 septembre » chez Marc (Montréal, UTC−4). Le concept est déjà documenté et
+ * mesuré dans `Budget.tsx` (`parseLocalDateStr`, « TZ=America/Toronto : 2026-08-01 redevient le
+ * 31 juillet ») ; ce qui DIFFÈRE ici est le repli — celui de Budget retombe sur AUJOURD'HUI, ce qui
+ * est juste pour une fenêtre d'affichage et interdit pour une date qui AFFIRME quand un solde a été
+ * relevé (`no-fake-data`). D'où une lecture qui construit la date en heure LOCALE et rend « — »
+ * plutôt que d'inventer un jour (`AVANT-D-UNIFIER-N-COPIES-SEPARER-CE-QUI-EST-PARTAGE-DE-CE-QUI-NE-L-EST-PAS`).
+ *
+ * ⚠️ Le conteneur de CI tourne en UTC, où les deux variantes coïncident TOUJOURS : la garde de ce
+ * helper balaie un fuseau de chaque signe (`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
+ */
+export function formatIsoDay(iso: unknown): string {
+    if (typeof iso !== 'string') return '—';
+    const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d) || !y || !m || !d) return '—';
+    return formatDate(new Date(y, m - 1, d));
+}
+
+/**
  * Format court mois-année (« mai 2026 »).
  */
 export function formatMonthYear(d: Date | string | number | undefined | null): string {

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 199 tests** Vitest
-(626 fichiers de test, base MESURÉE par la CI complète le 2026-09-17 à 22:51 UTC (773 s — 6 195) + **4** gardes de l'estampille du solde, lancées en ciblé (vertes, 2 rouges sur perturbation)). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 211 tests** Vitest
+(627 fichiers de test, base MESURÉE par la CI complète le 2026-09-17 à 22:51 UTC (773 s — 6 195) + **4** gardes de l'estampille du solde + **12** gardes de la date AFFICHÉE, lancées en ciblé (vertes, 3 perturbations séparées à 2 rouges chacune)). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1255,6 +1255,21 @@ n'est pas réécrire un récit.
   automatiquement doit demander qui COMPTE les écritures, pas seulement qui les LIT** : « qui lit ce
   champ ? » rendait « personne », vrai et sans rapport
   (`UN-SOLDE-STOCKE-SANS-DATE-EST-UN-INSTANTANE-QUE-RIEN-N-AVANCE`).
+
+- ⚠️⚠️ **Un correctif PRESCRIT se re-mesure contre l'écran qui doit le porter** (2026-09-18) : mon
+  propre ticket de la veille disait « afficher la date sous le solde dans le formulaire », et Marc a
+  dit oui — mais le formulaire n'affiche PAS le solde stocké (`startEdit` le remplace par la valeur
+  ramenée à aujourd'hui, avec son commentaire expliquant pourquoi). La phrase prescrite aurait
+  contredit le champ juste au-dessus. « Le périmètre d'un ticket se RECENSE » vaut pour son REMÈDE,
+  et **l'auteur du ticket n'est pas une exception**. ⚠️⚠️ Le vrai piège était le FUSEAU : le réflexe
+  `formatDate(iso)` parse à MINUIT UTC, donc affiche la VEILLE dans un fuseau négatif — mesuré,
+  **« 17 septembre » contre « 18 septembre » à Montréal**, sur l'écran même qui existe pour rassurer
+  Marc sur cette date. Le conteneur tourne en UTC où les deux coïncident TOUJOURS : la garde force
+  `process.env.TZ` avant le premier formatage, avec une anti-vacuité du FUSEAU lui-même. ⚠️ Le
+  concept existait (`parseLocalDateStr`) mais son CONTRAT diffère (repli sur AUJOURD'HUI, interdit
+  pour une date qui AFFIRME). ⚠️ Et Marc a divergé de ma recommandation — une recommandation rend le
+  choix rapide, elle ne le pré-décide pas
+  (`UN-CORRECTIF-PRESCRIT-SE-REMESURE-CONTRE-L-ECRAN-QUI-DOIT-LE-PORTER`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

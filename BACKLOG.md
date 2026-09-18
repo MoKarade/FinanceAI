@@ -57,7 +57,8 @@
 
 ---
 
-- [ ] 🔧 **`[DETTE-BALANCEASOF-INVISIBLE]`** (S) — **la date du solde n'est AFFICHÉE nulle part, donc
+- [x] 🔧 **`[DETTE-BALANCEASOF-INVISIBLE]`** (S) **LIVRÉ le 18/09/2026** (OK explicite de Marc :
+  « oui affiche la date dans le formulaire ») — **la date du solde n'était AFFICHÉE nulle part, donc
   ni Marc ni moi ne pouvons vérifier qu'elle est posée.** Mesuré le 18/09/2026, quand Marc a demandé
   « vérifie que la date est posée » après avoir cliqué « Enregistrer » sur son bail : **aucune des
   trois voies ne répond.** (a) `grep balanceAsOf components/ hooks/ utils/` → **2 écritures, 0 lecture**
@@ -76,6 +77,12 @@
   dire « ce solde ne bouge plus tout seul », exactement l'information qui manquait ici. ⚠️ Ne PAS la
   rendre saisissable : elle vaut parce qu'elle est estampillée à l'écriture, une date tapée à la main
   rouvrirait le défaut d'origine.
+  **LIVRÉ** : `statutSoldeDette` (le module qui DÉCIDE rend les trois formes — `suit-les-versements`
+  / `date-figee` / `jamais-date`), `phraseStatutSolde` qui traduit sans décider, et une ligne sous le
+  champ « Solde » du formulaire d'édition. ⚠️ **Marc a choisi « formulaire seulement », contre ma
+  recommandation** (liste + formulaire) : une recommandation sert à rendre le choix rapide, pas à le
+  pré-décider. ⚠️ Et le correctif que J'AVAIS prescrit la veille était incohérent avec son écran —
+  voir la leçon du jour dans `docs/CONVENTIONS.md`.
 
 ## 🔗 Carte du hub — ce que FinanceAI publie (14/09/2026)
 

@@ -15666,3 +15666,46 @@ SHA faux casse le run au milieu.
 désormais `persist-credentials: true` **explicite** : il fait `git push` + `gh pr create`. Sans
 l'intention écrite, quelqu'un poserait `false` par cohérence avec les cinq autres et casserait
 le push, avec une erreur d'authentification à l'autre bout du job.
+
+---
+
+## `UN-RECENSEMENT-ANCRE-SUR-NPM-CI-NE-VOIT-PAS-NPX` (2026-09-18, lot L2 de l'audit)
+
+Le lot L2 posait `--ignore-scripts` sur les installs de workflow, pour que les scripts
+d'installation d'un paquet cessent de s'exécuter sur un runner qui porte les secrets. Recensement
+fait sur `npm ci` et `npm install`, sept sites trouvés et corrigés ici, compte rejoué, lot déclaré
+fini.
+
+**Il restait trois `npx`** : `npx playwright install --with-deps chromium` dans `ci.yml` (job
+`e2e`) et dans `refresh-screenshots.yml`, plus `npx playwright test e2e/screenshots.spec.ts
+--update-snapshots`. `npx` télécharge le paquet depuis le registre quand il ne le trouve pas
+localement **et exécute ses scripts de cycle de vie** — la surface qu'on vient de fermer à
+l'étape d'installation, rouverte une étape plus bas, sur une version que le lockfile ne gouverne
+pas (le registre sert la dernière). ⚠️ Et `refresh-screenshots.yml` est précisément le workflow
+qui garde son jeton (`persist-credentials: true`, il pousse) : c'est le pire endroit du dépôt
+pour laisser une installation non gouvernée.
+
+**Ce n'est pas mon recensement qui l'a trouvé**, c'est le rapport SonarCloud d'un AUTRE dépôt du
+parc, qui le disait dans des termes où je ne cherchais pas — « "npx" can install packages
+on-demand and run their lifecycle scripts », plus « Define exact package version ». La requête
+élargie sur les huit dépôts a alors sorti **8 sites** hors de la requête initiale : 3 ici, 5 chez
+JobAI.
+
+**Le correctif est `npx --no-install`** : le binaire vient de `node_modules/.bin`, donc de la
+version qu'épingle le lockfile, et npx échoue franchement s'il manque au lieu d'aller le
+chercher. Mesuré avant d'être posé : `npx --no-install playwright --version` rend
+« Version 1.60.0 », et `@playwright/test` est bien une devDependency.
+
+⚠️ **Le drapeau exige que l'étape d'installation vive dans le MÊME job**, sinon il transforme un
+téléchargement silencieux en échec de CI. Vérifié job par job avant de le poser : `quality`,
+`e2e` et `refresh` font tous leur `npm install --ignore-scripts` avant leurs `npx`.
+
+**La règle** : un recensement de commandes d'installation s'énumère par ce qu'elles FONT
+(installer un paquet, exécuter un binaire qui peut s'installer), jamais par le nom de l'une
+d'elles. C'est `UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`
+appliqué non plus à un extracteur de code mais à une **requête de recensement** — d'où l'absence
+de ligne d'index neuve en §9 du `CLAUDE.md` : la classe y figure déjà, c'est sa quatrième forme.
+
+⚠️ Deuxième enseignement, de méthode : le signal est venu d'un scanner branché sur un dépôt
+VOISIN. Le parc partage ses formes de workflow ; un constat d'outil sur l'un vaut la peine d'être
+rejoué sur les huit, y compris quand le dépôt visé n'a pas ce scanner.

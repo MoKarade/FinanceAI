@@ -77,7 +77,15 @@ jobs:
         run: npm install --no-audit --no-fund --ignore-scripts
 
       - name: Install Playwright Chromium + deps système
-        run: npx playwright install --with-deps chromium
+        # [CI-NPX-NO-INSTALL] `--no-install` : sans lui, `npx` TÉLÉCHARGE le paquet depuis le
+        # registre quand il ne le trouve pas localement, puis exécute ses scripts de cycle de vie
+        # — la surface que `--ignore-scripts` ferme à l'étape d'installation, rouverte ici, et sur
+        # une version NON figée (le registre sert la dernière). Avec le drapeau, npx n'utilise que
+        # le binaire de `node_modules/.bin`, donc la version qu'épingle le lockfile, et échoue
+        # franchement s'il manque au lieu d'aller le chercher. Mesuré le 18/09 : `npx --no-install playwright --version` rend « Version 1.60.0 », le binaire local (`@playwright/test` est une devDependency).
+        # ⚠️ Vérifié aussi que l'étape d'installation vit dans le MÊME job — sans elle, le drapeau
+        # transformerait un téléchargement silencieux en échec.
+        run: npx --no-install playwright install --with-deps chromium
 
       # playwright.config.ts démarre automatiquement `npm run dev` (port 3000)
       # test:e2e:ci exclut les tests @visual (screenshots) : la comparaison

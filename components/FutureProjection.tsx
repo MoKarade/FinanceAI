@@ -99,6 +99,7 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
  *  pas doit s'afficher « — », jamais « 0 $ ». */
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { detteSousZero, COULEUR_DETTE } from './future/detteSerie';
 import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -1889,6 +1890,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 patrimoine de toute la valeur de l'entreprise — une décomposition qui ne somme pas. */}
                             {isVisible('Entreprise') && <Area type="monotone" dataKey="Entreprise" stackId="1" stroke="#84cc16" fill="#84cc16" fillOpacity={0.3} name="Entreprise privée" isAnimationActive={false}/>}
 
+                            {/* [FUTUR-COURBE-DETTE] La dette, en NÉGATIF, sous zéro. ⚠️ PAS de `stackId` :
+                                elle n'appartient pas à la pile des actifs — l'empiler la ferait
+                                s'additionner à des comptes positifs. Et `connectNulls` reste FAUX :
+                                un point sans `DettesNonImmo` interrompt la courbe au lieu de tracer
+                                un zéro qui affirmerait « aucune dette ». */}
+                            {isVisible('DettesNonImmo') && <Area type="monotone" dataKey={detteSousZero} stroke={COULEUR_DETTE} fill={COULEUR_DETTE} fillOpacity={0.35} name="Dettes (hors hypothèque)" connectNulls={false} isAnimationActive={false}/>}
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {/* [FUTUR-DAILY-NATIVE] `FluxImpots` n'existe sur les points quotidiens
                                 QU'AUX jours d'échéance (retiré ailleurs dans `dailyAll`) : la Bar ne

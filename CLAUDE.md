@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 251 tests** Vitest
-(629 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes ajoutées depuis, lancées en ciblé : 2 à l'écran (marchand déjà lié, refus annoncé) et 1 de RACCORD (badge = dernier point de la courbe). Huit perturbations SÉPARÉES sur ce lot : 10 / 3 / 2 / 1 / 1 / 1 / 1 / 1 rouge). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 257 tests** Vitest
+(630 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes du lot `[DETTE-VIREMENTS-REELS]` + **6** gardes des lots `[FUTUR-COURBE-DETTE]` / `[FUTUR-MOUVEMENTS-TOUS]` (1 fichier neuf), toutes lancées en ciblé et vertes ; quatre perturbations SÉPARÉES sur ce dernier lot : 1 / 1 / 1 / 2 rouges). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1311,6 +1311,34 @@ n'est pas réécrire un récit.
   réécrite avec un mécanisme INVENTÉ et un fichier de mesure avec son `console.log` sont partis dans
   un commit poussé. `UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` vaut pour les FICHIERS qu'on ramasse,
   pas seulement pour les chiffres qu'on recopie.
+
+- ⚠️⚠️ **Une troncature ANNONCÉE reste une troncature si elle retire ce qu'on cherche** (2026-09-18,
+  signalé par Marc : « je vois pas les transactions dans l'infobulle on dirait ça manque des
+  transactions ») : le plafond de 6 mouvements par journée avait été rendu VISIBLE (`movementsTotal`
+  + « +N autres ») par un lot antérieur, et l'inventaire de cette dette vivait dans un test. Mesuré
+  sur les vraies transactions : **9 journées** dépassaient 6, la pire le **31 août avec 18 (12
+  cachés)** — et la liste gardait les six **PREMIERS RENCONTRÉS**, donc **Anthropic −321,93 $** et
+  **Global Exchange −307,40 $** sautaient pendant qu'un « Frais de service −15,95 $ » restait.
+  Rendre une troncature visible ne répond que si ce qu'elle retire est INDIFFÉRENT : **demander par
+  quel CRITÈRE les survivants sont choisis** — sans critère, un plafond ne borne pas le bruit, il
+  tire au sort. ⚠️ La contrainte invoquée n'existait pas (le conteneur porte déjà `max-h` +
+  `overflow-y-auto`) : la borne datait de l'époque où la liste ne portait que des NOMS, et a survécu
+  à l'ajout des MONTANTS qui lui retirait sa raison d'être. ⚠️ Le test de limite s'est INVERSÉ au
+  même endroit, anti-vacuité sur le DERNIER arrivé (celui que le plafond jetait en premier), et
+  `movementsTotal` SURVIT — il compte aussi les transactions sans description, donc « +N autres » ne
+  parle plus que d'elles ; le retirer avec le plafond rouvrait le trou de `[silent-failure #644]`
+  (`UNE-TRONCATURE-ANNONCEE-RESTE-UNE-TRONCATURE-SI-ELLE-RETIRE-CE-QU-ON-CHERCHE`).
+- ⚠️⚠️ **Une PRÉMISSE VISUELLE de l'utilisateur se mesure avant d'être suivie** (2026-09-18) : Marc
+  a répondu « je vois pourtant bien qu'il y a une courbe rouge en dessous de zéro donc je veux que
+  ce soit celle-ci qui continue **si c'est bien celle de la dette** ». Ce n'en était pas : la seule
+  série sous zéro est `ImpotLatent`, et `DettesNonImmo` n'était pas tracée du tout — suivre la
+  phrase aurait fait passer un impôt HYPOTHÉTIQUE pour sa dette RÉELLE. Ce qu'il VOIT est une donnée
+  exacte, ce qu'il en DÉDUIT est une hypothèse, et les deux arrivent dans la même phrase. Le geste
+  est un grep des séries, pas un raisonnement. ⚠️ Conséquence : les deux courbes doivent différer
+  par COULEUR **et** par FORME (orange plein / rouge pointillé), le test ancrant les deux — n'ancrer
+  que l'une laisse un lot futur les refondre par l'autre. ⚠️ Et le point rend `null`, jamais `0`,
+  quand le champ manque : `0` dirait « aucune dette », la valeur la plus crédible donc la pire
+  (`UNE-PREMISSE-VISUELLE-DE-L-UTILISATEUR-SE-MESURE-AVANT-D-ETRE-SUIVIE`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

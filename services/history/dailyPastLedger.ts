@@ -153,11 +153,23 @@ interface BuildDailyPastInput {
 const DAY_MS = 86_400_000;
 
 /**
- * Nombre de mouvements RETENUS pour l'affichage d'une journée (l'infobulle en liste quelques-uns,
- * pas 40). ⚠️ Ce plafond ne borne QUE `movements` : `movementsTotal` compte tout, pour que
- * l'infobulle puisse dire « +N autres » au lieu de s'arrêter en silence.
+ * ⚠️⚠️ [FUTUR-MOUVEMENTS-TOUS] **Il n'y a plus de plafond, et c'est une demande de Marc mesurée
+ * avant d'être suivie** : « je vois pas les transactions dans l'infobulle on dirait ça manque des
+ * transactions ». Le plafond valait **6**, et la liste gardait les six PREMIERS rencontrés — pas les
+ * plus gros.
+ *
+ * Mesuré sur ses vraies transactions du 1er août au 18 septembre 2026 : **9 journées** dépassent 6,
+ * la pire étant le **31 août avec 18 mouvements — 12 cachés**. Et l'ordre d'arrivée décidait seul de
+ * ce qu'il voyait : ce jour-là l'infobulle montrait « Frais de service −15,95 $ » et cachait
+ * **Anthropic −321,93 $** et **Global Exchange −307,40 $**, les deux plus grosses dépenses de la
+ * journée. Une troncature ANNONCÉE (« +N autres ») reste une troncature quand ce qu'elle retire est
+ * précisément ce qu'on cherchait.
+ *
+ * Le panneau défile déjà : la place n'était pas la contrainte, le plafond l'était.
+ * ⚠️ `movementsTotal` reste compté à part — il porte AUSSI les transactions SANS description, qui
+ * n'entrent dans aucune liste affichée. « +N autres » n'a donc pas disparu : il ne parle plus que
+ * d'elles, ce qui est exactement ce qu'il devrait toujours avoir dit.
  */
-const MAX_MOVEMENTS_SHOWN = 6;
 
 const emptyByAccount = (): Record<PastAccountKey, number> => ({
     CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0,
@@ -275,7 +287,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         movementsCount.set(d, (movementsCount.get(d) ?? 0) + 1);
         if (t.payee) {
             const slot = movementsByDay.get(d) ?? [];
-            if (slot.length < MAX_MOVEMENTS_SHOWN) slot.push({ payee: t.payee, amount: t.amount });
+            slot.push({ payee: t.payee, amount: t.amount });
             movementsByDay.set(d, slot);
         }
     }

@@ -15135,3 +15135,76 @@ travail des agents**. Un rapport d'agent a réécrit `docs/PROJECTION.md` en y i
 `UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` ne vaut pas que pour les CHIFFRES qu'on recopie : elle
 vaut pour les FICHIERS qu'on ramasse. Relire `git status` avant `git add -A` quand des agents
 tournent — ou committer par chemins nommés.
+
+---
+
+## `UNE-TRONCATURE-ANNONCEE-RESTE-UNE-TRONCATURE-SI-ELLE-RETIRE-CE-QU-ON-CHERCHE` (2026-09-18)
+
+**Le contexte.** L'infobulle d'une journée du passé listait au plus **6** mouvements. Ce plafond
+avait été rendu VISIBLE par un lot antérieur (`movementsTotal` + « +N autres »), précisément parce
+qu'une troncature muette est pire qu'une plage annoncée — et le fichier de test portait cet
+inventaire, `expect(jour.movements).toHaveLength(6)`, comme une dette assumée.
+
+Marc, en regardant ses vraies journées : « je vois pas les transactions dans l'infobulle on dirait
+ça manque des transactions ».
+
+**Ce que la mesure a dit.** Sur ses transactions réelles du 1er août au 18 septembre 2026 :
+**9 journées** dépassaient 6. La pire, le **31 août : 18 mouvements, 12 cachés**. Et le critère de
+sélection n'était pas un critère : la liste gardait les six **PREMIERS RENCONTRÉS**. Ce jour-là,
+l'infobulle affichait « Frais de service −15,95 $ » et cachait **Anthropic −321,93 $** et
+**Global Exchange −307,40 $** — les deux plus grosses dépenses de la journée.
+
+**La leçon.** Rendre une troncature visible n'est une réponse acceptable que si ce qu'elle retire
+est INDIFFÉRENT. Ici l'ordre d'arrivée décidait seul, donc ce qui sautait était en moyenne aussi
+important que ce qui restait — et l'utilisateur ouvre une infobulle justement pour trouver la grosse
+dépense. « +N autres » transformait « je ne vois pas tout » en « je vois qu'il en manque », ce qui
+répond à la mauvaise question. **Devant un plafond d'affichage, demander d'abord par quel CRITÈRE
+les survivants sont choisis** : sans critère, le plafond ne borne pas le bruit, il tire au sort.
+
+⚠️ **Et la contrainte invoquée n'existait pas** : le conteneur de l'infobulle porte déjà
+`max-h` + `overflow-y-auto`. Le plafond n'a jamais protégé la PLACE — il a été écrit quand la liste
+ne portait que des noms, où six suffisaient, et il a survécu à l'ajout des montants qui lui retirait
+sa raison d'être. Une borne se re-justifie quand ce qu'elle borne change de nature.
+
+⚠️ **Le test de limite s'est INVERSÉ au même endroit**, avec sa mesure et son histoire, plutôt que
+d'être supprimé — sinon plus rien ne dirait que le plafond a existé, ni pourquoi on ne le remet pas
+« pour alléger l'infobulle ». Et son anti-vacuité vise le **DERNIER** arrivé (`M17`), celui que le
+plafond jetait en premier : asserter seulement la longueur laisserait passer une liste de dix-huit
+fois le même.
+
+⚠️ `movementsTotal` **ne meurt pas avec le plafond** : il compte aussi les transactions SANS
+description, qui n'entrent dans aucune liste affichée. « +N autres » ne parle donc plus que d'elles
+— ce qu'il aurait toujours dû dire. Un compteur né pour une raison peut en garder une autre ; le
+retirer avec le mécanisme qui l'a fait naître aurait rouvert le trou de `[finding silent-failure
+#644]` (un jour dont AUCUNE transaction n'est décrite : la liste est vide, le compte est le seul
+indice que des mouvements existent).
+
+---
+
+## `UNE-PREMISSE-VISUELLE-DE-L-UTILISATEUR-SE-MESURE-AVANT-D-ETRE-SUIVIE` (2026-09-18)
+
+**Le contexte.** À la question « comment veux-tu voir ta dette sur le graphe ? », Marc a répondu en
+texte libre : « Je vois pourtant bien qu'il y a une courbe rouge en dessous de zéro donc je veux que
+ce soit celle-ci qui continue **si c'est bien celle de la dette** ».
+
+**La mesure.** Ce n'était pas sa dette. La seule série tracée sous zéro est `ImpotLatent` — l'impôt
+qu'il devrait si tout était liquidé —, et `DettesNonImmo` n'était tout simplement pas tracée. Suivre
+la phrase à la lettre aurait fait passer un **impôt hypothétique** pour sa **dette réelle**, sur le
+graphe qui porte son patrimoine.
+
+**La leçon.** Une observation d'utilisateur sur ce qu'il VOIT est une donnée, exacte (il voyait bien
+une courbe rouge sous zéro) ; son INTERPRÉTATION est une hypothèse. Les deux arrivent dans la même
+phrase et se distinguent rarement — ici le « si c'est bien » de Marc était l'invitation explicite à
+mesurer, et il aurait été tentant de le lire comme une formule de politesse. **Devant « je vois
+X donc fais Y », vérifier que X est bien ce qu'il croit avant de faire Y** : le geste est un grep
+des séries du graphe, pas un raisonnement.
+
+⚠️ Conséquence de conception : les deux courbes devaient devenir **indiscernables l'une de l'autre
+par accident et discernables à l'œil** — orange PLEIN pour la dette, rouge POINTILLÉ pour l'impôt
+latent. Un test verrouille les deux axes (couleur ET forme) : n'ancrer que la couleur laisserait un
+lot futur re-fondre les deux en changeant la forme, et réciproquement.
+
+⚠️ `detteSousZero` rend **`null`**, jamais `0`, quand `DettesNonImmo` est absent ou non fini. `0`
+signifierait « aucune dette » — la valeur la plus CRÉDIBLE, donc la pire (`no-fake-data` appliqué à
+un point de courbe). ⚠️ Et le retour a dû normaliser `-0` : `v === 0 ? 0 : -v`, sinon `toBe(0)`
+rougit sur une dette éteinte, `-0` et `0` étant distincts pour `Object.is`.

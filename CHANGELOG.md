@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (la dette se voit dans le passé, et l'infobulle ne cache plus rien)
+
+- **Ta dette a maintenant sa courbe, en orange, sous la ligne du zéro.** Tu la vois dans le PASSÉ
+  comme dans le futur, elle remonte vers zéro à mesure que tu rembourses, et tu peux l'éteindre
+  depuis la légende comme n'importe quelle autre.
+  ⚠️ **La courbe rouge sous zéro que tu voyais n'était PAS ta dette** : c'est l'**impôt latent** (ce
+  que tu devrais au fisc si tu liquidais tout). Elle reste rouge et pointillée, la dette est orange
+  et pleine — deux choses différentes, deux apparences différentes.
+- **L'infobulle d'une journée liste TOUTES tes transactions.** Il y avait un plafond de 6, et il
+  gardait les six PREMIÈRES rencontrées — pas les plus grosses. Mesuré sur tes vraies données du
+  1er août au 18 septembre : **9 journées** dépassaient 6, la pire étant le **31 août avec 18
+  mouvements, donc 12 cachés** — dont **Anthropic −321,93 $** et **Global Exchange −307,40 $**,
+  tes deux plus grosses dépenses du jour, pendant qu'un « Frais de service −15,95 $ » restait
+  affiché. Le panneau défilait déjà : la place n'était pas la contrainte, le plafond l'était.
+- **« +N autres » ne parle plus que des transactions sans description.** C'est ce qu'il aurait
+  toujours dû dire : ces lignes-là ont bougé ton solde mais n'ont aucun nom à afficher.
+
+---
+
 ## [unreleased] — 2026-09-18 (ta dette suit tes vrais virements à Toyota)
 
 - **Ta dette baisse maintenant quand TU paies, pas quand un modèle le suppose.** Tu peux relier une

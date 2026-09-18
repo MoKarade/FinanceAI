@@ -7,9 +7,10 @@
  * ⚠️ CE QUE CE FICHIER VERROUILLE :
  *   1. `labels` est DÉRIVÉ de `movements`, pas accumulé en parallèle. Deux listes remplies
  *      séparément finissent par diverger, et l'infobulle afficherait des noms sans leurs montants.
- *   2. Le plafond d'affichage (6) devient VISIBLE via `movementsTotal`. Il était silencieux : tant
- *      qu'on n'affichait que des noms c'était un détail, mais avec des MONTANTS Marc lirait six
- *      dépenses en croyant les avoir toutes (même classe que `truncatedFrom`).
+ *   2. ⚠️ Il n'y a PLUS de plafond d'affichage (`[FUTUR-MOUVEMENTS-TOUS]`, 2026-09-18) — la liste
+ *      sort entière. `movementsTotal` survit parce qu'il compte AUSSI les transactions sans
+ *      description, qui n'entrent dans aucune liste affichée : « +N autres » ne parle plus que
+ *      d'elles. Le test de limite du plafond est INVERSÉ plus bas, avec sa mesure.
  */
 import { describe, it, expect } from 'vitest';
 import { buildDailyPastLedger } from '../../services/history/dailyPastLedger';
@@ -70,19 +71,49 @@ describe('[FUTUR-INFOBULLE-MONTANTS] les mouvements portent leur montant', () =>
     });
 });
 
-describe('[FUTUR-INFOBULLE-MONTANTS] la troncature devient VISIBLE', () => {
-    it('au-delà de 6 mouvements, le TOTAL reste connu', () => {
+describe('[FUTUR-MOUVEMENTS-TOUS] la troncature a DISPARU, le compte reste', () => {
+    /**
+     * ⚠️⚠️ TEST DE LIMITE **INVERSÉ** au même endroit, pas supprimé (2026-09-18).
+     *
+     * Il affirmait « au-delà de 6 mouvements, le TOTAL reste connu » et EXIGEAIT
+     * `toHaveLength(6)` — l'inventaire d'une troncature qu'on rendait visible faute de pouvoir la
+     * retirer. Marc, en regardant ses vraies journées : « je vois pas les transactions dans
+     * l'infobulle on dirait ça manque des transactions ». Mesuré sur ses transactions du 1er août
+     * au 18 septembre 2026 : **9 journées** dépassaient 6, la pire étant le **31 août avec 18
+     * mouvements — 12 cachés**, dont les DEUX plus grosses dépenses du jour (Anthropic −321,93 $,
+     * Global Exchange −307,40 $) pendant qu'un « Frais de service −15,95 $ » restait affiché : la
+     * liste gardait les six PREMIERS rencontrés, pas les six qui comptent.
+     *
+     * L'assertion garde donc son sujet et change de sens : **tous** les mouvements décrits sortent.
+     * La supprimer laisserait croire que le plafond n'a jamais existé — or c'est cette trace qui
+     * empêche de le remettre « pour alléger l'infobulle ».
+     */
+    it('TOUS les mouvements décrits sortent — plus aucun plafond', () => {
         const r = construire(
-            Array.from({ length: 9 }, (_, i) => txn({ payee: `M${i}`, amount: -(i + 1) })),
+            Array.from({ length: 18 }, (_, i) => txn({ payee: `M${i}`, amount: -(i + 1) })),
         );
         const jour = ligneDu(r, JOUR);
-        // Affichage plafonné…
-        expect(jour.movements).toHaveLength(6);
-        // …mais le compte réel est exposé, pour dire « +3 autres » au lieu de mentir par omission.
-        expect(jour.movementsTotal).toBe(9);
+        // Sur le code d'avant : 6. La journée réelle la pire de Marc, au complet.
+        expect(jour.movements).toHaveLength(18);
+        expect(jour.movementsTotal).toBe(18);
+        // ⚠️ Anti-vacuité : ce n'est pas une liste de 18 fois le même — le DERNIER arrivé, celui que
+        // le plafond jetait en premier, est bien là avec son montant.
+        expect(jour.movements[17]).toMatchObject({ payee: 'M17', amount: -18 });
     });
 
-    it('sous le plafond, total === nombre affiché (pas de « +0 autres »)', () => {
+    it('« +N autres » ne parle plus que des mouvements SANS description', () => {
+        // 9 décrits (au-delà de l'ancien plafond) + 2 anonymes : l'écart vaut exactement 2.
+        const r = construire([
+            ...Array.from({ length: 9 }, (_, i) => txn({ payee: `M${i}`, amount: -(i + 1) })),
+            txn({ payee: '', amount: -100 }), txn({ payee: '', amount: -200 }),
+        ]);
+        const jour = ligneDu(r, JOUR);
+        expect(jour.movements).toHaveLength(9);
+        expect(jour.movementsTotal).toBe(11);
+        expect(jour.movementsTotal - jour.movements.length).toBe(2);
+    });
+
+    it('un jour ordinaire n’annonce aucun reste (pas de « +0 autres »)', () => {
         const r = construire([txn({ payee: 'A' }), txn({ payee: 'B' })]);
         const jour = ligneDu(r, JOUR);
         expect(jour.movementsTotal).toBe(jour.movements.length);

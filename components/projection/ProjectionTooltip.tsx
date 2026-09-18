@@ -420,9 +420,12 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                     ? <PrivateText className="text-tiny text-ink-100">{dayLabels.join(', ')}</PrivateText>
                                     : <span className="text-tiny text-ink-100">Mouvement à date connue</span>
                             )}
-                            {/* ⚠️ La troncature était SILENCIEUSE. Avec des montants affichés, Marc
-                                lirait six dépenses en croyant les avoir toutes — même classe que
-                                `truncatedFrom`.
+                            {/* ⚠️ [FUTUR-MOUVEMENTS-TOUS 2026-09-18] Cette ligne ne parle PLUS d'une
+                                troncature d'affichage : il n'y en a plus (le plafond de 6 est
+                                retiré, `dayMovements` sort entier et le panneau défile déjà —
+                                `max-h`/`overflow-y-auto` du conteneur). L'écart restant est celui
+                                des transactions SANS description, qui n'entrent dans aucune liste
+                                affichée : c'est exactement ce dont le titre parle depuis toujours.
                                 ⚠️ [finding silent-failure #644] Cette ligne est HORS du ternaire, et
                                 c'est le correctif : une journée dont AUCUNE transaction ne porte de
                                 description tombe dans la branche de repli (liste affichée vide) —

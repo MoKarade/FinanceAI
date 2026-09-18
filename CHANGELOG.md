@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (l'app s'installe pour de vrai sur ton téléphone)
+
+- **Tu peux maintenant installer FinanceAI sur ton écran d'accueil.** Chrome ne le proposait
+  jamais : le manifeste ne déclarait qu'une icône vectorielle, et Android en exige une en pixels
+  pour fabriquer l'application. C'est la même icône qu'avant — elle a simplement été rendue en
+  192 et 512 px, plus une version pensée pour le masque rond d'Android.
+- **Ouverte depuis le hub, l'app réutilise sa fenêtre** au lieu d'en empiler une nouvelle.
+
+---
+
 ## [unreleased] — 2026-09-18 (rangement interne : le backlog ne garde plus que ce qui reste à faire)
 
 - **Aucun changement visible dans l'app.** C'est du rangement dans les documents de suivi.
@@ -15,6 +25,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   `docs/BACKLOG_ARCHIVE.md`, avec leur texte intact — rien n'a été réécrit ni résumé.
 - **Et cette fois un test le surveille** : il refuse que les tâches terminées s'accumulent à nouveau,
   tout en laissant le droit de cocher ce qu'une livraison vient de finir.
+
+---
+
 
 ---
 

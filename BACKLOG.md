@@ -17,6 +17,20 @@
 
 ---
 
+## 📱 Installable sur le téléphone (Marc, 18/09/2026 — « toutes les applications installables »)
+
+- [x] **`[PWA-ANDROID]` — le manifeste ne déclarait qu'une icône SVG, donc l'app n'était PAS
+  installable.** Chrome fabrique un WebAPK à l'installation et exige une icône RASTER ≥ 192 px :
+  sans elle, « Installer l'application » n'apparaît jamais, et rien ne le dit — l'app s'ouvre
+  parfaitement dans un onglet. Livré : PNG 192 / 512 / maskable-512 **rendus depuis le SVG
+  existant** (donc la même icône, pas un nouveau dessin), `id` fixé, et
+  `launch_handler: navigate-existing` pour qu'un lien venu du hub réutilise la fenêtre déjà
+  ouverte. Garde : `tests/pwaManifest.test.ts`, 4 perturbations prouvées. 18/09/2026.
+  ⚠️ CSP **vérifiée avant** (elle est *enforced* ici) : `default-src 'self'` couvre le manifeste,
+  `img-src 'self'` couvre les PNG — aucune ligne de `vercel.json` à toucher.
+- [ ] **`[PWA-IOS-ICONE]`** (XS, non demandé) — pas d'`apple-touch-icon.png`. Hors périmètre :
+  Marc est sur **Android** (tranché le 18/09). À prendre si un iPhone entre dans le parc.
+
 ## 📈 Infobulle et courbes du Futur (18/09/2026, demandé par Marc)
 
 > Demande : « je veux voir la courbe de la dette même dans le passé et je vois pas les transactions

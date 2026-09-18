@@ -5,6 +5,35 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤🔴 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18, URGENT) — **deux merges
+  d'affilée sur `main` n'ont produit AUCUN déploiement de production.** Le site sert donc encore la
+  version d'avant tes deux correctifs de dette.
+  **Mesuré** (`mcp__Vercel__list_deployments`, cible `production`) :
+  | commit | PR | fusionné | déploiement |
+  |---|---|---|---|
+  | `68cd1734` | #991 | 20:07 | créé à 20:07:16, **`QUEUED` 43 min**, puis `READY` |
+  | `38162e50` | #994 | 20:38 | **AUCUN** — ni `QUEUED`, ni `BUILDING`, ni `ERROR`, ni `CANCELED` |
+  | `ebe74ef3` | #995 | 21:36 | **AUCUN** |
+  Les onze déploiements précédents de la journée ont tous leur enregistrement créé **dans les
+  secondes** qui suivent le merge, puis passent `READY` en quelques minutes. Un enregistrement
+  absent 58 minutes après le merge n'est donc pas de la lenteur.
+  **Écarté par la mesure** : `vercel.json` porte bien `git.deploymentEnabled { "claude/*": false }`,
+  mais ça ne vise **pas** `main` — ce n'est pas la configuration qui saute ces commits.
+  **Le geste, que toi seul peux faire** : ouvre le tableau de bord Vercel du projet `finance-ai` →
+  onglet *Deployments* → bouton **Redeploy** sur le dernier déploiement de production, **en cochant
+  « use existing Build Cache: off »**, ou *Settings → Git* → **Redeploy** le dernier commit de `main`
+  (`ebe74ef3`). Si le bouton n'apparaît pas, c'est que l'intégration GitHub a décroché : *Settings →
+  Git → Disconnect / Connect* la reconnecte.
+  **Pourquoi je ne peux pas le faire d'ici** : `vercel.com` répond **403 au CONNECT** depuis mon
+  conteneur (refus de POLITIQUE du proxy, cf. `CLAUDE.md` §6), l'URL `*.vercel.app` est derrière le
+  SSO, et je ne lance pas de déploiement de production de moi-même pendant qu'un incident de file
+  est en cours — j'empilerais au lieu de débloquer. **Dis-le-moi et je le lance.**
+  ⚠️ C'est la classe d'incident pour laquelle `CLAUDE.md` §6 existe : le 31/07/2026, Hubperso et
+  BatchChef sont restés **cinq jours** sans déploiement, CI verte, rien de rouge nulle part.
+  ⚠️ Et la seconde moitié de §6 (« contrôler l'effet sur la réponse RÉELLE ») n'est pas mesurable
+  depuis ce conteneur : **toi seul** peux ouvrir `finance.hubperso.com` et vérifier que ta courbe de
+  dette ne descend plus sous zéro.
+
 - [x] 👤 **[MESURE — FX-TAUX-JAMAIS-ARRIVES]** (2026-09-16) — ✅ **FAITE le 2026-09-17, et elle a
   donné la cause.** Marc a cliqué, lu le diagnostic (« au moins une des deux séries était absente »)
   puis ouvert l'URL de l'API : `observations[0]` est la dernière valeur du **dong vietnamien**, série

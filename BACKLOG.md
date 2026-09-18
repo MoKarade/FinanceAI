@@ -43,6 +43,35 @@
   ⚠️ `movementsTotal` survit : il compte AUSSI les transactions sans description, donc
   « +N autres » ne parle plus que d'elles.
 
+- [ ] 🔧 **`[INFOBULLE-DETTE-NW-NON-FINI]`** (S) — **PRÉEXISTANT, trouvé par le panel du 18/09, NON
+  corrigé** (hors du périmètre demandé : c'est un chemin de CORRUPTION, pas un irritant que Marc
+  subit). `detteReductrice` (`components/projection/futureDetail/comptes.ts`) dérive la dette par
+  `Math.max(0, Σactifs − Number(point.NetWorth) || 0)`. Un `NetWorth` **non fini** devient donc `0`
+  en silence, et la ligne « Dettes (hors hypothèque) » affiche alors **la somme TOTALE des actifs** —
+  un chiffre faux et parfaitement crédible, dans les DEUX surfaces (infobulle + « Détail complet »),
+  sans aucun `logError` et sans aucun test qui couvre ce cas.
+  ⚠️ Le dépôt traite déjà cette corruption ailleurs : `FutureProjection.tsx` a un `logError` dédié
+  pour ce champ — mais il ne couvre que `chartData[0]`, pas les points arbitraires que
+  `detteReductrice` reçoit au survol.
+  **Correctif proposé** : type de retour `number | null` (le compilateur ÉNUMÈRE alors les deux
+  consommateurs, qui gatent aujourd'hui sur `> 0.5` et masqueraient donc en silence), `null` quand
+  `NetWorth` est absent ou non fini ET quand une clé d'actif est PRÉSENTE mais non finie (une somme
+  amputée rend la soustraction fausse aussi) ; l'absence d'une clé reste légitime (pas de compte).
+  À l'écran : une mention honnête, jamais une ligne masquée — `no-fake-data` §1.
+  ⚠️ Poser le `logError` DANS `comptes.ts` élargirait le contrat de mock de tous les tests qui
+  montent `FutureProjection` (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK…`,
+  2 occurrences) — à mesurer avant, pas à supposer.
+  ⚠️ Jumeau FAIBLE, à décider dans le même lot : `detteSousZero`
+  (`components/future/detteSerie.ts`) ne distingue pas non plus « absent » (silence LÉGITIME) de
+  « présent mais non fini » (corruption, à tracer) — mais son échec est SÛR (trou visuel honnête,
+  jamais un chiffre faux), donc il ne justifie pas à lui seul un lot.
+
+- [ ] 🔧 **`[FUTUR-COURBE-DETTE-RENDU-NON-GARDE]`** (XS) — angle mort ASSUMÉ de
+  `tests/components/futureCourbeDette.test.ts` : elle teste le module `detteSerie` et la config de
+  légende, **jamais le rendu Recharts réel**. Un `connectNulls` retiré par erreur sur l'`<Area>` de
+  la dette relierait les trous sans qu'aucun test ne rougisse — et un trou relié affirme une
+  continuité que la donnée n'a pas.
+
 - [ ] 🔧 **`[FUTUR-PANNEAU-FIXE]`** (L) — remplacer l'infobulle flottante par un **panneau FIXE sous
   le graphe**, choix de Marc en clic et en texte libre : « j'aimerais que ce soit un panneau fixe en
   dessous du graphe et pareil sur le téléphone mais je veux que ça reste lisible. Je veux pouvoir

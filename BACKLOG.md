@@ -107,6 +107,51 @@
   soit l'absenter (comme pour un jour sans veille connue, déjà fait), soit la nommer pour ce
   qu'elle est. Aucun chiffre ne se lisse.
 
+- [ ] 🔴 **`[SMITH-VENTE-FORCEE-FLUX-MUET]`** (M, money-critical d'AFFICHAGE, **préexistant**) —
+  la vente forcée de l'appel de marge (`realEstateMonth.ts`, appel à `handleNonRegSale`) n'alimente
+  **aucun flux publié** : pas de `state.withdrawalNonReg += call`, alors que son JUMEAU du même
+  fichier (financement de l'achat) le fait. **Mesuré** sur la fixture Smith de
+  `tests/services/smithMargeSansDette.test.ts`, invariant `ΔNonReg == MarketGrowthNonReg +
+  NetTransferNonReg` : **227 pas sur 240** avec un résiduel > 1 $, pire 1 650,26 $, **209 748,91 $
+  cumulés** ; contrôle négatif Smith OFF : **0/240**. Le patrimoine net reste JUSTE (actif ↓ = dette
+  ↓) — ce qui ment est la SÉRIE : le non-enregistré bouge sans cause chez tous ses consommateurs
+  (infobulle Futur, table `sr-only`, répartitions).
+  ⚠️ **Le lot est ASYMÉTRIQUE et c'est ce qui le rend non trivial.** Publier `withdrawalNonReg` pour
+  la vente coûte **0 $** (lecteur unique d'affichage). Publier `contribNonReg` pour l'injection
+  jumelle (`state.nonReg += principalPaid`) **DÉPLACE DE L'ARGENT** : `growthApplication.ts` calcule
+  la croissance sur `nonReg − contribNonReg`, donc l'injection gagne aujourd'hui un mois plein de
+  rendement qu'elle n'a pas mérité — même mécanisme que `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`,
+  mesuré à −428,67 $/30 ans. Les deux ne se livrent pas au même titre.
+  ⚠️ **Pourquoi rien ne rougit** : `tests/services/projection.fluxForm.test.ts` PORTE cet invariant
+  sur NonReg, mais sa fixture a `realEstateGoals: []` — tout le module immobilier est hors de sa
+  portée (`UN-INVARIANT-JUSTE-PEUT-ETRE-AVEUGLE-A-UNE-STRATEGIE-ENTIERE`, ici par la fixture). Le
+  lot doit venir avec l'élargissement de cette fixture (une maison + Smith), sinon il reste invisible.
+  ⚠️ `[SMITH-MARGE-SANS-DETTE]` a RÉDUIT l'exposition sans la fermer : avant, la vente muette
+  frappait TOUT propriétaire ; depuis, seuls les dossiers `useSmithManoeuvre`.
+
+- [ ] 🟠 **`[DETTE-LIEN-IGNORE-SANS-MESSAGE]`** (S, **préexistant**) — une dette liée à un marchand
+  (taux 0 %) dont on remonte ensuite le taux perd son champ « marchand lié » : `peutSuivreDesVirements`
+  devient faux, le champ ET son explication DISPARAISSENT du formulaire. `paymentPayee` reste stocké,
+  le moteur refuse la courbe (`tracerDetteSuspecte` → `logError` warning), mais ce warning ne vit que
+  dans Système & diagnostics — jamais dans le formulaire où l'utilisateur vient de faire le
+  changement qui casse le lien. Il voit un champ s'évaporer sans cause donnée.
+  Correctif proposé : quand `versementsFixes && lie !== '' && interestRate !== 0`, un message inline
+  (`role="status"`, comme le refus d'origine incohérente deux lignes plus bas) : « Le lien à {lie} est
+  ignoré tant que le taux n'est pas à 0 % — le solde n'est pas suivi. »
+
+- [ ] 🟡 **`[SMITH-MARGE-BLOC-SANS-GARDE-FINIE]`** (XS, **préexistant**, aujourd'hui INATTEIGNABLE) —
+  le bloc de l'appel de marge n'a aucune garde de finitude à lui. Un `currentValue`/`mortgage` non
+  fini le ferait sauter EN SILENCE (`NaN > NaN` est `false`), et `smithManoeuvreDebt` croîtrait sans
+  plafond, sans trace. Non atteint aujourd'hui **grâce au filet amont** (`verifierEntreesMoteur`
+  scanne `realEstateGoals` récursivement) — à ne pas comptabiliser comme une protection DU BLOC.
+
+- [ ] 🟡 **`[NORMALISATION-ACCENTS-DUPLIQUEE]`** (XS) — `s.normalize('NFD').replace(/\p{Diacritic}/gu,
+  '')` est réécrit dans au moins **8** fichiers (`categoryRules.ts`, `merchantProfile.ts`,
+  `detectTransfers.ts`, `suggestDebtName.ts`, `commun.ts`, `budget.ts`, et `ChampMarchandLie.ts`
+  depuis `[DETTE-MARCHAND-RECHERCHE]`). ⚠️ Avant d'unifier : SÉPARER ce qui est partagé de ce qui ne
+  l'est pas — une clé de RECHERCHE (rabat casse et accents) et une clé d'APPARIEMENT (`clePayee`,
+  `trim()` seul) ne doivent surtout PAS fusionner, et c'est écrit dans les deux en-têtes.
+
 - [ ] 🧭 **`[SMITH-LTV-SEUIL-65]`** (S, **décision Marc**, money-critical) — né du correctif
   `[SMITH-MARGE-SANS-DETTE]`. L'appel de marge compare **`marge Smith + hypothèque`** à **65 % de la
   valeur du bien**. Au Canada, le 65 % borne la portion **MARGE** d'un prêt ré-avançable ; le TOTAL

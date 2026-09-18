@@ -66,9 +66,26 @@ interface Props {
 /**
  * ⚠️ PAS d'état ouvert/fermé, et c'est délibéré. Un champ de recherche qui se REPLIE une fois le
  * choix fait rend le lien invisible au montage suivant — `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-
- * RALLUME-EST-UNE-TRAPPE` appliqué à un formulaire. La liste reste donc toujours là, le marchand lié
- * est marqué `aria-selected`, et « aucun lien » est la PREMIÈRE ligne — atteignable en un geste quelle
- * que soit la recherche en cours, puisqu'elle ne passe pas par le filtre.
+ * RALLUME-EST-UNE-TRAPPE` appliqué à un formulaire.
+ *
+ * ⚠️⚠️ DEUX LIGNES SONT HORS DU FILTRE, et c'est la moitié qui manquait au 1er jet. « Aucun lien »
+ * l'était déjà ; le marchand DÉJÀ LIÉ, lui, était filtré comme n'importe quel autre — donc chercher
+ * « hydro » sur une dette liée à « Toyota Financial » le faisait DISPARAÎTRE de l'écran, avec sa
+ * coche, sans que rien d'autre ne dise à quoi la dette est liée. Le commentaire de ce fichier
+ * AFFIRMAIT pourtant la garantie inverse (« le marchand lié est marqué, la liste reste là ») :
+ * elle n'était vraie qu'à requête vide ou correspondante. La même classe que celle citée juste
+ * au-dessus, re-commise dans le fichier qui la cite.
+ *
+ * ⚠️ ET AUCUN RÔLE ARIA DE COMBOBOX. Le 1er jet posait `role="combobox"` + `aria-expanded` +
+ * `listbox`/`option`. Mesuré (axe-core, 3 violations `nested-interactive`, sévérité *serious*) :
+ * un `role="option"` qui CONTIENT un `<button>` est un contrôle imbriqué, et le focus se pose sur
+ * le bouton — donc l'`aria-selected` du `<li>` n'était jamais exposé à l'élément focalisé. Pire,
+ * `aria-expanded={resultats.length > 0}` devenait `false` alors que la liste restait RENDUE (la
+ * ligne « aucun lien » est hors filtre) : un attribut qui annonce « replié » pendant que du
+ * contenu actionnable est affiché ment plus qu'un `<select>`, qui lui n'a jamais menti. Et le rôle
+ * `combobox` PROMET les flèches et `aria-activedescendant`, que ce composant n'implémente pas.
+ * Le patron réel est « un champ qui filtre, une liste de boutons » : on l'écrit tel quel, et
+ * l'option courante se dit par `aria-current`, porté par l'élément qui a VRAIMENT le focus.
  */
 export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, id }) => {
     const [requete, setRequete] = useState('');
@@ -76,6 +93,9 @@ export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, i
     // ⚠️ Le marchand DÉJÀ lié figure toujours dans la liste, même si plus aucune transaction ne le
     // porte : sans lui, ouvrir le formulaire puis choisir effacerait le lien en silence, et Marc
     // n'aurait aucun moyen de voir à quoi sa dette est liée.
+    // ⚠️ Et son `nb: 0` s'ÉCRIT « aucun virement trouvé », pas « (0) » : le `<select>` que ce lot
+    // remplace le disait en toutes lettres, et « (0) » est indiscernable d'un marchand simplement
+    // rare — une nuance perdue au passage, rendue par le panel.
     const tous = useMemo<MarchandCandidat[]>(() => (
         lie !== '' && !marchands.some(m => m.payee === lie)
             ? [{ payee: lie, nb: 0 }, ...marchands]
@@ -84,6 +104,29 @@ export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, i
 
     const resultats = useMemo(() => filtrerMarchands(tous, requete), [tous, requete]);
     const idListe = `${id}-resultats`;
+    // ⚠️ Le marchand lié est ÉPINGLÉ hors du filtre, exactement comme « aucun lien » — mais
+    // seulement quand le filtre ne le rend pas déjà, sinon il apparaîtrait DEUX fois. Le compte
+    // annoncé plus bas reste celui du FILTRE (« N sur M ») : épingler une ligne ne change pas
+    // combien de marchands correspondent à la recherche, et prétendre le contraire serait un
+    // second mensonge à la place du premier.
+    const epingle = useMemo<MarchandCandidat | null>(() => (
+        lie !== '' && !resultats.some(m => m.payee === lie)
+            ? tous.find(m => m.payee === lie) ?? null
+            : null
+    ), [lie, resultats, tous]);
+
+    const ligne = (m: MarchandCandidat, choisi: boolean) => (
+        <li key={m.payee}>
+            <button
+                type="button"
+                aria-current={choisi ? 'true' : undefined}
+                onClick={() => onChoisir(m.payee)}
+                className={`w-full text-left px-2 py-1 min-h-[44px] text-meta hover:bg-white/10 touch-target ${choisi ? 'text-primary font-bold' : 'text-white'}`}
+            >
+                {m.payee} ({m.nb === 0 ? 'aucun virement trouvé' : m.nb}){choisi ? ' ✓' : ''}
+            </button>
+        </li>
+    );
 
     return (
         <div className="flex flex-col gap-1 text-tiny text-ink-400">
@@ -91,9 +134,6 @@ export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, i
             <input
                 id={id}
                 type="text"
-                role="combobox"
-                aria-expanded={resultats.length > 0}
-                aria-controls={idListe}
                 autoComplete="off"
                 placeholder="Cherche un marchand : toyota, hydro…"
                 value={requete}
@@ -102,33 +142,24 @@ export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, i
             />
             <ul
                 id={idListe}
-                role="listbox"
                 aria-label="Marchands à lier à cette dette"
                 className="max-h-56 overflow-y-auto rounded border border-white/10 bg-dark divide-y divide-white/5"
             >
                 {/* ⚠️ Le libellé de l'option vide dit si l'état est INACHEVÉ ou CHOISI : « aucun lien »
                     est un état parfaitement défini (la dette suit alors la cadence saisie), pas un
                     formulaire à finir. Hors filtre, donc toujours à un geste. */}
-                <li role="option" aria-selected={lie === ''}>
+                <li>
                     <button
                         type="button"
+                        aria-current={lie === '' ? 'true' : undefined}
                         onClick={() => onChoisir(undefined)}
                         className="w-full text-left px-2 py-1 min-h-[44px] text-meta text-ink-300 hover:bg-white/10 touch-target"
                     >
                         — aucun : suivre la cadence saisie ci-dessous —
                     </button>
                 </li>
-                {resultats.map(m => (
-                    <li key={m.payee} role="option" aria-selected={m.payee === lie}>
-                        <button
-                            type="button"
-                            onClick={() => onChoisir(m.payee)}
-                            className={`w-full text-left px-2 py-1 min-h-[44px] text-meta hover:bg-white/10 touch-target ${m.payee === lie ? 'text-primary font-bold' : 'text-white'}`}
-                        >
-                            {m.payee} ({m.nb}){m.payee === lie ? ' ✓' : ''}
-                        </button>
-                    </li>
-                ))}
+                {epingle !== null && ligne(epingle, true)}
+                {resultats.map(m => ligne(m, m.payee === lie))}
             </ul>
             {/* Ce que la recherche a RETIRÉ de la vue se DIT : une liste filtrée qui ne compte pas
                 est indiscernable d'une liste vide. */}

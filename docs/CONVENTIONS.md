@@ -15644,6 +15644,58 @@ invisible — c'est écrit dans la fixture de la garde, à côté du montant.
 
 ---
 
+## `UNE-LECON-CITEE-EN-TETE-D-UN-FICHIER-NE-PROTEGE-PAS-CE-FICHIER` (2026-09-18)
+
+**Le fait.** `ChampMarchandLie.tsx` s'ouvre sur `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-
+EST-UNE-TRAPPE`, la nomme, et affirme l'avoir neutralisée : « la liste reste donc toujours là, le
+marchand lié est marqué, et *aucun lien* est la PREMIÈRE ligne — hors du filtre ». Deux des trois
+moitiés étaient vraies. Le marchand **déjà lié** était protégé dans la liste COMPLÈTE (préfixé avec
+`nb: 0` s'il n'a plus de transaction) puis **filtré comme n'importe quel autre** : chercher
+« hydro » sur une dette liée à « Toyota Financial » le faisait disparaître de l'écran avec sa coche,
+et rien d'autre du formulaire ne dit à quoi la dette est liée. La garantie n'était vraie qu'à
+requête vide ou correspondante.
+
+**La leçon.** Citer une leçon en tête d'un fichier ne la fait pas tenir — c'est une INTENTION, et
+elle se vérifie par la même perturbation qu'ailleurs. Pire, la citation ENDORT la relecture : le
+commentaire répond à la question avant qu'on la pose. `UNE-GARDE-ECRITE-CONTRE-UN-PIEGE-CONNU-LE-
+RECOMMET` vue depuis la prose plutôt que depuis le code. **Le geste** : pour chaque garantie qu'un
+en-tête AFFIRME, écrire l'assertion qui la casse — ici « le marchand lié survit à une recherche qui
+ne le matche pas », avec son anti-vacuité (prouver que la requête l'exclut vraiment du filtre) et le
+contrôle qu'il n'apparaît pas EN DOUBLE quand le filtre le rend déjà.
+
+**⚠️⚠️ Et trois rôles ARIA posés par réflexe mentaient, mesuré par axe-core.** Le même composant
+portait `role="combobox"` + `aria-expanded` + `listbox`/`option`. Trois défauts INDÉPENDANTS :
+(1) chaque `role="option"` CONTIENT un `<button>` — **3 violations `nested-interactive`, sévérité
+*serious*** —, donc le focus se pose sur le bouton et l'`aria-selected` du `<li>` n'est jamais
+exposé à l'élément focalisé ; (2) `aria-expanded={resultats.length > 0}` passait à `false` alors que
+la liste restait RENDUE (la ligne « aucun lien » est hors filtre) — un attribut qui annonce
+« replié » pendant qu'un contenu actionnable est affiché ; (3) `combobox` PROMET les flèches et
+`aria-activedescendant`, que le composant n'implémente pas. **Le `<select>` natif remplacé n'avait
+aucun des trois.** Le correctif n'est pas d'implémenter le contrat promis mais de cesser de le
+promettre : le patron réel est « un champ qui filtre, une liste de boutons », et l'option courante
+se dit par `aria-current`, porté par l'élément qui a vraiment le focus. **Un rôle ARIA est une
+PROMESSE de comportement clavier — ne le poser que si on livre le comportement.**
+
+**⚠️ Le libellé perdu au passage.** Le `<select>` écrivait « Marchand Disparu (aucun virement
+trouvé) » ; le composant neuf rendait « (0) », indiscernable d'un marchand simplement rare — la
+nuance qui MOTIVE la présence de cette ligne. Une migration de contrôle se relit sur ce que
+l'ancien DISAIT, pas seulement sur ce qu'il offrait.
+
+**⚠️ Et c'est un test qui a corrigé mon test.** Le lecteur du fichier de garde filtrait la ligne de
+sortie par `!txt.includes('aucun')` ; « aucun virement trouvé » contient « aucun », donc le marchand
+disparu sortait de l'inventaire — rouge immédiat. Un filtre de test s'ancre sur le LIBELLÉ
+DISCRIMINANT (`— aucun :`), jamais sur un mot que le domaine peut réemployer.
+
+**Perturbations (2, séparées).** Épinglage retiré → **1 rouge**, le cas neuf seul. `aria-current`
+retiré → **2 rouges**, exactement les deux cas qui le lisent.
+
+**Trouvé par le panel, après un gate ciblé vert** — et par TROIS agents indépendamment sur l'ARIA,
+dont un avec la mesure axe-core. Aucun test du dépôt ne pouvait le voir : le scan a11y de pages ne
+monte pas `DebtManager`, et il faut `taux nul + versements fixes + transactions` pour atteindre le
+composant.
+
+---
+
 ## `UN-CORRECTIF-DONT-LE-COMMENTAIRE-CONTIENT-LE-MOTIF-FAUSSE-SON-PROPRE-RECENSEMENT` (2026-09-18)
 
 Le lot L2 de l'audit du 18/09 pose `persist-credentials: false` sur les étapes

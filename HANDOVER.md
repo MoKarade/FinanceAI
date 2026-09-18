@@ -44,6 +44,32 @@
 > jamais pour APPARIER — `clePayee` reste un `trim()`), la liste restant la SEULE émettrice de
 > valeur. Trois perturbations séparées. ⚠️ Pas d'état replié : un champ qui se referme rend le lien
 > invisible au montage suivant.
+>
+> ⚠️⚠️ **PUIS LE PANEL A TROUVÉ DEUX DÉFAUTS DANS CE COMPOSANT NEUF, après un gate ciblé vert.**
+> (a) Le marchand DÉJÀ LIÉ était protégé dans la liste complète puis **filtré comme les autres** :
+> chercher « hydro » sur une dette liée à « Toyota Financial » le faisait disparaître avec sa coche,
+> et rien d'autre du formulaire ne dit à quoi la dette est liée — alors que l'en-tête du fichier
+> CITE `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE` et affirme l'avoir
+> neutralisée. Il est désormais ÉPINGLÉ hors filtre, comme « aucun lien », sans doublon quand le
+> filtre le rend déjà, et le compte annoncé reste celui du FILTRE.
+> (b) Trois rôles ARIA MENTAIENT, mesuré par axe-core (**3 violations `nested-interactive`,
+> *serious***) : `role="option"` contenant un `<button>`, `aria-expanded` à `false` sur une liste
+> toujours rendue, et `role="combobox"` qui promet des flèches non implémentées. Le `<select>`
+> remplacé n'avait aucun des trois. Rôles retirés ; le choix courant se dit par `aria-current`,
+> porté par l'élément qui a vraiment le focus. Et le libellé « (aucun virement trouvé) » du
+> `<select>`, perdu au passage en « (0) », est restauré.
+> 📌 `components/debt/ChampMarchandLie.tsx` · `tests/components/debtManagerStatutSolde.test.tsx`
+> (2 perturbations séparées : épinglage → 1 rouge, `aria-current` → 2 rouges).
+>
+> 🧭 **ROUTÉ, pas corrigé** (préexistants, dans `BACKLOG.md`) : `[SMITH-VENTE-FORCEE-FLUX-MUET]`
+> (ÉLEVÉ — la vente forcée n'alimente aucun flux publié : **227 pas sur 240**, **209 749 $** cumulés
+> sur un dossier Smith ; le jumeau `contribNonReg` DÉPLACE de l'argent, donc le lot est asymétrique
+> et exige d'élargir la fixture `fluxForm`, qui n'a pas de maison) · `[DETTE-LIEN-IGNORE-SANS-MESSAGE]`
+> · `[SMITH-MARGE-BLOC-SANS-GARDE-FINIE]` · `[NORMALISATION-ACCENTS-DUPLIQUEE]`.
+> 🔧 **Deux docs réparées au passage** : `docs/FISCAL_REFERENCE.md` §8 décrivait encore un « taux
+> HELOC 5 %/an en dur » abandonné le 2026-08-24 (le taux SUIT l'hypothèque depuis), et la raison
+> d'inventaire du `0.65` dans `utils/fiscalConstGuardV2.ts` citait en preuve une phrase que mon
+> propre commit `e082081d` venait de retirer de §8 — elle commettait donc ce qu'elle reprochait.
 
 > ## 🟦 Session 2026-09-18 (suite 4) — **le BACKLOG ne gardait plus que le vivant que sur le papier**
 > ✅ **PR #992 fusionnée** (18:38 UTC), déploiement Vercel de PRODUCTION `dpl_9C7EhC3J…` **READY**

@@ -1297,9 +1297,16 @@ choisir). Calcul cumulatif par tranche (style impôt).
     l'une découlait de l'autre, ce qui donnait à une hypothèse de modèle l'autorité d'un texte
     réglementaire. **Décision ouverte, à Marc : `[SMITH-LTV-SEUIL-65]` dans `BACKLOG.md`** — la
     changer déplace de l'argent.
-- Hypothèse de modèle (PAS une constante fiscale) : **taux HELOC 5 %/an** en dur
-  (`realEstateMonth.ts:336`) — à paramétrer un jour si besoin (reste OUVERT, non couvert par le
-  lot FA-8 2026-06-11 — cf BACKLOG).
+- Hypothèse de modèle (PAS une constante fiscale) : le **taux de la marge SUIT l'hypothèque** —
+  `smithHelocAnnualRate` (`services/projection/modelAssumptions.ts`) rend `max(3 %, taux du prêt +
+  2 points)`.
+  - ⚠️ **Cette ligne affirmait « taux HELOC 5 %/an **en dur** (`realEstateMonth.ts:336`) » jusqu'au
+    2026-09-18** — fausse sur les trois plans depuis `[SMITH-HELOC-TAUX-FIGE]` (2026-08-24) : le
+    littéral a quitté le fichier, le taux n'est plus figé, et le numéro de ligne ne pointait plus
+    rien (`UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`). Un lecteur de la source de vérité en
+    concluait que le levier Smith est évalué à 5 % quel que soit le marché — exactement le biais que
+    ce lot-là avait corrigé. Trouvé par le panel, un mois après coup, dans la ligne VOISINE de celle
+    qu'un autre lot venait de réécrire.
 
 ---
 

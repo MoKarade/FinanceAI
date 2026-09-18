@@ -24,6 +24,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - ⚠️ **Une question reste pour toi** : ce fameux seuil de 65 % compare la marge **plus** l'hypothèque
   à la valeur de la maison. Au Canada, ce 65 % borne plutôt la seule portion marge. Je te poserai la
   question — la changer déplacerait encore des chiffres.
+- **Et la liste des marchands ne te cache plus ton propre choix.** Dans le champ « Virements qui
+  remboursent cette dette », chercher autre chose (« hydro » alors que ta dette est liée à Toyota)
+  faisait disparaître de l'écran le marchand auquel elle est liée, coche comprise — rien d'autre
+  dans le formulaire ne te l'aurait dit. Il reste maintenant affiché en permanence, comme la ligne
+  « aucun lien ». Un marchand dont il ne reste plus aucun virement s'écrit à nouveau « (aucun
+  virement trouvé) » au lieu d'un « (0) » qu'on peut confondre avec un marchand rare.
 
 ---
 

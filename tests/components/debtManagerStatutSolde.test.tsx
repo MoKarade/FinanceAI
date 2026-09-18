@@ -20,6 +20,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { DebtManager, phraseStatutSolde } from '../../components/DebtManager';
 import { statutSoldeDette } from '../../services/projection/debtAmortization';
+import { filtrerMarchands } from '../../components/debt/ChampMarchandLie';
 import { formatIsoDay } from '../../utils/format';
 import { todayIsoLocal } from '../../services/projection/dailyRefine';
 import type { Debt } from '../../types';
@@ -170,14 +171,25 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         expect(p.textContent).toContain('Marchand Inexistant');
     });
 
+    const listeMarchands = () => screen.getByRole('list', { name: /Marchands à lier/i });
+
     /** Les marchands OFFERTS, dans l'ordre affiché. La ligne « aucun lien » est hors liste : elle
-     *  ne passe pas par le filtre, donc elle n'a pas sa place dans un inventaire des candidats. */
+     *  ne passe pas par le filtre, donc elle n'a pas sa place dans un inventaire des candidats.
+     *
+     *  ⚠️ Lu par le RÔLE RÉEL (`list` + `button`), et c'est le correctif d'un mensonge : le 1er jet
+     *  posait `role="listbox"`/`role="option"` sur des `<li>` qui CONTIENNENT un `<button>` —
+     *  axe-core rendait 3 violations `nested-interactive` (*serious*), et l'`aria-selected` du `<li>`
+     *  n'était jamais exposé à l'élément qui a le focus. Le choix courant se lit désormais sur
+     *  `aria-current`, porté par le bouton lui-même. */
     const marchandsOfferts = (): string[] =>
-        within(screen.getByRole('listbox', { name: /Marchands à lier/i }))
-            .getAllByRole('option')
+        within(listeMarchands())
+            .getAllByRole('button')
             .map(o => o.textContent ?? '')
-            .filter(txt => !txt.includes('aucun'))
-            .map(txt => txt.replace(/\s*\(\d+\)\s*✓?\s*$/, '').trim());
+            // ⚠️ Sur le LIBELLÉ DE LA SORTIE, jamais sur le mot « aucun » : un marchand sans virement
+            // restant s'écrit « (aucun virement trouvé) » depuis ce lot, et un `includes('aucun')`
+            // le jetait de l'inventaire — c'est le test lui-même qui l'a dit, en rougissant.
+            .filter(txt => !txt.trimStart().startsWith('— aucun'))
+            .map(txt => txt.replace(/\s*\((?:\d+|aucun virement trouvé)\)\s*✓?\s*$/, '').trim());
 
     it('le sélecteur de marchand N’EXISTE que là où il produit quelque chose (taux nul + versements fixes)', () => {
         // ⚠️ [DETTE-MARCHAND-RECHERCHE] Ce n'était plus un `<select>` depuis que la liste a dépassé
@@ -192,7 +204,7 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         expect(marchandsOfferts()).toEqual(['Toyota Financial', 'Ste Foy Toyota Quebec']);
         // ⚠️ Aucun MONTANT dans la liste : `PrivateAmount` ne peut pas envelopper une ligne d'option,
         // donc il serait lisible en mode discret. Un COMPTE, lui, ne dit rien de ce que Marc possède.
-        expect(screen.getByRole('listbox', { name: /Marchands à lier/i }).textContent).not.toMatch(/\$/);
+        expect(listeMarchands().textContent).not.toMatch(/\$/);
         unmount();
 
         // CONTRÔLE NÉGATIF : à taux NON NUL, la déduction serait fausse — le champ disparaît.
@@ -214,7 +226,7 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         // Casse ET accents ignorés pour CHERCHER — jamais pour apparier (`clePayee` reste un trim).
         fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'ste foy' } });
         expect(marchandsOfferts()).toEqual(['Ste Foy Toyota Quebec']);
-        expect(screen.getByRole('option', { name: /aucun/i })).toBeTruthy();
+        expect(within(listeMarchands()).getByRole('button', { name: /aucun/i })).toBeTruthy();
 
         // Une requête sans résultat ne laisse PAS croire que la liste est vide : le compte le dit.
         fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'zzzz' } });
@@ -285,7 +297,41 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         // Il est OFFERT (donc re-choisissable) ET marqué comme le choix courant — sans les deux,
         // le formulaire effacerait le lien en silence au premier changement.
         expect(marchandsOfferts()).toContain('Marchand Disparu');
-        expect(screen.getByRole('option', { name: /^Marchand Disparu/ }).getAttribute('aria-selected')).toBe('true');
+        expect(
+            within(listeMarchands()).getByRole('button', { name: /^Marchand Disparu/ }).getAttribute('aria-current'),
+        ).toBe('true');
+    });
+
+    it('le marchand LIÉ survit à une recherche qui ne le matche pas — sinon Marc ne voit plus son propre choix', () => {
+        // ⚠️⚠️ TROUVÉ PAR LE PANEL, après un gate ciblé vert. Le 1er jet protégeait le marchand lié
+        // de la disparition dans la liste COMPLÈTE (`tous`), puis la FILTRAIT comme n'importe quelle
+        // autre ligne — donc chercher « hydro » sur une dette liée à « Toyota Financial » le faisait
+        // disparaître de l'écran avec sa coche, et RIEN d'autre du formulaire ne dit à quoi la dette
+        // est liée. C'est `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`
+        // re-commise dans le fichier qui CITE cette leçon, et dont le commentaire AFFIRMAIT la
+        // garantie inverse — vraie seulement à requête vide ou correspondante.
+        poserTransactions(TX);
+        render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9), paymentPayee: 'Toyota Financial' } as Partial<Debt>)]} setDebts={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
+
+        // ANTI-VACUITÉ : la requête choisie doit vraiment EXCLURE le marchand lié, sinon le test
+        // passerait pour la mauvaise raison (il serait simplement resté dans les résultats).
+        expect(filtrerMarchands([{ payee: 'Toyota Financial', nb: 8 }], 'ste foy')).toEqual([]);
+
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'ste foy' } });
+        expect(marchandsOfferts()).toContain('Toyota Financial');
+        expect(
+            within(listeMarchands()).getByRole('button', { name: /^Toyota Financial/ }).getAttribute('aria-current'),
+        ).toBe('true');
+        // Et il n'apparaît qu'UNE fois : épinglé hors filtre ET rendu par le filtre serait un doublon.
+        expect(marchandsOfferts().filter(m => m === 'Toyota Financial')).toHaveLength(1);
+        // Le compte annoncé reste celui du FILTRE — épingler une ligne ne change pas combien de
+        // marchands correspondent à la recherche.
+        expect(screen.getByText(/1 sur 2 marchands/)).toBeTruthy();
+
+        // CONTRÔLE : une requête qui matche le marchand lié ne le duplique pas non plus.
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'toyota' } });
+        expect(marchandsOfferts().filter(m => m === 'Toyota Financial')).toHaveLength(1);
     });
 });
 

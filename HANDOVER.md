@@ -33,6 +33,15 @@
 > → 2 rouges (accumulation + dette déclarée) · **un seul** item coché SOUS le plafond mais portant
 > la phrase → 1 rouge, la seconde assertion seule · fichier vidé → l'anti-vacuité seule.
 > 📌 `tests/backlogArchivageDesCoches.test.ts` (4 cas) · `BACKLOG.md` 2874 → 1815 lignes.
+> ✅ **Compteur de tests MESURÉ en local**, suite complète verte : **6 319 tests / 638 fichiers**
+> (979 s, sur `cc0aa63c`). Le total DÉRIVÉ que portait l'en-tête pour `069effd3` (6 315 / 637) était
+> **exact au test près** — une mesure qui CONFIRME se publie autant qu'une réfutation.
+> ⚠️ **Le log du job CI n'est PAS téléchargeable depuis ce conteneur** : le blob Azure rend **403 au
+> CONNECT**, et `get_job_logs` ne rend que ~3,5 Ko de QUEUE, donc jamais le résumé Vitest. Le
+> compteur se mesure donc EN LOCAL — inutile de retenter le log.
+> ⚠️ **Et une suite lancée sur un arbre MOUVANT ne mesure pas l'arbre** : une première mesure a été
+> JETÉE parce qu'elle tournait pendant que je modifiais `BACKLOG.md`, que deux gardes de ce dépôt
+> lisent à l'EXÉCUTION. Figer l'arbre d'abord, mesurer ensuite.
 
 > ## 🟦 Session 2026-09-18 (suite 3) — **le détail du jour devient un PANNEAU FIXE**
 > 🔎 **`[FUTUR-PANNEAU-FIXE]`** — l'infobulle flottante du graphe Futur est REMPLACÉE par un

@@ -1,12 +1,15 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 315 tests** Vitest
-(637 fichiers de test — base **MESURÉE par la CI** le 2026-09-18 sur `4a74bf1f` : 6 258 tests /
-631 fichiers, puis + 39 gardes du lot `[FUTUR-PANNEAU-FIXE]` (5 fichiers) + 18 des correctifs de
-son panel (1 fichier). ⚠️ Le total n'a PAS été re-mesuré en local — c'est la CI qui exécute la
-suite complète (§5). Treize perturbations SÉPARÉES, chacune ne touchant que sa cible, dont deux de
-sens OPPOSÉ. Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 319 tests** Vitest
+(638 fichiers de test — **MESURÉ en local**, suite complète verte, le 2026-09-18 sur `cc0aa63c`
+(`npm run test`, 979 s). ⚠️ Une suite lancée pendant qu'on modifie `BACKLOG.md` ne mesure rien :
+deux gardes lisent ce fichier à l'EXÉCUTION — une première mesure a été jetée pour ça.
+⚠️ Et le log du job CI n'est pas téléchargeable depuis ce conteneur (403 au CONNECT sur le blob
+Azure ; `get_job_logs` ne rend que ~3,5 Ko de queue, donc jamais le résumé Vitest) : le compteur se
+mesure EN LOCAL, une fois l'arbre figé. Mesure qui CONFIRME, publiée comme telle : le total DÉRIVÉ
+que portait cet en-tête pour `069effd3` — 6 315 / 637 — était exact au test près (6 319 − 4 gardes
+neuves, 638 − 1 fichier neuf). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,

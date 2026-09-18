@@ -43,21 +43,19 @@
   ⚠️ `movementsTotal` survit : il compte AUSSI les transactions sans description, donc
   « +N autres » ne parle plus que d'elles.
 
-- [ ] 🔧 **`[INFOBULLE-DETTE-NW-NON-FINI]`** (S) — **PRÉEXISTANT, trouvé par le panel du 18/09, NON
-  corrigé** (hors du périmètre demandé : c'est un chemin de CORRUPTION, pas un irritant que Marc
-  subit). `detteReductrice` (`components/projection/futureDetail/comptes.ts`) dérive la dette par
-  `Math.max(0, Σactifs − Number(point.NetWorth) || 0)`. Un `NetWorth` **non fini** devient donc `0`
-  en silence, et la ligne « Dettes (hors hypothèque) » affiche alors **la somme TOTALE des actifs** —
-  un chiffre faux et parfaitement crédible, dans les DEUX surfaces (infobulle + « Détail complet »),
-  sans aucun `logError` et sans aucun test qui couvre ce cas.
-  ⚠️ Le dépôt traite déjà cette corruption ailleurs : `FutureProjection.tsx` a un `logError` dédié
-  pour ce champ — mais il ne couvre que `chartData[0]`, pas les points arbitraires que
-  `detteReductrice` reçoit au survol.
-  **Correctif proposé** : type de retour `number | null` (le compilateur ÉNUMÈRE alors les deux
-  consommateurs, qui gatent aujourd'hui sur `> 0.5` et masqueraient donc en silence), `null` quand
-  `NetWorth` est absent ou non fini ET quand une clé d'actif est PRÉSENTE mais non finie (une somme
-  amputée rend la soustraction fausse aussi) ; l'absence d'une clé reste légitime (pas de compte).
-  À l'écran : une mention honnête, jamais une ligne masquée — `no-fake-data` §1.
+- [x] 🔧 **`[INFOBULLE-DETTE-NW-NON-FINI]`** (S) **LIVRÉ le 18/09/2026, avec `[FUTUR-PANNEAU-FIXE]`**
+  — routé la veille comme « préexistant, hors périmètre », corrigé ici parce qu'il est devenu du
+  chemin **NOMINAL** : la colonne « Par compte » du panneau consomme `detteReductrice`.
+  Le défaut : `Number(point.NetWorth) || 0` rabattait un `NaN`/`Infinity` sur **zéro**, et la
+  soustraction rendait alors la somme **TOTALE des actifs** sous le libellé « Dettes (hors
+  hypothèque) » — un chiffre faux et parfaitement crédible, dans les deux surfaces, sans trace.
+  **Correctif = le TYPE** (`number | null`), qui a fait ÉNUMÉRER les deux consommateurs par le
+  compilateur : tous deux gataient sur `> 0.5` et auraient masqué `null` en silence.
+  ⚠️ **Les DEUX moitiés sont fermées**, et la seconde est plus discrète : une clé d'actif PRÉSENTE
+  mais non finie rend la SOMME amputée, donc la dette **surévaluée** du montant du compte illisible
+  — l'erreur va dans l'autre sens. Une clé ABSENTE reste légitime (« pas de compte de ce type »,
+  pas « donnée perdue »).
+  Le REFUS est **dit à l'écran** dans les deux surfaces, jamais une ligne silencieusement masquée.
   ⚠️ Poser le `logError` DANS `comptes.ts` élargirait le contrat de mock de tous les tests qui
   montent `FutureProjection` (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK…`,
   2 occurrences) — à mesurer avant, pas à supposer.
@@ -89,16 +87,24 @@
   la dette relierait les trous sans qu'aucun test ne rougisse — et un trou relié affirme une
   continuité que la donnée n'a pas.
 
-- [ ] 🔧 **`[FUTUR-PANNEAU-FIXE]`** (L) — remplacer l'infobulle flottante par un **panneau FIXE sous
-  le graphe**, choix de Marc en clic et en texte libre : « j'aimerais que ce soit un panneau fixe en
-  dessous du graphe et pareil sur le téléphone mais je veux que ça reste lisible. Je veux pouvoir
-  choisir le lendemain ou la veille ». Organisation retenue : **colonnes sur PC, onglets sur
-  téléphone** ; **le graphe garde sa taille** (la page défile pour atteindre le panneau) ; état
-  initial sur **aujourd'hui** ; pas à pas veille/lendemain toujours présent.
-  ⚠️ Marc a coché les QUATRE irritants (elle disparaît quand il veut la lire · trop de choses à
-  trier · les chiffres ne se recomposent pas entre eux · pénible sur téléphone) **et** les quatre
-  « ce que je regarde en premier » : le problème est l'**ORGANISATION**, pas le volume — **aucune
-  section ne se supprime**.
+- [x] 🔧 **`[FUTUR-PANNEAU-FIXE]`** (L) **LIVRÉ le 18/09/2026** — l'infobulle flottante est
+  remplacée par un **panneau FIXE sous le graphe**, choix de Marc en clic et en texte libre :
+  « j'aimerais que ce soit un panneau fixe en dessous du graphe et pareil sur le téléphone mais je
+  veux que ça reste lisible. Je veux pouvoir choisir le lendemain ou la veille ».
+  **Cadré avec lui, en trois lots de questions** : colonnes sur PC / onglets sur téléphone · le
+  graphe garde sa taille (la page défile) · état initial **aujourd'hui** · ordre **net → flux →
+  comptes → mouvements** · survol = aperçu, clic = épingle · l'infobulle flottante disparaît · sur
+  téléphone, **flèches à PAS RÉGLABLE (jour / mois / année)** — les trois premières propositions
+  (tape + flèches, curseur sous le graphe, flèches seules) ont toutes été refusées.
+  ⚠️ Marc a coché les QUATRE irritants **et** les quatre « ce que je regarde en premier » : le
+  problème était l'**ORGANISATION**, pas le volume — **aucune section n'a été supprimée**.
+  ⚠️ L'irritant n°1 (« elle disparaît / bouge quand je veux la lire ») est STRUCTUREL à un objet
+  qui suit le curseur : pour lire une infobulle il faut bouger la souris vers elle, et la bouger la
+  change. Seul l'endroit où elle vit le corrige.
+  **TROIS états, pas deux** : l'infobulle n'existait que pendant un survol ou un gel ; un panneau
+  fixe est toujours là et a besoin d'un troisième état — ce qu'il montre au repos.
+  `choisirJourAffiche` en fait une fonction pure (épingle > survol > ancre) et l'ORIGINE est écrite
+  à l'écran.
 
 ---
 

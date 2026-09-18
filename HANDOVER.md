@@ -4,6 +4,46 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-18 (suite 3) — **le détail du jour devient un PANNEAU FIXE**
+> 🔎 **`[FUTUR-PANNEAU-FIXE]`** — l'infobulle flottante du graphe Futur est REMPLACÉE par un
+> panneau dans le flux du document, sous le graphe. Demande de Marc en texte libre, puis cadrée en
+> trois lots de questions : **colonnes sur PC / onglets sur téléphone** · le graphe **garde sa
+> taille** (la page défile) · état initial **aujourd'hui** · ordre **net → flux → comptes →
+> mouvements** · survol = aperçu, clic = **épingle** · l'infobulle flottante **disparaît** · sur
+> téléphone, **flèches à PAS RÉGLABLE (jour / mois / année)**.
+> ⚠️ Ses trois premières options pour le téléphone ont TOUTES été refusées (tape + flèches, curseur
+> sous le graphe, flèches seules) : il a demandé d'autres propositions, et c'est la quatrième vague
+> qui a été retenue. **Un menu borne ce qu'on peut découvrir** — quand la question porte sur un
+> geste d'utilisateur, la réponse utile arrive souvent au deuxième tour.
+> ⚠️ **L'irritant n°1 est STRUCTUREL, pas réglable** : « elle disparaît / bouge quand je veux la
+> lire » est ce que fait un objet qui suit le curseur — pour le lire il faut bouger la souris vers
+> lui, et la bouger le change. Seul l'endroit où il vit le corrige.
+> ⚠️ **TROIS états, pas deux.** L'infobulle n'existait que pendant un survol ou un gel ; un panneau
+> fixe est toujours là et a besoin d'un troisième état — ce qu'il montre au repos (**aujourd'hui**,
+> choix de Marc). `choisirJourAffiche` en fait une fonction pure et l'ORIGINE est ÉCRITE à l'écran.
+> ⚠️ **Tout le POSITIONNEMENT est mort avec l'infobulle** : `useChartTooltipPosition` faisait deux
+> choses, la machine d'état (reprise telle quelle dans `useSelectionJour`) et le placement flottant
+> (bornage au viewport, mesure de hauteur, mutation de left/top au mousemove, bottom sheet,
+> remontage à la rotation). Retiré avec `clampTooltipPosition` et ses quatre constantes : un panneau
+> dans le flux n'a ni bord d'écran à éviter ni position à calculer.
+> 🔎 **`[INFOBULLE-DETTE-NW-NON-FINI]`** corrigé au passage, parce qu'il devient du chemin NOMINAL
+> (la colonne « Par compte » consomme `detteReductrice`) : `Number(point.NetWorth) || 0` rabattait
+> un non-fini sur ZÉRO et la fonction rendait la somme TOTALE des actifs sous le libellé « Dettes ».
+> Correctif = le TYPE (`number | null`), qui a fait énumérer les deux consommateurs par le
+> compilateur. **Les deux moitiés sont fermées** — un COMPTE non fini surévalue la dette du même
+> montant, l'erreur allant dans l'autre sens ; une clé ABSENTE reste légitime.
+> ⚠️⚠️ **Le LINT a trouvé ce qu'aucun test rouge n'aurait vu** : en retirant le bloc
+> `clampTooltipPosition` d'un fichier de test, j'avais emporté AUSSI le bloc `resolvePointByX` qui
+> le suit — douze assertions sur du code bien vivant (le clic sur la courbe). Signalé par un import
+> devenu inutilisé. `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`, et la question qui
+> l'aurait évité est « qu'est-ce qui n'existe QUE là ? ». Restauré.
+> ✅ Ciblé : `npm run typecheck` vert (VU) · `lint` **0 erreur, 32 avertissements = la base exacte**
+> (ils étaient montés à 36, et c'est ce qui a démasqué la coupe ci-dessus) · gardes neuves vertes.
+> **HUIT perturbations SÉPARÉES**, chacune ne touchant que sa cible, dont une de sens OPPOSÉ (un
+> commentaire français citant `createPortal` doit laisser la garde VERTE).
+> ⚠️ Le gate complet n'a PAS tourné en local : sur le chemin `git add && git commit` chaîné, le hook
+> `commit-gate` lit un index vide. **La CI est le gate de cette PR** (#992).
+>
 > ## 🟦 Session 2026-09-18 (suite 2) — **la dette a sa courbe, l'infobulle ne cache plus rien**
 > Demande de Marc : « je veux voir la courbe de la dette même dans le passé et je vois pas les
 > transactions dans l'infobulle on dirait ça manque des transactions, fais une grosse grosse passe

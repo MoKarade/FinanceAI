@@ -6,6 +6,32 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-18 (le détail du jour ne fuit plus sous ta souris)
+
+- **L'infobulle qui suivait ton curseur est remplacée par un panneau FIXE, sous le graphe.** C'est
+  ce que tu demandais : « un panneau fixe en dessous du graphe et pareil sur le téléphone, mais je
+  veux que ça reste lisible ». Elle disparaissait quand tu essayais de la lire — c'est ce que fait
+  n'importe quoi qui suit la souris : pour aller la lire, il faut bouger la souris, et la bouger la
+  change. Il n'y avait pas de réglage à trouver, seulement un endroit à changer.
+- **Quatre colonnes sur ordinateur, quatre onglets sur téléphone**, dans l'ordre que tu as choisi :
+  ① valeur nette et sa variation · ② entrées / sorties et impôts · ③ par compte et dette ·
+  ④ ce qui s'est passé ce jour-là. **Rien n'a été retiré** : tu avais coché les quatre « ce que je
+  regarde en premier », donc le problème était le rangement, pas la quantité.
+- **Au repos, le panneau montre AUJOURD'HUI.** Il te dit toujours d'où vient ce qu'il affiche :
+  « Aujourd'hui », « Aperçu » (tu survoles), ou « Jour épinglé » (tu as cliqué). Une fois épinglé,
+  il ne bouge plus — tu peux descendre la souris dedans et le lire tranquillement. Échap, ou le
+  bouton « Revenir à aujourd'hui », le relâche.
+- **Les flèches Veille / Lendemain ont un pas réglable : jour, mois ou année.** Sur téléphone,
+  viser un jour au doigt est impossible — à l'horizon par défaut, un mois fait moins d'un pixel.
+  Remonter trois ans coûte maintenant trois tapes au lieu de mille.
+- **Un chiffre faux, discret, a été corrigé au passage.** Quand ta valeur nette devenait illisible
+  sur un point (donnée corrompue), la ligne « Dettes (hors hypothèque) » affichait le **total de
+  tes actifs** à la place — un montant crédible et complètement faux. Le panneau dit maintenant
+  qu'il ne peut pas la calculer, plutôt que d'inventer. Idem si un compte devient illisible : la
+  dette était alors gonflée du montant de ce compte.
+
+---
+
 ## [unreleased] — 2026-09-18 (la dette se voit dans le passé, et l'infobulle ne cache plus rien)
 
 - **Ta dette a maintenant sa courbe, en orange, sous la ligne du zéro.** Tu la vois dans le PASSÉ

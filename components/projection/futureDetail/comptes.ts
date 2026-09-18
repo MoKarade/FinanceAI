@@ -69,7 +69,19 @@ export function detteReductrice(
     // parler (`UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE`).
     const nw = Number(point.NetWorth);
     if (!Number.isFinite(nw)) return null;
-    const sommeActifs = clesActifsAffiches.reduce((s, k) => s + (Number(point[k]) || 0), 0);
+    // ⚠️ L'AUTRE MOITIÉ, et elle est plus discrète : une clé d'actif PRÉSENTE mais non finie rend la
+    // SOMME amputée, donc la soustraction fausse — dans l'autre sens (une dette SURÉVALUÉE du
+    // montant du compte illisible). `|| 0` l'absorbait aussi silencieusement que pour la valeur
+    // nette. ⚠️ Une clé ABSENTE reste légitime : ça veut dire « pas de compte de ce type », pas
+    // « donnée perdue » — c'est la distinction `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`.
+    let sommeActifs = 0;
+    for (const k of clesActifsAffiches) {
+        const v = point[k];
+        if (v === undefined || v === null) continue;
+        const n = Number(v);
+        if (!Number.isFinite(n)) return null;
+        sommeActifs += n;
+    }
     return Math.max(0, sommeActifs - nw);
 }
 

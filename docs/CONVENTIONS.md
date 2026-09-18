@@ -15330,3 +15330,106 @@ mesuré). Le SEUIL voyage avec l'appelant, le MÉCANISME avec le helper.
 jeton de PROSE qui doit avoir disparu. Sans lui, un décommenteur qui ne décommenterait rien
 passerait la part de code et le témoin de code. Partager un helper n'est pas partager toutes ses
 assertions — chaque garde garde celles qui lui appartiennent.
+
+---
+
+## `UN-IRRITANT-PEUT-ETRE-STRUCTUREL-A-LA-FORME-CHOISIE` (2026-09-18)
+
+**Contexte.** Marc, après le lot précédent : « fais une grosse grosse passe sur les infobulles y a
+des irritants pose des questions ». Interrogé en clic, il a coché les **quatre** propositions —
+*elle disparaît / bouge quand je veux la lire · trop de choses, je cherche le chiffre que je veux ·
+les chiffres ne se recomposent pas entre eux · illisible ou pénible sur téléphone*.
+
+### 1. Un irritant qui décrit une CONSÉQUENCE de la forme ne se règle pas par un réglage
+
+Le premier irritant est le seul qui n'avait aucune réponse dans l'espace des réglages. Une infobulle
+flottante **disparaît quand on veut la lire** parce que c'est ce que fait un objet ancré au curseur :
+pour aller la lire, il faut déplacer la souris, et la déplacer la change. Le dépôt avait déjà tenté
+les réglages — « clic = fige » existait depuis `[R3]`, la largeur avait été augmentée, un mode
+*bottom sheet* avait été ajouté pour le téléphone. Aucun ne touchait la cause.
+
+**Le test qui tranche** : *cet irritant décrit-il un RÉGLAGE, ou une CONSÉQUENCE de la forme ?* Si
+c'est le second, continuer à régler produit des demi-corrections qui s'accumulent — et chacune donne
+l'impression d'avoir répondu.
+
+### 2. Déplacer une surface CRÉE un état qui n'existait pas
+
+L'infobulle n'existait que pendant un **survol** ou un **gel** : hors de ces deux états, il n'y avait
+rien à montrer, et c'était cohérent. Un panneau FIXE, lui, est **toujours là**. Il lui faut donc un
+troisième état — ce qu'il montre au repos —, et cet état :
+
+- **ne se devine pas** : il se demande (Marc a tranché *aujourd'hui*, en clic) ;
+- **ne se remplit pas par un repli** : retomber sur le premier point de la série afficherait les
+  montants d'une date que personne n'a demandée, ce qui est `no-fake-data` §1 appliqué à une
+  sélection. Sans ancre ET sans interaction, `choisirJourAffiche` rend `null` et le panneau le dit ;
+- **s'ÉCRIT à l'écran** : « aujourd'hui », « aperçu » et « épinglé » se ressemblent et ne veulent pas
+  dire la même chose. C'est `UNE-VALEUR-NON-VERIFIEE-NE-PORTE-PAS-L-HABILLAGE-D-UNE-VALEUR-VERIFIEE`
+  appliqué à une sélection.
+
+Corollaire de navigation : les flèches partent du jour **affiché**, pas du jour épinglé. Se caler sur
+l'épingle les aurait laissées inertes tant que rien n'est épinglé — c'est-à-dire à l'ouverture de
+l'écran, le seul moment garanti.
+
+Et l'état qui retire l'utilisateur du défaut doit avoir son **geste de retour, visible** :
+`UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`. « Échap » n'existe pas au doigt,
+d'où un bouton « Revenir à aujourd'hui » qui n'apparaît que quand il y a quelque chose à défaire —
+proposé au repos, il serait un no-op déguisé.
+
+### 3. Ce qui meurt avec une surface est plus gros que la surface
+
+`useChartTooltipPosition` faisait **deux** choses : la machine d'état (survol → aperçu, clic →
+épingle, Échap / clic-dehors → relâche) et le **placement** de l'objet flottant. La première a
+déménagé intacte dans `useSelectionJour` — c'est exactement ce que Marc a choisi, et le prouver
+demandait de reprendre ses gardes telles quelles. La seconde n'avait plus d'objet : bornage au
+viewport, mesure de hauteur, mutation impérative de `left`/`top` au mousemove, ancrage *bottom
+sheet*, remontage à la rotation d'écran, plus `clampTooltipPosition` et ses quatre constantes.
+
+Les garder aurait laissé un système complet **sans consommateur**, et surtout une **description d'un
+comportement que l'app n'a plus** — ce qu'un prochain lot lirait comme un fait
+(`DOC-STALE-IMPOSSIBILITY`).
+
+### 4. ⚠️⚠️ Et c'est le LINT qui a trouvé le vrai défaut du lot
+
+En retirant de `tests/utils/chartTooltip.test.ts` le bloc `clampTooltipPosition`, j'ai emporté
+**aussi** le bloc suivant — `resolvePointByX`, douze assertions sur du code parfaitement vivant (la
+résolution du point sous le clic, sur la courbe Futur, avec ses comparaisons contre l'ancienne
+fonction pour prouver qu'elle discrimine).
+
+**Aucun test n'a rougi** : ils avaient disparu. Le seul signal était un **import devenu inutilisé**,
+et il n'est visible qu'en comparant le **COMPTE d'avertissements** à la base (32 → 36) — jamais en
+lisant la ligne « 0 errors ». C'est `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`, et
+la question qu'elle pose — *qu'est-ce qui n'existe QUE là ?* — l'aurait évité en une seconde.
+
+### 5. Un menu borne ce qu'on peut DÉCOUVRIR (3ᵉ occurrence)
+
+Pour choisir un jour au doigt, j'ai proposé trois options (tape sur le graphe + flèches · curseur
+sous le graphe · flèches seules). Marc les a **toutes** refusées et a demandé d'autres propositions.
+La réponse retenue — **flèches à pas réglable jour / mois / année** — était dans la deuxième vague, et
+elle règle précisément ce qui rendait « flèches seules » pénible : remonter trois ans coûte trois
+tapes au lieu de mille, sans aucun geste à deviner.
+
+La contrainte qui justifiait la question est mesurée, pas supposée : à l'horizon par défaut (40 ans),
+**un mois vaut ≈ 0,7 px**. Aucune tape ne peut être précise — ce n'est pas une question de soin.
+
+### 6. Une contrainte préexistante a rattrapé les trois libellés d'un coup
+
+Mes trois phrases d'origine dépassaient toutes le plafond de prose de `[FUTUR-INFOBULLE-EPUREE]`
+(45 caractères par nœud de texte), qui existe parce que « moins de texte » se réalise trivialement en
+SUPPRIMANT de l'information. Re-mesurées à **34 / 39 / 31** : le geste juste est de **dire** l'état,
+pas de l'expliquer. La garde couvre désormais les **trois** origines — chacune rend une phrase
+différente, donc chacune peut faire revenir de la prose par un chemin que les autres ne couvrent pas.
+
+### 7. Le défaut préexistant qui devient NOMINAL se corrige dans le lot
+
+`[INFOBULLE-DETTE-NW-NON-FINI]` avait été **routé** la veille comme « préexistant, hors périmètre ».
+Le panneau change ça : sa colonne « Par compte » consomme `detteReductrice`, donc le chemin de
+corruption devient le chemin **nominal**. Bâtir une colonne neuve dessus aurait été livrer un
+`|| 0` connu sous une surface neuve.
+
+Le correctif est le **TYPE** (`number | null`), qui fait énumérer les deux consommateurs par le
+compilateur — tous deux gataient sur `> 0.5` et auraient masqué `null` en silence. Et les **deux
+moitiés** sont fermées : une valeur nette non finie rendait la somme TOTALE des actifs sous le
+libellé « Dettes » (dette fantôme), une clé d'actif présente mais non finie **surévalue** la dette du
+montant du compte illisible — l'erreur va dans l'autre sens, et c'est la moitié qu'on oublie. Une clé
+**absente** reste légitime (« pas de compte de ce type ») : refuser là ferait crier le panneau sur le
+cas nominal de quiconque n'a pas de crypto (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).

@@ -40,8 +40,14 @@ export interface SelectionJour<P> {
     onHoverPoint: (point: P) => void;
     /** Le curseur a quitté la zone tracée. */
     onChartLeave: () => void;
-    /** Clic sur le graphe → épingle le point donné (repli : le point courant). */
-    freezeOn: (point: P | null) => void;
+    /**
+     * Clic sur le graphe → épingle le point donné (repli : le point courant).
+     *
+     * ⚠️ `parClavier` n'est pas un détail de confort : il décide si le panneau est AMENÉ à l'écran.
+     * Voir le commentaire de l'effet de focus plus bas — les deux modalités ont des besoins
+     * OPPOSÉS, et les servir pareil sacrifie forcément l'une des deux.
+     */
+    freezeOn: (point: P | null, opts?: { parClavier?: boolean }) => void;
     /** Relâche l'épingle (retour au repos, donc à l'ancre « aujourd'hui »). */
     release: () => void;
 }
@@ -70,9 +76,13 @@ export function useSelectionJour<P>({ getKey, containerRef }: OptionsSelectionJo
         setPoint(null);
     }, []);
 
-    const freezeOn = useCallback((next: P | null) => {
+    // Mémorise la MODALITÉ de la dernière épingle — lue par l'effet de focus, qui ne peut pas la
+    // deviner autrement (un `focus()` ne sait pas d'où vient le geste qui l'a déclenché).
+    const parClavierRef = useRef(false);
+    const freezeOn = useCallback((next: P | null, opts?: { parClavier?: boolean }) => {
         const cible = next ?? pointRef.current;
         if (cible === null) return; // rien à épingler
+        parClavierRef.current = opts?.parClavier === true;
         setPoint(cible);
         setMode('frozen');
     }, []);
@@ -85,16 +95,26 @@ export function useSelectionJour<P>({ getKey, containerRef }: OptionsSelectionJo
     // a11y : à l'épingle, le panneau prend le focus (c'est lui qui vient de devenir interactif —
     // Veille / Lendemain / Détail complet) ; au relâchement, le focus revient au graphe.
     //
-    // ⚠️ `preventScroll` : le panneau est SOUS le graphe et peut être hors écran. Sans lui, un clic
-    // à la souris ferait sauter la page vers le bas — l'utilisateur perdrait des yeux la courbe
-    // qu'il vient de cliquer. Le focus se pose quand même, donc le clavier n'y perd rien.
+    // ⚠️⚠️ `preventScroll` DÉPEND DE LA MODALITÉ, et c'est une correction : les deux besoins sont
+    // OPPOSÉS, donc les servir pareil sacrifie forcément l'un des deux.
+    //   • À la SOURIS, l'utilisateur regarde la courbe qu'il vient de cliquer. Faire défiler la page
+    //     vers le panneau la lui ferait perdre de vue — d'où `preventScroll`.
+    //   • Au CLAVIER (Entrée ou flèches sur le graphe), le panneau est le seul endroit où quelque
+    //     chose s'est passé, et il peut être HORS ÉCRAN — le graphe fait de 380 à 650 px de haut.
+    //     `preventScroll` y posait le focus sans rien amener à l'écran : le lecteur d'écran suivait,
+    //     l'utilisateur clavier VOYANT se retrouvait à taper dans un panneau qu'il ne voit pas
+    //     (WCAG 2.4.7). Il faut donc laisser le navigateur faire défiler.
+    // Trouvé par l'audit d'accessibilité du lot, et aucune fixture ne pouvait le voir : jsdom ne
+    // fait pas de mise en page, donc « hors écran » n'y existe pas.
     const modePrecedentRef = useRef<ModeSelectionJour>(mode);
     useEffect(() => {
         const prec = modePrecedentRef.current;
         if (mode === 'frozen' && prec !== 'frozen') {
-            panneauRef.current?.focus?.({ preventScroll: true });
+            panneauRef.current?.focus?.({ preventScroll: !parClavierRef.current });
         } else if (prec === 'frozen' && mode !== 'frozen') {
-            containerRef.current?.focus?.({ preventScroll: true });
+            // Au relâchement, le focus revient au graphe. Même règle : au clavier on le ramène à
+            // l'écran, à la souris il y est déjà.
+            containerRef.current?.focus?.({ preventScroll: !parClavierRef.current });
         }
         modePrecedentRef.current = mode;
     }, [mode, containerRef]);

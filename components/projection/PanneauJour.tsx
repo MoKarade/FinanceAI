@@ -146,11 +146,17 @@ export const PanneauJour: React.FC<PanneauJourProps> = (props) => {
 
     const contenu = (id: SectionPanneauId) => RENDU_SECTION[id]({ ...props, data });
 
+    // ⚠️ `data-jour-epingle` REMPLACE `data-frozen-tooltip`, et ce n'est pas un renommage. Le
+    // panneau est TOUJOURS présent — c'est tout l'objet du lot —, donc sa présence ne dit plus
+    // rien. Ce que l'e2e doit pouvoir observer, c'est « un jour est ÉPINGLÉ ». Sans ce marqueur,
+    // les specs qui vérifiaient « clic → figé » chercheraient un nœud toujours là, et seraient
+    // vertes pour la mauvaise raison.
     return (
         <div
             ref={panneauRef}
             tabIndex={-1}
             data-panneau-jour=""
+            data-jour-epingle={origine === 'epingle' ? '' : undefined}
             aria-label="Détail du jour sélectionné sur la courbe"
             className="mt-3 rounded-card border border-white/10 bg-surface/40 p-3 focus-ring"
         >
@@ -192,9 +198,11 @@ export const PanneauJour: React.FC<PanneauJourProps> = (props) => {
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                     {PANNEAU_SECTIONS.map((s) => (
                         <section key={s.id} aria-label={s.label} className="min-w-0">
-                            <h4 className="flex items-center gap-1.5 text-tiny uppercase tracking-widest text-ink-300 font-bold mb-1.5" title={s.aide}>
+                            {/* ⚠️ `h3` et non `h4` : la carte qui enveloppe le graphe rend un `h2`, donc un `h4` sauterait
+                                un niveau — un lecteur d'écran annonce alors une sous-section fantôme. */}
+                            <h3 className="flex items-center gap-1.5 text-tiny uppercase tracking-widest text-ink-300 font-bold mb-1.5" title={s.aide}>
                                 <Icon name={s.icon} size={13} />{s.label}
-                            </h4>
+                            </h3>
                             {contenu(s.id)}
                         </section>
                     ))}

@@ -78,3 +78,42 @@ describe('[FUTUR-DETAIL-TOTAL-COMPTES] le total et sa relation à la valeur nett
         expect(texte()).toContain('horsdettes');
     });
 });
+
+/**
+ * [INFOBULLE-DETTE-NW-NON-FINI] La branche de REFUS de cette surface.
+ *
+ * ⚠️ POURQUOI ICI, et pas seulement dans le test du panneau. `detteReductrice` a DEUX
+ * consommateurs. Sa dérivation est testée chez elle, et son rendu côté panneau l'est aussi — mais
+ * la branche neuve de CETTE modale n'était couverte par RIEN, alors qu'elle affiche les mêmes
+ * chiffres dans le même écran. C'est la moitié « qui n'appartient à personne » : deux surfaces
+ * partagent une vérité, une seule la garde, et la seconde peut disparaître au prochain lot sans que
+ * rien ne rougisse (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
+ */
+describe('[INFOBULLE-DETTE-NW-NON-FINI] valeur nette illisible : la modale refuse au lieu d’inventer', () => {
+    const pointCorrompu = { ...point, NetWorth: Number.NaN } as unknown as ProjectionChartPoint;
+
+    it('dit que la dette n’est pas calculable, et n’affiche AUCUN montant de dette', () => {
+        render(<FutureDetailModal point={pointCorrompu} chartData={[pointCorrompu]} onClose={vi.fn()} />);
+        expect(texte()).toContain('Dettenoncalculable');
+        // ⚠️ Le montant fautif d'avant le correctif était la somme TOTALE des actifs affichée sous
+        // le libellé « Dettes » — 274 384 $ ici. Il ne doit apparaître nulle part comme une dette.
+        const detteRendue = montantApres('Dettes');
+        expect(detteRendue, 'aucun montant ne doit suivre un libellé « Dettes » sur un point illisible').not.toBe(TOTAL_COMPTES);
+    });
+
+    it('n’annonce pas non plus une valeur nette de 0 $ — « — », pas un zéro crédible', () => {
+        render(<FutureDetailModal point={pointCorrompu} chartData={[pointCorrompu]} onClose={vi.fn()} />);
+        // ⚠️ Deux affirmations contradictoires à vingt centimètres l'une de l'autre (« 0 $ » et
+        // « valeur nette illisible ») sont pires que chacune séparément : c'est ce que le `|| 0`
+        // produisait avant ce lot.
+        expect(montantApres('Valeurnette')).not.toBe(0);
+    });
+
+    // ⚠️ ANTI-VACUITÉ : les deux cas ci-dessus sont des ABSENCES, donc vrais d'une modale qui ne
+    // rendrait plus rien du tout. Le cas SAIN doit continuer d'afficher la dette et sa valeur.
+    it('le cas SAIN continue d’afficher la dette (les refus ci-dessus ne sont pas un écran vide)', () => {
+        render(<FutureDetailModal point={point} chartData={[point]} onClose={vi.fn()} />);
+        expect(texte()).not.toContain('Dettenoncalculable');
+        expect(texte()).toContain('49337');
+    });
+});

@@ -43,6 +43,25 @@
 > commentaire français citant `createPortal` doit laisser la garde VERTE).
 > ⚠️ Le gate complet n'a PAS tourné en local : sur le chemin `git add && git commit` chaîné, le hook
 > `commit-gate` lit un index vide. **La CI est le gate de cette PR** (#992).
+> ⚠️⚠️ **La CI a rendu ONZE rouges que le gate ciblé ne pouvait pas voir**, tous de la même famille :
+> un test qui vise une SURFACE par son CHEMIN DE FICHIER (la garde des revenus ventilés scannait
+> l'ancienne infobulle) et **dix E2E** qui visaient `[data-frozen-tooltip]`. Le remplacement n'est
+> pas un renommage : le panneau est TOUJOURS là, donc sa PRÉSENCE ne prouve plus rien — ce qui
+> s'observe est l'ÉPINGLE (`data-jour-epingle`), et « relâché » se lit par la disparition de
+> l'ATTRIBUT, pas par `toBeHidden`. Deux specs faisaient déjà `toHaveCount(0)` sur l'ancien
+> sélecteur : elles étaient devenues VERTES pour la mauvaise raison. Les quatre fichiers e2e sont
+> réécrits et **rejoués en local, tous verts** (8 mobile + 6 desktop + 2 infobulle).
+> ⚠️⚠️ **Le PANEL a trouvé quatre défauts de plus après ça** : une mémoïsation cassée par un objet
+> recréé à chaque rendu (invisible à tous les tests) · l'`aria-label` du graphe qui décrivait encore
+> l'infobulle · `preventScroll` juste à la souris et faux au clavier (focus dans un panneau hors
+> écran — jsdom ne fait pas de mise en page, aucune fixture ne pouvait le voir) · un `0 $` fabriqué
+> qui CONTREDISAIT le refus affiché à côté. Plus une phrase de couverture FAUSSE que j'avais écrite
+> (« déjà testée chez elle » — aucun test n'importait le module) : la couverture annoncée existe
+> maintenant, et la branche de refus du second consommateur aussi.
+> ⚠️ La mesure la plus utile du panel est celle qui CONFIRME : l'ancien composant restauré et monté
+> sur le même point, **42 jetons numériques, 0 manquant, 0 en plus** — aucun montant déplacé.
+> ✅ Quatre findings FAIBLES routés au BACKLOG (contraste des boutons fantômes, colonne de flux
+> muette, variable morte, trou d'outillage du scan de vie privée).
 >
 > ## 🟦 Session 2026-09-18 (suite 2) — **la dette a sa courbe, l'infobulle ne cache plus rien**
 > Demande de Marc : « je veux voir la courbe de la dette même dans le passé et je vois pas les

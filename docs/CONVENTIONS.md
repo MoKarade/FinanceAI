@@ -15433,3 +15433,75 @@ libellé « Dettes » (dette fantôme), une clé d'actif présente mais non fini
 montant du compte illisible — l'erreur va dans l'autre sens, et c'est la moitié qu'on oublie. Une clé
 **absente** reste légitime (« pas de compte de ce type ») : refuser là ferait crier le panneau sur le
 cas nominal de quiconque n'a pas de crypto (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).
+
+
+### 8. ⚠️⚠️ Ce que le PANEL a trouvé après un gate ciblé vert — et ce que la CI a trouvé avant lui
+
+Quatre agents (revue de code, échecs silencieux, accessibilité, intégrité des montants) sur le diff
+du lot. **La mesure la plus utile du panel est celle qui CONFIRME** : l'agent d'intégrité a restauré
+l'ancien `ExpertTooltip` depuis `f2d0ee69`, monté les deux composants sur le même point riche, et
+comparé les jetons numériques rendus — **42 jetons, 0 manquant, 0 en plus**. Un déménagement de
+quatre blocs d'affichage monétaire sans un seul montant déplacé, ça se prouve, ça ne se suppose pas.
+
+Ce qui restait :
+
+**a) Une mémoïsation cassée par un objet recréé à chaque rendu.** `choisirJourAffiche` rend un
+littéral NEUF à chaque appel ; appelé hors `useMemo`, il invalidait le `useMemo` de `idxAffiche` —
+un `findIndex` sur la série NON décimée, à chaque rendu de l'écran, pour n'importe quelle raison.
+Le code RETIRÉ mémoïsait correctement (dépendances primitives). **Remplacer un mécanisme, c'est
+hériter de ses garanties ou les perdre** : ici la garantie perdue n'était pas une règle métier mais
+une propriété de performance, invisible à tous les tests.
+
+**b) Un `aria-label` devenu faux, et il décrit l'INTERACTION.** Le conteneur du graphe annonçait
+« clic = figer l'infobulle […] Détail complet dans l'infobulle ». L'infobulle n'existe plus. C'est
+`UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME` — la leçon est écrite dans ce
+dépôt, et le lot l'a quand même re-payée : *ce que le lot périme n'est pas seulement ce qui est
+AFFICHÉ, c'est aussi ce qui est ANNONCÉ aux lecteurs d'écran, là où aucun œil ne passe.*
+
+**c) `preventScroll` : deux modalités, deux besoins OPPOSÉS.** Je l'avais posé pour la souris — juste
+(l'utilisateur regarde la courbe qu'il vient de cliquer, faire défiler la lui ferait perdre de vue).
+Au CLAVIER c'est l'inverse : le panneau est sous un graphe de 380 à 650 px, donc hors écran, et le
+focus s'y posait **sans rien amener à l'écran**. Le lecteur d'écran suivait ; l'utilisateur clavier
+VOYANT tapait dans un panneau invisible (WCAG 2.4.7). **Un même geste servi identiquement pour deux
+modalités sacrifie forcément l'une des deux** — la modalité voyage donc avec l'appel
+(`freezeOn(point, { parClavier })`). ⚠️ Aucune fixture ne pouvait le voir : jsdom ne fait pas de
+mise en page, donc « hors écran » n'y existe pas.
+
+**d) Le `0 $` fabriqué qui CONTREDIT le refus d'à côté.** `fmt(data.NetWorth || 0)` est antérieur au
+lot ; ce que le lot a changé, c'est qu'il rend la contradiction VISIBLE et PERMANENTE — « Valeur
+nette 0 $ » en colonne ① pendant que la colonne ③ dit « Dette non calculable — valeur nette
+illisible », à vingt centimètres l'une de l'autre. **Deux affirmations contradictoires sur la même
+valeur au même écran sont pires que chacune séparément**, et le correctif ne coûtait rien :
+`formatCAD` sait déjà rendre « — », c'était le `|| 0` de l'appelant qui court-circuitait le chemin
+honnête. ⚠️ Et la perturbation qui l'a prouvé était MUETTE côté panneau au premier essai : ma garde
+ne couvrait que la ligne de dette, pas la valeur nette. **Une perturbation muette dit d'abord que la
+garde ne couvre pas ce qu'on croyait.**
+
+**e) Une phrase de couverture FAUSSE, écrite par moi.** Mon test de rendu affirmait
+« `detteReductrice` est déjà testée chez elle ». Mesuré : **aucun fichier de `tests/` n'importait ce
+module**. Une phrase de couverture se vérifie comme un chiffre — sinon elle vaut une protection dans
+tout inventaire futur sans rien protéger. Et la branche de refus du SECOND consommateur (la modale)
+n'était couverte par rien non plus : deux surfaces partagent une vérité, une seule la gardait.
+
+**f) ⚠️⚠️ Et la CI a trouvé, AVANT le panel, deux choses qu'aucun agent n'a vues** — parce qu'elles
+ne se voient qu'à l'exécution d'une suite complète :
+
+1. `tests/services/revenusVentiles.test.ts` scannait `ProjectionTooltip.tsx` pour y trouver
+   `RentalIncome`, `childBenefits`, `ReeePayout`. **Le chemin d'un fichier est un PROXY de la
+   surface**, et un proxy se périme au premier déménagement. Le fichier existe toujours — il ne rend
+   plus que du SVG de graphe.
+2. **Dix tests E2E** visaient `[data-frozen-tooltip]`. Le remplacement n'est pas un renommage : le
+   panneau est TOUJOURS présent, donc chercher sa PRÉSENCE ne prouve plus rien. Ce qui s'observe
+   désormais est l'ÉPINGLE (`data-jour-epingle`), et « relâché » ne se lit plus par `toBeHidden`
+   mais par la disparition de l'ATTRIBUT. ⚠️ Deux de ces specs (`futurePinchZoom`) faisaient
+   `toHaveCount(0)` sur l'ancien sélecteur : elles étaient **devenues vertes pour la mauvaise
+   raison** — vraies d'un nœud qui n'existe plus du tout.
+3. Une garde e2e interdisait tout bouton nommé exactement « Jour » (l'ancien chemin intermédiaire,
+   retiré par `[FUTUR-DAILY-NATIVE]`). Le réglage de PAS du panneau a un cran qui s'appelle aussi
+   « Jour » — un contrôle sans aucun rapport. **Portée resserrée au lieu d'un renommage** : la garde
+   reste entière hors du panneau, et c'est là que le chemin retiré réapparaîtrait.
+
+**Bilan de conduite** : le gate ciblé était vert, la CI a trouvé onze rouges, et le panel quatre
+défauts de plus dont deux qu'aucun test ne pouvait voir. Ce n'est pas un argument pour lancer plus
+de choses — c'est un argument pour **ne pas confondre « mes gardes sont vertes » avec « le lot est
+bon »** : mes gardes ne connaissent que ce que j'ai pensé à garder.

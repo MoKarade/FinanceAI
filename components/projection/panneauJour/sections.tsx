@@ -39,7 +39,17 @@ export type PointJour = ProjectionChartPoint & {
     lockedNetWorth?: number;
 };
 
-const fmt = (n: number) => formatCAD(Math.round(n));
+/**
+ * ⚠️ NON FINI ⇒ « — », JAMAIS « 0 $ ». `formatCAD` sait déjà rendre « — » ; c'était le `|| 0` des
+ * appelants qui court-circuitait ce chemin honnête. Le panneau pouvait donc afficher « Valeur nette
+ * 0 $ » en colonne ① pendant que la colonne ③ disait « Dette non calculable — valeur nette
+ * illisible sur ce point » : deux affirmations contradictoires sur la même valeur, à vingt
+ * centimètres l'une de l'autre. Le défaut est ANTÉRIEUR (il vivait dans l'infobulle), mais c'est ce
+ * lot qui le rend contradictoire ET permanent, puisque le panneau est toujours affiché.
+ * ⚠️ `Math.round` est conservé pour les valeurs FINIES : le laisser tomber au profit de l'arrondi
+ * d'`Intl` déplacerait les demis NÉGATIFS (mesuré ailleurs dans le dépôt : 4 valeurs sur 11).
+ */
+const fmt = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? formatCAD(Math.round(n)) : formatCAD(n));
 // ⚠️ Ce site-ci n'a JAMAIS porté de « $ » : c'est le gain affiché sous la valeur du compte, dont le
 // symbole est déjà une ligne plus haut. `formatCAD` y ajouterait un symbole que l'écran n'avait pas
 // — le membre déviant d'un remplacement de classe.
@@ -118,7 +128,7 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
                         </span>
                     )}
                 </div>
-                <PrivateAmount as="div" className="mt-1 text-2xl font-black text-white font-mono leading-none">{fmt(data.NetWorth || 0)}</PrivateAmount>
+                <PrivateAmount as="div" className="mt-1 text-2xl font-black text-white font-mono leading-none">{fmt(data.NetWorth)}</PrivateAmount>
             </div>
 
             {/* [PH2-d-2] — référence VERROUILLÉE (présente seulement sous verrou) : valeur figée +

@@ -38,9 +38,19 @@ async function chartBox(page: Page) {
   return box!;
 }
 
-/** Clique dans les aires en évitant la modale des pastilles d'événement (garde CLICK-AREA). */
+/**
+ * Clique dans les aires en évitant la modale des pastilles d'événement (garde CLICK-AREA).
+ *
+ * ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] Le marqueur est `[data-jour-epingle]` et NON plus
+ * `[data-frozen-tooltip]`, et ce n'est pas un renommage. Le panneau du jour est désormais TOUJOURS
+ * présent sous le graphe : chercher sa PRÉSENCE ne prouverait plus rien, ces tests seraient verts
+ * pour la mauvaise raison. Ce qui s'observe, c'est l'état ÉPINGLÉ, que le panneau publie sur sa
+ * racine quand un jour a été choisi par un clic (ou par les flèches).
+ * ⚠️ Corollaire : « relâché » ne se lit plus par `toBeHidden` (le panneau reste, il retombe sur
+ * aujourd'hui) mais par la DISPARITION DE L'ATTRIBUT — donc `toHaveCount(0)` sur le sélecteur.
+ */
 async function clickAndFreeze(page: Page, x: number, y: number) {
-  const frozen = page.locator('[data-frozen-tooltip]');
+  const frozen = page.locator('[data-jour-epingle]');
   const modal = page.getByRole('dialog', { name: 'Détail du mois' });
   await page.mouse.click(x, y);
   if (await modal.isVisible().catch(() => false)) {
@@ -72,7 +82,15 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     // 1. L'écran annonce la courbe au jour D'EMBLÉE — aucun seuil, aucun bouton à connaître.
     await expect(page.getByText(/Courbe au jour/)).toBeVisible({ timeout: 10_000 });
     // Les chemins intermédiaires retirés ne doivent PAS réapparaître :
-    await expect(page.getByRole('button', { name: 'Jour', exact: true })).toHaveCount(0);
+    // ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] PORTÉE RESSERRÉE, et c'est un faux positif corrigé, pas un
+    // assouplissement. Cette assertion visait le bouton « Jour » de l'ANCIEN chemin intermédiaire
+    // (« zoomer sur ce mois pour voir les jours »), retiré par `[FUTUR-DAILY-NATIVE]`. Le panneau du
+    // jour porte désormais un réglage de PAS dont un cran s'appelle aussi « Jour » — un contrôle
+    // sans aucun rapport, qui faisait rougir la garde sur un lot qui ne touchait pas son objet
+    // (`UN-TEST-QUI-ROUGIT-SUR-UN-LOT-QUI-NE-TOUCHE-PAS-SON-OBJET-MESURAIT-UN-PROXY`). On exclut
+    // donc le panneau, et la garde reste entière ailleurs : un chemin intermédiaire qui
+    // réapparaîtrait vivrait dans les contrôles du graphe, pas dans le panneau.
+    await expect(page.locator('button:not([data-panneau-jour] button)', { hasText: /^Jour$/ })).toHaveCount(0);
     await expect(page.getByText(/Vue au jour indisponible/)).toHaveCount(0);
 
     // 2-3. Deux clics à des abscisses éloignées, en vue 30 ans, SANS zoomer : deux JOURS distincts.
@@ -86,10 +104,10 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
       // Les barres obliques prouvent le JOUR (« lun. 14/09/2026 ») — un point mensuel n'a que
       // « janv. 2030 », et Marc a signalé deux fois un libellé qui « ne montre pas le jour ».
       const m = txt.match(DAY_RE);
-      expect(m, `aucune date au jour dans l'infobulle figée en vue LARGE (fx=${fx}) : ${txt.slice(0, 200)}`).not.toBeNull();
+      expect(m, `aucune date au jour dans le panneau épinglé en vue LARGE (fx=${fx}) : ${txt.slice(0, 200)}`).not.toBeNull();
       dates.push(m![0]);
       await page.keyboard.press('Escape');
-      await frozen.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+      await expect(frozen).toHaveCount(0, { timeout: 2_000 });
     }
     expect(dates[0]).not.toBe(dates[1]);
   });
@@ -113,13 +131,13 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
       const txt = (await frozen.textContent()) ?? '';
       expect(txt.match(DAY_RE), `zone morte au clic : ${nom} — ${txt.slice(0, 120)}`).not.toBeNull();
       await page.keyboard.press('Escape');
-      await frozen.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+      await expect(frozen).toHaveCount(0, { timeout: 2_000 });
     }
   });
 
   test('[D6-GRAPH] AU CLAVIER : Entrée sur le graphe fige le jour d\'aujourd\'hui, Échap relâche et restitue le focus', async ({ page }) => {
     // Le seul chaînon qui manquait au clavier : le PREMIER geste (figer un jour sans souris).
-    // Après le gel, l'infobulle figée est déjà un dialogue clavier complet (Veille/Lendemain,
+    // Après l'épingle, le panneau est déjà complet au clavier (Veille/Lendemain,
     // « Détail complet », Échap) — couverts par les tests souris ci-dessus qui empruntent les
     // mêmes boutons. Ici on prouve : focus → Entrée → jour DATÉ figé → Échap → relâché ET focus
     // restitué au graphe (le hook comptait sur la focusabilité du conteneur — désormais tabIndex 0).
@@ -128,12 +146,12 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     await chart.focus();
     await expect(chart).toBeFocused();
     await page.keyboard.press('Enter');
-    const frozen = page.locator('[data-frozen-tooltip]');
+    const frozen = page.locator('[data-jour-epingle]');
     await expect(frozen).toBeVisible({ timeout: 5_000 });
     const txt = (await frozen.textContent()) ?? '';
     expect(txt.match(DAY_RE), `le gel clavier n'a pas figé un jour daté : ${txt.slice(0, 160)}`).not.toBeNull();
     await page.keyboard.press('Escape');
-    await frozen.waitFor({ state: 'hidden', timeout: 2_000 });
+    await expect(frozen).toHaveCount(0, { timeout: 2_000 });
     await expect(chart, 'le focus doit revenir au graphe au relâchement (restitution du hook)').toBeFocused();
   });
 

@@ -43,6 +43,39 @@
   ⚠️ `movementsTotal` survit : il compte AUSSI les transactions sans description, donc
   « +N autres » ne parle plus que d'elles.
 
+- [ ] 🎨 **`[A11Y-PANNEAU-BOUTONS-FANTOMES]`** (S) — **PRÉEXISTANT, trouvé par l'audit a11y du
+  2026-09-18, non corrigé** (hors du périmètre demandé). Les boutons « à contour fantôme » du
+  panneau du jour — « Détail complet » (`bg-primary/15` + `border-primary/30`), « Revenir à
+  aujourd'hui » et les flèches Veille/Lendemain (`bg-white/10` + `border-white/20`) — ont un TEXTE
+  parfaitement lisible (≈ 11,8:1) mais un **fond à ≈ 1,40:1** et une **bordure à ≈ 2,35:1** contre
+  la page, sous le seuil WCAG 1.4.11 (3:1) qui s'applique aux limites d'un contrôle.
+  ⚠️ **`npm run check-contrast` ne le voit pas** : il ne mesure que les CTA PLEINS. C'est le trou
+  d'outillage qui explique que le motif ait survécu.
+  ⚠️ Le motif est **identique à celui de l'ancienne infobulle** — donc pas introduit par
+  `[FUTUR-PANNEAU-FIXE]` —, mais son EXPOSITION a changé : il est désormais **permanent** à l'écran
+  au lieu d'apparaître au survol. Corriger = monter l'opacité du fond/bordure, et la valeur se
+  choisit par MESURE, jamais au jugé.
+
+- [ ] 🔧 **`[PANNEAU-FLUX-COLONNE-MUETTE]`** (XS) — **PRÉEXISTANT** (hérité de l'infobulle, vérifié
+  contre `f2d0ee69`), signalé par la chasse aux échecs silencieux. `SectionFlux` rend un bloc VIDE
+  quand aucun revenu ni dépense n'est non nul (une journée calme) : une colonne sans texte se lit
+  comme une donnée manquante, alors que ses trois sœurs disent toutes explicitement qu'il n'y a rien
+  (« Point mensuel — pas de détail au jour », « Aucun mouvement · marché seul »…).
+  ⚠️ L'exposition a changé avec le panneau : la colonne est là en permanence.
+
+- [ ] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** (XS) — `FutureDetailModal.tsx` calcule
+  `shownAssetsSum` et ne la lit **jamais** (une seule occurrence dans tout le dépôt). Elle porte en
+  plus le `Number(...) || 0` que `[INFOBULLE-DETTE-NW-NON-FINI]` vient de condamner : la laisser,
+  c'est garder un exemple du motif corrigé à trois lignes du correctif.
+
+- [ ] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** (S) — `amountPrivacyScan` ne connaît que
+  `formatCAD` / `formatCompactCAD` / `formatSigned(withCurrency)` et leurs alias : un
+  `const fmtNu = (n) => formatNumber(...)` lui est **structurellement invisible**. Le site réel
+  (`panneauJour/sections.tsx`, le gain affiché sous la valeur d'un compte) EST correctement
+  enveloppé dans `<PrivateAmount>` — vérifié à l'œil — mais la garde ne peut pas le dire, donc son
+  silence ne vaut rien ici. Trou d'outillage PRÉEXISTANT, simplement déménagé avec le code
+  (`UN-RELEVE-PAR-LE-NOM-CANONIQUE-EST-AVEUGLE-AUX-ALIAS` appliqué à un formateur SANS devise).
+
 - [x] 🔧 **`[INFOBULLE-DETTE-NW-NON-FINI]`** (S) **LIVRÉ le 18/09/2026, avec `[FUTUR-PANNEAU-FIXE]`**
   — routé la veille comme « préexistant, hors périmètre », corrigé ici parce qu'il est devenu du
   chemin **NOMINAL** : la colonne « Par compte » du panneau consomme `detteReductrice`.

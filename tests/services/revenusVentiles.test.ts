@@ -89,9 +89,16 @@ describe('[REVENUS-NON-VENTILES-AFFICHAGE] les DEUX surfaces consomment les cham
     // MOTEUR, qui n'a pas changé — ils prouvent que le résidu existait et que les champs le
     // comblent, mais ils passeraient AUSSI sur le code d'avant. Le correctif, lui, vit dans les
     // deux composants d'affichage. C'est ce bloc-ci qui discrimine.
+    //
+    // ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] LA SECONDE SURFACE A DÉMÉNAGÉ, et ce test l'a attrapé —
+    // en CI, pas en local. L'infobulle flottante (`ProjectionTooltip.tsx`) a été remplacée par le
+    // panneau fixe sous le graphe : la ventilation des revenus vit maintenant dans
+    // `panneauJour/sections.tsx`. Le chemin était un PROXY de la surface, et un proxy se périme au
+    // premier déménagement — c'est bien la SURFACE qu'il faut suivre, pas le fichier qui la
+    // portait ce jour-là. Le fichier d'origine ne rend plus que du SVG de graphe.
     const surfaces = [
         'components/projection/FutureDetailModal.tsx',
-        'components/projection/ProjectionTooltip.tsx',
+        'components/projection/panneauJour/sections.tsx',
     ];
 
     for (const chemin of surfaces) {

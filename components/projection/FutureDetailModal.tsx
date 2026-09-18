@@ -159,7 +159,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
      */
     const totalComptes = ACCOUNTS.reduce((acc, a) => acc + (Number(point[a.key]) || 0), 0);
 
-    const fmt = (n: number) => formatCAD(n);
+    // ⚠️ NON FINI ⇒ « — », jamais « 0 $ » : `formatCAD` sait déjà le faire, c'était le `|| 0` de
+    // l'appelant qui l'empêchait. Sans ça, l'en-tête annonçait « Valeur nette 0 $ » pendant que le
+    // bandeau ci-dessous disait que la dette n'était pas calculable faute de valeur nette lisible.
+    const fmt = (n: unknown) => formatCAD(n);
     const eventsCount = (point.lifeEvents?.length ?? 0) + (point.flowEvents?.length ?? 0);
     // [FUTUR-MOBILE-PR5] Le bouton « Tout afficher » ne doit exister que s'il y a RÉELLEMENT
     // quelque chose de plus à montrer — sinon c'est un bouton mort sur un mois futur sans
@@ -184,7 +187,10 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     const reducingDebt = detteReductrice(point as unknown as Record<string, unknown>, ACCOUNTS.map((a) => a.key));
     const detteCalculable = reducingDebt !== null;
     const liquidDebt = Number(point.LiquidDebt) || 0;          // part « découvert » (liquidité à sec)
-    const otherReducingDebt = Math.max(0, (reducingDebt ?? 0) - liquidDebt); // prêts/cartes + HELOC
+    // ⚠️ `?? 0` ÉVITÉ : ce lot vient de condamner exactement ce repli crédible trois lignes plus
+    // haut. `detteCalculable` fait foi, et `0` ici n'est jamais lu comme une mesure — c'est la
+    // valeur d'une branche que le rendu n'emprunte pas.
+    const otherReducingDebt = detteCalculable ? Math.max(0, reducingDebt - liquidDebt) : 0; // prêts/cartes + HELOC
 
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);
     // [REVENUS-NON-VENTILES-AFFICHAGE] `Income` contient AUSSI le revenu locatif, les prestations
@@ -266,7 +272,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                     </div>
                     <div className="text-right">
                         <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">Valeur nette</div>
-                        <PrivateAmount as="div" className="text-2xl font-black text-white font-mono leading-none mt-0.5">{fmt(point.NetWorth || 0)}</PrivateAmount>
+                        <PrivateAmount as="div" className="text-2xl font-black text-white font-mono leading-none mt-0.5">{fmt(point.NetWorth)}</PrivateAmount>
                     </div>
                     <button
                         type="button"

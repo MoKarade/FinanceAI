@@ -29,6 +29,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   tes actifs** à la place — un montant crédible et complètement faux. Le panneau dit maintenant
   qu'il ne peut pas la calculer, plutôt que d'inventer. Idem si un compte devient illisible : la
   dette était alors gonflée du montant de ce compte.
+- **Deux chiffres qui se contredisaient à vingt centimètres l'un de l'autre.** Quand une donnée
+  devenait illisible, l'écran annonçait « Valeur nette **0 $** » d'un côté et « valeur nette
+  illisible sur ce point » de l'autre, dans le même panneau. Il affiche maintenant « — » des deux
+  côtés — un tiret honnête plutôt qu'un zéro crédible. Même correction dans « Détail complet ».
+- **Au clavier, le panneau vient enfin à toi.** Entrée sur la courbe épingle le jour, mais la page
+  ne descendait pas : le focus se posait dans un panneau que tu ne voyais pas. À la souris, à
+  l'inverse, la page reste où elle est — tu regardes la courbe que tu viens de cliquer.
 
 ---
 

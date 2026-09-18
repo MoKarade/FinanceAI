@@ -114,7 +114,7 @@ test.describe('Futur — pincement 2 doigts (contexte tactile réel)', () => {
     await attendreTout(page, false);
 
     // La fin du pincement n'a PAS figé de jour (le lever du 2e doigt émet un pointerup crédible).
-    await expect(page.locator('[data-frozen-tooltip]')).toHaveCount(0);
+    await expect(page.locator('[data-jour-epingle]')).toHaveCount(0);
 
     // Resserrer (scaleFactor < 1) → retour vers la vue large. ⚠️ Gestes MODÉRÉS (0,5 ×3) : le
     // synthétiseur CDP est VERTICAL et un dézoom démarre doigts ÉCARTÉS — à 0,25 l'écart de
@@ -164,7 +164,7 @@ test.describe('Futur — pincement 2 doigts (contexte tactile réel)', () => {
     // même si un zoom était en train de se committer (cf. l'en-tête de `attendreTout`).
     await page.waitForTimeout(BUDGET_BASCULE_MS);
     expect(await toutIsActive(page)).toBe(true);
-    await expect(page.locator('[data-frozen-tooltip]')).toHaveCount(0);
+    await expect(page.locator('[data-jour-epingle]')).toHaveCount(0);
 
     // 2 doigts : annulés (le geste appartient au graphe) — et il zoome RÉELLEMENT
     // (« Tout » perd son état actif : preuve que le pincement construit a traversé le hook).

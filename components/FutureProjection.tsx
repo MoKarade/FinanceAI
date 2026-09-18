@@ -1136,7 +1136,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const brut = idxAncre === -1 ? null : selectSeries[idxAncre];
         return brut ? (enrichDailyPoint(brut) ?? brut) : null;
     }, [idxAncre, selectSeries, enrichDailyPoint]);
-    const jourAffiche = choisirJourAffiche(selection.mode, selection.point, pointAncre);
+    // ⚠️ `useMemo` OBLIGATOIRE, et ce n'est pas une micro-optimisation : `choisirJourAffiche` rend un
+    // littéral NEUF à chaque appel, donc sans lui `idxAffiche` (un `useMemo` qui en dépend) se
+    // recalculerait à CHAQUE rendu de cet écran — un `findIndex` sur `selectSeries`, la tranche NON
+    // décimée, qui peut compter des milliers de points. Le code retiré mémoïsait correctement sur
+    // des dépendances primitives ; le reproduire en moins bien aurait été une régression payée par
+    // le jank d'un écran qui se re-rend à chaque écriture du store.
+    const jourAffiche = useMemo(
+        () => choisirJourAffiche(selection.mode, selection.point, pointAncre),
+        [selection.mode, selection.point, pointAncre],
+    );
 
     // [FUTUR-DAILY-SELECT-STEP] Veille / lendemain sans re-viser au pixel (à ~150 jours affichés,
     // un jour ≈ 6 px — mesuré ; en vue 30 ans, ~0,3 px). Indispensable au DOIGT, où le zoom molette
@@ -1152,6 +1161,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const x = jourAffiche.point.monthIndex;
         return selectSeries.findIndex((d) => d.monthIndex === x);
     }, [jourAffiche, selectSeries]);
+    // ⚠️ Mémoïsé pour la même raison que `idxAffiche` : sur un pas « mois » ou « année »,
+    // `indexApresPas` balaie la série jusqu'au bord dans la direction demandée. Écrits INLINE dans
+    // le JSX, ces deux appels faisaient deux balayages O(n) de plus à chaque rendu — et un bouton
+    // désactivé ne vaut pas qu'on rescanne des milliers de points pour l'apprendre.
+    const bornesPas = useMemo(() => ({
+        prev: idxAffiche !== -1 && indexApresPas(selectSeries, idxAffiche, -1, pasNavigation) !== -1,
+        next: idxAffiche !== -1 && indexApresPas(selectSeries, idxAffiche, 1, pasNavigation) !== -1,
+    }), [idxAffiche, selectSeries, pasNavigation]);
+
     const stepJour = useCallback((dir: -1 | 1, pas: PasNavigation) => {
         if (idxAffiche === -1) return;
         const suivant = indexApresPas(selectSeries, idxAffiche, dir, pas);
@@ -1278,7 +1296,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (selectSeries.length === 0) return;
         const idxAujourdhui = selectSeries.findIndex((p) => p.monthIndex >= 0);
         const point = selectSeries[idxAujourdhui === -1 ? selectSeries.length - 1 : idxAujourdhui];
-        if (point) selection.freezeOn(enrichDailyPoint(point) ?? point);
+        // ⚠️ `parClavier` : le panneau est SOUS le graphe et peut être hors écran. À la souris on ne
+        // veut surtout pas faire défiler (l'utilisateur regarde la courbe qu'il vient de cliquer) ;
+        // au clavier, c'est l'inverse — sans défilement, le focus se pose dans un panneau invisible.
+        if (point) selection.freezeOn(enrichDailyPoint(point) ?? point, { parClavier: true });
     }, [selectSeries, selection, enrichDailyPoint]);
     // ⚠️ Le prédicat des touches vit dans `utils/chartKeyboardSelect.ts` — PAS inline : ce fichier
     // rend un tablist, et la garde tablistMotifUniqueGuard interdit ici tout littéral de flèche
@@ -1776,7 +1797,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onKeyDown={handleChartKeyDown}
                     className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
-                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Les mêmes données sont lisibles sous la courbe, sous forme de tableau et de liste de jalons. À la souris : clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = figer le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans l'infobulle, Échap = relâcher."
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Le détail du jour visé est décrit dans le panneau situé juste sous la courbe ; les mêmes données sont aussi lisibles sous forme de tableau et de liste de jalons. À la souris : survol = aperçu, clic = épingle le jour dans le panneau, molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = épingle le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans le panneau, Échap = relâche."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on
@@ -1985,8 +2006,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onStep={stepJour}
                     pas={pasNavigation}
                     onPasChange={setPasNavigation}
-                    canStepPrev={idxAffiche !== -1 && indexApresPas(selectSeries, idxAffiche, -1, pasNavigation) !== -1}
-                    canStepNext={idxAffiche !== -1 && indexApresPas(selectSeries, idxAffiche, 1, pasNavigation) !== -1}
+                    canStepPrev={bornesPas.prev}
+                    canStepNext={bornesPas.next}
                     onRelease={selection.release}
                     panneauRef={selection.panneauRef}
                 />

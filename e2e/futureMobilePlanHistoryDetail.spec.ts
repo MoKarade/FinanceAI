@@ -125,7 +125,13 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
     }
 
     async function ouvrirDetailComplet(page: Page) {
-        const sheet = page.locator('[data-frozen-tooltip]');
+        // ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] Le chemin passe par le PANNEAU du jour, pas par une
+        // infobulle figée : elle n'existe plus. Le panneau est TOUJOURS là, donc on ne peut pas
+        // attendre son apparition — on attend l'ÉPINGLE (`data-jour-epingle`), qui est ce que le
+        // tap produit réellement, et c'est aussi ce qui garantit qu'on ouvre le détail sur un JOUR
+        // choisi plutôt que sur l'ancre « aujourd'hui ».
+        const panneau = page.locator('[data-panneau-jour]');
+        const epingle = page.locator('[data-jour-epingle]');
         const spots: Array<[number, number]> = [
             [0.5, 0.78], [0.3, 0.82], [0.65, 0.75], [0.45, 0.6],
         ];
@@ -133,12 +139,12 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
         for (const [fx, fy] of spots) {
             await page.touchscreen.tap(box.x + box.width * fx, box.y + box.height * fy);
             await page.waitForTimeout(500);
-            if (await sheet.isVisible().catch(() => false)) break;
+            if (await epingle.count() > 0) break;
         }
-        await expect(sheet).toBeVisible({ timeout: 5_000 });
-        // Bouton de L'INFOBULLE FIGÉE (« Détail complet → », inchangé) — pas celui de la modale,
-        // renommé « Tout afficher » pour éviter deux contrôles au même nom accessible.
-        await sheet.getByRole('button', { name: /Détail complet/ }).click();
+        await expect(epingle).toHaveCount(1, { timeout: 5_000 });
+        // Bouton DU PANNEAU (« Détail complet → », inchangé) — pas celui de la modale, renommé
+        // « Tout afficher » pour éviter deux contrôles au même nom accessible.
+        await panneau.getByRole('button', { name: /Détail complet/ }).click();
         await expect(page.getByRole('dialog', { name: 'Détail du mois' })).toBeVisible({ timeout: 5_000 });
     }
 

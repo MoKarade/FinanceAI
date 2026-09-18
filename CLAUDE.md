@@ -1,12 +1,12 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 299 tests** Vitest
-(636 fichiers de test — compte DÉRIVÉ du lot `[FUTUR-PANNEAU-FIXE]` : 6 262 + 39 gardes neuves
-(5 fichiers) + 5 assertions ajoutées dans 3 fichiers migrés − 7 retirées avec leur sujet
-(positionnement de l'infobulle flottante, disparue). ⚠️ DÉRIVÉ, pas mesuré : la suite complète n'a
-pas tourné en local (voir §5) — c'est la CI qui l'exécute. Huit perturbations SÉPARÉES, chacune ne
-touchant que sa cible, dont une de sens OPPOSÉ. Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 315 tests** Vitest
+(637 fichiers de test — base **MESURÉE par la CI** le 2026-09-18 sur `4a74bf1f` : 6 258 tests /
+631 fichiers, puis + 39 gardes du lot `[FUTUR-PANNEAU-FIXE]` (5 fichiers) + 18 des correctifs de
+son panel (1 fichier). ⚠️ Le total n'a PAS été re-mesuré en local — c'est la CI qui exécute la
+suite complète (§5). Treize perturbations SÉPARÉES, chacune ne touchant que sa cible, dont deux de
+sens OPPOSÉ. Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1426,6 +1426,31 @@ n'est pas réécrire un récit.
   ⚠️ Et une contrainte préexistante a rattrapé mes trois libellés d'un coup : le plafond de prose de
   `[FUTUR-INFOBULLE-EPUREE]` (45 caractères) — le geste juste est de DIRE l'état, pas de l'expliquer
   (`UN-IRRITANT-PEUT-ETRE-STRUCTUREL-A-LA-FORME-CHOISIE`).
+
+- ⚠️⚠️ **Un test qui vise une SURFACE par son chemin de fichier, ou un nœud par sa PRÉSENCE, se
+  périme au premier déménagement** (2026-09-18, onze rouges de CI sur `[FUTUR-PANNEAU-FIXE]`, tous
+  invisibles au gate ciblé) : (1) une garde scannait `ProjectionTooltip.tsx` pour y trouver trois
+  champs de revenu — le fichier existe toujours, il ne rend plus que du SVG ; (2) **dix tests E2E**
+  visaient `[data-frozen-tooltip]`, et le remplacement n'est PAS un renommage : le panneau est
+  TOUJOURS présent, donc chercher sa présence ne prouve plus rien. Ce qui s'observe est l'ÉTAT
+  (`data-jour-epingle`), et « relâché » ne se lit plus par `toBeHidden` mais par la disparition de
+  l'ATTRIBUT. ⚠️ Deux de ces specs faisaient déjà `toHaveCount(0)` sur l'ancien sélecteur : elles
+  étaient devenues **vertes pour la mauvaise raison**, vraies d'un nœud qui n'existe plus du tout —
+  une garde d'ABSENCE survit à la disparition de son sujet sans rien dire. ⚠️ Et une garde e2e
+  interdisant tout bouton nommé « Jour » a rougi sur un contrôle sans rapport (le réglage de pas du
+  panneau) : portée RESSERRÉE plutôt que contrôle renommé, la garde reste entière là où le chemin
+  retiré réapparaîtrait.
+  ⚠️⚠️ Corollaires du panel du même lot, tous des CLASSES : **remplacer un mécanisme, c'est hériter
+  de ses garanties ou les perdre** — ici une mémoïsation, invisible à tous les tests (un littéral
+  recréé à chaque rendu invalidait un `useMemo` O(n)) ; **ce qu'un lot périme n'est pas seulement ce
+  qui est AFFICHÉ mais ce qui est ANNONCÉ** (l'`aria-label` du graphe décrivait encore l'infobulle) ;
+  **un même geste servi identiquement pour deux MODALITÉS en sacrifie une** (`preventScroll` est juste
+  à la souris et pose le focus dans un panneau hors écran au clavier — jsdom ne fait pas de mise en
+  page, donc aucune fixture ne pouvait le voir) ; **deux affirmations contradictoires sur la même
+  valeur au même écran sont pires que chacune séparément** (« Valeur nette 0 $ » à côté de « valeur
+  nette illisible » — le `|| 0` court-circuitait le « — » que `formatCAD` sait déjà rendre) ; et
+  **une phrase de COUVERTURE se vérifie comme un chiffre** (« déjà testée chez elle » était faux :
+  aucun test n'importait le module) (`UN-TEST-QUI-VISE-UNE-SURFACE-PAR-SON-CHEMIN-SE-PERIME`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

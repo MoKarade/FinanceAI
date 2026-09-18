@@ -7,9 +7,12 @@
  * colonne « Par compte » du panneau ne liste que des termes POSITIFS : sans la ligne de dette, la
  * somme des comptes dépasse la valeur nette affichée juste à côté, et rien ne l'explique.
  *
- * ⚠️ Cette garde vise le RENDU, pas la dérivation. `detteReductrice` est déjà testée chez elle ;
- * ce qui n'appartenait à personne, c'est le CHAÎNON — que la ligne rendue porte bien ce montant-là,
- * dans la colonne que Marc regarde (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
+ * ⚠️ Cette garde vise le RENDU, pas la dérivation : la dérivation elle-même est testée dans
+ * `tests/components/detteReductrice.test.ts`. Ce qui n'appartenait à personne, c'est le CHAÎNON —
+ * que la ligne rendue porte bien ce montant-là, dans la colonne que Marc regarde
+ * (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
+ * ⚠️ Mon premier jet affirmait ici « déjà testée chez elle » — c'était FAUX : aucun fichier de
+ * `tests/` n'importait ce module. Une phrase de couverture se vérifie comme un chiffre.
  */
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
@@ -92,5 +95,23 @@ describe('[FUTUR-PANNEAU-FIXE] la colonne « Par compte » recompose la valeur n
         // Le montant fautif d'avant le correctif ne doit apparaître NULLE PART.
         expect(texte()).not.toContain('357 000');
         expect(screen.queryByText(/Dettes \(hors hypothèque\)/)).toBeNull();
+    });
+
+    /**
+     * ⚠️ LA COLONNE ① DOIT DIRE LA MÊME CHOSE QUE LA ③, et c'est une perturbation MUETTE qui l'a
+     * révélé : remettre le `|| 0` sur la valeur nette du panneau laissait ce fichier TOUT VERT.
+     * Le panneau affichait alors « Valeur nette 0 $ » (colonne ①) pendant que la colonne ③ disait
+     * « Dette non calculable — valeur nette illisible » : deux affirmations contradictoires sur la
+     * même valeur, à vingt centimètres l'une de l'autre, et la seconde est vraie. `formatCAD` sait
+     * déjà rendre « — » ; c'était le `|| 0` de l'appelant qui court-circuitait ce chemin honnête.
+     */
+    it('valeur nette NON FINIE : la colonne ① n’annonce PAS « 0 $ » — « — », pas un zéro crédible', () => {
+        renderPanneauJour(point({ NetWorth: Number.NaN }));
+        const t = texte();
+        const i = t.indexOf('Valeur nette');
+        expect(i, 'libellé « Valeur nette » introuvable — le test serait vacueux').toBeGreaterThanOrEqual(0);
+        // Le premier montant rendu après le libellé doit être le tiret d'absence, pas un zéro.
+        expect(t.slice(i, i + 80)).toContain('—');
+        expect(t.slice(i, i + 80)).not.toMatch(/\b0 \$/);
     });
 });

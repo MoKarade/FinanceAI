@@ -14,9 +14,8 @@
  *      reste accessible au survol. Échoue sur une « épuration » faite à coups de suppressions.
  */
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { ExpertTooltip } from '../../components/projection/ProjectionTooltip';
+import { screen } from '@testing-library/react';
+import { renderPanneauJour } from '../helpers/panneauJour';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 
 /**
@@ -75,23 +74,27 @@ const PLAFOND = 45;
 
 describe('[FUTUR-INFOBULLE-EPUREE] plafond de prose', () => {
     it.each([
-        ['jour réel figé', { frozen: true }],
-        ['jour réel survolé', { frozen: false }],
+        // ⚠️ Les TROIS origines, pas deux : le panneau existe aussi AU REPOS (sur aujourd'hui),
+        // état que l'infobulle n'avait pas — et chaque origine rend une phrase d'état différente,
+        // donc chacune peut faire revenir de la prose par un chemin que les autres ne couvrent pas.
+        ['jour réel épinglé', { origine: 'epingle' as const }],
+        ['jour réel survolé', { origine: 'survol' as const }],
+        ['jour réel au repos', { origine: 'ancre' as const }],
     ])('%s : aucun nœud de texte ne dépasse le plafond', (_nom, opts) => {
-        render(<ExpertTooltip data={jour()} userName1="Marc" frozen={opts.frozen} onOpenDetail={() => {}} onStepDay={() => {}} canStepPrev canStepNext />);
+        renderPanneauJour(jour(), { userName1: 'Marc', origine: opts.origine });
         const trop = noeudsDeTexte().filter((t) => t.length > PLAFOND);
         // Message diagnostique : sans lui, un échec ne dirait pas QUELLE phrase est revenue.
         expect(trop, `phrases trop longues rendues : ${JSON.stringify(trop)}`).toEqual([]);
     });
 
     it('jour PROJETÉ sans mouvement : idem (c’est là que vivait la plus longue phrase)', () => {
-        render(<ExpertTooltip data={jour({ dayIsReal: false })} />);
+        renderPanneauJour(jour({ dayIsReal: false }));
         expect(noeudsDeTexte().filter((t) => t.length > PLAFOND)).toEqual([]);
     });
 
     // ⚠️ Anti-sur-correctif du plafond : le plafond ne doit PAS être satisfait en vidant l'écran.
     it('l’infobulle dit toujours l’essentiel (valeur, variation, comptes, impôts)', () => {
-        render(<ExpertTooltip data={jour()} />);
+        renderPanneauJour(jour());
         const txt = (document.body.textContent || '').replace(/\s+/g, '');
         expect(txt).toContain('Valeurnette');
         expect(txt).toContain('Variation');
@@ -130,52 +133,52 @@ describe('[FUTUR-INFOBULLE-EPUREE] aucune réserve perdue', () => {
     };
 
     it('prix ESTIMÉ : pastille visible + phrase complète (survol ET lecteur d’écran)', () => {
-        render(<ExpertTooltip data={jour({ hasEstimatedPrice: true })} />);
+        renderPanneauJour(jour({ hasEstimatedPrice: true }));
         verifieReserve('~ prix estimé', /prix ACTUEL/);
     });
 
     it('prix PÉRIMÉ : la pastille porte l’âge réel, pas un vague « ancien »', () => {
-        render(<ExpertTooltip data={jour({ priceAgeMaxDays: 34 })} />);
+        renderPanneauJour(jour({ priceAgeMaxDays: 34 }));
         expect(screen.getByText(/prix J−34/)).toBeInTheDocument();
         verifieReserve(/prix J−34/, /plateau de reconstruction/);
     });
 
     it('sync NON CONFIRMÉE : pastille visible + phrase complète (survol ET lecteur d’écran)', () => {
-        render(<ExpertTooltip data={jour({ daySyncUnconfirmed: true })} />);
+        renderPanneauJour(jour({ daySyncUnconfirmed: true }));
         verifieReserve(/sync incomplète/, /transactions de ce jour peuvent manquer/);
     });
 
     // ⚠️ Sans cette garde, afficher les trois pastilles EN PERMANENCE resterait vert — et une
     // réserve permanente ne se lit plus comme une réserve.
     it('aucune réserve → aucune pastille (pas d’avertissement décoratif)', () => {
-        render(<ExpertTooltip data={jour()} />);
+        renderPanneauJour(jour());
         expect(screen.queryByText('~ prix estimé')).toBeNull();
         expect(screen.queryByText(/prix J−/)).toBeNull();
         expect(screen.queryByText(/sync incomplète/)).toBeNull();
     });
 
     it('un prix de 7 jours ou moins n’est PAS une réserve (seuil inchangé)', () => {
-        render(<ExpertTooltip data={jour({ priceAgeMaxDays: 7 })} />);
+        renderPanneauJour(jour({ priceAgeMaxDays: 7 }));
         expect(screen.queryByText(/prix J−/)).toBeNull();
     });
 
     // La justification du badge « Réel » était un paragraphe ; elle est maintenant son `title`.
     it('le badge Réel / Projeté garde sa justification (survol ET lecteur d’écran)', () => {
-        const { unmount } = render(<ExpertTooltip data={jour()} />);
+        const { unmount } = renderPanneauJour(jour());
         verifieReserve('Réel', /pas une moyenne du mois/);
         unmount();
-        render(<ExpertTooltip data={jour({ dayIsReal: false })} />);
+        renderPanneauJour(jour({ dayIsReal: false }));
         verifieReserve('Projeté', /pas une mesure/);
     });
 
     // La troncature de la liste des mouvements reste ANNONCÉE : c'est la garde de
     // [FUTUR-INFOBULLE-MONTANTS], que l'épuration ne doit pas emporter en raccourcissant le libellé.
     it('la troncature des mouvements reste annoncée', () => {
-        render(<ExpertTooltip data={jour({
+        renderPanneauJour(jour({
             dayIsDated: true,
             dayMovements: [{ payee: 'Metro', amount: -42 }],
             dayMovementsTotal: 5,
-        })} />);
+        }));
         const reste = screen.getByText('+4 autres');
         expect(reste.getAttribute('title')).toMatch(/Détail complet/);
     });
@@ -189,19 +192,19 @@ describe('[FUTUR-INFOBULLE-EPUREE] aucune réserve perdue', () => {
      * mouvements existent — le pire endroit possible pour le perdre.
      */
     it('le compte survit quand AUCUN mouvement n’est décrit (branche de repli)', () => {
-        render(<ExpertTooltip data={jour({
+        renderPanneauJour(jour({
             dayIsDated: true, dayMovements: [], dayMovementsTotal: 3,
-        })} />);
+        }));
         expect(screen.getByText('Mouvement à date connue')).toBeInTheDocument();
         expect(screen.getByText('+3 autres')).toBeInTheDocument();
     });
 
     it('rien à annoncer quand la liste est complète (pas de « +0 autres »)', () => {
-        render(<ExpertTooltip data={jour({
+        renderPanneauJour(jour({
             dayIsDated: true,
             dayMovements: [{ payee: 'Metro', amount: -42 }],
             dayMovementsTotal: 1,
-        })} />);
+        }));
         expect(screen.queryByText(/autres?$/)).toBeNull();
     });
 });

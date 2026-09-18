@@ -12,8 +12,8 @@
  * un remplacement de classe se relit membre par membre.
  */
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { ExpertTooltip } from '../../../components/projection/ProjectionTooltip';
+import { screen } from '@testing-library/react';
+import { renderPanneauJour } from '../../helpers/panneauJour';
 import { formatCAD, formatNumber } from '../../../utils/format';
 import type { ProjectionChartPoint } from '../../../services/projection/types';
 
@@ -22,7 +22,7 @@ const pt = (over: Partial<ProjectionChartPoint>): ProjectionChartPoint => ({
 } as ProjectionChartPoint);
 
 const rendu = (over: Partial<ProjectionChartPoint> = {}): string =>
-    render(<ExpertTooltip data={pt(over)} />).container.textContent ?? '';
+    renderPanneauJour(pt(over)).container.textContent ?? '';
 
 describe('[FMT] les montants de l\'infobulle passent par la source unique', () => {
     it('le gros chiffre porte UN seul « $ », posé par formatCAD', () => {

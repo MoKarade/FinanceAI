@@ -56,9 +56,21 @@ export const ACCOUNTS: AccountDef[] = [
 export function detteReductrice(
     point: Record<string, unknown>,
     clesActifsAffiches: readonly string[],
-): number {
+): number | null {
+    // ⚠️ [INFOBULLE-DETTE-NW-NON-FINI] `Number(point.NetWorth) || 0` rabattait un `NaN` ou un
+    // `Infinity` sur ZÉRO — et la soustraction rendait alors la somme TOTALE des actifs, affichée
+    // sous le libellé « Dettes (hors hypothèque) ». Un patrimoine corrompu ne produisait donc pas
+    // un écran vide mais un montant de dette FAUX ET CRÉDIBLE, sans trace, dans les deux surfaces
+    // qui appellent cette fonction. Le repli le plus plausible est le pire (§1, no-fake-data).
+    //
+    // ⚠️ LE CORRECTIF EST LE TYPE, pas un meilleur nombre : `number | null` fait ÉNUMÉRER les
+    // consommateurs par le compilateur. Les deux gatent sur `> 0.5`, ce qui masque `null` en
+    // silence — un retour numérique « prudent » les aurait laissés muets exactement là où il faut
+    // parler (`UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE`).
+    const nw = Number(point.NetWorth);
+    if (!Number.isFinite(nw)) return null;
     const sommeActifs = clesActifsAffiches.reduce((s, k) => s + (Number(point[k]) || 0), 0);
-    return Math.max(0, sommeActifs - (Number(point.NetWorth) || 0));
+    return Math.max(0, sommeActifs - nw);
 }
 
 // G19 — espace de cotisation gagné par année (CELI/REER). Dérivation par

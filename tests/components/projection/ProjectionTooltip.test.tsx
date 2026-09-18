@@ -1,9 +1,15 @@
 // Bloc « Impôts » de l'infobulle Futur (demande Marc) : impôt dormant (latent) +
 // régularisation d'avril. On vérifie l'étiquetage honnête et les signes.
-// [R3] ExpertTooltip prend désormais `data` en prop DIRECTE (découplé de Recharts).
+// ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] Ces gardes visaient l'infobulle FLOTTANTE, qui n'existe plus.
+// Le contenu — blocs Impôts, badge Variation, détail du jour — est désormais rendu par le PANNEAU
+// FIXE sous le graphe, et c'est LUI qu'on monte ici. Les assertions de CONTENU sont inchangées :
+// elles portent sur des faits qui n'ont pas bougé. Celles qui décrivaient la MÉCANIQUE de
+// l'infobulle (« Clique pour figer », pied collant, flèches réservées à l'état figé) ont été
+// INVERSÉES au même endroit, avec leur histoire — les supprimer laisserait croire que ces
+// exigences n'ont jamais existé (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ExpertTooltip } from '../../../components/projection/ProjectionTooltip';
+import { renderPanneauJour } from '../../helpers/panneauJour';
 import type { ProjectionChartPoint } from '../../../services/projection/types';
 
 const pt = (over: Partial<ProjectionChartPoint>): ProjectionChartPoint => ({
@@ -14,10 +20,9 @@ const pt = (over: Partial<ProjectionChartPoint>): ProjectionChartPoint => ({
     ...over,
 } as ProjectionChartPoint);
 
-const renderTip = (over: Partial<ProjectionChartPoint>) =>
-    render(<ExpertTooltip data={pt(over)} />);
+const renderTip = (over: Partial<ProjectionChartPoint>) => renderPanneauJour(pt(over));
 
-describe('ExpertTooltip — bloc Impôts (impôt dormant + régularisation)', () => {
+describe('PanneauJour — bloc Impôts (impôt dormant + régularisation)', () => {
     it("affiche l'impôt dormant en valeur ABSOLUE (ImpotLatent est négatif dans le moteur)", () => {
         renderTip({ ImpotLatent: -50000 });
         expect(screen.getByText('Impôts')).toBeInTheDocument();
@@ -63,15 +68,15 @@ const dayPoint = (over: Partial<ProjectionChartPoint> & {
     isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
 }) => pt(over as Partial<ProjectionChartPoint>);
 
-describe('ExpertTooltip — point QUOTIDIEN sélectionné', () => {
+describe('PanneauJour — point QUOTIDIEN sélectionné', () => {
     it('nomme les mouvements du jour visé', () => {
-        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: ['Paie', 'Loyer'] })} />);
+        renderPanneauJour(dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: ['Paie', 'Loyer'] }));
         expect(screen.getByText('Ce jour')).toBeInTheDocument();
         expect(screen.getByText('Paie, Loyer')).toBeInTheDocument();
     });
 
     it("dit explicitement qu'un jour SANS mouvement daté n'est que de l'étalement", () => {
-        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: false, dayLabels: [] })} />);
+        renderPanneauJour(dayPoint({ isDailyPoint: true, dayIsDated: false, dayLabels: [] }));
         // [FUTUR-INFOBULLE-EPUREE] Phrase raccourcie (demande Marc : « quasiment pas de texte »),
         // mais l'AFFIRMATION reste la même — et sa version longue reste au survol (`title`).
         const ligne = screen.getByText(/croissance étalée/);
@@ -81,34 +86,45 @@ describe('ExpertTooltip — point QUOTIDIEN sélectionné', () => {
     });
 
     it("un jour DATÉ sans libellé le dit quand même (un DatedDelta peut n'avoir aucun label)", () => {
-        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: [] })} />);
+        renderPanneauJour(dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: [] }));
         expect(screen.getByText('Ce jour')).toBeInTheDocument();
         expect(screen.getByText('Mouvement à date connue')).toBeInTheDocument();
     });
 
     it("aucun bloc « jour » sur un point MENSUEL (l'immense majorité des survols)", () => {
-        render(<ExpertTooltip data={pt({})} />);
+        renderPanneauJour(pt({}));
         expect(screen.queryByText('Ce jour')).toBeNull();
         expect(screen.queryByText(/croissance étalée/)).toBeNull();
     });
 });
 
-// [R3] Pied de page selon l'état figé/survol + bouton « Détail complet ».
-describe('ExpertTooltip — figeage (R3)', () => {
-    it('au SURVOL (non figé) : invite à figer, aucun bouton « Détail complet »', () => {
-        render(<ExpertTooltip data={pt({})} />);
-        expect(screen.getByText(/Clique pour figer/)).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Détail complet/ })).toBeNull();
+// ⚠️ INVERSION DE `[R3] figeage`. L'ancienne règle était « au survol, l'infobulle n'est qu'un
+// aperçu : pas d'actions, une invite à figer ». Elle existait parce qu'un objet qui suit le curseur
+// est INATTEIGNABLE à la souris — viser son bouton le déplace. Le panneau étant dans le flux du
+// document, la contrainte disparaît : ses actions sont cliquables dans les trois états. Ce qui
+// reste vrai, et que le test garde, c'est que l'ÉTAT est ANNONCÉ — trois situations qui se
+// ressemblent à l'écran (aujourd'hui / aperçu / épinglé) et ne veulent pas dire la même chose.
+describe('PanneauJour — l’origine du jour affiché est annoncée, et les actions restent cliquables', () => {
+    it('au SURVOL : le panneau dit que c’est un aperçu, et « Détail complet » reste actionnable', () => {
+        renderPanneauJour(pt({}), { origine: 'survol' });
+        expect(screen.getByText(/Aperçu/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Détail complet/ })).toBeInTheDocument();
     });
 
-    it('FIGÉ : affiche le bouton « Détail complet » et déclenche onOpenDetail au clic', () => {
+    it('ÉPINGLÉ : le panneau le dit, et « Détail complet » déclenche onOpenDetail au clic', () => {
         const onOpenDetail = vi.fn();
-        render(<ExpertTooltip data={pt({})} frozen onOpenDetail={onOpenDetail} />);
-        const btn = screen.getByRole('button', { name: /Détail complet/ });
-        expect(btn).toBeInTheDocument();
-        expect(screen.queryByText(/Clique pour figer/)).toBeNull();
-        fireEvent.click(btn);
+        renderPanneauJour(pt({}), { origine: 'epingle', onOpenDetail });
+        expect(screen.getByText(/Jour épinglé/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Détail complet/ }));
         expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    });
+
+    it('AU REPOS : le panneau montre aujourd’hui et ne propose PAS de relâcher une épingle', () => {
+        renderPanneauJour(pt({}), { origine: 'ancre' });
+        expect(screen.getByText(/Aujourd’hui/)).toBeInTheDocument();
+        // ⚠️ Le bouton de retour n'existe que quand il y a quelque chose à défaire : proposé au
+        // repos, il serait un no-op déguisé — un contrôle qui ne change rien apprend à être ignoré.
+        expect(screen.queryByRole('button', { name: /Revenir à aujourd/ })).toBeNull();
     });
 });
 
@@ -119,20 +135,20 @@ describe('ExpertTooltip — figeage (R3)', () => {
 // chaque jour — y compris celui où la paie tombe, pendant que le bas de la même infobulle disait
 // correctement « Ce jour : Paie ». C'est le faux zéro crédible que tout ce chantier combat, sur la
 // donnée la plus regardée.
-describe('ExpertTooltip — badge « Variation » : une absence n’est pas un zéro', () => {
+describe('PanneauJour — badge « Variation » : une absence n’est pas un zéro', () => {
     it('MASQUE le badge quand la variation est inconnue', () => {
-        render(<ExpertTooltip data={pt({ diffNW: undefined })} />);
+        renderPanneauJour(pt({ diffNW: undefined }));
         expect(screen.queryByText(/Variation/)).toBeNull();
     });
 
     it('affiche un vrai zéro quand la variation VAUT zéro', () => {
         // Distinction essentielle : « je ne sais pas » ≠ « ça n'a pas bougé ».
-        render(<ExpertTooltip data={pt({ diffNW: 0 })} />);
+        renderPanneauJour(pt({ diffNW: 0 }));
         expect(screen.getByText(/Variation/)).toBeInTheDocument();
     });
 
     it('affiche la variation du JOUR sur un point quotidien qui en porte une', () => {
-        render(<ExpertTooltip data={pt({ diffNW: -1250 })} />);
+        renderPanneauJour(pt({ diffNW: -1250 }));
         const badge = screen.getByText(/Variation/);
         expect(badge.textContent).toContain('-1');
         expect(badge.className).toContain('text-red-300');
@@ -143,53 +159,82 @@ describe('ExpertTooltip — badge « Variation » : une absence n’est pas un z
 // par jour » ([FUTUR-DAILY-SELECT-PATH]) a été RETIRÉ : la courbe est au jour partout, le clic
 // sélectionne directement le jour. Restent les flèches « Veille / Lendemain » (sélection au jour
 // près sans re-viser au pixel — utilisables au doigt, sans molette).
-describe('ExpertTooltip — sélection du jour (pied figé)', () => {
+describe('PanneauJour — navigation d’un jour à l’autre', () => {
     it('le bouton « Voir ce mois jour par jour » n\'existe PLUS (courbe au jour native)', () => {
-        render(<ExpertTooltip data={pt({})} frozen />);
+        renderPanneauJour(pt({}));
         expect(screen.queryByRole('button', { name: /Voir ce mois jour par jour/ })).toBeNull();
     });
 
-    it('jour FIGÉ : « Veille » et « Lendemain » sélectionnent le jour voisin (−1 / +1)', () => {
-        const onStepDay = vi.fn();
-        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onStepDay={onStepDay} canStepPrev canStepNext />);
+    // ⚠️ INVERSION. L'ancienne règle réservait Veille/Lendemain à l'infobulle FIGÉE, ce qui était
+    // cohérent : hors gel, l'infobulle suivait le curseur et n'était pas cliquable. Le panneau,
+    // lui, est toujours là — et au repos il montre AUJOURD'HUI. Des flèches inertes tant que rien
+    // n'est épinglé les auraient rendues mortes exactement à l'ouverture de l'écran, le seul moment
+    // garanti. Elles marchent donc dans les trois états.
+    it('les flèches sélectionnent le jour voisin MÊME au repos (origine « ancre »)', () => {
+        const onStep = vi.fn();
+        renderPanneauJour(dayPoint({ isDailyPoint: true }), { origine: 'ancre', onStep });
         // ⚠️ [WCAG 2.5.3 label-in-name — finding a11y #589] Le nom accessible DOIT contenir le texte
         // visible : ces requêtes par /Veille|Lendemain/ verrouillent qu'un futur aria-label de
         // REMPLACEMENT (« Jour précédent » seul) casserait le test comme il casserait Dragon.
         fireEvent.click(screen.getByRole('button', { name: /Veille/ }));
         fireEvent.click(screen.getByRole('button', { name: /Lendemain/ }));
-        expect(onStepDay).toHaveBeenNthCalledWith(1, -1);
-        expect(onStepDay).toHaveBeenNthCalledWith(2, 1);
+        // ⚠️ Le PAS voyage avec la direction : sans lui, le parent ne saurait pas de combien
+        // avancer, et « Année » retomberait silencieusement sur un jour.
+        expect(onStep).toHaveBeenNthCalledWith(1, -1, 'jour');
+        expect(onStep).toHaveBeenNthCalledWith(2, 1, 'jour');
     });
 
-    it('jour FIGÉ : borne atteinte = bouton DÉSACTIVÉ (pas absent)', () => {
-        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onStepDay={vi.fn()} canStepPrev={false} canStepNext />);
-        // ⚠️ Un bouton de borne DÉSACTIVÉ (pas absent) : le pied garde sa géométrie, et le lecteur
+    it('le PAS choisi est transmis aux flèches (jour / mois / année)', () => {
+        const onStep = vi.fn();
+        renderPanneauJour(dayPoint({ isDailyPoint: true }), { onStep, pas: 'annee' });
+        fireEvent.click(screen.getByRole('button', { name: /Lendemain/ }));
+        expect(onStep).toHaveBeenCalledWith(1, 'annee');
+    });
+
+    it('changer de pas remonte le choix au parent (c’est lui qui borne les flèches)', () => {
+        const onPasChange = vi.fn();
+        renderPanneauJour(dayPoint({ isDailyPoint: true }), { onPasChange });
+        fireEvent.click(screen.getByRole('button', { name: 'Mois' }));
+        expect(onPasChange).toHaveBeenCalledWith('mois');
+    });
+
+    it('borne atteinte = bouton DÉSACTIVÉ (pas absent)', () => {
+        renderPanneauJour(dayPoint({ isDailyPoint: true }), { canStepPrev: false, canStepNext: true });
+        // ⚠️ Un bouton de borne DÉSACTIVÉ (pas absent) : la barre garde sa géométrie, et le lecteur
         // d'écran comprend qu'il n'y a simplement pas de veille dans la fenêtre.
         expect(screen.getByRole('button', { name: /Veille/ })).toBeDisabled();
         expect(screen.getByRole('button', { name: /Lendemain/ })).toBeEnabled();
     });
 });
 
-// [FUTUR-TOOLTIP-STICKY-ACTIONS] Le pied d'actions du tooltip FIGÉ est ÉPINGLÉ en bas.
+// ⚠️ INVERSION de `[FUTUR-TOOLTIP-STICKY-ACTIONS]`, et il faut lire POURQUOI avant de croire
+// qu'on a perdu une protection.
 //
-// Pas du style : le tooltip défile en interne (`max-h-[480px] overflow-y-auto`) et avec des
-// données réelles le pied passait SOUS LE PLI — Marc ne voyait pas les actions du pied
-// alors qu'elles étaient rendues (capture 2026-08-12, bouton d'époque depuis retiré par DAILY-NATIVE). L'e2e n'a rien vu : Playwright scrolle l'élément
-// en vue AVANT de cliquer. jsdom ne rend pas de layout → on verrouille l'INTENTION (les classes
-// sticky/bottom-0 + fond opaque), ce qui échoue sur le code d'avant (pied dans le flux).
-describe('ExpertTooltip — pied d’actions épinglé (visible sans défiler)', () => {
-    it('FIGÉ : le conteneur des boutons est sticky bottom-0 avec un fond opaque', () => {
-        render(<ExpertTooltip data={pt({})} frozen onOpenDetail={vi.fn()} />);
-        const footer = screen.getByRole('button', { name: /Détail complet/ }).closest('div.sticky');
-        expect(footer).not.toBeNull();
-        expect(footer!.className).toContain('bottom-0');
-        // Fond opaque : sans lui, le contenu scrollé transparaîtrait sous les boutons.
-        expect(footer!.className).toMatch(/bg-\[#0d1118\]/);
+// La règle d'origine : le pied d'actions de l'infobulle figée devait être `sticky bottom-0` sur
+// fond opaque, parce que l'infobulle défilait EN INTERNE (`max-h` + `overflow-y-auto`) et qu'avec
+// des données réelles le pied passait sous le pli — Marc ne voyait pas les boutons alors qu'ils
+// étaient rendus (capture 2026-08-12). L'e2e ne l'avait jamais vu : Playwright fait défiler
+// l'élément en vue AVANT de cliquer, donc le robot payait un chemin que l'humain ne voit pas.
+//
+// Ce qui a changé : le panneau vit dans le FLUX du document et ne défile pas en interne. Il n'y a
+// plus de pli à franchir, donc plus rien à épingler — et remettre un `sticky` ici recréerait le
+// problème qu'il résolvait. La garde vérifie donc le FAIT qui rend la règle caduque, pas sa forme
+// disparue : le panneau n'a pas de hauteur bornée ni de défilement interne.
+describe('PanneauJour — les actions sont atteignables sans défilement interne', () => {
+    it('le panneau ne borne pas sa hauteur et ne défile pas en interne', () => {
+        const { container } = renderPanneauJour(pt({}));
+        const racine = container.querySelector('[data-panneau-jour]');
+        expect(racine).not.toBeNull();
+        expect(racine!.className).not.toMatch(/max-h-/);
+        expect(racine!.className).not.toMatch(/overflow-y-auto/);
     });
 
-    it('SURVOL : pas de pied d’actions du tout (rien à épingler)', () => {
-        render(<ExpertTooltip data={pt({})} />);
-        expect(screen.queryByRole('button', { name: /Détail complet/ })).toBeNull();
+    it('les actions sont rendues dans les trois origines (rien à « figer » d’abord)', () => {
+        for (const origine of ['ancre', 'survol', 'epingle'] as const) {
+            const { unmount } = renderPanneauJour(pt({}), { origine });
+            expect(screen.getByRole('button', { name: /Détail complet/ })).toBeInTheDocument();
+            unmount();
+        }
     });
 });
 

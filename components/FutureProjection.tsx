@@ -79,8 +79,9 @@ const RENDER_MAX_POINTS = 700;
 const CURVE_FIELDS: ReadonlySet<string> = new Set([
     'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier', 'Entreprise',
     'ImpotLatent', 'FluxImpots', 'P10', 'P50', 'P90', 'NetWorth', 'lockedNetWorth',
-    // ⚠️ `DettesNonImmo` n'est TRACÉE par aucune aire : elle est ici parce que le patrimoine au
-    // jour est RECOMPOSÉ (`NetWorth = Σ NET_WORTH_DAILY_ASSETS − DettesNonImmo`) et que la
+    // ⚠️ `DettesNonImmo` est entrée ici AVANT d'avoir la moindre courbe (elle en a une depuis
+    // `[FUTUR-COURBE-DETTE]`, 2026-09-18 — aire orange sous zéro) : sa vraie raison d'être dans ce
+    // set est que le patrimoine au jour est RECOMPOSÉ (`NetWorth = Σ NET_WORTH_DAILY_ASSETS − DettesNonImmo`) et que la
     // recomposition s'ABSTIENT si un seul terme manque — une somme partielle serait un patrimoine
     // faux et crédible. Sans ce champ, le correctif `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]` était
     // INERTE dans la vraie courbe : vert en test (qui ventile tout), sans effet en prod
@@ -99,6 +100,7 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
  *  pas doit s'afficher « — », jamais « 0 $ ». */
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { detteSousZero, COULEUR_DETTE } from './future/detteSerie';
 import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -766,6 +768,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             { key: 'Crypto', label: 'Crypto', format: money },
             { key: 'Immobilier', label: 'Équité Immo', format: money },
             { key: 'Entreprise', label: 'Entreprise privée', format: money },
+            // ⚠️ [FUTUR-COURBE-DETTE 2026-09-18] La dette EST une colonne, parce que le graphe l'a
+            // désormais comme série ET parce que l'`aria-label` du conteneur promet en toutes
+            // lettres « les mêmes données ». Sans elle, un utilisateur de lecteur d'écran obtient
+            // une table où la valeur nette ne se RECOMPOSE PAS par somme des comptes — le défaut
+            // corrigé la veille dans l'infobulle, laissé intact dans son alternative texte.
+            { key: 'DettesNonImmo', label: 'Dettes (hors hypothèque)', format: money },
         ];
     }, [isPrivacyMode]);
 
@@ -1889,6 +1897,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 patrimoine de toute la valeur de l'entreprise — une décomposition qui ne somme pas. */}
                             {isVisible('Entreprise') && <Area type="monotone" dataKey="Entreprise" stackId="1" stroke="#84cc16" fill="#84cc16" fillOpacity={0.3} name="Entreprise privée" isAnimationActive={false}/>}
 
+                            {/* [FUTUR-COURBE-DETTE] La dette, en NÉGATIF, sous zéro. ⚠️ PAS de `stackId` :
+                                elle n'appartient pas à la pile des actifs — l'empiler la ferait
+                                s'additionner à des comptes positifs. Et `connectNulls` reste FAUX :
+                                un point sans `DettesNonImmo` interrompt la courbe au lieu de tracer
+                                un zéro qui affirmerait « aucune dette ». */}
+                            {isVisible('DettesNonImmo') && <Area type="monotone" dataKey={detteSousZero} stroke={COULEUR_DETTE} fill={COULEUR_DETTE} fillOpacity={0.35} name="Dettes (hors hypothèque)" connectNulls={false} isAnimationActive={false}/>}
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {/* [FUTUR-DAILY-NATIVE] `FluxImpots` n'existe sur les points quotidiens
                                 QU'AUX jours d'échéance (retiré ailleurs dans `dailyAll`) : la Bar ne

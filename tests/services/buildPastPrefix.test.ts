@@ -10,19 +10,23 @@ const invPoint = (date: string, o: Partial<PortfolioHistoryPoint> = {}): Portfol
     date, monthIndex: 0, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0, InvestedValue: 0, ...o,
 });
 
+// startYear/startMonth = janvier 2026 (mois 0). '2025-12' → mi=-1, '2025-11' → mi=-2.
+// ⚠️ UNE SEULE fixture de base pour tout le fichier (2026-09-18) : elle était recopiée à
+// l'identique dans trois `describe`, et une quatrième copie a fait rougir le contrôle de
+// duplication. Trois copies d'une même fixture divergent au premier lot qui en touche une.
+const base = {
+    startYear: 2026, startMonth: 0,
+    // [DEBT-CADENCE-REELLE] Le JOUR d'aujourd'hui, désormais requis : il doit tomber dans le
+    // mois 0 (janvier 2026), sinon la courbe au mois et le registre au jour parleraient de
+    // deux « aujourd'hui » différents.
+    todayIso: '2026-01-15',
+    realEstateGoals: [],
+    // 1 vraie transaction en 2025-12 → firstMonth = 2025-12 (firstTxnMi = -1).
+    transactions: [{ date: '2025-12-15', amount: -500 }],
+    calculatedStartingCash: 3000,
+};
+
 describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
-    // startYear/startMonth = janvier 2026 (mois 0). '2025-12' → mi=-1, '2025-11' → mi=-2.
-    const base = {
-        startYear: 2026, startMonth: 0,
-        // [DEBT-CADENCE-REELLE] Le JOUR d'aujourd'hui, désormais requis : il doit tomber dans le
-        // mois 0 (janvier 2026), sinon la courbe au mois et le registre au jour parleraient de
-        // deux « aujourd'hui » différents.
-        todayIso: '2026-01-15',
-        realEstateGoals: [],
-        // 1 vraie transaction en 2025-12 → firstMonth = 2025-12 (firstTxnMi = -1).
-        transactions: [{ date: '2025-12-15', amount: -500 }],
-        calculatedStartingCash: 3000,
-    };
 
     it('soustrait la dette COURANTE du patrimoine net (Option A) — reconstructabilité exacte', () => {
         const out = buildPastPrefix({
@@ -176,10 +180,6 @@ describe('[PAST-NW-BUSINESS-SANS-PRODUCTEUR] la valeur COURANTE d’une entrepri
     // (audit 2026-09-07, lot 214) `pastNetWorthAt` acceptait la valeur depuis août — et aucun appelant ne
     // la passait : le passé la mettait à 0, le premier mois futur la comptait en entier → MARCHE de la
     // valeur au raccord. Le 5e argument existait ; c'est le PRODUCTEUR qui manquait.
-    const base = {
-        startYear: 2026, startMonth: 0, realEstateGoals: [], todayIso: '2026-01-15',
-        transactions: [{ date: '2025-12-15', amount: -500 }], calculatedStartingCash: 3000,
-    };
     const pts = [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })];
 
     it('avec 900 000 $ : chaque point porte `Entreprise` et le patrimoine l’inclut (identité étendue)', () => {
@@ -199,5 +199,63 @@ describe('[PAST-NW-BUSINESS-SANS-PRODUCTEUR] la valeur COURANTE d’une entrepri
         expect(sans[sans.length - 1].Entreprise).toBe(0);
         expect(sans[sans.length - 1].NetWorth).toBe(13_000);
         expect(zero.map(p => p.NetWorth)).toEqual(sans.map(p => p.NetWorth));
+    });
+});
+
+/**
+ * [FUTUR-COURBE-DETTE 2026-09-18] La dette du PRÉFIXE PASSÉ arrive jusqu'à la courbe.
+ *
+ * ⚠️ Garde de TRAVERSÉE, écrite après un finding du panel : `buildPastPrefix` CALCULAIT déjà
+ * `debtNonImmo` (avec tout son gating) et ne le PUBLIAIT pas — il ne servait qu'à produire
+ * `NetWorth`. Le jour où la dette est devenue une courbe, ce producteur est devenu le seul du
+ * passé à ne rien publier, donc `detteSousZero` y lisait `undefined` et rendait `null` : un TROU
+ * silencieux, indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir.
+ *
+ * Le test part du producteur et va jusqu'à la fonction que l'aire consomme — sans reconstruire
+ * aucun maillon (`UN-TROU-ENTRE-DEUX-MOITIES-TESTEES-N-APPARTIENT-A-PERSONNE`).
+ */
+describe('[FUTUR-COURBE-DETTE] le préfixe passé publie sa dette, et la courbe la voit', () => {
+    it('publie `DettesNonImmo`, et c\'est la MÊME grandeur que celle retranchée du patrimoine', () => {
+        const out = buildPastPrefix({
+            ...base,
+            pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })],
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
+        }).points;
+        const last = out[out.length - 1];
+        // Sur le code d'avant : `undefined` (le champ n'existait pas).
+        expect(last.DettesNonImmo).toBe(8_000);
+        // ⚠️ L'assertion qui compte n'est pas la valeur mais l'IDENTITÉ : une seconde dérivation
+        // divergerait au premier lot qui touche à l'une des deux.
+        const cols = last.Liquidites + last.Immobilier + last.Entreprise
+            + last.CELI + last.CELIAPP + last.REER + last.REEE + last.NonReg + last.Crypto;
+        expect(cols - last.DettesNonImmo!).toBe(last.NetWorth);
+    });
+
+    it('la courbe la TRACE : `detteSousZero` rend le NÉGATIF, jamais `null`', async () => {
+        const { detteSousZero } = await import('../../components/future/detteSerie');
+        const out = buildPastPrefix({
+            ...base,
+            pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000 })],
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
+        }).points;
+        const last = out[out.length - 1];
+        // Sur le code d'avant : `null` — l'aire s'interrompait ici sans rien dire.
+        expect(detteSousZero(last)).toBe(-8_000);
+    });
+
+    it('[contrôle négatif] un point sans patrimoine connu n\'affirme AUCUNE dette', () => {
+        // `hasNW` faux : aucune transaction, donc pas d'ancre de cash — le point existe mais on ne
+        // sait rien de lui. Publier un montant là serait un chiffre crédible sans mesure derrière.
+        const out = buildPastPrefix({
+            ...base,
+            transactions: [],
+            pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000 })],
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
+        }).points;
+        for (const p of out) {
+            if (p.NetWorth === undefined) expect(p.DettesNonImmo).toBeUndefined();
+        }
+        // ⚠️ Anti-vacuité : la boucle ci-dessus est vraie d'une liste vide.
+        expect(out.some((p) => p.NetWorth === undefined)).toBe(true);
     });
 });

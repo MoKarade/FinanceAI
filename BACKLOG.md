@@ -17,6 +17,91 @@
 
 ---
 
+## 📈 Infobulle et courbes du Futur (18/09/2026, demandé par Marc)
+
+> Demande : « je veux voir la courbe de la dette même dans le passé et je vois pas les transactions
+> dans l'infobulle on dirait ça manque des transactions, fais une grosse grosse passe sur les
+> infobulles y a des irritants ». Réponses en clic : **tout afficher avec défilement**, dette en
+> **orange plein sous zéro**, périmètre **le graphe Futur d'abord**.
+
+- [x] 🔧 **`[FUTUR-COURBE-DETTE]`** (S) **LIVRÉ le 18/09/2026** — la dette hors hypothèque
+  (`DettesNonImmo`, déjà publiée par le moteur ET par la reconstruction du passé) devient une série
+  du graphe, tracée **NÉGATIVE** (aire orange `#ea580c` sous zéro), avec son entrée de légende.
+  ⚠️ **La prémisse de Marc a été MESURÉE avant d'être suivie** : « il y a bien une courbe rouge en
+  dessous de zéro donc je veux que ce soit celle-ci qui continue si c'est bien celle de la dette ».
+  Ce n'en était pas : cette courbe est `ImpotLatent`. La suivre aurait fait passer un impôt
+  hypothétique pour sa dette réelle. Couleur ET forme distinctes, verrouillées par test.
+  ⚠️ `detteSousZero` rend `null` (jamais `0`) quand le champ est absent ou non fini — `0` se lirait
+  « aucune dette », la valeur la plus crédible donc la pire.
+- [x] 🔧 **`[FUTUR-MOUVEMENTS-TOUS]`** (S) **LIVRÉ le 18/09/2026** — le plafond de 6 mouvements par
+  journée est retiré. **Mesuré sur les vraies transactions de Marc** (1er août → 18 septembre) :
+  9 journées dépassaient 6, la pire le 31 août avec 18 mouvements (12 cachés), et la liste gardait
+  les six PREMIERS rencontrés, pas les plus gros — Anthropic (−321,93 $) et Global Exchange
+  (−307,40 $) étaient cachés pendant qu'un « Frais de service » de 15,95 $ restait affiché.
+  Le conteneur de l'infobulle défile déjà (`max-h` + `overflow-y-auto`) : aucune place à gagner.
+  Le test de limite du plafond est **INVERSÉ** au même endroit, avec sa mesure.
+  ⚠️ `movementsTotal` survit : il compte AUSSI les transactions sans description, donc
+  « +N autres » ne parle plus que d'elles.
+
+- [ ] 🔧 **`[INFOBULLE-DETTE-NW-NON-FINI]`** (S) — **PRÉEXISTANT, trouvé par le panel du 18/09, NON
+  corrigé** (hors du périmètre demandé : c'est un chemin de CORRUPTION, pas un irritant que Marc
+  subit). `detteReductrice` (`components/projection/futureDetail/comptes.ts`) dérive la dette par
+  `Math.max(0, Σactifs − Number(point.NetWorth) || 0)`. Un `NetWorth` **non fini** devient donc `0`
+  en silence, et la ligne « Dettes (hors hypothèque) » affiche alors **la somme TOTALE des actifs** —
+  un chiffre faux et parfaitement crédible, dans les DEUX surfaces (infobulle + « Détail complet »),
+  sans aucun `logError` et sans aucun test qui couvre ce cas.
+  ⚠️ Le dépôt traite déjà cette corruption ailleurs : `FutureProjection.tsx` a un `logError` dédié
+  pour ce champ — mais il ne couvre que `chartData[0]`, pas les points arbitraires que
+  `detteReductrice` reçoit au survol.
+  **Correctif proposé** : type de retour `number | null` (le compilateur ÉNUMÈRE alors les deux
+  consommateurs, qui gatent aujourd'hui sur `> 0.5` et masqueraient donc en silence), `null` quand
+  `NetWorth` est absent ou non fini ET quand une clé d'actif est PRÉSENTE mais non finie (une somme
+  amputée rend la soustraction fausse aussi) ; l'absence d'une clé reste légitime (pas de compte).
+  À l'écran : une mention honnête, jamais une ligne masquée — `no-fake-data` §1.
+  ⚠️ Poser le `logError` DANS `comptes.ts` élargirait le contrat de mock de tous les tests qui
+  montent `FutureProjection` (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK…`,
+  2 occurrences) — à mesurer avant, pas à supposer.
+  ⚠️ Jumeau FAIBLE, à décider dans le même lot : `detteSousZero`
+  (`components/future/detteSerie.ts`) ne distingue pas non plus « absent » (silence LÉGITIME) de
+  « présent mais non fini » (corruption, à tracer) — mais son échec est SÛR (trou visuel honnête,
+  jamais un chiffre faux), donc il ne justifie pas à lui seul un lot.
+
+- [x] 🔧 **`[FUTUR-COURBE-DETTE-PREFIXE-PASSE]`** (S) **LIVRÉ le 18/09/2026** — trouvé par le panel
+  APRÈS un gate ciblé vert : `buildPastPrefix` CALCULAIT la dette du mois (avec tout son gating par
+  `startDate` et par l'amortissement) et ne la PUBLIAIT pas — elle ne servait qu'à produire
+  `NetWorth`. Le jour où la dette est devenue une COURBE, ce producteur est devenu le seul du passé
+  à ne rien publier, donc `detteSousZero` y lisait `undefined` : **trou silencieux dans la courbe,
+  indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir**. Chemin étroit mais
+  réel (repli MENSUEL, et le tout premier point d'ancrage de la courbe quotidienne). Garde de
+  TRAVERSÉE (producteur → `detteSousZero`) + contrôle négatif (patrimoine inconnu ⇒ aucune dette
+  affirmée). La grandeur publiée est la MÊME variable que celle retranchée du patrimoine, jamais une
+  seconde dérivation.
+- [x] 🔧 **`[FUTUR-COURBE-DETTE-TABLE-A11Y]`** (S) **LIVRÉ le 18/09/2026** — la table de données
+  `sr-only` (alternative texte au graphe, dont l'`aria-label` promet « les mêmes données ») n'avait
+  pas reçu la colonne de la nouvelle série : un utilisateur de lecteur d'écran obtenait une table où
+  la valeur nette ne se RECOMPOSE PAS par somme des comptes. Garde **DÉRIVÉE** de
+  `FUTURE_LEGEND_ITEMS` (toute série en AIRE doit avoir sa colonne) — une garde qui recopierait
+  `dataColumns` serait circulaire et ne verrait aucun oubli.
+
+- [ ] 🔧 **`[FUTUR-COURBE-DETTE-RENDU-NON-GARDE]`** (XS) — angle mort ASSUMÉ de
+  `tests/components/futureCourbeDette.test.ts` : elle teste le module `detteSerie` et la config de
+  légende, **jamais le rendu Recharts réel**. Un `connectNulls` retiré par erreur sur l'`<Area>` de
+  la dette relierait les trous sans qu'aucun test ne rougisse — et un trou relié affirme une
+  continuité que la donnée n'a pas.
+
+- [ ] 🔧 **`[FUTUR-PANNEAU-FIXE]`** (L) — remplacer l'infobulle flottante par un **panneau FIXE sous
+  le graphe**, choix de Marc en clic et en texte libre : « j'aimerais que ce soit un panneau fixe en
+  dessous du graphe et pareil sur le téléphone mais je veux que ça reste lisible. Je veux pouvoir
+  choisir le lendemain ou la veille ». Organisation retenue : **colonnes sur PC, onglets sur
+  téléphone** ; **le graphe garde sa taille** (la page défile pour atteindre le panneau) ; état
+  initial sur **aujourd'hui** ; pas à pas veille/lendemain toujours présent.
+  ⚠️ Marc a coché les QUATRE irritants (elle disparaît quand il veut la lire · trop de choses à
+  trier · les chiffres ne se recomposent pas entre eux · pénible sur téléphone) **et** les quatre
+  « ce que je regarde en premier » : le problème est l'**ORGANISATION**, pas le volume — **aucune
+  section ne se supprime**.
+
+---
+
 ## 🚗 Dette — elle suit maintenant les VRAIS virements (18/09/2026, demandé par Marc)
 
 - [x] 🔧 **`[DETTE-VIREMENTS-REELS]`** (M) **LIVRÉ le 18/09/2026** (demande de Marc :

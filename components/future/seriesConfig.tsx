@@ -9,6 +9,7 @@
  * 'events', 'fire', 'aujourdhui').
  */
 import React from 'react';
+import { COULEUR_DETTE } from './detteSerie';
 
 export type LegendShape = 'area' | 'line' | 'bar' | 'dashed' | 'dot';
 
@@ -31,6 +32,10 @@ export const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
     { key: 'Immobilier', label: 'Équité Immo', color: '#ec4899', shape: 'area' },
     { key: 'Entreprise', label: 'Entreprise privée', color: '#84cc16', shape: 'area' },
     { key: 'NetWorth', label: 'Valeur Nette', color: '#ffffff', shape: 'line' },
+    // [FUTUR-COURBE-DETTE] Aire PLEINE sous zéro, ORANGE — à ne pas confondre avec l'impôt latent
+    // juste en dessous, rouge POINTILLÉ. Marc lisait ce dernier comme sa dette ; deux couleurs et
+    // deux formes séparent désormais un dû RÉEL d'un impôt HYPOTHÉTIQUE. Détail : `detteSerie.ts`.
+    { key: 'DettesNonImmo', label: 'Dettes (hors hypothèque)', color: COULEUR_DETTE, shape: 'area' },
     { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
     { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
     { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#3b82f6', shape: 'dashed', mcOnly: true },

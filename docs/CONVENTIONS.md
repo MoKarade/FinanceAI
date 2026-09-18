@@ -15135,3 +15135,198 @@ travail des agents**. Un rapport d'agent a réécrit `docs/PROJECTION.md` en y i
 `UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` ne vaut pas que pour les CHIFFRES qu'on recopie : elle
 vaut pour les FICHIERS qu'on ramasse. Relire `git status` avant `git add -A` quand des agents
 tournent — ou committer par chemins nommés.
+
+---
+
+## `UNE-TRONCATURE-ANNONCEE-RESTE-UNE-TRONCATURE-SI-ELLE-RETIRE-CE-QU-ON-CHERCHE` (2026-09-18)
+
+**Le contexte.** L'infobulle d'une journée du passé listait au plus **6** mouvements. Ce plafond
+avait été rendu VISIBLE par un lot antérieur (`movementsTotal` + « +N autres »), précisément parce
+qu'une troncature muette est pire qu'une plage annoncée — et le fichier de test portait cet
+inventaire, `expect(jour.movements).toHaveLength(6)`, comme une dette assumée.
+
+Marc, en regardant ses vraies journées : « je vois pas les transactions dans l'infobulle on dirait
+ça manque des transactions ».
+
+**Ce que la mesure a dit.** Sur ses transactions réelles du 1er août au 18 septembre 2026 :
+**9 journées** dépassaient 6. La pire, le **31 août : 18 mouvements, 12 cachés**. Et le critère de
+sélection n'était pas un critère : la liste gardait les six **PREMIERS RENCONTRÉS**. Ce jour-là,
+l'infobulle affichait « Frais de service −15,95 $ » et cachait **Anthropic −321,93 $** et
+**Global Exchange −307,40 $** — les deux plus grosses dépenses de la journée.
+
+**La leçon.** Rendre une troncature visible n'est une réponse acceptable que si ce qu'elle retire
+est INDIFFÉRENT. Ici l'ordre d'arrivée décidait seul, donc ce qui sautait était en moyenne aussi
+important que ce qui restait — et l'utilisateur ouvre une infobulle justement pour trouver la grosse
+dépense. « +N autres » transformait « je ne vois pas tout » en « je vois qu'il en manque », ce qui
+répond à la mauvaise question. **Devant un plafond d'affichage, demander d'abord par quel CRITÈRE
+les survivants sont choisis** : sans critère, le plafond ne borne pas le bruit, il tire au sort.
+
+⚠️ **Et la contrainte invoquée n'existait pas** : le conteneur de l'infobulle porte déjà
+`max-h` + `overflow-y-auto`. Le plafond n'a jamais protégé la PLACE — il a été écrit quand la liste
+ne portait que des noms, où six suffisaient, et il a survécu à l'ajout des montants qui lui retirait
+sa raison d'être. Une borne se re-justifie quand ce qu'elle borne change de nature.
+
+⚠️ **Le test de limite s'est INVERSÉ au même endroit**, avec sa mesure et son histoire, plutôt que
+d'être supprimé — sinon plus rien ne dirait que le plafond a existé, ni pourquoi on ne le remet pas
+« pour alléger l'infobulle ». Et son anti-vacuité vise le **DERNIER** arrivé (`M17`), celui que le
+plafond jetait en premier : asserter seulement la longueur laisserait passer une liste de dix-huit
+fois le même.
+
+⚠️ `movementsTotal` **ne meurt pas avec le plafond** : il compte aussi les transactions SANS
+description, qui n'entrent dans aucune liste affichée. « +N autres » ne parle donc plus que d'elles
+— ce qu'il aurait toujours dû dire. Un compteur né pour une raison peut en garder une autre ; le
+retirer avec le mécanisme qui l'a fait naître aurait rouvert le trou de `[finding silent-failure
+#644]` (un jour dont AUCUNE transaction n'est décrite : la liste est vide, le compte est le seul
+indice que des mouvements existent).
+
+---
+
+## `UNE-PREMISSE-VISUELLE-DE-L-UTILISATEUR-SE-MESURE-AVANT-D-ETRE-SUIVIE` (2026-09-18)
+
+**Le contexte.** À la question « comment veux-tu voir ta dette sur le graphe ? », Marc a répondu en
+texte libre : « Je vois pourtant bien qu'il y a une courbe rouge en dessous de zéro donc je veux que
+ce soit celle-ci qui continue **si c'est bien celle de la dette** ».
+
+**La mesure.** Ce n'était pas sa dette. La seule série tracée sous zéro est `ImpotLatent` — l'impôt
+qu'il devrait si tout était liquidé —, et `DettesNonImmo` n'était tout simplement pas tracée. Suivre
+la phrase à la lettre aurait fait passer un **impôt hypothétique** pour sa **dette réelle**, sur le
+graphe qui porte son patrimoine.
+
+**La leçon.** Une observation d'utilisateur sur ce qu'il VOIT est une donnée, exacte (il voyait bien
+une courbe rouge sous zéro) ; son INTERPRÉTATION est une hypothèse. Les deux arrivent dans la même
+phrase et se distinguent rarement — ici le « si c'est bien » de Marc était l'invitation explicite à
+mesurer, et il aurait été tentant de le lire comme une formule de politesse. **Devant « je vois
+X donc fais Y », vérifier que X est bien ce qu'il croit avant de faire Y** : le geste est un grep
+des séries du graphe, pas un raisonnement.
+
+⚠️ Conséquence de conception : les deux courbes devaient devenir **indiscernables l'une de l'autre
+par accident et discernables à l'œil** — orange PLEIN pour la dette, rouge POINTILLÉ pour l'impôt
+latent. Un test verrouille les deux axes (couleur ET forme) : n'ancrer que la couleur laisserait un
+lot futur re-fondre les deux en changeant la forme, et réciproquement.
+
+⚠️ `detteSousZero` rend **`null`**, jamais `0`, quand `DettesNonImmo` est absent ou non fini. `0`
+signifierait « aucune dette » — la valeur la plus CRÉDIBLE, donc la pire (`no-fake-data` appliqué à
+un point de courbe). ⚠️ Et le retour a dû normaliser `-0` : `v === 0 ? 0 : -v`, sinon `toBe(0)`
+rougit sur une dette éteinte, `-0` et `0` étant distincts pour `Object.is`.
+
+---
+
+## `UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE` (2026-09-18)
+
+**Le fait.** `tests/services/bilanQuotidien.test.ts` extrait le set `CURVE_FIELDS` du source de
+`FutureProjection.tsx` en relevant tout ce qui est entre apostrophes simples. J'ai ajouté **une
+ligne de commentaire** à ce bloc — « sa vraie raison d'être dans ce set… » — et le test a rougi en
+affirmant que `DettesNonImmo` était **ABSENTE** de `CURVE_FIELDS`. Elle y était, intacte, à la ligne
+suivante.
+
+**Le mécanisme.** L'apostrophe française et le délimiteur de chaîne JavaScript sont le **même
+caractère**. Un commentaire portant un nombre **IMPAIR** d'apostrophes décale toutes les paires qui
+suivent : le scan ne relève plus des littéraux mais des tranches de prose. Le bloc `CURVE_FIELDS`
+est presque entièrement du commentaire français — une bombe amorcée depuis le jour où il a été
+écrit, que n'importe quel lot pouvait faire sauter sans toucher au code.
+
+**Pourquoi c'est pire qu'un faux positif ordinaire.** Le message accusait un champ money-critical
+d'être absent d'une liste où il est. Un scan qui accuse le code d'après la PROSE qui l'entoure
+envoie corriger ce qui va bien — et le correctif « évident » (rajouter le champ) l'aurait mis en
+double sans rien régler.
+
+**La règle, déjà écrite, encore non tenue.** `SCAN-QUI-MATCHE-LA-PROSE` dit depuis longtemps que
+**toute** assertion de compte ou d'absence sur du source lit la source **DÉCOMMENTÉE**. Cette garde
+est antérieure et n'avait jamais été reprise. Le geste n'est pas de compter les apostrophes : c'est
+`stripCommentsJsx` (la source unique), point.
+
+⚠️ **Et le seuil d'anti-vacuité recopié était FAUX au premier essai**, deuxième fois pour cette
+classe : `partDeCodeRestante > 0.5` est le seuil d'un scan de **DÉPÔT** (agrégé sur des centaines de
+fichiers). Mesuré sur `FutureProjection.tsx` : **0,455** — il est à plus de la moitié commentaire
+par conception, et le 0,5 l'a déclaré VIDE. Seuil re-mesuré à 0,35, **la mesure écrite à côté avec
+sa date**, et doublé d'une anti-vacuité qui ne dépend d'aucun seuil : un jeton de vrai code
+(`RENDER_MAX_POINTS`) doit survivre, un jeton de PROSE (« patrimoine faux et crédible ») doit
+disparaître — un décommenteur cassé dans un sens ou dans l'autre rougit alors.
+
+⚠️ Deux perturbations **de sens opposé** prouvent la réparation : retirer `DettesNonImmo` → rouge
+(la garde tire encore) ; ajouter un commentaire à apostrophe impaire → **vert** (le faux positif a
+disparu). Réparer un faux positif sans prouver que le vrai positif survit, c'est désarmer la garde.
+
+---
+
+## `UN-LOT-QUI-AJOUTE-UNE-SERIE-DOIT-L-AJOUTER-PARTOUT-OU-LE-GRAPHE-EST-REPRESENTE` (2026-09-18)
+
+**Le fait.** Le lot `[FUTUR-COURBE-DETTE]` ajoutait une série au graphe Futur. Gate ciblé vert,
+cinq gardes neuves, trois perturbations séparées — et le panel a trouvé **deux défauts ÉLEVÉS**,
+qui sont le même défaut vu de deux côtés.
+
+1. **Le producteur qui calcule sans publier.** `buildPastPrefix` dérivait déjà `debtNonImmo`, avec
+   tout son gating (`startDate`, amortissement), et s'en servait **uniquement** pour produire
+   `NetWorth` — le champ n'était ni dans son type ni dans l'objet poussé. `detteSousZero` y lisait
+   donc `undefined` et rendait `null` : **un trou silencieux dans la courbe**, sur le repli MENSUEL
+   et sur le premier point d'ancrage de la courbe quotidienne. Indiscernable d'une dette à zéro, et
+   exactement à l'endroit que le lot existait pour remplir.
+2. **La représentation qu'on oublie parce qu'on ne la regarde pas.** La table de données `sr-only`
+   est l'alternative texte du graphe, et l'`aria-label` du conteneur promet en toutes lettres « les
+   mêmes données ». Sa liste de colonnes est écrite À LA MAIN : la nouvelle série n'y est pas entrée,
+   donc un utilisateur de lecteur d'écran obtenait une table où **la valeur nette ne se recompose
+   plus** par somme des comptes — le défaut corrigé la veille dans l'infobulle
+   (`UNE-REPARTITION-QUI-NE-LISTE-QUE-LES-TERMES-POSITIFS…`), laissé intact un cran à côté.
+
+**La leçon.** Une série n'est pas un `<Area>`. C'est un CHAMP qui doit exister sur tout point, chez
+**tous** les producteurs, et une LIGNE dans toutes les représentations du graphe. Après avoir ajouté
+une série, énumérer : quels producteurs fabriquent les points de cette courbe (ici deux : le
+quotidien et le repli mensuel), et par quelles surfaces ce graphe est aussi rendu (légende,
+infobulle, détail complet, table accessible, PDF). `MODULE-ECRIT-HORS-CHECKLIST` appliquée à une
+série d'affichage — et le producteur oublié est celui qu'on n'emprunte **pas** dans le cas nominal.
+
+⚠️ **Le signal était dans le code** : le jumeau `dailyPastLedger` publiait le champ depuis toujours.
+Ce n'est pas l'absence qui est lisible, c'est l'**ASYMÉTRIE entre deux producteurs du même
+registre** — aucun des deux n'étant faux tout seul.
+
+⚠️ **La garde de la table est DÉRIVÉE, jamais recopiée** : « toute série en AIRE de
+`FUTURE_LEGEND_ITEMS` a sa colonne ». Une garde qui recopierait la liste des colonnes serait
+CIRCULAIRE et ne pourrait voir aucun oubli — même famille que « une garde qui lit la table de config
+pour choisir quoi vérifier ».
+
+⚠️ **Et la grandeur publiée est la MÊME VARIABLE** que celle retranchée du patrimoine, pas un second
+calcul : deux dérivations du même solde divergent au premier lot qui touche à l'une des deux, et
+aucune n'est fausse toute seule (`UNE-REGLE-SUR-LA-PRECISION…`, même piège).
+
+⚠️ Contrôle négatif obligatoire : sur un point dont le patrimoine est INCONNU, le champ reste
+`undefined`. Publier un montant là serait un chiffre crédible sans mesure derrière — et l'assertion
+de boucle qui le vérifie a sa propre anti-vacuité (elle est vraie d'une liste vide).
+
+⚠️ Corollaire de DOC : le lot avait mis à jour `CLAUDE.md`, `CHANGELOG.md`, `HANDOVER.md` et
+`BACKLOG.md` mais manqué `docs/PROJECTION_OUTPUT_SCHEMA.md`, le document de CONTRAT, qui décrivait
+encore « le plafond d'affichage à 6 » retiré par le même lot. Les docs de contrat ne sont pas dans
+le réflexe parce qu'on ne les édite presque jamais — c'est exactement pourquoi elles pourrissent.
+
+---
+
+## `UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-DE-GARDES` (2026-09-18)
+
+**Le fait.** Le lot précédent a été refusé par le contrôle de qualité de la CI : **3,3 % de
+duplication sur le code neuf** (seuil ≤ 3 %). Les deux blocs dupliqués étaient à moi, et le second
+est le plus instructif : j'avais écrit **deux fois** un lecteur de source décommentée avec son
+anti-vacuité — une fois dans `bilanQuotidien.test.ts`, une fois dans la garde a11y neuve.
+
+`tests/helpers/source.ts` **exportait déjà** `readCodeOnly(path, witness, minCodeRatio)`, qui fait
+exactement ça : décommenter, exiger une part de code non blanc, exiger un témoin de vrai code. Son
+en-tête porte la leçon `GUARD-STRIPCOMMENTS-DUPLIQUE` — « le dépôt avait déjà SIX décommenteurs,
+aucun exporté ». Je l'ai re-commise **dans la session même où je venais de réparer un de ces
+scans**, et deux fois de suite.
+
+**La leçon.** « Grep le CONCEPT, pas le symbole » est écrite depuis longtemps ; ce qui manquait est
+le DÉCLENCHEUR. Le voici : **quand on s'apprête à écrire une garde, chercher d'abord dans
+`tests/helpers/`** — une garde a presque toujours besoin de ce qu'une autre garde a déjà eu besoin,
+et le premier réflexe est d'écrire les quinze lignes plutôt que de chercher les trois mots.
+
+⚠️ **C'est un contrôle de DUPLICATION qui l'a dit, pas une relecture.** Aucun humain et aucun panel
+n'avait signalé les deux copies : elles sont justes, commentées, et chacune se lit très bien
+isolément. Une duplication ne se voit qu'à l'échelle du DIFF, ce qui est précisément la portée d'un
+gate automatique — l'inverse d'un panel, qui juge chaque fichier pour ce qu'il affirme.
+
+⚠️ Le seuil recopié reste FAUX au premier essai (3ᵉ fois pour cette classe) : `readCodeOnly` prend
+`minCodeRatio` en argument, et le 0,2 par défaut ne vaut pas pour `FutureProjection.tsx` (0,455
+mesuré). Le SEUIL voyage avec l'appelant, le MÉCANISME avec le helper.
+
+⚠️ Et ce qui reste chez l'appelant est ce que le helper ne porte PAS : le **second témoin**, un
+jeton de PROSE qui doit avoir disparu. Sans lui, un décommenteur qui ne décommenterait rien
+passerait la part de code et le témoin de code. Partager un helper n'est pas partager toutes ses
+assertions — chaque garde garde celles qui lui appartiennent.

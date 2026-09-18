@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 251 tests** Vitest
-(629 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes ajoutées depuis, lancées en ciblé : 2 à l'écran (marchand déjà lié, refus annoncé) et 1 de RACCORD (badge = dernier point de la courbe). Huit perturbations SÉPARÉES sur ce lot : 10 / 3 / 2 / 1 / 1 / 1 / 1 / 1 rouge). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **6 262 tests** Vitest
+(631 fichiers de test, base MESURÉE en local le 2026-09-18 à 15:31 UTC sur `7a2aa60b` (982 s — 629 fichiers, 6 248 tests, tous verts) + **3** gardes du lot `[DETTE-VIREMENTS-REELS]` + **11** gardes des lots `[FUTUR-COURBE-DETTE]` / `[FUTUR-MOUVEMENTS-TOUS]` et de leurs deux correctifs de panel (2 fichiers neufs), toutes lancées en ciblé et vertes ; sept perturbations SÉPARÉES, chacune ne touchant que sa cible, dont trois de sens OPPOSÉ. Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1311,6 +1311,81 @@ n'est pas réécrire un récit.
   réécrite avec un mécanisme INVENTÉ et un fichier de mesure avec son `console.log` sont partis dans
   un commit poussé. `UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE` vaut pour les FICHIERS qu'on ramasse,
   pas seulement pour les chiffres qu'on recopie.
+
+- ⚠️⚠️ **Une troncature ANNONCÉE reste une troncature si elle retire ce qu'on cherche** (2026-09-18,
+  signalé par Marc : « je vois pas les transactions dans l'infobulle on dirait ça manque des
+  transactions ») : le plafond de 6 mouvements par journée avait été rendu VISIBLE (`movementsTotal`
+  + « +N autres ») par un lot antérieur, et l'inventaire de cette dette vivait dans un test. Mesuré
+  sur les vraies transactions : **9 journées** dépassaient 6, la pire le **31 août avec 18 (12
+  cachés)** — et la liste gardait les six **PREMIERS RENCONTRÉS**, donc **Anthropic −321,93 $** et
+  **Global Exchange −307,40 $** sautaient pendant qu'un « Frais de service −15,95 $ » restait.
+  Rendre une troncature visible ne répond que si ce qu'elle retire est INDIFFÉRENT : **demander par
+  quel CRITÈRE les survivants sont choisis** — sans critère, un plafond ne borne pas le bruit, il
+  tire au sort. ⚠️ La contrainte invoquée n'existait pas (le conteneur porte déjà `max-h` +
+  `overflow-y-auto`) : la borne datait de l'époque où la liste ne portait que des NOMS, et a survécu
+  à l'ajout des MONTANTS qui lui retirait sa raison d'être. ⚠️ Le test de limite s'est INVERSÉ au
+  même endroit, anti-vacuité sur le DERNIER arrivé (celui que le plafond jetait en premier), et
+  `movementsTotal` SURVIT — il compte aussi les transactions sans description, donc « +N autres » ne
+  parle plus que d'elles ; le retirer avec le plafond rouvrait le trou de `[silent-failure #644]`
+  (`UNE-TRONCATURE-ANNONCEE-RESTE-UNE-TRONCATURE-SI-ELLE-RETIRE-CE-QU-ON-CHERCHE`).
+- ⚠️⚠️ **Une PRÉMISSE VISUELLE de l'utilisateur se mesure avant d'être suivie** (2026-09-18) : Marc
+  a répondu « je vois pourtant bien qu'il y a une courbe rouge en dessous de zéro donc je veux que
+  ce soit celle-ci qui continue **si c'est bien celle de la dette** ». Ce n'en était pas : la seule
+  série sous zéro est `ImpotLatent`, et `DettesNonImmo` n'était pas tracée du tout — suivre la
+  phrase aurait fait passer un impôt HYPOTHÉTIQUE pour sa dette RÉELLE. Ce qu'il VOIT est une donnée
+  exacte, ce qu'il en DÉDUIT est une hypothèse, et les deux arrivent dans la même phrase. Le geste
+  est un grep des séries, pas un raisonnement. ⚠️ Conséquence : les deux courbes doivent différer
+  par COULEUR **et** par FORME (orange plein / rouge pointillé), le test ancrant les deux — n'ancrer
+  que l'une laisse un lot futur les refondre par l'autre. ⚠️ Et le point rend `null`, jamais `0`,
+  quand le champ manque : `0` dirait « aucune dette », la valeur la plus crédible donc la pire
+  (`UNE-PREMISSE-VISUELLE-DE-L-UTILISATEUR-SE-MESURE-AVANT-D-ETRE-SUIVIE`).
+
+- ⚠️⚠️ **Une APOSTROPHE française est un délimiteur de chaîne** (2026-09-18, `SCAN-QUI-MATCHE-LA-PROSE`
+  re-payée sur une garde ANTÉRIEURE à la règle) : le scan qui extrait `CURVE_FIELDS` du source de
+  `FutureProjection.tsx` relevait tout ce qui est entre `'`. Une simple ligne de COMMENTAIRE ajoutée
+  au bloc (« sa raison d'**être** ») a décalé toutes les paires suivantes et fait accuser
+  `DettesNonImmo` d'être ABSENTE de la liste — alors qu'elle y est, intacte, ligne suivante. Le bloc
+  est presque entièrement du commentaire français : une bombe amorcée depuis son écriture, que
+  n'importe quel lot pouvait faire sauter sans toucher au code, et dont le correctif « évident »
+  (rajouter le champ) l'aurait mis en double. Le geste n'est pas de compter les apostrophes, c'est
+  `stripCommentsJsx`. ⚠️ Et mon seuil d'anti-vacuité recopié était faux au 1er essai (2ᵉ fois pour
+  cette classe) : `> 0.5` est le seuil d'un scan de DÉPÔT ; ce fichier est à **0,455** de code
+  mesuré — plus qu'à moitié commentaire par conception. Seuil re-mesuré, MESURE écrite à côté, plus
+  une anti-vacuité sans seuil (jeton de code présent / jeton de prose absent). ⚠️ Deux perturbations
+  de sens OPPOSÉ : champ retiré → rouge, commentaire à apostrophe impaire → vert — réparer un faux
+  positif sans prouver que le vrai positif survit, c'est désarmer la garde
+  (`UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE`).
+
+- ⚠️⚠️ **Un lot qui ajoute une SÉRIE doit l'ajouter PARTOUT où le graphe est représenté** (2026-09-18,
+  DEUX findings ÉLEVÉS du panel après un gate ciblé vert, et c'est le même défaut vu de deux côtés) :
+  (1) `buildPastPrefix` CALCULAIT la dette du mois avec tout son gating et ne la PUBLIAIT pas — elle
+  ne servait qu'à produire `NetWorth` —, donc la courbe neuve avait un **trou SILENCIEUX** sur le
+  repli mensuel et sur le premier point d'ancrage, indiscernable d'une dette à zéro, exactement là où
+  Marc avait demandé à la voir ; (2) la table de données `sr-only`, dont l'`aria-label` promet « les
+  mêmes données », a une liste de colonnes écrite À LA MAIN où la série n'est pas entrée — la valeur
+  nette n'y était plus recomposable par somme des comptes. **Une série n'est pas un `<Area>`** : c'est
+  un champ qui doit exister chez TOUS les producteurs de ces points, et une ligne dans TOUTES les
+  représentations du graphe (légende, infobulle, détail, table accessible, PDF) — les énumérer.
+  ⚠️ Le signal était lisible : le jumeau `dailyPastLedger` publiait le champ depuis toujours — ce
+  n'est pas l'absence qui se voit, c'est l'**ASYMÉTRIE entre deux producteurs du même registre**, et
+  le producteur oublié est celui qu'on n'emprunte PAS dans le cas nominal. ⚠️ La garde de la table est
+  **DÉRIVÉE** de la légende, jamais recopiée de `dataColumns` (une copie serait CIRCULAIRE et ne
+  verrait aucun oubli), et le champ publié est la MÊME VARIABLE que celle retranchée du patrimoine.
+  ⚠️ Et le lot avait mis à jour quatre documents mais manqué `PROJECTION_OUTPUT_SCHEMA.md`, le
+  document de CONTRAT — on ne l'édite presque jamais, c'est exactement pour ça qu'il pourrit
+  (`UN-LOT-QUI-AJOUTE-UNE-SERIE-DOIT-L-AJOUTER-PARTOUT-OU-LE-GRAPHE-EST-REPRESENTE`).
+
+- ⚠️⚠️ **Avant d'écrire une garde, chercher dans `tests/helpers/`** (2026-09-18, signalé par le
+  contrôle de DUPLICATION de la CI — 3,3 % sur le code neuf, seuil 3 %) : j'avais réécrit **deux
+  fois**, dans la même session, un lecteur de source décommentée avec son anti-vacuité, alors que
+  `readCodeOnly` existait et l'EXPORTAIT — son en-tête portant justement la leçon
+  `GUARD-STRIPCOMMENTS-DUPLIQUE` (« six décommenteurs, aucun exporté »). « Grep le CONCEPT, pas le
+  symbole » était écrite ; ce qui manquait est le DÉCLENCHEUR, et le voici. ⚠️ **C'est un gate
+  automatique qui l'a vu, pas un panel** : les deux copies sont justes et se lisent bien isolément —
+  une duplication n'existe qu'à l'échelle du DIFF. ⚠️ Le SEUIL voyage avec l'appelant (0,35 ici,
+  contre 0,2 par défaut), le MÉCANISME avec le helper ; et ce qui reste chez l'appelant est ce que
+  le helper ne porte pas — partager un helper n'est pas partager toutes ses assertions
+  (`UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-DE-GARDES`).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

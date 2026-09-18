@@ -4,6 +4,45 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-18 (suite 2) — **la dette a sa courbe, l'infobulle ne cache plus rien**
+> Demande de Marc : « je veux voir la courbe de la dette même dans le passé et je vois pas les
+> transactions dans l'infobulle on dirait ça manque des transactions, fais une grosse grosse passe
+> sur les infobulles y a des irritants pose des questions ».
+> 🔎 **`[FUTUR-COURBE-DETTE]`** — `DettesNonImmo` devient une série du graphe, aire **orange plein
+> sous zéro** (`#ea580c`), présente au PASSÉ comme au futur, débrayable depuis la légende.
+> ⚠️ **Sa prémisse a été mesurée avant d'être suivie** : « il y a bien une courbe rouge sous zéro,
+> je veux que ce soit celle-ci ». C'est `ImpotLatent`, pas sa dette — la suivre aurait fait passer un
+> impôt hypothétique pour une dette réelle. Couleur ET forme distinctes, verrouillées par test.
+> 🔎 **`[FUTUR-MOUVEMENTS-TOUS]`** — le plafond de 6 mouvements par journée est RETIRÉ.
+> **Mesuré sur les vraies transactions de Marc** (1er août → 18 septembre) : **9 journées**
+> dépassaient 6, la pire le **31 août avec 18 mouvements (12 cachés)** — et la liste gardait les six
+> PREMIERS rencontrés, pas les plus gros : **Anthropic −321,93 $** et **Global Exchange −307,40 $**
+> étaient cachés pendant qu'un « Frais de service −15,95 $ » restait affiché. Le conteneur défile
+> déjà (`max-h` + `overflow-y-auto`) : la place n'était pas la contrainte.
+> Le test de limite du plafond est **INVERSÉ** au même endroit, avec sa mesure. « +N autres » ne
+> parle plus que des transactions SANS description — ce qu'il aurait toujours dû dire.
+> ⚠️⚠️ **Le PANEL a trouvé DEUX défauts ÉLEVÉS après un gate ciblé vert, tous deux corrigés dans le
+> même lot** : (1) `buildPastPrefix` CALCULAIT la dette du mois et ne la PUBLIAIT pas — donc la
+> courbe neuve avait un **trou silencieux** sur le repli MENSUEL et sur le premier point d'ancrage,
+> indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir ; (2) la table de
+> données `sr-only` (dont l'`aria-label` promet « les mêmes données ») n'avait pas la colonne de la
+> nouvelle série — la valeur nette n'y était plus recomposable par somme des comptes. **Les deux
+> sont la même classe** : un lot qui ajoute une série ne l'a pas ajoutée PARTOUT où le graphe est
+> représenté. Plus un document de contrat périmé (`PROJECTION_OUTPUT_SCHEMA.md` décrivait encore le
+> plafond de 6).
+> ✅ Ciblé : `npm run typecheck` vert (VU), `lint` 0 erreur, 88 tests des surfaces touchées verts.
+> Sept perturbations SÉPARÉES au total, dont trois de sens OPPOSÉ (un faux positif doit disparaître
+> SANS que le vrai positif meure). Compteur : **6 262** (631 fichiers).
+> Perturbations SÉPARÉES : dette dessinée POSITIVE → 1 rouge · dette à la couleur de l'impôt latent
+> → 1 rouge · champ absent dessiné à zéro → 1 rouge · plafond de 6 rétabli → 2 rouges (et
+> uniquement les deux assertions visées). Compteur : 6 251 → **6 257** (630 fichiers).
+> ⚠️ **SUITE IMMÉDIATE — `[FUTUR-PANNEAU-FIXE]`, déjà cadré avec Marc, rien à lui redemander** :
+> panneau FIXE sous le graphe (PC **et** téléphone), **colonnes sur PC / onglets sur téléphone**,
+> le graphe **garde sa taille** (la page défile), état initial **aujourd'hui**, pas à pas
+> veille/lendemain toujours présent. Il a coché les QUATRE irritants **et** les quatre « ce que je
+> regarde en premier » ⇒ le problème est l'**ORGANISATION**, pas le volume : **aucune section ne se
+> supprime**.
+>
 > ## 🟦 Session 2026-09-18 (suite) — **la dette suit les VRAIS virements**
 > 🔎 **`[DETTE-VIREMENTS-REELS]`** — Marc : « chaque fois que je paie toyota ca enleve ca de la
 > dette ». Champ `Debt.paymentPayee` (le marchand, CHOISI dans une liste) ; `sourceVersements`

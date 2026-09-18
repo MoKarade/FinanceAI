@@ -318,7 +318,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
 
             {/* U4 — Tous les événements du mois, pas juste le premier.
                 Avant : seul events[0] affiché + « +N ». Maintenant : liste
-                complète (le tooltip est déjà scrollable max-h-[480px]).
+                complète (le tooltip est déjà scrollable max-h-[560px]).
                 Chaque ligne a son icône dédié via splitEventIcon. */}
             {events.length > 0 && (
                 <div className="mb-2.5 space-y-1">
@@ -420,9 +420,12 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                     ? <PrivateText className="text-tiny text-ink-100">{dayLabels.join(', ')}</PrivateText>
                                     : <span className="text-tiny text-ink-100">Mouvement à date connue</span>
                             )}
-                            {/* ⚠️ La troncature était SILENCIEUSE. Avec des montants affichés, Marc
-                                lirait six dépenses en croyant les avoir toutes — même classe que
-                                `truncatedFrom`.
+                            {/* ⚠️ [FUTUR-MOUVEMENTS-TOUS 2026-09-18] Cette ligne ne parle PLUS d'une
+                                troncature d'affichage : il n'y en a plus (le plafond de 6 est
+                                retiré, `dayMovements` sort entier et le panneau défile déjà —
+                                `max-h`/`overflow-y-auto` du conteneur). L'écart restant est celui
+                                des transactions SANS description, qui n'entrent dans aucune liste
+                                affichée : c'est exactement ce dont le titre parle depuis toujours.
                                 ⚠️ [finding silent-failure #644] Cette ligne est HORS du ternaire, et
                                 c'est le correctif : une journée dont AUCUNE transaction ne porte de
                                 description tombe dans la branche de repli (liste affichée vide) —
@@ -453,7 +456,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 cliquable que figé (le tooltip de survol est `pointer-events:none`). */}
             {frozen ? (
                 /* ⚠️ [FUTUR-TOOLTIP-STICKY-ACTIONS 2026-08-12] Pied COLLANT, et ce n'est pas du
-                   style : l'infobulle défile en interne (`max-h-[480px] overflow-y-auto`) et avec
+                   style : l'infobulle défile en interne (`max-h-[560px] overflow-y-auto`) et avec
                    des données réelles (bloc impôts + par-compte + événements) le pied dépassait le
                    pli — Marc ne VOYAIT pas « Voir ce mois jour par jour » alors qu'il était rendu
                    (capture 2026-08-12, infobulle coupée). L'e2e ne l'a jamais attrapé : Playwright

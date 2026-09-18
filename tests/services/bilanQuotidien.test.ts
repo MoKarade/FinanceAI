@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readCodeOnly } from '../helpers/source';
 import { join } from 'node:path';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import { buildDailyLedger, NET_WORTH_DAILY_ASSETS, FIELD_KIND } from '../../services/projection/dailyLedger';
@@ -140,8 +140,30 @@ describe('[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE] le patrimoine au jour EST son bilan
     // `buildDailyLedger`, pas la configuration de son APPELANT — `TEST-AU-CONTRAT-NE-VOIT-PAS-
     // L-APPELANT`, sur mon propre correctif. Ce cas-ci rejoue la ventilation avec le set EXACT lu
     // dans le source du composant : il échoue si quelqu'un retire `DettesNonImmo` de `CURVE_FIELDS`.
+    //
+    // ⚠️⚠️ CE SCAN LIT LA SOURCE **DÉCOMMENTÉE** (2026-09-18, `SCAN-QUI-MATCHE-LA-PROSE`, re-payée).
+    // Il ne le faisait pas, et le bloc `CURVE_FIELDS` est presque entièrement du COMMENTAIRE
+    // FRANÇAIS. Or l'apostrophe française est le même caractère qu'un délimiteur de chaîne : un
+    // commentaire portant un nombre IMPAIR d'apostrophes (« sa raison d'être ») décale toutes les
+    // paires suivantes, et le scan rend alors un set FAUX. Mesuré : le lot `[FUTUR-COURBE-DETTE]`
+    // a ajouté une ligne de commentaire à ce bloc et le test a rougi en accusant
+    // `DettesNonImmo` d'être ABSENTE de `CURVE_FIELDS` — alors qu'elle y est, intacte, à la ligne
+    // suivante. Un scan qui accuse le code d'après la PROSE qui l'entoure est pire qu'absent : il
+    // envoie corriger ce qui va bien.
     const curveFieldsDuComposant = (): Set<string> => {
-        const src = readFileSync(join(__dirname, '../../components/FutureProjection.tsx'), 'utf-8');
+        // ⚠️ Lecture via `readCodeOnly` (`tests/helpers/source.ts`), qui EXISTAIT déjà et fait
+        // exactement ce travail : décommenter, puis prouver que le décommentage n'a pas tout mangé
+        // (part de code non blanc + un témoin de vrai code). Mon 1er jet l'avait réécrit à la main,
+        // DEUX fois — `GUARD-STRIPCOMMENTS-DUPLIQUE` re-commise dans la session même où je venais de
+        // l'écrire, et c'est le contrôle de DUPLICATION de la CI qui l'a dit.
+        // **Grep le CONCEPT, pas le symbole.**
+        // ⚠️ Seuil 0,35 et non le 0,2 par défaut : MESURÉ le 2026-09-18, `FutureProjection.tsx` est
+        // à **0,455** de code — plus qu'à moitié commentaire par conception
+        // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
+        const src = readCodeOnly(join(__dirname, '../../components/FutureProjection.tsx'), 'RENDER_MAX_POINTS', 0.35);
+        // Le SECOND témoin, celui que `readCodeOnly` ne porte pas : un jeton de PROSE doit avoir
+        // DISPARU. Sans lui, un décommenteur qui ne décommente rien passerait les deux autres.
+        expect(src).not.toContain('patrimoine faux et crédible');
         const bloc = src.match(/const CURVE_FIELDS[^=]*= new Set\(\[([\s\S]*?)\]\)/);
         if (!bloc) throw new Error('CURVE_FIELDS introuvable dans FutureProjection.tsx');
         return new Set([...bloc[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));

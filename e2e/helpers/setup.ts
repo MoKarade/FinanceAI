@@ -44,9 +44,15 @@ export function scriptBypassOnboarding(): string {
  * MESURÉ le 2026-09-21 sur `main` (4f1466b4), sans aucun changement applicatif :
  * `futureAxis.spec.ts` échoue 3 fois sur 3 (30 s chacune) avec le pointeur en (0,0), et passe
  * une fois le pointeur écarté. Le même mécanisme faisait expirer le job E2E de la CI à son
- * plafond de 30 minutes.
+ * plafond de 30 minutes. Suite complète : 18 tests traités en 29 min et TOUS en échec avant,
+ * **52 passés / 2 échoués en 7,4 min** après — les 2 restants étant le MÊME défaut dans un
+ * spec qui ne passe pas par `activateTestMode` (d'où l'export).
+ *
+ * ⚠️ RÈGLE, et c'est pour ça qu'il est EXPORTÉ : tout spec qui clique un contrôle situé dans
+ * les 288 px de gauche APRÈS un `goto` doit l'appeler d'abord. Le premier clic d'une page
+ * neuve est toujours concerné, puisque le pointeur n'a pas encore bougé de (0,0).
  */
-async function ecarterLeRail(page: Page): Promise<void> {
+export async function ecarterLeRail(page: Page): Promise<void> {
   const vp = page.viewportSize();
   if (!vp) return;
   await page.mouse.move(vp.width - 5, Math.floor(vp.height / 2));

@@ -79,21 +79,6 @@
 > se ferme **tout de suite, en lot séparé** ; (6) backup manuel **refusé avec explication**, export
 > PDF **refusé** pendant le mode (choix de Marc CONTRE ma recommandation de filigrane).
 
-- [x] 🔒 **`[SANDBOX-ETANCHEITE-FICHIERS]`** (M) — ✅ **livré 2026-09-21** (lot de sécurité séparé,
-  décision 5 ci-dessus). Trois sorties qui produisent un FICHIER ne regardaient **jamais** si l'app
-  tourne sur des données fictives — mesuré : `services/backupAuto.ts`, `services/pdfReport.ts` et
-  `services/claude.ts` contenaient **zéro** occurrence de `isTestMode`. Livré : backup d'ARCHIVE
-  refusé (avec cause nommée, distincte d'une panne), export PDF refusé, téléchargement CSV refusé.
-  ⚠️ **Le backup FILET n'est PAS refusé**, et c'est le cœur du lot : mesuré, `createBackupNow` a
-  CINQ appelants dont trois posent un filet avant une opération destructive — `writeExecutor` fait
-  de sa réussite la CONDITION de l'écriture (le refuser interdirait à l'assistant toute écriture
-  dans le bac à sable), `syncPull` et `restoreBackup` perdraient le leur. D'où une INTENTION
-  explicite (`archive` / `filet`) : `source: 'auto' | 'manual'` mélangeait les deux.
-  ⚠️ Un backup-filet pris en mode fictif porte désormais `testMode: true`.
-  Gardes : `tests/services/etancheiteDonneesFictives.test.ts` (11 cas, 2 perturbations de sens
-  OPPOSÉ prouvées). Source unique du prédicat : `store/modeTestActif.ts` (il vivait en DEUX copies
-  non exportées).
-
 - [ ] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
   (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
   `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi

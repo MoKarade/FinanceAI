@@ -10,6 +10,35 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-21 (nuit) — `[SANDBOX-ETANCHEITE-FICHIERS]` (PR #1006, mergée, déployée)
+
+Déménagé au merge de la PR #1006 (`17d02997`), conformément à la règle « item fini ET validé →
+DÉMÉNAGE, au plus tard à la PR suivante ». **Déploiement de production
+`dpl_5f5dEZRS5VD4TtXhqwDYyDmADopy` CRÉÉ et `READY` sur le SHA exact** — ⚠️ la RÉPONSE servie n'a
+PAS pu être lue depuis ce conteneur (403 au CONNECT, §6 de `CLAUDE.md`) : ce qui est vérifié est
+la création et l'état du déploiement, rien de plus.
+
+⚠️ **La CI a rendu 3 rouges dans 2 fichiers que le lot ne touche PAS**, réparés dans la même PR et
+consignés sous `UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL` : une anti-vacuité posée à
+0,0007 de marge de sa propre mesure, et un détecteur de frontière `services/ ↔ store` rendu aveugle
+par la source unique que ce lot venait d'extraire. Le périmètre à rejouer n'est pas « ce que j'ai
+édité » mais « ce qui SCANNE ce que j'ai édité ».
+
+- [x] 🔒 **`[SANDBOX-ETANCHEITE-FICHIERS]`** (M) — ✅ **livré 2026-09-21** (lot de sécurité séparé,
+  décision 5 ci-dessus). Trois sorties qui produisent un FICHIER ne regardaient **jamais** si l'app
+  tourne sur des données fictives — mesuré : `services/backupAuto.ts`, `services/pdfReport.ts` et
+  `services/claude.ts` contenaient **zéro** occurrence de `isTestMode`. Livré : backup d'ARCHIVE
+  refusé (avec cause nommée, distincte d'une panne), export PDF refusé, téléchargement CSV refusé.
+  ⚠️ **Le backup FILET n'est PAS refusé**, et c'est le cœur du lot : mesuré, `createBackupNow` a
+  CINQ appelants dont trois posent un filet avant une opération destructive — `writeExecutor` fait
+  de sa réussite la CONDITION de l'écriture (le refuser interdirait à l'assistant toute écriture
+  dans le bac à sable), `syncPull` et `restoreBackup` perdraient le leur. D'où une INTENTION
+  explicite (`archive` / `filet`) : `source: 'auto' | 'manual'` mélangeait les deux.
+  ⚠️ Un backup-filet pris en mode fictif porte désormais `testMode: true`.
+  Gardes : `tests/services/etancheiteDonneesFictives.test.ts` (11 cas, 2 perturbations de sens
+  OPPOSÉ prouvées). Source unique du prédicat : `store/modeTestActif.ts` (il vivait en DEUX copies
+  non exportées).
+
 ## 2026-09-21 (soir) — 3 items livrés (PR #1003 · PR Hubperso #63)
 
 Déménagés au merge de la PR #1003, conformément à la règle « item fini ET validé → DÉMÉNAGE,

@@ -144,6 +144,7 @@ import { buildDailyPastLedger } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCAD, formatCompactCAD } from '../utils/format';
+import { maskedTick } from '../utils/chartPrivacy';
 import { NO_DATA_LABEL } from './ui/emptyAware';
 // [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
@@ -1990,7 +1991,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     x={isDailyCurve && todayAxisX !== null ? todayAxisX : todayMonthIndex}
                                     y={pointAncre.NetWorth}
                                     r={0}
-                                    shape={<TodayValueBadge value={isPrivacyMode ? '***' : formatCompactCAD(pointAncre.NetWorth)} />}
+                                    shape={<TodayValueBadge value={maskedTick(isPrivacyMode, formatCompactCAD)(pointAncre.NetWorth)} />}
                                 />
                             )}
 

@@ -118,30 +118,51 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
     );
 };
 
+// [FUTUR-AXE-Y-MINIMAL, revue panel] Pastille de graphe PARTAGÉE (rect arrondi + texte centré) —
+// extraite de `RefLineLabel`/`TodayValueBadge` pour que le prochain correctif de contraste/police
+// ne se fasse pas sur l'un et s'oublie sur l'autre (les deux étaient identiques à quelques
+// constantes près, dupliquées). `aria-hidden` explicite en DÉFENSE EN PROFONDEUR : ce `<g>` est
+// déjà présentationnel par héritage (descendant sans rôle propre d'un ancêtre `role="img"`), mais
+// ne pas en dépendre implicitement — audit a11y du panel, 2026-09-21.
+const Pill = (props: { x: number; y: number; text: string; color: string; fontSize: number; height: number; widthPad: number; fillOpacity: number; rx: number }) => {
+    const { x, y, text, color, fontSize, height, widthPad, fillOpacity, rx } = props;
+    const w = Math.round(text.length * fontSize * 0.58 + widthPad);
+    return (
+        <g aria-hidden="true" style={{ pointerEvents: 'none' }}>
+            <rect x={x} y={y} width={w} height={height} rx={rx} fill="#0B0E14" fillOpacity={fillOpacity} stroke={color} strokeOpacity={0.55} />
+            <text x={x + w / 2} y={y + height / 2 + 0.5} textAnchor="middle" dominantBaseline="central" fill={color} fontSize={fontSize} fontWeight="bold">{text}</text>
+        </g>
+    );
+};
+
 // [FUTUR-AXE-Y-MINIMAL] Badge flottant ancré sur le POINT « aujourd'hui » de la courbe (pas sur la
 // ligne verticale de référence, déjà étiquetée par `RefLineLabel` plus haut dans le graphe) —
 // rendu comme `shape` d'un `ReferenceDot`, recharts y injecte `cx`/`cy` en pixels. Remplace
 // l'ancien axe Y numérique (retiré, `[FUTUR-AXE-Y-MINIMAL]`) pour LA seule valeur qui compte au
 // premier regard : la valeur nette d'aujourd'hui, déjà calculée ailleurs (`pointAncre.NetWorth`,
-// même source que le panneau du jour) — jamais recalculée ici.
+// même source que le panneau du jour) — jamais recalculée ici. L'appelant masque `value` en mode
+// discret AVANT de l'y passer (`maskedTick`, `utils/chartPrivacy.ts` — source unique du « *** »,
+// jamais un littéral recopié ici).
 export const TodayValueBadge = (props: { cx?: number; cy?: number; value?: string }) => {
     const { cx, cy, value } = props;
-    if (typeof cx !== 'number' || typeof cy !== 'number' || !value) return null;
-    const fontSize = 12;
-    const w = Math.round(value.length * fontSize * 0.58 + 20);
+    // `Number.isFinite`, pas `typeof === 'number'` : ce dernier laisse passer `NaN` (même patron
+    // que `ClickableEventIcon` ci-dessus, mais un garde de SORTIE ne doit pas hériter d'un défaut
+    // d'entrée qu'il peut éviter — revue panel silent-failure-hunter, 2026-09-21).
+    if (!Number.isFinite(cx) || !Number.isFinite(cy) || !value) return null;
     const h = 22;
     // Tige verticale (patron `ClickableEventIcon`) : lève le badge AU-DESSUS de la zone où les
-    // pastilles d'événement s'empilent (elles montent par paliers de 24px depuis le point) —
-    // sans elle, mesuré à l'écran, le badge se peignait dans le même espace que la 1re pastille.
-    const dy = -46;
-    const rectX = cx + 6;
-    const rectY = cy + dy - h / 2;
+    // pastilles d'événement s'empilent (elles montent par paliers de 24px depuis le point, jusqu'à
+    // 2-3 crans si plusieurs événements tombent le même jour) — sans elle, mesuré à l'écran, le
+    // badge se peignait dans le même espace que la 1re pastille. -60 (et non -46) : marge mesurée
+    // pour rester au-dessus d'une 2e pastille empilée (subIdx=1, centrée à -44) — revue panel.
+    const dy = -60;
+    const rectX = (cx as number) + 6;
+    const rectY = (cy as number) + dy - h / 2;
     return (
-        <g style={{ pointerEvents: 'none' }}>
-            <line x1={cx} y1={cy} x2={cx} y2={cy + dy} stroke="#ffffff" strokeOpacity={0.45} strokeWidth={1} />
+        <g style={{ pointerEvents: 'none' }} aria-hidden="true">
+            <line x1={cx} y1={cy} x2={cx} y2={(cy as number) + dy} stroke="#ffffff" strokeOpacity={0.45} strokeWidth={1} />
             <circle cx={cx} cy={cy} r={4} fill="#ffffff" stroke="#0B0E14" strokeWidth={1.5} />
-            <rect x={rectX} y={rectY} width={w} height={h} rx={11} fill="#0B0E14" fillOpacity={0.92} stroke="#ffffff" strokeOpacity={0.55} />
-            <text x={rectX + w / 2} y={rectY + h / 2 + 0.5} textAnchor="middle" dominantBaseline="central" fill="#ffffff" fontSize={fontSize} fontWeight="bold">{value}</text>
+            <Pill x={rectX} y={rectY} text={value} color="#ffffff" fontSize={12} height={h} widthPad={20} fillOpacity={0.92} rx={11} />
         </g>
     );
 };
@@ -154,17 +175,14 @@ export const RefLineLabel = (props: { viewBox?: { x?: number; y?: number; width?
     const { viewBox, value, color = '#ffffff' } = props;
     if (!viewBox) return null;
     const { x = 0, y = 0, width = 0, height = 0 } = viewBox;
-    const fontSize = 11;
-    const text = String(value);
-    const w = Math.round(text.length * fontSize * 0.58 + 16);
     const h = 18;
+    const text = String(value);
     const isHorizontal = width >= height; // FIRE (horizontale) vs Aujourd'hui (verticale)
+    // `w` recalculé ici (dupliqué de `Pill`, même formule) uniquement pour positionner rectX/rectY
+    // AVANT le rendu — `Pill` la recalcule à l'identique, aucune divergence possible (même formule,
+    // mêmes paramètres).
+    const w = Math.round(text.length * 11 * 0.58 + 16);
     const rectX = isHorizontal ? x + width - w - 6 : x + 6;
     const rectY = isHorizontal ? y - h - 3 : y + 3;
-    return (
-        <g style={{ pointerEvents: 'none' }}>
-            <rect x={rectX} y={rectY} width={w} height={h} rx={9} fill="#0B0E14" fillOpacity={0.88} stroke={color} strokeOpacity={0.55} />
-            <text x={rectX + w / 2} y={rectY + h / 2 + 0.5} textAnchor="middle" dominantBaseline="central" fill={color} fontSize={fontSize} fontWeight="bold">{text}</text>
-        </g>
-    );
+    return <Pill x={rectX} y={rectY} text={text} color={color} fontSize={11} height={h} widthPad={16} fillOpacity={0.88} rx={9} />;
 };

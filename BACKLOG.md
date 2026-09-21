@@ -25,34 +25,64 @@
 > mesures dans `docs/CONVENTIONS.md`
 > (`UN-DEPLOIEMENT-QUI-EMBARQUE-LE-DOSSIER-LOCAL-NE-DIT-PAS-QUEL-CODE-IL-SERT`).
 
-- [x] 🔧 **`[MCP-VERSION-FIGEE]`** (S) — ✅ **livré 2026-09-21**. `GET /health` publie désormais
-  `sha`, le COMMIT déployé (`buildSha()` dans `mcp/bootstrap.ts`, posé par `mcp/deploy.sh` via
-  `git rev-parse HEAD`). Avant : `version: "0.11.0"` figée depuis le 2026-07-13 alors que
-  **351 commits** avaient touché le serveur — chiffre imprimé par le workflow de déploiement
-  lui-même. ⚠️ `null` quand la variable manque ou n'est pas un SHA de 40 hexadécimaux : un
-  identifiant de build faux est pire qu'absent. Gardes : `tests/mcp/healthPublieLeCommit.test.ts`.
-
-- [x] 🔧 **`[DEPLOY-CLONE-EN-RETARD]`** (S) — ✅ **livré 2026-09-21**. `mcp/deploy.sh` REFUSE de
-  déployer quand le clone est derrière `origin/main` : il déploie `--source .`, donc le DOSSIER
-  local, et `gcloud` annonce « serving 100 percent of traffic » sur du code périmé. Le refus nomme
-  le retard et le geste qui répare ; `ALLOW_BEHIND=1` laisse passer un retour arrière VOLONTAIRE en
-  l'annonçant. Garde COMPORTEMENTALE (vrai dépôt git jetable, les deux sens) :
-  `tests/mcp/deployRefuseCloneEnRetard.test.ts`.
-
-- [ ] 🧭 **`[HUB-URL-PAR-DEFAUT-POINTE-L-APP]`** (XS, dépôt **Hubperso**) — `lib/sources.ts` déclare
-  pour `financeai` `defaultUrl: "https://finance.hubperso.com/hub/summary"` — qui est l'**app
-  Vercel**, pas le serveur MCP : mesuré, cette URL répond **200 avec `<!DOCTYPE html>`**, donc le hub
-  obtient une page web là où il attend un résumé JSON. Le contournement existe et Marc l'a posé
-  (`FINANCEAI_SUMMARY_URL`), mais un défaut par DÉFAUT revient au premier environnement qui oublie
-  la variable. ⚠️ Aucune fuite : la réponse est du HTML, pas un résumé non authentifié.
-  ⚠️ Le correctif vit dans un AUTRE dépôt — à porter là-bas avec sa garde, pas ici.
-
 - [ ] 👤 **`[MCP-DEPLOY-CONTINU-MORT]`** (S, **bloqué sur Marc** → `docs/A_FAIRE_MOI.md`) — le
   workflow `Deploy MCP (Cloud Run)` échoue à CHAQUE push en ~12 s : `GCP_PROJECT_ID` n'est pas
   défini, et les secrets `GCP_WIF_PROVIDER` / `GCP_DEPLOY_SA` manquent. Tant qu'il est mort, la
   seule voie vers Cloud Run est le script lancé à la main — c'est-à-dire exactement la voie qui
   permet de déployer un clone périmé. ⚠️ Un workflow qui échoue à chaque push depuis des mois
   n'alerte plus personne : il enseigne le rouge.
+
+## 🧪 Mode Sandbox de l'onglet Futur (21/09/2026, demandé par Marc)
+
+> Demande : « on va retravailler full le sandbox de l'onglet futur, jveux que ca change que ce soit
+> plus propore ». Décisions prises : périmètre cible = **copie complète du dossier** modifiable de
+> bout en bout ; signal = **toute la page change d'allure**. Cadrage en cours (fiche produit +
+> plan d'architecture). Les trois items ci-dessous sont des défauts **PRÉ-EXISTANTS** trouvés en
+> recensant l'existant — ils ne dépendent pas de la refonte et n'ont PAS été corrigés (scope non
+> demandé ; règle « bug préexistant découvert en chemin → signalé, jamais corrigé sans feu vert »).
+
+- [ ] 🔴 **`[SANDBOX-FUITE-VERS-LE-MCP]`** (M, money-critical) — un sandbox laissé ALLUMÉ sort de
+  l'onglet Futur et atteint les outils MCP. Chaîne tracée : `buildSimulationParamsFromState`
+  (`services/projection/buildSimulationParams.ts:318`) passe `state.projection` **ENTIER** au
+  moteur, donc `useTheoretical` / `theoreticalIncome` / `theoreticalExpenses` avec — et `projection`
+  **est persisté** (`extrairePersistable`, `store/optionsPersistance.ts:76-95`, n'exclut que
+  `lastProjection`). Le blob part vers Drive, le serveur MCP le lit, et `get_projection`,
+  `get_retirement_outlook` et `simulate_what_if` répondent sur une projection **théorique**
+  présentée à l'assistant comme le dossier réel. ⚠️ **MESURE QUI RÉFUTE l'alarme voisine** : le
+  résumé du **hub n'est PAS atteint** — `mcp/hubSummary.ts:140` passe par `computeFinancialSignals`
+  → `buildFinancialOverview` + `computeBaseGrossAnnual`, qui lisent `users` et les avoirs, jamais
+  `projection`. Publier « le hub montre des chiffres inventés » serait faux : c'est le chemin MCP,
+  et lui seul.
+
+- [ ] 🟠 **`[SANDBOX-LASTPROJECTION-SANS-GARDE]`** (S, money-critical) — `ProjectionEngine.tsx:142`
+  fait `setLastProjection(results)` **sans condition sur `useTheoretical`**. Or `lastProjection` est
+  la source unique du dépôt (`CLAUDE.md` §1), lue par Retraite, Placements, Planification enfant,
+  l'export PDF et le contexte de l'assistant — des écrans qui n'affichent AUCUN signe de sandbox.
+  Un chiffre théorique y est donc indiscernable d'un chiffre réel. ⚠️ Contrepoint vérifié :
+  `lastProjection` EST exclu de la persistance, donc il ne part jamais vers Drive — le défaut est
+  borné à la session en cours, ce qui le rend moins grave que le précédent mais tout aussi
+  silencieux. C'est `DECISION-PRIVACY-UNE-SEULE-SORTIE` à l'envers : une décision prise pour UN
+  écran qui se répand sur toutes les surfaces.
+
+- [ ] 🟠 **`[SANDBOX-SPLIT-5545-INVENTE-UN-CONJOINT]`** (S, money-critical) — le revenu saisi en
+  sandbox est coupé **55 % / 45 %** en dur (`services/projection/setupSimulation.ts:168-169`) sans
+  vérifier qu'un second conjoint existe. **Mesuré** (`computeIncomeBaseline`, revenu 8 000 $) : un
+  dossier à UN seul utilisateur — comme un dossier dont le second est `undefined` — rend
+  `{ 4 400, 3 600 }`, alors que le mode RÉEL sur le même dossier rend `{ 5 000, 0 }`. Le sandbox
+  invente donc un second déclarant, ce qui fractionne le revenu sur deux déclarations et
+  sous-estime l'impôt. ⚠️ Le défaut est **invisible dans le cas nominal** (Marc est en couple) et
+  apparaît exactement dans le scénario que le bac à sable existe pour explorer (« et si j'étais
+  seul », « et si Anna arrêtait de travailler »). ⚠️ Peut devenir sans objet si la refonte fait
+  éditer chaque salaire individuellement dans la copie — à trancher au plan, pas à corriger deux
+  fois.
+
+- [ ] 🟡 **`[SANDBOX-FORME-DES-CHAMPS]`** (XS) — dans `FluxMensuelsFields.tsx` : les deux montants
+  sont composés À LA MAIN (`{projection.theoreticalIncome || 8000}$`), donc hors `formatCAD`
+  (« 8000$ » au lieu de « 8 000 $ ») alors que le `CLAUDE.md` §1 impose `formatCAD` UNIQUEMENT ;
+  les défauts `8000`/`4000` sont écrits en dur sur **4+ sites** (affichage et curseur de chaque
+  champ, plus les deux lecteurs moteur) ; et en mode réel les curseurs restent VISIBLES mais
+  `opacity-50 pointer-events-none`, sans dire pourquoi — `pointer-events-none` ne les retire pas
+  du parcours clavier, donc ils restent atteignables à la tabulation tout en paraissant éteints.
 
 ## 📱 Installable sur le téléphone (Marc, 18/09/2026 — « toutes les applications installables »)
 

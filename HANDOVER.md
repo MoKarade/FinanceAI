@@ -50,6 +50,23 @@
 > ⚠️ **Rien de ce lot ne change ce que Vercel sert** (le serveur MCP est auto-hébergé sur Cloud Run,
 > pas sur Vercel) : il n'y a donc **pas de déploiement Vercel à vérifier** pour cette PR — le dire
 > plutôt que de laisser croire qu'on a vérifié (`CLAUDE.md` §6).
+> ✅ **MERGÉE** (PR #1003, `74415b87`, 20:48 UTC). ⚠️ Le job E2E a rougi une fois sur
+> `e2e/futureDailySelect.spec.ts:119` (`[FUTUR-CLICK-ANYWHERE]`) alors que ce lot ne touche AUCUN
+> code d'app ni d'E2E, que l'E2E était vert au SHA précédent et que la spec passait 6/6 en local :
+> **relance unique** → verte (59 passés, 6 min 18 s). Flake, donc, mais le mécanisme reste noté pour
+> la prochaine occurrence — le journal montrait Recharts à `width(-1) and height(-1)`, donc des
+> coordonnées de clic prises une seule fois sur un `chartBox()` initial peuvent devenir périmées
+> pendant que le graphe se redimensionne ; le correctif serait de relire `chartBox` juste avant
+> chaque clic (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`).
+> ✅ **La moitié Hubperso est livrée aussi** (PR Hubperso #63 `e8b1c848` puis #64 `bbea054`) :
+> `[HUB-URL-PAR-DEFAUT-POINTE-L-APP]` est CLOS — `defaultSummaryUrl` vaut désormais **`null`** pour
+> `financeai` (une adresse Cloud Run écrite en dur serait un défaut plausible-mais-faux), et
+> l'adresse d'ACCUEIL a été séparée dans sa propre table (`ACCUEIL_PAR_ID`) parce qu'un seul champ
+> ne pouvait pas dire les deux. Déploiement de production Vercel **créé et `READY`** sur le SHA
+> exact (`dpl_57CYRjvTuUYdPrMih2Kdjwk5v1Uj`) ; ⚠️ la RÉPONSE servie n'a pas pu être lue depuis le
+> conteneur (403 au CONNECT sur `hubperso.com`) — c'est à Marc de constater la carte.
+> 🗂️ Les trois items livrés ont DÉMÉNAGÉ vers `docs/BACKLOG_ARCHIVE.md` ; il ne reste de cette
+> section que `[MCP-DEPLOY-CONTINU-MORT]`, bloqué sur Marc.
 
 > ## 🟦 Session 2026-09-21 (suite) — **`[FUTUR-NAV-TIROIRS]` : la barre à 4 onglets devient une barre latérale + tiroirs**
 > 🔎 Marc a demandé un changement de design de l'écran Futur, maquette d'abord (Design canvas,

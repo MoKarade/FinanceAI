@@ -22,7 +22,7 @@ import { describe, it, expect } from 'vitest';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal, User } from '../../types';
 import type { AllocationStrategy } from '../../services/projection/types';
-import { FIELD_KIND, NET_WORTH_DAILY_ASSETS } from '../../services/projection/dailyLedger';
+import { FIELD_KIND, NET_WORTH_DAILY_ASSETS, buildDailyLedger } from '../../services/projection/dailyLedger';
 import { FUTURE_LEGEND_ITEMS } from '../../components/future/seriesConfig';
 import {
     detteLevierSousZero, phraseLevier, COULEUR_LEVIER, COULEUR_DETTE, LIBELLE_LEVIER,
@@ -126,6 +126,38 @@ describe('[DETTE-LEVIER-EXPLICITE] le moteur publie la part LEVIER à part', () 
         const delta = (r: number) => run(true, r).finalNetWorth - run(false, r).finalNetWorth;
         expect(delta(3), 'à 3 % de rendement, emprunter à ~7 % pour investir doit COÛTER').toBeLessThan(0);
         expect(delta(8), 'à 8 % de rendement, le levier doit RAPPORTER').toBeGreaterThan(0);
+    });
+
+    it('raccord au JOUR : le dernier jour du mois vaut EXACTEMENT la valeur du moteur', () => {
+        // ⚠️ POURQUOI CE CAS VIT ICI et pas dans `tests/services/dailyLedger.test.ts`, où habite le
+        // balayage des soldes : sa fixture « riche » n'active PAS `useSmithManoeuvre`, donc
+        // `DetteLevierSmith` y vaut **0,00 $ sur les 6 mois** (mesuré le 2026-09-21). L'y inscrire
+        // aurait ajouté une entrée à une liste sans rien protéger — `UNE-GARDE-NE-COUVRE-QUE-CE-QUE-
+        // SA-FIXTURE-REND-NON-NUL`. Le champ y est donc déclaré HORS PÉRIMÈTRE **avec un renvoi
+        // vers ce cas-ci**, et ce cas existe pour que ce renvoi ne soit pas un mensonge.
+        const months = run(true).chartData as unknown as Array<Record<string, number>>;
+        const days = buildDailyLedger({
+            months: months as never, startYear: 2026, startMonth: 0,
+            dated: { recurring: [], monthlyNetSalary: 5_620, monthlyDebtPayment: 450 },
+        }) as unknown as Array<Record<string, number>>;
+
+        expect(days.length).toBeGreaterThan(1_000);
+        // Anti-vacuité : la ventilation porte VRAIMENT un levier non nul — sans ça, « le raccord
+        // tient » serait vrai d'une série de zéros.
+        expect(days.filter((d) => Number(d.DetteLevierSmith) > 0).length).toBeGreaterThan(500);
+
+        // Le raccord : le DERNIER jour de chaque mois est la valeur du moteur, au cent près.
+        let raccords = 0;
+        for (let i = 0; i < days.length; i++) {
+            const finDeMois = i + 1 >= days.length || days[i + 1].dayOfMonth === 1;
+            if (!finDeMois) continue;
+            const mois = months.find((m) => Number(m.monthIndex) === Number(days[i].hostMonthIndex));
+            if (!mois || !Number.isFinite(Number(mois.DetteLevierSmith))) continue;
+            raccords++;
+            expect(Number(days[i].DetteLevierSmith), `raccord au ${days[i].dayIso}`)
+                .toBeCloseTo(Number(mois.DetteLevierSmith), 2);
+        }
+        expect(raccords, 'aucun raccord mesuré — le balayage ne prouve rien').toBeGreaterThan(200);
     });
 
     it('le champ est classé au grand livre, et JAMAIS dans la recomposition du patrimoine', () => {

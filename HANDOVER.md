@@ -37,6 +37,15 @@
 > à la base le montre.
 > ⚠️ **Trois `as never` de mocks** rendaient l'ANCIENNE forme et laissaient le typecheck vert pendant
 > que l'exécution rougissait : réécrits SANS l'échappatoire.
+> ⚠️⚠️ **Et la CI a rendu 3 rouges dans 2 fichiers que le lot ne touche PAS** (PR #1006) : (a)
+> l'anti-vacuité du patron MGA exigeait `code/brut > 0.45` sur `services/` contre une mesure de
+> **0,45072** — 0,0007 de marge, que 4 900 caractères de commentaire ont suffi à franchir ; elle
+> devient une PAIRE sans réglage fin, au seuil de sa garde JUMELLE sur la MÊME portée ; (b) la garde
+> de frontière `services/ ↔ store` cherchait la chaîne `store/useFinanceStore`, donc l'extraction de
+> `store/modeTestActif.ts` l'a rendue aveugle à `syncPush.ts` **des deux côtés** — son détecteur est
+> désormais DÉRIVÉ (scanner `store/` pour juger `services/`), l'inventaire restant écrit à la main.
+> Mesuré : le détecteur élargi sort exactement les 7 entrées. Leçon :
+> `UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL`.
 > ⚠️ **Non couvert, et dit plutôt que sous-entendu** : les prompts envoyés au modèle
 > (`services/claude.ts`). C'est le SEUL des trois canaux qui sort de la machine (le backup va dans
 > IndexedDB local chiffré, le PDF reste sur le disque), il n'a pas de point d'entrée unique (7

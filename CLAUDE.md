@@ -1664,6 +1664,25 @@ n'est pas réécrire un récit.
   COMPTE d'avertissements à la base (32 → 33 → 32)
   (`UNE-REGLE-DE-PUBLICATION-SE-RECENSE-PAR-INTENTION-PAS-PAR-DECLENCHEUR`).
 
+- ⚠️⚠️ **Un SEUIL écrit à ras de sa mesure n'est plus un seuil** (2026-09-21, trois rouges de CI sur
+  un lot dont aucun fichier touché n'était en cause) : l'anti-vacuité du patron MGA exigeait
+  `code/brut > 0.45` sur `services/` contre une mesure de **0,45072** — **0,0007 de marge**, soit
+  ~1 300 caractères de commentaire sur 1,83 M. Un lot qui en ajoute 4 900 la fait rougir, alors
+  qu'elle existe pour attraper un décommenteur qui AVALE le code (ratio ≈ 0). Le correctif n'est pas
+  un nombre un peu plus bas mais une PAIRE sans réglage fin (le décommentage AGIT / il n'a pas tout
+  mangé), au seuil que la garde JUMELLE porte déjà sur la MÊME portée — recopié seulement après
+  avoir VÉRIFIÉ la portée et l'avoir écrit. ⚠️⚠️ Jumeau du même rouge : **un détecteur ancré sur
+  l'ORTHOGRAPHE d'un import devient aveugle au geste que le dépôt encourage** — extraire le prédicat
+  « données fictives ? » en source unique (`store/modeTestActif.ts`) a fait que `syncPush.ts`
+  atteint le store par un ALIAS, donc la garde de frontière a rougi **des deux côtés** (« importeur
+  non déclaré » ET « entrée à retirer ») pour un fait qui n'avait pas bougé. Le détecteur se DÉRIVE
+  (scanner `store/` pour juger `services/` n'est pas circulaire) ; l'INVENTAIRE, lui, reste écrit à
+  la main. ⚠️ Mesuré : le détecteur élargi sort EXACTEMENT les 7 entrées — la liste était juste,
+  c'est l'instrument qui ne voyait plus. ⚠️ Et de conduite : 197 tests ciblés couvraient les fichiers
+  TOUCHÉS, or **aucun des deux rouges ne vivait dans un fichier touché** — le périmètre à rejouer
+  n'est pas « ce que j'ai édité » mais « ce qui SCANNE ce que j'ai édité », et cette liste-là, seule
+  la CI la connaît (`UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

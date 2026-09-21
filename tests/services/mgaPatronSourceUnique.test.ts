@@ -62,9 +62,23 @@ describe('[MGA-PATRON-5-COPIES] une seule écriture de la vitesse d\'indexation'
                 if (COPIE_DU_PATRON.test(l)) offenders.push(`${f}:${i + 1}  ${l.trim().slice(0, 100)}`);
             });
         }
-        // Anti-vacuité AGRÉGÉE, mesurée sur CETTE portée : le seuil est posé sous la mesure, pas
-        // par habitude (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
-        expect(codeTotal / brutTotal).toBeGreaterThan(0.45);
+        // Anti-vacuité AGRÉGÉE, mesurée sur CETTE portée. Ce qu'elle doit attraper est un
+        // décommenteur qui AVALE le code (ratio ≈ 0), jamais la prose du dépôt qui respire — d'où
+        // la PAIRE : le décommentage agit, et il n'a pas tout mangé.
+        //
+        // ⚠️ SEUIL RE-MESURÉ LE 2026-09-21, ET POURQUOI IL A BOUGÉ. Il valait `0.45` contre une
+        // mesure de `0,4507` : **0,0007 de marge**, soit ~1 300 caractères de commentaire sur les
+        // 1,83 M que pèse `services/`. N'importe quel lot un peu commenté le faisait rougir, et
+        // c'est arrivé — `[SANDBOX-ETANCHEITE-FICHIERS]` a fait tomber le ratio à `0,44985` sans
+        // toucher ni au patron MGA ni au décommenteur. Un seuil écrit à ras de sa propre mesure ne
+        // mesure plus rien : il transforme « le dépôt a été commenté » en « la garde est rouge ».
+        // `0.35` est le seuil que la garde JUMELLE (`storeCouplingBoundary.test.ts`) porte déjà sur
+        // la MÊME portée `services/`, avec cette justification écrite — et les deux ratios sont
+        // bien du même ordre (0,44985 en `stripCommentsJsx`, 0,44999 en `stripComments`, mesurés).
+        // Re-mesurer : `codeTotal / brutTotal` imprimé par ce test.
+        expect(brutTotal, 'le périmètre scanné est vide').toBeGreaterThan(100_000);
+        expect(codeTotal, 'le décommentage n\'a RIEN retiré — motif mort ?').toBeLessThan(brutTotal);
+        expect(codeTotal / brutTotal, 'le décommenteur a avalé le code').toBeGreaterThan(0.35);
         expect(offenders, 'le patron MGA est recopié — appelle `projeterAuPatronMga` de `helpers.ts`.')
             .toEqual([]);
     });

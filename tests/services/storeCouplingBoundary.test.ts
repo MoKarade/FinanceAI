@@ -17,7 +17,9 @@
 //     déjà typée) et désactivaient le compilateur exactement sur le chemin d'écriture piloté par
 //     l'IA/MCP. Ce lot les a retirés ; cette assertion interdit leur retour.
 //
-// La liste est ÉCRITE À LA MAIN (une garde qui dérive sa liste de ce qu'elle scanne est circulaire).
+// L'INVENTAIRE est ÉCRIT À LA MAIN (une garde qui dérive sa liste de ce qu'elle scanne est
+// circulaire). Le DÉTECTEUR, lui, est dérivé — il scanne `store/`, pas `services/` : voir le
+// bloc `MODULES_STORE` plus bas et ce que son absence a coûté le 2026-09-21.
 
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -35,8 +37,36 @@ const SERVICES_STORE_AUTORISES = [
     'services/sync/syncSnapshot.ts',
 ];
 
+/**
+ * Les modules de `store/` par lesquels un fichier de services/ atteint le store — DÉRIVÉS, jamais
+ * écrits à la main.
+ *
+ * ⚠️ POURQUOI CE N'EST PLUS UN SEUL NOM (2026-09-21, trouvé par la CI). La garde ne cherchait que
+ * `store/useFinanceStore`. Le lot `[SANDBOX-ETANCHEITE-FICHIERS]` a extrait le prédicat « données
+ * fictives ? » — qui vivait en DEUX copies non exportées — dans `store/modeTestActif.ts` ; du jour
+ * au lendemain `services/sync/syncPush.ts` atteignait le store par cet alias et la garde ne le
+ * voyait PLUS, dans les deux sens (« importeur non déclaré » ET « entrée à retirer »). Le FAIT
+ * qu'elle défend n'a pourtant pas bougé d'un pouce : ce fichier traîne toujours `useFinanceStore`
+ * dans son graphe d'imports. Elle ancrait l'ORTHOGRAPHE d'un import au lieu du fait, et le geste
+ * même que le dépôt encourage — extraire une source unique — suffisait à la rendre aveugle.
+ *
+ * La dérivation est UNE marche, et elle n'est pas circulaire : elle scanne `store/` (tout module
+ * qui importe lui-même `useFinanceStore`) pour juger `services/`.
+ */
+const MODULES_STORE: string[] = (() => {
+    const racine = 'store/useFinanceStore';
+    const alias = (readdirSync('store', { recursive: true }) as string[])
+        .filter((f) => /\.ts$/.test(f) && !f.endsWith('.d.ts'))
+        .map((f) => `store/${f}`.replace(/\\/g, '/').replace(/\.ts$/, ''))
+        .filter((f) => f !== racine)
+        .filter((f) => /from\s+['"][^'"]*useFinanceStore['"]/.test(stripComments(readFileSync(`${f}.ts`, 'utf8'))));
+    return [racine, ...alias].sort();
+})();
+
 /** Un import RÉEL du store (pas une mention en prose) : chemin du module dans un from/import(). */
-const IMPORT_STORE = /from\s+['"][^'"]*store\/useFinanceStore['"]|import\(\s*['"][^'"]*store\/useFinanceStore['"]/;
+const IMPORT_STORE = new RegExp(
+    `(?:from\\s+|import\\(\\s*)['"][^'"]*(?:${MODULES_STORE.join('|')})['"]`,
+);
 
 function fichiersTs(dir: string): string[] {
     return (readdirSync(dir, { recursive: true }) as string[])
@@ -77,6 +107,21 @@ describe('[SVC-STORE-COUPLING] frontière services/ ↔ store', () => {
         expect(moteur.length).toBeGreaterThan(50);
         const offenders = moteur.filter((f) => IMPORT_STORE.test(sourceDecommentee(f)));
         expect(offenders, 'le moteur importe le store — régression de pureté (voir ARCHITECTURE §2)').toEqual([]);
+    });
+
+    it('la dérivation des modules du store TIRE : la racine ET au moins un alias', () => {
+        // Sans ce cas, « aucun importeur non déclaré » serait aussi vrai d'une dérivation cassée
+        // (liste réduite à la seule racine) que d'un inventaire complet — l'état exact dans lequel
+        // la garde a laissé passer `syncPush.ts` le 2026-09-21.
+        expect(MODULES_STORE).toContain('store/useFinanceStore');
+        expect(MODULES_STORE.length, 'la dérivation ne voit plus aucun alias du store').toBeGreaterThan(1);
+        // Témoin NOMMÉ, dans la forme la moins familière : un module qui n'expose PAS le store
+        // lui-même mais un prédicat lu dessus. C'est celui qui a démasqué le défaut.
+        expect(MODULES_STORE).toContain('store/modeTestActif');
+        // …et la garde reconnaît bien l'import tel qu'un fichier de services/ l'écrit.
+        expect(IMPORT_STORE.test("import { modeDonneesFictives } from '../../store/modeTestActif';")).toBe(true);
+        // Contre-témoin : un chemin voisin qui ne mène pas au store reste ignoré.
+        expect(IMPORT_STORE.test("import { x } from '../../utils/format';")).toBe(false);
     });
 
     it('inventaire fermé, sens 1 : tout fichier de services/ qui importe le store est déclaré ici', () => {

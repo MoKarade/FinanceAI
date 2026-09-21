@@ -1373,6 +1373,17 @@
 
 ## 🧱 Dette technique
 
+- [ ] 🔧 **`[FUTUR-DRAWER-FOCUS-ROTATION]`** (XS, routé — pas corrigé) — **Découvert en revue
+  (`silent-failure-hunter`) du lot `[FUTUR-NAV-TIROIRS]` (21/09).** Si le viewport bascule le seuil
+  ~1024px (`hooks/useViewportBelowLg.ts`) PENDANT qu'un tiroir (`components/ui/Drawer.tsx`) est
+  ouvert, son déclencheur d'origine (bouton de `FutureSidebar` ou boutons mobiles, selon le côté
+  d'où l'on vient) est démonté avant la fermeture du tiroir. `previousFocusRef` pointe alors vers
+  un nœud absent du DOM ; le garde-fou `document.body.contains(target)` évite le crash mais ne
+  restaure le focus NULLE PART — il retombe sur `<body>`, sans annonce, l'utilisateur clavier doit
+  retabuler depuis le haut. Edge case rare (rotation d'écran exactement au seuil, tiroir ouvert),
+  jamais couvert par un test. **Correctif** : un repli explicite (ex. le `<h1>` de la page ou le
+  conteneur principal) quand `document.body.contains(target)` est faux, au lieu du silence actuel.
+
 - [ ] 🔧 **`[MCP-HTTP-ERR-MESSAGE]`** (S) — les **QUATRE** routes de
   `mcp/http/routesPlanifiees.ts` renvoient `err.message` BRUT à l'appelant authentifié
   (`handleRefresh`, `handleFintableSync`, `handleVehiculeBail` — **la même ligne au caractère

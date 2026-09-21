@@ -25,6 +25,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
     bas** plutôt qu'en changeant d'onglet.
 - **Rien ne change dans tes chiffres** : ce lot touche uniquement la disposition et la navigation,
   aucun calcul n'est modifié.
+- **Petit correctif trouvé en relisant le lot** : si tu ouvrais « Plan d'action » dans la toute
+  petite fenêtre où ta projection se recharge après un rafraîchissement de page, le tiroir
+  s'ouvrait vide (juste le titre). Il affiche maintenant le même message de chargement que le
+  reste de l'écran.
 
 ---
 

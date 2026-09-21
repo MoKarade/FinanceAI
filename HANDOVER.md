@@ -47,6 +47,32 @@
 > (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
 > 🧭 `[GODFILE-FUTUREPROJECTION]` reste entier à découper (la contrainte de séquencement avec
 > `[A11Y-SUBTABS-FUTUR]` est caduque, déjà notée dans `BACKLOG.md`).
+> 🔎 **Revue** (`code-reviewer` + `silent-failure-hunter` + `a11y-auditor` en parallèle sur le
+> diff) — chaque finding a été VÉRIFIÉ contre le vrai code avant application (`un rapport d'agent
+> n'est pas une source`) :
+> - **Réfuté** : « le focus revient au mauvais déclencheur en changeant directement de tiroir »
+>   (silent-failure-hunter). Le fond plein écran (`inset-0`, `z-[9999]`) de chaque `Drawer` couvre
+>   la barre latérale ET les boutons mobiles tant qu'un tiroir est ouvert — aucun clic ne peut
+>   atteindre un second déclencheur pour déclencher la course décrite. Vérifié en lisant
+>   `Drawer.tsx` directement plutôt qu'en faisant confiance au raisonnement de l'agent.
+> - **Corrigé** : cible tactile de la sidebar `min-h-[40px]` → `min-h-[44px]` (standard interne,
+>   incohérent avec les boutons mobiles équivalents à 44px) ; `aria-controls` restauré sur les 6
+>   boutons déclencheurs (perdu avec l'ancien `panelId` du bandeau à onglets — `Drawer` expose
+>   maintenant un `id` optionnel, `tiroirDomId()` en source unique) ; le tiroir Plan d'action
+>   pouvait s'ouvrir totalement VIDE pendant la fenêtre de restauration de la projection
+>   (`curveRestoring`, ni invite ni contenu) — spinner ajouté, symétrique à celui du corps
+>   principal ; `Drawer` gagne `initialFocusRef` (calque de `Modal.tsx`,
+>   `[A11Y-MODAL-GUIDE-NODIALOG]`, préventif — aucun contenu de tiroir n'a d'`autoFocus` aujourd'hui).
+> - **Trou de couverture fermé** : ni `Drawer.tsx` ni `FutureSidebar.tsx` n'avaient de test à leur
+>   niveau (seulement via l'unique site d'appel mobile) — c'est ce qui avait laissé passer la
+>   cible tactile à 40px. Ajout de `tests/components/ui/Drawer.test.tsx` (16 cas),
+>   `tests/hooks/useViewportBelowLg.test.tsx`, et `e2e/futureDesktopTiroirs.spec.ts` (variante
+>   `lateral`, jamais exercée avant ce lot).
+> - **Routé, pas corrigé** (edge case rare, sans crash) : si le viewport bascule le seuil ~1024px
+>   PENDANT qu'un tiroir est ouvert, le déclencheur d'origine peut être démonté avant la fermeture
+>   → le focus retombe sur `<body>` au lieu d'un point d'ancrage connu. `Drawer.tsx:58-61` a le
+>   garde-fou anti-crash mais aucun repli. Pas de ticket ouvert — fréquence quasi nulle (rotation
+>   d'écran exactement au seuil, tiroir ouvert) pour l'effort d'une API de repli.
 
 > ## 🟦 Session 2026-09-21 — **deux dettes de sens OPPOSÉS partageaient une seule courbe**
 > 🔎 **`[DETTE-LEVIER-EXPLICITE]`** — Marc, après le correctif de la marge : « **Non la dette augmente

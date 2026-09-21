@@ -19,15 +19,6 @@
 
 ## 📱 Installable sur le téléphone (Marc, 18/09/2026 — « toutes les applications installables »)
 
-- [x] **`[PWA-ANDROID]` — le manifeste ne déclarait qu'une icône SVG, donc l'app n'était PAS
-  installable.** Chrome fabrique un WebAPK à l'installation et exige une icône RASTER ≥ 192 px :
-  sans elle, « Installer l'application » n'apparaît jamais, et rien ne le dit — l'app s'ouvre
-  parfaitement dans un onglet. Livré : PNG 192 / 512 / maskable-512 **rendus depuis le SVG
-  existant** (donc la même icône, pas un nouveau dessin), `id` fixé, et
-  `launch_handler: navigate-existing` pour qu'un lien venu du hub réutilise la fenêtre déjà
-  ouverte. Garde : `tests/pwaManifest.test.ts`, 4 perturbations prouvées. 18/09/2026.
-  ⚠️ CSP **vérifiée avant** (elle est *enforced* ici) : `default-src 'self'` couvre le manifeste,
-  `img-src 'self'` couvre les PNG — aucune ligne de `vercel.json` à toucher.
 - [ ] **`[PWA-IOS-ICONE]`** (XS, non demandé) — pas d'`apple-touch-icon.png`. Hors périmètre :
   Marc est sur **Android** (tranché le 18/09). À prendre si un iPhone entre dans le parc.
 
@@ -164,20 +155,6 @@
   de cotations qui couvre Euronext/Xetra, ou accepter et DIRE que le passé européen est figé. →
   décision Marc (une source payante est un abonnement, ce que le profil du dépôt exclut).
 
-- [x] ✅ **`[KPI-AVOIRS-DETTES]`** (M, **cadré avec Marc le 2026-09-21**, LIVRÉ le jour même) — « je veux voir genre ma
-  somme totale d'argent et ma somme totale de dette / ce que je dois (partout dans financeai et
-  dans hubperso) ». Né de l'écart Fintable/app : Fintable additionne des SOLDES (277 230 $), l'app
-  publie une VALEUR NETTE (230 210 $), et les deux termes n'étaient visibles nulle part ensemble.
-  **Décisions de Marc** (toutes deux DIVERGENTES de ma recommandation, cf. la leçon du dépôt) :
-  1. dettes = **un total TOUT COMPRIS + le détail** (« Dettes 46 934 $ · dont 0 $ d'hypothèque ») ;
-  2. bandeau à **6 tuiles**, on garde Liquidités.
-  ⚠️ Conséquence arithmétique à tenir : si les dettes incluent l'hypothèque, les AVOIRS doivent
-  porter l'immobilier en valeur **BRUTE**, sinon l'hypothèque est retranchée deux fois (le
-  patrimoine net compte déjà l'immobilier en ÉQUITÉ). Les deux se DÉRIVENT de champs déjà publiés,
-  sans toucher au moteur : `hypothèque = DetteTotale − DettesNonImmo`, `avoirs bruts =
-  Σ actifs(équité) + hypothèque` — et alors `Avoirs − Dettes = Patrimoine net` tient au dollar près.
-  Surfaces : `FutureKpiStrip` (rendu par `TabRouter`, donc partout) + les métriques de
-  `mcp/hubSummary.ts` (libellés STABLES — `[HUB-METRIQUE-LIBELLE-EST-UNE-CLE]`).
 
 - [ ] 🟠 **`[FUTUR-LEVIER-PASSE-MUET]`** (S, découvert en livrant `[DETTE-LEVIER-EXPLICITE]`) — la
   courbe « dont levier Smith » ne commence qu'au premier mois PROJETÉ où la résidence est détenue :
@@ -387,22 +364,6 @@
 
 ## 🔗 Chaîne de build — audit du 2026-09-18 (`REMEDIATION_AUDIT_2026-09-18.md`)
 
-- [x] **`[AUDIT-L1]` `sanitizeContext` perdait la clé `__proto__` d'un `JSON.parse`.** Livré le
-  18/09. Aikido sévérité 75, mais son annonce « change le comportement de l'application » est
-  FAUSSE — aucune pollution d'`Object.prototype`, et un cas du test le mesure pour borner le
-  signalement. Le défaut réel : l'affectation sur `{}` remplaçait le prototype, donc
-  `JSON.stringify` n'énumérait plus la clé et l'entrée de journal la perdait en silence.
-- [x] **`[AUDIT-L5B]` 19 `typescript:S2187` BLOCKER sur `mcp/tools/*.spec.ts`.** Livré le 18/09
-  par `.sonarcloud.properties` (`sonar.tests=tests,e2e`), sur arbitrage de Marc : configurer
-  plutôt que renommer 19 fichiers et 43 imports. ⚠️ **La preuve n'est PAS dans le commit** —
-  elle est la disparition des 19 au prochain passage de l'analyse automatique. Si elles sont
-  toujours là, le nom du fichier est le premier suspect (`.sonarcloud.properties` pour
-  l'analyse automatique, `sonar-project.properties` pour le scanner CLI).
-- [x] **`[AUDIT-L2]` La chaîne de build de FinanceAI.** Livré le 18/09 : les 6 `actions/checkout`
-  portent un `persist-credentials` explicite (5 `false`, 1 `true` documenté sur
-  `refresh-screenshots.yml` qui POUSSE), les 5 commandes d'installation ont `--ignore-scripts`
-  (mesuré sans danger : esbuild tient, typecheck et build verts), et les 3 actions tierces sont
-  épinglées au SHA résolu depuis leur dépôt distant.
 - [ ] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S). `DriveAI` 6
   checkout, `Hubperso` 5, `JobAI` 3, `CarAI` 3, `hub-contract` 2, `batchchef-` 2, `MemoryAI` 2 —
   23 étapes, aucune avec `persist-credentials` au 18/09. Plus `npm ci` sans `--ignore-scripts`.

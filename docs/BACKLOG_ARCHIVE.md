@@ -10,6 +10,37 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-21 (soir) — 3 items livrés (PR #1003 · PR Hubperso #63)
+
+Déménagés au merge de la PR #1003, conformément à la règle « item fini ET validé → DÉMÉNAGE,
+au plus tard à la PR suivante ». ⚠️ **Aucun déploiement Vercel à vérifier pour les deux premiers**
+(le serveur MCP est auto-hébergé sur Cloud Run, pas servi par Vercel) — le dire plutôt que de
+laisser croire qu'on a vérifié (§6 de `CLAUDE.md`). Le troisième vit dans le dépôt **Hubperso** :
+déploiement de production `dpl_57CYRjvTuUYdPrMih2Kdjwk5v1Uj` **créé et `READY`** sur le SHA exact ;
+la RÉPONSE servie n'a pas pu être lue depuis le conteneur (403 au CONNECT sur `hubperso.com`).
+
+- [x] 🔧 **`[MCP-VERSION-FIGEE]`** (S) — ✅ **livré 2026-09-21**. `GET /health` publie désormais
+  `sha`, le COMMIT déployé (`buildSha()` dans `mcp/bootstrap.ts`, posé par `mcp/deploy.sh` via
+  `git rev-parse HEAD`). Avant : `version: "0.11.0"` figée depuis le 2026-07-13 alors que
+  **351 commits** avaient touché le serveur — chiffre imprimé par le workflow de déploiement
+  lui-même. ⚠️ `null` quand la variable manque ou n'est pas un SHA de 40 hexadécimaux : un
+  identifiant de build faux est pire qu'absent. Gardes : `tests/mcp/healthPublieLeCommit.test.ts`.
+
+- [x] 🔧 **`[DEPLOY-CLONE-EN-RETARD]`** (S) — ✅ **livré 2026-09-21**. `mcp/deploy.sh` REFUSE de
+  déployer quand le clone est derrière `origin/main` : il déploie `--source .`, donc le DOSSIER
+  local, et `gcloud` annonce « serving 100 percent of traffic » sur du code périmé. Le refus nomme
+  le retard et le geste qui répare ; `ALLOW_BEHIND=1` laisse passer un retour arrière VOLONTAIRE en
+  l'annonçant. Garde COMPORTEMENTALE (vrai dépôt git jetable, les deux sens) :
+  `tests/mcp/deployRefuseCloneEnRetard.test.ts`.
+
+- [x] 🧭 **`[HUB-URL-PAR-DEFAUT-POINTE-L-APP]`** (XS, dépôt **Hubperso**) — ✅ **livré 2026-09-21** (PR Hubperso #63, `e8b1c848`). `lib/sources.ts` déclare
+  pour `financeai` `defaultUrl: "https://finance.hubperso.com/hub/summary"` — qui est l'**app
+  Vercel**, pas le serveur MCP : mesuré, cette URL répond **200 avec `<!DOCTYPE html>`**, donc le hub
+  obtient une page web là où il attend un résumé JSON. Le contournement existe et Marc l'a posé
+  (`FINANCEAI_SUMMARY_URL`), mais un défaut par DÉFAUT revient au premier environnement qui oublie
+  la variable. ⚠️ Aucune fuite : la réponse est du HTML, pas un résumé non authentifié.
+  ⚠️ Le correctif vit dans un AUTRE dépôt — à porter là-bas avec sa garde, pas ici.
+
 ## 2026-09-21 — 5 items livrés (PR #995 à #1000, mergées, déployées)
 
 Déménagés au merge de la PR #1000, conformément à la règle « item fini ET validé → DÉMÉNAGE,

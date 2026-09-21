@@ -15,30 +15,13 @@
  * est le même caractère qu'un délimiteur de chaîne, et ce bloc est très commenté).
  */
 import { describe, it, expect } from 'vitest';
-import { join } from 'node:path';
-import { readCodeOnly } from '../helpers/source';
+import { colonnesDeLaTable } from '../helpers/futureSource';
 import { FUTURE_LEGEND_ITEMS } from '../../components/future/seriesConfig';
 
-const SOURCE = join(__dirname, '../../components/FutureProjection.tsx');
-
-/** Les `key` du tableau rendu par le `useMemo<ChartDataColumn[]>`, lues dans la source décommentée. */
-function colonnesDeLaTable(): string[] {
-    // ⚠️ `readCodeOnly` (`tests/helpers/source.ts`) EXISTAIT déjà et fait exactement ce travail :
-    // décommenter, puis prouver que le décommentage n'a pas tout mangé (part de code non blanc +
-    // un témoin de vrai code). L'avoir réécrit à la main ici était `GUARD-STRIPCOMMENTS-DUPLIQUE`
-    // re-commise — signalée par le contrôle de DUPLICATION de la CI, pas par une relecture.
-    // ⚠️ Seuil 0,35 et non le 0,2 par défaut : MESURÉ le 2026-09-18, ce fichier est à **0,455** de
-    // code, plus qu'à moitié commentaire par conception
-    // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
-    const src = readCodeOnly(SOURCE, 'RENDER_MAX_POINTS', 0.35);
-    // Le SECOND témoin, celui que `readCodeOnly` ne porte pas : un jeton de PROSE doit avoir
-    // DISPARU. Sans lui, un décommenteur qui ne décommente rien passerait les deux autres.
-    expect(src).not.toContain('alternative texte à la courbe');
-
-    const bloc = src.match(/useMemo<ChartDataColumn\[\]>\(\(\) => \{([\s\S]*?)\n {4}\}, \[/);
-    if (!bloc) throw new Error('bloc `dataColumns` introuvable dans FutureProjection.tsx');
-    return [...bloc[1].matchAll(/\{\s*key:\s*'([^']+)'/g)].map((m) => m[1]);
-}
+// ⚠️ [DETTE-LEVIER-EXPLICITE 2026-09-21] L'extracteur a déménagé vers `tests/helpers/futureSource.ts`
+// (avec son décommentage, ses deux témoins et son anti-vacuité) : il existait en TROIS exemplaires
+// et un quatrième allait naître — `UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-
+// DE-GARDES`. Ce qui reste ici est ce que le helper ne porte pas : les assertions de cette garde.
 
 describe('[FUTUR-COURBE-DETTE] la table de données ne diverge pas du graphe', () => {
     it('chaque série MONÉTAIRE de la légende a sa colonne', () => {

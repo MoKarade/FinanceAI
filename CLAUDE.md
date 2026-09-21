@@ -1475,6 +1475,41 @@ n'est pas réécrire un récit.
   au mot près et pourtant une réécriture d'un récit daté
   (`UNE-REGLE-DE-TENUE-SANS-GARDE-DERIVE-SANS-QUE-RIEN-NE-ROUGISSE`).
 
+- ⚠️⚠️ **Deux grandeurs de TRAJECTOIRES OPPOSÉES ne peuvent pas partager une courbe** (2026-09-21,
+  signalé par Marc : « la dette augmente à 150k alors que j'ai juste une dette auto qui fini en
+  2030 ») : il avait RAISON ET TORT — sa dette ordinaire s'éteint bien en 2030, ce qui monte ensuite
+  est le HELOC de la Smith Manoeuvre. `DettesNonImmo` additionnait une dette qu'on REMBOURSE (elle
+  doit descendre) et une dette qu'une stratégie CRÉE exprès (elle doit monter) : le total est
+  comptablement exact et **illisible**, et c'est la deuxième fois qu'il le signale comme un bug.
+  Devant une agrégation, demander **si ses membres ont le même sens de variation « sain »** — sinon
+  publier la PART et la tracer à côté, en disant « **dont** ». ⚠️ Ce mot porte le lot : sans lui on
+  additionne, donc le libellé est une SOURCE UNIQUE consommée par cinq surfaces. ⚠️ Un SOUS-ENSEMBLE
+  se garde trois fois (borné par son conteneur, absent des actifs, absent de la recomposition), et
+  « `levier ≤ dette` » ne prouve rien sur une fixture à UNE seule dette : l'égalité le satisfait, il
+  faut des points **STRICTEMENT** inférieurs (mesuré 180/241). ⚠️ **La preuve qu'un levier EST un
+  levier est un CHANGEMENT DE SIGNE, pas un montant** : ON − OFF vaut **−51 794 $ à 3 %** et
+  **+58 824 $ à 8 %** — la garde ancre les deux bornes, aucun chiffre (un golden se re-base, le
+  retournement survit). ⚠️ Et l'écran ne promet **aucun seuil de rentabilité** : ~5,6 % sur la
+  fixture, ~4 % sur le profil réel de Marc — un seuil dépend du DOSSIER
+  (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`), et une garde l'interdit.
+  ⚠️ « Explicite et expliqué » (choix de Marc, contre ma recommandation de retirer le réglage) veut
+  dire VISIBLE : le texte vivait dans un `title`, invisible au doigt, au clavier et au lecteur
+  d'écran. Dans le panneau du jour, le plafond de prose de 45 car. impose la forme « libellé court +
+  `title` + jumeau `sr-only` », sans aucun montant dans la phrase
+  (`DEUX-GRANDEURS-DE-TRAJECTOIRES-OPPOSEES-NE-PEUVENT-PAS-PARTAGER-UNE-COURBE`).
+- ⚠️⚠️ **Une garde qui ne connaît qu'UNE écriture du `dataKey` est aveugle à l'autre** (2026-09-21) :
+  `[FUTUR-DAILY-NATIVE]` ne lisait que `dataKey="…"`, donc la forme ACCESSEUR
+  (`dataKey={detteSousZero}`, introduite trois jours plus tôt pour tracer une valeur DÉRIVÉE) lui
+  était invisible — la série pouvait manquer à `CURVE_FIELDS` et rester MUETTE au jour, le défaut
+  que cette garde existe pour empêcher. Quand une garde scanne une SYNTAXE, demander **combien
+  d'écritures le langage autorise**. ⚠️ Une valeur dérivée n'a pas de nom de champ : il se DÉCLARE
+  (`CHAMP_PAR_ACCESSEUR`), et une table déclarative peut MENTIR — on relit le CORPS de l'accesseur,
+  source décommentée. ⚠️⚠️ Et la même garde lisait encore la source BRUTE : elle portait toujours la
+  bombe `UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE`, corrigée le 2026-09-18 sur sa
+  JUMELLE et pas sur elle — **quand on corrige un extracteur, grepper ses COPIES** ; ici la réponse
+  était de n'en avoir plus qu'une (`tests/helpers/futureSource.ts`, 3 copies consolidées, une 4ᵉ sur
+  le point de naître) (`UNE-GARDE-QUI-NE-CONNAIT-QU-UNE-ECRITURE-DU-DATAKEY-EST-AVEUGLE-A-L-AUTRE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

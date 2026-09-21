@@ -4,6 +4,52 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 — **deux dettes de sens OPPOSÉS partageaient une seule courbe**
+> 🔎 **`[DETTE-LEVIER-EXPLICITE]`** — Marc, après le correctif de la marge : « **Non la dette augmente
+> à 150k alors que j'ai juste une dette auto qui fini en 2030** ». Il avait **raison ET tort** : sa
+> dette ORDINAIRE s'éteint bien en 2030 ; ce qui monte ensuite est le **HELOC de la Smith Manoeuvre**,
+> activé par un bouton des réglages avancés dont le seul texte vivait dans un `title` (invisible au
+> doigt, au clavier et au lecteur d'écran). Interrogé, il a tranché : « **Je veux que ce soit
+> explicite et expliqué** » — donc PAS de retrait du réglage.
+> 🔧 **Livré** : le moteur publie `DetteLevierSmith` (`monthlyOutput.ts`) — **SOUS-ENSEMBLE** de
+> `DettesNonImmo`, jamais un terme de plus ; une **seconde courbe** sur le graphe Futur (« dont
+> levier Smith », **indigo POINTILLÉ**, la couleur du bouton qui l'active) distincte par la couleur
+> ET par la forme ; sa **colonne** dans la table `sr-only` ; une **sous-ligne** dans le panneau du
+> jour (libellé court + phrase entière en `title` **et** en `sr-only`, sans aucun montant) ; et
+> l'explication du réglage devenue **VISIBLE** à l'écran.
+> 📏 **MESURÉ le 2026-09-21** (fixture committée, chemin DÉTERMINISTE, 20 ans, marge à
+> `max(3 %, hypo + 2 pts)` = 7 %) — écart de patrimoine final **ON − OFF** :
+> **3 % → −51 794 $** · 4 % → −32 855 · 5 % → −12 344 · **6 % → +9 829** · 8 % → +58 824.
+> Le signe CHANGE : c'est la définition d'un levier, et c'est pourquoi l'écran ne promet aucun gain.
+> Contrôle négatif : `DetteLevierSmith` vaut **0 exactement** sur les 241 points sans le réglage.
+> Discriminant du sous-ensemble : **180 points** où le levier est STRICTEMENT inférieur à la dette
+> totale (sans un second prêt dans la fixture, « sous-ensemble » serait satisfait par un câblage qui
+> recopie son conteneur).
+> ⚠️ **Sur le profil RÉEL de Marc, le point d'équilibre est plus bas (~4 %)** : un seuil de
+> rentabilité dépend du PROFIL, d'où le refus d'en écrire un à l'écran
+> (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`) — une garde l'interdit.
+> ⚠️⚠️ **Trou fermé en chemin** : la garde `[FUTUR-DAILY-NATIVE]` ne lisait que `dataKey="…"`, donc
+> une série tracée par **ACCESSEUR** (`dataKey={fonction}` — la dette depuis 2026-09-18) lui était
+> **invisible** : elle pouvait manquer à `CURVE_FIELDS` et rester muette au jour. La table
+> `CHAMP_PAR_ACCESSEUR` rend la chose vérifiable, et un test relit le CORPS de chaque accesseur pour
+> qu'elle ne puisse pas MENTIR.
+> ⚠️⚠️ **Et cette même garde lisait encore la source BRUTE** : elle portait toujours la bombe
+> `UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE`, corrigée le 2026-09-18 sur sa jumelle de
+> `bilanQuotidien.test.ts` mais pas sur elle. Les trois extracteurs de source de
+> `FutureProjection.tsx` sont consolidés dans **`tests/helpers/futureSource.ts`**.
+> 📏 **25 gardes neuves** (3 fichiers), **12 perturbations SÉPARÉES**, chacune ne rougissant que sa
+> cible : champ retiré de `CURVE_FIELDS` → 2 · moteur qui publie la dette totale → 2 · légende
+> repassée en aire → 1 · colonne `sr-only` retirée → 1 · table accesseur qui ment → 1 · montant
+> dans la phrase → 1 · `null` remplacé par `0` → 1 · `sr-only` retiré → 1 · phrase rendue visible
+> → 2 · ligne affichée en permanence → 2 · explication remise en `title` → 5 · seuil chiffré
+> glissé dans la phrase → 1.
+> ⚠️ **Gate local NON lancé** (`UN-GATE-QUI-N-A-PAS-TOURNE`) : vérifs CIBLÉES (typecheck, lint à
+> **32 avertissements — la base inchangée**, les 3 fichiers de garde, les 3 gardes refondues) puis
+> commit/push. **La CI est l'arbitre** (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
+> 🧭 **Reste ouvert, routé** : `[SMITH-LTV-SEUIL-65]`, `[SMITH-MARGE-BIEN-QUELCONQUE]`,
+> `[SMITH-VENTE-FORCEE-FLUX-MUET]`, `[HUB-MCP-PERIME]` (le serveur MCP de Marc tourne encore du code
+> d'avant les correctifs — ses chiffres MCP sont ceux d'AVANT).
+
 > ## 🟦 Session 2026-09-18 (suite 5) — **une marge jamais tirée était appelée, et rendait la dette NÉGATIVE**
 > 🔎 **`[SMITH-MARGE-SANS-DETTE]`** — signalé par Marc : « la dette ne s'arrête pas, ça me met 112k à
 > 44 ans ». Son bail auto n'y était pour rien (éteint en ~46 mois). Le bloc « LTV margin call » de

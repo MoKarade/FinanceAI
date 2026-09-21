@@ -228,6 +228,16 @@ describe('dailyLedger — invariants de raccord (moteur réel)', () => {
         // [ENG-W5-BUSINESS-NON-PUBLIE] (lot 214) 0 dans cette fixture (aucune entreprise) : balayé à 900 000 $
         // par `bilanQuotidien.test.ts`, où il est non nul — une garde ne couvre que ce que sa fixture rend non nul.
         'Entreprise',
+        // [DETTE-LEVIER-EXPLICITE] (2026-09-21) MESURÉ **0,00 $ sur les 6 mois** de cette fixture, et
+        // pas par hasard : la marge Smith n'ouvre que si `projection.useSmithManoeuvre` est vrai, ce
+        // que `params_riches` ne demande pas. L'inscrire dans le balayage ne protégerait donc RIEN
+        // (le rapport est calculé sur un plancher de 100 $, jamais atteint) tout en ayant l'air
+        // d'une protection — `UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`.
+        // ⚠️ Il EST balayé ailleurs, à valeur non nulle : `tests/components/futureCourbeLevier.test.ts`
+        // (« raccord au JOUR ») rejoue `buildDailyLedger` sur une fixture qui ACTIVE le levier et
+        // vérifie que le dernier jour de chaque mois vaut exactement la valeur du moteur. Sans ce
+        // renvoi, cette ligne serait une exclusion en silence, qui se lit « déjà tranché ».
+        'DetteLevierSmith',
     ];
 
     it('ORDRE DE GRANDEUR ÉLARGI : aucun solde ne se met à valoir un 30e, sur TOUS les jours', () => {

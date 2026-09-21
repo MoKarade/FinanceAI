@@ -77,6 +77,16 @@ test.describe('Futur — ancrages de l’axe X numérique', () => {
 
     // La bande doit avoir une largeur RÉELLE — sinon les deux tests ci-dessus seraient vrais par
     // dégénérescence (une bande de largeur nulle collée au bord passerait tout).
-    expect(geom.areaW).toBeGreaterThan(5);
+    //
+    // [FUTUR-NAV-TIROIRS] (2026-09-21) Un seuil en PIXELS ABSOLUS (`> 5`) calibré sur l'ancien tracé
+    // PLEINE LARGEUR (986px de tracé) est devenu marginal (4,14px) dès que la barre latérale
+    // desktop (280px + espacement) réduit ce tracé à 682px au viewport par défaut du projet
+    // `chromium` (1280×720) — RÉGRESSION mesurée avant de conclure : réfutée. La PART occupée par
+    // la bande est IDENTIQUE des deux côtés (0,607 % du tracé, mesuré aux deux largeurs) : la
+    // donnée n'a pas bougé, seul l'espace dispo pour le graphe a rétréci — un effet attendu et
+    // accepté du choix de Marc (barre latérale desktop). La bonne anti-dégénérescence est donc une
+    // PART du tracé, pas un compte de pixels — robuste à toute largeur de conteneur future.
+    const plotWidth = geom.plotRight - geom.plotLeft;
+    expect(geom.areaW / plotWidth).toBeGreaterThan(0.003);
   });
 });

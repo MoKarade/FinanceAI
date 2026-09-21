@@ -24,6 +24,7 @@ import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
 import { requestPersistentStorage } from '../services/storagePersistence';
 import { decisionEcritureFx, fxSourceEffective } from '../services/fx/provenance';
+import { modeDonneesFictives } from '../store/modeTestActif';
 
 /** Tous les effets de boot d'App : handlers d'erreur, courbe verrouillée, service worker, purge
  *  persona, init sync Drive, filets migration/hydratation, provider marché, clés API chiffrées,
@@ -61,7 +62,10 @@ export function useAppBootEffects(): void {
         // auto-expirant dans utils/lazyWithRetry (au plus 1 reload auto/min, aucun clear requis).
         // P1.3 — auto-backup quotidien dans IndexedDB (silent fail si indispo).
         // Léger debounce (2s) pour ne pas bloquer le 1er paint.
-        const timer = setTimeout(() => { initAutoBackup(); }, 2000);
+        // ARCHIVE : refusée si l'app tourne sur des données fictives (mode test / bac à sable).
+        // Le prédicat est lu DANS le timer, pas à la pose : 2 s séparent les deux, et le mode
+        // peut avoir basculé entre-temps.
+        const timer = setTimeout(() => { initAutoBackup(modeDonneesFictives()); }, 2000);
 
         // P2.9 — service worker en PROD seulement (Vite HMR en dev s'auto-gère).
         // Bug fix 2026-05-21 : ce useEffect tourne souvent APRÈS window.load
@@ -98,8 +102,12 @@ export function useAppBootEffects(): void {
             try {
                 // Depuis [BACKUP-PROMISE-CATCH], createBackupNow journalise EN INTERNE ses échecs
                 // IndexedDB (rejet async tx.onerror → null) ; ici on trace juste que le filet est absent.
-                const backup = await createBackupNow('auto');
-                if (!backup) {
+                // FILET avant la purge. ⚠️ Ce chemin ne tourne jamais en mode fictif (un
+                // `if (st.isTestMode) return;` le coupe plus haut) — on passe quand même le
+                // prédicat RÉEL plutôt que `false` en dur : inscrire une prémisse ici la rendrait
+                // fausse le jour où la garde du dessus bouge, sans rien de rouge.
+                const backup = await createBackupNow('auto', { intent: 'filet', donneesFictives: modeDonneesFictives() });
+                if (!backup.ok) {
                     logError({ source: 'storage', severity: 'warning', message: 'purgePersonaArtifacts : backup pré-purge indisponible (null) — purge SANS filet' });
                 }
             } catch (e) {

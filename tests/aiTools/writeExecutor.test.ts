@@ -11,7 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../services/backupAuto', () => ({
-    createBackupNow: vi.fn(async () => ({ id: 'backup-1', createdAt: 0, source: 'auto' })),
+    createBackupNow: vi.fn(async () => ({ ok: true, entry: { id: 'backup-1', timestamp: 0, sizeBytes: 1, payload: '{}', source: 'auto' } })),
 }));
 vi.mock('../../services/errorLogger', async (orig) => ({
     ...(await orig() as object),
@@ -41,7 +41,7 @@ const DEBT_ARGS = { name: 'Prêt auto Vitest', balance: 9000, interestRate: 6.9,
 
 beforeEach(() => {
     vi.mocked(createBackupNow).mockClear();
-    vi.mocked(createBackupNow).mockResolvedValue({ id: 'backup-1' } as never);
+    vi.mocked(createBackupNow).mockResolvedValue({ ok: true, entry: { id: 'backup-1', timestamp: 0, sizeBytes: 1, payload: '{}', source: 'auto' } });
     vi.mocked(logError).mockClear();
     useFinanceStore.getState().resetState();
     // Snapshot par défaut : l'état persona (cloné à chaque appel, comme le vrai snapshotAppState).
@@ -57,7 +57,9 @@ describe('executeWriteTool (AITOOLS-D)', () => {
         let debtsAtBackupTime: AppState['debts'] | null = null;
         vi.mocked(createBackupNow).mockImplementation(async () => {
             debtsAtBackupTime = useFinanceStore.getState().debts;
-            return { id: 'b' } as never;
+            // ⚠️ Plus de `as never` ici non plus : c'est lui qui laissait un faux contrat de mock
+            // passer le typecheck et rougir seulement à l'exécution.
+            return { ok: true, entry: { id: 'b', timestamp: 0, sizeBytes: 1, payload: '{}', source: 'auto' } };
         });
 
         let seenPreview: WritePreview | null = null;
@@ -74,7 +76,7 @@ describe('executeWriteTool (AITOOLS-D)', () => {
         expect(seenPreview!.toolName).toBe('apply_debt');
         expect(seenPreview!.changes.length).toBeGreaterThan(0);
         // Backup demandé en mode 'auto', AVANT l'écriture (le store ne portait pas encore la dette).
-        expect(createBackupNow).toHaveBeenCalledWith('auto');
+        expect(createBackupNow).toHaveBeenCalledWith('auto', { intent: 'filet', donneesFictives: false });
         expect(debtsAtBackupTime).not.toBeNull();
         expect(debtsAtBackupTime!.some((d) => d.name === 'Prêt auto Vitest')).toBe(false);
         // Le store porte maintenant la dette proposée (l'écriture a bien eu lieu).
@@ -131,7 +133,7 @@ describe('executeWriteTool (AITOOLS-D)', () => {
     });
 
     it('BACKUP ÉCHOUÉ (null) : AUCUNE écriture, logError, message honnête (jamais d\'écriture sans filet)', async () => {
-        vi.mocked(createBackupNow).mockResolvedValue(null);
+        vi.mocked(createBackupNow).mockResolvedValue({ ok: false, cause: 'echec-ecriture' });
         const before = useFinanceStore.getState().debts;
         const res = await executeWriteTool(applyDebtSpec as never, DEBT_ARGS, async () => 'apply');
         const out = parseResult(res);

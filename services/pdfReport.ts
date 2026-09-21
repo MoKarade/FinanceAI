@@ -17,6 +17,7 @@ import { formatCAD } from '../utils/format';
 import { assetValueCad } from './portfolio';
 import { logError } from './errorLogger';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { modeDonneesFictives } from '../store/modeTestActif';
 
 // ============================================================================
 // Types — payload de report
@@ -823,11 +824,32 @@ export class PdfRefusedPrivacyError extends Error {
     }
 }
 
+/**
+ * Refus JUMEAU, pour la même raison structurelle : un PDF SORT de l'app, et ce qu'il emporte
+ * doit être vrai. Quand l'app tourne sur des données fictives (mode test / bac à sable), le
+ * document produit serait un dossier financier complet, d'allure parfaitement réelle, qui
+ * n'existe pas — imprimé, envoyé ou relu six mois plus tard, plus rien ne dirait qu'il est
+ * inventé. C'est `no-fake-data` appliqué à une SORTIE.
+ *
+ * ⚠️ Refus PUR plutôt que filigrane : arbitrage de Marc, 21/09/2026, CONTRE ma recommandation
+ * (je proposais d'autoriser avec une marque visible, pour permettre de montrer un scénario).
+ * Écrit ici pour qu'un lot futur sache que c'est une décision, pas un oubli de conception.
+ */
+export class PdfRefusedTestModeError extends Error {
+    constructor() {
+        super('Export PDF refusé : l\'app affiche des données fictives.');
+        this.name = 'PdfRefusedTestModeError';
+    }
+}
+
 export async function generateFinancialReport(data: ReportData): Promise<void> {
     // ⚠️ Lu au moment de l'APPEL, pas capturé en amont : le mode a pu être activé entre le rendu du
     // bouton et le clic. Et on refuse AVANT tout travail — pas au moment d'écrire le fichier, pour
     // ne pas laisser un PDF partiel derrière soi.
     if (useFinanceStore.getState().isPrivacyMode) throw new PdfRefusedPrivacyError();
+    // Même lecture FRAÎCHE, même refus AVANT tout travail, et pour la même raison que la ligne
+    // du dessus : le mode a pu basculer entre le rendu du bouton et le clic.
+    if (modeDonneesFictives()) throw new PdfRefusedTestModeError();
 
     const isFr = (data.lang || 'fr') !== 'en';
     const L = construireLibelles(isFr, data.generatedAt);

@@ -43,12 +43,12 @@ describe('backupAuto', () => {
         vi.unstubAllGlobals();
     });
 
-    it('createBackupNow returns null si localStorage vide', async () => {
+    it('createBackupNow : rien à sauvegarder si localStorage vide (cause NOMMÉE, pas un null muet)', async () => {
         const { createBackupNow } = await import('../../services/backupAuto');
         // jsdom localStorage est vide par défaut
         localStorage.clear();
-        const result = await createBackupNow('manual');
-        expect(result).toBeNull();
+        const result = await createBackupNow('manual', { intent: 'archive', donneesFictives: false });
+        expect(result).toEqual({ ok: false, cause: 'rien-a-sauvegarder' });
     });
 
     it('createBackupNow : échec IndexedDB avec payload → logError (non silencieux) + null', async () => {
@@ -56,8 +56,8 @@ describe('backupAuto', () => {
         localStorage.setItem('financeai-storage', SAMPLE_PAYLOAD);
         vi.stubGlobal('indexedDB', undefined);
         vi.mocked(logError).mockClear();
-        const result = await createBackupNow('manual');
-        expect(result).toBeNull();
+        const result = await createBackupNow('manual', { intent: 'archive', donneesFictives: false });
+        expect(result).toEqual({ ok: false, cause: 'echec-ecriture' });
         expect(logError).toHaveBeenCalledWith(
             expect.objectContaining({ message: expect.stringContaining('createBackupNow') }),
         );
@@ -115,14 +115,14 @@ describe('backupAuto', () => {
     it('initAutoBackup silent fail si IndexedDB indisponible', async () => {
         const { initAutoBackup } = await import('../../services/backupAuto');
         vi.stubGlobal('indexedDB', undefined);
-        await expect(initAutoBackup()).resolves.toBeUndefined();
+        await expect(initAutoBackup(false)).resolves.toBeUndefined();
         vi.unstubAllGlobals();
     });
 
     it('restoreBackup retourne false si id invalide', async () => {
         const { restoreBackup } = await import('../../services/backupAuto');
         vi.stubGlobal('indexedDB', undefined);
-        const result = await restoreBackup('nonexistent-id');
+        const result = await restoreBackup('nonexistent-id', false);
         expect(result).toBe(false);
         vi.unstubAllGlobals();
     });

@@ -36,7 +36,7 @@ const NET_PERIOD = 2100;     // → 54 600 $/an → 4 550 $/mois
 beforeEach(() => {
     useFinanceStore.setState(initialState, true);
     vi.clearAllMocks();
-    backupMock.mockResolvedValue({ id: 'bk1', timestamp: Date.now() } as never);
+    backupMock.mockResolvedValue({ ok: true, entry: { id: 'bk1', timestamp: Date.now(), sizeBytes: 1, payload: '{}', source: 'auto' } });
     analyzeMock.mockResolvedValue({
         grossPeriod: GROSS_PERIOD, netPeriod: NET_PERIOD, taxPeriod: 700, rrspPeriod: 200,
         frequency: 'Bi-Weekly',
@@ -101,7 +101,7 @@ describe('[AI-VISION-PAYSLIP-NOGATE] écriture du salaire par l\'IA Vision', () 
     });
 
     it('backup ÉCHOUÉ → écriture ANNULÉE (le filet est la CONDITION de l\'écriture)', async () => {
-        backupMock.mockResolvedValue(null);
+        backupMock.mockResolvedValue({ ok: false, cause: 'echec-ecriture' });
         const { container } = render(<PayslipUploadCard />);
         const grossAvant = grossOf();
         await dropFile(container);

@@ -25,6 +25,7 @@ import { pushNow } from './syncPush';
 import { setStatus, emitSyncNotice } from './syncStatusStore';
 import { currentMeta, readDrive, resolveSub } from './syncMeta';
 import { handleError } from './syncErrors';
+import { modeDonneesFictives } from '../../store/modeTestActif';
 
 /**
  * Réapplique un payload tiré de Drive : backup d'assurance → clés API → écriture localStorage →
@@ -48,8 +49,10 @@ async function applyPulledPayload(payload: unknown, apiKeys?: ApiKeys): Promise<
     // être avalé en silence (finding silent-failure 2026-07-14) : on journalise en 'warning' pour que
     // « restauration SANS filet » soit visible (diagnostics/SystemView), pas invisible.
     try {
-        const backup = await createBackupNow('auto');
-        if (!backup) {
+        // FILET avant d'écraser l'état local : passe même sur des données fictives (l'annulation
+        // de CETTE restauration est ce qu'il protège, pas la valeur des données).
+        const backup = await createBackupNow('auto', { intent: 'filet', donneesFictives: modeDonneesFictives() });
+        if (!backup.ok) {
             logError({ source: 'storage', severity: 'warning', message: 'applyPulledPayload: backup pré-restauration non créé (localStorage vide ou IndexedDB indispo) — restauration SANS filet' });
         }
     } catch (e) {

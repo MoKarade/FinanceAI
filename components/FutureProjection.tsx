@@ -15,7 +15,7 @@ import { useHiddenSeries } from '../hooks/useHiddenSeries';
 import { FuturePeriodSelector } from './future/FuturePeriodSelector';
 import { PageHeader } from './ui/PageHeader';
 import { Drawer } from './ui/Drawer';
-import { FutureSidebar, type FutureDrawerId } from './future/FutureSidebar';
+import { FutureSidebar, type FutureDrawerId, tiroirDomId } from './future/FutureSidebar';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { KPIStat } from './ui/KPIStat';
@@ -1594,6 +1594,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onClick={() => setTiroirOuvert('hypotheses')}
                     aria-haspopup="dialog"
                     aria-expanded={tiroirOuvert === 'hypotheses'}
+                    aria-controls={tiroirDomId('hypotheses')}
                     className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
                 >
                     <span aria-hidden="true">⚙️</span> Hypothèses
@@ -1603,6 +1604,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onClick={() => setTiroirOuvert('plan')}
                     aria-haspopup="dialog"
                     aria-expanded={tiroirOuvert === 'plan'}
+                    aria-controls={tiroirDomId('plan')}
                     className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
                 >
                     <span aria-hidden="true">🗂️</span> Plan
@@ -1612,6 +1614,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onClick={() => setTiroirOuvert('historique')}
                     aria-haspopup="dialog"
                     aria-expanded={tiroirOuvert === 'historique'}
+                    aria-controls={tiroirDomId('historique')}
                     className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
                 >
                     <span aria-hidden="true">📊</span> Historique
@@ -2190,6 +2193,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             le même seuil que la mise en page : feuille du bas en colonne empilée, tiroir latéral
             quand la barre latérale est visible. */}
         <Drawer
+            id={tiroirDomId('hypotheses')}
             isOpen={tiroirOuvert === 'hypotheses'}
             onClose={() => setTiroirOuvert(null)}
             variant={isBelowSidebarBreakpoint ? 'feuille' : 'lateral'}
@@ -2234,11 +2238,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         </Drawer>
 
         <Drawer
+            id={tiroirDomId('plan')}
             isOpen={tiroirOuvert === 'plan'}
             onClose={() => setTiroirOuvert(null)}
             variant={isBelowSidebarBreakpoint ? 'feuille' : 'lateral'}
             title="Plan d'action"
         >
+            {/* [FUTUR-NAV-TIROIRS] Trois états, symétriques au corps principal (curveRestoring
+                gérée en premier, comme là-bas) : sans ce bloc, ouvrir ce tiroir pendant la fenêtre de
+                restauration (~300 ms-qq s, [PROJECTION-PERSIST]) rendait un dialogue avec un titre et
+                rien d'autre — un écran vide plus trompeur ici que dans l'ancien panneau d'onglet,
+                puisqu'on s'attend à du contenu dans une boîte de dialogue qu'on vient d'ouvrir. */}
+            {curveRestoring && (
+                <div className="py-10 flex flex-col items-center gap-3 text-ink-300" role="status" aria-live="polite">
+                    <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5" />
+                    </svg>
+                    <span className="text-meta">Ta projection se recharge…</span>
+                </div>
+            )}
             {/* PH4 — gated comme la courbe : pas de résultats tant que la projection n'est pas
                 calculée. [PROJECTION-PERSIST] pendant la restauration, ne pas montrer l'invite. */}
             {!curveVisible && !curveRestoring && (
@@ -2263,6 +2281,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             Indépendant de la projection (pas gated par curveVisible : l'historique existe même sans
             courbe calculée). Lazy → le pipeline ne se paie qu'à l'affichage. */}
         <Drawer
+            id={tiroirDomId('historique')}
             isOpen={tiroirOuvert === 'historique'}
             onClose={() => setTiroirOuvert(null)}
             variant={isBelowSidebarBreakpoint ? 'feuille' : 'lateral'}

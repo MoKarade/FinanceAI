@@ -11,6 +11,13 @@ import { FutureHealthSummary } from './FutureHealthSummary';
 
 export type FutureDrawerId = 'hypotheses' | 'plan' | 'historique';
 
+/** Source unique de l'`id` DOM du tiroir associé — consommée ICI (`aria-controls` des liens de la
+ *  barre latérale) ET dans `FutureProjection.tsx` (boutons mobiles + `<Drawer id=…>`), pour que les
+ *  deux ne divergent jamais. */
+export function tiroirDomId(id: FutureDrawerId): string {
+    return `future-drawer-${id}`;
+}
+
 interface FutureSidebarProps {
     insolvencyBadge?: React.ReactNode;
     dataModePill: React.ReactNode;
@@ -65,7 +72,8 @@ export const FutureSidebar: React.FC<FutureSidebarProps> = ({
                         onClick={() => onOuvrirTiroir(lien.id)}
                         aria-haspopup="dialog"
                         aria-expanded={tiroirOuvert === lien.id}
-                        className="flex items-center justify-between gap-2 min-h-[40px] px-2 rounded-card text-meta font-semibold text-ink-200 hover:bg-white/5 transition-colors focus-ring"
+                        aria-controls={tiroirDomId(lien.id)}
+                        className="flex items-center justify-between gap-2 min-h-[44px] px-2 rounded-card text-meta font-semibold text-ink-200 hover:bg-white/5 transition-colors focus-ring"
                     >
                         <span className="flex items-center gap-2">
                             <span aria-hidden="true">{lien.icon}</span> {lien.label}

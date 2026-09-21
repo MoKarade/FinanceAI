@@ -22,14 +22,27 @@ interface DrawerProps {
     title: string;
     subtitle?: React.ReactNode;
     variant: DrawerVariant;
+    /** Posé sur le conteneur `role="dialog"` — permet à un déclencheur externe de le référencer
+     *  via `aria-controls` AVANT l'ouverture (perdu par rapport à l'ancien bandeau à onglets,
+     *  qui exposait `panelId`). Optionnel : un tiroir sans déclencheur externe s'en passe. */
+    id?: string;
     closeOnBackdrop?: boolean;
     closeOnEsc?: boolean;
+    /**
+     * Élément à focaliser à l'ouverture, à la place du bouton ✕.
+     *
+     * ⚠️ [A11Y-MODAL-GUIDE-NODIALOG] Même piège que `Modal.tsx` : sans ça, un tiroir de SAISIE
+     * (`ProjectionControls` en contient un) qui gagnerait un jour un `autoFocus` se le ferait
+     * reprendre par le focus différé du ✕ (50 ms). Aucun contenu de tiroir n'en pose aujourd'hui —
+     * la prop existe pour que ce jour-là n'ait pas à redécouvrir le problème.
+     */
+    initialFocusRef?: React.RefObject<HTMLElement | null>;
     children: React.ReactNode;
 }
 
 export const Drawer: React.FC<DrawerProps> = ({
-    isOpen, onClose, title, subtitle, variant,
-    closeOnBackdrop = true, closeOnEsc = true, children,
+    isOpen, onClose, title, subtitle, variant, id,
+    closeOnBackdrop = true, closeOnEsc = true, initialFocusRef, children,
 }) => {
     const closeBtnRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -43,7 +56,7 @@ export const Drawer: React.FC<DrawerProps> = ({
     useEffect(() => {
         if (!isOpen) return;
         previousFocusRef.current = (document.activeElement as HTMLElement | null) ?? null;
-        const t = setTimeout(() => closeBtnRef.current?.focus(), 50);
+        const t = setTimeout(() => (initialFocusRef?.current ?? closeBtnRef.current)?.focus(), 50);
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
@@ -60,7 +73,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                 target.focus();
             }
         };
-    }, [isOpen, closeOnEsc]);
+    }, [isOpen, closeOnEsc, initialFocusRef]);
 
     if (!isOpen) return null;
 
@@ -72,6 +85,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         <div role="presentation" className="fixed inset-0 z-[9999] bg-black/55 animate-fade-in" onClick={closeOnBackdrop ? onClose : undefined}>
             <div
                 ref={panelRef}
+                id={id}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}

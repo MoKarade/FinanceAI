@@ -38,6 +38,16 @@
 > laisse `pastPurchaseInit.test.ts` VERT (17/17). Ce n'est pas une régression du lot (la garde est
 > préservée telle quelle) mais un trou de couverture PRÉEXISTANT sur un gate qui a coûté un
 > incident (A6, revue #684) — à vérifier avant d'y toucher.
+> ⚠️⚠️ **CI rouge, et c'est une leçon DÉJÀ écrite qui a été re-commise** : `amountPrivacyScan` a
+> refusé `sublabel={… ${formatCAD(hypotheque)} …}` — la règle « une ligne d'ATTRIBUT porte sa marque
+> À ELLE » existe depuis le lot 58, et mon drapeau `privateSublabel`, posé une ligne plus bas, ne
+> lui servait pas de preuve. Le correctif n'est pas de faire taire la garde mais de **DÉCOUPER** :
+> `sublabel` passe de `string` à `ReactNode` (leçon jumelle, déjà payée sur `DualKPIStat.sublabel`
+> et `PageHeader.subtitle`) et seule la VALEUR est enveloppée — en mode discret le sous-titre lit
+> « dont ••• d'hypothèque », donc la composition du total reste compréhensible. **Deux
+> perturbations de sens opposé** : montant nu → le scan rougit ; sous-titre masqué EN ENTIER → le
+> scan reste VERT et c'est la garde comportementale neuve qui rougit. Aucune des deux ne couvre
+> l'autre.
 
 > ## 🟦 Session 2026-09-21 (suite) — **les deux pavés sous la courbe, en pastilles**
 > 🔎 **`[FUTUR-NOTES-COMPACTES]`** — Marc, capture au marqueur rouge : « **vire moi tout le texte

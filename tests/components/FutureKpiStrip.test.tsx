@@ -224,14 +224,25 @@ describe('[KPI-AVOIRS-DETTES] avoirs et dettes, à côté du net qu’ils compos
         expect(t.textContent).toContain(formatCAD(300_000));
     });
 
-    it('le détail de l’hypothèque est MASQUÉ en mode discret — c’est un montant', () => {
+    it('le détail de l’hypothèque est MASQUÉ en mode discret — mais la PHRASE reste', () => {
         // ⚠️ Un sous-titre qui porte un montant est une donnée financière : le laisser nu à côté
         // d'une valeur masquée est exactement le finding a11y/privacy #644.
+        //
+        // ⚠️⚠️ Ce test porte les DEUX moitiés, et la seconde est née d'un rouge de CI :
+        // `amountPrivacyScan` exige qu'une ligne d'ATTRIBUT (`sublabel=`) porte sa marque À ELLE —
+        // le drapeau `privateSublabel`, posé une ligne plus bas, ne lui servait pas de preuve.
+        // Le correctif n'est pas de faire taire la garde mais de DÉCOUPER : seule la valeur est
+        // enveloppée, « dont … d'hypothèque » survit. Sans la seconde assertion, un lot futur
+        // pourrait remasquer le sous-titre ENTIER et rester vert, alors que Marc perdrait
+        // l'information qui explique la composition de son total.
         useFinanceStore.setState({ realEstateGoals: [goal], isPrivacyMode: true });
         renderStrip();
-        expect(tile('Dettes').textContent).not.toContain(formatCAD(300_000));
-        // Anti-vacuité : hors mode discret, il EST là (cas ci-dessus) — et le LIBELLÉ, lui, reste.
-        expect(tile('Dettes').textContent).toMatch(/Dettes/);
+        const t = tile('Dettes');
+        expect(t.textContent).not.toContain(formatCAD(300_000));
+        expect(t.textContent).toMatch(/dont/i);
+        expect(t.textContent).toMatch(/hypoth/i);
+        // Anti-vacuité : hors mode discret, le montant EST là (cas ci-dessus) — et le LIBELLÉ reste.
+        expect(t.textContent).toMatch(/Dettes/);
     });
 
     it('un bien à équité NÉGATIVE ne casse pas l’identité', () => {

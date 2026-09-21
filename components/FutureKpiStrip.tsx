@@ -26,9 +26,23 @@ const KpiTile: React.FC<{
     label: string;
     value: number;
     signed?: boolean;
-    /** Précision de périmètre ou variation relative, sous la valeur. Masquée avec la valeur en
-     *  mode discret quand `privateSublabel` (un % de variation reste une donnée financière). */
-    sublabel?: string;
+    /**
+     * Précision de périmètre ou variation relative, sous la valeur.
+     *
+     * ⚠️ TYPÉ `ReactNode`, PAS `string` — leçon du dépôt : « un champ de texte d'interface qui peut
+     * contenir un montant ne doit jamais être typé `string` » (déjà payée sur `DualKPIStat.sublabel`
+     * et `PageHeader.subtitle`). Un montant interpolé dans une phrase n'est plus un nœud, donc plus
+     * masquable — l'appelant doit pouvoir envelopper LA valeur et laisser l'explication lisible.
+     *
+     * Deux masquages, deux besoins distincts :
+     *  · `privateSublabel` — le sous-titre est ENTIÈREMENT un montant (la variation en %) : on masque
+     *    tout, l'appelant n'a rien à découper.
+     *  · `<PrivateAmount>` posé par l'appelant — le sous-titre MÊLE explication et montant (« dont
+     *    X $ d'hypothèque ») : seule la valeur part, la phrase reste. C'est aussi ce qu'exige
+     *    `amountPrivacyScan` d'une ligne d'ATTRIBUT — elle porte sa marque À ELLE, le masquage du
+     *    voisin ne lui sert jamais d'alibi.
+     */
+    sublabel?: React.ReactNode;
     privateSublabel?: boolean;
     /** Étiquette de PÉRIMÈTRE (assiette du chiffre), sous le sublabel — jamais privée : elle ne
      *  contient aucune donnée financière, et doit rester lisible même en mode discret. */
@@ -166,8 +180,12 @@ export const FutureKpiStrip: React.FC<{
                 // ⚠️ Le détail que Marc a demandé, et il est PRIVÉ : c'est un montant. Affiché
                 // seulement quand il existe — « dont 0 $ d'hypothèque » sur un dossier sans
                 // immobilier serait du décor (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
-                sublabel={realEstateHypotheque > 0.5 ? `dont ${formatCAD(realEstateHypotheque)} d'hypothèque` : undefined}
-                privateSublabel
+                // ⚠️ Seule la VALEUR est enveloppée : en mode discret le sous-titre lit encore
+                // « dont ••• d'hypothèque », donc la COMPOSITION du total reste compréhensible
+                // sans qu'aucun chiffre ne sorte.
+                sublabel={realEstateHypotheque > 0.5 ? (
+                    <>dont <PrivateAmount>{formatCAD(realEstateHypotheque)}</PrivateAmount> d'hypothèque</>
+                ) : undefined}
             />
             <KpiTile label="Liquidités" value={liquidity} />
             <KpiTile label="Épargne / mois" value={monthlySavings} signed />

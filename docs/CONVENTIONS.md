@@ -9945,6 +9945,26 @@ elle** ; ce que fait son voisin ne prouve rien sur elle. C'est
 correctif de typage suit la même logique : `sublabel` passe de `string` à `React.ReactNode`, parce
 qu'une carte ne peut pas masquer à la place de l'appelant un texte qui mêle explication et montant.
 
+⚠️⚠️ **Re-payée le 2026-09-21 (`[KPI-AVOIRS-DETTES]`), et c'est le mode de panne qu'il faut retenir.**
+`FutureKpiStrip` a été écrit avec un drapeau `privateSublabel` : un masquage RÉEL, testé, qui enveloppe
+le sous-titre entier dans `PrivateAmount`. La CI a quand même rougi sur
+`sublabel={… ${formatCAD(hypotheque)} …}`. Deux raisons, et aucune n'est un défaut de la garde :
+
+1. **Le drapeau vivait une ligne plus bas** — exactement l'alibi que la règle ci-dessus interdit.
+2. **Son NOM est invisible au vocabulaire du scan.** La liste `PRIVACY` refuse DÉLIBÉRÉMENT les noms
+   de helpers locaux (les y mettre rendrait la garde auto-satisfaite) ; `privateSublabel` en est un.
+   Donc un mécanisme de masquage inventé par un lot est, par construction, **indémontrable à la
+   garde** — et l'élargir serait la désarmer. La seule issue est de DÉCOUPER : envelopper la VALEUR
+   sur sa ligne, laisser la phrase lisible.
+
+⚠️ Bénéfice non anticipé du découpage, qui justifie de le préférer au masquage total : en mode discret
+le sous-titre lit « dont ••• d'hypothèque » au lieu de « ••• ». **La COMPOSITION du total reste
+compréhensible sans qu'aucun chiffre ne sorte** — un sous-titre masqué en entier ne dit même plus
+qu'il y a une hypothèque. D'où une garde comportementale JUMELLE du scan : masquer le sous-titre
+entier laisse `amountPrivacyScan` **VERT** (c'est un masquage valide) et ne rougit que chez elle.
+Mesuré par deux perturbations de sens opposé — montant nu → scan rouge, sous-titre entier masqué →
+scan vert / garde rouge. **Aucune des deux ne couvre l'autre**, et c'était le seul moyen de le savoir.
+
 Quatre constats d'outillage, tous mesurés :
 
 - **La dette restante se BORNE, elle ne se documente pas.** Douze sites portent le montant à

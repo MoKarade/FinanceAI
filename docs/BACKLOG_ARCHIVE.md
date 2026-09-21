@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-21 — `[DETTE-LEVIER-EXPLICITE]` (PR #998, mergée, déployée)
+
+Déménagé le jour même de son merge, conformément à la règle « au plus tard à la PR suivante ».
+Déploiement de production VÉRIFIÉ : `dpl_H7tnNg4D5x2z64Eo4V6cMqhmKfKo`, état `READY`, SHA
+`70a309d3`. ⚠️ La RÉPONSE servie n'a pas pu être lue depuis le conteneur (403 au CONNECT sur
+`finance.hubperso.com`, et l'URL `*.vercel.app` est derrière le SSO Vercel) — c'est la CRÉATION du
+déploiement et son état qui sont vérifiés, pas le contenu rendu (§6 de `CLAUDE.md`).
+
+- [x] ✅ **`[DETTE-LEVIER-EXPLICITE]`** (M, money-critical d'AFFICHAGE) — LIVRÉ 2026-09-21. Marc :
+  « la dette augmente à 150k alors que j'ai juste une dette auto qui fini en 2030 », puis « je veux
+  que ce soit explicite et expliqué ». Le moteur publie `DetteLevierSmith` (SOUS-ENSEMBLE de
+  `DettesNonImmo`), le graphe porte une 2ᵉ courbe indigo pointillée « dont levier Smith », la table
+  `sr-only` sa colonne, le panneau du jour sa sous-ligne (phrase en `title` + `sr-only`, sans
+  montant), et le réglage avancé s'explique VISIBLEMENT. Mesuré : écart ON−OFF **−51 794 $ à 3 %**
+  → **+58 824 $ à 8 %** (le signe change : c'est un levier) ; contrôle négatif `0` exactement sans
+  le réglage. → à déménager vers `BACKLOG_ARCHIVE` à la prochaine PR.
+
+
+---
+
 ## 2026-09-18 — Ménage : 91 items cochés déménagés depuis `BACKLOG.md`
 
 Retirés de `BACKLOG.md` parce qu'ils étaient **cochés, mergés et gate vert**. La règle du dépôt

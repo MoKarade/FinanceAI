@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (les deux pavés sous la courbe sont partis)
+
+- **Tu as barré deux blocs de texte sous le graphe Futur** : le bandeau « aujourd'hui part du total
+  de ton courtier… » et le pavé « Courbe au jour — … » (avec la ligne sur l'impôt latent). Ils ne
+  s'affichent plus.
+- **Rien n'est perdu pour autant** : les trois explications qu'ils portaient sont devenues des
+  **pastilles ⓘ** (Méthode · Raccord · Impôt latent). Le texte complet est au survol, et reste
+  lisible par un lecteur d'écran. Chacune ne s'affiche que quand elle a quelque chose à dire.
+- **Pourquoi je ne les ai pas simplement supprimées** : ces trois phrases répondent chacune à une
+  question que tu as déjà posée — dont, le jour même, « explique pourquoi j'ai pas la même valeur
+  sur mon app et sur Fintable ». C'est la pastille « Raccord » qui y répond.
+- **Les avertissements, eux, n'ont pas bougé** (transactions non plaçables, courbe passée
+  tronquée, marche au raccord chiffrée) : tu ne les avais pas barrés, et pour cause — aucun
+  n'était à l'écran, chacun ne parlant que quand son défaut existe.
+
+---
+
 ## [unreleased] — 2026-09-21 (l'écran Futur a une nouvelle disposition : barre latérale + tiroirs)
 
 - **Ce que tu as demandé** : changer l'agencement de l'écran Futur. On a fait une maquette d'abord,

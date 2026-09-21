@@ -18,6 +18,7 @@
  * qui n'existe plus.
  */
 import { describe, it, expect } from 'vitest';
+import { sourceFutureProjection } from '../helpers/futureSource';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -35,10 +36,24 @@ describe('[PASSE-REEL-IMPOT-LATENT-DEBUT] le passé n’émet PAS d’impôt lat
     });
 
     it('l’écran EXPLIQUE l’absence au lieu de laisser la courbe surgir', () => {
-        const src = lire('components/FutureProjection.tsx');
-        // La phrase doit être GATÉE sur la visibilité de la série : l'afficher en permanence serait
-        // du bruit sur un écran déjà dense.
-        expect(src).toMatch(/isVisible\('ImpotLatent'\)\s*&&\s*\(/);
-        expect(src).toContain("n'est pas reconstruit");
+        // ⚠️⚠️ GARDE INVERSÉE EN PLACE le 2026-09-21 (`[FUTUR-NOTES-COMPACTES]`), pas supprimée.
+        // Marc a biffé le pavé qui portait cette phrase (« vire moi tout le texte que j'ai barré »),
+        // donc elle n'est plus un paragraphe de `FutureProjection.tsx` — elle est une PASTILLE de
+        // `components/future/notesGraphe.tsx` (libellé court + `title` + jumeau `sr-only`).
+        // Ce qu'elle DÉFEND n'a pas changé d'un mot : une courbe qui surgit à une date arbitraire se
+        // lit comme un bug, et le calcul, lui, est juste. Supprimer la garde avec le paragraphe
+        // aurait laissé croire que la contrainte n'avait jamais existé
+        // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+        const src = lire('components/future/notesGraphe.tsx');
+        expect(src).toContain('n’est pas reconstruit');
+        // La note reste GATÉE sur la visibilité de la série : l'afficher en permanence serait du
+        // bruit sur un écran déjà dense — et expliquerait une courbe que l'utilisateur a masquée.
+        expect(src).toMatch(/o\.courbeAuJour\s*&&\s*o\.impotLatentVisible/);
+        // Et le paragraphe d'origine ne doit PAS revenir : deux endroits qui expliquent la même
+        // chose divergent, et c'est le pavé qui a été retiré.
+        // ⚠️ Lecture DÉCOMMENTÉE — mon 1er jet lisait la source brute et rougissait sur un
+        // commentaire sans rapport (« le cash/immo passé n'est pas reconstruit »),
+        // `SCAN-QUI-MATCHE-LA-PROSE` re-payée dans la garde même qui la cite.
+        expect(sourceFutureProjection()).not.toContain('pas reconstruit');
     });
 });

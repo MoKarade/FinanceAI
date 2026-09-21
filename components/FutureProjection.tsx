@@ -110,6 +110,7 @@ import { Tab as TabEnum } from '../types';
 import { ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { PanneauJour } from './projection/PanneauJour';
 import { detteSousZero, COULEUR_DETTE, detteLevierSousZero, COULEUR_LEVIER, LIBELLE_LEVIER } from './future/detteSerie';
+import { NotesGraphe, notesGraphe } from './future/notesGraphe';
 import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -2010,31 +2011,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     panneauRef={selection.panneauRef}
                 />
 
-                {/* [FUTUR-DAILY-NATIVE] La courbe est au jour PARTOUT — la bannière est devenue une
-                    note de méthodologie compacte + les avertissements d'honnêteté conditionnels.
-                    Le repli mensuel (ventilation impossible : < 2 mois à valeur nette finie) est
-                    signalé, jamais silencieux. */}
-                {/* [FINTABLE-AUTORITE-AUJOURDHUI] La SECONDE cause possible de marche au raccord,
-                    et elle est neuve : aujourd'hui part du total du COURTIER pendant que le passé
-                    reste reconstruit à partir des titres saisis. Sans cette phrase, la marche se
-                    lirait comme un bug — c'est ce que `mentionRaccord` a déjà appris à ce graphe.
-                    ⚠️ Bloc À PART, et pas dans les paragraphes voisins : ceux-là sont gouvernés par
-                    `isDailyCurve`, alors que cette marche existe dans les DEUX modes. Un signal
-                    logé sous la condition d'un autre signal n'est visible que la moitié du temps. */}
-                {/* ⚠️ Conteneur monté EN PERMANENCE, texte VIDÉ — et c'est une correction, pas une
-                    précaution : `mentionAutoriteCourtier` dérive de l'état du store, donc il peut
-                    passer de vide à non-vide EN COURS DE SESSION (une synchro Fintable de fond
-                    pendant que l'écran Futur est déjà ouvert). Monté à ce moment-là, le nœud
-                    apparaît DÉJÀ rempli et la première annonce — la seule utile — est perdue
-                    (`UNE-REGION-LIVE-MONTEE-CONDITIONNELLEMENT-N-ANNONCE-PAS`). */}
-                <p
-                    role="status"
-                    className={mentionAutoriteCourtier
-                        ? 'mt-2 rounded-card border border-white/10 bg-white/5 px-3 py-2 text-tiny text-ink-200'
-                        : 'sr-only'}
-                >
-                    {mentionAutoriteCourtier}
-                </p>
+                {/* [FUTUR-NOTES-COMPACTES] Marc, 2026-09-21 (capture, deux blocs biffés) : « vire moi
+                    tout le texte que j'ai barré ». Le BANDEAU d'autorité courtier et le PAVÉ
+                    « Courbe au jour » ont quitté l'écran ; leurs trois réserves survivent en
+                    pastilles (`components/future/notesGraphe.tsx`), libellé court + phrase entière
+                    en `title` ET en jumeau `sr-only`. ⚠️ Les effacer tout court aurait réarmé trois
+                    plaintes que Marc a DÉJÀ formulées — dont, le jour même, « explique pourquoi j'ai
+                    pas la même valeur sur mon app et sur Fintable », à laquelle la note « Raccord »
+                    répond (`EPURATION-SUPPRIME-LA-RESERVE`). */}
+                <NotesGraphe notes={notesGraphe({
+                    courbeAuJour: isDailyCurve,
+                    mentionAutoriteCourtier,
+                    impotLatentVisible: isVisible('ImpotLatent'),
+                })} />
                 {!isDailyCurve && (
                     <p role="status" className="mt-2 rounded-card border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-tiny text-ink-200">
                         <strong className="text-amber-300">Courbe au mois (repli)</strong> — la valeur nette
@@ -2042,43 +2031,24 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         donc les jours ne peuvent pas être reconstruits honnêtement.
                     </p>
                 )}
-                {isDailyCurve && (
+                {/* [FUTUR-NOTES-COMPACTES] Ce qui RESTE de l'ancien pavé « Courbe au jour » : les
+                    avertissements CONDITIONNELS et les mentions de raccord. Marc n'en a biffé
+                    aucun — et pour cause, aucun n'était à l'écran ce jour-là : chacun ne parle que
+                    quand son défaut existe. La méthodologie et l'impôt latent, eux, s'affichaient
+                    EN PERMANENCE ; ce sont eux qui sont passés en pastilles juste au-dessus.
+                    ⚠️ Le conteneur ne se monte plus que s'il a quelque chose à dire : un encadré
+                    vide sous la courbe serait du chrome, exactement ce que ce lot retire. */}
+                {(mentionRaccordJour || mentionRaccordMois
+                    || (dailyPast !== null && Math.abs(dailyPast.undatedTotal) > 0.5)
+                    || Boolean(dailyPast?.truncatedFrom)
+                    || (dailyPast !== null && Math.abs(dailyPast.flowsAfterNowDate) > 0.5)) && (
                     <p role="status" className="mt-2 rounded-card border border-primary/25 bg-primary/5 px-3 py-2 text-tiny text-ink-200">
-                        <strong className="text-primary">Courbe au jour</strong> — chaque point est une
-                        journée : survole pour la lire, clique pour la figer.
-                        <strong className="text-ink-100"> Avant aujourd'hui, c'est du RÉEL</strong> (tes
-                        transactions datées, le prix de tes titres ce jour-là). Après, c'est projeté : ce
-                        que l'app sait dater (paie du jeudi, charges à leur quantième, solde d'impôt à
-                        l'échéance) tombe au bon jour ; le rendement du marché — sans date connue — est
-                        réparti sur le mois, et les bandes Monte Carlo sont des percentiles mensuels
-                        reliés entre fins de mois. L'infobulle dit pour chaque jour s'il est réel,
-                        daté ou réparti. En vue très large, le TRACÉ est échantillonné pour rester
-                        fluide — le survol et le clic, eux, visent toujours le jour exact.
                         {/* [FUTUR-DAILY-ANCHOR-CAVEAT] Un montant que l'ancre compte mais que la série
                             quotidienne ne peut pas placer décale TOUT le niveau passé. Le dire est le
                             minimum ; le corriger (retrancher ces flux de l'ancre) touche
                             `computeStartingCash`, donc le raccord au présent — plan-first, au BACKLOG. */}
-                        {/* [PASSE-REEL-IMPOT-LATENT-DEBUT] Marc : « je vois impôt latent commencer
-                            le 1/09 mais jsp pourquoi ». MESURÉ : `ImpotLatent` n'est émis NULLE PART
-                            dans le passé reconstruit (0 occurrence dans `dailyPastLedger.ts` et
-                            `buildPastPrefix.ts` — le passé ne porte que soldes, flux et patrimoine
-                            net). Sa série ne PEUT donc démarrer qu'au premier mois PROJETÉ.
-                            ⚠️ Le calcul est juste ; c'est de ne pas le DIRE qui est le défaut — une
-                            courbe qui surgit à une date arbitraire se lit comme un bug. Même classe
-                            que `SILENCE-READS-AS-BROKEN`.
-                            ⚠️ Affiché SEULEMENT si la série est visible : sinon c'est du bruit
-                            permanent sur un écran déjà dense. Et surtout, on n'invente PAS un impôt
-                            latent passé — il faudrait l'historique des prix de revient, que l'app
-                            n'a pas (no-fake-data). */}
-                        {isVisible('ImpotLatent') && (
-                            <span className="mt-1 block text-ink-300">
-                                L'<strong className="text-ink-100">impôt latent</strong> n'est pas reconstruit
-                                pour le passé : l'app n'a pas l'historique de tes prix de revient. Sa courbe
-                                démarre donc au premier mois projeté — ce n'est pas un trou dans tes données.
-                            </span>
-                        )}
                         {dailyPast !== null && Math.abs(dailyPast.undatedTotal) > 0.5 && (
-                            <span className="mt-1 block text-amber-300/90">
+                            <span className="block text-amber-300/90">
                                 ⚠ <PrivateAmount>{formatCAD(Math.abs(dailyPast.undatedTotal))}</PrivateAmount> de transactions datées au mois
                                 seul (sans jour) ne peuvent pas être placées : le niveau des jours passés peut
                                 être décalé d'autant.

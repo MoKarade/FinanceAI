@@ -1510,6 +1510,37 @@ n'est pas réécrire un récit.
   était de n'en avoir plus qu'une (`tests/helpers/futureSource.ts`, 3 copies consolidées, une 4ᵉ sur
   le point de naître) (`UNE-GARDE-QUI-NE-CONNAIT-QU-UNE-ECRITURE-DU-DATAKEY-EST-AVEUGLE-A-L-AUTRE`).
 
+- ⚠️⚠️ **Une épuration DEMANDÉE se lit comme un DÉPLACEMENT, pas comme une suppression**
+  (2026-09-21, Marc, capture au marqueur rouge : « vire moi tout le texte que j'ai barré ») : les
+  trois phrases biffées sous le graphe Futur répondaient chacune à une question qu'il avait
+  lui-même posée — dont, **le jour même**, « explique pourquoi j'ai pas la même valeur sur mon app
+  et sur Fintable », à laquelle le bandeau biffé répondait mot pour mot. Les effacer, c'est
+  réarmer trois fois la même plainte (`EPURATION-SUPPRIME-LA-RESERVE`). La forme était déjà payée
+  par le dépôt : libellé COURT visible + phrase entière en `title` **ET** en jumeau `sr-only`.
+  ⚠️ La garde tient les DEUX moitiés (plafond sur le visible ET « aucune réserve perdue ») —
+  séparées, chacune est satisfaite par le mauvais moyen. ⚠️ **Le périmètre d'une biffure se lit
+  sur le RENDU de ce moment-là, jamais sur le source** : le même bloc portait cinq avertissements
+  CONDITIONNELS, aucun à l'écran ce jour-là, donc aucun biffé — les emporter aurait été
+  l'épuration qui prend trop. ⚠️ Et le compte de LINT est passé de 32 à 33 (un import inutilisé),
+  invisible si on ne lit que « 0 errors »
+  (`UNE-EPURATION-DEMANDEE-SE-LIT-COMME-UN-DEPLACEMENT-PAS-COMME-UNE-SUPPRESSION`).
+- ⚠️⚠️ **Deux chiffres qui ne mesurent pas la même chose ne se comparent pas** (2026-09-21) :
+  Fintable affichait **277 230 $**, l'app **230 210 $** — 47 020 $ d'écart, et **aucun bug**.
+  Fintable additionne des SOLDES DE COMPTES, l'app calcule une VALEUR NETTE. Décomposition exacte :
+  **+46 934** (le bail, ignoré par Fintable) **+195** (la carte, comptée en ACTIF) **−15**
+  (placements) **−95** (liquidités) = **47 019**, à 1 $ d'arrondi. Devant « pourquoi X ≠ Y », la
+  question n'est pas « lequel est faux ? » mais **« mesurent-ils la même chose ? »** — et la
+  réponse se PROUVE en décomposant jusqu'au dollar. ⚠️ **Refaire la somme de l'écran de l'autre
+  outil est la mesure la plus rentable** : 29 859 $ d'écart ÷ le solde du compte affiché `$74 647,59`
+  (un `$` NU, pas `C$`) = **1,4000** pile — une division a identifié la devise, le taux et le compte.
+  ⚠️ Ce qui restait après la décomposition était sur un AUTRE axe : le jour ÉPINGLÉ (20/09) vaut
+  238 051 $ contre 247 298 $ de titres aujourd'hui, parce que le passé est reconstruit à des **prix
+  vieux de 59 jours** — **55,8 % du portefeuille est coté en Europe**, que le forfait gratuit ne sert
+  pas (`[COTATIONS-EUROPE-PERIMEES]`). ⚠️ Et **le SENS DE VARIATION suffit à désigner le producteur
+  périmé** : une dette de bail qui MONTE en avançant dans le temps est impossible — le MCP (46 934)
+  dépassait l'app (45 917), donc c'est lui qui tourne du code d'avant `balanceAsOf`, et hubperso en
+  hérite (`DEUX-CHIFFRES-QUI-NE-MESURENT-PAS-LA-MEME-CHOSE-NE-SE-COMPARENT-PAS`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

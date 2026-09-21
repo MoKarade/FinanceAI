@@ -81,7 +81,11 @@ describe('[PASSE-REEL-RACCORD-CHUTE] la marche vaut le flux du JOUR', () => {
 
 describe('[PASSE-REEL-RACCORD-CHUTE] la SECONDE cause, DISTINCTE : ce que l’ancre compte sans pouvoir le placer', () => {
     // Celle-ci décale TOUT le niveau passé au lieu de créer une marche d'un jour. Déjà exposée
-    // (`undatedTotal`, `flowsAfterNowDate`) et affichée dans le bandeau « Courbe au jour ».
+    // (`undatedTotal`, `flowsAfterNowDate`) et affichée sous la courbe.
+// ⚠️ Le bandeau « Courbe au jour » qui la portait n'existe plus depuis `[FUTUR-NOTES-COMPACTES]`
+// (2026-09-21, Marc l'a fait retirer) : seuls les avertissements CONDITIONNELS sont restés, dans
+// un conteneur qui ne se monte que s'il a quelque chose à dire. Un exemple périmé se lit comme un
+// fait — d'où la correction de ce commentaire dans le même geste.
     it('une transaction datée au MOIS seul est comptée à part, jamais placée dans un jour', () => {
         const res = reconstructCashHistoryDaily(
             [txn({ date: '2026-08', amount: -2_000 }), txn({ date: '2026-08-10', amount: -100 })],

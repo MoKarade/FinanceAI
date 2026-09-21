@@ -1,8 +1,12 @@
 /**
  * Tests E2E — [FUTUR-MOBILE-PR2] Écran Projection mobile : en-tête compact, sélecteur de période en
- * `<select>` natif (+ bouton plein écran), courbe AVANT les KPI. Aucun changement d'horizon ni de
- * calcul (décision Marc : la vue change, jamais `projection.years`) — le test 1 ci-dessous est le
- * garde-fou money-critical explicitement requis par l'architecte pour ce risque.
+ * `<select>` natif (+ bouton plein écran). Aucun changement d'horizon ni de calcul (décision Marc :
+ * la vue change, jamais `projection.years`) — le test 1 ci-dessous est le garde-fou money-critical
+ * explicitement requis par l'architecte pour ce risque.
+ *
+ * ⚠️ [FUTUR-NAV-TIROIRS] (2026-09-21) « courbe AVANT les KPI » n'est plus vrai : Marc a demandé
+ * l'inverse (KPI avant le graphe, mobile ET desktop) au lot qui a retiré les sous-onglets. Voir le
+ * test d'ordre plus bas, retourné plutôt que supprimé.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { scriptBypassOnboarding, activateTestMode } from './helpers/setup';
@@ -93,27 +97,37 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         expect(box.height).toBeGreaterThanOrEqual(44);
     });
 
-    test('[FUTUR-MOBILE-PR2] ordre : courbe AVANT les KPI sur mobile, KPI AVANT la courbe sur desktop (contrôle négatif)', async ({ page }) => {
+    test('[FUTUR-MOBILE-PR2 → FUTUR-NAV-TIROIRS] ordre : KPI AVANT la courbe en DOM, mobile ET desktop', async ({ page }) => {
+        // [FUTUR-NAV-TIROIRS] (2026-09-21, choix Marc « Avant le graphe ») : ce test affirmait
+        // « courbe AVANT les KPI sur mobile, contrôle négatif desktop » — la distinction entre les
+        // deux viewports a disparu avec la barre à onglets qui la portait. Retourné, pas supprimé
+        // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+        //
+        // ⚠️ Comparer `getBoundingClientRect().top` a semblé le bon geste (repris du test d'origine)
+        // et mesurait en fait autre chose sur desktop : la barre latérale et la courbe sont deux
+        // colonnes flex INDÉPENDANTES (`items-start`), pas un flux empilé — le KPI, enfoui après le
+        // titre/bandeaux/santé DANS la sidebar, se retrouve plus bas en PIXELS que la Card du
+        // graphe, qui démarre près du haut de SA colonne. Le `top` d'un élément dans une colonne ne
+        // se compare pas au `top` d'un élément dans une autre. Mesuré : la comparaison en PIXELS
+        // donnait `kpi-apres-courbe` sur desktop après ce lot, alors que le KPI précède bien le
+        // graphe dans le MARKUP (la sidebar est rendue avant `<div className="flex-1">`). Le geste
+        // juste est l'ordre DOM (`compareDocumentPosition`), qui reste correct dans les deux
+        // dispositions — colonne unique empilée (mobile) ou deux colonnes côte à côte (desktop).
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
-        const mobileOrder = await page.evaluate(() => {
+        const domOrder = () => page.evaluate(() => {
             const chart = Array.from(document.querySelectorAll('[role="img"]')).find((e) => (e.getAttribute('aria-label') || '').includes('Courbe de vie'));
             const kpi = Array.from(document.querySelectorAll('.kpi-label')).find((e) => e.textContent?.includes('Objectif FIRE'));
             if (!chart || !kpi) return 'introuvable';
-            return kpi.getBoundingClientRect().top > chart.getBoundingClientRect().top ? 'kpi-apres-courbe' : 'kpi-avant-courbe';
+             
+            return (kpi.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING) ? 'kpi-avant-courbe' : 'kpi-apres-courbe';
         });
-        expect(mobileOrder).toBe('kpi-apres-courbe');
+        expect(await domOrder()).toBe('kpi-avant-courbe');
 
-        // Contrôle négatif — MÊME page, élargie : l'ordre desktop est celui d'AVANT ce lot.
+        // Même vérification élargie (barre latérale desktop).
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.waitForTimeout(300);
-        const desktopOrder = await page.evaluate(() => {
-            const chart = Array.from(document.querySelectorAll('[role="img"]')).find((e) => (e.getAttribute('aria-label') || '').includes('Courbe de vie'));
-            const kpi = Array.from(document.querySelectorAll('.kpi-label')).find((e) => e.textContent?.includes('Objectif FIRE'));
-            if (!chart || !kpi) return 'introuvable';
-            return kpi.getBoundingClientRect().top > chart.getBoundingClientRect().top ? 'kpi-apres-courbe' : 'kpi-avant-courbe';
-        });
-        expect(desktopOrder).toBe('kpi-avant-courbe');
+        expect(await domOrder()).toBe('kpi-avant-courbe');
         // Un seul strip de KPI visible à la fois — jamais les deux (perturbation possible : oublier de
         // désactiver le site du haut ferait apparaître DEUX « Objectif FIRE »).
         const count = await page.evaluate(() => Array.from(document.querySelectorAll('.kpi-label')).filter((e) => e.textContent?.includes('Objectif FIRE')).length);

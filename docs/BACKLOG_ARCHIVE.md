@@ -12772,3 +12772,17 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   entrantes décidait — une douteuse traitée en premier volait l'existante d'un vrai doublon, ce qui
   produisait DEUX erreurs d'un coup (faux positif listé à Marc + vrai doublon reclassé NOUVELLE,
   donc compté deux fois). 1 test, prouvé discriminant.
+
+
+## Livré le 2026-09-21 — `[FUTUR-NAV-TIROIRS]`
+
+- [x] **`[A11Y-SUBTABS-FUTUR]`** — **RÉSOLU 2026-09-21 par `[FUTUR-NAV-TIROIRS]`, autrement que prévu.**
+  Le ticket proposait de CONVERTIR le bandeau à 4 onglets vers `<SubTabs>` (bloqué par l'obstacle
+  structurel ci-dessous, jamais résolu tel quel). Le lot qui a réglé le sujet a plutôt RETIRÉ le
+  bandeau : Projection est désormais toujours affichée (plus un onglet parmi d'autres), et
+  Hypothèses/Plan d'action/Historique s'ouvrent chacun dans un tiroir (`ui/Drawer.tsx`) au lieu de
+  basculer un panneau. `FutureProjection.tsx` n'a donc plus AUCUN `role="tablist"` — l'exception du
+  cliquet de `tests/components/subTabsAria.test.tsx` (`EXCEPTIONS_CONNUES`) est retombée à `[]`.
+  L'obstacle structurel qui bloquait la conversion (7 blocs conditionnels dispersés pour 4 onglets,
+  un `role="tabpanel"` par bloc aurait produit des `id` en double) n'avait donc plus besoin d'être
+  résolu : le contournement de fond était de ne plus avoir de panneaux exclusifs du tout.

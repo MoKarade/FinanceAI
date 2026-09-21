@@ -85,14 +85,16 @@ describe('[A11Y-SUBTABS-TABPANEL] garde de SOURCE : personne ne recopie le balis
     const sansCommentaires = (src: string): string => stripComments(src);
 
     /** Exception CONNUE, LISTÉE et JUSTIFIÉE — jamais une exclusion silencieuse.
-     *  `FutureProjection` est un vrai motif à panneaux, mais son bandeau a un habillage DIFFÉRENT
-     *  (emojis au lieu d'icônes, autre fond, autres espacements). Le convertir tel quel changerait
-     *  l'apparence de l'écran principal de Marc, ce qu'il n'a pas demandé. Ticket dédié :
-     *  `[A11Y-SUBTABS-FUTUR]` — soit une variante d'habillage dans `SubTabs`, soit un accord
-     *  explicite de Marc sur le changement visuel.
      *  ⚠️ Cette liste est un CLIQUET : elle ne doit que RÉTRÉCIR. Un fichier de plus ici veut dire
-     *  qu'on a recopié le balisage au lieu d'utiliser `<SubTabs>`. */
-    const EXCEPTIONS_CONNUES = ['FutureProjection.tsx'];
+     *  qu'on a recopié le balisage au lieu d'utiliser `<SubTabs>`.
+     *
+     *  [A11Y-SUBTABS-FUTUR] RÉSOLU (`FUTUR-NAV-TIROIRS`, 2026-09-21) : `FutureProjection.tsx` n'a
+     *  plus de bandeau `role="tablist"` du tout — barre latérale + tiroirs (`ui/Drawer.tsx`)
+     *  remplacent les anciens sous-onglets Hypothèses/Plan d'action/Historique, et la Projection
+     *  elle-même n'est plus un onglet parmi d'autres (elle est toujours affichée). Le cliquet
+     *  descend donc à zéro — la liste reste ici, vide, pour qu'un futur bandeau recopié soit
+     *  détecté immédiatement plutôt que de devoir réapprendre pourquoi elle existe. */
+    const EXCEPTIONS_CONNUES: string[] = [];
 
     it('aucun NOUVEAU composant ne recopie `role="tablist"` à la main', () => {
         const offenders = tousLesFichiers(racine)

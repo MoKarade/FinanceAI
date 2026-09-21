@@ -16033,6 +16033,54 @@ d'explication, par conception. Recopier le 0,35 y faisait échouer une garde par
 
 ---
 
+## `UN-AUDIT-SCOPE-A-MAIN-EST-AVEUGLE-A-UN-PORTAL-VERS-DOCUMENT-BODY` (2026-09-21)
+
+`[FUTUR-NAV-TIROIRS]` a remplacé les 4 onglets de l'écran Futur par une barre latérale desktop et
+des tiroirs (`ui/Drawer.tsx`, `createPortal(..., document.body)`) déclenchés par des boutons. L'e2e
+existant qui recense les cibles tactiles trop petites (`futureMobileFilet.spec.ts`) ne parcourait
+que `<main>` — un scope raisonnable tant que tout le contenu de l'écran vivait DANS `<main>`, ce qui
+cessait d'être vrai dès qu'un tiroir ouvert projette son contenu (le formulaire Hypothèses inclus)
+directement sous `document.body`. Sans correction, ouvrir un tiroir aurait rendu son contenu
+**invisible à l'audit**, silencieusement — pas un rouge qui manque, une PORTÉE qui ne couvre plus
+ce qu'elle prétend couvrir. Corrigé en élargissant le sélecteur de l'audit pour unir `<main>` et
+tout `[role="dialog"]` actuellement ouvert.
+
+C'est une instance de `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` appliquée au DOM plutôt qu'à une
+liste de code : **un audit scopé à un conteneur (`<main>`, un formulaire, une section) doit se
+demander ce qu'un `createPortal` fait sortir de ce conteneur**, et le refaire à chaque fois qu'un
+nouveau mécanisme de superposition (modale, tiroir, tooltip flottant) apparaît dans l'écran audité.
+Le signal était mesurable : re-mesurer le plafond de cibles trop petites APRÈS l'élargissement
+(49, contre un chiffre deviné à 60 avant mesure — rappel de `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`)
+a confirmé qu'aucune régression n'était cachée dans le tiroir : le compte n'a pas bougé une fois le
+tiroir inclus, la dette pré-existante (radiogroup `Pill size="sm"` 24px) vivait déjà dans `<main>`.
+
+---
+
+## `L-ECART-DE-REVISION-CHROMIUM-N-EST-PAS-SPECIFIQUE-A-UN-FICHIER` (2026-09-21)
+
+Croyance écrite dans une session antérieure (jamais committée, mais reprise telle quelle dans le
+raisonnement d'une session suivante) : « `e2e/kpi.spec.ts` est le SEUL fichier bloqué par l'écart
+de révision Chromium (1194 installé vs 1223 attendu par `@playwright/test`), parce que c'est le
+seul spec pertinent sans le contournement `PW_LOCAL_CHROMIUM` que portent tous les specs
+`*Mobile*` ». Faux, re-mesuré en écrivant `e2e/futureDesktopTiroirs.spec.ts` (lot
+`[FUTUR-NAV-TIROIRS]`) : lancer ce fichier neuf SANS le contournement échoue exactement pareil
+(`Executable doesn't exist at .../chromium_headless_shell-1223/...`), et un fichier EXISTANT
+choisi au hasard dans le projet `chromium` (`futureMilestonesKeyboard.spec.ts`, jamais touché par
+ce lot) échoue À L'IDENTIQUE. L'écart n'est pas une propriété d'un fichier, c'est une propriété du
+**projet Playwright** : `mobile-chrome` fonctionne nativement dans ce conteneur (mesure non faite
+ici, mais cohérente avec le fait que ses specs passent systématiquement sans le contournement dans
+les runs de session), `chromium` (Desktop Chrome, `headless: true` → résolution `chromium_headless_shell`)
+ne le peut jamais SANS `PW_LOCAL_CHROMIUM=/opt/pw-browsers/chromium` explicite dans le fichier —
+et ce, pour N'IMPORTE quel spec de ce projet, ancien ou neuf. « Ce fichier est le seul concerné »
+est une conclusion qu'un scan par FICHIER ne peut pas soutenir quand la cause vraie est au niveau
+du PROJET/de la CONFIGURATION — variante de `UN-PERIMETRE-EXCLU-SE-JUSTIFIE-PAR-CE-QU-IL-CONTIENT-PAS-PAR-SON-ROLE`
+appliquée à l'outillage plutôt qu'au code. ⚠️ Ceci reste un écart d'ENVIRONNEMENT LOCAL (ce
+conteneur de dev), sans rapport avec la CI (qui installe elle-même la bonne révision) : aucun
+fichier `*Mobile*` ni `e2e/kpi.spec.ts` n'a besoin d'être « corrigé » pour la CI — le contournement
+ne sert qu'à vérifier un spec desktop AVANT de pousser, depuis CE conteneur précisément.
+
+---
+
 ## `UNE-EPURATION-DEMANDEE-SE-LIT-COMME-UN-DEPLACEMENT-PAS-COMME-UNE-SUPPRESSION` (2026-09-21)
 
 **Marc, capture au marqueur rouge : « vire moi tout le texte que j'ai barré ».** Deux blocs sous le

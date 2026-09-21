@@ -42,6 +42,26 @@ pas faux : ils sont **AFFAMÉS**. La piste restante est la lenteur du rendu du g
 `vite dev` sur un runner à 2 cœurs (option b, non prise : servir un BUILD plutôt que le serveur
 de dev).
 
+## 🟦 Session 2026-09-21 (suite 6) — **#1000 est EN LIGNE, et le E2E est redevenu un gate**
+> ✅ **PR #1000 fusionnée** (`cb3cc75e`), CI **entièrement verte** : `Lint / Typecheck / Tests /
+> Build` ET `E2E (Playwright / Chromium)` — ce dernier en **5 min 42 s**, à comparer aux **29 min**
+> coupés au plafond de 30 il y a quatre heures. Déploiement de production **CRÉÉ et `READY`**
+> (`dpl_2URNA9CNdEyj18mxJWNN5Efbs28t`). ⚠️ La RÉPONSE servie n'a PAS pu être lue d'ici (§6) — c'est
+> la création et l'état qui sont vérifiés.
+> 📏 **Ce que le E2E a coûté, en une ligne** : trois lots pour le remettre en marche
+> (`[E2E-RAIL-INTERCEPTE-LE-CLIC]` → le rail de nav recouvrait 224 px de contenu et la souris de
+> Playwright démarre en (0,0) ; `[E2E-MAX-FAILURES]` → sans borne, une suite qui échoue LENTEMENT
+> ressort `cancelled` et n'imprime jamais son rapport ; `[E2E-REDUCED-MOTION]` → une promesse
+> d'en-tête de config qui ne s'exécutait pas). **Aucun des trois n'était visible tant que le job ne
+> parlait pas.** L'ordre a compté : borner d'abord, diagnostiquer ensuite.
+> ⚠️ **Le BACKLOG est à jour** : 5 items cochés déménagés vers `docs/BACKLOG_ARCHIVE.md`,
+> conservation PROUVÉE (39 lignes retirées, **0 introuvable**). Il reste **0 case cochée** dans
+> `BACKLOG.md`. Les quatre lots E2E du jour n'y avaient jamais d'entrée — nés de signalements
+> directs de Marc — et c'est écrit dans l'archive plutôt que laissé à deviner.
+> ⚠️ **PR #1001** (autre session, écran Futur en tiroirs) est en CONFLIT et son E2E est ROUGE : elle
+> part de l'ancien `main`. Les deux se règlent par un rebase. **Marc a tranché : ne pas y toucher**,
+> il s'en occupe lui-même — ne pas reprendre cette décision sans lui redemander.
+
 ## 🟦 Session 2026-09-21 (suite 5) — **le E2E s'est remis à tourner, et il a trouvé une VRAIE régression**
 > 📏 **Mesure qui tranche**, run 35634812081 sur `68bf327a` : **30 tests passés** contre **1** au run
 > précédent. `futureAxis` et `futureDailyRollover` — les deux `element is not stable` — sont VERTS.

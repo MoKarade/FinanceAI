@@ -16552,3 +16552,29 @@ inspection du déploiement.
 depuis `gcloud secrets versions access` **à l'intérieur de la commande**, et ne lui demandent de
 recopier qu'un code HTTP ou un compte. Un jeton tapé dans le chat est un jeton en clair dans un
 dépôt PUBLIC de conversation.
+
+## ⚠️ Et la CI a trouvé le défaut de la garde : **une fixture qui dépend de ce que la MACHINE a installé**
+
+Le premier jet de `deployRefuseCloneEnRetard` exécutait vraiment `mcp/deploy.sh` — bonne idée — mais
+sans rien faire du `gcloud` que le script appelle **huit fois** une fois le refus passé (`run
+services describe`, six `secrets describe`, `run deploy`).
+
+Vert ici, ROUGE en CI : « Test timed out in 5000ms », **1 test en échec sur 6 405**. La cause n'est
+pas le test, c'est l'ENVIRONNEMENT — le conteneur de dev n'a pas `gcloud` (bash échoue aussitôt,
+donc le script s'arrête net), l'image GitHub Actions embarque le SDK Google. Là-bas le script
+partait donc vraiment interroger GCP et restait pendu.
+
+**Deux choses à retenir.** D'abord : un test qui passe parce qu'une commande est ABSENTE ne teste
+pas ce qu'il croit — c'est `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` avec un binaire au lieu
+d'une version de Node, et la question à se poser devant tout test qui lance un vrai programme est
+**« qu'est-ce que cette machine a que l'autre n'a pas, et l'inverse ? »**. Ensuite, et c'est pire
+que la CI rouge : sur une machine où `gcloud` est authentifié, ce test aurait appelé un `gcloud`
+RÉEL. Un test n'a pas à pouvoir toucher une infrastructure.
+
+Correctif : la fixture pose son propre `gcloud` (un script qui sort `0`) dans le dépôt jetable et le
+met en tête de `PATH`. Le comportement devient identique partout, et l'appel réel est
+**inexprimable** depuis le test — la même forme que
+`UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE`, appliquée à un
+effet de bord. ⚠️ Reproduit AVANT de corriger (un faux `gcloud` qui dort 30 s sur le `PATH` fait
+bien expirer l'ancien test), puis re-vérifié avec ce même `gcloud` hostile encore en place : 3/3
+verts. Et la perturbation d'origine tire toujours (refus neutralisé → 1 rouge).

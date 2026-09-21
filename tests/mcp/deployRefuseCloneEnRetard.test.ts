@@ -18,7 +18,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, cpSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, cpSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -44,6 +44,22 @@ function deportEnRetard(): { clone: string; nettoyer: () => void } {
     git(clone, 'reset', '--quiet', '--hard', 'HEAD~1');
 
     cpSync(join(process.cwd(), 'mcp', 'deploy.sh'), join(clone, 'mcp', 'deploy.sh'));
+
+    // ⚠️ UN FAUX `gcloud`, ET C'EST LE CŒUR DE CETTE FIXTURE (correctif du 2026-09-21).
+    //
+    // Passé le refus, le script appelle `gcloud` huit fois (`run services describe`, six
+    // `secrets describe`, `run deploy`). Le 1er jet ne posait rien : il marchait ICI parce que
+    // `gcloud` est ABSENT du conteneur — bash échoue aussitôt — et il a fait échouer la CI
+    // (« Test timed out in 5000ms »), parce que l'image GitHub Actions, ELLE, embarque le SDK
+    // Google : le script partait alors vraiment interroger GCP et restait pendu.
+    //
+    // Donc la fixture ne dépend plus de ce que la machine a installé — et surtout, aucun
+    // `gcloud` RÉEL ne peut être appelé depuis un test, ce qui serait bien pire qu'un test lent.
+    mkdirSync(join(clone, 'faux-bin'), { recursive: true });
+    const fauxGcloud = join(clone, 'faux-bin', 'gcloud');
+    writeFileSync(fauxGcloud, '#!/usr/bin/env bash\nexit 0\n');
+    chmodSync(fauxGcloud, 0o755);
+
     return { clone, nettoyer: () => rmSync(racine, { recursive: true, force: true }) };
 }
 
@@ -53,7 +69,13 @@ function lancer(cwd: string, env: Record<string, string> = {}): string {
         return execFileSync('bash', ['mcp/deploy.sh'], {
             cwd,
             encoding: 'utf8',
-            env: { ...process.env, PROJECT_ID: 'projet-bidon', ...env },
+            // Le faux `gcloud` du dépôt jetable passe AVANT celui de la machine, s'il y en a un.
+            env: {
+                ...process.env,
+                PATH: `${join(cwd, 'faux-bin')}:${process.env.PATH ?? ''}`,
+                PROJECT_ID: 'projet-bidon',
+                ...env,
+            },
             stdio: 'pipe',
         });
     } catch (e) {

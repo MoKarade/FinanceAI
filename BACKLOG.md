@@ -17,6 +17,43 @@
 
 ---
 
+## 🛰️ Chaîne de publication vers hubperso (21/09/2026, signalé par Marc)
+
+> Demande : « affciehe encore la mauvais valeur dans hubperso, pourtant jai deploy », puis
+> « corrige tout maointeant je veux avoir la bonne valeur dans hubperso et que ca réarrive jamais ».
+> Cause racine : **rien dans la réponse servie ne disait quel code la produisait**. Détail et
+> mesures dans `docs/CONVENTIONS.md`
+> (`UN-DEPLOIEMENT-QUI-EMBARQUE-LE-DOSSIER-LOCAL-NE-DIT-PAS-QUEL-CODE-IL-SERT`).
+
+- [x] 🔧 **`[MCP-VERSION-FIGEE]`** (S) — ✅ **livré 2026-09-21**. `GET /health` publie désormais
+  `sha`, le COMMIT déployé (`buildSha()` dans `mcp/bootstrap.ts`, posé par `mcp/deploy.sh` via
+  `git rev-parse HEAD`). Avant : `version: "0.11.0"` figée depuis le 2026-07-13 alors que
+  **351 commits** avaient touché le serveur — chiffre imprimé par le workflow de déploiement
+  lui-même. ⚠️ `null` quand la variable manque ou n'est pas un SHA de 40 hexadécimaux : un
+  identifiant de build faux est pire qu'absent. Gardes : `tests/mcp/healthPublieLeCommit.test.ts`.
+
+- [x] 🔧 **`[DEPLOY-CLONE-EN-RETARD]`** (S) — ✅ **livré 2026-09-21**. `mcp/deploy.sh` REFUSE de
+  déployer quand le clone est derrière `origin/main` : il déploie `--source .`, donc le DOSSIER
+  local, et `gcloud` annonce « serving 100 percent of traffic » sur du code périmé. Le refus nomme
+  le retard et le geste qui répare ; `ALLOW_BEHIND=1` laisse passer un retour arrière VOLONTAIRE en
+  l'annonçant. Garde COMPORTEMENTALE (vrai dépôt git jetable, les deux sens) :
+  `tests/mcp/deployRefuseCloneEnRetard.test.ts`.
+
+- [ ] 🧭 **`[HUB-URL-PAR-DEFAUT-POINTE-L-APP]`** (XS, dépôt **Hubperso**) — `lib/sources.ts` déclare
+  pour `financeai` `defaultUrl: "https://finance.hubperso.com/hub/summary"` — qui est l'**app
+  Vercel**, pas le serveur MCP : mesuré, cette URL répond **200 avec `<!DOCTYPE html>`**, donc le hub
+  obtient une page web là où il attend un résumé JSON. Le contournement existe et Marc l'a posé
+  (`FINANCEAI_SUMMARY_URL`), mais un défaut par DÉFAUT revient au premier environnement qui oublie
+  la variable. ⚠️ Aucune fuite : la réponse est du HTML, pas un résumé non authentifié.
+  ⚠️ Le correctif vit dans un AUTRE dépôt — à porter là-bas avec sa garde, pas ici.
+
+- [ ] 👤 **`[MCP-DEPLOY-CONTINU-MORT]`** (S, **bloqué sur Marc** → `docs/A_FAIRE_MOI.md`) — le
+  workflow `Deploy MCP (Cloud Run)` échoue à CHAQUE push en ~12 s : `GCP_PROJECT_ID` n'est pas
+  défini, et les secrets `GCP_WIF_PROVIDER` / `GCP_DEPLOY_SA` manquent. Tant qu'il est mort, la
+  seule voie vers Cloud Run est le script lancé à la main — c'est-à-dire exactement la voie qui
+  permet de déployer un clone périmé. ⚠️ Un workflow qui échoue à chaque push depuis des mois
+  n'alerte plus personne : il enseigne le rouge.
+
 ## 📱 Installable sur le téléphone (Marc, 18/09/2026 — « toutes les applications installables »)
 
 - [ ] **`[PWA-IOS-ICONE]`** (XS, non demandé) — pas d'`apple-touch-icon.png`. Hors périmètre :

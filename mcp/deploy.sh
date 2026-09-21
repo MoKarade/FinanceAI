@@ -36,6 +36,52 @@ SERVICE="${SERVICE:-financeai-mcp}"
 # cold start + garder le cache chaud (facture le temps idle → non gratuit).
 MIN_INSTANCES="${MIN_INSTANCES:-0}"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# [DEPLOY-CLONE-EN-RETARD] REFUS de déployer un clone en retard sur origin/main.
+#
+# ⚠️ CE SCRIPT ENVOIE `--source .` : il construit LE DOSSIER D'OÙ ON LE LANCE, pas GitHub.
+# Un clone qui n'a pas été `git pull` déploie donc l'ANCIEN code — et `gcloud` affiche quand
+# même « ✅ Déployé », « Routing traffic... Done », « serving 100 percent of traffic ». Rien,
+# nulle part, ne dit que le code embarqué est périmé.
+#
+# Vécu le 2026-09-21 : plusieurs allers-retours à chercher pourquoi la carte du hub n'affichait
+# pas des métriques pourtant mergées, alors que le déploiement était « réussi ». C'est
+# exactement la classe §6 du CLAUDE.md (« CI verte ne veut pas dire en ligne ») appliquée au
+# déploiement manuel : le succès de l'OUTIL est pris pour le succès de l'INTENTION.
+#
+# ⚠️ On refuse UNIQUEMENT le retard strict (`HEAD..origin/main` non vide). Déployer une branche
+# de travail, un correctif local non poussé ou un `HEAD` détaché reste permis : ce sont des
+# gestes délibérés, et un garde-fou qui interdit les cas légitimes finit contourné.
+# ⚠️ `ALLOW_BEHIND=1` existe pour le cas rare (retour arrière volontaire) — il doit se TAPER,
+# donc il ne peut pas arriver par distraction.
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  if git fetch --quiet origin main 2>/dev/null; then
+    retard="$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)"
+    if [ "${retard:-0}" -gt 0 ]; then
+      if [ "${ALLOW_BEHIND:-0}" = "1" ]; then
+        echo "  ⚠️ Clone en retard de ${retard} commit(s) sur origin/main — forcé par ALLOW_BEHIND=1."
+      else
+        echo "✋ REFUS : ce clone est en retard de ${retard} commit(s) sur origin/main." >&2
+        echo "   Le déploiement embarque le dossier LOCAL : il enverrait du code PÉRIMÉ en affichant « ✅ Déployé »." >&2
+        echo "   Corrige :  git pull origin main   puis relance ce script." >&2
+        echo "   (Retour arrière volontaire : ALLOW_BEHIND=1 $0)" >&2
+        exit 1
+      fi
+    fi
+  else
+    # Une mesure impossible se DIT, elle ne se remplace pas par un silence rassurant.
+    echo "  ⚠️ Impossible de joindre origin : le retard du clone n'a PAS pu être vérifié."
+  fi
+else
+  echo "  ⚠️ Hors dépôt git : le retard du clone n'a PAS pu être vérifié."
+fi
+
+# [MCP-VERSION-FIGEE] Le commit embarqué, publié par GET /health (cf `buildSha` dans
+# mcp/bootstrap.ts). Vide hors dépôt git : `/health` rendra alors `sha: null`, ce qui est la
+# réponse honnête — jamais un repli qui ferait croire qu'on sait.
+BUILD_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
+# ─────────────────────────────────────────────────────────────────────────────
+
 echo "▶ Déploiement de $SERVICE sur $REGION (projet $PROJECT_ID, min-instances $MIN_INSTANCES)…"
 
 # L'issuer OAuth (FINANCEAI_PUBLIC_URL) doit être connu AU DÉMARRAGE (le serveur refuse
@@ -134,7 +180,7 @@ gcloud run deploy "$SERVICE" \
   --max-instances 2 \
   --port 8080 \
   --set-secrets "$SECRETS" \
-  --set-env-vars "FINANCEAI_GOOGLE_SECRET=projects/${PROJECT_ID}/secrets/financeai-google-refresh,FINANCEAI_PUBLIC_URL=${PUBLIC_URL}"
+  --set-env-vars "FINANCEAI_GOOGLE_SECRET=projects/${PROJECT_ID}/secrets/financeai-google-refresh,FINANCEAI_PUBLIC_URL=${PUBLIC_URL},FINANCEAI_BUILD_SHA=${BUILD_SHA}"
 
 if [ -z "$EXISTING_URL" ]; then
   URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format 'value(status.url)')"

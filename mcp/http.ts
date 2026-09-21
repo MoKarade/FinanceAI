@@ -33,7 +33,7 @@ import { randomUUID } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createServer as createMcpServer } from './server';
-import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
+import { MCP_SERVER_VERSION, buildSha, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
 import { makeAttemptLimiter } from './auth/rateLimit';
 import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
@@ -245,7 +245,13 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     const server = createHttpServer((req, res) => {
         const url = (req.url ?? '/').split('?')[0];
         if (url === '/health') {
-            sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION });
+            // [MCP-VERSION-FIGEE] `sha` est le COMMIT déployé — la seule chose qui distingue
+            // « j'ai lancé le déploiement » de « le nouveau code est servi ». `version` seule ne
+            // le dit pas : elle est figée à 0.11.0 depuis 351 commits, et cette immobilité
+            // ressemble à une réponse (2026-09-21, mesuré ; cf. le commentaire de `buildSha`).
+            // ⚠️ `null` = « ce serveur ne sait pas quel code il porte », et c'est une réponse
+            // utile — jamais un repli crédible qui masquerait le trou (`no-fake-data`).
+            sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION, sha: buildSha() });
             return;
         }
         if (url === '/hub/summary' && options.hubToken) {

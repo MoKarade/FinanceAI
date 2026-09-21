@@ -19,6 +19,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   dans les dettes, les avoirs portent la valeur **brute** de la maison — sinon elle serait
   retranchée deux fois et les trois chiffres cesseraient de s'additionner. C'est verrouillé par un
   test qui utilise un bien à 400 000 $ avec 300 000 $ d'hypothèque.
+- 🔧 **Côté outillage (invisible pour toi, mais c'est ce qui bloquait la livraison)** : les tests
+  de bout en bout tournent désormais avec les animations coupées. Deux d'entre eux attendaient
+  qu'un bouton s'arrête de bouger pendant deux minutes entières sans que ça n'arrive jamais — et
+  la configuration promettait déjà ce réglage sans l'appliquer.
 - **Sur hubperso aussi** : la carte publie « Total avoirs » et « Dettes » à côté de la valeur nette,
   et là encore les trois se recomposent.
 - ⚠️ **Un écart que j'ai trouvé en chemin, et que tu ne vois pas encore** : le patrimoine net de

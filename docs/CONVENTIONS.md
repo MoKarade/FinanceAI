@@ -16273,3 +16273,69 @@ même phrase à un lecteur d'écran.
 ⚠️ Même famille que `UN-BOUTON-N-EST-PAS-UN-FILET` et que
 `UN-FOCUS-SUR-UN-CONTENEUR-EST-UN-NO-OP-SILENCIEUX` : dans les trois cas, l'appel est posé, la
 garde le voit, et il ne se passe rien.
+
+---
+
+# UNE-PROMESSE-ECRITE-DANS-UN-EN-TETE-DE-CONFIG-NE-S-EXECUTE-PAS
+`[E2E-REDUCED-MOTION]` — 2026-09-21
+
+L'en-tête de `playwright.config.ts` annonçait, depuis sa création :
+
+> « Animations : reducedMotion pour stabiliser les screenshots. »
+
+La clé n'était **nulle part** dans `use`. Le fichier décrivait une garantie qu'il n'appliquait pas
+— et la phrase est d'autant plus crédible qu'elle est dans le fichier qui DEVRAIT la porter.
+
+**Ce que l'absence a coûté**, lisible dans le journal CI une fois le rapport enfin imprimé
+(`[E2E-MAX-FAILURES]`) :
+
+```
+219 × waiting for element to be visible, enabled and stable
+        - element is not stable
+      - retrying click action
+        - waiting 500ms
+```
+
+219 × 500 ms = les **120 s entières** du test, sur le MÊME bouton dans deux specs Futur. Un
+élément qui ne se fige jamais n'est pas un test LENT, c'est un élément qui BOUGE — la distinction
+change tout le diagnostic, et je l'ai d'abord manquée (« les tests sont affamés »).
+
+## Ce que trois mesures NÉGATIVES ont apporté
+
+Le piège de ce lot est qu'aucune mesure locale ne reproduit le défaut. Trois protocoles, tous
+avec le même verdict :
+
+| protocole | résultat |
+|---|---|
+| étranglement CPU à **20×** (ordre de grandeur d'un runner à 2 cœurs) | boîte **bit-stable** |
+| **réseau sortant coupé** (`route.abort` hors localhost) | boîte **bit-stable** |
+| échantillonnage de `boundingBox` sur **120 points** | `y=570.0 x=503.3 w=337.5`, 3 états distincts, tous identiques |
+
+⚠️ **Une mesure négative n'est pas une mesure ratée : elle déplace le correctif.** Puisqu'on ne
+peut désigner AUCUNE animation coupable, on ne corrige pas un suspect — on neutralise la
+**CLASSE**. `index.css` rabat déjà toute animation à `0.01ms !important` sous
+`prefers-reduced-motion: reduce`, dont le `translateY(20px)` de `.animate-premium-in` que porte
+**chaque `Card`** — y compris celle qui contient le bouton. Le correctif est donc de faire dire à
+la config ce qu'elle prétendait déjà dire.
+
+## Corollaires
+
+- ⚠️ **Une phrase de COUVERTURE se vérifie comme un chiffre** (déjà écrit le 2026-09-18 à propos
+  de « déjà testée chez elle », faux). Ici elle vivait dans un **commentaire de configuration** —
+  l'endroit le moins relu du dépôt, parce qu'on lit la config pour ce qu'elle FAIT et l'en-tête
+  pour savoir à quoi elle sert. Le geste est d'ouvrir le fichier, jamais de citer son en-tête.
+- ⚠️ **La corrélation la plus forte du journal était à moi, et elle reste NON PROUVÉE** : E2E vert
+  en **5 min 47 s** sur `a94ea669`, rouge sur tous les commits depuis `[KPI-AVOIRS-DETTES]` — qui
+  fait passer le bandeau de quatre à **six** tuiles, donc chacune plus étroite (`flex-1
+  min-w-[140px]`). Mesuré localement : `strip h=96.0`, une seule rangée, aucune oscillation. Une
+  corrélation qu'on ne peut pas transformer en mécanisme s'ÉCRIT comme telle plutôt que d'être
+  tue ou affirmée.
+- ⚠️ **Un budget par test se compare à ses VOISINES avant d'être jugé confortable** : `futureAxis`
+  était la seule des treize specs Futur restée au défaut de **30 s** quand dix ont `120_000`.
+  Mesuré : la seule ARRIVÉE sur l'écran plus le premier clic coûtent **19,5 s** à 20×
+  d'étranglement — les deux tiers du budget avant que le test n'affirme quoi que ce soit.
+  L'aligner n'endort aucune assertion : un test qui expire reste rouge, il a seulement le temps
+  d'arriver jusqu'à ce qu'il mesure.
+- ⚠️ **`reducedMotion` va sous `contextOptions`** sur `@playwright/test` **1.60** ; la forme racine
+  compile chez l'API `browser.newContext()` mais pas dans `use`. C'est `npm run typecheck` qui l'a
+  refusée — avant la CI, et avant un troisième aller-retour de 8 minutes.

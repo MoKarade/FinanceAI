@@ -42,6 +42,33 @@ pas faux : ils sont **AFFAMÉS**. La piste restante est la lenteur du rendu du g
 `vite dev` sur un runner à 2 cœurs (option b, non prise : servir un BUILD plutôt que le serveur
 de dev).
 
+## 🟦 Session 2026-09-21 (suite 4) — **`element is not stable` : une promesse de config qui ne couvrait rien**
+> 🔎 **`[E2E-REDUCED-MOTION]`** — une fois le rail écarté ET le rapport enfin imprimé
+> (`--max-failures=2`), le journal a NOMMÉ ce qui restait : `219 × waiting for element to be
+> visible, enabled and stable / element is not stable`, pendant les **120 s entières**, sur le
+> MÊME bouton (« ou vois directement ta projection actuelle ») dans `futureAxis` et
+> `futureDailyRollover`. 219 × 500 ms : l'élément ne se fige JAMAIS — ce n'est pas de la lenteur,
+> c'est du mouvement.
+> ⚠️⚠️ **L'en-tête de `playwright.config.ts` ANNONÇAIT « Animations : reducedMotion pour
+> stabiliser les screenshots » depuis toujours, et la clé n'était nulle part dans `use`.** Une
+> phrase de COUVERTURE qui ne couvrait rien, exactement comme « déjà testée chez elle » du
+> 2026-09-18 : elle se vérifie en OUVRANT le fichier, pas en le citant.
+> 📏 **Trois protocoles de mesure, tous NÉGATIFS en local** — et c'est ce qui rend le correctif non
+> évident : étranglement CPU à 20×, réseau sortant coupé, échantillonnage de `boundingBox` sur
+> 120 points. La boîte du bouton est **bit-stable** (`y=570.0 x=503.3 w=337.5`) dans les trois.
+> Le mouvement n'existe QUE sur le runner ; on ne peut donc pas désigner l'animation coupable, on
+> neutralise la CLASSE : `index.css` rabat toute animation à 0,01 ms sous
+> `prefers-reduced-motion`, dont le `translateY(20px)` de `.animate-premium-in` que porte CHAQUE
+> `Card` — y compris celle qui contient ce bouton.
+> ⚠️ Corrélation la plus forte du journal, et elle est à moi : E2E **vert en 5 min 47 s** sur
+> `a94ea669`, rouge sur tous les commits depuis `[KPI-AVOIRS-DETTES]`, qui fait passer le bandeau
+> de quatre à **six** tuiles — donc chaque tuile plus étroite. Non prouvé, écrit comme tel.
+> ⚠️ `futureAxis` était la seule des treize specs Futur restée au budget par défaut de **30 s**
+> quand dix de ses voisines ont 120 s. Mesuré : la seule ARRIVÉE sur l'écran plus le premier clic
+> coûtent **19,5 s** à 20× d'étranglement. Alignée.
+> ⚠️ `reducedMotion` va sous **`contextOptions`** sur @playwright/test 1.60 — la forme racine est
+> refusée par `npm run typecheck`, qui l'a attrapée avant la CI.
+
 ## 🟦 Session 2026-09-21 (suite 3) — **le job E2E ne tournait pas, il se faisait couper**
 > 🔎 **`[E2E-RAIL-INTERCEPTE-LE-CLIC]`** — le check E2E de la CI tournait **29 min** et se faisait
 > couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate était

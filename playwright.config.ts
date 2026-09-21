@@ -25,6 +25,23 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     headless: true,
+    // [E2E-REDUCED-MOTION] L'en-tête de ce fichier ANNONÇAIT « Animations : reducedMotion pour
+    // stabiliser les screenshots » depuis toujours — et la clé n'était nulle part dans `use` :
+    // une phrase de COUVERTURE qui ne couvrait rien (`UN-TEST-QUI-VISE-UNE-SURFACE…`, variante
+    // config). Ce que la promesse manquante coûte se lit dans le journal CI du 2026-09-21 :
+    // `219 × waiting for element to be visible, enabled and stable / element is not stable`,
+    // pendant les 120 s ENTIÈRES du test, sur le même bouton dans deux specs Futur.
+    // ⚠️ MESURÉ, et c'est ce qui rend ce correctif non évident : la boîte du bouton est
+    // bit-stable EN LOCAL — à 20× d'étranglement CPU comme réseau sortant coupé (trois
+    // protocoles, `boundingBox` identique sur 120 échantillons). Le mouvement n'existe que sur
+    // le runner. `prefers-reduced-motion` neutralise la cause CLASSE plutôt qu'un suspect :
+    // `index.css` rabat TOUTE animation à 0,01 ms sous ce média, y compris le `translateY(20px)`
+    // de `.animate-premium-in` que porte CHAQUE `Card` — donc celle qui contient ce bouton.
+    // ⚠️ `contextOptions` et NON la racine de `use` : sur @playwright/test 1.60, `reducedMotion`
+    // n'existe qu'au niveau contexte, et `npm run typecheck` refuse la forme racine (attrapé au
+    // gate, pas en CI). Les projets ci-dessous étalent `devices[…]`, qui ne porte pas cette clé :
+    // la fusion config→projet la conserve donc pour les deux.
+    contextOptions: { reducedMotion: 'reduce' },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'off',

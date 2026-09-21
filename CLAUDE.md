@@ -1589,6 +1589,24 @@ n'est pas réécrire un récit.
   oubliée : c'est UN chemin que toutes empruntent — `title` et `sr-only` RETIRÉS avec le chemin mort
   (`UNE-GARDE-QUI-VERIFIE-LA-PRESENCE-D-UN-TEXTE-NE-DIT-RIEN-DE-SON-ATTEIGNABILITE`).
 
+- ⚠️⚠️ **Une promesse écrite dans un EN-TÊTE de config ne s'exécute pas** (2026-09-21) :
+  `playwright.config.ts` annonçait « Animations : reducedMotion pour stabiliser les screenshots »
+  et la clé n'était **nulle part** dans `use`. Coût, lisible une fois le rapport CI imprimé :
+  `219 × waiting for element to be visible, enabled and stable / element is not stable` — les
+  **120 s entières**, sur le même bouton dans deux specs Futur. Un élément qui ne se fige jamais
+  n'est pas un test LENT, c'est un élément qui BOUGE, et confondre les deux envoie chercher de la
+  lenteur. ⚠️⚠️ **Trois mesures NÉGATIVES déplacent le correctif** : CPU à 20×, réseau sortant
+  coupé, 120 échantillons de `boundingBox` — boîte **bit-stable** dans les trois, donc aucune
+  animation coupable désignable. On neutralise alors la CLASSE (`index.css` rabat toute animation
+  à 0,01 ms sous `prefers-reduced-motion`, dont le `translateY(20px)` de `.animate-premium-in` que
+  porte CHAQUE `Card`), jamais un suspect. ⚠️ « Une phrase de COUVERTURE se vérifie comme un
+  chiffre » re-payée, cette fois dans un **commentaire de configuration** — l'endroit le moins
+  relu. ⚠️ Un budget par test se compare à ses VOISINES : `futureAxis` était seule au défaut de
+  30 s contre 120 s chez dix des treize specs Futur, alors que l'arrivée + le premier clic coûtent
+  **19,5 s** mesurés. ⚠️ Et la corrélation la plus forte était à MOI, non prouvée et écrite comme
+  telle (E2E vert avant `[KPI-AVOIRS-DETTES]`, rouge depuis — quatre tuiles devenues six)
+  (`UNE-PROMESSE-ECRITE-DANS-UN-EN-TETE-DE-CONFIG-NE-S-EXECUTE-PAS`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

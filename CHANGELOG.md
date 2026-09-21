@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (la courbe principale utilise enfin toute la largeur de l'écran)
+
+- **L'axe vertical (les chiffres à gauche du graphe) a disparu** — c'était ton choix, parmi 5
+  propositions. La courbe gagne l'espace que ces chiffres prenaient (jusqu'à 70 px sur un écran de
+  téléphone). Quelques lignes de repère discrètes restent, sans nombre.
+- **La valeur d'aujourd'hui apparaît maintenant directement SUR la courbe** — une petite pastille
+  flottante au point du jour, avec le montant. Elle se masque avec le reste en mode discret.
+- Le graphe déborde maintenant jusqu'aux bords de sa carte, au lieu de garder la marge intérieure
+  habituelle.
+- ⚠️ **Fait sur l'écran Futur seulement pour l'instant** — les 9 autres écrans avec un graphe
+  (Retraite, Dettes, Enfants, Placements, Immobilier, Historique…) attendent le même traitement
+  (`[FUTUR-AXE-Y-MINIMAL-ROLLOUT]` au backlog).
+
 ## [unreleased] — 2026-09-21 (le texte qui débordait dans la barre latérale et les tiroirs est corrigé)
 
 - **Le bandeau KPI de la barre latérale et du tiroir « Modifier les hypothèses »** n'écrasait plus

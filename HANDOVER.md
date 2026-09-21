@@ -4,6 +4,47 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite×3) — **`[FUTUR-AXE-Y-MINIMAL]` : axe Y minimal + badge flottant sur la courbe principale**
+> 🔎 Après le correctif du bandeau/tiroirs (entrée juste en dessous), Marc a choisi parmi 5
+> maquettes (canvas `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`, E1-E5) la combinaison **E2 (badge
+> flottant) + E4 (étiquettes superposées)** pour resserrer la courbe « Courbe de vie » sur
+> téléphone (« l'axe Y prend trop de place »).
+> 🔧 **Livré sur `FutureProjection.tsx`** (le graphe principal SEULEMENT — les 9 autres écrans à
+> graphe restent à porter, `[FUTUR-AXE-Y-MINIMAL-ROLLOUT]` au BACKLOG) :
+> - `<YAxis hide domain={['auto','auto']} />` remplace l'ancien axe à chiffres — `hide` retire
+>   aussi la gouttière réservée (~60-70px), le `domain` reste explicite pour que recharts garde son
+>   échelle interne (`ReferenceLine`/`ReferenceDot`/`CartesianGrid` en dépendent). Les 5 lignes de
+>   grille discrètes restent dessinées (vérifié en DOM, indépendant du rendu de l'axe).
+> - Nouveau badge flottant `TodayValueBadge` (`components/projection/ProjectionTooltip.tsx`),
+>   ancré sur le point « aujourd'hui » de la courbe via `shape=` d'un `ReferenceDot`, montrant
+>   `pointAncre.NetWorth` (**même source que le panneau du jour**, jamais recalculée), masqué en
+>   mode discret via `maskedTick` (source unique déjà nommée, `utils/chartPrivacy.ts`). Rendu
+>   APRÈS les `Area`/`Line` (et non avec les autres `ReferenceLine`) pour se peindre PAR-DESSUS la
+>   pile colorée — un premier essai plus haut dans l'ordre de rendu le laissait invisible, masqué
+>   par les aires (mesuré à l'écran).
+> - Le conteneur du graphe déborde du padding de sa `<Card>` (`-mx-6 px-1`) — `.chart-fullscreen:fullscreen`
+>   reçoit `margin: 0` pour que cette marge négative ne pousse pas l'élément hors du viewport en
+>   plein écran (l'API Fullscreen sort l'élément du flux normal).
+> ⚠️ **Panel a11y-auditor/code-reviewer/silent-failure-hunter lancé et corrigé** (0 bloquant,
+> 4 correctifs) : garde `Number.isFinite` (pas `typeof === 'number'`, qui laisse passer `NaN`) ;
+> `Pill` extraite en composant partagé (`TodayValueBadge`/`RefLineLabel` dupliquaient le même
+> patron pastille) ; `aria-hidden="true"` explicite en défense en profondeur ; `dy` du badge monté
+> à -60 (mitigation d'un chevauchement possible avec une 2e pastille d'événement empilée le même
+> jour). Nouveau test `tests/components/FutureProjection.todayValueBadge.test.tsx` (4 cas) — le
+> composant n'était exercé par AUCUN test avant ce lot (tous les mocks recharts neutralisent
+> `ReferenceDot`).
+> ⚠️⚠️ **Deux pièges rencontrés en écrivant ce test, capturés dans `docs/CONVENTIONS.md`** : (1)
+> `pointAncre` (la valeur du badge) vient de `displayData`, préfixé par la reconstruction RÉELLE du
+> passé du persona chargé — PAS par la prop `transactions` du harness de test, qui peut donc
+> sembler contrôler la donnée sans le faire réellement ; (2) `isPrivacyMode` est un PROP de
+> `FutureProjection` (défaut `false`), jamais lu du store À L'INTÉRIEUR du composant — un harness
+> qui oublie de le câbler rend tout test de masquage VACUEUX (toujours en clair, quel que soit le
+> store).
+> ⚠️ Gate ciblé vert (typecheck, lint, 40 tests ciblés) — **gate complet PAS relancé, CI = arbitre**
+> (PR #1004, déjà ouverte pour le lot précédent, poursuivie plutôt que fractionnée).
+> ⚠️ Vérifié sur Pixel 10 Pro (**[Probable]**, ~412×915px CSS, websearch — device sorti après le
+> dernier entraînement) : zone de tracé 238px→~290px sur 412 (57,8 %→70 %+ de la largeur).
+>
 > ## 🟦 Session 2026-09-21 (suite du suite) — **régressions du bandeau `[FUTUR-NAV-TIROIRS]` : trois grilles écrasées dans le tiroir/la sidebar**
 > 🔎 Une fois `[FUTUR-NAV-TIROIRS]` (voir entrée juste en dessous) mergée, Marc a rouvert l'écran
 > Futur et signalé trois défauts VISUELS en rafale, capture à l'appui : « texte dépasse c'est

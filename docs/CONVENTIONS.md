@@ -16558,3 +16558,82 @@ fier à `sm:`/`md:`/`lg:` pour DÉCIDER — il peut continuer à les utiliser l�
 correspond encore (mobile `w-full`), mais a besoin d'un signal explicite du CONTEXTE pour les
 autres. Ce signal existe presque toujours déjà chez l'appelant (le même hook de seuil qui a créé
 le tiroir/la sidebar) — il suffit de le PASSER, jamais de le redériver.
+
+---
+
+## `UN-HARNESS-DE-TEST-PEUT-SEMBLER-CONTROLER-UNE-DONNEE-SANS-LA-CONTROLER` (2026-09-21)
+
+**Contexte.** `[FUTUR-AXE-Y-MINIMAL]` ajoutait `TodayValueBadge`, un badge flottant montrant
+`pointAncre.NetWorth` sur le graphe Futur. Le code-reviewer du lot précédent avait noté que ce
+composant n'était exercé par AUCUN test — tous les fichiers qui montent `FutureProjection`
+mockent `ReferenceDot: () => null`. Écrire le premier test a buté deux fois sur la même famille de
+piège : un harness qui PARAÎT contrôler une entrée sans réellement la piloter.
+
+**Piège n° 1 — le `chartData` injecté n'est pas la source de la valeur affichée.**
+
+Le harness suivait le patron déjà établi (`FutureProjection.eventStack.test.tsx`) :
+
+```tsx
+useFinanceStore.setState({
+    lastProjection: { chartData: [{ monthIndex: 0, NetWorth: 253_417, ... }], ... },
+});
+```
+
+Résultat mesuré : le badge affichait **238 k$**, pas 253 k$. La valeur réelle vient de
+`displayData` (`FutureProjection.tsx`) :
+
+```tsx
+const displayData = useMemo(() => {
+    const base = pastPrefixPoints.length ? [...pastPrefixPoints, ...chartData] : chartData;
+    ...
+}, [pastPrefixPoints, chartData, lockedByMonth]);
+```
+
+`pastPrefixPoints` vient de `buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions,
+... })` — et `pastHistory` est un HOOK qui lit les VRAIES transactions/actifs du store (chargés par
+`enableTestMode(persona.build())`), **pas** la prop `transactions={[]}` passée au harness. Le
+persona par défaut a un historique réel, donc `pastPrefixPoints` est non vide et se prépose devant
+mon `chartData` synthétique. `indexAujourdhui` (premier point à `monthIndex >= 0`) trouve alors le
+point du PRÉFIXE (reconstruction réelle) avant d'atteindre le mien.
+
+Le patron `eventStack.test.tsx` n'avait jamais révélé ce piège parce qu'il n'asserte que des
+POSITIONS RELATIVES entre pastilles (rangs contigus), jamais une VALEUR absolue — la première fois
+qu'un test a voulu épingler un NOMBRE précis, le préfixe caché est apparu.
+
+**Correctif retenu — ne pas fighter le pipeline, observer la vraie sortie.** Plutôt que de
+chercher comment vider `pastHistory` (invasif : il faudrait mocker le hook ou vider les
+assets/transactions du store persona, au risque de casser d'autres branches du composant qui en
+dépendent), le test capture la valeur RÉELLE produite et vérifie ses PROPRIÉTÉS (format monétaire
+compact valide, jamais `NaN`/`—`) plutôt qu'une valeur exacte imposée. Le cas no-fake-data
+(entrée non finie → aucun rendu) est testé SÉPARÉMENT, en isolation directe sur `TodayValueBadge`
+lui-même (`render(<svg><TodayValueBadge cx={NaN} .../></svg>)`) — hors du pipeline `displayData`
+entièrement, donc hors d'atteinte de ce piège.
+
+**Piège n° 2 — un prop qui a l'air d'être lu du store, alors qu'il ne l'est qu'au niveau du
+PARENT.**
+
+Le masquage utilise `isPrivacyMode`. Le harness faisait :
+
+```tsx
+useFinanceStore.setState({ isPrivacyMode: true });
+render(<Harness />); // Harness ne passe PAS isPrivacyMode à <FutureProjection>
+```
+
+Résultat mesuré : le badge montrait **toujours** la valeur en clair (`253 k$`), jamais `***`,
+peu importe l'état du store. Cause : `isPrivacyMode` est un PROP de `FutureProjection`
+(`isPrivacyMode?: boolean` avec un défaut `= false`), lu **une seule fois au sommet de l'arbre**
+(vraisemblablement `App.tsx`) puis transmis en cascade — le composant lui-même ne fait AUCUN
+`useFinanceStore(s => s.isPrivacyMode)`. Un harness de test qui ne reproduit pas cette même
+cascade obtient toujours la valeur par défaut, quoi que porte le store.
+
+**Correctif** : le `Harness` lit explicitement `useFinanceStore(s => s.isPrivacyMode)` et le passe
+en prop — reproduisant la même cascade que le vrai parent, plutôt que de supposer qu'un composant
+« branché sur le store » l'est PARTOUT dans son propre corps.
+
+**Généralisation.** Les deux pièges partagent un point commun : le harness assumait qu'une variable
+du store (transactions, isPrivacyMode) alimentait directement la donnée testée, sans vérifier PAR
+OÙ elle transite réellement (un hook qui relit le store indépendamment de la prop du harness ; un
+prop transmis en cascade depuis un ancêtre que le harness ne reproduit pas). Avant d'écrire un
+test qui injecte une donnée via `setState`, tracer le chemin RÉEL entre cette clé de store et le
+rendu qu'on veut observer — un `grep` du nom de la variable dans le composant testé (« est-elle lue
+ICI, ou seulement reçue en PROP ? ») suffit à éviter les deux cas ci-dessus.

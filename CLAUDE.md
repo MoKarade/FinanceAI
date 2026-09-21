@@ -2992,6 +2992,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   10 Pro (238px de tracé utile sur 412, 57,8 %) dans `docs/CONVENTIONS.md`
   (`UN-COMPOSANT-A-APPELANT-UNIQUE-DANS-UN-CONTENEUR-PLAFONNE-NE-PEUT-PAS-SE-FIER-AU-VIEWPORT`,
   2026-09-21).
+- ⚠️⚠️ **Un harness de test peut sembler contrôler une donnée sans la contrôler réellement, sur DEUX
+  axes indépendants** : en écrivant le premier test de `TodayValueBadge` (`[FUTUR-AXE-Y-MINIMAL]`),
+  (1) un `chartData` synthétique à `monthIndex: 0` ne pilotait PAS la valeur affichée — celle-ci
+  vient de `displayData`, préfixé par la reconstruction RÉELLE du passé (`buildPastPrefix`, depuis
+  les vraies transactions/actifs du persona chargé), pas de la prop `transactions={[]}` du harness ;
+  (2) `isPrivacyMode` est un PROP de `FutureProjection` (défaut `false`), jamais lu du store à
+  l'intérieur du composant — l'oublier dans le harness aurait rendu le test de masquage VACUEUX
+  (toujours en clair, quel que soit `useFinanceStore.setState({isPrivacyMode:true})`). Détail dans
+  `docs/CONVENTIONS.md` (`UN-HARNESS-DE-TEST-PEUT-SEMBLER-CONTROLER-UNE-DONNEE-SANS-LA-CONTROLER`,
+  2026-09-21).
 
 ### CI (GitHub Actions) — pourquoi un gate vert ne suffit pas
 

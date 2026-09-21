@@ -1541,6 +1541,92 @@ n'est pas réécrire un récit.
   dépassait l'app (45 917), donc c'est lui qui tourne du code d'avant `balanceAsOf`, et hubperso en
   hérite (`DEUX-CHIFFRES-QUI-NE-MESURENT-PAS-LA-MEME-CHOSE-NE-SE-COMPARENT-PAS`).
 
+- ⚠️⚠️ **Publier les DEUX TERMES d'une soustraction oblige à les dériver d'UN SEUL appel**
+  (2026-09-21, Marc : « je veux voir ma somme totale d'argent et ma somme totale de dettes,
+  partout ») : dès que `A`, `B` et `A − B` sont sur le même écran, l'utilisateur fait l'addition —
+  et trois chiffres produits par trois appels indépendants se recomposent jusqu'au premier
+  correctif appliqué à un seul, puis cessent EN SILENCE. Le geste n'est pas d'ajouter deux calculs
+  à côté du troisième : c'est de faire DÉRIVER le troisième des deux autres (`computePresentTermes`
+  → `computePresentNetWorth` ; `presentTermesOfGoal` → `presentEquityOfGoal`). L'identité devient
+  vraie PAR CONSTRUCTION, gardes de corruption comprises. ⚠️⚠️ **Le choix de PÉRIMÈTRE de
+  l'utilisateur détermine l'autre terme, et il ne le sait pas** : Marc a choisi « dettes tout
+  compris + le détail » (contre ma recommandation), ce qui OBLIGE les avoirs à porter la valeur
+  BRUTE du bien — l'équité d'un côté et l'hypothèque de l'autre la retrancherait deux fois. Une
+  réponse produit ferme un choix et en OUVRE un autre, technique. ⚠️ La garde qui compte est
+  l'IDENTITÉ, et il lui faut un cas où elle peut être FAUSSE (un bien à 400 k$ pour 300 k$
+  d'hypothèque, plus un bien à équité NÉGATIVE) : sans immobilier elle est vraie quoi qu'on câble.
+  ⚠️ Même piège sur la carte hub, dont la fixture n'a aucune dette — « avoirs − dettes = net » y
+  est vrai par ACCIDENT, d'où un cas ENDETTÉ dédié. ⚠️ Un sous-titre qui porte un MONTANT est une
+  donnée financière (`privateSublabel`), et il ne s'affiche que s'il y a quelque chose à détailler.
+  ⚠️ Corollaire routé : le patrimoine net du BANDEAU ajoute l'équité immobilière, celui du snapshot
+  MCP/hubperso NON — invisible tant qu'il n'y a pas de bien, faux dès l'achat
+  (`PUBLIER-DEUX-TERMES-D-UNE-SOUSTRACTION-OBLIGE-A-LES-DERIVER-D-UN-SEUL-APPEL`).
+
+- ⚠️⚠️ **Une surface qui s'ouvre AU SURVOL et RECOUVRE le contenu rend inatteignable tout ce qui
+  est dessous** (2026-09-21) : le rail de navigation passe de `w-16` à `w-72` au survol pendant que
+  le `<main>` ne réserve que 64 px (`md:ml-16`) — donc une bande de **224 px** où aucun clic ne
+  passe tant que le pointeur est sur le rail. Et **la souris de Playwright démarre en (0,0)**,
+  c'est-à-dire dessus : le premier clic d'une page neuve tombe toujours dans ce cas. Le job E2E
+  de la CI tournait **29 min** et se faisait couper à son plafond de 30, sur `main` comme sur
+  chaque PR, en répétant « subtree intercepts pointer events » — mesuré, **18 tests traités, tous
+  en échec**, contre **54 passés en 7,4 min** une fois le pointeur écarté d'une ligne.
+  ⚠️ **Un run `cancelled` n'est pas un run annulé par quelqu'un** : c'est la forme que prend une
+  suite qui échoue LENTEMENT sous `timeout-minutes`. Devant un run annulé qu'on n'a pas annulé,
+  lire la DURÉE des étapes avant d'accuser l'infra — la référence (4 min 03 s) était écrite dans
+  le workflow, juste au-dessus du plafond. ⚠️ Et le journal de Playwright NOMME l'élément qui
+  intercepte : la question n'est pas « le sélecteur est-il bon ? » mais « qu'est-ce qui est
+  au-dessus, et pourquoi ? » (`UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE`).
+
+- ⚠️⚠️ **Une garde qui vérifie la PRÉSENCE d'un texte ne dit rien de son ATTEIGNABILITÉ**
+  (2026-09-21, signalé par Marc : « le ⓘ fait rien ») : les trois réserves du graphe Futur vivaient
+  dans un `title` + un jumeau `sr-only`, derrière une pastille. Un `title` ne se révèle qu'au
+  SURVOL SOURIS — au doigt, taper ne produisait RIEN. ⚠️⚠️ Et **l'en-tête du fichier décrivait déjà
+  le défaut** (« ni au doigt, ni au clavier »), écrit comme la justification d'ajouter le jumeau :
+  j'ai traité la moitié « lecteur d'écran » et laissé la moitié « doigt » dans la phrase même qui
+  la nommait. La garde, elle, a CERTIFIÉ le résultat — elle mesurait la présence d'un ATTRIBUT.
+  ⚠️ La garde qui compte **simule le GESTE que l'interface annonce** (cliquer, puis re-cliquer pour
+  vérifier le retour). ⚠️ Et le correctif n'est pas une TROISIÈME copie du texte pour la modalité
+  oubliée : c'est UN chemin que toutes empruntent — `title` et `sr-only` RETIRÉS avec le chemin mort
+  (`UNE-GARDE-QUI-VERIFIE-LA-PRESENCE-D-UN-TEXTE-NE-DIT-RIEN-DE-SON-ATTEIGNABILITE`).
+
+- ⚠️⚠️ **Une promesse écrite dans un EN-TÊTE de config ne s'exécute pas** (2026-09-21) :
+  `playwright.config.ts` annonçait « Animations : reducedMotion pour stabiliser les screenshots »
+  et la clé n'était **nulle part** dans `use`. Coût, lisible une fois le rapport CI imprimé :
+  `219 × waiting for element to be visible, enabled and stable / element is not stable` — les
+  **120 s entières**, sur le même bouton dans deux specs Futur. Un élément qui ne se fige jamais
+  n'est pas un test LENT, c'est un élément qui BOUGE, et confondre les deux envoie chercher de la
+  lenteur. ⚠️⚠️ **Trois mesures NÉGATIVES déplacent le correctif** : CPU à 20×, réseau sortant
+  coupé, 120 échantillons de `boundingBox` — boîte **bit-stable** dans les trois, donc aucune
+  animation coupable désignable. On neutralise alors la CLASSE (`index.css` rabat toute animation
+  à 0,01 ms sous `prefers-reduced-motion`, dont le `translateY(20px)` de `.animate-premium-in` que
+  porte CHAQUE `Card`), jamais un suspect. ⚠️ « Une phrase de COUVERTURE se vérifie comme un
+  chiffre » re-payée, cette fois dans un **commentaire de configuration** — l'endroit le moins
+  relu. ⚠️ Un budget par test se compare à ses VOISINES : `futureAxis` était seule au défaut de
+  30 s contre 120 s chez dix des treize specs Futur, alors que l'arrivée + le premier clic coûtent
+  **19,5 s** mesurés. ⚠️ Et la corrélation la plus forte était à MOI, non prouvée et écrite comme
+  telle (E2E vert avant `[KPI-AVOIRS-DETTES]`, rouge depuis — quatre tuiles devenues six)
+  (`UNE-PROMESSE-ECRITE-DANS-UN-EN-TETE-DE-CONFIG-NE-S-EXECUTE-PAS`).
+
+- ⚠️⚠️ **Une émulation de test qui force une durée sur `*` retarde ce qui en dépend** (2026-09-21,
+  suite de `[E2E-REDUCED-MOTION]`) : `reducedMotion: 'reduce'` a fait passer le job E2E de **1**
+  test réussi à **30** — et rougir une garde d'a11y sans rapport avec les animations. Le repli d'un
+  groupe de la sidebar sort ses items du tab-order par `visibility: hidden` ; or le bloc
+  `prefers-reduced-motion` d'`index.css` force `transition-duration: 0.01ms !important` sur `*`, et
+  la durée INITIALE d'une transition est `0s` — ce `!important` n'abrège pas, il **ALLONGE**.
+  `visibility` étant transitionnable à interpolation **DISCRÈTE**, elle bascule à la FIN de la
+  durée : une frame plus tard. Sonde : panneau `hidden` pendant que son ENFANT lit encore
+  `visible` — **un enfant `visible` sous un parent `hidden` est la signature d'un style à moitié
+  propagé**, jamais un état stable. ⚠️ Attendre le CONTENEUR (`toBeHidden` sur le panneau) reste
+  ROUGE ; il faut attendre l'ÉLÉMENT dont dépend le fait (l'item focusable). Le contrat testé n'a
+  pas bougé — c'est le MOMENT de la lecture qui était faux. ⚠️ Avant de poser une émulation
+  globale, demander **quelle garantie du produit repose sur l'INSTANTANÉITÉ d'un changement de
+  style**. ⚠️ `CSS.escape` n'existe que dans le NAVIGATEUR : côté runner, sélecteur par attribut.
+  ⚠️⚠️ Et le même run a fait rougir un cliquet écrit par un AUTRE lot sur **ma** régression :
+  `59 → 61` cibles tactiles < 44 px, l'inventaire nommant `ⓘMéthode` 90×**25** et `ⓘImpôt latent`
+  116×**25** — les pastilles que le lot précédent venait de rendre « tapables ». Le défaut que ce
+  lot corrigeait, réintroduit une marche plus bas ; et il n'a pu être vu que parce que le job E2E
+  s'est remis à TOURNER (`UNE-EMULATION-QUI-FORCE-UNE-DUREE-DE-TRANSITION-SUR-TOUT-RETARDE-CE-QUI-EN-DEPEND`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

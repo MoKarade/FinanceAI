@@ -126,7 +126,36 @@ export function initPastPurchase(goal: RealEstateGoal, monthsSincePurchase: numb
  * la garde vit ICI pour couvrir TOUS les consommateurs (panel #552 : 1 site gardé sur 3).
  */
 export function presentEquityOfGoal(goal: RealEstateGoal, monthsSincePurchase: number): number {
-    if (!goal.isActive) return 0;
+    const { valeur, hypotheque } = presentTermesOfGoal(goal, monthsSincePurchase);
+    return valeur - hypotheque;
+}
+
+/**
+ * [KPI-AVOIRS-DETTES] Les DEUX TERMES d'un bien présent : sa valeur BRUTE et son hypothèque.
+ *
+ * Marc, 2026-09-21 : « je veux voir ma somme totale d'argent et ma somme totale de dettes / ce que
+ * je dois », et il a tranché que « ce que je dois » inclut l'hypothèque, avec son détail.
+ *
+ * ⚠️⚠️ POURQUOI UNE SEULE FONCTION REND LES DEUX, et pourquoi `presentEquityOfGoal` en DÉRIVE
+ * désormais au lieu de calculer à côté : l'identité que l'écran doit tenir est
+ * `avoirs − dettes = patrimoine net`, or `équité = valeur − hypothèque`. Deux fonctions
+ * indépendantes qui recalculent ces termes divergeraient en silence au premier correctif appliqué
+ * à l'une seule (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`), et l'écran afficherait trois
+ * chiffres qui ne se recomposent pas — exactement la classe de défaut que Marc a signalée quatre
+ * fois. Ici, par construction, `(valeur) − (hypothèque) === équité` pour TOUT bien, même corrompu
+ * (les deux tombent à 0 ensemble).
+ *
+ * Toutes les décisions de `presentEquityOfGoal` sont conservées TELLES QUELLES — elles ont chacune
+ * coûté un incident : bien inactif → 0 ; champ non fini → 0 TRACÉ (jamais un défaut crédible) ;
+ * `isOwned === false` → 0 SANS repli sur les champs explicites (A6, revue #684) ; date future ou
+ * absente → seuls les champs EXPLICITES comptent.
+ */
+export function presentTermesOfGoal(
+    goal: RealEstateGoal,
+    monthsSincePurchase: number,
+): { valeur: number; hypotheque: number } {
+    const RIEN = { valeur: 0, hypotheque: 0 };
+    if (!goal.isActive) return RIEN;
     if ([goal.currentValue, goal.mortgageBalance, goal.price, goal.downPayment,
         goal.mortgageRate, goal.amortization].some(isCorrupt)) {
         logErrorThrottled(`presentEquity-nonfini:${goal.id}`, {
@@ -134,7 +163,7 @@ export function presentEquityOfGoal(goal: RealEstateGoal, monthsSincePurchase: n
             message: 'RealEstateGoal : champ non fini — bien EXCLU du patrimoine affiché',
             context: { id: goal.id, name: goal.name },
         });
-        return 0;
+        return RIEN;
     }
     // [ENG-PAST-OWNED-VS-PLANNED] (A6) même gate que le moteur (un flux alimente PLUSIEURS
     // registres — moteur ET affichage) : isOwned === false = objectif planifié NON réalisé →
@@ -142,16 +171,16 @@ export function presentEquityOfGoal(goal: RealEstateGoal, monthsSincePurchase: n
     // contradictoires ; honorer currentValue ici affichait 200 000 $ (KPI/PDF) pendant que le
     // moteur, gate en aval, publiait 0 — l'écart Accueil↔Futur du panel #552 réintroduit
     // (revue #684, mesuré). Le repli explicite reste réservé aux dates futures/absentes.
-    if (goal.isOwned === false) return 0;
+    if (goal.isOwned === false) return RIEN;
     if (monthsSincePurchase > 0) {
         const s = initPastPurchase(goal, monthsSincePurchase);
-        return s.currentValue - s.mortgage;
+        return { valeur: s.currentValue, hypotheque: s.mortgage };
     }
     const explicitValue = fin(goal.currentValue);
     if (explicitValue > 0) {
-        return explicitValue - Math.max(0, fin(goal.mortgageBalance));
+        return { valeur: explicitValue, hypotheque: Math.max(0, fin(goal.mortgageBalance)) };
     }
-    return 0;
+    return RIEN;
 }
 
 /** Mois écoulés depuis `purchaseDate` (YYYY-MM…) — négatif si la date est future, 0 si absente/invalide. */

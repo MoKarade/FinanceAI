@@ -9945,6 +9945,26 @@ elle** ; ce que fait son voisin ne prouve rien sur elle. C'est
 correctif de typage suit la même logique : `sublabel` passe de `string` à `React.ReactNode`, parce
 qu'une carte ne peut pas masquer à la place de l'appelant un texte qui mêle explication et montant.
 
+⚠️⚠️ **Re-payée le 2026-09-21 (`[KPI-AVOIRS-DETTES]`), et c'est le mode de panne qu'il faut retenir.**
+`FutureKpiStrip` a été écrit avec un drapeau `privateSublabel` : un masquage RÉEL, testé, qui enveloppe
+le sous-titre entier dans `PrivateAmount`. La CI a quand même rougi sur
+`sublabel={… ${formatCAD(hypotheque)} …}`. Deux raisons, et aucune n'est un défaut de la garde :
+
+1. **Le drapeau vivait une ligne plus bas** — exactement l'alibi que la règle ci-dessus interdit.
+2. **Son NOM est invisible au vocabulaire du scan.** La liste `PRIVACY` refuse DÉLIBÉRÉMENT les noms
+   de helpers locaux (les y mettre rendrait la garde auto-satisfaite) ; `privateSublabel` en est un.
+   Donc un mécanisme de masquage inventé par un lot est, par construction, **indémontrable à la
+   garde** — et l'élargir serait la désarmer. La seule issue est de DÉCOUPER : envelopper la VALEUR
+   sur sa ligne, laisser la phrase lisible.
+
+⚠️ Bénéfice non anticipé du découpage, qui justifie de le préférer au masquage total : en mode discret
+le sous-titre lit « dont ••• d'hypothèque » au lieu de « ••• ». **La COMPOSITION du total reste
+compréhensible sans qu'aucun chiffre ne sorte** — un sous-titre masqué en entier ne dit même plus
+qu'il y a une hypothèque. D'où une garde comportementale JUMELLE du scan : masquer le sous-titre
+entier laisse `amountPrivacyScan` **VERT** (c'est un masquage valide) et ne rougit que chez elle.
+Mesuré par deux perturbations de sens opposé — montant nu → scan rouge, sous-titre entier masqué →
+scan vert / garde rouge. **Aucune des deux ne couvre l'autre**, et c'était le seul moyen de le savoir.
+
 Quatre constats d'outillage, tous mesurés :
 
 - **La dette restante se BORNE, elle ne se documente pas.** Douze sites portent le montant à
@@ -16104,3 +16124,290 @@ variation d'une grandeur suffit à désigner lequel de deux producteurs est pér
 ligne de leur code — et `hubperso` étant alimenté par ce même serveur, il héritait du même retard.
 
 ---
+
+## `PUBLIER-DEUX-TERMES-D-UNE-SOUSTRACTION-OBLIGE-A-LES-DERIVER-D-UN-SEUL-APPEL` (2026-09-21)
+
+**Marc : « je veux voir genre ma somme total d'argent et ma somme total de dette / ce que je dois
+(partout dans financeai et dans hubperso) ».** Demande simple en apparence — deux chiffres déjà
+calculés, à afficher. Ce qu'elle cache est une contrainte d'INTÉGRITÉ.
+
+Dès que `A`, `B` et `A − B` sont sur le MÊME écran, l'utilisateur fait l'addition. Elle doit tomber
+juste — et Marc a signalé **quatre fois en deux jours** des chiffres d'un même écran qui ne se
+recomposent pas (carte hub, tuile « Variation 30 j », infobulle Futur, bases du graphe). **Trois
+chiffres produits par trois appels indépendants se recomposent tant que personne ne touche à la
+composition, puis cessent, en silence, au premier correctif appliqué à un seul**
+(`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`).
+
+**Le geste :** ce n'est pas d'ajouter deux calculs à côté du troisième, c'est de faire DÉRIVER le
+troisième des deux autres. Deux fois dans ce lot :
+- `computePresentTermes` rend `{ avoirs, dettes }`, et `computePresentNetWorth` — qui EXISTAIT et
+  faisait la soustraction lui-même — en dérive ;
+- `presentTermesOfGoal` rend `{ valeur, hypotheque }`, et `presentEquityOfGoal` en dérive.
+
+L'identité devient vraie **par construction**, y compris sur les entrées corrompues : les gardes
+(non-fini, `isOwned === false`, bien inactif) s'appliquent aux mêmes valeurs que celles publiées, et
+les deux termes tombent à zéro ENSEMBLE.
+
+⚠️⚠️ **Le choix de l'utilisateur sur le PÉRIMÈTRE détermine l'autre terme, et il ne le sait pas.**
+J'ai posé la question « l'hypothèque compte-t-elle dans ce que je dois ? » en recommandant « hors
+hypothèque » (parce que le patrimoine net compte déjà l'immobilier en ÉQUITÉ, donc l'identité
+tombait juste sans rien changer). Marc a choisi **« un total tout compris, et le détail »** — ce qui
+est plus intuitif, et ce qui **oblige les avoirs à porter la valeur BRUTE du bien**. Mettre
+l'équité d'un côté et l'hypothèque de l'autre retrancherait l'hypothèque DEUX fois. La bonne
+nouvelle, mesurée avant d'accepter : les deux termes se dérivent de ce qui est déjà calculé, sans
+toucher au moteur. **Une réponse produit ferme un choix et en OUVRE un autre, technique** — le
+second est à moi, mais il doit être vérifié, pas supposé.
+
+⚠️ **La garde qui compte n'est pas « la tuile affiche X », c'est l'IDENTITÉ**, et elle a besoin
+d'un cas où elle peut être FAUSSE : un bien à 400 000 $ de valeur pour 300 000 $ d'hypothèque. Sur
+un dossier sans immobilier, `avoirs − dettes = net` est vrai quoi qu'on câble. Ajouté aussi un bien
+à équité **NÉGATIVE** (300 000 / 400 000) : une implémentation qui clamperait un terme à zéro « pour
+éviter un négatif » romprait la recomposition, et c'est une correction que quelqu'un tentera.
+
+⚠️ **Même piège sur la carte hub, en pire** : sa fixture n'a aucune dette, donc « avoirs − dettes =
+valeur nette » y est vrai **par accident** (avoirs = net). Un câblage publiant `netWorth` en guise
+d'avoirs et `0` en guise de dettes passait le test. D'où un cas ENDETTÉ dédié
+(`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`), et la perturbation le prouve.
+
+⚠️ **Un sous-titre qui porte un MONTANT est une donnée financière.** « dont 300 000 $ d'hypothèque »
+passe par `privateSublabel` : le laisser nu à côté d'une valeur masquée est le finding a11y/privacy
+#644, re-commis. Et il ne s'affiche QUE s'il y a une hypothèque — « dont 0 $ » en permanence serait
+du décor (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
+
+⚠️ Corollaire trouvé en câblant : le patrimoine net du BANDEAU ajoute l'équité immobilière, celui du
+snapshot MCP / hubperso NON. Les deux coïncident **tant qu'il n'y a pas de bien** — donc c'est
+invisible aujourd'hui et faux le jour de l'achat. **Deux surfaces qui prétendent publier la même
+grandeur doivent être comparées sur un état qui les SÉPARE**, jamais sur l'état courant
+(`[NW-IMMO-ABSENT-DU-HUB]`, routé : corriger déplace un chiffre publié).
+
+⚠️ Et `vitest` NE TYPECHECK PAS, re-payé dans le même lot : mes deux assertions d'identité sur la
+carte hub étaient VERTES pendant que `tsc` refusait l'arithmétique (`HubMetric.value` est
+`string | number` au contrat). Les vérifs ciblées se relancent **après la DERNIÈRE édition**.
+
+---
+
+---
+
+# UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE
+
+**2026-09-21, `[E2E-RAIL-INTERCEPTE-LE-CLIC]`.** Le job E2E de la CI tournait **29 minutes** et se
+faisait couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate
+était vert. Il n'avait pas l'air d'un échec : `conclusion: cancelled`, donc ni rouge ni vert — et
+un run annulé ne ressemble pas à un test qui casse.
+
+**La cause n'est pas dans les tests, elle est dans une décision de mise en page.** Le rail de
+navigation est `fixed`, replié à `w-16`, et s'ouvre **au survol** à `w-72` en **recouvrant** le
+contenu — choix assumé et commenté (« l'expansion overlay le contenu sans push, pas de jump »).
+Le `<main>`, lui, ne réserve que 64 px (`md:ml-16`). Il existe donc en permanence une bande de
+**224 px** où tout contrôle devient inatteignable au clic **dès que le pointeur est sur le rail**.
+
+Et le pointeur de Playwright **démarre en (0,0)** — c'est-à-dire précisément sur le rail. Le
+premier clic d'une page neuve tombe donc toujours dans ce cas : Playwright réessaie 30 s en
+répétant « subtree intercepts pointer events », puis le test expire. Comme le clic en question
+vivait dans le helper **partagé** `activateTestMode`, la panne était en cascade.
+
+**Mesuré sur `main` (4f1466b4), sans aucun changement applicatif** :
+
+| | avant | après |
+|---|---|---|
+| `futureAxis.spec.ts` | 3 échecs sur 3, 30 s chacun | passe en **10,9 s** |
+| suite complète | **18** tests traités en 29 min, tous en échec | **54 passés en 7,4 min** |
+
+⚠️ **Ce n'est PAS le contournement d'un bug de l'app.** Un humain qui survole le rail le voit
+s'ouvrir et déplace sa souris ; c'est ce geste qui manquait au test. La question à se poser devant
+un clic qui « ne passe pas » n'est donc pas « le sélecteur est-il bon ? » mais **« qu'est-ce qui
+est au-dessus, et pourquoi ? »** — la réponse était dans le journal de Playwright, qui NOMME
+l'élément intercepteur, et elle a été lue en dernier.
+
+⚠️ **Un run `cancelled` n'est pas un run raté, et c'est ce qui l'a fait vivre si longtemps.** Le
+plafond `timeout-minutes` existe pour empêcher un job figé de tourner six heures (leçon DriveAI) ;
+son effet de bord est qu'une suite qui échoue LENTEMENT ressort en « annulé » plutôt qu'en
+« échec ». Devant un run annulé qu'on n'a pas annulé, lire la DURÉE des étapes avant de conclure à
+l'infra : 29 min 22 s contre 4 min 03 s de référence — la référence était écrite dans le workflow,
+juste au-dessus du plafond.
+
+⚠️ **Et le correctif se juge sur la suite ENTIÈRE, pas sur le spec qu'on a réparé.** Après la
+première passe : 52 passés, **2 échoués** — le même défaut, dans le seul spec qui clique l'onglet
+sans passer par le helper partagé. D'où un helper **exporté** avec sa règle écrite dedans plutôt
+qu'une seconde copie : tout spec qui clique dans les 288 px de gauche après un `goto` doit
+l'appeler, et le premier clic d'une page neuve est toujours concerné.
+
+---
+
+# UNE-GARDE-QUI-VERIFIE-LA-PRESENCE-D-UN-TEXTE-NE-DIT-RIEN-DE-SON-ATTEIGNABILITE
+
+**2026-09-21, `[FUTUR-NOTES-PASTILLES-MORTES]`.** Marc : « le truc impôt latent méthode et raccord
+sert à rien, **le ⓘ fait rien** ».
+
+La veille, pour retirer deux pavés de texte qu'il avait biffés sans perdre les trois réserves
+qu'ils portaient, j'avais mis chaque phrase dans un `title` plus un jumeau `sr-only`, derrière une
+pastille « ⓘ Méthode ». **Un `title` ne se révèle qu'au survol SOURIS.** Au doigt — et Marc regarde
+cet écran au téléphone — taper la pastille ne produit rien. Une pastille qui annonce une
+explication sans pouvoir la donner est pire que pas de pastille : elle promet et ne tient pas.
+
+⚠️⚠️ **Le pire n'est pas le défaut, c'est que je l'avais ÉCRIT.** L'en-tête du fichier portait,
+noir sur blanc : « un `title` sur un `<span>` non focusable n'est lisible qu'à la SOURIS, donc ni
+au doigt, ni au clavier, ni au lecteur d'écran ». Je l'avais écrit comme la *justification*
+d'ajouter le jumeau `sr-only` — c'est-à-dire que j'ai traité la moitié « lecteur d'écran » du
+problème et laissé la moitié « doigt » intacte, dans la phrase même qui la nommait. Une
+justification qui énumère trois modalités et n'en couvre que deux est un inventaire incomplet
+déguisé en raisonnement.
+
+**Et la garde a certifié le résultat.** Elle affirmait « chaque note porte sa phrase entière, en
+`title` ET en jumeau `sr-only` » — vraie, verte, et parfaitement satisfaite par un écran où le
+geste annoncé ne produit RIEN. Elle mesurait la **présence d'un attribut**, pas
+l'**atteignabilité d'une information**.
+
+**La règle** : `title`, `aria-label`, `sr-only`, `data-*`, un nœud caché — tous peuvent être
+présents dans le DOM sans qu'aucun geste ne les atteigne. Une garde qui vérifie qu'un texte
+EXISTE ne dit rien de qui peut le LIRE. La garde qui compte **simule le geste que l'interface
+annonce** : si l'écran montre un ⓘ, le test clique dessus et vérifie que la phrase apparaît — puis
+re-clique et vérifie qu'elle repart.
+
+⚠️ Corollaire de forme : le correctif n'est pas d'ajouter une TROISIÈME copie du texte pour la
+modalité oubliée, c'est de n'avoir qu'UN chemin que toutes empruntent (ici un `<button>` de
+dévoilement, `aria-expanded` / `aria-controls`, qui affiche la phrase). `title` et `sr-only` ont
+été RETIRÉS : c'étaient les béquilles du chemin mort, et les garder faisait relire deux fois la
+même phrase à un lecteur d'écran.
+
+⚠️ Même famille que `UN-BOUTON-N-EST-PAS-UN-FILET` et que
+`UN-FOCUS-SUR-UN-CONTENEUR-EST-UN-NO-OP-SILENCIEUX` : dans les trois cas, l'appel est posé, la
+garde le voit, et il ne se passe rien.
+
+---
+
+# UNE-PROMESSE-ECRITE-DANS-UN-EN-TETE-DE-CONFIG-NE-S-EXECUTE-PAS
+`[E2E-REDUCED-MOTION]` — 2026-09-21
+
+L'en-tête de `playwright.config.ts` annonçait, depuis sa création :
+
+> « Animations : reducedMotion pour stabiliser les screenshots. »
+
+La clé n'était **nulle part** dans `use`. Le fichier décrivait une garantie qu'il n'appliquait pas
+— et la phrase est d'autant plus crédible qu'elle est dans le fichier qui DEVRAIT la porter.
+
+**Ce que l'absence a coûté**, lisible dans le journal CI une fois le rapport enfin imprimé
+(`[E2E-MAX-FAILURES]`) :
+
+```
+219 × waiting for element to be visible, enabled and stable
+        - element is not stable
+      - retrying click action
+        - waiting 500ms
+```
+
+219 × 500 ms = les **120 s entières** du test, sur le MÊME bouton dans deux specs Futur. Un
+élément qui ne se fige jamais n'est pas un test LENT, c'est un élément qui BOUGE — la distinction
+change tout le diagnostic, et je l'ai d'abord manquée (« les tests sont affamés »).
+
+## Ce que trois mesures NÉGATIVES ont apporté
+
+Le piège de ce lot est qu'aucune mesure locale ne reproduit le défaut. Trois protocoles, tous
+avec le même verdict :
+
+| protocole | résultat |
+|---|---|
+| étranglement CPU à **20×** (ordre de grandeur d'un runner à 2 cœurs) | boîte **bit-stable** |
+| **réseau sortant coupé** (`route.abort` hors localhost) | boîte **bit-stable** |
+| échantillonnage de `boundingBox` sur **120 points** | `y=570.0 x=503.3 w=337.5`, 3 états distincts, tous identiques |
+
+⚠️ **Une mesure négative n'est pas une mesure ratée : elle déplace le correctif.** Puisqu'on ne
+peut désigner AUCUNE animation coupable, on ne corrige pas un suspect — on neutralise la
+**CLASSE**. `index.css` rabat déjà toute animation à `0.01ms !important` sous
+`prefers-reduced-motion: reduce`, dont le `translateY(20px)` de `.animate-premium-in` que porte
+**chaque `Card`** — y compris celle qui contient le bouton. Le correctif est donc de faire dire à
+la config ce qu'elle prétendait déjà dire.
+
+## Corollaires
+
+- ⚠️ **Une phrase de COUVERTURE se vérifie comme un chiffre** (déjà écrit le 2026-09-18 à propos
+  de « déjà testée chez elle », faux). Ici elle vivait dans un **commentaire de configuration** —
+  l'endroit le moins relu du dépôt, parce qu'on lit la config pour ce qu'elle FAIT et l'en-tête
+  pour savoir à quoi elle sert. Le geste est d'ouvrir le fichier, jamais de citer son en-tête.
+- ⚠️ **La corrélation la plus forte du journal était à moi, et elle reste NON PROUVÉE** : E2E vert
+  en **5 min 47 s** sur `a94ea669`, rouge sur tous les commits depuis `[KPI-AVOIRS-DETTES]` — qui
+  fait passer le bandeau de quatre à **six** tuiles, donc chacune plus étroite (`flex-1
+  min-w-[140px]`). Mesuré localement : `strip h=96.0`, une seule rangée, aucune oscillation. Une
+  corrélation qu'on ne peut pas transformer en mécanisme s'ÉCRIT comme telle plutôt que d'être
+  tue ou affirmée.
+- ⚠️ **Un budget par test se compare à ses VOISINES avant d'être jugé confortable** : `futureAxis`
+  était la seule des treize specs Futur restée au défaut de **30 s** quand dix ont `120_000`.
+  Mesuré : la seule ARRIVÉE sur l'écran plus le premier clic coûtent **19,5 s** à 20×
+  d'étranglement — les deux tiers du budget avant que le test n'affirme quoi que ce soit.
+  L'aligner n'endort aucune assertion : un test qui expire reste rouge, il a seulement le temps
+  d'arriver jusqu'à ce qu'il mesure.
+- ⚠️ **`reducedMotion` va sous `contextOptions`** sur `@playwright/test` **1.60** ; la forme racine
+  compile chez l'API `browser.newContext()` mais pas dans `use`. C'est `npm run typecheck` qui l'a
+  refusée — avant la CI, et avant un troisième aller-retour de 8 minutes.
+
+---
+
+# UNE-EMULATION-QUI-FORCE-UNE-DUREE-DE-TRANSITION-SUR-TOUT-RETARDE-CE-QUI-EN-DEPEND
+`[E2E-REDUCED-MOTION]` — 2026-09-21, suite du même lot
+
+Poser `reducedMotion: 'reduce'` a fait passer le job E2E de **1 test réussi** à **30**
+(`futureAxis` et `futureDailyRollover` verts, `futureDailySelect` flaky-mais-vert). Il a aussi
+fait ROUGIR une garde d'accessibilité qui n'a rien à voir avec les animations :
+`sidebarKeyboard` — « replier un groupe sort ses items du tab-order ».
+
+## Le mécanisme, MESURÉ
+
+Le repli du groupe sort ses items du tab-order par **`visibility: hidden`** (`invisible`), et
+`Layout.tsx` le dit en toutes lettres depuis `[D6-KBD]`. Or le bloc `prefers-reduced-motion` de
+`index.css` force `transition-duration: 0.01ms !important` sur **`*`**. La durée initiale d'une
+transition étant `0s`, ce `!important` ne raccourcit rien : il **ALLONGE**. Et `visibility` est
+une propriété **transitionnable à interpolation DISCRÈTE** — elle bascule à la FIN de la durée,
+si minuscule soit-elle. Le changement quitte donc le tick courant et part à la frame suivante.
+
+Sonde, juste après `Enter` (repli), sous `prefers-reduced-motion` :
+
+```
+#nav-group-… : visibility = "hidden"    ← le PANNEAU a basculé
+  └─ enfant  : visibility = "visible"   ← le DESCENDANT, non
+```
+
+Un enfant ne peut pas calculer `visible` sous un parent `hidden` dans une mise en page STABLE :
+cette paire est la signature d'un style à moitié propagé. Et c'est le descendant qui décide du
+tab-order, pas le conteneur.
+
+## Ce que le correctif a coûté de faux départs, et pourquoi c'est la leçon
+
+1. `await expect(panneau).toBeHidden()` → **toujours rouge**. Playwright voyait bien le panneau
+   caché ; l'item, lui, était encore focusable. **Attendre le CONTENEUR ne prouve rien sur ce que
+   le navigateur fait du SOUS-ARBRE.**
+2. `await expect(panneau.locator('button').first()).toBeHidden()` → **vert**. On attend l'élément
+   dont dépend le FAIT testé.
+
+⚠️ **Le contrat testé n'a pas bougé d'un pouce** — c'est le MOMENT de la lecture qui était faux.
+Aucune assertion n'a été relâchée, aucun seuil déplacé : c'est `UN-TEST-E2E-QUI-LIT-UN-ETAT-UNE-SEULE-FOIS`
+appliqué à un état que l'émulation du harnais a rendu asynchrone.
+
+⚠️ **Généralisation, et c'est elle qu'il faut retenir** : une émulation de test qui force une
+propriété sur `*` (`transition-duration`, `animation-duration`, `scroll-behavior`) ne « neutralise »
+pas — elle **réécrit le modèle temporel de tout le document**. Avant d'en poser une, demander
+quelles garanties du produit reposent sur l'INSTANTANÉITÉ d'un changement de style : ici, un
+contrat d'accessibilité.
+
+⚠️ `CSS.escape` n'existe **que dans le navigateur** : dans un fichier de spec (Node), il faut un
+sélecteur par ATTRIBUT (`[id="…"]`). Le rouge est franc (`ReferenceError`), mais il coûte un tour.
+
+## Le corollaire le plus utile : le cliquet a attrapé MA régression
+
+Le même run a rougi sur `futureMobileFilet` — « pas de NOUVELLE cible tactile < 44 px » :
+**59 → 61**, et l'inventaire NOMME les deux coupables :
+
+```
+[Projection] button « ⓘMéthode »       90×25
+[Projection] button « ⓘImpôt latent » 116×25
+```
+
+Ce sont les pastilles que `[FUTUR-NOTES-PASTILLES-MORTES]` venait de transformer de `<span>` en
+`<button>` pour que Marc puisse enfin les TAPER. **Le défaut que le lot existait pour corriger,
+réintroduit une marche plus bas** : une pastille qu'on annonce tapable et qui mesure 25 px de haut
+ne l'est pas davantage qu'un `title` invisible au doigt. Correctif : `touch-target` (44×44,
+`index.css`), le patron déjà employé par `ui/SubTabs` et `ui/Toast`, repris **inconditionnel comme
+chez eux** (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+
+⚠️ Ce n'est ni le gate, ni le panel, ni moi qui l'ai vu : c'est un **cliquet écrit par un autre
+lot**, et il n'a pu le voir que parce que le job E2E s'est remis à TOURNER. Une suite coupée à son
+plafond ne protège de rien — et pendant trois runs, elle n'a rien protégé du tout.

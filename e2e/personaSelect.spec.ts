@@ -7,13 +7,17 @@
  * sans cliquer un bouton → l'utilisateur voyait encore 2 salaires (couple).
  */
 import { test } from '@playwright/test';
-import { scriptBypassOnboarding } from './helpers/setup';
+import { ecarterLeRail, scriptBypassOnboarding } from './helpers/setup';
 
 test.describe('Mode test — sélecteur de persona', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(scriptBypassOnboarding());
     await page.goto('/#SETTINGS');
     await page.waitForLoadState('domcontentloaded');
+    // ⚠️ Le pointeur n'a pas encore bougé de (0,0), donc il SURVOLE le rail, qui s'ouvre et
+    // recouvre l'onglet visé. Voir `ecarterLeRail` — sans cet appel, le clic ci-dessous
+    // expire au bout de 30 s en répétant « subtree intercepts pointer events ».
+    await ecarterLeRail(page);
     // TestModePanel vit désormais dans le sous-onglet « Profil »
     // (déplacé depuis « Système & diagnostics » — charger un persona est une action profil).
     await page.getByRole('tab', { name: /Profil/i }).click();

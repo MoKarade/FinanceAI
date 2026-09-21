@@ -16459,3 +16459,122 @@ chez eux** (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
 ⚠️ Ce n'est ni le gate, ni le panel, ni moi qui l'ai vu : c'est un **cliquet écrit par un autre
 lot**, et il n'a pu le voir que parce que le job E2E s'est remis à TOURNER. Une suite coupée à son
 plafond ne protège de rien — et pendant trois runs, elle n'a rien protégé du tout.
+
+---
+
+# `UN-DEPLOIEMENT-QUI-EMBARQUE-LE-DOSSIER-LOCAL-NE-DIT-PAS-QUEL-CODE-IL-SERT` (2026-09-21)
+
+> Marc : « affciehe encore la mauvais valeur dans hubperso, pourtant jai deploy », puis
+> « corrige tout maointeant je veux avoir la bonne valeur dans hubperso et que ca réarrive jamais ».
+
+## Le fait
+
+La carte FinanceAI du hub n'affichait pas les deux tuiles neuves (« Total avoirs », « Dettes »)
+alors que le serveur MCP venait d'être déployé et que `gcloud` avait répondu :
+
+```
+Service [financeai-mcp] revision [financeai-mcp-00023-jxh] has been deployed
+and is serving 100 percent of traffic.
+```
+
+Trois défauts distincts, tous du même genre : **chaque maillon disait « oui » sans qu'aucun ne
+puisse dire QUOI**.
+
+## 1. `--source .` déploie le DOSSIER, jamais GitHub
+
+`mcp/deploy.sh` lance `gcloud run deploy --source .` : ce qui part dans l'image est le dossier
+d'où on lance le script. Un clone non rafraîchi envoie donc l'ANCIEN code — et `gcloud` répond
+quand même « Routing traffic... Done » puis « serving 100 percent of traffic ». **Le succès de
+l'OUTIL se lit alors comme le succès de l'INTENTION.**
+
+Rien dans la sortie ne distingue « déployé » de « déployé le bon code ». Correctif :
+`[DEPLOY-CLONE-EN-RETARD]` — le script REFUSE quand `git rev-list --count HEAD..origin/main > 0`,
+nomme le retard, nomme le geste qui répare (`git pull origin main`), et laisse une porte explicite
+pour un retour arrière VOLONTAIRE (`ALLOW_BEHIND=1`, qui l'ANNONCE dans la sortie).
+
+⚠️ La garde est **COMPORTEMENTALE** et pas un scan de source, délibérément : `deploy.sh` est du
+shell dont les COMMENTAIRES expliquent le refus mot pour mot (« REFUS », « en retard sur
+origin/main »), donc un scan de présence y serait satisfait par la PROSE (`SCAN-QUI-MATCHE-LA-PROSE`)
+— et `readCodeOnly` ne sait décommenter que du JS/TS. Le test construit un vrai dépôt git jetable
+et exécute vraiment le script, dans les DEUX sens (le contrôle négatif est ce qui distingue une
+protection d'un `exit 1` posé trop haut).
+
+⚠️ **Et le contrôle négatif a échoué au premier essai — parce que MON clone était en retard d'un
+commit.** La garde avait raison, ma prémisse était périmée. C'est exactement le défaut qu'elle
+existe pour attraper, et il s'est présenté pendant qu'on l'écrivait.
+
+## 2. Une VERSION figée ne dit pas quel code tourne
+
+`GET /health` publiait `version: MCP_SERVER_VERSION`, soit **`0.11.0` depuis le 2026-07-13** alors
+que le workflow de déploiement lui-même imprimait **351 commits** touchant le serveur depuis. Une
+version qui ne varie plus ne dit pas quel code tourne : elle donne l'ILLUSION de le dire, ce qui
+est pire qu'un champ absent.
+
+Conséquence mesurée ce jour-là : **impossible de trancher** entre « le déploiement n'a pas embarqué
+le nouveau code » et « le consommateur regarde ailleurs ». J'ai publié DEUX diagnostics faux avant
+que Marc ne tranche en regardant son écran.
+
+Correctif : `buildSha()` (`mcp/bootstrap.ts`), posé par `mcp/deploy.sh` (`git rev-parse HEAD`) et
+publié par `/health`. ⚠️ Il rend **`null`** quand il ne sait pas — jamais un repli sur
+`MCP_SERVER_VERSION`, sur `'inconnu'` ou sur une valeur tronquée : un identifiant de build FAUX est
+pire qu'absent, il fait croire qu'on sait (`no-fake-data`, `UN-REPLI-PLUS-CREDIBLE-EST-MOINS-REFUTABLE`).
+Le format est vérifié (40 hexadécimaux), et la garde JUMELLE exige que `deploy.sh` ÉCRIVE la
+variable — une route qui lit un champ que personne n'écrit est morte
+(`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`).
+
+## 3. Mon propre diagnostic était FAUX, et ma sonde ne discriminait pas
+
+J'ai écrit « PROUVÉ : le serveur tourne du vieux code » parce que `totalDebt` restait à **46 934 $**.
+Mesure re-faite : le dernier prélèvement Toyota est du **2026-09-15** et 46 934,00 est daté APRÈS
+lui (`47 168,67 − 234,67 = 46 934,00`). Le vieillissement du solde est donc un **no-op sur cette
+donnée** : l'ancien code et le neuf rendent le MÊME nombre.
+
+**Ma sonde ne pouvait pas départager les deux hypothèses**, et j'ai quand même conclu. Ce qui a
+tranché est une observation de Marc — « aucune tuile Total avoirs ni Dettes » — c'est-à-dire la
+branche où les hypothèses DIVERGENT
+(`UNE-SEULE-OBSERVATION-DANS-LA-BRANCHE-RARE-TRANCHE-CE-QUE-MILLE-PASSES-NOMINALES-NE-PEUVENT-PAS`).
+
+Mesuré ensuite, proprement, sans jamais afficher le jeton (lu depuis Secret Manager dans la commande
+elle-même) : sans en-tête → **401** ; avec le vrai jeton → `grep -c "Total avoirs"` = **1**. Donc
+**le serveur MCP était à jour**. Le hub, lui, interrogeait un AUTRE hôte —
+`finance.hubperso.com/hub/summary` répond **200 avec `<!DOCTYPE html>`**, c'est-à-dire l'app Vercel,
+pas le serveur MCP.
+
+## Ce qu'il faut retenir
+
+**Devant « j'ai déployé et ça n'a pas changé », la question n'est pas « le déploiement a-t-il
+réussi ? » mais « qu'est-ce qui, dans la RÉPONSE SERVIE, permettrait de savoir quel code la
+produit ? »** Tant que la réponse est « rien », aucun diagnostic n'est falsifiable et on empile des
+hypothèses plausibles. Le correctif est un identifiant de build publié — pas une meilleure
+inspection du déploiement.
+
+⚠️ Corollaire de sécurité, tenu tout du long : toutes les commandes envoyées à Marc lisent le jeton
+depuis `gcloud secrets versions access` **à l'intérieur de la commande**, et ne lui demandent de
+recopier qu'un code HTTP ou un compte. Un jeton tapé dans le chat est un jeton en clair dans un
+dépôt PUBLIC de conversation.
+
+## ⚠️ Et la CI a trouvé le défaut de la garde : **une fixture qui dépend de ce que la MACHINE a installé**
+
+Le premier jet de `deployRefuseCloneEnRetard` exécutait vraiment `mcp/deploy.sh` — bonne idée — mais
+sans rien faire du `gcloud` que le script appelle **huit fois** une fois le refus passé (`run
+services describe`, six `secrets describe`, `run deploy`).
+
+Vert ici, ROUGE en CI : « Test timed out in 5000ms », **1 test en échec sur 6 405**. La cause n'est
+pas le test, c'est l'ENVIRONNEMENT — le conteneur de dev n'a pas `gcloud` (bash échoue aussitôt,
+donc le script s'arrête net), l'image GitHub Actions embarque le SDK Google. Là-bas le script
+partait donc vraiment interroger GCP et restait pendu.
+
+**Deux choses à retenir.** D'abord : un test qui passe parce qu'une commande est ABSENTE ne teste
+pas ce qu'il croit — c'est `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` avec un binaire au lieu
+d'une version de Node, et la question à se poser devant tout test qui lance un vrai programme est
+**« qu'est-ce que cette machine a que l'autre n'a pas, et l'inverse ? »**. Ensuite, et c'est pire
+que la CI rouge : sur une machine où `gcloud` est authentifié, ce test aurait appelé un `gcloud`
+RÉEL. Un test n'a pas à pouvoir toucher une infrastructure.
+
+Correctif : la fixture pose son propre `gcloud` (un script qui sort `0`) dans le dépôt jetable et le
+met en tête de `PATH`. Le comportement devient identique partout, et l'appel réel est
+**inexprimable** depuis le test — la même forme que
+`UNE-CONTRAINTE-DE-VIE-PRIVEE-SE-TIENT-PAR-L-ARCHITECTURE-PAS-PAR-UN-COMMENTAIRE`, appliquée à un
+effet de bord. ⚠️ Reproduit AVANT de corriger (un faux `gcloud` qui dort 30 s sur le `PATH` fait
+bien expirer l'ancien test), puis re-vérifié avec ce même `gcloud` hostile encore en place : 3/3
+verts. Et la perturbation d'origine tire toujours (refus neutralisé → 1 rouge).

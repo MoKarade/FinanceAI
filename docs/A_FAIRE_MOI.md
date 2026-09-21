@@ -5,6 +5,27 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤 **[MCP-DEPLOY-CONTINU-MORT]** (2026-09-21) — **le déploiement automatique du serveur MCP
+  est mort, et c'est lui qui aurait évité la panne d'aujourd'hui.** Le workflow
+  `Deploy MCP (Cloud Run)` échoue à CHAQUE push en ~12 secondes : `GCP_PROJECT_ID` n'est pas défini
+  et les secrets d'authentification manquent. Conséquence : la SEULE voie vers Cloud Run est
+  `./mcp/deploy.sh` lancé à la main depuis ton PC — c'est-à-dire la voie qui peut embarquer un clone
+  périmé (je viens d'ajouter un refus pour ça, mais un refus ne remplace pas une automatisation).
+  **Ce que je ne peux pas faire d'ici** : créer des secrets GitHub et configurer un compte de
+  service Google Cloud exige des droits que je n'ai pas, et `console.cloud.google.com` est **403 au
+  CONNECT** depuis mon conteneur.
+  **Le geste, dans le dépôt GitHub `MoKarade/FinanceAI` → Settings → Secrets and variables →
+  Actions** :
+  - *Variables* → `GCP_PROJECT_ID` = `financeai-497112`
+  - *Secrets* → `GCP_WIF_PROVIDER` (le fournisseur d'identité fédérée Workload Identity) et
+    `GCP_DEPLOY_SA` (l'adresse du compte de service qui a le droit de déployer sur Cloud Run).
+  Si tu préfères ne pas monter la fédération d'identité, dis-le : le workflow peut être adapté à une
+  clé de compte de service classique (moins bien, mais fonctionnel). Dans les deux cas, dis-moi quand
+  c'est posé — je vérifierai qu'un run passe au VERT sur un vrai push, pas en le supposant.
+  ⚠️ **Et si tu choisis de ne rien faire** : dis-le aussi, je retirerai le workflow plutôt que de le
+  laisser échouer à chaque push. Un rouge permanent n'alerte plus personne — il enseigne le rouge.
+
+
 - [x] 👤 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18) — ✅ **RÉSOLU TOUT SEUL le jour
   même, à 21:47 UTC : NE FAIS RIEN.** Vercel a rattrapé au troisième push — le merge de la PR #996
   (`d66fe5be`, tête de `main`, qui porte LES TROIS lots) a déclenché un déploiement de production

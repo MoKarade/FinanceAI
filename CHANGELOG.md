@@ -6,6 +6,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (pourquoi hubperso affichait encore l'ancienne valeur)
+
+- **Tu as déployé, et hubperso montrait toujours l'ancienne carte.** Ce n'était pas ton
+  déploiement : le serveur était bien à jour. Le hub, lui, interrogeait une **autre adresse** —
+  celle de l'app web au lieu de celle du serveur. Tu as changé la variable, et la carte est
+  repartie.
+- **Ce qui a coûté l'après-midi, c'est qu'on ne pouvait pas le SAVOIR.** Le serveur annonçait
+  « version 0.11.0 » quoi qu'il arrive — un numéro figé depuis le 13 juillet, alors que 351 commits
+  l'avaient modifié depuis. Impossible de distinguer « le déploiement n'a pas pris » de « le hub
+  regarde ailleurs ». J'ai publié deux diagnostics faux avant que ta capture d'écran ne tranche.
+- 🔧 **Pour que ça ne se reproduise jamais, deux garde-fous** :
+  - le serveur publie maintenant **le commit exact qu'il sert** (`/health`). Une question qui
+    prenait une heure se répond en une seconde. S'il ne sait pas, il dit « je ne sais pas » plutôt
+    que d'inventer un numéro ;
+  - le script de déploiement **REFUSE de partir** si ton dossier local est en retard sur GitHub. Il
+    embarque le dossier, pas GitHub : sans ce refus, il envoie du vieux code en affichant
+    « ✅ Déployé ». Il te dit de combien tu es en retard et quelle commande lancer.
+- ⚠️ **Deux choses restent à faire, et une seule est de mon ressort** : côté hub, l'adresse par
+  DÉFAUT pointe encore l'app plutôt que le serveur (ta variable la corrige, mais le défaut
+  reviendrait ailleurs) — c'est un autre dépôt, je m'en occupe. Et le déploiement AUTOMATIQUE du
+  serveur est en panne depuis des mois faute de secrets configurés : ça, il n'y a que toi qui peux
+  le poser (`docs/A_FAIRE_MOI.md`).
+
 ## [unreleased] — 2026-09-21 (ton total d'argent et ton total de dettes, côte à côte)
 
 - **Tu voulais voir « ta somme totale d'argent et ta somme totale de dettes, partout ».** Le bandeau

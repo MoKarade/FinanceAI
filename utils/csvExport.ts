@@ -10,6 +10,7 @@
 
 import type { Transaction, Asset, BudgetCategory } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { modeDonneesFictives } from '../store/modeTestActif';
 
 /**
  * Échappe une valeur pour CSV RFC 4180.
@@ -45,10 +46,34 @@ export function toCSV<T>(rows: T[], columns: CsvColumn<T>[]): string {
 }
 
 /**
+ * Refus JUMEAU de `CsvRefusedPrivacyError`, pour l'autre raison de ne pas faire sortir un
+ * fichier : non pas « ces montants doivent rester masqués » mais « ces montants n'existent pas ».
+ * Quand l'app tourne sur des données FICTIVES (mode test / bac à sable), un CSV téléchargé est
+ * un fichier d'allure parfaitement réelle, ligne par ligne, que rien ne distinguera du vrai une
+ * fois ouvert dans un tableur six mois plus tard.
+ */
+export class CsvRefusedTestModeError extends Error {
+    constructor() {
+        super('Export CSV refusé : l\'app affiche des données fictives.');
+        this.name = 'CsvRefusedTestModeError';
+    }
+}
+
+/**
  * Déclenche le téléchargement d'un CSV dans le browser.
  * Ajoute le BOM UTF-8 pour qu'Excel ouvre correctement les accents.
+ *
+ * ⚠️ POURQUOI la garde « données fictives » est ICI et pas dans chaque preset, alors que la garde
+ * du mode discret, elle, vit dans `exportTransactionsCSV`. Les deux règles n'ont pas le même point
+ * de passage obligé. Le mode discret refuse de CONSTRUIRE (inutile de fabriquer des lignes qu'on
+ * ne rendra pas), donc il vit au plus près de la construction. Les données fictives refusent de
+ * FAIRE SORTIR — et `downloadCSV` est le seul endroit par lequel un fichier sort, quel que soit le
+ * preset, y compris ceux qu'un lot futur ajoutera sans penser à cette règle. Mesuré : il y a trois
+ * presets d'export, et poser la garde sur chacun aurait laissé le quatrième découvert.
  */
 export function downloadCSV(filename: string, content: string): void {
+    // Lu à l'APPEL : le mode a pu basculer entre le rendu du bouton et le clic.
+    if (modeDonneesFictives()) throw new CsvRefusedTestModeError();
     if (typeof window === 'undefined') return;
     const bom = '﻿'; // BOM UTF-8 pour Excel
     const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8' });

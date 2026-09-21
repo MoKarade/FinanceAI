@@ -16756,3 +16756,86 @@ met en tête de `PATH`. Le comportement devient identique partout, et l'appel r�
 effet de bord. ⚠️ Reproduit AVANT de corriger (un faux `gcloud` qui dort 30 s sur le `PATH` fait
 bien expirer l'ancien test), puis re-vérifié avec ce même `gcloud` hostile encore en place : 3/3
 verts. Et la perturbation d'origine tire toujours (refus neutralisé → 1 rouge).
+
+---
+
+## `UNE-REGLE-DE-PUBLICATION-SE-RECENSE-PAR-INTENTION-PAS-PAR-DECLENCHEUR` (2026-09-21)
+
+**Contexte.** Marc demande de retravailler le mode « Sandbox » de l'onglet Futur. En recensant
+l'existant, trois sorties qui produisent un FICHIER ne regardaient **jamais** si l'app tourne sur
+des données fictives. Mesuré, et c'est net : `services/backupAuto.ts`, `services/pdfReport.ts` et
+`services/claude.ts` contenaient **zéro** occurrence de `isTestMode`.
+
+C'était tolérable tant que le mode test ne servait qu'à des personas figés — un « Karim » ne
+ressemble à rien de réel, donc personne ne confond. Ça cesse de l'être dès que l'état fictif est
+une COPIE du dossier réel, ce que Marc vient de demander : un PDF, une sauvegarde ou un CSV issus
+d'un scénario sont alors indiscernables des vrais.
+
+**La leçon.** `source: 'auto' | 'manual'` de `createBackupNow` dit **QUI a déclenché**, pas **À
+QUOI ça sert** — et les deux ne coïncident pas. Recensé sur les cinq sites d'appel :
+
+| site | `source` | intention RÉELLE |
+|---|---|---|
+| `initAutoBackup` (boot quotidien) | `auto` | archive |
+| `AutoBackupPanel` (bouton) | `manual` | archive |
+| `writeExecutor` (avant écriture de l'assistant) | `auto` | **filet** |
+| `syncPull` (avant d'écraser l'état local) | `auto` | **filet** |
+| `restoreBackup` (avant de restaurer) | `manual` | **filet** |
+
+Donc « refuser le backup en mode fictif » est **faux pour trois sites sur cinq**, et le refus y
+casserait trois protections d'un coup. `writeExecutor` écrit en toutes lettres que « le filet est
+la CONDITION de l'écriture » : le refuser interdirait à l'assistant toute écriture **dans le bac à
+sable**, c'est-à-dire l'usage même que le bac à sable sert. `syncPull` journaliserait « restauration
+SANS filet » à chaque pull, et un avertissement permanent est un avertissement mort.
+
+**Devant une règle de publication, recenser par INTENTION, jamais par le drapeau qui traîne déjà
+dans la signature.** Ici c'est `UN-BOOLEEN-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`
+appliqué à un paramètre qu'on croyait descriptif : `intent: 'archive' | 'filet'`, REQUIS, pour que le
+compilateur énumère les sites au lieu de laisser un appelant futur retomber en silence sur « archive
+d'un dossier réel » — le cas exact qu'on veut interdire.
+
+⚠️ **Le refus porte sa CAUSE, sinon l'écran est muet.** `createBackupNow` rendait `BackupEntry | null`
+pour trois situations opposées (refusé par règle / rien à sauvegarder / écriture échouée), donc le
+bouton ne pouvait afficher qu'un seul message — et il disait « localStorage vide ou IndexedDB
+indispo », ce qui envoie chercher une panne quand la seule chose qui s'est passée est une règle
+(`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`). Union discriminée.
+
+⚠️ **Le filet qu'on ne peut pas refuser se MARQUE** : un backup-filet pris en mode fictif porte
+`testMode: true`, additif et optionnel (absent = antérieur au marquage, donc réel — c'est la lecture
+juste, pas un repli commode). Sans lui, une entrée fictive serait indiscernable d'une vraie dans la
+liste des sauvegardes, et restaurable des mois plus tard.
+
+⚠️ **Le prédicat vivait en DEUX copies non exportées** au corps identique et au nom différent —
+`isTestModeNow()` (`services/fintable/autoSync.ts`) et `isTestModeActive()` (`services/sync/syncPush.ts`).
+Une troisième allait naître. `store/modeTestActif.ts` est la source unique
+(`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`). ⚠️ Mais les modules
+PURS continuent de recevoir le booléen en ARGUMENT (`shouldPush`, `backupReminder`, et désormais
+`backupAuto`) : y faire entrer le store élargirait le graphe d'imports de tout ce qui monte le boot
+(`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUS-LES-MONTAGES`).
+
+⚠️ **Le CSV a failli être la porte oubliée.** Le plan d'architecture affirmait « Export CSV :
+recherché, **n'existe pas** ». Il existe (`utils/csvExport.ts`), et le fichier de test qui le garde
+porte en en-tête la leçon exacte de ce lot : *« une décision de vie privée écrite pour UNE sortie
+doit être passée en revue sur TOUTES les sorties — sinon elle protège la porte qu'on regardait »*.
+⚠️ Et sa garde ne se pose pas au même endroit que celle du mode discret, pour une raison qui se
+dit : le mode discret refuse de CONSTRUIRE (inutile de fabriquer des lignes qu'on ne rendra pas), les
+données fictives refusent de **FAIRE SORTIR** — donc `downloadCSV`, seul point par lequel un fichier
+sort, quel que soit le preset, y compris celui qu'un lot futur ajoutera.
+
+⚠️ **Le LINT a trouvé le seul vrai défaut que j'avais introduit** : remplacer la copie du prédicat
+par un alias a rendu `useFinanceStore` inutilisé dans `syncPush.ts`. Le typecheck ne le voit pas, et
+la ligne « 0 errors » non plus — il n'est visible qu'en comparant le COMPTE d'avertissements à la
+base (32 sur `origin/main`, 33 avec mon lot, 32 après correction). `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`
+re-payée, cette fois attrapée.
+
+⚠️ **Les `as never` des mocks ont laissé le typecheck vert pendant que l'exécution rougissait** :
+trois mocks de `createBackupNow` rendaient l'ANCIENNE forme sous un `as never`, qui fait taire le
+compilateur sur l'objet ENTIER (`UN-CHAMP-REQUIS-NE-PROTEGE-QUE-LA-OU-LE-TYPE-EST-VERIFIE`). Ils ont
+été réécrits SANS l'échappatoire, pour que le type protège vraiment.
+
+**Ce que ce lot NE couvre PAS, et c'est écrit plutôt que sous-entendu** : les prompts envoyés au
+modèle (`services/claude.ts`). C'est le **seul des trois canaux qui SORT de la machine** — le backup
+va dans IndexedDB (local, chiffré par une clé de device) et le PDF reste sur le disque. Il est traité
+à part parce qu'il n'a pas de point d'entrée unique (sept fonctions qui parlent au modèle, trois
+appels SDK directs) et parce que la réponse juste n'y est probablement pas un refus : demander
+conseil SUR un scénario est l'usage même du bac à sable. À trancher avec Marc.

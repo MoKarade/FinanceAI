@@ -10,7 +10,6 @@ import { shouldPush, buildEnvelope, buildEncryptedEnvelope } from './syncEngine'
 import { getPassphrase } from './passphraseStore';
 import { encryptBackup } from '../cloudBackup';
 import { getOrCreateDeviceId, writeSyncMeta } from './syncState';
-import { useFinanceStore } from '../../store/useFinanceStore';
 import type { SyncEnvelope } from './syncTypes';
 import { getLocalPayload, hasAnyKey } from './syncSnapshot';
 import { setStatus, getSyncStatus } from './syncStatusStore';

@@ -1646,6 +1646,24 @@ n'est pas réécrire un récit.
   retard d'un commit — le défaut s'est présenté pendant qu'on écrivait sa garde
   (`UN-DEPLOIEMENT-QUI-EMBARQUE-LE-DOSSIER-LOCAL-NE-DIT-PAS-QUEL-CODE-IL-SERT`).
 
+- ⚠️⚠️ **Une règle de publication se recense par INTENTION, jamais par le déclencheur** (2026-09-21) :
+  trois sorties qui produisent un FICHIER ne regardaient jamais si l'app tourne sur des données
+  fictives — mesuré, `backupAuto.ts`, `pdfReport.ts` et `claude.ts` portaient **zéro** occurrence de
+  `isTestMode`. Tolérable avec des personas figés (« Karim » ne ressemble à rien de réel) ;
+  inacceptable dès que l'état fictif est une COPIE du dossier. ⚠️ Et « refuser le backup en mode
+  fictif » est FAUX pour **3 sites sur 5** : `source: 'auto' | 'manual'` dit QUI a déclenché, pas À
+  QUOI ça sert, et trois appelants posent un FILET avant une opération destructive — `writeExecutor`
+  fait de sa réussite la CONDITION de l'écriture, donc le refuser interdirait à l'assistant toute
+  écriture DANS le bac à sable, l'usage même qu'il sert. D'où une `intent` REQUISE. ⚠️ Le refus porte
+  sa CAUSE (union discriminée : « refusé par règle » ≠ « rien à sauvegarder » ≠ « écriture échouée »),
+  le filet qu'on ne peut pas refuser se MARQUE (`testMode: true`), et le prédicat — qui vivait en DEUX
+  copies non exportées — devient `store/modeTestActif.ts`. ⚠️ Le CSV a failli être la porte oubliée :
+  le plan disait « n'existe pas », il existe, et sa garde vit dans `downloadCSV` (le point de SORTIE)
+  et non dans chaque preset. ⚠️ Et c'est le LINT qui a trouvé mon seul vrai défaut — un import devenu
+  inutilisé, invisible au typecheck et à la ligne « 0 errors », lisible seulement en comparant le
+  COMPTE d'avertissements à la base (32 → 33 → 32)
+  (`UNE-REGLE-DE-PUBLICATION-SE-RECENSE-PAR-INTENTION-PAS-PAR-DECLENCHEUR`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

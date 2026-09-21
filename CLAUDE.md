@@ -1627,6 +1627,25 @@ n'est pas réécrire un récit.
   lot corrigeait, réintroduit une marche plus bas ; et il n'a pu être vu que parce que le job E2E
   s'est remis à TOURNER (`UNE-EMULATION-QUI-FORCE-UNE-DUREE-DE-TRANSITION-SUR-TOUT-RETARDE-CE-QUI-EN-DEPEND`).
 
+- ⚠️⚠️ **Un déploiement qui embarque le DOSSIER LOCAL ne dit pas quel code il sert** (2026-09-21,
+  signalé par Marc : « affciehe encore la mauvais valeur dans hubperso, pourtant jai deploy ») :
+  `mcp/deploy.sh` fait `gcloud run deploy --source .`, donc l'image part du dossier d'où on LANCE le
+  script — jamais de GitHub — et `gcloud` répond quand même « serving 100 percent of traffic ». Le
+  succès de l'OUTIL se lit comme le succès de l'INTENTION. Pire, `/health` publiait
+  `MCP_SERVER_VERSION` figée à **`0.11.0` depuis le 2026-07-13** pendant que **351 commits**
+  touchaient le serveur : une version qui ne varie plus donne l'ILLUSION de dire quel code tourne.
+  Résultat mesurable : **impossible de trancher** entre « le déploiement n'a pas embarqué le neuf »
+  et « le consommateur regarde ailleurs » — et j'ai publié DEUX diagnostics FAUX avant que Marc ne
+  tranche en regardant son écran. Devant « j'ai déployé et rien n'a changé », la question n'est pas
+  « le déploiement a-t-il réussi ? » mais **« qu'est-ce qui, dans la réponse SERVIE, permettrait de
+  savoir quel code la produit ? »** — réponse « rien » ⇒ il faut un SHA publié, pas une meilleure
+  inspection. ⚠️ `buildSha()` rend **`null`** quand il ne sait pas : un identifiant de build faux
+  est pire qu'absent. ⚠️ Ma sonde ne DISCRIMINAIT pas (`totalDebt` = 46 934 $ est daté APRÈS le
+  dernier prélèvement, donc l'ancien et le neuf rendent le même nombre) et j'ai conclu quand même.
+  ⚠️ Et le contrôle négatif de la garde neuve a échoué au 1er essai parce que MON clone était en
+  retard d'un commit — le défaut s'est présenté pendant qu'on écrivait sa garde
+  (`UN-DEPLOIEMENT-QUI-EMBARQUE-LE-DOSSIER-LOCAL-NE-DIT-PAS-QUEL-CODE-IL-SERT`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

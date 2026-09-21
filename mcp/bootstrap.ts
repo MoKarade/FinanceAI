@@ -14,6 +14,33 @@ import { resolveCredentialsBackend } from './auth/credentialsBackend';
 
 export const MCP_SERVER_VERSION = '0.11.0';
 
+/**
+ * [MCP-VERSION-FIGEE] Le COMMIT réellement déployé, et la seule chose qui distingue
+ * « j'ai déployé » de « c'est déployé ».
+ *
+ * ⚠️ POURQUOI CE CHAMP EXISTE, écrit le jour où il a coûté un après-midi (2026-09-21) :
+ * `MCP_SERVER_VERSION` n'a pas bougé depuis le 2026-07-13 alors que **351 commits** ont
+ * touché le serveur. `/health` publiait donc `0.11.0` quoi qu'il arrive — une version qui
+ * ne varie plus ne dit pas quel code tourne, elle donne seulement l'ILLUSION de le dire.
+ * Conséquence mesurée : impossible de trancher entre « le déploiement n'a pas embarqué le
+ * nouveau code » et « le consommateur regarde ailleurs », et j'ai publié deux diagnostics
+ * FAUX avant que Marc ne tranche en regardant son écran.
+ *
+ * ⚠️ `null` est une réponse À PART ENTIÈRE et ne se remplace JAMAIS par un repli crédible
+ * (ni `MCP_SERVER_VERSION`, ni `'inconnu'` déguisé en SHA) : « ce serveur ne sait pas dire
+ * quel code il porte » est exactement l'information utile — c'est l'état d'AVANT ce lot, et
+ * il doit rester reconnaissable. `no-fake-data` appliqué à la télémétrie.
+ *
+ * Posé par `mcp/deploy.sh` (`--set-env-vars FINANCEAI_BUILD_SHA=$(git rev-parse HEAD)`).
+ */
+export const buildSha = (env: NodeJS.ProcessEnv = process.env): string | null => {
+    const brut = (env.FINANCEAI_BUILD_SHA ?? '').trim();
+    // Un SHA git complet : 40 hexadécimaux. Tout le reste (chaîne vide, placeholder d'un
+    // déploiement manuel, valeur tronquée) est refusé plutôt que republié — un identifiant
+    // de build faux est pire qu'absent, il ferait CROIRE qu'on sait.
+    return /^[0-9a-f]{40}$/.test(brut) ? brut : null;
+};
+
 export interface ResolvedState {
     source: StateSource | null;
     store: StateStore;

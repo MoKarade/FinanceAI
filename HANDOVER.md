@@ -78,6 +78,70 @@
 > ⚠️ Gate ciblé vert (typecheck, lint, vitest ciblés sur les 6 fichiers de test touchés, 2 specs e2e
 > `futureAxis`/aucune régression du seuil ratio) — **gate complet PAS encore relancé, CI = arbitre**.
 >
+> ## 🟦 Session 2026-09-21 (suite 2) — **`[MCP-VERSION-FIGEE]` + `[DEPLOY-CLONE-EN-RETARD]` : le serveur MCP sait enfin dire quel code il sert**
+> 🔎 Marc : « affciehe encore la mauvais valeur dans hubperso, pourtant jai deploy », puis
+> « corrige tout maointeant je veux avoir la bonne valeur dans hubperso et que ca réarrive jamais ».
+> 🔬 **Diagnostic, après DEUX conclusions fausses de ma part** : le serveur MCP sur Cloud Run était
+> **à jour** (sans jeton → `401` ; avec le vrai jeton, lu depuis Secret Manager dans la commande
+> elle-même → `grep -c "Total avoirs"` = **1**). C'est le HUB qui interrogeait un autre hôte :
+> `finance.hubperso.com/hub/summary` répond **200 avec `<!DOCTYPE html>`** — l'app Vercel, pas le
+> serveur MCP. Marc a changé `FINANCEAI_SUMMARY_URL` et redéployé hubperso (`READY`) : la carte est
+> repartie.
+> ⚠️ **Ma 1re « preuve » était vide** : j'avais écrit « PROUVÉ : le serveur tourne du vieux code »
+> parce que `totalDebt` restait à 46 934 $. Or 46 934,00 est daté APRÈS le dernier prélèvement Toyota
+> (2026-09-15) : le vieillissement est un **no-op sur cette donnée**, ancien et neuf rendent le MÊME
+> nombre. **Ma sonde ne discriminait pas**, et j'ai conclu quand même. C'est l'observation de Marc
+> (« aucune tuile Total avoirs ni Dettes ») qui a tranché.
+> 🔧 **Livré (la moitié FinanceAI de « que ça ne réarrive jamais »)** :
+> - `mcp/bootstrap.ts` — `buildSha(env)` : rend le SHA si `FINANCEAI_BUILD_SHA` est 40 hexadécimaux,
+>   **`null` sinon**. Jamais de repli sur `MCP_SERVER_VERSION` ni sur `'inconnu'` : un identifiant de
+>   build faux est pire qu'absent (`no-fake-data`).
+> - `mcp/http.ts` — `GET /health` publie `sha`. Avant, il publiait `version: "0.11.0"`, figée depuis
+>   le **2026-07-13** pendant que **351 commits** touchaient le serveur (chiffre imprimé par le
+>   workflow de déploiement lui-même). Une version qui ne varie plus donne l'ILLUSION de dire quel
+>   code tourne — c'est ce qui a rendu le diagnostic impossible.
+> - `mcp/deploy.sh` — REFUS si le clone est derrière `origin/main` (le script déploie `--source .`,
+>   donc le DOSSIER local, et `gcloud` annonce quand même « serving 100 percent of traffic »). Le
+>   refus nomme le retard ET la commande qui répare ; `ALLOW_BEHIND=1` autorise un retour arrière
+>   volontaire **en l'annonçant**. Pose aussi `FINANCEAI_BUILD_SHA=$(git rev-parse HEAD)`.
+> 🧪 **Gardes (7 tests, 2 fichiers neufs)** : `tests/mcp/healthPublieLeCommit.test.ts` (4) et
+> `tests/mcp/deployRefuseCloneEnRetard.test.ts` (3). La seconde est **COMPORTEMENTALE** et pas un
+> scan de source : `deploy.sh` est du shell dont les COMMENTAIRES écrivent « REFUS » et « en retard
+> sur origin/main » mot pour mot, donc un scan y serait satisfait par la prose
+> (`SCAN-QUI-MATCHE-LA-PROSE`, et `readCodeOnly` ne décommente que du JS/TS). Elle construit un vrai
+> dépôt git jetable et exécute le script, **dans les deux sens** (contrôle négatif + `ALLOW_BEHIND`).
+> ⚠️ Son contrôle négatif a **échoué au 1er essai parce que MON clone était en retard d'un commit** :
+> la garde avait raison, ma prémisse était périmée — le défaut s'est présenté pendant qu'on écrivait
+> sa garde.
+> 📏 Vérifs ciblées vertes : `npm run typecheck`, `npm run lint` (**0 erreur, 32 avertissements** =
+> base inchangée), 7/7 tests neufs. ⚠️ **Gate local complet NON relancé** — la CI exécute le même
+> gate sur le SHA exact (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
+> 🧭 **Ce qui RESTE de « corrige tout »** : (1) `[HUB-URL-PAR-DEFAUT-POINTE-L-APP]` — le `defaultUrl`
+> de `financeai` dans `Hubperso/lib/sources.ts` pointe l'app, pas le serveur MCP (autre dépôt) ;
+> (2) `[MCP-DEPLOY-CONTINU-MORT]` — le workflow `Deploy MCP (Cloud Run)` échoue à chaque push depuis
+> des mois (`GCP_PROJECT_ID` + 2 secrets absents), **routé à Marc** dans `docs/A_FAIRE_MOI.md` :
+> créer des secrets GitHub et un compte de service Google n'est pas à ma portée.
+> ⚠️ **Rien de ce lot ne change ce que Vercel sert** (le serveur MCP est auto-hébergé sur Cloud Run,
+> pas sur Vercel) : il n'y a donc **pas de déploiement Vercel à vérifier** pour cette PR — le dire
+> plutôt que de laisser croire qu'on a vérifié (`CLAUDE.md` §6).
+> ✅ **MERGÉE** (PR #1003, `74415b87`, 20:48 UTC). ⚠️ Le job E2E a rougi une fois sur
+> `e2e/futureDailySelect.spec.ts:119` (`[FUTUR-CLICK-ANYWHERE]`) alors que ce lot ne touche AUCUN
+> code d'app ni d'E2E, que l'E2E était vert au SHA précédent et que la spec passait 6/6 en local :
+> **relance unique** → verte (59 passés, 6 min 18 s). Flake, donc, mais le mécanisme reste noté pour
+> la prochaine occurrence — le journal montrait Recharts à `width(-1) and height(-1)`, donc des
+> coordonnées de clic prises une seule fois sur un `chartBox()` initial peuvent devenir périmées
+> pendant que le graphe se redimensionne ; le correctif serait de relire `chartBox` juste avant
+> chaque clic (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`).
+> ✅ **La moitié Hubperso est livrée aussi** (PR Hubperso #63 `e8b1c848` puis #64 `bbea054`) :
+> `[HUB-URL-PAR-DEFAUT-POINTE-L-APP]` est CLOS — `defaultSummaryUrl` vaut désormais **`null`** pour
+> `financeai` (une adresse Cloud Run écrite en dur serait un défaut plausible-mais-faux), et
+> l'adresse d'ACCUEIL a été séparée dans sa propre table (`ACCUEIL_PAR_ID`) parce qu'un seul champ
+> ne pouvait pas dire les deux. Déploiement de production Vercel **créé et `READY`** sur le SHA
+> exact (`dpl_57CYRjvTuUYdPrMih2Kdjwk5v1Uj`) ; ⚠️ la RÉPONSE servie n'a pas pu être lue depuis le
+> conteneur (403 au CONNECT sur `hubperso.com`) — c'est à Marc de constater la carte.
+> 🗂️ Les trois items livrés ont DÉMÉNAGÉ vers `docs/BACKLOG_ARCHIVE.md` ; il ne reste de cette
+> section que `[MCP-DEPLOY-CONTINU-MORT]`, bloqué sur Marc.
+
 > ## 🟦 Session 2026-09-21 (suite) — **`[FUTUR-NAV-TIROIRS]` : la barre à 4 onglets devient une barre latérale + tiroirs**
 > 🔎 Marc a demandé un changement de design de l'écran Futur, maquette d'abord (Design canvas,
 > 2 rondes : A/B puis C/D). Il a choisi **B** (barre latérale desktop + panneau du jour À CÔTÉ du

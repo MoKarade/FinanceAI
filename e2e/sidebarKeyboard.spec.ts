@@ -59,6 +59,17 @@ test.describe('Sidebar — pilotage clavier (D6-KBD)', () => {
     await header.focus();
     await page.keyboard.press('Enter');
     await expect(header).toHaveAttribute('aria-expanded', 'false');
+    // ⚠️ [E2E-REDUCED-MOTION] ATTENDRE que le panneau soit RÉELLEMENT caché avant de taper Tab.
+    // `aria-expanded="false"` est posé par React ; `visibility: hidden` — le mécanisme qui sort
+    // les items du tab-order (voir le commentaire [D6-KBD] de `Layout.tsx`) — arrive une FRAME
+    // plus tard sous `prefers-reduced-motion` : le bloc de `index.css` force
+    // `transition-duration: 0.01ms` sur `*`, donc `visibility` devient une propriété TRANSITIONNÉE
+    // (transition DISCRÈTE : elle bascule à la FIN de la durée, si courte soit-elle) au lieu de
+    // basculer dans le même tick. Mesuré : `#nav-group-*` à `hidden` pendant que son enfant lit
+    // encore `visible`, et Tab entre dans le panneau. Le CONTRAT testé n'a pas bougé — c'est le
+    // MOMENT de la lecture qui était faux (`UN-TEST-E2E-QUI-LIT-UN-ETAT-UNE-SEULE-FOIS…`).
+    const panneau = page.locator(`[id="${panelId}"]`); // ⚠️ `CSS.escape` n'existe pas côté runner Node
+    await expect(panneau.locator('button').first()).toBeHidden(); // l'ITEM, pas le panneau : c'est lui que Tab voit
     await page.keyboard.press('Tab');
     const inPanelWhenClosed = await page.evaluate(
       (id) => !!document.activeElement?.closest(`#${CSS.escape(id!)}`), panelId,
@@ -69,6 +80,7 @@ test.describe('Sidebar — pilotage clavier (D6-KBD)', () => {
     await header.focus();
     await page.keyboard.press('Enter');
     await expect(header).toHaveAttribute('aria-expanded', 'true');
+    await expect(panneau.locator('button').first()).toBeVisible(); // symétrique : même frame de retard au DÉPLIAGE
     await page.keyboard.press('Tab');
     const inPanelReopened = await page.evaluate(
       (id) => !!document.activeElement?.closest(`#${CSS.escape(id!)}`), panelId,

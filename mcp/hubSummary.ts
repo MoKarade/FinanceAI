@@ -183,6 +183,23 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
             severity: overview.monthlyCashflow > 0 ? 'ok' : 'alert',
         },
         { label: 'Liquidités', value: Math.round(overview.liquidity), format: 'currency' },
+        // [KPI-AVOIRS-DETTES] Marc, 2026-09-21 : « je veux voir ma somme totale d'argent et ma
+        // somme totale de dettes / ce que je dois (partout dans financeai ET DANS HUBPERSO) ».
+        //
+        // ⚠️ `avoirs = netWorth + totalDebt` est une IDENTITÉ, pas une reconstruction : le snapshot
+        // publie `netWorth = computePresentNetWorth(...)` et `totalDebt = computeTotalDebt(...)`,
+        // et le premier est défini comme « avoirs − dettes » avec CE second terme. La carte se
+        // recompose donc à l'œil quoi qu'il arrive à la composition des avoirs — c'est ce qui
+        // manquait, et c'est exactement ce que Marc a signalé quatre fois en deux jours.
+        // ⚠️ LIBELLÉS STABLES : côté hub, le libellé est la CLÉ de l'historique de la métrique
+        // (`[HUB-METRIQUE-LIBELLE-EST-UNE-CLE]`) — jamais de date, jamais de qualificatif variable,
+        // sinon la série repart de zéro et la sparkline reste vide sous une valeur pourtant publiée.
+        // ⚠️ `Dettes` n'est PAS `severity: 'alert'` : devoir de l'argent n'est pas une anomalie, et
+        // une carte qui crie en permanence cesse d'être lue
+        // (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`). Les dettes TOXIQUES ont déjà
+        // leur signal, produit par `computeFinancialSignals`.
+        { label: 'Total avoirs', value: Math.round(overview.netWorth + overview.totalDebt), format: 'currency' },
+        { label: 'Dettes', value: Math.round(overview.totalDebt), format: 'currency' },
     ];
 
     if (placements) {

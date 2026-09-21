@@ -73,6 +73,168 @@
 >   → le focus retombe sur `<body>` au lieu d'un point d'ancrage connu. `Drawer.tsx:58-61` a le
 >   garde-fou anti-crash mais aucun repli. Pas de ticket ouvert — fréquence quasi nulle (rotation
 >   d'écran exactement au seuil, tiroir ouvert) pour l'effort d'une API de repli.
+> ⚠️⚠️ **CI rouge après le premier push (merge avec `main` jusqu'à #999), et c'est du VRAI, pas des
+> flakes** — vérifié en le rejouant sur `origin/main` ET sur le commit pré-merge avant de conclure :
+> `futureAxis.spec.ts` (bande « passé » `> 5px` en dur, or la barre latérale rétrécit le tracé de
+> 986→682px au viewport par défaut, 5,99→4,14px — la PART du tracé occupée est IDENTIQUE des deux
+> côtés, 0,607 % : seuil remplacé par une PART, pas un compte de pixels) et
+> `futureMobileProjectionScreen.spec.ts` (l'ordre KPI/courbe comparait `getBoundingClientRect().top`
+> entre deux colonnes flex INDÉPENDANTES sur desktop — valide pour un flux empilé, pas pour une
+> sidebar ; remplacé par l'ordre DOM, `compareDocumentPosition`). Puis un DEUXIÈME conflit est
+> apparu, `main` ayant avancé jusqu'à `[KPI-AVOIRS-DETTES]` (#1000) pendant la résolution du premier
+> — remergé, mêmes vérifs rejouées (43/43 des 13 autres specs Futur, hors `futureTooltip.spec.ts`,
+> écart Chromium local documenté dans `CONVENTIONS.md`).
+
+> ## 🟦 Session 2026-09-21 (suite 4) — **une pastille qui promet et ne tient pas**
+
+🔎 **`[FUTUR-NOTES-PASTILLES-MORTES]`** — Marc : « le truc impôt latent méthode et raccord sert à
+rien, **le ⓘ fait rien** ». Exact, et le plus dur à admettre : **l'en-tête du fichier décrivait
+déjà le défaut**. Il disait « un `title` sur un `<span>` non focusable n'est lisible qu'à la
+SOURIS, donc ni au doigt, ni au clavier » — écrit comme la JUSTIFICATION d'ajouter un jumeau
+`sr-only`, et j'ai quand même livré un chemin visuel réservé à la souris, sur un écran que Marc
+regarde au téléphone. Il tapait, rien ne s'ouvrait.
+🔧 Les pastilles sont désormais de vrais `<button>` de dévoilement (`aria-expanded` /
+`aria-controls`) qui AFFICHENT la phrase sous la rangée. Doigt, souris, clavier et lecteur d'écran
+passent par le MÊME chemin ; `title` et jumeau `sr-only` retirés (béquilles du chemin mort, et un
+lecteur d'écran lisait la phrase deux fois). Une seule note ouverte à la fois — deux pavés dépliés
+refabriqueraient le mur de texte que le lot précédent venait de retirer — et re-taper referme.
+📏 Test de limite **INVERSÉ en place** : il exigeait `title` + `sr-only` et passait au vert sur un
+écran où le geste ne produisait RIEN. Il mesurait la présence d'un ATTRIBUT, pas l'atteignabilité
+d'une INFORMATION. Perturbation (retour au `title`) → 3 rouges.
+
+⚠️⚠️ **La leçon est sur la GARDE, pas sur le composant** : une assertion qui vérifie qu'un texte
+est PRÉSENT dans le DOM ne dit rien de son ATTEIGNABILITÉ. `title`, `sr-only`, `aria-label`,
+`data-*` : tous présents, aucun forcément joignable par un geste. La garde qui compte simule le
+GESTE que l'interface annonce.
+
+## 🟦 Session 2026-09-21 (suite 3-bis) — **le job E2E est bordé pour qu'il PARLE**
+
+🔎 Arbitrage de Marc (« fais le a ») : `--max-failures=2` sur `test:e2e:ci`. Sans lui, une suite
+qui échoue LENTEMENT n'échoue pas — elle est COUPÉE au plafond de 30 min, ressort `cancelled`
+(ni rouge ni vert) et **n'imprime jamais son résumé**. Mesuré sur trois runs d'affilée : 18 tests
+traités, zéro diagnostic.
+📏 Arithmétique écrite dans le workflow : `retries: 2` × `test.setTimeout(120_000)` = jusqu'à
+6 min par test qui expire ; deux échecs ≈ 12 min, sous le plafond, AVEC le rapport. Une suite
+saine n'est pas concernée (référence du workflow : 4 min 03 s pour les 54 tests).
+⚠️ Ça ne désactive, ne saute ni ne met en quarantaine aucun test.
+⚠️⚠️ **Fait décisif de la relance** : `futureDailySelect.spec.ts:142` a échoué DEUX fois à 2,0 m
+(son propre budget) puis **réussi en 4,7 s au retry #2**, même code, même run. Les tests ne sont
+pas faux : ils sont **AFFAMÉS**. La piste restante est la lenteur du rendu du graphe Futur sous
+`vite dev` sur un runner à 2 cœurs (option b, non prise : servir un BUILD plutôt que le serveur
+de dev).
+
+## 🟦 Session 2026-09-21 (suite 5) — **le E2E s'est remis à tourner, et il a trouvé une VRAIE régression**
+> 📏 **Mesure qui tranche**, run 35634812081 sur `68bf327a` : **30 tests passés** contre **1** au run
+> précédent. `futureAxis` et `futureDailyRollover` — les deux `element is not stable` — sont VERTS.
+> `reducedMotion` était bien la cause.
+> ⚠️ Deux rouges restaient, tous deux réels et tous deux corrigés ici :
+> 1. **`futureMobileFilet` : 59 → 61 cibles tactiles < 44 px**, l'inventaire nommant `ⓘMéthode`
+>    90×**25** et `ⓘImpôt latent` 116×**25** — MES pastilles, celles que
+>    `[FUTUR-NOTES-PASTILLES-MORTES]` venait de rendre « tapables ». Une pastille de 25 px de haut
+>    ne l'est pas : `touch-target` (44×44), patron repris tel quel de `ui/SubTabs`/`ui/Toast`.
+>    **C'est un cliquet écrit par un AUTRE lot qui l'a vu** — et il n'a pu le voir que parce que le
+>    job s'est remis à tourner.
+> 2. **`sidebarKeyboard`** — rouge à cause de `reducedMotion`, mécanisme mesuré : `index.css` force
+>    `transition-duration: 0.01ms !important` sur `*`, donc `visibility` (interpolation DISCRÈTE)
+>    bascule une FRAME plus tard, et c'est elle qui sort les items du tab-order. Sonde : panneau
+>    `hidden`, enfant encore `visible`. Attendre le PANNEAU ne suffit pas ; attendre l'ITEM, oui.
+> ✅ Vérifs locales : les deux specs VERTES, typecheck vert, lint **32** (la base), 45 tests
+> `notesGraphe` + `a11y` verts.
+
+## 🟦 Session 2026-09-21 (suite 4) — **`element is not stable` : une promesse de config qui ne couvrait rien**
+> 🔎 **`[E2E-REDUCED-MOTION]`** — une fois le rail écarté ET le rapport enfin imprimé
+> (`--max-failures=2`), le journal a NOMMÉ ce qui restait : `219 × waiting for element to be
+> visible, enabled and stable / element is not stable`, pendant les **120 s entières**, sur le
+> MÊME bouton (« ou vois directement ta projection actuelle ») dans `futureAxis` et
+> `futureDailyRollover`. 219 × 500 ms : l'élément ne se fige JAMAIS — ce n'est pas de la lenteur,
+> c'est du mouvement.
+> ⚠️⚠️ **L'en-tête de `playwright.config.ts` ANNONÇAIT « Animations : reducedMotion pour
+> stabiliser les screenshots » depuis toujours, et la clé n'était nulle part dans `use`.** Une
+> phrase de COUVERTURE qui ne couvrait rien, exactement comme « déjà testée chez elle » du
+> 2026-09-18 : elle se vérifie en OUVRANT le fichier, pas en le citant.
+> 📏 **Trois protocoles de mesure, tous NÉGATIFS en local** — et c'est ce qui rend le correctif non
+> évident : étranglement CPU à 20×, réseau sortant coupé, échantillonnage de `boundingBox` sur
+> 120 points. La boîte du bouton est **bit-stable** (`y=570.0 x=503.3 w=337.5`) dans les trois.
+> Le mouvement n'existe QUE sur le runner ; on ne peut donc pas désigner l'animation coupable, on
+> neutralise la CLASSE : `index.css` rabat toute animation à 0,01 ms sous
+> `prefers-reduced-motion`, dont le `translateY(20px)` de `.animate-premium-in` que porte CHAQUE
+> `Card` — y compris celle qui contient ce bouton.
+> ⚠️ Corrélation la plus forte du journal, et elle est à moi : E2E **vert en 5 min 47 s** sur
+> `a94ea669`, rouge sur tous les commits depuis `[KPI-AVOIRS-DETTES]`, qui fait passer le bandeau
+> de quatre à **six** tuiles — donc chaque tuile plus étroite. Non prouvé, écrit comme tel.
+> ⚠️ `futureAxis` était la seule des treize specs Futur restée au budget par défaut de **30 s**
+> quand dix de ses voisines ont 120 s. Mesuré : la seule ARRIVÉE sur l'écran plus le premier clic
+> coûtent **19,5 s** à 20× d'étranglement. Alignée.
+> ⚠️ `reducedMotion` va sous **`contextOptions`** sur @playwright/test 1.60 — la forme racine est
+> refusée par `npm run typecheck`, qui l'a attrapée avant la CI.
+
+## 🟦 Session 2026-09-21 (suite 3) — **le job E2E ne tournait pas, il se faisait couper**
+> 🔎 **`[E2E-RAIL-INTERCEPTE-LE-CLIC]`** — le check E2E de la CI tournait **29 min** et se faisait
+> couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate était
+> vert. Il ne ressemblait pas à un échec : `conclusion: cancelled`, donc ni rouge ni vert.
+> ⚠️⚠️ **La cause n'est pas dans les tests, elle est dans une décision de mise en page** : le rail
+> de navigation s'ouvre AU SURVOL (`w-16` → `w-72`) et RECOUVRE le contenu, qui ne réserve que
+> 64 px (`md:ml-16`) — une bande de **224 px** où aucun clic ne passe tant que le pointeur est sur
+> le rail. Et **la souris de Playwright démarre en (0,0)**, donc dessus. Le clic sur l'onglet
+> « Profil » du helper PARTAGÉ `activateTestMode` n'atteignait jamais sa cible : 30 s d'attente,
+> « subtree intercepts pointer events », puis expiration — en cascade sur toute une famille de specs.
+> 📏 **Mesuré sur `main` (4f1466b4), sans aucun changement applicatif** : `futureAxis` échoue 3/3
+> (30 s chacun) → passe en **10,9 s** ; suite complète **18 tests traités en 29 min, tous en échec**
+> → **54 passés en 7,4 min**. Le correctif est une ligne (`ecarterLeRail`), EXPORTÉE avec sa règle :
+> tout spec qui clique dans les 288 px de gauche après un `goto` doit l'appeler.
+> ⚠️ **Ce n'est PAS un contournement d'un bug de l'app** — un humain qui survole le rail le voit
+> s'ouvrir et déplace sa souris. C'est ce geste qui manquait au test.
+> ⚠️ **Deux specs mobiles restent rouges EN LOCAL et je ne les compte pas** : `44` attendu contre
+> **43,99999237060547** mesuré — un écart d'un ulp, sur un conteneur qui exécute Chromium **141**
+> (binaire préinstallé) là où le dépôt épingle **148**. Rien dans ce lot ne peut changer la hauteur
+> d'un bouton. La CI, qui a le bon binaire, est l'arbitre.
+> ⚠️ **Outillage** : le binaire Playwright épinglé n'existe pas dans ce conteneur ; les specs
+> acceptent `PW_LOCAL_CHROMIUM`, et un pont de liens symboliques vers `chromium-1194` marche aussi.
+
+> ## 🟦 Session 2026-09-21 (suite 2) — **les deux TERMES du patrimoine, partout**
+> 🔎 **`[KPI-AVOIRS-DETTES]`** — Marc : « je veux voir genre ma somme total d'argent et ma somme
+> total de dette / ce que je dois (partout dans financeai et dans hubperso) ». Né de l'écart
+> Fintable/app qu'il venait de signaler : Fintable additionne des SOLDES (277 230 $), l'app publie
+> une VALEUR NETTE (230 210 $), et **les deux termes de la soustraction n'étaient visibles nulle
+> part ensemble**.
+> 🧭 **Ses deux arbitrages ont DIVERGÉ de mes recommandations** (3ᵉ fois cette session — une
+> recommandation rend le choix rapide, elle ne le pré-décide pas) : dettes = **total TOUT COMPRIS +
+> le détail** (« dont X $ d'hypothèque »), et bandeau à **6 tuiles** (Liquidités gardée).
+> ⚠️⚠️ **La conséquence arithmétique de son choix est le cœur du lot** : si les dettes incluent
+> l'hypothèque, les avoirs DOIVENT porter la valeur **BRUTE** du bien — sinon elle est retranchée
+> DEUX fois et les trois tuiles cessent de se recomposer, la classe de défaut que Marc a signalée
+> QUATRE fois en deux jours. Aucun changement de moteur : tout se dérive de ce qui existe.
+> 🔧 **Deux sources uniques, et c'est la décision structurante** : `presentTermesOfGoal` (valeur +
+> hypothèque d'un bien) — dont `presentEquityOfGoal` DÉRIVE désormais — et `computePresentTermes`
+> (avoirs + dettes hors immo) — dont `computePresentNetWorth` DÉRIVE. Trois chiffres calculés par
+> trois appels indépendants se recomposent jusqu'au premier correctif appliqué à un seul
+> (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`) ; ici l'identité est vraie PAR CONSTRUCTION.
+> 📏 **6 gardes neuves** (5 sur les tuiles, 1 sur la carte hub), **5 perturbations séparées** :
+> avoirs sur l'ÉQUITÉ → 2 rouges · dettes SANS hypothèque → 2 · sous-titre non privé → 1 · hub
+> publiant `netWorth` en guise d'avoirs → 1. Le cas immobilier utilise 400 000 $ de valeur pour
+> 300 000 $ d'hypothèque, plus un bien à équité NÉGATIVE (un clamp à zéro casserait l'identité).
+> ⚠️ Le hub a son cas ENDETTÉ dédié : sur la fixture sans dette, « avoirs − dettes = net » est vrai
+> PAR ACCIDENT (avoirs = net) — un câblage qui publierait `netWorth` et `0` y passait.
+> ⚠️ **`vitest` NE TYPECHECK PAS** (re-payé) : mes deux assertions d'identité sur la carte hub
+> étaient VERTES pendant que `tsc` refusait l'arithmétique (`HubMetric.value` est
+> `string | number`). Les vérifs ciblées se relancent APRÈS la dernière édition.
+> 🧭 **Découvert et ROUTÉ — `[NW-IMMO-ABSENT-DU-HUB]`** : le patrimoine net du BANDEAU ajoute
+> l'équité immobilière, celui du snapshot MCP/hubperso NON. Identiques tant qu'il n'y a pas de
+> bien — donc invisible aujourd'hui, et faux dès l'achat de 2029.
+> ⚠️ Perturbation MUETTE notée sans être réparée : retirer `if (goal.isOwned === false) return RIEN`
+> laisse `pastPurchaseInit.test.ts` VERT (17/17). Ce n'est pas une régression du lot (la garde est
+> préservée telle quelle) mais un trou de couverture PRÉEXISTANT sur un gate qui a coûté un
+> incident (A6, revue #684) — à vérifier avant d'y toucher.
+> ⚠️⚠️ **CI rouge, et c'est une leçon DÉJÀ écrite qui a été re-commise** : `amountPrivacyScan` a
+> refusé `sublabel={… ${formatCAD(hypotheque)} …}` — la règle « une ligne d'ATTRIBUT porte sa marque
+> À ELLE » existe depuis le lot 58, et mon drapeau `privateSublabel`, posé une ligne plus bas, ne
+> lui servait pas de preuve. Le correctif n'est pas de faire taire la garde mais de **DÉCOUPER** :
+> `sublabel` passe de `string` à `ReactNode` (leçon jumelle, déjà payée sur `DualKPIStat.sublabel`
+> et `PageHeader.subtitle`) et seule la VALEUR est enveloppée — en mode discret le sous-titre lit
+> « dont ••• d'hypothèque », donc la composition du total reste compréhensible. **Deux
+> perturbations de sens opposé** : montant nu → le scan rougit ; sous-titre masqué EN ENTIER → le
+> scan reste VERT et c'est la garde comportementale neuve qui rougit. Aucune des deux ne couvre
+> l'autre.
 
 > ## 🟦 Session 2026-09-21 (suite) — **les deux pavés sous la courbe, en pastilles**
 > 🔎 **`[FUTUR-NOTES-COMPACTES]`** — Marc, capture au marqueur rouge : « **vire moi tout le texte

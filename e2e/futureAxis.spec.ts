@@ -27,6 +27,14 @@ const localChromium = process.env.PW_LOCAL_CHROMIUM;
 if (localChromium) test.use({ launchOptions: { executablePath: localChromium } });
 
 test.describe('Futur — ancrages de l’axe X numérique', () => {
+  // [E2E-REDUCED-MOTION] Le budget par test des specs Futur est de 120 s chez DIX de ses treize
+  // voisines ; celle-ci était restée au défaut de 30 s. Ce n'est pas du confort : MESURÉ à 20×
+  // d'étranglement CPU (l'ordre de grandeur d'un runner à 2 cœurs), la seule ARRIVÉE sur l'écran
+  // plus le premier clic coûtent déjà **19,5 s** — les deux tiers du budget, avant que le test
+  // n'ait rien affirmé. Le rendre égal à ses voisines n'endort aucune assertion : un test qui
+  // expire reste rouge, il a seulement le temps d'arriver jusqu'à ce qu'il mesure.
+  test.setTimeout(120_000);
+
   test('la bande du passé part du bord du tracé et finit EXACTEMENT sur la frontière', async ({ page }) => {
     await page.addInitScript(scriptBypassOnboarding());
     await page.goto('/');

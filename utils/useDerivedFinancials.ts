@@ -1,12 +1,21 @@
 import { useMemo } from 'react';
 import type { AppState, Transaction } from '../types';
-import { assetValueCad, computePresentNetWorth } from '../services/portfolio';
+import { assetValueCad, computePresentTermes } from '../services/portfolio';
 import { placementsFaisantAutorite } from '../services/fintable/placementsAutorite';
 import { useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { isSavingsNature } from './budget';
 
 interface DerivedFinancials {
     globalNetWorth: number;
+    /**
+     * [KPI-AVOIRS-DETTES] Les deux TERMES du patrimoine net présent, HORS immobilier — Marc :
+     * « je veux voir ma somme totale d'argent et ma somme totale de dettes ».
+     * ⚠️ `globalNetWorth === avoirsHorsImmo − dettesHorsImmo` par CONSTRUCTION (même appel), et
+     * l'immobilier s'ajoute aux DEUX côtés chez le consommateur (`presentTermesOfGoal`) — jamais
+     * l'équité d'un côté et l'hypothèque de l'autre, qui la retrancherait deux fois.
+     */
+    avoirsHorsImmo: number;
+    dettesHorsImmo: number;
     baseGrossAnnual: number;
     calculatedMonthlySavings: number;
     assetBreakdown: { reer: number; celi: number; reee: number; nonReg: number };
@@ -41,10 +50,15 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` n'est lu que par ces cinq champs.
         [state.assets, state.fxRates, state.fxRatesSource, state.fxRatesEstimated, state.fintableBrokerBalances],
     );
-    const globalNetWorth = useMemo(
-        () => computePresentNetWorth(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart, todayIso),
+    // [KPI-AVOIRS-DETTES] UN SEUL appel pour les trois chiffres : `computePresentNetWorth` dérive
+    // lui-même de `computePresentTermes`, donc l'identité affichée est vraie par construction.
+    // Un second `useMemo` qui rappellerait `computePresentNetWorth` à côté rouvrirait exactement
+    // la divergence que ce lot ferme.
+    const termes = useMemo(
+        () => computePresentTermes(state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart, todayIso),
         [state.initialBalances, state.transactions, state.assets, state.fxRates, state.debts, autoritePlacements.ecart, todayIso],
     );
+    const globalNetWorth = termes.avoirs - termes.dettes;
 
     const calculatedMonthlySavings = useMemo(() => {
         const income = state.config.users.reduce((acc, u) => acc + (u.netSalary || u.salary || 0), 0);
@@ -85,5 +99,5 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         return cash;
     }, [state.initialBalances, state.transactions]);
 
-    return { globalNetWorth, baseGrossAnnual, calculatedMonthlySavings, assetBreakdown, currentLiquidity };
+    return { globalNetWorth, avoirsHorsImmo: termes.avoirs, dettesHorsImmo: termes.dettes, baseGrossAnnual, calculatedMonthlySavings, assetBreakdown, currentLiquidity };
 }

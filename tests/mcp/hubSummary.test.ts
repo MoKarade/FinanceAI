@@ -214,17 +214,37 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
     // de chaque métrique. Donc un libellé daté remet la série à zéro chaque séance (« pas encore
     // d'historique » à perpétuité), et une métrique qui EST une variation se fait re-dériver
     // (« −430,6 % sur 7 j » chez Marc). Les deux faits sont morts, la limite reste écrite ici.
-    it('publie 4 métriques à libellé STABLE — les variations ont quitté la carte', () => {
+    it('publie 6 métriques à libellé STABLE — les variations ont quitté la carte', () => {
         const s = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
-        expect(s.metrics).toHaveLength(4);
+        // ⚠️ 4 → 6 le 2026-09-21 (`[KPI-AVOIRS-DETTES]`, demande de Marc : « je veux voir ma somme
+        // totale d'argent et ma somme totale de dettes, partout dans financeai ET DANS HUBPERSO »).
+        // Le COMPTE reste ancré à dessein : ce qu'il interdit est l'ajout SILENCIEUX d'une métrique
+        // — une carte dont la composition bouge sans décision est illisible, et c'est ce que la
+        // ligne « les trois sortantes ne REVIENNENT pas » ci-dessous dit déjà autrement.
+        expect(s.metrics).toHaveLength(6);
 
         // L'ordre est un arbitrage : le hub rend la PREMIÈRE en gros (à défaut de `primary`).
         expect(s.metrics.map((m) => m.label)).toEqual([
             'Valeur nette',
             'Cashflow mensuel',
             'Liquidités',
+            'Total avoirs',
+            'Dettes',
             'Placements',
         ]);
+
+        // ⚠️⚠️ L'IDENTITÉ DE LA CARTE, et c'est la vraie raison d'être des deux métriques neuves :
+        // « Total avoirs » − « Dettes » doit redonner « Valeur nette » À L'ŒIL. Marc a signalé
+        // QUATRE fois en deux jours des chiffres d'un même écran qui ne se recomposent pas ; on ne
+        // rouvre pas cette porte pour deux tuiles. L'assertion porte sur les valeurs PUBLIÉES
+        // (donc arrondies), exactement ce que l'utilisateur additionne.
+        const parLabelIdentite = Object.fromEntries(s.metrics.map((m) => [m.label, Number(m.value)])) as Record<string, number>;
+        expect(parLabelIdentite['Total avoirs'] - parLabelIdentite['Dettes'])
+            .toBe(parLabelIdentite['Valeur nette']);
+        // ⚠️ Cette fixture n'a AUCUNE dette, donc l'identité y est vraie par accident
+        // (avoirs = net). Son anti-vacuité vit dans le cas dédié ci-dessous, sur un état ENDETTÉ —
+        // `UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`.
+        expect(parLabelIdentite['Dettes']).toBe(0);
 
         // Les trois sortantes du lot [HUB-PLACEMENTS-SEANCE] ne REVIENNENT pas : deux places se
         // sont libérées, ce n'est pas une invitation à recomposer la carte.
@@ -239,6 +259,35 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
         expect(parLabel['Placements'].trend).toBeCloseTo((1 / 112) * 100, 2);
 
         // Tout doit rester conforme au contrat — c'est le hub qui valide, on ne triche pas.
+        expect(() => validateSummary(s as never)).not.toThrow();
+    });
+
+    it('[KPI-AVOIRS-DETTES] sur un état ENDETTÉ : avoirs − dettes = valeur nette, et la dette n’est pas nulle', () => {
+        // ⚠️ LE cas qui rend l'identité non vacueuse. Sur la fixture sans dette, « avoirs − dettes
+        // = net » est vrai par accident (avoirs = net) : un câblage qui publierait `netWorth` en
+        // guise d'avoirs et `0` en guise de dettes y passerait sans broncher
+        // (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+        const endette = {
+            ...avecPlacements(14, 18),
+            debts: [
+                { id: 'h1', name: 'Bail auto', balance: 46_934, interestRate: 0, minimumPayment: 1_017, category: 'Car' },
+                { id: 'h2', name: 'Carte', balance: 1_200, interestRate: 19.9, minimumPayment: 50, category: 'CreditCard' },
+            ],
+        };
+        const s = buildHubSummary(endette as never, MAINTENANT);
+        // ⚠️ Typé `number` explicitement : `HubMetric.value` est `string | number` au contrat (une
+        // métrique peut être une durée, cf. « Dernière synchro »), et `vitest` NE TYPECHECK PAS —
+        // sans ça le test passait en vert pendant que `tsc` refusait l'arithmétique (leçon du
+        // dépôt : les vérifs ciblées se lancent APRÈS la dernière édition).
+        const v = Object.fromEntries(s.metrics.map((m) => [m.label, Number(m.value)])) as Record<string, number>;
+
+        // Les deux termes EXISTENT et sont non nuls — sinon tout ce qui suit est décoratif.
+        expect(v['Dettes']).toBeGreaterThan(40_000);
+        expect(v['Total avoirs']).toBeGreaterThan(v['Valeur nette']);
+        // …et ils se RECOMPOSENT, au dollar publié près.
+        expect(v['Total avoirs'] - v['Dettes']).toBe(v['Valeur nette']);
+
+        // La carte reste conforme au contrat — c'est le hub qui valide, on ne triche pas.
         expect(() => validateSummary(s as never)).not.toThrow();
     });
 
@@ -286,7 +335,9 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
     it('donnée PÉRIMÉE : la carte publie MOINS, pas autre chose', () => {
         // Dernier close le 8 août, soit 11 jours avant : aucune des trois métriques n'est publiable.
         const s = buildHubSummary(avecPlacements(5, 8) as never, MAINTENANT);
-        expect(s.metrics.map((m) => m.label)).toEqual(['Valeur nette', 'Cashflow mensuel', 'Liquidités']);
+        expect(s.metrics.map((m) => m.label)).toEqual([
+            'Valeur nette', 'Cashflow mensuel', 'Liquidités', 'Total avoirs', 'Dettes',
+        ]);
 
         // ⚠️ Le point le plus important du lot : AUCUN zéro n'est fabriqué. Un « 0 $ / 0 % » se
         // lirait « journée stable » alors qu'on ne sait simplement pas.
@@ -305,7 +356,7 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
     it('semaine incalculable : la séance seule est publiée (refus indépendants)', () => {
         const s = buildHubSummary(avecPlacements(2, 18) as never, MAINTENANT);
         expect(s.metrics.map((m) => m.label)).toEqual([
-            'Valeur nette', 'Cashflow mensuel', 'Liquidités', 'Placements',
+            'Valeur nette', 'Cashflow mensuel', 'Liquidités', 'Total avoirs', 'Dettes', 'Placements',
         ]);
         // Les deux refus restent INDÉPENDANTS — ça se lit maintenant dans `details` : la séance y
         // figure, la semaine non.

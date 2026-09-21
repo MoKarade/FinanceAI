@@ -6,6 +6,31 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (ton total d'argent et ton total de dettes, côte à côte)
+
+- **Tu voulais voir « ta somme totale d'argent et ta somme totale de dettes, partout ».** Le bandeau
+  du haut — celui qui te suit sur tous les écrans — a maintenant **six tuiles** : Patrimoine net ·
+  Variation 30 j · **Total avoirs** · **Dettes** · Liquidités · Épargne/mois.
+- **Aujourd'hui tu y liras** : Total avoirs **277 145 $**, Dettes **46 934 $**, Patrimoine net
+  **230 210 $**. Et les trois se recomposent : avoirs − dettes = net.
+- **Les dettes sont TOUT COMPRIS, avec le détail** (ton choix) : quand tu auras ta maison, la tuile
+  dira « dont X $ d'hypothèque » sous le total. Le détail se masque avec le reste en mode discret.
+- ⚠️ **Conséquence de ce choix, et elle est invisible mais importante** : si l'hypothèque compte
+  dans les dettes, les avoirs portent la valeur **brute** de la maison — sinon elle serait
+  retranchée deux fois et les trois chiffres cesseraient de s'additionner. C'est verrouillé par un
+  test qui utilise un bien à 400 000 $ avec 300 000 $ d'hypothèque.
+- 🔧 **Côté outillage (invisible pour toi, mais c'est ce qui bloquait la livraison)** : les tests
+  de bout en bout tournent désormais avec les animations coupées. Deux d'entre eux attendaient
+  qu'un bouton s'arrête de bouger pendant deux minutes entières sans que ça n'arrive jamais — et
+  la configuration promettait déjà ce réglage sans l'appliquer.
+- **Sur hubperso aussi** : la carte publie « Total avoirs » et « Dettes » à côté de la valeur nette,
+  et là encore les trois se recomposent.
+- ⚠️ **Un écart que j'ai trouvé en chemin, et que tu ne vois pas encore** : le patrimoine net de
+  hubperso **n'inclut pas** l'équité immobilière, celui de ton app oui. Identiques tant que tu n'as
+  pas de maison — différents dès 2029. Noté, pas corrigé : ça déplace un chiffre publié.
+
+---
+
 ## [unreleased] — 2026-09-21 (les deux pavés sous la courbe sont partis)
 
 - **Tu as barré deux blocs de texte sous le graphe Futur** : le bandeau « aujourd'hui part du total

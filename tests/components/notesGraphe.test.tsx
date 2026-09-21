@@ -12,7 +12,7 @@
 //   2. AUCUNE RÉSERVE PERDUE — chaque note garde sa phrase entière, atteignable au `title` ET au
 //      lecteur d'écran (échoue sur une « épuration » faite à coups de suppressions).
 import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { notesGraphe, NotesGraphe, PLAFOND_LABEL } from '../../components/future/notesGraphe';
 import { sourceFutureProjection } from '../helpers/futureSource';
@@ -54,20 +54,65 @@ describe('[FUTUR-NOTES-COMPACTES] ce qui est VISIBLE reste court', () => {
 });
 
 describe('[FUTUR-NOTES-COMPACTES] aucune réserve perdue', () => {
-    it('chaque note porte sa phrase ENTIÈRE, en `title` ET en jumeau `sr-only`', () => {
-        // ⚠️ Les DEUX, pas l'un ou l'autre : un `title` sur un `<span>` non focusable n'est révélé
-        // que par un survol SOURIS — ni le clavier, ni le lecteur d'écran n'y accèdent
-        // (finding a11y #644, la raison pour laquelle le pavé avait été gardé jusqu'ici).
+    it('taper une pastille AFFICHE sa phrase entière ; re-taper la referme', () => {
+        // ⚠️⚠️ TEST INVERSÉ EN PLACE. Il exigeait la phrase dans le `title` ET dans un jumeau
+        // `sr-only` — la forme livrée le 2026-09-21, et elle était MORTE : Marc, au téléphone,
+        // « le truc impôt latent méthode et raccord sert à rien, le ⓘ fait rien ». Un `title` sur
+        // un nœud non focusable ne se révèle qu'au SURVOL SOURIS. L'ancienne assertion passait au
+        // vert sur un écran où le geste ne produisait RIEN : elle mesurait la présence d'un
+        // attribut, pas l'atteignabilité d'une information.
+        // Ce qui est affirmé maintenant est le FAIT, pas la forme : la phrase est atteignable PAR
+        // LE GESTE que la pastille annonce. Le supprimer laisserait croire que ce chemin n'a
+        // jamais été cassé (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
         const notes = notesGraphe(TOUT);
         const { container } = render(<NotesGraphe notes={notes} />);
         for (const n of notes) {
-            const el = container.querySelector(`[data-note="${n.cle}"]`);
-            expect(el, `pastille ${n.cle} absente`).toBeTruthy();
-            expect(el!.getAttribute('title')).toBe(n.explication);
-            expect(el!.querySelector('.sr-only')?.textContent).toContain(n.explication);
+            const bouton = container.querySelector<HTMLButtonElement>(`button[data-note="${n.cle}"]`);
+            expect(bouton, `pastille ${n.cle} absente, ou ce n'est pas un bouton`).toBeTruthy();
+            expect(bouton!.getAttribute('aria-expanded')).toBe('false');
+            // Fermée, la pastille ne DIT pas encore sa phrase — sinon « taper l'affiche » serait
+            // vrai d'un écran qui l'affichait déjà.
+            expect(container.textContent).not.toContain(n.explication);
+
+            fireEvent.click(bouton!);
+            expect(bouton!.getAttribute('aria-expanded')).toBe('true');
+            const texte = container.querySelector(`[data-note-texte="${n.cle}"]`);
+            expect(texte, `la phrase de ${n.cle} ne s'affiche pas au clic`).toBeTruthy();
+            expect(texte!.textContent).toContain(n.explication);
+            // Le bouton DÉSIGNE bien le bloc qu'il ouvre (sinon le lecteur d'écran ne suit pas).
+            expect(bouton!.getAttribute('aria-controls')).toBe(texte!.id);
+
+            // …et le geste de RETOUR existe : re-taper referme.
+            fireEvent.click(bouton!);
+            expect(bouton!.getAttribute('aria-expanded')).toBe('false');
+            expect(container.textContent).not.toContain(n.explication);
+
             // Une « explication » de trois mots ne serait pas une réserve.
             expect(n.explication.length).toBeGreaterThan(60);
         }
+    });
+
+    it('le chemin RÉSERVÉ À LA SOURIS a disparu — plus de `title`, plus de jumeau `sr-only`', () => {
+        // ⚠️ La garde qui compte vraiment. Les deux béquilles servaient à rendre la phrase
+        // « atteignable » sans qu'aucun geste ne l'ouvre ; les laisser en place reconstruirait le
+        // défaut à la première refonte, et ferait relire deux fois la même phrase à un lecteur
+        // d'écran. Anti-vacuité : les pastilles existent bien (sinon « aucun title » est vrai d'un
+        // écran vide).
+        const notes = notesGraphe(TOUT);
+        const { container } = render(<NotesGraphe notes={notes} />);
+        expect(container.querySelectorAll('button[data-note]').length).toBe(3);
+        expect(container.querySelectorAll('[data-note][title]').length).toBe(0);
+        expect(container.querySelectorAll('[data-note] .sr-only').length).toBe(0);
+    });
+
+    it('une seule note ouverte à la fois — deux pavés dépliés refont le mur de texte', () => {
+        const notes = notesGraphe(TOUT);
+        const { container } = render(<NotesGraphe notes={notes} />);
+        fireEvent.click(container.querySelector('button[data-note="methode"]')!);
+        fireEvent.click(container.querySelector('button[data-note="raccord"]')!);
+        expect(container.querySelectorAll('[data-note-texte]').length).toBe(1);
+        expect(container.querySelector('[data-note-texte]')!.getAttribute('data-note-texte'))
+            .toBe('raccord');
     });
 
     it('les trois réserves répondent chacune à une question que Marc a POSÉE', () => {

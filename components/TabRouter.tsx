@@ -54,6 +54,9 @@ interface TabRouterProps {
     isPrivacyMode: boolean;
     isLoading: boolean;
     globalNetWorth: number;
+    /** [KPI-AVOIRS-DETTES] Les deux termes hors immobilier, du MÊME appel que `globalNetWorth`. */
+    avoirsHorsImmo: number;
+    dettesHorsImmo: number;
     calculatedMonthlySavings: number;
     assetBreakdown: { reer: number; celi: number; reee: number; nonReg: number };
     currentLiquidity: number;
@@ -72,7 +75,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
     // [REFONTE-NAV Lot 1] setActiveTab n'a plus de consommateur ici (seul l'ex-Accueil
     // naviguait) — gardé dans l'interface pour App, préfixé le temps du Lot 2.
     activeTab, state, setAppState, setActiveTab: _setActiveTab, isPrivacyMode, isLoading: _isLoading,
-    globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
+    globalNetWorth, avoirsHorsImmo, dettesHorsImmo, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
     onUpdateApiKeys, onManualImport,
 }) => {
     return (
@@ -175,6 +178,8 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                                 netWorth={globalNetWorth}
                                 liquidity={currentLiquidity}
                                 monthlySavings={calculatedMonthlySavings}
+                                avoirsHorsImmo={avoirsHorsImmo}
+                                dettesHorsImmo={dettesHorsImmo}
                             />
                         </Suspense>
                         <FutureProjection

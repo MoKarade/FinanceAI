@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-21 — Aucun fichier ne sort pendant que l'app affiche des données fictives
+
+- **Sauvegarde, export PDF et export CSV refusent désormais** quand l'app tourne en mode test ou en
+  bac à sable. Avant, les trois ignoraient complètement ce mode : un PDF, un CSV ou une sauvegarde
+  produits depuis un dossier fictif avaient exactement l'allure des vrais.
+- Le refus **dit sa raison** et ne se confond plus avec une panne : « l'app affiche des données
+  fictives » plutôt que « IndexedDB indisponible », qui envoyait chercher un problème inexistant.
+- **Les sauvegardes de sécurité, elles, continuent** — celles prises juste avant une opération qui
+  écrase quelque chose (une écriture de l'assistant, une restauration de sauvegarde). Les refuser
+  aurait retiré une protection à l'instant précis où elle sert. Elles sont marquées comme fictives.
+
+
 Toutes les modifications notables apportées au projet sont documentées ici.
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).

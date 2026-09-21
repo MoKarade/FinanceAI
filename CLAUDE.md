@@ -1577,6 +1577,18 @@ n'est pas réécrire un récit.
   intercepte : la question n'est pas « le sélecteur est-il bon ? » mais « qu'est-ce qui est
   au-dessus, et pourquoi ? » (`UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE`).
 
+- ⚠️⚠️ **Une garde qui vérifie la PRÉSENCE d'un texte ne dit rien de son ATTEIGNABILITÉ**
+  (2026-09-21, signalé par Marc : « le ⓘ fait rien ») : les trois réserves du graphe Futur vivaient
+  dans un `title` + un jumeau `sr-only`, derrière une pastille. Un `title` ne se révèle qu'au
+  SURVOL SOURIS — au doigt, taper ne produisait RIEN. ⚠️⚠️ Et **l'en-tête du fichier décrivait déjà
+  le défaut** (« ni au doigt, ni au clavier »), écrit comme la justification d'ajouter le jumeau :
+  j'ai traité la moitié « lecteur d'écran » et laissé la moitié « doigt » dans la phrase même qui
+  la nommait. La garde, elle, a CERTIFIÉ le résultat — elle mesurait la présence d'un ATTRIBUT.
+  ⚠️ La garde qui compte **simule le GESTE que l'interface annonce** (cliquer, puis re-cliquer pour
+  vérifier le retour). ⚠️ Et le correctif n'est pas une TROISIÈME copie du texte pour la modalité
+  oubliée : c'est UN chemin que toutes empruntent — `title` et `sr-only` RETIRÉS avec le chemin mort
+  (`UNE-GARDE-QUI-VERIFIE-LA-PRESENCE-D-UN-TEXTE-NE-DIT-RIEN-DE-SON-ATTEIGNABILITE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

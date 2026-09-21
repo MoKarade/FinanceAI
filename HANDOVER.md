@@ -4,7 +4,45 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-09-21 (suite 3) — **le job E2E ne tournait pas, il se faisait couper**
+> ## 🟦 Session 2026-09-21 (suite 4) — **une pastille qui promet et ne tient pas**
+
+🔎 **`[FUTUR-NOTES-PASTILLES-MORTES]`** — Marc : « le truc impôt latent méthode et raccord sert à
+rien, **le ⓘ fait rien** ». Exact, et le plus dur à admettre : **l'en-tête du fichier décrivait
+déjà le défaut**. Il disait « un `title` sur un `<span>` non focusable n'est lisible qu'à la
+SOURIS, donc ni au doigt, ni au clavier » — écrit comme la JUSTIFICATION d'ajouter un jumeau
+`sr-only`, et j'ai quand même livré un chemin visuel réservé à la souris, sur un écran que Marc
+regarde au téléphone. Il tapait, rien ne s'ouvrait.
+🔧 Les pastilles sont désormais de vrais `<button>` de dévoilement (`aria-expanded` /
+`aria-controls`) qui AFFICHENT la phrase sous la rangée. Doigt, souris, clavier et lecteur d'écran
+passent par le MÊME chemin ; `title` et jumeau `sr-only` retirés (béquilles du chemin mort, et un
+lecteur d'écran lisait la phrase deux fois). Une seule note ouverte à la fois — deux pavés dépliés
+refabriqueraient le mur de texte que le lot précédent venait de retirer — et re-taper referme.
+📏 Test de limite **INVERSÉ en place** : il exigeait `title` + `sr-only` et passait au vert sur un
+écran où le geste ne produisait RIEN. Il mesurait la présence d'un ATTRIBUT, pas l'atteignabilité
+d'une INFORMATION. Perturbation (retour au `title`) → 3 rouges.
+
+⚠️⚠️ **La leçon est sur la GARDE, pas sur le composant** : une assertion qui vérifie qu'un texte
+est PRÉSENT dans le DOM ne dit rien de son ATTEIGNABILITÉ. `title`, `sr-only`, `aria-label`,
+`data-*` : tous présents, aucun forcément joignable par un geste. La garde qui compte simule le
+GESTE que l'interface annonce.
+
+## 🟦 Session 2026-09-21 (suite 3-bis) — **le job E2E est bordé pour qu'il PARLE**
+
+🔎 Arbitrage de Marc (« fais le a ») : `--max-failures=2` sur `test:e2e:ci`. Sans lui, une suite
+qui échoue LENTEMENT n'échoue pas — elle est COUPÉE au plafond de 30 min, ressort `cancelled`
+(ni rouge ni vert) et **n'imprime jamais son résumé**. Mesuré sur trois runs d'affilée : 18 tests
+traités, zéro diagnostic.
+📏 Arithmétique écrite dans le workflow : `retries: 2` × `test.setTimeout(120_000)` = jusqu'à
+6 min par test qui expire ; deux échecs ≈ 12 min, sous le plafond, AVEC le rapport. Une suite
+saine n'est pas concernée (référence du workflow : 4 min 03 s pour les 54 tests).
+⚠️ Ça ne désactive, ne saute ni ne met en quarantaine aucun test.
+⚠️⚠️ **Fait décisif de la relance** : `futureDailySelect.spec.ts:142` a échoué DEUX fois à 2,0 m
+(son propre budget) puis **réussi en 4,7 s au retry #2**, même code, même run. Les tests ne sont
+pas faux : ils sont **AFFAMÉS**. La piste restante est la lenteur du rendu du graphe Futur sous
+`vite dev` sur un runner à 2 cœurs (option b, non prise : servir un BUILD plutôt que le serveur
+de dev).
+
+## 🟦 Session 2026-09-21 (suite 3) — **le job E2E ne tournait pas, il se faisait couper**
 > 🔎 **`[E2E-RAIL-INTERCEPTE-LE-CLIC]`** — le check E2E de la CI tournait **29 min** et se faisait
 > couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate était
 > vert. Il ne ressemblait pas à un échec : `conclusion: cancelled`, donc ni rouge ni vert.

@@ -16232,3 +16232,44 @@ sans passer par le helper partagé. D'où un helper **exporté** avec sa règle 
 qu'une seconde copie : tout spec qui clique dans les 288 px de gauche après un `goto` doit
 l'appeler, et le premier clic d'une page neuve est toujours concerné.
 
+---
+
+# UNE-GARDE-QUI-VERIFIE-LA-PRESENCE-D-UN-TEXTE-NE-DIT-RIEN-DE-SON-ATTEIGNABILITE
+
+**2026-09-21, `[FUTUR-NOTES-PASTILLES-MORTES]`.** Marc : « le truc impôt latent méthode et raccord
+sert à rien, **le ⓘ fait rien** ».
+
+La veille, pour retirer deux pavés de texte qu'il avait biffés sans perdre les trois réserves
+qu'ils portaient, j'avais mis chaque phrase dans un `title` plus un jumeau `sr-only`, derrière une
+pastille « ⓘ Méthode ». **Un `title` ne se révèle qu'au survol SOURIS.** Au doigt — et Marc regarde
+cet écran au téléphone — taper la pastille ne produit rien. Une pastille qui annonce une
+explication sans pouvoir la donner est pire que pas de pastille : elle promet et ne tient pas.
+
+⚠️⚠️ **Le pire n'est pas le défaut, c'est que je l'avais ÉCRIT.** L'en-tête du fichier portait,
+noir sur blanc : « un `title` sur un `<span>` non focusable n'est lisible qu'à la SOURIS, donc ni
+au doigt, ni au clavier, ni au lecteur d'écran ». Je l'avais écrit comme la *justification*
+d'ajouter le jumeau `sr-only` — c'est-à-dire que j'ai traité la moitié « lecteur d'écran » du
+problème et laissé la moitié « doigt » intacte, dans la phrase même qui la nommait. Une
+justification qui énumère trois modalités et n'en couvre que deux est un inventaire incomplet
+déguisé en raisonnement.
+
+**Et la garde a certifié le résultat.** Elle affirmait « chaque note porte sa phrase entière, en
+`title` ET en jumeau `sr-only` » — vraie, verte, et parfaitement satisfaite par un écran où le
+geste annoncé ne produit RIEN. Elle mesurait la **présence d'un attribut**, pas
+l'**atteignabilité d'une information**.
+
+**La règle** : `title`, `aria-label`, `sr-only`, `data-*`, un nœud caché — tous peuvent être
+présents dans le DOM sans qu'aucun geste ne les atteigne. Une garde qui vérifie qu'un texte
+EXISTE ne dit rien de qui peut le LIRE. La garde qui compte **simule le geste que l'interface
+annonce** : si l'écran montre un ⓘ, le test clique dessus et vérifie que la phrase apparaît — puis
+re-clique et vérifie qu'elle repart.
+
+⚠️ Corollaire de forme : le correctif n'est pas d'ajouter une TROISIÈME copie du texte pour la
+modalité oubliée, c'est de n'avoir qu'UN chemin que toutes empruntent (ici un `<button>` de
+dévoilement, `aria-expanded` / `aria-controls`, qui affiche la phrase). `title` et `sr-only` ont
+été RETIRÉS : c'étaient les béquilles du chemin mort, et les garder faisait relire deux fois la
+même phrase à un lecteur d'écran.
+
+⚠️ Même famille que `UN-BOUTON-N-EST-PAS-UN-FILET` et que
+`UN-FOCUS-SUR-UN-CONTENEUR-EST-UN-NO-OP-SILENCIEUX` : dans les trois cas, l'appel est posé, la
+garde le voit, et il ne se passe rien.

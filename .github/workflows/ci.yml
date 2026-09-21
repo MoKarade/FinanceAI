@@ -91,6 +91,19 @@ jobs:
       # test:e2e:ci exclut les tests @visual (screenshots) : la comparaison
       # pixel-à-pixel échoue en cross-platform (baselines Windows vs runner Linux).
       # Les screenshots restent un filet de régression VISUELLE en local.
+      #
+      # ⚠️ `--max-failures=2` EXISTE POUR QUE CE JOB PARLE. Sans lui, une suite qui échoue
+      # LENTEMENT n'échoue pas : elle est COUPÉE au plafond de 30 min ci-dessus, et un job coupé
+      # ressort `cancelled` — ni rouge ni vert — SANS JAMAIS IMPRIMER SON RÉSUMÉ. Mesuré le
+      # 2026-09-21 sur trois runs d'affilée : 18 tests traités, zéro diagnostic lisible, et la
+      # panne avait déjà survécu plusieurs merges pour cette seule raison.
+      # L'arithmétique du plafond : `retries: 2` et les specs du Futur portent
+      # `test.setTimeout(120_000)`, donc un test qui expire coûte jusqu'à 3 × 2 min = 6 min.
+      # Deux échecs = ~12 min, plus les tests qui passent — on reste sous les 30 min AVEC le
+      # rapport. Une suite SAINE n'est pas concernée : le drapeau ne mord qu'au 2ᵉ échec réel
+      # (référence écrite plus haut : 4 min 03 s pour les 54 tests).
+      # ⚠️ Ça ne désactive, ne saute ni ne met en quarantaine AUCUN test — ça borne le temps
+      # qu'on accorde à une suite déjà cassée pour qu'elle dise POURQUOI.
       - name: Run E2E tests (fonctionnels — sans screenshots)
         run: npm run test:e2e:ci
 

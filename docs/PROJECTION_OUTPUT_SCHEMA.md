@@ -36,7 +36,7 @@ moteur réel** — un champ ajouté à `monthlyOutput.ts` sans classe fait écho
 
 | Classe | Traitement | Exemples |
 |---|---|---|
-| `stock` | Interpolé de la fin du mois précédent à la fin de ce mois. **Le dernier jour vaut EXACTEMENT la valeur du moteur.** | `Liquidites`, `CELI`, `REER`, `Immobilier`, `NetWorth`, `ImpotLatent`, `DettesNonImmo` |
+| `stock` | Interpolé de la fin du mois précédent à la fin de ce mois. **Le dernier jour vaut EXACTEMENT la valeur du moteur.** | `Liquidites`, `CELI`, `REER`, `Immobilier`, `NetWorth`, `ImpotLatent`, `DettesNonImmo`, `DetteLevierSmith` |
 | `stock` **dérivé** | Interpolé comme les autres, puis **RECOMPOSÉ** à partir de ses composants (sauf le dernier jour du mois). | `NetWorth` (voir ci-dessous) |
 | `flow` | Réparti sur les jours selon sa cadence. **La somme des jours vaut EXACTEMENT le total du moteur.** | `Expenses`, `IncomeMarc`, `MarketGrowth*`, `NetTransfer*`, `FluxImpots` |
 | `monthly` | Recopié tel quel — un taux ne se divise pas. | `marginalTaxRate`, `MarketGrowthPct*`, `age` |
@@ -77,6 +77,9 @@ NetWorth[jour] = Σ NET_WORTH_DAILY_ASSETS[jour] − DettesNonImmo[jour]
   (`tests/services/bilanQuotidien.test.ts`).
 - Si un composant est absent ou non fini, la recomposition est ABANDONNÉE pour ce jour (la valeur
   interpolée reste) — on ne fabrique pas un patrimoine amputé d'un poste.
+- ⚠️ `DetteLevierSmith` n'entre **PAS** dans cette identité : c'est une PART de `DettesNonImmo`,
+  déjà retranchée. L'ajouter d'un côté ou de l'autre fausserait le patrimoine des deux façons
+  possibles. Garde : `tests/components/futureCourbeLevier.test.ts` (« jamais dans la recomposition »).
 
 ⚠️ Un champ que le mois n'émet pas reste **absent** du jour — jamais un `0` crédible.
 
@@ -152,7 +155,18 @@ Le point porte `dayIsReal`, `priceAgeMaxDays` et `hasEstimatedPrice` : l'infobul
 
 ### Balances de fin de mois ($)
 
-`Liquidites`, `CELI`, `CELIAPP`, `REER`, `REEE`, `NonReg`, `Crypto`, `Immobilier` (équité), `Entreprise` (valeur des entreprises privées au prorata détenu, constante — publiée au lot 214 : elle comptait dans `NetWorth` depuis le 2026-08-19 sans champ), `DetteTotale` (hypo + dettes), `DettesNonImmo` (dettes SANS hypothèque → `NetWorth = Σactifs − DettesNonImmo` tient même sous prêt, audit M5 2026-06-17), `LiquidDebt` (découvert porté en dette), `rapBalance`, `CELIMax`, `REERMax`.
+`Liquidites`, `CELI`, `CELIAPP`, `REER`, `REEE`, `NonReg`, `Crypto`, `Immobilier` (équité), `Entreprise` (valeur des entreprises privées au prorata détenu, constante — publiée au lot 214 : elle comptait dans `NetWorth` depuis le 2026-08-19 sans champ), `DetteTotale` (hypo + dettes), `DettesNonImmo` (dettes SANS hypothèque → `NetWorth = Σactifs − DettesNonImmo` tient même sous prêt, audit M5 2026-06-17), `LiquidDebt` (découvert porté en dette), `DetteLevierSmith`, `rapBalance`, `CELIMax`, `REERMax`.
+
+> ⚠️ **`DetteLevierSmith` est un SOUS-ENSEMBLE de `DettesNonImmo`, jamais un terme de plus.**
+> C'est la part de la dette portée par la marge de la Smith Manoeuvre (`realEstateMonth.ts` :
+> ré-emprunt mensuel du capital remboursé + capitalisation des intérêts de la marge). Elle est
+> DÉJÀ comptée dans `DettesNonImmo` : la soustraire une seconde fois du patrimoine doublerait la
+> dette. Elle vaut **0 exactement** quand `useSmithManoeuvre` est faux (contrôle négatif mesuré),
+> et elle est publiée même à zéro — un champ absent se lirait « je ne sais pas ».
+> Publiée par `[DETTE-LEVIER-EXPLICITE]` (2026-09-21) parce que deux dettes de trajectoires
+> OPPOSÉES — une qu'on rembourse, une qu'une stratégie crée exprès — partageaient un seul nombre,
+> et que la seconde rendait la première illisible. Gardes :
+> `tests/components/futureCourbeLevier.test.ts`.
 
 ### Variations mensuelles ($)
 

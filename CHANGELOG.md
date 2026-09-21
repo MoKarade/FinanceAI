@@ -6,6 +6,36 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (ta dette qui monte a maintenant un nom, une courbe et une explication)
+
+- **Ce que tu as vu** : « la dette augmente à 150k alors que j'ai juste une dette auto qui finit en
+  2030 ». Tu avais raison sur ta dette auto — elle s'éteint bien en 2030. Ce qui monte après, c'est
+  **autre chose**, et rien à l'écran ne le disait.
+- **Ce que c'est** : la **Smith Manoeuvre**, que tu as activée dans « Optimisations fiscales
+  avancées ». Chaque mois, le capital que tu viens de rembourser sur l'hypothèque est **ré-emprunté**
+  sur une marge pour être investi hors REER, et les intérêts de cette marge s'y **ajoutent**. Cette
+  dette **monte par construction** : ce n'est pas un découvert, et ce n'est pas un bug.
+- **Deux dettes qui ne veulent pas dire la même chose** partageaient une seule courbe et un seul
+  nombre : celle que tu **rembourses** et celle qu'une stratégie **crée exprès**. Leurs trajectoires
+  normales sont opposées, donc l'une rendait l'autre illisible.
+- **Maintenant** : le graphe Futur porte une **seconde courbe**, « dont levier Smith », **indigo
+  pointillée** — la couleur du bouton qui l'active. Elle se trace PAR-DESSUS ta dette, jamais en
+  plus : c'est une **part** de celle-ci, pas un montant supplémentaire. Tu peux la masquer d'un clic
+  dans la légende, comme les autres.
+- **En t'arrêtant sur un jour**, la ligne « dont levier Smith » apparaît sous ta dette, avec
+  l'explication complète au survol (et lisible par un lecteur d'écran).
+- **Et le bouton dit enfin ce qu'il fait**, à l'écran : son explication vivait dans une bulle qui ne
+  s'ouvre qu'à la souris — invisible au doigt.
+- **Mesuré** (fixture de test, 20 ans, marge à 7 %) : le levier fait **perdre 51 794 $** si tes
+  placements rapportent 3 %, et **gagner 58 824 $** s'ils rapportent 8 %. C'est exactement ça, un
+  levier : il **amplifie dans les deux sens**. Sur ton profil réel, le point d'équilibre est plus bas
+  (autour de 4 %). Aucun seuil n'est écrit à l'écran : il dépend de l'écart entre le taux de ta marge
+  et ton rendement, donc de ton dossier — l'afficher lui donnerait l'autorité d'une règle générale.
+- ⚠️ **Ce qui n'a PAS changé** : aucun montant de ta projection ne bouge. Ce lot ne fait que
+  **séparer et nommer** ce qui était déjà calculé.
+
+---
+
 ## [unreleased] — 2026-09-18 (ta dette ne devient plus négative, et tes placements ne sont plus vendus de force)
 
 - **Le problème que tu as vu** : « la dette ne s'arrête pas, ça me met 112k à 44 ans ». Ton bail auto

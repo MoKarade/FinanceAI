@@ -310,6 +310,25 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         DettesNonImmo: round2((activeDebtsTotal + liquidDebt + smithManoeuvreDebt)),
         /** Découvert (liquidité négative non couverte) porté en dette — exposé pour l'UI. */
         LiquidDebt: round2(liquidDebt),
+        /**
+         * [DETTE-LEVIER-EXPLICITE] La part de `DettesNonImmo` qui est un LEVIER Smith, publiée à
+         * part — décision Marc 2026-09-19 : « je veux que ce soit explicite et expliqué ».
+         *
+         * ⚠️ POURQUOI CE CHAMP EXISTE. Marc, devant sa courbe : « la dette augmente à 150k alors
+         * que j'ai juste une dette auto qui finit en 2030 ». Il avait raison ET tort : sa dette
+         * ORDINAIRE s'éteint bien en 2030, et ce qui monte ensuite est le HELOC de la Smith
+         * Manoeuvre — qui ré-emprunte chaque mois le capital remboursé sur l'hypothèque pour
+         * l'investir, et capitalise ses intérêts. Les deux vivaient dans UNE seule courbe, donc
+         * une dette qu'il rembourse et une dette qu'une stratégie crée exprès étaient
+         * indiscernables. Le chiffre était JUSTE et ILLISIBLE — même mots, correctifs opposés
+         * (`UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`).
+         *
+         * ⚠️ C'est un SOUS-ENSEMBLE de `DettesNonImmo`, jamais un terme de plus : l'UI l'annonce
+         * « dont levier », et l'additionner au total double-compterait.
+         * ⚠️ Toujours publié, même à zéro : un champ ABSENT serait indiscernable d'un levier nul,
+         * et c'est exactement le trou silencieux que `[FUTUR-COURBE-DETTE]` a payé.
+         */
+        DetteLevierSmith: round2(smithManoeuvreDebt),
         NetWorth: round2(rawNetWorth),
         // Centralisation Phase 3 Tier 1 — champs dérivés simples
         realNetWorth: round2(rawNetWorth / Math.max(1e-9, expenseMultiplier)),

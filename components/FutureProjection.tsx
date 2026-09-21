@@ -87,6 +87,14 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
     // (`[CURVE-FIELDS-DETTE-MANQUANTE]`, 2026-08-19). La garde qui tient ce lien est
     // `tests/services/bilanQuotidien.test.ts` — elle rejoue la ventilation avec CE set exact.
     'DettesNonImmo',
+    // [DETTE-LEVIER-EXPLICITE] La part LEVIER de cette dette (marge Smith Manoeuvre), publiée à
+    // part par le moteur pour qu’une courbe puisse la distinguer de la dette qu’on REMBOURSE.
+    // ⚠️ SOUS-ENSEMBLE de `DettesNonImmo` : ce champ ne doit JAMAIS entrer dans la recomposition
+    // du patrimoine au jour (double comptage). Sa présence ici sert uniquement à ce que la série
+    // existe sur les points QUOTIDIENS — la ventilation est allégée à ce set exact, donc un champ
+    // absent d’ici est une courbe muette en prod (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`).
+    // Garde : `tests/components/futureCourbeLevier.test.ts`.
+    'DetteLevierSmith',
     'year', 'age', 'isPast',
 ]);
 
@@ -100,7 +108,7 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
 import { Tab as TabEnum } from '../types';
 import { ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { PanneauJour } from './projection/PanneauJour';
-import { detteSousZero, COULEUR_DETTE } from './future/detteSerie';
+import { detteSousZero, COULEUR_DETTE, detteLevierSousZero, COULEUR_LEVIER, LIBELLE_LEVIER } from './future/detteSerie';
 import { estGesteSelectionJourClavier } from '../utils/chartKeyboardSelect';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -776,6 +784,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // une table où la valeur nette ne se RECOMPOSE PAS par somme des comptes — le défaut
             // corrigé la veille dans l'infobulle, laissé intact dans son alternative texte.
             { key: 'DettesNonImmo', label: 'Dettes (hors hypothèque)', format: money },
+            // ⚠️ [DETTE-LEVIER-EXPLICITE 2026-09-21] Colonne en PLUS de la précédente, dont elle est
+            // un SOUS-ENSEMBLE : elle ne se soustrait pas une seconde fois. Son absence laisserait
+            // la table `sr-only` incapable de dire POURQUOI la dette monte, alors que le graphe le
+            // montre — et l’`aria-label` du conteneur promet « les mêmes données ».
+            { key: 'DetteLevierSmith', label: LIBELLE_LEVIER, format: money },
         ];
     }, [isPrivacyMode]);
 
@@ -1928,6 +1941,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 un point sans `DettesNonImmo` interrompt la courbe au lieu de tracer
                                 un zéro qui affirmerait « aucune dette ». */}
                             {isVisible('DettesNonImmo') && <Area type="monotone" dataKey={detteSousZero} stroke={COULEUR_DETTE} fill={COULEUR_DETTE} fillOpacity={0.35} name="Dettes (hors hypothèque)" connectNulls={false} isAnimationActive={false}/>}
+                            {/* [DETTE-LEVIER-EXPLICITE] La PART levier, tracée PAR-DESSUS l’aire de
+                                dette — jamais empilée : c’est un SOUS-ENSEMBLE, l’empiler doublerait
+                                le total. ⚠️ Une `Line` et non une `Area`, et en POINTILLÉ INDIGO :
+                                deux dettes de sens opposé sur la même case visuelle sont
+                                indiscernables si elles ne diffèrent que par la couleur
+                                (`UNE-PREMISSE-VISUELLE-DE-L-UTILISATEUR-SE-MESURE-AVANT-D-ETRE-SUIVIE`).
+                                `connectNulls` FAUX : le levier n’existe pas avant l’achat de la
+                                résidence, et tracer 0 affirmerait « aucun levier ». */}
+                            {isVisible('DetteLevierSmith') && <Line type="monotone" dataKey={detteLevierSousZero} stroke={COULEUR_LEVIER} strokeWidth={2} strokeDasharray="6 3" dot={false} name={LIBELLE_LEVIER} connectNulls={false} isAnimationActive={false}/>}
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
                             {/* [FUTUR-DAILY-NATIVE] `FluxImpots` n'existe sur les points quotidiens
                                 QU'AUX jours d'échéance (retiré ailleurs dans `dailyAll`) : la Bar ne

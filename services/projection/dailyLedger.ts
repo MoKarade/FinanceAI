@@ -63,7 +63,7 @@ export const FIELD_KIND: Readonly<Record<string, FieldKind>> = {
     // — Soldes et photos —
     Liquidites: 'stock', CELI: 'stock', CELIAPP: 'stock', REER: 'stock', REEE: 'stock',
     NonReg: 'stock', Crypto: 'stock', Immobilier: 'stock', Entreprise: 'stock',
-    DetteTotale: 'stock', DettesNonImmo: 'stock', LiquidDebt: 'stock',
+    DetteTotale: 'stock', DettesNonImmo: 'stock', LiquidDebt: 'stock', DetteLevierSmith: 'stock',
     NetWorth: 'stock', realNetWorth: 'stock',
     ImpotLatent: 'stock', rapBalance: 'stock',
     CELIMax: 'stock', REERMax: 'stock', CELIAPPMax: 'stock',

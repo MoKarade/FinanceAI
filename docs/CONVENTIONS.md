@@ -15907,3 +15907,108 @@ tests.
 
 ---
 
+
+## `DEUX-GRANDEURS-DE-TRAJECTOIRES-OPPOSEES-NE-PEUVENT-PAS-PARTAGER-UNE-COURBE` (2026-09-21)
+
+**Marc, après le correctif de la marge Smith : « Non la dette augmente à 150k alors que j'ai juste
+une dette auto qui fini en 2030 ». Il avait RAISON ET TORT, et c'est ça qui rend le cas
+intéressant** — sa dette ORDINAIRE s'éteint bien en 2030 ; ce qui monte ensuite est le HELOC de la
+**Smith Manoeuvre**, un réglage qu'il avait activé lui-même en un clic.
+
+`DettesNonImmo` additionnait donc deux objets dont la **trajectoire normale est OPPOSÉE** : une
+dette qu'on **rembourse** (elle descend vers zéro, et sa descente est la preuve qu'elle va bien) et
+une dette qu'une stratégie **CRÉE EXPRÈS** pour investir (elle grossit par construction, et sa
+montée est la preuve qu'elle va bien). Une seule courbe ne peut pas être lue correctement dans les
+deux régimes : la somme montait, donc la première était **illisible** — et c'est exactement ce que
+Marc a signalé, deux fois, en croyant chaque fois à un bug.
+
+**La question à se poser devant une agrégation :** *ses membres ont-ils le même sens de variation
+« sain » ?* Si non, le total ne veut rien dire pour l'utilisateur, quel que soit son exactitude
+comptable. Le correctif n'est ni de retirer le mécanisme, ni de changer le total : c'est de
+**publier la part** et de la tracer À CÔTÉ, en disant « **dont** ».
+
+⚠️ **« dont » est le mot qui porte tout le lot.** Un libellé « levier Smith » ferait lire deux
+dettes là où il n'y en a qu'une, et un lecteur les additionnerait. Le libellé est donc une SOURCE
+UNIQUE (`LIBELLE_LEVIER`) consommée par cinq surfaces — légende, `name` de la courbe, colonne de la
+table `sr-only`, ligne du panneau du jour, explication du réglage — parce que recopié il
+divergerait, et que sa divergence ne casse rien : elle trompe, simplement.
+
+⚠️ **La part publiée est un SOUS-ENSEMBLE, jamais un terme de plus.** Trois gardes distinctes le
+tiennent, parce qu'il y a trois façons de se tromper : `0 ≤ levier ≤ dette` sur chaque point,
+l'**absence** du champ de `NET_WORTH_DAILY_ASSETS` (l'y mettre le compterait en ACTIF), et son
+**absence de la recomposition** du patrimoine au jour (l'en retrancher le compterait deux fois).
+⚠️ Et « sous-ensemble » ne se teste pas sur une fixture qui n'a qu'UNE dette : `levier ≤ dette` y
+est satisfait par l'**égalité**, donc un câblage qui recopie bêtement son conteneur passerait. La
+fixture porte un second prêt, et l'assertion exige des points **STRICTEMENT** inférieurs (mesuré :
+180 points sur 241).
+
+⚠️ **La preuve qu'un levier EST un levier est un CHANGEMENT DE SIGNE, pas un montant.** MESURÉ le
+2026-09-21 (chemin déterministe, 20 ans, marge à `max(3 %, hypothèque + 2 pts)` = 7 %), écart de
+patrimoine final ON − OFF : **3 % → −51 794 $**, 4 % → −32 855, 5 % → −12 344, **6 % → +9 829**,
+8 % → +58 824. La garde ancre les deux BORNES (négatif à 3 %, positif à 8 %) et **aucun montant** :
+un golden se ferait re-baser au premier lot qui déplace de l'argent, alors que le retournement,
+lui, survit — il vient du mécanisme.
+
+⚠️ **Et c'est pour ça que l'écran ne promet aucun seuil de rentabilité.** Le point d'équilibre vaut
+~5,6 % sur la fixture et **~4 % sur le profil réel de Marc** : il dépend de l'écart entre le taux de
+la marge et le rendement, donc du DOSSIER. L'écrire à l'écran lui donnerait l'autorité d'une règle
+générale qu'aucune mesure ne soutient (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`)
+— une garde l'interdit explicitement, en cherchant un pourcentage dans le paragraphe.
+
+⚠️ **« Explicite et expliqué » est une décision de PRODUIT, et Marc a divergé de ma recommandation.**
+Je proposais aussi de retirer ou de neutraliser le réglage ; il a choisi de le garder et de le faire
+EXPLIQUER. La conséquence pratique : le texte devait devenir visible, et il vivait dans un `title`
+sur le `<button>` — invisible au doigt (aucun survol n'existe), au clavier et au lecteur d'écran,
+qui lit le CONTENU du bouton. Un réglage dont l'effet est de faire monter une dette toute une vie ne
+peut pas s'expliquer dans un canal que la moitié des utilisateurs n'a pas (finding a11y #644,
+re-payé). ⚠️ Dans le **panneau du jour**, la même explication se heurte au plafond de prose de 45
+caractères de `[FUTUR-INFOBULLE-EPUREE]` : la forme juste n'est pas de raccourcir l'explication mais
+de la déplacer — libellé COURT visible, phrase entière en `title` **ET** en jumeau `sr-only`. Et
+**aucun montant dans la phrase** : interpolé, il ne serait plus un nœud, donc plus masquable en mode
+discret (`UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`).
+
+---
+
+## `UNE-GARDE-QUI-NE-CONNAIT-QU-UNE-ECRITURE-DU-DATAKEY-EST-AVEUGLE-A-L-AUTRE` (2026-09-21)
+
+**Trou trouvé en ajoutant la seconde courbe, et il était ouvert depuis trois jours.** La garde
+`[FUTUR-DAILY-NATIVE]` (« chaque `dataKey` tracé ∈ `CURVE_FIELDS` ») existe précisément pour empêcher
+une série d'être **muette au jour** — tracée sur un champ que la ventilation allégée n'émet pas :
+verte en test, inerte en prod. Elle ne lisait que `dataKey="…"`, la forme CHAÎNE.
+
+Or `[FUTUR-COURBE-DETTE]` avait introduit la forme **ACCESSEUR** — `dataKey={detteSousZero}`, une
+fonction, parce que la dette se trace en NÉGATIF et n'est donc pas un champ brut. Cette forme était
+**totalement invisible** à la garde. Le champ y était par chance (il avait été ajouté pour une autre
+raison : la recomposition du patrimoine au jour) ; la protection, elle, n'existait pas.
+
+**La règle :** quand une garde scanne une SYNTAXE, demander *combien d'écritures de cette syntaxe le
+langage autorise* — et si la réponse est « plusieurs », en couvrir la seconde ou écrire qu'on ne la
+couvre pas. `UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`, appliqué à
+du JSX au lieu d'un type.
+
+⚠️ **Une valeur DÉRIVÉE n'a pas de nom de champ : il faut le DÉCLARER.** D'où
+`CHAMP_PAR_ACCESSEUR` (`components/future/detteSerie.ts`), qui dit quel champ lit chaque accesseur.
+⚠️ Et **une table déclarative peut MENTIR** — une entrée fausse est pire qu'aucune, elle certifie
+« couvert » ce qui ne l'est pas. La garde relit donc le CORPS de chaque accesseur dans la source
+**décommentée** et exige que le champ y figure : un champ cité dans un commentaire ne prouve rien
+(`SCAN-QUI-MATCHE-LA-PROSE`).
+
+⚠️⚠️ **Et cette même garde lisait encore la source BRUTE.** Elle portait donc toujours la bombe
+`UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE` — une ligne de commentaire français à nombre
+IMPAIR d'apostrophes ASCII dans le bloc `CURVE_FIELDS` décale toutes les paires de littéraux
+suivantes et fait accuser un champ PRÉSENT d'être absent. Le défaut avait été trouvé et corrigé le
+2026-09-18 sur sa **jumelle** de `tests/services/bilanQuotidien.test.ts` ; personne n'avait grepé
+l'autre copie. **Quand on corrige un extracteur, grepper ses COPIES** — et, ici, la vraie réponse
+était de ne plus en avoir : `curveFieldsDuComposant` existait en deux exemplaires et
+`colonnesDeLaTable` en un troisième, tous sur le même fichier source. Ils vivent désormais dans
+`tests/helpers/futureSource.ts`
+(`UN-CONTROLE-DE-DUPLICATION-EST-UNE-GARDE-CONTRE-LA-DUPLICATION-DE-GARDES`, le déclencheur étant
+« avant d'écrire une garde, chercher dans `tests/helpers/` » — un QUATRIÈME exemplaire allait naître).
+
+⚠️ Corollaire de seuil, 2ᵉ fois pour cette classe : l'anti-vacuité du décommentage se re-mesure à
+la PORTÉE où on la pose. `FutureProjection.tsx` est à **0,455** de code non blanc (seuil 0,35) mais
+`detteSerie.ts` est à **0,159** — c'est un module de ~30 lignes de code sous ~80 lignes
+d'explication, par conception. Recopier le 0,35 y faisait échouer une garde parfaitement saine
+(`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
+
+---

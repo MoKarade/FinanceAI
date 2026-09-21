@@ -9,7 +9,7 @@
  * 'events', 'fire', 'aujourdhui').
  */
 import React from 'react';
-import { COULEUR_DETTE } from './detteSerie';
+import { COULEUR_DETTE, COULEUR_LEVIER, LIBELLE_LEVIER } from './detteSerie';
 
 export type LegendShape = 'area' | 'line' | 'bar' | 'dashed' | 'dot';
 
@@ -36,6 +36,12 @@ export const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
     // juste en dessous, rouge POINTILLÉ. Marc lisait ce dernier comme sa dette ; deux couleurs et
     // deux formes séparent désormais un dû RÉEL d'un impôt HYPOTHÉTIQUE. Détail : `detteSerie.ts`.
     { key: 'DettesNonImmo', label: 'Dettes (hors hypothèque)', color: COULEUR_DETTE, shape: 'area' },
+    // [DETTE-LEVIER-EXPLICITE] La PART de la dette ci-dessus qui est un levier voulu (marge Smith
+    // Manoeuvre). Couleur ET forme distinctes — INDIGO POINTILLÉ, la couleur du bouton qui
+    // l’active — parce que les deux dettes ont des trajectoires normales OPPOSÉES : l’une descend
+    // vers zéro, l’autre grossit par construction. Le libellé dit « dont » : c’est un sous-
+    // ensemble tracé PAR-DESSUS, jamais un terme de plus. Détail : `detteSerie.ts`.
+    { key: 'DetteLevierSmith', label: LIBELLE_LEVIER, color: COULEUR_LEVIER, shape: 'dashed' },
     { key: 'ImpotLatent', label: 'Impôt Latent', color: '#ef4444', shape: 'dashed' },
     { key: 'FluxImpots', label: 'Paiement Impôts', color: '#ef4444', shape: 'bar' },
     { key: 'montecarlo', label: 'Monte Carlo (P10–P90)', color: '#3b82f6', shape: 'dashed', mcOnly: true },

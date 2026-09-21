@@ -20,6 +20,7 @@ import { PrivateText } from '../../ui/PrivateText';
 import { formatCAD, formatNumber } from '../../../utils/format';
 import { detteReductrice } from '../futureDetail/comptes';
 import { splitEventIcon } from '../ProjectionTooltip';
+import { detteLevierSousZero, phraseLevier, COULEUR_LEVIER, LIBELLE_LEVIER } from '../../future/detteSerie';
 
 /**
  * [FUTUR-DAILY lot B étape 2] Champs portés par les points QUOTIDIENS de la courbe. Ils sont
@@ -232,6 +233,14 @@ export const SectionComptes = ({ data }: { data: PointJour }) => {
 
     const afficheDette = detteReduc !== null && detteReduc > 0.5;
     const afficheRefus = detteReduc === null;
+    // [DETTE-LEVIER-EXPLICITE] Marc, 2026-09-21 : « la dette augmente à 150k alors que j’ai juste
+    // une dette auto qui finit en 2030 ». Il avait raison sur sa dette ORDINAIRE ; ce qui monte
+    // ensuite est la marge de la Smith Manoeuvre. Le FAIT se lit sur le champ que le MOTEUR
+    // publie — jamais sur une seconde lecture de `useSmithManoeuvre`, qui ne saurait pas dire à
+    // quelle DATE le levier existe (il n’ouvre qu’une fois la résidence achetée).
+    const levier = detteLevierSousZero(data as unknown as Record<string, unknown>);
+    const afficheLevier = afficheDette && levier !== null && Math.abs(levier) > 0.5;
+    const explicationLevier = phraseLevier(data as unknown as Record<string, unknown>);
     if (comptes.length === 0 && !afficheDette && !afficheRefus) return null;
 
     return (
@@ -261,6 +270,26 @@ export const SectionComptes = ({ data }: { data: PointJour }) => {
                     </span>
                     <span className="flex items-center gap-1.5 shrink-0 font-mono">
                         <PrivateAmount className="text-danger-400">−{fmt(detteReduc)}</PrivateAmount>
+                    </span>
+                </div>
+            )}
+            {/* [DETTE-LEVIER-EXPLICITE] La PART de la dette ci-dessus qui est un levier VOULU, en
+                retrait pour dire « dont » plutôt que « en plus ». ⚠️ Le libellé visible reste court
+                (plafond de prose de `[FUTUR-INFOBULLE-EPUREE]`, 45 car.) : la phrase entière vit
+                dans le `title` ET dans son jumeau `sr-only` — un `title` seul n’est lisible qu’à la
+                souris (finding a11y #644). Aucun MONTANT dans la phrase : interpolé, il ne serait
+                plus masquable en mode discret. */}
+            {afficheLevier && explicationLevier && (
+                <div className="flex items-center justify-between gap-2 pl-3.5">
+                    <span className="flex items-center gap-1.5 text-ink-300 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: COULEUR_LEVIER }} />
+                        <span className="truncate" title={explicationLevier}>
+                            {LIBELLE_LEVIER}
+                            <span className="sr-only"> — {explicationLevier}</span>
+                        </span>
+                    </span>
+                    <span className="flex items-center gap-1.5 shrink-0 font-mono">
+                        <PrivateAmount className="text-indigo-300">−{fmt(Math.abs(levier))}</PrivateAmount>
                     </span>
                 </div>
             )}

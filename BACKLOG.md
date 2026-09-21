@@ -139,6 +139,23 @@
   (`role="status"`, comme le refus d'origine incohérente deux lignes plus bas) : « Le lien à {lie} est
   ignoré tant que le taux n'est pas à 0 % — le solde n'est pas suivi. »
 
+- [x] ✅ **`[DETTE-LEVIER-EXPLICITE]`** (M, money-critical d'AFFICHAGE) — LIVRÉ 2026-09-21. Marc :
+  « la dette augmente à 150k alors que j'ai juste une dette auto qui fini en 2030 », puis « je veux
+  que ce soit explicite et expliqué ». Le moteur publie `DetteLevierSmith` (SOUS-ENSEMBLE de
+  `DettesNonImmo`), le graphe porte une 2ᵉ courbe indigo pointillée « dont levier Smith », la table
+  `sr-only` sa colonne, le panneau du jour sa sous-ligne (phrase en `title` + `sr-only`, sans
+  montant), et le réglage avancé s'explique VISIBLEMENT. Mesuré : écart ON−OFF **−51 794 $ à 3 %**
+  → **+58 824 $ à 8 %** (le signe change : c'est un levier) ; contrôle négatif `0` exactement sans
+  le réglage. → à déménager vers `BACKLOG_ARCHIVE` à la prochaine PR.
+
+- [ ] 🟠 **`[FUTUR-LEVIER-PASSE-MUET]`** (S, découvert en livrant `[DETTE-LEVIER-EXPLICITE]`) — la
+  courbe « dont levier Smith » ne commence qu'au premier mois PROJETÉ où la résidence est détenue :
+  le PASSÉ (`buildPastPrefix`, `dailyPastLedger`) ne publie pas `DetteLevierSmith`, et l'app ne suit
+  aucune marge RÉELLE. C'est un choix ASSUMÉ (`null` plutôt que `0` — tracer zéro affirmerait
+  « aucun levier »), **pas un oubli**, et la garde le verrouille. ⚠️ Mais rien à l'écran ne DIT que
+  la courbe commence là : une courbe qui démarre au milieu du graphe est indiscernable d'un bug —
+  exactement la plainte qui a créé ce lot. À trancher : une mention à l'écran, ou rien.
+
 - [ ] 🟡 **`[SMITH-MARGE-BLOC-SANS-GARDE-FINIE]`** (XS, **préexistant**, aujourd'hui INATTEIGNABLE) —
   le bloc de l'appel de marge n'a aucune garde de finitude à lui. Un `currentValue`/`mortgage` non
   fini le ferait sauter EN SILENCE (`NaN > NaN` est `false`), et `smithManoeuvreDebt` croîtrait sans

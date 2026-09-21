@@ -8,6 +8,7 @@
 //     MC iterations, useManualBalances, survivor pcts)
 
 import React from 'react';
+import { LIBELLE_LEVIER } from './future/detteSerie';
 import { Card } from './ui/Card';
 import { PrivateNumberInput } from './ui/PrivateNumberInput';
 import { Input } from './ui/Input';
@@ -90,6 +91,26 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             Véhicule auto-replace {projection.vehicleReplacementEnabled ? 'ON' : 'OFF'}
                         </button>
                     </div>
+                    {/* [DETTE-LEVIER-EXPLICITE] Marc, 2026-09-21 : « la dette augmente à 150k alors
+                        que j’ai juste une dette auto qui finit en 2030 », puis « je veux que ce soit
+                        explicite et expliqué ». Ce bouton active en UN clic une stratégie qui CRÉE
+                        de la dette exprès — et son seul texte vivait dans un `title`, invisible au
+                        doigt et au lecteur d’écran (finding a11y #644). L’explication est donc
+                        VISIBLE, et elle nomme la courbe où l’effet se voit : un utilisateur qui lit
+                        « {LIBELLE_LEVIER} » sur le graphe Futur doit pouvoir remonter jusqu’ici.
+                        ⚠️ Aucun seuil de rentabilité chiffré : il dépend de l’écart entre le taux de
+                        la marge et le rendement, donc du profil — l’écrire ici lui donnerait
+                        l’autorité d’un fait général qu’aucune mesure ne soutient
+                        (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`). */}
+                    <p className="mt-2 text-tiny text-ink-300 leading-relaxed">
+                        <span className="font-bold text-indigo-300">Smith Manoeuvre</span> : chaque mois, le capital
+                        que tu viens de rembourser sur l’hypothèque est <strong>ré-emprunté</strong> sur une marge pour
+                        être investi hors REER (l’intérêt de la marge devient déductible). Cette dette <strong>monte
+                        par construction</strong>, et les intérêts de la marge s’y capitalisent : ce n’est pas un
+                        découvert. Sur le graphe Futur, c’est la courbe indigo pointillée «&nbsp;{LIBELLE_LEVIER}&nbsp;».
+                        Stratégie agressive — elle n’est gagnante que si le rendement des placements dépasse le coût
+                        de la marge.
+                    </p>
                 </div>
 
                 {/* ─────────────────────────────────────────────────────────── */}

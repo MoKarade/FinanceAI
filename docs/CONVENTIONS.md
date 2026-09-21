@@ -16012,3 +16012,95 @@ d'explication, par conception. Recopier le 0,35 y faisait échouer une garde par
 (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
 
 ---
+
+## `UNE-EPURATION-DEMANDEE-SE-LIT-COMME-UN-DEPLACEMENT-PAS-COMME-UNE-SUPPRESSION` (2026-09-21)
+
+**Marc, capture au marqueur rouge : « vire moi tout le texte que j'ai barré ».** Deux blocs sous le
+graphe Futur — le bandeau d'autorité courtier et le pavé « Courbe au jour » (méthodologie + impôt
+latent). La demande est légitime et l'écran était effectivement trop bavard.
+
+**Ce qui rend le cas instructif, c'est ce que les trois phrases FAISAIENT.** Chacune répond à une
+question que Marc a lui-même posée :
+- la marche au raccord ← « **explique pourquoi j'ai pas la même valeur sur mon app et sur
+  Fintable** », qu'il a posée **le jour même où il a biffé la phrase qui y répond** ;
+- l'impôt latent qui démarre au milieu du graphe ← « je vois impôt latent commencer le 1/09 mais
+  jsp pourquoi » (`[PASSE-REEL-IMPOT-LATENT-DEBUT]`) ;
+- réel avant / projeté après ← la distinction sans laquelle un point passé et un point futur se
+  lisent avec la même confiance.
+
+Les effacer, c'est **réarmer trois fois la même plainte**. Et c'est exactement
+`EPURATION-SUPPRIME-LA-RESERVE` : « moins de texte » se satisfait trivialement en SUPPRIMANT de
+l'information. **Une demande d'épuration se lit donc comme un DÉPLACEMENT** — la prose quitte
+l'écran, le FAIT reste atteignable — et la forme était déjà payée par le dépôt
+(`[FUTUR-INFOBULLE-EPUREE]` + finding a11y #644) : libellé COURT visible, phrase entière dans le
+`title` **ET** dans un jumeau `sr-only`, parce qu'un `title` sur un `<span>` non focusable n'est
+révélé que par un survol SOURIS.
+
+⚠️ **La garde tient les DEUX moitiés, et c'est leur TENSION qui fait sa valeur** : un plafond sur
+le libellé visible (14 caractères) est satisfait par un écran vide ; « aucune réserve perdue » est
+satisfait par le pavé d'origine. Séparées, chacune se laisse contenter par le mauvais moyen.
+
+⚠️ **Ce que l'utilisateur a biffé est exactement ce qui était À L'ÉCRAN, pas la liste des choses
+que le bloc peut rendre.** Le même `<p>` portait cinq avertissements CONDITIONNELS (transactions
+non plaçables, courbe tronquée, flux après aujourd'hui, deux mentions de raccord) — aucun n'était
+affiché ce jour-là, donc aucun n'a été biffé. Les emporter avec le pavé aurait été l'épuration qui
+prend trop (`UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`). **Le périmètre d'une
+biffure se lit sur le RENDU de ce moment-là, jamais sur le source du composant.**
+
+⚠️ Corollaire de garde : la garde `[PASSE-REEL-IMPOT-LATENT-DEBUT]` exigeait la phrase dans
+`FutureProjection.tsx`. Elle a été **INVERSÉE EN PLACE** (elle vise `notesGraphe.tsx`, et interdit
+en plus le retour du pavé), jamais supprimée : ce qu'elle défend n'a pas changé d'un mot
+(`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+
+⚠️ Deux pièges connus re-payés dans ce lot, et les deux étaient déjà écrits ici :
+- **`SCAN-QUI-MATCHE-LA-PROSE`** : mon `not.toContain('pas reconstruit')` lisait la source BRUTE et
+  rougissait sur un commentaire sans rapport (« le cash/immo passé n'est pas reconstruit ») — dans
+  la garde même qui cite la leçon. Toute assertion d'ABSENCE lit la source DÉCOMMENTÉE.
+- **Le COMPTE de lint** : 32 → **33**. Un `screen` importé et jamais utilisé dans la garde neuve,
+  strictement invisible si on ne lit que la ligne « 0 errors » — le signal est la comparaison à la
+  BASE (`UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`, dont c'est la 2ᵉ instance).
+
+---
+
+## `DEUX-CHIFFRES-QUI-NE-MESURENT-PAS-LA-MEME-CHOSE-NE-SE-COMPARENT-PAS` (2026-09-21)
+
+**Marc : « explique pourquoi j'ai pas la même valeur sur mon app et sur Fintable pour aujd ».**
+Fintable affichait **C$277 230**, l'app **230 210 $**. Réflexe naturel devant 47 020 $ d'écart :
+chercher un bug de calcul. Il n'y en avait pas.
+
+**La décomposition, exacte au dollar près** (données réelles, MCP synchronisé 5 min avant) :
+| terme | montant | cause |
+|---|---|---|
+| bail Toyota | **+46 934 $** | Fintable ne connaît aucune dette |
+| Mastercard | **+195 $** | Fintable la compte en **ACTIF**, l'app en dette |
+| placements | **−15 $** | 246 643 (Fintable) vs 246 658 (app) |
+| liquidités | **−95 $** | 30 392 vs 30 487 |
+| **total** | **47 019 $** | à 1 $ d'arrondi près |
+
+**Fintable additionne des SOLDES DE COMPTES ; l'app calcule une VALEUR NETTE.** Ce ne sont pas deux
+mesures de la même grandeur, donc leur écart n'est pas une erreur à corriger — c'est une
+DÉFINITION à nommer. Devant « pourquoi X ≠ Y », la première question n'est pas « lequel est faux ? »
+mais **« mesurent-ils la même chose ? »**, et la réponse se prouve en décomposant l'écart jusqu'au
+dollar : tant qu'un terme manque, on n'a pas compris.
+
+⚠️ **Refaire la somme de l'écran de l'autre outil est la mesure la plus rentable du lot.** Les six
+comptes Fintable additionnés BRUT donnent 247 371 $, pas 277 230 $. L'écart de 29 859 $ divisé par
+le solde du compte Disnat `$74 647,59` (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
+Fintable convertit l'USD à un taux ROND. Une seule division a identifié la devise, le taux et le
+compte concernés — ce qu'aucune lecture de notre code ne pouvait donner.
+
+⚠️ **Ce qui restait à expliquer après la décomposition était sur un AUTRE axe.** Le jour qu'il avait
+épinglé (20/09) montrait 238 051 $ de placements contre **247 298 $** de titres aujourd'hui — 9 247 $
+de moins, parce que le PASSÉ est reconstruit à partir des titres saisis, aux prix que l'app a. Le
+badge le disait : « **prix J−59** ». Mesuré sur ses 12 positions : **55,8 % du portefeuille est coté
+en Europe** (138 068 $ sur 247 298 $), places que le forfait gratuit du fournisseur ne sert pas.
+AUJOURD'HUI, lui, est juste — il part du total du courtier. **C'est ce couple (aujourd'hui exact /
+passé figé) qui fabrique la marche au raccord**, celle-là même que le bandeau biffé expliquait.
+
+⚠️ **Une dette de BAIL qui MONTE en avançant dans le temps est impossible** : l'app donnait 45 917 $
+au 20/09, le MCP 46 934 $ aujourd'hui. L'app applique les prélèvements hebdomadaires ; le serveur
+MCP rend le solde BRUT stocké parce qu'il tourne du code d'avant `balanceAsOf`. **Le sens de
+variation d'une grandeur suffit à désigner lequel de deux producteurs est périmé**, sans lire une
+ligne de leur code — et `hubperso` étant alimenté par ce même serveur, il héritait du même retard.
+
+---

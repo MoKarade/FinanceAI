@@ -4,6 +4,43 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite) — **les deux pavés sous la courbe, en pastilles**
+> 🔎 **`[FUTUR-NOTES-COMPACTES]`** — Marc, capture au marqueur rouge : « **vire moi tout le texte
+> que j'ai barré** ». Deux blocs : le bandeau `mentionAutoriteCourtier` et le pavé « Courbe au
+> jour » (méthodologie + impôt latent).
+> ⚠️⚠️ **Les supprimer tout court aurait réarmé TROIS plaintes déjà formulées par Marc**
+> (`EPURATION-SUPPRIME-LA-RESERVE`) — dont, **le jour même**, « explique pourquoi j'ai pas la même
+> valeur sur mon app et sur Fintable », à laquelle la phrase du bandeau répond mot pour mot.
+> Forme retenue, celle que le dépôt a déjà payée pour cette tension (`[FUTUR-INFOBULLE-EPUREE]` +
+> finding a11y #644) : **libellé court visible + phrase entière en `title` ET en jumeau `sr-only`**.
+> 🔧 `components/future/notesGraphe.tsx` (neuf, pur) ; le pavé conditionnel ne garde que les
+> AVERTISSEMENTS (non biffés — aucun n'était à l'écran, chacun ne parle que quand son défaut
+> existe) et ne se monte plus que s'il a quelque chose à dire.
+> 📏 **10 gardes neuves** tenant les DEUX moitiés ensemble (plafond de 14 car. sur le libellé
+> visible ET « aucune réserve perdue »), chacune seule étant satisfaite par le mauvais moyen.
+> La garde `[PASSE-REEL-IMPOT-LATENT-DEBUT]` est **INVERSÉE EN PLACE**, pas supprimée : elle vise
+> désormais `notesGraphe.tsx` (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+> ⚠️ Deux pièges re-payés dans le lot : `SCAN-QUI-MATCHE-LA-PROSE` (ma garde d'absence lisait la
+> source BRUTE et rougissait sur un commentaire sans rapport) et le **compte de lint** (32 → 33 :
+> un `screen` importé et non utilisé — invisible si on ne lit que « 0 errors »,
+> `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`).
+>
+> ### 📊 Mesuré ce jour sur les données RÉELLES de Marc (question : « pourquoi pas la même valeur qu'sur Fintable »)
+> **Pour AUJOURD'HUI, l'app et Fintable sont d'accord** — 15 $ d'écart sur les placements.
+> L'écart des TOTAUX (277 230 Fintable vs 230 210 app) se décompose EXACTEMENT :
+> **+46 934** (le bail, que Fintable ignore) **+195** (la Mastercard, comptée en ACTIF par Fintable)
+> **−15** (placements) **−95** (liquidités) = **47 019**, à 1 $ d'arrondi près.
+> ⚠️ Fintable convertit le compte Disnat **USD** (`$74 647,59`, pas `C$`) à **1,4000** pile.
+> ⚠️ Le jour ÉPINGLÉ (20/09) est autre chose : **238 051 $** de Non-Enreg contre **247 298 $** de
+> titres aujourd'hui — **9 247 $** sous-évalués par des **prix vieux de 59 jours**, parce que
+> **55,8 %** du portefeuille est coté en Europe. → `[COTATIONS-EUROPE-PERIMEES]`.
+> ⚠️ Et la dette du MCP (46 934) dépasse celle de l'app au 20/09 (45 917) — une dette de bail qui
+> MONTE en avançant est impossible : c'est `[HUB-MCP-PERIME]`, le serveur de Marc tourne du code
+> d'avant `balanceAsOf`. **hubperso est alimenté par ce même serveur** → redéploiement chez lui.
+> 🧭 **Cadré avec Marc, pas encore codé — `[KPI-AVOIRS-DETTES]`** : « ma somme totale d'argent et
+> ma somme totale de dettes, partout ». Ses deux choix ont DIVERGÉ de mes recommandations (total
+> tout compris + détail ; 6 tuiles).
+
 > ## 🟦 Session 2026-09-21 — **deux dettes de sens OPPOSÉS partageaient une seule courbe**
 > 🔎 **`[DETTE-LEVIER-EXPLICITE]`** — Marc, après le correctif de la marge : « **Non la dette augmente
 > à 150k alors que j'ai juste une dette auto qui fini en 2030** ». Il avait **raison ET tort** : sa

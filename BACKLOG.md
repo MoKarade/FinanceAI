@@ -139,14 +139,33 @@
   (`role="status"`, comme le refus d'origine incohérente deux lignes plus bas) : « Le lien à {lie} est
   ignoré tant que le taux n'est pas à 0 % — le solde n'est pas suivi. »
 
-- [x] ✅ **`[DETTE-LEVIER-EXPLICITE]`** (M, money-critical d'AFFICHAGE) — LIVRÉ 2026-09-21. Marc :
-  « la dette augmente à 150k alors que j'ai juste une dette auto qui fini en 2030 », puis « je veux
-  que ce soit explicite et expliqué ». Le moteur publie `DetteLevierSmith` (SOUS-ENSEMBLE de
-  `DettesNonImmo`), le graphe porte une 2ᵉ courbe indigo pointillée « dont levier Smith », la table
-  `sr-only` sa colonne, le panneau du jour sa sous-ligne (phrase en `title` + `sr-only`, sans
-  montant), et le réglage avancé s'explique VISIBLEMENT. Mesuré : écart ON−OFF **−51 794 $ à 3 %**
-  → **+58 824 $ à 8 %** (le signe change : c'est un levier) ; contrôle négatif `0` exactement sans
-  le réglage. → à déménager vers `BACKLOG_ARCHIVE` à la prochaine PR.
+- [ ] 🔴 **`[COTATIONS-EUROPE-PERIMEES]`** (M, money-critical d'AFFICHAGE, **signalé par la mesure
+  du 2026-09-21**) — le panneau du jour de Marc affiche « **prix J−59** » : les cours de ses titres
+  ont 59 jours. MESURÉ sur ses 12 positions réelles : **55,8 % du portefeuille est coté en Europe**
+  (`GBS.PA` 63 937 $, `CW8.PA` 47 005 $, `KLA.TG` 16 579 $, `SAF.PA` 10 547 $ = **138 068 $** sur
+  247 298 $), et le forfait gratuit du fournisseur ne sert pas ces places (403 « le forfait ne
+  couvre pas », classe déjà documentée). Conséquence CHIFFRÉE : le PASSÉ reconstruit vaut
+  **238 051 $** au 20/09 contre **247 298 $** de titres aujourd'hui — **9 247 $ sous-évalués**, sur
+  toute la courbe passée. ⚠️ AUJOURD'HUI est juste (il part du total du courtier,
+  `[FINTABLE-AUTORITE-AUJOURDHUI]`) : c'est exactement ce qui fabrique la marche au raccord dont
+  Marc demande l'explication. ⚠️ Le correctif n'est PAS « un meilleur repli » : il faut une source
+  de cotations qui couvre Euronext/Xetra, ou accepter et DIRE que le passé européen est figé. →
+  décision Marc (une source payante est un abonnement, ce que le profil du dépôt exclut).
+
+- [ ] 🟠 **`[KPI-AVOIRS-DETTES]`** (M, **cadré avec Marc le 2026-09-21**) — « je veux voir genre ma
+  somme totale d'argent et ma somme totale de dette / ce que je dois (partout dans financeai et
+  dans hubperso) ». Né de l'écart Fintable/app : Fintable additionne des SOLDES (277 230 $), l'app
+  publie une VALEUR NETTE (230 210 $), et les deux termes n'étaient visibles nulle part ensemble.
+  **Décisions de Marc** (toutes deux DIVERGENTES de ma recommandation, cf. la leçon du dépôt) :
+  1. dettes = **un total TOUT COMPRIS + le détail** (« Dettes 46 934 $ · dont 0 $ d'hypothèque ») ;
+  2. bandeau à **6 tuiles**, on garde Liquidités.
+  ⚠️ Conséquence arithmétique à tenir : si les dettes incluent l'hypothèque, les AVOIRS doivent
+  porter l'immobilier en valeur **BRUTE**, sinon l'hypothèque est retranchée deux fois (le
+  patrimoine net compte déjà l'immobilier en ÉQUITÉ). Les deux se DÉRIVENT de champs déjà publiés,
+  sans toucher au moteur : `hypothèque = DetteTotale − DettesNonImmo`, `avoirs bruts =
+  Σ actifs(équité) + hypothèque` — et alors `Avoirs − Dettes = Patrimoine net` tient au dollar près.
+  Surfaces : `FutureKpiStrip` (rendu par `TabRouter`, donc partout) + les métriques de
+  `mcp/hubSummary.ts` (libellés STABLES — `[HUB-METRIQUE-LIBELLE-EST-UNE-CLE]`).
 
 - [ ] 🟠 **`[FUTUR-LEVIER-PASSE-MUET]`** (S, découvert en livrant `[DETTE-LEVIER-EXPLICITE]`) — la
   courbe « dont levier Smith » ne commence qu'au premier mois PROJETÉ où la résidence est détenue :

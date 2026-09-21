@@ -13,8 +13,9 @@ import { FutureHealthSummary } from './future/FutureHealthSummary';
 import { FutureLegendDrawer } from './future/FutureLegendDrawer';
 import { useHiddenSeries } from '../hooks/useHiddenSeries';
 import { FuturePeriodSelector } from './future/FuturePeriodSelector';
-import { TabPanel, tabId, panelId, clavierTablist } from './ui/SubTabs';
 import { PageHeader } from './ui/PageHeader';
+import { Drawer } from './ui/Drawer';
+import { FutureSidebar, type FutureDrawerId } from './future/FutureSidebar';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { KPIStat } from './ui/KPIStat';
@@ -134,6 +135,7 @@ import { applyConfigToSettings, type StrategyConfig } from '../services/projecti
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso, axisXAtDay } from '../services/projection/dailyRefine';
 import { useViewportBelowSm } from '../hooks/useViewportBelowSm';
+import { useViewportBelowLg } from '../hooks/useViewportBelowLg';
 import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
 import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger } from '../services/projection/dailyLedger';
@@ -167,18 +169,6 @@ interface FutureProjectionProps {
   setProjection: (p: ProjectionConfig) => void;
   isPrivacyMode?: boolean;
 }
-
-/** Les quatre sous-onglets de Futur — une SEULE source pour le rendu ET pour le clavier : une liste
- *  recopiée dans le `onKeyDown` divergerait au premier onglet ajouté, et les flèches sauteraient
- *  silencieusement le nouveau. */
-const FUTURE_SUB_TABS = [
-    { id: 'graph', emoji: '🎯', label: 'Projection' },
-    { id: 'params', emoji: '⚙️', label: 'Hypothèses' },
-    { id: 'plan', emoji: '🗂️', label: 'Plan d\'action' },
-    { id: 'historique', emoji: '📊', label: 'Historique' },
-] as const;
-
-type FutureSubTabId = typeof FUTURE_SUB_TABS[number]['id'];
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
     initialBalances = {}, transactions = [], budgetItems = [], config,
@@ -584,7 +574,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // PH4-FUT « leviers-d'abord » — sous-onglet « Optimisation » RETIRÉ : le composeur de leviers est
     // remonté dans l'écran d'amorçage du Graphique (en amont du calcul).
     // [REFONTE-NAV-L2b] + 4e sous-onglet « Historique » (l'évolution PASSÉE, ex-Accueil).
-    const [futureSubTab, setFutureSubTab] = useState<FutureSubTabId>('graph');
+    // [FUTUR-NAV-TIROIRS] Remplace les anciens sous-onglets Hypothèses/Plan d'action/Historique :
+    // la courbe est désormais TOUJOURS affichée, ces trois-là s'ouvrent chacun en tiroir par-dessus.
+    const [tiroirOuvert, setTiroirOuvert] = useState<FutureDrawerId | null>(null);
     // PH4 (refonte Futur « leviers-d'abord », demande Marc) — la courbe ET les KPIs ne s'affichent
     // QUE sur un calcul EXPLICITE : la révélation est liée à une SIGNATURE de ce qui PILOTE la courbe.
     // Revue PH4 (MAJEUR) — on signe `params` ENTIER (la source UNIQUE, ~20 entrées du store) et NON un
@@ -848,6 +840,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // C'est aussi ce qui règle l'irritant n°1 de Marc — « elle disparaît / bouge quand je veux la
     // lire » est STRUCTUREL à un objet qui suit le curseur.
     const isNarrowViewport = useViewportBelowSm();
+    // [FUTUR-NAV-TIROIRS] Sous ce seuil (tablette portrait incluse), pas de place pour une barre
+    // latérale à côté d'un graphe lisible : la mise en page repasse en colonne empilée, comme sur
+    // téléphone. `isNarrowViewport` (téléphone strict, < 640px) continue de piloter ses propres
+    // réglages fins par-dessus, inchangé.
+    const isBelowSidebarBreakpoint = useViewportBelowLg();
     const selection = useSelectionJour<ProjectionChartPoint>({
         getKey: (p) => p.monthIndex,
         containerRef: zoom.containerEl,
@@ -1463,144 +1460,181 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         </StatGrid>
     );
 
-    return (
-        <div className="space-y-6 animate-fade-in pb-24">
+    // role="status" (live polite) : le badge apparaît après le calcul de projection → annoncé au
+    // lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
+    const insolvencyBadge = insolvency ? (
+        <div role="status">
+            <Badge variant="danger" size="md">
+                {insolvency.age != null
+                    ? `Plan insoutenable — capital épuisé vers ${insolvency.age} ans`
+                    : 'Plan insoutenable — capital épuisé'}
+            </Badge>
+        </div>
+    ) : undefined;
+    const dataModePill = (
+        <Pill
+            aria-label="Mode de données"
+            size="sm"
+            value={projection.useTheoretical ? 'sandbox' : 'real'}
+            onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
+            options={[
+                { value: 'real', label: 'Données Réelles', icon: '🔗' },
+                { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
+            ]}
+        />
+    );
 
+    // [FUTUR-NAV-TIROIRS] Sélecteur de période + actions (Ré-optimiser/Verrouiller/Plein écran) —
+    // un seul calcul, rendu soit dans la barre d'outils de la courbe (mise en page empilée), soit
+    // dans la barre latérale (desktop) : `barreOutils` en JSX, comme `kpiGrid` ci-dessus.
+    const barreOutils = (
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <FuturePeriodSelector
+                variant={isNarrowViewport ? 'compact' : 'buttons'}
+                zoom={zoom}
+                todayPresetRange={todayPresetRange}
+                idxForYears={idxForYears}
+                lastMonthIndex={lastMonthIndex}
+                onFullscreen={() => zoom.containerEl.current?.requestFullscreen?.()}
+            />
+            <div className="flex items-center gap-2">
+                {/* [A11Y-CHART-HINT-HIDDEN] `aria-hidden` ASSUMÉ, et vérifié : cette phrase est un
+                    DOUBLON visuel de l'`aria-label` du graphe (plus bas). */}
+                <span className="text-tiny text-ink-400 hidden md:block" aria-hidden="true">
+                    survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
+                </span>
+                {/* PH4-FUT « leviers-d'abord » — revenir au composeur de leviers (ré-optimiser).
+                    [PROJECTION-PERSIST] même chemin que « Rechoisir mes leviers » : efface AUSSI
+                    le gel (mémoire + IDB), sinon un blob périmé resurgirait au prochain périmé. */}
+                <button
+                    type="button"
+                    onClick={regateToLevers}
+                    className="px-2 py-1 text-tiny font-bold rounded text-primary hover:brightness-110 bg-primary/15 hover:bg-primary/25 border border-primary/30 transition-colors focus-ring"
+                    title="Recomposer tes leviers et recalculer la meilleure stratégie"
+                >
+                    <span aria-hidden="true">🎯</span> Ré-optimiser
+                </button>
+                {/* PH2-d — verrou de courbe : fige la courbe courante comme référence (persistée IDB). */}
+                {isProjectionLocked ? (
+                    <button
+                        type="button"
+                        onClick={unlockProjection}
+                        className="px-2 py-1 text-tiny font-bold rounded text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
+                        title="Déverrouiller : revenir à la courbe live seule"
+                    >
+                        <span aria-hidden="true">🔓</span> Déverrouiller
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => { if (results) lockProjection(results); }}
+                        disabled={!results || isComputing}
+                        className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Verrouiller cette courbe comme référence (persistée jusqu'au déverrouillage)"
+                    >
+                        <span aria-hidden="true">🔒</span> Verrouiller
+                    </button>
+                )}
+                {!isNarrowViewport && (
+                <button
+                    type="button"
+                    onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
+                    className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
+                    title="Plein écran (Échap pour quitter)"
+                >
+                    ⛶ Plein écran
+                </button>
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className={isBelowSidebarBreakpoint ? 'space-y-6 animate-fade-in pb-24' : 'flex items-start gap-6 animate-fade-in pb-24'}>
+        {isBelowSidebarBreakpoint ? (
+            <>
             {/* [FUTUR-MOBILE-PR2] Badge et pill FACTORISÉS : mêmes éléments, un seul habillage choisi
-                selon la largeur — desktop INCHANGÉ (PageHeader reçoit exactement le même JSX qu'avant). */}
-            {(() => {
-                const insolvencyBadge = insolvency ? (
-                    // role="status" (live polite) : le badge apparaît après le calcul de projection →
-                    // annoncé au lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
-                    <div role="status">
-                        <Badge variant="danger" size="md">
-                            {insolvency.age != null
-                                ? `Plan insoutenable — capital épuisé vers ${insolvency.age} ans`
-                                : 'Plan insoutenable — capital épuisé'}
-                        </Badge>
+                selon la largeur. */}
+            {isNarrowViewport ? (
+                // En-tête compact (≈40 px, décision Marc 2026-09-10) : titre court + pastille de
+                // mode de données sur une ligne, badge d'insolvabilité s'il y a lieu.
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <h1 className="text-h1 text-ink-50 tracking-tight">Projection</h1>
+                        {insolvencyBadge}
                     </div>
-                ) : undefined;
-                const dataModePill = (
-                    <Pill
-                        aria-label="Mode de données"
-                        size="sm"
-                        value={projection.useTheoretical ? 'sandbox' : 'real'}
-                        onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
-                        options={[
-                            { value: 'real', label: 'Données Réelles', icon: '🔗' },
-                            { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
-                        ]}
-                    />
-                );
-                if (isNarrowViewport) {
-                    // En-tête compact (≈40 px, décision Marc 2026-09-10) : titre court + pastille de
-                    // mode de données sur une ligne, badge d'insolvabilité s'il y a lieu.
-                    return (
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <h1 className="text-h1 text-ink-50 tracking-tight">Projection</h1>
-                                {insolvencyBadge}
-                            </div>
-                            {dataModePill}
-                        </div>
-                    );
-                }
-                return (
-                    <PageHeader
-                        icon="🔮"
-                        title="Projection Future"
-                        subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
-                        badge={insolvencyBadge}
-                        actions={dataModePill}
-                    />
-                );
-            })()}
+                    {dataModePill}
+                </div>
+            ) : (
+                <PageHeader
+                    icon="🔮"
+                    title="Projection Future"
+                    subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
+                    badge={insolvencyBadge}
+                    actions={dataModePill}
+                />
+            )}
 
             {/* [NAV-MERGE-SANTE-FUTUR] Résumé condensé, toujours visible (pas de gate curveVisible :
                 le score de santé ne dépend pas d'une projection calculée). */}
             <FutureHealthSummary />
 
-            {/* Hero KPI strip — PH4 : caché tant que la projection n'est pas calculée explicitement
-                (cf revealedSig) ; sinon les chiffres projetés s'affichaient sans geste de l'utilisateur.
-                [FUTUR-MOBILE-PR2] Sur mobile, l'onglet Projection affiche la courbe AVANT ces KPI
-                (décision Marc) : `kpiGrid` (défini plus haut) est alors rendu une seconde fois, après
-                la courbe — jamais recalculé, la MÊME expression JSX. Sur desktop et sur les 3 autres
-                sous-onglets mobiles, rien ne change : cette position reste la SEULE où il s'affiche. */}
-            {curveVisible && !(isNarrowViewport && futureSubTab === 'graph') && kpiGrid}
-            {/* PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection / Paramètres / Plan d'action */}
-            {/* [A11Y-TABLIST-NO-PANEL] Ce bandeau garde son habillage (emoji, autres classes) mais
-                emprunte le MOTIF de `ui/SubTabs` : mêmes `id` d'onglet et de panneau, même clavier.
-                Sans `aria-controls` ni panneau déclaré, un lecteur d'écran annonçait « onglet » sans
-                pouvoir dire ce que l'onglet commande — le seul des quatre bandeaux resté à part. */}
-            <div
-                className="flex flex-wrap gap-1 p-1 rounded-card bg-surface/40 border border-white/5 w-fit"
-                role="tablist"
-                aria-label="Vue Future"
-                onKeyDown={clavierTablist<FutureSubTabId>('futur', FUTURE_SUB_TABS.map((t) => t.id), futureSubTab, setFutureSubTab)}
-            >
-                {FUTURE_SUB_TABS.map(t => (
-                    <button
-                        key={t.id}
-                        type="button" role="tab" aria-selected={futureSubTab === t.id}
-                        id={tabId('futur', t.id)}
-                        aria-controls={panelId('futur', t.id)}
-                        tabIndex={futureSubTab === t.id ? 0 : -1}
-                        onClick={() => setFutureSubTab(t.id)}
-                        className={`px-4 py-1.5 rounded-card text-meta font-bold transition-colors focus-ring ${futureSubTab === t.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-100'}`}
-                    >
-                        <span aria-hidden="true" className="mr-1">{t.emoji}</span>{t.label}
-                    </button>
-                ))}
+            {/* Hero KPI strip — PH4 : caché tant que la projection n'est pas calculée explicitement.
+                [FUTUR-NAV-TIROIRS] AVANT le graphe, seule position désormais (choix Marc) — l'ancien
+                double rendu (avant/après selon le sous-onglet actif) n'a plus lieu d'être : il n'y a
+                plus de sous-onglet à quitter pour voir la courbe. */}
+            {curveVisible && kpiGrid}
+
+            {/* [FUTUR-NAV-TIROIRS] Remplace les anciens sous-onglets Hypothèses/Plan d'action/
+                Historique : la courbe (ci-dessous) est TOUJOURS affichée, ces trois boutons ouvrent
+                chacun un tiroir par-dessus plutôt que de basculer la vue. */}
+            <div className="flex gap-2">
+                <button
+                    type="button"
+                    onClick={() => setTiroirOuvert('hypotheses')}
+                    aria-haspopup="dialog"
+                    aria-expanded={tiroirOuvert === 'hypotheses'}
+                    className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
+                >
+                    <span aria-hidden="true">⚙️</span> Hypothèses
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setTiroirOuvert('plan')}
+                    aria-haspopup="dialog"
+                    aria-expanded={tiroirOuvert === 'plan'}
+                    className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
+                >
+                    <span aria-hidden="true">🗂️</span> Plan
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setTiroirOuvert('historique')}
+                    aria-haspopup="dialog"
+                    aria-expanded={tiroirOuvert === 'historique'}
+                    className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
+                >
+                    <span aria-hidden="true">📊</span> Historique
+                </button>
             </div>
-
-            {/* ⚠️ UN SEUL panneau, dont l'identité SUIT l'onglet actif. Les blocs de chaque onglet
-                sont éclatés en plusieurs conditions (`graph` en porte trois, `plan` deux) : leur
-                donner chacun un `TabPanel` produirait des `id` EN DOUBLE, et `aria-controls`
-                pointerait alors vers un élément ambigu — un attribut présent qui désigne la mauvaise
-                chose. Comme un seul onglet est actif à la fois, un panneau unique et mobile dit
-                exactement la vérité. */}
-            <TabPanel idPrefix="futur" tab={futureSubTab} when className="space-y-6">
-
-            {futureSubTab === 'params' && (
-            <>
-            <ProjectionControls
-                projection={projection}
-                updateProj={updateProj}
-                updateReturnRate={updateReturnRate}
-                runMC={runMC}
-                setRunMC={setRunMC}
-                isComputing={isComputing}
-                fireNumber={fireNumber}
-                liveCSVBalances={liveCSVBalances}
-                applyHistoricalRate={applyHistoricalRate}
-                realEstateGoals={realEstateGoals}
-                setRealEstateGoals={setRealEstateGoals}
-                config={config}
-            />
-            {/* [FUTUR-MOBILE-PR4] CTA collant au-dessus de la nav mobile (décision Marc 2026-09-10) :
-                « aucun calcul sans geste » reste vrai — ce bouton est le SEUL chemin qui déclenche la
-                révélation depuis l'onglet Hypothèses sur téléphone, sans devoir changer d'onglet
-                d'abord. `changedHypothesesCount` (calculé plus haut, additif au mécanisme de
-                révélation/gel existant) dit CE QUI a changé depuis le dernier calcul. */}
-            {isNarrowViewport && (
-                <div className="sticky bottom-[72px] z-40 -mx-3 px-3 py-2.5 border-t border-white/10 bg-[#0d1118]/95 backdrop-blur-sm">
-                    <button
-                        type="button"
-                        onClick={() => { revealCurve(); setFutureSubTab('graph'); }}
-                        disabled={isComputing}
-                        aria-busy={isComputing}
-                        className="w-full min-h-[48px] rounded-card bg-primary text-dark font-bold text-body focus-ring disabled:opacity-50"
-                    >
-                        {isComputing
-                            ? 'Calcul en cours…'
-                            : changedHypothesesCount > 0
-                                ? `Recalculer la projection (${changedHypothesesCount} hypothèse${changedHypothesesCount > 1 ? 's' : ''} modifiée${changedHypothesesCount > 1 ? 's' : ''})`
-                                : 'Recalculer la projection'}
-                    </button>
-                </div>
-            )}
             </>
-            )}
+        ) : (
+            <FutureSidebar
+                insolvencyBadge={insolvencyBadge}
+                dataModePill={dataModePill}
+                kpi={curveVisible ? kpiGrid : null}
+                // ⚠️ Comme `kpiGrid` : dans l'ancien code, `barreOutils` (période, Ré-optimiser,
+                // Verrouiller, Plein écran) vivait DANS la Card qui n'existe que si `curveVisible` —
+                // avant le premier calcul, ces contrôles n'existaient tout simplement pas. La barre
+                // latérale, elle, est TOUJOURS montée : sans cette garde, « Ré-optimiser » serait
+                // visible sur l'écran d'amorçage, avant qu'il y ait quoi que ce soit à optimiser.
+                barreOutils={curveVisible ? barreOutils : null}
+                tiroirOuvert={tiroirOuvert}
+                onOuvrirTiroir={setTiroirOuvert}
+            />
+        )}
+
+        <div className={isBelowSidebarBreakpoint ? undefined : 'flex-1 min-w-0 space-y-3'}>
 
             {/* Écran d'invite : tant que la courbe n'est pas révélée (jamais calculée OU entrées
                 modifiées depuis le dernier calcul), on invite à (re)calculer — jamais de courbe auto. */}
@@ -1610,7 +1644,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             {/* [PROJECTION-PERSIST] Fenêtre de restauration (sig persistée, résultat pas encore là :
                 moteur en route ~300 ms-qq s, gel IDB en lecture) → chargement honnête, PAS l'écran
                 d'amorçage (sinon chaque reload donne l'impression d'avoir perdu la projection). */}
-            {futureSubTab === 'graph' && curveRestoring && (
+            {curveRestoring && (
                 <Card className="text-center">
                     <div className="py-10 flex flex-col items-center gap-3 text-ink-300" role="status" aria-live="polite">
                         <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1620,7 +1654,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 </Card>
             )}
-            {futureSubTab === 'graph' && !curveVisible && !curveRestoring && (
+            {!curveVisible && !curveRestoring && (
                 <div className="space-y-4">
                     <Card className="text-center">
                         <div className="py-6 px-4 space-y-3 max-w-xl mx-auto">
@@ -1652,7 +1686,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 </div>
             )}
 
-            {futureSubTab === 'graph' && curveVisible && (
+            {curveVisible && (
             <div ref={revealedRef} tabIndex={-1} className="outline-none space-y-3" role="region" aria-label="Projection affichée">
             {/* [PROJECTION-PERSIST] Badge « pas à jour » (choix Marc : FIGER l'ancienne courbe, pas la
                 recalculer en douce). Affiché dès que les entrées divergent de la dernière révélation :
@@ -1709,70 +1743,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         Recalcul Monte Carlo en cours…
                     </span>
                 ) : undefined}>
-                {/* G4 — sélecteur de période façon Google Finance */}
-                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                    <FuturePeriodSelector
-                        variant={isNarrowViewport ? 'compact' : 'buttons'}
-                        zoom={zoom}
-                        todayPresetRange={todayPresetRange}
-                        idxForYears={idxForYears}
-                        lastMonthIndex={lastMonthIndex}
-                        onFullscreen={() => zoom.containerEl.current?.requestFullscreen?.()}
-                    />
-                    <div className="flex items-center gap-2">
-                        {/* [A11Y-CHART-HINT-HIDDEN] `aria-hidden` ASSUMÉ, et vérifié : cette phrase
-                            est un DOUBLON visuel de l'`aria-label` du graphe (plus bas). L'exposer
-                            ferait annoncer deux fois les mêmes gestes. Ce qui manquait n'était pas
-                            une copie sr-only mais le CONTENU de cet `aria-label`, qui n'énonçait que
-                            des gestes de POINTEUR — inutilisables par qui ne pointe pas — sans jamais
-                            nommer l'alternative textuelle qui existe pourtant juste après la courbe. */}
-                        <span className="text-tiny text-ink-400 hidden md:block" aria-hidden="true">
-                            survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
-                        </span>
-                        {/* PH4-FUT « leviers-d'abord » — revenir au composeur de leviers (ré-optimiser).
-                            [PROJECTION-PERSIST] même chemin que « Rechoisir mes leviers » : efface AUSSI
-                            le gel (mémoire + IDB), sinon un blob périmé resurgirait au prochain périmé. */}
-                        <button
-                            type="button"
-                            onClick={regateToLevers}
-                            className="px-2 py-1 text-tiny font-bold rounded text-primary hover:brightness-110 bg-primary/15 hover:bg-primary/25 border border-primary/30 transition-colors focus-ring"
-                            title="Recomposer tes leviers et recalculer la meilleure stratégie"
-                        >
-                            <span aria-hidden="true">🎯</span> Ré-optimiser
-                        </button>
-                        {/* PH2-d — verrou de courbe : fige la courbe courante comme référence (persistée IDB). */}
-                        {isProjectionLocked ? (
-                            <button
-                                type="button"
-                                onClick={unlockProjection}
-                                className="px-2 py-1 text-tiny font-bold rounded text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
-                                title="Déverrouiller : revenir à la courbe live seule"
-                            >
-                                <span aria-hidden="true">🔓</span> Déverrouiller
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => { if (results) lockProjection(results); }}
-                                disabled={!results || isComputing}
-                                className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
-                                title="Verrouiller cette courbe comme référence (persistée jusqu'au déverrouillage)"
-                            >
-                                <span aria-hidden="true">🔒</span> Verrouiller
-                            </button>
-                        )}
-                        {!isNarrowViewport && (
-                        <button
-                            type="button"
-                            onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
-                            className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
-                            title="Plein écran (Échap pour quitter)"
-                        >
-                            ⛶ Plein écran
-                        </button>
-                        )}
-                    </div>
-                </div>
+                {/* [FUTUR-NAV-TIROIRS] `barreOutils` (calculée plus haut) : ici en mise en page
+                    empilée seulement — sur desktop elle vit dans la barre latérale. */}
+                {isBelowSidebarBreakpoint && barreOutils}
                 {/* [FUTUR-REAL-HISTORY] Note d'honnêteté sur le passé reconstruit : patrimoine net réel
                     (placements + cash + immo − dettes), avec deux approximations SIGNALÉES (Option A + FX du jour). */}
                 {pastPrefixPoints.length > 0 && (
@@ -2209,44 +2182,96 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 />
 
             </Card>
-            {/* [FUTUR-MOBILE-PR2] Même `kpiGrid` (défini une seule fois plus haut), rendu ICI en plus
-                sur mobile — la position du haut est désactivée pour ce sous-onglet exactement pendant
-                que celle-ci est active (jamais les deux à la fois, voir le commentaire au site du haut). */}
-            {isNarrowViewport && kpiGrid}
             </div>
             )}
+        </div>
 
-            {/* Plan d'action : explications fusionnées + checklist hiérarchique.
-                PH4 — gated comme la courbe : pas de résultats tant que la projection n'est pas calculée. */}
-            {/* [PROJECTION-PERSIST] pendant la restauration, ne pas montrer l'invite (flash trompeur). */}
-            {futureSubTab === 'plan' && !curveVisible && !curveRestoring && (
-                <Card className="text-center">
-                    <div className="py-10 px-4 space-y-3 max-w-md mx-auto">
-                        <div className="text-3xl" aria-hidden="true">🗂️</div>
-                        <p className="text-meta text-ink-300 leading-snug">
-                            {isStale ? 'Tes paramètres ont changé — relance le calcul' : 'Calcule ta projection'} dans
-                            l'onglet <strong>Graphique</strong> pour voir ton plan d'action.
-                        </p>
-                    </div>
-                </Card>
+        {/* [FUTUR-NAV-TIROIRS] Les trois anciens sous-onglets, désormais en tiroir. `variant` suit
+            le même seuil que la mise en page : feuille du bas en colonne empilée, tiroir latéral
+            quand la barre latérale est visible. */}
+        <Drawer
+            isOpen={tiroirOuvert === 'hypotheses'}
+            onClose={() => setTiroirOuvert(null)}
+            variant={isBelowSidebarBreakpoint ? 'feuille' : 'lateral'}
+            title="Modifier les hypothèses"
+        >
+            <ProjectionControls
+                projection={projection}
+                updateProj={updateProj}
+                updateReturnRate={updateReturnRate}
+                runMC={runMC}
+                setRunMC={setRunMC}
+                isComputing={isComputing}
+                fireNumber={fireNumber}
+                liveCSVBalances={liveCSVBalances}
+                applyHistoricalRate={applyHistoricalRate}
+                realEstateGoals={realEstateGoals}
+                setRealEstateGoals={setRealEstateGoals}
+                config={config}
+            />
+            {/* [FUTUR-MOBILE-PR4] CTA collant en pied de tiroir (décision Marc 2026-09-10, adaptée) :
+                « aucun calcul sans geste » reste vrai — ce bouton reste le SEUL chemin qui déclenche
+                la révélation depuis ce tiroir sur téléphone. `changedHypothesesCount` dit CE QUI a
+                changé depuis le dernier calcul. Referme le tiroir au lieu de basculer d'onglet — la
+                courbe est déjà visible derrière. */}
+            {isNarrowViewport && (
+                <div className="sticky bottom-0 -mx-5 px-5 py-2.5 mt-3 border-t border-white/10 bg-[#0d1118]/95 backdrop-blur-sm">
+                    <button
+                        type="button"
+                        onClick={() => { revealCurve(); setTiroirOuvert(null); }}
+                        disabled={isComputing}
+                        aria-busy={isComputing}
+                        className="w-full min-h-[48px] rounded-card bg-primary text-dark font-bold text-body focus-ring disabled:opacity-50"
+                    >
+                        {isComputing
+                            ? 'Calcul en cours…'
+                            : changedHypothesesCount > 0
+                                ? `Recalculer la projection (${changedHypothesesCount} hypothèse${changedHypothesesCount > 1 ? 's' : ''} modifiée${changedHypothesesCount > 1 ? 's' : ''})`
+                                : 'Recalculer la projection'}
+                    </button>
+                </div>
             )}
-            {futureSubTab === 'plan' && curveVisible && (
+        </Drawer>
+
+        <Drawer
+            isOpen={tiroirOuvert === 'plan'}
+            onClose={() => setTiroirOuvert(null)}
+            variant={isBelowSidebarBreakpoint ? 'feuille' : 'lateral'}
+            title="Plan d'action"
+        >
+            {/* PH4 — gated comme la courbe : pas de résultats tant que la projection n'est pas
+                calculée. [PROJECTION-PERSIST] pendant la restauration, ne pas montrer l'invite. */}
+            {!curveVisible && !curveRestoring && (
+                <div className="py-10 px-4 space-y-3 max-w-md mx-auto text-center">
+                    <div className="text-3xl" aria-hidden="true">🗂️</div>
+                    <p className="text-meta text-ink-300 leading-snug">
+                        {isStale ? 'Tes paramètres ont changé — relance le calcul' : 'Calcule ta projection'} pour
+                        voir ton plan d'action.
+                    </p>
+                </div>
+            )}
+            {curveVisible && (
                 <div className="space-y-6">
                     <ProjectionExplains chartData={chartData} />
                     {/* C2 — Plan d'action HIÉRARCHIQUE (global → mois, drill-down au clic). */}
                     <ActionPlanDrilldown chartData={chartData} strategyName={allResults[0]?.strategyName} />
                 </div>
             )}
+        </Drawer>
 
-            {/* [REFONTE-NAV-L2b] Historique : évolution PASSÉE du patrimoine par compte (ex-Accueil).
-                Indépendant de la projection (pas gated par curveVisible : l'historique existe même
-                sans courbe calculée). Lazy → le pipeline ne se paie qu'à l'affichage. */}
-            {futureSubTab === 'historique' && (
-                <Suspense fallback={<Skeleton variant="chart" />}>
-                    <FutureHistorySection />
-                </Suspense>
-            )}
-            </TabPanel>
+        {/* [REFONTE-NAV-L2b] Historique : évolution PASSÉE du patrimoine par compte (ex-Accueil).
+            Indépendant de la projection (pas gated par curveVisible : l'historique existe même sans
+            courbe calculée). Lazy → le pipeline ne se paie qu'à l'affichage. */}
+        <Drawer
+            isOpen={tiroirOuvert === 'historique'}
+            onClose={() => setTiroirOuvert(null)}
+            variant={isBelowSidebarBreakpoint ? 'feuille' : 'lateral'}
+            title="Historique"
+        >
+            <Suspense fallback={<Skeleton variant="chart" />}>
+                <FutureHistorySection />
+            </Suspense>
+        </Drawer>
         </div>
     );
 };

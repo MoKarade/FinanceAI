@@ -48,14 +48,38 @@ function bandeaux(): Bandeau[] {
 describe('[A11Y-TABLIST-NO-PANEL] tout bandeau d\'onglets emprunte le motif partagé', () => {
     it('le scan voit les bandeaux RÉELS, et pas ceux dont on parle', () => {
         const vus = bandeaux().map((b) => b.chemin);
-        // Témoins : la primitive et le bandeau à habillage propre.
+        // Témoin : la primitive elle-même.
         expect(vus).toContain(SOURCE_DU_MOTIF);
-        expect(vus).toContain('components/FutureProjection.tsx');
+        // [FUTUR-NAV-TIROIRS] RÉSOLU (2026-09-21) : `FutureProjection.tsx` n'a plus de bandeau à
+        // habillage propre — barre latérale + tiroirs remplacent les sous-onglets. Le seul bandeau
+        // réel restant dans le dépôt est la primitive elle-même ; tout le reste passe par
+        // `<SubTabs>` (donc n'écrit jamais `role="tablist"` en clair). Ancienne assertion inversée,
+        // pas supprimée — un futur bandeau recopié ici doit être détecté, pas oublié.
+        expect(vus, 'un bandeau réel est réapparu hors de la primitive — passer par <SubTabs>')
+            .not.toContain('components/FutureProjection.tsx');
         // ⚠️ Contre-témoin, et c'est lui qui prouve le décommentage : `Profile.tsx` ÉCRIT
         // « role="tablist" » dans son en-tête pour expliquer d'où vient la primitive, alors qu'il
         // n'en rend aucun — il passe par `SubTabs`. Lu brut, il apparaîtrait ici.
         expect(vus, 'le scan lit les commentaires : il compte un bandeau qui n\'existe pas')
             .not.toContain('components/Profile.tsx');
+    });
+
+    it('anti-vacuité : le mécanisme (décommentage + regex) détecte un VRAI motif applicatif', () => {
+        // ⚠️ Sans témoin réel restant hors de la primitive, il faut prouver que le mécanisme lui-même
+        // fonctionne sur du code applicatif — pas seulement sur `SOURCE_DU_MOTIF`, qui pourrait par
+        // accident être le seul chemin qui marche. Fixture SYNTHÉTIQUE, jamais un fichier réel :
+        // un `role="tablist"` en dur, entouré d'un commentaire qui EN PARLE (le piège exact que ce
+        // fichier corrige) et d'un commentaire à apostrophe française (`UNE-APOSTROPHE-FRANCAISE-
+        // EST-UN-DELIMITEUR-DE-CHAINE`).
+        const fixtureReelle = `
+            // Ce composant N'utilise PAS role="tablist" — il passe par <SubTabs>.
+            export const Faux: React.FC = () => <div role="tablist">{/* un vrai attribut, pas une mention */}</div>;
+        `;
+        const decommente = stripCommentsJsx(fixtureReelle);
+        expect(/role="tablist"/.test(decommente), 'le scan ne trouve plus un motif applicatif réel').toBe(true);
+
+        const fixtureCommentaireSeul = `// Ce fichier ne rend plus de role="tablist", il passe par <SubTabs>.\nexport const Vide = () => null;`;
+        expect(/role="tablist"/.test(stripCommentsJsx(fixtureCommentaireSeul)), 'le scan compte un bandeau qui n\'existe pas').toBe(false);
     });
 
     it('chaque bandeau relie ses onglets à un panneau et se parcourt au clavier', () => {

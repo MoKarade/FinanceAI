@@ -74,7 +74,10 @@ test.describe('Futur mobile — Plan d\'action (PR5)', () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFutur(page);
         await revelerCourbe(page);
-        await page.getByRole('tab', { name: 'Plan d\'action' }).click();
+        // [FUTUR-NAV-TIROIRS] Plan d'action n'est plus un onglet : un bouton ouvre un tiroir
+        // (feuille du bas sur téléphone) qui porte ce contenu, inchangé.
+        await page.getByRole('button', { name: /^Plan/ }).click();
+        await expect(page.getByRole('dialog', { name: 'Plan d\'action' })).toBeVisible();
 
         const pourquoi = page.getByRole('button', { name: /Pourquoi/ }).first();
         await expect(pourquoi).toBeVisible({ timeout: 10_000 });
@@ -100,7 +103,9 @@ test.describe('Futur mobile — Historique (PR5)', () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFutur(page);
         await revelerCourbe(page);
-        await page.getByRole('tab', { name: 'Historique' }).click();
+        // [FUTUR-NAV-TIROIRS] Historique n'est plus un onglet : un bouton ouvre un tiroir.
+        await page.getByRole('button', { name: 'Historique' }).click();
+        await expect(page.getByRole('dialog', { name: 'Historique' })).toBeVisible();
         // Scope au groupe de pastilles (libellé « Affichage : ») — un sélecteur générique
         // `[aria-pressed]` matche aussi le bouton « Mode Discret » de la nav, hors sujet ici.
         const groupe = page.getByText('Affichage :').locator('..');

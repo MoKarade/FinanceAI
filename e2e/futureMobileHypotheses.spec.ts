@@ -1,8 +1,14 @@
 /**
- * Tests E2E — [FUTUR-MOBILE-PR4] Onglet Hypothèses mobile : ordre Mode → macro → rendements →
- * sections repliées (inflation par poste, risques, rejeu, avancés), CTA « Recalculer » collant
- * au-dessus de la nav, comptant les hypothèses modifiées. Ordre et grille DESKTOP inchangés
- * (mandat Marc « zéro changement visuel desktop », contrôle négatif systématique).
+ * Tests E2E — [FUTUR-MOBILE-PR4] Ordre Mode → macro → rendements → sections repliées (inflation
+ * par poste, risques, rejeu, avancés), CTA « Recalculer » collant en pied, comptant les hypothèses
+ * modifiées. Ordre et grille inchangés (mandat Marc « zéro changement visuel du contenu »).
+ *
+ * [FUTUR-NAV-TIROIRS] (2026-09-21) L'onglet Hypothèses n'existe plus : ce contenu s'ouvre dans un
+ * tiroir (`ui/Drawer.tsx`) déclenché par un bouton — feuille du bas sur téléphone/tablette, tiroir
+ * latéral sur desktop. Le CONTENU du formulaire (ProjectionControls) est inchangé ; seul le
+ * déclencheur et le conteneur changent. `ouvrirHypotheses` accepte les deux libellés du bouton
+ * (court « Hypothèses » en colonne empilée, complet « Modifier les hypothèses » dans la barre
+ * latérale) — le TITRE du tiroir, lui, est fixe des deux côtés.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { scriptBypassOnboarding, activateTestMode } from './helpers/setup';
@@ -24,7 +30,8 @@ async function ouvrirFuturEtReveler(page: Page) {
 }
 
 async function ouvrirHypotheses(page: Page) {
-    await page.getByRole('tab', { name: 'Hypothèses' }).click();
+    await page.getByRole('button', { name: /Hypothèses/ }).click();
+    await expect(page.getByRole('dialog', { name: 'Modifier les hypothèses' })).toBeVisible();
 }
 
 test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
@@ -79,13 +86,14 @@ test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
         await horizonField.blur();
         await expect(cta).toHaveText(/Recalculer la projection \(1 hypothèse modifiée\)/);
 
-        // Contrôle négatif desktop : le CTA collant n'existe PAS (l'utilisateur voit déjà la courbe).
+        // Contrôle négatif desktop : le CTA collant n'existe PAS (l'utilisateur voit déjà la courbe
+        // derrière le tiroir latéral).
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.waitForTimeout(300);
         await expect(page.getByRole('button', { name: /Recalculer la projection/ })).toHaveCount(0);
     });
 
-    test('[FUTUR-MOBILE-PR4] CTA collant : le clic recalcule ET revient à l\'onglet Projection', async ({ page }) => {
+    test('[FUTUR-MOBILE-PR4] CTA collant : le clic recalcule ET referme le tiroir', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
         await ouvrirHypotheses(page);
@@ -93,8 +101,9 @@ test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
         await horizonField.fill('40');
         await horizonField.blur();
         await page.getByRole('button', { name: /Recalculer la projection/ }).click();
-        // De retour sur l'onglet Projection, la courbe reste visible (recalcul déclenché).
-        await expect(page.getByRole('tab', { name: 'Projection', selected: true })).toBeVisible();
+        // [FUTUR-NAV-TIROIRS] La courbe n'était jamais cachée (elle est TOUJOURS affichée derrière
+        // le tiroir) : le clic n'a donc plus besoin de « revenir » nulle part, seulement de refermer.
+        await expect(page.getByRole('dialog', { name: 'Modifier les hypothèses' })).toBeHidden();
         await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
     });
 });

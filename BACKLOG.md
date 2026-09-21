@@ -580,7 +580,7 @@
   avant donnerait un périmètre DEVINÉ, pas mesuré. La garde du mode discret l'a confirmé une fois de
   plus : son ticket annonçait 38 sites, la mesure alias-aware en a trouvé d'autres et en a réfuté. **4b** mode discret formulaires · **4c** contraste · **4d** clavier /
   focus / cibles tactiles (indépendant des outils, peut partir en parallèle) ·
-  **4e** `[A11Y-SUBTABS-FUTUR]` ⚠️ **APRÈS** la vague 8b (même fichier, 2 026 lignes).
+  **4e** ✅ `[A11Y-SUBTABS-FUTUR]` — résolu 2026-09-21, voir archive.
 - [ ] **Vague 5 — IA/Anthropic** : un seul lot, une seule surface (`services/claude.ts` + `mcp/`).
 - [ ] **Vague 7 — Fintable/sync** : ✅ `[FINTABLE-INVESTMENTS-MUET]` (PR #830) · ✅ `[FINTABLE-SOURCE-TAG]` (lot 130). Reste : `[FINTABLE-BACKFILL-HISTORY]` (prérequis Marc), `[DEFAULTS-DRIFT…]` fermé caduque.
 - [ ] **Vague 8 — Dette technique** : **8a** god-fonctions moteur · **8b** god-files UI, UN fichier à
@@ -1367,22 +1367,17 @@
     2026-07-31 par la PR #549, donc AVANT la rédaction du plan, qui ne consacrait au Lot 7 qu'une
     ligne sans contenu. Classe `BACKLOG-STALE-TICKET`.
     → remplacé par le découpage de **Profil** (seul volet vivant, cf. `[UI-TABS-RICH]`).
-- [ ] **`[A11Y-SUBTABS-FUTUR]`** (M — **RE-CHIFFRÉ 2026-08-17, plus gros qu'annoncé**) —
-  `FutureProjection` est le 5e écran à sous-onglets et le seul non converti à `<SubTabs>`.
-  **Deux obstacles, mesurés** :
-  1. **Habillage différent** (emojis au lieu d'icônes, autre fond, autres espacements) → le convertir
-     tel quel changerait l'apparence de l'écran principal de Marc. Solution : une VARIANTE
-     d'habillage dans `<SubTabs>`, pas un alignement forcé.
-  2. ⚠️ **Obstacle STRUCTUREL, découvert en tentant la conversion** : ses 4 onglets ne sont pas
-     rendus par 4 blocs mais par **SEPT blocs conditionnels dispersés** — `graph` en 3 morceaux
-     (`curveRestoring`, `!curveVisible`, `curveVisible`), `plan` en 2, plus `params` et
-     `historique`. Un `role="tabpanel"` par bloc produirait **plusieurs panneaux avec le même `id`
-     pour un seul onglet** — un balisage ARIA invalide, donc pire que l'actuel.
-     La conversion exige donc de REGROUPER 7 blocs en 4 panneaux dans un fichier de ~2 000 lignes.
-  **C'est un refactor à part entière de l'écran principal**, pas un habillage : à faire dans une PR
-  DÉDIÉE, avec les tests de l'écran en filet. Chiffré M, pas S.
-  ⚠️ En attendant, il reste épinglé dans le CLIQUET de `tests/components/subTabsAria.test.tsx` —
-  exception listée et justifiée, jamais silencieuse.
+- [x] **`[A11Y-SUBTABS-FUTUR]`** — **RÉSOLU 2026-09-21 par `[FUTUR-NAV-TIROIRS]`, autrement que prévu.**
+  Le ticket proposait de CONVERTIR le bandeau à 4 onglets vers `<SubTabs>` (bloqué par l'obstacle
+  structurel ci-dessous, jamais résolu tel quel). Le lot qui a réglé le sujet a plutôt RETIRÉ le
+  bandeau : Projection est désormais toujours affichée (plus un onglet parmi d'autres), et
+  Hypothèses/Plan d'action/Historique s'ouvrent chacun dans un tiroir (`ui/Drawer.tsx`) au lieu de
+  basculer un panneau. `FutureProjection.tsx` n'a donc plus AUCUN `role="tablist"` — l'exception du
+  cliquet de `tests/components/subTabsAria.test.tsx` (`EXCEPTIONS_CONNUES`) est retombée à `[]`.
+  L'obstacle structurel qui bloquait la conversion (7 blocs conditionnels dispersés pour 4 onglets,
+  un `role="tabpanel"` par bloc aurait produit des `id` en double) n'avait donc plus besoin d'être
+  résolu : le contournement de fond était de ne plus avoir de panneaux exclusifs du tout.
+  → déménagé vers `docs/BACKLOG_ARCHIVE.md`.
 
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le
@@ -1890,8 +1885,9 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   `FutureProjection` de l'ex-`[DETTE-GODFILES]`) — ⚠️ **taille re-mesurée le 2026-09-07 : 2 207 lignes** (2 026 le
   2026-08-19, pas 1 820 : le fichier a GROSSI de 12 % entre deux tickets qui le décrivaient. C'est la
   démonstration que l'agrégat périmé ne servait à rien.
-  ⚠️ **À faire AVANT `[A11Y-SUBTABS-FUTUR]`**, qui est un second refactor du MÊME fichier : les
-  mener en parallèle garantit un conflit sur le plus gros fichier du dépôt.
+  ⚠️ La contrainte de séquencement avec `[A11Y-SUBTABS-FUTUR]` (deux refactors du même fichier) est
+  caduque : ce dernier est résolu (2026-09-21), et autrement qu'en touchant à la structure interne
+  du fichier — il reste donc entier à découper ici.
   Détail historique (mesure 1 820 l.) : `FutureProjection.tsx` **1 820 lignes**, 91 fonctions
   locales, 15 `useMemo`, 6 `useEffect`. Combine : config séries + zoom/tooltip + marqueurs événements
   + persistance localStorage. **Correctif (découpe sans changement comportement)** : (1) extraire config

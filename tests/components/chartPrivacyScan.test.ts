@@ -11,11 +11,18 @@
  *
  * CE QUE LA GARDE EXIGE :
  *  1. tout `<YAxis>` non masqué (`hide`) porte une marque de mode discret ;
- *  2. toute ligne de `tickFormatter=` / `formatter={` qui manipule des $ porte cette même marque.
+ *  2. toute ligne de `tickFormatter=` / `formatter={` / `shape={` qui manipule des $ porte cette
+ *     même marque.
  *
  * ÉCHAPPATOIRE assumée : un axe qui ne montre PAS d'argent (%, âge, nombre d'unités) se déclare
  * avec le jeton `AXE-NON-MONETAIRE` en commentaire — explicite, greppable, et il force à se poser
  * la question au lieu de désactiver la garde.
+ *
+ * [FUTUR-AXE-Y-MINIMAL, 2026-09-21] `shape=` AJOUTÉ au motif : le badge flottant « Aujourd'hui »
+ * (`ReferenceDot shape={<TodayValueBadge value={…}/>}`) est un TROISIÈME endroit où un montant peut
+ * fuir, après l'axe et le tooltip — ni `tickFormatter`, ni `formatter`, ni `content=`. Ce lot masque
+ * la valeur AVANT de la passer en prop (`isPrivacyMode ? '***' : formatCompactCAD(…)`), donc rien à
+ * corriger ici, mais le TROU du scan restait ouvert pour le prochain badge qui ne le ferait pas.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -53,7 +60,7 @@ function formatterBlocks(src: string): Array<{ text: string; line: number; close
     const lines = src.split('\n');
     const blocks: Array<{ text: string; line: number; closed: boolean }> = [];
     lines.forEach((line, i) => {
-        const at = line.search(/tickFormatter=\{|formatter=\{/);
+        const at = line.search(/tickFormatter=\{|formatter=\{|shape=\{/);
         if (at < 0) return;
         let depth = 0, text = '', done = false;
         for (let j = i; j < lines.length && !done; j++) {

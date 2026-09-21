@@ -107,7 +107,7 @@ const CURVE_FIELDS: ReadonlySet<string> = new Set([
  *  plus diverger sans casser le typecheck. `Partial<>` reste la clé : un champ que le mois n'émet
  *  pas doit s'afficher « — », jamais « 0 $ ». */
 import { Tab as TabEnum } from '../types';
-import { ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
+import { ClickableEventIcon, RefLineLabel, TodayValueBadge } from './projection/ProjectionTooltip';
 import { PanneauJour } from './projection/PanneauJour';
 import { detteSousZero, COULEUR_DETTE, detteLevierSousZero, COULEUR_LEVIER, LIBELLE_LEVIER } from './future/detteSerie';
 import { NotesGraphe, notesGraphe } from './future/notesGraphe';
@@ -1792,6 +1792,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     serait pas interprétable. Rend `null` si la comparaison n'a pas de sens. */}
                 <ForecastAccuracyBadge accuracy={forecastAccuracy} />
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
+                {/* [FUTUR-AXE-Y-MINIMAL] `-mx-6 px-1` : déborde du padding horizontal de la <Card>
+                    parente (p-6, 24px de chaque côté) — Marc : « faut qu'elle prenne toute la
+                    largeur de l'écran ». Neutralisé en plein écran (index.css, .chart-fullscreen). */}
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
@@ -1802,7 +1805,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     // Le hook comptait déjà sur sa focusabilité pour restituer le focus.
                     tabIndex={0}
                     onKeyDown={handleChartKeyDown}
-                    className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
+                    className={`chart-fullscreen relative w-full -mx-6 px-1 h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
                     aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Le détail du jour visé est décrit dans le panneau situé juste sous la courbe ; les mêmes données sont aussi lisibles sous forme de tableau et de liste de jalons. À la souris : survol = aperçu, clic = épingle le jour dans le panneau, molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = épingle le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans le panneau, Échap = relâche."
                 >
@@ -1874,7 +1877,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 }}
                             />
 
-                            <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
+                            {/* [FUTUR-AXE-Y-MINIMAL] Marc, maquettes E2+E4 choisies : plus de chiffres sur
+                                l'axe Y — `hide` retire aussi la gouttière (~60px) qu'il réservait, même
+                                masqué. `domain` reste explicite : recharts a encore besoin de l'échelle
+                                pour placer les <ReferenceLine>/<ReferenceDot> et les repères de
+                                <CartesianGrid> (3 lignes de grille, discrètes, restent visibles). La
+                                valeur exacte vit désormais dans le badge « Aujourd'hui » (ci-dessous) et
+                                le panneau du jour — jamais sur l'axe. */}
+                            <YAxis hide domain={['auto', 'auto']} />
 
                             {pastPrefixPoints.length > 0 && (
                                 <ReferenceArea
@@ -1967,6 +1977,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
                             {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
                             {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
+
+                            {/* [FUTUR-AXE-Y-MINIMAL] Badge flottant sur le POINT du jour (maquette E2) :
+                                rendu APRÈS les aires/lignes (et non avec les autres ReferenceLine plus
+                                haut) pour se peindre PAR-DESSUS elles — un badge dessiné avant la pile
+                                colorée en était masqué (mesuré à l'écran, invisible derrière l'aire
+                                verte du CELI). `pointAncre` est la MÊME ancre que le panneau du jour
+                                au repos (`[FUTUR-PANNEAU-FIXE]`), jamais une valeur recalculée ici. Pas
+                                de badge tant que l'ancre n'existe pas ou n'est pas finie : no-fake-data. */}
+                            {isVisible('aujourdhui') && pointAncre && Number.isFinite(pointAncre.NetWorth) && (
+                                <ReferenceDot
+                                    x={isDailyCurve && todayAxisX !== null ? todayAxisX : todayMonthIndex}
+                                    y={pointAncre.NetWorth}
+                                    r={0}
+                                    shape={<TodayValueBadge value={isPrivacyMode ? '***' : formatCompactCAD(pointAncre.NetWorth)} />}
+                                />
+                            )}
 
                             {/* [Audit a11y #599, MED] UNE seule séquence triée par date : vie et flux
                                 étaient rendus en DEUX passes (tous les « vie » chronologiques, puis

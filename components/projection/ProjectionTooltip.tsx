@@ -118,6 +118,34 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
     );
 };
 
+// [FUTUR-AXE-Y-MINIMAL] Badge flottant ancré sur le POINT « aujourd'hui » de la courbe (pas sur la
+// ligne verticale de référence, déjà étiquetée par `RefLineLabel` plus haut dans le graphe) —
+// rendu comme `shape` d'un `ReferenceDot`, recharts y injecte `cx`/`cy` en pixels. Remplace
+// l'ancien axe Y numérique (retiré, `[FUTUR-AXE-Y-MINIMAL]`) pour LA seule valeur qui compte au
+// premier regard : la valeur nette d'aujourd'hui, déjà calculée ailleurs (`pointAncre.NetWorth`,
+// même source que le panneau du jour) — jamais recalculée ici.
+export const TodayValueBadge = (props: { cx?: number; cy?: number; value?: string }) => {
+    const { cx, cy, value } = props;
+    if (typeof cx !== 'number' || typeof cy !== 'number' || !value) return null;
+    const fontSize = 12;
+    const w = Math.round(value.length * fontSize * 0.58 + 20);
+    const h = 22;
+    // Tige verticale (patron `ClickableEventIcon`) : lève le badge AU-DESSUS de la zone où les
+    // pastilles d'événement s'empilent (elles montent par paliers de 24px depuis le point) —
+    // sans elle, mesuré à l'écran, le badge se peignait dans le même espace que la 1re pastille.
+    const dy = -46;
+    const rectX = cx + 6;
+    const rectY = cy + dy - h / 2;
+    return (
+        <g style={{ pointerEvents: 'none' }}>
+            <line x1={cx} y1={cy} x2={cx} y2={cy + dy} stroke="#ffffff" strokeOpacity={0.45} strokeWidth={1} />
+            <circle cx={cx} cy={cy} r={4} fill="#ffffff" stroke="#0B0E14" strokeWidth={1.5} />
+            <rect x={rectX} y={rectY} width={w} height={h} rx={11} fill="#0B0E14" fillOpacity={0.92} stroke="#ffffff" strokeOpacity={0.55} />
+            <text x={rectX + w / 2} y={rectY + h / 2 + 0.5} textAnchor="middle" dominantBaseline="central" fill="#ffffff" fontSize={fontSize} fontWeight="bold">{value}</text>
+        </g>
+    );
+};
+
 // G2 — label de ReferenceLine en pastille ancrée au bord (au lieu d'un texte
 // centré qui passe par-dessus les aires et devient illisible). Ligne horizontale
 // (Objectif FIRE) → pill en haut à droite ; ligne verticale (Aujourd'hui) → pill

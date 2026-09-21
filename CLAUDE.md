@@ -1541,6 +1541,27 @@ n'est pas réécrire un récit.
   dépassait l'app (45 917), donc c'est lui qui tourne du code d'avant `balanceAsOf`, et hubperso en
   hérite (`DEUX-CHIFFRES-QUI-NE-MESURENT-PAS-LA-MEME-CHOSE-NE-SE-COMPARENT-PAS`).
 
+- ⚠️⚠️ **Publier les DEUX TERMES d'une soustraction oblige à les dériver d'UN SEUL appel**
+  (2026-09-21, Marc : « je veux voir ma somme totale d'argent et ma somme totale de dettes,
+  partout ») : dès que `A`, `B` et `A − B` sont sur le même écran, l'utilisateur fait l'addition —
+  et trois chiffres produits par trois appels indépendants se recomposent jusqu'au premier
+  correctif appliqué à un seul, puis cessent EN SILENCE. Le geste n'est pas d'ajouter deux calculs
+  à côté du troisième : c'est de faire DÉRIVER le troisième des deux autres (`computePresentTermes`
+  → `computePresentNetWorth` ; `presentTermesOfGoal` → `presentEquityOfGoal`). L'identité devient
+  vraie PAR CONSTRUCTION, gardes de corruption comprises. ⚠️⚠️ **Le choix de PÉRIMÈTRE de
+  l'utilisateur détermine l'autre terme, et il ne le sait pas** : Marc a choisi « dettes tout
+  compris + le détail » (contre ma recommandation), ce qui OBLIGE les avoirs à porter la valeur
+  BRUTE du bien — l'équité d'un côté et l'hypothèque de l'autre la retrancherait deux fois. Une
+  réponse produit ferme un choix et en OUVRE un autre, technique. ⚠️ La garde qui compte est
+  l'IDENTITÉ, et il lui faut un cas où elle peut être FAUSSE (un bien à 400 k$ pour 300 k$
+  d'hypothèque, plus un bien à équité NÉGATIVE) : sans immobilier elle est vraie quoi qu'on câble.
+  ⚠️ Même piège sur la carte hub, dont la fixture n'a aucune dette — « avoirs − dettes = net » y
+  est vrai par ACCIDENT, d'où un cas ENDETTÉ dédié. ⚠️ Un sous-titre qui porte un MONTANT est une
+  donnée financière (`privateSublabel`), et il ne s'affiche que s'il y a quelque chose à détailler.
+  ⚠️ Corollaire routé : le patrimoine net du BANDEAU ajoute l'équité immobilière, celui du snapshot
+  MCP/hubperso NON — invisible tant qu'il n'y a pas de bien, faux dès l'achat
+  (`PUBLIER-DEUX-TERMES-D-UNE-SOUSTRACTION-OBLIGE-A-LES-DERIVER-D-UN-SEUL-APPEL`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

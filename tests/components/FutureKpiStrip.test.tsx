@@ -15,7 +15,7 @@
  *  - les tuiles du Lot 1 (liquidités, épargne/mois) toujours rendues.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, cleanup } from '@testing-library/react';
 import { FutureKpiStrip } from '../../components/FutureKpiStrip';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD, formatPercent } from '../../utils/format';
@@ -48,8 +48,20 @@ const underwaterGoal: RealEstateGoal = {
     ...goal, id: 'g2', name: 'Chalet', currentValue: 300_000, mortgageBalance: 400_000,
 };
 
+// [KPI-AVOIRS-DETTES] Les deux termes sont REQUIS : le compilateur a énuméré les deux sites
+// (`TabRouter` et ce fichier) plutôt que de laisser un défaut optionnel les rendre muets
+// (`UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`, appliqué à une prop).
+// ⚠️ Les valeurs ne sont pas quelconques : `62 000 − 12 000 = 50 000` = le `netWorth` passé, donc
+// l'identité que les tuiles affichent est VRAIE dans la fixture. Des nombres incohérents ici
+// feraient passer une garde d'identité qui ne peut plus rien mesurer.
 const renderStrip = () =>
-    render(<FutureKpiStrip netWorth={50_000} liquidity={12_000} monthlySavings={800} />);
+    render(<FutureKpiStrip
+        netWorth={50_000}
+        liquidity={12_000}
+        monthlySavings={800}
+        avoirsHorsImmo={62_000}
+        dettesHorsImmo={12_000}
+    />);
 
 /** La tuile entière (conteneur) à partir de son libellé.
  *  ⚠️ Les montants s'assertent via `textContent.toContain(formatCAD(...))`, PAS `getByText` :
@@ -148,5 +160,88 @@ describe('FutureKpiStrip — tuiles du Lot 1 conservées', () => {
         renderStrip();
         expect(tile('Liquidités').textContent).toContain(formatCAD(12_000));
         expect(tile('Épargne / mois').textContent).toContain(`+${formatCAD(800)}`);
+    });
+});
+
+/* ───────────────────────── [KPI-AVOIRS-DETTES] les deux TERMES du patrimoine ───────────────────────── */
+//
+// Marc, 2026-09-21 : « je veux voir genre ma somme total d'argent et ma somme total de dette /
+// ce que je dois (partout dans financeai et dans hubperso) ». Né d'un écart qu'il a constaté
+// lui-même : Fintable additionne des SOLDES DE COMPTES (277 230 $ chez lui), l'app publie une
+// VALEUR NETTE (230 210 $) — et les deux TERMES de la soustraction n'étaient visibles nulle part.
+//
+// ⚠️⚠️ CE QUE CES GARDES TIENNENT : `avoirs − dettes = patrimoine net`, À L'ŒIL, sur la même
+// rangée. Marc a signalé QUATRE fois en deux jours des chiffres d'un même écran qui ne se
+// recomposent pas ; trois tuiles qui divergent rouvriraient exactement cette porte.
+describe('[KPI-AVOIRS-DETTES] avoirs et dettes, à côté du net qu’ils composent', () => {
+    /** Les trois montants affichés, lus dans le DOM et re-convertis en nombres. */
+    const montants = () => {
+        const nb = (label: string): number => {
+            const txt = tile(label).textContent ?? '';
+            const m = txt.match(/-?[\d   ]+(?:,\d+)?\s*\$/);
+            if (!m) throw new Error(`Aucun montant dans la tuile « ${label} » : ${txt}`);
+            return Number(m[0].replace(/[^\d,-]/g, '').replace(',', '.'));
+        };
+        return { avoirs: nb('Total avoirs'), dettes: nb('Dettes'), net: nb('Patrimoine net') };
+    };
+
+    it('sans immobilier : les trois tuiles se recomposent', () => {
+        renderStrip();
+        const { avoirs, dettes, net } = montants();
+        expect(avoirs - dettes).toBe(net);
+        // Anti-vacuité : une dette NULLE rendrait l'identité vraie par accident.
+        expect(dettes).toBeGreaterThan(0);
+        expect(avoirs).toBeGreaterThan(net);
+    });
+
+    it('AVEC immobilier : l’hypothèque compte dans les dettes ET la valeur BRUTE dans les avoirs', () => {
+        // ⚠️ LE cas qui discrimine, et le piège que Marc a créé en tranchant « dettes tout compris
+        // avec le détail » : si les dettes incluent l'hypothèque mais que les avoirs portent
+        // l'ÉQUITÉ (valeur − hypothèque), l'hypothèque est retranchée DEUX FOIS et les trois
+        // chiffres cessent de se recomposer. Bien : 400 000 $ de valeur, 300 000 $ d'hypothèque.
+        useFinanceStore.setState({ realEstateGoals: [goal] });
+        renderStrip();
+        const { avoirs, dettes, net } = montants();
+        expect(avoirs - dettes).toBe(net);
+        // Les deux termes ont bien AUGMENTÉ du bien, chacun de son côté.
+        expect(avoirs).toBe(62_000 + 400_000);
+        expect(dettes).toBe(12_000 + 300_000);
+        // …et le net, lui, n'a bougé que de l'ÉQUITÉ (100 000 $).
+        expect(net).toBe(50_000 + 100_000);
+    });
+
+    it('le DÉTAIL de l’hypothèque n’apparaît que s’il y en a une', () => {
+        // Marc a demandé « un total, et le détail ». Un « dont 0 $ d'hypothèque » permanent serait
+        // du décor (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
+        renderStrip();
+        expect(tile('Dettes').textContent).not.toMatch(/hypoth/i);
+
+        cleanup();
+        useFinanceStore.setState({ realEstateGoals: [goal] });
+        renderStrip();
+        const t = tile('Dettes');
+        expect(t.textContent).toMatch(/hypoth/i);
+        expect(t.textContent).toContain(formatCAD(300_000));
+    });
+
+    it('le détail de l’hypothèque est MASQUÉ en mode discret — c’est un montant', () => {
+        // ⚠️ Un sous-titre qui porte un montant est une donnée financière : le laisser nu à côté
+        // d'une valeur masquée est exactement le finding a11y/privacy #644.
+        useFinanceStore.setState({ realEstateGoals: [goal], isPrivacyMode: true });
+        renderStrip();
+        expect(tile('Dettes').textContent).not.toContain(formatCAD(300_000));
+        // Anti-vacuité : hors mode discret, il EST là (cas ci-dessus) — et le LIBELLÉ, lui, reste.
+        expect(tile('Dettes').textContent).toMatch(/Dettes/);
+    });
+
+    it('un bien à équité NÉGATIVE ne casse pas l’identité', () => {
+        // 300 000 $ de valeur pour 400 000 $ d'hypothèque : les avoirs montent de 300 000, les
+        // dettes de 400 000, et le net BAISSE de 100 000. Une implémentation qui clamperait l'un
+        // des deux termes à zéro « pour éviter un négatif » romprait la recomposition.
+        useFinanceStore.setState({ realEstateGoals: [underwaterGoal] });
+        renderStrip();
+        const { avoirs, dettes, net } = montants();
+        expect(avoirs - dettes).toBe(net);
+        expect(net).toBe(50_000 - 100_000);
     });
 });

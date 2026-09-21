@@ -16104,3 +16104,64 @@ variation d'une grandeur suffit à désigner lequel de deux producteurs est pér
 ligne de leur code — et `hubperso` étant alimenté par ce même serveur, il héritait du même retard.
 
 ---
+
+## `PUBLIER-DEUX-TERMES-D-UNE-SOUSTRACTION-OBLIGE-A-LES-DERIVER-D-UN-SEUL-APPEL` (2026-09-21)
+
+**Marc : « je veux voir genre ma somme total d'argent et ma somme total de dette / ce que je dois
+(partout dans financeai et dans hubperso) ».** Demande simple en apparence — deux chiffres déjà
+calculés, à afficher. Ce qu'elle cache est une contrainte d'INTÉGRITÉ.
+
+Dès que `A`, `B` et `A − B` sont sur le MÊME écran, l'utilisateur fait l'addition. Elle doit tomber
+juste — et Marc a signalé **quatre fois en deux jours** des chiffres d'un même écran qui ne se
+recomposent pas (carte hub, tuile « Variation 30 j », infobulle Futur, bases du graphe). **Trois
+chiffres produits par trois appels indépendants se recomposent tant que personne ne touche à la
+composition, puis cessent, en silence, au premier correctif appliqué à un seul**
+(`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`).
+
+**Le geste :** ce n'est pas d'ajouter deux calculs à côté du troisième, c'est de faire DÉRIVER le
+troisième des deux autres. Deux fois dans ce lot :
+- `computePresentTermes` rend `{ avoirs, dettes }`, et `computePresentNetWorth` — qui EXISTAIT et
+  faisait la soustraction lui-même — en dérive ;
+- `presentTermesOfGoal` rend `{ valeur, hypotheque }`, et `presentEquityOfGoal` en dérive.
+
+L'identité devient vraie **par construction**, y compris sur les entrées corrompues : les gardes
+(non-fini, `isOwned === false`, bien inactif) s'appliquent aux mêmes valeurs que celles publiées, et
+les deux termes tombent à zéro ENSEMBLE.
+
+⚠️⚠️ **Le choix de l'utilisateur sur le PÉRIMÈTRE détermine l'autre terme, et il ne le sait pas.**
+J'ai posé la question « l'hypothèque compte-t-elle dans ce que je dois ? » en recommandant « hors
+hypothèque » (parce que le patrimoine net compte déjà l'immobilier en ÉQUITÉ, donc l'identité
+tombait juste sans rien changer). Marc a choisi **« un total tout compris, et le détail »** — ce qui
+est plus intuitif, et ce qui **oblige les avoirs à porter la valeur BRUTE du bien**. Mettre
+l'équité d'un côté et l'hypothèque de l'autre retrancherait l'hypothèque DEUX fois. La bonne
+nouvelle, mesurée avant d'accepter : les deux termes se dérivent de ce qui est déjà calculé, sans
+toucher au moteur. **Une réponse produit ferme un choix et en OUVRE un autre, technique** — le
+second est à moi, mais il doit être vérifié, pas supposé.
+
+⚠️ **La garde qui compte n'est pas « la tuile affiche X », c'est l'IDENTITÉ**, et elle a besoin
+d'un cas où elle peut être FAUSSE : un bien à 400 000 $ de valeur pour 300 000 $ d'hypothèque. Sur
+un dossier sans immobilier, `avoirs − dettes = net` est vrai quoi qu'on câble. Ajouté aussi un bien
+à équité **NÉGATIVE** (300 000 / 400 000) : une implémentation qui clamperait un terme à zéro « pour
+éviter un négatif » romprait la recomposition, et c'est une correction que quelqu'un tentera.
+
+⚠️ **Même piège sur la carte hub, en pire** : sa fixture n'a aucune dette, donc « avoirs − dettes =
+valeur nette » y est vrai **par accident** (avoirs = net). Un câblage publiant `netWorth` en guise
+d'avoirs et `0` en guise de dettes passait le test. D'où un cas ENDETTÉ dédié
+(`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`), et la perturbation le prouve.
+
+⚠️ **Un sous-titre qui porte un MONTANT est une donnée financière.** « dont 300 000 $ d'hypothèque »
+passe par `privateSublabel` : le laisser nu à côté d'une valeur masquée est le finding a11y/privacy
+#644, re-commis. Et il ne s'affiche QUE s'il y a une hypothèque — « dont 0 $ » en permanence serait
+du décor (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
+
+⚠️ Corollaire trouvé en câblant : le patrimoine net du BANDEAU ajoute l'équité immobilière, celui du
+snapshot MCP / hubperso NON. Les deux coïncident **tant qu'il n'y a pas de bien** — donc c'est
+invisible aujourd'hui et faux le jour de l'achat. **Deux surfaces qui prétendent publier la même
+grandeur doivent être comparées sur un état qui les SÉPARE**, jamais sur l'état courant
+(`[NW-IMMO-ABSENT-DU-HUB]`, routé : corriger déplace un chiffre publié).
+
+⚠️ Et `vitest` NE TYPECHECK PAS, re-payé dans le même lot : mes deux assertions d'identité sur la
+carte hub étaient VERTES pendant que `tsc` refusait l'arithmétique (`HubMetric.value` est
+`string | number` au contrat). Les vérifs ciblées se relancent **après la DERNIÈRE édition**.
+
+---

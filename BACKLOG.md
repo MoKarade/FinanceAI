@@ -139,6 +139,18 @@
   (`role="status"`, comme le refus d'origine incohérente deux lignes plus bas) : « Le lien à {lie} est
   ignoré tant que le taux n'est pas à 0 % — le solde n'est pas suivi. »
 
+- [ ] 🟠 **`[NW-IMMO-ABSENT-DU-HUB]`** (S, **découvert en livrant `[KPI-AVOIRS-DETTES]`**) — le
+  patrimoine net du BANDEAU de l'app AJOUTE l'équité immobilière (`FutureKpiStrip` : `netWorth +
+  realEstateEquity`), celui du **snapshot MCP / hubperso** ne l'ajoute PAS
+  (`services/financialSnapshot.ts` : `computePresentNetWorth(...)` seul, aucun `realEstateGoals`).
+  Les deux coïncident tant qu'il n'y a pas de bien — **c'est le cas de Marc aujourd'hui**, et c'est
+  pour ça que personne ne l'a vu. Le jour de son achat (2029 dans sa projection), hubperso
+  affichera une valeur nette inférieure à celle de son app, de toute son équité. ⚠️ Même classe que
+  l'écart Fintable/app qu'il vient de signaler : **deux chiffres qui prétendent mesurer la même
+  chose et ne se recomposent pas**. ⚠️ Corriger côté snapshot DÉPLACE un chiffre money-critical
+  publié (hub + prompts IA + `get_financial_overview`) → plan-first, et mesurer d'abord si d'autres
+  consommateurs comptent sur la convention actuelle.
+
 - [ ] 🔴 **`[COTATIONS-EUROPE-PERIMEES]`** (M, money-critical d'AFFICHAGE, **signalé par la mesure
   du 2026-09-21**) — le panneau du jour de Marc affiche « **prix J−59** » : les cours de ses titres
   ont 59 jours. MESURÉ sur ses 12 positions réelles : **55,8 % du portefeuille est coté en Europe**
@@ -152,7 +164,7 @@
   de cotations qui couvre Euronext/Xetra, ou accepter et DIRE que le passé européen est figé. →
   décision Marc (une source payante est un abonnement, ce que le profil du dépôt exclut).
 
-- [ ] 🟠 **`[KPI-AVOIRS-DETTES]`** (M, **cadré avec Marc le 2026-09-21**) — « je veux voir genre ma
+- [x] ✅ **`[KPI-AVOIRS-DETTES]`** (M, **cadré avec Marc le 2026-09-21**, LIVRÉ le jour même) — « je veux voir genre ma
   somme totale d'argent et ma somme totale de dette / ce que je dois (partout dans financeai et
   dans hubperso) ». Né de l'écart Fintable/app : Fintable additionne des SOLDES (277 230 $), l'app
   publie une VALEUR NETTE (230 210 $), et les deux termes n'étaient visibles nulle part ensemble.

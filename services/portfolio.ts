@@ -286,6 +286,44 @@ export const computePresentNetWorth = (
   /** Cf. `computeTotalDebt` — REQUIS pour la même raison. */
   aujourdhuiIso: string | null,
 ): number => {
-  return computeGrossAssets(initialBalances, transactions, assets, fxRates, ecartAutorite)
-       - computeTotalDebt(debts, aujourdhuiIso, transactions);
+  const { avoirs, dettes } = computePresentTermes(
+    initialBalances, transactions, assets, fxRates, debts, ecartAutorite, aujourdhuiIso,
+  );
+  return avoirs - dettes;
 };
+
+/**
+ * [KPI-AVOIRS-DETTES] Les DEUX TERMES du patrimoine net présent, hors immobilier.
+ *
+ * Marc, 2026-09-21 : « je veux voir ma somme totale d'argent et ma somme totale de dettes /
+ * ce que je dois (partout dans financeai et dans hubperso) ». Né d'un écart qu'il a vu lui-même :
+ * Fintable additionne des SOLDES DE COMPTES (277 230 $ chez lui), l'app publie une VALEUR NETTE
+ * (230 210 $) — et les deux TERMES de la soustraction n'étaient visibles nulle part ensemble.
+ *
+ * ⚠️⚠️ POURQUOI `computePresentNetWorth` EN DÉRIVE au lieu de garder sa propre soustraction :
+ * l'écran doit tenir `avoirs − dettes = patrimoine net` À L'ŒIL, sur la même rangée de tuiles.
+ * Trois chiffres produits par trois appels indépendants se recomposent tant que personne ne touche
+ * à la composition — puis, au premier correctif appliqué à un seul, ils cessent, en silence
+ * (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`). Ici l'identité est vraie PAR CONSTRUCTION, y
+ * compris sur les entrées corrompues : les gardes de `computeGrossAssets` et `computeTotalDebt`
+ * s'appliquent aux mêmes valeurs que celles publiées.
+ * ⚠️ « Deux chiffres d'un même écran qui ne se recomposent pas, c'est une mesure » — Marc l'a
+ * signalé QUATRE fois en deux jours (carte hub, tuile Variation 30 j, infobulle Futur, bases du
+ * graphe). On ne rouvre pas cette porte pour trois tuiles.
+ *
+ * ⚠️ L'IMMOBILIER n'est PAS ici : il vit dans `realEstateGoals`, et ses deux termes (valeur brute,
+ * hypothèque) sortent de `presentTermesOfGoal`. L'appelant additionne les deux paires — jamais
+ * l'équité d'un côté et l'hypothèque de l'autre, qui retrancherait l'hypothèque deux fois.
+ */
+export const computePresentTermes = (
+  initialBalances: Record<string, number>,
+  transactions: Transaction[],
+  assets: Asset[],
+  fxRates: Record<string, number>,
+  debts: Debt[],
+  ecartAutorite: number,
+  aujourdhuiIso: string | null,
+): { avoirs: number; dettes: number } => ({
+  avoirs: computeGrossAssets(initialBalances, transactions, assets, fxRates, ecartAutorite),
+  dettes: computeTotalDebt(debts, aujourdhuiIso, transactions),
+});

@@ -4,6 +4,41 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite 2) — **les deux TERMES du patrimoine, partout**
+> 🔎 **`[KPI-AVOIRS-DETTES]`** — Marc : « je veux voir genre ma somme total d'argent et ma somme
+> total de dette / ce que je dois (partout dans financeai et dans hubperso) ». Né de l'écart
+> Fintable/app qu'il venait de signaler : Fintable additionne des SOLDES (277 230 $), l'app publie
+> une VALEUR NETTE (230 210 $), et **les deux termes de la soustraction n'étaient visibles nulle
+> part ensemble**.
+> 🧭 **Ses deux arbitrages ont DIVERGÉ de mes recommandations** (3ᵉ fois cette session — une
+> recommandation rend le choix rapide, elle ne le pré-décide pas) : dettes = **total TOUT COMPRIS +
+> le détail** (« dont X $ d'hypothèque »), et bandeau à **6 tuiles** (Liquidités gardée).
+> ⚠️⚠️ **La conséquence arithmétique de son choix est le cœur du lot** : si les dettes incluent
+> l'hypothèque, les avoirs DOIVENT porter la valeur **BRUTE** du bien — sinon elle est retranchée
+> DEUX fois et les trois tuiles cessent de se recomposer, la classe de défaut que Marc a signalée
+> QUATRE fois en deux jours. Aucun changement de moteur : tout se dérive de ce qui existe.
+> 🔧 **Deux sources uniques, et c'est la décision structurante** : `presentTermesOfGoal` (valeur +
+> hypothèque d'un bien) — dont `presentEquityOfGoal` DÉRIVE désormais — et `computePresentTermes`
+> (avoirs + dettes hors immo) — dont `computePresentNetWorth` DÉRIVE. Trois chiffres calculés par
+> trois appels indépendants se recomposent jusqu'au premier correctif appliqué à un seul
+> (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`) ; ici l'identité est vraie PAR CONSTRUCTION.
+> 📏 **6 gardes neuves** (5 sur les tuiles, 1 sur la carte hub), **5 perturbations séparées** :
+> avoirs sur l'ÉQUITÉ → 2 rouges · dettes SANS hypothèque → 2 · sous-titre non privé → 1 · hub
+> publiant `netWorth` en guise d'avoirs → 1. Le cas immobilier utilise 400 000 $ de valeur pour
+> 300 000 $ d'hypothèque, plus un bien à équité NÉGATIVE (un clamp à zéro casserait l'identité).
+> ⚠️ Le hub a son cas ENDETTÉ dédié : sur la fixture sans dette, « avoirs − dettes = net » est vrai
+> PAR ACCIDENT (avoirs = net) — un câblage qui publierait `netWorth` et `0` y passait.
+> ⚠️ **`vitest` NE TYPECHECK PAS** (re-payé) : mes deux assertions d'identité sur la carte hub
+> étaient VERTES pendant que `tsc` refusait l'arithmétique (`HubMetric.value` est
+> `string | number`). Les vérifs ciblées se relancent APRÈS la dernière édition.
+> 🧭 **Découvert et ROUTÉ — `[NW-IMMO-ABSENT-DU-HUB]`** : le patrimoine net du BANDEAU ajoute
+> l'équité immobilière, celui du snapshot MCP/hubperso NON. Identiques tant qu'il n'y a pas de
+> bien — donc invisible aujourd'hui, et faux dès l'achat de 2029.
+> ⚠️ Perturbation MUETTE notée sans être réparée : retirer `if (goal.isOwned === false) return RIEN`
+> laisse `pastPurchaseInit.test.ts` VERT (17/17). Ce n'est pas une régression du lot (la garde est
+> préservée telle quelle) mais un trou de couverture PRÉEXISTANT sur un gate qui a coûté un
+> incident (A6, revue #684) — à vérifier avant d'y toucher.
+
 > ## 🟦 Session 2026-09-21 (suite) — **les deux pavés sous la courbe, en pastilles**
 > 🔎 **`[FUTUR-NOTES-COMPACTES]`** — Marc, capture au marqueur rouge : « **vire moi tout le texte
 > que j'ai barré** ». Deux blocs : le bandeau `mentionAutoriteCourtier` et le pavé « Courbe au

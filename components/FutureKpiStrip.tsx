@@ -4,7 +4,7 @@ import { PrivateAmount } from './ui/PrivateAmount';
 import { NO_DATA_LABEL } from './ui/emptyAware';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useNetWorthVariation, VARIATION_WINDOW_DAYS } from '../hooks/useNetWorthVariation';
-import { presentEquityOfGoal, monthsSince } from '../services/projection/pastPurchaseInit';
+import { presentTermesOfGoal, monthsSince } from '../services/projection/pastPurchaseInit';
 import { FxEstimateBadge } from './ui/FxEstimateBadge';
 
 /**
@@ -65,7 +65,10 @@ export const FutureKpiStrip: React.FC<{
     netWorth: number;
     liquidity: number;
     monthlySavings: number;
-}> = ({ netWorth, liquidity, monthlySavings }) => {
+    /** [KPI-AVOIRS-DETTES] Les deux TERMES hors immobilier, du MÊME appel que `netWorth`. */
+    avoirsHorsImmo: number;
+    dettesHorsImmo: number;
+}> = ({ netWorth, liquidity, monthlySavings, avoirsHorsImmo, dettesHorsImmo }) => {
     // [REFONTE-NAV-L2a] Variation 30 j — liquide + placements (hook, pas de prop-drilling).
     // `null` (couverture < 2 points) → tuile « — » : jamais un 0 $ crédible.
     const variation = useNetWorthVariation();
@@ -86,13 +89,44 @@ export const FutureKpiStrip: React.FC<{
     // de l'ex-Accueil : deux équités qui se compensent (somme 0) restent de l'immobilier à
     // l'écran, l'étiquette doit s'afficher même si la somme ajoutée est nulle.
     const realEstateGoals = useFinanceStore(s => s.realEstateGoals);
-    const { realEstateEquity, hasRealEstate } = useMemo(() => {
-        const equities = realEstateGoals.map(g => presentEquityOfGoal(g, monthsSince(g.purchaseDate)));
+    // [KPI-AVOIRS-DETTES] Les deux termes de CHAQUE bien viennent d'un seul appel
+    // (`presentTermesOfGoal`), dont `presentEquityOfGoal` dérive : `valeur − hypothèque === équité`
+    // par construction. Les calculer séparément ferait trois chiffres qui cessent de se recomposer
+    // au premier correctif appliqué à un seul (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`).
+    const { realEstateEquity, realEstateValeur, realEstateHypotheque, hasRealEstate } = useMemo(() => {
+        const termes = realEstateGoals.map(g => presentTermesOfGoal(g, monthsSince(g.purchaseDate)));
+        const somme = (f: (t: { valeur: number; hypotheque: number }) => number) =>
+            termes.reduce((sum, t) => sum + f(t), 0);
         return {
-            realEstateEquity: equities.reduce((sum, e) => sum + e, 0),
-            hasRealEstate: equities.some(e => e !== 0),
+            realEstateEquity: somme(t => t.valeur - t.hypotheque),
+            realEstateValeur: somme(t => t.valeur),
+            realEstateHypotheque: somme(t => t.hypotheque),
+            hasRealEstate: termes.some(t => t.valeur - t.hypotheque !== 0),
         };
     }, [realEstateGoals]);
+
+    /**
+     * [KPI-AVOIRS-DETTES] Marc, 2026-09-21 : « je veux voir ma somme totale d'argent et ma somme
+     * totale de dettes / ce que je dois ». Il a tranché que « ce que je dois » inclut
+     * l'hypothèque, AVEC son détail — c'est ce que le sous-titre porte.
+     *
+     * ⚠️⚠️ L'IDENTITÉ QUE CES TROIS TUILES DOIVENT TENIR À L'ŒIL :
+     *     avoirs − dettes = patrimoine net
+     * Elle est vraie PAR CONSTRUCTION ici, et il ne faut pas s'en écarter :
+     *     avoirs   = (actifs hors immo)      + valeur BRUTE des biens
+     *     dettes   = (dettes hors immo)      + hypothèques
+     *     net      = (actifs − dettes) hors immo + (valeur − hypothèque)  ← la tuile existante
+     * ⚠️ Si les dettes incluent l'hypothèque, les avoirs DOIVENT porter la valeur BRUTE. Mettre
+     * l'équité d'un côté et l'hypothèque de l'autre la retrancherait DEUX fois — et trois chiffres
+     * d'un même écran qui ne se recomposent pas, c'est la classe de défaut que Marc a signalée
+     * quatre fois en deux jours.
+     * ⚠️ L'identité tient sur les valeurs BRUTES ; les tuiles, elles, ARRONDISSENT chacune à
+     * l'affichage, donc la somme lue peut différer d'un dollar. C'est de l'arrondi d'affichage,
+     * pas une dérive — et c'est pour ça que la garde vérifie l'identité sur les nombres, pas sur
+     * le texte rendu.
+     */
+    const avoirs = avoirsHorsImmo + realEstateValeur;
+    const dettes = dettesHorsImmo + realEstateHypotheque;
 
     return (
         <section aria-label="Indicateurs clés" className="flex flex-wrap gap-2 md:gap-3 mb-4">
@@ -117,6 +151,23 @@ export const FutureKpiStrip: React.FC<{
                     : undefined}
                 privateSublabel
                 scope={variationScope}
+            />
+            {/* [KPI-AVOIRS-DETTES] Les deux TERMES, à côté du net qu'ils composent. Six tuiles :
+                choix de Marc — « on garde tout », Liquidités comprise (elle est un sous-ensemble
+                des avoirs, mais c'est le chiffre qu'il regarde tous les jours). */}
+            <KpiTile
+                label="Total avoirs"
+                value={avoirs}
+                sublabel={hasRealEstate ? 'valeur brute des biens incluse' : undefined}
+            />
+            <KpiTile
+                label="Dettes"
+                value={dettes}
+                // ⚠️ Le détail que Marc a demandé, et il est PRIVÉ : c'est un montant. Affiché
+                // seulement quand il existe — « dont 0 $ d'hypothèque » sur un dossier sans
+                // immobilier serait du décor (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
+                sublabel={realEstateHypotheque > 0.5 ? `dont ${formatCAD(realEstateHypotheque)} d'hypothèque` : undefined}
+                privateSublabel
             />
             <KpiTile label="Liquidités" value={liquidity} />
             <KpiTile label="Épargne / mois" value={monthlySavings} signed />

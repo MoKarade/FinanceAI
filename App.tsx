@@ -221,7 +221,7 @@ export const App: React.FC = () => {
     });
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts
-    const { globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
+    const { globalNetWorth, avoirsHorsImmo, dettesHorsImmo, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
 
     // Coffre Drive verrouillé (blob chiffré) → on déverrouille AVANT tout le reste : le prompt de
     // passphrase est LE premier message (jamais l'écran d'accueil par-dessus). Tous les hooks sont
@@ -283,6 +283,8 @@ export const App: React.FC = () => {
                     isPrivacyMode={isPrivacyMode}
                     isLoading={isLoading}
                     globalNetWorth={globalNetWorth}
+                    avoirsHorsImmo={avoirsHorsImmo}
+                    dettesHorsImmo={dettesHorsImmo}
                     calculatedMonthlySavings={calculatedMonthlySavings}
                     assetBreakdown={assetBreakdown}
                     currentLiquidity={currentLiquidity}

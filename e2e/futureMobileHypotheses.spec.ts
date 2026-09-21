@@ -30,7 +30,10 @@ async function ouvrirFuturEtReveler(page: Page) {
 }
 
 async function ouvrirHypotheses(page: Page) {
-    await page.getByRole('button', { name: /Hypothèses/ }).click();
+    // ⚠️ Insensible à la casse : le bouton court dit « Hypothèses » (seul mot, majuscule), le
+    // bouton complet de la barre latérale dit « Modifier les hypothèses » (minuscule mi-phrase,
+    // français correct) — un regex sensible à la casse ne matchait que le premier.
+    await page.getByRole('button', { name: /Hypothèses/i }).click();
     await expect(page.getByRole('dialog', { name: 'Modifier les hypothèses' })).toBeVisible();
 }
 

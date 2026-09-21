@@ -46,12 +46,15 @@ const CIBLE_MIN = 44;
 
 /**
  * ⚠️ MESURÉ le 2026-09-21 sur cette forme d'écran (barre de tiroirs + graphe toujours visible,
- * `[FUTUR-NAV-TIROIRS]`) : voir la valeur ci-dessous et son historique de mesure. L'ANCIENNE valeur
- * (59, motif à onglets) ne peut PAS être recopiée : la forme de l'écran a changé, donc ce qu'elle
- * mesure a changé (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`).
+ * `[FUTUR-NAV-TIROIRS]`) : **49** (repos + 3 tiroirs, sur `mobile-chrome` 390×844). L'ANCIENNE
+ * valeur (59, motif à onglets) ne pouvait PAS être recopiée : la forme de l'écran a changé, donc ce
+ * qu'elle mesure a changé (`UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`). L'essentiel de
+ * la dette mesurée est PRÉ-EXISTANT (le radiogroup `Pill size="sm"` « Données Réelles/Sandbox »,
+ * dimensionné à 24 px pour WCAG 2.5.8 AA — pas les 44 px du plancher interne de ce fichier —,
+ * répété dans chaque état où il apparaît, dont les 3 tiroirs).
  * Chaque PR qui rétrécit la dette DOIT abaisser ce plafond ; à 0, inverser en règle.
  */
-const PLAFOND_CIBLES_TROP_PETITES = 60;
+const PLAFOND_CIBLES_TROP_PETITES = 49;
 
 async function ouvrirFutur(page: Page) {
   await page.addInitScript(scriptBypassOnboarding());

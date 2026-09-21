@@ -16012,3 +16012,26 @@ d'explication, par conception. Recopier le 0,35 y faisait échouer une garde par
 (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`).
 
 ---
+
+## `UN-AUDIT-SCOPE-A-MAIN-EST-AVEUGLE-A-UN-PORTAL-VERS-DOCUMENT-BODY` (2026-09-21)
+
+`[FUTUR-NAV-TIROIRS]` a remplacé les 4 onglets de l'écran Futur par une barre latérale desktop et
+des tiroirs (`ui/Drawer.tsx`, `createPortal(..., document.body)`) déclenchés par des boutons. L'e2e
+existant qui recense les cibles tactiles trop petites (`futureMobileFilet.spec.ts`) ne parcourait
+que `<main>` — un scope raisonnable tant que tout le contenu de l'écran vivait DANS `<main>`, ce qui
+cessait d'être vrai dès qu'un tiroir ouvert projette son contenu (le formulaire Hypothèses inclus)
+directement sous `document.body`. Sans correction, ouvrir un tiroir aurait rendu son contenu
+**invisible à l'audit**, silencieusement — pas un rouge qui manque, une PORTÉE qui ne couvre plus
+ce qu'elle prétend couvrir. Corrigé en élargissant le sélecteur de l'audit pour unir `<main>` et
+tout `[role="dialog"]` actuellement ouvert.
+
+C'est une instance de `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` appliquée au DOM plutôt qu'à une
+liste de code : **un audit scopé à un conteneur (`<main>`, un formulaire, une section) doit se
+demander ce qu'un `createPortal` fait sortir de ce conteneur**, et le refaire à chaque fois qu'un
+nouveau mécanisme de superposition (modale, tiroir, tooltip flottant) apparaît dans l'écran audité.
+Le signal était mesurable : re-mesurer le plafond de cibles trop petites APRÈS l'élargissement
+(49, contre un chiffre deviné à 60 avant mesure — rappel de `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`)
+a confirmé qu'aucune régression n'était cachée dans le tiroir : le compte n'a pas bougé une fois le
+tiroir inclus, la dette pré-existante (radiogroup `Pill size="sm"` 24px) vivait déjà dans `<main>`.
+
+---

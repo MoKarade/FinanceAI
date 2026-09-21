@@ -4,6 +4,50 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite) — **`[FUTUR-NAV-TIROIRS]` : la barre à 4 onglets devient une barre latérale + tiroirs**
+> 🔎 Marc a demandé un changement de design de l'écran Futur, maquette d'abord (Design canvas,
+> 2 rondes : A/B puis C/D). Il a choisi **B** (barre latérale desktop + panneau du jour À CÔTÉ du
+> graphe) — qui contredisait une décision déjà écrite dans le code, `[FUTUR-PANNEAU-FIXE]`
+> (« panneau fixe EN DESSOUS du graphe, pareil sur téléphone »). Signalé plutôt que tranché en
+> silence ; Marc a répondu **« autre design pour téléphone »** : la barre latérale reste à côté du
+> graphe sur desktop, le panneau du jour reste EN DESSOUS sur mobile (inchangé). Confirmé sur C/D
+> (« C et D me vont, continue ») : Hypothèses / Plan d'action / Historique s'ouvrent en **tiroir**
+> par-dessus la courbe (toujours visible), au lieu de basculer un panneau exclusif.
+> 🔧 **Livré** : la barre à 4 onglets (`role="tablist"`) est **retirée** — Projection n'est plus un
+> onglet parmi d'autres, elle est TOUJOURS affichée. Nouveau seuil de largeur **~1024px**
+> (`hooks/useViewportBelowLg.ts`, calque du patron existant `useViewportBelowSm.ts`) :
+> - **≥ 1024px** : `components/future/FutureSidebar.tsx` (titre, bandeau santé, KPI, barre d'outils,
+>   3 boutons qui ouvrent un tiroir LATÉRAL — `components/ui/Drawer.tsx` variant `'lateral'`).
+> - **< 1024px** : layout empilé inchangé (panneau du jour toujours EN DESSOUS du graphe), KPI
+>   déplacés AVANT le graphe, mêmes 3 boutons ouvrant un tiroir en **feuille du bas** (`'feuille'`).
+> `Drawer` (nouveau, `createPortal` + `useFocusTrap`, calque de `ui/Modal.tsx`) gère Échap, restaure
+> le focus au déclencheur, verrouille le scroll du body. La barre d'outils (sélecteur de période +
+> Ré-optimiser/Verrouiller/Plein écran) est hissée en UNE const `barreOutils`, rendue à un seul des
+> deux endroits selon le viewport — jamais recopiée.
+> ⚠️ **Aucun changement au bloc graphe/données** (`CURVE_FIELDS`, `dataColumns`, `<ComposedChart>`,
+> `PanneauJour`, sélection du jour) : contrainte vérifiée par les tests qui lisent ce fichier en
+> TEXTE (`plusDInfobulleFlottante.test.ts` reste vert — aucune chaîne interdite introduite).
+> ⚠️⚠️ **Trou fermé en chemin, touch-target** : l'audit e2e des cibles tactiles était scopé à
+> `<main>` seul — `Drawer` sort par `createPortal(..., document.body)`, donc son contenu (formulaire
+> Hypothèses inclus) était invisible à l'audit tant qu'un tiroir n'était pas ouvert. Élargi pour
+> unir `<main>` et tout `[role="dialog"]` ouvert. Plafond re-MESURÉ (jamais deviné) : **49** cibles
+> sous 44px, dette pré-existante (radiogroup `Pill size="sm"` 24px, conforme WCAG 2.5.8 AA).
+> ⚠️ Deux gardes existantes se sont RETOURNÉES (jamais supprimées, per convention du dépôt) :
+> `tests/guards/tablistMotifUniqueGuard.test.ts` (`FutureProjection.tsx` n'a plus de motif à
+> détecter — témoin positif retiré, anti-vacuité synthétique ajoutée pour prouver que le mécanisme
+> de scan marche encore) et `tests/components/subTabsAria.test.tsx` (`EXCEPTIONS_CONNUES` retombé
+> à `[]`, `[A11Y-SUBTABS-FUTUR]` marqué résolu — autrement que prévu, en RETIRANT le bandeau plutôt
+> qu'en le convertissant vers `<SubTabs>`).
+> 📏 Vérifs ciblées vertes : typecheck, lint (0 erreur), ~300+ tests Vitest ciblés (tous les fichiers
+> touchant `FutureProjection`/`future/`/guards concernés), 17/17 specs e2e Playwright (3 réécrites :
+> `futureMobileFilet`, `futureMobileHypotheses`, `futureMobilePlanHistoryDetail`), build propre.
+> `e2e/kpi.spec.ts` reste bloqué par un écart d'environnement PRÉ-EXISTANT et SANS RAPPORT (revision
+> Chromium installée ≠ celle attendue par `@playwright/test@1.60.0`) — non corrigé, hors périmètre.
+> ⚠️ **Gate local complet NON relancé** — vérifs ciblées + CI comme arbitre
+> (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
+> 🧭 `[GODFILE-FUTUREPROJECTION]` reste entier à découper (la contrainte de séquencement avec
+> `[A11Y-SUBTABS-FUTUR]` est caduque, déjà notée dans `BACKLOG.md`).
+
 > ## 🟦 Session 2026-09-21 — **deux dettes de sens OPPOSÉS partageaient une seule courbe**
 > 🔎 **`[DETTE-LEVIER-EXPLICITE]`** — Marc, après le correctif de la marge : « **Non la dette augmente
 > à 150k alors que j'ai juste une dette auto qui fini en 2030** ». Il avait **raison ET tort** : sa

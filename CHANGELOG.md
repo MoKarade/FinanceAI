@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (l'écran Futur a une nouvelle disposition : barre latérale + tiroirs)
+
+- **Ce que tu as demandé** : changer l'agencement de l'écran Futur. On a fait une maquette d'abord,
+  tu as choisi l'agencement B (barre latérale + panneau du jour à côté du graphe sur ordinateur), et
+  précisé que sur téléphone tu voulais autre chose (le panneau du jour reste sous le graphe, comme
+  avant — pas assez de place sur un petit écran pour le mettre à côté).
+- **Ce qui change** : les 4 onglets du haut (Projection / Hypothèses / Plan d'action / Historique)
+  disparaissent. Le graphe est maintenant **toujours affiché**, ce n'est plus un onglet parmi
+  d'autres.
+  - **Sur ordinateur** (écran large) : une **barre latérale** à gauche regroupe le titre, ta santé
+    financière, les indicateurs clés et les boutons d'action. Hypothèses, Plan d'action et
+    Historique s'ouvrent maintenant dans un **panneau qui glisse depuis la droite**, par-dessus le
+    graphe — tu ne perds jamais ta courbe de vue.
+  - **Sur téléphone/tablette** (écran étroit) : rien ne change dans la disposition que tu connais
+    (le panneau du jour reste sous le graphe) ; les indicateurs clés passent juste AVANT le graphe
+    au lieu d'après, et Hypothèses/Plan d'action/Historique s'ouvrent en **feuille qui remonte du
+    bas** plutôt qu'en changeant d'onglet.
+- **Rien ne change dans tes chiffres** : ce lot touche uniquement la disposition et la navigation,
+  aucun calcul n'est modifié.
+
+---
+
 ## [unreleased] — 2026-09-21 (ta dette qui monte a maintenant un nom, une courbe et une explication)
 
 - **Ce que tu as vu** : « la dette augmente à 150k alors que j'ai juste une dette auto qui finit en

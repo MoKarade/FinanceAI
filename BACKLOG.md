@@ -1367,18 +1367,6 @@
     2026-07-31 par la PR #549, donc AVANT la rédaction du plan, qui ne consacrait au Lot 7 qu'une
     ligne sans contenu. Classe `BACKLOG-STALE-TICKET`.
     → remplacé par le découpage de **Profil** (seul volet vivant, cf. `[UI-TABS-RICH]`).
-- [x] **`[A11Y-SUBTABS-FUTUR]`** — **RÉSOLU 2026-09-21 par `[FUTUR-NAV-TIROIRS]`, autrement que prévu.**
-  Le ticket proposait de CONVERTIR le bandeau à 4 onglets vers `<SubTabs>` (bloqué par l'obstacle
-  structurel ci-dessous, jamais résolu tel quel). Le lot qui a réglé le sujet a plutôt RETIRÉ le
-  bandeau : Projection est désormais toujours affichée (plus un onglet parmi d'autres), et
-  Hypothèses/Plan d'action/Historique s'ouvrent chacun dans un tiroir (`ui/Drawer.tsx`) au lieu de
-  basculer un panneau. `FutureProjection.tsx` n'a donc plus AUCUN `role="tablist"` — l'exception du
-  cliquet de `tests/components/subTabsAria.test.tsx` (`EXCEPTIONS_CONNUES`) est retombée à `[]`.
-  L'obstacle structurel qui bloquait la conversion (7 blocs conditionnels dispersés pour 4 onglets,
-  un `role="tabpanel"` par bloc aurait produit des `id` en double) n'avait donc plus besoin d'être
-  résolu : le contournement de fond était de ne plus avoir de panneaux exclusifs du tout.
-  → déménagé vers `docs/BACKLOG_ARCHIVE.md`.
-
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le
   provider le PLUS strict). Fix provider-aware planifié, pas un Promise.all aveugle. (≡ D7.)

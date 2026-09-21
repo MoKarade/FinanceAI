@@ -4,6 +4,39 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite du suite) — **régressions du bandeau `[FUTUR-NAV-TIROIRS]` : trois grilles écrasées dans le tiroir/la sidebar**
+> 🔎 Une fois `[FUTUR-NAV-TIROIRS]` (voir entrée juste en dessous) mergée, Marc a rouvert l'écran
+> Futur et signalé trois défauts VISUELS en rafale, capture à l'appui : « texte dépasse c'est
+> moche » (barre latérale), « pareil quand je fais modifier les hypothèses », « pareil pour
+> historique, trop cramped ». Cause UNIQUE des trois : `StatGrid`/les grilles Tailwind du dépôt
+> forcent leurs colonnes par SEUIL DE VIEWPORT (`sm:`/`md:`/`lg:`), pas par largeur de CONTENEUR —
+> or la barre latérale (280px) et le tiroir latéral desktop (`max-w-[440px]`) n'existent QUE quand
+> le viewport fait déjà ≥1024px, donc ces seuils sont TOUJOURS actifs et écrasent 3-4 colonnes dans
+> un espace pensé pour une page pleine largeur.
+> 🔧 **Livré** (aucune maquette requise, mécanique) :
+> - **Bandeau KPI** (`components/FutureProjection.tsx`) : libellés raccourcis PARTOUT (« Patrimoine »,
+>   « Succès », « Vitalité » — texte complet déplacé dans le `tooltip`, déjà le patron établi) pour
+>   ne jamais faire diverger le test money-critical qui compare l'innerText mobile/desktop au
+>   caractère près. Deux grilles séparées sur les MÊMES `<KPIStat>` : `cols={4}` en page empilée
+>   (inchangé), `cols={2}` FIXE dans la sidebar (`kpiGridSidebar`). Sidebar élargie 280px→320px
+>   (`FutureSidebar.tsx`) pour utiliser l'espace libre, comme demandé.
+> - **Tiroir Hypothèses** (`ProjectionControls.tsx`) : nouveau prop `isLateralDrawer` (fourni par
+>   `FutureProjection.tsx` = `!isBelowSidebarBreakpoint`) qui REMPLACE les préfixes `md:`/`lg:` de 4
+>   grilles par des colonnes fixes quand le tiroir est latéral (mobile inchangé, feuille `w-full`).
+> - **Tiroir Historique** (`FutureHistorySection.tsx`) : sélecteur de période (6 boutons) passe à la
+>   ligne (`flex-wrap`) au lieu de s'écraser ; titre de `<Card>` retiré (redondant avec le titre
+>   « Historique » du `<Drawer>` qui l'entoure désormais — libère la largeur pour le sélecteur).
+> ⚠️ Vérifié à la largeur RÉELLE du téléphone de Marc (Pixel 10 Pro, **[Probable]** viewport CSS
+> ~412×915px / DPR ~3,125, websearch — device non sorti au moment du dernier entraînement) : capture
+> + mesure DOM confirment le bandeau KPI en 2×2 propre, SANS chevauchement. Mais la zone de tracé du
+> graphe principal ne fait que **238px sur 412** (57,8 %) à cette largeur — l'axe Y fixe (`width=55`
+> chez `ZoomableTimeChart`, `tickFormatter` chez le graphe Futur) et le padding de `<Card>` (`p-6`)
+> mangent le reste. C'est exactement ce que les 5 maquettes E1-E5 (canvas déjà publié) adressent —
+> **la partie « courbe trop petite sur téléphone » attend toujours le choix de Marc parmi E1-E5**,
+> aucune n'a encore été appliquée au code.
+> ⚠️ Gate ciblé vert (typecheck, lint, vitest ciblés sur les 6 fichiers de test touchés, 2 specs e2e
+> `futureAxis`/aucune régression du seuil ratio) — **gate complet PAS encore relancé, CI = arbitre**.
+>
 > ## 🟦 Session 2026-09-21 (suite) — **`[FUTUR-NAV-TIROIRS]` : la barre à 4 onglets devient une barre latérale + tiroirs**
 > 🔎 Marc a demandé un changement de design de l'écran Futur, maquette d'abord (Design canvas,
 > 2 rondes : A/B puis C/D). Il a choisi **B** (barre latérale desktop + panneau du jour À CÔTÉ du

@@ -17,6 +17,31 @@
 
 ---
 
+## 📉 Axe des graphes trop large sur téléphone (Marc, 21/09/2026)
+
+> Demande : « texte dépasse c'est moche, sur téléphone la courbe est trop petite, faut qu'elle
+> prenne toute la largeur de l'écran, laisser moins de place pour la légende et pour le x et y,
+> pose plein de questions je veux 5 propositions ». Cadrage fait (4 questions en clic) : le
+> bandeau KPI/tiroirs (texte qui débordait) est **corrigé** — voir `HANDOVER.md` et le
+> `CHANGELOG.md` du 21/09. Ce qui RESTE : le graphe lui-même.
+
+- [ ] 🧭 **`[FUTUR-AXE-Y-MINIMAL]`** (M, décision Marc requise) — Marc a choisi la direction
+  (« Axe Y quasi invisible » : plus de nombres sur l'axe Y, valeur exacte seulement au survol/dans
+  le panneau du jour) et le périmètre (**tous les graphes de l'app**, pas seulement Futur — 14
+  fichiers utilisent `ResponsiveContainer`, au moins 9 avec leur propre JSX d'axe, aucune
+  abstraction partagée). Cinq exécutions visuelles concrètes proposées en maquette (canvas
+  `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`, tableaux E1-E5) : repères discrets sans chiffres, badge
+  flottant, repères ancrés à droite, étiquettes superposées sur le tracé, sparkline pur. **En
+  attente du choix de Marc** avant tout code — une fois choisi, le traitement se propage à
+  `Retirement.tsx`, `DebtManager.tsx`, `ChildPlanning.tsx`, `budget/BudgetGroupTable.tsx`,
+  `investments/DividendPanel.tsx`, `projection/futureDetail/DrillDownCompte.tsx`,
+  `realestate/MultiPropertyComparison.tsx`, `realestate/ScenariosComparatifsCard.tsx`,
+  `ui/ZoomableTimeChart.tsx` (Historique) et `FutureProjection.tsx` lui-même.
+  ⚠️ **MESURÉ** sur un Pixel 10 Pro (viewport ~412×915px CSS) : la zone de tracé du graphe Futur ne
+  fait que **238px sur 412 (57,8 %)** — l'axe Y fixe (`width=55` chez `ZoomableTimeChart` et
+  ~70px chez le graphe Futur lui-même) et le padding de `<Card>` (`p-6`, 48px) mangent le reste.
+  C'est exactement ce que le traitement choisi doit récupérer.
+
 ## 📱 Installable sur le téléphone (Marc, 18/09/2026 — « toutes les applications installables »)
 
 - [ ] **`[PWA-IOS-ICONE]`** (XS, non demandé) — pas d'`apple-touch-icon.png`. Hors périmètre :

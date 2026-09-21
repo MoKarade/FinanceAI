@@ -16459,3 +16459,102 @@ chez eux** (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
 ⚠️ Ce n'est ni le gate, ni le panel, ni moi qui l'ai vu : c'est un **cliquet écrit par un autre
 lot**, et il n'a pu le voir que parce que le job E2E s'est remis à TOURNER. Une suite coupée à son
 plafond ne protège de rien — et pendant trois runs, elle n'a rien protégé du tout.
+
+---
+
+## `UN-COMPOSANT-A-APPELANT-UNIQUE-DANS-UN-CONTENEUR-PLAFONNE-NE-PEUT-PAS-SE-FIER-AU-VIEWPORT` (2026-09-21)
+
+**Contexte.** `[FUTUR-NAV-TIROIRS]` (mergé le jour même) a retiré la barre à 4 onglets de l'écran
+Futur au profit d'une barre latérale desktop (`FutureSidebar.tsx`, `w-[280px]`) et de trois tiroirs
+(`Drawer.tsx`, variant `'lateral'` = `max-w-[440px]`). Marc a rouvert l'écran et signalé, en trois
+messages séparés dans la même minute : « texte dépasse c'est moche » (barre latérale), « pareil
+quand je fais modifier les hypothèses », « pareil pour historique, trop cramped ». Trois écrans,
+trois signalements — le réflexe naturel est de les traiter comme trois bugs distincts.
+
+**Le mécanisme est UN SEUL.** Les grilles Tailwind concernées (`StatGrid` pour le bandeau KPI,
+quatre `<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">` etc. dans
+`ProjectionControls.tsx`) choisissent leur nombre de colonnes par un SEUIL DE VIEWPORT (`sm:`
+640px, `md:` 768px, `lg:` 1024px). C'est correct tant que le composant est affiché en page pleine
+largeur — le viewport EST alors une bonne approximation de la largeur du composant. `[FUTUR-NAV-
+TIROIRS]` a changé cette hypothèse sans y toucher : `ProjectionControls` n'a plus qu'un SEUL
+appelant (`FutureProjection.tsx`, vérifié par grep — le composant frère `ProjectionControlsMobile`
+prend le relais sous ~640px), et cet appelant unique le monte désormais dans un conteneur dont la
+largeur RÉELLE ne suit plus le viewport :
+
+| viewport                  | conteneur                          | largeur réelle | seuils Tailwind actifs |
+|----------------------------|-------------------------------------|----------------|--------------------------|
+| < ~640px (`useViewportBelowSm`) | `ProjectionControlsMobile` (autre composant) | — | non concerné |
+| [~640px, ~1024px[ (`useViewportBelowLg`) | tiroir `'feuille'`, `w-full` | = viewport | `md:` cohérent avec la largeur réelle |
+| ≥ ~1024px | tiroir `'lateral'`, `max-w-[440px]` | **plafonnée à 440px, quel que soit le viewport** | `md:`/`lg:` TOUJOURS actifs, faux dès 440px |
+
+La troisième ligne est le piège : dès que le viewport dépasse 1024px (l'unique condition pour que
+le tiroir latéral existe), `md:` ET `lg:` sont satisfaits par DÉFINITION — la grille rend TOUJOURS
+sa forme « pleine largeur » (3 ou 4 colonnes), quelle que soit la largeur réelle du tiroir (440px
+ou moins). Le bandeau KPI de la sidebar (`w-[280px]`) est encore plus serré : il n'a AUCUNE fenêtre
+de viewport où `md:` est inactif, puisque la sidebar n'existe qu'à viewport ≥1024px.
+
+**Pourquoi ça n'a pas été vu avant le merge.** Aucun test (unitaire, e2e) n'affirme sur le NOMBRE
+de colonnes d'une grille CSS — ce n'est ni un texte, ni une valeur calculée, ni un état accessible.
+Le rendu réel (texte qui se chevauche, boutons collés) n'est visible qu'à l'œil, sur un vrai
+navigateur, à une largeur physique précise. Aucune des 6319 mesures automatisées du dépôt ne peut
+remplacer ce regard-là pour CETTE classe de défaut — la garde possible ici est un `boundingBox`
+Playwright qui vérifie qu'un texte ne DÉBORDE pas de son conteneur parent, pas une assertion sur
+la classe CSS elle-même (une classe peut être présente ET produire un rendu cassé selon le contexte
+qui l'entoure — c'est tout le problème).
+
+**Le correctif n'est PAS de rendre les grilles plus étroites partout** (elles restent correctes
+dans la feuille mobile, `w-full`, où le viewport redevient une bonne approximation). Il faut un
+signal EXPLICITE du CONTEXTE — pas du viewport — que seul l'appelant connaît déjà :
+
+```tsx
+// ProjectionControls.tsx — nouveau prop, calculé par l'appelant qui connaît le seuil
+isLateralDrawer?: boolean; // défaut false : comportement d'avant ce lot
+
+const gridHypotheses = isLateralDrawer
+  ? 'grid grid-cols-1 gap-6'
+  : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'; // seuils Tailwind conservés ici
+```
+
+```tsx
+// FutureProjection.tsx — l'appelant UNIQUE fournit le signal qu'il possède déjà
+<ProjectionControls … isLateralDrawer={!isBelowSidebarBreakpoint} />
+```
+
+Pour le bandeau KPI (partagé entre DEUX rendus : page empilée ET sidebar), le geste est le même
+mais appliqué à la GRILLE, jamais au contenu : les 4 `<KPIStat>` restent des éléments PARTAGÉS
+(mêmes libellés, mêmes valeurs, même `tooltip`) et sont enveloppés par DEUX `<StatGrid>` distincts
+selon le contexte (`cols={4}` en page empilée, `cols={2}` fixe dans la sidebar — `sm:` étant
+garanti actif dès que la sidebar existe, `cols={2}` n'y retombe jamais à 1 colonne).
+
+⚠️ **Piège adjacent, trouvé en écrivant ce correctif** : un test e2e money-critical
+(`futureMobileProjectionScreen.spec.ts`) compare l'innerText COMPLET (label + valeur + sous-label)
+d'une tuile KPI entre mobile et desktop, au caractère près — c'est voulu, ça garantit que la
+VALEUR affichée ne dépend jamais de la largeur d'écran. Si les libellés avaient été raccourcis
+UNIQUEMENT dans la version sidebar (en gardant les longs libellés dans la version mobile), ce test
+aurait cassé pour une raison SANS RAPPORT avec son objet (texte du libellé, pas le montant) — un
+faux rouge qui aurait fait perdre du temps à qui l'aurait diagnostiqué à la lettre du message
+d'erreur plutôt qu'en relisant ce que le test protège réellement. Le correctif juste raccourcit le
+libellé PARTOUT (texte complet déplacé dans le `tooltip`, déjà le patron établi pour la tuile
+« Patrimoine ») — la grille change, le contenu ne diverge jamais entre les deux rendus.
+
+**Mesure de confirmation** (Pixel 10 Pro, Marc : « je veux que ça marche pour mon tel c'est un
+pixel 10 pro »). **[Probable]** — appareil sorti après le dernier entraînement du modèle, spec
+vérifiée par recherche web plutôt que connue : viewport CSS ≈ 412×915px, DPR ≈ 3,125 (deux sources
+concordantes à quelques pixels près). Capturé et mesuré en conditions réelles (mode test, fixtures
+Alex/Sam) à cette largeur :
+
+- Bandeau KPI : 2×2 propre, aucun chevauchement (`OBJECTIF FIRE` / `PATRIMOINE`, `SUCCÈS` /
+  `VITALITÉ`) — le défaut signalé est réglé.
+- Zone de tracé du graphe principal : **238px sur 412 (57,8 %)** — l'axe Y fixe (repère à gauche,
+  ~70px) et le padding de la `<Card>` (`p-6`, 48px cumulés) mangent le reste. **Ce chiffre n'est
+  PAS corrigé par ce lot** : c'est exactement le problème que les 5 maquettes E1-E5 (canvas
+  `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`) proposent de résoudre, en attente du choix de Marc.
+
+**Généralisation.** Avant de juger qu'un seuil Tailwind viewport-based est correct pour un
+composant, vérifier COMBIEN d'appelants il a et si CHACUN place ce composant dans un conteneur
+dont la largeur suit fidèlement le viewport. Un composant à appelant unique, déplacé dans un
+tiroir/une sidebar/toute surface à largeur PLAFONNÉE indépendante du viewport, ne peut plus se
+fier à `sm:`/`md:`/`lg:` pour DÉCIDER — il peut continuer à les utiliser là où le contexte
+correspond encore (mobile `w-full`), mais a besoin d'un signal explicite du CONTEXTE pour les
+autres. Ce signal existe presque toujours déjà chez l'appelant (le même hook de seuil qui a créé
+le tiroir/la sidebar) — il suffit de le PASSER, jamais de le redériver.

@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (le texte qui débordait dans la barre latérale et les tiroirs est corrigé)
+
+- **Le bandeau KPI de la barre latérale et du tiroir « Modifier les hypothèses »** n'écrasait plus
+  son texte lisiblement — les libellés étaient coupés/superposés. Corrigé : libellés raccourcis
+  (« Patrimoine », « Succès », « Vitalité »), le texte complet reste accessible via le petit « i ».
+  La barre latérale est aussi un peu plus large (320px, était 280px) pour respirer.
+- **Le tiroir « Modifier les hypothèses »** avait ses grilles de curseurs écrasées en 3-4 colonnes
+  serrées dans les 440px du tiroir desktop. Corrigé : colonnes fixes adaptées à cette largeur.
+- **Le tiroir « Historique »** avait son sélecteur de période (1M/3M/YTD/1Y/ALL/CUSTOM) écrasé sur
+  une seule ligne trop étroite. Il passe maintenant à la ligne si besoin, et le titre en double
+  (déjà affiché en haut du tiroir) a été retiré pour lui laisser plus de place.
+- ⚠️ **Ce qui reste à faire** : la courbe elle-même est encore petite sur téléphone (l'axe vertical
+  et les marges du graphe prennent encore ~42 % de la largeur d'écran, mesuré sur un Pixel 10 Pro).
+  Cinq façons de resserrer ça sont proposées en maquette — en attente de ton choix.
+
 ## [unreleased] — 2026-09-21 (ton total d'argent et ton total de dettes, côte à côte)
 
 - **Tu voulais voir « ta somme totale d'argent et ta somme totale de dettes, partout ».** Le bandeau

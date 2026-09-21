@@ -2983,6 +2983,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   couper — et après toute résolution, `grep` les marqueurs sur l'arbre AVANT `git add`. C'est
   `tests/noConflictMarkers.test.ts` qui a sauvé le lot, au gate rejoué APRÈS le rebase : un lot rebasé
   se re-gate INTÉGRALEMENT (`UN-TAIL-SUR-LA-SORTIE-D-UN-REBASE-CACHE-DES-CONFLITS`).
+- ⚠️⚠️ **Un composant à APPELANT UNIQUE, déplacé dans un conteneur PLAFONNÉ, ne peut plus se fier au
+  VIEWPORT** : `[FUTUR-NAV-TIROIRS]` a enfermé `ProjectionControls`/le bandeau KPI dans un tiroir
+  latéral/une sidebar à largeur FIXE (440px/280px), toujours affichés à viewport ≥1024px — leurs
+  grilles `md:`/`lg:` (seuils de VIEWPORT) sont alors TOUJOURS actives, écrasant 3-4 colonnes dans
+  un espace pensé pour une page pleine largeur. Marc l'a signalé trois fois de suite sur trois
+  écrans différents avant que le mécanisme commun soit nommé. Détail, correctifs et mesure Pixel
+  10 Pro (238px de tracé utile sur 412, 57,8 %) dans `docs/CONVENTIONS.md`
+  (`UN-COMPOSANT-A-APPELANT-UNIQUE-DANS-UN-CONTENEUR-PLAFONNE-NE-PEUT-PAS-SE-FIER-AU-VIEWPORT`,
+  2026-09-21).
 
 ### CI (GitHub Actions) — pourquoi un gate vert ne suffit pas
 

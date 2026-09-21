@@ -1409,57 +1409,74 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     })();
     const todayPresetRange = centeredWindowRange(displayData.length, todayArrayIndex, 7);
 
-    // [FUTUR-MOBILE-PR2] Définie une seule fois : rendue soit une fois (desktop, tous sous-onglets ;
-    // mobile, sous-onglets Hypothèses/Plan/Historique), soit deux fois (mobile, sous-onglet Projection
-    // — avant ET après la courbe ne sont jamais VRAIS en même temps, cf les deux sites de rendu).
-    const kpiGrid = (
-        <StatGrid cols={4}>
-            <KPIStat
-                label="Objectif FIRE"
-                icon="🎯"
-                // ⚠️ MESURÉ : l'ancien format restait en « k$ » quel que soit l'ordre de grandeur — une cible
-                // FIRE de 1,25 M$ s'affichait « 1250k $ ». `formatCompactCAD` bascule en M$.
-                value={formatCompactCAD(fireNumber)}
-                sublabel="Règle des 4%"
-                privacy
-                variant="warning"
-            />
-            <KPIStat
-                // Le fallback (value ci-dessous) tombe sur finalNetWorth/fireNumber quand estateNetWorth=0 :
-                // dans ce cas le nombre N'INCLUT PAS les rentes → libellé neutre + pas de tooltip « avec rentes »
-                // (sinon le libellé mentirait, le bug même que R1 corrige). Sinon : successoral, avec rentes.
-                label={results?.estateNetWorth ? "Patrimoine successoral, avec rentes" : "Patrimoine projeté"}
-                tooltip={results?.estateNetWorth ? "Patrimoine au décès : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon." : undefined}
-                icon="💼"
-                // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
-                // silencieux du moteur), utiliser finalNetWorth puis fireNumber
-                // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
-                value={formatCompactCAD((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0)}
-                sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
-                privacy
-                variant="primary"
-            />
-            <KPIStat
-                label="Taux de succès"
-                icon="✓"
-                value={results?.successRate != null ? `${results.successRate}%` : '—'}
-                // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config
-                // vivante : `results` peut être GELÉ (curseur bougé sans relance), et lire la
-                // config faisait alors annoncer un nombre d'itérations qui n'avait pas servi.
-                // Résultat sans compte (MC non lancé, ou projection d'avant ce lot) → « Monte
-                // Carlo » SANS chiffre : un « — » honnête vaut mieux qu'un nombre crédible.
-                sublabel={mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}
-                variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
-            />
-            <KPIStat
-                label="Vitalité financière"
-                icon="🌡️"
-                value={results?.fvi != null ? `${results.fvi}/100` : '—'}
-                sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
-                variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
-            />
-        </StatGrid>
-    );
+    // [FUTUR-MOBILE-PR2] Les 4 tuiles KPI, définies UNE fois (source unique des libellés/valeurs) et
+    // rendues dans DEUX grilles distinctes selon le contexte — jamais recopiées.
+    // [FUTUR-NAV-TIROIRS bandeau, 2026-09-21] Marc : « texte dépasse, c'est moche » dans la barre
+    // latérale (280px). Cause : `StatGrid` force ses colonnes par SEUIL DE VIEWPORT (`md:`/`sm:`),
+    // pas par largeur de conteneur — dans la sidebar (toujours à viewport ≥1024px), 4 colonnes
+    // s'écrasaient dans 280px quel que soit leur contenu. Libellés raccourcis partout (le texte
+    // complet vit dans le `tooltip`, déjà le patron établi pour « Patrimoine ») : garder les MÊMES
+    // props partout, seule la grille change, pour ne jamais faire diverger le test money-critical
+    // qui compare l'innerText mobile/desktop au caractère près (futureMobileProjectionScreen.spec.ts).
+    const kpiStats = [
+        <KPIStat
+            key="fire"
+            label="Objectif FIRE"
+            icon="🎯"
+            // ⚠️ MESURÉ : l'ancien format restait en « k$ » quel que soit l'ordre de grandeur — une cible
+            // FIRE de 1,25 M$ s'affichait « 1250k $ ». `formatCompactCAD` bascule en M$.
+            value={formatCompactCAD(fireNumber)}
+            sublabel="Règle des 4%"
+            privacy
+            variant="warning"
+        />,
+        <KPIStat
+            key="patrimoine"
+            // Libellé COURT constant (jamais « successoral, avec rentes » en toutes lettres) : la
+            // distinction vit désormais entièrement dans le tooltip, qui suit le même fallback que
+            // la valeur — sinon le tooltip mentirait sur ce que `value` montre réellement.
+            label="Patrimoine"
+            tooltip={results?.estateNetWorth
+                ? "Patrimoine successoral, avec rentes : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon."
+                : "Patrimoine projeté en fin d'horizon (mode simplifié, sans rentes)."}
+            icon="💼"
+            // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
+            // silencieux du moteur), utiliser finalNetWorth puis fireNumber
+            // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
+            value={formatCompactCAD((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0)}
+            sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
+            privacy
+            variant="primary"
+        />,
+        <KPIStat
+            key="succes"
+            label="Succès"
+            tooltip="Taux de succès : part des simulations Monte Carlo où le capital ne s'épuise jamais."
+            icon="✓"
+            value={results?.successRate != null ? `${results.successRate}%` : '—'}
+            // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config
+            // vivante : `results` peut être GELÉ (curseur bougé sans relance), et lire la
+            // config faisait alors annoncer un nombre d'itérations qui n'avait pas servi.
+            // Résultat sans compte (MC non lancé, ou projection d'avant ce lot) → « Monte
+            // Carlo » SANS chiffre : un « — » honnête vaut mieux qu'un nombre crédible.
+            sublabel={mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}
+            variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
+        />,
+        <KPIStat
+            key="vitalite"
+            label="Vitalité"
+            tooltip="Vitalité financière : indice composite (30 % épargne / 30 % dette / 20 % liquidités / 20 % diversification)."
+            icon="🌡️"
+            value={results?.fvi != null ? `${results.fvi}/100` : '—'}
+            sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
+            variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
+        />,
+    ];
+    // Pleine largeur (mobile empilé, tablette) : 4 colonnes dès 768px de VIEWPORT, comme avant.
+    const kpiGrid = <StatGrid cols={4}>{kpiStats}</StatGrid>;
+    // Barre latérale desktop (toujours à viewport ≥1024px, mais physiquement ~320px) : 2 colonnes
+    // FIXES — `sm:` (640px) est garanti actif à ce viewport, jamais replié à 1 colonne.
+    const kpiGridSidebar = <StatGrid cols={2}>{kpiStats}</StatGrid>;
 
     // role="status" (live polite) : le badge apparaît après le calcul de projection → annoncé au
     // lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
@@ -1626,7 +1643,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <FutureSidebar
                 insolvencyBadge={insolvencyBadge}
                 dataModePill={dataModePill}
-                kpi={curveVisible ? kpiGrid : null}
+                kpi={curveVisible ? kpiGridSidebar : null}
                 // ⚠️ Comme `kpiGrid` : dans l'ancien code, `barreOutils` (période, Ré-optimiser,
                 // Verrouiller, Plein écran) vivait DANS la Card qui n'existe que si `curveVisible` —
                 // avant le premier calcul, ces contrôles n'existaient tout simplement pas. La barre
@@ -2182,6 +2199,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 realEstateGoals={realEstateGoals}
                 setRealEstateGoals={setRealEstateGoals}
                 config={config}
+                isLateralDrawer={!isBelowSidebarBreakpoint}
             />
             {/* [FUTUR-MOBILE-PR4] CTA collant en pied de tiroir (décision Marc 2026-09-10, adaptée) :
                 « aucun calcul sans geste » reste vrai — ce bouton reste le SEUL chemin qui déclenche

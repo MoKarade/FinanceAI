@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite 3) — **le job E2E ne tournait pas, il se faisait couper**
+> 🔎 **`[E2E-RAIL-INTERCEPTE-LE-CLIC]`** — le check E2E de la CI tournait **29 min** et se faisait
+> couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate était
+> vert. Il ne ressemblait pas à un échec : `conclusion: cancelled`, donc ni rouge ni vert.
+> ⚠️⚠️ **La cause n'est pas dans les tests, elle est dans une décision de mise en page** : le rail
+> de navigation s'ouvre AU SURVOL (`w-16` → `w-72`) et RECOUVRE le contenu, qui ne réserve que
+> 64 px (`md:ml-16`) — une bande de **224 px** où aucun clic ne passe tant que le pointeur est sur
+> le rail. Et **la souris de Playwright démarre en (0,0)**, donc dessus. Le clic sur l'onglet
+> « Profil » du helper PARTAGÉ `activateTestMode` n'atteignait jamais sa cible : 30 s d'attente,
+> « subtree intercepts pointer events », puis expiration — en cascade sur toute une famille de specs.
+> 📏 **Mesuré sur `main` (4f1466b4), sans aucun changement applicatif** : `futureAxis` échoue 3/3
+> (30 s chacun) → passe en **10,9 s** ; suite complète **18 tests traités en 29 min, tous en échec**
+> → **54 passés en 7,4 min**. Le correctif est une ligne (`ecarterLeRail`), EXPORTÉE avec sa règle :
+> tout spec qui clique dans les 288 px de gauche après un `goto` doit l'appeler.
+> ⚠️ **Ce n'est PAS un contournement d'un bug de l'app** — un humain qui survole le rail le voit
+> s'ouvrir et déplace sa souris. C'est ce geste qui manquait au test.
+> ⚠️ **Deux specs mobiles restent rouges EN LOCAL et je ne les compte pas** : `44` attendu contre
+> **43,99999237060547** mesuré — un écart d'un ulp, sur un conteneur qui exécute Chromium **141**
+> (binaire préinstallé) là où le dépôt épingle **148**. Rien dans ce lot ne peut changer la hauteur
+> d'un bouton. La CI, qui a le bon binaire, est l'arbitre.
+> ⚠️ **Outillage** : le binaire Playwright épinglé n'existe pas dans ce conteneur ; les specs
+> acceptent `PW_LOCAL_CHROMIUM`, et un pont de liens symboliques vers `chromium-1194` marche aussi.
+
 > ## 🟦 Session 2026-09-21 (suite 2) — **les deux TERMES du patrimoine, partout**
 > 🔎 **`[KPI-AVOIRS-DETTES]`** — Marc : « je veux voir genre ma somme total d'argent et ma somme
 > total de dette / ce que je dois (partout dans financeai et dans hubperso) ». Né de l'écart

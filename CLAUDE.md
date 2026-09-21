@@ -1562,6 +1562,21 @@ n'est pas réécrire un récit.
   MCP/hubperso NON — invisible tant qu'il n'y a pas de bien, faux dès l'achat
   (`PUBLIER-DEUX-TERMES-D-UNE-SOUSTRACTION-OBLIGE-A-LES-DERIVER-D-UN-SEUL-APPEL`).
 
+- ⚠️⚠️ **Une surface qui s'ouvre AU SURVOL et RECOUVRE le contenu rend inatteignable tout ce qui
+  est dessous** (2026-09-21) : le rail de navigation passe de `w-16` à `w-72` au survol pendant que
+  le `<main>` ne réserve que 64 px (`md:ml-16`) — donc une bande de **224 px** où aucun clic ne
+  passe tant que le pointeur est sur le rail. Et **la souris de Playwright démarre en (0,0)**,
+  c'est-à-dire dessus : le premier clic d'une page neuve tombe toujours dans ce cas. Le job E2E
+  de la CI tournait **29 min** et se faisait couper à son plafond de 30, sur `main` comme sur
+  chaque PR, en répétant « subtree intercepts pointer events » — mesuré, **18 tests traités, tous
+  en échec**, contre **54 passés en 7,4 min** une fois le pointeur écarté d'une ligne.
+  ⚠️ **Un run `cancelled` n'est pas un run annulé par quelqu'un** : c'est la forme que prend une
+  suite qui échoue LENTEMENT sous `timeout-minutes`. Devant un run annulé qu'on n'a pas annulé,
+  lire la DURÉE des étapes avant d'accuser l'infra — la référence (4 min 03 s) était écrite dans
+  le workflow, juste au-dessus du plafond. ⚠️ Et le journal de Playwright NOMME l'élément qui
+  intercepte : la question n'est pas « le sélecteur est-il bon ? » mais « qu'est-ce qui est
+  au-dessus, et pourquoi ? » (`UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

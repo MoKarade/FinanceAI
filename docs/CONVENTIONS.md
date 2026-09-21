@@ -16185,3 +16185,50 @@ carte hub étaient VERTES pendant que `tsc` refusait l'arithmétique (`HubMetric
 `string | number` au contrat). Les vérifs ciblées se relancent **après la DERNIÈRE édition**.
 
 ---
+
+---
+
+# UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE
+
+**2026-09-21, `[E2E-RAIL-INTERCEPTE-LE-CLIC]`.** Le job E2E de la CI tournait **29 minutes** et se
+faisait couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate
+était vert. Il n'avait pas l'air d'un échec : `conclusion: cancelled`, donc ni rouge ni vert — et
+un run annulé ne ressemble pas à un test qui casse.
+
+**La cause n'est pas dans les tests, elle est dans une décision de mise en page.** Le rail de
+navigation est `fixed`, replié à `w-16`, et s'ouvre **au survol** à `w-72` en **recouvrant** le
+contenu — choix assumé et commenté (« l'expansion overlay le contenu sans push, pas de jump »).
+Le `<main>`, lui, ne réserve que 64 px (`md:ml-16`). Il existe donc en permanence une bande de
+**224 px** où tout contrôle devient inatteignable au clic **dès que le pointeur est sur le rail**.
+
+Et le pointeur de Playwright **démarre en (0,0)** — c'est-à-dire précisément sur le rail. Le
+premier clic d'une page neuve tombe donc toujours dans ce cas : Playwright réessaie 30 s en
+répétant « subtree intercepts pointer events », puis le test expire. Comme le clic en question
+vivait dans le helper **partagé** `activateTestMode`, la panne était en cascade.
+
+**Mesuré sur `main` (4f1466b4), sans aucun changement applicatif** :
+
+| | avant | après |
+|---|---|---|
+| `futureAxis.spec.ts` | 3 échecs sur 3, 30 s chacun | passe en **10,9 s** |
+| suite complète | **18** tests traités en 29 min, tous en échec | **54 passés en 7,4 min** |
+
+⚠️ **Ce n'est PAS le contournement d'un bug de l'app.** Un humain qui survole le rail le voit
+s'ouvrir et déplace sa souris ; c'est ce geste qui manquait au test. La question à se poser devant
+un clic qui « ne passe pas » n'est donc pas « le sélecteur est-il bon ? » mais **« qu'est-ce qui
+est au-dessus, et pourquoi ? »** — la réponse était dans le journal de Playwright, qui NOMME
+l'élément intercepteur, et elle a été lue en dernier.
+
+⚠️ **Un run `cancelled` n'est pas un run raté, et c'est ce qui l'a fait vivre si longtemps.** Le
+plafond `timeout-minutes` existe pour empêcher un job figé de tourner six heures (leçon DriveAI) ;
+son effet de bord est qu'une suite qui échoue LENTEMENT ressort en « annulé » plutôt qu'en
+« échec ». Devant un run annulé qu'on n'a pas annulé, lire la DURÉE des étapes avant de conclure à
+l'infra : 29 min 22 s contre 4 min 03 s de référence — la référence était écrite dans le workflow,
+juste au-dessus du plafond.
+
+⚠️ **Et le correctif se juge sur la suite ENTIÈRE, pas sur le spec qu'on a réparé.** Après la
+première passe : 52 passés, **2 échoués** — le même défaut, dans le seul spec qui clique l'onglet
+sans passer par le helper partagé. D'où un helper **exporté** avec sa règle écrite dedans plutôt
+qu'une seconde copie : tout spec qui clique dans les 288 px de gauche après un `goto` doit
+l'appeler, et le premier clic d'une page neuve est toujours concerné.
+

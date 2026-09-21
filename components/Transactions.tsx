@@ -452,15 +452,33 @@ export const Transactions: React.FC<TransactionsProps> = ({
     // [REFONTE-NAV-L5] Une SEULE dérivation CSV (utils/csvExport, RFC 4180) pour les DEUX exports
     // (tout l'historique depuis le header / la vue filtrée-triée ici) — l'ancien builder local
     // dupliquait le format avec un jeu de colonnes divergent (consolidation, pas de 2e dérivation).
+    /**
+     * Les DEUX boutons d'export partagent exactement le même traitement de refus — il y vivait en
+     * double, et le second aurait été oublié en ajoutant la règle « données fictives » (c'est
+     * précisément ce qui est arrivé au mode discret sur les presets voisins de `csvExport`).
+     * Rend `true` si le refus a été traité ; `false` laisse l'appelant relancer une vraie panne.
+     */
+    const refusExportCsvTraite = (e: unknown): boolean => {
+        if (!(e instanceof Error)) return false;
+        if (e.name === 'CsvRefusedPrivacyError') {
+            showToast('Export CSV refusé : le mode discret est actif. Le fichier contiendrait tes marchands et tes montants en clair.', 'info');
+            return true;
+        }
+        if (e.name === 'CsvRefusedTestModeError') {
+            // Le message nomme l'ISSUE (revenir aux données réelles) — jamais « réessaie » :
+            // aucun nouvel essai ne réussira tant que le mode est actif.
+            showToast("Export CSV refusé : l’app affiche des données fictives (mode test / bac à sable). Le fichier aurait l’allure de vraies transactions. Reviens aux données réelles pour l’exporter.", 'info');
+            return true;
+        }
+        return false;
+    };
+
     const handleExportFilteredCSV = async () => {
         const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
         try {
             downloadCSV(`transactions-filtrees-${dateForFilename()}`, exportTransactionsCSV(sortedTransactions));
         } catch (e) {
-            if (e instanceof Error && e.name === 'CsvRefusedPrivacyError') {
-                showToast('Export CSV refusé : le mode discret est actif. Le fichier contiendrait tes marchands et tes montants en clair.', 'info');
-                return;
-            }
+            if (refusExportCsvTraite(e)) return;
             throw e;
         }
     };
@@ -499,10 +517,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     try {
                                         downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
                                     } catch (e) {
-                                        if (e instanceof Error && e.name === 'CsvRefusedPrivacyError') {
-                                            showToast('Export CSV refusé : le mode discret est actif. Le fichier contiendrait tes marchands et tes montants en clair.', 'info');
-                                            return;
-                                        }
+                                        if (refusExportCsvTraite(e)) return;
                                         throw e;
                                     }
                                 }}

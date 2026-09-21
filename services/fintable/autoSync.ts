@@ -23,6 +23,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { logError } from '../errorLogger';
 import { lastProductiveAtSuivant } from './syncHealth';
+import { modeDonneesFictives } from '../../store/modeTestActif';
 
 /** Une passe réussie par 24 h — la cadence demandée. */
 const DAILY_MS = 24 * 3600_000;
@@ -72,10 +73,13 @@ export function isDailySyncDue(report: FintableSyncReport | undefined, now: numb
     return now - report.at >= DAILY_MS;
 }
 
-/** Le mode test est-il actif MAINTENANT (lecture fraîche du store) ? */
-function isTestModeNow(): boolean {
-    return useFinanceStore.getState().isTestMode === true;
-}
+/**
+ * Les données sont-elles FICTIVES MAINTENANT (lecture fraîche du store) ?
+ *
+ * ⚠️ Corps déménagé vers `store/modeTestActif.ts` — il vivait ici EN DOUBLE avec
+ * `services/sync/syncPush.ts`. Alias local gardé pour ne pas toucher aux sites d'appel.
+ */
+const isTestModeNow = modeDonneesFictives;
 
 /**
  * [FINTABLE-SYNC-XTAB-MUTEX] Verrou CROSS-ONGLET, quand le navigateur sait le faire.

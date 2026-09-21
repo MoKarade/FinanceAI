@@ -24,6 +24,7 @@ import { sanitizePromptText } from '../../utils/promptSafety';
 // [MCP-WRITE-SUMMARY-SCRUB] Désinfection du résultat renvoyé au modèle — helper PARTAGÉ avec le
 // serveur MCP (runApply) pour éviter la dérive « delta appliqué à une seule copie ». Voir le module.
 import { scrubWriteResultForModel } from '../../mcp/tools/scrubWriteResult';
+import { modeDonneesFictives } from '../../store/modeTestActif';
 
 /** Aperçu montré dans le modal de confirmation. */
 export interface WritePreview {
@@ -69,8 +70,11 @@ export async function executeWriteTool(
 
     // Backup AVANT d'écrire (annulable via Réglages → Sauvegarde) — échec du backup = on N'ÉCRIT
     // PAS (le filet est la condition de l'écriture, pas un best-effort).
-    const backup = await createBackupNow('auto');
-    if (!backup) {
+    // FILET, jamais refusé sur données fictives : ce module fait de la réussite du backup la
+    // CONDITION de l'écriture, donc un refus interdirait à l'assistant toute écriture dans le
+    // bac à sable — l'usage même que le bac à sable sert.
+    const backup = await createBackupNow('auto', { intent: 'filet', donneesFictives: modeDonneesFictives() });
+    if (!backup.ok) {
         logError({
             source: 'storage', severity: 'error',
             message: `Chat in-app : backup pré-écriture ÉCHOUÉ — écriture ${spec.name} ANNULÉE (jamais d'écriture sans filet).`,

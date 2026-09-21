@@ -1646,6 +1646,43 @@ n'est pas réécrire un récit.
   retard d'un commit — le défaut s'est présenté pendant qu'on écrivait sa garde
   (`UN-DEPLOIEMENT-QUI-EMBARQUE-LE-DOSSIER-LOCAL-NE-DIT-PAS-QUEL-CODE-IL-SERT`).
 
+- ⚠️⚠️ **Une règle de publication se recense par INTENTION, jamais par le déclencheur** (2026-09-21) :
+  trois sorties qui produisent un FICHIER ne regardaient jamais si l'app tourne sur des données
+  fictives — mesuré, `backupAuto.ts`, `pdfReport.ts` et `claude.ts` portaient **zéro** occurrence de
+  `isTestMode`. Tolérable avec des personas figés (« Karim » ne ressemble à rien de réel) ;
+  inacceptable dès que l'état fictif est une COPIE du dossier. ⚠️ Et « refuser le backup en mode
+  fictif » est FAUX pour **3 sites sur 5** : `source: 'auto' | 'manual'` dit QUI a déclenché, pas À
+  QUOI ça sert, et trois appelants posent un FILET avant une opération destructive — `writeExecutor`
+  fait de sa réussite la CONDITION de l'écriture, donc le refuser interdirait à l'assistant toute
+  écriture DANS le bac à sable, l'usage même qu'il sert. D'où une `intent` REQUISE. ⚠️ Le refus porte
+  sa CAUSE (union discriminée : « refusé par règle » ≠ « rien à sauvegarder » ≠ « écriture échouée »),
+  le filet qu'on ne peut pas refuser se MARQUE (`testMode: true`), et le prédicat — qui vivait en DEUX
+  copies non exportées — devient `store/modeTestActif.ts`. ⚠️ Le CSV a failli être la porte oubliée :
+  le plan disait « n'existe pas », il existe, et sa garde vit dans `downloadCSV` (le point de SORTIE)
+  et non dans chaque preset. ⚠️ Et c'est le LINT qui a trouvé mon seul vrai défaut — un import devenu
+  inutilisé, invisible au typecheck et à la ligne « 0 errors », lisible seulement en comparant le
+  COMPTE d'avertissements à la base (32 → 33 → 32)
+  (`UNE-REGLE-DE-PUBLICATION-SE-RECENSE-PAR-INTENTION-PAS-PAR-DECLENCHEUR`).
+
+- ⚠️⚠️ **Un SEUIL écrit à ras de sa mesure n'est plus un seuil** (2026-09-21, trois rouges de CI sur
+  un lot dont aucun fichier touché n'était en cause) : l'anti-vacuité du patron MGA exigeait
+  `code/brut > 0.45` sur `services/` contre une mesure de **0,45072** — **0,0007 de marge**, soit
+  ~1 300 caractères de commentaire sur 1,83 M. Un lot qui en ajoute 4 900 la fait rougir, alors
+  qu'elle existe pour attraper un décommenteur qui AVALE le code (ratio ≈ 0). Le correctif n'est pas
+  un nombre un peu plus bas mais une PAIRE sans réglage fin (le décommentage AGIT / il n'a pas tout
+  mangé), au seuil que la garde JUMELLE porte déjà sur la MÊME portée — recopié seulement après
+  avoir VÉRIFIÉ la portée et l'avoir écrit. ⚠️⚠️ Jumeau du même rouge : **un détecteur ancré sur
+  l'ORTHOGRAPHE d'un import devient aveugle au geste que le dépôt encourage** — extraire le prédicat
+  « données fictives ? » en source unique (`store/modeTestActif.ts`) a fait que `syncPush.ts`
+  atteint le store par un ALIAS, donc la garde de frontière a rougi **des deux côtés** (« importeur
+  non déclaré » ET « entrée à retirer ») pour un fait qui n'avait pas bougé. Le détecteur se DÉRIVE
+  (scanner `store/` pour juger `services/` n'est pas circulaire) ; l'INVENTAIRE, lui, reste écrit à
+  la main. ⚠️ Mesuré : le détecteur élargi sort EXACTEMENT les 7 entrées — la liste était juste,
+  c'est l'instrument qui ne voyait plus. ⚠️ Et de conduite : 197 tests ciblés couvraient les fichiers
+  TOUCHÉS, or **aucun des deux rouges ne vivait dans un fichier touché** — le périmètre à rejouer
+  n'est pas « ce que j'ai édité » mais « ce qui SCANNE ce que j'ai édité », et cette liste-là, seule
+  la CI la connaît (`UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

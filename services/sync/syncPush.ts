@@ -10,13 +10,13 @@ import { shouldPush, buildEnvelope, buildEncryptedEnvelope } from './syncEngine'
 import { getPassphrase } from './passphraseStore';
 import { encryptBackup } from '../cloudBackup';
 import { getOrCreateDeviceId, writeSyncMeta } from './syncState';
-import { useFinanceStore } from '../../store/useFinanceStore';
 import type { SyncEnvelope } from './syncTypes';
 import { getLocalPayload, hasAnyKey } from './syncSnapshot';
 import { setStatus, getSyncStatus } from './syncStatusStore';
 import { currentMeta, resolveSub } from './syncMeta';
 import { handleError } from './syncErrors';
 import { logError } from '../errorLogger';
+import { modeDonneesFictives } from '../../store/modeTestActif';
 
 /** Résultat d'un push — permet à l'UI d'être honnête (toast réel vs « rien à sauvegarder »). */
 type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'error';
@@ -29,16 +29,15 @@ let _apiKeysHydrated = false;
 export function markApiKeysHydrated(): void { _apiKeysHydrated = true; }
 
 /**
- * Vrai si l'app tourne en MODE TEST (fixtures persona). On ne synchronise JAMAIS ces données :
- * sinon l'auto-push écraserait la vraie sauvegarde Drive par des données de démo (bug 2026-05-29).
+ * Vrai si l'app tourne sur des données FICTIVES (mode test / bac à sable). On ne synchronise
+ * JAMAIS ces données : sinon l'auto-push écraserait la vraie sauvegarde Drive par des données
+ * de démo (bug 2026-05-29).
+ *
+ * ⚠️ Le corps a déménagé vers `store/modeTestActif.ts` : il vivait ici EN DOUBLE avec
+ * `services/fintable/autoSync.ts`, au corps identique et sous un autre nom. L'alias local est
+ * gardé pour ne pas toucher aux sites d'appel ni à leurs tests.
  */
-function isTestModeActive(): boolean {
-    try {
-        return useFinanceStore.getState().isTestMode === true;
-    } catch {
-        return false;
-    }
-}
+const isTestModeActive = modeDonneesFictives;
 
 // `__APP_VERSION__` est injecté par Vite (define). `typeof` évite un ReferenceError en test
 // (où le define n'existe pas) — diagnostic uniquement dans l'enveloppe.

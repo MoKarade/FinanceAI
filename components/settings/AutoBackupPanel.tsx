@@ -10,6 +10,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { showToast } from '../ui/Toast';
 import { formatDate } from '../../utils/format';
 import { Icon } from '../ui/Icon';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import {
     listBackups, createBackupNow, deleteBackup, clearAllBackups, restoreBackup,
     getBackupStats, type BackupEntry,
@@ -18,6 +19,10 @@ import {
 export const AutoBackupPanel: React.FC = () => {
     const [backups, setBackups] = useState<BackupEntry[]>([]);
     const [stats, setStats] = useState<{ count: number; totalBytes: number; oldest?: number; newest?: number }>({ count: 0, totalBytes: 0 });
+    // ⚠️ ABONNEMENT au store, pas une lecture ponctuelle : ce composant reste monté pendant
+    // qu'on entre ou sort du mode fictif, et une valeur capturée au montage laisserait le
+    // bouton accepter une archive de données fictives après la bascule — sans rien de rouge.
+    const donneesFictives = useFinanceStore(s => s.isTestMode === true);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [confirmRestore, setConfirmRestore] = useState<BackupEntry | null>(null);
@@ -36,11 +41,17 @@ export const AutoBackupPanel: React.FC = () => {
 
     const handleCreate = async () => {
         setIsCreating(true);
-        const entry = await createBackupNow('manual');
+        // ARCHIVE : c'est le geste « je veux retrouver cet état plus tard ». Refusé sur des
+        // données fictives — et le refus s'EXPLIQUE, il ne se confond pas avec une panne : un
+        // même message pour « règle métier » et « IndexedDB cassé » enverrait Marc réparer un
+        // disque qui va très bien (choix de Marc, 21/09/2026 : refuser plutôt qu'étiqueter).
+        const r = await createBackupNow('manual', { intent: 'archive', donneesFictives });
         setIsCreating(false);
-        if (entry) {
-            showToast(`Backup créé (${(entry.sizeBytes / 1024).toFixed(1)} KB).`, 'success');
+        if (r.ok) {
+            showToast(`Backup créé (${(r.entry.sizeBytes / 1024).toFixed(1)} KB).`, 'success');
             refresh();
+        } else if (r.cause === 'donnees-fictives') {
+            showToast("Sauvegarde refusée : l'app affiche des données fictives (mode test / bac à sable). Reviens aux données réelles pour sauvegarder.", 'error');
         } else {
             showToast("Impossible de créer le backup (localStorage vide ou IndexedDB indispo).", 'error');
         }
@@ -48,7 +59,7 @@ export const AutoBackupPanel: React.FC = () => {
 
     const handleRestore = async () => {
         if (!confirmRestore) return;
-        const ok = await restoreBackup(confirmRestore.id);
+        const ok = await restoreBackup(confirmRestore.id, donneesFictives);
         setConfirmRestore(null);
         if (!ok) showToast('Restauration échouée.', 'error');
         // Si ok → window.location.reload() est déjà déclenché par restoreBackup

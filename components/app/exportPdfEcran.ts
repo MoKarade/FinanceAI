@@ -91,6 +91,13 @@ export async function genererRapportPdfEcran({ state, globalNetWorth, calculated
         // Le refus en mode discret n'est PAS une erreur : c'est le contrat. Le
         // confondre avec une panne dirait « ça a planté » là où il faut dire
         // « désactive le mode discret » — l'utilisateur chercherait un bug.
+        // Même famille que le refus ci-dessous : une RÈGLE, pas une panne. Le message nomme
+        // l'issue (revenir aux données réelles), jamais « réessaie » — aucun nouvel essai ne
+        // réussira tant que le mode est actif.
+        if (e instanceof Error && e.name === 'PdfRefusedTestModeError') {
+            showToast("L’app affiche des données fictives (mode test / bac à sable) : l’export PDF est bloqué. Un PDF sort de l’app et aurait l’allure d’un vrai dossier. Reviens aux données réelles pour le générer.", 'error');
+            return;
+        }
         if (e instanceof Error && e.name === 'PdfRefusedPrivacyError') {
             showToast('Mode discret actif : l’export PDF est bloqué. Un PDF sort de l’app et garderait tes montants en clair — désactive le mode discret pour le générer.', 'error');
             return;

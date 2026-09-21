@@ -4,6 +4,54 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-21 (suite 3) — **`[SANDBOX-ETANCHEITE-FICHIERS]` : aucun fichier ne sort pendant que les données sont fictives**
+> 🔎 Marc : « on va retravailler full le sandbox de l'onglet futur, jveux que ca change que ce soit
+> plus propore pose moi des questions ».
+> 🧭 **Cadrage fait, décisions de Marc** : (1) le bac à sable devient une **COPIE COMPLÈTE du
+> dossier**, modifiable de bout en bout ; (2) **toute la page change d'allure** tant que le mode est
+> actif ; (3) on **GÉNÉRALISE le MODE TEST existant** plutôt que d'en créer un second — il remplace
+> déjà tout l'état, garde une copie du réel (`realDataSnapshot`), sait revenir, coupe le push Drive
+> (`shouldPush`) et affiche déjà un bandeau plein écran ; (4) les deux curseurs actuels seront
+> **SUPPRIMÉS** avec neutralisation de la valeur persistée, ce qui referme le split 55/45 par
+> suppression du code qui le porte ; (5) l'étanchéité se ferme **tout de suite, en lot séparé** ;
+> (6) backup manuel **refusé avec explication**, PDF **refusé** — choix de Marc CONTRE ma
+> recommandation de filigrane, noté comme décision et non comme oubli.
+> 🔧 **Livré (décision 5)** : `store/modeTestActif.ts` (source unique du prédicat, il vivait en DEUX
+> copies non exportées, `isTestModeNow` et `isTestModeActive`) ; `createBackupNow` prend une
+> **INTENTION REQUISE** (`archive` / `filet`) et rend une union discriminée ; refus d'export **PDF**
+> (`PdfRefusedTestModeError`, jumeau du refus de mode discret) et de téléchargement **CSV**.
+> ⚠️ **Le backup FILET n'est PAS refusé**, et c'est le cœur du lot : `createBackupNow` a CINQ
+> appelants, dont trois posent un filet avant une opération destructive. `writeExecutor` écrit en
+> toutes lettres que « le filet est la CONDITION de l'écriture » — le refuser interdirait à
+> l'assistant toute écriture DANS le bac à sable, l'usage même qu'il sert ; `syncPull` et
+> `restoreBackup` perdraient le leur. Un filet pris en mode fictif porte `testMode: true`.
+> ⚠️ **Le CSV a failli être la porte oubliée** : le plan d'architecture affirmait « Export CSV :
+> n'existe pas ». Il existe. Sa garde vit dans `downloadCSV` — le point de SORTIE commun aux trois
+> presets, y compris celui qu'un lot futur ajoutera — et non dans chaque preset.
+> 🧪 **Gardes** : `tests/services/etancheiteDonneesFictives.test.ts`, 11 cas, prouvés par **deux
+> perturbations de sens OPPOSÉ** (règle désarmée → 3 rouges ; `intent` ignoré → 2 rouges, dont
+> exactement l'assertion du filet).
+> 📏 `npm run typecheck` vert · `npm run lint` **0 erreur / 32 avertissements** = base d'`origin/main`.
+> ⚠️ **Le LINT a trouvé mon seul vrai défaut** : l'alias avait rendu `useFinanceStore` inutilisé dans
+> `syncPush.ts` (32 → 33). Invisible au typecheck ET à la ligne « 0 errors » — seul le COMPTE comparé
+> à la base le montre.
+> ⚠️ **Trois `as never` de mocks** rendaient l'ANCIENNE forme et laissaient le typecheck vert pendant
+> que l'exécution rougissait : réécrits SANS l'échappatoire.
+> ⚠️⚠️ **Et la CI a rendu 3 rouges dans 2 fichiers que le lot ne touche PAS** (PR #1006) : (a)
+> l'anti-vacuité du patron MGA exigeait `code/brut > 0.45` sur `services/` contre une mesure de
+> **0,45072** — 0,0007 de marge, que 4 900 caractères de commentaire ont suffi à franchir ; elle
+> devient une PAIRE sans réglage fin, au seuil de sa garde JUMELLE sur la MÊME portée ; (b) la garde
+> de frontière `services/ ↔ store` cherchait la chaîne `store/useFinanceStore`, donc l'extraction de
+> `store/modeTestActif.ts` l'a rendue aveugle à `syncPush.ts` **des deux côtés** — son détecteur est
+> désormais DÉRIVÉ (scanner `store/` pour juger `services/`), l'inventaire restant écrit à la main.
+> Mesuré : le détecteur élargi sort exactement les 7 entrées. Leçon :
+> `UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL`.
+> ⚠️ **Non couvert, et dit plutôt que sous-entendu** : les prompts envoyés au modèle
+> (`services/claude.ts`). C'est le SEUL des trois canaux qui sort de la machine (le backup va dans
+> IndexedDB local chiffré, le PDF reste sur le disque), il n'a pas de point d'entrée unique (7
+> fonctions qui parlent au modèle, 3 appels SDK directs), et la réponse juste n'y est probablement
+> pas un refus — demander conseil SUR un scénario est l'usage même du bac à sable. **À trancher.**
+> ⚠️ **Ce lot touche l'app** (pas seulement le serveur MCP) : un déploiement Vercel est à vérifier.
 > ## 🟦 Session 2026-09-21 (suite×3) — **`[FUTUR-AXE-Y-MINIMAL]` : axe Y minimal + badge flottant sur la courbe principale**
 > 🔎 Après le correctif du bandeau/tiroirs (entrée juste en dessous), Marc a choisi parmi 5
 > maquettes (canvas `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`, E1-E5) la combinaison **E2 (badge

@@ -16756,3 +16756,159 @@ met en tête de `PATH`. Le comportement devient identique partout, et l'appel r�
 effet de bord. ⚠️ Reproduit AVANT de corriger (un faux `gcloud` qui dort 30 s sur le `PATH` fait
 bien expirer l'ancien test), puis re-vérifié avec ce même `gcloud` hostile encore en place : 3/3
 verts. Et la perturbation d'origine tire toujours (refus neutralisé → 1 rouge).
+
+---
+
+## `UNE-REGLE-DE-PUBLICATION-SE-RECENSE-PAR-INTENTION-PAS-PAR-DECLENCHEUR` (2026-09-21)
+
+**Contexte.** Marc demande de retravailler le mode « Sandbox » de l'onglet Futur. En recensant
+l'existant, trois sorties qui produisent un FICHIER ne regardaient **jamais** si l'app tourne sur
+des données fictives. Mesuré, et c'est net : `services/backupAuto.ts`, `services/pdfReport.ts` et
+`services/claude.ts` contenaient **zéro** occurrence de `isTestMode`.
+
+C'était tolérable tant que le mode test ne servait qu'à des personas figés — un « Karim » ne
+ressemble à rien de réel, donc personne ne confond. Ça cesse de l'être dès que l'état fictif est
+une COPIE du dossier réel, ce que Marc vient de demander : un PDF, une sauvegarde ou un CSV issus
+d'un scénario sont alors indiscernables des vrais.
+
+**La leçon.** `source: 'auto' | 'manual'` de `createBackupNow` dit **QUI a déclenché**, pas **À
+QUOI ça sert** — et les deux ne coïncident pas. Recensé sur les cinq sites d'appel :
+
+| site | `source` | intention RÉELLE |
+|---|---|---|
+| `initAutoBackup` (boot quotidien) | `auto` | archive |
+| `AutoBackupPanel` (bouton) | `manual` | archive |
+| `writeExecutor` (avant écriture de l'assistant) | `auto` | **filet** |
+| `syncPull` (avant d'écraser l'état local) | `auto` | **filet** |
+| `restoreBackup` (avant de restaurer) | `manual` | **filet** |
+
+Donc « refuser le backup en mode fictif » est **faux pour trois sites sur cinq**, et le refus y
+casserait trois protections d'un coup. `writeExecutor` écrit en toutes lettres que « le filet est
+la CONDITION de l'écriture » : le refuser interdirait à l'assistant toute écriture **dans le bac à
+sable**, c'est-à-dire l'usage même que le bac à sable sert. `syncPull` journaliserait « restauration
+SANS filet » à chaque pull, et un avertissement permanent est un avertissement mort.
+
+**Devant une règle de publication, recenser par INTENTION, jamais par le drapeau qui traîne déjà
+dans la signature.** Ici c'est `UN-BOOLEEN-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`
+appliqué à un paramètre qu'on croyait descriptif : `intent: 'archive' | 'filet'`, REQUIS, pour que le
+compilateur énumère les sites au lieu de laisser un appelant futur retomber en silence sur « archive
+d'un dossier réel » — le cas exact qu'on veut interdire.
+
+⚠️ **Le refus porte sa CAUSE, sinon l'écran est muet.** `createBackupNow` rendait `BackupEntry | null`
+pour trois situations opposées (refusé par règle / rien à sauvegarder / écriture échouée), donc le
+bouton ne pouvait afficher qu'un seul message — et il disait « localStorage vide ou IndexedDB
+indispo », ce qui envoie chercher une panne quand la seule chose qui s'est passée est une règle
+(`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`). Union discriminée.
+
+⚠️ **Le filet qu'on ne peut pas refuser se MARQUE** : un backup-filet pris en mode fictif porte
+`testMode: true`, additif et optionnel (absent = antérieur au marquage, donc réel — c'est la lecture
+juste, pas un repli commode). Sans lui, une entrée fictive serait indiscernable d'une vraie dans la
+liste des sauvegardes, et restaurable des mois plus tard.
+
+⚠️ **Le prédicat vivait en DEUX copies non exportées** au corps identique et au nom différent —
+`isTestModeNow()` (`services/fintable/autoSync.ts`) et `isTestModeActive()` (`services/sync/syncPush.ts`).
+Une troisième allait naître. `store/modeTestActif.ts` est la source unique
+(`UN-COMMENTAIRE-QUI-RECLAME-DE-LA-VIGILANCE-EST-UNE-SOURCE-UNIQUE-MANQUANTE`). ⚠️ Mais les modules
+PURS continuent de recevoir le booléen en ARGUMENT (`shouldPush`, `backupReminder`, et désormais
+`backupAuto`) : y faire entrer le store élargirait le graphe d'imports de tout ce qui monte le boot
+(`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUS-LES-MONTAGES`).
+
+⚠️ **Le CSV a failli être la porte oubliée.** Le plan d'architecture affirmait « Export CSV :
+recherché, **n'existe pas** ». Il existe (`utils/csvExport.ts`), et le fichier de test qui le garde
+porte en en-tête la leçon exacte de ce lot : *« une décision de vie privée écrite pour UNE sortie
+doit être passée en revue sur TOUTES les sorties — sinon elle protège la porte qu'on regardait »*.
+⚠️ Et sa garde ne se pose pas au même endroit que celle du mode discret, pour une raison qui se
+dit : le mode discret refuse de CONSTRUIRE (inutile de fabriquer des lignes qu'on ne rendra pas), les
+données fictives refusent de **FAIRE SORTIR** — donc `downloadCSV`, seul point par lequel un fichier
+sort, quel que soit le preset, y compris celui qu'un lot futur ajoutera.
+
+⚠️ **Le LINT a trouvé le seul vrai défaut que j'avais introduit** : remplacer la copie du prédicat
+par un alias a rendu `useFinanceStore` inutilisé dans `syncPush.ts`. Le typecheck ne le voit pas, et
+la ligne « 0 errors » non plus — il n'est visible qu'en comparant le COMPTE d'avertissements à la
+base (32 sur `origin/main`, 33 avec mon lot, 32 après correction). `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`
+re-payée, cette fois attrapée.
+
+⚠️ **Les `as never` des mocks ont laissé le typecheck vert pendant que l'exécution rougissait** :
+trois mocks de `createBackupNow` rendaient l'ANCIENNE forme sous un `as never`, qui fait taire le
+compilateur sur l'objet ENTIER (`UN-CHAMP-REQUIS-NE-PROTEGE-QUE-LA-OU-LE-TYPE-EST-VERIFIE`). Ils ont
+été réécrits SANS l'échappatoire, pour que le type protège vraiment.
+
+**Ce que ce lot NE couvre PAS, et c'est écrit plutôt que sous-entendu** : les prompts envoyés au
+modèle (`services/claude.ts`). C'est le **seul des trois canaux qui SORT de la machine** — le backup
+va dans IndexedDB (local, chiffré par une clé de device) et le PDF reste sur le disque. Il est traité
+à part parce qu'il n'a pas de point d'entrée unique (sept fonctions qui parlent au modèle, trois
+appels SDK directs) et parce que la réponse juste n'y est probablement pas un refus : demander
+conseil SUR un scénario est l'usage même du bac à sable. À trancher avec Marc.
+
+---
+
+## `UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL` (2026-09-21, trouvé par la CI)
+
+Le lot `[SANDBOX-ETANCHEITE-FICHIERS]` est parti avec gate ciblé vert, 197 tests lancés à la main
+tous verts — et la CI a rendu **3 rouges dans 2 fichiers**, aucun des deux n'ayant le moindre rapport
+avec l'étanchéité. Les deux disent la même chose sous deux formes : **une garde qui ancre un CHIFFRE
+ou une ORTHOGRAPHE au lieu du FAIT qu'elle défend se retourne contre le premier lot qui passe.**
+
+### 1. Le seuil d'anti-vacuité à 0,0007 de marge
+
+`tests/services/mgaPatronSourceUnique.test.ts` exigeait `codeTotal / brutTotal > 0.45` sur tout
+`services/`. Mesuré sur `origin/main` : **0,45072**. La marge entière était de **0,0007**, soit
+~1 300 caractères de commentaire sur les **1,83 M** que pèse le dossier. Mon lot en a ajouté ~4 900
+(deux en-têtes qui expliquent pourquoi un refus existe) : ratio à **0,44985**, garde rouge — sur une
+garde qui ne parle ni de backup, ni de PDF, ni du patron MGA qu'elle défend.
+
+Ce que cette anti-vacuité doit attraper est un décommenteur qui **AVALE le code** (ratio ≈ 0). Un
+seuil posé à ras de sa propre mesure n'attrape plus ça : il attrape « le dépôt a été commenté ».
+Et il enseigne la mauvaise leçon — *commente moins, ou re-tune le nombre* —, alors que le dépôt
+demande l'inverse.
+
+Le correctif n'est pas un nombre un peu plus bas choisi au jugé, c'est une **PAIRE qui borne des
+deux côtés** et ne dépend d'aucun réglage fin :
+
+```
+expect(brutTotal).toBeGreaterThan(100_000);   // le périmètre n'est pas vide
+expect(codeTotal).toBeLessThan(brutTotal);    // le décommentage AGIT (motif mort ?)
+expect(codeTotal / brutTotal).toBeGreaterThan(0.35); // il n'a pas tout mangé
+```
+
+`0.35` n'est pas inventé : c'est le seuil que la garde **JUMELLE** (`storeCouplingBoundary.test.ts`)
+porte déjà sur la **MÊME portée** `services/`, avec sa justification écrite — et les deux ratios sont
+du même ordre (0,44985 en `stripCommentsJsx`, 0,44999 en `stripComments`, mesurés le 2026-09-21).
+Recopier un seuil reste interdit ; recopier un seuil **après avoir vérifié que la portée est la
+même et l'avoir écrit** est le geste que `UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`
+demande. ⚠️ Les deux perturbations prouvent la paire dans ses deux sens : décommenteur qui rend `''`
+→ rouge sur le plancher ; décommenteur qui rend le brut → rouge sur « n'a RIEN retiré ».
+
+### 2. Le détecteur rendu aveugle par la source unique qu'il aurait dû encourager
+
+`tests/services/storeCouplingBoundary.test.ts` tient l'inventaire fermé des fichiers de `services/`
+qui lisent le store, **dans les deux sens** (aucun importeur non déclaré ; aucune entrée qui
+n'importe plus). Son détecteur cherchait la chaîne `store/useFinanceStore`.
+
+Or ce lot a fait exactement ce que le dépôt réclame : le prédicat « les données sont-elles
+fictives ? » vivait en **deux copies non exportées**, il est devenu `store/modeTestActif.ts`. Dès
+lors `services/sync/syncPush.ts` atteint le store **par cet alias** — le fait défendu n'a pas bougé
+d'un pouce, ce fichier traîne toujours `useFinanceStore` dans son graphe d'imports — et la garde
+a rougi **des deux côtés à la fois** : « nouvel importeur non déclaré » (il a disparu de la liste
+détectée) ET « entrée à retirer » (elle croit qu'il n'importe plus rien).
+
+La leçon n'est pas « ajouter `modeTestActif` au motif » : le prochain alias le rendrait aveugle à
+nouveau, et un motif ancré sur une orthographe n'a pas de borne
+(`UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`). Le détecteur se
+**DÉRIVE**, sur UNE marche, et ce n'est pas circulaire : il scanne `store/` — tout module qui importe
+lui-même `useFinanceStore` — pour juger `services/`. L'INVENTAIRE, lui, reste écrit à la main (le
+dériver de ce qu'il scanne le rendrait vide de sens). ⚠️ Mesuré : le détecteur élargi sort
+**exactement les 7 entrées** de l'inventaire, aucun offender nouveau — la liste était juste, c'est
+l'instrument qui ne voyait plus. ⚠️ Anti-vacuité obligatoire sur la DÉRIVATION elle-même (la racine
+présente, au moins un alias, et le témoin NOMMÉ `store/modeTestActif`) : sans elle, « aucun importeur
+non déclaré » est aussi vrai d'une dérivation cassée que d'un inventaire complet — l'état exact dans
+lequel la garde a laissé passer `syncPush.ts`.
+
+### 3. Ce que ça dit de la conduite
+
+`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE` a tenu : les 197 tests que j'avais choisis à la
+main couvraient les fichiers TOUCHÉS, et **aucun des deux rouges ne vivait dans un fichier touché**.
+Une garde de dépôt est un consommateur de tout `services/` — le périmètre à rejouer n'est pas « ce
+que j'ai édité » mais « ce qui SCANNE ce que j'ai édité », et cette seconde liste ne se devine pas :
+c'est la CI qui la connaît. Ne pas lancer un gate complet local était le bon choix ; croire que les
+197 tests ciblés valaient un gate ne l'était pas.

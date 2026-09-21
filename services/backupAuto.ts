@@ -44,7 +44,51 @@ export interface BackupEntry {
     /** S-A — vrai si `payload` est chiffré avec la clé de device. Absent/false
      *  sur les anciens backups, qui restent restaurables en clair. */
     encrypted?: boolean;
+    /** Vrai si le snapshot a été pris pendant que l'app tournait sur des données FICTIVES
+     *  (mode test / bac à sable). Additif et optionnel : absent sur tous les backups
+     *  antérieurs, qui sont donc réels — c'est la lecture juste, pas un repli commode.
+     *  ⚠️ Il n'existe QUE parce qu'un backup-FILET reste créé en mode fictif (cf `BackupIntent`
+     *  plus bas) : sans lui, une entrée fictive serait indiscernable d'une vraie dans la liste
+     *  des sauvegardes, et restaurable des mois plus tard en croyant restaurer son dossier. */
+    testMode?: boolean;
 }
+
+/**
+ * POURQUOI une intention, alors que `source: 'auto' | 'manual'` existe déjà.
+ *
+ * `source` dit QUI a déclenché, pas À QUOI ça sert — et les deux ne coïncident pas : mesuré, sur
+ * les cinq sites qui appellent `createBackupNow`, `restoreBackup` passe `'manual'` pour un filet
+ * et `writeExecutor`/`syncPull` passent `'auto'` pour un filet aussi. Un même drapeau recouvrait
+ * donc deux faits OPPOSÉS vis-à-vis des données fictives
+ * (`UN-BOOLEEN-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`).
+ *
+ * ⚠️ La distinction n'est pas cosmétique : refuser TOUS les backups en mode fictif casserait
+ * trois protections d'un coup. `services/aiTools/writeExecutor.ts` écrit en toutes lettres que
+ * « le filet est la condition de l'écriture » — un refus y interdirait à l'assistant toute
+ * écriture dans le bac à sable, c'est-à-dire l'usage même que le bac à sable sert ;
+ * `services/sync/syncPull.ts` journaliserait « restauration SANS filet » à chaque pull, et un
+ * avertissement permanent est un avertissement mort ; `restoreBackup` perdrait le sien.
+ */
+export type BackupIntent =
+    /** Archiver l'état pour le retrouver plus tard (quotidien du boot, bouton « Sauvegarder
+     *  maintenant »). Archiver du FICTIF est au mieux inutile, au pire trompeur → REFUSÉ. */
+    | 'archive'
+    /** Filet posé juste avant une opération destructive, pour pouvoir l'annuler. Ce qu'il
+     *  protège est l'opération QUI SUIT, pas la valeur des données → JAMAIS refusé, même
+     *  fictif ; marqué `testMode` à la place. */
+    | 'filet';
+
+/** Ce que `createBackupNow` a fait. Une union plutôt qu'un `null` : « refusé par règle » et
+ *  « l'écriture a échoué » appellent des réactions OPPOSÉES chez l'appelant, et les confondre
+ *  rendait l'écran muet (`UN-SERVICE-QUI-REND-LA-MEME-VALEUR-POUR-N-SITUATIONS-REND-SON-ECRAN-MUET`). */
+export type BackupResultat =
+    | { ok: true; entry: BackupEntry }
+    /** Règle métier : on n'archive pas des données fictives. Rien n'est cassé, rien à réparer. */
+    | { ok: false; cause: 'donnees-fictives' }
+    /** Rien à sauvegarder (localStorage vide/absent). */
+    | { ok: false; cause: 'rien-a-sauvegarder' }
+    /** L'écriture IndexedDB a échoué — déjà journalisé. */
+    | { ok: false; cause: 'echec-ecriture' };
 
 function openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
@@ -146,9 +190,26 @@ async function tryGetDeviceKey(): Promise<CryptoKey | null> {
  * Crée un nouveau backup (manuel ou auto).
  * Retourne le BackupEntry créé, ou null si rien à sauvegarder.
  */
-export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Promise<BackupEntry | null> {
+export async function createBackupNow(
+    source: 'auto' | 'manual',
+    /**
+     * ⚠️ REQUIS, les deux champs. Optionnels, un appelant qui les oublie retomberait en silence
+     * sur « archive d'un dossier réel » — c'est-à-dire exactement le cas qu'on veut interdire,
+     * et sans rien de rouge. Requis, le compilateur énumère les sites à chaque ajout.
+     * `donneesFictives` est PASSÉ, jamais lu ici : ce module ne connaît pas le store (il lit
+     * `localStorage` brut), et l'y faire entrer élargirait le graphe d'imports de tout ce qui
+     * monte le boot (`UN-IMPORT-DANS-LA-COUCHE-SERVICES-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUS-LES-MONTAGES`).
+     * C'est la forme déjà retenue par `shouldPush(localIsEmpty, isTestMode)`.
+     */
+    opts: { intent: BackupIntent; donneesFictives: boolean },
+): Promise<BackupResultat> {
+    // Règle : on n'ARCHIVE pas des données fictives. Le filet, lui, passe toujours — voir
+    // `BackupIntent`, qui dit pourquoi les deux ne peuvent pas partager la même décision.
+    if (opts.intent === 'archive' && opts.donneesFictives) {
+        return { ok: false, cause: 'donnees-fictives' };
+    }
     const plaintext = getCurrentPayload();
-    if (!plaintext || plaintext.length === 0) return null;
+    if (!plaintext || plaintext.length === 0) return { ok: false, cause: 'rien-a-sauvegarder' };
 
     // S-A — chiffre avant stockage (clé de device). Crypto indisponible →
     // dégradation en clair pour ne pas perdre la capacité de backup.
@@ -162,6 +223,11 @@ export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Pro
         payload: stored.payload,
         source,
         encrypted: stored.encrypted,
+        // Seul un FILET peut arriver ici avec des données fictives (l'archive a été refusée
+        // plus haut). On le MARQUE : la liste des sauvegardes le montrera, et la restauration
+        // pourra prévenir. ⚠️ `false` explicite plutôt qu'omis quand c'est réel — un champ absent
+        // veut dire « ce backup est antérieur au marquage », pas « il est réel ».
+        testMode: opts.donneesFictives,
     };
 
     try {
@@ -169,13 +235,13 @@ export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Pro
         // [BACKUP-PROMISE-CATCH] `await` la promesse AVANT de la retourner : sinon un rejet ASYNC
         // (tx.onerror IndexedDB, ex. quota) passe au caller SANS être journalisé par le catch ci-dessous
         // (l'utilisateur croirait être sauvegardé). L'await ramène le rejet dans ce catch → logué + null.
-        return await new Promise((resolve, reject) => {
+        return await new Promise<BackupResultat>((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             store.add(entry);
             tx.oncomplete = () => {
                 db.close();
-                resolve(entry);
+                resolve({ ok: true, entry });
             };
             tx.onerror = () => {
                 db.close();
@@ -187,7 +253,7 @@ export async function createBackupNow(source: 'auto' | 'manual' = 'manual'): Pro
         // être sauvegardé). On journalise via le logger borné (visible diagnostics/UI)
         // tout en gardant le contrat null (l'appelant décide quoi afficher).
         logError({ source: 'storage', severity: 'error', message: 'createBackupNow: échec écriture du backup (IndexedDB)', error: err instanceof Error ? err : new Error(String(err)) });
-        return null;
+        return { ok: false, cause: 'echec-ecriture' };
     }
 }
 
@@ -254,7 +320,7 @@ export async function clearAllBackups(): Promise<void> {
  * Restaure un backup : écrase localStorage `financeai-storage` avec le payload
  * et déclenche un reload. ATTENTION : action destructrice.
  */
-export async function restoreBackup(id: string): Promise<boolean> {
+export async function restoreBackup(id: string, donneesFictives: boolean): Promise<boolean> {
     const backups = await listBackups();
     const entry = backups.find(b => b.id === id);
     if (!entry) return false;
@@ -264,8 +330,11 @@ export async function restoreBackup(id: string): Promise<boolean> {
         // indéchiffrable lève ici → catch → false, sans rien écraser.
         const deviceKey = await tryGetDeviceKey();
         const plaintext = await readStoredPayload(entry, deviceKey);
-        // Backup la version actuelle d'abord (insurance)
-        await createBackupNow('manual');
+        // Backup la version actuelle d'abord (insurance). C'est un FILET, malgré `'manual'` :
+        // il existe pour pouvoir annuler la restauration qui suit, pas pour archiver. Il passe
+        // donc même sur des données fictives — le refuser retirerait la protection à l'instant
+        // précis où elle sert.
+        await createBackupNow('manual', { intent: 'filet', donneesFictives });
         // [PERSONA-PURGE] Un backup HISTORIQUE peut contenir des artefacts de persona de test
         // (fuite d'avant les gardes) → désinfection avant restauration (skip auto si le backup
         // est un état de mode test légitime). Parse best-effort : illisible → restauré tel quel
@@ -316,14 +385,19 @@ async function pruneOldBackups(): Promise<void> {
  * À appeler au boot. Crée un backup auto si aucun n'existe dans les
  * dernières 23h (≈ 1 par jour, tolérant aux fuseaux horaires).
  */
-export async function initAutoBackup(): Promise<void> {
+export async function initAutoBackup(donneesFictives: boolean): Promise<void> {
     if (typeof indexedDB === 'undefined') return;
     try {
         const backups = await listBackups();
         const last = backups[0];
         const dayMs = 23 * 60 * 60 * 1000; // 23h tolerance
         if (!last || Date.now() - last.timestamp > dayMs) {
-            await createBackupNow('auto');
+            // ARCHIVE : refusée en données fictives, et c'est un silence VOULU — ce chemin
+            // tourne tout seul au boot, une alerte y parlerait à chaque démarrage du bac à
+            // sable sans que personne n'ait rien demandé (un avertissement permanent est un
+            // avertissement mort). Le refus reste lisible : aucune entrée neuve n'apparaît.
+            const r = await createBackupNow('auto', { intent: 'archive', donneesFictives });
+            if (!r.ok && r.cause === 'donnees-fictives') return;
             await pruneOldBackups();
         }
     } catch (err) {

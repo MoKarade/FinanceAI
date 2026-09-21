@@ -70,11 +70,38 @@
 ## 🧪 Mode Sandbox de l'onglet Futur (21/09/2026, demandé par Marc)
 
 > Demande : « on va retravailler full le sandbox de l'onglet futur, jveux que ca change que ce soit
-> plus propore ». Décisions prises : périmètre cible = **copie complète du dossier** modifiable de
-> bout en bout ; signal = **toute la page change d'allure**. Cadrage en cours (fiche produit +
-> plan d'architecture). Les trois items ci-dessous sont des défauts **PRÉ-EXISTANTS** trouvés en
-> recensant l'existant — ils ne dépendent pas de la refonte et n'ont PAS été corrigés (scope non
-> demandé ; règle « bug préexistant découvert en chemin → signalé, jamais corrigé sans feu vert »).
+> plus propore ». **Décisions de Marc (21/09)** : (1) périmètre cible = **copie complète du dossier**
+> modifiable de bout en bout ; (2) signal = **toute la page change d'allure** ; (3) le mécanisme
+> GÉNÉRALISE le **MODE TEST** existant plutôt que d'en créer un second — il remplace déjà tout
+> l'état, garde une copie du réel, sait revenir, coupe le push Drive et affiche déjà un bandeau
+> plein écran ; (4) les deux curseurs actuels sont **SUPPRIMÉS** (avec neutralisation de la valeur
+> persistée), ce qui referme le split 55/45 par suppression du code qui le porte ; (5) l'étanchéité
+> se ferme **tout de suite, en lot séparé** ; (6) backup manuel **refusé avec explication**, export
+> PDF **refusé** pendant le mode (choix de Marc CONTRE ma recommandation de filigrane).
+
+- [x] 🔒 **`[SANDBOX-ETANCHEITE-FICHIERS]`** (M) — ✅ **livré 2026-09-21** (lot de sécurité séparé,
+  décision 5 ci-dessus). Trois sorties qui produisent un FICHIER ne regardaient **jamais** si l'app
+  tourne sur des données fictives — mesuré : `services/backupAuto.ts`, `services/pdfReport.ts` et
+  `services/claude.ts` contenaient **zéro** occurrence de `isTestMode`. Livré : backup d'ARCHIVE
+  refusé (avec cause nommée, distincte d'une panne), export PDF refusé, téléchargement CSV refusé.
+  ⚠️ **Le backup FILET n'est PAS refusé**, et c'est le cœur du lot : mesuré, `createBackupNow` a
+  CINQ appelants dont trois posent un filet avant une opération destructive — `writeExecutor` fait
+  de sa réussite la CONDITION de l'écriture (le refuser interdirait à l'assistant toute écriture
+  dans le bac à sable), `syncPull` et `restoreBackup` perdraient le leur. D'où une INTENTION
+  explicite (`archive` / `filet`) : `source: 'auto' | 'manual'` mélangeait les deux.
+  ⚠️ Un backup-filet pris en mode fictif porte désormais `testMode: true`.
+  Gardes : `tests/services/etancheiteDonneesFictives.test.ts` (11 cas, 2 perturbations de sens
+  OPPOSÉ prouvées). Source unique du prédicat : `store/modeTestActif.ts` (il vivait en DEUX copies
+  non exportées).
+
+- [ ] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
+  (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
+  `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi
+  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). ⚠️ **Mesuré avant d'écrire « fuite »** : les deux
+  n'ont **AUCUN appelant** dans tout le code de production — ce sont des exports MORTS, donc le
+  défaut est aujourd'hui **inatteignable**. Deux issues possibles (les retirer, ou les garder et
+  les brancher) ; trancher avant de coder. ⚠️ Le téléchargement, lui, est déjà couvert contre les
+  données fictives : la garde vit dans `downloadCSV`, le point de sortie commun.
 
 - [ ] 🔴 **`[SANDBOX-FUITE-VERS-LE-MCP]`** (M, money-critical) — un sandbox laissé ALLUMÉ sort de
   l'onglet Futur et atteint les outils MCP. Chaîne tracée : `buildSimulationParamsFromState`

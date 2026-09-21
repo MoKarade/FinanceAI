@@ -52,6 +52,10 @@
 > fonctions qui parlent au modèle, 3 appels SDK directs), et la réponse juste n'y est probablement
 > pas un refus — demander conseil SUR un scénario est l'usage même du bac à sable. **À trancher.**
 > ⚠️ **Ce lot touche l'app** (pas seulement le serveur MCP) : un déploiement Vercel est à vérifier.
+> ✅ **MERGÉ** (PR #1006, `17d02997`) et **DÉPLOYÉ** : déploiement de production
+> `dpl_5f5dEZRS5VD4TtXhqwDYyDmADopy` **créé et `READY`** sur le SHA exact. ⚠️ La RÉPONSE servie
+> n'a PAS pu être lue depuis ce conteneur (403 au CONNECT) — c'est la création + l'état qui sont
+> vérifiés, rien de plus. Item déménagé vers `docs/BACKLOG_ARCHIVE.md`.
 > ## 🟦 Session 2026-09-21 (suite×3) — **`[FUTUR-AXE-Y-MINIMAL]` : axe Y minimal + badge flottant sur la courbe principale**
 > 🔎 Après le correctif du bandeau/tiroirs (entrée juste en dessous), Marc a choisi parmi 5
 > maquettes (canvas `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`, E1-E5) la combinaison **E2 (badge

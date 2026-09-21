@@ -28,6 +28,31 @@ export function scriptBypassOnboarding(): string {
 }
 
 /**
+ * Éloigne le pointeur du rail de navigation AVANT toute interaction.
+ *
+ * ⚠️ LA SOURIS DE PLAYWRIGHT DÉMARRE EN (0,0) — c'est-à-dire SUR le rail. Celui-ci s'ouvre au
+ * survol (`isSidebarOpen = (hovered || focused) && !dismissed`, `components/Layout.tsx`) et, par
+ * décision assumée (« l'expansion overlay le contenu sans push, pas de jump »), il RECOUVRE les
+ * 288 px de gauche (`w-72`) alors que le contenu ne commence qu'à 64 px (`md:ml-16`). Tout
+ * contrôle situé dans cette bande devient donc inatteignable au clic tant que le pointeur n'a
+ * pas bougé : Playwright réessaie pendant 30 s en répétant « subtree intercepts pointer events »,
+ * puis le test expire.
+ *
+ * Ce n'est PAS le contournement d'un défaut de l'app : un humain qui survole le rail le voit
+ * s'ouvrir et déplace sa souris. Ce que le helper reproduit, c'est ce geste-là.
+ *
+ * MESURÉ le 2026-09-21 sur `main` (4f1466b4), sans aucun changement applicatif :
+ * `futureAxis.spec.ts` échoue 3 fois sur 3 (30 s chacune) avec le pointeur en (0,0), et passe
+ * une fois le pointeur écarté. Le même mécanisme faisait expirer le job E2E de la CI à son
+ * plafond de 30 minutes.
+ */
+async function ecarterLeRail(page: Page): Promise<void> {
+  const vp = page.viewportSize();
+  if (!vp) return;
+  await page.mouse.move(vp.width - 5, Math.floor(vp.height / 2));
+}
+
+/**
  * Active le mode test (fixtures Alex/Sam) en naviguant vers l'onglet
  * Configuration → sous-onglet « Profil » (qui contient TestModePanel ;
  * déplacé depuis « Système & diagnostics » — charger un persona est une
@@ -40,6 +65,7 @@ export async function activateTestMode(page: Page): Promise<void> {
   // Navigation vers Configuration via le hash
   await page.goto('/#SETTINGS');
   await page.waitForLoadState('domcontentloaded');
+  await ecarterLeRail(page);
 
   // Cliquer le sous-onglet "Profil" (contient TestModePanel)
   const btnProfil = page.getByRole('tab', { name: /Profil/i });

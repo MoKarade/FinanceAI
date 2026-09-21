@@ -80,7 +80,11 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     const box = await chartBox(page);
 
     // 1. L'écran annonce la courbe au jour D'EMBLÉE — aucun seuil, aucun bouton à connaître.
-    await expect(page.getByText(/Courbe au jour/)).toBeVisible({ timeout: 10_000 });
+    // ⚠️ [FUTUR-NOTES-COMPACTES 2026-09-21] On observe l'ÉTAT (`data-note="methode"`, la pastille
+    // qui n'existe QUE si la courbe est au jour), plus le LIBELLÉ « Courbe au jour » : Marc a fait
+    // retirer ce pavé, et un test qui vise une prose se périme au premier changement de forme
+    // (`UN-TEST-QUI-VISE-UNE-SURFACE-PAR-SON-CHEMIN-SE-PERIME`). Le FAIT défendu est le même.
+    await expect(page.locator('[data-note="methode"]')).toBeAttached({ timeout: 10_000 });
     // Les chemins intermédiaires retirés ne doivent PAS réapparaître :
     // ⚠️ [FUTUR-PANNEAU-FIXE 2026-09-18] PORTÉE RESSERRÉE, et c'est un faux positif corrigé, pas un
     // assouplissement. Cette assertion visait le bouton « Jour » de l'ANCIEN chemin intermédiaire
@@ -188,7 +192,7 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     for (let i = 0; i < 40; i++) await page.mouse.wheel(0, -400);
 
     // La courbe reste au jour (elle l'était déjà) et les aires par compte sont RENDUES.
-    await expect(page.getByText(/Courbe au jour/)).toBeVisible();
+    await expect(page.locator('[data-note="methode"]')).toBeAttached();
     await expect(page.locator('.recharts-area-area').first()).toBeVisible();
     expect(await page.locator('.recharts-area').count()).toBeGreaterThan(1);
 
@@ -201,7 +205,7 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
 
   test('[FUTUR-DAILY-NATIVE] garde de POIDS : la Bar des impôts ne rend pas un rect par jour', async ({ page }) => {
     await chartBox(page);
-    await expect(page.getByText(/Courbe au jour/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-note="methode"]')).toBeAttached({ timeout: 10_000 });
     // `FluxImpots` n'existe que les jours d'échéance (~1/an sur ~30 ans) : quelques dizaines de
     // rects au plus. ~11 000 rects = la Bar lit la série entière, la garde `dailyAll` a sauté.
     const rects = await page.locator('.recharts-bar-rectangle').count();

@@ -53,8 +53,17 @@ const CIBLE_MIN = 44;
  * dimensionné à 24 px pour WCAG 2.5.8 AA — pas les 44 px du plancher interne de ce fichier —,
  * répété dans chaque état où il apparaît, dont les 3 tiroirs).
  * Chaque PR qui rétrécit la dette DOIT abaisser ce plafond ; à 0, inverser en règle.
+ *
+ * ⚠️⚠️ RE-MESURÉ le 21/09 (`[FUTUR-NAV-TIROIRS bandeau]`) : **57**. Delta EXPLIQUÉ, pas une dérive
+ * silencieuse : le bandeau KPI de la barre latérale n'avait qu'UN tooltip conditionnel (« Patrimoine »,
+ * quand `estateNetWorth` est non nul) — les libellés raccourcis (« Patrimoine »/« Succès »/
+ * « Vitalité ») en portent maintenant TROIS, pour garder le texte complet accessible malgré le
+ * libellé court. Le tooltip « Aide sur ce montant » est le MÊME cercle de 16 px, WCAG-exempté
+ * (`KPIStat.tsx`, commentaire `[A11Y-TOUCH-TARGET-TINY]` : cible EN LIGNE dans un bloc de texte,
+ * WCAG 2.5.8 AA n'exige pas 44 px ici) — pas un nouveau motif, le MÊME motif répété 3× au lieu de
+ * 1×, dans les 4 états walkés par ce test (+2 × 4 = +8, exactement l'écart mesuré).
  */
-const PLAFOND_CIBLES_TROP_PETITES = 49;
+const PLAFOND_CIBLES_TROP_PETITES = 57;
 
 async function ouvrirFutur(page: Page) {
   await page.addInitScript(scriptBypassOnboarding());

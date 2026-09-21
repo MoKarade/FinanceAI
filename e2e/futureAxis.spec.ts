@@ -88,8 +88,9 @@ test.describe('Futur — ancrages de l’axe X numérique', () => {
     //
     // [FUTUR-NAV-TIROIRS] (2026-09-21) Un seuil en PIXELS ABSOLUS (`> 5`) calibré sur l'ancien tracé
     // PLEINE LARGEUR (986px de tracé) est devenu marginal (4,14px) dès que la barre latérale
-    // desktop (280px + espacement) réduit ce tracé à 682px au viewport par défaut du projet
-    // `chromium` (1280×720) — RÉGRESSION mesurée avant de conclure : réfutée. La PART occupée par
+    // desktop (280px, élargie à 320px le même jour pour le bandeau KPI — voir plus bas) réduit ce
+    // tracé à 682px au viewport par défaut du projet `chromium` (1280×720) — RÉGRESSION mesurée
+    // avant de conclure : réfutée. La PART occupée par
     // la bande est IDENTIQUE des deux côtés (0,607 % du tracé, mesuré aux deux largeurs) : la
     // donnée n'a pas bougé, seul l'espace dispo pour le graphe a rétréci — un effet attendu et
     // accepté du choix de Marc (barre latérale desktop). La bonne anti-dégénérescence est donc une

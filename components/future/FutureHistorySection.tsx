@@ -14,7 +14,6 @@
 
 import React, { useMemo, useState, Suspense } from 'react';
 import { useTodayIsoLocal } from '../../hooks/useSimulationParams';
-import { useTranslation } from 'react-i18next';
 import { Card } from '../ui/Card';
 import { Skeleton } from '../ui/Skeleton';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
@@ -40,7 +39,6 @@ type TimeRange = '1M' | '3M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
 const COLORS = ['#4f9d86', '#5b82bf', '#c2974f', '#9277bd', '#bd7d9c', '#5093a8', '#8ba85a', '#6f72c4'];
 
 const FutureHistorySection: React.FC = () => {
-    const { t } = useTranslation();
     // [DETTE-SOLDE-INSTANTANE-FIGE] Le jour LOCAL : un solde de dette DATÉ se ramène à aujourd'hui.
     const todayIso = useTodayIsoLocal();
     // [FUTUR-MOBILE-PR5] Pastilles de légende (24 px) → 44 px — mobile UNIQUEMENT (desktop
@@ -192,10 +190,19 @@ const FutureHistorySection: React.FC = () => {
     }, [marketData, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals, todayIso]);
 
     return (
-        <Card title={t('dashboard.detailed_evolution')} className="w-full min-h-[450px]"
+        // [FUTUR-NAV-TIROIRS bandeau, 2026-09-21] `title` retiré : ce panneau ne vit plus QUE dans le
+        // tiroir « Historique » (le `<Drawer title="Historique">` l'affiche déjà) — le garder ici
+        // dupliquait le chrome et volait la largeur que réclame le sélecteur de période à 6 boutons
+        // dans les 440px du tiroir latéral desktop.
+        <Card className="w-full min-h-[450px]"
             action={
                 <div className="flex flex-col items-end gap-2">
-                    <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/10">
+                    {/* [FUTUR-NAV-TIROIRS bandeau, 2026-09-21] `flex-wrap` : ce sélecteur vit désormais
+                        TOUJOURS dans le tiroir « Historique » (≤440px en tiroir latéral desktop) —
+                        avant ce lot il vivait dans une Card pleine largeur où 6 boutons sur une seule
+                        ligne tenaient toujours. Marc : « trop cramped ». Passer à la ligne plutôt que
+                        d'écraser chaque bouton en dessous d'une cible tactile lisible. */}
+                    <div className="flex flex-wrap justify-end gap-0.5 bg-black/40 rounded-lg p-0.5 border border-white/10">
                         {/* [A11Y] aria-pressed = période active annoncée au lecteur d'écran ;
                             focus-ring = focus clavier visible (préexistant au déménagement). */}
                         {(['1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as TimeRange[]).map(r => (

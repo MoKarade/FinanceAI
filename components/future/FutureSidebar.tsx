@@ -42,7 +42,7 @@ export const FutureSidebar: React.FC<FutureSidebarProps> = ({
     insolvencyBadge, dataModePill, kpi, barreOutils, tiroirOuvert, onOuvrirTiroir,
 }) => {
     return (
-        <aside className="w-[280px] flex-shrink-0 flex flex-col gap-4" aria-label="Contrôles de la projection">
+        <aside className="w-[320px] flex-shrink-0 flex flex-col gap-4" aria-label="Contrôles de la projection">
             <div className="flex items-start gap-2.5">
                 <span className="text-xl leading-none" aria-hidden="true">🔮</span>
                 <div className="min-w-0">

@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-21 (la courbe principale utilise enfin toute la largeur de l'écran)
+
+- **L'axe vertical (les chiffres à gauche du graphe) a disparu** — c'était ton choix, parmi 5
+  propositions. La courbe gagne l'espace que ces chiffres prenaient (jusqu'à 70 px sur un écran de
+  téléphone). Quelques lignes de repère discrètes restent, sans nombre.
+- **La valeur d'aujourd'hui apparaît maintenant directement SUR la courbe** — une petite pastille
+  flottante au point du jour, avec le montant. Elle se masque avec le reste en mode discret.
+- Le graphe déborde maintenant jusqu'aux bords de sa carte, au lieu de garder la marge intérieure
+  habituelle.
+- ⚠️ **Fait sur l'écran Futur seulement pour l'instant** — les 9 autres écrans avec un graphe
+  (Retraite, Dettes, Enfants, Placements, Immobilier, Historique…) attendent le même traitement
+  (`[FUTUR-AXE-Y-MINIMAL-ROLLOUT]` au backlog).
+
+## [unreleased] — 2026-09-21 (le texte qui débordait dans la barre latérale et les tiroirs est corrigé)
+
+- **Le bandeau KPI de la barre latérale et du tiroir « Modifier les hypothèses »** n'écrasait plus
+  son texte lisiblement — les libellés étaient coupés/superposés. Corrigé : libellés raccourcis
+  (« Patrimoine », « Succès », « Vitalité »), le texte complet reste accessible via le petit « i ».
+  La barre latérale est aussi un peu plus large (320px, était 280px) pour respirer.
+- **Le tiroir « Modifier les hypothèses »** avait ses grilles de curseurs écrasées en 3-4 colonnes
+  serrées dans les 440px du tiroir desktop. Corrigé : colonnes fixes adaptées à cette largeur.
+- **Le tiroir « Historique »** avait son sélecteur de période (1M/3M/YTD/1Y/ALL/CUSTOM) écrasé sur
+  une seule ligne trop étroite. Il passe maintenant à la ligne si besoin, et le titre en double
+  (déjà affiché en haut du tiroir) a été retiré pour lui laisser plus de place.
+- ⚠️ **Ce qui reste à faire** : la courbe elle-même est encore petite sur téléphone (l'axe vertical
+  et les marges du graphe prennent encore ~42 % de la largeur d'écran, mesuré sur un Pixel 10 Pro).
+  Cinq façons de resserrer ça sont proposées en maquette — en attente de ton choix.
+
 ## [unreleased] — 2026-09-21 (pourquoi hubperso affichait encore l'ancienne valeur)
 
 - **Tu as déployé, et hubperso montrait toujours l'ancienne carte.** Ce n'était pas ton

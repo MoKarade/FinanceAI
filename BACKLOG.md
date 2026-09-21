@@ -17,6 +17,41 @@
 
 ---
 
+## 📉 Axe des graphes trop large sur téléphone (Marc, 21/09/2026)
+
+> Demande : « texte dépasse c'est moche, sur téléphone la courbe est trop petite, faut qu'elle
+> prenne toute la largeur de l'écran, laisser moins de place pour la légende et pour le x et y,
+> pose plein de questions je veux 5 propositions ». Cadrage fait (4 questions en clic) : le
+> bandeau KPI/tiroirs (texte qui débordait) est **corrigé** — voir `HANDOVER.md` et le
+> `CHANGELOG.md` du 21/09. Ce qui RESTE : le graphe lui-même.
+
+- [x] 🔧 **`[FUTUR-AXE-Y-MINIMAL]`** (M) — **Futur fait, reste 9 écrans (→ item suivant).** Marc a
+  choisi, parmi 5 maquettes (canvas `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`, E1-E5), la combinaison
+  **E2 (badge flottant) + E4 (étiquettes superposées)**. Livré sur le graphe principal « Courbe de
+  vie » (`FutureProjection.tsx`) : `<YAxis hide>` (plus aucun chiffre, gouttière récupérée — 5
+  lignes de `CartesianGrid` restent en repère discret), nouveau badge `TodayValueBadge`
+  (`ProjectionTooltip.tsx`) ancré sur le point du jour avec sa valeur nette réelle
+  (`pointAncre.NetWorth`, masquée en mode discret via `maskedTick`), conteneur du graphe débordant
+  du padding de sa `<Card>` (`-mx-6 px-1`). Panel a11y-auditor/code-reviewer/silent-failure-hunter
+  passé, 0 bloquant, 4 correctifs appliqués (garde `Number.isFinite`, `Pill` partagée, `aria-hidden`
+  défensif, mitigation de chevauchement). 4 tests neufs
+  (`tests/components/FutureProjection.todayValueBadge.test.tsx`).
+  ⚠️ **MESURÉ** sur un Pixel 10 Pro (viewport ~412×915px CSS, **[Probable]** — appareil sorti après
+  le dernier entraînement du modèle) : zone de tracé passée de 238px à ~290px sur 412 (57,8 %→70 %+).
+
+- [ ] 🔧 **`[FUTUR-AXE-Y-MINIMAL-ROLLOUT]`** (L) — Le même traitement (E2+E4) reste à porter sur les
+  **9 autres écrans à graphe**, aucun n'ayant d'abstraction d'axe partagée : `Retirement.tsx`,
+  `DebtManager.tsx`, `ChildPlanning.tsx`, `budget/BudgetGroupTable.tsx`,
+  `investments/DividendPanel.tsx`, `projection/futureDetail/DrillDownCompte.tsx`,
+  `realestate/MultiPropertyComparison.tsx`, `realestate/ScenariosComparatifsCard.tsx`, et
+  `ui/ZoomableTimeChart.tsx` (partagé par le tiroir Historique de Futur — signalé « trop cramped »
+  par Marc, donc PRIORITAIRE dans ce sous-lot — **et** par `StockChart.tsx`/Investments, contextes
+  pleine largeur où masquer l'axe n'a pas été demandé). ⚠️ `ZoomableTimeChart` a 3 appelants
+  distincts (`FutureHistorySection` via `DashboardEvolutionChart`, `Investments.tsx`,
+  `StockComparisonModal.tsx`) : le patron `isLateralDrawer`/`isLateralDrawer`-style de
+  `ProjectionControls.tsx` (prop booléen fourni par l'appelant, défaut `false`) s'applique — jamais
+  un `hide` inconditionnel qui casserait les 2 autres contextes non signalés.
+
 ## 🛰️ Chaîne de publication vers hubperso (21/09/2026, signalé par Marc)
 
 > Demande : « affciehe encore la mauvais valeur dans hubperso, pourtant jai deploy », puis

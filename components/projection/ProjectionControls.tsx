@@ -35,6 +35,17 @@ interface ProjectionControlsProps {
     realEstateGoals: RealEstateGoal[];
     setRealEstateGoals?: (g: RealEstateGoal[]) => void;
     config: BudgetConfig;
+    /** [FUTUR-NAV-TIROIRS bandeau, 2026-09-21] Ce composant ne s'affiche plus QUE dans un `<Drawer>`
+     *  (tiroir « Modifier les hypothèses ») — jamais plus en page pleine largeur. Sur téléphone
+     *  (`isNarrowViewport`, branche `ProjectionControlsMobile` ci-dessus) le tiroir est une feuille
+     *  `w-full` : les seuils `md:`/`lg:` (viewport) restent justes. Sur desktop, le tiroir est
+     *  `lateral` — plafonné à 440px alors que le VIEWPORT (≥1024px pour l'atteindre) déclenche
+     *  toujours `md:`/`lg:` : 3-4 colonnes s'écrasaient dans 440px, quel que soit le contenu.
+     *  Tailwind 3.4 n'a pas de container queries natives ici (pas de plugin installé) → ce booléen,
+     *  fourni par l'appelant qui connaît déjà le seuil (`useViewportBelowLg`), REMPLACE les préfixes
+     *  `md:`/`lg:` par un choix explicite quand le tiroir est latéral. Défaut `false` (comportement
+     *  d'avant ce lot) pour le test existant qui monte `ProjectionControls` sans le fournir. */
+    isLateralDrawer?: boolean;
 }
 
 // [FUTUR-MOBILE-PR4] Exportés pour être réutilisés tels quels par `ProjectionControlsMobile`
@@ -77,7 +88,15 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     runMC, setRunMC, isComputing,
     liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals,
+    isLateralDrawer = false,
 }) => {
+    // Grilles de la branche desktop : colonnes FIXES dans le tiroir latéral (440px, viewport ≥1024px
+    // garanti donc `md:`/`lg:` toujours actifs et sans rapport avec la largeur réelle du tiroir),
+    // seuils `md:` d'origine conservés dans la feuille mobile (`w-full`, où ils restent justes).
+    const gridHypotheses = isLateralDrawer ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6';
+    const gridInflationCategories = isLateralDrawer ? 'grid grid-cols-2 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg' : 'grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg';
+    const gridUsWithholding = isLateralDrawer ? 'grid grid-cols-1 gap-4 p-3 rounded-card border border-white/5 bg-black/30' : 'grid grid-cols-1 md:grid-cols-2 gap-4 p-3 rounded-card border border-white/5 bg-black/30';
+    const gridStochastic = isLateralDrawer ? 'grid grid-cols-2 gap-2 mt-3' : 'grid grid-cols-1 md:grid-cols-3 gap-2 mt-3';
     // D6-SR-2 — masque la valeur des sliders monétaires (revenu/dépenses théoriques, plafond immo) au
     // lecteur d'écran en mode privé (parité avec le blur visuel ; les sliders de taux/% ne sont pas masqués).
     const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
@@ -203,7 +222,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 icon={<Icon name="cash" size={20} />}
                 defaultOpen={true}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className={gridHypotheses}>
                     <FluxMensuelsFields projection={projection} updateProj={updateProj} useTheoretical={!!projection.useTheoretical} isPrivacyMode={isPrivacyMode} />
 
                     <div className="space-y-4">
@@ -302,7 +321,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             Inflation par poste {projection.usePerCategoryInflation ? 'ON' : 'OFF'}
                         </Button>
                         {projection.usePerCategoryInflation && (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg">
+                            <div className={gridInflationCategories}>
                                 {INFLATION_CATEGORIES.map(item => (
                                     <div key={item.key}>
                                         <label className="flex justify-between text-meta text-ink-300 mb-1">
@@ -337,7 +356,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                     </div>
 
                     {/* US Withholding */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 rounded-card border border-white/5 bg-black/30">
+                    <div className={gridUsWithholding}>
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>🇺🇸 Part actions US dans CELI (%)</span>
@@ -380,7 +399,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                             )}
                         </div>
                         {showStochastic && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+                            <div className={gridStochastic}>
                                 {STOCHASTIC_TOGGLES.map(({ key, label, title }) => {
                                     const isOn = !!projAsMap[key];
                                     return (

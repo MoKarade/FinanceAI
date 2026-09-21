@@ -309,6 +309,10 @@ select {
 .chart-fullscreen:fullscreen {
   width: 100vw;
   height: 100vh;
+  /* [FUTUR-AXE-Y-MINIMAL] `margin: 0` : le conteneur porte désormais `-mx-6` (pour déborder du
+     padding de la <Card> et utiliser toute la largeur, hors plein écran) — sans ce reset, la même
+     marge négative pousserait l'élément hors du viewport une fois en plein écran (width: 100vw). */
+  margin: 0;
   background: #0B0E14;
   padding: 1.5rem;
 }

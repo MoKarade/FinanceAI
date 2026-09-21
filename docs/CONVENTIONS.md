@@ -16339,3 +16339,75 @@ la config ce qu'elle prétendait déjà dire.
 - ⚠️ **`reducedMotion` va sous `contextOptions`** sur `@playwright/test` **1.60** ; la forme racine
   compile chez l'API `browser.newContext()` mais pas dans `use`. C'est `npm run typecheck` qui l'a
   refusée — avant la CI, et avant un troisième aller-retour de 8 minutes.
+
+---
+
+# UNE-EMULATION-QUI-FORCE-UNE-DUREE-DE-TRANSITION-SUR-TOUT-RETARDE-CE-QUI-EN-DEPEND
+`[E2E-REDUCED-MOTION]` — 2026-09-21, suite du même lot
+
+Poser `reducedMotion: 'reduce'` a fait passer le job E2E de **1 test réussi** à **30**
+(`futureAxis` et `futureDailyRollover` verts, `futureDailySelect` flaky-mais-vert). Il a aussi
+fait ROUGIR une garde d'accessibilité qui n'a rien à voir avec les animations :
+`sidebarKeyboard` — « replier un groupe sort ses items du tab-order ».
+
+## Le mécanisme, MESURÉ
+
+Le repli du groupe sort ses items du tab-order par **`visibility: hidden`** (`invisible`), et
+`Layout.tsx` le dit en toutes lettres depuis `[D6-KBD]`. Or le bloc `prefers-reduced-motion` de
+`index.css` force `transition-duration: 0.01ms !important` sur **`*`**. La durée initiale d'une
+transition étant `0s`, ce `!important` ne raccourcit rien : il **ALLONGE**. Et `visibility` est
+une propriété **transitionnable à interpolation DISCRÈTE** — elle bascule à la FIN de la durée,
+si minuscule soit-elle. Le changement quitte donc le tick courant et part à la frame suivante.
+
+Sonde, juste après `Enter` (repli), sous `prefers-reduced-motion` :
+
+```
+#nav-group-… : visibility = "hidden"    ← le PANNEAU a basculé
+  └─ enfant  : visibility = "visible"   ← le DESCENDANT, non
+```
+
+Un enfant ne peut pas calculer `visible` sous un parent `hidden` dans une mise en page STABLE :
+cette paire est la signature d'un style à moitié propagé. Et c'est le descendant qui décide du
+tab-order, pas le conteneur.
+
+## Ce que le correctif a coûté de faux départs, et pourquoi c'est la leçon
+
+1. `await expect(panneau).toBeHidden()` → **toujours rouge**. Playwright voyait bien le panneau
+   caché ; l'item, lui, était encore focusable. **Attendre le CONTENEUR ne prouve rien sur ce que
+   le navigateur fait du SOUS-ARBRE.**
+2. `await expect(panneau.locator('button').first()).toBeHidden()` → **vert**. On attend l'élément
+   dont dépend le FAIT testé.
+
+⚠️ **Le contrat testé n'a pas bougé d'un pouce** — c'est le MOMENT de la lecture qui était faux.
+Aucune assertion n'a été relâchée, aucun seuil déplacé : c'est `UN-TEST-E2E-QUI-LIT-UN-ETAT-UNE-SEULE-FOIS`
+appliqué à un état que l'émulation du harnais a rendu asynchrone.
+
+⚠️ **Généralisation, et c'est elle qu'il faut retenir** : une émulation de test qui force une
+propriété sur `*` (`transition-duration`, `animation-duration`, `scroll-behavior`) ne « neutralise »
+pas — elle **réécrit le modèle temporel de tout le document**. Avant d'en poser une, demander
+quelles garanties du produit reposent sur l'INSTANTANÉITÉ d'un changement de style : ici, un
+contrat d'accessibilité.
+
+⚠️ `CSS.escape` n'existe **que dans le navigateur** : dans un fichier de spec (Node), il faut un
+sélecteur par ATTRIBUT (`[id="…"]`). Le rouge est franc (`ReferenceError`), mais il coûte un tour.
+
+## Le corollaire le plus utile : le cliquet a attrapé MA régression
+
+Le même run a rougi sur `futureMobileFilet` — « pas de NOUVELLE cible tactile < 44 px » :
+**59 → 61**, et l'inventaire NOMME les deux coupables :
+
+```
+[Projection] button « ⓘMéthode »       90×25
+[Projection] button « ⓘImpôt latent » 116×25
+```
+
+Ce sont les pastilles que `[FUTUR-NOTES-PASTILLES-MORTES]` venait de transformer de `<span>` en
+`<button>` pour que Marc puisse enfin les TAPER. **Le défaut que le lot existait pour corriger,
+réintroduit une marche plus bas** : une pastille qu'on annonce tapable et qui mesure 25 px de haut
+ne l'est pas davantage qu'un `title` invisible au doigt. Correctif : `touch-target` (44×44,
+`index.css`), le patron déjà employé par `ui/SubTabs` et `ui/Toast`, repris **inconditionnel comme
+chez eux** (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+
+⚠️ Ce n'est ni le gate, ni le panel, ni moi qui l'ai vu : c'est un **cliquet écrit par un autre
+lot**, et il n'a pu le voir que parce que le job E2E s'est remis à TOURNER. Une suite coupée à son
+plafond ne protège de rien — et pendant trois runs, elle n'a rien protégé du tout.

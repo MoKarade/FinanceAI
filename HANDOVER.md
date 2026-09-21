@@ -42,6 +42,24 @@ pas faux : ils sont **AFFAMÉS**. La piste restante est la lenteur du rendu du g
 `vite dev` sur un runner à 2 cœurs (option b, non prise : servir un BUILD plutôt que le serveur
 de dev).
 
+## 🟦 Session 2026-09-21 (suite 5) — **le E2E s'est remis à tourner, et il a trouvé une VRAIE régression**
+> 📏 **Mesure qui tranche**, run 35634812081 sur `68bf327a` : **30 tests passés** contre **1** au run
+> précédent. `futureAxis` et `futureDailyRollover` — les deux `element is not stable` — sont VERTS.
+> `reducedMotion` était bien la cause.
+> ⚠️ Deux rouges restaient, tous deux réels et tous deux corrigés ici :
+> 1. **`futureMobileFilet` : 59 → 61 cibles tactiles < 44 px**, l'inventaire nommant `ⓘMéthode`
+>    90×**25** et `ⓘImpôt latent` 116×**25** — MES pastilles, celles que
+>    `[FUTUR-NOTES-PASTILLES-MORTES]` venait de rendre « tapables ». Une pastille de 25 px de haut
+>    ne l'est pas : `touch-target` (44×44), patron repris tel quel de `ui/SubTabs`/`ui/Toast`.
+>    **C'est un cliquet écrit par un AUTRE lot qui l'a vu** — et il n'a pu le voir que parce que le
+>    job s'est remis à tourner.
+> 2. **`sidebarKeyboard`** — rouge à cause de `reducedMotion`, mécanisme mesuré : `index.css` force
+>    `transition-duration: 0.01ms !important` sur `*`, donc `visibility` (interpolation DISCRÈTE)
+>    bascule une FRAME plus tard, et c'est elle qui sort les items du tab-order. Sonde : panneau
+>    `hidden`, enfant encore `visible`. Attendre le PANNEAU ne suffit pas ; attendre l'ITEM, oui.
+> ✅ Vérifs locales : les deux specs VERTES, typecheck vert, lint **32** (la base), 45 tests
+> `notesGraphe` + `a11y` verts.
+
 ## 🟦 Session 2026-09-21 (suite 4) — **`element is not stable` : une promesse de config qui ne couvrait rien**
 > 🔎 **`[E2E-REDUCED-MOTION]`** — une fois le rail écarté ET le rapport enfin imprimé
 > (`--max-failures=2`), le journal a NOMMÉ ce qui restait : `219 × waiting for element to be

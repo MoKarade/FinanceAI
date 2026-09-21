@@ -120,7 +120,13 @@ export const NotesGraphe: React.FC<{ notes: NoteGraphe[] }> = ({ notes }) => {
                             aria-expanded={ouvert}
                             aria-controls={`note-${n.cle}`}
                             onClick={() => setOuverte(ouvert ? null : n.cle)}
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors focus-ring ${
+                            // [E2E-REDUCED-MOTION] `touch-target` (44×44, `index.css`) : le cliquet mobile de
+                            // `futureMobileFilet` a compté ces pastilles comme DEUX cibles neuves de 25 px
+                            // de haut (59 → 61). C'est le défaut que ce lot existe pour corriger, vu une
+                            // marche plus bas : une pastille qu'on annonce TAPABLE au doigt et qui mesure
+                            // 25 px ne l'est pas. Patron repris tel quel de `ui/SubTabs` et `ui/Toast`,
+                            // inconditionnel comme chez eux (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+                            className={`touch-target inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors focus-ring ${
                                 ouvert
                                     ? 'border-primary/60 bg-primary/15 text-ink-50'
                                     : 'border-white/15 bg-white/5 text-ink-300 hover:bg-white/10'

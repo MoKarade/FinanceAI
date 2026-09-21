@@ -1607,6 +1607,26 @@ n'est pas réécrire un récit.
   telle (E2E vert avant `[KPI-AVOIRS-DETTES]`, rouge depuis — quatre tuiles devenues six)
   (`UNE-PROMESSE-ECRITE-DANS-UN-EN-TETE-DE-CONFIG-NE-S-EXECUTE-PAS`).
 
+- ⚠️⚠️ **Une émulation de test qui force une durée sur `*` retarde ce qui en dépend** (2026-09-21,
+  suite de `[E2E-REDUCED-MOTION]`) : `reducedMotion: 'reduce'` a fait passer le job E2E de **1**
+  test réussi à **30** — et rougir une garde d'a11y sans rapport avec les animations. Le repli d'un
+  groupe de la sidebar sort ses items du tab-order par `visibility: hidden` ; or le bloc
+  `prefers-reduced-motion` d'`index.css` force `transition-duration: 0.01ms !important` sur `*`, et
+  la durée INITIALE d'une transition est `0s` — ce `!important` n'abrège pas, il **ALLONGE**.
+  `visibility` étant transitionnable à interpolation **DISCRÈTE**, elle bascule à la FIN de la
+  durée : une frame plus tard. Sonde : panneau `hidden` pendant que son ENFANT lit encore
+  `visible` — **un enfant `visible` sous un parent `hidden` est la signature d'un style à moitié
+  propagé**, jamais un état stable. ⚠️ Attendre le CONTENEUR (`toBeHidden` sur le panneau) reste
+  ROUGE ; il faut attendre l'ÉLÉMENT dont dépend le fait (l'item focusable). Le contrat testé n'a
+  pas bougé — c'est le MOMENT de la lecture qui était faux. ⚠️ Avant de poser une émulation
+  globale, demander **quelle garantie du produit repose sur l'INSTANTANÉITÉ d'un changement de
+  style**. ⚠️ `CSS.escape` n'existe que dans le NAVIGATEUR : côté runner, sélecteur par attribut.
+  ⚠️⚠️ Et le même run a fait rougir un cliquet écrit par un AUTRE lot sur **ma** régression :
+  `59 → 61` cibles tactiles < 44 px, l'inventaire nommant `ⓘMéthode` 90×**25** et `ⓘImpôt latent`
+  116×**25** — les pastilles que le lot précédent venait de rendre « tapables ». Le défaut que ce
+  lot corrigeait, réintroduit une marche plus bas ; et il n'a pu être vu que parce que le job E2E
+  s'est remis à TOURNER (`UNE-EMULATION-QUI-FORCE-UNE-DUREE-DE-TRANSITION-SUR-TOUT-RETARDE-CE-QUI-EN-DEPEND`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

@@ -79,6 +79,90 @@
 > se ferme **tout de suite, en lot séparé** ; (6) backup manuel **refusé avec explication**, export
 > PDF **refusé** pendant le mode (choix de Marc CONTRE ma recommandation de filigrane).
 
+### Ce que « généraliser le MODE TEST » FAIT, mesuré le 2026-09-22 (Marc : « analyse d'abord tout ce que ça fait mais oui »)
+
+**Le « Sandbox » actuel n'est pas un mode, c'est UN booléen** : `projection.useTheoretical`, basculé
+par le sélecteur `real`/`sandbox` de `FutureProjection.tsx`. Il change **trois** sites du moteur :
+`computeIncomeBaseline` remplace les vrais salaires par `theoreticalIncome` **splitté 55/45 entre
+deux conjoints**, `projection.ts` (base de dépenses) lit `theoreticalExpenses`, et la sensibilité
+d'épargne bascule aussi. Les deux curseurs n'écrivent que ces deux champs. Rien d'autre de l'app ne
+sait que le sandbox existe.
+
+**Le MODE TEST, lui, est lu par 22 fichiers de production** (`grep isTestMode`, hors tests/e2e), en
+QUATRE familles — c'est ça, « tout ce que ça fait » :
+
+| famille | ce que ça fait | sites |
+|---|---|---|
+| **Coupure réseau / écriture** | push Drive coupé (`syncPush`, `syncEngine`) · sync Fintable coupée (`autoSync`) · **les 3 hooks de cotations s'arrêtent** (`useAssetDataHydration`, `usePortfolioHistory`, `usePastPortfolioHistory`) · pièces jointes non poussées (`useAiChat`) · backup d'ARCHIVE, PDF et CSV refusés | 10 |
+| **Rappels tus** | `BackupReminder`, `StatementReminder`, `SyncStaleBanner`, `SyncStatusBanner`, `CeliAssetNudge`, `HistorySyncDoctor`, `FintableSyncCard` | 7 |
+| **Affichage** | bandeau + contour orange plein écran (`Layout`, classe `test-mode-active`) · `TestModePanel` · `FutureProjection` (8 sites autour de la révélation/gel de courbe) · `Investments` · `AiChatView` | 5 |
+| **Hygiène** | `personaSanitizer`, `purgePersonaArtifacts`, `migrationsPersistees` | 3 |
+
+**Ce qui est DÉJÀ sûr sans rien écrire** : le push Drive coupé ⇒ le serveur MCP et hubperso
+continuent de servir le DERNIER instantané RÉEL ; les clés API ne sont jamais écrasées ; la sortie
+désinfecte le snapshot avant de le restaurer.
+
+- [ ] 🧪 **`[SANDBOX-MODE-TEST-GENERALISE]`** (L, **cadré + OK de Marc le 2026-09-21**, portée
+  GLOBALE confirmée le 2026-09-22) — remplacer `useTheoretical` par un bac à sable qui est une
+  **copie complète du dossier**, via le MODE TEST existant. Trois conséquences MESURÉES décident de
+  la forme du lot, et aucune n'était sur la table au cadrage :
+  1. ⚠️ **Toute clé absente des fixtures retombe au DÉFAUT, pas au réel.** `enableTestMode` fait
+     `personaResetBase()` (= `DEFAULT_APP_STATE` moins `apiKeys`/`fxRates`/`lastUpdate`, cloné)
+     **PUIS** `...fixtures`. Un clone PARTIEL est donc un dossier silencieusement AMPUTÉ — sur 47
+     clés d'`AppState`, chaque oubli est une tranche remise à zéro sans le dire. Le clone doit
+     porter le jeu de clés EXACT du snapshot. ⚠️ Et **deux listes d'exclusion divergent déjà** :
+     `extrairePersistable` en exclut 8, le snapshot d'`enableTestMode` en exclut 8 AUTRES (il
+     n'exclut pas `projectionStatus`/`projectionRefus`/`lockedProjection`). En écrire une
+     troisième à la main, c'est la faire diverger une fois de plus → **source unique**.
+  2. ⚠️ **Les cotations s'ARRÊTENT pendant tout le bac à sable** (3 hooks). Voulu pour un persona
+     figé — on ne dépense pas de quota Finnhub sur du faux. Sur un bac à sable qui porte SES vrais
+     titres, ça veut dire **portefeuille gelé aux derniers prix connus** tant que le mode est actif.
+     Probablement acceptable (on explore un scénario, pas la séance du jour), mais ça doit être
+     **dit à l'écran**, jamais subi — sinon c'est indiscernable d'un bug (classe
+     `UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`).
+  3. ⚠️ **`realDataSnapshot` est PERSISTÉ** (`extrairePersistable` ne l'exclut pas, délibérément :
+     « la bannière survit au reload »). Avec un persona, le snapshot est le dossier réel et les
+     fixtures sont petites. Avec un **clone**, le blob `financeai-storage` porte le dossier **DEUX
+     FOIS**. `localStorage` plafonne à ~5 Mo/origine et le dépôt a déjà un garde qui **re-lance**
+     l'erreur de quota (`services/quotaStorage.ts`) — donc un dépassement n'est pas silencieux, il
+     CASSE l'écriture. ⚠️ **Taille non mesurable depuis le conteneur** : aucune mesure du poids de
+     l'état n'existe dans le dépôt. Mesure à UNE question de distance — Marc, dans la console du
+     navigateur : `new Blob([localStorage.getItem('financeai-storage')]).size`. Sous ~1,5 Mo le
+     doublement est sans risque ; au-delà il faut trancher entre « le bac à sable ne survit pas au
+     reload » (ne pas persister le clone) et une compression.
+
+  Reste du plan, inchangé : entrée « bac à sable » appelant `enableTestMode(cloneDuDossier,
+  'bac-a-sable')` ; `activeTestPersonaId` ne peut pas porter un persona qui n'existe pas → marqueur
+  propre, sinon le bandeau (qui le LIT) annonce un persona vide ; bandeau adapté pour distinguer
+  « persona de démo » de « bac à sable sur TA copie ».
+
+- [ ] 🔒 **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`** (S, **OK de Marc**) — retirer les deux curseurs
+  `theoreticalIncome`/`theoreticalExpenses` **ET neutraliser `useTheoretical` dans le moteur**. La
+  PAIRE est obligatoire : un dossier déjà persisté à `useTheoretical: true` resterait sur des
+  revenus splittés 55/45 **sans plus aucun bouton pour revenir** — l'interface qui le permettait
+  venant de disparaître (`RETIRER-UN-REGLAGE-NUISIBLE-EXIGE-DE-NEUTRALISER-SA-VALEUR-PERSISTEE`,
+  re-payée à l'identique sur T1213). Sites moteur à neutraliser : `setupSimulation.ts`
+  (`computeIncomeBaseline`), `projection.ts` (base de dépenses), `projection.ts` (sensibilité
+  d'épargne). Les trois champs restent `@deprecated` dans le type : les supprimer exigerait une
+  migration du schéma persisté, soit un risque sur les données pour un gain nul.
+
+- [ ] 🔒 **`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`** (S, **décision de Marc le 2026-09-22**, contre
+  l'option « refuser ») — quand l'app tourne sur des données fictives, le `system` envoyé au modèle
+  DIT que les chiffres sont un scénario hypothétique. Rien n'est refusé : demander conseil **sur**
+  un scénario est l'usage même du bac à sable ; ce qu'on corrige est que le modèle traite du fictif
+  comme des faits. ⚠️ **Périmètre RE-MESURÉ, et il corrige ce que j'avais publié** : j'avais écrit
+  « pas de point d'entrée unique, sept fonctions, trois appels SDK directs » — faux dans les deux
+  sens. Mesuré sur `\.messages\.(create|stream)\(` : **CINQ** points de contact, tous porteurs
+  d'un `system` → `claude.ts` ×4 (`chat`, `chatStream`, `analyzePayslip`, `analyzeBankStatement`) et
+  `services/aiTools/agentLoop.ts` ×1 (l'agent d'outils, celui qui porte le contexte financier).
+  ⚠️ Le marqueur s'injecte **au point de contact SDK**, jamais chez l'appelant : `chat`/`chatStream`
+  reçoivent `options.system` de leurs appelants, donc une injection en amont obligerait chaque
+  appelant futur à y penser (même raison qui a mis la garde CSV dans `downloadCSV`, le point de
+  SORTIE). ⚠️ Le patron existe déjà : `VISION_INJECTION_GUARD` (`utils/promptSafety.ts`) est un
+  fragment de `system` partagé, injecté dans les `system` littéraux — c'est son domicile naturel.
+  Garde : une 6ᵉ surface SDK sans marqueur doit rougir (l'inventaire se dérive du grep, pas d'une
+  liste écrite à la main).
+
 - [ ] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
   (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
   `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi

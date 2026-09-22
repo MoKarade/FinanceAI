@@ -50,6 +50,8 @@
 > (`services/claude.ts`). C'est le SEUL des trois canaux qui sort de la machine (le backup va dans
 > IndexedDB local chiffré, le PDF reste sur le disque), il n'a pas de point d'entrée unique (7
 > fonctions qui parlent au modèle, 3 appels SDK directs), et la réponse juste n'y est probablement
+> — ⚠️ **chiffre CORRIGÉ le 2026-09-22 : 5 points de contact SDK, tous porteurs d'un `system`,
+> dont 4 dans `claude.ts` ; il y a une taille de guêpe, contrairement à ce que j'avais publié** —
 > pas un refus — demander conseil SUR un scénario est l'usage même du bac à sable. **À trancher.**
 > ⚠️ **Ce lot touche l'app** (pas seulement le serveur MCP) : un déploiement Vercel est à vérifier.
 > ✅ **MERGÉ** (PR #1006, `17d02997`) et **DÉPLOYÉ** : déploiement de production

@@ -16836,7 +16836,15 @@ compilateur sur l'objet ENTIER (`UN-CHAMP-REQUIS-NE-PROTEGE-QUE-LA-OU-LE-TYPE-ES
 **Ce que ce lot NE couvre PAS, et c'est écrit plutôt que sous-entendu** : les prompts envoyés au
 modèle (`services/claude.ts`). C'est le **seul des trois canaux qui SORT de la machine** — le backup
 va dans IndexedDB (local, chiffré par une clé de device) et le PDF reste sur le disque. Il est traité
-à part parce qu'il n'a pas de point d'entrée unique (sept fonctions qui parlent au modèle, trois
+à part parce que la réponse juste n'y est probablement pas un refus. ⚠️ **Le périmètre que j'avais
+publié — « pas de point d'entrée unique, sept fonctions, trois appels SDK directs » — était FAUX dans
+les DEUX sens** (re-mesuré le 2026-09-22 sur `\.messages\.(create|stream)\(`) : il y a **CINQ**
+points de contact SDK, et ils portent **tous** un `system` — quatre dans `services/claude.ts`, un
+dans `services/aiTools/agentLoop.ts`. Donc une taille de guêpe existe, et le marqueur s'y injecte
+comme `VISION_INJECTION_GUARD` s'injecte déjà. **Un point d'entrée unique se COMPTE ; on ne déclare
+pas son absence** (`UN-PERIMETRE-RECOPIE-D-UN-AGENT-EST-FAUX-DANS-LES-DEUX-SENS`, cette fois sur ma
+propre affirmation, recopiée dans TROIS fichiers du dépôt avant d'être mesurée). Ancienne phrase :
+(sept fonctions qui parlent au modèle, trois
 appels SDK directs) et parce que la réponse juste n'y est probablement pas un refus : demander
 conseil SUR un scénario est l'usage même du bac à sable. À trancher avec Marc.
 

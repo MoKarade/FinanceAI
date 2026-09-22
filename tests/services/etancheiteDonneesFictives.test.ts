@@ -17,6 +17,12 @@
 // sur le disque. Il est traité à part parce qu'il n'a pas de point d'entrée unique (sept
 // fonctions, trois appels SDK directs) et parce que la réponse juste n'y est probablement pas un
 // refus : demander conseil SUR un scénario est l'usage même du bac à sable.
+// ⚠️ CORRECTION (2026-09-22, RE-MESURÉ) : la phrase ci-dessus disait « sept fonctions, trois
+// appels SDK directs, pas de point d'entrée unique ». FAUX dans les deux sens. Mesuré sur
+// `\.messages\.(create|stream)\(` : **CINQ** points de contact SDK, et ils portent TOUS un
+// `system` — quatre dans `services/claude.ts` (chat, chatStream, analyzePayslip,
+// analyzeBankStatement) et un dans `services/aiTools/agentLoop.ts` (l'agent d'outils, celui
+// qui porte le contexte financier). Il y a donc bien une taille de guêpe.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 

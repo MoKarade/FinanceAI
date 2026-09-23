@@ -6,6 +6,11 @@
   builds en Node 20 à partir du 2026-10-01.
 - **Fusion automatique** : une PR se fusionne seule quand les contrôles obligatoires de `main` sont
   verts (tests, E2E, CodeQL). Le brouillon reste le frein.
+- Les types de Node suivent (`@types/node` 24) et le contrat du hub passe en `v1.3.1` (même contrat,
+  livré prêt à l'emploi : sous Node 24, l'installation ne le construisait plus).
+- **Dette jamais remboursée : la bonne raison s'affiche.** Un prêt dont le solde n'a pas bougé depuis
+  l'emprunt est refusé comme « ne décroît jamais » — selon l'ancienneté du prêt, un arrondi au
+  dernier chiffre le faisait passer pour « paiement hors bande ». Même refus, cause désormais juste.
 
 
 ## 2026-09-23 (correctif) — Le relais de l'IA est enfin joignable en production

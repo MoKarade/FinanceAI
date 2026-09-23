@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-23 — Node 24 et fusion automatique
+
+- **Node 24** partout (`.nvmrc`, `engines`, CI, image Docker du serveur MCP) : Vercel refuse les
+  builds en Node 20 à partir du 2026-10-01.
+- **Fusion automatique** : une PR se fusionne seule quand les contrôles obligatoires de `main` sont
+  verts (tests, E2E, CodeQL). Le brouillon reste le frein.
+
+
 ## 2026-09-23 (correctif) — Le relais de l'IA est enfin joignable en production
 
 - **L'allumage de l'IA locale avait cassé l'IA texte en production** pendant quelques minutes : le relais

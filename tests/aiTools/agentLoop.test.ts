@@ -435,6 +435,19 @@ describe('runAgentLoop', () => {
         expect(res.usage).toEqual({ inputTokens: 1200, outputTokens: 80, cacheReadTokens: 800, cacheWriteTokens: 100 });
     });
 
+    it('[IA-LOCALE] un tour servi par l\'IA locale (model gpt-oss-atelier) n\'est PAS compté comme facturé', async () => {
+        // Tour 1 local (gratuit), tour 2 basculé sur Claude (facturé) : seul le tour 2 entre dans l'usage.
+        const withUsage = (m: Anthropic.Message, model: string, u: Record<string, number>): Anthropic.Message =>
+            ({ ...m, model, usage: u } as unknown as Anthropic.Message);
+        const { client } = scriptedClient([
+            withUsage(toolMsg('get_financial_overview', {}), 'gpt-oss-atelier', { input_tokens: 5000, output_tokens: 300 }),
+            withUsage(textMsg('Voilà.'), 'claude-sonnet-4-6', { input_tokens: 200, output_tokens: 30 }),
+        ]);
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(res.usage).toEqual({ inputTokens: 200, outputTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0 });
+        expect(res.stopReason).toBe('end');
+    });
+
     it('[B4-CHAT-COST] les tours DÉJÀ payés restent comptés même quand la boucle finit en ÉCHEC/annulation', async () => {
         // Tour 1 abouti (payé), tour 2 : l'appel API rejette → stopReason error, usage du tour 1 conservé.
         const usageMsg = { ...toolMsg('get_financial_overview', {}), usage: { input_tokens: 500, output_tokens: 40 } } as unknown as Anthropic.Message;

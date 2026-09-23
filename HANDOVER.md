@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-23 — **`[IA-LOCALE]` : le relais route un maximum d'appels Claude vers l'IA locale de Marc**
+> 🔎 Marc : « continue avec financeai … faire passer un max par ollama ». L'Atelier (dépôt MoKarade/atelier)
+> expose une **passerelle IA locale** (format API Anthropic → Ollama `gpt-oss-atelier` sur son PC, tunnel
+> Cloudflare `https://ia.hubperso.com`, clé par app, journal sans contenu).
+> 🔧 **Livré** : `api/_lib/relay.ts` route vers la passerelle tout appel **texte ou à outils « custom »**
+> sur Haiku/Sonnet (`IA_LOCALE_MODELES`), si l'env **serveur** `IA_LOCALE_URL` + `IA_LOCALE_CLE` est posé.
+> Restent sur Claude : Opus (choix explicite), image/PDF (Vision reste d'ailleurs en direct), outils serveur,
+> `tool_choice` forcé. Passerelle éteinte / 5xx / 529 GPU occupé / exception → **bascule Anthropic** avec la
+> clé BYOK (sonde `/sante` 1,5 s mémorisée 30 s). La clé BYOK n'est JAMAIS envoyée à la passerelle.
+> Fonction passée en **runtime Node.js** (Edge exige un début de réponse en 25 s ; bascule non-flux trop
+> longue) + `supportsCancellation` dans `vercel.json` (l'Annuler reste chaîné). **Opus ajouté à
+> l'allowlist** (il aurait échoué en 400 dès l'allumage du relais). `agentLoop` : un tour servi par
+> `gpt-oss-atelier` n'entre pas dans l'usage facturé (`isLocalModel`, `services/aiChat/models.ts`).
+> 🧪 `tests/api/claudeRelayIaLocale.test.ts` (14 cas) + 1 cas `agentLoop`. Bout en bout MESURÉ avant PR :
+> SDK → relais dev Vite → tunnel → passerelle → Ollama, clé BYOK FACTICE (un appel parti chez Anthropic
+> aurait rendu 401) : Haiku texte ✔, chat Sonnet + outil en flux ✔, Opus → Anthropic ✔.
+> ⚠️ **Rien ne change en prod tant que le transport n'est pas `proxy`** : le relais n'a jamais été allumé
+> (`docs/A_FAIRE_MOI.md` O4). Env à poser : `PROXY_ACCESS_TOKEN`, `VITE_PROXY_ACCESS_TOKEN`,
+> `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL`, `IA_LOCALE_CLE`. Décision : ADR 0018.
+> ⚠️ Qualité : gpt-oss-20b est en dessous de Haiku/Sonnet (banc Atelier : 80 % sur une catégorisation
+> synthétique ; enum pas toujours respecté en appel d'outil) — les garde-fous existants (allowlist de
+> catégories, zod des tools) restent la ceinture.
+>
 > ## 🟦 Session 2026-09-21 (suite 3) — **`[SANDBOX-ETANCHEITE-FICHIERS]` : aucun fichier ne sort pendant que les données sont fictives**
 > 🔎 Marc : « on va retravailler full le sandbox de l'onglet futur, jveux que ca change que ce soit
 > plus propore pose moi des questions ».

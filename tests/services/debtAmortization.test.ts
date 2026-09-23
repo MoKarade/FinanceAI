@@ -211,6 +211,24 @@ describe('[DEBT-AMORTIZATION] la courbe rendue', () => {
         expect(r.forme).toBe('inapplicable');
         if (r.forme === 'inapplicable') expect(r.cause).toBe('jamais-decroissant');
     });
+
+    it('[NODE24-POW-ULP] paiement = intérêt au bit près : refusé pour la BONNE cause, quel que soit l\'âge du prêt', () => {
+        // Solde inchangé depuis l'origine → paiement résolu = intérêt EXACTEMENT, en réel. En flottant,
+        // le dernier bit dépend de `Math.pow(1+i, N)`, donc de N ET de la version de V8 (mesuré : Node 24
+        // ne rend pas le même bit que Node 20/22 pour plusieurs N). Le cas unique ci-dessus ne teste
+        // qu'UN N ; ici on balaie 26 ans d'anciennetés, où les deux côtés de 200 $ apparaissent sur
+        // n'importe quel moteur. Sans tolérance, une partie tombe sur « recalage-hors-bande ».
+        const causes = new Set<string>();
+        for (let annee = 2000; annee <= 2026; annee++) {
+            for (let m = 1; m <= 12; m++) {
+                if (annee === 2026 && m >= 9) break;
+                const startDate = `${annee}-${String(m).padStart(2, '0')}-15`;
+                const r = amortirDettePassee(pret({ originalBalance: 20000, balance: 20000, interestRate: 12, minimumPayment: 100, startDate }), AUJOURDHUI, AUJ_ISO, []);
+                causes.add(r.forme === 'inapplicable' ? r.cause : `ok (${startDate})`);
+            }
+        }
+        expect([...causes]).toEqual(['jamais-decroissant']);
+    });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

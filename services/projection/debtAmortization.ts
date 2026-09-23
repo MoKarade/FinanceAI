@@ -472,6 +472,9 @@ export type ResultatAmortissement =
  */
 export const RECALAGE_MIN = 0.5;
 export const RECALAGE_MAX = 2;
+/** Marge relative sous laquelle un paiement est tenu pour ÉGAL à l'intérêt (bruit flottant de
+ *  `Math.pow`, qui varie d'une version de V8 à l'autre) — voir `[NODE24-POW-ULP]`. */
+const TOLERANCE_PAIEMENT_INTERET = 1e-9;
 
 const fini = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -582,7 +585,18 @@ export function amortirDettePassee(
     // de la série — c'est-à-dire du montant emprunté. En dessous, la dette enfle : le modèle ne
     // décrit alors pas un remboursement, et le moteur du futur, lui, force un plancher
     // (`max(minimumPayment, intérêt + solde/300)`). Refuser garde les deux bouts cohérents.
-    if (paiementResolu <= i * originalBalance) return { forme: 'inapplicable', cause: 'jamais-decroissant' };
+    //
+    // ⚠️ [NODE24-POW-ULP] Comparaison TOLÉRANTE, pas stricte. Quand le solde n'a pas bougé depuis
+    // l'origine, `paiementQuiRelie` vaut EXACTEMENT l'intérêt en arithmétique réelle ; en flottant,
+    // le dernier bit dépend de `Math.pow`, donc du nombre de mois ET de la version de V8. Mesuré le
+    // 23/09/2026 sur 20 000 $ à 12 %, 32 mois : Node 20 → 199,99999999999997 (refus juste), Node 24 →
+    // 200,00000000000003, qui passait ce test et tombait sur « recalage-hors-bande » — la bonne
+    // décision pour la mauvaise raison, cause fausse remontée à l'écran. Pas propre à Node 24 : sous
+    // Node 20, 99 anciennetés sur 320 tombaient déjà du mauvais côté. 1e-9 relatif, c'est
+    // 0,0000002 $ par mois sur 200 $ : aucun prêt réel ne « décroît » à ce rythme.
+    if (paiementResolu <= i * originalBalance * (1 + TOLERANCE_PAIEMENT_INTERET)) {
+        return { forme: 'inapplicable', cause: 'jamais-decroissant' };
+    }
 
     const facteurRecalage = paiementResolu / minimumPayment;
     if (facteurRecalage < RECALAGE_MIN || facteurRecalage > RECALAGE_MAX) {

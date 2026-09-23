@@ -31,7 +31,7 @@ jobs:
         run: echo "97e36acba8770c9614b6295773267b9690d07bc5bcd130b3bc0d03da996ab62b  docs/COMPTE-RENDU.md" | sha256sum -c -
 
       # Pas de `cache: 'npm'` : pas de package-lock.json commité dans ce repo
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
@@ -68,7 +68,7 @@ jobs:
           # une action tierce, peut le lire. Ce job ne pousse rien, donc il n'en a pas besoin.
           persist-credentials: false
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'

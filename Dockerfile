@@ -11,7 +11,7 @@
 #
 # Build/run local : docker build -t financeai-mcp . && docker run -e PORT=8080 … financeai-mcp
 
-FROM node:22-slim
+FROM node:24-slim
 
 WORKDIR /app
 

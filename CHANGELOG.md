@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-23 (correctif) — Le relais de l'IA est enfin joignable en production
+
+- **L'allumage de l'IA locale avait cassé l'IA texte en production** pendant quelques minutes : le relais
+  serveur n'était pas trouvé par Vercel (le fichier portait un nom « attrape-tout » que Vercel ne route pas
+  sur ce type de projet), et chaque appel recevait une page d'erreur. Remis en service en revenant au
+  déploiement précédent, puis corrigé : le relais vit maintenant à son adresse exacte.
+- Un test verrouille désormais cette forme, pour que ça ne puisse pas revenir.
+
 ## 2026-09-23 — L'assistant et les tâches IA passent par l'IA locale quand ton PC est allumé
 
 - **Un maximum d'appels IA sont maintenant servis gratuitement par l'IA de ton PC** (Ollama, via la

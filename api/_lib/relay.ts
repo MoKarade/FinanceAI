@@ -28,7 +28,8 @@
 //   - la réponse locale porte `model: gpt-oss-atelier` (services/aiChat/models.ts LOCAL_MODEL_ID) →
 //     le chat ne la facture pas.
 
-import { MODEL_IDS, LOCAL_MODEL_ID } from '../../services/aiChat/models';
+// `.js` obligatoire : chargé en ESM natif par le runtime Node de Vercel (cf api/claude/v1/messages.ts).
+import { MODEL_IDS, LOCAL_MODEL_ID } from '../../services/aiChat/models.js';
 
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
 const ALLOWED_PATH = '/v1/messages';

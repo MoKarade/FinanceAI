@@ -6,7 +6,8 @@
 // (jamais deux littéraux d'id qui divergent — classe « littéral dupliqué à côté de la source »).
 
 import type { AiChatModelKey } from '../../types';
-import { PRICING_USD_PER_MTOK } from './pricing';
+// `.js` : ce module est aussi chargé côté serveur par le relais (ESM natif du runtime Node Vercel).
+import { PRICING_USD_PER_MTOK } from './pricing.js';
 
 /** Ids API complets par clé de chat. ⚠️ Chaque id DOIT avoir une entrée dans PRICING_USD_PER_MTOK
  *  (services/aiChat/pricing) — parité verrouillée par tests/services/aiChatPricing.test.ts. */

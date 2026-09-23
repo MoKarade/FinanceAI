@@ -12,7 +12,9 @@
 // servi par l'IA locale puis, en cas d'échec, rejoué sur Anthropic peut dépasser ce délai. Node sur
 // Fluid compute n'a pas cette contrainte (durée max 300 s par défaut) et Vercel recommande Node.
 // L'annulation client (request.signal) est activée par `supportsCancellation` dans vercel.json.
-import { relayClaude, anthropicError } from '../../_lib/relay';
+// Extension `.js` OBLIGATOIRE : le runtime Node charge ces fichiers en ESM natif (package.json
+// "type": "module"), qui ne résout pas les imports sans extension (mesuré : ERR_MODULE_NOT_FOUND).
+import { relayClaude, anthropicError } from '../../_lib/relay.js';
 
 export const config = { runtime: 'nodejs' };
 

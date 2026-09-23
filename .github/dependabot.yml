@@ -11,6 +11,12 @@ updates:
     groups:
       mineures-et-correctifs:
         update-types: [minor, patch]
+    ignore:
+      # @types/node suit la MAJEURE de Node déclarée (engines, .nvmrc) : la garde
+      # [ENV-NODE-NON-DECLARE] exige les trois alignés. Une majeure de types plus récente ne peut
+      # que rougir (vécu : #1015, @types/node 26 sur Node 24) — elle se change AVEC Node, pas seule.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }

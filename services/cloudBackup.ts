@@ -48,13 +48,15 @@ const getCrypto = (): SubtleCrypto => {
     return c.subtle;
 };
 
-const randomBytes = (length: number): Uint8Array => {
+// TypeScript 5.9 : WebCrypto exige un tampon adossé à un vrai ArrayBuffer (`BufferSource`), plus
+// n'importe quel `ArrayBufferLike` (SharedArrayBuffer exclu). Types seulement : les octets ne changent pas.
+const randomBytes = (length: number): Uint8Array<ArrayBuffer> => {
     const out = new Uint8Array(length);
     crypto.getRandomValues(out);
     return out;
 };
 
-const deriveKey = async (passphrase: string, salt: Uint8Array): Promise<CryptoKey> => {
+const deriveKey = async (passphrase: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> => {
     const subtle = getCrypto();
     const passwordBytes = new TextEncoder().encode(passphrase);
     const baseKey = await subtle.importKey(

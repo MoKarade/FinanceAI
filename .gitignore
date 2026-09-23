@@ -72,3 +72,9 @@ dist-mcp
 # deux. Convention de nommage à respecter par les agents : préfixe `__probe` ou `ztmp-`.
 tests/**/__probe*.test.ts
 tests/**/ztmp-*.test.ts
+
+# Portes qualité de l'Atelier (S6) — sorties de mesure, jamais committées
+coverage/
+reports/
+.stryker-tmp/
+qualite/rapport.json

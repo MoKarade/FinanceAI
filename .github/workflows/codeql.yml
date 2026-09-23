@@ -1,0 +1,53 @@
+# CodeQL en configuration AVANCÉE (remplace la configuration « par défaut » de GitHub).
+#
+# Pourquoi : la configuration par défaut n'analyse PAS les PR de Dependabot. Or
+# « Analyze (javascript-typescript) » est un check OBLIGATOIRE de main : sur une PR Dependabot il
+# n'arrive jamais, la PR reste BLOQUÉE à vie, CI verte comprise (vécu le 23/09/2026 : #1013,
+# #1016, #1017). Un workflow du dépôt, lui, tourne sur toutes les PR, Dependabot compris.
+# Mêmes langages, même suite de requêtes (« default »), même fréquence hebdomadaire qu'avant ;
+# le nom du job garde le nom exact du check obligatoire.
+#
+# ⚠️ Ne fonctionne qu'une fois la configuration par défaut DÉSACTIVÉE (Settings → Advanced
+# Security → CodeQL analysis → « Switch to advanced » → « Disable CodeQL ») : tant qu'elle est
+# active, GitHub refuse les analyses d'une configuration avancée.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1" # hebdomadaire, comme la configuration par défaut
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    # Nom = check obligatoire de main (« Analyze (javascript-typescript) ») : ne pas le changer.
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      # Téléverser les résultats dans l'onglet Security. Accordé EXPLICITEMENT : sur une PR
+      # Dependabot, le jeton est en lecture seule sauf ce que le workflow déclare.
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: default
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

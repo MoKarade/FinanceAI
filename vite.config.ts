@@ -2,7 +2,7 @@ import path from 'path';
 import { execSync } from 'node:child_process';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { relayClaude } from './api/_lib/relay';
+import { relayClaude, iaLocaleDepuisEnv } from './api/_lib/relay';
 
 // [P0-PROXY] Middleware dev : monte le relais BYOK (api/_lib/relay.ts, code Web-standard partagé
 // avec la fonction Edge Vercel) sous /api/claude en `npm run dev` — sans dépendre de `vercel dev`.
@@ -29,6 +29,8 @@ const claudeRelayDevPlugin = (env: Record<string, string>): Plugin => ({
                 });
                 const response = await relayClaude(request, {
                     accessToken: env.PROXY_ACCESS_TOKEN || env.VITE_PROXY_ACCESS_TOKEN || undefined,
+                    // [IA-LOCALE] Même lecture qu'en prod, depuis .env.local (IA_LOCALE_URL / _CLE / …).
+                    iaLocale: iaLocaleDepuisEnv((k) => env[k] || undefined),
                 });
                 res.statusCode = response.status;
                 response.headers.forEach((v, k) => res.setHeader(k, v));

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-23 — L'assistant et les tâches IA passent par l'IA locale quand ton PC est allumé
+
+- **Un maximum d'appels IA sont maintenant servis gratuitement par l'IA de ton PC** (Ollama, via la
+  passerelle de l'Atelier) : la catégorisation des transactions, la détection d'abonnements, les conseils
+  et le chat avec ses outils, quand tu as choisi Haiku ou Sonnet.
+- **Restent sur Claude** : Opus (quand tu le choisis, c'est que tu veux le meilleur), la lecture de
+  relevés et de fiches de paie (l'IA locale ne lit pas les images ni les PDF).
+- **PC éteint ou occupé : rien ne casse.** L'appel repart automatiquement chez Claude avec ta clé, comme
+  avant. La clé Anthropic n'est jamais envoyée à ton PC.
+- **Le coût affiché reste honnête** : une réponse de l'IA locale n'est pas comptée comme facturée.
+- Nécessite d'allumer le relais serveur (variables Vercel) — voir `docs/A_FAIRE_MOI.md`.
+
 ## 2026-09-21 — Aucun fichier ne sort pendant que l'app affiche des données fictives
 
 - **Sauvegarde, export PDF et export CSV refusent désormais** quand l'app tourne en mode test ou en

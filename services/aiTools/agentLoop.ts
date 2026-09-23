@@ -16,6 +16,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { makeClient, makeTimeoutSignal, MODEL_SONNET } from '../claude';
+import { isLocalModel } from '../aiChat/models';
 import { logError } from '../errorLogger';
 import { sanitizePromptText } from '../../utils/promptSafety';
 import type { StateProvider, ToolTextResult } from '../../mcp/tools/_dataAware';
@@ -280,7 +281,10 @@ export async function runAgentLoop(
 
         // [B4-CHAT-COST] Le tour a abouti : ses tokens sont facturés — cumulés quel que soit le
         // dénouement de la boucle (une annulation au tour 3 a quand même payé les tours 1-2).
-        usage = addUsage(usage, usageFromMessage(msg));
+        // [IA-LOCALE] Sauf si le tour a été servi par l'IA LOCALE (relais → passerelle Ollama) : il n'est
+        // PAS facturé, ses tokens n'entrent donc pas dans l'usage (useAiChat le chiffrerait sinon au tarif
+        // du modèle Claude DEMANDÉ — un coût inventé).
+        if (!isLocalModel(msg.model)) usage = addUsage(usage, usageFromMessage(msg));
 
         for (const block of msg.content) {
             if (block.type === 'text') text += (text ? '\n' : '') + block.text;

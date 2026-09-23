@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/claude/**": {
+      "supportsCancellation": true
+    }
+  },
   "git": {
     "deploymentEnabled": {
       "claude/*": false

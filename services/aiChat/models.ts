@@ -52,3 +52,16 @@ export function modelLabelFromId(id: string): string {
     const entry = AI_CHAT_MODELS.find((m) => MODEL_IDS[m.key] === id);
     return entry ? `Claude ${entry.label}` : id;
 }
+
+/**
+ * [IA-LOCALE] Modèle servi par la passerelle IA LOCALE (Ollama sur le PC de Marc, via tunnel) quand le
+ * relais `api/_lib/relay.ts` route un appel Claude texte vers elle. Le relais réécrit `model` en cet
+ * id et la réponse le porte (`msg.model`) : c'est la seule façon fiable de savoir qu'un tour n'a PAS
+ * été facturé par Anthropic (no-fake-data : un tour local chiffré au tarif Sonnet serait un coût inventé).
+ */
+export const LOCAL_MODEL_ID = 'gpt-oss-atelier';
+
+/** Vrai si la réponse a été servie par l'IA locale (gratuite, jamais facturée). */
+export function isLocalModel(id: unknown): boolean {
+    return id === LOCAL_MODEL_ID;
+}

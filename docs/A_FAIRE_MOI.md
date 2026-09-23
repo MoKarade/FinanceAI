@@ -1164,6 +1164,12 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 - [ ] **(6) OPTIONNEL — basculer le transport** : une fois satisfait, poser `VITE_CLAUDE_TRANSPORT=proxy` (Production)
   pour passer du relais par défaut (Vision en direct pour l'instant). Redéployer. Note : rollback = retirer le flag.
 
+- [ ] **(7) [IA-LOCALE] 2026-09-23 — tout en un** : les valeurs prêtes à coller (jeton relais généré, clé de
+  la passerelle IA locale) sont dans `C:\dev\atelier\passerelle\a-coller-vercel-financeai.txt` sur ton PC
+  (hors git). Poser en Production + Preview : `PROXY_ACCESS_TOKEN`, `VITE_PROXY_ACCESS_TOKEN`,
+  `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL=https://ia.hubperso.com`, `IA_LOCALE_CLE`. Remplace (1) à (6).
+  Pourquoi à la main : l'écriture de secrets dans Vercel par Claude est bloquée par son garde-fou. ADR 0018.
+
 ⚠️ **Aucune clé Anthropic serveur à créer** — le relais utilise TA clé client (via le navigateur au premier appel
   token=null), puis la chiffre via le token Vercel, réemballe + envoie à Anthropic. Zéro exposition cloud.
 

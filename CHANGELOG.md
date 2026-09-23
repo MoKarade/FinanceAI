@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-23 — Mises à jour de la semaine (22 dépendances) et contrôles rodés
+
+- **22 dépendances à jour** (React 19.3, recharts 3.10, SDK Anthropic, Vite 8.3, Playwright…). La
+  nouvelle version de recharts a demandé un ajustement : l'infobulle des graphiques temporels ne
+  formate plus que les vraies dates — le reste s'affiche tel quel au lieu de « Invalid Date ».
+- **Les mises à jour automatiques ne restent plus coincées** : vitest et son module de couverture
+  voyagent ensemble ; TypeScript 7 et Tailwind 4 attendent (le premier n'a pas encore l'interface dont
+  le lint a besoin, le second est un vrai chantier de design) ; le contrat du hub reste épinglé à la main.
+- La recherche de secrets lit l'historique qui serait fusionné, plus les branches voisines.
+
 ## 2026-09-23 — Contrôles automatiques de qualité et de sécurité
 
 - Chaque modification passe maintenant, en plus des tests, par des **contrôles qui ne peuvent que se resserrer** : couverture des tests (93 % des lignes, 94 % pour le moteur de calcul), code mort, règles d'architecture, avertissements du lint. Rien ne peut reculer par rapport à aujourd'hui.

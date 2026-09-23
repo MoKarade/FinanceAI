@@ -9,6 +9,11 @@ updates:
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 5
     groups:
+      # vitest et @vitest/* exigent la MÊME version (peer exacte) : séparés, chaque PR échoue à
+      # l'installation (ERESOLVE, vécu le 23/09). Leurs majeures voyagent donc ensemble.
+      vitest-majeures:
+        patterns: ["vitest", "@vitest/*"]
+        update-types: [major]
       mineures-et-correctifs:
         update-types: [minor, patch]
     ignore:
@@ -17,6 +22,19 @@ updates:
       # que rougir (vécu : #1015, @types/node 26 sur Node 24) — elle se change AVEC Node, pas seule.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 : aucune API programmatique avant la 7.1 (annonce TS 7.0, 08/07/2026) ; typescript-eslint
+      # en dépend, et la 7.0 change des défauts (`types` vide, imports à effet de bord vérifiés). Mesuré le
+      # 23/09/2026 (JobAI #29) : typecheck rouge. À retirer avec TypeScript 7.1 + typescript-eslint compatible.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Tailwind 4 : vraie migration (plugin PostCSS déplacé dans @tailwindcss/postcss, configuration en CSS).
+      # Mesuré le 23/09/2026 (FinanceAI #1018) : build rouge. Chantier de design (S5), pas une montée de version.
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # Contrat INTERNE, épinglé à la main sur un tag (outils/repin_hub_contract.py de l'Atelier) : pas à
+      # Dependabot. Il lisait mal le tag annoté v1.3.1 et proposait une RÉTROGRADATION v1.3.1 -> v1.3.0
+      # (sans dist/ : installation cassée) — vécu le 23/09/2026, BatchChef #114 et JobAI #34.
+      - dependency-name: "@mokarade/hub-contract"
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }

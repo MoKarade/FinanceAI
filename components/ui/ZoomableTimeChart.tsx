@@ -243,7 +243,13 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                         contentStyle={CHART_TOOLTIP_STYLE}
                         itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                         formatter={(val, name) => [tooltipValue(typeof val === 'number' ? val : null, privacyMode, yFormatter), String(name)]}
-                        labelFormatter={(label) => new Date(label).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        // recharts 3.10 type le libellé en ReactNode (avant : any). L'axe X porte une date
+                        // (chaîne ISO ou horodatage) : on ne formate que ces deux cas, le reste passe tel quel
+                        // au lieu d'afficher « Invalid Date ».
+                        labelFormatter={(label) =>
+                            typeof label === 'string' || typeof label === 'number'
+                                ? new Date(label).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })
+                                : label}
                     />
                     <Legend verticalAlign="top" iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
                     {series.map((s, idx) =>

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-23 — Contrôles automatiques de qualité et de sécurité
+
+- Chaque modification passe maintenant, en plus des tests, par des **contrôles qui ne peuvent que se resserrer** : couverture des tests (93 % des lignes, 94 % pour le moteur de calcul), code mort, règles d'architecture, avertissements du lint. Rien ne peut reculer par rapport à aujourd'hui.
+- **Sécurité** : recherche de secrets dans tout l'historique du projet (aucun trouvé) et analyse statique du code à chaque modification.
+- Les mises à jour de dépendances sont proposées chaque semaine et passent par les mêmes contrôles.
+
 ## 2026-09-23 — Node 24 et fusion automatique
 
 - **Node 24** partout (`.nvmrc`, `engines`, CI, image Docker du serveur MCP) : Vercel refuse les

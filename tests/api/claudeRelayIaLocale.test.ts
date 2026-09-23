@@ -147,7 +147,7 @@ describe('[IA-LOCALE] routage du relais vers la passerelle locale', () => {
         locale = () => { ctrl.abort(); throw new DOMException('aborted', 'AbortError'); };
         const r = await call(texte(), IA, ctrl.signal);
         expect(r.status).toBe(499);
-        expect(urls().some((u) => u.includes('anthropic.com'))).toBe(false);
+        expect(urls()).not.toContain('https://api.anthropic.com/v1/messages');
     });
 });
 

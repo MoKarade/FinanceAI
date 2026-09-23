@@ -16920,3 +16920,23 @@ Une garde de dépôt est un consommateur de tout `services/` — le périmètre 
 que j'ai édité » mais « ce qui SCANNE ce que j'ai édité », et cette seconde liste ne se devine pas :
 c'est la CI qui la connaît. Ne pas lancer un gate complet local était le bon choix ; croire que les
 197 tests ciblés valaient un gate ne l'était pas.
+
+---
+
+## `UN-RELAIS-NON-TESTE-EN-PROD-N-EST-PAS-UN-RELAIS` (2026-09-23, trouvé en prod)
+
+`[IA-LOCALE]` (#1009) est parti avec 15 tests verts, un bout-en-bout réel (SDK → relais en **dev Vite** →
+tunnel → Ollama) et une CI entièrement verte. Dès les variables Vercel posées, **toute l'IA texte a échoué en
+production** : `POST /api/claude/v1/messages` → 405, `GET` → `index.html`. Le fichier `api/claude/[...path].ts`
+(attrape-tout, hérité de P0-PROXY, jamais allumé) n'est **pas routé par Vercel** sur ce projet Vite ; la
+réécriture SPA `/(.*) → /index.html` avalait l'appel.
+
+Pourquoi personne ne l'a vu : les tests appellent `relayClaude` **en direct**, et le middleware dev monte le
+relais sur `/api/claude` **sans passer par le routage de Vercel**. Les deux vérifient le cœur, aucun ne
+vérifie le **chemin**. Le bout-en-bout « réel » ne l'était que jusqu'à la frontière de la plateforme.
+
+Règle : un point d'entrée qui dépend du routage d'une plateforme se vérifie **sur cette plateforme** avant
+l'allumage — un déploiement de prévisualisation (les branches `claude/*` n'en ont pas : `vercel.json`
+`git.deploymentEnabled`) et un `POST` réel. Correctif : chemin statique `api/claude/v1/messages.ts`, garde
+`tests/api/relayRouteStatique.test.ts`. Et après un **rollback** Vercel, le prochain déploiement doit être
+**promu** à la main (l'auto-assignation du domaine de prod est coupée).

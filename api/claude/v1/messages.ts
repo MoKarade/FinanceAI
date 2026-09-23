@@ -1,12 +1,18 @@
-// api/claude/[...path].ts — fonction Vercel (runtime Node.js) : relais BYOK Anthropic (cf api/_lib/relay.ts).
-// Catch-all : le SDK client (baseURL = <origine>/api/claude) appelle /api/claude/v1/messages ;
-// toute autre route est rejetée 404 par le relais. Signature Web-standard → portable (dev Vite).
+// api/claude/v1/messages.ts — fonction Vercel (runtime Node.js) : relais BYOK Anthropic (cf api/_lib/relay.ts).
+// Le SDK client (baseURL = <origine>/api/claude) appelle /api/claude/v1/messages : c'est la SEULE route du
+// relais, d'où un fichier au chemin EXACT.
+//
+// [IA-LOCALE-ROUTE] 2026-09-23 : l'ancien fichier « attrape-tout » `api/claude/[...path].ts` n'était PAS
+// routé par Vercel sur ce projet Vite (hors Next.js) : la requête tombait sur la réécriture SPA
+// `/(.*) → /index.html` et rendait 405. Mesuré en prod (POST → 405, GET → index.html) ; le relais
+// n'avait jamais été allumé avant, le défaut était donc latent depuis P0-PROXY. Un chemin statique est
+// servi par le système de fichiers AVANT toute réécriture.
 //
 // [IA-LOCALE] Runtime Node.js (plus Edge) : Edge doit commencer à répondre en 25 s, or un appel non-flux
 // servi par l'IA locale puis, en cas d'échec, rejoué sur Anthropic peut dépasser ce délai. Node sur
 // Fluid compute n'a pas cette contrainte (durée max 300 s par défaut) et Vercel recommande Node.
 // L'annulation client (request.signal) est activée par `supportsCancellation` dans vercel.json.
-import { relayClaude, anthropicError } from '../_lib/relay';
+import { relayClaude, anthropicError } from '../../_lib/relay';
 
 export const config = { runtime: 'nodejs' };
 

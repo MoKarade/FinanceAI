@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
+> Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
+> `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA
+> texte en échec. **Rollback Vercel** vers le déploiement précédent (même code, construit SANS les variables = transport
+> direct). Correctif : `api/claude/v1/messages.ts` (chemin statique) + garde `tests/api/relayRouteStatique.test.ts`.
+> ⚠️ Après un rollback, Vercel coupe l'auto-assignation du domaine de prod : le prochain déploiement doit être
+> **promu** (Vercel → Deployments → Promote) — sinon finance.hubperso.com reste sur l'ancien.
+> Leçon : `docs/CONVENTIONS.md` `UN-RELAIS-NON-TESTE-EN-PROD-N-EST-PAS-UN-RELAIS`.
+>
 > ## 🟦 Session 2026-09-23 — **`[IA-LOCALE]` : le relais route un maximum d'appels Claude vers l'IA locale de Marc**
 > 🔎 Marc : « continue avec financeai … faire passer un max par ollama ». L'Atelier (dépôt MoKarade/atelier)
 > expose une **passerelle IA locale** (format API Anthropic → Ollama `gpt-oss-atelier` sur son PC, tunnel

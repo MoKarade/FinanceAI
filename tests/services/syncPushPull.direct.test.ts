@@ -382,6 +382,7 @@ describe('[SYNC-PUSH-SANS-OCC] le push n\'écrase jamais une version de Drive qu
 
         expect(await pushNow()).toBe('conflict');
         expect(ecrituresDrive()).toBe(0);
+        expect(logErrorMock).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/réécrit depuis la dernière version vue/) }));
         const st = getSyncStatus();
         expect(st.conflict).toBe(true);
         expect(st.busy).toBe(false);
@@ -403,6 +404,25 @@ describe('[SYNC-PUSH-SANS-OCC] le push n\'écrase jamais une version de Drive qu
         readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
         expect(await pushNow()).toBe('conflict');
 
+        await resolveConflict('local');
+        expect(ecrituresDrive()).toBe(1);
+        expect(getSyncStatus().conflict).toBe(false);
+    });
+
+    it.each([
+        ['absente', undefined],
+        ['non finie', Number.NaN],
+    ])('date de Drive %s → échec FERMÉ : aucune écriture, choix demandé, tracé ; « garder cet appareil » passe ensuite', async (_n, date) => {
+        // `NaN > n` et `undefined > n` valent FAUX : sans garde, la comparaison concluait « Drive n'a pas
+        // bougé » et le push écrasait. Le blob relu n'est validé par aucun schéma.
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue({ ...blobServeur(ECRIT_PAR_LE_SERVEUR), updatedAt: date } as never);
+
+        expect(await pushNow()).toBe('conflict');
+        expect(ecrituresDrive()).toBe(0);
+        expect(logErrorMock).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/date de la sauvegarde Drive illisible/) }));
+
+        // Le choix explicite ne doit pas être une trappe : la version montrée EST celle de Drive.
         await resolveConflict('local');
         expect(ecrituresDrive()).toBe(1);
         expect(getSyncStatus().conflict).toBe(false);

@@ -101,7 +101,8 @@ export const GoogleDriveSyncCard: React.FC = () => {
         } else if (result === 'skipped-testmode') {
             showToast('Mode test actif — sauvegarde désactivée (sors du mode test d’abord).', 'info');
         }
-        // 'error' : message rouge déjà affiché via le statut ; 'not-configured' : carte masquée.
+        // 'error' : message rouge déjà affiché via le statut ; 'not-configured' : carte masquée ;
+        // 'conflict' : le modal global de conflit (SyncConflictModal) prend le relais.
     };
     const onPull = async () => {
         // pullNow réhydrate le store EN PLACE (plus de reload) → on confirme par un toast.

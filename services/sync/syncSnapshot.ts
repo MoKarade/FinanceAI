@@ -84,7 +84,9 @@ export function resumeConflit(localPayload: unknown, drive: SyncEnvelope | null)
         local: summarizeForConflict(localPayload),
         drive: {
             ...summarizeForConflict(drive?.enc ? null : drive?.payload),
-            updatedAt: drive?.updatedAt ?? 0,
+            // Tel quel, même illisible : « garder cet appareil » compare ce qu'il a MONTRÉ à ce que
+            // Drive porte encore (identité). Le modal affiche « date inconnue » pour une valeur non finie.
+            updatedAt: drive ? drive.updatedAt : 0,
             encrypted: Boolean(drive?.enc),
         },
     };

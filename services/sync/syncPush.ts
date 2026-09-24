@@ -24,9 +24,9 @@ import { modeDonneesFictives } from '../../store/modeTestActif';
 type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'conflict' | 'error';
 
 interface PushOptions {
-    /** `updatedAt` de la version de Drive qu'on accepte d'écraser. Par défaut : la dernière vue par
-     *  cet appareil (`lastPulledUpdatedAt`). Le choix « garder cet appareil » passe celle que le
-     *  modal a MONTRÉE. */
+    /** Choix EXPLICITE « garder cet appareil » : `updatedAt` de la version de Drive que le modal a
+     *  MONTRÉE (tel quel, même illisible). L'écrasement n'est permis que si Drive la porte encore.
+     *  Clé absente : contrôle ordinaire contre la dernière version vue (`lastPulledUpdatedAt`). */
     driveVuA?: number;
 }
 
@@ -90,10 +90,32 @@ async function runPushNow(options: PushOptions): Promise<PushResult> {
         // ⚠️ Reste une fenêtre de quelques centaines de millisecondes entre cette lecture et
         // l'écriture : l'API de fichiers de Drive n'offre pas d'écriture conditionnelle ici.
         const existant = ref ? await readSyncFile(token, ref.id) : null;
-        const vuA = options.driveVuA ?? currentMeta().lastPulledUpdatedAt;
-        if (existant && driveAAvance(existant.updatedAt, vuA)) {
-            setStatus({ busy: false, conflict: true, conflictSummary: resumeConflit(local.payload, existant) });
-            return 'conflict';
+        if (existant) {
+            // « Garder cet appareil » : l'écrasement est permis si Drive porte ENCORE la version que le
+            // modal a montrée — une IDENTITÉ (`Object.is`, qui tient aussi pour une date illisible), pas
+            // un ordre.
+            // La PRÉSENCE de la clé porte le choix (pas sa valeur) : une date absente montrée par le
+            // modal vaut `undefined`, et `!== undefined` aurait rendu le bouton inopérant pour toujours.
+            const ecrasementChoisi = Object.prototype.hasOwnProperty.call(options, 'driveVuA')
+                && Object.is(existant.updatedAt, options.driveVuA);
+            // Le blob relu n'est validé par aucun schéma : une date absente ou non finie rendrait
+            // `driveAAvance` FAUX (`NaN > n`), donc « rien n'a changé » — le verdict qui écrase. Une
+            // date illisible échoue FERMÉ : on ne sait pas, donc on demande.
+            const dateLisible = Number.isFinite(existant.updatedAt);
+            const vuA = currentMeta().lastPulledUpdatedAt;
+            if (!ecrasementChoisi && (!dateLisible || driveAAvance(existant.updatedAt, vuA))) {
+                // Tracé : un push AUTOMATIQUE (fermeture d'onglet) peut s'abstenir sans que personne voie
+                // le modal ; le prochain chargement le redétecte, mais « pourquoi rien n'est parti ? »
+                // doit rester lisible après coup.
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: dateLisible
+                        ? 'Push Drive : Drive a été réécrit depuis la dernière version vue — rien n\'est écrit, choix demandé.'
+                        : 'Push Drive : date de la sauvegarde Drive illisible — rien n\'est écrit, choix demandé.',
+                });
+                setStatus({ busy: false, conflict: true, conflictSummary: resumeConflit(local.payload, existant) });
+                return 'conflict';
+            }
         }
         // Passphrase optionnelle active (D-3) → chemin ZÉRO-KNOWLEDGE : on chiffre le payload COMPLET
         // ET les clés API ensemble avec `encryptBackup` (la passphrase ne quitte jamais l'appareil).

@@ -30,7 +30,7 @@
 > SÉPARÉ, écrit par une seule tâche serveur (GitHub Actions → Cloud Run, ADR 0004/0010) ; moteur de
 > valorisation pur partagé app/MCP/tâche ; Fintable en contrôle si Marc choisit la clôture officielle.
 
-- [ ] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
+- [x] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
   est « demandée, sans ajout » ; la revue du lot 1a a relevé ce qu'elle ne sait pas écrire, à trancher
   AVANT le parseur Disnat (1f) : annulation ou correction d'une ligne du courtier (montants toujours
   positifs, aucune sorte ne défait), regroupement qui change d'ISIN ou espèces versées pour une
@@ -39,12 +39,19 @@
   Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
   nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
   `CHAMPS_TEXTE` dans le même commit.
-- [ ] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
+  ✅ **Tranché par Marc et livré le 2026-09-24** : annulation qui GARDE la trace (`cancelsId`), sorte
+  `echange` (changement d'ISIN, une fraction payée s'écrit comme une vente), coût TOTAL gardé tel
+  qu'imprimé (`cost`, jamais avec `price`). ADR 0020 §11. Tests :
+  `tests/services/grandLivre/sortesTranchees.test.ts` (21 cas, 5 perturbations rouges).
+- [x] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
   devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
   manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait
   (deux événements sans lien, taux de conversion perdu). À trancher avec le parseur (1f), sur des
   relevés synthétiques qui en portent : une sorte qui débite un compte et crédite l'autre dans le
   MÊME événement, avec le taux appliqué.
+  ✅ **Tranché par Marc et livré le 2026-09-24** : `conversion` et `virement-interne` en UN SEUL
+  événement (`toAccountId`, `toAmount`, `rate` gardé pour la trace) ; un refus ne fait bouger aucun
+  des deux comptes (perturbation « débiter avant de valider l'arrivée » → rouge).
 - [ ] 🔧 **`[PTF-L1C1-LECTEURS-EVENEMENTS]`** (S) — lecteurs EODHD des fractionnements et des
   dividendes, et lecteur Yahoo (secours). Volontairement ABSENTS du lot 1c-1 : la mesure du Lot 0.5b
   n'a porté que sur les clôtures, et Yahoo sert un prix AJUSTÉ qu'il faut dé-ajuster des

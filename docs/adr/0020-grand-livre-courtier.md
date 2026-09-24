@@ -33,9 +33,10 @@ qu'une clé textuelle inconnue de la garde de réhydratation (`verifierTypesRest
 6. **Référentiel en tableau d'objets**, jamais un `Record` indexé par ISIN (ses valeurs seraient
    jugées sous une clé dynamique → refus → app vide). La place (`exchange`) reste du texte libre :
    une union fermée des places publierait où le portefeuille est coté.
-7. **Formes imposées par la garde de dérivation** (elle lit des FORMES) : alias `typeof X[number]`
-   sur des tableaux `as const` en ASCII sans accent, sous-objets en interfaces NOMMÉES, aucun `;`
-   dans les commentaires du bloc. Trois clés textuelles neuves (`isin`, `exchange`, `controlSymbol`)
+7. **Formes imposées par la garde de dérivation** (elle lit des FORMES) : alias en union DIRECTE de
+   littéraux ASCII sans accent (d'abord des `typeof X[number]` sur des tableaux `as const`, remplacés
+   au lot 1a même par la porte « code mort » : un tableau utilisé seulement comme type est une valeur
+   inutilisée), sous-objets en interfaces NOMMÉES, aucun `;` dans les commentaires du bloc. Trois clés textuelles neuves (`isin`, `exchange`, `controlSymbol`)
    entrent dans `CHAMPS_TEXTE` dans le même lot, avec des témoins nommés dans la garde.
 8. **Le livre compte** : un appareil qui ne porte que lui n'est pas « vide » (`DATA_ARRAY_KEYS`), le
    modal de conflit de synchro affiche « N opération(s) de courtier » des deux côtés, la sauvegarde
@@ -46,6 +47,24 @@ qu'une clé textuelle inconnue de la garde de réhydratation (`verifierTypesRest
    laisserait survivre le livre local à une restauration Drive.
 10. **Aucun persona ne plante de référentiel** : `instruments` n'a pas d'`id`, le nettoyeur ne peut pas
    le filtrer ; la règle est tenue par `tests/services/personaSanitizer.test.ts`.
+
+11. **Quatre sortes ajoutées sur décision de Marc (2026-09-24)**, sans migration (membres d'union et
+   champs optionnels) :
+   - **annulation** (`cancelsId`) : on GARDE la trace. La ligne annulée reste dans le livre et cesse
+     d'avoir un effet à la date de l'annulation — l'état étant recalculé depuis le début, « retirer »
+     suffit, et défaire à la main une vente serait un second calcul qui pourrait diverger. Une
+     correction = une annulation + la ligne juste. Même compte, une seule fois, jamais une annulation
+     d'annulation, jamais une cible ambiguë (refus nommés).
+   - **échange** (`toIsin`, `splitFrom`/`splitTo`) : regroupement ou fusion qui change d'ISIN, toute la
+     position du compte passe au nouveau titre. Aucune espèce dans l'événement : un versement pour une
+     fraction s'écrit comme la VENTE de cette fraction.
+   - **coût total** (`cost`, sur les lignes de titres) : gardé tel qu'imprimé, le coût unitaire se
+     calcule à la lecture. L'un OU l'autre du coût unitaire et du coût total, jamais les deux.
+   - **conversion** (`toAccountId`, `toAmount`, `rate` gardé pour la trace) et **virement interne**
+     (`toAccountId`, même montant) : UN SEUL événement, les deux comptes bougent ensemble ou pas du tout.
+   Trois clés textuelles neuves (`cancelsId`, `toIsin`, `toAccountId`) entrent dans `CHAMPS_TEXTE`
+   dans le même geste. Le moteur de valorisation suit une position à travers un échange et DÉFAIT un
+   fractionnement annulé dans la fenêtre (`suivreLaPosition`).
 
 ## Conséquences
 

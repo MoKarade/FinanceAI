@@ -17010,3 +17010,20 @@ parce qu'énumérer les valeurs à protéger dans un dépôt public serait la fu
   (celui de `node_modules`, jamais réinstallé) ne voyait pas. D'où `export` retiré aussi des cinq
   variantes de `BrokerLedgerEvent` et de `BrokerLedgerCurrency` : un lot suivant l'ajoutera quand il
   les importera.
+
+## `UN-TEST-OU-RIEN-NE-BOUGE-NE-VOIT-PAS-UN-MECANISME-DONT-LA-PANNE-REND-AUSSI-ZERO` (2026-09-24, sortes du grand livre)
+
+La garde « zéro artefact » du moteur de valorisation vérifie qu'un jour où les cours et les taux ne
+bougent pas, les effets de cours et de change valent 0. Écrite pour l'ÉCHANGE (changement d'ISIN),
+elle est restée VERTE quand j'ai retiré le suivi de l'ISIN : sans suivi, l'ancien titre est « sorti du
+livre », tout son écart part aux mouvements… qui valent 0 eux aussi quand rien ne bouge. La panne et
+le bon fonctionnement rendaient le même zéro.
+
+- Un scénario où rien ne bouge prouve l'ABSENCE d'artefact, jamais la PRÉSENCE d'un mécanisme : quand
+  la panne a pour issue un repli qui rend la même valeur au repos (ici « tout est mouvement »), il
+  faut un second scénario où le levier est ACTIF (un cours qui bouge après l'échange), et c'est lui
+  seul qui rougit.
+- Le geste qui l'a montré est la perturbation PAR MÉCANISME (5 perturbations, 5 compteurs de rouges
+  différents) : un « 1 rouge » là où on en attendait 2 n'est pas un test faible, c'est une information
+  sur lequel des deux porte la preuve.
+

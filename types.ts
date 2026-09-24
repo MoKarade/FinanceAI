@@ -869,7 +869,8 @@ export interface CategoryReviewState {
 // [PTF-L1A] Grand livre courtier + référentiel d'instruments.
 // Deux champs ADDITIFS et OPTIONNELS d'AppState. Aucun palier de migration, aucun bump (v7 reste v7).
 // ⚠️ TEXTUELS ET PERSISTÉS. Trois clés feuilles textuelles NEUVES (isin, exchange, controlSymbol)
-// entrent dans CHAMPS_TEXTE dans le MÊME commit. Toutes les autres feuilles textuelles de ce bloc
+// entrent dans CHAMPS_TEXTE dans le MÊME commit. Même geste pour les trois du 2026-09-24
+// (cancelsId, toIsin, toAccountId). Toutes les autres feuilles textuelles de ce bloc
 // (id, date, accountId, kind, currency, symbol, name) y figurent déjà.
 // ⚠️ Formes imposées par la garde de dérivation (tests/services/verifierTypesRestaures.test.ts:187-255),
 // qui lit des FORMES et pas des sens :
@@ -894,10 +895,13 @@ export type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-cour
  *  CAD ou en USD, jamais en EUR (invariant du validateur du lot 1b). Élargissement additif possible. */
 export type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
 
-/** Types d'événements (liste demandée, onze, sans ajout). */
+/** Types d'événements. Les onze de départ, plus quatre tranchés par Marc le 2026-09-24
+ *  (`[PTF-L1A-SORTES-A-TRANCHER]`, `[PTF-L1B-CONVERSION-VIREMENT]`) : annulation, échange,
+ *  conversion de devises et virement interne. */
 type BrokerLedgerEventKind =
   'acquisition' | 'transfert-entrant' | 'transfert-sortant' | 'achat' | 'vente' | 'fractionnement' |
-  'dividende' | 'retenue-etrangere' | 'depot-especes' | 'retrait-especes' | 'frais';
+  'dividende' | 'retenue-etrangere' | 'depot-especes' | 'retrait-especes' | 'frais' |
+  'annulation' | 'echange' | 'conversion' | 'virement-interne';
 
 /** Provenance : import d'un relevé daté, ou saisie manuelle (compte hors courtier). */
 type BrokerLedgerSourceKind = 'releve-courtier' | 'saisie-manuelle';
@@ -931,12 +935,16 @@ interface BrokerLedgerEventBase {
 }
 
 /** Titres reçus ou transférés SANS mouvement d'espèces. `price` = coût unitaire imprimé, devise de
- *  cotation. Absent = INCONNU, jamais 0 (un coût nul rendrait toute la vente imposable). */
+ *  cotation. `cost` = coût TOTAL de la ligne, tel qu'imprimé (décision Marc 2026-09-24 : on garde le
+ *  total, le coût unitaire se calcule à la lecture, jamais une division à l'import qui perdrait des
+ *  cents à la re-multiplication). L'un OU l'autre, jamais les deux (le lot 1b refuse la paire).
+ *  Absents = INCONNU, jamais 0 (un coût nul rendrait toute la vente imposable). */
 interface BrokerLedgerTitresEvent extends BrokerLedgerEventBase {
   kind: 'acquisition' | 'transfert-entrant' | 'transfert-sortant';
   isin: string;
   quantity: number;
   price?: BrokerLedgerMoney;
+  cost?: BrokerLedgerMoney;
   amount?: never;
   splitFrom?: never;
   splitTo?: never;
@@ -951,6 +959,7 @@ interface BrokerLedgerTradeEvent extends BrokerLedgerEventBase {
   quantity: number;
   price: BrokerLedgerMoney;
   amount: BrokerLedgerMoney;
+  cost?: never;
   splitFrom?: never;
   splitTo?: never;
 }
@@ -990,8 +999,72 @@ interface BrokerLedgerEspecesEvent extends BrokerLedgerEventBase {
   splitTo?: never;
 }
 
+/** Annulation d'une ligne du courtier (décision Marc 2026-09-24 : garder la trace). `cancelsId` =
+ *  identifiant de la ligne annulée, qui RESTE dans le livre. À partir de la date de l'annulation, la
+ *  ligne annulée n'a plus d'effet, avant elle en a (c'est ce que disait le relevé de l'époque).
+ *  Une CORRECTION s'écrit comme une annulation suivie de la ligne juste, jamais comme une retouche.
+ *  Même compte que la ligne annulée. Une annulation ne s'annule pas. */
+interface BrokerLedgerAnnulationEvent extends BrokerLedgerEventBase {
+  kind: 'annulation';
+  cancelsId: string;
+  isin?: never;
+  quantity?: never;
+  price?: never;
+  amount?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Échange de titres (décision Marc 2026-09-24) : regroupement ou fusion qui CHANGE d'ISIN.
+ *  Toute la position `isin` du compte devient `toIsin`, à raison de `splitFrom` anciens pour
+ *  `splitTo` nouveaux (deux NOMBRES, comme le fractionnement). Le coût d'achat suit la position.
+ *  Aucune espèce : un versement pour une fraction s'écrit comme la VENTE de cette fraction. */
+interface BrokerLedgerEchangeEvent extends BrokerLedgerEventBase {
+  kind: 'echange';
+  isin: string;
+  toIsin: string;
+  splitFrom: number;
+  splitTo: number;
+  quantity?: never;
+  price?: never;
+  amount?: never;
+}
+
+/** Conversion de devises entre deux comptes du livre, en UN SEUL événement (décision Marc
+ *  2026-09-24 : une moitié seule ne peut pas exister). `amount` sort de `accountId` dans sa devise,
+ *  `toAmount` entre dans `toAccountId` dans la sienne, les deux tels qu'imprimés. `rate` = taux
+ *  imprimé par le courtier, gardé pour la trace, jamais recalculé ni utilisé pour déduire un montant. */
+interface BrokerLedgerConversionEvent extends BrokerLedgerEventBase {
+  kind: 'conversion';
+  toAccountId: BrokerLedgerAccountId;
+  amount: BrokerLedgerMoney;
+  toAmount: BrokerLedgerMoney;
+  rate?: number;
+  isin?: never;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Virement d'espèces entre deux comptes du livre, sans conversion : même montant, même devise,
+ *  qui doit être admise par les DEUX comptes. */
+interface BrokerLedgerVirementEvent extends BrokerLedgerEventBase {
+  kind: 'virement-interne';
+  toAccountId: BrokerLedgerAccountId;
+  amount: BrokerLedgerMoney;
+  toAmount?: never;
+  rate?: never;
+  isin?: never;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
 export type BrokerLedgerEvent =
-  BrokerLedgerTitresEvent | BrokerLedgerTradeEvent | BrokerLedgerSplitEvent | BrokerLedgerRevenuEvent | BrokerLedgerEspecesEvent;
+  BrokerLedgerTitresEvent | BrokerLedgerTradeEvent | BrokerLedgerSplitEvent | BrokerLedgerRevenuEvent | BrokerLedgerEspecesEvent |
+  BrokerLedgerAnnulationEvent | BrokerLedgerEchangeEvent | BrokerLedgerConversionEvent | BrokerLedgerVirementEvent;
 
 /** Référentiel d'instruments. TABLEAU d'objets, jamais un Record indexé par ISIN (ses valeurs
  *  seraient jugées sous une clé DYNAMIQUE, refus garanti, app vide). Identité = `isin` (unique,

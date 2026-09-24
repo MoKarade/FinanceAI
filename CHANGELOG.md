@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille : les opérations de courtier que le journal ne savait pas écrire
+
+- Tes quatre choix sont en place. Une ligne **annulée** par Disnat reste visible et cesse de compter
+  à partir de la date de l'annulation. Un **regroupement qui change le code du titre** déplace toute
+  la position vers le nouveau titre. Le **coût total** d'un transfert est gardé tel qu'imprimé (aucun
+  cent perdu). Une **conversion USD↔CAD** ou un **virement entre tes comptes** est une seule
+  opération : les deux comptes bougent ensemble, ou pas du tout.
+
 ## 2026-09-24 — Portefeuille, lot 1d : ce que vaut ton portefeuille, et pourquoi il a bougé
 
 - Le calcul qui dira **ce que vaut ton portefeuille à une date** (titres au cours de clôture ×

@@ -122,7 +122,8 @@ describe('[DEBT-MCP-ORIGINALBALANCE] le schéma du tool (la bretelle)', () => {
     it('expose le champ, et son libellé dit la CONSÉQUENCE plutôt que le type', () => {
         const champ = applyDebtSpec.inputSchema.originalBalance;
         expect(champ).toBeDefined();
-        const { description } = champ._def as { description?: string };
+        // [S5-ZOD4] API publique `.description` : zod 4 ne range plus la description dans `_def`.
+        const { description } = champ;
         // Un modèle qui lit « nombre positif » invente ; un modèle qui lit « ne l'estime jamais »
         // s'abstient. La description est l'endroit où cette règle atteint l'IA.
         expect(description ?? '').toMatch(/contrat/i);

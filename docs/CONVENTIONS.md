@@ -17062,3 +17062,20 @@ notée au Lot 0 et oubliée en écrivant la fixture).
 - La forme découverte entre ensuite DANS la fixture fictive, avec son recoupement : la prochaine
   régression se verra en CI, pas seulement sur la machine de celui qui a les relevés.
 
+## `UN-RECOUPEMENT-NE-PROTEGE-QUE-LES-CHAMPS-QU-IL-ADDITIONNE` (2026-09-24, parseur Disnat, revue)
+
+Le parseur lisait les nombres GLOUTONS en commentant « c'est le recoupement de l'encaisse qui juge si
+un chiffre de la description a été avalé ». Vrai du MONTANT, qui entre dans la somme. Faux du PRIX,
+lu par la même règle sur la même ligne et qui n'entre dans AUCUNE somme : « SP INDEX 100 105,00 »
+donnait un prix de 100 105 et zéro anomalie, et le rejeu sur les vrais relevés (« positions à l'unité
+près ») ne pouvait pas le voir non plus — il ne compare que des QUANTITÉS.
+
+- Devant un contrôle qui « juge » une lecture, lister les champs qu'il ADDITIONNE ; tout champ lu par
+  la même règle et absent de la liste n'a aucune garde. Le prix a reçu la sienne (quantité × prix du
+  même ordre que le montant, sinon ligne illisible).
+- Même revue, même famille : un montant imprimé sur une sorte qui n'en écrit pas (fractionnement,
+  transfert) était VALIDÉ par le recoupement de l'encaisse puis JETÉ à la traduction — l'argent
+  disparaissait entre deux étapes toutes deux vertes. Une donnée validée en amont et ignorée en aval
+  se refuse par son nom (`montant-non-traduit`).
+- Et un filtre par PRÉFIXE (« Total ») jette tout ce qui commence pareil, y compris une position
+  réelle : ancrer le saut sur ce que le document annonce lui-même (la catégorie en cours).

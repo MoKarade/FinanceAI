@@ -84,6 +84,12 @@
   refus nommé par numéro de ligne. Tests : 28 cas sur un relevé fictif de même forme, 6 perturbations
   rouges. Mesuré EN LOCAL sur les trois vrais relevés (jamais committés) : 0 anomalie, 0 refus, et
   le livre rejoué rend TOUTES les positions du dernier relevé à l'unité près.
+  Revue (panel, avant push) : 4 défauts prouvés et corrigés — montant imprimé sur un fractionnement
+  ou un transfert reçu JETÉ (→ refus `montant-non-traduit`), position au nom commençant par « Total »
+  avalée (seul le total de la catégorie EN COURS est sauté), nombre de fin de description avalé dans
+  le PRIX (lecture retenue seulement si quantité × prix est du même ordre que le montant), indicateur
+  glissant d'une ligne « ENCAISSE » sur la position suivante. 34 cas, 10 perturbations rouges ; le
+  rejeu local sur les trois vrais relevés est inchangé.
 - [ ] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — extraction PDF → lignes, chargée en différé (pdfjs-dist,
   ~500 Ko gz) : reconstruction par ligne à tolérance verticale 3 (mesurée au Lot 0 identique à
   pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne). Branchée sur `lireReleveDisnat`.

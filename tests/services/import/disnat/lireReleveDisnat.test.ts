@@ -148,6 +148,47 @@ describe('[PTF-L1F] rien ne disparaît en silence', () => {
         expect(op).toMatchObject({ sorte: null, libelle: 'ÉCHANGE' });
     });
 
+    it('une position dont le nom COMMENCE par « Total » est lue (seul le total de la catégorie en cours est sauté)', () => {
+        const kappa = 'KAPPA CORP KAPA 50 132,4590 6 622,95 142,7010 USD 9 675,99 4,38 C';
+        const lignes = [...LIGNES];
+        lignes.splice(LIGNES.indexOf(kappa) + 1, 0, 'Total Energies SE TTE 100 40,0000 4 000,00 45,0000 USD 4 500,00 1,00 C');
+        const r = lireReleveDisnat(lignes);
+        expect(r.anomalies).toEqual([]);
+        expect(r.comptes[1].positions.map((p) => p.libelle)).toContain('Total Energies SE TTE');
+    });
+
+    it('une ligne « Total … » qui n\'est pas le total de la catégorie en cours est signalée, jamais sautée', () => {
+        const total = 'Total fonds communs de placement 1 239,95 1 250,00 0,57';
+        const r = lireReleveDisnat(avec(total, 'Total fonds indiciels 1 239,95 1 250,00 0,57'));
+        expect(r.anomalies).toEqual([{ type: 'ligne-illisible', ligne: LIGNES.indexOf(total) + 1, section: 'positions' }]);
+    });
+
+    it('un nombre en fin de description n\'est pas avalé dans le PRIX (le recoupement de l\'encaisse ne le verrait pas)', () => {
+        const achat = '20/01/2026 21/01/2026 ACHAT 100 BETA CDR C$HDG 12,3995 -1 239,95';
+        const r = lireReleveDisnat(avec(achat, '20/01/2026 21/01/2026 ACHAT 10 BETA CDR 100 123,9950 -1 239,95'));
+        expect(r.anomalies).toEqual([]);
+        expect(r.comptes[0].operations[4]).toMatchObject({ quantite: 10, description: 'BETA CDR 100', prix: 123.995, montant: -1239.95 });
+    });
+
+    it('un prix qu\'aucune lecture ne recoupe avec quantité × prix ≈ montant → ligne illisible, jamais deviné', () => {
+        const achat = '20/01/2026 21/01/2026 ACHAT 100 BETA CDR C$HDG 12,3995 -1 239,95';
+        const r = lireReleveDisnat(avec(achat, '20/01/2026 21/01/2026 ACHAT 1000 BETA CDR 100 123,9950 -1 239,95'));
+        expect(r.anomalies).toContainEqual({ type: 'ligne-illisible', ligne: LIGNES.indexOf(achat) + 1, section: 'activite' });
+    });
+
+    it('un indicateur imprimé avant la ligne « ENCAISSE » ne glisse pas sur la position suivante', () => {
+        const encaisse = 'ENCAISSE 1 499,74 1 499,74 0,59';
+        const lignes = [...LIGNES];
+        const i = LIGNES.indexOf(encaisse);
+        lignes.splice(i + 1, 0, 'OMEGA INC OMG 10 5,0000 50,00 5,0000 USD 50,00 0,02 C');
+        lignes.splice(i, 0, '2');
+        const r = lireReleveDisnat(lignes);
+        expect(r.anomalies).toEqual([]);
+        const omega = r.comptes[1].positions.find((p) => p.libelle === 'OMEGA INC OMG');
+        expect(omega).toBeDefined();
+        expect(omega?.indicateur).toBeUndefined();
+    });
+
     it('sans date d\'arrêté, le relevé le dit', () => {
         expect(lireReleveDisnat(LIGNES.filter((l) => !l.startsWith('Au '))).anomalies).toContainEqual({ type: 'date-arrete-introuvable' });
     });

@@ -77,6 +77,18 @@ describe('[PTF-L1F] refus : rien n\'est deviné', () => {
         expect(refus.map((r) => r.type)).toEqual(['devise-de-cotation-inconnue', 'devise-de-cotation-inconnue']);
     });
 
+    it('un montant imprimé sur un fractionnement ou un transfert reçu est refusé, jamais jeté', () => {
+        const frac = '22/01/2026 21/01/2026 FRACTIONNEMENT D\'ACTIONS 54 KAPPA CORP';
+        const trsf = '14/01/2026 08/01/2026 TRANSFERT REÇU 180 ALPHA ASIE UCITS';
+        const lignes = LIGNES.map((l) => (l === frac ? `${frac} 8,40` : l === trsf ? `${trsf} -25,00` : l));
+        const { evenements, refus } = versEvenements(lireReleveDisnat(lignes), correspondances());
+        expect(refus).toEqual([
+            { type: 'montant-non-traduit', ligne: LIGNES.indexOf(trsf) + 1 },
+            { type: 'montant-non-traduit', ligne: LIGNES.indexOf(frac) + 1 },
+        ]);
+        expect(evenements.some((e) => e.kind === 'fractionnement' || e.kind === 'transfert-entrant' && e.isin === 'ZZ0000000011')).toBe(false);
+    });
+
     it('une opération inconnue est refusée', () => {
         const lignes = [...LIGNES];
         lignes.splice(LIGNES.indexOf('CONV. EN CAD @ 1.36340') + 1, 0, '26/01/2026 26/01/2026 ÉCHANGE DE TITRES 20 GAMMA SA');

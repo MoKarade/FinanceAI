@@ -213,15 +213,34 @@ function lireOperation(ligne: number, dT: string, dR: string, reste: string): Op
     const libelle = connu ? connu[0] : reste.split(' ')[0];
     const jetons = reste.slice(libelle.length).trim().split(' ').filter(Boolean);
     let fin = jetons.length;
-    // Montant (dernier nombre), puis prix s'il en précède un autre. Lecture GLOUTONNE : c'est le
-    // recoupement de l'encaisse qui juge si un chiffre de la description a été avalé.
+    // Montant (dernier nombre), lu GLOUTON : si un chiffre de la description y a été avalé, le
+    // recoupement de l'encaisse le voit (la somme des montants ne retombe plus sur la variation).
     const montant = nombreQuiFinitA(jetons, fin, 'max');
     if (montant) fin = montant.debut;
-    const prix = montant ? nombreQuiFinitA(jetons, fin, 'max') : null;
-    if (prix) fin = prix.debut;
     let debutDescription = 0;
     let q: number | undefined;
     if (estQuantite(jetons[0]) && fin > 1) { q = quantite(jetons[0]); debutDescription = 1; }
+    // Prix, s'il précède le montant. AUCUN recoupement de l'encaisse ne le voit : lu glouton, « SP INDEX
+    // 100 105,00 » donnait un prix de 100 105 et une description tronquée, sans anomalie. Quand plusieurs
+    // lectures sont possibles, seule celle dont quantité × prix est du même ordre que le montant est
+    // retenue (écart admis ×10 : commission et conversion de devise ; une lecture fausse s'écarte d'un
+    // facteur ~1 000) ; ni une ni plusieurs : ligne illisible, jamais un prix deviné.
+    let prix: Lu | null = null;
+    if (montant) {
+        const lectures = lecturesPossibles(jetons, fin).filter((l) => l.debut >= debutDescription);
+        if (lectures.length === 1) prix = lectures[0];
+        else if (lectures.length > 1) {
+            if (q === undefined) return null;
+            const qte = q;
+            const plausibles = lectures.filter((l) => {
+                const rapport = Math.abs(montant.valeur) / (qte * l.valeur);
+                return rapport >= 0.1 && rapport <= 10;
+            });
+            if (plausibles.length !== 1) return null;
+            prix = plausibles[0];
+        }
+    }
+    if (prix) fin = prix.debut;
     const description = jetons.slice(debutDescription, fin).join(' ');
     if (!connu && description === '' && !montant) return null;
     return {
@@ -313,6 +332,8 @@ export function lireReleveDisnat(lignesBrutes: readonly string[]): ReleveDisnat 
     let courant: CompteReleve | null = null;
     let mode: 'profil' | 'activite' | 'positions' | 'hors-compte' = 'hors-compte';
     let indicateurEnAttente: number | undefined;
+    /** Dernière catégorie lue (ligne sans chiffre), pour reconnaître SON total. */
+    let categorie: string | undefined;
 
     const fermer = (): void => {
         if (!courant) return;
@@ -341,6 +362,8 @@ export function lireReleveDisnat(lignesBrutes: readonly string[]): ReleveDisnat 
             if (!compte) { anomalies.push({ type: 'compte-inconnu', ligne: n }); mode = 'hors-compte'; return; }
             if (comptes.some((c) => c.compte === compte)) { anomalies.push({ type: 'compte-en-double', ligne: n }); mode = 'hors-compte'; return; }
             courant = { compte, operations: [], positions: [] };
+            // La catégorie survit à une page « suite » (son total peut tomber après le saut), pas au compte.
+            categorie = undefined;
             mode = 'profil';
             return;
         }
@@ -373,9 +396,14 @@ export function lireReleveDisnat(lignesBrutes: readonly string[]): ReleveDisnat 
             return;
         }
         if (mode === 'positions') {
-            // En-têtes de colonnes et catégories : sans aucun chiffre, ou « Total … ».
-            if (/^Total /.test(l) || !/\d/.test(l)) return;
             if (/^(Coût unitaire|Description Symbole|moyen)/.test(l)) return;
+            // Une catégorie (« Actions et fonds d'actions ») ne porte aucun chiffre ; son total
+            // s'imprime « Total actions et fonds d'actions … ». Seul le total de la catégorie EN COURS
+            // est sauté : un simple préfixe « Total » avalait aussi une position dont le nom commence
+            // ainsi (« Total Energies SE … »), sans anomalie. Une autre ligne « Total … » passe à
+            // `lirePosition` : lue, ou signalée illisible — jamais jetée.
+            if (!/\d/.test(l)) { categorie = l; return; }
+            if (categorie !== undefined && l.startsWith(`Total ${categorie.charAt(0).toLowerCase()}${categorie.slice(1)} `)) return;
             if (/^[123]$/.test(l)) { indicateurEnAttente = Number(l); return; }
             if (/^ENCAISSE /.test(l)) {
                 // « ENCAISSE <coût> <valeur marchande> <%> », sans statut ni quantité.
@@ -385,6 +413,8 @@ export function lireReleveDisnat(lignesBrutes: readonly string[]): ReleveDisnat 
                 const cout = valeur ? nombreQuiFinitA(j, valeur.debut, 'max') : null;
                 if (!cout || cout.debut !== 1 || c.encaisseDetail !== undefined) anomalies.push({ type: 'ligne-illisible', ligne: n, section: 'positions' });
                 else c.encaisseDetail = (valeur as Lu).valeur;
+                // Un indicateur en attente ne concerne pas l'encaisse ni la position qui suit.
+                indicateurEnAttente = undefined;
                 return;
             }
             const p = lirePosition(n, l, indicateurEnAttente);

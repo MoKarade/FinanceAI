@@ -6,7 +6,8 @@
 //
 // Ce que ce module garantit :
 //   1. RIEN N'EST DEVINÉ. Un titre que la correspondance ne reconnaît pas, une opération inconnue, un
-//      montant au signe inattendu, un fractionnement sur une position nulle : REFUS nommé (numéro de
+//      montant au signe inattendu ou qu'aucune sorte ne sait écrire, un fractionnement sur une position
+//      nulle : REFUS nommé (numéro de
 //      ligne, jamais le texte). L'import (lot 1g) montre ces refus à Marc avant d'écrire quoi que ce soit.
 //   2. LE SIGNE DEVIENT UN `kind`, UNE FOIS : un achat doit être imprimé négatif, un dividende positif,
 //      etc. Un signe contraire n'est pas « corrigé » par une valeur absolue : il est refusé.
@@ -32,7 +33,11 @@ type RefusTraduction =
     | { type: 'devise-de-cotation-inconnue'; ligne: number }
     | { type: 'champ-manquant'; ligne: number; champ: 'quantite' | 'prix' | 'montant' }
     | { type: 'signe-inattendu'; ligne: number }
-    | { type: 'fractionnement-sans-position'; ligne: number };
+    | { type: 'fractionnement-sans-position'; ligne: number }
+    /** Un montant imprimé là où la traduction n'en écrit aucun (fraction payée en espèces sur un
+     *  fractionnement, frais sur un transfert…) : le jeter ferait disparaître de l'argent que le
+     *  recoupement de l'encaisse a pourtant validé. */
+    | { type: 'montant-non-traduit'; ligne: number };
 
 const DEVISE_DU_COMPTE: Record<CompteDisnat, BrokerLedgerCurrency> = { 'courtier-cad': 'CAD', 'courtier-usd': 'USD' };
 
@@ -63,6 +68,9 @@ export function versEvenements(
                 if (o.montant === undefined) { manque('montant'); return; }
                 if (Math.sign(o.montant) !== signe) { refus.push({ type: 'signe-inattendu', ligne: o.ligne }); return; }
                 montant = signe * o.montant;
+            } else if (o.montant !== undefined && o.montant !== 0) {
+                refus.push({ type: 'montant-non-traduit', ligne: o.ligne });
+                return;
             }
             const argent = (): { value: number; currency: BrokerLedgerCurrency } => ({ value: montant as number, currency: deviseCompte });
 

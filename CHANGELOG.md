@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille, lot 1f2 : FinanceAI sait lire le PDF du relevé
+
+- Le relevé Disnat peut maintenant être lu directement depuis son PDF, dans ton navigateur : le
+  fichier ne part nulle part. Le lecteur PDF n'est chargé que quand tu en as besoin, pour ne pas
+  alourdir l'ouverture de l'app. Il n'est pas encore branché à l'écran (ce sera le lot suivant).
+
 ## 2026-09-24 — Portefeuille, lot 1f : FinanceAI sait lire un relevé Disnat
 
 - Le lecteur de relevé Disnat est prêt (pas encore branché à l'écran). Contrairement à l'ancien, il

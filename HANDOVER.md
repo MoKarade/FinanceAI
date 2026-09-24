@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 6) — **Lot 1f2 : lecture du relevé PDF**
+> Livré `[PTF-L1F2-LECTURE-PDF]` : `services/import/disnat/lignesDuPdf.ts` (fragments pdfjs → lignes,
+> tolérance 3 ; pdfjs-dist 4.10.38 chargé en différé, worker servi par l'app). Garde de traversée : PDF
+> fictif (jsPDF) → pdfjs → `lireReleveDisnat` = relevé lu depuis le texte. Non branché à l'écran.
+> ⚠️ Le `node_modules` partagé du conteneur manquait `@fontsource/*` (build local rouge sans rapport
+> avec le lot) : ré-installé à la main depuis le lock. ⏭️ Suite : `[PTF-L1G-IMPORT-PORTEFEUILLE]`.
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur Disnat (partie texte)**
 > Livré `[PTF-L1F-PARSEUR-DISNAT]` : `services/import/disnat/lireReleveDisnat.ts` (texte → relevé, trois
 > recoupements du découpage) et `versEvenements.ts` (relevé → événements ; ISIN, devise de cotation et

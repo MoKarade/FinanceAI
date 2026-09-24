@@ -14,6 +14,11 @@ updates:
       vitest-majeures:
         patterns: ["vitest", "@vitest/*"]
         update-types: [major]
+      # react-i18next suit la majeure d'i18next (react-i18next 17 exige i18next >= 26.2) : séparée, la PR
+      # restait rouge à vie (#1025, 24/09/2026 : ERESOLVE à l'installation).
+      i18n-majeures:
+        patterns: ["i18next", "react-i18next"]
+        update-types: [major]
       mineures-et-correctifs:
         update-types: [minor, patch]
     ignore:

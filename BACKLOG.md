@@ -45,17 +45,6 @@
   (deux événements sans lien, taux de conversion perdu). À trancher avec le parseur (1f), sur des
   relevés synthétiques qui en portent : une sorte qui débite un compte et crédite l'autre dans le
   MÊME événement, avec le taux appliqué.
-- [x] 🔧 **`[PTF-L1C1-MAGASIN-FORMAT]`** (M) — première des trois PR de `[PTF-L1C-MAGASIN-MARCHE]` :
-  format du magasin et clients PURS (aucun réseau, aucune horloge).
-  ✅ **Livré le 2026-09-24** : `services/marche/magasinMarche.ts` — format versionné (v1 ; une version
-  FUTURE est refusée, jamais lue comme une v1), validation qui REFUSE sans réparer (ISIN, dates
-  strictement croissantes, valeurs finies et positives, messages sans aucun cours ni taux), fusion
-  idempotente où la SOURCE décide (un point de secours n'écrase jamais un point officiel, un point
-  officiel promeut un point de secours), lecture à une date où le « reporté » se CALCULE et ne s'écrit
-  jamais, avec un âge maximal REQUIS. `services/marche/clientsMarche.ts` — URL et lecteurs EODHD
-  (`close` BRUT, jamais `adjusted_close`) et Banque du Canada (une SÉRIE datée, jamais le groupe),
-  la clé jamais dans un message. Tests : 34 cas, 8 perturbations rouges, forme Valet vérifiée sur la
-  réponse réelle enregistrée.
 - [ ] 🔧 **`[PTF-L1C1-LECTEURS-EVENEMENTS]`** (S) — lecteurs EODHD des fractionnements et des
   dividendes, et lecteur Yahoo (secours). Volontairement ABSENTS du lot 1c-1 : la mesure du Lot 0.5b
   n'a porté que sur les clôtures, et Yahoo sert un prix AJUSTÉ qu'il faut dé-ajuster des

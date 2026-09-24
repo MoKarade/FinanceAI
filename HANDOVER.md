@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur Disnat (partie texte)**
+> Livré `[PTF-L1F-PARSEUR-DISNAT]` : `services/import/disnat/lireReleveDisnat.ts` (texte → relevé, trois
+> recoupements du découpage) et `versEvenements.ts` (relevé → événements ; ISIN, devise de cotation et
+> position d'avant en ARGUMENTS). Relevé de test ENTIÈREMENT fictif ; essai local sur les 3 vrais relevés
+> (0 anomalie, toutes les positions retrouvées). ⏭️ Suite : `[PTF-L1F2-LECTURE-PDF]` (PDF → lignes, différé), puis 1g.
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 4) — **Quatre sortes du grand livre, tranchées par Marc**
 > Livré `[PTF-L1A-SORTES-A-TRANCHER]` + `[PTF-L1B-CONVERSION-VIREMENT]` (ADR 0020 §11) : `annulation`
 > (`cancelsId`, la ligne reste et cesse de compter à la date de l'annulation), `echange` (`toIsin`),

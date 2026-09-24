@@ -10,6 +10,39 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1s : sortes tranchées du grand livre (PR #1050)
+
+Déménagé au lot suivant (1f).
+
+- [x] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
+  est « demandée, sans ajout » ; la revue du lot 1a a relevé ce qu'elle ne sait pas écrire, à trancher
+  AVANT le parseur Disnat (1f) : annulation ou correction d'une ligne du courtier (montants toujours
+  positifs, aucune sorte ne défait), regroupement qui change d'ISIN ou espèces versées pour une
+  fraction (le fractionnement n'a qu'un ISIN et interdit tout montant), valeur comptable TOTALE
+  imprimée à un transfert entrant (seul un coût unitaire est accepté, donc une division à l'import).
+  Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
+  nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
+  `CHAMPS_TEXTE` dans le même commit.
+  ✅ **Tranché par Marc et livré le 2026-09-24** : annulation qui GARDE la trace (`cancelsId`), sorte
+  `echange` (changement d'ISIN, une fraction payée s'écrit comme une vente), coût TOTAL gardé tel
+  qu'imprimé (`cost`, jamais avec `price`). ADR 0020 §11. Tests :
+  `tests/services/grandLivre/sortesTranchees.test.ts` (21 cas, 5 perturbations rouges).
+  Revue (panel, avant push) : trois dépendances à l'ORDRE du tableau fermées — un fractionnement
+  et un échange du même titre le même jour s'appliquent fractionnement d'abord (`rangDansLaJournee`,
+  partagé par le suivi de position de la valorisation) ; deux annulations au MÊME identifiant sont
+  refusées toutes les deux (`identifiant-en-double`) au lieu de faire tomber deux lignes réelles ;
+  deux annulations d'une même ligne le même jour rapportent toujours la même (tri par date puis id).
+  4 cas neufs, 4 perturbations séparées, chacune rouge.
+- [x] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
+  devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
+  manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait
+  (deux événements sans lien, taux de conversion perdu). À trancher avec le parseur (1f), sur des
+  relevés synthétiques qui en portent : une sorte qui débite un compte et crédite l'autre dans le
+  MÊME événement, avec le taux appliqué.
+  ✅ **Tranché par Marc et livré le 2026-09-24** : `conversion` et `virement-interne` en UN SEUL
+  événement (`toAccountId`, `toAmount`, `rate` gardé pour la trace) ; un refus ne fait bouger aucun
+  des deux comptes (perturbation « débiter avant de valider l'arrivée » → rouge).
+
 ## 2026-09-24 — Portefeuille, lot 1d : moteur de valorisation (PR #1049)
 
 Déménagé au lot suivant (1s).

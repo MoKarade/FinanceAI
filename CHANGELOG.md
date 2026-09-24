@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille, lot 1f : FinanceAI sait lire un relevé Disnat
+
+- Le lecteur de relevé Disnat est prêt (pas encore branché à l'écran). Contrairement à l'ancien, il
+  ne perd plus de lignes : il vérifie que la somme des opérations retombe sur la variation de
+  l'encaisse, que la ligne « Encaisse » retombe sur le solde, et que chaque coût se recoupe. Essayé
+  sur tes trois vrais relevés, sur l'ordinateur seulement : aucune ligne perdue, et toutes les positions
+  de juin retrouvées à l'unité près.
+
 ## 2026-09-24 — Portefeuille : les opérations de courtier que le journal ne savait pas écrire
 
 - Tes quatre choix sont en place. Une ligne **annulée** par Disnat reste visible et cesse de compter

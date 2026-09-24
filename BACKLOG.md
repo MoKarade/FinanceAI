@@ -30,34 +30,6 @@
 > SÉPARÉ, écrit par une seule tâche serveur (GitHub Actions → Cloud Run, ADR 0004/0010) ; moteur de
 > valorisation pur partagé app/MCP/tâche ; Fintable en contrôle si Marc choisit la clôture officielle.
 
-- [x] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
-  est « demandée, sans ajout » ; la revue du lot 1a a relevé ce qu'elle ne sait pas écrire, à trancher
-  AVANT le parseur Disnat (1f) : annulation ou correction d'une ligne du courtier (montants toujours
-  positifs, aucune sorte ne défait), regroupement qui change d'ISIN ou espèces versées pour une
-  fraction (le fractionnement n'a qu'un ISIN et interdit tout montant), valeur comptable TOTALE
-  imprimée à un transfert entrant (seul un coût unitaire est accepté, donc une division à l'import).
-  Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
-  nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
-  `CHAMPS_TEXTE` dans le même commit.
-  ✅ **Tranché par Marc et livré le 2026-09-24** : annulation qui GARDE la trace (`cancelsId`), sorte
-  `echange` (changement d'ISIN, une fraction payée s'écrit comme une vente), coût TOTAL gardé tel
-  qu'imprimé (`cost`, jamais avec `price`). ADR 0020 §11. Tests :
-  `tests/services/grandLivre/sortesTranchees.test.ts` (21 cas, 5 perturbations rouges).
-  Revue (panel, avant push) : trois dépendances à l'ORDRE du tableau fermées — un fractionnement
-  et un échange du même titre le même jour s'appliquent fractionnement d'abord (`rangDansLaJournee`,
-  partagé par le suivi de position de la valorisation) ; deux annulations au MÊME identifiant sont
-  refusées toutes les deux (`identifiant-en-double`) au lieu de faire tomber deux lignes réelles ;
-  deux annulations d'une même ligne le même jour rapportent toujours la même (tri par date puis id).
-  4 cas neufs, 4 perturbations séparées, chacune rouge.
-- [x] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
-  devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
-  manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait
-  (deux événements sans lien, taux de conversion perdu). À trancher avec le parseur (1f), sur des
-  relevés synthétiques qui en portent : une sorte qui débite un compte et crédite l'autre dans le
-  MÊME événement, avec le taux appliqué.
-  ✅ **Tranché par Marc et livré le 2026-09-24** : `conversion` et `virement-interne` en UN SEUL
-  événement (`toAccountId`, `toAmount`, `rate` gardé pour la trace) ; un refus ne fait bouger aucun
-  des deux comptes (perturbation « débiter avant de valider l'arrivée » → rouge).
 - [ ] 🔧 **`[PTF-L1C1-LECTEURS-EVENEMENTS]`** (S) — lecteurs EODHD des fractionnements et des
   dividendes, et lecteur Yahoo (secours). Volontairement ABSENTS du lot 1c-1 : la mesure du Lot 0.5b
   n'a porté que sur les clôtures, et Yahoo sert un prix AJUSTÉ qu'il faut dé-ajuster des
@@ -72,14 +44,38 @@
 - [ ] 🔧 **`[PTF-L1E-PASSERELLE]`** (L+L) — un seul point d'entrée pour toutes les surfaces (présent,
   départ du Futur, passé, PDF, MCP, hub), identique livre vide ; parité CROISÉE (même portefeuille en
   actifs et en livre → même chiffre au cent partout ; retirer une surface fait rougir).
-- [ ] 🔧 **`[PTF-L1F-PARSEUR-DISNAT]`** (L) — parseur TypeScript texte → événements, sections bornées
+- [x] 🔧 **`[PTF-L1F-PARSEUR-DISNAT]`** (L) — parseur TypeScript texte → événements, sections bornées
   par la fin de COMPTE (l'ancien parseur Python s'arrêtait au premier « Total » et perdait des lignes
   en silence, mesuré), opérations réelles (retenue, impôt de non-résident, fractionnement), devise
   du prix distincte de celle de la valeur ; fixtures SYNTHÉTIQUES ; lecture PDF chargée en différé.
+  ✅ **Livré le 2026-09-24 (partie texte)** : `services/import/disnat/lireReleveDisnat.ts` (texte →
+  relevé structuré) et `versEvenements.ts` (relevé → événements, correspondance ISIN et position
+  d'avant en ARGUMENTS : le relevé n'imprime aucun ISIN). Trois recoupements du découpage (activité ↔
+  variation de l'encaisse, ligne « ENCAISSE » ↔ fermeture, quantité × coût unitaire ↔ coût
+  comptable) ; signe traduit en `kind` sans valeur absolue ; opération, titre, devise inconnus →
+  refus nommé par numéro de ligne. Tests : 28 cas sur un relevé fictif de même forme, 6 perturbations
+  rouges. Mesuré EN LOCAL sur les trois vrais relevés (jamais committés) : 0 anomalie, 0 refus, et
+  le livre rejoué rend TOUTES les positions du dernier relevé à l'unité près.
+  Revue (panel, avant push) : 4 défauts prouvés et corrigés — montant imprimé sur un fractionnement
+  ou un transfert reçu JETÉ (→ refus `montant-non-traduit`), position au nom commençant par « Total »
+  avalée (seul le total de la catégorie EN COURS est sauté), nombre de fin de description avalé dans
+  le PRIX (lecture retenue seulement si quantité × prix est du même ordre que le montant), indicateur
+  glissant d'une ligne « ENCAISSE » sur la position suivante. 34 cas, 10 perturbations rouges ; le
+  rejeu local sur les trois vrais relevés est inchangé.
+- [ ] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — extraction PDF → lignes, chargée en différé (pdfjs-dist,
+  ~500 Ko gz) : reconstruction par ligne à tolérance verticale 3 (mesurée au Lot 0 identique à
+  pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne). Branchée sur `lireReleveDisnat`.
 - [ ] 🔧 **`[PTF-L1G-IMPORT-PORTEFEUILLE]`** (L) — import déclenché par Marc, aperçu avant/après
   (quantité, prix, devise, coût, encaisse) ; remplacement daté des lignes mal cotées ; refus
   d'`apply_broker_statement` et de `delete_item` sur les lignes du référentiel (variante de symbole
   comprise) ; « ligne absente du relevé → rien retiré, écart signalé ».
+  🔒 **Tranché par Marc le 2026-09-24** : l'import écrit le grand livre et le référentiel SEULEMENT
+  (les écrans lisent les placements actuels jusqu'à `[PTF-L1E-PASSERELLE]`) ; plusieurs PDF d'un coup,
+  triés par date d'arrêté, un seul aperçu, relevé antérieur au dernier importé refusé et nommé ;
+  bouton dans l'onglet Placements. ⛔ **BLOQUÉ par `[PTF-L1C-MAGASIN-MARCHE]` (tâche serveur 1c-2)** :
+  les relevés impriment description, symbole Disnat et devise du prix, mais AUCUN ISIN ni place de
+  cotation (mesuré sur les trois vrais relevés : 0 ISIN) ; Marc a choisi que l'ISIN et la place
+  viennent d'une recherche EODHD par symbole, pas d'une saisie.
 - [ ] 🔧 **`[PTF-L1H-SOURCE-UNIQUE]`** (M) — retrait des anciens producteurs pour les lignes du livre ;
   l'appel BdC du navigateur est GARDÉ pour les actifs hors livre.
 - [ ] 🔧 **`[PTF-L2-AUTOMATISATION]`** (M×5) — dividendes courus puis réels (requêtes tournantes dans

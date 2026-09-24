@@ -17027,7 +17027,6 @@ le bon fonctionnement rendaient le même zéro.
   différents) : un « 1 rouge » là où on en attendait 2 n'est pas un test faible, c'est une information
   sur lequel des deux porte la preuve.
 
-
 ## `UN-TRI-PAR-DATE-LAISSE-L-ORDRE-DU-TABLEAU-DECIDER-LE-RESTE` (2026-09-24, revue du lot 1s)
 
 Le grand livre trie ses événements par DATE, puis applique. Deux événements du même jour gardaient
@@ -17045,3 +17044,38 @@ même jour rapportaient l'une ou l'autre selon le tableau.
 - Corollaire : un identifiant censé être unique ne l'est que si quelque chose le **refuse** en double.
   Deux annulations au même `id` faisaient tomber deux lignes réelles ; elles sont désormais refusées
   toutes les deux, sans deviner laquelle était la bonne.
+
+## `UNE-FIXTURE-ECRITE-DE-MEMOIRE-PERD-CE-QUE-L-ORIGINAL-PORTE` (2026-09-24, parseur Disnat)
+
+Le relevé de test du parseur était écrit d'après la FORME des vrais relevés, pour ne rien publier
+d'eux. Il était vert, chaque test prouvé par une panne volontaire — et le premier passage sur les
+trois vrais relevés, en local, a sorti trois lignes illisibles : la ligne « ENCAISSE » de la catégorie
+« Encaisse et équivalents », que ma fixture n'avait pas (celle-là même que l'ancien parseur perdait,
+notée au Lot 0 et oubliée en écrivant la fixture).
+
+- Une fixture recopiée « de forme » ne contient que les formes dont on se SOUVIENT. Quand l'original
+  est privé, on ne le committe pas — on le REJOUE localement, et seuls des COMPTES et des TYPES
+  d'anomalies sortent (jamais un texte, jamais un montant).
+- Le rejeu doit viser la grandeur la plus aval disponible : ici, le livre reconstruit rend-il les
+  positions imprimées au dernier relevé ? (toutes, à l'unité près). Un « 0 anomalie » seul aurait aussi été vrai
+  d'un parseur qui saute ce qu'il ne comprend pas.
+- La forme découverte entre ensuite DANS la fixture fictive, avec son recoupement : la prochaine
+  régression se verra en CI, pas seulement sur la machine de celui qui a les relevés.
+
+## `UN-RECOUPEMENT-NE-PROTEGE-QUE-LES-CHAMPS-QU-IL-ADDITIONNE` (2026-09-24, parseur Disnat, revue)
+
+Le parseur lisait les nombres GLOUTONS en commentant « c'est le recoupement de l'encaisse qui juge si
+un chiffre de la description a été avalé ». Vrai du MONTANT, qui entre dans la somme. Faux du PRIX,
+lu par la même règle sur la même ligne et qui n'entre dans AUCUNE somme : « SP INDEX 100 105,00 »
+donnait un prix de 100 105 et zéro anomalie, et le rejeu sur les vrais relevés (« positions à l'unité
+près ») ne pouvait pas le voir non plus — il ne compare que des QUANTITÉS.
+
+- Devant un contrôle qui « juge » une lecture, lister les champs qu'il ADDITIONNE ; tout champ lu par
+  la même règle et absent de la liste n'a aucune garde. Le prix a reçu la sienne (quantité × prix du
+  même ordre que le montant, sinon ligne illisible).
+- Même revue, même famille : un montant imprimé sur une sorte qui n'en écrit pas (fractionnement,
+  transfert) était VALIDÉ par le recoupement de l'encaisse puis JETÉ à la traduction — l'argent
+  disparaissait entre deux étapes toutes deux vertes. Une donnée validée en amont et ignorée en aval
+  se refuse par son nom (`montant-non-traduit`).
+- Et un filtre par PRÉFIXE (« Total ») jette tout ce qui commence pareil, y compris une position
+  réelle : ancrer le saut sur ce que le document annonce lui-même (la catégorie en cours).

@@ -39,15 +39,6 @@
   Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
   nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
   `CHAMPS_TEXTE` dans le même commit.
-- [x] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
-  native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
-  dividende, retenue, dépôt, frais).
-  ✅ **Livré le 2026-09-24** : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu`, module pur).
-  Livre absent → `null`, jamais un état vide ; encaisse en cents ENTIERS arrondis à la conversion ;
-  un fractionnement passe AVANT les opérations du même jour ; tout événement fautif (valeur non
-  finie, quantité ou montant nul ou négatif, date illisible, identifiant en double, vente au-delà du
-  détenu, devise étrangère au compte) est ÉCARTÉ et NOMMÉ dans `anomalies`, jamais corrigé. Tests :
-  `tests/services/grandLivre/etatDuLivre.test.ts` (15 cas, 8 perturbations rouges).
 - [ ] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
   devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
   manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait

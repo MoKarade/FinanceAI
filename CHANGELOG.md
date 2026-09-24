@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-24 — Google Drive : l'app n'efface plus une mise à jour faite ailleurs
+
+- Avant d'envoyer tes données vers Google Drive, l'app vérifie maintenant que personne n'y a écrit
+  depuis sa dernière synchro (la mise à jour automatique des cours, la synchro Fintable ou Claude
+  via le connecteur). Si c'est le cas, elle n'écrase rien et t'affiche le choix habituel entre
+  « cet appareil » et « Drive ». Avant, cette mise à jour était effacée sans que tu le saches.
+
 ## 2026-09-24 — Portefeuille, lot 1e (étape 1) : ce que le journal du courtier remplace
 
 - Chaque compte du courtier aura son **régime fiscal** (CELI, REER, non enregistré…), que tu choisiras

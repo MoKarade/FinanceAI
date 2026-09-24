@@ -104,6 +104,17 @@ import { recordActivity, clearActivity, getLastActivityAt, INACTIVITY_LIMIT_MS }
 import { runBootSync } from '../../services/sync/syncOrchestrator';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import * as errorLogger from '../../services/errorLogger';
+import { writeSyncMeta, getOrCreateDeviceId } from '../../services/sync/syncState';
+
+/** [SYNC-PUSH-SANS-OCC] Cet appareil a déjà VU la version de Drive datée `updatedAt` (dernier pull ou
+ *  push). Sans ça, un push sur une méta vierge écraserait une copie jamais vue : il ouvre désormais
+ *  le modal de conflit au lieu d'écrire. */
+function dejaVu(updatedAt: number): void {
+    writeSyncMeta({
+        connectedEmail: 'marc@example.com', lastSyncedAt: updatedAt, lastPulledUpdatedAt: updatedAt,
+        lastLocalHash: '', deviceId: getOrCreateDeviceId(),
+    });
+}
 
 beforeEach(() => {
     useFinanceStore.getState().resetState(); // état store par défaut (isolation entre tests)
@@ -269,6 +280,7 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
         localStorage.setItem(STORE_KEY, JSON.stringify(local));
 
         const driveApi = await import('../../services/googleDrive/driveAppData');
+        dejaVu(driveEnvelope.updatedAt);
         const result = await pushNow();
         expect(result).toBe('pushed');
 
@@ -302,6 +314,7 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
         localStorage.setItem(STORE_KEY, JSON.stringify(local));
 
         const driveApi = await import('../../services/googleDrive/driveAppData');
+        dejaVu(driveEnvelope.updatedAt);
         const result = await pushNow();
         expect(result).toBe('pushed');
         const sent =
@@ -533,28 +546,31 @@ describe('D5 — anti-race : clés API préservées si pas encore hydratées', (
         useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
         localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local' }] }, version: 7 }));
         (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(blobWithKeys);
+        dejaVu(blobWithKeys.updatedAt);
 
         expect(await pushNow()).toBe('pushed');
         const sent = (driveApi.updateSyncFile as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[2];
         expect(sent.apiKeysEnc).toBe('EXISTING-ENC-BLOB'); // préservé, PAS effacé
     });
 
-    it('[SYNC-APIKEYS-SILENT push, finding panel 2026-07-21] relecture de préservation D5 ÉCHOUE → logError warning, push part quand même (sans clés)', async () => {
-        // Discriminant : l'ancien `catch { /* best-effort */ }` était VIDE — l'apiKeysEnc Drive était
-        // écrasé sans AUCUNE trace (« mes clés ont disparu sur l'autre appareil » indébuggable).
+    it('[SYNC-PUSH-SANS-OCC] relecture du blob ÉCHOUE → AUCUNE écriture (test de limite INVERSÉ)', async () => {
+        // Avant : la relecture ne servait qu'à préserver les clés (D5), et son échec laissait partir le
+        // push SANS clés — l'apiKeysEnc de Drive était écrasé, journalisé mais perdu
+        // ([SYNC-APIKEYS-SILENT]). Depuis [SYNC-PUSH-SANS-OCC], la même relecture est le contrôle de
+        // concurrence : sans elle on ne sait pas si Drive a été réécrit, donc on n'écrit RIEN — ni
+        // les données, ni l'effacement des clés. L'erreur passe par le chemin commun (statut + trace).
         // ⚠️ Doit rester AVANT le test markApiKeysHydrated (le flag ne se réinitialise pas).
         const driveApi = await import('../../services/googleDrive/driveAppData');
-        const logSpy = vi.spyOn(errorLogger, 'logError');
+        const update = driveApi.updateSyncFile as ReturnType<typeof vi.fn>;
+        const avant = update.mock.calls.length;
         useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
         localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local-d5' }] }, version: 7 }));
         (driveApi.readSyncFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Drive 500'));
+        dejaVu(blobWithKeys.updatedAt);
 
-        expect(await pushNow()).toBe('pushed'); // best-effort préservé : le push part
-        expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
-            source: 'storage', severity: 'warning',
-            message: expect.stringMatching(/PRÉSERVER les clés API existantes ÉCHOUÉE/),
-        }));
-        logSpy.mockRestore();
+        expect(await pushNow()).toBe('error');
+        expect(update.mock.calls.length).toBe(avant);
+        expect(getSyncStatus().error).toBeTruthy();
     });
 
     it('après markApiKeysHydrated() : clés vides = effacement volontaire → on n\'écrase plus avec les anciennes', async () => {
@@ -562,8 +578,9 @@ describe('D5 — anti-race : clés API préservées si pas encore hydratées', (
         markApiKeysHydrated(); // App.tsx l'appelle après le chargement du vault (status ok)
         useFinanceStore.getState().updateApiKeys({ anthropic: '', finnhub: '' });
         localStorage.setItem(STORE_KEY, JSON.stringify({ state: { transactions: [{ id: 'local2' }] }, version: 7 }));
-        // Pas de mock readSyncFile ici : la branche « préserve » est skippée (flag hydraté) → readSyncFile
-        // n'est PAS appelé (et un mockResolvedValueOnce non consommé fuiterait vers le test suivant).
+        // Pas de mock readSyncFile ici : la relecture rend l'enveloppe par défaut (sans clés), et la
+        // branche « préserve » est de toute façon skippée (flag hydraté).
+        dejaVu(driveEnvelope.updatedAt);
 
         expect(await pushNow()).toBe('pushed');
         const sent = (driveApi.updateSyncFile as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[2];

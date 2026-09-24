@@ -103,10 +103,15 @@
 
 **Défauts trouvés au Lot 0, hors du chemin des lots (mesurés ou relus dans le code)**
 
-- [ ] 🔴 **`[SYNC-PUSH-SANS-OCC]`** (M) — la poussée Drive de l'app ne compare jamais l'état distant à
-  sa dernière lecture (`services/sync/syncPush.ts`) : une écriture serveur (cron des cours, cron
-  Fintable, outil MCP) arrivée entre deux sondages est effacée en silence. Prérequis de
-  `[PTF-L1G-IMPORT-PORTEFEUILLE]` si le livre peut s'écrire depuis claude.ai.
+- [x] 🔴 **`[SYNC-PUSH-SANS-OCC]`** (M) — ✅ 2026-09-24 : avant d'écraser Drive, `pushNow` relit
+  le blob et compare son `updatedAt` à la dernière version VUE (`driveAAvance`, source unique partagée
+  avec `decideOnLoad`). Réécrit depuis (cron des cours, cron Fintable, outil MCP) → AUCUNE écriture,
+  modal de conflit ouvert (`resumeConflit`, partagé avec la décision au chargement). « Garder cet
+  appareil » n'écrase que la version que le modal a MONTRÉE ; réécrit entre-temps → modal rouvert.
+  Une relecture qui ÉCHOUE fait échouer le push (avant : push sans clés, `apiKeysEnc` de Drive écrasé
+  — test de limite inversé). ⚠️ Reste une fenêtre de quelques centaines de ms entre relecture et
+  écriture (pas d'écriture conditionnelle dans l'API de fichiers utilisée). 4 gardes, 3 perturbations
+  distinctes.
 - [ ] 🔴 **`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`** (→ `[PTF-L1G-IMPORT-PORTEFEUILLE]`) — `apply_broker_statement` :
   ligne neuve en CAD par défaut, coût = cours du relevé, quantité réécrite sans les achats datés,
   prix écrit dans la devise STOCKÉE, aucune suppression, aucun aperçu côté claude.ai. Simulé en pur

@@ -4,7 +4,7 @@
 // tout départ vers Drive). Importé par : syncPush, syncPull (hasAnyKey/STORE_KEY), syncLifecycle.
 
 import { hashPayload } from './syncEngine';
-import type { ApiKeys, ConflictSideCounts } from './syncTypes';
+import type { ApiKeys, ConflictSideCounts, ConflictSummary, SyncEnvelope } from './syncTypes';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { hasMeaningfulData } from '../../utils/onboarding';
 import { sanitizePersistEnvelope } from '../personaSanitizer';
@@ -72,6 +72,22 @@ export function summarizeForConflict(payload: unknown): ConflictSideCounts {
     const state = (payload as { state?: Record<string, unknown> } | null)?.state;
     const len = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
     return { assets: len(state?.assets), transactions: len(state?.transactions), brokerEvents: len(state?.brokerLedger), instruments: len(state?.instruments) };
+}
+
+/**
+ * Résumé « cet appareil vs Drive » du modal de conflit. Partagé par la décision au chargement et par
+ * la garde du push ([SYNC-PUSH-SANS-OCC]) : les deux chemins montrent la MÊME chose. Blob chiffré →
+ * payload illisible, comptes à 0 non significatifs, d'où `encrypted` (le modal dit « contenu inconnu »).
+ */
+export function resumeConflit(localPayload: unknown, drive: SyncEnvelope | null): ConflictSummary {
+    return {
+        local: summarizeForConflict(localPayload),
+        drive: {
+            ...summarizeForConflict(drive?.enc ? null : drive?.payload),
+            updatedAt: drive?.updatedAt ?? 0,
+            encrypted: Boolean(drive?.enc),
+        },
+    };
 }
 
 interface LocalPayload {

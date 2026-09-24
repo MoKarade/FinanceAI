@@ -72,7 +72,7 @@ import { hasPassphrase, clearPassphrase } from './passphraseStore';
 import { readSyncMeta, writeSyncMeta, clearSyncMeta } from './syncState';
 import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate';
 import { setStatus, getSyncStatus } from './syncStatusStore';
-import { getLocalPayload, summarizeForConflict } from './syncSnapshot';
+import { getLocalPayload, resumeConflit } from './syncSnapshot';
 import { currentMeta, readDrive } from './syncMeta';
 import { handleError } from './syncErrors';
 import { pushNow } from './syncPush';
@@ -342,20 +342,7 @@ async function runDecision(token: string): Promise<void> {
                 // transactions de chaque côté + date Drive) pour que l'utilisateur choisisse sans se
                 // tromper (anti-clobber Marc 2026-07-14 : voir « cet appareil : 15 placements » vs
                 // « Drive : 1 placement, il y a 3 mois » évite de restaurer une vieille copie pauvre).
-                setStatus({
-                    busy: false,
-                    conflict: true,
-                    conflictSummary: {
-                        local: summarizeForConflict(local.payload),
-                        drive: {
-                            // Blob chiffré → payload illisible (null) → comptes 0 non significatifs :
-                            // on marque `encrypted` pour que le modal affiche « contenu inconnu ».
-                            ...summarizeForConflict(drive?.enc ? null : drive?.payload),
-                            updatedAt: drive?.updatedAt ?? 0,
-                            encrypted: Boolean(drive?.enc),
-                        },
-                    },
-                });
+                setStatus({ busy: false, conflict: true, conflictSummary: resumeConflit(local.payload, drive) });
                 break;
             case 'noop':
             default:
@@ -377,7 +364,10 @@ export async function resolveConflict(keep: 'local' | 'drive'): Promise<void> {
     // SUCCÈS, et laissent le conflit AFFICHÉ en cas d'échec (réseau) → le choix explicite « garder cet
     // appareil » / « restaurer Drive » n'est jamais annulé en silence (finding silent-failure 2026-07-14 :
     // avant, un pull raté effaçait quand même le conflit, l'utilisateur retombait sur la bannière générique).
-    if (keep === 'local') await pushNow();
+    // [SYNC-PUSH-SANS-OCC] « Garder cet appareil » écrase la version de Drive que le modal a MONTRÉE,
+    // et elle seule : si Drive a été réécrit depuis (cron, outil MCP), le push refuse et le modal se
+    // rouvre sur la version la plus récente, au lieu d'effacer une écriture que personne n'a vue.
+    if (keep === 'local') await pushNow({ driveVuA: getSyncStatus().conflictSummary?.drive.updatedAt });
     else await pullNow();
 }
 

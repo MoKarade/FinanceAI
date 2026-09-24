@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 8) — **Le push Drive n'écrase plus une version qu'il n'a pas vue**
+> Livré `[SYNC-PUSH-SANS-OCC]` : `pushNow` relit le blob avant d'écrire ; `driveAAvance` (source unique
+> avec `decideOnLoad`) → réécrit depuis la dernière version vue ⇒ 0 écriture + modal de conflit
+> (`resumeConflit`, partagé avec `runDecision`). « Garder cet appareil » passe la version MONTRÉE
+> (`driveVuA`). Relecture en échec ⇒ push en échec (plus de push aveugle sans clés). Lot 1 (portefeuille)
+> en pause : e1 livrée (#1053), la suite attend 1c-2 (paramètres GCP + clé EODHD de Marc).
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 7) — **Lot 1e, étape e1 : passerelle livre ↔ placements (non branchée)**
 > Livré `[PTF-L1E-PASSERELLE]` e1 : champ persisté `brokerAccountRegimes` (régime DÉCLARÉ par compte du
 > livre, tri-état comme le livre, `regime` dans `CHAMPS_TEXTE`) et module PUR

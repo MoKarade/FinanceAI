@@ -1,22 +1,14 @@
 // hooks/useTabNavigation.ts
 //
 // [GODFILE-APP] Effets de NAVIGATION par onglet, extraits tels quels d'App.tsx : deep-links par
-// hash (avec les redirections héritées #ACTIONS/#DASHBOARD), titre de page, raccourcis Alt+1..9,
-// page_view GA4 et <html lang>. Comportement inchangé — mêmes effets, mêmes dépendances.
+// hash (avec les redirections héritées #ACTIONS/#DASHBOARD), titre de page, raccourcis Alt+1..9
+// et <html lang>. [S5-SANS-GA] Le page_view GA4 est retiré avec Google Analytics (24/09/2026).
 
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../types';
-import { trackPageView } from '../services/analytics';
 
 export function useTabNavigation(activeTab: Tab, setActiveTab: (tab: Tab) => void): void {
-    // GA4 — page_view explicite à chaque changement d'onglet. GA4 ne
-    // track automatiquement que la page d'entrée ; sans cet effect, les
-    // navigations SPA n'apparaissent pas dans "Pages and screens".
-    useEffect(() => {
-        trackPageView(activeTab);
-    }, [activeTab]);
-
     useEffect(() => {
         const applyHash = () => {
             const hash = window.location.hash.replace('#', '');

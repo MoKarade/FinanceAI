@@ -46,7 +46,8 @@ jobs:
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          queries: default
+          # Sans `queries` : la suite « default », celle de la configuration par défaut. Écrire
+          # `queries: default` la faisait chercher comme un PAQUET nommé « default » (échec au démarrage).
           build-mode: none
       - uses: github/codeql-action/analyze@v4
         with:

@@ -250,9 +250,9 @@ describe('[HUB-PLACEMENTS-SEANCE] le piège de couplage : la décimation', () =>
 describe('[HUB-TOTAL-AMPUTE] refus 4 — un titre DÉTENU absent du TOTAL', () => {
     /**
      * Le défaut RÉEL, mesuré le 2026-09-17 sur l'état de Marc : hubperso publiait
-     * « Placements 217 767 $ » quand la somme des titres valait 245 687 $ (−27 920 $, −11,4 %), et
+     * « Placements » amputé d'environ 11 % par rapport à la somme des titres, et
      * « Variation 7 jours +38,2 % » — un titre absent du total sept jours plus tôt, présent
-     * aujourd'hui, se lit comme un gain de 60 229 $.
+     * aujourd'hui, se lit comme un gain de plusieurs dizaines de milliers de dollars.
      *
      * Mécanisme : `buildMarketData` LAISSE TOMBER un titre dont la queue de candles est périmée
      * (> 7 j) sans quote fraîche pour la raccorder. Le `TOTAL` reste fini et plausible — donc aucun
@@ -332,7 +332,7 @@ describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] le refus porte sa CAUSE', () => {
      * Avant ce lot, `null` recouvrait CINQ situations : le hub perdait ses trois lignes de
      * placements sans pouvoir dire pourquoi, et un silence inexplicable se lit comme une panne.
      * C'était une conséquence DIRECTE du refus du total amputé livré le matin même — sur l'état
-     * réel de Marc, un titre était bel et bien écarté (217 767 $ publiés contre 245 687 $).
+     * réel de Marc, un titre était bel et bien écarté (un total amputé publié).
      */
     const compagnon = (history: Array<{ date: string; price: number }>): Asset => ({
         symbol: 'GBS.PA', quantity: 1, currency: 'CAD', currentPrice: 500,

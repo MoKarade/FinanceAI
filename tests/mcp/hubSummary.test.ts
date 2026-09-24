@@ -558,7 +558,7 @@ describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] la carte dit POURQUOI elle perd ses plac
     };
 
     it('total amputé : la section existe, NOMME le titre, et aucune ligne de placements ne sort', () => {
-        // C'est la situation réelle de Marc : le hub publiait 217 767 $ au lieu de 245 687 $. Depuis
+        // C'est la situation réelle de Marc : le hub publiait un total amputé d'environ 11 %. Depuis
         // le refus du total amputé, la carte se TAIT — et sans cette section, ce silence serait
         // indiscernable d'une panne.
         const s = buildHubSummary({

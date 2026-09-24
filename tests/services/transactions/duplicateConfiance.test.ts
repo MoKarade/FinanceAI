@@ -1,21 +1,21 @@
 /**
- * [TX-DUPLICATES-BRUIT] — MESURÉ le 2026-09-15 sur 321 transactions RÉELLES de Marc
+ * [TX-DUPLICATES-BRUIT] — MESURÉ le 2026-09-15 sur les transactions RÉELLES de Marc
  * (01/07 → 14/09, re-dérivable par `npx tsx scripts/mesureDoublons.ts <extrait.tsv>`).
  *
  * Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas
- * efficace ». Mesuré, le détecteur groupait `OnlyFans −100 $` avec un `Bill payment /Carte de
- * crédit −100 $` ET un `Interac e-Transfer to /Maxime −100 $` — trois dépenses sans aucun rapport
+ * efficace ». Mesuré, le détecteur groupait une dépense ronde chez un marchand avec un `Bill payment /Carte de
+ * crédit −100 $` ET un virement Interac du même montant — trois dépenses sans aucun rapport
  * qui partagent un montant rond. **3 groupes sur 10** étaient de telles collisions à 3 jours de
  * tolérance. Un panneau dont un tiers des propositions est manifestement faux ne se trie pas : il
  * se fait ignorer en entier.
  *
  * Le libellé reste HORS du critère de REGROUPEMENT — c'est la décision d'origine, et elle vise un
  * vrai cas (un doublon né de deux sources d'import porte deux libellés). Ce qui change, c'est qu'il
- * CLASSE le résultat : `cleMarchandPourConfiance` normalise assez fort pour que `MCDONALD'S 40044` (relevé) et
+ * CLASSE le résultat : `cleMarchandPourConfiance` normalise assez fort pour que `MCDONALD'S 00000` (relevé) et
  * `McDonald's` (Fintable) tombent tous deux sur `mcdonald`, donc la paire cross-source garde une
  * confiance élevée pendant que les collisions descendent en `faible`.
  *
- * ⚠️ Les fixtures ci-dessous sont les VRAIS libellés et montants de ces collisions — c'est le seul
+ * ⚠️ Les fixtures ci-dessous reproduisent la FORME de ces collisions — c'est le seul
  * moyen que la garde échoue si la normalisation cesse de les distinguer.
  */
 import { describe, it, expect } from 'vitest';
@@ -73,15 +73,15 @@ describe('[TX-DUPLICATES-BRUIT] la confiance sépare les vrais doublons des coll
         // ⚠️ Le témoin ci-dessus est REDONDANT et c'est mesuré : retirer la règle qui efface les
         // n° de succursale le laisse VERT, parce que `slice(0, 2)` coupe déjà après « mcdonald ».
         // Le témoin qui DISCRIMINE vraiment est un marchand dont le numéro tombe dans les deux
-        // premiers jetons — `MAXI 8676` (relevé) contre `Maxi` (Fintable), deux vrais libellés de
-        // l'état de Marc. Sans la règle, `maxi 8676` ≠ `maxi` et le rapprochement est perdu.
+        // premiers jetons — `MAXI 0000` (relevé) contre `Maxi` (Fintable), deux libellés de
+        // cette forme. Sans la règle, `maxi 0000` ≠ `maxi` et le rapprochement est perdu.
         expect(cleMarchand('MAXI 8676')).toBe(cleMarchand('Maxi'));
         expect(groupes).toHaveLength(1);
         expect(groupes[0].confiance).toBe('moyenne'); // même marchand, dates différentes
     });
 
     it('le TRI met la confiance avant le montant — la première ligne décide si le panneau est cru', () => {
-        // Sans ce tri, la collision à 100 $ passait DEVANT le vrai doublon à 7,90 $.
+        // Sans ce tri, la collision à 100 $ passait DEVANT le vrai doublon de quelques dollars.
         const txs = [
             tx('2026-07-10', -100, 'OnlyFans'),
             tx('2026-07-10', -100, 'Bill payment - AccèsD - Internet /Carte de crédit'),
@@ -98,7 +98,7 @@ describe('[TX-DUPLICATES-BRUIT] la confiance sépare les vrais doublons des coll
         // ⚠️ Ce test ne défend pas une qualité : il EMPÊCHE de croire que la clé apparie tout.
         // Elle CLASSE, elle ne regroupe pas (cf. son JSDoc) — un trou coûte une
         // confiance `faible`, jamais un doublon perdu, puisque le groupe reste listé.
-        // Mesuré sur les vrais libellés de Marc :
+        // Mesuré sur des libellés de cette forme :
         expect(cleMarchand('Maxi 8664 Baie')).toBe('maxi baie');   // la VILLE reste dans les 2 jetons
         expect(cleMarchand('Maxi')).toBe('maxi');                  // donc ces deux-là ne s'apparient PAS
         expect(cleMarchand('UBER CANADA/UBEREATS')).toBe('uber ubereats');

@@ -80,7 +80,7 @@ export const KIND_AMORTISSANT: Readonly<Record<DebtKind, boolean>> = {
  * fixe ») était juste pour un bail modélisé comme un LOYER. Elle est devenue fausse pour la façon
  * dont ce bail est SAISI depuis le 2026-09-14 : son `balance` est la **somme des versements
  * restants** et son taux est **0** (cf. la leçon `UN-TAUX-SAISI-SUR-UN-SOLDE-QUI-CONTIENT-DEJA-L-INTERET`
- * — y écrire le taux du contrat comptait l'intérêt DEUX fois, +7 423 $ de versements fantômes).
+ * — y écrire le taux du contrat comptait l'intérêt DEUX fois, plusieurs milliers de dollars de versements fantômes).
  * Sur un solde tout-compris à taux nul, chaque versement retire EXACTEMENT son montant : c'est le
  * cas le plus simple et le plus EXACT à reconstruire, pas une devinette.
  *
@@ -182,8 +182,8 @@ const JOUR_MS = 86_400_000;
 /**
  * Nombre de prélèvements par an, par cadence — 52 et 26, les cadences réelles d'un prêteur.
  *
- * ⚠️ MESURE, pas convention arbitraire : le bail de Marc est prélevé 234,67 $ par semaine et son
- * `minimumPayment` mensuel vaut 1 016,90 $, soit exactement `234,67 × 52 / 12`. Diviser par 52
+ * ⚠️ MESURE, pas convention arbitraire : le bail de Marc est prélevé chaque semaine et son
+ * `minimumPayment` mensuel vaut exactement `versement hebdo × 52 / 12`. Diviser par 52
  * rend donc le versement RÉEL au cent près — c'est la marche que Marc voit sur son compte. Prendre
  * `365,25 / 7 = 52,18` rendrait le total ANNUEL exact et chaque marche fausse ; on préfère la
  * marche, puisque c'est elle qui est observable. Écart assumé et borné : une grille de 7 jours
@@ -284,9 +284,9 @@ export function clePayee(brut: unknown): string {
  *
  * Ce qui compte comme virement :
  *   · le marchand est EXACTEMENT celui qui est lié (après `clePayee`) — c'est ce qui écarte
- *     `Ste Foy Toyota Quebec` (le concessionnaire, −500,00 $ et −779,79 $ en juillet) des huit
- *     `Toyota Financial` à −234,67 $ : le CONTRÔLE NÉGATIF de tout ce lot, mesuré sur les vraies
- *     transactions de Marc. Un appariement lâche (« contient toyota ») aurait retiré 1 279,79 $ de
+ *     le concessionnaire (deux achats en juillet) des huit
+ *     virements du prêteur : le CONTRÔLE NÉGATIF de tout ce lot, mesuré sur les vraies
+ *     transactions de Marc. Un appariement lâche (« contient toyota ») aurait retiré le total de ces achats de
  *     sa dette pour un achat qui n'en est pas un remboursement ;
  *   · le montant est fini et NÉGATIF (un remboursement sort de l'argent) ;
  *   · la date est lisible et n'est pas dans l'AVENIR (`jusquMs`) — une transaction post-datée ne
@@ -300,8 +300,8 @@ export function clePayee(brut: unknown): string {
  * a réfuté ce raisonnement** : le cash EXCLUT `isTransfer` partout (`startingCash`,
  * `reconstructCashHistory`, `dailyPastLedger`), donc une dette qui, elle, l'inclut fait DESCENDRE le
  * passif sans faire descendre l'actif — mesuré sur huit virements marqués, **patrimoine net
- * −25 291,31 $ au lieu de −27 168,67 $, soit 1 877,36 $ CRÉÉS**, et 234,67 $ de plus par semaine
- * (≈ 12 203 $/an sur ce bail). `isDuplicate` marqué sert de contrôle : conservé au cent près.
+ * surévalué de la somme des huit virements, soit de l'argent CRÉÉ**, et un versement de plus par semaine
+ * (des milliers de dollars par an sur ce bail). `isDuplicate` marqué sert de contrôle : conservé au cent près.
  * Pour un PATRIMOINE NET, les deux registres n'ont pas le droit de traiter la même transaction
  * différemment — `ΔNW == ΔΣactifs − ΔΣdettes` l'exige.
  * ⚠️ Le coût de l'alignement est VISIBLE et celui du défaut était SILENCIEUX : marquer ses paiements
@@ -313,8 +313,8 @@ export function paiementsReelsDette(
     transactions: ReadonlyArray<MouvementDette> | null | undefined,
     /** Borne HAUTE : aujourd'hui, ou la fin du TERME quand il est échu — la plus ANCIENNE des deux.
      *  ⚠️ Sans la borne de terme, un bail ÉTEINT continuait de descendre sur des virements qui n'en
-     *  remboursent plus rien : mesuré **−2 581,37 $** sur un résiduel de 5 000 $ dont le prêteur
-     *  prélève encore 234,67 $/semaine (le cas n'est pas théorique — remplacer un bail chez le même
+     *  remboursent plus rien : mesuré sur un résiduel de 5 000 $ (fixture) dont le prêteur
+     *  prélève encore chaque semaine (le cas n'est pas théorique — remplacer un bail chez le même
      *  prêteur garde le MÊME libellé de marchand). La branche GRILLE portait déjà cette borne
      *  (`construireGrille`/`finMs`) et restait plate à 5 000 $ : c'est l'asymétrie entre les deux
      *  sources qui a démasqué le trou (`EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`). */
@@ -646,8 +646,8 @@ function amortirVersementsFixes(
     // ⚠️⚠️ [DETTE-VIREMENTS-REELS] `startDate` n'est REQUISE que par la grille. Une dette LIÉE sans
     // date de début fait partir la série du PREMIER VIREMENT CONNU — un FAIT, pas une devinette.
     // Sans ça, `soldeDetteAujourdhui` déduisait les virements (il ne lit pas `startDate`) pendant
-    // que cette fonction refusait tout : mesuré, le passé restait PLAT à 45 291,31 $ alors que le
-    // cash descendait des mêmes 1 877,36 $, donc la valeur nette du passé était **1 878 $ trop
+    // que cette fonction refusait tout : mesuré, le passé restait PLAT au solde stocké alors que le
+    // cash descendait de la somme des mêmes virements, donc la valeur nette du passé était **trop
     // haute** puis CHUTAIT vers aujourd'hui sans aucune cause — et l'écran affirmait
     // « suit-les-virements » pour une courbe qui ne suivait rien. C'est le JUMEAU exact de
     // l'asymétrie `minimumPayment` corrigée trois lignes plus bas : j'avais réparé l'une et laissé
@@ -894,7 +894,7 @@ function sourceVersements(
         // ⚠️⚠️ LE REFUS QUI REMPLACE UN PLANCHER DEVENU MUET. Si les virements retenus depuis
         // l'estampille dépassent le solde enregistré, ils ne décrivent pas cette dette : le lien
         // pointe le mauvais marchand, ou le solde n'a jamais été ré-enregistré. `Math.max(0, …)`
-        // rendait alors **0,00 $** — mesuré sur un lien vers une épicerie à 400 sorties : 47 168,67 $
+        // rendait alors **0,00 $** — mesuré sur un lien vers une épicerie à 400 sorties : tout le solde
         // effacés, sous une phrase RASSURANTE et sans alerte. Un total amputé n'est pas une autorité
         // dégradée, c'est un FAUX : on REFUSE la correction (le solde stocké reste), on le TRACE, et
         // `statutSoldeDette` le dit à l'écran.
@@ -935,7 +935,7 @@ function sourceVersements(
  *
  * Marc, 2026-09-17 : « ça devrait enlever de la dette le montant que je paye quand je le paye et ce
  * n'est pas le cas ». Mesuré sur son bail : le solde stocké valait après SEPT prélèvements alors
- * qu'il en avait fait HUIT — 234,67 $ de trop, et l'écart grandissait d'un versement par SEMAINE,
+ * qu'il en avait fait HUIT — un versement hebdomadaire de trop, et l'écart grandissait d'un versement par SEMAINE,
  * parce que `Debt.balance` est un instantané que rien n'avance.
  *
  * Cette fonction ne corrige QUE là où le solde d'aujourd'hui se DÉDUIT sans rien inventer : dette à

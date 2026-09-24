@@ -42,7 +42,7 @@ const TOLERANCES: Array<{ value: number; label: string }> = [
  * réglable) : un badge qui ne compte pas ce que le panneau montrera affirme un chiffre que ses
  * sources ne donnent pas. Valeur 0 (même jour) assumée : c'est la seule où « même marchand, même
  * montant au cent » suffit à pré-cocher sans risque — à ±1 jour, deux achats RÉCURRENTS identiques
- * deux jours de suite (le café de Marc à 7,90 $) deviendraient pré-cochés, et `isDuplicate` retire
+ * deux jours de suite (un petit achat quotidien) deviendraient pré-cochés, et `isDuplicate` retire
  * de l'argent réel du solde, du budget et des revenus. L'élargissement reste à UN clic dans le
  * panneau ; le badge dit sa portée dans son `title`.
  */
@@ -82,8 +82,8 @@ export const DuplicatesPanel: React.FC<Props> = ({
     );
 
     // [TX-DUPLICATES-BRUIT] La sélection par défaut suit la suggestion — mais SEULEMENT pour les
-    // groupes dont le marchand concorde. Mesuré sur 321 transactions réelles de Marc : à 3 jours de
-    // tolérance, 3 groupes sur 10 étaient des COLLISIONS DE MONTANT (`OnlyFans −100 $` avec un
+    // groupes dont le marchand concorde. Mesuré sur les transactions réelles de Marc : à 3 jours de
+    // tolérance, environ un tiers des groupes étaient des COLLISIONS DE MONTANT (une dépense ronde à un marchand quelconque avec un
     // paiement de carte et un Interac). Pré-cocher ça revenait à proposer d'effacer de l'argent
     // réel en un clic — et un panneau dont un tiers des propositions est faux se fait ignorer en
     // entier, ce qui est exactement ce que Marc a signalé le 2026-09-15.

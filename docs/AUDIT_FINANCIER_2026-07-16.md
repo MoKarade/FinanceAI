@@ -18,7 +18,7 @@ sous-modules). **Le lot de findings de juin est fermé à 12/14.** MAIS la passe
 - **1 CRITIQUE inédit** (hors périmètre des passes précédentes) : la **réhydratation du store Zustand n'a
   aucun filet d'erreur** — un blob localStorage corrompu ou une migration qui lève = app vierge au boot,
   **sans aucune trace** (ni log, ni console). Même classe de gravité que l'incident SYNC-ANTI-CLOBBER
-  (230 k$), côté hydratation locale. Le « filet ultime » de `syncPull` est du code mort pour ce scénario
+  (données réelles écrasées), côté hydratation locale. Le « filet ultime » de `syncPull` est du code mort pour ce scénario
   (la promesse de `rehydrate()` ne rejette jamais — vérifié dans les internes zustand).
 - **2 HIGH récidivants de la classe n°1** (« un consommateur recalcule au lieu de lire la source unique ») :
   le KPI « Valeur Nette Globale » du Dashboard (repli sans CSV = dettes JAMAIS soustraites) et le revenu
@@ -108,7 +108,7 @@ sont verts sur cette passe.
 `computePresentNetWorth` ni `useDerivedFinancials` :
 - **Repli sans CSV d'historique (l.160-175) : `Total = cash + portefeuille` — dettes JAMAIS soustraites**
   (vérifié). Pour un utilisateur endetté sans CSV, le patrimoine affiché est gonflé du montant de la dette
-  (~50 k$ dans le cas réel). C'est le pattern MONEY-PHANTOM/H1 fermé en juin dans `useDerivedFinancials`,
+  (plusieurs dizaines de milliers de dollars dans le cas réel). C'est le pattern MONEY-PHANTOM/H1 fermé en juin dans `useDerivedFinancials`,
   réapparu dans un chemin non couvert par ce fix.
 - Chemin principal : dette sommée sans garde `Number.isFinite` (l.270) — classe NAN-INPUT-HARDENING rouverte ici.
 - **Nuance conservée (pas un bug en soi)** : l'inclusion de l'équité immo dans la série historique suit la

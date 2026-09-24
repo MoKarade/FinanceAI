@@ -35,9 +35,9 @@ export const ACCOUNTS: AccountDef[] = [
  * [DETTE-INVISIBLE-INFOBULLE] La dette qui tire le patrimoine net SOUS la somme des actifs affichés.
  *
  * Marc, 2026-09-17 : « je le vois nulle part dans le passé, pas sur l'infobulle ou quoi ». Son bail
- * auto (47 169 $) entre au bilan en juillet — le patrimoine net baisse d'autant, et AUCUNE ligne de
+ * auto entre au bilan en juillet — le patrimoine net baisse d'autant, et AUCUNE ligne de
  * l'infobulle ne l'explique : elle ne liste que des comptes POSITIFS. Les chiffres affichés ne se
- * recomposent donc pas (260 898 $ d'actifs pour 214 918 $ de patrimoine net), et rien ne dit
+ * recomposent donc pas (la somme des actifs dépasse le patrimoine net du montant de la dette), et rien ne dit
  * pourquoi — la même classe de défaut que la carte du hub corrigée le matin même.
  *
  * ⚠️ DÉRIVÉE PAR SOUSTRACTION, jamais lue dans `DettesNonImmo`, et c'est délibéré : ce champ du

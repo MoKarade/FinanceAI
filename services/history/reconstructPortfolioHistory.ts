@@ -93,8 +93,8 @@ export const STALE_PRICE_DAYS = 7;
  * ⚠️⚠️ ELLE EXISTE PARCE QUE LA RÈGLE A ÉTÉ ÉCRITE DEUX FOIS, ET LA SECONDE MANQUAIT. Le correctif
  * du 2026-09-17 n'a d'abord touché que la boucle MENSUELLE ; la reconstruction QUOTIDIENNE
  * (`reconstructPortfolioHistoryDaily`), producteur DISTINCT, gardait ses clôtures périmées. Marc l'a
- * vu à l'écran : le dernier point du passé affichait **233 618 $** de titres contre **245 771 $** au
- * prix courant (≈ 12 100 $), avec le badge « prix J−55 » qui nommait la cause sans que rien ne la
+ * vu à l'écran : le dernier point du passé affichait des titres inférieurs d'environ 5 % à leur valeur
+ * au prix courant, avec le badge « prix J−55 » qui nommait la cause sans que rien ne la
  * corrige. Classe `MODULE-ECRIT-HORS-CHECKLIST` : corriger « le producteur X a oublié Y » exige
  * d'énumérer TOUS les producteurs.
  *
@@ -210,8 +210,8 @@ export function reconstructPortfolioHistory(
             // D'AUJOURD'HUI à une date PASSÉE : la courbe du passé serait réécrite au prix du jour.
             // Pour une date passée, le dernier close connu EST la meilleure estimation. Le défaut
             // ne vit qu'ici, où une clôture périmée était préférée à une cotation FRAÎCHE qui
-            // existe. Mesuré sur l'état réel : mois 0 à 231 849 $ contre 245 687 $ de titres au
-            // prix courant, soit −13 838 $ (−5,6 %) au départ de TOUTE la projection.
+            // existe. Mesuré sur l'état réel : mois 0 inférieur à la valeur des titres au
+            // prix courant, soit ≈ −5,6 % au départ de TOUTE la projection.
             //
             // ⚠️ La fraîcheur est VÉRIFIÉE (`priceUpdatedAt`), jamais supposée : sans ça on
             // remplacerait un chiffre vieux par un autre chiffre vieux.

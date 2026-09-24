@@ -394,7 +394,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
         const allocation = assets.map(a => {
             // [ASSET-FX-DISPLAY] valeur en CAD (prix natif × FX) — l'ancien qty×prix brut mélangeait
-            // USD/EUR/CAD (portefeuille sous-affiché de ~70 k$, incident Marc 2026-07-14).
+            // USD/EUR/CAD (portefeuille sous-affiché de plusieurs dizaines de milliers de dollars, incident 2026-07-14).
             const value = assetValueCad(a, fxRates);
             // [INVEST-ALLOC-GEO-SECTOR] Résolution PARTAGÉE (champ persisté > seed normalisé
             // préfixe↔suffixe > crypto > Autre) — l'ancien lookup statique `ASSET_META[a.symbol]`

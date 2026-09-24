@@ -53,7 +53,7 @@ export const toCurrencyFactor = (fxRates: Record<string, number> | undefined, cu
   // CAD (devise de base) ou devise absente → 1:1 légitime (l'absence de devise sur un ACTIF est
   // signalée par assetValueCad, qui a le contexte). Devise ÉTRANGÈRE sans taux valide → repli 1:1
   // MAIS JAMAIS silencieux (finding panel 2026-07-14 : le repli muet « {} → facteur 1 » est
-  // exactement le bug ASSET-FX-DISPLAY qui a sous-affiché ~70 k$ — s'il se reproduit via un fxRates
+  // exactement le bug ASSET-FX-DISPLAY qui a sous-affiché des dizaines de milliers de dollars — s'il se reproduit via un fxRates
   // vide/corrompu, on veut le voir dans les diagnostics). Throttlé 1×/devise (hot-path UI).
   if (!currency || currency === 'CAD') return 1;
   const r = fxRates?.[currency];
@@ -71,8 +71,8 @@ export const toCurrencyFactor = (fxRates: Record<string, number> | undefined, cu
  * [ASSET-FX-DISPLAY] Valeur CAD d'UN actif — LA source unique pour tout affichage/somme de placements.
  * `currentPrice` est stocké en devise NATIVE du titre (AddStockForm : prix Finnhub USD/EUR/CAD + champ
  * `currency`) → toute somme SANS `toCurrencyFactor` mélange les devises (incident Marc 2026-07-14 :
- * l'app affichait 160 352 « $ » = 69 k USD + 84 k EUR + 7 k CAD additionnés bruts, vs ~230 k$ CAD réels
- * — le patrimoine était SOUS-affiché de ~70 k$). Garde NaN/Infinity incluse (NAN-INPUT-HARDENING).
+ * l'app affichait une somme brute USD + EUR + CAD, bien sous la valeur réelle en CAD
+ * — le patrimoine était SOUS-affiché de plusieurs dizaines de milliers de dollars). Garde NaN/Infinity incluse (NAN-INPUT-HARDENING).
  * Un test-garde (assetFxGuard) interdit toute nouvelle somme quantity×currentPrice hors de ce helper.
  */
 export const assetValueCad = (
@@ -157,7 +157,7 @@ export const computeInvestmentsValue = (
  * [CASH-NAN-SILENT] Délègue à la SOURCE UNIQUE `computeCashLedger` (`services/startingCash.ts`).
  * Cette fonction portait sa propre copie de la formule avec des `Number(v) || 0` MUETS — juste
  * en dessous d'`assetValueCad`, qui applique pourtant le patron `HARDEN-*-NAN` depuis l'incident
- * « −193 k$ ». Deux poids, deux mesures dans le même fichier.
+ * « patrimoine fantôme ». Deux poids, deux mesures dans le même fichier.
  */
 export const computeCurrentLiquidity = (
   initialBalances: Record<string, number>,
@@ -297,8 +297,8 @@ export const computePresentNetWorth = (
  *
  * Marc, 2026-09-21 : « je veux voir ma somme totale d'argent et ma somme totale de dettes /
  * ce que je dois (partout dans financeai et dans hubperso) ». Né d'un écart qu'il a vu lui-même :
- * Fintable additionne des SOLDES DE COMPTES (277 230 $ chez lui), l'app publie une VALEUR NETTE
- * (230 210 $) — et les deux TERMES de la soustraction n'étaient visibles nulle part ensemble.
+ * Fintable additionne des SOLDES DE COMPTES (un total plus élevé chez lui), l'app publie une VALEUR NETTE
+ * — et les deux TERMES de la soustraction n'étaient visibles nulle part ensemble.
  *
  * ⚠️⚠️ POURQUOI `computePresentNetWorth` EN DÉRIVE au lieu de garder sa propre soustraction :
  * l'écran doit tenir `avoirs − dettes = patrimoine net` À L'ŒIL, sur la même rangée de tuiles.

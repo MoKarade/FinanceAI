@@ -100,7 +100,7 @@ describe('decideOnLoad — matrice anti-perte', () => {
 /**
  * Reconnexion / gate : il n'y a PLUS d'exception « restoreIntent » (qui faisait gagner Drive même sur
  * du LOCAL réel → une vieille copie Drive écrasait des données récentes à la reconnexion). Bug Marc
- * 2026-07-14 : 230k$ de placements locaux clobberés par une copie Drive périmée (SPCX seul). UNE seule
+ * 2026-07-14 : les placements locaux clobberés par une copie Drive périmée (un seul titre). UNE seule
  * garde anti-perte : local vide → pull (restaure) ; local réel + Drive divergent → `conflict` (choix
  * utilisateur, surfacé par l'UI globale SyncConflictModal), JAMAIS d'écrasement auto. Le cas légitime
  * « nouvel appareil, je restaure » passe par la règle local-vide (hasMeaningfulData classe un défaut/

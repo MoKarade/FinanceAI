@@ -18,7 +18,7 @@
 // Conséquence : `obs` existait (donc aucune erreur), il ne portait NI `FXUSDCAD` NI `FXEURCAD`, les
 // deux replis tiraient ENSEMBLE, et l'app servait `USD 1,4000 / EUR 1,4700` — le littéral du dépôt.
 // Écart mesuré contre les vrais taux du jour (1,3947 et 1,6073) : **−0,38 % sur USD** mais
-// **+9,34 % sur EUR**, soit +5 426 $ sur une seule des douze positions de Marc.
+// **+9,34 % sur EUR**, soit plusieurs milliers de dollars sur une seule position de Marc.
 //
 // ⚠️ La leçon n'est pas « il fallait prendre `[1]` » — ce serait le même défaut décalé d'un cran.
 // Un INDEX sur une liste groupée par cohorte ne désigne rien : c'est la série qu'on cherche, donc

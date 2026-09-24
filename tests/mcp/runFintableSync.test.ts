@@ -339,7 +339,7 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
     //
     // Retirer l'assertion aurait rendu ce test VACUEUX : sans payload rejeté, il ne teste plus
     // l'isolation qu'il porte dans son titre (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
-    // Il lui faut donc une cause de rejet RÉELLE : une carte à découvert (`-379.99`, donc une vraie
+    // Il lui faut donc une cause de rejet RÉELLE : une carte à découvert (`-250.00`, donc une vraie
     // dette sous la convention mesurée) vers une dette qui n'existe pas encore dans l'état —
     // `applyDebt` exige alors taux ET paiement minimum pour CRÉER, que le mapper ne fournit jamais.
     it('un payload dette REJETÉ devient un AVERTISSEMENT — transaction + cash restent appliqués', async () => {

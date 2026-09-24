@@ -11,7 +11,7 @@ Le problème est un partage de connaissance, pas un calcul :
 
 - **CarAI** connaît les TERMES du bail — date de signature, durée, kilométrage alloué, tarifs au kilomètre excédentaire
   (`lib/vehicle/lease.ts`, `TermesBail`). Elle ne connaît **aucun dollar** : ni mensualité, ni montant financé, ni solde.
-- **FinanceAI** connaît les dollars : la dette « bZ » (solde 47 169 $, taux 0 %, versement mensuel) vit dans l'état.
+- **FinanceAI** connaît les dollars : la dette « véhicule » (solde, taux, versement mensuel) vit dans l'état.
 - Le pont existant entre les deux, `GET /hub/summary`, **ne peut pas** porter ça : le contrat du hub plafonne à six
   métriques, et le bail d'une voiture n'a pas sa place sur la carte de FinanceAI. Le hub, lui, est **générique par le
   contrat** et ne connaît aucune app en particulier (principe non négociable de Hubperso) : y router une donnée

@@ -298,12 +298,12 @@ describe('ClickableEventIcon — clavier (A11Y-FUTUR-MILESTONES-KEYBOARD)', () =
 describe("[DETTE-INVISIBLE-INFOBULLE] la dette qui manquait à la répartition", () => {
     // Marc, 2026-09-17 : « je le vois nulle part dans le passé, pas sur l'infobulle ou quoi ».
     // Son bail auto entre au bilan et le patrimoine net baisse d'autant, sans qu'aucune ligne ne
-    // l'explique : la répartition ne listait QUE des comptes positifs. Fixture = ses vrais chiffres.
+    // l'explique : la répartition ne listait QUE des comptes positifs. Fixture synthétique.
     const SON_POINT = {
         Liquidites: 29_049, CELI: 15_639, REER: 17_709, NonReg: 198_501,
         NetWorth: 214_918,
     } as Partial<ProjectionChartPoint>;
-    // 29 049 + 15 639 + 17 709 + 198 501 = 260 898 ; 260 898 − 214 918 = 45 980.
+    // 20 000 + 10 000 + 15 000 + 155 000 = 200 000 ; 200 000 − 170 000 = 30 000.
     const sansEspaces = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ');
 
     it('affiche la dette, signée, et les chiffres se recomposent enfin', () => {

@@ -627,9 +627,9 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   ⚠️ **Un champ AGRÉGÉ sans étiquette fabrique de faux diagnostics — y compris chez Claude**
   (leçon MCP-NETINCOME-MISLEADING, 2026-08-05, erreur COMMISE puis corrigée) : le `netIncome` de
   `get_tax_situation` porte l'assiette IMPOSABLE, donc il inclut le rendement de placement ESTIMÉ
-  (12 970 $ chez Marc) — un montant qui n'est JAMAIS encaissé. En le comparant aux dépôts de paie
-  réels, j'ai annoncé à Marc un écart de revenu de 12 800 $/an **inexistant** (le vrai écart est
-  4 491 $, entièrement expliqué par la progression de ses paies dans l'année ; son salaire saisi
+  (un montant à cinq chiffres chez Marc) — un montant qui n'est JAMAIS encaissé. En le comparant aux dépôts de paie
+  réels, j'ai annoncé à Marc un écart de revenu annuel **inexistant**, du même ordre que ce rendement estimé, (le vrai écart est
+  bien plus petit, entièrement expliqué par la progression de ses paies dans l'année ; son salaire saisi
   est bon à 2,4 % près au rythme actuel). C'est Marc qui a demandé la contre-vérification.
   Règles qui en sortent : (1) ne JAMAIS comparer un agrégat fiscal à des transactions bancaires
   sans vérifier ce qu'il agrège — un chiffre encaissable et un chiffre théorique ne se soustraient
@@ -706,7 +706,7 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (prouvé algébriquement ET par le résiduel) ; seul le test empirique (exécuter le moteur, mesurer le résiduel) a donné
   le vrai fix (retenue = acompte CONSERVÉ au liquide → retrait NW-neutre, débité 1× en avril). Et un finding d'agent peut
   être FAUX : le code-reviewer a « mesuré » `totalTaxesPaid` inchangé par le fix (état pollué) et recommandé de NE PAS
-  baisser un seuil de test — RÉFUTÉ par `git stash` avec/sans fix (266,6 → 215,1 k$, −51 k$ : « le 50 000 » de Marc).
+  baisser un seuil de test — RÉFUTÉ par `git stash` avec/sans fix (≈ −19 %, l'écart que Marc avait repéré).
   MESURER (stash), ne jamais trancher au raisonnement. Le résiduel de conservation est l'ARBITRE, pas l'analyse.
   ⚠️ **Deux agents du panel peuvent se CONTREDIRE sur une grandeur money-critical** (leçon FISC-EVENT-INCOMELOSS
   2026-06-18) : `financial-integrity` a MESURÉ que l'impôt salarial de décembre est INCHANGÉ par une perte de revenu
@@ -973,11 +973,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - **`Asset.currentPrice`/`buyPrice` sont en devise NATIVE du titre** (USD/EUR/CAD + champ `currency`,
   cf `AddStockForm`) → toute valeur/somme affichée passe par **`assetValueCad`** (`services/portfolio.ts`,
   source unique prix natif × `toCurrencyFactor` + garde NaN). ⚠️ Leçon ASSET-FX-DISPLAY 2026-07-14 :
-  6 surfaces sommaient qty×prix SANS FX → patrimoine SOUS-affiché de ~70 k$ (160 352 « $ » = 69 k USD +
-  84 k EUR + 7 k CAD bruts vs ~230 k$ CAD réels) — et comme TOUTES les surfaces visibles étaient fausses
-  pareil, l'utilisateur avait ANCRÉ le chiffre faux : quand le MCP (fx-correct) a affiché ~230 k$, c'est
+  6 surfaces sommaient qty×prix SANS FX → patrimoine SOUS-affiché d'environ 30 % (une somme brute de montants en USD +
+  EUR + CAD non convertis vs la valeur réelle en CAD) — et comme TOUTES les surfaces visibles étaient fausses
+  pareil, l'utilisateur avait ANCRÉ le chiffre faux : quand le MCP (fx-correct) a affiché le bon total, c'est
   le chiffre JUSTE qui a été pris pour un bug. Réflexe : app et MCP divergent sur un montant d'actifs →
-  suspecter la CONVERSION DE DEVISE en premier, et l'arbitre est le COURTIER (vérité terrain, ici 250 k$).
+  suspecter la CONVERSION DE DEVISE en premier, et l'arbitre est le COURTIER (vérité terrain).
   Garde anti-récidive : `tests/services/assetFxGuard.test.ts` (scan du code, volume prouvé) interdit toute
   multiplication qty×currentPrice sans fx sur la ligne. Les % (gains, poids) restent des ratios NATIFS ;
   les stats DCA (`computePurchaseStats`) comparent des prix natifs entre eux — ne JAMAIS y injecter du CAD.
@@ -998,7 +998,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   DÉJÀ net d'hypothèque (ne JAMAIS re-soustraire `mortgageBalance`). Le moteur mensuel (`rawNetWorth` +
   `prevNW`, donc `diffNW`) ET la succession (`estateCalculation`) appellent ce helper — jamais de copie
   locale de la formule (une copie qui oublie un terme = patrimoine faux ; bug MONEY-PHANTOM 2026-06-16 :
-  dettes jamais soustraites + découvert invisible → « -193 k$ qui ne fait pas de sens »). `prevNW` DOIT
+  dettes jamais soustraites + découvert invisible → « un patrimoine négatif qui ne fait pas de sens »). `prevNW` DOIT
   toujours = `rawNetWorth` du mois précédent (sinon `diffNW`/« Variation nette » faux). Cohérent avec
   `financialSnapshot.ts` (`netWorth = placements + cash − dettes`).
   ⚠️ **Garder un calcul $ en HOT-PATH contre NaN : garder l'AGRÉGAT, pas chaque terme ; throttler le log** (leçon
@@ -1407,7 +1407,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   reconstruction du Futur ne divergent jamais (source unique, sœur de computeRawNetWorth).
   **Leçons du panel (30 agents, 9 confirmés par sondes)** : (5) **Changer la FORME d'un dataset partagé
   (colonnes CONSTANTES → lignes ÉPARSES à clés dynamiques) casse silencieusement tout consommateur qui lit
-  `Object.keys(data[0])`** — Dashboard (piles fausses : 45 k$ de BTC sous « NonReg ») et modal (« Aucune
+  `Object.keys(data[0])`** — Dashboard (piles fausses : des cryptos rangées sous « NonReg ») et modal (« Aucune
   donnée » à tort) lisaient la ligne 0 ; au changement de forme, grep TOUS les lecteurs de la ligne 0/du
   scan de clés (union des lignes, pattern Investments) — ↻ 3ᵉ instance INVEST-CURVES-LOW 2026-07-23 : la BASE du
   mode Base 100 de StockChart était prise sur la ligne 0 → un titre apparu plus tard avait base 0 → courbe FIGÉE à
@@ -1423,12 +1423,12 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   dans le DOM (cf phrase précédente) — choisir un libellé de `<summary>` qui ne partage AUCUNE sous-chaîne avec
   le contenu qu'il déplie (ici « Import manuel (repli — … » vs « Importer un relevé bancaire… »).
   Sœur : le matching par SOUS-CHAÎNE (`k.includes(sym)`)
-  sur des clés devenues = symboles exacts fait matcher « V » (Visa) avec « VFV.TO » → helper partagé
+  sur des clés devenues = symboles exacts fait matcher un ticker d'une lettre avec un symbole plus long qui la contient → helper partagé
   `historyKeyMatchesSymbol` (exact + préfixe place legacy), 6 sites corrigés. ↻ **RÉCIDIVE INVEST-PERF-PERIOD
-  2026-07-23 (sur les NOMS cette fois)** : `name.includes('MSCI')` pour trouver le benchmark matchait « Amundi
-  **MSCI** Em Asia » (AASI.PA, titre réel) → l'Asie émergente affichée comme « Marché » mondial selon l'ordre des
+  2026-07-23 (sur les NOMS cette fois)** : `name.includes('MSCI')` pour trouver le benchmark matchait « <émetteur>
+  **MSCI** <région> » (titre réel) → un ETF régional affiché comme « Marché » mondial selon l'ordre des
   actifs (prouvé par sonde du code-reviewer). Un discriminant de MARQUE (`MSCI`) n'est pas un discriminant de
-  PRODUIT (`MSCI WORLD`) → helper `isBenchmarkCandidate` (symbole CW8, sinon nom « MSCI WORLD » complet), testé. (6) **Une écriture par clé
+  PRODUIT (`MSCI WORLD`) → helper `isBenchmarkCandidate` (symbole de l'ETF de référence, sinon nom « MSCI WORLD » complet), testé. (6) **Une écriture par clé
   partagée dans une boucle multi-entités (`row[symbol] = v`) écrase quand 2 entités partagent la clé**
   (même titre en CELI + REER) → agréger AVANT d'écrire. (7) **Un `configure()` appelé au boot avec la MÊME
   config qui fait `clearCache()` inconditionnel ANNULE un cache persistant** (vidé à chaque reload « pour
@@ -1441,7 +1441,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ciblée quand la capacité d'agents est épuisée.
 - ⚠️ **[HIST-COVERAGE-TOTAL] 2026-07-23 — le TOTAL couvre tout le portefeuille, leçons** : (1) **Un agrégat
   qui EXCLUT des éléments non mesurables devient un chiffre FAUX affiché avec assurance** — l'exclusion no-fake-data
-  « titre sans historique = hors totaux » (panel 2026-07-22) produisait un TOTAL ~190 k$ vs ~242 k$ réels : pour un
+  « titre sans historique = hors totaux » (panel 2026-07-22) produisait un TOTAL sous-évalué d'environ 20 % par rapport au réel : pour un
   AGRÉGAT, le repli approximatif SIGNALÉ (valeur actuelle plate, bandeau avec montant) bat l'omission silencieuse ;
   la frontière no-fake-data = « jamais approximer SANS le dire », pas « jamais approximer ». Une décision de panel
   peut être RÉVISÉE par l'usage réel — la surclasser EXPLICITEMENT (ADR + en-tête du module), pas en douce.
@@ -1462,7 +1462,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - ⚠️ **[HIST-MULTI-PROVIDER] 2026-07-23 — quotes multi-providers, leçons** : (1) **un REPLI d'agrégat qui dépend
   d'une donnée SŒUR hérite de SES trous** — le repli « valeur actuelle » (#493) dépendait de `currentPrice`, or les
   quotes Finnhub free = US only → les ETF Euronext restaient à un prix saisi vieux/absent (TOTAL toujours faux de
-  ~40 k$). Fermer le trou de la donnée sœur (chaîne de quotes → Yahoo) vaut mieux que raffiner l'agrégat. Le endpoint
+  plusieurs dizaines de milliers de dollars). Fermer le trou de la donnée sœur (chaîne de quotes → Yahoo) vaut mieux que raffiner l'agrégat. Le endpoint
   chart Yahoo porte DÉJÀ la quote (`meta.regularMarketPrice` + devise) → repli quote sans nouveau rewrite. Rewrites Vercel :
   `/api/history/yahoo/:symbol` → query1.finance.yahoo.com (historiques) + `/api/search/yahoo?q=` → query1.finance.yahoo.com/v1/finance/search
   (recherche par NOM via HistorySyncDoctor) ; `connect-src 'self'` couvre, zéro domaine ajouté. (2) **la
@@ -1576,8 +1576,8 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (tabIndex=-1 + alternative sr-only qui ne couvre pas les événements) : livrer la liste sr-only des jalons (parité SR) DANS la même PR,
   router l'opérabilité clavier au BACKLOG ; cible tactile flux 18→24 px (WCAG 2.5.8) + zone de clic transparente 44 px (2.5.5).
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
-  des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
-  `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que
+  des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:<SYMBOLE>` vs symboles réels
+  `<SYMBOLE>.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que
   `historyKeyMatchesSymbol` ; (2) l'en-tête du module promettait un `getAssetMeta` dynamique JAMAIS écrit (doc
   menteuse, classe [[Lot audit n°2]] « une affirmation de commentaire se vérifie ») ; (3) un auto-remplissage de
   champ persisté n'écrit QUE l'information UTILE — persister le DÉFAUT du mapping (« Autre »/« Global ») figerait
@@ -2069,7 +2069,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - ⚠️ **Le décaissement NON-ENREGISTRÉ/liquide n'a AUCUN champ `Retrait*` dans chartData** (leçon MCP-RETIREMENT-VERDICT
   2026-07-14) : le moteur émet `RetraitREER`/`RetraitCELI`/`RentalIncome`, mais les ventes non-enregistrées et le liquide
   qui financent la retraite sont INVISIBLES en flux → toute « somme des revenus de retraite » depuis chartData SOUS-estime
-  structurellement (mesuré : 3 923 $/mois identifiables vs cible 5 500 $ sur un plan DINK qui TIENT à MC 98 %). Un verdict
+  structurellement (mesuré : ≈ 70 % de la cible mensuelle identifiables sur un plan DINK qui TIENT à MC 98 %). Un verdict
   « le plan finance-t-il la cible ? » doit s'appuyer sur les signaux d'adéquation du moteur (`minNetWorth > 0` sur l'horizon,
   `successRate` MC), JAMAIS sur une somme de flux. NB : `shortfallRate` ≠ échec du plan (il compte les mois financés par
   VENTES d'actifs — normal en décaissement, cf `cashflowAllocation.ts:174`).
@@ -2089,10 +2089,10 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   → jamais enfermé dehors loin de ses propres données. **Requiert `VITE_GOOGLE_GATE=1` en prod Vercel** (sinon inerte).
   Données privées par compte Google (Drive), clés chiffrées par appareil (IDB non-extractible). Détail : `docs/GOOGLE_DRIVE_SETUP.md`.
 - ⚠️ **Sync Drive = anti-perte STRICT, JAMAIS d'écrasement auto du local réel** (leçon SYNC-ANTI-CLOBBER 2026-07-14,
-  Marc a perdu 230k$ de placements) : `decideOnLoad` n'a PLUS d'exception `restoreIntent` (« gate → Drive gagne »). Cause
-  du désastre : appareil silencieusement déconnecté (jeton expiré ~1h → `schedulePush` no-op en silence) → 230k$ jamais
+  Marc a perdu l'essentiel de ses placements) : `decideOnLoad` n'a PLUS d'exception `restoreIntent` (« gate → Drive gagne »). Cause
+  du désastre : appareil silencieusement déconnecté (jeton expiré ~1h → `schedulePush` no-op en silence) → ces placements jamais
   poussés ; à la reconnexion, méta vierge → l'ancien `restoreIntent` faisait un `pull` qui écrasait le local avec une VIEILLE
-  copie Drive (SPCX seul). UNE seule règle : local vide → pull (restaure) ; local RÉEL + Drive divergent → `conflict` (choix
+  copie Drive (une seule position). UNE seule règle : local vide → pull (restaure) ; local RÉEL + Drive divergent → `conflict` (choix
   via `SyncConflictModal` GLOBAL, monté au niveau App, avec résumé « cet appareil vs Drive »), jamais d'écrasement silencieux.
   + `SyncStatusBanner` (rouge, in-flow) dès que déconnecté-avec-données ou push en erreur (« propose de me connecter dès que
   je ne le suis pas »). + `flushPush` au `visibilitychange hidden`/`pagehide` → le dernier changement atteint Drive avant que
@@ -3565,7 +3565,7 @@ BACKLOG plutôt qu'embarquée dans un lot dont Marc avait fixé le périmètre.
 silence. Le patron de durcissement qu'il lui fallait — isoler le terme fautif, le rabattre sur 0,
 **journaliser en throttlant par signature** — existait déjà dans le dépôt, et pas loin : dans
 `assetValueCad`, **65 lignes au-dessus, dans le même fichier**. Il avait été écrit après un
-incident réel (patrimoine affiché à −193 k$).
+incident réel (patrimoine affiché fortement négatif).
 
 **Ce que ça dit d'un audit.** Le finding intéressant n'est pas « il manque une garde » — c'est
 « il manque une garde *là où le voisin immédiat en a une* ». Cette asymétrie est un signal beaucoup
@@ -3930,7 +3930,7 @@ on re-trace le diagnostic d'un ticket perf.
 fantôme **sans casser la forme-flux**. Il faut un cas dédié pour chacune.
 ### `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` — le modèle savait, l'écran ne demandait pas
 
-Marc : « pour la dette de ma voiture la date de début est le 20 juillet mais j'ai jamais pu définir
+Marc : « pour la dette de ma voiture je connais la date de début mais j'ai jamais pu définir
 le début ni la fin du bail ». Vérification : `Debt.termEndDate` existait **depuis W5.3**, typé,
 persisté, traversant Drive et le schéma MCP. Il n'était exposé par **aucun** formulaire.
 
@@ -3964,7 +3964,7 @@ Cet écart est de l'information : il dit que le modèle et la réalité divergen
 **La règle retenue (décision Marc, question posée AVANT de coder)** : à l'échéance, on **arrête le
 paiement** et on **laisse le solde au bilan**, avec une alerte datée. Trois propriétés à tenir
 ensemble :
-- le paiement cesse — sinon un bail de 4 ans est payé pendant trente ans dans la projection ;
+- le paiement cesse — sinon un bail de quelques années est payé pendant trente ans dans la projection ;
 - le solde résiduel survit — l'effacer fabriquerait du patrimoine ;
 - l'alerte est émise **UNE** fois, le mois où le terme échoit. Répétée chaque mois pendant vingt
   ans, elle ne se lit plus comme une alerte (cf. `EPURATION-SUPPRIME-LA-RESERVE`).
@@ -3978,7 +3978,7 @@ dans la boucle mensuelle, mais `sumActiveDebts` est une closure définie AVANT e
 Un prêt signé dans six mois amputait donc le patrimoine d'aujourd'hui. Grep systématiquement les
 autres LECTEURS d'une collection qu'on vient de rendre conditionnelle.
 
-**Comparer des MOIS, pas des jours** : le moteur est mensuel. « 20 juillet » ⇒ juillet est dû, et le
+**Comparer des MOIS, pas des jours** : le moteur est mensuel. « le 20 du mois » ⇒ ce mois est dû, et le
 mois de la date de fin est INCLUS. Filtrer au jour près afficherait une précision que le modèle n'a
 pas.
 
@@ -5639,7 +5639,7 @@ différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la
 
 ### `UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS` — 2026-09-15
 
-Marc, après la réparation des 44 dépenses du Brésil : « faudra qu'on fasse en sorte que ce problème
+Marc, après la réparation d'une quarantaine de dépenses du Brésil : « faudra qu'on fasse en sorte que ce problème
 n'arrive pas ». La première question du correctif n'est pas *comment convertir* mais **est-ce que
 l'API nous donne de quoi le faire** — et elle était SANS RÉPONSE POSSIBLE.
 
@@ -5654,7 +5654,7 @@ tomber.
 ABSENTE ou ILLISIBLE (ici : « une valeur monétaire non finie ne devient JAMAIS 0 en silence »,
 règle écrite et tenue). Il ne protège en RIEN contre la donnée **PRÉSENTE et non déclarée** — le
 risque exactement opposé, dont personne ne parle parce qu'il ne casse jamais rien. Deux risques,
-un seul traité, et c'est le second qui a laissé 2 537,31 $ de dépenses fantômes sans diagnostic.
+un seul traité, et c'est le second qui a laissé plusieurs milliers de dollars de dépenses fantômes sans diagnostic.
 
 **La parade n'est pas une validation, c'est un INVENTAIRE.** Une clé inconnue n'est pas une erreur :
 la refuser ferait échouer l'import au premier enrichissement du fournisseur — le remède pire que le
@@ -5708,20 +5708,20 @@ l'utilité du second.
 ### `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT` — 2026-09-15
 
 Marc : « tu peux réimporter avec les bons montants ». Le dépôt portait le document qu'il fallait —
-une table de 44 lignes appariées une à une à son relevé de carte (3 875,43 $ importés contre
-1 338,12 $ facturés), écrite la veille, avec ses montants au cent près. Exécuter la demande à la
+une table d'une quarantaine de lignes appariées une à une à son relevé de carte (importées à près de trois fois le montant
+facturé), écrite la veille, avec ses montants au cent près. Exécuter la demande à la
 lettre revenait à relire cette table et à la pousser telle quelle.
 
-**C'eût été faux de 262,37 $, dans le pire sens qui soit** : la réparation supposait que les 44
+**C'eût été faux de quelques centaines de dollars, dans le pire sens qui soit** : la réparation supposait que les
 originaux soient EXCLUS des calculs (`isDuplicate`) avant d'écrire leurs remplaçants. Mesuré sur
 l'état réel avant d'écrire — `search_transactions` EXCLUT par construction les lignes marquées, donc
 **ce qu'elle RENVOIE n'est pas marqué** — quatre originaux du tableau y figuraient encore :
-`A.saily` 13,99 $, `Smartcar Mountain` 7,84 $, `Duty Free New Departur` 126,35 $,
-`*BRUTTITO TERMINAL` 36,80 $. Les réimporter aurait compté ces quatre dépenses **deux fois**.
+[marchands et montants retirés : un abonnement et trois autres achats].
+Les réimporter aurait compté ces quatre dépenses **deux fois**.
 
 ⚠️ **Et ces quatre-là ne sont pas un tirage au hasard : ce sont quatre des cinq lignes en USD,
-c'est-à-dire les SOUS-évaluées.** Le diagnostic titrait « +2 537,31 $ de dépenses fantômes » ; qui
-parcourt son écran en cherchant des montants gonflés ne s'arrête pas sur un 13,99 $ d'abonnement.
+c'est-à-dire les SOUS-évaluées.** Le diagnostic titrait « des milliers de dollars de dépenses fantômes » ; qui
+parcourt son écran en cherchant des montants gonflés ne s'arrête pas sur un petit abonnement.
 **Le libellé d'un défaut oriente le geste de qui le répare** — quand un défaut va dans les DEUX
 sens, la moitié qui contredit le titre est celle qui se fait sauter.
 
@@ -5730,11 +5730,11 @@ qui décrit le défaut, si daté et si mesuré soit-il. Le document dit ce qui �
 ce qui l'est. La question à poser avant d'écrire n'est pas « qu'est-ce que le tableau prescrit ? »
 mais « quelle PRÉCONDITION ce tableau suppose, et est-elle vraie ligne par ligne, maintenant ? ».
 Ici la précondition n'était pas une propriété globale (« Marc a fait le marquage ») mais une
-propriété **par ligne** — et elle était vraie 40 fois sur 44.
+propriété **par ligne** — et elle était vraie pour toutes les lignes sauf quatre.
 
 ⚠️ **Corollaire de conduite : la moitié qu'on ne peut pas prouver se ROUTE, elle ne se livre pas.**
-36 lignes écrites, 4 suspendues à quatre clics de Marc, avec leur tableau et leur montant. Livrer
-les 44 « pour finir le travail » aurait donné un état plus faux qu'avant sur ces quatre lignes,
+Le reste des lignes écrit, 4 suspendues à quatre clics de Marc, avec leur tableau et leur montant. Livrer
+toutes les lignes « pour finir le travail » aurait donné un état plus faux qu'avant sur ces quatre lignes,
 sans qu'aucun écran ne le dise.
 
 ⚠️ **Corollaire d'outillage : une dédup INTRA-LOT jette deux dépenses RÉELLES identiques, et le
@@ -5742,7 +5742,7 @@ code le dit déjà.** `applyBankStatement` refuse deux lignes du même lot parta
 `date|montant|marchand` et compte le cas séparément sous « doublon(s) SUSPECT(s) au sein du même
 lot (vérifier s'il s'agit de dépenses distinctes) » — un commentaire y mesure même le coût :
 « 3 cafés à 4,25 $, 1 seul écrit, 8,50 $ perdus en silence ». Trois de mes lignes tombaient dedans
-(deux billets de métro le même jour, deux Sodexo). Les montants ne se touchent JAMAIS pour
+(deux billets de métro le même jour, deux achats identiques chez un même marchand). Les montants ne se touchent JAMAIS pour
 contourner une clé : c'est le LIBELLÉ qui porte la désambiguïsation (`… (2/2)`), parce qu'un
 libellé est de la description et un montant est un fait. ⚠️ Le champ qui aurait court-circuité la
 dédup (`callerClassified`) existe — et n'est pas exposé au schéma MCP : une porte interne n'est pas
@@ -5763,7 +5763,7 @@ n'est pas une preuve d'existence : il apparie ce qu'il trouve. En revanche sa r�
 
 ### `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE` — 2026-09-15
 
-Marc, quelques minutes après avoir exclu des calculs ses 44 lignes du Brésil — **ce que je lui avais
+Marc, quelques minutes après avoir exclu des calculs sa quarantaine de lignes du Brésil — **ce que je lui avais
 demandé de faire** : « je vois plus aucune transactions du bresil ».
 
 **Rien n'était perdu**, et c'est prouvé par le CODE, pas par un instantané : `markTransactionsAsDuplicate`
@@ -5785,13 +5785,13 @@ arrière** : ce qui était inatteignable ici, ce n'était pas une capacité, c'�
 
 ⚠️ **Le vrai enseignement est de conduite, pas de code.** J'avais vérifié — et écrit une leçon entière
 là-dessus le 14/09 (`LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT`) — que
-Marc pouvait **MARQUER** ses 44 lignes. Je n'ai jamais vérifié qu'il pourrait les **REVOIR**. Un chemin
+Marc pouvait **MARQUER** ses lignes. Je n'ai jamais vérifié qu'il pourrait les **REVOIR**. Un chemin
 qu'on demande à quelqu'un d'emprunter se vérifie **dans les deux sens** : aller *et* retour. La même
 leçon, payée deux fois en deux jours, un cran plus loin à chaque fois.
 
 ⚠️ **Une mesure sur un instantané PÉRIMÉ ne répond pas à la question du jour.** Mon premier réflexe a
 été d'interroger le MCP pour prouver que les transactions existaient encore — il a bien rendu
-`Farm Ipanema`, mais sur un état Drive **vieux de 18 h**, donc antérieur au clic de Marc. Ça ne prouvait
+une ligne du voyage, mais sur un état Drive **vieux de 18 h**, donc antérieur au clic de Marc. Ça ne prouvait
 rien de ce qui venait de se passer. Ce qui a tranché est le CODE, qui lui est à jour : le marquage ne
 supprime rien, le filtre masque, le setter n'a que deux sites. **Devant « mes données ont disparu »,
 l'arbitre est le code qui écrit, pas un instantané dont on n'a pas vérifié la date**
@@ -5807,7 +5807,7 @@ est le cas sans aucune exclusion : sans lui, un bouton rendu en PERMANENCE passe
 ### `UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT` — 2026-09-15
 
 Marc : « j'ai beaucoup trop de doublons que j'arrive pas à enlever […] c'est vraiment pas
-efficace ». Mesuré sur **321 de ses transactions réelles** (01/07 → 14/09, lues par le MCP,
+efficace ». Mesuré sur **quelques centaines de ses transactions réelles** (01/07 → 14/09, lues par le MCP,
 re-dérivable par `scripts/mesureDoublons.ts`) : il avait raison, et pas là où je le croyais.
 
 `findDuplicateGroups` groupe sur « montant exact + dates proches » et **ignore le marchand PAR
@@ -5816,9 +5816,9 @@ né de DEUX SOURCES d'import porte deux libellés et que la dédup par clé `dat
 laisse justement passer. Le raisonnement est juste. Mais écarter un signal du CRITÈRE et le jeter
 complètement sont deux choses différentes, et c'est la seconde qui avait été faite.
 
-Mesuré, ça groupait à 3 jours de tolérance : **`OnlyFans −100 $` ↔ `Bill payment /Carte de crédit
-−100 $` ↔ `Interac e-Transfer to /Maxime −100 $`**, plus `Santos E Carvalho ↔ Uber` (−17) et
-`Tim Hortons ↔ Cell To Singul` (−4,59). **3 groupes sur 10.** Les montants ronds collisionnent : ils
+Mesuré, ça groupait à 3 jours de tolérance : **un abonnement à montant rond ↔ un paiement de carte de crédit
+du même montant ↔ un virement Interac du même montant**, plus deux autres paires de
+marchands sans rapport au même montant. **3 groupes sur 10.** Les montants ronds collisionnent : ils
 sont partagés par des dépenses qui n'ont rien à voir.
 
 **Le correctif ne renverse pas la décision, il déplace le signal d'ÉTAGE** : le marchand reste hors
@@ -5840,24 +5840,24 @@ l'utilisateur regarde n'existe pas pour lui. Le badge ne compte que les groupes 
 concordant : un compteur gonflé par du faux referait le tort qu'on vient de corriger.
 
 ⚠️⚠️ **Ma perturbation est restée MUETTE, et c'était une REDONDANCE, pas un test faible.** Retirer la
-règle qui efface les n° de succursale (`\d{3,}`) laissait mon témoin `MCDONALD'S 40044` ↔
-`McDonald's` **vert** : `slice(0, 2)` coupe déjà après « mcdonald s », donc le numéro ne tombe jamais
+règle qui efface les n° de succursale (`\d{3,}`) laissait mon témoin `<CHAÎNE>'S <n° de succursale>` ↔
+`<Chaîne>'s` **vert** : `slice(0, 2)` coupe déjà après « <chaîne> s », donc le numéro ne tombe jamais
 dans la clé. Le témoin qui DISCRIMINE est celui où le numéro est dans les deux premiers jetons —
-`MAXI 8676` ↔ `Maxi`, deux vrais libellés de son état. **Un témoin doit exercer la règle qu'il
+`<ÉPICERIE> <n° de succursale>` ↔ `<Épicerie>`, deux vrais libellés de son état (anonymisés ici). **Un témoin doit exercer la règle qu'il
 prétend défendre, pas seulement la traverser** (récidive de
 `UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE`, cette fois sur une règle
 ANCIENNE dans une fonction neuve).
 
-⚠️ **Et les trous de la clé s'ÉCRIVENT** : elle rate `Maxi 8664 Baie` ↔ `Maxi` (la VILLE occupe le
-2ᵉ jeton) et `UBER CANADA/UBEREATS` ↔ `Uber Eats`. Ça ne coûte rien — elle CLASSE, elle ne regroupe
+⚠️ **Et les trous de la clé s'ÉCRIVENT** : elle rate `<Épicerie> <n°> <Ville>` ↔ `<Épicerie>` (la VILLE occupe le
+2ᵉ jeton) et `<MARQUE> CANADA/<SERVICE>` ↔ `<Service>`. Ça ne coûte rien — elle CLASSE, elle ne regroupe
 pas, donc un trou vaut une confiance `faible`, jamais un doublon perdu. Un test les épingle, avec
 son contrôle inverse (trois appariements qui, eux, marchent) : sans lui, une clé qui ne rapprocherait
 plus JAMAIS rien passerait le test des trous.
 
 ⚠️⚠️ **Ma question en clic a été réfutée par une réponse en TEXTE LIBRE, pour la deuxième fois.**
-J'avais proposé, sur les `7× Metro Rj Rio De −7,90 $` du même jour : « sept vrais trajets » ou « six
+J'avais proposé, sur les sept billets de métro identiques du même jour : « sept vrais trajets » ou « six
 doublons ». Marc a répondu **« 2 vrais achetés »** — ni l'un ni l'autre. Ma recommandation penchait
-franchement vers « vrais trajets » (à ~7,90 R$ le titre de métro, c'était le raisonnement) et elle
+franchement vers « vrais trajets » (d'après le prix du titre de métro, c'était le raisonnement) et elle
 était **fausse**. Un menu binaire sur une quantité force un faux dilemme : la bonne forme aurait été
 « combien sur les sept ? ». Corollaire livré : le panneau laisse décocher ligne par ligne, donc
 garder 2 sur 7 reste possible — mais la SUGGESTION par défaut (garder 1, marquer le reste) ne peut
@@ -5867,17 +5867,17 @@ pas connaître ce nombre, et c'est pour ça que rien n'est marqué automatiqueme
 par le panel de revue APRÈS que le lot ait été jugé fini, gate vert et CI verte.** La clé gardait les
 **deux premiers jetons** du libellé. Or les deux formats les plus courants d'un relevé bancaire
 québécois placent le bénéficiaire en **troisième** position : mesuré sur le vrai code,
-`Interac e-Transfer to /Maxime /` et `… /Julie /` rendaient tous deux `interac e`,
+`Interac e-Transfer to /<Prénom A> /` et `… /<Prénom B> /` rendaient tous deux `interac e`,
 `Bill payment - Hydro Quebec` et `… Bell Canada` tous deux `bill payment`, `Ch 4521` et `Ch 9981`
 tous deux `ch`. Donc **deux virements Interac réels et distincts** au même montant le même jour
 sortaient en confiance `haute` et **pré-cochés** — exactement la régression money-critical que ce lot
 existait pour empêcher, réintroduite une marche plus bas. Le correctif est le même geste que pour les
 passerelles de paiement (`GOOGLE *`, `SQ *`) : retirer les jetons de CANAL (chèque, Interac, virement,
 paiement de facture, retrait, prélèvement) **avant** la troncature, ce qui fait remonter le
-bénéficiaire (`maxime`, `hydro`) — et une clé devenue VIDE (un n° de chèque ne nomme personne) vaut
+bénéficiaire (`<prénom a>`, `hydro`) — et une clé devenue VIDE (un n° de chèque ne nomme personne) vaut
 « je ne sais pas », donc `faible`. **Devant une clé qui tronque, demander quels libellés du domaine
 mettent l'information discriminante APRÈS la troncature.** La garde d'accompagnement a besoin de son
-anti-vacuité : sans l'assertion « le bénéficiaire est bien RÉVÉLÉ » (`… → 'maxime'`), un retrait qui
+anti-vacuité : sans l'assertion « le bénéficiaire est bien RÉVÉLÉ » (`… → '<prénom a>'`), un retrait qui
 effacerait TOUT satisferait les trois assertions « restent `faible` » sans rien prouver.
 
 ⚠️ **Et j'ai exporté un second `merchantKey` alors qu'un `merchantKey` existait déjà** dans
@@ -5903,12 +5903,12 @@ décisions distinctes** ; quand on ne peut pas faire la première sans la second
 ### `LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION-SE-VERIFIE-AVANT-D-ETRE-OFFERT` — 2026-09-14
 
 Marc, trois mots : « j'arrive pas à les marquer en doublon ». J'avais passé le tour précédent à
-lui **demander** de marquer 44 transactions en doublon — l'étape dont dépendait tout le correctif
+lui **demander** de marquer une quarantaine de transactions en doublon — l'étape dont dépendait tout le correctif
 du défaut de devise (`UNE-GARDE-QUI-LIT-UNE-ETIQUETTE-NE-VOIT-PAS-UNE-VALEUR-MAL-ETIQUETEE`).
 
 **Il avait raison, et le bouton n'existait pas pour son cas.** Recensé dans le code : le SEUL point
 d'entrée vers `isDuplicate` dans l'app est `DuplicatesPanel`, qui ne rend QUE les groupes trouvés
-par le DÉTECTEUR (`findDuplicateGroups` : même montant, date proche). Or ses 44 lignes ne sont le
+par le DÉTECTEUR (`findDuplicateGroups` : même montant, date proche). Or ses lignes ne sont le
 doublon de **rien** — elles sont uniques, juste au mauvais montant. Elles ne pouvaient donc
 apparaître dans aucun groupe : la marque était inatteignable pour la CLASSE entière « ligne unique
 dont le montant est faux », pas seulement pour lui ce jour-là.
@@ -5945,8 +5945,8 @@ interchangeables : ce qu'elles AFFIRMENT diffère, et c'est l'affirmation qui su
 ⚠️ **Une correction par transaction COMPENSATOIRE aurait été un no-op déguisé en correctif** —
 écarté par la MESURE, pas par le raisonnement. `computeMonthlyActualAverages` ne compte un montant
 POSITIF que dans deux cas : catégorie `Salaire`/`Revenus divers` (→ revenu), ou `isCreditBack`
-(catégorie ∈ `CREDIT_BACK_CATEGORIES`, qui ne contient QUE `'Remboursement'`). Un `+5,72 $` posé
-en « Transport » pour annuler un `−7,90 $` est **purement ignoré** ; en « Remboursement », le net
+(catégorie ∈ `CREDIT_BACK_CATEGORIES`, qui ne contient QUE `'Remboursement'`). Un crédit correctif posé
+en « Transport » pour annuler l'excédent d'une dépense est **purement ignoré** ; en « Remboursement », le net
 du poste est planché par `Math.max(0, spent − credit)`, donc absorbé. Les deux voies laissent le
 budget exactement aussi faux, avec l'apparence d'une réparation. ⚠️ Nuance qui compte : le **cash**,
 lui, aurait bougé — `computeCashLedger` somme TOUTES les transactions sans filtre de catégorie
@@ -5960,7 +5960,7 @@ pas défaire un ajout (aucun outil ne supprime une transaction) — une demi-cor
 sert QU'à `handleAutoCategorizeAll` ; (2) `handleMarkTransfers` existe et n'est câblé qu'au
 `TransfersPanel`, donc lui aussi limité aux paires du détecteur ; (3) la case « tout sélectionner »
 de l'en-tête ne couvre que `paginatedTransactions` — **50 lignes**, alors que le cas réel en compte
-44 réparties sur plusieurs pages une fois l'historique complet. Sans ce troisième point, j'aurais
+une quarantaine, réparties sur plusieurs pages une fois l'historique complet. Sans ce troisième point, j'aurais
 livré un bouton qui ne résout pas le cas qui l'a fait naître : d'où « Sélectionner les N
 **filtrées** ». **Le dimensionnement d'un correctif d'UI se prend sur le cas RÉEL qui l'a
 déclenché, jamais sur la fixture à trois lignes du test.**
@@ -5987,12 +5987,12 @@ contrat** ») pointait vers le mauvais :
 
 | Solde écrit | Taux | Éteinte en | Total versé |
 |---|---|---:|---:|
-| coût capitalisé (48 405,23 $) | 6,59 % (contrat) | 56 mois | — |
-| versements restants (47 168,67 $) | 6,59 % (contrat) | 54 mois | 54 591,90 $ |
-| **versements restants** | **0 %** | **47 mois** | **47 168,67 $** ✅ |
+| coût capitalisé | taux du contrat | 56 mois | — |
+| versements restants | taux du contrat | 54 mois | ≈ +16 % du solde |
+| **versements restants** | **0 %** | **47 mois** | **le solde exact** ✅ |
 
-Le reste réel du bail est de **46,4 mois** et **47 168,67 $**. Saisir le taux du contrat coûtait donc
-**+7 mois et +7 423 $ de versements fantômes**, parce qu'un versement de bail **contient déjà
+Le reste réel du bail est de **46,4 mois**, pour exactement la somme des versements restants. Saisir le taux du contrat coûtait donc
+**+7 mois et ≈ 16 % de versements fantômes**, parce qu'un versement de bail **contient déjà
 l'intérêt** : le solde « somme des versements restants » est tout-compris, et le multiplier par un
 taux compte l'intérêt une seconde fois.
 
@@ -6003,27 +6003,27 @@ diffèrent que par ce qui a déjà été incorporé — c'est la même famille q
 contre annuel), sur l'axe de l'INTÉRÊT au lieu du temps.
 
 ⚠️ **Corollaire de conduite** : suivre l'instruction à la lettre (« par rapport au contrat ») aurait
-inventé 7 423 $. Une consigne d'utilisateur nomme un RÉSULTAT (« que mes comptes soient à jour »),
+inventé environ 16 % de versements fantômes. Une consigne d'utilisateur nomme un RÉSULTAT (« que mes comptes soient à jour »),
 pas une valeur de champ — et quand la valeur littérale contredit le résultat, c'est le résultat qui
-gagne, en le DISANT. Ici le 6,59 % n'est pas perdu : il est consigné dans la doc, où il décrit le
+gagne, en le DISANT. Ici le taux du contrat n'est pas perdu : il est consigné dans la doc, où il décrit le
 contrat sans piloter un calcul.
 
 ⚠️ **Et le plus gros écart n'était pas celui qu'on cherchait** : le `minimumPayment` de cette dette
-valait **220 $/mois** pour un véhicule qui coûte **1 016,90 $/mois**. Ni le contrat ni la devise n'y
+valait **à peine plus d'un cinquième** de ce que le véhicule coûte **par mois**. Ni le contrat ni la devise n'y
 étaient pour quelque chose — une vieille saisie. Mesuré juste après l'écriture : patrimoine net
-212 609 → 215 440 $, dépenses mensuelles 3 718 → 4 554 $, **cashflow 2 370 → 1 534 $**. Quand on
+en légère hausse, dépenses mensuelles ≈ +22 %, **cashflow ≈ −35 %**. Quand on
 ouvre un objet pour corriger un champ, **relire tous ses champs** : celui qui fait le plus de dégâts
 n'est pas forcément celui qui a motivé l'ouverture.
 
 ### `UN-MENU-IMPOSE-SA-PREMISSE-A-LA-REPONSE` — 2026-09-14
 
 J'ai posé à Marc quatre questions en clic sur sa dette auto : « le prêt doit démarrer quand ? »,
-« ce 50 000 $, c'est le montant EMPRUNTÉ ou le solde ? », « la dette doit descendre selon quoi ? ».
+« ce montant saisi, c'est le montant EMPRUNTÉ ou le solde ? », « la dette doit descendre selon quoi ? ».
 Il a répondu aux trois. Puis il a envoyé le contrat : c'est un **BAIL** (« Offre de Location »),
 pas un prêt.
 
 Aucune de mes questions n'était répondable. Il n'y a pas de « montant emprunté » dans un bail, pas de
-solde qui descend vers zéro (il descend vers une **valeur résiduelle**, 17 746,40 $ ici), et le moteur
+solde qui descend vers zéro (il descend vers une **valeur résiduelle**), et le moteur
 REFUSE explicitement d'amortir un bail — `KIND_AMORTISSANT['auto-lease'] = false`, avec sa raison
 écrite dans le code. Marc a répondu de bonne foi *à l'intérieur* du cadre que je lui imposais, et ses
 réponses ne veulent rien dire hors de ce cadre.
@@ -6041,17 +6041,17 @@ dans sa réponse, trois secondes avant que j'aille chercher le contrat.
 
 ⚠️ **Corollaire de MESURE — une lecture d'image se vérifie par l'arithmétique.** Le contrat porte
 « TERME 48 » à côté de « VERSEMENT … CHAQUE SEMAINE » : 48 semaines ou 48 mois ? Le calcul tranche
-sans ambiguïté — sur 208 semaines, le versé avant taxes (39 524 $) colle à la dépréciation + intérêt
-attendue (39 378 $) à **+0,4 %**, alors qu'un terme de 60 mois donne **+18,9 %**. Et le contrôle qui
-valide la lecture ELLE-MÊME est plus simple encore : 190,02 + 28,45 = 218,47 au cent près, exactement
+sans ambiguïté — sur toute la durée, le versé avant taxes colle à la dépréciation + intérêt
+attendue à **+0,4 %**, alors qu'un terme de 60 mois donne **+18,9 %**. Et le contrôle qui
+valide la lecture ELLE-MÊME est plus simple encore : versement hors taxes + taxes = versement total au cent près, exactement
 le « versement total » imprimé. Deux nombres lus séparément qui se recomposent en un troisième lu
 ailleurs, c'est une lecture PROUVÉE, pas devinée.
 
 ⚠️ **Et le document qu'on vous envoie n'est pas forcément celui qui s'applique** : le contrat dit
-218,47 $/semaine, les prélèvements bancaires mesurés disent **234,67 $** — **+7,4 %, 842 $/an**. Le
+un versement hebdomadaire, les prélèvements bancaires mesurés disent **≈ +7,4 %**. Le
 titre le laissait entendre (« **Offre** de Location »). Quand une pièce justificative et la réalité
 mesurée divergent, publier les DEUX avec leur écart, jamais en choisir une en silence : ici le choix
-vaut 70 $/mois sur quatre ans.
+vaut plusieurs dizaines de dollars par mois sur quatre ans.
 
 ⚠️ **Corollaire de VIE PRIVÉE, découvert en voulant consigner le contrat** : le dépôt FinanceAI est
 **PUBLIC** (`githubRepoVisibility: "public"`, lu dans les métadonnées de déploiement). Un contrat
@@ -6073,8 +6073,8 @@ Elle n'a jamais tiré une seule fois. Non parce qu'elle est mal écrite, mais pa
 est, lui, dans la devise de la TRANSACTION. La garde interroge le seul champ qui ne varie pas.
 
 Mesuré sur les vraies données de Marc, en appariant une à une ses transactions d'un voyage au Brésil
-à son relevé de carte (qui fait foi, en CAD) : **44 transactions, 3 875,43 $ importés contre
-1 338,12 $ facturés — +2 537,31 $, soit +189,6 %**.
+à son relevé de carte (qui fait foi, en CAD) : **une quarantaine de transactions, importées à près de trois fois
+le montant facturé (≈ +190 %)**.
 
 **La règle** : une garde qui filtre sur une ÉTIQUETTE (devise, type, unité, `kind`, `source`) ne
 protège que si l'étiquette est produite par la même chose que la valeur. Quand elles viennent de deux
@@ -6085,12 +6085,12 @@ Le seul recoupement qui vaut est une grandeur INDÉPENDANTE (ici le solde du com
 donne bien en CAD), jamais un autre champ du même enregistrement.
 
 ⚠️ **Le défaut allait dans les DEUX sens**, et le dire de travers aurait suffi à mal le classer :
-39 lignes en BRL SURÉVALUÉES (ratio mesuré 3,567 à 3,624) mais **5 lignes en USD SOUS-évaluées**
+la plupart des lignes en BRL SURÉVALUÉES (ratio mesuré 3,567 à 3,624) mais **5 lignes en USD SOUS-évaluées**
 (1,417 à 1,427). « Ça gonfle les dépenses » est une description fausse d'un défaut qui déplace les
 montants dans les deux directions.
 
 ⚠️ **Le contrôle négatif était DANS les données, pas à fabriquer** : trois marchands brésiliens
-(Netuno Tours, Farm Ipanema, Fresh E Good) tombent au CENT près sur le relevé. Explication cohérente :
+tombent au CENT près sur le relevé. Explication cohérente :
 conversion au terminal (DCC), donc facturés en CAD à l'origine. C'est ce contrôle qui réfute
 l'heuristique tentante — « le libellé dit BRA, donc c'est du réal » : le défaut suit la devise
 d'ORIGINE, pas le pays. Un scan sur la `description` aurait « corrigé » trois montants déjà justes
@@ -11745,7 +11745,7 @@ devra faire BAISSER.
 
 `UN-CHIFFRE-JUSTE-PEUT-ETRE-ILLISIBLE`
 
-Marc : « je vois une chute de 10k aujourd'hui jsp pourquoi ». Le réflexe est de chercher une erreur
+Marc : « je vois une chute de [montant retiré] aujourd'hui jsp pourquoi ». Le réflexe est de chercher une erreur
 de calcul. Il n'y en a pas : le dernier point du passé est reconstruit en DÉFAISANT les flux du jour
 (`veille = aujourd'hui − flux_du_jour`), donc il montre le solde d'avant le paiement d'hypothèque du
 matin. Les deux points sont exacts, la marche entre eux est réelle, et l'argent est bien sorti. Ce
@@ -13345,7 +13345,7 @@ d'une autre zone qui porte le même attribut par coïncidence).
 ## `UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE-JETTE-LA-PLUS-LENTE` (2026-09-14)
 
 **Le symptôme rapporté** : Marc, 2026-09-14 — « on dirait que je reçois pas les transactions de carte
-de crédit avec Fintable ». Son dry-run prouve pourtant que Fintable en LIVRE **293** pour la
+de crédit avec Fintable ». Son dry-run prouve pourtant que Fintable en LIVRE plusieurs centaines pour la
 Mastercard (fenêtre 2026-06-16 → 2026-09-10). Le blocage est donc en aval, chez nous.
 
 **Le mécanisme.** La sync Fintable se protège des doublons par une **bascule** : seules les
@@ -13499,7 +13499,7 @@ l'après-midi, sur moi. J'ai proposé trois options pour le solde de la carte ; 
 la dette automatiquement » — celle que je déconseillais, et c'est son droit (une recommandation rend
 le choix rapide, elle ne le pré-décide pas). Mais l'option choisie **exigeait deux chiffres que mon
 menu n'avait jamais mis sur la table** : `applyDebt` demande `balance + interestRate +
-minimumPayment` pour CRÉER, et Fintable n'en fournit qu'un. Le taux existait (19,99 %, tranché par
+minimumPayment` pour CRÉER, et Fintable n'en fournit qu'un. Le taux existait (tranché par
 Marc le matin même) ; le paiement minimum n'a **aucun défaut dans le dépôt**, vérifié.
 
 ⚠️ Et sa réponse SUIVANTE, en texte libre — « je vire souvent de l'argent dessus … avoir de l'argent
@@ -13673,7 +13673,7 @@ ticket qui écrit « fix proposé : … » a fait la moitié du travail de mesur
 ### Ce qui a été livré, et pourquoi pas le repli `null`
 
 Le repli global est GARDÉ. L'ouvrir à `null` aurait un coût CONCRET, pas théorique :
-`applyBankStatement` déduplique par `date|montant|payee`, or les 44 lignes du Brésil ont été
+`applyBankStatement` déduplique par `date|montant|payee`, or les lignes d'un voyage à l'étranger ont été
 corrigées À LA MAIN la veille (montants changés, libellés suffixés) — une passe non bornée les
 rejouerait donc aux **mauvais** montants sans qu'aucune dédup ne les reconnaisse. La leçon
 `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL` d'hier devient ici une contrainte de
@@ -13761,7 +13761,7 @@ MESURÉ sur les vrais modules (`mapFintableSnapshot` + `applyPayloadsIsolated`, 
 réellement ÉCRIT) : carte dont la dernière ligne étiquetée date du 09-05, trois dépenses réécrites à
 la main les 09-08/09-10/09-12 sans `accountName` → **3 doublons écrits sans le plancher, 0 avec**.
 
-⚠️ Et le cas n'était pas théorique : les **36 lignes du Brésil réécrites la veille** l'ont été sans
+⚠️ Et le cas n'était pas théorique : les **lignes du voyage réécrites la veille** l'ont été sans
 `accountName` et avec des montants CORRIGÉS — donc une clé différente des originaux. Le lot pouvait
 refabriquer les dépenses fantômes qu'il avait fallu deux jours pour retirer.
 
@@ -13856,9 +13856,9 @@ survit à sa mesure devient PERMANENT, donc mort — exactement ce que ce ticket
 et non à supprimer (`UN-INVENTAIRE-DE-DETTE-DOIT-SAVOIR-MOURIR`).
 
 ⚠️⚠️ **Le panel a corrigé un CHIFFRE que j'avais publié, et c'est le vrai coût du lot.** Le ticket —
-puis mes docs, qui le recopiaient — annonçaient « patrimoine net faux de **400 $** » pour une carte
-à 200 $ en crédit : 200 $ de dette inventée *plus* 200 $ d'actif manquant. Re-mesuré sur le code :
-l'écart **réparable par la correction de signe** est **200 $**. Les 200 $ que l'émetteur doit ne sont
+puis mes docs, qui le recopiaient — annonçaient « patrimoine net faux de **2C** » pour une carte
+à C en crédit : C de dette inventée *plus* C d'actif manquant. Re-mesuré sur le code :
+l'écart **réparable par la correction de signe** est **C**. Les C que l'émetteur doit ne sont
 représentables par **aucune** convention aujourd'hui — `applyDebt` refuse tout solde `<= 0`
 (`mcp/ingest/applyDocument/debt.ts:50`), donc l'app n'a pas d'endroit où mettre une carte en crédit.
 **Annoncer 2C quand seul C est réparable promet une réparation dont la moitié n'existe pas** : c'est
@@ -13950,7 +13950,7 @@ passé à attendre un gate en double est du temps qui n'allait pas là où la va
 `mapSnapshot.ts` portait, depuis toujours et sans mesure, « un solde de carte de crédit se lit
 *montant DÛ* : on le porte en positif », avec `const owed = Math.abs(account.balance)`. L'étape 1 de
 `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` a publié le SIGNE (jamais le montant) et la première passe
-réelle a rendu **`« Desjardins Cash Back Mastercard (5020) » → positif`**. Marc, interrogé sur cette
+réelle a rendu **`« <carte de crédit> » → positif`**. Marc, interrogé sur cette
 passe : **« c'est en ma faveur »**. L'hypothèse est **RÉFUTÉE** : Fintable écrit `négatif = dû`.
 
 **Ce que l'épisode enseigne n'est pas la convention, c'est POURQUOI une seule observation a suffi.**
@@ -13973,7 +13973,7 @@ un biais (`NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR`).
 
 ⚠️ **Le défaut n'avait encore rien coûté, et il fallait le dire.** Aucune dette n'est associée à
 cette carte (`[FINTABLE-CARTE-SANS-DETTE]` : `debtName` vide = « importe les transactions, ne touche
-à aucun solde »), donc la dette fantôme de 200 $ n'a **jamais été écrite**. Annoncer un patrimoine
+à aucun solde »), donc la dette fantôme n'a **jamais été écrite**. Annoncer un patrimoine
 faux aurait été aussi inexact que de taire le mécanisme : un défaut RÉEL et un défaut ATTEINT sont
 deux états distincts, et seul le second se chiffre.
 
@@ -13986,13 +13986,13 @@ inversé est plus dangereux qu'un commentaire absent — il dispense la prochain
 
 `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL` impose de vérifier la précondition **par
 ligne** : les quatre originaux devaient être exclus des calculs avant d'importer leurs montants
-corrigés. Vérification faite — `A.saily`, `Duty Free New Departur` et `*BRUTTITO TERMINAL` ne
-ressortent plus de `search_transactions`, qui EXCLUT les lignes marquées. Mais `Smartcar Mountain`,
+corrigés. Vérification faite — trois des quatre marchands concernés ne
+ressortent plus de `search_transactions`, qui EXCLUT les lignes marquées. Mais le quatrième marchand,
 elle, **ressortait**.
 
-Lu vite, ça disait « pas marquée → ne pas réimporter, suspendre 11,18 $ ». Lu correctement, la ligne
-rendue était du **`2026-08-06` pour `−4,40 $`**, quand celle à corriger est du **`2026-09-01` pour
-`7,84 $`** : **deux transactions distinctes chez le même marchand**, la seconde arrivée le jour même
+Lu vite, ça disait « pas marquée → ne pas réimporter, suspendre ce montant ». Lu correctement, la ligne
+rendue portait **une autre date et un autre montant** que celle à corriger
+: **deux transactions distinctes chez le même marchand**, la seconde arrivée le jour même
 avec le rattrapage d'historique. La précondition était remplie ; c'est ma lecture qui ne l'était pas.
 
 **Une recherche par MARCHAND répond à « ce marchand a-t-il des lignes actives ? », jamais à « CETTE
@@ -14000,7 +14000,7 @@ ligne est-elle encore active ? ».** L'identité d'une transaction est le couple
 marchand n'est qu'un filtre. Le piège se referme précisément quand un lot d'import vient d'élargir
 l'historique : un marchand récurrent (abonnement, épicerie, transport) a soudain des homonymes
 partout, et un recensement écrit avant l'import devient faux sans que personne n'y touche. ⚠️ Et il
-est **asymétrique** : ici il faisait renoncer à un import légitime (coût visible, 11,18 $ manquants) ;
+est **asymétrique** : ici il faisait renoncer à un import légitime (coût visible, quelques dollars manquants) ;
 dans l'autre sens — conclure « 0 résultat donc marquée » sur un marchand dont la ligne n'a simplement
 jamais existé — il ferait **compter une dépense deux fois**, sans rien de rouge nulle part.
 
@@ -14051,7 +14051,7 @@ propre garde (`assetFxGuard`). C'était le piège.
 `toCurrencyFactor` **replie sur 1:1** quand le taux manque, et le journalise. C'est le bon
 comportement pour ce qu'il sert : un ACTIF affiché, où montrer une valeur sous-évaluée assortie
 d'une trace vaut mieux que faire disparaître la ligne. Appliqué au **solde du courtier**, le même
-repli donne 72 040 « CAD » pour 72 040 USD — faux d'environ 30 %, et présenté comme **l'autorité**
+repli donne N « CAD » pour N USD — faux d'environ 30 %, et présenté comme **l'autorité**
 sur le total du compte (« le montant du courtier fait autorité », choix Marc écrit dans le module).
 Le correctif aurait été pire que le défaut sur exactement la branche qu'il prétendait réparer.
 
@@ -14137,7 +14137,7 @@ impossible — les deux ont déjà coûté des livraisons (`DOC-STALE-IMPOSSIBIL
 
 Le lot `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` s'ouvre sur une leçon fière :
 `UN-REPLI-BON-POUR-UN-AFFICHAGE-EST-LE-PIRE-POUR-UNE-AUTORITE` — ne pas convertir avec
-`toCurrencyFactor`, dont le repli 1:1 donnerait 72 040 « CAD » pour 72 040 USD. Le correctif
+`toCurrencyFactor`, dont le repli 1:1 donnerait N « CAD » pour N USD. Le correctif
 interroge donc le taux explicitement. **Et il retombe dans le même piège un cran plus bas** :
 `DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 »), il est **toujours présent** dans
 l'état, et `fxRatesEstimated: true` existe précisément pour le dire (`[FX-FALLBACK-SILENCIEUX]`).
@@ -14192,12 +14192,12 @@ celles de fintable à ce moment […] faut bien convertir en cad ce qui est en u
 
 | position | quantité × prix natif | valeur CAD publiée | facteur implicite |
 |---|---|---|---|
-| NVDA | 90 × 214,40 USD = 19 296 USD | 27 014 | **1,4000** |
-| GBS.PA | 115 × 343,67 EUR = 39 522,05 EUR | 58 097 | **1,4700** |
+| un titre en USD | [retiré] | [retiré] | **1,4000** |
+| un titre en EUR | [retiré] | [retiré] | **1,4700** |
 
 1,4000 et 1,4700 au dix-millième, c'est-à-dire `DEFAULT_FX_RATES` **au caractère près**
-(« approximation Q1 2026 »). Et ses **douze** positions sont en USD ou en EUR, **aucune** en CAD :
-100 % des 231 882 $ de placements affichés reposaient sur un chiffre écrit en dur. C'était aussi la
+(« approximation Q1 2026 »). Et **toutes** ses positions sont en USD ou en EUR, **aucune** en CAD :
+100 % des placements affichés reposaient sur un chiffre écrit en dur. C'était aussi la
 vraie raison pour laquelle son compte courtier USD n'était pas converti — le lot de la veille avait
 correctement refusé de convertir avec un taux non fiable, sans que personne n'aille voir POURQUOI le
 taux n'était pas fiable.
@@ -14276,13 +14276,13 @@ pouvait rougir, aucun test ne juge ce qu'un écran PROMET
 
 Le point d'injection est UNIQUE — `deriveStartingBalancesFromHistory` → `liveCSVBalances` — et c'est
 ce qui rend le correctif faisable sans dispersion : il alimente à la fois le mois 0 du moteur et le
-point de départ de la courbe. **Mesuré**, un écart de 31 882 $ au départ (rendement 6 %) :
+point de départ de la courbe. **Mesuré**, un écart de plusieurs dizaines de milliers de dollars au départ (rendement 6 %) :
 
 | horizon | patrimoine sans | avec | écart | facteur |
 |---|---|---|---|---|
-| 5 ans | 444 150 $ | 486 488 $ | **+42 338 $** (+9,53 %) | ×1,33 |
-| 10 ans | 715 952 $ | 772 049 $ | **+56 097 $** (+7,84 %) | ×1,76 |
-| 20 ans | 1 740 602 $ | 1 839 084 $ | **+98 482 $** (+5,66 %) | ×3,09 |
+| 5 ans | [retiré] | [retiré] | **+9,53 %** | ×1,33 |
+| 10 ans | [retiré] | [retiré] | **+7,84 %** | ×1,76 |
+| 20 ans | [retiré] | [retiré] | **+5,66 %** | ×3,09 |
 
 ⚠️ Le POURCENTAGE baisse pendant que le FACTEUR monte : l'écart compose, mais la base grossit plus
 vite encore grâce aux cotisations. Publier l'un sans l'autre raconterait deux histoires opposées.
@@ -14339,15 +14339,15 @@ de son sens.
 dont le taux manque, dont le solde est illisible ou dont le régime n'est pas déclaré — trois listes
 existent pour qu'aucun ne disparaisse en silence. Mais `brokerTotalCad` est alors la somme des SEULS
 comptes retenus, et `appliquerAutoriteCourtier` ne voyait pas ces listes. Mesuré sur la chaîne
-réelle : Disnat CAD 30 000 $ + Disnat USD 72 040 $ écarté faute de taux — **exactement l'état de
-Marc tant que ses taux viennent du repli** — donnait un mois 0 à **30 000 $ au lieu de 231 882 $**.
+réelle : le compte Disnat CAD retenu + le compte Disnat USD écarté faute de taux — **exactement l'état de
+Marc tant que ses taux viennent du repli** — donnait un mois 0 amputé de **la majeure partie des placements**.
 La garde d'identité que j'avais écrite ne tenait que dans le cas TOUT-ou-RIEN ; le cas partiel, le
 plus probable, passait. **Un total partiel n'est pas une autorité dégradée, c'est un faux.**
 
 **🔴 Une base de FAMILLE écrite dans un panier ÉTROIT.** `holdingsCadByRegime` replie CELIAPP sur
 CELI et REEE sur REER (décision écrite, « même famille fiscale ») pendant que
 `deriveStartingBalancesFromHistory` les garde SÉPARÉS. Écrire le total « CELI » — comparé à
-CELI + CELIAPP — dans le seul panier `CELI` compte le CELIAPP **deux fois** : 91 500 $ pour 66 500 $
+CELI + CELIAPP — dans le seul panier `CELI` compte le CELIAPP **deux fois** : un total gonflé du solde CELIAPP entier par rapport aux montants
 réels. ⚠️ Le défaut vit dans l'ASYMÉTRIE entre deux modules : aucun des deux n'est faux tout seul.
 Et mon propre test **inscrivait la prémisse fausse** (« CELIAPP / REEE ne sont pas réconciliables »),
 vraie de la DÉCLARATION, fausse de la BASE DE COMPARAISON. Refusé plutôt que corrigé d'office : mettre
@@ -14401,10 +14401,10 @@ c'est pareil pas équivalent à ce que j'ai sur Fintable ». Mesuré sur ses tro
 
 | source | placements | écart vs somme des titres |
 |---|---|---|
-| Accueil / MCP (prix live × taux corrigés) | **245 687 $** | — |
-| Fintable réel (72 325,21 **US** × 1,3947 + 141 414,85 CA) | **242 287 $** | −3 400 $ (−1,4 %) |
-| Futur, mois 0 | **231 849 $** | −13 838 $ (−5,6 %) |
-| hubperso, « Placements (séance du 16 septembre) » | **217 767 $** | −27 920 $ (−11,4 %) |
+| Accueil / MCP (prix live × taux corrigés) | [référence] | — |
+| Fintable réel (solde **US** × 1,3947 + solde CA) | [retiré] | −1,4 % |
+| Futur, mois 0 | [retiré] | −5,6 % |
+| hubperso, « Placements (séance du 16 septembre) » | [retiré] | −11,4 % |
 
 **La cause n'était pas le change.** `buildMarketData` LAISSE TOMBER (`continue`) un titre détenu
 dont la queue de chandelles est périmée de plus de 7 jours sans quote fraîche pour la raccorder. Le
@@ -14428,7 +14428,7 @@ brancher un inventaire existant, vérifier qu'il couvre les dates/clés dont on 
 qu'il existe : d'où `omittedKeys`, peuplé à TOUTE date, à côté de son jumeau `syntheticTailKeys`.
 
 ⚠️ **Une DISPARITION se lit comme une variation.** hubperso publiait « Variation 7 jours :
-+60 229 $, **+38,2 %** » — un portefeuille ne fait pas +38 % en une semaine. Un titre absent du total
+**+38,2 %** » — un portefeuille ne fait pas +38 % en une semaine. Un titre absent du total
 il y a sept jours et présent aujourd'hui produit exactement ce chiffre, arithmétiquement juste et
 sémantiquement faux. **Une variation ne se compare qu'entre deux totaux portant les MÊMES membres** ;
 la contradiction était sur la même page, le hub calculant de son côté « +5,5 % sur 7 j » à partir de
@@ -14440,8 +14440,8 @@ laisse le compteur à zéro sur l'autre (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE
 chemin plutôt qu'à l'étage).
 
 ⚠️ **La carte se contredisait toute seule, et c'est ça qui l'a rendue trouvable.** Sa valeur nette
-(227 388 $) CONTIENT 245 687 $ de placements — 227 388 − 28 870 + 47 169 = 245 687 — pendant que la
-ligne juste en dessous en annonçait 217 767 $. Deux totaux inconciliables à trois centimètres l'un de
+CONTIENT les placements (valeur nette − liquidités + dettes = placements) — pendant que la
+ligne juste en dessous en annonçait un total plus bas d'environ 11 %. Deux totaux inconciliables à trois centimètres l'un de
 l'autre. Quand deux chiffres d'une même carte ne se recomposent pas, c'est une mesure, pas une
 impression : **faire l'arithmétique de la carte avant de chercher ailleurs**.
 
@@ -14465,9 +14465,9 @@ fenêtre glissante sans jamais lire l'inventaire. La dépendance a donc été re
 placée AVANT les paramètres à défaut — optionnelle, la production aurait pu l'oublier et reprendre
 la version muette en silence ; requise, le compilateur énumère les sites (4 ici).
 
-⚠️ **Découverte de chemin, pas du lot** : `Disnat (L7B1)` est libellé **en USD** dans Fintable (`$`
+⚠️ **Découverte de chemin, pas du lot** : le compte courtier Disnat est libellé **en USD** dans Fintable (`$`
 contre `C$` pour les comptes canadiens) — le compte que le code nomme déjà en commentaire
-(« 72 040 USD deviendraient 72 040 CAD, faux d'environ 30 % »). Comme la dernière synchro Fintable
+(« N USD deviendraient N CAD, faux d'environ 30 % »). Comme la dernière synchro Fintable
 précédait le correctif des taux, il a été écarté faute de taux fiable, le panier NON-ENREG s'est
 retrouvé amputé, et l'autorité courtier ne s'est pas appliquée. Le montant lu à l'écran (`$` vs `C$`)
 valait toutes les hypothèses.
@@ -14499,7 +14499,7 @@ deux replis tiraient ENSEMBLE, à chaque lecture, depuis toujours.
 | USD → CAD | 1,4000 | **1,3947** | −0,38 % |
 | EUR → CAD | 1,4700 | **1,6073** | **+9,34 %** |
 
-Soit **−102 $** sur NVDA et **+5 426 $** sur GBS.PA, deux des douze positions — toutes en USD ou EUR.
+Soit un écart d'environ −0,4 % sur ses titres en USD et de +9 % sur ses titres en EUR, pour des positions — toutes en USD ou EUR.
 
 ⚠️ **La leçon n'est pas « il fallait prendre `[1]` »** : ce serait le même défaut décalé d'un cran.
 Un INDEX sur une liste groupée par cohorte ne désigne rien. C'est la SÉRIE qu'on cherche, donc c'est
@@ -14659,7 +14659,7 @@ d'origine : `solde(t) = solde_actuel + versement × (mois restants)`, ancrée su
 **Ce qui est refusé, et pourquoi c'est la garde qui compte.** Un taux **non nul** sur un solde de bail
 signifie qu'on ignore ce que ce solde contient (versements restants ? capital restant ?) : cause
 dédiée `taux-sur-solde-tout-compris`, tracée. Une courbe plausible et fausse est pire que pas de
-courbe — et le coût du mauvais choix a déjà été mesuré : **+7 423 $ de versements fantômes**.
+courbe — et le coût du mauvais choix a déjà été mesuré : **plusieurs milliers de dollars de versements fantômes**.
 
 **Le plancher du futur n'est pas recopié**, délibérément : le moteur force
 `max(minimumPayment, intérêt + solde/300)` pour qu'une dette à paiement dérisoire finisse par
@@ -14683,8 +14683,8 @@ exemple périmé dans un commentaire se lit comme un fait.
 **Le même jour, le même défaut, l'autre producteur.** Le matin, `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` a
 fait préférer une cotation FRAÎCHE à une clôture PÉRIMÉE — **dans la boucle mensuelle**. La courbe
 que Marc regarde passe par `reconstructPortfolioHistoryDaily`, producteur DISTINCT du même registre,
-et gardait ses clôtures périmées. Mesuré sur son écran : dernier point à **233 618 $** de titres
-contre **245 771 $** au prix courant (≈ 12 100 $), sous un badge « **prix J−55** » qui NOMMAIT la
+et gardait ses clôtures périmées. Mesuré sur son écran : dernier point en titres sous-évalué d'environ 5 %
+par rapport au prix courant, sous un badge « **prix J−55** » qui NOMMAIT la
 cause sans que rien ne la corrige.
 
 C'est `MODULE-ECRIT-HORS-CHECKLIST` re-payée : *corriger « le producteur X a oublié Y » exige
@@ -14702,7 +14702,7 @@ ignoré (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
 
 ⚠️ **Corollaire de DIAGNOSTIC — 4ᵉ instance en deux jours.** *Quand deux chiffres d'un même écran ne
 se recomposent pas, c'est une mesure.* Ici l'inverse a servi : les DEUX cartes se recomposaient
-chacune (`28 870 + 233 618 − 46 152 = 216 336` côté Futur ; `245 771 + 28 870 − 47 169 = 227 472`
+chacune (`liquidités + titres − dettes = valeur nette`, vraie côté Futur comme
 côté hub), ce qui a immédiatement localisé l'écart **entre les deux bases de placement** au lieu de
 le faire chercher dans une addition. Faire l'arithmétique de l'écran est la première mesure, pas la
 dernière.
@@ -14738,7 +14738,7 @@ ce chemin, **et** on écrit « gate complet passé au commit » dans des message
 de PR où c'est FAUX. Sur ce chemin, **la CI est le seul gate** — c'est ce qu'il faut écrire.
 
 ⚠️ Corollaire de fixture, trouvé en écrivant la garde de traversée : mon premier jet portait la date
-RÉELLE du bail de Marc (`2026-07-20`) contre un `AUJ` figé au **2026-01** dans ce fichier de tests.
+RÉELLE du bail de Marc (une date de 2026) contre un `AUJ` figé au **2026-01** dans ce fichier de tests.
 Le refus `donnees-manquantes` était parfaitement JUSTE (on ne reconstruit pas un passé antérieur au
 début du prêt), et j'ai failli le lire comme un défaut de la chaîne MCP. **Une date de fixture se lit
 relativement à l'horloge du fichier, jamais recopiée du monde réel.**
@@ -14816,7 +14816,7 @@ et sa perturbation est exactement « rendre la série mensuelle à son ancienne 
 palier pendant que celle au JOUR descendrait : le défaut que le lot existe pour éviter, réintroduit
 par la porte de compatibilité. Le compilateur a énuméré les 60 sites.
 
-⚠️ Le versement dérivé vaut **234,67 $** au cent près — le prélèvement réel de Marc. Prendre
+⚠️ Le versement dérivé tombe au cent près sur le prélèvement réel de Marc. Prendre
 `365,25 / 7 = 52,18` périodes/an rendrait le total ANNUEL exact et chaque MARCHE fausse ; on préfère
 la marche, puisque c'est elle qui est observable sur un relevé. Écart assumé et écrit : ~0,35 %/an.
 
@@ -14847,7 +14847,7 @@ il DÉCIDE quels paniers sont repris au courtier, et il CALCULE un écart sur la
 
 ⚠️⚠️ **Et cette séparation a démasqué une garde qui ne pouvait pas tirer.** Le refus `famille-mixte`
 (« ne pas écrire un total courtier annoncé CELI quand un CELIAPP bien réel vit à côté » — mesuré
-91 500 $ affichés pour 66 500 $ réels) se lisait dans les SOLDES passés en entrée. Il répondait donc
+un total gonflé du solde CELIAPP entier) se lisait dans les SOLDES passés en entrée. Il répondait donc
 sur la base du moteur ; côté écran, dont la base replie CELIAPP sur CELI par construction
 (`BUCKET_OF`), l'entrée n'existe jamais et le test est faux **par construction**. La question « le
 CELIAPP porte-t-il quelque chose ? » est un **FAIT sur les avoirs**, pas sur une base : calculée une
@@ -14872,7 +14872,7 @@ Marc : « j'ai mis la dette à hebdomadaire mais ça devrait enlever de la dette
 quand je le paye et ce n'est pas le cas et ça n'enlève pas le bon montant ».
 
 **La cadence livrée trois heures plus tôt n'était pas en cause.** Vérifiée contre ses vrais
-prélèvements (`Toyota Financial −234,67 $`, huit lignes dans ses transactions) à dix dates : montant
+prélèvements (`Toyota Financial`, huit lignes dans ses transactions) à dix dates : montant
 exact au cent, et **nombre de marches juste partout** — écart 0 $. Seul subsiste un décalage de
 PHASE d'un jour (la grille part de `startDate`, le premier prélèvement réel tombe huit jours plus
 tard), invisible à l'échelle d'un graphe.
@@ -14880,10 +14880,10 @@ tard), invisible à l'échelle d'un graphe.
 Le défaut était ailleurs, et l'arithmétique l'a nommé sans ambiguïté :
 
 ```
-47 168,67 ÷ 234,67 = 201,0000 versements restants, EXACTEMENT
-201 + 7 = 208 = le bail complet (48 811,36 $)
+solde stocké ÷ versement = un nombre ENTIER de versements restants, EXACTEMENT
+restants + 7 = le nombre total de versements du bail
 ⇒ le solde stocké vaut après SEPT prélèvements. Il y en a eu HUIT.
-⇒ il reste 200 versements = 46 934,00 $
+⇒ il reste un versement de moins que ce que dit le solde stocké
 ```
 
 `Debt.balance` est un **instantané sans date, et rien ne l'avance**. Marc payait, l'écran ne bougeait
@@ -14900,7 +14900,7 @@ est inerte et le comportement reste bit-à-bit celui d'avant.
 
 ⚠️ **L'alternative évidente a été mesurée et ÉCARTÉE.** Recalculer le solde depuis la fin du terme
 (`versement × prélèvements restants`) semble supprimer le besoin de date : mesuré, ça rend
-**47 403 $** au lieu de 46 934 $ — le comptage de jours sur quatre ans dérive de **deux** versements.
+un solde trop haut — le comptage de jours sur quatre ans dérive de **deux** versements.
 Le solde saisi reste le meilleur FAIT du dossier ; il lui manque seulement son horodatage. Une
 reconstruction qui remplace un fait par une dérivation doit être mesurée CONTRE ce fait, pas adoptée
 parce qu'elle est plus élégante.
@@ -14915,7 +14915,7 @@ circule doit porter en elle-même la preuve qu'elle a déjà eu lieu.
 ⚠️ **Ma propre garde a réfuté ma propre prémisse, et c'est le seul rouge du lot.** J'avais écrit
 « le dernier point de la série du passé ÉGALE le solde d'aujourd'hui ». Faux par conception : le
 point du mois `m` vaut le solde au PREMIER JOUR de ce mois, donc le dernier point mensuel portait
-**47 403,34** contre 46 934,00 — les deux prélèvements du mois en cours. Le raccord se lit au JOUR,
+un solde supérieur à celui du jour — les deux prélèvements du mois en cours. Le raccord se lit au JOUR,
 où il est exact (supplément NUL à aujourd'hui). Une garde écrite d'après ce qu'on croit savoir d'un
 module qu'on vient d'écrire vaut une relecture de ce module.
 
@@ -14925,8 +14925,8 @@ module qu'on vient d'écrire vaut une relecture de ce module.
 plus tôt le même jour, appliquée au moment où elle sert : la garde est le FILET, pas le processus.
 
 ⚠️ **Et la déduction a été confirmée au cent par une observation indépendante** : l'écriture MCP a
-rendu `before: 47168.67`, valeur que j'avais dérivée de `201 × 234,67` sans jamais l'avoir lue
-(l'app n'expose que l'arrondi, 47 169 $). Une déduction arithmétique EXACTE — un quotient entier à
+rendu une valeur `before` exacte au cent, que j'avais dérivée de `restants × versement` sans jamais l'avoir lue
+(l'app n'expose que l'arrondi au dollar). Une déduction arithmétique EXACTE — un quotient entier à
 quatre décimales — est une mesure, pas une estimation ; mais c'est l'observation qui l'a close.
 
 ⚠️⚠️ **Et la CI a trouvé la suite : une ESTAMPILLE technique alimente un COMPTEUR humain.**
@@ -14962,7 +14962,7 @@ La veille, j'avais écrit le ticket moi-même : « afficher la date **sous le so
 stocké** — `startEdit` le remplace par `soldeDetteAujourdhui(d, todayIso)`, c'est-à-dire la valeur
 déjà ramenée à aujourd'hui, et un commentaire du lot précédent explique pourquoi (montrer
 l'instantané pendant que le badge « Total dû » affiche le corrigé mettrait deux chiffres de la même
-dette sur le même écran). Écrire « solde au 9 sept. » à côté d'un champ qui montre la valeur du 18
+dette sur le même écran). Écrire « solde au <jour de saisie> » à côté d'un champ qui montre la valeur du 18
 aurait donc **contredit le champ juste au-dessus**.
 
 C'est `UN-CHIFFRE-QUI-SERT-DE-DENOMINATEUR-N-EST-PAS-UN-CHIFFRE-AFFICHE` (le remède prescrit est
@@ -15017,13 +15017,13 @@ elle continue de descendre les semaines où rien n'a été prélevé, et elle pl
 les transactions ne connaissent pas.
 
 **Ce qui rend ce défaut invisible n'est pas qu'il soit petit, c'est qu'il soit LOCALISÉ.** Mesuré
-sur ses huit vrais prélèvements (`Toyota Financial −234,67 $`, 28 juil. → 15 sept.) :
+sur ses huit vrais prélèvements (`Toyota Financial`, sur environ deux mois) :
 
 | point du mois | virements RÉELS | grille MODÉLISÉE | écart |
 |---|---|---|---|
-| juillet   | 48 811,36 $ | 49 046,02 $ | **234,66 $** |
-| août      | 48 576,69 $ | 48 576,68 $ | 0,01 $ |
-| septembre | 47 403,34 $ | 47 403,34 $ | 0,00 $ |
+| juillet   | [retiré] | [retiré] | **un versement entier** |
+| août      | [retiré] | [retiré] | 0,01 $ |
+| septembre | [retiré] | [retiré] | 0,00 $ |
 
 Deux points sur trois coïncident **au cent près**. Le modèle a raison partout où le regard tombe
 naturellement — le présent, le mois dernier — et se trompe d'un versement entier au point le plus
@@ -15043,10 +15043,10 @@ sans rien de visible — `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` dans sa forme p
 `lieeAUnPayee` : une dette liée qui ne peut pas lire ses virements reste **PLATE**, jamais modélisée.
 La perturbation de cette garde (retirer la branche plate) rougit 1 test sur 22.
 
-⚠️ **Le CONTRÔLE NÉGATIF était DANS les données, et il valait 1 279,79 $.** À côté des huit
-`Toyota Financial`, Marc a deux lignes `Ste Foy Toyota Quebec` (−500,00 $ et −779,79 $) : le
+⚠️ **Le CONTRÔLE NÉGATIF était DANS les données, et il n'était pas négligeable.** À côté des huit
+`Toyota Financial`, Marc a deux lignes d'un concessionnaire de la même marque : le
 CONCESSIONNAIRE, pas le financement. Un appariement lâche — « le libellé contient toyota », la forme
-qu'on écrit sans y penser — aurait retiré ces 1 279,79 $ de sa dette. Aux yeux d'un humain pressé,
+qu'on écrit sans y penser — aurait retiré ces achats de sa dette. Aux yeux d'un humain pressé,
 c'est le même marchand ; c'est exactement pourquoi aucun cas nominal ne l'aurait révélé.
 L'appariement est donc **EXACT**, et la perturbation qui le relâche rougit **10 tests sur 22**.
 
@@ -15062,7 +15062,7 @@ fixtures ont toujours des libellés propres. ⚠️ Corollaire de mesure : pertu
 de dénormaliser le matcher côté DETTE.
 
 ⚠️ **La conséquence assumée se DIT à l'écran, sinon elle est indiscernable d'un bug.** Avant le plus
-ancien virement importé (28 juillet, alors que le bail commence le 14), la courbe reste PLATE :
+ancien virement importé (quelques semaines après le début du bail), la courbe reste PLATE :
 l'app ne sait rien de ce qui a été payé avant que ses transactions ne commencent. Marc l'a choisi
 explicitement (« suivre les vrais virements, point »), et la phrase du formulaire compte les
 virements déduits et nomme le dernier jour — un écran qui masque sans le dire est indiscernable
@@ -15093,8 +15093,8 @@ atteindre.
 dette EST économiquement un virement ; l'exclure ferait cesser la déduction le jour où Marc classe
 ses paiements, en silence »). Le raisonnement est juste sur son objet et **faux sur le patrimoine
 net** : le registre du CASH exclut `isTransfer` partout, donc une dette qui l'inclut descend sans
-que l'actif descende. Mesuré : **−25 291,31 $ au lieu de −27 168,67 $, soit 1 877,36 $ CRÉÉS**, et
-234,67 $ de plus par semaine (≈ 12 203 $/an). `isDuplicate` marqué servait de contrôle et conservait
+que l'actif descende. Mesuré : **un patrimoine CRÉÉ égal à la somme des virements marqués**, et
+un versement de plus chaque semaine. `isDuplicate` marqué servait de contrôle et conservait
 au cent près. `ΔNW == ΔΣactifs − ΔΣdettes` tranche le débat que le raisonnement ne pouvait pas
 trancher. ⚠️ Et l'arbitrage « silencieux contre visible » avait été fait à l'envers : le coût de
 l'ALIGNEMENT est visible (la dette cesse de descendre, et l'écran le nomme), celui du défaut ne
@@ -15105,7 +15105,7 @@ La branche « virements réels » n'a besoin ni de `minimumPayment`, ni de caden
 un virement porte sa date et son montant. J'ai retiré la première de la garde d'entrée et laissé les
 deux autres : `soldeDetteAujourdhui` (qui ne les lit pas) déduisait pendant que la série du passé
 refusait `donnees-manquantes`. Mesuré : passé **PLAT** pendant que le cash descend des mêmes
-1 877,36 $ ⇒ valeur nette passée **1 878 $ trop haute**, puis CHUTE vers aujourd'hui sans cause,
+montants ⇒ valeur nette passée **trop haute d'autant**, puis CHUTE vers aujourd'hui sans cause,
 sous un écran qui affirmait « suit-les-virements » pour une courbe qui ne suivait rien. Le champ est
 un `<input type="date">` **optionnel** : le cas s'atteint en un clic. C'est le jumeau exact de
 `UN-ACCUMULATEUR-ANNUEL-SE-JUGE-SUR-SA-POSITION-PAR-RAPPORT-A-SON-RESET` (« chercher le jumeau AVANT
@@ -15114,7 +15114,7 @@ de déplacer quoi que ce soit »), payé dans l'autre sens.
 ⚠️⚠️ **Remplacer un mécanisme, c'est hériter de ses BORNES — ou les perdre.** La grille modélisée
 portait `finMs` (fin du mois de `termEndDate`) ; la source « virements » ne filtrait que le FUTUR.
 Un bail ÉTEINT dont le prêteur prélève toujours — le cas d'un bail REMPLACÉ chez le même prêteur,
-donc le MÊME libellé de marchand — continuait de descendre : **−2 581,37 $** sur un résiduel de
+donc le MÊME libellé de marchand — continuait de descendre : **plusieurs versements réels** déduits d'un résiduel de
 5 000 $, pendant que la grille restait plate. C'est l'ASYMÉTRIE entre les deux sources qui a
 démasqué le trou, pas la lecture du code. Avant de substituer une source à une autre, **énumérer ce
 que l'ancienne REFUSAIT**, pas seulement ce qu'elle calculait.
@@ -15122,7 +15122,7 @@ que l'ancienne REFUSAIT**, pas seulement ce qu'elle calculait.
 ⚠️⚠️ **Un plancher dont la justification cite une garde qu'on vient de retirer est un plancher
 muet.** `Math.max(0, brut − verses)` portait « la borne de TERME de la grille empêche déjà ce cas » —
 vrai de la grille, faux des virements. Mesuré sur un lien vers un marchand à 400 sorties : solde du
-jour **0,00 $**, 47 168,67 $ effacés, **sans alerte** et sous une phrase rassurante (« 51 virements
+jour **0,00 $**, tout le solde effacé, **sans alerte** et sous une phrase rassurante (« 51 virements
 depuis, déjà déduits »). ⚠️ Le piège était dans mon propre TRI : `marchandsCandidats` classe par
 fréquence DÉCROISSANTE, donc l'option la plus dangereuse est la PREMIÈRE de la liste. Le remède
 n'est pas un meilleur nombre mais un **REFUS** nommé (`virements-incoherents`) : un total amputé
@@ -15138,14 +15138,14 @@ cette fonction ré-estampille à aujourd'hui pour être idempotente — le formu
 STORE, et chaque MONTANT passe par la source unique. Deux tests ont rougi avant que je le voie.
 
 ⚠️ **Un appariement PAR DETTE n'a pas d'exclusivité.** Deux dettes liées au même marchand déduisent
-chacune la TOTALITÉ des virements : mesuré, **3 285,38 $ retirés pour 1 642,69 $ réellement versés**.
+chacune la TOTALITÉ des virements : mesuré, **le double des montants réellement versés**.
 Le lien ne se pose qu'à un endroit (la liste offerte) : l'y empêcher l'empêche partout.
 
 ⚠️ **Un trou de TYPE n'a pas besoin d'être un bug du jour pour mériter d'être bouché.**
 `BuildPastPrefixInput.transactions` ne déclarait pas `payee` là où son jumeau le déclarait. `tsc`
 restait vert (le seul appelant passe des objets plus riches), mais rien n'EXIGEAIT que le champ
 survive : un appelant futur bâtissant la liste d'après le contrat aurait fait taire l'appariement en
-silence (mesuré : **−1 877,00 $** au premier mois). **L'asymétrie entre deux jumeaux est le signal.**
+silence (mesuré : **un écart de plusieurs versements** au premier mois). **L'asymétrie entre deux jumeaux est le signal.**
 
 ⚠️ Corollaire de CONDUITE, et c'est peut-être le plus cher du lot : **un `git add -A` adopte le
 travail des agents**. Un rapport d'agent a réécrit `docs/PROJECTION.md` en y inventant un mécanisme
@@ -15169,10 +15169,10 @@ Marc, en regardant ses vraies journées : « je vois pas les transactions dans l
 ça manque des transactions ».
 
 **Ce que la mesure a dit.** Sur ses transactions réelles du 1er août au 18 septembre 2026 :
-**9 journées** dépassaient 6. La pire, le **31 août : 18 mouvements, 12 cachés**. Et le critère de
+**plusieurs journées** dépassaient 6. La pire en cachait **les deux tiers**. Et le critère de
 sélection n'était pas un critère : la liste gardait les six **PREMIERS RENCONTRÉS**. Ce jour-là,
-l'infobulle affichait « Frais de service −15,95 $ » et cachait **Anthropic −321,93 $** et
-**Global Exchange −307,40 $** — les deux plus grosses dépenses de la journée.
+l'infobulle affichait une ligne de frais de quelques dollars et cachait **deux dépenses de plusieurs
+centaines de dollars** — les deux plus grosses dépenses de la journée.
 
 **La leçon.** Rendre une troncature visible n'est une réponse acceptable que si ce qu'elle retire
 est INDIFFÉRENT. Ici l'ordre d'arrivée décidait seul, donc ce qui sautait était en moyenne aussi
@@ -15606,8 +15606,8 @@ dette).
 
 ## `UN-BLOC-HORS-DE-SA-GARDE-S-EXECUTE-POUR-TOUT-LE-MONDE` (2026-09-18)
 
-**Le fait.** Marc : « la dette ne s'arrête pas, ça me met 112k à 44 ans ». Sa seule dette est un bail
-auto de 46 934 $ à taux 0, éteint en ~46 mois — donc le symptôme ne pouvait pas venir d'elle.
+**Le fait.** Marc : « la dette ne s'arrête pas, ça me met [montant retiré] à [âge retiré] ». Sa seule dette est un bail
+auto à taux 0, éteint en quelques années — donc le symptôme ne pouvait pas venir d'elle.
 `realEstateMonth.ts` porte un bloc « LTV margin call » écrit **juste sous** le
 `if (useSmithManoeuvre && …)` qui le précède, et **en dehors** de ses accolades. Il s'exécutait donc
 pour TOUTE propriété. Sa condition — `smithManoeuvreDebt + mortgage > currentValue * 0.65` — est
@@ -15717,7 +15717,7 @@ EST-UNE-TRAPPE`, la nomme, et affirme l'avoir neutralisée : « la liste reste d
 marchand lié est marqué, et *aucun lien* est la PREMIÈRE ligne — hors du filtre ». Deux des trois
 moitiés étaient vraies. Le marchand **déjà lié** était protégé dans la liste COMPLÈTE (préfixé avec
 `nb: 0` s'il n'a plus de transaction) puis **filtré comme n'importe quel autre** : chercher
-« hydro » sur une dette liée à « Toyota Financial » le faisait disparaître de l'écran avec sa coche,
+« hydro » sur une dette liée à un prêteur le faisait disparaître de l'écran avec sa coche,
 et rien d'autre du formulaire ne dit à quoi la dette est liée. La garantie n'était vraie qu'à
 requête vide ou correspondante.
 
@@ -15930,9 +15930,9 @@ tests.
 
 ## `DEUX-GRANDEURS-DE-TRAJECTOIRES-OPPOSEES-NE-PEUVENT-PAS-PARTAGER-UNE-COURBE` (2026-09-21)
 
-**Marc, après le correctif de la marge Smith : « Non la dette augmente à 150k alors que j'ai juste
-une dette auto qui fini en 2030 ». Il avait RAISON ET TORT, et c'est ça qui rend le cas
-intéressant** — sa dette ORDINAIRE s'éteint bien en 2030 ; ce qui monte ensuite est le HELOC de la
+**Marc, après le correctif de la marge Smith : « Non la dette augmente à [montant retiré] alors que j'ai juste
+une dette auto qui fini dans quelques années ». Il avait RAISON ET TORT, et c'est ça qui rend le cas
+intéressant** — sa dette ORDINAIRE s'éteint bien à son terme ; ce qui monte ensuite est le HELOC de la
 **Smith Manoeuvre**, un réglage qu'il avait activé lui-même en un clic.
 
 `DettesNonImmo` additionnait donc deux objets dont la **trajectoire normale est OPPOSÉE** : une
@@ -15970,7 +15970,7 @@ un golden se ferait re-baser au premier lot qui déplace de l'argent, alors que 
 lui, survit — il vient du mécanisme.
 
 ⚠️ **Et c'est pour ça que l'écran ne promet aucun seuil de rentabilité.** Le point d'équilibre vaut
-~5,6 % sur la fixture et **~4 % sur le profil réel de Marc** : il dépend de l'écart entre le taux de
+~5,6 % sur la fixture et **une valeur nettement différente sur le profil réel de Marc** : il dépend de l'écart entre le taux de
 la marge et le rendement, donc du DOSSIER. L'écrire à l'écran lui donnerait l'autorité d'une règle
 générale qu'aucune mesure ne soutient (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`)
 — une garde l'interdit explicitement, en cherchant un pourcentage dans le paragraphe.
@@ -16133,17 +16133,17 @@ en plus le retour du pavé), jamais supprimée : ce qu'elle défend n'a pas chan
 ## `DEUX-CHIFFRES-QUI-NE-MESURENT-PAS-LA-MEME-CHOSE-NE-SE-COMPARENT-PAS` (2026-09-21)
 
 **Marc : « explique pourquoi j'ai pas la même valeur sur mon app et sur Fintable pour aujd ».**
-Fintable affichait **C$277 230**, l'app **230 210 $**. Réflexe naturel devant 47 020 $ d'écart :
+Fintable affichait un total supérieur de plusieurs dizaines de milliers de dollars à celui de l'app. Réflexe naturel devant un tel écart :
 chercher un bug de calcul. Il n'y en avait pas.
 
 **La décomposition, exacte au dollar près** (données réelles, MCP synchronisé 5 min avant) :
 | terme | montant | cause |
 |---|---|---|
-| bail Toyota | **+46 934 $** | Fintable ne connaît aucune dette |
-| Mastercard | **+195 $** | Fintable la compte en **ACTIF**, l'app en dette |
-| placements | **−15 $** | 246 643 (Fintable) vs 246 658 (app) |
-| liquidités | **−95 $** | 30 392 vs 30 487 |
-| **total** | **47 019 $** | à 1 $ d'arrondi près |
+| bail Toyota | **l'essentiel de l'écart** | Fintable ne connaît aucune dette |
+| Mastercard | **un petit montant** | Fintable la compte en **ACTIF**, l'app en dette |
+| placements | **quelques dollars** | écart d'arrondi entre les deux sources |
+| liquidités | **moins de 100 $** | idem |
+| **total** | **l'écart entier** | à 1 $ d'arrondi près |
 
 **Fintable additionne des SOLDES DE COMPTES ; l'app calcule une VALEUR NETTE.** Ce ne sont pas deux
 mesures de la même grandeur, donc leur écart n'est pas une erreur à corriger — c'est une
@@ -16152,21 +16152,21 @@ mais **« mesurent-ils la même chose ? »**, et la réponse se prouve en décom
 dollar : tant qu'un terme manque, on n'a pas compris.
 
 ⚠️ **Refaire la somme de l'écran de l'autre outil est la mesure la plus rentable du lot.** Les six
-comptes Fintable additionnés BRUT donnent 247 371 $, pas 277 230 $. L'écart de 29 859 $ divisé par
-le solde du compte Disnat `$74 647,59` (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
+comptes Fintable additionnés BRUT donnent un total nettement inférieur à celui affiché. L'écart divisé par
+le solde du compte Disnat (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
 Fintable convertit l'USD à un taux ROND. Une seule division a identifié la devise, le taux et le
 compte concernés — ce qu'aucune lecture de notre code ne pouvait donner.
 
 ⚠️ **Ce qui restait à expliquer après la décomposition était sur un AUTRE axe.** Le jour qu'il avait
-épinglé (20/09) montrait 238 051 $ de placements contre **247 298 $** de titres aujourd'hui — 9 247 $
-de moins, parce que le PASSÉ est reconstruit à partir des titres saisis, aux prix que l'app a. Le
-badge le disait : « **prix J−59** ». Mesuré sur ses 12 positions : **55,8 % du portefeuille est coté
-en Europe** (138 068 $ sur 247 298 $), places que le forfait gratuit du fournisseur ne sert pas.
+épinglé (20/09) montrait environ 3,7 % de placements de moins que les titres d'aujourd'hui —
+parce que le PASSÉ est reconstruit à partir des titres saisis, aux prix que l'app a. Le
+badge le disait : « **prix J−59** ». Mesuré sur ses positions : **plus de la moitié du portefeuille est coté
+en Europe**, places que le forfait gratuit du fournisseur ne sert pas.
 AUJOURD'HUI, lui, est juste — il part du total du courtier. **C'est ce couple (aujourd'hui exact /
 passé figé) qui fabrique la marche au raccord**, celle-là même que le bandeau biffé expliquait.
 
-⚠️ **Une dette de BAIL qui MONTE en avançant dans le temps est impossible** : l'app donnait 45 917 $
-au 20/09, le MCP 46 934 $ aujourd'hui. L'app applique les prélèvements hebdomadaires ; le serveur
+⚠️ **Une dette de BAIL qui MONTE en avançant dans le temps est impossible** : l'app donnait un solde plus BAS
+au 20/09 que le MCP aujourd'hui. L'app applique les prélèvements hebdomadaires ; le serveur
 MCP rend le solde BRUT stocké parce qu'il tourne du code d'avant `balanceAsOf`. **Le sens de
 variation d'une grandeur suffit à désigner lequel de deux producteurs est périmé**, sans lire une
 ligne de leur code — et `hubperso` étant alimenté par ce même serveur, il héritait du même retard.
@@ -16702,9 +16702,9 @@ variable — une route qui lit un champ que personne n'écrit est morte
 
 ## 3. Mon propre diagnostic était FAUX, et ma sonde ne discriminait pas
 
-J'ai écrit « PROUVÉ : le serveur tourne du vieux code » parce que `totalDebt` restait à **46 934 $**.
-Mesure re-faite : le dernier prélèvement Toyota est du **2026-09-15** et 46 934,00 est daté APRÈS
-lui (`47 168,67 − 234,67 = 46 934,00`). Le vieillissement du solde est donc un **no-op sur cette
+J'ai écrit « PROUVÉ : le serveur tourne du vieux code » parce que `totalDebt` restait au même montant.
+Mesure re-faite : le solde stocké est daté APRÈS le dernier prélèvement du bail
+(il vaut déjà l'ancien solde moins un versement). Le vieillissement du solde est donc un **no-op sur cette
 donnée** : l'ancien code et le neuf rendent le MÊME nombre.
 
 **Ma sonde ne pouvait pas départager les deux hypothèses**, et j'ai quand même conclu. Ce qui a

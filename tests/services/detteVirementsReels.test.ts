@@ -7,17 +7,17 @@
 // fais un virement du bon montant a toyota ». Puis, devant la question du virement MANQUANT :
 // « suivre les vrais virements, point » — aucun chiffre inventé, jamais.
 //
-// ⚠️ LA FIXTURE EST SA SITUATION RÉELLE, et c'est elle qui porte le CONTRÔLE NÉGATIF : huit
-// `Toyota Financial` à −234,67 $ (le financement du bail) ET deux `Ste Foy Toyota Quebec` à
-// −500,00 $ et −779,79 $ (le CONCESSIONNAIRE, en juillet). Un appariement lâche — « le libellé
-// contient toyota » — retirerait 1 279,79 $ de sa dette pour des achats qui n'en remboursent rien.
+// ⚠️ LA FIXTURE porte le CONTRÔLE NÉGATIF : huit
+// virements du prêteur (le financement du bail) ET deux achats chez le concessionnaire à
+// des montants différents (le CONCESSIONNAIRE, en juillet). Un appariement lâche — « le libellé
+// contient toyota » — retirerait ces achats de sa dette pour des achats qui n'en remboursent rien.
 // C'est exactement le genre d'erreur qu'aucun cas nominal ne révèle : les deux lignes sont du même
 // marchand aux yeux d'un humain pressé.
 //
 // ⚠️ MESURES DE RÉFÉRENCE (2026-09-18, sur cette fixture). Elles disent ce que le lot CHANGE :
-//   · série au mois, LIÉE aux virements : 48 811,36 | 48 576,69 | 47 403,34 (juillet → septembre)
-//   · série au mois, GRILLE modélisée   : 49 046,02 | 48 576,68 | 47 403,34
-//   L'écart de JUILLET (234,66 $) est le cœur du lot : la grille inventait un versement de plus que
+//   · série au mois, LIÉE aux virements : 31 200,00 | 31 050,00 | 30 300,00 (juillet → septembre)
+//   · série au mois, GRILLE modélisée   : 31 350,00 | 31 050,00 | 30 300,00
+//   L'écart de JUILLET (un versement) est le cœur du lot : la grille inventait un versement de plus que
 //   ce que les transactions connaissent. Les mois suivants coïncident au cent près — le modèle
 //   n'était pas faux, il était SUPPOSÉ ; la différence se voit là où la supposition dépasse la mesure.
 
@@ -48,7 +48,7 @@ const TX: MouvementDette[] = [
     { date: '2026-07-20', payee: 'Ste Foy Toyota Quebec', amount: -779.79 },
 ];
 
-/** Le bail de Marc, sans lien : il descend par la GRILLE modélisée (comportement d'avant ce lot). */
+/** Un bail type, sans lien : il descend par la GRILLE modélisée (comportement d'avant ce lot). */
 const GRILLE: EntreeAmortissement = {
     kind: 'auto-lease', balance: 46_934, interestRate: 0, minimumPayment: 1_016.90,
     startDate: '2026-07-14', termEndDate: '2030-07-14', paymentFrequency: 'weekly', balanceAsOf: AUJ,
@@ -68,7 +68,7 @@ describe('[DETTE-VIREMENTS-REELS] l’appariement du marchand', () => {
         expect(p).not.toBeNull();
         expect(p!.length).toBe(VERSEMENTS.length);
         // ⚠️ L'assertion qui compte : la SOMME. Un appariement lâche passerait le compte à 10 et la
-        // somme à 3 157,15 $ — 1 279,79 $ retirés d'une dette pour des achats chez le concessionnaire.
+        // somme à 2 200,00 $ — 1 000,00 $ retirés d'une dette pour des achats chez le concessionnaire.
         expect(p!.reduce((s, x) => s + x.montant, 0)).toBeCloseTo(MONTANT * 8, 2);
         expect(p!.map(x => new Date(x.ms).toISOString().slice(0, 10))).toEqual(VERSEMENTS);
     });
@@ -84,8 +84,8 @@ describe('[DETTE-VIREMENTS-REELS] l’appariement du marchand', () => {
         // remboursement EN est un » et gardait les lignes marquées `isTransfer`, au motif que le
         // cash et la dette répondent à deux questions distinctes. Faux pour le PATRIMOINE NET : le
         // registre du cash EXCLUT `isTransfer` partout, donc une dette qui l'inclut descend sans
-        // que l'actif descende. Mesuré sur ces huit virements — **−25 291,31 $ au lieu de
-        // −27 168,67 $, soit 1 877,36 $ CRÉÉS**, et 234,67 $ de plus par semaine. Le test est
+        // que l'actif descende. Mesuré sur ces huit virements — **le patrimoine surévalué
+        // de la somme des virements, soit de l'argent CRÉÉ**, et un versement de plus par semaine. Le test est
         // INVERSÉ au même endroit avec son histoire, jamais supprimé : c'est cette trace qui
         // empêche de re-tenter l'inclusion « pour que la dette continue de descendre ».
         const classes = TX.map(t => ({ ...t, isTransfer: true }));
@@ -104,7 +104,7 @@ describe('[DETTE-VIREMENTS-REELS] l’appariement du marchand', () => {
             - soldeDetteAujourdhui({ ...LIE, balanceAsOf: '2026-07-24' }, AUJ, tx);
         // ⚠️ SEULES les lignes du financement sont marquées : marquer AUSSI les deux achats chez le
         // concessionnaire les retirerait du cash sans rien changer à la dette (ils n'y entrent
-        // jamais), et le test mesurerait ce déplacement-là — 1 279,79 $, mesuré, pour rien.
+        // jamais), et le test mesurerait ce déplacement-là — la somme de ces achats, mesurée, pour rien.
         const marque = (f: Partial<MouvementDette>) =>
             TX.map(t => (t.payee === 'Toyota Financial' ? { ...t, ...f } : t));
         const normal = nw(TX);
@@ -325,7 +325,7 @@ describe('[DETTE-VIREMENTS-REELS] la liste offerte au lien vient de la MÊME cl�
 
 describe('[DETTE-VIREMENTS-REELS] les BORNES que la grille avait et que les virements n’avaient pas', () => {
     /** Un bail ÉTEINT le 2026-06-30 dont il reste 5 000 $, et dont le prêteur prélève TOUJOURS
-     *  234,67 $/semaine — le cas réel d'un bail REMPLACÉ chez le même prêteur : même libellé de
+     *  le même versement hebdomadaire — le cas d'un bail REMPLACÉ chez le même prêteur : même libellé de
      *  marchand, autre dette. */
     const TERMINE: EntreeAmortissement = {
         kind: 'auto-lease', balance: 5_000, interestRate: 0, minimumPayment: 1_016.90,
@@ -336,8 +336,8 @@ describe('[DETTE-VIREMENTS-REELS] les BORNES que la grille avait et que les vire
         .map(date => ({ date, payee: 'Toyota Financial', amount: -MONTANT }));
 
     it('après la FIN DU TERME, aucun virement ne descend plus la dette — comme la grille', () => {
-        // ⚠️ Mesuré AVANT la borne : solde du jour **2 418,63 $** au lieu de 5 000 $, soit
-        // −2 581,37 $ de dette effacée, croissant de 234,67 $/semaine — pendant que la GRILLE, elle,
+        // ⚠️ Mesuré AVANT la borne : solde du jour bien sous 5 000 $, soit
+        // de la dette effacée, croissant d'un versement par semaine — pendant que la GRILLE, elle,
         // restait plate à 5 000 $. C'est l'asymétrie entre les deux sources qui a démasqué le trou
         // (`EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`).
         const lie = { ...TERMINE, paymentPayee: 'Toyota Financial' };
@@ -360,7 +360,7 @@ describe('[DETTE-VIREMENTS-REELS] les BORNES que la grille avait et que les vire
 
     it('des virements qui DÉPASSENT le solde enregistré sont REFUSÉS, jamais rabattus à zéro', () => {
         // ⚠️ Mesuré AVANT le refus, sur un lien vers une épicerie à 400 sorties : `Math.max(0, …)`
-        // rendait **0,00 $** — 47 168,67 $ effacés sous une phrase rassurante et SANS alerte. Le
+        // rendait **0,00 $** — tout le solde effacé sous une phrase rassurante et SANS alerte. Le
         // piège était dans le tri de la liste offerte : `marchandsCandidats` classe par fréquence
         // DÉCROISSANTE, donc l'option la plus dangereuse est la PREMIÈRE.
         const beaucoup: MouvementDette[] = Array.from({ length: 400 }, (_, i) => ({
@@ -402,7 +402,7 @@ describe('[DETTE-VIREMENTS-REELS] sans date de DÉBUT, la série part du premier
     it('le solde du jour et la série du passé décrivent la MÊME dette', () => {
         // ⚠️ Mesuré AVANT : `soldeDetteAujourdhui` déduisait (il ne lit pas `startDate`) pendant que
         // la série refusait `donnees-manquantes` — le passé restait PLAT pendant que le cash
-        // descendait, donc la valeur nette passée était **1 878 $ trop haute** puis chutait vers
+        // descendait, donc la valeur nette passée était **trop haute de la somme des virements** puis chutait vers
         // aujourd'hui sans cause. `startDate` est un champ de formulaire OPTIONNEL : un clic suffit.
         const sansDebut = { ...LIE, startDate: undefined, balanceAsOf: '2026-07-24' } as EntreeAmortissement;
         const attendu = 46_934 - MONTANT * VERSEMENTS.length;

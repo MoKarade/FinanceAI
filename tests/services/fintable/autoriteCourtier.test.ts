@@ -146,9 +146,9 @@ describe('mentionAutoriteCourtier — la marche au raccord, NOMMÉE', () => {
 // qu'à une carte d'écart, ça ne coûtait rien ; depuis que le mois 0 de la projection le consomme,
 // un total AMPUTÉ écrase la valeur reconstruite COMPLÈTE.
 //
-// Mesuré sur la chaîne réelle : Disnat CAD 30 000 $ + Disnat USD 72 040 $ écarté faute de taux —
+// Mesuré sur la chaîne réelle : un compte CAD retenu + un compte USD écarté faute de taux —
 // c'est-à-dire EXACTEMENT l'état de Marc tant que ses taux viennent du repli — donnait un mois 0
-// à 30 000 $ au lieu de 231 882 $. Un total partiel n'est pas une autorité dégradée : c'est un faux.
+// égal au seul compte CAD au lieu de la valeur complète. Un total partiel n'est pas une autorité dégradée : c'est un faux.
 describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
     const avecUnCompteEcarte = (over: Partial<ReconciliationLue> = {}): ReconciliationLue => ({
         regimes: [

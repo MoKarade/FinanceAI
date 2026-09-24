@@ -2,10 +2,10 @@
 //
 // [FX-TAUX-JAMAIS-ARRIVES] D'OÙ vient le taux de change qui convertit les avoirs étrangers.
 //
-// MESURE À L'ORIGINE DU MODULE (2026-09-16, état RÉEL de Marc lu par le MCP) : ses douze positions
+// MESURE À L'ORIGINE DU MODULE (2026-09-16, état RÉEL de Marc lu par le MCP) : ses positions
 // sont en USD ou en EUR — AUCUNE en CAD — et les facteurs appliqués valaient **1,4000** et **1,4700**
 // au dix-millième, c'est-à-dire `DEFAULT_FX_RATES` au caractère près (« approximation Q1 2026 »).
-// Autrement dit : 100 % des 231 882 $ de placements affichés reposaient sur un taux INVENTÉ, et
+// Autrement dit : 100 % des placements affichés reposaient sur un taux INVENTÉ, et
 // c'était aussi la vraie raison pour laquelle le compte courtier USD n'était pas converti.
 //
 // ⚠️ POURQUOI UNE PROVENANCE ET PAS UN BOOLÉEN. `fxRatesEstimated` recouvre DEUX faits (« du marché »

@@ -163,7 +163,7 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
     // ── [FINTABLE-DISNAT-USD-SOLDE-IGNORE] TEST DE LIMITE **INVERSÉ** le 2026-09-16 ──────────────
     // Il affirmait « ÉCARTE une devise ≠ CAD » et c'était juste tant qu'aucune conversion n'existait.
     // Mais cet écartement se faisait AVANT la persistance, donc avant la seule liste qui recense les
-    // comptes écartés : « Disnat (L7B1) » n'apparaissait ni réconcilié ni signalé sur l'écran
+    // comptes écartés : « Disnat (0001) » n'apparaissait ni réconcilié ni signalé sur l'écran
     // Investissements — ABSENT, ce qui est indiscernable d'un compte qui n'existe pas.
     // La limite est levée là où on peut la lever (taux connu → conversion) et RENDUE VISIBLE là où
     // on ne peut pas (taux absent → signal). Inversé au même endroit, jamais supprimé, pour que la

@@ -315,7 +315,7 @@ let _decisionInFlight: Promise<void> | null = null;
  * Applique decideOnLoad puis exécute l'action résultante. UNE seule règle anti-perte (plus de
  * `restoreIntent`/exception gate) : local vide → pull (restaure) ; local réel + Drive divergent →
  * `conflict` (choix utilisateur via SyncConflictModal), JAMAIS d'écrasement auto. Retrait 2026-07-14
- * (anti-clobber Marc : une vieille copie Drive écrasait 230k$ de local réel à la reconnexion).
+ * (anti-clobber Marc : une vieille copie Drive écrasait le portefeuille local réel à la reconnexion).
  */
 async function runDecision(token: string): Promise<void> {
     if (_decisionInFlight) return _decisionInFlight; // une décision concurrente est déjà en cours

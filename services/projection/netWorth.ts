@@ -42,7 +42,7 @@ export interface NetWorthParts {
  * ajouter un champ à l'interface sans lui donner un signe ici CASSE le typecheck. Couplé au test croisé
  * (`tests/services/netWorth.test.ts` : « formule littérale == Σ signe×valeur »), un nouveau champ ajouté à
  * l'interface + au sign-map mais OUBLIÉ dans la formule littérale fait ÉCHOUER le test → la classe de bug
- * MONEY-PHANTOM (terme d'actif/dette oublié = patrimoine faux, bug Marc « -193 k$ » 2026-06-16) devient
+ * MONEY-PHANTOM (terme d'actif/dette oublié = patrimoine faux, bug Marc 2026-06-16) devient
  * STRUCTURELLEMENT impossible. ⚠️ La formule littérale ci-dessous reste la SOURCE d'exécution (hot-path
  * du moteur mensuel × Monte-Carlo, inchangée et prouvée) — le sign-map n'est qu'un filet compile-time + test.
  */

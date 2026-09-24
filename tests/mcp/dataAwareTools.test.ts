@@ -353,7 +353,7 @@ describe('Lot 1 — get_tax_situation', () => {
         // [MCP-NETINCOME-MISLEADING] Le champ qui m'a trompé (incident 2026-08-05) : `netIncome`
         // porte l'assiette IMPOSABLE, donc il INCLUT le rendement de placement estimé — qui n'est
         // jamais encaissé. Comparé aux dépôts de paie réels, il fabrique un faux écart de revenu
-        // (annoncé à tort à Marc : 12 800 $/an inexistants). `netSalaryIncome` est la trésorerie
+        // (annoncé à tort à Marc : un revenu annuel inexistant). `netSalaryIncome` est la trésorerie
         // qui tombe VRAIMENT au compte. DISCRIMINANT : sur le code d'avant, netSalaryIncome
         // n'existe pas — et l'écart ci-dessous est exactement le revenu fantôme.
         const netTotal = outWith.netIncome as number;

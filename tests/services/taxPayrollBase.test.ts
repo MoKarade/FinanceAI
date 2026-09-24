@@ -8,8 +8,8 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFiscalReport } from '../../utils/tax';
 
-// Profil proche de Marc : salaire ~50 k (sous tous les maximums) + ~230 k non-enreg → placement
-// imposable estimé ≈ 230 000 × (0,02 div + 0,07 gains × 0,5) = 12 650 $.
+// Profil type : salaire ~50 k (sous tous les maximums) + un portefeuille non-enreg → placement
+// imposable estimé ≈ portefeuille × (0,02 div + 0,07 gains × 0,5).
 const SALARY = 50_000;
 const INVEST_TAXABLE = 12_650;
 

@@ -653,8 +653,8 @@ export interface Debt {
   /** [DETTE-SOLDE-INSTANTANE-FIGE] DATE à laquelle `balance` était vrai (YYYY-MM-DD).
    *
    *  ⚠️ **Sans elle, `balance` est un instantané SANS DATE, et rien ne l'avance.** Mesuré le
-   *  2026-09-17 sur le bail de Marc : le solde stocké (47 168,67 $) valait après SEPT prélèvements
-   *  alors qu'il en avait fait HUIT — 234,67 $ de trop, et l'écart grandissait d'un versement par
+   *  2026-09-17 sur le bail de Marc : le solde stocké valait après SEPT prélèvements
+   *  alors qu'il en avait fait HUIT — un versement hebdomadaire de trop, et l'écart grandissait d'un versement par
    *  SEMAINE. Il payait, l'écran ne bougeait pas.
    *
    *  Ce champ n'a d'effet que là où le solde d'aujourd'hui est DÉDUCTIBLE sans rien inventer :

@@ -2,7 +2,7 @@
 //
 // [CELI-ASSET-NUDGE] — l'app suit les VIREMENTS CELI sortants (transactions) mais pas le compte
 // destinataire : un utilisateur qui cotise à son CELI chez un courtier externe (Wealthsimple, Disnat…)
-// voit « CELI : 0 $ » alors qu'il y a de vrais avoirs → patrimoine SOUS-estimé (cas Marc : ~24 k$
+// voit « CELI : 0 $ » alors qu'il y a de vrais avoirs → patrimoine SOUS-estimé (cas Marc : des dizaines de milliers de dollars
 // cotisés, 0 affiché). Audit CONFIRMED (finding #6, 2026-07-14).
 //
 // ⚠️ NO-FAKE-DATA : on ne DÉRIVE JAMAIS le solde CELI de la somme des virements (= un COÛT cumulé,

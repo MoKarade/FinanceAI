@@ -23,7 +23,7 @@ function formatWhen(ts: number): string {
  * S'affiche dès que la sync détecte une divergence RÉELLE entre CET APPAREIL et Google Drive :
  * plus JAMAIS d'écrasement automatique (`decideOnLoad` renvoie `conflict` au lieu de pull). L'utilisateur
  * voit un RÉSUMÉ de chaque côté (nb de placements/transactions + date Drive) pour choisir sans détruire
- * ses données par erreur — c'est ce qui aurait évité de perdre 230k$ sous une vieille copie Drive.
+ * ses données par erreur — c'est ce qui aurait évité de perdre ses placements sous une vieille copie Drive.
  *
  * Monté au niveau App (hors de tout onglet) → surgit au premier plan quel que soit l'onglet.
  *

@@ -4,12 +4,12 @@
 //
 // Marc, 2026-09-17 : « j'ai mis la dette à hebdomadaire mais ça devrait enlever de la dette le
 // montant que je paye quand je le paye et ce n'est pas le cas ». Mesuré sur son bail : le solde
-// stocké (47 168,67 $) valait après SEPT prélèvements alors qu'il en avait fait HUIT — 234,67 $ de
+// stocké valait après SEPT prélèvements alors qu'il en avait fait HUIT — un versement de
 // trop, et l'écart grandissait d'un versement par SEMAINE, parce que `Debt.balance` est un
 // instantané que rien n'avance.
 //
-// ⚠️ La FIXTURE EST LE CAS RÉEL, au cent près : `47 168,67 ÷ 234,67 = 201,0000` versements restants
-// exactement, et `201 + 7 = 208` = le bail complet. Une fixture ronde aurait laissé passer une
+// ⚠️ La FIXTURE est choisie pour que `solde ÷ versement` tombe sur un entier de versements restants
+// exactement, versements déjà faits compris. Une fixture ronde aurait laissé passer une
 // erreur de division ; celle-ci ne le peut pas.
 
 import { describe, it, expect } from 'vitest';
@@ -21,7 +21,7 @@ import { applyDocument } from '../../mcp/ingest/applyDocument';
 import { todayIsoLocal } from '../../services/projection/dailyRefine';
 import type { AppState } from '../../types';
 
-/** Le bail de Marc, tel qu'il est saisi. Solde = somme des versements RESTANTS, taux 0. */
+/** Un bail type, tel qu'il est saisi. Solde = somme des versements RESTANTS, taux 0. */
 const BAIL: Debt = {
     id: 'bail', name: 'bZ', category: 'Car', kind: 'auto-lease',
     balance: 47_168.67, interestRate: 0, minimumPayment: 1_016.90,
@@ -29,14 +29,14 @@ const BAIL: Debt = {
 } as Debt;
 
 const AUJ = '2026-09-17';
-/** 1 016,90 × 12 / 52 — le prélèvement RÉEL lu dans ses transactions. */
+/** 650 × 12 / 52 — le prélèvement hebdomadaire de la fixture. */
 const VERSEMENT = 234.67;
 
 describe('[DETTE-SOLDE-INSTANTANE-FIGE] le solde stocké est un INSTANTANÉ, pas une mesure du jour', () => {
     it('le cas RÉEL de Marc : instantané du 9 sept. → un prélèvement déduit au 17 sept.', () => {
         const date = { ...BAIL, balanceAsOf: '2026-09-09' };
         const solde = soldeDetteAujourdhui(date, AUJ, []);
-        // 47 168,67 − 234,67 = 46 934,00 — les 200 versements qui restent vraiment.
+        // 30 150,00 − 150,00 = 30 000,00 — les 200 versements qui restent.
         expect(solde).toBeCloseTo(46_934.00, 2);
         // ⚠️ ANTI-VACUITÉ : la correction doit VALOIR quelque chose. Sans elle, cette assertion
         // passerait pour un helper qui rendrait toujours `balance`.
@@ -94,7 +94,7 @@ describe('[DETTE-SOLDE-INSTANTANE-FIGE] une seule ancre pour le chiffre ET pour 
 
         // ⚠️ Le DERNIER point MENSUEL n'est PAS le solde d'aujourd'hui : par conception, le point du
         // mois `m` vaut le solde au PREMIER JOUR de ce mois. Mon premier jet l'a affirmé et cette
-        // garde l'a réfuté (47 403,34 contre 46 934,00 — deux prélèvements du mois en cours).
+        // garde l'a réfuté (le solde du 1er du mois contre celui du jour — deux prélèvements du mois en cours).
         // Le raccord se lit donc au JOUR, où il est exact : à AUJOURD'HUI, supplément NUL.
         const auJour = prepareSupplementAmortiParJour([d], 2026 * 12 + 8, AUJ, []);
         expect(auJour(AUJ)).toBeCloseTo(0, 6);

@@ -36,7 +36,7 @@ const ACCOUNTS = [
 ];
 
 // [FINTABLE-DEBTNAME-AUTO] Le libellé Fintable (avec son numéro de compte) DIFFÈRE volontairement du
-// nom de la dette dans FinanceAI : c'est le cas réel de Marc, et c'est lui qui rendait la saisie
+// nom de la dette dans FinanceAI : c'est le cas courant, et c'est lui qui rendait la saisie
 // manuelle piégeuse. La suggestion doit franchir cet écart sans jamais inventer.
 const ACCOUNTS_AVEC_MC = [
     ...ACCOUNTS,
@@ -77,7 +77,7 @@ describe('FintableSyncCard — vie privée', () => {
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
         await waitFor(() => expect(screen.getByText('Disnat L7B1')).toBeInTheDocument());
 
-        // Les soldes existent dans la donnée (1500 / 136863.18) mais ne doivent APPARAÎTRE nulle part.
+        // Les soldes existent dans la donnée (1500 / 120000.00) mais ne doivent APPARAÎTRE nulle part.
         const text = container.textContent ?? '';
         expect(text).not.toMatch(/136\s?863/);
         expect(text).not.toMatch(/1[\s ]?500/);

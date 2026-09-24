@@ -510,7 +510,7 @@ gcloud secrets add-iam-policy-binding financeai-vehicule-token --project "$PROJE
 
 # 3. (optionnel) Nommer la dette exacte si plusieurs véhicules coexistent
 #    Sans lui, la route choisit par kind/catégorie et REFUSE (409) s'il y a plusieurs candidates.
-printf 'bZ' | gcloud secrets create financeai-vehicule-dette --project "$PROJECT_ID" --data-file=-
+printf '<nom-de-la-dette>' | gcloud secrets create financeai-vehicule-dette --project "$PROJECT_ID" --data-file=-
 
 # 4. Redéployer — le script annonce « GET /vehicule/bail ACTIF »
 PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
@@ -523,7 +523,7 @@ Test manuel (curl) :
 
 ```bash
 curl -sS "$MCP_URL/vehicule/bail" -H "Authorization: Bearer $FINANCEAI_VEHICULE_TOKEN"
-# → {"ok":true,"statut":"trouve","bail":{"nom":"bZ","solde":47169,"mensualite":1017,…}}
+# → {"ok":true,"statut":"trouve","bail":{"nom":"<nom de la dette>","solde":<solde>,"mensualite":<mensualité>,…}}
 ```
 
 ## Sync Fintable planifiée — POST /fintable-sync (FINTABLE-3)

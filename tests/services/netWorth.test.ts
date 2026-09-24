@@ -1,5 +1,5 @@
 // tests/services/netWorth.test.ts
-// [HARDEN-NETWORTH-EXHAUSTIVE] garde anti MONEY-PHANTOM (bug Marc « -193 k$ » 2026-06-16 : une copie
+// [HARDEN-NETWORTH-EXHAUSTIVE] garde anti MONEY-PHANTOM (bug Marc 2026-06-16 : une copie
 // de la formule du patrimoine net OUBLIAIT un terme de dette → patrimoine faux). Ici on PROUVE que la
 // formule littérale `computeRawNetWorth` utilise EXACTEMENT les termes classés dans `NET_WORTH_SIGN` —
 // donc qu'un futur champ d'actif/dette ajouté à l'interface mais oublié dans la formule est attrapé.

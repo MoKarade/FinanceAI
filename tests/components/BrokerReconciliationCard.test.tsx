@@ -85,7 +85,7 @@ describe('BrokerReconciliationCard — variant compact (Accueil)', () => {
     });
 
     it('[panel #543 CRITIQUE] AUCUN panier déclaré → PAS de « 0 $ » fabriqué, un état honnête à la place', () => {
-        // 2 comptes réels (~171 k$) sans régime déclaré : l'ancien code affichait « 0 $ » avec
+        // 2 comptes (plus de 100 k$) sans régime déclaré : l'ancien code affichait « 0 $ » avec
         // l'autorité du mot « courtier » (no-fake-data violé, mesuré par financial-integrity).
         useFinanceStore.setState({
             fintableBrokerBalances: [

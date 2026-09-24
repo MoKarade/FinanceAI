@@ -174,7 +174,7 @@ describe('dette carte de crédit', () => {
     // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Le SIGNE de cette fixture a changé le 2026-09-16, et
     // ce n'est pas une re-base : il encodait une HYPOTHÈSE (« positif = montant dû »), jamais
     // mesurée, que la première passe réelle a RÉFUTÉE. Rapport : « → positif » ; Marc : « c'est en
-    // ma faveur ». Devoir 379,99 $ arrive donc en **−379,99** chez Fintable.
+    // ma faveur ». Devoir 250 $ arrive donc en **−250** chez Fintable.
     // La valeur absolue est inchangée : ce qui bouge est la convention, pas le montant observé.
     const card = account({ id: 'acc_mc', label: 'Desjardins Cash Back Mastercard', rawType: 'credit / credit card', balance: -379.99 });
 
@@ -268,7 +268,7 @@ describe('scénario réel de Marc (6 comptes, mesuré 2026-07-29)', () => {
             account({ id: 'shr', label: 'SHR Qualifying share', rawType: 'investment / rrsp', balance: 5 }),
             account({ id: 'ch', label: 'PCA Everyday', rawType: 'depository / checking', balance: 8066.18 }),
             // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Signe corrigé le 2026-09-16 : ce relevé a été
-            // transcrit avant toute mesure de la convention Fintable, donc son `+379,99` reflétait
+            // transcrit avant toute mesure de la convention Fintable, donc son montant positif reflétait
             // la lecture d'un RELEVÉ (« solde dû »), pas ce que l'API envoie. Mesuré depuis :
             // devoir de l'argent arrive en négatif. Le montant observé est inchangé.
             account({ id: 'mc', label: 'Desjardins Cash Back Mastercard', rawType: 'credit / credit card', balance: -379.99 }),

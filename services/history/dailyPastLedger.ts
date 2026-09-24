@@ -158,10 +158,10 @@ const DAY_MS = 86_400_000;
  * transactions ». Le plafond valait **6**, et la liste gardait les six PREMIERS rencontrés — pas les
  * plus gros.
  *
- * Mesuré sur ses vraies transactions du 1er août au 18 septembre 2026 : **9 journées** dépassent 6,
- * la pire étant le **31 août avec 18 mouvements — 12 cachés**. Et l'ordre d'arrivée décidait seul de
- * ce qu'il voyait : ce jour-là l'infobulle montrait « Frais de service −15,95 $ » et cachait
- * **Anthropic −321,93 $** et **Global Exchange −307,40 $**, les deux plus grosses dépenses de la
+ * Mesuré sur ses vraies transactions sur sept semaines : **plusieurs journées** dépassent 6,
+ * la pire avec **trois fois plus de mouvements que le plafond — la majorité cachés**. Et l'ordre d'arrivée décidait seul de
+ * ce qu'il voyait : ce jour-là l'infobulle montrait de petits frais bancaires et cachait
+ * **les deux plus grosses dépenses** de la
  * journée. Une troncature ANNONCÉE (« +N autres ») reste une troncature quand ce qu'elle retire est
  * précisément ce qu'on cherchait.
  *
@@ -329,7 +329,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         // quand on ignore les dates de prélèvement : interpoler fabriquerait une précision que la
         // donnée n'a pas. Mais quand la dette DÉCLARE sa cadence (bail prélevé chaque semaine), les
         // dates SONT connues et la marche mensuelle n'était plus une prudence, c'était une perte :
-        // Marc voyait sa dette baisser une fois par mois alors que Toyota prélève tous les lundis.
+        // Marc voyait sa dette baisser une fois par mois alors que le prêteur prélève chaque semaine.
         const moisDuJour = moisAbsolu(date) ?? Number.POSITIVE_INFINITY;
         const debtNonImmo = Math.max(0, currentDebtNonImmo
             - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisDuJour, moisAujourdhui)

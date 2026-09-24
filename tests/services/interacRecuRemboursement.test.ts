@@ -42,7 +42,7 @@ describe('[TX-INTERAC-REMBOURSEMENT] un Interac REÇU importé est un crédit, p
 
     it('le revenu réel du Budget ne contient que la paie : 5 000 $, pas 5 300 $', () => {
         // Avant la règle, l'Interac reçu tombait en « Revenus divers » → +300 $ de faux revenu, soit
-        // 5,7 % du revenu de ce mois (mesuré sur cette fixture ; 900 $/mois sur le corpus réel).
+        // 5,7 % du revenu de ce mois (mesuré sur cette fixture).
         expect(computeIncomeBreakdown(importer())).toEqual({ salary: 5000, other: 0, total: 5000 });
     });
 

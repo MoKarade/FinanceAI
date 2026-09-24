@@ -47,7 +47,7 @@ const ASSET_META: Record<string, AssetMeta> = {
   "BIT:GBS": { name: "Gold Bullion", sector: "Mines/Or", region: "Global", yield: 0, freq: 1 },
   // [Sonde #496] GBS est coté à Paris AUSSI (GBS.PA) — l'entrée BIT: seule normalisait en GBS.MI
   // → GBS.PA restait « Autre ». Idem AASI.PA (Amundi MSCI Em Asia, ticker Paris réel — le seed
-  // n'avait que EPA:PAASI/ANDXF). Tickers du portefeuille réel de Marc, mesurés non couverts.
+  // n'avait que EPA:PAASI/ANDXF). Tickers mesurés non couverts.
   "EPA:GBS": { name: "Gold Bullion", sector: "Mines/Or", region: "Global", yield: 0, freq: 1 },
   "EPA:AASI": { name: "Amundi MSCI Em Asia", sector: "Index", region: "Asie", yield: 0, freq: 1 },
   "EPA:PAAS": { name: "Pan American", sector: "Mines/Or", region: "Ameriques", yield: 1.2, freq: 4, nextPayMonth: 2 },

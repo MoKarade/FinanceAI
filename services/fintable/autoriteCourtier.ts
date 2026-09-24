@@ -153,8 +153,8 @@ export function decideRegimesRepris(
 
         // ⚠️⚠️ TROIS REFUS AVANT TOUTE ÉCRITURE, et ils viennent d'une mesure sur la chaîne réelle.
         // Un total courtier AMPUTÉ (un compte du régime écarté, un autre retenu) écrasait la valeur
-        // reconstruite COMPLÈTE : Disnat CAD 30 000 $ + Disnat USD 72 040 $ sans taux donnait un
-        // mois 0 à 30 000 $ au lieu de 231 882 $. C'est exactement l'état de Marc tant que ses taux
+        // reconstruite COMPLÈTE : un compte CAD retenu + un compte USD sans taux donnait un
+        // mois 0 égal au seul compte CAD au lieu de la valeur complète. C'est exactement l'état de Marc tant que ses taux
         // viennent du repli — le cas le plus probable, pas un cas limite.
         if (nonPlacable) { refuses.push({ regime: r.regime, raison: 'compte-non-placable' }); continue; }
         if (incomplets.has(r.regime)) { refuses.push({ regime: r.regime, raison: 'total-partiel' }); continue; }

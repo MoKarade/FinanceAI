@@ -162,15 +162,15 @@ export const getTaxSituationSpec = {
             // ⚠️ [MCP-NETINCOME-MISLEADING] `netIncome` porte l'assiette IMPOSABLE (salaire +
             // rendement de placement ESTIMÉ) : il inclut donc un montant qui n'est JAMAIS encaissé
             // (le rendement n'est ni versé ni liquidé). Incident 2026-08-05 : ce champ m'a fait
-            // annoncer à Marc un écart de revenu INEXISTANT — j'ai comparé `netIncome` (52 625 $,
-            // dont 12 970 $ de rendement théorique) à ses dépôts de paie réels (39 848 $) et conclu
+            // annoncer à Marc un écart de revenu INEXISTANT — j'ai comparé `netIncome` (l'assiette imposable,
+            // dont un rendement théorique) à ses dépôts de paie réels et conclu
             // à tort que son salaire saisi était faux. Un agrégat crédible mais non étiqueté
             // fabrique de faux diagnostics : c'est le principe no-fake-data appliqué aux tools.
             netIncome: Math.round(sum((r) => r.report.netIncome)),
             // Ce qui tombe RÉELLEMENT au compte : le salaire brut moins TOUT ce qui est prélevé
             // (impôt du ménage — y compris la part due au placement, payée depuis le salaire
             // puisque le portefeuille n'est pas liquidé — et cotisations). Vérifiable contre le
-            // relevé bancaire : sur le profil réel de Marc, 39 654 $ prédits vs 39 848 $ de dépôts
+            // relevé bancaire : sur le profil réel de Marc, la prédiction et les dépôts
             // de paie mesurés sur 12 mois (écart 0,5 %).
             netSalaryIncome: Math.round(netSalaryAnnual),
             netSalaryMonthly: Math.round(netSalaryAnnual / 12),

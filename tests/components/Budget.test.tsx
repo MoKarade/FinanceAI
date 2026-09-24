@@ -293,7 +293,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
     });
 
     it('[BUDGET-INCOME-REAL] Revenus = vraies transactions salaire+divers (pas les positifs non-revenu), avec ventilation', () => {
-        // Bug Marc 2026-07-16 : le revenu doit venir des vraies rentrées (paie Robovic + revenus divers),
+        // Bug Marc 2026-07-16 : le revenu doit venir des vraies rentrées (paie + revenus divers),
         // ventilé, et NE PAS compter un positif non-revenu (remboursement). Discriminant : l'ancien code
         // sommait TOUS les positifs → 2600 ; le fix restreint aux catégories de revenu → 2500.
         const now = new Date();

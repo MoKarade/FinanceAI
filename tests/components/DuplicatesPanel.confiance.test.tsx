@@ -3,8 +3,8 @@
  *
  * [TX-DUPLICATES-BRUIT] La moitié VISIBLE du correctif — celle que Marc touche.
  *
- * Deux faits, mesurés le 2026-09-15 sur ses 321 transactions réelles :
- *   1. le panneau pré-cochait TOUT, collisions de montant comprises (`OnlyFans −100 $` avec un
+ * Deux faits, mesurés le 2026-09-15 sur ses transactions réelles :
+ *   1. le panneau pré-cochait TOUT, collisions de montant comprises (une dépense ronde chez un marchand avec un
  *      paiement de carte et un Interac) : un clic suffisait à effacer de l'argent réel ;
  *   2. replié, il n'annonçait RIEN — Marc voit ses doublons « dans ma liste de transactions » et
  *      n'avait aucune raison d'ouvrir ce panneau. C'est sa réponse textuelle du 2026-09-15.

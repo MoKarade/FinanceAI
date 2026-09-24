@@ -3,7 +3,7 @@
  *
  * [TX-EXCLUES-INTROUVABLES] — Marc, le 2026-09-15 : « je vois plus aucune transactions du bresil ».
  *
- * Il venait d'exclure des calculs ses 44 lignes du voyage, comme je le lui avais demandé. RIEN
+ * Il venait d'exclure des calculs les lignes de son voyage, comme je le lui avais demandé. RIEN
  * n'était perdu — `markTransactionsAsDuplicate` est PUR et ne fait que poser un drapeau — mais
  * `showDuplicates` est un état de COMPOSANT (`useState(false)`), donc remis à faux à chaque
  * montage, et son SEUL `setShowDuplicates(true)` vivait dans `handleMarkDuplicates`. Mesuré sur le

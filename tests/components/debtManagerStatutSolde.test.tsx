@@ -44,7 +44,7 @@ const ilYA = (jours: number): string => {
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 };
 
-/** Le bail de Marc : versements fixes, taux NUL, cadence connue — le SEUL cas où le solde avance. */
+/** Un bail type : versements fixes, taux NUL, cadence connue — le SEUL cas où le solde avance. */
 const BAIL = (over: Partial<Debt> = {}): Debt =>
     ({
         id: 'bail', name: 'bZ', category: 'Car', kind: 'auto-lease',
@@ -135,7 +135,7 @@ describe('[DETTE-BALANCEASOF-INVISIBLE] le formulaire d’édition REND la phras
 });
 
 describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, et offre le lien', () => {
-    /** Les vrais virements de Marc, ramenés à l'horloge du fichier : une date figée deviendrait
+    /** Des virements types, ramenés à l'horloge du fichier : une date figée deviendrait
      *  postérieure à `AUJ` un jour ou l'autre, et le cas cesserait de mesurer quoi que ce soit. */
     const TX = [
         { id: 1, date: ilYA(9), payee: 'Toyota Financial', amount: -234.67, category: 'Transport', status: 'processed' },
@@ -193,7 +193,7 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
 
     it('le sélecteur de marchand N’EXISTE que là où il produit quelque chose (taux nul + versements fixes)', () => {
         // ⚠️ [DETTE-MARCHAND-RECHERCHE] Ce n'était plus un `<select>` depuis que la liste a dépassé
-        // l'écran : 1 879 sorties d'argent chez Marc, `Tim Hortons` 218 fois contre 8 pour le
+        // l'écran : plus d'un millier de sorties d'argent chez Marc, un café présent des centaines de fois contre une poignée pour le
         // marchand cherché, trié par fréquence — « je vois pas toyota dans la liste ». Ce que la
         // garde défend n'a pas bougé (mêmes candidats, même ordre, aucun montant) ; seule la FORME
         // du contrôle a changé, donc le test la suit au lieu d'ancrer `<option>`.
@@ -260,7 +260,7 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
     it('un marchand LIÉ À UNE AUTRE DETTE disparaît de la liste — sinon il est déduit DEUX fois', () => {
         // ⚠️ `paiementsReelsDette` travaille par dette : deux dettes liées au même marchand
         // déduiraient CHACUNE la totalité des virements. Mesuré sur deux dettes et 7 virements
-        // (1 642,69 $ réellement versés) : 3 285,38 $ retirés du total dû. La liste est le SEUL
+        // réels : le double de la somme versée retiré du total dû. La liste est le SEUL
         // endroit où ce lien se pose — l'empêcher ici l'empêche partout.
         poserTransactions(TX);
         const autre = BAIL({ id: 'autre', name: 'autre bail', balanceAsOf: ilYA(9), paymentPayee: 'Toyota Financial' } as Partial<Debt>);

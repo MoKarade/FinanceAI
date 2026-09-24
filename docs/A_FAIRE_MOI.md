@@ -9,7 +9,7 @@
   depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
   oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :
   - `MESURE_ANCRES` : colle le contenu du fichier `mesure-ancres-secret.json` que je t'ai préparé
-    HORS dépôt (tes 12 lignes, leurs symboles et les clôtures publiques aux 3 dates de relevé, SANS
+    HORS dépôt (tes lignes, leurs symboles et les clôtures publiques aux 3 dates de relevé, SANS
     aucune quantité ni solde) ;
   - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
 
@@ -25,10 +25,10 @@
   ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
   garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
 
-- [ ] 👤 **[PTF-JOURNAL-PUBLIC]** (2026-09-24) — **les anciens journaux du cron « Rafraîchir les
-  prix » montrent la liste de tes titres** (symboles rafraîchis et sautés, 254 passes). Le cron ne
-  l'imprime plus. Je peux SUPPRIMER les journaux déjà publiés (irréversible : ils ne servent qu'au
-  diagnostic) — oui ou non ?
+- [x] 👤 **[PTF-JOURNAL-PUBLIC]** (2026-09-24, ✅ **fait le jour même sur ta décision**) — les
+  anciens journaux du cron « Rafraîchir les prix » montraient la liste de tes titres. Le cron ne
+  l'imprime plus, et les journaux des 254 passes déjà publiées ont été SUPPRIMÉS (vérifié : le plus
+  récent rend 404). Les passes restent listées, sans contenu.
 
 - [ ] 👤 **[PTF-FISCALISTE]** (2026-09-24) — **faire confirmer le coût fiscal de tes titres** (don
   reçu : la règle générale est la valeur de marché à la date du don, mais une origine étrangère peut
@@ -119,7 +119,7 @@
   raconte.~~**
   **Ce qui est déjà mesuré** : ton état porte les taux ÉCRITS EN DUR dans le code (facteurs
   **1,4000** pour l'USD et **1,4700** pour l'EUR, au dix-millième — `DEFAULT_FX_RATES`,
-  « approximation Q1 2026 »). Tes 12 positions sont toutes en USD ou EUR, donc **100 %** de la
+  « approximation Q1 2026 »). Tes positions sont toutes en USD ou EUR, donc **100 %** de la
   valeur de tes placements en dépend. La lecture de la Banque du Canada n'a donc **jamais** abouti
   chez toi, ou son résultat n'a jamais été écrit.
   **Pourquoi je ne peux pas aller plus loin d'ici** : `www.bankofcanada.ca` répond **403 au CONNECT**
@@ -139,9 +139,9 @@
   séance » / « Variation 7 jours ». Ces trois choses ont été **supprimées du code** par la PR #983,
   mergée le 2026-09-17 à 21:32 UTC. Un binaire qui les rend encore est donc antérieur.
   **Ce que le redéploiement corrige** :
-  · **220 106 $** au lieu de **245 790 $** sous « Placements » (écart **25 684 $**) — total amputé
+  · un « Placements » sous-évalué d'environ 10 % — total amputé
     des titres à queue de chandelles périmée, corrigé par `[HUB-TOTAL-AMPUTE]` (PR #981) ;
-  · « −457,9 % sur 7 j » et « −110,6 % sur 7 j » — le hub dérive l'évolution 7 j de **chaque**
+  · des variations aberrantes « sur 7 j » (jusqu'à plusieurs centaines de %) — le hub dérive l'évolution 7 j de **chaque**
     métrique, donc publier une variation lui faisait calculer une variation de variation
     (`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`, PR #983) ;
   · « pas encore d'historique » sous une valeur pourtant publiée — le hub indexe la série **par le
@@ -995,7 +995,7 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
 
 - [x] ✅ **Jeton re-collé — CONFIRMÉ PAR MARC 2026-08-05 15:03 UTC (« jeton marche »).** Vérifié
   côté serveur dans la foulée : les 5 jours manquants sont RATTRAPÉS (11 transactions du 2026-07-31
-  au 2026-08-05 : loyer 1 600 $, Virgin Plus, épicerie, crédit de solidarité). Le fix
+  au 2026-08-05 : loyer, télécom, épicerie, crédit de solidarité). Le fix
   `[FINTABLE-TOKEN-PERSIST]` (#559) est donc validé EN CONDITIONS RÉELLES, pas seulement en test.
 - [x] ✅ **Plan fintable.io — implicitement validé** : l'import a repris et rapporte des
   transactions, ce qui exige `can_sync: true`. L'hypothèse « fin d'essai » était bien un leurre de
@@ -1027,7 +1027,7 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
   je le mettrai dans la config, sinon elle sera comptée deux fois dans ton patrimoine.
 - [ ] **Me donner la date de bascule** — le jour de ta dernière transaction déjà importée à la main.
   C'est ce qui empêche les doublons : la dédup de l'app compare `date|montant|libellé`, or le libellé
-  de Fintable (« Blue Bottle Coffee ») ne sera pas celui de tes relevés PDF → même dépense, clé
+  de Fintable (le nom de marchand normalisé) ne sera pas celui de tes relevés PDF → même dépense, clé
   différente, doublon silencieux qui fausserait ton solde ET tes dépenses réelles. En ne prenant que
   ce qui est strictement après cette date, il n'y a aucun recouvrement possible.
 - [ ] **Construire le fichier de rôles de comptes** (une fois) — pour l'aperçu de mapping :
@@ -1036,12 +1036,12 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
   FINTABLE_TOKEN="$(gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)" \
     npm run fintable:dry -- --show-ids
   # 2. Crée .fintable-roles.json à la racine (gitignoré) :
-  #   { "<id PCA>":  {"kind":"cash"},
-  #     "<id TS1>":  {"kind":"cash"},
+  #   { "<id compte chèque>":  {"kind":"cash"},
+  #     "<id compte épargne>":  {"kind":"cash"},
   #     "<id MC>":   {"kind":"debt","debtName":"Desjardins Cash Back Mastercard"},
-  #     "<id Disnat L7B1>": {"kind":"investment","taxRegime":"NON-ENREG"},
-  #     "<id Disnat L7A3>": {"kind":"investment","taxRegime":"CELI"},
-  #     "<id SHR>":  {"kind":"investment","taxRegime":"REER"} }
+  #     "<id Disnat non-enregistré>": {"kind":"investment","taxRegime":"NON-ENREG"},
+  #     "<id Disnat CELI>": {"kind":"investment","taxRegime":"CELI"},
+  #     "<id compte REER>":  {"kind":"investment","taxRegime":"REER"} }
   #
   # ⚠️ [FINTABLE-6] `taxRegime` (CELI | REER | NON-ENREG) : mets le VRAI régime de chaque compte —
   # je ne le devine jamais. Il décide dans quel panier fiscal l'écart entre le solde du courtier et
@@ -1114,7 +1114,7 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
 
 ## O-SYNC — Décisions durcissement sync (Vague 3, remontées par Claude 2026-07-16)
 > Les 2 gros wins de Vague 3 sont livrés (ARCH-SYNC-SPLIT #455, SYNC-FETCH-TIMEOUT #456). Les 2 items
-> restants touchent des chemins money-critical (ta zone de perte 230k$) et méritent TON arbitrage avant
+> restants touchent des chemins money-critical (ta zone de perte de données) et méritent TON arbitrage avant
 > que Claude code — d'où ce point plutôt qu'un pilote auto.
 
 - [ ] **`[SEC-DRIVE-ENCRYPT-DEFAULT]` — chiffrer le payload Drive par défaut ? (décision archi)**
@@ -1125,7 +1125,7 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
     ton `appDataFolder` PRIVÉ (accès = ton compte Google + scope `drive.appdata`), et la clé dérivée du `sub`
     n'est **pas un secret** (le `sub` est dans le jeton OAuth → un attaquant qui a ton compte peut la redériver,
     aveu de `keyCipher.ts`). Le vrai zéro-knowledge, c'est la passphrase (déjà dispo, opt-in).
-  - **Le coût réel (pas un « M »)** : ça touche la mécanique EXACTE de l'anti-clobber qui t'a sauvé du 230k$ :
+  - **Le coût réel (pas un « M »)** : ça touche la mécanique EXACTE de l'anti-clobber qui t'a sauvé de la perte de tes données :
     (1) `decideOnLoad` lit le payload clair pour l'optimisation « contenu identique → noop » (`syncEngine.ts:54`)
     → chiffré, elle saute → **faux conflits bruyants** sur des données identiques à la reconnexion ;
     (2) `summarizeForConflict` lit `assets`/`transactions` en clair pour le modal « cet appareil vs Drive »
@@ -1500,9 +1500,9 @@ sont catégorisés « Remboursement » — je ne veux pas décider seul de chang
 
 ## `[BUDGET-PREVU-BUG]` — diagnostiqué, deux décisions de méthodologie à trancher (2026-08-26)
 
-Ton exemple (« 18 000 $ prévu sur 1 trimestre — irréaliste ») est **reproduit exactement** :
-un compte avec 3 mois d'historique à 6 000 $/mois de revenu donne `incomeAvg = 6 000 $` × 3
-(multiplicateur trimestre) = **18 000 $**. Le calcul est mathématiquement juste sur ses propres
+Ton exemple (« un revenu prévu irréaliste sur 1 trimestre ») est **reproduit exactement** :
+un compte avec 3 mois d'historique à un revenu mensuel R donne `incomeAvg = R` × 3
+(multiplicateur trimestre) = **3 R**. Le calcul est mathématiquement juste sur ses propres
 termes — le problème est que ces termes ne mesurent pas ce que « prévu » devrait vouloir dire.
 
 **Cause n°1 — la moyenne s'étend sur TOUT l'historique, jamais une fenêtre récente.**
@@ -1548,7 +1548,7 @@ l'extension de la normalisation de période si tu la veux.
 <summary>Ticket d'origine (extrait du BACKLOG)</summary>
 
 - [ ] 🔴 **`[BUDGET-PREVU-BUG]`** (M, possiblement money-critical) — le « budget prévu » semble pas
-  à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent de 18 000 $ prévue
+  à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent prévue
   sur 1 trimestre — irréaliste pour la situation de Marc. À diagnostiquer.
 
 </details>
@@ -1795,7 +1795,7 @@ le navigateur de Marc.
 
 Le rapport de synchro du 2026-09-16 a publié :
 
-> « Desjardins Cash Back Mastercard (5020) » → **positif**
+> « Desjardins Cash Back Mastercard (xxxx) » → **positif**
 
 Marc, interrogé sur cette passe : **« c'est en ma faveur »**.
 
@@ -1814,7 +1814,7 @@ doit effectivement de l'argent et où le solde arrive en négatif. Aucune décis
 plan de l'étape 2 (`dû = max(0, −solde)`) est déjà écrit dans ce sens, et il est confirmé.
 
 ✅ **Bonne nouvelle : rien n'est faux aujourd'hui dans ton patrimoine net.** Aucune dette n'est
-associée à cette carte (`Dettes mises à jour : aucune`), donc la dette fantôme de 200 $ que le
+associée à cette carte (`Dettes mises à jour : aucune`), donc la dette fantôme que le
 `Math.abs` aurait fabriquée n'a **jamais été écrite**. Le défaut est réel et il n'a pas encore
 coûté un dollar.
 
@@ -1847,7 +1847,7 @@ c'est une condition, pas une garantie, et elle doit être écrite dans un test.
 
 **Étape 3 — la création automatique de la dette.** Elle reste bloquée sur **un seul chiffre** :
 
-- Le **taux** est tranché : **19,99 %** (décision de Marc du même jour, `[ENG-LIQUIDDEBT-NEVER-REPAID]`
+- Le **taux** est tranché : **le taux de la carte** (décision de Marc du même jour, `[ENG-LIQUIDDEBT-NEVER-REPAID]`
   plus haut dans ce fichier).
 - Le **paiement minimum** n'a **aucun défaut dans le dépôt** — vérifié : il est saisi à la main partout,
   et `debtAmortization` refuse d'amortir sans `minimumPayment > 0`. `applyDebt`
@@ -1858,17 +1858,17 @@ c'est une condition, pas une garantie, et elle doit être écrite dans un test.
   bloqué depuis ce conteneur (`EGRESS_BLOCKED` sur LégisQuébec). La consigner sans source lui donnerait
   l'autorité d'un texte de loi (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`).
 
-### ✅ RÉPONDU par Marc le 2026-09-14 : paiement minimum = **10 $**
+### ✅ RÉPONDU par Marc le 2026-09-14 : paiement minimum = **[montant retiré]**
 
 Chiffre donné par Marc lui-même (son relevé), donc ni inventé ni « hypothèse de modèle » : il peut
-entrer tel quel dans `applyDebt`. Avec le taux déjà tranché (19,99 %), **les trois champs requis pour
+entrer tel quel dans `applyDebt`. Avec le taux déjà tranché (taux de la carte), **les trois champs requis pour
 CRÉER la dette sont désormais disponibles** — il ne reste que le GO sur le plan en trois étapes
 ci-dessus, dont l'étape 1 (mesurer le signe) ne déplace aucun dollar.
 
-⚠️ Un paiement minimum de 10 $ sur une carte à 19,99 % n'éteint pratiquement jamais le solde : c'est
-le minimum CONTRACTUEL, pas le paiement réel de Marc (il vire de grosses sommes — 2 700 $ le
-2026-09-14). Si le moteur ne sert que 10 $/mois, la projection montrera une dette qui ne descend
-jamais. À trancher en même temps que le GO : sert-on le minimum contractuel (10 $) ou le paiement
+⚠️ Un paiement minimum de quelques dollars sur une carte à taux élevé n'éteint pratiquement jamais le solde : c'est
+le minimum CONTRACTUEL, pas le paiement réel de Marc (il vire de grosses sommes — plusieurs milliers de dollars le
+2026-09-14). Si le moteur ne sert que le minimum, la projection montrera une dette qui ne descend
+jamais. À trancher en même temps que le GO : sert-on le minimum contractuel ou le paiement
 RÉEL observé dans les transactions ?
 
 ### ⚠️ Correction : « la mesure était inatteignable » était FAUX
@@ -1888,9 +1888,9 @@ le suivre.
 
 ---
 
-## `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` — 44 transactions fausses dans ton état, +2 537,31 $ de dépenses fantômes
+## `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` — des transactions fausses dans ton état, des dépenses fantômes
 
-> ✅ **Réimport FAIT le 2026-09-15** (36 lignes, 1 067,03 $) — il reste **4 lignes à exclure par Marc**, détail au bas de cette section.
+> ✅ **Réimport FAIT le 2026-09-15** (montants du relevé) — il reste **4 lignes à exclure par Marc**, détail au bas de cette section.
 
 **Statut : MESURÉ, DÉCISION DE RÉPARATION EN ATTENTE.** Rien n'a été écrit dans tes données.
 
@@ -1900,64 +1900,64 @@ Fintable livre le montant dans la **devise d'ORIGINE** de la transaction, en l'�
 `currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper lit l'ÉTIQUETTE : il n'a donc
 jamais pu tirer. Ton relevé de carte, lui, fait foi — il est en CAD.
 
-Mesuré en appariant une à une tes transactions à ton relevé : **+2 537,31 $ (+189,6 %)**.
-39 en BRL surévaluées (ratio 3,567 à 3,624), **5 en USD SOUS-évaluées** (1,417 à 1,427) — le défaut
-va dans les DEUX sens. Contrôle négatif : Netuno Tours, Farm Ipanema et Fresh E Good tombent au cent
+Mesuré en appariant une à une tes transactions à ton relevé : **des dépenses gonflées de plusieurs fois leur montant facturé**.
+la plupart surévaluées (ratio ≈ ×3,6), **quelques-unes en USD SOUS-évaluées** (1,417 à 1,427) — le défaut
+va dans les DEUX sens. Contrôle négatif : trois marchands locaux tombent au cent
 près (conversion au terminal, donc facturés en CAD d'origine).
 
 ### La table de correction
 
 | Marchand (tel qu'importé) | Date app | Importé | **Facturé CAD** | Écart |
 |---|---|---:|---:|---:|
-| Pura Chama Copacabana | 2026-08-31 | 342.61 $ | **94.66 $** | +247.95 $ |
-| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
-| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
-| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
-| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
-| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
-| Metro Rj Rio De | 2026-08-31 | 7.90 $ | **2.18 $** | +5.72 $ |
-| Zigpay | 2026-08-31 | 56.00 $ | **15.48 $** | +40.52 $ |
-| Marieneluciados | 2026-08-31 | 24.00 $ | **6.63 $** | +17.37 $ |
-| Uber | 2026-08-31 | 69.96 $ | **19.33 $** | +50.63 $ |
-| Uber | 2026-08-31 | 9.76 $ | **2.70 $** | +7.06 $ |
-| Global Exchange | 2026-08-31 | 1112.56 $ | **307.40 $** | +805.16 $ |
-| Santos E Carvalho Come | 2026-08-31 | 17.00 $ | **4.70 $** | +12.30 $ |
-| Pindoramagestaoe | 2026-08-31 | 335.20 $ | **92.67 $** | +242.53 $ |
-| *TBC2 40 BAR MERKATO (Panama) | 2026-08-31 | 45.15 $ | **64.33 $** | -19.18 $ |
-| A.saily | 2026-08-31 | 13.99 $ | **19.96 $** | -5.97 $ |
-| Smartcar Mountain | 2026-09-01 | 7.84 $ | **11.18 $** | -3.34 $ |
-| Uber | 2026-09-01 | 26.66 $ | **7.37 $** | +19.29 $ |
-| Uber | 2026-09-01 | 17.00 $ | **4.70 $** | +12.30 $ |
-| Bruno William Boni Paraty | 2026-09-02 | 45.00 $ | **12.48 $** | +32.52 $ |
-| *JIM.COM* SANTINO CIPO | 2026-09-02 | 106.38 $ | **29.52 $** | +76.86 $ |
-| Uber | 2026-09-02 | 12.07 $ | **3.38 $** | +8.69 $ |
-| Uber | 2026-09-02 | 10.45 $ | **2.93 $** | +7.52 $ |
-| Marcosdebrito Angra Dos | 2026-09-04 | 10.00 $ | **2.80 $** | +7.20 $ |
-| Selmadossantosgar Angra | 2026-09-04 | 310.00 $ | **86.90 $** | +223.10 $ |
-| Mercadinho Portal Da I | 2026-09-04 | 15.00 $ | **4.20 $** | +10.80 $ |
-| Romulosilvamorais | 2026-09-04 | 200.00 $ | **56.06 $** | +143.94 $ |
-| Uber | 2026-09-08 | 29.94 $ | **8.35 $** | +21.59 $ |
-| Metro Rj Rio De | 2026-09-08 | 7.90 $ | **2.20 $** | +5.70 $ |
-| Metro Rj Rio De | 2026-09-08 | 7.90 $ | **2.20 $** | +5.70 $ |
-| Uber | 2026-09-08 | 26.93 $ | **7.51 $** | +19.42 $ |
-| Uber | 2026-09-08 | 39.95 $ | **11.14 $** | +28.81 $ |
-| Armazem San Thiago | 2026-09-08 | 226.60 $ | **62.73 $** | +163.87 $ |
-| Zona Sul | 2026-09-08 | 80.56 $ | **22.30 $** | +58.26 $ |
-| Confeitaria Bonis | 2026-09-08 | 29.00 $ | **8.03 $** | +20.97 $ |
-| Zona Sul | 2026-09-08 | 46.14 $ | **12.89 $** | +33.25 $ |
-| Pagte (BEE**PagTesouro) | 2026-09-08 | 168.10 $ | **46.98 $** | +121.12 $ |
-| Duty Free New Departur | 2026-09-10 | 126.35 $ | **179.04 $** | -52.69 $ |
-| Nescafe Galeao | 2026-09-10 | 111.31 $ | **31.05 $** | +80.26 $ |
-| *BRUTTITO TERMINAL | 2026-09-10 | 36.80 $ | **52.19 $** | -15.39 $ |
-| Uber | 2026-09-09 | 35.93 $ | **10.05 $** | +25.88 $ |
-| Sodexo | 2026-09-09 | 13.50 $ | **3.77 $** | +9.73 $ |
-| Sodexo | 2026-09-09 | 13.50 $ | **3.77 $** | +9.73 $ |
-| Uber | 2026-09-09 | 40.99 $ | **11.46 $** | +29.53 $ |
-| **TOTAL (44)** | | **3875.43 $** | **1338.12 $** | **+2537.31 $** |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| **TOTAL** | | **[montant retiré]** | **[montant retiré]** | **[montant retiré]** |
 
 ⚠️ **Cette table n'est PAS complète** : mes captures du relevé s'arrêtent au 08 SEP pour la partie
-facturée et ne montrent pas tout le 09-10 SEP. Au moins deux lignes de ton état (Uber −57,93 $ et
-Copa −70,00 $ du 2026-09-10) n'ont pas pu être appariées faute de la ligne de relevé correspondante.
+facturée et ne montrent pas tout le 09-10 SEP. Au moins deux lignes de ton état (deux dépenses
+de la fin du relevé) n'ont pas pu être appariées faute de la ligne de relevé correspondante.
 Une réparation COMPLÈTE exige le relevé complet.
 
 ### ⚠️ MESURÉ le 2026-09-14 : ce n'est PAS toi, le bouton n'existe pas pour ton cas
@@ -1965,19 +1965,19 @@ Une réparation COMPLÈTE exige le relevé complet.
 Marc : « j'arrive pas à les marquer en doublon ». **Il a raison, et c'est structurel.** Le seul point
 d'entrée du marquage « doublon » dans l'app est `DuplicatesPanel`, et ce panneau n'affiche que les
 **groupes trouvés par le DÉTECTEUR** (`findDuplicateGroups` : même date/montant/marchand à une
-tolérance près). Ses 44 lignes du Brésil ne sont le doublon de **rien** — elles sont uniques, juste
+tolérance près). Ses lignes en devise étrangère ne sont le doublon de **rien** — elles sont uniques, juste
 au mauvais montant. Elles n'apparaîtront donc **jamais** dans ce panneau. Il n'existe aucun autre
 chemin vers `isDuplicate` dans l'interface.
 
 **Le seul levier par ligne qui existe aujourd'hui** est le bouton ⇄ « virement » de la liste
 Transactions (`toggleTransfer`). Il neutralise bel et bien la ligne — `isTransfer` l'exclut du cash
 (`reconstructCashHistory`), des dépenses ET des revenus (`isSpend`, `isIncome`) — mais il **étiquette
-une vraie dépense comme un virement interne**, ce qui est faux, et il faut le faire **44 fois**.
+une vraie dépense comme un virement interne**, ce qui est faux, et il faut le faire **une fois par ligne**.
 
 ⚠️ **Et une correction par transaction COMPENSATOIRE est impossible** — vérifié dans le code, pas
 supposé. `computeMonthlyActualAverages` ne compte un montant POSITIF que dans deux cas : catégorie
 `Salaire`/`Revenus divers` (→ revenu), ou `isCreditBack` (catégorie ∈ `CREDIT_BACK_CATEGORIES`, qui
-ne contient QUE `'Remboursement'`). Un `+5,72 $` posé en « Transport » pour annuler un `−7,90 $`
+ne contient QUE `'Remboursement'`). Un montant positif posé en « Transport » pour annuler une dépense surévaluée
 serait **purement ignoré** : ni revenu, ni réduction de dépense. Et en « Remboursement », le net du
 poste est planché à zéro (`Math.max(0, spent − credit)`), donc absorbé. Les deux voies donnent un
 **no-op qui a l'air d'un correctif** — le pire des résultats.
@@ -2009,19 +2009,19 @@ re-catégoriser, et aucun libellé ne le disait.
 
 1. Filtre pour isoler les lignes à neutraliser (la recherche, ou le filtre par catégorie).
 2. Coche une ligne → une barre apparaît : « N sélectionnée(s) ».
-3. Clique **« Sélectionner les N filtrées »** — ça dépasse la page (tes 44 lignes s'étalent sur
+3. Clique **« Sélectionner les N filtrées »** — ça dépasse la page (tes lignes s'étalent sur
    plusieurs pages de 50, et la case « tout cocher » de l'en-tête ne couvre QUE la page courante).
 4. Clique **« Exclure des calculs »**.
 
 Les lignes restent visibles dans l'historique, mais sortent du solde, du budget et des revenus.
 **C'est réversible** : « Annuler tous les marquages » dans le panneau « Doublons ».
 
-Dis-moi quand c'est fait — j'importe les bons montants (1 338,12 $ au lieu de 3 875,43 $) dans la
+Dis-moi quand c'est fait — j'importe les bons montants (les montants facturés au lieu des montants importés) dans la
 foulée, et ton solde redevient juste.
 
 ⚠️ **L'ADR reste fermée, et c'est volontaire** : je ne me suis toujours pas donné le droit de
 modifier une transaction existante. Ce que ce lot corrige, c'est que TOI tu peux le faire en
-quatre gestes au lieu de 44 — et que la décision de neutraliser une ligne reste la tienne.
+quatre gestes au lieu d'un par ligne — et que la décision de neutraliser une ligne reste la tienne.
 
 ### Pourquoi je ne l'ai pas corrigée tout seul
 
@@ -2031,16 +2031,16 @@ ajouterait donc une SECONDE ligne au lieu de corriger la première, et doublerai
 
 Le seul levier propre est `isDuplicate` : il exclut une ligne de **tous** les calculs (cash, budget,
 grand livre du passé), et c'est exactement ce à quoi il sert (« artefact d'import »). Il se pose à la
-main dans l'écran Transactions. La réparation complète est donc en deux temps — **marquer les 44
+main dans l'écran Transactions. La réparation complète est donc en deux temps — **marquer les
 lignes « doublon », puis ré-importer les montants du relevé** — et l'ordre compte : ajouter d'abord
 ferait doubler la dépense tant que le marquage n'est pas fait.
 
 C'est une migration de tes données financières RÉELLES : elle attend ton feu vert explicite.
 
-### ✅ RÉIMPORT FAIT le 2026-09-15 — 36 lignes, **1 067,03 $** (ton feu vert : « tu peux réimporter avec les bons montants »)
+### ✅ RÉIMPORT FAIT le 2026-09-15 — (ton feu vert : « tu peux réimporter avec les bons montants »)
 
 Écrit dans ton état par `apply_bank_statement` (sauvegarde horodatée automatique avant écriture) :
-**36 transactions ajoutées, 0 doublon, 0 rejet.** Pas 44 lignes ni 1 338,12 $ — huit lignes du
+**Transactions ajoutées, 0 doublon, 0 rejet.** Pas tout le tableau — huit lignes du
 tableau ont été ÉCARTÉES, toutes dans le sens prudent (importer moins, jamais plus).
 
 **A. Quatre lignes dont l'original est encore ACTIF dans tes calculs** — mesuré le 2026-09-15 sur
@@ -2049,50 +2049,50 @@ marquées, donc elles ne sont pas marquées. Les réimporter aurait compté la d
 
 | ligne | date | encore compté | montant réel | manque |
 |---|---|---:|---:|---:|
-| A.saily | 2026-08-31 | 13.99 $ | **19.96 $** | 5.97 $ |
-| Smartcar Mountain | 2026-09-01 | 7.84 $ | **11.18 $** | 3.34 $ |
-| Duty Free New Departur | 2026-09-10 | 126.35 $ | **179.04 $** | 52.69 $ |
-| *BRUTTITO TERMINAL 1 TOCUMEN 008 | 2026-09-10 | 36.80 $ | **52.19 $** | 15.39 $ |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
 
 ✅ **FAIT le 2026-09-16.** Marc a exclu les quatre lignes, et les quatre bons montants ont été
-importés (**262,37 $**, 4 ajoutées / 0 rejet, sauvegarde `…2026-09-16T18-20-27-514Z.bak.json`).
-La précondition a été vérifiée **par ligne**, jamais comme propriété globale : `A.saily`,
-`Duty Free New Departur` et `*BRUTTITO TERMINAL` ne ressortent plus d'une recherche qui EXCLUT les
+importés (4 ajoutées / 0 rejet, sauvegarde `…2026-09-16T18-20-27-514Z.bak.json`).
+La précondition a été vérifiée **par ligne**, jamais comme propriété globale : trois des quatre lignes
+ne ressortent plus d'une recherche qui EXCLUT les
 lignes marquées → elles sont bien exclues.
 
-⚠️ **Et `Smartcar Mountain` a failli me faire suspendre un import parfaitement légitime** : elle
-RESSORTAIT de la recherche. Mais à `2026-08-06` pour `−4,40 $`, alors que la ligne à corriger est du
-`2026-09-01` pour `7,84 $` — **deux transactions différentes chez le même marchand**, la seconde
+⚠️ **Et la quatrième ligne a failli me faire suspendre un import parfaitement légitime** : elle
+RESSORTAIT de la recherche. Mais à une autre date et pour un autre montant, alors que la ligne à corriger est du
+la date et le montant du relevé — **deux transactions différentes chez le même marchand**, la seconde
 arrivée avec le rattrapage d'historique du jour. Une recherche par MARCHAND ne dit rien d'une LIGNE :
-c'est le couple (date, montant) qui identifie. Lue trop vite, elle aurait suspendu 11,18 $ au motif
+c'est le couple (date, montant) qui identifie. Lue trop vite, elle aurait suspendu une correction légitime au motif
 d'un doublon qui n'existait pas.
 
-Ces quatre dépenses ne sont donc plus sous-évaluées de 77,39 $.
+Ces quatre dépenses ne sont donc plus sous-évaluées.
 
 **B. Quatre billets de métro du 2026-08-31 n'ont pas été remis.** Tu avais répondu **« 2 vrais
-achetés »** sur ce groupe : le tableau en apparie 6, je n'en ai réimporté que **2** (2,18 $ chacun).
+achetés »** sur ce groupe : le tableau en apparie 6, je n'en ai réimporté que **2**.
 Les **2** du 2026-09-08 sont conservées — ta réponse portait sur le groupe du 31 août, et le relevé
-les apparie séparément. Si eux aussi sont des doublons d'import, dis-le : 4,40 $ à exclure.
+les apparie séparément. Si eux aussi sont des doublons d'import, dis-le : ces deux-là à exclure.
 
-**C. Trois libellés portent un suffixe `(2/2)`** — `Metro Rj Rio De` (31/08 et 08/09) et `Sodexo`
-(09/09). Ce sont deux dépenses RÉELLES identiques le même jour, et la dédup de l'import jette la
+**C. Trois libellés portent un suffixe `(2/2)`** — deux libellés de transport (deux jours distincts) et un de restauration
+Ce sont deux dépenses RÉELLES identiques le même jour, et la dédup de l'import jette la
 seconde dès que date + montant + marchand coïncident (elle le dit elle-même : « doublon SUSPECT au
 sein du même lot »). Le suffixe est la seule façon de conserver les deux montants sans toucher à un
 seul chiffre. Tu peux le retirer à la main si ça te gêne.
 
-**D. Huit lignes sont en « Non catégorisé »** — Marieneluciados, Pindoramagestaoe, Bruno William
-Boni Paraty, JIM.COM SANTINO CIPO, Marcosdebrito, Selmadossantosgar, Romulosilvamorais, Pagte. Ce
-sont des prestataires brésiliens que je ne peux pas identifier ; leur inventer une catégorie aurait
-été une affirmation, pas une donnée. ⚠️ Et `Metro Rj Rio De` a reçu **Transport** en dur : la règle
+**D. Huit lignes sont en « Non catégorisé »** — des prestataires
+aux libellés opaques. Ce
+sont des prestataires étrangers que je ne peux pas identifier ; leur inventer une catégorie aurait
+été une affirmation, pas une donnée. ⚠️ Et les billets de métro ont reçu **Transport** en dur : la règle
 d'import lit `\bMETRO\b` et l'aurait classé **Épicerie** (le supermarché québécois), ce qu'un
-billet de métro de Rio n'est pas.
+billet de métro à l'étranger n'est pas.
 
-**E. Aucun nom de compte** n'est attaché à ces 36 lignes — je n'ai pas de quoi lire le libellé exact
+**E. Aucun nom de compte** n'est attaché à ces lignes — je n'ai pas de quoi lire le libellé exact
 de ta carte, et en inventer un serait faux. Ça ne change **aucun** calcul (`computeCashLedger` ne
 lit pas le compte), seulement l'affichage.
 
 ⚠️ **Le tableau reste incomplet** (voir l'avertissement plus haut) : mes captures du relevé
-s'arrêtent au 08 SEP. Les deux lignes du 2026-09-10 jamais appariées (Uber −57,93 $, Copa −70,00 $)
+s'arrêtent au 08 SEP. Les deux lignes du 2026-09-10 jamais appariées
 sont **exclues** de tes calculs et n'ont donc **pas** de remplaçante — cette dépense-là manque
 entièrement tant que je n'ai pas la fin du relevé.
 
@@ -2142,7 +2142,7 @@ conteneur (403 au CONNECT, et `EGRESS_BLOCKED` via l'outil de récupération web
 **Statut : CONTRAT LU ET VÉRIFIÉ, RIEN N'A ÉTÉ ÉCRIT DANS TES DONNÉES.** Deux faits changent la
 décision, et aucun des deux n'était connu quand tu as répondu au menu.
 
-### Ce que dit le contrat (Ste-Foy Toyota, 2026-07-14)
+### Ce que dit le contrat (concessionnaire et date retirés)
 
 Seuls les paramètres qui servent au MODÈLE sont consignés ici. ⚠️ **Le dépôt est PUBLIC** : le NIV,
 ton adresse, ton téléphone, le numéro de contrat et le nom du vendeur sont DÉLIBÉRÉMENT omis — ils
@@ -2151,34 +2151,34 @@ n'ont aucune valeur de calcul et n'ont rien à faire dans un dépôt public.
 | Paramètre | Valeur au contrat |
 |---|---|
 | Nature | **Offre de LOCATION (bail)** — pas un prêt |
-| Véhicule | Toyota bZ XLE AWD 2026, neuf |
-| Date du contrat / livraison | **2026-07-14** |
-| Prix total | 59 467,33 $ |
-| Rabais manufacturier | −12 000,00 $ |
-| **Coût capitalisé** | **48 405,23 $** |
-| **Versement** | **190,02 $/semaine** + 28,45 $ de taxes = **218,47 $/semaine** |
+| Véhicule | véhicule neuf |
+| Date du contrat / livraison | **[date retirée]** |
+| Prix total | [montant retiré] |
+| Rabais manufacturier | [montant retiré] |
+| **Coût capitalisé** | **[montant retiré]** |
+| **Versement** | **[montant retiré]/semaine** taxes comprises |
 | **Terme** | **48 mois** |
-| **Taux** | **6,59 %** |
-| **Valeur résiduelle** | **17 746,40 $** |
-| Kilométrage | 28 000 km/an |
+| **Taux** | **[taux retiré]** |
+| **Valeur résiduelle** | **[montant retiré]** |
+| Kilométrage | [kilométrage retiré] |
 | Institution | Toyota Services Financiers |
 
-**Lecture VÉRIFIÉE par l'arithmétique, pas seulement par l'œil** : 190,02 + 28,45 = 218,47 au cent
-près, et le terme de 48 **mois** se déduit du reste — sur 208 semaines, le versé avant taxes
-(39 524 $) colle à la dépréciation + intérêt attendue (39 378 $) à **+0,4 %**, alors qu'un terme de
+**Lecture VÉRIFIÉE par l'arithmétique, pas seulement par l'œil** : versement avant taxes + taxes = versement total au cent
+près, et le terme de 48 **mois** se déduit du reste — sur toute la durée, le versé avant taxes
+colle à la dépréciation + intérêt attendue à **+0,4 %**, alors qu'un terme de
 60 mois donnerait **+18,9 %**. Le « 48 » du contrat est donc bien en mois.
 
 ### ⚠️ BLOCAGE 1 — ce que tu paies n'est PAS ce que dit le contrat
 
-- Contrat : **218,47 $/semaine**
-- Mesuré dans tes transactions (7 prélèvements « Toyota Financial », hebdomadaires, du 2026-07-28 au
-  2026-09-09) : **234,67 $/semaine**
-- Écart : **+16,20 $/semaine, soit +7,4 % et 842 $/an**
+- Contrat : **[montant retiré]/semaine**
+- Mesuré dans tes transactions (prélèvements hebdomadaires du financier, sur les premières semaines
+  du bail) : **un versement hebdomadaire plus élevé**
+- Écart : **environ +7,4 %**
 
 Le document que tu m'as envoyé s'intitule « Contrat de Vente — **Offre** de Location » : c'est une
 OFFRE, et le bail signé a pu changer. Je ne choisis pas : **lequel des deux est la vérité ?** Un
-versement faux se propage à toute la projection, et le mensualiser donne 946,70 $ (contrat) contre
-1 016,90 $ (réel) — 70 $/mois d'écart sur 4 ans.
+versement faux se propage à toute la projection, et l'écart mensualisé entre contrat et réel se
+répète sur toute la durée du bail.
 
 ### ⚠️ BLOCAGE 2 — un BAIL ne s'amortit pas, et le moteur le REFUSE exprès
 
@@ -2191,18 +2191,18 @@ Ta demande (« qu'elle diminue avec chaque virement ») reste parfaitement légi
 qui décroît n'est pas la même :
 
 1. **L'engagement restant** = versements qui restent × montant. Décroît à chaque paiement, c'est ce
-   que tu dois encore contractuellement. Au 2026-09-14 : 7 versements faits sur 208.
-2. **Le solde capitalisé** = coût capitalisé qui descend vers la VALEUR RÉSIDUELLE (17 746,40 $), pas
+   que tu dois encore contractuellement. Au moment de l'écriture : quelques versements faits sur l'ensemble du terme.
+2. **Le solde capitalisé** = coût capitalisé qui descend vers la VALEUR RÉSIDUELLE, pas
    vers zéro. C'est la vision comptable du bail.
 
 Les deux sont défendables et **ne donnent pas le même patrimoine net**. Il faut choisir.
 
 ### ⚠️ Et ta saisie actuelle est fausse sur les deux chiffres
 
-Ta dette « bZ » porte **50 000 $ à 5,69 %**. Le contrat dit **48 405,23 $ de coût capitalisé à
-6,59 %**. Le 50 000 est un chiffre rond qui ne figure nulle part au contrat.
-⚠️ Et ton patrimoine net ne contient **aucun véhicule à l'actif** (31 984 + 230 624 − 50 000 =
-212 609 $, ce que l'app affiche) : tu portes donc une dette de 50 000 $ pour une auto qui n'existe pas
+Ta dette « bZ » porte **un montant rond et un taux** qui ne sont pas ceux du contrat, qui dit **un autre coût capitalisé à
+un autre taux**. Le montant saisi est un chiffre rond qui ne figure nulle part au contrat.
+⚠️ Et ton patrimoine net ne contient **aucun véhicule à l'actif** (liquidités + placements − dette du bail =
+la valeur nette que l'app affiche) : tu portes donc une dette de plusieurs dizaines de milliers de dollars pour une auto qui n'existe pas
 dans ton bilan. Pour un bail c'est un choix défendable (tu ne possèdes pas le véhicule), mais c'en est
 un, et il doit être délibéré plutôt que subi.
 
@@ -2211,58 +2211,58 @@ un, et il doit être délibéré plutôt que subi.
 > « le bon prix est celui que je paie car j'ai des offres en plus, calcule combien ça fera en tout…
 > modifie le prêt par rapport au contrat »
 
-**Combien ça fera en tout** — au versement que tu paies réellement (234,67 $/semaine, 208 semaines) :
+**Combien ça fera en tout** — au versement que tu paies réellement (sur toute la durée du bail) :
 
 | | |
 |---|---:|
-| Total des 208 versements | **48 811,36 $** |
-| (au contrat seul : 208 × 218,47 $) | 45 441,76 $ |
-| **Ce que tes options ajoutent sur le terme** | **+3 369,60 $** |
-| Déjà versé (7 semaines) | 1 642,69 $ |
-| Reste à verser (201 semaines) | **47 168,67 $** |
-| **+ si tu ACHÈTES le véhicule à la fin** (valeur résiduelle) | +17 746,40 $ |
-| **Total si tu achètes** | **66 557,76 $** |
+| Total des versements | **[montant retiré]** |
+| (au contrat seul) | [montant retiré] |
+| **Ce que tes options ajoutent sur le terme** | **[montant retiré]** |
+| Déjà versé | [montant retiré] |
+| Reste à verser (versements restants) | **[montant retiré]** |
+| **+ si tu ACHÈTES le véhicule à la fin** (valeur résiduelle) | +[montant retiré] |
+| **Total si tu achètes** | **[montant retiré]** |
 
 **Ce qui a été écrit dans ton état** (`apply_debt`, sauvegarde horodatée créée avant — réversible) :
 
 | Champ | Avant | Après |
 |---|---:|---:|
-| `balance` | 50 000,00 $ | **47 168,67 $** (versements restants au 2026-09-14) |
-| `interestRate` | 5,69 % | **0 %** |
-| `minimumPayment` | **220,00 $** | **1 016,90 $** (= 234,67 × 52 ÷ 12) |
+| `balance` | [montant retiré] | **[montant retiré]** (versements restants au 2026-09-14) |
+| `interestRate` | [taux retiré] | **0 %** |
+| `minimumPayment` | **[montant retiré]** | **[montant retiré]** (= versement hebdomadaire × 52 ÷ 12) |
 | `rateProvider` | — | Toyota Services Financiers |
 
-⚠️ **Pourquoi 0 % et pas les 6,59 % du contrat — c'est mesuré, pas un avis.** Le moteur amortit tout
+⚠️ **Pourquoi 0 % et pas le taux du contrat — c'est mesuré, pas un avis.** Le moteur amortit tout
 solde actif : `intérêt = solde × taux/12`, puis `solde += intérêt − paiement`. Or le solde que j'ai
 écrit est la **somme des versements restants**, et un versement de bail **contient déjà l'intérêt**.
-Ressaisir 6,59 % par-dessus le compte donc **deux fois** :
+Ressaisir le taux du contrat par-dessus le compte donc **deux fois** :
 
 | Taux saisi | Dette éteinte en | Total versé |
 |---|---:|---:|
-| **0 %** | **47 mois** (réel : 46,4) | **47 168,67 $** ✅ |
-| 6,59 % | 54 mois | 54 591,90 $ |
+| **0 %** | **la durée réelle du terme** (à un mois près) | **exactement le solde saisi** ✅ |
+| taux du contrat | ≈ 7 mois de plus | ≈ 16 % de plus |
 
-Soit **+7 mois et +7 423 $ de versements que tu ne feras jamais**. Le 6,59 % reste consigné ici et au
+Soit **+7 mois et ≈ 16 % de versements que tu ne feras jamais**. Le taux du contrat reste consigné ici et au
 `BACKLOG` : il décrit le contrat, il n'a rien à faire dans un champ qui multiplie un solde déjà
 tout-compris.
 
-⚠️ **Ton paiement était à 220 $/mois dans l'app** pour une auto qui te coûte **1 016,90 $/mois** — le
+⚠️ **Ton paiement était sous-évalué d'environ quatre fois dans l'app** par rapport à ce que l'auto te coûte vraiment — le
 plus gros des quatre écarts, et il ne venait pas du contrat mais d'une vieille saisie. Effet mesuré
-dans l'app juste après l'écriture : patrimoine net **212 609 $ → 215 440 $**, dépenses mensuelles
-**3 718 $ → 4 554 $**, **cashflow mensuel 2 370 $ → 1 534 $**. Ta capacité d'épargne projetée était
-surévaluée de ~836 $/mois.
+dans l'app juste après l'écriture : patrimoine net **[montant retiré] → [montant retiré]**, dépenses mensuelles
+**en hausse d'environ un quart**, **cashflow mensuel en baisse d'environ un tiers**. Ta capacité d'épargne projetée était
+surévaluée de plusieurs centaines de dollars par mois.
 
 ### ⚠️ Ce qui RESTE à faire, et seulement dans l'écran (le MCP ne peut pas)
 
-Dans **Réglages → Dettes**, sur « bZ » :
+Dans **Réglages → Dettes**, sur le bail auto :
 
 1. **Type** → « bail auto » (`auto-lease`). Sans ça, le moteur la traite comme un prêt ordinaire.
-2. **Date de début** → **2026-07-14** (date du contrat et de la livraison). Avant cette date, la dette
+2. **Date de début** → **la date du contrat** (date du contrat et de la livraison). Avant cette date, la dette
    sort du bilan — sinon ton passé porte un bail que tu n'avais pas encore.
-3. **Date de fin de terme** → **2030-07-14** (48 mois). Le moteur cesse alors de payer, et s'il reste
+3. **Date de fin de terme** → **la date de fin du contrat** (fin du terme). Le moteur cesse alors de payer, et s'il reste
    un solde il le DIT au lieu de l'effacer.
 
-⚠️ Et la **valeur résiduelle de 17 746,40 $** n'existe nulle part dans le modèle : si tu comptes
+⚠️ Et la **valeur résiduelle du contrat** n'existe nulle part dans le modèle : si tu comptes
 acheter le véhicule à la fin, c'est une décision à cadrer à part (ni `Debt` ni `Asset` ne portent
 aujourd'hui « rachat de bail »).
 
@@ -2297,7 +2297,7 @@ Un compte dont **aucune** transaction n'est encore identifiée à son nom n'a pa
 reste sur l'ancien, donc il continue d'être écarté. Le rapport de synchro le dit maintenant en
 toutes lettres, par exemple :
 
-> Compte(s) en retard de postage sans historique connu : **Mastercard**. […] Lance « Rattraper
+> Compte(s) en retard de postage sans historique connu : **ta carte**. […] Lance « Rattraper
 > l'historique » dans Réglages UNE fois pour l'amorcer.
 
 Si tu vois ce message : **Réglages → Rattraper l'historique**, une seule fois. Ensuite le repère de
@@ -2308,7 +2308,7 @@ Si tu ne le vois pas, il n'y a rien à faire — ta carte est déjà connue et l
 ### Pourquoi je ne le fais pas automatiquement
 
 Ouvrir la fenêtre d'un compte inconnu rapatrierait **tout son historique sans dédoublonnage** — et
-dans ton cas précis ça rejouerait les **44 lignes du Brésil aux MAUVAIS montants**, ceux qu'on vient
+dans ton cas précis ça rejouerait les **lignes en devise étrangère aux MAUVAIS montants**, ceux qu'on vient
 de corriger : la protection anti-doublon compare date + **montant** + marchand, donc elle ne
 reconnaîtrait pas les lignes corrigées. « Rattraper l'historique », lui, passe par un classement des
 doublons avec arbitrage — c'est le bon outil, et il existe déjà.
@@ -2316,7 +2316,7 @@ doublons avec arbitrage — c'est le bon outil, et il existe déjà.
 ### ⚠️ Et une nuance ajoutée après relecture (elle peut retarder l'effet chez toi)
 
 Le repère d'un compte ne « voit » que les lignes portant SON nom de compte. Tes lignes saisies à la
-main — dont les **36 du Brésil réécrites le 15 septembre** — n'en portent aucun. Or ce sont elles qui
+main — dont les **lignes en devise étrangère réécrites le 15 septembre** — n'en portent aucun. Or ce sont elles qui
 t'empêchaient jusqu'ici qu'une dépense déjà connue soit réimportée.
 
 Sans précaution, le nouveau repère les aurait **réimportées aux montants d'origine** (donc faux), la
@@ -2324,5 +2324,5 @@ protection anti-doublon ne les reconnaissant pas puisqu'elle compare le libellé
 Mesuré : **3 doublons écrits**. C'est refabriquer exactement ce qu'on venait d'enlever.
 
 Donc : le repère d'un compte ne recule jamais au-delà de ta dernière ligne « sans compte ». Tant que
-celle-ci est récente (le 10 septembre pour le Brésil), le gain reste partiel pour la carte — et il
+celle-ci est récente (début septembre pour ces lignes), le gain reste partiel pour la carte — et il
 se rétablit **tout seul** à mesure que les jours passent, sans rien faire de ta part.

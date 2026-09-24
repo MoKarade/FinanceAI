@@ -236,7 +236,7 @@ describe('[DEBT-AMORTIZATION] la courbe rendue', () => {
 //
 // Le défaut, mesuré dans le code des deux côtés : la boucle du FUTUR (`services/projection.ts`,
 // bloc « DETTES ») amortit toute dette active SANS lire `kind` ; le PASSÉ refusait `auto-lease`.
-// Sa seule dette réelle est un bail à 47 169 $ et **0 %** (mesuré par le MCP le 2026-09-17), donc
+// Sa seule dette réelle est un bail à taux **0 %** (mesuré par le MCP le 2026-09-17), donc
 // il voyait une dette parfaitement plate derrière lui et décroissante devant.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -293,7 +293,7 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
 
     it('un taux NON NUL est REFUSÉ — on ne sait plus ce que le solde contient', () => {
         // Contrôle NÉGATIF, et c'est la garde qui compte le plus : écrire le taux du contrat sur un
-        // solde tout-compris comptait l'intérêt DEUX fois (+7 423 $ mesurés le 2026-09-14). Une
+        // solde tout-compris comptait l'intérêt DEUX fois (mesuré le 2026-09-14). Une
         // courbe plausible et fausse est pire que pas de courbe.
         refus(amortirDettePassee(bail({ interestRate: 6.59 }), AUJOURDHUI, AUJ_ISO, []), 'taux-sur-solde-tout-compris');
     });
@@ -344,7 +344,7 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
    ──────────────────────────────────────────────────────────────────────────────────────────────── */
 
 describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () => {
-    /** Le bail RÉEL de Marc : 234,67 $/semaine, soit 1 016,90 $/mois. Le jour d'aujourd'hui est
+    /** Un bail type : 150 $/semaine, soit 650 $/mois. Le jour d'aujourd'hui est
      *  cohérent avec `AUJOURDHUI` (septembre 2026) et tombe 57 jours après le début — donc 8
      *  prélèvements écoulés, un compte qu'on peut refaire à la main. */
     const bailHebdo = (o: Partial<EntreeAmortissement> = {}): EntreeAmortissement =>

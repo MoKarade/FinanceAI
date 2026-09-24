@@ -30,7 +30,7 @@ des bugs le touchant directement attendent).
 
 - **Risque n° 1 : `services/sync/syncOrchestrator.ts`** (892 lignes, 23 exports : push, pull,
   conflit, passphrase, polling, suppression distante mêlés). Les deux incidents money-critical de
-  juillet (perte 230 k$, fuite persona) sont nés dans ce périmètre ; chaque fix a été un patch
+  juillet (perte de la quasi-totalité des placements affichés, fuite persona) sont nés dans ce périmètre ; chaque fix a été un patch
   DANS le fichier, jamais une redistribution. **Refactor le plus rentable du repo** : scission en
   4 modules (push / pull+conflit / cycle de vie / passphrase), `syncEngine.ts` (pur) inchangé,
   barrel de compat, discriminants sur les scénarios des 2 incidents. → `[ARCH-SYNC-SPLIT]`
@@ -50,7 +50,7 @@ des bugs le touchant directement attendent).
 ## 2. Dette technique — top findings (15 au total, détail BACKLOG)
 
 - **HIGH `[DETTE-PDF-FX-BYPASS]`** : `services/pdfReport.ts:123` calcule `quantity × currentPrice × fx`
-  à la main au lieu d'`assetValueCad` — même classe que l'incident FX des 230 k$ sous-affichés,
+  à la main au lieu d'`assetValueCad` — même classe que l'incident FX des placements sous-affichés,
   dans le PDF remis à l'utilisateur, ET invisible du test-garde `assetFxGuard` (le mot « fx » sur
   la ligne suffit à le faire passer). Effort S. **À corriger en premier.**
 - HIGH : les 3 god-components UI (Budget, Investments, FutureProjection) — cf. §1.
@@ -66,7 +66,7 @@ des bugs le touchant directement attendent).
 ## 3. Produit — pour l'utilisateur réel (solo)
 
 - **Déséquilibre d'investissement** : chantiers majeurs récents à valeur actuelle ≈ 0 pour un
-  utilisateur SOLO de 26 ans (retraite per-conjoint, optimiseur de couple `[CIX]`, dons FA-6,
+  utilisateur SOLO et jeune (retraite per-conjoint, optimiseur de couple `[CIX]`, dons FA-6,
   enfants/REEE), pendant que des bugs à impact direct attendaient (`FISC-PAYROLL-BASE-INVEST`
   correspond quasi exactement à son profil salaire + gros non-enregistré). **Décision proposée :
   geler `[CIX]` et tout raffinement per-conjoint/dons tant que la situation ne change pas.**
@@ -80,7 +80,7 @@ des bugs le touchant directement attendent).
   → `[UX-STATEMENT-REMINDER]`
 - Tension VISION↔réel assumée à surveiller : l'infra OAuth/Cloud Run dépasse le besoin strict d'un
   mono-utilisateur — geler le durcissement au niveau actuel sauf incident.
-- Prix des titres EU (gros du portefeuille) non couverts par Finnhub gratuit — friction récurrente
+- Prix des titres EU non couverts par Finnhub gratuit — friction récurrente
   documentée, sans solution gratuite propre identifiée à date.
 
 ## 4. Sécurité / vie privée — posture

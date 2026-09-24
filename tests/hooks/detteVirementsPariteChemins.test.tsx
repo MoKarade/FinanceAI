@@ -52,7 +52,7 @@ describe('[DETTE-VIREMENTS-REELS] parité navigateur / MCP sur une dette LIÉE �
         const soldeHook = (result.current.params.debts as any[])[0].balance;
         const soldeMcp = (mcp.debts as any[])[0].balance;
         expect(soldeHook).toBe(soldeMcp);
-        // ⚠️ La VALEUR, pas seulement l'égalité : huit virements de 234,67 $ déduits du solde
+        // ⚠️ La VALEUR, pas seulement l'égalité : huit virements hebdomadaires déduits du solde
         // enregistré. Sans elle, deux chemins également figés au solde brut passeraient.
         expect(soldeHook).toBeCloseTo(47168.67 - 8 * 234.67, 2);
         // Anti-vacuité : la correction doit VRAIMENT avoir eu lieu (sinon les deux lignes

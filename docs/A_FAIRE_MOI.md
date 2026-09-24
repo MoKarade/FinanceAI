@@ -5,7 +5,7 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
-- [ ] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24) — **deux secrets pour mesurer les sources de cours
+- [x] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24, ✅ fait le jour même, mesure lancée) — **deux secrets pour mesurer les sources de cours
   depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
   oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :
   - `MESURE_ANCRES` : colle le contenu du fichier `mesure-ancres-secret.json` que je t'ai préparé
@@ -13,8 +13,8 @@
     aucune quantité ni solde) ;
   - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
 
-  Puis dis-le-moi : je lance « Mesurer les sources de cours » (Actions → workflow manuel) et je
-  consigne les verdicts. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
+  ✅ Secrets posés et recollés le 2026-09-24 ; mesure réussie au 2ᵉ lancement. Résultats dans
+  `[PTF-L05B-MESURE-SOURCES]` du BACKLOG : les sources gratuites suffisent. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
   jamais un symbole ni un prix.
 
 - [ ] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24) — **les questions du Lot 0 de la refonte du
@@ -22,10 +22,9 @@
   contient tes montants). Ce qui bloque le plus : date d'acquisition des titres (Q1), nature de
   l'acquisition — don, succession, achat (Q2, fiscaliste), clôture officielle ou total Fintable comme
   vérité (Q4), gratuit d'abord / payant seulement sur mesure (Q5), paramètres GCP du déploiement MCP
-  (Q6, voir `[MCP-DEPLOY-CONTINU-MORT]` ci-dessous). **Question neuve née du Lot 0.5** : le BACKLOG
-  public porte DÉJÀ en clair la composition, des quantités et des montants de ton portefeuille
-  (`[INVEST-PORTFOLIO-DATA-CORRECTION]`, `[COTATIONS-EUROPE-PERIMEES]`). Je les retire du fichier
-  courant (l'historique git les garde, le réécrire exigerait un `--force` sur `main`) ?
+  (Q6, voir `[MCP-DEPLOY-CONTINU-MORT]` ci-dessous). ✅ Question née du Lot 0.5 **répondue** : les
+  données du portefeuille publiées dans le BACKLOG en ont été retirées (fichier courant seulement,
+  l'historique git n'est pas réécrit).
   ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
   garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
 

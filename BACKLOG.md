@@ -36,18 +36,35 @@
   vérification aussi). Le seul code de sous-compte publié (dans un test de catégorisation) est
   anonymisé, SANS réécrire l'historique git (le commit d'origine le porte encore : décision Marc).
   `.gitignore` : `prive/`, fichiers de vérification et relevés PDF.
-  ⚠️ **Ce que la garde NE couvre PAS** : `[INVEST-PORTFOLIO-DATA-CORRECTION]` et
-  `[COTATIONS-EUROPE-PERIMEES]`, plus bas, publient déjà en clair la composition, des quantités et
-  des montants du portefeuille. Les retirer est une décision de Marc (question posée).
-- [ ] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
+  ⚠️ **Ce que la garde NE couvre PAS** : des VALEURS déjà écrites. Le BACKLOG publiait en clair la
+  composition, des quantités et des montants du portefeuille (`[INVEST-PORTFOLIO-DATA-CORRECTION]`,
+  `[COTATIONS-EUROPE-PERIMEES]`, `[FINTABLE-AUTORITE-PARTOUT]`, tickets FX) : **retirés du fichier
+  courant le 2026-09-24** (décision Marc), remplacés par des écarts relatifs. Historique git non
+  réécrit (il faudrait un `--force` sur `main`).
+- [x] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
   `.github/workflows/mesure-sources.yml`, `scripts/mesureSources.mjs`, logique pure
   `scripts/lib/mesureSources.mjs`, 8 cas dans `tests/mesureSources.test.ts`). Il mesure depuis la CI
   (le conteneur n'a aucun réseau vers les sources) : couverture de Yahoo et d'EODHD **gratuit** par
   ligne, devise renvoyée (pence de Londres signalés), prix brut ou ajusté avant un fractionnement,
   écart aux ancres, accès du plan gratuit aux API fractionnements/dividendes, écart des taux Valet.
   Le journal est PUBLIC : il n'imprime que des verdicts par rang (`L1`…), jamais un symbole ni un
-  prix. **RESTE** : Marc pose `MESURE_ANCRES` (+ `EODHD_TOKEN_MESURE`, clé gratuite), lancer, puis
-  consigner les verdicts ici. C'est ce qui tranche la question de la source (gratuit/payant).
+  prix. **1er lancement (2026-09-24, run 36032594452) : ÉCHEC avant toute mesure** — le secret posé
+  est du JSON valide mais sans « lignes » (probablement l'autre fichier, ou le bon collé entre
+  guillemets). L'erreur nomme désormais la FORME reçue (objet à N clés / chaîne / tableau), jamais son
+  contenu.
+  ✅ **MESURÉ le 2026-09-24 (run 36033041191, 12 lignes, 3 dates d'ancrage)** :
+  - **EODHD gratuit : 12/12 lignes servies**, écart aux ancres **0,00 %** sur les 9 lignes à ancre
+    indépendante (0,01 % sur une), ≤ 0,07 % sur les 3 dont l'ancre est le prix du courtier. Le champ
+    `close` est **BRUT** avant un fractionnement. `/splits` et `/div` accessibles au plan gratuit.
+  - **Yahoo : 11/12**, mêmes écarts ; **une ligne refusée (HTTP 400)** — celle-là n'est servie que
+    par EODHD. Avant un fractionnement, Yahoo rend le prix **AJUSTÉ** (÷ ratio) : le relire comme
+    brut diviserait la valeur de la ligne par le ratio sur tout le passé.
+  - **Devise : conforme partout**, aucune ligne en pence. Dividendes : quatre lignes n'en rendent
+    AUCUN, dont deux fonds de capitalisation — ce qui confirme `[DIVIDENDES-TABLE-EN-DUR]`.
+  - **Banque du Canada (Valet)** : USD/CAD et EUR/CAD à **0,000 %** des ancres, 3/3 dates.
+  ⇒ **Q5 tranchée par la mesure : rien de payant n'est nécessaire.** EODHD gratuit couvre tout ;
+  son quota (20 appels/jour) impose un historique mis en CACHE (une série par ligne, puis
+  incrémental), pas un appel par affichage. Correspondance rang → titre : HORS dépôt.
 - [ ] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
   SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
   clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de
@@ -471,12 +488,11 @@ désinfecte le snapshot avant de le restaurer.
 
 - [ ] 🔴 **`[COTATIONS-EUROPE-PERIMEES]`** (M, money-critical d'AFFICHAGE, **signalé par la mesure
   du 2026-09-21**) — le panneau du jour de Marc affiche « **prix J−59** » : les cours de ses titres
-  ont 59 jours. MESURÉ sur ses 12 positions réelles : **55,8 % du portefeuille est coté en Europe**
-  (`GBS.PA` 63 937 $, `CW8.PA` 47 005 $, `KLA.TG` 16 579 $, `SAF.PA` 10 547 $ = **138 068 $** sur
-  247 298 $), et le forfait gratuit du fournisseur ne sert pas ces places (403 « le forfait ne
-  couvre pas », classe déjà documentée). Conséquence CHIFFRÉE : le PASSÉ reconstruit vaut
-  **238 051 $** au 20/09 contre **247 298 $** de titres aujourd'hui — **9 247 $ sous-évalués**, sur
-  toute la courbe passée. ⚠️ AUJOURD'HUI est juste (il part du total du courtier,
+  ont 59 jours. MESURÉ sur ses positions réelles : **≈ 56 % du portefeuille est coté en Europe**
+  (quatre lignes, sur des places de Paris et de Francfort), et le forfait gratuit du fournisseur ne
+  sert pas ces places (403 « le forfait ne couvre pas », classe déjà documentée). Conséquence CHIFFRÉE : le PASSÉ reconstruit au 20/09 est
+  **≈ 3,7 % sous** la valeur des titres au prix du jour, sur toute la courbe passée.
+  ⚠️ AUJOURD'HUI est juste (il part du total du courtier,
   `[FINTABLE-AUTORITE-AUJOURDHUI]`) : c'est exactement ce qui fabrique la marche au raccord dont
   Marc demande l'explication. ⚠️ Le correctif n'est PAS « un meilleur repli » : il faut une source
   de cotations qui couvre Euronext/Xetra, ou accepter et DIRE que le passé européen est figé. →
@@ -836,28 +852,11 @@ désinfecte le snapshot avant de le restaurer.
   CAD » est réfutée (les prix sont déjà stockés comme prix NATIFS) ; la ligne du 12 juin est le
   FRACTIONNEMENT 10:1, pas un achat (l'ajouter créerait des actifs fictifs) ; plusieurs lignes sont
   sur la mauvaise place de cotation. Remplacé par `[PTF-L1G-IMPORT-PORTEFEUILLE]` (import du relevé du
-  courtier, qui fait foi). La liste ci-dessous publie en clair des données réelles : son retrait est
-  une question posée à Marc.
-  remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
-  d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
-  - Amundi MSCI Em Asia UCITS ETF – USD (C) (OTCMKTS:ANDXF) : 12 déc. 2025, 180 actions à 52,43 $ CAD
-  - Amundi MSCI World Swap UCITS ETF EUR Acc (EPA:CW8) : 12 déc. 2025, 42 actions à 601,42 $ CAD
-  - Broadcom Inc (NASDAQ:AVGO) : 12 déc. 2025, 25 actions à 360,48 $ CAD
-  - Gold Bullion Securities Limited (BIT:GBS) : 12 déc. 2025, 115 actions à 334,61 $ CAD
-  - Howmet Aerospace Inc (NYSE:HWM) : 12 déc. 2025, 38 actions à 198,62 $ CAD
-  - KLA Corp (ETR:KLA) : 12 déc. 2025, 6 actions à 1 018,09 $ CAD ; puis 12 juin 2026, 54 actions à 213,60 $ CAD
-  - NVIDIA Corp (NASDAQ:NVDA) : 12 déc. 2025, 90 actions à 175,29 $ CAD
-  - Palantir Technologies Inc (NASDAQ:PLTR) : 12 déc. 2025, 55 actions à 183,86 $ CAD
-  - Safran SA (EPA:SAF) : 12 déc. 2025, 20 actions à 291,30 $ CAD
-  - Space Exploration Technologies Corp (NASDAQ:SPCX) : 15 juin 2026, 19,44 actions à 172,80 $ CAD
-  - Taiwan Semiconductor Mnfg Co Ltd (NYSE:TSM) : 12 déc. 2025, 20 actions à 292,46 $ CAD
-  - Visa Inc (NYSE:V) : 12 déc. 2025, 21 actions à 348,37 $ CAD
-  ⚠️ Vérifier d'abord l'écart avec les positions actuelles avant d'écraser quoi que ce soit (ne pas
-  dupliquer si déjà en partie correct).
-  ⚠️ [INVEST-COURS-EXACT-TOUTES-ACTIONS livré] `ETR:` (Xetra) et `BIT:` (Milan) ont désormais un
-  cours exact. `OTCMKTS:ANDXF` reste un gap de COUVERTURE (forfait gratuit Finnhub/Yahoo, pas un
-  bug de routage) : ce titre pourrait rester sans cours exact — vérifier après saisie, et si besoin
-  entrer son jumeau coté en bourse standard (l'ETF Amundi existe probablement aussi en `EPA:`/`ETR:`).
+  courtier, qui fait foi). La liste des positions que ce ticket portait (composition, dates,
+  quantités, prix) a été RETIRÉE le 2026-09-24 sur décision de Marc (dépôt public) ; l'historique git
+  la garde, il n'a pas été réécrit. Elle se relit, au besoin, dans le relevé du courtier.
+  ⚠️ Couverture : une ligne cotée hors marché (OTC) reste un gap de COUVERTURE du forfait gratuit, pas
+  un bug de routage — son jumeau coté sur une bourse standard est la piste, à trancher au Lot 1.
 
 ---
 
@@ -1252,8 +1251,8 @@ désinfecte le snapshot avant de le restaurer.
 - [ ] 🔴 **`[FINTABLE-AUTORITE-PARTOUT]`** (L, money-critical, **DEMANDE MARC 2026-09-17**) —
   « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce soit la valeur
   Fintable, car la plus fiable ». Aujourd'hui QUATRE producteurs répondent à « combien valent mes
-  placements ? » (mesuré : Accueil 245 687 $ · Fintable réel 242 287 $ · Futur mois 0 231 849 $ ·
-  hub 217 767 $), et un seul consulte Fintable (`appliquerAutoriteCourtier`, uniquement le mois 0).
+  placements ? » (mesuré : quatre valeurs différentes — Accueil, Fintable réel, Futur mois 0, hub —
+  avec ≈ 11 % entre la plus haute et la plus basse), et un seul consulte Fintable (`appliquerAutoriteCourtier`, uniquement le mois 0).
   **Réponses de cadrage de Marc** : total incomplet → *« si trop gros écart, marquer qu'il y a une
   erreur d'import ; si pas trop long, dernière valeur Fintable affichée »* ; variations → *« garder
   l'historique nous »*.
@@ -1353,15 +1352,15 @@ désinfecte le snapshot avant de le restaurer.
       `Σ derivePortfolioStartingBalances(assets, fx)` est **exactement** la divergence de QUANTITÉ
       (`a.quantity` contre la somme des achats). À mesurer sur l'état RÉEL de Marc avant de livrer —
       pas sur une fixture, qui aura toujours les deux en phase. Point de repère du 2026-09-17 :
-      `get_holdings` rend **245 687 $**, 12 positions, **100 % NON-ENREG** (aucun CELI, aucun crypto)
+      `get_holdings` rend une douzaine de positions, **100 % NON-ENREG** (aucun CELI, aucun crypto)
       — donc sur SON état le refus `famille-mixte` n'est pas atteignable non plus, et la mesure porte
       sur un seul panier.
     - ⚠️⚠️ **OBSTACLE D'ORDONNANCEMENT, trouvé le 2026-09-17 en câblant : cette étape DÉPEND de
       `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`.** `appliquerAutoriteCourtier` s'applique aux soldes issus de
       la RECONSTRUCTION (derniers closes datés, sans borne d'âge), alors que l'Accueil affiche
-      `computeInvestmentsValue` (prix COURANTS). Les deux bases diffèrent de **13 838 $** sur l'état
-      réel. Conséquence : brancher l'Accueil sur la sortie de l'autorité ferait TOMBER son chiffre de
-      245 687 $ à ~231 849 $ partout où Fintable ne s'applique pas — on importerait le défaut des
+      `computeInvestmentsValue` (prix COURANTS). Les deux bases diffèrent de **≈ 5,6 %** sur l'état
+      réel. Conséquence : brancher l'Accueil sur la sortie de l'autorité ferait TOMBER son chiffre
+      d'environ 5,6 % partout où Fintable ne s'applique pas — on importerait le défaut des
       clôtures périmées sur l'écran d'accueil pour régler un problème de cohérence. **Le gain de
       cohérence coûterait une régression de justesse.**
       Deux ordres possibles, à trancher : (a) corriger d'abord `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` pour
@@ -1406,8 +1405,8 @@ désinfecte le snapshot avant de le restaurer.
   `coverage < 0,99`) ne tire JAMAIS. Le cas RARE (aucun historique) est couvert, le cas COURANT (flux
   de prix interrompu) est traité comme sain. Même défaut dans `reconstructPortfolioHistoryDaily`,
   qui alimente le patrimoine net du PASSÉ à l'écran.
-  réel : Futur au 17/09 = **231 849 $** de placements contre **245 687 $** de titres au prix live,
-  soit **−13 838 $ (−5,6 %)** au point de départ de toute la projection. ⚠️ Le correctif re-basera
+  réel : Futur au 17/09 porte des placements **−5,6 %** sous les titres au prix live,
+  au point de départ de toute la projection. ⚠️ Le correctif re-basera
   des goldens (il déplace le mois 0) : plan-first. ⚠️ Et il faut décider ce que devient un titre
   périmé SANS quote fraîche — l'omettre au mois 0 rejouerait `[HUB-TOTAL-AMPUTE]` un cran plus bas.
   ⚠️⚠️ **LE REMÈDE ÉVIDENT EST FAUX POUR LE PASSÉ PROFOND — mesuré le 2026-09-17 EN LE CÂBLANT.**
@@ -1430,8 +1429,8 @@ désinfecte le snapshot avant de le restaurer.
   réseau reste coupé des semaines, le taux d'origine garde **indéfiniment** le droit d'écrire le
   mois 0 de la projection, badge vert compris. ⚠️ **Et le seuil actuel porte DEUX questions** :
   « cette série est-elle morte ? » (10 j y répondent : VND 2 452 j, RUB/SAR 140 j) et « ce taux
-  peut-il écrire un total de 231 882 $ ? » — à laquelle 10 j ne répondent pas, USD/CAD bougeant
-  couramment de 1 à 2 % sur dix jours (ordre de grandeur 1 000–2 000 $ sur 72 040 USD). Piste :
+  peut-il écrire le total du portefeuille ? » — à laquelle 10 j ne répondent pas, USD/CAD bougeant
+  couramment de 1 à 2 % sur dix jours (soit 1 à 2 % du solde USD du courtier). Piste :
   `fxFaitAutorite` prend l'ÉTAT et non la seule `source`, avec un `AGE_MAX_POUR_AUTORITE` distinct
   et DÉRIVÉ d'une volatilité mesurée — jamais deviné. ⚠️ La limite est écrite dans
   `services/fx/observationsBdc.ts` plutôt que laissée à découvrir.
@@ -1493,9 +1492,9 @@ désinfecte le snapshot avant de le restaurer.
   FIGÉ au taux de l'écriture (`toPersistableBrokerBalances`), tandis que l'autre côté de la
   réconciliation (`holdingsCadByRegime` → `assetValueCad`) est recalculé au taux COURANT à chaque
   rendu. `gapCad` compare donc deux dates de taux, et invente un écart là où il n'y en a pas.
-  **MESURÉ par le panel** (72 040 USD au courtier, titres strictement équivalents, écart VRAI = 0) :
-  taux identique → **0,00 $** (contrôle négatif) ; 1,37 → 1,42 → **−3 602 $** ; 1,37 → 1,32 →
-  **+3 602 $**. ⚠️ **Borné à la carte de réconciliation** : l'énumération complète des lecteurs de
+  **MESURÉ par le panel** (un solde USD au courtier, titres strictement équivalents, écart VRAI = 0) :
+  taux identique → **0,00 $** (contrôle négatif) ; 1,37 → 1,42 → **−5 %** du solde USD ; 1,37 → 1,32
+  → **+5 %**. ⚠️ **Borné à la carte de réconciliation** : l'énumération complète des lecteurs de
   `fintableBrokerBalances` ne donne qu'UN consommateur de production, et ni le patrimoine net ni la
   projection ne le lisent. Pas un dollar faux au bilan — un écart inventé sur l'écran dont c'est la
   seule raison d'être, qui pousserait Marc à « corriger » des titres corrects.

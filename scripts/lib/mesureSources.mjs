@@ -97,6 +97,16 @@ export function formaterVerdict(rang, source, v) {
     return morceaux.join(' · ');
 }
 
+/** La FORME de ce qui a été reçu, sans jamais son contenu (ni clé ni valeur : le journal est public).
+ *  Premier lancement du 2026-09-24 : « lignes vide ou absent », et rien pour dire si le secret était
+ *  un autre fichier, une chaîne entre guillemets ou un tableau nu — trois corrections différentes. */
+export function formeRecue(j) {
+    if (typeof j === 'string') return 'une chaîne JSON (contenu collé entre guillemets ?)';
+    if (Array.isArray(j)) return `un tableau de ${j.length} élément(s) (il manque l'objet { "lignes": … } autour)`;
+    if (j && typeof j === 'object') return `un objet à ${Object.keys(j).length} clé(s) de premier niveau, sans « lignes »`;
+    return `une valeur de type ${j === null ? 'null' : typeof j}`;
+}
+
 /** Validation du secret : un format faux doit échouer BRUYAMMENT, pas produire un rapport vide. */
 export function lireAncres(brut) {
     let j;
@@ -105,7 +115,10 @@ export function lireAncres(brut) {
     } catch {
         throw new Error('MESURE_ANCRES n’est pas du JSON valide');
     }
-    if (!Array.isArray(j?.lignes) || j.lignes.length === 0) throw new Error('MESURE_ANCRES : « lignes » vide ou absent');
+    if (!Array.isArray(j?.lignes) || j.lignes.length === 0) {
+        throw new Error(`MESURE_ANCRES : « lignes » vide ou absent — reçu ${formeRecue(j)}. Le secret attendu est le`
+            + ' contenu de mesure-ancres-secret.json (clés « lignes » et « taux »), pas le fichier de vérification.');
+    }
     j.lignes.forEach((l, i) => {
         if (typeof l?.yahoo !== 'string' || typeof l?.devise !== 'string' || typeof l?.ancres !== 'object') {
             throw new Error(`MESURE_ANCRES : ligne L${i + 1} incomplète (yahoo, devise et ancres requis)`);

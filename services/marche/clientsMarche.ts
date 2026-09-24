@@ -98,7 +98,7 @@ export function lireReponseEodhd(json: unknown): LectureSerieSource<PointCoursLu
 // ─── Banque du Canada ───────────────────────────────────────────────────────────────────────────────
 
 /** Nom de la série Valet d'une devise (`FXUSDCAD` = dollars canadiens pour 1 dollar américain). */
-export function serieBdc(devise: DeviseTaux): string {
+function serieBdc(devise: DeviseTaux): string {
     return `FX${devise}CAD`;
 }
 

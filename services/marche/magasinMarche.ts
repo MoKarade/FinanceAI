@@ -23,18 +23,18 @@
 import type { BrokerLedgerCurrency } from '../../types';
 import { jourUtcDepuisD } from '../fx/observationsBdc';
 
-export const VERSION_MAGASIN_MARCHE = 1 as const;
+const VERSION_MAGASIN_MARCHE = 1 as const;
 
 /** Sources de cours reconnues. Leur ORDRE ne décide de rien : c'est `STATUT_PAR_SOURCE` qui tranche. */
-export const SOURCES_COURS = ['eodhd', 'yahoo'] as const;
-export type SourceCours = typeof SOURCES_COURS[number];
+const SOURCES_COURS = ['eodhd', 'yahoo'] as const;
+type SourceCours = typeof SOURCES_COURS[number];
 
 /** Statut d'un point ÉCRIT. `reportee` n'en fait pas partie : il n'existe qu'à la lecture (point 1). */
-export type StatutCloture = 'officielle' | 'secours';
-export const STATUT_PAR_SOURCE: Record<SourceCours, StatutCloture> = { eodhd: 'officielle', yahoo: 'secours' };
+type StatutCloture = 'officielle' | 'secours';
+const STATUT_PAR_SOURCE: Record<SourceCours, StatutCloture> = { eodhd: 'officielle', yahoo: 'secours' };
 
 /** Devises dont la Banque du Canada publie un taux ici. CAD n'en a pas besoin (taux 1 par définition). */
-export const DEVISES_TAUX = ['USD', 'EUR'] as const;
+const DEVISES_TAUX = ['USD', 'EUR'] as const;
 export type DeviseTaux = typeof DEVISES_TAUX[number];
 
 /** Une clôture : `[date AAAA-MM-JJ, cours brut dans la devise de cotation, source]`. En tuple pour la
@@ -50,7 +50,7 @@ export interface SerieClotures {
     points: PointCloture[];
 }
 
-export interface FractionnementMarche {
+interface FractionnementMarche {
     isin: string;
     /** Date d'effet (ex-date). */
     date: string;
@@ -60,7 +60,7 @@ export interface FractionnementMarche {
     source: SourceCours;
 }
 
-export interface DividendeMarche {
+interface DividendeMarche {
     isin: string;
     dateEx: string;
     /** Montant BRUT par titre, dans `devise`. */

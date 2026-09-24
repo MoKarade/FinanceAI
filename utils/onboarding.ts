@@ -57,6 +57,11 @@ const DATA_ARRAY_KEYS = [
     'transactions', 'assets', 'investmentTransactions', 'debts',
     'financialGoals', 'budgetItems', 'travelGoals', 'lifeEvents', 'insurancePolicies',
     'rentalProperties', 'privateBusinesses', 'charitableGoals',
+    // [PTF-L1A] Un appareil qui ne porte QUE le grand livre courtier n'est pas « vide » : sinon Drive
+    // l'écraserait au premier pull, et l'onboarding s'afficherait sur un portefeuille importé.
+    // `instruments` compte aussi : un référentiel importé seul (lot 1c-3, avant le livre) est une
+    // donnée saisie que rien ne doit écraser en silence.
+    'brokerLedger', 'instruments',
 ] as const;
 type DataArrayKey = (typeof DATA_ARRAY_KEYS)[number];
 

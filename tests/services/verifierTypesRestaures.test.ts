@@ -203,13 +203,17 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         //   export type DebtKind = typeof DEBT_KINDS[number];   (tableau `as const` de littéraux)
         //   export type LifeEventType = 'a' | 'b' | …;          (union directe)
         const aliasTextuels = new Set<string>();
-        for (const m of types.matchAll(/export\s+type\s+([A-Za-z_]\w*)\s*=\s*([^;]+);/g)) {
+        // ⚠️ [PTF-L1A] Le mot `export` n'est PAS exigé : un alias gardé privé à `types.ts` (parce que rien
+        // hors du fichier ne l'importe encore, et que la porte « code mort » refuse un export inutilisé)
+        // type quand même un champ persisté. Exiger `export` aurait forcé un export mort pour rester
+        // visible ici — les témoins `BrokerLedger*` ci-dessous sont justement de cette forme.
+        for (const m of types.matchAll(/\b(?:export\s+)?type\s+([A-Za-z_]\w*)\s*=\s*([^;]+);/g)) {
             const [, nom, brut] = m;
             const t = brut.trim().replace(/\s*\n\s*/g, ' ');
             if (/^'[^']*'(\s*\|\s*'[^']*')*$/.test(t)) { aliasTextuels.add(nom); continue; }
             const tab = t.match(/^typeof\s+([A-Za-z_]\w*)\s*\[\s*number\s*\]$/);
             if (!tab) continue;
-            const decl = types.match(new RegExp(`export\\s+const\\s+${tab[1]}\\s*(?::[^=]+)?=\\s*\\[([^\\]]*)\\]\\s*as\\s+const`));
+            const decl = types.match(new RegExp(`\\b(?:export\\s+)?const\\s+${tab[1]}\\s*(?::[^=]+)?=\\s*\\[([^\\]]*)\\]\\s*as\\s+const`));
             // Le tableau ne doit contenir QUE des littéraux de chaîne : un tableau de nombres
             // rendrait l'alias numérique, et l'inclure élargirait la liste sans raison.
             if (decl && /^[\s'",\w-]*$/.test(decl[1]) && /'/.test(decl[1])) aliasTextuels.add(nom);
@@ -245,6 +249,14 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         // NOMMÉ. Sans résolution des alias, le scan ne le voit pas et « aucun manquant » ne veut
         // plus rien dire — c'est le silence exact qui a laissé passer le champ.
         expect(textuels.has('paymentFrequency'), 'témoin : un champ typé par un ALIAS doit être vu').toBe(true);
+        // [PTF-L1A] Témoins du grand livre courtier : trois clés textuelles NEUVES, qu'aucun état du
+        // dépôt ne porte encore — exactement le profil des trois vagues d'incident. Si la garde ne les
+        // voyait pas, « aucun manquant » ne dirait rien sur la surface que ce lot ajoute.
+        expect(textuels.has('isin'), 'témoin [PTF-L1A] : isin').toBe(true);
+        expect(textuels.has('exchange'), 'témoin [PTF-L1A] : exchange').toBe(true);
+        expect(textuels.has('controlSymbol'), 'témoin [PTF-L1A] : controlSymbol').toBe(true);
+        expect(aliasTextuels.has('BrokerLedgerEventKind'), 'témoin [PTF-L1A] : alias du discriminant, NON exporté').toBe(true);
+        expect(aliasTextuels.has('BrokerLedgerAccountId'), 'témoin [PTF-L1A] : alias des comptes').toBe(true);
 
         const manquants = [...textuels].filter((c) => !CHAMPS_TEXTE.has(c)).sort();
         expect(

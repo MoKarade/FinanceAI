@@ -865,6 +865,153 @@ export interface CategoryReviewState {
   startedAt: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// [PTF-L1A] Grand livre courtier + référentiel d'instruments.
+// Deux champs ADDITIFS et OPTIONNELS d'AppState. Aucun palier de migration, aucun bump (v7 reste v7).
+// ⚠️ TEXTUELS ET PERSISTÉS. Trois clés feuilles textuelles NEUVES (isin, exchange, controlSymbol)
+// entrent dans CHAMPS_TEXTE dans le MÊME commit. Toutes les autres feuilles textuelles de ce bloc
+// (id, date, accountId, kind, currency, symbol, name) y figurent déjà.
+// ⚠️ Formes imposées par la garde de dérivation (tests/services/verifierTypesRestaures.test.ts:187-255),
+// qui lit des FORMES et pas des sens :
+//   - un alias textuel s'écrit en union DIRECTE de littéraux (`type X = 'a' | 'b'`), jamais ouverte
+//     par un `|` en tête (non résolue). Pas de tableau `as const` : utilisé seulement comme type, il
+//     coûterait un avertissement de lint (valeur inutilisée) ou, exporté, une entrée « code mort »
+//   - `export` seulement quand un autre fichier importe l'alias (la porte « code mort » refuse
+//     un export inutilisé) — la garde lit aussi les alias non exportés
+//   - les littéraux restent en ASCII SANS ACCENT (identifiants stables, et le contrôle des tableaux
+//     `as const` de la garde est `\w` si l'un d'eux devient un jour un tableau)
+//   - un sous-objet se déclare par une interface NOMMÉE (le premier champ d'un littéral objet
+//     en ligne est avalé par la capture du champ parent)
+//   - AUCUN point-virgule dans les commentaires de ce bloc (la regex repart après chaque `;`)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Comptes du grand livre : deux comptes du courtier (règlement CAD, règlement USD) et un compte
+ *  hors courtier. Identifiants PROPRES à l'app. Jamais un numéro de compte (dépôt public), jamais
+ *  l'id Fintable (un lien de réconciliation s'ajoutera plus tard, en additif). */
+type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-courtier';
+
+/** Devises admises. EUR = devise de COTATION de titres européens. Un compte du courtier règle en
+ *  CAD ou en USD, jamais en EUR (invariant du validateur du lot 1b). Élargissement additif possible. */
+type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
+
+/** Types d'événements (liste demandée, onze, sans ajout). */
+type BrokerLedgerEventKind =
+  'acquisition' | 'transfert-entrant' | 'transfert-sortant' | 'achat' | 'vente' | 'fractionnement' |
+  'dividende' | 'retenue-etrangere' | 'depot-especes' | 'retrait-especes' | 'frais';
+
+/** Provenance : import d'un relevé daté, ou saisie manuelle (compte hors courtier). */
+type BrokerLedgerSourceKind = 'releve-courtier' | 'saisie-manuelle';
+
+/** Un montant n'existe JAMAIS sans sa devise. `value` est la valeur TELLE QU'IMPRIMÉE sur le relevé,
+ *  toujours POSITIVE (le sens est porté par `kind`, traduit une seule fois à l'import, sans Math.abs).
+ *  Jamais une grandeur dérivée (ni quantité × prix, ni équivalent CAD). */
+export interface BrokerLedgerMoney {
+  value: number;
+  currency: BrokerLedgerCurrency;
+}
+
+/** Provenance d'un événement. `date` = date d'arrêté du relevé (YYYY-MM-DD locale), PAS celle de l'opération. */
+interface BrokerLedgerSource {
+  kind: BrokerLedgerSourceKind;
+  date: string;
+}
+
+/** Champs communs. `id` STABLE, dérivé de la ligne source par l'importeur (réimport identique = mêmes id,
+ *  import idempotent), jamais un horodatage d'import. `date` = date de TRANSACTION imprimée (YYYY-MM-DD
+ *  locale, jamais passée à `new Date(iso)` qui lit minuit UTC) — pas la date de règlement ; laquelle
+ *  des deux fixe l'année d'imposition reste à trancher par le fiscaliste (ADR 0019 §4), pas à supposer.
+ *  ⚠️ Toute `quantity`, comme tout montant, est POSITIVE : le sens est porté par `kind`, jamais par un
+ *  signe (le lot 1b refuse une valeur nulle ou négative). */
+interface BrokerLedgerEventBase {
+  id: string;
+  date: string;
+  accountId: BrokerLedgerAccountId;
+  kind: BrokerLedgerEventKind;
+  source: BrokerLedgerSource;
+}
+
+/** Titres reçus ou transférés SANS mouvement d'espèces. `price` = coût unitaire imprimé, devise de
+ *  cotation. Absent = INCONNU, jamais 0 (un coût nul rendrait toute la vente imposable). */
+interface BrokerLedgerTitresEvent extends BrokerLedgerEventBase {
+  kind: 'acquisition' | 'transfert-entrant' | 'transfert-sortant';
+  isin: string;
+  quantity: number;
+  price?: BrokerLedgerMoney;
+  amount?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Achat ou vente. `price` = prix unitaire imprimé, devise de COTATION. `amount` = montant RÉGLÉ au
+ *  compte, NET, commission INCLUSE, devise du COMPTE. C'est l'autorité, jamais recalculé.
+ *  Une commission n'est jamais un événement `frais` de plus. */
+interface BrokerLedgerTradeEvent extends BrokerLedgerEventBase {
+  kind: 'achat' | 'vente';
+  isin: string;
+  quantity: number;
+  price: BrokerLedgerMoney;
+  amount: BrokerLedgerMoney;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Fractionnement ou regroupement : `splitFrom` anciens titres deviennent `splitTo` nouveaux.
+ *  Deux NOMBRES, jamais la chaîne « 2:1 ». Ni quantité, ni prix, ni montant (pas un achat à prix nul). */
+interface BrokerLedgerSplitEvent extends BrokerLedgerEventBase {
+  kind: 'fractionnement';
+  isin: string;
+  splitFrom: number;
+  splitTo: number;
+  quantity?: never;
+  price?: never;
+  amount?: never;
+}
+
+/** Dividende (montant BRUT, devise du compte) ou retenue d'impôt étranger (événement DISTINCT). */
+interface BrokerLedgerRevenuEvent extends BrokerLedgerEventBase {
+  kind: 'dividende' | 'retenue-etrangere';
+  isin: string;
+  amount: BrokerLedgerMoney;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Dépôt ou retrait d'espèces depuis ou vers l'EXTÉRIEUR du grand livre, ou frais de COMPTE.
+ *  `isin` facultatif pour des frais rattachés à un titre. */
+interface BrokerLedgerEspecesEvent extends BrokerLedgerEventBase {
+  kind: 'depot-especes' | 'retrait-especes' | 'frais';
+  amount: BrokerLedgerMoney;
+  isin?: string;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+export type BrokerLedgerEvent =
+  BrokerLedgerTitresEvent | BrokerLedgerTradeEvent | BrokerLedgerSplitEvent | BrokerLedgerRevenuEvent | BrokerLedgerEspecesEvent;
+
+/** Référentiel d'instruments. TABLEAU d'objets, jamais un Record indexé par ISIN (ses valeurs
+ *  seraient jugées sous une clé DYNAMIQUE, refus garanti, app vide). Identité = `isin` (unique,
+ *  invariant de test du lot 1b). Pas de champ `id`, donc le nettoyeur de persona ne peut pas filtrer
+ *  ce tableau et AUCUN persona ne doit en planter. */
+export interface BrokerInstrument {
+  // Identité ISO 6166, clé de jointure du grand livre.
+  isin: string;
+  // Symbole de la cotation PRINCIPALE, sous la forme attendue par le fournisseur de cours.
+  symbol: string;
+  // Place de la cotation principale (code MIC). Texte LIBRE, délibérément : une union fermée des
+  // places publierait dans un dépôt PUBLIC où le portefeuille est coté.
+  exchange: string;
+  // Devise de COTATION (celle de `price` sur un achat ou une vente, pas celle du règlement).
+  currency: BrokerLedgerCurrency;
+  // Cotation de CONTRÔLE éventuelle (recoupement de cours, jamais une source).
+  controlSymbol?: string;
+  name: string;
+}
+
 export interface AppState {
   transactions: Transaction[];
   assets: Asset[];
@@ -995,6 +1142,15 @@ export interface AppState {
    *  fichier `.fintable-roles.json` que Marc devait écrire à la main puis pousser en secret GCP.
    *  Clé = id de compte Fintable (stable). Un compte absent d'ici est SIGNALÉ, jamais deviné. */
   fintableRoles?: Record<string, FintableAccountRoleConfig>;
+  /** [PTF-L1A] Grand livre courtier, tableau PLAT d'événements portant chacun son `accountId`.
+   *  ADDITIF optionnel, aucun bump. Sémantique TRI-ÉTAT que tout lecteur respecte :
+   *  `undefined` = jamais importé (on retombe sur les `assets` saisis), `[]` = importé et vide.
+   *  Un lecteur teste `=== undefined`, JAMAIS `.length`.
+   *  Défaut : `undefined` EXPLICITE dans DEFAULT_APP_STATE ET dans buildDefaultAppState (PERSONA-PURGE),
+   *  jamais `[]`. ⚠️ TEXTUEL ET PERSISTÉ, voir CHAMPS_TEXTE. */
+  brokerLedger?: BrokerLedgerEvent[];
+  /** [PTF-L1A] Référentiel des instruments cités par `brokerLedger`. Même contrat tri-état, même défaut. */
+  instruments?: BrokerInstrument[];
 }
 
 /**

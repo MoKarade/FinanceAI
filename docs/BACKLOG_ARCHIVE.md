@@ -10,6 +10,62 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille : Lot 0.5, taux BdC côté serveur, journal public (PR #1035, #1036, #1039)
+
+Déménagés au lot suivant (1a), conformément à la règle « item fini ET validé → DÉMÉNAGE, au plus tard à
+la PR suivante ». Aucun déploiement à vérifier pour ces lots côté Vercel : ils ne changent pas ce que
+l'app sert, hormis `mcp/refreshPrices.ts`, qui attend le redéploiement du serveur MCP (paramètres GCP).
+
+- [x] 🔧 **`[PTF-L05-GARDE-FUITE]`** (S) — garde `tests/confidentialitePortefeuille.test.ts` : aucun
+  fichier suivi ne porte une clé du fichier de vérification ni un code de compte après « Disnat »
+  (perturbation faite : le test de catégorisation d'avant ce lot est détecté, le fichier de
+  vérification aussi). Le seul code de sous-compte publié (dans un test de catégorisation) est
+  anonymisé, SANS réécrire l'historique git (le commit d'origine le porte encore : décision Marc).
+  `.gitignore` : `prive/`, fichiers de vérification et relevés PDF.
+  ⚠️ **Ce que la garde NE couvre PAS** : des VALEURS déjà écrites. Le BACKLOG publiait en clair la
+  composition, des quantités et des montants du portefeuille (`[INVEST-PORTFOLIO-DATA-CORRECTION]`,
+  `[COTATIONS-EUROPE-PERIMEES]`, `[FINTABLE-AUTORITE-PARTOUT]`, tickets FX) : **retirés du fichier
+  courant le 2026-09-24** (décision Marc), remplacés par des écarts relatifs. Historique git non
+  réécrit (il faudrait un `--force` sur `main`).
+- [x] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
+  `.github/workflows/mesure-sources.yml`, `scripts/mesureSources.mjs`, logique pure
+  `scripts/lib/mesureSources.mjs`, 8 cas dans `tests/mesureSources.test.ts`). Il mesure depuis la CI
+  (le conteneur n'a aucun réseau vers les sources) : couverture de Yahoo et d'EODHD **gratuit** par
+  ligne, devise renvoyée (pence de Londres signalés), prix brut ou ajusté avant un fractionnement,
+  écart aux ancres, accès du plan gratuit aux API fractionnements/dividendes, écart des taux Valet.
+  Le journal est PUBLIC : il n'imprime que des verdicts par rang (`L1`…), jamais un symbole ni un
+  prix. **1er lancement (2026-09-24, run 36032594452) : ÉCHEC avant toute mesure** — le secret posé
+  est du JSON valide mais sans « lignes » (probablement l'autre fichier, ou le bon collé entre
+  guillemets). L'erreur nomme désormais la FORME reçue (objet à N clés / chaîne / tableau), jamais son
+  contenu.
+  ✅ **MESURÉ le 2026-09-24 (run 36033041191, toutes les lignes, 3 dates d'ancrage)** :
+  - **EODHD gratuit : toutes les lignes servies**, écart aux ancres **0,00 %** sur les lignes à ancre
+    indépendante (0,01 % sur une), ≤ 0,07 % sur celles dont l'ancre est le prix du courtier. Le champ
+    `close` est **BRUT** avant un fractionnement. `/splits` et `/div` accessibles au plan gratuit.
+  - **Yahoo : toutes sauf une**, mêmes écarts ; **une ligne refusée (HTTP 400)** — celle-là n'est servie que
+    par EODHD. Avant un fractionnement, Yahoo rend le prix **AJUSTÉ** (÷ ratio) : le relire comme
+    brut diviserait la valeur de la ligne par le ratio sur tout le passé.
+  - **Devise : conforme partout**, aucune ligne en pence. Dividendes : quatre lignes n'en rendent
+    AUCUN, dont deux fonds de capitalisation — ce qui confirme `[DIVIDENDES-TABLE-EN-DUR]`.
+  - **Banque du Canada (Valet)** : USD/CAD et EUR/CAD à **0,000 %** des ancres, 3/3 dates.
+  ⇒ **Q5 tranchée par la mesure : rien de payant n'est nécessaire.** EODHD gratuit couvre tout ;
+  son quota (20 appels/jour) impose un historique mis en CACHE (une série par ligne, puis
+  incrémental), pas un appel par affichage. Correspondance rang → titre : HORS dépôt.
+- [x] 🟠 **`[FX-SERVEUR-JAMAIS-RAFRAICHI]`** (S) — les taux BdC ne sont lus que par le navigateur, au
+  démarrage, avec un cache de 24 h sur l'heure du FETCH ; le serveur (hub, MCP) valorise avec les
+  taux de la dernière ouverture de l'app. ✅ **Livré le 2026-09-24** (petit lot choisi par Marc,
+  ADR 0019) : le cron `/refresh` lit aussi les taux ; décision ET écriture extraites du store et du
+  démarrage vers `services/fx/ecritureFx.ts` (source unique app/serveur, aucun changement pour
+  l'app). 5 cas serveur, dont « taux saisi à la main + BdC injoignable → il survit ». ⚠️ Inerte en
+  prod tant que le serveur n'est pas redéployé (`[MCP-DEPLOY-CONTINU-MORT]`, paramètres GCP).
+- [x] 🔴 **`[PTF-JOURNAL-PUBLIC]`** (XS, trouvé le 2026-09-24 en lisant le cron) — « Rafraîchir les
+  prix » imprimait la réponse ENTIÈRE du serveur dans son journal GitHub Actions, qui est PUBLIC : la
+  liste des symboles rafraîchis et sautés, donc la composition du portefeuille, toutes les 6 h
+  depuis des mois (254 passes). Même défaut latent sur « fintable-sync » (en échec, rien de fuité).
+  Les deux n'impriment plus qu'un résumé (`jq` : issue, comptes, raisons). Garde
+  `tests/journauxCiSansDonnees.test.ts` (perturbation : l'ancien workflow → rouge). Les journaux des
+  254 passes déjà publiées ont été SUPPRIMÉS sur décision de Marc (vérifié : 404).
+
 ## 2026-09-21 (nuit) — `[SANDBOX-ETANCHEITE-FICHIERS]` (PR #1006, mergée, déployée)
 
 Déménagé au merge de la PR #1006 (`17d02997`), conformément à la règle « item fini ET validé →

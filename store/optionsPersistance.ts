@@ -33,6 +33,10 @@ export const getHydrationStatus = (): HydrationStatus => _hydrationStatus;
 // bannière « ne rien saisir, restaurer un backup », état par défaut chargé, et le blob
 // laissé INTACT dans localStorage pour diagnostic. Le filet [STORE-REHYDRATE-SILENT]
 // existait déjà ; on lui donne une raison de plus de se déclencher.
+/** [PTF-L1A-RESTAURATION-TRI-ETAT] Champs dont l'ABSENCE dans le blob est une information
+ *  (« jamais importé ») : ils ne s'héritent jamais de l'état vivant à la fusion. */
+const CLES_TRI_ETAT = ['brokerLedger', 'instruments'] as const satisfies readonly (keyof FinanceState)[];
+
 export const fusionnerEtatPersiste = (persistedState: unknown, currentState: FinanceState): FinanceState => {
     const fautifs = verifierTypesRestaures(persistedState);
     if (fautifs.length > 0) {
@@ -41,7 +45,21 @@ export const fusionnerEtatPersiste = (persistedState: unknown, currentState: Fin
         // un fichier dont l'inventaire des constantes surveille chaque nombre.
         throw new Error(`Données persistées illisibles — ${resumeTechniqueDesFautifs(fautifs)}`);
     }
-    return { ...currentState, ...(persistedState as object) };
+    const fusion: FinanceState = { ...currentState, ...(persistedState as object) };
+    // [PTF-L1A-RESTAURATION-TRI-ETAT] Un champ TRI-ÉTAT (`undefined` = jamais importé) vient du BLOB
+    // et de lui seul. zustand appelle `merge(blob, get())` avec l'état VIVANT, pas des défauts
+    // recalculés (middleware.mjs) : sans cette ligne, « Restaurer depuis Drive » avec un blob qui ne
+    // porte pas la clé (sauvegarde d'avant le livre, ou appareil qui n'en a jamais eu) GARDAIT en
+    // silence le livre local — la copie restaurée n'était donc pas celle qu'on avait choisie.
+    // Sans blob (`persistedState` absent : premier lancement), on ne touche à rien.
+    if (persistedState !== null && typeof persistedState === 'object') {
+        for (const cle of CLES_TRI_ETAT) {
+            (fusion as unknown as Record<string, unknown>)[cle] = Object.hasOwn(persistedState, cle)
+                ? (persistedState as Record<string, unknown>)[cle]
+                : undefined;
+        }
+    }
+    return fusion;
 };
 
 // [STORE-REHYDRATE-SILENT] Le FILET : sans ce callback, toute erreur de parse/migration est

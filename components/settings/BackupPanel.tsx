@@ -53,6 +53,11 @@ export const BackupSchema = z.object({
   vehicleReplacements: z.array(z.unknown()).optional(),
   majorRenovations: z.array(z.unknown()).optional(),
   charitableGoals: z.array(z.unknown()).optional(),
+  // [PTF-L1A] Grand livre courtier et référentiel d'instruments. Même tolérance que les deux
+  // collections lourdes (tableau d'objets, champs inconnus gardés) : la forme exacte est jugée à la
+  // réhydratation (`verifierTypesRestaures`), qui REFUSE une chaîne dans un champ numérique.
+  brokerLedger: z.array(z.object({}).passthrough()).optional(),
+  instruments: z.array(z.object({}).passthrough()).optional(),
   aiConversation: z.array(z.unknown()).optional(),
   // [B2] symétrie de schéma (le chat n'est pas restauré par le backup JSON — cf doRestore — mais
   // un export qui porte ces champs ne doit pas être rejeté à la validation).
@@ -268,6 +273,10 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     safeSet('app_vehicle_replacements', data.vehicleReplacements);
     safeSet('app_major_renovations', data.majorRenovations);
     safeSet('app_charitable_goals', data.charitableGoals);
+    // [PTF-L1A] Sans `?? []` : un backup sans grand livre doit restaurer un état « jamais importé »
+    // (clé ABSENTE), pas un livre « importé et vide ».
+    safeSet('app_broker_ledger', data.brokerLedger);
+    safeSet('app_instruments', data.instruments);
 
     // SYS-AUDIT — trace la restauration (écrite APRÈS les writes → survit au reload).
     logAudit({

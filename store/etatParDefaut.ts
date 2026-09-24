@@ -132,6 +132,15 @@ const DEFAULT_APP_STATE: AppState = {
     // [FINTABLE-7] Rôles assignés depuis Réglages. Présent explicitement (même raison) : la liste
     // des comptes réels de Marc n'a rien à faire dans une démo persona.
     fintableRoles: undefined,
+    // [PTF-L1A] Grand livre courtier et référentiel d'instruments : `undefined` EXPLICITE (jamais
+    // `[]`). Deux raisons, toutes deux écrites plus haut pour les champs Fintable : (1) PERSONA-PURGE
+    // — `personaResetBase()` dérive de ce littéral, une clé absente ne serait pas remise à zéro et
+    // le vrai portefeuille de Marc traverserait la démo persona ; (2) `undefined` n'est PAS une
+    // valeur par défaut au sens du piège `fxRatesSource` : JSON le retire du blob, et la fusion
+    // `{...courant, ...persisté}` le laisse recouvert par tout blob qui porte la clé. `[]`, lui,
+    // voudrait dire « importé et vide » — le contraire de « jamais importé ».
+    brokerLedger: undefined,
+    instruments: undefined,
 };
 
 // Base PROPRE pour charger un persona de test : toutes les tranches de DONNÉES remises aux défauts
@@ -146,6 +155,20 @@ export const personaResetBase = (): Partial<AppState> => {
     // mutation en place en aval corromprait silencieusement les défauts globaux partagés.
     return structuredClone(data);
 };
+
+/** [PTF-L1A] Relit un tableau optionnel écrit par la restauration d'un backup. Absent → `undefined`
+ *  (jamais `[]` : « jamais importé » n'est pas « importé et vide »). Illisible → journalisé, absent. */
+function lireLegacyOptionnel<T>(cle: string): T[] | undefined {
+    try {
+        const brut = localStorage.getItem(cle);
+        if (brut === null) return undefined;
+        const v: unknown = JSON.parse(brut);
+        return Array.isArray(v) ? (v as T[]) : undefined;
+    } catch (e) {
+        logError({ source: 'storage', severity: 'warning', message: `Migration store : « ${cle} » illisible (ignoré)`, error: e });
+        return undefined;
+    }
+}
 
 export const getInitialStateWithMigration = (): AppState => {
     const defaultState: AppState = { ...DEFAULT_APP_STATE, lastUpdate: Date.now() };
@@ -291,6 +314,11 @@ export const getInitialStateWithMigration = (): AppState => {
             // littéral legacy (même classe que le « FIX agents : defaults manquants » ci-dessus) →
             // state.documents undefined au 1er boot sans financeai-storage. Jamais stocké en legacy → [].
             documents: [],
+            // [PTF-L1A] Relus depuis la restauration d'un backup JSON (`BackupPanel.doRestore`). Absents
+            // → `undefined` (« jamais importé »), JAMAIS `[]`. Un JSON illisible est journalisé et vaut
+            // absent, comme les tableaux voisins.
+            brokerLedger: lireLegacyOptionnel('app_broker_ledger'),
+            instruments: lireLegacyOptionnel('app_instruments'),
         };
     } catch (e) {
         const errorStr = String(e);

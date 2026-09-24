@@ -25,6 +25,12 @@
   ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
   garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
 
+- [ ] 👤 **[PTF-L1A-ROUVRIR-APPAREILS]** (2026-09-24) — **rouvre FinanceAI une fois sur ton
+  téléphone, ton PC de dev et ton PC 24/7**, après le déploiement du lot 1a (ADR 0020). Rien à faire
+  d'autre : ouvrir, laisser charger. C'est ce qui garantit qu'aucun appareil resté sur une ancienne
+  version ne s'ouvre vide le jour où le grand livre de ton portefeuille sera importé. Dis-moi quand
+  c'est fait : l'import (lot 1g) attend ce feu vert.
+
 - [x] 👤 **[PTF-JOURNAL-PUBLIC]** (2026-09-24, ✅ **fait le jour même sur ta décision**) — les
   anciens journaux du cron « Rafraîchir les prix » montraient la liste de tes titres. Le cron ne
   l'imprime plus, et les journaux des 254 passes déjà publiées ont été SUPPRIMÉS (vérifié : le plus

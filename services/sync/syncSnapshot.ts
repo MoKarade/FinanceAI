@@ -71,7 +71,7 @@ export function computeIsEmpty(snapshot: unknown): boolean {
 export function summarizeForConflict(payload: unknown): ConflictSideCounts {
     const state = (payload as { state?: Record<string, unknown> } | null)?.state;
     const len = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
-    return { assets: len(state?.assets), transactions: len(state?.transactions) };
+    return { assets: len(state?.assets), transactions: len(state?.transactions), brokerEvents: len(state?.brokerLedger) };
 }
 
 interface LocalPayload {

@@ -24,52 +24,22 @@
 > par Marc avec un fichier de vérification). Le **Lot 0** (audit en lecture seule + plan + questions)
 > est livré à Marc **hors dépôt** — il contient ses montants réels, et ce dépôt est PUBLIC. Ce qui
 > suit ne porte que des MÉCANISMES : aucune quantité, aucun montant, aucune date réelle d'acquisition.
-> Feu vert de Marc : **Lot 0.5 seulement** (2026-09-24). Tout lot suivant attend ses réponses
-> (`docs/A_FAIRE_MOI.md`, `[PTF-QUESTIONS-LOT0]`). Architecture retenue au Lot 0 : grand livre par
+> Lot 0.5 livré (PR #1035-#1039) ; questions du Lot 0 répondues (ADR 0019) ; **feu vert de Marc pour
+> le Lot 1** (2026-09-24), un lot = une PR, dans l'ordre ci-dessous. Architecture retenue au Lot 0 : grand livre par
 > compte courtier (champ additif, sans valeur par défaut) ; magasin de marché dans un fichier Drive
 > SÉPARÉ, écrit par une seule tâche serveur (GitHub Actions → Cloud Run, ADR 0004/0010) ; moteur de
 > valorisation pur partagé app/MCP/tâche ; Fintable en contrôle si Marc choisit la clôture officielle.
 
-- [x] 🔧 **`[PTF-L05-GARDE-FUITE]`** (S) — garde `tests/confidentialitePortefeuille.test.ts` : aucun
-  fichier suivi ne porte une clé du fichier de vérification ni un code de compte après « Disnat »
-  (perturbation faite : le test de catégorisation d'avant ce lot est détecté, le fichier de
-  vérification aussi). Le seul code de sous-compte publié (dans un test de catégorisation) est
-  anonymisé, SANS réécrire l'historique git (le commit d'origine le porte encore : décision Marc).
-  `.gitignore` : `prive/`, fichiers de vérification et relevés PDF.
-  ⚠️ **Ce que la garde NE couvre PAS** : des VALEURS déjà écrites. Le BACKLOG publiait en clair la
-  composition, des quantités et des montants du portefeuille (`[INVEST-PORTFOLIO-DATA-CORRECTION]`,
-  `[COTATIONS-EUROPE-PERIMEES]`, `[FINTABLE-AUTORITE-PARTOUT]`, tickets FX) : **retirés du fichier
-  courant le 2026-09-24** (décision Marc), remplacés par des écarts relatifs. Historique git non
-  réécrit (il faudrait un `--force` sur `main`).
-- [x] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
-  `.github/workflows/mesure-sources.yml`, `scripts/mesureSources.mjs`, logique pure
-  `scripts/lib/mesureSources.mjs`, 8 cas dans `tests/mesureSources.test.ts`). Il mesure depuis la CI
-  (le conteneur n'a aucun réseau vers les sources) : couverture de Yahoo et d'EODHD **gratuit** par
-  ligne, devise renvoyée (pence de Londres signalés), prix brut ou ajusté avant un fractionnement,
-  écart aux ancres, accès du plan gratuit aux API fractionnements/dividendes, écart des taux Valet.
-  Le journal est PUBLIC : il n'imprime que des verdicts par rang (`L1`…), jamais un symbole ni un
-  prix. **1er lancement (2026-09-24, run 36032594452) : ÉCHEC avant toute mesure** — le secret posé
-  est du JSON valide mais sans « lignes » (probablement l'autre fichier, ou le bon collé entre
-  guillemets). L'erreur nomme désormais la FORME reçue (objet à N clés / chaîne / tableau), jamais son
-  contenu.
-  ✅ **MESURÉ le 2026-09-24 (run 36033041191, toutes les lignes, 3 dates d'ancrage)** :
-  - **EODHD gratuit : toutes les lignes servies**, écart aux ancres **0,00 %** sur les lignes à ancre
-    indépendante (0,01 % sur une), ≤ 0,07 % sur celles dont l'ancre est le prix du courtier. Le champ
-    `close` est **BRUT** avant un fractionnement. `/splits` et `/div` accessibles au plan gratuit.
-  - **Yahoo : toutes sauf une**, mêmes écarts ; **une ligne refusée (HTTP 400)** — celle-là n'est servie que
-    par EODHD. Avant un fractionnement, Yahoo rend le prix **AJUSTÉ** (÷ ratio) : le relire comme
-    brut diviserait la valeur de la ligne par le ratio sur tout le passé.
-  - **Devise : conforme partout**, aucune ligne en pence. Dividendes : quatre lignes n'en rendent
-    AUCUN, dont deux fonds de capitalisation — ce qui confirme `[DIVIDENDES-TABLE-EN-DUR]`.
-  - **Banque du Canada (Valet)** : USD/CAD et EUR/CAD à **0,000 %** des ancres, 3/3 dates.
-  ⇒ **Q5 tranchée par la mesure : rien de payant n'est nécessaire.** EODHD gratuit couvre tout ;
-  son quota (20 appels/jour) impose un historique mis en CACHE (une série par ligne, puis
-  incrémental), pas un appel par affichage. Correspondance rang → titre : HORS dépôt.
-- [ ] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
+- [x] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
   SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
   clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de
   conflit de synchro et le détecteur de « données significatives » comptent le livre (sinon la copie
   importée paraît « plus pauvre » que l'ancienne). Déploiement en deux temps (incident 2026-09-01).
+  ✅ **Livré le 2026-09-24** (ADR 0020). Écart assumé au ticket : les deux clés sont PRÉSENTES à
+  `undefined` dans les défauts (pas absentes) — sinon le vrai livre traverserait la démo persona ;
+  `undefined` disparaît au JSON, donc aucun blob ne le porte. Tests : `tests/store/grandLivrePersistance.test.ts`
+  (15 cas, 6 perturbations rouges), `tests/types/grandLivreImpossibles.test.ts` (formes interdites
+  par `tsc`), témoins de la garde de dérivation. ⚠️ Avant le premier import : rouvrir chaque appareil.
 - [ ] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
   native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
   dividende, retenue, dépôt, frais).
@@ -120,20 +90,6 @@
   datés : elle disparaît de toute la courbe passée.
 - [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
   la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
-- [x] 🟠 **`[FX-SERVEUR-JAMAIS-RAFRAICHI]`** (S) — les taux BdC ne sont lus que par le navigateur, au
-  démarrage, avec un cache de 24 h sur l'heure du FETCH ; le serveur (hub, MCP) valorise avec les
-  taux de la dernière ouverture de l'app. ✅ **Livré le 2026-09-24** (petit lot choisi par Marc,
-  ADR 0019) : le cron `/refresh` lit aussi les taux ; décision ET écriture extraites du store et du
-  démarrage vers `services/fx/ecritureFx.ts` (source unique app/serveur, aucun changement pour
-  l'app). 5 cas serveur, dont « taux saisi à la main + BdC injoignable → il survit ». ⚠️ Inerte en
-  prod tant que le serveur n'est pas redéployé (`[MCP-DEPLOY-CONTINU-MORT]`, paramètres GCP).
-- [x] 🔴 **`[PTF-JOURNAL-PUBLIC]`** (XS, trouvé le 2026-09-24 en lisant le cron) — « Rafraîchir les
-  prix » imprimait la réponse ENTIÈRE du serveur dans son journal GitHub Actions, qui est PUBLIC : la
-  liste des symboles rafraîchis et sautés, donc la composition du portefeuille, toutes les 6 h
-  depuis des mois (254 passes). Même défaut latent sur « fintable-sync » (en échec, rien de fuité).
-  Les deux n'impriment plus qu'un résumé (`jq` : issue, comptes, raisons). Garde
-  `tests/journauxCiSansDonnees.test.ts` (perturbation : l'ancien workflow → rouge). Les journaux des
-  254 passes déjà publiées ont été SUPPRIMÉS sur décision de Marc (vérifié : 404).
 - [ ] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — le formulaire d'ajout ignore la devise de la
   cotation et part en USD : un titre européen ajouté sans toucher au sélecteur est mal valorisé puis
   jamais rafraîchi (`AddStockForm.tsx:39`).

@@ -245,6 +245,14 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         // NOMMÉ. Sans résolution des alias, le scan ne le voit pas et « aucun manquant » ne veut
         // plus rien dire — c'est le silence exact qui a laissé passer le champ.
         expect(textuels.has('paymentFrequency'), 'témoin : un champ typé par un ALIAS doit être vu').toBe(true);
+        // [PTF-L1A] Témoins du grand livre courtier : trois clés textuelles NEUVES, qu'aucun état du
+        // dépôt ne porte encore — exactement le profil des trois vagues d'incident. Si la garde ne les
+        // voyait pas, « aucun manquant » ne dirait rien sur la surface que ce lot ajoute.
+        expect(textuels.has('isin'), 'témoin [PTF-L1A] : isin').toBe(true);
+        expect(textuels.has('exchange'), 'témoin [PTF-L1A] : exchange').toBe(true);
+        expect(textuels.has('controlSymbol'), 'témoin [PTF-L1A] : controlSymbol').toBe(true);
+        expect(aliasTextuels.has('BrokerLedgerEventKind'), 'témoin [PTF-L1A] : alias du discriminant').toBe(true);
+        expect(aliasTextuels.has('BrokerLedgerAccountId'), 'témoin [PTF-L1A] : alias des comptes').toBe(true);
 
         const manquants = [...textuels].filter((c) => !CHAMPS_TEXTE.has(c)).sort();
         expect(

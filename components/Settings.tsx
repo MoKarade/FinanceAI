@@ -155,6 +155,12 @@ export const Settings: React.FC<SettingsProps> = ({
     vehicleReplacements,
     majorRenovations,
     charitableGoals,
+    // [PTF-L1A] Grand livre courtier et référentiel : lus au moment de l'EXPORT (aucun abonnement de
+    // rendu pour deux tableaux que cet écran n'affiche pas). `undefined` reste `undefined` — JSON
+    // l'omet — et jamais `[]` : un backup d'un appareil qui n'a jamais importé ne doit pas restaurer
+    // un livre « importé et vide ».
+    brokerLedger: useFinanceStore.getState().brokerLedger,
+    instruments: useFinanceStore.getState().instruments,
   });
 
   return (

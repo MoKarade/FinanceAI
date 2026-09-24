@@ -80,6 +80,10 @@ export function buildDefaultAppState(): AppState {
         fintableBrokerBalances: undefined,
         fintableBrokerHistory: undefined,
         fintableRoles: undefined,
+        // [PTF-L1A] Miroir de DEFAULT_APP_STATE : `undefined`, jamais `[]` — une valeur `[]` ici
+        // serait MATÉRIALISÉE dans le blob Drive au premier outil d'écriture (« importé et vide »).
+        brokerLedger: undefined,
+        instruments: undefined,
     };
 }
 

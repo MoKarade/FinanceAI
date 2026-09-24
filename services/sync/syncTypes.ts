@@ -97,6 +97,9 @@ export type ApiKeys = { anthropic: string; finnhub: string };
 export interface ConflictSideCounts {
     assets: number;
     transactions: number;
+    /** [PTF-L1A] Opérations du grand livre courtier : sans ce compte, une copie qui a PERDU le livre
+     *  paraîtrait aussi riche que celle qui le porte, et le modal laisserait choisir la mauvaise. */
+    brokerEvents: number;
 }
 
 /** Résumé « cet appareil vs Drive » présenté par SyncConflictModal (anti-clobber Marc 2026-07-14). */

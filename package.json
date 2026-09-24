@@ -70,7 +70,7 @@
     "dependency-cruiser": "^18.4.0",
     "esbuild": "0.28.2",
     "eslint": "^9.0.0",
-    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
     "fast-check": "^4.10.2",
     "jsdom": "^29.1.1",

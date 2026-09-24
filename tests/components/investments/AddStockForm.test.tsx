@@ -254,14 +254,14 @@ describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais 
     // 90 lignes sous le premier correctif, sans qu'aucune suite ne rougisse.
     it('bannière « Prix actuel » (Finnhub validé) : devise NATIVE, pas CAD', async () => {
         vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
-        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'AAPL', price: 231.4 } } as never);
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'AAPL', price: 231.4, currency: 'USD' } } as never);
 
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
         fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
         fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
 
         const banner = await screen.findByText(/Prix actuel/i);
-        // devise par défaut du formulaire = USD (state initial) — jamais un symbole $ CAD.
+        // devise de la COTATION (USD ici) — jamais un symbole $ CAD.
         expect(banner.textContent).toContain('USD');
         expect(banner.textContent).not.toContain('$');
         expect(banner.textContent).toContain('231,40');
@@ -287,5 +287,39 @@ describe('[A11Y-ADDSTOCKFORM-LABELS] chaque champ du formulaire a un nom accessi
         for (const c of controles) expect(['INPUT', 'SELECT']).toContain(c.tagName);
         // Le combobox d'autocomplétion EST le champ Symbole : un seul contrôle, nommé par son label.
         expect(screen.getByRole('combobox', { name: /Symbole/i })).toBe(controles[0]);
+    });
+});
+
+// [ADDSTOCK-DEVISE-USD-PAR-DEFAUT] La devise d'un titre validé vient de sa COTATION, pas du défaut USD.
+describe('[ADDSTOCK-DEVISE-USD-PAR-DEFAUT] la devise suit la cotation', () => {
+    const valider = async (quote: Record<string, unknown>) => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'XEQT.TO', price: 38.12, ...quote } } as never);
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'xeqt.to' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        return onAdd;
+    };
+
+    it('titre de Toronto coté en CAD → sélecteur et actif en CAD, sans toucher au formulaire', async () => {
+        const onAdd = await valider({ currency: 'CAD' });
+        await screen.findByText(/Prix actuel/i);
+        expect((screen.getByLabelText(/Devise/i) as HTMLSelectElement).value).toBe('CAD');
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter au portefeuille/i }));
+        expect(onAdd.mock.calls[0][0].currency).toBe('CAD');
+    });
+
+    it('devise que l’app ne porte pas (GBP) → refus nommé, aucun titre validé', async () => {
+        await valider({ currency: 'gbp' });
+        expect(await screen.findByText(/coté en GBP : l'app ne gère que CAD, USD et EUR/)).toBeInTheDocument();
+        expect(screen.queryByText(/Prix actuel/i)).toBeNull();
+    });
+
+    it('devise non indiquée par la source → avertissement, la devise reste à vérifier', async () => {
+        await valider({ currency: '' });
+        await screen.findByText(/Prix actuel/i);
+        expect(screen.getByText(/n'a pas indiqué la devise/)).toBeInTheDocument();
     });
 });

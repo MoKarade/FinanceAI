@@ -72,6 +72,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         setBuyPrice('');
         setManualMode(false);
         setManualPrice('');
+        setCurrency('USD'); // la devise d'un titre précédent ne se transmet pas au suivant
         setError(null);
         setNotice(null);
         setSuggestions([]);
@@ -122,10 +123,11 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
      *  - 'ok'       : cours obtenu, symbole validé.
      *  - 'no-quote' : pas de cours (symbole inconnu / non couvert par le forfait) → fallback légitime.
      *  - 'error'    : exception réseau (timeout, 401, panne) → NE PAS basculer silencieusement en manuel.
+     *  - 'devise-non-geree' : coté dans une devise que l'app ne porte pas → refus nommé, pas de manuel.
      * La distinction est cruciale : une panne réseau ≠ un symbole non cotable (sinon on masquerait une
      * vraie erreur derrière « entre le prix à la main »).
      */
-    const validateSymbol = async (symOverride?: string, nameOverride?: string): Promise<'ok' | 'no-quote' | 'error'> => {
+    const validateSymbol = async (symOverride?: string, nameOverride?: string): Promise<'ok' | 'no-quote' | 'error' | 'devise-non-geree'> => {
         const sym = (symOverride ?? symbol).trim().toUpperCase();
         if (!sym) return 'no-quote';
         setShowSuggestions(false);
@@ -152,6 +154,20 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 return 'no-quote';
             }
             const quote = res.quote;
+            // [ADDSTOCK-DEVISE-USD-PAR-DEFAUT] La devise vient de la COTATION, jamais du défaut du
+            // formulaire : un titre de Toronto ajouté sans toucher au sélecteur partait en USD, donc
+            // mal valorisé puis jamais rafraîchi (ses cours CAD rejetés pour devise différente).
+            const devise = String(quote.currency ?? '').trim().toUpperCase();
+            if (devise === 'USD' || devise === 'CAD' || devise === 'EUR') {
+                setCurrency(devise);
+            } else if (devise !== '') {
+                // Une devise que l'app ne sait pas porter (GBP, CHF…) : l'enregistrer sous une autre
+                // étiquette fabriquerait un montant faux. Refus nommé plutôt qu'un repli.
+                setError(`« ${sym} » est coté en ${devise} : l'app ne gère que CAD, USD et EUR. Ce titre ne peut pas être ajouté avec son cours automatique.`);
+                return 'devise-non-geree';
+            } else {
+                setNotice(`La source de cours n'a pas indiqué la devise de « ${sym} » : vérifie le champ Devise avant d'ajouter.`);
+            }
             setSymbol(sym);
             setValidatedSymbol(sym);
             setStockName(nameOverride || quote.symbol);

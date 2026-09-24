@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24 — Ajout d'un titre : la bonne devise d'office
+
+- Quand tu ajoutes un titre dont le cours est trouvé automatiquement, sa devise vient maintenant de sa
+  cotation : un FNB de Toronto s'ajoute en CAD sans que tu touches au sélecteur. Avant, tout partait en
+  USD, et le titre était mal valorisé puis jamais mis à jour.
+- Un titre coté dans une devise que l'app ne gère pas (livre sterling, franc suisse…) est refusé avec
+  un message clair, au lieu d'être enregistré sous une mauvaise devise.
+
 ## 2026-09-24 — Google Drive : l'app n'efface plus une mise à jour faite ailleurs
 
 - Avant d'envoyer tes données vers Google Drive, l'app vérifie maintenant que personne n'y a écrit

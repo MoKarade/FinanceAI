@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 9) — **Ajout d'un titre : devise de la cotation**
+> Livré `[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]` (`AddStockForm`) : devise lue de `quote.currency`, refus nommé
+> hors CAD/USD/EUR, avertissement si absente. `[SYNC-PUSH-SANS-OCC]` fusionné (#1054) et archivé.
+> `[EXPORT-JSON-PERD-FINTABLE]` re-mesuré M (restauration par clés legacy), plan au BACKLOG, non codé.
+> Test E2E instable `[FUTUR-CLICK-ANYWHERE]` inscrit (`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`).
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 8) — **Le push Drive n'écrase plus une version qu'il n'a pas vue**
 > Livré `[SYNC-PUSH-SANS-OCC]` : `pushNow` relit le blob avant d'écrire ; `driveAAvance` (source unique
 > avec `decideOnLoad`) → réécrit depuis la dernière version vue ⇒ 0 écriture + modal de conflit

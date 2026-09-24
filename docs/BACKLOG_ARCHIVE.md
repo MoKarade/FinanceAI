@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Synchro Drive : le push n'écrase plus une version qu'il n'a pas vue (PR #1054)
+
+Déménagé au lot suivant (ADDSTOCK-DEVISE).
+
+- [x] 🔴 **`[SYNC-PUSH-SANS-OCC]`** (M) — ✅ 2026-09-24 : avant d'écraser Drive, `pushNow` relit
+  le blob et compare son `updatedAt` à la dernière version VUE (`driveAAvance`, source unique partagée
+  avec `decideOnLoad`). Réécrit depuis (cron des cours, cron Fintable, outil MCP) → AUCUNE écriture,
+  modal de conflit ouvert (`resumeConflit`, partagé avec la décision au chargement). « Garder cet
+  appareil » n'écrase que la version que le modal a MONTRÉE ; réécrit entre-temps → modal rouvert.
+  Une relecture qui ÉCHOUE fait échouer le push (avant : push sans clés, `apiKeysEnc` de Drive écrasé
+  — test de limite inversé). Revue (deux relecteurs) : date Drive illisible → échec FERMÉ et choix
+  toujours possible (identité, présence de la clé) ; refus tracés ; un « garder cet appareil » n'est
+  plus absorbé par un push en vol ; même contenu réécrit ailleurs → adopté sans modal ; retirer la
+  passphrase pendant un conflit n'annonce plus « repassée en clair ». ⚠️ Reste une fenêtre de quelques
+  centaines de ms entre relecture et écriture ; [À vérifier] si la v3 accepte un `If-Match`.
+
 ## 2026-09-24 — Portefeuille, lot 1f2 : lecture du relevé PDF (PR #1052)
 
 Déménagé au lot suivant (1e, étape 1).

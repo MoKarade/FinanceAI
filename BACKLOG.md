@@ -97,6 +97,13 @@
   (quantité, prix, devise, coût, encaisse) ; remplacement daté des lignes mal cotées ; refus
   d'`apply_broker_statement` et de `delete_item` sur les lignes du référentiel (variante de symbole
   comprise) ; « ligne absente du relevé → rien retiré, écart signalé ».
+  🔒 **Tranché par Marc le 2026-09-24** : l'import écrit le grand livre et le référentiel SEULEMENT
+  (les écrans lisent les placements actuels jusqu'à `[PTF-L1E-PASSERELLE]`) ; plusieurs PDF d'un coup,
+  triés par date d'arrêté, un seul aperçu, relevé antérieur au dernier importé refusé et nommé ;
+  bouton dans l'onglet Placements. ⛔ **BLOQUÉ par `[PTF-L1C-MAGASIN-MARCHE]` (tâche serveur 1c-2)** :
+  les relevés impriment description, symbole Disnat et devise du prix, mais AUCUN ISIN ni place de
+  cotation (mesuré sur les trois vrais relevés : 0 ISIN) ; Marc a choisi que l'ISIN et la place
+  viennent d'une recherche EODHD par symbole, pas d'une saisie.
 - [ ] 🔧 **`[PTF-L1H-SOURCE-UNIQUE]`** (M) — retrait des anciens producteurs pour les lignes du livre ;
   l'appel BdC du navigateur est GARDÉ pour les actifs hors livre.
 - [ ] 🔧 **`[PTF-L2-AUTOMATISATION]`** (M×5) — dividendes courus puis réels (requêtes tournantes dans

@@ -11,19 +11,12 @@
     <meta name="theme-color" content="#10b981">
     <!-- mobile-web-app-capable : standard (remplace le apple- déprécié). On garde
          le apple- pour la rétro-compat iOS Safari. -->
+    <meta name="description" content="FinanceAI — tableau de bord de finances personnelles (Québec/Canada) : budget, placements, impôts, projections.">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Sprint 2 PL1 — preload du weight 400 d'Outfit (le plus utilisé) pour
-         économiser ~100ms LCP. Le navigateur découvre la fonte avant de parser
-         le CSS Google Fonts. -->
-    <link rel="preload" as="font" type="font/woff2" crossorigin
-          href="https://fonts.gstatic.com/s/outfit/v11/QGYvz_MVcBeNP4NJtEtq.woff2">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FONTS : auto-hébergées (@fontsource, importées par index.tsx) — [S5-PERF] 24/09/2026. -->
 
     <link rel="stylesheet" href="/index.css">
     <!-- CSP en <meta> : défense-en-profondeur (s'applique même si les headers HTTP manquent). -->
@@ -33,7 +26,7 @@
     <!-- Sprint 3 SH2 (sécurité) — `unsafe-inline` retiré de script-src (tous les scripts inline ont été
          migrés). [S5-SANS-GA] 24/09/2026 : Google Analytics / Tag Manager retirés (décision de Marc) —
          googletagmanager.com n'est plus autorisé (vecteur connu de contournement de CSP). Aligné avec vercel.json. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; base-uri 'self'; object-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; base-uri 'self'; object-src 'none';">
 
     <!-- Permissions-Policy : aligné avec vercel.json [[headers]] pour les
          hébergeurs qui ne lisent pas les headers HTTP (ex: GitHub Pages). -->

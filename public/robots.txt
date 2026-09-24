@@ -1,0 +1,4 @@
+# [S5-PERF] robots.txt réel (24/09/2026) : sans lui, /robots.txt renvoyait la page de l'app (réécriture SPA)
+# et Lighthouse le signalait invalide. Comportement inchangé : rien n'est interdit.
+User-agent: *
+Allow: /

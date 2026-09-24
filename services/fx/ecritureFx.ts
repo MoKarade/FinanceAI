@@ -21,7 +21,7 @@ import type { FxCause, FxSource } from './provenance';
 import { decisionEcritureFx, fxSourceEffective, type LectureFx } from './provenance';
 
 /** Les champs FX de l'état — forme minimale, jamais `AppState` en entier. */
-export interface EtatFx {
+interface EtatFx {
     fxRates: { USD: number; EUR: number; CAD: number; lastFetched?: number };
     fxRatesEstimated?: boolean;
     fxRatesSource?: FxSource;

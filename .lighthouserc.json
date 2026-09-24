@@ -6,25 +6,67 @@
       "settings": {
         "chromeFlags": "--no-sandbox",
         "preset": "desktop",
-        "onlyCategories": ["performance", "accessibility", "best-practices", "seo"]
+        "onlyCategories": [
+          "performance",
+          "accessibility",
+          "best-practices",
+          "seo"
+        ]
       }
     },
     "assert": {
       "assertions": {
-        "categories:performance": ["warn", { "minScore": 0.5 }],
-        "categories:accessibility": ["warn", { "minScore": 0.85 }],
-        "categories:best-practices": ["warn", { "minScore": 0.8 }],
-        "categories:seo": ["warn", { "minScore": 0.7 }],
-
+        "categories:performance": [
+          "error",
+          {
+            "minScore": 0.9
+          }
+        ],
+        "categories:accessibility": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:best-practices": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
+        "categories:seo": [
+          "error",
+          {
+            "minScore": 1
+          }
+        ],
         "is-on-https": "off",
         "uses-http2": "off",
         "redirects-http": "off",
-
-        "color-contrast": ["warn", { "minScore": 1 }],
-        "image-alt": ["warn", { "minScore": 1 }],
-        "html-has-lang": ["warn", { "minScore": 1 }],
-        "meta-viewport": ["warn", { "minScore": 1 }],
-
+        "color-contrast": [
+          "warn",
+          {
+            "minScore": 1
+          }
+        ],
+        "image-alt": [
+          "warn",
+          {
+            "minScore": 1
+          }
+        ],
+        "html-has-lang": [
+          "warn",
+          {
+            "minScore": 1
+          }
+        ],
+        "meta-viewport": [
+          "warn",
+          {
+            "minScore": 1
+          }
+        ],
         "errors-in-console": "warn",
         "no-document-write": "warn"
       }

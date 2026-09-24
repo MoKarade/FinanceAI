@@ -1,8 +1,8 @@
 # P1.6 — Lighthouse CI audit perf + a11y + best-practices + SEO.
 #
 # Workflow séparé du CI critique pour ne pas bloquer Tests+Build.
-# Tous les budgets sont en "warn" initialement — aucune assertion ne fail le job.
-# Pour durcir, basculer les warn → error dans .lighthouserc.json.
+# [S5-PERF] Depuis le 24/09/2026 : les 4 catégories sont des budgets bloquants (« error »), figés sur la
+# mesure CI du jour (perf 0,97 → seuil 0,90 pour absorber le bruit ; accessibilité, bonnes pratiques et SEO à 1).
 #
 # Résultats : artefact .html téléchargeable + lien temporary-public-storage.
 
@@ -54,4 +54,5 @@ jobs:
           configPath: ./.lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
-        continue-on-error: true
+        # [S5-PERF] Budgets FIGÉS (24/09/2026, décision de Marc « mesurer puis figer ») : plus de
+        # continue-on-error — un recul sous les seuils de .lighthouserc.json fait échouer le job.

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # [CI-PERSIST-CREDS] `actions/checkout` v2+ écrit le GITHUB_TOKEN dans la config git
           # du runner POUR TOUT LE RESTE DU RUN : n'importe quelle étape suivante, y compris
@@ -32,7 +32,7 @@ jobs:
 
       # Pas de `cache: 'npm'` : pas de package-lock.json commité dans ce repo
       - name: Setup Node 24
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # [CI-PERSIST-CREDS] `actions/checkout` v2+ écrit le GITHUB_TOKEN dans la config git
           # du runner POUR TOUT LE RESTE DU RUN : n'importe quelle étape suivante, y compris
@@ -69,7 +69,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node 24
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
@@ -127,11 +127,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Setup Node 24
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
       - name: Install dependencies
@@ -140,7 +140,7 @@ jobs:
         run: node qualite/portes.mjs
       - name: Rapport
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapport-qualite
           path: qualite/rapport.json
@@ -158,7 +158,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # gitleaks lit l'historique complet, pas seulement le dernier commit
           persist-credentials: false
@@ -170,7 +170,7 @@ jobs:
           echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tgz" | sha256sum -c -
           tar xzf gitleaks.tgz gitleaks
           ./gitleaks git . --no-banner --redact --log-opts="--full-history HEAD"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Analyse statique (Semgrep)

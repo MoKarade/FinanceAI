@@ -24,7 +24,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # [CI-PERSIST-CREDS] `true` EXPLICITE, et c'est le seul de ce dépôt.
           #
@@ -38,7 +38,7 @@ jobs:
           persist-credentials: true
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 

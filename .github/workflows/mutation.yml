@@ -1,0 +1,49 @@
+# Tests de mutation du MOTEUR FISCAL (porte qualité de l'Atelier, S6 lot 1b — décision de Marc, 24/09/2026).
+#
+# Stryker modifie volontairement le calcul d'impôt (un taux, une borne, un `<`) et vérifie que les
+# tests le remarquent. Lent, donc HEBDOMADAIRE et à la demande — jamais sur une PR : ce n'est PAS un
+# contrôle obligatoire, la fusion automatique ne l'attend pas. Le seuil (score minimal) vit dans
+# qualite/seuils.json comme les autres portes (cliquet : il ne peut que monter).
+# Dépôt public : minutes d'Actions gratuites.
+name: Mutation (moteur fiscal)
+
+on:
+  schedule:
+    - cron: "41 7 * * 1" # lundi, 03:41 à Québec
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    name: Tests de mutation (moteur fiscal, hebdomadaire)
+    # Plafond : sans lui, un job figé tourne six heures. Calibré sur le premier passage local.
+    timeout-minutes: 300
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Dépendances
+        run: npm ci --ignore-scripts
+      - name: Stryker
+        # Le binaire du lockfile (npm run), jamais un `npx` qui pourrait télécharger à la volée.
+        run: npm run mutation -- --concurrency 4
+      - name: Seuil de mutation (cliquet)
+        run: node qualite/portes.mjs --seulement-mutation
+      - name: Rapport de mutation
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rapport-mutation
+          path: reports/mutation/
+          if-no-files-found: ignore

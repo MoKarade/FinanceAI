@@ -96,6 +96,7 @@ vi.mock('../../services/cloudBackup', async (orig) => {
 import { pushNow, schedulePush, flushPush, markApiKeysHydrated } from '../../services/sync/syncPush';
 import { pullNow } from '../../services/sync/syncPull';
 import { resolveConflict } from '../../services/sync/syncLifecycle';
+import { removeSyncPassphrase } from '../../services/sync/syncPassphrase';
 import { setStatus, getSyncStatus, _resetSyncStatusForTests } from '../../services/sync/syncStatusStore';
 import { writeSyncMeta, getOrCreateDeviceId } from '../../services/sync/syncState';
 import { getLocalPayload } from '../../services/sync/syncSnapshot';
@@ -438,5 +439,45 @@ describe('[SYNC-PUSH-SANS-OCC] le push n\'écrase jamais une version de Drive qu
         expect(ecrituresDrive()).toBe(0);
         expect(getSyncStatus().conflict).toBe(true);
         expect(getSyncStatus().conflictSummary?.drive.updatedAt).toBe(ECRIT_PAR_LE_SERVEUR + 500);
+    });
+
+    it('même contenu réécrit ailleurs → ni modal ni écriture : la version de Drive est adoptée comme vue', async () => {
+        localModifieDepuis(VU);
+        const local = getLocalPayload();
+        readSyncFileMock.mockResolvedValue({ ...blobServeur(ECRIT_PAR_LE_SERVEUR), payload: local.payload } as never);
+
+        expect(await pushNow()).toBe('pushed');
+        expect(ecrituresDrive()).toBe(0);
+        expect(getSyncStatus().conflict).toBe(false);
+        // Adoptée : le push suivant ne rouvre rien et écrit normalement.
+        expect(await pushNow()).toBe('pushed');
+        expect(getSyncStatus().conflict).toBe(false);
+    });
+
+    it('« garder cet appareil » pendant un push déjà en vol : il n\'est PAS absorbé, il passe après', async () => {
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
+        let relacher!: () => void;
+        const enVol = new Promise<void>((r) => { relacher = r; });
+        readSyncFileMock.mockImplementationOnce(async () => { await enVol; return blobServeur(ECRIT_PAR_LE_SERVEUR) as never; });
+
+        const auto = pushNow();                                             // push automatique, en vol
+        const choix = pushNow({ driveVuA: ECRIT_PAR_LE_SERVEUR });          // clic « garder cet appareil »
+        relacher(); // avant toute assertion : un push laissé en vol contaminerait les cas suivants
+        expect(choix).not.toBe(auto);
+        expect(await auto).toBe('conflict');
+        expect(await choix).toBe('pushed');
+        expect(ecrituresDrive()).toBe(1);
+    });
+
+    it('retirer la passphrase pendant un conflit : l\'écran n\'annonce PAS « repassée en clair »', async () => {
+        localModifieDepuis(VU);
+        setPassphrase('passphrase-de-test-12');
+        setStatus({ connected: true, needsPassphrase: false });
+        readSyncFileMock.mockResolvedValue({ ...blobServeur(ECRIT_PAR_LE_SERVEUR), enc: true, payload: null, encPayload: 'FAI1xx' } as never);
+
+        expect(await removeSyncPassphrase()).toBe('removed-republish-pending');
+        expect(ecrituresDrive()).toBe(0);
+        expect(getSyncStatus().conflict).toBe(true);
     });
 });

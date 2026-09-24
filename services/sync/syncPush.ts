@@ -6,7 +6,7 @@
 import { isGoogleAuthConfigured, getValidAccessToken } from '../googleDrive/gisAuth';
 import { findSyncFile, readSyncFile, updateSyncFile, createSyncFile } from '../googleDrive/driveAppData';
 import { encryptApiKeys } from './keyCipher';
-import { shouldPush, buildEnvelope, buildEncryptedEnvelope, driveAAvance } from './syncEngine';
+import { shouldPush, buildEnvelope, buildEncryptedEnvelope, driveAAvance, hashPayload } from './syncEngine';
 import { getPassphrase } from './passphraseStore';
 import { encryptBackup } from '../cloudBackup';
 import { getOrCreateDeviceId, writeSyncMeta } from './syncState';
@@ -60,6 +60,11 @@ let _pushInFlight: Promise<PushResult> | null = null;
 
 /** Pousse le payload local vers Drive (create ou update) et met à jour la meta. Dé-doublonné (réentrance). */
 export function pushNow(options: PushOptions = {}): Promise<PushResult> {
+    // [SYNC-PUSH-SANS-OCC, revue] Un choix EXPLICITE (« garder cet appareil ») ne se fond pas dans un
+    // push déjà en vol : ses options seraient perdues et le clic ne ferait rien. Il passe APRÈS.
+    if (_pushInFlight && Object.prototype.hasOwnProperty.call(options, 'driveVuA')) {
+        return _pushInFlight.then(() => pushNow(options), () => pushNow(options));
+    }
     if (_pushInFlight) return _pushInFlight;
     const run = runPushNow(options).finally(() => { _pushInFlight = null; });
     _pushInFlight = run;
@@ -88,7 +93,8 @@ async function runPushNow(options: PushOptions): Promise<PushResult> {
         // ne ferme pas la fenêtre, il la rétrécit. La lecture qui ÉCHOUE fait échouer le push (le
         // `catch` global) : écrire à l'aveugle est exactement le défaut corrigé ici.
         // ⚠️ Reste une fenêtre de quelques centaines de millisecondes entre cette lecture et
-        // l'écriture : l'API de fichiers de Drive n'offre pas d'écriture conditionnelle ici.
+        // l'écriture : aucune écriture CONDITIONNELLE n'est employée ici. [À vérifier] si l'API de
+        // fichiers v3 accepte un `If-Match` sur une version du fichier — ce qui fermerait la fenêtre.
         const existant = ref ? await readSyncFile(token, ref.id) : null;
         if (existant) {
             // « Garder cet appareil » : l'écrasement est permis si Drive porte ENCORE la version que le
@@ -104,6 +110,16 @@ async function runPushNow(options: PushOptions): Promise<PushResult> {
             const dateLisible = Number.isFinite(existant.updatedAt);
             const vuA = currentMeta().lastPulledUpdatedAt;
             if (!ecrasementChoisi && (!dateLisible || driveAAvance(existant.updatedAt, vuA))) {
+                // Réécrit ailleurs avec EXACTEMENT le même contenu (republication identique) : rien à
+                // choisir — le raccourci de `decideOnLoad`, sans lequel le modal « tes données
+                // diffèrent » s'ouvrirait pour rien. On adopte cette version comme vue, sans écrire.
+                // Seulement en clair des DEUX côtés : un blob chiffré n'est pas comparable, et une
+                // passphrase active veut réécrire la FORME du blob, pas seulement son contenu.
+                if (dateLisible && !existant.enc && getPassphrase() === null && hashPayload(existant.payload) === local.hash) {
+                    writeSyncMeta({ ...currentMeta(), lastSyncedAt: now, lastPulledUpdatedAt: existant.updatedAt, lastLocalHash: local.hash });
+                    setStatus({ busy: false, lastSyncedAt: now, connected: true, conflict: false, conflictSummary: null });
+                    return 'pushed';
+                }
                 // Tracé : un push AUTOMATIQUE (fermeture d'onglet) peut s'abstenir sans que personne voie
                 // le modal ; le prochain chargement le redétecte, mais « pourquoi rien n'est parti ? »
                 // doit rester lisible après coup.

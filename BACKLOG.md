@@ -109,9 +109,11 @@
   modal de conflit ouvert (`resumeConflit`, partagé avec la décision au chargement). « Garder cet
   appareil » n'écrase que la version que le modal a MONTRÉE ; réécrit entre-temps → modal rouvert.
   Une relecture qui ÉCHOUE fait échouer le push (avant : push sans clés, `apiKeysEnc` de Drive écrasé
-  — test de limite inversé). ⚠️ Reste une fenêtre de quelques centaines de ms entre relecture et
-  écriture (pas d'écriture conditionnelle dans l'API de fichiers utilisée). 4 gardes, 3 perturbations
-  distinctes.
+  — test de limite inversé). Revue (deux relecteurs) : date Drive illisible → échec FERMÉ et choix
+  toujours possible (identité, présence de la clé) ; refus tracés ; un « garder cet appareil » n'est
+  plus absorbé par un push en vol ; même contenu réécrit ailleurs → adopté sans modal ; retirer la
+  passphrase pendant un conflit n'annonce plus « repassée en clair ». ⚠️ Reste une fenêtre de quelques
+  centaines de ms entre relecture et écriture ; [À vérifier] si la v3 accepte un `If-Match`.
 - [ ] 🔴 **`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`** (→ `[PTF-L1G-IMPORT-PORTEFEUILLE]`) — `apply_broker_statement` :
   ligne neuve en CAD par défaut, coût = cours du relevé, quantité réécrite sans les achats datés,
   prix écrit dans la devise STOCKÉE, aucune suppression, aucun aperçu côté claude.ai. Simulé en pur

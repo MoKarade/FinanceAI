@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1d : moteur de valorisation (PR #1049)
+
+Déménagé au lot suivant (1s).
+
+- [x] 🔧 **`[PTF-L1D-VALORISATION]`** (L) — moteur pur partagé (date de calcul INJECTÉE) ; test
+  « zéro artefact » contre un ORACLE indépendant (l'identité cours + change + flux est vraie par
+  algèbre si le moteur calcule lui-même les effets) sur valeurs non arrondies, plus « jour sans
+  mouvement → 0 » et « passé stable au recalcul » ; scénarios synthétiques nommés ; tests sous deux
+  fuseaux de signes opposés.
+  ✅ 2026-09-24 : `services/valorisation/valoriser.ts` — `valoriserAu(livre, magasin, date, ageMaxJours)`
+  (total `null` dès qu'un cours, un taux ou le livre manque ; `manquants` nomme chaque cause sans
+  montant ; aucun arrondi) et `variationEntre` (effet de cours, effet de change, mouvements ; un
+  fractionnement de la fenêtre ré-exprime la position de départ). Oracle écrit à la main, 15 cas,
+  6 perturbations rouges. Non branché : la passerelle est `[PTF-L1E-PASSERELLE]`.
+
 ## 2026-09-24 — Portefeuille, lot 1c-1 : format du magasin de marché (PR #1048)
 
 Déménagé au lot suivant (1d).

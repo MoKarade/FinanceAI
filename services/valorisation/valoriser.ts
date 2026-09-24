@@ -22,10 +22,15 @@
 //     (×10). La quantité de départ et le cours de départ sont donc exprimés dans l'unité d'APRÈS le
 //     fractionnement avant de calculer l'effet de cours ; sinon un 10:1 serait une chute de 90 %
 //     compensée par un « mouvement » de +900 %.
+//     Une ANNULATION ou un ÉCHANGE (changement d'ISIN) déplacent aussi l'unité : `suivreLaPosition` suit
+//     la position de départ à travers eux, annulations comprises (une ligne annulée dans la fenêtre est
+//     DÉFAITE, pas appliquée). Pour un échange, l'écart entre le cours du nouveau titre et le cours
+//     ré-exprimé de l'ancien est un effet de cours : c'est la valeur que l'échange a créée ou détruite,
+//     pas de l'argent entré ou sorti.
 //  4. Le « reporté » vient du magasin (`clotureAu`/`tauxAu`) : il est calculé à la lecture, jamais
 //     écrit, et l'âge maximal est un argument REQUIS — un défaut ici serait un seuil inventé.
 import type { BrokerLedgerAccountId, BrokerLedgerCurrency, BrokerLedgerEvent } from '../../types';
-import { etatDuLivreAu, type AnomalieLivre } from '../grandLivre/etatDuLivre';
+import { annulationsAu, etatDuLivreAu, rangDansLaJournee, type AnomalieLivre } from '../grandLivre/etatDuLivre';
 import { clotureAu, tauxAu, type MagasinMarche, type LectureAuJour, type LectureTauxAuJour } from '../marche/magasinMarche';
 
 /** Une ligne de titres valorisée. `cours` en devise de cotation, `taux` = CAD par unité de devise. */
@@ -167,7 +172,7 @@ export function variationEntre(
     if (v0 === null || v1 === null) return { statut: 'jamais-importe' };
     if (v0.totalCad === null || v1.totalCad === null) return { statut: 'incomplete', debut: v0, fin: v1 };
 
-    const ratio = ratiosDeFractionnement(livre ?? [], debut, fin);
+    const suivre = suivreLaPosition(livre ?? [], debut, fin);
     const cle = (compte: string, x: string): string => `${compte}\u0000${x}`;
     const fin1 = new Map(v1.titres.map((l) => [cle(l.compte, l.isin), l]));
     const esp1 = new Map(v1.especes.map((l) => [cle(l.compte, l.devise), l]));
@@ -175,13 +180,15 @@ export function variationEntre(
     let effetCours = 0;
     let effetChange = 0;
     for (const l0 of v0.titres) {
-        const r = ratio.get(cle(l0.compte, l0.isin)) ?? 1;
+        const { isin, ratio: r } = suivre(l0.compte, l0.isin);
         const q0 = l0.quantite * r;
         const p0 = l0.cours / r;
-        const l1 = fin1.get(cle(l0.compte, l0.isin));
+        const l1 = fin1.get(cle(l0.compte, isin));
         // Titre sorti du livre avant la fin : son cours de fin n'est pas lu (il peut ne plus être
         // servi). Tout son écart est un mouvement — il n'a pas eu de performance À NOUS.
-        if (!l1) continue;
+        // Un échange vers un titre coté dans une AUTRE devise ne se décompose pas (cours et taux
+        // n'ont plus la même unité des deux côtés) : tout son écart va aux mouvements, sans rien inventer.
+        if (!l1 || l1.devise !== l0.devise) continue;
         effetCours += q0 * (l1.cours - p0) * l0.taux;
         effetChange += q0 * l1.cours * (l1.taux - l0.taux);
     }
@@ -194,15 +201,59 @@ export function variationEntre(
     return { statut: 'ok', variation: { debut: v0, fin: v1, effetCours, effetChange, mouvements } };
 }
 
-/** compte × ISIN → produit des ratios (`splitTo / splitFrom`) des fractionnements de ]debut, fin]. */
-function ratiosDeFractionnement(livre: readonly BrokerLedgerEvent[], debut: string, fin: string): Map<string, number> {
-    const ratios = new Map<string, number>();
-    for (const e of livre) {
-        if (e.kind !== 'fractionnement' || !(e.date > debut && e.date <= fin)) continue;
-        const k = `${e.accountId}\u0000${e.isin}`;
-        ratios.set(k, (ratios.get(k) ?? 1) * (e.splitTo / e.splitFrom));
-    }
-    return ratios;
+type ChangementDUnite = Extract<BrokerLedgerEvent, { kind: 'fractionnement' | 'echange' }>;
+
+/**
+ * Suit une position détenue à `debut` jusqu'à `fin` : sous quel ISIN elle se retrouve, et combien de
+ * titres de fin vaut un titre de départ. Deux temps, dans cet ordre :
+ *  1. DÉFAIRE, du plus récent au plus ancien, les fractionnements et échanges qui avaient effet à
+ *     `debut` et qu'une annulation de la fenêtre a retirés (ils n'existent plus dans le monde de `fin`),
+ *  2. APPLIQUER, dans l'ordre chronologique, ceux de ]debut, fin] qui ont effet à `fin`.
+ * Les événements invalides (ratio non fini ou nul) sont ignorés ici : ils sont déjà des anomalies du
+ * livre, donc le total est `null` et aucune variation n'est calculée.
+ */
+function suivreLaPosition(
+    livre: readonly BrokerLedgerEvent[],
+    debut: string,
+    fin: string,
+): (compte: BrokerLedgerAccountId, isin: string) => { isin: string; ratio: number } {
+    const valide = (e: BrokerLedgerEvent): e is ChangementDUnite =>
+        (e.kind === 'fractionnement' || e.kind === 'echange')
+        && Number.isFinite(e.splitFrom) && Number.isFinite(e.splitTo) && e.splitFrom > 0 && e.splitTo > 0
+        && typeof e.date === 'string';
+    const annulesDebut = annulationsAu(livre, debut).annules;
+    const annulesFin = annulationsAu(livre, fin).annules;
+    // Même ordre que le grand livre (fractionnement, puis échange, dans une journée) : un ordre propre
+    // ici ferait suivre une position autrement que le livre ne l'a calculée.
+    const chronologique = (a: ChangementDUnite, b: ChangementDUnite): number =>
+        (a.date < b.date ? -1 : a.date > b.date ? 1 : rangDansLaJournee(a) - rangDansLaJournee(b));
+    const defaits = livre
+        .filter(valide)
+        .filter((e) => e.date <= debut && !annulesDebut.has(e.id) && annulesFin.has(e.id))
+        .sort(chronologique)
+        .reverse();
+    const appliques = livre
+        .filter(valide)
+        .filter((e) => e.date > debut && e.date <= fin && !annulesFin.has(e.id))
+        .sort(chronologique);
+
+    return (compte, isinDepart) => {
+        let isin = isinDepart;
+        let ratio = 1;
+        for (const e of defaits) {
+            if (e.accountId !== compte) continue;
+            const cible = e.kind === 'echange' ? e.toIsin : e.isin;
+            if (cible !== isin) continue;
+            ratio /= e.splitTo / e.splitFrom;
+            isin = e.isin;
+        }
+        for (const e of appliques) {
+            if (e.accountId !== compte || e.isin !== isin) continue;
+            ratio *= e.splitTo / e.splitFrom;
+            if (e.kind === 'echange') isin = e.toIsin;
+        }
+        return { isin, ratio };
+    };
 }
 
 /** Entrées d'un enregistrement partiel, triées par clé : un ordre stable rend la sortie comparable. */

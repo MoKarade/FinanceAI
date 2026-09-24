@@ -17010,3 +17010,38 @@ parce qu'énumérer les valeurs à protéger dans un dépôt public serait la fu
   (celui de `node_modules`, jamais réinstallé) ne voyait pas. D'où `export` retiré aussi des cinq
   variantes de `BrokerLedgerEvent` et de `BrokerLedgerCurrency` : un lot suivant l'ajoutera quand il
   les importera.
+
+## `UN-TEST-OU-RIEN-NE-BOUGE-NE-VOIT-PAS-UN-MECANISME-DONT-LA-PANNE-REND-AUSSI-ZERO` (2026-09-24, sortes du grand livre)
+
+La garde « zéro artefact » du moteur de valorisation vérifie qu'un jour où les cours et les taux ne
+bougent pas, les effets de cours et de change valent 0. Écrite pour l'ÉCHANGE (changement d'ISIN),
+elle est restée VERTE quand j'ai retiré le suivi de l'ISIN : sans suivi, l'ancien titre est « sorti du
+livre », tout son écart part aux mouvements… qui valent 0 eux aussi quand rien ne bouge. La panne et
+le bon fonctionnement rendaient le même zéro.
+
+- Un scénario où rien ne bouge prouve l'ABSENCE d'artefact, jamais la PRÉSENCE d'un mécanisme : quand
+  la panne a pour issue un repli qui rend la même valeur au repos (ici « tout est mouvement »), il
+  faut un second scénario où le levier est ACTIF (un cours qui bouge après l'échange), et c'est lui
+  seul qui rougit.
+- Le geste qui l'a montré est la perturbation PAR MÉCANISME (5 perturbations, 5 compteurs de rouges
+  différents) : un « 1 rouge » là où on en attendait 2 n'est pas un test faible, c'est une information
+  sur lequel des deux porte la preuve.
+
+
+## `UN-TRI-PAR-DATE-LAISSE-L-ORDRE-DU-TABLEAU-DECIDER-LE-RESTE` (2026-09-24, revue du lot 1s)
+
+Le grand livre trie ses événements par DATE, puis applique. Deux événements du même jour gardaient
+donc l'ordre du tableau reçu — et un fractionnement suivi d'un échange du même titre ne donne pas le
+même résultat que l'inverse. Aucun test ne le voyait : chaque fixture écrivait les événements dans
+l'ordre « naturel ». Même classe, deux fois dans le même lot : deux annulations de la même ligne le
+même jour rapportaient l'une ou l'autre selon le tableau.
+
+- Devant un tri, demander ce qui départage les **égalités** : si c'est l'ordre d'arrivée, le résultat
+  dépend de qui a construit le tableau (un import, une restauration, une fusion Drive).
+- La règle de départage est une **source unique** (`rangDansLaJournee`), appelée par le livre ET par
+  le suivi de position de la valorisation — deux copies divergeraient en silence.
+- La garde écrit le cas dans **les deux ordres** et exige le même résultat : un seul ordre ne prouve
+  que l'ordre qu'on a écrit.
+- Corollaire : un identifiant censé être unique ne l'est que si quelque chose le **refuse** en double.
+  Deux annulations au même `id` faisaient tomber deux lignes réelles ; elles sont désormais refusées
+  toutes les deux, sans deviner laquelle était la bonne.

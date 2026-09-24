@@ -36,7 +36,9 @@ import { BackupSchema } from '../../components/settings/BackupPanel';
 const STORE_KEY = 'financeai-storage';
 const source = { kind: 'releve-courtier', date: '2026-01-31' } as const;
 
-/** Les onze sortes d'événements, une fois chacune — synthétiques. */
+/** Les quinze sortes d'événements, une fois chacune — synthétiques. Les quatre dernières (2026-09-24)
+ *  portent les trois clés textuelles neuves `cancelsId`, `toIsin`, `toAccountId` : sans elles dans
+ *  `CHAMPS_TEXTE`, la réhydratation ci-dessous REFUSERAIT l'état et viderait l'app. */
 const LIVRE: BrokerLedgerEvent[] = [
     { id: 'e1', date: '2026-01-10', accountId: 'courtier-cad', kind: 'acquisition', source, isin: 'ZZ0000000001', quantity: 10 },
     { id: 'e2', date: '2026-01-11', accountId: 'courtier-usd', kind: 'transfert-entrant', source, isin: 'ZZ0000000002', quantity: 5, price: { value: 12.5, currency: 'USD' } },
@@ -49,6 +51,11 @@ const LIVRE: BrokerLedgerEvent[] = [
     { id: 'e9', date: '2026-01-17', accountId: 'courtier-cad', kind: 'depot-especes', source, amount: { value: 250, currency: 'CAD' } },
     { id: 'e10', date: '2026-01-18', accountId: 'courtier-cad', kind: 'retrait-especes', source, amount: { value: 50, currency: 'CAD' } },
     { id: 'e11', date: '2026-01-19', accountId: 'courtier-cad', kind: 'frais', source: { kind: 'saisie-manuelle', date: '2026-01-19' }, amount: { value: 3.5, currency: 'CAD' } },
+    { id: 'e12', date: '2026-01-20', accountId: 'courtier-cad', kind: 'annulation', source, cancelsId: 'e11' },
+    { id: 'e13', date: '2026-01-21', accountId: 'courtier-cad', kind: 'echange', source, isin: 'ZZ0000000001', toIsin: 'ZZ0000000004', splitFrom: 2, splitTo: 1 },
+    { id: 'e14', date: '2026-01-22', accountId: 'courtier-usd', kind: 'conversion', source, toAccountId: 'courtier-cad', amount: { value: 10, currency: 'USD' }, toAmount: { value: 13.72, currency: 'CAD' }, rate: 1.372 },
+    { id: 'e15', date: '2026-01-23', accountId: 'courtier-cad', kind: 'virement-interne', source, toAccountId: 'hors-courtier', amount: { value: 5, currency: 'CAD' } },
+    { id: 'e16', date: '2026-01-24', accountId: 'courtier-usd', kind: 'transfert-entrant', source, isin: 'ZZ0000000003', quantity: 2, cost: { value: 81.4, currency: 'USD' } },
 ];
 const INSTRUMENTS: BrokerInstrument[] = [
     { isin: 'ZZ0000000001', symbol: 'AAA.TO', exchange: 'XTSE', currency: 'CAD', name: 'Titre A' },
@@ -94,7 +101,7 @@ describe('[PTF-L1A] tri-état : `undefined` = jamais importé, jamais `[]` par d
 });
 
 describe('[PTF-L1A] réhydratation : un grand livre réel ne vide pas l\'app', () => {
-    it('la garde de types accepte les onze sortes d\'événements et un référentiel complet', () => {
+    it('la garde de types accepte les quinze sortes d\'événements (et le coût total) et un référentiel complet', () => {
         expect(verifierTypesRestaures({ brokerLedger: LIVRE, instruments: INSTRUMENTS })).toEqual([]);
     });
 

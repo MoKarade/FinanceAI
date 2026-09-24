@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 4) — **Quatre sortes du grand livre, tranchées par Marc**
+> Livré `[PTF-L1A-SORTES-A-TRANCHER]` + `[PTF-L1B-CONVERSION-VIREMENT]` (ADR 0020 §11) : `annulation`
+> (`cancelsId`, la ligne reste et cesse de compter à la date de l'annulation), `echange` (`toIsin`),
+> `cost` (coût total imprimé), `conversion` / `virement-interne` (`toAccountId`, un seul événement).
+> `etatDuLivreAu` et `variationEntre` les lisent (échange suivi, fractionnement annulé DÉFAIT). Trois clés
+> textuelles neuves dans `CHAMPS_TEXTE`. ⏭️ Suite : 1f (parseur Disnat), qui peut maintenant tout écrire.
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 3) — **Lot 1d : moteur de valorisation pur**
 > Livré `[PTF-L1D-VALORISATION]` : `services/valorisation/valoriser.ts` (`valoriserAu`, `variationEntre`), PUR, non
 > branché. Total `null` + `manquants` dès qu'il manque un cours, un taux ou que le livre porte une anomalie (un total

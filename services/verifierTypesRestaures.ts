@@ -148,6 +148,9 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // (les autres feuilles textuelles du bloc — id, date, accountId, kind, currency, symbol, name —
     // figurent déjà ici). Un grand livre importé qui porterait une clé absente d'ici viderait l'app.
     'isin', 'exchange', 'controlSymbol',
+    // [PTF-L1A-SORTES-A-TRANCHER] Annulation (`cancelsId`), échange (`toIsin`), conversion et virement
+    // interne (`toAccountId`). Même geste, même raison : écrits avec leur déclaration.
+    'cancelsId', 'toIsin', 'toAccountId',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

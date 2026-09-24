@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 — **Portefeuille Disnat : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
+> 🔎 Marc : « faut tout checker pour avoir un vrai rapport détaillé », puis un cahier des charges (« PROMPT v2 »)
+> et un fichier de vérification. Trois analyses (38 agents) + relecture adverse → rapport, audit, plan des lots
+> 0.5 à 4 et questions, remis à Marc **HORS dépôt** (ses montants réels ; dépôt PUBLIC). Feu vert : **Lot 0.5 seul**.
+> 🔧 **Livré** : garde `tests/confidentialitePortefeuille.test.ts` (clés du fichier de vérification + code de
+> compte après « Disnat ») ; code de sous-compte anonymisé dans `tests/services/categoryRules.test.ts` (historique
+> git NON réécrit) ; `.gitignore` (`prive/`, fichiers de vérification, relevés) ; workflow MANUEL
+> `mesure-sources.yml` + `scripts/mesureSources.mjs` (verdicts par rang seulement, journal public) ; section
+> « 💼 Portefeuille Disnat » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
+> ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`) et ses secrets `MESURE_ANCRES` /
+> `EODHD_TOKEN_MESURE`, puis lancer la mesure et consigner les verdicts dans `[PTF-L05B-MESURE-SOURCES]`.
+> ⚠️ Le BACKLOG publie DÉJÀ en clair des données réelles du portefeuille (`[INVEST-PORTFOLIO-DATA-CORRECTION]`,
+> `[COTATIONS-EUROPE-PERIMEES]`) : la garde ne les voit pas (elle cherche des FORMES, pas des valeurs) ; leur
+> retrait est une question posée à Marc. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
+> simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
+>
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
 > `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA

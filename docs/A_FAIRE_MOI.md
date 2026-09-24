@@ -5,6 +5,40 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24) — **deux secrets pour mesurer les sources de cours
+  depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
+  oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :
+  - `MESURE_ANCRES` : colle le contenu du fichier `mesure-ancres-secret.json` que je t'ai préparé
+    HORS dépôt (tes 12 lignes, leurs symboles et les clôtures publiques aux 3 dates de relevé, SANS
+    aucune quantité ni solde) ;
+  - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
+
+  Puis dis-le-moi : je lance « Mesurer les sources de cours » (Actions → workflow manuel) et je
+  consigne les verdicts. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
+  jamais un symbole ni un prix.
+
+- [ ] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24) — **les questions du Lot 0 de la refonte du
+  portefeuille** t'ont été remises HORS dépôt (document « Lot 0 — audit, plan, questions » : il
+  contient tes montants). Ce qui bloque le plus : date d'acquisition des titres (Q1), nature de
+  l'acquisition — don, succession, achat (Q2, fiscaliste), clôture officielle ou total Fintable comme
+  vérité (Q4), gratuit d'abord / payant seulement sur mesure (Q5), paramètres GCP du déploiement MCP
+  (Q6, voir `[MCP-DEPLOY-CONTINU-MORT]` ci-dessous). **Question neuve née du Lot 0.5** : le BACKLOG
+  public porte DÉJÀ en clair la composition, des quantités et des montants de ton portefeuille
+  (`[INVEST-PORTFOLIO-DATA-CORRECTION]`, `[COTATIONS-EUROPE-PERIMEES]`). Je les retire du fichier
+  courant (l'historique git les garde, le réécrire exigerait un `--force` sur `main`) ?
+  ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
+  garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
+
+- [ ] 👤 **[CASHFLOW-REVENU-GONFLE-PAR-UN-VIREMENT]** (2026-09-24) — un virement entrant **unique**
+  de fin décembre 2025 est classé « Revenus divers » : il est moyenné comme un revenu mensuel et
+  gonfle le cashflow que publie ton hub. Si ce n'était pas un revenu, reclasse-le (Transactions →
+  la ligne → catégorie « Transfert ») ; le défaut de calcul, lui, est au BACKLOG.
+
+- [ ] 👤 **[HUBPERSO-HORS-DEPOT]** (2026-09-24, à faire dans Hubperso, pas ici) — deux défauts
+  relevés dans le code de Hubperso en lisant la carte FinanceAI : la page de détail écrit « sur 7 j »
+  en dur (la fenêtre réelle peut être plus courte) et la mini-courbe espace ses points par RANG, pas
+  par date (un trou de trois jours ressemble à un jour). Je ne modifie pas Hubperso depuis ici.
+
 - [ ] 👤 **[MCP-DEPLOY-CONTINU-MORT]** (2026-09-21) — **le déploiement automatique du serveur MCP
   est mort, et c'est lui qui aurait évité la panne d'aujourd'hui.** Le workflow
   `Deploy MCP (Cloud Run)` échoue à CHAQUE push en ~12 secondes : `GCP_PROJECT_ID` n'est pas défini

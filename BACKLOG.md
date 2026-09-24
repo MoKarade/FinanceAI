@@ -17,6 +17,135 @@
 
 ---
 
+## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
+
+> Demande : « FinanceAI devient la référence fiable du portefeuille Disnat : valeur exacte jour par
+> jour, aucun artefact, tenue à jour sans intervention » (cahier des charges « PROMPT v2 », fourni
+> par Marc avec un fichier de vérification). Le **Lot 0** (audit en lecture seule + plan + questions)
+> est livré à Marc **hors dépôt** — il contient ses montants réels, et ce dépôt est PUBLIC. Ce qui
+> suit ne porte que des MÉCANISMES : aucune quantité, aucun montant, aucune date réelle d'acquisition.
+> Feu vert de Marc : **Lot 0.5 seulement** (2026-09-24). Tout lot suivant attend ses réponses
+> (`docs/A_FAIRE_MOI.md`, `[PTF-QUESTIONS-LOT0]`). Architecture retenue au Lot 0 : grand livre par
+> compte courtier (champ additif, sans valeur par défaut) ; magasin de marché dans un fichier Drive
+> SÉPARÉ, écrit par une seule tâche serveur (GitHub Actions → Cloud Run, ADR 0004/0010) ; moteur de
+> valorisation pur partagé app/MCP/tâche ; Fintable en contrôle si Marc choisit la clôture officielle.
+
+- [x] 🔧 **`[PTF-L05-GARDE-FUITE]`** (S) — garde `tests/confidentialitePortefeuille.test.ts` : aucun
+  fichier suivi ne porte une clé du fichier de vérification ni un code de compte après « Disnat »
+  (perturbation faite : le test de catégorisation d'avant ce lot est détecté, le fichier de
+  vérification aussi). Le seul code de sous-compte publié (dans un test de catégorisation) est
+  anonymisé, SANS réécrire l'historique git (le commit d'origine le porte encore : décision Marc).
+  `.gitignore` : `prive/`, fichiers de vérification et relevés PDF.
+  ⚠️ **Ce que la garde NE couvre PAS** : `[INVEST-PORTFOLIO-DATA-CORRECTION]` et
+  `[COTATIONS-EUROPE-PERIMEES]`, plus bas, publient déjà en clair la composition, des quantités et
+  des montants du portefeuille. Les retirer est une décision de Marc (question posée).
+- [ ] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
+  `.github/workflows/mesure-sources.yml`, `scripts/mesureSources.mjs`, logique pure
+  `scripts/lib/mesureSources.mjs`, 8 cas dans `tests/mesureSources.test.ts`). Il mesure depuis la CI
+  (le conteneur n'a aucun réseau vers les sources) : couverture de Yahoo et d'EODHD **gratuit** par
+  ligne, devise renvoyée (pence de Londres signalés), prix brut ou ajusté avant un fractionnement,
+  écart aux ancres, accès du plan gratuit aux API fractionnements/dividendes, écart des taux Valet.
+  Le journal est PUBLIC : il n'imprime que des verdicts par rang (`L1`…), jamais un symbole ni un
+  prix. **RESTE** : Marc pose `MESURE_ANCRES` (+ `EODHD_TOKEN_MESURE`, clé gratuite), lancer, puis
+  consigner les verdicts ici. C'est ce qui tranche la question de la source (gratuit/payant).
+- [ ] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
+  SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
+  clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de
+  conflit de synchro et le détecteur de « données significatives » comptent le livre (sinon la copie
+  importée paraît « plus pauvre » que l'ancienne). Déploiement en deux temps (incident 2026-09-01).
+- [ ] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
+  native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
+  dividende, retenue, dépôt, frais).
+- [ ] 🔧 **`[PTF-L1C-MAGASIN-MARCHE]`** (M+L+S, trois PR) — format du magasin (clôtures BRUTES avec
+  source et statut officiel/reporté/secours, taux BdC datés, fractionnements, dividendes) ; tâche
+  serveur idempotente qui rattrape les jours manqués, budget d'appels COMPTÉ, mode essai à blanc,
+  magasin inclus dans l'export JSON ; import du SEUL référentiel (sans quantités) pour que
+  l'archivage démarre avant le livre. ⚠️ Si la source retenue n'offre qu'un an d'historique gratuit,
+  le rattrapage doit avoir lieu avant la fin de cette fenêtre.
+- [ ] 🔧 **`[PTF-L1D-VALORISATION]`** (L) — moteur pur partagé (date de calcul INJECTÉE) ; test
+  « zéro artefact » contre un ORACLE indépendant (l'identité cours + change + flux est vraie par
+  algèbre si le moteur calcule lui-même les effets) sur valeurs non arrondies, plus « jour sans
+  mouvement → 0 » et « passé stable au recalcul » ; scénarios synthétiques nommés ; tests sous deux
+  fuseaux de signes opposés.
+- [ ] 🔧 **`[PTF-L1E-PASSERELLE]`** (L+L) — un seul point d'entrée pour toutes les surfaces (présent,
+  départ du Futur, passé, PDF, MCP, hub), identique livre vide ; parité CROISÉE (même portefeuille en
+  actifs et en livre → même chiffre au cent partout ; retirer une surface fait rougir).
+- [ ] 🔧 **`[PTF-L1F-PARSEUR-DISNAT]`** (L) — parseur TypeScript texte → événements, sections bornées
+  par la fin de COMPTE (l'ancien parseur Python s'arrêtait au premier « Total » et perdait des lignes
+  en silence, mesuré), opérations réelles (retenue, impôt de non-résident, fractionnement), devise
+  du prix distincte de celle de la valeur ; fixtures SYNTHÉTIQUES ; lecture PDF chargée en différé.
+- [ ] 🔧 **`[PTF-L1G-IMPORT-PORTEFEUILLE]`** (L) — import déclenché par Marc, aperçu avant/après
+  (quantité, prix, devise, coût, encaisse) ; remplacement daté des lignes mal cotées ; refus
+  d'`apply_broker_statement` et de `delete_item` sur les lignes du référentiel (variante de symbole
+  comprise) ; « ligne absente du relevé → rien retiré, écart signalé ».
+- [ ] 🔧 **`[PTF-L1H-SOURCE-UNIQUE]`** (M) — retrait des anciens producteurs pour les lignes du livre ;
+  l'appel BdC du navigateur est GARDÉ pour les actifs hors livre.
+- [ ] 🔧 **`[PTF-L2-AUTOMATISATION]`** (M×5) — dividendes courus puis réels (requêtes tournantes dans
+  le budget) ; virements caisse → courtier appariés ; rapprochements et alertes (dont compteur
+  quotidien des résidus > 0,01 $, sans montant) ; arrivée des documents ; répartitions datées ; puis
+  dix jours de bourse sans intervention.
+- [ ] 🔧 **`[PTF-L3-AFFICHAGE]`** (M×5+L) — qualité des données, en-tête, courbe Valeur/Performance,
+  lignes et fiche, dividendes réels, répartitions, MCP enrichi au cent près de l'app.
+- [ ] 🔧 **`[PTF-L4-FISCALITE]`** (M×2, seulement si Marc le retient, après avis d'un fiscaliste) —
+  PBR en CAD, gains latents fiscaux, T1135, revenus et impôts étrangers, gains réalisés (+ MCP).
+
+**Défauts trouvés au Lot 0, hors du chemin des lots (mesurés ou relus dans le code)**
+
+- [ ] 🔴 **`[SYNC-PUSH-SANS-OCC]`** (M) — la poussée Drive de l'app ne compare jamais l'état distant à
+  sa dernière lecture (`services/sync/syncPush.ts`) : une écriture serveur (cron des cours, cron
+  Fintable, outil MCP) arrivée entre deux sondages est effacée en silence. Prérequis de
+  `[PTF-L1G-IMPORT-PORTEFEUILLE]` si le livre peut s'écrire depuis claude.ai.
+- [ ] 🔴 **`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`** (→ `[PTF-L1G-IMPORT-PORTEFEUILLE]`) — `apply_broker_statement` :
+  ligne neuve en CAD par défaut, coût = cours du relevé, quantité réécrite sans les achats datés,
+  prix écrit dans la devise STOCKÉE, aucune suppression, aucun aperçu côté claude.ai. Simulé en pur
+  sur l'état réel : un relevé recopié fidèlement double une partie du portefeuille.
+- [ ] 🔴 **`[MCP-DELETE-ITEM-EFFACE-LE-PASSE]`** (→ L1g) — supprimer une ligne retire aussi ses achats
+  datés : elle disparaît de toute la courbe passée.
+- [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
+  la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
+- [ ] 🟠 **`[FX-SERVEUR-JAMAIS-RAFRAICHI]`** (S) — les taux BdC ne sont lus que par le navigateur, au
+  démarrage, avec un cache de 24 h sur l'heure du FETCH ; le serveur (hub, MCP) valorise avec les
+  taux de la dernière ouverture de l'app.
+- [ ] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — le formulaire d'ajout ignore la devise de la
+  cotation et part en USD : un titre européen ajouté sans toucher au sélecteur est mal valorisé puis
+  jamais rafraîchi (`AddStockForm.tsx:39`).
+- [ ] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — un symbole de cotation collé est accepté sans
+  contrôle de devise ni d'ordre de grandeur, et efface l'historique ; ses cours sont ensuite rejetés
+  pour devise différente → prix figé sans alerte.
+- [ ] 🟠 **`[HISTORIQUE-YAHOO-DEVISE-NON-LUE]`** (S) — l'historique Yahoo ne lit pas `meta.currency` :
+  une ligne de Londres en pence entrerait dans la courbe à ×100 sans rien dire.
+- [ ] 🟠 **`[PERF-COMPAREE-TOTAL-AMPUTE]`** (M) — la « Performance » d'Investissements compare des
+  totaux qui ne portent pas les mêmes titres ; une ligne sortie du TOTAL fait un creux FANTÔME, et la
+  note ne regarde que le DERNIER jour de l'axe.
+- [ ] 🟠 **`[DIVIDENDES-TABLE-EN-DUR]`** (→ L2/L3) — rendements codés en dur sans source (un FNB
+  capitalisant reçoit un dividende inventé) ; la garde `> 0` empêche de saisir 0.
+- [ ] 🟠 **`[FUTUR-HISTORIQUE-DETTE-DU-JOUR]`** (S) — l'Historique du Futur retranche la dette
+  d'AUJOURD'HUI à toutes les dates passées (`FutureHistorySection.tsx:130`, `:161`).
+- [ ] 🟠 **`[CASHFLOW-REVENU-GONFLE-PAR-UN-VIREMENT]`** (S + geste Marc) — un virement entrant
+  UNIQUE classé « Revenus divers » est moyenné comme un revenu mensuel ; et le cashflow publié
+  (revenu réel − dépenses BUDGÉTÉES) est planché à 0 (`financialSnapshot.ts:183`), donc un déficit
+  s'affiche « 0 $ ». Quatre définitions de l'épargne coexistent selon l'écran.
+- [ ] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (S) — l'export JSON énumère ses champs à la main et la
+  restauration vide le stockage : soldes et historique Fintable, rôles, abonnements et taux perdus.
+- [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
+  ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
+  page ne s'additionne pas.
+- [ ] 🟡 **`[COURS-AU-TROMPEUR]`** (S) — « Cours au … » est l'heure du dernier rafraîchissement, pas
+  l'âge de chaque cours ; la variation « 24 h » compare les deux dernières clôtures quel que soit
+  leur âge ; `get_holdings` ne publie aucune date.
+- [ ] 🟡 **`[FUTUR-PANNEAU-REPOS-DEBUT-DE-MOIS]`** (S, [Probable], à confirmer à l'écran) — au
+  repos, le panneau du jour désigne le 1er du mois (premier point `monthIndex ≥ 0`,
+  `panneauPas.ts:53-57`), pas aujourd'hui.
+- [ ] 🟡 **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** (S) — la tendance collée à « Valeur nette »
+  est la variation de séance des seuls placements (`mcp/hubSummary.ts:177`).
+- [ ] 🟡 **`[HUB-FRAICHEUR-HORODATEE-PAR-LE-CRON]`** (S) — « Dernière synchro » prend l'heure de
+  n'importe quelle écriture du blob, cron des cours compris : « ok » possible avec des transactions
+  figées.
+- [ ] 🟡 **`[HISTORIQUE-FX-1POUR1-MUET]`** (S) — deux copies locales du convertisseur du passé
+  replient à 1:1 sans journaliser (`reconstructPortfolioHistory.ts:64`, `dailyPastLedger.ts:191`).
+- [ ] 🔧 **`[CELI-SOLDE-ZERO-DESYNC]`** (?) — signalé par Marc dans son cahier des charges (« solde
+  CELI à 0 par désynchronisation récurrente ») : NON investigué, à reproduire avant tout correctif.
+
 ## 📉 Axe des graphes trop large sur téléphone (Marc, 21/09/2026)
 
 > Demande : « texte dépasse c'est moche, sur téléphone la courbe est trop petite, faut qu'elle
@@ -352,6 +481,11 @@ désinfecte le snapshot avant de le restaurer.
   Marc demande l'explication. ⚠️ Le correctif n'est PAS « un meilleur repli » : il faut une source
   de cotations qui couvre Euronext/Xetra, ou accepter et DIRE que le passé européen est figé. →
   décision Marc (une source payante est un abonnement, ce que le profil du dépôt exclut).
+  ⚠️ **Complété au Lot 0 (2026-09-24)** : le diagnostic « forfait gratuit » est incomplet. Le repli
+  Yahoo ne s'active que dans le NAVIGATEUR (`services/marketData/index.ts:183`) : côté serveur (cron,
+  hub, MCP app fermée), seul Finnhub existe. Et trois lignes ne sont servies NULLE PART (devise
+  rejetée ou aucune cotation). Le remède passe par `[PTF-L1C-MAGASIN-MARCHE]`, source tranchée par
+  `[PTF-L05B-MESURE-SOURCES]`.
 
 
 - [ ] 🟠 **`[FUTUR-LEVIER-PASSE-MUET]`** (S, découvert en livrant `[DETTE-LEVIER-EXPLICITE]`) — la
@@ -698,6 +832,12 @@ désinfecte le snapshot avant de le restaurer.
   est pour DEMAIN : un lot qui brancherait le SWR publierait un taux **sous-estimé**, donc un plan
   qui a l'air plus sûr qu'il ne l'est.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
+  ⚠️ **RE-MESURÉ au Lot 0 (2026-09-24) — NE PAS appliquer tel quel.** Sa prémisse « transactions en
+  CAD » est réfutée (les prix sont déjà stockés comme prix NATIFS) ; la ligne du 12 juin est le
+  FRACTIONNEMENT 10:1, pas un achat (l'ajouter créerait des actifs fictifs) ; plusieurs lignes sont
+  sur la mauvaise place de cotation. Remplacé par `[PTF-L1G-IMPORT-PORTEFEUILLE]` (import du relevé du
+  courtier, qui fait foi). La liste ci-dessous publie en clair des données réelles : son retrait est
+  une question posée à Marc.
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
   - Amundi MSCI Em Asia UCITS ETF – USD (C) (OTCMKTS:ANDXF) : 12 déc. 2025, 180 actions à 52,43 $ CAD

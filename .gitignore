@@ -78,3 +78,9 @@ coverage/
 reports/
 .stryker-tmp/
 qualite/rapport.json
+
+# [PTF-L05-GARDE-FUITE] Données RÉELLES du portefeuille (relevés, fichier de vérification, script
+# privé) : jamais dans ce dépôt PUBLIC. `prive/` est le seul endroit prévu pour elles.
+prive/
+**/ancres_verification*.json
+**/*Releve_*.pdf

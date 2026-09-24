@@ -32,8 +32,8 @@ describe('SyncConflictModal', () => {
         mockStatus = baseStatus({
             conflict: true,
             conflictSummary: {
-                local: { assets: 5, transactions: 10, brokerEvents: 0 },
-                drive: { assets: 0, transactions: 0, brokerEvents: 0, updatedAt: 1_700_000_000_000, encrypted: true },
+                local: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0 },
+                drive: { assets: 0, transactions: 0, brokerEvents: 0, instruments: 0, updatedAt: 1_700_000_000_000, encrypted: true },
             },
         });
         render(<SyncConflictModal />);
@@ -50,17 +50,36 @@ describe('SyncConflictModal', () => {
     it('grand livre d\'un seul côté → le compte s\'affiche des DEUX côtés (le 0 est l\'alerte)', () => {
         mockStatus = baseStatus({
             conflict: true,
-            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 7 }, drive: { assets: 5, transactions: 10, brokerEvents: 0, updatedAt: 1, encrypted: false } },
+            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 7, instruments: 0 }, drive: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0, updatedAt: 1, encrypted: false } },
         });
         render(<SyncConflictModal />);
         expect(screen.getByText('7 opération(s) de courtier')).toBeTruthy();
         expect(screen.getByText('0 opération(s) de courtier')).toBeTruthy();
     });
 
+    // [PTF-L1A] Le référentiel peut arriver seul (lot 1c-3) : deux copies qui ne diffèrent que par lui
+    // affichaient deux colonnes identiques, et le conseil « garde le côté qui a le plus » ne voyait rien.
+    it('référentiel d\'un seul côté → le compte s\'affiche des DEUX côtés ; absent partout → aucune ligne', () => {
+        mockStatus = baseStatus({
+            conflict: true,
+            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 3 }, drive: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0, updatedAt: 1, encrypted: false } },
+        });
+        const { unmount } = render(<SyncConflictModal />);
+        expect(screen.getByText('3 instrument(s) au référentiel')).toBeTruthy();
+        expect(screen.getByText('0 instrument(s) au référentiel')).toBeTruthy();
+        unmount();
+        mockStatus = baseStatus({
+            conflict: true,
+            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0 }, drive: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0, updatedAt: 1, encrypted: false } },
+        });
+        render(<SyncConflictModal />);
+        expect(screen.queryByText(/instrument\(s\) au référentiel/)).toBeNull();
+    });
+
     it('aucun grand livre nulle part → aucune ligne d\'opérations (pas de bruit)', () => {
         mockStatus = baseStatus({
             conflict: true,
-            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0 }, drive: { assets: 1, transactions: 2, brokerEvents: 0, updatedAt: 1, encrypted: false } },
+            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0 }, drive: { assets: 1, transactions: 2, brokerEvents: 0, instruments: 0, updatedAt: 1, encrypted: false } },
         });
         render(<SyncConflictModal />);
         expect(screen.queryByText(/opération\(s\) de courtier/)).toBeNull();
@@ -69,7 +88,7 @@ describe('SyncConflictModal', () => {
     it('« Garder cet appareil » → resolveConflict("local")', () => {
         mockStatus = baseStatus({
             conflict: true,
-            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0 }, drive: { assets: 1, transactions: 2, brokerEvents: 0, updatedAt: 1, encrypted: false } },
+            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0 }, drive: { assets: 1, transactions: 2, brokerEvents: 0, instruments: 0, updatedAt: 1, encrypted: false } },
         });
         render(<SyncConflictModal />);
         fireEvent.click(screen.getByRole('button', { name: /Garder cet appareil/ }));
@@ -79,7 +98,7 @@ describe('SyncConflictModal', () => {
     it('« Restaurer depuis Drive » : confirmation en 2 temps → resolveConflict("drive")', () => {
         mockStatus = baseStatus({
             conflict: true,
-            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0 }, drive: { assets: 1, transactions: 2, brokerEvents: 0, updatedAt: 1, encrypted: false } },
+            conflictSummary: { local: { assets: 5, transactions: 10, brokerEvents: 0, instruments: 0 }, drive: { assets: 1, transactions: 2, brokerEvents: 0, instruments: 0, updatedAt: 1, encrypted: false } },
         });
         render(<SyncConflictModal />);
         // 1er clic = révèle la confirmation ; 2e clic = confirme la restauration destructrice.

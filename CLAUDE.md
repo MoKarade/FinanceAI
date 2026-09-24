@@ -1693,6 +1693,12 @@ n'est pas réécrire un récit.
   une donnée : le ticket garde le mécanisme
   (`UNE-GARDE-DE-CONFIDENTIALITE-QUI-CHERCHE-DES-FORMES-NE-VOIT-PAS-CE-QUI-EST-DEJA-ECRIT`).
 
+- ⚠️⚠️ **Une clé ABSENTE du blob n'efface pas l'état VIVANT** (2026-09-24, revue du lot 1a) :
+  zustand fusionne le blob avec `get()`, donc `{ ...vivant, ...blob }` garde l'ancien grand livre
+  quand la sauvegarde restaurée n'en porte pas — pour un champ tri-état, l'absence EST la donnée.
+  Liste `CLES_TRI_ETAT` lue du seul blob ; un test de fusion part d'un état vivant PEUPLÉ
+  (`UNE-CLE-ABSENTE-DU-BLOB-N-EFFACE-PAS-L-ETAT-VIVANT`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

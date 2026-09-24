@@ -40,6 +40,18 @@
   `undefined` disparaît au JSON, donc aucun blob ne le porte. Tests : `tests/store/grandLivrePersistance.test.ts`
   (15 cas, 6 perturbations rouges), `tests/types/grandLivreImpossibles.test.ts` (formes interdites
   par `tsc`), témoins de la garde de dérivation. ⚠️ Avant le premier import : rouvrir chaque appareil.
+  Revue du lot (même PR) : la restauration Drive gardait le livre local quand la sauvegarde n'en
+  portait pas (corrigé, `CLES_TRI_ETAT`) ; le modal de conflit compte aussi les instruments ; la garde
+  « aucun persona ne plante de référentiel » promise par un commentaire est écrite.
+- [ ] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
+  est « demandée, sans ajout » ; la revue du lot 1a a relevé ce qu'elle ne sait pas écrire, à trancher
+  AVANT le parseur Disnat (1f) : annulation ou correction d'une ligne du courtier (montants toujours
+  positifs, aucune sorte ne défait), regroupement qui change d'ISIN ou espèces versées pour une
+  fraction (le fractionnement n'a qu'un ISIN et interdit tout montant), valeur comptable TOTALE
+  imprimée à un transfert entrant (seul un coût unitaire est accepté, donc une division à l'import).
+  Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
+  nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
+  `CHAMPS_TEXTE` dans le même commit.
 - [ ] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
   native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
   dividende, retenue, dépôt, frais).

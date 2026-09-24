@@ -38,7 +38,8 @@ const ARRAY_SLICES = [
     'documents',
     'categorizationRules',
     // [PTF-L1A] Chaque événement du grand livre porte un `id`. `instruments` n'en a PAS (identité = ISIN)
-    // et ne peut donc pas être filtré ici : aucun persona ne doit en planter (garde de test).
+    // et ne peut donc pas être filtré ici : aucun persona ne doit en planter — tenu par
+    // `tests/services/personaSanitizer.test.ts` (« aucun persona ne plante de référentiel »).
     'brokerLedger',
 ] as const;
 

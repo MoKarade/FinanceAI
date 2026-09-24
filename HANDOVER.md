@@ -8,7 +8,9 @@
 > Marc : « go pour le lot 1 ». Livré `[PTF-L1A-SCHEMA-LIVRE]` (ADR 0020) : `brokerLedger` / `instruments` dans
 > `AppState`, `undefined` explicite dans les défauts store ET MCP (purge persona), 3 clés textuelles neuves dans
 > `CHAMPS_TEXTE` avec témoins de la garde, compté par `DATA_ARRAY_KEYS` et le modal de conflit, sauvegarde JSON
-> aller-retour, nettoyeur persona. ⏭️ Marc rouvre ses 3 appareils (`[PTF-L1A-ROUVRIR-APPAREILS]`) ; suite = 1b
+> aller-retour, nettoyeur persona. Revue (même PR) : restauration Drive tri-état (`CLES_TRI_ETAT`), modal qui
+> compte les instruments, garde « aucun persona ne plante de référentiel » ; schéma à trancher routé
+> (`[PTF-L1A-SORTES-A-TRANCHER]`). ⏭️ Marc rouvre ses 3 appareils (`[PTF-L1A-ROUVRIR-APPAREILS]`) ; suite = 1b
 > (positions/encaisse pures), 1c-1, 1d, 1f — un lot par PR.
 >
 > ## 🟩 Session 2026-09-24 (suite) — **Réponses du Lot 0, taux BdC côté serveur, fuite du journal public**

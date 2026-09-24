@@ -39,7 +39,13 @@ qu'une clé textuelle inconnue de la garde de réhydratation (`verifierTypesRest
    entrent dans `CHAMPS_TEXTE` dans le même lot, avec des témoins nommés dans la garde.
 8. **Le livre compte** : un appareil qui ne porte que lui n'est pas « vide » (`DATA_ARRAY_KEYS`), le
    modal de conflit de synchro affiche « N opération(s) de courtier » des deux côtés, la sauvegarde
-   JSON l'exporte et le restaure, le nettoyeur d'artefacts de persona le filtre par `id`.
+   JSON l'exporte et le restaure, le nettoyeur d'artefacts de persona le filtre par `id`. Le modal
+   compte aussi les instruments (le référentiel peut arriver seul).
+9. **À la réhydratation, un champ tri-état vient du blob et de lui seul** (`CLES_TRI_ETAT` dans
+   `store/optionsPersistance.ts`) : zustand fusionne avec l'état vivant, donc une clé absente du blob
+   laisserait survivre le livre local à une restauration Drive.
+10. **Aucun persona ne plante de référentiel** : `instruments` n'a pas d'`id`, le nettoyeur ne peut pas
+   le filtrer ; la règle est tenue par `tests/services/personaSanitizer.test.ts`.
 
 ## Conséquences
 

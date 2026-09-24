@@ -16971,3 +16971,26 @@ parce qu'énumérer les valeurs à protéger dans un dépôt public serait la fu
   en CI — mais son journal est public, donc elle n'imprime que des verdicts par rang (`L1`…), et ses
   entrées (symboles, ancres) arrivent par un secret. Un test vérifie qu'un verdict ne contient aucune
   suite de trois chiffres.
+
+
+## `UNE-CLE-ABSENTE-DU-BLOB-N-EFFACE-PAS-L-ETAT-VIVANT` (2026-09-24, revue du lot 1a du portefeuille)
+
+- **Le défaut.** `fusionnerEtatPersiste` rend `{ ...currentState, ...persisted }`, et zustand l'appelle
+  avec l'état VIVANT (`options.merge(migratedState, get())`, lu dans `middleware.mjs`), jamais avec des
+  défauts recalculés. Pour un champ TRI-ÉTAT (`undefined` = jamais importé), l'absence de la clé dans le
+  blob EST l'information — et le spread la jette. « Restaurer depuis Drive » avec une sauvegarde qui ne
+  porte pas `brokerLedger` gardait donc en silence le livre local : la copie restaurée n'était pas celle
+  qu'on avait choisie. Mesuré par l'agent de vérification (test jetable : l'assertion « le livre local
+  survit » PASSAIT), puis gardé par un test à perturbation.
+- **Symétrique de `UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN`** : là, le défaut
+  écrit dans l'état initial survivait à un blob ancien ; ici, l'état VIVANT survit à un blob neuf. Les
+  deux viennent de la même ligne — une fusion clé par clé ne sait pas dire « cette clé n'existe pas ».
+- **Remède** : une liste `CLES_TRI_ETAT` dont la valeur vient du blob et de lui seul (`Object.hasOwn`
+  → sa valeur, sinon `undefined`), appliquée seulement quand il y a un blob — au premier lancement,
+  `merge(undefined, …)` ne doit rien effacer.
+- ⚠️ Deux tests suffisent et aucun des anciens ne le voyait : ils réhydrataient tous depuis un store
+  VIDE, où hériter de l'état vivant et lire le blob donnent le même `undefined`. **Un test de fusion se
+  fait depuis un état vivant PEUPLÉ**, sinon il ne distingue pas les deux sources.
+- ⚠️ Corollaire du même lot : un commentaire qui PROMET une garde (« aucun persona ne doit en planter
+  (garde de test) ») se vérifie par un grep — elle n'existait pas, et le seul balayage des personas
+  saute en silence tout élément sans `id`. La garde écrite, le commentaire nomme son fichier.

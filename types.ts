@@ -918,8 +918,11 @@ export interface BrokerLedgerSource {
 }
 
 /** Champs communs. `id` STABLE, dérivé de la ligne source par l'importeur (réimport identique = mêmes id,
- *  import idempotent), jamais un horodatage d'import. `date` = date de l'opération (YYYY-MM-DD locale,
- *  jamais passée à `new Date(iso)` qui lit minuit UTC). */
+ *  import idempotent), jamais un horodatage d'import. `date` = date de TRANSACTION imprimée (YYYY-MM-DD
+ *  locale, jamais passée à `new Date(iso)` qui lit minuit UTC) — pas la date de règlement ; laquelle
+ *  des deux fixe l'année d'imposition reste à trancher par le fiscaliste (ADR 0019 §4), pas à supposer.
+ *  ⚠️ Toute `quantity`, comme tout montant, est POSITIVE : le sens est porté par `kind`, jamais par un
+ *  signe (le lot 1b refuse une valeur nulle ou négative). */
 interface BrokerLedgerEventBase {
   id: string;
   date: string;

@@ -14,6 +14,21 @@ import { sanitizePersonaArtifacts, sanitizePersistEnvelope } from '../../service
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { AppState, Transaction, Debt, FinancialGoal } from '../../types';
 
+// ——— 1 bis. [PTF-L1A] Le référentiel d'instruments n'a PAS d'`id` (identité = ISIN) : le nettoyeur ne
+// peut pas le filtrer, et la parité ci-dessous saute en silence tout élément sans `id`. La règle
+// « aucun persona n'en plante » n'est donc tenue QUE par ce test — le commentaire de
+// `services/personaSanitizer.ts` y renvoie. Un persona qui voudrait un référentiel devra d'abord
+// donner aux instruments fictifs une marque reconnaissable par le registre des artefacts.
+describe('[PTF-L1A] aucun persona ne plante de référentiel d\'instruments', () => {
+    it('`instruments` absent (ou `undefined`) pour TOUS les personas', () => {
+        expect(TEST_PERSONAS.length).toBeGreaterThanOrEqual(7);
+        const fautifs = TEST_PERSONAS
+            .filter((p) => (p.build() as { instruments?: unknown }).instruments !== undefined)
+            .map((p) => p.id);
+        expect(fautifs).toEqual([]);
+    });
+});
+
 // ——— 1. PARITÉ registre ↔ fixtures (leçon FISC-CONST-LINT : prouver le VOLUME) ———
 
 describe('artifactIds — parité avec les fixtures de TOUS les personas', () => {

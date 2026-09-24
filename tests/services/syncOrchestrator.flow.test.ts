@@ -173,18 +173,23 @@ describe('summarizeForConflict — résumé « cet appareil vs Drive » (choix �
             assets: 3,
             transactions: 2,
             brokerEvents: 0,
+            instruments: 0,
         });
     });
     it('[PTF-L1A] compte les opérations du grand livre courtier ; absent ou non-tableau → 0', () => {
         expect(summarizeForConflict({ state: { brokerLedger: [{}, {}, {}, {}] } }).brokerEvents).toBe(4);
         expect(summarizeForConflict({ state: { brokerLedger: 'x' } }).brokerEvents).toBe(0);
     });
+    it('[PTF-L1A] compte les instruments du référentiel, qui peut arriver SEUL (avant le livre)', () => {
+        expect(summarizeForConflict({ state: { instruments: [{}, {}] } }).instruments).toBe(2);
+        expect(summarizeForConflict({ state: { instruments: 'x' } }).instruments).toBe(0);
+    });
     it('défensif : payload null (blob chiffré) / malformé / sans state → zéros (pas de crash)', () => {
-        expect(summarizeForConflict(null)).toEqual({ assets: 0, transactions: 0, brokerEvents: 0 });
-        expect(summarizeForConflict(undefined)).toEqual({ assets: 0, transactions: 0, brokerEvents: 0 });
-        expect(summarizeForConflict('bogus')).toEqual({ assets: 0, transactions: 0, brokerEvents: 0 });
-        expect(summarizeForConflict({ state: {} })).toEqual({ assets: 0, transactions: 0, brokerEvents: 0 });
-        expect(summarizeForConflict({ state: { assets: 'notarray' } })).toEqual({ assets: 0, transactions: 0, brokerEvents: 0 });
+        expect(summarizeForConflict(null)).toEqual({ assets: 0, transactions: 0, brokerEvents: 0, instruments: 0 });
+        expect(summarizeForConflict(undefined)).toEqual({ assets: 0, transactions: 0, brokerEvents: 0, instruments: 0 });
+        expect(summarizeForConflict('bogus')).toEqual({ assets: 0, transactions: 0, brokerEvents: 0, instruments: 0 });
+        expect(summarizeForConflict({ state: {} })).toEqual({ assets: 0, transactions: 0, brokerEvents: 0, instruments: 0 });
+        expect(summarizeForConflict({ state: { assets: 'notarray' } })).toEqual({ assets: 0, transactions: 0, brokerEvents: 0, instruments: 0 });
     });
 });
 

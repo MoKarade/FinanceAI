@@ -6,6 +6,9 @@
   (achats, ventes, transferts, fractionnements, dividendes…) et la **liste de tes titres** (code ISIN,
   bourse, devise). Rien n'y est encore écrit : c'est l'étape qui garantit qu'aucun appareil ne
   s'ouvrira vide le jour de l'import.
+- Si tu choisis « Restaurer depuis Drive » avec une sauvegarde qui n'a pas encore ce journal, l'app
+  le remet bien à « jamais importé » au lieu de garder en silence celui de l'appareil.
+- En cas de conflit de synchronisation, la fenêtre de choix compte aussi les titres de ta liste.
 - **À faire de ton côté** : rouvrir FinanceAI une fois sur ton téléphone, ton PC de dev et ton PC 24/7
   une fois cette version en ligne.
 

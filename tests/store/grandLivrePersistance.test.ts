@@ -106,6 +106,25 @@ describe('[PTF-L1A] réhydratation : un grand livre réel ne vide pas l\'app', (
         expect(useFinanceStore.getState().instruments).toEqual(INSTRUMENTS);
     });
 
+    // [PTF-L1A-RESTAURATION-TRI-ETAT] zustand fusionne le blob avec l'état VIVANT : « Restaurer depuis
+    // Drive » avec un blob sans la clé gardait le livre local en silence (mesuré par la revue du lot).
+    it('restauration d\'un blob SANS livre sur un appareil qui en a un → « jamais importé », pas l\'ancien', async () => {
+        useFinanceStore.setState({ brokerLedger: LIVRE, instruments: INSTRUMENTS });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { assets: [] }, version: 7 }));
+        await useFinanceStore.persist.rehydrate();
+        expect(getHydrationStatus().failed).toBe(false);
+        expect(useFinanceStore.getState().brokerLedger).toBeUndefined();
+        expect(useFinanceStore.getState().instruments).toBeUndefined();
+    });
+
+    it('restauration d\'un blob au livre VIDE (`[]`) → `[]`, pas l\'ancien ni `undefined`', async () => {
+        useFinanceStore.setState({ brokerLedger: LIVRE, instruments: INSTRUMENTS });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { brokerLedger: [], instruments: [] }, version: 7 }));
+        await useFinanceStore.persist.rehydrate();
+        expect(useFinanceStore.getState().brokerLedger).toEqual([]);
+        expect(useFinanceStore.getState().instruments).toEqual([]);
+    });
+
     it.each([
         ['une quantité en texte', { brokerLedger: [{ ...LIVRE[0], quantity: '12.5' }] }],
         ['un ratio de fractionnement en texte', { brokerLedger: [{ ...LIVRE[5], splitTo: '10' }] }],

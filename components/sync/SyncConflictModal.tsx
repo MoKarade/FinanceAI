@@ -127,6 +127,9 @@ export const SyncConflictModal: React.FC = () => {
                             {(s.local.brokerEvents > 0 || s.drive.brokerEvents > 0) && (
                                 <div className="text-meta text-ink-100">{s.local.brokerEvents} opération(s) de courtier</div>
                             )}
+                            {(s.local.instruments > 0 || s.drive.instruments > 0) && (
+                                <div className="text-meta text-ink-100">{s.local.instruments} instrument(s) au référentiel</div>
+                            )}
                             <div className="text-tiny text-ink-400 mt-1">Données actuelles (pas encore sauvegardées)</div>
                         </div>
                         <div className="rounded-card border border-white/10 bg-white/5 p-3">
@@ -140,6 +143,9 @@ export const SyncConflictModal: React.FC = () => {
                                     {(s.local.brokerEvents > 0 || s.drive.brokerEvents > 0) && (
                                         <div className="text-meta text-ink-100">{s.drive.brokerEvents} opération(s) de courtier</div>
                                     )}
+                                    {(s.local.instruments > 0 || s.drive.instruments > 0) && (
+                                        <div className="text-meta text-ink-100">{s.drive.instruments} instrument(s) au référentiel</div>
+                                    )}
                                 </>
                             )}
                             <div className="text-tiny text-ink-400 mt-1">Sauvegardé le {formatWhen(s.drive.updatedAt)}</div>
@@ -152,7 +158,7 @@ export const SyncConflictModal: React.FC = () => {
                         <>Le contenu de Drive est chiffré (passphrase) et illisible d'ici — il peut contenir plus que cet appareil.
                         En cas de doute, ne l'écrase pas : « Restaurer depuis Drive » le récupère.</>
                     ) : (
-                        <>En cas de doute, garde le côté qui a le PLUS de placements/transactions/opérations.
+                        <>En cas de doute, garde le côté qui a le PLUS de placements/transactions/opérations/instruments.
                         « Garder cet appareil » n'efface jamais tes données locales.</>
                     )}
                 </p>

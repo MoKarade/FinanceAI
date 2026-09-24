@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille, lot 1b : ce que tu détiens, à n'importe quelle date
+
+- Le calcul qui dira **combien de titres et combien d'espèces** chaque compte courtier contenait à
+  une date donnée est prêt (pas encore branché à l'écran). Les espèces sont comptées au cent près,
+  un fractionnement est appliqué avant les achats du même jour, et une opération incohérente — par
+  exemple vendre plus de titres que tu n'en as — est **mise de côté et signalée**, jamais corrigée
+  en silence.
+
 ## 2026-09-24 — Portefeuille, lot 1a : la place du grand livre est prête
 
 - Tes données sauvegardées savent maintenant accueillir le **journal des opérations de ton courtier**

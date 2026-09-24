@@ -67,11 +67,16 @@
   magasin inclus dans l'export JSON ; import du SEUL référentiel (sans quantités) pour que
   l'archivage démarre avant le livre. ⚠️ Si la source retenue n'offre qu'un an d'historique gratuit,
   le rattrapage doit avoir lieu avant la fin de cette fenêtre.
-- [ ] 🔧 **`[PTF-L1D-VALORISATION]`** (L) — moteur pur partagé (date de calcul INJECTÉE) ; test
+- [x] 🔧 **`[PTF-L1D-VALORISATION]`** (L) — moteur pur partagé (date de calcul INJECTÉE) ; test
   « zéro artefact » contre un ORACLE indépendant (l'identité cours + change + flux est vraie par
   algèbre si le moteur calcule lui-même les effets) sur valeurs non arrondies, plus « jour sans
   mouvement → 0 » et « passé stable au recalcul » ; scénarios synthétiques nommés ; tests sous deux
   fuseaux de signes opposés.
+  ✅ 2026-09-24 : `services/valorisation/valoriser.ts` — `valoriserAu(livre, magasin, date, ageMaxJours)`
+  (total `null` dès qu'un cours, un taux ou le livre manque ; `manquants` nomme chaque cause sans
+  montant ; aucun arrondi) et `variationEntre` (effet de cours, effet de change, mouvements ; un
+  fractionnement de la fenêtre ré-exprime la position de départ). Oracle écrit à la main, 15 cas,
+  6 perturbations rouges. Non branché : la passerelle est `[PTF-L1E-PASSERELLE]`.
 - [ ] 🔧 **`[PTF-L1E-PASSERELLE]`** (L+L) — un seul point d'entrée pour toutes les surfaces (présent,
   départ du Futur, passé, PDF, MCP, hub), identique livre vide ; parité CROISÉE (même portefeuille en
   actifs et en livre → même chiffre au cent partout ; retirer une surface fait rougir).

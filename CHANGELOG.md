@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille, lot 1d : ce que vaut ton portefeuille, et pourquoi il a bougé
+
+- Le calcul qui dira **ce que vaut ton portefeuille à une date** (titres au cours de clôture ×
+  taux de la Banque du Canada, plus les espèces) est prêt, pas encore branché à l'écran. S'il manque
+  un seul cours ou un seul taux, il ne donne **pas** de total partiel : il dit ce qui manque.
+- Entre deux dates, il sépare ce qui vient **du marché** (cours), **du change** (dollar) et **de tes
+  opérations** (achats, dépôts, transferts). Un fractionnement ou un achat ne se lit jamais comme un
+  gain ou une perte.
+
 ## 2026-09-24 — Portefeuille, lot 1c-1 : le format des prix archivés
 
 - Rien de visible encore. FinanceAI sait maintenant décrire et vérifier le fichier où seront archivés

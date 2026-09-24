@@ -29,7 +29,7 @@ import { etatDuLivreAu, type AnomalieLivre } from '../grandLivre/etatDuLivre';
 import { clotureAu, tauxAu, type MagasinMarche, type LectureAuJour, type LectureTauxAuJour } from '../marche/magasinMarche';
 
 /** Une ligne de titres valorisée. `cours` en devise de cotation, `taux` = CAD par unité de devise. */
-export interface LigneTitres {
+interface LigneTitres {
     compte: BrokerLedgerAccountId;
     isin: string;
     quantite: number;
@@ -44,7 +44,7 @@ export interface LigneTitres {
 }
 
 /** Une encaisse valorisée (compte × devise). */
-export interface LigneEspeces {
+interface LigneEspeces {
     compte: BrokerLedgerAccountId;
     devise: BrokerLedgerCurrency;
     montant: number;
@@ -54,7 +54,7 @@ export interface LigneEspeces {
 }
 
 /** Pourquoi le total n'est pas publié. Chaque cause nomme ce qui manque, sans aucun montant. */
-export type Manquant =
+type Manquant =
     | { type: 'cours'; compte: BrokerLedgerAccountId; isin: string; statut: 'absente' | 'perimee' }
     | { type: 'taux'; devise: BrokerLedgerCurrency; statut: 'absente' | 'perimee' }
     | { type: 'livre'; anomalie: AnomalieLivre };
@@ -132,7 +132,7 @@ export function valoriserAu(
 }
 
 /** Décomposition d'une variation entre deux dates (garantie 3). Somme des trois = `fin − debut`. */
-export interface Variation {
+interface Variation {
     debut: Valorisation;
     fin: Valorisation;
     /** Titres détenus au début (exprimés dans l'unité de la fin) × variation du cours × taux du début. */

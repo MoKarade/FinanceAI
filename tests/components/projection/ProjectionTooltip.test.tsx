@@ -298,12 +298,12 @@ describe('ClickableEventIcon — clavier (A11Y-FUTUR-MILESTONES-KEYBOARD)', () =
 describe("[DETTE-INVISIBLE-INFOBULLE] la dette qui manquait à la répartition", () => {
     // Marc, 2026-09-17 : « je le vois nulle part dans le passé, pas sur l'infobulle ou quoi ».
     // Son bail auto entre au bilan et le patrimoine net baisse d'autant, sans qu'aucune ligne ne
-    // l'explique : la répartition ne listait QUE des comptes positifs. Fixture = ses vrais chiffres.
+    // l'explique : la répartition ne listait QUE des comptes positifs. Fixture synthétique.
     const SON_POINT = {
-        Liquidites: 29_049, CELI: 15_639, REER: 17_709, NonReg: 198_501,
-        NetWorth: 214_918,
+        Liquidites: 21_350, CELI: 12_480, REER: 16_220, NonReg: 162_730,
+        NetWorth: 175_410,
     } as Partial<ProjectionChartPoint>;
-    // 29 049 + 15 639 + 17 709 + 198 501 = 260 898 ; 260 898 − 214 918 = 45 980.
+    // 21 350 + 12 480 + 16 220 + 162 730 = 212 780 ; 212 780 − 175 410 = 37 370.
     const sansEspaces = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ');
 
     it('affiche la dette, signée, et les chiffres se recomposent enfin', () => {
@@ -312,7 +312,7 @@ describe("[DETTE-INVISIBLE-INFOBULLE] la dette qui manquait à la répartition",
         expect(ligne).toBeTruthy();
         // ⚠️ `formatCAD` sépare les milliers par une INSÉCABLE : une assertion écrite avec une
         // espace ordinaire serait vacueuse.
-        expect(sansEspaces(ligne?.textContent)).toContain('45 980');
+        expect(sansEspaces(ligne?.textContent)).toContain('37 370');
         // Le signe dit que le terme se SOUSTRAIT — sans lui, la ligne se lirait comme un actif.
         expect(sansEspaces(ligne?.textContent)).toContain('−');
     });

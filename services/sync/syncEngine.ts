@@ -40,7 +40,7 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
     //
     //    ⚠️ Retrait de l'ancien `restoreIntent` (« gate → Drive gagne ») : il faisait gagner Drive même
     //    sur du LOCAL réel → à la reconnexion, une VIEILLE copie Drive écrasait des données récentes.
-    //    Bug Marc 2026-07-14 : 230k$ de placements locaux clobberés par une copie Drive périmée (SPCX
+    //    Bug Marc 2026-07-14 : les placements locaux clobberés par une copie Drive périmée (un seul titre
     //    seul). Le local significatif ne se perd désormais JAMAIS en silence. Le cas légitime « nouvel
     //    appareil, je restaure » est déjà couvert par (2) (local vide → pull).
     const driveAdvanced = drive.updatedAt > meta.lastPulledUpdatedAt;

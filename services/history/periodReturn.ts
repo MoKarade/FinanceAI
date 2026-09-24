@@ -41,7 +41,7 @@ const pct = (from: number, to: number): number => ((to - from) / from) * 100;
 /**
  * Le titre/la série est-il le benchmark « marché » (MSCI World / CW8) ?
  * Matching STRICT (finding ÉLEVÉ panel #498, prouvé par sonde) : un `name.includes('MSCI')` nu
- * matchait « Amundi MSCI Em Asia » (AASI.PA, titre réel du portefeuille) → la carte « Marché »
+ * matchait « Amundi MSCI Em Asia » (AASI.PA) → la carte « Marché »
  * pouvait afficher l'Asie émergente comme benchmark mondial selon l'ordre des actifs — 3ᵉ
  * instance de la classe « matching par sous-chaîne » (cf historyKeyMatchesSymbol).
  */

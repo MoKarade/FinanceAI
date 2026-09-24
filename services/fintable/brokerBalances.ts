@@ -38,7 +38,7 @@ interface RegimeReconciliation {
     holdingsValueCad: number;
     /** `brokerTotalCad − holdingsValueCad`. Positif = des avoirs non saisis ; négatif = sur-saisie. */
     gapCad: number;
-    /** Libellés des comptes courtier agrégés ici (affichage : « Disnat L7B1 + Disnat L7A3 »). */
+    /** Libellés des comptes courtier agrégés ici (affichage : « Disnat 0001 + Disnat 0002 »). */
     accountLabels: string[];
     /**
      * Lecture la plus ANCIENNE du panier (epoch ms) — c'est elle qui borne la fraîcheur affichée.
@@ -62,7 +62,7 @@ interface BrokerReconciliation {
      */
     unreadableAccountLabels: string[];
     /**
-     * [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Comptes écartés faute de TAUX DE CHANGE — `« Disnat (L7B1) »
+     * [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Comptes écartés faute de TAUX DE CHANGE — `« Disnat (0001) »
      * (USD)`. Troisième cause d'écartement, et la seule qui n'était recensée NULLE PART : le filtre
      * de devise vit dans `toPersistableBrokerBalances`, donc un cran AVANT la persistance, donc ces
      * comptes n'entraient jamais dans `balances` et ne pouvaient figurer ni ici ni dans
@@ -71,7 +71,7 @@ interface BrokerReconciliation {
      * (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
      *
      * ⚠️ Le compte reste ÉCARTÉ, et c'est délibéré : convertir avec le repli 1:1 de
-     * `toCurrencyFactor` donnerait 72 040 « CAD » pour 72 040 USD — une valeur fausse d'environ 30 %
+     * `toCurrencyFactor` donnerait N « CAD » pour N USD — une valeur fausse d'environ 30 %
      * présentée comme AUTORITÉ, donc pire que l'omission qu'on corrige
      * (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). Un taux CONNU convertit ; un
      * taux absent écarte et le DIT.
@@ -85,8 +85,8 @@ interface BrokerReconciliation {
      * du panier et se présente comme le tout. Tant que personne ne lisait ces totaux hors de la
      * carte d'écart, ça ne coûtait rien. Depuis que le mois 0 de la projection les consomme, un
      * panier partiel ÉCRASE la valeur reconstruite complète — mesuré sur la chaîne réelle :
-     * Disnat CAD 30 000 $ + Disnat USD 72 040 $ écarté faute de taux (exactement l'état de Marc
-     * quand ses taux viennent du repli) donne un mois 0 à **30 000 $** au lieu de 231 882 $.
+     * un compte CAD + un compte USD écarté faute de taux (exactement l'état de Marc
+     * quand ses taux viennent du repli) donne un mois 0 égal au **seul compte CAD** au lieu de la valeur complète.
      *
      * Le champ existe pour que `appliquerAutoriteCourtier` REFUSE ces régimes, au lieu de les
      * appliquer à moitié. Un total partiel n'est pas une autorité dégradée : c'est un faux.
@@ -366,12 +366,12 @@ export function toPersistableBrokerBalances(
         if (!Number.isFinite(amount)) continue;
         // [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Avant le 2026-09-16, ce `continue` jetait le compte en
         // devise étrangère — et le jetait AVANT la persistance, donc avant la seule liste qui
-        // recense les écartés : « Disnat (L7B1) » n'apparaissait ni réconcilié, ni signalé, il était
+        // recense les écartés : « Disnat (0001) » n'apparaissait ni réconcilié, ni signalé, il était
         // simplement ABSENT de l'écran Investissements et de l'Accueil.
         //
         // ⚠️ La conversion N'EST PAS faite par `toCurrencyFactor` : ce helper replie sur 1:1 quand
         // le taux manque, ce qui est le bon comportement pour un AFFICHAGE d'actif (montrer quelque
-        // chose + journaliser) et le pire pour une AUTORITÉ — 72 040 USD deviendraient 72 040 « CAD »,
+        // chose + journaliser) et le pire pour une AUTORITÉ — N USD deviendraient N « CAD »,
         // faux d'environ 30 %, présentés comme le total du compte
         // (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). On interroge donc le taux
         // EXPLICITEMENT, et son absence produit un signal, jamais un nombre.

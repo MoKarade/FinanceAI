@@ -11,7 +11,7 @@ import type { Transaction } from '../../types';
  * Le cash n'est pas stocké : il est DÉRIVÉ (Σ soldes initiaux + Σ transactions hors
  * doublons/transferts). Cette formule vivait en TROIS copies qui faisaient toutes
  * `Number(v) || 0` **sans aucune trace**, alors que le patron `HARDEN-*-NAN` — né de l'incident
- * réel « −193 k$ » du 2026-06-16 — est appliqué à `assetValueCad` (65 lignes plus haut dans le
+ * réel du 2026-06-16 — est appliqué à `assetValueCad` (65 lignes plus haut dans le
  * MÊME fichier) et à `computeRawNetWorth`.
  *
  * ⚠️ Ce qui change ici n'est PAS le nombre : un terme non fini valait 0 avant, il vaut 0 après.

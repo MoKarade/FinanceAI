@@ -167,8 +167,8 @@ describe('FutureKpiStrip — tuiles du Lot 1 conservées', () => {
 //
 // Marc, 2026-09-21 : « je veux voir genre ma somme total d'argent et ma somme total de dette /
 // ce que je dois (partout dans financeai et dans hubperso) ». Né d'un écart qu'il a constaté
-// lui-même : Fintable additionne des SOLDES DE COMPTES (277 230 $ chez lui), l'app publie une
-// VALEUR NETTE (230 210 $) — et les deux TERMES de la soustraction n'étaient visibles nulle part.
+// lui-même : Fintable additionne des SOLDES DE COMPTES (un total plus élevé chez lui), l'app publie une
+// VALEUR NETTE — et les deux TERMES de la soustraction n'étaient visibles nulle part.
 //
 // ⚠️⚠️ CE QUE CES GARDES TIENNENT : `avoirs − dettes = patrimoine net`, À L'ŒIL, sur la même
 // rangée. Marc a signalé QUATRE fois en deux jours des chiffres d'un même écran qui ne se

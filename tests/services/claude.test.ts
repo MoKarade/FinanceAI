@@ -72,12 +72,12 @@ describe('isDefiniteTransfer', () => {
     // Régression (relevé Desjardins réel) : un Interac vise une PERSONNE (loyer, revenu,
     // remboursement) et « money/funds transfer » est un mouvement externe → À CATÉGORISER,
     // pas un transfert interne. Avant, « interac » les marquait transferts → revenus/dépenses
-    // sortis à tort du cashflow (ex. « Funds transfer received » +64 168 $).
+    // sortis à tort du cashflow (ex. un gros « Funds transfer received »).
     it.each([
         ['Interac e-Transfer to /Clara/', -500],
         ['INTERAC e-Transfer from /Anna/', 200],
         ['Virement Interac', -500],
-        ['Money transfer sent to /Valerie/Loyer', -1600],
+        ['Money transfer sent to /Jean/Loyer', -1500],
         ['Funds transfer received /SELARL/', 64000],
     ])('%s → PAS un transfert interne (Interac/externe)', (payee, amount) => {
         expect(isDefiniteTransfer(payee, amount)).toBe(false);

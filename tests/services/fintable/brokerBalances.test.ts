@@ -28,7 +28,7 @@ const TAUX_TEST = { rates: { USD: 1.40, EUR: 1.60 }, estimated: false };
 const AT = 1_770_000_000_000;
 
 function bal(over: Partial<FintableBrokerBalance> = {}): FintableBrokerBalance {
-    return { accountId: 'acc-1', label: 'Disnat L7B1', balanceCad: 100_000, taxRegime: 'NON-ENREG', at: AT, ...over };
+    return { accountId: 'acc-1', label: 'Disnat 0001', balanceCad: 100_000, taxRegime: 'NON-ENREG', at: AT, ...over };
 }
 
 describe('reconcileBrokerBalances — autorité + écart', () => {
@@ -47,8 +47,8 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
     it('agrège PLUSIEURS comptes du même régime (les titres ne portent pas d\'id de compte)', () => {
         const r = reconcileBrokerBalances(
             [
-                bal({ accountId: 'a', label: 'Disnat L7B1', balanceCad: 100_000 }),
-                bal({ accountId: 'b', label: 'Disnat L7A3', balanceCad: 50_000 }),
+                bal({ accountId: 'a', label: 'Disnat 0001', balanceCad: 100_000 }),
+                bal({ accountId: 'b', label: 'Disnat 0002', balanceCad: 50_000 }),
             ],
             { 'NON-ENREG': 140_000 },
         TAUX_TEST,
@@ -56,7 +56,7 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
         expect(r.regimes).toHaveLength(1);
         expect(r.regimes[0].brokerTotalCad).toBe(150_000);
         expect(r.regimes[0].gapCad).toBe(10_000);
-        expect(r.regimes[0].accountLabels).toEqual(['Disnat L7B1', 'Disnat L7A3']);
+        expect(r.regimes[0].accountLabels).toEqual(['Disnat 0001', 'Disnat 0002']);
     });
 
     it('sépare les régimes et ne mélange JAMAIS les paniers fiscaux', () => {
@@ -163,7 +163,7 @@ describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorit
     // ── [FINTABLE-DISNAT-USD-SOLDE-IGNORE] TEST DE LIMITE **INVERSÉ** le 2026-09-16 ──────────────
     // Il affirmait « ÉCARTE une devise ≠ CAD » et c'était juste tant qu'aucune conversion n'existait.
     // Mais cet écartement se faisait AVANT la persistance, donc avant la seule liste qui recense les
-    // comptes écartés : « Disnat (L7B1) » n'apparaissait ni réconcilié ni signalé sur l'écran
+    // comptes écartés : « Disnat (0001) » n'apparaissait ni réconcilié ni signalé sur l'écran
     // Investissements — ABSENT, ce qui est indiscernable d'un compte qui n'existe pas.
     // La limite est levée là où on peut la lever (taux connu → conversion) et RENDUE VISIBLE là où
     // on ne peut pas (taux absent → signal). Inversé au même endroit, jamais supprimé, pour que la
@@ -334,7 +334,7 @@ describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé'
         const r = reconcileBrokerBalances([
             brut({ accountId: 'cad', balanceCad: 30_000 }),
             brut({ accountId: 'usd', balanceCad: 0, missingRate: 'USD' }),
-        ], { 'NON-ENREG': 231_882 }, TAUX_TEST);
+        ], { 'NON-ENREG': 240_000 }, TAUX_TEST);
         expect(r.regimes[0].brokerTotalCad).toBe(30_000);   // le total EST amputé…
         expect(r.incompleteRegimes).toEqual(['NON-ENREG']); // …et c'est DIT
         expect(r.hasUnplaceableAccount).toBe(false);

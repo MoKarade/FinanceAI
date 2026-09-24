@@ -4,7 +4,7 @@
 //
 // Contexte (incident 2026-07-14) : le prix d'un titre est FIGÉ au moment de l'ajout (saisie ou
 // quote Finnhub du jour J) et n'est JAMAIS rafraîchi ensuite → le patrimoine affiché dérive de la
-// réalité (mesuré : ~230 k$ calculés vs ~250 k$ chez le courtier). Ce service met à jour les prix
+// réalité (mesuré : un écart de quelques pour cent avec le courtier). Ce service met à jour les prix
 // via `getQuote` (source unique marketData : Finnhub/CoinGecko, cache 5 min), avec les règles :
 //
 //  - PRIX NATIF uniquement : le quote est dans la devise du titre (convention `Asset.currentPrice`,

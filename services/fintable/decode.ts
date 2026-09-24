@@ -141,7 +141,7 @@ export function decodeHolding(
  * d'après la DOC de l'API, jamais d'après un payload observé — et `decodeTransaction` reconstruit
  * l'objet champ par champ, donc **tout ce que l'API envoie en plus est jeté sans trace**. C'est
  * exactement le trou par lequel est passé `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` : le montant
- * arrive dans la devise d'ORIGINE (mesuré : +2 537,31 $ sur 44 transactions au Brésil) pendant que
+ * arrive dans la devise d'ORIGINE (mesuré : des dépenses surévaluées de près de ×3 sur un voyage à l'étranger) pendant que
  * `currency` porte la devise du COMPTE, et personne ne pouvait dire si l'API fournissait, ailleurs
  * dans le même objet, de quoi le corriger. Un type TypeScript disparaît à l'exécution : seule une
  * liste de chaînes peut répondre à « qu'est-ce qu'on jette ? ». Elle est tenue alignée sur le type

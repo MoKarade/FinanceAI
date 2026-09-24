@@ -65,7 +65,7 @@ import { emitSyncNotice, _resetSyncNoticeForTests, _resetSyncStatusForTests } fr
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { stripComments } from '../../utils/stripComments';
 
-const realTx = { id: 'tx-reel-1', date: '2026-06-04', payee: 'Paie / ROBOVIC INC.', amount: 837.31, category: 'Salaire' };
+const realTx = { id: 'tx-reel-1', date: '2026-06-04', payee: 'Paie / EMPLOYEUR INC.', amount: 812.46, category: 'Salaire' };
 // Même convention d'id que les fixtures de `personaSanitizer.test.ts` (préfixe reconnu par le registre).
 const personaTx = { id: 'persona-tx-1', date: '2026-06-01', payee: 'Shopify - Dépôt paie', amount: 3200, category: 'Salaire' };
 const enveloppe = (transactions: unknown[]) => ({

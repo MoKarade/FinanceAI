@@ -1288,7 +1288,7 @@ choisir). Calcul cumulatif par tranche (style impôt).
     — écrit HORS du `if (useSmithManoeuvre)` — s'exécutait pour **toute** propriété (une mise de fonds
     de 20 % donne déjà 80 % de LTV) et soustrayait la vente d'une dette Smith à **zéro**, qui passait
     négative : `DettesNonImmo` négative, donc patrimoine net faux **à la hausse**. Mesuré sur un
-    dossier réel : `dettesNonImmo` à **−88 234 $** l'année de l'achat, plateau **−98 560 $** cinq ans.
+    dossier réel : `dettesNonImmo` **négative** dès l'année de l'achat, et plus négative encore sur le plateau cinq ans plus tard.
   - ⚠️⚠️ **La formule ci-dessus et sa justification usuelle ne disent PAS la même chose, et ce
     document ne tranche pas.** Le 65 % de la ligne directrice B-20 borne la portion **réavançable**
     d'un prêt (le total marge + hypothèque étant plutôt borné à 80 %) — or le code compare la SOMME

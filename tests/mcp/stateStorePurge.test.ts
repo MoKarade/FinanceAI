@@ -28,7 +28,7 @@ describe('StateStore MCP — désinfection persona à la lecture', () => {
             ...buildDefaultAppState(),
             transactions: [
                 { id: 'persona-tx-1', payee: 'Shopify - Dépôt paie', amount: 3200, date: '2026-06-01', category: 'Salaire' } as unknown as Transaction,
-                { id: '1752585600001', payee: 'Paie / ROBOVIC INC.', amount: 837.31, date: '2026-06-04', category: 'Salaire' } as unknown as Transaction,
+                { id: '1752585600001', payee: 'Paie / EMPLOYEUR EXEMPLE INC.', amount: 812.47, date: '2026-06-04', category: 'Salaire' } as unknown as Transaction,
             ],
             financialGoals: [{ id: 'kar-fg1', name: 'Indépendance financière (1 M$)' } as unknown as FinancialGoal],
         };
@@ -43,7 +43,7 @@ describe('StateStore MCP — désinfection persona à la lecture', () => {
     it('un blob propre est lu tel quel (aucune altération)', async () => {
         const clean: AppState = {
             ...buildDefaultAppState(),
-            transactions: [{ id: '1752585600002', payee: 'Achat / IGA #8376', amount: -12.05, date: '2026-06-05', category: 'Épicerie' } as unknown as Transaction],
+            transactions: [{ id: '1752585600002', payee: 'Achat / EPICERIE #1234', amount: -12.34, date: '2026-06-05', category: 'Épicerie' } as unknown as Transaction],
         };
         await fs.writeFile(file, JSON.stringify(clean), 'utf8');
         const store = makeStateStore(new FileStateSource(file), { ttlMs: 0 });

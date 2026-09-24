@@ -78,10 +78,10 @@ describe('[FUTUR-MOUVEMENTS-TOUS] la troncature a DISPARU, le compte reste', () 
      * Il affirmait « au-delà de 6 mouvements, le TOTAL reste connu » et EXIGEAIT
      * `toHaveLength(6)` — l'inventaire d'une troncature qu'on rendait visible faute de pouvoir la
      * retirer. Marc, en regardant ses vraies journées : « je vois pas les transactions dans
-     * l'infobulle on dirait ça manque des transactions ». Mesuré sur ses transactions du 1er août
-     * au 18 septembre 2026 : **9 journées** dépassaient 6, la pire étant le **31 août avec 18
-     * mouvements — 12 cachés**, dont les DEUX plus grosses dépenses du jour (Anthropic −321,93 $,
-     * Global Exchange −307,40 $) pendant qu'un « Frais de service −15,95 $ » restait affiché : la
+     * l'infobulle on dirait ça manque des transactions ». Mesuré sur ses transactions de
+     * sept semaines : **plusieurs journées** dépassaient 6, la pire avec **trois fois plus de
+     * mouvements que le plafond, la majorité cachés**, dont les DEUX plus grosses dépenses du jour
+     * pendant que de petits frais bancaires restaient affichés : la
      * liste gardait les six PREMIERS rencontrés, pas les six qui comptent.
      *
      * L'assertion garde donc son sujet et change de sens : **tous** les mouvements décrits sortent.
@@ -93,7 +93,7 @@ describe('[FUTUR-MOUVEMENTS-TOUS] la troncature a DISPARU, le compte reste', () 
             Array.from({ length: 18 }, (_, i) => txn({ payee: `M${i}`, amount: -(i + 1) })),
         );
         const jour = ligneDu(r, JOUR);
-        // Sur le code d'avant : 6. La journée réelle la pire de Marc, au complet.
+        // Sur le code d'avant : 6. Une journée chargée, au complet.
         expect(jour.movements).toHaveLength(18);
         expect(jour.movementsTotal).toBe(18);
         // ⚠️ Anti-vacuité : ce n'est pas une liste de 18 fois le même — le DERNIER arrivé, celui que

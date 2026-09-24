@@ -23,7 +23,7 @@ import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, mark
 import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
 import { requestPersistentStorage } from '../services/storagePersistence';
-import { decisionEcritureFx, fxSourceEffective } from '../services/fx/provenance';
+import { ecritureFxSelonLecture } from '../services/fx/ecritureFx';
 import { modeDonneesFictives } from '../store/modeTestActif';
 
 /** Tous les effets de boot d'App : handlers d'erreur, courbe verrouillée, service worker, purge
@@ -320,29 +320,12 @@ export function useAppBootEffects(): void {
                 // OUVRÉ, donc « même taux qu'hier » est le cas normal — une lecture réussie ne
                 // rafraîchissait alors ni la fraîcheur, ni la cause, ni la date de tentative.
                 // La décision est maintenant PURE et testée (`decisionEcritureFx`).
-                const quoi = decisionEcritureFx(fxEtat, rates);
-                if (quoi === 'tout') {
-                    updateFxRates(rates);
-                } else if (quoi === 'diagnostic') {
-                    // ⚠️ Une lecture SANS autorité n'écrase pas un taux qui en a. On ne garde que la
-                    // trace de la tentative : sinon la saisie manuelle de Marc — faite justement
-                    // parce que la Banque du Canada ne répond pas — serait remplacée par le repli en
-                    // dur à la PREMIÈRE réouverture de l'app, et le recours n'existerait que le temps
-                    // d'une session.
-                    updateFxRates({
-                        USD: fxEtat.fxRates.USD, EUR: fxEtat.fxRates.EUR, CAD: fxEtat.fxRates.CAD,
-                        lastFetched: fxEtat.fxRates.lastFetched,
-                        estimated: fxEtat.fxRatesEstimated,
-                        source: fxSourceEffective(fxEtat),
-                        cause: rates.cause,
-                        attemptAt: rates.attemptAt,
-                        // ⚠️ La date de l'observation est REPASSÉE telle quelle : ce chemin ne
-                        // touche pas aux taux, donc il ne doit pas toucher à ce qui les date. Sans
-                        // elle, le mutateur la CLASSERAIT comme une écriture neuve et l'effacerait
-                        // (il dérive la date de la provenance — cf. `updateFxRates`).
-                        observationDate: fxEtat.fxObservationDate,
-                    });
-                }
+                // [FX-SERVEUR-JAMAIS-RAFRAICHI] Décision ET branche « diagnostic » (une lecture SANS
+                // autorité n'écrase pas un taux saisi à la main) vivent dans `services/fx/ecritureFx.ts`,
+                // partagées avec le rafraîchissement serveur : le serveur ne pouvait pas importer ce
+                // hook, et une copie aurait divergé au premier correctif.
+                const ecriture = ecritureFxSelonLecture(fxEtat, rates);
+                if (ecriture) updateFxRates(ecriture);
             } catch (e) {
                 logError({ source: 'network', severity: 'warning', message: 'Mise à jour des taux FX impossible (taux de repli utilisés)', error: e });
             }

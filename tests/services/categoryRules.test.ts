@@ -1,5 +1,5 @@
 // tests/services/categoryRules.test.ts
-// [TX-CATEGORY-RULES] — règles déterministes de catégorisation (corpus réel Desjardins).
+// [TX-CATEGORY-RULES] — règles déterministes de catégorisation (corpus type de libellés Desjardins).
 // Direction : payees représentatifs de CHAQUE catégorie + inconnus → null (jamais d'invention).
 // Intégration : parseBankCsv (CSV sans colonne catégorie) et applyBankStatement (MCP) routent
 // par les MÊMES règles — cohérence app↔MCP.
@@ -10,11 +10,11 @@ import { parseBankCsv } from '../../services/import/parseBankCsv';
 import { applyDocument } from '../../mcp/ingest/applyDocument';
 import { buildDefaultAppState } from '../../mcp/state/loadAppState';
 
-describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard)', () => {
+describe('ruleCategorize — corpus type (payees compte + MasterCard)', () => {
     const cases: Array<[string, string]> = [
         // compte
-        ['Paie / ROBOVIC INC.', 'Salaire'],
-        ['Payroll /ROBOVIC INC.', 'Salaire'],
+        ['Paie / EMPLOYEUR INC.', 'Salaire'],
+        ['Payroll /EMPLOYEUR INC.', 'Salaire'],
         ['Paie / ALGO SERVICE DE PAIE', 'Salaire'],
         ['Ristourne', 'Revenus divers'],
         ['Intérêt sur ET', 'Revenus divers'],
@@ -22,11 +22,11 @@ describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard
         // « Revenus divers » — un Interac reçu est un CRÉDIT sur une dépense partagée, pas un revenu.
         // Un test de limite s'inverse, il ne se supprime pas : c'est la trace qui empêche de le
         // re-classer revenu « pour simplifier ».
-        ['Virement Interac de / ANNA LUCIE MAL/', 'Remboursement'],
+        ['Virement Interac de / JEANNE TREMBLAY/', 'Remboursement'],
         ['E-Transfer received / JOHN DOE', 'Remboursement'],
-        ['Interac e-Transfer from /ANNA LUCIE MAL/', 'Remboursement'],
-        ['Loyer/bail / 9420 3767 Quebec inc.', 'Logement'],
-        ['Virement envoyé à / Valerie cameron    /Loyer', 'Logement'],
+        ['Interac e-Transfer from /JEANNE TREMBLAY/', 'Remboursement'],
+        ['Loyer/bail / 1234 5678 Quebec inc.', 'Logement'],
+        ['Virement envoyé à / Jean Tremblay    /Loyer', 'Logement'],
         ['Paiement facture - AccèsD Internet / HYDRO-QUEBEC', 'Logement'],
         ['Paiement facture - AccèsD Internet / Desjardins Remises MasterCard', 'Transfert'],
         ['Paiement facture - AccèsD Internet / Desjardins Cash Back MasterCar', 'Transfert'],
@@ -38,37 +38,37 @@ describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard
         ['FRAIS DE CRÉDIT', 'Frais bancaires'],
         ['Paiement facture - AccèsD Internet / Payement impôt fédéral', 'Impôts'],
         // carte
-        ['METRO FERLAND DU MARAI', 'Épicerie'],
-        ['IGA DES SOURCES CHARLE', 'Épicerie'],
-        ['Achat / FRUITERIE 440 Q', 'Épicerie'],
-        ['SAQ33616 GALERIES CHAR', 'Épicerie'],
-        ['DEPANNEUR L ETAPE', 'Épicerie'],
-        ['TIM HORTONS #1338', 'Restaurants'],
-        ["MCDONALD'S #40044", 'Restaurants'],
+        ['METRO CENTRE VILLE', 'Épicerie'],
+        ['IGA CENTRE VILLE', 'Épicerie'],
+        ['Achat / FRUITERIE DU COIN', 'Épicerie'],
+        ['SAQ12345 CENTRE VILLE', 'Épicerie'],
+        ['DEPANNEUR DU COIN', 'Épicerie'],
+        ['TIM HORTONS #1234', 'Restaurants'],
+        ["MCDONALD'S #12345", 'Restaurants'],
         ['UBER CANADA/UBEREATS', 'Restaurants'],
-        ['CHEZ ASHTON 1ERE AVENU', 'Restaurants'],
-        ['SONIC PRINCEVILLE 3179', 'Transport'],
-        ['PETRO-CANADA 12200', 'Transport'],
-        ['COUCHE-TARD # 1141', 'Transport'],
+        ['CHEZ ASHTON CENTRE', 'Restaurants'],
+        ['SONIC CENTRE 1234', 'Transport'],
+        ['PETRO-CANADA 12345', 'Transport'],
+        ['COUCHE-TARD # 1234', 'Transport'],
         ['ACHAT PREAUTORISE / COUCHETARD', 'Transport'],
         ['NETFLIX.COM', 'Abonnements'],
         ['VIRGIN PLUS', 'Abonnements'],
         // [TX-CATEGORIZE] Google Play est une plateforme AMBIGUË (achat unique OU abonnement) :
         // le libellé seul ne peut plus décider « Abonnements » — c'est le profil de récurrence du
         // marchand qui promeut (cf. services/transactions/contextualCategorize.ts).
-        ['GOOGLE *Cell to Singul', 'Loisirs'],
+        ['GOOGLE *Jeu mobile', 'Loisirs'],
         ['CLAUDE.AI SUBSCRIPTION', 'Abonnements'],
-        ['BRUNET MARAIS 6433', 'Santé'],
-        ['ECONOFITNESS ADMIN MON', 'Santé'],
+        ['BRUNET CENTRE 1234', 'Santé'],
+        ['ECONOFITNESS ADMIN', 'Santé'],
         ['STEAM PURCHASE', 'Loisirs'],
-        ['SQDC77005 QC LEBOURGNE', 'Loisirs'],
-        ['SEPAQ JACQUES CARTIER', 'Loisirs'],
-        ['WINNERS 330', 'Magasinage'],
-        ['DOLLARAMA # 52', 'Magasinage'],
-        ['CANADIAN TIRE #245', 'Magasinage'],
-        ['AIRBNB * HMM54R29XW', 'Voyages'],
+        ['SQDC12345 QC CENTRE', 'Loisirs'],
+        ['SEPAQ PARC NATIONAL', 'Loisirs'],
+        ['WINNERS 123', 'Magasinage'],
+        ['DOLLARAMA # 12', 'Magasinage'],
+        ['CANADIAN TIRE #123', 'Magasinage'],
+        ['AIRBNB * HMABC12345', 'Voyages'],
         ['AIR TRANSAT A.T. INC.', 'Voyages'],
-        ['Virement Interac à / ensemble patio/', 'Autre'],
+        ['Virement Interac à / JEAN DUPONT /', 'Autre'],
     ];
     it.each(cases)('« %s » → %s', (payee, expected) => {
         expect(ruleCategorize(payee)).toBe(expected);
@@ -82,7 +82,7 @@ describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard
     });
 
     it("DIRECTION : payee inconnu → null (jamais d'invention — l'IA/Uncategorized prend le relais)", () => {
-        for (const p of ['TRUDEL INNOVATION', 'MERCHANT XYZ 123', '', 'GARMIN INTL AFP']) {
+        for (const p of ['BOUTIQUE ALPHA', 'MERCHANT XYZ 123', '', 'GARMIN INTL AFP']) {
             expect(ruleCategorize(p)).toBe(null);
         }
     });
@@ -120,26 +120,26 @@ describe('intégration — les règles s\'appliquent à l\'import', () => {
     it('parseBankCsv SANS colonne catégorie → catégories par règles ; inconnu → Uncategorized', () => {
         const csv = [
             'Date,Description,Montant',
-            '2026-06-04,"Paie / ROBOVIC INC.",837.31',
-            '2026-06-15,"Achat / FRUITERIE 440 Q",-15.82',
-            '2026-06-16,"TRUDEL INNOVATION",-9.20',
+            '2026-06-04,"Paie / EMPLOYEUR INC.",812.46',
+            '2026-06-15,"Achat / FRUITERIE DU COIN",-14.35',
+            '2026-06-16,"BOUTIQUE ALPHA",-9.95',
         ].join('\n');
         const { transactions } = parseBankCsv(csv);
         // NB : markDuplicates trie par date — on compare payee→catégorie, pas l'ordre.
         const byPayee = new Map(transactions.map(t => [t.payee, t.category]));
-        expect(byPayee.get('Paie / ROBOVIC INC.')).toBe('Salaire');
-        expect(byPayee.get('Achat / FRUITERIE 440 Q')).toBe('Épicerie');
-        expect(byPayee.get('TRUDEL INNOVATION')).toBe('Uncategorized');
+        expect(byPayee.get('Paie / EMPLOYEUR INC.')).toBe('Salaire');
+        expect(byPayee.get('Achat / FRUITERIE DU COIN')).toBe('Épicerie');
+        expect(byPayee.get('BOUTIQUE ALPHA')).toBe('Uncategorized');
     });
 
     it('MCP applyBankStatement → mêmes règles (cohérence app↔MCP) ; catégorie fournie PRIME', () => {
         const { nextState } = applyDocument(buildDefaultAppState(), {
             kind: 'bank_statement',
             transactions: [
-                { date: '2026-06-04', payee: 'Paie / ROBOVIC INC.', amount: 837.31 },
-                { date: '2026-06-05', payee: 'TIM HORTONS #1338', amount: -8.37 },
-                { date: '2026-06-06', payee: 'TIM HORTONS #1338', amount: -5.74, category: 'Autre' },
-                { date: '2026-06-07', payee: 'TRUDEL INNOVATION', amount: -9.2 },
+                { date: '2026-06-04', payee: 'Paie / EMPLOYEUR INC.', amount: 812.46 },
+                { date: '2026-06-05', payee: 'TIM HORTONS #1234', amount: -7.25 },
+                { date: '2026-06-06', payee: 'TIM HORTONS #1234', amount: -4.60, category: 'Autre' },
+                { date: '2026-06-07', payee: 'BOUTIQUE ALPHA', amount: -9.95 },
             ],
         } as Parameters<typeof applyDocument>[1]);
         expect(nextState.transactions.map(t => t.category)).toEqual([

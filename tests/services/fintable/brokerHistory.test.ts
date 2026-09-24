@@ -17,7 +17,7 @@ const JOUR = 24 * 60 * 60 * 1000;
 const T0 = Date.UTC(2026, 8, 16, 12, 0, 0); // 2026-09-16 12:00 UTC
 
 const lig = (p: Partial<FintableBrokerBalance> = {}): FintableBrokerBalance => ({
-    accountId: 'acc_1', label: 'Disnat (L7B1)', balanceCad: 100_000, at: T0, ...p,
+    accountId: 'acc_1', label: 'Disnat (0001)', balanceCad: 100_000, at: T0, ...p,
 });
 
 describe('jourUtc', () => {

@@ -12,7 +12,7 @@
 //  - PURE (aucun réseau, aucun store) → testable ; l'horloge s'injecte via `opts.nowMs` ;
 //  - ⚠️ [HIST-COVERAGE-TOTAL] COUVERTURE DU TOTAL (décision Marc 2026-07-23, ADR docs/adr/0007-couverture-du-total-de-la-courbe.md,
 //    SURCLASSE l'ancien « un actif sans historique n'a NI colonne NI part dans les totaux ») : un
-//    TOTAL qui omet des titres détenus est un chiffre FAUX (vu : ~190 k$ affiché vs ~242 k$ réels —
+//    TOTAL qui omet des titres détenus est un chiffre FAUX (vu : un total inférieur d'environ un cinquième à la réalité —
 //    pire que l'approximation qu'on évitait). Désormais :
 //      · titre SANS historique → AUCUNE colonne (on n'invente jamais une courbe), mais il contribue
 //        au TOTAL/buckets à sa VALEUR ACTUELLE (qty(t) × currentPrice × fx, contribution PLATE en
@@ -102,8 +102,8 @@ interface BuildMarketDataResult {
      * qui compare DEUX dates — `computePortfolioSessionMetrics` et sa variation 7 jours — a besoin de
      * savoir si l'une ou l'autre borne est amputée, et la borne passée n'est jamais `lastAxisDate`.
      * Sans ça, la DISPARITION d'un titre entre les deux bornes se publie comme une variation de
-     * marché (mesuré le 2026-09-17 sur l'état réel : « Variation 7 jours +38,2 % », et un total
-     * publié au hub inférieur de 27 920 $ à la somme des titres).
+     * marché (mesuré le 2026-09-17 sur l'état réel : « Variation 7 jours » fortement positive, et un total
+     * publié au hub inférieur d'environ 11 % à la somme des titres).
      *
      * `UN-TOTAL-AMPUTE-N-EST-PAS-UNE-AUTORITE-DEGRADEE-C-EST-UN-FAUX` : la liste existe pour qu'aucun
      * compte ne disparaisse en silence — encore faut-il que le consommateur la LISE.

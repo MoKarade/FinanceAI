@@ -3,8 +3,8 @@
  *
  * [TX-DUPLICATES-BRUIT] La moitié VISIBLE du correctif — celle que Marc touche.
  *
- * Deux faits, mesurés le 2026-09-15 sur ses 321 transactions réelles :
- *   1. le panneau pré-cochait TOUT, collisions de montant comprises (`OnlyFans −100 $` avec un
+ * Deux faits, mesurés le 2026-09-15 sur ses transactions réelles :
+ *   1. le panneau pré-cochait TOUT, collisions de montant comprises (une dépense ronde chez un marchand avec un
  *      paiement de carte et un Interac) : un clic suffisait à effacer de l'argent réel ;
  *   2. replié, il n'annonçait RIEN — Marc voit ses doublons « dans ma liste de transactions » et
  *      n'avait aucune raison d'ouvrir ce panneau. C'est sa réponse textuelle du 2026-09-15.
@@ -24,9 +24,9 @@ function tx(date: string, amount: number, payee: string): Transaction {
 /** Un VRAI doublon (même marchand, même jour) et une COLLISION (marchands sans rapport). */
 function jeuMixte(): Transaction[] {
     return [
-        tx('2026-08-31', -7.9, 'Metro Rj Rio De'),
-        tx('2026-08-31', -7.9, 'Metro Rj Rio De'),
-        tx('2026-07-10', -100, 'OnlyFans'),
+        tx('2026-08-31', -4.25, 'Metro Ligne Bleue'),
+        tx('2026-08-31', -4.25, 'Metro Ligne Bleue'),
+        tx('2026-07-10', -100, 'Abonnement Streaming'),
         tx('2026-07-10', -100, 'Bill payment - AccèsD - Internet /Carte de crédit'),
     ];
 }
@@ -45,7 +45,7 @@ describe('[TX-DUPLICATES-BRUIT] le panneau annonce, et ne pré-coche que ce qui 
 
     it('ANTI-VACUITÉ : sans aucun doublon, aucun badge', () => {
         const { container } = render(
-            <DuplicatesPanel transactions={[tx('2026-08-31', -7.9, 'Metro Rj Rio De')]}
+            <DuplicatesPanel transactions={[tx('2026-08-31', -4.25, 'Metro Ligne Bleue')]}
                 onMarkDuplicates={vi.fn()} markedCount={0} onUnmarkAll={vi.fn()} />,
         );
         expect(container.textContent).not.toContain('détecté');
@@ -63,8 +63,8 @@ describe('[TX-DUPLICATES-BRUIT] le panneau annonce, et ne pré-coche que ce qui 
         fireEvent.click(getByRole('button', { name: /Doublons/ }));
 
         // Les DEUX groupes restent listés — on ne perd rien, la décision d'origine est intacte.
-        expect(container.textContent).toContain('Metro Rj Rio De');
-        expect(container.textContent).toContain('OnlyFans');
+        expect(container.textContent).toContain('Metro Ligne Bleue');
+        expect(container.textContent).toContain('Abonnement Streaming');
         expect(container.textContent).toContain('marchands différents');
 
         // Mais un seul est pré-coché, donc le bouton ne propose qu'UNE ligne.

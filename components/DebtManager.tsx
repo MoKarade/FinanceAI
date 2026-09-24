@@ -98,7 +98,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     // La liste offerte au lien, calculée UNE fois pour les deux formulaires (ajout et édition).
     // ⚠️ Les marchands DÉJÀ liés à une AUTRE dette en sont retirés : `paiementsReelsDette` travaille
     // par dette, donc deux dettes liées au même marchand déduiraient CHACUNE la totalité des
-    // virements. Mesuré sur deux dettes et 7 virements (1 642,69 $ réellement versés) : 3 285,38 $
+    // virements. Mesuré sur deux dettes et 7 virements réels : le double de la somme versée
     // retirés du total dû, soit exactement deux fois trop. La liste est le SEUL endroit où ce lien
     // se pose : l'empêcher ici l'empêche partout.
     const marchands = useMemo(() => marchandsCandidats(transactions), [transactions]);

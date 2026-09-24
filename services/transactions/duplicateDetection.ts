@@ -49,15 +49,15 @@ export interface DuplicateGroup {
      */
     payeesDiffer: boolean;
     /**
-     * [TX-DUPLICATES-BRUIT] Confiance du groupe. MESURÉE sur 321 transactions réelles de Marc
+     * [TX-DUPLICATES-BRUIT] Confiance du groupe. MESURÉE sur les transactions réelles de Marc
      * (01/07 → 14/09, `scripts/mesureDoublons.ts`) : le critère « montant + date » seul groupait
-     * `OnlyFans −100 $` avec un paiement de carte de crédit ET un Interac — 3 groupes sur 10 étaient
+     * une dépense ronde chez un marchand avec un paiement de carte de crédit ET un Interac — 3 groupes sur 10 étaient
      * des COLLISIONS DE MONTANT. Le libellé reste HORS du critère de REGROUPEMENT (sinon on reperd
      * les doublons à deux sources, cf. le JSDoc de `findDuplicateGroups`), mais il CLASSE le
      * résultat, et l'UI ne pré-coche que ce qui est `haute` ou `moyenne`.
      *
      * · `haute`   — même marchand normalisé ET même jour. C'est la signature mesurée chez Marc
-     *               (`7× Metro Rj Rio De −7,90` le 2026-08-31, dont il a confirmé que **2 seulement**
+     *               (sept lignes identiques du même marchand le même jour, dont il a confirmé que **2 seulement**
      *               étaient de vrais achats).
      * · `moyenne` — même marchand normalisé, dates proches mais différentes (autorisation vs
      *               comptabilisation, ou deux sources d'import).
@@ -98,7 +98,7 @@ function normalizePayee(payee: string): string {
  * Jetons qui n'identifient AUCUN marchand : ils décrivent le CANAL du mouvement (chèque, virement,
  * paiement de facture) et préfixent le bénéficiaire réel, exactement comme les passerelles de
  * paiement. Mesuré le 2026-09-15 sur la vraie forme des libellés bancaires québécois : sans ce
- * retrait, `Interac e-Transfer to /Maxime /` et `… /Julie /` rendaient tous deux `interac e`,
+ * retrait, `Interac e-Transfer to /Alex /` et `… /Sam /` rendaient tous deux `interac e`,
  * `Bill payment - Hydro Quebec` et `… Bell Canada` tous deux `bill payment`, `Ch 4521` et
  * `Ch 9981` tous deux `ch` — donc DEUX virements distincts au même montant le même jour étaient
  * classés `haute` et PRÉ-COCHÉS. C'est la régression money-critical que ce lot corrige, une marche
@@ -117,8 +117,8 @@ const JETONS_CANAL = /\b(interac|virement|transfert|transfer|cheque|chq|ch|paiem
  * le code introuvable par un seul grep (`UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM`).
  *
  * Normalisation agressive, pensée pour rapprocher les DEUX sources d'import réelles — le relevé en
- * capitales avec n° de succursale (`MCDONALD'S 40044`) et le libellé nettoyé de Fintable
- * (`McDonald's`). Mesuré : les deux rendent `mcdonald`, donc la paire cross-source du 06→09/07
+ * capitales avec n° de succursale (`MCDONALD'S 00000`) et le libellé nettoyé de Fintable
+ * (`McDonald's`). Mesuré : les deux rendent `mcdonald`, donc la paire cross-source
  * garde une confiance haute au lieu d'être noyée.
  *
  * ⚠️ Elle ne sert qu'à CLASSER, jamais à regrouper : elle est volontairement imparfaite
@@ -137,7 +137,7 @@ export function cleMarchandPourConfiance(payee: string): string {
         .replace(/\b(google|sq|sp|paypal|pp)\b/g, ' ')
         // Canal du mouvement (chèque, Interac, paiement de facture) : même raison, cf. JETONS_CANAL.
         .replace(JETONS_CANAL, ' ')
-        // N° de succursale / de terminal : `MCDONALD'S 40044` et `MCDONALD'S 26033` sont la même
+        // N° de succursale / de terminal : `MCDONALD'S 00001` et `MCDONALD'S 00002` sont la même
         // enseigne pour ce classement.
         .replace(/\b\d{3,}\b/g, ' ')
         .replace(/\b(inc|ltd|llc|co|canada|quebec|qc|ns|halifax|montreal|rio|de|du|la|le|les)\b/g, ' ')
@@ -204,7 +204,7 @@ export function findDuplicateGroups(
     }
 
     // [TX-DUPLICATES-BRUIT] La CONFIANCE d'abord, le montant ensuite. Trier sur le seul montant
-    // plaçait une collision à 100 $ au-dessus d'un vrai doublon à 7,90 $ — et c'est la première
+    // plaçait une collision à 100 $ au-dessus d'un vrai doublon de quelques dollars — et c'est la première
     // ligne d'un panneau qui décide s'il est cru ou ignoré.
     const rang = { haute: 0, moyenne: 1, faible: 2 } as const;
     return groups.sort(

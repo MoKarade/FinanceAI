@@ -3,8 +3,8 @@
 // [FUTUR-MOIS0-CLOTURE-SANS-AGE] Le DERNIER point de la reconstruction — celui qui sert de mois 0
 // au moteur et de raccord à la courbe Futur — préférait une clôture PÉRIMÉE à une cotation fraîche.
 //
-// Mesuré sur l'état réel de Marc le 2026-09-17 : mois 0 à 231 849 $ contre 245 687 $ de titres au
-// prix courant, soit −13 838 $ (−5,6 %) au départ de TOUTE la projection.
+// Mesuré sur l'état réel de Marc le 2026-09-17 : mois 0 inférieur à la valeur des titres au
+// prix courant, soit ≈ −5,6 % au départ de TOUTE la projection.
 //
 // ⚠️ LE CONTRÔLE LE PLUS IMPORTANT DE CE FICHIER EST CELUI QUI VÉRIFIE QUE LE PASSÉ NE BOUGE PAS.
 // Le remède « évident » (borner la péremption à toutes les dates) aurait réécrit la courbe du passé
@@ -125,7 +125,7 @@ describe('[FUTUR-MOIS0-CLOTURE-SANS-AGE] la garde qui TRAVERSE — jusqu\'au moi
 //
 // Le correctif ci-dessus ne touchait que la boucle MENSUELLE. La courbe que Marc regarde (le
 // registre au JOUR) passe par `reconstructPortfolioHistoryDaily`, un producteur distinct, et
-// gardait ses clôtures périmées : dernier point à **233 618 $** de titres contre **245 771 $** au
+// gardait ses clôtures périmées : dernier point inférieur d'environ 5 % à la valeur des titres au
 // prix courant, avec le badge « prix J−55 » qui nommait la cause sans que rien ne la corrige.
 // Classe `MODULE-ECRIT-HORS-CHECKLIST` : énumérer TOUS les producteurs, jamais celui du ticket.
 // ─────────────────────────────────────────────────────────────────────────────────────────────

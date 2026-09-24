@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-24 — Taux de change à jour sans ouvrir l'app, et la liste de tes titres ne sort plus en public
+
+- **Taux de change** : le serveur qui alimente ton hub lit maintenant lui-même les taux de la
+  Banque du Canada à chaque rafraîchissement des prix, au lieu de garder ceux de la dernière fois où
+  tu as ouvert l'app. Un taux que tu as saisi à la main n'est jamais écrasé par une panne. Effet visible
+  une fois le serveur redéployé.
+- **Confidentialité** : le rafraîchissement automatique des prix affichait, dans un journal public,
+  la liste des titres de ton portefeuille. Il n'affiche plus que des compteurs. Les montants réels
+  qui restaient dans la documentation du projet ont été retirés partout.
+- **Tes décisions sur le portefeuille** sont consignées (source de vérité, coût provisoire, import).
+
 ## 2026-09-24 — Portefeuille : audit complet, et tes données restent privées
 
 - **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés Disnat, écran par
@@ -142,8 +153,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Tu voulais voir « ta somme totale d'argent et ta somme totale de dettes, partout ».** Le bandeau
   du haut — celui qui te suit sur tous les écrans — a maintenant **six tuiles** : Patrimoine net ·
   Variation 30 j · **Total avoirs** · **Dettes** · Liquidités · Épargne/mois.
-- **Aujourd'hui tu y liras** : Total avoirs **277 145 $**, Dettes **46 934 $**, Patrimoine net
-  **230 210 $**. Et les trois se recomposent : avoirs − dettes = net.
+- **Aujourd'hui tu y liras** : Total avoirs, Dettes et Patrimoine net
+  côte à côte. Et les trois se recomposent : avoirs − dettes = net.
 - **Les dettes sont TOUT COMPRIS, avec le détail** (ton choix) : quand tu auras ta maison, la tuile
   dira « dont X $ d'hypothèque » sous le total. Le détail se masque avec le reste en mode discret.
 - ⚠️ **Conséquence de ce choix, et elle est invisible mais importante** : si l'hypothèque compte
@@ -158,7 +169,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   et là encore les trois se recomposent.
 - ⚠️ **Un écart que j'ai trouvé en chemin, et que tu ne vois pas encore** : le patrimoine net de
   hubperso **n'inclut pas** l'équité immobilière, celui de ton app oui. Identiques tant que tu n'as
-  pas de maison — différents dès 2029. Noté, pas corrigé : ça déplace un chiffre publié.
+  pas de maison — différents dès l'achat. Noté, pas corrigé : ça déplace un chiffre publié.
 
 ---
 
@@ -207,8 +218,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-21 (ta dette qui monte a maintenant un nom, une courbe et une explication)
 
-- **Ce que tu as vu** : « la dette augmente à 150k alors que j'ai juste une dette auto qui finit en
-  2030 ». Tu avais raison sur ta dette auto — elle s'éteint bien en 2030. Ce qui monte après, c'est
+- **Ce que tu as vu** : « la dette augmente sans arrêt alors que j'ai juste une dette auto qui finit bientôt
+  ». Tu avais raison sur ta dette auto — elle s'éteint bien à son terme. Ce qui monte après, c'est
   **autre chose**, et rien à l'écran ne le disait.
 - **Ce que c'est** : la **Smith Manoeuvre**, que tu as activée dans « Optimisations fiscales
   avancées ». Chaque mois, le capital que tu viens de rembourser sur l'hypothèque est **ré-emprunté**
@@ -228,7 +239,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Mesuré** (fixture de test, 20 ans, marge à 7 %) : le levier fait **perdre 51 794 $** si tes
   placements rapportent 3 %, et **gagner 58 824 $** s'ils rapportent 8 %. C'est exactement ça, un
   levier : il **amplifie dans les deux sens**. Sur ton profil réel, le point d'équilibre est plus bas
-  (autour de 4 %). Aucun seuil n'est écrit à l'écran : il dépend de l'écart entre le taux de ta marge
+  (que sur la fixture). Aucun seuil n'est écrit à l'écran : il dépend de l'écart entre le taux de ta marge
   et ton rendement, donc de ton dossier — l'afficher lui donnerait l'autorité d'une règle générale.
 - ⚠️ **Ce qui n'a PAS changé** : aucun montant de ta projection ne bouge. Ce lot ne fait que
   **séparer et nommer** ce qui était déjà calculé.
@@ -237,19 +248,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-18 (ta dette ne devient plus négative, et tes placements ne sont plus vendus de force)
 
-- **Le problème que tu as vu** : « la dette ne s'arrête pas, ça me met 112k à 44 ans ». Ton bail auto
+- **Le problème que tu as vu** : « la dette ne s'arrête pas, ça me met une grosse dette des années plus tard ». Ton bail auto
   n'y était pour rien — il s'éteint bien en un peu moins de quatre ans.
 - **La vraie cause** : un « appel de marge », qui n'a de sens que si tu utilises le levier Smith
   (emprunter sur ta maison pour investir), s'exécutait pour **n'importe quelle** propriété. Comme une
   hypothèque ordinaire dépasse 65 % de la valeur de la maison dès le premier jour, il se déclenchait
   **à l'achat**, vendait tes placements non enregistrés pour rembourser une marge **que tu n'as jamais
   prise**, et rendait ta dette **négative**.
-- **Ce que ça faussait, mesuré sur ta vraie projection** : dette à **−88 234 $** l'année de l'achat,
-  **−98 560 $** pendant cinq ans, puis remontée jusqu'à **+159 370 $**. Une dette négative est
+- **Ce que ça faussait, mesuré sur ta vraie projection** : dette **négative de plusieurs dizaines de milliers de dollars** l'année de l'achat,
+  **encore plus négative** pendant cinq ans, puis remontée jusqu'à **un fort solde positif**. Une dette négative est
   soustraite de ta valeur nette, donc elle la **gonflait** d'autant. Et dans la même année, tes
-  placements non enregistrés passaient de 194 681 $ à 91 922 $.
+  placements non enregistrés perdaient plus de la moitié de leur valeur.
 - ⚠️ **Correction de ce que je t'ai écrit plus tôt** : j'avais rangé dans la même liste la chute de
-  ton CELI (48 656 → 1 991 $). Re-mesuré : **ce n'est pas ce défaut-là qui la cause** — le CELI est
+  ton CELI (presque entièrement vidé). Re-mesuré : **ce n'est pas ce défaut-là qui la cause** — le CELI est
   identique au dollar avant et après le correctif. Ce qui vide ton CELI cette année-là, c'est la
   **mise de fonds** de la maison, qui pioche dedans quand le comptant ne suffit pas. Les deux
   arrivent la même année, mais l'un n'explique pas l'autre. Ta valeur nette et ta dette, elles, sont
@@ -337,8 +348,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **L'infobulle d'une journée liste TOUTES tes transactions.** Il y avait un plafond de 6, et il
   gardait les six PREMIÈRES rencontrées — pas les plus grosses. Mesuré sur tes vraies données du
   1er août au 18 septembre : **9 journées** dépassaient 6, la pire étant le **31 août avec 18
-  mouvements, donc 12 cachés** — dont **Anthropic −321,93 $** et **Global Exchange −307,40 $**,
-  tes deux plus grosses dépenses du jour, pendant qu'un « Frais de service −15,95 $ » restait
+  mouvements, donc 12 cachés** — dont
+  tes deux plus grosses dépenses du jour, pendant qu'un petit frais de service restait
   affiché. Le panneau défilait déjà : la place n'était pas la contrainte, le plafond l'était.
 - **« +N autres » ne parle plus que des transactions sans description.** C'est ce qu'il aurait
   toujours dû dire : ces lignes-là ont bougé ton solde mais n'ont aucun nom à afficher.
@@ -358,35 +369,35 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   « Virements qui remboursent cette dette », enregistre. À partir de là, chaque virement importé
   retire de la dette **le montant réellement prélevé, le jour où il l'a été** — plus aucune marche
   supposée.
-  ⚠️ **Là où aucun virement n'est connu, la dette ne bouge pas.** Tes transactions commencent le
-  28 juillet, ton bail le 14 : avant le 28, la courbe reste plate. C'est voulu — c'est le prix de
+  ⚠️ **Là où aucun virement n'est connu, la dette ne bouge pas.** Tes transactions importées commencent
+  après le début de ton bail : avant le premier virement connu, la courbe reste plate. C'est voulu — c'est le prix de
   « aucun chiffre inventé ». Tu avais choisi cette option contre l'autre (compléter les trous avec
   des versements supposés).
   Ce que ça change, mesuré sur tes vrais prélèvements : en **juillet**, l'ancienne courbe plaçait un
-  versement de plus que ce que tes transactions connaissent (**234,66 $** d'écart) ; en août et en
+  versement de plus que ce que tes transactions connaissent (**un versement hebdomadaire** d'écart) ; en août et en
   septembre, les deux coïncident au cent près. Un modèle juste la plupart du temps reste un modèle.
-- **Le bon Toyota, et lui seul.** Tes deux achats chez `Ste Foy Toyota Quebec` (−500,00 $ et
-  −779,79 $ en juillet) sont le **concessionnaire**, pas le financement : ils ne touchent pas à ta
-  dette. Une recherche approximative sur « toyota » en aurait retiré **1 279,79 $** à tort.
+- **Le bon Toyota, et lui seul.** Tes deux achats chez un concessionnaire de la marque
+  sont le **concessionnaire**, pas le financement : ils ne touchent pas à ta
+  dette. Une recherche approximative sur « toyota » en aurait retiré **leur montant** à tort.
 - **Le formulaire dit ce qui se passe.** Sous le solde : « Enregistré le 18 septembre 2026 ·
-  2 virements à « Toyota Financial » depuis, le dernier le 15 septembre — déjà déduits ci-dessus. »
+  2 virements à « Toyota Financial » depuis, le dernier le [date] — déjà déduits ci-dessus. »
   Et si le marchand choisi ne verse rien, il te le dit en clair au lieu de rester muet.
 - ⚠️ **Si tu marques un paiement « virement interne », il ne fait plus baisser la dette.** C'est
   voulu, et c'est une correction : l'app enlève déjà ces lignes de tes liquidités, donc les compter
-  quand même du côté de la dette faisait MONTER ta valeur nette de 234,67 $ à chaque paiement marqué
-  (1 877 $ mesuré sur huit, ~12 200 $/an) — de l'argent qui n'existe pas. Maintenant les deux côtés
+  quand même du côté de la dette faisait MONTER ta valeur nette d'un versement à chaque paiement marqué
+  (mesuré sur huit paiements) — de l'argent qui n'existe pas. Maintenant les deux côtés
   traitent la même transaction pareil, et le formulaire te dit quand plus rien n'est déduit.
 - **L'app refuse plutôt que d'effacer ta dette.** Si les virements du marchand choisi dépassent le
   solde enregistré (mauvais marchand, ou solde jamais ré-enregistré), rien n'est déduit et le
   formulaire te le dit. Avant ce garde-fou, un lien vers un marchand très fréquent — et la liste
   propose les plus fréquents EN PREMIER — ramenait la dette à **0 $** sous un message rassurant.
 - **Un bail terminé ne descend plus.** Si tu remplaces un véhicule chez le même prêteur, les
-  virements du NOUVEAU bail ne s'appliquent plus à l'ancien solde résiduel (mesuré : 2 581 $
+  virements du NOUVEAU bail ne s'appliquent plus à l'ancien solde résiduel (mesuré : plusieurs milliers de dollars
   effacés à tort).
 - **Un seul chiffre par dette à l'écran.** La ligne de chaque dette, le simulateur « Liberté dans
   X ans » et le résumé envoyé à l'assistant affichaient encore le solde enregistré pendant que le
   badge « Total dû », lui, descendait. Tout passe maintenant par la même source.
-- **À faire par toi** : ouvrir la dette « bZ » et choisir le marchand. Le lien ne se devine pas.
+- **À faire par toi** : ouvrir la dette de ton bail et choisir le marchand. Le lien ne se devine pas.
 
 ---
 
@@ -399,16 +410,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   intacts), mais c'est indiscernable d'une perte de données. Corrigé, et la garde qui devait
   l'empêcher a été réparée : elle ne savait pas lire un champ dont le type porte un nom.
 - **Ta dette ne descendait pas quand tu payais — corrigé.** Mesuré sur tes vrais prélèvements
-  Toyota : le solde enregistré (47 168,67 $) valait **après 7 versements** alors que tu en avais fait
-  **8** ; il te restait **46 934,00 $**. Le solde était un instantané figé, sans date, que rien
-  n'avançait : l'écart grandissait de 234,67 $ **par semaine**. Désormais l'app **date** le solde au
+  Toyota : le solde enregistré valait **un versement de retard** sur ce que tu avais
+  réellement payé. Le solde était un instantané figé, sans date, que rien
+  n'avançait : l'écart grandissait d'un versement **par semaine**. Désormais l'app **date** le solde au
   moment où tu l'enregistres et en déduit les prélèvements survenus depuis — le « Total dû », la
   valeur nette, la Santé financière, le graphe Futur et la carte du hub affichent tous le solde
-  d'**aujourd'hui**. Ton solde a été corrigé à 46 934,00 $ dans la foulée.
+  d'**aujourd'hui**. Ton solde a été corrigé dans la foulée.
   ⚠️ Ça ne concerne QUE les dettes à versements fixes sans intérêt dont la cadence est connue (ton
   bail). Une carte de crédit ou une hypothèque ne se devine pas à partir d'une date : elles ne
   bougent pas d'un cent.
-  ⚠️ **À faire une fois** : ouvre ta dette « bZ » et clique « Enregistrer ». C'est ce geste qui pose
+  ⚠️ **À faire une fois** : ouvre la dette de ton bail et clique « Enregistrer ». C'est ce geste qui pose
   la date de départ — sans lui, le solde reste au chiffre corrigé mais cessera d'avancer tout seul.
   ⚠️ Et la synchro Fintable ne déclarera pas tes dettes « mises à jour » chaque jour pour
   rien : la date ne se repose que lorsque le solde CHANGE vraiment.
@@ -423,11 +434,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Toyota, pas une fois par mois ». Exact — le passé reconstruit ne produisait qu'un point par mois.
   Une dette à versements fixes peut maintenant déclarer sa **cadence réelle** (hebdomadaire, aux deux
   semaines, mensuelle) dans le formulaire de dette, et la courbe descend **au jour du prélèvement**,
-  du montant réellement prélevé (234,67 $/semaine pour ton bail). Le montant que tu saisis reste le
+  du montant réellement prélevé (ton versement hebdomadaire, pour ton bail). Le montant que tu saisis reste le
   paiement MENSUEL : c'est seulement la date des marches qui change.
-  ⚠️ **À faire une fois** : ouvrir ta dette « bZ » et choisir « Hebdomadaire ». Sans ça, rien ne
+  ⚠️ **À faire une fois** : ouvrir la dette de ton bail et choisir « Hebdomadaire ». Sans ça, rien ne
   bouge — on ne devine pas la fréquence à ta place.
-- **La carte du hub affichait « −430,6 % sur 7 j ».** Deux causes, toutes deux de notre côté.
+- **La carte du hub affichait un pourcentage absurde « sur 7 j ».** Deux causes, toutes deux de notre côté.
   D'abord, le libellé « Placements (16 sept.) » changeait chaque jour : le hub garde l'historique
   d'une métrique **par son libellé**, donc la petite courbe repartait de zéro tous les jours et
   affichait « pas encore d'historique » sous une valeur pourtant publiée. Le libellé est maintenant
@@ -458,8 +469,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   sur un solde « somme des versements restants », un taux compterait l'intérêt deux fois.
 - **La courbe affichait des prix vieux de 55 jours.** Le badge « prix J−55 » le disait déjà. Le
   correctif de ce matin ne touchait que la courbe au MOIS ; celle que tu regardes, au JOUR, passe par
-  un second calcul qui gardait ses vieilles clôtures — d'où **233 618 $** de titres affichés contre
-  **245 771 $** au prix courant. Le dernier point prend désormais la cotation du jour quand elle est
+  un second calcul qui gardait ses vieilles clôtures — d'où des titres affichés **plusieurs milliers de dollars sous**
+  leur valeur au prix courant. Le dernier point prend désormais la cotation du jour quand elle est
   fraîche, et le badge disparaît. **Le passé, lui, ne bouge pas** : y coller le prix d'aujourd'hui
   réécrirait ton histoire.
 
@@ -482,7 +493,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-17 (ta projection ne démarre plus sur des cours périmés)
 
-- **Ton onglet Futur partait de 231 849 $ quand tes titres en valaient 245 687 $** — **13 838 $**
+- **Ton onglet Futur partait d'une valeur inférieure à celle de tes titres** — **environ 5,6 %**
   d'écart, au point de départ de TOUTES tes projections. La cause : pour le point « aujourd'hui »,
   l'app préférait la dernière **clôture enregistrée** à la **cotation du jour**, même quand cette
   clôture avait des semaines et que la cotation était fraîche.
@@ -502,10 +513,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 - **Tu as demandé où était ta dette auto dans le passé : elle n'était nulle part.** La répartition
   « Par compte » de l'infobulle ne listait que des comptes **positifs**. Quand ton bail entre au
-  bilan, ta valeur nette baisse de 47 169 $ — et aucune ligne ne l'expliquait.
-- **Concrètement** : sur ton point du 17/09, l'infobulle montrait 29 049 + 15 639 + 17 709 +
-  198 501 = **260 898 $** d'actifs pour une valeur nette de **214 918 $**. Impossible de retrouver
-  les 45 980 $ qui manquaient.
+  bilan, ta valeur nette baisse du solde du bail — et aucune ligne ne l'expliquait.
+- **Concrètement** : sur ton point du 17/09, l'infobulle montrait une somme d'actifs
+  **nettement supérieure** à la valeur nette affichée. Impossible de retrouver
+  l'écart qui manquait.
 - **Ce qui change** : une ligne **« Dettes (hors hypothèque) »** apparaît, en rouge et signée, et les
   chiffres se recomposent enfin. Elle n'apparaît que s'il y a vraiment une dette — pas de « 0 $ »
   affiché pour rien.
@@ -521,7 +532,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte Disnat en USD a
   été synchronisé pendant que les taux étaient au repli : il a donc été mis de côté « faute de taux
   fiable », et il le restait **jusqu'à la synchro suivante**, même une fois les vrais taux obtenus.
-  Résultat : environ **100 872 $** hors du panier, et le total de ton courtier refusé en entier.
+  Résultat : **un compte entier** hors du panier, et le total de ton courtier refusé en entier.
 - **Ce qui change** : l'app enregistre désormais le montant dans sa **devise d'origine** à côté du
   montant converti, et refait la conversion **au taux du jour** à chaque lecture. Un compte écarté
   faute de taux redevient utilisable dès que le bon taux arrive — sans rien attendre.
@@ -529,22 +540,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   total de compte. Tes taux **saisis à la main**, eux, l'ont : c'est le recours prévu quand la Banque
   du Canada ne répond pas, et le refuser aurait supprimé ce recours.
 - C'est l'**étape 0** du chantier « une seule valeur partout, celle de Fintable » que tu as demandé.
-  Sans elle, brancher Fintable en autorité aurait retiré ces 100 872 $ de tous tes écrans.
+  Sans elle, brancher Fintable en autorité aurait retiré ce compte de tous tes écrans.
 
 ---
 
 ## [unreleased] — 2026-09-17 (tes trois montants ne parlaient pas des mêmes titres)
 
-- **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit **245 687 $**,
-  ton courtier Fintable **242 287 $** (une fois le compte Disnat converti — il est en **dollars US**,
-  Fintable écrit `$` et non `C$`), l'onglet Futur **231 849 $**, et hubperso **217 767 $**. Quatre
+- **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit un montant,
+  ton courtier Fintable un autre (une fois le compte Disnat converti — il est en **dollars US**,
+  Fintable écrit `$` et non `C$`), l'onglet Futur un troisième, et hubperso un quatrième. Quatre
   chiffres pour une seule question.
 - **Le bon chiffre est celui de l'Accueil** : il tombe à 1,4 % du total réel de ton courtier. Les
   autres sont en retard, pour deux raisons différentes.
 - **Celle de hubperso est réparée ici.** Quand les cours d'un titre cessent d'arriver, l'app le
   retirait purement et simplement du total sans le dire — et le total restait un nombre crédible.
-  Il te manquait **27 920 $**, sur la même carte qu'une valeur nette qui, elle, les comptait. C'est
-  aussi ce qui fabriquait le « **+38,2 % sur 7 jours** » : pas un gain, un titre qui réapparaît.
+  Il te manquait **environ un dixième de tes titres**, sur la même carte qu'une valeur nette qui, elle, les comptait. C'est
+  aussi ce qui fabriquait le « **forte hausse sur 7 jours** » : pas un gain, un titre qui réapparaît.
 - **Ce qui change à l'écran** : tant qu'un titre manque à l'appel, la carte du hub **n'affiche plus
   du tout** ses trois lignes de placements, au lieu d'afficher un montant faux. L'app, elle, te
   nomme les titres concernés sur l'écran Investissements. Mieux vaut une case vide qu'un chiffre
@@ -556,7 +567,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Et mon premier correctif ne couvrait que deux cas sur trois.** Le troisième est le plus
   discret : un titre sans historique de cours n'entrait dans le total que s'il était détenu
   *aujourd'hui* — donc un titre que tu as vendu comptait pour zéro sur **tout son passé**.
-- ⚠️ **Ce qui reste** : l'écart du Futur (**−13 838 $**) a une autre cause — cet écran accepte une
+- ⚠️ **Ce qui reste** : l'écart du Futur (**environ −5,6 %**) a une autre cause — cet écran accepte une
   clôture de n'importe quel âge comme valeur du jour. C'est noté, chiffré, et ça touche le point de
   départ de toute ta projection : je te le présenterai avant d'y toucher.
 
@@ -571,8 +582,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   retombait sur les deux chiffres écrits en dur. La Banque du Canada n'a jamais eu de problème.
 - **Ce que ça te coûtait, mesuré sur tes vraies positions** : l'USD de repli (1,4000) était presque
   juste — le vrai taux du 16/09 est **1,3947**, soit −0,38 %. Mais l'EUR de repli (1,4700) est faux
-  de **+9,34 %** : le vrai est **1,6073**. Sur ta seule position GBS.PA, ça fait **+5 426 $** de
-  valeur qui n'était pas comptée. Tes douze positions sont toutes en USD ou EUR.
+  de **+9,34 %** : le vrai est **1,6073**. Sur une seule de tes positions en EUR, ça fait **plusieurs milliers de dollars** de
+  valeur qui n'était pas comptée. Tes positions sont toutes en USD ou EUR.
 - **Ce qui change** : l'app cherche désormais chaque série là où elle se trouve, et **refuse** une
   valeur publiée il y a plus de dix jours (une série abandonnée n'est pas « le taux du jour »). La
   carte « Taux de change » affiche en plus **la date de l'observation** d'où viennent tes taux —
@@ -595,10 +606,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-16 (tes taux de change n'étaient JAMAIS arrivés — et Fintable fait enfin autorité)
 
-- **Ce qui a été mesuré sur TES données** : NVDA, 90 × 214,40 USD, affiché 27 014 $ → facteur
-  **1,4000** pile. GBS.PA, 115 × 343,67 EUR, affiché 58 097 $ → **1,4700** pile. Ce sont les taux
+- **Ce qui a été mesuré sur TES données** : une position en USD, quantité × cours affiché → facteur
+  **1,4000** pile. une position en EUR → **1,4700** pile. Ce sont les taux
   écrits en dur dans le code (« approximation Q1 2026 »), pas ceux de la Banque du Canada. Et tes
-  **douze** positions sont en USD ou en EUR, aucune en CAD : la totalité de la valeur de tes
+  positions sont en USD ou en EUR, aucune en CAD : la totalité de la valeur de tes
   placements reposait sur un chiffre inventé. C'était aussi la vraie raison pour laquelle ton compte
   Disnat en USD n'était pas converti hier.
 - **Ce qui change — un RECOURS, là où il n'y en avait aucun.** Réglages → Système & diagnostics :
@@ -630,7 +641,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Pourquoi** : l'import te disait déjà que 5 champs arrivent et sont ignorés — mais seulement
   leurs NOMS. Un nom ne dit pas si un champ sert. Celui qui compte est `external_memo` : du texte
   libre, là où certaines banques écrivent « USD 4.40 @ 1.37 ». C'est la seule piste pour corriger à
-  la source les montants étrangers qui ont faussé 44 de tes dépenses.
+  la source les montants étrangers qui ont faussé plusieurs dizaines de tes dépenses.
 - **Ce qui change** : après une synchro manuelle, la carte « Sync Fintable » (Réglages) montre
   quelques **valeurs d'exemple** pour chacun de ces champs.
 - ⚠️ **Affiché là, et nulle part ailleurs** : jamais dans le rapport de synchro, qui est archivé en
@@ -643,7 +654,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-16 (ton compte Disnat en USD réapparaît dans tes placements)
 
-- **Le problème que tu ne pouvais pas voir** : « Disnat (L7B1) » est en USD, et son montant était
+- **Le problème que tu ne pouvais pas voir** : « Disnat » est en USD, et son montant était
   ignoré à chaque synchro. L'avertissement existait — mais dans *Système & diagnostics*, pas sur
   l'écran **Investissements** ni sur l'**Accueil**. Là où tu regardes tes placements, le compte
   n'était ni réconcilié ni signalé : simplement **absent**, ce qui ressemble à un compte qui
@@ -651,8 +662,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Ce qui change** : son solde est maintenant **converti en dollars canadiens** au taux du moment
   et entre normalement dans la réconciliation avec tes titres saisis.
 - **Si le taux de change manque**, le compte n'est pas converti au hasard — il est **nommé à
-  l'écran**, avec la raison. Un taux 1:1 appliqué par défaut aurait affiché 72 040 $ pour
-  72 040 US$ : un montant faux d'environ 30 %, présenté comme exact. Mieux vaut le dire que le
+  l'écran**, avec la raison. Un taux 1:1 appliqué par défaut aurait affiché ton solde en dollars US
+  comme s'il était en dollars canadiens : un montant faux d'environ 30 %, présenté comme exact. Mieux vaut le dire que le
   deviner.
 - Tes titres saisis à la main restent utilisés dans tous les cas.
 
@@ -676,7 +687,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-16 (réponse reçue : ta carte est en TA faveur — et tes 4 dépenses de voyage sont corrigées)
 
-- **Ta réponse a tranché.** Le rapport de synchro a affiché « Desjardins Cash Back Mastercard (5020)
+- **Ta réponse a tranché.** Le rapport de synchro a affiché « [ta carte de crédit]
   → **positif** », et tu m'as dit : **« c'est en ma faveur »**. La convention de Fintable est donc
   `négatif = tu dois`, `positif = c'est en ta faveur` — exactement l'inverse de ce que le code
   supposait depuis toujours.
@@ -684,14 +695,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   découvert, les deux hypothèses donnent le même chiffre (la valeur absolue les confond). C'est le cas
   rare — la carte en crédit — qui les sépare, et c'est celui qui s'est présenté.
 - ✅ **Rien n'est faux dans ton patrimoine net aujourd'hui** : aucune dette n'est associée à cette
-  carte, donc la dette inventée de 200 $ n'a jamais été écrite. Le défaut est réel, il n'a pas encore
+  carte, donc la dette inventée du montant de ce crédit n'a jamais été écrite. Le défaut est réel, il n'a pas encore
   coûté un dollar.
 - **Tes 4 dépenses de voyage sont réparées** : tu as exclu les quatre originaux sous-évalués, j'ai
-  importé les bons montants (**262,37 $**, 4 ajoutées, 0 rejet, sauvegarde horodatée avant écriture).
-  Ces dépenses ne sont plus sous-comptées de 77,39 $.
+  importé les bons montants (4 ajoutées, 0 rejet, sauvegarde horodatée avant écriture).
+  Ces dépenses ne sont plus sous-comptées.
 - ✅ **Le correctif de la bascule anti-doublon a passé son premier vrai test.** Ton « Rattraper
-  l'historique » a ajouté **1 478 transactions** sur un état qui n'était pas vierge — exactement le
-  scénario risqué. Vérifié après coup : les lignes du Brésil réécrites à la main la veille sont
+  l'historique » a ajouté **plus d'un millier de transactions** sur un état qui n'était pas vierge — exactement le
+  scénario risqué. Vérifié après coup : les lignes du voyage réécrites à la main la veille sont
   **intactes**, leurs originaux ne sont pas revenus, **0 doublon**.
 - **Ce qui reste** : le correctif du signe lui-même (le calcul et le commentaire, qui affirme encore
   l'inverse) est un lot de code money-critical — plan d'abord, ton OK ensuite.
@@ -743,7 +754,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   te protégeaient d'un ré-import. Sans précaution, le nouveau repère pouvait **réimporter des
   dépenses que tu avais déjà**, avec un libellé un peu différent, donc sans que la protection
   anti-doublon les reconnaisse : mesuré, **3 doublons écrits**. C'est exactement ce qui serait arrivé
-  à tes 36 lignes du Brésil corrigées la veille.
+  à tes lignes de voyage corrigées la veille.
   Le repère d'un compte ne recule donc jamais plus loin que ta dernière ligne « sans compte ».
   Conséquence : tant que cette ligne est récente, le gain est partiel pour ce compte — et il se
   rétablit tout seul à mesure que les jours passent.
@@ -752,7 +763,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-15 (savoir ce que la banque nous envoie et qu'on jetait)
 
-- **Pourquoi** : tes 44 dépenses du Brésil étaient fausses parce que le montant arrive dans la
+- **Pourquoi** : tes dépenses de voyage étaient fausses parce que le montant arrive dans la
   devise du PAYS pendant que l'étiquette dit « CAD ». La vraie question était : *est-ce que
   Fintable nous donne, ailleurs dans la même ligne, de quoi corriger ?* Personne ne pouvait
   répondre — l'import recopie les champs qu'il connaît et **jette le reste sans le dire**, et la
@@ -768,18 +779,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-09-15 (tes dépenses du Brésil sont enfin aux vrais montants)
+## [unreleased] — 2026-09-15 (tes dépenses de voyage sont enfin aux vrais montants)
 
-- **Réparé, dans tes données** : les 44 transactions de ton voyage étaient importées dans la devise
+- **Réparé, dans tes données** : les transactions de ton voyage étaient importées dans la devise
   d'ORIGINE (réaux, dollars US) et comptées comme des dollars canadiens. Tu les avais exclues des
-  calculs ; **36 lignes ont été réimportées aux montants de ton relevé, pour 1 067,03 $** au lieu
-  des 3 875,43 $ d'origine.
-- **Pourquoi 36 et pas 44** : **quatre** dépenses n'avaient jamais été exclues (elles étaient
+  calculs ; **les lignes concernées ont été réimportées aux montants de ton relevé, environ trois fois plus bas** au lieu
+  des montants d'origine.
+- **Pourquoi pas toutes** : **quatre** dépenses n'avaient jamais été exclues (elles étaient
   SOUS-évaluées, donc elles ne ressemblaient pas au problème qu'on cherchait) — les réimporter les
   aurait comptées deux fois ; et **quatre** billets de métro du 31 août étaient des doublons
   d'import, comme tu l'avais dit. Les quatre premières attendent quatre clics de ta part, et la
   marche à suivre est écrite dans `docs/A_FAIRE_MOI.md`.
-- **Trois libellés portent `(2/2)`** : deux vrais achats identiques le même jour (métro, Sodexo) se
+- **Trois libellés portent `(2/2)`** : deux vrais achats identiques le même jour (métro, restauration) se
   font sinon avaler par la protection anti-doublon de l'import. Aucun montant n'a été modifié pour
   autant — c'est le libellé qui distingue, jamais le chiffre.
 - **Ce qui n'est PAS réglé** : l'import Fintable continue de livrer les montants en devise
@@ -814,7 +825,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-15 (Le panneau « Doublons » te dit enfin combien il en trouve — et arrête de raconter n'importe quoi)
 
-- **Corrigé (signalé par toi, le jour même)** : « je vois plus aucune transactions du Brésil ».
+- **Corrigé (signalé par toi, le jour même)** : « je vois plus aucune transactions du voyage ».
   **Rien n'était perdu** — exclure des calculs ne supprime jamais rien, ça pose juste une marque.
   Mais la liste cachait les lignes exclues **et plus aucun bouton ne permettait de les revoir** :
   l'affichage se rouvrait au moment du marquage, puis retombait au premier rechargement de la page.
@@ -824,7 +835,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 - **Corrigé** : le détecteur de doublons groupait des dépenses qui n'ont **rien à voir** dès qu'elles
   partageaient un montant rond. Mesuré sur tes vraies transactions : il mettait dans le même groupe
-  `OnlyFans −100 $`, un **paiement de carte de crédit −100 $** et un **Interac à Maxime −100 $** —
+  un abonnement, un **paiement de carte de crédit** et un **virement Interac à une personne**, tous au même montant rond —
   et il te proposait d'en effacer deux. Un groupe sur trois était de ce genre. Désormais il regarde
   aussi le **marchand** : ces groupes-là restent affichés (au cas où), mais avec la mention
   « marchands différents », et ils ne sont **plus cochés d'avance**.
@@ -835,13 +846,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   au lieu du plus gros montant d'abord. La première ligne est celle en laquelle tu peux avoir le plus
   confiance.
 - **Corrigé (2ᵉ passe, trouvé par la revue)** : la reconnaissance du marchand s'arrêtait aux deux
-  premiers mots du libellé — or « Interac e-Transfer to /**Maxime** » et « Bill payment - **Hydro** »
+  premiers mots du libellé — or « Interac e-Transfer to /**Prénom** » et « Bill payment - **Hydro** »
   mettent le vrai destinataire en troisième. Résultat : **deux virements Interac à deux personnes
   différentes**, même montant, même jour, étaient présentés comme un doublon sûr et **cochés
   d'avance**. Corrigé — le mot qui compte est maintenant celui du destinataire, et un numéro de
   chèque (qui ne nomme personne) ne suffit plus à rapprocher quoi que ce soit.
-- **Note** : rien n'est marqué automatiquement, et ça ne changera pas. Sur tes sept lignes « Metro Rj
-  Rio De −7,90 $ » du même jour, tu m'as dit qu'il y en avait **deux vraies** — aucune règle ne peut
+- **Note** : rien n'est marqué automatiquement, et ça ne changera pas. Sur tes sept lignes identiques
+  (un titre de transport) du même jour, tu m'as dit qu'il y en avait **deux vraies** — aucune règle ne peut
   deviner ce « deux ». L'app propose, tu décoches ce qui est réel.
 
 ---
@@ -853,15 +864,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   **« Exclure des calculs »**, « Désélectionner ». Les lignes exclues restent visibles dans ton
   historique mais sortent du solde, du budget et des revenus. C'est réversible : « Annuler tous les
   marquages » dans le panneau « Doublons ».
-- **Pourquoi** : tu as essayé de marquer en doublon les 44 transactions de ton voyage au Brésil
+- **Pourquoi** : tu as essayé de marquer en doublon les transactions de ton voyage à l'étranger
   importées au mauvais montant, et tu n'y es pas arrivé. **Ce n'était pas toi.** Le seul endroit qui
   permettait ce marquage était le panneau « Doublons », qui n'affiche que les groupes trouvés
-  automatiquement (même montant, dates proches). Tes 44 lignes ne sont le doublon de *rien* — elles
+  automatiquement (même montant, dates proches). Tes lignes ne sont le doublon de *rien* — elles
   sont uniques, juste au mauvais prix : elles ne pouvaient donc apparaître nulle part. Le seul
   bouton qui restait était ⇄ « virement », qui neutralise bien la ligne mais **déclare qu'une vraie
-  dépense est un virement interne** — et qu'il aurait fallu cliquer 44 fois.
+  dépense est un virement interne** — et qu'il aurait fallu cliquer une fois par ligne.
 - **Note** : « Sélectionner les N **filtrées** » et non « de la page » — la liste s'affiche par 50 et
-  tes 44 lignes s'étalent au-delà, donc une sélection limitée à la page n'aurait pas réglé le cas qui
+  tes lignes s'étalent au-delà, donc une sélection limitée à la page n'aurait pas réglé le cas qui
   a fait naître ce bouton.
 
 ---
@@ -1640,7 +1651,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-09-03 (La « chute » que tu voyais au raccord est enfin expliquée)
 
-- **Expliqué** : tu avais signalé « une chute de 10k aujourd'hui, jsp pourquoi » sur la courbe. Ce
+- **Expliqué** : tu avais signalé « une grosse chute aujourd'hui, jsp pourquoi » sur la courbe. Ce
   n'était **pas une erreur de calcul** — les deux points sont justes. Le dernier point du passé est
   reconstruit en *défaisant* les mouvements de la journée en cours : il montre donc ton solde **avant**
   ton paiement d'hypothèque du jour, et la courbe marche vers le bas jusqu'à aujourd'hui.
@@ -2895,7 +2906,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Un objectif immobilier dont la date d'achat est passée n'est plus automatiquement traité comme
   ACHETÉ : l'app te demande désormais « est-ce acheté ? » (popup, ou case à cocher dans le
   formulaire). Réponds « pas encore » et le bien ne compte NI équité NI dette dans la projection —
-  fini l'objectif de 2024 jamais mis à jour qui injectait +156 628 $ d'équité et +307 081 $ de
+  fini l'objectif de 2024 jamais mis à jour qui injectait de l'équité et de la
   dette fantômes au premier mois. Sans réponse, rien ne change à tes projections actuelles.
 - Un bien auquel tu réponds « pas encore » déménage vers « Projets immo » (ce que je prévois) :
   il n'apparaît plus dans « Immobilier » (ce que je possède), ni dans l'historique d'équité
@@ -3149,7 +3160,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   « Supprimer » : changer un montant, un taux ou un nom obligeait à détruire la dette et à la
   ressaisir. Il y a maintenant un bouton **Modifier** sur chaque dette.
 - **Deux nouvelles dates, facultatives** : *début du prêt / bail* et *fin du terme*. Tu peux enfin
-  dire que ton bail auto a commencé le 20 juillet.
+  dire quand ton bail auto a commencé.
 - **Ce que ça change dans ta projection** :
   - une dette qui **n'a pas encore commencé** ne pèse plus ni sur ton budget ni sur ton bilan —
     avant, un prêt signé dans six mois te coûtait déjà de l'argent aujourd'hui ;
@@ -3301,7 +3312,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   était silencieusement comptée pour 0 $ — un chiffre parfaitement crédible, sans le moindre
   signal. Tout ce que la projection en déduisait était faux, et rien ne le disait.
 - La protection existait déjà pour tes placements et ton patrimoine net (posée après un incident où
-  le patrimoine s'affichait à −193 k$). Elle manquait au point d'entrée.
+  le patrimoine s'affichait fortement négatif). Elle manquait au point d'entrée.
 - Trois copies de ce calcul cohabitaient dans le code ; elles n'en font plus qu'une.
 
 ---
@@ -3472,7 +3483,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Le total de tes comptes, et les catégories du mois
 - Le panneau « Détail complet » affiche le **Total des comptes**, en pied de liste. ⚠️ Libellé
-  « hors dettes » : ce n'est PAS ta valeur nette (sur tes données, 49 337 $ d'écart).
+  « hors dettes » : ce n'est PAS ta valeur nette (sur tes données, un écart de plusieurs dizaines de milliers de dollars).
 - Pour un mois **passé**, il ventile aussi tes **dépenses par catégorie**, d'après tes vraies
   transactions, de la plus lourde à la plus légère, avec le nombre de transactions.
 - Une dépense **sans catégorie** est comptée à part et signalée « à classer dans Transactions » —
@@ -3559,12 +3570,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-14 (correctif courbe)
 
 ### 🔴 Ton historique réapparaît (bug que tu as signalé)
-- **Tu ne pouvais plus rien sélectionner dans ta courbe passée à partir du 10 janvier 2026.** Ce
+- **Tu ne pouvais plus rien sélectionner dans ta courbe passée à partir d'une date précise.** Ce
   n'était pas un problème d'affichage : ces journées n'étaient tout simplement **pas reconstruites**,
   donc ni tracées ni cliquables.
 - La cause : la reconstruction du passé au jour était plafonnée à **400 jours** à partir du début de
-  ton historique. Le tien commence le 6 décembre 2024 — et 6 décembre 2024 + 399 jours tombe le
-  9 janvier 2026. Le plafond coupait donc **exactement** là où tu l'as constaté.
+  ton historique. Le début de ton historique + 399 jours tombait
+  la veille du jour où la sélection cessait. Le plafond coupait donc **exactement** là où tu l'as constaté.
 - Le plafond passe à ~11 ans. Il n'a été possible de le relever que parce que la reconstruction est
   devenue **54× plus rapide** au passage (2 secondes → 37 ms sur 4 ans et demi) : elle re-parcourait
   tout l'historique de prix de chaque titre, pour chaque journée.
@@ -3781,7 +3792,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   journalisé, donc diagnosticable.
 - **Les graphiques aussi se taisent en mode discret.** L'axe et l'infobulle d'un graphique ne
   passaient pas par le masquage habituel : la courbe d'extinction de dette continuait d'afficher
-  « 41k » sur son axe, et le graphe des dividendes affichait carrément les montants complets.
+  des montants en « k » sur son axe, et le graphe des dividendes affichait carrément les montants complets.
   Corrigé sur 19 axes et infobulles (dettes, enfant, retraite, immobilier, budget, placements,
   dividendes, projets de vie).
 - Le récapitulatif de confirmation d'une écriture proposée par l'assistant ne peut plus **apparaître
@@ -4258,11 +4269,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'inflation, sur les deux branches (actif et retraité). Aucun scénario existant n'est modifié.
 - **`[MCP-NETINCOME-MISLEADING]` — l'assistant ne confondra plus « revenu net » et « argent qui
   rentre ».** Le champ `netIncome` de l'outil fiscal additionnait ton salaire net ET le rendement
-  estimé de tes placements (12 970 $/an chez toi) — un montant que tu n'encaisses jamais. Comparé à
+  estimé de tes placements (un montant annuel substantiel chez toi) — un montant que tu n'encaisses jamais. Comparé à
   tes vrais dépôts de paie, il fabriquait un écart de revenu fictif (ça m'a trompé moi-même le
-  2026-08-05 : j'ai signalé à tort un salaire surestimé de 12 800 $). Ajout de **`netSalaryIncome`
+  2026-08-05 : j'ai signalé à tort un salaire surestimé d'à peu près autant). Ajout de **`netSalaryIncome`
   / `netSalaryMonthly`** = ce qui tombe vraiment au compte (brut − impôt − cotisations), vérifiable
-  contre ton relevé : 39 654 $ prédits vs 39 848 $ de dépôts réels sur 12 mois, soit 0,5 % d'écart.
+  contre ton relevé : prédiction et dépôts réels sur 12 mois concordent à 0,5 % près.
   La note de l'outil met désormais explicitement en garde.
 - **`[FINTABLE-TOKEN-PERSIST]` — ton jeton Fintable est maintenant SAUVEGARDÉ (incident réel
   2026-08-05).** Le jeton collé dans Réglages n'était écrit qu'en mémoire : au premier
@@ -4284,7 +4295,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   étaient payés EN DOUBLE (mesuré : ~1 243 $/an réel sur le couple de référence, jusqu'à
   6 393 $/an à hauts revenus). **Effet visible : le patrimoine long-terme des scénarios
   SALARIÉS monte de +7 % à +14 % à 30 ans selon le profil et la stratégie (mesuré : +13,6 %
-  PRIO_CELI et +10,0 % AUTO_MARGINAL sur un couple à 183,6 k$ ; +7 à +8 % sur les fixtures
+  PRIO_CELI et +10,0 % AUTO_MARGINAL sur un couple à hauts revenus ; +7 à +8 % sur les fixtures
   de référence)** — l'ancien chiffre était
   pessimiste par un impôt fantôme, pas par prudence assumée. Le solde d'avril ne règle plus
   que l'écart dû aux déductions (REER…) : nul sans déductions, remboursement sinon. La branche
@@ -4703,7 +4714,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Nouveau tool `upsert_savings_goal`** : « crée un objectif Voyage Japon de 8 000 $ » — ajoute ou met à
   jour un objectif d'épargne par nom (cible, accumulé, échéance, icône). Même confirmation à 2 temps.
 
-- **Nouveau tool `delete_item`** : « j'ai tout vendu mes VFV.TO » / « supprime ma dette soldée » /
+- **Nouveau tool `delete_item`** : « j'ai tout vendu mes parts de tel ETF » / « supprime ma dette soldée » /
   « retire l'objectif X » — supprime un actif, une dette ou un objectif, avec correspondance EXACTE
   (jamais d'à-peu-près sur une suppression), aperçu des effets (courbe, patrimoine, décaissement) et
   confirmation stricte avant d'agir. Sauvegarde horodatée avant chaque suppression (annulable).
@@ -4893,7 +4904,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Deux mesures honnêtes selon la surface** : le portefeuille et les comptes affichent la
   variation de leur VALEUR (sensible aux apports) ; chaque titre affiche la performance de son
   PRIX (insensible à tes achats — un dépôt ne « performe » pas). Le benchmark Marché utilise
-  désormais le prix du CW8/MSCI, plus la valeur de ta position (un apport gonflait le « marché »).
+  désormais le prix de l'indice de référence (MSCI World), plus la valeur de ta position (un apport gonflait le « marché »).
 - **Pas de donnée dans la fenêtre → « — »** (un titre acheté il y a 2 mois n'affiche pas un faux
   « 1 an »). Le score de diversification du haut de page reste calé sur 24h (stable quel que soit
   le sélecteur).
@@ -4907,7 +4918,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   du SDK.
 
 ### Correctif
-- `GBS.PA` et `AASI.PA` (or Paris, Amundi MSCI Em Asia) ajoutés au catalogue de classification —
+- Deux tickers européens ajoutés au catalogue de classification —
   les deux seuls tickers du portefeuille mesurés non couverts par les répartitions après la #496.
 
 ## [unreleased — Investissements : répartitions géographique et sectorielle réparées] — 2026-07-23
@@ -4928,7 +4939,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   sont maintenant repliés en une ligne discrète chacun (le détail honnête reste à un clic), et la
   ligne « N points · période » est retirée.
 - **Les petites courbes sont enfin lisibles** : quand plusieurs séries d'échelles très différentes
-  sont affichées (ton TOTAL à ~240 k$ à côté d'un titre à 30 $), le graphe passe automatiquement en
+  sont affichées (ton TOTAL de plusieurs centaines de milliers de dollars à côté d'un titre de quelques dizaines de dollars), le graphe passe automatiquement en
   vue Base 100 (%) — la même convention que Google Finance pour comparer ; ton choix manuel
   Prix ($) / Base 100 garde toujours le dernier mot.
 - **Correctif** : en Base 100, un titre acheté après le début de la fenêtre restait figé à 0 %
@@ -4942,7 +4953,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Cours multi-fournisseurs : « tout ce que j'ai et plus »] — 2026-07-23
 
-### Correctif (retour Marc post-couverture TOTAL : ~200 k$ affichés et titres toujours sans courbe)
+### Correctif (retour Marc post-couverture TOTAL : total encore sous-évalué et titres toujours sans courbe)
 - **Les cotations ont maintenant une chaîne de repli complète** : crypto → CoinGecko ; actions/ETF →
   Finnhub (si clé) → **Yahoo via le proxy de l'app** (le tier gratuit Finnhub ne quote pas les bourses
   européennes — c'est pour ça que les ETF Euronext gardaient un vieux prix saisi à la main, et donc un
@@ -4951,9 +4962,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   échec, cache purgé) + cotations + diagnostic — plus besoin d'attendre le lendemain pour voir l'effet
   d'une correction.
 - **Diagnostic par titre sous le graphe (Investissements)** : chaque titre sans courbe affiche la
-  raison exacte (« introuvable — essayé : CW8, CW8.PA… », « cours trouvé incompatible avec ton prix
+  raison exacte (« introuvable — essayé : XXX, XXX.PA… », « cours trouvé incompatible avec ton prix
   saisi »), un champ « symbole de cotation » pour fixer le ticker à la main, et un bouton « Chercher
-  le titre » qui propose les bons tickers par NOM (ex. « Amundi EM Asia » → AASI.PA) en un clic.
+  le titre » qui propose les bons tickers par NOM (ex. le nom d'un ETF → son ticker Euronext) en un clic.
 - Un ticker résolu (automatiquement ou à la main) sert aussi aux cotations, et corriger un ticker
   purge l'historique du titre (jamais deux titres mélangés dans une courbe).
 - Correctifs du panel de revue (3 agents, sondes) : un échec de resynchronisation est maintenant dit
@@ -4965,17 +4976,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Investissements : la courbe TOTAL couvre TOUT le portefeuille] — 2026-07-23
 
-### Correctif (bug signalé Marc : « normalement j'ai 230K mais dans la courbe je vois 180k »)
+### Correctif (bug signalé Marc : « la courbe affiche bien moins que ce que j'ai vraiment »)
 - **Le TOTAL de la courbe de portefeuille n'omet plus aucun titre détenu** : un titre sans historique
-  de cours (ex. ETF européens Amundi/CW8/GBS sans candles chez les providers gratuits) est désormais
+  de cours (ex. ETF européens sans candles chez les providers gratuits) est désormais
   COMPTÉ dans le total à sa valeur actuelle (contribution plate) au lieu d'être silencieusement exclu
-  (~50 k$ manquants). Aucune courbe individuelle n'est inventée pour autant — le bandeau sous le
+  (une part notable du total manquante). Aucune courbe individuelle n'est inventée pour autant — le bandeau sous le
   graphe liste ces titres et le montant compté.
 - **Plus de « marche » fantôme** : quand l'historique d'un titre commence après son achat (provider
   borné, ex. crypto ~365 j), les dates antérieures comptent à son premier cours connu (approximation
   signalée) au lieu de faire sauter le total sans transaction.
 - **Raccord au cours du jour** : un titre dont l'historique s'arrête mais dont le prix live est frais
-  (quote < 7 j) est raccordé à son prix actuel sur les derniers jours (cas GBS.PA : cotation OK,
+  (quote < 7 j) est raccordé à son prix actuel sur les derniers jours (cas d'un ETF européen : cotation OK,
   historique cassé).
 - **Tickers européens sans suffixe résolus automatiquement** : un ticker nu qui ne répond pas est
   réessayé avec les suffixes de sa devise (EUR → .PA/.DE/.AS/.MI, CAD → .TO/.V), accepté seulement si
@@ -5023,7 +5034,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   terme, Sensibilité, projection Fin de mois, ventilation des revenus (Salaire/Divers), statut
   Excédentaire/Déficitaire, dépassements détectés — chacune avec sa PROVENANCE (d'où vient le
   chiffre, quel calcul derrière : ex. « Impact à long terme = patrimoine successoral de la
-  projection Futur, rentes RRQ/PSV incluses »). « Explique-moi ce 6 104 080 $ » reçoit maintenant
+  projection Futur, rentes RRQ/PSV incluses »). « Explique-moi ce chiffre » reçoit maintenant
   une vraie réponse au lieu d'un « je ne vois pas ce chiffre ».
 - Prochaines vagues : mêmes cartes+provenance sur les autres onglets (V2 au BACKLOG).
 
@@ -5174,10 +5185,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   valeur entière, mesuré 10 k$).
 - **Piles du Dashboard (CELI/REER/Non-enr./Crypto)** : lues depuis les totaux par compte ÉMIS par le
   builder (mêmes règles partout — CELIAPP compte en CELI, REEE en REER) — avant, une recomposition
-  locale classait tout actif acheté après la 1re date en « Non-enregistré » (45 k$ de BTC mal empilés
+  locale classait tout actif acheté après la 1re date en « Non-enregistré » (plusieurs dizaines de milliers de dollars de BTC mal empilés
   mesurés) et divergeait d'Investissements pour CELIAPP/REEE.
-- **« Voir courbe » / matching des titres** : correspondance EXACTE partout — avant, « V » (Visa)
-  matchait « VFV.TO » par sous-chaîne (mauvaise courbe affichée, mauvais actif modifié/supprimé
+- **« Voir courbe » / matching des titres** : correspondance EXACTE partout — avant, un ticker d'une lettre
+  matchait un ticker plus long par sous-chaîne (mauvaise courbe affichée, mauvais actif modifié/supprimé
   dans Investissements), et le modal lisait les clés de la 1re ligne (éparse) → « Aucune donnée »
   à tort pour un titre acheté après le 1er achat global.
 - **Garde de devise crypto** : « BTC » nu (CoinGecko répond en USD) sur un actif déclaré CAD n'est
@@ -5191,7 +5202,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   balayage des entrées expirées ajouté (croissance bornée).
 - **Signalement honnête des courbes incomplètes** : note sous le graphe listant les titres sans
   historique (exclus) et ceux à historique borné par le provider (« depuis AAAA-MM-JJ » — la marche
-  du TOTAL ce jour-là est expliquée, mesurée +90 k$ sans transaction avant fix).
+  du TOTAL ce jour-là est expliquée, mesurée à plusieurs dizaines de milliers de dollars sans transaction avant fix).
 - **Prix périmé jamais forward-fillé** : un titre dont l'historique s'arrête (délisting, sync en
   échec) sort de la courbe après 7 jours au lieu d'afficher un vieux close comme valeur du jour.
 - **Chips du graphe Investissements** : chaque total par compte a son libellé (« CELI (total) »…) —
@@ -5450,7 +5461,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **`[STORE-REHYDRATE-SILENT]` (CRITIQUE)** — la réhydratation Zustand a maintenant un filet : `onRehydrateStorage`
   journalise en `critical` tout blob illisible / migration en erreur (avec le PALIER fautif, ex. « v5→v6 ») et
   l'app affiche un toast honnête « tes données n'ont PAS pu être chargées — NE RIEN SAISIR, restaure un backup »
-  au lieu de démarrer VIERGE en silence (même classe que l'incident 230 k$, côté local). Le blob localStorage
+  au lieu de démarrer VIERGE en silence (même classe que l'incident de perte des placements, côté local). Le blob localStorage
   reste INTACT (aucune écrasure). 4 tests discriminants.
 - **`[DASH-NW-DUP]` (HIGH)** — le KPI « Valeur Nette Globale » du Dashboard ne contourne plus la source unique :
   le repli sans CSV route sur `computePresentNetWorth` (les dettes étaient JAMAIS soustraites — pattern
@@ -5617,7 +5628,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Refactor (comportement inchangé)
 - **`syncOrchestrator.ts` scindé en 9 modules à responsabilité unique + barrel de compat** (`[ARCH-SYNC-SPLIT]`) — le
-  fichier de 892 lignes (siège des 2 incidents de sync de juillet, dont la perte de 230k$) est éclaté par responsabilité :
+  fichier de 892 lignes (siège des 2 incidents de sync de juillet, dont la perte de tous les placements saisis) est éclaté par responsabilité :
   `syncStatusStore` (propriétaire UNIQUE de l'état de statut, racine du graphe de dépendances), `syncTypes`, `syncSnapshot`
   (snapshot local + helpers purs), `syncErrors`, `syncMeta`, `syncPush`, `syncPull`, `syncLifecycle` (décision anti-clobber),
   `syncPolling`, `syncPassphrase`. Déplacements **verbatim** : l'API publique historique est préservée par le barrel
@@ -5659,7 +5670,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   placement estimé* → cotisations surévaluées quand le salaire est sous les maximums (RRQ ~74,6 k, AE ~68,9 k,
   RQAP ~103 k). `calculateFiscalReport` sépare désormais l'assiette d'EMPLOI (cotisations) de l'assiette IMPOSABLE
   (paliers d'impôt). **Mesuré : ~1 016 $/an de cotisations surévaluées corrigées** sur un profil salaire 50 k +
-  230 k non-enregistré. Rétrocompat bit-identique pour le moteur de projection (aucun changement de conservation).
+  un gros portefeuille non enregistré. Rétrocompat bit-identique pour le moteur de projection (aucun changement de conservation).
 - **App ↔ MCP alignés** — `get_tax_situation` (MCP) et l'onglet Impôt utilisent maintenant le MÊME helper d'estimation
   du revenu de placement (`services/taxEstimate.ts`) → mêmes chiffres. Le MCP inclut désormais le placement imposable
   dans l'assiette (`taxableInvestmentIncome` exposé), et `averageRatePct` porte sur l'assiette imposable réelle.
@@ -5682,7 +5693,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ### Corrigé
 - **`[DETTE-PDF-FX-BYPASS]`** — le PDF (`buildHoldingsRows`) ET `useDerivedFinancials` (2ᵉ instance latente révélée par
-  le garde resserré) calculaient `quantité × prix × fx` à la main (repli 1:1 muet, classe de l'incident FX des 230 k$) →
+  le garde resserré) calculaient `quantité × prix × fx` à la main (repli 1:1 muet, classe de l'incident FX de l'affichage du patrimoine) →
   routés par la source unique `assetValueCad` ; garde `assetFxGuard` resserré (interdit désormais le `fx`/`factor` nu).
 - **`[MCP-FRESHNESS-PRECISION]`** — la note de fraîcheur MCP affiche heures + minutes sous 48 h (« 4 h 40 » au lieu de
   « 5 h »), et corrige un double-arrondi.
@@ -5752,7 +5763,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 - **`services/import/categoryRules.ts`** : catégorisation DÉTERMINISTE par règles sur le payee
   (corpus réel : ~88 % de couverture mesurée sur 1 995 transactions extraites de 37 relevés
-  Desjardins). Jeu canonique de 16 catégories (`RULE_CATEGORIES`). Gratuit, instantané,
+  bancaires réels). Jeu canonique de 16 catégories (`RULE_CATEGORIES`). Gratuit, instantané,
   reproductible — l'IA (clé Anthropic) ne sert qu'EN SECOURS sur le reste.
 - **Branchée partout** : import CSV (`parseBankCsv`, si pas de colonne catégorie), bouton
   « Auto-catégoriser » (passe règles AVANT l'IA — ce que les règles classent ne coûte aucun appel
@@ -5833,7 +5844,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — Cours actualisés en continu (`[PRICE-REFRESH-LIVE]`)] — 2026-07-14
 
 > Suite directe d'ASSET-FX-DISPLAY : même convertis, les prix restaient FIGÉS à leur valeur d'ajout
-> (dérive mesurée ~20 k$ vs courtier). Les cours se rafraîchissent désormais.
+> (dérive mesurée de plusieurs milliers de dollars vs courtier). Les cours se rafraîchissent désormais.
 
 - **`services/priceRefresh.ts`** : `refreshAssetPrices` — quotes live via la source unique `getQuote`
   (Finnhub/CoinGecko, cache 5 min), SÉQUENTIEL espacé 2 500 ms (≈24/min, sous la limite du provider le
@@ -5847,7 +5858,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   jour : … », toast récapitulatif (X mis à jour · Y non couverts par le fournisseur, symboles nommés).
 - **`Asset.priceUpdatedAt`** : champ additif optionnel (aucun bump de migration).
 - **Panel adversarial (3 agents) — findings intégrés** :
-  - **[ÉLEVÉ, racine] `inferCurrency` Finnhub ignorait les SUFFIXES** (`CW8.PA` → étiqueté USD) → la
+  - **[ÉLEVÉ, racine] `inferCurrency` Finnhub ignorait les SUFFIXES** (un ticker en `.PA` → étiqueté USD) → la
     garde de devise aurait skippé à tort TOUTE la poche EUR en « currency-mismatch » (jamais
     rafraîchie). Fix : mapping des suffixes (.PA/.TG/.DE… → EUR, .TO/.V → CAD, .L → GBP), discriminant
     git-stash prouvé.
@@ -5867,10 +5878,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Patrimoine affiché en VRAIS dollars CAD (`[ASSET-FX-DISPLAY]`, money-critical)] — 2026-07-14
 
-> Incident élucidé : « je devrais pas avoir 230k » — en fait SI. Les prix des actifs sont stockés en
+> Incident élucidé : « je devrais pas avoir autant » — en fait SI. Les prix des actifs sont stockés en
 > devise NATIVE (USD/EUR/CAD) et 6 surfaces UI les sommaient SANS conversion → l'app affichait
-> 160 352 « $ » (69 k USD + 84 k EUR + 7 k CAD additionnés bruts) au lieu de ~230 k$ CAD réels.
-> Le connecteur MCP (fx-correct) donnait le bon chiffre — pris à tort pour un bug. Courtier : ~250 k$
+> un total en « $ » (USD, EUR et CAD additionnés bruts, sensiblement trop bas) au lieu du vrai total en CAD.
+> Le connecteur MCP (fx-correct) donnait le bon chiffre — pris à tort pour un bug. Courtier : un peu plus encore
 > (l'écart restant = cours périmés → `[PRICE-REFRESH-LIVE]` au BACKLOG).
 
 - **`assetValueCad`** (`services/portfolio.ts`) : source UNIQUE de la valeur CAD d'un actif (prix natif ×
@@ -5922,7 +5933,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Fraîcheur des données (`[MCP-STALE-FRESHNESS]`)
 - `mcp/state/freshness.ts` + note automatique sur CHAQUE réponse data-aware : date/âge du blob Drive ;
   au-delà de 6 h → avertissement « possiblement périmées — ouvre l'app pour pousser » (incident
-  2026-07-14 : le MCP servait 5 732 $ pendant que l'app locale portait 160 k$+ jamais poussés).
+  2026-07-14 : le MCP servait une copie presque vide pendant que l'app locale portait des placements jamais poussés).
 
 ### `get_projection` + `simulate_what_if` — étiquette fiscale honnête (`[PROJ-TAXPAID-LABEL]`, surface MCP)
 - `totalTaxesPaid` → `netTaxSettlements` (+ `netTaxSettlementsDelta` dans le what-if) + note : ce compteur
@@ -5946,8 +5957,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — Intégrité des données Drive : anti-perte STRICT + gate hard-block] — 2026-07-14
 
 ### Sync Google Drive — plus JAMAIS d'écrasement automatique du local réel (`[SYNC-ANTI-CLOBBER]`)
-> Contexte : Marc a perdu 230k$ de placements — appareil silencieusement déconnecté (jeton expiré → aucun push),
-> puis reconnexion → `pull` qui a écrasé le local avec une vieille copie Drive (SPCX seul). Récupéré via auto-backup.
+> Contexte : Marc a perdu tous ses placements saisis — appareil silencieusement déconnecté (jeton expiré → aucun push),
+> puis reconnexion → `pull` qui a écrasé le local avec une vieille copie Drive (une seule position). Récupéré via auto-backup.
 - **`decideOnLoad` sans exception `restoreIntent`** (`services/sync/syncEngine.ts`) : une seule garde anti-perte —
   local vide → pull (restaure) ; local RÉEL + Drive divergent → `conflict` (choix utilisateur), jamais d'écrasement
   silencieux. Retrait du champ `restoreIntent` de `DecideOnLoadInput` et des 3 appelants (connect/gate/boot).
@@ -6546,8 +6557,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — Money-critical : patrimoine net = dettes soustraites + découvert VISIBLE] — 2026-06-16
 
-> Bug rapporté par Marc : « patrimoine net -193 398 $ avec une variation mensuelle de -208 633 $ »
-> alors que revenu ~10,6 k$/mois et dépenses 6,8 k$. Audit total du moteur financier (workflow
+> Bug rapporté par Marc : un patrimoine net fortement NÉGATIF, avec une variation mensuelle négative du même ordre
+> alors que ses revenus dépassaient nettement ses dépenses. Audit total du moteur financier (workflow
 > multi-agents + panel adversarial). Cause + corrections ci-dessous.
 
 ### Corrigé (patrimoine net)
@@ -6610,7 +6621,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   une personne) et « money/funds transfer » ne sont **plus** marqués « transfert » — seuls
   les vrais transferts internes (« virement/transfert », AccèsD entre comptes propres) le
   sont. Évitait de sortir à tort revenus/dépenses du cashflow (sur l'échantillon réel,
-  **83/97 « transferts » étaient des faux**, dont un revenu de +64 168 $). Logique partagée
+  **83/97 « transferts » étaient des faux**, dont un revenu important). Logique partagée
   `parseBankCsv` ↔ `categorizeBatch` via `isInternalTransferLabel`.
 - **Auto-classification à l'import** : les nouvelles transactions (PDF ET CSV) sont
   catégorisées automatiquement par l'IA (`categorizeBatch`, Haiku) après import, en

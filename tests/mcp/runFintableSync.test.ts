@@ -256,8 +256,8 @@ describe('runFintableSync — persistance des soldes courtier (FINTABLE-6)', () 
                 if (path.startsWith('/accounts')) {
                     return {
                         data: [{
-                            id: 'acc_disnat', connection_id: 'conn_1', name: 'Disnat L7B1',
-                            type: 'brokerage', currency: 'CAD', balance: '136863.18',
+                            id: 'acc_disnat', connection_id: 'conn_1', name: 'Disnat 0001',
+                            type: 'brokerage', currency: 'CAD', balance: '118452.37',
                             cash_balance: null, debt: null,
                         }],
                     };
@@ -279,7 +279,7 @@ describe('runFintableSync — persistance des soldes courtier (FINTABLE-6)', () 
         expect(balances).toHaveLength(1);
         expect(balances?.[0]).toMatchObject({
             accountId: 'acc_disnat',        // clé STABLE (pas le libellé, renommable côté banque)
-            balanceCad: 136863.18,
+            balanceCad: 118452.37,
             taxRegime: 'NON-ENREG',
         });
         // Horodatage réel → l'UI peut dire honnêtement « vu il y a N jours » plutôt que faire semblant.
@@ -339,7 +339,7 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
     //
     // Retirer l'assertion aurait rendu ce test VACUEUX : sans payload rejeté, il ne teste plus
     // l'isolation qu'il porte dans son titre (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
-    // Il lui faut donc une cause de rejet RÉELLE : une carte à découvert (`-379.99`, donc une vraie
+    // Il lui faut donc une cause de rejet RÉELLE : une carte à découvert (`-250.00`, donc une vraie
     // dette sous la convention mesurée) vers une dette qui n'existe pas encore dans l'état —
     // `applyDebt` exige alors taux ET paiement minimum pour CRÉER, que le mapper ne fournit jamais.
     it('un payload dette REJETÉ devient un AVERTISSEMENT — transaction + cash restent appliqués', async () => {
@@ -347,7 +347,7 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
         const { store, saved } = makeStore(state);
 
         const report = await runFintableSync(store, {
-            token: 't', roles: ROLES, client: clientAvecCarte('-379.99'),
+            token: 't', roles: ROLES, client: clientAvecCarte('-250.00'),
         });
 
         expect(report.error).toBeNull();

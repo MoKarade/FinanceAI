@@ -9,7 +9,7 @@
 //   · `services/portfolio.ts`             (`computeCurrentLiquidity` → Dashboard, snapshot IA)
 //   · `services/projection/buildSimulationParams.ts` (`computeStartingCash` → loader MCP)
 //
-// Pourquoi c'était grave : le patron `HARDEN-*-NAN` — créé après l'incident réel « −193 k$ » du
+// Pourquoi c'était grave : le patron `HARDEN-*-NAN` — créé après l'incident réel « patrimoine fantôme » du
 // 2026-06-16 — est appliqué à `assetValueCad` (65 lignes plus haut dans `portfolio.ts` !) et à
 // `computeRawNetWorth`, mais PAS ici. Or c'est le POINT D'ENTRÉE : si le cash de départ est faux,
 // tout ce que la projection en dérive l'est aussi, en silence.

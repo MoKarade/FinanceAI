@@ -26,7 +26,7 @@ import { buildDefaultAppState } from '../../../mcp/state/appStateDefaults';
 import type { FintableClient } from '../../../services/fintable/client';
 
 const ACC_MC = 'acc_mc';
-const LIBELLE_MC = 'Desjardins Cash Back Mastercard';
+const LIBELLE_MC = 'Mastercard Remises';
 
 /** Cinq achats de carte, tous APRÈS la bascule dérivée de l'état (2026-09-01). */
 const TRANSACTIONS = Array.from({ length: 5 }, (_, i) => ({
@@ -53,7 +53,7 @@ function clientFake(): FintableClient {
                 return {
                     data: [{
                         id: ACC_MC, connection_id: 'conn_1', name: LIBELLE_MC, type: 'credit',
-                        currency: 'CAD', balance: '842.11', cash_balance: null, debt: null,
+                        currency: 'CAD', balance: '615.43', cash_balance: null, debt: null,
                     }],
                 };
             }

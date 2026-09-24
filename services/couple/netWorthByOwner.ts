@@ -77,7 +77,7 @@ export function netWorthByOwner(holdings: readonly OwnableHolding[], isCouple = 
 /**
  * Convertit des Asset (placements) en avoirs valorisés EN CAD (prix natif × quantité × FX).
  * [ASSET-FX-DISPLAY] `fxRates` OBLIGATOIRE : les prix sont stockés en devise NATIVE — l'ancienne
- * version sommait USD+EUR+CAD bruts (patrimoine SOUS-affiché de ~70 k$, incident Marc 2026-07-14).
+ * version sommait USD+EUR+CAD bruts (patrimoine SOUS-affiché de plusieurs dizaines de milliers de dollars, incident 2026-07-14).
  */
 export function assetsToHoldings(
     assets: readonly Asset[],

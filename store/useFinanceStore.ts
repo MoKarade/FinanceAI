@@ -9,7 +9,7 @@ import { initialState } from './etatParDefaut';
 import { migratePersistedState } from './migrationsPersistees';
 import { creerActionsModeTest } from './actionsModeTest';
 import { fusionnerEtatPersiste, surRehydratation, extrairePersistable } from './optionsPersistance';
-import type { FxSource, FxCause } from '../services/fx/provenance';
+import { champsFxApres, type EcritureFx } from '../services/fx/ecritureFx';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -89,17 +89,8 @@ export interface FinanceState extends AppState {
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
     clearPendingFocus: () => void;
-    updateFxRates: (rates: {
-        USD: number; EUR: number; CAD: number; lastFetched?: number; estimated?: boolean;
-        /** [FX-TAUX-JAMAIS-ARRIVES] provenance du taux (`services/fx/provenance.ts`). */
-        source?: FxSource;
-        /** résultat de la tentative qui a produit ce taux. */
-        cause?: FxCause;
-        /** epoch ms de cette tentative, réussie ou non. */
-        attemptAt?: number;
-        /** [FX-OBSERVATION-COHORTE] date de l'observation BdC retenue (`YYYY-MM-DD`). */
-        observationDate?: string;
-    }) => void;
+    /** Champs et règles : `services/fx/ecritureFx.ts` (`EcritureFx`, `champsFxApres`). */
+    updateFxRates: (rates: EcritureFx) => void;
     updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
@@ -178,42 +169,9 @@ export const useFinanceStore = create<FinanceState>()(
                 });
             },
             clearPendingFocus: () => set({ pendingFocus: null }),
-            updateFxRates: ({ estimated, source, cause, attemptAt, observationDate, ...rates }) => set((prev) => ({
-                // [FX-FALLBACK-SILENCIEUX] `estimated` vit SIBLING de fxRates (jamais dans l'objet
-                // lui-même — il resterait un Record<string, number> pour ses ~13 consommateurs).
-                // [FX-TAUX-JAMAIS-ARRIVES] `source`/`cause`/`attemptAt` sont SIBLING pour la même
-                // raison, et TOUS optionnels : un appelant qui n'en passe aucun (état ancien, test
-                // écrit avant ce lot) laisse l'existant intact plutôt que de l'effacer.
-                fxRates: { ...prev.fxRates, ...rates },
-                fxRatesEstimated: estimated ?? prev.fxRatesEstimated,
-                // ⚠️ Quand un appelant ne donne QUE `estimated` (l'ancienne signature), on DÉRIVE la
-                // provenance au lieu de garder l'ancienne : sinon l'état porterait deux réponses
-                // contradictoires à la même question, et `fxSourceEffective` — qui préfère le champ
-                // explicite — suivrait la périmée. Un seul écrivain, donc aucune contradiction
-                // exprimable (`UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`,
-                // pris par l'autre bout : séparer deux faits impose de les tenir cohérents).
-                fxRatesSource: source
-                    ?? (estimated === undefined ? prev.fxRatesSource : (estimated ? 'repli' : 'api')),
-                fxLastAttemptCause: cause ?? prev.fxLastAttemptCause,
-                fxLastAttemptAt: attemptAt ?? prev.fxLastAttemptAt,
-                // ⚠️ [FX-OBSERVATION-COHORTE] La date est DÉRIVÉE de la provenance, jamais recopiée
-                // telle quelle : elle ne décrit les DEUX taux que si les deux ont été lus chez la
-                // Banque du Canada. Un taux saisi à la main ou un repli en dur n'a aucune
-                // observation derrière lui — garder l'ancienne date daterait le littéral du dépôt.
-                // Aucun appelant ne peut donc se tromper : c'est le mutateur qui tient les deux
-                // champs cohérents (même geste que pour `fxRatesSource` ci-dessus).
-                // ⚠️ Et quand l'appelant ne parle PAS de provenance (ancienne signature), la date
-                // ne survit que si les TAUX n'ont pas bougé. Mon commentaire affirmait « aucun
-                // appelant ne peut donc se tromper » — mesuré par la revue, c'était FAUX de ce
-                // chemin-là : `{ USD: 1.55, EUR: 1.80 }` sans `source` laissait la date de la
-                // veille DATER des taux neufs. Aucun appelant de production ne l'emprunte
-                // aujourd'hui, ce qui est précisément ce qui dispense de vérifier.
-                fxObservationDate: source === undefined
-                    ? ((rates.USD !== prev.fxRates.USD || rates.EUR !== prev.fxRates.EUR)
-                        ? undefined
-                        : prev.fxObservationDate)
-                    : (source === 'api' ? observationDate : undefined),
-            })),
+            // [FX-SERVEUR-JAMAIS-RAFRAICHI] Le corps vit dans `services/fx/ecritureFx.ts`, source unique
+            // partagée avec le rafraîchissement SERVEUR (qui ne peut pas importer le store).
+            updateFxRates: (ecriture) => set((prev) => champsFxApres(prev, ecriture)),
             updateApiKeys: (keys) => set((prev) => ({
                 apiKeys: { ...prev.apiKeys, ...keys }
             })),

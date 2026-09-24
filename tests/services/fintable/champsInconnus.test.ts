@@ -4,7 +4,7 @@
 // partir d'un contrat (`FtRawTransaction`) écrit d'après la DOC, jamais d'après un payload observé.
 // Tout ce que l'API envoie en plus disparaît sans trace — et c'est par là qu'est passé
 // `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` : le montant arrive dans la devise d'ORIGINE (mesuré :
-// 3 875,43 $ importés contre 1 338,12 $ facturés sur 44 transactions), `currency` porte la devise
+// des montants importés près de trois fois supérieurs aux montants facturés), `currency` porte la devise
 // du COMPTE, et personne ne pouvait dire si de quoi corriger existait ailleurs dans le même objet.
 //
 // Les gardes vont par PAIRES : ce qu'on trouve, et ce qu'on ne doit PAS trouver (un détecteur qui
@@ -169,7 +169,7 @@ describe('le rapport de synchronisation le DIT', () => {
         const r = mapFintableSnapshot(snap(['iso_currency_code']), CONFIG);
         const w = r.report.warnings.find((x: string) => x.includes('iso_currency_code'));
         expect(w).toBeDefined();
-        // Le message porte la QUESTION qui a coûté 2 537,31 $, pas seulement le constat.
+        // Le message porte la QUESTION qui a coûté des milliers de dollars, pas seulement le constat.
         expect(w).toMatch(/devise/i);
     });
 

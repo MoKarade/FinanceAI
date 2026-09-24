@@ -26,6 +26,17 @@ import {
     type PriceSkipReason,
 } from '../services/priceRefresh';
 import { getQuote, canAttemptQuote } from '../services/marketData';
+import { fetchFxRates } from '../services/finance';
+import { champsFxApres, ecritureFxSelonLecture, type LectureFxComplete } from '../services/fx/ecritureFx';
+import { decisionEcritureFx, type FxCause } from '../services/fx/provenance';
+
+/** [FX-SERVEUR-JAMAIS-RAFRAICHI] Ce que la passe a fait des taux de change.
+ *  `taux` = taux, provenance et date écrits ; `diagnostic` = seule la trace de la tentative (une
+ *  lecture sans autorité n'écrase pas un taux saisi à la main) ; `aucune` = rien de neuf ;
+ *  `echec` = la lecture a levé (les PRIX sont quand même rafraîchis). */
+type FxOutcome =
+    | { ecriture: 'taux' | 'diagnostic' | 'aucune'; cause: FxCause }
+    | { ecriture: 'echec'; erreur: string };
 
 interface PriceRefreshOutcome {
     /** Symboles dont le prix a réellement changé (et donc l'état réécrit). */
@@ -34,12 +45,17 @@ interface PriceRefreshOutcome {
     unchanged: string[];
     /** Symboles non rafraîchis + raison honnête. */
     skipped: Array<{ symbol: string; reason: PriceSkipReason }>;
-    /** Un nouvel état a-t-il été écrit dans Drive ? (false si aucun prix n'a changé). */
+    /** Un nouvel état a-t-il été écrit dans Drive ? (false si ni un prix ni les taux n'ont changé). */
     saved: boolean;
+    /** [FX-SERVEUR-JAMAIS-RAFRAICHI] Taux de la Banque du Canada. */
+    fx: FxOutcome;
 }
 
 /** Dépendances injectables (tests) ; défaut = source unique marketData (Finnhub/CoinGecko). */
-type PriceRefreshServerDeps = Partial<Pick<PriceRefreshDeps, 'getQuote' | 'hasProvider' | 'sleep' | 'delayMs' | 'now'>>;
+type PriceRefreshServerDeps = Partial<Pick<PriceRefreshDeps, 'getQuote' | 'hasProvider' | 'sleep' | 'delayMs' | 'now'>> & {
+    /** Lecture des taux ; défaut = la Banque du Canada, caches court-circuités (geste planifié). */
+    lireTauxFx?: () => Promise<LectureFxComplete>;
+};
 
 /**
  * Rafraîchit les prix de l'état du store et réécrit Drive si (et seulement si) un cours a changé.
@@ -73,16 +89,38 @@ export async function runPriceRefresh(
 
     const skipped = result.skipped.map((s) => ({ symbol: s.symbol, reason: s.reason }));
 
-    // Aucun cours n'a changé → AUCUNE écriture (pas de push parasite, pas de conflit inutile).
-    if (result.patches.size === 0) {
-        return { refreshed: [...result.refreshed], unchanged: [...result.unchanged], skipped, saved: false };
+    // [FX-SERVEUR-JAMAIS-RAFRAICHI] Les taux de la Banque du Canada n'étaient lus QUE par le
+    // navigateur, au démarrage : le hub et le MCP valorisaient les titres étrangers au taux de la
+    // dernière ouverture de l'app. Même décision et même écriture que le navigateur (source unique
+    // `services/fx/ecritureFx.ts`) — dont la règle qui compte : une Banque du Canada injoignable
+    // depuis le serveur n'écrase JAMAIS un taux saisi à la main ni un taux de marché déjà lu.
+    // ⚠️ Un échec de lecture ne bloque pas les PRIX : il est RAPPORTÉ (`fx.ecriture: 'echec'`), jamais
+    // avalé. `fetchFxRates` encode déjà réseau/HTTP/réponse illisible dans `cause` ; ce `catch` ne
+    // couvre que l'imprévu.
+    let fx: FxOutcome;
+    let champsFx: ReturnType<typeof champsFxApres> | null = null;
+    try {
+        const lecture = await (deps?.lireTauxFx ?? (() => fetchFxRates({ force: true })))();
+        const ecriture = ecritureFxSelonLecture(state, lecture);
+        if (ecriture) champsFx = champsFxApres(state, ecriture);
+        // Le RAPPORT relit la même décision pure (`ecritureFxSelonLecture` la prend aussi) : aucune
+        // déduction à partir de l'écriture, qui ne dit pas laquelle des deux branches l'a produite.
+        const quoi = decisionEcritureFx(state, lecture);
+        fx = { ecriture: quoi === 'tout' ? 'taux' : quoi === 'diagnostic' ? 'diagnostic' : 'aucune', cause: lecture.cause };
+    } catch (e) {
+        fx = { ecriture: 'echec', erreur: e instanceof Error ? e.message : String(e) };
     }
 
-    const nextAssets = applyPricePatches(state.assets, result.patches);
-    const nextState: typeof state = { ...state, assets: nextAssets };
+    // Ni cours ni taux changés → AUCUNE écriture (pas de push parasite, pas de conflit inutile).
+    if (result.patches.size === 0 && champsFx === null) {
+        return { refreshed: [...result.refreshed], unchanged: [...result.unchanged], skipped, saved: false, fx };
+    }
+
+    const nextAssets = result.patches.size === 0 ? state.assets : applyPricePatches(state.assets, result.patches);
+    const nextState: typeof state = { ...state, assets: nextAssets, ...(champsFx ?? {}) };
 
     // OCC : n'écrit que si le blob Drive n'a pas bougé depuis la lecture ci-dessus.
     await store.save(nextState, version);
 
-    return { refreshed: [...result.refreshed], unchanged: [...result.unchanged], skipped, saved: true };
+    return { refreshed: [...result.refreshed], unchanged: [...result.unchanged], skipped, saved: true, fx };
 }

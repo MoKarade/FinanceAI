@@ -1,6 +1,6 @@
 // services/sync/syncPull.ts
 // [ARCH-SYNC-SPLIT] MODULE money-critical : lit Drive et ÉCRIT le local (réhydratation EN PLACE).
-// C'est le point exact de la perte 230k$ (2026-07-14) → `applyPulledPayload` fait un backup d'assurance
+// C'est le point exact de la perte de placements (2026-07-14) → `applyPulledPayload` fait un backup d'assurance
 // AVANT d'écraser, et porte la CEINTURE persona côté PULL (sanitizePersistEnvelope avant d'écrire le
 // local — double-ceinture avec syncSnapshot côté PUSH, à NE PAS fusionner). Aucune mutex de pull (préservé
 // verbatim). Importé par : syncLifecycle (pullNow via runDecision/resolveConflict), syncPassphrase (pullNow).

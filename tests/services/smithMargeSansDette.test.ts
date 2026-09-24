@@ -3,16 +3,16 @@
 // [SMITH-MARGE-SANS-DETTE] Une marge qu'on n'a jamais tirée ne peut pas être appelée — et un appel
 // ne rembourse jamais plus que ce que la marge PORTE.
 //
-// SIGNALÉ PAR MARC le 2026-09-18 : « la dette ne s'arrête pas, ça me met 112k à 44 ans ». Sa seule
-// dette est un bail auto de 46 934 $ à taux 0, éteint en ~46 mois.
+// SIGNALÉ PAR MARC le 2026-09-18 : « la dette ne s'arrête pas ». Sa seule
+// dette est un bail auto à taux 0, éteint en quelques années.
 //
 // MESURÉ sur sa projection réelle (MCP, 20 ans) AVANT correctif — `dettesNonImmo` par âge :
-//   26 → 34 731 · 27 → 22 528 · **28 → −88 234** · 29 à 33 → **−98 560** (plateau) · 34 → −99 043
-//   · 39 → −3 072 · 40 → +21 639 · **44 → +128 234** · 46 → +159 370
+//   positive au départ, puis **fortement NÉGATIVE** pendant des années (plateau),
+//   puis remontant à plus de 100 k$ quelques années plus tard
 // Une DETTE NÉGATIVE pendant douze ans, donc un patrimoine net FAUX À LA HAUSSE du même montant
 // (`DettesNonImmo` est soustrait : `NetWorth = Σ actifs − DettesNonImmo`).
 // Et la vente forcée qui la creuse est visible dans la même série, l'année de l'achat :
-// non-enregistré **194 681 → 91 922 $**, CELI **48 656 → 1 991 $**.
+// non-enregistré divisé par deux, CELI presque vidé.
 //
 // CAUSE, lue dans `realEstateMonth.ts` : le bloc « LTV margin call » vivait HORS du
 // `if (useSmithManoeuvre)` qui le précède. Sa condition — `smithManoeuvreDebt + mortgage >

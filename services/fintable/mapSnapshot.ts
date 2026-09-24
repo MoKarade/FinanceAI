@@ -541,7 +541,7 @@ export function mapFintableSnapshot(
     // une version près. S'il parle à chaque passe, ce n'est pas le seuil qu'il faut monter — ce sont
     // les champs cités qu'il faut trancher : consommés (→ `decodeTransaction`) ou écartés SCIEMMENT
     // (→ `CLES_TRANSACTION_DECLAREES`, avec la raison). Un avertissement permanent est un
-    // avertissement mort, et celui-ci porte la question qui a coûté 2 537,31 $.
+    // avertissement mort, et celui-ci porte la question qui a coûté des milliers de dollars de dépenses fantômes.
     if (snapshot.unknownTransactionKeys.length > 0) {
         const cites = snapshot.unknownTransactionKeys.slice(0, MAX_CLES_CITEES);
         const reste = snapshot.unknownTransactionKeys.length - cites.length;

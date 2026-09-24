@@ -5,10 +5,10 @@
 //
 // ⚠️ POURQUOI CE LOT EXISTE, et la mesure qui l'a déclenché. Le champ était un `<select>` natif qui
 // offrait TOUT marchand ayant au moins une sortie d'argent, trié par fréquence décroissante. Mesuré
-// sur les vraies transactions de Marc le 2026-09-18 : **1 879 sorties d'argent**, dont
-// `Tim Hortons` **218 fois** et `Metro Ferland Du Marai` **50 fois**, contre **8** pour
-// `Toyota Financial` — celui qu'il cherchait. L'option EXISTAIT, au libellé exact
-// « Toyota Financial (8) », et il ne la voyait pas : « je vois pas toyota dans la liste ». Un tri
+// sur les vraies transactions de Marc le 2026-09-18 : **plus d'un millier de sorties d'argent**, dont
+// des marchands du quotidien présents des centaines de fois, contre **une poignée** pour
+// le prêteur du bail — celui qu'il cherchait. L'option EXISTAIT, au libellé exact
+// « <prêteur> (N) », et il ne la voyait pas : « je vois pas toyota dans la liste ». Un tri
 // par fréquence enterre par construction ce qu'on cherche dès que la liste dépasse un écran.
 //
 // ⚠️ CE QUI N'A PAS CHANGÉ, et c'est délibéré : la liste reste la SEULE émettrice de valeur. Taper

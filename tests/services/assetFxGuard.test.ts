@@ -3,7 +3,7 @@
 // [ASSET-FX-DISPLAY] Garde-fou ANTI-RÉCIDIVE : les prix des actifs (`Asset.currentPrice`) sont
 // stockés en devise NATIVE (USD/EUR/CAD, cf AddStockForm) — toute somme `quantity × currentPrice`
 // SANS conversion FX mélange les devises et fausse le patrimoine affiché (incident Marc 2026-07-14 :
-// 160 352 « $ » affichés = 69 k USD + 84 k EUR + 7 k CAD bruts, vs ~230 k$ CAD réels — 6 surfaces
+// une somme brute USD + EUR + CAD affichée, bien sous la valeur réelle en CAD — 6 surfaces
 // touchées : NetWorthByOwnerCard, Investments, Dashboard, HealthIndicator, AssetLocationCard, CSV).
 //
 // Ce test SCANNE le code source : tout `quantity` et `currentPrice` multipliés sur la MÊME ligne

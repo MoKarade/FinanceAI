@@ -39,7 +39,7 @@ describe('buildFinancialSnapshot', () => {
         const d = new Date(now.getFullYear(), now.getMonth() - 1, 10).toISOString().split('T')[0];
         base.config.users[0] = { ...base.config.users[0], netSalary: 4000 };
         base.transactions = [
-            { id: -101, date: d, payee: 'ROBOVIC', amount: 2000, category: 'Salaire', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
+            { id: -101, date: d, payee: 'EMPLOYEUR', amount: 2000, category: 'Salaire', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
             { id: -102, date: d, payee: 'Interac', amount: 300, category: 'Revenus divers', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
             // positif NON-revenu → exclu
             { id: -103, date: d, payee: 'Magasin', amount: 500, category: 'Remboursement', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
@@ -77,7 +77,7 @@ describe('buildFinancialOverview', () => {
         const d = new Date(now.getFullYear(), now.getMonth() - 1, 10).toISOString().split('T')[0];
         base.config.users[0] = { ...base.config.users[0], netSalary: 4000 };
         base.transactions = [
-            { id: -111, date: d, payee: 'ROBOVIC', amount: 2000, category: 'Salaire', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
+            { id: -111, date: d, payee: 'EMPLOYEUR', amount: 2000, category: 'Salaire', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
             { id: -112, date: d, payee: 'Interac', amount: 300, category: 'Revenus divers', accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false },
         ];
         base.budgetItems = [];

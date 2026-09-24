@@ -9,7 +9,7 @@
 //   1. le RACCORD au présent reste exact — un supplément nul aujourd'hui, sinon la courbe SAUTE ;
 //   2. les deux corrections de dette (pas-encore-commencée / supplément amorti) sont DISJOINTES ;
 //   3. le passé doit PLUS, jamais moins, et la correction décroît en approchant d'aujourd'hui ;
-//   4. une dette qui ne s'amortit pas (le bail de Marc) reste PLATE — non-régression stricte.
+//   4. une dette qui ne s'amortit pas (un bail) reste PLATE — non-régression stricte.
 import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { supplementAmortiAuMoisAbsolu, supplementAmortiAuMois, prepareSupplementAmortiAbsolu, amortirDettePassee, type DebtAmortissable } from '../../services/projection/debtAmortization';
@@ -117,7 +117,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la courbe MENSUELLE du passé', () => {
         for (const p of avant) expect(p.NetWorth).toBe(35000);
     });
 
-    it('un BAIL reste PLAT — le cas réel de Marc, et ce n\'est pas un oubli', () => {
+    it('un BAIL reste PLAT — le cas type, et ce n\'est pas un oubli', () => {
         const avecBail = buildPastPrefix({ ...basePrefix, debts: [bail] }).points;
         for (const p of avecBail) expect(p.NetWorth).toBe(35000);
     });
@@ -173,7 +173,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la courbe QUOTIDIENNE porte la même corre
         // le prélèvement du 03 (début du bail le 2025-10-06, + 4 × 7 j).
         const bailHebdo: DebtAmortissable = {
             balance: 18000, kind: 'auto-lease', startDate: '2025-10-06',
-            interestRate: 0, minimumPayment: 1016.90, paymentFrequency: 'weekly',
+            interestRate: 0, minimumPayment: 650, paymentFrequency: 'weekly',
         };
         const sansCadence: DebtAmortissable = { ...bailHebdo, paymentFrequency: undefined };
         const hebdo = buildDailyPastLedger({ ...baseDaily, debts: [bailHebdo] });
@@ -188,7 +188,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] la courbe QUOTIDIENNE porte la même corre
         expect(parJour.get('2025-11-01')).toBe(parJour.get('2025-11-02'));
         expect(parJour.get('2025-11-03')).toBe(parJour.get('2025-11-04'));
         const marche = (parJour.get('2025-11-02') ?? 0) - (parJour.get('2025-11-03') ?? 0);
-        expect(marche).toBeCloseTo(1016.90 * 12 / 52, 2);   // 234,67 $, le prélèvement réel
+        expect(marche).toBeCloseTo(650 * 12 / 52, 2);   // 150 $, le prélèvement hebdomadaire
     });
 
     it('un BAIL ne bouge pas non plus au jour — même refus, même raison', () => {
@@ -232,7 +232,7 @@ describe('[DEBT-AMORTIZATION-CABLAGE] le bandeau dit ce que la courbe montre', (
         expect(mentionDettesPasse([toutNeuf], AUJ, 18000, '2026-01-15', [])).toBe('dettes au niveau actuel');
     });
 
-    it('MIXTE — le cas réel de Marc (un bail À CÔTÉ d\'un prêt) se nomme', () => {
+    it('MIXTE — le cas type (un bail À CÔTÉ d\'un prêt) se nomme', () => {
         // « dettes amorties » serait faux pour la moitié de la somme affichée, et « niveau actuel »
         // pour l'autre. Les deux formulations simples mentent ; c'est pour ça que le cas existe.
         expect(mentionDettesPasse([bail, pretAuto], AUJ, 36000, '2026-01-15', [])).toBe('dettes partiellement amorties');

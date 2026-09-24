@@ -1,9 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * [TX-EXCLUES-INTROUVABLES] — Marc, le 2026-09-15 : « je vois plus aucune transactions du bresil ».
+ * [TX-EXCLUES-INTROUVABLES] — Marc, le 2026-09-15 : il ne voyait plus aucune des transactions de son voyage.
  *
- * Il venait d'exclure des calculs ses 44 lignes du voyage, comme je le lui avais demandé. RIEN
+ * Il venait d'exclure des calculs les lignes de son voyage, comme je le lui avais demandé. RIEN
  * n'était perdu — `markTransactionsAsDuplicate` est PUR et ne fait que poser un drapeau — mais
  * `showDuplicates` est un état de COMPOSANT (`useState(false)`), donc remis à faux à chaque
  * montage, et son SEUL `setShowDuplicates(true)` vivait dans `handleMarkDuplicates`. Mesuré sur le
@@ -62,7 +62,7 @@ describe('[TX-EXCLUES-INTROUVABLES] les transactions exclues restent atteignable
 
     it('le libellé nomme l\'ACTION disponible, dans les deux sens', () => {
         const code = stripCommentsJsx(readFileSync(SOURCE, 'utf8'));
-        // « 44 exclues » seul décrit un état sans dire qu'on peut y faire quelque chose — c'est la
+        // « 3 exclues » seul décrit un état sans dire qu'on peut y faire quelque chose — c'est la
         // moitié du défaut (l'autre étant l'absence de contrôle). Le libellé porte donc le verbe,
         // et il change avec l'état plutôt que d'affirmer une seule direction.
         expect(code).toMatch(/showDuplicates\s*\?\s*'masquer'\s*:\s*'afficher'/);
@@ -75,8 +75,8 @@ describe('[TX-EXCLUES-INTROUVABLES] au REMONTAGE — le cas exact vécu par Marc
     // qu'un geste ramène les lignes. Ici on monte l'écran avec une transaction DÉJÀ exclue — donc
     // `showDuplicates` repart à `false`, exactement comme après un rechargement de page.
     const TXS: Transaction[] = [
-        { id: 1, date: '2026-09-08', payee: 'Farm Ipanema', amount: -120.99, category: 'Magasinage', status: 'processed', isDuplicate: true },
-        { id: 2, date: '2026-09-09', payee: 'Metro Ferland', amount: -42.5, category: 'Épicerie', status: 'processed' },
+        { id: 1, date: '2026-09-08', payee: 'Boutique Voyage', amount: -87.35, category: 'Magasinage', status: 'processed', isDuplicate: true },
+        { id: 2, date: '2026-09-09', payee: 'Metro Centre', amount: -42.5, category: 'Épicerie', status: 'processed' },
     ];
 
     function monter() {
@@ -90,11 +90,11 @@ describe('[TX-EXCLUES-INTROUVABLES] au REMONTAGE — le cas exact vécu par Marc
         const table = () => container.querySelector('table') as HTMLElement;
 
         // 1. Le masquage lui-même est le comportement voulu — on ne le retire pas.
-        expect(within(table()).queryByText('Farm Ipanema')).toBeNull();
+        expect(within(table()).queryByText('Boutique Voyage')).toBeNull();
         // Témoin : l'écran n'est pas vide pour une autre raison (fixture cassée, rendu absent…).
-        expect(within(table()).getByText('Metro Ferland')).toBeTruthy();
+        expect(within(table()).getByText('Metro Centre')).toBeTruthy();
 
-        // 2. …mais il DIT ce qu'il masque. Sans ça, « plus aucune transaction du Brésil » est
+        // 2. …mais il DIT ce qu'il masque. Sans ça, « plus aucune transaction du voyage » est
         //    indiscernable d'une perte de données — c'est ce que Marc a vécu.
         const bascule = within(container).getByRole('button', { name: /1 exclue/ });
         expect(bascule.getAttribute('aria-pressed')).toBe('false');
@@ -102,13 +102,13 @@ describe('[TX-EXCLUES-INTROUVABLES] au REMONTAGE — le cas exact vécu par Marc
         // 3. …et le geste la RAMÈNE. C'est le chaînon qui n'existait pas : avant ce lot, le seul
         //    recours était « Annuler tous les marquages », qui défait le travail au lieu de le montrer.
         fireEvent.click(bascule);
-        expect(within(table()).getByText('Farm Ipanema')).toBeTruthy();
+        expect(within(table()).getByText('Boutique Voyage')).toBeTruthy();
         expect(within(container).getByRole('button', { name: /1 exclue/ }).getAttribute('aria-pressed')).toBe('true');
 
         // 4. La bascule va dans les DEUX sens — un bouton qui n'allume que dans un sens
         //    recrée la trappe un cran plus loin.
         fireEvent.click(within(container).getByRole('button', { name: /1 exclue/ }));
-        expect(within(table()).queryByText('Farm Ipanema')).toBeNull();
+        expect(within(table()).queryByText('Boutique Voyage')).toBeNull();
     });
 
     it('ANTI-VACUITÉ : sans aucune exclusion, aucun compte n\'est annoncé', () => {

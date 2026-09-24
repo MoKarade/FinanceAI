@@ -164,8 +164,8 @@ export function computePortfolioSessionMetrics(
     // queue de candles est périmée sans quote fraîche pour la raccorder. Le `TOTAL` reste un nombre
     // fini, plausible, simplement FAUX — et c'est ce nombre que le hub imprimait sous « Placements ».
     //
-    // Mesuré sur l'état réel de Marc le 2026-09-17 : hubperso publiait **217 767 $** pendant que la
-    // somme des titres valait **245 687 $** — 27 920 $ (11,4 %) absents, sur la MÊME carte que la
+    // Mesuré sur l'état réel de Marc le 2026-09-17 : hubperso publiait un total **amputé** pendant que la
+    // somme des titres valait environ 11 % de plus — un titre absent, sur la MÊME carte que la
     // valeur nette, qui elle les comptait. Deux totaux inconciliables côte à côte.
     //
     // ⚠️ On ne publie pas « moins bien », on ne publie PAS : un total amputé n'est pas une autorité

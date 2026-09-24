@@ -35,7 +35,7 @@ describe('[FINTABLE-DEBTNAME-AUTO] suggestDebtName', () => {
     });
 
     it('mots signifiants en commun : le libellé de la banque n\'a pas à être identique', () => {
-        expect(suggestDebtName('DESJARDINS CASH BACK MC 5020', [MC, HYPO, AUTO])).toBe('Desjardins Cash Back Mastercard');
+        expect(suggestDebtName('DESJARDINS CASH BACK MC 0000', [MC, HYPO, AUTO])).toBe('Desjardins Cash Back Mastercard');
     });
 
     // ── La moitié qui protège : ne RIEN proposer plutôt que de proposer au hasard. ──

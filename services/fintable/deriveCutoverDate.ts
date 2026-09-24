@@ -111,7 +111,7 @@ export function deriveCutoverDatesByAccount(
  * C'est le PIÈGE N°1 de `mapSnapshot.ts` (« pas de recouvrement = pas de dépendance à la dédup »),
  * que le premier jet de ce lot annulait en silence.
  *
- * ⚠️ Cas CONCRET et daté : les 36 lignes du Brésil réécrites à la main le 2026-09-15 l'ont été SANS
+ * ⚠️ Cas CONCRET et daté : les lignes du voyage réécrites à la main le 2026-09-15 l'ont été SANS
  * `accountName` et avec des montants CORRIGÉS — donc une clé de dédup différente des originaux.
  * Sans ce plancher, une borne de carte antérieure au 2026-09-10 les aurait fait revenir aux MAUVAIS
  * montants, c'est-à-dire refabriquer les dépenses fantômes qu'on venait de retirer.

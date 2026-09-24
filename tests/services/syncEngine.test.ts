@@ -100,7 +100,7 @@ describe('decideOnLoad — matrice anti-perte', () => {
 /**
  * Reconnexion / gate : il n'y a PLUS d'exception « restoreIntent » (qui faisait gagner Drive même sur
  * du LOCAL réel → une vieille copie Drive écrasait des données récentes à la reconnexion). Bug Marc
- * 2026-07-14 : 230k$ de placements locaux clobberés par une copie Drive périmée (SPCX seul). UNE seule
+ * 2026-07-14 : les placements locaux clobberés par une copie Drive périmée (un seul titre). UNE seule
  * garde anti-perte : local vide → pull (restaure) ; local réel + Drive divergent → `conflict` (choix
  * utilisateur, surfacé par l'UI globale SyncConflictModal), JAMAIS d'écrasement auto. Le cas légitime
  * « nouvel appareil, je restaure » passe par la règle local-vide (hasMeaningfulData classe un défaut/
@@ -114,8 +114,8 @@ describe('decideOnLoad — anti-clobber reconnexion (retrait restoreIntent, Marc
         // Le piège EXACT : appareil déconnecté (méta vierge) avec des placements locaux réels, Drive
         // porte une VIEILLE copie pauvre. AVANT le fix : restoreIntent → pull → local écrasé. APRÈS : conflict.
         const d = decideOnLoad({
-            drive: envelope({ updatedAt: 5000, payload: { state: { assets: [{ symbol: 'SPCX' }] } } }),
-            localIsEmpty: false, // l'appareil a les vraies données (230k$)
+            drive: envelope({ updatedAt: 5000, payload: { state: { assets: [{ symbol: 'XYZ' }] } } }),
+            localIsEmpty: false, // l'appareil a les vraies données
             localHash: 'richlocal',
             meta: fresh(), // méta vierge = déconnecté / jamais syncé via ce système
         });

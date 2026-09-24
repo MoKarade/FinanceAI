@@ -410,7 +410,7 @@ describe('plancherNonAttribuable — une borne par compte ne peut pas payer son 
             // Réécrites à la main (montants corrigés, libellé différent) — aucun `accountName`.
             { id: 91, date: '2026-09-08', payee: 'SAISIE MAIN A', amount: -12.5, category: 'x', status: 'processed' } as Transaction,
             { id: 92, date: '2026-09-10', payee: 'SAISIE MAIN B', amount: -30.2, category: 'x', status: 'processed' } as Transaction,
-            { id: 93, date: '2026-09-12', payee: 'SAISIE MAIN C', amount: -7.9, category: 'x', status: 'processed' } as Transaction,
+            { id: 93, date: '2026-09-12', payee: 'SAISIE MAIN C', amount: -4.3, category: 'x', status: 'processed' } as Transaction,
         ];
     }
 
@@ -503,7 +503,7 @@ describe('browserSync applique le plancher, il ne se contente pas de l\'exporter
             }),
             getAllPages: vi.fn(async (path: string) => (path === '/transactions'
                 ? [{
-                    id: 'f1', account_id: CARTE.id, date: '2026-09-12', amount: '-7.90',
+                    id: 'f1', account_id: CARTE.id, date: '2026-09-12', amount: '-4.25',
                     currency: 'CAD', description: 'METRO PLUS', merchant: 'Metro', pending: false,
                     category: null, updated_at: null,
                 }]

@@ -4,7 +4,7 @@
 //
 // [MCP-GET-HOLDINGS] — liste les positions RÉELLES de l'utilisateur (symbole, qty, prix natif, devise,
 // valeur CAD, compte, rendement). Comblait un trou : pendant l'incident FX (2026-07-14), impossible
-// d'identifier le « +70 k$ » en une question — get_financial_overview ne donne que les AGRÉGATS par
+// d'identifier l'écart en une question — get_financial_overview ne donne que les AGRÉGATS par
 // compte, pas les titres. Lecture seule, réutilise la SOURCE UNIQUE assetValueCad (FX + garde NaN).
 
 import type { AppState, Asset } from '../../types';

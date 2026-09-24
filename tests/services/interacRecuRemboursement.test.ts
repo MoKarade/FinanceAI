@@ -18,10 +18,10 @@ import { isCreditBack, isSpend, spendAmountOf } from '../../utils/spendRules';
 
 const csv = [
     'date,description,amount',
-    '2026-05-01,Paie / ROBOVIC INC.,5000',
-    '2026-05-03,Virement Interac de / ANNA LUCIE MAL/,300',
+    '2026-05-01,Paie / EMPLOYEUR INC.,5000',
+    '2026-05-03,Virement Interac de / JEANNE TREMBLAY/,300',
     '2026-05-04,IGA St-Roch,-200',
-    '2026-05-05,Virement Interac à / ANNA LUCIE MAL/,-150',
+    '2026-05-05,Virement Interac à / JEANNE TREMBLAY/,-150',
 ].join('\n');
 
 const importer = () => {
@@ -42,7 +42,7 @@ describe('[TX-INTERAC-REMBOURSEMENT] un Interac REÇU importé est un crédit, p
 
     it('le revenu réel du Budget ne contient que la paie : 5 000 $, pas 5 300 $', () => {
         // Avant la règle, l'Interac reçu tombait en « Revenus divers » → +300 $ de faux revenu, soit
-        // 5,7 % du revenu de ce mois (mesuré sur cette fixture ; 900 $/mois sur le corpus réel).
+        // 5,7 % du revenu de ce mois (mesuré sur cette fixture).
         expect(computeIncomeBreakdown(importer())).toEqual({ salary: 5000, other: 0, total: 5000 });
     });
 

@@ -353,7 +353,7 @@ describe('Lot 1 — get_tax_situation', () => {
         // [MCP-NETINCOME-MISLEADING] Le champ qui m'a trompé (incident 2026-08-05) : `netIncome`
         // porte l'assiette IMPOSABLE, donc il INCLUT le rendement de placement estimé — qui n'est
         // jamais encaissé. Comparé aux dépôts de paie réels, il fabrique un faux écart de revenu
-        // (annoncé à tort à Marc : 12 800 $/an inexistants). `netSalaryIncome` est la trésorerie
+        // (annoncé à tort à Marc : un revenu annuel inexistant). `netSalaryIncome` est la trésorerie
         // qui tombe VRAIMENT au compte. DISCRIMINANT : sur le code d'avant, netSalaryIncome
         // n'existe pas — et l'écart ci-dessous est exactement le revenu fantôme.
         const netTotal = outWith.netIncome as number;
@@ -378,7 +378,7 @@ describe('Lot 1 — get_tax_situation', () => {
         const state = karimState();
         // Karim est SOLO : muter l'index 0 EN PLACE (reconstruire le tuple créerait users[1] =
         // undefined → null au JSON → schéma AppState rejeté).
-        state.config.users[0] = { ...state.config.users[0], salarySource: { kind: 'mcp', label: 'ROBOVIC', appliedAt: 1752585600000 } };
+        state.config.users[0] = { ...state.config.users[0], salarySource: { kind: 'mcp', label: 'EMPLOYEUR', appliedAt: 1752585600000 } };
         const h = captureTool(registerGetTaxSituation, providerFor(state));
         const out = await callJson(h, { year: 2026 });
         const pu = (out.perUser as Array<Record<string, unknown>>)[0];
@@ -391,7 +391,7 @@ describe('Lot 1 — get_tax_situation', () => {
         expect(pu.netMonthly as number).toBeCloseTo((pu.netIncome as number) / 12, -1);
         // Provenance de la paie (source unique) transmise telle quelle
         expect((pu.salarySource as Record<string, unknown>).kind).toBe('mcp');
-        expect((pu.salarySource as Record<string, unknown>).label).toBe('ROBOVIC');
+        expect((pu.salarySource as Record<string, unknown>).label).toBe('EMPLOYEUR');
         // Réel des transactions (mois pleins) : net = income − expenses
         const real = out.realMonthlyAverages as Record<string, number>;
         expect(real.net).toBe(real.income - real.expenses);
@@ -426,14 +426,14 @@ describe('Lot 1 — get_tax_situation', () => {
 
     it('[INCOME-PROVENANCE] apply_payslip estampille la source (montant changé, 1er apply idempotent, changement d\'employeur) ; retry identique = inerte', async () => {
         const s = karimState();
-        const first = applyDocument(s, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'ROBOVIC INC.' });
+        const first = applyDocument(s, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'EMPLOYEUR INC.' });
         const u1 = first.nextState.config.users[0];
         expect(u1.salarySource?.kind).toBe('mcp');
-        expect(u1.salarySource?.label).toBe('ROBOVIC INC.');
+        expect(u1.salarySource?.label).toBe('EMPLOYEUR INC.');
         expect(typeof u1.salarySource?.appliedAt).toBe('number');
 
         // Retry STRICTEMENT identique (même employeur, mêmes montants) → 0 changement, inerte.
-        const retry = applyDocument(first.nextState, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'ROBOVIC INC.' });
+        const retry = applyDocument(first.nextState, { kind: 'payslip', userIndex: 0, grossAnnual: 90_000, employer: 'EMPLOYEUR INC.' });
         expect(retry.changes).toHaveLength(0);
         expect(retry.nextState.config.users[0].salarySource?.appliedAt).toBe(u1.salarySource?.appliedAt);
 

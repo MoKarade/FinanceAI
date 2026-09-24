@@ -236,16 +236,16 @@ describe('[DEBT-AMORTIZATION] la courbe rendue', () => {
 //
 // Le défaut, mesuré dans le code des deux côtés : la boucle du FUTUR (`services/projection.ts`,
 // bloc « DETTES ») amortit toute dette active SANS lire `kind` ; le PASSÉ refusait `auto-lease`.
-// Sa seule dette réelle est un bail à 47 169 $ et **0 %** (mesuré par le MCP le 2026-09-17), donc
-// il voyait une dette parfaitement plate derrière lui et décroissante devant.
+// Le cas type est un bail à taux **0 %**, donc on voyait une dette parfaitement plate derrière
+// soi et décroissante devant.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Bail auto tel que Marc le saisit : solde = somme des versements RESTANTS, taux 0, versement réel. */
+/** Bail auto type (valeurs SYNTHÉTIQUES) : solde = somme des versements RESTANTS, taux 0, versement mensuel. */
 const bail = (o: Partial<EntreeAmortissement> = {}): EntreeAmortissement => ({
-    balance: 47169,
+    balance: 30000,
     interestRate: 0,
-    minimumPayment: 1016.90,
-    startDate: '2026-07-20',
+    minimumPayment: 700,
+    startDate: '2026-07-16',
     kind: 'auto-lease',
     ...o,
 });
@@ -270,15 +270,15 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
         expect(r.premierMoisAbsolu).toBe(mois(2026, 6));
         expect(r.soldes).toHaveLength(3);
         // L'ANCRE : le dernier point vaut le solde saisi, au centime.
-        expect(r.soldes[r.soldes.length - 1]).toBe(47169);
+        expect(r.soldes[r.soldes.length - 1]).toBe(30000);
         // La PENTE : un versement par mois, ni plus ni moins. C'est la relation, pas une valeur de
         // fixture — elle survit à tout changement de solde ou de date.
         for (let k = 1; k < r.soldes.length; k++) {
-            expect(r.soldes[k - 1] - r.soldes[k]).toBeCloseTo(1016.90, 6);
+            expect(r.soldes[k - 1] - r.soldes[k]).toBeCloseTo(700, 6);
         }
         // Rien n'est RECALÉ : le versement saisi est exactement celui qui sert.
         expect(r.facteurRecalage).toBe(1);
-        expect(r.paiementResolu).toBe(1016.90);
+        expect(r.paiementResolu).toBe(700);
     });
 
     it('le PASSÉ et le FUTUR décrivent le même bail — même pas, en sens inverse', () => {
@@ -287,15 +287,15 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
         const r = amortirDettePassee(bail(), AUJOURDHUI, AUJ_ISO, []);
         if (r.forme !== 'ok') throw new Error('bail refusé');
         const pasPasse = r.soldes[r.soldes.length - 2] - r.soldes[r.soldes.length - 1];
-        const pasFutur = Math.max(1016.90, 0 + 47169 / 300); // `effectiveMinimum` du moteur, taux nul
+        const pasFutur = Math.max(700, 0 + 30000 / 300); // `effectiveMinimum` du moteur, taux nul
         expect(pasPasse).toBeCloseTo(pasFutur, 6);
     });
 
     it('un taux NON NUL est REFUSÉ — on ne sait plus ce que le solde contient', () => {
         // Contrôle NÉGATIF, et c'est la garde qui compte le plus : écrire le taux du contrat sur un
-        // solde tout-compris comptait l'intérêt DEUX fois (+7 423 $ mesurés le 2026-09-14). Une
+        // solde tout-compris comptait l'intérêt DEUX fois (mesuré le 2026-09-14). Une
         // courbe plausible et fausse est pire que pas de courbe.
-        refus(amortirDettePassee(bail({ interestRate: 6.59 }), AUJOURDHUI, AUJ_ISO, []), 'taux-sur-solde-tout-compris');
+        refus(amortirDettePassee(bail({ interestRate: 5.25 }), AUJOURDHUI, AUJ_ISO, []), 'taux-sur-solde-tout-compris');
     });
 
     it('sans date de début ou sans versement, on REFUSE au lieu de deviner', () => {
@@ -311,17 +311,17 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
         const r = amortirDettePassee(bail({ startDate: '2022-01-15', termEndDate: '2025-01-15' }), AUJOURDHUI, AUJ_ISO, []);
         if (r.forme !== 'ok') throw new Error(`bail à terme échu refusé : ${r.cause}`);
         const finTerme = mois(2025, 0) - r.premierMoisAbsolu;
-        for (let k = finTerme; k < r.soldes.length; k++) expect(r.soldes[k]).toBe(47169);
+        for (let k = finTerme; k < r.soldes.length; k++) expect(r.soldes[k]).toBe(30000);
         // Anti-vacuité : il reste bien des mois après le terme, et la partie AVANT décroît vraiment.
         expect(r.soldes.length - 1 - finTerme).toBeGreaterThan(12);
-        expect(r.soldes[0]).toBeGreaterThan(47169);
+        expect(r.soldes[0]).toBeGreaterThan(30000);
     });
 
     it('le SUPPLÉMENT rendu aux registres du passé vaut un versement au mois précédent', () => {
         // La garde qui TRAVERSE : ce que les deux registres du passé consomment réellement, pas la
         // série interne. Un supplément nul ici voudrait dire « la correction n'atteint pas l'écran ».
         const supp = supplementAmortiAuMoisAbsolu([{ ...bail(), id: 'bail', name: 'bZ' } as never], AUJOURDHUI - 1, AUJOURDHUI, AUJ_ISO, []);
-        expect(supp).toBeCloseTo(1016.90, 6);
+        expect(supp).toBeCloseTo(700, 6);
         // Et au mois d'aujourd'hui, EXACTEMENT zéro — l'invariant de raccord.
         expect(supplementAmortiAuMoisAbsolu([{ ...bail(), id: 'bail', name: 'bZ' } as never], AUJOURDHUI, AUJOURDHUI, AUJ_ISO, [])).toBe(0);
     });
@@ -331,7 +331,7 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
 /* ─────────────────────────────────────────────────────────────────────────────────────────────────
    [DEBT-CADENCE-REELLE] LA CADENCE RÉELLE DES PRÉLÈVEMENTS
 
-   Marc, 2026-09-17 : « la dette descend, mais elle devrait descendre à chaque paiement à Toyota,
+   Marc, 2026-09-17 : « la dette descend, mais elle devrait descendre à chaque paiement du bail,
    pas une fois par mois ». Son bail est prélevé toutes les SEMAINES ; le passé reconstruit ne
    produisait qu'un point par mois, donc une marche mensuelle.
 
@@ -344,33 +344,33 @@ describe('[DEBT-BAIL-PASSE-PLAT] un bail à versements fixes décroît AUSSI dan
    ──────────────────────────────────────────────────────────────────────────────────────────────── */
 
 describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () => {
-    /** Le bail RÉEL de Marc : 234,67 $/semaine, soit 1 016,90 $/mois. Le jour d'aujourd'hui est
-     *  cohérent avec `AUJOURDHUI` (septembre 2026) et tombe 57 jours après le début — donc 8
+    /** Un bail type : 700 $/mois, soit ≈ 161,54 $/semaine. Le jour d'aujourd'hui est
+     *  cohérent avec `AUJOURDHUI` (septembre 2026) et tombe 61 jours après le début — donc 8
      *  prélèvements écoulés, un compte qu'on peut refaire à la main. */
     const bailHebdo = (o: Partial<EntreeAmortissement> = {}): EntreeAmortissement =>
         bail({ paymentFrequency: 'weekly', ...o });
-    const VERSEMENT = 1016.90 * 12 / 52;   // 234,67 $ — le prélèvement réel, au cent près
+    const VERSEMENT = 700 * 12 / 52;   // ≈ 161,54 $ — le prélèvement hebdomadaire, au cent près
     const JOUR = '2026-09-15';
 
     const parJour = (d: EntreeAmortissement, jour: string): number =>
         prepareSupplementAmortiParJour([{ ...d, id: 'bail', name: 'bZ' } as never], AUJOURDHUI, JOUR, [])(jour);
 
-    it('le versement DÉRIVÉ vaut le prélèvement réel de Marc, au cent près', () => {
+    it('le versement DÉRIVÉ vaut le prélèvement hebdomadaire du cas type, au cent près', () => {
         // Anti-vacuité de tout ce qui suit : si la dérivation était fausse, chaque marche le serait,
         // et les tests de pente passeraient quand même (ils comparent des marches entre elles).
-        expect(VERSEMENT).toBeCloseTo(234.67, 2);
+        expect(VERSEMENT).toBeCloseTo(161.54, 2);
     });
 
     it('la marche tombe aux dates de PRÉLÈVEMENT, pas au changement de mois', () => {
         const d = bailHebdo();
-        // Début 2026-07-20 ⇒ prélèvements les 20/07, 27/07, 03/08… Entre deux prélèvements, le
+        // Début 2026-07-16 ⇒ prélèvements les 16/07, 23/07, 30/07… Entre deux prélèvements, le
         // supplément est CONSTANT ; il augmente d'exactement un versement quand on recule d'un cran.
-        const veille = parJour(d, '2026-09-13');
-        const jourDePrelevement = parJour(d, '2026-09-14'); // lundi, 8 × 7 j après le 20/07
+        const veille = parJour(d, '2026-09-09');
+        const jourDePrelevement = parJour(d, '2026-09-10'); // jeudi, 8 × 7 j après le 16/07
         expect(veille - jourDePrelevement).toBeCloseTo(VERSEMENT, 6);
         // ... et à l'intérieur d'une semaine, rien ne bouge (ce n'est pas une interpolation).
-        expect(parJour(d, '2026-09-10')).toBeCloseTo(veille, 6);
-        expect(parJour(d, '2026-09-11')).toBeCloseTo(veille, 6);
+        expect(parJour(d, '2026-09-05')).toBeCloseTo(veille, 6);
+        expect(parJour(d, '2026-09-06')).toBeCloseTo(veille, 6);
     });
 
     it('AUJOURD\'HUI le supplément est EXACTEMENT nul — l\'ancre tient avec la grille', () => {
@@ -378,9 +378,9 @@ describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () =>
     });
 
     it('au début du bail, on devait 8 versements de plus — le compte se refait à la main', () => {
-        // Du 2026-07-20 au 2026-09-15 : 57 jours, soit 8 prélèvements (le 20/07 lui-même exclu,
+        // Du 2026-07-16 au 2026-09-15 : 61 jours, soit 8 prélèvements (le 16/07 lui-même exclu,
         // même convention que la forme mensuelle).
-        expect(parJour(bailHebdo(), '2026-07-20')).toBeCloseTo(VERSEMENT * 8, 6);
+        expect(parJour(bailHebdo(), '2026-07-16')).toBeCloseTo(VERSEMENT * 8, 6);
     });
 
     it('⚠️ LA GARDE DU LOT : la courbe au MOIS et la courbe au JOUR disent la MÊME chose', () => {
@@ -392,7 +392,7 @@ describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () =>
         if (r.forme !== 'ok') throw new Error(`bail hebdo refusé : ${r.cause}`);
         expect(r.grilleVersements?.pasJours).toBe(7);
         const echantillon: Record<number, string> = {
-            [mois(2026, 6)]: '2026-07-20',   // mois de DÉBUT : la dette n'existe pas avant le 20
+            [mois(2026, 6)]: '2026-07-16',   // mois de DÉBUT : la dette n'existe pas avant le 16
             [mois(2026, 7)]: '2026-08-01',
             [mois(2026, 8)]: '2026-09-01',
         };
@@ -412,7 +412,7 @@ describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () =>
         // Le supplément au JOUR retombe sur le palier MENSUEL : deux jours du même mois, même valeur.
         expect(parJour(mensuel, '2026-08-01')).toBeCloseTo(parJour(mensuel, '2026-08-28'), 6);
         // Et il vaut un versement MENSUEL par mois écoulé, comme avant ce lot.
-        expect(parJour(mensuel, '2026-08-15')).toBeCloseTo(1016.90, 6);
+        expect(parJour(mensuel, '2026-08-15')).toBeCloseTo(700, 6);
         // ⚠️ Le contraste EST la mesure : à cadence hebdo, les deux mêmes jours DIFFÈRENT.
         expect(parJour(bailHebdo(), '2026-08-01')).not.toBeCloseTo(parJour(bailHebdo(), '2026-08-28'), 2);
     });
@@ -430,6 +430,6 @@ describe('[DEBT-CADENCE-REELLE] la dette descend à chaque prélèvement', () =>
         const r = amortirDettePassee(d, AUJOURDHUI, JOUR, []);
         if (r.forme !== 'ok') throw new Error('bail bimensuel refusé');
         expect(r.grilleVersements?.pasJours).toBe(14);
-        expect(r.grilleVersements?.versement).toBeCloseTo(1016.90 * 12 / 26, 6);
+        expect(r.grilleVersements?.versement).toBeCloseTo(700 * 12 / 26, 6);
     });
 });

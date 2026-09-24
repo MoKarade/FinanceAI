@@ -81,7 +81,7 @@ describe('assetsToHoldings', () => {
 
     it('[ASSET-FX-DISPLAY] DISCRIMINANT : convertit les prix NATIFS en CAD (USD×1.4, EUR×1.5) — échoue sur l\'ancien code sans FX', () => {
         // Le bug de l'incident 2026-07-14 : NVDA (USD) + CW8.PA (EUR) sommés bruts comme des CAD →
-        // portefeuille SOUS-affiché (~70 k$ chez Marc). L'ancien code rendait 100 et 200 ici.
+        // portefeuille SOUS-affiché (de plusieurs dizaines de milliers de dollars chez Marc). L'ancien code rendait 100 et 200 ici.
         const assets = [
             { symbol: 'NVDA', currency: 'USD', currentPrice: 10, quantity: 10, accountType: 'NON-ENREG' },
             { symbol: 'CW8.PA', currency: 'EUR', currentPrice: 20, quantity: 10, accountType: 'NON-ENREG' },

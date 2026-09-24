@@ -64,7 +64,7 @@ describe('buildMarketData', () => {
 
     it('[HIST-COVERAGE-TOTAL] sans historique : PAS de colonne, mais COMPTÉ au TOTAL/bucket à la valeur actuelle + signalé', () => {
         // Décision Marc 2026-07-23 : avant, SANSHIST était exclu des totaux → TOTAL sous-compté
-        // (~50 k$ réels : Amundi EM Asia, CW8.PA, GBS.PA absents de la courbe ~190 k$ vs ~242 k$).
+        // (des titres détenus absents de la courbe, soit environ un cinquième du total).
         const { rows, noHistorySymbols } = buildMarketData([
             mk({}),
             mk({ symbol: 'SANSHIST', priceHistory: [], accountType: 'REER', currentPrice: 30 }),

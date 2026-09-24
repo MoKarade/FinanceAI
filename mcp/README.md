@@ -389,7 +389,13 @@ hub soit à jour.
   sinon). Sans la variable, la route n'existe pas (404), comme `/hub/summary`.
 - **Auth** : header `Authorization: Bearer <secret>` ; comparaison en temps constant,
   **401** si absent ou invalide. Réponse `Cache-Control: no-store`.
-- **Réponse** : `200 { ok:true, saved, refreshed[], unchanged[], skipped[] }` au succès. Un
+- **Taux de change** ([FX-SERVEUR-JAMAIS-RAFRAICHI], 2026-09-24) : la même passe lit les taux de la
+  Banque du Canada et les écrit avec la décision et l'écriture du navigateur
+  (`services/fx/ecritureFx.ts`, source unique) — une Banque du Canada injoignable n'écrase jamais un
+  taux saisi à la main ni un taux de marché déjà lu. Un échec de lecture est RAPPORTÉ (`fx`) et ne
+  bloque pas les prix.
+- **Réponse** : `200 { ok:true, saved, refreshed[], unchanged[], skipped[], fx }` au succès. ⚠️ Le
+  cron n'en imprime que des COMPTES (journal public : les symboles décrivent le portefeuille). Un
   conflit de concurrence (l'app a poussé au même instant) renvoie `200 { ok:false, conflict:true }`
   — TRANSITOIRE, le prochain tick réessaie (le cron ne rougit pas). Une panne RÉELLE (Drive
   injoignable, jeton révoqué, coffre chiffré) renvoie un **5xx** → le job GitHub rougit et alerte,
@@ -504,7 +510,7 @@ gcloud secrets add-iam-policy-binding financeai-vehicule-token --project "$PROJE
 
 # 3. (optionnel) Nommer la dette exacte si plusieurs véhicules coexistent
 #    Sans lui, la route choisit par kind/catégorie et REFUSE (409) s'il y a plusieurs candidates.
-printf 'bZ' | gcloud secrets create financeai-vehicule-dette --project "$PROJECT_ID" --data-file=-
+printf '<nom-de-la-dette>' | gcloud secrets create financeai-vehicule-dette --project "$PROJECT_ID" --data-file=-
 
 # 4. Redéployer — le script annonce « GET /vehicule/bail ACTIF »
 PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
@@ -517,7 +523,7 @@ Test manuel (curl) :
 
 ```bash
 curl -sS "$MCP_URL/vehicule/bail" -H "Authorization: Bearer $FINANCEAI_VEHICULE_TOKEN"
-# → {"ok":true,"statut":"trouve","bail":{"nom":"bZ","solde":47169,"mensualite":1017,…}}
+# → {"ok":true,"statut":"trouve","bail":{"nom":"<nom de la dette>","solde":<solde>,"mensualite":<mensualité>,…}}
 ```
 
 ## Sync Fintable planifiée — POST /fintable-sync (FINTABLE-3)

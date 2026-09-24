@@ -108,7 +108,7 @@ sources pour la même grandeur, exactement ce que la règle « source unique » 
 
 ### Mise à jour 2026-07-29 (n°2) — premières mesures RÉELLES : le Lot 5 est tranché, les positions sont un blocage
 
-Premier dry-run réussi contre le compte Fintable de Marc (6 comptes, 121 transactions). Trois décisions
+Premier dry-run réussi contre le compte Fintable de Marc (tous ses comptes liés, un premier lot de transactions). Trois décisions
 en découlent, toutes fondées sur la MESURE et non sur la doc :
 
 1. **`[FINTABLE-BOOL-QUERY]` confirmé par mesure** (était [Probable]) : `pending=0` passe là où
@@ -125,10 +125,10 @@ en découlent, toutes fondées sur la MESURE et non sur la doc :
 3. **Mapping des comptes, décidé par Marc** (le champ `type` est du texte libre, la doc interdit d'en
    déduire quoi que ce soit) : les deux comptes Disnat (`investment / brokerage`, l'un USD l'autre CAD)
    sont **non-enregistrés** ; la Mastercard Desjardins (`credit / credit card`) doit alimenter une
-   **dette**, pas les liquidités — 90 des 121 transactions en viennent, et confondre son solde avec du
+   **dette**, pas les liquidités — la majorité des transactions en viennent, et confondre son solde avec du
    cash gonflerait le patrimoine du montant dû.
 
-**Blocage ouvert — zéro position sur 3 comptes de placement.** Les appels `/accounts/{id}/holdings`
+**Blocage ouvert — zéro position sur les comptes de placement.** Les appels `/accounts/{id}/holdings`
 ont **réussi** en rendant des listes VIDES (aucun skip tracé), sur des comptes qui contiennent
 réellement des titres (confirmé par Marc). C'est la moitié de la demande initiale (« mes
 investissements en temps réel ») qui ne fonctionne pas. Comme un agrégat vide SANS erreur est la
@@ -142,7 +142,7 @@ sans jamais exposer ses positions.
 **Conséquence de cadrage** : le volet « positions » du Lot 2 reste NON codé tant que la donnée
 n'arrive pas — un mapper de positions qui ne peut être exercé sur aucune donnée réelle n'est pas
 vérifiable, et la leçon `PORTFOLIO-HISTORY` (« un stub qui nourrit un graphe est une dette qui MENT »)
-s'applique directement. Le volet transactions/liquidités/dette, lui, est pleinement exerçable (121
+s'applique directement. Le volet transactions/liquidités/dette, lui, est pleinement exerçable (des
 transactions réelles) et peut avancer.
 
 ### Mise à jour 2026-07-29 (n°3) — positions IMPOSSIBLES, et la date de bascule remplace la dédup
@@ -159,7 +159,7 @@ Ce n'est pas une configuration à corriger, c'est une **limite du produit**. Con
   chat — qui fonctionne déjà et ne coûte rien ;
 - les soldes des comptes de placement sont conservés comme **valeur de RÉFÉRENCE du courtier**, à
   comparer au patrimoine calculé. C'est précisément le garde-fou qui manquait lors de l'incident
-  `ASSET-FX-DISPLAY` (patrimoine sous-affiché de ~70 k$ : « l'arbitre est le COURTIER »).
+  `ASSET-FX-DISPLAY` (patrimoine sous-affiché de plusieurs dizaines de milliers de dollars : « l'arbitre est le COURTIER »).
 
 **2. Marc a choisi de prendre un plan payant**, contre ma recommandation (je conseillais d'arrêter :
 le cœur de la demande étant impossible, le gain restant ne justifiait pas de casser sa règle « zéro

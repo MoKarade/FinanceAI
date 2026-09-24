@@ -235,13 +235,13 @@ PageHeader (cohérent, bon) · tooltips pédagogiques · états vides (`EmptySta
 **Doc complète** : [AUTH_SETUP.md](AUTH_SETUP.md) (config réelle + journal de debug)
 + [ADR 007](adr/007-auth-cloudflare-access.md)
 
-Résultat : seul `marc.richard4@gmail.com` accède à l'app via Google OAuth,
+Résultat : seul `<courriel-du-propriétaire>` accède à l'app via Google OAuth,
 session 24h. `hubperso.com` redirige (301) vers `www.hubperso.com` qui impose
 Access.
 
 - [x] DNS Cloudflare (domaine acheté chez Cloudflare Registrar → NS déjà OK)
 - [x] Application Access Self-hosted sur `www.hubperso.com`
-- [x] Policy `Allow` si `email == marc.richard4@gmail.com`
+- [x] Policy `Allow` si `email == <courriel-du-propriétaire>`
 - [x] Identity Provider Google OAuth
 - [x] Session 24h
 - [x] Redirect Rule apex `hubperso.com` → `www.hubperso.com`
@@ -301,7 +301,7 @@ fiable (React 19 ignore les events synthétiques). Toi oui.
 
 ### A4 — Valider TB3 : cards scénarios à 0.00M$
 **Pourquoi** : j'ai vu les 7 cards scénarios afficher `0.00M$` alors que le
-KPI principal était 1.69M$. À confirmer visuellement.
+KPI principal affichait une valeur normale. À confirmer visuellement.
 - [ ] Ouvrir **Future**, attendre le calcul Monte Carlo
 - [ ] Regarder les 7 cards de scénarios (BASE, Liberté 55, etc.)
 - [ ] **Si elles affichent toutes `0.00M$`** → confirmer, je fixe le worker
@@ -516,7 +516,7 @@ Chaque batch : branche → `tsc`+`eslint`+suite Vitest → merge `--no-ff` → p
 
 > Documentation post-implémentation de [ADR 007](adr/007-auth-cloudflare-access.md).
 > Setup réalisé et validé le **2026-05-22**. L'app `hubperso.com` est désormais
-> protégée : seul `marc.richard4@gmail.com` peut y accéder, via Google OAuth.
+> protégée : seul `<courriel-du-propriétaire>` peut y accéder, via Google OAuth.
 >
 > Ce doc contient la **config réelle qui fonctionne** + le **journal de debug**
 > (toutes les erreurs rencontrées et leur cause). En cas de pépin futur, commence
@@ -537,7 +537,7 @@ www.hubperso.com (domaine canonique)
   · DNS Cloudflare, proxied (nuage orange)
   · Vercel : "Valid Configuration" (projet finance-ai)
   · Cloudflare Access — application Self-hosted "FinanceAI"
-        policy : Allow si email == marc.richard4@gmail.com
+        policy : Allow si email == <courriel-du-propriétaire>
         IdP    : Google OAuth
         session: 24h
         │
@@ -569,7 +569,7 @@ Valeurs réelles de ce déploiement (à connaître pour tout dépannage) :
 | Domaine canonique | `www.hubperso.com` |
 | Google Cloud — projet | `financeai-497112` |
 | Google OAuth — App ID | le **Client ID** (`…apps.googleusercontent.com`), PAS l'ID de projet |
-| Access — email autorisé | `marc.richard4@gmail.com` |
+| Access — email autorisé | `<courriel-du-propriétaire>` |
 | Access — durée de session | 24 h |
 
 > Le domaine a été acheté **chez Cloudflare Registrar** → les nameservers sont
@@ -590,8 +590,8 @@ Valeurs réelles de ce déploiement (à connaître pour tout dépannage) :
 
 1. `console.cloud.google.com` → projet `financeai-497112`
 2. **OAuth consent screen** : External, app name `FinanceAI`, support email
-   `marc.richard4@gmail.com`, scopes `userinfo.email` + `userinfo.profile` +
-   `openid`. En mode « Testing » → ajouter `marc.richard4@gmail.com` en **Test user**.
+   `<courriel-du-propriétaire>`, scopes `userinfo.email` + `userinfo.profile` +
+   `openid`. En mode « Testing » → ajouter `<courriel-du-propriétaire>` en **Test user**.
 3. **Credentials → Create OAuth client ID → Web application** :
    - Authorized redirect URI : le callback URL de l'étape A (exact, sans slash final)
 4. Copier le **Client ID** (`…apps.googleusercontent.com`) et le **Client secret**.
@@ -618,7 +618,7 @@ Valeurs réelles de ce déploiement (à connaître pour tout dépannage) :
 3. **Application domain** : sélectionner `www.hubperso.com` **via le dropdown de
    zone** (ne pas taper en texte libre — sinon la zone n'est pas reconnue).
 4. Policy : name `Marc only`, action **Allow**, Include → Emails →
-   `marc.richard4@gmail.com`
+   `<courriel-du-propriétaire>`
 5. Identity providers : cocher **Google** → Save.
 
 ### Étape F — Redirect apex → www
@@ -630,7 +630,7 @@ Valeurs réelles de ce déploiement (à connaître pour tout dépannage) :
 ### Étape G — Validation
 
 - Fenêtre privée **fraîche** → `https://www.hubperso.com` → page login Cloudflare
-- Login `marc.richard4@gmail.com` → app accessible
+- Login `<courriel-du-propriétaire>` → app accessible
 - `https://hubperso.com` → redirige vers `www` → login requis également
 - Un autre Gmail → refusé (403)
 
@@ -754,7 +754,7 @@ diagnostiquer. Le DNS reste proxied, l'app redevient publique le temps du fix.
 1. **Cloudflare → Zero Trust → Access → Applications → FinanceAI → Edit**.
 2. Onglet **Policies** → édite la policy `Allow`.
 3. Dans **Include**, ajoute un bloc `Emails` (ou utilise `Emails` en liste) et mets
-   l'adresse Gmail de la personne, à côté de `marc.richard4@gmail.com`.
+   l'adresse Gmail de la personne, à côté de `<courriel-du-propriétaire>`.
    - Alternative plus large : `Include → Emails ending in → @ton-domaine.com`.
 4. **Save**. La personne se connecte sur `www.hubperso.com` avec **son** Google →
    elle a sa propre app vierge. Aucun déploiement nécessaire.
@@ -1282,7 +1282,7 @@ des niveaux d'accès** (*Add or remove scopes*) :
 ### E — T'ajouter comme utilisateur test (si mode « Test »)
 **Écran de consentement OAuth** → **Audience** → si **État de publication** (*Publishing status*) =
 **Test** (*Testing*) → **Utilisateurs tests** (*Test users*) → **Ajouter des utilisateurs** →
-`marc.richard4@gmail.com` (+ conjoint·e si besoin). Si déjà **En production**, rien à faire.
+`<courriel-du-propriétaire>` (+ conjoint·e si besoin). Si déjà **En production**, rien à faire.
 
 ---
 
@@ -1474,7 +1474,7 @@ ancienne, soit (b) choix explicite de l'utilisateur.
 Dans **Google Cloud Console** (projet `financeai-497112` déjà existant) :
 1. **Activer l'API Google Drive**.
 2. **OAuth consent screen** : ajouter le scope `…/auth/drive.appdata` ; en mode Testing, ajouter
-   `marc.richard4@gmail.com` en test user.
+   `<courriel-du-propriétaire>` en test user.
 3. **Credentials → OAuth client ID → Web application** : *Authorized JavaScript origins* =
    `https://www.hubperso.com` (+ `http://localhost:5173` pour le dev). Pas de redirect URI ni de
    secret (le token client GIS du navigateur n'en utilise pas).
@@ -2080,7 +2080,7 @@ conversationnelle**, pas une fenêtre sur les données de Marc.
 
 | Aujourd'hui (calculatrice) | Ce que veut Marc (Q&A sur SES données) |
 |---|---|
-| « Combien d'espace CELI si né en 1992, arrivé en 2010, 25k$ dedans ? » (Marc fournit tout) | « **Combien d'espace CELI il ME reste ?** » (le connecteur lit le solde réel) |
+| « Combien d'espace CELI si né en [année], arrivé en [année], [montant] dedans ? » (Marc fournit tout) | « **Combien d'espace CELI il ME reste ?** » (le connecteur lit le solde réel) |
 | `run_projection(80000, 2000, 20, 7)` — Marc donne patrimoine, épargne, horizon | « **Mon patrimoine dans 20 ans ?** » (lit comptes, salaires, objectifs, immo, enfants…) |
 | Aucune écriture | « **Range cette fiche de paie au bon endroit** » (ingestion → revenus) |
 
@@ -2730,7 +2730,7 @@ a divergé. Un test d'intégration vérifie l'égalité sur un scénario couple 
 
 - [ ] **1.1** Suivre `docs/GOOGLE_DRIVE_SETUP.md` §1 (A→E) : projet `financeai-497112` → activer l'API Drive → ajouter le scope `…/auth/drive.appdata` à l'écran de consentement → créer un **OAuth Client ID « Web »**.
   - **Origines JavaScript autorisées** : `https://www.hubperso.com` (+ `http://localhost:5173` pour le dev). Pas de redirect URI, pas de secret.
-- [ ] **1.2** Écran de consentement en **mode Test** (décision D-4) → onglet **Utilisateurs test** : ajouter `marc.richard4@gmail.com` + les e-mails de ta bêta (cercle restreint, D-5). Limite ~100 users.
+- [ ] **1.2** Écran de consentement en **mode Test** (décision D-4) → onglet **Utilisateurs test** : ajouter `<courriel-du-propriétaire>` + les e-mails de ta bêta (cercle restreint, D-5). Limite ~100 users.
 - [ ] **1.3** Copier le **Client ID** (public) → Vercel **Project Settings → Environment Variables** :
   - `VITE_GOOGLE_CLIENT_ID = <ton client id>` (Production + Preview).
   - (Local : le mettre aussi dans `.env`.)
@@ -2820,7 +2820,7 @@ Sync Drive + isolation par compte · clés API chiffrées (keyCipher) · hard ga
 >
 > **MAJ 2026-05-22 — Option A (Cloudflare Access) implémentée et validée.**
 > L'app n'est plus publique : login Google obligatoire, restreint à
-> `marc.richard4@gmail.com`. Détails dans [AUTH_SETUP.md](AUTH_SETUP.md).
+> `<courriel-du-propriétaire>`. Détails dans [AUTH_SETUP.md](AUTH_SETUP.md).
 > Le « risque principal non-mitigé » ci-dessous est désormais **mitigé**.
 
 ## 1. Modèle de menace
@@ -2845,7 +2845,7 @@ Sync Drive + isolation par compte · clés API chiffrées (keyCipher) · hard ga
 
 Cloudflare Access est **en production**. Voir [AUTH_SETUP.md](AUTH_SETUP.md) pour la config détaillée.
 
-Résultat : seul `marc.richard4@gmail.com` peut accéder à `hubperso.com`. La session
+Résultat : seul `<courriel-du-propriétaire>` peut accéder à `hubperso.com`. La session
 dure 24h et expire automatiquement. ⚠️ **La PWA ne charge plus son manifest** — À corriger
 via Bypass Access pour `/manifest.json` et `/sw.js` (voir [ACTIONS_MARC.md](ACTIONS_MARC.md) §A12).
 
@@ -2870,7 +2870,7 @@ Browser → Cloudflare Edge (Access policy)
 - ✅ MFA via Google OAuth (TOTP ou clé matérielle si configuré sur Google)
 - ✅ Bloque l'URL **avant même** que le HTML/JS soit servi → le store ne se charge
   pas pour un visiteur non-auth
-- ✅ Politique simple : "email exact = marc.richard4@gmail.com"
+- ✅ Politique simple : "email exact = <courriel-du-propriétaire>"
 - ✅ Session expirable (24h par défaut, configurable)
 - ✅ Logs d'accès dans Cloudflare Dashboard
 
@@ -2886,7 +2886,7 @@ Browser → Cloudflare Edge (Access policy)
 
 **Étapes d'implémentation** (pour référence):
 1. ✅ `hubperso.com` sur Cloudflare DNS
-2. ✅ Application Cloudflare Access créée (`email = marc.richard4@gmail.com`)
+2. ✅ Application Cloudflare Access créée (`email = <courriel-du-propriétaire>`)
 3. ✅ Google comme Identity Provider (IdP)
 4. ✅ Durée de session 24h
 5. ✅ Testé : fenêtre privée redirige bien vers Google
@@ -2987,7 +2987,7 @@ Total Phase 1-4 : **~90 minutes** pour une app full-secure.
 Checklist (état au 2026-05-22, Access activé) :
 
 - [x] Ouvrir `hubperso.com` en fenêtre privée → redirige bien vers Google
-- [x] Se connecter avec marc.richard4@gmail.com → app accessible
+- [x] Se connecter avec <courriel-du-propriétaire> → app accessible
 - [ ] Se connecter avec un autre Gmail → doit refuser (403) — à confirmer
 - [ ] Attendre 24h+ → la session doit expirer et re-demander auth — à confirmer
 - [ ] Inspecter response headers : `cf-access-jwt-assertion` présent — à confirmer
@@ -4493,7 +4493,7 @@ Audit : 7 risques évalués dans [`docs/SECURITY_STRATEGY.md`](../SECURITY_STRAT
 
 **Mettre en place Cloudflare Access en frontale du domaine
 `hubperso.com`**, avec authentification Google OAuth + MFA, policy
-restreinte à `marc.richard4@gmail.com`.
+restreinte à `<courriel-du-propriétaire>`.
 
 ### Architecture (telle qu'implémentée)
 
@@ -4519,7 +4519,7 @@ connexion Google de Cloudflare.
 2. Activer Cloudflare Access (plan **gratuit** jusqu'à 50 users)
 3. Configurer une "Application" Access avec :
    - Domaine : `hubperso.com`
-   - Policy : `Allow if email = marc.richard4@gmail.com`
+   - Policy : `Allow if email = <courriel-du-propriétaire>`
    - Identity Provider : Google
    - Session duration : 24h
 4. Activer 2FA sur le compte Google (MFA hardware ou TOTP)
@@ -6583,7 +6583,7 @@ C'était le **seul** fichier avec des erreurs `rules-of-hooks` (scan repo entier
 
 ### S1 — Auth Google OAuth + MFA (Cloudflare Access) — ✅ FAIT (2026-05-22)
 Site désormais protégé : login Google obligatoire, restreint à
-`marc.richard4@gmail.com`. Doc : [AUTH_SETUP.md](AUTH_SETUP.md).
+`<courriel-du-propriétaire>`. Doc : [AUTH_SETUP.md](AUTH_SETUP.md).
 - [x] Phase 1 — DNS Cloudflare (domaine acheté chez Cloudflare Registrar)
 - [x] Phase 2 — Cloudflare Access policy (email Marc) + IdP Google OAuth
 - [x] Phase 3 — Testé en fenêtre privée, session 24h, redirect apex → www

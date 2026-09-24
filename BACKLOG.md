@@ -55,12 +55,18 @@
     sans livre, livre vide ou refusé ; régime EXACT, CELIAPP ≠ CELI, absent = NON-ENREG) et
     `valeurDuLivre` (`indisponible` dès qu'un cours ou un taux manque, jamais une somme partielle).
     Parité au cent avec `computeInvestmentsValue` aujourd'hui ET à une date passée. Rien n'est encore
-    BRANCHÉ : aucun écran ne change.
+    BRANCHÉ : aucun écran ne change. Revue : un `accountId` hors des trois du contrat (blob restauré)
+    refuse le livre (`compte-inconnu`) au lieu de finir sous une clé `undefined` de la ventilation, et
+    une décision prise sur un autre livre rend `indisponible` (`decision-desynchronisee`).
   - [ ] **e2** — présent + mois 0 du Futur : `computeInvestmentsValue`/`computePresentTermes`,
     `useSimulationParams` (soldes de départ), et retrait des régimes couverts par le livre de
     `decideRegimesRepris` (Fintable), sinon l'autorité Fintable corrigerait un panier que le livre
     remplace déjà.
   - [ ] **e3** — passé (courbe, variation 30 j) sur `valoriserAu` pour les régimes couverts.
+    ⚠️ À trancher avant : l'exclusion des placements saisis ne dépend pas de la DATE. Avant le premier
+    événement du livre, le régime couvert vaut donc 0 $ — juste si le livre remonte à l'ouverture du
+    compte, faux s'il commence au premier relevé importé (le « transfert entrant » d'ouverture date
+    alors l'arrivée des titres au mauvais jour).
   - [ ] **e4** — MCP, hub, PDF ; plus une garde à cliquet sur les appels `assetValueCad` /
     `computeInvestmentsValue` hors de la passerelle.
   ⚠️ À dire à Marc avant e2 : l'exclusion se fait par PANIER de régime — un placement saisi du même

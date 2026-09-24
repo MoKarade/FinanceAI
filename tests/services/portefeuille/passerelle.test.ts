@@ -9,7 +9,8 @@
 //      valeur, aujourd'hui ET à une date passée. L'attendu est écrit à la main depuis les constantes du
 //      scénario, et comparé à `computeInvestmentsValue` — la source unique des écrans — jamais à ce que
 //      la passerelle publie d'elle-même.
-//   3. REFUS NOMMÉ : un compte porteur sans régime, deux régimes pour un compte, un régime illisible.
+//   3. REFUS NOMMÉ : un compte porteur sans régime, deux régimes pour un compte, un régime illisible,
+//      un compte hors contrat ; et une décision prise sur un autre livre rend la valeur indisponible.
 //   4. EXACTITUDE DU RÉGIME : CELIAPP n'est pas CELI, un actif sans type est NON-ENREG, le crypto ne
 //      sort jamais.
 //   5. TOTAL AMPUTÉ = FAUX : magasin absent ou cours manquant → `indisponible`, jamais une somme partielle.
@@ -107,6 +108,14 @@ describe('[PTF-L1E] décision : le livre fait-il autorité ?', () => {
         expect(deciderPasserelle(livre, illisible)).toEqual({ etat: 'refusee', causes: [{ type: 'regime-inconnu', compte: 'courtier-cad' }] });
     });
 
+    it('un compte HORS contrat (blob restauré, schéma futur) refuse le livre entier, compte nommé tel quel', () => {
+        // `etatDuLivre` valorise ce compte comme les autres : le laisser passer ferait sortir sa valeur de
+        // toute ventilation par régime. Un régime déclaré pour lui ne le rend pas légitime.
+        const avecInconnu = [...livre, e({ id: 'x1', date: '2026-07-03', accountId: 'courtier-cad-ancien' as never, kind: 'transfert-entrant', isin: A, quantity: 3 })];
+        const regimes = [...regimesCeli, { accountId: 'courtier-cad-ancien', regime: 'CELI' } as never];
+        expect(deciderPasserelle(avecInconnu, regimes)).toEqual({ etat: 'refusee', causes: [{ type: 'compte-inconnu', compte: 'courtier-cad-ancien' }] });
+    });
+
     it('un régime déclaré pour un compte ABSENT du livre ne couvre rien', () => {
         const seulCad = [e({ id: 'x', date: '2026-07-01', accountId: 'courtier-cad', kind: 'transfert-entrant', isin: A, quantity: 1 })];
         const d = deciderPasserelle(seulCad, [{ accountId: 'courtier-cad', regime: 'CELI' }, { accountId: 'courtier-usd', regime: 'REER' }]);
@@ -194,6 +203,13 @@ describe('[PTF-L1E] TOTAL AMPUTÉ = FAUX', () => {
         expect(v.etat === 'indisponible' && v.cause).toBe('valorisation-incomplete');
         expect(v.etat === 'indisponible' && v.cause === 'valorisation-incomplete' && v.valorisation.manquants)
             .toEqual([{ type: 'cours', compte: 'courtier-usd', isin: B, statut: 'absente' }]);
+    });
+
+    it('une décision prise sur un AUTRE livre → indisponible, jamais une ligne perdue ni une clé fantôme', () => {
+        // Décision calculée sur le seul compte CAD, livre qui porte aussi le compte USD.
+        const dCad = deciderPasserelle(livre.filter((x) => x.accountId === 'courtier-cad'), regimesCeli);
+        expect(dCad.etat).toBe('active');
+        expect(valeurDuLivre(livre, dCad, magasin, AUJ, AGE)).toEqual({ etat: 'indisponible', cause: 'decision-desynchronisee' });
     });
 
     it('les placements saisis du régime couvert restent EXCLUS même quand la valeur est indisponible', () => {

@@ -1087,8 +1087,8 @@ export interface BrokerInstrument {
 
 /** [PTF-L1E-PASSERELLE] Régime fiscal d'un compte du grand livre, DÉCLARÉ par Marc (décision du
  *  2026-09-24 : un régime par compte, jamais deviné). Crypto et « autre » en sont exclus, un compte
- *  de courtier n'a ni l'un ni l'autre. Le compte `hors-courtier` n'en a pas besoin, il n'est pas
- *  valorisé par la passerelle (voir services/portefeuille/passerelle.ts). */
+ *  de courtier n'a ni l'un ni l'autre. Le compte `hors-courtier` y est soumis comme les deux autres
+ *  dès qu'il porte un événement (garantie E de services/portefeuille/passerelle.ts). */
 export type BrokerAccountRegimeType = Exclude<RegisteredAccountType, 'CRYPTO' | 'AUTRE'>;
 
 export interface BrokerAccountRegime {

@@ -50,6 +50,10 @@ const REGIMES_ADMIS: readonly BrokerAccountRegimeType[] = ['CELI', 'CELIAPP', 'R
 
 /** Pourquoi le livre ne fait pas autorité. Chaque cause nomme le compte, jamais un montant. */
 type CauseRefusPasserelle =
+    /** Un événement porte un compte hors des trois du contrat (blob restauré, schéma futur) : rien
+     *  n'en dit le régime, et `etatDuLivre` le valorise quand même — le laisser passer ferait
+     *  sortir sa valeur de toute ventilation par régime. `compte` est la chaîne lue, telle quelle. */
+    | { type: 'compte-inconnu'; compte: string }
     | { type: 'compte-sans-regime'; compte: BrokerLedgerAccountId }
     /** Deux régimes différents déclarés pour le même compte : lequel vaut n'est pas à deviner. */
     | { type: 'regime-ambigu'; compte: BrokerLedgerAccountId }
@@ -96,6 +100,10 @@ export function deciderPasserelle(
     }
 
     const causes: CauseRefusPasserelle[] = [];
+    const connus = COMPTES_DU_LIVRE as readonly string[];
+    for (const compte of [...presents].filter((c) => !connus.includes(c)).sort()) {
+        causes.push({ type: 'compte-inconnu', compte });
+    }
     const regimeParCompte = new Map<BrokerLedgerAccountId, BrokerAccountRegimeType>();
     for (const compte of COMPTES_DU_LIVRE) {
         if (!presents.has(compte)) continue;
@@ -122,6 +130,9 @@ export type ValeurDuLivre =
     | { etat: 'sans-objet' }
     /** Le livre remplace des régimes, mais sa valeur n'est pas publiable (garantie D). */
     | { etat: 'indisponible'; cause: 'magasin-absent' }
+    /** Une ligne valorisée vient d'un compte sans régime dans `decision` : la décision n'a pas été
+     *  prise sur CE livre. Refus plutôt qu'une ventilation qui perdrait la ligne. */
+    | { etat: 'indisponible'; cause: 'decision-desynchronisee' }
     | { etat: 'indisponible'; cause: 'valorisation-incomplete'; valorisation: Valorisation }
     | {
         etat: 'disponible';
@@ -152,8 +163,11 @@ export function valeurDuLivre(
 
     const parRegime: Partial<Record<BrokerAccountRegimeType, number>> = {};
     for (const l of [...valorisation.titres, ...valorisation.especes]) {
-        // Toute ligne vient d'un compte présent au livre, donc d'un compte à régime (décision active).
-        const regime = decision.regimeParCompte.get(l.compte) as BrokerAccountRegimeType;
+        // Une décision prise sur CE livre couvre chacun de ses comptes (un compte inconnu la refuse).
+        // Une ligne sans régime dit donc que `decision` vient d'un autre livre : jamais de clé
+        // fantôme, jamais une ligne perdue en silence.
+        const regime = decision.regimeParCompte.get(l.compte);
+        if (regime === undefined) return { etat: 'indisponible', cause: 'decision-desynchronisee' };
         parRegime[regime] = (parRegime[regime] ?? 0) + l.valeurCad;
     }
     return { etat: 'disponible', parRegime, totalCad: valorisation.totalCad, valorisation };

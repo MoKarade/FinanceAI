@@ -44,27 +44,14 @@
 - [ ] 🔧 **`[PTF-L1E-PASSERELLE]`** (L+L) — un seul point d'entrée pour toutes les surfaces (présent,
   départ du Futur, passé, PDF, MCP, hub), identique livre vide ; parité CROISÉE (même portefeuille en
   actifs et en livre → même chiffre au cent partout ; retirer une surface fait rougir).
-- [x] 🔧 **`[PTF-L1F-PARSEUR-DISNAT]`** (L) — parseur TypeScript texte → événements, sections bornées
-  par la fin de COMPTE (l'ancien parseur Python s'arrêtait au premier « Total » et perdait des lignes
-  en silence, mesuré), opérations réelles (retenue, impôt de non-résident, fractionnement), devise
-  du prix distincte de celle de la valeur ; fixtures SYNTHÉTIQUES ; lecture PDF chargée en différé.
-  ✅ **Livré le 2026-09-24 (partie texte)** : `services/import/disnat/lireReleveDisnat.ts` (texte →
-  relevé structuré) et `versEvenements.ts` (relevé → événements, correspondance ISIN et position
-  d'avant en ARGUMENTS : le relevé n'imprime aucun ISIN). Trois recoupements du découpage (activité ↔
-  variation de l'encaisse, ligne « ENCAISSE » ↔ fermeture, quantité × coût unitaire ↔ coût
-  comptable) ; signe traduit en `kind` sans valeur absolue ; opération, titre, devise inconnus →
-  refus nommé par numéro de ligne. Tests : 28 cas sur un relevé fictif de même forme, 6 perturbations
-  rouges. Mesuré EN LOCAL sur les trois vrais relevés (jamais committés) : 0 anomalie, 0 refus, et
-  le livre rejoué rend TOUTES les positions du dernier relevé à l'unité près.
-  Revue (panel, avant push) : 4 défauts prouvés et corrigés — montant imprimé sur un fractionnement
-  ou un transfert reçu JETÉ (→ refus `montant-non-traduit`), position au nom commençant par « Total »
-  avalée (seul le total de la catégorie EN COURS est sauté), nombre de fin de description avalé dans
-  le PRIX (lecture retenue seulement si quantité × prix est du même ordre que le montant), indicateur
-  glissant d'une ligne « ENCAISSE » sur la position suivante. 34 cas, 10 perturbations rouges ; le
-  rejeu local sur les trois vrais relevés est inchangé.
-- [ ] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — extraction PDF → lignes, chargée en différé (pdfjs-dist,
-  ~500 Ko gz) : reconstruction par ligne à tolérance verticale 3 (mesurée au Lot 0 identique à
-  pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne). Branchée sur `lireReleveDisnat`.
+- [x] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — ✅ 2026-09-24 : `services/import/disnat/lignesDuPdf.ts`.
+  `reconstruireLignes` (pure) regroupe les fragments à tolérance verticale 3 (mesurée au Lot 0
+  identique à pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne) — même algorithme que
+  l'extraction du Lot 0, sur laquelle le parseur a été essayé. `lireLignesPdf` charge `pdfjs-dist`
+  (4.10.38, épinglé) EN DIFFÉRÉ : build mesuré, chunk à part de 112 Ko gz + worker servi par l'app
+  (`worker-src 'self'` déjà dans la CSP), `isEvalSupported: false`. Garde qui TRAVERSE : le relevé
+  fictif imprimé dans un vrai PDF (jsPDF) puis relu par pdfjs rend le MÊME relevé que le texte.
+  ⚠️ Rien n'importe encore ce module depuis l'app : le chunk n'apparaît au build qu'avec 1g.
 - [ ] 🔧 **`[PTF-L1G-IMPORT-PORTEFEUILLE]`** (L) — import déclenché par Marc, aperçu avant/après
   (quantité, prix, devise, coût, encaisse) ; remplacement daté des lignes mal cotées ; refus
   d'`apply_broker_statement` et de `delete_item` sur les lignes du référentiel (variante de symbole

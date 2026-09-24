@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1f : parseur Disnat, partie texte (PR #1051)
+
+Déménagé au lot suivant (1f2).
+
+- [x] 🔧 **`[PTF-L1F-PARSEUR-DISNAT]`** (L) — parseur TypeScript texte → événements, sections bornées
+  par la fin de COMPTE (l'ancien parseur Python s'arrêtait au premier « Total » et perdait des lignes
+  en silence, mesuré), opérations réelles (retenue, impôt de non-résident, fractionnement), devise
+  du prix distincte de celle de la valeur ; fixtures SYNTHÉTIQUES ; lecture PDF chargée en différé.
+  ✅ **Livré le 2026-09-24 (partie texte)** : `services/import/disnat/lireReleveDisnat.ts` (texte →
+  relevé structuré) et `versEvenements.ts` (relevé → événements, correspondance ISIN et position
+  d'avant en ARGUMENTS : le relevé n'imprime aucun ISIN). Trois recoupements du découpage (activité ↔
+  variation de l'encaisse, ligne « ENCAISSE » ↔ fermeture, quantité × coût unitaire ↔ coût
+  comptable) ; signe traduit en `kind` sans valeur absolue ; opération, titre, devise inconnus →
+  refus nommé par numéro de ligne. Tests : 28 cas sur un relevé fictif de même forme, 6 perturbations
+  rouges. Mesuré EN LOCAL sur les trois vrais relevés (jamais committés) : 0 anomalie, 0 refus, et
+  le livre rejoué rend TOUTES les positions du dernier relevé à l'unité près.
+  Revue (panel, avant push) : 4 défauts prouvés et corrigés — montant imprimé sur un fractionnement
+  ou un transfert reçu JETÉ (→ refus `montant-non-traduit`), position au nom commençant par « Total »
+  avalée (seul le total de la catégorie EN COURS est sauté), nombre de fin de description avalé dans
+  le PRIX (lecture retenue seulement si quantité × prix est du même ordre que le montant), indicateur
+  glissant d'une ligne « ENCAISSE » sur la position suivante. 34 cas, 10 perturbations rouges ; le
+  rejeu local sur les trois vrais relevés est inchangé.
+
 ## 2026-09-24 — Portefeuille, lot 1s : sortes tranchées du grand livre (PR #1050)
 
 Déménagé au lot suivant (1f).

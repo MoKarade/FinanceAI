@@ -30,7 +30,7 @@
 //  4. Le « reporté » vient du magasin (`clotureAu`/`tauxAu`) : il est calculé à la lecture, jamais
 //     écrit, et l'âge maximal est un argument REQUIS — un défaut ici serait un seuil inventé.
 import type { BrokerLedgerAccountId, BrokerLedgerCurrency, BrokerLedgerEvent } from '../../types';
-import { annulationsAu, etatDuLivreAu, type AnomalieLivre } from '../grandLivre/etatDuLivre';
+import { annulationsAu, etatDuLivreAu, rangDansLaJournee, type AnomalieLivre } from '../grandLivre/etatDuLivre';
 import { clotureAu, tauxAu, type MagasinMarche, type LectureAuJour, type LectureTauxAuJour } from '../marche/magasinMarche';
 
 /** Une ligne de titres valorisée. `cours` en devise de cotation, `taux` = CAD par unité de devise. */
@@ -223,7 +223,10 @@ function suivreLaPosition(
         && typeof e.date === 'string';
     const annulesDebut = annulationsAu(livre, debut).annules;
     const annulesFin = annulationsAu(livre, fin).annules;
-    const chronologique = (a: ChangementDUnite, b: ChangementDUnite): number => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    // Même ordre que le grand livre (fractionnement, puis échange, dans une journée) : un ordre propre
+    // ici ferait suivre une position autrement que le livre ne l'a calculée.
+    const chronologique = (a: ChangementDUnite, b: ChangementDUnite): number =>
+        (a.date < b.date ? -1 : a.date > b.date ? 1 : rangDansLaJournee(a) - rangDansLaJournee(b));
     const defaits = livre
         .filter(valide)
         .filter((e) => e.date <= debut && !annulesDebut.has(e.id) && annulesFin.has(e.id))

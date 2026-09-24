@@ -17027,3 +17027,21 @@ le bon fonctionnement rendaient le même zéro.
   différents) : un « 1 rouge » là où on en attendait 2 n'est pas un test faible, c'est une information
   sur lequel des deux porte la preuve.
 
+
+## `UN-TRI-PAR-DATE-LAISSE-L-ORDRE-DU-TABLEAU-DECIDER-LE-RESTE` (2026-09-24, revue du lot 1s)
+
+Le grand livre trie ses événements par DATE, puis applique. Deux événements du même jour gardaient
+donc l'ordre du tableau reçu — et un fractionnement suivi d'un échange du même titre ne donne pas le
+même résultat que l'inverse. Aucun test ne le voyait : chaque fixture écrivait les événements dans
+l'ordre « naturel ». Même classe, deux fois dans le même lot : deux annulations de la même ligne le
+même jour rapportaient l'une ou l'autre selon le tableau.
+
+- Devant un tri, demander ce qui départage les **égalités** : si c'est l'ordre d'arrivée, le résultat
+  dépend de qui a construit le tableau (un import, une restauration, une fusion Drive).
+- La règle de départage est une **source unique** (`rangDansLaJournee`), appelée par le livre ET par
+  le suivi de position de la valorisation — deux copies divergeraient en silence.
+- La garde écrit le cas dans **les deux ordres** et exige le même résultat : un seul ordre ne prouve
+  que l'ordre qu'on a écrit.
+- Corollaire : un identifiant censé être unique ne l'est que si quelque chose le **refuse** en double.
+  Deux annulations au même `id` faisaient tomber deux lignes réelles ; elles sont désormais refusées
+  toutes les deux, sans deviner laquelle était la bonne.

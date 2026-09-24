@@ -124,6 +124,43 @@ describe('échange : toute la position change d\'ISIN, au ratio imprimé', () =>
     });
 });
 
+describe('revue : ce qui dépendait de l\'ordre du tableau, ou passait en silence', () => {
+    it('fractionnement puis échange du même titre le même jour : même résultat dans les deux ordres', () => {
+        const detenu = e({ id: 't', date: '2026-01-02', accountId: 'courtier-usd', kind: 'transfert-entrant', isin: A, quantity: 10 });
+        const frac = e({ id: 'f', date: '2026-02-01', accountId: 'courtier-usd', kind: 'fractionnement', isin: A, splitFrom: 1, splitTo: 2 });
+        const ech = e({ id: 'ech', date: '2026-02-01', accountId: 'courtier-usd', kind: 'echange', isin: A, toIsin: B, splitFrom: 1, splitTo: 1 });
+        for (const livre of [[detenu, frac, ech], [detenu, ech, frac]]) {
+            const etat = etatDuLivreAu(livre, '2026-12-31')!;
+            expect(etat.positions['courtier-usd']).toEqual({ [B]: 20 });
+            expect(etat.anomalies).toEqual([]);
+        }
+    });
+
+    it('deux annulations au MÊME identifiant sont refusées toutes les deux (sinon deux lignes réelles tombaient)', () => {
+        const livre = [
+            e({ id: 'a1', date: '2026-01-10', accountId: 'courtier-usd', kind: 'transfert-entrant', isin: A, quantity: 5 }),
+            e({ id: 'a2', date: '2026-01-10', accountId: 'courtier-usd', kind: 'transfert-entrant', isin: B, quantity: 7 }),
+            e({ id: 'x', date: '2026-01-15', accountId: 'courtier-usd', kind: 'annulation', cancelsId: 'a1' }),
+            e({ id: 'x', date: '2026-01-15', accountId: 'courtier-usd', kind: 'annulation', cancelsId: 'a2' }),
+        ];
+        const etat = etatDuLivreAu(livre, '2026-12-31')!;
+        expect(etat.positions['courtier-usd']).toEqual({ [A]: 5, [B]: 7 });
+        expect(etat.anomalies).toEqual([
+            { type: 'annulation-invalide', id: 'x', raison: 'identifiant-en-double' },
+            { type: 'annulation-invalide', id: 'x', raison: 'identifiant-en-double' },
+        ]);
+    });
+
+    it('deux annulations d\'une même ligne, le même jour : c\'est la même qui est rapportée, quel que soit l\'ordre', () => {
+        const achat = e({ id: 'a', date: '2026-01-10', accountId: 'courtier-usd', kind: 'transfert-entrant', isin: A, quantity: 5 });
+        const x1 = e({ id: 'x1', date: '2026-01-15', accountId: 'courtier-usd', kind: 'annulation', cancelsId: 'a' });
+        const x2 = e({ id: 'x2', date: '2026-01-15', accountId: 'courtier-usd', kind: 'annulation', cancelsId: 'a' });
+        const attendu = [{ type: 'annulation-invalide', id: 'x2', raison: 'deja-annulee' }];
+        expect(etatDuLivreAu([achat, x1, x2], '2026-12-31')!.anomalies).toEqual(attendu);
+        expect(etatDuLivreAu([achat, x2, x1], '2026-12-31')!.anomalies).toEqual(attendu);
+    });
+});
+
 describe('coût d\'une ligne de titres : unitaire OU total, jamais les deux', () => {
     const t = (x: Record<string, unknown>) => e({ id: 'c', date: '2026-01-02', accountId: 'courtier-usd', kind: 'transfert-entrant', isin: A, quantity: 37, ...x });
 
@@ -219,6 +256,19 @@ describe('variation : l\'annulation et l\'échange ne fabriquent pas de performa
         const v = ok(variationEntre(livre, m({ [A]: [['2026-07-10', 100, 'eodhd']], [C]: [['2026-07-20', 51, 'eodhd']] }), '2026-07-10', '2026-07-20', 5));
         expect(v.effetCours).toBeCloseTo(20 * 1 * 1.4, PRECIS);
         expect(v.mouvements).toBeCloseTo(0, PRECIS);
+    });
+
+    it('fractionnement et échange le même jour DANS la fenêtre : suivis dans l\'ordre du livre, 0 artefact', () => {
+        // 10 A à 100 ; le même jour, A se fractionne (×2) puis est échangé contre C (1 pour 1) : 20 C à 50.
+        const t = e({ id: 't', date: '2026-07-01', accountId: 'courtier-usd', kind: 'transfert-entrant', isin: A, quantity: 10 });
+        const frac = e({ id: 'f', date: '2026-07-15', accountId: 'courtier-usd', kind: 'fractionnement', isin: A, splitFrom: 1, splitTo: 2 });
+        const ech = e({ id: 'ech', date: '2026-07-15', accountId: 'courtier-usd', kind: 'echange', isin: A, toIsin: C, splitFrom: 1, splitTo: 1 });
+        const marche = m({ [A]: [['2026-07-10', 100, 'eodhd']], [C]: [['2026-07-20', 50, 'eodhd']] });
+        for (const livre of [[t, frac, ech], [t, ech, frac]]) {
+            const v = ok(variationEntre(livre, marche, '2026-07-10', '2026-07-20', 5));
+            expect(v.effetCours).toBeCloseTo(0, PRECIS);
+            expect(v.mouvements).toBeCloseTo(0, PRECIS);
+        }
     });
 
     it('un fractionnement d\'AVANT la fenêtre, annulé DANS la fenêtre, est défait : 0 artefact', () => {

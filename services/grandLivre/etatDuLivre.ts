@@ -13,7 +13,10 @@
 //      cent près d'un relevé, donc une somme flottante fabriquerait des écarts d'un cent.
 //   3. ORDRE D'UNE JOURNÉE : un fractionnement s'applique AVANT les autres opérations du même jour —
 //      un achat daté du jour de l'ex-date est déjà en titres post-fractionnement. Sans cette règle,
-//      l'ordre d'import décidait de la quantité.
+//      l'ordre d'import décidait de la quantité. Puis l'échange, avant tout le reste : un fractionnement
+//      et un échange du même titre le même jour donnaient, à égalité de rang, 20 ou 10 titres selon
+//      l'ordre du tableau (l'échange vide la position de départ, le fractionnement d'une position vide
+//      ne fait rien) — sans anomalie.
 //   4. REFUS, JAMAIS CORRECTION : une valeur non finie, une quantité négative à la sortie, une devise
 //      de règlement étrangère au compte, un identifiant en double sont RAPPORTÉS (`anomalies`) et
 //      l'événement fautif est écarté. On ne coerce rien, on ne complète rien.
@@ -48,7 +51,7 @@ export type AnomalieLivre =
     | { type: 'sorte-inconnue'; id: string }
     /** Le relevé imprime un coût total ET un coût unitaire : lequel fait foi n'est pas à deviner. */
     | { type: 'cout-ambigu'; id: string }
-    | { type: 'annulation-invalide'; id: string; raison: 'cible-absente' | 'cible-ambigue' | 'cible-posterieure' | 'cible-annulation' | 'compte-different' | 'deja-annulee' }
+    | { type: 'annulation-invalide'; id: string; raison: 'cible-absente' | 'cible-ambigue' | 'cible-posterieure' | 'cible-annulation' | 'compte-different' | 'deja-annulee' | 'identifiant-en-double' }
     | { type: 'echange-invalide'; id: string }
     /** Un échange imprimé sur des titres que le livre ne détient pas : un import antérieur manque. */
     | { type: 'echange-sans-position'; id: string; isin: string; compte: BrokerLedgerAccountId }
@@ -69,8 +72,11 @@ const DATE_ISO = /^\d{4}-\d{2}-\d{2}$/;
 const enCents = (valeur: number): number => Math.round(valeur * 100);
 const estFini = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-/** Rang d'un événement DANS une journée : fractionnement et échange d'abord (point 3 de l'en-tête). */
-const rangDansLaJournee = (e: BrokerLedgerEvent): number => (e.kind === 'fractionnement' || e.kind === 'echange' ? 0 : 1);
+/**
+ * Rang d'un événement DANS une journée : fractionnement, puis échange, puis le reste (point 3 de
+ * l'en-tête). Exporté : le moteur de valorisation suit une position dans le MÊME ordre.
+ */
+export const rangDansLaJournee = (e: BrokerLedgerEvent): number => (e.kind === 'fractionnement' ? 0 : e.kind === 'echange' ? 1 : 2);
 
 /**
  * Identifiants des lignes ANNULÉES à la date `date` (point 5 de l'en-tête), plus les annulations
@@ -91,12 +97,17 @@ export function annulationsAu(
     }
     const annulations = livre
         .filter((e) => e?.kind === 'annulation' && typeof e.date === 'string' && DATE_ISO.test(e.date) && e.date <= date)
-        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        // Par date, puis par identifiant : laquelle de deux annulations d'une même ligne est rapportée
+        // `deja-annulee` ne dépend pas de l'ordre du tableau reçu.
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const a of annulations) {
         if (a.kind !== 'annulation') continue;
         const refuser = (raison: Extract<AnomalieLivre, { type: 'annulation-invalide' }>['raison']): void => {
             refusees.push({ type: 'annulation-invalide', id: a.id, raison });
         };
+        // Les annulations échappent au contrôle d'identifiant de `etatDuLivreAu` (elles ne sont pas
+        // rejouées) : deux annulations au même identifiant s'appliquaient TOUTES LES DEUX, en silence.
+        if ((parId.get(a.id)?.length ?? 0) > 1) { refuser('identifiant-en-double'); continue; }
         const cibles = parId.get(a.cancelsId) ?? [];
         if (cibles.length === 0) { refuser('cible-absente'); continue; }
         if (cibles.length > 1) { refuser('cible-ambigue'); continue; }
@@ -112,8 +123,8 @@ export function annulationsAu(
 
 /**
  * État du livre à la date `date` (incluse). `null` si le livre n'a jamais été importé.
- * L'ordre du tableau reçu n'importe pas : les événements sont triés par date, fractionnement
- * d'abord dans une journée, puis dans l'ordre reçu (tri stable).
+ * L'ordre du tableau reçu n'importe pas : les événements sont triés par date, puis, dans une
+ * journée, fractionnement, échange et le reste, puis dans l'ordre reçu (tri stable).
  */
 export function etatDuLivreAu(livre: readonly BrokerLedgerEvent[] | undefined, date: string): EtatDuLivre | null {
     if (livre === undefined) return null;

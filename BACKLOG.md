@@ -43,6 +43,12 @@
   `echange` (changement d'ISIN, une fraction payée s'écrit comme une vente), coût TOTAL gardé tel
   qu'imprimé (`cost`, jamais avec `price`). ADR 0020 §11. Tests :
   `tests/services/grandLivre/sortesTranchees.test.ts` (21 cas, 5 perturbations rouges).
+  Revue (panel, avant push) : trois dépendances à l'ORDRE du tableau fermées — un fractionnement
+  et un échange du même titre le même jour s'appliquent fractionnement d'abord (`rangDansLaJournee`,
+  partagé par le suivi de position de la valorisation) ; deux annulations au MÊME identifiant sont
+  refusées toutes les deux (`identifiant-en-double`) au lieu de faire tomber deux lignes réelles ;
+  deux annulations d'une même ligne le même jour rapportent toujours la même (tri par date puis id).
+  4 cas neufs, 4 perturbations séparées, chacune rouge.
 - [x] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
   devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
   manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait

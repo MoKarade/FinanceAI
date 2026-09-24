@@ -39,22 +39,29 @@
   Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
   nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
   `CHAMPS_TEXTE` dans le même commit.
-- [x] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
-  native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
-  dividende, retenue, dépôt, frais).
-  ✅ **Livré le 2026-09-24** : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu`, module pur).
-  Livre absent → `null`, jamais un état vide ; encaisse en cents ENTIERS arrondis à la conversion ;
-  un fractionnement passe AVANT les opérations du même jour ; tout événement fautif (valeur non
-  finie, quantité ou montant nul ou négatif, date illisible, identifiant en double, vente au-delà du
-  détenu, devise étrangère au compte) est ÉCARTÉ et NOMMÉ dans `anomalies`, jamais corrigé. Tests :
-  `tests/services/grandLivre/etatDuLivre.test.ts` (15 cas, 8 perturbations rouges).
 - [ ] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
   devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
   manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait
   (deux événements sans lien, taux de conversion perdu). À trancher avec le parseur (1f), sur des
   relevés synthétiques qui en portent : une sorte qui débite un compte et crédite l'autre dans le
   MÊME événement, avec le taux appliqué.
-- [ ] 🔧 **`[PTF-L1C-MAGASIN-MARCHE]`** (M+L+S, trois PR) — format du magasin (clôtures BRUTES avec
+- [x] 🔧 **`[PTF-L1C1-MAGASIN-FORMAT]`** (M) — première des trois PR de `[PTF-L1C-MAGASIN-MARCHE]` :
+  format du magasin et clients PURS (aucun réseau, aucune horloge).
+  ✅ **Livré le 2026-09-24** : `services/marche/magasinMarche.ts` — format versionné (v1 ; une version
+  FUTURE est refusée, jamais lue comme une v1), validation qui REFUSE sans réparer (ISIN, dates
+  strictement croissantes, valeurs finies et positives, messages sans aucun cours ni taux), fusion
+  idempotente où la SOURCE décide (un point de secours n'écrase jamais un point officiel, un point
+  officiel promeut un point de secours), lecture à une date où le « reporté » se CALCULE et ne s'écrit
+  jamais, avec un âge maximal REQUIS. `services/marche/clientsMarche.ts` — URL et lecteurs EODHD
+  (`close` BRUT, jamais `adjusted_close`) et Banque du Canada (une SÉRIE datée, jamais le groupe),
+  la clé jamais dans un message. Tests : 34 cas, 8 perturbations rouges, forme Valet vérifiée sur la
+  réponse réelle enregistrée.
+- [ ] 🔧 **`[PTF-L1C1-LECTEURS-EVENEMENTS]`** (S) — lecteurs EODHD des fractionnements et des
+  dividendes, et lecteur Yahoo (secours). Volontairement ABSENTS du lot 1c-1 : la mesure du Lot 0.5b
+  n'a porté que sur les clôtures, et Yahoo sert un prix AJUSTÉ qu'il faut dé-ajuster des
+  fractionnements avant de le traiter en secours. Chacun arrive avec sa réponse RÉELLE enregistrée en
+  fixture (mesure en CI, journal sans valeur), jamais d'après une forme supposée.
+- [ ] 🔧 **`[PTF-L1C-MAGASIN-MARCHE]`** (L+S, deux PR restantes : tâche serveur 1c-2, référentiel 1c-3) — format du magasin (clôtures BRUTES avec
   source et statut officiel/reporté/secours, taux BdC datés, fractionnements, dividendes) ; tâche
   serveur idempotente qui rattrape les jours manqués, budget d'appels COMPTÉ, mode essai à blanc,
   magasin inclus dans l'export JSON ; import du SEUL référentiel (sans quantités) pour que

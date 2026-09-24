@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1b : positions et encaisse du grand livre (PR #1047)
+
+Déménagé au lot suivant (1c-1).
+
+- [x] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
+  native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
+  dividende, retenue, dépôt, frais).
+  ✅ **Livré le 2026-09-24** : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu`, module pur).
+  Livre absent → `null`, jamais un état vide ; encaisse en cents ENTIERS arrondis à la conversion ;
+  un fractionnement passe AVANT les opérations du même jour ; tout événement fautif (valeur non
+  finie, quantité ou montant nul ou négatif, date illisible, identifiant en double, vente au-delà du
+  détenu, devise étrangère au compte) est ÉCARTÉ et NOMMÉ dans `anomalies`, jamais corrigé. Tests :
+  `tests/services/grandLivre/etatDuLivre.test.ts` (15 cas, 8 perturbations rouges).
+
 ## 2026-09-24 — Portefeuille, lot 1a : grand livre et référentiel déclarés (PR #1043)
 
 Déménagé au lot suivant (1b). Déploiement de production créé sur `86254fb9`.

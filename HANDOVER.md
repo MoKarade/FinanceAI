@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 2) — **Lot 1c-1 : format du magasin de marché, clients purs**
+> Livré `[PTF-L1C1-MAGASIN-FORMAT]` : `services/marche/magasinMarche.ts` (format v1, validation qui refuse,
+> fusion idempotente où la source décide, `clotureAu`/`tauxAu` avec âge maximal REQUIS) et
+> `services/marche/clientsMarche.ts` (EODHD `close` brut, BdC par série datée). Aucun réseau ici : la tâche
+> serveur 1c-2 fera les appels (attend les paramètres GCP et la clé EODHD de Marc). Lecteurs d'événements
+> EODHD et Yahoo volontairement absents : `[PTF-L1C1-LECTEURS-EVENEMENTS]`. ⏭️ Suite : 1d, 1f.
+>
 > ## 🟩 Session 2026-09-24 (fin, suite) — **Lot 1b : positions et encaisse pures**
 > Livré `[PTF-L1B-LIVRE-PUR]` : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu(livre, date)`), module PUR,
 > non branché à l'écran. Tri-état respecté (`undefined` → `null`), encaisse en cents entiers arrondis, fractionnement

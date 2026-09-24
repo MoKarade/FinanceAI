@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille, lot 1c-1 : le format des prix archivés
+
+- Rien de visible encore. FinanceAI sait maintenant décrire et vérifier le fichier où seront archivés
+  chaque jour les cours de clôture de tes titres et les taux de la Banque du Canada : un cours
+  « officiel » n'est jamais remplacé par un cours de secours, et un prix reporté d'un jour de bourse
+  fermée est calculé à la lecture, jamais écrit comme s'il avait été observé.
+
 ## 2026-09-24 — Portefeuille, lot 1b : ce que tu détiens, à n'importe quelle date
 
 - Le calcul qui dira **combien de titres et combien d'espèces** chaque compte courtier contenait à

@@ -235,7 +235,9 @@ export function logError(input: {
         // SH5/S-C/S2 : on loggue le message ET le context SANITISÉS (entry.*), pas
         // l'input brut — sinon la PII (montants, salaires, clés) fuiterait dans la
         // console DevTools alors que l'entrée stockée/exportée est déjà nettoyée.
-        fn(`[${input.source}] ${entry.message}`, entry.context ?? '');
+        // [S5-CODEQL] js/tainted-format-string : un message contenant « %s » ou « %o » aurait consommé le
+        // contexte comme argument de format. Format constant, message passé comme simple valeur.
+        fn('%s', `[${input.source}] ${entry.message}`, entry.context ?? '');
     }
 }
 

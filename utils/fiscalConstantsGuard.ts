@@ -64,7 +64,9 @@ export interface FiscalLeak {
  */
 export function findFiscalLeaks(source: string, banned: readonly string[]): FiscalLeak[] {
     if (banned.length === 0) return [];
-    const escaped = banned.map(b => b.replace(/[.]/g, '\\.'));
+    // [S5-CODEQL] js/incomplete-sanitization : seul « . » était échappé ; un littéral contenant « + », « ( »
+    // ou « $ » aurait changé le sens du motif. Échappement complet.
+    const escaped = banned.map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     // (?<![\d.]) et (?![\d]) : ne pas matcher un littéral banni à l'intérieur d'un nombre plus grand
     // (ex. 58523 dans 585234, ou la partie décimale d'un autre nombre).
     const re = new RegExp(`(?<![\\d.])(${escaped.join('|')})(?![\\d])`, 'g');

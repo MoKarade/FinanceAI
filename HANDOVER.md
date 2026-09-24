@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite) — **Lot 1b : positions et encaisse pures**
+> Livré `[PTF-L1B-LIVRE-PUR]` : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu(livre, date)`), module PUR,
+> non branché à l'écran. Tri-état respecté (`undefined` → `null`), encaisse en cents entiers arrondis, fractionnement
+> avant les opérations du même jour, événements fautifs écartés et nommés (`anomalies`). ⚠️ Le livre n'a pas de sorte
+> pour une conversion de devises ni un virement interne : routé `[PTF-L1B-CONVERSION-VIREMENT]`, à trancher avec 1f.
+> ⏭️ Suite : 1c-1 (format du magasin de marché + clients purs), 1d, 1f.
+>
 > ## 🟩 Session 2026-09-24 (fin) — **Lot 1a : grand livre et référentiel déclarés, rien d'écrit**
 > Marc : « go pour le lot 1 ». Livré `[PTF-L1A-SCHEMA-LIVRE]` (ADR 0020) : `brokerLedger` / `instruments` dans
 > `AppState`, `undefined` explicite dans les défauts store ET MCP (purge persona), 3 clés textuelles neuves dans

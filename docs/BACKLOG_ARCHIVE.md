@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1a : grand livre et référentiel déclarés (PR #1043)
+
+Déménagé au lot suivant (1b). Déploiement de production créé sur `86254fb9`.
+
+- [x] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
+  SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
+  clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de
+  conflit de synchro et le détecteur de « données significatives » comptent le livre (sinon la copie
+  importée paraît « plus pauvre » que l'ancienne). Déploiement en deux temps (incident 2026-09-01).
+  ✅ **Livré le 2026-09-24** (ADR 0020). Écart assumé au ticket : les deux clés sont PRÉSENTES à
+  `undefined` dans les défauts (pas absentes) — sinon le vrai livre traverserait la démo persona ;
+  `undefined` disparaît au JSON, donc aucun blob ne le porte. Tests : `tests/store/grandLivrePersistance.test.ts`
+  (15 cas, 6 perturbations rouges), `tests/types/grandLivreImpossibles.test.ts` (formes interdites
+  par `tsc`), témoins de la garde de dérivation. ⚠️ Avant le premier import : rouvrir chaque appareil.
+  Revue du lot (même PR) : la restauration Drive gardait le livre local quand la sauvegarde n'en
+  portait pas (corrigé, `CLES_TRI_ETAT`) ; le modal de conflit compte aussi les instruments ; la garde
+  « aucun persona ne plante de référentiel » promise par un commentaire est écrite.
+
 ## 2026-09-24 — Portefeuille : Lot 0.5, taux BdC côté serveur, journal public (PR #1035, #1036, #1039)
 
 Déménagés au lot suivant (1a), conformément à la règle « item fini ET validé → DÉMÉNAGE, au plus tard à

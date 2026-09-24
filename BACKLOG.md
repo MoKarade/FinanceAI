@@ -30,19 +30,6 @@
 > SÉPARÉ, écrit par une seule tâche serveur (GitHub Actions → Cloud Run, ADR 0004/0010) ; moteur de
 > valorisation pur partagé app/MCP/tâche ; Fintable en contrôle si Marc choisit la clôture officielle.
 
-- [x] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
-  SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
-  clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de
-  conflit de synchro et le détecteur de « données significatives » comptent le livre (sinon la copie
-  importée paraît « plus pauvre » que l'ancienne). Déploiement en deux temps (incident 2026-09-01).
-  ✅ **Livré le 2026-09-24** (ADR 0020). Écart assumé au ticket : les deux clés sont PRÉSENTES à
-  `undefined` dans les défauts (pas absentes) — sinon le vrai livre traverserait la démo persona ;
-  `undefined` disparaît au JSON, donc aucun blob ne le porte. Tests : `tests/store/grandLivrePersistance.test.ts`
-  (15 cas, 6 perturbations rouges), `tests/types/grandLivreImpossibles.test.ts` (formes interdites
-  par `tsc`), témoins de la garde de dérivation. ⚠️ Avant le premier import : rouvrir chaque appareil.
-  Revue du lot (même PR) : la restauration Drive gardait le livre local quand la sauvegarde n'en
-  portait pas (corrigé, `CLES_TRI_ETAT`) ; le modal de conflit compte aussi les instruments ; la garde
-  « aucun persona ne plante de référentiel » promise par un commentaire est écrite.
 - [ ] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
   est « demandée, sans ajout » ; la revue du lot 1a a relevé ce qu'elle ne sait pas écrire, à trancher
   AVANT le parseur Disnat (1f) : annulation ou correction d'une ligne du courtier (montants toujours
@@ -52,9 +39,21 @@
   Conversion de devises et virement interne : voir `[PTF-L1B-CONVERSION-VIREMENT]`. Tout ajout est un
   nouveau membre d'union ou un champ optionnel, sans migration ; chaque clé textuelle neuve entre dans
   `CHAMPS_TEXTE` dans le même commit.
-- [ ] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
+- [x] 🔧 **`[PTF-L1B-LIVRE-PUR]`** (M) — positions et encaisse par compte courtier et par devise
   native, à toute date, depuis des événements datés (transfert, achat, vente, fractionnement,
   dividende, retenue, dépôt, frais).
+  ✅ **Livré le 2026-09-24** : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu`, module pur).
+  Livre absent → `null`, jamais un état vide ; encaisse en cents ENTIERS arrondis à la conversion ;
+  un fractionnement passe AVANT les opérations du même jour ; tout événement fautif (valeur non
+  finie, quantité ou montant nul ou négatif, date illisible, identifiant en double, vente au-delà du
+  détenu, devise étrangère au compte) est ÉCARTÉ et NOMMÉ dans `anomalies`, jamais corrigé. Tests :
+  `tests/services/grandLivre/etatDuLivre.test.ts` (15 cas, 8 perturbations rouges).
+- [ ] 🔧 **`[PTF-L1B-CONVERSION-VIREMENT]`** (S) — le livre n'a PAS de sorte pour une conversion de
+  devises entre les comptes CAD et USD, ni pour un virement d'espèces interne. Tant qu'elles
+  manquent, un relevé qui en contient ne peut pas être importé sans les déformer en dépôt/retrait
+  (deux événements sans lien, taux de conversion perdu). À trancher avec le parseur (1f), sur des
+  relevés synthétiques qui en portent : une sorte qui débite un compte et crédite l'autre dans le
+  MÊME événement, avec le taux appliqué.
 - [ ] 🔧 **`[PTF-L1C-MAGASIN-MARCHE]`** (M+L+S, trois PR) — format du magasin (clôtures BRUTES avec
   source et statut officiel/reporté/secours, taux BdC datés, fractionnements, dividendes) ; tâche
   serveur idempotente qui rattrape les jours manqués, budget d'appels COMPTÉ, mode essai à blanc,

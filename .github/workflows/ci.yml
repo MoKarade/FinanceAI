@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# [S5-CODEQL] Moindre privilège (CodeQL actions/missing-workflow-permissions, 4 alertes) : aucun job de ce
+# workflow n'écrit via le jeton (ni gh, ni commentaire, ni SARIF) — lecture seule pour tous.
+permissions:
+  contents: read
+
 jobs:
   quality:
     # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur

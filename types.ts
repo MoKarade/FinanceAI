@@ -892,7 +892,7 @@ type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-courtier';
 
 /** Devises admises. EUR = devise de COTATION de titres européens. Un compte du courtier règle en
  *  CAD ou en USD, jamais en EUR (invariant du validateur du lot 1b). Élargissement additif possible. */
-export type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
+type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
 
 /** Types d'événements (liste demandée, onze, sans ajout). */
 type BrokerLedgerEventKind =
@@ -932,7 +932,7 @@ interface BrokerLedgerEventBase {
 
 /** Titres reçus ou transférés SANS mouvement d'espèces. `price` = coût unitaire imprimé, devise de
  *  cotation. Absent = INCONNU, jamais 0 (un coût nul rendrait toute la vente imposable). */
-export interface BrokerLedgerTitresEvent extends BrokerLedgerEventBase {
+interface BrokerLedgerTitresEvent extends BrokerLedgerEventBase {
   kind: 'acquisition' | 'transfert-entrant' | 'transfert-sortant';
   isin: string;
   quantity: number;
@@ -945,7 +945,7 @@ export interface BrokerLedgerTitresEvent extends BrokerLedgerEventBase {
 /** Achat ou vente. `price` = prix unitaire imprimé, devise de COTATION. `amount` = montant RÉGLÉ au
  *  compte, NET, commission INCLUSE, devise du COMPTE. C'est l'autorité, jamais recalculé.
  *  Une commission n'est jamais un événement `frais` de plus. */
-export interface BrokerLedgerTradeEvent extends BrokerLedgerEventBase {
+interface BrokerLedgerTradeEvent extends BrokerLedgerEventBase {
   kind: 'achat' | 'vente';
   isin: string;
   quantity: number;
@@ -957,7 +957,7 @@ export interface BrokerLedgerTradeEvent extends BrokerLedgerEventBase {
 
 /** Fractionnement ou regroupement : `splitFrom` anciens titres deviennent `splitTo` nouveaux.
  *  Deux NOMBRES, jamais la chaîne « 2:1 ». Ni quantité, ni prix, ni montant (pas un achat à prix nul). */
-export interface BrokerLedgerSplitEvent extends BrokerLedgerEventBase {
+interface BrokerLedgerSplitEvent extends BrokerLedgerEventBase {
   kind: 'fractionnement';
   isin: string;
   splitFrom: number;
@@ -968,7 +968,7 @@ export interface BrokerLedgerSplitEvent extends BrokerLedgerEventBase {
 }
 
 /** Dividende (montant BRUT, devise du compte) ou retenue d'impôt étranger (événement DISTINCT). */
-export interface BrokerLedgerRevenuEvent extends BrokerLedgerEventBase {
+interface BrokerLedgerRevenuEvent extends BrokerLedgerEventBase {
   kind: 'dividende' | 'retenue-etrangere';
   isin: string;
   amount: BrokerLedgerMoney;
@@ -980,7 +980,7 @@ export interface BrokerLedgerRevenuEvent extends BrokerLedgerEventBase {
 
 /** Dépôt ou retrait d'espèces depuis ou vers l'EXTÉRIEUR du grand livre, ou frais de COMPTE.
  *  `isin` facultatif pour des frais rattachés à un titre. */
-export interface BrokerLedgerEspecesEvent extends BrokerLedgerEventBase {
+interface BrokerLedgerEspecesEvent extends BrokerLedgerEventBase {
   kind: 'depot-especes' | 'retrait-especes' | 'frais';
   amount: BrokerLedgerMoney;
   isin?: string;

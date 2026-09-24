@@ -17005,3 +17005,8 @@ parce qu'énumérer les valeurs à protéger dans un dépôt public serait la fu
   demander si la garde a le droit de l'exiger** ; et le compte `knip` se mesure AVANT de pousser
   (`npx --no-install knip --reporter json`, en comptant comme `qualite/portes.mjs`), pas au verdict de
   la CI — la porte « Qualité » tourne ~20 min après toutes les autres.
+  ⚠️ Et **mesurer avec la version de l'outil que la CI exécute** : `main` est passé à knip 6 pendant le
+  lot, et knip 6 compte en plus tout export que seul son propre fichier utilise — **+6** que knip 5
+  (celui de `node_modules`, jamais réinstallé) ne voyait pas. D'où `export` retiré aussi des cinq
+  variantes de `BrokerLedgerEvent` et de `BrokerLedgerCurrency` : un lot suivant l'ajoutera quand il
+  les importera.

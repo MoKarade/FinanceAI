@@ -103,17 +103,6 @@
 
 **Défauts trouvés au Lot 0, hors du chemin des lots (mesurés ou relus dans le code)**
 
-- [x] 🔴 **`[SYNC-PUSH-SANS-OCC]`** (M) — ✅ 2026-09-24 : avant d'écraser Drive, `pushNow` relit
-  le blob et compare son `updatedAt` à la dernière version VUE (`driveAAvance`, source unique partagée
-  avec `decideOnLoad`). Réécrit depuis (cron des cours, cron Fintable, outil MCP) → AUCUNE écriture,
-  modal de conflit ouvert (`resumeConflit`, partagé avec la décision au chargement). « Garder cet
-  appareil » n'écrase que la version que le modal a MONTRÉE ; réécrit entre-temps → modal rouvert.
-  Une relecture qui ÉCHOUE fait échouer le push (avant : push sans clés, `apiKeysEnc` de Drive écrasé
-  — test de limite inversé). Revue (deux relecteurs) : date Drive illisible → échec FERMÉ et choix
-  toujours possible (identité, présence de la clé) ; refus tracés ; un « garder cet appareil » n'est
-  plus absorbé par un push en vol ; même contenu réécrit ailleurs → adopté sans modal ; retirer la
-  passphrase pendant un conflit n'annonce plus « repassée en clair ». ⚠️ Reste une fenêtre de quelques
-  centaines de ms entre relecture et écriture ; [À vérifier] si la v3 accepte un `If-Match`.
 - [ ] 🔴 **`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`** (→ `[PTF-L1G-IMPORT-PORTEFEUILLE]`) — `apply_broker_statement` :
   ligne neuve en CAD par défaut, coût = cours du relevé, quantité réécrite sans les achats datés,
   prix écrit dans la devise STOCKÉE, aucune suppression, aucun aperçu côté claude.ai. Simulé en pur
@@ -122,9 +111,11 @@
   datés : elle disparaît de toute la courbe passée.
 - [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
   la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
-- [ ] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — le formulaire d'ajout ignore la devise de la
-  cotation et part en USD : un titre européen ajouté sans toucher au sélecteur est mal valorisé puis
-  jamais rafraîchi (`AddStockForm.tsx:39`).
+- [x] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — ✅ 2026-09-24 : la devise d'un titre validé
+  vient de sa COTATION (`quote.currency`) ; une devise que l'app ne porte pas (GBP, CHF…) est un refus
+  nommé, jamais un repli ; une devise non indiquée par la source affiche un avertissement ; la devise
+  se remet à USD entre deux ajouts. ⚠️ Le mode 100 % manuel garde son défaut USD (aucune cotation à
+  lire) : c'est à Marc de choisir. 3 gardes, 2 perturbations distinctes.
 - [ ] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — un symbole de cotation collé est accepté sans
   contrôle de devise ni d'ordre de grandeur, et efface l'historique ; ses cours sont ensuite rejetés
   pour devise différente → prix figé sans alerte.
@@ -141,8 +132,19 @@
   UNIQUE classé « Revenus divers » est moyenné comme un revenu mensuel ; et le cashflow publié
   (revenu réel − dépenses BUDGÉTÉES) est planché à 0 (`financialSnapshot.ts:183`), donc un déficit
   s'affiche « 0 $ ». Quatre définitions de l'épargne coexistent selon l'écran.
-- [ ] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (S) — l'export JSON énumère ses champs à la main et la
-  restauration vide le stockage : soldes et historique Fintable, rôles, abonnements et taux perdus.
+- [ ] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (**M**, re-mesuré le 2026-09-24 — pas S) — l'export JSON
+  énumère ses champs à la main et la restauration vide le stockage : soldes et historique Fintable,
+  rôles, abonnements et taux perdus. ⚠️ La restauration passe par les clés LEGACY (`localStorage.clear()`
+  puis `app_*`, relues par `store/etatParDefaut.ts`) : exporter un champ de plus ne suffit pas, il lui
+  faut aussi un lecteur legacy — sinon il est perdu quand même. Plan proposé : restaurer en écrivant
+  le blob du store (`financeai-storage`) pour qu'il passe par `merge` + `verifierTypesRestaures`, garder
+  le chemin legacy pour les anciens backups, et une garde « toute clé persistée est exportée OU exclue
+  avec sa raison ». À trancher avec Marc : le backup contient-il aussi les conversations IA et les
+  documents (la synchro Drive les contient déjà).
+- [ ] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`** (S) — `e2e/futureDailySelect.spec.ts:119`
+  (`[FUTUR-CLICK-ANYWHERE]`) échoue par intermittence : aux 3 essais sur `main` au commit `d4f7a723`
+  (run 36058234613, avec 3 autres tests Futur instables) et sur la PR #1054, verte à la relance.
+  `[data-jour-epingle]` n'apparaît pas après le clic. Cause non mesurée ; ne pas relancer à l'aveugle.
 - [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.

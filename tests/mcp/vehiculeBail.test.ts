@@ -15,9 +15,9 @@ import type { AppState, Debt } from '../../types';
 const dette = (over: Partial<Debt> = {}): Debt => ({
     id: over.id ?? 'debt_1789480000000',
     name: over.name ?? 'bZ',
-    balance: over.balance ?? 47169,
+    balance: over.balance ?? 31200,
     interestRate: over.interestRate ?? 0,
-    minimumPayment: over.minimumPayment ?? 1017,
+    minimumPayment: over.minimumPayment ?? 640,
     category: over.category ?? 'Car',
     ...over,
 });
@@ -30,8 +30,8 @@ describe('bailVehicule — sélection', () => {
         expect(r.statut).toBe('trouve');
         if (r.statut !== 'trouve') return;
         expect(r.bail.nom).toBe('bZ');
-        expect(r.bail.solde).toBe(47169);
-        expect(r.bail.mensualite).toBe(1017);
+        expect(r.bail.solde).toBe(31200);
+        expect(r.bail.mensualite).toBe(640);
     });
 
     it('un `kind: auto-lease` PRIME sur une autre dette de catégorie Car', () => {
@@ -89,14 +89,14 @@ describe('bailVehicule — sélection', () => {
 describe('bailVehicule — ce qui est publié', () => {
     it('ne nomme AUCUN champ absent quand l’état les porte tous (anti-vacuité)', () => {
         const r = bailVehicule(etat([dette({
-            originalBalance: 48816, startDate: '2026-07-14', termEndDate: '2030-07-14',
+            originalBalance: 33600, startDate: '2025-03-01', termEndDate: '2029-03-01',
         })]));
         expect(r.statut).toBe('trouve');
         if (r.statut !== 'trouve') return;
         expect(r.bail.champsAbsents).toEqual([]);
-        expect(r.bail.montantOrigine).toBe(48816);
-        expect(r.bail.debut).toBe('2026-07-14');
-        expect(r.bail.finTerme).toBe('2030-07-14');
+        expect(r.bail.montantOrigine).toBe(33600);
+        expect(r.bail.debut).toBe('2025-03-01');
+        expect(r.bail.finTerme).toBe('2029-03-01');
     });
 
     it('NOMME les champs que l’état ne porte pas — le cas réel d’une dette saisie par le MCP', () => {

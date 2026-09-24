@@ -281,7 +281,7 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
                 isTestMode: false,
                 transactions: [
                     { id: 'persona-tx-1', payee: 'Shopify - Dépôt paie', amount: 3200 },
-                    { id: '1752585600002', payee: 'Paie / ROBOVIC INC.', amount: 837.31 },
+                    { id: '1752585600002', payee: 'Paie / EMPLOYEUR INC.', amount: 812.46 },
                 ],
                 financialGoals: [{ id: 'kar-fg1', name: 'Indépendance financière (1 M$)' }],
                 assets: [{ id: '1752585600003', symbol: 'XEQT' }],

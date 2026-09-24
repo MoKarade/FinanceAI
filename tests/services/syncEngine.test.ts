@@ -114,8 +114,8 @@ describe('decideOnLoad — anti-clobber reconnexion (retrait restoreIntent, Marc
         // Le piège EXACT : appareil déconnecté (méta vierge) avec des placements locaux réels, Drive
         // porte une VIEILLE copie pauvre. AVANT le fix : restoreIntent → pull → local écrasé. APRÈS : conflict.
         const d = decideOnLoad({
-            drive: envelope({ updatedAt: 5000, payload: { state: { assets: [{ symbol: 'SPCX' }] } } }),
-            localIsEmpty: false, // l'appareil a les vraies données (230k$)
+            drive: envelope({ updatedAt: 5000, payload: { state: { assets: [{ symbol: 'XYZ' }] } } }),
+            localIsEmpty: false, // l'appareil a les vraies données
             localHash: 'richlocal',
             meta: fresh(), // méta vierge = déconnecté / jamais syncé via ce système
         });

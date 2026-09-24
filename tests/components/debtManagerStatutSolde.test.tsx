@@ -2,7 +2,7 @@
 //
 // [DETTE-BALANCEASOF-INVISIBLE] — le formulaire DIT enfin où en est le solde enregistré.
 //
-// Marc, 2026-09-18, après avoir fait le geste que je lui avais demandé (« ouvre bZ, clique
+// Marc, 2026-09-18, après avoir fait le geste que je lui avais demandé (« ouvre la dette, clique
 // Enregistrer ») : « vérifie que la date est posée ». PERSONNE ne pouvait : `balanceAsOf` avait
 // DEUX écritures et ZÉRO lecture dans tout `components/`. Un champ qu'on demande à l'utilisateur de
 // poser et qu'aucun écran ne rend est indiscernable d'un champ qui n'existe pas.
@@ -47,8 +47,8 @@ const ilYA = (jours: number): string => {
 /** Un bail type : versements fixes, taux NUL, cadence connue — le SEUL cas où le solde avance. */
 const BAIL = (over: Partial<Debt> = {}): Debt =>
     ({
-        id: 'bail', name: 'bZ', category: 'Car', kind: 'auto-lease',
-        balance: 46_934, interestRate: 0, minimumPayment: 1_016.90,
+        id: 'bail', name: 'Bail auto', category: 'Car', kind: 'auto-lease',
+        balance: 30_000, interestRate: 0, minimumPayment: 650,
         startDate: ilYA(60), termEndDate: ilYA(-1400), paymentFrequency: 'weekly',
         ...over,
     } as unknown as Debt);
@@ -75,7 +75,7 @@ describe('[DETTE-BALANCEASOF-INVISIBLE] `statutSoldeDette` — trois formes EXCL
     });
 
     it('CONTRÔLE NÉGATIF — un TAUX non nul → `date-figee` : on ignore ce que le solde contient', () => {
-        const avecTaux = BAIL({ interestRate: 6.59, balanceAsOf: ilYA(9) } as Partial<Debt>);
+        const avecTaux = BAIL({ interestRate: 6.5, balanceAsOf: ilYA(9) } as Partial<Debt>);
         expect(statutSoldeDette(avecTaux, AUJ, []).forme).toBe('date-figee');
     });
 });
@@ -138,9 +138,9 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
     /** Des virements types, ramenés à l'horloge du fichier : une date figée deviendrait
      *  postérieure à `AUJ` un jour ou l'autre, et le cas cesserait de mesurer quoi que ce soit. */
     const TX = [
-        { id: 1, date: ilYA(9), payee: 'Toyota Financial', amount: -234.67, category: 'Transport', status: 'processed' },
-        { id: 2, date: ilYA(3), payee: 'Toyota Financial', amount: -234.67, category: 'Transport', status: 'processed' },
-        { id: 3, date: ilYA(60), payee: 'Ste Foy Toyota Quebec', amount: -779.79, category: 'Transport', status: 'processed' },
+        { id: 1, date: ilYA(9), payee: 'Financement Auto', amount: -150, category: 'Transport', status: 'processed' },
+        { id: 2, date: ilYA(3), payee: 'Financement Auto', amount: -150, category: 'Transport', status: 'processed' },
+        { id: 3, date: ilYA(60), payee: 'Concessionnaire Auto', amount: -600, category: 'Transport', status: 'processed' },
     ];
     const poserTransactions = (txs: unknown[]): void => {
         useFinanceStore.setState({ transactions: txs as never });
@@ -149,12 +149,12 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
 
     it('lié à un marchand, la phrase COMPTE les virements déduits et nomme le dernier jour', () => {
         poserTransactions(TX);
-        const dette = BAIL({ balanceAsOf: ilYA(20), paymentPayee: 'Toyota Financial' } as Partial<Debt>);
+        const dette = BAIL({ balanceAsOf: ilYA(20), paymentPayee: 'Financement Auto' } as Partial<Debt>);
         render(<DebtManager debts={[dette]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
-        // ⚠️ Le sélecteur vise la PHRASE, pas « le texte Toyota Financial » : ce libellé figure aussi
+        // ⚠️ Le sélecteur vise la PHRASE, pas « le texte Financement Auto » : ce libellé figure aussi
         // dans les `<option>` du menu de liaison, et un `getByText` large y trouverait deux nœuds.
-        const p = screen.getByText(/virements à « Toyota Financial » depuis/);
+        const p = screen.getByText(/virements à « Financement Auto » depuis/);
         expect(p.textContent).toContain('2 virements');
         expect(p.textContent).toContain(formatIsoDay(ilYA(3)));
         // ⚠️ Le CONCESSIONNAIRE n'entre pas dans le compte : « 3 virements » serait le signe que
@@ -193,22 +193,22 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
 
     it('le sélecteur de marchand N’EXISTE que là où il produit quelque chose (taux nul + versements fixes)', () => {
         // ⚠️ [DETTE-MARCHAND-RECHERCHE] Ce n'était plus un `<select>` depuis que la liste a dépassé
-        // l'écran : plus d'un millier de sorties d'argent chez Marc, un café présent des centaines de fois contre une poignée pour le
-        // marchand cherché, trié par fréquence — « je vois pas toyota dans la liste ». Ce que la
+        // l'écran : une longue liste de sorties d'argent, un marchand courant présent des centaines de fois contre une poignée pour le
+        // marchand cherché, trié par fréquence — le prêteur devenait introuvable dans la liste. Ce que la
         // garde défend n'a pas bougé (mêmes candidats, même ordre, aucun montant) ; seule la FORME
         // du contrôle a changé, donc le test la suit au lieu d'ancrer `<option>`.
         poserTransactions(TX);
         const { unmount } = render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
         // La liste vient de `marchandsCandidats` : les deux marchands, le plus fréquent en tête.
-        expect(marchandsOfferts()).toEqual(['Toyota Financial', 'Ste Foy Toyota Quebec']);
+        expect(marchandsOfferts()).toEqual(['Financement Auto', 'Concessionnaire Auto']);
         // ⚠️ Aucun MONTANT dans la liste : `PrivateAmount` ne peut pas envelopper une ligne d'option,
         // donc il serait lisible en mode discret. Un COMPTE, lui, ne dit rien de ce que Marc possède.
         expect(listeMarchands().textContent).not.toMatch(/\$/);
         unmount();
 
         // CONTRÔLE NÉGATIF : à taux NON NUL, la déduction serait fausse — le champ disparaît.
-        render(<DebtManager debts={[BAIL({ interestRate: 6.59, balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
+        render(<DebtManager debts={[BAIL({ interestRate: 6.5, balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
         expect(screen.queryByLabelText(/Virements qui remboursent/i)).toBeNull();
     });
@@ -224,8 +224,8 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         expect(marchandsOfferts()).toHaveLength(2);
 
         // Casse ET accents ignorés pour CHERCHER — jamais pour apparier (`clePayee` reste un trim).
-        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'ste foy' } });
-        expect(marchandsOfferts()).toEqual(['Ste Foy Toyota Quebec']);
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'concess' } });
+        expect(marchandsOfferts()).toEqual(['Concessionnaire Auto']);
         expect(within(listeMarchands()).getByRole('button', { name: /aucun/i })).toBeTruthy();
 
         // Une requête sans résultat ne laisse PAS croire que la liste est vide : le compte le dit.
@@ -246,31 +246,31 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
         const setDebts = vi.fn();
         render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9) } as Partial<Debt>)]} setDebts={setDebts} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
-        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'Toyota Financial' } });
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'Financement Auto' } });
         fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
         expect(setDebts.mock.calls.at(-1)?.[0][0].paymentPayee).toBeUndefined();
 
         // Contrôle POSITIF : le même libellé, CHOISI dans la liste, pose bien le lien.
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
-        fireEvent.click(screen.getByRole('button', { name: /^Toyota Financial/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^Financement Auto/ }));
         fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
-        expect(setDebts.mock.calls.at(-1)?.[0][0].paymentPayee).toBe('Toyota Financial');
+        expect(setDebts.mock.calls.at(-1)?.[0][0].paymentPayee).toBe('Financement Auto');
     });
 
     it('un marchand LIÉ À UNE AUTRE DETTE disparaît de la liste — sinon il est déduit DEUX fois', () => {
         // ⚠️ `paiementsReelsDette` travaille par dette : deux dettes liées au même marchand
-        // déduiraient CHACUNE la totalité des virements. Mesuré sur deux dettes et 7 virements
-        // réels : le double de la somme versée retiré du total dû. La liste est le SEUL
+        // déduiraient CHACUNE la totalité des virements. Mesuré sur deux dettes liées au même
+        // marchand : le double de la somme versée retiré du total dû. La liste est le SEUL
         // endroit où ce lien se pose — l'empêcher ici l'empêche partout.
         poserTransactions(TX);
-        const autre = BAIL({ id: 'autre', name: 'autre bail', balanceAsOf: ilYA(9), paymentPayee: 'Toyota Financial' } as Partial<Debt>);
+        const autre = BAIL({ id: 'autre', name: 'autre bail', balanceAsOf: ilYA(9), paymentPayee: 'Financement Auto' } as Partial<Debt>);
         const celleCi = BAIL({ id: 'bail', balanceAsOf: ilYA(9) } as Partial<Debt>);
         render(<DebtManager debts={[celleCi, autre]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getAllByRole('button', { name: 'Modifier' })[0]);
-        expect(marchandsOfferts()).not.toContain('Toyota Financial');
+        expect(marchandsOfferts()).not.toContain('Financement Auto');
         // ⚠️ Anti-vacuité : le marchand NON pris reste offert, sinon « absent » serait vrai d'une
         // liste vide ou d'un sélecteur cassé.
-        expect(marchandsOfferts()).toContain('Ste Foy Toyota Quebec');
+        expect(marchandsOfferts()).toContain('Concessionnaire Auto');
     });
 
     it('des virements qui DÉPASSENT le solde annoncent le refus, et alertent', () => {
@@ -305,33 +305,33 @@ describe('[DETTE-VIREMENTS-REELS] le formulaire dit ce que les VIREMENTS font, e
     it('le marchand LIÉ survit à une recherche qui ne le matche pas — sinon Marc ne voit plus son propre choix', () => {
         // ⚠️⚠️ TROUVÉ PAR LE PANEL, après un gate ciblé vert. Le 1er jet protégeait le marchand lié
         // de la disparition dans la liste COMPLÈTE (`tous`), puis la FILTRAIT comme n'importe quelle
-        // autre ligne — donc chercher « hydro » sur une dette liée à « Toyota Financial » le faisait
+        // autre ligne — donc chercher « hydro » sur une dette liée à « Financement Auto » le faisait
         // disparaître de l'écran avec sa coche, et RIEN d'autre du formulaire ne dit à quoi la dette
         // est liée. C'est `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE`
         // re-commise dans le fichier qui CITE cette leçon, et dont le commentaire AFFIRMAIT la
         // garantie inverse — vraie seulement à requête vide ou correspondante.
         poserTransactions(TX);
-        render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9), paymentPayee: 'Toyota Financial' } as Partial<Debt>)]} setDebts={vi.fn()} />);
+        render(<DebtManager debts={[BAIL({ balanceAsOf: ilYA(9), paymentPayee: 'Financement Auto' } as Partial<Debt>)]} setDebts={vi.fn()} />);
         fireEvent.click(screen.getByRole('button', { name: 'Modifier' }));
 
         // ANTI-VACUITÉ : la requête choisie doit vraiment EXCLURE le marchand lié, sinon le test
         // passerait pour la mauvaise raison (il serait simplement resté dans les résultats).
-        expect(filtrerMarchands([{ payee: 'Toyota Financial', nb: 8 }], 'ste foy')).toEqual([]);
+        expect(filtrerMarchands([{ payee: 'Financement Auto', nb: 8 }], 'concess')).toEqual([]);
 
-        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'ste foy' } });
-        expect(marchandsOfferts()).toContain('Toyota Financial');
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'concess' } });
+        expect(marchandsOfferts()).toContain('Financement Auto');
         expect(
-            within(listeMarchands()).getByRole('button', { name: /^Toyota Financial/ }).getAttribute('aria-current'),
+            within(listeMarchands()).getByRole('button', { name: /^Financement Auto/ }).getAttribute('aria-current'),
         ).toBe('true');
         // Et il n'apparaît qu'UNE fois : épinglé hors filtre ET rendu par le filtre serait un doublon.
-        expect(marchandsOfferts().filter(m => m === 'Toyota Financial')).toHaveLength(1);
+        expect(marchandsOfferts().filter(m => m === 'Financement Auto')).toHaveLength(1);
         // Le compte annoncé reste celui du FILTRE — épingler une ligne ne change pas combien de
         // marchands correspondent à la recherche.
         expect(screen.getByText(/1 sur 2 marchands/)).toBeTruthy();
 
         // CONTRÔLE : une requête qui matche le marchand lié ne le duplique pas non plus.
-        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'toyota' } });
-        expect(marchandsOfferts().filter(m => m === 'Toyota Financial')).toHaveLength(1);
+        fireEvent.change(screen.getByLabelText(/Virements qui remboursent/i), { target: { value: 'auto' } });
+        expect(marchandsOfferts().filter(m => m === 'Financement Auto')).toHaveLength(1);
     });
 });
 

@@ -75,7 +75,7 @@ describe('artifactIds — ne flagge JAMAIS les conventions d\'ids réels', () =>
 // ——— 3. SANITIZER ———
 
 const realTx = (id: string): Transaction => ({
-    id, date: '2026-06-04', payee: 'Paie / ROBOVIC INC.', amount: 837.31, category: 'Salaire',
+    id, date: '2026-06-04', payee: 'Paie / EMPLOYEUR INC.', amount: 800, category: 'Salaire',
 } as unknown as Transaction);
 const personaTx = (n: number): Transaction => ({
     id: `persona-tx-${n}`, date: '2026-06-01', payee: 'Shopify - Dépôt paie', amount: 3200, category: 'Salaire',
@@ -90,7 +90,7 @@ describe('sanitizePersonaArtifacts', () => {
                 { id: '1752585600003', name: 'Mise de fonds' } as unknown as FinancialGoal,
             ],
             budgetItems: [{ id: 'kar-b1', name: 'Loyer (condo)' }, { id: 'cat_1752585600004', name: 'Épicerie' }] as AppState['budgetItems'],
-            debts: [{ id: '1752585600005', name: 'VOiture', balance: 49787 } as unknown as Debt],
+            debts: [{ id: '1752585600005', name: 'Voiture', balance: 30000 } as unknown as Debt],
         };
         const { state: cleaned, report } = sanitizePersonaArtifacts(state);
         expect(report.removedTotal).toBe(4);

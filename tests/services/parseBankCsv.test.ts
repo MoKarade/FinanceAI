@@ -152,18 +152,18 @@ describe('extractedTxnsToCsv — relevé PDF/image → CSV canonique → re-pars
     });
 });
 
-describe('détection de transfert interne (relevé Desjardins réel)', () => {
+describe('détection de transfert interne (libellés au format Desjardins)', () => {
     // Reproduit le pipeline : un libellé → la transaction parsée, on lit isTransfer.
     const isTransfer = (desc: string): boolean =>
         parseBankCsv(`date,description,amount\n2026-01-01,${JSON.stringify(desc)},-100`).transactions[0].isTransfer === true;
 
     it('Interac e-Transfer (vers/depuis une personne) → PAS un transfert', () => {
-        expect(isTransfer('Interac e-Transfer to /Clara D/')).toBe(false);
-        expect(isTransfer('Interac e-Transfer from /ANNA LUCIE MAL/')).toBe(false);
+        expect(isTransfer('Interac e-Transfer to /Chloe B/')).toBe(false);
+        expect(isTransfer('Interac e-Transfer from /JEANNE TREMBLAY/')).toBe(false);
     });
     it('« money/funds transfer » (paiement/revenu externe) → PAS un transfert', () => {
-        expect(isTransfer('Money transfer sent to /Valerie cameron/Loyer')).toBe(false);
-        expect(isTransfer('Funds transfer received /SELARL AFFIDAV/')).toBe(false);
+        expect(isTransfer('Money transfer sent to /Jean Tremblay/Loyer')).toBe(false);
+        expect(isTransfer('Funds transfer received /SOCIETE EXEMPLE/')).toBe(false);
     });
     it('« Transfer - AccèsD » (entre comptes propres) → transfert interne', () => {
         expect(isTransfer('Transfer - AccèsD - Internet /to PCA')).toBe(true);
@@ -175,6 +175,6 @@ describe('détection de transfert interne (relevé Desjardins réel)', () => {
         expect(isTransfer('Transfer to savings')).toBe(true);
     });
     it('un achat normal → PAS un transfert', () => {
-        expect(isTransfer('Purchase /IGA DES SOURCES')).toBe(false);
+        expect(isTransfer('Purchase /EPICERIE DU QUARTIER')).toBe(false);
     });
 });

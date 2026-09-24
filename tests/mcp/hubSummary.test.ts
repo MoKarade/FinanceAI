@@ -213,7 +213,8 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
     // (`serieMetrique(historique, metrique.label)`), et le hub dérive l'évolution 7 j de la VALEUR
     // de chaque métrique. Donc un libellé daté remet la série à zéro chaque séance (« pas encore
     // d'historique » à perpétuité), et une métrique qui EST une variation se fait re-dériver
-    // (« −430,6 % sur 7 j » chez Marc). Les deux faits sont morts, la limite reste écrite ici.
+    // (une « variation » de plusieurs centaines de % sur 7 j). Les deux faits sont morts, la limite
+    // reste écrite ici.
     it('publie 6 métriques à libellé STABLE — les variations ont quitté la carte', () => {
         const s = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
         // ⚠️ 4 → 6 le 2026-09-21 (`[KPI-AVOIRS-DETTES]`, demande de Marc : « je veux voir ma somme
@@ -270,7 +271,7 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
         const endette = {
             ...avecPlacements(14, 18),
             debts: [
-                { id: 'h1', name: 'Bail auto', balance: 46_934, interestRate: 0, minimumPayment: 1_017, category: 'Car' },
+                { id: 'h1', name: 'Bail auto', balance: 42_000, interestRate: 0, minimumPayment: 700, category: 'Car' },
                 { id: 'h2', name: 'Carte', balance: 1_200, interestRate: 19.9, minimumPayment: 50, category: 'CreditCard' },
             ],
         };
@@ -550,7 +551,7 @@ describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] la carte dit POURQUOI elle perd ses plac
 
     /** Compagnon détenu dont l'historique s'arrête tôt : absent du TOTAL de la séance. */
     const compagnonR = {
-        symbol: 'GBS.PA', quantity: 1, currency: 'CAD' as const, currentPrice: 500,
+        symbol: 'TITRE.PA', quantity: 1, currency: 'CAD' as const, currentPrice: 500,
         name: 'Compagnon', performance: 0, dateBought: '2026-08-05',
         purchases: [{ date: '2026-08-05', quantity: 1, price: 500 }],
         priceHistory: [{ date: '2026-08-05', price: 500 }, { date: '2026-08-06', price: 500 }],
@@ -558,7 +559,7 @@ describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] la carte dit POURQUOI elle perd ses plac
     };
 
     it('total amputé : la section existe, NOMME le titre, et aucune ligne de placements ne sort', () => {
-        // C'est la situation réelle de Marc : le hub publiait un total amputé d'environ 11 %. Depuis
+        // C'est la situation type : le hub publiait un total amputé d'un titre détenu. Depuis
         // le refus du total amputé, la carte se TAIT — et sans cette section, ce silence serait
         // indiscernable d'une panne.
         const s = buildHubSummary({
@@ -570,7 +571,7 @@ describe('[HUB-REFUS-4-SANS-DIAGNOSTIC] la carte dit POURQUOI elle perd ses plac
         expect(s.metrics.some((m) => m.label.startsWith('Placements'))).toBe(false);
         const section = (s.details ?? []).find((d) => d.title === 'Pourquoi les placements manquent');
         expect(section).toBeTruthy();
-        expect(String(section?.items[0]?.value)).toContain('GBS.PA');
+        expect(String(section?.items[0]?.value)).toContain('TITRE.PA');
         expect(section?.items[0]?.severity).toBe('warn');
     });
 

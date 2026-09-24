@@ -792,7 +792,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             A Verifier
                         </button>
                         {/* [TX-EXCLUES-INTROUVABLES] Marc, le 2026-09-15 : « je vois plus aucune
-                            transactions du bresil » — après avoir exclu ses 44 lignes du voyage,
+                            transactions du [voyage] » — après avoir exclu les lignes de son voyage,
                             comme je le lui avais demandé. Rien n'était perdu : `showDuplicates`
                             est un état de COMPOSANT, remis à `false` à chaque montage, et son seul
                             `setShowDuplicates(true)` vivait dans `handleMarkDuplicates`. Donc au

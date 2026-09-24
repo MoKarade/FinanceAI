@@ -8,10 +8,10 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFiscalReport } from '../../utils/tax';
 
-// Profil type : salaire ~50 k (sous tous les maximums) + un portefeuille non-enreg → placement
+// Profil type : salaire ~55 k (sous tous les maximums) + un portefeuille non-enreg → placement
 // imposable estimé ≈ portefeuille × (0,02 div + 0,07 gains × 0,5).
-const SALARY = 50_000;
-const INVEST_TAXABLE = 12_650;
+const SALARY = 55_000;
+const INVEST_TAXABLE = 10_000;
 
 describe('[FISC-PAYROLL-BASE-INVEST] assiette emploi vs assiette imposable', () => {
     it('cotisations sur le SALAIRE seul quand on fournit employmentIncome (impôt sur salaire+placement)', () => {
@@ -27,7 +27,7 @@ describe('[FISC-PAYROLL-BASE-INVEST] assiette emploi vs assiette imposable', () 
         expect(withInvest.totalTax).toBeGreaterThan(salaryOnly.totalTax);
     });
 
-    it('DISCRIMINANT : sans employmentIncome, l\'assiette = total → sur-cotisation (~1 000 $/an)', () => {
+    it('DISCRIMINANT : sans employmentIncome, l\'assiette = total → sur-cotisation (~800 $/an)', () => {
         // Chemin BUGUÉ (ce que faisait TaxCenter avant) : le placement gonfle l'assiette de cotisation.
         const inflated = calculateFiscalReport(SALARY + INVEST_TAXABLE, 0, 0);
         // Chemin CORRIGÉ : assiette emploi = salaire.
@@ -37,7 +37,7 @@ describe('[FISC-PAYROLL-BASE-INVEST] assiette emploi vs assiette imposable', () 
         const overContribution =
             (inflated.rrq + inflated.rqap + inflated.ae) - (correct.rrq + correct.rqap + correct.ae);
         process.stderr.write(`[FISC-PAYROLL] sur-cotisation évitée (salaire ${SALARY}) = ${overContribution.toFixed(2)} $\n`);
-        expect(overContribution).toBeGreaterThan(500); // profil Marc : ~1 000 $/an
+        expect(overContribution).toBeGreaterThan(500); // profil type : de l'ordre de 800 $/an
         // Le total d'impôt (fed+QC) est INCHANGÉ (les cotisations n'entrent pas dans totalTax).
         expect(correct.totalTax).toBeCloseTo(inflated.totalTax, 6);
         // Le net est PLUS ÉLEVÉ après fix (moins de cotisations retranchées).

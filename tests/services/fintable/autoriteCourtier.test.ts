@@ -46,13 +46,13 @@ describe('identité — le cas de qui n\'utilise pas Fintable', () => {
 describe('autorité appliquée', () => {
     it('remplace le panier par le total du courtier et RECALCULE le total', () => {
         const r = appliquerAutoriteCourtier(soldes(), reco([
-            { regime: 'NON-ENREG', brokerTotalCad: 231_882, holdingsValueCad: 200_000, accountLabels: ['Disnat'] },
+            { regime: 'NON-ENREG', brokerTotalCad: 237_450, holdingsValueCad: 200_000, accountLabels: ['Disnat'] },
         ]), AUCUN_JUMEAU);
-        expect(r.soldes.NON_ENREG).toBe(231_882);
-        expect(r.ecartTotal).toBe(31_882);
+        expect(r.soldes.NON_ENREG).toBe(237_450);
+        expect(r.ecartTotal).toBe(37_450);
         // Le TOTAL est la somme des six paniers — jamais l'ancien total plus l'écart, qui
         // coïnciderait ici et divergerait dès qu'un autre panier serait non fini.
-        expect(r.soldes.TOTAL).toBe(10_000 + 0 + 50_000 + 0 + 231_882 + 1_000);
+        expect(r.soldes.TOTAL).toBe(10_000 + 0 + 50_000 + 0 + 237_450 + 1_000);
         expect(r.regimesAppliques).toEqual(['NON-ENREG']);
     });
 
@@ -126,7 +126,7 @@ describe('mentionAutoriteCourtier — la marche au raccord, NOMMÉE', () => {
     it('dit le SENS, et ne porte AUCUN montant', () => {
         // Un montant interpolé dans une chaîne n'est plus un nœud, donc plus masquable en mode
         // discret (`UN-MONTANT-INTERPOLE-DANS-UNE-CHAINE-N-EST-PLUS-UN-NOEUD`).
-        const haut = mentionAutoriteCourtier(31_882, ['NON-ENREG']);
+        const haut = mentionAutoriteCourtier(37_450, ['NON-ENREG']);
         const bas = mentionAutoriteCourtier(-20_000, ['NON-ENREG']);
         expect(haut).toContain('au-dessus');
         expect(bas).toContain('en dessous');
@@ -147,12 +147,12 @@ describe('mentionAutoriteCourtier — la marche au raccord, NOMMÉE', () => {
 // un total AMPUTÉ écrase la valeur reconstruite COMPLÈTE.
 //
 // Mesuré sur la chaîne réelle : un compte CAD retenu + un compte USD écarté faute de taux —
-// c'est-à-dire EXACTEMENT l'état de Marc tant que ses taux viennent du repli — donnait un mois 0
+// c'est-à-dire EXACTEMENT le cas type tant que les taux viennent du repli — donnait un mois 0
 // égal au seul compte CAD au lieu de la valeur complète. Un total partiel n'est pas une autorité dégradée : c'est un faux.
 describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
     const avecUnCompteEcarte = (over: Partial<ReconciliationLue> = {}): ReconciliationLue => ({
         regimes: [
-            { regime: 'NON-ENREG', brokerTotalCad: 30_000, holdingsValueCad: 231_882, accountLabels: ['Disnat CAD'] },
+            { regime: 'NON-ENREG', brokerTotalCad: 28_500, holdingsValueCad: 237_450, accountLabels: ['Disnat CAD'] },
         ],
         ...over,
     });
@@ -176,7 +176,7 @@ describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
     it('CONTRÔLE NÉGATIF — rien d\'écarté : le régime est appliqué normalement', () => {
         // Sans lui, « on refuse les totaux amputés » serait indiscernable de « on ne fait plus rien ».
         const r = appliquerAutoriteCourtier(soldes(), avecUnCompteEcarte(), AUCUN_JUMEAU);
-        expect(r.soldes.NON_ENREG).toBe(30_000);
+        expect(r.soldes.NON_ENREG).toBe(28_500);
         expect(r.regimesAppliques).toEqual(['NON-ENREG']);
         expect(r.regimesRefuses).toEqual([]);
     });
@@ -185,7 +185,7 @@ describe('⚠️ un total courtier AMPUTÉ ne fait autorité sur rien', () => {
         const r = appliquerAutoriteCourtier(soldes(), {
             regimes: [
                 { regime: 'CELI', brokerTotalCad: 12_500, holdingsValueCad: 10_000, accountLabels: ['a'] },
-                { regime: 'NON-ENREG', brokerTotalCad: 30_000, holdingsValueCad: 200_000, accountLabels: ['b'] },
+                { regime: 'NON-ENREG', brokerTotalCad: 28_500, holdingsValueCad: 200_000, accountLabels: ['b'] },
             ],
             incompleteRegimes: ['NON-ENREG'],
         }, AUCUN_JUMEAU);
@@ -261,10 +261,10 @@ describe('⚠️ base de FAMILLE écrite dans un panier ÉTROIT', () => {
         // `NonReg` est large des DEUX côtés (MARGE et AUTRE y tombent aussi), donc cohérent.
         const r = appliquerAutoriteCourtier(
             soldes({ CELIAPP: 25_500, REEE: 30_500 }),
-            { regimes: [{ regime: 'NON-ENREG', brokerTotalCad: 231_882, holdingsValueCad: 200_000, accountLabels: ['a'] }] },
+            { regimes: [{ regime: 'NON-ENREG', brokerTotalCad: 237_450, holdingsValueCad: 200_000, accountLabels: ['a'] }] },
             jumeaux({ CELIAPP: true, REEE: true }),
         );
-        expect(r.soldes.NON_ENREG).toBe(231_882);
+        expect(r.soldes.NON_ENREG).toBe(237_450);
         expect(r.regimesAppliques).toEqual(['NON-ENREG']);
     });
 });

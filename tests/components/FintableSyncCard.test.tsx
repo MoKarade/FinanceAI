@@ -32,7 +32,7 @@ vi.mock('../../services/secureKeyStore', () => ({
 
 const ACCOUNTS = [
     { id: 'acc_1', label: 'Compte chèque', rawType: 'depository', currency: 'CAD', balance: 1500 },
-    { id: 'acc_2', label: 'Disnat L7B1', rawType: 'brokerage', currency: 'CAD', balance: 136863.18 },
+    { id: 'acc_2', label: 'Disnat 0001', rawType: 'brokerage', currency: 'CAD', balance: 123456.78 },
 ];
 
 // [FINTABLE-DEBTNAME-AUTO] Le libellé Fintable (avec son numéro de compte) DIFFÈRE volontairement du
@@ -40,11 +40,11 @@ const ACCOUNTS = [
 // manuelle piégeuse. La suggestion doit franchir cet écart sans jamais inventer.
 const ACCOUNTS_AVEC_MC = [
     ...ACCOUNTS,
-    { id: 'acc_mc', label: 'Desjardins Cash Back Mastercard 5020', rawType: 'credit', currency: 'CAD', balance: -842.11 },
+    { id: 'acc_mc', label: 'Desjardins Cash Back Mastercard 0000', rawType: 'credit', currency: 'CAD', balance: -613.47 },
 ];
 
 const DETTE_MC = {
-    id: 'debt_mc', name: 'Desjardins Cash Back Mastercard', balance: 842.11,
+    id: 'debt_mc', name: 'Desjardins Cash Back Mastercard', balance: 613.47,
     interestRate: 19.99, minimumPayment: 25, category: 'CreditCard' as const,
 };
 const DETTE_HYPO = {
@@ -75,11 +75,11 @@ describe('FintableSyncCard — vie privée', () => {
         const { container } = render(<FintableSyncCard />);
 
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Disnat L7B1')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('Disnat 0001')).toBeInTheDocument());
 
-        // Les soldes existent dans la donnée (1500 / 120000.00) mais ne doivent APPARAÎTRE nulle part.
+        // Les soldes existent dans la donnée (1500 / 123456.78) mais ne doivent APPARAÎTRE nulle part.
         const text = container.textContent ?? '';
-        expect(text).not.toMatch(/136\s?863/);
+        expect(text).not.toMatch(/123\s?456/);
         expect(text).not.toMatch(/1[\s ]?500/);
         // Et aucun symbole monétaire rendu par la carte.
         expect(text).not.toContain(' $');
@@ -186,9 +186,9 @@ describe('FintableSyncCard — assignation des rôles', () => {
         listMock.mockResolvedValue({ accounts: ACCOUNTS, error: null });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Disnat L7B1')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('Disnat 0001')).toBeInTheDocument());
 
-        fireEvent.change(screen.getByLabelText(/Rôle de Disnat L7B1/i), { target: { value: 'investment' } });
+        fireEvent.change(screen.getByLabelText(/Rôle de Disnat 0001/i), { target: { value: 'investment' } });
 
         expect(useFinanceStore.getState().fintableRoles?.acc_2).toEqual({
             kind: 'investment', taxRegime: 'NON-ENREG',
@@ -206,10 +206,10 @@ describe('FintableSyncCard — assignation des rôles', () => {
         listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 0000')).toBeInTheDocument());
 
         // UN SEUL geste : déclarer que le compte est une dette. Rien à taper ensuite.
-        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 0000/i), { target: { value: 'debt' } });
 
         expect(useFinanceStore.getState().fintableRoles?.acc_mc).toEqual({
             kind: 'debt', debtName: 'Desjardins Cash Back Mastercard',
@@ -224,8 +224,8 @@ describe('FintableSyncCard — assignation des rôles', () => {
         listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
-        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 0000')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 0000/i), { target: { value: 'debt' } });
 
         const select = await screen.findByLabelText(/Dette correspondante/i) as HTMLSelectElement;
         const valeurs = Array.from(select.options).map((o) => o.value);
@@ -263,8 +263,8 @@ describe('FintableSyncCard — assignation des rôles', () => {
         listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
-        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 0000')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 0000/i), { target: { value: 'debt' } });
 
         // ⚠️ [FINTABLE-CARTE-SANS-DETTE] Ce cas disait « crée d'abord une dette » — un cul-de-sac :
         // Marc ne VEUT pas de dette pour sa carte, et sans dette le compte n'était pas routé du
@@ -284,8 +284,8 @@ describe('FintableSyncCard — assignation des rôles', () => {
         listMock.mockResolvedValue({ accounts: ACCOUNTS_AVEC_MC, error: null });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 5020')).toBeInTheDocument());
-        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 5020/i), { target: { value: 'debt' } });
+        await waitFor(() => expect(screen.getByText('Desjardins Cash Back Mastercard 0000')).toBeInTheDocument());
+        fireEvent.change(screen.getByLabelText(/Rôle de Desjardins Cash Back Mastercard 0000/i), { target: { value: 'debt' } });
 
         const select = await screen.findByLabelText(/Dette correspondante/i) as HTMLSelectElement;
         expect(select.options[0].text).toMatch(/importer seulement les transactions/i);

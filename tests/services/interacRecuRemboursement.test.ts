@@ -18,10 +18,10 @@ import { isCreditBack, isSpend, spendAmountOf } from '../../utils/spendRules';
 
 const csv = [
     'date,description,amount',
-    '2026-05-01,Paie / ROBOVIC INC.,5000',
-    '2026-05-03,Virement Interac de / ANNA LUCIE MAL/,300',
+    '2026-05-01,Paie / EMPLOYEUR INC.,5000',
+    '2026-05-03,Virement Interac de / JEANNE TREMBLAY/,300',
     '2026-05-04,IGA St-Roch,-200',
-    '2026-05-05,Virement Interac à / ANNA LUCIE MAL/,-150',
+    '2026-05-05,Virement Interac à / JEANNE TREMBLAY/,-150',
 ].join('\n');
 
 const importer = () => {

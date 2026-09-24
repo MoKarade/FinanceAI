@@ -15,7 +15,7 @@ const dayMs = 86_400_000;
 const iso = (msAgo: number): string => new Date(Date.now() - msAgo).toISOString().slice(0, 10);
 
 const tx = (date: string, id: number): Transaction => ({
-    id, date, payee: 'Payroll /ROBOVIC INC.', amount: 837.31, category: 'Salaire', status: 'processed',
+    id, date, payee: 'Payroll /EMPLOYEUR INC.', amount: 800.00, category: 'Salaire', status: 'processed',
 });
 
 /** Historique quotidien : donne une cadence médiane de 1 jour → seuil de gel à 3 jours. */

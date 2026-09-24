@@ -256,8 +256,8 @@ describe('runFintableSync — persistance des soldes courtier (FINTABLE-6)', () 
                 if (path.startsWith('/accounts')) {
                     return {
                         data: [{
-                            id: 'acc_disnat', connection_id: 'conn_1', name: 'Disnat L7B1',
-                            type: 'brokerage', currency: 'CAD', balance: '136863.18',
+                            id: 'acc_disnat', connection_id: 'conn_1', name: 'Disnat 0001',
+                            type: 'brokerage', currency: 'CAD', balance: '118452.37',
                             cash_balance: null, debt: null,
                         }],
                     };
@@ -279,7 +279,7 @@ describe('runFintableSync — persistance des soldes courtier (FINTABLE-6)', () 
         expect(balances).toHaveLength(1);
         expect(balances?.[0]).toMatchObject({
             accountId: 'acc_disnat',        // clé STABLE (pas le libellé, renommable côté banque)
-            balanceCad: 136863.18,
+            balanceCad: 118452.37,
             taxRegime: 'NON-ENREG',
         });
         // Horodatage réel → l'UI peut dire honnêtement « vu il y a N jours » plutôt que faire semblant.
@@ -347,7 +347,7 @@ describe('runFintableSync — isolation par payload (un payload rejeté n\'avort
         const { store, saved } = makeStore(state);
 
         const report = await runFintableSync(store, {
-            token: 't', roles: ROLES, client: clientAvecCarte('-379.99'),
+            token: 't', roles: ROLES, client: clientAvecCarte('-250.00'),
         });
 
         expect(report.error).toBeNull();

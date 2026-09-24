@@ -37,8 +37,8 @@ describe('[FUTUR-COURBE-DETTE] la dette est une série du graphe', () => {
 });
 
 describe('[FUTUR-COURBE-DETTE] la valeur tracée', () => {
-    it('une dette de 46 934 $ se trace à −46 934 : SOUS zéro', () => {
-        expect(detteSousZero({ DettesNonImmo: 46_934 })).toBe(-46_934);
+    it('une dette de 31 275 $ se trace à −31 275 : SOUS zéro', () => {
+        expect(detteSousZero({ DettesNonImmo: 31_275 })).toBe(-31_275);
     });
 
     it('une dette ÉTEINTE vaut zéro — c’est un fait, il se trace', () => {
@@ -51,7 +51,7 @@ describe('[FUTUR-COURBE-DETTE] la valeur tracée', () => {
         expect(detteSousZero({})).toBeNull();
         expect(detteSousZero({ DettesNonImmo: NaN })).toBeNull();
         expect(detteSousZero({ DettesNonImmo: Infinity })).toBeNull();
-        expect(detteSousZero({ DettesNonImmo: '46934' })).toBeNull();
+        expect(detteSousZero({ DettesNonImmo: '31275' })).toBeNull();
         expect(detteSousZero(null)).toBeNull();
         expect(detteSousZero(undefined)).toBeNull();
     });

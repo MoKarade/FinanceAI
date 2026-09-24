@@ -24,7 +24,7 @@ const SECRET = 'un-secret-de-test-assez-long';
 // pourtant une dette. Le sanitizer avait raison ; c'est la fixture qui mentait.
 
 const dette = (over: Partial<Debt> = {}): Debt => ({
-    id: 'debt_1789480000000', name: 'bZ', balance: 47169, interestRate: 0, minimumPayment: 1017, category: 'Car', ...over,
+    id: 'debt_1789480000000', name: 'Civic', balance: 30000, interestRate: 0, minimumPayment: 650, category: 'Car', ...over,
 });
 
 function fixture(debts: Debt[]): ResolvedState {
@@ -85,8 +85,8 @@ describe('GET /vehicule/bail — les réponses', () => {
             expect(res.headers.get('cache-control')).toBe('no-store');
             const body = await res.json() as { ok: boolean; bail: { nom: string; mensualite: number; champsAbsents: string[] } };
             expect(body.ok).toBe(true);
-            expect(body.bail.nom).toBe('bZ');
-            expect(body.bail.mensualite).toBe(1017);
+            expect(body.bail.nom).toBe('Civic');
+            expect(body.bail.mensualite).toBe(650);
             expect(body.bail.champsAbsents).toContain('debut');
         });
     });
@@ -100,18 +100,18 @@ describe('GET /vehicule/bail — les réponses', () => {
     });
 
     it('409 quand deux véhicules coexistent — on REFUSE de choisir, et on nomme', async () => {
-        const deux = [dette({ id: 'a', name: 'bZ' }), dette({ id: 'b', name: 'Corolla' })];
+        const deux = [dette({ id: 'a', name: 'Civic' }), dette({ id: 'b', name: 'Corolla' })];
         await avecServeur({ debts: deux, secret: SECRET }, async (base) => {
             const res = await fetch(`${base}/vehicule/bail`, { headers: bearer(SECRET) });
             expect(res.status).toBe(409);
             const body = await res.json() as { statut: string; candidates: string[] };
             expect(body.statut).toBe('ambigu');
-            expect(body.candidates).toEqual(['bZ', 'Corolla']);
+            expect(body.candidates).toEqual(['Civic', 'Corolla']);
         });
     });
 
     it('le nom configuré LÈVE l’ambiguïté — c’est à ça qu’il sert', async () => {
-        const deux = [dette({ id: 'a', name: 'bZ' }), dette({ id: 'b', name: 'Corolla' })];
+        const deux = [dette({ id: 'a', name: 'Civic' }), dette({ id: 'b', name: 'Corolla' })];
         await avecServeur({ debts: deux, secret: SECRET, nom: 'Corolla' }, async (base) => {
             const res = await fetch(`${base}/vehicule/bail`, { headers: bearer(SECRET) });
             expect(res.status).toBe(200);

@@ -147,10 +147,11 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, m
             )}
             {peutSuivreDesVirements && (
                 /* ⚠️ [DETTE-MARCHAND-RECHERCHE] Une liste qui se CHERCHE, plus un menu déroulant.
-                   Mesuré sur les vraies transactions de Marc : 1 879 sorties d'argent, `Tim Hortons`
-                   218 fois contre 8 pour le marchand cherché — trié par fréquence, ce qu'on cherche
-                   est enterré par construction. L'émission de valeur n'a PAS bougé : seule une ligne
-                   existante peut poser `paymentPayee`. */
+                   Mesuré sur les vraies transactions de Marc : plus d'un millier de sorties d'argent,
+                   un café présent des centaines de fois contre une poignée pour le marchand cherché —
+                   trié par fréquence, ce qu'on cherche est enterré par construction.
+                   L'émission de valeur n'a PAS bougé : seule une ligne existante peut poser
+                   `paymentPayee`. */
                 <ChampMarchandLie
                     id={idMarchand}
                     lie={lie}

@@ -37,8 +37,8 @@ function fakeClient(accounts: unknown[]): FintableClient {
 
 /** Un compte courtier en USD — la seule branche où la provenance change quoi que ce soit. */
 const compteUsd = () => ([{
-    id: 'acc_usd', connection_id: 'c', name: 'Disnat (L7B1)', type: 'brokerage',
-    currency: 'USD', balance: '72040.00', cash_balance: null, debt: null,
+    id: 'acc_usd', connection_id: 'c', name: 'Disnat (0001)', type: 'brokerage',
+    currency: 'USD', balance: '58310.00', cash_balance: null, debt: null,
 }]);
 
 function etat(over: Partial<AppState> = {}): AppState {
@@ -61,7 +61,7 @@ describe('la PROVENANCE décide de convertir, jamais la présence du taux', () =
         const r = await passe({ fxRatesSource: 'manuel', fxRatesEstimated: true });
         const [b] = (r.statePatch?.fintableBrokerBalances ?? []) as FintableBrokerBalance[];
         expect(b).toBeDefined();
-        expect(b.balanceCad).toBeCloseTo(72_040 * 1.33, 6);
+        expect(b.balanceCad).toBeCloseTo(58_310 * 1.33, 6);
         expect(b.missingRate).toBeUndefined();
     });
 
@@ -78,7 +78,7 @@ describe('la PROVENANCE décide de convertir, jamais la présence du taux', () =
     it('provenance « api » → converti (le cas nominal, pour que le contraste soit lisible)', async () => {
         const r = await passe({ fxRatesSource: 'api', fxRatesEstimated: false });
         const [b] = (r.statePatch?.fintableBrokerBalances ?? []) as FintableBrokerBalance[];
-        expect(b.balanceCad).toBeCloseTo(72_040 * 1.33, 6);
+        expect(b.balanceCad).toBeCloseTo(58_310 * 1.33, 6);
     });
 
     it('un état d\'AVANT ce lot (sans provenance) garde le comportement d\'avant, à l\'octet près', async () => {
@@ -93,7 +93,7 @@ describe('la PROVENANCE décide de convertir, jamais la présence du taux', () =
 describe('l\'historique du courtier s\'ACCUMULE au lieu d\'être écrasé', () => {
     it('la lecture du jour REJOINT celle d\'hier', async () => {
         const hier: FintableBrokerBalance[] = [
-            { accountId: 'acc_usd', label: 'Disnat (L7B1)', balanceCad: 95_000, taxRegime: 'NON-ENREG', at: HIER },
+            { accountId: 'acc_usd', label: 'Disnat (0001)', balanceCad: 95_000, taxRegime: 'NON-ENREG', at: HIER },
         ];
         const r = await passe({ fxRatesSource: 'api', fxRatesEstimated: false, fintableBrokerHistory: hier });
         const hist = r.statePatch?.fintableBrokerHistory as FintableBrokerBalance[];

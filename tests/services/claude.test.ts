@@ -77,7 +77,7 @@ describe('isDefiniteTransfer', () => {
         ['Interac e-Transfer to /Clara/', -500],
         ['INTERAC e-Transfer from /Anna/', 200],
         ['Virement Interac', -500],
-        ['Money transfer sent to /Valerie/Loyer', -1600],
+        ['Money transfer sent to /Jean/Loyer', -1500],
         ['Funds transfer received /SELARL/', 64000],
     ])('%s → PAS un transfert interne (Interac/externe)', (payee, amount) => {
         expect(isDefiniteTransfer(payee, amount)).toBe(false);

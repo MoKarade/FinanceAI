@@ -139,8 +139,8 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
             tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' }),
             tx({ category: 'Épicerie', amount: -200, date: '2026-06-05' }),
             tx({ category: 'Restaurants', amount: -30, date: '2026-06-11' }),
-            tx({ category: 'Salaire', amount: 1674.62, date: '2026-06-04' }),
-            tx({ category: 'Salaire', amount: 837.31, date: '2026-07-03' }),
+            tx({ category: 'Salaire', amount: 1624.92, date: '2026-06-04' }),
+            tx({ category: 'Salaire', amount: 812.46, date: '2026-07-03' }),
             tx({ category: 'Uncategorized', amount: 50, date: '2026-06-20' }), // revenu à classer
             tx({ category: 'Salaire', amount: 999, date: '2026-06-15', isTransfer: true }), // exclu
             tx({ category: 'Épicerie', amount: -999, date: '2025-06-05' }), // hors fenêtre 12 mois
@@ -159,19 +159,19 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
         expect(epicerie.monthlyAverage).toBeCloseTo(200 / 11, 4);
         // Revenus
         const salaire = l.incomeRows.find(r => r.category === 'Salaire')!;
-        expect(salaire.byMonth[10]).toBe(1674.62);
-        expect(salaire.byMonth[11]).toBe(837.31);
+        expect(salaire.byMonth[10]).toBe(1624.92);
+        expect(salaire.byMonth[11]).toBe(812.46);
         // [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] INVERSÉ le 2026-09-05 (décision Marc 2b) : le positif
         // « à classer » (+50) était une ligne de REVENU « Autres revenus » et entrait dans le total —
-        // le grand livre disait 1 724,62 $ pendant que le KPI Revenus disait 1 674,62 $. Il est
+        // le grand livre disait 1 674,92 $ pendant que le KPI Revenus disait 1 624,92 $. Il est
         // désormais EXCLU du revenu et NOMMÉ sous « Non classées ». Un test de limite s'inverse.
         expect(l.incomeRows.find(r => r.category === 'Autres revenus')).toBeUndefined();
         expect(l.entreesHorsRevenuRows.find(r => r.category === 'Non classées')!.byMonth[10]).toBe(50);
         expect(l.entreesHorsRevenuByMonth[10]).toBe(50);
-        // Totaux + solde (juin) : revenus 1674.62 (le +50 est hors revenu), dépenses 230
-        expect(l.totalIncomeByMonth[10]).toBeCloseTo(1674.62, 2);
+        // Totaux + solde (juin) : revenus 1624.92 (le +50 est hors revenu), dépenses 230
+        expect(l.totalIncomeByMonth[10]).toBeCloseTo(1624.92, 2);
         expect(l.totalExpenseByMonth[10]).toBe(230);
-        expect(l.netByMonth[10]).toBeCloseTo(1444.62, 2);
+        expect(l.netByMonth[10]).toBeCloseTo(1394.92, 2);
     });
 
     // [BUDGET-MATCH-UNIFY] Le ledger rapproche par la MÊME règle que le réel (fuzzy) — avant,
@@ -320,7 +320,7 @@ describe('moyennes de TOUT le passé (mois pleins)', () => {
             tx({ category: 'Épicerie', amount: -400, date: '2026-05-10' }),
             tx({ category: 'Épicerie', amount: -600, date: '2026-06-10' }),
             tx({ category: 'Transfert', amount: -5000, date: '2026-06-15', isTransfer: true }), // exclu
-            tx({ category: 'Salaire', amount: 837, date: '2026-07-03' }), // mois courant : exclu
+            tx({ category: 'Salaire', amount: 812, date: '2026-07-03' }), // mois courant : exclu
         ];
         const a = computeMonthlyActualAverages(transactions, REF);
         expect(a.fullMonths).toBe(2);

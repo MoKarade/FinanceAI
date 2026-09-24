@@ -34,14 +34,14 @@ describe('[DETTE-VIREMENTS-REELS] parité navigateur / MCP sur une dette LIÉE �
         const dep = new Date(auj.getTime() - 60 * 86400000);
         const tx: any[] = [];
         for (let k = 1; k <= 8; k++) {
-            tx.push({ id: `toy${k}`, date: jour(new Date(dep.getTime() + k * 7 * 86400000)), payee: 'Toyota Financial', amount: -234.67, category: 'Transport', type: 'expense' });
+            tx.push({ id: `bail${k}`, date: jour(new Date(dep.getTime() + k * 7 * 86400000)), payee: 'Credit-bail Auto Nord', amount: -161.54, category: 'Transport', type: 'expense' });
         }
         (fx as any).transactions = [...((fx as any).transactions ?? []), ...tx];
         (fx as any).debts = [{
-            id: 'bail', name: 'Bail Toyota', category: 'Car', kind: 'auto-lease',
-            balance: 47168.67, interestRate: 0, minimumPayment: 1016.90,
-            startDate: '2026-01-09', termEndDate: '2029-12-09', paymentFrequency: 'weekly',
-            balanceAsOf: jour(dep), paymentPayee: 'Toyota Financial',
+            id: 'bail', name: 'Bail auto', category: 'Car', kind: 'auto-lease',
+            balance: 30161.54, interestRate: 0, minimumPayment: 700,
+            startDate: '2026-01-12', termEndDate: '2029-12-12', paymentFrequency: 'weekly',
+            balanceAsOf: jour(dep), paymentPayee: 'Credit-bail Auto Nord',
         }];
         act(() => { useFinanceStore.getState().enableTestMode(fx, persona.id); });
         const state = useFinanceStore.getState() as unknown as AppState;
@@ -54,10 +54,10 @@ describe('[DETTE-VIREMENTS-REELS] parité navigateur / MCP sur une dette LIÉE �
         expect(soldeHook).toBe(soldeMcp);
         // ⚠️ La VALEUR, pas seulement l'égalité : huit virements hebdomadaires déduits du solde
         // enregistré. Sans elle, deux chemins également figés au solde brut passeraient.
-        expect(soldeHook).toBeCloseTo(47168.67 - 8 * 234.67, 2);
+        expect(soldeHook).toBeCloseTo(30161.54 - 8 * 161.54, 2);
         // Anti-vacuité : la correction doit VRAIMENT avoir eu lieu (sinon les deux lignes
         // ci-dessus seraient vraies d'un monde où rien n'est lié).
-        expect(soldeHook).toBeLessThan(47168.67);
+        expect(soldeHook).toBeLessThan(30161.54);
         expect(result.current.params).toEqual(mcp);
     });
 });

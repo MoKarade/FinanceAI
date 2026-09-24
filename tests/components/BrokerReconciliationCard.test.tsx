@@ -24,7 +24,7 @@ const ASSET: Asset = {
 } as Asset;
 
 const BALANCES: FintableBrokerBalance[] = [
-    { accountId: 'acc_broker', label: 'Disnat L7B1', balanceCad: 136_863, taxRegime: 'NON-ENREG', at: Date.now() - 3600_000 },
+    { accountId: 'acc_broker', label: 'Disnat 0001', balanceCad: 128_450, taxRegime: 'NON-ENREG', at: Date.now() - 3600_000 },
 ];
 
 beforeEach(() => {
@@ -48,10 +48,10 @@ describe('BrokerReconciliationCard — variant full (Investissements)', () => {
         useFinanceStore.setState({ fintableBrokerBalances: BALANCES, assets: [ASSET] });
         const { container } = render(<BrokerReconciliationCard variant="full" />);
         const text = textOf(container);
-        expect(text).toMatch(/136 863/);            // total courtier (autorité)
+        expect(text).toMatch(/128 450/);            // total courtier (autorité)
         expect(text).toMatch(/100 000/);            // titres saisis (100 × 1000 CAD)
-        expect(text).toMatch(/\+36 863/);           // écart matérialisé : Σ titres + écart == courtier
-        expect(text).toMatch(/Disnat L7B1/);
+        expect(text).toMatch(/\+28 450/);           // écart matérialisé : Σ titres + écart == courtier
+        expect(text).toMatch(/Disnat 0001/);
         expect(text).toMatch(/vu il y a 1h/);       // badge de fraîcheur honnête
     });
 
@@ -80,8 +80,8 @@ describe('BrokerReconciliationCard — variant compact (Accueil)', () => {
         const { container } = render(<BrokerReconciliationCard variant="compact" />);
         const text = textOf(container);
         expect(text).toMatch(/total courtier/i);
-        expect(text).toMatch(/136 863/);
-        expect(text).toMatch(/\+36 863/);
+        expect(text).toMatch(/128 450/);
+        expect(text).toMatch(/\+28 450/);
     });
 
     it('[panel #543 CRITIQUE] AUCUN panier déclaré → PAS de « 0 $ » fabriqué, un état honnête à la place', () => {
@@ -89,8 +89,8 @@ describe('BrokerReconciliationCard — variant compact (Accueil)', () => {
         // l'autorité du mot « courtier » (no-fake-data violé, mesuré par financial-integrity).
         useFinanceStore.setState({
             fintableBrokerBalances: [
-                { accountId: 'a1', label: 'Disnat L7B1', balanceCad: 136_863, at: Date.now() },
-                { accountId: 'a2', label: 'Disnat L7A3', balanceCad: 34_112, at: Date.now() },
+                { accountId: 'a1', label: 'Disnat 0001', balanceCad: 128_450, at: Date.now() },
+                { accountId: 'a2', label: 'Disnat 0002', balanceCad: 21_730, at: Date.now() },
             ],
         });
         const { container } = render(<BrokerReconciliationCard variant="compact" />);
@@ -110,7 +110,7 @@ describe('BrokerReconciliationCard — variant compact (Accueil)', () => {
         });
         const { container } = render(<BrokerReconciliationCard variant="compact" />);
         const text = textOf(container);
-        expect(text).toMatch(/136 863/);            // le total des paniers déclarés reste affiché
+        expect(text).toMatch(/128 450/);            // le total des paniers déclarés reste affiché
         expect(text).toMatch(/\+ 1 compte hors total/); // …mais l'omission est DITE
     });
 });
@@ -121,7 +121,7 @@ describe('BrokerReconciliationCard — mode discret (Loi 25)', () => {
         const { container } = render(<BrokerReconciliationCard variant="full" />);
         const text = textOf(container);
         // La vraie valeur SORT du DOM (PrivateAmount rend •••) — pas un blur CSS.
-        expect(text).not.toMatch(/136/);
+        expect(text).not.toMatch(/128/);
         expect(text).not.toMatch(/100 000/);
         expect(screen.getAllByText('•••').length).toBeGreaterThan(0);
     });
@@ -136,14 +136,14 @@ describe('BrokerReconciliationCard — mode discret (Loi 25)', () => {
 
 describe('[FINTABLE-DISNAT-USD-SOLDE-IGNORE] un compte sans taux est NOMMÉ là où Marc regarde', () => {
     const SANS_TAUX: FintableBrokerBalance[] = [
-        { accountId: 'acc_usd', label: 'Disnat (L7B1)', balanceCad: 0, missingRate: 'USD', taxRegime: 'NON-ENREG', at: Date.now() },
+        { accountId: 'acc_usd', label: 'Disnat (0001)', balanceCad: 0, missingRate: 'USD', taxRegime: 'NON-ENREG', at: Date.now() },
     ];
 
     it('variante FULL : le compte est nommé, la raison est dite, et AUCUN 0 $ n\'est affiché', () => {
         useFinanceStore.setState({ fintableBrokerBalances: SANS_TAUX, assets: [ASSET] } as never);
         const { container } = render(<BrokerReconciliationCard variant="full" />);
         const texte = textOf(container as HTMLElement);
-        expect(texte).toContain('Disnat (L7B1) (USD)');
+        expect(texte).toContain('Disnat (0001) (USD)');
         expect(texte).toContain('Taux de change inconnu');
         // ⚠️ LA garde du chaînon : le `balanceCad: 0` de l'entrée ne doit JAMAIS être affiché comme
         // un total — il ne signifie rien. Un « 0 $ » ici serait le no-fake-data violé.

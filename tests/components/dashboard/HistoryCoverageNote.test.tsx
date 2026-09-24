@@ -12,11 +12,11 @@ describe('HistoryCoverageNote', () => {
     it('avec courbe : « compté dans le total à la valeur actuelle » + montant', () => {
         const { container } = render(
             <HistoryCoverageNote hasChart
-                noHistorySymbols={[{ symbol: 'GBS.PA', valueCad: 7350 }]}
+                noHistorySymbols={[{ symbol: 'TITRE.PA', valueCad: 5000 }]}
                 partialHistorySymbols={[]} staleTailSymbols={[]} />,
         );
         expect(container.textContent).toContain('compté dans le total à la valeur actuelle');
-        expect(container.textContent).toContain('GBS.PA');
+        expect(container.textContent).toContain('TITRE.PA');
     });
 
     it('[INVEST-CHART-CLEAN] REPLIÉ par défaut (details sans open) — le but même de la PR #495', () => {
@@ -24,7 +24,7 @@ describe('HistoryCoverageNote', () => {
         // contenu quand même : l'attribut `open` est le SEUL discriminant testable ici.
         const { container } = render(
             <HistoryCoverageNote hasChart
-                noHistorySymbols={[{ symbol: 'GBS.PA', valueCad: 7350 }]}
+                noHistorySymbols={[{ symbol: 'TITRE.PA', valueCad: 5000 }]}
                 partialHistorySymbols={[]} staleTailSymbols={[]} />,
         );
         expect(container.querySelector('details')?.open).toBeFalsy();
@@ -36,7 +36,7 @@ describe('HistoryCoverageNote', () => {
         // donnée » = affirmation sans rien pour l'appuyer.
         const { container } = render(
             <HistoryCoverageNote hasChart={false}
-                noHistorySymbols={[{ symbol: 'GBS.PA', valueCad: 7350 }]}
+                noHistorySymbols={[{ symbol: 'TITRE.PA', valueCad: 5000 }]}
                 partialHistorySymbols={[]} staleTailSymbols={[]} />,
         );
         expect(container.textContent).not.toContain('compté dans le total');

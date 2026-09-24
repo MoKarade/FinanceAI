@@ -17,7 +17,7 @@ const dayMs = 86_400_000;
 
 const tx = (date: string, id?: number): Transaction => ({
     id: id ?? Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000),
-    date, payee: 'Payroll /ROBOVIC INC.', amount: 837.31, category: 'Salaire', status: 'processed',
+    date, payee: 'Payroll /EMPLOYEUR INC.', amount: 812.45, category: 'Salaire', status: 'processed',
 });
 
 const okReport = (atMs: number): FintableSyncReport => ({

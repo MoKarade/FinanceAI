@@ -190,6 +190,18 @@ describe('[PTF-L1E] PARITÉ AU CENT avec les placements saisis', () => {
     });
 });
 
+describe('[PTF-L1E] LIMITE CONNUE : la décision ne dépend pas de la date', () => {
+    it('avant le premier événement du livre, le régime couvert vaut 0 $ (saisis exclus, livre vide à cette date)', () => {
+        // Test de LIMITE, à INVERSER (pas à supprimer) quand Marc aura tranché avant e3 : juste si le livre
+        // remonte à l'ouverture du compte, faux s'il commence au premier relevé importé.
+        const d = deciderPasserelle(livre, regimesCeli);
+        const avant = '2026-06-15';
+        expect(actifsHorsLivre(saisisAu(PASSE), d)).toEqual([]);
+        const v = valeurDuLivre(livre, d, magasin, avant, AGE);
+        expect(v.etat === 'disponible' && v.totalCad).toBe(0);
+    });
+});
+
 describe('[PTF-L1E] TOTAL AMPUTÉ = FAUX', () => {
     const d = deciderPasserelle(livre, regimesCeli);
 

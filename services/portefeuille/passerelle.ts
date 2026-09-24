@@ -35,6 +35,11 @@
 // ⚠️ Conséquence de B, à dire et non à cacher : l'exclusion se fait par PANIER de régime. Un placement
 // saisi du même régime mais tenu chez un AUTRE courtier sortirait aussi. C'est routé à Marc
 // (`[PTF-L1E-PASSERELLE]` au BACKLOG), pas deviné ici.
+// ⚠️ LIMITE CONNUE, non tranchée ici : la décision ne dépend pas de la DATE. À une date antérieure au
+// premier événement d'un compte couvert, les placements saisis de son régime sont exclus ET le livre
+// vaut 0 pour lui — juste si le livre remonte à l'ouverture du compte, faux s'il commence au premier
+// relevé importé. Sans effet tant que le passé n'est pas branché ; à trancher avec Marc avant e3
+// (test de limite dans `passerelle.test.ts`, à INVERSER le jour où la règle change).
 import type {
     Asset, BrokerAccountRegime, BrokerAccountRegimeType, BrokerLedgerAccountId, BrokerLedgerEvent,
 } from '../../types';
@@ -44,9 +49,16 @@ import { valoriserAu, type Valorisation } from '../valorisation/valoriser';
 /** Les comptes du livre, dans un ordre fixe : deux appels sur le même état rendent les mêmes causes. */
 const COMPTES_DU_LIVRE: readonly BrokerLedgerAccountId[] = ['courtier-cad', 'courtier-usd', 'hors-courtier'];
 
-/** Les régimes qu'un compte du livre peut déclarer. Tableau et non ensemble : la valeur lue d'un
- *  blob n'est pas typée, et `includes` sur un tableau typé exige une conversion explicite. */
-const REGIMES_ADMIS: readonly BrokerAccountRegimeType[] = ['CELI', 'CELIAPP', 'REER', 'NON-ENREG', 'REEE', 'MARGE'];
+/** Les régimes qu'un compte du livre peut déclarer. Un objet et non un tableau : `satisfies Record`
+ *  fait rougir le compilateur si le type gagne un régime oublié ici (sinon il serait refusé en
+ *  silence comme `regime-inconnu`). */
+const REGIMES_ADMIS = {
+    CELI: true, CELIAPP: true, REER: true, 'NON-ENREG': true, REEE: true, MARGE: true,
+} as const satisfies Record<BrokerAccountRegimeType, true>;
+
+function regimeAdmis(v: unknown): v is BrokerAccountRegimeType {
+    return typeof v === 'string' && Object.prototype.hasOwnProperty.call(REGIMES_ADMIS, v);
+}
 
 /** Pourquoi le livre ne fait pas autorité. Chaque cause nomme le compte, jamais un montant. */
 type CauseRefusPasserelle =
@@ -111,8 +123,8 @@ export function deciderPasserelle(
         if (valeurs.length === 0) { causes.push({ type: 'compte-sans-regime', compte }); continue; }
         if (valeurs.length > 1) { causes.push({ type: 'regime-ambigu', compte }); continue; }
         const regime = valeurs[0];
-        if (!(REGIMES_ADMIS as readonly unknown[]).includes(regime)) { causes.push({ type: 'regime-inconnu', compte }); continue; }
-        regimeParCompte.set(compte, regime as BrokerAccountRegimeType);
+        if (!regimeAdmis(regime)) { causes.push({ type: 'regime-inconnu', compte }); continue; }
+        regimeParCompte.set(compte, regime);
     }
     if (causes.length > 0) return { etat: 'refusee', causes };
     return { etat: 'active', regimeParCompte, regimesCouverts: new Set(regimeParCompte.values()) };

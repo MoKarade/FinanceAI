@@ -57,7 +57,9 @@
     Parité au cent avec `computeInvestmentsValue` aujourd'hui ET à une date passée. Rien n'est encore
     BRANCHÉ : aucun écran ne change. Revue : un `accountId` hors des trois du contrat (blob restauré)
     refuse le livre (`compte-inconnu`) au lieu de finir sous une clé `undefined` de la ventilation, et
-    une décision prise sur un autre livre rend `indisponible` (`decision-desynchronisee`).
+    une décision prise sur un autre livre rend `indisponible` (`decision-desynchronisee`) ; `REGIMES_ADMIS`
+    exhaustif par le compilateur ; aucun persona ne plante `brokerAccountRegimes` (garde jumelle
+    d'`instruments`).
   - [ ] **e2** — présent + mois 0 du Futur : `computeInvestmentsValue`/`computePresentTermes`,
     `useSimulationParams` (soldes de départ), et retrait des régimes couverts par le livre de
     `decideRegimesRepris` (Fintable), sinon l'autorité Fintable corrigerait un panier que le livre
@@ -66,7 +68,10 @@
     ⚠️ À trancher avant : l'exclusion des placements saisis ne dépend pas de la DATE. Avant le premier
     événement du livre, le régime couvert vaut donc 0 $ — juste si le livre remonte à l'ouverture du
     compte, faux s'il commence au premier relevé importé (le « transfert entrant » d'ouverture date
-    alors l'arrivée des titres au mauvais jour).
+    alors l'arrivée des titres au mauvais jour). Épinglé par un test de LIMITE (`passerelle.test.ts`),
+    à inverser ; la revue recommande une décision sensible à la date (un compte ne couvre qu'à partir
+    de son premier événement), à soumettre à Marc avec le cas « panier » (deux comptes du même
+    régime qui commencent à des dates différentes).
   - [ ] **e4** — MCP, hub, PDF ; plus une garde à cliquet sur les appels `assetValueCad` /
     `computeInvestmentsValue` hors de la passerelle.
   ⚠️ À dire à Marc avant e2 : l'exclusion se fait par PANIER de régime — un placement saisi du même

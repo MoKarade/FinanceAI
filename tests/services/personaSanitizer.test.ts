@@ -29,6 +29,18 @@ describe('[PTF-L1A] aucun persona ne plante de référentiel d\'instruments', ()
     });
 });
 
+// ——— 1 ter. [PTF-L1E] Même raison pour les régimes des comptes du livre (`{ accountId, regime }`, sans
+// `id`) : le nettoyeur ne peut pas les filtrer, seul ce test tient la règle.
+describe('[PTF-L1E] aucun persona ne plante de régime de compte du livre', () => {
+    it('`brokerAccountRegimes` absent (ou `undefined`) pour TOUS les personas', () => {
+        expect(TEST_PERSONAS.length).toBeGreaterThanOrEqual(7);
+        const fautifs = TEST_PERSONAS
+            .filter((p) => (p.build() as { brokerAccountRegimes?: unknown }).brokerAccountRegimes !== undefined)
+            .map((p) => p.id);
+        expect(fautifs).toEqual([]);
+    });
+});
+
 // ——— 1. PARITÉ registre ↔ fixtures (leçon FISC-CONST-LINT : prouver le VOLUME) ———
 
 describe('artifactIds — parité avec les fixtures de TOUS les personas', () => {

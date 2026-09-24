@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1c-1 : format du magasin de marché (PR #1048)
+
+Déménagé au lot suivant (1d).
+
+- [x] 🔧 **`[PTF-L1C1-MAGASIN-FORMAT]`** (M) — première des trois PR de `[PTF-L1C-MAGASIN-MARCHE]` :
+  format du magasin et clients PURS (aucun réseau, aucune horloge).
+  ✅ **Livré le 2026-09-24** : `services/marche/magasinMarche.ts` — format versionné (v1 ; une version
+  FUTURE est refusée, jamais lue comme une v1), validation qui REFUSE sans réparer (ISIN, dates
+  strictement croissantes, valeurs finies et positives, messages sans aucun cours ni taux), fusion
+  idempotente où la SOURCE décide (un point de secours n'écrase jamais un point officiel, un point
+  officiel promeut un point de secours), lecture à une date où le « reporté » se CALCULE et ne s'écrit
+  jamais, avec un âge maximal REQUIS. `services/marche/clientsMarche.ts` — URL et lecteurs EODHD
+  (`close` BRUT, jamais `adjusted_close`) et Banque du Canada (une SÉRIE datée, jamais le groupe),
+  la clé jamais dans un message. Tests : 34 cas, 8 perturbations rouges, forme Valet vérifiée sur la
+  réponse réelle enregistrée.
+
 ## 2026-09-24 — Portefeuille, lot 1b : positions et encaisse du grand livre (PR #1047)
 
 Déménagé au lot suivant (1c-1).

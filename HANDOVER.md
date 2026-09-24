@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 3) — **Lot 1d : moteur de valorisation pur**
+> Livré `[PTF-L1D-VALORISATION]` : `services/valorisation/valoriser.ts` (`valoriserAu`, `variationEntre`), PUR, non
+> branché. Total `null` + `manquants` dès qu'il manque un cours, un taux ou que le livre porte une anomalie (un total
+> amputé est un faux) ; aucun arrondi ; zéro artefact (jour sans mouvement → effets 0 exactement ; fractionnement
+> ré-exprimé). ⚠️ Porte « code mort » (knip 6, plafond 40) : seuls les symboles importés hors de leur fichier sont
+> exportés ; chaque lot ré-exporte ce qu'il consomme. ⏭️ Suite : 1f (parseur Disnat), puis 1e.
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 2) — **Lot 1c-1 : format du magasin de marché, clients purs**
 > Livré `[PTF-L1C1-MAGASIN-FORMAT]` : `services/marche/magasinMarche.ts` (format v1, validation qui refuse,
 > fusion idempotente où la source décide, `clotureAu`/`tauxAu` avec âge maximal REQUIS) et

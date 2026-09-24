@@ -17027,7 +17027,6 @@ le bon fonctionnement rendaient le même zéro.
   différents) : un « 1 rouge » là où on en attendait 2 n'est pas un test faible, c'est une information
   sur lequel des deux porte la preuve.
 
-
 ## `UN-TRI-PAR-DATE-LAISSE-L-ORDRE-DU-TABLEAU-DECIDER-LE-RESTE` (2026-09-24, revue du lot 1s)
 
 Le grand livre trie ses événements par DATE, puis applique. Deux événements du même jour gardaient
@@ -17045,3 +17044,21 @@ même jour rapportaient l'une ou l'autre selon le tableau.
 - Corollaire : un identifiant censé être unique ne l'est que si quelque chose le **refuse** en double.
   Deux annulations au même `id` faisaient tomber deux lignes réelles ; elles sont désormais refusées
   toutes les deux, sans deviner laquelle était la bonne.
+
+## `UNE-FIXTURE-ECRITE-DE-MEMOIRE-PERD-CE-QUE-L-ORIGINAL-PORTE` (2026-09-24, parseur Disnat)
+
+Le relevé de test du parseur était écrit d'après la FORME des vrais relevés, pour ne rien publier
+d'eux. Il était vert, chaque test prouvé par une panne volontaire — et le premier passage sur les
+trois vrais relevés, en local, a sorti trois lignes illisibles : la ligne « ENCAISSE » de la catégorie
+« Encaisse et équivalents », que ma fixture n'avait pas (celle-là même que l'ancien parseur perdait,
+notée au Lot 0 et oubliée en écrivant la fixture).
+
+- Une fixture recopiée « de forme » ne contient que les formes dont on se SOUVIENT. Quand l'original
+  est privé, on ne le committe pas — on le REJOUE localement, et seuls des COMPTES et des TYPES
+  d'anomalies sortent (jamais un texte, jamais un montant).
+- Le rejeu doit viser la grandeur la plus aval disponible : ici, le livre reconstruit rend-il les
+  positions imprimées au dernier relevé ? (toutes, à l'unité près). Un « 0 anomalie » seul aurait aussi été vrai
+  d'un parseur qui saute ce qu'il ne comprend pas.
+- La forme découverte entre ensuite DANS la fixture fictive, avec son recoupement : la prochaine
+  régression se verra en CI, pas seulement sur la machine de celui qui a les relevés.
+

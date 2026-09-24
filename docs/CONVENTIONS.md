@@ -17144,3 +17144,18 @@ dépassement de tampon d'`execSync` perdait tout).
 - Toute incertitude (guillemet non fermé, `cd`, `git -C`, `git reset/rm` avant le commit, `add -p`) → suite
   complète : la logique pure est testable (`tests/gateCommitAnalyse.test.ts`), le défaut reste le cas sûr.
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
+
+---
+
+### `UN-SECRET-LIVRE-AU-NAVIGATEUR-N-EST-PAS-UN-SECRET` — 2026-09-25
+
+Lot `[DURCISSEMENT-RELAIS]`. Le « jeton de relais » vivait dans `VITE_PROXY_ACCESS_TOKEN` : tout ce qui est préfixé
+`VITE_` est recopié en clair dans le JavaScript public. Il dissuadait le scraping en théorie et n'a jamais protégé rien.
+
+- Un contrôle d'accès dont la clé part dans le bundle est de la décoration : le retirer et le DIRE vaut mieux que le garder.
+- Ce qui protège vraiment : une preuve que l'appelant possède une ressource (ici la clé Anthropic, vérifiée) et des
+  freins bornés (Origin, débit, taille) dont on écrit l'honnêteté dans le code — Vercel est sans état, l'Origin est
+  falsifiable hors navigateur.
+- La garde qui empêche le retour : un test qui CONSTRUIT avec une valeur canari dans la variable et fouille la sortie
+  (sans jamais l'afficher). Vérifié en remettant l'ancien en-tête : le test devient rouge.
+- Un mémo de sécurité borné vide-t-il tout à saturation (`clear()`) ? Alors il se rejoue : éviction par ancienneté.

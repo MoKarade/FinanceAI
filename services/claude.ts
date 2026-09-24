@@ -176,7 +176,7 @@ export const makeClient = async (apiKey: string, kind: 'text' | 'vision' = 'text
             apiKey: null,
             authToken: apiKey,
             baseURL: `${window.location.origin}/api/claude`, // ABSOLU obligatoire (new URL côté SDK)
-            defaultHeaders: { 'x-financeai-proxy': import.meta.env.VITE_PROXY_ACCESS_TOKEN ?? '' },
+            // [DURCISSEMENT-RELAIS] Plus de jeton de relais : un secret livré au navigateur n'en est pas un (cf. relay.ts).
             dangerouslyAllowBrowser: true,
         });
     }

@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟥 Session 2026-09-25 — **`[DURCISSEMENT-RELAIS]` : le jeton de relais public disparaît, des freins honnêtes le remplacent**
+> 🔎 Audit sécurité (pole-securite, décision de Marc) : `VITE_PROXY_ACCESS_TOKEN` était recopié dans le bundle public ;
+> n'importe qui le lisait, il n'a jamais rien protégé. **Supprimé** (client + relais). À la place, dans `api/_lib/` :
+> Origin (finance.hubperso.com, `RELAIS_ORIGINES`, `VERCEL_URL`, localhost — falsifiable hors navigateur : un frein),
+> débit par IP (120/min) et par empreinte de clé (60/min) et budget de vérification de clé (10/min/IP) — en mémoire,
+> donc frein FAIBLE sur Vercel sans état (aucun stockage partagé, décision à part), corps ≤ 200 Ko (413),
+> `max_tokens` local ≤ 8192 (au-delà : Claude, jamais tronqué), `anthropic-version` en forme stricte.
+> Mémo de vérification de clé (S5) : négatif court (refus 60 s, panne 15 s), 200 entrées, éviction par ancienneté
+> (avant : vidage total à 50), empreinte SALÉE (`RELAIS_SEL_EMPREINTE`, sinon sel aléatoire par instance).
+> 🧪 `tests/api/relaisDurcissement.test.ts` + `tests/api/jetonAbsentDuBundle.test.ts` (construit avec une valeur canari dans
+> `VITE_PROXY_ACCESS_TOKEN`, échoue si elle ou le nom de l'en-tête est dans le bundle ; vérifié en le rendant rouge).
+> ⚠️ Action Marc (`docs/A_FAIRE_MOI.md` O4) : RETIRER `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel s'ils
+> sont posés (inutiles, la première est même une valeur sensible à faire tourner par prudence). Décision : ADR 0021.
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur

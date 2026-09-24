@@ -17,6 +17,11 @@
 
 ---
 
+## 🔒 Relais IA — suites du durcissement (2026-09-25)
+- [ ] 🧭 [DURCISSEMENT-RELAIS-DEBIT-PARTAGE] (M) Limite de débit PARTAGÉE entre instances Vercel : seulement si un stockage
+  gratuit est confirmé et qu'il échoue FERMÉ ; sinon on garde le frein en mémoire (faible mais utile). Décision à part.
+- [ ] 👤 [DURCISSEMENT-RELAIS-ENV] (S) Retirer `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel (cf. `A_FAIRE_MOI` O4).
+
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 
 > Demande : « FinanceAI devient la référence fiable du portefeuille Disnat : valeur exacte jour par

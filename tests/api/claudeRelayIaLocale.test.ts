@@ -7,19 +7,20 @@ import {
     relayClaude, iaLocaleDepuisEnv, eligibleIaLocale, reinitialiserSanteIaLocale, type IaLocaleConfig,
     cleAnthropicValide, reinitialiserClesValidees,
 } from '../../api/_lib/relay';
+import { reinitialiserLimites } from '../../api/_lib/garde';
 import { MODEL_IDS, LOCAL_MODEL_ID } from '../../services/aiChat/models';
 
 const RELAY_URL = 'http://localhost/api/claude/v1/messages';
-const TOKEN = 'tok-test';
+const ORIGINE = 'http://localhost:5173';
 const IA: IaLocaleConfig = {
     url: 'https://ia.exemple.test', cle: 'atl_cle-test',
-    modeles: new Set([MODEL_IDS.haiku, MODEL_IDS.sonnet]), reflexion: 'low',
+    modeles: new Set([MODEL_IDS.haiku, MODEL_IDS.sonnet]), reflexion: 'low', maxTokens: 8_192,
 };
 
 const mkRequest = (body: Record<string, unknown>, signal?: AbortSignal): Request => new Request(RELAY_URL, {
     method: 'POST',
     headers: {
-        'x-financeai-proxy': TOKEN,
+        'origin': ORIGINE,
         'authorization': 'Bearer sk-ant-test-123',
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
@@ -37,6 +38,7 @@ let sante: () => Response | Promise<Response>;
 let locale: () => Response | Promise<Response>;
 
 beforeEach(() => {
+    reinitialiserLimites();
     reinitialiserSanteIaLocale();
     sante = () => new Response('{"ok": true}', { status: 200 });
     locale = () => new Response(JSON.stringify({ id: 'msg_l', model: LOCAL_MODEL_ID }), {
@@ -54,7 +56,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 const call = (body: Record<string, unknown>, ia: IaLocaleConfig | null = IA, signal?: AbortSignal) =>
-    relayClaude(mkRequest(body, signal), { accessToken: TOKEN, iaLocale: ia, verifierCle: async () => true });
+    relayClaude(mkRequest(body, signal), { iaLocale: ia, verifierCle: async () => true });
 const urls = () => (fetchSpy.mock.calls as Appel[]).map(([u]) => u);
 
 describe('[IA-LOCALE] routage du relais vers la passerelle locale', () => {
@@ -69,7 +71,6 @@ describe('[IA-LOCALE] routage du relais vers la passerelle locale', () => {
         expect(init.headers!['x-api-key']).toBe('atl_cle-test');
         expect(init.headers!['x-atelier-reflexion']).toBe('low');
         expect(JSON.stringify(init.headers)).not.toContain('sk-ant-test-123');      // BYOK hors passerelle
-        expect(JSON.stringify(init.headers)).not.toContain(TOKEN);                  // jeton de relais non plus
         expect((JSON.parse(init.body as string) as { model: string }).model).toBe(LOCAL_MODEL_ID);
     });
 
@@ -183,19 +184,18 @@ describe('[IA-LOCALE] configuration depuis l\'env serveur', () => {
 });
 
 describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE', () => {
-    // Le jeton x-financeai-proxy est dans le bundle public : sans cette vérification, n'importe quelle
-    // chaîne « Bearer » ouvrait la passerelle (le GPU du PC de Marc) à qui lisait le bundle.
+    // Sans cette vérification, n'importe quelle chaîne « Bearer » ouvrait la passerelle (le GPU du PC de Marc).
     beforeEach(() => reinitialiserClesValidees());
     const COUNT = 'https://api.anthropic.com/v1/messages/count_tokens';
 
     it('clé refusée par Anthropic → pas de passerelle (ni même sa sonde), appel Anthropic avec la clé fournie', async () => {
-        const res = await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA, verifierCle: async () => false });
+        const res = await relayClaude(mkRequest(texte()), { iaLocale: IA, verifierCle: async () => false });
         expect(res.status).toBe(200);
         expect(urls()).toEqual(['https://api.anthropic.com/v1/messages']);
     });
 
     it('vérification réelle : count_tokens avec la clé BYOK et un contenu FACTICE (aucune donnée envoyée)', async () => {
-        const res = await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA });
+        const res = await relayClaude(mkRequest(texte()), { iaLocale: IA });
         expect(res.status).toBe(200);
         expect(urls()).toEqual([COUNT, `${IA.url}/sante`, `${IA.url}/v1/messages`]);
         const [, init] = (fetchSpy.mock.calls as Appel[])[0];
@@ -204,18 +204,20 @@ describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE',
     });
 
     it('clé mémorisée 10 min (par empreinte) : pas de seconde vérification', async () => {
-        await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA });
-        await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA });
+        await relayClaude(mkRequest(texte()), { iaLocale: IA });
+        await relayClaude(mkRequest(texte()), { iaLocale: IA });
         expect(urls().filter((u) => u === COUNT)).toHaveLength(1);
     });
 
-    it('échec fermé : 401 d\'Anthropic ou panne réseau → faux, et rien n\'est mémorisé', async () => {
+    it('échec fermé : 401 d\'Anthropic ou panne réseau → faux ; le refus est mémorisé COURT (pas de martelage)', async () => {
         fetchSpy.mockImplementationOnce(async () => new Response('{}', { status: 401 }));
         expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        // Même clé tout de suite : verdict négatif en mémoire, AUCUN nouvel appel.
+        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        // Panne réseau sur une autre clé : faux aussi.
         fetchSpy.mockImplementationOnce(async () => { throw new TypeError('fetch failed'); });
-        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
-        fetchSpy.mockImplementationOnce(async () => new Response('{}', { status: 401 }));
-        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
-        expect(fetchSpy).toHaveBeenCalledTimes(3);
+        expect(await cleAnthropicValide('sk-autre', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 });

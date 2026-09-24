@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-25 — Sécurité du relais IA : plus de jeton public, des freins honnêtes
+
+- Le jeton de relais était visible dans le code servi au public : il est supprimé (il ne protégeait rien).
+- Le relais vérifie maintenant d'où vient l'appel (Origin), limite le débit par IP et par clé, plafonne la taille des
+  requêtes (200 Ko) et la longueur des réponses servies par l'IA locale (8192), et se souvient plus finement des clés
+  déjà vérifiées (refus mémorisé 60 s, éviction par ancienneté, empreinte salée).
+- Un test construit l'app avec une valeur piège et échoue si elle réapparaît dans le code public.
+
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 
 - Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ

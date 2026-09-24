@@ -1207,6 +1207,12 @@ COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des acti
   (cf checklist `BACKLOG.md` § sync).
 
 ## O4 — Relais BYOK pour Claude (P0-PROXY, dark-launch awaiting env+flag)
+> ⚠️ **2026-09-25 [DURCISSEMENT-RELAIS] — les étapes (1) à (3) et (7) ci-dessous sont PÉRIMÉES** : le jeton de relais
+> (`PROXY_ACCESS_TOKEN` / `VITE_PROXY_ACCESS_TOKEN`) n'existe plus (il était public dans le bundle). **À faire** :
+> retirer ces deux variables de Vercel (Production + Preview) si elles y sont, et, par prudence, considérer la valeur
+> comme brûlée. Restent nécessaires pour l'IA locale : `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL`, `IA_LOCALE_CLE`.
+> Optionnelles : `RELAIS_SEL_EMPREINTE` (sel du mémo de clés), `RELAIS_ORIGINES` (origines supplémentaires),
+> `IA_LOCALE_MAX_TOKENS` (plafond local, défaut 8192). ADR 0021.
 Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
 - [ ] **(1) Générer le token** : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" (PowerShell : openssl absent sur Windows)` → copier.
 - [ ] **(2) Poser l'env Vercel SERVEUR** (`PROXY_ACCESS_TOKEN`) : ce token → Settings → Environment Variables

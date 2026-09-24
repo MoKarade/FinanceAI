@@ -4,8 +4,12 @@
 // Modèle : l'appelant fournit SA clé Anthropic (Authorization: Bearer — le SDK client passe en
 // `authToken`) ; le relais la re-mappe en `x-api-key` vers api.anthropic.com. AUCUNE clé serveur :
 // personne ne peut consommer le budget d'autrui via ce endpoint (anti-abus par construction).
-// Le jeton `x-financeai-proxy` (env PROXY_ACCESS_TOKEN) ne fait que dissuader le scraping anonyme
-// de l'infra Vercel — il est extractible du bundle (VITE_*), c'est un frein documenté, pas une barrière.
+// [DURCISSEMENT-RELAIS] 2026-09-25 : le jeton `x-financeai-proxy` (PROXY_ACCESS_TOKEN / VITE_PROXY_ACCESS_TOKEN)
+// est SUPPRIMÉ. Il était livré dans le bundle public (VITE_*) : n'importe qui le lisait, il n'a jamais protégé rien.
+// Un secret qu'on livre au navigateur n'est pas un secret. À la place, des freins HONNÊTES (cf. api/_lib/garde.ts) :
+// Origin (falsifiable hors navigateur), débit par IP et par empreinte de clé, plafond de corps, et — pour la
+// passerelle locale — la clé Anthropic VÉRIFIÉE. Un test (tests/api/jetonAbsentDuBundle.test.ts) échoue si une
+// valeur posée dans VITE_PROXY_ACCESS_TOKEN se retrouve dans le bundle construit.
 //
 // Exigences sécurité (modèle de menaces 2026-07-06, agents security-privacy + ai-reviewer) :
 //   - URL amont CONSTANTE (aucune entrée requête ne dérive l'URL → zéro SSRF) ;
@@ -36,6 +40,10 @@
 
 // `.js` obligatoire : chargé en ESM natif par le runtime Node de Vercel (cf api/claude/v1/messages.ts).
 import { MODEL_IDS, LOCAL_MODEL_ID } from '../../services/aiChat/models.js';
+import {
+    CorpsTropGros, LIMITES_PAR_DEFAUT, essayerDebit, ipClient, lireCorpsBorne, origineAutorisee,
+    type Limites,
+} from './garde.js';
 
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
 const ALLOWED_PATH = '/v1/messages';
@@ -45,6 +53,8 @@ const ALLOWED_MODELS: ReadonlySet<string> = new Set(Object.values(MODEL_IDS));
 // Plafond serveur (le max observé côté app : analyzeBankStatement = 16000).
 const MAX_TOKENS_CAP = 16_000;
 const DEFAULT_MAX_TOKENS = 1_024;
+// Plafond local par défaut : au-delà, l'appel reste possible mais part chez Anthropic (cf. eligibleIaLocale).
+const MAX_TOKENS_LOCAL_DEFAUT = 8_192;
 
 export function anthropicError(status: number, type: string, message: string): Response {
     return new Response(JSON.stringify({ type: 'error', error: { type, message } }), {
@@ -59,10 +69,6 @@ function readEnv(name: string): string | undefined {
     return p?.env?.[name] || undefined;
 }
 
-function configuredToken(): string | undefined {
-    return readEnv('PROXY_ACCESS_TOKEN');
-}
-
 // ─── [IA-LOCALE] Passerelle IA locale ─────────────────────────────────────────────────────────────
 
 export interface IaLocaleConfig {
@@ -71,10 +77,15 @@ export interface IaLocaleConfig {
     cle: string;
     modeles: ReadonlySet<string>;
     reflexion: 'low' | 'medium' | 'high';
+    /** Plafond de max_tokens pour un appel servi LOCALEMENT (le GPU de Marc n'est pas un puits sans fond). */
+    maxTokens: number;
 }
 
 export interface RelayOptions {
-    accessToken?: string;
+    /** Env serveur injectable (tests, dev Vite) ; défaut = process.env. */
+    env?: (k: string) => string | undefined;
+    /** Plafonds de débit par minute (tests) ; défaut = LIMITES_PAR_DEFAUT. */
+    limites?: Limites;
     /** Injecté par les tests et le middleware dev ; `undefined` = lu dans l'env serveur ; `null` = coupé. */
     iaLocale?: IaLocaleConfig | null;
     /** [S5-RELAIS-CLE] Injecté par les tests ; `undefined` = vérification réelle (count_tokens). */
@@ -98,7 +109,9 @@ export function iaLocaleDepuisEnv(get: (k: string) => string | undefined = readE
     const liste = get('IA_LOCALE_MODELES') ?? `${MODEL_IDS.haiku},${MODEL_IDS.sonnet}`;
     const modeles = new Set(liste.split(',').map((s) => s.trim()).filter((s) => ALLOWED_MODELS.has(s)));
     const r = get('IA_LOCALE_REFLEXION');
-    return { url: base.origin, cle, modeles, reflexion: r === 'medium' || r === 'high' ? r : 'low' };
+    const mt = Number(get('IA_LOCALE_MAX_TOKENS'));
+    const maxTokens = Number.isFinite(mt) && mt > 0 ? Math.min(Math.floor(mt), MAX_TOKENS_CAP) : MAX_TOKENS_LOCAL_DEFAUT;
+    return { url: base.origin, cle, modeles, reflexion: r === 'medium' || r === 'high' ? r : 'low', maxTokens };
 }
 
 // Blocs que gpt-oss ne sait pas traiter (pas de vision, pas de PDF) : présence → Claude.
@@ -121,6 +134,8 @@ export function eligibleIaLocale(body: Record<string, unknown>, cfg: IaLocaleCon
         const type = (t as { type?: unknown } | null)?.type;
         return type !== undefined && type !== 'custom';
     })) return false;
+    // Plafond local : une demande plus longue que ce que la passerelle accepte va chez Claude (jamais tronquée).
+    if (typeof body.max_tokens === 'number' && body.max_tokens > cfg.maxTokens) return false;
     return !contientBlocNonTexte(body.messages) && !contientBlocNonTexte(body.system);
 }
 
@@ -202,26 +217,63 @@ async function appelIaLocale(body: Record<string, unknown>, cfg: IaLocaleConfig,
 }
 
 // ─── [S5-RELAIS-CLE] Vérification de la clé BYOK avant la passerelle locale ──────────────────────────
+// [DURCISSEMENT-RELAIS] Mémo : positif 10 min ; NÉGATIF court (un refus d'Anthropic 60 s, une panne 15 s : on ne
+// re-martèle pas count_tokens avec la même clé) ; borné à 200 entrées, éviction PAR ANCIENNETÉ (avant : vidage
+// total à 50 entrées, ce qui rendait la vérification rejouable à volonté) ; empreinte SALÉE (sel = env serveur
+// RELAIS_SEL_EMPREINTE, sinon aléatoire par instance) : la table en mémoire ne se rejoue pas hors de ce processus.
 const CLE_VALIDE_TTL_MS = 10 * 60_000;
+const CLE_REFUSEE_TTL_MS = 60_000;
+const CLE_PANNE_TTL_MS = 15_000;
 const CLE_VERIF_DELAI_MS = 3_000;
-const CLES_MEMO_MAX = 50;
-const clesValidees = new Map<string, number>(); // empreinte SHA-256 → expiration (jamais la clé)
+const CLES_MEMO_MAX = 200;
+const clesVerifiees = new Map<string, { ok: boolean; expire: number }>(); // empreinte salée → verdict (jamais la clé)
+const selInstance = (() => {
+    const o = new Uint8Array(16);
+    crypto.getRandomValues(o);
+    return Array.from(o, (x) => x.toString(16).padStart(2, '0')).join('');
+})();
 
 /** Tests uniquement : oublie les clés déjà vérifiées. */
 export function reinitialiserClesValidees(): void {
-    clesValidees.clear();
+    clesVerifiees.clear();
 }
 
-async function empreinte(cle: string): Promise<string> {
-    const octets = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cle)));
+/** Taille du mémo (tests : borne). */
+export function tailleMemoCles(): number {
+    return clesVerifiees.size;
+}
+
+export async function empreinteCle(cle: string): Promise<string> {
+    const sel = readEnv('RELAIS_SEL_EMPREINTE') ?? selInstance;
+    const octets = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${sel}\0${cle}`)));
     return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
+}
+
+function memoriserVerdict(h: string, ok: boolean, ttl: number): void {
+    const maintenant = Date.now();
+    clesVerifiees.delete(h);
+    if (clesVerifiees.size >= CLES_MEMO_MAX) {
+        for (const [k, v] of clesVerifiees) if (v.expire <= maintenant) clesVerifiees.delete(k);
+        while (clesVerifiees.size >= CLES_MEMO_MAX) {
+            const plusAncien = clesVerifiees.keys().next().value;
+            if (plusAncien === undefined) break;
+            clesVerifiees.delete(plusAncien);
+        }
+    }
+    clesVerifiees.set(h, { ok, expire: maintenant + ttl });
+}
+
+/** Verdict déjà mémorisé (et non expiré) pour cette clé, sinon `undefined` (une vérification réseau serait nécessaire). */
+export async function verdictEnMemoire(cle: string): Promise<boolean | undefined> {
+    const v = clesVerifiees.get(await empreinteCle(cle));
+    return v && v.expire > Date.now() ? v.ok : undefined;
 }
 
 /** Vrai si Anthropic accepte la clé (count_tokens : gratuit, contenu factice). Échec fermé. */
 export async function cleAnthropicValide(cle: string, modele: string, signal: AbortSignal): Promise<boolean> {
-    const h = await empreinte(cle);
-    const expire = clesValidees.get(h);
-    if (expire !== undefined && expire > Date.now()) return true;
+    const h = await empreinteCle(cle);
+    const m = clesVerifiees.get(h);
+    if (m && m.expire > Date.now()) return m.ok;
     try {
         const r = await fetch(ANTHROPIC_BASE + '/v1/messages/count_tokens', {
             method: 'POST',
@@ -230,13 +282,14 @@ export async function cleAnthropicValide(cle: string, modele: string, signal: Ab
             signal: AbortSignal.any([signal, AbortSignal.timeout(CLE_VERIF_DELAI_MS)]),
         });
         await r.body?.cancel().catch(() => undefined);
-        if (!r.ok) return false;
+        if (r.ok) { memoriserVerdict(h, true, CLE_VALIDE_TTL_MS); return true; }
+        // 4xx = refus net d'Anthropic ; 5xx/429 = panne ou quota côté Anthropic (verdict plus court).
+        memoriserVerdict(h, false, r.status >= 400 && r.status < 500 && r.status !== 429 ? CLE_REFUSEE_TTL_MS : CLE_PANNE_TTL_MS);
+        return false;
     } catch {
+        if (!signal.aborted) memoriserVerdict(h, false, CLE_PANNE_TTL_MS);
         return false;
     }
-    if (clesValidees.size >= CLES_MEMO_MAX) clesValidees.clear();
-    clesValidees.set(h, Date.now() + CLE_VALIDE_TTL_MS);
-    return true;
 }
 
 /** Cœur du relais — pur Web-standard (Request→Response) : même code en fonction Vercel et en dev Vite. */
@@ -247,13 +300,23 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
         return anthropicError(404, 'not_found_error', 'Route non prise en charge par le relais.');
     }
 
-    const expected = opts?.accessToken ?? configuredToken();
-    if (!expected) {
-        return anthropicError(503, 'api_error', 'Relais non configuré (PROXY_ACCESS_TOKEN absent).');
+    const env = opts?.env ?? readEnv;
+    const limites = opts?.limites ?? LIMITES_PAR_DEFAUT;
+
+    // [DURCISSEMENT-RELAIS] Origin : frein contre l'usage depuis une page tierce (falsifiable hors navigateur).
+    if (!origineAutorisee(request.headers.get('origin'), env)) {
+        return anthropicError(403, 'permission_error', 'Origine non autorisée.');
     }
-    if (request.headers.get('x-financeai-proxy') !== expected) {
-        return anthropicError(401, 'authentication_error', 'Jeton de relais invalide.');
-    }
+    const ip = ipClient(request.headers);
+    const trop = (r: { ok: false; retryApresSec: number }) => {
+        // Journal SANS contenu : ni IP, ni clé, ni corps — seulement qu'un plafond a joué.
+        console.warn('[relay] limite de débit atteinte');
+        const rep = anthropicError(429, 'rate_limit_error', 'Trop de requêtes : réessaie dans un instant.');
+        rep.headers.set('retry-after', String(r.retryApresSec));
+        return rep;
+    };
+    const debitIp = essayerDebit(`ip:${ip}`, limites.parIp);
+    if (!debitIp.ok) return trop(debitIp);
 
     // Clé BYOK de l'appelant — jamais loggée, jamais stockée, transite tel quel vers Anthropic.
     const auth = request.headers.get('authorization') ?? '';
@@ -261,15 +324,20 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
     if (!apiKey) {
         return anthropicError(401, 'authentication_error', 'Clé Anthropic absente (Authorization: Bearer requis).');
     }
+    const debitCle = essayerDebit(`cle:${await empreinteCle(apiKey)}`, limites.parCle);
+    if (!debitCle.ok) return trop(debitCle);
 
     let body: Record<string, unknown>;
     try {
-        const parsed: unknown = await request.json();
+        const parsed: unknown = JSON.parse(await lireCorpsBorne(request));
         // `null`/tableau/scalaire sont du JSON VALIDE mais pas un corps de requête Anthropic —
         // sans ce garde, `body.model` sur `null` lèverait une TypeError hors enveloppe.
         if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('non-objet');
         body = parsed as Record<string, unknown>;
-    } catch {
+    } catch (e) {
+        if (e instanceof CorpsTropGros) {
+            return anthropicError(413, 'request_too_large', 'Corps de requête trop volumineux pour le relais.');
+        }
         return anthropicError(400, 'invalid_request_error', 'Corps JSON invalide.');
     }
     if (typeof body.model !== 'string' || !ALLOWED_MODELS.has(body.model)) {
@@ -282,10 +350,10 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
 
     // [IA-LOCALE] Essai sur la passerelle locale si l'appel est éligible et qu'elle répond ; sinon
     // (ou en cas d'échec) on continue vers Anthropic exactement comme avant.
-    const iaLocale = opts?.iaLocale !== undefined ? opts.iaLocale : iaLocaleDepuisEnv();
+    const iaLocale = opts?.iaLocale !== undefined ? opts.iaLocale : iaLocaleDepuisEnv(env);
     const verifierCle = opts?.verifierCle ?? cleAnthropicValide;
     if (iaLocale && eligibleIaLocale(body, iaLocale)
-        && await verifierCle(apiKey, body.model, request.signal)
+        && await cleAutoriseeLocalement(apiKey, body.model, ip, limites, verifierCle, request.signal, opts?.verifierCle !== undefined)
         && await passerelleEnLigne(iaLocale)) {
         try {
             const locale = await appelIaLocale(body, iaLocale, request.signal);
@@ -302,7 +370,7 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
             method: 'POST',
             headers: {
                 'content-type': 'application/json',
-                'anthropic-version': request.headers.get('anthropic-version') ?? '2023-06-01',
+                'anthropic-version': versionAnthropic(request.headers.get('anthropic-version')),
                 'x-api-key': apiKey,
             },
             body: JSON.stringify(body),
@@ -329,4 +397,31 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
     if (ct) headers.set('content-type', ct);
     headers.set('cache-control', 'no-store');
     return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+/** `anthropic-version` : forme AAAA-MM-JJ seulement (jamais une valeur libre recopiée vers l'amont). */
+function versionAnthropic(v: string | null): string {
+    return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '2023-06-01';
+}
+
+/**
+ * La clé est-elle vérifiée pour servir l'appel en local ? Une clé DÉJÀ vue (verdict en mémoire) ne coûte rien.
+ * Une clé INCONNUE coûte un appel count_tokens : plafonné par IP (`verifParIp`) — au-delà, pas de local
+ * (l'appel continue chez Anthropic avec la clé fournie, qui refusera une clé fausse). `injecte` = vérificateur
+ * de test : on ne touche ni au mémo ni au budget.
+ */
+async function cleAutoriseeLocalement(
+    cle: string, modele: string, ip: string, limites: Limites,
+    verifier: (cle: string, modele: string, signal: AbortSignal) => Promise<boolean>,
+    signal: AbortSignal, injecte: boolean,
+): Promise<boolean> {
+    if (!injecte) {
+        const connu = await verdictEnMemoire(cle);
+        if (connu !== undefined) return connu;
+        if (!essayerDebit(`verif:${ip}`, limites.verifParIp).ok) {
+            console.warn('[relay] budget de vérification de clé épuisé');
+            return false;
+        }
+    }
+    return verifier(cle, modele, signal);
 }

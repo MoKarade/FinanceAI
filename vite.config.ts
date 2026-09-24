@@ -28,7 +28,7 @@ const claudeRelayDevPlugin = (env: Record<string, string>): Plugin => ({
                     signal: ctrl.signal,
                 });
                 const response = await relayClaude(request, {
-                    accessToken: env.PROXY_ACCESS_TOKEN || env.VITE_PROXY_ACCESS_TOKEN || undefined,
+                    env: (k) => env[k] || undefined,
                     // [IA-LOCALE] Même lecture qu'en prod, depuis .env.local (IA_LOCALE_URL / _CLE / …).
                     iaLocale: iaLocaleDepuisEnv((k) => env[k] || undefined),
                 });

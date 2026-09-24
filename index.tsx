@@ -1,3 +1,5 @@
+// [S5-ZOD4-CSP] Toujours en premier : zod sans eval, compatible avec notre CSP (voir le fichier).
+import './utils/zodSansEval';
 // [S5-PERF] Polices auto-hébergées (24/09/2026) : plus de CSS Google Fonts bloquant le rendu (la 1re
 // opportunité Lighthouse, ~0,5 s) ni de requête vers Google à chaque ouverture. Sous-ensemble latin
 // (français compris), graisses réellement utilisées. Noms de familles inchangés (tailwind.config.js).

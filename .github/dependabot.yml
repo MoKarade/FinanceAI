@@ -30,6 +30,15 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@vitest/*"
         update-types: ["version-update:semver-major"]
+      # jsdom 30 (+ @types/jsdom) : CONSÉQUENCE de l'épinglage vitest 4 ci-dessus. L'environnement jsdom de
+      # vitest 4.1.11 (dernière 4.x) convertit les Blob en lisant l'interne `_buffer`, que jsdom 30 a retiré :
+      # URL.createObjectURL lève « Cannot read properties of undefined (reading '_buffer') ». Mesuré le
+      # 24/09/2026 (#1026) : 1 test rouge (export CSV), la pile passe par vitest/…/makeCompatBlob, pas par
+      # notre code. À retirer EN MÊME TEMPS que l'exclusion vitest (vitest 5 lit jsdom 30).
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jsdom"
+        update-types: ["version-update:semver-major"]
       # TypeScript 7 : aucune API programmatique avant la 7.1 (annonce TS 7.0, 08/07/2026) ; typescript-eslint
       # en dépend, et la 7.0 change des défauts (`types` vide, imports à effet de bord vérifiés). Mesuré le
       # 23/09/2026 (JobAI #29) : typecheck rouge. À retirer avec TypeScript 7.1 + typescript-eslint compatible.

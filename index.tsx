@@ -1,3 +1,14 @@
+// [S5-PERF] Polices auto-hébergées (24/09/2026) : plus de CSS Google Fonts bloquant le rendu (la 1re
+// opportunité Lighthouse, ~0,5 s) ni de requête vers Google à chaque ouverture. Sous-ensemble latin
+// (français compris), graisses réellement utilisées. Noms de familles inchangés (tailwind.config.js).
+import '@fontsource/outfit/latin-300.css';
+import '@fontsource/outfit/latin-400.css';
+import '@fontsource/outfit/latin-500.css';
+import '@fontsource/outfit/latin-600.css';
+import '@fontsource/outfit/latin-700.css';
+import '@fontsource/outfit/latin-800.css';
+import '@fontsource/jetbrains-mono/latin-400.css';
+import '@fontsource/jetbrains-mono/latin-700.css';
 import React from 'react';
 import './i18n';
 import ReactDOM from 'react-dom/client';

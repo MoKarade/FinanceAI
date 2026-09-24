@@ -70,7 +70,7 @@ export interface SyncMeta {
     deviceId: string;
 }
 
-export type SyncAction = 'pull' | 'push' | 'conflict' | 'noop';
+type SyncAction = 'pull' | 'push' | 'conflict' | 'noop';
 
 export interface SyncDecision {
     action: SyncAction;

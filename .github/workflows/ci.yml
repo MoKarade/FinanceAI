@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+# [S5-CI-ALLEGEE] (décision de Marc, 24/09/2026 : « réduis la CI ») Un nouveau push sur la MÊME branche de
+# PR annule le run devenu inutile. `main` est exclu : on n'annule jamais la validation d'un commit fusionné.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   quality:
     # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
@@ -35,14 +41,16 @@ jobs:
       - name: La convention de compte-rendu n'a pas dérivé
         run: echo "97e36acba8770c9614b6295773267b9690d07bc5bcd130b3bc0d03da996ab62b  docs/COMPTE-RENDU.md" | sha256sum -c -
 
-      # Pas de `cache: 'npm'` : pas de package-lock.json commité dans ce repo
+      # [S5-CI-ALLEGEE] package-lock.json EST commité : cache npm + `npm ci` (installation exacte du
+      # lockfile, plus rapide et reproductible) au lieu de `npm install` (qui re-résolvait les versions).
       - name: Setup Node 24
         uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --ignore-scripts
+        run: npm ci --no-audit --no-fund --ignore-scripts
 
       # Bloque sur erreurs ESLint (react-hooks/rules-of-hooks a cassé prod le 2026-05-22)
       - name: Lint
@@ -51,12 +59,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit tests (Vitest)
-        run: npm run test
-
-      # Note : le script prebuild relance lint automatiquement via package.json
+      # [S5-CI-ALLEGEE] Tests unitaires : exécutés UNE fois, avec couverture, par le job « Qualité » (contrôle
+      # obligatoire lui aussi : un seul test en échec le rend rouge, porte tests.echecs = 0). Les rejouer ici
+      # coûtait ~6 min par run pour le même verdict. Le nom de ce job reste inchangé : c'est un contrôle
+      # obligatoire de la protection de branche.
+      # [S5-CI-ALLEGEE] `npm run build` relançait tout le lint (script prebuild) juste après l'étape Lint :
+      # construction directe par Vite, même commande que le script build, sans le prebuild.
       - name: Build
-        run: npm run build
+        run: npx --no-install vite build --mode production
 
   e2e:
     # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
@@ -77,9 +87,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --ignore-scripts
+        run: npm ci --no-audit --no-fund --ignore-scripts
 
       - name: Install Playwright Chromium + deps système
         # [CI-NPX-NO-INSTALL] `--no-install` : sans lui, `npx` TÉLÉCHARGE le paquet depuis le
@@ -139,8 +150,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+          cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --ignore-scripts
+        run: npm ci --no-audit --no-fund --ignore-scripts
       - name: Portes qualité (cliquet)
         run: node qualite/portes.mjs
       - name: Rapport

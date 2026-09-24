@@ -39,12 +39,14 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund --ignore-scripts
+        run: npm ci --no-audit --no-fund --ignore-scripts
 
+      # [S5-CI-ALLEGEE] Construction directe (sans le prebuild qui relançait tout le lint : la CI s'en charge).
       - name: Build
-        run: npm run build
+        run: npx --no-install vite build --mode production
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12

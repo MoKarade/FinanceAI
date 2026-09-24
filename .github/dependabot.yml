@@ -22,6 +22,14 @@ updates:
       # que rougir (vécu : #1015, @types/node 26 sur Node 24) — elle se change AVEC Node, pas seule.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # vitest 5 (+ @vitest/*) : le lanceur vitest de Stryker ne sait pas encore le piloter — sous vitest 5
+      # chaque mutant « survit » à tort (stryker-js#6210, ouvert ; mesuré chez BatchChef le 24/09/2026 :
+      # 40,6 % → 5,2 %). Les tests de mutation du moteur fiscal en dépendent. À retirer quand
+      # @stryker-mutator/vitest-runner corrige #6210.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
       # TypeScript 7 : aucune API programmatique avant la 7.1 (annonce TS 7.0, 08/07/2026) ; typescript-eslint
       # en dépend, et la 7.0 change des défauts (`types` vide, imports à effet de bord vérifiés). Mesuré le
       # 23/09/2026 (JobAI #29) : typecheck rouge. À retirer avec TypeScript 7.1 + typescript-eslint compatible.

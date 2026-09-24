@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24 — Le calcul d'impôt est maintenant « testé contre lui-même » chaque semaine
+
+- Chaque lundi, un robot modifie volontairement le calcul d'impôt (un taux, un palier, une
+  comparaison) et vérifie que les tests s'en aperçoivent. Premier passage : **75 %** des 1 663
+  modifications sont détectées. Les 25 % restants montrent où un taux faux pourrait passer
+  inaperçu — c'est exactement ce genre de trou qui avait laissé le crédit fédéral à 15 % au lieu
+  de 14 %. Le score ne peut que monter.
+
 ## 2026-09-23 — Mises à jour de la semaine (22 dépendances) et contrôles rodés
 
 - **22 dépendances à jour** (React 19.3, recharts 3.10, SDK Anthropic, Vite 8.3, Playwright…). La

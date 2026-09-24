@@ -1,23 +1,57 @@
 {
   "_doc": "Seuils du cliquet (portes qualité de l'Atelier, S6). Valeurs mesurées le jour de la mise en place (23/09/2026, Linux, Node 24.21) : l'existant est toléré, rien ne peut reculer. `npm run portes:maj` resserre un seuil quand le chiffre s'améliore ; le desserrer demande `--forcer` et une décision de Marc. Mutation : pas encore de seuil — il sera posé sur la mesure du premier passage hebdomadaire (lot S6 suivant).",
-  "mis_a_jour": "2026-09-23",
+  "mis_a_jour": "2026-09-24",
   "config": {
     "app": "FinanceAI",
     "lint": "eslint . --ext ts,tsx",
-    "coeur": { "libelle": "services/", "motif": "[\\\\/]services[\\\\/]" },
-    "archi": ["services", "components", "hooks", "store", "utils", "api", "mcp", "App.tsx", "index.tsx"],
+    "coeur": {
+      "libelle": "services/",
+      "motif": "[\\\\/]services[\\\\/]"
+    },
+    "archi": [
+      "services",
+      "components",
+      "hooks",
+      "store",
+      "utils",
+      "api",
+      "mcp",
+      "App.tsx",
+      "index.tsx"
+    ],
     "vitest_args": "--testTimeout=30000",
     "_vitest_args": "Sous instrumentation de couverture, les gardes qui parcourent l'arbre des sources (ex. storageKeysRegistreGuard) dépassent le délai par défaut : mesuré 9,9 s le 23/09/2026. 30 s ne change rien au verdict des tests, seulement au délai d'abandon."
   },
   "portes": {
-    "typecheck.erreurs": { "max": 0 },
-    "lint.erreurs": { "max": 0 },
-    "lint.avertissements": { "max": 32 },
-    "tests.echecs": { "max": 0 },
-    "couverture.lignes_coeur": { "min": 94.3 },
-    "couverture.lignes_global": { "min": 93 },
-    "couverture.branches_global": { "min": 83.3 },
-    "code_mort.problemes": { "max": 40 },
-    "architecture.violations": { "max": 14 }
+    "typecheck.erreurs": {
+      "max": 0
+    },
+    "lint.erreurs": {
+      "max": 0
+    },
+    "lint.avertissements": {
+      "max": 32
+    },
+    "tests.echecs": {
+      "max": 0
+    },
+    "couverture.lignes_coeur": {
+      "min": 94.3
+    },
+    "couverture.lignes_global": {
+      "min": 93
+    },
+    "couverture.branches_global": {
+      "min": 83.3
+    },
+    "code_mort.problemes": {
+      "max": 40
+    },
+    "architecture.violations": {
+      "max": 14
+    },
+    "mutation.score": {
+      "min": 75.1
+    }
   }
 }

@@ -14,9 +14,9 @@ import { markDuplicates, isInternalTransferLabel } from '../../utils/transaction
 import { ruleCategorize } from './categoryRules';
 
 export type Delimiter = ',' | ';' | '\t';
-export type DateOrder = 'ISO' | 'DMY' | 'MDY';
+type DateOrder = 'ISO' | 'DMY' | 'MDY';
 
-export interface BankCsvColumns {
+interface BankCsvColumns {
     date: number | null;
     payee: number | null;
     amount: number | null;

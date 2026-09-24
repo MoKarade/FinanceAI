@@ -41,7 +41,7 @@
   `[COTATIONS-EUROPE-PERIMEES]`, `[FINTABLE-AUTORITE-PARTOUT]`, tickets FX) : **retirés du fichier
   courant le 2026-09-24** (décision Marc), remplacés par des écarts relatifs. Historique git non
   réécrit (il faudrait un `--force` sur `main`).
-- [ ] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
+- [x] 🔧 **`[PTF-L05B-MESURE-SOURCES]`** (S) — outillage LIVRÉ (workflow manuel
   `.github/workflows/mesure-sources.yml`, `scripts/mesureSources.mjs`, logique pure
   `scripts/lib/mesureSources.mjs`, 8 cas dans `tests/mesureSources.test.ts`). Il mesure depuis la CI
   (le conteneur n'a aucun réseau vers les sources) : couverture de Yahoo et d'EODHD **gratuit** par
@@ -51,8 +51,20 @@
   prix. **1er lancement (2026-09-24, run 36032594452) : ÉCHEC avant toute mesure** — le secret posé
   est du JSON valide mais sans « lignes » (probablement l'autre fichier, ou le bon collé entre
   guillemets). L'erreur nomme désormais la FORME reçue (objet à N clés / chaîne / tableau), jamais son
-  contenu. **RESTE** : Marc recolle `mesure-ancres-secret.json`, relancer, consigner les verdicts
-  ici. C'est ce qui tranche la question de la source (gratuit/payant).
+  contenu.
+  ✅ **MESURÉ le 2026-09-24 (run 36033041191, 12 lignes, 3 dates d'ancrage)** :
+  - **EODHD gratuit : 12/12 lignes servies**, écart aux ancres **0,00 %** sur les 9 lignes à ancre
+    indépendante (0,01 % sur une), ≤ 0,07 % sur les 3 dont l'ancre est le prix du courtier. Le champ
+    `close` est **BRUT** avant un fractionnement. `/splits` et `/div` accessibles au plan gratuit.
+  - **Yahoo : 11/12**, mêmes écarts ; **une ligne refusée (HTTP 400)** — celle-là n'est servie que
+    par EODHD. Avant un fractionnement, Yahoo rend le prix **AJUSTÉ** (÷ ratio) : le relire comme
+    brut diviserait la valeur de la ligne par le ratio sur tout le passé.
+  - **Devise : conforme partout**, aucune ligne en pence. Dividendes : quatre lignes n'en rendent
+    AUCUN, dont deux fonds de capitalisation — ce qui confirme `[DIVIDENDES-TABLE-EN-DUR]`.
+  - **Banque du Canada (Valet)** : USD/CAD et EUR/CAD à **0,000 %** des ancres, 3/3 dates.
+  ⇒ **Q5 tranchée par la mesure : rien de payant n'est nécessaire.** EODHD gratuit couvre tout ;
+  son quota (20 appels/jour) impose un historique mis en CACHE (une série par ligne, puis
+  incrémental), pas un appel par affichage. Correspondance rang → titre : HORS dépôt.
 - [ ] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
   SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
   clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de

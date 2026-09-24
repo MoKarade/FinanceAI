@@ -13,8 +13,9 @@
 > git NON réécrit) ; `.gitignore` (`prive/`, fichiers de vérification, relevés) ; workflow MANUEL
 > `mesure-sources.yml` + `scripts/mesureSources.mjs` (verdicts par rang seulement, journal public) ; section
 > « 💼 Portefeuille Disnat » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
-> ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`) et ses secrets `MESURE_ANCRES` /
-> `EODHD_TOKEN_MESURE`, puis lancer la mesure et consigner les verdicts dans `[PTF-L05B-MESURE-SOURCES]`.
+> ✅ **Mesure des sources faite** (`[PTF-L05B-MESURE-SOURCES]`) : EODHD gratuit sert 12/12 lignes à 0,00 %
+> des ancres indépendantes, Yahoo 11/12 (et rend un prix AJUSTÉ avant fractionnement), Valet exact. Rien de payant.
+> ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`), puis Lot 1.
 > ⚠️ Le BACKLOG publiait en clair des données réelles du portefeuille (composition, quantités, montants) : la
 > garde ne les voyait pas (elle cherche des FORMES, pas des valeurs). **Retirées du fichier courant** sur décision
 > de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :

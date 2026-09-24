@@ -5,7 +5,7 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
-- [ ] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24) — **deux secrets pour mesurer les sources de cours
+- [x] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24, ✅ fait le jour même, mesure lancée) — **deux secrets pour mesurer les sources de cours
   depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
   oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :
   - `MESURE_ANCRES` : colle le contenu du fichier `mesure-ancres-secret.json` que je t'ai préparé
@@ -13,10 +13,8 @@
     aucune quantité ni solde) ;
   - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
 
-  ⚠️ Secrets posés le 2026-09-24, mais le 1er lancement a échoué AVANT toute mesure : le contenu de
-  `MESURE_ANCRES` est du JSON valide **sans la clé « lignes »**. Le plus probable : c'est le fichier de
-  vérification (`ancres_verification.json`) qui a été collé, pas `mesure-ancres-secret.json`. Recolle
-  ce dernier tel quel (il commence par `{"lignes":[`), sans guillemets autour, puis dis-le-moi. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
+  ✅ Secrets posés et recollés le 2026-09-24 ; mesure réussie au 2ᵉ lancement. Résultats dans
+  `[PTF-L05B-MESURE-SOURCES]` du BACKLOG : les sources gratuites suffisent. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
   jamais un symbole ni un prix.
 
 - [ ] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24) — **les questions du Lot 0 de la refonte du

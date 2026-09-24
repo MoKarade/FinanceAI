@@ -79,14 +79,6 @@
   `hors-courtier`). Et l'encaisse du courtier compte dans son régime : un compte d'encaisse saisi à la
   main pour le même argent la compterait deux fois. Tant que le magasin de marché n'est pas alimenté
   (1c-2), la valeur du livre reste `indisponible` : e2 ne doit rien activer sans magasin.
-- [x] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — ✅ 2026-09-24 : `services/import/disnat/lignesDuPdf.ts`.
-  `reconstruireLignes` (pure) regroupe les fragments à tolérance verticale 3 (mesurée au Lot 0
-  identique à pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne) — même algorithme que
-  l'extraction du Lot 0, sur laquelle le parseur a été essayé. `lireLignesPdf` charge `pdfjs-dist`
-  (4.10.38, épinglé) EN DIFFÉRÉ : build mesuré, chunk à part de 112 Ko gz + worker servi par l'app
-  (`worker-src 'self'` déjà dans la CSP), `isEvalSupported: false`. Garde qui TRAVERSE : le relevé
-  fictif imprimé dans un vrai PDF (jsPDF) puis relu par pdfjs rend le MÊME relevé que le texte.
-  ⚠️ Rien n'importe encore ce module depuis l'app : le chunk n'apparaît au build qu'avec 1g.
 - [ ] 🔧 **`[PTF-L1G-IMPORT-PORTEFEUILLE]`** (L) — import déclenché par Marc, aperçu avant/après
   (quantité, prix, devise, coût, encaisse) ; remplacement daté des lignes mal cotées ; refus
   d'`apply_broker_statement` et de `delete_item` sur les lignes du référentiel (variante de symbole

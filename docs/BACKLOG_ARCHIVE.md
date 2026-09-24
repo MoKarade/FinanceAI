@@ -10,6 +10,19 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Portefeuille, lot 1f2 : lecture du relevé PDF (PR #1052)
+
+Déménagé au lot suivant (1e, étape 1).
+
+- [x] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — ✅ 2026-09-24 : `services/import/disnat/lignesDuPdf.ts`.
+  `reconstruireLignes` (pure) regroupe les fragments à tolérance verticale 3 (mesurée au Lot 0
+  identique à pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne) — même algorithme que
+  l'extraction du Lot 0, sur laquelle le parseur a été essayé. `lireLignesPdf` charge `pdfjs-dist`
+  (4.10.38, épinglé) EN DIFFÉRÉ : build mesuré, chunk à part de 112 Ko gz + worker servi par l'app
+  (`worker-src 'self'` déjà dans la CSP), `isEvalSupported: false`. Garde qui TRAVERSE : le relevé
+  fictif imprimé dans un vrai PDF (jsPDF) puis relu par pdfjs rend le MÊME relevé que le texte.
+  ⚠️ Rien n'importe encore ce module depuis l'app : le chunk n'apparaît au build qu'avec 1g.
+
 ## 2026-09-24 — Portefeuille, lot 1f : parseur Disnat, partie texte (PR #1051)
 
 Déménagé au lot suivant (1f2).

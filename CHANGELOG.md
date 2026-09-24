@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-24 — Taux de change à jour sans ouvrir l'app, et la liste de tes titres ne sort plus en public
+
+- **Taux de change** : le serveur qui alimente ton hub lit maintenant lui-même les taux de la
+  Banque du Canada à chaque rafraîchissement des prix, au lieu de garder ceux de la dernière fois où
+  tu as ouvert l'app. Un taux que tu as saisi à la main n'est jamais écrasé par une panne. Effet visible
+  une fois le serveur redéployé.
+- **Confidentialité** : le rafraîchissement automatique des prix affichait, dans un journal public,
+  la liste des titres de ton portefeuille. Il n'affiche plus que des compteurs. Les montants réels
+  qui restaient dans la documentation du projet ont été retirés partout.
+- **Tes décisions sur le portefeuille** sont consignées (source de vérité, coût provisoire, import).
+
 ## 2026-09-24 — Portefeuille : audit complet, et tes données restent privées
 
 - **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés Disnat, écran par

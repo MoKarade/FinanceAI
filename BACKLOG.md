@@ -120,9 +120,20 @@
   datés : elle disparaît de toute la courbe passée.
 - [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
   la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
-- [ ] 🟠 **`[FX-SERVEUR-JAMAIS-RAFRAICHI]`** (S) — les taux BdC ne sont lus que par le navigateur, au
+- [x] 🟠 **`[FX-SERVEUR-JAMAIS-RAFRAICHI]`** (S) — les taux BdC ne sont lus que par le navigateur, au
   démarrage, avec un cache de 24 h sur l'heure du FETCH ; le serveur (hub, MCP) valorise avec les
-  taux de la dernière ouverture de l'app.
+  taux de la dernière ouverture de l'app. ✅ **Livré le 2026-09-24** (petit lot choisi par Marc,
+  ADR 0019) : le cron `/refresh` lit aussi les taux ; décision ET écriture extraites du store et du
+  démarrage vers `services/fx/ecritureFx.ts` (source unique app/serveur, aucun changement pour
+  l'app). 5 cas serveur, dont « taux saisi à la main + BdC injoignable → il survit ». ⚠️ Inerte en
+  prod tant que le serveur n'est pas redéployé (`[MCP-DEPLOY-CONTINU-MORT]`, paramètres GCP).
+- [x] 🔴 **`[PTF-JOURNAL-PUBLIC]`** (XS, trouvé le 2026-09-24 en lisant le cron) — « Rafraîchir les
+  prix » imprimait la réponse ENTIÈRE du serveur dans son journal GitHub Actions, qui est PUBLIC : la
+  liste des symboles rafraîchis et sautés, donc la composition du portefeuille, toutes les 6 h
+  depuis des mois (254 passes). Même défaut latent sur « fintable-sync » (en échec, rien de fuité).
+  Les deux n'impriment plus qu'un résumé (`jq` : issue, comptes, raisons). Garde
+  `tests/journauxCiSansDonnees.test.ts` (perturbation : l'ancien workflow → rouge). ⚠️ Les journaux
+  DÉJÀ publiés restent en ligne : leur suppression est une question posée à Marc.
 - [ ] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — le formulaire d'ajout ignore la devise de la
   cotation et part en USD : un titre européen ajouté sans toucher au sélecteur est mal valorisé puis
   jamais rafraîchi (`AddStockForm.tsx:39`).

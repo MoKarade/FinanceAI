@@ -389,7 +389,13 @@ hub soit à jour.
   sinon). Sans la variable, la route n'existe pas (404), comme `/hub/summary`.
 - **Auth** : header `Authorization: Bearer <secret>` ; comparaison en temps constant,
   **401** si absent ou invalide. Réponse `Cache-Control: no-store`.
-- **Réponse** : `200 { ok:true, saved, refreshed[], unchanged[], skipped[] }` au succès. Un
+- **Taux de change** ([FX-SERVEUR-JAMAIS-RAFRAICHI], 2026-09-24) : la même passe lit les taux de la
+  Banque du Canada et les écrit avec la décision et l'écriture du navigateur
+  (`services/fx/ecritureFx.ts`, source unique) — une Banque du Canada injoignable n'écrase jamais un
+  taux saisi à la main ni un taux de marché déjà lu. Un échec de lecture est RAPPORTÉ (`fx`) et ne
+  bloque pas les prix.
+- **Réponse** : `200 { ok:true, saved, refreshed[], unchanged[], skipped[], fx }` au succès. ⚠️ Le
+  cron n'en imprime que des COMPTES (journal public : les symboles décrivent le portefeuille). Un
   conflit de concurrence (l'app a poussé au même instant) renvoie `200 { ok:false, conflict:true }`
   — TRANSITOIRE, le prochain tick réessaie (le cron ne rougit pas). Une panne RÉELLE (Drive
   injoignable, jeton révoqué, coffre chiffré) renvoie un **5xx** → le job GitHub rougit et alerte,

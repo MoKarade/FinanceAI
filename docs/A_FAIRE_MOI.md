@@ -17,16 +17,22 @@
   `[PTF-L05B-MESURE-SOURCES]` du BACKLOG : les sources gratuites suffisent. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
   jamais un symbole ni un prix.
 
-- [ ] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24) — **les questions du Lot 0 de la refonte du
-  portefeuille** t'ont été remises HORS dépôt (document « Lot 0 — audit, plan, questions » : il
-  contient tes montants). Ce qui bloque le plus : date d'acquisition des titres (Q1), nature de
-  l'acquisition — don, succession, achat (Q2, fiscaliste), clôture officielle ou total Fintable comme
-  vérité (Q4), gratuit d'abord / payant seulement sur mesure (Q5), paramètres GCP du déploiement MCP
-  (Q6, voir `[MCP-DEPLOY-CONTINU-MORT]` ci-dessous). ✅ Question née du Lot 0.5 **répondue** : les
-  données du portefeuille publiées dans le BACKLOG en ont été retirées (fichier courant seulement,
-  l'historique git n'est pas réécrit).
+- [x] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24, ✅ **répondues le jour même, en session**) — les
+  questions du Lot 0 de la refonte du portefeuille. Décisions consignées dans
+  `docs/adr/0019-decisions-refonte-portefeuille.md` (sans aucune donnée personnelle ; ta date et la
+  nature exacte de l'acquisition restent hors dépôt). Ce qu'elles te laissent à faire est listé
+  juste en dessous et dans `[MCP-DEPLOY-CONTINU-MORT]`.
   ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
   garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
+
+- [ ] 👤 **[PTF-JOURNAL-PUBLIC]** (2026-09-24) — **les anciens journaux du cron « Rafraîchir les
+  prix » montrent la liste de tes titres** (symboles rafraîchis et sautés, 254 passes). Le cron ne
+  l'imprime plus. Je peux SUPPRIMER les journaux déjà publiés (irréversible : ils ne servent qu'au
+  diagnostic) — oui ou non ?
+
+- [ ] 👤 **[PTF-FISCALISTE]** (2026-09-24) — **faire confirmer le coût fiscal de tes titres** (don
+  reçu : la règle générale est la valeur de marché à la date du don, mais une origine étrangère peut
+  la changer). D'ici là, l'app affichera une valeur PROVISOIRE, marquée comme telle (ADR 0019 §4).
 
 - [ ] 👤 **[CASHFLOW-REVENU-GONFLE-PAR-UN-VIREMENT]** (2026-09-24) — un virement entrant **unique**
   de fin décembre 2025 est classé « Revenus divers » : il est moyenné comme un revenu mensuel et
@@ -57,6 +63,9 @@
   c'est posé — je vérifierai qu'un run passe au VERT sur un vrai push, pas en le supposant.
   ⚠️ **Et si tu choisis de ne rien faire** : dis-le aussi, je retirerai le workflow plutôt que de le
   laisser échouer à chaque push. Un rouge permanent n'alerte plus personne — il enseigne le rouge.
+  ✅ **Décision 2026-09-24 (ADR 0019 §9)** : tu poses ces paramètres. C'est aussi ce qui met en
+  ligne la lecture des taux par le serveur (`[FX-SERVEUR-JAMAIS-RAFRAICHI]`), et la réparation du
+  cron Fintable (tu as choisi de le réparer) passe par le même redéploiement.
 
 
 - [x] 👤 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18) — ✅ **RÉSOLU TOUT SEUL le jour

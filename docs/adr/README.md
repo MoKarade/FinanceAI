@@ -29,6 +29,7 @@ conservés en 0001 et 0002.
 | [`0015-prestations-rqap-ae-rrq-hors-assiette.md`](0015-prestations-rqap-ae-rrq-hors-assiette.md) | ADR — Prestations RQAP/AE/RRQ : hors assiette de cotisation, imposables (Marc, 2026-08-20) |
 | [`0016-refonte-futur-mobile.md`](0016-refonte-futur-mobile.md) | ADR — Refonte de l'onglet Futur pour le téléphone : adaptation EN PLACE, direction « courbe d'abord » (Marc, 2026-09-10) |
 | [`0018-ia-locale-via-relais.md`](0018-ia-locale-via-relais.md) | ADR — IA locale : le relais BYOK route un maximum d'appels vers la passerelle Ollama de l'Atelier (Marc, 2026-09-23) |
+| [`0019-decisions-refonte-portefeuille.md`](0019-decisions-refonte-portefeuille.md) | ADR — Refonte du portefeuille : les décisions de cadrage du Lot 0 (Marc, 2026-09-24) |
 
 Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
 un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

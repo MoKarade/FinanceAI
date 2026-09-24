@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (suite) — **Réponses du Lot 0, taux BdC côté serveur, fuite du journal public**
+> 🗳️ Marc a répondu aux questions du Lot 0 en session : décisions dans `docs/adr/0019-decisions-refonte-portefeuille.md`
+> (clôture × taux BdC fait foi, Fintable en contrôle ; EODHD gratuit ; coût fiscal PROVISOIRE ; import PDF local ET MCP
+> après `[SYNC-PUSH-SANS-OCC]`). 🔧 **Livré** : `[FX-SERVEUR-JAMAIS-RAFRAICHI]` (décision + écriture FX extraites vers
+> `services/fx/ecritureFx.ts`, source unique app/serveur ; `/refresh` lit les taux) — ⚠️ inerte tant que le serveur n'est
+> pas redéployé (paramètres GCP, `[MCP-DEPLOY-CONTINU-MORT]`). 🔴 `[PTF-JOURNAL-PUBLIC]` : le cron « Rafraîchir les prix »
+> publiait la liste des titres dans son journal PUBLIC depuis 254 passes ; il n'imprime plus que des comptes (garde
+> `tests/journauxCiSansDonnees.test.ts`). Suppression des anciens journaux = question à Marc. Montants réels retirés
+> de toute la doc (fichiers courants ; historique git non réécrit).
+> ⏭️ **Suite** : Lot 1 (`[PTF-L1A-SCHEMA-LIVRE]`) — plan approuvé par les réponses ; attendre le feu vert explicite.
+>
 > ## 🟩 Session 2026-09-24 — **Portefeuille Disnat : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
 > 🔎 Marc : « faut tout checker pour avoir un vrai rapport détaillé », puis un cahier des charges (« PROMPT v2 »)
 > et un fichier de vérification. Trois analyses (38 agents) + relecture adverse → rapport, audit, plan des lots

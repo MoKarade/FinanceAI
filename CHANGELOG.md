@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille, lot 1e (étape 1) : ce que le journal du courtier remplace
+
+- Chaque compte du courtier aura son **régime fiscal** (CELI, REER, non enregistré…), que tu choisiras
+  toi-même : rien n'est deviné. Tant qu'un compte n'a pas de régime, l'app garde tes placements saisis.
+- Quand le journal fera foi, les placements saisis **du même régime** sortiront des calculs, pour que
+  rien ne compte deux fois ; un CELIAPP reste distinct d'un CELI. S'il manque un cours, l'app dira
+  « indisponible » plutôt qu'un total partiel. Rien n'est encore branché à l'écran.
+
 ## 2026-09-24 — Portefeuille, lot 1f2 : FinanceAI sait lire le PDF du relevé
 
 - Le relevé Disnat peut maintenant être lu directement depuis son PDF, dans ton navigateur : le

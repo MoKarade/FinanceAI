@@ -141,6 +141,8 @@ const DEFAULT_APP_STATE: AppState = {
     // voudrait dire « importé et vide » — le contraire de « jamais importé ».
     brokerLedger: undefined,
     instruments: undefined,
+    // [PTF-L1E-PASSERELLE] Même contrat, même raisons : `undefined` = aucun régime déclaré.
+    brokerAccountRegimes: undefined,
 };
 
 // Base PROPRE pour charger un persona de test : toutes les tranches de DONNÉES remises aux défauts
@@ -319,6 +321,7 @@ export const getInitialStateWithMigration = (): AppState => {
             // absent, comme les tableaux voisins.
             brokerLedger: lireLegacyOptionnel('app_broker_ledger'),
             instruments: lireLegacyOptionnel('app_instruments'),
+            brokerAccountRegimes: lireLegacyOptionnel('app_broker_account_regimes'),
         };
     } catch (e) {
         const errorStr = String(e);

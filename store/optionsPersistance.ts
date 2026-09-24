@@ -35,7 +35,7 @@ export const getHydrationStatus = (): HydrationStatus => _hydrationStatus;
 // existait déjà ; on lui donne une raison de plus de se déclencher.
 /** [PTF-L1A-RESTAURATION-TRI-ETAT] Champs dont l'ABSENCE dans le blob est une information
  *  (« jamais importé ») : ils ne s'héritent jamais de l'état vivant à la fusion. */
-const CLES_TRI_ETAT = ['brokerLedger', 'instruments'] as const satisfies readonly (keyof FinanceState)[];
+const CLES_TRI_ETAT = ['brokerLedger', 'instruments', 'brokerAccountRegimes'] as const satisfies readonly (keyof FinanceState)[];
 
 export const fusionnerEtatPersiste = (persistedState: unknown, currentState: FinanceState): FinanceState => {
     const fautifs = verifierTypesRestaures(persistedState);

@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-24 (fin, suite 7) — **Lot 1e, étape e1 : passerelle livre ↔ placements (non branchée)**
+> Livré `[PTF-L1E-PASSERELLE]` e1 : champ persisté `brokerAccountRegimes` (régime DÉCLARÉ par compte du
+> livre, tri-état comme le livre, `regime` dans `CHAMPS_TEXTE`) et module PUR
+> `services/portefeuille/passerelle.ts` (`deciderPasserelle`, `actifsHorsLivre`, `valeurDuLivre`). Parité
+> au cent avec `computeInvestmentsValue` aujourd'hui et à une date passée ; 5 perturbations, 5 rouges
+> distincts. Aucun écran ne change encore. ⏭️ Suite : e2 (présent + mois 0 + retrait des régimes couverts
+> de l'autorité Fintable) — à ne rien activer tant que le magasin de marché (1c-2) n'est pas alimenté.
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 6) — **Lot 1f2 : lecture du relevé PDF**
 > Livré `[PTF-L1F2-LECTURE-PDF]` : `services/import/disnat/lignesDuPdf.ts` (fragments pdfjs → lignes,
 > tolérance 3 ; pdfjs-dist 4.10.38 chargé en différé, worker servi par l'app). Garde de traversée : PDF

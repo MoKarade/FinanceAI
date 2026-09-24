@@ -151,6 +151,9 @@ export const CHAMPS_TEXTE: ReadonlySet<string> = new Set([
     // [PTF-L1A-SORTES-A-TRANCHER] Annulation (`cancelsId`), échange (`toIsin`), conversion et virement
     // interne (`toAccountId`). Même geste, même raison : écrits avec leur déclaration.
     'cancelsId', 'toIsin', 'toAccountId',
+    // [PTF-L1E-PASSERELLE] Régime fiscal par compte du grand livre (`brokerAccountRegimes`). `accountId`
+    // y figure déjà ; `regime` est la seule feuille textuelle neuve, écrite avec sa déclaration.
+    'regime',
     'accountName', 'accountType', 'acquisitionDate', 'actionPlan',
     'activeAiConversationId', 'activeTab', 'activitiesLevel', 'aiChatModel',
     'anthropic', 'apiKeys', 'appliedContributionOrder', 'appliedReturnProfile',

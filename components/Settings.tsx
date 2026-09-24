@@ -161,6 +161,7 @@ export const Settings: React.FC<SettingsProps> = ({
     // un livre « importé et vide ».
     brokerLedger: useFinanceStore.getState().brokerLedger,
     instruments: useFinanceStore.getState().instruments,
+    brokerAccountRegimes: useFinanceStore.getState().brokerAccountRegimes,
   });
 
   return (

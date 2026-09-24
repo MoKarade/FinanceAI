@@ -44,6 +44,30 @@
 - [ ] 🔧 **`[PTF-L1E-PASSERELLE]`** (L+L) — un seul point d'entrée pour toutes les surfaces (présent,
   départ du Futur, passé, PDF, MCP, hub), identique livre vide ; parité CROISÉE (même portefeuille en
   actifs et en livre → même chiffre au cent partout ; retirer une surface fait rougir).
+  🔒 **Tranché par Marc le 2026-09-24** : (1) doublon → les placements saisis d'un régime couvert par le
+  livre sortent AUTOMATIQUEMENT des calculs ; (2) régime DÉCLARÉ par compte du livre
+  (`brokerAccountRegimes`), jamais deviné ; (3) « tout brancher maintenant » (écrans, MCP, PDF, hub),
+  contre ma recommandation de commencer par le présent seul. Découpage en quatre PR :
+  - ✅ **e1** (2026-09-24) — `brokerAccountRegimes` persisté partout où le livre l'est (tri-état,
+    `CHAMPS_TEXTE`, `CLES_TRI_ETAT`, sauvegarde JSON, MCP) et module PUR
+    `services/portefeuille/passerelle.ts` : `deciderPasserelle` (refus NOMMÉ du livre entier si un
+    compte porteur n'a pas de régime, en a deux, ou un illisible), `actifsHorsLivre` (même référence
+    sans livre, livre vide ou refusé ; régime EXACT, CELIAPP ≠ CELI, absent = NON-ENREG) et
+    `valeurDuLivre` (`indisponible` dès qu'un cours ou un taux manque, jamais une somme partielle).
+    Parité au cent avec `computeInvestmentsValue` aujourd'hui ET à une date passée. Rien n'est encore
+    BRANCHÉ : aucun écran ne change.
+  - [ ] **e2** — présent + mois 0 du Futur : `computeInvestmentsValue`/`computePresentTermes`,
+    `useSimulationParams` (soldes de départ), et retrait des régimes couverts par le livre de
+    `decideRegimesRepris` (Fintable), sinon l'autorité Fintable corrigerait un panier que le livre
+    remplace déjà.
+  - [ ] **e3** — passé (courbe, variation 30 j) sur `valoriserAu` pour les régimes couverts.
+  - [ ] **e4** — MCP, hub, PDF ; plus une garde à cliquet sur les appels `assetValueCad` /
+    `computeInvestmentsValue` hors de la passerelle.
+  ⚠️ À dire à Marc avant e2 : l'exclusion se fait par PANIER de régime — un placement saisi du même
+  régime tenu chez un AUTRE courtier sortirait aussi (sauf à le saisir au livre, compte
+  `hors-courtier`). Et l'encaisse du courtier compte dans son régime : un compte d'encaisse saisi à la
+  main pour le même argent la compterait deux fois. Tant que le magasin de marché n'est pas alimenté
+  (1c-2), la valeur du livre reste `indisponible` : e2 ne doit rien activer sans magasin.
 - [x] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — ✅ 2026-09-24 : `services/import/disnat/lignesDuPdf.ts`.
   `reconstruireLignes` (pure) regroupe les fragments à tolérance verticale 3 (mesurée au Lot 0
   identique à pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne) — même algorithme que

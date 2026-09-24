@@ -23,7 +23,7 @@ vi.mock('../../services/errorLogger', async (orig) => ({
     logError: vi.fn(),
 }));
 
-import type { BrokerInstrument, BrokerLedgerEvent } from '../../types';
+import type { BrokerAccountRegime, BrokerInstrument, BrokerLedgerEvent } from '../../types';
 import { useFinanceStore, getHydrationStatus, personaResetBase } from '../../store/useFinanceStore';
 import { initialState, getInitialStateWithMigration } from '../../store/etatParDefaut';
 import { extrairePersistable } from '../../store/optionsPersistance';
@@ -202,5 +202,64 @@ describe('[PTF-L1A] restauration d\'un backup JSON : relecture des clés hérit�
         localStorage.removeItem(STORE_KEY);
         localStorage.setItem('app_broker_ledger', '{pas-du-json');
         expect(getInitialStateWithMigration().brokerLedger).toBeUndefined();
+    });
+});
+
+// [PTF-L1E-PASSERELLE] Le régime fiscal de chaque compte du livre (`brokerAccountRegimes`) suit le MÊME
+// contrat que le livre : il décide quels placements saisis sortent des calculs, donc un régime hérité
+// d'un autre état (appareil, persona, restauration) retirerait des placements sans rien pour les
+// remplacer. `regime` est une feuille textuelle neuve : absente de CHAMPS_TEXTE, elle viderait l'app.
+describe('[PTF-L1E] régimes des comptes du livre : même contrat tri-état que le livre', () => {
+    const REGIMES: BrokerAccountRegime[] = [
+        { accountId: 'courtier-cad', regime: 'CELI' },
+        { accountId: 'courtier-usd', regime: 'NON-ENREG' },
+    ];
+    afterEach(() => {
+        useFinanceStore.setState({ brokerAccountRegimes: undefined });
+        localStorage.removeItem('app_broker_account_regimes');
+    });
+
+    it('défauts store, persona et MCP : clé PRÉSENTE à `undefined`, jamais matérialisée au JSON', () => {
+        expect(Object.hasOwn(initialState, 'brokerAccountRegimes')).toBe(true);
+        expect(initialState.brokerAccountRegimes).toBeUndefined();
+        expect(Object.hasOwn(personaResetBase(), 'brokerAccountRegimes')).toBe(true);
+        expect(Object.hasOwn(buildDefaultAppState(), 'brokerAccountRegimes')).toBe(true);
+        expect(Object.hasOwn(JSON.parse(JSON.stringify(normalizeAppState({}))), 'brokerAccountRegimes')).toBe(false);
+    });
+
+    it('la garde de types accepte des régimes réels (la feuille `regime` est déclarée textuelle)', () => {
+        expect(verifierTypesRestaures({ brokerLedger: LIVRE, brokerAccountRegimes: REGIMES })).toEqual([]);
+    });
+
+    it('bout en bout : un blob portant les régimes se réhydrate intact', async () => {
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { brokerLedger: LIVRE, brokerAccountRegimes: REGIMES }, version: 7 }));
+        await useFinanceStore.persist.rehydrate();
+        expect(getHydrationStatus().failed).toBe(false);
+        expect(useFinanceStore.getState().brokerAccountRegimes).toEqual(REGIMES);
+    });
+
+    it('restauration d\'un blob SANS régimes → `undefined`, jamais ceux de l\'état vivant', async () => {
+        useFinanceStore.setState({ brokerAccountRegimes: REGIMES });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ state: { assets: [] }, version: 7 }));
+        await useFinanceStore.persist.rehydrate();
+        expect(useFinanceStore.getState().brokerAccountRegimes).toBeUndefined();
+    });
+
+    it('démo persona : les régimes réels ne la traversent pas, et reviennent à la sortie', () => {
+        useFinanceStore.setState({ brokerAccountRegimes: REGIMES });
+        useFinanceStore.getState().enableTestMode({}, 'persona-test');
+        expect(useFinanceStore.getState().brokerAccountRegimes).toBeUndefined();
+        useFinanceStore.getState().disableTestMode();
+        expect(useFinanceStore.getState().brokerAccountRegimes).toEqual(REGIMES);
+    });
+
+    it('sauvegarde JSON : le schéma les garde, un backup sans eux ne les invente pas, la relecture les retrouve', () => {
+        const r = BackupSchema.safeParse({ version: '3.2', brokerAccountRegimes: REGIMES });
+        expect(r.success && r.data.brokerAccountRegimes).toEqual(REGIMES);
+        const sans = BackupSchema.safeParse({ version: '3.2' });
+        expect(sans.success && sans.data.brokerAccountRegimes).toBeUndefined();
+        localStorage.removeItem(STORE_KEY);
+        localStorage.setItem('app_broker_account_regimes', JSON.stringify(REGIMES));
+        expect(getInitialStateWithMigration().brokerAccountRegimes).toEqual(REGIMES);
     });
 });

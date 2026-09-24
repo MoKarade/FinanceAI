@@ -1,12 +1,15 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "index.tsx",
     "mcp/stdio.ts",
     "mcp/server.ts",
     "scripts/*.{ts,cjs}",
     "public/sw.js",
-    "api/**/*.ts"
+    "api/**/*.ts",
+    "vitest.mutation.config.ts"
   ],
-  "project": ["**/*.{ts,tsx,js,cjs}"]
+  "project": [
+    "**/*.{ts,tsx,js,cjs}"
+  ]
 }

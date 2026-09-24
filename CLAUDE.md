@@ -1685,6 +1685,14 @@ n'est pas réécrire un récit.
   n'est pas « ce que j'ai édité » mais « ce qui SCANNE ce que j'ai édité », et cette liste-là, seule
   la CI la connaît (`UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL`).
 
+- ⚠️⚠️ **Une garde de confidentialité qui cherche des FORMES ne voit pas ce qui est DÉJÀ écrit**
+  (2026-09-24) : la garde du portefeuille interdit les clés d'un fichier de vérification et la forme
+  d'un code de compte — et le BACKLOG publiait déjà en clair la composition, des quantités et des
+  montants, recopiés d'un message de Marc. Une garde protège l'avenir ; le passé se trouve en cherchant
+  les VALEURS localement, sans les committer. Un message de l'utilisateur qui contient ses données est
+  une donnée : le ticket garde le mécanisme
+  (`UNE-GARDE-DE-CONFIDENTIALITE-QUI-CHERCHE-DES-FORMES-NE-VOIT-PAS-CE-QUI-EST-DEJA-ECRIT`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

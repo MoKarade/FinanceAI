@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-24 — Portefeuille : audit complet, et tes données restent privées
+
+- **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés Disnat, écran par
+  écran (app, assistant, hub). Le rapport et le plan de refonte t'ont été remis à part : ils contiennent
+  tes montants, et ce dépôt est public.
+- **Protection** : un contrôle automatique refuse désormais qu'un fichier de vérification de ton
+  portefeuille ou un numéro de compte de courtier entre dans le projet. Un numéro de sous-compte qui y
+  figurait a été masqué.
+- **Mesure des sources de cours** : un outil lancé à la demande vérifie, depuis les serveurs de GitHub,
+  quelles sources gratuites couvrent vraiment tes titres européens, avant de parler d'abonnement.
+
 ## 2026-09-24 — Le calcul d'impôt est maintenant « testé contre lui-même » chaque semaine
 
 - Chaque lundi, un robot modifie volontairement le calcul d'impôt (un taux, un palier, une

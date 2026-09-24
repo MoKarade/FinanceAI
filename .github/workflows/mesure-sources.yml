@@ -1,0 +1,45 @@
+# [PTF-L05B-MESURE-SOURCES] Mesure des sources de cours et de change contre des ancres.
+#
+# Pourquoi un workflow : le conteneur de développement n'a aucun accès réseau vers les sources
+# (EODHD, Yahoo, Banque du Canada — CONNECT refusé, mesuré le 2026-09-24). La CI, elle, en a.
+# Il tranche par la MESURE ce que la documentation ne tranche pas : couverture des places non US
+# par le plan GRATUIT d'EODHD, devise renvoyée pour les lignes de Londres (USD ou pence), prix
+# brut ou ajusté autour d'un fractionnement, écart aux clôtures publiques.
+#
+# ⚠️ Le dépôt est PUBLIC, donc ce journal aussi : le script n'imprime QUE des verdicts et des écarts
+# relatifs, jamais un symbole, un prix ni un taux. Les lignes sont désignées par leur rang (L1…).
+#
+# Secrets (Settings → Secrets and variables → Actions) :
+#   MESURE_ANCRES       — JSON des lignes et des ancres (format en tête de scripts/mesureSources.mjs)
+#   EODHD_TOKEN_MESURE  — optionnel : clé d'un compte EODHD GRATUIT (rien de payant)
+#
+# Manuel uniquement : une mesure se lance quand on a une question, pas sur un horaire.
+
+name: Mesurer les sources de cours
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mesure-sources
+  cancel-in-progress: false
+
+jobs:
+  mesure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Mesurer (verdicts seulement)
+        env:
+          MESURE_ANCRES: ${{ secrets.MESURE_ANCRES }}
+          EODHD_TOKEN: ${{ secrets.EODHD_TOKEN_MESURE }}
+        run: node scripts/mesureSources.mjs

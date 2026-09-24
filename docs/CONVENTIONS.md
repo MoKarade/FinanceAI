@@ -16940,3 +16940,34 @@ l'allumage — un déploiement de prévisualisation (les branches `claude/*` n'e
 `git.deploymentEnabled`) et un `POST` réel. Correctif : chemin statique `api/claude/v1/messages.ts`, garde
 `tests/api/relayRouteStatique.test.ts`. Et après un **rollback** Vercel, le prochain déploiement doit être
 **promu** à la main (l'auto-assignation du domaine de prod est coupée).
+
+---
+
+## `UNE-GARDE-DE-CONFIDENTIALITE-QUI-CHERCHE-DES-FORMES-NE-VOIT-PAS-CE-QUI-EST-DEJA-ECRIT` (2026-09-24, Lot 0.5 du portefeuille)
+
+Le cahier des charges du portefeuille demandait de copier un fichier de vérification (relevés de
+courtier, quantités, soldes, coûts, journal, origine des titres) dans les fixtures de tests. Le dépôt
+est PUBLIC : j'ai refusé, écrit une garde qui interdit les CLÉS de ce fichier et la forme d'un code de
+compte, prouvé qu'elle tire (le test de catégorisation d'avant le lot et le fichier de vérification
+sont détectés), et anonymisé le seul code de sous-compte publié. Garde verte, lot propre.
+
+**Et c'est en rédigeant les entrées du BACKLOG que j'ai trouvé l'essentiel** : deux tickets publiaient
+DÉJÀ en clair la composition du portefeuille, des quantités et des montants — une liste d'achats
+complète, recopiée d'un message de Marc des semaines plus tôt. La garde ne pouvait pas les voir, et ce
+n'est pas un défaut de motif : **elle cherche des FORMES (des clés, un code), jamais des VALEURS**,
+parce qu'énumérer les valeurs à protéger dans un dépôt public serait la fuite elle-même.
+
+- **Une garde de confidentialité protège l'AVENIR, pas le passé.** Avant de l'écrire, chercher les
+  VALEURS sensibles dans l'arbre suivi, LOCALEMENT et sans rien committer (une quantité, un montant,
+  un symbole rare lus dans le document privé) — c'est ce balayage, pas la garde, qui dit ce qui a déjà
+  fui.
+- **Le vecteur n'était pas le code mais la PROSE d'un ticket** : une demande de l'utilisateur recopiée
+  telle quelle dans `BACKLOG.md`. Un message de Marc qui contient ses données est une donnée ; le
+  ticket en garde le MÉCANISME (« prix saisis dans la mauvaise devise ») et renvoie aux chiffres hors
+  dépôt.
+- **Retirer n'efface pas** : l'historique git garde tout, et le réécrire exige un `--force` sur `main`
+  — décision destructive, donc posée à Marc, jamais prise « par sécurité ».
+- ⚠️ Corollaire de mesure, même lot : quand la CI a du réseau et le conteneur non, on déplace la MESURE
+  en CI — mais son journal est public, donc elle n'imprime que des verdicts par rang (`L1`…), et ses
+  entrées (symboles, ancres) arrivent par un secret. Un test vérifie qu'un verdict ne contient aucune
+  suite de trois chiffres.

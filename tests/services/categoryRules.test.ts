@@ -31,7 +31,7 @@ describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard
         ['Paiement facture - AccèsD Internet / Desjardins Remises MasterCard', 'Transfert'],
         ['Paiement facture - AccèsD Internet / Desjardins Cash Back MasterCar', 'Transfert'],
         ['PAIEMENT CAISSE', 'Transfert'],
-        ['Paiement facture - AccèsD Internet / Virement Disnat 5NFL7A3', 'Transfert'],
+        ['Paiement facture - AccèsD Internet / Virement Disnat 0000000', 'Transfert'],
         ['Placement / Wealthsimple Investments Inc.', 'Transfert'],
         ['Assurance / DESJARDINS ASS. GENERALES', 'Assurances'],
         ["Frais fixes d'utilisation", 'Frais bancaires'],

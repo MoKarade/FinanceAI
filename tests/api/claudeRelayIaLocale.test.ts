@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     relayClaude, iaLocaleDepuisEnv, eligibleIaLocale, reinitialiserSanteIaLocale, type IaLocaleConfig,
+    cleAnthropicValide, reinitialiserClesValidees,
 } from '../../api/_lib/relay';
 import { MODEL_IDS, LOCAL_MODEL_ID } from '../../services/aiChat/models';
 
@@ -53,7 +54,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 const call = (body: Record<string, unknown>, ia: IaLocaleConfig | null = IA, signal?: AbortSignal) =>
-    relayClaude(mkRequest(body, signal), { accessToken: TOKEN, iaLocale: ia });
+    relayClaude(mkRequest(body, signal), { accessToken: TOKEN, iaLocale: ia, verifierCle: async () => true });
 const urls = () => (fetchSpy.mock.calls as Appel[]).map(([u]) => u);
 
 describe('[IA-LOCALE] routage du relais vers la passerelle locale', () => {
@@ -178,5 +179,43 @@ describe('[IA-LOCALE] configuration depuis l\'env serveur', () => {
         }))!;
         expect([...c.modeles]).toEqual([MODEL_IDS.opus]);
         expect(c.reflexion).toBe('medium');
+    });
+});
+
+describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE', () => {
+    // Le jeton x-financeai-proxy est dans le bundle public : sans cette vérification, n'importe quelle
+    // chaîne « Bearer » ouvrait la passerelle (le GPU du PC de Marc) à qui lisait le bundle.
+    beforeEach(() => reinitialiserClesValidees());
+    const COUNT = 'https://api.anthropic.com/v1/messages/count_tokens';
+
+    it('clé refusée par Anthropic → pas de passerelle (ni même sa sonde), appel Anthropic avec la clé fournie', async () => {
+        const res = await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA, verifierCle: async () => false });
+        expect(res.status).toBe(200);
+        expect(urls()).toEqual(['https://api.anthropic.com/v1/messages']);
+    });
+
+    it('vérification réelle : count_tokens avec la clé BYOK et un contenu FACTICE (aucune donnée envoyée)', async () => {
+        const res = await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA });
+        expect(res.status).toBe(200);
+        expect(urls()).toEqual([COUNT, `${IA.url}/sante`, `${IA.url}/v1/messages`]);
+        const [, init] = (fetchSpy.mock.calls as Appel[])[0];
+        expect(init.headers?.['x-api-key']).toBe('sk-ant-test-123');
+        expect(JSON.parse(String(init.body)).messages).toEqual([{ role: 'user', content: '.' }]);
+    });
+
+    it('clé mémorisée 10 min (par empreinte) : pas de seconde vérification', async () => {
+        await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA });
+        await relayClaude(mkRequest(texte()), { accessToken: TOKEN, iaLocale: IA });
+        expect(urls().filter((u) => u === COUNT)).toHaveLength(1);
+    });
+
+    it('échec fermé : 401 d\'Anthropic ou panne réseau → faux, et rien n\'est mémorisé', async () => {
+        fetchSpy.mockImplementationOnce(async () => new Response('{}', { status: 401 }));
+        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        fetchSpy.mockImplementationOnce(async () => { throw new TypeError('fetch failed'); });
+        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        fetchSpy.mockImplementationOnce(async () => new Response('{}', { status: 401 }));
+        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        expect(fetchSpy).toHaveBeenCalledTimes(3);
     });
 });

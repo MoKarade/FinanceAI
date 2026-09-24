@@ -27,6 +27,12 @@
 //     (sonde /sante 1,5 s mémorisée 30 s : PC éteint = +0 s sur les appels suivants) ;
 //   - la réponse locale porte `model: gpt-oss-atelier` (services/aiChat/models.ts LOCAL_MODEL_ID) →
 //     le chat ne la facture pas.
+//   - [S5-RELAIS-CLE] (audit S5, 24/09/2026) la clé BYOK est VÉRIFIÉE auprès d'Anthropic avant tout
+//     appel local (count_tokens : gratuit, aucun contenu envoyé ; résultat mémorisé 10 min par empreinte
+//     SHA-256 de la clé, jamais la clé elle-même). Sans ça, l'invariant « aucune clé serveur » tombait :
+//     le jeton x-financeai-proxy est public (bundle) et N'IMPORTE QUELLE chaîne « Bearer » ouvrait la
+//     passerelle — donc le GPU du PC de Marc — à qui lisait le bundle. Clé refusée ou vérification
+//     impossible → pas de local (échec FERMÉ) ; la suite est inchangée (Anthropic avec la clé fournie).
 
 // `.js` obligatoire : chargé en ESM natif par le runtime Node de Vercel (cf api/claude/v1/messages.ts).
 import { MODEL_IDS, LOCAL_MODEL_ID } from '../../services/aiChat/models.js';
@@ -71,6 +77,8 @@ export interface RelayOptions {
     accessToken?: string;
     /** Injecté par les tests et le middleware dev ; `undefined` = lu dans l'env serveur ; `null` = coupé. */
     iaLocale?: IaLocaleConfig | null;
+    /** [S5-RELAIS-CLE] Injecté par les tests ; `undefined` = vérification réelle (count_tokens). */
+    verifierCle?: (cle: string, modele: string, signal: AbortSignal) => Promise<boolean>;
 }
 
 /** Config IA locale depuis l'env serveur, ou `null` (routage coupé) si incomplète/invalide. */
@@ -193,6 +201,44 @@ async function appelIaLocale(body: Record<string, unknown>, cfg: IaLocaleConfig,
     }
 }
 
+// ─── [S5-RELAIS-CLE] Vérification de la clé BYOK avant la passerelle locale ──────────────────────────
+const CLE_VALIDE_TTL_MS = 10 * 60_000;
+const CLE_VERIF_DELAI_MS = 3_000;
+const CLES_MEMO_MAX = 50;
+const clesValidees = new Map<string, number>(); // empreinte SHA-256 → expiration (jamais la clé)
+
+/** Tests uniquement : oublie les clés déjà vérifiées. */
+export function reinitialiserClesValidees(): void {
+    clesValidees.clear();
+}
+
+async function empreinte(cle: string): Promise<string> {
+    const octets = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cle)));
+    return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
+}
+
+/** Vrai si Anthropic accepte la clé (count_tokens : gratuit, contenu factice). Échec fermé. */
+export async function cleAnthropicValide(cle: string, modele: string, signal: AbortSignal): Promise<boolean> {
+    const h = await empreinte(cle);
+    const expire = clesValidees.get(h);
+    if (expire !== undefined && expire > Date.now()) return true;
+    try {
+        const r = await fetch(ANTHROPIC_BASE + '/v1/messages/count_tokens', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'anthropic-version': '2023-06-01', 'x-api-key': cle },
+            body: JSON.stringify({ model: modele, messages: [{ role: 'user', content: '.' }] }),
+            signal: AbortSignal.any([signal, AbortSignal.timeout(CLE_VERIF_DELAI_MS)]),
+        });
+        await r.body?.cancel().catch(() => undefined);
+        if (!r.ok) return false;
+    } catch {
+        return false;
+    }
+    if (clesValidees.size >= CLES_MEMO_MAX) clesValidees.clear();
+    clesValidees.set(h, Date.now() + CLE_VALIDE_TTL_MS);
+    return true;
+}
+
 /** Cœur du relais — pur Web-standard (Request→Response) : même code en fonction Vercel et en dev Vite. */
 export async function relayClaude(request: Request, opts?: RelayOptions): Promise<Response> {
     const url = new URL(request.url);
@@ -237,7 +283,10 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
     // [IA-LOCALE] Essai sur la passerelle locale si l'appel est éligible et qu'elle répond ; sinon
     // (ou en cas d'échec) on continue vers Anthropic exactement comme avant.
     const iaLocale = opts?.iaLocale !== undefined ? opts.iaLocale : iaLocaleDepuisEnv();
-    if (iaLocale && eligibleIaLocale(body, iaLocale) && await passerelleEnLigne(iaLocale)) {
+    const verifierCle = opts?.verifierCle ?? cleAnthropicValide;
+    if (iaLocale && eligibleIaLocale(body, iaLocale)
+        && await verifierCle(apiKey, body.model, request.signal)
+        && await passerelleEnLigne(iaLocale)) {
         try {
             const locale = await appelIaLocale(body, iaLocale, request.signal);
             if (locale) return locale;

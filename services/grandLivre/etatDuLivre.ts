@@ -29,7 +29,7 @@ const DEVISE_DU_COMPTE: Partial<Record<BrokerLedgerAccountId, BrokerLedgerCurren
  *  un fractionnement divise des flottants. En dessous de ce seuil, un reste n'est pas une position. */
 const EPSILON_QUANTITE = 1e-9;
 
-export type AnomalieLivre =
+type AnomalieLivre =
     | { type: 'valeur-non-finie'; id: string; champ: string }
     /** Le sens est porté par `kind`, jamais par un signe (contrat du schéma, lot 1a) : une valeur nulle
      *  ou négative est un import qui a mal lu sa ligne, pas une opération à inverser. */

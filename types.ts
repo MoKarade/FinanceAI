@@ -888,11 +888,11 @@ export interface CategoryReviewState {
 /** Comptes du grand livre : deux comptes du courtier (règlement CAD, règlement USD) et un compte
  *  hors courtier. Identifiants PROPRES à l'app. Jamais un numéro de compte (dépôt public), jamais
  *  l'id Fintable (un lien de réconciliation s'ajoutera plus tard, en additif). */
-type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-courtier';
+export type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-courtier';
 
 /** Devises admises. EUR = devise de COTATION de titres européens. Un compte du courtier règle en
  *  CAD ou en USD, jamais en EUR (invariant du validateur du lot 1b). Élargissement additif possible. */
-type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
+export type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
 
 /** Types d'événements (liste demandée, onze, sans ajout). */
 type BrokerLedgerEventKind =

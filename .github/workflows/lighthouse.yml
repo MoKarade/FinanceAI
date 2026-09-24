@@ -3,8 +3,9 @@
 # Workflow séparé du CI critique pour ne pas bloquer Tests+Build.
 # [S5-PERF] Depuis le 24/09/2026 : les 4 catégories sont des budgets bloquants (« error »), figés sur la
 # mesure CI du jour (perf 0,97 → seuil 0,90 pour absorber le bruit ; accessibilité, bonnes pratiques et SEO à 1).
+# 3 passages, médiane retenue : un seul passage variait de ±0,02 à 0,05 d'un run à l'autre.
 #
-# Résultats : artefact .html téléchargeable + lien temporary-public-storage.
+# Résultats : artefact GitHub (.lighthouseci/) — plus de lien public (24/09/2026).
 
 name: Lighthouse CI
 
@@ -53,6 +54,8 @@ jobs:
         with:
           configPath: ./.lighthouserc.json
           uploadArtifacts: true
-          temporaryPublicStorage: true
+          # [S5-PERF] Rapports gardés en artefact GitHub seulement : plus de dépôt PUBLIC sur le stockage
+          # temporaire de Google (et un appel réseau de moins qui pourrait faire échouer le job).
+          temporaryPublicStorage: false
         # [S5-PERF] Budgets FIGÉS (24/09/2026, décision de Marc « mesurer puis figer ») : plus de
         # continue-on-error — un recul sous les seuils de .lighthouserc.json fait échouer le job.

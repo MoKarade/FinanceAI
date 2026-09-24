@@ -95,6 +95,8 @@ vi.mock('../../services/cloudBackup', async (orig) => {
 
 import { pushNow, schedulePush, flushPush, markApiKeysHydrated } from '../../services/sync/syncPush';
 import { pullNow } from '../../services/sync/syncPull';
+import { resolveConflict } from '../../services/sync/syncLifecycle';
+import { removeSyncPassphrase } from '../../services/sync/syncPassphrase';
 import { setStatus, getSyncStatus, _resetSyncStatusForTests } from '../../services/sync/syncStatusStore';
 import { writeSyncMeta, getOrCreateDeviceId } from '../../services/sync/syncState';
 import { getLocalPayload } from '../../services/sync/syncSnapshot';
@@ -354,5 +356,128 @@ describe('[SYNC-PUSH-PULL-NO-UNIT-TEST] pullNow — filets du blob en clair', ()
         expect(localStorage.getItem(STORE_KEY)).toContain('tx-drive');
         expect(saveApiKeysMock).not.toHaveBeenCalled();
         expect(getSyncStatus().error).toBeNull();
+    });
+});
+
+// [SYNC-PUSH-SANS-OCC] Une écriture SERVEUR (cron des cours, cron Fintable, outil MCP) arrivée sur Drive
+// entre deux sondages était effacée en silence par le push suivant : `pushNow` écrasait le fichier sans
+// jamais comparer sa version à la dernière vue par l'appareil. Désormais il relit, et refuse d'écraser
+// une version qu'il n'a pas vue — le modal de conflit laisse choisir, comme au chargement.
+describe('[SYNC-PUSH-SANS-OCC] le push n\'écrase jamais une version de Drive qu\'il n\'a pas vue', () => {
+    const VU = 1_000;
+    const ECRIT_PAR_LE_SERVEUR = 2_000;
+    /** Blob réécrit par le serveur : deux transactions, un placement — le modal doit les compter. */
+    const blobServeur = (updatedAt: number) => ({
+        schemaVersion: 1, updatedAt, deviceId: 'serveur-mcp', appVersion: 'mcp', enc: false,
+        payload: { state: { transactions: [{ id: 'tx-cron-1' }, { id: 'tx-cron-2' }], assets: [{ symbol: 'ZZZ' }] }, version: 7 },
+    });
+    /** Cet appareil a vu la version `VU` et a changé depuis (hash différent du local courant). */
+    const localModifieDepuis = (vuA: number) => writeSyncMeta({
+        connectedEmail: 'marc@example.com', connectedSub: 'sub-123', lastSyncedAt: vuA,
+        lastPulledUpdatedAt: vuA, lastLocalHash: 'avant-modif', deviceId: getOrCreateDeviceId(),
+    });
+
+    it('Drive réécrit depuis la version vue → AUCUNE écriture, modal de conflit ouvert avec la version du serveur', async () => {
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
+
+        expect(await pushNow()).toBe('conflict');
+        expect(ecrituresDrive()).toBe(0);
+        expect(logErrorMock).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/réécrit depuis la dernière version vue/) }));
+        const st = getSyncStatus();
+        expect(st.conflict).toBe(true);
+        expect(st.busy).toBe(false);
+        expect(st.conflictSummary?.drive).toMatchObject({ updatedAt: ECRIT_PAR_LE_SERVEUR, transactions: 2, assets: 1, encrypted: false });
+        expect(st.conflictSummary?.local.transactions).toBe(1);
+    });
+
+    it('contrôle négatif : Drive à la version vue → le push écrit', async () => {
+        localModifieDepuis(ECRIT_PAR_LE_SERVEUR);
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
+
+        expect(await pushNow()).toBe('pushed');
+        expect(ecrituresDrive()).toBe(1);
+        expect(getSyncStatus().conflict).toBe(false);
+    });
+
+    it('« garder cet appareil » écrase la version que le modal a MONTRÉE', async () => {
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
+        expect(await pushNow()).toBe('conflict');
+
+        await resolveConflict('local');
+        expect(ecrituresDrive()).toBe(1);
+        expect(getSyncStatus().conflict).toBe(false);
+    });
+
+    it.each([
+        ['absente', undefined],
+        ['non finie', Number.NaN],
+    ])('date de Drive %s → échec FERMÉ : aucune écriture, choix demandé, tracé ; « garder cet appareil » passe ensuite', async (_n, date) => {
+        // `NaN > n` et `undefined > n` valent FAUX : sans garde, la comparaison concluait « Drive n'a pas
+        // bougé » et le push écrasait. Le blob relu n'est validé par aucun schéma.
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue({ ...blobServeur(ECRIT_PAR_LE_SERVEUR), updatedAt: date } as never);
+
+        expect(await pushNow()).toBe('conflict');
+        expect(ecrituresDrive()).toBe(0);
+        expect(logErrorMock).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/date de la sauvegarde Drive illisible/) }));
+
+        // Le choix explicite ne doit pas être une trappe : la version montrée EST celle de Drive.
+        await resolveConflict('local');
+        expect(ecrituresDrive()).toBe(1);
+        expect(getSyncStatus().conflict).toBe(false);
+    });
+
+    it('Drive réécrit ENCORE entre le modal et le clic → rien d\'écrit, modal rouvert sur la version la plus récente', async () => {
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
+        expect(await pushNow()).toBe('conflict');
+
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR + 500) as never);
+        await resolveConflict('local');
+        expect(ecrituresDrive()).toBe(0);
+        expect(getSyncStatus().conflict).toBe(true);
+        expect(getSyncStatus().conflictSummary?.drive.updatedAt).toBe(ECRIT_PAR_LE_SERVEUR + 500);
+    });
+
+    it('même contenu réécrit ailleurs → ni modal ni écriture : la version de Drive est adoptée comme vue', async () => {
+        localModifieDepuis(VU);
+        const local = getLocalPayload();
+        readSyncFileMock.mockResolvedValue({ ...blobServeur(ECRIT_PAR_LE_SERVEUR), payload: local.payload } as never);
+
+        expect(await pushNow()).toBe('pushed');
+        expect(ecrituresDrive()).toBe(0);
+        expect(getSyncStatus().conflict).toBe(false);
+        // Adoptée : le push suivant ne rouvre rien et écrit normalement.
+        expect(await pushNow()).toBe('pushed');
+        expect(getSyncStatus().conflict).toBe(false);
+    });
+
+    it('« garder cet appareil » pendant un push déjà en vol : il n\'est PAS absorbé, il passe après', async () => {
+        localModifieDepuis(VU);
+        readSyncFileMock.mockResolvedValue(blobServeur(ECRIT_PAR_LE_SERVEUR) as never);
+        let relacher!: () => void;
+        const enVol = new Promise<void>((r) => { relacher = r; });
+        readSyncFileMock.mockImplementationOnce(async () => { await enVol; return blobServeur(ECRIT_PAR_LE_SERVEUR) as never; });
+
+        const auto = pushNow();                                             // push automatique, en vol
+        const choix = pushNow({ driveVuA: ECRIT_PAR_LE_SERVEUR });          // clic « garder cet appareil »
+        relacher(); // avant toute assertion : un push laissé en vol contaminerait les cas suivants
+        expect(choix).not.toBe(auto);
+        expect(await auto).toBe('conflict');
+        expect(await choix).toBe('pushed');
+        expect(ecrituresDrive()).toBe(1);
+    });
+
+    it('retirer la passphrase pendant un conflit : l\'écran n\'annonce PAS « repassée en clair »', async () => {
+        localModifieDepuis(VU);
+        setPassphrase('passphrase-de-test-12');
+        setStatus({ connected: true, needsPassphrase: false });
+        readSyncFileMock.mockResolvedValue({ ...blobServeur(ECRIT_PAR_LE_SERVEUR), enc: true, payload: null, encPayload: 'FAI1xx' } as never);
+
+        expect(await removeSyncPassphrase()).toBe('removed-republish-pending');
+        expect(ecrituresDrive()).toBe(0);
+        expect(getSyncStatus().conflict).toBe(true);
     });
 });

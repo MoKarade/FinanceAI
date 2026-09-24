@@ -52,7 +52,10 @@ export function clearSyncPassphrase(): void {
     setStatus({ passphraseActive: false });
 }
 
-type RemovePassphraseResult = 'removed' | 'removed-and-republished';
+/** `removed-republish-pending` : la passphrase est retirée ICI, mais Drive porte ENCORE le blob
+ *  chiffré — le push a été refusé (Drive réécrit ailleurs : modal de conflit) ou a échoué. L'écran ne
+ *  doit surtout pas annoncer « repassée en clair » ([SYNC-PUSH-SANS-OCC], revue). */
+type RemovePassphraseResult = 'removed' | 'removed-and-republished' | 'removed-republish-pending';
 
 /**
  * RETIRE la passphrase ET re-publie aussitôt le coffre EN CLAIR (`enc:false`) si on est connecté et
@@ -64,8 +67,12 @@ export async function removeSyncPassphrase(): Promise<RemovePassphraseResult> {
     clearSyncPassphrase();
     const s = getSyncStatus();
     if (s.connected && !s.needsPassphrase && isGoogleAuthConfigured()) {
-        await pushNow(); // ré-écrit le blob en clair (le secret est déjà purgé → enc:false)
-        return 'removed-and-republished';
+        // Ré-écrit le blob en clair (le secret est déjà purgé → enc:false). Le RÉSULTAT décide de ce
+        // que l'écran affirme : un push refusé ou en échec laisse Drive chiffré.
+        const r = await pushNow();
+        if (r === 'pushed') return 'removed-and-republished';
+        if (r === 'conflict' || r === 'error') return 'removed-republish-pending';
+        return 'removed';
     }
     return 'removed';
 }

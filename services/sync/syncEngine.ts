@@ -43,7 +43,7 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
     //    Bug Marc 2026-07-14 : les placements locaux clobberés par une copie Drive périmée (un seul titre
     //    seul). Le local significatif ne se perd désormais JAMAIS en silence. Le cas légitime « nouvel
     //    appareil, je restaure » est déjà couvert par (2) (local vide → pull).
-    const driveAdvanced = drive.updatedAt > meta.lastPulledUpdatedAt;
+    const driveAdvanced = driveAAvance(drive.updatedAt, meta.lastPulledUpdatedAt);
     const localChanged = localHash !== meta.lastLocalHash;
 
     if (driveAdvanced && localChanged) {
@@ -68,6 +68,16 @@ export function decideOnLoad(input: DecideOnLoadInput): SyncDecision {
     }
     // Rien n'a bougé des deux côtés.
     return decision('noop', 'deja-sync');
+}
+
+/**
+ * [SYNC-PUSH-SANS-OCC] Drive a-t-il été ÉCRIT depuis la version qu'on a vue ? Source unique de la
+ * comparaison, partagée par la décision au chargement et par la garde du push : deux écritures de la
+ * même règle divergeraient au premier correctif. `vuA` est l'`updatedAt` du dernier blob vu (pull ou
+ * push) — ou celui que le modal de conflit a MONTRÉ, quand l'utilisateur choisit d'écraser Drive.
+ */
+export function driveAAvance(updatedAtDrive: number, vuA: number): boolean {
+    return updatedAtDrive > vuA;
 }
 
 /**

@@ -6,20 +6,29 @@
 import { isGoogleAuthConfigured, getValidAccessToken } from '../googleDrive/gisAuth';
 import { findSyncFile, readSyncFile, updateSyncFile, createSyncFile } from '../googleDrive/driveAppData';
 import { encryptApiKeys } from './keyCipher';
-import { shouldPush, buildEnvelope, buildEncryptedEnvelope } from './syncEngine';
+import { shouldPush, buildEnvelope, buildEncryptedEnvelope, driveAAvance, hashPayload } from './syncEngine';
 import { getPassphrase } from './passphraseStore';
 import { encryptBackup } from '../cloudBackup';
 import { getOrCreateDeviceId, writeSyncMeta } from './syncState';
 import type { SyncEnvelope } from './syncTypes';
-import { getLocalPayload, hasAnyKey } from './syncSnapshot';
+import { getLocalPayload, hasAnyKey, resumeConflit } from './syncSnapshot';
 import { setStatus, getSyncStatus } from './syncStatusStore';
 import { currentMeta, resolveSub } from './syncMeta';
 import { handleError } from './syncErrors';
 import { logError } from '../errorLogger';
 import { modeDonneesFictives } from '../../store/modeTestActif';
 
-/** Résultat d'un push — permet à l'UI d'être honnête (toast réel vs « rien à sauvegarder »). */
-type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'error';
+/** Résultat d'un push — permet à l'UI d'être honnête (toast réel vs « rien à sauvegarder »).
+ *  `conflict` : Drive a été réécrit depuis la version vue, RIEN n'a été écrit et le modal de conflit
+ *  est ouvert ([SYNC-PUSH-SANS-OCC]). */
+type PushResult = 'pushed' | 'skipped-empty' | 'skipped-testmode' | 'not-configured' | 'conflict' | 'error';
+
+interface PushOptions {
+    /** Choix EXPLICITE « garder cet appareil » : `updatedAt` de la version de Drive que le modal a
+     *  MONTRÉE (tel quel, même illisible). L'écrasement n'est permis que si Drive la porte encore.
+     *  Clé absente : contrôle ordinaire contre la dernière version vue (`lastPulledUpdatedAt`). */
+    driveVuA?: number;
+}
 
 // D5 (anti-race) — les clés API sont hydratées de façon ASYNC depuis secureKeyStore au boot
 // (App.tsx). Tant que ce flag est faux, un push avec clés locales VIDES n'écrase PAS l'apiKeysEnc
@@ -50,14 +59,19 @@ const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '
 let _pushInFlight: Promise<PushResult> | null = null;
 
 /** Pousse le payload local vers Drive (create ou update) et met à jour la meta. Dé-doublonné (réentrance). */
-export function pushNow(): Promise<PushResult> {
+export function pushNow(options: PushOptions = {}): Promise<PushResult> {
+    // [SYNC-PUSH-SANS-OCC, revue] Un choix EXPLICITE (« garder cet appareil ») ne se fond pas dans un
+    // push déjà en vol : ses options seraient perdues et le clic ne ferait rien. Il passe APRÈS.
+    if (_pushInFlight && Object.prototype.hasOwnProperty.call(options, 'driveVuA')) {
+        return _pushInFlight.then(() => pushNow(options), () => pushNow(options));
+    }
     if (_pushInFlight) return _pushInFlight;
-    const run = runPushNow().finally(() => { _pushInFlight = null; });
+    const run = runPushNow(options).finally(() => { _pushInFlight = null; });
     _pushInFlight = run;
     return run;
 }
 
-async function runPushNow(): Promise<PushResult> {
+async function runPushNow(options: PushOptions): Promise<PushResult> {
     if (!isGoogleAuthConfigured()) return 'not-configured';
     const testMode = isTestModeActive();
     const local = getLocalPayload();
@@ -73,6 +87,52 @@ async function runPushNow(): Promise<PushResult> {
         // Fichier Drive existant (s'il existe) : récupéré UNE seule fois — sert à PRÉSERVER les clés
         // (anti-race D5) ET à décider create vs update plus bas.
         const ref = await findSyncFile(token);
+        // [SYNC-PUSH-SANS-OCC] Contrôle de concurrence : avant d'écraser Drive, relire la version qu'il
+        // porte. Une écriture SERVEUR (cron des cours, cron Fintable, outil MCP) arrivée depuis la
+        // dernière version vue par cet appareil serait sinon effacée en silence — le sondage de 60 s
+        // ne ferme pas la fenêtre, il la rétrécit. La lecture qui ÉCHOUE fait échouer le push (le
+        // `catch` global) : écrire à l'aveugle est exactement le défaut corrigé ici.
+        // ⚠️ Reste une fenêtre de quelques centaines de millisecondes entre cette lecture et
+        // l'écriture : aucune écriture CONDITIONNELLE n'est employée ici. [À vérifier] si l'API de
+        // fichiers v3 accepte un `If-Match` sur une version du fichier — ce qui fermerait la fenêtre.
+        const existant = ref ? await readSyncFile(token, ref.id) : null;
+        if (existant) {
+            // « Garder cet appareil » : l'écrasement est permis si Drive porte ENCORE la version que le
+            // modal a montrée — une IDENTITÉ (`Object.is`, qui tient aussi pour une date illisible), pas
+            // un ordre.
+            // La PRÉSENCE de la clé porte le choix (pas sa valeur) : une date absente montrée par le
+            // modal vaut `undefined`, et `!== undefined` aurait rendu le bouton inopérant pour toujours.
+            const ecrasementChoisi = Object.prototype.hasOwnProperty.call(options, 'driveVuA')
+                && Object.is(existant.updatedAt, options.driveVuA);
+            // Le blob relu n'est validé par aucun schéma : une date absente ou non finie rendrait
+            // `driveAAvance` FAUX (`NaN > n`), donc « rien n'a changé » — le verdict qui écrase. Une
+            // date illisible échoue FERMÉ : on ne sait pas, donc on demande.
+            const dateLisible = Number.isFinite(existant.updatedAt);
+            const vuA = currentMeta().lastPulledUpdatedAt;
+            if (!ecrasementChoisi && (!dateLisible || driveAAvance(existant.updatedAt, vuA))) {
+                // Réécrit ailleurs avec EXACTEMENT le même contenu (republication identique) : rien à
+                // choisir — le raccourci de `decideOnLoad`, sans lequel le modal « tes données
+                // diffèrent » s'ouvrirait pour rien. On adopte cette version comme vue, sans écrire.
+                // Seulement en clair des DEUX côtés : un blob chiffré n'est pas comparable, et une
+                // passphrase active veut réécrire la FORME du blob, pas seulement son contenu.
+                if (dateLisible && !existant.enc && getPassphrase() === null && hashPayload(existant.payload) === local.hash) {
+                    writeSyncMeta({ ...currentMeta(), lastSyncedAt: now, lastPulledUpdatedAt: existant.updatedAt, lastLocalHash: local.hash });
+                    setStatus({ busy: false, lastSyncedAt: now, connected: true, conflict: false, conflictSummary: null });
+                    return 'pushed';
+                }
+                // Tracé : un push AUTOMATIQUE (fermeture d'onglet) peut s'abstenir sans que personne voie
+                // le modal ; le prochain chargement le redétecte, mais « pourquoi rien n'est parti ? »
+                // doit rester lisible après coup.
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: dateLisible
+                        ? 'Push Drive : Drive a été réécrit depuis la dernière version vue — rien n\'est écrit, choix demandé.'
+                        : 'Push Drive : date de la sauvegarde Drive illisible — rien n\'est écrit, choix demandé.',
+                });
+                setStatus({ busy: false, conflict: true, conflictSummary: resumeConflit(local.payload, existant) });
+                return 'conflict';
+            }
+        }
         // Passphrase optionnelle active (D-3) → chemin ZÉRO-KNOWLEDGE : on chiffre le payload COMPLET
         // ET les clés API ensemble avec `encryptBackup` (la passphrase ne quitte jamais l'appareil).
         // Sinon → chemin historique INCHANGÉ (`enc:false`, payload en clair, clés via `apiKeysEnc`).
@@ -106,24 +166,14 @@ async function runPushNow(): Promise<PushResult> {
                         });
                     }
                 }
-            } else if (!_apiKeysHydrated && ref) {
+            } else if (!_apiKeysHydrated && existant && !existant.enc && existant.apiKeysEnc) {
                 // D5 (anti-race) : clés locales pas encore hydratées depuis secureKeyStore → NE PAS
-                // écraser les clés déjà présentes dans Drive. On relit le blob existant et on PRÉSERVE
-                // son apiKeysEnc. (Après hydratation, des clés vides = effacement volontaire → on laisse
-                // tomber, comportement normal.) Lecture best-effort : un échec ne pousse pas de clés.
-                try {
-                    const existing = await readSyncFile(token, ref.id);
-                    if (existing && !existing.enc && existing.apiKeysEnc) apiKeysEnc = existing.apiKeysEnc;
-                } catch (e) {
-                    // [SYNC-APIKEYS-SILENT, finding panel 2026-07-21] Échec de la PRÉSERVATION D5 : ce
-                    // push écrase l'apiKeysEnc de Drive sans le relire → le journaliser (sinon des clés
-                    // qui « disparaissent » de Drive n'ont aucune explication nulle part).
-                    logError({
-                        source: 'storage', severity: 'warning',
-                        message: 'Push Drive : relecture du blob pour PRÉSERVER les clés API existantes ÉCHOUÉE — push envoyé sans clés (l\'apiKeysEnc Drive existant est écrasé).',
-                        error: e instanceof Error ? e : new Error(String(e)),
-                    });
-                }
+                // écraser les clés déjà présentes dans Drive : on PRÉSERVE l'apiKeysEnc du blob relu
+                // plus haut. (Après hydratation, des clés vides = effacement volontaire → comportement
+                // normal.) [SYNC-PUSH-SANS-OCC] La relecture est désormais celle du contrôle de
+                // concurrence, et son échec fait échouer le push : l'ancien repli « push envoyé sans
+                // clés, apiKeysEnc écrasé » n'existe plus.
+                apiKeysEnc = existant.apiKeysEnc;
             }
             envelope = buildEnvelope(local.payload, getOrCreateDeviceId(), APP_VERSION, now, apiKeysEnc);
         }

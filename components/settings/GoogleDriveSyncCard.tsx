@@ -52,6 +52,15 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
         setBusy(true);
         try {
             const r = await removeSyncPassphrase();
+            if (r === 'removed-republish-pending') {
+                // Drive porte ENCORE le blob chiffré : ne pas annoncer « en clair ». La passphrase reste
+                // nécessaire pour lire cette copie tant que la sauvegarde n'est pas repartie.
+                showToast(
+                    'Passphrase retirée sur cet appareil, mais ta sauvegarde Drive est ENCORE chiffrée : elle n\'a pas pu être republiée (voir le message affiché). Garde ta passphrase tant que ce n\'est pas réglé.',
+                    'error',
+                );
+                return;
+            }
             showToast(
                 r === 'removed-and-republished'
                     ? 'Passphrase retirée — ta sauvegarde Drive est repassée EN CLAIR (plus de passphrase nulle part).'
@@ -101,7 +110,8 @@ export const GoogleDriveSyncCard: React.FC = () => {
         } else if (result === 'skipped-testmode') {
             showToast('Mode test actif — sauvegarde désactivée (sors du mode test d’abord).', 'info');
         }
-        // 'error' : message rouge déjà affiché via le statut ; 'not-configured' : carte masquée.
+        // 'error' : message rouge déjà affiché via le statut ; 'not-configured' : carte masquée ;
+        // 'conflict' : le modal global de conflit (SyncConflictModal) prend le relais.
     };
     const onPull = async () => {
         // pullNow réhydrate le store EN PLACE (plus de reload) → on confirme par un toast.

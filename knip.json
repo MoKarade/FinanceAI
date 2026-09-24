@@ -6,7 +6,6 @@
     "mcp/server.ts",
     "scripts/*.{ts,cjs}",
     "public/sw.js",
-    "public/ga-init.js",
     "api/**/*.ts"
   ],
   "project": ["**/*.{ts,tsx,js,cjs}"]

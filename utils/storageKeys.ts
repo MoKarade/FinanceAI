@@ -65,16 +65,4 @@ export const STORAGE_KEYS = {
      */
     onboardingDone: 'app_onboarding_done',
 
-    /**
-     * Choix de consentement analytique (Loi 25) : `'granted'` | `'denied'`.
-     * Propriétaire : `services/consent.ts`. Le harnais E2E le pré-règle à `'denied'` pour que la
-     * bannière n'intercepte pas les clics.
-     *
-     * ⚠️ UNE COPIE SURVIT HORS DU BUNDLE, et elle est irréductible : `public/ga-init.js` est un
-     * fichier statique vanilla, chargé AVANT l'app pour rétablir le consentement d'une session
-     * précédente. Il ne peut rien importer. La copie est donc assumée — mais elle est VÉRIFIÉE par
-     * `tests/guards/storageKeysRegistreGuard.test.ts`, ce qui n'était pas le cas avant : jusqu'ici
-     * un commentaire demandait de la synchroniser à la main.
-     */
-    analyticsConsent: 'financeai:analyticsConsent:v1',
 } as const;

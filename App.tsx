@@ -4,7 +4,6 @@ import { Onboarding } from './components/Onboarding';
 import { shouldShowOnboarding, hasMeaningfulData } from './utils/onboarding';
 import { ToastContainer, showToast } from './components/ui/Toast';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
-import { ConsentBanner } from './components/ConsentBanner';
 import { Tab, AppState } from './types';
 import { INITIAL_CHILD_GOAL } from './constants';
 import { useFinanceStore } from './store/useFinanceStore';
@@ -302,8 +301,6 @@ export const App: React.FC = () => {
                 le résumé de chaque côté. Monté ici → surgit au premier plan quel que soit l'onglet. */}
             <SyncConflictModal />
             <PwaInstallBanner />
-            {/* S-B (Loi 25) — consentement mesure d'audience, bandeau discret. */}
-            <ConsentBanner />
             <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
             {/* G22-F4 — tutoriel guidé (overlay global, démarré par event). */}
             <GuidedTour />

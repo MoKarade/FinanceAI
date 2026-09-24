@@ -11,18 +11,13 @@
 // un seul endroit n'a pas le défaut, et l'y forcer ajouterait un import à des fichiers qui n'en ont
 // pas besoin — du bruit qui rend la règle plus facile à ignorer.
 import { describe, it, expect } from 'vitest';
-import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs';
+import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = process.cwd();
 const REGISTRE = 'utils/storageKeys.ts';
-/**
- * La copie IRRÉDUCTIBLE : `public/ga-init.js` est chargé avant le bundle et ne peut rien importer.
- * Elle est assumée — mais vérifiée ici, ce qu'un commentaire ne faisait pas.
- */
-const HORS_BUNDLE = 'public/ga-init.js';
 
 function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
@@ -78,14 +73,6 @@ describe('[STORAGE-KEYS-NO-REGISTRY] une clé partagée s\'écrit en UN seul end
         expect(fichiersAvecLitteral('cle-qui-nexiste-nulle-part-xyz')).toEqual([]);
     });
 
-    it('la copie HORS BUNDLE de la clé de consentement est à jour', () => {
-        // ⚠️ `public/ga-init.js` est chargé AVANT l'app et ne peut rien importer : la duplication est
-        // irréductible. Elle était « garantie » par un commentaire demandant de synchroniser à la
-        // main — ce qui n'est pas une garantie. Elle est vérifiée ici.
-        const chemin = resolve(racine, HORS_BUNDLE);
-        expect(existsSync(chemin), `${HORS_BUNDLE} introuvable — l'exemption ne protège plus rien`).toBe(true);
-        expect(readFileSync(chemin, 'utf8')).toContain(`'${STORAGE_KEYS.analyticsConsent}'`);
-    });
 
     it('chaque clé du registre est réellement UTILISÉE — un registre ne se remplit pas de souvenirs', () => {
         // Une entrée que plus personne ne consomme est un constat périmé qui se lit comme un fait

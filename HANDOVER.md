@@ -15,9 +15,9 @@
 > « 💼 Portefeuille Disnat » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
 > ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`) et ses secrets `MESURE_ANCRES` /
 > `EODHD_TOKEN_MESURE`, puis lancer la mesure et consigner les verdicts dans `[PTF-L05B-MESURE-SOURCES]`.
-> ⚠️ Le BACKLOG publie DÉJÀ en clair des données réelles du portefeuille (`[INVEST-PORTFOLIO-DATA-CORRECTION]`,
-> `[COTATIONS-EUROPE-PERIMEES]`) : la garde ne les voit pas (elle cherche des FORMES, pas des valeurs) ; leur
-> retrait est une question posée à Marc. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
+> ⚠️ Le BACKLOG publiait en clair des données réelles du portefeuille (composition, quantités, montants) : la
+> garde ne les voyait pas (elle cherche des FORMES, pas des valeurs). **Retirées du fichier courant** sur décision
+> de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
 >
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**

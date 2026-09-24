@@ -13,8 +13,8 @@
     aucune quantité ni solde) ;
   - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
 
-  Puis dis-le-moi : je lance « Mesurer les sources de cours » (Actions → workflow manuel) et je
-  consigne les verdicts. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
+  ✅ Secrets posés le 2026-09-24. Je lance « Mesurer les sources de cours » (Actions → workflow
+  manuel) et je consigne les verdicts. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
   jamais un symbole ni un prix.
 
 - [ ] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24) — **les questions du Lot 0 de la refonte du
@@ -22,10 +22,9 @@
   contient tes montants). Ce qui bloque le plus : date d'acquisition des titres (Q1), nature de
   l'acquisition — don, succession, achat (Q2, fiscaliste), clôture officielle ou total Fintable comme
   vérité (Q4), gratuit d'abord / payant seulement sur mesure (Q5), paramètres GCP du déploiement MCP
-  (Q6, voir `[MCP-DEPLOY-CONTINU-MORT]` ci-dessous). **Question neuve née du Lot 0.5** : le BACKLOG
-  public porte DÉJÀ en clair la composition, des quantités et des montants de ton portefeuille
-  (`[INVEST-PORTFOLIO-DATA-CORRECTION]`, `[COTATIONS-EUROPE-PERIMEES]`). Je les retire du fichier
-  courant (l'historique git les garde, le réécrire exigerait un `--force` sur `main`) ?
+  (Q6, voir `[MCP-DEPLOY-CONTINU-MORT]` ci-dessous). ✅ Question née du Lot 0.5 **répondue** : les
+  données du portefeuille publiées dans le BACKLOG en ont été retirées (fichier courant seulement,
+  l'historique git n'est pas réécrit).
   ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
   garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
 

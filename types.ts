@@ -873,9 +873,13 @@ export interface CategoryReviewState {
 // (id, date, accountId, kind, currency, symbol, name) y figurent déjà.
 // ⚠️ Formes imposées par la garde de dérivation (tests/services/verifierTypesRestaures.test.ts:187-255),
 // qui lit des FORMES et pas des sens :
-//   - un alias textuel s'écrit `typeof X[number]` sur un `export const X = [...] as const`
-//     (une union multiligne ouverte par un `|` n'est pas résolue)
-//   - les littéraux de ces tableaux sont en ASCII SANS ACCENT (le contrôle du tableau est `\w`)
+//   - un alias textuel s'écrit en union DIRECTE de littéraux (`type X = 'a' | 'b'`), jamais ouverte
+//     par un `|` en tête (non résolue). Pas de tableau `as const` : utilisé seulement comme type, il
+//     coûterait un avertissement de lint (valeur inutilisée) ou, exporté, une entrée « code mort »
+//   - `export` seulement quand un autre fichier importe l'alias (la porte « code mort » refuse
+//     un export inutilisé) — la garde lit aussi les alias non exportés
+//   - les littéraux restent en ASCII SANS ACCENT (identifiants stables, et le contrôle des tableaux
+//     `as const` de la garde est `\w` si l'un d'eux devient un jour un tableau)
 //   - un sous-objet se déclare par une interface NOMMÉE (le premier champ d'un littéral objet
 //     en ligne est avalé par la capture du champ parent)
 //   - AUCUN point-virgule dans les commentaires de ce bloc (la regex repart après chaque `;`)
@@ -884,24 +888,19 @@ export interface CategoryReviewState {
 /** Comptes du grand livre : deux comptes du courtier (règlement CAD, règlement USD) et un compte
  *  hors courtier. Identifiants PROPRES à l'app. Jamais un numéro de compte (dépôt public), jamais
  *  l'id Fintable (un lien de réconciliation s'ajoutera plus tard, en additif). */
-export const BROKER_LEDGER_ACCOUNTS = ['courtier-cad', 'courtier-usd', 'hors-courtier'] as const;
-export type BrokerLedgerAccountId = typeof BROKER_LEDGER_ACCOUNTS[number];
+type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-courtier';
 
 /** Devises admises. EUR = devise de COTATION de titres européens. Un compte du courtier règle en
  *  CAD ou en USD, jamais en EUR (invariant du validateur du lot 1b). Élargissement additif possible. */
-export const BROKER_LEDGER_CURRENCIES = ['CAD', 'USD', 'EUR'] as const;
-export type BrokerLedgerCurrency = typeof BROKER_LEDGER_CURRENCIES[number];
+export type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
 
 /** Types d'événements (liste demandée, onze, sans ajout). */
-export const BROKER_LEDGER_EVENT_KINDS = [
-  'acquisition', 'transfert-entrant', 'transfert-sortant', 'achat', 'vente', 'fractionnement',
-  'dividende', 'retenue-etrangere', 'depot-especes', 'retrait-especes', 'frais',
-] as const;
-export type BrokerLedgerEventKind = typeof BROKER_LEDGER_EVENT_KINDS[number];
+type BrokerLedgerEventKind =
+  'acquisition' | 'transfert-entrant' | 'transfert-sortant' | 'achat' | 'vente' | 'fractionnement' |
+  'dividende' | 'retenue-etrangere' | 'depot-especes' | 'retrait-especes' | 'frais';
 
 /** Provenance : import d'un relevé daté, ou saisie manuelle (compte hors courtier). */
-export const BROKER_LEDGER_SOURCE_KINDS = ['releve-courtier', 'saisie-manuelle'] as const;
-export type BrokerLedgerSourceKind = typeof BROKER_LEDGER_SOURCE_KINDS[number];
+type BrokerLedgerSourceKind = 'releve-courtier' | 'saisie-manuelle';
 
 /** Un montant n'existe JAMAIS sans sa devise. `value` est la valeur TELLE QU'IMPRIMÉE sur le relevé,
  *  toujours POSITIVE (le sens est porté par `kind`, traduit une seule fois à l'import, sans Math.abs).
@@ -912,7 +911,7 @@ export interface BrokerLedgerMoney {
 }
 
 /** Provenance d'un événement. `date` = date d'arrêté du relevé (YYYY-MM-DD locale), PAS celle de l'opération. */
-export interface BrokerLedgerSource {
+interface BrokerLedgerSource {
   kind: BrokerLedgerSourceKind;
   date: string;
 }

@@ -16994,3 +16994,14 @@ parce qu'énumérer les valeurs à protéger dans un dépôt public serait la fu
 - ⚠️ Corollaire du même lot : un commentaire qui PROMET une garde (« aucun persona ne doit en planter
   (garde de test) ») se vérifie par un grep — elle n'existait pas, et le seul balayage des personas
   saute en silence tout élément sans `id`. La garde écrite, le commentaire nomme son fichier.
+- ⚠️⚠️ **Et la CI a trouvé une troisième chose : deux portes se renvoyaient la balle.** Le lot exportait
+  quatre tableaux `as const`, leurs alias et un type, parce que la garde de dérivation n'ACCEPTAIT que
+  `export type` / `export const` — une garde qui lit des formes avait fini par imposer un export MORT.
+  Mesuré : **+9** à la porte « code mort » de la CI (plafond 40, `main` à 40 pile). Retirer `export`
+  des tableaux déplaçait le défaut : un tableau qui ne sert que de type devient une valeur inutilisée,
+  **+4** avertissements de lint (plafond 32, `main` à 32). La forme qui passe les DEUX portes est
+  l'union DIRECTE de littéraux, sans valeur d'exécution ; et la garde accepte désormais un alias NON
+  exporté (témoin `BrokerLedgerEventKind` à perturbation). **Avant d'exporter pour une garde,
+  demander si la garde a le droit de l'exiger** ; et le compte `knip` se mesure AVANT de pousser
+  (`npx --no-install knip --reporter json`, en comptant comme `qualite/portes.mjs`), pas au verdict de
+  la CI — la porte « Qualité » tourne ~20 min après toutes les autres.

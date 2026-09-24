@@ -44,14 +44,41 @@
 - [ ] 🔧 **`[PTF-L1E-PASSERELLE]`** (L+L) — un seul point d'entrée pour toutes les surfaces (présent,
   départ du Futur, passé, PDF, MCP, hub), identique livre vide ; parité CROISÉE (même portefeuille en
   actifs et en livre → même chiffre au cent partout ; retirer une surface fait rougir).
-- [x] 🔧 **`[PTF-L1F2-LECTURE-PDF]`** (M) — ✅ 2026-09-24 : `services/import/disnat/lignesDuPdf.ts`.
-  `reconstruireLignes` (pure) regroupe les fragments à tolérance verticale 3 (mesurée au Lot 0
-  identique à pdfplumber ; à 2, l'exposant « ² » tombe sur une autre ligne) — même algorithme que
-  l'extraction du Lot 0, sur laquelle le parseur a été essayé. `lireLignesPdf` charge `pdfjs-dist`
-  (4.10.38, épinglé) EN DIFFÉRÉ : build mesuré, chunk à part de 112 Ko gz + worker servi par l'app
-  (`worker-src 'self'` déjà dans la CSP), `isEvalSupported: false`. Garde qui TRAVERSE : le relevé
-  fictif imprimé dans un vrai PDF (jsPDF) puis relu par pdfjs rend le MÊME relevé que le texte.
-  ⚠️ Rien n'importe encore ce module depuis l'app : le chunk n'apparaît au build qu'avec 1g.
+  🔒 **Tranché par Marc le 2026-09-24** : (1) doublon → les placements saisis d'un régime couvert par le
+  livre sortent AUTOMATIQUEMENT des calculs ; (2) régime DÉCLARÉ par compte du livre
+  (`brokerAccountRegimes`), jamais deviné ; (3) « tout brancher maintenant » (écrans, MCP, PDF, hub),
+  contre ma recommandation de commencer par le présent seul. Découpage en quatre PR :
+  - ✅ **e1** (2026-09-24) — `brokerAccountRegimes` persisté partout où le livre l'est (tri-état,
+    `CHAMPS_TEXTE`, `CLES_TRI_ETAT`, sauvegarde JSON, MCP) et module PUR
+    `services/portefeuille/passerelle.ts` : `deciderPasserelle` (refus NOMMÉ du livre entier si un
+    compte porteur n'a pas de régime, en a deux, ou un illisible), `actifsHorsLivre` (même référence
+    sans livre, livre vide ou refusé ; régime EXACT, CELIAPP ≠ CELI, absent = NON-ENREG) et
+    `valeurDuLivre` (`indisponible` dès qu'un cours ou un taux manque, jamais une somme partielle).
+    Parité au cent avec `computeInvestmentsValue` aujourd'hui ET à une date passée. Rien n'est encore
+    BRANCHÉ : aucun écran ne change. Revue : un `accountId` hors des trois du contrat (blob restauré)
+    refuse le livre (`compte-inconnu`) au lieu de finir sous une clé `undefined` de la ventilation, et
+    une décision prise sur un autre livre rend `indisponible` (`decision-desynchronisee`) ; `REGIMES_ADMIS`
+    exhaustif par le compilateur ; aucun persona ne plante `brokerAccountRegimes` (garde jumelle
+    d'`instruments`).
+  - [ ] **e2** — présent + mois 0 du Futur : `computeInvestmentsValue`/`computePresentTermes`,
+    `useSimulationParams` (soldes de départ), et retrait des régimes couverts par le livre de
+    `decideRegimesRepris` (Fintable), sinon l'autorité Fintable corrigerait un panier que le livre
+    remplace déjà.
+  - [ ] **e3** — passé (courbe, variation 30 j) sur `valoriserAu` pour les régimes couverts.
+    ⚠️ À trancher avant : l'exclusion des placements saisis ne dépend pas de la DATE. Avant le premier
+    événement du livre, le régime couvert vaut donc 0 $ — juste si le livre remonte à l'ouverture du
+    compte, faux s'il commence au premier relevé importé (le « transfert entrant » d'ouverture date
+    alors l'arrivée des titres au mauvais jour). Épinglé par un test de LIMITE (`passerelle.test.ts`),
+    à inverser ; la revue recommande une décision sensible à la date (un compte ne couvre qu'à partir
+    de son premier événement), à soumettre à Marc avec le cas « panier » (deux comptes du même
+    régime qui commencent à des dates différentes).
+  - [ ] **e4** — MCP, hub, PDF ; plus une garde à cliquet sur les appels `assetValueCad` /
+    `computeInvestmentsValue` hors de la passerelle.
+  ⚠️ À dire à Marc avant e2 : l'exclusion se fait par PANIER de régime — un placement saisi du même
+  régime tenu chez un AUTRE courtier sortirait aussi (sauf à le saisir au livre, compte
+  `hors-courtier`). Et l'encaisse du courtier compte dans son régime : un compte d'encaisse saisi à la
+  main pour le même argent la compterait deux fois. Tant que le magasin de marché n'est pas alimenté
+  (1c-2), la valeur du livre reste `indisponible` : e2 ne doit rien activer sans magasin.
 - [ ] 🔧 **`[PTF-L1G-IMPORT-PORTEFEUILLE]`** (L) — import déclenché par Marc, aperçu avant/après
   (quantité, prix, devise, coût, encaisse) ; remplacement daté des lignes mal cotées ; refus
   d'`apply_broker_statement` et de `delete_item` sur les lignes du référentiel (variante de symbole

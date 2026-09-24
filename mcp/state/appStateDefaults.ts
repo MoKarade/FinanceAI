@@ -84,6 +84,7 @@ export function buildDefaultAppState(): AppState {
         // serait MATÉRIALISÉE dans le blob Drive au premier outil d'écriture (« importé et vide »).
         brokerLedger: undefined,
         instruments: undefined,
+        brokerAccountRegimes: undefined,
     };
 }
 

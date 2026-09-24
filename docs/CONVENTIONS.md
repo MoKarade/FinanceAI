@@ -17079,3 +17079,16 @@ près ») ne pouvait pas le voir non plus — il ne compare que des QUANTITÉS.
   se refuse par son nom (`montant-non-traduit`).
 - Et un filtre par PRÉFIXE (« Total ») jette tout ce qui commence pareil, y compris une position
   réelle : ancrer le saut sur ce que le document annonce lui-même (la catégorie en cours).
+
+## `LE-NOM-D-UN-COMPTE-N-EST-PAS-SA-SEMANTIQUE` (2026-09-24, passerelle livre ↔ placements)
+
+Mon premier jet de la passerelle excluait le compte `hors-courtier` de la valorisation, sur la foi de
+son NOM : « ce qui quitte le courtier se compte ailleurs ». Faux. Le type dit que ce compte porte les
+saisies MANUELLES d'avoirs tenus hors du courtier (source `saisie-manuelle`), et un test du moteur de
+valorisation y faisait déjà ARRIVER des titres (transfert en transit). Exclu, il aurait rendu ces titres
+invisibles une fois les placements saisis de leur régime retirés — un patrimoine amputé, sans alerte.
+
+- Avant d'exclure une valeur d'une union par ce qu'elle SEMBLE dire, lire le commentaire du type qui la
+  déclare, puis grepper les TESTS qui l'emploient : ce qu'un scénario existant y écrit est sa sémantique.
+- Corollaire : la règle la plus simple (« tous les comptes se traitent pareil ») était aussi la seule qui
+  ne fabrique aucun trou. Une exception a besoin d'une preuve, l'uniformité non.

@@ -58,6 +58,8 @@ export const BackupSchema = z.object({
   // réhydratation (`verifierTypesRestaures`), qui REFUSE une chaîne dans un champ numérique.
   brokerLedger: z.array(z.object({}).passthrough()).optional(),
   instruments: z.array(z.object({}).passthrough()).optional(),
+  // [PTF-L1E-PASSERELLE] Régime fiscal par compte du grand livre : même tolérance, même juge.
+  brokerAccountRegimes: z.array(z.object({}).passthrough()).optional(),
   aiConversation: z.array(z.unknown()).optional(),
   // [B2] symétrie de schéma (le chat n'est pas restauré par le backup JSON — cf doRestore — mais
   // un export qui porte ces champs ne doit pas être rejeté à la validation).
@@ -277,6 +279,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     // (clé ABSENTE), pas un livre « importé et vide ».
     safeSet('app_broker_ledger', data.brokerLedger);
     safeSet('app_instruments', data.instruments);
+    safeSet('app_broker_account_regimes', data.brokerAccountRegimes);
 
     // SYS-AUDIT — trace la restauration (écrite APRÈS les writes → survit au reload).
     logAudit({

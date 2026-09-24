@@ -86,6 +86,11 @@ describe('[PTF-L05B-MESURE-SOURCES] logique pure de la mesure', () => {
         expect(() => lireAncres('pas du json SECRET-XYZ')).toThrow(/pas du JSON valide/);
         expect(() => lireAncres('pas du json SECRET-XYZ')).not.toThrow(/SECRET-XYZ/);
         expect(() => lireAncres('{"lignes":[]}')).toThrow(/vide/);
+        // La FORME reçue est nommée (trois erreurs de collage, trois corrections), jamais une clé.
+        expect(() => lireAncres('{"cleSecreteXYZ":{}}')).toThrow(/objet à 1 clé/);
+        expect(() => lireAncres('{"cleSecreteXYZ":{}}')).not.toThrow(/cleSecreteXYZ/);
+        expect(() => lireAncres('"{\\"lignes\\":[]}"')).toThrow(/chaîne JSON/);
+        expect(() => lireAncres('[{"yahoo":"X"}]')).toThrow(/tableau de 1/);
         expect(() => lireAncres('{"lignes":[{"yahoo":"X"}]}')).toThrow(/L1 incomplète/);
         expect(lireAncres('{"lignes":[{"yahoo":"X","devise":"USD","ancres":{}}]}').lignes).toHaveLength(1);
     });

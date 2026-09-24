@@ -48,8 +48,11 @@
   ligne, devise renvoyée (pence de Londres signalés), prix brut ou ajusté avant un fractionnement,
   écart aux ancres, accès du plan gratuit aux API fractionnements/dividendes, écart des taux Valet.
   Le journal est PUBLIC : il n'imprime que des verdicts par rang (`L1`…), jamais un symbole ni un
-  prix. **RESTE** : Marc pose `MESURE_ANCRES` (+ `EODHD_TOKEN_MESURE`, clé gratuite), lancer, puis
-  consigner les verdicts ici. C'est ce qui tranche la question de la source (gratuit/payant).
+  prix. **1er lancement (2026-09-24, run 36032594452) : ÉCHEC avant toute mesure** — le secret posé
+  est du JSON valide mais sans « lignes » (probablement l'autre fichier, ou le bon collé entre
+  guillemets). L'erreur nomme désormais la FORME reçue (objet à N clés / chaîne / tableau), jamais son
+  contenu. **RESTE** : Marc recolle `mesure-ancres-secret.json`, relancer, consigner les verdicts
+  ici. C'est ce qui tranche la question de la source (gratuit/payant).
 - [ ] 🔧 **`[PTF-L1A-SCHEMA-LIVRE]`** (M) — déclarer le grand livre et le référentiel d'instruments
   SANS rien écrire et SANS valeur par défaut (store ET MCP : test `hasOwnProperty` sur les deux) ;
   clés textuelles neuves dans la liste blanche de réhydratation dans le MÊME geste ; le modal de

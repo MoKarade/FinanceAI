@@ -13,8 +13,10 @@
     aucune quantité ni solde) ;
   - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
 
-  ✅ Secrets posés le 2026-09-24. Je lance « Mesurer les sources de cours » (Actions → workflow
-  manuel) et je consigne les verdicts. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
+  ⚠️ Secrets posés le 2026-09-24, mais le 1er lancement a échoué AVANT toute mesure : le contenu de
+  `MESURE_ANCRES` est du JSON valide **sans la clé « lignes »**. Le plus probable : c'est le fichier de
+  vérification (`ancres_verification.json`) qui a été collé, pas `mesure-ancres-secret.json`. Recolle
+  ce dernier tel quel (il commence par `{"lignes":[`), sans guillemets autour, puis dis-le-moi. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
   jamais un symbole ni un prix.
 
 - [ ] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24) — **les questions du Lot 0 de la refonte du

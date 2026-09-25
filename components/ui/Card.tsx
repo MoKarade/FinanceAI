@@ -15,15 +15,17 @@ interface CardProps {
 export const Card: React.FC<CardProps> = ({ children, className = "", title, icon, action, style, noPadding = false }) => {
   return (
     <div
-      className={`premium-card rounded-2xl transition-all duration-500 group animate-premium-in ${noPadding ? '' : 'p-6'} ${className}`}
+      className={`premium-card rounded-2xl group animate-premium-in ${noPadding ? '' : 'p-5 sm:p-6'} ${className}`}
       style={style}
     >
       {(title || action) && (
-        <div className={`flex justify-between items-center mb-6 pb-3 border-b border-white/5 relative z-10 ${noPadding ? 'px-6 pt-6' : ''}`}>
+        <div className={`flex justify-between items-center gap-3 mb-4 relative z-10 ${noPadding ? 'px-6 pt-6' : ''}`}>
+          {/* [S5-REFONTE-R2] Titre de carte des maquettes : 17 px, semi-gras, blanc franc (plus de dégradé
+              ni de filet ; l'icône reste, discrète, pour les cartes qui en portent une). */}
           {title && (
-            <h2 className="text-lg font-bold tracking-wide flex items-center gap-2 min-w-0">
-              {icon && <span className="text-primary shrink-0" aria-hidden="true">{icon}</span>}
-              <span className="truncate bg-clip-text text-transparent bg-linear-to-r/srgb from-white to-ink-300">{title}</span>
+            <h2 className="text-[17px] leading-6 font-semibold text-ink-50 flex items-center gap-2 min-w-0">
+              {icon && <span className="text-ink-300 shrink-0" aria-hidden="true">{icon}</span>}
+              <span className="truncate">{title}</span>
             </h2>
           )}
           {action && <div className="flex items-center">{action}</div>}

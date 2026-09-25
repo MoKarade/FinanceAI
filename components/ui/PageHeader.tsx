@@ -16,29 +16,28 @@ interface PageHeaderProps {
 }
 
 /**
- * Header standard de page (top de chaque tab).
- * Pattern uniforme : titre display + subtitle + actions à droite.
- * Mobile-friendly : actions wrap sous le titre si manque de place.
+ * En-tête standard de page (haut de chaque onglet).
+ * [S5-REFONTE-R2] Maquettes : titre 26 px gras, sous-titre discret, actions à droite, filet sous
+ * l'en-tête. Plus d'icône devant le titre (les maquettes n'en ont pas) : `icon` reste accepté pour
+ * ne pas casser les appelants, et n'est plus rendu.
+ * Mobile : les actions passent sous le titre si la place manque.
  */
 export const PageHeader: React.FC<PageHeaderProps> = ({
-    title, subtitle, icon, badge, actions, className = '',
+    title, subtitle, badge, actions, className = '',
 }) => {
     return (
-        <header className={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-section ${className}`}>
-            <div className="flex items-start gap-3 min-w-0">
-                {icon && <span className="shrink-0 text-primary mt-0.5" aria-hidden="true">{icon}</span>}
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <h1 className="text-display text-ink-50 tracking-tight">{title}</h1>
-                        {badge && <div>{badge}</div>}
-                    </div>
-                    {subtitle && (
-                        <p className="text-body text-ink-300 mt-1 max-w-2xl">{subtitle}</p>
-                    )}
+        <header className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-5 border-b border-white/6 ${className}`}>
+            <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-[26px] leading-8 font-bold text-ink-50">{title}</h1>
+                    {badge && <div>{badge}</div>}
                 </div>
+                {subtitle && (
+                    <p className="text-[13px] leading-5 text-ink-400 mt-1 max-w-2xl">{subtitle}</p>
+                )}
             </div>
             {actions && (
-                <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {actions}
                 </div>
             )}

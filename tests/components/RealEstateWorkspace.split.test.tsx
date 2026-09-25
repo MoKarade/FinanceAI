@@ -51,6 +51,9 @@ const project = goal({ id: 'proj', name: 'Chalet Projet 2099', purchaseDate: '20
 const newSetGoals = () => vi.fn<(g: RealEstateGoal[]) => void>();
 type SetGoalsMock = ReturnType<typeof newSetGoals>;
 
+/** [S5-REFONTE-IMMOBILIER] Nom, suppression et réglages fins vivent dans le repli de « Financement ». */
+const ouvrirReglages = () => fireEvent.click(screen.getByRole('button', { name: /Taux, frais récurrents et plafond de valeur/ }));
+
 /** Dernier appel à setGoals (la liste COMPLÈTE écrite dans le store). */
 const lastWrite = (setGoals: SetGoalsMock): RealEstateGoal[] =>
     setGoals.mock.calls[setGoals.mock.calls.length - 1][0];
@@ -60,7 +63,7 @@ describe("addNewGoal — le SEED atterrit dans la zone où sa classification est
         const setGoals = newSetGoals();
         render(<RealEstate availableCash={50_000} goals={[owned, project]} setGoals={setGoals} />);
 
-        fireEvent.click(screen.getByText('+ Ajouter un bien'));
+        fireEvent.click(screen.getByRole('button', { name: 'Ajouter un bien' }));
 
         const written = lastWrite(setGoals);
         const created = written.find(g => g.id !== 'owned' && g.id !== 'proj');
@@ -82,7 +85,7 @@ describe("addNewGoal — le SEED atterrit dans la zone où sa classification est
         const setGoals = newSetGoals();
         render(<RealEstateProjects availableCash={50_000} goals={[owned, project]} setGoals={setGoals} />);
 
-        fireEvent.click(screen.getByText('+ Ajouter un projet'));
+        fireEvent.click(screen.getByRole('button', { name: 'Ajouter un projet' }));
 
         const created = lastWrite(setGoals).find(g => g.id !== 'owned' && g.id !== 'proj');
         expect(created).toBeDefined();
@@ -99,6 +102,7 @@ describe("addNewGoal — le SEED atterrit dans la zone où sa classification est
  * touchait pas à ce qu'il DÉFEND (le dénominateur réel est-il annoncé ?), seulement à la FORME
  * qu'avait le code. On lit donc le texte COMPLET du sous-titre, ce que la structure ne change pas.
  */
+// [S5-REFONTE-IMMOBILIER] La phrase est le « chiffre clé » de l'en-tête (badge), toujours un <p>.
 const sousTitre = (): string => (document.querySelector('header p')?.textContent ?? '')
     .replace(/[\s\u00A0\u202F]+/g, ' ').trim();
 
@@ -178,10 +182,10 @@ describe('Écritures — toujours sur la liste COMPLÈTE (l\'autre vue jamais pe
     const cas = [
         { nom: 'actuel', render: (setGoals: SetGoalsMock) =>
             render(<RealEstate availableCash={50_000} goals={[owned, project]} setGoals={setGoals} />),
-          ajoute: '+ Ajouter un bien', edite: 'owned', autre: 'proj', supprime: 'Supprimer Maison Détenue 2019' },
+          ajoute: 'Ajouter un bien', edite: 'owned', autre: 'proj', supprime: 'Supprimer Maison Détenue 2019' },
         { nom: 'projet', render: (setGoals: SetGoalsMock) =>
             render(<RealEstateProjects availableCash={50_000} goals={[owned, project]} setGoals={setGoals} />),
-          ajoute: '+ Ajouter un projet', edite: 'proj', autre: 'owned', supprime: 'Supprimer Chalet Projet 2099' },
+          ajoute: 'Ajouter un projet', edite: 'proj', autre: 'owned', supprime: 'Supprimer Chalet Projet 2099' },
     ];
 
     for (const c of cas) {
@@ -189,7 +193,7 @@ describe('Écritures — toujours sur la liste COMPLÈTE (l\'autre vue jamais pe
             it('AJOUT : la liste écrite contient encore le goal de l\'autre vue, intact', () => {
                 const setGoals = newSetGoals();
                 c.render(setGoals);
-                fireEvent.click(screen.getByText(c.ajoute));
+                fireEvent.click(screen.getByRole('button', { name: c.ajoute }));
 
                 const written = lastWrite(setGoals);
                 expect(written).toHaveLength(3);
@@ -200,6 +204,7 @@ describe('Écritures — toujours sur la liste COMPLÈTE (l\'autre vue jamais pe
             it('ÉDITION : renommer le bien visible n\'altère pas le goal de l\'autre vue', () => {
                 const setGoals = newSetGoals();
                 c.render(setGoals);
+                ouvrirReglages();
                 fireEvent.change(screen.getByLabelText('Nom de la propriété'), { target: { value: 'Renommé' } });
 
                 const written = lastWrite(setGoals);
@@ -211,6 +216,7 @@ describe('Écritures — toujours sur la liste COMPLÈTE (l\'autre vue jamais pe
             it('SUPPRESSION : seul le goal visé disparaît, l\'autre vue survit', () => {
                 const setGoals = newSetGoals();
                 c.render(setGoals);
+                ouvrirReglages();
                 fireEvent.click(screen.getByLabelText(c.supprime));
                 fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }));
 

@@ -190,6 +190,11 @@
     background-color: rgba(11, 14, 20, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
+  /* [S5-REFONTE] `.champ-alerte` : valeur « à préciser » (maquette E-immobilier : bordure et fond ambrés). */
+  select.champ-alerte:not(:focus) {
+    background-color: rgba(212, 162, 76, 0.08) !important;
+    border-color: rgba(212, 162, 76, 0.55) !important;
+  }
   /* LUXE — focus aligné sur la marque (emerald/primary, au lieu du violet) + anneau
      plus doux. Les composants demandaient déjà focus:border-primary ; le !important
      global forçait le violet → incohérent. Corrigé ici, app-wide. */

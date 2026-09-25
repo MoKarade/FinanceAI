@@ -49,7 +49,8 @@ describe('RealEstate — vue Config (biens ACTUELS seulement, [REFONTE-NAV-L3])'
         expect(screen.getAllByText(/Maison Détenue 2019/).length).toBeGreaterThan(0);
         expect(screen.queryByText(/Chalet Projet 2099/)).toBeNull();
         // Le lien croisé signale où vit l'autre moitié de la tranche.
-        expect(screen.getByText(/1 projet d'achat futur → Vie · Projets immo/)).toBeInTheDocument();
+        // [S5-REFONTE-IMMOBILIER] L'autre moitié du split est à un onglet d'en-tête (« Projets d'achat · N »).
+        expect(screen.getByRole('button', { name: "Projets d'achat · 1" })).toBeInTheDocument();
     });
 
     it('sans bien détenu : état vide honnête (aucun éditeur sur un goal placeholder)', () => {

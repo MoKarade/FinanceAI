@@ -140,4 +140,11 @@ describe('formatCompactCAD', () => {
         expect(norm(formatCompactCAD(1_500_000, { precis: true }))).toBe('1,50 M$');
         expect(norm(formatCompactCAD(500, { precis: true }))).toBe('500 $');
     });
+
+    it('repère d\'axe : zéro nu, M$ sans décimales inutiles, k$ inchangé', () => {
+        expect(formatCompactCAD(0, { repere: true })).toBe('0');
+        expect(norm(formatCompactCAD(1_000_000, { repere: true }))).toBe('1 M$');
+        expect(norm(formatCompactCAD(1_250_000, { repere: true }))).toBe('1,25 M$');
+        expect(norm(formatCompactCAD(750_000, { repere: true }))).toBe('750 k$');
+    });
 });

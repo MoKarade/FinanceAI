@@ -124,221 +124,69 @@ describe('Layout', () => {
         expect(sidebar?.hasAttribute('aria-expanded')).toBe(false);
     });
 
-    it('§B.1 — sidebar expands au mouseEnter, collapses au mouseLeave (observable = largeur)', () => {
+    it('[S5-REFONTE-R1] barre latérale TEXTE toujours dépliée : trois groupes, items dans l\'ordre des maquettes', () => {
         const { container } = render(<Layout {...baseProps} />);
-        const sidebar = container.querySelector('aside')!;
-        expect(sidebar.className).toContain('w-16');
-        fireEvent.mouseEnter(sidebar);
-        expect(sidebar.className).toContain('w-72');
-        fireEvent.mouseLeave(sidebar);
-        expect(sidebar.className).toContain('w-16');
+        const aside = container.querySelector('aside')!;
+        expect(aside.className, 'largeur fixe, plus de rail au survol').toContain('w-[232px]');
+        const nav = within(aside).getByRole('navigation', { name: 'Navigation principale' });
+        const textes = within(nav).getAllByRole('button').map((b) => b.textContent?.trim());
+        expect(textes).toEqual(['Futur', 'Transactions', 'Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Assistant', 'Réglages']);
+        for (const titre of ['Vue', 'Planifier', 'Outils']) expect(within(nav).getByText(titre)).toBeInTheDocument();
+        expect(within(nav).queryAllByRole('button').some((b) => b.hasAttribute('aria-expanded')), 'plus d\'accordéon').toBe(false);
     });
 
-    it('§B.2 — clic sur header de groupe (sidebar ouverte) toggle aria-expanded', () => {
-        const { container } = render(<Layout {...baseProps} />);
-        const sidebar = container.querySelector('aside')!;
-        fireEvent.mouseEnter(sidebar); // ouvre la sidebar
-        const configHeader = within(sidebar).getAllByRole('button').find(
-            b => b.textContent?.includes('Configurations') && !b.hasAttribute('aria-current')
-        );
-        expect(configHeader).toBeDefined();
-        expect(configHeader!.getAttribute('aria-expanded')).toBe('true'); // default open
-        fireEvent.click(configHeader!);
-        expect(configHeader!.getAttribute('aria-expanded')).toBe('false');
-        fireEvent.click(configHeader!);
-        expect(configHeader!.getAttribute('aria-expanded')).toBe('true');
+    it('[S5-REFONTE-R1] Immobilier réunit biens et projets : item courant sur les DEUX onglets', () => {
+        const { container } = render(<Layout {...baseProps} activeTab={Tab.REAL_ESTATE_PROJECTS} />);
+        const nav = within(container.querySelector('aside')!).getByRole('navigation', { name: 'Navigation principale' });
+        expect(within(nav).getByText('Immobilier').getAttribute('aria-current')).toBe('page');
     });
 
-    it('§B.2 (inversé par D6-KBD) — header de groupe JAMAIS disabled, même sidebar collapsée', () => {
-        // L'ancien contrat (« disabled quand collapsed ») rendait l'accordéon inatteignable au
-        // clavier en marche avant : Tab SAUTE un bouton désactivé, et au moment où Tab le
-        // considère la sidebar est encore repliée. Nouveau contrat : atteint = opérable (le
-        // focus ouvre la sidebar via l'onFocus de l'aside).
-        const { container } = render(<Layout {...baseProps} />);
-        const sidebar = container.querySelector('aside')!;
-        const headers = within(sidebar).getAllByRole('button').filter(
-            b => b.textContent?.includes('Configurations') && !b.hasAttribute('aria-current')
-        );
-        expect(headers.length).toBeGreaterThan(0);
-        expect(headers.every(h => !(h as HTMLButtonElement).disabled)).toBe(true);
-    });
-});
-
-// [D6-KBD] Sidebar pilotable au CLAVIER (V10 a11y, 2026-08-12). Deux pièges verrouillés :
-// 1. `disabled={!isSidebarOpen}` sautait l'accordéon au Tab (au moment où Tab le considère, le
-//    focus n'est pas encore DANS l'aside, donc la sidebar est repliée et le bouton désactivé) ;
-// 2. les items d'un groupe REPLIÉ restaient dans l'ordre de tabulation (max-h-0 + overflow-hidden
-//    cache visuellement mais ne retire PAS du tab-order) → focus posé sur un élément invisible.
-describe('Layout — sidebar au clavier (D6-KBD)', () => {
-    it('les boutons d’accordéon ne sont JAMAIS disabled et exposent toujours aria-expanded', () => {
-        const { container } = render(<Layout {...baseProps} />);
-        const accordions = Array.from(container.querySelectorAll('aside button[aria-expanded]'))
-            // exclut l'aside lui-même (aria-expanded aussi) et tout bouton hors groupes
-            .filter((b) => b.tagName === 'BUTTON');
-        expect(accordions.length).toBeGreaterThan(0);
-        for (const b of accordions) {
-            expect(b).not.toBeDisabled();
-            expect(['true', 'false']).toContain(b.getAttribute('aria-expanded'));
-        }
-    });
-
-    it('un groupe REPLIÉ est visibility:hidden (hors tab-order), un groupe déplié est visible', () => {
-        // ⚠️ Version corrigée (audit #598) : la première mouture assertait sur les groupes repliés
-        // DU RENDU PAR DÉFAUT — or tous les groupes sont OUVERTS par défaut, la boucle ne
-        // s'exécutait jamais (test vacueux, classe CONVENTIONS). On REPLIE d'abord.
-        const { container } = render(<Layout {...baseProps} />);
-        expect(container.querySelectorAll('aside .max-h-0').length).toBe(0); // tout ouvert par défaut
-        const btn = container.querySelector('aside button[aria-expanded="true"]') as HTMLButtonElement;
-        fireEvent.click(btn); // replie le premier groupe
-        const collapsed = container.querySelectorAll('aside .max-h-0');
-        expect(collapsed.length).toBe(1);
-        expect(collapsed[0].className).toContain('invisible');
-        const expanded = container.querySelectorAll('aside .max-h-\\[600px\\]');
-        expect(expanded.length).toBeGreaterThan(0);
-        for (const e of Array.from(expanded)) expect(e.className).toContain('visible');
-    });
-
-    it('cliquer un accordéon bascule son état, sidebar repliée ou non (plus de garde isSidebarOpen)', () => {
-        // Groupes dépliés par défaut → on replie PUIS on redéplie, sidebar restée « repliée »
-        // (aucun focus/hover simulé) : l'ancien onClick gardé par isSidebarOpen ne faisait RIEN ici.
-        const { container } = render(<Layout {...baseProps} />);
-        const btn = Array.from(container.querySelectorAll('aside button[aria-expanded]'))[0] as HTMLButtonElement;
-        expect(btn).toBeTruthy();
-        const before = btn.getAttribute('aria-expanded');
-        fireEvent.click(btn);
-        expect(btn.getAttribute('aria-expanded')).not.toBe(before);
-        fireEvent.click(btn);
-        expect(btn.getAttribute('aria-expanded')).toBe(before);
-    });
-});
-
-// [REFONTE-NAV Lot 1] La nav = 6 destinations (source unique components/navDestinations.ts).
-describe('Layout — nav 6 destinations (REFONTE-NAV Lot 1)', () => {
-    it('les destinations à onglet unique (Futur, Assistant, Réglages) sont des boutons DIRECTS, pas des accordéons', () => {
-        const { container } = render(<Layout {...baseProps} />);
-        const sidebar = container.querySelector('aside')!;
-        for (const label of ['Futur', 'Assistant', 'Réglages']) {
-            const btn = within(sidebar).getAllByRole('button').find(b => b.textContent?.trim() === label);
-            expect(btn, `bouton direct « ${label} »`).toBeDefined();
-            expect(btn!.hasAttribute('aria-expanded')).toBe(false); // navigue, ne se déplie pas
-        }
-    });
-
-    it('un clic sur « Futur » navigue vers Tab.FUTURE', () => {
+    it('[S5-REFONTE-R1] la carte Profil (pied de barre) ouvre le Profil', () => {
         const setActiveTab = vi.fn();
         const { container } = render(<Layout {...baseProps} setActiveTab={setActiveTab} />);
-        const sidebar = container.querySelector('aside')!;
-        const futur = within(sidebar).getAllByRole('button').find(b => b.textContent?.trim() === 'Futur')!;
-        fireEvent.click(futur);
-        expect(setActiveTab).toHaveBeenCalledWith(Tab.FUTURE);
+        fireEvent.click(container.querySelector(`aside [data-tour-id="nav-${Tab.PROFILE}"]`)!);
+        expect(setActiveTab).toHaveBeenCalledWith(Tab.PROFILE);
     });
 
-    it('les 3 groupes multi-onglets (Configurations, Vie, Transactions) exposent un accordéon', () => {
-        const { container } = render(<Layout {...baseProps} />);
-        const sidebar = container.querySelector('aside')!;
-        for (const label of ['Configurations', 'Vie', 'Transactions']) {
-            const header = within(sidebar).getAllByRole('button').find(
-                b => b.textContent?.includes(label) && b.hasAttribute('aria-expanded'),
-            );
-            expect(header, `accordéon « ${label} »`).toBeDefined();
-        }
-    });
-
-    it('non-perte mobile : chaque onglet couvert est atteignable via la barre OU le drawer « Plus » — scoped AU drawer', () => {
-        // ⚠️ Version corrigée (finding code-reviewer #600) : la 1re mouture interrogeait le
-        // DOCUMENT entier — la sidebar desktop (présente dans jsdom malgré `hidden md:flex`)
-        // satisfaisait l'assertion et masquait un bouton du drawer mal étiqueté (« Budget »
-        // affiché « Transactions »). On interroge LE conteneur du drawer, rien d'autre.
+    it('non-perte mobile : chaque onglet est atteignable via la barre OU le menu « Plus » — scoped AU menu', () => {
+        // ⚠️ (finding code-reviewer #600) : interroger le DOCUMENT entier laisserait la barre latérale
+        // (présente dans jsdom malgré `hidden lg:flex`) satisfaire l'assertion. On interroge LE menu.
         const setActiveTab = vi.fn();
         render(<Layout {...baseProps} setActiveTab={setActiveTab} />);
-        // Barre mobile : Futur, Transactions, Assistant épinglés.
         const mobileNav = screen.getByRole('navigation', { name: 'Navigation mobile' });
         for (const label of ['Futur', 'Transactions', 'Assistant']) {
             expect(within(mobileNav).getByText(label)).toBeInTheDocument();
         }
-        // Drawer : le reste (Configurations ×5, Vie ×3, Budget, Réglages) — CHAQUE libellé
-        // doit exister DANS le drawer, exactement une fois.
         fireEvent.click(within(mobileNav).getByRole('button', { name: "Plus d'options" }));
-        const drawer = screen.getByRole('navigation', { name: 'Autres destinations' });
-        for (const label of ['Profil', 'Investissements', 'Immobilier', 'Dettes', 'Impôts & Docs',
-            'Retraite', 'Enfant', 'Projets de vie', 'Budget', 'Réglages']) {
-            // Sur les BOUTONS uniquement : un en-tête de section peut légitimement porter le
-            // même texte qu'un bouton (« Réglages »), mais chaque libellé doit correspondre à
-            // EXACTEMENT un bouton de navigation.
-            const btns = within(drawer).getAllByRole('button').filter(b => b.textContent?.trim() === label);
-            expect(btns.length, `« ${label} » = un bouton du drawer`).toBe(1);
+        const menu = screen.getByRole('navigation', { name: 'Autres destinations' });
+        for (const label of ['Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Réglages']) {
+            const btns = within(menu).getAllByRole('button').filter(b => b.textContent?.replace('›', '').trim() === label);
+            expect(btns.length, `« ${label} » = un bouton du menu`).toBe(1);
         }
-        // Le libellé fait ce qu'il dit : cliquer « Budget » navigue vers Tab.BUDGET
-        // (le bug corrigé étiquetait ce bouton « Transactions »).
-        fireEvent.click(within(drawer).getByText('Budget'));
+        fireEvent.click(within(menu).getByText('Budget'));
         expect(setActiveTab).toHaveBeenCalledWith(Tab.BUDGET);
+    });
+
+    it('[S5-REFONTE-R1] menu « Plus » : le Profil y est, Échap le referme', () => {
+        const setActiveTab = vi.fn();
+        render(<Layout {...baseProps} setActiveTab={setActiveTab} />);
+        fireEvent.click(screen.getByRole('button', { name: "Plus d'options" }));
+        expect(screen.getByRole('heading', { name: 'Plus' })).toBeInTheDocument();
+        fireEvent.keyDown(window, { key: 'Escape' });
+        expect(screen.queryByRole('navigation', { name: 'Autres destinations' })).toBeNull();
+    });
+
+    it('[S5-REFONTE-R1] mobile : les pages hors barre du bas remontent vers « Plus »', () => {
+        const { rerender } = render(<Layout {...baseProps} activeTab={Tab.FUTURE} />);
+        expect(screen.queryByText('‹ Plus')).toBeNull();
+        rerender(<Layout {...baseProps} activeTab={Tab.DEBT} />);
+        fireEvent.click(screen.getByText('‹ Plus'));
+        expect(screen.getByRole('navigation', { name: 'Autres destinations' })).toBeInTheDocument();
     });
 
     it('l\'Accueil n\'apparaît NULLE PART dans la nav (retiré, pas caché)', () => {
         const { container } = render(<Layout {...baseProps} />);
         expect(container.querySelector(`[data-tour-id="nav-${Tab.DASHBOARD}"]`)).toBeNull();
         expect(screen.queryByText('Accueil')).toBeNull();
-    });
-
-    /**
-     * [A11Y-SIDEBAR-ESC] WCAG 1.4.13 (Content on Hover or Focus) — « Dismissable ».
-     *
-     * Le rail se DÉPLIE au survol et au focus. La norme exige qu'on puisse le REFERMER au clavier
-     * sans déplacer le pointeur ni le focus : sinon un utilisateur au clavier, ou qui grossit
-     * l'écran, se retrouve avec un panneau de 288 px qui recouvre le contenu et qu'aucune touche ne
-     * ferme. L'état largeur (`w-72` / `w-16`) est la grandeur PUBLIÉE : c'est elle qu'on vérifie,
-     * pas le drapeau interne.
-     */
-    describe('a11y — le rail latéral se referme avec Échap', () => {
-        const rail = (container: HTMLElement): HTMLElement => {
-            const el = container.querySelector('aside');
-            if (!el) throw new Error('aside introuvable');
-            return el as HTMLElement;
-        };
-
-        it('Échap replie le rail déplié au survol, sans bouger le pointeur', () => {
-            const { container } = render(<Layout {...baseProps} />);
-            const aside = rail(container);
-
-            fireEvent.mouseEnter(aside);
-            expect(aside.className, 'le survol doit déplier le rail').toContain('w-72');
-
-            fireEvent.keyDown(aside, { key: 'Escape' });
-            expect(aside.className, 'Échap doit replier le rail (WCAG 1.4.13)').toContain('w-16');
-        });
-
-        it('Échap tient MALGRÉ un focus interne qui rouvrirait le rail', () => {
-            // Le piège du correctif naïf : `onFocus` se redéclenche au moindre Tab dans le rail.
-            // Sans verrou, le rail se rouvrirait tout seul juste après le Échap.
-            const { container } = render(<Layout {...baseProps} />);
-            const aside = rail(container);
-
-            fireEvent.mouseEnter(aside);
-            fireEvent.keyDown(aside, { key: 'Escape' });
-            fireEvent.focus(aside);
-            expect(aside.className, 'un focus interne ne doit pas annuler le Échap').toContain('w-16');
-        });
-
-        it('le verrou se LÈVE quand le pointeur quitte puis revient', () => {
-            // Une fermeture DÉFINITIVE serait un autre défaut : le rail deviendrait inutilisable à
-            // la souris pour le reste de la session.
-            const { container } = render(<Layout {...baseProps} />);
-            const aside = rail(container);
-
-            fireEvent.mouseEnter(aside);
-            fireEvent.keyDown(aside, { key: 'Escape' });
-            fireEvent.mouseLeave(aside);
-            fireEvent.mouseEnter(aside);
-            expect(aside.className, 'revenir sur le rail doit le rouvrir').toContain('w-72');
-        });
-
-        it('une autre touche ne referme rien', () => {
-            const { container } = render(<Layout {...baseProps} />);
-            const aside = rail(container);
-
-            fireEvent.mouseEnter(aside);
-            fireEvent.keyDown(aside, { key: 'a' });
-            expect(aside.className, 'seule Échap referme').toContain('w-72');
-        });
     });
 });

@@ -3,7 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal, User } from '../types';
 import { TAB_LABELS } from '../constants';
-import { NAV_DESTINATIONS, MOBILE_BAR_TABS, destinationOfTab } from './navDestinations';
+import { NAV_GROUPS, MOBILE_BAR_TABS, PROFILE_TAB, navItemOfTab } from './navDestinations';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { showToast } from './ui/Toast';
 import { Icon, type IconName } from './ui/Icon';
@@ -74,70 +74,23 @@ export const Layout: React.FC<LayoutProps> = ({
     setAnnonceRoute(TAB_LABELS[activeTab]);
   }, [activeTab]);
 
-  // Phase B.1 — sidebar cachée par défaut, expansion au survol + focus clavier.
-  const [sidebarHovered, setSidebarHovered] = React.useState(false);
-  const [sidebarFocused, setSidebarFocused] = React.useState(false);
-  // [A11Y-SIDEBAR-ESC] WCAG 1.4.13 (Dismissable) : un contenu déclenché par le survol ou le focus
-  // doit pouvoir être REFERMÉ au clavier sans déplacer ni le pointeur ni le focus. Un simple
-  // `setSidebarHovered(false)` ne suffit pas — `onMouseEnter` ne se redéclenche pas tant que le
-  // pointeur ne SORT pas, mais `onFocus` se redéclenche au moindre Tab interne et rouvrirait le
-  // rail aussitôt. D'où un VERROU, levé quand le survol ou le focus quitte réellement l'aside.
-  const [sidebarDismissed, setSidebarDismissed] = React.useState(false);
-  const isSidebarOpen = (sidebarHovered || sidebarFocused) && !sidebarDismissed;
+  // [S5-REFONTE-R1] Barre latérale TOUJOURS dépliée (232 px, texte) : plus de rail au survol, donc
+  // plus d'accordéon ni de verrou Échap (WCAG 1.4.13 ne s'applique plus : rien n'apparaît au survol).
+  const isNavActive = (tab: Tab) => navItemOfTab(activeTab)?.tab === tab;
+  const itemsMobilePlus = NAV_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter((it) => !MOBILE_BAR_TABS.includes(it.tab)) }))
+    .filter((g) => g.items.length > 0);
+  const surPagePlus = !MOBILE_BAR_TABS.includes(activeTab);
 
-  // Phase B.2 — accordion : chaque destination multi-onglets peut être dépliée/repliée au clic.
-  // Par défaut toutes ouvertes pour ne pas surprendre l'utilisateur.
-  const [openGroups, setOpenGroups] = React.useState<Set<string>>(
-    () => new Set(NAV_DESTINATIONS.filter((d) => d.tabs.length > 1).map((d) => d.label)),
-  );
-  const toggleGroup = React.useCallback((label: string) => {
-    setOpenGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
-  }, []);
-
-  // [REFONTE-NAV Lot 1] La structure vient de NAV_DESTINATIONS (source unique) — plus de
-  // navGroups locaux. Icône par onglet : celle de sa destination pour les singletons, sinon
-  // l'icône historique de la page.
-  const TAB_ICONS: Record<Tab, IconName> = {
-    [Tab.DASHBOARD]: 'dashboard',
-    [Tab.TRANSACTIONS]: 'transactions',
-    [Tab.BUDGET]: 'budget',
-    [Tab.DEBT]: 'debt',
-    [Tab.INVESTMENTS]: 'investments',
-    [Tab.FUTURE]: 'future',
-    [Tab.REAL_ESTATE]: 'real-estate',
-    [Tab.REAL_ESTATE_PROJECTS]: 'building',
-    [Tab.CHILD]: 'child',
-    [Tab.TRAVEL]: 'life-projects',
-    [Tab.LIFE_EVENTS]: 'life-projects',
-    [Tab.LIFE_PROJECTS]: 'life-projects',
-    [Tab.RETIREMENT]: 'retirement',
-    [Tab.TAX]: 'tax',
-    [Tab.SETTINGS]: 'settings',
-    [Tab.PROFILE]: 'settings',
-    [Tab.ASSISTANT]: 'bot',
-  };
-
-  // Barre mobile : onglets épinglés + tout le reste via le drawer « Plus ».
-  const mobileBarItems = MOBILE_BAR_TABS.map((tab) => ({
-    id: tab,
-    label: destinationOfTab(tab)?.tabs.length === 1 ? destinationOfTab(tab)!.label : TAB_LABELS[tab],
-    icon: TAB_ICONS[tab],
-  }));
-  // ⚠️ `isSingleTab` se calcule AVANT le filtrage des tabs épinglés : après filtrage,
-  // Transactions [TRANSACTIONS, BUDGET] devient [BUDGET] (length 1) et le bouton Budget
-  // s'étiquetait « Transactions » (finding code-reviewer #600, prouvé par rendu).
-  const drawerDestinations = NAV_DESTINATIONS
-    .map((d) => ({
-      ...d,
-      isSingleTab: d.tabs.length === 1,
-      tabs: d.tabs.filter((tab) => !MOBILE_BAR_TABS.includes(tab)),
-    }))
-    .filter((d) => d.tabs.length > 0);
+  // Menu « Plus » (mobile) : Échap le referme, et le focus y entre à l'ouverture.
+  const panneauPlusRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!showMobileDrawer) return;
+    panneauPlusRef.current?.querySelector<HTMLElement>('button, a')?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowMobileDrawer(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showMobileDrawer]);
 
   // Phase B.3 — `getSmartMilestone` (palier statique) retiré. Remplacé par le
   // widget NextBestAction qui appelle Claude (Haiku) avec lastProjection.
@@ -170,6 +123,13 @@ export const Layout: React.FC<LayoutProps> = ({
     showToast('Définis d\'abord ton conjoint (nom + âge) dans Profil pour passer en couple.', 'info');
     useFinanceStore.getState().setActiveTab(Tab.PROFILE);
   };
+
+  // Carte Profil : initiales + prénoms du ménage (« Alex et Sam »), sans le suffixe « (test) ».
+  const prenoms = ((coupleConfig?.users ?? []) as User[])
+    .map((u) => (u?.name ?? '').replace(/\s*\(test\)\s*$/i, '').trim())
+    .filter(Boolean);
+  const libelleProfil = prenoms.length ? prenoms.join(' et ') : 'Profil';
+  const initiales = prenoms.length ? prenoms.map((n) => n[0]!.toUpperCase()).join('').slice(0, 2) : 'P';
 
   return (
     <div className={`min-h-screen flex flex-col md:flex-row text-ink-100 font-sans ${isPrivacyMode ? 'privacy-active' : ''} ${isTestMode ? 'test-mode-active' : ''}`}>
@@ -244,322 +204,206 @@ export const Layout: React.FC<LayoutProps> = ({
         }
       `}</style>
 
-      {/* Phase B.1 — sidebar fixe-positionnée, collapsed-by-default (w-16),
-          expand au survol/focus (w-72). Le main a `md:ml-16` pour préserver la
-          place du rail collapsé ; l'expansion overlay le contenu (pas de shift). */}
-      {/* aria-expanded retiré de l'aside (audit #598) : non supporté par le rôle implicite
-          complementary (axe aria-allowed-attr) — chaque groupe expose le sien via son bouton. */}
-      <aside
-        className={`hidden md:flex fixed top-0 left-0 bottom-0 z-40 flex-col bg-dark border-r border-white/10 overflow-hidden shadow-2xl transition-[width] duration-200 motion-reduce:transition-none ${
-          isSidebarOpen ? 'w-72' : 'w-16'
-        }`}
-        onMouseEnter={() => setSidebarHovered(true)}
-        onMouseLeave={() => { setSidebarHovered(false); setSidebarDismissed(false); }}
-        onFocus={() => setSidebarFocused(true)}
-        onBlur={(e) => {
-          // Ne déclenche le collapse que si le focus quitte tout l'aside.
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            setSidebarFocused(false);
-            setSidebarDismissed(false);
-          }
-        }}
-        // [A11Y-SIDEBAR-ESC] Échap replie le rail sans bouger le focus : les libellés repassent en
-        // `opacity-0`, mais les noms accessibles restent (chaque item porte un `aria-label` quand le
-        // rail est replié), donc rien n'est perdu pour un lecteur d'écran.
-        onKeyDown={(e) => { if (e.key === 'Escape') setSidebarDismissed(true); }}
-      >
-        {/* Brand + privacy toggle */}
-        <div className="p-3 pb-2 shrink-0 space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-ink-50 text-xl font-bold shadow-[0_0_20px_rgba(230,234,242,0.12)] shrink-0" aria-hidden="true">
-              Fi
-            </div>
-            <div className={`min-w-0 whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-              <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
-              <div className="text-tiny text-ink-400 font-mono" title={`Build ${__BUILD_DATE__}`}>
-                v{__APP_VERSION__} • {__GIT_SHA__}
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={togglePrivacyMode}
-            aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
-            aria-pressed={isPrivacyMode}
-            title="Mode Discret"
-            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
-              isPrivacyMode ? 'bg-white/10 text-white' : 'text-ink-400 hover:bg-white/5 hover:text-white'
-            }`}
-          >
-            <Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={16} className="shrink-0" />
-            <span className={`text-meta whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-              {isPrivacyMode ? 'Quitter discret' : 'Mode discret'}
-            </span>
-          </button>
+      {/* [S5-REFONTE-R1] Barre latérale TEXTE (bureau, ≥ lg) : marque, trois groupes, carte Profil.
+          aria-expanded absent de l'aside (audit #598 : non supporté par le rôle complementary). */}
+      <aside className={`hidden lg:flex fixed top-0 left-0 bottom-0 z-40 w-[232px] flex-col gap-5 bg-[#0A0C10] border-r border-white/6 px-3.5 pb-3.5 ${isTestMode ? 'pt-16' : 'pt-5'}`}>
+        <div className="flex items-center gap-2.5 px-2" title={`v${__APP_VERSION__} • ${__GIT_SHA__} — build ${__BUILD_DATE__}`}>
+          <div className="w-[30px] h-[30px] rounded-[9px] bg-primary text-dark font-extrabold text-base flex items-center justify-center shrink-0" aria-hidden="true">F</div>
+          {/* Le brand n'est PAS un titre : le <h1> est réservé au titre de page. */}
+          <p className="text-base font-bold text-ink-50">FinanceAI</p>
         </div>
 
-        {/* NBA-PAGE — « Prochaine action » déplacé dans son onglet dédié (retiré de la sidebar). */}
-
-        {/* Navigation principale — accordion par groupe */}
-        <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {NAV_DESTINATIONS.map((dest) => {
-            // [REFONTE-NAV Lot 1] Destination à onglet UNIQUE (Futur, Assistant, Réglages) :
-            // bouton de navigation direct, même gabarit visuel qu'un header de groupe (pas
-            // d'accordéon d'un seul item). aria-current le distingue des accordéons.
-            if (dest.tabs.length === 1) {
-              const tab = dest.tabs[0];
-              const isActive = activeTab === tab;
-              return (
-                <div key={dest.id} className="mb-1.5">
+        <nav aria-label="Navigation principale" className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.id} className="flex flex-col gap-0.5">
+              <p className="px-2.5 pb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400">{group.label}</p>
+              {group.items.map((item) => {
+                const actif = isNavActive(item.tab);
+                return (
                   <button
+                    key={item.tab}
                     type="button"
-                    data-tour-id={`nav-${tab}`}
-                    onClick={() => setActiveTab(tab)}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={!isSidebarOpen ? dest.label : undefined}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-card transition-colors duration-150 relative focus-ring ${
-                      isActive ? 'bg-white/5 text-ink-50' : 'hover:bg-white/5 text-ink-300 hover:text-ink-50'
+                    data-tour-id={`nav-${item.tab}`}
+                    onClick={() => setActiveTab(item.tab)}
+                    aria-current={actif ? 'page' : undefined}
+                    className={`h-9 px-2.5 rounded-[10px] flex items-center text-left text-body transition-colors focus-ring ${
+                      actif ? 'bg-primary/10 text-ink-50 font-semibold' : 'text-ink-300 hover:bg-white/5 hover:text-ink-50'
                     }`}
                   >
-                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-primary rounded-r" aria-hidden="true"></span>}
-                    <Icon name={dest.icon} size={18} className={`shrink-0 ${isActive ? 'text-primary' : 'text-ink-300'}`} />
-                    <span className={`text-tiny uppercase font-bold tracking-widest whitespace-nowrap flex-1 text-left transition-opacity duration-150 ${isActive ? 'text-ink-100' : 'text-ink-400'} ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                      {dest.label}
-                    </span>
+                    {item.label}
                   </button>
-                </div>
-              );
-            }
-
-            const group = {
-              label: dest.label,
-              icon: dest.icon,
-              items: dest.tabs.map((tab) => ({ id: tab, label: TAB_LABELS[tab], icon: TAB_ICONS[tab] })),
-            };
-            const isGroupExpanded = openGroups.has(group.label);
-            // U-sidebar — le repli RESPECTE désormais l'accordion : un sous-groupe
-            // rangé (replié) n'empile plus toutes ses icônes ; il montre l'icône
-            // du groupe + un badge compteur (nombre d'items cachés). Déplié, on
-            // affiche les items (icônes seules en rail, icônes + labels ouvert).
-            const showItems = isGroupExpanded;
-            const count = group.items.length;
-            const hasActive = group.items.some((it) => it.id === activeTab);
-            const tidied = !isGroupExpanded; // groupe « rangé »
-
-            return (
-              <div key={group.label} className="mb-1.5">
-                <button
-                  type="button"
-                  // [D6-KBD] JAMAIS disabled : un bouton désactivé est SAUTÉ par Tab — au moment où
-                  // Tab le considérait, la sidebar était encore repliée (le focus n'y était pas
-                  // entré), donc l'accordéon était inatteignable au clavier en marche avant. Le
-                  // focus OUVRE la sidebar (onFocus de l'aside) : atteint = opérable, toujours.
-                  onClick={() => toggleGroup(group.label)}
-                  aria-expanded={isGroupExpanded}
-                  aria-controls={`nav-group-${group.label}`}
-                  aria-label={!isSidebarOpen ? `${group.label} — ${count} onglets${tidied ? ' (rangé)' : ''}` : undefined}
-                  title={!isSidebarOpen ? `${group.label} (${count})` : undefined}
-                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-card transition-colors hover:bg-white/5 cursor-pointer focus-ring"
-                >
-                  <span className="relative shrink-0 flex items-center justify-center">
-                    <Icon
-                      name={group.icon}
-                      size={18}
-                      className={`shrink-0 transition-colors ${hasActive && tidied ? 'text-primary' : 'text-ink-300'}`}
-                    />
-                    {/* Badge compteur visible en rail replié quand le groupe est rangé. */}
-                    {!isSidebarOpen && tidied && (
-                      <span
-                        className={`absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 flex items-center justify-center rounded-full text-[9px] font-bold leading-none ring-2 ring-dark ${
-                          hasActive ? 'bg-primary text-dark' : 'bg-white/15 text-ink-100'
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {count}
-                      </span>
-                    )}
-                  </span>
-                  <span className={`text-tiny uppercase font-bold tracking-widest whitespace-nowrap flex-1 text-left transition-opacity duration-150 ${hasActive ? 'text-ink-200' : 'text-ink-400'} ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                    {group.label}
-                  </span>
-                  {/* Pastille compteur (panneau ouvert) — sous-groupes plus lisibles. */}
-                  <span
-                    className={`shrink-0 flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none transition-opacity duration-150 ${
-                      tidied ? 'bg-white/12 text-ink-100' : 'bg-white/5 text-ink-400'
-                    } ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
-                    aria-hidden="true"
-                  >
-                    {count}
-                  </span>
-                  <span
-                    className={`shrink-0 text-ink-500 text-meta transition-all duration-150 ${
-                      isSidebarOpen ? 'opacity-100' : 'opacity-0'
-                    } ${isGroupExpanded ? 'rotate-90' : ''}`}
-                    aria-hidden="true"
-                  >
-                    ›
-                  </span>
-                </button>
-                {/* [D6-KBD] `invisible` quand replié : max-h-0 + overflow-hidden CACHE visuellement
-                    mais laisse les boutons DANS l'ordre de tabulation — Tab posait le focus sur un
-                    élément invisible (focus perdu à l'écran). visibility:hidden les en retire. */}
-                <div id={`nav-group-${group.label}`} className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px] visible' : 'max-h-0 invisible'}`}>
-                  {/* Filet + léger retrait pour matérialiser l'appartenance au groupe (panneau ouvert). */}
-                  <div className={`space-y-0.5 pt-0.5 ${isSidebarOpen ? 'ml-[1.35rem] pl-1 border-l border-white/10' : ''}`}>
-                    {group.items.map((item) => {
-                      const isActive = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          data-tour-id={`nav-${item.id}`}
-                          onClick={() => setActiveTab(item.id)}
-                          aria-current={isActive ? 'page' : undefined}
-                          title={!isSidebarOpen ? item.label : undefined}
-                          className={`flex items-center gap-3 w-full px-3 py-2 rounded-card transition-colors duration-150 relative focus-ring ${
-                            isActive ? 'bg-white/5 text-ink-50' : 'hover:bg-white/5 text-ink-300 hover:text-ink-50'
-                          }`}
-                        >
-                          {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-primary rounded-r" aria-hidden="true"></span>}
-                          <Icon name={item.icon} size={18} className={`shrink-0 ${isActive ? 'text-primary' : ''}`} />
-                          <span className={`font-medium text-meta whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                            {item.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
-        {/* Footer : système + badge couple */}
-        <div className="p-2 border-t border-white/5 bg-[#0F1116] shrink-0 space-y-2">
-          {/* U7 — disposition constante (icônes alignées à gauche, px-3) pour que
-              rien ne bouge entre l'état replié et déplié ; seuls les labels
-              apparaissent en fondu (opacity). Plus de bascule grid↔flex. */}
-          <nav aria-label="Outils système" className="flex flex-col gap-0.5">
-            {/* [REFONTE-NAV Lot 1] Le bouton Configuration/Réglages a MONTÉ dans la nav
-                principale (destination « Réglages ») — le footer ne garde que le lien Hub. */}
-            {/* Retour au hub perso (lien externe ; URL overridable via VITE_HUB_URL). */}
-            <a
-              href={HUB_URL}
-              title="Retour au hub"
-              className="flex flex-row items-center gap-3 px-3 py-2 rounded-card text-tiny font-medium text-ink-400 hover:bg-white/5 hover:text-ink-100 transition-colors focus-ring"
-            >
-              <span aria-hidden className="shrink-0 w-[18px] text-center text-base leading-none">←</span>
-              <span className={`whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                Hub
-              </span>
-            </a>
-          </nav>
-          {/* G22-B2 — clic = BASCULE directe Couple ⇄ Individuel (ajoute/retire le
-              conjoint), propagée à toute l'app. Détails du conjoint dans Configuration. */}
+        <div className="flex flex-col gap-2 shrink-0">
           <button
             type="button"
-            onClick={toggleCoupleMode}
-            aria-pressed={isCouple}
-            title={isCouple ? 'Mode Couple actif — cliquer pour repasser en Individuel' : 'Mode Individuel — cliquer pour passer en Couple'}
-            className="flex justify-center w-full hover:opacity-80 transition-opacity focus-ring rounded-full"
+            data-tour-id={`nav-${PROFILE_TAB}`}
+            onClick={() => setActiveTab(PROFILE_TAB)}
+            aria-current={activeTab === PROFILE_TAB ? 'page' : undefined}
+            className={`h-12 px-2.5 rounded-xl flex items-center gap-2.5 text-left text-body transition-colors focus-ring border ${
+              activeTab === PROFILE_TAB ? 'bg-primary/10 border-primary/30 text-ink-50 font-semibold' : 'border-white/6 text-ink-200 hover:bg-white/5'
+            }`}
           >
-            <CoupleModeBadge compact={!isSidebarOpen} />
+            <span className="w-7 h-7 rounded-full bg-surfaceHighlight flex items-center justify-center text-meta font-bold text-primary shrink-0" aria-hidden="true">{initiales}</span>
+            <span className="truncate">{libelleProfil} · Profil</span>
           </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={togglePrivacyMode}
+              aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
+              aria-pressed={isPrivacyMode}
+              title="Mode discret"
+              className={`h-9 px-2.5 rounded-[10px] flex items-center gap-2 text-meta transition-colors focus-ring ${
+                isPrivacyMode ? 'bg-white/10 text-ink-50' : 'text-ink-400 hover:bg-white/5 hover:text-ink-50'
+              }`}
+            >
+              <Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={16} className="shrink-0" />
+              {isPrivacyMode ? 'Quitter discret' : 'Discret'}
+            </button>
+            {/* G22-B2 — clic = bascule Couple ⇄ Individuel (détails du conjoint dans Profil). */}
+            <button
+              type="button"
+              onClick={toggleCoupleMode}
+              aria-pressed={isCouple}
+              title={isCouple ? 'Mode Couple actif — cliquer pour repasser en Individuel' : 'Mode Individuel — cliquer pour passer en Couple'}
+              className="rounded-full hover:opacity-80 transition-opacity focus-ring"
+            >
+              <CoupleModeBadge compact />
+            </button>
+            {/* Retour au hub perso (lien externe ; URL overridable via VITE_HUB_URL). */}
+            <a href={HUB_URL} title="Retour au hub" className="ml-auto h-9 px-2.5 rounded-[10px] flex items-center text-meta text-ink-400 hover:bg-white/5 hover:text-ink-100 transition-colors focus-ring">
+              ← Hub
+            </a>
+          </div>
         </div>
       </aside>
 
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-dark/95 backdrop-blur-xl border-b border-white/10 z-50 flex items-center justify-between px-4 shadow-xl">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center text-ink-50 font-bold" aria-hidden="true">Fi</div>
-          <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
-        </div>
-        {/* Phase B.4 — info ℹ️ et Synchroniser 🔄 retirées sur mobile aussi. */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={togglePrivacyMode}
-            aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
-            aria-pressed={isPrivacyMode}
-            className="w-11 h-11 rounded-full bg-white/5 flex items-center justify-center text-ink-200 active:scale-90 transition-transform focus-ring"
-          >
-            <Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Phase B.1 — md:ml-16 réserve la largeur du rail collapsé. L'expansion
-          de la sidebar (w-72) overlay le contenu sans push (pas de jump). */}
-      <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 md:ml-16 mt-16 md:mt-0 overflow-y-auto min-h-dvh pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-hidden">
-        <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-premium-in">
+      {/* Contenu. Mobile : pas de barre du haut (le titre de page EST l'en-tête) ; la bannière du mode
+          test est fixe en haut, d'où la marge qui la dégage. */}
+      <main
+        id="main"
+        tabIndex={-1}
+        className={`flex-1 lg:ml-[232px] px-5 pb-28 lg:px-8 lg:pb-10 ${isTestMode ? 'pt-16' : 'pt-5 lg:pt-8'} overflow-y-auto min-h-dvh relative z-0 scroll-smooth focus:outline-hidden`}
+      >
+        <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-premium-in">
+          {/* Mobile : les pages hors barre du bas remontent vers le menu « Plus ». */}
+          {surPagePlus && (
+            <button
+              type="button"
+              onClick={() => setShowMobileDrawer(true)}
+              className="lg:hidden -mb-3 text-meta text-ink-400 hover:text-ink-100 focus-ring rounded-sm"
+            >
+              ‹ Plus
+            </button>
+          )}
           <BackupReminder onNavigateToSettings={() => setActiveTab(Tab.SETTINGS)} />
           {children}
         </div>
       </main>
 
-      {/* Phase D1 — Bottom nav avec text-tiny (cohérent avec scale typo) + targets touch 48px+ */}
-      <nav aria-label="Navigation mobile" className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-[#12141a] backdrop-blur-2xl border-t border-white/10 z-100 flex items-center justify-around px-1 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-        {mobileBarItems.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            data-tour-id={`nav-${item.id}`}
-            onClick={() => { setActiveTab(item.id as Tab); setShowMobileDrawer(false); }}
-            aria-current={activeTab === item.id ? 'page' : undefined}
-            className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 group focus-ring rounded-card`}
-          >
-            <div aria-hidden="true" className={`mb-1 transition-transform duration-300 ${activeTab === item.id ? 'scale-110 -translate-y-0.5 text-ink-50 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-ink-400 group-hover:text-ink-200'}`}><Icon name={item.icon} size={24} /></div>
-            <span className={`text-tiny font-medium transition-colors ${activeTab === item.id ? 'text-primary' : 'text-ink-400'}`}>{item.label}</span>
-            {activeTab === item.id && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_6px_rgba(230,234,242,0.55)]"></span>}
-          </button>
-        ))}
+      {/* Barre du bas (mobile, < lg) : Futur, Transactions, Assistant, Plus. Cibles ≥ 44 px. */}
+      <nav aria-label="Navigation mobile" className="lg:hidden fixed bottom-0 left-0 right-0 h-[76px] z-100 grid grid-cols-4 px-3 pt-2 pb-4 pb-safe bg-[#0A0C10]/94 border-t border-white/6">
+        {MOBILE_BAR_TABS.map((tab) => {
+          const item = navItemOfTab(tab)!;
+          const actif = activeTab === tab && !showMobileDrawer;
+          return (
+            <button
+              key={tab}
+              type="button"
+              data-tour-id={`nav-${tab}`}
+              onClick={() => { setActiveTab(tab); setShowMobileDrawer(false); }}
+              aria-current={activeTab === tab ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center gap-1 text-[11px] transition-colors focus-ring rounded-card ${actif ? 'text-ink-50 font-semibold' : 'text-ink-400'}`}
+            >
+              <Icon name={item.icon} size={22} aria-hidden="true" />
+              {item.label}
+            </button>
+          );
+        })}
         <button
-          onClick={() => setShowMobileDrawer(v => !v)}
+          type="button"
+          onClick={() => setShowMobileDrawer((v) => !v)}
           aria-label="Plus d'options"
           aria-expanded={showMobileDrawer}
-          className={`relative flex flex-col items-center justify-center min-w-[56px] h-full transition-all duration-200 active:scale-95 focus-ring rounded-card ${showMobileDrawer || !MOBILE_BAR_TABS.includes(activeTab) ? 'text-primary' : 'text-ink-400'}`}
+          className={`flex flex-col items-center justify-center gap-1 text-[11px] transition-colors focus-ring rounded-card ${showMobileDrawer || surPagePlus ? 'text-ink-50 font-semibold' : 'text-ink-400'}`}
         >
-          <div aria-hidden="true" className={`mb-1 transition-transform ${showMobileDrawer ? 'rotate-90' : ''}`}><Icon name="more" size={24} /></div>
-          <span className="text-tiny font-medium">Plus</span>
-          {!MOBILE_BAR_TABS.includes(activeTab) && <span aria-hidden="true" className="absolute top-1.5 w-1 h-1 bg-primary rounded-full"></span>}
+          <Icon name="more" size={22} aria-hidden="true" />
+          Plus
         </button>
       </nav>
 
+      {/* Menu « Plus » (mobile) : un écran à part entière, au-dessus du contenu, sous la barre du bas. */}
       {showMobileDrawer && (
-        <div className="md:hidden fixed inset-0 z-40" onClick={() => setShowMobileDrawer(false)}>
-          {/* role+label : sémantique du panneau ET ancrage des tests (le test « non-perte mobile »
-              doit interroger CE conteneur — interroger le document entier laissait la sidebar
-              desktop satisfaire l'assertion, test vacueux — finding code-reviewer #600). */}
-          <div role="navigation" aria-label="Autres destinations" className="absolute bottom-[72px] left-0 right-0 bg-[#0F1116]/98 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl animate-slide-up max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            {/* [REFONTE-NAV Lot 1] Drawer « Plus » = les destinations, moins les onglets déjà
-                épinglés dans la barre (dérivé de NAV_DESTINATIONS — source unique). */}
-            {drawerDestinations.map((dest) => (
-              <div key={dest.id} className="mb-4 last:mb-0">
-                <div className="text-tiny uppercase text-ink-400 font-bold tracking-widest mb-2 flex items-center gap-2">
-                  <Icon name={dest.icon} size={16} />
-                  <span>{dest.label}</span>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {dest.tabs.map((tab) => (
+        <div ref={panneauPlusRef} className={`lg:hidden fixed inset-x-0 bottom-[76px] ${isTestMode ? 'top-10' : 'top-0'} z-90 bg-dark overflow-y-auto px-6 pt-5 pb-6 flex flex-col gap-4`}>
+          <h2 className="text-[26px] font-bold text-ink-50">Plus</h2>
+          <button
+            type="button"
+            onClick={() => { setActiveTab(PROFILE_TAB); setShowMobileDrawer(false); }}
+            aria-current={activeTab === PROFILE_TAB ? 'page' : undefined}
+            className="h-[60px] px-3.5 rounded-[14px] bg-surface border border-white/6 flex items-center gap-3 text-left focus-ring"
+          >
+            <span className="w-9 h-9 rounded-full bg-surfaceHighlight flex items-center justify-center text-meta font-bold text-primary shrink-0" aria-hidden="true">{initiales}</span>
+            <span className="flex-1 min-w-0 flex flex-col">
+              <span className="font-semibold text-ink-50 truncate">{libelleProfil}</span>
+              <span className="text-meta text-ink-400">Profil</span>
+            </span>
+            <span className="text-ink-400" aria-hidden="true">›</span>
+          </button>
+          {/* role+label : ancrage des tests (le test « non-perte mobile » interroge CE conteneur). */}
+          <div role="navigation" aria-label="Autres destinations" className="flex flex-col gap-4">
+            {itemsMobilePlus.map((group) => (
+              <section key={group.id} className="flex flex-col">
+                <h3 className="px-1 pb-2 text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400">{group.label}</h3>
+                <div className="rounded-[14px] bg-surface border border-white/6 overflow-hidden">
+                  {group.items.map((item, i) => (
                     <button
-                      key={tab}
+                      key={item.tab}
                       type="button"
-                      onClick={() => { setActiveTab(tab); setShowMobileDrawer(false); }}
-                      aria-current={activeTab === tab ? 'page' : undefined}
-                      className={`flex flex-col items-center justify-center p-3 rounded-card transition-all active:scale-95 border focus-ring min-h-[72px] ${activeTab === tab
-                        ? 'bg-white/10 border-white/20 text-ink-50'
-                        : 'bg-white/5 border-white/5 text-ink-300 hover:text-ink-50 hover:bg-white/10'
-                        }`}
+                      onClick={() => { setActiveTab(item.tab); setShowMobileDrawer(false); }}
+                      aria-current={isNavActive(item.tab) ? 'page' : undefined}
+                      className={`w-full h-[52px] px-4 flex items-center justify-between text-left text-body focus-ring ${i ? 'border-t border-white/5' : ''} ${isNavActive(item.tab) ? 'text-ink-50 font-semibold' : 'text-ink-100'}`}
                     >
-                      <Icon name={TAB_ICONS[tab]} size={20} className="mb-1" />
-                      <span className="text-tiny font-medium text-center leading-tight">
-                        {dest.isSingleTab ? dest.label : TAB_LABELS[tab]}
-                      </span>
+                      {item.label}
+                      <span className="text-ink-400" aria-hidden="true">›</span>
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
+          <section className="flex flex-col">
+            <h3 className="px-1 pb-2 text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400">Préférences</h3>
+            <div className="rounded-[14px] bg-surface border border-white/6 overflow-hidden">
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                aria-label={isPrivacyMode ? 'Quitter le mode discret' : 'Activer le mode discret'}
+                aria-pressed={isPrivacyMode}
+                className="w-full h-[52px] px-4 flex items-center justify-between text-body text-ink-100 focus-ring"
+              >
+                <span className="flex items-center gap-2"><Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={18} aria-hidden="true" />Mode discret</span>
+                <span className="text-meta text-ink-400">{isPrivacyMode ? 'activé' : 'désactivé'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleCoupleMode}
+                aria-pressed={isCouple}
+                className="w-full h-[52px] px-4 flex items-center justify-between text-body text-ink-100 border-t border-white/5 focus-ring"
+              >
+                Ménage
+                <CoupleModeBadge />
+              </button>
+              <a href={HUB_URL} className="w-full h-[52px] px-4 flex items-center justify-between text-body text-ink-100 border-t border-white/5 focus-ring">
+                Retour au hub
+                <span className="text-ink-400" aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </section>
         </div>
       )}
     </div>

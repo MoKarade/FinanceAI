@@ -416,7 +416,7 @@ const WinnerCard: React.FC<{
     );
 };
 
-// [FORMAT-EXPLAINS-TOLOCALESTRING] La prop s'appelait `blur-sm`, un nom FAUX depuis que le masquage
+// [FORMAT-EXPLAINS-TOLOCALESTRING] La prop s'appelait `blur`, un nom FAUX depuis que le masquage
 // passe par `PrivateAmount` : celui-ci ne floute pas, il RETIRE la valeur du DOM. Renommée
 // `privacy`, comme `KPIStat` et `DualKPIStat` — un nom trompeur fabrique des faux findings, et
 // celui-ci en a fabriqué deux dans la garde du mode discret.

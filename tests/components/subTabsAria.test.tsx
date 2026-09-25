@@ -137,7 +137,7 @@ describe('[A11Y-SUBTABS-TOUCH-TARGET] les onglets atteignent le plancher tactile
         // no-op SILENCIEUX (même famille que « un shade hors palette ne génère rien »). Sans cette
         // vérification, le test ci-dessus resterait vert en ne posant plus aucune contrainte.
         const css = readFileSync(resolve(__dirname, '..', '..', 'index.css'), 'utf8');
-        const regle = css.match(/\.touch-target\s*\{([^}]*)\}/);
+        const regle = css.match(/(?:\.|@utility\s+)touch-target\s*\{([^}]*)\}/); // [S5-TAILWIND4] @utility en v4
         expect(regle, '`.touch-target` a disparu de index.css').not.toBeNull();
         expect(regle?.[1]).toMatch(/min-height:\s*44px/);
         expect(regle?.[1]).toMatch(/min-width:\s*44px/);

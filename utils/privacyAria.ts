@@ -1,6 +1,6 @@
 // utils/privacyAria.ts
 // D6-SR-2 — parité lecteur d'écran ↔ blur visuel pour les contrôles dont la valeur affichée est
-// MASQUÉE en mode privé. Le blur est purement CSS (`.privacy-active … { filter: blur-sm }`, Layout) :
+// MASQUÉE en mode privé. Le blur est purement CSS (`.privacy-active … { filter: blur }`, Layout) :
 // il cache la valeur À L'ŒIL mais PAS au lecteur d'écran, qui continue d'annoncer le `aria-valuenow`
 // réel d'un `<input type="range">`. On force donc `aria-valuetext="Montant masqué"` quand le mode privé
 // est actif (même libellé que le sr-only de `PrivateAmount`). Helper partagé = un seul libellé, réutilisable.

@@ -164,7 +164,7 @@ export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selectio
                             <LineChart data={lignes} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
                                 <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                                 <XAxis dataKey="date" ticks={dates} interval={0} tick={<TickDate />} tickLine={false} axisLine={false} />
-                                <YAxis
+                                <YAxis /* AXE-NON-MONETAIRE : variation en %, jamais un montant */
                                     orientation={etroit ? 'left' : 'right'} mirror={etroit} ticks={reperes} domain={['dataMin', 'dataMax']}
                                     stroke="#8896a8" tick={{ fontSize: etroit ? 10 : 11, fontFamily: 'JetBrains Mono', dy: etroit ? -8 : 0 }}
                                     tickLine={false} axisLine={false} width={64} tickFormatter={(v: number) => formatVariationPct(v)}

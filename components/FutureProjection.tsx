@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { Card } from './ui/Card';
 import { Skeleton } from './ui/Skeleton';
 // [REFONTE-NAV-L2b] Sous-onglet « Historique » (évolution passée par compte, ex-Accueil) —
 // lazy : son pipeline (usePortfolioHistory + helpers immo/dettes) ne se paie qu'à l'affichage.
@@ -15,11 +14,13 @@ import { useHiddenSeries } from '../hooks/useHiddenSeries';
 import { FuturePeriodSelector } from './future/FuturePeriodSelector';
 import { PageHeader } from './ui/PageHeader';
 import { Drawer } from './ui/Drawer';
-import { FutureSidebar, type FutureDrawerId, tiroirDomId } from './future/FutureSidebar';
+import { OutilsProjection, type FutureDrawerId, tiroirDomId } from './future/OutilsProjection';
+import { TableJalons, CarteLeviers, type JalonProjection, type LevierAffiche } from './future/JalonsLeviers';
+import { couleurSerie } from './future/seriesConfig';
+import { ouvrirPaletteCommandes } from './ui/CommandPalette';
+import type { VarianteBandeau } from './FutureKpiStrip';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
-import { KPIStat } from './ui/KPIStat';
-import { StatGrid } from './ui/StatGrid';
 import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
 import { BudgetConfig, BudgetCategory, RealEstateGoal, RetirementGoal, Transaction, ProjectionConfig } from '../types';
@@ -134,7 +135,7 @@ import { ProjectionExplains } from './projection/ProjectionExplains';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
 import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
-import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
+import { applyConfigToSettings, leverValueLabel, LEVER_LIBRARY, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso, axisXAtDay } from '../services/projection/dailyRefine';
 import { useViewportBelowSm } from '../hooks/useViewportBelowSm';
@@ -147,6 +148,7 @@ import { reconstructRealEstateEquityByYear } from '../services/history/reconstru
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCAD, formatCompactCAD } from '../utils/format';
 import { maskedTick } from '../utils/chartPrivacy';
+import { reperesRonds } from '../utils/reperesRonds';
 import { NO_DATA_LABEL } from './ui/emptyAware';
 // [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
@@ -172,12 +174,15 @@ interface FutureProjectionProps {
   projection: ProjectionConfig;
   setProjection: (p: ProjectionConfig) => void;
   isPrivacyMode?: boolean;
+  /** [S5-REFONTE-FUTUR] Bandeau des chiffres de tête (FutureKpiStrip), rendu par l'hôte selon la
+   *  variante demandée : sous le titre au bureau, découpé tête / pied au téléphone (maquettes). */
+  bandeauKpi?: (variante: VarianteBandeau) => React.ReactNode;
 }
 
 export const FutureProjection: React.FC<FutureProjectionProps> = ({
     initialBalances = {}, transactions = [], budgetItems = [], config,
     realEstateGoals = [], setRealEstateGoals, retirementGoal, setRetirementGoal,
-    calculatedMonthlySavings, projection, setProjection, isPrivacyMode = false
+    calculatedMonthlySavings, projection, setProjection, isPrivacyMode = false, bandeauKpi,
 }) => {
     // C6 fix (Sprint 1B) — La garde SAFETY CHECKS qui retournait du JSX avant
     // tous les hooks ci-dessous était une violation flagrante de la règle des
@@ -551,7 +556,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // de phase). Calculées une fois depuis chartData ; rendues en lignes verticales discrètes (masquables
     // via le toggle « Événements » de la légende). Les ÉVÉNEMENTS DE VIE restent les pastilles cliquables.
     const lifeMarkers = useMemo(() => {
-        const markers: { monthIndex: number; label: string; color: string }[] = [];
+        const markers: { monthIndex: number; label: string; color: string; jalon?: boolean }[] = [];
         let retDone = false;
         const accounts: Array<[keyof ProjectionChartPoint, string]> = [
             ['REER', 'REER'], ['CELI', 'CELI'], ['NonReg', 'Non-enr.'], ['CELIAPP', 'CELIAPP'],
@@ -560,7 +565,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const dep: Record<string, boolean> = {};
         for (const d of chartData as ProjectionChartPoint[]) {
             if (d.monthIndex < 0) continue; // pas d'annotation sur le passé reconstruit
-            if (!retDone && d.isRetired) { markers.push({ monthIndex: d.monthIndex, label: `Retraite${d.age ? ` ${d.age}` : ''}`, color: '#f97316' }); retDone = true; }
+            // [S5-REFONTE-FUTUR] Jalon « Retraite · 60 ans » en pastille au-dessus du tracé (maquette F-bureau).
+            if (!retDone && d.isRetired) { markers.push({ monthIndex: d.monthIndex, label: `Retraite${d.age ? ` · ${Math.floor(d.age)} ans` : ''}`, color: '#e6eaf2', jalon: true }); retDone = true; }
             // [FUTUR-ICONS-RICH, ADR-3] RRQ/PSV retirés des lignes verticales → désormais icônes-jalons cliquables
             // (`deriveMilestoneIcons`) : évite la double représentation (ligne + pastille) du même mois.
             for (const [key, short] of accounts) {
@@ -571,6 +577,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
         return markers;
     }, [chartData]);
+
+    // [S5-REFONTE-FUTUR] Le jalon FIRE (année, âge) est l'évènement que le MOTEUR émet (« Objectif FIRE
+    // Atteint »), déjà repéré pour la pastille de la courbe — pas un seuil recalculé côté écran.
+    const jalonFire = useMemo(
+        () => lifeChartEvents.find((e) => e.kind === 'life' && /\bfire\b/i.test(e.label)) ?? null,
+        [lifeChartEvents],
+    );
 
     // G3 + PH4-FUT « leviers-d'abord » — 3 sous-onglets : Projection (composeur de leviers EN AMONT puis
     // courbe + KPIs) ; Paramètres (hypothèses) ; Plan d'action (explications + checklist). Plus d'onglet
@@ -849,6 +862,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // téléphone. `isNarrowViewport` (téléphone strict, < 640px) continue de piloter ses propres
     // réglages fins par-dessus, inchangé.
     const isBelowSidebarBreakpoint = useViewportBelowLg();
+    // [S5-REFONTE-FUTUR] Mise en page téléphone des maquettes (F-mobile) sous 1024 px.
+    const etroit = isBelowSidebarBreakpoint;
+    // Au téléphone (maquette F-mobile), pastille courte « FIRE ≈ 2036 » et pas d'étiquette sur le
+    // trait de la retraite : deux pastilles longues s'y chevauchaient (mesuré à 390 px).
+    const libelleJalonFire = jalonFire?.year != null
+        ? `FIRE ≈ ${jalonFire.year}${!etroit && jalonFire.age != null ? ` · ${Math.floor(jalonFire.age)} ans` : ''}`
+        : 'FIRE';
     const selection = useSelectionJour<ProjectionChartPoint>({
         getKey: (p) => p.monthIndex,
         containerRef: zoom.containerEl,
@@ -1131,6 +1151,38 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!isDailyCurve) return zoom.visibleData as ProjectionChartPoint[];
         return decimateForRender(daysInWindow, dailyWindowRange[0], RENDER_MAX_POINTS);
     }, [isDailyCurve, daysInWindow, dailyWindowRange, zoom.visibleData]);
+
+    // [S5-REFONTE-FUTUR] Échelle Y « ronde » des maquettes (0, 10 M$, 20 M$…) sur ce qui est TRACÉ :
+    // séries visibles de la fenêtre affichée seulement — masquer une série ou zoomer réajuste
+    // l'échelle (« l'échelle s'ajuste », sous-titre de la carte). Le domaine colle aux données (plus
+    // de marge « auto » de recharts, qui descendait à −50 M$ pour une dette de quelques milliers).
+    const echelleY = useMemo(() => {
+        // `hiddenSeries` (l'état) et non `isVisible` (fonction recréée à chaque rendu) : l'échelle ne se
+        // recalcule qu'au vrai changement de masquage ou de fenêtre.
+        const vue = (k: string) => !hiddenSeries.has(k);
+        const empilees = (['Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier', 'Entreprise'] as const)
+            .filter((k) => vue(k));
+        const lignes: Array<'NetWorth' | 'P10' | 'P50' | 'P90' | 'ImpotLatent'> = [];
+        if (vue('NetWorth')) lignes.push('NetWorth');
+        if (runMC && vue('montecarlo')) lignes.push('P10', 'P50', 'P90');
+        if (vue('ImpotLatent')) lignes.push('ImpotLatent');
+        const valeurs: number[] = [];
+        const garder = (v: unknown) => { if (typeof v === 'number' && Number.isFinite(v)) valeurs.push(v); };
+        for (const p of chartSeries) {
+            let pile = 0;
+            for (const k of empilees) { const v = p[k]; if (typeof v === 'number' && Number.isFinite(v)) pile += v; }
+            valeurs.push(pile);
+            for (const k of lignes) garder(p[k]);
+            if (vue('DettesNonImmo')) garder(detteSousZero(p));
+            garder((p as { lockedNetWorth?: number }).lockedNetWorth);
+        }
+        if (vue('fire')) garder(fireNumber);
+        const ticks = reperesRonds(valeurs);
+        if (!ticks || valeurs.length === 0) return null;
+        const bas = Math.min(0, ...valeurs, ticks[0]);
+        const haut = Math.max(...valeurs, ticks[ticks.length - 1]);
+        return { ticks, domaine: [bas, haut] as [number, number] };
+    }, [chartSeries, hiddenSeries, runMC, fireNumber]);
     /** Série de RÉSOLUTION des interactions : les jours complets, ou le mensuel en repli. */
     const selectSeries = isDailyCurve ? daysInWindow : (zoom.visibleData as ProjectionChartPoint[]);
 
@@ -1415,69 +1467,123 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     })();
     const todayPresetRange = centeredWindowRange(displayData.length, todayArrayIndex, 7);
 
-    // [FUTUR-MOBILE-PR2] Les 4 tuiles KPI, définies UNE fois (source unique des libellés/valeurs) et
-    // rendues dans DEUX grilles distinctes selon le contexte — jamais recopiées.
-    // [FUTUR-NAV-TIROIRS bandeau, 2026-09-21] Marc : « texte dépasse, c'est moche » dans la barre
-    // latérale (280px). Cause : `StatGrid` force ses colonnes par SEUIL DE VIEWPORT (`md:`/`sm:`),
-    // pas par largeur de conteneur — dans la sidebar (toujours à viewport ≥1024px), 4 colonnes
-    // s'écrasaient dans 280px quel que soit leur contenu. Libellés raccourcis partout (le texte
-    // complet vit dans le `tooltip`, déjà le patron établi pour « Patrimoine ») : garder les MÊMES
-    // props partout, seule la grille change, pour ne jamais faire diverger le test money-critical
-    // qui compare l'innerText mobile/desktop au caractère près (futureMobileProjectionScreen.spec.ts).
+    // [S5-REFONTE-FUTUR] Stats de la carte « La courbe de vie » (maquettes F-bureau / F-mobile) :
+    // Objectif FIRE, Succès, valeur à l'horizon, Vitalité — mêmes sources que les anciennes tuiles
+    // KPI (`kpiPatrimoine`, `results.successRate`, `results.fvi`), jamais recalculées ici.
     const patrimoineKpi = kpiPatrimoine(results, isPrivacyMode);
-    const kpiStats = [
-        <KPIStat
-            key="fire"
-            label="Objectif FIRE"
-            icon="🎯"
-            // ⚠️ MESURÉ : l'ancien format restait en « k$ » quel que soit l'ordre de grandeur — une cible
-            // FIRE de 1,25 M$ s'affichait « 1250k $ ». `formatCompactCAD` bascule en M$.
-            value={formatCompactCAD(fireNumber)}
-            sublabel="Règle des 4%"
-            privacy
-            variant="warning"
-        />,
-        <KPIStat
-            key="patrimoine"
-            // [FUTUR-KPI-PATRIMOINE-FIN-COURBE] Valeur nette de fin de courbe (même chiffre que
-            // Retraite et Placements) ; l'héritage net vit dans l'info-bulle — cf. kpiPatrimoine.ts.
-            label="Patrimoine"
-            tooltip={patrimoineKpi.tooltip}
-            icon="💼"
-            value={patrimoineKpi.value}
-            sublabel={`À ${esperanceDeVieEffective(retirementGoal)} ans`} // [HORIZON-ESPERANCE-DE-VIE]
-            privacy
-            variant="primary"
-        />,
-        <KPIStat
-            key="succes"
-            label="Succès"
-            tooltip="Taux de succès : part des simulations Monte Carlo où le capital ne s'épuise jamais."
-            icon="✓"
-            value={results?.successRate != null ? `${results.successRate}%` : '—'}
-            // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config
-            // vivante : `results` peut être GELÉ (curseur bougé sans relance), et lire la
-            // config faisait alors annoncer un nombre d'itérations qui n'avait pas servi.
-            // Résultat sans compte (MC non lancé, ou projection d'avant ce lot) → « Monte
-            // Carlo » SANS chiffre : un « — » honnête vaut mieux qu'un nombre crédible.
-            sublabel={mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}
-            variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
-        />,
-        <KPIStat
-            key="vitalite"
-            label="Vitalité"
-            tooltip="Vitalité financière : indice composite (30 % épargne / 30 % dette / 20 % liquidités / 20 % diversification)."
-            icon="🌡️"
-            value={results?.fvi != null ? `${results.fvi}/100` : '—'}
-            sublabel={runMC ? '30/30/20/20 split' : 'Active MC pour calculer'}
-            variant={results?.fvi != null && results.fvi >= 70 ? 'success' : results?.fvi != null && results.fvi >= 40 ? 'warning' : 'danger'}
-        />,
+    const anneeDe = (monthIndex: number) => calendarFromMonthIndex(startYear, startMonth, monthIndex).year;
+    const pointRetraite = (chartData as ProjectionChartPoint[]).find((d) => d.monthIndex >= 0 && d.isRetired) ?? null;
+    const dernierPoint = chartData.length > 0 ? (chartData[chartData.length - 1] as ProjectionChartPoint) : null;
+    const anneesHorizon = dernierPoint ? Math.max(0, Math.round((dernierPoint.monthIndex - todayMonthIndex) / 12)) : null;
+    const successRate = results?.successRate;
+    const tonSucces = successRate == null ? 'text-ink-50' : successRate >= 80 ? 'text-success-400' : successRate >= 50 ? 'text-warning-400' : 'text-danger-400';
+    const valeurSucces = successRate != null ? `${successRate} %` : '—';
+    // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config vivante : `results`
+    // peut être GELÉ (curseur bougé sans relance). Résultat sans compte → « Monte Carlo » sans chiffre.
+    const titreSucces = `Part des simulations Monte-Carlo où le capital ne s'épuise jamais — ${mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}`;
+    const valeurVitalite = results?.fvi != null ? `${results.fvi}/100` : '—';
+    const titreVitalite = runMC
+        ? 'Vitalité financière : indice composite (30 % épargne / 30 % dette / 20 % liquidités / 20 % diversification).'
+        : 'Vitalité financière : active Monte-Carlo (hypothèses) pour la calculer.';
+    const statsCourbe = (
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
+            <div className="min-w-0">
+                <dt className="text-meta text-ink-400">Objectif FIRE</dt>
+                <dd className="mt-0.5 flex items-baseline gap-1.5 flex-wrap" title="Règle des 4 %">
+                    <PrivateAmount className="text-[20px] font-bold text-ink-50">{formatCompactCAD(fireNumber)}</PrivateAmount>
+                    {jalonFire?.year != null && <span className="text-meta font-semibold text-warning-400">vers {jalonFire.year}</span>}
+                </dd>
+            </div>
+            <div className="min-w-0">
+                <dt className="text-meta text-ink-400">Succès (Monte-Carlo)</dt>
+                <dd className={`mt-0.5 text-[20px] font-bold ${tonSucces}`} title={titreSucces}>{valeurSucces}</dd>
+            </div>
+            <div className="min-w-0">
+                {/* [HORIZON-ESPERANCE-DE-VIE] L'horizon court jusqu'à l'espérance de vie de la personne 1. */}
+                <dt className="text-meta text-ink-400" title={`Jusqu'à ${esperanceDeVieEffective(retirementGoal)} ans`}>
+                    À l&apos;horizon{anneesHorizon != null ? ` (${anneesHorizon} ans)` : ''}
+                </dt>
+                {/* [FUTUR-KPI-PATRIMOINE-FIN-COURBE] Valeur nette de fin de courbe ; l'héritage net vit dans l'info-bulle. */}
+                <dd className="mt-0.5 text-[20px] font-bold text-ink-50" title={patrimoineKpi.tooltip}>
+                    <PrivateAmount>{patrimoineKpi.value}</PrivateAmount>
+                </dd>
+            </div>
+            <div className="min-w-0">
+                <dt className="text-meta text-ink-400">Vitalité</dt>
+                <dd className="mt-0.5 text-[20px] font-bold text-ink-50" title={titreVitalite}>{valeurVitalite}</dd>
+            </div>
+        </dl>
+    );
+    // Téléphone (maquette F-mobile) : Objectif FIRE et Succès en tuiles, à côté des tuiles
+    // « Avoirs / dettes » et « Liquidités » du bandeau (`bandeauKpi('mobile-pied')`).
+    const tuile = 'min-w-0 rounded-2xl bg-surface border border-white/6 p-3.5 flex flex-col gap-1';
+    const tuilesCourbeMobile = (
+        <>
+            <div className={tuile}>
+                <p className="text-meta text-ink-400">Objectif FIRE</p>
+                <p className="text-[17px] font-bold text-ink-50 leading-snug"><PrivateAmount>{formatCompactCAD(fireNumber)}</PrivateAmount></p>
+            </div>
+            <div className={tuile} title={titreSucces}>
+                <p className="text-meta text-ink-400">Succès</p>
+                <p className={`text-[17px] font-bold leading-snug ${tonSucces}`}>{valeurSucces}</p>
+            </div>
+        </>
+    );
+
+    // [S5-REFONTE-FUTUR] Jalons (tableau sous la courbe). Années et âges lus sur les points de la
+    // courbe ; « ≈ » devant l'année FIRE, comme sur la courbe (le seuil est une estimation).
+    const ageDe = (a: number | undefined) => (a != null && Number.isFinite(a) ? String(Math.floor(a)) : '—');
+    const jalons: JalonProjection[] = [
+        {
+            cle: 'aujourdhui',
+            libelle: "Aujourd'hui",
+            annee: String(anneeDe(todayMonthIndex)),
+            age: ageDe(pointAncre?.age),
+            montant: pointAncre && Number.isFinite(pointAncre.NetWorth) ? <PrivateAmount>{formatCAD(pointAncre.NetWorth)}</PrivateAmount> : null,
+            bureauSeulement: true,
+        },
+        {
+            cle: 'fire',
+            libelle: jalonFire ? 'Objectif FIRE atteint' : 'Objectif FIRE (non atteint)',
+            libelleCourt: 'Objectif FIRE',
+            annee: jalonFire?.year != null ? `≈ ${jalonFire.year}` : '—',
+            age: ageDe(jalonFire?.age),
+            montant: <PrivateAmount>{formatCompactCAD(fireNumber)}</PrivateAmount>,
+            ton: 'fire',
+        },
+        {
+            cle: 'retraite',
+            libelle: 'Retraite',
+            annee: pointRetraite ? String(anneeDe(pointRetraite.monthIndex)) : '—',
+            age: pointRetraite ? ageDe(pointRetraite.age) : String(retirementGoal.targetAge),
+            montant: null,
+        },
+        {
+            cle: 'horizon',
+            libelle: "Fin de l'horizon",
+            annee: dernierPoint ? String(anneeDe(dernierPoint.monthIndex)) : '—',
+            age: ageDe(dernierPoint?.age),
+            montant: <PrivateAmount>{patrimoineKpi.value}</PrivateAmount>,
+        },
     ];
-    // Pleine largeur (mobile empilé, tablette) : 4 colonnes dès 768px de VIEWPORT, comme avant.
-    const kpiGrid = <StatGrid cols={4}>{kpiStats}</StatGrid>;
-    // Barre latérale desktop (toujours à viewport ≥1024px, mais physiquement ~320px) : 2 colonnes
-    // FIXES — `sm:` (640px) est garanti actif à ce viewport, jamais replié à 1 colonne.
-    const kpiGridSidebar = <StatGrid cols={2}>{kpiStats}</StatGrid>;
+
+    // [S5-REFONTE-FUTUR] Leviers APPLIQUÉS (valeurs réelles de l'état, jamais une plage inventée).
+    const ordreRetrait = projection.withdrawalStrategy === 'PRIO_CELI_NO_RAP'
+        ? `${leverValueLabel('withdrawalOrder', 'PRIO_CELI')} (sans RAP)`
+        : leverValueLabel('withdrawalOrder', projection.withdrawalStrategy ?? 'AUTO_MARGINAL');
+    const profilRendement = projection.appliedReturnProfile
+        ? leverValueLabel('returnRateProfile', projection.appliedReturnProfile)
+        : 'Personnalisé';
+    const ageRrq = retirementGoal.rrqStartAge ?? Math.min(retirementGoal.targetAge, 65);
+    const agePsv = retirementGoal.psvStartAge ?? 65;
+    const rentes = ageRrq === agePsv ? `${ageRrq} ans` : `RRQ ${ageRrq} · PSV ${agePsv} ans`;
+    const leviers: LevierAffiche[] = [
+        { libelle: 'Âge de retraite', valeur: `${retirementGoal.targetAge} ans` },
+        { libelle: 'Ordre de retrait', valeur: ordreRetrait },
+        { libelle: 'Profil de rendement', valeur: profilRendement },
+        { libelle: 'Rentes gouvernementales', valeur: rentes },
+    ];
+    const resumeLeviers = `Retraite à ${retirementGoal.targetAge} ans — retrait : ${ordreRetrait.toLowerCase()} — profil ${profilRendement.toLowerCase()} — rentes : ${rentes}`;
 
     // role="status" (live polite) : le badge apparaît après le calcul de projection → annoncé au
     // lecteur d'écran si le plan bascule en insoutenable lors d'un recalcul.
@@ -1490,195 +1596,109 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </Badge>
         </div>
     ) : undefined;
+    // [S5-REFONTE-FUTUR] Commutateur « Données réelles / Bac à sable » (maquettes) : pleine largeur
+    // sous le titre au téléphone, à droite de la recherche au bureau.
     const dataModePill = (
         <Pill
             aria-label="Mode de données"
-            size="sm"
+            fullWidth={etroit}
             value={projection.useTheoretical ? 'sandbox' : 'real'}
             onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
+            className="*:min-h-11 lg:*:min-h-8"
             options={[
-                { value: 'real', label: 'Données Réelles', icon: '🔗' },
-                { value: 'sandbox', label: 'Sandbox', icon: '🧪' },
+                { value: 'real', label: 'Données réelles' },
+                { value: 'sandbox', label: 'Bac à sable', title: 'Bac à sable : projection sur des données théoriques, sans toucher aux tiennes' },
             ]}
         />
     );
+    const rechercheBouton = (
+        <button
+            type="button"
+            onClick={ouvrirPaletteCommandes}
+            aria-keyshortcuts="Control+K"
+            className="h-11 w-[300px] px-4 rounded-xl bg-surface border border-white/8 flex items-center justify-between gap-3 text-[13px] text-ink-400 hover:text-ink-200 hover:border-white/15 transition-colors focus-ring"
+        >
+            <span className="truncate">Rechercher un compte, un levier…</span>
+            <kbd className="shrink-0 whitespace-nowrap font-mono text-tiny text-ink-500">Ctrl K</kbd>
+        </button>
+    );
 
-    // [FUTUR-NAV-TIROIRS] Sélecteur de période + actions (Ré-optimiser/Verrouiller/Plein écran) —
-    // un seul calcul, rendu soit dans la barre d'outils de la courbe (mise en page empilée), soit
-    // dans la barre latérale (desktop) : `barreOutils` en JSX, comme `kpiGrid` ci-dessus.
-    const barreOutils = (
-        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-            <FuturePeriodSelector
-                variant={isNarrowViewport ? 'compact' : 'buttons'}
-                zoom={zoom}
-                todayPresetRange={todayPresetRange}
-                idxForYears={idxForYears}
-                lastMonthIndex={lastMonthIndex}
-                onFullscreen={() => zoom.containerEl.current?.requestFullscreen?.()}
-            />
-            <div className="flex items-center gap-2">
-                {/* [A11Y-CHART-HINT-HIDDEN] `aria-hidden` ASSUMÉ, et vérifié : cette phrase est un
-                    DOUBLON visuel de l'`aria-label` du graphe (plus bas). */}
-                <span className="text-tiny text-ink-400 hidden md:block" aria-hidden="true">
-                    survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
-                </span>
-                {/* PH4-FUT « leviers-d'abord » — revenir au composeur de leviers (ré-optimiser).
-                    [PROJECTION-PERSIST] même chemin que « Rechoisir mes leviers » : efface AUSSI
-                    le gel (mémoire + IDB), sinon un blob périmé resurgirait au prochain périmé. */}
-                <button
-                    type="button"
-                    onClick={regateToLevers}
-                    className="px-2 py-1 text-tiny font-bold rounded-sm text-primary hover:brightness-110 bg-primary/15 hover:bg-primary/25 border border-primary/30 transition-colors focus-ring"
-                    title="Recomposer tes leviers et recalculer la meilleure stratégie"
-                >
-                    <span aria-hidden="true">🎯</span> Ré-optimiser
-                </button>
-                {/* PH2-d — verrou de courbe : fige la courbe courante comme référence (persistée IDB). */}
+    // Verrouiller / Plein écran : secondaires, à droite des périodes dans l'en-tête de la carte.
+    const actionsCourbe = (
+        <div className="flex items-center gap-1.5">
+            {/* PH2-d — verrou de courbe : fige la courbe courante comme référence (persistée IDB). */}
                 {isProjectionLocked ? (
                     <button
                         type="button"
                         onClick={unlockProjection}
-                        className="px-2 py-1 text-tiny font-bold rounded-sm text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
+                        className="h-11 min-w-11 lg:h-9 lg:min-w-0 px-3 rounded-lg text-[13px] font-semibold text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
                         title="Déverrouiller : revenir à la courbe live seule"
                     >
-                        <span aria-hidden="true">🔓</span> Déverrouiller
+                        <span aria-hidden="true">🔓</span> <span className="max-lg:sr-only">Déverrouiller</span>
                     </button>
                 ) : (
                     <button
                         type="button"
                         onClick={() => { if (results) lockProjection(results); }}
                         disabled={!results || isComputing}
-                        className="px-2 py-1 text-tiny font-bold rounded-sm text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="h-11 min-w-11 lg:h-9 lg:min-w-0 px-3 rounded-lg text-[13px] text-ink-300 hover:text-ink-50 hover:bg-white/5 border border-white/8 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Verrouiller cette courbe comme référence (persistée jusqu'au déverrouillage)"
                     >
-                        <span aria-hidden="true">🔒</span> Verrouiller
+                        <span aria-hidden="true">🔒</span> <span className="max-lg:sr-only">Verrouiller</span>
                     </button>
                 )}
-                {!isNarrowViewport && (
+                {/* Au téléphone, le sélecteur compact porte déjà « Plein écran » (44×44). */}
+                {!etroit && (
                 <button
                     type="button"
                     onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
-                    className="px-2 py-1 text-tiny font-bold rounded-sm text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
+                    className="h-9 px-3 rounded-lg text-[13px] text-ink-300 hover:text-ink-50 hover:bg-white/5 border border-white/8 transition-colors focus-ring"
                     title="Plein écran (Échap pour quitter)"
                 >
                     ⛶ Plein écran
                 </button>
                 )}
-            </div>
         </div>
     );
 
+    const outils = <OutilsProjection tiroirOuvert={tiroirOuvert} onOuvrir={setTiroirOuvert} />;
+
     return (
-        <div className={isBelowSidebarBreakpoint ? 'space-y-6 animate-fade-in pb-24' : 'flex items-start gap-6 animate-fade-in pb-24'}>
-        {isBelowSidebarBreakpoint ? (
-            <>
-            {/* [FUTUR-MOBILE-PR2] Badge et pill FACTORISÉS : mêmes éléments, un seul habillage choisi
-                selon la largeur. */}
-            {isNarrowViewport ? (
-                // En-tête compact (≈40 px, décision Marc 2026-09-10) : titre court + pastille de
-                // mode de données sur une ligne, badge d'insolvabilité s'il y a lieu.
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <h1 className="text-h1 text-ink-50 tracking-tight">Projection</h1>
-                        {insolvencyBadge}
-                    </div>
-                    {dataModePill}
-                </div>
-            ) : (
-                <PageHeader
-                    icon="🔮"
-                    title="Projection Future"
-                    subtitle="Analyse des flux mensuels projetés avec Loyer → Hypothèque automatique et frais enfants dynamiques."
-                    badge={insolvencyBadge}
-                    actions={dataModePill}
-                />
-            )}
-
-            {/* [NAV-MERGE-SANTE-FUTUR] Résumé condensé, toujours visible (pas de gate curveVisible :
-                le score de santé ne dépend pas d'une projection calculée). */}
-            <FutureHealthSummary />
-
-            {/* Hero KPI strip — PH4 : caché tant que la projection n'est pas calculée explicitement.
-                [FUTUR-NAV-TIROIRS] AVANT le graphe, seule position désormais (choix Marc) — l'ancien
-                double rendu (avant/après selon le sous-onglet actif) n'a plus lieu d'être : il n'y a
-                plus de sous-onglet à quitter pour voir la courbe. */}
-            {curveVisible && kpiGrid}
-
-            {/* [FUTUR-NAV-TIROIRS] Remplace les anciens sous-onglets Hypothèses/Plan d'action/
-                Historique : la courbe (ci-dessous) est TOUJOURS affichée, ces trois boutons ouvrent
-                chacun un tiroir par-dessus plutôt que de basculer la vue. */}
-            <div className="flex gap-2">
-                <button
-                    type="button"
-                    onClick={() => setTiroirOuvert('hypotheses')}
-                    aria-haspopup="dialog"
-                    aria-expanded={tiroirOuvert === 'hypotheses'}
-                    aria-controls={tiroirDomId('hypotheses')}
-                    className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
-                >
-                    <span aria-hidden="true">⚙️</span> Hypothèses
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setTiroirOuvert('plan')}
-                    aria-haspopup="dialog"
-                    aria-expanded={tiroirOuvert === 'plan'}
-                    aria-controls={tiroirDomId('plan')}
-                    className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
-                >
-                    <span aria-hidden="true">🗂️</span> Plan
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setTiroirOuvert('historique')}
-                    aria-haspopup="dialog"
-                    aria-expanded={tiroirOuvert === 'historique'}
-                    aria-controls={tiroirDomId('historique')}
-                    className="flex-1 min-h-[44px] rounded-card bg-white/5 border border-white/10 text-ink-200 text-tiny font-bold focus-ring"
-                >
-                    <span aria-hidden="true">📊</span> Historique
-                </button>
-            </div>
-            </>
-        ) : (
-            <FutureSidebar
-                insolvencyBadge={insolvencyBadge}
-                dataModePill={dataModePill}
-                kpi={curveVisible ? kpiGridSidebar : null}
-                // ⚠️ Comme `kpiGrid` : dans l'ancien code, `barreOutils` (période, Ré-optimiser,
-                // Verrouiller, Plein écran) vivait DANS la Card qui n'existe que si `curveVisible` —
-                // avant le premier calcul, ces contrôles n'existaient tout simplement pas. La barre
-                // latérale, elle, est TOUJOURS montée : sans cette garde, « Ré-optimiser » serait
-                // visible sur l'écran d'amorçage, avant qu'il y ait quoi que ce soit à optimiser.
-                barreOutils={curveVisible ? barreOutils : null}
-                tiroirOuvert={tiroirOuvert}
-                onOuvrirTiroir={setTiroirOuvert}
+        <div className="space-y-4 lg:space-y-6 animate-fade-in pb-24">
+            <PageHeader
+                title="Projection"
+                badge={insolvencyBadge}
+                nav={etroit ? dataModePill : undefined}
+                actions={
+                    <>
+                        {!etroit && rechercheBouton}
+                        {!etroit && dataModePill}
+                        <FutureHealthSummary />
+                    </>
+                }
             />
-        )}
 
-        <div className={isBelowSidebarBreakpoint ? undefined : 'flex-1 min-w-0 space-y-3'}>
+            {/* [REFONTE-NAV Lot 1] Chiffres de tête (ex-Accueil), fournis par l'hôte (TabRouter) :
+                le bandeau reste un module chargé à part — il tire l'historique du portefeuille. */}
+            {bandeauKpi?.(etroit ? 'mobile-tete' : 'bureau')}
 
             {/* Écran d'invite : tant que la courbe n'est pas révélée (jamais calculée OU entrées
-                modifiées depuis le dernier calcul), on invite à (re)calculer — jamais de courbe auto. */}
-            {/* PH4-FUT « leviers-d'abord » : le composeur de leviers est REMONTÉ EN AMONT (avant tout
-                calcul). On compose ses leviers, on cherche la meilleure combo, on l'applique → la courbe
-                affichée = la MEILLEURE selon les leviers. Plus de sous-onglet « Optimisation » séparé. */}
-            {/* [PROJECTION-PERSIST] Fenêtre de restauration (sig persistée, résultat pas encore là :
-                moteur en route ~300 ms-qq s, gel IDB en lecture) → chargement honnête, PAS l'écran
-                d'amorçage (sinon chaque reload donne l'impression d'avoir perdu la projection). */}
+                modifiées depuis le dernier calcul), on invite à (re)calculer — jamais de courbe auto.
+                PH4-FUT « leviers-d'abord » : le composeur de leviers est EN AMONT de tout calcul.
+                [PROJECTION-PERSIST] Fenêtre de restauration → chargement honnête, pas l'amorçage. */}
             {curveRestoring && (
-                <Card className="text-center">
+                <section className="rounded-2xl bg-surface border border-white/6 text-center">
                     <div className="py-10 flex flex-col items-center gap-3 text-ink-300" role="status" aria-live="polite">
                         <svg className="animate-spin h-8 w-8 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5" />
                         </svg>
                         <span className="text-meta">Ta projection se recharge…</span>
                     </div>
-                </Card>
+                </section>
             )}
             {!curveVisible && !curveRestoring && (
                 <div className="space-y-4">
-                    <Card className="text-center">
+                    <section className="rounded-2xl bg-surface border border-white/6 text-center">
                         <div className="py-6 px-4 space-y-3 max-w-xl mx-auto">
                             <div className="text-4xl" aria-hidden="true">{isStale ? '🔄' : '🎯'}</div>
                             <h2 className="text-h2 text-ink-50">{isStale ? 'Paramètres modifiés' : 'Compose tes leviers, calcule ta meilleure projection'}</h2>
@@ -1699,7 +1719,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 {isComputing ? 'Calcul en cours…' : 'ou vois directement ta projection actuelle (sans optimiser)'}
                             </button>
                         </div>
-                    </Card>
+                    </section>
                     <StrategyOptimizerPanel params={params} onApply={setRetirementGoal ? applyAndReveal : undefined} />
                     {/* [UI-SCEN] — stress-tests à la demande (sortis du recalcul permanent). [EP-10] repliés. */}
                     <CollapsibleSection title="Stress-tests" subtitle="Scénarios adverses (krach, inflation, longévité…) — à la demande." defaultOpen={false}>
@@ -1708,11 +1728,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 </div>
             )}
 
+            {!curveVisible && !curveRestoring && (
+                <>
+                    {etroit && bandeauKpi && <div className="grid grid-cols-2 gap-2.5">{bandeauKpi('mobile-pied')}</div>}
+                    {outils}
+                </>
+            )}
+
             {curveVisible && (
-            <div ref={revealedRef} tabIndex={-1} className="outline-hidden space-y-3" role="region" aria-label="Projection affichée">
-            {/* [PROJECTION-PERSIST] Badge « pas à jour » (choix Marc : FIGER l'ancienne courbe, pas la
-                recalculer en douce). Affiché dès que les entrées divergent de la dernière révélation :
-                la courbe ci-dessous est le GEL (ou le repli live si le gel est absent — autre PC). */}
+            <div ref={revealedRef} tabIndex={-1} className="outline-hidden space-y-4 lg:space-y-6" role="region" aria-label="Projection affichée">
             {isStale && (
                 <div className="flex flex-wrap items-center gap-3 rounded-card border border-warning-500/40 bg-warning-500/10 px-4 py-2.5" role="status">
                     <span aria-hidden="true">🔄</span>
@@ -1756,22 +1780,42 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </span>
                 </div>
             )}
-            <Card title={`La Courbe de Vie - ${allResults[0]?.strategyName || 'Simulation'}`}
-                action={isComputing ? (
-                    <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
-                        <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5"/>
-                        </svg>
-                        Recalcul Monte Carlo en cours…
-                    </span>
-                ) : undefined}>
-                {/* [FUTUR-NAV-TIROIRS] `barreOutils` (calculée plus haut) : ici en mise en page
-                    empilée seulement — sur desktop elle vit dans la barre latérale. */}
-                {isBelowSidebarBreakpoint && barreOutils}
+
+            {/* [S5-REFONTE-FUTUR] Carte « La courbe de vie » (maquette F-bureau) ; au téléphone, pas de
+                cadre : la courbe prend toute la largeur (maquette F-mobile). */}
+            <section aria-labelledby="courbe-vie-titre" className="lg:rounded-2xl lg:bg-surface lg:border lg:border-white/6 lg:px-6 lg:pt-5 lg:pb-6 space-y-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                        <h2 id="courbe-vie-titre" className="text-[17px] lg:text-[18px] font-bold text-ink-50">La courbe de vie</h2>
+                        {!etroit && (
+                            <p className="text-meta text-ink-400 mt-0.5">Toutes les séries de la projection · clique une étiquette pour la masquer, l&apos;échelle s&apos;ajuste</p>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {isComputing && (
+                            <span className="flex items-center gap-2 text-tiny text-amber-400" role="status" aria-live="polite">
+                                <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="40" strokeDashoffset="20" opacity="0.5"/>
+                                </svg>
+                                Recalcul Monte Carlo en cours…
+                            </span>
+                        )}
+                        <FuturePeriodSelector
+                            variant={etroit ? 'compact' : 'buttons'}
+                            zoom={zoom}
+                            todayPresetRange={todayPresetRange}
+                            idxForYears={idxForYears}
+                            lastMonthIndex={lastMonthIndex}
+                            onFullscreen={() => zoom.containerEl.current?.requestFullscreen?.()}
+                        />
+                        {actionsCourbe}
+                    </div>
+                </div>
+                {!etroit && statsCourbe}
                 {/* [FUTUR-REAL-HISTORY] Note d'honnêteté sur le passé reconstruit : patrimoine net réel
                     (placements + cash + immo − dettes), avec deux approximations SIGNALÉES (Option A + FX du jour). */}
                 {pastPrefixPoints.length > 0 && (
-                    <div className="-mt-1 mb-2 text-tiny text-cyan-300/80 flex items-center gap-1.5 flex-wrap">
+                    <div className="text-tiny text-cyan-300/80 flex items-start gap-1.5">
                         <span aria-hidden="true">⟵</span>
                         <span>
                             Patrimoine net réel{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
@@ -1782,20 +1826,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                 )}
                 {/* PH2-d — légende TEXTE de la courbe verrouillée (la légende custom du graphe ne la
-                    liste pas) : label accessible + repère NON-couleur (trait tireté ambre). */}
+                    liste pas) : label accessible + repère NON-couleur (trait tireté). [S5-REFONTE-FUTUR] Fuchsia :
+                    l'ambre est désormais celui de l'objectif FIRE (palette des maquettes). */}
                 {lockedByMonth && (
-                    <div className="-mt-1 mb-2 text-tiny text-amber-300/90 flex items-center gap-1.5 flex-wrap">
-                        <span aria-hidden="true" className="inline-block w-5 border-t-2 border-dashed border-amber-400" />
+                    <div className="text-tiny text-fuchsia-300/90 flex items-center gap-1.5 flex-wrap">
+                        <span aria-hidden="true" className="inline-block w-5 border-t-2 border-dashed border-fuchsia-400" />
                         <span>Courbe verrouillée — référence figée (l'aperçu live continue de se recalculer).</span>
                     </div>
                 )}
                 {/* [PASSE-REEL-2] L'écart se lit JUSTE SOUS sa référence : affiché ailleurs, il ne
                     serait pas interprétable. Rend `null` si la comparaison n'a pas de sens. */}
                 <ForecastAccuracyBadge accuracy={forecastAccuracy} />
-                {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
-                {/* [FUTUR-AXE-Y-MINIMAL] `-mx-6 px-1` : déborde du padding horizontal de la <Card>
-                    parente (p-6, 24px de chaque côté) — Marc : « faut qu'elle prenne toute la
-                    largeur de l'écran ». Neutralisé en plein écran (index.css, .chart-fullscreen). */}
+                {/* [PASSE-REEL-2] L'écart se lit JUSTE SOUS sa référence : affiché ailleurs, il ne
+                    serait pas interprétable. Rend `null` si la comparaison n'a pas de sens. */}
+                <ForecastAccuracyBadge accuracy={forecastAccuracy} />
+                {/* Hauteur : 55dvh (≥ 380 px) au téléphone, 500 px tablette, 650 px bureau. [S5-REFONTE-FUTUR]
+                    Plus haute que les maquettes, VOLONTAIREMENT : « le graphe GARDE sa taille » est un
+                    choix de Marc ([FUTUR-PANNEAU-FIXE]) — la page défile, la courbe ne rétrécit pas.
+                    Plus de `-mx-6` : la carte n'a plus de cadre au téléphone, la courbe y prend déjà
+                    toute la largeur ([FUTUR-AXE-Y-MINIMAL]). */}
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
@@ -1806,7 +1855,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     // Le hook comptait déjà sur sa focusabilité pour restituer le focus.
                     tabIndex={0}
                     onKeyDown={handleChartKeyDown}
-                    className={`chart-fullscreen relative w-full -mx-6 px-1 h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
+                    className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring rounded-lg ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
                     aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Le détail du jour visé est décrit dans le panneau situé juste sous la courbe ; les mêmes données sont aussi lisibles sous forme de tableau et de liste de jalons. À la souris : survol = aperçu, clic = épingle le jour dans le panneau, molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = épingle le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans le panneau, Échap = relâche."
                 >
@@ -1824,7 +1873,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
                             data={chartSeries}
-                            margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                            margin={{ top: 34, right: 2, left: 2, bottom: 4 }}
                             onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => {
                                 // [DETTE-CAST-DAILYCURVE] Les DEUX derniers `as unknown as` du fichier
                                 // (celui-ci et onMouseLeave), JUSTIFIÉS : les types recharts v3
@@ -1839,7 +1888,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             }) as unknown as (nextState: unknown, event: unknown) => void}
                             onMouseLeave={(() => selection.onChartLeave()) as unknown as () => void}
                         >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                            <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
 
                             {/* [FUTUR-DAILY lot B] Axe X NUMÉRIQUE (`type="number"`), et non plus catégoriel.
                                 ⚠️ CE QUE ÇA CHANGE, ET POURQUOI C'EST LE PRÉALABLE AU QUOTIDIEN. En catégoriel,
@@ -1863,8 +1912,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 dataKey="monthIndex"
                                 type="number"
                                 domain={X_AXIS_DOMAIN}
-                                stroke="#666"
-                                tick={{fontSize: 10}}
+                                stroke="#6b7485"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: '#6b7485', fontFamily: 'var(--font-mono, monospace)' }}
                                 minTickGap={50}
                                 tickFormatter={(val: number) => {
                                     // Un axe numérique génère ses PROPRES graduations (nombres ronds), qui ne
@@ -1878,14 +1929,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 }}
                             />
 
-                            {/* [FUTUR-AXE-Y-MINIMAL] Marc, maquettes E2+E4 choisies : plus de chiffres sur
-                                l'axe Y — `hide` retire aussi la gouttière (~60px) qu'il réservait, même
-                                masqué. `domain` reste explicite : recharts a encore besoin de l'échelle
-                                pour placer les <ReferenceLine>/<ReferenceDot> et les repères de
-                                <CartesianGrid> (3 lignes de grille, discrètes, restent visibles). La
-                                valeur exacte vit désormais dans le badge « Aujourd'hui » (ci-dessous) et
-                                le panneau du jour — jamais sur l'axe. */}
-                            <YAxis hide domain={['auto', 'auto']} />
+                            {/* [S5-REFONTE-FUTUR] Repères de l'axe Y À DROITE, DANS le tracé (`mirror`) — maquettes
+                                F-bureau / F-mobile : « 0 », « 10 M$ », « 20 M$ »… Remplace l'axe masqué de
+                                [FUTUR-AXE-Y-MINIMAL] : les maquettes validées remettent l'échelle, mais sans
+                                gouttière (le tracé garde toute la largeur, la demande d'origine de Marc).
+                                Graduations « rondes » de recharts, montants masqués en mode discret. */}
+                            <YAxis
+                                orientation="right"
+                                mirror
+                                domain={echelleY?.domaine ?? ['auto', 'auto']}
+                                ticks={echelleY?.ticks}
+                                tickCount={4}
+                                axisLine={false}
+                                tickLine={false}
+                                width={64}
+                                tick={{ fontSize: 11, fill: '#8a93a6', fontFamily: 'var(--font-mono, monospace)' }}
+                                tickFormatter={maskedTick(isPrivacyMode, (v: number) => formatCompactCAD(v, { repere: true }))}
+                            />
 
                             {pastPrefixPoints.length > 0 && (
                                 <ReferenceArea
@@ -1913,32 +1973,38 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {pastPrefixPoints.length > 0 && !isDailyCurve && (
                                 <ReferenceLine x={0} stroke="#22d3ee" strokeOpacity={0.5} strokeDasharray="3 3" label={<RefLineLabel value="Passé réel ⟵" color="#22d3ee" />} />
                             )}
-                            <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
+                            <ReferenceLine y={0} stroke="rgba(255,255,255,0.22)" strokeWidth={1} />
                             {isVisible('aujourdhui') && <ReferenceLine x={isDailyCurve && todayAxisX !== null ? todayAxisX : todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 
                             {/* [R3] Recharts ne rend RIEN (content=()=>null) : il reste actif pour
                                 alimenter onMouseMove (point survolé) + le curseur (ligne verticale).
                                 Le vrai tooltip est rendu dans un PORTAIL positionné par le hook. */}
                             <Tooltip content={() => null} cursor={{ stroke: 'rgba(255,255,255,0.18)', strokeWidth: 1 }} isAnimationActive={false} />
-                            {isVisible('fire') && <ReferenceLine y={fireNumber} stroke="#f97316" strokeDasharray="5 5" label={<RefLineLabel value="Objectif FIRE" color="#f97316" />} />}
+                            {isVisible('fire') && <ReferenceLine y={fireNumber} stroke={couleurSerie('fire')} strokeOpacity={0.8} strokeDasharray="5 5" />}
+                            {/* [S5-REFONTE-FUTUR] Jalon FIRE (maquette F-bureau) : trait vertical à l'année où le
+                                MOTEUR déclare l'objectif atteint (`jalonFire`, même évènement que la pastille
+                                de la courbe) — jamais recalculé ici. Absent tant que l'objectif n'est pas atteint. */}
+                            {isVisible('fire') && jalonFire && (
+                                <ReferenceLine x={jalonFire.x ?? jalonFire.monthIndex} stroke={couleurSerie('fire')} strokeOpacity={0.45} strokeDasharray="2 4" label={<RefLineLabel value={libelleJalonFire} color={couleurSerie('fire')} jalon />} />
+                            )}
 
                             {/* PH4-FUT — ANNOTATIONS de cycle de vie (retraite / rentes RRQ-PSV / épuisement
                                 de compte). Lignes verticales discrètes, masquables via le toggle « Événements ». */}
                             {isVisible('events') && lifeMarkers.map((mk, i) => (
-                                <ReferenceLine key={`lifemark-${i}`} x={mk.monthIndex} stroke={mk.color} strokeOpacity={0.5} strokeDasharray="2 4" label={<RefLineLabel value={mk.label} color={mk.color} />} />
+                                <ReferenceLine key={`lifemark-${i}`} x={mk.monthIndex} stroke={mk.color} strokeOpacity={0.5} strokeDasharray="2 4" label={etroit && mk.jalon ? undefined : <RefLineLabel value={mk.label} color={mk.color} jalon={mk.jalon} />} />
                             ))}
 
-                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
-                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
-                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
-                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
-                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
-                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
-                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
-                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
+                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke={couleurSerie('Liquidites')} fill={couleurSerie('Liquidites')} fillOpacity={0.55} name="Cash" isAnimationActive={false} />}
+                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke={couleurSerie('CELI')} fill={couleurSerie('CELI')} fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke={couleurSerie('CELIAPP')} fill={couleurSerie('CELIAPP')} fillOpacity={0.6} name="CELIAPP" isAnimationActive={false}/>}
+                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke={couleurSerie('REER')} fill={couleurSerie('REER')} fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
+                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke={couleurSerie('REEE')} fill={couleurSerie('REEE')} fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
+                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke={couleurSerie('NonReg')} fill={couleurSerie('NonReg')} fillOpacity={0.6} name="Non-enregistré" isAnimationActive={false}/>}
+                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke={couleurSerie('Crypto')} fill={couleurSerie('Crypto')} fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
+                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke={couleurSerie('Immobilier')} fill={couleurSerie('Immobilier')} fillOpacity={0.3} name="Équité immo" isAnimationActive={false}/>}
                             {/* [ENG-W5-BUSINESS-NON-PUBLIE] Sans cette aire, la pile des actifs restait SOUS la ligne de
                                 patrimoine de toute la valeur de l'entreprise — une décomposition qui ne somme pas. */}
-                            {isVisible('Entreprise') && <Area type="monotone" dataKey="Entreprise" stackId="1" stroke="#84cc16" fill="#84cc16" fillOpacity={0.3} name="Entreprise privée" isAnimationActive={false}/>}
+                            {isVisible('Entreprise') && <Area type="monotone" dataKey="Entreprise" stackId="1" stroke={couleurSerie('Entreprise')} fill={couleurSerie('Entreprise')} fillOpacity={0.3} name="Entreprise" isAnimationActive={false}/>}
 
                             {/* [FUTUR-COURBE-DETTE] La dette, en NÉGATIF, sous zéro. ⚠️ PAS de `stackId` :
                                 elle n'appartient pas à la pile des actifs — l'empiler la ferait
@@ -1955,11 +2021,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 `connectNulls` FAUX : le levier n’existe pas avant l’achat de la
                                 résidence, et tracer 0 affirmerait « aucun levier ». */}
                             {isVisible('DetteLevierSmith') && <Line type="monotone" dataKey={detteLevierSousZero} stroke={COULEUR_LEVIER} strokeWidth={2} strokeDasharray="6 3" dot={false} name={LIBELLE_LEVIER} connectNulls={false} isAnimationActive={false}/>}
-                            {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
+                            {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke={couleurSerie('ImpotLatent')} fill={couleurSerie('ImpotLatent')} fillOpacity={0.2} strokeDasharray="3 3" name="Impôt latent" isAnimationActive={false}/>}
                             {/* [FUTUR-DAILY-NATIVE] `FluxImpots` n'existe sur les points quotidiens
                                 QU'AUX jours d'échéance (retiré ailleurs dans `dailyAll`) : la Bar ne
                                 rend donc ~qu'un rect par an, pas 11 000 rects à hauteur nulle. */}
-                            {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
+                            {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill={couleurSerie('FluxImpots')} fillOpacity={0.8} name="Paiement impôts" barSize={4} isAnimationActive={false} />}
 
                             {/* G17 — Monte Carlo dessiné PAR-DESSUS la pile (sinon occulté) en
                                 cône d'incertitude : P10/P90 pointillés + médiane pleine.
@@ -1969,15 +2035,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 ferait disparaître PARTOUT maintenant que tout est au jour. */}
                             {runMC && isVisible('montecarlo') && (
                                 <>
-                                    <Line type="monotone" dataKey="P90" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P90" stroke="#7c93f2" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
                                     <Line type="monotone" dataKey="P10" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="P50" stroke="#c084fc" strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="P50" stroke={couleurSerie('montecarlo')} strokeWidth={2.5} dot={false} name="Scénario médian (P50)" isAnimationActive={false} />
                                 </>
                             )}
 
-                            {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
+                            {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke={couleurSerie('NetWorth')} strokeWidth={2.5} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
                             {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
-                            {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
+                            {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#e879f9" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
 
                             {/* [FUTUR-AXE-Y-MINIMAL] Badge flottant sur le POINT du jour (maquette E2) :
                                 rendu APRÈS les aires/lignes (et non avec les autres ReferenceLine plus
@@ -2027,6 +2093,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ResponsiveContainer>
                      )}
                 </div>
+
+                {/* [S5-REFONTE-FUTUR] Légende en étiquettes (maquettes), sous la courbe à toutes les
+                    largeurs. La phrase d'aide des gestes suit, au bureau seulement. */}
+                <FutureLegendDrawer
+                    runMC={runMC}
+                    hiddenSeries={hiddenSeries}
+                    isVisible={isVisible}
+                    toggleSeries={toggleSeries}
+                    showAllSeries={showAllSeries}
+                />
+                {/* [A11Y-CHART-HINT-HIDDEN] `aria-hidden` ASSUMÉ, et vérifié : cette phrase est un
+                    DOUBLON visuel de l'`aria-label` du graphe (plus haut). */}
+                <p className="hidden lg:block text-tiny text-ink-500" aria-hidden="true">
+                    survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
+                </p>
 
                 {/* [FUTUR-PANNEAU-FIXE] Le panneau du jour, dans le FLUX du document, immédiatement
                     sous le graphe — demande de Marc en texte libre : « j'aimerais que ce soit un
@@ -2186,23 +2267,27 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         onClose={() => { setDetailPoint(null); setDetailDayIso(null); setDetailAnchorIso(null); setDetailMonthIso(null); }}
                     />
                 )}
+            </section>
 
-                {/* [FUTUR-MOBILE-PR3] Légende extraite : inline sur desktop (rendu byte-identique),
-                    tiroir replié sur mobile — voir components/future/FutureLegendDrawer.tsx. */}
-                <FutureLegendDrawer
-                    runMC={runMC}
-                    hiddenSeries={hiddenSeries}
-                    isVisible={isVisible}
-                    toggleSeries={toggleSeries}
-                    showAllSeries={showAllSeries}
-                    variant={isNarrowViewport ? 'drawer' : 'inline'}
-                />
+            {etroit && (
+                <div className="grid grid-cols-2 gap-2.5">
+                    {tuilesCourbeMobile}
+                    {bandeauKpi?.('mobile-pied')}
+                </div>
+            )}
 
-            </Card>
+            {/* [S5-REFONTE-FUTUR] Jalons + Leviers (maquettes) ; la carte Outils porte les tiroirs. */}
+            <div className="grid gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_380px] items-start">
+                <TableJalons jalons={jalons} etroit={etroit} />
+                <div className="space-y-4 lg:space-y-6">
+                    <CarteLeviers leviers={leviers} strategie={allResults[0]?.strategyName} resume={resumeLeviers} nbLeviers={LEVER_LIBRARY.length} etroit={etroit} onOptimiser={regateToLevers} />
+                    {outils}
+                </div>
+            </div>
             </div>
             )}
-        </div>
 
+        
         {/* [FUTUR-NAV-TIROIRS] Les trois anciens sous-onglets, désormais en tiroir. `variant` suit
             le même seuil que la mise en page : feuille du bas en colonne empilée, tiroir latéral
             quand la barre latérale est visible. */}

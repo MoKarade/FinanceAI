@@ -1,5 +1,5 @@
 /**
- * Tests E2E — [FUTUR-NAV-TIROIRS] la barre latérale desktop (≥1024px) et ses tiroirs LATÉRAUX.
+ * Tests E2E — [FUTUR-NAV-TIROIRS] les tiroirs LATÉRAUX du bureau (≥1024px), ouverts depuis la carte « Outils » (ex-barre latérale, retirée par la refonte S5).
  *
  * `futureMobileFilet.spec.ts` (et ses voisins) couvrent la variante « feuille » sous 1024px ;
  * AUCUN test — vitest ou e2e — n'exerçait `FutureSidebar` ni la variante `lateral` de `Drawer`
@@ -30,18 +30,20 @@ async function ouvrirFuturEtReveler(page: Page) {
 }
 
 const LIENS: ReadonlyArray<{ nom: RegExp; titreDialogue: string }> = [
-    { nom: /Modifier les hypothèses/, titreDialogue: 'Modifier les hypothèses' },
-    { nom: /Plan d'action/, titreDialogue: "Plan d'action" },
-    { nom: /Historique/, titreDialogue: 'Historique' },
+    { nom: /^Modifier les hypothèses$/, titreDialogue: 'Modifier les hypothèses' },
+    { nom: /^Plan d'action$/, titreDialogue: "Plan d'action" },
+    { nom: /^Historique$/, titreDialogue: 'Historique' },
 ];
 
-test.describe('Futur desktop — barre latérale et tiroirs (PR [FUTUR-NAV-TIROIRS])', () => {
+test.describe('Futur desktop — carte Outils et tiroirs (PR [FUTUR-NAV-TIROIRS], S5)', () => {
     test.setTimeout(120_000);
 
-    test('la barre latérale est visible, le graphe aussi, PAS de bandeau à onglets', async ({ page }) => {
+    test('la carte Outils est visible, le graphe aussi, PAS de bandeau à onglets', async ({ page }) => {
         await ouvrirFuturEtReveler(page);
-        await expect(page.getByRole('complementary', { name: 'Contrôles de la projection' })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Projection Future' })).toBeVisible();
+        // [S5-REFONTE-FUTUR] La barre latérale est retirée (maquette F-bureau) ; les tiroirs vivent
+        // dans la carte « Outils », sous la courbe.
+        await expect(page.getByRole('region', { name: 'Outils' })).toBeVisible();
+        await expect(page.getByRole('heading', { level: 1, name: 'Projection' })).toBeVisible();
         await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible();
         await expect(page.getByRole('tablist')).toHaveCount(0);
     });
@@ -91,13 +93,13 @@ test.describe('Futur desktop — barre latérale et tiroirs (PR [FUTUR-NAV-TIROI
         await activateTestMode(page);
         await page.goto('/#FUTURE');
         await page.waitForLoadState('domcontentloaded');
-        await page.getByRole('button', { name: /Plan d'action/ }).click();
+        await page.getByRole('button', { name: "Plan d'action", exact: true }).click();
         const dialogue = page.getByRole('dialog', { name: "Plan d'action" });
         await expect(dialogue).toBeVisible();
         await expect(dialogue.getByText(/pour voir ton plan d'action/)).toBeVisible();
     });
 
-    test('les 3 liens de la barre latérale ont une cible tactile ≥44px (standard interne du dépôt)', async ({ page }) => {
+    test('les 3 boutons de la carte Outils ont une cible tactile ≥44px (standard interne du dépôt)', async ({ page }) => {
         await ouvrirFuturEtReveler(page);
         for (const lien of LIENS) {
             const box = await page.getByRole('button', { name: lien.nom }).boundingBox();

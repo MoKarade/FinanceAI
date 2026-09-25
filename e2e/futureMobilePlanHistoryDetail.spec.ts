@@ -137,8 +137,12 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
         // choisi plutôt que sur l'ancre « aujourd'hui ».
         const panneau = page.locator('[data-panneau-jour]');
         const epingle = page.locator('[data-jour-epingle]');
+        // [S5-REFONTE-FUTUR] Échelle Y resserrée sur les données : la courbe et ses pastilles
+        // d'évènement occupent désormais la bande 0,6-0,8 de la hauteur — un tap y ouvre leur fiche
+        // au lieu d'épingler un jour. On vise le HAUT du tracé, vide de pastilles (le jour se choisit
+        // à l'abscisse, la hauteur du tap n'y change rien).
         const spots: Array<[number, number]> = [
-            [0.5, 0.78], [0.3, 0.82], [0.65, 0.75], [0.45, 0.6],
+            [0.5, 0.3], [0.3, 0.35], [0.65, 0.25], [0.45, 0.4],
         ];
         const box = await chartBox(page);
         for (const [fx, fy] of spots) {

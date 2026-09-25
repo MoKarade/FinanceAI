@@ -43,10 +43,25 @@ export function useCommandPalette() {
             }
             if (e.key === 'Escape') setIsOpen(false);
         };
+        // [S5-REFONTE-FUTUR] Le champ « Rechercher… » de l'en-tête Futur (maquette F-bureau) ouvre la
+        // MÊME palette : un évènement DOM plutôt qu'un contexte, la palette vit dans App et l'écran
+        // Futur est chargé à part (lazy) — aucun fil à tirer entre les deux.
+        const ouvrir = () => setIsOpen(true);
         window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
+        window.addEventListener(EVT_OUVRIR_PALETTE, ouvrir);
+        return () => {
+            window.removeEventListener('keydown', handler);
+            window.removeEventListener(EVT_OUVRIR_PALETTE, ouvrir);
+        };
     }, []);
     return { isOpen, open: () => setIsOpen(true), close: () => setIsOpen(false) };
+}
+
+const EVT_OUVRIR_PALETTE = 'financeai:ouvrir-palette';
+
+/** Ouvre la palette de commandes (Ctrl/Cmd + K) depuis n'importe quel écran. */
+export function ouvrirPaletteCommandes(): void {
+    window.dispatchEvent(new Event(EVT_OUVRIR_PALETTE));
 }
 
 /** Helper : génère les actions de navigation pour tous les Tabs. */

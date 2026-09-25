@@ -51,7 +51,8 @@ async function chartBox(page: Page) {
 async function toutIsActive(page: Page): Promise<boolean> {
   const bouton = page.getByRole('button', { name: 'Tout', exact: true });
   if (await bouton.count() > 0) {
-    return bouton.evaluate((el) => el.className.includes('bg-primary'));
+    // [S5-REFONTE-FUTUR] État lu sur `aria-pressed` (annoncé), plus sur une classe de couleur.
+    return (await bouton.getAttribute('aria-pressed')) === 'true';
   }
   const select = page.getByRole('combobox', { name: 'Période affichée' });
   return select.evaluate((el) => (el as HTMLSelectElement).value === 'all');

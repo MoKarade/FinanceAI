@@ -33,8 +33,9 @@ test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
 
 /** Les trois tiroirs, avec le libellé COURT du bouton (colonne empilée) et le TITRE fixe du tiroir. */
 const TIROIRS = [
-  { bouton: 'Hypothèses', titre: 'Modifier les hypothèses' },
-  { bouton: 'Plan', titre: "Plan d'action" },
+  // [S5-REFONTE-FUTUR] Carte « Outils » : un seul nom par tiroir, au bureau comme au téléphone.
+  { bouton: 'Modifier les hypothèses', titre: 'Modifier les hypothèses' },
+  { bouton: "Plan d'action", titre: "Plan d'action" },
   { bouton: 'Historique', titre: 'Historique' },
 ] as const;
 
@@ -62,8 +63,12 @@ const CIBLE_MIN = 44;
  * (`KPIStat.tsx`, commentaire `[A11Y-TOUCH-TARGET-TINY]` : cible EN LIGNE dans un bloc de texte,
  * WCAG 2.5.8 AA n'exige pas 44 px ici) — pas un nouveau motif, le MÊME motif répété 3× au lieu de
  * 1×, dans les 4 états walkés par ce test (+2 × 4 = +8, exactement l'écart mesuré).
+ *
+ * [S5-REFONTE-FUTUR] 57 → 28, mesuré (390 px) : les tuiles KPI et leurs cercles d'aide « ? » ont
+ * quitté l'écran (maquette F-mobile) et le commutateur « Données réelles / Bac à sable » passe à
+ * 44 px (−2 par état × 4 états). Ce qui reste est DANS les tiroirs.
  */
-const PLAFOND_CIBLES_TROP_PETITES = 57;
+const PLAFOND_CIBLES_TROP_PETITES = 28;
 
 async function ouvrirFutur(page: Page) {
   await page.addInitScript(scriptBypassOnboarding());
@@ -73,8 +78,9 @@ async function ouvrirFutur(page: Page) {
   await page.goto('/#FUTURE');
   await page.waitForLoadState('domcontentloaded');
   // [FUTUR-NAV-TIROIRS] Le témoin de chargement n'est plus le bandeau d'onglets (disparu) : le
-  // bouton « Hypothèses » est présent dans les DEUX états (amorçage et courbe révélée).
-  await expect(page.getByRole('button', { name: 'Hypothèses' })).toBeVisible({ timeout: 15_000 });
+  // bouton « Modifier les hypothèses » (carte Outils) est présent dans les DEUX états (amorçage et
+  // courbe révélée).
+  await expect(page.getByRole('button', { name: 'Modifier les hypothèses', exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 async function largeurDefilable(page: Page): Promise<number> {

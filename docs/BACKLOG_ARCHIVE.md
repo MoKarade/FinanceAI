@@ -10,6 +10,14 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-25 — Futur : la tuile « Patrimoine » montre le bout de la courbe
+
+- [x] 🟠 **`[FUTUR-KPI-PATRIMOINE-FIN-COURBE]`** (S) — ✅ 2026-09-25 : la tuile du Futur affiche
+  `finalNetWorth` (fin de courbe, même chiffre que Retraite et Placements) au lieu de `estateNetWorth` ;
+  l'héritage net passe dans l'info-bulle, masqué en mode discret. Source unique
+  `components/projection/kpiPatrimoine.ts`, garde `tests/components/projection/kpiPatrimoine.test.ts`.
+  Repli historique (nombre FIRE si pas de valeur finale) conservé tel quel.
+
 ## 2026-09-25 — Symbole de cotation vérifié avant la purge (PR #1059)
 
 Déménagé au lot suivant (E2E-FUTUR-CLICK-ANYWHERE-INSTABLE).

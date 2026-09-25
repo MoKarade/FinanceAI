@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-25 — Futur : la tuile « Patrimoine » montre le bout de la courbe
+
+- La tuile « Patrimoine — Fin de l'horizon » du Futur affichait l'héritage net (l'impôt dû au décès
+  déjà retiré, la valeur des rentes RRQ/PSV restantes ajoutée), alors que la courbe, Retraite et
+  Placements montrent la valeur nette de la même année. Exemple de test : 9,79 M$ sur la tuile,
+  11,23 M$ partout ailleurs. La tuile montre maintenant la valeur nette de fin de courbe, comme les
+  autres pages.
+- L'héritage net n'a pas disparu : il est dans l'info-bulle de la tuile (masqué en mode discret).
+
 ## 2026-09-25 — Symbole de cotation : vérifié avant d'effacer la courbe
 
 - Quand tu fixes le symbole de cotation d'un titre (diagnostic « Cours non synchronisés »), l'app

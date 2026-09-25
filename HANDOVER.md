@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 (suite 4) — **Futur : la tuile « Patrimoine » = bout de la courbe**
+> `[FUTUR-KPI-PATRIMOINE-FIN-COURBE]` (décision Marc) : la tuile montrait `estateNetWorth` (héritage
+> net) sous « Fin de l'horizon », contredite par son info-bulle ; persona Couple à l'aise 9,79 M$ contre
+> 11,23 M$ sur la courbe, Retraite et Placements (mesuré dans une même session). Source unique
+> `components/projection/kpiPatrimoine.ts` : valeur = `finalNetWorth`, héritage net dans l'info-bulle
+> (masqué en mode discret). ⚠️ Vu au passage, NON corrigé ici : Retraite affiche « Succès jusqu'à 92 ans »
+> et « Héritage (92 ans) » alors que la projection s'arrête à la fin de l'horizon (75 ans pour ce
+> persona) — Marc a choisi l'horizon automatique jusqu'à l'espérance de vie, chantier à cadrer.
+>
 > ## 🟩 Session 2026-09-25 (suite 3) — **E2E « clic partout » : le bandeau du mode test recouvrait la cible**
 > `[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]` : rouge aussi sur `main` après #1058, vert 25/25 en local.
 > Mécanisme reproduit (graphe défilé sous le bandeau fixe « Mode test activé ») ; clic visé sous le

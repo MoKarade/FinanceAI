@@ -30,17 +30,19 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 }) => {
     return (
         <header className={`flex flex-wrap items-start lg:items-center justify-between gap-3 lg:pb-5 lg:border-b border-white/6 ${className}`}>
-            <div className="flex-1 min-w-0">
+            <div className={`min-w-0 flex-1 ${nav ? 'lg:flex-none' : ''}`}>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                     <h1 className="text-[26px] leading-8 font-bold text-ink-50">{title}</h1>
                     {/* Mobile (maquettes M-*) : le chiffre clé passe SOUS le titre ; bureau : à côté. */}
                     {badge && <div className="max-lg:basis-full max-lg:-mt-2">{badge}</div>}
-                    {nav && <div className="basis-full lg:basis-auto min-w-0">{nav}</div>}
                 </div>
                 {subtitle && (
                     <p className="text-[13px] leading-5 text-ink-400 mt-1 max-w-2xl">{subtitle}</p>
                 )}
             </div>
+            {/* Sous-onglets : à côté du titre (bureau) ; au téléphone, pleine largeur SOUS le titre et
+                ses actions (maquettes M-impots, M-enfants, M-profil). */}
+            {nav && <div className="order-last lg:order-none basis-full lg:basis-auto min-w-0 lg:ml-3 lg:mr-auto">{nav}</div>}
             {actions && (
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {actions}

@@ -30,13 +30,6 @@ const SOURCE_DES_MESSAGES = 'services/messageErreurIa.ts';
 const ACCUSE_LA_CLE = /(Vérifie|vérifie|Configure|configure)[^<>{}\n]{0,60}cl[ée][^<>{}\n]{0,20}Anthropic/;
 
 const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string }> = [
-    {
-        fichier: 'CoupleOptimizationCard.tsx',
-        jeton: 'Configure ta clé Anthropic dans Configuration pour activer l\'IA',
-        raison: 'ce n\'est PAS un message d\'erreur : c\'est l\'état « aucune clé configurée », affiché '
-            + 'À LA PLACE du bouton, avant tout appel. Il ne peut donc rien accuser à tort — la clé '
-            + 'est réellement absente, l\'app le sait sans avoir rien tenté.',
-    },
 ];
 
 function fichiersTsx(dir: string): string[] {

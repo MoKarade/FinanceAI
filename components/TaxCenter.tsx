@@ -3,14 +3,14 @@ import { showToast } from './ui/Toast';
 import { importWithRetry } from '../utils/lazyWithRetry';
 import { useWriteConfirmation } from '../hooks/useWriteConfirmation';
 import { AiChatConfirmModal } from './aiChat/AiChatConfirmModal';
-import { Card } from './ui/Card';
+import { CollapsibleSection } from './ui/CollapsibleSection';
 import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { maskedSliderAria } from '../utils/privacyAria';
 import { PageHeader } from './ui/PageHeader';
-import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon } from './ui/Icon';
 import { CoupleOptimizationCard } from './tax/CoupleOptimizationCard';
-import { BudgetConfig, Asset } from '../types';
+import { BudgetConfig, Asset, Tab } from '../types';
+import { TAB_LABELS } from '../constants';
 // Phase 4 A4: bascule sur services/claude.ts (Sonnet 4.6 + Vision)
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
@@ -28,7 +28,7 @@ import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLB
 const RRSP_SLIDER_MAX = RRSP_ANNUAL_LIMITS[new Date().getFullYear()] ?? RRSP_ANNUAL_LIMIT_FALLBACK;
 import { computeMonthlyActualAverages } from '../utils/budgetSync';
 import { PrivateAmount } from './ui/PrivateAmount';
-import { formatCAD, formatSigned } from '../utils/format';
+import { formatCAD, formatIsoDay, formatPercent, formatSigned } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface TaxCenterProps {
@@ -376,43 +376,91 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
     const realAverages = useMemo(() => computeMonthlyActualAverages(transactions), [transactions]);
 
     const openDrive = () => window.open(DRIVE_FOLDER_URL, '_blank');
+    const importer = () => fileInputRef.current?.click();
+    const annee = new Date().getFullYear();
+    const paieAppliquee = salarySource?.kind === 'payslip' || salarySource?.kind === 'mcp';
+    const imposable = grossIncome + taxableAddOn;
+    const retenues = [
+        { cle: 'fed', libelle: 'Impôt fédéral (après abattement)', montant: deductions.fed },
+        { cle: 'qc', libelle: 'Impôt Québec', montant: deductions.qc },
+        { cle: 'rrq', libelle: 'RRQ', montant: deductions.rrq },
+        { cle: 'rqap', libelle: 'RQAP', montant: deductions.rqap },
+        { cle: 'ae', libelle: 'Assurance-emploi', montant: deductions.ae },
+    ];
+    // Barres de la cascade (maquettes) : en % du revenu imposable ; les retenues s'empilent depuis la
+    // DROITE (chacune commence où la précédente s'arrête), le net part de la gauche.
+    const pct = (v: number) => (imposable > 0 ? Math.max(0, Math.min(100, (v / imposable) * 100)) : 0);
+    let depuisDroite = 0;
+    const barresRetenues = retenues.map((r) => {
+        const debut = 100 - depuisDroite - pct(r.montant);
+        depuisDroite += pct(r.montant);
+        return { ...r, gauche: Math.max(0, debut), largeur: pct(r.montant) };
+    });
+    const boutonImporter = (classe: string) => (
+        <button type="button" onClick={importer} disabled={isAnalyzing} className={`h-10 px-4 rounded-lg bg-primary text-dark text-body font-bold focus-ring disabled:opacity-50 ${classe}`}>
+            {isAnalyzing ? 'Analyse…' : 'Importer une fiche de paie'}
+        </button>
+    );
+    const tuile = 'rounded-2xl bg-surface border border-white/6 p-4 lg:px-[18px] flex flex-col gap-1';
+    const etiquetteTuile = 'text-meta lg:text-[11px] lg:font-semibold lg:tracking-[0.06em] lg:uppercase text-ink-400';
 
+    // [S5-REFONTE-IMPOTS] Maquettes E-impots / M-impots : en-tête (Couple / conjoints, « Estimation
+    // AAAA », import de paie), bandeau de provenance du revenu, 4 tuiles, cascade « Du brut au net »,
+    // puis à droite les réducteurs d'impôt, le réel des 3 derniers mois et l'optimisation du couple.
     return (
-        <div className="space-y-6 stagger-in pb-20">
-
-            {/* [REFONTE-NAV-L3] Titre aligné sur TAB_LABELS (« Impôts & Docs ») — la page et la
-                nav doivent dire la même chose (passe de cohérence Config). */}
+        <div className="space-y-5 stagger-in pb-20">
             <PageHeader
-                icon={<Icon name="tax" size={28} />}
-                title="Impôts & Docs"
+                title={TAB_LABELS[Tab.TAX]}
+                nav={config.users.length > 1 ? (
+                    <div role="group" aria-label="Vue fiscale" className="flex gap-1 p-1 rounded-xl bg-surface border border-white/6 w-full lg:w-auto">
+                        {[{ id: 'all', libelle: 'Couple' }, ...config.users.map((u) => ({ id: u.name, libelle: u.name }))].map((o) => (
+                            <button
+                                key={o.id}
+                                type="button"
+                                onClick={() => setViewUser(o.id)}
+                                aria-pressed={viewUser === o.id}
+                                className={`flex-1 lg:flex-none min-h-10 lg:min-h-8 px-3.5 rounded-lg text-[13px] transition-colors focus-ring ${viewUser === o.id ? 'bg-ink-50 text-dark font-semibold' : 'text-ink-300 hover:bg-white/5'}`}
+                            >
+                                {o.libelle}
+                            </button>
+                        ))}
+                    </div>
+                ) : undefined}
+                actions={
+                    <span className="flex items-center gap-3">
+                        <span className="text-meta text-ink-400">Estimation {annee}</span>
+                        {boutonImporter('hidden lg:inline-flex items-center')}
+                    </span>
+                }
             />
+            <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileDrop} />
 
-            {/* PH3 — salaire + options fiscales déplacés dans l'onglet Profil unifié. */}
-            <ProfileFieldsMoved what="Ton salaire et tes options fiscales" />
-
-            <div className="flex justify-end gap-2 w-full md:w-auto md:ml-auto -mt-2">
-                    {/* Phase G.2 — upload migré vers l'onglet Documents global (doc directives §9).
-                        On garde l'extraction IA ici pour les utilisateurs qui veulent un calcul
-                        direct, mais on annonce clairement la nouvelle destination. */}
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isAnalyzing}
-                        className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/40 px-4 py-2 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
-                        title="Pour archiver vos documents, utilisez plutôt l'onglet Documents"
-                    >
-                        <Icon name={isAnalyzing ? 'clock' : 'bot'} size={18} className="text-ink-300" />
-                        <span className="font-bold text-ink-100 text-meta">Calcul rapide</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} className="hidden" multiple accept="image/*,application/pdf" onChange={handleFileDrop} />
-
-                    <button onClick={openDrive} className="flex items-center justify-center gap-2 bg-[#1f2937] hover:bg-[#374151] border border-white/40 px-4 py-2 rounded-lg transition-all shadow-lg active:scale-95 group">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Drive" className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                    </button>
-            </div>
-            {/* [SEC-VISION-CONSENT-INJECTION] Loi 25 : « Calcul rapide » envoie la fiche de paie BRUTE
-                (nom, employeur, salaire exact) à Anthropic — le dire explicitement près de l'action. */}
-            <p className="text-tiny text-ink-400">
-                « Calcul rapide » envoie ta fiche de paie (image/PDF, avec nom/employeur/salaire) à Anthropic (Claude) pour en extraire les montants.
+            {/* [INCOME-PROVENANCE] Source UNIQUE du revenu (demande Marc : « l'onglet impôt dépend
+                seulement des fichiers de paie que je lui mets »). */}
+            {paieAppliquee ? (
+                <div className="rounded-xl border border-success-500/30 bg-success-500/8 px-4 py-3 text-[13px] text-ink-100 flex items-center gap-2">
+                    <Icon name="lock" size={14} className="shrink-0" />
+                    <span>
+                        <strong className="text-success-400 font-semibold">Revenu de la fiche de paie</strong>{salarySource?.label ? ` « ${salarySource.label} »` : ''}
+                        {salarySource?.kind === 'mcp' ? ' (via le connecteur Claude)' : ''}
+                        {salarySource?.appliedAt ? `, appliquée le ${formatIsoDay(salarySource.appliedAt)}` : ''}.
+                        {' '}La Santé financière et le Budget utilisent ce même revenu.
+                    </span>
+                </div>
+            ) : (
+                <div className="rounded-xl border border-warning-500/30 bg-warning-500/6 px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-3">
+                    <p className="text-[13px] text-ink-100 leading-5">
+                        <strong className="text-warning-400 font-semibold">Revenu saisi à la main.</strong>{' '}
+                        Aucune fiche de paie appliquée : importe une paie pour un calcul précis, elle devient la source du revenu partout.
+                    </p>
+                    {boutonImporter('lg:hidden w-full h-11')}
+                </div>
+            )}
+            {/* [SEC-VISION-CONSENT-INJECTION] Loi 25 : l'import envoie la fiche de paie BRUTE (nom,
+                employeur, salaire exact) à Anthropic — le dire explicitement près de l'action. */}
+            <p className="text-tiny text-ink-400 -mt-2">
+                L'import envoie ta fiche de paie (image/PDF, avec nom/employeur/salaire) à Anthropic (Claude) pour en extraire les montants.{' '}
+                <button type="button" onClick={openDrive} className="underline underline-offset-2 hover:text-ink-100 focus-ring rounded-sm">Ouvrir Google Drive ↗</button>
             </p>
 
             {isAnalyzing && (
@@ -423,344 +471,214 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
             )}
 
             {scannedPay && (
-                <div className="bg-white/3 border border-white/10 p-4 rounded-xl mt-4 animate-fade-in">
-                    <h3 className="text-body font-bold text-white mb-3 flex items-center gap-2">Fiche de Paie Détectée ({scannedPay.freq})</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
-                            <div className="text-tiny text-ink-300">Brut Annuel Est.</div>
-                            <PrivateAmount as="div" className="text-lg font-bold text-white">{formatCAD(scannedPay.gross)}</PrivateAmount>
-                        </div>
-                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
-                            <div className="text-tiny text-ink-300">Net Annuel Est.</div>
-                            <PrivateAmount as="div" className="text-lg font-bold text-green-400">{formatCAD(scannedPay.net)}</PrivateAmount>
-                        </div>
-                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
-                            <div className="text-tiny text-ink-300">Impôts Retenus Est.</div>
-                            <PrivateAmount as="div" className="text-lg font-bold text-danger-400">{formatSigned(-scannedPay.tax, { withCurrency: true })}</PrivateAmount>
-                        </div>
-                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
-                            <div className="text-tiny text-ink-300">REER/RPP Retenus</div>
-                            <PrivateAmount as="div" className="text-lg font-bold text-info-400">{formatCAD(scannedPay.rrsp)}</PrivateAmount>
-                        </div>
+                <section aria-labelledby="paie-detectee" className="rounded-2xl bg-surface border border-white/10 p-4 sm:p-5 animate-fade-in">
+                    <h2 id="paie-detectee" className="text-[17px] font-semibold text-ink-50 mb-3">Fiche de paie détectée ({scannedPay.freq})</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
+                        {[
+                            { l: 'Brut annuel est.', v: <PrivateAmount as="div" className="font-mono text-[18px] font-bold text-ink-50">{formatCAD(scannedPay.gross)}</PrivateAmount> },
+                            { l: 'Net annuel est.', v: <PrivateAmount as="div" className="font-mono text-[18px] font-bold text-success-400">{formatCAD(scannedPay.net)}</PrivateAmount> },
+                            { l: 'Impôts retenus est.', v: <PrivateAmount as="div" className="font-mono text-[18px] font-bold text-danger-400">{formatSigned(-scannedPay.tax, { withCurrency: true })}</PrivateAmount> },
+                            { l: 'REER/RPP retenus', v: <PrivateAmount as="div" className="font-mono text-[18px] font-bold text-ink-50">{formatCAD(scannedPay.rrsp)}</PrivateAmount> },
+                        ].map((t) => (
+                            <div key={t.l} className="rounded-xl bg-dark/40 border border-white/6 px-3.5 py-3">
+                                <div className="text-meta text-ink-400">{t.l}</div>
+                                {t.v}
+                            </div>
+                        ))}
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => setScannedPay(null)} className="text-meta text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
-                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-700 text-white text-meta font-bold px-4 py-1.5 rounded-sm transition shadow-lg">
-                            Appliquer au Profil Principal
-                        </button>
+                        <button type="button" onClick={() => setScannedPay(null)} className="h-10 px-4 rounded-lg text-body text-ink-300 hover:bg-white/5 focus-ring">Ignorer</button>
+                        <button type="button" onClick={applyToProfile} className="h-10 px-4 rounded-lg bg-primary text-dark text-body font-bold focus-ring">Appliquer au profil principal</button>
                     </div>
-                </div>
+                </section>
             )}
 
             {analysisStatus && !scannedPay && (
-                <div className="bg-info-500/10 border border-info-500/30 text-blue-300 px-4 py-2 rounded-lg text-body flex items-center gap-2 animate-fade-in">
-                    <span>ℹ️</span> {analysisStatus}
+                <div className="bg-info-500/10 border border-info-500/30 text-blue-300 px-4 py-2 rounded-lg text-body animate-fade-in" role="status">
+                    {analysisStatus}
                 </div>
             )}
 
-            {/* Phase G.4 — Optimisation fiscale couple IA (rendu uniquement si couple) */}
-            <CoupleOptimizationCard />
-
-            {/* TABS FOR PROFILE */}
-            {config.users.length > 1 && (
-                <div className="flex bg-black/40 p-1 rounded-lg w-fit mx-auto border border-white/5">
-                    <button
-                        type="button"
-                        onClick={() => setViewUser('all')}
-                        aria-pressed={viewUser === 'all'}
-                        className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow-sm' : 'text-ink-300 hover:text-white'}`}
-                    >
-                        Global (Couple)
-                    </button>
-                    {config.users.map((u) => (
-                        <button
-                            key={u.name}
-                            type="button"
-                            onClick={() => setViewUser(u.name)}
-                            aria-pressed={viewUser === u.name}
-                            className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow-sm' : 'text-ink-300 hover:text-white'}`}
-                        >
-                            {u.name}
-                        </button>
-                    ))}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-4">
+                <div className={tuile}>
+                    <span className={etiquetteTuile}>Impôt total</span>
+                    <PrivateAmount as="div" className="font-mono text-[18px] lg:text-[24px] font-bold text-ink-50">{formatCAD(report.totalTax)}</PrivateAmount>
+                    <span className="text-tiny text-ink-400">fédéral + Québec</span>
                 </div>
-            )}
+                <div className={tuile}>
+                    <span className={etiquetteTuile}>Revenu net</span>
+                    <PrivateAmount as="div" className="font-mono text-[18px] lg:text-[24px] font-bold text-ink-50 lg:text-success-400">{formatCAD(report.netIncome)}</PrivateAmount>
+                    <span className="text-tiny text-ink-400"><PrivateAmount>{formatCAD(report.netIncome / 12)}</PrivateAmount> par mois</span>
+                </div>
+                <div className={tuile}>
+                    <span className={etiquetteTuile}>Taux marginal</span>
+                    {/* utils/tax.ts:getMarginalRate retourne un DÉCIMAL (0,4 pour 40 %). */}
+                    <div className="font-mono lg:font-sans text-[18px] lg:text-[24px] font-bold text-ink-50">{formatPercent(report.marginalRate * 100, 1)}</div>
+                    <span className="text-tiny text-ink-400">sur le prochain dollar</span>
+                </div>
+                <div className={tuile}>
+                    <span className={etiquetteTuile}>Remboursement estimé</span>
+                    <PrivateAmount as="div" className={`font-mono text-[18px] lg:text-[24px] font-bold ${report.refundOrOwe > 0 ? 'text-success-400' : report.refundOrOwe < 0 ? 'text-danger-400' : 'text-ink-50'}`}>
+                        {formatSigned(report.refundOrOwe, { withCurrency: true })}
+                    </PrivateAmount>
+                    <span className="text-tiny text-ink-400">selon les documents reçus</span>
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                <div className="lg:col-span-4 space-y-6 order-2 lg:order-1">
-                    <Card icon={<Icon name="portfolio" size={18} />} title="Revenus & Déductions">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">
-                                    {isGlobal ? "Revenu Brut Annuel du Couple" : `Revenu Brut (${viewUser})`}
-                                </label>
-                                <div className="p-3 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between">
-                                    <span className="text-ink-300">Total Synchronisé</span>
-                                    <PrivateAmount className="text-xl font-bold text-white font-mono">{formatCAD(grossIncome)}</PrivateAmount>
-                                </div>
-                                <p className="text-tiny text-ink-400 mt-2 flex items-center gap-1.5">
-                                    <Icon name="lock" size={12} /> Lié à la Configuration (× 12 mois).
-                                </p>
-                            </div>
-
-                            {alreadyPaidTax > 0 && (
-                                <div className="p-3 bg-green-900/10 border border-green-500/30 rounded-sm">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-meta text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
-                                        <PrivateAmount className="text-body font-mono text-white">{formatCAD(alreadyPaidTax)}</PrivateAmount>
-                                    </div>
-                                    <div className="text-tiny text-ink-400 mt-1">Détecté automatiquement via vos documents</div>
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 items-start">
+                <div className="min-w-0 flex flex-col gap-5">
+                    {/* [TAX-DETAIL] Brut → chaque retenue → net (demande Marc : « que je vois exactement ce
+                        que je gagne ») — la cascade doit BOUCLER au dollar près (placement inclus). */}
+                    <section aria-labelledby="brut-net-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:px-6 sm:py-5">
+                        <h2 id="brut-net-titre" className="text-[17px] lg:text-[18px] font-semibold text-ink-50 mb-3">Du brut au net (annuel{!isGlobal ? `, ${viewUser}` : ''})</h2>
+                        <dl className="flex flex-col">
+                            <LigneCascade libelle="Salaire brut" montant={<PrivateAmount>{formatCAD(grossIncome)}</PrivateAmount>} barre={{ gauche: 0, largeur: pct(grossIncome), couleur: 'bg-ink-50' }} />
+                            {taxableAddOn > 0 && (
+                                <LigneCascade libelle="Revenu de placement estimé" montant={<PrivateAmount>{formatSigned(taxableAddOn, { withCurrency: true })}</PrivateAmount>} barre={{ gauche: pct(grossIncome), largeur: pct(taxableAddOn), couleur: 'bg-success-400' }} />
+                            )}
+                            <LigneCascade fort separe libelle="Revenu imposable" montant={<PrivateAmount>{formatCAD(imposable)}</PrivateAmount>} barre={{ gauche: 0, largeur: 100, couleur: 'bg-ink-500' }} />
+                            {barresRetenues.map((r) => (
+                                <LigneCascade key={r.cle} libelle={r.libelle} montant={<PrivateAmount>{formatSigned(-r.montant, { withCurrency: true })}</PrivateAmount>} couleurMontant="text-danger-400" barre={{ gauche: r.gauche, largeur: r.largeur, couleur: 'bg-danger-400' }} />
+                            ))}
+                            <LigneCascade fort separe libelle="Revenu net fiscal" montant={<PrivateAmount>{formatCAD(report.netIncome)}</PrivateAmount>} barre={{ gauche: 0, largeur: pct(report.netIncome), couleur: 'bg-success-400' }} />
+                            {/* [ENG-NET-MODEL-RESIDUAL] Affiché seulement quand il y a un FAIT à montrer (brut SAISI
+                                et écart ≥ 1 % du net déclaré). */}
+                            {residuelNet?.significatif && (
+                                <div className="flex justify-between gap-3 py-2 border-t border-white/6 text-[13px]">
+                                    <dt className="text-warning-400">Écart net déclaré ↔ net du modèle (salaire)</dt>
+                                    <dd className="font-mono text-warning-400"><PrivateAmount>{formatSigned(residuelNet.residuel, { withCurrency: true })}</PrivateAmount></dd>
                                 </div>
                             )}
+                        </dl>
+                        {residuelNet?.significatif && (
+                            <p className="text-tiny text-ink-400 mt-2">Ton brut est saisi à la main et le net que le modèle en déduit ne retombe pas sur ton net déclaré — les projections encaissent le net DÉCLARÉ, l'impôt vient du MODÈLE. Écart positif : le modèle rend plus de net que ta paie (retenues d'employeur type RPP/assurances non modélisées ?). Écart négatif : vérifie le brut et le net au Profil (une des deux saisies est peut-être périmée).</p>
+                        )}
+                        <p className="text-tiny text-ink-400 mt-3">Net fiscal = imposable − impôts − cotisations (avant régime de retraite et assurances collectives){isGlobal ? ' ; couple : sommé par conjoint' : ''}.</p>
+                    </section>
 
-                            {investmentTaxData.totalNonReg > 0 && (
-                                <div className="p-3 bg-white/5 rounded-sm border border-white/10">
-                                    <div className="flex justify-between items-center mb-1">
-                                        {/* [FX-BADGE-SURFACES-RESTANTES] Ce montant et l'impact fiscal en dessous convertissent
-                                            les avoirs étrangers avec `fxRates` (`assetValueCad`) : la surface fiscale portait
-                                            le même repli silencieux que le patrimoine avant #686. Le badge rend `null` sans
-                                            avoir étranger ou avec un taux réel — aucun bruit hors-sujet. */}
-                                        <span className="flex items-center gap-2">
-                                            <span className="text-meta text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
-                                            <FxEstimateBadge />
-                                        </span>
-                                        <PrivateAmount className="text-meta text-white">{formatCAD(investmentTaxData.totalNonReg)}</PrivateAmount>
-                                    </div>
-                                    <div className="text-tiny text-ink-400">
-                                        Impact estimé sur revenu imposable: <PrivateAmount className="text-red-300">{formatSigned(investmentTaxData.taxableAddOn, { withCurrency: true })}</PrivateAmount>
-                                    </div>
-                                </div>
-                            )}
+                    {/* Paliers : individuels (vue d'un conjoint, ou solo). */}
+                    {!isGlobal && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <Paliers titre="Paliers fédéraux" paliers={fedBreakdown ?? []} couleur="bg-danger-600/80" />
+                            <Paliers titre="Paliers provinciaux" paliers={qcBreakdown ?? []} couleur="bg-info-600/80" />
+                        </div>
+                    )}
+                </div>
 
-                            <div className="p-4 bg-blue-900/10 border border-info-500/20 rounded-xl space-y-3">
-                                <h4 className="text-meta font-bold text-blue-300 uppercase flex items-center gap-2">
-                                    Réducteurs d'Impôt
-                                </h4>
+                <div className="min-w-0 flex flex-col gap-4">
+                    <section aria-labelledby="reducteurs-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:px-5 sm:py-[18px] flex flex-col gap-2.5">
+                        <h2 id="reducteurs-titre" className="text-[17px] lg:text-[16px] font-semibold text-ink-50">Réducteurs d'impôt</h2>
+                        <LigneSimple libelle="Cotisation REER" valeur={<PrivateSliderValue revealed={rrspSliderFocus}>{formatCAD(rrspContribution)}</PrivateSliderValue>} />
+                        <LigneSimple libelle="CELIAPP" valeur={<PrivateSliderValue revealed={fhsaSliderFocus}>{formatCAD(fhsaContribution)}</PrivateSliderValue>} />
+                        {investmentTaxData.totalNonReg > 0 && (
+                            <LigneSimple
+                                libelle={<span className="flex items-center gap-2">Placements non enregistrés <FxEstimateBadge /></span>}
+                                valeur={<span className="text-warning-400"><PrivateAmount>{formatSigned(taxableAddOn, { withCurrency: true })}</PrivateAmount> imposable</span>}
+                            />
+                        )}
+                        {alreadyPaidTax > 0 && (
+                            <LigneSimple libelle="Impôt déjà prélevé (documents)" valeur={<PrivateAmount>{formatCAD(alreadyPaidTax)}</PrivateAmount>} />
+                        )}
+                        {/* Les curseurs (absents des maquettes, gardés) : simuler une cotisation. */}
+                        <CollapsibleSection title="Simuler une cotisation" variant="quiet" headingLevel={3}>
+                            <div className="space-y-4">
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>Cotisation REER</span>
                                         <PrivateSliderValue revealed={rrspSliderFocus}>{formatCAD(rrspContribution)}</PrivateSliderValue>
                                     </label>
-                                    <input type="range" aria-label="Cotisation REER" min="0" max={RRSP_SLIDER_MAX} step="100" value={rrspContribution} {...maskedSliderAria(isPrivacyMode && !rrspSliderFocus)} onChange={e => setRrspContribution(parseFloat(e.target.value))} onFocus={() => setRrspSliderFocus(true)} onBlur={() => setRrspSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                    <input type="range" aria-label="Cotisation REER" min="0" max={RRSP_SLIDER_MAX} step="100" value={rrspContribution} {...maskedSliderAria(isPrivacyMode && !rrspSliderFocus)} onChange={e => setRrspContribution(parseFloat(e.target.value))} onFocus={() => setRrspSliderFocus(true)} onBlur={() => setRrspSliderFocus(false)} className="w-full accent-primary cursor-pointer" />
                                 </div>
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>CELIAPP</span>
                                         <PrivateSliderValue revealed={fhsaSliderFocus}>{formatCAD(fhsaContribution)}</PrivateSliderValue>
                                     </label>
-                                    <input type="range" aria-label="CELIAPP" min="0" max={FHSA_ANNUAL_LIMIT_PER_USER} step="100" value={fhsaContribution} {...maskedSliderAria(isPrivacyMode && !fhsaSliderFocus)} onChange={e => setFhsaContribution(parseFloat(e.target.value))} onFocus={() => setFhsaSliderFocus(true)} onBlur={() => setFhsaSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
+                                    <input type="range" aria-label="CELIAPP" min="0" max={FHSA_ANNUAL_LIMIT_PER_USER} step="100" value={fhsaContribution} {...maskedSliderAria(isPrivacyMode && !fhsaSliderFocus)} onChange={e => setFhsaContribution(parseFloat(e.target.value))} onFocus={() => setFhsaSliderFocus(true)} onBlur={() => setFhsaSliderFocus(false)} className="w-full accent-primary cursor-pointer" />
                                 </div>
                             </div>
-                        </div>
-                    </Card>
-                </div>
+                        </CollapsibleSection>
+                    </section>
 
-                <div className="lg:col-span-8 space-y-6 order-1 lg:order-2">
-
-                    {/* [INCOME-PROVENANCE] Source UNIQUE du revenu (demande Marc : « l'onglet impôt
-                        dépend seulement des fichiers de paie que je lui mets »). La Santé financière
-                        lit le même config.users[].netSalary → toute la chaîne suit cette source. */}
-                    {salarySource?.kind === 'payslip' || salarySource?.kind === 'mcp' ? (
-                        <div className="bg-success-500/10 border border-success-500/30 rounded-lg px-4 py-2.5 text-meta text-ink-100 flex items-center gap-2">
-                            <Icon name="lock" size={14} />
-                            <span>
-                                Revenu basé sur la fiche de paie{salarySource.label ? ` « ${salarySource.label} »` : ''}
-                                {salarySource.kind === 'mcp' ? ' (via le connecteur Claude)' : ''}
-                                {salarySource.appliedAt ? `, appliquée le ${new Date(salarySource.appliedAt).toLocaleDateString('fr-CA')}` : ''}.
-                                {' '}La Santé financière et le Budget utilisent ce même revenu.
-                            </span>
-                        </div>
-                    ) : (
-                        <div className="bg-warning-500/10 border border-warning-500/30 rounded-lg px-4 py-2.5 text-meta text-ink-100 flex items-center gap-2">
-                            <Icon name="status" size={14} />
-                            <span>Revenu saisi manuellement (aucune fiche de paie appliquée). Pour un calcul précis, importe une paie via « Calcul rapide » — elle deviendra LA source du revenu partout.</span>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Card className="p-4! border-l-4 border-l-red-500 bg-surface/50">
-                            <div className="text-tiny text-ink-400 uppercase font-bold">Impôt Total</div>
-                            <PrivateAmount as="div" className="text-2xl font-black text-white">{formatCAD(report.totalTax)}</PrivateAmount>
-                            <div className="text-tiny text-ink-400">Fed + Qc</div>
-                        </Card>
-                        <Card className="p-4! border-l-4 border-l-green-500 bg-surface/50">
-                            <div className="text-tiny text-ink-400 uppercase font-bold">Revenu Net</div>
-                            <PrivateAmount as="div" className="text-2xl font-black text-green-400">{formatCAD(report.netIncome)}</PrivateAmount>
-                            <div className="text-tiny text-ink-400">Dans vos poches</div>
-                        </Card>
-                        <Card className="p-4! border-l-4 border-l-yellow-500 bg-surface/50">
-                            <div className="text-tiny text-ink-400 uppercase font-bold">Taux Marginal</div>
-                            {/* Bug fix : utils/tax.ts:getMarginalRate retourne un DÉCIMAL
-                                (ex: 0.4 pour 40%), pas un pourcentage. Multiplier par 100. */}
-                            <div className="text-2xl font-black text-yellow-400">{(report.marginalRate * 100).toFixed(1)}%</div>
-                            <div className="text-tiny text-ink-400">Sur le prochain $</div>
-                        </Card>
-                        <Card className="p-4! border-l-4 border-l-blue-500 bg-surface/50">
-                            <div className="text-tiny text-ink-400 uppercase font-bold">Remboursement Est.</div>
-                            <PrivateAmount as="div" className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-danger-400'}`}>
-                                {formatSigned(report.refundOrOwe, { withCurrency: true })}
-                            </PrivateAmount>
-                            <div className="text-tiny text-ink-400">Basé sur docs reçus</div>
-                        </Card>
-                    </div>
-
-                    {/* [TAX-DETAIL] Brut → chaque retenue → net (demande Marc : « plus détaillé,
-                        plus précis, que je vois exactement ce que je gagne ») + réel des dépenses. */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card icon={<Icon name="tax" size={18} />} title={`Ce que tu gagnes — détail (annuel${!isGlobal ? `, ${viewUser}` : ''})`}>
-                            <dl className="space-y-1.5 text-meta">
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-200 font-bold">Salaire brut</dt>
-                                    <dd className="font-mono text-white font-bold"><PrivateAmount>{formatCAD(grossIncome)}</PrivateAmount></dd>
-                                </div>
-                                {/* [TAX-DETAIL F1] la base fiscale inclut le revenu de placement ESTIMÉ :
-                                    sans cette ligne, la cascade brut − retenues ≠ net (écart = l'add-on,
-                                    mesuré par le panel — la carte doit BOUCLER au dollar près). */}
-                                {taxableAddOn > 0 && (
-                                    <div className="flex justify-between py-1">
-                                        <dt className="text-ink-300">+ Revenu de placement estimé (non-enreg/crypto)</dt>
-                                        <dd className="font-mono text-ink-100"><PrivateAmount>{formatSigned(taxableAddOn, { withCurrency: true })}</PrivateAmount></dd>
-                                    </div>
-                                )}
-                                <div className="flex justify-between py-1 border-b border-white/10">
-                                    <dt className="text-ink-200 font-bold">Revenu imposable estimé</dt>
-                                    <dd className="font-mono text-white font-bold"><PrivateAmount>{formatCAD(grossIncome + taxableAddOn)}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-300">Impôt fédéral (après abattement QC)</dt>
-                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.fed, { withCurrency: true })}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-300">Impôt Québec</dt>
-                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.qc, { withCurrency: true })}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-300">RRQ (volets 1 + 2)</dt>
-                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.rrq, { withCurrency: true })}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-300">RQAP</dt>
-                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.rqap, { withCurrency: true })}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-300">Assurance-emploi</dt>
-                                    <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-deductions.ae, { withCurrency: true })}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1.5 border-t border-white/10">
-                                    <dt className="text-ink-100 font-bold">Revenu net (fiscal)</dt>
-                                    <dd className="font-mono text-success-400 font-bold"><PrivateAmount>{formatCAD(report.netIncome)}</PrivateAmount></dd>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <dt className="text-ink-300">Soit par mois (net fiscal)</dt>
-                                    <dd className="font-mono text-ink-100"><PrivateAmount>{formatCAD(report.netIncome / 12)}</PrivateAmount></dd>
-                                </div>
-                                {/* [ENG-NET-MODEL-RESIDUAL] Affiché seulement quand il y a un FAIT à montrer :
-                                    brut SAISI (déduit → écart nul par construction, un 0 $ serait du décor) ET
-                                    écart ≥ 1 % du net déclaré (sous ça : bruit de paie). Le montant reste un
-                                    NŒUD (PrivateAmount), la phrase du dessous ne porte aucun chiffre. */}
-                                {residuelNet?.significatif && (
-                                    <div className="flex justify-between py-1 border-t border-white/10">
-                                        <dt className="text-warning-400">Écart net déclaré ↔ net du modèle (salaire)</dt>
-                                        <dd className="font-mono text-warning-400"><PrivateAmount>{formatSigned(residuelNet.residuel, { withCurrency: true })}</PrivateAmount></dd>
-                                    </div>
-                                )}
-                            </dl>
-                            {residuelNet?.significatif && (
-                                <p className="text-tiny text-ink-400 mt-2">Ton brut est saisi à la main et le net que le modèle en déduit ne retombe pas sur ton net déclaré — les projections encaissent le net DÉCLARÉ, l'impôt vient du MODÈLE. Écart positif : le modèle rend plus de net que ta paie (retenues d'employeur type RPP/assurances non modélisées ?). Écart négatif : vérifie le brut et le net au Profil (une des deux saisies est peut-être périmée).</p>
-                            )}
-                            <p className="text-tiny text-ink-400 mt-2">Estimation {new Date().getFullYear()}{isGlobal ? ' (couple, sommé par conjoint)' : ''}. Net FISCAL = imposable − impôts − cotisations (avant RPP/assurances collectives). Les cotisations RRQ/RQAP/AE sont estimées sur le revenu imposable (léger sur-compte si salaire sous les maximums — suivi au BACKLOG).</p>
-                        </Card>
-                        <Card icon={<Icon name="transactions" size={18} />} title="Ce que tu dépenses — réel (transactions, ménage)">
-                            {/* [TAX-DETAIL F2-scope] le réel des transactions est TOUJOURS un agrégat
-                                MÉNAGE : en vue individuelle d'un couple, comparer au net d'UN conjoint
-                                serait dominé par le salaire de l'autre (finding panel) → carte masquée. */}
-                            {!isGlobal ? (
-                                <p className="text-meta text-ink-400">Le réel des transactions est un agrégat du ménage — sélectionne « Global (Couple) » pour le voir.</p>
-                            ) : realAverages.fullMonths > 0 ? (
-                                <dl className="space-y-1.5 text-meta">
-                                    <div className="flex justify-between py-1">
-                                        <dt className="text-ink-300">Revenus réels moyens / mois</dt>
-                                        <dd className="font-mono text-success-400"><PrivateAmount>{formatCAD(realAverages.incomeAvg)}</PrivateAmount></dd>
-                                    </div>
-                                    <div className="flex justify-between py-1">
-                                        <dt className="text-ink-300">Dépenses réelles moyennes / mois</dt>
-                                        <dd className="font-mono text-danger-400"><PrivateAmount>{formatSigned(-realAverages.expenseAvg, { withCurrency: true })}</PrivateAmount></dd>
-                                    </div>
-                                    <div className="flex justify-between py-1.5 border-t border-white/10">
-                                        <dt className="text-ink-100 font-bold">Solde mensuel moyen</dt>
-                                        <dd className={`font-mono font-bold ${realAverages.incomeAvg - realAverages.expenseAvg >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                            <PrivateAmount>{formatSigned(realAverages.incomeAvg - realAverages.expenseAvg, { withCurrency: true })}</PrivateAmount>
-                                        </dd>
-                                    </div>
-                                    <div className="flex justify-between py-1">
-                                        <dt className="text-ink-300">Écart net fiscal ↔ revenus réels</dt>
-                                        <dd className="font-mono text-ink-100"><PrivateAmount>{formatSigned(realAverages.incomeAvg - report.netIncome / 12, { withCurrency: true })}</PrivateAmount></dd>
-                                    </div>
-                                </dl>
-                            ) : (
-                                <p className="text-meta text-ink-400">Aucun mois complet de transactions — importe tes relevés pour voir le réel ici.</p>
-                            )}
-                            <p className="text-tiny text-ink-400 mt-2">Moyennes sur {realAverages.fullMonths} mois plein(s) d'historique, hors transferts et doublons, impôts INCLUS — l'onglet Budget, lui, met les impôts hors de sa comparaison budget↔réel. Un écart net↔réel notable = revenus hors paie (Interac, remboursements) ou relevés incomplets.</p>
-                        </Card>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {isGlobal ? (
-                            <div className="md:col-span-2 text-center py-6 text-ink-400 bg-white/5 rounded-xl">
-                                ℹ️ Les paliers d'imposition sont individuels. Veuillez sélectionner un profil pour voir les paliers détaillés.
-                            </div>
-                        ) : (
+                    {/* [TAX-REAL-SPENDING] Le réel des transactions est un agrégat MÉNAGE : en vue d'un seul
+                        conjoint, le comparer à SON net serait dominé par le salaire de l'autre. */}
+                    <section aria-labelledby="vraie-vie-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:px-5 sm:py-[18px] flex flex-col gap-2.5">
+                        <h2 id="vraie-vie-titre" className="text-[17px] lg:text-[16px] font-semibold text-ink-50">Dans la vraie vie ({realAverages.fullMonths > 0 ? `${realAverages.fullMonths} derniers mois` : 'transactions'})</h2>
+                        {!isGlobal ? (
+                            <p className="text-meta text-ink-400">Le réel des transactions est un agrégat du ménage — choisis « Couple » pour le voir.</p>
+                        ) : realAverages.fullMonths > 0 ? (
                             <>
-                                <Card title="Paliers fédéraux">
-                                    <div className="space-y-4 mt-2">
-                                        {(fedBreakdown ?? []).map((b, i) => (
-                                            <div key={i} className="relative">
-                                                <div className="flex justify-between text-tiny mb-1">
-                                                    <span className="text-ink-200 font-bold">{b.rate}</span>
-                                                    <PrivateAmount className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : '0 $'}</PrivateAmount>
-                                                </div>
-                                                <div className="h-4 w-full bg-surfaceHighlight rounded-sm overflow-hidden relative border border-white/5">
-                                                    <div className="h-full bg-danger-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
-                                                    <PrivateAmount as="div" className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
-                                                        {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
-                                                    </PrivateAmount>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </Card>
-                                <Card title="Paliers provinciaux">
-                                    <div className="space-y-4 mt-2">
-                                        {(qcBreakdown ?? []).map((b, i) => (
-                                            <div key={i} className="relative">
-                                                <div className="flex justify-between text-tiny mb-1">
-                                                    <span className="text-ink-200 font-bold">{b.rate}</span>
-                                                    <PrivateAmount className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : '0 $'}</PrivateAmount>
-                                                </div>
-                                                <div className="h-4 w-full bg-surfaceHighlight rounded-sm overflow-hidden relative border border-white/5">
-                                                    <div className="h-full bg-info-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
-                                                    <PrivateAmount as="div" className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
-                                                        {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
-                                                    </PrivateAmount>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </Card>
+                                <LigneSimple libelle="Revenus réels / mois" valeur={<PrivateAmount>{formatCAD(realAverages.incomeAvg)}</PrivateAmount>} />
+                                <LigneSimple libelle="Dépenses réelles / mois" valeur={<PrivateAmount>{formatSigned(-realAverages.expenseAvg, { withCurrency: true })}</PrivateAmount>} />
+                                <div className="flex justify-between items-center gap-3 pt-2 border-t border-white/6">
+                                    <span className="text-body font-semibold text-ink-50">Solde mensuel</span>
+                                    <span className={`font-mono font-bold ${realAverages.incomeAvg - realAverages.expenseAvg >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                        <PrivateAmount>{formatSigned(realAverages.incomeAvg - realAverages.expenseAvg, { withCurrency: true })}</PrivateAmount>
+                                    </span>
+                                </div>
+                                <p className="text-tiny text-ink-400">
+                                    Écart avec le net fiscal : <PrivateAmount>{formatSigned(realAverages.incomeAvg - report.netIncome / 12, { withCurrency: true })}</PrivateAmount> par mois (virements exclus).
+                                </p>
                             </>
+                        ) : (
+                            <p className="text-meta text-ink-400">Aucun mois complet de transactions — importe tes relevés pour voir le réel ici.</p>
                         )}
-                    </div>
+                    </section>
 
+                    {/* Phase G.4 — Optimisation fiscale couple IA (rendu uniquement si couple) */}
+                    <CoupleOptimizationCard />
                 </div>
             </div>
 
-            {/* [AI-TAXCENTER-APPLY-NOGATE] Point de contrôle humain : MÊME modal que le chat in-app
-                et que le dépôt de talon (diff avant → après). Toute fermeture = refus ; l'écriture
-                et sa sauvegarde ne partent qu'après « Appliquer ». */}
+            {/* [AI-TAXCENTER-APPLY-NOGATE] Point de contrôle humain : MÊME modal que le chat in-app et que
+                le dépôt de talon (diff avant → après). Toute fermeture = refus. */}
             {pendingWrite && (
                 <AiChatConfirmModal preview={pendingWrite} onDecision={resolvePendingWrite} />
             )}
         </div>
     );
 };
+
+/** Ligne de la cascade « Du brut au net » : libellé, barre (position en % de l'imposable), montant. */
+const LigneCascade: React.FC<{
+    libelle: string; montant: React.ReactNode; barre: { gauche: number; largeur: number; couleur: string };
+    fort?: boolean; separe?: boolean; couleurMontant?: string;
+}> = ({ libelle, montant, barre, fort, separe, couleurMontant = 'text-ink-50' }) => (
+    <div className={`grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_120px] items-center gap-x-4 gap-y-1.5 py-2.5 lg:py-0 lg:h-[42px] ${separe ? 'border-t border-white/6' : ''}`}>
+        <dt className={`text-[13px] lg:text-body ${fort ? 'font-semibold text-ink-50' : 'text-ink-200'}`}>{libelle}</dt>
+        <div className="relative h-2.5 col-span-2 lg:col-span-1 row-start-2 lg:row-start-auto" aria-hidden="true">
+            <span className={`absolute inset-y-0 rounded-sm ${barre.couleur}`} style={{ left: `${barre.gauche}%`, width: `max(${barre.largeur}%, 2px)` }} />
+        </div>
+        <dd className={`font-mono text-right text-[13px] lg:text-body ${fort ? 'font-bold' : ''} ${couleurMontant}`}>{montant}</dd>
+    </div>
+);
+
+const LigneSimple: React.FC<{ libelle: React.ReactNode; valeur: React.ReactNode }> = ({ libelle, valeur }) => (
+    <div className="flex justify-between items-center gap-3 text-body">
+        <span className="text-ink-300">{libelle}</span>
+        <span className="font-mono text-ink-50 text-right">{valeur}</span>
+    </div>
+);
+
+type Palier = { rate: string; amount: number; filled: number; max: number | string; percentFull: number };
+const Paliers: React.FC<{ titre: string; paliers: Palier[]; couleur: string }> = ({ titre, paliers, couleur }) => (
+    <section className="rounded-2xl bg-surface border border-white/6 p-4 sm:p-5">
+        <h2 className="text-[17px] font-semibold text-ink-50 mb-3">{titre}</h2>
+        <div className="space-y-4">
+            {paliers.map((b, i) => (
+                <div key={i} className="relative">
+                    <div className="flex justify-between text-tiny mb-1">
+                        <span className="text-ink-200 font-bold">{b.rate}</span>
+                        <PrivateAmount className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : formatCAD(0)}</PrivateAmount>
+                    </div>
+                    <div className="h-4 w-full bg-surfaceHighlight rounded-sm overflow-hidden relative border border-white/5">
+                        <div className={`h-full transition-all duration-500 ${couleur}`} style={{ width: `${b.percentFull}%` }}></div>
+                        <PrivateAmount as="div" className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80">
+                            {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
+                        </PrivateAmount>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </section>
+);

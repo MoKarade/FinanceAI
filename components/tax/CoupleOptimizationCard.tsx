@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Icon } from '../ui/Icon';
-import { Card } from '../ui/Card';
+import { Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { messageErreurIa, MESSAGE_IA_MODE_DISCRET } from '../../services/messageErreurIa';
 import { getCoupleOptimizationStrategies, type CoupleOptimizationStrategy, type CoupleTaxContext } from '../../services/claude';
@@ -49,6 +48,7 @@ const CONFIDENCE_LABELS: Record<CoupleOptimizationStrategy['confidence'], string
 export const CoupleOptimizationCard: React.FC = () => {
     const config = useFinanceStore(s => s.config);
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
 
     const [strategies, setStrategies] = useState<CoupleOptimizationStrategy[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -106,27 +106,33 @@ export const CoupleOptimizationCard: React.FC = () => {
         }
     };
 
+    // [S5-REFONTE-IMPOTS] Carte des maquettes : filet pointillé (fonction à activer), phrase courte,
+    // un bouton pleine largeur. Sans clé : le bouton MÈNE à la clé (Réglages · Clés API).
     return (
-        <Card icon={<Icon name="users" size={18} />} title="Optimisation fiscale du couple">
-            <div className="space-y-4">
-                <p className="text-tiny text-ink-300 leading-snug">
-                    Génère 3 stratégies concrètes d'optimisation fiscale croisée :
-                    fractionnement REER, allocation CELI, pension splitting, transfert de crédits.
-                    Calculé pour <strong className="text-white">{u1.name}</strong> et <strong className="text-white">{u2.name}</strong>.
+        <section aria-labelledby="optim-couple-titre" className="rounded-2xl border border-dashed border-white/15 p-4 sm:p-5">
+            <div className="space-y-3">
+                <h2 id="optim-couple-titre" className="text-[17px] lg:text-[16px] font-semibold text-ink-50">Optimisation fiscale du couple</h2>
+                <p className="text-[13px] text-ink-300 leading-5">
+                    3 stratégies calculées pour <strong className="text-ink-100 font-semibold">{u1.name}</strong> et <strong className="text-ink-100 font-semibold">{u2.name}</strong> :
+                    fractionnement REER, répartition CELI, fractionnement de pension, transfert de crédits.
                 </p>
 
                 {strategies.length === 0 && (
-                    <div className="text-center py-4">
+                    <div>
                         {!apiKey ? (
-                            <p className="text-warning-400 text-body">
-                                ℹ️ Configure ta clé Anthropic dans Configuration pour activer l'IA.
-                            </p>
+                            <button
+                                type="button"
+                                onClick={() => navigateWithFocus(Tab.SETTINGS, 'apiKeys-anthropic')}
+                                className="w-full h-11 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring"
+                            >
+                                Ajouter ma clé Anthropic pour l'activer
+                            </button>
                         ) : (
                             <button
                                 type="button"
                                 onClick={handleGenerate}
                                 disabled={isLoading}
-                                className="px-4 py-2 bg-primary/15 border border-primary/40 text-primary rounded-lg font-bold text-body hover:bg-primary/25 transition-colors disabled:opacity-50"
+                                className="w-full h-11 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring disabled:opacity-50"
                             >
                                 {isLoading ? 'Analyse fiscale…' : 'Générer 3 stratégies IA'}
                             </button>
@@ -186,6 +192,6 @@ export const CoupleOptimizationCard: React.FC = () => {
                     </div>
                 )}
             </div>
-        </Card>
+        </section>
     );
 };

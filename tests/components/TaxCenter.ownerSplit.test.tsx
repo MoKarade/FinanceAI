@@ -34,7 +34,7 @@ const nonReg200k = (owner?: AssetOwner): Asset => ({
 /** Lit le montant affiché sous l'étiquette « Impôt Total » (vue ménage par défaut). */
 function impotTotalAffiche(config: BudgetConfig, assets: Asset[]): string {
     render(<TaxCenter config={config} assets={assets} />);
-    const label = screen.getByText('Impôt Total');
+    const label = screen.getByText('Impôt total');
     const montant = label.nextElementSibling?.textContent ?? '';
     cleanup();
     return montant;

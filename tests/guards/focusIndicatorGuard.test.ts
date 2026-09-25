@@ -21,6 +21,8 @@ import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 const racine = resolve(process.cwd(), 'components');
 
 /** Toute compensation acceptée sur la ligne elle-même. */
+// [S5-TAILWIND4] `outline-none` s'écrit `outline-hidden` en v4 (même effet : contour transparent).
+const OUTLINE_SUPPRIME = /outline-(?:none|hidden)/;
 const COMPENSE = /focus:(ring|border|bg|text|shadow|outline)|focus-ring|focus-visible:|focus-within:/;
 
 /**
@@ -79,7 +81,7 @@ function outlineNoneNonCompenses(): Ligne[] {
     const out: Ligne[] = [];
     for (const chemin of fichiersTsx(racine)) {
         lireCode(chemin).split('\n').forEach((texte, i) => {
-            if (!texte.includes('outline-none') || COMPENSE.test(texte)) return;
+            if (!OUTLINE_SUPPRIME.test(texte) || COMPENSE.test(texte)) return;
             out.push({
                 chemin: chemin.replace(`${process.cwd()}/`, ''),
                 ligne: i + 1,
@@ -102,7 +104,7 @@ describe('[A11Y-FOCUS-INDICATOR-MISSING] un focus retiré est un focus remplacé
         // ANTI-VACUITÉ : le dépôt emploie `outline-none` massivement (via `.focus-ring`), donc un
         // scan qui n'en trouve plus une seule occurrence ne lit pas ce qu'il croit.
         const total = fichiersTsx(racine)
-            .reduce((n, c) => n + (lireCode(c).match(/outline-none/g)?.length ?? 0), 0);
+            .reduce((n, c) => n + (lireCode(c).match(/outline-(?:none|hidden)/g)?.length ?? 0), 0);
         expect(total, 'plus aucun `outline-none` trouvé → le scan ne lit pas ce qu\'il croit')
             .toBeGreaterThanOrEqual(20);
 

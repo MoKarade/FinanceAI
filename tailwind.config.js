@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import paletteV3 from './tailwind.palette-v3.js';
+
 export default {
   content: [
     './index.html',
@@ -11,6 +13,8 @@ export default {
   ],
   darkMode: 'class',
   theme: {
+    // [S5-TAILWIND4] palette v3 (hex) plutôt que celle de la v4 (oklch) — voir tailwind.palette-v3.js.
+    colors: paletteV3,
     extend: {
       fontFamily: {
         sans: ['Outfit', 'sans-serif'],

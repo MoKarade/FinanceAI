@@ -175,8 +175,9 @@
 
 @layer base {
   body {
+    /* [S5-REFONTE] Fond UNI des maquettes (#07090D) : plus d'aurore ni de dégradé — les halos
+       flous animés (blur 90 px en boucle) coûtaient aussi du rendu sur mobile. */
     @apply bg-dark text-slate-200 font-sans antialiased;
-    background-image: radial-gradient(circle at top left, #0c0f15 0%, #07090D 55%);
     min-height: 100vh;
   }
 
@@ -205,57 +206,6 @@
 }
 
 @layer utilities {
-  /* Aurora background (migre depuis index.html) */
-  .aurora-bg {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1;
-    overflow: hidden;
-    background: radial-gradient(circle at top left, #0c0f15 0%, #07090d 55%);
-  }
-
-  .aurora-blob {
-    position: absolute;
-    filter: blur(90px);
-    opacity: 0.25;
-    animation: blob 20s infinite alternate;
-    border-radius: 50%;
-    mix-blend-mode: screen;
-  }
-
-  /* Aurora neutralisée (choix Marc) : plus aucune couleur, juste une profondeur
-   grise très subtile en haut-gauche. Fond noir profond et luxe. */
-  .blob-1 {
-    top: -10%;
-    left: -10%;
-    width: 60vw;
-    height: 60vw;
-    background: #1c2230;
-    animation-delay: 0s;
-    opacity: 0.35;
-  }
-  .blob-2 {
-    bottom: -20%;
-    right: -10%;
-    width: 70vw;
-    height: 70vw;
-    background: #141822;
-    animation-delay: 4s;
-    opacity: 0.3;
-  }
-  .blob-3 {
-    top: 30%;
-    left: 30%;
-    width: 40vw;
-    height: 40vw;
-    background: #141822;
-    animation-delay: 8s;
-    opacity: 0;
-  }
-
   /* Animations */
   @keyframes slideUpFade {
     /* transform absent du keyframe 100% (cf cardRise) : `forwards` ne fige que
@@ -490,10 +440,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .aurora-blob {
-    animation: none !important;
   }
 
   .skeleton-box::after {

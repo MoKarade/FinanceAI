@@ -89,7 +89,7 @@ describe('[A11Y-PRIVACY-DIVERS] le nom accessible SURVIT au masquage', () => {
     /** Le formulaire du conjoint est derrière un bouton : sans le déplier, le champ n'existe pas. */
     const monterEtDeplier = () => {
         const rendu = render(<UsersCard config={config} setConfig={vi.fn()} />);
-        fireEvent.click(screen.getByText(/Ajouter conjoint/));
+        fireEvent.click(screen.getByText(/Ajouter un conjoint/));
         return rendu;
     };
 

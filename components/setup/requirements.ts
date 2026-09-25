@@ -32,6 +32,8 @@ export interface RequirementField {
 export interface Requirement {
     id: string;
     label: string;
+    /** [S5-REFONTE-REGLAGES] État manquant en quelques mots (liste de complétude des Réglages : « 0/1 · clé API manquante »). */
+    manque: string;
     help?: string;
     icon?: IconName;
     isMet: (s: FinanceState) => boolean;
@@ -63,6 +65,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     salary: {
         id: 'salary',
         label: 'Salaire — utilisateur principal',
+        manque: 'salaire manquant',
         help: "Brut MENSUEL (le net est optionnel). Base du calcul d'impôt et des optimisations.",
         icon: 'tax',
         isMet: (s) => (s.config.users[0]?.grossSalary ?? 0) > 0,
@@ -92,6 +95,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     retirementProfile: {
         id: 'retirementProfile',
         label: 'Profil retraite',
+        manque: 'profil retraite à remplir',
         help: 'Âge de retraite cible et revenu mensuel visé (espérance de vie optionnelle).',
         icon: 'retirement',
         isMet: (s) => (s.retirementGoal?.targetAge ?? 0) > 0 && (s.retirementGoal?.targetMonthlyIncome ?? 0) > 0,
@@ -125,6 +129,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     assets: {
         id: 'assets',
         label: 'Placements / actifs',
+        manque: 'aucun placement',
         help: 'Au moins un actif (action, ETF, crypto…) pour projeter la croissance.',
         icon: 'investments',
         isMet: (s) => (s.assets?.length ?? 0) > 0,
@@ -133,6 +138,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     realEstate: {
         id: 'realEstate',
         label: 'Projet immobilier',
+        manque: 'aucun projet immobilier',
         help: 'Au moins un projet activé (achat, refinancement, comparaison louer/acheter).',
         icon: 'real-estate',
         // Le state pré-amorce un objectif placeholder (isActive:false, price:0) :
@@ -142,6 +148,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     children: {
         id: 'children',
         label: 'Planification enfant',
+        manque: 'aucun enfant planifié',
         help: 'Au moins un objectif enfant activé (REEE, coûts de garde, etc.).',
         icon: 'child',
         // Idem : l'objectif par défaut a isActive:false → gate sur l'activation.
@@ -150,6 +157,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     transactions: {
         id: 'transactions',
         label: 'Transactions',
+        manque: 'aucune transaction',
         help: 'Au moins une transaction (import de relevé CSV ou ajout manuel).',
         icon: 'transactions',
         isMet: (s) => (s.transactions?.length ?? 0) > 0,
@@ -157,6 +165,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     debts: {
         id: 'debts',
         label: 'Dettes',
+        manque: 'aucune dette renseignée',
         help: 'Au moins une dette (prêt, carte, marge…).',
         icon: 'debt',
         isMet: (s) => (s.debts?.length ?? 0) > 0,
@@ -164,6 +173,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     lifeProjects: {
         id: 'lifeProjects',
         label: 'Projets de vie',
+        manque: 'aucun projet',
         help: 'Au moins un projet ou voyage planifié.',
         icon: 'life-projects',
         isMet: (s) => (s.travelGoals?.length ?? 0) > 0 || (s.lifeEvents?.length ?? 0) > 0,
@@ -171,6 +181,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
     anthropicKey: {
         id: 'anthropicKey',
         label: 'Clé API Anthropic (Claude)',
+        manque: 'clé API manquante',
         help: 'Nécessaire pour les fonctions IA. Se saisit dans Configuration (jamais stockée dans les backups).',
         icon: 'sparkles',
         isMet: (s) => !!(s.apiKeys?.anthropic && s.apiKeys.anthropic.trim()),

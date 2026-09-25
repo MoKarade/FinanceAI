@@ -3,7 +3,8 @@
 // orchestrateur léger : il détient les données (pour construire le payload de
 // backup) et délègue chaque thème à une section dédiée sous components/settings/sections/.
 //
-// Sous-onglets : Profil | Comptes & soldes | Patrimoine | Clés API | Sauvegarde.
+// Sous-onglets : Complétude | Comptes et soldes | Patrimoine | Clés API | Sauvegarde | Système et diagnostics
+// (+ lien « Profil ↗ » hors tablist : c'est une autre page, pas un onglet).
 // (« Hypothèses éco » du plan initial est sans objet ici : les hypothèses
 // économiques vivent dans l'onglet Futur. « Patrimoine » accueille les panneaux
 // W5.x qui n'avaient pas de section dédiée.)
@@ -14,7 +15,7 @@
 
 import React, { useState } from 'react';
 import { PageHeader } from './ui/PageHeader';
-import { Icon, type IconName } from './ui/Icon';
+import type { IconName } from './ui/Icon';
 import { SubTabs, TabPanel } from './ui/SubTabs';
 import {
   AppState, BudgetCategory, Transaction, Asset, TravelGoal, Debt,
@@ -22,9 +23,11 @@ import {
   RealEstateGoal, ChildGoal, Tab,
 } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { SetupHub } from './setup/SetupHub';
+import { SetupHub, useCompletudeOnglets } from './setup/SetupHub';
 import { usePendingFocus } from '../utils/usePendingFocus';
-import { ProfileSection } from './settings/sections/ProfileSection';
+import { TestModePanel } from './settings/TestModePanel';
+import { startGuidedTour } from './tour/tourControl';
+import { useViewportXl } from '../hooks/useViewportXl';
 import { AccountsSection } from './settings/sections/AccountsSection';
 import { PatrimoineSection } from './settings/sections/PatrimoineSection';
 import { IntegrationsSection } from './settings/sections/IntegrationsSection';
@@ -60,15 +63,17 @@ interface SettingsProps {
   appState: AppState;
 }
 
-type SubTab = 'profile' | 'accounts' | 'patrimoine' | 'integrations' | 'backup' | 'system';
+type SubTab = 'completude' | 'accounts' | 'patrimoine' | 'integrations' | 'backup' | 'system';
 
 const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
-  { id: 'profile', label: 'Profil', icon: 'users' },
-  { id: 'accounts', label: 'Comptes & soldes', icon: 'bank' },
+  // [S5-REFONTE-REGLAGES] « Complétude » ouvre les Réglages ; le Profil a son propre onglet (lien sous
+  // le menu) et le mode test sa carte à droite — l'ancien sous-onglet « Profil » n'avait plus que ça.
+  { id: 'completude', label: 'Complétude', icon: 'check' },
+  { id: 'accounts', label: 'Comptes et soldes', icon: 'bank' },
   { id: 'patrimoine', label: 'Patrimoine', icon: 'real-estate' },
   { id: 'integrations', label: 'Clés API', icon: 'link' },
   { id: 'backup', label: 'Sauvegarde', icon: 'cloud' },
-  { id: 'system', label: 'Système & diagnostics', icon: 'group-tools' },
+  { id: 'system', label: 'Système et diagnostics', icon: 'group-tools' },
 ];
 
 /** Mappe un data-focus-section (deep-link) vers le sous-onglet qui le contient. */
@@ -79,7 +84,7 @@ function subTabForSection(section: string | null | undefined): SubTab | null {
   // entrée, le deep-link ouvrait Réglages sur le sous-onglet courant sans rien focaliser :
   // un bouton d'apparence fonctionnelle qui ne mène nulle part (panne silencieuse).
   if (section.startsWith('fintable-')) return 'integrations';
-  if (section.startsWith('profile-')) return 'profile';
+  if (section.startsWith('profile-')) return 'completude';
   return null;
 }
 
@@ -87,7 +92,7 @@ export const Settings: React.FC<SettingsProps> = ({
   apiKeys,
   setApiKeys,
   config,
-  setConfig,
+  setConfig: _setConfig,
   initialBalances,
   setInitialBalances,
   transactions,
@@ -118,11 +123,12 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // Deep-link : on démarre sur le sous-onglet ciblé pour que le champ soit
   // monté quand usePendingFocus tente le scroll.
-  const [sub, setSub] = useState<SubTab>(() => {
+  // `null` = accueil des Réglages : « Complétude » sur bureau, liste des sections sur mobile.
+  const [sub, setSub] = useState<SubTab | null>(() => {
     if (pendingFocus && pendingFocus.tab === Tab.SETTINGS && Date.now() <= pendingFocus.expiresAt) {
-      return subTabForSection(pendingFocus.section) ?? 'profile';
+      return subTabForSection(pendingFocus.section);
     }
-    return 'profile';
+    return null;
   });
 
   // Consomme pendingFocus + scroll vers le champ (one-shot).
@@ -164,47 +170,143 @@ export const Settings: React.FC<SettingsProps> = ({
     brokerAccountRegimes: useFinanceStore.getState().brokerAccountRegimes,
   });
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 stagger-in">
-      <PageHeader
-        icon={<Icon name="settings" size={28} />}
-        title="Configuration"
-      />
+  const { pct } = useCompletudeOnglets();
+  const large = useViewportXl();
+  const setActiveTab = useFinanceStore(s => s.setActiveTab);
+  const aFaire = (id: SubTab) => id === 'integrations' && !apiKeys.anthropic;
+  const onglets = SUB_TABS.map((t) => ({
+    ...t,
+    badge: t.id === 'completude' ? `${pct} %` : aFaire(t.id) ? <span className="text-warning-400">à faire</span> : undefined,
+  }));
 
-      {/* Hub de complétude PAR ONGLET : ce qui manque pour débloquer chaque page + remplir ici. */}
-      <SetupHub />
+  // Contenu d'une section — partagé par les deux mises en page.
+  const contenu = (id: SubTab): React.ReactNode => {
+    switch (id) {
+      case 'completude':
+        // Hub de complétude PAR ONGLET : ce qui manque pour débloquer chaque page + remplir ici.
+        return <SetupHub compact={!large} />;
+      case 'accounts':
+        return (
+          <AccountsSection
+            initialBalances={initialBalances}
+            setInitialBalances={setInitialBalances}
+            transactions={transactions}
+            onImportData={onImportData}
+            apiKey={apiKeys.anthropic}
+          />
+        );
+      case 'patrimoine':
+        return <PatrimoineSection />;
+      case 'integrations':
+        return (
+          <div className="space-y-6">
+            <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
+            {/* [FINTABLE-7] Sync bancaire in-app : jeton + rôles de comptes, sans aucune config externe. */}
+            <FintableSyncCard />
+          </div>
+        );
+      case 'backup':
+        return <BackupSection buildPayload={buildBackupPayload} />;
+      case 'system':
+        return <SystemView state={appState} />;
+    }
+  };
 
-      {/* Navigation sous-onglets thématiques */}
-      <SubTabs<SubTab>
-        idPrefix="config"
-        label="Sections Configuration"
-        tabs={SUB_TABS}
-        active={sub}
-        onSelect={setSub}
-      />
+  const enTete = (
+    <PageHeader
+      title="Réglages"
+      actions={
+        <button type="button" onClick={startGuidedTour} className="h-10 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring">
+          Revoir le tutoriel
+        </button>
+      }
+    />
+  );
 
-      <TabPanel idPrefix="config" tab="profile" when={sub === 'profile'}>
-        <ProfileSection config={config} setConfig={setConfig} />
-      </TabPanel>
-      <TabPanel idPrefix="config" tab="accounts" when={sub === 'accounts'}>
-        <AccountsSection
-          initialBalances={initialBalances}
-          setInitialBalances={setInitialBalances}
-          transactions={transactions}
-          onImportData={onImportData}
-          apiKey={apiKeys.anthropic}
-        />
-      </TabPanel>
-      <TabPanel idPrefix="config" tab="patrimoine" when={sub === 'patrimoine'}><PatrimoineSection /></TabPanel>
-      <TabPanel idPrefix="config" tab="integrations" when={sub === 'integrations'}>
-        <div className="space-y-6">
-          <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
-          {/* [FINTABLE-7] Sync bancaire in-app : jeton + rôles de comptes, sans aucune config externe. */}
-          <FintableSyncCard />
+  // [S5-REFONTE-REGLAGES] Bureau large (≥ xl, maquette E-reglages) : menu à gauche (onglets verticaux),
+  // section au centre, carte du mode test à droite.
+  if (large) {
+    const actif = sub ?? 'completude';
+    return (
+      <div className="space-y-6 stagger-in">
+        {enTete}
+        <div className="grid grid-cols-[240px_minmax(0,1fr)_380px] gap-5 items-start">
+          <div className="min-w-0 flex flex-col gap-1">
+            <SubTabs<SubTab>
+              idPrefix="config"
+              label="Sections des réglages"
+              tabs={onglets}
+              active={actif}
+              onSelect={setSub}
+              orientation="vertical"
+            />
+            {/* Hors tablist : le Profil est une autre page, pas un onglet de celle-ci. */}
+            <button type="button" onClick={() => setActiveTab(Tab.PROFILE)} className="h-10 px-3 rounded-[10px] flex items-center justify-between gap-2 text-body text-ink-300 hover:bg-white/5 hover:text-ink-50 focus-ring">
+              Profil <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <div className="min-w-0">
+            {SUB_TABS.map(({ id }) => (
+              <TabPanel key={id} idPrefix="config" tab={id} when={actif === id}>{contenu(id)}</TabPanel>
+            ))}
+          </div>
+          {/* Mode test (dev) — charger un persona réaliste ; vraies données sauvegardées/restaurées. */}
+          <div className="min-w-0">
+            <TestModePanel />
+          </div>
         </div>
-      </TabPanel>
-      <TabPanel idPrefix="config" tab="backup" when={sub === 'backup'}><BackupSection buildPayload={buildBackupPayload} /></TabPanel>
-      <TabPanel idPrefix="config" tab="system" when={sub === 'system'}><SystemView state={appState} /></TabPanel>
+      </div>
+    );
+  }
+
+  // Mobile et bureau étroit (maquette M-reglages) : carte du mode test, liste des sections (on touche
+  // pour ouvrir), puis la complétude. Une section ouverte remplace la liste, avec un retour.
+  const ouverte = sub && sub !== 'completude' ? SUB_TABS.find((t) => t.id === sub) : undefined;
+  if (ouverte) {
+    return (
+      <div className="space-y-6 stagger-in">
+        {enTete}
+        <section aria-labelledby="reglages-section-titre" className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => { setSub(null); requestAnimationFrame(() => document.getElementById(`reglages-ligne-${ouverte.id}`)?.focus()); }}
+              className="self-start min-h-11 text-meta text-ink-400 hover:text-ink-100 focus-ring rounded-sm"
+            >
+              ‹ Toutes les sections
+            </button>
+            <h2 id="reglages-section-titre" tabIndex={-1} className="text-[20px] font-semibold text-ink-50 focus:outline-hidden">{ouverte.label}</h2>
+          </div>
+          {contenu(ouverte.id)}
+        </section>
+      </div>
+    );
+  }
+
+  const ouvrir = (id: SubTab) => {
+    setSub(id);
+    requestAnimationFrame(() => document.getElementById('reglages-section-titre')?.focus());
+  };
+  const ligne = 'w-full h-[52px] px-4 flex items-center justify-between gap-3 text-left text-body text-ink-100 focus-ring';
+  return (
+    <div className="space-y-4 stagger-in">
+      {enTete}
+      <TestModePanel compact />
+      <nav aria-label="Sections des réglages" className="rounded-2xl bg-surface border border-white/6 overflow-hidden">
+        <button type="button" onClick={() => setActiveTab(Tab.PROFILE)} className={ligne}>
+          Profil <span className="text-ink-400" aria-hidden="true">›</span>
+        </button>
+        {SUB_TABS.filter((t) => t.id !== 'completude').map((t) => (
+          <button key={t.id} id={`reglages-ligne-${t.id}`} type="button" onClick={() => ouvrir(t.id)} className={`${ligne} border-t border-white/5`}>
+            {t.label}
+            <span className="flex items-center gap-3">
+              {aFaire(t.id) && <span className="text-meta text-warning-400">à faire</span>}
+              <span className="text-ink-400" aria-hidden="true">›</span>
+            </span>
+          </button>
+        ))}
+      </nav>
+      {contenu('completude')}
     </div>
   );
 };

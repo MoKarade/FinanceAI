@@ -18,7 +18,6 @@ import { RULE_CATEGORIES } from '../services/import/categoryRules';
 // unique d'un abonnement. Modules PURS et légers.
 import { buildMerchantProfiles } from '../services/transactions/merchantProfile';
 import { contextualCategorize } from '../services/transactions/contextualCategorize';
-import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
@@ -26,7 +25,9 @@ import { ImportBankStatement } from './import/ImportBankStatement';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { usePendingFocus } from '../utils/usePendingFocus';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatSigned } from '../utils/format';
+import { couleurCategorie } from './transactions/couleursCategories';
+import { useViewportBelowLg } from '../hooks/useViewportBelowLg';
 import { DuplicatesPanel } from './transactions/DuplicatesPanel';
 import { TransfersPanel } from './transactions/TransfersPanel';
 import { CategoryReviewPanel } from './transactions/CategoryReviewPanel';
@@ -108,8 +109,15 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [lastSelectedId, setLastSelectedId] = useState<number | null>(null);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 50;
+    // [S5-REFONTE-TRANSACTIONS] « Afficher plus » (maquettes) remplace la pagination : 16 lignes au
+    // bureau, 10 sur mobile, puis autant à chaque clic. Toute nouvelle vue (filtre, recherche) repart du début.
+    const etroit = useViewportBelowLg();
+    const pas = etroit ? 10 : 16;
+    const [plus, setPlus] = useState(0);
+    const [importOuvert, setImportOuvert] = useState(transactions.length === 0);
+    const [outil, setOutil] = useState<null | 'doublons' | 'virements' | 'qualite' | 'regles' | 'selection'>(null);
+    const modeSelection = outil === 'selection';
+    const [masquerVirements, setMasquerVirements] = useState(false);
 
     useEffect(() => {
         if (processing && logsEndRef.current) {
@@ -132,7 +140,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [categorizationRules]);
 
-    const [showRulesPanel, setShowRulesPanel] = useState(false);
     const [newPattern, setNewPattern] = useState('');
     const [newRuleCategory, setNewRuleCategory] = useState('');
 
@@ -156,8 +163,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
         showToast(`${ids.length} marquage(s) annulé(s).`, 'success');
     };
 
-    // [TX-TRANSFERS] Marque les deux côtés d'un virement interne. Même forme que `toggleTransfer`
-    // (catégorie « Transfert », `originalCategory` préservée pour pouvoir défaire) — une seule
+    // [TX-TRANSFERS] Marque les deux côtés d'un virement interne : catégorie « Transfert » (comme le
+    // choix « Transfert » dans la pastille de catégorie), `originalCategory` préservée — une seule
     // sémantique du marquage, quel que soit le point d'entrée.
     const handleMarkTransfers = (ids: number[]): void => {
         if (ids.length === 0) return;
@@ -225,6 +232,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             if (quickFilter === 'TO_REVIEW' && t.category !== 'Uncategorized' && t.category !== 'Autre' && t.category !== 'Inconnu') return false;
 
             if (!showDuplicates && t.isDuplicate) return false;
+            if (masquerVirements && t.isTransfer) return false;
 
             const searchMatch = filterText === '' ||
                 (t.payee || '').toLowerCase().includes(filterText.toLowerCase()) ||
@@ -235,7 +243,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
             return true;
         });
-    }, [transactions, filterText, showDuplicates, selectedCategory, quickFilter]);
+    }, [transactions, filterText, showDuplicates, selectedCategory, quickFilter, masquerVirements]);
 
     // PH4-TX — tri appliqué APRÈS le filtre. localeCompare 'fr' pour marchand/catégorie ; numérique
     // pour le montant ; comparaison de chaîne ISO pour la date (YYYY-MM-DD trie correctement).
@@ -279,22 +287,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
             idSet.has(t.id) ? { ...t, category: newCat, status: 'processed' as const, confidence: 100 } : t
         );
         setTransactions(updated);
-    };
-
-    const toggleTransfer = (id: number) => {
-        setTransactions(prev => prev.map(t => {
-            if (t.id === id) {
-                const newVal = !t.isTransfer;
-                return {
-                    ...t,
-                    isTransfer: newVal,
-                    category: newVal ? 'Transfert' : (t.originalCategory || 'Uncategorized'),
-                    status: 'manual' as const,
-                    confidence: 100
-                };
-            }
-            return t;
-        }));
     };
 
     const updateCategory = (id: number, newCat: string) => {
@@ -423,11 +415,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         }
     };
 
-    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-    const paginatedTransactions = sortedTransactions.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const visiblesTx = sortedTransactions.slice(0, pas * (plus + 1));
 
     const handleSelectOne = (id: number, shiftKey: boolean) => {
         const newSelected = new Set(selectedIds);
@@ -483,164 +471,180 @@ export const Transactions: React.FC<TransactionsProps> = ({
         }
     };
 
-    const getConfidenceColor = (score?: number) => {
-        if (!score) return 'bg-surfaceHighlight';
-        if (score >= 90) return 'bg-green-500';
-        if (score >= 70) return 'bg-yellow-500';
-        return 'bg-danger-500';
+    // [S5-REFONTE-TRANSACTIONS] Écran des maquettes E/M-transactions : barre de recherche et de
+    // filtres, tableau (liste par jour sur mobile), à droite le mois en cours, les outils et les
+    // groupes à classer. Les outils (doublons, virements, qualité, règles, sélection) s'ouvrent en
+    // panneau au-dessus de la liste.
+    const vueFiltree = (fn: () => void) => { fn(); setPlus(0); };
+    const aVerifier = transactions.filter((t) => !t.isDuplicate && (t.category === 'Uncategorized' || t.category === 'Autre' || t.category === 'Inconnu')).length;
+    const moisCourant = (() => {
+        const d = new Date();
+        const prefixe = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        let entrees = 0; let sorties = 0;
+        for (const t of transactions) {
+            if (t.isTransfer || t.isDuplicate || !(t.date || '').startsWith(prefixe)) continue;
+            if (t.amount > 0) entrees += t.amount; else sorties += t.amount;
+        }
+        const libelle = d.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' });
+        return { libelle: libelle.charAt(0).toUpperCase() + libelle.slice(1), entrees, sorties };
+    })();
+    const OUTILS: ReadonlyArray<{ id: NonNullable<typeof outil>; libelle: string; compte?: number }> = [
+        { id: 'doublons', libelle: 'Doublons' },
+        { id: 'virements', libelle: 'Virements internes' },
+        { id: 'qualite', libelle: 'Qualité du classement' },
+        { id: 'regles', libelle: 'Règles automatiques', compte: categorizationRules.length },
+        { id: 'selection', libelle: 'Sélectionner des lignes' },
+    ];
+    const titreOutil = OUTILS.find((o) => o.id === outil)?.libelle;
+    const exporterTout = async () => {
+        const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
+        try {
+            downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
+        } catch (e) {
+            if (refusExportCsvTraite(e)) return;
+            throw e;
+        }
     };
+    const ligneOutil = 'w-full min-h-12 px-4 lg:px-5 flex items-center justify-between gap-3 border-t border-white/5 text-body text-ink-100 text-left hover:bg-white/3 focus-ring';
+    const pastille = 'h-10 px-3.5 rounded-full border text-[13px] whitespace-nowrap transition-colors focus-ring shrink-0';
+    const signe = (n: number) => (n > 0 ? '+' : '');
+    // Jours de la liste mobile (maquette : « mar. 15 sept. » + total du jour).
+    const jours: Array<{ date: string; libelle: string; total: number; lignes: Transaction[] }> = [];
+    for (const t of visiblesTx) {
+        const dernier = jours[jours.length - 1];
+        if (dernier && dernier.date === t.date) { dernier.lignes.push(t); if (!t.isTransfer) dernier.total += t.amount; continue; }
+        const [y, m, dd] = (t.date || '').split('-').map(Number);
+        const libelle = y && m && dd ? new Date(y, m - 1, dd).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short' }) : t.date;
+        jours.push({ date: t.date, libelle, total: t.isTransfer ? 0 : t.amount, lignes: [t] });
+    }
 
-    // [AI-UNBOUNDED-CONFIDENCE] Ceinture d'AFFICHAGE, en plus de la bretelle Zod (`CategorizeItemSchema`
-    // borne désormais `confidence` à [0,100]). Les deux sont nécessaires : le schéma protège ce qui
-    // ENTRE aujourd'hui, ce clamp protège ce qui est DÉJÀ PERSISTÉ — une transaction catégorisée
-    // avant ce correctif porte encore sa valeur hallucinée dans le store, et aucune revalidation
-    // rétroactive n'a lieu à la lecture (même raisonnement que « le mauvais résultat a-t-il été
-    // SAUVEGARDÉ ? », classe UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE).
-    const displayConfidence = (score: number): number =>
-        Number.isFinite(score) ? Math.min(100, Math.max(0, Math.round(score))) : 0;
+    const outils = (
+        <section aria-labelledby="outils-tx-titre" className="rounded-2xl bg-surface border border-white/6 overflow-hidden">
+            <h2 id="outils-tx-titre" className="px-4 lg:px-5 py-3 text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400">Outils</h2>
+            {etroit && (
+                <button type="button" onClick={() => { void handleAutoCategorizeAll('gaps'); }} disabled={processing} className={`${ligneOutil} disabled:opacity-50`}>
+                    {processing ? 'Catégorisation…' : 'Auto-catégoriser'}<span className="text-ink-400" aria-hidden="true">›</span>
+                </button>
+            )}
+            {OUTILS.map((o) => (
+                <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => setOutil(outil === o.id ? null : o.id)}
+                    aria-expanded={outil === o.id}
+                    className={ligneOutil}
+                >
+                    {o.libelle}
+                    <span className="flex items-center gap-2 text-ink-400">{o.compte !== undefined && <span className="font-mono text-meta">{o.compte}</span>}<span aria-hidden="true">›</span></span>
+                </button>
+            ))}
+            {/* [TX-CATEGORIZE] Passe sur TOUT l'historique (demande Marc). Les catégories
+                existantes sont réécrites — SAUF les corrections manuelles, verrouillées. */}
+            <button
+                type="button"
+                onClick={() => { void handleAutoCategorizeAll('all'); }}
+                disabled={processing}
+                aria-label="Recatégoriser tout l'historique (les corrections manuelles sont conservées)"
+                className={`${ligneOutil} disabled:opacity-50`}
+            >
+                Tout recatégoriser<span className="text-ink-400" aria-hidden="true">›</span>
+            </button>
+            {filteredTransactions.length > 0 && (
+                <button type="button" onClick={() => { void handleExportFilteredCSV(); }} aria-label="Exporter la vue filtrée en CSV" className={ligneOutil}>
+                    Exporter la vue filtrée<span className="text-ink-400" aria-hidden="true">›</span>
+                </button>
+            )}
+            {etroit && transactions.length > 0 && (
+                <button type="button" onClick={() => { void exporterTout(); }} className={ligneOutil}>
+                    Exporter CSV<span className="text-ink-400" aria-hidden="true">›</span>
+                </button>
+            )}
+        </section>
+    );
+    const resumeMois = (
+        <section aria-labelledby="mois-tx-titre" className="rounded-2xl bg-surface border border-white/6 p-4 lg:p-5 flex flex-col gap-2.5">
+            <h2 id="mois-tx-titre" className="text-[17px] font-semibold text-ink-50">{moisCourant.libelle}</h2>
+            <dl className={etroit ? 'grid grid-cols-3 gap-2' : 'flex flex-col gap-2.5 text-body'}>
+                <div className={etroit ? 'flex flex-col gap-0.5' : 'flex justify-between gap-3'}><dt className="text-meta lg:text-body text-ink-400 lg:text-ink-300">Entrées</dt><dd><PrivateAmount className="font-mono font-bold lg:font-normal text-success-400">{`${signe(moisCourant.entrees)}${formatCAD(moisCourant.entrees)}`}</PrivateAmount></dd></div>
+                <div className={etroit ? 'flex flex-col gap-0.5' : 'flex justify-between gap-3'}><dt className="text-meta lg:text-body text-ink-400 lg:text-ink-300">Sorties</dt><dd><PrivateAmount className="font-mono font-bold lg:font-normal text-ink-50 lg:text-danger-400">{formatCAD(moisCourant.sorties)}</PrivateAmount></dd></div>
+                <div className={etroit ? 'flex flex-col gap-0.5' : 'flex justify-between gap-3 pt-2.5 border-t border-white/6 font-semibold'}><dt className="text-meta lg:text-body text-ink-400 lg:text-ink-50">Restant</dt><dd><PrivateAmount className="font-mono font-bold text-ink-50">{formatCAD(moisCourant.entrees + moisCourant.sorties)}</PrivateAmount></dd></div>
+            </dl>
+        </section>
+    );
+    const aClasser = uncategorizedGroups.length > 0 && (
+        <section aria-labelledby="a-classer-titre" className={`rounded-2xl border border-warning-400/35 bg-warning-500/6 p-4 lg:p-5 flex ${etroit ? 'items-center justify-between gap-3' : 'flex-col gap-3'}`}>
+            <div className="flex flex-col gap-1 min-w-0">
+                <h2 id="a-classer-titre" className="text-body font-semibold text-warning-400">{uncategorizedGroups.length} groupe{uncategorizedGroups.length > 1 ? 's' : ''} à classer</h2>
+                <p className="text-meta text-ink-300">Choisis une catégorie par groupe de transactions semblables : tout le groupe la prend.</p>
+            </div>
+            <button
+                type="button"
+                onClick={() => setShowWizard(true)}
+                aria-label={`Ouvrir l'assistant de classement (${uncategorizedGroups.length} groupes)`}
+                className={etroit ? 'shrink-0 h-10 px-4 rounded-lg bg-warning-400 text-dark text-body font-bold focus-ring' : 'h-11 rounded-lg border border-warning-400/60 text-warning-400 text-body font-semibold hover:bg-warning-500/10 focus-ring'}
+            >
+                {etroit ? 'Classer' : 'Classer maintenant'}
+            </button>
+        </section>
+    );
 
     return (
-        <div className="space-y-6 relative stagger-in">
+        <div className="space-y-5 relative stagger-in">
 
             <PageHeader
-                icon={<Icon name="transactions" size={28} />}
                 // [REFONTE-NAV-L5] Titre = TAB_LABELS (cohérence des en-têtes de la destination).
                 title={TAB_LABELS[Tab.TRANSACTIONS]}
-                subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
+                badge={<span className="text-meta lg:text-body text-ink-400">{transactions.length} transactions · {uncategorizedGroups.length} groupe{uncategorizedGroups.length > 1 ? 's' : ''} à classer</span>}
                 actions={
-                    <div className="flex items-center gap-2">
-                        {transactions.length > 0 && (
+                    <span className="flex items-center gap-2">
+                        {onImport && (
                             <button
                                 type="button"
-                                onClick={async () => {
-                                    const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
-                                    try {
-                                        downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
-                                    } catch (e) {
-                                        if (refusExportCsvTraite(e)) return;
-                                        throw e;
-                                    }
-                                }}
-                                className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-400 text-tiny font-bold transition-colors focus-ring"
-                                title="Exporter toutes les transactions en CSV"
+                                onClick={() => setImportOuvert((o) => !o)}
+                                aria-expanded={importOuvert}
+                                className="h-10 px-3.5 lg:px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 focus-ring"
                             >
-                                Export CSV
+                                {etroit ? 'Importer' : 'Importer CSV / PDF'}
                             </button>
                         )}
-                    </div>
+                        {!etroit && transactions.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => { void exporterTout(); }}
+                                className="h-10 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 focus-ring"
+                                title="Exporter toutes les transactions en CSV"
+                            >
+                                Exporter CSV
+                            </button>
+                        )}
+                        {!etroit && (
+                            <button
+                                type="button"
+                                onClick={() => { void handleAutoCategorizeAll('gaps'); }}
+                                disabled={processing}
+                                aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
+                                className="h-10 px-4 rounded-lg bg-primary text-dark text-body font-bold hover:bg-white disabled:opacity-60 focus-ring"
+                            >
+                                {processing ? 'Catégorisation…' : 'Auto-catégoriser'}
+                            </button>
+                        )}
+                    </span>
                 }
             />
 
             {/* [FINTABLE-4] Import manuel — repli JAMAIS supprimé (seul chemin quand Fintable/Plaid
-                est indisponible), mais déplacé HORS du flux principal (retiré des actions du header)
-                maintenant que Fintable synchronise les transactions récentes automatiquement, 1×/jour.
-                Disclosure native `<details>` (convention établie, cf `AdvancedProjectionParams` /
-                `HistoryCoverageNote`) : ouverte par défaut UNIQUEMENT à l'onboarding (aucune transaction,
-                D2 activation — l'écran vide ne doit jamais être une impasse) ; repliée sinon, un clic pour
-                l'atteindre. ⚠️ jsdom ne cache pas le contenu d'un `<details>` fermé → le test discrimine
-                sur l'attribut `open`, pas sur la présence du panneau (cf CLAUDE.md [[INVEST-CHART-CLEAN]]). */}
-            {onImport && (
-                <details open={transactions.length === 0}>
-                    <summary className="cursor-pointer text-body text-ink-300 hover:text-white transition-colors focus-ring rounded-card inline-block px-1 py-1.5">
-                        Import manuel (repli — CSV/PDF)
-                    </summary>
-                    <div className="mt-3">
-                        <ImportBankStatement onImport={onImport} apiKey={apiKey} />
+                est indisponible), hors du flux principal : le bouton « Importer » de l'en-tête l'ouvre.
+                Ouvert d'emblée UNIQUEMENT à l'onboarding (aucune transaction, D2 activation — l'écran
+                vide ne doit jamais être une impasse). */}
+            {onImport && importOuvert && (
+                <section aria-labelledby="import-tx-titre" className="rounded-2xl bg-surface border border-white/6 p-4 lg:p-5 flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <h2 id="import-tx-titre" className="text-body font-semibold text-ink-50">Import manuel (repli — CSV/PDF)</h2>
+                        {transactions.length > 0 && <button type="button" onClick={() => setImportOuvert(false)} className="min-h-11 px-2 text-meta text-ink-300 underline underline-offset-2 focus-ring rounded-sm">Fermer</button>}
                     </div>
-                </details>
+                    <ImportBankStatement onImport={onImport} apiKey={apiKey} />
+                </section>
             )}
-
-            {/* [TX-DUPLICATES] Détection de doublons — propose, ne marque jamais d'office. */}
-            <DuplicatesPanel
-                transactions={transactions}
-                markedCount={markedDuplicateCount}
-                onMarkDuplicates={handleMarkDuplicates}
-                onUnmarkAll={handleUnmarkAllDuplicates}
-            />
-
-            {/* [TX-TRANSFERS] Virements internes — marque d'office ce qui est PROUVÉ (deux comptes
-                connus et différents), fait confirmer le reste. */}
-            <TransfersPanel transactions={transactions} onMarkTransfers={handleMarkTransfers} />
-
-            {/* [TX-REVIEW] Mesure du taux réel d'erreurs — le seul moyen de vérifier l'objectif. */}
-            <CategoryReviewPanel
-                transactions={transactions}
-                review={categoryReview}
-                onChange={(next) => setAppState({ categoryReview: next })}
-                onFixCategory={(id) => {
-                    // Amène la transaction à l'écran pour la corriger : filtre sur son marchand et
-                    // remonte en haut de liste. Sans ça, « mal classée » serait un vote sans suite.
-                    // ⚠️ [finding vie privée #645] PAS en mode discret : recopier le `payee` brut
-                    // dans `filterText` le rend en CLAIR dans l'attribut `value` d'un `<input>`
-                    // visible — le panneau juste à côté masque pourtant ce même marchand. Le
-                    // masquage sautait donc par un chemin d'INTERACTION, pas par un rendu : c'est
-                    // la classe « la valeur fuit par un attribut », vue cette fois via un state.
-                    const target = transactions.find((t) => t.id === id);
-                    if (target?.payee && !isPrivacyMode) { setFilterText(target.payee); setCurrentPage(1); }
-                }}
-            />
-
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">
-                <button
-                    onClick={() => setShowRulesPanel(p => !p)}
-                    aria-expanded={showRulesPanel}
-                    className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-ink-200 hover:text-ink-50 transition-colors"
-                >
-                    <span className="flex items-center gap-2">
-                        <Icon name="actions" size={15} className="text-ink-400" />
-                        Règles automatiques
-                        <span className="bg-white/10 text-ink-300 px-2 py-0.5 rounded-full">{categorizationRules.length}</span>
-                    </span>
-                    <span className={`transition-transform ${showRulesPanel ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
-                </button>
-
-                {showRulesPanel && (
-                    <div className="px-4 pb-4 space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <input
-                                type="text"
-                                placeholder="Texte du marchand (ex: Metro, Spotify...)"
-                                value={newPattern}
-                                onChange={e => setNewPattern(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAddRule()}
-                                aria-label="Texte du marchand a matcher"
-                                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-hidden"
-                            />
-                            <select
-                                value={newRuleCategory}
-                                onChange={e => setNewRuleCategory(e.target.value)}
-                                aria-label="Categorie a appliquer"
-                                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-hidden"
-                            >
-                                <option value="">-- Categorie --</option>
-                                {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <button
-                                onClick={handleAddRule}
-                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-meta font-bold rounded-lg transition-colors"
-                            >
-                                + Ajouter
-                            </button>
-                        </div>
-
-                        {categorizationRules.length === 0 ? (
-                            <p className="text-tiny text-ink-400 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
-                        ) : (
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                                {categorizationRules.map(rule => (
-                                    <div key={rule.id} className="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/5 text-meta group">
-                                        <span className="text-ink-200 font-bold flex-1 truncate">"{rule.pattern}"</span>
-                                        <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
-                                        <PrivateText quoi="categorie" className="text-ink-100 bg-white/10 px-2 py-0.5 rounded-sm font-bold truncate max-w-[120px]">{rule.category}</PrivateText>
-                                        <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
-                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
 
             {showWizard && (
                 <div role="dialog" aria-modal="true" aria-labelledby="wizard-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
@@ -704,71 +708,88 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 </div>
             )}
 
-            {/* [REFONTE-NAV-L5] Ancre du deep-link Budget → Transactions : usePendingFocus scrolle
-                vers `category:<nom>` — l'attribut suit la catégorie filtrée (posée à l'arrivée). */}
-            <div data-focus-section={`category:${selectedCategory}`}>
-            <Card
-                title={`Historique (${filteredTransactions.length})`}
-                action={
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        {/* [A11Y-PRIVACY-TXN-TOTALS] Σ de la vue filtrée : agrégat = donnée privée. */}
-                        <PrivateAmount as="div" className={`text-tiny sm:text-meta font-bold px-2 py-1 rounded-sm border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
-                            Σ {formatCAD(filteredSum, { decimals: 2 })}
-                        </PrivateAmount>
-                        <button
-                            onClick={() => { void handleExportFilteredCSV(); }}
-                            title="Exporter la vue filtrée en CSV (compatible Excel)"
-                            aria-label="Exporter la vue filtrée en CSV"
-                            className="text-tiny sm:text-meta flex items-center gap-1 text-green-300 hover:text-white border border-green-500/30 bg-green-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold"
-                        >
-                            CSV
-                        </button>
-                        <button
-                            onClick={() => setShowWizard(true)}
-                            aria-label={`Ouvrir l'assistant de classement (${uncategorizedGroups.length} groupes)`}
-                            className="text-tiny sm:text-meta flex items-center gap-1 text-blue-300 hover:text-white border border-info-500/30 bg-info-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold whitespace-nowrap"
-                        >
-                            <span className="hidden sm:inline">Assistant </span>({uncategorizedGroups.length})
-                        </button>
-                    </div>
-                }
-            >
-                <div className="flex flex-col gap-3 mb-4">
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
-                            <input
-                                type="text"
-                                placeholder="Rechercher..."
-                                aria-label="Rechercher dans les transactions"
-                                className="w-full bg-surfaceHighlight border border-border rounded-full pl-9 pr-3 py-2 text-body text-white focus:border-primary outline-hidden shadow-inner"
-                                value={filterText}
-                                onChange={(e) => { setFilterText(e.target.value); setCurrentPage(1); }}
-                            />
-                        </div>
-                        <button
-                            onClick={() => { void handleAutoCategorizeAll('gaps'); }}
-                            disabled={processing}
-                            aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
-                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 text-white cursor-not-allowed' : apiKey ? 'bg-primary text-dark hover:bg-white' : 'bg-surfaceHighlight text-white'
-                                }`}
-                        >
-                            <span className="hidden sm:inline">{processing ? 'Catégorisation…' : 'Auto-catégoriser'}</span>
-                            <span className="sm:hidden">{processing ? '…' : 'Auto'}</span>
-                        </button>
-                        {/* [TX-CATEGORIZE] Passe sur TOUT l'historique (demande Marc). Les catégories
-                            existantes sont réécrites — SAUF les corrections manuelles, verrouillées. */}
-                        <button
-                            onClick={() => { void handleAutoCategorizeAll('all'); }}
-                            disabled={processing}
-                            aria-label="Recatégoriser tout l'historique (les corrections manuelles sont conservées)"
-                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold border transition-all active:scale-95 whitespace-nowrap ${processing ? 'bg-white/5 text-ink-400 border-white/10 cursor-not-allowed' : 'bg-white/5 text-ink-200 border-white/10 hover:text-ink-50'
-                                }`}
-                        >
-                            <span className="hidden sm:inline">Tout recatégoriser</span>
-                            <span className="sm:hidden">Tout</span>
-                        </button>
-                    </div>
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-5 items-start">
+                <div className="flex flex-col gap-4 min-w-0">
+                    {outil && (
+                        <section aria-label={titreOutil} className="rounded-2xl bg-surface border border-white/6 p-4 lg:p-5 flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <h2 className="text-body font-semibold text-ink-50">{titreOutil}</h2>
+                                <button type="button" onClick={() => setOutil(null)} className="min-h-11 px-2 text-meta text-ink-300 underline underline-offset-2 focus-ring rounded-sm">Fermer</button>
+                            </div>
+                            {/* [TX-DUPLICATES] Détection de doublons — propose, ne marque jamais d'office. */}
+                            {outil === 'doublons' && (
+                                <DuplicatesPanel integre transactions={transactions} markedCount={markedDuplicateCount} onMarkDuplicates={handleMarkDuplicates} onUnmarkAll={handleUnmarkAllDuplicates} />
+                            )}
+                            {/* [TX-TRANSFERS] Virements internes — marque d'office ce qui est PROUVÉ (deux comptes
+                                connus et différents), fait confirmer le reste. */}
+                            {outil === 'virements' && <TransfersPanel integre transactions={transactions} onMarkTransfers={handleMarkTransfers} />}
+                            {/* [TX-REVIEW] Mesure du taux réel d'erreurs — le seul moyen de vérifier l'objectif. */}
+                            {outil === 'qualite' && (
+                                <CategoryReviewPanel
+                                    integre
+                                    transactions={transactions}
+                                    review={categoryReview}
+                                    onChange={(next) => setAppState({ categoryReview: next })}
+                                    onFixCategory={(id) => {
+                                        // Amène la transaction à l'écran pour la corriger : filtre sur son marchand.
+                                        // ⚠️ [finding vie privée #645] PAS en mode discret : recopier le `payee` brut
+                                        // dans `filterText` le rendrait en CLAIR dans l'attribut `value` du champ.
+                                        const target = transactions.find((t) => t.id === id);
+                                        if (target?.payee && !isPrivacyMode) vueFiltree(() => setFilterText(target.payee));
+                                    }}
+                                />
+                            )}
+                            {outil === 'regles' && (
+                            <div className="space-y-3">
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Texte du marchand (ex: Metro, Spotify...)"
+                                        value={newPattern}
+                                        onChange={e => setNewPattern(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleAddRule()}
+                                        aria-label="Texte du marchand a matcher"
+                                        className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-hidden"
+                                    />
+                                    <select
+                                        value={newRuleCategory}
+                                        onChange={e => setNewRuleCategory(e.target.value)}
+                                        aria-label="Categorie a appliquer"
+                                        className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-hidden"
+                                    >
+                                        <option value="">-- Categorie --</option>
+                                        {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <button
+                                        onClick={handleAddRule}
+                                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-meta font-bold rounded-lg transition-colors"
+                                    >
+                                        + Ajouter
+                                    </button>
+                                </div>
+
+                                {categorizationRules.length === 0 ? (
+                                    <p className="text-tiny text-ink-400 text-center py-2">Aucune regle. Creez-en une pour categoriser automatiquement.</p>
+                                ) : (
+                                    <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                                        {categorizationRules.map(rule => (
+                                            <div key={rule.id} className="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/5 text-meta group">
+                                                <span className="text-ink-200 font-bold flex-1 truncate">"{rule.pattern}"</span>
+                                                <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
+                                                <PrivateText quoi="categorie" className="text-ink-100 bg-white/10 px-2 py-0.5 rounded-sm font-bold truncate max-w-[120px]">{rule.category}</PrivateText>
+                                                <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
+                                                <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            )}
+                            {outil === 'selection' && (
+                                <p className="text-meta text-ink-300">Coche des lignes dans la liste (Maj-clic pour une plage), puis exclus-les des calculs.</p>
+                            )}
+                        </section>
+                    )}
 
                     {processing && (
                         <div role="status" aria-live="polite" className="bg-black/80 border border-green-500/30 rounded-lg p-3 font-mono text-tiny text-green-400 h-32 overflow-y-auto custom-scrollbar flex flex-col-reverse shadow-inner">
@@ -783,376 +804,361 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         </div>
                     )}
 
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
-                        <button
-                            onClick={() => setQuickFilter(quickFilter === 'TO_REVIEW' ? 'NONE' : 'TO_REVIEW')}
-                            aria-pressed={quickFilter === 'TO_REVIEW'}
-                            className={`px-3 py-1.5 rounded-full text-meta font-bold transition-all border whitespace-nowrap ${quickFilter === 'TO_REVIEW' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' : 'bg-white/5 border-white/10 text-ink-300'}`}
-                        >
-                            A Verifier
-                        </button>
-                        {/* [TX-EXCLUES-INTROUVABLES] Marc, le 2026-09-15 : « je vois plus aucune
-                            transactions du [voyage] » — après avoir exclu les lignes de son voyage,
-                            comme je le lui avais demandé. Rien n'était perdu : `showDuplicates`
-                            est un état de COMPOSANT, remis à `false` à chaque montage, et son seul
-                            `setShowDuplicates(true)` vivait dans `handleMarkDuplicates`. Donc au
-                            rechargement les lignes exclues disparaissaient de la liste et AUCUN
-                            geste ne pouvait les rappeler — le seul recours était « Annuler tous
-                            les marquages », qui défait le travail au lieu de le montrer. Un état
-                            qu'aucun contrôle ne peut rallumer n'est pas un filtre, c'est une
-                            trappe (classe UX-UNREACHABLE-FEATURE). Le compte est TOUJOURS annoncé
-                            dès qu'il y a une exclusion : un écran qui masque doit dire ce qu'il
-                            masque, sinon il laisse croire à une perte de données. */}
-                        {markedDuplicateCount > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => { setShowDuplicates(p => !p); setCurrentPage(1); }}
-                                aria-pressed={showDuplicates}
-                                title={showDuplicates
-                                    ? 'Masquer à nouveau les transactions exclues des calculs'
-                                    : 'Ces transactions existent toujours : elles sont seulement exclues des calculs et cachées de la liste'}
-                                className={`touch-target inline-flex items-center px-3 py-1.5 rounded-full text-meta font-bold transition-all border whitespace-nowrap ${showDuplicates ? 'bg-warning-500/20 border-warning-500 text-warning-400' : 'bg-white/5 border-white/10 text-ink-300'}`}
-                            >
-                                {markedDuplicateCount} exclue{markedDuplicateCount > 1 ? 's' : ''} — {showDuplicates ? 'masquer' : 'afficher'}
-                            </button>
-                        )}
-                        <select
-                            aria-label="Filtre par categorie"
-                            className={`appearance-none px-4 py-1.5 rounded-full text-meta font-medium border transition-colors max-w-[150px] truncate ${selectedCategory !== 'All' ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-ink-200'}`}
-                            value={selectedCategory}
-                            onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
-                        >
-                            <option value="All">Toutes Categories</option>
-                            <option value="Uncategorized">A classer</option>
-                            <option value="Transfert">Transferts</option>
-                            {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        {/* [REFONTE-NAV-L5] Cross-link sobre : la catégorie filtrée a un poste budget
-                            du même nom → ouvrir le Budget scrollé sur ce poste (navigateWithFocus).
-                            Affiché SEULEMENT si le poste existe (pas de lien vers un poste absent). */}
-                        {selectedCategory !== 'All' && budgetItems.some(b => b.name === selectedCategory) && (
-                            <button
-                                type="button"
-                                onClick={() => navigateWithFocus(Tab.BUDGET, `poste:${selectedCategory}`)}
-                                title={`Ouvrir le poste « ${selectedCategory} » dans le Budget`}
-                                className="touch-target inline-flex items-center px-3 py-1.5 rounded-full text-meta font-medium border border-info-500/30 bg-info-500/10 text-info-400 hover:text-white transition-colors whitespace-nowrap focus-ring"
-                            >
-                                Voir au budget →
-                            </button>
-                        )}
-                    </div>
-                </div>
 
-
-                {/* [TX-SELECTION-SANS-ACTION] La sélection multiple existait (case par ligne,
-                    plage au Maj-clic, « tout sélectionner » de la page) mais ne pouvait RIEN faire
-                    d'autre que re-catégoriser : aucun libellé ne disait ce qu'elle permettait, et
-                    aucune action d'exclusion ne s'y branchait. Or `markTransactionsAsDuplicate` est
-                    PUR et accepte n'importe quels ids — la capacité existait dans le modèle, il
-                    manquait le point d'entrée. Mesuré le 2026-09-14 : le SEUL chemin vers
-                    `isDuplicate` était `DuplicatesPanel`, qui n'affiche que les groupes trouvés par
-                    le DÉTECTEUR — donc une ligne au montant faux, doublon de RIEN, était
-                    définitivement inatteignable (44 lignes réelles dans ce cas).
-                    ⚠️ Le libellé dit l'EFFET (« exclure des calculs »), pas le nom du champ : la
-                    raison d'exclure n'est pas toujours un doublon. L'annulation reste celle qui
-                    existe déjà (« Annuler tous les marquages » du panneau Doublons). */}
-                {selectedIds.size > 0 && (
-                    <div
-                        role="region"
-                        aria-label="Actions sur la sélection"
-                        className="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-xl border border-primary/30 bg-primary/10"
-                    >
-                        <span className="text-meta font-bold text-ink-100">
-                            {selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}
-                        </span>
-                        {selectedIds.size < filteredTransactions.length && (
-                            <button
-                                type="button"
-                                onClick={() => setSelectedIds(new Set(filteredTransactions.map(t => t.id)))}
-                                className="touch-target px-3 py-1.5 rounded-full text-meta font-bold bg-white/5 border border-white/10 text-ink-200 hover:text-ink-50 transition-colors focus-ring"
-                            >
-                                Sélectionner les {filteredTransactions.length} filtrées
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => { handleMarkDuplicates([...selectedIds]); setSelectedIds(new Set()); }}
-                            title="Les lignes restent dans l'historique mais sortent du solde, du budget et des revenus. Réversible."
-                            className="touch-target px-3 py-1.5 rounded-full text-meta font-bold bg-warning-600 text-dark focus-ring"
-                        >
-                            Exclure des calculs
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setSelectedIds(new Set())}
-                            className="touch-target px-3 py-1.5 rounded-full text-meta bg-white/5 border border-white/10 text-ink-300 hover:text-ink-100 transition-colors focus-ring"
-                        >
-                            Désélectionner
-                        </button>
-                        <span className="text-meta text-ink-400 basis-full">
-                            Rien n&apos;est effacé : les lignes restent visibles, simplement hors du solde,
-                            du budget et des revenus. Annulable dans le panneau « Doublons ».
-                        </span>
-                    </div>
-                )}
-
-                {/* [REFONTE-NAV-L5] Empty state UNIQUE (desktop + mobile) : avant, seul le mobile
-                    en avait un (le desktop montrait un tableau d'en-têtes vide). CTA honnête :
-                    importer s'il n'y a AUCUNE transaction, réinitialiser si ce sont les filtres. */}
-                {filteredTransactions.length === 0 ? (
-                    <EmptyState
-                        variant="subtle"
-                        icon={<Icon name="search" size={30} />}
-                        title="Aucune transaction"
-                        description={transactions.length === 0
-                            ? (onImport
-                                ? 'Aucune transaction pour l’instant — importe un relevé bancaire (CSV/PDF) via « Import manuel » en haut de page.'
-                                : 'Aucune transaction enregistrée pour l’instant.')
-                            : 'Aucune transaction ne correspond aux filtres actuels.'}
-                        cta={transactions.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => { setFilterText(''); setSelectedCategory('All'); setQuickFilter('NONE'); setCurrentPage(1); }}
-                                className="px-3 py-1.5 rounded-full text-meta font-bold bg-white/5 border border-white/10 text-ink-200 hover:text-ink-50 transition-colors focus-ring"
-                            >
-                                Réinitialiser les filtres
-                            </button>
-                        )}
-                    />
-                ) : (
-                <>
-                {/* Desktop: tableau complet (≥ md) */}
-                <div className="hidden md:block overflow-x-auto pb-4">
-                    <table className="w-full text-left border-collapse">
-                        <caption className="sr-only">Liste des {filteredTransactions.length} transactions filtrees</caption>
-                        <thead>
-                            <tr className="border-b border-border text-ink-300 text-meta uppercase tracking-wider">
-                                <th className="p-3 w-8">
-                                    <input
-                                        type="checkbox"
-                                        aria-label="Sélectionner toutes les transactions de la page"
-                                        className="rounded-sm bg-surfaceHighlight border-white/10"
-                                        checked={selectedIds.size > 0 && selectedIds.size >= paginatedTransactions.length}
-                                        ref={(el) => {
-                                            if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < paginatedTransactions.length;
-                                        }}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedIds(new Set(paginatedTransactions.map(t => t.id)));
-                                            } else {
-                                                setSelectedIds(new Set());
-                                            }
-                                        }}
-                                    />
-                                </th>
-                                {([['date', 'Date'], ['payee', 'Marchand']] as const).map(([k, label]) => (
-                                    <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                                        <button type="button" onClick={() => toggleSort(k)} className="flex items-center gap-1 uppercase tracking-wider hover:text-white focus-ring rounded-sm">
-                                            {label}{sortKey === k && <span aria-hidden="true">{sortDir === 'asc' ? '▲' : '▼'}</span>}
-                                        </button>
-                                    </th>
-                                ))}
-                                <th className="p-3 w-12" title="Confiance de la catégorisation IA — vert ≥ 90 %, jaune ≥ 70 %, rouge < 70 %">
-                                    <span className="inline-flex items-center gap-1">Auto<span aria-hidden="true" className="text-ink-500 not-italic">ⓘ</span></span>
-                                </th>
-                                <th className="p-3">Type</th>
-                                {([['amount', 'Montant'], ['category', 'Categorie']] as const).map(([k, label]) => (
-                                    <th key={k} className="p-3" aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                                        <button type="button" onClick={() => toggleSort(k)} className="flex items-center gap-1 uppercase tracking-wider hover:text-white focus-ring rounded-sm">
-                                            {label}{sortKey === k && <span aria-hidden="true">{sortDir === 'asc' ? '▲' : '▼'}</span>}
-                                        </button>
-                                    </th>
-                                ))}
-                                {isCouple && <th className="p-3 uppercase tracking-wider">Conjoint</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="text-body">
-                            {paginatedTransactions.map((t) => (
-                                <tr
-                                    key={t.id}
-                                    className={`border-b border-border/50 transition-colors ${selectedIds.has(t.id) ? 'bg-primary/10' : 'hover:bg-white/5'} ${t.category === 'Inconnu' ? 'bg-red-900/10' : ''}`}
-                                    onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'SELECT') handleSelectOne(t.id, e.shiftKey); }}
-                                >
-                                    <td className="p-3">
-                                        {/* UI6 (a11y) : checkbox pilotable au clavier (Espace/Entrée déclenchent
-                                            un click) ET à la souris. On lit shiftKey sur onClick pour préserver la
-                                            sélection par plage (shift-clic), et on stoppe la propagation pour éviter
-                                            un double-toggle avec le onClick du <tr>. onChange no-op = input contrôlé
-                                            sans warning React. */}
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.has(t.id)}
-                                            onChange={() => { /* géré par onClick (porte shiftKey) */ }}
-                                            onClick={(e) => { e.stopPropagation(); handleSelectOne(t.id, e.shiftKey); }}
-                                            aria-label={rowControlLabel('Sélectionner', t.payee, t.date, t.id, isPrivacyMode)}
-                                            className="rounded-sm bg-surfaceHighlight"
-                                        />
-                                    </td>
-                                    <td className="p-3 text-ink-300 whitespace-nowrap">{t.date}</td>
-                                    <td className="p-3 font-medium text-white"><PrivateText>{t.payee}</PrivateText></td>
-
-                                    <td className="p-3">
-                                        {t.confidence !== undefined && (
-                                            <div
-                                                className={`w-2 h-2 rounded-full ${getConfidenceColor(t.confidence)}`}
-                                                title={`Confiance: ${displayConfidence(t.confidence)}%`}
-                                                aria-label={`Confiance IA ${displayConfidence(t.confidence)}%`}
-                                            ></div>
-                                        )}
-                                    </td>
-
-                                    <td className="p-3">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); toggleTransfer(t.id); }}
-                                            aria-pressed={t.isTransfer}
-                                            className={`text-tiny px-2 py-0.5 rounded-sm border transition-colors ${t.isTransfer ? 'bg-info-500/20 border-info-500 text-blue-300' : 'bg-white/5 border-white/10 text-ink-400 hover:text-white'}`}
-                                        >
-                                            {t.isTransfer ? 'Transfert' : 'Transaction'}
-                                        </button>
-                                    </td>
-
-                                    <td className={`p-3 font-bold ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'}`}>
-                                        <PrivateAmount>{formatCAD(t.amount, { decimals: 2 })}</PrivateAmount>
-                                    </td>
-
-                                    <td className="p-3">
-                                        {/* ⚠️ [PRIV-CATEGORIE-MASQUEE] `PrivateSelect`, pas
-                                            `PrivateText` : la catégorie s'ÉDITE. Masquer le texte
-                                            masquerait la fonction — le dépôt a déjà résolu ce cas
-                                            pour les montants (`PrivateNumberInput`, décision
-                                            `D6-PRIV-MONTANTS`), on reprend cet idiome. */}
-                                        <PrivateSelect
-                                            aria-label={rowControlLabel('Catégorie de', t.payee, t.date, t.id, isPrivacyMode)}
-                                            className={`bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-hidden cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
-                                                }`}
-                                            value={t.category}
-                                            onChange={(e) => updateCategory(t.id, e.target.value)}
-                                            onClick={e => e.stopPropagation()}
-                                        >
-                                            {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </PrivateSelect>
-                                    </td>
-
-                                    {isCouple && (
-                                        <td className="p-3">
-                                            {/* [PH4E-OWNER-EDIT] override de l'attribution couple ; « Auto » = par type de poste (défaut).
-                                                SEULEMENT sur les DÉPENSES : computeActualByOwner ignore revenus/transferts → l'override n'y
-                                                aurait aucun effet (on n'offre pas un contrôle trompeur). aria-label discriminé par date (payee non unique). */}
-                                            {t.amount < 0 && !t.isTransfer ? (
-                                                <select
-                                                    aria-label={rowControlLabel('Conjoint propriétaire de', t.payee, t.date, t.id, isPrivacyMode)}
-                                                    className="bg-surfaceHighlight border border-white/10 rounded-sm px-2 py-1 text-meta text-white focus:border-primary outline-hidden cursor-pointer"
-                                                    value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
-                                                    onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
-                                                    onClick={e => e.stopPropagation()}
-                                                >
-                                                    <option value="auto">Auto</option>
-                                                    <option value="0">{ownerFirstName(0)}</option>
-                                                    <option value="1">{ownerFirstName(1)}</option>
-                                                </select>
-                                            ) : (
-                                                <span className="text-meta text-ink-400" title="L'attribution par conjoint ne s'applique qu'aux dépenses">—</span>
-                                            )}
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Mobile: vue cartes (< md) */}
-                <ul role="list" aria-label={`${filteredTransactions.length} transactions`} className="md:hidden space-y-2 pb-4 -mx-1">
-                    {paginatedTransactions.map((t) => {
-                        const isSelected = selectedIds.has(t.id);
-                        const isUncat = t.category === 'Uncategorized' || t.category === 'Inconnu';
-                        return (
-                            <li
-                                key={t.id}
-                                className={`rounded-xl border p-3 transition-colors ${isSelected ? 'border-primary/50 bg-primary/10' : isUncat ? 'border-danger-500/30 bg-red-900/10' : 'border-white/5 bg-white/3'
-                                    }`}
-                            >
-                                <div className="flex items-start justify-between gap-3 mb-2">
-                                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={(e) => { e.stopPropagation(); handleSelectOne(t.id, false); }}
-                                            aria-label={rowControlLabel('Sélectionner', t.payee, t.date, t.id, isPrivacyMode)}
-                                            className="mt-1 rounded-sm bg-surfaceHighlight shrink-0"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5">
-                                                <PrivateText className="font-semibold text-white text-body truncate">{t.payee}</PrivateText>
-                                                {t.confidence !== undefined && (
-                                                    <span
-                                                        className={`w-2 h-2 rounded-full shrink-0 ${getConfidenceColor(t.confidence)}`}
-                                                        title={`Confiance: ${displayConfidence(t.confidence)}%`}
-                                                        aria-label={`Confiance IA ${displayConfidence(t.confidence)}%`}
-                                                    ></span>
-                                                )}
-                                            </div>
-                                            <div className="text-tiny text-ink-400 mt-0.5">{t.date}</div>
-                                        </div>
-                                    </div>
-                                    <PrivateAmount as="div" className={`font-bold text-body whitespace-nowrap ${t.isTransfer ? 'text-blue-300 opacity-70' : t.amount > 0 ? 'text-green-400' : 'text-ink-100'
-                                        }`}>
-                                        {formatCAD(t.amount, { decimals: 2 })}
-                                    </PrivateAmount>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <PrivateSelect
-                                        aria-label={rowControlLabel('Catégorie de', t.payee, t.date, t.id, isPrivacyMode)}
-                                        className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-hidden cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-white/10'
-                                            }`}
-                                        value={t.category}
-                                        onChange={(e) => updateCategory(t.id, e.target.value)}
+                    {/* [REFONTE-NAV-L5] Ancre du deep-link Budget → Transactions : usePendingFocus scrolle
+                        vers `category:<nom>` — l'attribut suit la catégorie filtrée (posée à l'arrivée). */}
+                    <div data-focus-section={`category:${selectedCategory}`} className="flex flex-col gap-4">
+                    <section aria-label="Historique des transactions" className={etroit ? 'flex flex-col gap-3' : 'rounded-2xl bg-surface border border-white/6 overflow-hidden'}>
+                        <div className={etroit ? 'flex flex-col gap-3' : 'flex items-center gap-2.5 px-4 py-3.5 border-b border-white/5'}>
+                            <label className={`flex items-center gap-2 h-10 px-3 rounded-[10px] bg-dark border border-white/8 text-ink-400 focus-within:border-white/30 ${etroit ? 'w-full' : 'flex-1 min-w-0'}`}>
+                                <Icon name="search" size={16} />
+                                <input
+                                    type="search"
+                                    placeholder="Rechercher un marchand, un montant…"
+                                    aria-label="Rechercher dans les transactions"
+                                    className="champ-nu flex-1 min-w-0 bg-transparent border-0 text-body text-ink-100 placeholder-ink-400 outline-hidden"
+                                    value={filterText}
+                                    onChange={(e) => vueFiltree(() => setFilterText(e.target.value))}
+                                />
+                            </label>
+                            <div className={`flex items-center gap-2 ${etroit ? 'overflow-x-auto -mx-6 px-6 scrollbar-hide' : 'shrink-0'}`}>
+                                <span className="relative shrink-0">
+                                    <select
+                                        aria-label="Filtre par categorie"
+                                        className={`champ-nu appearance-none h-10 pl-3.5 pr-7 rounded-full border text-[13px] max-w-[180px] truncate cursor-pointer focus-ring ${selectedCategory !== 'All' ? 'bg-primary/15 border-primary/60 text-ink-50' : 'bg-surfaceHighlight border-white/10 text-ink-100'}`}
+                                        value={selectedCategory}
+                                        onChange={(e) => vueFiltree(() => setSelectedCategory(e.target.value))}
                                     >
+                                        <option value="All">Toutes catégories</option>
+                                        <option value="Uncategorized">À classer</option>
+                                        <option value="Transfert">Transferts</option>
                                         {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </PrivateSelect>
+                                    </select>
+                                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-ink-300" aria-hidden="true">▾</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => vueFiltree(() => setQuickFilter(quickFilter === 'TO_REVIEW' ? 'NONE' : 'TO_REVIEW'))}
+                                    aria-pressed={quickFilter === 'TO_REVIEW'}
+                                    className={`${pastille} ${quickFilter === 'TO_REVIEW' ? 'bg-warning-400 border-warning-400 text-dark font-semibold' : 'bg-warning-500/10 border-warning-400/35 text-warning-400 font-semibold'}`}
+                                >
+                                    À vérifier · {aVerifier}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => vueFiltree(() => setMasquerVirements((m) => !m))}
+                                    aria-pressed={masquerVirements}
+                                    className={`${pastille} ${masquerVirements ? 'bg-ink-50 border-ink-50 text-dark font-semibold' : 'border-white/10 text-ink-200'}`}
+                                >
+                                    Masquer les virements
+                                </button>
+                                {markedDuplicateCount > 0 && (
                                     <button
-                                        onClick={() => toggleTransfer(t.id)}
-                                        aria-pressed={t.isTransfer}
-                                        className={`text-tiny px-2 py-1.5 rounded border transition-colors whitespace-nowrap ${t.isTransfer ? 'bg-info-500/20 border-info-500 text-blue-300' : 'bg-white/5 border-white/10 text-ink-300'
-                                            }`}
+                                        type="button"
+                                        onClick={() => vueFiltree(() => setShowDuplicates(p => !p))}
+                                        aria-pressed={showDuplicates}
+                                        title={showDuplicates
+                                            ? 'Masquer à nouveau les transactions exclues des calculs'
+                                            : 'Ces transactions existent toujours : elles sont seulement exclues des calculs et cachées de la liste'}
+                                        className={`touch-target inline-flex items-center px-3 py-1.5 rounded-full text-meta font-bold transition-all border whitespace-nowrap ${showDuplicates ? 'bg-warning-500/20 border-warning-500 text-warning-400' : 'bg-white/5 border-white/10 text-ink-300'}`}
                                     >
-                                        {t.isTransfer ? '⇄ Tx' : 'Tx'}
+                                        {markedDuplicateCount} exclue{markedDuplicateCount > 1 ? 's' : ''} — {showDuplicates ? 'masquer' : 'afficher'}
                                     </button>
-                                </div>
-
-                                {isCouple && t.amount < 0 && !t.isTransfer && (
-                                    <div className="flex items-center gap-2">
-                                        {/* [PH4E-OWNER-EDIT] override de l'attribution couple en mode carte (mobile). Dépenses seulement
-                                            (revenus/transferts ignorés par le calcul). touch-target = cible tactile ≥ 44px (WCAG 2.5.5). */}
-                                        <span className="text-tiny text-ink-400 shrink-0">Conjoint :</span>
-                                        <select
-                                            aria-label={rowControlLabel('Conjoint propriétaire de', t.payee, t.date, t.id, isPrivacyMode)}
-                                            className="touch-target flex-1 bg-surfaceHighlight border border-white/10 rounded-sm px-2 py-1.5 text-meta text-white focus:border-primary outline-hidden cursor-pointer"
-                                            value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
-                                            onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
-                                        >
-                                            <option value="auto">Auto</option>
-                                            <option value="0">{ownerFirstName(0)}</option>
-                                            <option value="1">{ownerFirstName(1)}</option>
-                                        </select>
-                                    </div>
                                 )}
-                            </li>
-                        );
-                    })}
-                </ul>
-                </>
-                )}
+                                {/* [REFONTE-NAV-L5] Cross-link sobre : la catégorie filtrée a un poste budget
+                                    du même nom → ouvrir le Budget scrollé sur ce poste (navigateWithFocus).
+                                    Affiché SEULEMENT si le poste existe (pas de lien vers un poste absent). */}
+                                {selectedCategory !== 'All' && budgetItems.some(b => b.name === selectedCategory) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigateWithFocus(Tab.BUDGET, `poste:${selectedCategory}`)}
+                                        title={`Ouvrir le poste « ${selectedCategory} » dans le Budget`}
+                                        className="touch-target inline-flex items-center px-3 py-1.5 rounded-full text-meta font-medium border border-info-500/30 bg-info-500/10 text-info-400 hover:text-white transition-colors whitespace-nowrap focus-ring"
+                                    >
+                                        Voir au budget →
+                                    </button>
+                                )}
+                                {/* [A11Y-PRIVACY-TXN-TOTALS] Σ de la vue filtrée : agrégat = donnée privée. */}
+                                {!etroit && (
+                                    <PrivateAmount className="font-mono text-[13px] text-ink-400 whitespace-nowrap pl-1">{`Σ ${formatCAD(filteredSum, { decimals: 2 })}`}</PrivateAmount>
+                                )}
+                            </div>
+                        </div>
 
-                {totalPages > 1 && (
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
-                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-meta px-3 py-1 bg-white/10 rounded-sm disabled:opacity-30">Precedent</button>
-                        <span className="text-meta text-ink-400">Page {currentPage} / {totalPages}</span>
-                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-meta px-3 py-1 bg-white/10 rounded-sm disabled:opacity-30">Suivant</button>
+                        {etroit && resumeMois}
+                        {etroit && aClasser}
+
+                        {/* [TX-SELECTION-SANS-ACTION] La sélection multiple existait (case par ligne,
+                            plage au Maj-clic, « tout sélectionner » de la page) mais ne pouvait RIEN faire
+                            d'autre que re-catégoriser : aucun libellé ne disait ce qu'elle permettait, et
+                            aucune action d'exclusion ne s'y branchait. Or `markTransactionsAsDuplicate` est
+                            PUR et accepte n'importe quels ids — la capacité existait dans le modèle, il
+                            manquait le point d'entrée. Mesuré le 2026-09-14 : le SEUL chemin vers
+                            `isDuplicate` était `DuplicatesPanel`, qui n'affiche que les groupes trouvés par
+                            le DÉTECTEUR — donc une ligne au montant faux, doublon de RIEN, était
+                            définitivement inatteignable (44 lignes réelles dans ce cas).
+                            ⚠️ Le libellé dit l'EFFET (« exclure des calculs »), pas le nom du champ : la
+                            raison d'exclure n'est pas toujours un doublon. L'annulation reste celle qui
+                            existe déjà (« Annuler tous les marquages » du panneau Doublons). */}
+                        {selectedIds.size > 0 && (
+                            <div
+                                role="region"
+                                aria-label="Actions sur la sélection"
+                                className={`flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border border-primary/30 bg-primary/10 ${etroit ? '' : 'mx-4 my-3'}`}
+                            >
+                                <span className="text-meta font-bold text-ink-100">
+                                    {selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+                                </span>
+                                {selectedIds.size < filteredTransactions.length && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedIds(new Set(filteredTransactions.map(t => t.id)))}
+                                        className="touch-target px-3 py-1.5 rounded-full text-meta font-bold bg-white/5 border border-white/10 text-ink-200 hover:text-ink-50 transition-colors focus-ring"
+                                    >
+                                        Sélectionner les {filteredTransactions.length} filtrées
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => { handleMarkDuplicates([...selectedIds]); setSelectedIds(new Set()); }}
+                                    title="Les lignes restent dans l'historique mais sortent du solde, du budget et des revenus. Réversible."
+                                    className="touch-target px-3 py-1.5 rounded-full text-meta font-bold bg-warning-600 text-dark focus-ring"
+                                >
+                                    Exclure des calculs
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedIds(new Set())}
+                                    className="touch-target px-3 py-1.5 rounded-full text-meta bg-white/5 border border-white/10 text-ink-300 hover:text-ink-100 transition-colors focus-ring"
+                                >
+                                    Désélectionner
+                                </button>
+                                <span className="text-meta text-ink-400 basis-full">
+                                    Rien n&apos;est effacé : les lignes restent visibles, simplement hors du solde,
+                                    du budget et des revenus. Annulable dans le panneau « Doublons ».
+                                </span>
+                            </div>
+                        )}
+
+                        {filteredTransactions.length === 0 ? (
+                            <EmptyState
+                                variant="subtle"
+                                icon={<Icon name="search" size={30} />}
+                                title="Aucune transaction"
+                                description={transactions.length === 0
+                                    ? (onImport
+                                        ? 'Aucune transaction pour l’instant — importe un relevé bancaire (CSV/PDF) via « Import manuel » en haut de page.'
+                                        : 'Aucune transaction enregistrée pour l’instant.')
+                                    : 'Aucune transaction ne correspond aux filtres actuels.'}
+                                cta={transactions.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setFilterText(''); setSelectedCategory('All'); setQuickFilter('NONE'); setMasquerVirements(false); setPlus(0); }}
+                                        className="px-3 py-1.5 rounded-full text-meta font-bold bg-white/5 border border-white/10 text-ink-200 hover:text-ink-50 transition-colors focus-ring"
+                                    >
+                                        Réinitialiser les filtres
+                                    </button>
+                                )}
+                            />
+                        ) : etroit ? (
+                            <div className="flex flex-col">
+                                <div className="flex items-center justify-between py-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-ink-400">
+                                    <span>{visiblesTx.length} sur {filteredTransactions.length}</span>
+                                    <PrivateAmount className="font-mono normal-case tracking-normal">{`Σ ${formatCAD(filteredSum, { decimals: 2 })}`}</PrivateAmount>
+                                </div>
+                                <ul role="list" aria-label={`${filteredTransactions.length} transactions`}>
+                                    {jours.map((j) => (
+                                        <li key={j.date}>
+                                            <div className="flex items-center justify-between pt-3 pb-2 border-b border-white/5 text-meta">
+                                                <span className="font-semibold text-ink-200">{j.libelle}</span>
+                                                <PrivateAmount className="font-mono text-ink-400">{formatSigned(j.total, { withCurrency: true, decimals: 2 })}</PrivateAmount>
+                                            </div>
+                                            <ul>
+                                                {j.lignes.map((t) => {
+                                                    const isUncat = t.category === 'Uncategorized' || t.category === 'Inconnu';
+                                                    return (
+                                                        <li key={t.id} className={`flex items-center gap-3 py-2.5 border-b border-white/5 ${selectedIds.has(t.id) ? 'bg-primary/10' : ''}`}>
+                                                            {modeSelection && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedIds.has(t.id)}
+                                                                    onChange={() => handleSelectOne(t.id, false)}
+                                                                    aria-label={rowControlLabel('Sélectionner', t.payee, t.date, t.id, isPrivacyMode)}
+                                                                    className="rounded-sm bg-surfaceHighlight shrink-0"
+                                                                />
+                                                            )}
+                                                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: couleurCategorie(t.category) }} aria-hidden="true" />
+                                                            <span className="flex-1 min-w-0 flex flex-col">
+                                                                <PrivateText className="text-body font-medium text-ink-50 truncate">{t.payee}</PrivateText>
+                                                                <span className="flex items-center gap-1 text-meta text-ink-400">
+                                                                    {/* ⚠️ [PRIV-CATEGORIE-MASQUEE] `PrivateSelect` : la catégorie s'ÉDITE (toucher le libellé ouvre la liste). */}
+                                                                    <PrivateSelect
+                                                                        aria-label={rowControlLabel('Catégorie de', t.payee, t.date, t.id, isPrivacyMode)}
+                                                                        className={`champ-nu appearance-none field-sizing-content bg-transparent border-0 p-0 text-meta cursor-pointer max-w-[60%] truncate ${isUncat ? 'text-warning-400' : 'text-ink-400'}`}
+                                                                        value={t.category}
+                                                                        onChange={(e) => updateCategory(t.id, e.target.value)}
+                                                                    >
+                                                                        {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                                    </PrivateSelect>
+                                                                    {/* [PH4E-OWNER-EDIT] attribution couple — dépenses seulement. */}
+                                                                    {isCouple && t.amount < 0 && !t.isTransfer && (
+                                                                        <>
+                                                                            <span aria-hidden="true">·</span>
+                                                                            <select
+                                                                                aria-label={rowControlLabel('Conjoint propriétaire de', t.payee, t.date, t.id, isPrivacyMode)}
+                                                                                className="champ-nu appearance-none field-sizing-content bg-transparent border-0 p-0 text-meta text-ink-400 cursor-pointer"
+                                                                                value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
+                                                                                onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
+                                                                            >
+                                                                                <option value="auto">Auto</option>
+                                                                                <option value="0">{ownerFirstName(0)}</option>
+                                                                                <option value="1">{ownerFirstName(1)}</option>
+                                                                            </select>
+                                                                        </>
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                            <PrivateAmount className={`font-mono font-bold whitespace-nowrap ${t.isTransfer ? 'text-ink-300' : t.amount > 0 ? 'text-success-400' : 'text-ink-50'}`}>
+                                                                {`${signe(t.amount)}${formatCAD(t.amount, { decimals: 2 })}`}
+                                                            </PrivateAmount>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left border-collapse text-body">
+                                <caption className="sr-only">Liste des {filteredTransactions.length} transactions filtrees</caption>
+                                <thead>
+                                    <tr className="text-[11px] font-semibold tracking-[0.06em] uppercase text-ink-400">
+                                        {modeSelection && (
+                                            <th className="pl-4 w-8">
+                                                <input
+                                                    type="checkbox"
+                                                    aria-label="Sélectionner toutes les transactions de la page"
+                                                    className="rounded-sm bg-surfaceHighlight border-white/10"
+                                                    checked={selectedIds.size > 0 && selectedIds.size >= visiblesTx.length}
+                                                    ref={(el) => {
+                                                        if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < visiblesTx.length;
+                                                    }}
+                                                    onChange={(e) => setSelectedIds(e.target.checked ? new Set(visiblesTx.map(t => t.id)) : new Set())}
+                                                />
+                                            </th>
+                                        )}
+                                        {([['date', 'Date', 'px-4'], ['payee', 'Marchand', 'px-2'], ['category', 'Catégorie', 'px-2']] as const).map(([k, label, pad]) => (
+                                            <th key={k} className={`${pad} h-10 font-semibold`} aria-sort={sortKey === k ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                                {/* PH4-TX — tri par colonne ; la flèche n'apparaît que hors du tri par défaut (date, récent d'abord). */}
+                                                <button type="button" onClick={() => toggleSort(k)} className="uppercase tracking-[0.06em] font-semibold hover:text-ink-50 focus-ring rounded-sm">
+                                                    {label}{sortKey === k && !(k === 'date' && sortDir === 'desc') && <span aria-hidden="true"> {sortDir === 'asc' ? '▲' : '▼'}</span>}
+                                                </button>
+                                            </th>
+                                        ))}
+                                        {isCouple && <th className="px-2 font-semibold">Conjoint</th>}
+                                        <th className="px-4 font-semibold text-right" aria-sort={sortKey === 'amount' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                            <button type="button" onClick={() => toggleSort('amount')} className="uppercase tracking-[0.06em] font-semibold hover:text-ink-50 focus-ring rounded-sm">
+                                                Montant{sortKey === 'amount' && <span aria-hidden="true"> {sortDir === 'asc' ? '▲' : '▼'}</span>}
+                                            </button>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {visiblesTx.map((t) => {
+                                        const isUncat = t.category === 'Uncategorized' || t.category === 'Inconnu';
+                                        return (
+                                            <tr
+                                                key={t.id}
+                                                className={`h-12 border-t border-white/5 ${selectedIds.has(t.id) ? 'bg-primary/10' : ''}`}
+                                                // En mode sélection, un clic sur la ligne la coche (Maj-clic = plage), sauf sur ses contrôles.
+                                                onClick={modeSelection ? (e) => { if (!['BUTTON', 'SELECT', 'OPTION', 'INPUT'].includes((e.target as HTMLElement).tagName)) handleSelectOne(t.id, e.shiftKey); } : undefined}
+                                            >
+                                                {modeSelection && (
+                                                    <td className="pl-4">
+                                                        {/* UI6 (a11y) : checkbox pilotable au clavier ; shiftKey lu sur onClick pour la
+                                                            sélection par plage (Maj-clic). onChange no-op = input contrôlé sans warning. */}
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIds.has(t.id)}
+                                                            onChange={() => { /* géré par onClick (porte shiftKey) */ }}
+                                                            onClick={(e) => { e.stopPropagation(); handleSelectOne(t.id, e.shiftKey); }}
+                                                            aria-label={rowControlLabel('Sélectionner', t.payee, t.date, t.id, isPrivacyMode)}
+                                                            className="rounded-sm bg-surfaceHighlight"
+                                                        />
+                                                    </td>
+                                                )}
+                                                <td className="px-4 font-mono text-[13px] text-ink-400 whitespace-nowrap">{t.date}</td>
+                                                <td className="px-2 text-ink-100 max-w-0 w-full truncate"><PrivateText>{t.payee}</PrivateText></td>
+                                                <td className="px-2">
+                                                    {/* ⚠️ [PRIV-CATEGORIE-MASQUEE] `PrivateSelect`, pas `PrivateText` : la
+                                                        catégorie s'ÉDITE — la pastille de la maquette EST la liste. */}
+                                                    <span className="relative inline-flex items-center">
+                                                        <span className="pointer-events-none absolute left-2.5 w-2 h-2 rounded-full" style={{ background: couleurCategorie(t.category) }} aria-hidden="true" />
+                                                        <PrivateSelect
+                                                            aria-label={rowControlLabel('Catégorie de', t.payee, t.date, t.id, isPrivacyMode)}
+                                                            className={`champ-nu appearance-none field-sizing-content h-[30px] pl-6 pr-2.5 rounded-full border bg-surfaceHighlight text-[13px] cursor-pointer max-w-[170px] truncate ${isUncat ? 'border-warning-400/50 text-warning-400' : 'border-white/8 text-ink-200'}`}
+                                                            value={t.category}
+                                                            onChange={(e) => updateCategory(t.id, e.target.value)}
+                                                        >
+                                                            {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                        </PrivateSelect>
+                                                    </span>
+                                                </td>
+                                                {isCouple && (
+                                                    <td className="px-2">
+                                                        {/* [PH4E-OWNER-EDIT] override de l'attribution couple ; « Auto » = par type de poste.
+                                                            SEULEMENT sur les DÉPENSES : revenus/transferts ignorés par le calcul. */}
+                                                        {t.amount < 0 && !t.isTransfer ? (
+                                                            <select
+                                                                aria-label={rowControlLabel('Conjoint propriétaire de', t.payee, t.date, t.id, isPrivacyMode)}
+                                                                className="champ-nu appearance-none bg-transparent border-0 h-8 text-meta text-ink-300 cursor-pointer focus-ring rounded-sm"
+                                                                value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
+                                                                onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
+                                                            >
+                                                                <option value="auto">Auto</option>
+                                                                <option value="0">{ownerFirstName(0)}</option>
+                                                                <option value="1">{ownerFirstName(1)}</option>
+                                                            </select>
+                                                        ) : (
+                                                            <span className="text-meta text-ink-400" title="L'attribution par conjoint ne s'applique qu'aux dépenses">—</span>
+                                                        )}
+                                                    </td>
+                                                )}
+                                                <td className="px-4 text-right whitespace-nowrap">
+                                                    <PrivateAmount className={`font-mono ${t.isTransfer ? 'text-ink-300' : t.amount > 0 ? 'text-success-400' : 'text-ink-50'}`}>
+                                                        {`${signe(t.amount)}${formatCAD(t.amount, { decimals: 2 })}`}
+                                                    </PrivateAmount>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+
+                        {filteredTransactions.length > 0 && (
+                            <div className={`flex items-center justify-between gap-3 ${etroit ? 'justify-center pt-3' : 'px-4 py-3 border-t border-white/5'}`}>
+                                {!etroit && <span className="text-meta text-ink-400">{visiblesTx.length} sur {filteredTransactions.length}</span>}
+                                {visiblesTx.length < filteredTransactions.length && (
+                                    <button type="button" onClick={() => setPlus((n) => n + 1)} className="min-h-11 px-2 text-[13px] text-ink-100 underline underline-offset-2 focus-ring rounded-sm">
+                                        Afficher plus
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </section>
+                    </div>
+                    {etroit && outils}
+                </div>
+
+                {!etroit && (
+                    <div className="flex flex-col gap-5 min-w-0">
+                        {resumeMois}
+                        {outils}
+                        {aClasser}
                     </div>
                 )}
-            </Card>
             </div>
         </div>
     );

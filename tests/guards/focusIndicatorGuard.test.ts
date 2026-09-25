@@ -36,6 +36,10 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
             + '— un seul conteneur, deux champs couverts, et pas d\'anneau qui déborde du cadre ([S5-REFONTE-BUDGET]).',
     },
     {
+        fichier: 'Transactions.tsx', jeton: 'placeholder-ink-400',
+        raison: 'la recherche des transactions est couverte par le `focus-within:border-white/30` de son cadre ([S5-REFONTE-TRANSACTIONS]).',
+    },
+    {
         fichier: 'CommandPalette.tsx', jeton: 'placeholder-ink-400',
         raison: 'le champ de recherche est couvert par le `focus-within:border-primary/50` de sa barre.',
     },

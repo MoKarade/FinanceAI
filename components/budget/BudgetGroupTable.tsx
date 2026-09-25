@@ -129,7 +129,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
 
     return (
         <div className="mb-8 last:mb-0 animate-slide-up">
-            <div className={`flex items-center justify-between px-4 py-2 rounded-t-lg border-b border-white/5 ${getGroupColor(nature)} bg-opacity-10`}>
+            <div className={`flex items-center justify-between px-4 py-2 rounded-t-lg border-b border-white/5 ${getGroupColor(nature)}`}>
                 <div className="flex items-center gap-2">
                     <span className="font-bold uppercase tracking-wider text-meta">{nature}</span>
                     <span className="text-tiny opacity-70">({items.length})</span>

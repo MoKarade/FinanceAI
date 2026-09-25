@@ -1213,6 +1213,25 @@ COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des acti
 > comme brûlée. Restent nécessaires pour l'IA locale : `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL`, `IA_LOCALE_CLE`.
 > Optionnelles : `RELAIS_SEL_EMPREINTE` (sel du mémo de clés), `RELAIS_ORIGINES` (origines supplémentaires),
 > `IA_LOCALE_MAX_TOKENS` (plafond local, défaut 8192). ADR 0021.
+>
+> **ORDRE OBLIGATOIRE** : (1) déployer d'abord la PR de durcissement ; (2) SEULEMENT ENSUITE retirer `PROXY_ACCESS_TOKEN` et
+> `VITE_PROXY_ACCESS_TOKEN` de Vercel. L'inverse casse le relais (l'ancien code exige encore le jeton).
+>
+> **Réserver la passerelle locale à TA clé** (obligatoire pour que le routage local marche : sans l'une de ces deux
+> variables, le routage local est DÉSACTIVÉ et tout va chez Anthropic — échec fermé). Deux moyens, sans jamais montrer ta
+> clé à un agent :
+> - **Organisation (le plus simple, [À vérifier])** : console.anthropic.com → Settings → l'identifiant d'organisation
+>   (non secret) → `RELAIS_ORG_LOCALE=<cet identifiant>`. Le relais compare avec l'en-tête `anthropic-organization-id`
+>   de la réponse count_tokens ; si Anthropic ne le renvoyait pas, le routage local reste coupé (échec fermé) → utiliser
+>   le moyen suivant.
+> - **Empreinte de ta clé** : (a) générer un sel aléatoire long (PowerShell : `-join ((48..57)+(97..122) | Get-Random -Count 40 | % {[char]$_})`),
+>   le poser sur Vercel : `RELAIS_SEL_EMPREINTE=<ce sel>` ; (b) sur ton PC : `$env:RELAIS_SEL_EMPREINTE="<ce sel>"; node scripts/empreinteCleRelais.mjs`
+>   → colle ta clé à l'invite (masquée, rien ne s'affiche) → le script imprime UNE empreinte ; (c) la poser sur Vercel :
+>   `RELAIS_CLES_LOCALES=<empreinte>` (plusieurs : séparées par des virgules). Redéployer après avoir posé ou changé le sel
+>   (changer le sel invalide les empreintes déjà calculées).
+> **Le nettoyage des données d'identification ne change PAS l'historique git** : les anciennes valeurs restent lisibles
+> dans l'historique tant que le dépôt est public et non réécrit. Ce n'est pas « réglé » ; c'est décidé à part (dépôt privé
+> ou réécriture d'historique).
 Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
 - [ ] **(1) Générer le token** : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" (PowerShell : openssl absent sur Windows)` → copier.
 - [ ] **(2) Poser l'env Vercel SERVEUR** (`PROXY_ACCESS_TOKEN`) : ce token → Settings → Environment Variables

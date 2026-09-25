@@ -17,6 +17,11 @@
 > `VITE_PROXY_ACCESS_TOKEN`, échoue si elle ou le nom de l'en-tête est dans le bundle ; vérifié en le rendant rouge).
 > ⚠️ Action Marc (`docs/A_FAIRE_MOI.md` O4) : RETIRER `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel s'ils
 > sont posés (inutiles, la première est même une valeur sensible à faire tourner par prudence). Décision : ADR 0021.
+> 🔐 **Routage local réservé à la clé de Marc** : `RELAIS_ORG_LOCALE` (organisation renvoyée par count_tokens) et/ou
+> `RELAIS_CLES_LOCALES` (empreintes salées, `scripts/empreinteCleRelais.mjs`, lancé par Marc) ; aucune des deux → routage
+> local désactivé (échec fermé). IP client : `x-vercel-forwarded-for`, puis `x-real-ip`, puis 1er saut de `x-forwarded-for`.
+> ⚠️ Le nettoyage de données d'identification (docs actuelles) NE change PAS l'historique git : les anciennes valeurs
+> restent lisibles tant que le dépôt est public et non réécrit. Rien n'est « réglé » de ce côté.
 >
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,

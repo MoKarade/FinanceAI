@@ -7,6 +7,9 @@
   requêtes (200 Ko) et la longueur des réponses servies par l'IA locale (8192), et se souvient plus finement des clés
   déjà vérifiées (refus mémorisé 60 s, éviction par ancienneté, empreinte salée).
 - Un test construit l'app avec une valeur piège et échoue si elle réapparaît dans le code public.
+- L'IA locale (ton PC) n'est plus servie qu'à TA clé Anthropic (organisation ou empreinte que tu poses toi-même sur
+  Vercel) ; sans ce réglage, tout part chez Anthropic. Attention : nettoyer les documents ne change pas l'historique
+  public du dépôt, où d'anciennes valeurs restent lisibles.
 
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 

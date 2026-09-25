@@ -7,6 +7,7 @@ import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { esperanceDeVieEffective } from '../../services/projection/horizon';
 import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 import { FluxMensuelsFields } from './macroFields/FluxMensuelsFields';
 import { ValeurMaxMaisonField } from './macroFields/ValeurMaxMaisonField';
@@ -100,6 +101,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     // D6-SR-2 — masque la valeur des sliders monétaires (revenu/dépenses théoriques, plafond immo) au
     // lecteur d'écran en mode privé (parité avec le blur visuel ; les sliders de taux/% ne sont pas masqués).
     const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    const esperanceDeVie = esperanceDeVieEffective(useFinanceStore((s) => s.retirementGoal));
     const projAsMap = projection as unknown as Record<string, unknown>;
     const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
     // [EP-1] les 10 toggles d'événements de vie sont cachés derrière un bouton « Activer des
@@ -197,6 +199,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 {modeToolbar}
                 <ProjectionControlsMobile
                     projection={projection}
+                    esperanceDeVie={esperanceDeVie}
                     updateProj={updateProj}
                     updateReturnRate={updateReturnRate}
                     runMC={runMC}
@@ -227,13 +230,11 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
 
                     <div className="space-y-4">
                         <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
-                        <div>
-                            <label className="flex justify-between text-meta text-ink-300 mb-1">
-                                <span>Horizon (Années)</span>
-                                <span className="text-secondary font-bold">{projection.years || 30}</span>
-                            </label>
-                            <input type="range" aria-label="Horizon (Années)" min="5" max="50" step="1" value={projection.years || 30} onChange={e => updateProj('years', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-secondary" />
-                        </div>
+                        {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : la projection va toujours jusqu'à
+                            l'espérance de vie de la personne 1 (réglée dans Retraite). */}
+                        <p className="text-meta text-ink-300">
+                            Horizon : jusqu'à <span className="text-secondary font-bold">{esperanceDeVie} ans</span> (espérance de vie, réglable dans Retraite)
+                        </p>
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Inflation</span>

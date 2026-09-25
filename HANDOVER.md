@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
+> `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
+> fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur
+> (`useSimulationParams`, `deriveSimulationInputsFromState`) ; `simulate_what_if`/`get_projection`
+> refixent `years` après coup et gardent leur paramètre. Plancher 5 ans. Mesuré (Couple à l'aise,
+> Node, MC 100) : 40 ans 1,07 s → 57 ans 1,55 s ; fin 11,23 M$ (2066) → 23,22 M$ (2083) ; succès
+> 95 → 97 %. Tests qui rendaient le futur « périmé » en changeant `years` : passent par `inflationRate`
+> (`years` ne pilote plus le moteur). `projection.years` reste dans l'état (compat), sans effet dans l'app.
+>
 > ## 🟩 Session 2026-09-25 (suite 4) — **Futur : la tuile « Patrimoine » = bout de la courbe**
 > `[FUTUR-KPI-PATRIMOINE-FIN-COURBE]` (décision Marc) : la tuile montrait `estateNetWorth` (héritage
 > net) sous « Fin de l'horizon », contredite par son info-bulle ; persona Couple à l'aise 9,79 M$ contre

@@ -83,10 +83,11 @@ test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
         await expect(cta).toBeVisible();
         await expect(cta).toHaveText('Recalculer la projection'); // 0 modif juste après révélation
 
-        // Change une hypothèse (curseur Horizon, champ numérique synchronisé) → le compte apparaît.
-        const horizonField = page.getByRole('spinbutton', { name: 'Horizon (Années)' });
-        await horizonField.fill('35');
-        await horizonField.blur();
+        // Change une hypothèse (curseur Inflation, champ numérique synchronisé) → le compte apparaît.
+        // [HORIZON-ESPERANCE-DE-VIE] l'ancien curseur Horizon n'existe plus.
+        const inflationField = page.getByRole('spinbutton', { name: 'Inflation' });
+        await inflationField.fill('3.5');
+        await inflationField.blur();
         await expect(cta).toHaveText(/Recalculer la projection \(1 hypothèse modifiée\)/);
 
         // Contrôle négatif desktop : le CTA collant n'existe PAS (l'utilisateur voit déjà la courbe
@@ -100,9 +101,9 @@ test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
         await ouvrirHypotheses(page);
-        const horizonField = page.getByRole('spinbutton', { name: 'Horizon (Années)' });
-        await horizonField.fill('40');
-        await horizonField.blur();
+        const inflationField = page.getByRole('spinbutton', { name: 'Inflation' });
+        await inflationField.fill('3.2');
+        await inflationField.blur();
         await page.getByRole('button', { name: /Recalculer la projection/ }).click();
         // [FUTUR-NAV-TIROIRS] La courbe n'était jamais cachée (elle est TOUJOURS affichée derrière
         // le tiroir) : le clic n'a donc plus besoin de « revenir » nulle part, seulement de refermer.

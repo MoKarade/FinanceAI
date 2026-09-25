@@ -34,6 +34,7 @@ import { ForecastAccuracyBadge } from './projection/ForecastAccuracyBadge';
 import { findInsolvencyPoint } from '../utils/insolvency';
 import { construireAlerteObjectifsManques } from './projection/alerteObjectifsManques';
 import { kpiPatrimoine } from './projection/kpiPatrimoine';
+import { esperanceDeVieEffective } from '../services/projection/horizon';
 import { sampleEvenly } from '../utils/sampleEvenly';
 import { assignStackIndex } from '../utils/stackEventIcons';
 
@@ -1441,7 +1442,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             tooltip={patrimoineKpi.tooltip}
             icon="💼"
             value={patrimoineKpi.value}
-            sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
+            sublabel={`À ${esperanceDeVieEffective(retirementGoal)} ans`} // [HORIZON-ESPERANCE-DE-VIE]
             privacy
             variant="primary"
         />,

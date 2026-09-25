@@ -36,6 +36,8 @@ interface LiveCSVBalances {
 
 interface ProjectionControlsMobileProps {
     projection: ProjectionConfig;
+    /** [HORIZON-ESPERANCE-DE-VIE] Âge où s'arrête la projection (espérance de vie de la personne 1). */
+    esperanceDeVie: number;
     updateProj: (key: keyof ProjectionConfig, val: unknown) => void;
     updateReturnRate: (key: string, val: number) => void;
     runMC: boolean;
@@ -51,7 +53,7 @@ interface ProjectionControlsMobileProps {
 }
 
 export const ProjectionControlsMobile: React.FC<ProjectionControlsMobileProps> = ({
-    projection, updateProj, updateReturnRate,
+    projection, updateProj, updateReturnRate, esperanceDeVie,
     runMC, liveCSVBalances, applyHistoricalRate,
     realEstateGoals, setRealEstateGoals, isPrivacyMode,
     activeStochasticCount, showStochastic, setShowStochastic, projAsMap,
@@ -67,11 +69,10 @@ export const ProjectionControlsMobile: React.FC<ProjectionControlsMobileProps> =
                 <FluxMensuelsFields projection={projection} updateProj={updateProj} useTheoretical={!!projection.useTheoretical} isPrivacyMode={isPrivacyMode} />
                 <div className="space-y-4">
                     <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
-                    <ReturnRateField
-                        label="Horizon (Années)" unit="ans" value={projection.years || 30}
-                        onChange={(v) => updateProj('years', v)} min={5} max={50} step={1}
-                        colorClassName="text-secondary" accentClassName="accent-secondary"
-                    />
+                    {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : jusqu'à l'espérance de vie (Retraite). */}
+                    <p className="text-meta text-ink-300">
+                        Horizon : jusqu'à <span className="text-secondary font-bold">{esperanceDeVie} ans</span> (espérance de vie, réglable dans Retraite)
+                    </p>
                     <ReturnRateField
                         label="Inflation" value={projection.inflationRate}
                         onChange={(v) => updateProj('inflationRate', v)} min={0} max={8} step={0.1}

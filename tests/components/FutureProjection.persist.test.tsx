@@ -123,7 +123,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         // Un paramètre change (horizon) ET le moteur publie un NOUVEAU résultat (STRAT-B).
         act(() => {
             const proj = useFinanceStore.getState().projection;
-            useFinanceStore.setState({ projection: { ...proj, years: (proj.years || 30) + 7 }, lastProjection: RESULT_B });
+            useFinanceStore.setState({ projection: { ...proj, inflationRate: (proj.inflationRate ?? 2) + 1 /* [HORIZON-ESPERANCE-DE-VIE] `years` ne pilote plus le moteur */ }, lastProjection: RESULT_B });
         });
 
         // Discriminant : l'ancien code cachait la courbe (écran plein « Paramètres modifiés »).
@@ -140,7 +140,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
         act(() => {
             const proj = useFinanceStore.getState().projection;
-            useFinanceStore.setState({ projection: { ...proj, years: (proj.years || 30) + 7 }, lastProjection: RESULT_B });
+            useFinanceStore.setState({ projection: { ...proj, inflationRate: (proj.inflationRate ?? 2) + 1 /* [HORIZON-ESPERANCE-DE-VIE] `years` ne pilote plus le moteur */ }, lastProjection: RESULT_B });
         });
         expect(screen.getByText(/Pas à jour/i)).toBeInTheDocument();
 
@@ -156,7 +156,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
         act(() => {
             const proj = useFinanceStore.getState().projection;
-            useFinanceStore.setState({ projection: { ...proj, years: (proj.years || 30) + 7 }, lastProjection: RESULT_B });
+            useFinanceStore.setState({ projection: { ...proj, inflationRate: (proj.inflationRate ?? 2) + 1 /* [HORIZON-ESPERANCE-DE-VIE] `years` ne pilote plus le moteur */ }, lastProjection: RESULT_B });
         });
 
         fireEvent.click(screen.getByText(/Rechoisir mes leviers/i));

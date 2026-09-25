@@ -4,6 +4,11 @@
 // Modèle : l'appelant fournit SA clé Anthropic (Authorization: Bearer — le SDK client passe en
 // `authToken`) ; le relais la re-mappe en `x-api-key` vers api.anthropic.com. AUCUNE clé serveur :
 // personne ne peut consommer le budget d'autrui via ce endpoint (anti-abus par construction).
+// [DURCISSEMENT-RELAIS-CLE-DE-MARC] App SOLO : sans jeton, la seule barrière du GPU de Marc serait « n'importe quelle
+// clé Anthropic valide ». Le routage LOCAL est donc réservé à SA clé : soit l'organisation renvoyée par count_tokens
+// (en-tête `anthropic-organization-id`) égale RELAIS_ORG_LOCALE, soit l'empreinte salée de la clé figure dans
+// RELAIS_CLES_LOCALES (calculée par Marc : scripts/empreinteCleRelais.mjs, l'agent ne voit jamais la clé). Aucune des
+// deux variables → routage local DÉSACTIVÉ (échec fermé). Toute autre clé continue chez Anthropic, jamais en local.
 // [DURCISSEMENT-RELAIS] 2026-09-25 : le jeton `x-financeai-proxy` (PROXY_ACCESS_TOKEN / VITE_PROXY_ACCESS_TOKEN)
 // est SUPPRIMÉ. Il était livré dans le bundle public (VITE_*) : n'importe qui le lisait, il n'a jamais protégé rien.
 // Un secret qu'on livre au navigateur n'est pas un secret. À la place, des freins HONNÊTES (cf. api/_lib/garde.ts) :
@@ -77,8 +82,19 @@ export interface IaLocaleConfig {
     cle: string;
     modeles: ReadonlySet<string>;
     reflexion: 'low' | 'medium' | 'high';
+    /** Organisation Anthropic autorisée à utiliser la passerelle (RELAIS_ORG_LOCALE, non secret). */
+    orgAutorisee?: string;
+    /** Empreintes salées de clés autorisées (RELAIS_CLES_LOCALES, séparées par des virgules). */
+    empreintesAutorisees: ReadonlySet<string>;
     /** Plafond de max_tokens pour un appel servi LOCALEMENT (le GPU de Marc n'est pas un puits sans fond). */
     maxTokens: number;
+}
+
+/** Résultat d'une vérification de clé auprès d'Anthropic. */
+export interface VerdictCle {
+    valide: boolean;
+    /** En-tête `anthropic-organization-id` de la réponse, s'il est présent. */
+    orgId?: string;
 }
 
 export interface RelayOptions {
@@ -89,7 +105,7 @@ export interface RelayOptions {
     /** Injecté par les tests et le middleware dev ; `undefined` = lu dans l'env serveur ; `null` = coupé. */
     iaLocale?: IaLocaleConfig | null;
     /** [S5-RELAIS-CLE] Injecté par les tests ; `undefined` = vérification réelle (count_tokens). */
-    verifierCle?: (cle: string, modele: string, signal: AbortSignal) => Promise<boolean>;
+    verifierCle?: (cle: string, modele: string, signal: AbortSignal) => Promise<VerdictCle>;
 }
 
 /** Config IA locale depuis l'env serveur, ou `null` (routage coupé) si incomplète/invalide. */
@@ -97,6 +113,10 @@ export function iaLocaleDepuisEnv(get: (k: string) => string | undefined = readE
     const brute = get('IA_LOCALE_URL');
     const cle = get('IA_LOCALE_CLE');
     if (!brute || !cle) return null;
+    // Échec FERMÉ : ni organisation ni empreinte autorisée → pas de routage local du tout.
+    const orgAutorisee = get('RELAIS_ORG_LOCALE')?.trim() || undefined;
+    const empreintesAutorisees = new Set((get('RELAIS_CLES_LOCALES') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean));
+    if (!orgAutorisee && empreintesAutorisees.size === 0) return null;
     let base: URL;
     try {
         base = new URL(brute);
@@ -111,7 +131,7 @@ export function iaLocaleDepuisEnv(get: (k: string) => string | undefined = readE
     const r = get('IA_LOCALE_REFLEXION');
     const mt = Number(get('IA_LOCALE_MAX_TOKENS'));
     const maxTokens = Number.isFinite(mt) && mt > 0 ? Math.min(Math.floor(mt), MAX_TOKENS_CAP) : MAX_TOKENS_LOCAL_DEFAUT;
-    return { url: base.origin, cle, modeles, reflexion: r === 'medium' || r === 'high' ? r : 'low', maxTokens };
+    return { url: base.origin, cle, modeles, reflexion: r === 'medium' || r === 'high' ? r : 'low', maxTokens, orgAutorisee, empreintesAutorisees };
 }
 
 // Blocs que gpt-oss ne sait pas traiter (pas de vision, pas de PDF) : présence → Claude.
@@ -226,7 +246,7 @@ const CLE_REFUSEE_TTL_MS = 60_000;
 const CLE_PANNE_TTL_MS = 15_000;
 const CLE_VERIF_DELAI_MS = 3_000;
 const CLES_MEMO_MAX = 200;
-const clesVerifiees = new Map<string, { ok: boolean; expire: number }>(); // empreinte salée → verdict (jamais la clé)
+const clesVerifiees = new Map<string, { ok: boolean; orgId?: string; expire: number }>(); // empreinte salée → verdict (jamais la clé)
 const selInstance = (() => {
     const o = new Uint8Array(16);
     crypto.getRandomValues(o);
@@ -249,7 +269,7 @@ export async function empreinteCle(cle: string): Promise<string> {
     return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
 }
 
-function memoriserVerdict(h: string, ok: boolean, ttl: number): void {
+function memoriserVerdict(h: string, ok: boolean, ttl: number, orgId?: string): void {
     const maintenant = Date.now();
     clesVerifiees.delete(h);
     if (clesVerifiees.size >= CLES_MEMO_MAX) {
@@ -260,20 +280,20 @@ function memoriserVerdict(h: string, ok: boolean, ttl: number): void {
             clesVerifiees.delete(plusAncien);
         }
     }
-    clesVerifiees.set(h, { ok, expire: maintenant + ttl });
+    clesVerifiees.set(h, { ok, orgId, expire: maintenant + ttl });
 }
 
 /** Verdict déjà mémorisé (et non expiré) pour cette clé, sinon `undefined` (une vérification réseau serait nécessaire). */
-export async function verdictEnMemoire(cle: string): Promise<boolean | undefined> {
+export async function verdictEnMemoire(cle: string): Promise<VerdictCle | undefined> {
     const v = clesVerifiees.get(await empreinteCle(cle));
-    return v && v.expire > Date.now() ? v.ok : undefined;
+    return v && v.expire > Date.now() ? { valide: v.ok, orgId: v.orgId } : undefined;
 }
 
 /** Vrai si Anthropic accepte la clé (count_tokens : gratuit, contenu factice). Échec fermé. */
-export async function cleAnthropicValide(cle: string, modele: string, signal: AbortSignal): Promise<boolean> {
+export async function cleAnthropicValide(cle: string, modele: string, signal: AbortSignal): Promise<VerdictCle> {
     const h = await empreinteCle(cle);
     const m = clesVerifiees.get(h);
-    if (m && m.expire > Date.now()) return m.ok;
+    if (m && m.expire > Date.now()) return { valide: m.ok, orgId: m.orgId };
     try {
         const r = await fetch(ANTHROPIC_BASE + '/v1/messages/count_tokens', {
             method: 'POST',
@@ -282,13 +302,17 @@ export async function cleAnthropicValide(cle: string, modele: string, signal: Ab
             signal: AbortSignal.any([signal, AbortSignal.timeout(CLE_VERIF_DELAI_MS)]),
         });
         await r.body?.cancel().catch(() => undefined);
-        if (r.ok) { memoriserVerdict(h, true, CLE_VALIDE_TTL_MS); return true; }
+        if (r.ok) {
+            const orgId = r.headers.get('anthropic-organization-id')?.trim() || undefined;
+            memoriserVerdict(h, true, CLE_VALIDE_TTL_MS, orgId);
+            return { valide: true, orgId };
+        }
         // 4xx = refus net d'Anthropic ; 5xx/429 = panne ou quota côté Anthropic (verdict plus court).
         memoriserVerdict(h, false, r.status >= 400 && r.status < 500 && r.status !== 429 ? CLE_REFUSEE_TTL_MS : CLE_PANNE_TTL_MS);
-        return false;
+        return { valide: false };
     } catch {
         if (!signal.aborted) memoriserVerdict(h, false, CLE_PANNE_TTL_MS);
-        return false;
+        return { valide: false };
     }
 }
 
@@ -353,7 +377,7 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
     const iaLocale = opts?.iaLocale !== undefined ? opts.iaLocale : iaLocaleDepuisEnv(env);
     const verifierCle = opts?.verifierCle ?? cleAnthropicValide;
     if (iaLocale && eligibleIaLocale(body, iaLocale)
-        && await cleAutoriseeLocalement(apiKey, body.model, ip, limites, verifierCle, request.signal, opts?.verifierCle !== undefined)
+        && await cleAutoriseeLocalement(apiKey, body.model, ip, limites, iaLocale, verifierCle, request.signal, opts?.verifierCle !== undefined)
         && await passerelleEnLigne(iaLocale)) {
         try {
             const locale = await appelIaLocale(body, iaLocale, request.signal);
@@ -405,23 +429,29 @@ function versionAnthropic(v: string | null): string {
 }
 
 /**
- * La clé est-elle vérifiée pour servir l'appel en local ? Une clé DÉJÀ vue (verdict en mémoire) ne coûte rien.
- * Une clé INCONNUE coûte un appel count_tokens : plafonné par IP (`verifParIp`) — au-delà, pas de local
- * (l'appel continue chez Anthropic avec la clé fournie, qui refusera une clé fausse). `injecte` = vérificateur
- * de test : on ne touche ni au mémo ni au budget.
+ * Cette clé a-t-elle le DROIT de faire servir l'appel par la passerelle locale (le GPU de Marc) ?
+ *  1. empreinte salée dans RELAIS_CLES_LOCALES : oui, sans appel réseau (l'empreinte prouve la possession du secret) ;
+ *  2. sinon, si RELAIS_ORG_LOCALE est posée : la clé doit être VALIDE chez Anthropic (count_tokens) ET l'organisation
+ *     renvoyée doit être celle de Marc ; en-tête absent → refus (échec fermé) ;
+ *  3. sinon : non.
+ * Une clé INCONNUE coûte un appel count_tokens : plafonné par IP (`verifParIp`) ; au-delà, pas de local (l'appel
+ * continue chez Anthropic avec la clé fournie). `injecte` = vérificateur de test : ni mémo ni budget.
  */
 async function cleAutoriseeLocalement(
-    cle: string, modele: string, ip: string, limites: Limites,
-    verifier: (cle: string, modele: string, signal: AbortSignal) => Promise<boolean>,
+    cle: string, modele: string, ip: string, limites: Limites, cfg: IaLocaleConfig,
+    verifier: (cle: string, modele: string, signal: AbortSignal) => Promise<VerdictCle>,
     signal: AbortSignal, injecte: boolean,
 ): Promise<boolean> {
+    if (cfg.empreintesAutorisees.has(await empreinteCle(cle))) return true;
+    if (!cfg.orgAutorisee) return false;
+    let verdict: VerdictCle | undefined;
     if (!injecte) {
-        const connu = await verdictEnMemoire(cle);
-        if (connu !== undefined) return connu;
-        if (!essayerDebit(`verif:${ip}`, limites.verifParIp).ok) {
+        verdict = await verdictEnMemoire(cle);
+        if (verdict === undefined && !essayerDebit(`verif:${ip}`, limites.verifParIp).ok) {
             console.warn('[relay] budget de vérification de clé épuisé');
             return false;
         }
     }
-    return verifier(cle, modele, signal);
+    verdict ??= await verifier(cle, modele, signal);
+    return verdict.valide && verdict.orgId === cfg.orgAutorisee;
 }

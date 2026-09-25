@@ -69,11 +69,19 @@ export function tailleCompteurs(): number {
 
 // ─── Client ───────────────────────────────────────────────────────────────────────────────────────────
 
-/** IP du client telle que posée par la plateforme (x-forwarded-for : premier saut). Absente → 'inconnue'. */
+/**
+ * IP du client. Ordre de confiance : `x-vercel-forwarded-for` puis `x-real-ip` (posés par la plateforme, non
+ * falsifiables par l'appelant), enfin le PREMIER saut de `x-forwarded-for` (Vercel l'écrase par l'IP réelle ; hors
+ * Vercel — dev, autre hébergeur — il est falsifiable, d'où sa place en dernier). Absente → 'inconnue'.
+ */
 export function ipClient(headers: Headers): string {
-    const xff = headers.get('x-forwarded-for');
-    const premier = xff?.split(',')[0]?.trim();
-    return (premier || headers.get('x-real-ip')?.trim() || 'inconnue').slice(0, 64);
+    const candidats = [
+        headers.get('x-vercel-forwarded-for'),
+        headers.get('x-real-ip'),
+        headers.get('x-forwarded-for')?.split(',')[0],
+    ];
+    const ip = candidats.map((c) => c?.trim()).find((c) => c);
+    return (ip || 'inconnue').slice(0, 64);
 }
 
 // ─── Origin ───────────────────────────────────────────────────────────────────────────────────────────

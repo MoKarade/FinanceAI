@@ -15,6 +15,7 @@ const ORIGINE = 'http://localhost:5173';
 const IA: IaLocaleConfig = {
     url: 'https://ia.exemple.test', cle: 'atl_cle-test',
     modeles: new Set([MODEL_IDS.haiku, MODEL_IDS.sonnet]), reflexion: 'low', maxTokens: 8_192,
+    orgAutorisee: 'org-marc', empreintesAutorisees: new Set(),
 };
 
 const mkRequest = (body: Record<string, unknown>, signal?: AbortSignal): Request => new Request(RELAY_URL, {
@@ -48,7 +49,7 @@ beforeEach(() => {
         if (url === `${IA.url}/sante`) return sante();
         if (url === `${IA.url}/v1/messages`) return locale();
         return new Response(JSON.stringify({ id: 'msg_a', model: 'claude' }), {
-            status: 200, headers: { 'content-type': 'application/json' },
+            status: 200, headers: { 'content-type': 'application/json', 'anthropic-organization-id': 'org-marc' },
         });
     });
     vi.stubGlobal('fetch', fetchSpy);
@@ -56,7 +57,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 const call = (body: Record<string, unknown>, ia: IaLocaleConfig | null = IA, signal?: AbortSignal) =>
-    relayClaude(mkRequest(body, signal), { iaLocale: ia, verifierCle: async () => true });
+    relayClaude(mkRequest(body, signal), { iaLocale: ia, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
 const urls = () => (fetchSpy.mock.calls as Appel[]).map(([u]) => u);
 
 describe('[IA-LOCALE] routage du relais vers la passerelle locale', () => {
@@ -158,16 +159,16 @@ describe('[IA-LOCALE] configuration depuis l\'env serveur', () => {
 
     it('incomplète → null (routage coupé)', () => {
         expect(iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'https://ia.exemple.test' }))).toBeNull();
-        expect(iaLocaleDepuisEnv(env({ IA_LOCALE_CLE: 'k' }))).toBeNull();
+        expect(iaLocaleDepuisEnv(env({ IA_LOCALE_CLE: 'k', RELAIS_ORG_LOCALE: 'org-marc' }))).toBeNull();
     });
 
     it('HTTPS obligatoire (sauf localhost) — la clé ne voyage jamais en clair', () => {
-        expect(iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'http://ia.exemple.test', IA_LOCALE_CLE: 'k' }))).toBeNull();
-        expect(iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'http://localhost:8766', IA_LOCALE_CLE: 'k' }))?.url).toBe('http://localhost:8766');
+        expect(iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'http://ia.exemple.test', IA_LOCALE_CLE: 'k', RELAIS_ORG_LOCALE: 'org-marc' }))).toBeNull();
+        expect(iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'http://localhost:8766', IA_LOCALE_CLE: 'k', RELAIS_ORG_LOCALE: 'org-marc' }))?.url).toBe('http://localhost:8766');
     });
 
     it('défauts : Haiku + Sonnet, réflexion low ; URL réduite à son origine (chemins constants)', () => {
-        const c = iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'https://ia.exemple.test/autre/chemin', IA_LOCALE_CLE: 'k' }))!;
+        const c = iaLocaleDepuisEnv(env({ IA_LOCALE_URL: 'https://ia.exemple.test/autre/chemin', IA_LOCALE_CLE: 'k', RELAIS_ORG_LOCALE: 'org-marc' }))!;
         expect(c.url).toBe('https://ia.exemple.test');
         expect([...c.modeles].sort()).toEqual([MODEL_IDS.haiku, MODEL_IDS.sonnet].sort());
         expect(c.reflexion).toBe('low');
@@ -175,7 +176,7 @@ describe('[IA-LOCALE] configuration depuis l\'env serveur', () => {
 
     it('IA_LOCALE_MODELES filtré par l\'allowlist du relais (un id inconnu est ignoré)', () => {
         const c = iaLocaleDepuisEnv(env({
-            IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'k',
+            IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'k', RELAIS_ORG_LOCALE: 'org-marc',
             IA_LOCALE_MODELES: `${MODEL_IDS.opus}, modele-bidon`, IA_LOCALE_REFLEXION: 'medium',
         }))!;
         expect([...c.modeles]).toEqual([MODEL_IDS.opus]);
@@ -189,7 +190,7 @@ describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE',
     const COUNT = 'https://api.anthropic.com/v1/messages/count_tokens';
 
     it('clé refusée par Anthropic → pas de passerelle (ni même sa sonde), appel Anthropic avec la clé fournie', async () => {
-        const res = await relayClaude(mkRequest(texte()), { iaLocale: IA, verifierCle: async () => false });
+        const res = await relayClaude(mkRequest(texte()), { iaLocale: IA, verifierCle: async () => ({ valide: false }) });
         expect(res.status).toBe(200);
         expect(urls()).toEqual(['https://api.anthropic.com/v1/messages']);
     });
@@ -211,13 +212,13 @@ describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE',
 
     it('échec fermé : 401 d\'Anthropic ou panne réseau → faux ; le refus est mémorisé COURT (pas de martelage)', async () => {
         fetchSpy.mockImplementationOnce(async () => new Response('{}', { status: 401 }));
-        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        expect((await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).valide).toBe(false);
         // Même clé tout de suite : verdict négatif en mémoire, AUCUN nouvel appel.
-        expect(await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        expect((await cleAnthropicValide('sk-fausse', MODEL_IDS.haiku, new AbortController().signal)).valide).toBe(false);
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         // Panne réseau sur une autre clé : faux aussi.
         fetchSpy.mockImplementationOnce(async () => { throw new TypeError('fetch failed'); });
-        expect(await cleAnthropicValide('sk-autre', MODEL_IDS.haiku, new AbortController().signal)).toBe(false);
+        expect((await cleAnthropicValide('sk-autre', MODEL_IDS.haiku, new AbortController().signal)).valide).toBe(false);
         expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 });

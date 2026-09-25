@@ -17,6 +17,7 @@ const URL_RELAIS = 'http://localhost/api/claude/v1/messages';
 const IA: IaLocaleConfig = {
     url: 'https://ia.exemple.test', cle: 'atl_cle-test',
     modeles: new Set([MODEL_IDS.haiku, MODEL_IDS.sonnet]), reflexion: 'low', maxTokens: 8_192,
+    orgAutorisee: 'org-marc', empreintesAutorisees: new Set(),
 };
 const COUNT = 'https://api.anthropic.com/v1/messages/count_tokens';
 
@@ -40,7 +41,7 @@ beforeEach(() => {
     fetchSpy = vi.fn(async (url: string) => {
         if (url === `${IA.url}/sante`) return new Response('{"ok":true}');
         if (url === `${IA.url}/v1/messages`) return new Response('{"id":"msg_l"}', { status: 200, headers: { 'content-type': 'application/json' } });
-        return new Response('{"id":"msg_a"}', { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response('{"id":"msg_a"}', { status: 200, headers: { 'content-type': 'application/json', 'anthropic-organization-id': 'org-marc' } });
     });
     vi.stubGlobal('fetch', fetchSpy);
 });
@@ -122,7 +123,7 @@ describe('plafond de corps (~200 Ko)', () => {
 
 describe('max_tokens et passerelle locale', () => {
     const local = (json: Record<string, unknown>, ia: IaLocaleConfig = IA) =>
-        relayClaude(mk({ json }), { env: () => undefined, iaLocale: ia, verifierCle: async () => true });
+        relayClaude(mk({ json }), { env: () => undefined, iaLocale: ia, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
 
     it('sous le plafond local : servi localement', async () => {
         await local(corps({ max_tokens: 8_000 }));
@@ -136,7 +137,7 @@ describe('max_tokens et passerelle locale', () => {
 
     it('plafond configurable par IA_LOCALE_MAX_TOKENS (borné à 16 000)', async () => {
         const { iaLocaleDepuisEnv } = await import('../../api/_lib/relay');
-        const env = (k: string) => ({ IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c', IA_LOCALE_MAX_TOKENS: '2000' } as Record<string, string>)[k];
+        const env = (k: string) => ({ IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c', RELAIS_ORG_LOCALE: 'org-marc', IA_LOCALE_MAX_TOKENS: '2000' } as Record<string, string>)[k];
         expect(iaLocaleDepuisEnv(env)?.maxTokens).toBe(2_000);
         expect(iaLocaleDepuisEnv((k) => (k === 'IA_LOCALE_MAX_TOKENS' ? '99999999' : env(k)))?.maxTokens).toBe(16_000);
     });
@@ -179,8 +180,8 @@ describe('mémo de vérification de clé', () => {
         vi.setSystemTime(new Date('2026-09-25T12:00:00Z'));
         const sig = new AbortController().signal;
         fetchSpy.mockImplementation(async () => new Response('{}', { status: 401 }));
-        expect(await cleAnthropicValide('sk-x', MODEL_IDS.haiku, sig)).toBe(false);
-        expect(await cleAnthropicValide('sk-x', MODEL_IDS.haiku, sig)).toBe(false);
+        expect((await cleAnthropicValide('sk-x', MODEL_IDS.haiku, sig)).valide).toBe(false);
+        expect((await cleAnthropicValide('sk-x', MODEL_IDS.haiku, sig)).valide).toBe(false);
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         vi.setSystemTime(new Date('2026-09-25T12:00:30Z'));
         await cleAnthropicValide('sk-x', MODEL_IDS.haiku, sig);
@@ -247,8 +248,109 @@ describe('journal : jamais de clé, de corps, d\'IP ni de jeton', () => {
         await relayClaude(mk({ headers: h, json }), { env: () => undefined, iaLocale: null });
         // passerelle locale en panne (bascule)
         reinitialiserLimites();
-        await relayClaude(mk({ headers: h, json }), { env: () => undefined, iaLocale: IA, verifierCle: async () => true });
+        await relayClaude(mk({ headers: h, json }), { env: () => undefined, iaLocale: IA, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
         const tout = JSON.stringify(sonde.flatMap((s) => s.mock.calls));
         for (const interdit of [CLE, SECRET_CORPS, ip]) expect(tout).not.toContain(interdit);
+    });
+});
+
+// ─── [DURCISSEMENT-RELAIS-CLE-DE-MARC] la passerelle locale (le GPU de Marc) n'est servie qu'à SA clé ─────────────
+describe('routage local réservé à la clé de Marc (échec fermé)', () => {
+    const COUNT_URL = 'https://api.anthropic.com/v1/messages/count_tokens';
+    const ANTHROPIC = 'https://api.anthropic.com/v1/messages';
+    const reponduParOrg = (org: string | null, status = 200) => fetchSpy.mockImplementation(async (url: string) => {
+        if (url === COUNT_URL) return new Response('{}', { status, headers: org ? { 'anthropic-organization-id': org } : {} });
+        if (url === `${IA.url}/sante`) return new Response('{"ok":true}');
+        if (url === `${IA.url}/v1/messages`) return new Response('{"id":"msg_l"}', { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response('{"id":"msg_a"}', { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    const appel = (ia: IaLocaleConfig, cle = 'sk-ant-quelconque') =>
+        relayClaude(mk({ headers: { authorization: `Bearer ${cle}` } }), { env: () => undefined, iaLocale: ia });
+
+    it('organisation de Marc → servi en local', async () => {
+        reponduParOrg('org-marc');
+        await appel(IA);
+        expect(urls()).toContain(`${IA.url}/v1/messages`);
+    });
+
+    it('clé valide d\'une AUTRE organisation → Anthropic, jamais la passerelle (ni même sa sonde)', async () => {
+        reponduParOrg('org-etrangere');
+        await appel(IA);
+        expect(urls()).toEqual([COUNT_URL, ANTHROPIC]);
+    });
+
+    it('en-tête d\'organisation absent → refus (échec fermé), l\'appel part chez Anthropic', async () => {
+        reponduParOrg(null);
+        await appel(IA);
+        expect(urls()).toEqual([COUNT_URL, ANTHROPIC]);
+    });
+
+    it('clé refusée par Anthropic, même avec la bonne organisation annoncée → pas de local', async () => {
+        reponduParOrg('org-marc', 401);
+        await appel(IA);
+        expect(urls()).not.toContain(`${IA.url}/v1/messages`);
+    });
+
+    it('empreinte salée autorisée → local SANS appel count_tokens ; autre clé → Anthropic', async () => {
+        const ia: IaLocaleConfig = { ...IA, orgAutorisee: undefined, empreintesAutorisees: new Set([await empreinteCle('sk-ant-de-marc')]) };
+        await appel(ia, 'sk-ant-de-marc');
+        expect(urls()).toEqual([`${IA.url}/sante`, `${IA.url}/v1/messages`]);
+        fetchSpy.mockClear();
+        await appel(ia, 'sk-ant-intruse');
+        expect(urls()).toEqual([ANTHROPIC]);
+    });
+
+    it('variable absente : ni organisation ni empreinte → routage local DÉSACTIVÉ (config nulle), tout va chez Anthropic', async () => {
+        const { iaLocaleDepuisEnv } = await import('../../api/_lib/relay');
+        const base = { IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c' } as Record<string, string>;
+        expect(iaLocaleDepuisEnv((k) => base[k])).toBeNull();
+        expect(iaLocaleDepuisEnv((k) => ({ ...base, RELAIS_ORG_LOCALE: '  ' } as Record<string, string>)[k])).toBeNull();
+        expect(iaLocaleDepuisEnv((k) => ({ ...base, RELAIS_CLES_LOCALES: ' , ' } as Record<string, string>)[k])).toBeNull();
+        const r = await relayClaude(mk(), { env: (k) => base[k] });
+        expect(r.status).toBe(200);
+        expect(urls()).toEqual([ANTHROPIC]);
+    });
+
+    it('les empreintes de RELAIS_CLES_LOCALES se lisent en minuscules, séparées par des virgules', async () => {
+        const { iaLocaleDepuisEnv } = await import('../../api/_lib/relay');
+        const c = iaLocaleDepuisEnv((k) => ({ IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c', RELAIS_CLES_LOCALES: 'AB12, cd34' } as Record<string, string>)[k]);
+        expect([...(c?.empreintesAutorisees ?? [])]).toEqual(['ab12', 'cd34']);
+    });
+
+    it('scripts/empreinteCleRelais.mjs donne EXACTEMENT l\'empreinte que le relais calcule (et n\'écrit rien d\'autre)', async () => {
+        const { spawnSync } = await import('node:child_process');
+        const { resolve } = await import('node:path');
+        vi.stubEnv('RELAIS_SEL_EMPREINTE', 'un-sel-de-test-assez-long');
+        const attendu = await empreinteCle('sk-ant-essai');
+        const r = spawnSync(process.execPath, [resolve(__dirname, '../../scripts/empreinteCleRelais.mjs')], {
+            input: 'sk-ant-essai\n', encoding: 'utf8', env: { ...process.env, RELAIS_SEL_EMPREINTE: 'un-sel-de-test-assez-long' },
+        });
+        expect(r.status).toBe(0);
+        expect(r.stdout.trim()).toBe(attendu);
+        expect(r.stdout + r.stderr).not.toContain('sk-ant-essai');
+        const sans = spawnSync(process.execPath, [resolve(__dirname, '../../scripts/empreinteCleRelais.mjs')], {
+            input: 'x', encoding: 'utf8', env: { ...process.env, RELAIS_SEL_EMPREINTE: '' },
+        });
+        expect(sans.status).toBe(1);
+    });
+});
+
+describe('IP du client : la plateforme d\'abord', () => {
+    it('x-vercel-forwarded-for l\'emporte sur un x-forwarded-for préfixé par l\'attaquant', async () => {
+        const { ipClient } = await import('../../api/_lib/garde');
+        const h = new Headers({ 'x-forwarded-for': '1.2.3.4, 203.0.113.50', 'x-vercel-forwarded-for': '203.0.113.50' });
+        expect(ipClient(h)).toBe('203.0.113.50');
+        expect(ipClient(new Headers({ 'x-forwarded-for': '1.2.3.4', 'x-real-ip': '203.0.113.51' }))).toBe('203.0.113.51');
+        expect(ipClient(new Headers({ 'x-forwarded-for': '198.51.100.9, 10.0.0.1' }))).toBe('198.51.100.9');
+        expect(ipClient(new Headers())).toBe('inconnue');
+    });
+
+    it('tourner la valeur de x-forwarded-for ne contourne pas le plafond quand la plateforme donne l\'IP', async () => {
+        const limites = petites({ parIp: 2 });
+        const essai = (xff: string) => relayClaude(
+            mk({ headers: { 'x-forwarded-for': xff, 'x-vercel-forwarded-for': '203.0.113.60' } }), { env: () => undefined, iaLocale: null, limites });
+        expect((await essai('9.9.9.1')).status).toBe(200);
+        expect((await essai('9.9.9.2')).status).toBe(200);
+        expect((await essai('9.9.9.3')).status).toBe(429);
     });
 });

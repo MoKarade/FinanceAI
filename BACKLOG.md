@@ -111,13 +111,6 @@
   datés : elle disparaît de toute la courbe passée.
 - [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
   la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
-- [x] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — ✅ 2026-09-25 : le symbole collé est vérifié
-  AVANT la purge (`services/verifierSymboleCotation.ts`, même règle de devise que `priceRefresh`) :
-  aucun cours, panne, autre devise ou devise non gérée → refus nommé, RIEN n'est écrit, l'historique
-  survit. Ordre de grandeur éloigné → appliqué (le symbole saisi reste la donnée de Marc, et le prix
-  stocké peut être celui qui est faux) mais DIT. La règle ×2 vit dans `history/plausibiliteCours.ts`
-  (partagée avec l'hydratation, sans tirer celle-ci dans le chunk d'Investissements). 11 gardes, dont
-  le geste réel dans Investments (refus = 0 écriture ; contrôle : bonne devise = appliqué).
 - [ ] 🟠 **`[PERF-COMPAREE-TOTAL-AMPUTE]`** (M) — la « Performance » d'Investissements compare des
   totaux qui ne portent pas les mêmes titres ; une ligne sortie du TOTAL fait un creux FANTÔME, et la
   note ne regarde que le DERNIER jour de l'axe.
@@ -136,10 +129,14 @@
   le chemin legacy pour les anciens backups, et une garde « toute clé persistée est exportée OU exclue
   avec sa raison ». À trancher avec Marc : le backup contient-il aussi les conversations IA et les
   documents (la synchro Drive les contient déjà).
-- [ ] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`** (S) — `e2e/futureDailySelect.spec.ts:119`
-  (`[FUTUR-CLICK-ANYWHERE]`) échoue par intermittence : aux 3 essais sur `main` au commit `d4f7a723`
-  (run 36058234613, avec 3 autres tests Futur instables) et sur la PR #1054, verte à la relance.
-  `[data-jour-epingle]` n'apparaît pas après le clic. Cause non mesurée ; ne pas relancer à l'aveugle.
+- [x] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`** (S) — ✅ 2026-09-25 : rouge aussi sur `main`
+  `b083c700` (3 essais), vert 25/25 en local (Chromium complet et headless shell, seul et fichier
+  entier). Mécanisme REPRODUIT : le bandeau FIXE « Mode test activé » (42 px) recouvre le haut du
+  viewport ; dès que le graphe défile plus haut (bord à −40 px), le clic « ciel vide » à 8 % tombe
+  sur le bandeau, jamais sur le graphe — faux rouge de géométrie, pas une zone morte de l'app. Le
+  clic vise désormais le ciel SOUS tout bandeau fixe ; et `clickAndFreeze` nomme, en cas d'échec,
+  l'élément sous le pointeur (`elementFromPoint`), pour qu'une récidive d'une autre cause s'explique
+  d'elle-même. [Probable] que ce soit la cause CI : la position du graphe dépend de la mise en page.
 - [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.

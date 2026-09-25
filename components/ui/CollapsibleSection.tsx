@@ -55,12 +55,13 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 id={headerId}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left focus-ring hover:bg-white/3 transition-colors"
+                className={`w-full flex items-center justify-between gap-3 text-left focus-ring hover:bg-white/3 transition-colors ${variant === 'quiet' ? 'px-0 py-2 min-h-11 rounded-lg' : 'px-4 py-3'}`}
             >
                 <div className="flex items-center gap-3 min-w-0">
                     {icon && <span className="shrink-0 text-h2" aria-hidden="true">{icon}</span>}
                     <div className="min-w-0">
-                        <div className="text-h2 text-ink-50 truncate">{title}</div>
+                        {/* [S5-REFONTE] Titre d'accordéon des maquettes : 15 px semi-gras (plus le gros h2). */}
+                        <div className="text-[15px] font-semibold text-ink-50 truncate">{title}</div>
                         {subtitle && <div className="text-meta text-ink-400 mt-0.5 truncate">{subtitle}</div>}
                     </div>
                 </div>
@@ -80,7 +81,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                     role="region"
                     id={panelId}
                     aria-labelledby={headerId}
-                    className="px-4 pb-4 pt-1 border-t border-white/5"
+                    className={variant === 'quiet' ? 'pt-3' : 'px-4 pb-4 pt-1 border-t border-white/5'}
                 >
                     {children}
                 </div>

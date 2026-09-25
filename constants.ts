@@ -17,7 +17,7 @@ export const TAB_LABELS: Record<Tab, string> = {
     [Tab.LIFE_EVENTS]: 'Parcours de Vie',
     [Tab.LIFE_PROJECTS]: 'Projets de vie',
     [Tab.RETIREMENT]: 'Retraite',
-    [Tab.TAX]: 'Impôts & Docs',
+    [Tab.TAX]: 'Impôts',
     [Tab.SETTINGS]: 'Paramètres',
     [Tab.PROFILE]: 'Profil',
     [Tab.ASSISTANT]: 'Assistant IA',

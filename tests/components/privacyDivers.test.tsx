@@ -29,8 +29,10 @@ const lire = (rel: string) => stripCommentsJsx(readFileSync(resolve(process.cwd(
 
 /** Les huit sites, avec le motif qui prouve qu'ils passent par une primitive de masquage. */
 const SITES: ReadonlyArray<{ fichier: string; ecran: string; motif: RegExp }> = [
-    { fichier: 'components/Travel.tsx', ecran: 'budget d’un voyage',
-      motif: /<PrivateAmount[^>]*>\{formatCAD\(trip\.totalCost\)\}<\/PrivateAmount>/ },
+    // [S5-REFONTE-PROJETS] Travel.tsx a fondu dans la page Projets de vie : le budget d'un voyage
+    // s'affiche dans la liste des projets.
+    { fichier: 'components/LifeProjects.tsx', ecran: 'budget d’un voyage (liste des projets)',
+      motif: /<PrivateAmount[^>]*>\{formatCAD\(p\.cout\)\}<\/PrivateAmount>/ },
     { fichier: 'components/tax/CoupleOptimizationCard.tsx', ecran: 'économie d’impôt estimée',
       motif: /<PrivateAmount>\{formatCAD\(s\.estimated_savings_cad\)\}<\/PrivateAmount>/ },
     { fichier: 'components/FutureProjection.tsx', ecran: 'bandeau « transactions datées au mois »',

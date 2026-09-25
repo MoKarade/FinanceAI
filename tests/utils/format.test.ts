@@ -7,6 +7,7 @@ import {
     formatDate,
     formatMonthYear,
     formatCompactCAD,
+    formatVariationPct,
 } from '../../utils/format';
 
 // fr-CA Intl uses U+202F (NARROW NO-BREAK SPACE) for thousands separators
@@ -146,5 +147,15 @@ describe('formatCompactCAD', () => {
         expect(norm(formatCompactCAD(1_000_000, { repere: true }))).toBe('1 M$');
         expect(norm(formatCompactCAD(1_250_000, { repere: true }))).toBe('1,25 M$');
         expect(norm(formatCompactCAD(750_000, { repere: true }))).toBe('750 k$');
+    });
+});
+
+describe('formatVariationPct', () => {
+    it('signe, une décimale, jamais « −0,0 % »', () => {
+        expect(norm(formatVariationPct(14.66))).toBe('+14,7 %');
+        expect(norm(formatVariationPct(-2.4))).toBe('−2,4 %');
+        expect(norm(formatVariationPct(-0.02))).toBe('0,0 %');
+        expect(norm(formatVariationPct(0.25, 2))).toBe('+0,25 %');
+        expect(formatVariationPct(NaN)).toBe('—');
     });
 });

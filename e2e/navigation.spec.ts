@@ -19,7 +19,7 @@ const ONGLETS: Array<{ hash: string; nomAttendu: string }> = [
   { hash: 'TRANSACTIONS',  nomAttendu: 'Transactions' },
   { hash: 'BUDGET',        nomAttendu: 'Budget' },
   { hash: 'DEBT',          nomAttendu: 'Dette' },
-  { hash: 'INVESTMENTS',   nomAttendu: 'Investissements' },
+  { hash: 'INVESTMENTS',   nomAttendu: 'Placements' },
   { hash: 'FUTURE',        nomAttendu: 'Futur' },
   { hash: 'RETIREMENT',    nomAttendu: 'Retraite' },
   { hash: 'TAX',           nomAttendu: 'Impôts' },

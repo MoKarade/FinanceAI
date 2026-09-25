@@ -98,6 +98,17 @@ export function formatSigned(
 }
 
 /**
+ * [S5-REFONTE-PLACEMENTS] Variation en % signée (« +14,7 % », « −2,4 % », « 0,0 % ») — un ratio,
+ * pas un montant. Un résultat qui s'arrondit à zéro n'a pas de signe (jamais « −0,0 % »).
+ */
+export function formatVariationPct(n: unknown, decimals: 0 | 1 | 2 = 1): string {
+    if (!isFiniteNumber(n)) return '—';
+    const texte = formatNumber(Math.abs(n), { decimals });
+    const nul = Math.abs(n) < 0.5 * 10 ** -decimals;
+    return `${nul ? '' : n > 0 ? '+' : '−'}${texte}\u00a0%`;
+}
+
+/**
  * Formate une date courte (« 1 mai 2026 »).
  */
 export function formatDate(

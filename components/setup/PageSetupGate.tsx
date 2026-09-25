@@ -118,7 +118,7 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
     },
     [Tab.INVESTMENTS]: {
         mode: 'hard',
-        title: 'Investissements',
+        title: 'Placements',
         intro:
             'Ajoute au moins un placement (action, ETF, crypto…) — manuellement ou via un import ' +
             'courtier — pour suivre et projeter ton portefeuille.',

@@ -22,9 +22,9 @@
   gratuit est confirmé et qu'il échoue FERMÉ ; sinon on garde le frein en mémoire (faible mais utile). Décision à part.
 - [ ] 👤 [DURCISSEMENT-RELAIS-ENV] (S) Retirer `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel (cf. `A_FAIRE_MOI` O4).
 
-## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
+## 💼 Portefeuille courtier — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 
-> Demande : « FinanceAI devient la référence fiable du portefeuille Disnat : valeur exacte jour par
+> Demande : « FinanceAI devient la référence fiable du portefeuille courtier : valeur exacte jour par
 > jour, aucun artefact, tenue à jour sans intervention » (cahier des charges « PROMPT v2 », fourni
 > par Marc avec un fichier de vérification). Le **Lot 0** (audit en lecture seule + plan + questions)
 > est livré à Marc **hors dépôt** — il contient ses montants réels, et ce dépôt est PUBLIC. Ce qui
@@ -97,7 +97,7 @@
   (les écrans lisent les placements actuels jusqu'à `[PTF-L1E-PASSERELLE]`) ; plusieurs PDF d'un coup,
   triés par date d'arrêté, un seul aperçu, relevé antérieur au dernier importé refusé et nommé ;
   bouton dans l'onglet Placements. ⛔ **BLOQUÉ par `[PTF-L1C-MAGASIN-MARCHE]` (tâche serveur 1c-2)** :
-  les relevés impriment description, symbole Disnat et devise du prix, mais AUCUN ISIN ni place de
+  les relevés impriment description, symbole courtier et devise du prix, mais AUCUN ISIN ni place de
   cotation (mesuré sur les trois vrais relevés : 0 ISIN) ; Marc a choisi que l'ISIN et la place
   viennent d'une recherche EODHD par symbole, pas d'une saisie.
   🔒 **Conséquence de la décision date B (2026-09-25)** : le PREMIER relevé importé d'un compte doit

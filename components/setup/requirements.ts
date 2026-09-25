@@ -86,7 +86,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
             },
         ],
         importKind: 'payslip',
-        focus: { tab: Tab.SETTINGS, section: 'profile-user1-grossSalary' },
+        focus: { tab: Tab.PROFILE, section: 'profile-user1-grossSalary' }, // [BANDEAUX-VERS-PROFIL]
     },
 
     retirementProfile: {
@@ -117,7 +117,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
                 toState: (d, v) => ({ retirementGoal: { ...d.retirementGoal, targetMonthlyIncome: v } }),
             },
         ],
-        focus: { tab: Tab.SETTINGS, section: 'profile-retirementAge' },
+        focus: { tab: Tab.PROFILE, section: 'profile-retirementAge' }, // [BANDEAUX-VERS-PROFIL]
     },
 
     // Prérequis « liste » (pas de saisie inline) : on crée via la page elle-même

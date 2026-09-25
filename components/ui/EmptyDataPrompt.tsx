@@ -25,7 +25,7 @@ interface EmptyDataPromptProps {
 
 export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
     title = 'Données manquantes',
-    description = 'Renseigne ton profil dans Configuration pour activer cette section.',
+    description = 'Renseigne ton profil pour activer cette section.',
     icon = <Icon name="lock" size={20} className="text-warning-400" />,
     layout = 'block',
     className = '',
@@ -36,7 +36,7 @@ export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
         return (
             <button
                 type="button"
-                onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
+                onClick={() => navigateWithFocus(Tab.PROFILE, 'profile-user1-card')}
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-card border border-warning-500/30 bg-warning-500/10 text-amber-300 text-meta hover:bg-warning-500/20 focus-ring transition-colors ${className}`}
             >
                 <span aria-hidden="true">{icon}</span>
@@ -55,7 +55,7 @@ export const EmptyDataPrompt: React.FC<EmptyDataPromptProps> = ({
                     <div className="text-meta text-ink-300 mb-3 leading-snug">{description}</div>
                     <button
                         type="button"
-                        onClick={() => navigateWithFocus(Tab.SETTINGS, 'profile-user1-card')}
+                        onClick={() => navigateWithFocus(Tab.PROFILE, 'profile-user1-card')}
                         className="px-3 py-1.5 rounded-card bg-primary text-dark text-meta font-bold hover:bg-primary/80 focus-ring transition-colors"
                     >
                         → Configurer mon profil

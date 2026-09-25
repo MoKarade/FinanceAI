@@ -39,17 +39,15 @@ const SERVER_ONLY = ['ping', 'connect_drive'] as const;
 // Vérifié au 2026-08-28 : les 8 tools d'écriture sont bien dans le bloc conditionnel.
 
 /**
- * Normalise un JSON Schema pour comparer les DEUX convertisseurs. Les specs partagent le même objet
- * zod, mais chaque surface le rend avec son propre convertisseur : le SDK MCP en interne côté
- * serveur, `zod-to-json-schema` côté `toAnthropicTools`. MESURÉ sur les 19 tools : la sortie est
- * identique partout SAUF deux écarts de MÉTA, tous deux sans effet sur ce que le modèle peut
- * produire — et aucun autre :
- *   - `$schema` : posé par `zod-to-json-schema`, retiré par `toAnthropicTools` (hors contrat
- *     `Tool.InputSchema` d'Anthropic) ; présent côté MCP.
- *   - `additionalProperties: false` sur les 3 tools à schéma VIDE (`get_financial_overview`,
- *     `get_holdings`, `get_next_best_actions`) : le SDK MCP l'omet quand il n'y a aucune propriété.
- * On neutralise EXACTEMENT ces deux-là — donc toute divergence de `properties`, de `type`, de
- * `required` ou de `description` fait rougir la garde (finding ai-reviewer, panel PR #756).
+ * Normalise un JSON Schema pour comparer les DEUX surfaces. Les specs partagent le même objet zod et,
+ * depuis zod 4 ([S5-ZOD4]), le même convertisseur : `z.toJSONSchema` natif, avec les options que le
+ * SDK MCP applique à un schéma zod 4 (draft-7, côté entrée). MESURÉ sur les 19 tools : sortie
+ * identique partout SAUF la clé méta `$schema`, présente côté MCP et retirée par `toAnthropicTools`
+ * (hors contrat `Tool.InputSchema` d'Anthropic) — sans effet sur ce que le modèle peut produire.
+ * La clause `additionalProperties: false` sur schéma VIDE date de zod 3 (`zod-to-json-schema` la
+ * posait, le SDK MCP l'omettait) ; gardée : elle ne neutralise que cette valeur exacte. Toute
+ * divergence de `properties`, de `type`, de `required` ou de `description` fait rougir la garde
+ * (finding ai-reviewer, panel PR #756).
  */
 function normalizeSchema(raw: unknown): unknown {
     const schema = { ...(raw as Record<string, unknown>) };

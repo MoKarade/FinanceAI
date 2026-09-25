@@ -26,7 +26,7 @@ async function ouvrirFuturEtReveler(page: Page) {
     const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
     await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
     if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 const LIENS: ReadonlyArray<{ nom: RegExp; titreDialogue: string }> = [
@@ -44,7 +44,7 @@ test.describe('Futur desktop — carte Outils et tiroirs (PR [FUTUR-NAV-TIROIRS]
         // dans la carte « Outils », sous la courbe.
         await expect(page.getByRole('region', { name: 'Outils' })).toBeVisible();
         await expect(page.getByRole('heading', { level: 1, name: 'Projection' })).toBeVisible();
-        await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible();
+        await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible();
         await expect(page.getByRole('tablist')).toHaveCount(0);
     });
 

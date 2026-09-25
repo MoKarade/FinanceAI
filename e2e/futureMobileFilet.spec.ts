@@ -92,7 +92,7 @@ async function revelerCourbe(page: Page) {
   const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
   await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
   if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-  await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 /** Sélecteur des contrôles interactifs — UNE seule écriture, partagée par le recenseur et son anti-vacuité. */
@@ -161,7 +161,7 @@ test.describe('Futur mobile — tiroirs et courbe toujours visible', () => {
     for (const { titre } of TIROIRS) {
       await expect(page.getByRole('dialog', { name: titre })).toHaveCount(0);
     }
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible();
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible();
   });
 
   test('[FUTUR-NAV-TIROIRS] les trois boutons ouvrent chacun un tiroir nommé, Échap le referme au bon déclencheur', async ({ page }) => {

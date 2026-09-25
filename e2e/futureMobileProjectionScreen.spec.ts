@@ -25,7 +25,7 @@ async function ouvrirFuturEtReveler(page: Page) {
     const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
     await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
     if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 /**
@@ -100,7 +100,7 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
         const domOrder = () => page.evaluate(() => {
-            const chart = Array.from(document.querySelectorAll('[role="img"]')).find((e) => (e.getAttribute('aria-label') || '').includes('Courbe de vie'));
+            const chart = Array.from(document.querySelectorAll('[role="group"]')).find((e) => (e.getAttribute('aria-label') || '').includes('Courbe de vie'));
             const kpi = document.querySelector('section[aria-label="Indicateurs clés"]');
             if (!chart || !kpi) return 'introuvable';
             return (kpi.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING) ? 'kpi-avant-courbe' : 'kpi-apres-courbe';

@@ -1856,7 +1856,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     tabIndex={0}
                     onKeyDown={handleChartKeyDown}
                     className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none focus-ring rounded-lg ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
-                    role="img"
+                    // [S5-REFONTE-FUTUR, audit AA] `group` et non `img` : les pastilles de jalons sont
+                    // focusables DANS la courbe (#599) — sous `role="img"` elles devenaient
+                    // présentationnelles (axe `nested-interactive`, WCAG 4.1.2). L'alternative
+                    // textuelle reste la même (tableau + liste des jalons, renvoyés par ce libellé).
+                    role="group"
+                    aria-roledescription="graphique"
                     aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Le détail du jour visé est décrit dans le panneau situé juste sous la courbe ; les mêmes données sont aussi lisibles sous forme de tableau et de liste de jalons. À la souris : survol = aperçu, clic = épingle le jour dans le panneau, molette = zoom, glisser = défiler. Au clavier : Entrée ou flèches = épingle le jour d'aujourd'hui, puis Veille/Lendemain et Détail complet dans le panneau, Échap = relâche."
                 >
                      {isComputing ? (

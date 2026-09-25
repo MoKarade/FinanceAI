@@ -21,7 +21,7 @@ async function ouvrirFuturEtReveler(page: Page) {
     const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
     await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
     if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 const groupeSeries = (page: Page) => page.locator('[role="group"][aria-label="Séries du graphique"]');

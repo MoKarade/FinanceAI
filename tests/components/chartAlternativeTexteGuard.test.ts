@@ -44,6 +44,16 @@ const ROLE_IMG = /role="img"|role:\s*'img'/;
 const ALTERNATIVE = /role="img"|role:\s*'img'|aria-hidden/;
 const FENETRE = 8;
 
+/**
+ * Graphes INTERACTIFS : des contrôles focusables vivent DANS le tracé. Sous `role="img"`, leurs
+ * enfants deviennent présentationnels (axe `nested-interactive`, WCAG 4.1.2) : le conteneur est un
+ * `role="group"` NOMMÉ, et l'alternative textuelle (ChartDataTable) reste exigée comme partout.
+ */
+const GRAPHES_INTERACTIFS: Record<string, string> = {
+    'components/FutureProjection.tsx': 'pastilles de jalons focusables au clavier (#599) dans la courbe de vie',
+};
+const ROLE_GROUPE = /role="group"/;
+
 /** Exemptions de la règle PAR GRAPHE, chacune avec la raison qui la rend acceptable. */
 const HORS_FENETRE: Record<string, string> = {
     'components/ui/ZoomableTimeChart.tsx':
@@ -69,7 +79,8 @@ describe('[A11Y] aucun graphe sans alternative textuelle', () => {
         for (const file of fichiersAvecGraphe) {
             const src = stripCommentsJsx(readFileSync(file, 'utf8'));
             const manque: string[] = [];
-            if (!ROLE_IMG.test(src)) manque.push('role="img"');
+            const interactif = Boolean(GRAPHES_INTERACTIFS[path.relative(ROOT, file)]);
+            if (!(interactif ? ROLE_GROUPE : ROLE_IMG).test(src)) manque.push(interactif ? 'role="group"' : 'role="img"');
             if (!/ChartDataTable/.test(src)) manque.push('ChartDataTable');
             if (manque.length) offenders.push(`${path.relative(ROOT, file)} — manque ${manque.join(' et ')}`);
         }
@@ -90,6 +101,7 @@ describe('[A11Y] aucun graphe sans alternative textuelle', () => {
                 if (!RACINE_RECHARTS.test(l)) return;
                 const amont = lignes.slice(Math.max(0, i - FENETRE), i + 1).join('\n');
                 if (ALTERNATIVE.test(amont)) return;
+                if (GRAPHES_INTERACTIFS[rel] && ROLE_GROUPE.test(amont)) return;
                 offenders.push(`${rel}:${i + 1}  ${l.trim().slice(0, 90)}`);
             });
         }
@@ -107,6 +119,11 @@ describe('[A11Y] aucun graphe sans alternative textuelle', () => {
             const src = stripCommentsJsx(readFileSync(path.join(ROOT, rel), 'utf8'));
             expect(RACINE_RECHARTS.test(src), `${rel} ne rend plus de graphe — retire son exemption`).toBe(true);
             expect(ROLE_IMG.test(src), `${rel} : ${raison}`).toBe(true);
+        }
+        for (const [rel, raison] of Object.entries(GRAPHES_INTERACTIFS)) {
+            const src = stripCommentsJsx(readFileSync(path.join(ROOT, rel), 'utf8'));
+            expect(RACINE_RECHARTS.test(src), `${rel} ne rend plus de graphe — retire son exemption`).toBe(true);
+            expect(ROLE_GROUPE.test(src), `${rel} : ${raison}`).toBe(true);
         }
     });
 });

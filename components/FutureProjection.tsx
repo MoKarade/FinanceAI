@@ -33,6 +33,7 @@ import { computeForecastAccuracy } from '../services/projection/forecastAccuracy
 import { ForecastAccuracyBadge } from './projection/ForecastAccuracyBadge';
 import { findInsolvencyPoint } from '../utils/insolvency';
 import { construireAlerteObjectifsManques } from './projection/alerteObjectifsManques';
+import { kpiPatrimoine } from './projection/kpiPatrimoine';
 import { sampleEvenly } from '../utils/sampleEvenly';
 import { assignStackIndex } from '../utils/stackEventIcons';
 
@@ -1419,6 +1420,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // complet vit dans le `tooltip`, déjà le patron établi pour « Patrimoine ») : garder les MÊMES
     // props partout, seule la grille change, pour ne jamais faire diverger le test money-critical
     // qui compare l'innerText mobile/desktop au caractère près (futureMobileProjectionScreen.spec.ts).
+    const patrimoineKpi = kpiPatrimoine(results, isPrivacyMode);
     const kpiStats = [
         <KPIStat
             key="fire"
@@ -1433,18 +1435,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         />,
         <KPIStat
             key="patrimoine"
-            // Libellé COURT constant (jamais « successoral, avec rentes » en toutes lettres) : la
-            // distinction vit désormais entièrement dans le tooltip, qui suit le même fallback que
-            // la valeur — sinon le tooltip mentirait sur ce que `value` montre réellement.
+            // [FUTUR-KPI-PATRIMOINE-FIN-COURBE] Valeur nette de fin de courbe (même chiffre que
+            // Retraite et Placements) ; l'héritage net vit dans l'info-bulle — cf. kpiPatrimoine.ts.
             label="Patrimoine"
-            tooltip={results?.estateNetWorth
-                ? "Patrimoine successoral, avec rentes : net de l'impôt de liquidation (REER et gains en capital imposés au décès) + la valeur actualisée des rentes RRQ/PSV restantes. Différent du patrimoine en fin d'horizon."
-                : "Patrimoine projeté en fin d'horizon (mode simplifié, sans rentes)."}
+            tooltip={patrimoineKpi.tooltip}
             icon="💼"
-            // Fallback : si estateNetWorth est 0 (rare en réalité ou bug
-            // silencieux du moteur), utiliser finalNetWorth puis fireNumber
-            // comme proxy. Évite d'afficher "0.00M$" trompeur en mode test.
-            value={formatCompactCAD((results?.estateNetWorth || results?.finalNetWorth || results?.fireNumber) || 0)}
+            value={patrimoineKpi.value}
             sublabel={`Fin de l'horizon (${projection.years || 30} ans)`}
             privacy
             variant="primary"

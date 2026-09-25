@@ -21,6 +21,7 @@ import { usePortfolioHistory } from '../../hooks/usePortfolioHistory';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { HistoryCoverageNote } from '../dashboard/HistoryCoverageNote';
 import { computeTotalDebt } from '../../services/portfolio';
+import { prepareDetteNonImmoAuJour } from '../../services/history/detteDuPasse';
 import { presentEquityOfGoal, monthsSince } from '../../services/projection/pastPurchaseInit';
 import { reconstructRealEstateEquityByYear } from '../../services/history/reconstructRealEstateEquity';
 import { useSyncExternalStore } from 'react';
@@ -128,6 +129,12 @@ const FutureHistorySection: React.FC = () => {
         const nowYearImmo = new Date().getFullYear();
         // [DASH-NW-DUP] source unique gardée NaN/Infinity.
         const currentDebts = computeTotalDebt(debts ?? [], todayIso, transactions);
+        // [FUTUR-HISTORIQUE-DETTE-DU-JOUR] La dette À LA DATE de chaque point, pas celle
+        // d'aujourd'hui recopiée partout : un bail remboursé chaque semaine restait plat à son niveau
+        // du jour, donc le passé était sous-évalué de tout ce qui a été versé depuis — et ce graphe
+        // contredisait la courbe du Futur, qui reconstruit déjà la dette au jour. Même source
+        // UNIQUE que cette courbe (`detteDuPasse.ts`), jamais une seconde formule.
+        const detteAuJour = prepareDetteNonImmoAuJour(currentDebts, debts ?? [], todayIso, transactions);
 
         const hist = marketData.map(row => {
             const rowDateStr = row.date as string;
@@ -158,9 +165,10 @@ const FutureHistorySection: React.FC = () => {
                 ? currentRealEstateEquity
                 : (equityByYear.get(rowYear) ?? 0);
             point.Immobilier = immoAtRow;
-            point.Dettes = -currentDebts;
+            const detteAtRow = detteAuJour(rowDateStr.slice(0, 10));
+            point.Dettes = -detteAtRow;
 
-            total += invMap.CELI + invMap.REER + invMap.NonReg + invMap.Crypto + immoAtRow - currentDebts;
+            total += invMap.CELI + invMap.REER + invMap.NonReg + invMap.Crypto + immoAtRow - detteAtRow;
             point.Total = total;
             return point;
         });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-25 — Historique du Futur : la dette de chaque date
+
+- Le graphe « Historique » du Futur soustrayait ta dette d'aujourd'hui à toutes les dates passées.
+  Il montre maintenant la dette que tu avais à chaque date : ton bail y descend à chaque
+  prélèvement, et une dette contractée récemment ne pèse plus sur les mois d'avant. C'est le même
+  calcul que la courbe principale du Futur, qui le faisait déjà.
+
 ## 2026-09-25 — Historique des cours : la devise est vérifiée
 
 - L'historique d'un titre (la courbe de ses cours passés) est maintenant contrôlé comme son cours du

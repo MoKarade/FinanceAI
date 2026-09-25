@@ -10,6 +10,19 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-25 — Historique des cours : la devise est vérifiée (PR #1057)
+
+Déménagé au lot suivant (FUTUR-HISTORIQUE-DETTE-DU-JOUR).
+
+- [x] 🟠 **`[HISTORIQUE-YAHOO-DEVISE-NON-LUE]`** (S) — ✅ 2026-09-25 : `parseYahooChart` publie
+  `meta.currency` sur chaque point, CASSE GARDÉE (`GBp` = pence) ; règle unique
+  `services/history/deviseHistorique.ts`, appliquée par l'hydratation ET par `usePastPortfolioHistory`
+  (la seconde porte vers la courbe). Devise inconnue (Finnhub, cache antérieur) = acceptée comme avant ;
+  pence ou autre devise que l'actif = refus `currency-mismatch`, historique existant intact, aucune
+  pêche aux variantes. 5 perturbations, 5 rouges. ⚠️ Un `priceHistory` déjà écrit à ×100 AVANT ce lot
+  n'est pas purgé ; le refus ne s'affiche qu'au journal (comme la garde crypto) ; `parseYahooQuote`
+  met encore la devise en majuscules (`GBp` → `GBP`), sans effet aujourd'hui puisque GBP est refusé.
+
 ## 2026-09-24 — Ajout d'un titre : la devise vient de la cotation (PR #1056)
 
 Déménagé au lot suivant (HISTORIQUE-YAHOO-DEVISE).

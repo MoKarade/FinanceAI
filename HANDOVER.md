@@ -4,6 +4,11 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 (suite) — **Historique du Futur : la dette de chaque date**
+> Livré `[FUTUR-HISTORIQUE-DETTE-DU-JOUR]` : `services/history/detteDuPasse.ts`
+> (`prepareDetteNonImmoAuJour`, source unique extraite de `dailyPastLedger`), appelée par
+> `FutureHistorySection` (qui retranchait la dette du jour partout). #1057 fusionnée et déployée (READY).
+>
 > ## 🟩 Session 2026-09-25 — **Historique des cours : devise vérifiée**
 > Livré `[HISTORIQUE-YAHOO-DEVISE-NON-LUE]` : `HistoryPoint.currency` (optionnel, casse gardée),
 > `services/history/deviseHistorique.ts` (`verdictDeviseHistorique`, source unique), branché dans

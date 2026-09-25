@@ -11,7 +11,7 @@ import React from 'react';
 import {
   LayoutDashboard, CreditCard, Scale, LineChart, TrendingUp, TrendingDown,
   Palmtree, Home, Baby, Route, Landmark, Wallet, Compass, Target, Wrench,
-  Settings, MoreHorizontal, Zap, Eye, EyeOff, Plane,
+  Settings, MoreHorizontal, Zap, Eye, EyeOff, Plane, Info,
   Bitcoin, Check, Sparkles, Globe, Thermometer, Wind, Sprout, PartyPopper,
   Dices, Building2, Banknote, Briefcase, BarChart3, Download, Package, Search,
   CircleDot, HeartPulse,
@@ -70,6 +70,7 @@ const REGISTRY = {
   clock: Clock,
   trash: Trash2,
   alert: AlertTriangle,
+  info: Info,
   smartphone: Smartphone,
   link: Link,
   lock: Lock,

@@ -29,7 +29,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 vi.mock('recharts', async () => {
     const R = await import('react');
     const P = ({ children }: { children?: React.ReactNode }) => R.createElement('div', null, children);
-    return { ResponsiveContainer: P, AreaChart: P, Area: () => null, XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null };
+    return { ResponsiveContainer: P, AreaChart: P, ComposedChart: P, Area: () => null, Line: () => null, XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null };
 });
 
 afterEach(cleanup);

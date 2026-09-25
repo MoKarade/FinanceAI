@@ -33,7 +33,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             <div className={`min-w-0 ${nav ? 'flex-1' : ''}`}>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                     <h1 className="text-[26px] leading-8 font-bold text-ink-50">{title}</h1>
-                    {badge && <div>{badge}</div>}
+                    {/* Mobile (maquettes M-*) : le chiffre clé passe SOUS le titre ; bureau : à côté. */}
+                    {badge && <div className="max-lg:basis-full max-lg:-mt-2">{badge}</div>}
                     {nav && <div className="basis-full lg:basis-auto min-w-0">{nav}</div>}
                 </div>
                 {subtitle && (

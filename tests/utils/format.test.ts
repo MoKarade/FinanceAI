@@ -51,6 +51,11 @@ describe('formatNumber', () => {
         expect(norm(formatNumber(1111.555, { decimals: 2 }))).toBe('1 111,56');
     });
 
+    it('respects 1 decimal (durées : « 2,9 ans »)', () => {
+        expect(norm(formatNumber(34 / 12, { decimals: 1 }))).toBe('2,8');
+        expect(norm(formatNumber(3, { decimals: 1 }))).toBe('3,0');
+    });
+
     it('returns dash for invalid', () => {
         expect(formatNumber('abc')).toBe('—');
     });

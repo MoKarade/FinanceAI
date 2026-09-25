@@ -27,7 +27,7 @@ async function revelerCourbe(page: Page) {
     const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
     await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
     if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 test.describe('Futur mobile — amorçage (PR5)', () => {
@@ -120,7 +120,7 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
     test.setTimeout(120_000);
 
     async function chartBox(page: Page) {
-        const chart = page.getByRole('img', { name: /Courbe de vie/ });
+        const chart = page.getByRole('group', { name: /Courbe de vie/ });
         await expect(chart).toBeVisible({ timeout: 15_000 });
         await chart.scrollIntoViewIfNeeded();
         await page.locator('.recharts-cartesian-grid').first().waitFor({ state: 'visible', timeout: 15_000 });

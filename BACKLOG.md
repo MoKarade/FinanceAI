@@ -706,11 +706,15 @@ désinfecte le snapshot avant de le restaurer.
 
 ## 🔗 Chaîne de build — audit du 2026-09-18 (`REMEDIATION_AUDIT_2026-09-18.md`)
 
-- [ ] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S). `DriveAI` 6
-  checkout, `Hubperso` 5, `JobAI` 3, `CarAI` 3, `hub-contract` 2, `batchchef-` 2, `MemoryAI` 2 —
-  23 étapes, aucune avec `persist-credentials` au 18/09. Plus `npm ci` sans `--ignore-scripts`.
-  ⚠️ Mesurer par dépôt quels workflows POUSSENT avant d'éditer, et re-mesurer les comptes : sur
-  FinanceAI, deux des trois comptes du document (S6505 × 7, S8543 × 7) valaient **zéro**.
+- [ ] 🔧 **`[BACKLOG-GARDE-PAR-LIGNE]` `backlogArchivageDesCoches` ne voit pas une phrase
+  coupée sur deux lignes** (XS). Découvert le 25/09 en archivant `[AUDIT-L2-AUTRES]`, NON corrigé :
+  hors périmètre. La garde cherche « à déménager vers `BACKLOG_ARCHIVE` » ligne par ligne
+  (`lignes().filter(...)`), donc une entrée où « vers » finit une ligne et « `BACKLOG_ARCHIVE` »
+  ouvre la suivante passe VERTE — mesuré : 4/4 verts sur une entrée qui portait la phrase
+  interdite. Or les entrées de ce fichier sont justifiées à ~100 colonnes : la coupure n'est
+  pas un cas tordu, c'est le cas ordinaire. Remède probable : rejoindre les lignes de CHAQUE
+  item (l'item et ses sous-lignes indentées) avant de chercher le motif, avec un témoin coupé
+  en deux lignes dans le test des détecteurs.
 - [ ] 🔧 **`[CI-LOCKFILE-PERIME]` `ci.yml:33` affirme « pas de package-lock.json commité dans ce
   repo » — c'est FAUX** (S). Découvert en passant le 18/09, non corrigé : hors périmètre.
   Le lockfile EST commité (`npm ci` fonctionne sur un clone neuf, et le `Dockerfile` le copie).

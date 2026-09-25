@@ -10,6 +10,21 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-25 — Lot L2 de l'audit sur les 7 autres dépôts (case restée ouverte sept jours)
+
+- [x] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S) — ✅ livré le
+  18/09/2026 et fusionné le même soir : Hubperso #61, DriveAI #379, JobAI #20, CarAI #127,
+  hub-contract #13, MemoryAI #37, BatchChef #101. Présence re-mesurée le 25/09 sur la branche
+  par défaut des sept dépôts. Le constat d'origine : 23 étapes `actions/checkout` sans
+  `persist-credentials`, et des `npm ci` sans `--ignore-scripts` ; sur FinanceAI, deux des trois
+  comptes du document d'audit (S6505 × 7, S8543 × 7) valaient zéro.
+  ⚠️ **La case est restée ouverte sept jours après la livraison**, alors que la session qui
+  l'avait inscrite a elle-même livré le travail. La raison est structurelle : le travail vivait
+  dans SEPT AUTRES dépôts, donc aucune PR de CELUI-CI ne le touchait — et aucun contrôle d'ici,
+  ni `doc-a-jour` ni `backlogArchivageDesCoches`, ne pouvait voir qu'une tâche inscrite ici était
+  close ailleurs. Trouvé en rédigeant `Hubperso/docs/RAPPORT_2026-09-25.md`, en re-mesurant.
+  **Une tâche inscrite dans un dépôt et livrée dans d'autres n'a personne pour la refermer.**
+
 ## 2026-09-25 — Horizon de projection = espérance de vie
 
 - [x] 🟠 **`[HORIZON-ESPERANCE-DE-VIE]`** (M) — ✅ 2026-09-25 : Retraite annonçait « Succès jusqu'à

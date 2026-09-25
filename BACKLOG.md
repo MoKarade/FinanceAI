@@ -48,6 +48,11 @@
   livre sortent AUTOMATIQUEMENT des calculs ; (2) régime DÉCLARÉ par compte du livre
   (`brokerAccountRegimes`), jamais deviné ; (3) « tout brancher maintenant » (écrans, MCP, PDF, hub),
   contre ma recommandation de commencer par le présent seul. Découpage en quatre PR :
+  🔒 **Tranché par Marc le 2026-09-25 — date (option B)** : la décision ne dépend pas de la date ;
+  avant le premier événement d'un compte couvert, son régime vaut 0 $ (saisis exclus). Juste parce que
+  Marc importera tous ses relevés DEPUIS L'OUVERTURE des comptes ; l'import 1g doit le vérifier (le
+  premier relevé d'un compte part de positions nulles, sinon refus nommé). Test de limite inversé en
+  test de décision (`passerelle.test.ts`).
   - ✅ **e1** (2026-09-24) — `brokerAccountRegimes` persisté partout où le livre l'est (tri-état,
     `CHAMPS_TEXTE`, `CLES_TRI_ETAT`, sauvegarde JSON, MCP) et module PUR
     `services/portefeuille/passerelle.ts` : `deciderPasserelle` (refus NOMMÉ du livre entier si un
@@ -90,6 +95,10 @@
   les relevés impriment description, symbole Disnat et devise du prix, mais AUCUN ISIN ni place de
   cotation (mesuré sur les trois vrais relevés : 0 ISIN) ; Marc a choisi que l'ISIN et la place
   viennent d'une recherche EODHD par symbole, pas d'une saisie.
+  🔒 **Conséquence de la décision date B (2026-09-25)** : le PREMIER relevé importé d'un compte doit
+  partir de positions et d'une encaisse NULLES (ouverture du compte) ; sinon refus nommé (« importe
+  d'abord les relevés depuis l'ouverture »), car la passerelle compte 0 $ pour ce régime avant le
+  premier événement du livre.
 - [ ] 🔧 **`[PTF-L1H-SOURCE-UNIQUE]`** (M) — retrait des anciens producteurs pour les lignes du livre ;
   l'appel BdC du navigateur est GARDÉ pour les actifs hors livre.
 - [ ] 🔧 **`[PTF-L2-AUTOMATISATION]`** (M×5) — dividendes courus puis réels (requêtes tournantes dans
@@ -129,14 +138,6 @@
   le chemin legacy pour les anciens backups, et une garde « toute clé persistée est exportée OU exclue
   avec sa raison ». À trancher avec Marc : le backup contient-il aussi les conversations IA et les
   documents (la synchro Drive les contient déjà).
-- [x] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`** (S) — ✅ 2026-09-25 : rouge aussi sur `main`
-  `b083c700` (3 essais), vert 25/25 en local (Chromium complet et headless shell, seul et fichier
-  entier). Mécanisme REPRODUIT : le bandeau FIXE « Mode test activé » (42 px) recouvre le haut du
-  viewport ; dès que le graphe défile plus haut (bord à −40 px), le clic « ciel vide » à 8 % tombe
-  sur le bandeau, jamais sur le graphe — faux rouge de géométrie, pas une zone morte de l'app. Le
-  clic vise désormais le ciel SOUS tout bandeau fixe ; et `clickAndFreeze` nomme, en cas d'échec,
-  l'élément sous le pointeur (`elementFromPoint`), pour qu'une récidive d'une autre cause s'explique
-  d'elle-même. [Probable] que ce soit la cause CI : la position du graphe dépend de la mise en page.
 - [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.

@@ -36,7 +36,12 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     const [quantity, setQuantity] = useState('');
     const [buyPrice, setBuyPrice] = useState('');
     const [accountType, setAccountType] = useState<Asset['accountType']>('NON-ENREG');
-    const [currency, setCurrency] = useState<'USD' | 'CAD' | 'EUR'>('USD');
+    // [ADDSTOCK-DEVISE-A-CHOISIR] Aucune devise par défaut (décision de Marc, 2026-09-25) : en saisie
+    // manuelle, ou quand la source ne dit pas la devise, un défaut USD enregistrait EN SILENCE un
+    // titre canadien comme américain — mal valorisé, puis ses cours rejetés. `''` = « pas encore
+    // choisie », et « Ajouter » reste désactivé tant qu'elle l'est. Une cotation qui déclare sa
+    // devise la remplit d'office.
+    const [currency, setCurrency] = useState<'USD' | 'CAD' | 'EUR' | ''>('');
 
     // Saisie 100% MANUELLE (sans Finnhub) : pour ajouter une action/un placement à la main, sans clé
     // API ni connexion, ou pour un titre que Finnhub ne couvre pas (fonds, GIC, titre étranger…).
@@ -72,7 +77,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         setBuyPrice('');
         setManualMode(false);
         setManualPrice('');
-        setCurrency('USD'); // la devise d'un titre précédent ne se transmet pas au suivant
+        setCurrency(''); // la devise d'un titre précédent ne se transmet pas au suivant
         setError(null);
         setNotice(null);
         setSuggestions([]);
@@ -166,7 +171,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 setError(`« ${sym} » est coté en ${devise} : l'app ne gère que CAD, USD et EUR. Ce titre ne peut pas être ajouté avec son cours automatique.`);
                 return 'devise-non-geree';
             } else {
-                setNotice(`La source de cours n'a pas indiqué la devise de « ${sym} » : vérifie le champ Devise avant d'ajouter.`);
+                setNotice(`La source de cours n'a pas indiqué la devise de « ${sym} » : choisis-la dans le champ Devise avant d'ajouter.`);
             }
             setSymbol(sym);
             setValidatedSymbol(sym);
@@ -303,6 +308,10 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
         const effectivePrice = manualMode ? parseFloat(manualPrice) : currentPrice;
         if (!finalSymbol || !effectivePrice || !Number.isFinite(effectivePrice) || effectivePrice <= 0 || !quantity || !buyPrice) {
             setError(manualMode ? 'Symbole, prix actuel, quantité et prix d\'achat sont requis.' : 'Tous les champs sont requis.');
+            return;
+        }
+        if (!currency) {
+            setError('Choisis la devise du titre (celle de son cours) avant de l\'ajouter.');
             return;
         }
         const qty = parseFloat(quantity);
@@ -533,13 +542,18 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 <select
                                     id="stock-currency"
                                     value={currency}
-                                    onChange={(e) => setCurrency(e.target.value as 'USD' | 'CAD' | 'EUR')}
+                                    onChange={(e) => setCurrency(e.target.value as 'USD' | 'CAD' | 'EUR' | '')}
+                                    aria-invalid={currency === '' ? true : undefined}
                                     className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none"
                                 >
+                                    <option value="" disabled>— choisir —</option>
                                     <option value="USD">USD</option>
                                     <option value="CAD">CAD</option>
                                     <option value="EUR">EUR</option>
                                 </select>
+                                {currency === '' && (
+                                    <p className="text-tiny text-warning-400 mt-1">À choisir : la devise dans laquelle le titre est coté.</p>
+                                )}
                             </div>
                         </div>
 
@@ -601,7 +615,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={!ready || !quantity || !buyPrice || (manualMode && !manualPrice)}
+                        disabled={!ready || !quantity || !buyPrice || (manualMode && !manualPrice) || !currency}
                         className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded font-bold text-body transition-colors disabled:opacity-50"
                     >
                         Ajouter au portefeuille

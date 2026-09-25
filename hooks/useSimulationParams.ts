@@ -12,6 +12,7 @@ import { computeCashLedgerDetailed } from '../services/startingCash';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
+import { avecHorizonEsperanceDeVie } from '../services/projection/horizon';
 import type { SimulationParams } from '../services/projection';
 import type { Transaction } from '../types';
 import { usePastPortfolioHistory } from './usePastPortfolioHistory';
@@ -204,7 +205,9 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
 
     // Lot 0 — assemblage AppState → SimulationParams = fonction PURE (réutilisable hors React).
     const params = useMemo<SimulationParams>(() => buildSimulationParams({
-        projection,
+        // [HORIZON-ESPERANCE-DE-VIE] Durée = jusqu'à l'espérance de vie de la personne 1 (source
+        // unique, même règle que deriveSimulationInputsFromState).
+        projection: avecHorizonEsperanceDeVie(projection, config, retirementGoal),
         config,
         liveCSVBalances,
         calculatedStartingCash,

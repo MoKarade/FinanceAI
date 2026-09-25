@@ -128,7 +128,7 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
         act(() => {
             const proj = useFinanceStore.getState().projection;
             useFinanceStore.setState({
-                projection: { ...proj, years: (proj.years || 30) + 7 },
+                projection: { ...proj, inflationRate: (proj.inflationRate ?? 2) + 1 /* [HORIZON-ESPERANCE-DE-VIE] `years` ne pilote plus le moteur */ },
                 lastProjection: resultWithDebt('STRAT-B', 10_000_000),
             });
         });

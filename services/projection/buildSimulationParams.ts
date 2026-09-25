@@ -17,6 +17,7 @@
 // et un test de PARITÉ verrouille l'égalité.
 
 import { verifierEntreesMoteur } from './verifierEntreesMoteur';
+import { avecHorizonEsperanceDeVie } from './horizon';
 import { dettesAuSoldeDuJour } from './debtAmortization';
 import { todayIsoLocal } from './dailyRefine';
 import type {
@@ -315,7 +316,9 @@ export function deriveSimulationInputsFromState(
     const startMonth = opts?.startMonth ?? now.getMonth();
 
     return {
-        projection: state.projection,
+        // [HORIZON-ESPERANCE-DE-VIE] Même règle que useSimulationParams : l'écran et le serveur MCP
+        // projettent sur la même durée. `simulate_what_if` refixe `years` après coup (paramètre).
+        projection: avecHorizonEsperanceDeVie(state.projection, state.config, state.retirementGoal),
         config: state.config,
         // ⚠️⚠️ [FINTABLE-AUTORITE-AUJOURDHUI] La MÊME autorité que le chemin React, au MÊME endroit
         // logique. Sans ça, le serveur MCP (`get_projection`, `simulate_what_if`) répondrait sur un

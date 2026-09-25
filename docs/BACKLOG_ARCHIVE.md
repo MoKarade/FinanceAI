@@ -10,6 +10,14 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-25 — Horizon de projection = espérance de vie
+
+- [x] 🟠 **`[HORIZON-ESPERANCE-DE-VIE]`** (M) — ✅ 2026-09-25 : Retraite annonçait « Succès jusqu'à
+  92 ans » sur une projection arrêtée à 75 ans. La durée vient maintenant de `horizonAnnees(âge
+  personne 1, espérance de vie)` (plancher 5 ans), appliquée aux deux portes état → moteur ; curseur
+  « Horizon (Années) » retiré (bureau et mobile) ; tuile « À N ans », Placements « en AAAA (à N ans) ».
+  Gardes : `tests/services/horizonEsperanceDeVie.test.ts`, parité hook ↔ fonction pure mise à jour.
+
 ## 2026-09-25 — Futur : la tuile « Patrimoine » montre le bout de la courbe
 
 - [x] 🟠 **`[FUTUR-KPI-PATRIMOINE-FIN-COURBE]`** (S) — ✅ 2026-09-25 : la tuile du Futur affiche

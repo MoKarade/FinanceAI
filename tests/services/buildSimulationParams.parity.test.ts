@@ -26,6 +26,7 @@ import { deriveStartingBalancesFromHistory } from '../../services/history/starti
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 import type { AppState, User } from '../../types';
 import type { SimulationParams } from '../../services/projection';
+import { avecHorizonEsperanceDeVie } from '../../services/projection/horizon';
 
 // Réplique de la dérivation liveCSVBalances de FutureProjection.tsx (via le hook
 // usePastPortfolioHistory → reconstructPortfolioHistory → deriveStartingBalances).
@@ -71,7 +72,8 @@ function reactParams(state: AppState, startYear: number, startMonth: number): Si
     }
 
     return {
-        projection: state.projection,
+        // [HORIZON-ESPERANCE-DE-VIE] le hook applique l'horizon « espérance de vie » avant la frontière.
+        projection: avecHorizonEsperanceDeVie(state.projection, state.config, state.retirementGoal),
         calculatedStartingCash: computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []),
         liveCSVBalances: reactLiveCSVBalances(state),
         realEstateGoals: (state.realEstateGoals ?? []).filter(Boolean),
@@ -120,7 +122,7 @@ describe('Lot 0 — parité buildSimulationParams vs chemin React', () => {
         );
         // Construit l'objet inputs comme le ferait le composant (hooks résolus).
         const inputs: BuildSimulationParamsInputs = {
-            projection: state.projection,
+            projection: avecHorizonEsperanceDeVie(state.projection, state.config, state.retirementGoal),
             config: state.config,
             aujourdhuiIso: null,
         // [DETTE-VIREMENTS-REELS] Les virements réels, REQUIS à la frontière du moteur.

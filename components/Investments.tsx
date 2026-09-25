@@ -47,6 +47,7 @@ import { showToast } from './ui/Toast';
 import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { esperanceDeVieEffective, horizonAnnees } from '../services/projection/horizon';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
 // [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil Phase D.4) — la modale vit
 // désormais dans components/investments/, son seul consommateur restant est ici (+ l'ex-
@@ -187,7 +188,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     // [ASSET-FX-DISPLAY] prix des actifs en devise NATIVE → conversion CAD pour toute valeur affichée.
     const fxRates = useFinanceStore(s => s.fxRates);
-    const projectionHorizonYears = projection.years || 30;
+    // [HORIZON-ESPERANCE-DE-VIE] La projection va jusqu'à l'espérance de vie de la personne 1 :
+    // même durée que le moteur (services/projection/horizon.ts), plus le curseur retiré.
+    const agePersonne1 = useFinanceStore(s => s.config?.users?.[0]?.age);
+    const retirementGoalHorizon = useFinanceStore(s => s.retirementGoal);
+    const esperanceDeVie = esperanceDeVieEffective(retirementGoalHorizon);
+    const projectionHorizonYears = horizonAnnees(agePersonne1, retirementGoalHorizon?.lifeExpectancy);
     const horizonData = useMemo(() => {
         if (!lastProjection?.chartData?.length) return { snapshot: null, corrupt: false };
         const targetMonth = projectionHorizonYears * 12;
@@ -770,7 +776,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <Card className="bg-white/[0.03] border-white/10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div>
-                            <div className="kpi-label">Patrimoine net projeté en {horizonSnapshot.year} ({projectionHorizonYears} ans)</div>
+                            <div className="kpi-label">Patrimoine net projeté en {horizonSnapshot.year} (à {esperanceDeVie} ans)</div>
                             <PrivateAmount as="div" className="text-kpi text-ink-50 tabular-nums">{formatCAD(horizonSnapshot.netWorth)}</PrivateAmount>
                         </div>
                         <button

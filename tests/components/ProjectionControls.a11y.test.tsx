@@ -57,7 +57,8 @@ describe('ProjectionControls — noms accessibles des sliders (A11Y-SLIDERS)', (
             // monétaires (nommés au lot #279 — on garde la régression sous test ici aussi)
             'Revenus (Net)', 'Dépenses',
             // taux / % / coût (ce lot)
-            'Horizon (Années)', 'Inflation', 'Hausse Salaire (An)',
+            // [HORIZON-ESPERANCE-DE-VIE] plus de curseur « Horizon (Années) » (jusqu'à l'espérance de vie)
+            'Inflation', 'Hausse Salaire (An)',
             'CELI (Tax Free)', 'Non-Enregistré / REER', 'Coussin de Sécurité',
             'Part actions US dans CELI (%)', 'Rendement dividende US (%)',
             'Coût mensuel soins ($/mois)',

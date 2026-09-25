@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-25 — Futur et Retraite : la projection va jusqu'à ton espérance de vie
+
+- La projection va maintenant toujours jusqu'à l'espérance de vie de la personne 1 (réglée dans
+  Retraite). Le curseur « Horizon (Années) » disparaît ; pour regarder moins loin, le sélecteur de
+  période de la courbe suffit.
+- Avant, Retraite annonçait « Succès jusqu'à 92 ans » et « Héritage (92 ans) » alors que le calcul
+  s'arrêtait à la fin de l'horizon choisi (75 ans pour le persona de test) : rien n'était vérifié
+  entre les deux, et « l'héritage à 92 ans » était la valeur à 75 ans. C'est maintenant vraiment
+  calculé jusqu'à 92 ans.
+- Les chiffres de fin de courbe changent donc : la tuile « Patrimoine » dit « À 92 ans », Placements
+  montre l'année correspondante, et le taux de succès porte sur toute la vie. Exemple de test :
+  11,23 M$ en 2066 → 23,22 M$ en 2083, succès 95 % → 97 %. Le calcul prend environ 45 % de temps en
+  plus (1,07 s → 1,55 s mesurés, Monte-Carlo 100 tirages).
+- L'assistant et le connecteur claude.ai (perspective retraite) suivent la même règle. `get_projection`
+  garde son paramètre d'horizon.
+
 ## 2026-09-25 — Futur : la tuile « Patrimoine » montre le bout de la courbe
 
 - La tuile « Patrimoine — Fin de l'horizon » du Futur affichait l'héritage net (l'impôt dû au décès

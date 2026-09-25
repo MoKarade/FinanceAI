@@ -83,13 +83,13 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
             {tabStatus.map(({ tab, cfg, reqs, met, total, ready, optedOut }) => {
                     const isOpen = open === tab;
                     return (
-                        <div key={tab} className="rounded-card border border-white/[0.08] bg-black/20 overflow-hidden">
+                        <div key={tab} className="rounded-card border border-white/8 bg-black/20 overflow-hidden">
                             <div className="flex items-center gap-2 p-2.5">
                                 <button
                                     type="button"
                                     onClick={() => setOpen(isOpen ? null : tab)}
                                     aria-expanded={isOpen}
-                                    className="flex-1 min-w-0 flex items-center gap-2.5 text-left focus-ring rounded"
+                                    className="flex-1 min-w-0 flex items-center gap-2.5 text-left focus-ring rounded-sm"
                                 >
                                     <span
                                         className={`shrink-0 min-w-[1.5rem] h-6 px-1 rounded-md flex items-center justify-center text-tiny font-bold ${

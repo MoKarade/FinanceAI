@@ -114,7 +114,7 @@ export function SubTabs<Id extends string>({ idPrefix, label, tabs, active, onSe
                     // + une interligne de 16 px donnent 28 px de haut — sous le plancher WCAG 2.5.5.
                     // Le correctif vit ICI parce que les trois écrans à sous-onglets passent par ce
                     // composant : une seule ligne, trois surfaces.
-                    className={`touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${active === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
+                    className={`touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded-sm whitespace-nowrap transition-colors focus-ring ${active === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
                 >
                     <Icon name={s.icon} size={14} />{s.label}
                 </button>

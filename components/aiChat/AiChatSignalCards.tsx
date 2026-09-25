@@ -61,8 +61,8 @@ export const AiChatSignalCards: React.FC = () => {
 
     if (!hasData) {
         return (
-            <div className="bg-white/[0.03] border border-white/10 rounded-card p-3 mb-4 flex items-center gap-3">
-                <Icon name="actions" size={16} className="text-ink-300 flex-shrink-0" aria-hidden="true" />
+            <div className="bg-white/3 border border-white/10 rounded-card p-3 mb-4 flex items-center gap-3">
+                <Icon name="actions" size={16} className="text-ink-300 shrink-0" aria-hidden="true" />
                 <p className="text-meta text-ink-300 flex-1">
                     Configure ton profil (salaire, comptes) pour activer tes signaux financiers ici.
                 </p>
@@ -103,7 +103,7 @@ export const AiChatSignalCards: React.FC = () => {
                         onClick={() => discuss(s)}
                         aria-disabled={isPrivacyMode || isLoading}
                         title={isPrivacyMode ? 'Mode discret actif — clic désactivé' : 'Discuter de ce signal avec l\'assistant'}
-                        className={`w-full h-full text-left bg-white/[0.03] hover:bg-white/[0.06] border ${PRIORITY_STYLES[s.priority].border} rounded-card p-3 transition-colors focus-ring ${isPrivacyMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        className={`w-full h-full text-left bg-white/3 hover:bg-white/6 border ${PRIORITY_STYLES[s.priority].border} rounded-card p-3 transition-colors focus-ring ${isPrivacyMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                         <div className="flex items-center gap-2 mb-1">
                             {/* [Finding a11y #492 — MOYEN, WCAG 1.4.1] La priorité n'était portée que
@@ -111,7 +111,7 @@ export const AiChatSignalCards: React.FC = () => {
                             <span className="sr-only">
                                 Priorité {s.priority === 'high' ? 'élevée' : s.priority === 'medium' ? 'moyenne' : 'faible'} —{' '}
                             </span>
-                            <span className={`w-2 h-2 rounded-full ${PRIORITY_STYLES[s.priority].dot} flex-shrink-0`} aria-hidden="true" />
+                            <span className={`w-2 h-2 rounded-full ${PRIORITY_STYLES[s.priority].dot} shrink-0`} aria-hidden="true" />
                             {typeof s.metricCad === 'number' && Number.isFinite(s.metricCad) && (
                                 <PrivateAmount as="span" className="text-body font-bold text-white">
                                     {formatCAD(s.metricCad)}

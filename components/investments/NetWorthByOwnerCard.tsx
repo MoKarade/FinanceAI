@@ -84,7 +84,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                     {assets.map((a) => {
                         const value = assetValueCad(a, fxRates); // CAD (prix natif × FX)
                         return (
-                            <div key={a.symbol} className="flex items-center justify-between gap-2 text-body bg-white/5 rounded px-2 py-1.5">
+                            <div key={a.symbol} className="flex items-center justify-between gap-2 text-body bg-white/5 rounded-sm px-2 py-1.5">
                                 <span className="text-ink-100 truncate">
                                     <span className="font-bold">{a.symbol}</span>
                                     <span className="text-ink-400"> · {a.accountType || 'NON-ENREG'} · </span>
@@ -94,7 +94,7 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                                     aria-label={`Propriétaire de ${a.symbol}`}
                                     value={a.owner ?? ''}
                                     onChange={(e) => setOwner(a.symbol, (e.target.value || undefined) as AssetOwner | undefined)}
-                                    className="bg-dark border border-border rounded px-2 py-1 text-meta text-white shrink-0"
+                                    className="bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white shrink-0"
                                 >
                                     <option value="">Auto ({defaultOwner(a.accountType) === 'user1' ? name1 : 'Commun'})</option>
                                     <option value="user1">{name1}</option>

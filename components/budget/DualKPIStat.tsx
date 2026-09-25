@@ -40,7 +40,7 @@ interface DualKPIStatProps {
 }
 
 // Refonte sobre (choix Marc) : variantes neutralisées (plus de liseré coloré).
-const NEUTRAL = { border: 'border-l-white/10', bg: 'bg-white/[0.02]', label: 'text-ink-300' };
+const NEUTRAL = { border: 'border-l-white/10', bg: 'bg-white/2', label: 'text-ink-300' };
 const VARIANT_STYLES: Record<Variant, { border: string; bg: string; label: string }> = {
     primary: NEUTRAL, success: NEUTRAL, info: NEUTRAL, warning: NEUTRAL, danger: NEUTRAL,
 };
@@ -66,7 +66,7 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
     const ecartColor = ecart === 0 ? 'text-ink-400' : isGood ? 'text-success-400' : 'text-danger-400';
 
     return (
-        <div className={`rounded-card border border-white/5 border-l-4 ${styles.border} ${styles.bg} backdrop-blur-sm p-4 flex flex-col gap-2 hover:bg-white/[0.04] transition-colors`}>
+        <div className={`rounded-card border border-white/5 border-l-4 ${styles.border} ${styles.bg} backdrop-blur-xs p-4 flex flex-col gap-2 hover:bg-white/4 transition-colors`}>
             <div className="flex items-center justify-between">
                 <span className={`kpi-label ${styles.label}`}>
                     {icon && <span aria-hidden="true" className="mr-1">{icon}</span>}

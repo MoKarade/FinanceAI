@@ -211,7 +211,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 
     return createPortal(
         <div
-            className={`fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex justify-center animate-fade-in ${
+            className={`fixed inset-0 z-300 bg-black/70 backdrop-blur-xs flex justify-center animate-fade-in ${
                 isNarrowViewport ? 'items-end' : 'items-center p-3 sm:p-6'
             }`}
             onClick={onClose}
@@ -278,7 +278,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         type="button"
                         onClick={onClose}
                         aria-label="Fermer"
-                        className="shrink-0 inline-flex text-ink-400 hover:text-white leading-none p-1 -m-1 rounded focus-ring"
+                        className="shrink-0 inline-flex text-ink-400 hover:text-white leading-none p-1 -m-1 rounded-sm focus-ring"
                     >
                         <Icon name="close" size={18} />
                     </button>
@@ -296,7 +296,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     key={a.key}
                                     type="button"
                                     onClick={() => setSelected(a)}
-                                    className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-colors text-left focus-ring"
+                                    className="w-full p-2.5 rounded-xl bg-white/3 hover:bg-white/8 border border-white/5 transition-colors text-left focus-ring"
                                 >
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="flex items-center gap-2 min-w-0">
@@ -312,19 +312,19 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     {(a.flow !== null || a.gain !== null) ? (
                                         <div className="flex items-center gap-2 mt-1.5 pl-[18px] text-tiny font-mono">
                                             {a.flow !== null && (
-                                                <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`}>
+                                                <PrivateAmount className={`px-1.5 py-0.5 rounded-sm ${a.flow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`}>
                                                     Apport {a.flow > 0 ? '+' : ''}{fmt(a.flow)}
                                                 </PrivateAmount>
                                             )}
                                             {a.gain !== null && (
-                                                <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
+                                                <PrivateAmount className={`px-1.5 py-0.5 rounded-sm ${a.gain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
                                                     Gain {a.gain > 0 ? '+' : ''}{fmt(a.gain)}
                                                 </PrivateAmount>
                                             )}
                                         </div>
                                     ) : (
                                         <div className="mt-1.5 pl-[18px] text-tiny font-mono">
-                                            <PrivateAmount className={`px-1.5 py-0.5 rounded ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
+                                            <PrivateAmount className={`px-1.5 py-0.5 rounded-sm ${a.variation >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`}>
                                                 {a.variation > 0 ? '+' : ''}{fmt(a.variation)} ce mois
                                             </PrivateAmount>
                                         </div>
@@ -348,7 +348,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 <div className="text-tiny uppercase tracking-widest text-danger-400/80 font-bold mb-2">
                                     Dettes
                                 </div>
-                                <div className="p-2.5 rounded-xl bg-danger-500/[0.06] border border-danger-500/20">
+                                <div className="p-2.5 rounded-xl bg-danger-500/6 border border-danger-500/20">
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="flex items-center gap-2 min-w-0">
                                             <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-danger-500" />
@@ -360,7 +360,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     </div>
                                     {liquidDebt > 0.5 && otherReducingDebt > 0.5 && (
                                         <div className="mt-1.5 pl-[18px] text-tiny font-mono text-danger-400/80">
-                                            <PrivateAmount className="px-1.5 py-0.5 rounded bg-danger-500/10">dont découvert non couvert : -{fmt(liquidDebt)}</PrivateAmount>
+                                            <PrivateAmount className="px-1.5 py-0.5 rounded-sm bg-danger-500/10">dont découvert non couvert : -{fmt(liquidDebt)}</PrivateAmount>
                                         </div>
                                     )}
                                     {liquidDebt > 0.5 && (
@@ -377,7 +377,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             recomposent rien, sans que l'écran l'avoue — exactement le silence qui a
                             fait naître la ligne de dette (bug Marc 2026-06-16). */}
                         {!detteCalculable && (
-                            <div className="mb-5 p-2.5 rounded-xl bg-amber-500/[0.06] border border-amber-500/25 text-tiny text-amber-300/90">
+                            <div className="mb-5 p-2.5 rounded-xl bg-amber-500/6 border border-amber-500/25 text-tiny text-amber-300/90">
                                 Dette non calculable sur ce point — la valeur nette n’y est pas exploitable, donc
                                 l’écart entre la somme des comptes et elle ne veut rien dire.
                             </div>
@@ -386,18 +386,18 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         {/* Flux du mois */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
                             {incomes.map(([label, v]) => (
-                                <div key={label} className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
+                                <div key={label} className="flex justify-between text-meta bg-white/3 rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">{label}</span>
                                     <PrivateAmount className="font-mono text-green-400">+{fmt(v)}</PrivateAmount>
                                 </div>
                             ))}
                             {(point.Expenses || 0) > 0 && (
-                                <div className="flex justify-between text-meta bg-white/[0.03] rounded-lg px-2.5 py-1.5">
+                                <div className="flex justify-between text-meta bg-white/3 rounded-lg px-2.5 py-1.5">
                                     <span className="text-ink-400">Dépenses</span>
                                     <PrivateAmount className="font-mono text-danger-400">-{fmt(point.Expenses || 0)}</PrivateAmount>
                                 </div>
                             )}
-                            <div className="flex justify-between text-meta font-bold bg-white/[0.05] rounded-lg px-2.5 py-1.5">
+                            <div className="flex justify-between text-meta font-bold bg-white/5 rounded-lg px-2.5 py-1.5">
                                 <span className="text-ink-200">Variation nette (mois)</span>
                                 <PrivateAmount className={`font-mono ${(point.diffNW || 0) >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                     {(point.diffNW || 0) > 0 ? '+' : ''}{fmt(point.diffNW || 0)}
@@ -416,7 +416,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             return (
                                                 <li key={i} className="flex items-start gap-2 text-body text-ink-100">
                                                     <span className="shrink-0" aria-hidden="true">{icon}</span>
-                                                    <span className="flex-1 break-words">{text}</span>
+                                                    <span className="flex-1 wrap-break-word">{text}</span>
                                                 </li>
                                             );
                                         })}

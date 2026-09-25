@@ -67,7 +67,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <input
                                 id="travel-destination"
                                 type="text" placeholder="Japon, Italie..."
-                                className="w-full bg-dark border border-white/20 rounded p-2 text-white"
+                                className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white"
                                 value={newTrip.destination}
                                 onChange={e => setNewTrip({ ...newTrip, destination: e.target.value })}
                             />
@@ -77,7 +77,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <input
                                 id="travel-date"
                                 type="date"
-                                className="w-full bg-dark border border-white/20 rounded p-2 text-white"
+                                className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white"
                                 value={newTrip.date}
                                 onChange={e => setNewTrip({ ...newTrip, date: e.target.value })}
                             />
@@ -87,12 +87,12 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <input
                                 id="travel-totalCost"
                                 type="number" placeholder="5000"
-                                className="w-full bg-dark border border-white/20 rounded p-2 text-white"
+                                className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white"
                                 value={newTrip.totalCost || ''}
                                 onChange={e => setNewTrip({ ...newTrip, totalCost: parseFloat(e.target.value) })}
                             />
                         </div>
-                        <button onClick={handleAddTrip} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-2 rounded font-bold h-[42px]">
+                        <button onClick={handleAddTrip} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-2 rounded-sm font-bold h-[42px]">
                             Ajouter
                         </button>
                     </div>
@@ -107,9 +107,9 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                     return (
                         <div key={trip.id} className={`relative group overflow-hidden rounded-2xl border ${isPast ? 'border-white/10 bg-dark/50 grayscale' : 'border-white/10 bg-[#1e1e1e] hover:border-primary/50'} transition-all duration-300 shadow-xl`}>
                             {/* Image Header Placeholder */}
-                            <div className={`h-24 ${isPast ? 'bg-surfaceHighlight' : 'bg-white/[0.04]'} flex items-center justify-center relative overflow-hidden`}>
+                            <div className={`h-24 ${isPast ? 'bg-surfaceHighlight' : 'bg-white/4'} flex items-center justify-center relative overflow-hidden`}>
                                 <Icon name="plane" size={48} className="text-white opacity-[0.10] transform group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-meta font-mono border border-white/10">
+                                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded-sm text-meta font-mono border border-white/10">
                                     {isPast ? 'Terminé' : `J-${daysLeft}`}
                                 </div>
                             </div>

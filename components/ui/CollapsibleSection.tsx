@@ -55,16 +55,16 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 id={headerId}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left focus-ring hover:bg-white/[0.03] transition-colors"
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left focus-ring hover:bg-white/3 transition-colors"
             >
                 <div className="flex items-center gap-3 min-w-0">
-                    {icon && <span className="flex-shrink-0 text-h2" aria-hidden="true">{icon}</span>}
+                    {icon && <span className="shrink-0 text-h2" aria-hidden="true">{icon}</span>}
                     <div className="min-w-0">
                         <div className="text-h2 text-ink-50 truncate">{title}</div>
                         {subtitle && <div className="text-meta text-ink-400 mt-0.5 truncate">{subtitle}</div>}
                     </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                     {badge}
                     <span
                         aria-hidden="true"

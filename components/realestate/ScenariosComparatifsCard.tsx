@@ -91,7 +91,7 @@ export const ScenariosComparatifsCard: React.FC<ScenariosComparatifsCardProps> =
                             step="50"
                             value={currentRent}
                             onChange={e => setCurrentRent(Number(e.target.value))}
-                            className="w-full bg-purple-500/10 border border-purple-500/30 rounded px-2 py-1.5 text-purple-300 text-body font-bold focus:outline-none focus:border-purple-400"
+                            className="w-full bg-purple-500/10 border border-purple-500/30 rounded-sm px-2 py-1.5 text-purple-300 text-body font-bold focus:outline-hidden focus:border-purple-400"
                         />
                         <span className="text-meta text-ink-400">$/m</span>
                     </div>

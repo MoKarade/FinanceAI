@@ -27,12 +27,12 @@ const FlowChips: React.FC<{ flows: PlanBucket['flows'] }> = ({ flows }) => {
     return (
         <div className="flex flex-wrap gap-1.5 text-tiny font-mono">
             {deposits.map((a) => (
-                <PrivateAmount key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300">
+                <PrivateAmount key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-sky-500/10 text-sky-300">
                     <Icon name="cash" size={11} /> {a.label} +{cad(flows[a.key])}
                 </PrivateAmount>
             ))}
             {withdrawals.map((a) => (
-                <PrivateAmount key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300">
+                <PrivateAmount key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-orange-500/10 text-orange-300">
                     <Icon name="bank" size={11} /> {a.label} −{cad(-flows[a.key])}
                 </PrivateAmount>
             ))}
@@ -100,14 +100,14 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                     return (
                         <React.Fragment key={b.id}>
                             {isLast ? (
-                                <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary font-bold">
+                                <span className="px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary font-bold">
                                     {levelName(b.level)} · {b.label}
                                 </span>
                             ) : (
                                 <button
                                     type="button"
                                     onClick={() => jumpTo(i)}
-                                    className="px-1.5 py-0.5 rounded text-ink-400 hover:text-ink-100 hover:bg-white/5 focus-ring transition-colors"
+                                    className="px-1.5 py-0.5 rounded-sm text-ink-400 hover:text-ink-100 hover:bg-white/5 focus-ring transition-colors"
                                 >
                                     {b.label}
                                 </button>
@@ -119,7 +119,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
             </nav>
 
             {/* Résumé de la période courante. */}
-            <div className="bg-white/[0.03] rounded-lg p-3 mb-3">
+            <div className="bg-white/3 rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
                     <span className="text-meta font-bold text-white">
                         {current.label}
@@ -150,7 +150,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                         const whyOpen = openWhy.has(key);
                         const amountClass = item.kind === 'withdraw' || (item.amount ?? 0) < 0 ? 'text-orange-300' : 'text-success-400';
                         return (
-                            <li key={key} className="rounded-lg bg-white/[0.03] border border-white/5 px-2.5 py-2">
+                            <li key={key} className="rounded-lg bg-white/3 border border-white/5 px-2.5 py-2">
                                 <div className="flex items-start gap-2">
                                     {checkable ? (
                                         // [FUTUR-MOBILE-PR5] `<label>` et NON `<span>` : un `<span>` ne relaie PAS le
@@ -164,7 +164,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                                 checked={isDone}
                                                 onChange={() => toggle(setDone, key)}
                                                 aria-label={`Marquer comme fait : ${item.text}`}
-                                                className="h-3.5 w-3.5 cursor-pointer accent-success-500 focus-ring rounded"
+                                                className="h-3.5 w-3.5 cursor-pointer accent-success-500 focus-ring rounded-sm"
                                             />
                                         </label>
                                     ) : (
@@ -217,7 +217,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                     type="button"
                                     onClick={() => b.hasChildren && drillTo(b)}
                                     disabled={!b.hasChildren}
-                                    className={`text-left bg-white/[0.03] rounded-lg p-2.5 border border-white/5 transition-colors focus-ring ${
+                                    className={`text-left bg-white/3 rounded-lg p-2.5 border border-white/5 transition-colors focus-ring ${
                                         b.hasChildren ? 'hover:bg-white/[0.07] hover:border-primary/30 cursor-pointer' : 'cursor-default opacity-90'
                                     }`}
                                     title={b.hasChildren ? `Creuser : ${b.label}` : b.label}
@@ -225,7 +225,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
                                         <span className="text-meta font-bold text-white truncate">{b.label}</span>
                                         <span className="flex items-center gap-1.5 shrink-0">
-                                            {b.isRetired && <span className="text-tiny text-amber-300 bg-warning-500/10 px-1.5 py-0.5 rounded">Retraite</span>}
+                                            {b.isRetired && <span className="text-tiny text-amber-300 bg-warning-500/10 px-1.5 py-0.5 rounded-sm">Retraite</span>}
                                             <PrivateAmount className={`text-tiny font-mono tabular-nums ${childNet >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
                                                 {childNet >= 0 ? '+' : ''}{cad(childNet)}
                                             </PrivateAmount>

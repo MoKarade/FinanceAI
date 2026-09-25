@@ -353,11 +353,11 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         <div className="space-y-4">
                             <div>
                                 <label htmlFor="child-name-input" className="text-meta text-ink-300 block mb-1">Prénom ou Identifiant</label>
-                                <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-none focus:border-primary" />
+                                <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-hidden focus:border-primary" />
                             </div>
                             <div>
                                 <label htmlFor="child-birthDate" className="text-meta text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
-                                <input id="child-birthDate" type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-none" />
+                                <input id="child-birthDate" type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-hidden" />
                             </div>
                         </div>
                         <p className="text-tiny text-ink-400 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
@@ -445,19 +445,19 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <label htmlFor="child-governmentBenefits" className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
-                                <input id="child-governmentBenefits" type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-green-400 font-bold" />
+                                <input id="child-governmentBenefits" type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-green-400 font-bold" />
                             </div>
                             <div className="flex justify-between items-center">
                                 <label htmlFor="child-monthlyFood" className="text-meta text-ink-200">Nourriture / mois</label>
-                                <input id="child-monthlyFood" type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
+                                <input id="child-monthlyFood" type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-white" />
                             </div>
                             <div className="flex justify-between items-center">
                                 <label htmlFor="child-monthlyClothing" className="text-meta text-ink-200">Vêtements / mois</label>
-                                <input id="child-monthlyClothing" type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
+                                <input id="child-monthlyClothing" type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-white" />
                             </div>
                             <div className="flex justify-between items-center">
                                 <label htmlFor="child-initialCost" className="text-meta text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
-                                <input id="child-initialCost" type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded px-2 py-1 text-right text-body text-white" />
+                                <input id="child-initialCost" type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-white" />
                             </div>
                         </div>
                     </Card>
@@ -506,7 +506,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 </Badge>
                             )}
                             {respCovers != null ? (
-                                <div className={`text-meta font-bold px-2 py-1 rounded border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
+                                <div className={`text-meta font-bold px-2 py-1 rounded-sm border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
                                     {respCovers.toFixed(0)}% des études couvertes
                                 </div>
                             ) : (

@@ -87,7 +87,7 @@ export const FuturePeriodSelector: React.FC<FuturePeriodSelectorProps> = ({
                     type="button"
                     onClick={() => zoom.showRange(todayPresetRange[0], todayPresetRange[1])}
                     title="Fenêtre d'environ 6 mois centrée sur aujourd'hui"
-                    className="px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
+                    className="px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded-sm transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
                 >
                     Aujourd'hui
                 </button>
@@ -99,7 +99,7 @@ export const FuturePeriodSelector: React.FC<FuturePeriodSelectorProps> = ({
                         key={y}
                         type="button"
                         onClick={() => zoom.showRange(0, idxForYears(y))}
-                        className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                        className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded-sm transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                     >
                         {y} ans
                     </button>
@@ -108,7 +108,7 @@ export const FuturePeriodSelector: React.FC<FuturePeriodSelectorProps> = ({
             <button
                 type="button"
                 onClick={zoom.reset}
-                className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded-sm transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
             >
                 Tout
             </button>

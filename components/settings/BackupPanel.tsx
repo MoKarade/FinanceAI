@@ -322,7 +322,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                   value={exportPassphrase}
                   onChange={e => setExportPassphrase(e.target.value)}
                   ref={exportPassphraseRef}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-none font-mono"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-hidden font-mono"
                   disabled={encWorking}
                 />
               </div>
@@ -334,7 +334,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                   value={exportPassphraseConfirm}
                   onChange={e => setExportPassphraseConfirm(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && doEncryptedExport()}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-none font-mono"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-hidden font-mono"
                   disabled={encWorking}
                 />
                 {exportPassphrase && exportPassphraseConfirm && exportPassphrase !== exportPassphraseConfirm && (
@@ -385,7 +385,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 onChange={e => setImportPassphrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && importPassphrase.length >= MIN_PASSPHRASE_LENGTH && doEncryptedImport()}
                 ref={importPassphraseRef}
-                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-none font-mono"
+                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-body focus:border-primary outline-hidden font-mono"
                 disabled={encWorking}
               />
             </div>
@@ -443,7 +443,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
                 onChange={e => setRestoreConfirmPhrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && restoreConfirmPhrase === 'RESTAURER' && doRestore()}
                 ref={restoreConfirmRef}
-                className="w-full bg-black/50 border border-danger-500/30 rounded-lg px-3 py-2 text-white font-mono text-body focus:border-danger-500 outline-none"
+                className="w-full bg-black/50 border border-danger-500/30 rounded-lg px-3 py-2 text-white font-mono text-body focus:border-danger-500 outline-hidden"
                 placeholder="RESTAURER"
               />
             </div>
@@ -473,7 +473,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <p className="font-bold text-white mb-1">JSON en clair</p>
               <p className="text-meta">Sauvegarde lisible (debugging, audit). À conserver localement uniquement — ne contient pas les clés API.</p>
             </div>
-            <div className="flex gap-3 flex-shrink-0">
+            <div className="flex gap-3 shrink-0">
               <button
                 onClick={handleExport}
                 className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"
@@ -503,7 +503,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <p className="font-bold text-white mb-1">Sauvegarde chiffrée (.bak)</p>
               <p className="text-meta">AES-256-GCM + PBKDF2 600 000 itérations. Stockage cloud safe (Drive, Gist…) car illisible sans passphrase.</p>
             </div>
-            <div className="flex gap-3 flex-shrink-0">
+            <div className="flex gap-3 shrink-0">
               <button
                 onClick={() => { setExportPassphrase(''); setExportPassphraseConfirm(''); setShowExportEncModal(true); }}
                 className="px-4 py-2 bg-primary hover:bg-success-500 text-dark rounded-lg text-body font-bold flex items-center gap-2 shadow-lg"

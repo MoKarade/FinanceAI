@@ -352,7 +352,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
         <button
             type="button"
             onClick={() => navigateWithFocus(isActuel ? TabEnum.REAL_ESTATE_PROJECTS : TabEnum.REAL_ESTATE)}
-            className="text-meta text-ink-400 hover:text-ink-200 underline underline-offset-2 transition-colors focus-ring rounded"
+            className="text-meta text-ink-400 hover:text-ink-200 underline underline-offset-2 transition-colors focus-ring rounded-sm"
         >
             {isActuel
                 ? `${otherCount} projet${otherCount > 1 ? 's' : ''} d'achat futur${otherCount > 1 ? 's' : ''} → Vie · Projets immo`
@@ -531,7 +531,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                     value={propertyName}
                     onChange={e => updateActiveGoal({ name: e.target.value })}
                     placeholder="Renommer..."
-                    className="bg-transparent border-b border-white/20 text-ink-300 text-meta focus:outline-none focus:border-info-400 w-48 pb-0.5 transition-colors"
+                    className="bg-transparent border-b border-white/20 text-ink-300 text-meta focus:outline-hidden focus:border-info-400 w-48 pb-0.5 transition-colors"
                     aria-label="Nom de la propriété"
                 />
             </div>

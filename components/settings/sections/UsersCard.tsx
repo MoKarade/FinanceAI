@@ -90,7 +90,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
 
         {/* [CPL-1] — définition OBLIGATOIRE du partenaire avant le passage en couple. */}
         {showPartnerForm && config.users.length < 2 && (
-          <div className="rounded-card border border-success-500/25 bg-success-500/[0.06] p-4 space-y-3">
+          <div className="rounded-card border border-success-500/25 bg-success-500/6 p-4 space-y-3">
             <p className="text-meta text-ink-200 font-bold">Définir le conjoint pour passer en couple</p>
             <p className="text-tiny text-ink-400">
               ⚠️ Passer en couple change les calculs : imposition par conjoint, rentes RRQ/PSV/SRG du
@@ -104,7 +104,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   value={partnerDraft.name}
                   onChange={(e) => setPartnerDraft((p) => ({ ...p, name: e.target.value }))}
                   placeholder="ex: Anna"
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm px-3 py-2 text-body text-white focus:border-primary outline-hidden"
                 />
               </label>
               <label className="block">
@@ -116,7 +116,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   value={partnerDraft.age}
                   onChange={(e) => setPartnerDraft((p) => ({ ...p, age: e.target.value }))}
                   placeholder="ex: 32"
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm px-3 py-2 text-body text-white focus:border-primary outline-hidden"
                 />
               </label>
               <label className="block" htmlFor="partner-netSalary">
@@ -128,7 +128,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   value={partnerDraft.netSalary}
                   onChange={(e) => setPartnerDraft((p) => ({ ...p, netSalary: e.target.value }))}
                   placeholder="0 si sans revenu"
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm px-3 py-2 text-body text-white focus:border-primary outline-hidden"
                 />
               </label>
             </div>
@@ -169,7 +169,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                     newUsers[idx] = { ...user, name: e.target.value };
                     setConfig({ ...config, users: newUsers });
                   }}
-                  className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white"
+                  className="w-full bg-dark border border-border rounded-sm px-2 py-1 text-body text-white"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -184,7 +184,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                       newUsers[idx] = { ...user, age: parseInt(e.target.value) || 30 };
                       setConfig({ ...config, users: newUsers });
                     }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
+                    className="w-full bg-dark border border-border rounded-sm px-2 py-1 text-body text-white font-mono"
                     min={18} max={80}
                   />
                 </div>
@@ -198,7 +198,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, isImmigrant: e.target.checked };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-3.5 h-3.5 rounded"
+                      className="w-3.5 h-3.5 rounded-sm"
                     />
                     Immigré au Canada
                   </label>
@@ -212,7 +212,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                         newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || undefined };
                         setConfig({ ...config, users: newUsers });
                       }}
-                      className="w-full mt-1 bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
+                      className="w-full mt-1 bg-dark border border-border rounded-sm px-2 py-1 text-body text-white font-mono"
                       min={1950} max={new Date().getFullYear()}
                       placeholder="Année de résidence fiscale (ex: 2018)"
                     />

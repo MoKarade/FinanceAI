@@ -1,23 +1,311 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  --primary: #e6eaf2;
-  --primary-glow: rgba(230, 234, 242, 0.14);
-  --secondary: #8b5cf6;
-  --secondary-glow: rgba(139, 92, 246, 0.4);
-  --dark: #07090D;
-  --surface: #0E1014;
-  --surface-highlight: #15181E;
+@custom-variant dark (&:is(.dark *));
 
-  /* Glassmorphism Tokens */
-  --glass-bg: rgba(14, 16, 20, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.07);
-  --glass-blur: 24px;
+@theme {
+  --font-sans: Outfit, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
 
-  /* Animation Timings */
-  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  --color-primary: #e6eaf2;
+  --color-secondary: #8a7cc0;
+  --color-dark: #07090d;
+  --color-surface: #0e1014;
+  --color-surfaceHighlight: #15181e;
+  --color-border: rgba(255, 255, 255, 0.06);
+
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-success-border: rgba(16, 185, 129, 0.3);
+
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-danger-border: rgba(239, 68, 68, 0.3);
+
+  --color-info-400: #60a5fa;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+  --color-info-bg: rgba(59, 130, 246, 0.1);
+  --color-info-border: rgba(59, 130, 246, 0.3);
+
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #e2e8f0;
+  --color-ink-200: #cbd5e1;
+  --color-ink-300: #94a3b8;
+  --color-ink-400: #8896a8;
+  --color-ink-500: #6a7689;
+
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--font-weight: 700;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 2rem;
+  --text-h1--font-weight: 700;
+  --text-h2: 1.125rem;
+  --text-h2--line-height: 1.5rem;
+  --text-h2--font-weight: 600;
+  --text-kpi: 1.75rem;
+  --text-kpi--line-height: 2rem;
+  --text-kpi--font-weight: 800;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1rem;
+  --text-meta--font-weight: 500;
+  --text-tiny: 0.6875rem;
+  --text-tiny--line-height: 0.875rem;
+  --text-tiny--font-weight: 600;
+  --text-tiny--letter-spacing: 0.05em;
+
+  --spacing-page: 1.5rem;
+  --spacing-section: 2.5rem;
+
+  --radius-card: 1rem;
+  --radius-pill: 9999px;
+
+  --animate-fade-in: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-up: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-pulse-once: pulseOnce 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-collapse-down: collapseDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-blob: blob 15s infinite;
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    0% {
+      transform: translateY(15px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes pulseOnce {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.3);
+    }
+  }
+  @keyframes collapseDown {
+    0% {
+      max-height: 0;
+      opacity: 0;
+    }
+    100% {
+      max-height: 1000px;
+      opacity: 1;
+    }
+  }
+  @keyframes blob {
+    0% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(30px, -40px) scale(1.05);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.95);
+    }
+    100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/* [S5-TAILWIND4] Parité avec la v3, mesurée écran par écran (styles calculés, avant/après) :
+   - le préflight v4 remet à zéro la marge intérieure de TOUS les éléments ; la v3 laissait aux
+     cellules de tableau celle du navigateur (1 px) → tableaux 2 px plus bas par ligne, pages plus courtes ;
+   - les boutons v4 prennent le curseur par défaut ; la v3 (et toute l'app) supposait la main. */
+@layer base {
+  td,
+  th {
+    padding: 1px;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility premium-card {
+  @apply relative overflow-hidden transition-all duration-500 border border-white/6;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    @apply border-white/10;
+    background: rgba(22, 25, 33, 0.82);
+    box-shadow: 0 12px 40px -2px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
+
+  &::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-linear-to-br from-white/5 to-transparent;
+  }
+
+  &:hover::before {
+    @apply opacity-100;
+  }
+}
+
+@utility text-gradient-primary {
+  /* Text Gradients */
+  @apply bg-clip-text text-transparent bg-linear-to-r from-primary to-emerald-400 font-bold;
+}
+
+@utility text-gradient-secondary {
+  @apply bg-clip-text text-transparent bg-linear-to-r from-secondary to-purple-400 font-bold;
+}
+
+@utility glow-primary {
+  /* Custom Glows */
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+@utility glow-secondary {
+  box-shadow: 0 0 20px var(--secondary-glow);
+}
+
+@utility glass-panel {
+  /* Glass panel (migre depuis index.html) */
+  background: rgba(14, 16, 20, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    background: rgba(30, 35, 48, 0.75);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@utility privacy-blur {
+  /* Privacy blur */
+  transition: filter 0.3s ease;
+}
+
+@utility focus-ring {
+  /* Focus ring unifié pour tous les contrôles interactifs */
+  @apply outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dark;
+}
+
+@utility card-subtle {
+  /* Card "subtle" — variante pour sous-cards imbriquées */
+  @apply bg-white/3 border border-white/5 rounded-card;
+}
+
+@utility section-header {
+  /* Section header — pattern uniforme dans toutes les Cards */
+  @apply flex items-center justify-between mb-4 pb-3 border-b border-white/5;
+}
+
+@utility kpi-label {
+  /* KPI Label — petit caps avec tracking, pattern uniforme */
+  @apply text-tiny uppercase text-ink-400;
+}
+
+@utility lift-on-hover {
+  /* Phase D2 — microinteraction: lift léger au hover, utilisé sur les Cards
+   *  cliquables (deep-link cross-tab, navigation, etc.) */
+  @apply transition-all duration-200;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@utility pb-safe {
+  /* Phase D1 — safe-area inset pour iOS bottom nav (notch + home indicator) */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility touch-target {
+  /* Phase D1 — surface tactile minimum 44x44 (WCAG / Apple HIG) */
+  min-width: 44px;
+  min-height: 44px;
+
+  /* Phase D1 — Polish 360px: text-display est trop grand sur mobile.
+   *  On le rabaisse à 1.5rem (24px) sur viewports étroits, et restaure
+   *  la taille pleine sur md+ (28rem ≈ 448px). */
+}
+
+@utility text-display {
+  @media (max-width: 639px) {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+  }
+}
+
+@utility text-kpi {
+  @media (max-width: 639px) {
+    font-size: 1.375rem !important;
+    line-height: 1.75rem !important;
+  }
+}
+
+@layer utilities {
+  :root {
+    --primary: #e6eaf2;
+    --primary-glow: rgba(230, 234, 242, 0.14);
+    --secondary: #8b5cf6;
+    --secondary-glow: rgba(139, 92, 246, 0.4);
+    --dark: #07090d;
+    --surface: #0e1014;
+    --surface-highlight: #15181e;
+
+    /* Glassmorphism Tokens */
+    --glass-bg: rgba(14, 16, 20, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.07);
+    --glass-blur: 24px;
+
+    /* Animation Timings */
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
 
 @layer base {
@@ -51,334 +339,276 @@
   }
 }
 
-@layer components {
-  .premium-card {
-    @apply relative overflow-hidden transition-all duration-500 border border-white/[0.06];
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+@layer utilities {
+  /* Aurora background (migre depuis index.html) */
+  .aurora-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+    background: radial-gradient(circle at top left, #0c0f15 0%, #07090d 55%);
   }
 
-  .premium-card:hover {
-    @apply border-white/10;
-    background: rgba(22, 25, 33, 0.82);
-    box-shadow: 0 12px 40px -2px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
+  .aurora-blob {
+    position: absolute;
+    filter: blur(90px);
+    opacity: 0.25;
+    animation: blob 20s infinite alternate;
+    border-radius: 50%;
+    mix-blend-mode: screen;
   }
 
-  .premium-card::before {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-gradient-to-br from-white/5 to-transparent;
-  }
-
-  .premium-card:hover::before {
-    @apply opacity-100;
-  }
-
-  /* Text Gradients */
-  .text-gradient-primary {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400 font-bold;
-  }
-
-  .text-gradient-secondary {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-secondary to-purple-400 font-bold;
-  }
-
-  /* Custom Glows */
-  .glow-primary {
-    box-shadow: 0 0 20px var(--primary-glow);
-  }
-
-  .glow-secondary {
-    box-shadow: 0 0 20px var(--secondary-glow);
-  }
-
-  /* Glass panel (migre depuis index.html) */
-  .glass-panel {
-    background: rgba(14, 16, 20, 0.72);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  }
-
-  .glass-panel:hover {
-    background: rgba(30, 35, 48, 0.75);
-    border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Privacy blur */
-  .privacy-blur {
-    transition: filter 0.3s ease;
-  }
-}
-
-/* Aurora background (migre depuis index.html) */
-.aurora-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  overflow: hidden;
-  background: radial-gradient(circle at top left, #0c0f15 0%, #07090D 55%);
-}
-
-.aurora-blob {
-  position: absolute;
-  filter: blur(90px);
-  opacity: 0.25;
-  animation: blob 20s infinite alternate;
-  border-radius: 50%;
-  mix-blend-mode: screen;
-}
-
-/* Aurora neutralisée (choix Marc) : plus aucune couleur, juste une profondeur
+  /* Aurora neutralisée (choix Marc) : plus aucune couleur, juste une profondeur
    grise très subtile en haut-gauche. Fond noir profond et luxe. */
-.blob-1 { top: -10%; left: -10%; width: 60vw; height: 60vw; background: #1c2230; animation-delay: 0s; opacity: 0.35; }
-.blob-2 { bottom: -20%; right: -10%; width: 70vw; height: 70vw; background: #141822; animation-delay: 4s; opacity: 0.3; }
-.blob-3 { top: 30%; left: 30%; width: 40vw; height: 40vw; background: #141822; animation-delay: 8s; opacity: 0; }
+  .blob-1 {
+    top: -10%;
+    left: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: #1c2230;
+    animation-delay: 0s;
+    opacity: 0.35;
+  }
+  .blob-2 {
+    bottom: -20%;
+    right: -10%;
+    width: 70vw;
+    height: 70vw;
+    background: #141822;
+    animation-delay: 4s;
+    opacity: 0.3;
+  }
+  .blob-3 {
+    top: 30%;
+    left: 30%;
+    width: 40vw;
+    height: 40vw;
+    background: #141822;
+    animation-delay: 8s;
+    opacity: 0;
+  }
 
-/* Animations */
-@keyframes slideUpFade {
-  /* transform absent du keyframe 100% (cf cardRise) : `forwards` ne fige que
+  /* Animations */
+  @keyframes slideUpFade {
+    /* transform absent du keyframe 100% (cf cardRise) : `forwards` ne fige que
      l'opacité → pas de translateY(0) résiduel qui supprimerait le lift au survol
      des cartes ni ne créerait un bloc conteneur cassant position:fixed. */
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+    }
   }
-  to {
-    opacity: 1;
+
+  .animate-premium-in {
+    animation: slideUpFade 0.7s var(--ease-premium) forwards;
   }
-}
 
-.animate-premium-in {
-  animation: slideUpFade 0.7s var(--ease-premium) forwards;
-}
-
-/* ANIM — fondu d'entrée OPACITÉ PURE (aucun transform → ne crée pas de bloc
+  /* ANIM — fondu d'entrée OPACITÉ PURE (aucun transform → ne crée pas de bloc
    conteneur, ne casse pas position:fixed). Sert aux transitions d'onglet. */
-@keyframes fadeInOpacity {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-.animate-tab-in {
-  animation: fadeInOpacity 0.28s ease forwards;
-}
+  @keyframes fadeInOpacity {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-tab-in {
+    animation: fadeInOpacity 0.28s ease forwards;
+  }
 
-/* LUXE — entrée chorégraphiée : les enfants DIRECTS d'un conteneur `.stagger-in`
+  /* LUXE — entrée chorégraphiée : les enfants DIRECTS d'un conteneur `.stagger-in`
    montent en fondu, en cascade (style Apple/Google). Le transform est TRANSIENT
    (≤0.75s incl. décalage) puis libéré (cf keyframe) → AUCUN bloc conteneur
    résiduel (ne casse pas position:fixed) et le `:hover { transform }` des cartes
    reste fonctionnel. */
-@keyframes cardRise {
-  /* Le transform n'est PAS dans le keyframe 100% : avec `forwards`, seul l'état
+  @keyframes cardRise {
+    /* Le transform n'est PAS dans le keyframe 100% : avec `forwards`, seul l'état
      du dernier keyframe (opacity:1) est figé. Le transform redevient donc libre
      après l'entrée → le `:hover { transform }` des cartes n'est plus supprimé,
      et aucun bloc conteneur transform résiduel ne casse position:fixed. */
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; }
-}
-.stagger-in > * {
-  opacity: 0;
-  animation: cardRise 0.42s var(--ease-premium) forwards;
-}
-.stagger-in > *:nth-child(1)  { animation-delay: 0.03s; }
-.stagger-in > *:nth-child(2)  { animation-delay: 0.075s; }
-.stagger-in > *:nth-child(3)  { animation-delay: 0.12s; }
-.stagger-in > *:nth-child(4)  { animation-delay: 0.165s; }
-.stagger-in > *:nth-child(5)  { animation-delay: 0.21s; }
-.stagger-in > *:nth-child(6)  { animation-delay: 0.255s; }
-.stagger-in > *:nth-child(7)  { animation-delay: 0.30s; }
-.stagger-in > *:nth-child(n+8) { animation-delay: 0.33s; }
-/* Garde-fou : un enfant direct en position:fixed (overlay/modale) ne doit PAS
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .stagger-in > * {
+    opacity: 0;
+    animation: cardRise 0.42s var(--ease-premium) forwards;
+  }
+  .stagger-in > *:nth-child(1) {
+    animation-delay: 0.03s;
+  }
+  .stagger-in > *:nth-child(2) {
+    animation-delay: 0.075s;
+  }
+  .stagger-in > *:nth-child(3) {
+    animation-delay: 0.12s;
+  }
+  .stagger-in > *:nth-child(4) {
+    animation-delay: 0.165s;
+  }
+  .stagger-in > *:nth-child(5) {
+    animation-delay: 0.21s;
+  }
+  .stagger-in > *:nth-child(6) {
+    animation-delay: 0.255s;
+  }
+  .stagger-in > *:nth-child(7) {
+    animation-delay: 0.3s;
+  }
+  .stagger-in > *:nth-child(n + 8) {
+    animation-delay: 0.33s;
+  }
+  /* Garde-fou : un enfant direct en position:fixed (overlay/modale) ne doit PAS
    hériter du transform transitoire — sinon son positionnement viewport casse.
    Rend `.stagger-in` sûr à poser sur n'importe quelle racine de page. */
-.stagger-in > .fixed,
-.stagger-in > [role="dialog"],
-.stagger-in > [aria-modal="true"] {
-  opacity: 1;
-  animation: none;
-  transform: none;
-}
-
-/* Skeletons */
-.skeleton-box {
-  @apply relative overflow-hidden bg-white/5 rounded;
-}
-
-.skeleton-box::after {
-  content: '';
-  @apply absolute inset-0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* Sprint 2 H5 — Toast slide-in animation (remplace framer-motion, économie -80KB gzip). */
-@keyframes toast-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(50px) scale(0.9);
-  }
-  to {
+  .stagger-in > .fixed,
+  .stagger-in > [role='dialog'],
+  .stagger-in > [aria-modal='true'] {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    animation: none;
+    transform: none;
   }
-}
-@keyframes toast-slide-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-}
-.animate-toast-in {
-  animation: toast-slide-in 0.3s var(--ease-out-back, cubic-bezier(0.34, 1.56, 0.64, 1)) forwards;
-}
-.animate-toast-out {
-  animation: toast-slide-out 0.2s ease-out forwards;
-}
 
-/* Mode test — bordure orange permanente sur le viewport pour éviter d'oublier
+  /* Skeletons */
+  .skeleton-box {
+    @apply relative overflow-hidden bg-white/5 rounded-sm;
+  }
+
+  .skeleton-box::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.05),
+      transparent
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Sprint 2 H5 — Toast slide-in animation (remplace framer-motion, économie -80KB gzip). */
+  @keyframes toast-slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(50px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+  @keyframes toast-slide-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+  .animate-toast-in {
+    animation: toast-slide-in 0.3s
+      var(--ease-out-back, cubic-bezier(0.34, 1.56, 0.64, 1)) forwards;
+  }
+  .animate-toast-out {
+    animation: toast-slide-out 0.2s ease-out forwards;
+  }
+
+  /* Mode test — bordure orange permanente sur le viewport pour éviter d'oublier
    qu'on est en train de manipuler des fixtures et pas les vraies données. */
-.test-mode-active {
-  outline: 3px solid #f59e0b;
-  outline-offset: -3px;
-  padding-top: 36px; /* compense la hauteur du banner top fixed */
-}
-@media (max-width: 767px) {
-  .test-mode-active { padding-top: 48px; }
-}
+  .test-mode-active {
+    outline: 3px solid #f59e0b;
+    outline-offset: -3px;
+    padding-top: 36px; /* compense la hauteur du banner top fixed */
+  }
+  @media (max-width: 767px) {
+    .test-mode-active {
+      padding-top: 48px;
+    }
+  }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.2);
-}
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 
-/* LUXE — scrollbars fines aussi sur Firefox. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
-}
+  /* LUXE — scrollbars fines aussi sur Firefox. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
 
-/* LUXE — surbrillance de sélection à la marque (emerald discret). */
-::selection {
-  background: rgba(230, 234, 242, 0.90);
-  color: #07090D;
-}
+  /* LUXE — surbrillance de sélection à la marque (emerald discret). */
+  ::selection {
+    background: rgba(230, 234, 242, 0.9);
+    color: #07090d;
+  }
 
-/* LUXE — select : chevron custom (appearance-none) au lieu de la flèche native datée.
+  /* LUXE — select : chevron custom (appearance-none) au lieu de la flèche native datée.
    background-image distinct du background-color (!important du base) → pas de conflit ;
    padding-right !important réserve la place du chevron quelle que soit la classe px inline. */
-select {
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238896a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.6rem center;
-  background-size: 0.9rem;
-  padding-right: 1.75rem !important;
-}
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238896a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 0.9rem;
+    padding-right: 1.75rem !important;
+  }
 
-/* G3b — plein écran du graphique via la Fullscreen API. L'élément passe dans le
+  /* G3b — plein écran du graphique via la Fullscreen API. L'élément passe dans le
    « top layer » du navigateur, ce qui échappe aux ancêtres transformés
    (animate-fade-in) qui piégeaient l'approche position:fixed. */
-.chart-fullscreen:fullscreen {
-  width: 100vw;
-  height: 100vh;
-  /* [FUTUR-AXE-Y-MINIMAL] `margin: 0` : le conteneur porte désormais `-mx-6` (pour déborder du
+  .chart-fullscreen:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    /* [FUTUR-AXE-Y-MINIMAL] `margin: 0` : le conteneur porte désormais `-mx-6` (pour déborder du
      padding de la <Card> et utiliser toute la largeur, hors plein écran) — sans ce reset, la même
      marge négative pousserait l'élément hors du viewport une fois en plein écran (width: 100vw). */
-  margin: 0;
-  background: #0B0E14;
-  padding: 1.5rem;
-}
+    margin: 0;
+    background: #0b0e14;
+    padding: 1.5rem;
+  }
 
-/* ============================================================
+  /* ============================================================
  * Phase A1 (2026-05) — Tokens UI & helpers de refonte
  * Classes utilitaires consommées par les nouvelles primitives.
  * Ne pas utiliser directement dans les pages existantes — passer
  * par <Button>, <Badge>, <KPIStat>, etc. (à coder en A2/A3).
  * ============================================================ */
-
-@layer components {
-  /* Focus ring unifié pour tous les contrôles interactifs */
-  .focus-ring {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dark;
-  }
-
-  /* Card "subtle" — variante pour sous-cards imbriquées */
-  .card-subtle {
-    @apply bg-white/[0.03] border border-white/5 rounded-card;
-  }
-
-  /* Section header — pattern uniforme dans toutes les Cards */
-  .section-header {
-    @apply flex items-center justify-between mb-4 pb-3 border-b border-white/5;
-  }
-
-  /* KPI Label — petit caps avec tracking, pattern uniforme */
-  .kpi-label {
-    @apply text-tiny uppercase text-ink-400;
-  }
-
-  /* Phase D2 — microinteraction: lift léger au hover, utilisé sur les Cards
-   *  cliquables (deep-link cross-tab, navigation, etc.) */
-  .lift-on-hover {
-    @apply transition-all duration-200;
-  }
-  .lift-on-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Phase D1 — safe-area inset pour iOS bottom nav (notch + home indicator) */
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  /* Phase D1 — surface tactile minimum 44x44 (WCAG / Apple HIG) */
-  .touch-target {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  /* Phase D1 — Polish 360px: text-display est trop grand sur mobile.
-   *  On le rabaisse à 1.5rem (24px) sur viewports étroits, et restaure
-   *  la taille pleine sur md+ (28rem ≈ 448px). */
-  @media (max-width: 639px) {
-    .text-display {
-      font-size: 1.5rem !important;
-      line-height: 2rem !important;
-    }
-    .text-kpi {
-      font-size: 1.375rem !important;
-      line-height: 1.75rem !important;
-    }
-  }
 }
 
 /* ============================================================

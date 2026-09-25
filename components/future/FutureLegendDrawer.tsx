@@ -64,7 +64,7 @@ export const FutureLegendDrawer: React.FC<FutureLegendDrawerProps> = ({
         <button
             type="button"
             onClick={showAllSeries}
-            className="text-tiny font-bold text-primary hover:underline focus-ring rounded px-1"
+            className="text-tiny font-bold text-primary hover:underline focus-ring rounded-sm px-1"
         >
             Tout réafficher ({hiddenSeries.size} masqué{hiddenSeries.size > 1 ? 's' : ''})
         </button>

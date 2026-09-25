@@ -19,7 +19,7 @@ const CLAUDE_DOWNLOAD = 'https://claude.ai/download';
 const MCP_SERVER_URL = (import.meta.env.VITE_MCP_SERVER_URL as string | undefined)?.replace(/\/$/, '') || '';
 
 const StepNum: React.FC<{ n: number }> = ({ n }) => (
-    <span className="flex-shrink-0 w-6 h-6 inline-flex items-center justify-center rounded-full bg-primary/20 text-primary text-tiny font-bold">{n}</span>
+    <span className="shrink-0 w-6 h-6 inline-flex items-center justify-center rounded-full bg-primary/20 text-primary text-tiny font-bold">{n}</span>
 );
 
 type McpbStatus = 'checking' | 'available' | 'unavailable';

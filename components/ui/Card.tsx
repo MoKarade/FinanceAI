@@ -23,7 +23,7 @@ export const Card: React.FC<CardProps> = ({ children, className = "", title, ico
           {title && (
             <h2 className="text-lg font-bold tracking-wide flex items-center gap-2 min-w-0">
               {icon && <span className="text-primary shrink-0" aria-hidden="true">{icon}</span>}
-              <span className="truncate bg-clip-text text-transparent bg-gradient-to-r from-white to-ink-300">{title}</span>
+              <span className="truncate bg-clip-text text-transparent bg-linear-to-r/srgb from-white to-ink-300">{title}</span>
             </h2>
           )}
           {action && <div className="flex items-center">{action}</div>}

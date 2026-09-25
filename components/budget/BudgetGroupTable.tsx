@@ -223,7 +223,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 type="text"
                                                 value={item.name}
                                                 onChange={(e) => onUpdateItem(idx, 'name', e.target.value)}
-                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-ink-400"
+                                                className="bg-transparent text-white font-medium focus:border-primary outline-hidden w-full text-body placeholder-ink-400"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <div className="flex gap-2 mt-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -231,7 +231,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                     aria-label={`Fréquence — ${item.name || `poste ${idx + 1}`}`}
                                                     value={item.frequency}
                                                     onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)}
-                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
+                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded-sm px-1 outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="Weekly">Hebdo</option>
@@ -243,7 +243,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                     aria-label={`Attribution — ${item.name || `poste ${idx + 1}`}`}
                                                     value={item.type}
                                                     onChange={(e) => onUpdateItem(idx, 'type', e.target.value)}
-                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
+                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded-sm px-1 outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="Commun">Commun</option>
@@ -268,7 +268,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         type="number"
                                                         value={item.target}
                                                         onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
-                                                        className={`bg-transparent text-right w-20 outline-none focus-visible:ring-2 focus-visible:ring-primary rounded font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
+                                                        className={`bg-transparent text-right w-20 outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-sm font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
                                                         aria-label={`Montant de base — ${item.name}`}
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
@@ -357,7 +357,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                                 // `touch-target` (index.css) : 44×44 min au doigt sans changer le
                                                                 // rendu visuel — l'audit 2026-08-12 a compté ces écarts, on n'en
                                                                 // rajoute pas un neuf. `-my-3` neutralise la hauteur ajoutée.
-                                                                className="touch-target inline-flex items-center text-tiny text-info-400 hover:underline focus-ring rounded px-1 -my-3 whitespace-nowrap"
+                                                                className="touch-target inline-flex items-center text-tiny text-info-400 hover:underline focus-ring rounded-sm px-1 -my-3 whitespace-nowrap"
                                                                 aria-label={`Voir les transactions de la catégorie ${item.name}`}
                                                             >
                                                                 Voir les transactions →

@@ -423,29 +423,29 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
             )}
 
             {scannedPay && (
-                <div className="bg-white/[0.03] border border-white/10 p-4 rounded-xl mt-4 animate-fade-in">
+                <div className="bg-white/3 border border-white/10 p-4 rounded-xl mt-4 animate-fade-in">
                     <h3 className="text-body font-bold text-white mb-3 flex items-center gap-2">Fiche de Paie Détectée ({scannedPay.freq})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div className="bg-black/30 p-3 rounded border border-white/5">
+                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
                             <div className="text-tiny text-ink-300">Brut Annuel Est.</div>
                             <PrivateAmount as="div" className="text-lg font-bold text-white">{formatCAD(scannedPay.gross)}</PrivateAmount>
                         </div>
-                        <div className="bg-black/30 p-3 rounded border border-white/5">
+                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
                             <div className="text-tiny text-ink-300">Net Annuel Est.</div>
                             <PrivateAmount as="div" className="text-lg font-bold text-green-400">{formatCAD(scannedPay.net)}</PrivateAmount>
                         </div>
-                        <div className="bg-black/30 p-3 rounded border border-white/5">
+                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
                             <div className="text-tiny text-ink-300">Impôts Retenus Est.</div>
                             <PrivateAmount as="div" className="text-lg font-bold text-danger-400">{formatSigned(-scannedPay.tax, { withCurrency: true })}</PrivateAmount>
                         </div>
-                        <div className="bg-black/30 p-3 rounded border border-white/5">
+                        <div className="bg-black/30 p-3 rounded-sm border border-white/5">
                             <div className="text-tiny text-ink-300">REER/RPP Retenus</div>
                             <PrivateAmount as="div" className="text-lg font-bold text-info-400">{formatCAD(scannedPay.rrsp)}</PrivateAmount>
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
                         <button onClick={() => setScannedPay(null)} className="text-meta text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
-                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-700 text-white text-meta font-bold px-4 py-1.5 rounded transition shadow-lg">
+                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-700 text-white text-meta font-bold px-4 py-1.5 rounded-sm transition shadow-lg">
                             Appliquer au Profil Principal
                         </button>
                     </div>
@@ -468,7 +468,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                         type="button"
                         onClick={() => setViewUser('all')}
                         aria-pressed={viewUser === 'all'}
-                        className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
+                        className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === 'all' ? 'bg-white text-black shadow-sm' : 'text-ink-300 hover:text-white'}`}
                     >
                         Global (Couple)
                     </button>
@@ -478,7 +478,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                             type="button"
                             onClick={() => setViewUser(u.name)}
                             aria-pressed={viewUser === u.name}
-                            className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white'}`}
+                            className={`px-4 py-2 text-body font-bold rounded-md transition-all ${viewUser === u.name ? 'bg-white text-black shadow-sm' : 'text-ink-300 hover:text-white'}`}
                         >
                             {u.name}
                         </button>
@@ -505,7 +505,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                             </div>
 
                             {alreadyPaidTax > 0 && (
-                                <div className="p-3 bg-green-900/10 border border-green-500/30 rounded">
+                                <div className="p-3 bg-green-900/10 border border-green-500/30 rounded-sm">
                                     <div className="flex justify-between items-center">
                                         <span className="text-meta text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
                                         <PrivateAmount className="text-body font-mono text-white">{formatCAD(alreadyPaidTax)}</PrivateAmount>
@@ -515,7 +515,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                             )}
 
                             {investmentTaxData.totalNonReg > 0 && (
-                                <div className="p-3 bg-white/5 rounded border border-white/10">
+                                <div className="p-3 bg-white/5 rounded-sm border border-white/10">
                                     <div className="flex justify-between items-center mb-1">
                                         {/* [FX-BADGE-SURFACES-RESTANTES] Ce montant et l'impact fiscal en dessous convertissent
                                             les avoirs étrangers avec `fxRates` (`assetValueCad`) : la surface fiscale portait
@@ -579,24 +579,24 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                     )}
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Card className="!p-4 border-l-4 border-l-red-500 bg-surface/50">
+                        <Card className="p-4! border-l-4 border-l-red-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Impôt Total</div>
                             <PrivateAmount as="div" className="text-2xl font-black text-white">{formatCAD(report.totalTax)}</PrivateAmount>
                             <div className="text-tiny text-ink-400">Fed + Qc</div>
                         </Card>
-                        <Card className="!p-4 border-l-4 border-l-green-500 bg-surface/50">
+                        <Card className="p-4! border-l-4 border-l-green-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Revenu Net</div>
                             <PrivateAmount as="div" className="text-2xl font-black text-green-400">{formatCAD(report.netIncome)}</PrivateAmount>
                             <div className="text-tiny text-ink-400">Dans vos poches</div>
                         </Card>
-                        <Card className="!p-4 border-l-4 border-l-yellow-500 bg-surface/50">
+                        <Card className="p-4! border-l-4 border-l-yellow-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Taux Marginal</div>
                             {/* Bug fix : utils/tax.ts:getMarginalRate retourne un DÉCIMAL
                                 (ex: 0.4 pour 40%), pas un pourcentage. Multiplier par 100. */}
                             <div className="text-2xl font-black text-yellow-400">{(report.marginalRate * 100).toFixed(1)}%</div>
                             <div className="text-tiny text-ink-400">Sur le prochain $</div>
                         </Card>
-                        <Card className="!p-4 border-l-4 border-l-blue-500 bg-surface/50">
+                        <Card className="p-4! border-l-4 border-l-blue-500 bg-surface/50">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Remboursement Est.</div>
                             <PrivateAmount as="div" className={`text-2xl font-black ${report.refundOrOwe > 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                 {formatSigned(report.refundOrOwe, { withCurrency: true })}
@@ -720,7 +720,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                                                     <span className="text-ink-200 font-bold">{b.rate}</span>
                                                     <PrivateAmount className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : '0 $'}</PrivateAmount>
                                                 </div>
-                                                <div className="h-4 w-full bg-surfaceHighlight rounded overflow-hidden relative border border-white/5">
+                                                <div className="h-4 w-full bg-surfaceHighlight rounded-sm overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-danger-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <PrivateAmount as="div" className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
@@ -738,7 +738,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                                                     <span className="text-ink-200 font-bold">{b.rate}</span>
                                                     <PrivateAmount className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : '0 $'}</PrivateAmount>
                                                 </div>
-                                                <div className="h-4 w-full bg-surfaceHighlight rounded overflow-hidden relative border border-white/5">
+                                                <div className="h-4 w-full bg-surfaceHighlight rounded-sm overflow-hidden relative border border-white/5">
                                                     <div className="h-full bg-info-600/80 transition-all duration-500" style={{ width: `${b.percentFull}%` }}></div>
                                                     <PrivateAmount as="div" className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80 shadow-black drop-shadow-md">
                                                         {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}

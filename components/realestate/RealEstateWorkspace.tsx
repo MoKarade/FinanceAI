@@ -605,7 +605,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                         <span>Appréciation immo (comparatif)</span>
                                         <span className="font-mono text-ink-50">{pctTexte(localRentalAppreciation)} %</span>
                                     </label>
-                                    <input type="range" aria-label="Appréciation immo" min="0" max="10" step="0.5" value={localRentalAppreciation} onChange={e => setLocalRentalAppreciation(Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
+                                    <input type="range" aria-label="Appréciation immo (comparatif)" min="0" max="10" step="0.5" value={localRentalAppreciation} onChange={e => setLocalRentalAppreciation(Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
                                 </div>
                                 {!residence && (
                                     <p className="text-meta text-ink-300">Si location (cash-flow) : <PrivateAmount className={`font-mono ${netYield > 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatCurrency(netAnnualIncome)}</PrivateAmount>/an</p>

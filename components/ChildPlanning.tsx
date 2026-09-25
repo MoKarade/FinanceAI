@@ -1,13 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
-import { formatCAD, formatCompactCAD } from '../utils/format';
+import { formatCAD, formatCompactCAD, formatPercent } from '../utils/format';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
-import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
+import { CollapsibleSection } from './ui/CollapsibleSection';
+import { ChoixDeVie } from './child/ChoixDeVie';
+import { useViewportBelowLg } from '../hooks/useViewportBelowLg';
+import { reperesRonds } from '../utils/reperesRonds';
 import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, ReferenceLine, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
@@ -23,7 +25,7 @@ import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
 import {
-    DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
+    UNI_INFO,
     getAnnualChildCost,
     type DaycareType, type SchoolType, type ActivitiesLevel,
     type UniversityType, type CarGift,
@@ -44,6 +46,25 @@ interface ChildPlanningProps {
 
 const fmt = (n: number) => formatCAD(n);
 
+// [S5-REFONTE-ENFANTS] Titre = TAB_LABELS (source unique), aligné sur la navigation : « Enfants ».
+const TITRE = TAB_LABELS[TabEnum.CHILD];
+
+/** Séries du coût net par âge : couleurs et libellés des maquettes (clés = données du graphe). */
+const SERIES_COUT = [
+    { cle: 'Essentiel', libelle: 'Essentiel', couleur: '#7c93f2' },
+    { cle: 'Garde_École_Activités', libelle: 'Garde, école, activités', couleur: '#34b39a' },
+    { cle: 'Ponctuel', libelle: 'Ponctuel', couleur: '#d4a24c' },
+    { cle: 'Bénéfices', libelle: 'Allocations (reçues)', couleur: '#5B6573' },
+] as const;
+
+/** Montants mensuels / ponctuels saisis à la main (repliés dans « Détails de l'enfant »). */
+const CHAMPS_MONTANTS: ReadonlyArray<{ id: 'governmentBenefits' | 'monthlyFood' | 'monthlyClothing' | 'initialCost'; libelle: string }> = [
+    { id: 'governmentBenefits', libelle: 'Allocations (ACE + Soutien QC)' },
+    { id: 'monthlyFood', libelle: 'Nourriture / mois' },
+    { id: 'monthlyClothing', libelle: 'Vêtements / mois' },
+    { id: 'initialCost', libelle: 'Coûts naissance (chambre, siège, etc.)' },
+];
+
 // [REFONTE-NAV-L4] Sous-titre harmonisé de la famille « Vie » (ce que je PRÉVOIS).
 const CHILD_SUBTITLE = 'Chaque enfant planifié déforme ta courbe Future — coûts, allocations et REEE entrent dans la simulation.';
 
@@ -56,14 +77,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     // projeté par le moteur principal (FutureProjection), à comparer avec
     // la simulation locale ci-dessous.
     const lastProjection = useFinanceStore(s => s.lastProjection);
-    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
-    const projectedReeeAt18 = useMemo(() => {
-        if (!lastProjection?.chartData?.length || !goal?.birthDate) return null;
-        const childBirthYear = new Date(goal.birthDate).getFullYear();
-        const targetYear = childBirthYear + 17;
-        const point = lastProjection.chartData.find(p => p.year === targetYear);
-        return point?.REEE ?? null;
-    }, [lastProjection, goal?.birthDate]);
 
     const [daycareType, setDaycareTypeLocal] = useState<DaycareType>((goal?.daycareType as DaycareType) || 'cpe');
     const [schoolType, setSchoolTypeLocal] = useState<SchoolType>((goal?.schoolType as SchoolType) || 'publique');
@@ -224,7 +237,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
     // G7d — zoom molette / pan sur les deux graphes Enfant (x = âge).
     const zoomCost = useTimeChartZoom(costTimeline.data);
-    const zoomResp = useTimeChartZoom(respProjection);
+    const etroit = useViewportBelowLg();
+    // Repères ronds (−5, 0, 5 … 20 k$ — maquettes) : sommes empilées au-dessus ET au-dessous de zéro.
+    const reperesCout = useMemo(() => reperesRonds(costTimeline.data.flatMap((d) => [d.Essentiel + d.Garde_École_Activités + d.Ponctuel, d.Bénéfices])), [costTimeline.data]);
     const totalStudiesCost = uniInfo.yearlyCost * uniInfo.years;
     const respCovers = totalResp != null && totalStudiesCost > 0
         ? Math.min(100, (totalResp / totalStudiesCost) * 100)
@@ -242,13 +257,18 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         { key: 'Bénéfices', label: 'Allocations (négatif = bénéfice)', format: money },
         { key: 'Total', label: 'Total net', format: money },
     ];
-    const respColumns: ChartDataColumn[] = [
-        { key: 'age', label: 'Âge enfant', format: (v) => `${v} ans` },
-        { key: 'Solde', label: 'Solde total', format: money },
-        { key: 'Contribution', label: 'Contribution', format: money },
-        { key: 'Subvention', label: 'Subventions reçues', format: money },
-        { key: 'Intérêts', label: 'Intérêts', format: money },
-    ];
+
+    // Âges de l'axe, calés aux bords (« 0 an » à gauche, « 25 ans » à droite — jamais rognés).
+    const TickAge = (props: { x?: number; y?: number; payload?: { value: number }; index?: number; visibleTicksCount?: number }) => {
+        const { x = 0, y = 0, payload, index = 0, visibleTicksCount = 1 } = props;
+        const age = payload?.value ?? 0;
+        const dernier = index === visibleTicksCount - 1;
+        return (
+            <text x={x} y={y + 12} textAnchor={index === 0 ? 'start' : dernier ? 'end' : 'middle'} fill="#8896a8" fontSize={etroit ? 10 : 11} fontFamily="JetBrains Mono">
+                {age === 0 ? '0 an' : dernier ? `${age} ans` : age}
+            </text>
+        );
+    };
 
     // C8 fix : garde déplacée APRÈS tous les hooks ci-dessus.
     // [REFONTE-NAV-L4] avant : `return null` → page BLANCHE quand aucun enfant.
@@ -256,12 +276,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     if (!goal) {
         return (
             <div className="space-y-6 stagger-in pb-10">
-                <PageHeader
-                    icon={<Icon name="child" size={28} />}
-                    title={TAB_LABELS[TabEnum.CHILD]}
-                    subtitle={CHILD_SUBTITLE}
-                    actions={<VieCurveLink />}
-                />
+                <PageHeader title={TITRE} subtitle={CHILD_SUBTITLE} actions={<VieCurveLink />} />
                 <EmptyState
                     icon={<Icon name="child" size={30} />}
                     title="Aucun enfant planifié"
@@ -272,6 +287,22 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         );
     }
 
+    const nomEnfant = goal.name || `Enfant ${activeTabIndex + 1}`;
+    const coutTotal = <span className="text-meta lg:text-body text-ink-400">Coût total <PrivateAmount className="font-mono font-semibold lg:font-normal text-ink-50">{fmt(costTimeline.totalCost)}</PrivateAmount></span>;
+    const legende = (
+        <span className="flex flex-wrap gap-x-3.5 gap-y-1 text-meta text-ink-300" aria-hidden="true">
+            {SERIES_COUT.map((serie) => (
+                <span key={serie.cle} className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: serie.couleur }} />{serie.libelle}</span>
+            ))}
+        </span>
+    );
+
+    // [S5-REFONTE-ENFANTS] Maquettes E-enfants / M-enfants :
+    // - en-tête : titre, onglets des enfants (+ Ajouter), coût total et lien vers la courbe ;
+    // - bureau : « Choix de vie » à gauche ; courbe du coût net par âge puis REEE à droite ;
+    // - mobile : courbe, REEE, choix de vie, puis le lien vers la courbe en pleine largeur.
+    // Ce que les maquettes ne montrent pas (prénom, date, cotisation REEE, allocations, compter ou non
+    // dans le Futur, suppression) reste disponible, replié dans « Détails de l'enfant ».
     return (
         <div className="space-y-6 stagger-in pb-10">
             <ConfirmModal
@@ -279,209 +310,122 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 onConfirm={doRemoveChild}
                 onCancel={() => setConfirmRemove(null)}
                 title="Supprimer le profil"
-                message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
+                message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
                 confirmLabel="Supprimer"
             />
-            {/* [REFONTE-NAV-L4] header harmonisé famille « Vie » : titre = TAB_LABELS,
-                sous-titre = rôle vis-à-vis de la courbe, lien courbe en tête des actions. */}
             <PageHeader
-                icon={<Icon name="child" size={28} />}
-                title={TAB_LABELS[TabEnum.CHILD]}
-                subtitle={CHILD_SUBTITLE}
-                badge={
-                    <div className="flex items-center gap-2">
-                        {/* Phase F.9 — indicateur d'activation FUTUR uniformisé avec Immobilier */}
-                        {goal.isActive
-                            ? <Badge variant="success" size="md">Active dans simulation</Badge>
-                            // [UX-ISACTIVE-BADGE] (A5) : le défaut inactif est VOULU (« on attend
-                            // le clic Activer ») — mais l'absence de la simulation doit être DITE.
-                            : <Badge variant="neutral" size="md">Non compté dans la simulation</Badge>
-                        }
-                        <Badge variant="info" size="md">Coût total: <PrivateAmount>{fmt(costTimeline.totalCost)}</PrivateAmount></Badge>
+                title={TITRE}
+                badge={<span className="lg:hidden">{coutTotal}</span>}
+                nav={
+                    <div role="group" aria-label="Enfants" className="flex flex-wrap items-center gap-1">
+                        {goals.map((g, idx) => (
+                            <button
+                                type="button"
+                                key={g.id || idx}
+                                onClick={() => setActiveTabIndex(idx)}
+                                aria-pressed={activeTabIndex === idx}
+                                className={`min-h-11 lg:min-h-9 px-3.5 rounded-lg text-body transition-colors focus-ring ${
+                                    activeTabIndex === idx ? 'bg-ink-50 lg:bg-surfaceHighlight text-dark lg:text-ink-50 font-semibold' : 'text-ink-300 hover:bg-white/5'
+                                }`}
+                            >
+                                {g.name || `Enfant ${idx + 1}`}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={handleAddChild}
+                            aria-label="Ajouter un enfant"
+                            className="min-h-11 lg:min-h-9 px-3.5 rounded-lg border border-dashed border-white/20 text-body text-ink-200 hover:bg-white/5 transition-colors focus-ring"
+                        >
+                            + Ajouter
+                        </button>
                     </div>
                 }
-                actions={
-                    <>
-                        <VieCurveLink />
-                        <Button
-                            onClick={() => update('isActive', !goal.isActive)}
-                            variant={goal.isActive ? 'danger' : 'primary'}
-                            size="md"
-                        >
-                            {goal.isActive ? 'Désactiver dans Futur' : 'Activer dans Futur'}
-                        </Button>
-                        {goals.length > 1 && (
-                            <Button onClick={handleRemoveChild} variant="ghost" size="md" title="Supprimer ce profil"><Icon name="trash" size={16} /></Button>
-                        )}
-                    </>
-                }
+                actions={<span className="hidden lg:flex items-center gap-3">{coutTotal}<VieCurveLink /></span>}
             />
 
-            {/* PH3 — infos enfants (REEE) déplacées dans l'onglet Profil unifié. */}
-            <ProfileFieldsMoved what="Les infos enfants (REEE)" />
+            {/* Un enfant hors du Futur doit le DIRE (il ne déforme pas la courbe) — [UX-ISACTIVE-BADGE]. */}
+            {!goal.isActive && (
+                <div className="rounded-2xl border border-warning-500/30 bg-warning-500/6 p-4 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-body text-ink-200">{nomEnfant} n'est pas compté·e dans le Futur : sa courbe ne change pas.</p>
+                    <Button onClick={() => update('isActive', true)} variant="primary" size="md">Compter dans le Futur</Button>
+                </div>
+            )}
 
-            {/* Phase F.11 — onglets enfants alignés sur le style Pill (cohérence app) */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-b border-white/10 pb-4">
-                {goals.map((g, idx) => (
-                    <button
-                        type="button"
-                        key={g.id || idx}
-                        onClick={() => setActiveTabIndex(idx)}
-                        aria-pressed={activeTabIndex === idx}
-                        className={`px-4 py-1.5 rounded-pill font-medium text-meta transition-colors focus-ring ${
-                            activeTabIndex === idx
-                                ? 'bg-info-500/15 text-info-400 border border-info-500/30'
-                                : 'bg-white/5 text-ink-400 hover:bg-white/10 border border-white/10'
-                        }`}
-                    >
-                        {g.name || `Enfant ${idx + 1}`}
-                    </button>
-                ))}
-                <button
-                    type="button"
-                    onClick={handleAddChild}
-                    className="px-3 py-1.5 rounded-pill text-meta font-bold bg-success-500/10 text-emerald-300 border border-success-500/30 hover:bg-success-500/20 transition-colors focus-ring"
-                >
-                    + Ajouter
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* CONFIGURATEUR */}
-                <div className="space-y-5">
-                    <Card icon={<Icon name="calendar" size={18} />} title="Profil & Date Prévue">
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="child-name-input" className="text-meta text-ink-300 block mb-1">Prénom ou Identifiant</label>
-                                <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white outline-hidden focus:border-primary" />
-                            </div>
-                            <div>
-                                <label htmlFor="child-birthDate" className="text-meta text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
-                                <input id="child-birthDate" type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full bg-white/5 border border-border rounded-lg px-3 py-2 text-white focus:border-primary outline-hidden" />
-                            </div>
-                        </div>
-                        <p className="text-tiny text-ink-400 mt-2">Cette date sera utilisée dans la simulation de l'onglet Futur.</p>
-                    </Card>
-
-                    <Card icon={<Icon name="goal" size={18} />} title="Choix de Vie">
+            <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-5 items-start">
+                <div className="min-w-0 flex flex-col gap-4 order-2 xl:order-none">
+                    <ChoixDeVie
+                        daycareType={daycareType} setDaycareType={setDaycareType}
+                        schoolType={schoolType} setSchoolType={setSchoolType}
+                        activitiesLevel={activitiesLevel} setActivitiesLevel={setActivitiesLevel}
+                        universityType={universityType} setUniversityType={setUniversityType}
+                        carGift={carGift} setCarGift={setCarGift}
+                    />
+                    <CollapsibleSection title="Détails de l'enfant" subtitle="Prénom, date, cotisation REEE, allocations" headingLevel={2}>
                         <div className="space-y-5">
-                            <div>
-                                <div className="text-meta font-bold text-pink-400 uppercase mb-2">Mode de garde (0–5 ans)</div>
-                                <div className="space-y-1.5">
-                                    {(Object.entries(DAYCARE_INFO) as [DaycareType, typeof DAYCARE_INFO[DaycareType]][]).map(([key, info]) => (
-                                        <button key={key} type="button" onClick={() => setDaycareType(key)} aria-pressed={daycareType === key}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${daycareType === key ? 'border-primary bg-primary/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
-                                            <span className="text-xl">{info.icon}</span>
-                                            <div className="flex-1">
-                                                <div className="text-meta font-bold">{info.label}</div>
-                                                <div className="text-tiny text-ink-400">{info.desc}</div>
-                                            </div>
-                                            <div className="text-meta font-mono font-bold text-right">{info.monthly > 0 ? <><PrivateAmount>{formatCAD(info.monthly)}</PrivateAmount>/m</> : 'Gratuit'}</div>
-                                        </button>
-                                    ))}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label htmlFor="child-name-input" className="text-meta text-ink-300 block mb-1">Prénom ou identifiant</label>
+                                    <input id="child-name-input" type="text" value={goal.name || ''} onChange={e => update('name', e.target.value)} placeholder="Ex: Léo" className="w-full h-11 px-3 text-white" />
+                                </div>
+                                <div>
+                                    <label htmlFor="child-birthDate" className="text-meta text-ink-300 block mb-1">Date de naissance (ou prévue)</label>
+                                    <input id="child-birthDate" type="date" value={goal.birthDate} onChange={e => update('birthDate', e.target.value)} className="w-full h-11 px-3 text-white" />
                                 </div>
                             </div>
                             <div>
-                                <div className="text-meta font-bold text-info-400 uppercase mb-2">Type d'école (6–17 ans)</div>
-                                <div className="space-y-1.5">
-                                    {(Object.entries(SCHOOL_INFO) as [SchoolType, typeof SCHOOL_INFO[SchoolType]][]).map(([key, info]) => (
-                                        <button key={key} type="button" onClick={() => setSchoolType(key)} aria-pressed={schoolType === key}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${schoolType === key ? 'border-info-500 bg-info-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
-                                            <span className="text-xl">{info.icon}</span>
-                                            <div className="flex-1 text-meta font-bold">{info.label}</div>
-                                            <div className="text-meta font-mono font-bold text-right text-blue-300">+<PrivateAmount>{formatCompactCAD(info.yearlyExtra)}</PrivateAmount>/an</div>
-                                        </button>
-                                    ))}
-                                </div>
+                                <label className="flex justify-between text-meta text-ink-200 mb-1">
+                                    <span>Cotisation annuelle REEE</span>
+                                    <PrivateSliderValue revealed={respSliderFocus} className="font-mono text-ink-50">{fmt(respContribution)}</PrivateSliderValue>
+                                </label>
+                                <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} {...maskedSliderAria(isPrivacyMode && !respSliderFocus)} onChange={e => setRespContribution(Number(e.target.value))} onFocus={() => setRespSliderFocus(true)} onBlur={() => setRespSliderFocus(false)} className="w-full accent-primary cursor-pointer" />
                             </div>
-                            <div>
-                                <div className="text-meta font-bold text-yellow-400 uppercase mb-2">Sports & activités</div>
-                                <div className="space-y-1.5">
-                                    {(Object.entries(ACTIVITIES_INFO) as [ActivitiesLevel, typeof ACTIVITIES_INFO[ActivitiesLevel]][]).map(([key, info]) => (
-                                        <button key={key} type="button" onClick={() => setActivitiesLevel(key)} aria-pressed={activitiesLevel === key}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${activitiesLevel === key ? 'border-yellow-500 bg-yellow-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
-                                            <span className="text-xl">{info.icon}</span>
-                                            <div className="flex-1 text-meta font-bold">{info.label}</div>
-                                            <div className="text-meta font-mono font-bold text-right text-yellow-300">{info.yearlyExtra > 0 ? <>+<PrivateAmount>{formatCAD(info.yearlyExtra)}</PrivateAmount>/an</> : 'Rien'}</div>
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {CHAMPS_MONTANTS.map((c) => (
+                                    <div key={c.id}>
+                                        <label htmlFor={`child-${c.id}`} className="text-meta text-ink-300 block mb-1">{c.libelle}</label>
+                                        <input id={`child-${c.id}`} type="number" value={goal[c.id]} onChange={e => update(c.id, Number(e.target.value))} className="w-full h-11 px-3 text-right font-mono text-white" />
+                                    </div>
+                                ))}
                             </div>
-                            <div>
-                                <div className="text-meta font-bold text-purple-400 uppercase mb-2">Études post-secondaires (18–25 ans)</div>
-                                <div className="space-y-1.5">
-                                    {(Object.entries(UNI_INFO) as [UniversityType, typeof UNI_INFO[UniversityType]][]).map(([key, info]) => (
-                                        <button key={key} type="button" onClick={() => setUniversityType(key)} aria-pressed={universityType === key}
-                                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all ${universityType === key ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
-                                            <span className="text-xl">{info.icon}</span>
-                                            <div className="flex-1">
-                                                <div className="text-meta font-bold">{info.label}</div>
-                                                {info.years > 0 && <div className="text-tiny text-ink-400">{info.years} ans</div>}
-                                            </div>
-                                            <div className="text-meta font-mono font-bold text-right text-purple-300">{info.yearlyCost > 0
-                                                ? <><PrivateAmount>{formatCompactCAD(info.yearlyCost)}</PrivateAmount>/an</>
-                                                : 'Gratuit'}</div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-meta font-bold text-orange-400 uppercase mb-2">Voiture à 18 ans (cadeau)</div>
-                                <div className="flex gap-2">
-                                    {(Object.entries(CAR_INFO) as [CarGift, typeof CAR_INFO[CarGift]][]).map(([key, info]) => (
-                                        <button key={key} type="button" onClick={() => setCarGift(key)} aria-pressed={carGift === key}
-                                            className={`flex-1 flex flex-col items-center p-2.5 rounded-lg border text-center transition-all ${carGift === key ? 'border-orange-500 bg-orange-500/10 text-white' : 'border-white/5 bg-white/5 text-ink-300 hover:bg-white/10'}`}>
-                                            <span className="text-xl mb-1">{info.icon}</span>
-                                            <div className="text-tiny font-bold leading-tight">{info.label.split(' (')[0]}</div>
-                                            {info.cost > 0 && <PrivateAmount as="div" className="text-tiny font-mono text-orange-300 mt-0.5">{formatCompactCAD(info.cost)}</PrivateAmount>}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={goal.isActive}
+                                    onClick={() => update('isActive', !goal.isActive)}
+                                    className="flex items-center gap-3 min-h-11 text-body text-ink-100 focus-ring rounded-lg"
+                                >
+                                    <span className={`w-10 h-6 rounded-full p-0.5 flex transition-colors ${goal.isActive ? 'bg-primary justify-end' : 'bg-white/15 justify-start'}`} aria-hidden="true">
+                                        <span className={`w-5 h-5 rounded-full ${goal.isActive ? 'bg-dark' : 'bg-ink-300'}`} />
+                                    </span>
+                                    Compter dans le Futur
+                                </button>
+                                {goals.length > 1 && (
+                                    <button type="button" onClick={handleRemoveChild} className="ml-auto min-h-11 px-3 text-meta text-danger-400 underline underline-offset-2 focus-ring rounded-sm">
+                                        Supprimer {nomEnfant}
+                                    </button>
+                                )}
                             </div>
                         </div>
-                    </Card>
-
-                    <Card icon={<Icon name="money" size={18} />} title="Allocations">
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <label htmlFor="child-governmentBenefits" className="text-meta text-ink-200">Allocations (ACE + Soutien QC)</label>
-                                <input id="child-governmentBenefits" type="number" value={goal.governmentBenefits} onChange={e => update('governmentBenefits', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-green-400 font-bold" />
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <label htmlFor="child-monthlyFood" className="text-meta text-ink-200">Nourriture / mois</label>
-                                <input id="child-monthlyFood" type="number" value={goal.monthlyFood} onChange={e => update('monthlyFood', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-white" />
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <label htmlFor="child-monthlyClothing" className="text-meta text-ink-200">Vêtements / mois</label>
-                                <input id="child-monthlyClothing" type="number" value={goal.monthlyClothing} onChange={e => update('monthlyClothing', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-white" />
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <label htmlFor="child-initialCost" className="text-meta text-ink-200">Coûts naissance (chambre, siège, etc.)</label>
-                                <input id="child-initialCost" type="number" value={goal.initialCost} onChange={e => update('initialCost', Number(e.target.value))} className="w-20 bg-white/5 border border-border rounded-sm px-2 py-1 text-right text-body text-white" />
-                            </div>
-                        </div>
-                    </Card>
+                    </CollapsibleSection>
                 </div>
 
-                {/* GRAPHIQUES */}
-                <div className="lg:col-span-2 space-y-5">
-                    <Card icon={<Icon name="chart" size={18} />} title="Coût par âge" action={
-                        <div className="text-meta text-ink-300 font-mono">Total : <PrivateAmount className="text-white font-bold">{fmt(costTimeline.totalCost)}</PrivateAmount></div>
-                    }>
-                        <div role="img" aria-label="Graphique du coût de l'enfant par âge (essentiel, garde/école/activités, ponctuel, allocations)">
-                        <ZoomContainer zoom={zoomCost} className="h-[280px]">
+                <div className="min-w-0 flex flex-col gap-4 order-1 xl:order-none">
+                    <Card title="Coût net par âge" action={<span className="hidden sm:flex">{legende}</span>}>
+                        <div className="sm:hidden -mt-2 mb-3">{legende}</div>
+                        <div role="img" aria-label={`Coût net de ${nomEnfant} par âge, de 0 à 25 ans : essentiel, garde/école/activités, ponctuel, et allocations reçues en négatif.`}>
+                        <ZoomContainer zoom={zoomCost} hint={false} style={{ width: '100%', height: etroit ? '220px' : '300px' }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={zoomCost.visibleData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} label={{ value: 'Âge enfant', position: 'insideBottom', offset: -5, fill: '#666' }} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} />
-                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
-                                    <Legend />
-                                    <ReferenceLine y={0} stroke="#555" />
-                                    <Bar dataKey="Essentiel" stackId="a" fill="#6f72c4" name="Essentiel" />
-                                    <Bar dataKey="Garde_École_Activités" stackId="a" fill="#bd7d9c" name="Garde / École / Activités" />
-                                    <Bar dataKey="Ponctuel" stackId="a" fill="#c2974f" name="Ponctuel (naissance, voiture…)" />
-                                    <Bar dataKey="Bénéfices" stackId="a" fill="#4f9d86" name="Allocations (négatif = bénéfice)" />
+                                <BarChart data={zoomCost.visibleData} stackOffset="sign" margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                                    <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                    <XAxis dataKey="age" tick={<TickAge />} tickLine={false} axisLine={false} ticks={[0, 5, 10, 15, 20, 25]} interval={0} />
+                                    <YAxis orientation="right" ticks={reperesCout} domain={['dataMin', 'dataMax']} stroke="#8896a8" tick={{ fontSize: etroit ? 10 : 11, fontFamily: 'JetBrains Mono' }} tickLine={false} axisLine={false} width={etroit ? 40 : 48} tickFormatter={maskedTick(isPrivacyMode, (v: number) => formatCompactCAD(v))} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Math.abs(v)), name]} labelFormatter={l => `Âge ${l} ans`} />
+                                    <ReferenceLine y={0} stroke="rgba(255,255,255,0.3)" />
+                                    {SERIES_COUT.map((serie) => (
+                                        <Bar key={serie.cle} dataKey={serie.cle} stackId="a" fill={serie.couleur} fillOpacity={0.85} name={serie.libelle} />
+                                    ))}
                                 </BarChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
@@ -493,115 +437,34 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         />
                     </Card>
 
-                    <Card icon={<Icon name="graduation" size={18} />} title="Simulateur REEE" action={
-                        <div className="flex items-center gap-2">
-                            {projectedReeeAt18 !== null && projectedReeeAt18 > 0 && (
-                                <Badge
-                                    variant="info"
-                                    size="sm"
-                                    onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                                    title="Projection officielle (FutureProjection) au 17e anniversaire — clic pour ouvrir"
-                                >
-                                    <Icon name="link" size={11} className="inline mr-1" /><PrivateAmount>{fmt(projectedReeeAt18)}</PrivateAmount>
-                                </Badge>
-                            )}
-                            {respCovers != null ? (
-                                <div className={`text-meta font-bold px-2 py-1 rounded-sm border ${respCovers >= 100 ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'}`}>
-                                    {respCovers.toFixed(0)}% des études couvertes
-                                </div>
-                            ) : (
-                                <ProjectionRequired variant="inline" feature="la couverture études" />
-                            )}
+                    {/* REEE : phrase de repère + trois chiffres (maquettes). La cotisation se règle dans « Détails ». */}
+                    <section aria-labelledby="reee-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:px-[22px] sm:py-[18px] grid grid-cols-3 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] gap-x-4 gap-y-3 items-center">
+                        <div className="col-span-3 lg:col-span-1 flex flex-col gap-1">
+                            <h2 id="reee-titre" className="text-[17px] lg:text-[16px] font-semibold text-ink-50">REEE</h2>
+                            <p className="text-[13px] leading-[18px] text-ink-400"><PrivateAmount>{fmt(2500)}</PrivateAmount>/an maximise les subventions (30 % : 20 % fédéral, 10 % Québec).</p>
                         </div>
-                    }>
-                        <div className="space-y-3 mb-4">
-                            <div>
-                                <label className="flex justify-between text-meta text-ink-200 mb-1">
-                                    <span>Cotisation annuelle REEE</span>
-                                    <PrivateSliderValue revealed={respSliderFocus} className="text-info-400 font-bold">{fmt(respContribution)}</PrivateSliderValue>
-                                </label>
-                                <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} {...maskedSliderAria(isPrivacyMode && !respSliderFocus)} onChange={e => setRespContribution(Number(e.target.value))} onFocus={() => setRespSliderFocus(true)} onBlur={() => setRespSliderFocus(false)} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
-                                <p className="text-tiny text-ink-400 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="bg-blue-900/20 p-3 rounded-lg border border-info-500/20 text-center">
-                                    <div className="text-tiny text-ink-400 uppercase mb-1">Capital à 17 ans</div>
-                                    <PrivateAmount as="div" className="text-lg font-black text-white">
-                                        {totalResp != null ? fmt(totalResp) : <ProjectionRequired variant="inline" />}
-                                    </PrivateAmount>
-                                </div>
-                                <div className="bg-green-900/20 p-3 rounded-lg border border-green-500/20 text-center">
-                                    <div className="text-tiny text-ink-400 uppercase mb-1">Coût études prévu</div>
-                                    <PrivateAmount as="div" className="text-lg font-black text-white">{fmt(totalStudiesCost)}</PrivateAmount>
-                                </div>
-                                <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-500/20 text-center">
-                                    <div className="text-tiny text-ink-400 uppercase mb-1">Couverture</div>
-                                    <div className={`text-lg font-black ${respCovers != null && respCovers >= 100 ? 'text-green-400' : 'text-yellow-400'}`}>
-                                        {respCovers != null ? `${respCovers.toFixed(0)}%` : '—'}
-                                    </div>
-                                </div>
+                        <div>
+                            <div className="text-meta text-ink-400">Capital à 17 ans</div>
+                            {totalResp != null
+                                ? <PrivateAmount as="div" className="font-mono text-[18px] lg:text-[20px] font-bold text-ink-50">{fmt(totalResp)}</PrivateAmount>
+                                : <ProjectionRequired variant="inline" />}
+                        </div>
+                        <div>
+                            <div className="text-meta text-ink-400">Études prévues</div>
+                            <PrivateAmount as="div" className="font-mono text-[18px] lg:text-[20px] font-bold text-ink-50">{fmt(totalStudiesCost)}</PrivateAmount>
+                        </div>
+                        <div>
+                            <div className="text-meta text-ink-400">Couverture</div>
+                            <div className={`text-[18px] lg:text-[20px] font-bold ${respCovers != null && respCovers >= 100 ? 'text-success-400' : 'text-warning-400'}`}>
+                                {respCovers != null ? formatPercent(respCovers, 0) : '—'}
                             </div>
                         </div>
-                        <div className="h-[200px]">
-                            {respProjection.length === 0 ? (
-                                <ProjectionRequired feature="La projection REEE" />
-                            ) : (
-                            <div role="img" aria-label="Graphique de projection de l'épargne-études REEE (solde, contributions, subventions) par âge de l'enfant" className="h-full w-full">
-                            <ZoomContainer zoom={zoomResp} className="h-full w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={zoomResp.visibleData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="respGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#5b82bf" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#5b82bf" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} />
-                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(v)} labelFormatter={l => `Âge ${l} ans`} />
-                                    <Legend />
-                                    <Area type="monotone" dataKey="Solde" stroke="#5b82bf" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
-                                    <Bar dataKey="Subvention" fill="#4f9d86" name="Subventions reçues" />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                            </ZoomContainer>
-                            </div>
-                            )}
-                        </div>
-                        {respProjection.length > 0 && (
-                            <ChartDataTable
-                                caption="Projection de l'épargne-études REEE par âge de l'enfant"
-                                columns={respColumns}
-                                rows={respProjection}
-                            />
-                        )}
-                    </Card>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                            <div className="text-2xl mb-1">{DAYCARE_INFO[daycareType].icon}</div>
-                            <div className="text-tiny text-ink-300">Garde mensuelle</div>
-                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(DAYCARE_INFO[daycareType].monthly)}</PrivateAmount>
-                        </div>
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                            <div className="text-2xl mb-1">{SCHOOL_INFO[schoolType].icon}</div>
-                            <div className="text-tiny text-ink-300">Frais scolaires/an</div>
-                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(SCHOOL_INFO[schoolType].yearlyExtra)}</PrivateAmount>
-                        </div>
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                            <div className="text-2xl mb-1">{ACTIVITIES_INFO[activitiesLevel].icon}</div>
-                            <div className="text-tiny text-ink-300">Activités/an</div>
-                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(ACTIVITIES_INFO[activitiesLevel].yearlyExtra)}</PrivateAmount>
-                        </div>
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                            <div className="text-2xl mb-1">{UNI_INFO[universityType].icon}</div>
-                            <div className="text-tiny text-ink-300">Études total</div>
-                            <PrivateAmount as="div" className="text-body font-bold text-white">{fmt(totalStudiesCost)}</PrivateAmount>
-                        </div>
-                    </div>
+                    </section>
                 </div>
             </div>
+
+            {/* Mobile : le lien vers la courbe ferme la page, en pleine largeur (maquette M-enfants). */}
+            <div className="lg:hidden [&>button]:w-full"><VieCurveLink /></div>
         </div>
     );
 };

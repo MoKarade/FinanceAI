@@ -14,6 +14,7 @@ import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChar
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { useViewportBelowLg } from '../hooks/useViewportBelowLg';
+import { reperesRonds } from '../utils/reperesRonds';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
@@ -263,18 +264,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         if (dernier !== undefined && !r.includes(dernier)) r.push(dernier);
         return r;
     }, [simulation.chart, etroit]);
-    // Repères des montants « ronds » (maquettes : 0, 5, 10, 15, 20 k$) : pas de 1 / 2 / 2,5 / 5 × 10ⁿ
-    // le plus proche du quart du maximum ; la courbe peut dépasser le dernier repère.
-    const reperesMontants = useMemo(() => {
-        const max = Math.max(0, ...simulation.chart.map((p) => Math.max(p.balance, p.interestAccumulated)));
-        if (!(max > 0)) return undefined;
-        const brut = max / 4;
-        const puissance = 10 ** Math.floor(Math.log10(brut));
-        const pas = [1, 2, 2.5, 5, 10].map((f) => f * puissance).reduce((a, b) => (Math.abs(b - brut) < Math.abs(a - brut) ? b : a));
-        const r: number[] = [];
-        for (let v = 0; v <= max + 1e-9; v += pas) r.push(v);
-        return r;
-    }, [simulation.chart]);
+    // Repères de montants « ronds » (0, 5, 10, 15, 20 k$ — maquettes).
+    const reperesMontants = useMemo(() => reperesRonds(simulation.chart.flatMap((p) => [p.balance, p.interestAccumulated])), [simulation.chart]);
     // Libellés d'axe calés aux bords : le premier à gauche, le dernier à droite (jamais rognés).
     const TickMois = (props: { x?: number; y?: number; payload?: { value: number }; index?: number; visibleTicksCount?: number }) => {
         const { x = 0, y = 0, payload, index = 0, visibleTicksCount = 1 } = props;

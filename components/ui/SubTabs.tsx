@@ -39,6 +39,8 @@ export interface SubTabDef<Id extends string> {
     id: Id;
     label: string;
     icon: IconName;
+    /** [S5-REFONTE-REGLAGES] Pastille à droite du libellé (ex. « 93 % », « à faire »). */
+    badge?: React.ReactNode;
 }
 
 interface SubTabsProps<Id extends string> {
@@ -50,6 +52,8 @@ interface SubTabsProps<Id extends string> {
     tabs: ReadonlyArray<SubTabDef<Id>>;
     active: Id;
     onSelect: (id: Id) => void;
+    /** [S5-REFONTE-REGLAGES] Colonne verticale (menu de gauche des Réglages) : flèches haut/bas. */
+    orientation?: 'horizontal' | 'vertical';
 }
 
 export const tabId = (idPrefix: string, id: string): string => `${idPrefix}-tab-${id}`;
@@ -71,13 +75,15 @@ export function clavierTablist<Id extends string>(
     ids: ReadonlyArray<Id>,
     actif: Id,
     onSelect: (id: Id) => void,
+    orientation: 'horizontal' | 'vertical' = 'horizontal',
 ): (e: React.KeyboardEvent) => void {
+    const [suivante, precedente] = orientation === 'vertical' ? ['ArrowDown', 'ArrowUp'] : ['ArrowRight', 'ArrowLeft'];
     return (e) => {
         const courant = ids.indexOf(actif);
         if (courant < 0 || ids.length === 0) return;
         let cible: number;
-        if (e.key === 'ArrowRight') cible = (courant + 1) % ids.length;
-        else if (e.key === 'ArrowLeft') cible = (courant - 1 + ids.length) % ids.length;
+        if (e.key === suivante) cible = (courant + 1) % ids.length;
+        else if (e.key === precedente) cible = (courant - 1 + ids.length) % ids.length;
         else if (e.key === 'Home') cible = 0;
         else if (e.key === 'End') cible = ids.length - 1;
         else return;
@@ -90,13 +96,15 @@ export function clavierTablist<Id extends string>(
     };
 }
 
-export function SubTabs<Id extends string>({ idPrefix, label, tabs, active, onSelect }: SubTabsProps<Id>) {
+export function SubTabs<Id extends string>({ idPrefix, label, tabs, active, onSelect, orientation = 'horizontal' }: SubTabsProps<Id>) {
+    const vertical = orientation === 'vertical';
     return (
         <div
-            className="flex gap-1 w-fit max-w-full overflow-x-auto"
+            className={vertical ? 'flex flex-col gap-0.5 w-full' : 'flex gap-1 w-fit max-w-full overflow-x-auto'}
             role="tablist"
             aria-label={label}
-            onKeyDown={clavierTablist(idPrefix, tabs.map((t) => t.id), active, onSelect)}
+            aria-orientation={orientation}
+            onKeyDown={clavierTablist(idPrefix, tabs.map((t) => t.id), active, onSelect, orientation)}
         >
             {tabs.map((s) => (
                 <button
@@ -114,9 +122,14 @@ export function SubTabs<Id extends string>({ idPrefix, label, tabs, active, onSe
                     // + une interligne de 16 px donnent 28 px de haut — sous le plancher WCAG 2.5.5.
                     // Le correctif vit ICI parce que les trois écrans à sous-onglets passent par ce
                     // composant : une seule ligne, trois surfaces.
-                    className={`touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-body rounded-lg whitespace-nowrap transition-colors focus-ring ${active === s.id ? 'bg-surfaceHighlight text-ink-50 font-semibold' : 'text-ink-300 hover:text-ink-50 hover:bg-white/5'}`}
+                    className={`touch-target inline-flex items-center gap-1.5 px-3 py-1.5 text-body whitespace-nowrap transition-colors focus-ring ${
+                        vertical ? 'h-10 w-full justify-between rounded-[10px]' : 'shrink-0 justify-center rounded-lg'
+                    } ${active === s.id
+                        ? (vertical ? 'bg-primary/10 text-ink-50 font-semibold' : 'bg-surfaceHighlight text-ink-50 font-semibold')
+                        : 'text-ink-300 hover:text-ink-50 hover:bg-white/5'}`}
                 >
                     {/* [S5-REFONTE-R2] onglets texte seul (maquettes) */}{s.label}
+                    {s.badge != null && <span className="font-mono text-meta text-ink-400">{s.badge}</span>}
                 </button>
             ))}
         </div>

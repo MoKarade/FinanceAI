@@ -55,10 +55,8 @@ export async function ecarterLeRail(page: Page): Promise<void> {
 }
 
 /**
- * Active le mode test (fixtures Alex/Sam) en naviguant vers l'onglet
- * Configuration → sous-onglet « Profil » (qui contient TestModePanel ;
- * déplacé depuis « Système & diagnostics » — charger un persona est une
- * action profil).
+ * Active le mode test (fixtures Alex/Sam) depuis l'onglet Réglages, dont la
+ * colonne de droite porte la carte du mode test (TestModePanel).
  *
  * Méthode UI choisie : plus robuste que page.evaluate() sur un module
  * ES bundlé (le store Zustand n'est pas exposé sur window).
@@ -69,11 +67,8 @@ export async function activateTestMode(page: Page): Promise<void> {
   await page.waitForLoadState('domcontentloaded');
   await ecarterLeRail(page);
 
-  // Cliquer le sous-onglet "Profil" (contient TestModePanel)
-  const btnProfil = page.getByRole('tab', { name: /Profil/i });
-  await btnProfil.waitFor({ state: 'visible', timeout: 10_000 });
-  await btnProfil.click();
-
+  // [S5-REFONTE-REGLAGES] La carte du mode test est TOUJOURS visible dans Réglages (colonne de droite) :
+  // plus de sous-onglet « Profil » à ouvrir d'abord.
   // Cliquer "Activer le mode test" — charge le persona par défaut (couple
   // Alex/Sam) IMMÉDIATEMENT. Le flux de confirmation à 2 étapes ("Oui, charger
   // les fixtures") a été retiré avec l'arrivée du sélecteur de personas

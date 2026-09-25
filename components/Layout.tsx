@@ -288,7 +288,7 @@ export const Layout: React.FC<LayoutProps> = ({
       <main
         id="main"
         tabIndex={-1}
-        className={`flex-1 lg:ml-[232px] px-5 pb-28 lg:px-8 lg:pb-10 ${isTestMode ? 'pt-16' : 'pt-5 lg:pt-8'} overflow-y-auto min-h-dvh relative z-0 scroll-smooth focus:outline-hidden`}
+        className={`flex-1 lg:ml-[232px] px-6 pb-28 lg:px-8 lg:pb-10 ${isTestMode ? 'pt-16' : 'pt-5 lg:pt-8'} overflow-y-auto min-h-dvh relative z-0 scroll-smooth focus:outline-hidden`}
       >
         <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-premium-in">
           {/* Mobile : les pages hors barre du bas remontent vers le menu « Plus ». */}

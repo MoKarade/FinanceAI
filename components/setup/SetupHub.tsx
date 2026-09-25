@@ -6,6 +6,7 @@ import { Icon } from '../ui/Icon';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { PAGE_SETUP, RequirementCard } from './PageSetupGate';
 import { REQUIREMENTS } from './requirements';
+import { navItemOfTab } from '../navDestinations';
 
 /**
  * Hub de complétude PAR ONGLET (demande Marc) — affiché dans Configuration.
@@ -36,23 +37,8 @@ const TAB_ORDER: Tab[] = [
  */
 const TABS_GATES: Tab[] = TAB_ORDER.filter((t) => PAGE_SETUP[t]);
 
-export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) => {
-    // [PERF-RENDER-SETUPHUB-FULLSTORE] Avant : `useFinanceStore((s) => s)` — abonnement au store
-    // ENTIER, donc un rendu à CHAQUE écriture (mesuré : 2 écritures sans rapport = 2 rendus).
-    //
-    // ⚠️ Le remède « restreindre aux champs réellement lus » est INAPPLICABLE ici : les champs lus
-    // sont décidés par `REQUIREMENTS[*].isMet`, hors de ce composant. Les recopier ferait qu'une
-    // exigence future lisant un champ non listé cesserait SILENCIEUSEMENT de rafraîchir l'écran —
-    // une donnée périmée, bien pire que le rendu en trop qu'on corrige.
-    //
-    // Le patron juste vit chez le voisin qui consomme le même genre de registre
-    // (`MissingDataChecklist`, `[PERF-MISSINGDATA]`) : `useShallow` sur le RÉSULTAT DÉRIVÉ. Le
-    // sélecteur tourne toujours à chaque écriture, mais le composant ne se re-rend que si la
-    // dérivée change.
-    //
-    // ⚠️ Et la dérivée doit être PLATE : `useShallow` compare élément par élément, donc un tableau
-    // d'objets recréés à chaque passage n'est JAMAIS shallow-égal et rendrait le sélecteur
-    // vacueux. D'où deux tableaux de primitives plutôt qu'un tableau de statuts.
+/** [S5-REFONTE-REGLAGES] Complétude par onglet, partagée par le hub et la pastille du menu Réglages. */
+export function useCompletudeOnglets() {
     const metParOnglet = useFinanceStore(useShallow((s) => TABS_GATES.map(
         (t) => PAGE_SETUP[t]!.requirementIds.filter((id) => REQUIREMENTS[id].isMet(s)).length,
     )));
@@ -60,59 +46,91 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
         const cfg = PAGE_SETUP[t]!;
         return !!(cfg.optOut && s.setupOptOut?.[cfg.optOut.key]);
     })));
-    const navigateWithFocus = useFinanceStore((s) => s.navigateWithFocus);
-    const [open, setOpen] = useState<Tab | null>(null);
-
+    // Premier prérequis manquant de chaque onglet ('' si tout est rempli) : la ligne dit QUOI manque.
+    const premierManqueParOnglet = useFinanceStore(useShallow((s) => TABS_GATES.map(
+        (t) => PAGE_SETUP[t]!.requirementIds.find((id) => !REQUIREMENTS[id].isMet(s)) ?? '',
+    )));
     const tabs = TABS_GATES;
     const tabStatus = tabs.map((t, i) => {
         const cfg = PAGE_SETUP[t]!;
         const reqs = cfg.requirementIds.map((id) => REQUIREMENTS[id]);
         const met = metParOnglet[i];
         const optedOut = horsPerimetreParOnglet[i];
-        return { tab: t, cfg, reqs, met, total: reqs.length, ready: met === reqs.length || optedOut, optedOut };
+        const idManque = premierManqueParOnglet[i];
+        const manque = idManque ? REQUIREMENTS[idManque].manque : '';
+        return { tab: t, cfg, reqs, met, total: reqs.length, ready: met === reqs.length || optedOut, optedOut, manque };
     });
     const readyCount = tabStatus.filter((s) => s.ready).length;
     const allReady = tabs.length > 0 && readyCount === tabs.length;
-    // PH3-b — % de complétion GLOBAL (au niveau des INFOS, pas seulement des onglets prêts).
     const totalMet = tabStatus.reduce((s, t) => s + t.met, 0);
     const totalReq = tabStatus.reduce((s, t) => s + t.total, 0);
     const pct = totalReq > 0 ? Math.round((totalMet / totalReq) * 100) : 100;
+    return { tabs, tabStatus, readyCount, allReady, pct };
+}
 
+/**
+ * `compact` (mobile, maquette M-reglages) : chaque ligne est UN bouton qui ouvre l'onglet (« › ») ;
+ * l'onglet ouvert montre lui-même ce qui manque. Sans `compact` (bureau) : la ligne déplie les
+ * prérequis sur place, « Ouvrir → » navigue.
+ */
+export const SetupHub: React.FC<{ className?: string; compact?: boolean }> = ({ className = '', compact = false }) => {
+    const navigateWithFocus = useFinanceStore((s) => s.navigateWithFocus);
+    const [open, setOpen] = useState<Tab | null>(null);
+    const { tabs, tabStatus, readyCount, allReady, pct } = useCompletudeOnglets();
+
+    // [S5-REFONTE-REGLAGES] Lignes des maquettes : pastille d'état, nom de l'onglet (libellé de la nav),
+    // état en clair, « Ouvrir → ». Un clic sur la ligne déplie ce qu'il reste à renseigner.
     const list = (
-        <div className="space-y-2">
-            {tabStatus.map(({ tab, cfg, reqs, met, total, ready, optedOut }) => {
+        <div>
+            {tabStatus.map(({ tab, cfg, reqs, met, total, ready, optedOut, manque }) => {
                     const isOpen = open === tab;
+                    const etat = optedOut ? 'pas concerné' : ready ? 'prêt' : `${met}/${total}${manque ? ` · ${manque}` : ''}`;
+                    const pastille = (
+                        <span
+                            className={`shrink-0 w-5 h-5 rounded-full border-2 ${ready ? 'bg-success-400 border-success-400' : 'border-warning-400'}`}
+                            aria-hidden="true"
+                        />
+                    );
+                    if (compact) {
+                        return (
+                            <button
+                                key={tab}
+                                type="button"
+                                onClick={() => navigateWithFocus(tab)}
+                                className="w-full min-h-12 px-4 flex items-center gap-3 text-left border-t border-white/5 focus-ring"
+                            >
+                                {pastille}
+                                <span className="text-body text-ink-100 truncate">{navItemOfTab(tab)?.label ?? cfg.title}</span>
+                                <span className={`ml-auto shrink-0 text-meta ${ready ? 'text-success-400' : 'text-warning-400'}`}>{etat}</span>
+                                <span className="shrink-0 text-ink-400" aria-hidden="true">›</span>
+                            </button>
+                        );
+                    }
                     return (
-                        <div key={tab} className="rounded-card border border-white/8 bg-black/20 overflow-hidden">
-                            <div className="flex items-center gap-2 p-2.5">
+                        <div key={tab} className="border-t border-white/5">
+                            <div className="flex items-center gap-3 px-5 min-h-12">
                                 <button
                                     type="button"
                                     onClick={() => setOpen(isOpen ? null : tab)}
                                     aria-expanded={isOpen}
-                                    className="flex-1 min-w-0 flex items-center gap-2.5 text-left focus-ring rounded-sm"
+                                    className="flex-1 min-w-0 min-h-12 flex items-center gap-3 text-left focus-ring rounded-sm"
                                 >
-                                    <span
-                                        className={`shrink-0 min-w-[1.5rem] h-6 px-1 rounded-md flex items-center justify-center text-tiny font-bold ${
-                                            ready ? 'bg-success-500/15 text-success-400' : 'bg-warning-500/15 text-warning-400'
-                                        }`}
-                                        aria-hidden="true"
-                                    >
-                                        {ready ? <Icon name="check" size={13} /> : `${met}/${total}`}
+                                    {pastille}
+                                    <span className="text-body text-ink-100 truncate">{navItemOfTab(tab)?.label ?? cfg.title}</span>
+                                    <span className={`ml-auto shrink-0 text-meta ${ready ? 'text-success-400' : 'text-warning-400'}`}>
+                                        {etat}
                                     </span>
-                                    <span className="text-body font-semibold text-ink-100 truncate">{cfg.title}</span>
-                                    {optedOut && <span className="text-tiny text-ink-400 shrink-0">(pas concerné)</span>}
-                                    <span className={`ml-auto shrink-0 text-ink-500 transition-transform ${isOpen ? 'rotate-90' : ''}`} aria-hidden="true">›</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => navigateWithFocus(tab)}
-                                    className="shrink-0 min-h-[44px] px-2.5 py-1 rounded-card border border-white/10 bg-white/5 text-tiny font-medium text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
+                                    className="shrink-0 min-h-[44px] text-meta text-primary underline underline-offset-2 focus-ring rounded-sm"
                                 >
                                     Ouvrir →
                                 </button>
                             </div>
                             {isOpen && (
-                                <div className="p-3 pt-1 space-y-3 border-t border-white/5">
+                                <div className="px-5 pb-4 space-y-3">
                                     {reqs.map((req) => <RequirementCard key={req.id} req={req} currentTab={Tab.SETTINGS} />)}
                                     {cfg.optOut && (
                                         <p className="text-tiny text-ink-400 italic">
@@ -127,8 +145,6 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
         </div>
     );
 
-    // [EP-6] Config 100 % complète → le hub devient du bruit : ruban discret repliable
-    // (déplie pour revoir/ajuster). Sinon, hub complet (aide à l'onboarding).
     if (allReady) {
         return (
             <CollapsibleSection
@@ -148,31 +164,30 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
         );
     }
 
+    // Anneau de progression (maquettes) : 64 px, trait de 7 px.
+    const R = 27, C = 2 * Math.PI * R;
     return (
-        <div className={`rounded-card border border-white/10 bg-white/5 p-4 ${className}`}>
-            <div className="flex items-center justify-between gap-3 mb-3">
+        <div className={`rounded-2xl bg-surface border border-white/6 overflow-hidden ${className}`}>
+            <div className="flex items-center gap-4 px-5 py-4">
+                <div
+                    className="relative w-16 h-16 shrink-0"
+                    role="progressbar"
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Profil complété à ${pct} %`}
+                >
+                    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+                        <circle cx="32" cy="32" r={R} fill="none" stroke="#15181E" strokeWidth="7" />
+                        <circle cx="32" cy="32" r={R} fill="none" stroke="#34d399" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(C * pct) / 100} ${C}`} transform="rotate(-90 32 32)" />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-body font-bold text-ink-50" aria-hidden="true">{pct} %</span>
+                </div>
                 <div className="min-w-0">
                     {/* h2 : premier titre de section sous le h1 du PageHeader (évite le saut h1→h3, WCAG 1.3.1). */}
-                    <h2 className="font-bold text-ink-50">Complétude par onglet</h2>
-                    <p className="text-meta text-ink-400">
-                        Ce qu'il faut renseigner pour débloquer chaque page. Clique un onglet pour compléter ici,
-                        ou « Ouvrir » pour y aller.
-                    </p>
+                    <h2 className="text-[18px] font-semibold text-ink-50">{readyCount} onglets sur {tabs.length} prêts</h2>
+                    <p className="text-[13px] text-ink-400">Ce qu'il faut renseigner pour débloquer chaque page.</p>
                 </div>
-                <div className="shrink-0 text-right">
-                    <div className="text-body font-black text-ink-50 font-mono">{pct}%</div>
-                    <div className="text-tiny text-ink-400 font-mono">{readyCount}/{tabs.length} onglets prêts</div>
-                </div>
-            </div>
-            <div
-                className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-3"
-                role="progressbar"
-                aria-valuenow={pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Profil complété à ${pct} %`}
-            >
-                <div className="h-full bg-primary rounded-full transition-[width] duration-500" style={{ width: `${pct}%` }} />
             </div>
             {list}
         </div>

@@ -390,7 +390,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <div className="space-y-3.5">
                             <div>
                                 <label className="flex justify-between text-body text-ink-200 mb-2"><span>Paiement supplémentaire</span><span className="font-mono text-ink-50"><PrivateSliderValue revealed={extraSliderFocus}>{formatCAD(extraPayment)}</PrivateSliderValue>/mois</span></label>
-                                <input type="range" aria-label="Paiement supplémentaire par mois" min="0" max="2000" step="50" value={extraPayment} {...maskedSliderAria(isPrivacyMode && !extraSliderFocus)} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full accent-primary cursor-pointer" />
+                                <input type="range" aria-label="Paiement supplémentaire" min="0" max="2000" step="50" value={extraPayment} {...maskedSliderAria(isPrivacyMode && !extraSliderFocus)} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full accent-primary cursor-pointer" />
                                 <div className="text-[13px] text-ink-400 mt-1.5">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>) : <PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount> par mois au total.</div>
                             </div>
                             <div className="grid grid-cols-2 gap-2.5">

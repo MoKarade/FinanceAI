@@ -24,6 +24,7 @@ import { logError, logErrorThrottled } from '../errorLogger';
 import type { ResultatHistorique } from '../marketData';
 import { causePermanente } from '../marketData/messageEchec';
 import type { MarketDataErrorCode } from '../marketData/types';
+import { verdictDeviseHistorique, messageDeviseIncompatible } from './deviseHistorique';
 
 interface HydrateHistoryDeps {
     /**
@@ -263,6 +264,20 @@ async function runHydrate(
             const res = await deps.getHistory(primarySymbol, from, new Date(now()));
             const hist = res.forme === 'ok' ? res.points : null;
             let causeEchec: MarketDataErrorCode | null = res.forme === 'echec' ? res.echec.cause : null;
+            // [HISTORIQUE-YAHOO-DEVISE-NON-LUE] Garde de DEVISE (même classe que la garde crypto
+            // ci-dessus et que « currency-mismatch » de priceRefresh) : des clôtures dans une autre
+            // devise que l'actif — pence de Londres compris — seraient stockées comme des prix
+            // natifs et valorisées au mauvais facteur. On SAUTE : l'historique existant survit, et
+            // on ne part PAS à la pêche aux variantes (le symbole répond, il répond juste dans une
+            // autre devise ; seul l'utilisateur sait quelle cotation il détient).
+            if (hist !== null && hist.length > 0) {
+                const verdict = verdictDeviseHistorique(hist, a.currency);
+                if (verdict.etat === 'incompatible') {
+                    skipped.push({ symbol: a.symbol, reason: 'currency-mismatch', triedSymbols: [primarySymbol] });
+                    logError({ source: 'network', severity: 'warning', message: messageDeviseIncompatible(primarySymbol, verdict) });
+                    continue;
+                }
+            }
             let fresh = hist === null ? null : toFresh(hist);
             let resolvedSymbol: string | undefined;
             const variantNetFailures: string[] = [];
@@ -296,6 +311,13 @@ async function runHydrate(
                         // que le verdict final ne mente pas (finding silent-failure #493 : avalé
                         // en « empty » silencieux avant).
                         variantNetFailures.push(alt);
+                        continue;
+                    }
+                    // [HISTORIQUE-YAHOO-DEVISE-NON-LUE] Une variante dans une autre devise n'est pas le
+                    // titre détenu (ou pas sa cotation) : écartée comme une collision de ticker.
+                    const altVerdict = verdictDeviseHistorique(altHist, a.currency);
+                    if (altVerdict.etat === 'incompatible') {
+                        logError({ source: 'network', severity: 'warning', message: messageDeviseIncompatible(alt, altVerdict) });
                         continue;
                     }
                     const altFresh = toFresh(altHist);

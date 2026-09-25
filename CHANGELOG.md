@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-25 — Historique des cours : la devise est vérifiée
+
+- L'historique d'un titre (la courbe de ses cours passés) est maintenant contrôlé comme son cours du
+  jour : s'il est coté dans une autre devise que celle du titre, il est refusé au lieu d'être copié
+  tel quel. Le cas visé : un titre de Londres, coté en pence, serait entré dans ta courbe cent fois
+  trop haut.
+- Un historique dont la source ne dit pas la devise reste accepté, comme avant.
+
 ## 2026-09-24 — Ajout d'un titre : la bonne devise d'office
 
 - Quand tu ajoutes un titre dont le cours est trouvé automatiquement, sa devise vient maintenant de sa

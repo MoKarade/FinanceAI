@@ -111,16 +111,17 @@
   datés : elle disparaît de toute la courbe passée.
 - [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
   la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
-- [x] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — ✅ 2026-09-24 : la devise d'un titre validé
-  vient de sa COTATION (`quote.currency`) ; une devise que l'app ne porte pas (GBP, CHF…) est un refus
-  nommé, jamais un repli ; une devise non indiquée par la source affiche un avertissement ; la devise
-  se remet à USD entre deux ajouts. ⚠️ Le mode 100 % manuel garde son défaut USD (aucune cotation à
-  lire) : c'est à Marc de choisir. 3 gardes, 2 perturbations distinctes.
 - [ ] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — un symbole de cotation collé est accepté sans
   contrôle de devise ni d'ordre de grandeur, et efface l'historique ; ses cours sont ensuite rejetés
   pour devise différente → prix figé sans alerte.
-- [ ] 🟠 **`[HISTORIQUE-YAHOO-DEVISE-NON-LUE]`** (S) — l'historique Yahoo ne lit pas `meta.currency` :
-  une ligne de Londres en pence entrerait dans la courbe à ×100 sans rien dire.
+- [x] 🟠 **`[HISTORIQUE-YAHOO-DEVISE-NON-LUE]`** (S) — ✅ 2026-09-25 : `parseYahooChart` publie
+  `meta.currency` sur chaque point, CASSE GARDÉE (`GBp` = pence) ; règle unique
+  `services/history/deviseHistorique.ts`, appliquée par l'hydratation ET par `usePastPortfolioHistory`
+  (la seconde porte vers la courbe). Devise inconnue (Finnhub, cache antérieur) = acceptée comme avant ;
+  pence ou autre devise que l'actif = refus `currency-mismatch`, historique existant intact, aucune
+  pêche aux variantes. 5 perturbations, 5 rouges. ⚠️ Un `priceHistory` déjà écrit à ×100 AVANT ce lot
+  n'est pas purgé ; le refus ne s'affiche qu'au journal (comme la garde crypto) ; `parseYahooQuote`
+  met encore la devise en majuscules (`GBp` → `GBP`), sans effet aujourd'hui puisque GBP est refusé.
 - [ ] 🟠 **`[PERF-COMPAREE-TOTAL-AMPUTE]`** (M) — la « Performance » d'Investissements compare des
   totaux qui ne portent pas les mêmes titres ; une ligne sortie du TOTAL fait un creux FANTÔME, et la
   note ne regarde que le DERNIER jour de l'axe.

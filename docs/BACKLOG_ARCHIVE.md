@@ -10,6 +10,16 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-24 — Ajout d'un titre : la devise vient de la cotation (PR #1056)
+
+Déménagé au lot suivant (HISTORIQUE-YAHOO-DEVISE).
+
+- [x] 🟠 **`[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]`** (S) — ✅ 2026-09-24 : la devise d'un titre validé
+  vient de sa COTATION (`quote.currency`) ; une devise que l'app ne porte pas (GBP, CHF…) est un refus
+  nommé, jamais un repli ; une devise non indiquée par la source affiche un avertissement ; la devise
+  se remet à USD entre deux ajouts. ⚠️ Le mode 100 % manuel garde son défaut USD (aucune cotation à
+  lire) : c'est à Marc de choisir. 3 gardes, 2 perturbations distinctes.
+
 ## 2026-09-24 — Synchro Drive : le push n'écrase plus une version qu'il n'a pas vue (PR #1054)
 
 Déménagé au lot suivant (ADDSTOCK-DEVISE).

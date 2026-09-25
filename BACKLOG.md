@@ -129,15 +129,20 @@
   UNIQUE classé « Revenus divers » est moyenné comme un revenu mensuel ; et le cashflow publié
   (revenu réel − dépenses BUDGÉTÉES) est planché à 0 (`financialSnapshot.ts:183`), donc un déficit
   s'affiche « 0 $ ». Quatre définitions de l'épargne coexistent selon l'écran.
-- [ ] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (**M**, re-mesuré le 2026-09-24 — pas S) — l'export JSON
-  énumère ses champs à la main et la restauration vide le stockage : soldes et historique Fintable,
-  rôles, abonnements et taux perdus. ⚠️ La restauration passe par les clés LEGACY (`localStorage.clear()`
-  puis `app_*`, relues par `store/etatParDefaut.ts`) : exporter un champ de plus ne suffit pas, il lui
-  faut aussi un lecteur legacy — sinon il est perdu quand même. Plan proposé : restaurer en écrivant
-  le blob du store (`financeai-storage`) pour qu'il passe par `merge` + `verifierTypesRestaures`, garder
-  le chemin legacy pour les anciens backups, et une garde « toute clé persistée est exportée OU exclue
-  avec sa raison ». À trancher avec Marc : le backup contient-il aussi les conversations IA et les
-  documents (la synchro Drive les contient déjà).
+- [x] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (M) — ✅ **livré le 2026-09-25.** La sauvegarde JSON (claire
+  et chiffrée) porte l'enveloppe persistée ENTIÈRE (format `4.0`, celle que Drive pousse) ; la
+  restauration la réécrit sous `financeai-storage` et passe par `merge` + `verifierTypesRestaures` au
+  redémarrage. Décisions de Marc : conversations IA et documents INCLUS, restauration = TOUT
+  REMPLACER. Anciens backups `3.x` : chemin legacy inchangé. Export refusé en mode test. Revue :
+  blob illisible annoncé comme tel, écriture avec retour arrière (quota), filet de backup avant,
+  coffre des clés API conservé, `apiKeys`/mode test d'un fichier fabriqué jamais écrits. Garde :
+  `tests/components/sauvegardeJsonEtat.test.tsx` (clés du fichier = clés persistées). → à déménager
+  vers `BACKLOG_ARCHIVE` à la prochaine PR.
+- [ ] 🟠 **`[SYNC-PULL-APIKEYS-NON-FILTREES]`** (S, trouvé par la revue sécurité de #1065) —
+  `applyPulledPayload` (`services/sync/syncPull.ts`) écrit l'enveloppe Drive sans retirer
+  `state.apiKeys` : un blob Drive fabriqué poserait des clés API étrangères en mémoire au `merge`.
+  Même filtre que la restauration JSON (`enveloppeARestaurer`, `services/sauvegardeJson.ts`).
+  Surface plus étroite (il faut le compte Google), d'où non corrigé dans #1065.
 - [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.

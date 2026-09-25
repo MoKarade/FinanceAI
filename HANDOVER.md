@@ -4,6 +4,37 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⏸️ EN PAUSE (2026-09-25, 14:05 UTC, demande de Marc) — **point de reprise**
+> **État exact** :
+> - `main` = `1da01632` (#1064 fusionnée, déployée READY sur Vercel).
+> - **PR #1065 `[EXPORT-JSON-PERD-FINTABLE]` OUVERTE EN BROUILLON, NON FUSIONNÉE** (branche
+>   `claude/progress-check-yua8yy`). Code complet + revue de 3 agents intégrée (voir suite 6
+>   ci-dessous). Vérifs ciblées vertes (typecheck, lint 0 erreur / 32 avertissements, 25 fichiers de
+>   test). Reste à faire à la reprise : lire la CI sur la tête, sortir du brouillon, auto-merge
+>   SQUASH, vérifier Vercel READY, puis déménager `[EXPORT-JSON-PERD-FINTABLE]` vers l'archive.
+> - **Déploiement MCP : toujours impossible.** Marc a réactivé le workflow et l'a lancé (run
+>   `36144220105`, 13:56 UTC) : échec en 1 s sur le job garde — « la variable de dépôt
+>   `GCP_PROJECT_ID` n'est pas définie », job `deploy` **ignoré** (`skipped`). Donc la variable
+>   n'est pas vue comme **variable de dépôt Actions** (probablement posée comme *secret*, ou dans un
+>   *environment*, ou à un autre niveau). Mesure du job : 376 commits touchant le serveur depuis
+>   v0.11.0 (2026-07-13). Geste précis routé dans `docs/A_FAIRE_MOI.md` `[MCP-DEPLOY-CONTINU-MORT]`.
+> - Bloqués par ce déploiement : 1c-2 (brancher `financeai-eodhd-key` dans `mcp/deploy.sh`), 1g
+>   (import des relevés), `[FX-SERVEUR-JAMAIS-RAFRAICHI]`, la réparation du cron Fintable.
+> - Neuf, trouvé par la revue : `[SYNC-PULL-APIKEYS-NON-FILTREES]` (BACKLOG, 🟠 S).
+> - Aucun rappel programmé (le check-in de #1065 a été annulé pour la pause). Rien de non poussé.
+>
+> ## 🟩 Session 2026-09-25 (suite 6) — **Sauvegarde JSON = l'enveloppe persistée entière**
+> `[EXPORT-JSON-PERD-FINTABLE]` (décisions de Marc : conversations + documents inclus, restauration =
+> tout remplacer). `services/sauvegardeJson.ts` (pur) + `BackupPanel` : export = `getLocalPayload()`
+> (format `4.0`, `{ version, timestamp, store: { state, version } }`), refus en mode test ; restauration
+> 4.0 = `localStorage.clear()` puis `financeai-storage` réécrit tel quel, jugé au démarrage par `merge`.
+> `Settings` ne reçoit plus les 14 collections du vieux payload. Revue (3 agents) : blob illisible
+> nommé, `remplacerLeStockage` (retour arrière si l'écriture lève, coffre `app_api_keys_enc` gardé),
+> filet `createBackupNow` avant, `enveloppeARestaurer` retire `apiKeys` et le mode test d'un fichier
+> fabriqué, majeur de version PARSÉ. Même trou `apiKeys` côté pull Drive → `[SYNC-PULL-APIKEYS-NON-FILTREES]`. ⚠️ Le workflow `Deploy MCP (Cloud
+> Run)` est **désactivé** côté GitHub : Marc doit le réactiver avant qu'un déploiement puisse partir
+> (routé dans `docs/A_FAIRE_MOI.md`). 1c-2 attend ce déploiement vérifié.
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur

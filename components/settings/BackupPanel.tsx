@@ -10,6 +10,14 @@ import { logAudit } from '../../services/auditLog';
 import { logError } from '../../services/errorLogger';
 import { MIN_PASSPHRASE_LENGTH } from '../../services/sync/syncOrchestrator';
 import { verifierTypesRestaures, messageDeRefusTypes } from '../../services/verifierTypesRestaures';
+import { getLocalPayload } from '../../services/sync/syncSnapshot';
+import { modeDonneesFictives } from '../../store/modeTestActif';
+import { STORAGE_KEYS } from '../../utils/storageKeys';
+import {
+  construireSauvegardeEtat, enveloppeARestaurer, messageRefusSauvegarde, remplacerLeStockage, resumeSauvegarde,
+  type ResultatSauvegarde,
+} from '../../services/sauvegardeJson';
+import { createBackupNow } from '../../services/backupAuto';
 
 /**
  * ⚠️ EXPORTÉ pour être testable directement. Monter `BackupPanel` en test tirerait Card, Toast et
@@ -60,9 +68,18 @@ export const BackupSchema = z.object({
   instruments: z.array(z.object({}).passthrough()).optional(),
   // [PTF-L1E-PASSERELLE] Régime fiscal par compte du grand livre : même tolérance, même juge.
   brokerAccountRegimes: z.array(z.object({}).passthrough()).optional(),
+  // [EXPORT-JSON-PERD-FINTABLE] Format 4.0 : l'enveloppe persistée ENTIÈRE (`financeai-storage`),
+  // celle que la synchro Drive pousse. Son contenu n'est pas recopié champ par champ ici — c'est
+  // précisément ce qui perdait tout champ oublié — : il est jugé par `verifierTypesRestaures` dans
+  // le `superRefine` ci-dessous, puis par `merge` au redémarrage, comme un pull Drive.
+  store: z.object({
+    state: z.record(z.string(), z.unknown()),
+    version: z.number().int().nonnegative(),
+  }).optional(),
   aiConversation: z.array(z.unknown()).optional(),
-  // [B2] symétrie de schéma (le chat n'est pas restauré par le backup JSON — cf doRestore — mais
-  // un export qui porte ces champs ne doit pas être rejeté à la validation).
+  // [B2] symétrie de schéma (l'ANCIEN format 3.x ne restaure pas le chat — cf doRestore ; le
+  // format 4.0 le porte dans `store.state` — mais un export qui porte ces champs à la racine ne doit
+  // pas être rejeté à la validation).
   aiConversations: z.array(z.unknown()).optional(),
   activeAiConversationId: z.string().nullable().optional(),
   // [B3+B4] même symétrie : modèle du chat + coût cumulé (finite : jamais d'Infinity dans un $).
@@ -75,6 +92,19 @@ export const BackupSchema = z.object({
   (data) => data.version !== undefined || data.transactions !== undefined,
   { message: "doit contenir au moins 'version' ou 'transactions'" }
 ).superRefine((data, ctx) => {
+  // [EXPORT-JSON-PERD-FINTABLE] Un fichier qui se déclare au format 4 sans son état ne peut PAS
+  // retomber sur le chemin legacy : il n'y porte rien, et « tout remplacer » viderait l'app.
+  // ⚠️ Majeur PARSÉ, pas un préfixe « 4. » : `'4'`, `'40'` ou un futur `'5.0'` sans état passaient
+  // le préfixe et tombaient sur le chemin legacy — une restauration « réussie » de RIEN (revue #1065).
+  const majeur = Number.parseInt(data.version ?? '', 10);
+  if (Number.isFinite(majeur) && majeur >= 4 && !data.store) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['store'],
+      message: `sauvegarde au format ${data.version} sans son état — fichier incomplet, rien n'a été modifié`,
+    });
+    return;
+  }
   // [BACKUP-SCHEMA-NON-TYPE] La garde de TYPE, posée sur le SCHÉMA et non sur chaque appelant.
   //
   // ⚠️ Elle contredit délibérément la note « Tier 🟡 » ci-dessus (« c'est un chemin de RESTAURATION :
@@ -103,11 +133,26 @@ export const BackupSchema = z.object({
 
 type BackupData = z.infer<typeof BackupSchema>;
 
-interface BackupPanelProps {
-  buildPayload: () => object;
-}
+/**
+ * [EXPORT-JSON-PERD-FINTABLE] La sauvegarde du moment : l'enveloppe que la synchro Drive pousserait,
+ * lue FRAÎCHE au clic (jamais capturée au montage — une saisie faite entre-temps manquerait).
+ */
+const sauvegardeDuMoment = (): ResultatSauvegarde => {
+  let blobPresent = false;
+  try {
+    blobPresent = localStorage.getItem(STORAGE_KEYS.persistStore) !== null;
+  } catch {
+    // Stockage inaccessible : `getLocalPayload` rendra `null` → « rien à sauvegarder », seul constat
+    // honnête quand on ne peut même pas savoir s'il existe quelque chose.
+  }
+  const r = construireSauvegardeEtat(getLocalPayload().payload, modeDonneesFictives(), Date.now(), blobPresent);
+  if (!r.ok && r.cause === 'illisible') {
+    logError({ source: 'storage', severity: 'error', message: 'Export JSON : financeai-storage présent mais illisible — export refusé' });
+  }
+  return r;
+};
 
-export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
+export const BackupPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const encryptedFileRef = useRef<HTMLInputElement>(null);
   // [A11Y-MODAL-GUIDE-NODIALOG] Focus initial des trois dialogues de sauvegarde. Ils portaient un
@@ -128,15 +173,21 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
   const [restoreConfirmPhrase, setRestoreConfirmPhrase] = React.useState('');
 
   const handleExport = () => {
-    const { apiKeys: _stripped, ...dataWithoutKeys } = buildPayload() as { apiKeys: unknown };
-    const blob = new Blob([JSON.stringify(dataWithoutKeys, null, 2)], { type: 'application/json' });
+    const r = sauvegardeDuMoment();
+    if (!r.ok) {
+      showToast(messageRefusSauvegarde(r.cause), 'error');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(r.sauvegarde, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `financeai_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     markBackupDone();
-    showToast("Sauvegarde téléchargée (clés API exclues — utilise l'export chiffré pour les inclure).", "info");
+    // ⚠️ L'ancien message renvoyait vers « l'export chiffré pour les inclure » : faux, les deux
+    // exports excluent les clés API (elles ne sont jamais persistées en clair).
+    showToast("Sauvegarde téléchargée : tout ton dossier, conversations IA et documents compris (clés API exclues).", "info");
   };
 
   const doEncryptedExport = async () => {
@@ -150,8 +201,12 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     }
     setEncWorking(true);
     try {
-      const { apiKeys: _stripped, ...payloadWithoutKeys } = buildPayload() as { apiKeys: unknown };
-      await downloadBackup(payloadWithoutKeys, exportPassphrase, defaultBackupFilename());
+      const r = sauvegardeDuMoment();
+      if (!r.ok) {
+        showToast(messageRefusSauvegarde(r.cause), 'error');
+        return;
+      }
+      await downloadBackup(r.sauvegarde, exportPassphrase, defaultBackupFilename());
       markBackupDone();
       showToast("Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
       setShowExportEncModal(false);
@@ -228,66 +283,111 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     e.target.value = '';
   };
 
-  const doRestore = () => {
+  const doRestore = async () => {
     if (!pendingRestoreData || restoreConfirmPhrase !== 'RESTAURER') return;
     const data = pendingRestoreData;
     setPendingRestoreData(null);
     setRestoreConfirmPhrase('');
 
-    localStorage.clear();
-
-    const safeSet = (key: string, val: unknown) => {
-      if (val !== undefined && val !== null) {
-        localStorage.setItem(key, JSON.stringify(val));
+    // FILET avant d'écraser (même geste que le pull Drive et la restauration d'un backup auto) :
+    // la restauration remplace TOUT, l'annuler passe par ce backup. Un échec ne bloque pas, mais ne
+    // s'avale pas non plus — « restauration SANS filet » doit rester visible dans les diagnostics.
+    try {
+      const filet = await createBackupNow('manual', { intent: 'filet', donneesFictives: modeDonneesFictives() });
+      if (!filet.ok) {
+        logError({ source: 'storage', severity: 'warning', message: `Restauration JSON : backup pré-restauration non créé (${filet.cause}) — restauration SANS filet` });
       }
-    };
-
-    // C5 fix : apiKeys n'est plus inclus dans les backups par défaut (sécurité).
-    // V1 fix (audit 2026-05-21) : si un ancien backup contient des apiKeys,
-    // on NE LES RESTAURE PLUS dans localStorage (où elles seraient en clair).
-    // L'utilisateur doit les re-saisir manuellement via Configuration (la
-    // clef legacy `app_api_keys` est purgée au prochain boot du store).
-    if (data.apiKeys) {
-        console.warn('[Restore] apiKeys détectées dans backup mais non restaurées (sécurité V1). Re-saisir manuellement dans Configuration.');
+    } catch (e) {
+      logError({ source: 'storage', severity: 'warning', message: 'Restauration JSON : backup pré-restauration échoué — restauration SANS filet', error: e });
     }
-    safeSet('app_config', data.config);
-    safeSet('app_budget', data.budgetItems);
-    safeSet('initial_balances', data.initialBalances);
-    safeSet('app_assets', data.assets);
-    // [NAV-REMOVE-OBJECTIFS-TAB] `savingsGoals` retiré du produit — un vieux backup qui en
-    // contient encore (schéma toujours `.optional()` ci-dessus pour rester compatible en
-    // LECTURE) n'écrit plus la clé legacy : rien ne la relit, la restaurer serait inerte.
-    safeSet('app_travel_goals', data.travelGoals);
-    safeSet('app_debts', data.debts ?? []);
-    safeSet('app_investment_acc', data.investmentAccounts ?? []);
-    safeSet('app_investment_tx', data.investmentTransactions ?? []);
-    safeSet('app_life_events', data.lifeEvents ?? []);
-    safeSet('app_financial_goals', data.financialGoals ?? []);
-    safeSet('app_retirement_goal', data.retirementGoal);
-    safeSet('app_real_estate_goals', data.realEstateGoals);
-    safeSet('app_child_goal', data.childGoal);
-    if (data.childGoals) safeSet('app_child_goals', data.childGoals);
-    if (data.projection) safeSet('app_projection', data.projection);
-    safeSet('cached_transactions', data.transactions ?? []);
-    safeSet('app_insurance_policies', data.insurancePolicies);
-    safeSet('app_rental_properties', data.rentalProperties);
-    safeSet('app_private_businesses', data.privateBusinesses);
-    safeSet('app_vehicle_replacements', data.vehicleReplacements);
-    safeSet('app_major_renovations', data.majorRenovations);
-    safeSet('app_charitable_goals', data.charitableGoals);
-    // [PTF-L1A] Sans `?? []` : un backup sans grand livre doit restaurer un état « jamais importé »
-    // (clé ABSENTE), pas un livre « importé et vide ».
-    safeSet('app_broker_ledger', data.brokerLedger);
-    safeSet('app_instruments', data.instruments);
-    safeSet('app_broker_account_regimes', data.brokerAccountRegimes);
+
+    if (data.apiKeys) {
+      // C5 / V1 (audit 2026-05-21) : des clés API trouvées dans un ANCIEN backup ne sont jamais
+      // restaurées dans localStorage (elles y seraient en clair) — à re-saisir dans Configuration.
+      console.warn('[Restore] apiKeys détectées dans backup mais non restaurées (sécurité V1). Re-saisir manuellement dans Configuration.');
+    }
+
+    const aEcrire = data.store ? enveloppeARestaurer(data.store) : null;
+    if (aEcrire && aEcrire.retirees.length > 0) {
+      logError({ source: 'storage', severity: 'warning', message: `Restauration JSON : champs écartés du fichier (jamais restaurés) : ${aEcrire.retirees.join(', ')}` });
+    }
+
+    // `remplacerLeStockage` vide le stockage, écrit, et REMET EN PLACE l'ancien contenu si l'écriture
+    // lève (quota) : sans ça, un échec après `clear()` laissait une app vide au rechargement.
+    // Le coffre CHIFFRÉ des clés API survit : il ne fait pas partie du fichier, l'effacer obligeait à
+    // tout re-saisir.
+    const ecriture = remplacerLeStockage(localStorage, (st) => {
+      // [EXPORT-JSON-PERD-FINTABLE] Format 4.0 : l'enveloppe est réécrite TELLE QUELLE sous
+      // `financeai-storage`. Au rechargement, zustand la fait passer par `merge` (garde de types
+      // comprise) par-dessus l'état par défaut — les clés legacy venant d'être effacées, ce que la
+      // sauvegarde ne porte pas retombe à son défaut : « tout remplacer », décision de Marc
+      // (2026-09-25). Aucune clé `app_*` n'est écrite : rien ne doit rivaliser avec l'enveloppe.
+      if (aEcrire) {
+        st.setItem(STORAGE_KEYS.persistStore, JSON.stringify(aEcrire.enveloppe));
+        return;
+      }
+      const safeSet = (key: string, val: unknown) => {
+        if (val !== undefined && val !== null) {
+          st.setItem(key, JSON.stringify(val));
+        }
+      };
+      safeSet('app_config', data.config);
+      safeSet('app_budget', data.budgetItems);
+      safeSet('initial_balances', data.initialBalances);
+      safeSet('app_assets', data.assets);
+      // [NAV-REMOVE-OBJECTIFS-TAB] `savingsGoals` retiré du produit — un vieux backup qui en
+      // contient encore (schéma toujours `.optional()` ci-dessus pour rester compatible en
+      // LECTURE) n'écrit plus la clé legacy : rien ne la relit, la restaurer serait inerte.
+      safeSet('app_travel_goals', data.travelGoals);
+      safeSet('app_debts', data.debts ?? []);
+      safeSet('app_investment_acc', data.investmentAccounts ?? []);
+      safeSet('app_investment_tx', data.investmentTransactions ?? []);
+      safeSet('app_life_events', data.lifeEvents ?? []);
+      safeSet('app_financial_goals', data.financialGoals ?? []);
+      safeSet('app_retirement_goal', data.retirementGoal);
+      safeSet('app_real_estate_goals', data.realEstateGoals);
+      safeSet('app_child_goal', data.childGoal);
+      if (data.childGoals) safeSet('app_child_goals', data.childGoals);
+      if (data.projection) safeSet('app_projection', data.projection);
+      safeSet('cached_transactions', data.transactions ?? []);
+      safeSet('app_insurance_policies', data.insurancePolicies);
+      safeSet('app_rental_properties', data.rentalProperties);
+      safeSet('app_private_businesses', data.privateBusinesses);
+      safeSet('app_vehicle_replacements', data.vehicleReplacements);
+      safeSet('app_major_renovations', data.majorRenovations);
+      safeSet('app_charitable_goals', data.charitableGoals);
+      // [PTF-L1A] Sans `?? []` : un backup sans grand livre doit restaurer un état « jamais importé »
+      // (clé ABSENTE), pas un livre « importé et vide ».
+      safeSet('app_broker_ledger', data.brokerLedger);
+      safeSet('app_instruments', data.instruments);
+      safeSet('app_broker_account_regimes', data.brokerAccountRegimes);
+    }, [STORAGE_KEYS.apiKeysEncrypted]);
+
+    if (!ecriture.ok) {
+      logError({
+        source: 'storage', severity: 'critical',
+        message: ecriture.retabli
+          ? 'Restauration JSON : écriture impossible (stockage plein ?) — le contenu d\'avant a été remis en place'
+          : 'Restauration JSON : écriture impossible ET contenu d\'avant non rétabli — restaurer depuis Drive ou un backup automatique',
+        error: ecriture.erreur,
+      });
+      showToast(
+        ecriture.retabli
+          ? 'Restauration impossible : le navigateur a refusé d\'écrire la sauvegarde (stockage plein ?). Ton dossier actuel est intact.'
+          : 'Restauration impossible, et le dossier actuel n\'a pas pu être remis en place. Restaure depuis Google Drive ou un backup automatique (Sauvegarde → Backups automatiques).',
+        'error',
+      );
+      return;
+    }
 
     // SYS-AUDIT — trace la restauration (écrite APRÈS les writes → survit au reload).
+    const resume = resumeSauvegarde(data);
     logAudit({
       field: 'backup',
       operation: 'replace',
-      description: `Restauration depuis un backup (${data.transactions?.length ?? 0} transactions)`,
+      description: `Restauration depuis un backup ${resume.version} (${resume.transactions} transactions)`,
     });
-    showToast("Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
+    showToast("Restauration réussie ! Tes clés API sont conservées.", "success");
     window.location.reload();
   };
 
@@ -423,9 +523,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             <div className="flex items-start gap-3 mb-4">
               <div className="flex-1">
                 <div className="text-ink-300 text-body space-y-1 bg-black/30 p-3 rounded-lg mb-3">
-                  <p>Version : <span className="text-white font-mono">{String(pendingRestoreData.version ?? 'Inconnue')}</span></p>
-                  <p>Transactions : <span className="text-white font-mono">{(pendingRestoreData.transactions as unknown[])?.length ?? 0}</span></p>
-                  <p>Actifs : <span className="text-white font-mono">{(pendingRestoreData.assets as unknown[])?.length ?? 0}</span></p>
+                  <p>Version : <span className="text-white font-mono">{resumeSauvegarde(pendingRestoreData).version}</span></p>
+                  <p>Transactions : <span className="text-white font-mono">{resumeSauvegarde(pendingRestoreData).transactions}</span></p>
+                  <p>Actifs : <span className="text-white font-mono">{resumeSauvegarde(pendingRestoreData).actifs}</span></p>
                 </div>
                 <p className="text-danger-400 text-meta font-bold leading-relaxed">
                   Toutes les données actuelles seront effacées. Action irréversible.
@@ -471,7 +571,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="text-body text-ink-300">
               <p className="font-bold text-white mb-1">JSON en clair</p>
-              <p className="text-meta">Sauvegarde lisible (debugging, audit). À conserver localement uniquement — ne contient pas les clés API.</p>
+              <p className="text-meta">Tout ton dossier en fichier lisible (transactions, synchro Fintable, conversations IA, documents). À conserver localement uniquement — ne contient pas les clés API.</p>
             </div>
             <div className="flex gap-3 flex-shrink-0">
               <button

@@ -17126,3 +17126,42 @@ activé ». Le test accusait une zone morte du graphe alors que le clic n'atteig
 - Même famille que `UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE` : la
   question n'est pas « le sélecteur est-il bon ? » mais « qu'est-ce qui est au-dessus ? ».
 
+## `UNE-SAUVEGARDE-PAR-LISTE-PERD-CE-QUE-PERSONNE-N-A-AJOUTE-DEUX-FOIS` (2026-09-25, export JSON)
+
+L'export JSON manuel énumérait 26 champs à la main, et la restauration les réécrivait sous des clés
+LEGACY (`app_*`) relues au démarrage. Un champ persisté n'arrivait donc au bout que si quelqu'un
+l'avait ajouté DEUX fois — dans la liste d'export ET dans un lecteur legacy. Soldes et historique
+Fintable, rôles des comptes, abonnements, taux, conversations IA, documents : tout ce qui était né
+après la liste disparaissait à la restauration, pendant que la synchro Drive, qui pousse l'enveloppe
+persistée entière, les portait tous. Deux chemins de sauvegarde pour le même dossier, un seul complet.
+
+⚠️ Le correctif n'est pas une 27ᵉ clé mais l'INVERSION : la sauvegarde EST l'enveloppe que Drive
+pousse (`getLocalPayload`), la restauration la réécrit telle quelle, et le démarrage la juge par
+`merge` + `verifierTypesRestaures` comme un pull. La garde ne tient plus de liste : elle exige que les
+clés du fichier soient celles que le store PERSISTE (`extrairePersistable`) — une liste recopiée
+serait circulaire, et pourrirait comme la première.
+
+⚠️ « Tout remplacer » (décision de Marc) est tenu par la BASE de la fusion, pas par la sauvegarde :
+au démarrage, l'état de base est l'état PAR DÉFAUT (clés legacy effacées). Le test le prouve par
+contraste — fusionnée sur l'état vivant, une valeur absente de la sauvegarde survivrait.
+
+⚠️ Corollaire de fixture : mes premiers ids de test (`d1`, `c1`) ont été RETIRÉS en silence de
+l'export, parce que `d1` est un identifiant exact de persona et que l'export désinfecte comme Drive.
+Le désinfectant avait raison ; la règle était déjà écrite en tête de `artifactIds.ts` (« jamais d'id
+court générique »). Une fixture qui s'évapore dans un chemin de sortie accuse d'abord son ID.
+
+⚠️⚠️ **Et l'inversion a ÉLARGI ce qu'un fichier peut imposer** — le panel l'a trouvé, pas le gate.
+L'ancien format ne pouvait écrire que 26 clés connues ; « réécrire l'enveloppe telle quelle » laisse
+un fichier FABRIQUÉ poser `apiKeys` en mémoire au `merge` (le garde-fou « V1 » ne regardait que
+l'ancien champ racine), donc faire tourner l'Assistant, les cours et la synchro Fintable sur les
+identifiants d'un tiers. `verifierTypesRestaures` juge des TYPES, jamais le droit d'une clé à
+exister. Même revue : `getLocalPayload` rend `null` pour un blob absent ET pour un blob illisible
+(« rien à sauvegarder » dit à quelqu'un dont le dossier vient de se corrompre), et `clear()` suivi
+d'une écriture qui lève (quota) laissait une app VIDE. **Passer d'une liste blanche à « tout »
+change la question de sécurité : non plus « ai-je oublié un champ ? » mais « quel champ un fichier
+n'a-t-il jamais le droit d'imposer ? »** — et elle se pose au moment de l'inversion.
+
+⚠️ Vu en chemin : le workflow `Deploy MCP (Cloud Run)` est DÉSACTIVÉ côté GitHub (un
+`workflow_dispatch` est refusé ; état `disabled_manually`, posé le 2026-09-23). Poser les secrets ne suffit donc pas : tant
+qu'il est désactivé, aucun push ne déploie, et rien n'est rouge.
+

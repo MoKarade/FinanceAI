@@ -18,9 +18,9 @@ export const TAB_LABELS: Record<Tab, string> = {
     [Tab.LIFE_PROJECTS]: 'Projets de vie',
     [Tab.RETIREMENT]: 'Retraite',
     [Tab.TAX]: 'Impôts',
-    [Tab.SETTINGS]: 'Paramètres',
+    [Tab.SETTINGS]: 'Réglages', // [S5-REFONTE] libellés de navigation des maquettes
     [Tab.PROFILE]: 'Profil',
-    [Tab.ASSISTANT]: 'Assistant IA',
+    [Tab.ASSISTANT]: 'Assistant',
 };
 
 // ============================================================

@@ -30,6 +30,13 @@ export interface HistoryPoint {
     high?: number;
     low?: number;
     volume?: number;
+    /**
+     * [HISTORIQUE-YAHOO-DEVISE-NON-LUE] Devise des clôtures telle que le FOURNISSEUR la déclare,
+     * casse comprise (`GBp` = pence, pas livres). Absente quand il ne la dit pas (Finnhub) ou pour
+     * une entrée de cache antérieure : « inconnue », jamais un défaut inventé. Jugée par
+     * `services/history/deviseHistorique.ts` avant toute écriture dans `Asset.priceHistory`.
+     */
+    currency?: string;
 }
 
 /** Profil statique d'un actif (rarement changeant). */

@@ -1699,6 +1699,12 @@ n'est pas réécrire un récit.
   Liste `CLES_TRI_ETAT` lue du seul blob ; un test de fusion part d'un état vivant PEUPLÉ
   (`UNE-CLE-ABSENTE-DU-BLOB-N-EFFACE-PAS-L-ETAT-VIVANT`).
 
+- ⚠️ **Une mise en MAJUSCULES efface l'unité que la casse portait** (2026-09-25) : Yahoo écrit `GBp`
+  pour des PENCE, et `toUpperCase()` en fait `GBP`, une devise plausible pour un prix ×100. Avant de
+  normaliser un code, demander si sa forme d'origine porte une information ; et une garde posée sur un
+  seul lecteur d'un flux laisse passer le défaut par l'autre (l'historique a deux lecteurs)
+  (`UNE-MISE-EN-MAJUSCULES-EFFACE-L-UNITE-QUE-LA-CASSE-PORTAIT`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

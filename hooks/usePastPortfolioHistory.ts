@@ -22,7 +22,8 @@ import { getEffectivePurchases } from '../utils/assetPurchases';
 // [PERF-MARKETDATA-DYNIMPORT-INERTE] Ce hook est monté au niveau App (ProjectionEngine) → il est
 // dans le chunk d'ENTRÉE : pas d'import statique de valeurs marketData (voir lazy.ts).
 import { loadMarketData } from '../services/marketData/lazy';
-import { logError } from '../services/errorLogger';
+import { logError, logErrorThrottled } from '../services/errorLogger';
+import { verdictDeviseHistorique, messageDeviseIncompatible } from '../services/history/deviseHistorique';
 import {
     reconstructPortfolioHistory,
     type MinimalAsset,
@@ -160,6 +161,14 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
                         // possible au prochain lot ; [] = vide légitime.
                         const hist = await getHistory(a.symbol, new Date(`${firstDate}T00:00:00Z`), today);
                         if (hist && hist.length > 0) {
+                            // [HISTORIQUE-YAHOO-DEVISE-NON-LUE] Même règle que l'hydratation (source
+                            // unique) : des clôtures dans une autre devise que l'actif ne deviennent
+                            // jamais ses prix — la courbe de ce titre reste absente, et le dit.
+                            const verdict = verdictDeviseHistorique(hist, a.currency);
+                            if (verdict.etat === 'incompatible') {
+                                logErrorThrottled(`historique-devise:${a.symbol}`, { source: 'network', severity: 'warning', message: messageDeviseIncompatible(a.symbol, verdict) });
+                                continue;
+                            }
                             next[a.symbol] = hist.map((h) => ({ date: h.date, price: h.close }));
                         }
                     } catch (e) {

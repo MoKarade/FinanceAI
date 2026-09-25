@@ -53,6 +53,10 @@ export function parseYahooChart(data: YahooChartResponse, from: Date, to: Date):
         // Symbole valide mais aucune donnée sur la période (réponse sans séries) = vide légitime.
         return [];
     }
+    // [HISTORIQUE-YAHOO-DEVISE-NON-LUE] Devise des clôtures, recopiée sur chaque point pour survivre
+    // au cache (qui stocke les points, pas la réponse). Casse GARDÉE : Yahoo écrit `GBp` pour des
+    // pence, et `toUpperCase()` en ferait des livres — un cours ×100 déguisé en devise plausible.
+    const devise = typeof result.meta?.currency === 'string' ? result.meta.currency.trim() : '';
     const fromMs = from.getTime();
     const toMs = to.getTime() + 86_400_000; // inclut la journée `to`
     const points: HistoryPoint[] = [];
@@ -63,7 +67,7 @@ export function parseYahooChart(data: YahooChartResponse, from: Date, to: Date):
         // on OMET ces points (jamais un 0 fabriqué, no-fake-data).
         if (typeof close !== 'number' || !Number.isFinite(close) || close <= 0) continue;
         if (ms < fromMs || ms > toMs) continue;
-        points.push({ date: new Date(ms).toISOString().slice(0, 10), close });
+        points.push({ date: new Date(ms).toISOString().slice(0, 10), close, ...(devise ? { currency: devise } : {}) });
     }
     // Dédoublonne par date (Yahoo peut émettre le point intraday du jour EN PLUS de la clôture) :
     // on garde le DERNIER point de chaque date.

@@ -17092,3 +17092,22 @@ invisibles une fois les placements saisis de leur régime retirés — un patrim
   déclare, puis grepper les TESTS qui l'emploient : ce qu'un scénario existant y écrit est sa sémantique.
 - Corollaire : la règle la plus simple (« tous les comptes se traitent pareil ») était aussi la seule qui
   ne fabrique aucun trou. Une exception a besoin d'une preuve, l'uniformité non.
+
+## `UNE-MISE-EN-MAJUSCULES-EFFACE-L-UNITE-QUE-LA-CASSE-PORTAIT` (2026-09-25, historique Yahoo)
+
+Yahoo écrit la devise d'un titre de Londres `GBp` : des PENCE, pas des livres. Le parseur de cours
+spot fait `(meta.currency || '').toUpperCase()` — donc `GBP`, une devise parfaitement plausible, pour
+un prix cent fois trop grand. Aujourd'hui sans effet (GBP est refusé : l'app ne gère que USD/CAD/EUR),
+mais le jour où GBP sera admis, la normalisation fabriquera exactement le ×100 que la garde existe
+pour arrêter.
+
+- Avant de normaliser un code (casse, espaces, accents), demander si la forme d'ORIGINE porte une
+  information : ici la casse EST l'unité. On compare alors sur la forme d'origine, et on n'uniformise
+  que ce qu'on sait sans perte (`trim`).
+- Corollaire du même lot : l'historique d'un cours a DEUX lecteurs (l'hydratation qui écrit
+  `priceHistory`, et le hook de la courbe passée qui garde les séries des actifs non hydratés). Une
+  garde posée sur le seul lecteur connu laisse passer le défaut par l'autre : la règle est une source
+  unique appelée par les deux, et chacun a sa perturbation.
+- Et « inconnue » n'est pas « incompatible » : Finnhub ne déclare aucune devise. Refuser l'absence
+  aurait coupé des courbes justes pour en protéger une fausse.
+

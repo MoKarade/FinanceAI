@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 — **Historique des cours : devise vérifiée**
+> Livré `[HISTORIQUE-YAHOO-DEVISE-NON-LUE]` : `HistoryPoint.currency` (optionnel, casse gardée),
+> `services/history/deviseHistorique.ts` (`verdictDeviseHistorique`, source unique), branché dans
+> `hydrateAssetHistories` (principal + variantes) et `usePastPortfolioHistory`. `[ADDSTOCK-…]` archivé.
+> ⚠️ Après le merge de #1055 (zod 4), un `npm install` est nécessaire dans le conteneur (typecheck rouge sinon).
+>
 > ## 🟩 Session 2026-09-24 (fin, suite 9) — **Ajout d'un titre : devise de la cotation**
 > Livré `[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]` (`AddStockForm`) : devise lue de `quote.currency`, refus nommé
 > hors CAD/USD/EUR, avertissement si absente. `[SYNC-PUSH-SANS-OCC]` fusionné (#1054) et archivé.

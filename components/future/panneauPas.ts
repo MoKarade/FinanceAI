@@ -44,15 +44,23 @@ const defDuPas = (pas: PasNavigation): PasDef => PAS_NAVIGATION.find((p) => p.id
 /**
  * Index du point d'AUJOURD'HUI dans la série — ou du plus proche si la fenêtre ne le contient pas.
  *
- * ⚠️ `monthIndex >= 0` est la frontière passé/futur du moteur : le premier point à abscisse
- * positive ou nulle EST aujourd'hui (ou le premier jour projeté quand la fenêtre commence après).
+ * `xAujourdhui` : abscisse du jour même. ⚠️ [FUTUR-ANCRE-AUJOURDHUI] Ce n'est PAS 0 sur la courbe
+ * au jour : depuis [FUTUR-DAILY-ROLLOVER], l'abscisse 0 est le 1er du mois COURANT, et les jours
+ * réels de ce mois avant aujourd'hui occupent [0, xAujourdhui). La règle « premier point ≥ 0 »
+ * désignait donc le 1er du mois — le 25/09, le panneau « Aujourd'hui » montrait le 01/09, et la
+ * valeur flottante de la courbe s'écartait de la tuile Patrimoine net de tous les mouvements du
+ * mois. Défaut 0 : la courbe au mois (repli), où le mois 0 EST aujourd'hui.
+ *
  * Fenêtre entièrement dans le PASSÉ → le dernier point, c'est-à-dire le plus proche d'aujourd'hui
- * par le bas ; c'est la même règle que le geste clavier du graphe, extraite ici pour que les deux
- * ne puissent plus diverger.
+ * par le bas ; entièrement dans le futur → le premier. C'est la même règle que le geste clavier du
+ * graphe, extraite ici pour que les deux ne puissent plus diverger.
  */
-export function indexAujourdhui(series: readonly PointDeplacable[]): number {
+export function indexAujourdhui(series: readonly PointDeplacable[], xAujourdhui = 0): number {
     if (!series || series.length === 0) return -1;
-    const i = series.findIndex((p) => p.monthIndex >= 0);
+    // Tolérance d'arrondi : l'abscisse du jour et celle de son point sont calculées par deux
+    // chemins (date ISO / jour du mois) qui peuvent différer au dernier bit.
+    const seuil = xAujourdhui - 1e-9;
+    const i = series.findIndex((p) => p.monthIndex >= seuil);
     return i === -1 ? series.length - 1 : i;
 }
 

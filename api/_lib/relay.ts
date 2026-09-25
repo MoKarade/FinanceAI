@@ -86,6 +86,8 @@ export interface IaLocaleConfig {
     orgAutorisee?: string;
     /** Empreintes salées de clés autorisées (RELAIS_CLES_LOCALES, séparées par des virgules). */
     empreintesAutorisees: ReadonlySet<string>;
+    /** Sel des empreintes (RELAIS_SEL_EMPREINTE) ; absent = sel par défaut du processus (tests). */
+    sel?: string;
     /** Plafond de max_tokens pour un appel servi LOCALEMENT (le GPU de Marc n'est pas un puits sans fond). */
     maxTokens: number;
 }
@@ -115,7 +117,14 @@ export function iaLocaleDepuisEnv(get: (k: string) => string | undefined = readE
     if (!brute || !cle) return null;
     // Échec FERMÉ : ni organisation ni empreinte autorisée → pas de routage local du tout.
     const orgAutorisee = get('RELAIS_ORG_LOCALE')?.trim() || undefined;
-    const empreintesAutorisees = new Set((get('RELAIS_CLES_LOCALES') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean));
+    const sel = get('RELAIS_SEL_EMPREINTE') || undefined;
+    let empreintesAutorisees = new Set((get('RELAIS_CLES_LOCALES') ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean));
+    // Sans sel serveur, le sel est aléatoire PAR INSTANCE : l'empreinte calculée par Marc ne correspondrait jamais
+    // (échec fermé mais SILENCIEUX). On l'écarte donc et on le dit — sans aucune valeur dans le journal.
+    if (empreintesAutorisees.size > 0 && !sel) {
+        console.warn('[relay] sel manquant : empreintes ignorées (RELAIS_CLES_LOCALES sans RELAIS_SEL_EMPREINTE)');
+        empreintesAutorisees = new Set();
+    }
     if (!orgAutorisee && empreintesAutorisees.size === 0) return null;
     let base: URL;
     try {
@@ -131,7 +140,7 @@ export function iaLocaleDepuisEnv(get: (k: string) => string | undefined = readE
     const r = get('IA_LOCALE_REFLEXION');
     const mt = Number(get('IA_LOCALE_MAX_TOKENS'));
     const maxTokens = Number.isFinite(mt) && mt > 0 ? Math.min(Math.floor(mt), MAX_TOKENS_CAP) : MAX_TOKENS_LOCAL_DEFAUT;
-    return { url: base.origin, cle, modeles, reflexion: r === 'medium' || r === 'high' ? r : 'low', maxTokens, orgAutorisee, empreintesAutorisees };
+    return { url: base.origin, cle, modeles, reflexion: r === 'medium' || r === 'high' ? r : 'low', maxTokens, orgAutorisee, empreintesAutorisees, sel };
 }
 
 // Blocs que gpt-oss ne sait pas traiter (pas de vision, pas de PDF) : présence → Claude.
@@ -263,8 +272,8 @@ export function tailleMemoCles(): number {
     return clesVerifiees.size;
 }
 
-export async function empreinteCle(cle: string): Promise<string> {
-    const sel = readEnv('RELAIS_SEL_EMPREINTE') ?? selInstance;
+export async function empreinteCle(cle: string, selExplicite?: string): Promise<string> {
+    const sel = selExplicite ?? readEnv('RELAIS_SEL_EMPREINTE') ?? selInstance;
     const octets = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${sel}\0${cle}`)));
     return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
 }
@@ -442,7 +451,7 @@ async function cleAutoriseeLocalement(
     verifier: (cle: string, modele: string, signal: AbortSignal) => Promise<VerdictCle>,
     signal: AbortSignal, injecte: boolean,
 ): Promise<boolean> {
-    if (cfg.empreintesAutorisees.has(await empreinteCle(cle))) return true;
+    if (cfg.empreintesAutorisees.has(await empreinteCle(cle, cfg.sel))) return true;
     if (!cfg.orgAutorisee) return false;
     let verdict: VerdictCle | undefined;
     if (!injecte) {

@@ -1220,6 +1220,9 @@ COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des acti
 > **Réserver la passerelle locale à TA clé** (obligatoire pour que le routage local marche : sans l'une de ces deux
 > variables, le routage local est DÉSACTIVÉ et tout va chez Anthropic — échec fermé). Deux moyens, sans jamais montrer ta
 > clé à un agent :
+> **Recommandé : commence par l'option EMPREINTE** (ci-dessous) : l'option organisation dépend de l'en-tête
+> `anthropic-organization-id`, non vérifié. ⚠️ `RELAIS_CLES_LOCALES` exige `RELAIS_SEL_EMPREINTE` : sans le sel, les empreintes
+> sont ÉCARTÉES (le sel serait aléatoire par instance) et le journal le dit (« sel manquant : empreintes ignorées »).
 > - **Organisation (le plus simple, [À vérifier])** : console.anthropic.com → Settings → l'identifiant d'organisation
 >   (non secret) → `RELAIS_ORG_LOCALE=<cet identifiant>`. Le relais compare avec l'en-tête `anthropic-organization-id`
 >   de la réponse count_tokens ; si Anthropic ne le renvoyait pas, le routage local reste coupé (échec fermé) → utiliser

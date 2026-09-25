@@ -311,9 +311,34 @@ describe('routage local réservé à la clé de Marc (échec fermé)', () => {
         expect(urls()).toEqual([ANTHROPIC]);
     });
 
+    it('RELAIS_CLES_LOCALES sans RELAIS_SEL_EMPREINTE : empreintes ÉCARTÉES, routage local coupé, et une ligne SANS valeur le dit', async () => {
+        const { iaLocaleDepuisEnv } = await import('../../api/_lib/relay');
+        const avert = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const base = { IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c', RELAIS_CLES_LOCALES: 'ab12cd34' } as Record<string, string>;
+        expect(iaLocaleDepuisEnv((k) => base[k])).toBeNull();
+        expect(avert).toHaveBeenCalledTimes(1);
+        expect(String(avert.mock.calls[0][0])).toContain('sel manquant');
+        expect(JSON.stringify(avert.mock.calls)).not.toContain('ab12cd34');
+        // Avec le sel : l'empreinte est retenue, et le sel voyage dans la config (dev Vite : pas dans process.env).
+        const ok = iaLocaleDepuisEnv((k) => ({ ...base, RELAIS_SEL_EMPREINTE: 'un-sel-de-test-assez-long' } as Record<string, string>)[k]);
+        expect([...(ok?.empreintesAutorisees ?? [])]).toEqual(['ab12cd34']);
+        expect(ok?.sel).toBe('un-sel-de-test-assez-long');
+        // Avec l'organisation en plus mais sans sel : seule l'organisation reste.
+        const org = iaLocaleDepuisEnv((k) => ({ ...base, RELAIS_ORG_LOCALE: 'org-marc' } as Record<string, string>)[k]);
+        expect(org?.orgAutorisee).toBe('org-marc');
+        expect(org?.empreintesAutorisees.size).toBe(0);
+    });
+
+    it('le sel de la config sert bien au calcul (une empreinte faite avec CE sel autorise la clé)', async () => {
+        const ia: IaLocaleConfig = { ...IA, orgAutorisee: undefined, sel: 'sel-de-la-config-assez-long', empreintesAutorisees: new Set([await empreinteCle('sk-ant-de-marc', 'sel-de-la-config-assez-long')]) };
+        reponduParOrg('org-etrangere');
+        await appel(ia, 'sk-ant-de-marc');
+        expect(urls()).toContain(`${IA.url}/v1/messages`);
+    });
+
     it('les empreintes de RELAIS_CLES_LOCALES se lisent en minuscules, séparées par des virgules', async () => {
         const { iaLocaleDepuisEnv } = await import('../../api/_lib/relay');
-        const c = iaLocaleDepuisEnv((k) => ({ IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c', RELAIS_CLES_LOCALES: 'AB12, cd34' } as Record<string, string>)[k]);
+        const c = iaLocaleDepuisEnv((k) => ({ IA_LOCALE_URL: 'https://ia.exemple.test', IA_LOCALE_CLE: 'c', RELAIS_CLES_LOCALES: 'AB12, cd34', RELAIS_SEL_EMPREINTE: 'un-sel-de-test-assez-long' } as Record<string, string>)[k]);
         expect([...(c?.empreintesAutorisees ?? [])]).toEqual(['ab12', 'cd34']);
     });
 

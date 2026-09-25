@@ -28,8 +28,8 @@
 // interpolée, qui est honnête pour ce qu'elle est. Un jour à moitié réel serait pire que les deux.
 
 import { computeRawNetWorth } from '../projection/netWorth';
-import { moisAbsolu, sumNotYetStartedDebtsAtAbsoluteMonth } from '../projection/debtSchedule';
-import { prepareSupplementAmortiParJour, type DebtAmortissable } from '../projection/debtAmortization';
+import type { DebtAmortissable } from '../projection/debtAmortization';
+import { prepareDetteNonImmoAuJour } from './detteDuPasse';
 import { reconstructCashHistoryDaily } from './reconstructCashHistory';
 import { reconstructPortfolioHistoryDaily, MAX_DAILY_DAYS_DEFAULT, type MinimalAsset } from './reconstructPortfolioHistory';
 
@@ -232,18 +232,11 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     // ⚠️ [PASSE-REEL-CAP-400J] Défaut PARTAGÉ avec la reconstruction des placements. Deux `?? 400`
     // indépendants, c'était deux plafonds à faire évoluer ensemble — et donc un jour à désynchroniser.
     const maxDays = input.maxDays ?? MAX_DAILY_DAYS_DEFAULT;
-    // [PASSE-REEL-DETTE-1, CRITIQUE corrigé revue #687] Référence « aujourd'hui » pour le gating :
-    // une dette n'est retranchée du total que si elle est DÉJÀ active aujourd'hui (sinon elle n'a
-    // jamais fait partie de `currentDebtNonImmo` — cf commentaire dédié dans `debtSchedule.ts`).
-    // `?? Number.POSITIVE_INFINITY` en repli défensif (jamais atteint — `today` est une entrée ISO
-    // garantie par l'appelant) neutralise seulement CE garde-fou, sans réintroduire le bug d'origine.
-    const moisAujourdhui = moisAbsolu(today) ?? Number.POSITIVE_INFINITY;
-    // [DEBT-AMORTIZATION-CABLAGE] Préparé UNE fois : la boucle au JOUR va jusqu'à 4 000 itérations,
-    // et reconstruire la série d'un prêt de 25 ans à chacune coûtait des millions d'opérations.
-    // [DEBT-CADENCE-REELLE] Variante au JOUR : pour tout ce qui existait avant ce lot elle rend
-    // EXACTEMENT le palier mensuel d'avant (même série, même index) ; seule une dette à versements
-    // fixes et à cadence sous-mensuelle descend au jour de son prélèvement.
-    const supplementAuJour = prepareSupplementAmortiParJour(debts, moisAujourdhui, today, transactions);
+    // [PASSE-REEL-DETTE-1] + [DEBT-AMORTIZATION-CABLAGE] + [DEBT-CADENCE-REELLE] La dette d'un jour
+    // passé : dette du jour − dettes pas encore commencées + ce qui a été remboursé depuis. Préparée
+    // UNE fois (la boucle au JOUR va jusqu'à 4 000 itérations). ⚠️ [FUTUR-HISTORIQUE-DETTE-DU-JOUR]
+    // La formule vit dans `detteDuPasse.ts`, source UNIQUE partagée avec l'Historique du Futur.
+    const detteAuJour = prepareDetteNonImmoAuJour(currentDebtNonImmo, debts, today, transactions);
 
     // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
@@ -317,23 +310,10 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         const immo = equityByYear.get(Number(date.slice(0, 4))) ?? 0;
         const income = incomeByDay.get(date) ?? 0;
         const expenses = expenseByDay.get(date) ?? 0;
-        // [PASSE-REEL-DETTE-1] Palier MENSUEL volontaire (cf en-tête) : `moisAbsolu` ne retient que
-        // l'année/le mois de `date`, jamais le jour. `?? Number.POSITIVE_INFINITY` en repli défensif
-        // sur LE JOUR (jamais atteint en pratique — `date` vient toujours de notre propre boucle ISO)
-        // fait qu'AUCUNE dette n'est plus jamais 'a-venir' à ce point → delta nul → repli sur
-        // `currentDebtNonImmo` inchangé. `Math.max(0, …)` : voir le commentaire de
-        // `sumNotYetStartedDebtsAtAbsoluteMonth` (le delta utilise le solde BRUT contre un total
-        // post-amortissement — borne le résidu, une dette n'étant jamais négative).
-        // [DEBT-AMORTIZATION-CABLAGE] SECOND delta, additif : ce qu'on devait EN PLUS à ce jour-là.
-        // ⚠️ [DEBT-CADENCE-REELLE] Palier MENSUEL par DÉFAUT — et c'est toujours la bonne réponse
-        // quand on ignore les dates de prélèvement : interpoler fabriquerait une précision que la
-        // donnée n'a pas. Mais quand la dette DÉCLARE sa cadence (bail prélevé chaque semaine), les
-        // dates SONT connues et la marche mensuelle n'était plus une prudence, c'était une perte :
-        // Marc voyait sa dette baisser une fois par mois alors que le prêteur prélève chaque semaine.
-        const moisDuJour = moisAbsolu(date) ?? Number.POSITIVE_INFINITY;
-        const debtNonImmo = Math.max(0, currentDebtNonImmo
-            - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisDuJour, moisAujourdhui)
-            + supplementAuJour(date));
+        // [PASSE-REEL-DETTE-1] Palier MENSUEL par défaut pour l'exclusion des dettes pas encore
+        // commencées ; [DEBT-CADENCE-REELLE] au JOUR quand la dette déclare sa cadence ou est liée à
+        // ses virements. Détail et justification : `detteDuPasse.ts`.
+        const debtNonImmo = detteAuJour(date);
 
         out.push({
             date,

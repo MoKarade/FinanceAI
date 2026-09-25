@@ -17,7 +17,7 @@ import { Drawer } from './ui/Drawer';
 import { OutilsProjection, type FutureDrawerId, tiroirDomId } from './future/OutilsProjection';
 import { TableJalons, CarteLeviers, type JalonProjection, type LevierAffiche } from './future/JalonsLeviers';
 import { couleurSerie } from './future/seriesConfig';
-import { ouvrirPaletteCommandes } from './ui/CommandPalette';
+import { ouvrirPaletteCommandes } from './ui/commandPaletteActions';
 import type { VarianteBandeau } from './FutureKpiStrip';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';

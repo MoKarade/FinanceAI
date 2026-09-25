@@ -46,39 +46,41 @@ interface FieldDescriptor {
     helpText?: string;
 }
 
-// Note : `Tab.SETTINGS` est l'ancien nom ; sera renommé "Configuration" en C.1
-// (la valeur d'enum reste identique pour préserver la rétrocompat).
+// [BANDEAUX-VERS-PROFIL] Les champs `profile-*` vivent dans l'onglet PROFIL depuis PH3 (UsersCard,
+// UserConfigFields, RetirementSettingsCard) : les viser dans Réglages ouvrait un sous-onglet qui ne
+// contient plus qu'un renvoi (« ProfileFieldsMoved ») — un bouton « Configurer → » sans effet.
+// Seule la clé API reste dans Réglages.
 const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
     lifeExpectancy: {
         label: 'Espérance de vie',
         section: 'profile-lifeExpectancy',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.retirementGoal?.lifeExpectancy || s.retirementGoal.lifeExpectancy <= 0,
         helpText: 'Détermine la durée de la phase de décaissement projetée.',
     },
     retirementAge: {
         label: 'Âge de retraite cible',
         section: 'profile-retirementAge',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.retirementGoal?.targetAge || s.retirementGoal.targetAge <= 0,
         helpText: 'Pivote toutes les projections retraite (RRQ, PSV, drawdown).',
     },
     retirementIncome: {
         label: 'Revenus de retraite ciblés (mensuels)',
         section: 'profile-retirementIncome',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.retirementGoal?.targetMonthlyIncome || s.retirementGoal.targetMonthlyIncome <= 0,
     },
     'user1.name': {
         label: 'Votre nom',
         section: 'profile-user1-name',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.config?.users?.[0]?.name?.trim(),
     },
     'user1.grossSalary': {
         label: 'Salaire brut (vous)',
         section: 'profile-user1-grossSalary',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         // Source unique : délègue la condition au registre central (gate ↔ bannière).
         isMissing: (s) => !REQUIREMENTS.salary.isMet(s),
         helpText: 'Permet calcul exact impôt fédéral + QC.',
@@ -86,31 +88,31 @@ const MISSING_DATA_FIELDS: Record<MissingDataField, FieldDescriptor> = {
     'user1.netSalary': {
         label: 'Salaire net (vous)',
         section: 'profile-user1-netSalary',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.config?.users?.[0]?.netSalary || s.config.users[0].netSalary <= 0,
     },
     'user1.age': {
         label: 'Votre âge',
         section: 'profile-user1-age',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.config?.users?.[0]?.age || s.config.users[0].age <= 0,
     },
     'user2.name': {
         label: 'Nom du conjoint',
         section: 'profile-user2-name',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !isCoupleMode(s.config?.users), // [COUPLE-PREDICAT-COPIES] négation de la source unique
     },
     'user2.grossSalary': {
         label: 'Salaire brut (conjoint)',
         section: 'profile-user2-grossSalary',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.config?.users?.[1]?.grossSalary || s.config.users[1].grossSalary <= 0,
     },
     'user2.netSalary': {
         label: 'Salaire net (conjoint)',
         section: 'profile-user2-netSalary',
-        tab: Tab.SETTINGS,
+        tab: Tab.PROFILE,
         isMissing: (s) => !s.config?.users?.[1]?.netSalary || s.config.users[1].netSalary <= 0,
     },
     anthropicKey: {

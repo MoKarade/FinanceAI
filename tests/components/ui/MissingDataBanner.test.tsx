@@ -35,7 +35,8 @@ describe('MissingDataBanner', () => {
         render(<MissingDataBanner field="lifeExpectancy" />);
         fireEvent.click(screen.getByText('Configurer →'));
         const focus = useFinanceStore.getState().pendingFocus;
-        expect(focus?.tab).toBe(Tab.SETTINGS);
+        // [BANDEAUX-VERS-PROFIL] Le champ vit dans l'onglet Profil, plus dans Réglages.
+        expect(focus?.tab).toBe(Tab.PROFILE);
         expect(focus?.section).toBe('profile-lifeExpectancy');
     });
 

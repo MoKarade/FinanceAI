@@ -1145,7 +1145,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // écrites deux fois, les deux auraient fini par désigner deux jours différents.
     // ⚠️ `enrichDailyPoint` : la série de la courbe est LÉGÈRE (seuls les champs tracés) — le
     // panneau décrit toujours la version COMPLÈTE du jour.
-    const idxAncre = useMemo(() => indexAujourdhui(selectSeries), [selectSeries]);
+    // [FUTUR-ANCRE-AUJOURDHUI] L'abscisse du JOUR MÊME (courbe au jour) — la même que la ligne
+    // « Aujourd'hui » et la valeur flottante ; au mois (repli), le mois courant.
+    const xAncre = isDailyCurve && todayAxisX !== null ? todayAxisX : todayMonthIndex;
+    const idxAncre = useMemo(() => indexAujourdhui(selectSeries, xAncre), [selectSeries, xAncre]);
     const pointAncre = useMemo(() => {
         const brut = idxAncre === -1 ? null : selectSeries[idxAncre];
         return brut ? (enrichDailyPoint(brut) ?? brut) : null;

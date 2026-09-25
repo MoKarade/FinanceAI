@@ -8,7 +8,8 @@
 //
 // On vérifie AVANT de purger, avec la même règle que `priceRefresh` (une seule règle, deux
 // moments) :
-//   - aucun cours obtenu → refus (on ne peut rien vérifier, et purger sur une hypothèse coûte la
+//   - aucun cours obtenu, ou cours nul / non fini (rejeté ensuite par `priceRefresh`) → refus
+//     (on ne peut rien vérifier, et purger sur une hypothèse coûte la
 //     courbe) ; une PANNE se dit comme telle, jamais « symbole introuvable » ;
 //   - devise du cours ≠ devise de l'actif, ou devise que l'app ne gère pas → refus, les DEUX
 //     devises nommées ;
@@ -36,6 +37,12 @@ export function verifierSymboleCotation(
     }
     if (quote.forme === 'absent') {
         return { verdict: 'refuse', message: `${symbole} ne renvoie aucun cours : symbole non appliqué, l'historique actuel de ${actif.symbol} est conservé.` };
+    }
+    // Même garde que `priceRefresh` (« invalid-price ») : un cours nul, négatif ou non fini y est
+    // rejeté à chaque passe — l'appliquer purgerait la courbe pour un prix qui resterait figé.
+    const prix = quote.quote.price;
+    if (!Number.isFinite(prix) || prix <= 0) {
+        return { verdict: 'refuse', message: `${symbole} renvoie un cours inutilisable (nul ou illisible) : symbole non appliqué, l'historique actuel de ${actif.symbol} est conservé.` };
     }
     const devise = (quote.quote.currency || '').trim();
     if (devise && !asSupportedCurrency(devise)) {

@@ -32,6 +32,11 @@ describe('verifierSymboleCotation (règle pure)', () => {
     it('aucun cours → REFUS (purger sur une hypothèse coûterait la courbe)', () => {
         expect(verifierSymboleCotation(actif, 'ZZZ', { forme: 'absent' }).verdict).toBe('refuse');
     });
+    it('cours nul, négatif ou non fini → REFUS (même garde « invalid-price » que priceRefresh)', () => {
+        for (const p of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+            expect(verifierSymboleCotation(actif, 'ISF.PA', cours(p, 'EUR')).verdict).toBe('refuse');
+        }
+    });
     it('panne → REFUS qui dit PANNE, jamais « introuvable »', () => {
         const v = verifierSymboleCotation(actif, 'ISF.PA', { forme: 'echec', echec: { cause: 'NETWORK', provider: 'yahoo' } });
         expect(v.verdict).toBe('refuse');

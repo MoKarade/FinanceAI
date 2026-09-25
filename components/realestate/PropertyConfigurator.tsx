@@ -1,7 +1,5 @@
 import React from 'react';
-import { Icon } from '../ui/Icon';
-import { Card } from '../ui/Card';
-import { RealEstateGoal, Municipality } from '../../types';
+import { RealEstateGoal } from '../../types';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
@@ -56,7 +54,6 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
     const downPayment = activeGoal.downPayment || (price * 0.2);
     const downPaymentPercent = Math.round((downPayment / price) * 100);
     const rate = activeGoal.mortgageRate || 4.5;
-    const amortization = activeGoal.amortization || 25;
     const targetDate = activeGoal.purchaseDate || new Date().toISOString().split('T')[0];
     const propertyGrowthRate = activeGoal.propertyGrowthRate ?? 3.0;
     const rentalIncomeMonthly = activeGoal.rentalIncomeMonthly || 0;
@@ -67,8 +64,11 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
     const maxValue = activeGoal.maxValue || 0;
 
     return (
-        <div className="lg:col-span-1 space-y-5">
-            <Card title="Type de propriété">
+        // [S5-REFONTE-IMMOBILIER] Réglages FINS du bien, rendus dans « Taux, frais récurrents et plafond
+        // de valeur » (replié, carte Financement). Amortissement et municipalité vivent désormais DANS
+        // la carte Financement (maquettes) ; ici, des groupes à plat plutôt que quatre cartes.
+        <div className="flex flex-col gap-5">
+            <Groupe titre="Type de propriété">
                 <div className="space-y-3">
                     <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:bg-white/5 transition-colors">
                         <input
@@ -141,9 +141,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         </div>
                     )}
                 </div>
-            </Card>
+            </Groupe>
 
-            <Card icon={<Icon name="cash" size={18} />} title="Prix et Financement">
+            <Groupe titre="Prix, mise de fonds et date">
                 <div className="space-y-4">
                     <div>
                         <label className="flex justify-between text-meta text-ink-300 mb-1">
@@ -161,16 +161,6 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         <input type="range" aria-label="Mise de fonds" min={price * 0.05} max={price} step="5000" value={downPayment} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
                             className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label htmlFor="amortization-select" className="block text-meta text-ink-300 mb-1">Amortissement</label>
-                            <select id="amortization-select" value={amortization} onChange={e => updateActiveGoal({ amortization: Number(e.target.value) })} className="w-full bg-white/5 border border-border rounded-sm px-2 py-1.5 text-white text-body">
-                                <option value="15">15 ans</option>
-                                <option value="20">20 ans</option>
-                                <option value="25">25 ans</option>
-                                <option value="30">30 ans</option>
-                            </select>
-                        </div>
                         <div>
                             <label htmlFor="prop-targetDate" className="block text-meta text-ink-300 mb-1">Date cible</label>
                             <input id="prop-targetDate" type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded-sm px-2 py-1.5 text-white text-body" />
@@ -193,32 +183,10 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                                 </label>
                             )}
                         </div>
-                    </div>
-                    <div>
-                        <label htmlFor="municipality-select" className="block text-meta text-ink-300 mb-1">
-                            Municipalité <span className="text-tiny text-ink-400">(taxe de bienvenue)</span>
-                        </label>
-                        <select
-                            id="municipality-select"
-                            value={activeGoal.municipality ?? ''}
-                            onChange={e => updateActiveGoal({ municipality: e.target.value ? (e.target.value as Municipality) : undefined })}
-                            aria-describedby={!activeGoal.municipality ? 'municipality-hint' : undefined}
-                            className="w-full bg-white/5 border border-border rounded-sm px-2 py-1.5 text-white text-body"
-                        >
-                            <option value="">À préciser…</option>
-                            <option value="montreal">Montréal (surtaxe, jusqu'à 4 %)</option>
-                            <option value="reste_qc">Reste du Québec (max 2 %)</option>
-                        </select>
-                        {!activeGoal.municipality && (
-                            <p id="municipality-hint" className="text-tiny text-amber-400/80 mt-1">
-                                Non précisé : barème Montréal (le plus élevé) appliqué par prudence.
-                            </p>
-                        )}
-                    </div>
                 </div>
-            </Card>
+            </Groupe>
 
-            <Card icon={<Icon name="rate" size={18} />} title="Taux et Rendement">
+            <Groupe titre="Taux, appréciation et plafond">
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -259,9 +227,9 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         <p className="text-tiny text-ink-400 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
                     </div>
                 </div>
-            </Card>
+            </Groupe>
 
-            <Card icon={<Icon name="money" size={18} />} title="Frais Récurrents">
+            <Groupe titre="Frais récurrents">
                 <div className="space-y-3">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-meta text-ink-300">Mode de calcul</span>
@@ -313,7 +281,14 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                     </div>
                 </div>
-            </Card>
+            </Groupe>
         </div>
     );
 };
+
+const Groupe: React.FC<{ titre: string; children: React.ReactNode }> = ({ titre, children }) => (
+    <fieldset className="flex flex-col gap-3 min-w-0">
+        <legend className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400 mb-2">{titre}</legend>
+        {children}
+    </fieldset>
+);

@@ -4,6 +4,11 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 (suite 2) — **Symbole de cotation vérifié avant la purge**
+> Livré `[QUOTE-SYMBOLE-SANS-CONTROLE]` : `services/verifierSymboleCotation.ts` appelé par
+> `handleApplyQuoteSymbol` (Investments) avant toute écriture ; `variantClosePlausible` déplacée dans
+> `services/history/plausibiliteCours.ts` (ré-exportée par l'hydratation). #1058 fusionnée.
+>
 > ## 🟩 Session 2026-09-25 (suite) — **Historique du Futur : la dette de chaque date**
 > Livré `[FUTUR-HISTORIQUE-DETTE-DU-JOUR]` : `services/history/detteDuPasse.ts`
 > (`prepareDetteNonImmoAuJour`, source unique extraite de `dailyPastLedger`), appelée par

@@ -33,7 +33,8 @@ import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
 // Investments est un chunk PARESSEUX (TabRouter → lazyWithRetry) : l'import statique est
 // LÉGITIME ici — marketData part dans CE chunk, pas dans celui d'entrée
 // ([PERF-MARKETDATA-DYNIMPORT-INERTE] ne vise que le code atteignable au boot).
-import { getQuote, hasQuoteProvider, clearMarketDataCache, clearNegativeCache, getHistoryDetaille, hasHistoryProvider } from '../services/marketData';
+import { getQuote, getQuoteDetaille, hasQuoteProvider, clearMarketDataCache, clearNegativeCache, getHistoryDetaille, hasHistoryProvider } from '../services/marketData';
+import { verifierSymboleCotation } from '../services/verifierSymboleCotation';
 import { refreshAssetPrices, applyPricePatches } from '../services/priceRefresh';
 import { DividendPanel } from './investments/DividendPanel';
 import { formatCAD, formatDate } from '../utils/format';
@@ -582,6 +583,16 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const trimmed = quoteSymbol.trim();
         if (!trimmed) return;
         const current = useFinanceStore.getState().assets ?? [];
+        // [QUOTE-SYMBOLE-SANS-CONTROLE] Vérifier AVANT de purger : l'application efface la courbe du
+        // titre, et un symbole coté dans une autre devise verrait ensuite tous ses cours rejetés
+        // (prix figé, sans alerte). Refus nommé = rien n'est modifié.
+        const actif = current.find((a) => a.symbol === assetSymbol);
+        if (!actif) return;
+        const verdict = verifierSymboleCotation(actif, trimmed, await getQuoteDetaille(trimmed));
+        if (verdict.verdict === 'refuse') {
+            showToast(verdict.message, 'error');
+            return;
+        }
         const next = current.map((a) => a.symbol === assetSymbol
             ? { ...a, historySymbol: trimmed === a.symbol ? undefined : trimmed, priceHistory: [], lastHistorySync: undefined }
             : a);
@@ -590,6 +601,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
         // optimiste — le resync doit aboutir (ou son échec être dit par le toast/rapport) avant que
         // le geste soit considéré terminé.
         await handleRefreshPrices(); // recharge historique (cache purgé + force) + quotes
+        // Dit APRÈS le toast du rafraîchissement, sinon il le recouvrirait et disparaîtrait avec lui.
+        if (verdict.avertissement) showToast(verdict.avertissement, 'info');
     };
 
     // [INVEST-ALLOC-GEO-SECTOR] Édition inline région/secteur : appliquée à TOUS les actifs du

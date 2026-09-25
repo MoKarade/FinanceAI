@@ -111,20 +111,18 @@
   datés : elle disparaît de toute la courbe passée.
 - [ ] 🔴 **`[INVEST-AUCUNE-EDITION]`** (→ L1g/L3) — aucun écran ne corrige la devise, le prix d'achat,
   la quantité ou le symbole ; ni vente ni fractionnement (`addPurchase` n'a aucun appelant).
-- [ ] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — un symbole de cotation collé est accepté sans
-  contrôle de devise ni d'ordre de grandeur, et efface l'historique ; ses cours sont ensuite rejetés
-  pour devise différente → prix figé sans alerte.
+- [x] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — ✅ 2026-09-25 : le symbole collé est vérifié
+  AVANT la purge (`services/verifierSymboleCotation.ts`, même règle de devise que `priceRefresh`) :
+  aucun cours, panne, autre devise ou devise non gérée → refus nommé, RIEN n'est écrit, l'historique
+  survit. Ordre de grandeur éloigné → appliqué (le symbole saisi reste la donnée de Marc, et le prix
+  stocké peut être celui qui est faux) mais DIT. La règle ×2 vit dans `history/plausibiliteCours.ts`
+  (partagée avec l'hydratation, sans tirer celle-ci dans le chunk d'Investissements). 11 gardes, dont
+  le geste réel dans Investments (refus = 0 écriture ; contrôle : bonne devise = appliqué).
 - [ ] 🟠 **`[PERF-COMPAREE-TOTAL-AMPUTE]`** (M) — la « Performance » d'Investissements compare des
   totaux qui ne portent pas les mêmes titres ; une ligne sortie du TOTAL fait un creux FANTÔME, et la
   note ne regarde que le DERNIER jour de l'axe.
 - [ ] 🟠 **`[DIVIDENDES-TABLE-EN-DUR]`** (→ L2/L3) — rendements codés en dur sans source (un FNB
   capitalisant reçoit un dividende inventé) ; la garde `> 0` empêche de saisir 0.
-- [x] 🟠 **`[FUTUR-HISTORIQUE-DETTE-DU-JOUR]`** (S) — ✅ 2026-09-25 : l'Historique retranche la
-  dette À LA DATE de chaque point. La formule de la courbe du Futur (dette du jour − dettes pas encore
-  commencées + remboursé depuis) vivait en ligne dans `dailyPastLedger` : extraite en source unique
-  `services/history/detteDuPasse.ts` (`prepareDetteNonImmoAuJour`), appelée par les deux. 2 gardes
-  (bail hebdomadaire : ~14 versements de plus à J-100, raccord exact aujourd'hui ; dette contractée
-  après le point : 0 à ce point), rouges sur l'ancien code ; 45 fichiers de tests voisins verts.
 - [ ] 🟠 **`[CASHFLOW-REVENU-GONFLE-PAR-UN-VIREMENT]`** (S + geste Marc) — un virement entrant
   UNIQUE classé « Revenus divers » est moyenné comme un revenu mensuel ; et le cashflow publié
   (revenu réel − dépenses BUDGÉTÉES) est planché à 0 (`financialSnapshot.ts:183`), donc un déficit

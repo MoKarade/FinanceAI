@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-25 — Historique du Futur : la dette de chaque date (PR #1058)
+
+Déménagé au lot suivant (QUOTE-SYMBOLE-SANS-CONTROLE).
+
+- [x] 🟠 **`[FUTUR-HISTORIQUE-DETTE-DU-JOUR]`** (S) — ✅ 2026-09-25 : l'Historique retranche la
+  dette À LA DATE de chaque point. La formule de la courbe du Futur (dette du jour − dettes pas encore
+  commencées + remboursé depuis) vivait en ligne dans `dailyPastLedger` : extraite en source unique
+  `services/history/detteDuPasse.ts` (`prepareDetteNonImmoAuJour`), appelée par les deux. 2 gardes
+  (bail hebdomadaire : ~14 versements de plus à J-100, raccord exact aujourd'hui ; dette contractée
+  après le point : 0 à ce point), rouges sur l'ancien code ; 45 fichiers de tests voisins verts.
+
 ## 2026-09-25 — Historique des cours : la devise est vérifiée (PR #1057)
 
 Déménagé au lot suivant (FUTUR-HISTORIQUE-DETTE-DU-JOUR).

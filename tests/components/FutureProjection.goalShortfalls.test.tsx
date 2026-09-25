@@ -73,7 +73,7 @@ const monterAvecReveal = async (goalShortfalls: { count: number; total: number }
     });
     render(<Harness />);
     fireEvent.click(screen.getByText(/Appliquer la stratégie \(mock\)/i));
-    await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTitle(/Recomposer tes leviers/i)).toBeInTheDocument());
 };
 
 // `formatCAD` sépare par une insécable ; le normaliseur de testing-library transforme le DOM,

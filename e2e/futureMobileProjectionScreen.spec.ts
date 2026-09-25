@@ -4,6 +4,7 @@
  * la vue change, jamais `projection.years`) — le test 1 ci-dessous est le garde-fou money-critical
  * explicitement requis par l'architecte pour ce risque.
  *
+ * ⚠️ [S5-REFONTE-FUTUR] Titre « Projection » aux deux largeurs, tuiles KPI retirées (maquettes).
  * ⚠️ [FUTUR-NAV-TIROIRS] (2026-09-21) « courbe AVANT les KPI » n'est plus vrai : Marc a demandé
  * l'inverse (KPI avant le graphe, mobile ET desktop) au lot qui a retiré les sous-onglets. Voir le
  * test d'ordre plus bas, retourné plutôt que supprimé.
@@ -28,18 +29,13 @@ async function ouvrirFuturEtReveler(page: Page) {
 }
 
 /**
- * [FUTUR-MOBILE-PR2, revue code-reviewer] Le PREMIER jet remontait deux `.locator('..')` depuis
- * `.kpi-label` — ça n'atteint que `<div className="flex items-center justify-between">`
- * (`components/ui/KPIStat.tsx:71-89`), qui contient le LABEL et l'icône, jamais la valeur : la
- * valeur en dollars (`<div className="text-kpi …">`) et le sous-libellé sont des FRÈRES de ce
- * conteneur, pas des descendants. Vérifié en lisant `KPIStat.tsx` : le libellé, la valeur et le
- * sous-libellé sont trois enfants directs du conteneur `bg-surface/60 … rounded-card`, donc il
- * faut TROIS remontées, pas deux. Avec deux, la garde money-critical comparait deux fois la MÊME
- * chaîne statique (« Patrimoine successoral, avec rentes ») et restait verte quel que soit le
- * montant réellement affiché — vacueuse pile sur le seul risque qu'elle devait couvrir.
+ * [S5-REFONTE-FUTUR] Les tuiles KPI (`.kpi-label`) ont quitté l'écran (maquettes F-bureau /
+ * F-mobile). La garde money-critical lit désormais la ligne « Fin de l'horizon » du tableau des
+ * jalons — présente aux DEUX largeurs, même libellé : elle porte l'année, l'âge et le patrimoine
+ * de fin de courbe, soit exactement ce qu'un changement d'horizon ferait bouger.
  */
-function kpiPatrimoineTexte(page: Page) {
-    return page.locator('.kpi-label', { hasText: 'Patrimoine' }).locator('../../..').innerText();
+function ligneFinHorizon(page: Page) {
+    return page.getByRole('row', { name: /Fin de l'horizon/ }).innerText();
 }
 
 test.describe('Futur mobile — écran Projection (PR2)', () => {
@@ -49,7 +45,7 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         // Départ en LARGE (desktop) — mesure de référence.
         await page.setViewportSize({ width: 1440, height: 900 });
         await ouvrirFuturEtReveler(page);
-        const desktop = await kpiPatrimoineTexte(page);
+        const desktop = await ligneFinHorizon(page);
         // Anti-vacuité : le conteneur doit VRAIMENT porter un montant (chiffres) — sinon un
         // sélecteur cassé qui n'atteint que le libellé statique rendrait ce test vert à tort,
         // exactement le défaut trouvé par la revue code-reviewer sur le premier jet.
@@ -59,8 +55,8 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         // `projection.years` au lieu d'une simple fenêtre de vue, ce redimensionnement ferait diverger
         // le chiffre — c'est exactement ce que ce test interdit.
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.waitForTimeout(300); // laisse `useViewportBelowSm` (matchMedia réactif) se poser
-        const mobile = await kpiPatrimoineTexte(page);
+        await page.waitForTimeout(300); // laisse `useViewportBelowLg` (matchMedia réactif) se poser
+        const mobile = await ligneFinHorizon(page);
         expect(mobile, `Le conteneur lu ne contient aucun chiffre : ${mobile}`).toMatch(/\d/);
 
         expect(mobile, 'Le patrimoine affiché doit être IDENTIQUE quelle que soit la largeur — seule la VUE change, jamais le calcul').toBe(desktop);
@@ -97,50 +93,34 @@ test.describe('Futur mobile — écran Projection (PR2)', () => {
         expect(box.height).toBeGreaterThanOrEqual(44);
     });
 
-    test('[FUTUR-MOBILE-PR2 → FUTUR-NAV-TIROIRS] ordre : KPI AVANT la courbe en DOM, mobile ET desktop', async ({ page }) => {
-        // [FUTUR-NAV-TIROIRS] (2026-09-21, choix Marc « Avant le graphe ») : ce test affirmait
-        // « courbe AVANT les KPI sur mobile, contrôle négatif desktop » — la distinction entre les
-        // deux viewports a disparu avec la barre à onglets qui la portait. Retourné, pas supprimé
-        // (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
-        //
-        // ⚠️ Comparer `getBoundingClientRect().top` a semblé le bon geste (repris du test d'origine)
-        // et mesurait en fait autre chose sur desktop : la barre latérale et la courbe sont deux
-        // colonnes flex INDÉPENDANTES (`items-start`), pas un flux empilé — le KPI, enfoui après le
-        // titre/bandeaux/santé DANS la sidebar, se retrouve plus bas en PIXELS que la Card du
-        // graphe, qui démarre près du haut de SA colonne. Le `top` d'un élément dans une colonne ne
-        // se compare pas au `top` d'un élément dans une autre. Mesuré : la comparaison en PIXELS
-        // donnait `kpi-apres-courbe` sur desktop après ce lot, alors que le KPI précède bien le
-        // graphe dans le MARKUP (la sidebar est rendue avant `<div className="flex-1">`). Le geste
-        // juste est l'ordre DOM (`compareDocumentPosition`), qui reste correct dans les deux
-        // dispositions — colonne unique empilée (mobile) ou deux colonnes côte à côte (desktop).
+    test('[FUTUR-MOBILE-PR2 → S5-REFONTE-FUTUR] ordre : chiffres de tête AVANT la courbe en DOM, mobile ET desktop', async ({ page }) => {
+        // [FUTUR-NAV-TIROIRS] (choix Marc « Avant le graphe »), conservé par les maquettes S5 : le
+        // bandeau « Indicateurs clés » précède la courbe. Ordre DOM (`compareDocumentPosition`),
+        // pas les pixels — robuste à toute mise en page.
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
         const domOrder = () => page.evaluate(() => {
             const chart = Array.from(document.querySelectorAll('[role="img"]')).find((e) => (e.getAttribute('aria-label') || '').includes('Courbe de vie'));
-            const kpi = Array.from(document.querySelectorAll('.kpi-label')).find((e) => e.textContent?.includes('Objectif FIRE'));
+            const kpi = document.querySelector('section[aria-label="Indicateurs clés"]');
             if (!chart || !kpi) return 'introuvable';
-             
             return (kpi.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING) ? 'kpi-avant-courbe' : 'kpi-apres-courbe';
         });
         expect(await domOrder()).toBe('kpi-avant-courbe');
 
-        // Même vérification élargie (barre latérale desktop).
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.waitForTimeout(300);
         expect(await domOrder()).toBe('kpi-avant-courbe');
-        // Un seul strip de KPI visible à la fois — jamais les deux (perturbation possible : oublier de
-        // désactiver le site du haut ferait apparaître DEUX « Objectif FIRE »).
-        const count = await page.evaluate(() => Array.from(document.querySelectorAll('.kpi-label')).filter((e) => e.textContent?.includes('Objectif FIRE')).length);
-        expect(count).toBe(1);
+        // Un seul bandeau de tête à la fois — jamais les deux variantes montées ensemble.
+        await expect(page.locator('section[aria-label="Indicateurs clés"]')).toHaveCount(1);
     });
 
-    test('[FUTUR-MOBILE-PR2] en-tête : titre compact sur mobile, titre complet inchangé sur desktop (contrôle négatif)', async ({ page }) => {
+    test('[S5-REFONTE-FUTUR] en-tête : « Projection » aux deux largeurs (maquettes F-bureau / F-mobile)', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
         await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projection');
 
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.waitForTimeout(300);
-        await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projection Future');
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText('Projection');
     });
 });

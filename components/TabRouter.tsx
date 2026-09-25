@@ -171,18 +171,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         {/* [REFONTE-NAV-L2a] L'alerte de fraîcheur d'import AU-DESSUS des KPI :
                             des chiffres calculés sur un flux gelé se lisent AVEC l'avertissement. */}
                         <SyncStaleBanner />
-                        {/* [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil, compacts au-dessus
-                            de la courbe. Suspense DÉDIÉ (fallback null) : le bandeau qui charge ne
-                            doit pas remplacer toute la page par le spinner du Suspense parent. */}
-                        <Suspense fallback={null}>
-                            <FutureKpiStrip
-                                netWorth={globalNetWorth}
-                                liquidity={currentLiquidity}
-                                monthlySavings={calculatedMonthlySavings}
-                                avoirsHorsImmo={avoirsHorsImmo}
-                                dettesHorsImmo={dettesHorsImmo}
-                            />
-                        </Suspense>
                         <FutureProjection
                             initialBalances={state.initialBalances}
                             transactions={state.transactions}
@@ -196,6 +184,22 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             projection={state.projection}
                             setProjection={(p) => setAppState({ projection: p })}
                             isPrivacyMode={isPrivacyMode}
+                            // [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil. [S5-REFONTE-FUTUR]
+                            // Rendus PAR la page, à la place que lui donnent les maquettes (sous le
+                            // titre ; découpés tête / pied au téléphone). Suspense DÉDIÉ (fallback
+                            // null) : le bandeau qui charge ne remplace pas toute la page.
+                            bandeauKpi={(variante) => (
+                                <Suspense fallback={null}>
+                                    <FutureKpiStrip
+                                        variante={variante}
+                                        netWorth={globalNetWorth}
+                                        liquidity={currentLiquidity}
+                                        monthlySavings={calculatedMonthlySavings}
+                                        avoirsHorsImmo={avoirsHorsImmo}
+                                        dettesHorsImmo={dettesHorsImmo}
+                                    />
+                                </Suspense>
+                            )}
                         />
                     </PageSetupGate>
                 )}

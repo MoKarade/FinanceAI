@@ -2,9 +2,8 @@
  * @vitest-environment jsdom
  *
  * [REFONTE-NAV-L2a] Bandeau KPI du Futur — ce qu'on verrouille (itération panel #601) :
- *  - la tuile « Variation 30 j » : $ signé + % en sous-libellé (le % positif porte un « + »
- *    comme le $), « — » + sr-only NO_DATA_LABEL quand le hook rend `null` (JAMAIS un 0 $
- *    crédible) ;
+ *  - la ligne « Variation 30 j » (une tuile avant la refonte S5) : $ signé + % (le % positif porte
+ *    un « + » comme le $), et AUCUNE ligne quand le hook rend `null` (JAMAIS un 0 $ crédible) ;
  *  - l'ÉTIQUETTE DE PÉRIMÈTRE de la variation : « liquide + placements (courbe historique) »
  *    toujours visible (l'assiette du % diffère de la tuile Patrimoine — leçon
  *    DASH-NETWORTH-CANONICAL), et « sur N j de données » quand l'étendue réelle est plus
@@ -19,7 +18,6 @@ import { render, screen, within, cleanup } from '@testing-library/react';
 import { FutureKpiStrip } from '../../components/FutureKpiStrip';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD, formatPercent } from '../../utils/format';
-import { NO_DATA_LABEL } from '../../components/ui/emptyAware';
 import type { NetWorthVariation } from '../../hooks/useNetWorthVariation';
 import type { RealEstateGoal } from '../../types';
 
@@ -80,51 +78,51 @@ beforeEach(() => {
     useFinanceStore.setState({ isPrivacyMode: false, realEstateGoals: [] });
 });
 
-describe('FutureKpiStrip — tuile « Variation 30 j »', () => {
-    it('couverture insuffisante (hook → null) : « — » + sr-only, aucun 0 $ crédible, périmètre affiché', () => {
-        renderStrip();
-        const t = tile('Variation 30 j');
-        expect(within(t).getByText('—')).toBeInTheDocument();
-        expect(within(t).getByText(NO_DATA_LABEL)).toBeInTheDocument();
-        expect(t.textContent).not.toMatch(/0\s*\$/);
-        expect(t.textContent).not.toMatch(/%/);
-        // L'étiquette de périmètre reste : elle décrit la tuile, pas la valeur.
-        expect(within(t).getByText(SCOPE_FULL)).toBeInTheDocument();
+/** [S5-REFONTE-FUTUR] La variation 30 j n'est plus une tuile (maquette F-bureau) : une LIGNE sous le
+ *  patrimoine net, `data-variation-30j`, rendue seulement quand la variation est mesurée. */
+const ligneVariation = (c: HTMLElement): HTMLElement | null => c.querySelector('[data-variation-30j]');
+
+describe('FutureKpiStrip — ligne « Variation 30 j »', () => {
+    it('couverture insuffisante (hook → null) : AUCUNE ligne — ni « — », ni 0 $ crédible', () => {
+        const { container } = renderStrip();
+        expect(ligneVariation(container)).toBeNull();
+        expect(screen.queryByText(/Variation 30 j/)).not.toBeInTheDocument();
     });
 
     it('variation positive : montant « + », % « + » (cohérence de signe, LOW #601), périmètre étiqueté', () => {
         mockVariation.mockReturnValue({ diff: 1_234, pct: 4.5454, spanDays: 30 });
-        renderStrip();
-        const t = tile('Variation 30 j');
-        expect(t.textContent).toContain(`+${formatCAD(1_234)}`);
-        expect(t.textContent).toContain(`+${formatPercent(4.5454)}`);
-        expect(within(t).getByText(SCOPE_FULL)).toBeInTheDocument();
+        const { container } = renderStrip();
+        const l = ligneVariation(container)!;
+        expect(l).not.toBeNull();
+        expect(l.textContent).toContain(`+${formatCAD(1_234)}`);
+        expect(l.textContent).toContain(`+${formatPercent(4.5454)}`);
+        expect(l.textContent).toContain(SCOPE_FULL);
     });
 
     it('variation négative : montant négatif tel que formaté, % négatif SANS « + »', () => {
         mockVariation.mockReturnValue({ diff: -500, pct: -2.1, spanDays: 30 });
-        renderStrip();
-        const t = tile('Variation 30 j');
-        expect(t.textContent).toContain(formatCAD(-500));
-        expect(t.textContent).not.toContain(`+${formatCAD(-500)}`);
-        expect(t.textContent).toContain(formatPercent(-2.1));
-        expect(t.textContent).not.toContain(`+${formatPercent(-2.1)}`);
+        const { container } = renderStrip();
+        const l = ligneVariation(container)!;
+        expect(l.textContent).toContain(formatCAD(-500));
+        expect(l.textContent).not.toContain(`+${formatCAD(-500)}`);
+        expect(l.textContent).toContain(formatPercent(-2.1));
+        expect(l.textContent).not.toContain(`+${formatPercent(-2.1)}`);
     });
 
     it('pct null (départ ≤ 0) : le $ s\'affiche, aucun % (pas de 0 % trompeur)', () => {
         mockVariation.mockReturnValue({ diff: 100, pct: null, spanDays: 30 });
-        renderStrip();
-        const t = tile('Variation 30 j');
-        expect(t.textContent).toContain(`+${formatCAD(100)}`);
-        expect(t.textContent).not.toMatch(/%/);
+        const { container } = renderStrip();
+        const l = ligneVariation(container)!;
+        expect(l.textContent).toContain(`+${formatCAD(100)}`);
+        expect(l.textContent).not.toMatch(/%/);
     });
 
     it('[MED #601] étendue réelle < fenêtre : le périmètre dit « sur N j de données », pas 30 j implicites', () => {
         mockVariation.mockReturnValue({ diff: 1_234, pct: 4.5, spanDays: 12 });
-        renderStrip();
-        const t = tile('Variation 30 j');
-        expect(within(t).getByText('liquide + placements · sur 12 j de données')).toBeInTheDocument();
-        expect(within(t).queryByText(SCOPE_FULL)).not.toBeInTheDocument();
+        const { container } = renderStrip();
+        const l = ligneVariation(container)!;
+        expect(l.textContent).toContain('liquide + placements · sur 12 j de données');
+        expect(l.textContent).not.toContain(SCOPE_FULL);
     });
 });
 

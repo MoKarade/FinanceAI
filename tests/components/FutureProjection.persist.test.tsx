@@ -53,7 +53,7 @@ vi.mock('../../components/projection/StressTestPanel', () => ({
     StressTestPanel: () => null,
 }));
 
-// Résultats moteur discriminables par le TITRE de la carte (« La Courbe de Vie - <strategyName> »).
+// Résultats moteur discriminables par le TITRE de la carte (« Stratégie : <strategyName> », carte Leviers).
 const RESULT_A: ProjectionResult = { chartData: [], fireNumber: 500_000, allResults: [{ chartData: [], fireNumber: 500_000, allResults: [], strategyName: 'STRAT-A' } as unknown as ProjectionResult] };
 const RESULT_B: ProjectionResult = { chartData: [], fireNumber: 500_000, allResults: [{ chartData: [], fireNumber: 500_000, allResults: [], strategyName: 'STRAT-B' } as unknown as ProjectionResult] };
 
@@ -104,21 +104,21 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument(); // jamais calculé → gate
 
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
         expect(useFinanceStore.getState().revealedProjectionSig).not.toBeNull(); // signature PERSISTÉE
 
         cleanup();
         render(<Harness />); // « reload » : nouveau montage, store persistant intact
 
         // Discriminant : sur l'ancien code (useState local), ce remontage ré-affichait le gate.
-        expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument();
+        expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument();
         expect(screen.queryByText(/Compose tes leviers/i)).not.toBeInTheDocument();
     });
 
     it('entrées modifiées → courbe FIGÉE (STRAT-A) + badge « Pas à jour », PAS l\'écran d\'amorçage', async () => {
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
 
         // Un paramètre change (horizon) ET le moteur publie un NOUVEAU résultat (STRAT-B).
         act(() => {
@@ -129,15 +129,15 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         // Discriminant : l'ancien code cachait la courbe (écran plein « Paramètres modifiés »).
         // Désormais : la courbe reste, FIGÉE au dernier calcul (STRAT-A, pas le STRAT-B live), badge + boutons.
         expect(screen.getByText(/Pas à jour/i)).toBeInTheDocument();
-        expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument();
-        expect(screen.queryByText(/La Courbe de Vie - STRAT-B/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Stratégie : STRAT-B/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Compose tes leviers/i)).not.toBeInTheDocument();
     });
 
     it('« Recharger avec mes données » (badge) → courbe LIVE fraîche (STRAT-B), badge disparu', async () => {
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
         act(() => {
             const proj = useFinanceStore.getState().projection;
             useFinanceStore.setState({ projection: { ...proj, inflationRate: (proj.inflationRate ?? 2) + 1 /* [HORIZON-ESPERANCE-DE-VIE] `years` ne pilote plus le moteur */ }, lastProjection: RESULT_B });
@@ -146,14 +146,14 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
 
         fireEvent.click(screen.getByText(/Recharger avec mes données/i));
 
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-B/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-B/i)).toBeInTheDocument());
         expect(screen.queryByText(/Pas à jour/i)).not.toBeInTheDocument();
     });
 
     it('« Rechoisir mes leviers » (badge) → retour à l\'écran d\'amorçage, signature effacée', async () => {
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
         act(() => {
             const proj = useFinanceStore.getState().projection;
             useFinanceStore.setState({ projection: { ...proj, inflationRate: (proj.inflationRate ?? 2) + 1 /* [HORIZON-ESPERANCE-DE-VIE] `years` ne pilote plus le moteur */ }, lastProjection: RESULT_B });
@@ -171,7 +171,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         // 1. Révèle (sig persistée).
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
         cleanup();
 
         // 2. « Reload » : sig persistée MAIS le moteur n'a encore RIEN publié (lastProjection est hors
@@ -187,7 +187,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
 
         // 3. Le moteur publie → la courbe remplace le spinner, sans geste utilisateur.
         act(() => { useFinanceStore.setState({ lastProjection: RESULT_A }); });
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
         expect(screen.queryByText(/se recharge/i)).not.toBeInTheDocument();
     });
 
@@ -195,7 +195,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         // Montage avec sig persistée (posée par un cycle précédent) : pas de vol de focus.
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
         cleanup();
         render(<Harness />); // remontage révélé d'emblée
         const region = () => screen.getByRole('region', { name: /Projection affichée/i });
@@ -203,7 +203,7 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         expect(document.activeElement).not.toBe(region()); // focus resté où il était (body)
 
         // Transition explicite (clic) : re-gate puis re-révèle → le focus DOIT aller sur la courbe.
-        fireEvent.click(screen.getByText(/Ré-optimiser/i));
+        fireEvent.click(screen.getByTitle(/Recomposer tes leviers/i));
         await waitFor(() => expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument());
         fireEvent.click(revealBtn());
         await waitFor(() => expect(document.activeElement).toBe(region()));
@@ -219,9 +219,9 @@ describe('FutureProjection — persistance de la révélation + gel « pas à jo
         idbMocks.clearRevealed.mockClear();
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByTitle(/Recomposer tes leviers/i)).toBeInTheDocument());
 
-        fireEvent.click(screen.getByText(/Ré-optimiser/i)); // = regateToLevers
+        fireEvent.click(screen.getByTitle(/Recomposer tes leviers/i)); // « Trouver la meilleure stratégie » = regateToLevers
 
         await waitFor(() => expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument());
         // Discriminant (finding silent-failure ÉLEVÉ) : sans la garde, le blob RÉEL était supprimé

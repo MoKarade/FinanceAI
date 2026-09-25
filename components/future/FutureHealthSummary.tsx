@@ -19,7 +19,6 @@ import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { normalizeHealthWeights } from '../../utils/healthWeights';
 import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS } from '../../utils/healthScore';
-import { Icon } from '../ui/Icon';
 
 const selectFireTarget = (chart: ReadonlyArray<{ FireTarget?: number }>): number =>
     chart[0]?.FireTarget ?? 0;
@@ -55,43 +54,32 @@ export const FutureHealthSummary: React.FC = () => {
 
     // No-fake-data : sans données de base, on ne calcule PAS un score (0/100 serait crédible et
     // faux) — même garde que `HealthIndicator`, adaptée au format condensé.
+    // [S5-REFONTE-FUTUR] Pastille de l'en-tête (maquettes F-bureau / F-mobile : « Santé 76/100 »),
+    // au lieu de la bande pleine largeur. Même bouton, même destination, même nom accessible.
+    const pastille = 'touch-target inline-flex items-center gap-1.5 h-9 lg:h-10 px-3.5 lg:px-4 rounded-full border text-meta lg:text-[13px] font-semibold whitespace-nowrap transition-colors focus-ring';
+
     if (!hasData) {
         return (
             <button
                 type="button"
                 onClick={goToDetail}
-                // [a11y panel] Même contrat que la branche AVEC score : nom accessible porté par
-                // `aria-label` (le glyphe « → » serait épelé s'il restait dans le nom calculé), tout
-                // le contenu visible en `aria-hidden`. `touch-target` : le padding seul donne ~36 px,
-                // sous le plancher de 44 px appliqué partout ailleurs (cf. `ui/SubTabs.tsx`).
                 aria-label="Renseigne ton profil pour voir ta santé financière. Voir le détail."
-                className="touch-target w-full flex items-center gap-2 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
+                className={`${pastille} border-white/12 bg-white/5 text-ink-300 hover:bg-white/10`}
             >
-                <Icon name="health" size={16} className="text-ink-400 shrink-0" aria-hidden="true" />
-                <span className="text-meta text-ink-300 flex-1" aria-hidden="true">Renseigne ton profil pour voir ta santé financière.</span>
-                <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
+                <span aria-hidden="true">Renseigne ton profil</span>
             </button>
         );
     }
 
-    // [Finding silent-failure-hunter, panel PR #756] `null` = AUCUNE métrique mesurable (corruption
-    // large qui exclut jusqu'aux trois métriques de base). Afficher « 0/100 » y serait un score
-    // crédible ET faux, peint en ROUGE par `colorForHealthScore(0)` — l'utilisateur lirait « santé
-    // critique » là où la réponse honnête est « rien de mesurable ». Même traitement que `!hasData`,
-    // avec un libellé qui distingue la CAUSE (donnée invalide, actionnable) de l'absence de profil.
     if (totalScore === null) {
         return (
             <button
                 type="button"
                 onClick={goToDetail}
                 aria-label="Santé financière : aucune donnée exploitable. Voir le détail."
-                className="touch-target w-full flex items-center gap-2 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
+                className={`${pastille} border-white/12 bg-white/5 text-ink-300 hover:bg-white/10`}
             >
-                <Icon name="health" size={16} className={`${HEALTH_SCORE_UNKNOWN_COLORS.text} shrink-0`} aria-hidden="true" />
-                <span className="text-meta text-ink-300 flex-1" aria-hidden="true">
-                    Santé financière : <span className="font-bold text-ink-400">—</span> (aucune donnée exploitable)
-                </span>
-                <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
+                <span aria-hidden="true">Santé <span className={HEALTH_SCORE_UNKNOWN_COLORS.text}>—</span></span>
             </button>
         );
     }
@@ -110,25 +98,24 @@ export const FutureHealthSummary: React.FC = () => {
         ? ` ${nbInvalides === 1 ? 'Une métrique est exclue' : `${nbInvalides} métriques sont exclues`} : donnée invalide à corriger.`
         : '';
 
+    // Couleur du score : texte, bordure et fond teintés de la même famille.
+    const teinte = totalScore >= 70 ? 'border-success-400/30 bg-success-500/10' : totalScore >= 40 ? 'border-warning-400/35 bg-warning-500/10' : 'border-danger-400/30 bg-danger-500/10';
     return (
         <button
             type="button"
             onClick={goToDetail}
             aria-label={`Santé financière : ${totalScore} sur 100.${suffixeInvalide} Voir le détail.`}
-            className="touch-target w-full flex items-center gap-3 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
+            className={`${pastille} ${teinte} ${colors.text} hover:brightness-110`}
         >
-            <Icon name="health" size={16} className={`${colors.text} shrink-0`} aria-hidden="true" />
-            <span className="text-meta text-ink-200 flex-1" aria-hidden="true">
-                Santé financière : <span className={`font-bold ${colors.text}`}>{totalScore}/100</span>
-                {nbInvalides > 0 && (
-                    <span
-                        data-testid="pastille-donnee-invalide"
-                        title="Au moins une métrique est exclue du score : une donnée source est invalide. Clique pour voir laquelle et la corriger."
-                        className="ml-2 inline-block w-2 h-2 rounded-full bg-warning-500 align-middle"
-                    />
-                )}
-            </span>
-            <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
+            <span aria-hidden="true">Santé {totalScore}/100</span>
+            {nbInvalides > 0 && (
+                <span
+                    data-testid="pastille-donnee-invalide"
+                    title="Au moins une métrique est exclue du score : une donnée source est invalide. Clique pour voir laquelle et la corriger."
+                    className="inline-block w-2 h-2 rounded-full bg-warning-500"
+                    aria-hidden="true"
+                />
+            )}
         </button>
     );
 };

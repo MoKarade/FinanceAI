@@ -15,12 +15,12 @@ import { scriptBypassOnboarding, activateTestMode } from './helpers/setup';
  *  et ce hash legacy doit atterrir sur le Futur (redirect App.tsx) — le smoke vérifie donc
  *  le titre du Futur, pas « Vue d'ensemble ». */
 const ONGLETS: Array<{ hash: string; nomAttendu: string }> = [
-  { hash: 'DASHBOARD',     nomAttendu: 'Projection Future' }, // redirigé → Futur
+  { hash: 'DASHBOARD',     nomAttendu: 'Projection' }, // redirigé → Futur
   { hash: 'TRANSACTIONS',  nomAttendu: 'Transactions' },
   { hash: 'BUDGET',        nomAttendu: 'Budget' },
   { hash: 'DEBT',          nomAttendu: 'Dette' },
   { hash: 'INVESTMENTS',   nomAttendu: 'Placements' },
-  { hash: 'FUTURE',        nomAttendu: 'Futur' },
+  { hash: 'FUTURE',        nomAttendu: 'Projection' }, // [S5-REFONTE-FUTUR] titre des maquettes F-*
   { hash: 'RETIREMENT',    nomAttendu: 'Retraite' },
   { hash: 'TAX',           nomAttendu: 'Impôts' },
 ];

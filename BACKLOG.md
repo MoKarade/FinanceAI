@@ -706,11 +706,6 @@ désinfecte le snapshot avant de le restaurer.
 
 ## 🔗 Chaîne de build — audit du 2026-09-18 (`REMEDIATION_AUDIT_2026-09-18.md`)
 
-- [ ] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S). `DriveAI` 6
-  checkout, `Hubperso` 5, `JobAI` 3, `CarAI` 3, `hub-contract` 2, `batchchef-` 2, `MemoryAI` 2 —
-  23 étapes, aucune avec `persist-credentials` au 18/09. Plus `npm ci` sans `--ignore-scripts`.
-  ⚠️ Mesurer par dépôt quels workflows POUSSENT avant d'éditer, et re-mesurer les comptes : sur
-  FinanceAI, deux des trois comptes du document (S6505 × 7, S8543 × 7) valaient **zéro**.
 - [ ] 🔧 **`[CI-LOCKFILE-PERIME]` `ci.yml:33` affirme « pas de package-lock.json commité dans ce
   repo » — c'est FAUX** (S). Découvert en passant le 18/09, non corrigé : hors périmètre.
   Le lockfile EST commité (`npm ci` fonctionne sur un clone neuf, et le `Dockerfile` le copie).

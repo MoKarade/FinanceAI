@@ -17126,3 +17126,21 @@ activé ». Le test accusait une zone morte du graphe alors que le clic n'atteig
 - Même famille que `UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE` : la
   question n'est pas « le sélecteur est-il bon ? » mais « qu'est-ce qui est au-dessus ? ».
 
+
+---
+
+### `UN-HOOK-DE-COMMIT-LIT-LA-COMMANDE-PAS-LE-TEXTE-NI-L-INDEX-D-AVANT` — 2026-09-25
+
+Lot `[GATE-COMMIT-ANALYSE]`. Trois défauts mesurés dans `scripts/hooks/commit-gate.mjs` : (1) il réagissait à
+tout appel Bash dont le TEXTE contenait `git commit` (rapport, heredoc, echo) et lançait alors la suite
+complète (~5 min) ; (2) il lisait l'index AVANT l'exécution : dans `git add X && git commit` l'index est vide,
+donc « 0 fichier » → suite complète au lieu du ciblé ; (3) sur échec il ne gardait que 25 lignes (et un
+dépassement de tampon d'`execSync` perdait tout).
+
+- Un hook PreToolUse voit la commande AVANT qu'elle tourne : l'état du dépôt qu'il lit est celui d'avant les
+  `git add` de la même ligne. Il faut déduire les fichiers de la commande (`lib/analyseCommande.mjs`), pas de l'index.
+- Décider « est-ce un commit ? » sur un vrai découpage shell (segments `&& ; || | \n`, chaînes, heredocs,
+  commentaires ignorés), jamais sur une regex du texte brut.
+- Toute incertitude (guillemet non fermé, `cd`, `git -C`, `git reset/rm` avant le commit, `add -p`) → suite
+  complète : la logique pure est testable (`tests/gateCommitAnalyse.test.ts`), le défaut reste le cas sûr.
+- L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.

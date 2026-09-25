@@ -133,4 +133,11 @@ describe('formatCompactCAD', () => {
     it('falls back to standard for small amounts', () => {
         expect(norm(formatCompactCAD(500))).toBe('500 $');
     });
+
+    it('précis : une décimale au besoin en k$ (8,5 k$ et non 9 k$), rien de changé ailleurs', () => {
+        expect(norm(formatCompactCAD(8_500, { precis: true }))).toBe('8,5 k$');
+        expect(norm(formatCompactCAD(12_000, { precis: true }))).toBe('12 k$');
+        expect(norm(formatCompactCAD(1_500_000, { precis: true }))).toBe('1,50 M$');
+        expect(norm(formatCompactCAD(500, { precis: true }))).toBe('500 $');
+    });
 });

@@ -30,7 +30,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 }) => {
     return (
         <header className={`flex flex-wrap items-start lg:items-center justify-between gap-3 lg:pb-5 lg:border-b border-white/6 ${className}`}>
-            <div className={`min-w-0 ${nav ? 'flex-1' : ''}`}>
+            <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                     <h1 className="text-[26px] leading-8 font-bold text-ink-50">{title}</h1>
                     {/* Mobile (maquettes M-*) : le chiffre clé passe SOUS le titre ; bureau : à côté. */}

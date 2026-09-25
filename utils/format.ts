@@ -36,6 +36,11 @@ const FMT_NUM_1 = new Intl.NumberFormat(LOCALE, {
     maximumFractionDigits: 1,
 });
 
+const FMT_NUM_0_1 = new Intl.NumberFormat(LOCALE, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+});
+
 type Decimals = 0 | 2;
 
 const isFiniteNumber = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -133,9 +138,12 @@ export function formatMonthYear(d: Date | string | number | undefined | null): s
  * Format compact pour valeurs en k$ ou M$ (« 1,2 M$ », « 850 k$ »).
  * Utile pour les axes de graphiques.
  */
-export function formatCompactCAD(n: unknown): string {
+export function formatCompactCAD(n: unknown, opts: { precis?: boolean } = {}): string {
     if (!isFiniteNumber(n)) return '—';
     const abs = Math.abs(n);
+    // `precis` : une décimale au besoin sous le million (« 8,5 k$ », « 12 k$ ») — étiquettes courtes
+    // où arrondir 8 500 $ à « 9 k$ » tromperait (frise des projets de vie).
+    if (opts.precis && abs >= 1_000 && abs < 1_000_000) return `${FMT_NUM_0_1.format(n / 1_000)} k$`;
     if (abs >= 1_000_000) {
         return `${formatNumber(n / 1_000_000, { decimals: 2 })} M$`;
     }

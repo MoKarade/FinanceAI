@@ -125,7 +125,9 @@ describe('[A11Y-TABSTATE-TAXCENTER] l\'option active d\'une bascule est ANNONCÉ
         // par UN bouton commun (`child/ChoixDeVie.tsx`) : un seul site porte l'état des cinq groupes
         // (le test de rendu ChildPlanning.smoke le vérifie groupe par groupe). `ChildPlanning` garde
         // ses onglets d'enfants.
-        for (const fichier of ['ChildPlanning.tsx', 'ChoixDeVie.tsx', 'LifeEvents.tsx', 'TaxCenter.tsx']) {
+        // [S5-REFONTE-PROJETS] `LifeEvents.tsx` a fondu dans la page `LifeProjects` (liste, filtres) et
+        // `vie/FormulaireProjet` (bascule Voyage / Aléas & Projets).
+        for (const fichier of ['ChildPlanning.tsx', 'ChoixDeVie.tsx', 'LifeProjects.tsx', 'FormulaireProjet.tsx', 'TaxCenter.tsx']) {
             expect(vus.some((b) => b.chemin.endsWith(`/${fichier}`)), `témoin absent du scan : ${fichier}`).toBe(true);
         }
     });

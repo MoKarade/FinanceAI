@@ -2,137 +2,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: Outfit, sans-serif;
-  --font-mono: JetBrains Mono, monospace;
-
-  --color-primary: #e6eaf2;
-  --color-secondary: #8a7cc0;
-  --color-dark: #07090d;
-  --color-surface: #0e1014;
-  --color-surfaceHighlight: #15181e;
-  --color-border: rgba(255, 255, 255, 0.06);
-
-  --color-success-400: #34d399;
-  --color-success-500: #10b981;
-  --color-success-600: #059669;
-  --color-success-bg: rgba(16, 185, 129, 0.1);
-  --color-success-border: rgba(16, 185, 129, 0.3);
-
-  --color-warning-400: #fbbf24;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-warning-border: rgba(245, 158, 11, 0.3);
-
-  --color-danger-400: #f87171;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
-  --color-danger-700: #b91c1c;
-  --color-danger-bg: rgba(239, 68, 68, 0.1);
-  --color-danger-border: rgba(239, 68, 68, 0.3);
-
-  --color-info-400: #60a5fa;
-  --color-info-500: #3b82f6;
-  --color-info-600: #2563eb;
-  --color-info-700: #1d4ed8;
-  --color-info-bg: rgba(59, 130, 246, 0.1);
-  --color-info-border: rgba(59, 130, 246, 0.3);
-
-  --color-ink-50: #f8fafc;
-  --color-ink-100: #e2e8f0;
-  --color-ink-200: #cbd5e1;
-  --color-ink-300: #94a3b8;
-  --color-ink-400: #8896a8;
-  --color-ink-500: #6a7689;
-
-  --text-display: 2rem;
-  --text-display--line-height: 2.5rem;
-  --text-display--font-weight: 700;
-  --text-h1: 1.5rem;
-  --text-h1--line-height: 2rem;
-  --text-h1--font-weight: 700;
-  --text-h2: 1.125rem;
-  --text-h2--line-height: 1.5rem;
-  --text-h2--font-weight: 600;
-  --text-kpi: 1.75rem;
-  --text-kpi--line-height: 2rem;
-  --text-kpi--font-weight: 800;
-  --text-body: 0.875rem;
-  --text-body--line-height: 1.375rem;
-  --text-meta: 0.75rem;
-  --text-meta--line-height: 1rem;
-  --text-meta--font-weight: 500;
-  --text-tiny: 0.6875rem;
-  --text-tiny--line-height: 0.875rem;
-  --text-tiny--font-weight: 600;
-  --text-tiny--letter-spacing: 0.05em;
-
-  --spacing-page: 1.5rem;
-  --spacing-section: 2.5rem;
-
-  --radius-card: 1rem;
-  --radius-pill: 9999px;
-
-  --animate-fade-in: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-up: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-pulse-once: pulseOnce 1.5s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-collapse-down: collapseDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-blob: blob 15s infinite;
-
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-  @keyframes slideUp {
-    0% {
-      transform: translateY(15px);
-      opacity: 0;
-    }
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  @keyframes pulseOnce {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-    }
-    50% {
-      box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.3);
-    }
-  }
-  @keyframes collapseDown {
-    0% {
-      max-height: 0;
-      opacity: 0;
-    }
-    100% {
-      max-height: 1000px;
-      opacity: 1;
-    }
-  }
-  @keyframes blob {
-    0% {
-      transform: translate(0px, 0px) scale(1);
-    }
-    33% {
-      transform: translate(30px, -40px) scale(1.05);
-    }
-    66% {
-      transform: translate(-20px, 20px) scale(0.95);
-    }
-    100% {
-      transform: translate(0px, 0px) scale(1);
-    }
-  }
-}
+/* [S5-TAILWIND4] Les jetons (couleurs, typo, rayons, animations) restent dans tailwind.config.js,
+   lu par @config : une seule source, que les scripts de contraste et les tests lisent aussi. */
+@config './tailwind.config.js';
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
@@ -268,21 +140,17 @@
   /* Phase D1 — surface tactile minimum 44x44 (WCAG / Apple HIG) */
   min-width: 44px;
   min-height: 44px;
-
-  /* Phase D1 — Polish 360px: text-display est trop grand sur mobile.
-   *  On le rabaisse à 1.5rem (24px) sur viewports étroits, et restaure
-   *  la taille pleine sur md+ (28rem ≈ 448px). */
 }
 
-@utility text-display {
-  @media (max-width: 639px) {
+/* Phase D1 — Polish 360px : text-display et text-kpi sont trop grands sur mobile ; rabaissés sur
+ * viewports étroits, taille pleine au-delà. [S5-TAILWIND4] Règle CSS simple (hors @utility) : un
+ * @utility du même nom que l'utilitaire de taille du thème se fondrait avec lui. */
+@media (max-width: 639px) {
+  .text-display {
     font-size: 1.5rem !important;
     line-height: 2rem !important;
   }
-}
-
-@utility text-kpi {
-  @media (max-width: 639px) {
+  .text-kpi {
     font-size: 1.375rem !important;
     line-height: 1.75rem !important;
   }

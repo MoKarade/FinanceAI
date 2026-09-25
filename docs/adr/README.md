@@ -28,6 +28,7 @@ conservés en 0001 et 0002.
 | [`0014-sept-decisions-de-cadrage-2026-08-20.md`](0014-sept-decisions-de-cadrage-2026-08-20.md) | ADR — Sept décisions de cadrage en lot (Marc, 2026-08-20) |
 | [`0015-prestations-rqap-ae-rrq-hors-assiette.md`](0015-prestations-rqap-ae-rrq-hors-assiette.md) | ADR — Prestations RQAP/AE/RRQ : hors assiette de cotisation, imposables (Marc, 2026-08-20) |
 | [`0016-refonte-futur-mobile.md`](0016-refonte-futur-mobile.md) | ADR — Refonte de l'onglet Futur pour le téléphone : adaptation EN PLACE, direction « courbe d'abord » (Marc, 2026-09-10) |
+| [`0017-endpoint-bail-vehicule-pour-carai.md`](0017-endpoint-bail-vehicule-pour-carai.md) | ADR — `GET /vehicule/bail` : FinanceAI publie le bail du véhicule à CarAI, sous un secret dédié (Marc, 2026-09-15) |
 | [`0018-ia-locale-via-relais.md`](0018-ia-locale-via-relais.md) | ADR — IA locale : le relais BYOK route un maximum d'appels vers la passerelle Ollama de l'Atelier (Marc, 2026-09-23) |
 | [`0019-decisions-refonte-portefeuille.md`](0019-decisions-refonte-portefeuille.md) | ADR — Refonte du portefeuille : les décisions de cadrage du Lot 0 (Marc, 2026-09-24) |
 | [`0020-grand-livre-courtier.md`](0020-grand-livre-courtier.md) | ADR — Grand livre courtier et référentiel d'instruments : forme persistée (Lot 1a, 2026-09-24) |

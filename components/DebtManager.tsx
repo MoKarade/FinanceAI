@@ -6,12 +6,11 @@ import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
-import { Badge } from './ui/Badge';
 import { Debt } from '../types';
 import { useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { soldeDetteAujourdhui, statutSoldeDette, marchandsCandidats, dettesAuSoldeDuJour, clePayee, type StatutSoldeDette } from '../services/projection/debtAmortization';
 import { computeTotalDebt } from '../services/portfolio';
-import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, ComposedChart, Area, Line } from 'recharts';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
@@ -273,18 +272,17 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     }, [isPrivacyMode]);
 
     return (
-        <div className="space-y-6 stagger-in pb-20">
+        <div className="space-y-6 stagger-in">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
-            {/* [REFONTE-NAV-L3] Titre aligné sur TAB_LABELS (« Dettes ») — la page et la nav
-                doivent dire la même chose (passe de cohérence Config). */}
+            {/* [S5-REFONTE-DETTES] En-tête des maquettes : « Total dû » à côté du titre, action principale à droite. */}
             <PageHeader
-                icon={<Icon name="debt" size={28} />}
                 title="Dettes"
-                badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: <PrivateAmount>{formatCAD(totalDebt)}</PrivateAmount></Badge>}
+                badge={<span className="text-body text-ink-400">Total dû <PrivateAmount className={`font-mono ${totalDebt > 0 ? 'text-danger-400' : 'text-success-400'}`}>{formatCAD(totalDebt)}</PrivateAmount></span>}
+                actions={<button type="button" onClick={() => { setIsAdding(!isAdding); setRefusSaisie(null); }} aria-expanded={isAdding} className="h-10 px-4 rounded-lg bg-primary text-dark text-body font-bold focus-ring">{isAdding ? 'Fermer' : 'Ajouter une dette'}</button>}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                    <Card title="Vos Dettes" action={<button onClick={() => { setIsAdding(!isAdding); setRefusSaisie(null); }} className="text-meta bg-white/10 px-2 py-1 rounded-sm hover:bg-white/20">+ Ajouter</button>}>
+            <div className="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)] gap-5 items-start">
+                <div className="space-y-4">
+                    <Card title="Tes dettes">
                         {isAdding && (
                             <div className="mb-4 p-3 bg-white/5 rounded-sm border border-white/10 space-y-2">
                                 <input aria-label="Nom de la dette" type="text" placeholder="Nom (ex: Visa)" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.name} onChange={e => setNewDebt({...newDebt, name: e.target.value})} />
@@ -318,9 +316,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                 <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-700 text-white text-meta font-bold py-2 rounded-sm">Enregistrer</button>
                             </div>
                         )}
-                        <div className="space-y-3">
+                        <div>
                             {debts.map(d => (
-                                <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
+                                <div key={d.id} className="py-4 first:pt-0 last:pb-0 border-b border-white/5 last:border-b-0">
                                     {editingId === d.id ? (
                                         <div className="space-y-2">
                                             <input aria-label="Nom de la dette" type="text" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.name ?? ''} onChange={e => setDraft({ ...draft, name: e.target.value })} />
@@ -351,26 +349,28 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <div className="font-bold text-white text-body">{d.name}</div>
-                                                <div className="text-meta text-ink-400">{d.interestRate}% • Min: <PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount></div>
-                                                {/* [DETTE-DATES] Les dates ne sont pas des montants : elles restent visibles en
-                                                    mode discret. Aucune n'est INVENTÉE — un tiret honnête quand elle manque. */}
-                                                {(d.startDate || d.termEndDate) && (
-                                                    <div className="text-tiny text-ink-400 mt-0.5">
-                                                        {d.startDate ? `Début ${d.startDate}` : 'Début —'}
-                                                        {' → '}
-                                                        {d.termEndDate ? `fin ${d.termEndDate}` : 'fin —'}
-                                                    </div>
-                                                )}
+                                        <div className="flex flex-col gap-2.5">
+                                            <div className="flex justify-between items-baseline gap-3">
+                                                <span className="font-semibold text-ink-50 text-body">{d.name}</span>
+                                                <PrivateAmount as="span" className="font-mono text-[18px] font-bold text-danger-400">{formatCAD(soldeDetteAujourdhui(d, todayIso, transactions))}</PrivateAmount>
                                             </div>
-                                            <div className="text-right">
-                                                <PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(soldeDetteAujourdhui(d, todayIso, transactions))}</PrivateAmount>
-                                                <div className="flex gap-2 justify-end">
-                                                    <button onClick={() => startEdit(d)} className="text-tiny text-ink-400 hover:text-white md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Modifier</button>
-                                                    <button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <span className="h-6 px-2.5 rounded-full bg-surfaceHighlight text-ink-200 text-meta flex items-center">{d.interestRate.toLocaleString('fr-CA')} %</span>
+                                                <span className="h-6 px-2.5 rounded-full bg-surfaceHighlight text-ink-300 text-meta flex items-center">minimum&nbsp;<PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount>/mois</span>
+                                            </div>
+                                            {/* [DETTE-DATES] Les dates ne sont pas des montants : elles restent visibles en
+                                                mode discret. Aucune n'est INVENTÉE — un tiret honnête quand elle manque. */}
+                                            {(d.startDate || d.termEndDate) && (
+                                                <div className="text-tiny text-ink-400">
+                                                    {d.startDate ? `Début ${d.startDate}` : 'Début —'}
+                                                    {' → '}
+                                                    {d.termEndDate ? `fin ${d.termEndDate}` : 'fin —'}
                                                 </div>
+                                            )}
+                                            {/* Toujours visibles (maquettes) : plus de liens révélés au survol, inutilisables au doigt. */}
+                                            <div className="flex gap-3.5 text-meta">
+                                                <button type="button" onClick={() => startEdit(d)} className="text-primary underline underline-offset-2 focus-ring rounded-sm">Modifier</button>
+                                                <button type="button" onClick={() => handleDelete(d.id)} className="text-ink-300 underline underline-offset-2 hover:text-danger-400 focus-ring rounded-sm">Supprimer</button>
                                             </div>
                                         </div>
                                     )}
@@ -387,35 +387,50 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         </div>
                     </Card>
                     <Card title="Remboursement">
-                        <div className="space-y-4">
+                        <div className="space-y-3.5">
                             <div>
-                                <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><PrivateSliderValue revealed={extraSliderFocus} className="font-bold text-green-400">{formatCAD(extraPayment)}</PrivateSliderValue></label>
-                                <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} {...maskedSliderAria(isPrivacyMode && !extraSliderFocus)} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
-                                <div className="text-tiny text-ink-400 mt-1">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>). Total payé: <strong className="text-white"><PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>/mois</strong>.</div>
+                                <label className="flex justify-between text-body text-ink-200 mb-2"><span>Paiement supplémentaire</span><span className="font-mono text-ink-50"><PrivateSliderValue revealed={extraSliderFocus}>{formatCAD(extraPayment)}</PrivateSliderValue>/mois</span></label>
+                                <input type="range" aria-label="Paiement supplémentaire par mois" min="0" max="2000" step="50" value={extraPayment} {...maskedSliderAria(isPrivacyMode && !extraSliderFocus)} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full accent-primary cursor-pointer" />
+                                <div className="text-[13px] text-ink-400 mt-1.5">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>) : <PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount> par mois au total.</div>
                             </div>
-                            <div className="p-3 bg-white/5 rounded-sm border border-white/10">
-                                <div className="flex justify-between items-center mb-1"><span className="text-meta text-ink-300">Liberté dans</span><span className="text-body font-bold text-white">{simulation.valide ? `${(simulation.months / 12).toFixed(1)} ans` : '—'}</span></div>
-                                <div className="flex justify-between items-center"><span className="text-meta text-ink-300">Intérêts évités</span><span className="text-body font-bold text-green-400">Calculé vs Min.</span></div>
+                            <div className="grid grid-cols-2 gap-2.5">
+                                <div className="px-3.5 py-3 rounded-xl bg-surface border border-white/6">
+                                    <div className="text-meta text-ink-400">Liberté dans</div>
+                                    <div className="text-[22px] font-bold text-success-400">{simulation.valide ? `${(simulation.months / 12).toLocaleString('fr-CA', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ans` : '—'}</div>
+                                </div>
+                                {/* [S5-REFONTE-DETTES] « Intérêts évités : Calculé vs Min. » n'affichait AUCUN chiffre :
+                                    remplacé par les intérêts réellement payés d'ici l'extinction (même simulation que la courbe). */}
+                                <div className="px-3.5 py-3 rounded-xl bg-surface border border-white/6">
+                                    <div className="text-meta text-ink-400">Intérêts payés</div>
+                                    {simulation.valide
+                                        ? <PrivateAmount as="div" className="font-mono text-[20px] font-bold text-ink-50">{formatCAD(Math.round(simulation.totalInterest))}</PrivateAmount>
+                                        : <div className="font-mono text-[20px] font-bold text-ink-50">—</div>}
+                                </div>
                             </div>
                         </div>
                     </Card>
                 </div>
-                <div className="lg:col-span-2">
+                <div className="space-y-4 min-w-0">
                     <Card title="Extinction de la dette">
+                        {/* Légende sous le titre (et non à côté) : sur mobile, le titre ne se tronque plus. */}
+                        <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-meta text-ink-300 -mt-2 mb-3" aria-hidden="true">
+                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px] bg-[#e0703a]" />Solde restant</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-[3px] rounded-sm bg-warning-400" />Intérêts cumulés</span>
+                        </div>
                         <div
                             role="img"
-                            aria-label="Courbe d'extinction de la dette — solde total restant, mois par mois, jusqu'au remboursement complet selon le paiement supplémentaire choisi."
+                            aria-label="Courbe d'extinction de la dette — solde total restant et intérêts cumulés, mois par mois, jusqu'au remboursement complet selon le paiement supplémentaire choisi."
                         >
                         <ZoomContainer zoom={zoom} style={{ width: '100%', height: '350px', minHeight: '350px' }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={zoom.visibleData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                    <defs><linearGradient id="colorDebt" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient></defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="month" stroke="#666" tick={{fontSize: 10}} tickFormatter={(m) => `M${m}`} />
-                                    <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={maskedTick(isPrivacyMode, (val: number) => `${(val/1000).toFixed(0)}k`)} />
-                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
-                                    <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="url(#colorDebt)" name="Solde Restant" strokeWidth={3} />
-                                </AreaChart>
+                                <ComposedChart data={zoom.visibleData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                                    <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                    <XAxis dataKey="month" stroke="#8896a8" tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }} tickLine={false} axisLine={false} tickFormatter={(m: number) => (m === 0 ? "auj." : `${m} mois`)} />
+                                    <YAxis stroke="#8896a8" tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }} tickLine={false} axisLine={false} width={44} tickFormatter={maskedTick(isPrivacyMode, (val: number) => `${(val / 1000).toFixed(0)} k$`)} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelFormatter={(m: number) => (m === 0 ? "Aujourd'hui" : `Dans ${m} mois`)} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
+                                    <Area type="monotone" dataKey="balance" stroke="#e0703a" fill="#e0703a" fillOpacity={0.35} name="Solde restant" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="interestAccumulated" stroke="#fbbf24" strokeWidth={2} dot={false} name="Intérêts cumulés" />
+                                </ComposedChart>
                             </ResponsiveContainer>
                         </ZoomContainer>
                         </div>
@@ -427,11 +442,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             rows={simulation.chart}
                         />
                     </Card>
-                    <div className="mt-6 p-4 bg-blue-900/10 border border-info-500/20 rounded-xl flex gap-4 items-start">
-                        <span className="text-2xl">ℹ️</span>
+                    <div className="p-4 rounded-2xl bg-info-500/5 border border-info-500/25 flex gap-3 items-start">
+                        <Icon name="info" size={20} className="text-info-400 shrink-0 mt-0.5" />
                         <div>
-                            <h4 className="font-bold text-blue-300 text-body">Impact sur le Futur</h4>
-                            <p className="text-meta text-ink-200 mt-1">Ces dettes sont automatiquement prises en compte dans l'onglet <strong>Futur</strong>. Le simulateur déduit les paiements mensuels (<PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>) de vos liquidités jusqu'à ce que chaque dette soit remboursée.</p>
+                            <h3 className="font-semibold text-ink-50 text-body">Pris en compte dans le Futur</h3>
+                            <p className="text-[13px] leading-5 text-ink-300 mt-1">La projection déduit les <PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount> mensuels de tes liquidités jusqu'à ce que chaque dette soit remboursée.</p>
                         </div>
                     </div>
                 </div>

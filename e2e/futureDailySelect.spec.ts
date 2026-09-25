@@ -49,16 +49,40 @@ async function chartBox(page: Page) {
  * ⚠️ Corollaire : « relâché » ne se lit plus par `toBeHidden` (le panneau reste, il retombe sur
  * aujourd'hui) mais par la DISPARITION DE L'ATTRIBUT — donc `toHaveCount(0)` sur le sélecteur.
  */
-async function clickAndFreeze(page: Page, x: number, y: number) {
+async function clickAndFreeze(page: Page, x: number, y: number, zone = 'clic') {
   const frozen = page.locator('[data-jour-epingle]');
   const modal = page.getByRole('dialog', { name: 'Détail du mois' });
-  await page.mouse.click(x, y);
+  let cx = x;
+  let cy = y;
+  await page.mouse.click(cx, cy);
   if (await modal.isVisible().catch(() => false)) {
     await page.keyboard.press('Escape');
     await modal.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
-    await page.mouse.click(x, y - 30);
+    cy = y - 30;
+    await page.mouse.click(cx, cy);
   }
-  await expect(frozen).toBeVisible({ timeout: 5_000 });
+  // [E2E-FUTUR-CLICK-ANYWHERE-INSTABLE] Ce test rougit par intermittence en CI (3 essais sur 3,
+  // `main` d4f7a723 puis b083c700) et passe 25 fois sur 25 en local (Chromium complet ET headless
+  // shell, test seul ET fichier entier) : la cause n'est pas mesurable d'ici. Plutôt que relancer
+  // à l'aveugle, l'échec NOMME ce qui a reçu le clic — `elementFromPoint` au point exact : un
+  // bouton ou une surface par-dessus (le gestionnaire ignore un clic sur un bouton), ou un élément
+  // hors du conteneur du graphe (le `pointerup` n'y arrive pas). Aucune donnée de l'app n'est lue
+  // au-delà du nœud touché (mode test, persona fictif).
+  if (!(await frozen.isVisible().catch(() => false))) {
+    const sousLePointeur = await page.evaluate(([px, py]) => {
+      const el = document.elementFromPoint(px, py);
+      if (!el) return 'aucun élément';
+      const decrire = (n: Element) => `${n.tagName.toLowerCase()}${n.id ? `#${n.id}` : ''}`
+        + `${n.getAttribute('role') ? `[role=${n.getAttribute('role')}]` : ''}`
+        + `${n.getAttribute('aria-label') ? `[aria-label="${n.getAttribute('aria-label')}"]` : ''}`
+        + ` .${String(n.getAttribute('class') ?? '').trim().split(/\s+/).slice(0, 4).join('.')}`;
+      const bouton = el.closest('button, a, [role="button"]');
+      const graphe = el.closest('[role="img"]');
+      return `${decrire(el)} | bouton ancêtre : ${bouton ? decrire(bouton) : 'aucun'}`
+        + ` | dans le graphe : ${graphe ? 'oui' : 'NON'}`;
+    }, [cx, cy]);
+    await expect(frozen, `aucun jour épinglé au ${zone} (${Math.round(cx)}, ${Math.round(cy)}) — sous le pointeur : ${sousLePointeur}`).toBeVisible({ timeout: 5_000 });
+  }
   return frozen;
 }
 
@@ -125,13 +149,21 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     // lui-même est déjà couvert par le test « deux clics = deux jours » (y = 80 %).
     const box = await chartBox(page);
     const vpH = page.viewportSize()?.height ?? 720;
+    // [E2E-FUTUR-CLICK-ANYWHERE-INSTABLE] Le bandeau FIXE « Mode test activé » (42 px mesurés, en
+    // haut du viewport) recouvre le haut du graphe dès que celui-ci défile sous lui : le clic « ciel
+    // vide » à 8 % tombait alors sur le bandeau, jamais sur le graphe — un faux rouge de GÉOMÉTRIE,
+    // pas une zone morte de l'app (le bandeau n'existe qu'en mode test). Mesuré en local : haut du
+    // graphe à 70 px, donc 122 px au clic, hors du bandeau — d'où un test vert partout sauf là où la
+    // mise en page place le graphe plus haut. On vise le ciel SOUS tout bandeau fixe.
+    const bandeau = await page.getByRole('status', { name: 'Mode test activé' }).boundingBox().catch(() => null);
+    const hautVisible = Math.max(box.y, bandeau ? bandeau.y + bandeau.height : 0) + 8;
     const spots: Array<[string, number, number]> = [
-      ['ciel vide au-dessus de la pile', box.x + box.width * 0.6, box.y + box.height * 0.08],
+      ['ciel vide au-dessus de la pile', box.x + box.width * 0.6, Math.max(box.y + box.height * 0.08, hautVisible)],
       ['bande basse près de l\'axe des dates', box.x + box.width * 0.45, Math.min(box.y + box.height * 0.93, vpH - 24)],
       ['marge gauche (axe des montants)', box.x + 10, box.y + box.height * 0.5],
     ];
     for (const [nom, x, y] of spots) {
-      const frozen = await clickAndFreeze(page, x, y);
+      const frozen = await clickAndFreeze(page, x, y, nom);
       const txt = (await frozen.textContent()) ?? '';
       expect(txt.match(DAY_RE), `zone morte au clic : ${nom} — ${txt.slice(0, 120)}`).not.toBeNull();
       await page.keyboard.press('Escape');

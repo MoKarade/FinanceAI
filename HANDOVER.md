@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 (suite 3) — **E2E « clic partout » : le bandeau du mode test recouvrait la cible**
+> `[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]` : rouge aussi sur `main` après #1058, vert 25/25 en local.
+> Mécanisme reproduit (graphe défilé sous le bandeau fixe « Mode test activé ») ; clic visé sous le
+> bandeau + diagnostic `elementFromPoint` dans `clickAndFreeze`. Pour rejouer l'e2e ici : config
+> locale qui pointe `launchOptions.executablePath` vers `/opt/pw-browsers/…` (révision 1243 absente)
+> et `webServer.cwd` vers le dépôt. #1059 fusionnée et déployée (READY).
+>
 > ## 🟩 Session 2026-09-25 (suite 2) — **Symbole de cotation vérifié avant la purge**
 > Livré `[QUOTE-SYMBOLE-SANS-CONTROLE]` : `services/verifierSymboleCotation.ts` appelé par
 > `handleApplyQuoteSymbol` (Investments) avant toute écriture ; `variantClosePlausible` déplacée dans

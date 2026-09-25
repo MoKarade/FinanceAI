@@ -10,6 +10,18 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-25 — Symbole de cotation vérifié avant la purge (PR #1059)
+
+Déménagé au lot suivant (E2E-FUTUR-CLICK-ANYWHERE-INSTABLE).
+
+- [x] 🟠 **`[QUOTE-SYMBOLE-SANS-CONTROLE]`** (S) — ✅ 2026-09-25 : le symbole collé est vérifié
+  AVANT la purge (`services/verifierSymboleCotation.ts`, même règle de devise que `priceRefresh`) :
+  aucun cours, panne, autre devise ou devise non gérée → refus nommé, RIEN n'est écrit, l'historique
+  survit. Ordre de grandeur éloigné → appliqué (le symbole saisi reste la donnée de Marc, et le prix
+  stocké peut être celui qui est faux) mais DIT. La règle ×2 vit dans `history/plausibiliteCours.ts`
+  (partagée avec l'hydratation, sans tirer celle-ci dans le chunk d'Investissements). 11 gardes, dont
+  le geste réel dans Investments (refus = 0 écriture ; contrôle : bonne devise = appliqué).
+
 ## 2026-09-25 — Historique du Futur : la dette de chaque date (PR #1058)
 
 Déménagé au lot suivant (QUOTE-SYMBOLE-SANS-CONTROLE).

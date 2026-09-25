@@ -17111,3 +17111,18 @@ pour arrêter.
 - Et « inconnue » n'est pas « incompatible » : Finnhub ne déclare aucune devise. Refuser l'absence
   aurait coupé des courbes justes pour en protéger une fausse.
 
+## `UN-CLIC-VISE-EN-POURCENTAGE-D-UN-ELEMENT-IGNORE-CE-QUI-EST-PAR-DESSUS` (2026-09-25, e2e Futur)
+
+`[FUTUR-CLICK-ANYWHERE]` cliquait à 8 % de la hauteur du graphe pour viser le « ciel vide ». Vert
+25 fois sur 25 en local, rouge 3 fois sur 3 en CI : la position du graphe dans le viewport dépend
+de la mise en page, et dès qu'il défile plus haut, ce point tombe sous le bandeau FIXE « Mode test
+activé ». Le test accusait une zone morte du graphe alors que le clic n'atteignait jamais le graphe.
+
+- Une cible exprimée en pourcentage d'un ÉLÉMENT ignore tout ce qui est fixé par-dessus lui dans le
+  VIEWPORT. Viser sous les surfaces fixes connues, et le dire dans le test.
+- Quand un échec ne se reproduit pas, le rendre AUTO-EXPLICATIF avant de chercher plus : ici
+  `elementFromPoint` au point du clic a nommé le coupable à la première perturbation — ce qu'aucune
+  relecture du gestionnaire de clic n'aurait trouvé.
+- Même famille que `UNE-SURFACE-QUI-S-OUVRE-AU-SURVOL-REND-INATTEIGNABLE-CE-QU-ELLE-RECOUVRE` : la
+  question n'est pas « le sélecteur est-il bon ? » mais « qu'est-ce qui est au-dessus ? ».
+

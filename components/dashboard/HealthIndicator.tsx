@@ -130,7 +130,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                     onClick={() => setShowSettings(s => !s)}
                     aria-expanded={showSettings}
                     aria-label="Paramétrer les pondérations"
-                    className="text-tiny text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded px-2 py-1"
+                    className="text-tiny text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded-sm px-2 py-1"
                 >
                     {showSettings ? 'Fermer' : 'Paramétrer'}
                 </button>
@@ -234,7 +234,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                             <button
                                 type="button"
                                 onClick={resetWeights}
-                                className="text-tiny text-ink-400 hover:text-ink-200 px-2 py-0.5 rounded transition-colors"
+                                className="text-tiny text-ink-400 hover:text-ink-200 px-2 py-0.5 rounded-sm transition-colors"
                             >
                                 Réinitialiser
                             </button>

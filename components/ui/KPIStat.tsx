@@ -61,7 +61,7 @@ export const KPIStat: React.FC<KPIStatProps> = ({
     const isClickable = !!onClick;
 
     const containerClass = [
-        'bg-surface/60 backdrop-blur-sm rounded-card p-4 flex flex-col gap-1 transition-all',
+        'bg-surface/60 backdrop-blur-xs rounded-card p-4 flex flex-col gap-1 transition-all',
         VARIANT_BORDER[variant],
         isClickable ? 'cursor-pointer hover:bg-surface focus-ring active:scale-[0.98]' : '',
         className,

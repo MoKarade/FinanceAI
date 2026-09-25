@@ -55,13 +55,13 @@ export const ToastContainer: React.FC = () => {
             aria-live="polite"
             aria-atomic="true"
             aria-label="Notifications"
-            className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none"
+            className="fixed bottom-6 right-6 z-9999 flex flex-col gap-2 pointer-events-none"
         >
             {toasts.map(toast => (
                 <div
                     key={toast.id}
                     role={toast.type === 'error' ? 'alert' : 'status'}
-                    className={`${toast.isExiting ? 'animate-toast-out' : 'animate-toast-in'} pointer-events-auto min-w-[300px] p-4 rounded-xl border shadow-2xl flex items-center gap-3 bg-surfaceHighlight/95 backdrop-blur-sm text-ink-50 ${
+                    className={`${toast.isExiting ? 'animate-toast-out' : 'animate-toast-in'} pointer-events-auto min-w-[300px] p-4 rounded-xl border shadow-2xl flex items-center gap-3 bg-surfaceHighlight/95 backdrop-blur-xs text-ink-50 ${
                         toast.type === 'success' ? 'border-success-500/60' :
                             toast.type === 'error' ? 'border-danger-500/60' :
                                 'border-info-500/60'
@@ -76,7 +76,7 @@ export const ToastContainer: React.FC = () => {
                     <button
                         onClick={() => removeToast(toast.id)}
                         aria-label="Fermer la notification"
-                        className="touch-target flex items-center justify-center opacity-50 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/50 transition-opacity rounded"
+                        className="touch-target flex items-center justify-center opacity-50 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-white/50 transition-opacity rounded-sm"
                     >
                         <Icon name="close" size={16} />
                     </button>

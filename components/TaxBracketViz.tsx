@@ -113,7 +113,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     </PrivateBlock>
                 </div>
                 <div
-                    className="relative h-8 bg-black/40 rounded overflow-hidden border border-white/10"
+                    className="relative h-8 bg-black/40 rounded-sm overflow-hidden border border-white/10"
                     role="img"
                     aria-label={isPrivacyMode
                         ? `Graphique des tranches d'imposition ${jurisdiction}. Revenu et taux masqués (mode discret). Détail dans le tableau suivant.`
@@ -223,7 +223,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                 </p>
                 {renderBracketBar(fedBrackets as never, 'Fédéral (ARC)', '59, 130, 246', fedBreakdown, report.fedTax)}
                 {renderBracketBar(qcBrackets as never, 'Québec (Revenu Québec)', '236, 72, 153', qcBreakdown, report.qcTax)}
-                <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded border border-white/10">
+                <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded-sm border border-white/10">
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné effectif</div>
                         <PrivateAmount as="div" className="text-base font-bold text-warning-400 font-mono">{combinedEffective.toFixed(2)}%</PrivateAmount>

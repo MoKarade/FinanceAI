@@ -145,7 +145,7 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
     }
 
     return (
-        <div className="flex flex-col h-full min-h-0 w-64 border-r border-white/5 bg-white/[0.02]">
+        <div className="flex flex-col h-full min-h-0 w-64 border-r border-white/5 bg-white/2">
             <div className="p-3 border-b border-white/5">
                 <button
                     type="button"
@@ -167,7 +167,7 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
             <div
                 ref={listRef}
                 tabIndex={-1}
-                className="flex-1 overflow-y-auto p-2 space-y-1 outline-none"
+                className="flex-1 overflow-y-auto p-2 space-y-1 outline-hidden"
                 role="list"
                 aria-label="Conversations précédentes"
             >

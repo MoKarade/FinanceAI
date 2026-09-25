@@ -144,7 +144,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, a
             role="dialog"
             aria-modal="true"
             aria-label="Palette de commandes"
-            className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-200 flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-xs"
             onClick={onClose}
         >
             <div
@@ -160,7 +160,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, a
                         onKeyDown={onKeyDown}
                         placeholder="Tape pour rechercher…"
                         aria-label="Rechercher une commande"
-                        className="w-full bg-transparent text-ink-100 placeholder-ink-400 outline-none text-body"
+                        className="w-full bg-transparent text-ink-100 placeholder-ink-400 outline-hidden text-body"
                     />
                 </div>
                 <div ref={listRef} className="max-h-[60vh] overflow-y-auto custom-scrollbar">

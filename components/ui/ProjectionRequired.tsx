@@ -56,7 +56,7 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
                 Projection requise —{' '}
                 <button
                     onClick={goToFuture}
-                    className="underline hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-warning-400 rounded"
+                    className="underline hover:text-amber-300 focus:outline-hidden focus:ring-2 focus:ring-warning-400 rounded-sm"
                     aria-label="Ouvrir l'onglet Future pour calculer la projection"
                 >
                     ouvrir Future
@@ -82,7 +82,7 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
             </div>
             <button
                 onClick={goToFuture}
-                className="px-4 py-2 rounded-lg bg-warning-500 hover:bg-warning-600 text-dark text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-warning-400"
+                className="px-4 py-2 rounded-lg bg-warning-500 hover:bg-warning-600 text-dark text-meta font-bold transition-colors focus:outline-hidden focus:ring-2 focus:ring-warning-400"
                 aria-label="Naviguer vers l'onglet Future"
             >
                 Ouvrir Future →

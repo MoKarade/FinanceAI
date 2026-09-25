@@ -215,7 +215,7 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
             <div className="flex items-start gap-3">
                 <span
                     className={`shrink-0 w-9 h-9 rounded-card flex items-center justify-center ${
-                        met ? 'bg-success-500/15 text-success-400' : 'bg-white/[0.08] text-ink-300'
+                        met ? 'bg-success-500/15 text-success-400' : 'bg-white/8 text-ink-300'
                     }`}
                     aria-hidden="true"
                 >
@@ -244,7 +244,7 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
                                         placeholder={f.placeholder ?? '0'}
                                         onChange={(e) => setVals((p) => ({ ...p, [f.id]: e.target.value }))}
                                         aria-label={f.label}
-                                        className="flex-1 min-w-0 bg-transparent py-2 text-body text-ink-50 outline-none font-mono"
+                                        className="flex-1 min-w-0 bg-transparent py-2 text-body text-ink-50 outline-hidden font-mono"
                                     />
                                     {f.unit && <span className="text-meta text-ink-400 shrink-0">{f.unit}</span>}
                                 </div>
@@ -324,7 +324,7 @@ const FullSetupScreen: React.FC<{
             role="region"
             aria-labelledby="page-setup-title"
         >
-            <div className="rounded-2xl border border-warning-500/25 bg-gradient-to-b from-warning-500/[0.06] to-transparent p-6">
+            <div className="rounded-2xl border border-warning-500/25 bg-linear-to-b/srgb from-warning-500/6 to-transparent p-6">
                 <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
                     <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>
@@ -342,7 +342,7 @@ const FullSetupScreen: React.FC<{
                         aria-valuemax={total}
                         aria-label={`Configuration : ${done} sur ${total} prérequis prêts`}
                     >
-                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[10rem]">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-40">
                             <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
                         </div>
                         {/* [A11Y-CHART-HINT-HIDDEN] Masqué À BON DROIT : le `role="progressbar"`
@@ -394,7 +394,7 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; cu
 
     return (
         <div className="mb-6">
-            <div className="rounded-2xl border border-warning-500/25 bg-warning-500/[0.06] p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="rounded-2xl border border-warning-500/25 bg-warning-500/6 p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-meta text-warning-400">
                     <Icon name="alert" size={16} className="shrink-0" />
                     <span>{missing} donnée{missing > 1 ? 's' : ''} recommandée{missing > 1 ? 's' : ''} pour enrichir « {title} ».</span>

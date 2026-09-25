@@ -114,19 +114,19 @@ export const AutoBackupPanel: React.FC = () => {
 
                 {/* Stats + actions */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-white/5 rounded p-2 border border-white/10">
+                    <div className="bg-white/5 rounded-sm p-2 border border-white/10">
                         <div className="text-tiny text-ink-400 uppercase">Backups</div>
                         <div className="text-base font-bold text-white">{stats.count}</div>
                     </div>
-                    <div className="bg-white/5 rounded p-2 border border-white/10">
+                    <div className="bg-white/5 rounded-sm p-2 border border-white/10">
                         <div className="text-tiny text-ink-400 uppercase">Taille totale</div>
                         <div className="text-base font-bold text-white">{(stats.totalBytes / 1024).toFixed(1)} KB</div>
                     </div>
-                    <div className="bg-white/5 rounded p-2 border border-white/10">
+                    <div className="bg-white/5 rounded-sm p-2 border border-white/10">
                         <div className="text-tiny text-ink-400 uppercase">Plus récent</div>
                         <div className="text-base font-bold text-white">{stats.newest ? formatDate(stats.newest) : '—'}</div>
                     </div>
-                    <div className="bg-white/5 rounded p-2 border border-white/10">
+                    <div className="bg-white/5 rounded-sm p-2 border border-white/10">
                         <div className="text-tiny text-ink-400 uppercase">Plus ancien</div>
                         <div className="text-base font-bold text-white">{stats.oldest ? formatDate(stats.oldest) : '—'}</div>
                     </div>
@@ -169,7 +169,7 @@ export const AutoBackupPanel: React.FC = () => {
                 ) : (
                     <div className="space-y-1 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                         {backups.map(entry => (
-                            <div key={entry.id} className="flex items-center gap-3 p-2 bg-white/5 rounded border border-white/5 text-meta">
+                            <div key={entry.id} className="flex items-center gap-3 p-2 bg-white/5 rounded-sm border border-white/5 text-meta">
                                 <Icon name={entry.source === 'auto' ? 'settings' : 'users'} size={14} className="shrink-0 text-ink-400" />
                                 <div className="flex-1 min-w-0">
                                     <div className="text-ink-100 font-mono">{formatDate(entry.timestamp)} {new Date(entry.timestamp).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}</div>
@@ -178,7 +178,7 @@ export const AutoBackupPanel: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setConfirmRestore(entry)}
-                                    className="px-2 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-400 transition-colors focus-ring"
+                                    className="px-2 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-sm text-info-400 transition-colors focus-ring"
                                     title="Restaurer ce backup (reload)"
                                 >
                                     ↻ Restaurer
@@ -186,7 +186,7 @@ export const AutoBackupPanel: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setConfirmDelete(entry)}
-                                    className="px-2 py-1.5 text-tiny text-danger-400 hover:text-red-300 transition-colors focus-ring rounded"
+                                    className="px-2 py-1.5 text-tiny text-danger-400 hover:text-red-300 transition-colors focus-ring rounded-sm"
                                     title="Supprimer ce backup"
                                     aria-label={`Supprimer le backup du ${formatDate(entry.timestamp)}`}
                                 >

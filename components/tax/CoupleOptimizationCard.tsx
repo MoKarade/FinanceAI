@@ -159,7 +159,7 @@ export const CoupleOptimizationCard: React.FC = () => {
                                         // dix lignes plus haut dans la Fiscalité — un chiffre inventé héritait donc
                                         // de l'autorité d'un chiffre vérifié. Il porte maintenant sa provenance
                                         // DANS son libellé, là où on ne peut pas la manquer.
-                                        <div className="mt-2 inline-block px-2 py-1 bg-white/5 border border-white/15 rounded text-tiny font-mono text-ink-200">
+                                        <div className="mt-2 inline-block px-2 py-1 bg-white/5 border border-white/15 rounded-sm text-tiny font-mono text-ink-200">
                                             Ordre de grandeur avancé par l'IA : <PrivateAmount>{formatCAD(s.estimated_savings_cad)}</PrivateAmount>/an
                                         </div>
                                     )}

@@ -59,7 +59,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
         // en revanche ce qui ne dépend pas de la fermeture : dire qu'il est un dialogue, et lequel.
         // `aria-modal` annonce que le reste de la page est hors d'atteinte ; sans lui, un lecteur
         // d'écran laisse parcourir l'application recouverte comme si de rien n'était.
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/95 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-dark/95 backdrop-blur-xs p-4">
             <form
                 onSubmit={onSubmit}
                 role="dialog"
@@ -84,7 +84,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
                     placeholder="Ta passphrase"
                     autoComplete="off"
                     autoFocus
-                    className="w-full rounded-card border border-white/10 bg-black/40 px-3 py-2 text-ink-100 placeholder:text-ink-400 focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-card border border-white/10 bg-black/40 px-3 py-2 text-ink-100 placeholder:text-ink-400 focus:border-primary/50 focus:outline-hidden"
                 />
                 {(localError || status.error) && (
                     <p className="text-tiny italic text-rose-400">{localError || status.error}</p>

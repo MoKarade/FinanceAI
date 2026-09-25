@@ -72,7 +72,7 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
                     type="number"
                     value={initialBalances[acc] || 0}
                     onChange={(e) => setInitialBalances({ ...initialBalances, [acc]: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                    className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                   />
                 </div>
               ))}

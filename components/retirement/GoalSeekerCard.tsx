@@ -65,7 +65,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                         type="number"
                         value={goalSeekTarget}
                         onChange={e => setGoalSeekTarget(Number(e.target.value))}
-                        className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-3 py-2 text-purple-300 font-bold focus:border-purple-500 transition-colors outline-none"
+                        className="w-full bg-black/40 border border-purple-500/20 rounded-lg px-3 py-2 text-purple-300 font-bold focus:border-purple-500 transition-colors outline-hidden"
                     />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -92,7 +92,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                     Optimiser ordre de décaissement
                 </button>
                 {drawdownResult && !busyDrawdown && (
-                    <div className="p-3 bg-white/[0.03] border border-white/10 rounded-lg space-y-2">
+                    <div className="p-3 bg-white/3 border border-white/10 rounded-lg space-y-2">
                         <p className="text-meta text-ink-300">{drawdownResult.explanation}</p>
                         <div className="space-y-1">
                             {drawdownResult.results
@@ -108,7 +108,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                 )}
                 {anyBusy && <p className="text-meta text-ink-300">Calcul en cours…</p>}
                 {goalSeekResult && !busySavings && !busyAge && (
-                    <div className="p-3 bg-white/[0.03] border border-white/10 rounded-lg">
+                    <div className="p-3 bg-white/3 border border-white/10 rounded-lg">
                         {goalSeekResult.savings !== undefined && (
                             <p className="text-body text-ink-200">
                                 Tu dois épargner <strong className="text-primary"><PrivateAmount>{formatCAD(goalSeekResult.savings)}</PrivateAmount>/mois</strong>

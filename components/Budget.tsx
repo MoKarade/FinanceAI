@@ -958,7 +958,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     'Période personnalisée'}
                     </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
                         <Button onClick={handleAiDiagnosis} variant="primary" size="sm">
                             Diagnostic
                         </Button>
@@ -982,7 +982,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     onClick={() => setPeriodOffset(o => o - 1)}
                                     title="Période précédente"
                                     aria-label="Période précédente"
-                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
+                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded-sm transition-colors focus-ring"
                                 >
                                     <Icon name="chevron-left" size={15} />
                                 </button>
@@ -1003,7 +1003,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     disabled={periodOffset >= 0}
                                     title={periodOffset >= 0 ? 'Période actuelle' : 'Période suivante'}
                                     aria-label="Période suivante"
-                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded-sm transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                                 >
                                     <Icon name="chevron-right" size={15} />
                                 </button>
@@ -1012,7 +1012,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         type="button"
                                         onClick={() => setPeriodOffset(0)}
                                         title="Revenir à la période actuelle"
-                                        className="px-2 py-1 text-tiny text-info-400 hover:underline focus-ring rounded"
+                                        className="px-2 py-1 text-tiny text-info-400 hover:underline focus-ring rounded-sm"
                                     >
                                         Auj.
                                     </button>
@@ -1021,9 +1021,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         )}
                         {timeView === 'CUSTOM' && (
                             <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10 focus-within:border-primary/50 transition-colors">
-                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de début" />
+                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-hidden w-24" aria-label="Date de début" />
                                 <span className="text-ink-400">-</span>
-                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de fin" />
+                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-hidden w-24" aria-label="Date de fin" />
                             </div>
                         )}
                         {/* Phase D'.4 — filtre personne en mode couple */}
@@ -1137,7 +1137,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <button
                     type="button"
                     onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                    className="bg-white/[0.03] border border-white/40 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/[0.05] transition-colors focus-ring"
+                    className="bg-white/3 border border-white/40 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/5 transition-colors focus-ring"
                     title="Ouvrir FutureProjection"
                 >
                     <div>
@@ -1183,7 +1183,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 <div className="lg:col-span-1 space-y-6">
 
                     {/* SAVINGS CAPACITY CARD & EXPENSE BREAKDOWN */}
-                    <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-gradient-to-br from-[#1e1e1e] to-blue-900/10 border-info-500/20">
+                    <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-linear-to-br/srgb from-[#1e1e1e] to-blue-900/10 border-info-500/20">
                         <div className="space-y-6">
 
                             {/* Phase D'.3 — Visualisation fiscale détaillée (fed + QC + RRQ + AE + RQAP)
@@ -1221,28 +1221,28 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-tiny">
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-red-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-danger-500/80 rounded-sm" />
+                                            <span aria-hidden="true" className="w-2 h-2 bg-danger-500/80 rounded-xs" />
                                             Impôt fédéral
                                         </span>
                                         <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</PrivateAmount>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-rose-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-rose-600/80 rounded-sm" />
+                                            <span aria-hidden="true" className="w-2 h-2 bg-rose-600/80 rounded-xs" />
                                             Impôt QC
                                         </span>
                                         <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.qcTaxDisplay)}</PrivateAmount>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-amber-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-warning-500/80 rounded-sm" />
+                                            <span aria-hidden="true" className="w-2 h-2 bg-warning-500/80 rounded-xs" />
                                             RRQ
                                         </span>
                                         <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</PrivateAmount>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-yellow-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-yellow-400/80 rounded-sm" />
+                                            <span aria-hidden="true" className="w-2 h-2 bg-yellow-400/80 rounded-xs" />
                                             AE + RQAP
                                         </span>
                                         <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</PrivateAmount>
@@ -1266,7 +1266,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         {coupleAnalysis.splitMode === 'prorata' && (
                                             <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
                                         )}
-                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded" title={EFFORT_BASE_TITLE}>
+                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded-sm" title={EFFORT_BASE_TITLE}>
                                             Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
                                         </span>
                                     </div>
@@ -1301,7 +1301,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                             {coupleAnalysis.splitMode === 'prorata' && (
                                                 <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
                                             )}
-                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded" title={EFFORT_BASE_TITLE}>
+                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded-sm" title={EFFORT_BASE_TITLE}>
                                                 Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
                                             </span>
                                         </div>

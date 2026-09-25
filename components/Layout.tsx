@@ -176,7 +176,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* A11y (Audit Phase 5.1): skip link — invisible jusqu'à focus clavier. */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-dark focus:font-bold focus:shadow-xl"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-200 focus:px-4 focus:py-2 focus:rounded-card focus:bg-primary focus:text-dark focus:font-bold focus:shadow-xl"
       >
         Aller au contenu principal
       </a>
@@ -190,7 +190,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div
           role="status"
           aria-label="Mode test activé"
-          className="fixed top-0 left-0 right-0 z-[150] bg-gradient-to-r from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-body shadow-lg flex items-center justify-center gap-3"
+          className="fixed top-0 left-0 right-0 z-150 bg-linear-to-r/srgb from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-body shadow-lg flex items-center justify-center gap-3"
         >
           <Icon name="flask" size={16} />
           <span className="font-bold">MODE TEST</span>
@@ -203,7 +203,7 @@ export const Layout: React.FC<LayoutProps> = ({
               const persona = getPersonaOrDefault(e.target.value);
               enableTestMode(persona.build(), persona.id);
             }}
-            className="bg-amber-900/70 text-white text-meta rounded px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-none focus:ring-2 focus:ring-white/60"
+            className="bg-amber-900/70 text-white text-meta rounded-sm px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-hidden focus:ring-2 focus:ring-white/60"
           >
             {TEST_PERSONAS.map((p) => (
               <option key={p.id} value={p.id} className="bg-dark text-white">
@@ -489,7 +489,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Phase B.1 — md:ml-16 réserve la largeur du rail collapsé. L'expansion
           de la sidebar (w-72) overlay le contenu sans push (pas de jump). */}
-      <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 md:ml-16 mt-16 md:mt-0 overflow-y-auto min-h-[100dvh] pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-none">
+      <main id="main" tabIndex={-1} className="flex-1 p-3 md:p-10 md:ml-16 mt-16 md:mt-0 overflow-y-auto min-h-dvh pb-24 md:pb-10 relative z-0 scroll-smooth focus:outline-hidden">
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-premium-in">
           <BackupReminder onNavigateToSettings={() => setActiveTab(Tab.SETTINGS)} />
           {children}
@@ -497,7 +497,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
 
       {/* Phase D1 — Bottom nav avec text-tiny (cohérent avec scale typo) + targets touch 48px+ */}
-      <nav aria-label="Navigation mobile" className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-[#12141a]/100 backdrop-blur-2xl border-t border-white/10 z-[100] flex items-center justify-around px-1 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+      <nav aria-label="Navigation mobile" className="md:hidden fixed bottom-0 left-0 right-0 h-[72px] bg-[#12141a] backdrop-blur-2xl border-t border-white/10 z-100 flex items-center justify-around px-1 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
         {mobileBarItems.map((item) => (
           <button
             key={item.id}

@@ -217,7 +217,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     const hasEvents = eventsByYear[year]?.length > 0;
                                     const isDragOver = dragOverYear === year;
                                     return (
-                                        <div key={year} className={`flex-shrink-0 w-[90px] min-h-[120px] rounded-xl border p-2 flex flex-col gap-1.5 transition-all duration-150 ${isDragOver ? 'border-info-400 bg-blue-900/30 scale-[1.03]' : isNow ? 'border-green-500/50 bg-green-900/10' : hasEvents ? 'border-white/20 bg-white/5' : 'border-white/5 bg-white/[0.02]'}`}
+                                        <div key={year} className={`shrink-0 w-[90px] min-h-[120px] rounded-xl border p-2 flex flex-col gap-1.5 transition-all duration-150 ${isDragOver ? 'border-info-400 bg-blue-900/30 scale-[1.03]' : isNow ? 'border-green-500/50 bg-green-900/10' : hasEvents ? 'border-white/20 bg-white/5' : 'border-white/5 bg-white/2'}`}
                                             onDragOver={(e) => { handleDragOver(e); setDragOverYear(year); }}
                                             onDragLeave={() => setDragOverYear(null)}
                                             onDrop={(e) => { handleDrop(e, year); setDragOverYear(null); }}
@@ -227,7 +227,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             </div>
                                             {eventsByYear[year]?.map((item) => (
                                                 <div key={item.uniqueKey} draggable onDragStart={(e) => handleDragStart(e, item.uniqueKey)}
-                                                    className={`px-1.5 py-1 rounded text-tiny font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-danger-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-info-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
+                                                    className={`px-1.5 py-1 rounded-sm text-tiny font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-danger-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-info-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
                                                     title={`${item.name} — ${maskedAttr(item.cost)}`}>
                                                     <Icon name={item.icon} size={14} />
                                                     <span className="truncate max-w-[55px]">{item.name}</span>
@@ -251,16 +251,16 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                     </div>
                     {eventTypeCategory === 'TRAVEL' ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                            <div><label htmlFor="lifeevent-destination" className="text-meta text-ink-300 mb-1 block">Destination</label><input id="lifeevent-destination" type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newTrip.destination} onChange={e => setNewTrip({ ...newTrip, destination: e.target.value })} /></div>
-                            <div><label htmlFor="lifeevent-tripDate" className="text-meta text-ink-300 mb-1 block">Date</label><input id="lifeevent-tripDate" type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newTrip.date} onChange={e => setNewTrip({ ...newTrip, date: e.target.value })} /></div>
-                            <div><label htmlFor="lifeevent-tripCost" className="text-meta text-ink-300 mb-1 block">Coût ($)</label><input id="lifeevent-tripCost" type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newTrip.totalCost || ''} onChange={e => setNewTrip({ ...newTrip, totalCost: parseFloat(e.target.value) })} /></div>
-                            <button onClick={handleAdd} className="bg-info-600 hover:bg-info-700 text-white p-2 rounded font-bold h-[42px]">Planifier Voyage</button>
+                            <div><label htmlFor="lifeevent-destination" className="text-meta text-ink-300 mb-1 block">Destination</label><input id="lifeevent-destination" type="text" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newTrip.destination} onChange={e => setNewTrip({ ...newTrip, destination: e.target.value })} /></div>
+                            <div><label htmlFor="lifeevent-tripDate" className="text-meta text-ink-300 mb-1 block">Date</label><input id="lifeevent-tripDate" type="date" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newTrip.date} onChange={e => setNewTrip({ ...newTrip, date: e.target.value })} /></div>
+                            <div><label htmlFor="lifeevent-tripCost" className="text-meta text-ink-300 mb-1 block">Coût ($)</label><input id="lifeevent-tripCost" type="number" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newTrip.totalCost || ''} onChange={e => setNewTrip({ ...newTrip, totalCost: parseFloat(e.target.value) })} /></div>
+                            <button onClick={handleAdd} className="bg-info-600 hover:bg-info-700 text-white p-2 rounded-sm font-bold h-[42px]">Planifier Voyage</button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                             <div className="lg:col-span-1">
                                 <label htmlFor="lifeevent-type" className="text-meta text-ink-300 mb-1 block">Type</label>
-                                <select id="lifeevent-type" className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => { const t = e.target.value as LifeEventType; const isLoss = INCOME_LOSS_TYPES.includes(t); setNewLifeEvent(prev => ({ ...prev, type: t, incomeLossPercent: isLoss ? (prev.incomeLossPercent ?? INCOME_LOSS_DEFAULT_PCT[t]) : undefined, durationMonths: isLoss ? prev.durationMonths : undefined, impactPercent: t === 'KRACH' ? prev.impactPercent : undefined, impactAmount: (!isLoss && t !== 'KRACH') ? prev.impactAmount : undefined })); }}>
+                                <select id="lifeevent-type" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white text-meta" value={newLifeEvent.type} onChange={e => { const t = e.target.value as LifeEventType; const isLoss = INCOME_LOSS_TYPES.includes(t); setNewLifeEvent(prev => ({ ...prev, type: t, incomeLossPercent: isLoss ? (prev.incomeLossPercent ?? INCOME_LOSS_DEFAULT_PCT[t]) : undefined, durationMonths: isLoss ? prev.durationMonths : undefined, impactPercent: t === 'KRACH' ? prev.impactPercent : undefined, impactAmount: (!isLoss && t !== 'KRACH') ? prev.impactAmount : undefined })); }}>
                                     <optgroup label="Projets de Vie"><option value="GROS_ACHAT">Gros Achat</option><option value="MARIAGE">Mariage</option><option value="RENOVATION">Rénovations</option><option value="AUTO">Achat Auto</option><option value="SABBATIQUE">Année Sabbatique</option><option value="BUSINESS">Lancer Business</option></optgroup>
                                     <optgroup label="Risques & Aléas"><option value="ACCIDENT">Accident / Santé</option><option value="PERTE_EMPLOI">Perte d'Emploi</option><option value="KRACH">Krach Boursier</option><option value="HERITAGE">Héritage / Gain</option></optgroup>
                                 </select>
@@ -269,17 +269,17 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                 (`lifeevent-amount`, `lifeevent-krach`, `lifeevent-losspct`…) — « Nom » et « Date »
                                 étaient les deux seuls dont l'étiquette n'était liée à RIEN. Un lecteur d'écran
                                 annonçait deux champs sans nom, et un clic sur l'étiquette ne donnait pas le focus. */}
-                            <div><label htmlFor="lifeevent-name" className="text-meta text-ink-300 mb-1 block">Nom</label><input id="lifeevent-name" type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>
-                            <div><label htmlFor="lifeevent-date" className="text-meta text-ink-300 mb-1 block">Date</label><input id="lifeevent-date" type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.date} onChange={e => setNewLifeEvent({ ...newLifeEvent, date: e.target.value })} /></div>
+                            <div><label htmlFor="lifeevent-name" className="text-meta text-ink-300 mb-1 block">Nom</label><input id="lifeevent-name" type="text" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>
+                            <div><label htmlFor="lifeevent-date" className="text-meta text-ink-300 mb-1 block">Date</label><input id="lifeevent-date" type="date" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newLifeEvent.date} onChange={e => setNewLifeEvent({ ...newLifeEvent, date: e.target.value })} /></div>
                             {newLifeEvent.type === 'KRACH' ? (
-                                <div><label htmlFor="lifeevent-krach" className="text-meta text-ink-300 mb-1 block">Chute (%)</label><input id="lifeevent-krach" type="number" min={0} max={100} placeholder="Ex: 30" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: numOrUndef(e.target.value) })} /></div>
+                                <div><label htmlFor="lifeevent-krach" className="text-meta text-ink-300 mb-1 block">Chute (%)</label><input id="lifeevent-krach" type="number" min={0} max={100} placeholder="Ex: 30" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newLifeEvent.impactPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: numOrUndef(e.target.value) })} /></div>
                             ) : INCOME_LOSS_TYPES.includes(newLifeEvent.type as LifeEventType) ? (
                                 <>
-                                    <div><label htmlFor="lifeevent-losspct" className="text-meta text-ink-300 mb-1 block">% de revenu perdu</label><input id="lifeevent-losspct" type="number" min={0} max={100} placeholder="Ex: 100" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.incomeLossPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, incomeLossPercent: numOrUndef(e.target.value) })} /></div>
-                                    <div><label htmlFor="lifeevent-duration" className="text-meta text-ink-300 mb-1 block">Durée (mois)</label><input id="lifeevent-duration" type="number" min={1} placeholder="Ex: 6" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.durationMonths ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, durationMonths: numOrUndef(e.target.value) })} /></div>
+                                    <div><label htmlFor="lifeevent-losspct" className="text-meta text-ink-300 mb-1 block">% de revenu perdu</label><input id="lifeevent-losspct" type="number" min={0} max={100} placeholder="Ex: 100" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newLifeEvent.incomeLossPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, incomeLossPercent: numOrUndef(e.target.value) })} /></div>
+                                    <div><label htmlFor="lifeevent-duration" className="text-meta text-ink-300 mb-1 block">Durée (mois)</label><input id="lifeevent-duration" type="number" min={1} placeholder="Ex: 6" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newLifeEvent.durationMonths ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, durationMonths: numOrUndef(e.target.value) })} /></div>
                                 </>
                             ) : (
-                                <div><label htmlFor="lifeevent-amount" className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input id="lifeevent-amount" type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: numOrUndef(e.target.value) })} /></div>
+                                <div><label htmlFor="lifeevent-amount" className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input id="lifeevent-amount" type="number" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white" value={newLifeEvent.impactAmount ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: numOrUndef(e.target.value) })} /></div>
                             )}
                             {/* [ENG-LIFEEVENT-VENTE-SUBSTRING] Vendre un bien est une INTENTION, pas un mot
                                 dans un champ libre. Avant, l'unique déclencheur était « le nom contient
@@ -317,13 +317,13 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             {newLifeEvent.eventKind === 'VENTE_IMMO' && activeProperties.length >= 2 && (
                                 <div className="lg:col-span-5">
                                     <label htmlFor="lifeevent-property" className="text-meta text-ink-300 mb-1 block">Bien à vendre (plusieurs biens détectés)</label>
-                                    <select id="lifeevent-property" className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.propertyId ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, propertyId: e.target.value || undefined })}>
+                                    <select id="lifeevent-property" className="w-full bg-dark border border-white/20 rounded-sm p-2 text-white text-meta" value={newLifeEvent.propertyId ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, propertyId: e.target.value || undefined })}>
                                         <option value="">Auto (1er bien à équité positive)</option>
                                         {activeProperties.map(g => <option key={g.id} value={g.id}>{g.name || 'Bien immobilier'}</option>)}
                                     </select>
                                 </div>
                             )}
-                            <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded font-bold h-[42px]">Ajouter</button>
+                            <button onClick={handleAdd} className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-sm font-bold h-[42px]">Ajouter</button>
                             {eventError && <p className="lg:col-span-5 text-meta text-red-300 mt-1" role="alert">{eventError}</p>}
                         </div>
                     )}
@@ -342,8 +342,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             const isPast = new Date(item.date) < new Date();
                             const isSelected = selectedEventId === item.uniqueKey;
                             return (
-                                <div key={item.uniqueKey} role="button" tabIndex={0} aria-pressed={isSelected} className={`relative pl-8 group cursor-pointer transition-all duration-300 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${isSelected ? 'scale-105' : 'hover:pl-9'}`} onClick={() => setSelectedEventId(item.uniqueKey)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedEventId(item.uniqueKey); } }}>
-                                    <div className={`absolute -left-[9px] top-4 w-4 h-4 rounded-full border-4 border-dark transition-colors ${isSelected ? 'bg-white shadow-[0_0_10px_white]' : item.type === 'TRAVEL' ? 'bg-info-500' : 'bg-purple-500'}`}></div>
+                                <div key={item.uniqueKey} role="button" tabIndex={0} aria-pressed={isSelected} className={`relative pl-8 group cursor-pointer transition-all duration-300 rounded-xl focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-primary ${isSelected ? 'scale-105' : 'hover:pl-9'}`} onClick={() => setSelectedEventId(item.uniqueKey)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedEventId(item.uniqueKey); } }}>
+                                    <div className={`absolute left-[-9px] top-4 w-4 h-4 rounded-full border-4 border-dark transition-colors ${isSelected ? 'bg-white shadow-[0_0_10px_white]' : item.type === 'TRAVEL' ? 'bg-info-500' : 'bg-purple-500'}`}></div>
                                     <div className={`p-4 rounded-xl border transition-all ${isSelected ? 'bg-white/10 border-white/30 shadow-xl' : 'bg-surface border-white/5 hover:bg-white/10'} ${isPast ? 'opacity-50 grayscale' : ''}`}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-3">
@@ -375,8 +375,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 <div className="lg:col-span-5">
                     {selectedItem && impactAnalysis ? (
                         <div className="sticky top-6 space-y-6 animate-fade-in">
-                            <Card className="!p-0 overflow-hidden border-2 border-white/10">
-                                <div className="bg-gradient-to-r from-dark to-black p-6 border-b border-white/10 flex justify-between items-start">
+                            <Card className="p-0! overflow-hidden border-2 border-white/10">
+                                <div className="bg-linear-to-r/srgb from-dark to-black p-6 border-b border-white/10 flex justify-between items-start">
                                     <div>
                                         <div className="text-meta text-ink-400 uppercase tracking-widest font-bold mb-1">Analyse d'Impact</div>
                                         <h3 className="text-2xl font-black text-white">{selectedItem.name}</h3>
@@ -390,7 +390,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                         <div className="w-full bg-surfaceHighlight rounded-full h-2"><div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
                                         <div className="text-tiny text-right text-danger-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
                                     </div>
-                                    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                                    <div className="bg-white/3 border border-white/10 rounded-xl p-4">
                                         <div className="flex items-center gap-2 mb-2"><Icon name="sprout" size={18} className="text-ink-300" /><h4 className="font-bold text-ink-100 text-body">Effet papillon (20 ans)</h4></div>
                                         <p className="text-meta text-ink-300 mb-3">Si cet argent (<PrivateAmount>{formatCAD(impactAnalysis.immediateCost)}</PrivateAmount>) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
                                         <div className="flex justify-between items-end">
@@ -425,7 +425,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     )}
                                     <div className="space-y-3">
                                         <h4 className="text-meta font-bold text-ink-300 uppercase">Facteurs Cachés</h4>
-                                        {impactAnalysis.insights.tips.map((tip: string, i: number) => (<div key={i} className="text-meta text-ink-200 bg-white/5 p-3 rounded border border-white/5 leading-relaxed">{tip}</div>))}
+                                        {impactAnalysis.insights.tips.map((tip: string, i: number) => (<div key={i} className="text-meta text-ink-200 bg-white/5 p-3 rounded-sm border border-white/5 leading-relaxed">{tip}</div>))}
                                     </div>
                                 </Card>
                             )}

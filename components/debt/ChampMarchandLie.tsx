@@ -138,12 +138,12 @@ export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, i
                 placeholder="Cherche un marchand : toyota, hydro…"
                 value={requete}
                 onChange={e => setRequete(e.target.value)}
-                className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
             />
             <ul
                 id={idListe}
                 aria-label="Marchands à lier à cette dette"
-                className="max-h-56 overflow-y-auto rounded border border-white/10 bg-dark divide-y divide-white/5"
+                className="max-h-56 overflow-y-auto rounded-sm border border-white/10 bg-dark divide-y divide-white/5"
             >
                 {/* ⚠️ Le libellé de l'option vide dit si l'état est INACHEVÉ ou CHOISI : « aucun lien »
                     est un état parfaitement défini (la dette suit alors la cadence saisie), pas un

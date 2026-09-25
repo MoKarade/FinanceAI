@@ -13,10 +13,10 @@ import { messageErreurIa, MESSAGE_IA_MODE_DISCRET } from '../../services/message
  */
 
 const CATEGORY_META: Record<RealEstateAdvice['insights'][number]['category'], { icon: IconName; label: string; color: string }> = {
-    cost: { icon: 'cash', label: 'Coût', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
-    timing: { icon: 'clock', label: 'Timing', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
-    leverage: { icon: 'budget', label: 'Levier', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
-    tax: { icon: 'tax', label: 'Fiscal', color: 'text-ink-200 border-white/10 bg-white/[0.03]' },
+    cost: { icon: 'cash', label: 'Coût', color: 'text-ink-200 border-white/10 bg-white/3' },
+    timing: { icon: 'clock', label: 'Timing', color: 'text-ink-200 border-white/10 bg-white/3' },
+    leverage: { icon: 'budget', label: 'Levier', color: 'text-ink-200 border-white/10 bg-white/3' },
+    tax: { icon: 'tax', label: 'Fiscal', color: 'text-ink-200 border-white/10 bg-white/3' },
     risk: { icon: 'alert', label: 'Risque', color: 'text-danger-400 border-danger-500/25 bg-danger-500/5' },
 };
 
@@ -58,7 +58,7 @@ export const RealEstateAdviceCard: React.FC<RealEstateAdviceCardProps> = ({ cont
     };
 
     return (
-        <Card icon={<Icon name="sparkles" size={18} />} title="Conseils IA — Projet immobilier" className="bg-white/[0.02] border-white/10">
+        <Card icon={<Icon name="sparkles" size={18} />} title="Conseils IA — Projet immobilier" className="bg-white/2 border-white/10">
             <div className="space-y-3">
                 {!advice && (
                     <div className="text-center py-4 space-y-2">

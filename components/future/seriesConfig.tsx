@@ -53,8 +53,8 @@ export const FUTURE_LEGEND_ITEMS: FutureLegendItem[] = [
 export const LegendSwatch: React.FC<{ shape: LegendShape; color: string; dimmed?: boolean }> = ({ shape, color, dimmed }) => {
     const style = { backgroundColor: color, opacity: dimmed ? 0.4 : 1 } as React.CSSProperties;
     if (shape === 'line') return <span className="w-4 h-[3px] rounded-full shrink-0" style={style} aria-hidden="true" />;
-    if (shape === 'bar') return <span className="w-1.5 h-3 rounded-sm shrink-0" style={style} aria-hidden="true" />;
+    if (shape === 'bar') return <span className="w-1.5 h-3 rounded-xs shrink-0" style={style} aria-hidden="true" />;
     if (shape === 'dot') return <span className="w-2.5 h-2.5 rounded-full shrink-0" style={style} aria-hidden="true" />;
     if (shape === 'dashed') return <span className="w-4 h-0 shrink-0 border-t-2 border-dashed" style={{ borderColor: color, opacity: dimmed ? 0.4 : 1 }} aria-hidden="true" />;
-    return <span className="w-3 h-3 rounded shrink-0" style={style} aria-hidden="true" />;
+    return <span className="w-3 h-3 rounded-sm shrink-0" style={style} aria-hidden="true" />;
 };

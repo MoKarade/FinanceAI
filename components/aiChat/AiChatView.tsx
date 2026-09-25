@@ -223,7 +223,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     return (
         <div className="flex flex-col h-full min-h-0">
             {/* Header commun (titre + statut + Effacer ; le panneau ajoute Fermer). */}
-            <div className="bg-white/[0.03] p-4 border-b border-white/5 flex items-center gap-3 flex-shrink-0">
+            <div className="bg-white/3 p-4 border-b border-white/5 flex items-center gap-3 shrink-0">
                 <div className="w-10 h-10 rounded-full bg-white/10 p-0.5">
                     <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
                         <Icon name="bot" size={18} className="text-primary" />
@@ -286,7 +286,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
 
             {/* [AITOOLS-C] Bannière mode test : les réponses portent sur le PERSONA, pas les vraies données. */}
             {isTestMode && (
-                <div className="bg-warning-500/15 border-b border-warning-500/30 px-4 py-2 text-meta text-warning-400 flex-shrink-0" role="status">
+                <div className="bg-warning-500/15 border-b border-warning-500/30 px-4 py-2 text-meta text-warning-400 shrink-0" role="status">
                     Mode démo actif — je réponds sur les données du persona de test, pas sur tes vraies finances.
                 </div>
             )}
@@ -306,13 +306,13 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                         reste compact), sidebar md+ / sélecteur mobile, DANS la zone masquée du mode
                         discret (les titres = premières questions → montants potentiels). */}
                     {!isPanel && (
-                        <div className="hidden md:flex flex-shrink-0 min-h-0">
+                        <div className="hidden md:flex shrink-0 min-h-0">
                             <AiConversationList isLoading={isLoading} />
                         </div>
                     )}
                     <div className="flex flex-col flex-1 min-h-0">
                     {!isPanel && (
-                        <div className="md:hidden p-2 border-b border-white/5 flex-shrink-0">
+                        <div className="md:hidden p-2 border-b border-white/5 shrink-0">
                             <AiConversationList isLoading={isLoading} compact />
                         </div>
                     )}
@@ -320,7 +320,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                         {messagesToRender.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {m.role === 'model' && (
-                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 text-ink-200" aria-hidden="true"><Icon name="bot" size={16} /></div>
+                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 shrink-0 border border-white/10 text-ink-200" aria-hidden="true"><Icon name="bot" size={16} /></div>
                                 )}
                                 <div
                                     className={`max-w-[85%] rounded-2xl px-5 py-3 text-body leading-relaxed shadow-md ${m.role === 'user'
@@ -383,7 +383,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                         onClick={() => handleSend(prompt)}
                                         className="flex items-center gap-2 p-2.5 bg-white/5 hover:bg-white/10 border border-white/40 rounded-card text-left transition-colors focus-ring"
                                     >
-                                        <Icon name={icon} size={16} className="text-ink-300 flex-shrink-0" />
+                                        <Icon name={icon} size={16} className="text-ink-300 shrink-0" />
                                         <span className="text-meta text-ink-200 leading-tight">{label}</span>
                                     </button>
                                 ))}
@@ -392,7 +392,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
 
                         {isLoading && (
                             <div className="flex justify-start">
-                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10"><Icon name="bot" size={16} className="text-ink-300" /></div>
+                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 shrink-0 border border-white/10"><Icon name="bot" size={16} className="text-ink-300" /></div>
                                 {/* [Finding panel a11y #5] role="status"+aria-live sur le conteneur
                                     EXTERNE → l'insertion du bloc de chargement est annoncée AUSSI pendant
                                     la phase « points animés » (avant qu'un tool démarre), pas seulement
@@ -413,7 +413,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                         )}
                     </div>
 
-                    <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5 flex-shrink-0">
+                    <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5 shrink-0">
                         {/* [CHAT-PAGE-CONTEXT] Contexte d'écran perçu, contestable d'un coup d'œil.
                             Texte visible (pas title seul — leçon a11y #489). Mode discret : AUCUNE
                             garde locale ici — le DÉTAIL (montants/période) est déjà purgé à la
@@ -484,7 +484,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                 disabled={isLoading}
                                 aria-label="Joindre un fichier (image, PDF, CSV ou texte)"
                                 title="Joindre un fichier"
-                                className="text-ink-300 hover:text-white w-9 h-9 rounded-full flex items-center justify-center transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                                className="text-ink-300 hover:text-white w-9 h-9 rounded-full flex items-center justify-center transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                             >
                                 <Icon name="paperclip" size={16} />
                             </button>
@@ -496,7 +496,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                 placeholder="Analyser mon budget…"
                                 aria-label="Question au conseiller IA"
-                                className="flex-1 bg-transparent px-4 text-body text-white outline-none disabled:opacity-50 placeholder-ink-400 font-medium"
+                                className="flex-1 bg-transparent px-4 text-body text-white outline-hidden disabled:opacity-50 placeholder-ink-400 font-medium"
                                 disabled={isLoading}
                             />
                             {isLoading ? (

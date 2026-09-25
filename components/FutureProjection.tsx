@@ -1528,7 +1528,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <button
                     type="button"
                     onClick={regateToLevers}
-                    className="px-2 py-1 text-tiny font-bold rounded text-primary hover:brightness-110 bg-primary/15 hover:bg-primary/25 border border-primary/30 transition-colors focus-ring"
+                    className="px-2 py-1 text-tiny font-bold rounded-sm text-primary hover:brightness-110 bg-primary/15 hover:bg-primary/25 border border-primary/30 transition-colors focus-ring"
                     title="Recomposer tes leviers et recalculer la meilleure stratégie"
                 >
                     <span aria-hidden="true">🎯</span> Ré-optimiser
@@ -1538,7 +1538,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <button
                         type="button"
                         onClick={unlockProjection}
-                        className="px-2 py-1 text-tiny font-bold rounded text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
+                        className="px-2 py-1 text-tiny font-bold rounded-sm text-amber-300 hover:text-amber-100 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-colors focus-ring"
                         title="Déverrouiller : revenir à la courbe live seule"
                     >
                         <span aria-hidden="true">🔓</span> Déverrouiller
@@ -1548,7 +1548,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         type="button"
                         onClick={() => { if (results) lockProjection(results); }}
                         disabled={!results || isComputing}
-                        className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="px-2 py-1 text-tiny font-bold rounded-sm text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Verrouiller cette courbe comme référence (persistée jusqu'au déverrouillage)"
                     >
                         <span aria-hidden="true">🔒</span> Verrouiller
@@ -1558,7 +1558,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <button
                     type="button"
                     onClick={() => zoom.containerEl.current?.requestFullscreen?.()}
-                    className="px-2 py-1 text-tiny font-bold rounded text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
+                    className="px-2 py-1 text-tiny font-bold rounded-sm text-ink-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors focus-ring"
                     title="Plein écran (Échap pour quitter)"
                 >
                     ⛶ Plein écran
@@ -1709,7 +1709,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             )}
 
             {curveVisible && (
-            <div ref={revealedRef} tabIndex={-1} className="outline-none space-y-3" role="region" aria-label="Projection affichée">
+            <div ref={revealedRef} tabIndex={-1} className="outline-hidden space-y-3" role="region" aria-label="Projection affichée">
             {/* [PROJECTION-PERSIST] Badge « pas à jour » (choix Marc : FIGER l'ancienne courbe, pas la
                 recalculer en douce). Affiché dès que les entrées divergent de la dernière révélation :
                 la courbe ci-dessous est le GEL (ou le repli live si le gel est absent — autre PC). */}
@@ -2234,7 +2234,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 changé depuis le dernier calcul. Referme le tiroir au lieu de basculer d'onglet — la
                 courbe est déjà visible derrière. */}
             {isNarrowViewport && (
-                <div className="sticky bottom-0 -mx-5 px-5 py-2.5 mt-3 border-t border-white/10 bg-[#0d1118]/95 backdrop-blur-sm">
+                <div className="sticky bottom-0 -mx-5 px-5 py-2.5 mt-3 border-t border-white/10 bg-[#0d1118]/95 backdrop-blur-xs">
                     <button
                         type="button"
                         onClick={() => { revealCurve(); setTiroirOuvert(null); }}

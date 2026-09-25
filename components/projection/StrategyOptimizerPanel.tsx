@@ -378,7 +378,7 @@ const WinnerCard: React.FC<{
             {/* Tous les leviers en clair (LEVER_LIBRARY) */}
             <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {LEVER_LIBRARY.map((lever) => (
-                    <span key={String(lever.key)} className="rounded bg-white/5 px-2 py-0.5 text-tiny text-ink-300">
+                    <span key={String(lever.key)} className="rounded-sm bg-white/5 px-2 py-0.5 text-tiny text-ink-300">
                         {lever.label}: <strong className="text-white">{leverValueLabel(lever.key, r.config[lever.key])}</strong>
                     </span>
                 ))}
@@ -416,7 +416,7 @@ const WinnerCard: React.FC<{
     );
 };
 
-// [FORMAT-EXPLAINS-TOLOCALESTRING] La prop s'appelait `blur`, un nom FAUX depuis que le masquage
+// [FORMAT-EXPLAINS-TOLOCALESTRING] La prop s'appelait `blur-sm`, un nom FAUX depuis que le masquage
 // passe par `PrivateAmount` : celui-ci ne floute pas, il RETIRE la valeur du DOM. Renommée
 // `privacy`, comme `KPIStat` et `DualKPIStat` — un nom trompeur fabrique des faux findings, et
 // celui-ci en a fabriqué deux dans la garde du mode discret.
@@ -455,7 +455,7 @@ const ResultsTable: React.FC<{
                             const def = LEVER_LIBRARY.find((l) => l.key === key)!;
                             onFilter({ key, value: def.options[0].value });
                         }}
-                        className="rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-tiny text-ink-200 focus-ring"
+                        className="rounded-sm bg-white/5 border border-white/10 px-1.5 py-0.5 text-tiny text-ink-200 focus-ring"
                         aria-label="Filtrer par levier"
                     >
                         <option value="">Filtrer par…</option>
@@ -470,7 +470,7 @@ const ResultsTable: React.FC<{
                                 const opt = lever.options.find((o) => String(o.value) === e.target.value);
                                 if (opt) onFilter({ key: lever.key, value: opt.value });
                             }}
-                            className="rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-tiny text-ink-200 focus-ring"
+                            className="rounded-sm bg-white/5 border border-white/10 px-1.5 py-0.5 text-tiny text-ink-200 focus-ring"
                             aria-label="Valeur du filtre"
                         >
                             {lever.options.map((o) => (

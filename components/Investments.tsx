@@ -773,7 +773,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             {/* [EP-5] Détail projeté PAR COMPTE retiré (duplique l'onglet Futur) : on garde le
                 patrimoine net projeté à l'horizon + un lien vers le détail dans Futur. */}
             {subTab === 'overview' && horizonSnapshot && (
-                <Card className="bg-white/[0.03] border-white/10">
+                <Card className="bg-white/3 border-white/10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div>
                             <div className="kpi-label">Patrimoine net projeté en {horizonSnapshot.year} (à {esperanceDeVie} ans)</div>
@@ -782,7 +782,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         <button
                             type="button"
                             onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                            className="text-tiny text-info-400 hover:underline font-bold focus-ring rounded inline-flex items-center gap-1"
+                            className="text-tiny text-info-400 hover:underline font-bold focus-ring rounded-sm inline-flex items-center gap-1"
                         >
                             Détail par compte dans Futur →
                         </button>
@@ -829,8 +829,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <div style={{ width: '100%', height: '520px' }}>
                     {isLoading ? (
                         <div className="w-full h-full flex flex-col gap-4">
-                            <Skeleton variant="chart" className="!h-auto flex-1" />
-                            <Skeleton variant="text" className="w-3/4 mx-auto !h-8" />
+                            <Skeleton variant="chart" className="h-auto! flex-1" />
+                            <Skeleton variant="text" className="w-3/4 mx-auto h-8!" />
                         </div>
                     ) : filteredMarketData.length > 0 ? (
                         <StockChart
@@ -989,7 +989,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                 {/* Phase E.6 — Liste des stocks filtrés par geo/sector cliqué */}
                 {allocationFilter && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
+                    <div className="mt-4 p-4 bg-linear-to-r/srgb from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="text-body font-bold text-white flex items-center gap-2">
                                 <Icon name={allocationFilter.type === 'region' ? 'globe' : 'building'} size={16} className="text-ink-300" />
@@ -998,7 +998,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setAllocationFilter(null)}
-                                className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded transition-colors focus-ring"
+                                className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded-sm transition-colors focus-ring"
                             >
                                 Effacer filtre
                             </button>
@@ -1064,7 +1064,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         badge={hasActions ? <Badge variant="warning" size="sm">Action requise</Badge> : <Badge variant="success" size="sm">OK</Badge>}
                         className="mt-2"
                     >
-                        <div className="mb-6 bg-white/[0.03] p-4 rounded-xl border border-white/10 flex items-center justify-between">
+                        <div className="mb-6 bg-white/3 p-4 rounded-xl border border-white/10 flex items-center justify-between">
                             <div>
                                 <div className="text-meta text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
                                 <div className="text-white text-body font-bold">
@@ -1201,7 +1201,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                                     type="number"
                                                                     min="0"
                                                                     max="100"
-                                                                    className="w-16 bg-black/50 border border-violet-500/30 rounded px-2 py-0.5 text-white font-bold outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-right"
+                                                                    className="w-16 bg-black/50 border border-violet-500/30 rounded-sm px-2 py-0.5 text-white font-bold outline-hidden focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-right"
                                                                     value={item.targetPct}
                                                                     onChange={(e) => {
                                                                         // Remplace l'ENTRÉE, ne la mute pas : `[...targetModel]` copiait le
@@ -1372,7 +1372,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             isCompareMode && isCompareSelected ? 'border-primary/40 bg-primary/10' : 'border-white/5 hover:border-white/20'
                         }`}>
                             {/* Background Gradient based on sector */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl/srgb from-white/10 to-transparent -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
                             <div>
                                 <div className="flex justify-between items-start mb-4 relative z-10">
@@ -1390,7 +1390,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 onClick={() => toggleCompareSymbol(asset.id)}
                                                 aria-pressed={isCompareSelected}
                                                 aria-label={`Comparer ${asset.name}`}
-                                                className="touch-target -m-3 flex items-center justify-center shrink-0 focus-ring rounded"
+                                                className="touch-target -m-3 flex items-center justify-center shrink-0 focus-ring rounded-sm"
                                             >
                                                 <span
                                                     aria-hidden="true"
@@ -1416,11 +1416,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
-                                    <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
+                                    <div className="bg-white/3 p-2.5 rounded-xl border border-white/5 backdrop-blur-xs">
                                         <div className="text-ink-400 mb-1 font-bold">Valeur</div>
                                         <PrivateAmount as="div" className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</PrivateAmount>
                                     </div>
-                                    <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
+                                    <div className="bg-white/3 p-2.5 rounded-xl border border-white/5 backdrop-blur-xs">
                                         <div className="text-ink-400 mb-1 font-bold">Variation {PERF_PERIOD_LABELS[perfPeriod]}</div>
                                         <div className={`font-bold text-meta ${asset.trendPct === null ? 'text-ink-400' : asset.trendPct >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                             {asset.trendPct === null ? '—' : `${asset.trendPct > 0 ? '+' : ''}${asset.trendPct.toFixed(1)}%`}
@@ -1463,7 +1463,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Région pour ${asset.id}`}
                                         value={asset.region}
                                         onChange={(e) => handleAssetMetaChange(asset.id, 'region', e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-hidden focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         {CANONICAL_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                                         {!CANONICAL_REGIONS.includes(asset.region as never) && <option value={asset.region}>{asset.region}</option>}
@@ -1472,7 +1472,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Secteur pour ${asset.id}`}
                                         value={asset.sector}
                                         onChange={(e) => handleAssetMetaChange(asset.id, 'sector', e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-hidden focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         {CANONICAL_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
                                         {!CANONICAL_SECTORS.includes(asset.sector as never) && <option value={asset.sector}>{asset.sector}</option>}
@@ -1481,7 +1481,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Type de compte pour ${asset.id}`}
                                         value={accountType}
                                         onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-ink-200 font-bold outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-ink-200 font-bold outline-hidden focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         <option value="CELI">CELI</option>
                                         <option value="REER">REER</option>

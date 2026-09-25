@@ -3,18 +3,45 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { testsHomonymes } from './lib/testsHomonymes.mjs';
 import { execSync } from 'node:child_process';
+import { analyseCommande, fichiersAttendus } from './lib/analyseCommande.mjs';
 
 let cmd = '';
 try { cmd = (JSON.parse(readFileSync(0, 'utf8')).tool_input?.command) || ''; } catch { process.exit(0); }
-if (!/\bgit\s+commit\b/.test(cmd)) process.exit(0);
+
+// [GATE-COMMIT-ANALYSE] On ne réagit qu'à un VRAI segment shell `git commit` (pas au texte d'un echo,
+// d'un heredoc ou d'un rapport qui contient ces mots). Analyse pure et testée : lib/analyseCommande.mjs.
+const analyse = analyseCommande(cmd);
+if (!analyse.estCommit) process.exit(0);
+
+const MAX = 64 * 1024 * 1024;
+const git = (args) => execSync(`git ${args}`, { encoding: 'utf8', maxBuffer: MAX }).split('\n').filter(Boolean);
+const guillemet = (c) => `'${c.replace(/'/g, `'\\''`)}'`;
+// `git status --porcelain -z` : « XY chemin » ; pour un renommage, l'entrée suivante est l'ancien nom.
+const statut = ({ chemins = [], sansNonSuivis = false }) => {
+  const cible = chemins.length ? ` -- ${chemins.map(guillemet).join(' ')}` : '';
+  const brut = execSync(`git status --porcelain -z --untracked-files=${sansNonSuivis ? 'no' : 'all'}${cible}`, { encoding: 'utf8', maxBuffer: MAX });
+  const entrees = brut.split('\0').filter(Boolean);
+  const out = [];
+  for (let i = 0; i < entrees.length; i++) {
+    out.push(entrees[i].slice(3));
+    if (/^[RC]/.test(entrees[i])) i++;
+  }
+  return out;
+};
 
 // Le gate (typecheck/test/build) ne peut être affecté QUE par du source TS. Si aucun
-// fichier .ts/.tsx n'est stagé (commit de docs/.md, hooks .mjs, .json, .yml, CI…), on
-// saute la suite complète (~5 min) — gain énorme en cloud sans rien sacrifier. Garde-fou :
-// si on n'arrive pas à lister les fichiers stagés, on lance le gate (défaut sûr).
-let staged = '';
-try { staged = execSync('git diff --cached --name-only', { encoding: 'utf8' }); } catch { /* défaut sûr ci-dessous */ }
-const stagedFiles = staged.split('\n').filter(Boolean);
+// fichier .ts/.tsx n'est concerné (commit de docs/.md, hooks .mjs, .json, .yml, CI…), on
+// saute la suite complète (~5 min) — gain énorme en cloud sans rien sacrifier.
+// Les fichiers concernés sont ceux que le commit EMBARQUERA : quand un `git add` précède dans la même
+// commande (ou `commit -a`, `--amend`), l'index actuel est incomplet → `fichiersAttendus` les calcule.
+// Garde-fou : analyse incertaine ou git en échec → liste vide → suite complète (défaut sûr).
+const attendus = fichiersAttendus(analyse, {
+  index: () => git('diff --cached --name-only'),
+  suivisModifies: () => git('diff --name-only'),
+  dernierCommit: () => git('diff-tree --no-commit-id --name-only -r HEAD'),
+  status: statut,
+});
+const stagedFiles = attendus ?? [];
 const touchesSource = stagedFiles.length === 0 || stagedFiles.some(f => /\.(ts|tsx)$/.test(f));
 if (!touchesSource) process.exit(0);
 
@@ -62,10 +89,14 @@ const testCmd = sourceFiles.length > 0
   : 'npm run test';
 
 for (const [name, c] of [['typecheck','npm run typecheck'],['tests (affectés)', testCmd],['build','npm run build']]) {
-  try { execSync(c, { stdio: 'pipe' }); }
+  try { execSync(c, { stdio: 'pipe', maxBuffer: 256 * 1024 * 1024 }); }
   catch (e) {
-    const tail = ((e.stdout?.toString() || '') + (e.stderr?.toString() || '')).split('\n').slice(-25).join('\n');
-    process.stderr.write(`Commit bloqué : ${name} a échoué. Corrige avant de committer.\n${tail}\n`);
+    // [GATE-COMMIT-ANALYSE] L'erreur d'origine EN ENTIER : sortie standard + erreur + cause système
+    // (ENOBUFS, signal, code de sortie) — l'ancienne version n'en gardait que 25 lignes et perdait le reste.
+    const sortie = ((e.stdout?.toString() || '') + (e.stderr?.toString() || '')).trimEnd();
+    const cause = [e.code && `code=${e.code}`, e.signal && `signal=${e.signal}`, e.status != null && `sortie=${e.status}`].filter(Boolean).join(' ');
+    process.stderr.write(`Commit bloqué : ${name} a échoué (${c}${cause ? '; ' + cause : ''}). Corrige avant de committer.\n`);
+    process.stderr.write((sortie || e.message || String(e)) + '\n');
     process.exit(2);
   }
 }

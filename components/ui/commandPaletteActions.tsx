@@ -67,8 +67,8 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         { tab: Tab.TRANSACTIONS, label: 'Transactions', icon: <Icon name="transactions" size={sz} />, keywords: ['transac', 'depense', 'achats'] },
         { tab: Tab.BUDGET, label: 'Budget', icon: <Icon name="budget" size={sz} />, keywords: ['budget', 'depenses', 'abonnements', 'charges fixes', 'objectifs', 'planification'] },
         { tab: Tab.DEBT, label: 'Dettes', icon: <Icon name="debt" size={sz} />, keywords: ['debt', 'pret', 'credit'] },
-        { tab: Tab.INVESTMENTS, label: 'Investissements', icon: <Icon name="investments" size={sz} />, keywords: ['invest', 'bourse', 'actions'] },
-        { tab: Tab.FUTURE, label: 'Projection Future', icon: <Icon name="future" size={sz} />, keywords: ['future', 'projection', 'simulation', 'mc', 'dashboard', 'home', 'accueil'] },
+        { tab: Tab.INVESTMENTS, label: 'Placements', icon: <Icon name="investments" size={sz} />, keywords: ['invest', 'investissements', 'bourse', 'actions'] },
+        { tab: Tab.FUTURE, label: 'Futur', icon: <Icon name="future" size={sz} />, keywords: ['future', 'projection', 'simulation', 'mc', 'dashboard', 'home', 'accueil'] },
         { tab: Tab.REAL_ESTATE, label: 'Immobilier', icon: <Icon name="real-estate" size={sz} />, keywords: ['immo', 'maison', 'hypotheque'] },
         // [REFONTE-NAV-L3] Projets d'achat futurs (Vie) — l'actuel reste sous « Immobilier ».
         { tab: Tab.REAL_ESTATE_PROJECTS, label: 'Projets immo', icon: <Icon name="building" size={sz} />, keywords: ['projet immo', 'achat', 'futur', 'maison', 'hypotheque'] },
@@ -76,11 +76,11 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         // Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS fusionnés en LIFE_PROJECTS
         { tab: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: <Icon name="life-projects" size={sz} />, keywords: ['voyage', 'travel', 'mariage', 'event', 'parcours', 'projet'] },
         { tab: Tab.RETIREMENT, label: 'Retraite', icon: <Icon name="retirement" size={sz} />, keywords: ['retraite', 'pension', 'rrq'] },
-        { tab: Tab.TAX, label: 'Centre fiscal', icon: <Icon name="tax" size={sz} />, keywords: ['tax', 'impot', 'declaration'] },
+        { tab: Tab.TAX, label: 'Impôts', icon: <Icon name="tax" size={sz} />, keywords: ['tax', 'impot', 'declaration', 'centre fiscal'] },
         { tab: Tab.ASSISTANT, label: 'Assistant', icon: <Icon name="bot" size={sz} />, keywords: ['ai', 'claude', 'chat', 'assistant', 'action', 'reco', 'recommandation', 'conseil', 'prochaine'] },
         // G22-N5 — Système fusionné dans Configuration ; keywords 'system'/'diagnostic'
         // gardés ici pour que la recherche y mène toujours.
-        { tab: Tab.SETTINGS, label: 'Paramètres', icon: <Icon name="settings" size={sz} />, keywords: ['settings', 'config', 'reglages', 'system', 'systeme', 'admin', 'diagnostic', 'version'] },
+        { tab: Tab.SETTINGS, label: 'Réglages', icon: <Icon name="settings" size={sz} />, keywords: ['settings', 'config', 'parametres', 'system', 'systeme', 'admin', 'diagnostic', 'version'] },
         { tab: Tab.PROFILE, label: 'Profil', icon: <Icon name="settings" size={sz} />, keywords: ['profil', 'profile', 'utilisateur', 'user', 'identite', 'salaire', 'retraite', 'sante', 'carriere'] },
     ];
     return navMap.map(({ tab, label, icon, keywords }) => ({

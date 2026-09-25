@@ -23,6 +23,18 @@ import { installPreloadErrorReload } from './utils/lazyWithRetry';
 // de casser l'onglet. Installé avant le render pour couvrir le tout premier preload.
 installPreloadErrorReload();
 
+// [S5-REFONTE-PERF] Fin du « premier affichage » (voir `.demarrage` dans index.css) : au premier
+// geste — la navigation qui suit retrouve ses fondus — ou après 5 s. Phase de CAPTURE : la classe
+// tombe avant que React traite le clic, donc l'écran qu'il monte s'anime normalement.
+{
+  const finDemarrage = () => {
+    document.documentElement.classList.remove('demarrage');
+    for (const t of ['pointerdown', 'keydown'] as const) window.removeEventListener(t, finDemarrage, true);
+  };
+  for (const t of ['pointerdown', 'keydown'] as const) window.addEventListener(t, finDemarrage, { capture: true, once: true });
+  window.setTimeout(finDemarrage, 5000);
+}
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");

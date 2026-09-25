@@ -12,7 +12,6 @@ const PayslipUploadCard = lazyWithRetry(
     () => import('../settings/PayslipUploadCard').then((m) => ({ default: m.PayslipUploadCard })),
     'PayslipUploadCard',
 );
-import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
 import { REQUIREMENTS, type Requirement, type RequirementId, type RequirementField, type ImportKind } from './requirements';
 
 /**
@@ -306,7 +305,9 @@ const FullSetupScreen: React.FC<{
     const total = requirements.length;
     const done = useFinanceStore((s) => requirements.filter((r) => r.isMet(s)).length);
 
-    const loadTestData = () => {
+    // [S5-REFONTE-PERF] Personas chargés au clic : ~25 Ko de données fictives hors du démarrage.
+    const loadTestData = async () => {
+        const { getPersonaOrDefault, DEFAULT_PERSONA_ID } = await import('../../services/testFixtures');
         const persona = getPersonaOrDefault(DEFAULT_PERSONA_ID);
         enableTestMode(persona.build(), persona.id);
     };
@@ -363,7 +364,7 @@ const FullSetupScreen: React.FC<{
                     )}
                     <button
                         type="button"
-                        onClick={loadTestData}
+                        onClick={() => { void loadTestData(); }}
                         className="inline-flex items-center gap-2 min-h-[44px] px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
                     >
                         <Icon name="flask" size={14} /> Données de test

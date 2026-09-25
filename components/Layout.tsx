@@ -1,16 +1,19 @@
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tab, FinancialGoal, User } from '../types';
 import { TAB_LABELS } from '../constants';
 import { NAV_GROUPS, MOBILE_BAR_TABS, PROFILE_TAB, navItemOfTab } from './navDestinations';
 import { CoupleModeBadge } from './ui/CoupleModeBadge';
 import { showToast } from './ui/Toast';
-import { Icon, type IconName } from './ui/Icon';
+import { Icon } from './ui/Icon';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
-import { getPersonaById, getPersonaOrDefault, TEST_PERSONAS } from '../services/testFixtures';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { isCoupleMode } from '../services/couple/netWorthByOwner';
+
+// [S5-REFONTE-PERF] Bannière du mode test et sa liste de personas : hors du démarrage.
+const BandeauModeTest = lazyWithRetry(() => import('./test/BandeauModeTest').then(m => ({ default: m.BandeauModeTest })), 'BandeauModeTest');
 
 // Hub perso — cible du lien « ← Hub » de la sidebar (overridable au build via VITE_HUB_URL).
 const HUB_URL = (import.meta.env.VITE_HUB_URL as string | undefined)?.replace(/\/+$/, '') || 'https://hubperso.com';
@@ -97,9 +100,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Mode test : banner permanent en haut + classe globale.
   const isTestMode = useFinanceStore(s => s.isTestMode);
-  const activeTestPersonaId = useFinanceStore(s => s.activeTestPersonaId);
-  const activeTestPersona = getPersonaById(activeTestPersonaId);
-  const enableTestMode = useFinanceStore(s => s.enableTestMode);
 
   // G22-B2 — bascule directe Couple ⇄ Individuel depuis la sidebar. Ajoute/retire
   // le 2e utilisateur dans `config.users` ; tout l'app lit `config.users.length`
@@ -145,34 +145,13 @@ export const Layout: React.FC<LayoutProps> = ({
           écrire. Vide au premier rendu : arriver sur l'app n'est pas un changement de destination. */}
       <div role="status" aria-live="polite" className="sr-only">{annonceRoute}</div>
 
-      {/* Banner Mode Test — toujours visible quand isTestMode=true. */}
+      {/* Banner Mode Test — toujours visible quand isTestMode=true. [S5-REFONTE-PERF] Chargée à la
+          demande (personas hors du démarrage) ; bande de même teinte en attendant, pour que la mise
+          en page (décalage `pt-16`) ne saute pas. */}
       {isTestMode && (
-        <div
-          role="status"
-          aria-label="Mode test activé"
-          className="fixed top-0 left-0 right-0 z-150 bg-linear-to-r/srgb from-warning-600 via-orange-600 to-warning-600 text-white text-center py-2 px-4 font-bold text-body shadow-lg flex items-center justify-center gap-3"
-        >
-          <Icon name="flask" size={16} />
-          <span className="font-bold">MODE TEST</span>
-          {/* Sélecteur de persona directement dans la bannière : changer
-              d'utilisateur sans passer par Réglages (demandé par Marc). */}
-          <select
-            aria-label="Changer de persona de test"
-            value={activeTestPersona?.id ?? TEST_PERSONAS[0].id}
-            onChange={(e) => {
-              const persona = getPersonaOrDefault(e.target.value);
-              enableTestMode(persona.build(), persona.id);
-            }}
-            className="bg-amber-900/70 text-white text-meta rounded-sm px-2 py-1 border border-white/40 font-normal cursor-pointer max-w-[55vw] truncate focus:outline-hidden focus:ring-2 focus:ring-white/60"
-          >
-            {TEST_PERSONAS.map((p) => (
-              <option key={p.id} value={p.id} className="bg-dark text-white">
-                {p.emoji} {p.label}
-              </option>
-            ))}
-          </select>
-          <span className="hidden md:inline font-normal text-meta opacity-90">— données fictives, vraies données sauvegardées</span>
-        </div>
+        <Suspense fallback={<div className="fixed top-0 left-0 right-0 z-150 h-10 bg-warning-600" aria-hidden="true" />}>
+          <BandeauModeTest />
+        </Suspense>
       )}
       <style>{`
         /* [PRIV-DISCRET-DOM] survol-révèle RETIRÉ (un survol accidentel exposait le montant). Cette classe

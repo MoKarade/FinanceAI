@@ -442,6 +442,22 @@
  * sensibles aux mouvements (vestibulaires, anxiété, etc.).
  * Garde les transitions courtes (≤10ms) pour préserver l'UX.
  * ============================================================ */
+/* [S5-REFONTE-PERF] Premier affichage SANS animation d'entrée. `html.demarrage` (posée dans
+   index.html) est retirée au premier geste ou après 5 s (index.tsx). Tant qu'elle est là, les fondus
+   d'entrée durent 0 s : le contenu est visible dès la première image — un fondu de 0,5 s retardait
+   d'autant le plus grand affichage mesuré (Chrome ne le compte qu'une fois opaque).
+   ⚠️ Durée 0 et PAS `animation: none` : retirer ensuite la classe ne rejoue pas l'animation (même
+   nom, déjà terminée) ; un `none` la relancerait, et le contenu déjà affiché referait un fondu.
+   Ciblé sur les animations d'ENTRÉE seulement — un indicateur de chargement doit continuer de tourner. */
+.demarrage .animate-fade-in,
+.demarrage .animate-slide-up,
+.demarrage .animate-premium-in,
+.demarrage .animate-tab-in,
+.demarrage .stagger-in > * {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -31,6 +31,11 @@ const FMT_NUM_2 = new Intl.NumberFormat(LOCALE, {
     maximumFractionDigits: 2,
 });
 
+const FMT_NUM_1 = new Intl.NumberFormat(LOCALE, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+});
+
 type Decimals = 0 | 2;
 
 const isFiniteNumber = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -46,8 +51,10 @@ export function formatCAD(n: unknown, opts: { decimals?: Decimals } = {}): strin
 /**
  * Formate un nombre sans devise (« 1 111,55 »).
  */
-export function formatNumber(n: unknown, opts: { decimals?: Decimals } = {}): string {
+export function formatNumber(n: unknown, opts: { decimals?: Decimals | 1 } = {}): string {
     if (!isFiniteNumber(n)) return '—';
+    // 1 décimale : durées (« 2,9 ans ») — jamais pour un montant (formatCAD s'en tient à 0 ou 2).
+    if (opts.decimals === 1) return FMT_NUM_1.format(n);
     return opts.decimals === 2 ? FMT_NUM_2.format(n) : FMT_NUM_0.format(n);
 }
 

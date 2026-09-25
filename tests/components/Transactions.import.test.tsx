@@ -33,29 +33,33 @@ const PANEL = /CSV exporté de ta banque/i;
 // le DOM même details fermé, donc un `getByText` non-discriminant matcherait les 2).
 const IMPORT_SUMMARY = /Import manuel \(repli/i;
 
+// [S5-REFONTE-TRANSACTIONS] La disclosure `<details>` devient le bouton « Importer CSV / PDF » de
+// l'en-tête (maquettes) : le panneau est RENDU quand il est ouvert, absent sinon — la présence du
+// panneau redevient donc un discriminant fiable (plus de `<details>` que jsdom laisse visible).
+const BOUTON = { name: /Importer CSV \/ PDF/ };
+
 describe('Transactions — CTA d\'import (D2 activation + FINTABLE-4 repli masqué)', () => {
-    it('sans transaction : le panneau d\'import est affiché automatiquement (details ouvert)', () => {
-        const { container } = render(<Transactions transactions={[]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} onImport={vi.fn()} />);
+    it('sans transaction : le panneau d\'import est affiché automatiquement', () => {
+        render(<Transactions transactions={[]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} onImport={vi.fn()} />);
         expect(screen.getByText(PANEL)).toBeInTheDocument();
-        expect(container.querySelector('details')?.open).toBe(true);
+        expect(screen.getByText(IMPORT_SUMMARY)).toBeInTheDocument();
+        expect(screen.getByRole('button', BOUTON)).toHaveAttribute('aria-expanded', 'true');
     });
 
-    it('avec transactions : disclosure « Import manuel » REPLIÉE par défaut, révèle le panneau au clic', () => {
-        const { container } = render(<Transactions transactions={[TX]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} onImport={vi.fn()} />);
-        const summary = screen.getByText(IMPORT_SUMMARY);
-        expect(summary).toBeInTheDocument();
-        const details = container.querySelector('details') as HTMLDetailsElement;
-        expect(details).toBeInTheDocument();
-        expect(details.open).toBe(false); // repliée par défaut — discriminant sur `open`, pas sur la présence du panneau
-        fireEvent.click(summary);
-        expect(details.open).toBe(true); // révélée au clic
-        expect(screen.getByText(PANEL)).toBeInTheDocument();
+    it('avec transactions : import REPLIÉ par défaut, le bouton de l\'en-tête le révèle', () => {
+        render(<Transactions transactions={[TX]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} onImport={vi.fn()} />);
+        const bouton = screen.getByRole('button', BOUTON);
+        expect(bouton).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByText(PANEL)).toBeNull(); // replié par défaut
+        fireEvent.click(bouton);
+        expect(bouton).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByText(PANEL)).toBeInTheDocument(); // révélé au clic
     });
 
-    it('sans prop onImport : aucune disclosure ni panneau d\'import (rétro-compat)', () => {
-        const { container } = render(<Transactions transactions={[TX]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} />);
+    it('sans prop onImport : aucun bouton ni panneau d\'import (rétro-compat)', () => {
+        render(<Transactions transactions={[TX]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} />);
+        expect(screen.queryByRole('button', BOUTON)).toBeNull();
         expect(screen.queryByText(IMPORT_SUMMARY)).toBeNull();
         expect(screen.queryByText(PANEL)).toBeNull();
-        expect(container.querySelector('details')).toBeNull();
     });
 });

@@ -182,10 +182,11 @@
   }
 
   /* Styles globaux inputs (migres depuis index.html).
-     [S5-REFONTE] `.champ-nu` : champ posé DANS une barre qui porte déjà fond, bordure et focus (chat).
+     [S5-REFONTE] `.champ-nu` : champ posé DANS une barre qui porte déjà fond, bordure et focus (chat),
+     ou `<select>` habillé en pastille (catégorie d'une transaction) qui porte les siens.
      Opt-out ici, pas par des utilitaires `!important` : en couches, un !important de la couche base
      l'emporte sur celui de la couche utilities (ordre inversé pour les déclarations importantes). */
-  input:not(.champ-nu), select, textarea {
+  input:not(.champ-nu), select:not(.champ-nu), textarea {
     transition: all 0.2s ease;
     background-color: rgba(11, 14, 20, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -198,7 +199,7 @@
   /* LUXE — focus aligné sur la marque (emerald/primary, au lieu du violet) + anneau
      plus doux. Les composants demandaient déjà focus:border-primary ; le !important
      global forçait le violet → incohérent. Corrigé ici, app-wide. */
-  input:not(.champ-nu):focus, select:focus, textarea:focus {
+  input:not(.champ-nu):focus, select:not(.champ-nu):focus, textarea:focus {
     background-color: rgba(11, 14, 20, 0.9) !important;
     border-color: rgba(230, 234, 242, 0.45) !important;
     box-shadow: 0 0 0 3px rgba(230, 234, 242, 0.12);
@@ -207,7 +208,7 @@
   /* LUXE — champs texte/select/textarea plus arrondis (moderne, cohérent).
      Exclut checkbox/radio/range/color (forme propre). */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.champ-nu),
-  select,
+  select:not(.champ-nu),
   textarea {
     border-radius: 0.5rem !important;
   }
@@ -401,8 +402,9 @@
 
   /* LUXE — select : chevron custom (appearance-none) au lieu de la flèche native datée.
    background-image distinct du background-color (!important du base) → pas de conflit ;
-   padding-right !important réserve la place du chevron quelle que soit la classe px inline. */
-  select {
+   padding-right !important réserve la place du chevron quelle que soit la classe px inline.
+   [S5-REFONTE] Sauf `.champ-nu` (pastille qui porte son propre habillage, ou aucun chevron). */
+  select:not(.champ-nu) {
     -webkit-appearance: none;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238896a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");

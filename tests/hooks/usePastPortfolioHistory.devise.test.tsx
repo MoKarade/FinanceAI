@@ -42,7 +42,7 @@ describe('[HISTORIQUE-YAHOO-DEVISE-NON-LUE] usePastPortfolioHistory — garde de
     // pence est lue comme des euros, 10 × 9 × FX (≈ 130 $) si elle est refusée. Le contrôle en EUR
     // prouve que la même série, dans la bonne devise, est bien CONSOMMÉE (sinon le premier cas
     // passerait aussi avec un hook qui n'appelle plus rien).
-    const maxInvesti = (pts: Array<{ InvestedValue?: number }>) =>
+    const maxInvesti = (pts: ReadonlyArray<{ InvestedValue?: number }>) =>
         Math.max(0, ...pts.map((p) => Number(p.InvestedValue) || 0));
 
     it('clôtures en pence sur un actif EUR → la série n\'entre pas dans la courbe', async () => {

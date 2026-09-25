@@ -8,7 +8,7 @@ export const TAB_LABELS: Record<Tab, string> = {
     [Tab.TRANSACTIONS]: 'Transactions',
     [Tab.BUDGET]: 'Budget',
     [Tab.DEBT]: 'Dettes',
-    [Tab.INVESTMENTS]: 'Investissements',
+    [Tab.INVESTMENTS]: 'Placements',
     [Tab.FUTURE]: 'Futur',
     [Tab.REAL_ESTATE]: 'Immobilier',
     [Tab.REAL_ESTATE_PROJECTS]: 'Projets immo',

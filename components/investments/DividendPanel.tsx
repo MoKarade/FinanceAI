@@ -28,6 +28,8 @@ interface DividendPanelProps {
     totalAnnualDividends: number;
     currentAllocation: AllocationItem[];
     isLoading: boolean;
+    /** [S5-REFONTE-PLACEMENTS] Rendu sans carte ni titre (posé dans un accordéon qui les porte). */
+    sansCadre?: boolean;
 }
 
 export const DividendPanel: React.FC<DividendPanelProps> = ({
@@ -35,6 +37,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
     totalAnnualDividends,
     currentAllocation,
     isLoading,
+    sansCadre = false,
 }) => {
     const [dripEnabled, setDripEnabled] = useState(false);
     const [divGrowthRate, setDivGrowthRate] = useState(5);
@@ -86,7 +89,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
     }, [isPrivacyMode]);
 
     return (
-        <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>
+        <Cadre sansCadre={sansCadre}>
             <div className="flex justify-between items-center mb-6 bg-white/3 p-5 rounded-2xl border border-white/10 shadow-lg shadow-black/20">
                 <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center shadow-inner border border-white/10"><Icon name="cash" size={26} className="text-ink-200" /></div>
@@ -216,6 +219,10 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     />
                 </div>
             )}
-        </Card>
+        </Cadre>
     );
 };
+
+const Cadre: React.FC<{ sansCadre: boolean; children: React.ReactNode }> = ({ sansCadre, children }) => (sansCadre
+    ? <div>{children}</div>
+    : <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>{children}</Card>);

@@ -41,6 +41,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         onToggle?.(next);
     };
 
+    const discret = variant === 'quiet';
     const headerId = `cs-${React.useId().replace(/:/g, '')}`;
     const panelId = `${headerId}-panel`;
     // Le bouton d'accordéon est enveloppé d'un vrai titre (pattern WAI-ARIA Accordion) pour l'outline SR.
@@ -55,7 +56,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 id={headerId}
-                className={`w-full flex items-center justify-between gap-3 text-left focus-ring hover:bg-white/3 transition-colors ${variant === 'quiet' ? 'px-0 py-2 min-h-11 rounded-lg' : 'px-4 py-3'}`}
+                className={`w-full flex items-center justify-between gap-3 text-left focus-ring hover:bg-white/3 transition-colors ${discret ? 'px-0 py-2 min-h-11 rounded-lg' : 'px-4 py-3'}`}
             >
                 <div className="flex items-center gap-3 min-w-0">
                     {icon && <span className="shrink-0 text-h2" aria-hidden="true">{icon}</span>}
@@ -81,7 +82,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                     role="region"
                     id={panelId}
                     aria-labelledby={headerId}
-                    className={variant === 'quiet' ? 'pt-3' : 'px-4 pb-4 pt-1 border-t border-white/5'}
+                    className={discret ? 'pt-3' : 'px-4 pb-4 pt-1 border-t border-white/5'}
                 >
                     {children}
                 </div>

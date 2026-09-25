@@ -152,7 +152,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
         help: 'Au moins un objectif enfant activé (REEE, coûts de garde, etc.).',
         icon: 'child',
         // Idem : l'objectif par défaut a isActive:false → gate sur l'activation.
-        isMet: (s) => (s.childGoals ?? []).some((g) => g.isActive),
+        isMet: (s) => (s.childGoals ?? []).length > 0, // [S5-REFONTE-ENFANTS] tout enfant planifié compte
     },
     transactions: {
         id: 'transactions',

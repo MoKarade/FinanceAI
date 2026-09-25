@@ -110,7 +110,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
     const handleAddChild = () => {
         const newId = 'child_' + Date.now();
-        const newGoals = [...goals, { ...INITIAL_CHILD_GOAL, id: newId, name: `Enfant ${goals.length + 1}` }];
+        // Tout enfant planifié compte dans le Futur (décision de Marc) : `isActive` écrit à vrai pour les
+        // lecteurs qui le consultent encore (le moteur ne le lit plus).
+        const newGoals = [...goals, { ...INITIAL_CHILD_GOAL, id: newId, name: `Enfant ${goals.length + 1}`, isActive: true }];
         setGoals(newGoals);
         setActiveTabIndex(newGoals.length - 1);
     };
@@ -301,8 +303,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     // - en-tête : titre, onglets des enfants (+ Ajouter), coût total et lien vers la courbe ;
     // - bureau : « Choix de vie » à gauche ; courbe du coût net par âge puis REEE à droite ;
     // - mobile : courbe, REEE, choix de vie, puis le lien vers la courbe en pleine largeur.
-    // Ce que les maquettes ne montrent pas (prénom, date, cotisation REEE, allocations, compter ou non
-    // dans le Futur, suppression) reste disponible, replié dans « Détails de l'enfant ».
+    // Ce que les maquettes ne montrent pas (prénom, date, cotisation REEE, allocations, suppression) reste
+    // disponible, replié dans « Détails de l'enfant » (décision de Marc, 25/09). Plus d'interrupteur
+    // « compter dans le Futur » : un enfant planifié compte toujours.
     return (
         <div className="space-y-6 stagger-in pb-10">
             <ConfirmModal
@@ -344,14 +347,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 actions={<span className="hidden lg:flex items-center gap-3">{coutTotal}<VieCurveLink /></span>}
             />
 
-            {/* Un enfant hors du Futur doit le DIRE (il ne déforme pas la courbe) — [UX-ISACTIVE-BADGE]. */}
-            {!goal.isActive && (
-                <div className="rounded-2xl border border-warning-500/30 bg-warning-500/6 p-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-body text-ink-200">{nomEnfant} n'est pas compté·e dans le Futur : sa courbe ne change pas.</p>
-                    <Button onClick={() => update('isActive', true)} variant="primary" size="md">Compter dans le Futur</Button>
-                </div>
-            )}
-
             <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-5 items-start">
                 <div className="min-w-0 flex flex-col gap-4 order-2 xl:order-none">
                     <ChoixDeVie
@@ -388,25 +383,13 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     </div>
                                 ))}
                             </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={goal.isActive}
-                                    onClick={() => update('isActive', !goal.isActive)}
-                                    className="flex items-center gap-3 min-h-11 text-body text-ink-100 focus-ring rounded-lg"
-                                >
-                                    <span className={`w-10 h-6 rounded-full p-0.5 flex transition-colors ${goal.isActive ? 'bg-primary justify-end' : 'bg-white/15 justify-start'}`} aria-hidden="true">
-                                        <span className={`w-5 h-5 rounded-full ${goal.isActive ? 'bg-dark' : 'bg-ink-300'}`} />
-                                    </span>
-                                    Compter dans le Futur
-                                </button>
-                                {goals.length > 1 && (
-                                    <button type="button" onClick={handleRemoveChild} className="ml-auto min-h-11 px-3 text-meta text-danger-400 underline underline-offset-2 focus-ring rounded-sm">
+                            {goals.length > 1 && (
+                                <div className="flex justify-end">
+                                    <button type="button" onClick={handleRemoveChild} className="min-h-11 px-3 text-meta text-danger-400 underline underline-offset-2 focus-ring rounded-sm">
                                         Supprimer {nomEnfant}
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     </CollapsibleSection>
                 </div>

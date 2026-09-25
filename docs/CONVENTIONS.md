@@ -2340,7 +2340,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   dans le fichier. Une erreur *identique au caractère près* après un fix est bien plus souvent un code non
   rapatrié qu'un diagnostic erroné (un mauvais fix produit en général une erreur DIFFÉRENTE).
   (3) **Un agrégat VIDE sans erreur ne se débugge pas dans les données mais dans l'ÉTAT DU COMPTE** (leçon
-  FINTABLE-DOCTOR) : 3 comptes de placement ont rendu 0 position avec des appels qui RÉUSSISSENT — rien à
+  FINTABLE-DOCTOR) : des comptes de placement ont rendu 0 position avec des appels qui RÉUSSISSENT — rien à
   tracer côté skips. Le bon outil n'est pas un log de plus sur le chemin de données, c'est un **docteur** qui
   lit les endpoints d'ÉTAT (droits du plan, santé/historique de sync des connexions, intégrations) et porte le
   raisonnement dans une fonction PURE (`explainMissingData`, testable sans réseau). Ses décodeurs prennent des
@@ -2368,7 +2368,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - ⚠️ **Une intégration tierce peut être IMPOSSIBLE — le mesurer AVANT de coder l'aval, et le dire** (leçon
   FINTABLE-POSITIONS 2026-07-29) : la moitié « investissements temps réel » du chantier était irréalisable —
   l'annuaire PUBLIC de Fintable rend **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple) et
-  Disnat n'y est pas. Ce n'était pas une config à corriger mais une limite produit. Réflexe : quand une donnée
+  courtier n'y est pas. Ce n'était pas une config à corriger mais une limite produit. Réflexe : quand une donnée
   attendue n'arrive pas, chercher la **table de couverture du fournisseur** avant de débugger son propre code
   — et quand le cœur d'une demande tombe, le DIRE franchement plutôt que livrer le reste comme si de rien
   n'était (« ce qui reste est une proposition beaucoup plus petite que celle achetée mentalement au départ »).
@@ -13346,7 +13346,7 @@ d'une autre zone qui porte le même attribut par coïncidence).
 
 **Le symptôme rapporté** : Marc, 2026-09-14 — « on dirait que je reçois pas les transactions de carte
 de crédit avec Fintable ». Son dry-run prouve pourtant que Fintable en LIVRE plusieurs centaines pour la
-Mastercard (fenêtre 2026-06-16 → 2026-09-10). Le blocage est donc en aval, chez nous.
+carte de crédit (fenêtre 2026-06-16 → 2026-09-10). Le blocage est donc en aval, chez nous.
 
 **Le mécanisme.** La sync Fintable se protège des doublons par une **bascule** : seules les
 transactions STRICTEMENT postérieures à `transactionsAfter` sont importées. Cette bascule est dérivée
@@ -13404,7 +13404,7 @@ est un appariement déguisé en formulaire.**
 ⚠️ Deux pièges du remède, tous deux money-critical :
 1. **Une suggestion hardie écrit le solde sur la MAUVAISE dette.** D'où un matcher délibérément
    timide : mots passe-partout d'un libellé bancaire écartés (« carte », « crédit », « compte » —
-   sans eux, « Carte de crédit Visa BNC » et « Carte de crédit Amex » s'apparient sur rien de
+   sans eux, « Carte de crédit A » et « Carte de crédit B » s'apparient sur rien de
    discriminant), et **égalité de score ⇒ `null`** : ambigu n'est pas probable.
 2. **La valeur rendue doit être le nom d'ORIGINE, jamais sa forme normalisée.** Le matcher CHERCHE
    sans accents ; `applyDebt` VÉRIFIE avec. Rendre « hypotheque condo » reconstruirait le défaut
@@ -14339,7 +14339,7 @@ de son sens.
 dont le taux manque, dont le solde est illisible ou dont le régime n'est pas déclaré — trois listes
 existent pour qu'aucun ne disparaisse en silence. Mais `brokerTotalCad` est alors la somme des SEULS
 comptes retenus, et `appliquerAutoriteCourtier` ne voyait pas ces listes. Mesuré sur la chaîne
-réelle : le compte Disnat CAD retenu + le compte Disnat USD écarté faute de taux — **exactement l'état de
+réelle : le compte courtier CAD retenu + le compte courtier USD écarté faute de taux — **exactement l'état de
 Marc tant que ses taux viennent du repli** — donnait un mois 0 amputé de **la majeure partie des placements**.
 La garde d'identité que j'avais écrite ne tenait que dans le cas TOUT-ou-RIEN ; le cas partiel, le
 plus probable, passait. **Un total partiel n'est pas une autorité dégradée, c'est un faux.**
@@ -14465,7 +14465,7 @@ fenêtre glissante sans jamais lire l'inventaire. La dépendance a donc été re
 placée AVANT les paramètres à défaut — optionnelle, la production aurait pu l'oublier et reprendre
 la version muette en silence ; requise, le compilateur énumère les sites (4 ici).
 
-⚠️ **Découverte de chemin, pas du lot** : le compte courtier Disnat est libellé **en USD** dans Fintable (`$`
+⚠️ **Découverte de chemin, pas du lot** : le compte courtier est libellé **en USD** dans Fintable (`$`
 contre `C$` pour les comptes canadiens) — le compte que le code nomme déjà en commentaire
 (« N USD deviendraient N CAD, faux d'environ 30 % »). Comme la dernière synchro Fintable
 précédait le correctif des taux, il a été écarté faute de taux fiable, le panier NON-ENREG s'est
@@ -16140,7 +16140,7 @@ chercher un bug de calcul. Il n'y en avait pas.
 | terme | montant | cause |
 |---|---|---|
 | bail Toyota | **l'essentiel de l'écart** | Fintable ne connaît aucune dette |
-| Mastercard | **un petit montant** | Fintable la compte en **ACTIF**, l'app en dette |
+| Carte de crédit | **un petit montant** | Fintable la compte en **ACTIF**, l'app en dette |
 | placements | **quelques dollars** | écart d'arrondi entre les deux sources |
 | liquidités | **moins de 100 $** | idem |
 | **total** | **l'écart entier** | à 1 $ d'arrondi près |
@@ -16153,7 +16153,7 @@ dollar : tant qu'un terme manque, on n'a pas compris.
 
 ⚠️ **Refaire la somme de l'écran de l'autre outil est la mesure la plus rentable du lot.** Les six
 comptes Fintable additionnés BRUT donnent un total nettement inférieur à celui affiché. L'écart divisé par
-le solde du compte Disnat (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
+le solde du compte courtier (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
 Fintable convertit l'USD à un taux ROND. Une seule division a identifié la devise, le taux et le
 compte concernés — ce qu'aucune lecture de notre code ne pouvait donner.
 
@@ -17045,7 +17045,7 @@ même jour rapportaient l'une ou l'autre selon le tableau.
   Deux annulations au même `id` faisaient tomber deux lignes réelles ; elles sont désormais refusées
   toutes les deux, sans deviner laquelle était la bonne.
 
-## `UNE-FIXTURE-ECRITE-DE-MEMOIRE-PERD-CE-QUE-L-ORIGINAL-PORTE` (2026-09-24, parseur Disnat)
+## `UNE-FIXTURE-ECRITE-DE-MEMOIRE-PERD-CE-QUE-L-ORIGINAL-PORTE` (2026-09-24, parseur courtier)
 
 Le relevé de test du parseur était écrit d'après la FORME des vrais relevés, pour ne rien publier
 d'eux. Il était vert, chaque test prouvé par une panne volontaire — et le premier passage sur les
@@ -17062,7 +17062,7 @@ notée au Lot 0 et oubliée en écrivant la fixture).
 - La forme découverte entre ensuite DANS la fixture fictive, avec son recoupement : la prochaine
   régression se verra en CI, pas seulement sur la machine de celui qui a les relevés.
 
-## `UN-RECOUPEMENT-NE-PROTEGE-QUE-LES-CHAMPS-QU-IL-ADDITIONNE` (2026-09-24, parseur Disnat, revue)
+## `UN-RECOUPEMENT-NE-PROTEGE-QUE-LES-CHAMPS-QU-IL-ADDITIONNE` (2026-09-24, parseur courtier, revue)
 
 Le parseur lisait les nombres GLOUTONS en commentant « c'est le recoupement de l'encaisse qui juge si
 un chiffre de la description a été avalé ». Vrai du MONTANT, qui entre dans la somme. Faux du PRIX,

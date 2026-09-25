@@ -6543,7 +6543,7 @@ Merges sur `main`, CI verte vérifiée à chaque fois.
 
 ### 🚀 Prochaines étapes produit (préparées avec Marc)
 - **Import positions courtier (CSV)** : même mécanique que la banque, pour saisir les
-  actions en lot (Wealthsimple/Questrade/Disnat…). Demandé, non commencé.
+  actions en lot (Wealthsimple/Questrade/autre courtier…). Demandé, non commencé.
 - **Option B — agrégateur bancaire (clé)** : SimpleFIN (~15 $/an, payé par le user) via
   un relais serverless Vercel (contourne le CORS). **Différé** — Marc a choisi « CSV-only
   pour l'instant ».

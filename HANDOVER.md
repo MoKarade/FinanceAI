@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-25 (suite 6) — **Sauvegarde JSON = l'enveloppe persistée entière**
+> `[EXPORT-JSON-PERD-FINTABLE]` (décisions de Marc : conversations + documents inclus, restauration =
+> tout remplacer). `services/sauvegardeJson.ts` (pur) + `BackupPanel` : export = `getLocalPayload()`
+> (format `4.0`, `{ version, timestamp, store: { state, version } }`), refus en mode test ; restauration
+> 4.0 = `localStorage.clear()` puis `financeai-storage` réécrit tel quel, jugé au démarrage par `merge`.
+> `Settings` ne reçoit plus les 14 collections du vieux payload. ⚠️ Le workflow `Deploy MCP (Cloud
+> Run)` est **désactivé** côté GitHub : Marc doit le réactiver avant qu'un déploiement puisse partir
+> (routé dans `docs/A_FAIRE_MOI.md`). 1c-2 attend ce déploiement vérifié.
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur

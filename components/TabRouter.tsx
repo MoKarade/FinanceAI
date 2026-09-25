@@ -247,18 +247,9 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                     <Settings
                         apiKeys={state.apiKeys} setApiKeys={onUpdateApiKeys}
                         config={state.config} setConfig={(c) => setAppState({ config: c })}
-                        budgetItems={state.budgetItems}
                         onImportData={onManualImport}
                         initialBalances={state.initialBalances} setInitialBalances={(b) => setAppState({ initialBalances: b })}
-                        transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: t })}
-                        assets={state.assets}
-                        travelGoals={state.travelGoals}
-                        debts={state.debts}
-                        investmentAccounts={state.investmentAccounts} investmentTransactions={state.investmentTransactions}
-                        lifeEvents={state.lifeEvents} retirementGoal={state.retirementGoal}
-                        realEstateGoals={state.realEstateGoals}
-                        setRealEstateGoals={(g) => setAppState({ realEstateGoals: g })}
-                        childGoal={state.childGoal} childGoals={state.childGoals || []} financialGoals={state.financialGoals}
+                        transactions={state.transactions}
                         appState={state}
                     />
                 )}

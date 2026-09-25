@@ -78,6 +78,11 @@
   ✅ **Décision 2026-09-24 (ADR 0019 §9)** : tu poses ces paramètres. C'est aussi ce qui met en
   ligne la lecture des taux par le serveur (`[FX-SERVEUR-JAMAIS-RAFRAICHI]`), et la réparation du
   cron Fintable (tu as choisi de le réparer) passe par le même redéploiement.
+  ⚠️ **2026-09-25 — il reste UN geste** : tu as posé les paramètres, mais le workflow est
+  **désactivé à la main** côté GitHub (état `disabled_manually`, posé le 2026-09-23 vers 21 h 54, heure de Montréal ; mon lancement manuel a été refusé). Tant qu'il
+  l'est, aucun push ne déploie et rien n'est rouge. **Geste** : GitHub → `MoKarade/FinanceAI` →
+  onglet **Actions** → dans la liste de gauche **Deploy MCP (Cloud Run)** → bouton **Enable
+  workflow**. Dis-moi quand c'est fait : je lance un déploiement et je vérifie qu'il passe au vert.
 
 
 - [x] 👤 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18) — ✅ **RÉSOLU TOUT SEUL le jour

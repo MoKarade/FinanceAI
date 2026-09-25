@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Settings } from '../../components/Settings';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import type { AppState, BudgetConfig, User } from '../../types';
 
 vi.mock('../../services/cloudBackup', () => ({
@@ -51,13 +52,10 @@ const baseProps = {
     setApiKeys: vi.fn(),
     config: defaultConfig,
     setConfig: vi.fn(),
-    budgetItems: [],
     onImportData: vi.fn(),
     initialBalances: {},
     setInitialBalances: vi.fn(),
     transactions: [],
-    assets: [],
-    travelGoals: [],
     appState: minimalAppState,
 };
 
@@ -88,6 +86,12 @@ describe('Settings', () => {
     });
 
     it("l'export JSON clair n'inclut PAS les clés API dans le blob (audit sécurité 2026-05)", async () => {
+        // [EXPORT-JSON-PERD-FINTABLE] L'export lit l'état PERSISTÉ (plus les props) : on y pose une
+        // clé API — le partialize doit l'écarter — et une transaction, pour que l'enveloppe existe.
+        useFinanceStore.setState({
+            apiKeys: { anthropic: 'ANT_SECRET', finnhub: 'FIN_SECRET' },
+            transactions: [{ id: 't1', date: '2026-01-02', amount: -10, payee: 'x', category: 'Épicerie' }] as unknown as AppState['transactions'],
+        });
         render(<Settings {...baseProps} />);
         goToBackupTab();
 
@@ -108,6 +112,10 @@ describe('Settings', () => {
         expect(text).not.toContain('GEM_SECRET');
         expect(text).not.toContain('ERA_SECRET');
         expect(text).not.toContain('"apiKeys"');
+        expect(text).not.toContain('ANT_SECRET');
+        expect(text).not.toContain('FIN_SECRET');
+        // Anti-vacuité : le fichier porte bien l'état (sinon « aucune clé » serait vrai d'un vide).
+        expect(JSON.parse(text).store.state.transactions).toHaveLength(1);
     });
 
     it("le bouton 'Exporter chiffré' ouvre la modal de passphrase", async () => {

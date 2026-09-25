@@ -1705,6 +1705,12 @@ n'est pas réécrire un récit.
   seul lecteur d'un flux laisse passer le défaut par l'autre (l'historique a deux lecteurs)
   (`UNE-MISE-EN-MAJUSCULES-EFFACE-L-UNITE-QUE-LA-CASSE-PORTAIT`).
 
+- ⚠️ **Une sauvegarde par LISTE perd ce que personne n'a ajouté DEUX fois** (2026-09-25) : l'export
+  JSON énumérait 26 champs et restaurait par des clés legacy — Fintable, conversations IA, documents
+  disparaissaient pendant que Drive les portait. Correctif : la sauvegarde EST l'enveloppe persistée,
+  et la garde compare ses clés à celles que le store persiste, jamais à une liste recopiée
+  (`UNE-SAUVEGARDE-PAR-LISTE-PERD-CE-QUE-PERSONNE-N-A-AJOUTE-DEUX-FOIS`).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 - ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même

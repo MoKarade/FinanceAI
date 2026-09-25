@@ -10,6 +10,13 @@ import { logAudit } from '../../services/auditLog';
 import { logError } from '../../services/errorLogger';
 import { MIN_PASSPHRASE_LENGTH } from '../../services/sync/syncOrchestrator';
 import { verifierTypesRestaures, messageDeRefusTypes } from '../../services/verifierTypesRestaures';
+import { getLocalPayload } from '../../services/sync/syncSnapshot';
+import { modeDonneesFictives } from '../../store/modeTestActif';
+import { STORAGE_KEYS } from '../../utils/storageKeys';
+import {
+  construireSauvegardeEtat, messageRefusSauvegarde, resumeSauvegarde, VERSION_SAUVEGARDE_ETAT,
+  type ResultatSauvegarde,
+} from '../../services/sauvegardeJson';
 
 /**
  * ⚠️ EXPORTÉ pour être testable directement. Monter `BackupPanel` en test tirerait Card, Toast et
@@ -60,9 +67,18 @@ export const BackupSchema = z.object({
   instruments: z.array(z.object({}).passthrough()).optional(),
   // [PTF-L1E-PASSERELLE] Régime fiscal par compte du grand livre : même tolérance, même juge.
   brokerAccountRegimes: z.array(z.object({}).passthrough()).optional(),
+  // [EXPORT-JSON-PERD-FINTABLE] Format 4.0 : l'enveloppe persistée ENTIÈRE (`financeai-storage`),
+  // celle que la synchro Drive pousse. Son contenu n'est pas recopié champ par champ ici — c'est
+  // précisément ce qui perdait tout champ oublié — : il est jugé par `verifierTypesRestaures` dans
+  // le `superRefine` ci-dessous, puis par `merge` au redémarrage, comme un pull Drive.
+  store: z.object({
+    state: z.record(z.string(), z.unknown()),
+    version: z.number().int().nonnegative(),
+  }).optional(),
   aiConversation: z.array(z.unknown()).optional(),
-  // [B2] symétrie de schéma (le chat n'est pas restauré par le backup JSON — cf doRestore — mais
-  // un export qui porte ces champs ne doit pas être rejeté à la validation).
+  // [B2] symétrie de schéma (l'ANCIEN format 3.x ne restaure pas le chat — cf doRestore ; le
+  // format 4.0 le porte dans `store.state` — mais un export qui porte ces champs à la racine ne doit
+  // pas être rejeté à la validation).
   aiConversations: z.array(z.unknown()).optional(),
   activeAiConversationId: z.string().nullable().optional(),
   // [B3+B4] même symétrie : modèle du chat + coût cumulé (finite : jamais d'Infinity dans un $).
@@ -75,6 +91,16 @@ export const BackupSchema = z.object({
   (data) => data.version !== undefined || data.transactions !== undefined,
   { message: "doit contenir au moins 'version' ou 'transactions'" }
 ).superRefine((data, ctx) => {
+  // [EXPORT-JSON-PERD-FINTABLE] Un fichier qui se déclare au format 4 sans son état ne peut PAS
+  // retomber sur le chemin legacy : il n'y porte rien, et « tout remplacer » viderait l'app.
+  if (data.version?.startsWith('4.') && !data.store) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['store'],
+      message: `sauvegarde au format ${data.version} sans son état — fichier incomplet, rien n'a été modifié`,
+    });
+    return;
+  }
   // [BACKUP-SCHEMA-NON-TYPE] La garde de TYPE, posée sur le SCHÉMA et non sur chaque appelant.
   //
   // ⚠️ Elle contredit délibérément la note « Tier 🟡 » ci-dessus (« c'est un chemin de RESTAURATION :
@@ -103,11 +129,14 @@ export const BackupSchema = z.object({
 
 type BackupData = z.infer<typeof BackupSchema>;
 
-interface BackupPanelProps {
-  buildPayload: () => object;
-}
+/**
+ * [EXPORT-JSON-PERD-FINTABLE] La sauvegarde du moment : l'enveloppe que la synchro Drive pousserait,
+ * lue FRAÎCHE au clic (jamais capturée au montage — une saisie faite entre-temps manquerait).
+ */
+const sauvegardeDuMoment = (): ResultatSauvegarde =>
+  construireSauvegardeEtat(getLocalPayload().payload, modeDonneesFictives(), Date.now());
 
-export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
+export const BackupPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const encryptedFileRef = useRef<HTMLInputElement>(null);
   // [A11Y-MODAL-GUIDE-NODIALOG] Focus initial des trois dialogues de sauvegarde. Ils portaient un
@@ -128,15 +157,21 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
   const [restoreConfirmPhrase, setRestoreConfirmPhrase] = React.useState('');
 
   const handleExport = () => {
-    const { apiKeys: _stripped, ...dataWithoutKeys } = buildPayload() as { apiKeys: unknown };
-    const blob = new Blob([JSON.stringify(dataWithoutKeys, null, 2)], { type: 'application/json' });
+    const r = sauvegardeDuMoment();
+    if (!r.ok) {
+      showToast(messageRefusSauvegarde(r.cause), 'error');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(r.sauvegarde, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `financeai_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     markBackupDone();
-    showToast("Sauvegarde téléchargée (clés API exclues — utilise l'export chiffré pour les inclure).", "info");
+    // ⚠️ L'ancien message renvoyait vers « l'export chiffré pour les inclure » : faux, les deux
+    // exports excluent les clés API (elles ne sont jamais persistées en clair).
+    showToast("Sauvegarde téléchargée : tout ton dossier, conversations IA et documents compris (clés API exclues).", "info");
   };
 
   const doEncryptedExport = async () => {
@@ -150,8 +185,12 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     }
     setEncWorking(true);
     try {
-      const { apiKeys: _stripped, ...payloadWithoutKeys } = buildPayload() as { apiKeys: unknown };
-      await downloadBackup(payloadWithoutKeys, exportPassphrase, defaultBackupFilename());
+      const r = sauvegardeDuMoment();
+      if (!r.ok) {
+        showToast(messageRefusSauvegarde(r.cause), 'error');
+        return;
+      }
+      await downloadBackup(r.sauvegarde, exportPassphrase, defaultBackupFilename());
       markBackupDone();
       showToast("Sauvegarde chiffrée téléchargée. Conserve la passphrase précieusement.", "success");
       setShowExportEncModal(false);
@@ -235,6 +274,24 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     setRestoreConfirmPhrase('');
 
     localStorage.clear();
+
+    // [EXPORT-JSON-PERD-FINTABLE] Format 4.0 : l'enveloppe est réécrite TELLE QUELLE sous
+    // `financeai-storage`. Au rechargement, zustand la fait passer par `merge` (garde de types
+    // comprise) par-dessus l'état par défaut — les clés legacy venant d'être effacées, ce que la
+    // sauvegarde ne porte pas retombe à son défaut : « tout remplacer », décision de Marc
+    // (2026-09-25). Aucune clé `app_*` n'est écrite : rien ne doit rivaliser avec l'enveloppe.
+    if (data.store) {
+      localStorage.setItem(STORAGE_KEYS.persistStore, JSON.stringify(data.store));
+      const resume = resumeSauvegarde(data);
+      logAudit({
+        field: 'backup',
+        operation: 'replace',
+        description: `Restauration depuis un backup ${VERSION_SAUVEGARDE_ETAT} (${resume.transactions} transactions)`,
+      });
+      showToast("Restauration réussie ! Re-saisis tes clés API si nécessaire.", "success");
+      window.location.reload();
+      return;
+    }
 
     const safeSet = (key: string, val: unknown) => {
       if (val !== undefined && val !== null) {
@@ -423,9 +480,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
             <div className="flex items-start gap-3 mb-4">
               <div className="flex-1">
                 <div className="text-ink-300 text-body space-y-1 bg-black/30 p-3 rounded-lg mb-3">
-                  <p>Version : <span className="text-white font-mono">{String(pendingRestoreData.version ?? 'Inconnue')}</span></p>
-                  <p>Transactions : <span className="text-white font-mono">{(pendingRestoreData.transactions as unknown[])?.length ?? 0}</span></p>
-                  <p>Actifs : <span className="text-white font-mono">{(pendingRestoreData.assets as unknown[])?.length ?? 0}</span></p>
+                  <p>Version : <span className="text-white font-mono">{resumeSauvegarde(pendingRestoreData).version}</span></p>
+                  <p>Transactions : <span className="text-white font-mono">{resumeSauvegarde(pendingRestoreData).transactions}</span></p>
+                  <p>Actifs : <span className="text-white font-mono">{resumeSauvegarde(pendingRestoreData).actifs}</span></p>
                 </div>
                 <p className="text-danger-400 text-meta font-bold leading-relaxed">
                   Toutes les données actuelles seront effacées. Action irréversible.
@@ -471,7 +528,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="text-body text-ink-300">
               <p className="font-bold text-white mb-1">JSON en clair</p>
-              <p className="text-meta">Sauvegarde lisible (debugging, audit). À conserver localement uniquement — ne contient pas les clés API.</p>
+              <p className="text-meta">Tout ton dossier en fichier lisible (transactions, synchro Fintable, conversations IA, documents). À conserver localement uniquement — ne contient pas les clés API.</p>
             </div>
             <div className="flex gap-3 flex-shrink-0">
               <button

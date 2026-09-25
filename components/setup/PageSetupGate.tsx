@@ -418,7 +418,11 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; cu
 };
 
 // ────────────────────────────────────────────────────────────── Gate ───────
-export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = ({ tab, children }) => {
+/**
+ * `verrouille` : écran propre à la page, rendu À LA PLACE de l'écran générique tant que les
+ * prérequis manquent ([S5-REFONTE-ASSISTANT] l'Assistant montre un aperçu + sa carte d'activation).
+ */
+export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode; verrouille?: React.ReactNode }> = ({ tab, children, verrouille }) => {
     const config = PAGE_SETUP[tab];
     const requirements = useMemo(
         () => (config ? config.requirementIds.map((id) => REQUIREMENTS[id]) : []),
@@ -439,6 +443,7 @@ export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = 
     }
 
     if (allMet || optedOut || forceShow) return <>{children}</>;
+    if (verrouille) return <>{verrouille}</>;
 
     return (
         <FullSetupScreen

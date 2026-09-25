@@ -18,7 +18,7 @@ import { BackupPanel, BackupSchema } from '../../components/settings/BackupPanel
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { extrairePersistable, fusionnerEtatPersiste } from '../../store/optionsPersistance';
 import { initialState } from '../../store/etatParDefaut';
-import { construireSauvegardeEtat, resumeSauvegarde, VERSION_SAUVEGARDE_ETAT } from '../../services/sauvegardeJson';
+import { CLES_JAMAIS_RESTAUREES, construireSauvegardeEtat, remplacerLeStockage, resumeSauvegarde, VERSION_SAUVEGARDE_ETAT } from '../../services/sauvegardeJson';
 import type { AppState } from '../../types';
 import type { FinanceState } from '../../store/useFinanceStore';
 
@@ -74,15 +74,20 @@ beforeEach(() => {
 describe('construireSauvegardeEtat (règle pure)', () => {
     const env = { state: { transactions: [] }, version: 7 };
     it('données fictives → refus, quelle que soit l\'enveloppe', () => {
-        expect(construireSauvegardeEtat(env, true, 1)).toEqual({ ok: false, cause: 'donnees-fictives' });
+        expect(construireSauvegardeEtat(env, true, 1, true)).toEqual({ ok: false, cause: 'donnees-fictives' });
     });
-    it('aucune enveloppe lisible → refus (jamais un fichier vide présenté comme une sauvegarde)', () => {
-        for (const e of [null, undefined, 'x', {}, { state: [], version: 7 }, { state: {}, version: 'sept' }]) {
-            expect(construireSauvegardeEtat(e, false, 1)).toEqual({ ok: false, cause: 'rien-a-sauvegarder' });
+    it('aucun blob → « rien à sauvegarder »', () => {
+        expect(construireSauvegardeEtat(null, false, 1, false)).toEqual({ ok: false, cause: 'rien-a-sauvegarder' });
+    });
+    it('un blob PRÉSENT mais illisible ou mal formé → « illisible », JAMAIS « rien à sauvegarder »', () => {
+        // Illisible : `getLocalPayload` rend `null`, seule la présence du blob le distingue du vide.
+        expect(construireSauvegardeEtat(null, false, 1, true)).toEqual({ ok: false, cause: 'illisible' });
+        for (const e of ['x', {}, { state: [], version: 7 }, { state: {}, version: 'sept' }]) {
+            expect(construireSauvegardeEtat(e, false, 1, false)).toEqual({ ok: false, cause: 'illisible' });
         }
     });
     it('l\'état est recopié tel quel, avec la version du store', () => {
-        const r = construireSauvegardeEtat(env, false, 42);
+        const r = construireSauvegardeEtat(env, false, 42, true);
         expect(r).toEqual({ ok: true, sauvegarde: { version: VERSION_SAUVEGARDE_ETAT, timestamp: 42, store: env } });
     });
     it('le résumé lit les collections SOUS `store.state` (sinon « 0 transaction » sur un vrai dossier)', () => {
@@ -109,6 +114,14 @@ describe('Export : toute clé persistée est dans le fichier', () => {
         expect(JSON.stringify(fichier)).not.toContain('"apiKeys"');
     });
 
+    it('blob local corrompu → aucun fichier, et le message dit « illisible », pas « rien à sauvegarder »', () => {
+        render(<BackupPanel />);
+        localStorage.setItem(STORE, '{pas-du-json');
+        fireEvent.click(screen.getByRole('button', { name: 'Exporter JSON' }));
+        expect(blobs).toHaveLength(0);
+        expect(vi.mocked(showToast)).toHaveBeenCalledWith(expect.stringMatching(/illisible/), 'error');
+    });
+
     it('mode test → aucun fichier, message qui dit pourquoi', async () => {
         useFinanceStore.setState({ transactions: TX, isTestMode: true } as Partial<FinanceState>);
         render(<BackupPanel />);
@@ -124,8 +137,10 @@ describe('Restauration : aller-retour par l\'écran', () => {
         render(<BackupPanel />);
         const fichier = await exporter();
 
-        // Un appareil qui avait AUTRE CHOSE : une clé legacy et un autre état.
+        // Un appareil qui avait AUTRE CHOSE : une clé legacy et un autre état — et son coffre chiffré
+        // de clés API, qui n'est pas dans le fichier et doit SURVIVRE.
         localStorage.setItem('app_assets', JSON.stringify([{ symbol: 'AUTRE' }]));
+        localStorage.setItem('app_api_keys_enc', 'coffre-chiffre-opaque');
         localStorage.setItem(STORE, JSON.stringify({ state: { transactions: [] }, version: 7 }));
 
         await restaurer(fichier);
@@ -134,16 +149,63 @@ describe('Restauration : aller-retour par l\'écran', () => {
         fireEvent.change(screen.getByLabelText(/pour confirmer/), { target: { value: 'RESTAURER' } });
         fireEvent.click(screen.getByRole('button', { name: 'Restaurer définitivement' }));
 
-        expect(reload).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
         const ecrit = JSON.parse(localStorage.getItem(STORE)!);
-        expect(ecrit).toEqual(fichier.store);
+        const attendu = { ...(fichier.store as { state: Record<string, unknown> }).state };
+        for (const cle of CLES_JAMAIS_RESTAUREES) delete attendu[cle];
+        expect(ecrit).toEqual({ state: attendu, version: (fichier.store as { version: number }).version });
         expect(localStorage.getItem('app_assets')).toBeNull();
+        expect(localStorage.getItem('app_api_keys_enc')).toBe('coffre-chiffre-opaque');
 
         // Au redémarrage, `merge` rend bien les champs que l'ancien chemin perdait.
         const rendu = fusionnerEtatPersiste(ecrit.state, initialState as FinanceState);
         for (const [cle, valeur] of Object.entries(PERDUS_AVANT)) {
             expect((rendu as unknown as Record<string, unknown>)[cle]).toEqual(valeur);
         }
+    });
+
+    it('un fichier FABRIQUÉ qui porte des clés API ou un mode test : ces champs ne sont jamais écrits', async () => {
+        render(<BackupPanel />);
+        await restaurer({
+            version: '4.0', timestamp: 1,
+            store: {
+                state: {
+                    transactions: [],
+                    apiKeys: { anthropic: 'cle-d-un-tiers', finnhub: 'cle-d-un-tiers', fintable: 'jeton-d-un-tiers' },
+                    isTestMode: true, activeTestPersonaId: 'persona-x', realDataSnapshot: { transactions: [] },
+                },
+                version: 7,
+            },
+        });
+        await screen.findByText('Restauration Complète');
+        fireEvent.change(screen.getByLabelText(/pour confirmer/), { target: { value: 'RESTAURER' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Restaurer définitivement' }));
+        await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+        const ecrit = localStorage.getItem(STORE)!;
+        expect(ecrit).not.toContain('tiers');
+        expect(JSON.parse(ecrit).state).toEqual({ transactions: [] });
+    });
+
+    it('écriture refusée par le navigateur → pas de rechargement, dossier d\'avant intact, message clair', async () => {
+        const avant = JSON.stringify({ state: { transactions: TX }, version: 7 });
+        localStorage.setItem(STORE, avant);
+        render(<BackupPanel />);
+        await restaurer({ version: '4.0', timestamp: 1, store: { state: { transactions: [] }, version: 7 } });
+        await screen.findByText('Restauration Complète');
+        const vrai = Storage.prototype.setItem;
+        const espion = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+            if (k === STORE && v !== avant) throw new DOMException('plein', 'QuotaExceededError');
+            return vrai.call(this, k, v);
+        });
+        try {
+            fireEvent.change(screen.getByLabelText(/pour confirmer/), { target: { value: 'RESTAURER' } });
+            fireEvent.click(screen.getByRole('button', { name: 'Restaurer définitivement' }));
+            await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalledWith(expect.stringMatching(/intact/), 'error'));
+        } finally {
+            espion.mockRestore();
+        }
+        expect(reload).not.toHaveBeenCalled();
+        expect(localStorage.getItem(STORE)).toBe(avant);
     });
 
     it('« tout remplacer » : un champ absent de la sauvegarde retombe au DÉFAUT, jamais à l\'ancien', () => {
@@ -158,10 +220,42 @@ describe('Restauration : aller-retour par l\'écran', () => {
     });
 });
 
+describe('remplacerLeStockage : un échec d\'écriture remet l\'ancien contenu', () => {
+    it('quota dépassé après clear() → contenu d\'avant rétabli à l\'identique', () => {
+        localStorage.setItem(STORE, '{"state":{"a":1},"version":7}');
+        localStorage.setItem('autre', 'x');
+        const r = remplacerLeStockage(localStorage, (st) => {
+            st.setItem('partiel', 'y');
+            throw new DOMException('plein', 'QuotaExceededError');
+        });
+        expect(r).toMatchObject({ ok: false, retabli: true });
+        expect(localStorage.getItem(STORE)).toBe('{"state":{"a":1},"version":7}');
+        expect(localStorage.getItem('autre')).toBe('x');
+        expect(localStorage.getItem('partiel')).toBeNull();   // rien d'un demi-remplacement
+    });
+    it('les clés à GARDER survivent au remplacement (coffre des clés API)', () => {
+        localStorage.setItem('coffre', 'c');
+        localStorage.setItem('ancien', 'x');
+        expect(remplacerLeStockage(localStorage, (st) => st.setItem('neuf', 'y'), ['coffre'])).toEqual({ ok: true });
+        expect(localStorage.getItem('coffre')).toBe('c');
+        expect(localStorage.getItem('ancien')).toBeNull();
+    });
+
+    it('CONTRÔLE : écriture réussie → seul le nouveau contenu reste', () => {
+        localStorage.setItem('ancien', 'x');
+        expect(remplacerLeStockage(localStorage, (st) => st.setItem('neuf', 'y'))).toEqual({ ok: true });
+        expect(localStorage.getItem('ancien')).toBeNull();
+        expect(localStorage.getItem('neuf')).toBe('y');
+    });
+});
+
 describe('Refus qui laissent le stockage intact', () => {
     it('format 4 sans son état → refusé par le schéma (sinon le chemin legacy viderait tout)', () => {
-        const r = BackupSchema.safeParse({ version: '4.0', timestamp: 1 });
-        expect(r.success).toBe(false);
+        for (const version of ['4.0', '4', '40', '5.0']) {
+            expect(BackupSchema.safeParse({ version, timestamp: 1 }).success).toBe(false);
+        }
+        // CONTRÔLE : un ancien backup 3.x reste accepté (chemin legacy inchangé).
+        expect(BackupSchema.safeParse({ version: '3.2', transactions: [] }).success).toBe(true);
     });
 
     it('un montant en TEXTE dans l\'état → refusé AVANT toute écriture', async () => {

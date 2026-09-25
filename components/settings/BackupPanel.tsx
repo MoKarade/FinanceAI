@@ -14,9 +14,10 @@ import { getLocalPayload } from '../../services/sync/syncSnapshot';
 import { modeDonneesFictives } from '../../store/modeTestActif';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 import {
-  construireSauvegardeEtat, messageRefusSauvegarde, resumeSauvegarde, VERSION_SAUVEGARDE_ETAT,
+  construireSauvegardeEtat, enveloppeARestaurer, messageRefusSauvegarde, remplacerLeStockage, resumeSauvegarde,
   type ResultatSauvegarde,
 } from '../../services/sauvegardeJson';
+import { createBackupNow } from '../../services/backupAuto';
 
 /**
  * ⚠️ EXPORTÉ pour être testable directement. Monter `BackupPanel` en test tirerait Card, Toast et
@@ -93,7 +94,10 @@ export const BackupSchema = z.object({
 ).superRefine((data, ctx) => {
   // [EXPORT-JSON-PERD-FINTABLE] Un fichier qui se déclare au format 4 sans son état ne peut PAS
   // retomber sur le chemin legacy : il n'y porte rien, et « tout remplacer » viderait l'app.
-  if (data.version?.startsWith('4.') && !data.store) {
+  // ⚠️ Majeur PARSÉ, pas un préfixe « 4. » : `'4'`, `'40'` ou un futur `'5.0'` sans état passaient
+  // le préfixe et tombaient sur le chemin legacy — une restauration « réussie » de RIEN (revue #1065).
+  const majeur = Number.parseInt(data.version ?? '', 10);
+  if (Number.isFinite(majeur) && majeur >= 4 && !data.store) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['store'],
@@ -133,8 +137,20 @@ type BackupData = z.infer<typeof BackupSchema>;
  * [EXPORT-JSON-PERD-FINTABLE] La sauvegarde du moment : l'enveloppe que la synchro Drive pousserait,
  * lue FRAÎCHE au clic (jamais capturée au montage — une saisie faite entre-temps manquerait).
  */
-const sauvegardeDuMoment = (): ResultatSauvegarde =>
-  construireSauvegardeEtat(getLocalPayload().payload, modeDonneesFictives(), Date.now());
+const sauvegardeDuMoment = (): ResultatSauvegarde => {
+  let blobPresent = false;
+  try {
+    blobPresent = localStorage.getItem(STORAGE_KEYS.persistStore) !== null;
+  } catch {
+    // Stockage inaccessible : `getLocalPayload` rendra `null` → « rien à sauvegarder », seul constat
+    // honnête quand on ne peut même pas savoir s'il existe quelque chose.
+  }
+  const r = construireSauvegardeEtat(getLocalPayload().payload, modeDonneesFictives(), Date.now(), blobPresent);
+  if (!r.ok && r.cause === 'illisible') {
+    logError({ source: 'storage', severity: 'error', message: 'Export JSON : financeai-storage présent mais illisible — export refusé' });
+  }
+  return r;
+};
 
 export const BackupPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -267,84 +283,111 @@ export const BackupPanel: React.FC = () => {
     e.target.value = '';
   };
 
-  const doRestore = () => {
+  const doRestore = async () => {
     if (!pendingRestoreData || restoreConfirmPhrase !== 'RESTAURER') return;
     const data = pendingRestoreData;
     setPendingRestoreData(null);
     setRestoreConfirmPhrase('');
 
-    localStorage.clear();
+    // FILET avant d'écraser (même geste que le pull Drive et la restauration d'un backup auto) :
+    // la restauration remplace TOUT, l'annuler passe par ce backup. Un échec ne bloque pas, mais ne
+    // s'avale pas non plus — « restauration SANS filet » doit rester visible dans les diagnostics.
+    try {
+      const filet = await createBackupNow('manual', { intent: 'filet', donneesFictives: modeDonneesFictives() });
+      if (!filet.ok) {
+        logError({ source: 'storage', severity: 'warning', message: `Restauration JSON : backup pré-restauration non créé (${filet.cause}) — restauration SANS filet` });
+      }
+    } catch (e) {
+      logError({ source: 'storage', severity: 'warning', message: 'Restauration JSON : backup pré-restauration échoué — restauration SANS filet', error: e });
+    }
 
-    // [EXPORT-JSON-PERD-FINTABLE] Format 4.0 : l'enveloppe est réécrite TELLE QUELLE sous
-    // `financeai-storage`. Au rechargement, zustand la fait passer par `merge` (garde de types
-    // comprise) par-dessus l'état par défaut — les clés legacy venant d'être effacées, ce que la
-    // sauvegarde ne porte pas retombe à son défaut : « tout remplacer », décision de Marc
-    // (2026-09-25). Aucune clé `app_*` n'est écrite : rien ne doit rivaliser avec l'enveloppe.
-    if (data.store) {
-      localStorage.setItem(STORAGE_KEYS.persistStore, JSON.stringify(data.store));
-      const resume = resumeSauvegarde(data);
-      logAudit({
-        field: 'backup',
-        operation: 'replace',
-        description: `Restauration depuis un backup ${VERSION_SAUVEGARDE_ETAT} (${resume.transactions} transactions)`,
+    if (data.apiKeys) {
+      // C5 / V1 (audit 2026-05-21) : des clés API trouvées dans un ANCIEN backup ne sont jamais
+      // restaurées dans localStorage (elles y seraient en clair) — à re-saisir dans Configuration.
+      console.warn('[Restore] apiKeys détectées dans backup mais non restaurées (sécurité V1). Re-saisir manuellement dans Configuration.');
+    }
+
+    const aEcrire = data.store ? enveloppeARestaurer(data.store) : null;
+    if (aEcrire && aEcrire.retirees.length > 0) {
+      logError({ source: 'storage', severity: 'warning', message: `Restauration JSON : champs écartés du fichier (jamais restaurés) : ${aEcrire.retirees.join(', ')}` });
+    }
+
+    // `remplacerLeStockage` vide le stockage, écrit, et REMET EN PLACE l'ancien contenu si l'écriture
+    // lève (quota) : sans ça, un échec après `clear()` laissait une app vide au rechargement.
+    // Le coffre CHIFFRÉ des clés API survit : il ne fait pas partie du fichier, l'effacer obligeait à
+    // tout re-saisir.
+    const ecriture = remplacerLeStockage(localStorage, (st) => {
+      // [EXPORT-JSON-PERD-FINTABLE] Format 4.0 : l'enveloppe est réécrite TELLE QUELLE sous
+      // `financeai-storage`. Au rechargement, zustand la fait passer par `merge` (garde de types
+      // comprise) par-dessus l'état par défaut — les clés legacy venant d'être effacées, ce que la
+      // sauvegarde ne porte pas retombe à son défaut : « tout remplacer », décision de Marc
+      // (2026-09-25). Aucune clé `app_*` n'est écrite : rien ne doit rivaliser avec l'enveloppe.
+      if (aEcrire) {
+        st.setItem(STORAGE_KEYS.persistStore, JSON.stringify(aEcrire.enveloppe));
+        return;
+      }
+      const safeSet = (key: string, val: unknown) => {
+        if (val !== undefined && val !== null) {
+          st.setItem(key, JSON.stringify(val));
+        }
+      };
+      safeSet('app_config', data.config);
+      safeSet('app_budget', data.budgetItems);
+      safeSet('initial_balances', data.initialBalances);
+      safeSet('app_assets', data.assets);
+      // [NAV-REMOVE-OBJECTIFS-TAB] `savingsGoals` retiré du produit — un vieux backup qui en
+      // contient encore (schéma toujours `.optional()` ci-dessus pour rester compatible en
+      // LECTURE) n'écrit plus la clé legacy : rien ne la relit, la restaurer serait inerte.
+      safeSet('app_travel_goals', data.travelGoals);
+      safeSet('app_debts', data.debts ?? []);
+      safeSet('app_investment_acc', data.investmentAccounts ?? []);
+      safeSet('app_investment_tx', data.investmentTransactions ?? []);
+      safeSet('app_life_events', data.lifeEvents ?? []);
+      safeSet('app_financial_goals', data.financialGoals ?? []);
+      safeSet('app_retirement_goal', data.retirementGoal);
+      safeSet('app_real_estate_goals', data.realEstateGoals);
+      safeSet('app_child_goal', data.childGoal);
+      if (data.childGoals) safeSet('app_child_goals', data.childGoals);
+      if (data.projection) safeSet('app_projection', data.projection);
+      safeSet('cached_transactions', data.transactions ?? []);
+      safeSet('app_insurance_policies', data.insurancePolicies);
+      safeSet('app_rental_properties', data.rentalProperties);
+      safeSet('app_private_businesses', data.privateBusinesses);
+      safeSet('app_vehicle_replacements', data.vehicleReplacements);
+      safeSet('app_major_renovations', data.majorRenovations);
+      safeSet('app_charitable_goals', data.charitableGoals);
+      // [PTF-L1A] Sans `?? []` : un backup sans grand livre doit restaurer un état « jamais importé »
+      // (clé ABSENTE), pas un livre « importé et vide ».
+      safeSet('app_broker_ledger', data.brokerLedger);
+      safeSet('app_instruments', data.instruments);
+      safeSet('app_broker_account_regimes', data.brokerAccountRegimes);
+    }, [STORAGE_KEYS.apiKeysEncrypted]);
+
+    if (!ecriture.ok) {
+      logError({
+        source: 'storage', severity: 'critical',
+        message: ecriture.retabli
+          ? 'Restauration JSON : écriture impossible (stockage plein ?) — le contenu d\'avant a été remis en place'
+          : 'Restauration JSON : écriture impossible ET contenu d\'avant non rétabli — restaurer depuis Drive ou un backup automatique',
+        error: ecriture.erreur,
       });
-      showToast("Restauration réussie ! Re-saisis tes clés API si nécessaire.", "success");
-      window.location.reload();
+      showToast(
+        ecriture.retabli
+          ? 'Restauration impossible : le navigateur a refusé d\'écrire la sauvegarde (stockage plein ?). Ton dossier actuel est intact.'
+          : 'Restauration impossible, et le dossier actuel n\'a pas pu être remis en place. Restaure depuis Google Drive ou un backup automatique (Sauvegarde → Backups automatiques).',
+        'error',
+      );
       return;
     }
 
-    const safeSet = (key: string, val: unknown) => {
-      if (val !== undefined && val !== null) {
-        localStorage.setItem(key, JSON.stringify(val));
-      }
-    };
-
-    // C5 fix : apiKeys n'est plus inclus dans les backups par défaut (sécurité).
-    // V1 fix (audit 2026-05-21) : si un ancien backup contient des apiKeys,
-    // on NE LES RESTAURE PLUS dans localStorage (où elles seraient en clair).
-    // L'utilisateur doit les re-saisir manuellement via Configuration (la
-    // clef legacy `app_api_keys` est purgée au prochain boot du store).
-    if (data.apiKeys) {
-        console.warn('[Restore] apiKeys détectées dans backup mais non restaurées (sécurité V1). Re-saisir manuellement dans Configuration.');
-    }
-    safeSet('app_config', data.config);
-    safeSet('app_budget', data.budgetItems);
-    safeSet('initial_balances', data.initialBalances);
-    safeSet('app_assets', data.assets);
-    // [NAV-REMOVE-OBJECTIFS-TAB] `savingsGoals` retiré du produit — un vieux backup qui en
-    // contient encore (schéma toujours `.optional()` ci-dessus pour rester compatible en
-    // LECTURE) n'écrit plus la clé legacy : rien ne la relit, la restaurer serait inerte.
-    safeSet('app_travel_goals', data.travelGoals);
-    safeSet('app_debts', data.debts ?? []);
-    safeSet('app_investment_acc', data.investmentAccounts ?? []);
-    safeSet('app_investment_tx', data.investmentTransactions ?? []);
-    safeSet('app_life_events', data.lifeEvents ?? []);
-    safeSet('app_financial_goals', data.financialGoals ?? []);
-    safeSet('app_retirement_goal', data.retirementGoal);
-    safeSet('app_real_estate_goals', data.realEstateGoals);
-    safeSet('app_child_goal', data.childGoal);
-    if (data.childGoals) safeSet('app_child_goals', data.childGoals);
-    if (data.projection) safeSet('app_projection', data.projection);
-    safeSet('cached_transactions', data.transactions ?? []);
-    safeSet('app_insurance_policies', data.insurancePolicies);
-    safeSet('app_rental_properties', data.rentalProperties);
-    safeSet('app_private_businesses', data.privateBusinesses);
-    safeSet('app_vehicle_replacements', data.vehicleReplacements);
-    safeSet('app_major_renovations', data.majorRenovations);
-    safeSet('app_charitable_goals', data.charitableGoals);
-    // [PTF-L1A] Sans `?? []` : un backup sans grand livre doit restaurer un état « jamais importé »
-    // (clé ABSENTE), pas un livre « importé et vide ».
-    safeSet('app_broker_ledger', data.brokerLedger);
-    safeSet('app_instruments', data.instruments);
-    safeSet('app_broker_account_regimes', data.brokerAccountRegimes);
-
     // SYS-AUDIT — trace la restauration (écrite APRÈS les writes → survit au reload).
+    const resume = resumeSauvegarde(data);
     logAudit({
       field: 'backup',
       operation: 'replace',
-      description: `Restauration depuis un backup (${data.transactions?.length ?? 0} transactions)`,
+      description: `Restauration depuis un backup ${resume.version} (${resume.transactions} transactions)`,
     });
-    showToast("Restauration reussie ! Re-entrez vos cles API si necessaire.", "success");
+    showToast("Restauration réussie ! Tes clés API sont conservées.", "success");
     window.location.reload();
   };
 

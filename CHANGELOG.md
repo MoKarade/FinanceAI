@@ -7,8 +7,12 @@
   abonnements écartés, les taux de change, tes conversations avec l'assistant et la liste de tes
   documents. Avant, tout ça était perdu à la restauration.
 - Restaurer remplace tout : l'app redevient exactement la sauvegarde. Tes clés API ne sont jamais
-  dans le fichier (à re-saisir après une restauration). Les anciennes sauvegardes se restaurent
-  toujours.
+  dans le fichier, et elles sont désormais CONSERVÉES à la restauration (avant, il fallait les
+  re-saisir). Un backup automatique est fait juste avant, pour pouvoir annuler. Les anciennes
+  sauvegardes se restaurent toujours.
+- Si le navigateur refuse d'écrire la sauvegarde (stockage plein), ton dossier actuel est remis en
+  place au lieu de laisser une app vide. Un dossier local illisible est annoncé comme tel à l'export
+  (avant : « rien à sauvegarder »).
 - En mode test, l'export est refusé : il sauvegarderait des données fictives.
 
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit

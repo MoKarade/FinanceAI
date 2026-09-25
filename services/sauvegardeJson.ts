@@ -42,8 +42,12 @@ export type ResultatSauvegarde =
     | { readonly ok: true; readonly sauvegarde: SauvegardeEtat }
     /** Mode test / bac à sable : l'état courant est FICTIF, l'archiver produirait un faux dossier. */
     | { readonly ok: false; readonly cause: 'donnees-fictives' }
-    /** Aucune enveloppe lisible (rien n'a encore été enregistré sur cet appareil). */
-    | { readonly ok: false; readonly cause: 'rien-a-sauvegarder' };
+    /** Rien n'a encore été enregistré sur cet appareil (aucun blob). */
+    | { readonly ok: false; readonly cause: 'rien-a-sauvegarder' }
+    /** Un blob EXISTE mais il est illisible ou mal formé. Distinct du cas précédent : dire « rien à
+     *  sauvegarder » à quelqu'un dont le dossier vient de se corrompre l'enverrait dans le mauvais sens
+     *  (revue silent-failure, PR #1065). */
+    | { readonly ok: false; readonly cause: 'illisible' };
 
 /** L'objet a-t-il la forme d'une enveloppe persistée (`state` objet, `version` entier) ? */
 export function estEnveloppeStore(v: unknown): v is EnveloppeStore {
@@ -65,9 +69,14 @@ export function construireSauvegardeEtat(
     enveloppe: unknown,
     donneesFictives: boolean,
     maintenant: number,
+    /** Un blob `financeai-storage` existe-t-il, lisible ou non ? `getLocalPayload` rend `null` dans
+     *  les deux cas — seul l'appelant, qui lit le stockage, peut les séparer. */
+    blobPresent: boolean,
 ): ResultatSauvegarde {
     if (donneesFictives) return { ok: false, cause: 'donnees-fictives' };
-    if (!estEnveloppeStore(enveloppe)) return { ok: false, cause: 'rien-a-sauvegarder' };
+    if (!estEnveloppeStore(enveloppe)) {
+        return { ok: false, cause: blobPresent || enveloppe != null ? 'illisible' : 'rien-a-sauvegarder' };
+    }
     return {
         ok: true,
         sauvegarde: {
@@ -80,9 +89,13 @@ export function construireSauvegardeEtat(
 
 /** Message du refus d'export, une seule rédaction pour le JSON clair et le chiffré. */
 export function messageRefusSauvegarde(cause: Extract<ResultatSauvegarde, { ok: false }>['cause']): string {
-    return cause === 'donnees-fictives'
-        ? 'Sauvegarde impossible en mode test : l\'app affiche des données fictives. Quitte le mode test, puis exporte.'
-        : 'Rien à sauvegarder : aucune donnée enregistrée sur cet appareil pour l\'instant.';
+    if (cause === 'donnees-fictives') {
+        return 'Sauvegarde impossible en mode test : l\'app affiche des données fictives. Quitte le mode test, puis exporte.';
+    }
+    if (cause === 'illisible') {
+        return 'Sauvegarde impossible : le dossier enregistré sur cet appareil est illisible. Rien n\'a été modifié — restaure depuis Google Drive ou depuis une ancienne sauvegarde.';
+    }
+    return 'Rien à sauvegarder : aucune donnée enregistrée sur cet appareil pour l\'instant.';
 }
 
 /**
@@ -104,3 +117,71 @@ export function resumeSauvegarde(data: {
         actifs: longueur(source.assets),
     };
 }
+
+export type ResultatEcriture =
+    | { readonly ok: true }
+    /** L'écriture a levé (quota, stockage indisponible). `retabli` : le contenu d'avant a-t-il pu
+     *  être remis en place ? */
+    | { readonly ok: false; readonly erreur: unknown; readonly retabli: boolean };
+
+/**
+ * Vide le stockage puis y écrit la restauration — et, si l'écriture lève, REMET EN PLACE ce qui
+ * s'y trouvait. Sans ce retour arrière, un `QuotaExceededError` survenu APRÈS `clear()` laissait un
+ * stockage vide : au rechargement, une app sans aucune donnée, indiscernable d'un premier lancement
+ * (revue silent-failure, PR #1065). Le contenu d'avant tenait dans le stockage, il y retient donc.
+ */
+export function remplacerLeStockage(
+    stockage: Storage,
+    ecrire: (s: Storage) => void,
+    /** Clés qui SURVIVENT au remplacement (coffre chiffré des clés API) : elles ne font pas partie du
+     *  dossier sauvegardé, les effacer ferait perdre à l'utilisateur ce que le fichier ne peut pas
+     *  lui rendre. */
+    garder: readonly string[] = [],
+): ResultatEcriture {
+    const avant: Array<[string, string]> = [];
+    for (let i = 0; i < stockage.length; i++) {
+        const cle = stockage.key(i);
+        if (cle !== null) avant.push([cle, stockage.getItem(cle) ?? '']);
+    }
+    stockage.clear();
+    try {
+        for (const [cle, valeur] of avant) if (garder.includes(cle)) stockage.setItem(cle, valeur);
+        ecrire(stockage);
+        return { ok: true };
+    } catch (erreur) {
+        try {
+            stockage.clear();
+            for (const [cle, valeur] of avant) stockage.setItem(cle, valeur);
+            return { ok: false, erreur, retabli: true };
+        } catch {
+            return { ok: false, erreur, retabli: false };
+        }
+    }
+}
+
+/** Clés de l'état qu'un fichier de sauvegarde n'a JAMAIS le droit d'imposer à la restauration. */
+export const CLES_JAMAIS_RESTAUREES = ['apiKeys', 'isTestMode', 'realDataSnapshot', 'activeTestPersonaId'] as const;
+
+/**
+ * L'enveloppe à écrire, débarrassée de ce qu'un fichier ne doit jamais imposer (revue sécurité,
+ * PR #1065) :
+ * - `apiKeys` : un export légitime n'en porte JAMAIS (exclues de la persistance, puis retirées par
+ *   `stripApiKeys`). Un fichier qui en porte a été fabriqué ; sans ce filtre, `merge` les aurait
+ *   posées en mémoire — l'Assistant et les cours tourneraient avec les identifiants d'un tiers, et
+ *   la synchro Fintable sur SON compte. Le garde-fou « V1 » ne regardait que l'ancien champ racine.
+ * - le mode test : l'export est refusé en mode test, donc un fichier légitime porte toujours
+ *   `isTestMode: false` et aucun instantané. Retirés, ils retombent au défaut (mode normal).
+ * `retirees` nomme ce qui a été écarté, pour le journal.
+ */
+export function enveloppeARestaurer(store: EnveloppeStore): { enveloppe: EnveloppeStore; retirees: string[] } {
+    const state: Record<string, unknown> = { ...store.state };
+    const retirees: string[] = [];
+    for (const cle of CLES_JAMAIS_RESTAUREES) {
+        if (Object.hasOwn(state, cle)) {
+            delete state[cle];
+            retirees.push(cle);
+        }
+    }
+    return { enveloppe: { state, version: store.version }, retirees };
+}
+

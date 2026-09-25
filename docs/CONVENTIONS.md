@@ -17150,6 +17150,17 @@ l'export, parce que `d1` est un identifiant exact de persona et que l'export dé
 Le désinfectant avait raison ; la règle était déjà écrite en tête de `artifactIds.ts` (« jamais d'id
 court générique »). Une fixture qui s'évapore dans un chemin de sortie accuse d'abord son ID.
 
+⚠️⚠️ **Et l'inversion a ÉLARGI ce qu'un fichier peut imposer** — le panel l'a trouvé, pas le gate.
+L'ancien format ne pouvait écrire que 26 clés connues ; « réécrire l'enveloppe telle quelle » laisse
+un fichier FABRIQUÉ poser `apiKeys` en mémoire au `merge` (le garde-fou « V1 » ne regardait que
+l'ancien champ racine), donc faire tourner l'Assistant, les cours et la synchro Fintable sur les
+identifiants d'un tiers. `verifierTypesRestaures` juge des TYPES, jamais le droit d'une clé à
+exister. Même revue : `getLocalPayload` rend `null` pour un blob absent ET pour un blob illisible
+(« rien à sauvegarder » dit à quelqu'un dont le dossier vient de se corrompre), et `clear()` suivi
+d'une écriture qui lève (quota) laissait une app VIDE. **Passer d'une liste blanche à « tout »
+change la question de sécurité : non plus « ai-je oublié un champ ? » mais « quel champ un fichier
+n'a-t-il jamais le droit d'imposer ? »** — et elle se pose au moment de l'inversion.
+
 ⚠️ Vu en chemin : le workflow `Deploy MCP (Cloud Run)` est DÉSACTIVÉ côté GitHub (un
 `workflow_dispatch` est refusé ; état `disabled_manually`, posé le 2026-09-23). Poser les secrets ne suffit donc pas : tant
 qu'il est désactivé, aucun push ne déploie, et rien n'est rouge.

@@ -311,15 +311,9 @@ avant le nettoyage du 2026-08-19. Tous les scénarios MC, les helpers de project
 
 ## 8. Décisions clés (voir aussi `docs/adr/`)
 
-- **ADR-001** : Migration Gemini → Claude Anthropic
-- **ADR-002** : ~~Era Context comme moteur de qualité~~ — SUPERSEDED (era est MCP-only, REST API inexistante)
-- **ADR-003** : Projection.ts split en 50 sous-modules (mesuré 2026-08-19)
-- **ADR-004** : Design system primitives custom (vs shadcn/Radix)
-- **ADR-005** : Future = source unique pour les calculs projetés
-- **ADR-006** : Convention « valeurs réelles ou rien » (no-fake-data)
-- **ADR-007** : Authentification Cloudflare Access + Google OAuth
-- **ADR-008** : Optimiseur — leviers découplés + adaptateur moteur fin
-- **ADR-009** : Calculs fiscaux QC centralisés (crédits 65+, RAMQ, FSS, SRG) + règles immobilières
+La liste à jour et les titres exacts sont dans [`docs/adr/README.md`](adr/README.md) (numérotation 0001 et suivantes ; une ADR est un récit daté qui ne se réécrit pas). Ne pas recopier la liste ici : l'ancienne numérotation « ADR-001…009 » de ce paragraphe ne correspondait plus aux fichiers.
+
+Couches serveur, en plus du client : `api/` (relais Claude, IA locale avec bascule Anthropic, voir ADR 0018) et `mcp/` (serveur MCP).
 
 ---
 

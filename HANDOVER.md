@@ -22,6 +22,12 @@
 > et « Héritage (92 ans) » alors que la projection s'arrête à la fin de l'horizon (75 ans pour ce
 > persona) — Marc a choisi l'horizon automatique jusqu'à l'espérance de vie, chantier à cadrer.
 >
+> ## 🟩 Session 2026-09-25 (suite 4) — **Décisions de Marc : date B, devise à choisir**
+> `[ADDSTOCK-DEVISE-A-CHOISIR]` : plus de devise par défaut dans `AddStockForm` (`''` = à choisir,
+> « Ajouter » désactivé). Passerelle : date tranchée **B** (livre depuis l'ouverture ; test de limite
+> inversé en test de décision ; exigence reportée sur 1g). En attente de Marc : gestes GCP + clé
+> EODHD (Secret Manager `financeai-eodhd-key`) + réouverture des 3 appareils ; export JSON (2 choix).
+>
 > ## 🟩 Session 2026-09-25 (suite 3) — **E2E « clic partout » : le bandeau du mode test recouvrait la cible**
 > `[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]` : rouge aussi sur `main` après #1058, vert 25/25 en local.
 > Mécanisme reproduit (graphe défilé sous le bandeau fixe « Mode test activé ») ; clic visé sous le

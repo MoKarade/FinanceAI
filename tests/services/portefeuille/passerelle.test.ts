@@ -190,10 +190,13 @@ describe('[PTF-L1E] PARITÉ AU CENT avec les placements saisis', () => {
     });
 });
 
-describe('[PTF-L1E] LIMITE CONNUE : la décision ne dépend pas de la date', () => {
+describe('[PTF-L1E] DÉCISION B (Marc, 2026-09-25) : la décision ne dépend pas de la date', () => {
     it('avant le premier événement du livre, le régime couvert vaut 0 $ (saisis exclus, livre vide à cette date)', () => {
-        // Test de LIMITE, à INVERSER (pas à supprimer) quand Marc aura tranché avant e3 : juste si le livre
-        // remonte à l'ouverture du compte, faux s'il commence au premier relevé importé.
+        // Ce test était une LIMITE « à trancher avant e3 » ; Marc a choisi B : le livre remonte à
+        // l'ouverture du compte (tous les relevés seront importés), donc 0 $ avant son premier
+        // événement est la VÉRITÉ, pas un trou. L'option A écartée (placements saisis jusqu'au
+        // premier relevé) rendrait ce test rouge. La contrepartie vit dans l'import (1g) : il doit
+        // vérifier que le premier relevé d'un compte part de positions nulles.
         const d = deciderPasserelle(livre, regimesCeli);
         const avant = '2026-06-15';
         expect(actifsHorsLivre(saisisAu(PASSE), d)).toEqual([]);

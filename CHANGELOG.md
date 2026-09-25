@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
+
+- Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ
+  Devise n'est plus pré-rempli en USD : tu la choisis, et « Ajouter » reste grisé tant que ce n'est
+  pas fait. Avant, un titre canadien pouvait partir en USD sans que tu t'en rendes compte.
+- Portefeuille : décidé que ton historique de courtier partira de l'ouverture des comptes. Quand
+  l'import des relevés arrivera, il faudra importer tous tes relevés depuis l'ouverture.
+
 ## 2026-09-25 — Futur et Retraite : la projection va jusqu'à ton espérance de vie
 
 - La projection va maintenant toujours jusqu'à l'espérance de vie de la personne 1 (réglée dans

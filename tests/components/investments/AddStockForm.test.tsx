@@ -38,10 +38,13 @@ describe('AddStockForm — saisie 100% manuelle (sans Finnhub)', () => {
         fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
         fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
         fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+        // [ADDSTOCK-DEVISE-A-CHOISIR] Plus de devise par défaut : elle se choisit.
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'CAD' } });
         fireEvent.click(screen.getByRole('button', { name: /Ajouter au portefeuille/i }));
 
         expect(onAdd).toHaveBeenCalledTimes(1);
         const asset = onAdd.mock.calls[0][0];
+        expect(asset.currency).toBe('CAD');
         expect(asset.symbol).toBe('GIC-RBC');
         expect(asset.currentPrice).toBe(100);
         expect(asset.quantity).toBe(5);
@@ -56,6 +59,41 @@ describe('AddStockForm — saisie 100% manuelle (sans Finnhub)', () => {
         fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
         fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
         expect(screen.getByRole('button', { name: /Ajouter au portefeuille/i })).toBeDisabled();
+    });
+});
+
+// [ADDSTOCK-DEVISE-A-CHOISIR] Décision de Marc (2026-09-25) : aucune devise par défaut. Le défaut
+// USD enregistrait en silence un titre canadien comme américain en saisie manuelle. Ce test
+// s'INVERSE au même endroit que l'ancien comportement (« USD par défaut ») : il le remplace.
+describe('[ADDSTOCK-DEVISE-A-CHOISIR] en saisie manuelle, la devise se choisit', () => {
+    const remplir = () => {
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+    };
+
+    it('sans choix : « Ajouter » désactivé, le champ dit qu\'il est à choisir, rien n\'est ajouté', () => {
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+        remplir();
+        expect((screen.getByLabelText('Devise') as HTMLSelectElement).value).toBe('');
+        expect(screen.getByText(/À choisir : la devise/)).toBeInTheDocument();
+        const ajouter = screen.getByRole('button', { name: /Ajouter au portefeuille/i });
+        expect(ajouter).toBeDisabled();
+        fireEvent.click(ajouter);
+        expect(onAdd).not.toHaveBeenCalled();
+    });
+
+    it('CONTRÔLE : le même formulaire avec EUR choisi s\'ajoute en EUR', () => {
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+        remplir();
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'EUR' } });
+        expect(screen.queryByText(/À choisir : la devise/)).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter au portefeuille/i }));
+        expect(onAdd.mock.calls[0][0].currency).toBe('EUR');
     });
 });
 
@@ -211,11 +249,12 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
 });
 
 describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais formatCAD', () => {
-    it('devise USD (défaut) : quantité × prix affichés en USD, aucun symbole "$ CA"', () => {
+    it('devise USD (choisie) : quantité × prix affichés en USD, aucun symbole "$ CA"', () => {
         render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
         fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
         fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
         fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'USD' } });
         fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
         fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
 
@@ -321,5 +360,8 @@ describe('[ADDSTOCK-DEVISE-USD-PAR-DEFAUT] la devise suit la cotation', () => {
         await valider({ currency: '' });
         await screen.findByText(/Prix actuel/i);
         expect(screen.getByText(/n'a pas indiqué la devise/)).toBeInTheDocument();
+        // [ADDSTOCK-DEVISE-A-CHOISIR] Aucune devise supposée : elle reste à choisir.
+        expect((screen.getByLabelText(/Devise/i) as HTMLSelectElement).value).toBe('');
+        expect(screen.getByRole('button', { name: /Ajouter au portefeuille/i })).toBeDisabled();
     });
 });

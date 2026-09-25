@@ -36,6 +36,12 @@
   l'imprime plus, et les journaux des 254 passes déjà publiées ont été SUPPRIMÉS (vérifié : le plus
   récent rend 404). Les passes restent listées, sans contenu.
 
+- [ ] 👤 **[PTF-RELEVES-DEPUIS-OUVERTURE]** (2026-09-25, conséquence de ta décision « B ») —
+  **garde sous la main TOUS tes relevés du courtier depuis l'ouverture de chaque compte.** L'import
+  (lot 1g) les demandera dans l'ordre, en commençant par le premier : l'app compte 0 $ pour un compte
+  avant son premier relevé importé, donc un historique qui commencerait en cours de route serait faux.
+  Rien à faire maintenant.
+
 - [ ] 👤 **[PTF-FISCALISTE]** (2026-09-24) — **faire confirmer le coût fiscal de tes titres** (don
   reçu : la règle générale est la valeur de marché à la date du don, mais une origine étrangère peut
   la changer). D'ici là, l'app affichera une valeur PROVISOIRE, marquée comme telle (ADR 0019 §4).

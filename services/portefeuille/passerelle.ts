@@ -35,11 +35,13 @@
 // ⚠️ Conséquence de B, à dire et non à cacher : l'exclusion se fait par PANIER de régime. Un placement
 // saisi du même régime mais tenu chez un AUTRE courtier sortirait aussi. C'est routé à Marc
 // (`[PTF-L1E-PASSERELLE]` au BACKLOG), pas deviné ici.
-// ⚠️ LIMITE CONNUE, non tranchée ici : la décision ne dépend pas de la DATE. À une date antérieure au
-// premier événement d'un compte couvert, les placements saisis de son régime sont exclus ET le livre
-// vaut 0 pour lui — juste si le livre remonte à l'ouverture du compte, faux s'il commence au premier
-// relevé importé. Sans effet tant que le passé n'est pas branché ; à trancher avec Marc avant e3
-// (test de limite dans `passerelle.test.ts`, à INVERSER le jour où la règle change).
+// 🔒 TRANCHÉ par Marc le 2026-09-25 (option B) : la décision ne dépend pas de la DATE. À une date
+// antérieure au premier événement d'un compte couvert, les placements saisis de son régime sont
+// exclus ET le livre vaut 0 pour lui. C'est juste parce que le livre REMONTE À L'OUVERTURE du compte :
+// Marc importera tous ses relevés depuis l'ouverture, et l'import (1g) doit le vérifier (premier
+// relevé d'un compte = positions d'ouverture nulles), sinon ce 0 $ deviendrait faux sans rien de
+// rouge. Écartée : l'option A (garder les placements saisis jusqu'au premier relevé), qui aurait
+// fait de la date du premier import une frontière de régime.
 import type {
     Asset, BrokerAccountRegime, BrokerAccountRegimeType, BrokerLedgerAccountId, BrokerLedgerEvent,
 } from '../../types';

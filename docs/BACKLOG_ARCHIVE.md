@@ -26,6 +26,19 @@
   `components/projection/kpiPatrimoine.ts`, garde `tests/components/projection/kpiPatrimoine.test.ts`.
   Repli historique (nombre FIRE si pas de valeur finale) conservé tel quel.
 
+## 2026-09-25 — E2E « clic partout » : le bandeau du mode test recouvrait la cible (PR #1060)
+
+Déménagé au lot suivant (ADDSTOCK-DEVISE-A-CHOISIR).
+
+- [x] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`** (S) — ✅ 2026-09-25 : rouge aussi sur `main`
+  `b083c700` (3 essais), vert 25/25 en local (Chromium complet et headless shell, seul et fichier
+  entier). Mécanisme REPRODUIT : le bandeau FIXE « Mode test activé » (42 px) recouvre le haut du
+  viewport ; dès que le graphe défile plus haut (bord à −40 px), le clic « ciel vide » à 8 % tombe
+  sur le bandeau, jamais sur le graphe — faux rouge de géométrie, pas une zone morte de l'app. Le
+  clic vise désormais le ciel SOUS tout bandeau fixe ; et `clickAndFreeze` nomme, en cas d'échec,
+  l'élément sous le pointeur (`elementFromPoint`), pour qu'une récidive d'une autre cause s'explique
+  d'elle-même. [Probable] que ce soit la cause CI : la position du graphe dépend de la mise en page.
+
 ## 2026-09-25 — Symbole de cotation vérifié avant la purge (PR #1059)
 
 Déménagé au lot suivant (E2E-FUTUR-CLICK-ANYWHERE-INSTABLE).

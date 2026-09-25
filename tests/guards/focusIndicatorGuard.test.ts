@@ -40,7 +40,7 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
         raison: 'le champ de recherche est couvert par le `focus-within:border-primary/50` de sa barre.',
     },
     {
-        fichier: 'AiChatView.tsx', jeton: 'flex-1 bg-transparent px-4',
+        fichier: 'AiChatView.tsx', jeton: 'champ-nu flex-1 min-w-0',
         raison: 'la barre de saisie du chat porte déjà `focus-within:border-primary/50` (préexistant).',
     },
     {

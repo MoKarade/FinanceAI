@@ -181,8 +181,11 @@
     min-height: 100vh;
   }
 
-  /* Styles globaux inputs (migres depuis index.html) */
-  input, select, textarea {
+  /* Styles globaux inputs (migres depuis index.html).
+     [S5-REFONTE] `.champ-nu` : champ posé DANS une barre qui porte déjà fond, bordure et focus (chat).
+     Opt-out ici, pas par des utilitaires `!important` : en couches, un !important de la couche base
+     l'emporte sur celui de la couche utilities (ordre inversé pour les déclarations importantes). */
+  input:not(.champ-nu), select, textarea {
     transition: all 0.2s ease;
     background-color: rgba(11, 14, 20, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -190,7 +193,7 @@
   /* LUXE — focus aligné sur la marque (emerald/primary, au lieu du violet) + anneau
      plus doux. Les composants demandaient déjà focus:border-primary ; le !important
      global forçait le violet → incohérent. Corrigé ici, app-wide. */
-  input:focus, select:focus, textarea:focus {
+  input:not(.champ-nu):focus, select:focus, textarea:focus {
     background-color: rgba(11, 14, 20, 0.9) !important;
     border-color: rgba(230, 234, 242, 0.45) !important;
     box-shadow: 0 0 0 3px rgba(230, 234, 242, 0.12);
@@ -198,7 +201,7 @@
 
   /* LUXE — champs texte/select/textarea plus arrondis (moderne, cohérent).
      Exclut checkbox/radio/range/color (forme propre). */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.champ-nu),
   select,
   textarea {
     border-radius: 0.5rem !important;

@@ -14,20 +14,23 @@ import { AiChatView } from './aiChat/AiChatView';
 import { AiChatSignalCards } from './aiChat/AiChatSignalCards';
 
 export const AiAssistant: React.FC = () => {
+    // [S5-REFONTE-ASSISTANT] Même gabarit que l'écran « à activer » des maquettes : la conversation à
+    // gauche, les prochaines actions à droite (bureau large) ; au téléphone, les actions d'abord.
     return (
-        <div>
+        <div className="space-y-6 stagger-in">
             {/* [Finding panel a11y #4] En vraie page pleine écran, l'onglet doit porter le <h1> de
                 page (comme Budget/Dashboard) — sinon le 1er titre saute au <h3> du header interne. */}
-            <PageHeader
-                title="Assistant IA"
-                subtitle="Tes prochaines actions + ton conseiller — il consulte tes vraies données à la demande."
-            />
-            {/* [ASSISTANT-HUB] Cartes de signaux (fusion « Prochaine action ») AU-DESSUS du chat :
-                même moteur que le tool get_next_best_actions — clic = discussion contextualisée. */}
-            <AiChatSignalCards />
-            {/* Pleine hauteur sous l'en-tête ; le conteneur borne le scroll interne de la vue. */}
-            <div className="h-[calc(100vh-16rem)] min-h-[440px] bg-[#141414]/60 border border-white/10 rounded-3xl overflow-hidden">
-                <AiChatView variant="tab" />
+            <PageHeader title="Assistant" />
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-5 items-start">
+                {/* [ASSISTANT-HUB] Cartes de signaux (fusion « Prochaine action ») : même moteur que le
+                    tool get_next_best_actions — clic = discussion contextualisée. */}
+                <div className="xl:order-last min-w-0">
+                    <AiChatSignalCards />
+                </div>
+                {/* Hauteur bornée : le fil défile À L'INTÉRIEUR de la carte, le champ reste visible. */}
+                <div className="h-[calc(100dvh-14rem)] min-h-[480px] rounded-2xl bg-surface border border-white/6 overflow-hidden">
+                    <AiChatView variant="tab" />
+                </div>
             </div>
         </div>
     );

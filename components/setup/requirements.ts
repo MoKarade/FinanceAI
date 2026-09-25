@@ -182,7 +182,7 @@ export const REQUIREMENTS: Record<RequirementId, Requirement> = {
         id: 'anthropicKey',
         label: 'Clé API Anthropic (Claude)',
         manque: 'clé API manquante',
-        help: 'Nécessaire pour les fonctions IA. Se saisit dans Configuration (jamais stockée dans les backups).',
+        help: 'Nécessaire pour les fonctions IA. Se saisit dans Réglages · Clés API (jamais stockée dans les sauvegardes).',
         icon: 'sparkles',
         isMet: (s) => !!(s.apiKeys?.anthropic && s.apiKeys.anthropic.trim()),
         focus: { tab: Tab.SETTINGS, section: 'apiKeys-anthropic' },

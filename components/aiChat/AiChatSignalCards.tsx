@@ -61,7 +61,7 @@ export const AiChatSignalCards: React.FC = () => {
 
     if (!hasData) {
         return (
-            <div className="bg-white/3 border border-white/10 rounded-card p-3 mb-4 flex items-center gap-3">
+            <div className="rounded-2xl bg-surface border border-white/6 p-4 flex items-center gap-3">
                 <Icon name="actions" size={16} className="text-ink-300 shrink-0" aria-hidden="true" />
                 <p className="text-meta text-ink-300 flex-1">
                     Configure ton profil (salaire, comptes) pour activer tes signaux financiers ici.
@@ -79,7 +79,7 @@ export const AiChatSignalCards: React.FC = () => {
 
     if (signals.length === 0) {
         return (
-            <p className="text-meta text-ink-400 mb-4 flex items-center gap-2">
+            <p className="rounded-2xl bg-surface border border-white/6 p-4 text-meta text-ink-400 flex items-center gap-2">
                 <Icon name="check" size={14} className="text-success-400" aria-hidden="true" />
                 Aucun signal à ce stade — rien d'anormal détecté (dettes, cashflow, coussin, CELI/REER).
             </p>
@@ -87,11 +87,11 @@ export const AiChatSignalCards: React.FC = () => {
     }
 
     return (
-        <div className="mb-4">
-            <h2 className="text-tiny uppercase font-bold text-ink-300 tracking-widest mb-2">
-                Prochaines actions ({signals.length})
+        <section aria-labelledby="signaux-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:p-5">
+            <h2 id="signaux-titre" className="text-[17px] font-semibold text-ink-50 mb-3">
+                Prochaines actions <span className="text-ink-400 font-normal">({signals.length})</span>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2" role="list" aria-label="Signaux financiers">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-2" role="list" aria-label="Signaux financiers">
                 {signals.map((s) => (
                     // [Finding a11y #492 — ÉLEVÉ, mesuré axe] role=listitem sur un <button> est
                     // INVALIDE (écrase le rôle natif — le SR perd « bouton ») : wrapper <div
@@ -103,7 +103,7 @@ export const AiChatSignalCards: React.FC = () => {
                         onClick={() => discuss(s)}
                         aria-disabled={isPrivacyMode || isLoading}
                         title={isPrivacyMode ? 'Mode discret actif — clic désactivé' : 'Discuter de ce signal avec l\'assistant'}
-                        className={`w-full h-full text-left bg-white/3 hover:bg-white/6 border ${PRIORITY_STYLES[s.priority].border} rounded-card p-3 transition-colors focus-ring ${isPrivacyMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        className={`w-full h-full text-left bg-dark/40 hover:bg-white/5 border ${PRIORITY_STYLES[s.priority].border} rounded-xl p-3 transition-colors focus-ring ${isPrivacyMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                         <div className="flex items-center gap-2 mb-1">
                             {/* [Finding a11y #492 — MOYEN, WCAG 1.4.1] La priorité n'était portée que
@@ -131,6 +131,6 @@ export const AiChatSignalCards: React.FC = () => {
                     </div>
                 ))}
             </div>
-        </div>
+        </section>
     );
 };

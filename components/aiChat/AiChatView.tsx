@@ -9,7 +9,7 @@
 // (évite le double-modal si le panneau et l'onglet sont montés en même temps).
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Icon, type IconName } from '../ui/Icon';
+import { Icon } from '../ui/Icon';
 import { AiMessage, Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { useAiChatContext } from './AiChatContext';
@@ -32,15 +32,9 @@ import { viewContextMatchesTab } from '../../services/aiChat/viewContext';
 // ouvert sur Futur) ou, sur la page Assistant, directement sur la source unique lastProjection.
 import { buildFutureViewDetail, buildFutureChips } from '../../services/aiChat/futureViewContext';
 import { TAB_LABELS } from '../../constants';
+import { SUGGESTIONS_ASSISTANT as SUGGESTED_PROMPTS } from './suggestions';
 
 type AiChatVariant = 'panel' | 'tab';
-
-const SUGGESTED_PROMPTS: Array<{ icon: IconName; label: string; prompt: string }> = [
-    { icon: 'retirement', label: 'Quand retraite ?', prompt: "À quel âge puis-je raisonnablement prendre ma retraite selon mes finances actuelles ?" },
-    { icon: 'budget', label: 'Budget sain ?', prompt: "Analyse mes dépenses des 3 derniers mois et dis-moi si mon budget est équilibré. Identifie les 2 catégories où je dépense le plus." },
-    { icon: 'investments', label: 'Investir mieux', prompt: "Quelle stratégie d'investissement me recommandes-tu compte tenu de mon âge et de mes objectifs ? CELI ou REER en priorité ?" },
-    { icon: 'real-estate', label: 'Acheter maison', prompt: "Suis-je prêt à acheter une propriété ? Quels sont les 3 critères les plus importants à considérer ?" },
-];
 
 const GREETING: AiMessage = {
     role: 'model',
@@ -169,7 +163,10 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     };
     const removeFile = (idx: number) => setPendingFiles((fs) => fs.filter((_, i) => i !== idx));
 
-    const messagesToRender: AiMessage[] = aiConversation.length === 0 ? [GREETING] : aiConversation;
+    // [S5-REFONTE-ASSISTANT] Page : conversation vide = état d'accueil centré (maquettes) ; le panneau
+    // garde sa bulle de bienvenue.
+    const messagesToRender: AiMessage[] = aiConversation.length === 0 ? (variant === 'panel' ? [GREETING] : []) : aiConversation;
+    const accueilPage = variant === 'tab' && aiConversation.length === 0 && !isLoading;
 
     // [Fix bug Marc 2026-07-22 — « le petit chat de côté bug parfois et je vois pas le chat »]
     // Auto-scroll par scrollTop DIRECT sur le conteneur de messages, plus JAMAIS
@@ -218,19 +215,23 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
 
     // Deux gabarits : le panneau est compact (drawer), l'onglet occupe la page.
     const isPanel = variant === 'panel';
-    const suggestionCols = isPanel ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4';
+    const suggestionCols = 'grid-cols-2';
 
     return (
         <div className="flex flex-col h-full min-h-0">
             {/* Header commun (titre + statut + Effacer ; le panneau ajoute Fermer). */}
-            <div className="bg-white/3 p-4 border-b border-white/5 flex items-center gap-3 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-white/10 p-0.5">
-                    <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-                        <Icon name="bot" size={18} className="text-primary" />
+            {/* [S5-REFONTE-ASSISTANT] Page : la page porte déjà le titre « Assistant » → barre d'outils seule
+                (état, coût, modèle, Effacer). Panneau : avatar + titre, comme avant. */}
+            <div className={`${isPanel ? 'bg-white/3 p-4' : 'px-4 py-2.5'} border-b border-white/6 flex items-center gap-3 shrink-0`}>
+                {isPanel && (
+                    <div className="w-10 h-10 rounded-full bg-white/10 p-0.5">
+                        <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
+                            <Icon name="bot" size={18} className="text-primary" />
+                        </div>
                     </div>
-                </div>
+                )}
                 <div className="min-w-0">
-                    <h3 className="font-bold text-white text-base">Assistant</h3>
+                    {isPanel && <h3 className="font-bold text-white text-base">Assistant</h3>}
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         <span className="text-tiny text-green-300 font-medium">{isLoading ? 'Réflexion…' : 'En ligne'}</span>
@@ -374,7 +375,31 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                             </div>
                         ))}
 
-                        {aiConversation.length === 0 && !isLoading && (
+                        {accueilPage && (
+                            <div className="h-full flex flex-col items-center justify-center gap-3 py-6 text-center">
+                                <span className="w-12 h-12 rounded-xl bg-surfaceHighlight flex items-center justify-center text-primary" aria-hidden="true">
+                                    <Icon name="sparkles" size={20} />
+                                </span>
+                                <h2 className="text-[18px] font-semibold text-ink-100">Pose une question ou choisis une suggestion</h2>
+                                <p className="text-meta text-ink-400 max-w-md">
+                                    Il consulte tes vraies données (patrimoine, impôts, projection, transactions) à la demande.
+                                </p>
+                                <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-2 w-full sm:w-auto mt-1">
+                                    {SUGGESTED_PROMPTS.map(({ label, prompt }) => (
+                                        <button
+                                            key={label}
+                                            type="button"
+                                            onClick={() => handleSend(prompt)}
+                                            className="min-h-11 sm:min-h-9 px-3.5 rounded-xl sm:rounded-full border border-white/15 text-meta text-ink-200 hover:bg-white/5 hover:text-ink-50 transition-colors focus-ring"
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {isPanel && aiConversation.length === 0 && !isLoading && (
                             <div className={`grid ${suggestionCols} gap-2 pt-2`}>
                                 {SUGGESTED_PROMPTS.map(({ icon, label, prompt }) => (
                                     <button
@@ -413,7 +438,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                         )}
                     </div>
 
-                    <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5 shrink-0">
+                    <div className="p-4 border-t border-white/6 shrink-0">
                         {/* [CHAT-PAGE-CONTEXT] Contexte d'écran perçu, contestable d'un coup d'œil.
                             Texte visible (pas title seul — leçon a11y #489). Mode discret : AUCUNE
                             garde locale ici — le DÉTAIL (montants/période) est déjà purgé à la
@@ -466,7 +491,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                 ))}
                             </div>
                         )}
-                        <div className={`flex gap-2 bg-[#2a2a2a] rounded-full border border-white/10 px-2 py-2 focus-within:border-primary/50 transition-colors shadow-inner ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
+                        {/* [S5-REFONTE-ASSISTANT] Champ des maquettes : 52 px, coins 12 px, envoi carré à droite. */}
+                        <div className={`h-[52px] flex items-center gap-1 bg-dark/40 rounded-xl border border-white/8 px-2 focus-within:border-primary/50 transition-colors ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
                             {/* [AITOOLS-B1] Joindre images/PDF/CSV — validation à la sélection. */}
                             <input
                                 ref={fileInputRef}
@@ -484,7 +510,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                 disabled={isLoading}
                                 aria-label="Joindre un fichier (image, PDF, CSV ou texte)"
                                 title="Joindre un fichier"
-                                className="text-ink-300 hover:text-white w-9 h-9 rounded-full flex items-center justify-center transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                className="text-ink-300 hover:text-white w-9 h-9 rounded-lg flex items-center justify-center transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                             >
                                 <Icon name="paperclip" size={16} />
                             </button>
@@ -494,9 +520,9 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Analyser mon budget…"
+                                placeholder="Écris ta question…"
                                 aria-label="Question au conseiller IA"
-                                className="flex-1 bg-transparent px-4 text-body text-white outline-hidden disabled:opacity-50 placeholder-ink-400 font-medium"
+                                className="champ-nu flex-1 min-w-0 h-full bg-transparent border-0 px-2 text-body text-ink-50 outline-hidden disabled:opacity-50 placeholder-ink-400"
                                 disabled={isLoading}
                             />
                             {isLoading ? (
@@ -504,7 +530,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                     onClick={cancel}
                                     aria-label="Annuler la génération"
                                     title="Annuler"
-                                    className="bg-danger-600 hover:bg-danger-700 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-danger-500/20 focus-ring"
+                                    className="bg-danger-600 hover:bg-danger-700 text-white w-9 h-9 rounded-lg flex items-center justify-center transition-colors focus-ring shrink-0"
                                 >
                                     <Icon name="close" size={16} />
                                 </button>
@@ -513,9 +539,9 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                     onClick={() => handleSend()}
                                     disabled={isLoading || (!input.trim() && pendingFiles.length === 0)}
                                     aria-label="Envoyer le message"
-                                    className="bg-primary hover:bg-white disabled:opacity-50 text-dark w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-black/30 focus-ring"
+                                    className="bg-primary hover:bg-white disabled:bg-surfaceHighlight disabled:text-ink-400 text-dark w-9 h-9 rounded-lg flex items-center justify-center transition-colors focus-ring shrink-0"
                                 >
-                                    <Icon name="send" size={16} />
+                                    <Icon name="arrow-up" size={16} />
                                 </button>
                             )}
                         </div>

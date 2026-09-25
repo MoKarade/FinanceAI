@@ -33,7 +33,7 @@
 // certains panneaux sont lourds). C'est conforme au motif ARIA : les panneaux inactifs peuvent être
 // absents du DOM plutôt que masqués.
 import React from 'react';
-import { Icon, type IconName } from './Icon';
+import type { IconName } from './Icon';
 
 export interface SubTabDef<Id extends string> {
     id: Id;
@@ -93,7 +93,7 @@ export function clavierTablist<Id extends string>(
 export function SubTabs<Id extends string>({ idPrefix, label, tabs, active, onSelect }: SubTabsProps<Id>) {
     return (
         <div
-            className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto"
+            className="flex gap-1 w-fit max-w-full overflow-x-auto"
             role="tablist"
             aria-label={label}
             onKeyDown={clavierTablist(idPrefix, tabs.map((t) => t.id), active, onSelect)}
@@ -114,9 +114,9 @@ export function SubTabs<Id extends string>({ idPrefix, label, tabs, active, onSe
                     // + une interligne de 16 px donnent 28 px de haut — sous le plancher WCAG 2.5.5.
                     // Le correctif vit ICI parce que les trois écrans à sous-onglets passent par ce
                     // composant : une seule ligne, trois surfaces.
-                    className={`touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded-sm whitespace-nowrap transition-colors focus-ring ${active === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
+                    className={`touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-body rounded-lg whitespace-nowrap transition-colors focus-ring ${active === s.id ? 'bg-surfaceHighlight text-ink-50 font-semibold' : 'text-ink-300 hover:text-ink-50 hover:bg-white/5'}`}
                 >
-                    <Icon name={s.icon} size={14} />{s.label}
+                    {/* [S5-REFONTE-R2] onglets texte seul (maquettes) */}{s.label}
                 </button>
             ))}
         </div>

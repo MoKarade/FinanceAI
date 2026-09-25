@@ -40,17 +40,14 @@
 }
 
 @utility premium-card {
-  @apply relative overflow-hidden transition-all duration-500 border border-white/6;
+  @apply relative overflow-hidden transition-colors duration-200 border border-white/6;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+  /* [S5-REFONTE-R2] Cartes posées à plat (maquettes) : plus d'ombre portée ni de lévitation au survol. */
 
   &:hover {
     @apply border-white/10;
-    background: rgba(22, 25, 33, 0.82);
-    box-shadow: 0 12px 40px -2px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
   }
 
   &::before {

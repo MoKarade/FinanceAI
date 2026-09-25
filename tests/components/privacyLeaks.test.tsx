@@ -263,9 +263,15 @@ describe('[A11Y-PRIVACY-BUDGET-COUPLE] Santé financière du couple', () => {
     // Vue par défaut = MOIS : la carte affiche le brut MENSUEL du couple (6 113 + 3 887).
     const MONTHLY_GROSS = '10000';
 
-    const renderBudget = () => render(
-        <Budget transactions={[]} config={config} budgetItems={[]} setBudgetItems={vi.fn()} apiKey="" />,
-    );
+    const renderBudget = () => {
+        const r = render(
+            <Budget transactions={[]} config={config} budgetItems={[]} setBudgetItems={vi.fn()} apiKey="" />,
+        );
+        // [S5-REFONTE-BUDGET] Le partage par conjoint (et ses `title` chiffrés) est replié sous
+        // « Détail par personne » : déplié, sinon la garde des attributs passerait à vide.
+        fireEvent.click(r.getByRole('button', { name: /Détail par personne/ }));
+        return r;
+    };
     /** Texte de TOUS les attributs `title` de l'écran, espaces retirées. */
     const titles = (container: HTMLElement) =>
         [...container.querySelectorAll('[title]')]

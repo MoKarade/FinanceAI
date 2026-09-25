@@ -1,18 +1,18 @@
 import React from 'react';
 import { CHART_TOOLTIP_STYLE } from '../../utils/chartTooltip';
 import { BudgetCategory } from '../../types';
-import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
-import { formatCAD, formatSigned, formatPercent } from '../../utils/format';
+import { formatCAD, formatSigned, formatPercent, formatNumber } from '../../utils/format';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { maskedTick } from '../../utils/chartPrivacy';
 import { ChartDataTable } from '../ui/ChartDataTable';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { useViewportBelowLg } from '../../hooks/useViewportBelowLg';
+import type { TimeView } from './pilotage';
 
-type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 
 /**
  * [A11Y-BUDGETGROUP-CHART-NOALT] Alternative TEXTUELLE d'un sparkline (WCAG 1.1.1).
@@ -59,13 +59,14 @@ const Sparkline = ({ data, color, poste }: { data: number[]; color: string; post
     );
 };
 
-const getGroupColor = (nature: string) => {
-    switch (nature) {
-        case 'Besoin': return 'text-green-400 bg-green-400/10 border-green-400/20';
-        case 'Envie': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-        case 'Epargne': return 'text-info-400 bg-info-400/10 border-info-400/20';
-        default: return 'text-ink-300';
-    }
+/** [S5-REFONTE-BUDGET] Titres des groupes (maquettes E/M-budget). */
+const TITRES: Record<'Besoin' | 'Envie' | 'Epargne', string> = { Besoin: 'Besoins', Envie: 'Envies', Epargne: 'Épargne' };
+
+const LIBELLES_PERIODE: Record<TimeView, { cible: string; reel: string }> = {
+    MONTH: { cible: 'Cible / mois', reel: 'Réel ce mois' },
+    QUARTER: { cible: 'Cible / trim.', reel: 'Réel ce trim.' },
+    YEAR: { cible: 'Cible / an', reel: 'Réel cette année' },
+    CUSTOM: { cible: 'Cible / période', reel: 'Réel (période)' },
 };
 
 interface BudgetGroupTableProps {
@@ -97,6 +98,15 @@ interface BudgetGroupTableProps {
     onViewTransactions?: (categoryName: string) => void;
 }
 
+
+/** Moyenne indisponible : « — » honnête, jamais un faux 0 (no-fake-data). */
+const MoyenneIndisponible: React.FC<{ texte: string }> = ({ texte }) => (
+    <span className="text-ink-400 font-mono" title="Aucun mois plein d'historique — moyenne indisponible">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">{texte}</span>
+    </span>
+);
+
 export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     nature, items, allItems, actualsMap, trendMap, monthlyDataMap,
     totalBudgetDisplay, monthProgress, expandedId, onExpandToggle,
@@ -107,6 +117,10 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     // (ci-dessous) disparaissait avec eux → impossible de créer la 1re catégorie
     // d'un groupe (bloquant total pour un nouvel utilisateur, INITIAL_BUDGET=[]).
     const isEmpty = items.length === 0;
+    const etroit = useViewportBelowLg();
+    const titre = TITRES[nature];
+    const idTitre = `groupe-budget-${nature}`;
+    const libelles = LIBELLES_PERIODE[timeView];
 
     // [AUDIT-SAFETY] Mode discret : le composant masquait ses cellules $ (`PrivateAmount`) mais pas
     // l'axe Y ni l'infobulle du mini-graphique par poste — les $ dépensés y restaient lisibles.
@@ -123,309 +137,328 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     const groupAvgs = items.map(i => getDisplayAvg(i)).filter((v): v is number => v !== null);
     const groupTotalAvg = groupAvgs.length > 0 ? groupAvgs.reduce((s, v) => s + v, 0) : null;
 
-    const labelPeriod = timeView === 'YEAR' ? '12 Mois' :
-        timeView === 'QUARTER' ? 'Trimestre' :
-            timeView === 'CUSTOM' ? 'Période' : 'Mois';
+    const boutonAjouter = (
+        <button
+            type="button"
+            onClick={() => onAddItem(nature)}
+            aria-label={`Ajouter un poste dans ${titre}`}
+            className="self-start min-h-11 px-5 lg:px-5 text-[13px] text-ink-200 hover:text-ink-50 focus-ring rounded-sm"
+        >
+            + Ajouter un poste
+        </button>
+    );
 
-    return (
-        <div className="mb-8 last:mb-0 animate-slide-up">
-            <div className={`flex items-center justify-between px-4 py-2 rounded-t-lg border-b border-white/5 ${getGroupColor(nature)}`}>
-                <div className="flex items-center gap-2">
-                    <span className="font-bold uppercase tracking-wider text-meta">{nature}</span>
-                    <span className="text-tiny opacity-70">({items.length})</span>
+    // [S5-REFONTE-BUDGET] Épargne sans poste : la carte en pointillés des maquettes, qui invite à
+    // créer le premier (au lieu d'un tableau vide).
+    if (isEmpty && nature === 'Epargne') {
+        return (
+            <section aria-labelledby={idTitre} className="rounded-2xl border border-dashed border-white/15 px-4 py-4 lg:px-5 flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1 min-w-0">
+                    <h2 id={idTitre} className="text-body font-semibold text-ink-50">{titre} · aucun poste</h2>
+                    <p className="text-meta lg:text-[13px] text-ink-400">Crée un poste d'épargne pour suivre ce que tu mets de côté chaque mois.</p>
                 </div>
-                <div className="text-meta font-mono" title="Réel · moyenne 12 mois · cible">
-                    <PrivateAmount className={groupTotalSpent > groupTotalTarget ? 'text-danger-400' : 'opacity-80'}>
-                        {formatCAD(groupTotalSpent)}
-                    </PrivateAmount>
-                    <span className="opacity-50"> · moy. </span>
-                    {groupTotalAvg === null
-                        ? (
-                            <span className="opacity-50">
-                                <span aria-hidden="true">—</span>
-                                <span className="sr-only">Moyenne du groupe indisponible (aucun mois plein d'historique)</span>
-                            </span>
-                        )
-                        : <PrivateAmount className="opacity-70">{formatCAD(groupTotalAvg)}</PrivateAmount>}
-                    <span className="opacity-50"> / </span>
-                    <PrivateAmount className="opacity-50">{formatCAD(groupTotalTarget)}</PrivateAmount>
-                </div>
-            </div>
-
-            <div className="bg-[#1a1a1a] rounded-b-lg border border-white/5 overflow-hidden">
-                {isEmpty && (
-                    <div className="px-4 py-6 text-center text-tiny text-ink-400">
-                        Aucune catégorie dans « {nature} » pour l'instant. Clique ci-dessous pour en créer une.
-                    </div>
-                )}
-                {!isEmpty && (
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-black/20 text-tiny text-ink-400 uppercase">
-                        <tr>
-                            <th className="p-3 font-normal">Catégorie</th>
-                            <th className="p-3 font-normal hidden sm:table-cell">Tendance (6m)</th>
-                            <th className="p-3 font-normal text-right">Cible ({labelPeriod})</th>
-                            <th className="p-3 font-normal text-right text-tiny w-16">% Budget</th>
-                            <th className="p-3 font-normal text-right hidden sm:table-cell">Répartition</th>
-                            <th
-                                className="p-3 font-normal text-right hidden sm:table-cell"
-                                title="Moyenne mensuelle des 12 derniers mois (mois courant, partiel, exclu), ramenée à la période affichée"
-                            >
-                                Moy. 12m
-                            </th>
-                            <th className="p-3 font-normal text-right">Réel ({labelPeriod})</th>
-                            <th className="p-3 font-normal text-right hidden md:table-cell">Écart</th>
-                            <th className="p-3 w-10"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-body divide-y divide-white/5">
-                        {items.map((item) => {
-                            const idx = allItems.findIndex(i => i.id === item.id);
-                            const displayTarget = getDisplayTarget(item);
-                            const displayAvg = getDisplayAvg(item);
-                            const spent = actualsMap[item.name] || 0;
-                            const remaining = displayTarget - spent;
-                            const isOver = spent > displayTarget;
-                            const percentageOfBudget = totalBudgetDisplay > 0 ? (displayTarget / totalBudgetDisplay) * 100 : 0;
-                            const isExpanded = expandedId === item.id;
-                            const percentSpent = displayTarget > 0 ? (spent / displayTarget) * 100 : 0;
-
-                            // [A11Y-PRIVACY-CHAINES-RESTANTES] La répartition était UNE CHAÎNE qui
-                            // mêlait les prénoms et les montants — donc plus aucun nœud à masquer.
-                            // Elle est maintenant une LISTE de parts : le nom reste lisible, le
-                            // montant redevient un nœud. Deux raisons de ne pas simplement envelopper
-                            // la phrase entière : « ••• » seul ne dirait plus QUI paie quoi, et la
-                            // répartition ENTRE CONJOINTS est une information relationnelle
-                            // (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
-                            const parts: Array<{ nom: string; montant: number }> = isSolo
-                                ? [{ nom: userNames[0], montant: displayTarget }]
-                                : item.type === 'Commun'
-                                    ? [
-                                        { nom: userNames[0].substring(0, 3), montant: displayTarget * splitRatio1 },
-                                        { nom: userNames[1].substring(0, 3), montant: displayTarget * (1 - splitRatio1) },
-                                    ]
-                                    : item.type === 'Perso 1'
-                                        ? [{ nom: userNames[0], montant: displayTarget }]
-                                        : [{ nom: userNames[1], montant: displayTarget }];
-
-                            return (
-                                <React.Fragment key={item.id}>
-                                    <tr
-                                        // [REFONTE-NAV-L5] Ancre du deep-link Transactions → Budget (« Voir au budget »
-                                        // sur une catégorie) : usePendingFocus scrolle vers `poste:<nom>`.
-                                        data-focus-section={`poste:${item.name}`}
-                                        className={`hover:bg-white/5 transition-colors group cursor-pointer ${isExpanded ? 'bg-white/5' : ''}`}
-                                        onClick={() => onExpandToggle(isExpanded ? null : (item.id ?? null))}
-                                    >
-                                        <td className="p-3">
-                                            <input
-                                                aria-label="Nom du poste"
-                                                type="text"
-                                                value={item.name}
-                                                onChange={(e) => onUpdateItem(idx, 'name', e.target.value)}
-                                                className="bg-transparent text-white font-medium focus:border-primary outline-hidden w-full text-body placeholder-ink-400"
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                            <div className="flex gap-2 mt-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                                                <select
-                                                    aria-label={`Fréquence — ${item.name || `poste ${idx + 1}`}`}
-                                                    value={item.frequency}
-                                                    onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)}
-                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded-sm px-1 outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <option value="Weekly">Hebdo</option>
-                                                    <option value="Monthly">Mensuel</option>
-                                                    <option value="Quarterly">Trimestre</option>
-                                                    <option value="Yearly">Annuel</option>
-                                                </select>
-                                                <select
-                                                    aria-label={`Attribution — ${item.name || `poste ${idx + 1}`}`}
-                                                    value={item.type}
-                                                    onChange={(e) => onUpdateItem(idx, 'type', e.target.value)}
-                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded-sm px-1 outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <option value="Commun">Commun</option>
-                                                    <option value="Perso 1">Perso 1</option>
-                                                    <option value="Perso 2">Perso 2</option>
-                                                </select>
-                                            </div>
-                                        </td>
-                                        <td className="p-3 hidden sm:table-cell">
-                                            <Sparkline data={trendMap[item.name] || []} color={isOver ? '#ef4444' : '#0f9d58'} poste={item.name} />
-                                        </td>
-                                        <td className="p-3 text-right">
-                                            <div className="flex flex-col items-end">
-                                                <div className="flex items-center justify-end">
-                                                    {/* [A11Y-PRIVACY-SALAIRE] Ce champ n'avait AUCUN nommeur : ni `id`+`<label>`,
-                                                        ni `aria-label`. Son nom venait du `title`, IDENTIQUE sur toutes les
-                                                        lignes — « Modifier le montant de base » ×N, sans dire de quel poste.
-                                                        En mode discret c'était pire : le `title` est remplacé par le libellé
-                                                        masqué. Le nom porte donc le POSTE (déjà visible dans la ligne, aucune
-                                                        fuite de montant), ce qui le rend distinguable dans les deux modes. */}
-                                                    <PrivateNumberInput
-                                                        type="number"
-                                                        value={item.target}
-                                                        onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
-                                                        className={`bg-transparent text-right w-20 outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-sm font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
-                                                        aria-label={`Montant de base — ${item.name}`}
-                                                        title="Modifier le montant de base"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                    <span className="text-ink-400 text-meta ml-1">
-                                                        {item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}
-                                                    </span>
-                                                </div>
-                                                <span className="text-meta font-bold text-ink-300 tabular-nums">= <PrivateAmount>{formatCAD(displayTarget)}</PrivateAmount></span>
-                                            </div>
-                                        </td>
-                                        <td className="p-3 text-right">
-                                            <div className="text-tiny text-ink-400 font-mono">{percentageOfBudget.toFixed(1)}%</div>
-                                        </td>
-                                        <td className="p-3 text-right hidden sm:table-cell">
-                                            <div className="text-tiny text-ink-300 font-mono whitespace-nowrap">
-                                                {parts.map((p, i) => (
-                                                    <React.Fragment key={p.nom}>
-                                                        {i > 0 && ' / '}
-                                                        {p.nom}: <PrivateAmount>{formatCAD(p.montant)}</PrivateAmount>
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
-                                        </td>
-                                        <td className="p-3 text-right hidden sm:table-cell">
-                                            {displayAvg === null ? (
-                                                <span
-                                                    className="text-ink-400 font-mono"
-                                                    title="Aucun mois plein d'historique — moyenne indisponible"
-                                                >
-                                                    <span aria-hidden="true">—</span>
-                                                    <span className="sr-only">Moyenne indisponible (aucun mois plein d'historique)</span>
-                                                </span>
-                                            ) : (
-                                                <PrivateAmount as="div" className="font-mono text-ink-300">
-                                                    {formatCAD(displayAvg)}
-                                                </PrivateAmount>
-                                            )}
-                                        </td>
-                                        <td className="p-3 text-right">
-                                            <PrivateAmount as="div" className={`font-mono font-bold ${isOver ? 'text-danger-400' : 'text-ink-100'}`}>
-                                                {formatCAD(spent)}
-                                            </PrivateAmount>
-                                            {timeView === 'MONTH' && displayTarget > 0 && (
-                                                <div className="w-full bg-surfaceHighlight h-1.5 rounded-full mt-1 overflow-hidden relative">
-                                                    <div
-                                                        className="absolute top-0 bottom-0 w-0.5 bg-white z-10 opacity-50"
-                                                        style={{ left: `${monthProgress}%` }}
-                                                        title="Aujourd'hui"
-                                                    />
-                                                    <div
-                                                        className={`h-full transition-all duration-500 ${isOver ? 'bg-danger-500' : (percentSpent > monthProgress ? 'bg-orange-400' : 'bg-green-500')}`}
-                                                        style={{ width: `${Math.min(100, percentSpent)}%` }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="p-3 text-right hidden md:table-cell">
-                                            <PrivateAmount as="div" className={`font-mono ${remaining < 0 ? 'text-danger-500' : 'text-green-500'} opacity-80`}>
-                                                {formatSigned(remaining, { withCurrency: true })}
-                                            </PrivateAmount>
-                                        </td>
-                                        <td className="p-3 text-center">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteItem(item.id); }}
-                                                className="inline-flex text-ink-500 hover:text-danger-500 p-2 -m-1 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                                                title="Supprimer la catégorie"
-                                                aria-label="Supprimer la catégorie"
-                                            >
-                                                <Icon name="close" size={14} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {isExpanded && (
-                                        <tr className="bg-black/30 border-b border-white/5 animate-fade-in">
-                                            <td colSpan={9} className="p-4">
-                                                <div className="flex flex-col gap-2">
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <div className="text-meta font-bold text-ink-300 uppercase">Historique (6 derniers mois)</div>
-                                                        {/* [REFONTE-NAV-L5] Cross-link sobre vers les transactions de la catégorie. */}
-                                                        {onViewTransactions && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); onViewTransactions(item.name); }}
-                                                                // `touch-target` (index.css) : 44×44 min au doigt sans changer le
-                                                                // rendu visuel — l'audit 2026-08-12 a compté ces écarts, on n'en
-                                                                // rajoute pas un neuf. `-my-3` neutralise la hauteur ajoutée.
-                                                                className="touch-target inline-flex items-center text-tiny text-info-400 hover:underline focus-ring rounded-sm px-1 -my-3 whitespace-nowrap"
-                                                                aria-label={`Voir les transactions de la catégorie ${item.name}`}
-                                                            >
-                                                                Voir les transactions →
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    {/* [A11Y-BUDGETGROUP-CHART-NOALT] Ce graphe était le SEUL des 16 du
-                                                        dépôt sans nom accessible ni alternative textuelle : un SVG Recharts
-                                                        est OPAQUE au lecteur d'écran. Il porte désormais le patron des onze
-                                                        autres fichiers — `role="img"` + `aria-label` pour le nommer, et
-                                                        `ChartDataTable` pour en LIRE les données. */}
-                                                    <div
-                                                        style={{ width: '100%', height: '150px' }}
-                                                        role="img"
-                                                        aria-label={`Dépenses mensuelles de ${item.name} sur les six derniers mois, comparées à la cible du poste.`}
-                                                    >
-                                                        <ResponsiveContainer width="100%" height="100%">
-                                                            <BarChart data={monthlyDataMap[item.name] || []}>
-                                                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                                                <XAxis dataKey="name" stroke="#666" tick={{ fontSize: 10 }} />
-                                                                <YAxis stroke="#666" tick={{ fontSize: 10 }} width={30} tickFormatter={maskedTick(isPrivacyMode, (v: number) => String(v))} />
-                                                                <Tooltip
-                                                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                                                    contentStyle={CHART_TOOLTIP_STYLE}
-                                                                    formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)}
-                                                                />
-                                                                <ReferenceLine
-                                                                    y={displayTarget}
-                                                                    stroke="#666"
-                                                                    strokeDasharray="3 3"
-                                                                    label={{ position: 'right', value: 'Cible', fill: '#666', fontSize: 10 }}
-                                                                />
-                                                                <Bar dataKey="value" fill={isOver ? '#ef4444' : '#0f9d58'} radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                                            </BarChart>
-                                                        </ResponsiveContainer>
-                                                    </div>
-                                                    {/* Les MÊMES données, en table `sr-only` : le lecteur d'écran « lit » le
-                                                        graphe. Le formateur gère le mode discret — l'alternative textuelle
-                                                        n'est pas une porte dérobée sur les montants
-                                                        (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). */}
-                                                    <ChartDataTable
-                                                        caption={`Dépenses mensuelles de ${item.name} sur les six derniers mois (cible : ${isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(displayTarget)})`}
-                                                        columns={[
-                                                            { key: 'name', label: 'Mois' },
-                                                            {
-                                                                key: 'value',
-                                                                label: 'Dépense réelle',
-                                                                format: (v) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v))),
-                                                            },
-                                                        ]}
-                                                        rows={monthlyDataMap[item.name] || []}
-                                                    />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-                    </tbody>
-                </table>
-                )}
                 <button
                     type="button"
                     onClick={() => onAddItem(nature)}
-                    className="w-full py-2 text-tiny text-ink-400 hover:text-white hover:bg-white/5 transition-colors border-t border-white/5"
+                    aria-label="Créer un poste d'épargne"
+                    className="shrink-0 h-10 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 focus-ring"
                 >
-                    + Ajouter une ligne dans {nature}
+                    Créer<span className="hidden lg:inline"> un poste</span>
+                </button>
+            </section>
+        );
+    }
+
+    const lignes = items.map((item) => {
+        const idx = allItems.findIndex(i => i.id === item.id);
+        const displayTarget = getDisplayTarget(item);
+        const displayAvg = getDisplayAvg(item);
+        const spent = actualsMap[item.name] || 0;
+        const remaining = displayTarget - spent;
+        const isOver = spent > displayTarget;
+        const percentSpent = displayTarget > 0 ? (spent / displayTarget) * 100 : 0;
+        // Barre du poste : rouge si dépassé, ambre si en avance sur le mois (vue Mois), clair sinon.
+        const couleurBarre = isOver ? 'bg-danger-400' : (timeView === 'MONTH' && percentSpent > monthProgress ? 'bg-warning-400' : 'bg-ink-100');
+        return { item, idx, displayTarget, displayAvg, spent, remaining, isOver, percentSpent, couleurBarre, isExpanded: expandedId === item.id };
+    });
+    const basculer = (id: string | undefined, ouvert: boolean) => onExpandToggle(ouvert ? null : (id ?? null));
+    const barre = (l: typeof lignes[number], classe: string) => (
+        <span className={`block h-1 rounded-full bg-white/8 overflow-hidden ${classe}`} aria-hidden="true">
+            <span className={`block h-full rounded-full ${l.couleurBarre}`} style={{ width: `${Math.min(100, l.percentSpent)}%` }} />
+        </span>
+    );
+    const reste = (l: typeof lignes[number]) => (
+        <PrivateAmount className={`font-mono ${l.remaining < 0 ? 'text-danger-400' : 'text-success-400'}`}>
+            {formatSigned(l.remaining, { withCurrency: true })}
+        </PrivateAmount>
+    );
+    const editeur = (l: typeof lignes[number]) => (
+        <EditeurPoste
+            l={l} nature={nature} totalBudgetDisplay={totalBudgetDisplay} trend={trendMap[l.item.name] || []}
+            mensuel={monthlyDataMap[l.item.name] || []} isSolo={isSolo} splitRatio1={splitRatio1} userNames={userNames}
+            isPrivacyMode={isPrivacyMode} onUpdateItem={onUpdateItem} onDeleteItem={onDeleteItem} onViewTransactions={onViewTransactions}
+        />
+    );
+
+    return (
+        <section aria-labelledby={idTitre} className="rounded-2xl bg-surface border border-white/6 overflow-hidden flex flex-col">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-0.5 lg:gap-3 px-4 pt-4 pb-2 lg:px-5 lg:py-3.5">
+                <h2 id={idTitre} className="text-[17px] lg:text-[16px] font-semibold text-ink-50">
+                    {titre}<span className="text-meta lg:text-[13px] font-normal text-ink-400"> · {items.length} poste{items.length > 1 ? 's' : ''}</span>
+                </h2>
+                <div className="text-meta lg:font-mono text-ink-400 lg:text-ink-200" title="Réel · moyenne 12 mois · cible">
+                    <PrivateAmount className={groupTotalSpent > groupTotalTarget ? 'text-danger-400' : ''}>
+                        {formatCAD(groupTotalSpent)}
+                    </PrivateAmount>
+                    <span className="text-ink-400"> · moy. </span>
+                    {groupTotalAvg === null
+                        ? <MoyenneIndisponible texte="Moyenne du groupe indisponible (aucun mois plein d'historique)" />
+                        : <PrivateAmount>{formatCAD(groupTotalAvg)}</PrivateAmount>}
+                    <span className="text-ink-400"> / </span>
+                    <PrivateAmount>{formatCAD(groupTotalTarget)}</PrivateAmount>
+                </div>
+            </div>
+
+            {isEmpty && (
+                <p className="px-4 lg:px-5 py-5 border-t border-white/5 text-meta text-ink-400">
+                    Aucune catégorie dans « {titre} » pour l'instant. Ajoute un premier poste ci-dessous.
+                </p>
+            )}
+
+            {!isEmpty && etroit && (
+                <ul className="px-4">
+                    {lignes.map((l) => (
+                        <li key={l.item.id} data-focus-section={`poste:${l.item.name}`} className="border-t border-white/5">
+                            <button
+                                type="button"
+                                aria-expanded={l.isExpanded}
+                                onClick={() => basculer(l.item.id, l.isExpanded)}
+                                className="w-full py-3 flex flex-col gap-2 text-left focus-ring rounded-sm"
+                            >
+                                <span className="w-full flex items-center justify-between gap-3">
+                                    <span className="text-body font-semibold text-ink-50 truncate">{l.item.name}</span>
+                                    <span className="font-mono text-meta text-ink-100 shrink-0">
+                                        <PrivateAmount className={l.isOver ? 'text-danger-400' : ''}>{formatCAD(l.spent)}</PrivateAmount>
+                                        {' / '}
+                                        <PrivateAmount>{formatCAD(l.displayTarget)}</PrivateAmount>
+                                    </span>
+                                </span>
+                                {barre(l, 'w-full')}
+                                <span className="w-full flex items-center justify-between gap-3 text-meta">
+                                    <span className="text-ink-400">
+                                        Moy. 12 mois{' '}
+                                        {l.displayAvg === null
+                                            ? <MoyenneIndisponible texte="Moyenne indisponible (aucun mois plein d'historique)" />
+                                            : <PrivateAmount>{formatCAD(l.displayAvg)}</PrivateAmount>}
+                                    </span>
+                                    <span className="font-mono"><span className={l.remaining < 0 ? 'text-danger-400' : 'text-success-400'}>Reste </span>{reste(l)}</span>
+                                </span>
+                            </button>
+                            {l.isExpanded && <div className="pb-4">{editeur(l)}</div>}
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {!isEmpty && !etroit && (
+                <table className="w-full text-left border-collapse text-body">
+                    <thead>
+                        <tr className="text-[11px] font-semibold tracking-[0.06em] uppercase text-ink-400 border-t border-white/5">
+                            <th scope="col" className="px-5 h-10 font-semibold">Poste</th>
+                            <th scope="col" className="px-3 font-semibold text-right">{libelles.cible}</th>
+                            <th scope="col" className="px-3 font-semibold text-right" title="Moyenne mensuelle des 12 derniers mois (mois courant, partiel, exclu), ramenée à la période affichée">Moy. 12 mois</th>
+                            <th scope="col" className="px-3 font-semibold text-right">{libelles.reel}</th>
+                            <th scope="col" className="px-5 font-semibold text-right">Reste</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {lignes.map((l) => (
+                            <React.Fragment key={l.item.id}>
+                                <tr
+                                    // [REFONTE-NAV-L5] Ancre du deep-link Transactions → Budget (« Voir au budget »
+                                    // sur une catégorie) : usePendingFocus scrolle vers `poste:<nom>`.
+                                    data-focus-section={`poste:${l.item.name}`}
+                                    className={`border-t border-white/5 ${l.isExpanded ? 'bg-white/3' : ''}`}
+                                >
+                                    <th scope="row" className="px-5 py-3 font-normal w-[42%]">
+                                        {/* Le nom est le bouton qui déplie l'édition du poste (cible, fréquence,
+                                            attribution, historique) — absente des maquettes, gardée repliée. */}
+                                        <button
+                                            type="button"
+                                            aria-expanded={l.isExpanded}
+                                            onClick={() => basculer(l.item.id, l.isExpanded)}
+                                            className="text-ink-50 font-medium hover:underline underline-offset-2 focus-ring rounded-sm text-left"
+                                        >
+                                            {l.item.name || 'Sans nom'}
+                                        </button>
+                                        {barre(l, 'mt-2 max-w-[285px]')}
+                                    </th>
+                                    <td className="px-3 text-right"><PrivateAmount className="font-mono text-ink-50">{formatCAD(l.displayTarget)}</PrivateAmount></td>
+                                    <td className="px-3 text-right">
+                                        {l.displayAvg === null
+                                            ? <MoyenneIndisponible texte="Moyenne indisponible (aucun mois plein d'historique)" />
+                                            : <PrivateAmount className="font-mono text-ink-300">{formatCAD(l.displayAvg)}</PrivateAmount>}
+                                    </td>
+                                    <td className="px-3 text-right"><PrivateAmount className={`font-mono ${l.isOver ? 'text-danger-400' : 'text-ink-50'}`}>{formatCAD(l.spent)}</PrivateAmount></td>
+                                    <td className="px-5 text-right">{reste(l)}</td>
+                                </tr>
+                                {l.isExpanded && (
+                                    <tr className="bg-white/3">
+                                        <td colSpan={5} className="px-5 pb-5 pt-1">{editeur(l)}</td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+            <div className="border-t border-white/5 flex">{boutonAjouter}</div>
+        </section>
+    );
+};
+
+interface EditeurPosteProps {
+    l: { item: BudgetCategory; idx: number; displayTarget: number; isOver: boolean };
+    nature: 'Besoin' | 'Envie' | 'Epargne';
+    totalBudgetDisplay: number;
+    trend: number[];
+    mensuel: { name: string; value: number }[];
+    isSolo: boolean;
+    splitRatio1: number;
+    userNames: [string, string];
+    isPrivacyMode: boolean;
+    onUpdateItem: BudgetGroupTableProps['onUpdateItem'];
+    onDeleteItem: BudgetGroupTableProps['onDeleteItem'];
+    onViewTransactions?: BudgetGroupTableProps['onViewTransactions'];
+}
+
+/** Édition d'un poste (déplié) : nom, montant de base, fréquence, attribution, répartition, historique. */
+const EditeurPoste: React.FC<EditeurPosteProps> = ({
+    l, totalBudgetDisplay, trend, mensuel, isSolo, splitRatio1, userNames, isPrivacyMode, onUpdateItem, onDeleteItem, onViewTransactions,
+}) => {
+    const { item, idx, displayTarget, isOver } = l;
+    const percentageOfBudget = totalBudgetDisplay > 0 ? (displayTarget / totalBudgetDisplay) * 100 : 0;
+    // [A11Y-PRIVACY-CHAINES-RESTANTES] La répartition était UNE CHAÎNE qui mêlait les prénoms et les
+    // montants — donc plus aucun nœud à masquer. Elle est maintenant une LISTE de parts : le nom reste
+    // lisible, le montant redevient un nœud. Deux raisons de ne pas simplement envelopper la phrase
+    // entière : « ••• » seul ne dirait plus QUI paie quoi, et la répartition ENTRE CONJOINTS est une
+    // information relationnelle (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
+    const parts: Array<{ nom: string; montant: number }> = isSolo
+        ? [{ nom: userNames[0], montant: displayTarget }]
+        : item.type === 'Commun'
+            ? [
+                { nom: userNames[0].substring(0, 3), montant: displayTarget * splitRatio1 },
+                { nom: userNames[1].substring(0, 3), montant: displayTarget * (1 - splitRatio1) },
+            ]
+            : item.type === 'Perso 1'
+                ? [{ nom: userNames[0], montant: displayTarget }]
+                : [{ nom: userNames[1], montant: displayTarget }];
+    const champ = 'h-10 px-3 text-body text-ink-50';
+    const etiquette = 'text-meta text-ink-400';
+
+    return (
+        <div className="flex flex-col gap-4 rounded-xl border border-white/8 bg-dark/40 p-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <label className="flex flex-col gap-1 col-span-2 lg:col-span-1">
+                    <span className={etiquette}>Nom du poste</span>
+                    <input aria-label="Nom du poste" type="text" value={item.name} onChange={(e) => onUpdateItem(idx, 'name', e.target.value)} className={champ} />
+                </label>
+                <div className="flex flex-col gap-1">
+                    <span className={etiquette} aria-hidden="true">Montant de base</span>
+                    <div className="flex items-center gap-1.5">
+                        {/* [A11Y-PRIVACY-SALAIRE] Le nom porte le POSTE (déjà visible, aucune fuite de
+                            montant) : distinguable d'une ligne à l'autre, en mode normal comme discret. */}
+                        <PrivateNumberInput
+                            type="number"
+                            value={item.target}
+                            onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
+                            className={`${champ} w-full font-mono text-right`}
+                            aria-label={`Montant de base — ${item.name}`}
+                            title="Modifier le montant de base"
+                        />
+                        <span className="text-meta text-ink-400 shrink-0">{item.frequency === 'Monthly' ? '/m' : item.frequency === 'Yearly' ? '/an' : ''}</span>
+                    </div>
+                </div>
+                <label className="flex flex-col gap-1">
+                    <span className={etiquette}>Fréquence</span>
+                    <select aria-label={`Fréquence — ${item.name || `poste ${idx + 1}`}`} value={item.frequency} onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)} className={champ}>
+                        <option value="Weekly">Hebdo</option>
+                        <option value="Monthly">Mensuel</option>
+                        <option value="Quarterly">Trimestre</option>
+                        <option value="Yearly">Annuel</option>
+                    </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                    <span className={etiquette}>Attribution</span>
+                    <select aria-label={`Attribution — ${item.name || `poste ${idx + 1}`}`} value={item.type} onChange={(e) => onUpdateItem(idx, 'type', e.target.value)} className={champ}>
+                        <option value="Commun">Commun</option>
+                        <option value="Perso 1">Perso 1</option>
+                        <option value="Perso 2">Perso 2</option>
+                    </select>
+                </label>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-ink-300">
+                <span>Part du budget <span className="font-mono text-ink-100">{formatNumber(percentageOfBudget, { decimals: 1 })} %</span></span>
+                <span className="font-mono">
+                    {parts.map((p, i) => (
+                        <React.Fragment key={p.nom}>
+                            {i > 0 && ' / '}
+                            {p.nom}: <PrivateAmount>{formatCAD(p.montant)}</PrivateAmount>
+                        </React.Fragment>
+                    ))}
+                </span>
+                <span className="flex items-center gap-2">Tendance (6 mois) <Sparkline data={trend} color={isOver ? '#f87171' : '#34b39a'} poste={item.name} /></span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-ink-400">Historique (6 derniers mois)</div>
+                    {/* [REFONTE-NAV-L5] Cross-link sobre vers les transactions de la catégorie. */}
+                    {onViewTransactions && (
+                        <button
+                            type="button"
+                            onClick={() => onViewTransactions(item.name)}
+                            className="touch-target inline-flex items-center text-meta text-ink-100 underline underline-offset-2 focus-ring rounded-sm px-1 -my-3 whitespace-nowrap"
+                            aria-label={`Voir les transactions de la catégorie ${item.name}`}
+                        >
+                            Voir les transactions →
+                        </button>
+                    )}
+                </div>
+                {/* [A11Y-BUDGETGROUP-CHART-NOALT] `role="img"` + `aria-label` pour le nommer, et
+                    `ChartDataTable` pour en LIRE les données. */}
+                <div style={{ width: '100%', height: '150px' }} role="img" aria-label={`Dépenses mensuelles de ${item.name} sur les six derniers mois, comparées à la cible du poste.`}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={mensuel}>
+                            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                            <XAxis dataKey="name" stroke="#8896a8" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#8896a8" tick={{ fontSize: 10 }} width={36} tickLine={false} axisLine={false} tickFormatter={maskedTick(isPrivacyMode, (v: number) => String(v))} />
+                            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
+                            <ReferenceLine y={displayTarget} stroke="#8896a8" strokeDasharray="3 3" label={{ position: 'right', value: 'Cible', fill: '#8896a8', fontSize: 10 }} />
+                            <Bar dataKey="value" fill={isOver ? '#f87171' : '#34b39a'} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+                {/* Les MÊMES données, en table `sr-only` : le formateur gère le mode discret — l'alternative
+                    textuelle n'est pas une porte dérobée sur les montants (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). */}
+                <ChartDataTable
+                    caption={`Dépenses mensuelles de ${item.name} sur les six derniers mois (cible : ${isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(displayTarget)})`}
+                    columns={[
+                        { key: 'name', label: 'Mois' },
+                        { key: 'value', label: 'Dépense réelle', format: (v) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v))) },
+                    ]}
+                    rows={mensuel}
+                />
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    onClick={() => onDeleteItem(item.id)}
+                    className="min-h-11 px-2 text-meta text-danger-400 underline underline-offset-2 focus-ring rounded-sm"
+                >
+                    Supprimer le poste
                 </button>
             </div>
         </div>

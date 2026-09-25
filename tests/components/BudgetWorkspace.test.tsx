@@ -80,7 +80,7 @@ describe('[REFONTE-NAV-L5] BudgetWorkspace — en-tête de page et sous-onglets'
     it('rend les trois sous-onglets, Budget sélectionné par défaut', () => {
         render(<BudgetWorkspace {...baseProps} />);
         const tabs = screen.getAllByRole('tab');
-        expect(tabs.map(t => t.textContent)).toEqual(['Budget', 'Charges fixes & Abos', 'Santé']);
+        expect(tabs.map(t => t.textContent)).toEqual(['Budget', 'Charges fixes et abonnements', 'Santé']);
         expect(screen.getByRole('tab', { name: 'Budget' }).getAttribute('aria-selected')).toBe('true');
     });
 });

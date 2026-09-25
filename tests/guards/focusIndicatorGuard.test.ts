@@ -31,9 +31,9 @@ const COMPENSE = /focus:(ring|border|bg|text|shadow|outline)|focus-ring|focus-vi
  */
 const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string }> = [
     {
-        fichier: 'Budget.tsx', jeton: 'type="date"',
-        raison: 'les deux champs de période vivent dans une pilule qui porte `focus-within:border-primary/50` '
-            + '— un seul conteneur, deux champs couverts, et pas d\'anneau qui déborde de la pilule.',
+        fichier: 'pilotage.tsx', jeton: 'type="date"',
+        raison: 'les deux champs de période vivent dans un cadre qui porte `focus-within:border-white/30` '
+            + '— un seul conteneur, deux champs couverts, et pas d\'anneau qui déborde du cadre ([S5-REFONTE-BUDGET]).',
     },
     {
         fichier: 'CommandPalette.tsx', jeton: 'placeholder-ink-400',

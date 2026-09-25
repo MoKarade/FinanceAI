@@ -1,108 +1,88 @@
 import React from 'react';
-import { formatCAD } from '../../utils/format';
+import { formatCAD, formatVariationPct } from '../../utils/format';
 import { PrivateAmount } from '../ui/PrivateAmount';
 
 /**
  * Phase D'.5 — tuile fusionnée "Prévu / Réel" pour le Budget.
  *
- * Affiche les deux valeurs côte-à-côte avec écart calculé automatiquement.
- * Indicateur visuel : vert si réel ≤ prévu pour revenus/restant, ou si
- * réel ≤ prévu pour dépenses (mode invertGoodBad).
+ * [S5-REFONTE-BUDGET] Tuile des maquettes E/M-budget : libellé + écart en % (réel vs prévu), le RÉEL
+ * en grand, une barre (réel / prévu), puis « Prévu » et « Objectif ». L'écart se calcule toujours
+ * Réel vs Prévu ; l'objectif reste une TROISIÈME valeur affichée, sans entrer dans le calcul.
  *
- * [BUDGET-REEL-PREVISIONNEL-OBJECTIF] `objectif` optionnel — une TROISIÈME valeur (cible saisie
- * par Marc : somme des cibles de dépense par catégorie pour les tuiles de dépenses, salaire
- * déclaré au profil pour Revenus), affichée à côté de Prévu/Réel sans changer le calcul d'écart
- * existant (toujours Réel vs Prévu). Absent → comportement IDENTIQUE à avant (rétrocompat).
+ * [BUDGET-REEL-PREVISIONNEL-OBJECTIF] `objectif` optionnel — la cible saisie (somme des cibles de
+ * dépense par catégorie pour les tuiles de dépenses, salaire déclaré au profil pour Revenus).
+ * Absent → ni libellé ni montant : jamais un « Objectif 0 $ » crédible.
+ *
+ * Hooks de test : `data-kpi` (la tuile, par libellé), `data-kpi-reel`, `data-kpi-objectif`.
  */
-
-type Variant = 'primary' | 'success' | 'info' | 'warning' | 'danger';
 
 interface DualKPIStatProps {
     label: string;
-    icon?: React.ReactNode;
     prevu: number;
     reel: number;
     /** [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Cible saisie (Objectif) — 3e valeur, optionnelle. */
     objectif?: number;
+    /** Ce que « Prévu » veut dire pour cette tuile (infobulle, jamais de montant). */
+    titrePrevu?: string;
     /**
-     * [A11Y-PRIVACY-SCAN-GLOBAL] `React.ReactNode`, pas `string` : les trois montants de cette carte
-     * passent par `PrivateAmount`, mais le sous-libellé sortait EN CLAIR juste en dessous — et un
-     * montant interpolé dans une CHAÎNE n'est plus un nœud à envelopper. En le typant `ReactNode`,
-     * l'appelant peut masquer ce qui doit l'être et garder lisible ce qui l'entoure.
-     * ⚠️ Cette carte ne peut pas masquer le sous-libellé À SA PLACE : il mêle du texte explicatif
-     * (« Budget = moy. passée (6 mois) ») et parfois un montant. Masquer le tout retirerait
-     * l'explication ; ne rien masquer laissait fuir le montant.
+     * [A11Y-PRIVACY-SCAN-GLOBAL] Note sous la tuile — `ReactNode` pour que l'appelant masque le
+     * montant qu'elle porte (`PrivateAmount`) et garde lisible le texte qui l'entoure.
      */
-    sublabel?: React.ReactNode;
-    variant?: Variant;
+    note?: React.ReactNode;
     /** Inverse la logique vert/rouge : true pour Dépenses (moins = mieux). */
     invertGoodBad?: boolean;
+    /** Couleur de la barre : `ecart` (celle de l'écart, défaut), `succes` (vert), `neutre` (claire). */
+    barre?: 'ecart' | 'succes' | 'neutre';
 }
 
-// Refonte sobre (choix Marc) : variantes neutralisées (plus de liseré coloré).
-const NEUTRAL = { border: 'border-l-white/10', bg: 'bg-white/2', label: 'text-ink-300' };
-const VARIANT_STYLES: Record<Variant, { border: string; bg: string; label: string }> = {
-    primary: NEUTRAL, success: NEUTRAL, info: NEUTRAL, warning: NEUTRAL, danger: NEUTRAL,
-};
-
 export const DualKPIStat: React.FC<DualKPIStatProps> = ({
-    label,
-    icon,
-    prevu,
-    reel,
-    objectif,
-    sublabel,
-    variant = 'info',
-    invertGoodBad = false,
+    label, prevu, reel, objectif, titrePrevu, note, invertGoodBad = false, barre = 'ecart',
 }) => {
-    const styles = VARIANT_STYLES[variant];
     const ecart = reel - prevu;
-    const ecartPct = prevu !== 0 ? (ecart / Math.abs(prevu)) * 100 : 0;
+    // Prévu nul : un écart en % n'a pas de sens → « — » (jamais un « +0,0 % » mesuré en apparence).
+    const ecartPct = prevu !== 0 ? (ecart / Math.abs(prevu)) * 100 : null;
 
-    // Logique vert/rouge :
-    //   - Dépenses (invertGoodBad=true) : réel > prévu = rouge (dépassement)
-    //   - Reste (default) : réel > prévu = vert (mieux que prévu)
-    const isGood = invertGoodBad ? ecart <= 0 : ecart >= 0;
-    const ecartColor = ecart === 0 ? 'text-ink-400' : isGood ? 'text-success-400' : 'text-danger-400';
+    // Dépenses (invertGoodBad) : sous le prévu = vert, jusqu'à +50 % = ambre, au-delà = rouge.
+    // Revenus / Restant : au-dessus du prévu = vert, en dessous = rouge.
+    const ton = ecartPct === null || ecart === 0 ? 'neutre'
+        : invertGoodBad
+            ? (ecart <= 0 ? 'succes' : ecartPct <= 50 ? 'alerte' : 'danger')
+            : (ecart >= 0 ? 'succes' : 'danger');
+    const texte = { neutre: 'text-ink-400', succes: 'text-success-400', alerte: 'text-warning-400', danger: 'text-danger-400' }[ton];
+    const fond = barre === 'succes' ? 'bg-success-400' : barre === 'neutre' ? 'bg-ink-100'
+        : { neutre: 'bg-ink-300', succes: 'bg-success-400', alerte: 'bg-warning-400', danger: 'bg-danger-400' }[ton];
+    const remplissage = prevu > 0 ? Math.min(1, Math.max(0, reel / prevu)) : 0;
+    const pct = <span className={`font-mono tabular-nums ${texte}`}>{formatVariationPct(ecartPct)}</span>;
 
     return (
-        <div className={`rounded-card border border-white/5 border-l-4 ${styles.border} ${styles.bg} backdrop-blur-xs p-4 flex flex-col gap-2 hover:bg-white/4 transition-colors`}>
-            <div className="flex items-center justify-between">
-                <span className={`kpi-label ${styles.label}`}>
-                    {icon && <span aria-hidden="true" className="mr-1">{icon}</span>}
-                    {label}
-                </span>
-                <span className={`text-tiny font-mono font-bold ${ecartColor} tabular-nums`}>
-                    {ecart >= 0 ? '+' : ''}{ecartPct.toFixed(1)}%
-                </span>
+        <div data-kpi={label} className="rounded-2xl bg-surface border border-white/6 px-3.5 py-3 lg:px-[18px] lg:py-4 flex flex-col gap-2 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-meta lg:text-[11px] lg:font-semibold lg:tracking-[0.06em] lg:uppercase text-ink-400 truncate">{label}</span>
+                <span className="hidden lg:inline text-meta">{pct}</span>
             </div>
             {/* [D6-SR] — montants via PrivateAmount (blur visuel + masquage lecteur d'écran). */}
-            <div className="flex items-baseline gap-2 flex-wrap">
-                <PrivateAmount className="text-kpi text-ink-50 tabular-nums">
-                    {formatCAD(reel)}
-                </PrivateAmount>
-                <span className="text-meta text-ink-500" aria-hidden="true">/</span>
-                <PrivateAmount className="text-meta text-ink-400 tabular-nums">
-                    {formatCAD(prevu)}
-                </PrivateAmount>
+            <div className="flex items-baseline gap-2 min-w-0">
+                <span data-kpi-reel="" className="font-mono text-[18px] lg:text-[26px] leading-tight font-bold text-ink-50 tabular-nums whitespace-nowrap">
+                    <PrivateAmount>{formatCAD(reel)}</PrivateAmount>
+                </span>
+                <span className="lg:hidden text-tiny">{pct}</span>
+            </div>
+            <span className="block h-1 rounded-full bg-white/8 overflow-hidden" aria-hidden="true">
+                <span className={`block h-full rounded-full ${fond}`} style={{ width: `${remplissage * 100}%` }} />
+            </span>
+            <div className="flex flex-wrap lg:flex-nowrap items-center lg:justify-between gap-x-1 lg:gap-x-2 text-[10px] lg:text-meta text-ink-400">
+                <span title={titrePrevu} data-kpi-prevu="">Prévu <PrivateAmount className="tabular-nums">{formatCAD(prevu)}</PrivateAmount></span>
                 {objectif !== undefined && (
                     <>
-                        <span className="text-meta text-ink-500" aria-hidden="true">/</span>
-                        {/* [a11y panel] Libellé `sr-only` INLINE plutôt qu'un `title` HTML : sur un
-                            `<span>` générique, `title` n'est ni annoncé de façon fiable ni atteignable
-                            au clavier — le 3e chiffre n'aurait aucun lien programmatique avec le mot
-                            « Objectif » de la légende, d'autant que `flex-wrap` peut casser la
-                            correspondance positionnelle en petite largeur. */}
-                        <PrivateAmount className="text-meta text-info-400 tabular-nums">
-                            <span className="sr-only">Objectif : </span>{formatCAD(objectif)}
-                        </PrivateAmount>
+                        <span className="lg:hidden" aria-hidden="true">·</span>
+                        <span>
+                            <span className="lg:hidden">Obj.</span><span className="hidden lg:inline">Objectif</span>{' '}
+                            <span data-kpi-objectif="" className="tabular-nums"><PrivateAmount>{formatCAD(objectif)}</PrivateAmount></span>
+                        </span>
                     </>
                 )}
             </div>
-            <div className="flex items-center justify-between text-tiny">
-                <span className="text-ink-400">{objectif !== undefined ? 'Réel / Prévu / Objectif' : 'Réel / Prévu'}</span>
-                {sublabel && <span className="text-ink-400 italic text-right truncate ml-2">{sublabel}</span>}
-            </div>
+            {note && <p className="text-[10px] lg:text-tiny leading-snug text-ink-400">{note}</p>}
         </div>
     );
 };

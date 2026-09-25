@@ -23,6 +23,7 @@ import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { logError, logErrorThrottled } from '../errorLogger';
 import type { ResultatHistorique } from '../marketData';
 import { causePermanente } from '../marketData/messageEchec';
+import { variantClosePlausible } from './plausibiliteCours';
 import type { MarketDataErrorCode } from '../marketData/types';
 import { verdictDeviseHistorique, messageDeviseIncompatible } from './deviseHistorique';
 
@@ -154,17 +155,9 @@ export function historySymbolVariants(symbol: string, currency: string | undefin
     return (SUFFIXES[(currency || '').toUpperCase()] ?? []).map((s) => `${symbol}${s}`);
 }
 
-/**
- * Le dernier close d'une VARIANTE est-il PLAUSIBLE vs le prix courant connu de l'actif ?
- * Garde anti-collision de ticker (« ABC » nu peut désigner un AUTRE titre sur « ABC.PA ») : sans
- * référence de prix courant on REFUSE (afficher la courbe d'un autre titre avec assurance serait
- * la pire violation no-fake-data) ; avec référence, on exige un facteur ≤ 2. Exporté pour test.
- */
-export function variantClosePlausible(lastClose: number, currentPrice: number | undefined): boolean {
-    const ref = Number(currentPrice);
-    if (!Number.isFinite(ref) || ref <= 0) return false;
-    return lastClose >= ref * 0.5 && lastClose <= ref * 2;
-}
+// [QUOTE-SYMBOLE-SANS-CONTROLE] Déplacée dans un module sans dépendance, pour que la vérification
+// d'un symbole COLLÉ (écran Investissements) la partage sans tirer ce module-ci dans son chunk.
+export { variantClosePlausible };
 
 /** Date du premier achat connu (purchases effectifs, sinon dateBought), ou null. */
 function firstPurchaseDate(a: Asset): string | null {

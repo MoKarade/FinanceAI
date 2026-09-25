@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-25 — Symbole de cotation : vérifié avant d'effacer la courbe
+
+- Quand tu fixes le symbole de cotation d'un titre (diagnostic « Cours non synchronisés »), l'app
+  vérifie maintenant ce symbole AVANT d'effacer l'historique du titre. S'il ne renvoie aucun cours,
+  si le fournisseur ne répond pas, ou s'il est coté dans une autre devise que ton titre, il est
+  refusé avec la raison, et rien n'est modifié. Avant, la courbe était effacée et le prix restait
+  figé sans explication.
+- Si le cours du symbole est très éloigné du prix connu, il est appliqué quand même (tu peux avoir
+  raison et le prix stocké tort), mais l'app te le signale.
+
 ## 2026-09-25 — Historique du Futur : la dette de chaque date
 
 - Le graphe « Historique » du Futur soustrayait ta dette d'aujourd'hui à toutes les dates passées.

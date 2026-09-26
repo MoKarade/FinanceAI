@@ -33,6 +33,10 @@ describe('peutArmer — chemins sensibles : jamais armée', () => {
         'scripts/commit-gate.mjs', 'outils/commit-gate/x.mjs',
         // propres à FinanceAI (auto-merge.json : chemins_label_validation)
         'api/auth/callback.ts', 'api/_lib/session.ts', 'api/_lib/sessionStore.ts', 'api/_lib/garde.ts', 'api/_lib/relay.ts', 'vercel.json',
+        'api/_lib/autreChose.ts', 'api/claude/v1/messages.ts', 'mcp/http.ts', 'mcp/tools/getTaxSituation.spec.ts',
+        'services/secureKeyStore.ts', 'vite.config.ts', 'index.html',
+        // réglages : tout fichier settings*.json, à toute profondeur
+        'settings.json', 'config/settings.prod.json', 'a/b/settings.local.json',
         // variantes de casse, séparateurs Windows, chemins déguisés
         'Scripts/Hooks/x.mjs', '.GITHUB/workflows/x.yml', 'scripts\\hooks\\x.mjs', './.github/workflows/x.yml',
     ];
@@ -67,7 +71,7 @@ describe('peutArmer — le code ordinaire de l\'app reste automatique (pas de su
         'services/projection.ts', 'components/TaxCenter.tsx', 'tests/x.test.ts', 'docs/CONVENTIONS.md', 'HANDOVER.md', 'package.json',
         // ⚠️ dossiers REACT nommés « hooks » et écran Réglages de l'app : pas des hooks de l'agence
         'hooks/useAiChat.ts', 'hooks/useFocusTrap.ts', 'components/Settings.tsx', 'components/settings/BackupPanel.tsx',
-        'components/settings/sections/UsersCard.tsx', 'api/_lib/autreChose.ts', 'api/claude/v1/messages.ts',
+        'components/settings/sections/UsersCard.tsx', 'services/secureKeyStoreHelper.ts', 'src/index.html.ts',
     ];
     it.each(ordinaires)('%s', (f) => {
         const d = peutArmer(pr([f]), config);
@@ -110,6 +114,30 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
         expect(CHEMINS_INTERDITS).toContain('.github/**');
         expect(CHEMINS_INTERDITS).not.toContain('hooks/**');
         expect(CHEMINS_INTERDITS).not.toContain('**/settings*');
+    });
+
+    // Anti-vacuité : la copie locale est ADAPTÉE, donc modifiable ; si elle perd un chemin d'agent, la garde ne protège plus rien
+    // sans que le reste de la suite s'en aperçoive. Chaque famille doit rester REPRÉSENTÉE (motif exact) ET bloquer un fichier réel.
+    it('la liste locale garde chaque famille de chemins d\'agent (motif présent ET fichier bloqué)', () => {
+        const famille: Array<[string, string]> = [
+            ['scripts/hooks/**', 'scripts/hooks/commit-gate.mjs'],
+            ['.claude/**', '.claude/settings.json'],
+            ['.github/**', '.github/workflows/ci.yml'],
+            ['**/commit-gate*', 'outils/commit-gate.mjs'],
+            ['**/settings*.json', 'x/settings.local.json'],
+            ['CODEOWNERS', 'CODEOWNERS'],
+            ['modeles/**', 'modeles/auto-merge/autoMerge.mjs'],
+        ];
+        for (const [motif, exemple] of famille) {
+            expect(CHEMINS_INTERDITS, `motif perdu : ${motif}`).toContain(motif);
+            expect(peutArmer(pr([exemple]), { ...config, chemins_interdits: [], chemins_label_validation: [] }).armer, exemple).toBe(false);
+        }
+    });
+
+    it('la config FinanceAI garde ses chemins sensibles propres (label validation-marc)', () => {
+        for (const m of ['api/**', 'mcp/**', 'services/secureKeyStore.ts', 'vite.config.ts', 'index.html', 'vercel.json']) {
+            expect(config.chemins_label_validation, `chemin perdu : ${m}`).toContain(m);
+        }
     });
 });
 

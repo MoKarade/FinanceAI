@@ -14,10 +14,11 @@
     "**/*.pem"
   ],
   "chemins_label_validation": [
-    "api/auth/**",
-    "api/_lib/session*",
-    "api/_lib/garde.ts",
-    "api/_lib/relay.ts",
+    "api/**",
+    "mcp/**",
+    "services/secureKeyStore.ts",
+    "vite.config.ts",
+    "index.html",
     "vercel.json"
   ],
   "carence_dependabot_jours": 0

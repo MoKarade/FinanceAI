@@ -9,8 +9,8 @@
 > BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la
 > BASE, la PR n'est lue que par l'API ; `armer.mjs` appelle `peutArmer` : brouillon, fork, label `validation-marc`/`do-not-merge`
 > ou fichier sensible ⇒ PAS armée (et désarmée si elle l'était). Sensibles : `scripts/hooks/**`, `.github/**`, `.claude/**`,
-> `**/settings.json`, `**/commit-gate*`, `CODEOWNERS`, `modeles/**`, `.gitattributes`, + FinanceAI : `api/auth/**`,
-> `api/_lib/session*`, `garde.ts`, `relay.ts`, `vercel.json` (label `validation-marc` posé). ⚠️ ADAPTATION : `hooks/**` et
+> `**/settings*.json`, `**/commit-gate*`, `CODEOWNERS`, `modeles/**`, `.gitattributes`, + FinanceAI : `api/**` (entier), `mcp/**`, `services/secureKeyStore.ts`, `vite.config.ts`, `index.html`,
+> `vercel.json` (label `validation-marc` posé). ⚠️ ADAPTATION : `hooks/**` et
 > `**/settings*` du modèle sont RETIRÉS ici — `hooks/` = hooks REACT, `components/settings/**` = écran Réglages (~35 fichiers d'UI
 > bloqués à tort) ; à refaire à chaque re-synchronisation (`.github/scripts/auto-merge/chemins-interdits.json`, `_note`).
 > Copies de modèles et leurs empreintes : `.github/scripts/auto-merge/COPIES.md`. Tests : `tests/blocageFusion.test.ts` (table

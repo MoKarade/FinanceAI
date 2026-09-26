@@ -17,8 +17,7 @@
     "chemins-interdits.json",
     "**/chemins-interdits.json",
     ".gitattributes",
-    "**/settings.json",
-    "**/settings.local.json"
+    "**/settings*.json"
   ],
-  "_note": "COPIE ADAPTÉE de atelier/modeles/auto-merge/chemins-interdits.json (celle de BatchChef, relue par pole-securite) : les entrées cockpit/* (propres à l'Atelier) sont retirées, et — ADAPTATION FinanceAI — `hooks/**`, `**/hooks/**`, `**/settings*`, `**/settings*/**` sont REMPLACÉES par `scripts/hooks/**` (déjà là), `.claude/**` (déjà là), `**/settings.json` et `**/settings.local.json` : ici `hooks/` est le dossier des hooks REACT (useAiChat.ts…) et `components/settings/**` l'écran Réglages de l'app, soit ~35 fichiers d'interface qui auraient été bloqués à tort. À la re-synchronisation : recopier la liste de l'Atelier puis refaire ces deux retouches. Les chemins propres à FinanceAI sont dans .github/auto-merge.json."
+  "_note": "COPIE ADAPTÉE de atelier/modeles/auto-merge/chemins-interdits.json (celle de BatchChef, relue par pole-securite) : les entrées cockpit/* (propres à l'Atelier) sont retirées, et — ADAPTATION FinanceAI — `hooks/**`, `**/hooks/**`, `**/settings*`, `**/settings*/**` sont REMPLACÉES par `scripts/hooks/**` (déjà là), `.claude/**` (déjà là), `**/settings*.json` (nom de fichier seulement : settings.json, settings.local.json, settings.foo.json ; jamais le dossier components/settings/) : ici `hooks/` est le dossier des hooks REACT (useAiChat.ts…) et `components/settings/**` l'écran Réglages de l'app, soit ~35 fichiers d'interface qui auraient été bloqués à tort. À la re-synchronisation : recopier la liste de l'Atelier puis refaire ces deux retouches. Les chemins propres à FinanceAI sont dans .github/auto-merge.json."
 }

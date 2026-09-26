@@ -155,7 +155,7 @@
 > Audit sécurité P3-P6 (findings élevés 1-2) : `apply_*` écrivaient sans confirmation et `confirm:true` était fourni par le modèle.
 > Désormais 8 outils via `mcp/tools/_writeTool.ts` : 1er appel = aperçu + `confirmToken` (usage unique, 5 min, lié session/outil/arguments/changements),
 > 2e appel = mêmes arguments + jeton. `confirm` retiré du schéma MCP. Plafond 500 éléments, annotations MCP, journal d'audit sans donnée.
-> Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0021. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
+> Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0023. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
 > ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion.
 >
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**

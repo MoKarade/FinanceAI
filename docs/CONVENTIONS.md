@@ -17144,3 +17144,4 @@ dépassement de tampon d'`execSync` perdait tout).
 - Toute incertitude (guillemet non fermé, `cd`, `git -C`, `git reset/rm` avant le commit, `add -p`) → suite
   complète : la logique pure est testable (`tests/gateCommitAnalyse.test.ts`), le défaut reste le cas sûr.
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
+- Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).

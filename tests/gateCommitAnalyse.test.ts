@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { analyseCommande, fichiersAttendus } from '../scripts/hooks/lib/analyseCommande.mjs';
+import { analyseCommande, fichiersAttendus, toucheLeGate, estConfigGlobale, finDeSortie } from '../scripts/hooks/lib/analyseCommande.mjs';
 
 const a = (c: string) => analyseCommande(c);
 
@@ -30,6 +30,11 @@ describe('analyseCommande — faux positifs (le texte contient « git commit » 
 });
 
 describe('analyseCommande — vrais commits', () => {
+  it('les redirections ne sont pas des arguments (2>&1, > f, 2>/dev/null)', () => {
+    const r = a('git add a.ts 2>&1 | grep -v x; git commit -m y > out.txt 2>/dev/null');
+    expect(r).toMatchObject({ estCommit: true, incertain: false });
+    expect(r.chemins).toEqual(['a.ts']);
+  });
   it('commit simple', () => {
     const r = a('git commit -m "[X] message"');
     expect(r).toMatchObject({ estCommit: true, incertain: false, index: true, commitTout: false, amend: false });
@@ -106,8 +111,108 @@ describe('analyseCommande — défaut sûr (incertain → suite complète)', () 
   it('un texte non fermé qui ne parle pas de commit est ignoré', () => {
     expect(a('echo "commit').estCommit).toBe(false);
   });
-  it('entrée non textuelle', () => {
-    expect(a(undefined as never).estCommit).toBe(false);
+  it('entrée non textuelle → jamais « pas un commit »', () => {
+    for (const x of [undefined, null, 42, {}, ['git', 'commit']]) {
+      const r = a(x as never);
+      expect(r.estCommit && r.incertain).toBe(true);
+    }
+  });
+  it('commande vide ou sans rapport avec git : rien à garder', () => {
+    expect(a('').estCommit).toBe(false);
+    expect(a('   ').estCommit).toBe(false);
+    expect(a('npm run build').estCommit).toBe(false);
+  });
+});
+
+// [revue pole-securite #1070] Table d'ATTAQUE : chaque forme qui peut lancer un commit sans que le texte
+// brut ressemble à `git commit` doit répondre estCommit (incertain ou non) — JAMAIS « pas un commit ».
+describe('analyseCommande — table d’attaque (fail-open interdit)', () => {
+  const attaques = [
+    'git com""mit -m x',
+    'git "com"mit -m x',
+    'git com\\mit -m x',
+    "g''it commit -m x",
+    'bash -c "git commit -m x"',
+    "sh -c 'git commit -m x'",
+    'eval "git commit -m x"',
+    'env git commit -m x',
+    'env GIT_AUTHOR_NAME=x git commit -m y',
+    'sudo git commit -m x',
+    'nice git commit -m x',
+    'nohup git commit -m x',
+    'timeout 5 git commit -m x',
+    'echo x | xargs git commit -m',
+    'find . -maxdepth 0 -exec git commit -m x {} +',
+    '/usr/bin/git commit -m x',
+    '"C:/Program Files/Git/cmd/git.exe" commit -m x',
+    'GIT commit -m x',
+    'C=commit; git $C -m x',
+    'git $(echo commit) -m x',
+    'G=git; $G commit -m x',
+    'git -c alias.x=commit x -m y',
+    'git ci -m x',
+    'git -c x=y commit -m z',
+    "python -c 'import os; os.system(\"git commit -m x\")'",
+  ];
+  it.each(attaques)('%s', (c) => {
+    const r = a(c);
+    expect(r.estCommit).toBe(true);
+  });
+
+  const shq = (x: string) => `'${x.split("'").join("'\\''")}'`;
+  const hostiles = ['a&b', '$(x)', '-x', 'a\nb', "it's", 'a;b', 'a|b', 'a`b`', 'a>b', '%PATH%', 'a^b', 'a!b', 'a"b'];
+  it.each(hostiles)('chemin hostile refusé (incertain) : %j', (chemin) => {
+    for (const c of [`git add -- ${shq(chemin)} && git commit -m x`, `git commit -m x -- ${shq(chemin)}`]) {
+      const r = a(c);
+      expect(r.estCommit).toBe(true);
+      expect(r.incertain).toBe(true);
+      expect(r.chemins).not.toContain(chemin);
+    }
+  });
+
+  it('git add avec un chemin sain reste NON incertain', () => {
+    const r = a('git add services/x.ts && git commit -m x');
+    expect(r.incertain).toBe(false);
+  });
+  it('des commandes git sans rapport avec le commit ne déclenchent rien', () => {
+    for (const c of ['git status', 'git push -u origin b', 'git diff --stat', 'git log --oneline -3', 'git fetch origin main', 'git checkout -b x', 'node --check scripts/hooks/commit-gate.mjs && git diff --stat']) {
+      expect(a(c).estCommit).toBe(false);
+    }
+  });
+});
+
+describe('finDeSortie — erreur d’origine plafonnée', () => {
+  it('garde les 200 dernières lignes', () => {
+    const t = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n');
+    const r = finDeSortie(t).split('\n');
+    expect(r).toHaveLength(200);
+    expect(r[199]).toBe('l499');
+  });
+  it('plafonne à 20 ko même sur une seule très longue ligne', () => {
+    expect(finDeSortie('x'.repeat(100_000)).length).toBe(20 * 1024);
+  });
+});
+
+describe('estConfigGlobale — ce qui impose la suite complète', () => {
+  it.each(['package.json', 'package-lock.json', 'tsconfig.json', 'tsconfig.node.json', 'vite.config.ts', 'vitest.config.ts', 'components/a.css', 'index.html', 'tailwind.config.js'])('%s', (f) => {
+    expect(estConfigGlobale(f)).toBe(true);
+  });
+  it.each(['services/a.ts', 'scripts/hooks/x.mjs', '.github/workflows/ci.yml', 'docs/a.md', 'tests/a.test.ts'])('%s : ciblable', (f) => {
+    expect(estConfigGlobale(f)).toBe(false);
+  });
+});
+
+describe('toucheLeGate — liste blanche des fichiers sans effet', () => {
+  it('docs et markdown seuls : ne touchent pas le gate', () => {
+    expect(toucheLeGate(['HANDOVER.md', 'docs/a.txt', 'docs/x/y.png'])).toBe(false);
+  });
+  it('tout le reste compte, y compris config, lockfile, css, scripts .mjs', () => {
+    for (const f of ['package.json', 'package-lock.json', 'tsconfig.json', 'tsconfig.node.json', 'vite.config.ts', 'vitest.config.ts', 'a.css', 'scripts/hooks/x.mjs', '.github/workflows/ci.yml', 'services/a.ts']) {
+      expect(toucheLeGate(['README.md', f])).toBe(true);
+    }
+  });
+  it('liste vide = inconnu = suite complète', () => {
+    expect(toucheLeGate([])).toBe(true);
   });
 });
 
@@ -159,8 +264,13 @@ describe('commit-gate.mjs — bout en bout, sans dépôt ni suite lancée', () =
     expect(r.status).toBe(0);
     expect(r.stderr).toBe('');
   });
-  it('une entrée illisible sort avec 0', () => {
+  it('une entrée illisible BLOQUE (fail-closed), avec un message', () => {
     const r = spawnSync(process.execPath, [hook], { input: 'pas du json', encoding: 'utf8', timeout: 20_000 });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/illisible/);
+  });
+  it('un appel sans commande (autre outil) sort avec 0', () => {
+    const r = spawnSync(process.execPath, [hook], { input: JSON.stringify({ tool_input: {} }), encoding: 'utf8', timeout: 20_000 });
     expect(r.status).toBe(0);
   });
 });

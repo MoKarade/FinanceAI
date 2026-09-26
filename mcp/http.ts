@@ -36,6 +36,7 @@ import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, buildSha, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
 import { makeAttemptLimiter } from './auth/rateLimit';
+import { makeRouteGuard, type LimitedRoute, type RouteGuard } from './auth/routeRateLimit';
 import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { parseRolesJson } from '../services/fintable/rolesConfig';
 import { BodyTooLargeError, readBody, sendJson, sendRpcError } from './http/plomberie';
@@ -90,7 +91,13 @@ export interface HttpServerOptions {
      *  Absent = sélection par kind/catégorie, et refus 409 si elle est ambiguë. */
     vehiculeNomDette?: string;
     fintableRoles?: FintableMappingConfig['roles'];
+    /** [MCP-RATE-LIMIT] Garde de débit des routes (injectable pour les tests ; défaut : plafonds de `routeRateLimit.ts`). */
+    rateGuard?: RouteGuard;
 }
+
+/** [MCP-ACCESS-KEY-MIN] Longueur minimale de FINANCEAI_ACCESS_KEY (refus de démarrer en dessous). */
+export const MIN_ACCESS_KEY_LENGTH = 32;
+export const cleAccesTropCourte = (cle: string | undefined): boolean => cle !== undefined && cle.length < MIN_ACCESS_KEY_LENGTH;
 
 export interface RunningHttpServer {
     server: Server;
@@ -232,6 +239,8 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     // [MCP-CLOUDRUN-AUTH-HARDENING] UN limiteur par serveur (pas par requête) : sa mémoire EST la
     // protection. En construire un à chaque appel remettrait le compteur à zéro à chaque tentative.
     const authorizeLimiter = makeAttemptLimiter();
+    // [MCP-RATE-LIMIT] UN garde de débit par serveur (mêmes raisons : sa mémoire EST la protection).
+    const rateGuard = options.rateGuard ?? makeRouteGuard();
 
     const knownEndpoints = [
         '/mcp',
@@ -253,6 +262,21 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
             // utile — jamais un repli crédible qui masquerait le trou (`no-fake-data`).
             sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION, sha: buildSha() });
             return;
+        }
+        // [MCP-RATE-LIMIT] Débit + échecs d'authentification, AVANT tout traitement de la route.
+        const routeLimitee: LimitedRoute | null =
+            url === '/mcp' || (url === '/hub/summary' && options.hubToken) || (url === '/refresh' && options.refreshSecret)
+            || (url === '/fintable-sync' && options.fintableSyncSecret) || (url === '/vehicule/bail' && options.vehiculeSecret)
+                ? (url as LimitedRoute) : null;
+        if (routeLimitee) {
+            const entree = rateGuard.enter(routeLimitee);
+            if (!entree.ok) {
+                console.error(`[FinanceAI MCP http] ${routeLimitee} : 429 (${entree.reason === 'echecs' ? 'trop echecs authentification' : 'plafond de debit'}).`);
+                res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(entree.retryAfterSeconds), 'Cache-Control': 'no-store' });
+                res.end(JSON.stringify({ error: 'Trop de requêtes.' }));
+                return;
+            }
+            res.once('finish', () => entree.done(res.statusCode));
         }
         if (url === '/hub/summary' && options.hubToken) {
             handleHubSummary(req, res, state.store, options.hubToken);
@@ -374,6 +398,12 @@ if (isDirectRun) {
         const accessKey = process.env.FINANCEAI_ACCESS_KEY;
         const publicUrl = process.env.FINANCEAI_PUBLIC_URL?.replace(/\/$/, '');
         let auth: OAuthProvider | undefined;
+        // [MCP-ACCESS-KEY-MIN] la clé d'accès est la SEULE porte devinable (saisie à la main sur /oauth/authorize) :
+        // trop courte, elle se force malgré le limiteur d'échecs. Refus de démarrer, message SANS la valeur.
+        if (cleAccesTropCourte(accessKey)) {
+            console.error(`[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_ACCESS_KEY trop courte (< ${MIN_ACCESS_KEY_LENGTH} caractères).`);
+            process.exit(1);
+        }
         if (signingKey && accessKey) {
             auth = makeOAuthProvider({
                 signingKey, accessKey,

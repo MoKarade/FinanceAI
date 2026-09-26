@@ -87,8 +87,18 @@ describe('peutArmer — le code ordinaire de l\'app reste automatique (pas de su
 });
 
 describe('peutArmer — étiquettes, brouillon, fork, état', () => {
-    it('do-not-merge bloque ; validation-marc est INFORMATIF depuis le modèle 1.6.0 (décision de Marc : seule l\'attestation débloque un chemin sensible, le label ne bloque plus)', () => {
-        expect(peutArmer(pr(['services/a.ts'], { labels: [{ name: 'do-not-merge' }] }), config).armer).toBe(false);
+    it('do-not-merge BLOQUE (frein manuel), quel que soit le fichier ; il bloque aussi malgré une attestation valide', () => {
+        const d = peutArmer(pr(['services/a.ts'], { labels: [{ name: 'do-not-merge' }] }), config);
+        expect(d.armer).toBe(false);
+        expect(d.raison).toContain('do-not-merge');
+        expect(peutArmer(pr(['docs/x.md'], { labels: [{ name: 'do-not-merge' }] }), config).armer).toBe(false);
+        const cfg = { ...config, securite_login: 'compte-securite' };
+        const revue = { state: 'APPROVED', commit_id: SHA, user: { login: 'compte-securite', id: 1 }, submitted_at: '2026-09-26T10:00:00Z' };
+        expect(peutArmer(pr(['api/_lib/relay.ts'], { labels: [{ name: 'do-not-merge' }], reviews: [revue] }), cfg).armer).toBe(false);
+        // anti-vacuité : sans le label, le même fichier ordinaire s'arme
+        expect(peutArmer(pr(['services/a.ts']), config).armer).toBe(true);
+    });
+    it('validation-marc est INFORMATIF depuis le modèle 1.6.0 (décision de Marc : seule l\'attestation débloque un chemin sensible, le label ne bloque plus)', () => {
         expect(peutArmer(pr(['services/a.ts'], { labels: [{ name: 'validation-marc' }] }), config).armer).toBe(true);
         // …mais un chemin sensible reste bloqué avec ou sans le label : ce n'est pas lui qui protège
         expect(peutArmer(pr(['api/_lib/relay.ts'], { labels: [{ name: 'validation-marc' }] }), config).armer).toBe(false);

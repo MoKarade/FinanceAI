@@ -22,7 +22,9 @@ const RACINE = resolve(__dirname, '..');
 
 describe('[GATE-RELATED-RELIABILITY] le test homonyme est retrouvé', () => {
     it('le cas EXACT de l’incident : monthlyEvents', () => {
-        expect(testsHomonymes(['services/projection/monthlyEvents.ts'], resolve(RACINE, 'tests')))
+        // `resolve` des deux côtés : la fonction joint avec « / », `resolve` rend le séparateur de la plateforme
+        // (« \ » sous Windows) — comparer les chaînes brutes échouait en local Windows, jamais en CI Linux.
+        expect(testsHomonymes(['services/projection/monthlyEvents.ts'], resolve(RACINE, 'tests')).map((p) => resolve(p)))
             .toEqual([resolve(RACINE, 'tests/services/monthlyEvents.test.ts')]);
     });
 
@@ -65,6 +67,8 @@ describe('[GATE-RELATED-RELIABILITY] le test homonyme est retrouvé', () => {
         const decl = src.slice(src.indexOf('const TOUJOURS'));
         const construction = decl.slice(0, decl.indexOf(';'));
         expect(construction, 'TESTS_HOMONYMES calculé mais absent de la liste lancée').toMatch(/TESTS_HOMONYMES/);
-        expect(src).toMatch(/vitest run \$\{TOUJOURS\.join\(' '\)\}/);
+        // Forme actuelle du hook (sans shell : `execFileSync` + tableau, cf. GATE-COMMIT-ANALYSE) ; l'ancienne
+        // chaîne `vitest run ${TOUJOURS.join(' ')}` n'existe plus.
+        expect(src).toMatch(/vitest\('run', \.\.\.TOUJOURS\)/);
     });
 });

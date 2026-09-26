@@ -1743,7 +1743,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let _childIncomeAnna = incomeAnna;
         activeChild.forEach((child, idx) => {
             const birthOffset = getMonthOffset(child.birthDate);
-            if (!child.isActive || m < Math.max(0, birthOffset)) return;
+            // [S5-REFONTE-ENFANTS] Décision de Marc (25/09) : un enfant planifié compte TOUJOURS dans le
+            // Futur — plus d'interrupteur « actif » (l'ancien `isActive` est ignoré ; `childrenCount`
+            // plus bas comptait déjà tous les enfants, le moteur devient cohérent avec lui-même).
+            if (m < Math.max(0, birthOffset)) return;
             // birthOffset < 0 = enfant né AVANT le début de projection : il a déjà
             // son âge réel (m − birthOffset, donc > m) et n'est PAS « nouveau-né »
             // au mois 0. Le « first month » (congé parental, 1ers frais…) ne se

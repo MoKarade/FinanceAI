@@ -56,6 +56,6 @@ describe('CoupleOptimizationCard (Phase G.4)', () => {
             },
         });
         render(<CoupleOptimizationCard />);
-        expect(screen.getByText(/Configure ta clé Anthropic/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Ajouter ma clé Anthropic/i })).toBeInTheDocument();
     });
 });

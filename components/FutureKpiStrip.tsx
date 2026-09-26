@@ -49,19 +49,20 @@ const KpiTile: React.FC<{
     scope?: string;
     /** Signal additionnel à côté du libellé (ex. FxEstimateBadge) — jamais de donnée financière. */
     badge?: React.ReactNode;
-}> = ({ label, value, signed = false, sublabel, privateSublabel = false, scope, badge }) => (
-    <div className="flex-1 min-w-[140px] rounded-card bg-white/5 border border-white/5 px-4 py-3">
-        <p className="text-tiny uppercase tracking-widest text-ink-400 font-bold flex flex-wrap items-center gap-1.5">
+    /** Couleur de la valeur (maquette : dettes en rouge, épargne en vert). */
+    ton?: string;
+}> = ({ label, value, signed = false, sublabel, privateSublabel = false, scope, badge, ton = 'text-ink-50' }) => (
+    <div className="min-w-0 rounded-2xl bg-surface border border-white/6 px-[18px] py-4 flex flex-col gap-1">
+        <p className="text-[11px] font-semibold tracking-[0.06em] uppercase text-ink-400 flex flex-wrap items-center gap-1.5">
             {label}{badge}
         </p>
         {Number.isFinite(value) ? (
-            <PrivateAmount as="div" className="text-lg font-bold text-ink-50 font-mono">
+            <PrivateAmount as="div" className={`text-[22px] leading-tight font-bold font-mono ${ton}`}>
                 {signed && value > 0 ? '+' : ''}{formatCAD(value)}
             </PrivateAmount>
         ) : (
-            <div className="text-lg font-bold text-ink-300">
-                {/* [Audit a11y #600, LOW] NO_DATA_LABEL importé (source unique) — une chaîne
-                    re-codée en dur dérive en silence si le libellé canonique change. */}
+            <div className="text-[22px] leading-tight font-bold text-ink-300">
+                {/* [Audit a11y #600, LOW] NO_DATA_LABEL importé (source unique). */}
                 <span aria-hidden="true">—</span>
                 <span className="sr-only">{NO_DATA_LABEL}</span>
             </div>
@@ -75,6 +76,16 @@ const KpiTile: React.FC<{
     </div>
 );
 
+/**
+ * [S5-REFONTE-FUTUR] Où le bandeau se rend (maquettes F-bureau / F-mobile) :
+ *  · `bureau` — cinq tuiles (Patrimoine net, Total avoirs, Dettes, Liquidités, Épargne / mois) ;
+ *  · `mobile-tete` — le patrimoine net en grand et l'épargne du mois, sous l'en-tête ;
+ *  · `mobile-pied` — « Avoirs / dettes » et « Liquidités », en tuiles sous la courbe.
+ * La variation 30 j (retirée des tuiles par la maquette) suit le patrimoine net, en une ligne,
+ * et seulement quand elle est mesurée : pas de ligne « — » sous le chiffre de tête.
+ */
+export type VarianteBandeau = 'bureau' | 'mobile-tete' | 'mobile-pied';
+
 export const FutureKpiStrip: React.FC<{
     netWorth: number;
     liquidity: number;
@@ -82,7 +93,8 @@ export const FutureKpiStrip: React.FC<{
     /** [KPI-AVOIRS-DETTES] Les deux TERMES hors immobilier, du MÊME appel que `netWorth`. */
     avoirsHorsImmo: number;
     dettesHorsImmo: number;
-}> = ({ netWorth, liquidity, monthlySavings, avoirsHorsImmo, dettesHorsImmo }) => {
+    variante?: VarianteBandeau;
+}> = ({ netWorth, liquidity, monthlySavings, avoirsHorsImmo, dettesHorsImmo, variante = 'bureau' }) => {
     // [REFONTE-NAV-L2a] Variation 30 j — liquide + placements (hook, pas de prop-drilling).
     // `null` (couverture < 2 points) → tuile « — » : jamais un 0 $ crédible.
     const variation = useNetWorthVariation();
@@ -142,33 +154,71 @@ export const FutureKpiStrip: React.FC<{
     const avoirs = avoirsHorsImmo + realEstateValeur;
     const dettes = dettesHorsImmo + realEstateHypotheque;
 
+    const net = netWorth + realEstateEquity;
+    // [REFONTE-NAV-L2a] Variation 30 j — « liquide + placements » PAR CONSTRUCTION : son assiette
+    // diffère du patrimoine net, et la ligne le dit (périmètre toujours écrit à côté).
+    const ligneVariation = variation && (
+        <p className="text-tiny text-ink-400" data-variation-30j="">
+            <span>Variation 30 j </span>
+            <PrivateAmount className={variation.diff >= 0 ? 'text-success-400' : 'text-danger-400'}>{`${variation.diff > 0 ? '+' : ''}${formatCAD(variation.diff)}`}</PrivateAmount>
+            {variation.pct != null && <> (<PrivateAmount>{`${variation.pct > 0 ? '+' : ''}${formatPercent(variation.pct)}`}</PrivateAmount>)</>}
+            <span> · {variationScope}</span>
+        </p>
+    );
+    const detailHypotheque = realEstateHypotheque > 0.5 ? (
+        <>dont <PrivateAmount>{formatCAD(realEstateHypotheque)}</PrivateAmount> d'hypothèque</>
+    ) : undefined;
+
+    if (variante === 'mobile-tete') {
+        return (
+            <section aria-label="Indicateurs clés" className="flex flex-col gap-1">
+                <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400 flex items-center gap-1.5">Patrimoine net<FxEstimateBadge /></p>
+                <div className="flex items-end justify-between gap-3">
+                    {Number.isFinite(net)
+                        ? <PrivateAmount as="div" className="font-mono text-[32px] leading-tight font-bold text-ink-50">{formatCAD(net)}</PrivateAmount>
+                        : <div className="text-[32px] font-bold text-ink-300"><span aria-hidden="true">—</span><span className="sr-only">{NO_DATA_LABEL}</span></div>}
+                    {Number.isFinite(monthlySavings) && (
+                        <span className="pb-1.5 text-meta font-semibold text-success-400 whitespace-nowrap">
+                            <PrivateAmount>{`${monthlySavings > 0 ? '+' : ''}${formatCAD(monthlySavings)}`}</PrivateAmount>/mois
+                        </span>
+                    )}
+                </div>
+                {hasRealEstate && <p className="text-tiny text-ink-400">équité immo incluse</p>}
+                {ligneVariation}
+            </section>
+        );
+    }
+    if (variante === 'mobile-pied') {
+        return (
+            <>
+                <div className="min-w-0 rounded-2xl bg-surface border border-white/6 p-3.5 flex flex-col gap-1">
+                    <p className="text-meta text-ink-400">Avoirs / dettes</p>
+                    <p className="font-mono text-[15px] font-bold leading-snug">
+                        <PrivateAmount className="text-ink-50">{formatCAD(avoirs)}</PrivateAmount>{' '}
+                        <PrivateAmount className="text-danger-400">{`−${formatCAD(dettes)}`}</PrivateAmount>
+                    </p>
+                    {detailHypotheque && <p className="text-tiny text-ink-400">{detailHypotheque}</p>}
+                </div>
+                <div className="min-w-0 rounded-2xl bg-surface border border-white/6 p-3.5 flex flex-col gap-1">
+                    <p className="text-meta text-ink-400">Liquidités</p>
+                    <PrivateAmount as="div" className="font-mono text-[15px] font-bold text-ink-50">{formatCAD(liquidity)}</PrivateAmount>
+                </div>
+            </>
+        );
+    }
+
     return (
-        <section aria-label="Indicateurs clés" className="flex flex-wrap gap-2 md:gap-3 mb-4">
+        <section aria-label="Indicateurs clés" className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
             <KpiTile
                 label="Patrimoine net"
-                value={netWorth + realEstateEquity}
+                value={net}
                 sublabel={hasRealEstate ? 'équité immo incluse' : undefined}
                 // [FX-FALLBACK-SILENCIEUX] : ce chiffre convertit les avoirs étrangers en CAD via
-                // le taux du store — le signal doit vivre ICI (surface la plus vue de l'app),
-                // pas seulement dans SystemView.
+                // le taux du store — le signal doit vivre ICI (surface la plus vue de l'app).
                 badge={<FxEstimateBadge />}
             />
-            <KpiTile
-                label="Variation 30 j"
-                // `NaN` volontaire quand la couverture est insuffisante → la tuile rend « — »
-                // + sr-only NO_DATA_LABEL (no-fake-data), jamais 0 $.
-                value={variation ? variation.diff : Number.NaN}
-                signed
-                // [LOW #601] `+` sur le % positif, comme la ligne $ (cohérence de signe).
-                sublabel={variation && variation.pct != null
-                    ? `${variation.pct > 0 ? '+' : ''}${formatPercent(variation.pct)}`
-                    : undefined}
-                privateSublabel
-                scope={variationScope}
-            />
-            {/* [KPI-AVOIRS-DETTES] Les deux TERMES, à côté du net qu'ils composent. Six tuiles :
-                choix de Marc — « on garde tout », Liquidités comprise (elle est un sous-ensemble
-                des avoirs, mais c'est le chiffre qu'il regarde tous les jours). */}
+            {/* [KPI-AVOIRS-DETTES] Les deux TERMES, à côté du net qu'ils composent (avoirs − dettes
+                = patrimoine net, par construction — voir plus haut). */}
             <KpiTile
                 label="Total avoirs"
                 value={avoirs}
@@ -177,18 +227,14 @@ export const FutureKpiStrip: React.FC<{
             <KpiTile
                 label="Dettes"
                 value={dettes}
-                // ⚠️ Le détail que Marc a demandé, et il est PRIVÉ : c'est un montant. Affiché
-                // seulement quand il existe — « dont 0 $ d'hypothèque » sur un dossier sans
-                // immobilier serait du décor (`UN-AVERTISSEMENT-PERMANENT-EST-UN-AVERTISSEMENT-MORT`).
-                // ⚠️ Seule la VALEUR est enveloppée : en mode discret le sous-titre lit encore
-                // « dont ••• d'hypothèque », donc la COMPOSITION du total reste compréhensible
-                // sans qu'aucun chiffre ne sorte.
-                sublabel={realEstateHypotheque > 0.5 ? (
-                    <>dont <PrivateAmount>{formatCAD(realEstateHypotheque)}</PrivateAmount> d'hypothèque</>
-                ) : undefined}
+                ton="text-danger-400"
+                // ⚠️ Le détail demandé par Marc est PRIVÉ (montant) : seule la VALEUR est masquée,
+                // la phrase reste — la COMPOSITION du total se lit sans qu'aucun chiffre ne sorte.
+                sublabel={detailHypotheque}
             />
             <KpiTile label="Liquidités" value={liquidity} />
-            <KpiTile label="Épargne / mois" value={monthlySavings} signed />
+            <KpiTile label="Épargne / mois" value={monthlySavings} signed ton="text-success-400" />
+            {ligneVariation && <div className="col-span-full -mt-1.5">{ligneVariation}</div>}
         </section>
     );
 };

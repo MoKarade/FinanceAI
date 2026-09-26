@@ -17,17 +17,21 @@ import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { Icon, type IconName } from './ui/Icon';
 import { Pill } from './ui/Pill';
+import { SubTabs, panelId, tabId } from './ui/SubTabs';
 import { Badge } from './ui/Badge';
 import { FxEstimateBadge } from './ui/FxEstimateBadge';
 import { CollapsibleSection } from './ui/CollapsibleSection';
-import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { HistorySyncDoctor } from './investments/HistorySyncDoctor';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { seriesReturnPct, priceReturnPct, isBenchmarkCandidate, PERF_PERIODS, PERF_PERIOD_LABELS, type PerfPeriod } from '../services/history/periodReturn';
-import { StockChart } from './StockChart';
+import { PerformanceComparee, variationFenetre, type PeriodeGraphe } from './investments/PerformanceComparee';
+import { TitresDetenus, type LigneTitre } from './investments/TitresDetenus';
+import { useViewportBelowLg } from '../hooks/useViewportBelowLg';
+import { isCoupleMode } from '../services/couple/netWorthByOwner';
+import { TAB_LABELS } from '../constants';
 import { resolveAssetMeta, lookupSeedMeta, CANONICAL_SECTORS, CANONICAL_REGIONS } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
 // Investments est un chunk PARESSEUX (TabRouter → lazyWithRetry) : l'import statique est
@@ -37,8 +41,7 @@ import { getQuote, getQuoteDetaille, hasQuoteProvider, clearMarketDataCache, cle
 import { verifierSymboleCotation } from '../services/verifierSymboleCotation';
 import { refreshAssetPrices, applyPricePatches } from '../services/priceRefresh';
 import { DividendPanel } from './investments/DividendPanel';
-import { formatCAD, formatDate } from '../utils/format';
-import { ProjectionRequired } from './ui/ProjectionRequired';
+import { formatCAD, formatDate, formatVariationPct } from '../utils/format';
 import { logError } from '../services/errorLogger';
 import { getRebalanceJustifications, type RebalanceActionInput } from '../services/claude';
 import { messageErreurIa, MESSAGE_IA_MODE_DISCRET } from '../services/messageErreurIa';
@@ -47,8 +50,8 @@ import { showToast } from './ui/Toast';
 import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { esperanceDeVieEffective, horizonAnnees } from '../services/projection/horizon';
-import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
+import { horizonAnnees } from '../services/projection/horizon';
+import { NetWorthByOwnerCard, nomProprietaire } from './investments/NetWorthByOwnerCard';
 // [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil Phase D.4) — la modale vit
 // désormais dans components/investments/, son seul consommateur restant est ici (+ l'ex-
 // Dashboard jusqu'à sa suppression à l'intégration).
@@ -97,7 +100,6 @@ const COLORS_REGION: Record<string, string> = {
     "Autre": "#6b7280"
 };
 
-type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
 
 interface AllocationItem {
     id: string;
@@ -171,7 +173,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-    const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+    // [S5-REFONTE-PLACEMENTS] Périodes des maquettes (1, 3, 6 mois, tout) ; « Tout » par défaut.
+    const [timeRange, setTimeRange] = useState<PeriodeGraphe>('ALL');
     // [INVEST-PERF-PERIOD] Période des variations/performances affichées (demande Marc 2026-07-23 :
     // « la performance actuellement c'est 24h mais je veux pouvoir choisir moi »). Pilote la carte
     // Performance, les chips du graphe et les cartes par titre. Le score de santé reste FIXÉ sur 24h
@@ -180,6 +183,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Phase E.3 — sous-onglets pour aérer la page (doc directives §4)
     // PH4-INV-4 — « moins de pages » : Rééquilibrage fusionné dans Allocation (4 → 3 sous-onglets).
     const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'detail'>('overview');
+    const etroit = useViewportBelowLg();
+    const configStore = useFinanceStore(s => s.config);
     // Phase E.6 — filtre interactif Geo/Sector cliqué dans la pie
     const [allocationFilter, setAllocationFilter] = useState<{ type: 'region' | 'sector'; value: string } | null>(null);
 
@@ -192,7 +197,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // même durée que le moteur (services/projection/horizon.ts), plus le curseur retiré.
     const agePersonne1 = useFinanceStore(s => s.config?.users?.[0]?.age);
     const retirementGoalHorizon = useFinanceStore(s => s.retirementGoal);
-    const esperanceDeVie = esperanceDeVieEffective(retirementGoalHorizon);
     const projectionHorizonYears = horizonAnnees(agePersonne1, retirementGoalHorizon?.lifeExpectancy);
     const horizonData = useMemo(() => {
         if (!lastProjection?.chartData?.length) return { snapshot: null, corrupt: false };
@@ -326,6 +330,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         diversificationScore,
         portfolioTrend,
         benchmarkTrend,
+        benchmarkTrend24,
     } = useMemo(() => {
         // PH4-INV-2 — SOURCE DE VÉRITÉ de l'allocation = le portefeuille `assets` saisi (qty × prix
         // courant), PAS le CSV historique (Google Sheet déprécié) qui divergeait du portefeuille réel
@@ -477,6 +482,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             diversificationScore,
             portfolioTrend,
             benchmarkTrend,
+            benchmarkTrend24,
         };
     }, [marketData, assets, fxRates, perfPeriod, isSyntheticValue]); // perfPeriod : leçon BUDGET-MONTH-NAV (dep manquante = memo figé)
 
@@ -491,8 +497,6 @@ export const Investments: React.FC<InvestmentsProps> = ({
             case '1M': startDate = new Date(); startDate.setMonth(now.getMonth() - 1); break;
             case '3M': startDate = new Date(); startDate.setMonth(now.getMonth() - 3); break;
             case '6M': startDate = new Date(); startDate.setMonth(now.getMonth() - 6); break;
-            case 'YTD': startDate = new Date(now.getFullYear(), 0, 1); break;
-            case '1Y': startDate = new Date(); startDate.setFullYear(now.getFullYear() - 1); break;
         }
 
         return marketData.filter(d => new Date(d.date) >= startDate);
@@ -644,7 +648,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     if (assets.length === 0) {
         return (
             <div className="space-y-6 stagger-in pb-10 relative">
-                <PageHeader icon={<Icon name="investments" size={28} />} title="Investissements" />
+                <PageHeader title={TAB_LABELS[TabEnum.INVESTMENTS]} />
                 <Card>
                     <div className="text-center py-12 px-4 space-y-4">
                         <Icon name="investments" size={44} className="text-ink-500 block mx-auto" />
@@ -673,185 +677,158 @@ export const Investments: React.FC<InvestmentsProps> = ({
         );
     }
 
+    // [S5-REFONTE-PLACEMENTS] Vue d'ensemble aux maquettes (E/M-placements) : 4 chiffres, la
+    // performance comparée, les titres détenus et « qui possède quoi ».
+    const valeurPortefeuille = currentAllocation.reduce((t, a) => t + a.value, 0);
+    // Même règle « pas de 0 % figé » que la carte Performance ([PERF-STALE-TAIL-ZERO]).
+    const variation24h = seriesReturnPct(marketData, 'TOTAL', '24H', isSyntheticValue);
+    const variationDepuisDebut = variationFenetre(marketData, 'TOTAL', isSyntheticValue);
+    const debutHistorique = marketData[0]?.date ? String(marketData[0].date) : null;
+    const moisDebut = debutHistorique
+        ? formatDate(new Date(Number(debutHistorique.slice(0, 4)), Number(debutHistorique.slice(5, 7)) - 1, 1), { month: 'short', year: 'numeric' })
+        : null;
+    const users = configStore?.users ?? [];
+    const couple = isCoupleMode(users);
+    const lignesTitres: LigneTitre[] = assets
+        .map((a, i) => ({ cle: `${a.symbol}-${a.accountType ?? ''}-${i}`, symbole: a.symbol, compte: a.accountType || 'NON-ENREG', proprietaire: couple ? nomProprietaire(a, users) : undefined, valeur: assetValueCad(a, fxRates), poids: 0 }))
+        .filter((l) => l.valeur > 0)
+        .map((l) => ({ ...l, poids: valeurPortefeuille > 0 ? (l.valeur / valeurPortefeuille) * 100 : 0 }))
+        .sort((x, y) => y.valeur - x.valeur);
+    const couleurVariation = (v: number | null) => (v === null ? 'text-ink-400' : v >= 0 ? 'text-success-400' : 'text-danger-400');
+    const scoreClasses = diversificationScore >= 80
+        ? 'bg-success-500/10 border-success-400/30 text-success-400'
+        // Maquettes : 40/100 en ambre (à surveiller), le rouge réservé au bas de l'échelle.
+        : diversificationScore >= 40 ? 'bg-warning-500/10 border-warning-400/35 text-warning-400' : 'bg-danger-500/10 border-danger-400/30 text-danger-400';
+    const badgeScore = (
+        <span
+            className={`h-[30px] lg:h-9 px-3 lg:px-4 rounded-full border text-meta lg:text-[13px] font-semibold flex items-center whitespace-nowrap ${scoreClasses}`}
+            title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
+        >
+            Diversification {diversificationScore}/100
+        </span>
+    );
+    const lienFutur = (
+        <button type="button" onClick={() => navigateWithFocus(TabEnum.FUTURE)} className="self-start min-h-6 text-meta text-ink-100 underline underline-offset-2 decoration-white/40 hover:text-ink-50 focus-ring rounded-sm">
+            {horizonSnapshot ? 'Détail par compte dans Futur →' : 'Calculer la projection dans Futur →'}
+        </button>
+    );
+    const etiquetteTuile = 'text-meta lg:text-[11px] lg:font-semibold lg:tracking-[0.06em] lg:uppercase text-ink-400';
+    const tuile = 'rounded-2xl bg-surface border border-white/6 px-[18px] py-4 flex flex-col gap-1 min-w-0';
+
     return (
-        <div className="space-y-6 stagger-in pb-10 relative">
+        <div className="space-y-5 stagger-in pb-10 relative">
 
             {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
             <ProjectionStaleBanner />
             <PageHeader
-                icon={<Icon name="investments" size={28} />}
-                title="Investissements"
-                badge={
-                    // [A11Y-REFLOW] flex-wrap (patron Retirement.tsx) : deux badges côte à côte
-                    // (~360 px cumulés) débordaient sur un viewport mobile étroit sans lui
-                    // (WCAG 1.4.10, revue #686).
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                            variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
-                            size="md"
-                            title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
-                        >
-                            Diversification {diversificationScore}/100
-                        </Badge>
-                        {/* [FX-FALLBACK-SILENCIEUX] : les totaux de cette page convertissent des
-                            avoirs étrangers en CAD — le signal doit vivre ICI, pas seulement
-                            dans SystemView (page technique que personne ne visite). */}
+                title={TAB_LABELS[TabEnum.INVESTMENTS]}
+                nav={
+                    <SubTabs<'overview' | 'allocation' | 'detail'>
+                        idPrefix="placements"
+                        label="Vues Placements"
+                        tabs={[
+                            { id: 'overview', label: "Vue d'ensemble", icon: 'chart' },
+                            { id: 'allocation', label: 'Allocation et rééquilibrage', icon: 'goal' },
+                            { id: 'detail', label: 'Détail', icon: 'investments' },
+                        ]}
+                        active={subTab}
+                        onSelect={setSubTab}
+                    />
+                }
+                actions={
+                    // [FX-FALLBACK-SILENCIEUX] : les totaux de cette page convertissent des avoirs
+                    // étrangers en CAD — le signal doit vivre ICI (pastille à côté du score).
+                    <span className="flex flex-wrap items-center justify-end gap-2">
                         <FxEstimateBadge size="md" />
-                    </div>
+                        {badgeScore}
+                    </span>
                 }
             />
 
             {/* [CELI-ASSET-NUDGE] virements CELI détectés mais aucun avoir CELI saisi → CELI affiché 0. */}
             <CeliAssetNudge onAddAsset={() => setShowAddStockForm(true)} />
 
-            {/* CI-1000x Phase 1 (axe B) — répartition du portefeuille par personne (mode couple). */}
-            <NetWorthByOwnerCard assets={assets} setAssets={setAssets} />
-
             {/* [FINTABLE-6 Lot 2] Le total du COURTIER fait autorité (demande Marc) : solde Fintable
                 par panier fiscal + écart explicite avec les titres saisis + fraîcheur. Ship dark
                 tant que la sync Fintable n'a jamais tourné. */}
             <BrokerReconciliationCard variant="full" />
 
-            {/* Phase E.3 — Sous-onglets + Phase E.1 — TimeRange global au sommet */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
-                <Pill
-                    aria-label="Vue Investissements"
-                    size="sm"
-                    value={subTab}
-                    onChange={(v) => setSubTab(v as typeof subTab)}
-                    options={[
-                        { value: 'overview', label: "Vue d'ensemble" },
-                        { value: 'allocation', label: 'Allocation & rééquilibrage' },
-                        { value: 'detail', label: 'Détail' },
-                    ]}
-                />
-                <Pill
-                    aria-label="Période"
-                    size="sm"
-                    value={timeRange}
-                    onChange={(v) => setTimeRange(v as TimeRange)}
-                    options={(['1M', '3M', '6M', 'YTD', '1Y', 'ALL'] as TimeRange[]).map(r => ({ value: r, label: r }))}
-                />
-            </div>
+            <div role="tabpanel" id={panelId('placements', subTab)} aria-labelledby={tabId('placements', subTab)} tabIndex={0} className="space-y-5 focus-ring rounded-card">
 
-            {/* [EP-4] Donut « Score de Santé » retiré : il dupliquait le badge header « Santé X/100 ».
-                Reste la performance (portefeuille vs marché), non affichée ailleurs.
-                [INVEST-PERF-PERIOD] Période AU CHOIX (24h par défaut) — pilote aussi les chips du
-                graphe et les cartes par titre. */}
-            <Card
-                title={`Performance (${PERF_PERIOD_LABELS[perfPeriod]})`}
-                action={
-                    <Pill
-                        aria-label="Période de performance"
-                        size="sm"
-                        value={perfPeriod}
-                        onChange={(v) => setPerfPeriod(v as PerfPeriod)}
-                        options={PERF_PERIODS.map(p => ({ value: p, label: PERF_PERIOD_LABELS[p] }))}
-                    />
-                }
-            >
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="card-subtle p-4 flex flex-col items-center justify-center">
-                        <div className="kpi-label mb-1">Votre Portefeuille</div>
-                        <div className={`text-kpi tabular-nums ${portfolioTrend === null ? 'text-ink-400' : portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                            {portfolioTrend === null ? '—' : `${portfolioTrend > 0 ? '+' : ''}${portfolioTrend.toFixed(2)}%`}
+            {subTab === 'overview' && (
+                etroit ? (
+                    <section aria-label="Chiffres clés" className="rounded-2xl bg-surface border border-white/6 p-4 flex flex-col gap-3.5">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400">Valeur du portefeuille</span>
+                            <PrivateAmount as="div" className="font-mono text-[30px] font-bold text-ink-50">{formatCAD(valeurPortefeuille)}</PrivateAmount>
                         </div>
-                    </div>
-                    <div className="card-subtle p-4 flex flex-col items-center justify-center">
-                        <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
-                        <div className={`text-kpi tabular-nums ${benchmarkTrend === null ? 'text-ink-400' : benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
-                            {benchmarkTrend === null ? '—' : `${benchmarkTrend > 0 ? '+' : ''}${benchmarkTrend.toFixed(2)}%`}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-0.5"><span className="text-meta text-ink-400">Sur 24 h</span><span className={`font-mono font-bold ${couleurVariation(variation24h)}`}>{formatVariationPct(variation24h, 2)}</span></div>
+                            <div className="flex flex-col gap-0.5"><span className="text-meta text-ink-400">Depuis {moisDebut ?? 'le début'}</span><span className={`font-mono font-bold ${couleurVariation(variationDepuisDebut)}`}>{formatVariationPct(variationDepuisDebut)}</span></div>
                         </div>
-                    </div>
-                </div>
-            </Card>
-
-            {/* 0.5 PROJECTION RETRAITE — Phase E.3 overview only */}
-            {subTab === 'overview' && !horizonSnapshot && (
-                <ProjectionRequired feature="Le portefeuille projeté à l'horizon retraite" />
-            )}
-            {/* [EP-5] Détail projeté PAR COMPTE retiré (duplique l'onglet Futur) : on garde le
-                patrimoine net projeté à l'horizon + un lien vers le détail dans Futur. */}
-            {subTab === 'overview' && horizonSnapshot && (
-                <Card className="bg-white/[0.03] border-white/10">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div>
-                            <div className="kpi-label">Patrimoine net projeté en {horizonSnapshot.year} (à {esperanceDeVie} ans)</div>
-                            <PrivateAmount as="div" className="text-kpi text-ink-50 tabular-nums">{formatCAD(horizonSnapshot.netWorth)}</PrivateAmount>
+                        <div className="border-t border-white/6 pt-3 flex flex-col gap-1">
+                            <span className="text-meta text-ink-400">Patrimoine net en {horizonSnapshot?.year ?? '—'}</span>
+                            {horizonSnapshot
+                                ? <PrivateAmount as="div" className="font-mono text-[18px] font-bold text-ink-50">{formatCAD(horizonSnapshot.netWorth)}</PrivateAmount>
+                                : <div className="font-mono text-[18px] font-bold text-ink-400">—</div>}
+                            {lienFutur}
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                            className="text-tiny text-info-400 hover:underline font-bold focus-ring rounded inline-flex items-center gap-1"
-                        >
-                            Détail par compte dans Futur →
-                        </button>
-                    </div>
-                </Card>
+                    </section>
+                ) : (
+                    <section aria-label="Chiffres clés" className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
+                        <div className={tuile}>
+                            <span className={etiquetteTuile}>Valeur du portefeuille</span>
+                            <PrivateAmount as="div" className="font-mono text-[22px] font-bold text-ink-50">{formatCAD(valeurPortefeuille)}</PrivateAmount>
+                        </div>
+                        <div className={tuile}>
+                            <span className={etiquetteTuile}>Sur 24 h</span>
+                            <div className={`font-mono text-[22px] font-bold ${couleurVariation(variation24h)}`}>{formatVariationPct(variation24h, 2)}</div>
+                            {benchmarkTrend24 !== null && <span className="text-meta text-ink-400">marché (CW8 / MSCI) {formatVariationPct(benchmarkTrend24, 2)}</span>}
+                        </div>
+                        <div className={tuile}>
+                            <span className={etiquetteTuile}>Depuis {moisDebut ?? 'le début'}</span>
+                            <div className={`font-mono text-[22px] font-bold ${couleurVariation(variationDepuisDebut)}`}>{formatVariationPct(variationDepuisDebut)}</div>
+                        </div>
+                        <div className={tuile}>
+                            <span className={etiquetteTuile}>Patrimoine net en {horizonSnapshot?.year ?? '—'}</span>
+                            {horizonSnapshot
+                                ? <PrivateAmount as="div" className="font-mono text-[22px] font-bold text-ink-50">{formatCAD(horizonSnapshot.netWorth)}</PrivateAmount>
+                                : <div className="font-mono text-[22px] font-bold text-ink-400">—</div>}
+                            {lienFutur}
+                        </div>
+                    </section>
+                )
             )}
 
-            {/* 1. CHART SECTION — Phase E.3 overview only */}
-            {subTab === 'overview' && <Card className="min-h-[550px]" title="Performance Comparée">
-                {/* [INVEST-CHART-CLEAN] Ligne « N points · période » retirée (demande Marc : moins
-                    de texte autour du graphe — la période est déjà dans la pill globale). */}
-                {/* SERIES TOGGLES */}
-                <div className="mb-4 flex flex-wrap gap-2 max-h-[100px] overflow-y-auto custom-scrollbar p-1">
-                    {availableSeriesWithTrend.map(asset => {
-                        const isActive = selectedKeys.has(asset.id);
-                        return (
-                            <button
-                                key={asset.id}
-                                onClick={() => {
-                                    const next = new Set(selectedKeys);
-                                    if (next.has(asset.id)) next.delete(asset.id); else next.add(asset.id);
-                                    setSelectedKeys(next);
-                                }}
-                                className={`text-tiny px-2 py-1.5 rounded-lg border transition-all flex items-center gap-2 ${isActive
-                                    ? (asset.isTotal ? 'bg-green-500/20 text-green-400 border-green-500/50 font-bold' : 'bg-info-500/20 text-blue-300 border-info-500/50')
-                                    : 'bg-[#1a1a1a] text-ink-400 border-white/5 hover:border-white/10 hover:text-ink-200'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-1">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? (asset.isTotal ? 'bg-green-400' : 'bg-info-400') : 'bg-white/10'}`}></span>
-                                    {asset.name}
-                                </div>
-                                {asset.trend !== null && Math.abs(asset.trend) > 0.5 && (
-                                    <span className={`text-tiny ${asset.trend > 0 ? 'text-green-500' : 'text-danger-500'}`}>
-                                        {asset.trend > 0 ? '↗' : '↘'}
-                                    </span>
-                                )}
-                            </button>
-                        )
-                    })}
-                </div>
+            {subTab === 'overview' && (
+                <PerformanceComparee
+                    donnees={filteredMarketData}
+                    series={availableSeriesWithTrend}
+                    selection={selectedKeys}
+                    onSelection={setSelectedKeys}
+                    periode={timeRange}
+                    onPeriode={setTimeRange}
+                    estSynthetique={isSyntheticValue}
+                    chargement={isLoading}
+                    etroit={etroit}
+                >
+                    {/* [HIST-COVERAGE-TOTAL] Même signalement honnête que le Dashboard (composant
+                        partagé) : c'est ICI que Marc lit la courbe TOTAL. */}
+                    <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols}
+                        staleTailSymbols={staleTailSymbols} hasChart={portfolioHistory.length > 0} />
+                    {/* [HIST-MULTI-PROVIDER] Diagnostic par titre + remède inline (symbole de cotation,
+                        recherche par nom). Jamais rendu en mode test (tickers réels). */}
+                    <HistorySyncDoctor onApplyQuoteSymbol={handleApplyQuoteSymbol} isSyncing={isRefreshingPrices} />
+                </PerformanceComparee>
+            )}
 
-                {/* [INVEST-CHART-CLEAN] 400 → 520 px : le graphe est la pièce maîtresse de la page. */}
-                <div style={{ width: '100%', height: '520px' }}>
-                    {isLoading ? (
-                        <div className="w-full h-full flex flex-col gap-4">
-                            <Skeleton variant="chart" className="!h-auto flex-1" />
-                            <Skeleton variant="text" className="w-3/4 mx-auto !h-8" />
-                        </div>
-                    ) : filteredMarketData.length > 0 ? (
-                        <StockChart
-                            data={filteredMarketData}
-                            visibleKeys={selectedKeys}
-                            isPrivacyMode={isPrivacyMode}
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-ink-400 bg-white/5 rounded-xl">
-                            Aucune donnée disponible pour cette période.
-                        </div>
-                    )}
+            {subTab === 'overview' && (
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+                    <TitresDetenus lignes={lignesTitres} couple={couple} etroit={etroit} />
+                    {/* CI-1000x Phase 1 (axe B) — répartition du portefeuille par personne (mode couple). */}
+                    <NetWorthByOwnerCard assets={assets} setAssets={setAssets} />
                 </div>
-                {/* [HIST-COVERAGE-TOTAL] Même signalement honnête que le Dashboard (composant
-                    partagé) : c'est ICI que Marc lit la courbe TOTAL. */}
-                <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols}
-                    staleTailSymbols={staleTailSymbols} hasChart={portfolioHistory.length > 0} />
-                {/* [HIST-MULTI-PROVIDER] Diagnostic par titre + remède inline (symbole de cotation,
-                    recherche par nom). Jamais rendu en mode test (tickers réels). */}
-                <HistorySyncDoctor onApplyQuoteSymbol={handleApplyQuoteSymbol} isSyncing={isRefreshingPrices} />
-            </Card>}
+            )}
 
             {/* 2. ALLOCATION PANORAMIQUE — Phase E.3 sub-tab 'allocation' */}
             {subTab === 'allocation' && <CollapsibleSection
@@ -989,7 +966,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
                 {/* Phase E.6 — Liste des stocks filtrés par geo/sector cliqué */}
                 {allocationFilter && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
+                    <div className="mt-4 p-4 bg-linear-to-r/srgb from-primary/5 to-info-500/5 border border-primary/20 rounded-xl">
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="text-body font-bold text-white flex items-center gap-2">
                                 <Icon name={allocationFilter.type === 'region' ? 'globe' : 'building'} size={16} className="text-ink-300" />
@@ -998,7 +975,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setAllocationFilter(null)}
-                                className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded transition-colors focus-ring"
+                                className="text-tiny text-ink-400 hover:text-ink-100 px-2 py-1 rounded-sm transition-colors focus-ring"
                             >
                                 Effacer filtre
                             </button>
@@ -1024,13 +1001,19 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 )}
             </CollapsibleSection>}
 
-            {/* 3. DIVIDEND CALENDAR — Phase E.3 visible en overview */}
-            {subTab === 'overview' && <DividendPanel
-                dividendCalendar={dividendCalendar}
-                totalAnnualDividends={totalAnnualDividends}
-                currentAllocation={currentAllocation}
-                isLoading={isLoading}
-            />}
+            {/* 3. DIVIDEND CALENDAR — Phase E.3 visible en overview. [S5-REFONTE-PLACEMENTS] Absent des
+                maquettes : gardé, replié. */}
+            {subTab === 'overview' && (
+                <CollapsibleSection title="Revenus passifs" subtitle="Dividendes estimés : rente annuelle et calendrier des versements">
+                    <DividendPanel
+                        dividendCalendar={dividendCalendar}
+                        totalAnnualDividends={totalAnnualDividends}
+                        currentAllocation={currentAllocation}
+                        isLoading={isLoading}
+                        sansCadre
+                    />
+                </CollapsibleSection>
+            )}
 
             {/* 4. VISUAL PORTFOLIO REBALANCING (V16) — sous « Allocation Phase E.3 sub-tab 'rebalance'  rééquilibrage » (PH4-INV-4) */}
             {subTab === 'allocation' && currentAllocation.length > 0 && (() => {
@@ -1064,7 +1047,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         badge={hasActions ? <Badge variant="warning" size="sm">Action requise</Badge> : <Badge variant="success" size="sm">OK</Badge>}
                         className="mt-2"
                     >
-                        <div className="mb-6 bg-white/[0.03] p-4 rounded-xl border border-white/10 flex items-center justify-between">
+                        <div className="mb-6 bg-white/3 p-4 rounded-xl border border-white/10 flex items-center justify-between">
                             <div>
                                 <div className="text-meta text-violet-400 uppercase font-bold mb-1">Diagnostic Automatique</div>
                                 <div className="text-white text-body font-bold">
@@ -1201,7 +1184,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                                     type="number"
                                                                     min="0"
                                                                     max="100"
-                                                                    className="w-16 bg-black/50 border border-violet-500/30 rounded px-2 py-0.5 text-white font-bold outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-right"
+                                                                    className="w-16 bg-black/50 border border-violet-500/30 rounded-sm px-2 py-0.5 text-white font-bold outline-hidden focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-right"
                                                                     value={item.targetPct}
                                                                     onChange={(e) => {
                                                                         // Remplace l'ENTRÉE, ne la mute pas : `[...targetModel]` copiait le
@@ -1290,6 +1273,36 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* 5. STOCK CARDS GRID — Phase E.3 sub-tab 'detail' */}
             {subTab === 'detail' && <>
+                {/* [INVEST-PERF-PERIOD] Période AU CHOIX (24h par défaut) — pilote aussi la variation des
+                    cartes par titre ci-dessous. [S5-REFONTE-PLACEMENTS] Déplacée de la Vue d'ensemble
+                    (les maquettes n'y gardent que « Sur 24 h ») vers Détail, où ses titres la lisent. */}
+                <Card
+                    title={`Performance (${PERF_PERIOD_LABELS[perfPeriod]})`}
+                    action={
+                        <Pill
+                            aria-label="Période de performance"
+                            size="sm"
+                            value={perfPeriod}
+                            onChange={(v) => setPerfPeriod(v as PerfPeriod)}
+                            options={PERF_PERIODS.map(p => ({ value: p, label: PERF_PERIOD_LABELS[p] }))}
+                        />
+                    }
+                >
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="card-subtle p-4 flex flex-col items-center justify-center">
+                            <div className="kpi-label mb-1">Votre portefeuille</div>
+                            <div className={`text-kpi font-mono tabular-nums ${portfolioTrend === null ? 'text-ink-400' : portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                {formatVariationPct(portfolioTrend, 2)}
+                            </div>
+                        </div>
+                        <div className="card-subtle p-4 flex flex-col items-center justify-center">
+                            <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
+                            <div className={`text-kpi font-mono tabular-nums ${benchmarkTrend === null ? 'text-ink-400' : benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
+                                {formatVariationPct(benchmarkTrend, 2)}
+                            </div>
+                        </div>
+                    </div>
+                </Card>
                 {/* Phase E.9 — bouton d'ajout manuel d'action · [PRICE-REFRESH-LIVE] actualisation des cours */}
                 <div className="flex justify-end items-center gap-2 flex-wrap">
                     {lastPriceRefreshAt != null && (
@@ -1372,7 +1385,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             isCompareMode && isCompareSelected ? 'border-primary/40 bg-primary/10' : 'border-white/5 hover:border-white/20'
                         }`}>
                             {/* Background Gradient based on sector */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl/srgb from-white/10 to-transparent -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
                             <div>
                                 <div className="flex justify-between items-start mb-4 relative z-10">
@@ -1390,7 +1403,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 onClick={() => toggleCompareSymbol(asset.id)}
                                                 aria-pressed={isCompareSelected}
                                                 aria-label={`Comparer ${asset.name}`}
-                                                className="touch-target -m-3 flex items-center justify-center shrink-0 focus-ring rounded"
+                                                className="touch-target -m-3 flex items-center justify-center shrink-0 focus-ring rounded-sm"
                                             >
                                                 <span
                                                     aria-hidden="true"
@@ -1416,11 +1429,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
-                                    <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
+                                    <div className="bg-white/3 p-2.5 rounded-xl border border-white/5 backdrop-blur-xs">
                                         <div className="text-ink-400 mb-1 font-bold">Valeur</div>
                                         <PrivateAmount as="div" className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</PrivateAmount>
                                     </div>
-                                    <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
+                                    <div className="bg-white/3 p-2.5 rounded-xl border border-white/5 backdrop-blur-xs">
                                         <div className="text-ink-400 mb-1 font-bold">Variation {PERF_PERIOD_LABELS[perfPeriod]}</div>
                                         <div className={`font-bold text-meta ${asset.trendPct === null ? 'text-ink-400' : asset.trendPct >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                             {asset.trendPct === null ? '—' : `${asset.trendPct > 0 ? '+' : ''}${asset.trendPct.toFixed(1)}%`}
@@ -1463,7 +1476,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Région pour ${asset.id}`}
                                         value={asset.region}
                                         onChange={(e) => handleAssetMetaChange(asset.id, 'region', e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-hidden focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         {CANONICAL_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                                         {!CANONICAL_REGIONS.includes(asset.region as never) && <option value={asset.region}>{asset.region}</option>}
@@ -1472,7 +1485,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Secteur pour ${asset.id}`}
                                         value={asset.sector}
                                         onChange={(e) => handleAssetMetaChange(asset.id, 'sector', e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-hidden focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         {CANONICAL_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
                                         {!CANONICAL_SECTORS.includes(asset.sector as never) && <option value={asset.sector}>{asset.sector}</option>}
@@ -1481,7 +1494,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Type de compte pour ${asset.id}`}
                                         value={accountType}
                                         onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-ink-200 font-bold outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-ink-200 font-bold outline-hidden focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         <option value="CELI">CELI</option>
                                         <option value="REER">REER</option>
@@ -1518,6 +1531,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
             </div>
             </CollapsibleSection>
             </>}
+
+            </div>
 
             {/* [REFONTE-NAV-L2b] Modale de comparaison superposée (ex-Accueil Phase D.4) :
                 1 titre → mode PRIX ; 2+ → base 100 (%) par défaut (toggle interne à StockChart). */}

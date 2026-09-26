@@ -8,11 +8,9 @@
 // et vivent désormais dans un autre sous-onglet. Ne PAS les réintroduire ici.
 
 import React from 'react';
-import { Card } from '../../ui/Card';
 import { PrivateNumberInput } from '../../ui/PrivateNumberInput';
 import { showToast } from '../../ui/Toast';
 import type { AppState, User } from '../../../types';
-import { Icon } from '../../ui/Icon';
 
 interface UsersCardProps {
   config: AppState['config'];
@@ -56,41 +54,38 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     partnerToggleRef.current?.focus();
   };
 
-  return (
-    <Card icon={<Icon name="users" size={18} />} title="Utilisateurs">
+  const retirerConjoint = () => {
+    const newUsers = [...config.users];
+    newUsers.pop();
+    setConfig({ ...config, users: newUsers as [User, User] });
+  };
+  const majUser = (idx: number, patch: Partial<User>) => {
+    const newUsers = [...config.users] as [User, User];
+    newUsers[idx] = { ...config.users[idx], ...patch };
+    setConfig({ ...config, users: newUsers });
+  };
+  // [S5-REFONTE-PROFIL] Champs des maquettes : 44 px de haut, fond page, bordure douce.
+  const CHAMP = 'w-full h-11 px-3.5 rounded-[10px] border border-white/10 bg-dark text-body text-ink-50 focus-ring';
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-body font-bold text-white">Utilisateurs</h3>
-          <div className="flex gap-2">
-            {config.users.length > 1 && (
-              <button
-                onClick={() => {
-                  const newUsers = [...config.users];
-                  newUsers.pop();
-                  setConfig({ ...config, users: newUsers as [User, User] });
-                }}
-                className="bg-danger-500/15 text-danger-400 min-h-[44px] px-3 py-1 rounded-card text-meta hover:bg-danger-500/25 transition-colors focus-ring"
-              >
-                - Retirer conjoint
-              </button>
-            )}
-            {config.users.length < 2 && (
-              <button
-                ref={partnerToggleRef}
-                onClick={() => setShowPartnerForm((v) => !v)}
-                aria-expanded={showPartnerForm}
-                className="bg-success-500/15 text-success-400 min-h-[44px] px-3 py-1 rounded-card text-meta hover:bg-success-500/25 transition-colors focus-ring"
-              >
-                + Ajouter conjoint
-              </button>
-            )}
-          </div>
+  return (
+    <section aria-labelledby="profil-utilisateurs" className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="profil-utilisateurs" className="text-[18px] font-semibold text-ink-50">Utilisateurs</h2>
+          {config.users.length < 2 && (
+            <button
+              ref={partnerToggleRef}
+              onClick={() => setShowPartnerForm((v) => !v)}
+              aria-expanded={showPartnerForm}
+              className="min-h-[44px] px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring"
+            >
+              + Ajouter un conjoint
+            </button>
+          )}
         </div>
 
         {/* [CPL-1] — définition OBLIGATOIRE du partenaire avant le passage en couple. */}
         {showPartnerForm && config.users.length < 2 && (
-          <div className="rounded-card border border-success-500/25 bg-success-500/[0.06] p-4 space-y-3">
+          <div className="rounded-card border border-success-500/25 bg-success-500/6 p-4 space-y-3">
             <p className="text-meta text-ink-200 font-bold">Définir le conjoint pour passer en couple</p>
             <p className="text-tiny text-ink-400">
               ⚠️ Passer en couple change les calculs : imposition par conjoint, rentes RRQ/PSV/SRG du
@@ -104,7 +99,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   value={partnerDraft.name}
                   onChange={(e) => setPartnerDraft((p) => ({ ...p, name: e.target.value }))}
                   placeholder="ex: Anna"
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm px-3 py-2 text-body text-white focus:border-primary outline-hidden"
                 />
               </label>
               <label className="block">
@@ -116,7 +111,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   value={partnerDraft.age}
                   onChange={(e) => setPartnerDraft((p) => ({ ...p, age: e.target.value }))}
                   placeholder="ex: 32"
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm px-3 py-2 text-body text-white focus:border-primary outline-hidden"
                 />
               </label>
               <label className="block" htmlFor="partner-netSalary">
@@ -128,7 +123,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   value={partnerDraft.netSalary}
                   onChange={(e) => setPartnerDraft((p) => ({ ...p, netSalary: e.target.value }))}
                   placeholder="0 si sans revenu"
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-body text-white focus:border-primary outline-none"
+                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-sm px-3 py-2 text-body text-white focus:border-primary outline-hidden"
                 />
               </label>
             </div>
@@ -150,85 +145,72 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
           {config.users.map((user, idx) => (
             <div
               key={idx}
               data-focus-section={`profile-user${idx + 1}-card`}
-              className="flex flex-col gap-2 p-3 bg-white/5 rounded-card border border-border h-full"
+              className="premium-card rounded-2xl p-5 sm:p-6 flex flex-col gap-4 h-full"
             >
-              <div className="font-bold text-white mb-2 border-b border-white/5 pb-1">Utilisateur {idx + 1}</div>
-              <div data-focus-section={`profile-user${idx + 1}-name`}>
-                <label htmlFor={`uc-name-${idx}`} className="text-meta text-ink-300">Nom</label>
-                <input
-                  id={`uc-name-${idx}`}
-                  type="text"
-                  value={user.name}
-                  onChange={(e) => {
-                    const newUsers = [...config.users] as [User, User];
-                    newUsers[idx] = { ...user, name: e.target.value };
-                    setConfig({ ...config, users: newUsers });
-                  }}
-                  className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white"
-                />
+              <div className="flex items-center gap-3">
+                <span className={`w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-dark shrink-0 ${idx === 0 ? 'bg-[#34b39a]' : 'bg-[#7c93f2]'}`} aria-hidden="true">
+                  {(user.name || '?').trim().charAt(0).toUpperCase() || '?'}
+                </span>
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <span className="text-meta text-ink-400">Utilisateur {idx + 1}</span>
+                  <span className="text-[18px] font-semibold text-ink-50 truncate">{user.name || '—'}</span>
+                </div>
+                {idx === 1 && (
+                  <button type="button" onClick={retirerConjoint} className="text-meta text-ink-300 underline underline-offset-2 hover:text-danger-400 focus-ring rounded-sm">
+                    Retirer le conjoint
+                  </button>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div data-focus-section={`profile-user${idx + 1}-age`}>
-                  <label htmlFor={`uc-age-${idx}`} className="text-meta text-ink-300">Age actuel</label>
+              <div className="grid grid-cols-[minmax(0,1fr)_88px] sm:grid-cols-[minmax(0,1fr)_140px] gap-3">
+                <div data-focus-section={`profile-user${idx + 1}-name`} className="flex flex-col gap-1.5">
+                  <label htmlFor={`uc-name-${idx}`} className="text-[13px] text-ink-300">Nom</label>
+                  <input id={`uc-name-${idx}`} type="text" value={user.name} onChange={(e) => majUser(idx, { name: e.target.value })} className={CHAMP} />
+                </div>
+                <div data-focus-section={`profile-user${idx + 1}-age`} className="flex flex-col gap-1.5">
+                  <label htmlFor={`uc-age-${idx}`} className="text-[13px] text-ink-300">Âge actuel</label>
+                  <input id={`uc-age-${idx}`} type="number" value={user.age || 30} onChange={(e) => majUser(idx, { age: parseInt(e.target.value) || 30 })} className={`${CHAMP} font-mono`} min={18} max={80} />
+                </div>
+              </div>
+              <div className="rounded-[10px] bg-surface border border-white/6 p-3.5 flex flex-col gap-2.5">
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-body text-ink-100">Immigré au Canada</span>
+                    <span className="text-meta text-ink-400">Coché : demande l’année de résidence fiscale au Canada</span>
+                  </span>
+                  {/* Case native (sémantique conservée) habillée en interrupteur. */}
                   <input
-                    id={`uc-age-${idx}`}
-                    type="number"
-                    value={user.age || 30}
-                    onChange={(e) => {
-                      const newUsers = [...config.users] as [User, User];
-                      newUsers[idx] = { ...user, age: parseInt(e.target.value) || 30 };
-                      setConfig({ ...config, users: newUsers });
-                    }}
-                    className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
-                    min={18} max={80}
+                    type="checkbox"
+                    checked={!!user.isImmigrant}
+                    onChange={(e) => majUser(idx, { isImmigrant: e.target.checked })}
+                    className="appearance-none shrink-0 relative w-11 h-[26px] rounded-full bg-surfaceHighlight border border-white/15 cursor-pointer transition-colors checked:bg-success-500 checked:border-success-500 focus-ring before:content-[''] before:absolute before:top-[3px] before:left-[3px] before:w-[18px] before:h-[18px] before:rounded-full before:bg-ink-400 before:transition-transform checked:before:translate-x-[18px] checked:before:bg-white"
                   />
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-meta text-warning-400 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!!user.isImmigrant}
-                      onChange={(e) => {
-                        const newUsers = [...config.users] as [User, User];
-                        newUsers[idx] = { ...user, isImmigrant: e.target.checked };
-                        setConfig({ ...config, users: newUsers });
-                      }}
-                      className="w-3.5 h-3.5 rounded"
-                    />
-                    Immigré au Canada
-                  </label>
-                  {user.isImmigrant && (
-                    <input
-                      aria-label={`Année de résidence fiscale au Canada — ${user.name || `conjoint ${idx + 1}`}`}
-                      type="number"
-                      value={user.canadaArrivalYear || ''}
-                      onChange={(e) => {
-                        const newUsers = [...config.users] as [User, User];
-                        newUsers[idx] = { ...user, canadaArrivalYear: parseInt(e.target.value) || undefined };
-                        setConfig({ ...config, users: newUsers });
-                      }}
-                      className="w-full mt-1 bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
-                      min={1950} max={new Date().getFullYear()}
-                      placeholder="Année de résidence fiscale (ex: 2018)"
-                    />
-                  )}
-                </div>
+                </label>
+                {user.isImmigrant && (
+                  <input
+                    aria-label={`Année de résidence fiscale au Canada — ${user.name || `conjoint ${idx + 1}`}`}
+                    type="number"
+                    value={user.canadaArrivalYear || ''}
+                    onChange={(e) => majUser(idx, { canadaArrivalYear: parseInt(e.target.value) || undefined })}
+                    className={`${CHAMP} font-mono`}
+                    min={1950} max={new Date().getFullYear()}
+                    placeholder="Année de résidence fiscale (ex. 2018)"
+                  />
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        <p className="text-meta text-ink-400 italic">
-          {/* PH3/PH3-c — libellé re-véridifié : tout le setup vit désormais dans CET onglet Profil. */}
-          Salaires &amp; options fiscales, carrière &amp; rémunération variable, retraite, enfants (REEE) et
-          mode de répartition : sections suivantes de cet onglet <strong className="text-ink-300">Profil</strong>.
+        <p className="text-[13px] text-ink-400">
+          {/* PH3/PH3-c — tout le setup vit dans CET onglet Profil. */}
+          Salaires et options fiscales, carrière et rémunération variable, retraite, enfants (REEE) et mode de
+          répartition : onglets suivants de ce Profil.
         </p>
-      </div>
-    </Card>
+    </section>
   );
 };

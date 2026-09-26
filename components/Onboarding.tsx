@@ -111,7 +111,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-[#080b10] flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-9999 bg-[#080b10] flex flex-col items-center justify-center p-4">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-[120px]" />
                 <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-secondary/5 rounded-full blur-[100px]" />
@@ -132,7 +132,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         aria-label="Progression de la configuration"
                     >
                         <div
-                            className="h-full bg-gradient-to-r from-primary to-success-400 transition-all duration-500"
+                            className="h-full bg-linear-to-r/srgb from-primary to-success-400 transition-all duration-500"
                             style={{ width: `${progress}%` }}
                         />
                     </div>
@@ -140,7 +140,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
                 {step === 'welcome' && (
                     <div className="text-center space-y-6 animate-fade-in">
-                        <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-emerald-300 flex items-center justify-center text-4xl shadow-[0_0_40px_rgba(16,185,129,0.3)]" aria-hidden="true">
+                        <div className="w-20 h-20 mx-auto rounded-2xl bg-linear-to-br/srgb from-primary to-emerald-300 flex items-center justify-center text-4xl shadow-[0_0_40px_rgba(16,185,129,0.3)]" aria-hidden="true">
                             Fi
                         </div>
                         <div>
@@ -194,7 +194,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                                 </Field>
                                 <div className="col-span-2">
                                     <label className="flex items-center gap-2 text-meta text-warning-400 cursor-pointer">
-                                        <input type="checkbox" checked={!!user1.isImmigrant} onChange={e => setUser1({ ...user1, isImmigrant: e.target.checked })} className="w-4 h-4 rounded focus-ring" />
+                                        <input type="checkbox" checked={!!user1.isImmigrant} onChange={e => setUser1({ ...user1, isImmigrant: e.target.checked })} className="w-4 h-4 rounded-sm focus-ring" />
                                         Je suis immigré au Canada <span className="text-ink-400">(ajuste le droit CELI/REER et la PSV)</span>
                                     </label>
                                     {user1.isImmigrant && (
@@ -205,7 +205,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <input type="checkbox" id="coupleMode" checked={hasCoupleMode} onChange={e => setHasCoupleMode(e.target.checked)} className="w-4 h-4 rounded focus-ring" />
+                            <input type="checkbox" id="coupleMode" checked={hasCoupleMode} onChange={e => setHasCoupleMode(e.target.checked)} className="w-4 h-4 rounded-sm focus-ring" />
                             <label htmlFor="coupleMode" className="text-body text-ink-200 cursor-pointer">Mode couple (2 revenus)</label>
                         </div>
 

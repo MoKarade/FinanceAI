@@ -49,12 +49,12 @@ export const InsurancePanel: React.FC<{
                     <p className="text-meta text-ink-400 italic">Aucune assurance enregistrée. Ajoute tes polices pour modéliser leur impact (primes mensuelles, capital décès, capital invalidité, etc.).</p>
                 )}
                 {policies.map((p, i) => (
-                    <div key={p.id} className="grid grid-cols-12 gap-1 items-center p-2 bg-black/30 rounded border border-white/5">
+                    <div key={p.id} className="grid grid-cols-12 gap-1 items-center p-2 bg-black/30 rounded-sm border border-white/5">
                         <select
                             aria-label="Type d'assurance"
                             value={p.kind}
                             onChange={e => update(i, { kind: e.target.value as InsuranceKind })}
-                            className="col-span-3 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
+                            className="col-span-3 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         >
                             <option value="life-term">Vie temp</option>
                             <option value="life-whole">Vie entière</option>
@@ -72,30 +72,30 @@ export const InsurancePanel: React.FC<{
                             aria-label="Assureur"
                             placeholder="Assureur" value={p.insurer ?? ''}
                             onChange={e => update(i, { insurer: e.target.value })}
-                            className="col-span-3 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
+                            className="col-span-3 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         />
                         <PrivateNumberInput
                             aria-label="Capital assuré (dollars)"
                             type="number" placeholder="Capital $" value={p.faceAmount ?? ''}
                             onChange={e => update(i, { faceAmount: Number(e.target.value) || undefined })}
-                            className="col-span-2 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
+                            className="col-span-2 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         />
                         <PrivateNumberInput
                             aria-label="Prime mensuelle (dollars)"
                             type="number" placeholder="Prime $/mois" value={p.monthlyPremium}
                             onChange={e => update(i, { monthlyPremium: Number(e.target.value) || 0 })}
-                            className="col-span-2 bg-dark border border-border rounded px-1 py-1 text-meta text-white"
+                            className="col-span-2 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         />
                         <input
                             aria-label="Date d'expiration de la police"
                             type="date" placeholder="Expire" value={p.expiryDate ?? ''}
                             onChange={e => update(i, { expiryDate: e.target.value })}
-                            className="col-span-1 bg-dark border border-border rounded px-0.5 py-1 text-tiny text-white"
+                            className="col-span-1 bg-dark border border-border rounded-sm px-0.5 py-1 text-tiny text-white"
                         />
                         <button onClick={() => remove(i)} className="col-span-1 text-danger-400 text-body hover:text-red-300 p-2 -m-2" title="Supprimer" aria-label="Supprimer cette police">×</button>
                     </div>
                 ))}
-                <button onClick={add} className="text-meta bg-info-500/20 border border-info-500/40 rounded px-2 py-1 text-blue-300 hover:bg-info-500/30">
+                <button onClick={add} className="text-meta bg-info-500/20 border border-info-500/40 rounded-sm px-2 py-1 text-blue-300 hover:bg-info-500/30">
                     + Ajouter une assurance
                 </button>
             </div>
@@ -136,7 +136,7 @@ export const RentalPropertyPanel: React.FC<{
                     barème réel) : loyer compté double, impôt calculé deux fois. Condition
                     STRUCTURELLE (les deux listes non vides), jamais un rapprochement par nom. */}
                 {properties.length > 0 && nbLocatifsImmobilier > 0 && (
-                    <p role="status" className="text-tiny text-warning-300 bg-warning-500/10 border border-warning-500/20 rounded p-2">
+                    <p role="status" className="text-tiny text-warning-300 bg-warning-500/10 border border-warning-500/20 rounded-sm p-2">
                         ⚠️ {nbLocatifsImmobilier === 1 ? 'Un bien locatif est aussi déclaré' : `${nbLocatifsImmobilier} biens locatifs sont aussi déclarés`}
                         {' '}dans l’onglet Immobilier. Si c’est le <strong>même</strong> immeuble, son loyer est compté
                         <strong> deux fois</strong> dans la projection — garde-le d’un seul côté.
@@ -148,7 +148,7 @@ export const RentalPropertyPanel: React.FC<{
                     const noi = annualRent - annualExpenses;
                     const capRate = rp.currentValue > 0 ? (noi / rp.currentValue * 100).toFixed(2) : '0.00';
                     return (
-                        <details key={rp.id} className="p-2 bg-black/30 rounded border border-white/5">
+                        <details key={rp.id} className="p-2 bg-black/30 rounded-sm border border-white/5">
                             {/* [A11Y-PRIVACY-PATRIMOINE-ETENDU] Le NOI est un MONTANT, et il était
                                 doublement fautif : rendu en clair quel que soit le mode, et via un
                                 `toLocaleString` nu (la règle du dépôt est `formatCAD`, source unique).
@@ -158,29 +158,29 @@ export const RentalPropertyPanel: React.FC<{
                                 {rp.name} — NOI: <PrivateAmount>{formatCAD(noi)}</PrivateAmount> · Cap: {capRate}%
                             </summary>
                             <div className="mt-2 grid grid-cols-3 gap-1">
-                                <input aria-label="Nom de l'immeuble locatif" placeholder="Nom" value={rp.name} onChange={e => update(i, { name: e.target.value })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <PrivateNumberInput aria-label="Prix d'achat (dollars)" type="number" placeholder="Prix achat $" value={rp.purchasePrice || ''} onChange={e => update(i, { purchasePrice: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <PrivateNumberInput aria-label="Valeur actuelle (dollars)" type="number" placeholder="Valeur actuelle $" value={rp.currentValue || ''} onChange={e => update(i, { currentValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <PrivateNumberInput aria-label="Solde hypothécaire (dollars)" type="number" placeholder="Hypothèque $" value={rp.mortgageBalance || ''} onChange={e => update(i, { mortgageBalance: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input aria-label="Taux hypothécaire (pourcentage)" type="number" placeholder="Taux %" value={rp.mortgageRate || ''} onChange={e => update(i, { mortgageRate: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <PrivateNumberInput aria-label="Loyer mensuel (dollars)" type="number" placeholder="Loyer $/mois" value={rp.monthlyRent || ''} onChange={e => update(i, { monthlyRent: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <input aria-label="Taux de vacance (pourcentage)" type="number" placeholder="Vacance %" value={rp.vacancyPct || ''} onChange={e => update(i, { vacancyPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Nom de l'immeuble locatif" placeholder="Nom" value={rp.name} onChange={e => update(i, { name: e.target.value })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <PrivateNumberInput aria-label="Prix d'achat (dollars)" type="number" placeholder="Prix achat $" value={rp.purchasePrice || ''} onChange={e => update(i, { purchasePrice: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <PrivateNumberInput aria-label="Valeur actuelle (dollars)" type="number" placeholder="Valeur actuelle $" value={rp.currentValue || ''} onChange={e => update(i, { currentValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <PrivateNumberInput aria-label="Solde hypothécaire (dollars)" type="number" placeholder="Hypothèque $" value={rp.mortgageBalance || ''} onChange={e => update(i, { mortgageBalance: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Taux hypothécaire (pourcentage)" type="number" placeholder="Taux %" value={rp.mortgageRate || ''} onChange={e => update(i, { mortgageRate: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <PrivateNumberInput aria-label="Loyer mensuel (dollars)" type="number" placeholder="Loyer $/mois" value={rp.monthlyRent || ''} onChange={e => update(i, { monthlyRent: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Taux de vacance (pourcentage)" type="number" placeholder="Vacance %" value={rp.vacancyPct || ''} onChange={e => update(i, { vacancyPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
                                 {/* [ENG-PROPGROWTH-PAR-IMMEUBLE] (décision Marc 2026-09-04) Croissance par bien.
                                     ⚠️ Champ vidé → undefined (défaut moteur 3 %), 0 TAPÉ → 0 conservé — jamais
                                     `|| 0` ni `|| 3`, qui effaceraient le 0 explicite ou le défaut
                                     (leçon ENG-PROPGROWTH-ZERO-INEXPRIMABLE). */}
-                                <input aria-label="Croissance annuelle de la valeur (pourcentage, vide = 3)" type="number" step="0.1" placeholder="Croissance %/an (3)" value={rp.propertyGrowthRate ?? ''} onChange={e => update(i, { propertyGrowthRate: e.target.value === '' ? undefined : Number(e.target.value) })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <PrivateNumberInput aria-label="Charges mensuelles (dollars)" type="number" placeholder="Charges $/mois" value={rp.monthlyExpenses || ''} onChange={e => update(i, { monthlyExpenses: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
-                                <PrivateNumberInput aria-label="DPA cumulée (dollars)" type="number" placeholder="DPA cumulée $" value={rp.ccaTaken || ''} onChange={e => update(i, { ccaTaken: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                <input aria-label="Croissance annuelle de la valeur (pourcentage, vide = 3)" type="number" step="0.1" placeholder="Croissance %/an (3)" value={rp.propertyGrowthRate ?? ''} onChange={e => update(i, { propertyGrowthRate: e.target.value === '' ? undefined : Number(e.target.value) })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <PrivateNumberInput aria-label="Charges mensuelles (dollars)" type="number" placeholder="Charges $/mois" value={rp.monthlyExpenses || ''} onChange={e => update(i, { monthlyExpenses: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
+                                <PrivateNumberInput aria-label="DPA cumulée (dollars)" type="number" placeholder="DPA cumulée $" value={rp.ccaTaken || ''} onChange={e => update(i, { ccaTaken: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
                                 {conjoints && (
-                                    <SelectProprietaire value={rp.owner} noms={conjoints} onChange={owner => update(i, { owner })} className="bg-dark border border-border rounded px-1 py-0.5 text-meta text-white" />
+                                    <SelectProprietaire value={rp.owner} noms={conjoints} onChange={owner => update(i, { owner })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
                                 )}
                                 <button onClick={() => remove(i)} className="col-span-3 text-danger-400 text-tiny hover:text-red-300">Supprimer cet immeuble</button>
                             </div>
                         </details>
                     );
                 })}
-                <button onClick={add} className="text-meta bg-success-500/20 border border-success-500/40 rounded px-2 py-1 text-emerald-300 hover:bg-success-500/30">
+                <button onClick={add} className="text-meta bg-success-500/20 border border-success-500/40 rounded-sm px-2 py-1 text-emerald-300 hover:bg-success-500/30">
                     + Ajouter un immeuble locatif
                 </button>
                 {/* [W5-PROXY-NON-SOURCE] Décision Marc `[W5-TAX-PROXY]` : garder le forfait, mais le
@@ -218,15 +218,15 @@ export const BusinessPanel: React.FC<{
                     <p className="text-meta text-ink-400 italic">Pour les actionnaires de société par actions (CCPC). Modélise dividende reçu, BNR, accès DPE.</p>
                 )}
                 {businesses.map((b, i) => (
-                    <div key={b.id} className="grid grid-cols-6 gap-1 items-center p-2 bg-black/30 rounded border border-white/5">
-                        <input aria-label="Nom de la société" placeholder="Nom" value={b.name} onChange={e => update(i, { name: e.target.value })} className="col-span-2 bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <input aria-label="Pourcentage détenu" type="number" placeholder="% détenu" value={b.ownershipPct} onChange={e => update(i, { ownershipPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <PrivateNumberInput aria-label="Juste valeur marchande (dollars)" type="number" placeholder="JVM $" value={b.estimatedValue || ''} onChange={e => update(i, { estimatedValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <PrivateNumberInput aria-label="Dividende annuel (dollars)" type="number" placeholder="Div annuel $" value={b.annualDividend || ''} onChange={e => update(i, { annualDividend: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
+                    <div key={b.id} className="grid grid-cols-6 gap-1 items-center p-2 bg-black/30 rounded-sm border border-white/5">
+                        <input aria-label="Nom de la société" placeholder="Nom" value={b.name} onChange={e => update(i, { name: e.target.value })} className="col-span-2 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white" />
+                        <input aria-label="Pourcentage détenu" type="number" placeholder="% détenu" value={b.ownershipPct} onChange={e => update(i, { ownershipPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white" />
+                        <PrivateNumberInput aria-label="Juste valeur marchande (dollars)" type="number" placeholder="JVM $" value={b.estimatedValue || ''} onChange={e => update(i, { estimatedValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white" />
+                        <PrivateNumberInput aria-label="Dividende annuel (dollars)" type="number" placeholder="Div annuel $" value={b.annualDividend || ''} onChange={e => update(i, { annualDividend: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white" />
                         <button onClick={() => remove(i)} className="text-danger-400 hover:text-red-300 p-2 -m-2" aria-label="Supprimer cet immeuble locatif">×</button>
                     </div>
                 ))}
-                <button onClick={add} className="text-meta bg-purple-500/20 border border-purple-500/40 rounded px-2 py-1 text-purple-300 hover:bg-purple-500/30">+ Ajouter une société</button>
+                <button onClick={add} className="text-meta bg-purple-500/20 border border-purple-500/40 rounded-sm px-2 py-1 text-purple-300 hover:bg-purple-500/30">+ Ajouter une société</button>
                 {/* [W5-PROXY-NON-SOURCE] Idem locatif — et ici l'écart est plus large, parce que le
                     modèle ne distingue pas dividende déterminé et ordinaire. */}
                 <p className="text-tiny text-ink-400 italic">
@@ -258,8 +258,8 @@ export const CyclicalGoalsPanel: React.FC<{
                     <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">Véhicules cycliques</h4>
                     {vehicles.map((v, i) => (
                         <div key={v.id} className="flex gap-1 mb-1">
-                            <input aria-label="Fréquence de remplacement (années)" type="number" placeholder="Tous les N ans" value={v.cyclYears} onChange={e => { const next = [...vehicles]; next[i] = { ...v, cyclYears: Number(e.target.value) || 0 }; onVehicles(next); }} className="w-16 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <PrivateNumberInput aria-label="Coût estimé du véhicule (dollars)" type="number" placeholder="Coût $" value={v.costEstimate} onChange={e => { const next = [...vehicles]; next[i] = { ...v, costEstimate: Number(e.target.value) || 0 }; onVehicles(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Fréquence de remplacement (années)" type="number" placeholder="Tous les N ans" value={v.cyclYears} onChange={e => { const next = [...vehicles]; next[i] = { ...v, cyclYears: Number(e.target.value) || 0 }; onVehicles(next); }} className="w-16 bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
+                            <PrivateNumberInput aria-label="Coût estimé du véhicule (dollars)" type="number" placeholder="Coût $" value={v.costEstimate} onChange={e => { const next = [...vehicles]; next[i] = { ...v, costEstimate: Number(e.target.value) || 0 }; onVehicles(next); }} className="flex-1 bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                             <button onClick={() => { const next = [...vehicles]; next.splice(i, 1); onVehicles(next); }} className="text-danger-400 text-meta p-2 -m-2" aria-label="Supprimer ce remplacement de véhicule">×</button>
                         </div>
                     ))}
@@ -270,8 +270,8 @@ export const CyclicalGoalsPanel: React.FC<{
                     <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">Rénovations majeures</h4>
                     {renovations.map((r, i) => (
                         <div key={r.id} className="flex gap-1 mb-1">
-                            <input aria-label="Date de la rénovation" type="date" value={r.date} onChange={e => { const next = [...renovations]; next[i] = { ...r, date: e.target.value }; onRenovations(next); }} className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <PrivateNumberInput aria-label="Coût de la rénovation (dollars)" type="number" placeholder="Coût $" value={r.cost} onChange={e => { const next = [...renovations]; next[i] = { ...r, cost: Number(e.target.value) || 0 }; onRenovations(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <input aria-label="Date de la rénovation" type="date" value={r.date} onChange={e => { const next = [...renovations]; next[i] = { ...r, date: e.target.value }; onRenovations(next); }} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
+                            <PrivateNumberInput aria-label="Coût de la rénovation (dollars)" type="number" placeholder="Coût $" value={r.cost} onChange={e => { const next = [...renovations]; next[i] = { ...r, cost: Number(e.target.value) || 0 }; onRenovations(next); }} className="flex-1 bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                             <button onClick={() => { const next = [...renovations]; next.splice(i, 1); onRenovations(next); }} className="text-danger-400 text-meta p-2 -m-2" aria-label="Supprimer cette rénovation">×</button>
                         </div>
                     ))}
@@ -282,7 +282,7 @@ export const CyclicalGoalsPanel: React.FC<{
                     <h4 className="text-tiny font-bold uppercase tracking-widest text-ink-300 mb-2">Dons charitables</h4>
                     {charity.map((c, i) => (
                         <div key={c.id} className="flex gap-1 mb-1">
-                            <PrivateNumberInput aria-label="Don annuel (dollars)" type="number" placeholder="$/an" value={c.annualAmount} onChange={e => { const next = [...charity]; next[i] = { ...c, annualAmount: Number(e.target.value) || 0 }; onCharity(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                            <PrivateNumberInput aria-label="Don annuel (dollars)" type="number" placeholder="$/an" value={c.annualAmount} onChange={e => { const next = [...charity]; next[i] = { ...c, annualAmount: Number(e.target.value) || 0 }; onCharity(next); }} className="flex-1 bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                             <label
                                 className="text-tiny text-ink-300 flex items-center gap-1"
                                 title="Don de titres cotés en nature : l'avantage fiscal (inclusion du gain en capital à 0 %) n'est pas encore modélisé — le crédit de don s'applique quand même. Cf FISCAL_REFERENCE §10."

@@ -27,7 +27,7 @@ async function revelerCourbe(page: Page) {
     const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
     await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
     if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 test.describe('Futur mobile — amorçage (PR5)', () => {
@@ -120,7 +120,7 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
     test.setTimeout(120_000);
 
     async function chartBox(page: Page) {
-        const chart = page.getByRole('img', { name: /Courbe de vie/ });
+        const chart = page.getByRole('group', { name: /Courbe de vie/ });
         await expect(chart).toBeVisible({ timeout: 15_000 });
         await chart.scrollIntoViewIfNeeded();
         await page.locator('.recharts-cartesian-grid').first().waitFor({ state: 'visible', timeout: 15_000 });
@@ -137,8 +137,12 @@ test.describe('Futur mobile — feuille du jour (PR5)', () => {
         // choisi plutôt que sur l'ancre « aujourd'hui ».
         const panneau = page.locator('[data-panneau-jour]');
         const epingle = page.locator('[data-jour-epingle]');
+        // [S5-REFONTE-FUTUR] Échelle Y resserrée sur les données : la courbe et ses pastilles
+        // d'évènement occupent désormais la bande 0,6-0,8 de la hauteur — un tap y ouvre leur fiche
+        // au lieu d'épingler un jour. On vise le HAUT du tracé, vide de pastilles (le jour se choisit
+        // à l'abscisse, la hauteur du tap n'y change rien).
         const spots: Array<[number, number]> = [
-            [0.5, 0.78], [0.3, 0.82], [0.65, 0.75], [0.45, 0.6],
+            [0.5, 0.3], [0.3, 0.35], [0.65, 0.25], [0.45, 0.4],
         ];
         const box = await chartBox(page);
         for (const [fx, fy] of spots) {

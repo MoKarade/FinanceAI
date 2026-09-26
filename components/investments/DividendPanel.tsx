@@ -28,6 +28,8 @@ interface DividendPanelProps {
     totalAnnualDividends: number;
     currentAllocation: AllocationItem[];
     isLoading: boolean;
+    /** [S5-REFONTE-PLACEMENTS] Rendu sans carte ni titre (posé dans un accordéon qui les porte). */
+    sansCadre?: boolean;
 }
 
 export const DividendPanel: React.FC<DividendPanelProps> = ({
@@ -35,6 +37,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
     totalAnnualDividends,
     currentAllocation,
     isLoading,
+    sansCadre = false,
 }) => {
     const [dripEnabled, setDripEnabled] = useState(false);
     const [divGrowthRate, setDivGrowthRate] = useState(5);
@@ -86,8 +89,8 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
     }, [isPrivacyMode]);
 
     return (
-        <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex justify-between items-center mb-6 bg-white/[0.03] p-5 rounded-2xl border border-white/10 shadow-lg shadow-black/20">
+        <Cadre sansCadre={sansCadre}>
+            <div className="flex justify-between items-center mb-6 bg-white/3 p-5 rounded-2xl border border-white/10 shadow-lg shadow-black/20">
                 <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center shadow-inner border border-white/10"><Icon name="cash" size={26} className="text-ink-200" /></div>
                     <div>
@@ -104,12 +107,12 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {isLoading ? (
                     Array(4).fill(0).map((_, i) => (
-                        <div key={i} className="bg-white/[0.03] p-4 rounded-xl border border-white/5 h-24 flex flex-col gap-3">
+                        <div key={i} className="bg-white/3 p-4 rounded-xl border border-white/5 h-24 flex flex-col gap-3">
                             <div className="flex justify-between">
                                 <div className="w-10 h-10 skeleton-box rounded-full"></div>
-                                <div className="w-20 h-4 skeleton-box rounded"></div>
+                                <div className="w-20 h-4 skeleton-box rounded-sm"></div>
                             </div>
-                            <div className="w-full h-4 skeleton-box rounded"></div>
+                            <div className="w-full h-4 skeleton-box rounded-sm"></div>
                         </div>
                     ))
                 ) : (
@@ -175,7 +178,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     max="50"
                                     value={divGrowthRate}
                                     onChange={(e) => setDivGrowthRate(Number(e.target.value))}
-                                    className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-meta text-white font-bold w-14 outline-none focus:border-success-500 transition-colors text-center"
+                                    className="bg-black/50 border border-white/10 rounded-sm px-2 py-0.5 text-meta text-white font-bold w-14 outline-hidden focus:border-success-500 transition-colors text-center"
                                 />
                                 <span className="text-tiny text-ink-300">% / an</span>
                             </div>
@@ -216,6 +219,10 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     />
                 </div>
             )}
-        </Card>
+        </Cadre>
     );
 };
+
+const Cadre: React.FC<{ sansCadre: boolean; children: React.ReactNode }> = ({ sansCadre, children }) => (sansCadre
+    ? <div>{children}</div>
+    : <Card title="Calendrier des Revenus Passifs" className="animate-premium-in" style={{ animationDelay: '0.2s' }}>{children}</Card>);

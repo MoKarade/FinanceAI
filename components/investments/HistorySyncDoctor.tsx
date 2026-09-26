@@ -92,8 +92,8 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
         <div className="mt-2">
         <h4 className="sr-only">Cours non synchronisés</h4>
         {quoteActionable.length > 0 && (
-            <details className="bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-1 mb-2">
-                <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2 py-1.5">
+            <details className="bg-white/3 border border-warning-400/30 rounded-card px-3 py-1 mb-2">
+                <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded-sm flex items-center gap-2 py-1.5">
                     <Icon name="alert" size={12} aria-hidden="true" />
                     Prix non actualisés ({quoteActionable.length}) — ces titres gardent leur dernier prix connu
                 </summary>
@@ -109,8 +109,8 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
             </details>
         )}
         {actionable.length > 0 && (
-        <details className="bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-1">
-            <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2 py-1.5">
+        <details className="bg-white/3 border border-warning-400/30 rounded-card px-3 py-1">
+            <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded-sm flex items-center gap-2 py-1.5">
                 <Icon name="alert" size={12} aria-hidden="true" />
                 Cours non synchronisés ({actionable.length}) — diagnostiquer et corriger
             </summary>

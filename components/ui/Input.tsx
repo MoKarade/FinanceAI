@@ -22,7 +22,7 @@ type InputAccent =
     | 'success' | 'teal' | 'violet' | 'warning' | 'yellow';
 
 const BASES: Record<InputVariant, string> = {
-    compact: 'w-full bg-dark border rounded px-2 py-1 text-meta text-white',
+    compact: 'w-full bg-dark border rounded-sm px-2 py-1 text-meta text-white',
     large: 'w-full bg-dark border rounded-card px-3 py-2 text-ink-50 text-body focus-ring',
 };
 

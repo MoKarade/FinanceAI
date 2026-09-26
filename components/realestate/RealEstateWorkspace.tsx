@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { formatCAD } from '../../utils/format';
-import { Card } from '../ui/Card';
-import { RealEstateGoal, Tab as TabEnum } from '../../types';
+import { formatCAD, formatNumber } from '../../utils/format';
+import { CollapsibleSection } from '../ui/CollapsibleSection';
+import { useViewportBelowLg } from '../../hooks/useViewportBelowLg';
+import { RealEstateGoal, Municipality, Tab as TabEnum } from '../../types';
 import { INITIAL_REAL_ESTATE_GOAL, TAB_LABELS } from '../../constants';
 import { VieCurveLink } from '../vie/VieCurveLink';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -10,7 +11,7 @@ import { PropertyConfigurator } from './PropertyConfigurator';
 import { MultiPropertyComparison } from './MultiPropertyComparison';
 import { RealEstateAdviceCard } from './RealEstateAdviceCard';
 import { construireAmortissement, construireComparaisonScenarios } from './calculsImmoLocaux';
-import { ScenariosComparatifsCard } from './ScenariosComparatifsCard';
+import { ScenariosAchatLocation } from './ScenariosAchatLocation';
 import { AmortissementCards } from './AmortissementCards';
 import { calculateWelcomeTax } from '../../services/realEstate';
 import { presentEquityOfGoal, monthsSince } from '../../services/projection/pastPurchaseInit';
@@ -18,8 +19,6 @@ import { firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { PageHeader } from '../ui/PageHeader';
 import { Icon } from '../ui/Icon';
-import { KPIStat } from '../ui/KPIStat';
-import { StatGrid } from '../ui/StatGrid';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -34,10 +33,6 @@ import { PrivateAmount } from '../ui/PrivateAmount';
  * SOUS-ENSEMBLE à afficher (`visibleGoals`) mais toute écriture repasse par la
  * liste COMPLÈTE (`allGoals`) pour ne jamais perdre l'autre moitié.
  */
-// [REFONTE-NAV-L4] Idiome de sous-titre de la famille « Vie » (ce que je PRÉVOIS) : chaque page
-// annonce son rôle vis-à-vis de la courbe Future. UNIQUEMENT la variante « projet » — la variante
-// « actuel » vit dans Configurations (ce que je POSSÈDE) et garde son sous-titre de photo.
-const PROJET_VIE_IDIOM = "Chaque projet d'achat déforme ta courbe Future";
 
 interface RealEstateWorkspaceProps {
     variant: 'actuel' | 'projet';
@@ -272,13 +267,9 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
 
     const formatCurrency = (val: number) => formatCAD(val);
 
-    // [REFONTE-NAV-L3] Équité PRÉSENTE (vue « actuel ») — source unique presentEquityOfGoal,
-    // MÊME convention que le moteur et le KPI patrimoine (jamais de formule locale).
-    //
-    // ⚠️ No-fake-data : `presentEquityOfGoal` retourne 0 pour un bien INACTIF (il est exclu du
-    // patrimoine simulé). Sommer sur TOUS les biens visibles faisait donc afficher
-    // « 1 bien détenu · Équité présente 0 $ » sur une maison payée mise en inactif — un 0 $
-    // crédible qui sous-déclare en silence. On n'agrège plus que les biens ACTIFS, et on le DIT.
+    // [REFONTE-NAV-L3] Équité PRÉSENTE agrégée (vue « actuel ») — source unique presentEquityOfGoal.
+    // ⚠️ No-fake-data : `presentEquityOfGoal` rend 0 pour un bien INACTIF → on n'agrège que les biens
+    // ACTIFS, et on le DIT (« 1 bien actif sur 2 ») ; aucun actif → « — » plutôt qu'un 0 $ crédible.
     const activeVisibleGoals = useMemo(
         () => (isActuel ? visibleGoals.filter(g => g.isActive) : []),
         [isActuel, visibleGoals],
@@ -289,18 +280,6 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const activePresentEquity = isActuel
         ? presentEquityOfGoal(activeGoal, monthsSince(activeGoal.purchaseDate))
         : 0;
-
-    // Wiring 2026-05: équité immo projetée par le moteur principal au terme de
-    // l'amortissement, à comparer avec le calcul local de la card Buy vs Rent.
-    const lastProjection = useFinanceStore(s => s.lastProjection);
-    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
-    const projectedEquityAtAmortEnd = useMemo(() => {
-        if (!lastProjection?.chartData?.length) return null;
-        const targetMonth = amortization * 12;
-        const point = lastProjection.chartData.find(p => p.monthIndex === targetMonth)
-            ?? lastProjection.chartData[Math.min(targetMonth, lastProjection.chartData.length - 1)];
-        return point?.Immobilier ?? null;
-    }, [lastProjection, amortization]);
 
     // G7b — calcul Acheter-vs-Louer remonté au niveau composant (il vivait dans
     // une IIFE de rendu) pour pouvoir brancher le zoom molette/pan sur la courbe.
@@ -315,84 +294,97 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
         amortissement: amortizationData.data,
     }), [amortization, totalCashNeeded, currentRent, netMonthlyCost, maintenanceMonthly, marketReturn, price, localRentalAppreciation, localStockReturn, netAnnualIncome, amortizationData.data]);
 
-    // [REFONTE-NAV-L3] Vocabulaire et en-tête par variante.
-    // [REFONTE-NAV-L4] Titre = TAB_LABELS (source unique des libellés d'onglets), comme les
-    // trois autres pages « Vie ». Les deux libellés en dur ici les répliquaient à la main.
-    const pageTitle = isActuel ? TAB_LABELS[TabEnum.REAL_ESTATE] : TAB_LABELS[TabEnum.REAL_ESTATE_PROJECTS];
-    const pageIcon = isActuel ? 'real-estate' as const : 'building' as const;
-    const entityWord = isActuel ? 'bien' : 'projet';
+    // [S5-REFONTE-IMMOBILIER] Maquettes E-immobilier / M-immobilier : UNE page « Immobilier », deux
+    // onglets d'en-tête (Biens détenus · N / Projets d'achat · N) qui basculent entre les deux vues du
+    // split (Tab.REAL_ESTATE ↔ Tab.REAL_ESTATE_PROJECTS — l'item de navigation reste « Immobilier »).
+    const setActiveTab = useFinanceStore(s => s.setActiveTab);
+    const etroit = useViewportBelowLg();
     const countVisible = visibleGoals.length;
-    const plural = countVisible > 1 ? 's' : '';
-    // Équité affichée = somme des biens ACTIFS uniquement (cf. bloc `activeVisibleGoals`).
-    // Aucun bien actif → « — » honnête plutôt qu'un « 0 $ » qui se lit comme un patrimoine nul.
-    // Mélange actif/inactif → on annonce le dénominateur réel de la somme.
-    const activeCount = activeVisibleGoals.length;
-    // [A11Y-PRIVACY-CHAINES-RESTANTES] Le sous-titre était UNE CHAÎNE portant l'équité et la
-    // mensualité à l'intérieur : rien à masquer. C'est du JSX maintenant — le contexte (« 2 biens
-    // détenus », « 1 actif sur 3 ») reste lisible, seuls les deux montants sont masquables.
-    const equityPart: React.ReactNode = activeCount === 0
-        ? 'Équité présente — (aucun bien actif dans la simulation)'
-        : (
-            <>
-                Équité présente <PrivateAmount>{formatCurrency(presentEquityTotal)}</PrivateAmount>
-                {activeCount < countVisible
-                    && ` (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})`}
-            </>
-        );
-    const pageSubtitle: React.ReactNode = isActuel
-        ? <>{countVisible} {entityWord}{plural} détenu{plural} · {equityPart}</>
-        : (
-            <>
-                {PROJET_VIE_IDIOM} · {countVisible} {entityWord}{plural} d&apos;achat · Mensualité nette{' '}
-                <PrivateAmount>{formatCurrency(netMonthlyCost)}</PrivateAmount>
-            </>
-        );
     const otherCount = allGoals.length - visibleGoals.length;
-    const crossLink = otherCount > 0 && (
+    const nbBiens = isActuel ? countVisible : otherCount;
+    const nbProjets = isActuel ? otherCount : countVisible;
+    const onglets = (
+        <div role="group" aria-label="Biens et projets" className="flex gap-1 p-1 lg:p-0 rounded-xl bg-surface lg:bg-transparent border border-white/6 lg:border-0 w-full lg:w-auto">
+            {([
+                { tab: TabEnum.REAL_ESTATE, libelle: `Biens détenus · ${nbBiens}`, courant: isActuel },
+                { tab: TabEnum.REAL_ESTATE_PROJECTS, libelle: `Projets d'achat · ${nbProjets}`, courant: !isActuel },
+            ]).map((o) => (
+                <button
+                    key={o.tab}
+                    type="button"
+                    onClick={() => { if (!o.courant) setActiveTab(o.tab); }}
+                    aria-current={o.courant ? 'page' : undefined}
+                    className={`flex-1 lg:flex-none min-h-10 lg:min-h-9 px-3.5 rounded-lg text-body transition-colors focus-ring ${o.courant ? 'bg-ink-50 lg:bg-surfaceHighlight text-dark lg:text-ink-50 font-semibold' : 'text-ink-300 hover:bg-white/5'}`}
+                >
+                    {o.libelle}
+                </button>
+            ))}
+        </div>
+    );
+    const boutonAjouter = (
         <button
             type="button"
-            onClick={() => navigateWithFocus(isActuel ? TabEnum.REAL_ESTATE_PROJECTS : TabEnum.REAL_ESTATE)}
-            className="text-meta text-ink-400 hover:text-ink-200 underline underline-offset-2 transition-colors focus-ring rounded"
+            onClick={addNewGoal}
+            aria-label={isActuel ? 'Ajouter un bien' : 'Ajouter un projet'}
+            className="h-10 px-3.5 lg:px-4 rounded-lg border border-white/40 lg:border-transparent text-ink-100 lg:bg-primary lg:text-dark text-body lg:font-bold focus-ring"
         >
-            {isActuel
-                ? `${otherCount} projet${otherCount > 1 ? 's' : ''} d'achat futur${otherCount > 1 ? 's' : ''} → Vie · Projets immo`
-                : `${otherCount} bien${otherCount > 1 ? 's' : ''} détenu${otherCount > 1 ? 's' : ''} → Configurations · Immobilier`}
+            <span className="lg:hidden">Ajouter</span><span className="hidden lg:inline">{isActuel ? 'Ajouter un bien' : 'Ajouter un projet'}</span>
         </button>
     );
+    // Biens détenus : la phrase de patrimoine (nombre de biens · équité présente des biens ACTIFS).
+    const activeCount = activeVisibleGoals.length;
+    const resumeBiens = isActuel && countVisible > 0 ? (
+        <p className="text-meta lg:text-body text-ink-400">
+            {countVisible} bien{countVisible > 1 ? 's' : ''} détenu{countVisible > 1 ? 's' : ''} ·{' '}
+            {activeCount === 0
+                ? 'Équité présente — (aucun bien actif dans la simulation)'
+                : <>Équité présente <PrivateAmount>{formatCurrency(presentEquityTotal)}</PrivateAmount>
+                    {activeCount < countVisible && ` (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})`}</>}
+        </p>
+    ) : undefined;
+    const enTete = (
+        <PageHeader
+            title={TAB_LABELS[TabEnum.REAL_ESTATE]}
+            badge={resumeBiens}
+            nav={onglets}
+            actions={
+                <span className="flex items-center gap-3">
+                    {!isActuel && <span className="hidden lg:inline-flex"><VieCurveLink /></span>}
+                    {boutonAjouter}
+                </span>
+            }
+        />
+    );
 
-    // [REFONTE-NAV-L3] Vue vide HONNÊTE (pas d'éditeur sur le goal placeholder) : rien à montrer
-    // dans CETTE moitié du split — on propose d'ajouter, et on pointe vers l'autre page si le
-    // reste de la tranche vit là-bas.
+    // Vue vide HONNÊTE (pas d'éditeur sur le goal placeholder) : rien à montrer dans CETTE moitié du
+    // split — on propose d'ajouter ; l'autre moitié est à un onglet.
     if (countVisible === 0) {
         return (
-            <div className="space-y-6 stagger-in pb-10">
-                <PageHeader
-                    icon={<Icon name={pageIcon} size={28} />}
-                    title={pageTitle}
-                    subtitle={isActuel
-                        ? 'Aucun bien détenu pour l\'instant'
-                        : `${PROJET_VIE_IDIOM} · aucun projet d'achat pour l'instant`}
-                    actions={isActuel ? undefined : <VieCurveLink />}
-                />
-                <Card>
-                    <div className="py-8 text-center space-y-4">
-                        <p className="text-body text-ink-300">
-                            {isActuel
-                                ? 'Tu ne possèdes aucun bien immobilier pour l\'instant (photo d\'aujourd\'hui).'
-                                : 'Aucun projet d\'achat futur pour l\'instant (les plans qui déforment la courbe).'}
-                        </p>
-                        <Button onClick={addNewGoal} variant="primary" size="md">
-                            {isActuel ? '+ Ajouter un bien détenu' : '+ Ajouter un projet d\'achat'}
-                        </Button>
-                        {crossLink && <div>{crossLink}</div>}
-                    </div>
-                </Card>
+            <div className="space-y-5 stagger-in pb-10">
+                {enTete}
+                <section className="rounded-2xl bg-surface border border-white/6 py-10 px-4 text-center space-y-4">
+                    <p className="text-body text-ink-300">
+                        {isActuel
+                            ? 'Tu ne possèdes aucun bien immobilier pour l\'instant (photo d\'aujourd\'hui).'
+                            : 'Aucun projet d\'achat futur pour l\'instant (les plans qui déforment la courbe).'}
+                    </p>
+                    <button type="button" onClick={addNewGoal} className="h-10 px-4 rounded-lg bg-primary text-dark text-body font-bold focus-ring">
+                        {isActuel ? '+ Ajouter un bien détenu' : '+ Ajouter un projet d\'achat'}
+                    </button>
+                </section>
+                {!isActuel && etroit && <div className="[&>button]:w-full"><VieCurveLink /></div>}
             </div>
         );
     }
 
+    const residence = activeGoal.isPrimaryResidence || !activeGoal.isRented;
+    const tuile = 'rounded-2xl bg-surface border border-white/6 px-4 py-3.5 lg:px-[18px] flex flex-col gap-0.5 min-w-0';
+    const etiquette = 'text-meta xl:text-[11px] xl:font-semibold xl:tracking-[0.06em] xl:uppercase text-ink-400';
+    const montant = 'font-mono text-[18px] xl:text-[20px] font-bold text-ink-50';
+    const pctTexte = (v: number) => formatNumber(v, { decimals: Number.isInteger(v) ? 0 : 1 });
+
     return (
-        <div className="space-y-6 stagger-in pb-10">
+        <div className="space-y-5 stagger-in pb-10">
             <ConfirmModal
                 isOpen={!!confirmDeleteGoalId}
                 onConfirm={doConfirmDeleteGoal}
@@ -409,8 +401,6 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
             {pendingOwnedGoal && (
                 // [ENG-PAST-OWNED-VS-PLANNED] Modal nu (PAS ConfirmModal : son onClose == onCancel,
                 // une fermeture accidentelle écrirait « pas acheté » et retirerait le bien du m0).
-                // Trois issues : Oui / Pas encore / fermer = décider plus tard (rien n'est écrit,
-                // la question reviendra).
                 <Modal
                     isOpen
                     onClose={() => dismissOwnedQuestion(pendingOwnedGoal.id)}
@@ -429,217 +419,254 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                     </p>
                 </Modal>
             )}
-            <PageHeader
-                icon={<Icon name={pageIcon} size={28} />}
-                title={pageTitle}
-                subtitle={pageSubtitle}
-                badge={
-                    <div className="flex items-center gap-2">
-                        {activeGoal.isActive
-                            ? <Badge variant="success" size="md">Active dans simulation</Badge>
-                            // [UX-ISACTIVE-BADGE] (A5) : l'amputation du patrimoine doit être VISIBLE.
-                            : <Badge variant="neutral" size="md">Non compté dans la simulation</Badge>}
-                        {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : date passée sans achat confirmé. La
-                            condition de DATE est requise : une date repoussée au futur rend le
-                            « Pas encore » caduc (le moteur achètera normalement) — sans elle, le
-                            badge d'avertissement resterait affiché à jamais (revue #684). */}
-                        {activeGoal.isOwned === false && !!activeGoal.purchaseDate
-                            && activeGoal.purchaseDate < firstDayOfCurrentMonth && (
-                            <Badge variant="warning" size="md">Date passée — non acheté</Badge>
-                        )}
-                    </div>
-                }
-                actions={
-                    <>
-                        {/* [REFONTE-NAV-L4] affordance commune des pages « Vie » — variante « projet »
-                            seulement (la page Immobilier de Configurations n'est pas une page Vie). */}
-                        {!isActuel && <VieCurveLink />}
-                        <Button
-                            onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
-                            variant={activeGoal.isActive ? 'danger' : 'primary'}
-                            size="md"
-                        >
-                            {activeGoal.isActive ? 'Désactiver' : 'Activer dans Simulation'}
-                        </Button>
-                    </>
-                }
-            />
+            {enTete}
 
-            {/* Multi-Property Tabs */}
-            <div className="flex flex-wrap items-center gap-2">
-                {visibleGoals.map((g, idx) => {
-                    const isActive = activeGoalId === g.id;
-                    const nomAffiche = g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`);
-                    return (
-                        // [A11Y-DELETE-SPAN-NO-KEYBOARD] Les deux commandes sont des FRÈRES dans une
-                        // pilule, pas l'une DANS l'autre.
-                        //
-                        // ⚠️ Le correctif évident — ajouter `tabIndex` et `onKeyDown` au `<span
-                        // role="button">` — aurait été FAUX : un contrôle interactif imbriqué dans un
-                        // `<button>` est interdit par la spec (contenu interactif dans un descendant
-                        // de bouton), et Entrée/Espace auraient déclenché les DEUX actions, la
-                        // sélection de l'onglet et la suppression. Sortir le contrôle règle
-                        // l'atteignabilité clavier ET l'imbrication d'un seul geste.
-                        //
-                        // Les classes de pilule passent au conteneur pour que l'apparence ne bouge
-                        // pas ; chaque bouton garde son propre `focus-ring`, sinon la tabulation
-                        // traverserait deux commandes en n'en signalant qu'une.
-                        <div
-                            key={g.id}
-                            className={`rounded-pill border transition-all flex items-center text-meta font-bold ${
-                                isActive
-                                    ? 'bg-info-bg border-info-500 text-info-400'
-                                    : 'bg-white/5 border-white/10 text-ink-300 hover:bg-white/10'
-                            }`}
-                        >
-                            <button
-                                onClick={() => setActiveGoalId(g.id)}
-                                className="px-4 py-2 flex items-center gap-2 rounded-pill focus-ring"
-                            >
-                                <span className="inline-flex items-center gap-1.5"><Icon name="real-estate" size={14} />{nomAffiche}</span>
-                                {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" aria-label="active" />}
-                            </button>
-                            {allGoals.length > 1 && (
+            {/* Plusieurs biens dans cette vue : un sélecteur (la maquette n'en montre qu'un). */}
+            {countVisible > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
+                    {visibleGoals.map((g, idx) => {
+                        const choisi = activeGoalId === g.id;
+                        const nomAffiche = g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`);
+                        return (
+                            // [A11Y-DELETE-SPAN-NO-KEYBOARD] Sélection et suppression sont des FRÈRES (jamais
+                            // un contrôle dans un <button>).
+                            <div key={g.id} className={`rounded-lg border flex items-center text-body ${choisi ? 'bg-surfaceHighlight border-white/15 text-ink-50 font-semibold' : 'border-white/8 text-ink-300 hover:bg-white/5'}`}>
+                                <button type="button" onClick={() => setActiveGoalId(g.id)} aria-pressed={choisi} className="min-h-10 px-3.5 flex items-center gap-2 rounded-lg focus-ring">
+                                    {nomAffiche}
+                                    {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500" aria-label="active" />}
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => deleteGoal(g.id)}
-                                    // `touch-target` (index.css) porte la hit-box au minimum WCAG 2.5.8 :
-                                    // l'icône fait 13 px, la cible d'une action DESTRUCTIVE ne peut pas.
-                                    className="touch-target pr-3 pl-1 text-ink-400 hover:text-danger-400 rounded-pill focus-ring"
+                                    className="touch-target pr-3 pl-1 text-ink-400 hover:text-danger-400 rounded-lg focus-ring"
                                     aria-label={`Supprimer ${nomAffiche}`}
                                 >
                                     <Icon name="close" size={13} />
                                 </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Carte du bien : nom, type, rôle dans la simulation, interrupteur « Actif ». */}
+            <section aria-labelledby="bien-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:px-[22px] sm:py-[18px] flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <h2 id="bien-titre" className="text-[17px] lg:text-[20px] font-bold text-ink-50">{propertyName}</h2>
+                        <span className="max-lg:basis-full max-lg:-mt-1 lg:h-6 lg:px-2.5 lg:rounded-full lg:bg-surfaceHighlight text-meta text-ink-300 flex items-center">{activeGoal.isPrimaryResidence ? 'Résidence principale' : activeGoal.isRented ? 'Propriété locative' : 'Propriété secondaire'}</span>
+                        {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : date passée sans achat confirmé (condition de DATE requise). */}
+                        {activeGoal.isOwned === false && !!activeGoal.purchaseDate && activeGoal.purchaseDate < firstDayOfCurrentMonth && (
+                            <Badge variant="warning" size="md">Date passée — non acheté</Badge>
+                        )}
+                    </div>
+                    <p className="hidden lg:block text-[13px] text-ink-400">{activeGoal.isPrimaryResidence ? 'Le loyer actuel disparaît de la simulation à l\'achat.' : activeGoal.isRented ? 'Les loyers perçus entrent dans la simulation.' : 'Aucun loyer : le bien pèse par sa mensualité et son équité.'}</p>
+                </div>
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={activeGoal.isActive}
+                    onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
+                    className="flex items-center justify-between lg:justify-start gap-3 min-h-11 px-3.5 lg:px-0 rounded-xl lg:rounded-none border border-white/6 lg:border-0 bg-dark/40 lg:bg-transparent text-body text-ink-200 focus-ring"
+                >
+                    Actif dans la simulation
+                    <span className={`w-11 h-[26px] rounded-full p-[3px] flex transition-colors ${activeGoal.isActive ? 'bg-success-400 justify-end' : 'bg-white/15 justify-start'}`} aria-hidden="true">
+                        <span className={`w-5 h-5 rounded-full ${activeGoal.isActive ? 'bg-dark' : 'bg-ink-300'}`} />
+                    </span>
+                </button>
+                {/* [UX-ISACTIVE-BADGE] (A5) : l'amputation du patrimoine doit être VISIBLE. */}
+                {!activeGoal.isActive && <p className="text-meta text-warning-400 lg:hidden">Non compté dans la simulation.</p>}
+                <p className="lg:hidden text-[13px] text-ink-400">{activeGoal.isPrimaryResidence ? 'Le loyer actuel disparaît de la simulation à l\'achat.' : activeGoal.isRented ? 'Les loyers perçus entrent dans la simulation.' : 'Aucun loyer : le bien pèse par sa mensualité et son équité.'}</p>
+            </section>
+
+            <section aria-label="Chiffres clés" className="grid grid-cols-2 xl:grid-cols-5 gap-2.5 xl:gap-3.5">
+                <div className={`${tuile} col-span-2 xl:col-span-1`}>
+                    <span className={etiquette}>Prix d'achat</span>
+                    <PrivateAmount as="div" className={montant}>{formatCurrency(price)}</PrivateAmount>
+                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">mise de fonds <PrivateAmount>{formatCurrency(downPayment)}</PrivateAmount> · {Math.round((downPayment / price) * 100)} %</span>
+                </div>
+                {isActuel ? (
+                    /* [REFONTE-NAV-L3] Bien détenu : l'équité PRÉSENTE (source unique presentEquityOfGoal) ;
+                       inactif → « — » honnête (presentEquityOfGoal rend 0 pour un bien inactif). */
+                    <div className={tuile}>
+                        <span className={etiquette}>Équité présente</span>
+                        {activeGoal.isActive
+                            ? <PrivateAmount as="div" className={montant}>{formatCurrency(activePresentEquity)}</PrivateAmount>
+                            : <div className={montant}>—</div>}
+                        <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">{activeGoal.isActive ? 'Valeur actuelle − hypothèque' : 'Bien inactif — exclu du patrimoine'}</span>
+                    </div>
+                ) : (
+                    <div className={tuile}>
+                        <span className={etiquette}>Cash nécessaire</span>
+                        <PrivateAmount as="div" className={montant}>{formatCurrency(totalCashNeeded)}</PrivateAmount>
+                        {availableCash >= totalCashNeeded
+                            ? <span className="text-[10px] sm:text-[11px] leading-[15px] text-success-400">disponible</span>
+                            : <span className="text-[10px] sm:text-[11px] leading-[15px] text-danger-400">manque <PrivateAmount>{formatCurrency(totalCashNeeded - availableCash)}</PrivateAmount></span>}
+                    </div>
+                )}
+                <div className={tuile}>
+                    <span className={etiquette}>Prêt initial</span>
+                    <PrivateAmount as="div" className={montant}>{formatCurrency(totalMortgage)}</PrivateAmount>
+                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">prêt / valeur {Math.round((totalMortgage / price) * 100)} %</span>
+                </div>
+                <div className={tuile}>
+                    <span className={etiquette}>Mensualité nette</span>
+                    <PrivateAmount as="div" className={montant}>{formatCurrency(netMonthlyCost)}</PrivateAmount>
+                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">perte sèche <PrivateAmount>{formatCurrency(unrecoverableMonthly)}</PrivateAmount>/mois</span>
+                </div>
+                <div className={tuile}>
+                    <span className={etiquette}>Valeur dans {amortization} ans</span>
+                    <PrivateAmount as="div" className={montant}>{formatCurrency(amortizationData.finalValue)}</PrivateAmount>
+                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">appréciation {pctTexte(propertyGrowthRate)} %/an</span>
+                </div>
+            </section>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5 items-start">
+                <section aria-labelledby="financement-titre" className="order-2 xl:order-none rounded-2xl bg-surface border border-white/6 p-4 sm:px-5 sm:py-[18px] flex flex-col gap-4 min-w-0">
+                    <h2 id="financement-titre" className="text-[17px] lg:text-[16px] font-semibold text-ink-50">Financement</h2>
+                    <div className="flex flex-col gap-2">
+                        <span id="amortissement-libelle" className="text-[13px] text-ink-300">Amortissement</span>
+                        <div role="group" aria-labelledby="amortissement-libelle" className="grid grid-cols-4 p-1 rounded-xl bg-dark border border-white/6">
+                            {[15, 20, 25, 30].map((n) => (
+                                <button
+                                    key={n}
+                                    type="button"
+                                    onClick={() => updateActiveGoal({ amortization: n })}
+                                    aria-pressed={amortization === n}
+                                    className={`h-9 rounded-lg text-[13px] transition-colors focus-ring ${amortization === n ? 'bg-ink-50 text-dark font-semibold' : 'text-ink-200 hover:bg-white/5'}`}
+                                >
+                                    {n} ans
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="municipality-select" className="text-[13px] text-ink-300">Municipalité (taxe de bienvenue)</label>
+                        <select
+                            id="municipality-select"
+                            value={activeGoal.municipality ?? ''}
+                            onChange={e => updateActiveGoal({ municipality: e.target.value ? (e.target.value as Municipality) : undefined })}
+                            aria-describedby={!activeGoal.municipality ? 'municipality-hint' : undefined}
+                            className={`h-11 px-3.5 text-body ${activeGoal.municipality ? 'text-ink-50' : 'text-warning-400 champ-alerte'}`}
+                        >
+                            <option value="">À préciser</option>
+                            <option value="montreal">Montréal (surtaxe, jusqu'à 4 %)</option>
+                            <option value="reste_qc">Reste du Québec (max 2 %)</option>
+                        </select>
+                        {!activeGoal.municipality && (
+                            <p id="municipality-hint" className="text-meta leading-[17px] text-ink-400">
+                                Non précisée : le barème de Montréal (le plus élevé) est appliqué par prudence.
+                            </p>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <div className="px-3 py-2.5 rounded-xl bg-dark border border-white/6">
+                            <div className="text-meta text-ink-400">Rendement boursier</div>
+                            <div className="font-mono text-ink-50">{pctTexte(marketReturn)} %</div>
+                        </div>
+                        <div className="px-3 py-2.5 rounded-xl bg-dark border border-white/6">
+                            <div className="text-meta text-ink-400">Appréciation immo</div>
+                            <div className="font-mono text-ink-50">{pctTexte(localRentalAppreciation)} %</div>
+                        </div>
+                    </div>
+                    <CollapsibleSection title="Taux, frais récurrents et plafond de valeur" variant="lien" headingLevel={3}>
+                        <div className="flex flex-col gap-5">
+                            <div>
+                                <label htmlFor="rew-nom" className="text-meta text-ink-300 block mb-1">Nom de la propriété</label>
+                                <input id="rew-nom" type="text" value={propertyName} onChange={e => updateActiveGoal({ name: e.target.value })} className="w-full h-11 px-3 text-ink-50" />
+                            </div>
+                            <fieldset className="flex flex-col gap-3">
+                                <legend className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400 mb-2">Hypothèses du comparatif</legend>
+                                <div>
+                                    <label htmlFor="rew-currentRent" className="text-meta text-ink-300 block mb-1">Loyer actuel (scénario « louer ») — $/mois</label>
+                                    <input id="rew-currentRent" type="number" step="50" value={currentRent} onChange={e => setCurrentRent(Number(e.target.value))} className="w-full h-11 px-3 font-mono text-ink-50" />
+                                </div>
+                                <div>
+                                    <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                        <span>Rendement boursier{!marketReturnOverridden && globalReturnRate !== undefined ? ' (celui du Futur)' : ''}</span>
+                                        <span className="flex items-center gap-2">
+                                            <span className="font-mono text-ink-50">{pctTexte(marketReturn)} %</span>
+                                            {marketReturnOverridden && globalReturnRate !== undefined && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setMarketReturnOverridden(false); setMarketReturn(globalReturnRate); setLocalStockReturn(globalReturnRate); }}
+                                                    className="text-meta text-primary underline underline-offset-2 focus-ring rounded-sm"
+                                                    title={`Resynchroniser avec la projection globale (${globalReturnRate} %)`}
+                                                >
+                                                    ↺ Futur
+                                                </button>
+                                            )}
+                                        </span>
+                                    </label>
+                                    <input type="range" aria-label="Rendement boursier" min="3" max="15" step="0.5" value={marketReturn} onChange={e => { setMarketReturn(Number(e.target.value)); setLocalStockReturn(Number(e.target.value)); setMarketReturnOverridden(true); }} className="w-full accent-primary cursor-pointer" />
+                                </div>
+                                <div>
+                                    <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                        <span>Appréciation immo (comparatif)</span>
+                                        <span className="font-mono text-ink-50">{pctTexte(localRentalAppreciation)} %</span>
+                                    </label>
+                                    <input type="range" aria-label="Appréciation immo (comparatif)" min="0" max="10" step="0.5" value={localRentalAppreciation} onChange={e => setLocalRentalAppreciation(Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
+                                </div>
+                                {!residence && (
+                                    <p className="text-meta text-ink-300">Si location (cash-flow) : <PrivateAmount className={`font-mono ${netYield > 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatCurrency(netAnnualIncome)}</PrivateAmount>/an</p>
+                                )}
+                            </fieldset>
+                            <PropertyConfigurator
+                                activeGoal={activeGoal}
+                                updateActiveGoal={updateActiveGoal}
+                                mode={mode}
+                                setMode={setMode}
+                                taxesYearly={taxesYearly}
+                                setTaxesYearly={setTaxesYearly}
+                                heatingMonthly={heatingMonthly}
+                                setHeatingMonthly={setHeatingMonthly}
+                                condoFees={condoFees}
+                                setCondoFees={setCondoFees}
+                            />
+                            {allGoals.length > 1 && countVisible === 1 && (
+                                <div className="flex justify-end">
+                                    <button type="button" onClick={() => deleteGoal(activeGoal.id)} aria-label={`Supprimer ${propertyName}`} className="min-h-11 px-3 text-meta text-danger-400 underline underline-offset-2 focus-ring rounded-sm">
+                                        Supprimer ce {isActuel ? 'bien' : 'projet'}
+                                    </button>
+                                </div>
                             )}
                         </div>
-                    );
-                })}
-                <button
-                    onClick={addNewGoal}
-                    className="px-4 py-2 rounded-pill bg-white/5 border border-dashed border-white/20 text-ink-300 hover:bg-white/10 text-meta font-bold focus-ring"
-                >
-                    {isActuel ? '+ Ajouter un bien' : '+ Ajouter un projet'}
-                </button>
-            </div>
-            {crossLink && <div>{crossLink}</div>}
+                    </CollapsibleSection>
+                </section>
 
-            {/* Property name editor */}
-            <div className="flex items-center gap-3">
-                <span className="text-h1 text-ink-50 inline-flex items-center gap-2"><Icon name="building" size={20} className="text-ink-400" />{propertyName}</span>
-                <input
-                    type="text"
-                    value={propertyName}
-                    onChange={e => updateActiveGoal({ name: e.target.value })}
-                    placeholder="Renommer..."
-                    className="bg-transparent border-b border-white/20 text-ink-300 text-meta focus:outline-none focus:border-info-400 w-48 pb-0.5 transition-colors"
-                    aria-label="Nom de la propriété"
-                />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <PropertyConfigurator
-                    activeGoal={activeGoal}
-                    updateActiveGoal={updateActiveGoal}
-                    mode={mode}
-                    setMode={setMode}
-                    taxesYearly={taxesYearly}
-                    setTaxesYearly={setTaxesYearly}
-                    heatingMonthly={heatingMonthly}
-                    setHeatingMonthly={setHeatingMonthly}
-                    condoFees={condoFees}
-                    setCondoFees={setCondoFees}
-                />
-
-                {/* ANALYSIS DASHBOARD */}
-                <div className="lg:col-span-3 space-y-5">
-                    <StatGrid cols={4} gap="sm">
-                        {isActuel ? (
-                            /* [REFONTE-NAV-L3] Bien détenu : le « cash nécessaire à l'achat » n'a plus de
-                               sens — on montre l'équité PRÉSENTE (source unique presentEquityOfGoal). */
-                            <KPIStat
-                                label="Équité présente"
-                                icon={<Icon name="cash" size={16} />}
-                                /* No-fake-data : `presentEquityOfGoal` rend 0 pour un bien inactif — afficher
-                                   « 0 $ » ferait croire à une équité nulle. « — » est la valeur honnête. */
-                                value={activeGoal.isActive ? formatCurrency(activePresentEquity) : '—'}
-                                sublabel={activeGoal.isActive ? 'Valeur actuelle − hypothèque' : 'Bien inactif — exclu du patrimoine'}
-                                privacy
-                                variant={!activeGoal.isActive ? 'info' : activePresentEquity >= 0 ? 'success' : 'danger'}
-                            />
-                        ) : (
-                            <KPIStat
-                                label="Cash nécessaire"
-                                icon={<Icon name="cash" size={16} />}
-                                value={formatCurrency(totalCashNeeded)}
-                                sublabel={availableCash >= totalCashNeeded ? 'Disponible'
-                                    : <>Manque <PrivateAmount>{formatCurrency(totalCashNeeded - availableCash)}</PrivateAmount></>}
-                                privacy
-                                variant={availableCash >= totalCashNeeded ? 'success' : 'danger'}
-                            />
-                        )}
-                        <KPIStat
-                            label="Prêt Initial"
-                            icon={<Icon name="bank" size={16} />}
-                            value={formatCurrency(totalMortgage)}
-                            sublabel={`Ratio Prêt/Valeur: ${Math.round((totalMortgage / price) * 100)}%`}
-                            privacy
-                            variant="info"
-                        />
-                        <KPIStat
-                            label="Perte Sèche (Mens.)"
-                            icon={<Icon name="debt" size={16} />}
-                            value={formatCurrency(unrecoverableMonthly)}
-                            sublabel="Intérêts + taxes + entretien"
-                            privacy
-                            variant="danger"
-                        />
-                        <KPIStat
-                            label="Valeur à terme"
-                            icon={<Icon name="investments" size={16} />}
-                            value={formatCurrency(amortizationData.finalValue)}
-                            sublabel={`Dans ${amortization} ans`}
-                            privacy
-                            variant="success"
-                        />
-                    </StatGrid>
-
-                    <ScenariosComparatifsCard
-                        activeGoal={activeGoal}
-                        amortization={amortization}
-                        projectedEquityAtAmortEnd={projectedEquityAtAmortEnd}
-                        combinedData={combinedData}
-                        netYield={netYield}
-                        netAnnualIncome={netAnnualIncome}
-                        currentRent={currentRent}
-                        setCurrentRent={setCurrentRent}
-                        marketReturn={marketReturn}
-                        setMarketReturn={setMarketReturn}
-                        marketReturnOverridden={marketReturnOverridden}
-                        setMarketReturnOverridden={setMarketReturnOverridden}
-                        globalReturnRate={globalReturnRate}
-                        setLocalStockReturn={setLocalStockReturn}
-                        localRentalAppreciation={localRentalAppreciation}
-                        setLocalRentalAppreciation={setLocalRentalAppreciation}
-                    />
-
-                    <AmortissementCards
-                        amortizationData={amortizationData}
-                        welcomeTax={welcomeTax}
-                        notaryFees={notaryFees}
-                        inspectionFees={inspectionFees}
-                        initialRenovations={initialRenovations}
-                        price={price}
-                        downPayment={downPayment}
-                        yearlyRenovations={yearlyRenovations}
-                        amortization={amortization}
+                <div className="order-1 xl:order-none min-w-0">
+                    <ScenariosAchatLocation
+                        donnees={combinedData}
+                        annees={amortization}
+                        rendementBoursier={marketReturn}
+                        appreciation={localRentalAppreciation}
+                        locatif={!residence}
+                        etroit={etroit}
                     />
                 </div>
             </div>
 
+            {!isActuel && etroit && <div className="[&>button]:w-full"><VieCurveLink /></div>}
+
+            <CollapsibleSection title="Tableau d'amortissement" subtitle="Frais d'achat, intérêts, équité année par année">
+                <AmortissementCards
+                    amortizationData={amortizationData}
+                    welcomeTax={welcomeTax}
+                    notaryFees={notaryFees}
+                    inspectionFees={inspectionFees}
+                    initialRenovations={initialRenovations}
+                    price={price}
+                    downPayment={downPayment}
+                    yearlyRenovations={yearlyRenovations}
+                    amortization={amortization}
+                />
+            </CollapsibleSection>
+
             <MultiPropertyComparison goals={visibleGoals} />
 
-            {/* Phase F.8 — Conseils IA Immobilier poussés */}
+            {/* Phase F.8 — Conseils IA Immobilier (absents des maquettes, gardés). */}
             <RealEstateAdviceCard
+                replie
                 context={{
                     price,
                     downPayment,
@@ -656,7 +683,6 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                     propertyAppreciationExpected: propertyGrowthRate,
                 }}
             />
-
         </div>
     );
 };

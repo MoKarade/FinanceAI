@@ -120,6 +120,8 @@ describe('badge « Date passée — non acheté » et checkbox — le cycle de c
     it("checkbox « Bien déjà acheté » : décochée pour un « Pas encore », la cocher écrit isOwned: true", () => {
         const setGoals = newSetGoals();
         render(<RealEstateProjects availableCash={50_000} goals={[notYet]} setGoals={setGoals} />);
+        // [S5-REFONTE-IMMOBILIER] La date et sa case vivent dans le repli « Taux, frais récurrents et plafond de valeur ».
+        fireEvent.click(screen.getByRole('button', { name: /Taux, frais récurrents et plafond de valeur/ }));
         const box = screen.getByRole('checkbox', { name: /Bien déjà acheté/ });
         expect(box).not.toBeChecked();
         fireEvent.click(box);
@@ -128,6 +130,7 @@ describe('badge « Date passée — non acheté » et checkbox — le cycle de c
 
     it('checkbox ABSENTE pour une date future (le moteur achètera normalement, rien à déclarer)', () => {
         render(<RealEstateProjects availableCash={50_000} goals={[project]} setGoals={newSetGoals()} />);
+        fireEvent.click(screen.getByRole('button', { name: /Taux, frais récurrents et plafond de valeur/ }));
         expect(screen.queryByRole('checkbox', { name: /Bien déjà acheté/ })).toBeNull();
     });
 });

@@ -28,7 +28,7 @@ async function chartBox(page: Page) {
   const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
   await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
   if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-  const chart = page.getByRole('img', { name: /Courbe de vie/ });
+  const chart = page.getByRole('group', { name: /Courbe de vie/ });
   await expect(chart).toBeVisible({ timeout: 15_000 });
   await chart.scrollIntoViewIfNeeded();
   await page.locator('.recharts-cartesian-grid').first().waitFor({ state: 'visible', timeout: 15_000 });
@@ -178,7 +178,7 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     // mêmes boutons. Ici on prouve : focus → Entrée → jour DATÉ figé → Échap → relâché ET focus
     // restitué au graphe (le hook comptait sur la focusabilité du conteneur — désormais tabIndex 0).
     await chartBox(page);
-    const chart = page.getByRole('img', { name: /Courbe de vie/ });
+    const chart = page.getByRole('group', { name: /Courbe de vie/ });
     await chart.focus();
     await expect(chart).toBeFocused();
     await page.keyboard.press('Enter');
@@ -229,7 +229,7 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     expect(await page.locator('.recharts-area').count()).toBeGreaterThan(1);
 
     // Clic DANS les aires après zoom (la boîte a pu bouger — re-mesurer).
-    const zoomedBox = (await page.getByRole('img', { name: /Courbe de vie/ }).boundingBox())!;
+    const zoomedBox = (await page.getByRole('group', { name: /Courbe de vie/ }).boundingBox())!;
     const y = Math.min(zoomedBox.y + zoomedBox.height * 0.8, (page.viewportSize()?.height ?? 720) - 24);
     const frozen = await clickAndFreeze(page, zoomedBox.x + zoomedBox.width * 0.5, y);
     expect(((await frozen.textContent()) ?? '').match(DAY_RE)).not.toBeNull();

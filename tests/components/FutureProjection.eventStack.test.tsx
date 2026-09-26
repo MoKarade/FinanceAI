@@ -88,7 +88,7 @@ async function pastillesVieAffichées() {
     capturés.length = 0;
     render(<Harness />);
     fireEvent.click(screen.getByText(/Appliquer \(mock\)/i));
-    await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTitle(/Recomposer tes leviers/i)).toBeInTheDocument());
     await waitFor(() => expect(capturés.length).toBeGreaterThan(0));
     return [...capturés];
 }

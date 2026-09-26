@@ -127,7 +127,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
                     <button
                         type="button"
                         onClick={onEscape}
-                        className="inline-block min-h-[24px] px-1 py-2 text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 focus-ring rounded"
+                        className="inline-block min-h-[24px] px-1 py-2 text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 focus-ring rounded-sm"
                     >
                         Problème de connexion ? Continuer sans me connecter (données non sauvegardées)
                     </button>

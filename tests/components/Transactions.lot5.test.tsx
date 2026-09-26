@@ -124,6 +124,6 @@ describe('[REFONTE-NAV-L5] compte honnête des groupes à classer', () => {
             />,
         );
         // 2 marchands non classés → 2 groupes, visibles d'emblée dans le sous-titre du header.
-        expect(screen.getByText(/2 groupe\(s\) à classer/)).toBeInTheDocument();
+        expect(screen.getByText(/transactions · 2 groupes à classer/)).toBeInTheDocument();
     });
 });

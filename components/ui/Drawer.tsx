@@ -82,7 +82,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         : 'fixed inset-x-0 bottom-0 w-full h-[75vh] max-h-[75vh] rounded-t-2xl border-t border-white/15';
 
     return createPortal(
-        <div role="presentation" className="fixed inset-0 z-[9999] bg-black/55 animate-fade-in" onClick={closeOnBackdrop ? onClose : undefined}>
+        <div role="presentation" className="fixed inset-0 z-9999 bg-black/55 animate-fade-in" onClick={closeOnBackdrop ? onClose : undefined}>
             <div
                 ref={panelRef}
                 id={id}
@@ -92,7 +92,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className={`${panelClass} bg-surface shadow-2xl flex flex-col`}
             >
-                <div className="flex items-start justify-between gap-3 p-5 border-b border-white/10 flex-shrink-0">
+                <div className="flex items-start justify-between gap-3 p-5 border-b border-white/10 shrink-0">
                     <div className="min-w-0">
                         <h2 id={titleId} className="text-h2 text-ink-50 truncate">{title}</h2>
                         {subtitle && <p className="text-meta text-ink-400 mt-0.5">{subtitle}</p>}
@@ -102,7 +102,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                         type="button"
                         onClick={onClose}
                         aria-label="Fermer"
-                        className="w-11 h-11 flex-shrink-0 inline-flex items-center justify-center rounded-card text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
+                        className="w-11 h-11 shrink-0 inline-flex items-center justify-center rounded-card text-ink-300 hover:text-ink-50 hover:bg-white/10 transition-colors focus-ring"
                     >
                         <Icon name="close" size={18} />
                     </button>

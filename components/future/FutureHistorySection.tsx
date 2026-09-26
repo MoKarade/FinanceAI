@@ -214,14 +214,14 @@ const FutureHistorySection: React.FC = () => {
                         {/* [A11Y] aria-pressed = période active annoncée au lecteur d'écran ;
                             focus-ring = focus clavier visible (préexistant au déménagement). */}
                         {(['1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'] as TimeRange[]).map(r => (
-                            <button key={r} type="button" onClick={() => setTimeRange(r)} aria-pressed={timeRange === r} className={`px-3 py-1 text-tiny font-bold rounded transition-all focus-ring ${timeRange === r ? 'bg-white text-black shadow' : 'text-ink-300 hover:text-white hover:bg-white/5'}`}>{r}</button>
+                            <button key={r} type="button" onClick={() => setTimeRange(r)} aria-pressed={timeRange === r} className={`px-3 py-1 text-tiny font-bold rounded-sm transition-all focus-ring ${timeRange === r ? 'bg-white text-black shadow-sm' : 'text-ink-300 hover:text-white hover:bg-white/5'}`}>{r}</button>
                         ))}
                     </div>
                     {timeRange === 'CUSTOM' && (
                         <div className="flex items-center gap-1.5">
-                            <input type="date" aria-label="Date de début" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
+                            <input type="date" aria-label="Date de début" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded-sm px-2 py-1 text-tiny text-white focus:border-white/30 outline-hidden" />
                             <span className="text-ink-500 text-tiny" aria-hidden="true">→</span>
-                            <input type="date" aria-label="Date de fin" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
+                            <input type="date" aria-label="Date de fin" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded-sm px-2 py-1 text-tiny text-white focus:border-white/30 outline-hidden" />
                         </div>
                     )}
                 </div>
@@ -245,7 +245,7 @@ const FutureHistorySection: React.FC = () => {
                                     isNarrowViewport ? 'min-h-[44px] min-w-[44px]' : ''
                                 } ${
                                     isHidden
-                                        ? 'bg-white/[0.02] text-ink-400 border-white/5 hover:bg-white/5'
+                                        ? 'bg-white/2 text-ink-400 border-white/5 hover:bg-white/5'
                                         : 'bg-white/10 text-ink-100 border-white/15 hover:bg-white/15'
                                 }`}
                             >
@@ -268,7 +268,7 @@ const FutureHistorySection: React.FC = () => {
                         } ${
                             showTotalLine
                                 ? 'bg-white text-black border-white'
-                                : 'bg-white/[0.02] text-ink-400 border-white/10 hover:bg-white/5'
+                                : 'bg-white/2 text-ink-400 border-white/10 hover:bg-white/5'
                         }`}
                     >
                         <span aria-hidden="true">∑</span>

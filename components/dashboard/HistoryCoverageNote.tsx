@@ -40,7 +40,7 @@ export const HistoryCoverageNote: React.FC<Props> = ({
         <details className="mt-2">
             {/* [Finding a11y #495] py-1.5 = boîte ≥ 24 px (WCAG 2.5.8 — le padding doit être sur le
                 summary LUI-MÊME : seule sa boîte propre déclenche le disclosure). */}
-            <summary className="text-tiny text-ink-400 cursor-pointer select-none hover:text-ink-200 focus-ring rounded py-1.5">
+            <summary className="text-tiny text-ink-400 cursor-pointer select-none hover:text-ink-200 focus-ring rounded-sm py-1.5">
                 Couverture des courbes : {totalNotes} note{totalNotes > 1 ? 's' : ''} (approximations signalées) — détails
             </summary>
             <p className="text-tiny text-ink-400 mt-1">

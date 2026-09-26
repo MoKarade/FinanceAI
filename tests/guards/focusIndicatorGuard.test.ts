@@ -21,6 +21,8 @@ import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 const racine = resolve(process.cwd(), 'components');
 
 /** Toute compensation acceptée sur la ligne elle-même. */
+// [S5-TAILWIND4] `outline-none` s'écrit `outline-hidden` en v4 (même effet : contour transparent).
+const OUTLINE_SUPPRIME = /outline-(?:none|hidden)/;
 const COMPENSE = /focus:(ring|border|bg|text|shadow|outline)|focus-ring|focus-visible:|focus-within:/;
 
 /**
@@ -29,16 +31,20 @@ const COMPENSE = /focus:(ring|border|bg|text|shadow|outline)|focus-ring|focus-vi
  */
 const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string }> = [
     {
-        fichier: 'Budget.tsx', jeton: 'type="date"',
-        raison: 'les deux champs de période vivent dans une pilule qui porte `focus-within:border-primary/50` '
-            + '— un seul conteneur, deux champs couverts, et pas d\'anneau qui déborde de la pilule.',
+        fichier: 'pilotage.tsx', jeton: 'type="date"',
+        raison: 'les deux champs de période vivent dans un cadre qui porte `focus-within:border-white/30` '
+            + '— un seul conteneur, deux champs couverts, et pas d\'anneau qui déborde du cadre ([S5-REFONTE-BUDGET]).',
+    },
+    {
+        fichier: 'Transactions.tsx', jeton: 'placeholder-ink-400',
+        raison: 'la recherche des transactions est couverte par le `focus-within:border-white/30` de son cadre ([S5-REFONTE-TRANSACTIONS]).',
     },
     {
         fichier: 'CommandPalette.tsx', jeton: 'placeholder-ink-400',
         raison: 'le champ de recherche est couvert par le `focus-within:border-primary/50` de sa barre.',
     },
     {
-        fichier: 'AiChatView.tsx', jeton: 'flex-1 bg-transparent px-4',
+        fichier: 'AiChatView.tsx', jeton: 'champ-nu flex-1 min-w-0',
         raison: 'la barre de saisie du chat porte déjà `focus-within:border-primary/50` (préexistant).',
     },
     {
@@ -79,7 +85,7 @@ function outlineNoneNonCompenses(): Ligne[] {
     const out: Ligne[] = [];
     for (const chemin of fichiersTsx(racine)) {
         lireCode(chemin).split('\n').forEach((texte, i) => {
-            if (!texte.includes('outline-none') || COMPENSE.test(texte)) return;
+            if (!OUTLINE_SUPPRIME.test(texte) || COMPENSE.test(texte)) return;
             out.push({
                 chemin: chemin.replace(`${process.cwd()}/`, ''),
                 ligne: i + 1,
@@ -102,7 +108,7 @@ describe('[A11Y-FOCUS-INDICATOR-MISSING] un focus retiré est un focus remplacé
         // ANTI-VACUITÉ : le dépôt emploie `outline-none` massivement (via `.focus-ring`), donc un
         // scan qui n'en trouve plus une seule occurrence ne lit pas ce qu'il croit.
         const total = fichiersTsx(racine)
-            .reduce((n, c) => n + (lireCode(c).match(/outline-none/g)?.length ?? 0), 0);
+            .reduce((n, c) => n + (lireCode(c).match(/outline-(?:none|hidden)/g)?.length ?? 0), 0);
         expect(total, 'plus aucun `outline-none` trouvé → le scan ne lit pas ce qu\'il croit')
             .toBeGreaterThanOrEqual(20);
 

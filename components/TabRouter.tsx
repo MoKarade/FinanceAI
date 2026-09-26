@@ -6,6 +6,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { PageSetupGate } from './setup/PageSetupGate';
+import { AssistantVerrouille } from './aiChat/AssistantVerrouille';
 // [REFONTE-NAV-L2a] Bannière « import bancaire figé » : vivait sur l'ex-Accueil (leçon incident
 // 2026-08-05 : une alerte doit être là où l'utilisateur regarde PAR DÉFAUT = désormais le Futur).
 // Import statique : store + syncHealth + Icon, rien de lourd ; elle se tait d'elle-même (région
@@ -170,18 +171,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         {/* [REFONTE-NAV-L2a] L'alerte de fraîcheur d'import AU-DESSUS des KPI :
                             des chiffres calculés sur un flux gelé se lisent AVEC l'avertissement. */}
                         <SyncStaleBanner />
-                        {/* [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil, compacts au-dessus
-                            de la courbe. Suspense DÉDIÉ (fallback null) : le bandeau qui charge ne
-                            doit pas remplacer toute la page par le spinner du Suspense parent. */}
-                        <Suspense fallback={null}>
-                            <FutureKpiStrip
-                                netWorth={globalNetWorth}
-                                liquidity={currentLiquidity}
-                                monthlySavings={calculatedMonthlySavings}
-                                avoirsHorsImmo={avoirsHorsImmo}
-                                dettesHorsImmo={dettesHorsImmo}
-                            />
-                        </Suspense>
                         <FutureProjection
                             initialBalances={state.initialBalances}
                             transactions={state.transactions}
@@ -195,6 +184,22 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             projection={state.projection}
                             setProjection={(p) => setAppState({ projection: p })}
                             isPrivacyMode={isPrivacyMode}
+                            // [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil. [S5-REFONTE-FUTUR]
+                            // Rendus PAR la page, à la place que lui donnent les maquettes (sous le
+                            // titre ; découpés tête / pied au téléphone). Suspense DÉDIÉ (fallback
+                            // null) : le bandeau qui charge ne remplace pas toute la page.
+                            bandeauKpi={(variante) => (
+                                <Suspense fallback={null}>
+                                    <FutureKpiStrip
+                                        variante={variante}
+                                        netWorth={globalNetWorth}
+                                        liquidity={currentLiquidity}
+                                        monthlySavings={calculatedMonthlySavings}
+                                        avoirsHorsImmo={avoirsHorsImmo}
+                                        dettesHorsImmo={dettesHorsImmo}
+                                    />
+                                </Suspense>
+                            )}
                         />
                     </PageSetupGate>
                 )}
@@ -268,7 +273,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 )}
 
                 {activeTab === Tab.ASSISTANT && (
-                    <PageSetupGate tab={Tab.ASSISTANT}>
+                    <PageSetupGate tab={Tab.ASSISTANT} verrouille={<AssistantVerrouille />}>
                         {/* [AITOOLS-E] L'onglet rend la conversation partagée (variant tab) via le
                             context AiChatProvider (monté App) — même instance que le panneau global. */}
                         <AiAssistant />

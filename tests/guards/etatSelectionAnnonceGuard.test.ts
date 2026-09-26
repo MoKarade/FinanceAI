@@ -121,12 +121,15 @@ describe('[A11Y-TABSTATE-TAXCENTER] l\'option active d\'une bascule est ANNONCÉ
         // sur une ligne, sur plusieurs, `key=` en tête) — c'est exactement ce qui a fait échouer la
         // garde du lot précédent, aveugle à la forme qu'elle n'avait pas croisée.
         const vus = basculesPeintes();
-        for (const fichier of ['ChildPlanning.tsx', 'LifeEvents.tsx', 'TaxCenter.tsx']) {
+        // [S5-REFONTE-ENFANTS] Les cinq groupes « choix de vie » de `ChildPlanning` passent désormais
+        // par UN bouton commun (`child/ChoixDeVie.tsx`) : un seul site porte l'état des cinq groupes
+        // (le test de rendu ChildPlanning.smoke le vérifie groupe par groupe). `ChildPlanning` garde
+        // ses onglets d'enfants.
+        // [S5-REFONTE-PROJETS] `LifeEvents.tsx` a fondu dans la page `LifeProjects` (liste, filtres) et
+        // `vie/FormulaireProjet` (bascule Voyage / Aléas & Projets).
+        for (const fichier of ['ChildPlanning.tsx', 'ChoixDeVie.tsx', 'LifeProjects.tsx', 'FormulaireProjet.tsx', 'TaxCenter.tsx']) {
             expect(vus.some((b) => b.chemin.endsWith(`/${fichier}`)), `témoin absent du scan : ${fichier}`).toBe(true);
         }
-        // `ChildPlanning` en porte CINQ : un scan qui n'en verrait qu'un couvrirait un cinquième
-        // du fichier en croyant l'avoir traité.
-        expect(vus.filter((b) => b.chemin.endsWith('/ChildPlanning.tsx')).length).toBeGreaterThanOrEqual(5);
     });
 
     it('chaque exemption est RÉELLE — une exemption périmée se retire', () => {

@@ -121,6 +121,8 @@ describe('BudgetGroupTable — répartition par personne et mode discret', () =>
         userNames: ['Marc', 'Anna'] as [string, string],
         getDisplayTarget: () => 900,
         totalBudgetDisplay: 900,
+        // [S5-REFONTE-BUDGET] La répartition vit dans l'édition DÉPLIÉE du poste.
+        expandedId: 'c1',
     };
     const cellules = () => Array.from(document.querySelectorAll('td'))
         .map((td) => (td.textContent ?? '').replace(/[\s\u00A0\u202F]+/g, ' ').trim());
@@ -151,10 +153,18 @@ describe('BudgetGroupTable — groupe vide', () => {
     it('affiche le bouton « + Ajouter » même sans aucune catégorie', () => {
         const onAddItem = vi.fn();
         render(<BudgetGroupTable {...baseProps} nature="Besoin" items={[]} onAddItem={onAddItem} />);
-        const btn = screen.getByText(/Ajouter une ligne dans Besoin/i);
+        const btn = screen.getByRole('button', { name: /Ajouter un poste dans Besoins/i });
         expect(btn).toBeInTheDocument();
         fireEvent.click(btn);
         expect(onAddItem).toHaveBeenCalledWith('Besoin');
+    });
+
+    it('[S5-REFONTE-BUDGET] Épargne vide : la carte « aucun poste » propose de créer le premier', () => {
+        const onAddItem = vi.fn();
+        render(<BudgetGroupTable {...baseProps} nature="Epargne" items={[]} onAddItem={onAddItem} />);
+        expect(screen.getByText(/Épargne · aucun poste/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: "Créer un poste d'épargne" }));
+        expect(onAddItem).toHaveBeenCalledWith('Epargne');
     });
 
     it('affiche un empty state explicite quand le groupe est vide', () => {
@@ -176,8 +186,9 @@ describe('BudgetGroupTable — groupe vide', () => {
                 onAddItem={vi.fn()}
             />
         );
-        expect(screen.getByDisplayValue('Épicerie')).toBeInTheDocument();
-        expect(screen.getByText(/Ajouter une ligne dans Besoin/i)).toBeInTheDocument();
+        // [S5-REFONTE-BUDGET] Le nom est le bouton qui déplie l'édition du poste.
+        expect(screen.getByRole('button', { name: 'Épicerie' })).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByRole('button', { name: /Ajouter un poste dans Besoins/i })).toBeInTheDocument();
     });
 });
 
@@ -200,10 +211,10 @@ describe('BudgetGroupTable — colonne moyenne 12 mois', () => {
                 onAddItem={vi.fn()}
             />
         );
-        expect(screen.getByText('Moy. 12m')).toBeInTheDocument();
+        expect(screen.getByText('Moy. 12 mois')).toBeInTheDocument();
         // Assertions SCOPÉES (finding panel : un regex global sur la page est fragile) :
         // la cellule de la LIGNE du poste, puis le total du bandeau de groupe.
-        const row = screen.getByDisplayValue('Épicerie').closest('tr')!;
+        const row = screen.getByRole('button', { name: 'Épicerie' }).closest('tr')!;
         expect(within(row as HTMLElement).getByText(/372/)).toBeInTheDocument();
         const header = screen.getByTitle('Réel · moyenne 12 mois · cible');
         expect(within(header).getByText(/372/)).toBeInTheDocument();
@@ -223,7 +234,7 @@ describe('BudgetGroupTable — colonne moyenne 12 mois', () => {
         );
         // Cellule du poste + total du bandeau : les deux rendent « — », aucun « 0 $ » de moyenne
         expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
-        expect(screen.getByTitle(/moyenne indisponible/i)).toBeInTheDocument();
+        expect(screen.getAllByTitle(/moyenne indisponible/i).length).toBeGreaterThanOrEqual(2);
         // A11y (finding panel) : le « — » porte un texte accessible sr-only aux DEUX endroits
         // (title seul n'est pas fiable pour lecteur d'écran).
         expect(screen.getByText('Moyenne indisponible (aucun mois plein d\'historique)')).toBeInTheDocument();
@@ -297,26 +308,33 @@ describe('BudgetGroupTable — nom accessible du montant par poste', () => {
         { id: 'c2', name: 'Restaurants', target: 150, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
     ] as BudgetCategory[];
 
-    const renderTable = () =>
-        render(<BudgetGroupTable {...baseProps} nature="Besoin" items={items} onAddItem={vi.fn()} />);
+    // [S5-REFONTE-BUDGET] Le champ vit dans l'édition DÉPLIÉE d'un poste (une à la fois).
+    const renderTable = (expandedId: string) =>
+        render(<BudgetGroupTable {...baseProps} nature="Besoin" items={items} allItems={items} expandedId={expandedId} onAddItem={vi.fn()} />);
 
     it('chaque ligne nomme son montant par le POSTE (deux lignes ≠ deux noms)', () => {
-        const { container } = renderTable();
-        const champs = [...container.querySelectorAll('input[type="number"]')];
-        expect(champs.length, 'une ligne = un champ montant').toBeGreaterThanOrEqual(2);
-        expect(champs[0]).toHaveAccessibleName('Montant de base — Épicerie');
-        expect(champs[1]).toHaveAccessibleName('Montant de base — Restaurants');
+        for (const [id, nom] of [['c1', 'Épicerie'], ['c2', 'Restaurants']]) {
+            const { container, unmount } = renderTable(id);
+            const champs = [...container.querySelectorAll('input[type="number"]')];
+            expect(champs.length, 'le poste déplié = un champ montant').toBe(1);
+            expect(champs[0]).toHaveAccessibleName(`Montant de base — ${nom}`);
+            unmount();
+        }
     });
 
     // Le nom porte le POSTE, jamais le MONTANT : il doit survivre au masquage sans rien divulguer.
     it('en mode discret, le nom survit ET ne porte aucun montant', () => {
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
-        const { container } = renderTable();
-        const boutons = [...container.querySelectorAll('button')]
-            .filter((b) => (b.textContent ?? '').includes('•••'));
-        expect(boutons.length, 'les montants doivent être masqués').toBeGreaterThanOrEqual(2);
-        expect(boutons[0]).toHaveAccessibleName('Montant de base — Épicerie');
-        expect(boutons[1]).toHaveAccessibleName('Montant de base — Restaurants');
+        const boutons: HTMLButtonElement[] = [];
+        for (const [id, nom] of [['c1', 'Épicerie'], ['c2', 'Restaurants']]) {
+            const { container, unmount } = renderTable(id);
+            const b = [...container.querySelectorAll('button')].find((x) => (x.getAttribute('aria-label') ?? '').startsWith('Montant de base'));
+            expect(b, 'le montant doit être masqué (bouton « ••• »)').toBeTruthy();
+            expect(b!.textContent).toContain('•••');
+            expect(b).toHaveAccessibleName(`Montant de base — ${nom}`);
+            boutons.push(b! as HTMLButtonElement);
+            unmount();
+        }
         const noms = boutons.map((b) => b.getAttribute('aria-label') ?? '').join(' ');
         expect(noms, 'le nom ne doit JAMAIS porter le montant').not.toContain('400');
         expect(noms).not.toContain('150');

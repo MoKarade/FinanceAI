@@ -80,6 +80,7 @@ jobs:
           REGION: ${{ vars.GCP_REGION || 'northamerica-northeast1' }}
           SERVICE: ${{ vars.MCP_SERVICE_NAME || 'financeai-mcp' }}
           MIN_INSTANCES: ${{ vars.MCP_MIN_INSTANCES || '0' }}
+          ACCESS_KEY_STRICT: ${{ vars.MCP_ACCESS_KEY_STRICT }}
         run: bash mcp/deploy.sh
 
   # ── LE SILENCE DEVIENT BRUYANT ──────────────────────────────────────────────────────

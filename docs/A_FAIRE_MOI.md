@@ -5,7 +5,10 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
-- [ ] 👤 **[MCP-ACCESS-KEY-MIN]** (2026-09-26, AVANT de fusionner/déployer le lot MCP-DURCISSEMENT) — le serveur MCP refusera de démarrer si `FINANCEAI_ACCESS_KEY` fait moins de 32 caractères. Vérifie la longueur du secret `financeai-access-key` dans Secret Manager (sans l'afficher ici) ; s'il fait moins de 32 caractères, crée une nouvelle version : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` (64 caractères), puis redéploie et ré-autorise le connecteur dans claude.ai.
+- [ ] 👤 **[MCP-DURCISSEMENT]** (2026-09-26) — **deux choses à NE PAS faire, une à faire quand tu veux.**
+  - ❌ **Ne jamais activer « Toujours autoriser » sur les outils d'écriture du connecteur FinanceAI dans claude.ai** (apply_payslip, apply_bank_statement, apply_broker_statement, apply_tax_slip, apply_debt, set_cash, set_budget_item, delete_item) : ce serait supprimer ta seule barrière humaine (`docs/adr/0023-confirmation-ecriture-mcp-par-jeton.md`).
+  - ❌ **Ne pas poser le secret GitHub `FINANCEAI_FINTABLE_SYNC_SECRET` avant que #1077 soit fusionnée ET que le journal public de `refresh-prices` ait été relu** (le journal du cron ne doit plus rien afficher de libre).
+  - ✅ **Clé d'accès** : le serveur alerte (journal + outil `ping`) si `FINANCEAI_ACCESS_KEY` fait moins de 32 caractères, sans rien couper. Quand tu veux : génère une nouvelle clé de 64 caractères hex (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`), mets-la dans le secret `financeai-access-key`, redéploie et ré-autorise le connecteur dans claude.ai ; puis pose la variable GitHub Actions `MCP_ACCESS_KEY_STRICT=1` (ou `ACCESS_KEY_STRICT=1` si tu déploies à la main avec `mcp/deploy.sh`, qui la transmet au serveur en `FINANCEAI_ACCESS_KEY_STRICT=1` : une variable ajoutée dans la console Cloud Run serait effacée au déploiement suivant) : à partir de là une clé faible ferme `/oauth/authorize` (le reste du serveur continue).
 
 - [x] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24, ✅ fait le jour même, mesure lancée) — **deux secrets pour mesurer les sources de cours
   depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,

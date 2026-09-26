@@ -215,7 +215,7 @@ MCP_HTTP_PORT=9090 npm run mcp:http   # port custom
 - Corps de requête plafonné (5 Mo → 413) ; arrêt SIGTERM borné (grâce 5 s puis fermeture forcée loguée).
 - Le mode **stdio** (`npm run mcp:dev`, Claude Desktop) reste inchangé.
 - **Authentification (Lot 3)** : définir `FINANCEAI_OAUTH_SIGNING_KEY` (≥32 car.) +
-  `FINANCEAI_ACCESS_KEY` (≥32 car., refus de démarrer sinon) + `FINANCEAI_PUBLIC_URL` active un **OAuth 2.1
+  `FINANCEAI_ACCESS_KEY` (≥32 car. ; plus court = alerte + `ping`, et `FINANCEAI_ACCESS_KEY_STRICT=1` ferme `/oauth/authorize`) + `FINANCEAI_PUBLIC_URL` active un **OAuth 2.1
   mono-utilisateur** : `/mcp` exige alors un Bearer, claude.ai fait le flux
   authorize/token, et la « porte » est ta clé d'accès (saisie une fois). Sans ces
   variables, le serveur refuse de démarrer sur un hôte exposé (loopback seulement).

@@ -19,7 +19,7 @@
 
 ## 🔐 Sécurité MCP — durcissement (audit P3-P6, 26/09/2026)
 
-- [ ] 🔧 **`[MCP-DURCISSEMENT]`** (M) — limites de débit des routes MCP, message de parse sans extrait, clé d'accès ≥ 32 : livré en PR brouillon (validation-marc, non armée). Reste : Dependabot cooldown, CSP (`img-src`, `form-action`), service worker (attend #1074).
+- [ ] 🔧 **`[MCP-DURCISSEMENT]`** (M) — limites de débit des routes MCP, message de parse sans extrait, clé d'accès faible signalée (STRICT optionnel) : livré en PR brouillon (validation-marc, non armée). Reste : Dependabot cooldown, CSP (`img-src`, `form-action`), service worker (attend #1074).
 
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 

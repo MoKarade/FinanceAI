@@ -17146,11 +17146,11 @@ dépassement de tampon d'`execSync` perdait tout).
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
 - Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).
 
-### `UN-LIMITEUR-GLOBAL-DOIT-REMBOURSER-CE-QUI-N-EST-PAS-LEGITIME` — 2026-09-26
+### `ON-VERIFIE-D-ABORD-ON-REFUSE-APRES` — 2026-09-26
 
-Lot `[MCP-DURCISSEMENT]`. Un plafond de volume global se laisse affamer : un flot de requêtes non authentifiées consomme le budget du cron légitime.
+Lot `[MCP-DURCISSEMENT]`. Le premier jet bloquait globalement après 20 échecs d'authentification : sur un service public, 20 requêtes invalides toutes les 15 min coupaient le connecteur du propriétaire (déni de service ouvert à Internet) sans rien protéger (secrets ≥ 16 caractères, force brute hors de portée).
 
-- Deux compteurs par route : ÉCHECS d'authentification (blocage avant d'examiner le secret) et VOLUME d'appels réussis ; un refus 401/403 est REMBOURSÉ du volume.
-- Global, pas par IP, tant que l'en-tête d'IP est contrôlable par le client (Cloud Run) ; en mémoire, limite assumée (cold-start = remise à zéro).
-- Un message d'erreur de parse ne cite jamais l'entrée (`JSON.parse` de Node en reproduit un morceau) ; une longueur minimale de secret se refuse au DÉMARRAGE, message sans la valeur.
-- Durcir une longueur de secret peut empêcher le service de démarrer : vérifier l'existant AVANT de déployer (`docs/A_FAIRE_MOI.md`).
+- Un limiteur ne touche JAMAIS une requête qui porte un secret VALIDE : on vérifie le secret d'abord (mêmes comparaisons en temps constant), on refuse après.
+- Le budget de volume ne compte que les appels authentifiés : une requête sans secret valide ne le consomme pas, même en flot concurrent (un remboursement après coup ne suffit pas).
+- Les échecs se comptent PAR ADRESSE (dernier élément de `X-Forwarded-For` derrière Cloud Run : les précédents sont forgeables), seuil haut, table bornée ; en mémoire, limite assumée.
+- Un message d'erreur de parse ne cite jamais l'entrée. Durcir une longueur de secret ne doit pas couper le service : alerte + état visible par défaut, refus seulement sur réglage explicite (STRICT) et limité à la porte concernée.

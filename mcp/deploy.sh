@@ -8,7 +8,7 @@
 #   - API activées : run, secretmanager, cloudbuild, artifactregistry ;
 #   - 3 secrets OBLIGATOIRES créés dans Secret Manager :
 #       financeai-oauth-signing-key   (≥32 octets aléatoires)
-#       financeai-access-key          (≥32 caractères aléatoires, ex. 32 octets en hex = 64 car. — TA clé d'accès ; le serveur refuse de démarrer en dessous)
+#       financeai-access-key          (≥32 caractères aléatoires, ex. 32 octets en hex = 64 car. — TA clé d'accès ; plus court : alerte au journal et dans ping, STRICT=1 ferme /oauth/authorize)
 #       financeai-google-refresh      (JSON des identifiants Drive : cf `npm run mcp:auth` puis copier ~/.financeai-mcp/credentials.json)
 #   - le compte de service Cloud Run a `roles/secretmanager.secretAccessor` sur CES 3 secrets
 #     (les 2 clés OAuth sont montées en variables d'env ; le refresh Google est lu à l'exécution).
@@ -171,6 +171,14 @@ else
   echo "             Pour l'activer : crée le secret puis redéploie (cf mcp/README.md § Bail du véhicule)."
 fi
 
+# [MCP-ACCESS-KEY-MIN] ACCESS_KEY_STRICT=1 (ou la variable GitHub MCP_ACCESS_KEY_STRICT) → FINANCEAI_ACCESS_KEY_STRICT=1 :
+# une clé d'accès de moins de 32 caractères ferme alors /oauth/authorize (le reste du serveur continue). Posée ICI parce que
+# --set-env-vars REMPLACE l'existant : une variable ajoutée à la main dans la console serait effacée au déploiement suivant.
+ENV_VARS="FINANCEAI_GOOGLE_SECRET=projects/${PROJECT_ID}/secrets/financeai-google-refresh,FINANCEAI_PUBLIC_URL=${PUBLIC_URL},FINANCEAI_BUILD_SHA=${BUILD_SHA}"
+if [ "${ACCESS_KEY_STRICT:-}" = "1" ]; then
+  ENV_VARS="${ENV_VARS},FINANCEAI_ACCESS_KEY_STRICT=1"
+fi
+
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" \
   --region "$REGION" \
@@ -180,7 +188,7 @@ gcloud run deploy "$SERVICE" \
   --max-instances 2 \
   --port 8080 \
   --set-secrets "$SECRETS" \
-  --set-env-vars "FINANCEAI_GOOGLE_SECRET=projects/${PROJECT_ID}/secrets/financeai-google-refresh,FINANCEAI_PUBLIC_URL=${PUBLIC_URL},FINANCEAI_BUILD_SHA=${BUILD_SHA}"
+  --set-env-vars "$ENV_VARS"
 
 if [ -z "$EXISTING_URL" ]; then
   URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format 'value(status.url)')"

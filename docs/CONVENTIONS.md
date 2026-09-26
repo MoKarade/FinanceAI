@@ -17146,6 +17146,22 @@ dépassement de tampon d'`execSync` perdait tout).
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
 - Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).
 
+---
+
+### `UNE-LISTE-DE-CHEMINS-COPIEE-D-UNE-AUTRE-APP-SUR-BLOQUE-CE-QUI-N-EST-PAS-A-ELLE` — 2026-09-25
+
+Lot `[GARDE]`. Le modèle d'auto-fusion de l'Atelier interdit `hooks/**` et `**/settings*` — pensés pour les hooks de l'agence et
+les réglages de Claude. Dans FinanceAI, `hooks/` est le dossier des hooks REACT et `components/settings/**` l'écran Réglages :
+~35 fichiers d'interface auraient exigé Marc à chaque PR. Le test qui a le premier révélé le faux positif est la table
+« le code ordinaire reste automatique » de `tests/blocageFusion.test.ts`.
+
+- Copier une liste de sécurité d'une autre app : la RE-LIRE contre l'arborescence locale (`git ls-files` + la liste) avant de
+  la déclarer bonne. Un test de sur-blocage est aussi nécessaire qu'un test de blocage.
+- Une copie ADAPTÉE se documente dans la copie (`_note`) ET dans la liste jointe (`COPIES.md`), sinon la prochaine
+  re-synchronisation efface l'adaptation en silence.
+- Un hook de commit qui ne sait pas décider (`git checkout-index` inconnu) ne doit pas déclencher 5 minutes de suite complète :
+  l'incertain doit porter sur ce qui peut vraiment être un commit (alias, enveloppes), pas sur toute commande git peu courante.
+
 ## `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS` (2026-09-26, `[WIN-GARDES]`)
 
 Une trentaine de tests-gardes (scan de source) échouaient sur le PC de Marc et passaient en CI Linux, ce qui

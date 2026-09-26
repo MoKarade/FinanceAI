@@ -8,7 +8,7 @@ export default [
     // dist/**, ils ne doivent PAS être lint-scannés (leur code bundlé porte des directives eslint de
     // deps tierces → « rule not found ». Vercel build d'un clone propre ne les a pas, mais un build
     // local APRÈS `mcp/build-server.mjs` fait échouer `prebuild=lint`). Alignés sur .gitignore.
-    ignores: ['dist/**', 'dist-mcp/**', 'dist-ssr/**', 'node_modules/**', '**/*.d.ts', 'public/**'],
+    ignores: ['dist/**', 'dist-mcp/**', 'dist-ssr/**', 'node_modules/**', '**/*.d.ts', 'public/**', 'modeles/auto-merge/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],

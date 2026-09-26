@@ -1,10 +1,21 @@
 # Changelog
 
+## 2026-09-26 — Fusion automatique : on adopte le modèle commun de l'Atelier
+
+- Aucun changement dans l'app. Le mécanisme qui décide si une PR peut se fusionner toute seule est maintenant la copie exacte du modèle
+  commun (version 1.6.0) ; les écarts propres à FinanceAI sont listés dans `COPIES.md`. Les PR Dependabot ne sont plus armées automatiquement
+  pour l'instant. Le label `validation-marc` ne bloque plus : seul un OK de l'équipe sécurité (pas encore configuré) débloquerait un chemin sensible.
+
 ## 2026-09-26 — Les tests de garde passent aussi sous Windows
 
 - Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes
   échouaient à cause des fins de ligne et des `\` de Windows, alors qu'ils passaient sur GitHub).
   Ajout de `.gitattributes` (fins de ligne uniformes) et d'un petit utilitaire de chemins pour les tests.
+## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
+
+- Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus
+  fusionnée toute seule : elle reste en attente de toi, même si tous les contrôles sont verts.
+- Les fichiers du dépôt sont maintenant toujours en fins de ligne LF, ce qui rend les tests fiables aussi sur ton PC.
 
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 

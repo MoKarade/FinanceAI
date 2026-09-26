@@ -21,6 +21,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { toPosix } from '../helpers/toPosix';
 import { stripCommentsJsx } from '../../utils/stripComments';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -71,14 +72,14 @@ describe('[FORMAT] tout montant de l\'UI passe par utils/format.ts', () => {
     it('aucun montant composé à la main dans components/, services/ et mcp/', () => {
         const offenders: string[] = [];
         for (const file of files) {
-            const rel = path.relative(ROOT, file);
+            const rel = toPosix(path.relative(ROOT, file));
             if (EXEMPTIONS.some((e) => e.fichier === rel)) continue;
             // Source DÉCOMMENTÉE : un commentaire qui EXPLIQUE le motif interdit — comme celui en
             // tête de ce fichier — ne doit pas faire rougir la garde (`SCAN-QUI-MATCHE-LA-PROSE`).
             const code = stripCommentsJsx(readFileSync(file, 'utf8'));
             code.split('\n').forEach((l, i) => {
                 if (!COMPOSE_A_LA_MAIN.some((m) => m.test(l))) return;
-                offenders.push(`${path.relative(ROOT, file)}:${i + 1}  ${l.trim().slice(0, 110)}`);
+                offenders.push(`${toPosix(path.relative(ROOT, file))}:${i + 1}  ${l.trim().slice(0, 110)}`);
             });
         }
         expect(
@@ -149,7 +150,7 @@ describe('[FORMATCAD-OR-ZERO] formatCAD reçoit la valeur BRUTE, jamais `… || 
         for (const file of files) {
             const code = stripCommentsJsx(readFileSync(file, 'utf8'));
             code.split('\n').forEach((l, i) => {
-                if (FORMATCAD_OU_ZERO.test(l)) offenders.push(`${path.relative(ROOT, file)}:${i + 1}: ${l.trim()}`);
+                if (FORMATCAD_OU_ZERO.test(l)) offenders.push(`${toPosix(path.relative(ROOT, file))}:${i + 1}: ${l.trim()}`);
             });
         }
         expect(offenders, 'un `|| 0` devant formatCAD fabrique un « 0 $ » à partir d\'une donnée absente').toEqual([]);

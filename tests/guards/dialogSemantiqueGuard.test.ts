@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = resolve(process.cwd(), 'components');
@@ -39,7 +40,7 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -59,7 +60,7 @@ function surfacesRecouvrantes(): Surface[] {
             throw new Error(`${chemin} : décommentage suspect — la garde lirait un fichier vidé`);
         }
         if (!/fixed inset-0/.test(code)) continue;
-        out.push({ chemin: chemin.replace(`${process.cwd()}/`, ''), code });
+        out.push({ chemin: chemin.replace(`${cwdPosix()}/`, ''), code });
     }
     return out;
 }

@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
 /**
@@ -52,7 +53,7 @@ const EXCLUSIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -71,7 +72,7 @@ describe('[A11Y-HOVER-ONLY-ACTIONS] pas d\'action masquée au doigt', () => {
                 if (!/(?<!md:)\bopacity-0 group-hover:opacity-100/.test(ligne)) return;
                 const nomFichier = chemin.split('/').pop() ?? '';
                 const exclu = EXCLUSIONS.some((e) => e.fichier === nomFichier && ligne.includes(e.jeton));
-                if (!exclu) offenders.push(`${chemin.replace(process.cwd() + '/', '')}:${i + 1}`);
+                if (!exclu) offenders.push(`${chemin.replace(cwdPosix() + '/', '')}:${i + 1}`);
             });
         }
 

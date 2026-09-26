@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = resolve(process.cwd(), 'components');
@@ -41,7 +42,7 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -93,7 +94,7 @@ function basculesPeintes(): Bascule[] {
             const classes = ouvrante.match(/className=\{`([\s\S]*?)`\}/);
             if (!classes) continue;
             if (!/\?/.test(classes[1]) || !/===|!==/.test(classes[1])) continue;
-            out.push({ chemin: chemin.replace(`${process.cwd()}/`, ''), ligne: code.slice(0, m.index ?? 0).split('\n').length, ouvrante });
+            out.push({ chemin: chemin.replace(`${cwdPosix()}/`, ''), ligne: code.slice(0, m.index ?? 0).split('\n').length, ouvrante });
         }
     }
     return out;

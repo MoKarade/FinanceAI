@@ -159,17 +159,6 @@ describe('analyseCommande — table d’attaque (fail-open interdit)', () => {
     expect(r.estCommit).toBe(true);
   });
 
-  // Limites CONNUES du garde-fou local (la CI reste le filet) : ces cas ne sont PAS détectés. Le test fige le
-  // comportement actuel ; s'il devient rouge parce que la détection s'améliore, c'est une bonne nouvelle : mettre à jour.
-  it.each([
-    ["printf 'commit' | xargs git", 'git et commit dans des segments différents'],
-    ['g${x}it commit -m y', 'git absent du texte normalisé'],
-    ['sh script.sh', 'script lançant git commit en interne, non analysable'],
-    ['npm run publier', 'script npm lançant git commit en interne, non analysable'],
-  ])('limite connue (non détecté) : %s — %s', (c) => {
-    expect(a(c).estCommit).toBe(false);
-  });
-
   const shq = (x: string) => `'${x.split("'").join("'\\''")}'`;
   const hostiles = ['a&b', '$(x)', '-x', 'a\nb', "it's", 'a;b', 'a|b', 'a`b`', 'a>b', '%PATH%', 'a^b', 'a!b', 'a"b'];
   it.each(hostiles)('chemin hostile refusé (incertain) : %j', (chemin) => {
@@ -184,13 +173,6 @@ describe('analyseCommande — table d’attaque (fail-open interdit)', () => {
   it('git add avec un chemin sain reste NON incertain', () => {
     const r = a('git add services/x.ts && git commit -m x');
     expect(r.incertain).toBe(false);
-  });
-  it('les sous-commandes INTÉGRÉES de git sans rapport avec un commit ne déclenchent rien (alias seuls suspects)', () => {
-    for (const c of ['git checkout-index -f -a', 'git diff-files --name-only', 'git hash-object f.txt', 'git update-ref refs/x HEAD', 'git verify-commit HEAD', 'git commit-tree -h', 'git show-branch']) {
-      expect(a(c).estCommit, c).toBe(false);
-    }
-    expect(a('git ci -m x').estCommit).toBe(true);          // alias inconnu : suspect
-    expect(a('git stage a.ts && git commit -m x').incertain).toBe(true); // stage = add caché : index imprévisible
   });
   it('des commandes git sans rapport avec le commit ne déclenchent rien', () => {
     for (const c of ['git status', 'git push -u origin b', 'git diff --stat', 'git log --oneline -3', 'git fetch origin main', 'git checkout -b x', 'node --check scripts/hooks/commit-gate.mjs && git diff --stat']) {

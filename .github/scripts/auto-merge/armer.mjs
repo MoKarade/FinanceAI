@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { peutArmer } from "./autoMerge.mjs";
+import { controleDocs, RAISON_DOC } from "./docsAjoutsSeulement.mjs";
 
 const { GH_TOKEN, REPO, PR, SHA } = process.env;
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -27,13 +28,30 @@ try {
   if (vue.state !== "OPEN") { resume("PR non ouverte : rien à faire."); process.exit(0); }
   const brut = gh(["api", "--paginate", `repos/${REPO}/pulls/${PR}/files`, "--jq", ".[] | {path: .filename, previous_filename: .previous_filename, status: .status, patch: .patch}"]);
   const fichiers = brut.split("\n").filter((l) => l !== "").map((l) => JSON.parse(l));
-  const decision = peutArmer({ ...vue, fichiers }, config);
+  let decision = peutArmer({ ...vue, fichiers }, config);
+  let codeDocs = null;
+  // Documents relus par les agents (leçons, HANDOVER…) : ajouts sains seulement, sinon pas d'armement (validation de Marc). ADAPTATION
+  // FinanceAI : la décision du modèle (autoMerge.mjs, copie exacte) n'est pas modifiée, cette couche vient PAR-DESSUS.
+  const listeDocs = (cle) => {
+    const l = config[cle] ?? [];
+    if (!Array.isArray(l) || !l.every((m) => typeof m === "string" && m.trim() !== "")) throw new Error(`${cle} : liste de motifs attendue`);
+    return l;
+  };
+  const listesDocs = { ajoutsSeulement: listeDocs("chemins_ajouts_seulement"), contenuSurveille: listeDocs("chemins_contenu_surveille") };
+  if (decision.armer) {
+    // Refus ATTESTABLE : `attester` doit répondre vrai seulement pour une revue de pole-securite sur le SHA exact (`attestationValide` du modèle
+    // Atelier 1.6.0, pas encore dans cette copie : jusque-là, AUCUNE attestation possible, échec fermé).
+    const docs = controleDocs(fichiers, listesDocs, () => false);
+    if (docs) { decision = { armer: false, raison: docs.raison, etiqueter: [] }; codeDocs = docs.code; }
+  }
   if (decision.armer) {
     gh(["pr", "merge", "--auto", "--squash", PR, "--repo", REPO]);
     resume(`Fusion automatique armée : ${decision.raison}.`);
   } else {
     desarmer();
-    resume(`Fusion automatique NON armée (désarmée si elle l'était) : ${decision.raison}.`);
+    // Refus d'un document surveillé : ligne de résumé FIXE (code + raison constante), jamais un texte de la PR (chemin, ligne, message).
+    if (codeDocs) resume(`Fusion automatique NON armée (désarmée si elle l'était) : code=${codeDocs} ; ${RAISON_DOC}.`);
+    else resume(`Fusion automatique NON armée (désarmée si elle l'était) : ${decision.raison}.`);
   }
 } catch (e) {
   desarmer();

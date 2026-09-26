@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-26 — **`[DOCS-PROTECTION]` : les documents lus par les agents sont protégés (ADR 0024)**
+> Attestation pour `CLAUDE.md` + `docs/claude/*.md` (sauf `lecons.md`) ; ajouts seulement sains (ni suppression/réécriture,
+> ni URL, ni commande, ≤ 200 lignes) pour `lecons.md`, `docs/CONVENTIONS.md`, `HANDOVER.md`, `CHANGELOG.md`, `BACKLOG.md` :
+> `.github/scripts/auto-merge/docsAjoutsSeulement.mjs`, appelé par `armer.mjs` APRÈS `peutArmer` (copie du modèle intacte).
+> PR empilée sur #1073, brouillon, `validation-marc`. ⚠️ Cocher/archiver un item de `BACKLOG.md` exige désormais l'attestation.
+>
 > ## 🟥 Session 2026-09-25 — **`[GARDE]` : la fusion auto ne s'arme plus sur les chemins sensibles**
 > Demande pole-architecture/pole-securite. **Workflow `fusion-auto.yml` refait** sur le modèle de l'Atelier (identique à
 > BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la

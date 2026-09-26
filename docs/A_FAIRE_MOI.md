@@ -335,6 +335,12 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## 🔎 `[DOCS-PROTECTION]` — revue HEBDOMADAIRE (pole-securite, dès la fusion de l'ADR 0024)
+
+Chaque semaine, pole-securite relit les lignes AJOUTÉES à `docs/claude/lecons.md` et `docs/CONVENTIONS.md`
+(`git log -p --since=7.days -- docs/claude/lecons.md docs/CONVENTIONS.md`) : une consigne en prose, sans URL ni commande,
+n'est pas vue par le détecteur automatique. Rien à faire pour Marc sauf si pole-securite signale une ligne.
+
 ## 🧭 `[IA-NAV-LABELS]` — DÉCISION (routée le 2026-09-04, lot 140)
 
 > ✅ **Tranché le 2026-09-05 (option 3 : garder le rail replié) — ticket FERMÉ et archivé au lot 177.**

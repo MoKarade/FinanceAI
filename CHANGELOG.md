@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-25 — Sécurité du relais IA : plus de jeton public, des freins honnêtes
+
+- Le jeton de relais était visible dans le code servi au public : il est supprimé (il ne protégeait rien).
+- Le relais vérifie maintenant d'où vient l'appel (Origin), limite le débit par IP et par clé, plafonne la taille des
+  requêtes (200 Ko) et la longueur des réponses servies par l'IA locale (8192), et se souvient plus finement des clés
+  déjà vérifiées (refus mémorisé 60 s, éviction par ancienneté, empreinte salée).
+- Un test construit l'app avec une valeur piège et échoue si elle réapparaît dans le code public.
+- L'IA locale (ton PC) n'est plus servie qu'à TA clé Anthropic (organisation ou empreinte que tu poses toi-même sur
+  Vercel) ; sans ce réglage, tout part chez Anthropic. Attention : nettoyer les documents ne change pas l'historique
+  public du dépôt, où d'anciennes valeurs restent lisibles.
+
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 
 - Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ
@@ -83,13 +94,13 @@
 
 ## 2026-09-24 — Portefeuille, lot 1f2 : FinanceAI sait lire le PDF du relevé
 
-- Le relevé Disnat peut maintenant être lu directement depuis son PDF, dans ton navigateur : le
+- Le relevé courtier peut maintenant être lu directement depuis son PDF, dans ton navigateur : le
   fichier ne part nulle part. Le lecteur PDF n'est chargé que quand tu en as besoin, pour ne pas
   alourdir l'ouverture de l'app. Il n'est pas encore branché à l'écran (ce sera le lot suivant).
 
-## 2026-09-24 — Portefeuille, lot 1f : FinanceAI sait lire un relevé Disnat
+## 2026-09-24 — Portefeuille, lot 1f : FinanceAI sait lire un relevé courtier
 
-- Le lecteur de relevé Disnat est prêt (pas encore branché à l'écran). Contrairement à l'ancien, il
+- Le lecteur de relevé courtier est prêt (pas encore branché à l'écran). Contrairement à l'ancien, il
   ne perd plus de lignes : il vérifie que la somme des opérations retombe sur la variation de
   l'encaisse, que la ligne « Encaisse » retombe sur le solde, et que chaque coût se recoupe. Essayé
   sur tes trois vrais relevés, sur l'ordinateur seulement : aucune ligne perdue, et toutes les positions
@@ -97,7 +108,7 @@
 
 ## 2026-09-24 — Portefeuille : les opérations de courtier que le journal ne savait pas écrire
 
-- Tes quatre choix sont en place. Une ligne **annulée** par Disnat reste visible et cesse de compter
+- Tes quatre choix sont en place. Une ligne **annulée** par le courtier reste visible et cesse de compter
   à partir de la date de l'annulation. Un **regroupement qui change le code du titre** déplace toute
   la position vers le nouveau titre. Le **coût total** d'un transfert est gardé tel qu'imprimé (aucun
   cent perdu). Une **conversion USD↔CAD** ou un **virement entre tes comptes** est une seule
@@ -152,7 +163,7 @@
 
 ## 2026-09-24 — Portefeuille : audit complet, et tes données restent privées
 
-- **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés Disnat, écran par
+- **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés courtier, écran par
   écran (app, assistant, hub). Le rapport et le plan de refonte t'ont été remis à part : ils contiennent
   tes montants, et ce dépôt est public.
 - **Protection** : un contrôle automatique refuse désormais qu'un fichier de vérification de ton
@@ -668,7 +679,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-09-17 (ton compte en dollars US rentre enfin dans le total)
 
 - **Le blocage était dans la conversion, et il était figé.** Ton solde courtier était converti en
-  dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte Disnat en USD a
+  dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte courtier en USD a
   été synchronisé pendant que les taux étaient au repli : il a donc été mis de côté « faute de taux
   fiable », et il le restait **jusqu'à la synchro suivante**, même une fois les vrais taux obtenus.
   Résultat : **un compte entier** hors du panier, et le total de ton courtier refusé en entier.
@@ -686,7 +697,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-09-17 (tes trois montants ne parlaient pas des mêmes titres)
 
 - **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit un montant,
-  ton courtier Fintable un autre (une fois le compte Disnat converti — il est en **dollars US**,
+  ton courtier Fintable un autre (une fois le compte courtier converti — il est en **dollars US**,
   Fintable écrit `$` et non `C$`), l'onglet Futur un troisième, et hubperso un quatrième. Quatre
   chiffres pour une seule question.
 - **Le bon chiffre est celui de l'Accueil** : il tombe à 1,4 % du total réel de ton courtier. Les
@@ -728,7 +739,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   carte « Taux de change » affiche en plus **la date de l'observation** d'où viennent tes taux —
   c'est ce chiffre qui manquait pour que le problème se voie.
 - ⚠️ **Ce qui va changer ENSUITE, et pas au moment que tu crois.** Dès que tes taux seront réels,
-  ton compte Disnat en USD cessera d'être « écarté faute de taux » : il sera converti, il rentrera
+  ton compte courtier en USD cessera d'être « écarté faute de taux » : il sera converti, il rentrera
   dans le total qui fait autorité, et **le point de départ de ta projection changera**. Mais le
   déclencheur n'est pas le déploiement — c'est ta **prochaine synchro Fintable** : la conversion est
   faite au moment de la synchro et le résultat est enregistré tel quel. Tant que tu n'as pas
@@ -750,7 +761,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   écrits en dur dans le code (« approximation Q1 2026 »), pas ceux de la Banque du Canada. Et tes
   positions sont en USD ou en EUR, aucune en CAD : la totalité de la valeur de tes
   placements reposait sur un chiffre inventé. C'était aussi la vraie raison pour laquelle ton compte
-  Disnat en USD n'était pas converti hier.
+  courtier en USD n'était pas converti hier.
 - **Ce qui change — un RECOURS, là où il n'y en avait aucun.** Réglages → Système & diagnostics :
   un bouton **« Réessayer maintenant »**, un diagnostic qui nomme la cause de l'échec (réseau,
   erreur du serveur, série absente…), et un champ pour **saisir le taux toi-même**. Un taux que tu
@@ -791,9 +802,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-09-16 (ton compte Disnat en USD réapparaît dans tes placements)
+## [unreleased] — 2026-09-16 (ton compte courtier en USD réapparaît dans tes placements)
 
-- **Le problème que tu ne pouvais pas voir** : « Disnat » est en USD, et son montant était
+- **Le problème que tu ne pouvais pas voir** : le compte courtier est en USD, et son montant était
   ignoré à chaque synchro. L'avertissement existait — mais dans *Système & diagnostics*, pas sur
   l'écran **Investissements** ni sur l'**Accueil**. Là où tu regardes tes placements, le compte
   n'était ni réconcilié ni signalé : simplement **absent**, ce qui ressemble à un compte qui
@@ -4710,7 +4721,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Transactions
 - **`[TX-TRANSFERS]` — détection des virements internes, sur TOUT l'historique** (bug Marc : « ça
   détecte mal mes transferts entre comptes »). Un virement entre ton compte courant, ton épargne, ta
-  Mastercard ou tes placements n'est pas une dépense : ses deux côtés sont importés, et sans marquage
+  carte de crédit ou tes placements n'est pas une dépense : ses deux côtés sont importés, et sans marquage
   il était compté deux fois par le Budget. L'appariement (montants exactement opposés, à quelques jours
   d'écart, sur deux comptes différents, un pour un) ne vivait que côté Fintable — il s'applique
   désormais à l'import CSV et aux relevés, donc à l'historique complet.
@@ -6755,7 +6766,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   relevé), convention de signe explicite (incluant les cartes de crédit), normalisation
   des montants FR/CAD (« 1 234,56 $ » → 1234.56), complétude multi-pages, exclusion
   soldes/totaux/reports/en-têtes.
-- **Détection de transfert corrigée** (validée sur un vrai relevé Desjardins, signes
+- **Détection de transfert corrigée** (validée sur un vrai relevé bancaire, signes
   réconciliés à la cenne contre la colonne Solde) : un **Interac e-Transfer** (vers/depuis
   une personne) et « money/funds transfer » ne sont **plus** marqués « transfert » — seuls
   les vrais transferts internes (« virement/transfert », AccèsD entre comptes propres) le
@@ -7408,7 +7419,7 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
 
 ### Ajouté
 - **Copilote — finitions** : import de positions courtier en lot (CSV Wealthsimple /
-  Questrade / Disnat…) via `parseBrokerCsv` (pur, 11 tests) + modal `ImportBrokerPositions`
+  Questrade / courtier…) via `parseBrokerCsv` (pur, 11 tests) + modal `ImportBrokerPositions`
   dans Investissements (dédup par symbole) ; cache de prix Finnhub persisté en IndexedDB
   (`persistentCache.ts`, TTL history 1h → 24h — prix passés quasi-immuables). « Appliquer
   le gagnant » de l'optimiseur était déjà en place.

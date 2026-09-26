@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟥 Session 2026-09-25 — **`[DURCISSEMENT-RELAIS]` : le jeton de relais public disparaît, des freins honnêtes le remplacent**
+> 🔎 Audit sécurité (pole-securite, décision de Marc) : `VITE_PROXY_ACCESS_TOKEN` était recopié dans le bundle public ;
+> n'importe qui le lisait, il n'a jamais rien protégé. **Supprimé** (client + relais). À la place, dans `api/_lib/` :
+> Origin (finance.hubperso.com, `RELAIS_ORIGINES`, `VERCEL_URL`, localhost — falsifiable hors navigateur : un frein),
+> débit par IP (120/min) et par empreinte de clé (60/min) et budget de vérification de clé (10/min/IP) — en mémoire,
+> donc frein FAIBLE sur Vercel sans état (aucun stockage partagé, décision à part), corps ≤ 200 Ko (413),
+> `max_tokens` local ≤ 8192 (au-delà : Claude, jamais tronqué), `anthropic-version` en forme stricte.
+> Mémo de vérification de clé (S5) : négatif court (refus 60 s, panne 15 s), 200 entrées, éviction par ancienneté
+> (avant : vidage total à 50), empreinte SALÉE (`RELAIS_SEL_EMPREINTE`, sinon sel aléatoire par instance).
+> 🧪 `tests/api/relaisDurcissement.test.ts` + `tests/api/jetonAbsentDuBundle.test.ts` (construit avec une valeur canari dans
+> `VITE_PROXY_ACCESS_TOKEN`, échoue si elle ou le nom de l'en-tête est dans le bundle ; vérifié en le rendant rouge).
+> ⚠️ Action Marc (`docs/A_FAIRE_MOI.md` O4) : RETIRER `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel s'ils
+> sont posés (inutiles, la première est même une valeur sensible à faire tourner par prudence). Décision : ADR 0021.
+> 🔐 **Routage local réservé à la clé de Marc** : `RELAIS_ORG_LOCALE` (organisation renvoyée par count_tokens) et/ou
+> `RELAIS_CLES_LOCALES` (empreintes salées, `scripts/empreinteCleRelais.mjs`, lancé par Marc) ; aucune des deux → routage
+> local désactivé (échec fermé). IP client : `x-vercel-forwarded-for`, puis `x-real-ip`, puis 1er saut de `x-forwarded-for`.
+> ⚠️ Le nettoyage de données d'identification (docs actuelles) NE change PAS l'historique git : les anciennes valeurs
+> restent lisibles tant que le dépôt est public et non réécrit. Rien n'est « réglé » de ce côté.
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur
@@ -80,7 +99,7 @@
 > avec le lot) : ré-installé à la main depuis le lock. ⏭️ Suite : `[PTF-L1E-PASSERELLE]` — l'import
 > (1g) attend la recherche EODHD de la tâche serveur 1c-2 (les relevés n'impriment aucun ISIN ; choix de Marc).
 >
-> ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur Disnat (partie texte)**
+> ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur courtier (partie texte)**
 > Livré `[PTF-L1F-PARSEUR-DISNAT]` : `services/import/disnat/lireReleveDisnat.ts` (texte → relevé, trois
 > recoupements du découpage) et `versEvenements.ts` (relevé → événements ; ISIN, devise de cotation et
 > position d'avant en ARGUMENTS). Relevé de test ENTIÈREMENT fictif ; essai local sur les 3 vrais relevés
@@ -91,14 +110,14 @@
 > (`cancelsId`, la ligne reste et cesse de compter à la date de l'annulation), `echange` (`toIsin`),
 > `cost` (coût total imprimé), `conversion` / `virement-interne` (`toAccountId`, un seul événement).
 > `etatDuLivreAu` et `variationEntre` les lisent (échange suivi, fractionnement annulé DÉFAIT). Trois clés
-> textuelles neuves dans `CHAMPS_TEXTE`. ⏭️ Suite : 1f (parseur Disnat), qui peut maintenant tout écrire.
+> textuelles neuves dans `CHAMPS_TEXTE`. ⏭️ Suite : 1f (parseur courtier), qui peut maintenant tout écrire.
 >
 > ## 🟩 Session 2026-09-24 (fin, suite 3) — **Lot 1d : moteur de valorisation pur**
 > Livré `[PTF-L1D-VALORISATION]` : `services/valorisation/valoriser.ts` (`valoriserAu`, `variationEntre`), PUR, non
 > branché. Total `null` + `manquants` dès qu'il manque un cours, un taux ou que le livre porte une anomalie (un total
 > amputé est un faux) ; aucun arrondi ; zéro artefact (jour sans mouvement → effets 0 exactement ; fractionnement
 > ré-exprimé). ⚠️ Porte « code mort » (knip 6, plafond 40) : seuls les symboles importés hors de leur fichier sont
-> exportés ; chaque lot ré-exporte ce qu'il consomme. ⏭️ Suite : 1f (parseur Disnat), puis 1e.
+> exportés ; chaque lot ré-exporte ce qu'il consomme. ⏭️ Suite : 1f (parseur courtier), puis 1e.
 >
 > ## 🟩 Session 2026-09-24 (fin, suite 2) — **Lot 1c-1 : format du magasin de marché, clients purs**
 > Livré `[PTF-L1C1-MAGASIN-FORMAT]` : `services/marche/magasinMarche.ts` (format v1, validation qui refuse,
@@ -134,21 +153,21 @@
 > de toute la doc (fichiers courants ; historique git non réécrit).
 > ⏭️ **Suite** : Lot 1 (`[PTF-L1A-SCHEMA-LIVRE]`) — plan approuvé par les réponses ; attendre le feu vert explicite.
 >
-> ## 🟩 Session 2026-09-24 — **Portefeuille Disnat : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
+> ## 🟩 Session 2026-09-24 — **Portefeuille courtier : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
 > 🔎 Marc : « faut tout checker pour avoir un vrai rapport détaillé », puis un cahier des charges (« PROMPT v2 »)
 > et un fichier de vérification. Trois analyses (38 agents) + relecture adverse → rapport, audit, plan des lots
 > 0.5 à 4 et questions, remis à Marc **HORS dépôt** (ses montants réels ; dépôt PUBLIC). Feu vert : **Lot 0.5 seul**.
 > 🔧 **Livré** : garde `tests/confidentialitePortefeuille.test.ts` (clés du fichier de vérification + code de
-> compte après « Disnat ») ; code de sous-compte anonymisé dans `tests/services/categoryRules.test.ts` (historique
+> compte après « courtier ») ; code de sous-compte anonymisé dans `tests/services/categoryRules.test.ts` (historique
 > git NON réécrit) ; `.gitignore` (`prive/`, fichiers de vérification, relevés) ; workflow MANUEL
 > `mesure-sources.yml` + `scripts/mesureSources.mjs` (verdicts par rang seulement, journal public) ; section
-> « 💼 Portefeuille Disnat » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
+> « 💼 Portefeuille courtier » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
 > ✅ **Mesure des sources faite** (`[PTF-L05B-MESURE-SOURCES]`) : EODHD gratuit sert 12/12 lignes à 0,00 %
 > des ancres indépendantes, Yahoo 11/12 (et rend un prix AJUSTÉ avant fractionnement), Valet exact. Rien de payant.
 > ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`), puis Lot 1.
 > ⚠️ Le BACKLOG publiait en clair des données réelles du portefeuille (composition, quantités, montants) : la
 > garde ne les voyait pas (elle cherche des FORMES, pas des valeurs). **Retirées du fichier courant** sur décision
-> de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
+> de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé courtier par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
 >
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
@@ -653,7 +672,7 @@ de dev).
 > L'écart des TOTAUX (Fintable ≈ 20 % au-dessus de l'app) se décompose EXACTEMENT :
 > **+ la dette du bail** (que Fintable ignore) **+ le solde de la carte** (compté en ACTIF par Fintable)
 > **− quelques dizaines de dollars** (placements, liquidités) = l'écart total, à 1 $ d'arrondi près.
-> ⚠️ Fintable convertit le compte Disnat **USD** (`$` nu, pas `C$`) à **1,4000** pile.
+> ⚠️ Fintable convertit le compte courtier **USD** (`$` nu, pas `C$`) à **1,4000** pile.
 > ⚠️ Le jour ÉPINGLÉ (20/09) est autre chose : un Non-Enreg ≈ 3,7 % sous la valeur des
 > titres aujourd'hui — sous-évalués par des **prix vieux de 59 jours**, parce que
 > **plus de la moitié** du portefeuille est coté en Europe. → `[COTATIONS-EUROPE-PERIMEES]`.
@@ -1202,7 +1221,7 @@ de dev).
 > soit la valeur Fintable, car la plus fiable ». Plan complet dans `BACKLOG.md` (5 étapes).
 > ✅ **Étape 0** : le montant NATIF (`amountNative` + `currency`) est persisté à côté de son reflet
 > converti, et `relireSoldeCourtier` reconvertit **au taux du jour**. Avant, la conversion était
-> faite À L'ÉCRITURE et figée : le compte Disnat en USD, synchronisé pendant le repli des taux,
+> faite À L'ÉCRITURE et figée : le compte courtier en USD, synchronisé pendant le repli des taux,
 > restait écarté jusqu'à la synchro suivante — **une grosse part du portefeuille** hors du panier NON-ENREG, donc
 > autorité courtier refusée en entier.
 > ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le natif gagne sur un `missingRate` PERSISTÉ (qui décrit
@@ -1233,7 +1252,7 @@ de dev).
 > valeur nette − liquidités + dette = **placements de l'Accueil** ≠ total du hub.
 > ⚠️ **Effet visible à surveiller** : tant qu'un titre manque, la carte du hub perd ses trois lignes
 > de placements (arbitrage des trois autres refus : publier MOINS, jamais autre chose).
-> 🔎 **Découverte de chemin** : le compte Disnat est en **USD** chez Fintable (`$` vs `C$`) — le compte
+> 🔎 **Découverte de chemin** : le compte courtier est en **USD** chez Fintable (`$` vs `C$`) — le compte
 > nommé en commentaire dans `brokerBalances.ts`. Écarté faute de taux à la dernière synchro (antérieure
 > au correctif FX) ⇒ panier NON-ENREG amputé ⇒ autorité courtier NON appliquée.
 > ⚠️⚠️ **2ᵉ passe — le panel a battu le gate ET la CI, 6ᵉ lot d'affilée.** (a) Mon inventaire couvrait
@@ -1310,7 +1329,7 @@ de dev).
 > Marc : « faut bien convertir en cad ce qui est en usd ». Mesuré sur son état RÉEL via le MCP :
 > **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au caractère près — et ses
 > positions sont en USD ou EUR, **aucune** en CAD. 100 % du montant affiché reposaient sur un
-> chiffre en dur, et c'était la vraie cause du Disnat USD non converti du lot précédent.
+> chiffre en dur, et c'était la vraie cause du courtier USD non converti du lot précédent.
 > ✅ **Lot A** — provenance à 3 états (`api`/`manuel`/`repli`), bouton « Réessayer maintenant »
 > (avec `force` : sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
 > diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, et la condition d'écriture
@@ -1818,7 +1837,7 @@ de dev).
 > encore **un seul chiffre** : le paiement minimum.
 
 > ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
-> Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard
+> Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la carte de crédit
 > (fenêtre 2026-06-16 → 2026-09-10) : le blocage est chez nous, en aval. **Cause** : la bascule
 > anti-doublon (`deriveCutoverDate`) est GLOBALE — « la transaction la plus récente, tous comptes
 > confondus ». Le compte chèque poste le jour même et avance la bascule chaque jour ; la carte poste
@@ -3299,7 +3318,7 @@ de dev).
 >   `FintableSyncReport.warnings` existe et est persisté, mais il aplatit en chaînes — un champ dédié
 >   (avec l'identité du compte) est nécessaire, ajouté AVEC son consommateur d'écran (leçon lot 95).
 > - ⚠️ `types.ts` documente déjà que Fintable ne rend JAMAIS les positions de certains comptes
->   (`FINTABLE-POSITIONS`, Disnat hors SnapTrade) : le cas est STRUCTUREL, pas seulement accidentel.
+>   (`FINTABLE-POSITIONS`, courtier hors SnapTrade) : le cas est STRUCTUREL, pas seulement accidentel.
 
 > ## 🟦 Session 2026-09-03 — Lot 97 : la marche du raccord expliquée sur la vue par DÉFAUT
 > `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — ferme ce que le lot 96 avait routé.
@@ -8806,7 +8825,7 @@ de dev).
 > (Fintable synchronise déjà le quotidien), **ouverte automatiquement** à l'onboarding (0 transaction, D2 —
 > l'écran vide ne doit jamais être une impasse). L'instance de Réglages → Comptes était déjà hors du flux
 > principal, inchangée. L'import de courtage (`Investments.tsx`) reste au premier plan — seul chemin pour
-> les positions (FINTABLE-POSITIONS : Disnat hors SnapTrade). 3 tests mis à jour, discriminant sur l'attribut
+> les positions (FINTABLE-POSITIONS : courtier hors SnapTrade). 3 tests mis à jour, discriminant sur l'attribut
 > `open` (jsdom ne cache pas le contenu d'un `<details>` fermé). Découverte en chemin : `text-info-300`
 > (token Tailwind inexistant, ~12 sites) → `[A11Y-INFO300-SWEEP]` au BACKLOG (1 site corrigé ici).
 > **Chantier Fintable CLOS côté code** (`[FINTABLE-0]`→`[FINTABLE-4]`, #521→ce jour) — ce qui reste est
@@ -8862,7 +8881,7 @@ de dev).
 > **🔵 Durcissement CLI** : `fintable:dry` REJETTE désormais une option inconnue. Un binaire pré-Lot-2
 > ignorait `--roles`/`--after`/`--show-ids` en silence et rendait une sortie normale → Marc a cru la feature
 > cassée alors que son clone n'était pas à jour (2ᵉ occurrence de « mergé ≠ déployé chez l'utilisateur »).
-> **Comptes de Marc mappés** (ids obtenus via `--show-ids`) : les comptes courants = `cash` · Mastercard = `debt` ·
+> **Comptes de Marc mappés** (ids obtenus via `--show-ids`) : les comptes courants = `cash` · carte de crédit = `debt` ·
 > les comptes de placement = `investment`. Date de bascule retenue : **2026-06-29** (à confirmer contre la dernière
 > transaction RÉELLE de l'app, pas la date d'import).
 > **Suite** : `[FINTABLE-3]` cron Cloud Run + écriture via `runApply` (OCC + backup) — PREMIÈRE écriture
@@ -8871,8 +8890,8 @@ de dev).
 >
 > ## 🟢 Session 2026-07-29 (suite 5) — Lot 2 LIVRÉ (mapper pur) · positions IMPOSSIBLES, clos · Marc paie
 > **❌ `[FINTABLE-POSITIONS]` CLOS — impossible, mesuré.** L'annuaire PUBLIC de Fintable rend
-> **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=disnat` → 0 résultat,
-> « Desjardins Online Solutions » = `supported: false`. Limite PRODUIT, pas une config. Les positions
+> **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=<courtier>` → 0 résultat,
+> « l'institution » = `supported: false`. Limite PRODUIT, pas une config. Les positions
 > restent sur `apply_broker_statement` (relevé déposé dans le chat), qui marche déjà.
 > **✅ `[FINTABLE-PLAN]`** : Marc prend un plan payant — CONTRE ma reco (j'ai conseillé d'arrêter, le
 > cœur de la demande étant impossible). Arbitrage assumé, tracé ADR + BACKLOG.
@@ -8890,17 +8909,17 @@ de dev).
 > SOLDE seulement (ni taux ni paiement minimum inventés → elle doit préexister).
 > Aperçu : `npm run fintable:dry -- --roles <f.json> --after YYYY-MM-DD` (`--show-ids` pour construire le
 > fichier ; `.fintable-roles.json` gitignoré = ids de comptes bancaires).
-> **Suite — 3 actions Marc (routées `A_FAIRE_MOI.md`)** : créer la dette Mastercard une fois (avec son
+> **Suite — 3 actions Marc (routées `A_FAIRE_MOI.md`)** : créer la dette de carte de crédit une fois (avec son
 > VRAI taux), donner la date de bascule, construire le fichier de rôles puis me coller l'aperçu. Ensuite
 > `[FINTABLE-3]` (cron Cloud Run + écriture via `runApply`) et `[FINTABLE-4]` (import manuel masqué).
 >
 > ## 🟠 Session 2026-07-29 (suite 4) — docteur lancé : cause des positions TROUVÉE + essai qui expire le 01-08
-> **Le docteur a désigné la bonne cause du premier coup** : les 6 comptes de Marc arrivent par **UNE
-> SEULE connexion, Desjardins via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
+> **Le docteur a désigné la bonne cause du premier coup** : les comptes de Marc arrivent par **UNE
+> SEULE connexion, une institution via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
 > courtage passe par SnapTrade → un compte de placement lié via un lien bancaire expose son solde sans
 > ses positions. Plan et santé des connexions HORS DE CAUSE (`can_sync: true`, sync réussie le jour même).
-> **Action Marc** : vérifier la couverture Disnat via l'annuaire PUBLIC (`GET /institutions?q=disnat&provider=SNAPTRADE`,
-> sans jeton) puis créer la connexion. Si Disnat n'est pas couvert par SnapTrade → « investissements
+> **Action Marc** : vérifier la couverture courtier via l'annuaire PUBLIC (`GET /institutions?q=<courtier>&provider=SNAPTRADE`,
+> sans jeton) puis créer la connexion. Si le courtier n'est pas couvert par SnapTrade → « investissements
 > temps réel » impossible via Fintable, rouvrir le cadrage.
 > **🔴 `[FINTABLE-PLAN]` NOUVEAU BLOCAGE, échéance dure** : l'essai de Marc **expire le 2026-08-01**, et
 > le palier **gratuit a `can_sync: false`** → à l'expiration plus AUCUNE sync ne tourne (arrêt total, pas
@@ -8910,13 +8929,13 @@ de dev).
 > documenté à l'ADR n'a JAMAIS existé en pratique, ce qui conforte le choix de l'API directe.
 >
 > ## 🟠 Session 2026-07-29 (suite 3) — 1ᵉʳ dry-run RÉEL : Lot 5 tranché, positions BLOQUÉES, docteur livré
-> **Le dry-run passe** (6 comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
+> **Le dry-run passe** (plusieurs comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
 > ⚠️ Piège rencontré : le 422 est revenu VERBATIM après le merge — pas un mauvais diagnostic, le clone de
 > Marc était sur un `main` périmé. Une erreur identique au caractère près après un fix = code non rapatrié.
 > **🔵 `[FINTABLE-5]` TRANCHÉ — ON GARDE les 18 mois d'historique manuel** : 90 jours demandés, **30 rendus**
 > (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc (« supprimer l'historique, que Plaid », Q8) était
 > sincère et FAUSSE → l'appliquer coûtait ~17 mois. C'est exactement pourquoi ce lot était gaté par une MESURE.
-> **🔴 `[FINTABLE-POSITIONS]` BLOQUANT** : 3 comptes de placement (chez son courtier), **0 position**, et les
+> **🔴 `[FINTABLE-POSITIONS]` BLOQUANT** : des comptes de placement (chez son courtier), **0 position**, et les
 > appels `/holdings` RÉUSSISSENT en rendant des listes vides (aucun skip à tracer). Marc confirme que ces
 > comptes contiennent des titres → c'est la moitié de la demande initiale qui ne marche pas.
 > **🔵 `[FINTABLE-1b]` docteur livré** (cette PR) : `readDiagnostics.ts` (`/me` droits du plan, `/connections`
@@ -8924,8 +8943,8 @@ de dev).
 > + `npm run fintable:doctor`. Décodeurs à défauts PRUDENTS (`can_sync`/`healthy` absents → `false`). Piste
 > n°1 encodée : chez Fintable le **courtage passe par SnapTrade** — un compte de placement lié via un provider
 > bancaire expose son solde sans ses positions. 16 tests (66 au total sur `services/fintable/`).
-> **Décisions de mapping tranchées par Marc** (AskUserQuestion) : les 2 Disnat = **non-enregistrés** ; la
-> Mastercard Desjardins alimente une **dette**, pas les liquidités (90/121 tx en viennent). Simplification
+> **Décisions de mapping tranchées par Marc** (AskUserQuestion) : les comptes de courtier = **régime choisi par Marc** ; la
+> carte de crédit alimente une **dette**, pas les liquidités (90/121 tx en viennent). Simplification
 > mesurée : **0 catégorie Fintable**, 121 tx non catégorisées → aucun conflit de taxonomie, `ruleCategorize` prend le relais.
 > **Suite** : Marc lance `npm run fintable:doctor` (routé `A_FAIRE_MOI.md`). Le `[FINTABLE-2]` est SCINDÉ —
 > volet transactions/liquidités/dette exerçable (121 tx réelles), volet **positions GELÉ** tant qu'aucune
@@ -9276,7 +9295,7 @@ de dev).
 > ## 🔴 Session 2026-07-15 (suite) — Incident « fausses transactions » : purge persona + chantier transactions/catégories/Budget
 > **Incident** : Marc a trouvé des FAUSSES transactions dans ses vraies données (« je veux plus que ça arrive jamais »).
 > Diagnostic (MCP + code) : ~600 transactions du persona de test « Karim » (`persona-tx-*`, activé ~06-07) + son objectif
-> `kar-fg1` (« Indépendance financière 1 M$ ») mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*`
+> `kar-fg1` (« Indépendance financière 1 M$ ») mélangés aux ~200 vraies transactions bancaires ; [Probable] budgets `kar-b*`
 > aussi (expliquerait « catégories très mal réglées »). Fuite antérieure aux gardes actuelles, chemin exact inconnu
 > (`[PERSONA-LEAK-ROOTCAUSE]` LOW au BACKLOG).
 > **✅ LIVRÉ `[PERSONA-PURGE]`** : registre d'ids (`testPersonas/artifactIds.ts`, parité test-scan) + sanitizer pur
@@ -10381,7 +10400,7 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 ## 9. Contact / contexte user
 
 - **GitHub** : MoKarade
-- **Email** : marc.richard4@gmail.com
+- **Email** : (retiré)
 - **Localisation** : Québec, Canada (l'app cible fiscalité QC/CA)
 - **Langue** : français (FR uniquement depuis le cycle A — EN retiré)
 - **Style** : direct, méthodique, valide en prod après merge, merge rapide

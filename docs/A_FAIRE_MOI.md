@@ -928,7 +928,7 @@ est pire que le bug : je ne touche à rien sans la source. **Une capture d'écra
 | C2 | 3 secrets Secret Manager + redéployer Cloud Run + 2 secrets GitHub Actions | GCP + GitHub | `FINTABLE-3` — la sync quotidienne AUTOMATIQUE (aujourd'hui, seule l'ouverture de l'app synchronise) |
 | C3 | Redéployer le serveur MCP sur Cloud Run | `mcp/deploy.sh` | `MCP-CATEGORY-ALLOWLIST` (#502) — sans ça, claude.ai peut encore écrire des catégories inventées |
 | C4 | Poser `PROXY_ACCESS_TOKEN` + `VITE_PROXY_ACCESS_TOKEN` sur Vercel, redéployer, smoke test | Vercel | `P0-PROXY` — le relais BYOK, livré mais jamais allumé |
-| C5 | Créer la dette **« Desjardins Cash Back Mastercard »** (vrai taux + paiement minimum) et vérifier qu'elle n'existe pas déjà en double | App → Réglages → Dettes | Sync du solde de carte. ⚠️ Un doublon compte la dette 2× dans ton patrimoine |
+| C5 | Créer la dette **« carte de crédit »** (vrai taux + paiement minimum) et vérifier qu'elle n'existe pas déjà en double | App → Réglages → Dettes | Sync du solde de carte. ⚠️ Un doublon compte la dette 2× dans ton patrimoine |
 | C6 | Me donner ta **date de bascule** (dernière transaction saisie à la main) + construire `.fintable-roles.json` avec le VRAI régime fiscal de chaque compte | Local | Mapping Fintable sans doublons. ⚠️ Un mauvais `taxRegime` fausse l'impôt de toute la projection |
 | C7 | Confirmer la **profondeur d'historique réellement offerte** par ton plan Fintable payant (90 j demandés, **30 rendus** au dernier test) | Fintable | `[FINTABLE-BACKFILL-HISTORY]` — ⚠️ en l'état il n'importera **aucune** transaction de plus |
 | C8 | Supprimer la branche morte **`claude/lot-53`** (bouton « Delete branch » sur https://github.com/MoKarade/FinanceAI/branches) | GitHub | Ménage. Elle a été RECRÉÉE par accident le 2026-09-01 : mon `git push` du correctif est arrivé après le squash-merge de la PR #779, qui avait déjà supprimé la branche. Son commit `130e910` est **identique** à ce que la PR #780 a livré — rien n'y est perdu. ⚠️ Je ne peux pas la supprimer moi-même : `git push origin :claude/lot-53` rend **HTTP 403** au proxy de sortie (les pushs normaux passent, la suppression non — 6 essais). |
@@ -1014,25 +1014,25 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
   timing (la vraie cause était le jeton non persisté). Rien à faire côté abonnement.
 
 ## FINTABLE — pourquoi aucune position ? (remonté par Claude 2026-07-29)
-- [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — 6 comptes, 121 transactions lues.
+- [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — plusieurs comptes, 121 transactions lues.
   Le fix `pending=1/0` (PR #524) est confirmé **par mesure**. (Je ne peux toujours PAS appeler
   `fintable.io` depuis l'exécution cloud : 403 au tunnel CONNECT sur tous les chemins.)
 - [x] **Décidé par la mesure : on GARDE tes 18 mois d'historique manuel** — 90 jours demandés,
   **30 rendus** (2026-06-29 → 2026-07-28). Ta réponse de cadrage « supprimer l'historique, n'utiliser
   que Plaid » est caduque : l'appliquer coûtait ~17 mois de données.
-- [x] **Docteur lancé — CAUSE IDENTIFIÉE (2026-07-29)** : tes 6 comptes arrivent par **UNE SEULE
-  connexion, Desjardins via PLAID** (santé OK, dernière sync réussie le jour même). **Aucune connexion
+- [x] **Docteur lancé — CAUSE IDENTIFIÉE (2026-07-29)** : tes comptes arrivent par **UNE SEULE
+  connexion, une institution via PLAID** (santé OK, dernière sync réussie le jour même). **Aucune connexion
   SNAPTRADE** — or chez Fintable le courtage passe par SnapTrade. Un compte de placement lié via un
   lien bancaire expose son solde sans jamais exposer ses positions. Le plan n'est PAS en cause
   (`can_sync: OUI`), les connexions sont saines : c'est bien un problème de **type de lien**.
 - [x] **Positions : IMPOSSIBLE via Fintable — clos par la mesure (2026-07-29)** — l'annuaire public
-  donne **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=disnat` → 0
-  résultat, « Desjardins Online Solutions » est `supported: false`. Limite du produit, pas une config.
-  Tes positions continuent de passer par `apply_broker_statement` (dépose un relevé Disnat dans le
+  donne **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=<courtier>` → 0
+  résultat, « l'institution » est `supported: false`. Limite du produit, pas une config.
+  Tes positions continuent de passer par `apply_broker_statement` (dépose un relevé courtier dans le
   chat) — ça marche déjà et ça ne coûte rien. À rouvrir seulement si tu changes de courtier.
 - [x] **Plan payant : tu as tranché (2026-07-29)** — tu prends un plan pour garder l'import automatique
   des transactions + les soldes de référence. (Ma reco était l'inverse ; arbitrage assumé, tracé.)
-- [ ] **Créer la dette « Desjardins Cash Back Mastercard » dans FinanceAI, une seule fois** — la sync
+- [ ] **Créer la dette « carte de crédit » dans FinanceAI, une seule fois** — la sync
   ne mettra à jour que le **solde** : Fintable ne fournit ni taux d'intérêt ni paiement minimum, et je
   refuse de les inventer. Va dans Réglages → Dettes et crée-la avec son vrai taux et son paiement
   minimum. ⚠️ Si tu en as **déjà** une pour cette carte, ne la duplique pas — dis-moi son nom exact et
@@ -1050,9 +1050,9 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
   # 2. Crée .fintable-roles.json à la racine (gitignoré) :
   #   { "<id compte chèque>":  {"kind":"cash"},
   #     "<id compte épargne>":  {"kind":"cash"},
-  #     "<id MC>":   {"kind":"debt","debtName":"Desjardins Cash Back Mastercard"},
-  #     "<id Disnat non-enregistré>": {"kind":"investment","taxRegime":"NON-ENREG"},
-  #     "<id Disnat CELI>": {"kind":"investment","taxRegime":"CELI"},
+  #     "<id MC>":   {"kind":"debt","debtName":"carte de crédit"},
+  #     "<id compte courtier 1>": {"kind":"investment","taxRegime":"<régime>"},
+  #     "<id compte courtier 2>": {"kind":"investment","taxRegime":"<régime>"},
   #     "<id compte REER>":  {"kind":"investment","taxRegime":"REER"} }
   #
   # ⚠️ [FINTABLE-6] `taxRegime` (CELI | REER | NON-ENREG) : mets le VRAI régime de chaque compte —
@@ -1065,8 +1065,8 @@ comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, é
   ```
   Colle-moi l'aperçu (montants masqués par défaut) : je vérifie que le compte de transactions retenues,
   les liquidités visées et la dette correspondent à ce que tu attends **avant** qu'on écrive quoi que ce soit.
-- [ ] **Vérifier le doublon de dette carte de crédit** (avant le Lot 2) — tu as choisi que la Mastercard
-  Desjardins alimente une dette dans FinanceAI. Regarde dans Réglages → Dettes si tu en as déjà une
+- [ ] **Vérifier le doublon de dette carte de crédit** (avant le Lot 2) — tu as choisi que la carte de crédit
+  alimente une dette dans FinanceAI. Regarde dans Réglages → Dettes si tu en as déjà une
   saisie à la main pour cette carte : si oui, il faudra la retirer au moment de brancher la sync, sinon
   elle sera comptée deux fois dans ton patrimoine.
 - [ ] **Rappel sécurité — 2 jetons Fintable ont été collés en clair dans le chat** (les deux avec scope
@@ -1207,6 +1207,34 @@ COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des acti
   (cf checklist `BACKLOG.md` § sync).
 
 ## O4 — Relais BYOK pour Claude (P0-PROXY, dark-launch awaiting env+flag)
+> ⚠️ **2026-09-25 [DURCISSEMENT-RELAIS] — les étapes (1) à (3) et (7) ci-dessous sont PÉRIMÉES** : le jeton de relais
+> (`PROXY_ACCESS_TOKEN` / `VITE_PROXY_ACCESS_TOKEN`) n'existe plus (il était public dans le bundle). **À faire** :
+> retirer ces deux variables de Vercel (Production + Preview) si elles y sont, et, par prudence, considérer la valeur
+> comme brûlée. Restent nécessaires pour l'IA locale : `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL`, `IA_LOCALE_CLE`.
+> Optionnelles : `RELAIS_SEL_EMPREINTE` (sel du mémo de clés), `RELAIS_ORIGINES` (origines supplémentaires),
+> `IA_LOCALE_MAX_TOKENS` (plafond local, défaut 8192). ADR 0021.
+>
+> **ORDRE OBLIGATOIRE** : (1) déployer d'abord la PR de durcissement ; (2) SEULEMENT ENSUITE retirer `PROXY_ACCESS_TOKEN` et
+> `VITE_PROXY_ACCESS_TOKEN` de Vercel. L'inverse casse le relais (l'ancien code exige encore le jeton).
+>
+> **Réserver la passerelle locale à TA clé** (obligatoire pour que le routage local marche : sans l'une de ces deux
+> variables, le routage local est DÉSACTIVÉ et tout va chez Anthropic — échec fermé). Deux moyens, sans jamais montrer ta
+> clé à un agent :
+> **Recommandé : commence par l'option EMPREINTE** (ci-dessous) : l'option organisation dépend de l'en-tête
+> `anthropic-organization-id`, non vérifié. ⚠️ `RELAIS_CLES_LOCALES` exige `RELAIS_SEL_EMPREINTE` : sans le sel, les empreintes
+> sont ÉCARTÉES (le sel serait aléatoire par instance) et le journal le dit (« sel manquant : empreintes ignorées »).
+> - **Organisation (le plus simple, [À vérifier])** : console.anthropic.com → Settings → l'identifiant d'organisation
+>   (non secret) → `RELAIS_ORG_LOCALE=<cet identifiant>`. Le relais compare avec l'en-tête `anthropic-organization-id`
+>   de la réponse count_tokens ; si Anthropic ne le renvoyait pas, le routage local reste coupé (échec fermé) → utiliser
+>   le moyen suivant.
+> - **Empreinte de ta clé** : (a) générer un sel aléatoire long (PowerShell : `-join ((48..57)+(97..122) | Get-Random -Count 40 | % {[char]$_})`),
+>   le poser sur Vercel : `RELAIS_SEL_EMPREINTE=<ce sel>` ; (b) sur ton PC : `$env:RELAIS_SEL_EMPREINTE="<ce sel>"; node scripts/empreinteCleRelais.mjs`
+>   → colle ta clé à l'invite (masquée, rien ne s'affiche) → le script imprime UNE empreinte ; (c) la poser sur Vercel :
+>   `RELAIS_CLES_LOCALES=<empreinte>` (plusieurs : séparées par des virgules). Redéployer après avoir posé ou changé le sel
+>   (changer le sel invalide les empreintes déjà calculées).
+> **Le nettoyage des données d'identification ne change PAS l'historique git** : les anciennes valeurs restent lisibles
+> dans l'historique tant que le dépôt est public et non réécrit. Ce n'est pas « réglé » ; c'est décidé à part (dépôt privé
+> ou réécriture d'historique).
 Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
 - [ ] **(1) Générer le token** : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" (PowerShell : openssl absent sur Windows)` → copier.
 - [ ] **(2) Poser l'env Vercel SERVEUR** (`PROXY_ACCESS_TOKEN`) : ce token → Settings → Environment Variables
@@ -1807,7 +1835,7 @@ le navigateur de Marc.
 
 Le rapport de synchro du 2026-09-16 a publié :
 
-> « Desjardins Cash Back Mastercard (xxxx) » → **positif**
+> « carte de crédit (xxxx) » → **positif**
 
 Marc, interrogé sur cette passe : **« c'est en ma faveur »**.
 

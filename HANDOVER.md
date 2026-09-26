@@ -4,6 +4,10 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-26 — **`[MCP-DURCISSEMENT]` : limites de débit du MCP, message de parse sans extrait, clé d'accès ≥ 32**
+> Audit P3-P6 (moyennes 5, 6, 8). (1) `parseRawToAppState` : message fixe (« contenu non affiché »), plus l'extrait de `JSON.parse`. (2) `mcp/auth/routeRateLimit.ts` : `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ont un plafond de volume (300/min, 12/h, 12/h, 120/h, 60/h) et un plafond d'ÉCHECS d'authentification (20 / 15 min, blocage AVANT d'examiner le secret, 429 + Retry-After) ; un refus 401/403 est remboursé du volume (un flot non authentifié n'affame pas le cron). Compteurs globaux (pas par IP : X-Forwarded-For contrôlable), en mémoire. (3) `FINANCEAI_ACCESS_KEY` < 32 caractères : refus de démarrer, message sans la valeur.
+> ⚠️ **AVANT DE DÉPLOYER** : vérifier que le secret `financeai-access-key` fait ≥ 32 caractères (l'ancienne consigne disait « ≥16 octets » : 16 octets en base64 = 24 caractères → le serveur refuserait de démarrer). Sinon le régénérer (voir `docs/A_FAIRE_MOI.md`). Chiffres de débit = estimation de l'usage, à ajuster (`ROUTE_LIMITS`).
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur

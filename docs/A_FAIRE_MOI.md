@@ -5,6 +5,8 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤 **[MCP-ACCESS-KEY-MIN]** (2026-09-26, AVANT de fusionner/déployer le lot MCP-DURCISSEMENT) — le serveur MCP refusera de démarrer si `FINANCEAI_ACCESS_KEY` fait moins de 32 caractères. Vérifie la longueur du secret `financeai-access-key` dans Secret Manager (sans l'afficher ici) ; s'il fait moins de 32 caractères, crée une nouvelle version : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` (64 caractères), puis redéploie et ré-autorise le connecteur dans claude.ai.
+
 - [x] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24, ✅ fait le jour même, mesure lancée) — **deux secrets pour mesurer les sources de cours
   depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
   oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :

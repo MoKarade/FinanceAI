@@ -8,7 +8,7 @@
 #   - API activées : run, secretmanager, cloudbuild, artifactregistry ;
 #   - 3 secrets OBLIGATOIRES créés dans Secret Manager :
 #       financeai-oauth-signing-key   (≥32 octets aléatoires)
-#       financeai-access-key          (≥16 octets aléatoires — TA clé d'accès)
+#       financeai-access-key          (≥32 caractères aléatoires, ex. 32 octets en hex = 64 car. — TA clé d'accès ; le serveur refuse de démarrer en dessous)
 #       financeai-google-refresh      (JSON des identifiants Drive : cf `npm run mcp:auth` puis copier ~/.financeai-mcp/credentials.json)
 #   - le compte de service Cloud Run a `roles/secretmanager.secretAccessor` sur CES 3 secrets
 #     (les 2 clés OAuth sont montées en variables d'env ; le refresh Google est lu à l'exécution).

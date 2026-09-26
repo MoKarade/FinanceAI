@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 // PreToolUse (Bash) : avant tout `git commit`, exige typecheck + tests (ciblés) + build verts. exit 2 = bloque.
+//
+// ⚠️ LIMITES CONNUES — garde-fou LOCAL, pas une frontière de sécurité ; la CI reste le filet :
+//   (a) `printf 'commit' | xargs git` : `git` et `commit` sont dans des segments différents → non détecté ;
+//   (b) `g${x}it commit` : `git` absent du texte normalisé → non détecté ;
+//   (c) un script qui lance `git commit` en interne (`sh script.sh`, `npm run …`) n'est pas analysable.
+// Ces trois cas sont figés (comportement actuel) dans tests/gateCommitAnalyse.test.ts, « limite connue ».
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { testsHomonymes } from './lib/testsHomonymes.mjs';
@@ -100,10 +106,13 @@ const SCAN_GUARD_TESTS = [
 // (Même geste que `SCAN_GUARD_TESTS` ci-dessus, pour une autre cause.)
 const TESTS_HOMONYMES = testsHomonymes(sourceFiles).filter(existsSync);
 const TOUJOURS = [...new Set([...SCAN_GUARD_TESTS, ...TESTS_HOMONYMES])];
-const ciblable = sourceFiles.length > 0 && !cibleImpossible && existsSync(vitestBin);
+// [GARDE-HOOK] Un commit de fichiers non-TS qui ne sont PAS une configuration globale (workflow, .gitattributes,
+// json de données, .mjs sans importeur…) n'a pas de graphe d'imports à suivre : typecheck + gardes-scan + build
+// suffisent, la suite complète reste celle de la CI. Liste vide (inconnu) = suite complète, comme avant.
+const ciblable = (sourceFiles.length > 0 || stagedFiles.length > 0) && !cibleImpossible && existsSync(vitestBin);
 const vitest = (...args) => execFileSync(process.execPath, [vitestBin, ...args], { stdio: 'pipe', maxBuffer: 256 * 1024 * 1024 });
 const testsAffectes = () => {
-  vitest('related', '--run', '--passWithNoTests', ...sourceFiles);
+  if (sourceFiles.length > 0) vitest('related', '--run', '--passWithNoTests', ...sourceFiles);
   vitest('run', ...TOUJOURS);
 };
 const npm = (script) => () => execSync(`npm run ${script}`, { stdio: 'pipe', maxBuffer: 256 * 1024 * 1024 });

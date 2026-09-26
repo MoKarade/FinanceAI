@@ -19,7 +19,7 @@
 
 const MOTS_DE_TETE = new Set(['{', '!', 'then', 'do', 'else', 'elif', 'if', 'while', 'until', 'time', 'exec', 'command']);
 // Sous-commandes git qui modifient l'index de façon non prévisible ici → on ne devine pas.
-const GIT_MUTE_INDEX = new Set(['reset', 'restore', 'checkout', 'switch', 'rm', 'mv', 'stash', 'apply', 'merge', 'cherry-pick', 'rebase', 'revert', 'pull', 'am', 'clean']);
+const GIT_MUTE_INDEX = new Set(['reset', 'restore', 'checkout', 'switch', 'rm', 'mv', 'stash', 'apply', 'merge', 'cherry-pick', 'rebase', 'revert', 'pull', 'am', 'clean', 'stage', 'update-index', 'read-tree', 'checkout-index']);
 // Options de `git commit` qui consomment le mot suivant.
 const COMMIT_OPTION_AVEC_VALEUR = new Set(['-m', '-F', '-C', '-c', '-t', '--message', '--file', '--author', '--date', '--reuse-message', '--reedit-message', '--template', '--cleanup', '--trailer', '--fixup', '--squash', '--pathspec-from-file']);
 const COMMIT_COURT_AVEC_VALEUR = 'mFCct';
@@ -35,7 +35,19 @@ const INTERPRETEURS_DE_SHELL = new Set(['eval', 'bash', 'sh', 'zsh', 'dash', 'ks
 const GIT_SOUS_INOFFENSIVES = new Set(['status', 'diff', 'log', 'show', 'branch', 'fetch', 'remote', 'push', 'tag', 'config', 'rev-parse',
   'ls-files', 'ls-remote', 'ls-tree', 'blame', 'describe', 'worktree', 'reflog', 'shortlog', 'grep', 'rev-list', 'diff-tree', 'cat-file',
   'show-ref', 'for-each-ref', 'symbolic-ref', 'merge-base', 'name-rev', 'gc', 'init', 'clone', 'version', 'help', 'check-ignore',
-  'submodule', 'bisect', 'notes', 'archive', 'count-objects', 'fsck', 'maintenance', 'sparse-checkout', 'whatchanged', 'range-diff']);
+  'submodule', 'bisect', 'notes', 'archive', 'count-objects', 'fsck', 'maintenance', 'sparse-checkout', 'whatchanged', 'range-diff',
+  // Le reste des sous-commandes INTÉGRÉES de git (`git --list-cmds=builtins`, git 2.5x) : un alias ne peut pas
+  // masquer une commande intégrée, donc tout nom ABSENT de cette liste est un alias ou un outil externe (incertain).
+  // Sans elles, `git diff-files` (etc.) déclenchait la suite complète sans aucun rapport avec un commit.
+  'annotate', 'backfill', 'bugreport', 'bundle', 'check-attr', 'check-mailmap', 'check-ref-format', 'cherry', 'column',
+  'commit-graph', 'commit-tree', 'credential', 'credential-cache', 'credential-store', 'diagnose', 'diff-files', 'diff-index',
+  'diff-pairs', 'difftool', 'fast-export', 'fast-import', 'fetch-pack', 'fmt-merge-msg', 'for-each-repo', 'format-patch',
+  'fsck-objects', 'get-tar-commit-id', 'hash-object', 'history', 'hook', 'index-pack', 'init-db', 'interpret-trailers',
+  'last-modified', 'mailinfo', 'mailsplit', 'merge-file', 'merge-index', 'merge-tree', 'mktag', 'mktree', 'multi-pack-index',
+  'pack-objects', 'pack-redundant', 'pack-refs', 'patch-id', 'pickaxe', 'prune', 'prune-packed', 'receive-pack', 'refs', 'repack',
+  'replace', 'replay', 'repo', 'rerere', 'send-pack', 'show-branch', 'show-index', 'stripspace', 'survey', 'unpack-file',
+  'unpack-objects', 'update-ref', 'update-server-info', 'upload-archive', 'upload-pack', 'var', 'verify-commit', 'verify-pack',
+  'verify-tag', 'write-tree']);
 // Un chemin venu du texte de la commande ne doit contenir aucun caractère de contrôle ni de métacaractère shell.
 const CHEMIN_HOSTILE = /[\x00-\x1f\x7f&|<>^%!`$;'"]|^-/;
 

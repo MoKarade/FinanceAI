@@ -51,3 +51,16 @@ seul appel, le rejeu, la substitution d'arguments, le jeton d'une autre session,
 `initialize.instructions` et la description de chaque outil d'écriture décrivent le nouveau protocole. Un client qui
 enverrait encore `confirm:true` reçoit un aperçu (le champ est ignoré). Tests d'attaque :
 `tests/mcp/confirmationEcritureMcp.test.ts`.
+
+## Ajouts après avis pole-securite (2026-09-26)
+
+1. **Ne PAS activer « toujours autoriser » sur les outils d'écriture du connecteur** dans claude.ai. Ce réglage supprime
+   l'approbation par appel, donc la seule barrière humaine ; le jeton ne l'y remplace pas (voir « Ce que le jeton NE prouve
+   PAS »). Consigne pour Marc dans `docs/A_FAIRE_MOI.md`.
+2. **`scope=local` à surveiller en production.** Si `extra.sessionId` est absent, la portée du jeton retombe sur « local »
+   (liée au seul processus). Chaque ligne d'audit porte `scope=local` ou `scope=session` (jamais la valeur de la session).
+   À vérifier après déploiement Cloud Run : les écritures doivent journaliser `scope=session` ; sinon le transport ne fournit
+   pas d'identifiant de session et le lien « session » du jeton est sans effet (le lien outil/arguments/changements reste).
+3. **Piste : l'« elicitation » MCP.** Le serveur peut demander lui-même l'accord à l'utilisateur (`elicitInput`) quand le
+   client la supporte : c'est la seule vraie barrière HORS modèle (l'utilisateur répond à une boîte que le modèle ne peut
+   pas remplir à sa place). À étudier : support par claude.ai, repli sur le jeton quand le client ne la supporte pas.

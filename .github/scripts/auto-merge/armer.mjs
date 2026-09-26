@@ -5,7 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { peutArmer } from "./autoMerge.mjs";
-import { docsModifies } from "./docsAjoutsSeulement.mjs";
+import { controleDocs } from "./docsAjoutsSeulement.mjs";
 
 const { GH_TOKEN, REPO, PR, SHA } = process.env;
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -29,6 +29,7 @@ try {
   const brut = gh(["api", "--paginate", `repos/${REPO}/pulls/${PR}/files`, "--jq", ".[] | {path: .filename, previous_filename: .previous_filename, status: .status, patch: .patch}"]);
   const fichiers = brut.split("\n").filter((l) => l !== "").map((l) => JSON.parse(l));
   let decision = peutArmer({ ...vue, fichiers }, config);
+  let codeDocs = null;
   // Documents relus par les agents (leçons, HANDOVER…) : ajouts sains seulement, sinon pas d'armement (validation de Marc). ADAPTATION
   // FinanceAI : la décision du modèle (autoMerge.mjs, copie exacte) n'est pas modifiée, cette couche vient PAR-DESSUS.
   const listeDocs = (cle) => {
@@ -38,8 +39,10 @@ try {
   };
   const listesDocs = { ajoutsSeulement: listeDocs("chemins_ajouts_seulement"), contenuSurveille: listeDocs("chemins_contenu_surveille") };
   if (decision.armer) {
-    const docs = docsModifies(fichiers, listesDocs);
-    if (docs) decision = { armer: false, raison: docs, etiqueter: [] };
+    // Refus ATTESTABLE : `attester` doit répondre vrai seulement pour une revue de pole-securite sur le SHA exact (`attestationValide` du modèle
+    // Atelier 1.6.0, pas encore dans cette copie : jusque-là, AUCUNE attestation possible, échec fermé).
+    const docs = controleDocs(fichiers, listesDocs, () => false);
+    if (docs) { decision = { armer: false, raison: docs.raison, etiqueter: [] }; codeDocs = docs.code; }
   }
   if (decision.armer) {
     gh(["pr", "merge", "--auto", "--squash", PR, "--repo", REPO]);

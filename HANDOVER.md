@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-26 — **`[GARDE-RESYNC]` : le mécanisme de fusion auto = le modèle Atelier 1.6.0 (copies exactes)**
+> Autorisé par Marc. `modeles/auto-merge/*` (copies exactes du commit `f8e2177` d'atelier, empreintes dans `COPIES.md` racine, écarts
+> FinanceAI déclarés un à un), `.github/workflows/armement-auto-merge.yml` (gabarit tel quel) ; SUPPRIMÉS : `.github/workflows/fusion-auto.yml` et
+> `.github/scripts/auto-merge/`. `validation-marc` devient INFORMATIF ; sans `securite_login` (absent) aucune attestation n'est possible : les chemins
+> sensibles restent bloqués. ⚠️ Le modèle DÉSARME les PR Dependabot (« traitées par le workflow de fusion ») : plus d'armement automatique de Dependabot
+> tant que le gabarit de fusion événementiel n'est pas adopté. `commit-gate` hors lot. ESLint ignore `modeles/auto-merge/**`. Tests : `tests/blocageFusion.test.ts`
+> (modèle exécuté dans Node : `tests/helpers/peutArmerNode.mjs`).
+>
 > ## 🟥 Session 2026-09-25 — **`[GARDE]` : la fusion auto ne s'arme plus sur les chemins sensibles**
 > Demande pole-architecture/pole-securite. **Workflow `fusion-auto.yml` refait** sur le modèle de l'Atelier (identique à
 > BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la

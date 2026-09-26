@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-26 — Fusion automatique : on adopte le modèle commun de l'Atelier
+
+- Aucun changement dans l'app. Le mécanisme qui décide si une PR peut se fusionner toute seule est maintenant la copie exacte du modèle
+  commun (version 1.6.0) ; les écarts propres à FinanceAI sont listés dans `COPIES.md`. Les PR Dependabot ne sont plus armées automatiquement
+  pour l'instant. Le label `validation-marc` ne bloque plus : seul un OK de l'équipe sécurité (pas encore configuré) débloquerait un chemin sensible.
+
 ## 2026-09-26 — Les tests de garde passent aussi sous Windows
 
 - Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes

@@ -3,14 +3,21 @@
 // [GARDE-BLOCAGE-FUSION] Le workflow « Fusion automatique » ne doit JAMAIS armer l'auto-fusion d'une PR qui touche un
 // chemin sensible (hooks de l'agence, .github, réglages, commit-gate, .claude, CODEOWNERS, modeles/, et — pour FinanceAI
 // — le relais IA, l'authentification, vercel.json), ni d'une PR étiquetée validation-marc ou en brouillon.
-// La décision est celle du modèle de l'Atelier (`peutArmer`), copiée dans .github/scripts/auto-merge/ ; le workflow
+// La décision est celle du modèle de l'Atelier 1.6.0 (`peutArmer`), copiée dans modeles/auto-merge/ ; le workflow
 // est un `pull_request_target` (lu sur `main`, jamais dans la PR). Ce fichier fige les deux : la décision (table
 // d'attaque) et le gabarit du workflow (grille de relecture sécurité A1-A9, lue comme DONNÉE).
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { peutArmer, CHEMINS_INTERDITS } from '../.github/scripts/auto-merge/autoMerge.mjs';
+import { execFileSync } from 'node:child_process';
+
+// Le modèle tourne dans NODE (voir tests/helpers/peutArmerNode.mjs : Vite ne sait pas charger sa surcouche facultative absente).
+interface Decision { armer: boolean; raison: string; etiqueter: string[] }
+const executer = (pr: unknown, config: unknown): { decision: Decision; chemins: string[] } =>
+    JSON.parse(execFileSync('node', [resolve(__dirname, 'helpers/peutArmerNode.mjs')], { input: JSON.stringify({ pr, config }), encoding: 'utf8' }));
+const peutArmer = (pr: unknown, config: unknown): Decision => executer(pr, config).decision;
+const CHEMINS_INTERDITS: string[] = executer({}, {}).chemins;
 
 const RACINE = resolve(__dirname, '..');
 const lit = (p: string) => readFileSync(resolve(RACINE, p), 'utf8');
@@ -27,15 +34,15 @@ describe('peutArmer — chemins sensibles : jamais armée', () => {
     const sensibles = [
         // liste commune de l'Atelier
         'scripts/hooks/commit-gate.mjs', 'scripts/hooks/lib/analyseCommande.mjs', '.github/workflows/ci.yml',
-        '.github/workflows/fusion-auto.yml', '.github/auto-merge.json', '.github/scripts/auto-merge/autoMerge.mjs',
+        '.github/workflows/armement-auto-merge.yml', '.github/auto-merge.json', 'modeles/auto-merge/armer.mjs',
         '.claude/settings.json', '.claude/agents/architect.md', '.claude/settings.local.json', 'CODEOWNERS', '.github/CODEOWNERS',
-        'modeles/auto-merge/autoMerge.mjs', 'passerelle/tunnel.yml', '.husky/pre-commit', '.gitattributes',
+        'modeles/auto-merge/autoMerge.mjs', '.husky/pre-commit', '.gitattributes',
         'scripts/commit-gate.mjs', 'outils/commit-gate/x.mjs',
         // propres à FinanceAI (auto-merge.json : chemins_label_validation)
         'api/auth/callback.ts', 'api/_lib/session.ts', 'api/_lib/sessionStore.ts', 'api/_lib/garde.ts', 'api/_lib/relay.ts', 'vercel.json',
         'api/_lib/autreChose.ts', 'api/claude/v1/messages.ts', 'mcp/http.ts', 'mcp/tools/getTaxSituation.spec.ts',
         'services/secureKeyStore.ts', 'vite.config.ts', 'index.html',
-        // réglages : tout fichier settings*.json, à toute profondeur
+        // réglages : tout fichier settings*.json, à toute profondeur (settings.json : base du modèle ; le reste : chemins_label_validation de FinanceAI)
         'settings.json', 'config/settings.prod.json', 'a/b/settings.local.json',
         // variantes de casse, séparateurs Windows, chemins déguisés
         'Scripts/Hooks/x.mjs', '.GITHUB/workflows/x.yml', 'scripts\\hooks\\x.mjs', './.github/workflows/x.yml',
@@ -80,10 +87,11 @@ describe('peutArmer — le code ordinaire de l\'app reste automatique (pas de su
 });
 
 describe('peutArmer — étiquettes, brouillon, fork, état', () => {
-    it('validation-marc et do-not-merge bloquent', () => {
-        for (const nom of ['validation-marc', 'do-not-merge']) {
-            expect(peutArmer(pr(['services/a.ts'], { labels: [{ name: nom }] }), config).armer, nom).toBe(false);
-        }
+    it('do-not-merge bloque ; validation-marc est INFORMATIF depuis le modèle 1.6.0 (décision de Marc : seule l\'attestation débloque un chemin sensible, le label ne bloque plus)', () => {
+        expect(peutArmer(pr(['services/a.ts'], { labels: [{ name: 'do-not-merge' }] }), config).armer).toBe(false);
+        expect(peutArmer(pr(['services/a.ts'], { labels: [{ name: 'validation-marc' }] }), config).armer).toBe(true);
+        // …mais un chemin sensible reste bloqué avec ou sans le label : ce n'est pas lui qui protège
+        expect(peutArmer(pr(['api/_lib/relay.ts'], { labels: [{ name: 'validation-marc' }] }), config).armer).toBe(false);
     });
     it('brouillon, fork : non ; champ absent : non (échec fermé)', () => {
         expect(peutArmer(pr(['services/a.ts'], { isDraft: true }), config).armer).toBe(false);
@@ -106,27 +114,27 @@ describe('peutArmer — étiquettes, brouillon, fork, état', () => {
 });
 
 describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'agence oui', () => {
-    it('adaptation FinanceAI documentée dans le fichier', () => {
-        const brut = JSON.parse(lit('.github/scripts/auto-merge/chemins-interdits.json'));
-        expect(brut._note).toContain('hooks REACT');
-        expect(CHEMINS_INTERDITS).toContain('scripts/hooks/**');
+    it('la base 1.6.0 est étroite : hooks/ et components/settings/ (UI de l\'app) n\'y sont pas', () => {
+        const brut = JSON.parse(lit('modeles/auto-merge/chemins-interdits-base.json'));
+        expect(brut._doc).toContain('components/settings/');
+        expect(CHEMINS_INTERDITS).toContain('**/scripts/hooks/**');
         expect(CHEMINS_INTERDITS).toContain('.claude/**');
         expect(CHEMINS_INTERDITS).toContain('.github/**');
         expect(CHEMINS_INTERDITS).not.toContain('hooks/**');
         expect(CHEMINS_INTERDITS).not.toContain('**/settings*');
     });
 
-    // Anti-vacuité : la copie locale est ADAPTÉE, donc modifiable ; si elle perd un chemin d'agent, la garde ne protège plus rien
-    // sans que le reste de la suite s'en aperçoive. Chaque famille doit rester REPRÉSENTÉE (motif exact) ET bloquer un fichier réel.
-    it('la liste locale garde chaque famille de chemins d\'agent (motif présent ET fichier bloqué)', () => {
+    // Anti-vacuité : si la liste de la base perd une famille de chemins d'agent, la garde ne protège plus rien sans que le reste de la
+    // suite s'en aperçoive. Chaque famille doit rester REPRÉSENTÉE (motif exact) ET bloquer un fichier réel, sans l'aide de la config.
+    it('la base garde chaque famille de chemins d\'agent (motif présent ET fichier bloqué)', () => {
         const famille: Array<[string, string]> = [
-            ['scripts/hooks/**', 'scripts/hooks/commit-gate.mjs'],
+            ['**/scripts/hooks/**', 'scripts/hooks/commit-gate.mjs'],
             ['.claude/**', '.claude/settings.json'],
             ['.github/**', '.github/workflows/ci.yml'],
             ['**/commit-gate*', 'outils/commit-gate.mjs'],
-            ['**/settings*.json', 'x/settings.local.json'],
             ['CODEOWNERS', 'CODEOWNERS'],
             ['modeles/**', 'modeles/auto-merge/autoMerge.mjs'],
+            ['CLAUDE.md', 'CLAUDE.md'],
         ];
         for (const [motif, exemple] of famille) {
             expect(CHEMINS_INTERDITS, `motif perdu : ${motif}`).toContain(motif);
@@ -134,15 +142,40 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
         }
     });
 
-    it('la config FinanceAI garde ses chemins sensibles propres (label validation-marc)', () => {
-        for (const m of ['api/**', 'mcp/**', 'services/secureKeyStore.ts', 'vite.config.ts', 'index.html', 'vercel.json']) {
+    it('la config FinanceAI garde ses chemins sensibles propres (label validation-marc), settings*.json compris', () => {
+        for (const m of ['api/**', 'mcp/**', 'services/secureKeyStore.ts', 'vite.config.ts', 'index.html', 'vercel.json', '**/settings*.json']) {
             expect(config.chemins_label_validation, `chemin perdu : ${m}`).toContain(m);
         }
     });
+
+    it('aucune attestation configurée : securite_login et securite_user_id sont ABSENTS (échec fermé, chemins sensibles bloqués)', () => {
+        expect(config).not.toHaveProperty('securite_login');
+        expect(config).not.toHaveProperty('securite_user_id');
+        expect(config).not.toHaveProperty('chemins_attestables');
+    });
+
+    // FIXTURE de revues (données de test), jamais un vérificateur de substitution : c'est `attestationValide` du modèle qui juge.
+    const revue = (over: Record<string, unknown> = {}) => ({ state: 'APPROVED', commit_id: SHA, user: { login: 'compte-securite', id: 1 }, submitted_at: '2026-09-26T10:00:00Z', ...over });
+
+    it('sans compte configuré, une revue APPROVED sur le bon SHA ne lève RIEN', () => {
+        for (const f of ['api/_lib/relay.ts', 'vercel.json', '.github/workflows/ci.yml', 'x/settings.local.json']) {
+            const d = peutArmer(pr([f], { reviews: [revue()] }), config);
+            expect(d.armer, f).toBe(false);
+        }
+    });
+
+    it('avec un compte configuré (variante de test, PAS la config réelle) : la revue lève un chemin sensible ; ancien SHA, autre compte, revue non approuvée, aucune revue : refus', () => {
+        const cfg = { ...config, securite_login: 'compte-securite' };
+        expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue()] }), cfg).armer).toBe(true);
+        expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue({ commit_id: 'b'.repeat(40) })] }), cfg).armer).toBe(false);
+        expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue({ user: { login: 'autre', id: 2 } })] }), cfg).armer).toBe(false);
+        expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue({ state: 'COMMENTED' })] }), cfg).armer).toBe(false);
+        expect(peutArmer(pr(['api/_lib/relay.ts']), cfg).armer).toBe(false);
+    });
 });
 
-describe('workflow fusion-auto.yml — grille de relecture sécurité (lue comme donnée)', () => {
-    const yml = lit('.github/workflows/fusion-auto.yml');
+describe('workflow armement-auto-merge.yml — grille de relecture sécurité (lue comme donnée)', () => {
+    const yml = lit('.github/workflows/armement-auto-merge.yml');
     const code = yml.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
 
     it('A1/A2 pull_request_target ; un seul checkout, de la BASE (jamais la tête de la PR) ; script lu depuis la base', () => {
@@ -155,7 +188,7 @@ describe('workflow fusion-auto.yml — grille de relecture sécurité (lue comme
         expect([...code.matchAll(/^\s*\S+:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}/gm)]).toHaveLength(1);
         expect(code).toMatch(/^\s+SHA:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}/m);
         expect(code).toContain('persist-credentials: false');
-        expect(code).toContain('node .github/scripts/auto-merge/armer.mjs');
+        expect(code).toContain('node modeles/auto-merge/armer.mjs');
     });
     it('A3 pas de fork', () => {
         expect(code).toContain("github.event.pull_request.head.repo.full_name == github.repository");
@@ -169,7 +202,12 @@ describe('workflow fusion-auto.yml — grille de relecture sécurité (lue comme
         expect(code).not.toMatch(/github\.event\.pull_request\.(title|body)|head_ref|github\.event\.head_commit|github\.event\.pull_request\.head\.label/);
         // ${{ }} : seuls le numéro, le SHA, le dépôt et le jeton
         const expressions = [...code.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)].map((m) => m[1]);
-        const permises = new Set(['github.event.pull_request.number', 'github.event.pull_request.head.sha', 'github.repository', 'github.token']);
+        const permises = new Set([
+            'github.event.pull_request.number', 'github.event.pull_request.head.sha', 'github.repository', 'github.token',
+            // gabarit 1.6.0 : numéro saisi à la main (validé par armer.mjs), SHA de base, nom de l'événement, variables de dépôt
+            'github.event.pull_request.number || inputs.pr', 'github.event.pull_request.base.sha || github.sha', 'github.event.action || github.event_name',
+            'vars.AUTOMERGE_OFF', 'fromJSON(vars.ARMEMENT_RUNNER || \'"ubuntu-latest"\')',
+        ]);
         for (const e of expressions) expect(permises.has(e), `expression non autorisée : ${e}`).toBe(true);
     });
     it('A6 toutes les actions épinglées par SHA de commit', () => {
@@ -186,24 +224,45 @@ describe('workflow fusion-auto.yml — grille de relecture sécurité (lue comme
         }
     });
     it('le script échoue FERMÉ : toute erreur désarme', () => {
-        const s = lit('.github/scripts/auto-merge/armer.mjs');
-        expect(s).toMatch(/catch \(e\) \{\s*desarmer\(\);/);
-        expect(s).toContain('process.exit(1)');
+        const s = lit('modeles/auto-merge/armer.mjs');
+        expect(s).toMatch(/catch \(e\) \{\s*\/\/ ÉCHEC FERMÉ[^\n]*\n\s*try \{ desarmer\(/);
         expect(s).toContain('peutArmer');
-        expect(s).toMatch(/headRefOid !== SHA/);
+        expect(s).toMatch(/pr\.headRefOid !== sha/);
+        expect(code).toMatch(/if: failure\(\)/);
+    });
+    it('A16 jamais pull_request_review ; lancement manuel seulement sur la branche par défaut', () => {
+        expect(code).not.toMatch(/pull_request_review/);
+        expect(code).toContain('workflow_dispatch');
+        expect(code).toContain("github.ref == format('refs/heads/{0}', github.event.repository.default_branch)");
+    });
+    it('un seul mécanisme : l\'ancien workflow et l\'ancien dossier .github/scripts/auto-merge n\'existent plus', () => {
+        expect(existsSync(resolve(RACINE, '.github/workflows/fusion-auto.yml'))).toBe(false);
+        expect(existsSync(resolve(RACINE, '.github/scripts/auto-merge'))).toBe(false);
     });
 });
 
-describe('copies de modèles : identiques à la source de l\'Atelier (contrôle si le dépôt Atelier est présent)', () => {
-    const SOURCE = 'C:/dev/atelier/modeles/auto-merge';
+describe('copies du modèle 1.6.0 : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
     const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
-    it.skipIf(!existsSync(`${SOURCE}/autoMerge.mjs`))('autoMerge.mjs et autoMerge.d.mts sont des copies EXACTES', () => {
-        for (const f of ['autoMerge.mjs', 'autoMerge.d.mts']) {
-            expect(sha(readFileSync(`${SOURCE}/${f}`, 'utf8')), f).toBe(sha(lit(`.github/scripts/auto-merge/${f}`)));
-        }
+    const liste = lit('COPIES.md');
+    const lignes = [...liste.matchAll(/^\| (\S+) \| ([0-9a-f]{64}) \| (\S+) \|$/gm)].map((m) => ({ chemin: m[1], sha: m[2], version: m[3] }));
+    const ATTENDUS = [
+        'modeles/auto-merge/autoMerge.mjs', 'modeles/auto-merge/autoMerge.d.mts', 'modeles/auto-merge/chemins-interdits-base.json',
+        'modeles/auto-merge/fusionner.mjs', 'modeles/auto-merge/armer.mjs', 'modeles/auto-merge/verifier-copies.mjs',
+        'modeles/auto-merge/surblocage.mjs', '.github/workflows/armement-auto-merge.yml', 'modeles/auto-merge/LISEZMOI.md',
+    ];
+    it('anti-vacuité : COPIES.md liste exactement les 9 fichiers du lot, tous en 1.6.0', () => {
+        expect(lignes.map((l) => l.chemin).sort()).toEqual([...ATTENDUS].sort());
+        for (const l of lignes) expect(l.version, l.chemin).toBe('1.6.0');
     });
-    it('la liste des copies jointe existe et couvre chaque fichier copié', () => {
-        const liste = lit('.github/scripts/auto-merge/COPIES.md');
-        for (const f of ['autoMerge.mjs', 'autoMerge.d.mts', 'chemins-interdits.json', 'armer.mjs']) expect(liste, f).toContain(f);
+    it.each(ATTENDUS)('%s : l\'empreinte de COPIES.md est celle du fichier (copie non retouchée)', (chemin) => {
+        const l = lignes.find((x) => x.chemin === chemin);
+        expect(l, chemin).toBeDefined();
+        expect(sha(lit(chemin)), chemin).toBe(l!.sha);
+    });
+    it('la source (commit f8e2177) et chaque écart FinanceAI sont déclarés', () => {
+        expect(liste).toContain('f8e2177');
+        for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'eslint-disable', 'fusion-auto.yml']) {
+            expect(liste, `écart non déclaré : ${mot}`).toContain(mot);
+        }
     });
 });

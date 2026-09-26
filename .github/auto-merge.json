@@ -19,7 +19,8 @@
     "services/secureKeyStore.ts",
     "vite.config.ts",
     "index.html",
-    "vercel.json"
+    "vercel.json",
+    "**/settings*.json"
   ],
   "carence_dependabot_jours": 0
 }

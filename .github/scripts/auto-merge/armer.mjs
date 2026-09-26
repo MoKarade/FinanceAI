@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { peutArmer } from "./autoMerge.mjs";
+import { docsModifies } from "./docsAjoutsSeulement.mjs";
 
 const { GH_TOKEN, REPO, PR, SHA } = process.env;
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -27,7 +28,15 @@ try {
   if (vue.state !== "OPEN") { resume("PR non ouverte : rien à faire."); process.exit(0); }
   const brut = gh(["api", "--paginate", `repos/${REPO}/pulls/${PR}/files`, "--jq", ".[] | {path: .filename, previous_filename: .previous_filename, status: .status, patch: .patch}"]);
   const fichiers = brut.split("\n").filter((l) => l !== "").map((l) => JSON.parse(l));
-  const decision = peutArmer({ ...vue, fichiers }, config);
+  let decision = peutArmer({ ...vue, fichiers }, config);
+  // Documents relus par les agents (leçons, HANDOVER…) : ajouts sains seulement, sinon pas d'armement (validation de Marc). ADAPTATION
+  // FinanceAI : la décision du modèle (autoMerge.mjs, copie exacte) n'est pas modifiée, cette couche vient PAR-DESSUS.
+  const motifsDocs = config.chemins_ajouts_seulement ?? [];
+  if (!Array.isArray(motifsDocs) || !motifsDocs.every((m) => typeof m === "string" && m.trim() !== "")) throw new Error("chemins_ajouts_seulement : liste de motifs attendue");
+  if (decision.armer) {
+    const docs = docsModifies(fichiers, motifsDocs);
+    if (docs) decision = { armer: false, raison: docs, etiqueter: [] };
+  }
   if (decision.armer) {
     gh(["pr", "merge", "--auto", "--squash", PR, "--repo", REPO]);
     resume(`Fusion automatique armée : ${decision.raison}.`);

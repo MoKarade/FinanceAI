@@ -2797,3 +2797,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   `docs/CONVENTIONS.md` (`UN-HARNESS-DE-TEST-PEUT-SEMBLER-CONTROLER-UNE-DONNEE-SANS-LA-CONTROLER`,
   2026-09-21).
 
+
+## `UN-DOC-QUE-LES-AGENTS-RELISENT-EST-UNE-SURFACE-D-ATTAQUE` (2026-09-26, `[DOCS-PROTECTION]`)
+
+Une « règle » ou « leçon » piégée, écrite par un agent puis auto-fusionnée, serait appliquée par toutes les sessions
+suivantes. Les documents relus au démarrage sont donc protégés : attestation (`CLAUDE.md`, `docs/claude/*.md` hors
+`lecons.md`) ou ajouts sains seulement (leçons, CONVENTIONS, HANDOVER, CHANGELOG, BACKLOG). Détail : ADR 0024.
+Un nouveau fichier dans `docs/claude/` doit entrer dans `chemins_label_validation` (un test le vérifie).

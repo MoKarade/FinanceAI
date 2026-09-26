@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-26 — Les documents que les agents relisent sont protégés
+
+- Aucun changement dans l'app : une PR qui touche `CLAUDE.md` ou `docs/claude/*.md` n'est plus fusionnée toute seule ;
+  les leçons, HANDOVER, CHANGELOG et BACKLOG n'acceptent plus, sans toi, que des lignes ajoutées sans lien ni commande
+  (200 lignes au plus par PR). Décision : ADR 0024.
+
 ## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
 
 - Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus

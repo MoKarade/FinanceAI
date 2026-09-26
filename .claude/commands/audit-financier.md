@@ -44,7 +44,7 @@ Comparer au rapport précédent (« peaufiner à chaque passage » : les finding
 ## 5. Router les findings
 - Tout finding actionnable → entrée `BACKLOG.md` (ID, gravité, `file:line`, fix, effort).
 - Findings réfutés / limites assumées → `docs/FISCAL_REFERENCE.md` §9 ou commentaire code (traçabilité).
-- Leçon de méthode/convention → delta `CLAUDE.md` (même PR).
+- Leçon de méthode/convention → delta `docs/claude/lecons.md` (même PR).
 
 ## 6. Conclure
 Verdict explicite (cœur sain ? findings périphériques ?) + lot de corrections proposé (plan-first si code

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-26 — Le rappel « leçon » pointe vers le bon fichier
+
+- Aucun changement dans l'app : le rappel avant chaque push, l'agent de documentation et trois commandes
+  renvoient maintenant vers `docs/claude/lecons.md` (le CLAUDE.md est devenu court). Le chemin se règle dans
+  `scripts/hooks/hooks.config.json`, pour que le même hook serve aux autres apps.
+
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 
 - Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ

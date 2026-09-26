@@ -151,6 +151,11 @@
 > de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
 >
+> ## 🟦 Session 2026-09-26 — **`[HOOKS-LECONS]` : hooks/agents/commandes pointent vers `docs/claude/lecons.md`**
+> `learn-on-push.mjs`, `guard.mjs`, `documentation-manager`, 3 commandes : plus de renvoi à `CLAUDE.md`. Le chemin est lu
+> dans `scripts/hooks/hooks.config.json` (`leconsFichier`, validé : relatif simple, sinon défaut). PR brouillon, chemins
+> sensibles (validation-marc, pole-securite). Test : `tests/learnOnPushLecons.test.ts`.
+>
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
 > `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA

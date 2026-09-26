@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { decision, peutArmer, LABEL_VALIDATION } from "./autoMerge.mjs";
+import { decision, peutArmer, codeRaison, LABEL_VALIDATION } from "./autoMerge.mjs";
 
 const TENTATIVES = 5;
 
@@ -32,7 +32,6 @@ const json = (texte, quoi) => {
 
 /** Texte sûr pour un commentaire : sans caractère de contrôle, sans backtick ni retour à la ligne, borné (un nom de fichier peut être hostile). */
 export function sansRisque(texte, max = 300) {
-  // eslint-disable-next-line no-control-regex
   return String(texte).replace(/[\u0000-\u001f\u007f`]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
@@ -52,7 +51,7 @@ const refusAExpliquer = (raison) => /^(attestation de pole-securite|fichier sens
 export async function lireRevues(gh, repo, numero, attente = pause) {
   try {
     const brut = await avecReessais(() => gh(["api", "--paginate", `repos/${repo}/pulls/${numero}/reviews`, "--jq",
-      ".[] | {user: {login: .user.login, id: .user.id}, state: .state, commit_id: .commit_id, submitted_at: .submitted_at}"]), attente);
+      ".[] | {user: {login: .user.login, id: .user.id, type: .user.type}, state: .state, commit_id: .commit_id, submitted_at: .submitted_at}"]), attente);
     return brut.split("\n").filter((l) => l !== "").map((l) => JSON.parse(l));
   } catch { return null; }
 }
@@ -90,7 +89,7 @@ const enCode = (t) => `\`${sansRisque(t, 200)}\``;
  * @param {(ms: number) => Promise<void>} [p.attente]
  * @returns {Promise<{fusionnees: number[], alertes: string[], erreurs: string[]}>}
  */
-export async function executer({ gh, config, env, maintenant, ecrire, attente = pause }) {
+export async function executer({ gh, config, env, maintenant, ecrire, sortie = () => {}, attente = pause }) {
   const repo = env.REPO;
   const res = { fusionnees: [], alertes: [], erreurs: [], signaux: [] };
   /** Enregistre une alerte (catégorie fixe + PR + SHA) : l'issue est créée à la fin, une fois par signal. */
@@ -179,7 +178,9 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
         poserLabels(n, armement.etiqueter);
         const commente = refusAExpliquer(armement.raison) ? await expliquer(n, armement.raison) : false;
         if (armement.code) signaler(armement.code, n, shaCourant);
-        ecrire(`- PR #${n} : pas d'armement — ${enCode(armement.raison)}${commente ? " (commentaire posé)" : ""}`);
+        const codeArmement = codeRaison(armement);
+        sortie(`code_pr_${n}=${codeArmement}`);
+        ecrire(`- PR #${n} : pas d'armement [${codeArmement}] — ${enCode(armement.raison)}${commente ? " (commentaire posé)" : ""}`);
         continue;
       }
 
@@ -193,7 +194,9 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
       if (!d.merger) {
         const commente = d.etiqueter.length ? await expliquer(n, d.raison) : false;
         if (d.code) signaler(d.code, n, shaCourant);                      // frein horaire : alerte, sans label ni commentaire
-        ecrire(`- PR #${n} : pas de fusion — ${enCode(d.raison)}${d.etiqueter.length ? ` (label ${d.etiqueter.join(", ")} posé)` : ""}${commente ? " (commentaire posé)" : ""}`);
+        const codeRefus = codeRaison(d);
+        sortie(`code_pr_${n}=${codeRefus}`);
+        ecrire(`- PR #${n} : pas de fusion [${codeRefus}] — ${enCode(d.raison)}${d.etiqueter.length ? ` (label ${d.etiqueter.join(", ")} posé)` : ""}${commente ? " (commentaire posé)" : ""}`);
         continue;
       }
 
@@ -207,6 +210,7 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
       }
       if (!fait) { res.erreurs.push(`PR #${n} : fusion impossible après ${TENTATIVES} essais`); signaler("fusion_impossible", n, shaCourant); ecrire(`- PR #${n} : ⚠️ fusion impossible (${enCode(d.raison)})`); continue; }
       res.fusionnees.push(n);
+      sortie(`code_pr_${n}=merge_ok`);
       ecrire(`- PR #${n} : ✅ fusionnée (${d.sha.slice(0, 8)}) — ${enCode(d.raison)}`);
       // trace sur la PR elle-même : une ligne par fusion automatique (une fois par SHA)
       try {
@@ -265,9 +269,11 @@ async function main() {
   const config = JSON.parse(readFileSync(configPath, "utf8"));
   const resume = process.env.GITHUB_STEP_SUMMARY;
   const ecrire = (ligne) => { console.log(ligne); if (resume) appendFileSync(resume, ligne + "\n"); };
+  const sortieJob = process.env.GITHUB_OUTPUT;
+  const sortie = (ligne) => { if (sortieJob && /^code_pr_[1-9][0-9]{0,8}=[a-z_]+$/.test(ligne)) appendFileSync(sortieJob, ligne + "\n"); };
   ecrire("### Fusion automatique");
   const r = await executer({
-    gh: ghReel, config, maintenant: () => Date.now(), ecrire,
+    gh: ghReel, config, maintenant: () => Date.now(), ecrire, sortie,
     env: { REPO: process.env.REPO, BRANCHE: process.env.BRANCHE || undefined, SHA_EVENT: process.env.SHA_EVENT || undefined, AUTOMERGE_OFF: process.env.AUTOMERGE_OFF,
       NUMERO: process.env.NUMERO || undefined,
       RUN_URL: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${process.env.REPO}/actions/runs/${process.env.GITHUB_RUN_ID}` : undefined },

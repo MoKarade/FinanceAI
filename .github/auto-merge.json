@@ -23,5 +23,5 @@
     "vercel.json",
     "**/settings*.json"
   ],
-  "carence_dependabot_jours": 0
+  "carence_dependabot_jours": 3
 }

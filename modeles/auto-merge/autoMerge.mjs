@@ -55,7 +55,9 @@ const SHA = /^[0-9a-f]{40}$/;
 /** Chemins JAMAIS attestables (secrets, clés) : aucune attestation, aucune configuration d'app ne les lève. Motifs sur chemins normalisés (minuscules). */
 export const JAMAIS_ATTESTABLES = Object.freeze(["**/.env*", "**/*.pem", "**/secrets/**", "**/jeton*", "**/*.key"]);
 /** Login GitHub valide (lettres, chiffres, tirets ; 1 à 39 caractères) : nom du compte dédié de pole-securite, comparé EXACTEMENT (casse comprise). */
-const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
+const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?(?:\[bot\])?$/;
+/** Login d'une GitHub App (« <slug>[bot] ») : l'attestation par l'App exige alors l'identifiant numérique du compte bot ET le type « Bot » sur les revues. */
+const estLoginBot = (login) => typeof login === "string" && login.endsWith("[bot]");
 /** L'API GitHub plafonne la liste des fichiers d'une PR : au-delà on ne sait pas tout, donc on refuse. */
 const FICHIERS_MAX = 3000;
 const JOUR_MS = 86_400_000;
@@ -137,7 +139,10 @@ export function validerConfig(config) {
     }
   }
   if (config.securite_login !== undefined && (typeof config.securite_login !== "string" || (config.securite_login !== "" && !LOGIN.test(config.securite_login)))) {
-    erreurs.push("securite_login : login GitHub du compte dédié (texte, vide = aucune attestation possible)");
+    erreurs.push("securite_login : login GitHub du compte dédié ou d'une App « <slug>[bot] » (texte, vide = aucune attestation possible)");
+  }
+  if (typeof config.securite_login === "string" && estLoginBot(config.securite_login) && config.securite_user_id === undefined) {
+    erreurs.push("securite_user_id : obligatoire quand securite_login est une App (« [bot] ») : identifiant numérique du compte bot");
   }
   if (config.chemins_attestables !== undefined && !listeDeTextes(config.chemins_attestables)) erreurs.push("chemins_attestables : liste de motifs (chemins de l'app que l'attestation peut lever)");
   if (config.securite_user_id !== undefined && (!Number.isInteger(config.securite_user_id) || config.securite_user_id <= 0)) erreurs.push("securite_user_id : entier positif (identifiant numérique du compte dédié)");
@@ -256,14 +261,18 @@ function testAssocieManquant(fichiers, regles) {
  * On garde les revues du compte (`user.login` égal EXACTEMENT : pas de casse, de préfixe ni de suffixe tolérés), on prend la DERNIÈRE (`submitted_at`) ;
  * valide seulement si `state === "APPROVED"` ET `commit_id === sha`. DISMISSED, CHANGES_REQUESTED, COMMENTED, autre SHA, autre compte, liste illisible,
  * revue du compte sans date lisible, login ou SHA invalide = pas d'attestation. Les revues PENDING (jamais soumises) sont ignorées.
- * @param {unknown} reviews  revues de la PR : [{user: {login}, state, commit_id, submitted_at}]
+ * @param {unknown} reviews  revues de la PR : [{user: {login, id, type}, state, commit_id, submitted_at}]
  * Quand `userId` (securite_user_id) est configuré, une revue ne compte que si `user.id` est ce nombre : un login renommé puis réattribué à un autre compte ne trompe pas le garde.
+ * GitHub App (login « <slug>[bot] ») : `userId` est OBLIGATOIRE (sans lui : pas d'attestation) et la revue doit porter `user.type === "Bot"` ; un login humain n'est jamais accepté à sa place
+ * (comparaison exacte : « atelier-securite-marc » n'est pas « atelier-securite-marc[bot] », ni l'inverse).
  * @param {{login?: string, sha?: string, userId?: number}} cible  compte attendu (securite_login, lu sur la branche de base), SHA actuel de la PR, identifiant numérique (option)
  */
 export function attestationValide(reviews, cible) {
   const { login, sha, userId } = cible && typeof cible === "object" ? cible : {};
   if (userId !== undefined && (!Number.isInteger(userId) || userId <= 0)) return false;
   if (typeof login !== "string" || !LOGIN.test(login)) return false;
+  const bot = estLoginBot(login);
+  if (bot && userId === undefined) return false;                                    // App : l'identifiant numérique du compte bot est exigé
   if (typeof sha !== "string" || !SHA.test(sha)) return false;
   if (!Array.isArray(reviews)) return false;
   let derniere = null, instant = -Infinity;
@@ -272,12 +281,34 @@ export function attestationValide(reviews, cible) {
     const auteur = r.user && typeof r.user === "object" ? r.user.login : undefined;
     if (auteur !== login) continue;
     if (userId !== undefined && r.user.id !== userId) continue;                        // même login, autre compte (renommage puis réattribution) : ignoré
+    if (bot ? r.user.type !== "Bot" : r.user.type !== undefined && r.user.type !== "User") continue;   // App : type « Bot » exigé ; login humain : jamais un compte Bot
     if (r.state === "PENDING") continue;
     const t = typeof r.submitted_at === "string" ? Date.parse(r.submitted_at) : NaN;
     if (!Number.isFinite(t)) return false;
     if (t >= instant) { derniere = r; instant = t; }                                 // égalité : la plus tardive de la liste
   }
   return derniere !== null && derniere.state === "APPROVED" && derniere.commit_id === sha;
+}
+
+/**
+ * Code de raison d'une décision (ou d'un refus d'armement) : UN élément de la liste fermée CODES_RAISON (codes-raison.mjs), écrit en sortie du job
+ * (`code_pr_<numéro>`). Le `motif` posé par la décision prime ; `frein_horaire` vient du `code` existant (alerte) ; sinon on lit la raison. Tout ce qui
+ * reste (fork, autre branche de base, fichier interdit, liste douteuse, configuration, arrêt d'urgence…) est « hors_perimetre » : l'auto-merge n'a pas à s'en occuper.
+ * N'ajoute AUCUN champ à la décision : le `code` existant déclenche des alertes (fusionner.mjs `signaler`), ce code-ci est de l'information.
+ */
+export function codeRaison(d) {
+  if (!d || typeof d !== "object") return "hors_perimetre";
+  if (d.merger === true || d.armer === true) return "merge_ok";
+  if (d.motif) return d.motif;
+  if (d.code === "frein_horaire") return "frein_horaire";
+  const r = String(d.raison || "");
+  if (r.startsWith("attestation de pole-securite requise")) return "attestation_requise";
+  if (r === "brouillon" || r.startsWith("brouillon")) return "brouillon";
+  if (r === `label ${LABEL_FREIN}`) return "do_not_merge";
+  if (r.startsWith("le SHA de la PR a changé")) return "sha_change";
+  if (r.startsWith("état de fusion")) return "etat_fusion";
+  if (r.startsWith("aucun check") || r.startsWith("contrôle requis absent")) return "controle_en_cours";
+  return "hors_perimetre";
 }
 
 /**
@@ -432,7 +463,7 @@ export function decision(pr, config, contexte = {}) {
     const nom = nomDuCheck(c);
     if (nonBloquants.has(nom)) continue;         // déclaré non bloquant : ni preuve, ni obstacle (ex. revue d'agent lente ou en course)
     const { v, detail } = verdictCheck(c);
-    if (v === "attente" || v === "rouge") return refus(`${nom} : ${detail}`);
+    if (v === "attente" || v === "rouge") return refus(`${nom} : ${detail}`, { motif: v === "rouge" ? "controle_rouge" : "controle_en_cours" });
     if (v === "vert") {
       preuve = true;
       if (requis.has(nom) && c.appId === appIdRequis) requis.set(nom, true);   // vert ET publié par GitHub Actions (appId absent = non)

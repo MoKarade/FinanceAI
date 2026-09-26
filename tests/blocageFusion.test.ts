@@ -3,7 +3,7 @@
 // [GARDE-BLOCAGE-FUSION] Le workflow « Fusion automatique » ne doit JAMAIS armer l'auto-fusion d'une PR qui touche un
 // chemin sensible (hooks de l'agence, .github, réglages, commit-gate, .claude, CODEOWNERS, modeles/, et — pour FinanceAI
 // — le relais IA, l'authentification, vercel.json), ni d'une PR étiquetée validation-marc ou en brouillon.
-// La décision est celle du modèle de l'Atelier 1.6.0 (`peutArmer`), copiée dans modeles/auto-merge/ ; le workflow
+// La décision est celle du kit de l'Atelier 1.9.0, tag kit-1.9.0 (`peutArmer`, `decision`), copiée dans modeles/auto-merge/ ; le workflow
 // est un `pull_request_target` (lu sur `main`, jamais dans la PR). Ce fichier fige les deux : la décision (table
 // d'attaque) et le gabarit du workflow (grille de relecture sécurité A1-A9, lue comme DONNÉE).
 import { describe, it, expect } from 'vitest';
@@ -13,9 +13,9 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // Le modèle tourne dans NODE (voir tests/helpers/peutArmerNode.mjs : Vite ne sait pas charger sa surcouche facultative absente).
-interface Decision { armer: boolean; raison: string; etiqueter: string[] }
-const executer = (pr: unknown, config: unknown): { decision: Decision; chemins: string[] } =>
-    JSON.parse(execFileSync('node', [resolve(__dirname, 'helpers/peutArmerNode.mjs')], { input: JSON.stringify({ pr, config }), encoding: 'utf8' }));
+interface Decision { armer: boolean; raison: string; etiqueter: string[]; merger?: boolean }
+const executer = (pr: unknown, config: unknown, contexte?: unknown): { decision: Decision; chemins: string[] } =>
+    JSON.parse(execFileSync('node', [resolve(__dirname, 'helpers/peutArmerNode.mjs')], { input: JSON.stringify({ pr, config, contexte }), encoding: 'utf8' }));
 const peutArmer = (pr: unknown, config: unknown): Decision => executer(pr, config).decision;
 const CHEMINS_INTERDITS: string[] = executer({}, {}).chemins;
 
@@ -98,7 +98,7 @@ describe('peutArmer — étiquettes, brouillon, fork, état', () => {
         // anti-vacuité : sans le label, le même fichier ordinaire s'arme
         expect(peutArmer(pr(['services/a.ts']), config).armer).toBe(true);
     });
-    it('validation-marc est INFORMATIF depuis le modèle 1.6.0 (décision de Marc : seule l\'attestation débloque un chemin sensible, le label ne bloque plus)', () => {
+    it('validation-marc est INFORMATIF depuis le kit 1.6.0 (décision de Marc : seule l\'attestation débloque un chemin sensible, le label ne bloque plus)', () => {
         expect(peutArmer(pr(['services/a.ts'], { labels: [{ name: 'validation-marc' }] }), config).armer).toBe(true);
         // …mais un chemin sensible reste bloqué avec ou sans le label : ce n'est pas lui qui protège
         expect(peutArmer(pr(['api/_lib/relay.ts'], { labels: [{ name: 'validation-marc' }] }), config).armer).toBe(false);
@@ -124,7 +124,7 @@ describe('peutArmer — étiquettes, brouillon, fork, état', () => {
 });
 
 describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'agence oui', () => {
-    it('la base 1.6.0 est étroite : hooks/ et components/settings/ (UI de l\'app) n\'y sont pas', () => {
+    it('la base du kit est étroite : hooks/ et components/settings/ (UI de l\'app) n\'y sont pas', () => {
         const brut = JSON.parse(lit('modeles/auto-merge/chemins-interdits-base.json'));
         expect(brut._doc).toContain('components/settings/');
         expect(CHEMINS_INTERDITS).toContain('**/scripts/hooks/**');
@@ -159,7 +159,7 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
     });
 
     // La liste FIXE d'avant le resync (.github/scripts/auto-merge/chemins-interdits.json, 894324cd), figée ICI comme donnée : chaque motif doit
-    // rester couvert par base ∪ config. Un motif qui disparaît sans être couvert (cas de passerelle/tunnel.yml, absent de la base 1.6.0) fait
+    // rester couvert par base ∪ config. Un motif qui disparaît sans être couvert (cas de passerelle/tunnel.yml, absent de la base du kit) fait
     // échouer ce test ; un écart voulu se DÉCLARE dans COPIES.md ET se code ici.
     const ANCIENNE_LISTE_FIXE = [
         'scripts/hooks/**', '.github/**', '**/commit-gate*', '**/commit-gate*/**', 'passerelle/tunnel.yml', '.claude/**', '.husky/**', 'CODEOWNERS',
@@ -242,7 +242,7 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
         const expressions = [...code.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)].map((m) => m[1]);
         const permises = new Set([
             'github.event.pull_request.number', 'github.event.pull_request.head.sha', 'github.repository', 'github.token',
-            // gabarit 1.6.0 : numéro saisi à la main (validé par armer.mjs), SHA de base, nom de l'événement, variables de dépôt
+            // gabarit d'armement : numéro saisi à la main (validé par armer.mjs), SHA de base, nom de l'événement, variables de dépôt
             'github.event.pull_request.number || inputs.pr', 'github.event.pull_request.base.sha || github.sha', 'github.event.action || github.event_name',
             'vars.AUTOMERGE_OFF', 'fromJSON(vars.ARMEMENT_RUNNER || \'"ubuntu-latest"\')',
         ]);
@@ -279,28 +279,153 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
     });
 });
 
-describe('copies du modèle 1.6.0 : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
+describe('copies du kit 1.9.0 (tag kit-1.9.0) : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
     const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
     const liste = lit('COPIES.md');
     const lignes = [...liste.matchAll(/^\| (\S+) \| ([0-9a-f]{64}) \| (\S+) \|$/gm)].map((m) => ({ chemin: m[1], sha: m[2], version: m[3] }));
     const ATTENDUS = [
         'modeles/auto-merge/autoMerge.mjs', 'modeles/auto-merge/autoMerge.d.mts', 'modeles/auto-merge/chemins-interdits-base.json',
         'modeles/auto-merge/fusionner.mjs', 'modeles/auto-merge/armer.mjs', 'modeles/auto-merge/verifier-copies.mjs',
-        'modeles/auto-merge/surblocage.mjs', '.github/workflows/armement-auto-merge.yml', 'modeles/auto-merge/LISEZMOI.md',
+        'modeles/auto-merge/surblocage.mjs', 'modeles/auto-merge/codes-raison.mjs', '.github/workflows/armement-auto-merge.yml', 'modeles/auto-merge/LISEZMOI.md',
     ];
-    it('anti-vacuité : COPIES.md liste exactement les 9 fichiers du lot, tous en 1.6.0', () => {
+    it('anti-vacuité : COPIES.md liste exactement les 10 fichiers du lot, tous en 1.9.0', () => {
         expect(lignes.map((l) => l.chemin).sort()).toEqual([...ATTENDUS].sort());
-        for (const l of lignes) expect(l.version, l.chemin).toBe('1.6.0');
+        for (const l of lignes) expect(l.version, l.chemin).toBe('1.9.0');
     });
     it.each(ATTENDUS)('%s : l\'empreinte de COPIES.md est celle du fichier (copie non retouchée)', (chemin) => {
         const l = lignes.find((x) => x.chemin === chemin);
         expect(l, chemin).toBeDefined();
         expect(sha(lit(chemin)), chemin).toBe(l!.sha);
     });
-    it('la source (commit f8e2177) et chaque écart FinanceAI sont déclarés', () => {
-        expect(liste).toContain('f8e2177');
-        for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'eslint-disable', 'fusion-auto.yml']) {
+    it('la source (tag kit-1.9.0, commit a17b41d) et chaque écart FinanceAI sont déclarés', () => {
+        expect(liste).toContain('kit-1.9.0');
+        expect(liste).toContain('a17b41d');
+        for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'securite_user_id', 'passerelle/tunnel.yml', 'workflows: [CI]', 'auto-merge.yml', 'carence_dependabot_jours', 'dependabot.yml']) {
             expect(liste, `écart non déclaré : ${mot}`).toContain(mot);
         }
+    });
+});
+
+// ── Dependabot : réarmé par la FUSION ÉVÉNEMENTIELLE (decision), après la carence de 3 jours ─────────────────────────────────────────────────────
+describe('Dependabot : fusionné par le workflow événementiel (decision du kit), carence de 3 jours', () => {
+    const MAINTENANT = '2026-09-27T12:00:00Z';
+    const JOUR = 86_400_000;
+    const creeIlYA = (jours: number) => new Date(Date.parse(MAINTENANT) - jours * JOUR).toISOString();
+    const controles = config.controles_requis.map((name: string) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS', appId: 15368 }));
+    const dependabot = (fichiers: string[], over: Record<string, unknown> = {}) => ({
+        state: 'OPEN', isDraft: false, isCrossRepository: false, labels: [], mergeStateStatus: 'CLEAN', baseRefName: 'main', headRefOid: SHA,
+        checks: controles, auteur: 'dependabot[bot]', dernierActeur: 'dependabot[bot]', creeLe: creeIlYA(4),
+        fichiers: fichiers.map((path) => ({ path, status: 'modified', patch: '@@ -1 +1 @@\n-a\n+b' })), ...over,
+    });
+    const decide = (pr: unknown, cfg: unknown = config): Decision & { merger: boolean } =>
+        executer(pr, cfg, { shaAttendu: SHA, maintenant: MAINTENANT, env: {} }).decision as Decision & { merger: boolean };
+
+    it('la carence est bien de 3 jours dans la config', () => {
+        expect(config.carence_dependabot_jours).toBe(3);
+    });
+    it('PR Dependabot éligible (package.json, 4 jours, contrôles verts par GitHub Actions) : FUSIONNÉE', () => {
+        const d = decide(dependabot(['package.json', 'package-lock.json']));
+        expect(d.merger, d.raison).toBe(true);
+    });
+    it('avant la carence (2 jours) : refusée, la raison le dit ; à 3 jours pile : fusionnée', () => {
+        const trop = decide(dependabot(['package.json'], { creeLe: creeIlYA(2) }));
+        expect(trop.merger).toBe(false);
+        expect(trop.raison).toContain('carence');
+        expect(decide(dependabot(['package.json'], { creeLe: creeIlYA(3) })).merger).toBe(true);
+    });
+    it('PR Dependabot qui touche un chemin SENSIBLE : non fusionnée (api/, mcp/, .github/, settings, tunnel)', () => {
+        for (const f of ['api/_lib/relay.ts', 'mcp/http.ts', '.github/workflows/ci.yml', 'x/settings.local.json', 'passerelle/tunnel.yml', 'vercel.json']) {
+            const d = decide(dependabot(['package.json', f]));
+            expect(d.merger, f).toBe(false);
+        }
+    });
+    it('faux Dependabot, dernier push humain, label do-not-merge, contrôle rouge ou absent : jamais fusionnée', () => {
+        expect(decide(dependabot(['package.json'], { auteur: 'dependabot-fake' })).merger).toBe(false);
+        expect(decide(dependabot(['package.json'], { auteur: 'dependabot' })).merger).toBe(false);
+        expect(decide(dependabot(['package.json'], { dernierActeur: 'MoKarade' })).merger).toBe(false);
+        expect(decide(dependabot(['package.json'], { labels: [{ name: 'do-not-merge' }] })).merger).toBe(false);
+        const rouge = controles.map((c: { name: string }, i: number) => (i === 0 ? { ...c, conclusion: 'FAILURE' } : c));
+        expect(decide(dependabot(['package.json'], { checks: rouge })).merger).toBe(false);
+        expect(decide(dependabot(['package.json'], { checks: controles.slice(1) })).merger).toBe(false);
+        expect(decide(dependabot(['package.json'], { checks: controles.map((c: object) => ({ ...c, appId: 1 })) })).merger).toBe(false);
+    });
+    it('arrêt d\'urgence AUTOMERGE_OFF : aucune fusion, même éligible', () => {
+        const d = executer(dependabot(['package.json']), config, { shaAttendu: SHA, maintenant: MAINTENANT, env: { AUTOMERGE_OFF: '1' } }).decision as Decision;
+        expect(d.merger).toBe(false);
+    });
+    it('l\'armement natif LAISSE Dependabot à ce workflow (il ne l\'arme pas lui-même)', () => {
+        const armer = readFileSync(resolve(RACINE, 'modeles/auto-merge/armer.mjs'), 'utf8');
+        expect(armer).toMatch(/PR Dependabot : traitée par le workflow de fusion/);
+    });
+});
+
+// ── attestation par l'App « <slug>[bot] » : fixture de revues, VRAI attestationValide ──────────────────────────────────────────────────────
+describe('attestation par une GitHub App (securite_login « <slug>[bot] » + securite_user_id) — variante de test, la config réelle n\'en a pas', () => {
+    const LOGIN_BOT = 'atelier-securite-marc[bot]';
+    const ID_BOT = 334232309;
+    const revue = (over: Record<string, unknown> = {}) => ({ state: 'APPROVED', commit_id: SHA, user: { login: LOGIN_BOT, id: ID_BOT, type: 'Bot' }, submitted_at: '2026-09-26T10:00:00Z', ...over });
+    const att = (reviews: unknown, over: Record<string, unknown> = {}) =>
+        (JSON.parse(execFileSync('node', [resolve(__dirname, 'helpers/peutArmerNode.mjs')], { input: JSON.stringify({ attestation: { reviews, login: LOGIN_BOT, sha: SHA, userId: ID_BOT, ...over } }), encoding: 'utf8' })) as { attestee: boolean }).attestee;
+
+    it('revue APPROVED du compte bot, type Bot, bon identifiant, SHA exact : attestée', () => {
+        expect(att([revue()])).toBe(true);
+    });
+    it('ancien SHA, mauvais identifiant numérique, type User, login humain voisin, COMMENTED, aucune revue, userId absent : PAS attestée', () => {
+        expect(att([revue({ commit_id: 'c'.repeat(40) })])).toBe(false);
+        expect(att([revue({ user: { login: LOGIN_BOT, id: 1, type: 'Bot' } })])).toBe(false);
+        expect(att([revue({ user: { login: LOGIN_BOT, id: ID_BOT, type: 'User' } })])).toBe(false);
+        expect(att([revue({ user: { login: 'atelier-securite-marc', id: ID_BOT, type: 'User' } })])).toBe(false);
+        expect(att([revue({ state: 'COMMENTED' })])).toBe(false);
+        expect(att([])).toBe(false);
+        expect(att(null)).toBe(false);
+        expect(att([revue()], { userId: undefined })).toBe(false);
+    });
+    it('la config réelle n\'a toujours ni securite_login ni securite_user_id (PR de 2 lignes de pole-securite ensuite)', () => {
+        expect(config).not.toHaveProperty('securite_login');
+        expect(config).not.toHaveProperty('securite_user_id');
+    });
+});
+
+// ── workflow de fusion événementielle (gabarit adapté), lu comme donnée ─────────────────────────────────────────────────────────────────────
+describe('workflow auto-merge.yml (gabarit événementiel adapté : workflows: [CI]) — grille de relecture, lue comme donnée', () => {
+    const yml = readFileSync(resolve(RACINE, '.github/workflows/auto-merge.yml'), 'utf8');
+    const code = yml.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+
+    it('l\'UNIQUE adaptation : le nom du workflow de CI (CI, avec la casse de ci.yml)', () => {
+        expect(code).toMatch(/workflow_run:\s*\n\s+workflows: \[CI\]/);
+        expect(readFileSync(resolve(RACINE, '.github/workflows/ci.yml'), 'utf8')).toMatch(/^name: CI\s*$/m);
+        expect(code).not.toMatch(/workflows: \[ci\]/);
+    });
+    it('déclencheurs à garder : workflow_run, status, check_run, ready_for_review, workflow_dispatch pr, cron ; JAMAIS pull_request_review', () => {
+        for (const t of ['workflow_run:', 'status:', 'check_run:', 'pull_request_target:', 'ready_for_review', 'workflow_dispatch:', 'schedule:']) expect(code, t).toContain(t);
+        expect(code).not.toMatch(/pull_request_review/);
+        expect(code).not.toMatch(/gh pr ready/);
+    });
+    it('permissions vides au niveau global ; un seul job ; un seul checkout, de la branche PAR DÉFAUT (jamais la tête de la PR) ; aucun secret', () => {
+        expect(code).toMatch(/^permissions: \{\}\s*$/m);
+        expect(code.match(/actions\/checkout@/g)).toHaveLength(1);
+        expect(code).toContain('ref: ${{ github.event.repository.default_branch }}');
+        expect(code).not.toMatch(/secrets\./);
+        expect(code).not.toMatch(/ref:\s*\$\{\{\s*github\.(event\.pull_request\.head|head_ref)/);
+    });
+    it('actions épinglées par SHA de commit ; aucun texte de la PR (titre, corps) dans le workflow ; Node via .nvmrc (=24)', () => {
+        const usages = [...code.matchAll(/^\s*-?\s*uses:\s*(\S+)/gm)].map((m) => m[1]);
+        expect(usages.length).toBeGreaterThanOrEqual(2);
+        for (const u of usages) expect(u, u).toMatch(/@[0-9a-f]{40}$/);
+        expect(code).not.toMatch(/github\.event\.pull_request\.(title|body)|head_commit/);
+        expect(code).toContain("node-version-file: '.nvmrc'");
+        expect(readFileSync(resolve(RACINE, '.nvmrc'), 'utf8').trim()).toBe('24');
+        expect(code).toContain('node modeles/auto-merge/fusionner.mjs');
+    });
+    it('dépôt PUBLIC : pas de runner auto-hébergé (la condition du job refuse « self-hosted » hors dépôt privé)', () => {
+        expect(code).toContain("(github.event.repository.private == true || !contains(vars.AUTOMERGE_RUNNER, 'self-hosted'))");
+    });
+    it('COPIES.md déclare les deux empreintes (gabarit du kit et adapté) et l\'adaptation est la SEULE ligne qui diffère', () => {
+        const copies = readFileSync(resolve(RACINE, 'COPIES.md'), 'utf8');
+        const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
+        expect(copies).toContain(sha(yml));
+        expect(copies).toContain('545bab9e1f29');
+        const modele = yml.replace('workflows: [CI]', 'workflows: [ci]').replace("node-version-file: '.nvmrc'", 'node-version: "24"');
+        expect(sha(modele).startsWith('545bab9e1f29')).toBe(true);
     });
 });

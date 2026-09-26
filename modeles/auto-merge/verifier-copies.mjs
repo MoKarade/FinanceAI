@@ -22,6 +22,7 @@ export const COPIABLES = Object.freeze([
   { source: "modeles/auto-merge/chemins-interdits-base.json", destination: "modeles/auto-merge/chemins-interdits-base.json", role: "liste" },
   { source: "modeles/auto-merge/fusionner.mjs", destination: "modeles/auto-merge/fusionner.mjs", role: "executeur" },
   { source: "modeles/auto-merge/armer.mjs", destination: "modeles/auto-merge/armer.mjs", role: "executeur" },
+  { source: "modeles/auto-merge/codes-raison.mjs", destination: "modeles/auto-merge/codes-raison.mjs", role: "liste" },
   { source: "modeles/auto-merge/verifier-copies.mjs", destination: "modeles/auto-merge/verifier-copies.mjs", role: "outil" },
   { source: "modeles/auto-merge/surblocage.mjs", destination: "modeles/auto-merge/surblocage.mjs", role: "outil" },
   { source: "modeles/qualite/commit-gate.mjs", destination: "scripts/hooks/commit-gate.mjs", role: "hook" },
@@ -45,7 +46,6 @@ export const GABARITS = Object.freeze([
   { source: "modeles/claude-md/CLAUDE.md", role: "canevas" },
   { source: "modeles/ci/gabarit-appelant.yml", role: "workflow" },
   { source: "modeles/auto-merge/gabarit-auto-merge-evenementiel.yml", role: "workflow" },
-  { source: "modeles/auto-merge/codes-raison.mjs", role: "liste" },
   { source: "modeles/vercel/ignore-command.mjs", role: "outil" },
   { source: "modeles/couts/couts.md", role: "canevas" },
   { source: "modeles/couts/compter-runs.mjs", role: "outil" },
@@ -55,7 +55,7 @@ export const GABARITS = Object.freeze([
 export const VERSION_CANEVAS_CLAUDE_MD = "1.0.0";
 
 /** Version du modèle : à incrémenter à chaque changement d'un fichier copiable (elle est écrite dans le manifeste et dans le COPIES.md de chaque dépôt). */
-export const VERSION_MODELE = "1.6.0";
+export const VERSION_MODELE = "1.9.0";
 export const FICHIER_COPIES = "COPIES.md";
 /** Transition : jusqu'à cette date (AAAA-MM-JJ, jour inclus), un COPIES.md ABSENT n'est qu'un avertissement (code 0) ; à partir de là c'est une erreur. Un COPIES.md présent mais faux est TOUJOURS une erreur. */
 export const COPIES_OBLIGATOIRE_DEPUIS = "2026-10-15";

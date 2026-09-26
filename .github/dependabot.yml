@@ -1,7 +1,7 @@
 # Mises à jour de dépendances proposées automatiquement (porte sécurité de l'Atelier, S6).
 # Groupées pour limiter le bruit : une PR par semaine pour les versions mineures/correctives.
 # Chaque PR passe par la CI complète (gate, E2E, qualité, sécurité) et fusionne seule si tout
-# est vert — fusion-auto.yml couvre aussi Dependabot.
+# est vert — armement-auto-merge.yml couvre aussi Dependabot.
 version: 2
 updates:
   - package-ecosystem: npm

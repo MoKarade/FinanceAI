@@ -1,0 +1,27 @@
+{
+  "branche_base": "main",
+  "controles_requis": [
+    "Lint / Typecheck / Tests / Build",
+    "E2E (Playwright / Chromium)",
+    "Analyze (javascript-typescript)",
+    "Qualité (lint · couverture · code mort · architecture)",
+    "Sécurité (secrets · analyse statique)",
+    "Lighthouse Audit"
+  ],
+  "controles_non_bloquants": [],
+  "chemins_interdits": [
+    "**/.env*",
+    "**/*.pem",
+    "passerelle/tunnel.yml"
+  ],
+  "chemins_label_validation": [
+    "api/**",
+    "mcp/**",
+    "services/secureKeyStore.ts",
+    "vite.config.ts",
+    "index.html",
+    "vercel.json",
+    "**/settings*.json"
+  ],
+  "carence_dependabot_jours": 0
+}

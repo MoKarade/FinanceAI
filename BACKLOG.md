@@ -17,6 +17,10 @@
 
 ---
 
+## 🔒 Garde de la fusion auto — suites (2026-09-25)
+- [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
+- [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
+
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 
 > Demande : « FinanceAI devient la référence fiable du portefeuille Disnat : valeur exacte jour par

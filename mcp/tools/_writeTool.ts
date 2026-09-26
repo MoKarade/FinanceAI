@@ -17,7 +17,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AnyWriteToolSpec } from './_toolSpec';
 import type { ToolTextResult } from './_dataAware';
 import type { StateStore } from '../state/stateStore';
-import { runApply, auditWrite, MAX_CHANGES_PER_CALL } from './_writeHelper';
+import { runApply, auditWrite, scopeTag, MAX_CHANGES_PER_CALL } from './_writeHelper';
 import { createConfirmVault, digest, type ConfirmVault } from './confirmVault';
 import { errorContent } from './_dataAware';
 
@@ -67,13 +67,13 @@ export function registerWriteTool(
         async (rawArgs, extra): Promise<ToolTextResult> => {
             const { confirmToken, ...args } = rawArgs as Record<string, unknown> & { confirmToken?: string };
             const doc = spec.toDocument(args);
+            const scope = (extra as { sessionId?: string } | undefined)?.sessionId ?? 'local';
             if (countItems(args) > MAX_INPUT_ITEMS_PER_CALL) {
-                auditWrite(doc.kind, 'refus', countItems(args), 'plafond_entree');
+                auditWrite(doc.kind, 'refus', countItems(args), 'plafond_entree', scopeTag(scope));
                 return errorContent(
                     `Trop d'éléments en un appel (max ${MAX_INPUT_ITEMS_PER_CALL}). Rien n'a été écrit. Découpe le document en plusieurs appels.`,
                 );
             }
-            const scope = (extra as { sessionId?: string } | undefined)?.sessionId ?? 'local';
             return runApply(store, doc, {
                 guard: { vault, scope, tool: spec.name, argsHash: digest(args), token: confirmToken },
             });

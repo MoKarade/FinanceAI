@@ -35,9 +35,14 @@ interface RunApplyOptions {
 }
 
 /** Journal d'audit : outil, phase, nombre d'éléments, code de résultat. JAMAIS de montant ni de nom. */
-export function auditWrite(tool: string, phase: 'apercu' | 'ecriture' | 'refus', elements: number, code = 'ok'): void {
-    console.error(`[mcp:audit] outil=${tool} phase=${phase} elements=${elements} resultat=${code}`);
+export function auditWrite(tool: string, phase: 'apercu' | 'ecriture' | 'refus', elements: number, code = 'ok', scope = 'session'): void {
+    // `scope=local` : l'identifiant de session MCP est ABSENT (stdio, ou transport sans session) et le jeton n'est
+    // plus lié qu'à ce processus — à surveiller en production (ADR 0023). Jamais la valeur de la session.
+    console.error(`[mcp:audit] outil=${tool} phase=${phase} elements=${elements} resultat=${code} scope=${scope}`);
 }
+
+/** Étiquette d'audit du scope : « local » (pas d'identifiant de session) ou « session ». Jamais la valeur. */
+export const scopeTag = (scope: string): string => (scope === 'local' ? 'local' : 'session');
 
 const REFUS: Record<Exclude<ConfirmVerdict, 'ok'>, string> = {
     invalide: "confirmToken invalide. Rien n'a été écrit. Appelle le tool SANS confirmToken pour obtenir un aperçu et un jeton.",
@@ -78,14 +83,14 @@ export async function runApply(store: StateStore, doc: DocumentPayload, opts?: R
         if (opts?.guard) {
             const g = opts.guard;
             if (changes.length > MAX_CHANGES_PER_CALL) {
-                auditWrite(g.tool, 'refus', changes.length, 'plafond');
+                auditWrite(g.tool, 'refus', changes.length, 'plafond', scopeTag(g.scope));
                 return errorContent(`Trop de changements en un appel (${changes.length} > ${MAX_CHANGES_PER_CALL}). Rien n'a été écrit. Découpe le document en plusieurs appels.`);
             }
             const binding = { scope: g.scope, tool: g.tool, argsHash: g.argsHash, changesHash: digest(changes) };
             if (g.token === undefined) {
                 const safe = scrubWriteResultForModel(summary, changes);
                 const { token, expiresInSec } = g.vault.issue(binding);
-                auditWrite(g.tool, 'apercu', changes.length);
+                auditWrite(g.tool, 'apercu', changes.length, 'ok', scopeTag(g.scope));
                 return jsonContent({
                     applied: false, preview: true, summary: safe.summary, changes: safe.changes,
                     confirmToken: token, expiresInSec,
@@ -96,12 +101,12 @@ export async function runApply(store: StateStore, doc: DocumentPayload, opts?: R
             }
             const verdict = g.vault.consume(g.token, binding);
             if (verdict !== 'ok') {
-                auditWrite(g.tool, 'refus', changes.length, verdict);
+                auditWrite(g.tool, 'refus', changes.length, verdict, scopeTag(g.scope));
                 return errorContent(REFUS[verdict]);
             }
         }
         const { backupPath } = await store.save(nextState, version);
-        if (opts?.guard) auditWrite(opts.guard.tool, 'ecriture', changes.length);
+        if (opts?.guard) auditWrite(opts.guard.tool, 'ecriture', changes.length, 'ok', scopeTag(opts.guard.scope));
         const safe = scrubWriteResultForModel(summary, changes);
         return jsonContent({ applied: true, summary: safe.summary, changes: safe.changes, backupPath });
     } catch (err) {

@@ -242,10 +242,24 @@ describe('[MCP-CONFIRM-TOKEN] attaques sur l\'écriture MCP', () => {
         const audit = espion.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('[mcp:audit]'));
         expect(audit.length).toBeGreaterThanOrEqual(3);
         for (const l of audit) {
-            expect(l).toMatch(/^\[mcp:audit\] outil=\w+ phase=(apercu|ecriture|refus) elements=\d+ resultat=\w+$/);
+            expect(l).toMatch(/^\[mcp:audit\] outil=\w+ phase=(apercu|ecriture|refus) elements=\d+ resultat=\w+ scope=(local|session)$/);
             expect(l).not.toMatch(/SENTINELLE|987654|4\.321/);
         }
+        // Sans identifiant de session (capture directe) → « scope=local », jamais la valeur d'une session.
+        expect(audit.every((l) => l.endsWith('scope=local'))).toBe(true);
         expect(audit.some((l) => l.includes('phase=refus'))).toBe(true);
+    });
+
+    it('avec un identifiant de session : le journal dit « scope=session » sans jamais en écrire la valeur', async () => {
+        const espion = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const h = capturer(registerSetCash, store);
+        await h({ targetCad: 4321 }, { sessionId: 'SESSION-SENTINELLE-123' });
+        const lignes = espion.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('[mcp:audit]'));
+        expect(lignes.length).toBeGreaterThanOrEqual(1);
+        for (const l of lignes) {
+            expect(l).toMatch(/scope=session$/);
+            expect(l).not.toMatch(/SENTINELLE/);
+        }
     });
 
     // ── 11) bout en bout via le vrai serveur MCP (schéma zod, annotations) ─────────────────────────

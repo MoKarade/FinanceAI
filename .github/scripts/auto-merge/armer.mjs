@@ -31,10 +31,14 @@ try {
   let decision = peutArmer({ ...vue, fichiers }, config);
   // Documents relus par les agents (leçons, HANDOVER…) : ajouts sains seulement, sinon pas d'armement (validation de Marc). ADAPTATION
   // FinanceAI : la décision du modèle (autoMerge.mjs, copie exacte) n'est pas modifiée, cette couche vient PAR-DESSUS.
-  const motifsDocs = config.chemins_ajouts_seulement ?? [];
-  if (!Array.isArray(motifsDocs) || !motifsDocs.every((m) => typeof m === "string" && m.trim() !== "")) throw new Error("chemins_ajouts_seulement : liste de motifs attendue");
+  const listeDocs = (cle) => {
+    const l = config[cle] ?? [];
+    if (!Array.isArray(l) || !l.every((m) => typeof m === "string" && m.trim() !== "")) throw new Error(`${cle} : liste de motifs attendue`);
+    return l;
+  };
+  const listesDocs = { ajoutsSeulement: listeDocs("chemins_ajouts_seulement"), contenuSurveille: listeDocs("chemins_contenu_surveille") };
   if (decision.armer) {
-    const docs = docsModifies(fichiers, motifsDocs);
+    const docs = docsModifies(fichiers, listesDocs);
     if (docs) decision = { armer: false, raison: docs, etiqueter: [] };
   }
   if (decision.armer) {

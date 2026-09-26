@@ -38,9 +38,11 @@
   "carence_dependabot_jours": 0,
   "chemins_ajouts_seulement": [
     "docs/claude/lecons.md",
-    "docs/CONVENTIONS.md",
+    "docs/CONVENTIONS.md"
+  ],
+  "chemins_contenu_surveille": [
+    "BACKLOG.md",
     "HANDOVER.md",
-    "CHANGELOG.md",
-    "BACKLOG.md"
+    "CHANGELOG.md"
   ]
 }

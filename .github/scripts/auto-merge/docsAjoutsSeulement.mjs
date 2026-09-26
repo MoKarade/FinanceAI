@@ -35,19 +35,26 @@ function commandeEntreBackticks(ligne) {
 
 /**
  * @param {(string|object)[]} fichiers  fichiers de la PR : {path, previous_filename, status, patch}
- * @param {string[]} motifs  `chemins_ajouts_seulement` (motifs glob)
+ * @param {{ajoutsSeulement?: string[], contenuSurveille?: string[]}} listes
+ *   `chemins_ajouts_seulement` : règle stricte, aucune ligne existante ne change (leçons, CONVENTIONS) ;
+ *   `chemins_contenu_surveille` : mêmes contrôles sur les lignes AJOUTÉES (URL, commande, plafond), mais supprimer ou réécrire une ligne est
+ *   admis (cocher / archiver un item de BACKLOG, journaux datés)
  * @returns {string|null} raison du refus, ou null si tout est admis
  */
-export function docsModifies(fichiers, motifs) {
-  if (!Array.isArray(motifs) || motifs.length === 0) return null;
+export function docsModifies(fichiers, listes) {
+  const strict = listes && Array.isArray(listes.ajoutsSeulement) ? listes.ajoutsSeulement : [];
+  const surveille = listes && Array.isArray(listes.contenuSurveille) ? listes.contenuSurveille : [];
+  if (strict.length === 0 && surveille.length === 0) return null;
   if (!Array.isArray(fichiers)) return "liste des fichiers illisible";
   let ajoutees = 0;
   for (const f of fichiers) {
     if (!f || typeof f !== "object") continue;
     const chemin = normaliser(f.path ?? f.filename);
     const avant = f.previous_filename === undefined || f.previous_filename === null ? null : normaliser(f.previous_filename);
-    const vise = (c) => c !== null && correspond(c, motifs);
+    const vise = (c) => c !== null && correspond(c, [...strict, ...surveille]);
     if (!vise(chemin) && !vise(avant)) continue;
+    // un fichier de la liste STRICTE (sous son nom actuel ou l'ancien) reste strict, même s'il est aussi listé comme surveillé
+    const ajoutsSeulement = (chemin !== null && correspond(chemin, strict)) || (avant !== null && correspond(avant, strict));
     const nom = court(vise(chemin) ? (f.path ?? f.filename) : f.previous_filename);
     if (f.status === "removed") return `document protégé supprimé (${nom}) : validation de Marc requise`;
     if (f.status === "renamed") return `document protégé renommé (${nom}) : validation de Marc requise`;
@@ -59,7 +66,10 @@ export function docsModifies(fichiers, motifs) {
       // « -- » (séparateur de tableau markdown…) s'écrit donc « --- » et doit compter comme suppression.
       if (ligneBrute.startsWith("@@") || ligneBrute.startsWith("\\")) continue;
       const signe = ligneBrute[0];
-      if (signe === "-") return `ligne supprimée ou réécrite dans ${nom} : ajouts seulement, validation de Marc requise`;
+      if (signe === "-") {
+        if (!ajoutsSeulement) continue;   // document surveillé : cocher / archiver / corriger une ligne passe seul
+        return `ligne supprimée ou réécrite dans ${nom} : ajouts seulement, validation de Marc requise`;
+      }
       if (signe !== "+") continue;
       const ligne = ligneBrute.slice(1);
       ajoutees++;

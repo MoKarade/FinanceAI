@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
+
+- Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus
+  fusionnée toute seule : elle reste en attente de toi, même si tous les contrôles sont verts.
+- Les fichiers du dépôt sont maintenant toujours en fins de ligne LF, ce qui rend les tests fiables aussi sur ton PC.
+
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 
 - Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ

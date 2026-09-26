@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟥 Session 2026-09-25 — **`[GARDE]` : la fusion auto ne s'arme plus sur les chemins sensibles**
+> Demande pole-architecture/pole-securite. **Workflow `fusion-auto.yml` refait** sur le modèle de l'Atelier (identique à
+> BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la
+> BASE, la PR n'est lue que par l'API ; `armer.mjs` appelle `peutArmer` : brouillon, fork, label `validation-marc`/`do-not-merge`
+> ou fichier sensible ⇒ PAS armée (et désarmée si elle l'était). Sensibles : `scripts/hooks/**`, `.github/**`, `.claude/**`,
+> `**/settings.json`, `**/commit-gate*`, `CODEOWNERS`, `modeles/**`, `.gitattributes`, + FinanceAI : `api/auth/**`,
+> `api/_lib/session*`, `garde.ts`, `relay.ts`, `vercel.json` (label `validation-marc` posé). ⚠️ ADAPTATION : `hooks/**` et
+> `**/settings*` du modèle sont RETIRÉS ici — `hooks/` = hooks REACT, `components/settings/**` = écran Réglages (~35 fichiers d'UI
+> bloqués à tort) ; à refaire à chaque re-synchronisation (`.github/scripts/auto-merge/chemins-interdits.json`, `_note`).
+> Copies de modèles et leurs empreintes : `.github/scripts/auto-merge/COPIES.md`. Tests : `tests/blocageFusion.test.ts` (table
+> d'attaque + grille A1-A9 du workflow lue comme donnée). ⚠️ Les contrôles obligatoires de la PR ne suffisent plus à fusionner :
+> une PR sensible reste à fusionner À LA MAIN par Marc.
+> 🔧 Aussi : `.gitattributes` (`* text=auto eol=lf`, l'index était déjà LF : aucun changement de contenu) ; test
+> `gateTestsHomonymes` réparé (séparateurs Windows + câblage sur la forme actuelle du hook) ; hook : limites connues documentées
+> et figées en test, sous-commandes git intégrées sans rapport avec un commit ne déclenchent plus le gate, commit non-TS sans
+> configuration globale = gardes-scan + typecheck + build (la suite complète reste celle de la CI). Le commit-gate « commun » de
+> `atelier/modeles/qualite/` n'existe pas encore : on reste sur celui de #1071.
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur

@@ -1,0 +1,3 @@
+# Fins de ligne : LF partout. Le PC de Marc (Windows, core.autocrlf=true) sortait des fichiers en CRLF :
+# les tests qui scannent le source par regex (\n) échouaient en local alors que la CI Linux passait.
+* text=auto eol=lf

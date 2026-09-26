@@ -1,0 +1,24 @@
+{
+  "branche_base": "main",
+  "controles_requis": [
+    "Lint / Typecheck / Tests / Build",
+    "E2E (Playwright / Chromium)",
+    "Analyze (javascript-typescript)",
+    "Qualité (lint · couverture · code mort · architecture)",
+    "Sécurité (secrets · analyse statique)",
+    "Lighthouse Audit"
+  ],
+  "controles_non_bloquants": [],
+  "chemins_interdits": [
+    "**/.env*",
+    "**/*.pem"
+  ],
+  "chemins_label_validation": [
+    "api/auth/**",
+    "api/_lib/session*",
+    "api/_lib/garde.ts",
+    "api/_lib/relay.ts",
+    "vercel.json"
+  ],
+  "carence_dependabot_jours": 0
+}

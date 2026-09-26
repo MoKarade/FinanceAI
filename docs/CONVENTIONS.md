@@ -17159,3 +17159,11 @@ Lot `[DURCISSEMENT-RELAIS]`. Le « jeton de relais » vivait dans `VITE_PROXY_AC
 - La garde qui empêche le retour : un test qui CONSTRUIT avec une valeur canari dans la variable et fouille la sortie
   (sans jamais l'afficher). Vérifié en remettant l'ancien en-tête : le test devient rouge.
 - Un mémo de sécurité borné vide-t-il tout à saturation (`clear()`) ? Alors il se rejoue : éviction par ancienneté.
+
+### `UNE-REDIRECTION-N-EST-PAS-UNE-AUTHENTIFICATION` — 2026-09-25
+
+Un mur posé devant l'app (Cloudflare Access) ne protège l'API que si l'API vérifie elle-même la preuve : l'alias `*.vercel.app` contourne le mur. Vérifier le
+jeton signé côté serveur (bibliothèque éprouvée, `alg` figé à RS256, `iss`/`aud`/`exp` exigés), et faire de l'ABSENCE d'un réglage un refus (`CF_ACCESS_REQUIRED` absent = exiger).
+Côté client et service worker : une session expirée répond par une REDIRECTION vers une autre origine ; ne jamais mettre en cache une réponse redirigée ou opaque
+(le HTML de connexion remplacerait l'app) et sonder avec `redirect: 'manual'`. Les attrape-tout `api/[...x]` ne sont pas routés sur ce projet : un proxy = un chemin statique
++ une réécriture `vercel.json`.

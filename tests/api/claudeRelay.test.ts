@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-const call = (req: Request) => relayClaude(req, { env: () => undefined });
+const call = (req: Request) => relayClaude(req, { access: null, env: () => undefined });
 
 describe('relayClaude — contrat sécurité', () => {
     it('rejette toute route hors POST /v1/messages (404, fetch amont JAMAIS appelé)', async () => {
@@ -69,7 +69,7 @@ describe('relayClaude — contrat sécurité', () => {
     it('Origin acceptée : prod, localhost (dev), URL du déploiement (VERCEL_URL), RELAIS_ORIGINES', async () => {
         const env = (k: string) => ({ VERCEL_URL: 'financeai-abc.vercel.app', RELAIS_ORIGINES: 'https://autre.example, https://encore.example' } as Record<string, string>)[k];
         for (const origin of ['https://finance.hubperso.com', 'http://localhost:3000', 'http://127.0.0.1:5173', 'https://financeai-abc.vercel.app', 'https://encore.example']) {
-            const r = await relayClaude(mkRequest({ headers: { origin } }), { env });
+            const r = await relayClaude(mkRequest({ headers: { origin } }), { access: null, env });
             expect(r.status, origin).toBe(200);
         }
     });

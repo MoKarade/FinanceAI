@@ -4,7 +4,8 @@
 // n'a rien. C'est la même classe qu'un correctif de calcul : un texte affiché affirme quelque chose,
 // et un diagnostic faux coûte plus qu'un diagnostic absent.
 import { describe, it, expect } from 'vitest';
-import { causeErreurIa, messageErreurIa } from '../../services/messageErreurIa';
+import { causeErreurIa, messageErreurIa, MARQUEUR_SESSION_ACCESS } from '../../services/messageErreurIa';
+import { relayClaude } from '../../api/_lib/relay';
 
 /** Une erreur du SDK Anthropic porte son statut sur `.status`. */
 const erreurHttp = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status });
@@ -72,5 +73,22 @@ describe('[AI-BUDGETMODAL-ERROR-COLLAPSE] causes distinctes, messages distincts'
         // Contrôle : le cas où elle DOIT en parler, sinon l'assertion ci-dessus serait satisfaite
         // par un module qui ne mentionne jamais la clé.
         expect(messageErreurIa(erreurHttp(401))).toMatch(/clé/i);
+    });
+});
+
+describe('[CF-ACCESS] une session expirée n\'accuse PAS la clé Anthropic', () => {
+    it('401 portant le marqueur du mur → « session-access » ; un 401 ordinaire reste « clé refusée »', () => {
+        const mur = Object.assign(new Error(`401 Accès refusé : session ${MARQUEUR_SESSION_ACCESS} absente ou invalide.`), { status: 401 });
+        expect(causeErreurIa(mur)).toBe('session-access');
+        expect(causeErreurIa(erreurHttp(401))).toBe('cle-refusee');
+        expect(messageErreurIa(mur)).toContain('Recharge la page');
+        expect(messageErreurIa(mur)).not.toContain('Vérifie-la');
+    });
+    it('le relais émet EXACTEMENT ce marqueur dans son 401 (sinon la distinction ne se déclenche jamais)', async () => {
+        const r = await relayClaude(new Request('http://localhost/api/claude/v1/messages', {
+            method: 'POST', headers: { origin: 'http://localhost:5173', authorization: 'Bearer sk-ant-test' }, body: '{}',
+        }), { env: () => undefined, iaLocale: null });
+        expect(r.status).toBe(401);
+        expect(JSON.stringify(await r.json())).toContain(MARQUEUR_SESSION_ACCESS);
     });
 });

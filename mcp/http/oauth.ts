@@ -6,7 +6,8 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { OAuthError, type OAuthProvider } from '../auth/oauthProvider';
-import type { AttemptLimiter } from '../auth/rateLimit';
+import type { AddressAttemptLimiter } from '../auth/rateLimit';
+import { adresseClient } from '../auth/routeRateLimit';
 import { readBody, sendJson } from './plomberie';
 
 const escapeHtml = (s: string): string =>
@@ -29,7 +30,7 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
 
 export const handleOAuth = async (
     auth: OAuthProvider,
-    limiter: AttemptLimiter,
+    limiter: AddressAttemptLimiter,
     url: string,
     req: IncomingMessage,
     res: ServerResponse,
@@ -65,8 +66,9 @@ export const handleOAuth = async (
         // ⚠️ [MCP-CLOUDRUN-AUTH-HARDENING] Plafond AVANT toute comparaison de clé : c'est la
         // seule porte devinable du serveur (voir `mcp/auth/rateLimit.ts` pour le pourquoi du
         // compteur global et de la limite assumée en mémoire).
-        if (limiter.isBlocked()) {
-            const retryAfter = limiter.retryAfterSeconds();
+        const adresse = adresseClient(req.headers['x-forwarded-for'], req.socket.remoteAddress);
+        if (limiter.isBlocked(adresse)) {
+            const retryAfter = limiter.retryAfterSeconds(adresse);
             // ⚠️ [finding silent-failure-hunter, PR #566] Un blocage NON TRACÉ rend une attaque
             // invisible — et le runbook de rotation de clé (mcp/README.md) désigne justement
             // « une tentative suspecte dans les logs Cloud Run » comme son déclencheur. Sans
@@ -93,7 +95,7 @@ export const handleOAuth = async (
             });
         } catch (err) {
             if (err instanceof OAuthError && err.code === 'access_denied') {
-                limiter.recordFailure();
+                limiter.recordFailure(adresse);
                 // Tracé aussi : un pilonnage se voit à la RÉPÉTITION de cette ligne, pas
                 // seulement au blocage final (qui n'arrive qu'au 8ᵉ échec).
                 console.error('[FinanceAI MCP http] /oauth/authorize : clé d\'accès REFUSÉE.');
@@ -104,7 +106,7 @@ export const handleOAuth = async (
             throw err;
         }
         // Succès : l'historique est effacé — l'usage légitime de Marc ne consomme aucun quota.
-        limiter.reset();
+        limiter.reset(adresse);
         const target = new URL(form.redirect_uri);
         target.searchParams.set('code', code);
         if (form.state) target.searchParams.set('state', form.state);

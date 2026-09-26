@@ -79,3 +79,64 @@ export function makeAttemptLimiter(opts: {
         reset: () => { failures = []; },
     };
 }
+
+// ── [MCP-RATE-LIMIT] /oauth/authorize : compteur PAR ADRESSE + plafond global de sécurité ─────────────────────────
+// Avis pole-securite : le limiteur d'échecs GLOBAL ci-dessus (8 par 15 min) laissait n'importe qui sur Internet interdire
+// à Marc toute NOUVELLE autorisation (le serveur Cloud Run est public) avec 8 requêtes. Désormais :
+//  - un seuil BAS PAR ADRESSE (8 : cette porte est la seule protégée par la clé d'accès, potentiellement faible) ;
+//  - un plafond GLOBAL beaucoup plus haut (200 par 15 min) : il ne sert qu'à borner une attaque distribuée ;
+//  - un succès n'efface que les échecs de SON adresse (jamais le compteur global : un attaquant ne peut pas le remettre à zéro).
+// ⚠️ Le blocage reste appliqué AVANT la comparaison de la clé, pour une adresse au quota épuisé ET pour le plafond global :
+// vérifier la clé « d'abord » depuis une adresse bloquée laisserait deviner à la vitesse de la ligne (un essai juste passerait,
+// un faux répondrait 429 comme le blocage) et viderait la protection de son sens. Conséquence assumée : Marc, après 8 fautes de
+// frappe, attend la fin de la fenêtre DEPUIS CETTE ADRESSE seulement ; les sessions déjà autorisées ne sont pas touchées.
+// Mémoire du processus, table d'adresses bornée ; l'adresse est le DERNIER élément de X-Forwarded-For (voir routeRateLimit.ts).
+
+export const AUTHORIZE_MAX_FAILURES_PAR_ADRESSE = 8;
+export const AUTHORIZE_MAX_FAILURES_GLOBAL = 200;
+export const AUTHORIZE_MAX_ADRESSES = 2000;
+
+export interface AddressAttemptLimiter {
+    /** `true` si cette adresse OU le plafond global est bloqué — à appeler AVANT de vérifier la clé. */
+    isBlocked: (adresse: string) => boolean;
+    retryAfterSeconds: (adresse: string) => number;
+    recordFailure: (adresse: string) => void;
+    /** Succès : efface les échecs de CETTE adresse seulement. */
+    reset: (adresse: string) => void;
+}
+
+export function makeAddressAttemptLimiter(opts: {
+    perAddressMax?: number;
+    globalMax?: number;
+    windowMs?: number;
+    maxAdresses?: number;
+    now?: () => number;
+} = {}): AddressAttemptLimiter {
+    const windowMs = opts.windowMs ?? AUTHORIZE_WINDOW_MS;
+    const now = opts.now ?? (() => Date.now());
+    const maxAdresses = opts.maxAdresses ?? AUTHORIZE_MAX_ADRESSES;
+    const perAddressMax = opts.perAddressMax ?? AUTHORIZE_MAX_FAILURES_PAR_ADRESSE;
+    const global = makeAttemptLimiter({ maxFailures: opts.globalMax ?? AUTHORIZE_MAX_FAILURES_GLOBAL, windowMs, now });
+    const parAdresse = new Map<string, AttemptLimiter>();
+
+    const de = (adresse: string): AttemptLimiter => {
+        let l = parAdresse.get(adresse);
+        if (!l) {
+            while (parAdresse.size >= maxAdresses) {
+                const plusAncienne = parAdresse.keys().next().value;
+                if (plusAncienne === undefined) break;
+                parAdresse.delete(plusAncienne);
+            }
+            l = makeAttemptLimiter({ maxFailures: perAddressMax, windowMs, now });
+            parAdresse.set(adresse, l);
+        }
+        return l;
+    };
+
+    return {
+        isBlocked: (adresse) => global.isBlocked() || de(adresse).isBlocked(),
+        retryAfterSeconds: (adresse) => Math.max(global.retryAfterSeconds(), de(adresse).retryAfterSeconds()),
+        recordFailure: (adresse) => { global.recordFailure(); de(adresse).recordFailure(); },
+        reset: (adresse) => { de(adresse).reset(); },
+    };
+}

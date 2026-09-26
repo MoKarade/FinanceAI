@@ -35,7 +35,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, buildSha, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
-import { makeAttemptLimiter } from './auth/rateLimit';
+import { makeAddressAttemptLimiter, type AddressAttemptLimiter } from './auth/rateLimit';
 import { makeRouteGuard, adresseClient, type LimitedRoute, type RouteGuard } from './auth/routeRateLimit';
 import { HUB_TOKEN_HEADER } from '@mokarade/hub-contract/endpoint';
 import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
@@ -94,6 +94,8 @@ export interface HttpServerOptions {
     fintableRoles?: FintableMappingConfig['roles'];
     /** [MCP-RATE-LIMIT] Garde de débit des routes (injectable pour les tests ; défaut : plafonds de `routeRateLimit.ts`). */
     rateGuard?: RouteGuard;
+    /** [MCP-RATE-LIMIT] Limiteur d'échecs de /oauth/authorize (injectable pour les tests ; défaut : 8 par adresse, 200 global). */
+    authorizeLimiter?: AddressAttemptLimiter;
     /** [MCP-ACCESS-KEY-MIN] La clé d'accès est faible (< 32 car.) : exposé par l'outil `ping` (derrière l'OAuth), jamais sur /health. */
     cleAccesFaible?: boolean;
     /** [MCP-ACCESS-KEY-MIN] STRICT + clé faible : `/oauth/authorize` (la porte que cette clé garde) répond 503 ; le reste du serveur (routes à secret propre, /mcp déjà autorisé) continue. */
@@ -258,7 +260,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     // ── [MCP-CLOUDRUN-B] endpoints OAuth 2.1 (si auth configurée) ────────────
     // [MCP-CLOUDRUN-AUTH-HARDENING] UN limiteur par serveur (pas par requête) : sa mémoire EST la
     // protection. En construire un à chaque appel remettrait le compteur à zéro à chaque tentative.
-    const authorizeLimiter = makeAttemptLimiter();
+    const authorizeLimiter = options.authorizeLimiter ?? makeAddressAttemptLimiter();
     // [MCP-RATE-LIMIT] UN garde de débit par serveur (mêmes raisons : sa mémoire EST la protection).
     const rateGuard = options.rateGuard ?? makeRouteGuard();
 

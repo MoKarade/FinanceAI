@@ -238,9 +238,14 @@ compare une clé saisie à la main (`/oauth/token` exige un code signé HMAC). I
 
 - On compte les **échecs**, jamais les succès → une autorisation réussie remet le compteur à zéro,
   et ton usage normal ne consomme rien.
-- Le compteur est **global**, pas par IP : derrière le load balancer, `X-Forwarded-For` est en
-  partie sous contrôle du client, donc une clé par IP se contournerait. Sur un serveur
-  mono-utilisateur, un plafond global est plus strict *et* plus honnête.
+- Le compteur est **par adresse** (8 échecs par 15 min et par adresse), plus un **plafond global de sécurité**
+  (200 échecs par 15 min) contre une attaque distribuée. L'adresse est le **dernier** élément de
+  `X-Forwarded-For` (Cloud Run y ajoute l'adresse réelle ; les éléments précédents viennent du client et
+  sont forgeables). Avant, le compteur était purement global : 8 requêtes suffisaient à interdire toute
+  nouvelle autorisation à Marc. Le blocage s'applique **avant** la comparaison de la clé, même pour la
+  bonne clé depuis une adresse bloquée (sinon on devinerait à la vitesse de la ligne) ; un succès n'efface
+  que les échecs de son adresse. À vérifier en production que le dernier élément de `X-Forwarded-For` est
+  bien l'adresse client (`docs/A_FAIRE_MOI.md`).
 - **Limite assumée** : le compteur vit en mémoire, donc un cold-start Cloud Run le remet à zéro
   (même compromis que le registre anti-rejeu `consumedJti`). Ça ralentit massivement une attaque
   soutenue sans prétendre à une garantie distribuée.

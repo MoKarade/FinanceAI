@@ -84,7 +84,9 @@ export function makeAttemptLimiter(opts: {
 // Avis pole-securite : le limiteur d'échecs GLOBAL ci-dessus (8 par 15 min) laissait n'importe qui sur Internet interdire
 // à Marc toute NOUVELLE autorisation (le serveur Cloud Run est public) avec 8 requêtes. Désormais :
 //  - un seuil BAS PAR ADRESSE (8 : cette porte est la seule protégée par la clé d'accès, potentiellement faible) ;
-//  - un plafond GLOBAL beaucoup plus haut (200 par 15 min) : il ne sert qu'à borner une attaque distribuée ;
+//  - un plafond GLOBAL beaucoup plus haut (200 par 15 min) : il ne sert qu'à borner une attaque distribuée, et n'est appliqué QUE si la clé
+//    d'accès est faible (< 32 caractères) : avec une clé conforme, la force brute est hors de portée et un plafond global ne ferait
+//    qu'offrir un déni de service à un attaquant disposant de nombreuses adresses (avis pole-securite) ;
 //  - un succès n'efface que les échecs de SON adresse (jamais le compteur global : un attaquant ne peut pas le remettre à zéro).
 // ⚠️ Le blocage reste appliqué AVANT la comparaison de la clé, pour une adresse au quota épuisé ET pour le plafond global :
 // vérifier la clé « d'abord » depuis une adresse bloquée laisserait deviner à la vitesse de la ligne (un essai juste passerait,
@@ -107,7 +109,8 @@ export interface AddressAttemptLimiter {
 
 export function makeAddressAttemptLimiter(opts: {
     perAddressMax?: number;
-    globalMax?: number;
+    /** Plafond global d'échecs ; `null` = AUCUN plafond global (seul le compteur par adresse s'applique). */
+    globalMax?: number | null;
     windowMs?: number;
     maxAdresses?: number;
     now?: () => number;
@@ -116,7 +119,7 @@ export function makeAddressAttemptLimiter(opts: {
     const now = opts.now ?? (() => Date.now());
     const maxAdresses = opts.maxAdresses ?? AUTHORIZE_MAX_ADRESSES;
     const perAddressMax = opts.perAddressMax ?? AUTHORIZE_MAX_FAILURES_PAR_ADRESSE;
-    const global = makeAttemptLimiter({ maxFailures: opts.globalMax ?? AUTHORIZE_MAX_FAILURES_GLOBAL, windowMs, now });
+    const global = opts.globalMax === null ? null : makeAttemptLimiter({ maxFailures: opts.globalMax ?? AUTHORIZE_MAX_FAILURES_GLOBAL, windowMs, now });
     const parAdresse = new Map<string, AttemptLimiter>();
 
     const de = (adresse: string): AttemptLimiter => {
@@ -134,9 +137,9 @@ export function makeAddressAttemptLimiter(opts: {
     };
 
     return {
-        isBlocked: (adresse) => global.isBlocked() || de(adresse).isBlocked(),
-        retryAfterSeconds: (adresse) => Math.max(global.retryAfterSeconds(), de(adresse).retryAfterSeconds()),
-        recordFailure: (adresse) => { global.recordFailure(); de(adresse).recordFailure(); },
+        isBlocked: (adresse) => (global?.isBlocked() ?? false) || de(adresse).isBlocked(),
+        retryAfterSeconds: (adresse) => Math.max(global?.retryAfterSeconds() ?? 0, de(adresse).retryAfterSeconds()),
+        recordFailure: (adresse) => { global?.recordFailure(); de(adresse).recordFailure(); },
         reset: (adresse) => { de(adresse).reset(); },
     };
 }

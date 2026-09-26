@@ -260,7 +260,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     // ── [MCP-CLOUDRUN-B] endpoints OAuth 2.1 (si auth configurée) ────────────
     // [MCP-CLOUDRUN-AUTH-HARDENING] UN limiteur par serveur (pas par requête) : sa mémoire EST la
     // protection. En construire un à chaque appel remettrait le compteur à zéro à chaque tentative.
-    const authorizeLimiter = options.authorizeLimiter ?? makeAddressAttemptLimiter();
+    const authorizeLimiter = options.authorizeLimiter ?? makeAddressAttemptLimiter({ globalMax: options.cleAccesFaible ? undefined : null });
     // [MCP-RATE-LIMIT] UN garde de débit par serveur (mêmes raisons : sa mémoire EST la protection).
     const rateGuard = options.rateGuard ?? makeRouteGuard();
 

@@ -238,8 +238,9 @@ compare une clé saisie à la main (`/oauth/token` exige un code signé HMAC). I
 
 - On compte les **échecs**, jamais les succès → une autorisation réussie remet le compteur à zéro,
   et ton usage normal ne consomme rien.
-- Le compteur est **par adresse** (8 échecs par 15 min et par adresse), plus un **plafond global de sécurité**
-  (200 échecs par 15 min) contre une attaque distribuée. L'adresse est le **dernier** élément de
+- Le compteur est **par adresse** (8 échecs par 15 min et par adresse), plus, **seulement si la clé d'accès est faible** (< 32 caractères), un **plafond global de sécurité**
+  (200 échecs par 15 min) contre une attaque distribuée (avec une clé conforme, la force brute est hors de portée et un plafond global
+  n'offrirait qu'un déni de service à un attaquant multi-adresses). L'adresse est le **dernier** élément de
   `X-Forwarded-For` (Cloud Run y ajoute l'adresse réelle ; les éléments précédents viennent du client et
   sont forgeables). Avant, le compteur était purement global : 8 requêtes suffisaient à interdire toute
   nouvelle autorisation à Marc. Le blocage s'applique **avant** la comparaison de la clé, même pour la

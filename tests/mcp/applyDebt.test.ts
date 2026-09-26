@@ -16,6 +16,7 @@ import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerApplyDebt } from '../../mcp/tools/applyDebt.tool';
 import { applyDebtSpec } from '../../mcp/tools/applyDebt.spec';
 import type { AppState, Debt } from '../../types';
+import { confirmer } from './_ecritureMcp';
 
 const baseState = (): AppState => buildDefaultAppState();
 
@@ -261,10 +262,12 @@ describe('applyDocument — kind debt : parité debtKind/startDate/termEndDate [
 type Handler = (a: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
 function captureApply(store: StateStore): Handler {
     let cap: Handler | null = null;
-    const fake = { tool: (_n: string, _d: string, _s: unknown, cb: Handler) => { cap = cb; } } as unknown as McpServer;
+    const fake = { tool: (..._a: unknown[]) => { cap = _a[_a.length - 1] as Handler; } } as unknown as McpServer;
     registerApplyDebt(fake, store);
     if (!cap) throw new Error('aucun handler capturé');
-    return cap;
+    const brut = cap;
+    // [MCP-CONFIRM-TOKEN] les écritures passent par l'aperçu + jeton : on déroule les deux temps.
+    return (a) => confirmer(brut, a);
 }
 
 describe('apply_debt — tool bout en bout', () => {

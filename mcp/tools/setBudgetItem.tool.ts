@@ -1,14 +1,12 @@
 // mcp/tools/setBudgetItem.tool.ts
-// [MCP-DIRECT-EDIT Lot 2] Enregistrement serveur MCP MINCE — schéma/description/toDocument vivent dans
-// le .spec (browser-safe) ; la persistance serveur (OCC + backup) reste dans runApply.
-// Confirmation à 2 temps : sans `confirm:true`, runApply renvoie un APERÇU sans écrire.
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+// [MCP-CONFIRM-TOKEN] Enregistrement serveur MCP MINCE : schema/description/toDocument vivent dans le .spec
+// (browser-safe) ; confirmation a deux temps liee cote serveur + persistance (OCC + sauvegarde) dans
+// registerWriteTool -> runApply. Ne JAMAIS rappeler runApply directement ici (garde de test).
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { setBudgetItemSpec as spec } from './setBudgetItem.spec';
-import { runApply } from './_writeHelper';
-import type { ToolTextResult } from './_dataAware';
+import { registerWriteTool } from './_writeTool';
+import type { ConfirmVault } from './confirmVault';
 import type { StateStore } from '../state/stateStore';
 
-export const registerSetBudgetItem = (server: McpServer, store: StateStore): void => {
-    server.tool(spec.name, spec.description, spec.inputSchema, async (args): Promise<ToolTextResult> =>
-        runApply(store, spec.toDocument(args), { requireConfirm: true, confirmed: args.confirm === true }));
-};
+export const registerSetBudgetItem = (server: McpServer, store: StateStore, vault?: ConfirmVault): void =>
+    registerWriteTool(server, store, spec, vault);

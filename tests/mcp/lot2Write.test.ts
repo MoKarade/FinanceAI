@@ -17,6 +17,7 @@ import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerApplyPayslip } from '../../mcp/tools/applyPayslip.tool';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import type { AppState } from '../../types';
+import { confirmer } from './_ecritureMcp';
 
 function baseState(): AppState {
     const s = buildDefaultAppState();
@@ -127,10 +128,12 @@ describe('Lot 2 — saveAppStateToFile (sûr)', () => {
 type Handler = (a: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
 function captureApply(store: StateStore): Handler {
     let cap: Handler | null = null;
-    const fake = { tool: (_n: string, _d: string, _s: unknown, cb: Handler) => { cap = cb; } } as unknown as McpServer;
+    const fake = { tool: (..._a: unknown[]) => { cap = _a[_a.length - 1] as Handler; } } as unknown as McpServer;
     registerApplyPayslip(fake, store);
     if (!cap) throw new Error('aucun handler capturé');
-    return cap;
+    const brut = cap;
+    // [MCP-CONFIRM-TOKEN] les écritures passent par l'aperçu + jeton : on déroule les deux temps.
+    return (a) => confirmer(brut, a);
 }
 
 describe('Lot 2 — apply_payslip (bout en bout, fichier réel)', () => {

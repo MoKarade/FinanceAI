@@ -32,6 +32,7 @@ conservés en 0001 et 0002.
 | [`0018-ia-locale-via-relais.md`](0018-ia-locale-via-relais.md) | ADR — IA locale : le relais BYOK route un maximum d'appels vers la passerelle Ollama de l'Atelier (Marc, 2026-09-23) |
 | [`0019-decisions-refonte-portefeuille.md`](0019-decisions-refonte-portefeuille.md) | ADR — Refonte du portefeuille : les décisions de cadrage du Lot 0 (Marc, 2026-09-24) |
 | [`0020-grand-livre-courtier.md`](0020-grand-livre-courtier.md) | ADR — Grand livre courtier et référentiel d'instruments : forme persistée (Lot 1a, 2026-09-24) |
+| [`0023-confirmation-ecriture-mcp-par-jeton.md`](0023-confirmation-ecriture-mcp-par-jeton.md) | ADR — Écriture MCP : confirmation à deux temps liée côté serveur, jeton à usage unique (2026-09-26) |
 
 Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
 un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

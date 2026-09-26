@@ -17145,3 +17145,12 @@ dépassement de tampon d'`execSync` perdait tout).
   complète : la logique pure est testable (`tests/gateCommitAnalyse.test.ts`), le défaut reste le cas sûr.
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
 - Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).
+
+### `UNE-CONFIRMATION-QUE-L-APPELANT-S-ACCORDE-N-EST-PAS-UNE-CONFIRMATION` — 2026-09-26
+
+Lot `[MCP-CONFIRM-TOKEN]`. Les outils d'écriture MCP se protégeaient par un booléen `confirm:true` passé par le MODÈLE ; les `apply_*` n'avaient rien. Un document piégé fait envoyer le booléen au premier appel.
+
+- Une porte de confirmation doit être un SECRET émis par le serveur en réponse à l'aperçu, à usage unique, court, lié à la session, à l'outil, aux arguments exacts et aux changements calculés. Jamais un flag que le demandeur remplit.
+- Un point d'enregistrement unique (`registerWriteTool`) + un test qui interdit `runApply` dans les `*.tool.ts` : impossible d'ajouter un outil d'écriture sans la porte.
+- Dire la limite : le jeton ne prouve pas qu'un humain a lu ; l'approbation par appel du client reste la barrière (annotations MCP).
+- Journal d'audit d'écriture : outil, phase, nombre, code de résultat ; jamais de montant ni de nom.

@@ -151,6 +151,13 @@
 > de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
 >
+> ## 🟦 Session 2026-09-26 — **`[MCP-CONFIRM-TOKEN]` : les écritures du connecteur claude.ai exigent un aperçu puis un jeton serveur**
+> Audit sécurité P3-P6 (findings élevés 1-2) : `apply_*` écrivaient sans confirmation et `confirm:true` était fourni par le modèle.
+> Désormais 8 outils via `mcp/tools/_writeTool.ts` : 1er appel = aperçu + `confirmToken` (usage unique, 5 min, lié session/outil/arguments/changements),
+> 2e appel = mêmes arguments + jeton. `confirm` retiré du schéma MCP. Plafond 500 éléments, annotations MCP, journal d'audit sans donnée.
+> Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0023. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
+> ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion.
+>
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
 > `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-26 — Connecteur claude.ai : toute écriture demande maintenant un aperçu puis une confirmation
+
+- Quand claude.ai modifie tes finances (paie, relevé, dette, solde, budget, suppression), il doit d'abord te
+  montrer un aperçu ; l'écriture n'a lieu qu'au second appel, avec un jeton que seul le serveur peut émettre
+  (usage unique, 5 min, lié à ces changements exacts). Avant, cinq de ces gestes écrivaient directement.
+- Un document piégé ne peut donc plus faire écrire ton état en un seul appel. Limite : c'est toujours à toi
+  d'approuver l'appel dans claude.ai ; la sauvegarde horodatée reste annulable.
+
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 
 - Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ

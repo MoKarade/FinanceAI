@@ -17,6 +17,10 @@
 
 ---
 
+## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
+
+- [ ] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils d'écriture : livré en PR brouillon (validation-marc, non armée) ; à archiver quand fusionnée. Suite non faite : rate limit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ; longueur minimale de `FINANCEAI_ACCESS_KEY` (audit findings moyenne 6 et 8).
+
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 
 > Demande : « FinanceAI devient la référence fiable du portefeuille Disnat : valeur exacte jour par

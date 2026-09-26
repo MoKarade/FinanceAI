@@ -12,6 +12,7 @@
 // en mémoire et on lui demande `tools/list`, exactement comme le ferait claude.ai. Un tool déclaré
 // mais jamais enregistré (ou l'inverse) ne peut pas se cacher derrière un `grep`.
 
+import { PROTOCOLE_ECRITURE } from '../../mcp/tools/_writeTool';
 import { describe, it, expect } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -49,9 +50,18 @@ const SERVER_ONLY = ['ping', 'connect_drive'] as const;
  * divergence de `properties`, de `type`, de `required` ou de `description` fait rougir la garde
  * (finding ai-reviewer, panel PR #756).
  */
-function normalizeSchema(raw: unknown): unknown {
+function normalizeSchema(raw: unknown, retirerControle = false): unknown {
     const schema = { ...(raw as Record<string, unknown>) };
     delete schema.$schema;
+    // [MCP-CONFIRM-TOKEN] 3e écart de méta DÉLIBÉRÉ, écritures seulement : le serveur MCP publie `confirmToken`
+    // (jeton à usage unique émis par le serveur) et RETIRE le booléen `confirm` fourni par le modèle ; le chat
+    // in-app confirme par modal et garde `confirm` dans son schéma. Les champs MÉTIER restent comparés à l'identique.
+    if (retirerControle) {
+        const pr = { ...((schema.properties ?? {}) as Record<string, unknown>) };
+        delete pr.confirm; delete pr.confirmToken;
+        schema.properties = pr;
+        if (Array.isArray(schema.required)) schema.required = (schema.required as string[]).filter((k) => k !== 'confirm' && k !== 'confirmToken');
+    }
     // Condition sur la VALEUR exacte mesurée (`false`), pas seulement sur « schéma vide » : sinon
     // la même clause avalerait aussi un futur `additionalProperties: true` (permissif) posé par une
     // seule des deux surfaces — un vrai changement de contrat de validation, pas un écart de méta
@@ -125,7 +135,9 @@ describe('[MCP-WRITE-PARITY-GUARD] serveur MCP ↔ registre du chat in-app', () 
         const byName = new Map(withStore.map((t) => [t.name, t.description]));
         for (const spec of [...READ_SPECS, ...WRITE_SPECS]) {
             expect(byName.get(spec.name), `« ${spec.name} » absent du serveur MCP`).toBeDefined();
-            expect(byName.get(spec.name), `description divergente pour « ${spec.name} »`).toBe(spec.description);
+            // Les outils d'ÉCRITURE portent en plus la clause de protocole à deux temps ([MCP-CONFIRM-TOKEN]).
+            const attendue = spec.kind === 'write' ? spec.description + PROTOCOLE_ECRITURE : spec.description;
+            expect(byName.get(spec.name), `description divergente pour « ${spec.name} »`).toBe(attendue);
         }
     });
 
@@ -141,9 +153,9 @@ describe('[MCP-WRITE-PARITY-GUARD] serveur MCP ↔ registre du chat in-app', () 
         expect(specs.length).toBeGreaterThanOrEqual(19); // anti-vacuité : la boucle balaie bien tout
         for (const spec of specs) {
             expect(
-                normalizeSchema(byName.get(spec.name)),
+                normalizeSchema(byName.get(spec.name), spec.kind === 'write'),
                 `schéma d'entrée divergent pour « ${spec.name} » entre le serveur MCP et le chat in-app`,
-            ).toEqual(normalizeSchema(toAnthropicTools([spec])[0].input_schema));
+            ).toEqual(normalizeSchema(toAnthropicTools([spec])[0].input_schema, spec.kind === 'write'));
         }
     });
 });

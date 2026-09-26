@@ -70,7 +70,7 @@ jobs:
           # NOMMENT des comptes et des signes de solde : il reste dans l'app (AppState), jamais ici.
           # On n'imprime que l'issue, en MODÈLE FIXE : booléens et codes, JAMAIS le texte `error` du serveur
           # (un message d'exception peut citer un extrait de l'état ou une réponse distante). Garde : tests/journauxCiSansDonnees.test.ts.
-          jq -c '{ok, conflict, erreur_signalee: (.error != null)}' /tmp/fintable_sync_out || echo "(réponse non JSON, non affichée)"
+          jq -c 'def b: if type == "boolean" then . else null end; {ok: (.ok | b), conflict: (.conflict | b), erreur_signalee: (.error != null)}' /tmp/fintable_sync_out || echo "(réponse non JSON, non affichée)"
           # Un 404 n'est PAS une panne de la sync : c'est un serveur qui n'a pas (encore) la route.
           # Le dire explicitement évite de chercher côté Fintable/Drive un problème de déploiement.
           if [ "${code}" = "404" ]; then

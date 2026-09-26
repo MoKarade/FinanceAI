@@ -161,7 +161,7 @@
 > Leçon : `docs/CONVENTIONS.md` `UN-RELAIS-NON-TESTE-EN-PROD-N-EST-PAS-UN-RELAIS`.
 >
 > ## 🟦 Session 2026-09-26 — **`[PTF-JOURNAL-PUBLIC-ERREURS]` : le journal PUBLIC des crons n'imprime plus le texte des erreurs**
-> Audit P3-P6 (moyenne 5) : `fintable-sync.yml` imprimait `error` du serveur, `refresh-prices.yml` `error` et `fx.erreur` — des messages d'exception libres (l'erreur de `JSON.parse` cite un extrait du texte fautif). Désormais modèle fixe : `erreur_signalee` (booléen) + `fx.ecriture/cause` (codes). Garde : `tests/journauxCiSansDonnees.test.ts`. Non testé sous jq réel (absent du poste) : à valider au prochain tick ou en déclenchement manuel du cron. Reste (hors lot) : le message de `parseRawToAppState` (`mcp/state/loadAppState.ts`) cite toujours le texte de `JSON.parse` côté serveur.
+> Audit P3-P6 (moyenne 5) : `fintable-sync.yml` imprimait `error` du serveur, `refresh-prices.yml` `error` et `fx.erreur` — des messages d'exception libres (l'erreur de `JSON.parse` cite un extrait du texte fautif). Désormais modèle fixe : `erreur_signalee` (booléen) ; `ok`, `conflict`, `saved` normalisés en booléens ; `sautes`, `fx.ecriture`, `fx.cause` en codes d'une liste fermée (sinon « autre »). Garde : LISTE BLANCHE des programmes jq (`tests/journauxCiSansDonnees.test.ts`). Filtre exécuté sous jq réel sur 3 entrées piégées (texte libre partout) : rien de libre ne sort. Reste (hors lot) : le message de `parseRawToAppState` (`mcp/state/loadAppState.ts`) cite toujours le texte de `JSON.parse` côté serveur.
 >
 > ## 🟦 Session 2026-09-23 — **`[IA-LOCALE]` : le relais route un maximum d'appels Claude vers l'IA locale de Marc**
 > 🔎 Marc : « continue avec financeai … faire passer un max par ollama ». L'Atelier (dépôt MoKarade/atelier)

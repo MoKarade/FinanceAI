@@ -17134,7 +17134,7 @@ activé ». Le test accusait une zone morte du graphe alors que le clic n'atteig
 Lot `[PTF-JOURNAL-PUBLIC-ERREURS]`. Un message d'exception est du texte libre : `JSON.parse` de Node y reproduit un morceau de l'entrée, une erreur réseau cite une URL. Dans un dépôt PUBLIC, tout ce qu'un workflow imprime est public.
 
 - Imprimer des booléens et des codes énumérés (`erreur_signalee: (.error != null)`), jamais `.error`, `.body`, `.message`, `.detail`, `.stack`, `.erreur`.
-- La garde lit les programmes `jq` des workflows (`tests/journauxCiSansDonnees.test.ts`), pas seulement `cat /tmp/…`.
+- Chaque valeur imprimée est normalisée : booléen, nombre ou code d'une liste fermée (sinon « autre »). La garde est une LISTE BLANCHE des programmes `jq` (`tests/journauxCiSansDonnees.test.ts`) : un détecteur de noms de champs se contourne (`jq .`, `..`, `to_entries`, `@json`), une égalité exacte non.
 
 ### `UN-HOOK-DE-COMMIT-LIT-LA-COMMANDE-PAS-LE-TEXTE-NI-L-INDEX-D-AVANT` — 2026-09-25
 

@@ -5,6 +5,37 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤 **[CF-ACCESS-MISE-EN-SERVICE]** (2026-09-25, décision Marc : Cloudflare Access remplace la passkey) — **mettre un mur
+  « code par e-mail » devant finance.hubperso.com**. Le code (PR `[CF-ACCESS]`) vérifie le jeton d'Access côté API ; rien ne
+  change tant que tu n'as pas fait les étapes 3 à 5. **L'ORDRE COMPTE.** Aucune valeur ci-dessous n'est un secret
+  (nom d'équipe, identifiant d'application, ton e-mail) ; ne colle jamais de clé ni de jeton dans un chat.
+  0. **Avant tout : test iPhone/PWA** (condition pole-securite). Si FinanceAI est installée sur l'écran d'accueil de ton
+     iPhone, iOS garde des cookies séparés de Safari : la connexion Access peut s'ouvrir hors de l'app. À tester EN PREMIER
+     (sans code) ; si ça ne marche pas, le plan change — préviens-moi.
+  1. **Cloudflare → Zero Trust → Settings** : note le *nom de l'équipe* (la partie avant `.cloudflareaccess.com`, déjà créée pour le cockpit).
+  2. **Access → Applications → Add → Self-hosted** : domaine `finance.hubperso.com` ; durée de session 1 mois ; fournisseur
+     d'identité **« One-time PIN »** UNIQUEMENT (ne réutilise PAS le client OAuth Google : c'est ce partage qui avait cassé
+     Drive en juin) ; une seule politique **Allow = ton e-mail** (aucune règle « Everyone », aucun Bypass, politique non
+     partagée). Relève l'**AUD tag** de l'application.
+  3. **Vercel → Settings → Environment Variables (Production)** : pose `CF_ACCESS_TEAM_DOMAIN` (nom d'équipe seul, pas d'URL),
+     `CF_ACCESS_AUD` (l'AUD tag), `CF_ACCESS_EMAIL` (ton e-mail) **ET `CF_ACCESS_REQUIRED` = `0`** (mode observation : le
+     relais laisse passer et écrit « observation active »). ⚠️ Sans `CF_ACCESS_REQUIRED=0`, le relais et les proxys REFUSENT
+     tout dès le déploiement (valeur absente = exiger) : l'IA texte et les cours tomberaient. Puis **déploie la PR** (et
+     promeus-la si Vercel l'exige).
+  4. **Cloudflare → DNS** : `finance.hubperso.com` en **Proxied** (nuage orange) ; **SSL/TLS = Full (strict)** ; aucun cache
+     sur `/api/*`. Teste en fenêtre privée : le mur de code e-mail apparaît, l'app se charge après le code.
+  5. **Vérifie** : (a) fenêtre privée sur l'adresse `*.vercel.app` → redirigée vers `finance.hubperso.com` ; (b) session
+     expirée : supprime le cookie `CF_Authorization`, reviens dans l'onglet → la page se recharge sur le mur (pas de page
+     blanche, pas de « Failed to fetch chunk ») ; (c) l'app installée sur l'iPhone.
+  6. **Passer à « exiger »** : SUPPRIME la variable `CF_ACCESS_REQUIRED` (ne mets PAS `1` : absente = exiger) et redéploie.
+     Refais (a) : l'API sans jeton répond 401.
+  7. **Retour arrière** (si l'app devient inaccessible) : Cloudflare → DNS → `finance.hubperso.com` en **DNS only** (nuage
+     gris) = mur retiré, l'app fonctionne comme avant. Si l'API répond 401 : repose `CF_ACCESS_REQUIRED=0` sur Vercel et redéploie.
+  Restent à confirmer : 2FA activée sur tes comptes Cloudflare, Vercel, GitHub et Anthropic (le compte Cloudflare devient
+  la racine de confiance) ; aucun robot (captures d'écran, CI) ne visite `finance.hubperso.com` (sinon jeton de service
+  Access, secret GitHub à portée minimale) ; le renouvellement du certificat Vercel derrière le proxy fonctionne
+  (`/.well-known/acme-challenge` non filtré). Plus tard (ta décision) : retirer le « gate Google » in-app devenu redondant.
+
 - [x] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24, ✅ fait le jour même, mesure lancée) — **deux secrets pour mesurer les sources de cours
   depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
   oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :

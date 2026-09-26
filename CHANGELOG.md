@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-25 — Un mur « code par e-mail » devant l'app (Cloudflare Access), vérifié aussi côté API
+
+- Le code est prêt ; il ne change rien tant que tu n'as pas posé le mur (procédure dans « À faire — Marc »).
+- Le relais IA et les proxys de cours/comptes refusent tout appel sans preuve de connexion valide (jeton signé par Cloudflare, à ton e-mail),
+  même par l'adresse `*.vercel.app`, qui redirige désormais vers finance.hubperso.com.
+- Si ta session expire, l'app se recharge sur l'écran de connexion au lieu d'afficher des erreurs de chargement.
+- L'app installée ne garde jamais en mémoire une page de connexion à la place de l'app.
+
 ## 2026-09-25 — Sécurité du relais IA : plus de jeton public, des freins honnêtes
 
 - Le jeton de relais était visible dans le code servi au public : il est supprimé (il ne protégeait rien).

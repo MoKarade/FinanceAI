@@ -18,6 +18,14 @@
 ---
 
 ## 🔒 Relais IA — suites du durcissement (2026-09-25)
+- [ ] 👤 [CF-ACCESS-MISE-EN-SERVICE] (S) Poser l'application Cloudflare Access + les variables Vercel, passer de l'observation à « exiger » :
+  procédure pas à pas dans `A_FAIRE_MOI` (code livré : PR `[CF-ACCESS]`, ADR 0022).
+- [ ] 🧭 [CF-ACCESS-VERIF-PROD] (S) Après mise en service, mesurer ce qu'on ne peut pas voir d'ici : Access répond-il 401 (pas 302) aux `fetch` ?
+  le rewrite vers une fonction garde-t-il la chaîne de requête d'origine ? `cf-connecting-ip` arrive-t-elle ? Retirer ensuite la variable `CF_ACCESS_REQUIRED`.
+- [ ] 🧭 [CF-ACCESS-GATE-GOOGLE] (S) Retirer le « gate Google » in-app devenu redondant (décision de Marc ; OAuth Drive/sync inchangé).
+- [ ] 🧭 [RELAIS-CLE-SERVEUR] (L, OPTION — pas recommandé maintenant) Lot B : clé Anthropic côté serveur pour qu'elle ne soit plus dans le navigateur.
+  Résidu actuel : la clé BYOK (IndexedDB chiffré) est lisible par un XSS. Coût ~18-20 h et nouvelle exposition (clé payante serveur) : exige un plafond de
+  dépense dur chez Anthropic. Derrière Access + contrôle du jeton, le relais est authentifié : le lot B n'est plus nécessaire pour l'accès.
 - [ ] 🧭 [DURCISSEMENT-RELAIS-DEBIT-PARTAGE] (M) Limite de débit PARTAGÉE entre instances Vercel : seulement si un stockage
   gratuit est confirmé et qu'il échoue FERMÉ ; sinon on garde le frein en mémoire (faible mais utile). Décision à part.
 - [ ] 👤 [DURCISSEMENT-RELAIS-ENV] (S) Retirer `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel (cf. `A_FAIRE_MOI` O4).

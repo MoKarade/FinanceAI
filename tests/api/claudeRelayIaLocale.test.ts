@@ -57,7 +57,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 const call = (body: Record<string, unknown>, ia: IaLocaleConfig | null = IA, signal?: AbortSignal) =>
-    relayClaude(mkRequest(body, signal), { iaLocale: ia, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
+    relayClaude(mkRequest(body, signal), { access: null, iaLocale: ia, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
 const urls = () => (fetchSpy.mock.calls as Appel[]).map(([u]) => u);
 
 describe('[IA-LOCALE] routage du relais vers la passerelle locale', () => {
@@ -190,13 +190,13 @@ describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE',
     const COUNT = 'https://api.anthropic.com/v1/messages/count_tokens';
 
     it('clé refusée par Anthropic → pas de passerelle (ni même sa sonde), appel Anthropic avec la clé fournie', async () => {
-        const res = await relayClaude(mkRequest(texte()), { iaLocale: IA, verifierCle: async () => ({ valide: false }) });
+        const res = await relayClaude(mkRequest(texte()), { access: null, iaLocale: IA, verifierCle: async () => ({ valide: false }) });
         expect(res.status).toBe(200);
         expect(urls()).toEqual(['https://api.anthropic.com/v1/messages']);
     });
 
     it('vérification réelle : count_tokens avec la clé BYOK et un contenu FACTICE (aucune donnée envoyée)', async () => {
-        const res = await relayClaude(mkRequest(texte()), { iaLocale: IA });
+        const res = await relayClaude(mkRequest(texte()), { access: null, iaLocale: IA });
         expect(res.status).toBe(200);
         expect(urls()).toEqual([COUNT, `${IA.url}/sante`, `${IA.url}/v1/messages`]);
         const [, init] = (fetchSpy.mock.calls as Appel[])[0];
@@ -205,8 +205,8 @@ describe('[S5-RELAIS-CLE] la passerelle locale exige une clé Anthropic VALIDE',
     });
 
     it('clé mémorisée 10 min (par empreinte) : pas de seconde vérification', async () => {
-        await relayClaude(mkRequest(texte()), { iaLocale: IA });
-        await relayClaude(mkRequest(texte()), { iaLocale: IA });
+        await relayClaude(mkRequest(texte()), { access: null, iaLocale: IA });
+        await relayClaude(mkRequest(texte()), { access: null, iaLocale: IA });
         expect(urls().filter((u) => u === COUNT)).toHaveLength(1);
     });
 

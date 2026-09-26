@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟥 Session 2026-09-25 (suite) — **`[CF-ACCESS]` : le mur Cloudflare Access, vérifié côté API**
+> Marc a dit OUI (Access remplace la passkey ; ADR `0022`). **Code livré, sans effet tant que Marc n'a pas posé le mur**
+> (`A_FAIRE_MOI` → `[CF-ACCESS-MISE-EN-SERVICE]`, dans l'ordre : test iPhone → application Access → variables Vercel AVEC
+> `CF_ACCESS_REQUIRED=0` → DNS proxifié → vérifs → suppression de la variable = exiger). `api/_lib/accessJwt.ts` (jose 6.2.3 : RS256, iss/aud/exp/nbf,
+> `kid`, e-mail) ; relais Claude → 401 enveloppe Anthropic ; proxys Yahoo/Fintable = fonctions gardées (`api/yahoo/*`, `api/proxy/fintable.ts`,
+> réécritures `vercel.json`) ; `ipClient(headers, jetonValide)` ; redirection `*.vercel.app` → prod ; SW : jamais de réponse redirigée/opaque/`/api/*` en
+> cache (cache v4) ; `utils/sessionAccess.ts` (session expirée → rechargement) ; manifest `use-credentials`.
+> ⚠️ Valeur ABSENTE de `CF_ACCESS_REQUIRED` = EXIGER (sans config Access : tout refusé, échec fermé). ⚠️ Base = branche `durcissement` (#1072) : PR empilée, pas de CI
+> ⚠️ Changements de comportement : le service worker ne sert plus `/api/*` hors ligne (plus de cours Yahoo périmés) ; une session expirée affiche « Ta session de connexion a expiré » (cause `session-access`, `messageErreurIa`) et non « clé refusée » ; la sonde de session ne couvre que le retour dans l'onglet (≥ 1 min) / le retour du réseau. [À MESURER en prévisualisation] : que la réécriture vers une fonction conserve la requête d'origine (les proxys lisent aussi le chemin d'origine) ; Access 302 ou 401 sur `fetch` ; Host `*.vercel.app` jamais transmis par Cloudflare (sinon boucle de redirection).
+> tant que #1072 n'est pas fusionnée. Lot B (clé serveur) : BACKLOG, option non recommandée. Tests : `accessJwt`, `relaisAccess`, `accessConfigFichiers`, `sessionAccess`.
+>
 > ## 🟥 Session 2026-09-25 — **`[DURCISSEMENT-RELAIS]` : le jeton de relais public disparaît, des freins honnêtes le remplacent**
 > 🔎 Audit sécurité (pole-securite, décision de Marc) : `VITE_PROXY_ACCESS_TOKEN` était recopié dans le bundle public ;
 > n'importe qui le lisait, il n'a jamais rien protégé. **Supprimé** (client + relais). À la place, dans `api/_lib/` :

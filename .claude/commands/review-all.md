@@ -17,7 +17,7 @@ Objectif : faire passer le **panel d'agents** de FinanceAI sur le travail couran
    - UI notable → `a11y-auditor`.
    - (`documentation-manager` est désormais dans « Toujours » ci-dessus — il sync le handover + la doc à chaque PR.)
    - (À la demande : `performance-optimizer` pour le profilage moteur lourd ; `code-analyzer` pour la dette large.)
-   N'invoque AUCUN agent hors sujet — la seule limite est la pertinence (cf CLAUDE.md).
+   N'invoque AUCUN agent hors sujet — la seule limite est la pertinence (cf docs/claude/lecons.md).
 
 3. **Consolidation (trust-but-verify)** : agrège tous les findings dans UN tableau dédupliqué, classé **CRITIQUE / ÉLEVÉ / MOYEN / FAIBLE**, chacun avec `fichier:ligne` · cause · impact utilisateur · correctif. ⚠️ Un finding money-critical est une **HYPOTHÈSE** (~33 % de faux positifs sur ce code) : VÉRIFIE le vrai code avant de le retenir. Marque chaque finding **retenu** ou **réfuté** (avec la raison).
 

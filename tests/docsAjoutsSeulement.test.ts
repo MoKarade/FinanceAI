@@ -139,6 +139,11 @@ describe('refus ATTESTABLES (controleDocs) — la revue de pole-securite lève l
         expect(controleDocs([fichier('BACKLOG.md', '@@ -3 +3 @@\n-- [ ] [ID-1] t\n+- [x] [ID-1] t')], LISTES, () => { appels++; return true; })).toBeNull();
         expect(appels).toBe(0);
     });
+    it('le résumé du run pour un refus de document est une ligne FIXE : code + raison constante, jamais decision.raison', () => {
+        const src = readFileSync(resolve(RACINE, '.github/scripts/auto-merge/armer.mjs'), 'utf8');
+        expect(src).toMatch(/if \(codeDocs\) resume\(`Fusion automatique NON armée \(désarmée si elle l'était\) : code=\$\{codeDocs\} ; \$\{RAISON_DOC\}\.`\)/);
+        expect(src).toMatch(/import \{ controleDocs, RAISON_DOC \}/);
+    });
     it('armer.mjs passe un vérificateur qui répond NON tant que attestationValide n est pas dans la copie du modèle', () => {
         const src = readFileSync(resolve(RACINE, '.github/scripts/auto-merge/armer.mjs'), 'utf8');
         expect(src).toMatch(/controleDocs\(fichiers, listesDocs, \(\) => false\)/);
@@ -170,7 +175,7 @@ describe('protection par attestation (chemins_label_validation) et configuration
     });
     it('armer.mjs applique controleDocs APRÈS peutArmer, et refuse une liste de motifs invalide (échec fermé)', () => {
         const src = readFileSync(resolve(RACINE, '.github/scripts/auto-merge/armer.mjs'), 'utf8');
-        expect(src).toMatch(/import \{ controleDocs \} from "\.\/docsAjoutsSeulement\.mjs"/);
+        expect(src).toMatch(/import \{ controleDocs, RAISON_DOC \} from "\.\/docsAjoutsSeulement\.mjs"/);
         expect(src.indexOf('peutArmer({')).toBeLessThan(src.indexOf('controleDocs(fichiers'));
         expect(src).toMatch(/\$\{cle\} : liste de motifs attendue/);
     });

@@ -5,7 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { peutArmer } from "./autoMerge.mjs";
-import { controleDocs } from "./docsAjoutsSeulement.mjs";
+import { controleDocs, RAISON_DOC } from "./docsAjoutsSeulement.mjs";
 
 const { GH_TOKEN, REPO, PR, SHA } = process.env;
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -49,7 +49,9 @@ try {
     resume(`Fusion automatique armée : ${decision.raison}.`);
   } else {
     desarmer();
-    resume(`Fusion automatique NON armée (désarmée si elle l'était) : ${decision.raison}.`);
+    // Refus d'un document surveillé : ligne de résumé FIXE (code + raison constante), jamais un texte de la PR (chemin, ligne, message).
+    if (codeDocs) resume(`Fusion automatique NON armée (désarmée si elle l'était) : code=${codeDocs} ; ${RAISON_DOC}.`);
+    else resume(`Fusion automatique NON armée (désarmée si elle l'était) : ${decision.raison}.`);
   }
 } catch (e) {
   desarmer();

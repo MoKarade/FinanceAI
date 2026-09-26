@@ -169,6 +169,12 @@
 > de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
 >
+> ## 🟦 Session 2026-09-26 — **`[WIN-GARDES]` : `npm test` passe en local Windows**
+> 33 tests-gardes échouaient sous Windows (CRLF de `core.autocrlf` + `\` de `path.join/relative`) et bloquaient le
+> hook commit-gate. Ajout `.gitattributes` (`eol=lf`) + `tests/helpers/toPosix.ts` appliqué dans 14 gardes ; aucun seuil
+> ni assertion assouplis, aucun code de production touché. Suite : 6832/6832. ⚠️ Une copie déjà extraite reste CRLF
+> tant qu'on ne la ré-extrait pas. Leçon : `docs/CONVENTIONS.md` `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS`.
+>
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
 > `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA

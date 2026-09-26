@@ -17161,3 +17161,15 @@ les réglages de Claude. Dans FinanceAI, `hooks/` est le dossier des hooks REACT
   re-synchronisation efface l'adaptation en silence.
 - Un hook de commit qui ne sait pas décider (`git checkout-index` inconnu) ne doit pas déclencher 5 minutes de suite complète :
   l'incertain doit porter sur ce qui peut vraiment être un commit (alias, enveloppes), pas sur toute commande git peu courante.
+
+## `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS` (2026-09-26, `[WIN-GARDES]`)
+
+Une trentaine de tests-gardes (scan de source) échouaient sur le PC de Marc et passaient en CI Linux, ce qui
+bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dans le code de production :
+- **Fins de ligne** : sans `.gitattributes`, `core.autocrlf=true` (défaut Git for Windows) extrait en CRLF ; un
+  `lignes[0] === "import '…';"` reçoit `…;\r`. Correctif de fond : `.gitattributes` `* text=auto eol=lf`.
+  ⚠️ Il agit à l'extraction : une copie déjà extraite reste CRLF jusqu'à `git rm --cached -r . && git reset --hard`.
+- **Séparateurs** : `path.join/resolve/relative` rendent `\` ; les gardes comparent à `/fichier.tsx` ou à
+  `process.cwd() + '/'`. Correctif : `tests/helpers/toPosix.ts` (`toPosix`, `cwdPosix`) appliqué À LA SORTIE des
+  marcheurs de fichiers, jamais en assouplissant une assertion (une garde qui ne voit rien doit rester rouge).
+- Règle : tout nouveau marcheur de fichiers d'une garde passe son résultat par `toPosix`.

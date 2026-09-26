@@ -29,6 +29,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { toPosix } from '../helpers/toPosix';
 import { stripCommentsJsx } from '../../utils/stripComments';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -71,7 +72,7 @@ describe('[A11Y] aucun graphe sans alternative textuelle', () => {
             const manque: string[] = [];
             if (!ROLE_IMG.test(src)) manque.push('role="img"');
             if (!/ChartDataTable/.test(src)) manque.push('ChartDataTable');
-            if (manque.length) offenders.push(`${path.relative(ROOT, file)} — manque ${manque.join(' et ')}`);
+            if (manque.length) offenders.push(`${toPosix(path.relative(ROOT, file))} — manque ${manque.join(' et ')}`);
         }
         expect(
             offenders,
@@ -83,7 +84,7 @@ describe('[A11Y] aucun graphe sans alternative textuelle', () => {
     it('chaque GRAPHE porte sa marque à lui (un voisin couvert ne couvre pas le suivant)', () => {
         const offenders: string[] = [];
         for (const file of fichiersAvecGraphe) {
-            const rel = path.relative(ROOT, file);
+            const rel = toPosix(path.relative(ROOT, file));
             if (HORS_FENETRE[rel]) continue;
             const lignes = stripCommentsJsx(readFileSync(file, 'utf8')).split('\n');
             lignes.forEach((l, i) => {

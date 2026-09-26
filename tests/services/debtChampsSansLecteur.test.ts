@@ -18,6 +18,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { describe, it, expect } from 'vitest';
+import { toPosix } from '../helpers/toPosix';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const RACINES = ['components', 'services', 'mcp', 'hooks', 'store', 'utils'];
@@ -26,7 +27,7 @@ const fichiersProd = (): string[] => {
     const out: string[] = [];
     const marcher = (dir: string): void => {
         for (const e of readdirSync(dir)) {
-            const p = join(dir, e);
+            const p = toPosix(join(dir, e));
             if (statSync(p).isDirectory()) { marcher(p); continue; }
             if (!['.ts', '.tsx'].includes(extname(p))) continue;
             if (p.includes('.test.') || p.includes('.spec.')) continue;

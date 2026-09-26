@@ -57,11 +57,12 @@ jobs:
           # ⚠️ [PTF-JOURNAL-PUBLIC] Ce journal est PUBLIC (dépôt public). Le corps de la réponse
           # listait les symboles rafraîchis et sautés, donc la composition du portefeuille réel, à
           # chaque passe. On n'en imprime que des COMPTES et des raisons : assez pour diagnostiquer,
-          # rien qui décrive le portefeuille. Garde : tests/journauxCiSansDonnees.test.ts.
-          jq -c '{ok, conflict, error, saved,
+          # rien qui décrive le portefeuille. Modèle FIXE aussi pour les erreurs : jamais le texte `error` ni
+          # `fx.erreur` (message d'exception libre), seulement des booléens et des codes. Garde : tests/journauxCiSansDonnees.test.ts.
+          jq -c '{ok, conflict, erreur_signalee: (.error != null), saved,
                   rafraichis: ((.refreshed // []) | length), inchanges: ((.unchanged // []) | length),
                   sautes: ((.skipped // []) | map(.reason) | group_by(.) | map({(.[0]): length}) | add),
-                  fx}' /tmp/refresh_out || echo "(réponse non JSON, non affichée)"
+                  fx: {ecriture: .fx.ecriture, cause: (.fx.cause // null)}}' /tmp/refresh_out || echo "(réponse non JSON, non affichée)"
           # 200 = OK (ok:true) ou conflit transitoire (ok:false, conflict:true — réessai au tick suivant).
           # 5xx = panne RÉELLE (Drive KO, jeton révoqué, coffre chiffré) → le job rougit et alerte.
           test "${code}" = "200"

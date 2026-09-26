@@ -43,3 +43,46 @@ describe('[PTF-JOURNAL-PUBLIC] aucun workflow n\'imprime un corps de réponse br
         expect(imprimeUnCorpsBrut(ligne)).toEqual(attendu);
     });
 });
+
+// ── [PTF-JOURNAL-PUBLIC-ERREURS] Le TEXTE d'une erreur du serveur n'est jamais imprimé ─────────────
+// Un message d'exception peut citer un extrait de l'état (l'erreur de `JSON.parse` de Node reproduit un
+// morceau du texte fautif) ou une réponse distante. Les workflows impriment donc un MODÈLE FIXE : des
+// booléens (`erreur_signalee: (.error != null)`) et des codes énumérés, jamais `.error`, `.body`,
+// `.message`, `.detail`, `.stack`, `.erreur` (libres).
+
+/** Programmes `jq '…'` d'un workflow (commentaires YAML exclus). */
+export const programmesJq = (contenu: string): string[] => {
+    const code = contenu.split('\n').map((l) => l.replace(/(^|\s)#.*$/, '')).join('\n');
+    return [...code.matchAll(/\bjq\b[^'\n]*'([^']*)'/g)].map((m) => m[1]);
+};
+
+/** Champs LIBRES lus par un programme jq, hors du test de présence `.error != null`. */
+export const champsLibresImprimes = (programme: string): string[] => {
+    const sansTest = programme.replace(/\(\s*\.error\s*!=\s*null\s*\)/g, '');
+    return [...sansTest.matchAll(/(?:\.|\b)(error|erreur|body|message|detail|stack)\b/g)].map((m) => m[1]);
+};
+
+describe('[PTF-JOURNAL-PUBLIC-ERREURS] aucun workflow n\'imprime le texte d\'une erreur serveur', () => {
+    it('balaie tous les workflows', () => {
+        const fichiers = readdirSync(DOSSIER).filter((f) => /\.ya?ml$/.test(f));
+        const tousProgrammes = fichiers.flatMap((f) =>
+            programmesJq(readFileSync(resolve(DOSSIER, f), 'utf8')).map((p) => ({ f, p })));
+        // Anti-vacuité : les deux crons ont bien un filtre jq à inspecter.
+        expect(tousProgrammes.filter((x) => x.f === 'fintable-sync.yml').length).toBeGreaterThanOrEqual(1);
+        expect(tousProgrammes.filter((x) => x.f === 'refresh-prices.yml').length).toBeGreaterThanOrEqual(1);
+        const fautes = tousProgrammes.filter((x) => champsLibresImprimes(x.p).length > 0).map((x) => `${x.f} : ${x.p}`);
+        expect(fautes, `texte d'erreur libre imprimé dans un journal PUBLIC :\n${fautes.join('\n')}`).toEqual([]);
+    });
+
+    it.each([
+        ['le défaut d\'origine (fintable)', "  jq -c '{ok, conflict, error}' /tmp/x", ['error']],
+        ['l\'erreur de change libre', "  jq -c '{fx}' /tmp/x; jq -c '{e: .fx.erreur}' /tmp/x", ['erreur']],
+        ['le corps', "  jq -r '.body' /tmp/x", ['body']],
+        ['le message', "  jq '.message' /tmp/x", ['message']],
+        ['le modèle fixe', "  jq -c '{ok, erreur_signalee: (.error != null)}' /tmp/x", []],
+        ['un commentaire qui en parle', "  # jq '.error' /tmp/x", []],
+    ])('détecteur : %s', (_nom, ligne, attendu) => {
+        const trouves = programmesJq(ligne).flatMap(champsLibresImprimes);
+        expect(trouves).toEqual(attendu);
+    });
+});

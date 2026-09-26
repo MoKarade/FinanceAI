@@ -17129,6 +17129,13 @@ activé ». Le test accusait une zone morte du graphe alors que le clic n'atteig
 
 ---
 
+### `UN-JOURNAL-PUBLIC-IMPRIME-UN-MODELE-FIXE-PAS-UN-MESSAGE-D-ERREUR` — 2026-09-26
+
+Lot `[PTF-JOURNAL-PUBLIC-ERREURS]`. Un message d'exception est du texte libre : `JSON.parse` de Node y reproduit un morceau de l'entrée, une erreur réseau cite une URL. Dans un dépôt PUBLIC, tout ce qu'un workflow imprime est public.
+
+- Imprimer des booléens et des codes énumérés (`erreur_signalee: (.error != null)`), jamais `.error`, `.body`, `.message`, `.detail`, `.stack`, `.erreur`.
+- La garde lit les programmes `jq` des workflows (`tests/journauxCiSansDonnees.test.ts`), pas seulement `cat /tmp/…`.
+
 ### `UN-HOOK-DE-COMMIT-LIT-LA-COMMANDE-PAS-LE-TEXTE-NI-L-INDEX-D-AVANT` — 2026-09-25
 
 Lot `[GATE-COMMIT-ANALYSE]`. Trois défauts mesurés dans `scripts/hooks/commit-gate.mjs` : (1) il réagissait à

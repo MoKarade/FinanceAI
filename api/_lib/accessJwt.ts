@@ -69,12 +69,14 @@ export function accesExige(get: (k: string) => string | undefined): boolean {
 const jeuxDeCles = new Map<string, JWTVerifyGetKey>();
 
 let dernierAvisRefus = 0;
+let dernierAvisConfig = 0;
 
 /** Tests uniquement. */
 export function reinitialiserCleAccess(): void {
     jeuxDeCles.clear();
     dernierAvisRefus = 0;
     dernierAvisObservation = 0;
+    dernierAvisConfig = 0;
 }
 
 function clesDistantes(equipe: string): JWTVerifyGetKey {
@@ -133,7 +135,12 @@ export async function controlerAcces(
     if (cfg) {
         jetonValide = await jetonAccessValide(headers.get(ENTETE_JETON), cfg, opts);
     } else if (exige) {
-        console.error('[access] configuration incomplète (CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD / CF_ACCESS_EMAIL) : accès refusé');
+        // 1 ligne / minute au plus (sans donnée) : le journal ne doit pas pouvoir être inondé par des appels répétés.
+        const t = Date.now();
+        if (t - dernierAvisConfig > 60_000) {
+            dernierAvisConfig = t;
+            console.error('[access] configuration incomplète (CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD / CF_ACCESS_EMAIL) : accès refusé');
+        }
     }
     if (jetonValide) return { autorise: true, jetonValide: true, observation: false };
     if (exige) return { autorise: false, jetonValide: false, observation: false };

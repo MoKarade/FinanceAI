@@ -228,3 +228,17 @@ describe('ipClient : cf-connecting-ip seulement avec un jeton valide', () => {
         expect(ipClient(new Headers({ 'x-vercel-forwarded-for': '104.16.0.1' }), true)).toBe('104.16.0.1');
     });
 });
+
+describe('journal : jamais inondable', () => {
+    const get = (o: Record<string, string>) => (k: string) => o[k];
+    it('configuration incomplète : UNE ligne par minute, quel que soit le nombre d\'appels, sans donnée', async () => {
+        const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        for (let i = 0; i < 20; i++) await controlerAcces(new Headers({ [ENTETE_JETON]: `secret-${i}` }), get({}), { cles });
+        expect(err).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(err.mock.calls)).not.toContain('secret-');
+    });
+    it('jetons refusés : au plus une ligne par 10 s', async () => {
+        for (let i = 0; i < 20; i++) await ok(`a.b.${i}`);
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+});

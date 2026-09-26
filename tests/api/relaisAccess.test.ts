@@ -200,3 +200,16 @@ describe('proxys : la réécriture Vercel peut livrer l\'URL réécrite OU l\'UR
         expect(ok.headers.get('x-content-type-options')).toBe('nosniff');
     });
 });
+
+describe('paramètre répété : refus, jamais de repli silencieux sur le chemin d\'origine', () => {
+    it('URL d\'origine avec `?symbol=` ajouté par l\'appelant', async () => {
+        const r = await proxyYahooHistorique(new Request('http://localhost/api/history/yahoo/AAPL?symbol=MSFT&symbol=X', { headers: { [ENTETE_JETON]: await jeton() } }), { env: env(), access: { cles } });
+        expect(r.status).toBe(400);
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+    it('URL d\'origine Fintable avec `?path=` répété', async () => {
+        const r = await proxyFintable(new Request('http://localhost/api/fintable/accounts?path=a&path=b', { headers: { [ENTETE_JETON]: await jeton() } }), { env: env(), access: { cles } });
+        expect(r.status).toBe(400);
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+});

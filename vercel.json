@@ -16,7 +16,7 @@
       "has": [
         {
           "type": "host",
-          "value": ".*\\.vercel\\.app"
+          "value": "finance-ai(-mokarades-projects)?\\.vercel\\.app"
         }
       ],
       "destination": "https://finance.hubperso.com/$1",

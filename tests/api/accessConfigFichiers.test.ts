@@ -38,9 +38,15 @@ describe('vercel.json', () => {
         expect(r!.destination).toBe('https://finance.hubperso.com/$1');
         expect(r!.permanent).toBe(false);
         const motif = new RegExp(`^(?:${(r!.has as Array<{ value: string }>)[0].value})$`);
-        expect(motif.test('financeai-abc123-marc.vercel.app')).toBe(true);
+        // Alias de PRODUCTION seulement (avis pole-securite) : les préversions ne sont PAS redirigées vers la prod
+        // (le mur de l'API — jeton Access — les protège déjà). [À vérifier] noms exacts du projet et de l'équipe dans Vercel.
+        expect(motif.test('finance-ai.vercel.app')).toBe(true);
+        expect(motif.test('finance-ai-mokarades-projects.vercel.app')).toBe(true);
+        expect(motif.test('finance-ai-git-agence-x-mokarades-projects.vercel.app')).toBe(false);
+        expect(motif.test('finance-ai-4kx9abc12-mokarades-projects.vercel.app')).toBe(false);
+        expect(motif.test('autre-projet.vercel.app')).toBe(false);
         expect(motif.test('finance.hubperso.com')).toBe(false);
-        expect(motif.test('evil.vercel.app.example.com')).toBe(false);
+        expect(motif.test('finance-ai.vercel.app.example.com')).toBe(false);
     });
 
     it('les prévisualisations claude/* restent DÉSACTIVÉES', () => {
@@ -94,7 +100,22 @@ describe('le contrôle d\'accès n\'est jamais coupé en code de production', ()
     });
     it('les points d\'entrée des fonctions n\'ouvrent aucune option de contournement', () => {
         const entrees = ['api/claude/v1/messages.ts', 'api/yahoo/history.ts', 'api/yahoo/search.ts', 'api/proxy/fintable.ts'];
-        for (const e of entrees) expect(lit(e), e).not.toMatch(/access|CF_ACCESS/);
+        for (const e of entrees) expect(lit(e), e).not.toMatch(/access|CF_ACCESS/i);
+    });
+    it('chaque point d\'entrée appelle son gestionnaire avec la SEULE requête : aucune option (ni venue de la requête, ni « pour les tests ») ne passe', () => {
+        const appels: Array<[string, RegExp]> = [
+            ['api/claude/v1/messages.ts', /relayClaude\(request\)/],
+            ['api/yahoo/history.ts', /proxyYahooHistorique\(request\)/],
+            ['api/yahoo/search.ts', /proxyYahooRecherche\(request\)/],
+            ['api/proxy/fintable.ts', /proxyFintable\(request\)/],
+        ];
+        for (const [f, motif] of appels) {
+            const src = lit(f);
+            expect(src, f).toMatch(motif);
+            // Un seul appel de gestionnaire par fichier, et aucun objet d'options construit à partir de l'en-tête/de la requête.
+            expect(src.match(/(relayClaude|proxy[A-Z]\w+)\(/g) ?? [], f).toHaveLength(1);
+            expect(src, f).not.toMatch(/headers\.get|searchParams|env\s*:/);
+        }
     });
     it('le jeton n\'est jamais journalisé : aucun console.* de accessJwt ne reçoit un jeton', () => {
         const src = lit('api/_lib/accessJwt.ts');

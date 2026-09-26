@@ -9,6 +9,11 @@
   « code par e-mail » devant finance.hubperso.com**. Le code (PR `[CF-ACCESS]`) vérifie le jeton d'Access côté API ; rien ne
   change tant que tu n'as pas fait les étapes 3 à 5. **L'ORDRE COMPTE.** Aucune valeur ci-dessous n'est un secret
   (nom d'équipe, identifiant d'application, ton e-mail) ; ne colle jamais de clé ni de jeton dans un chat.
+  **ORDRE DE DÉPLOIEMENT : 1) fusionner #1072 (durcissement) d'abord ; 2) AVANT de déployer #1074, poser `CF_ACCESS_REQUIRED=0` sur Vercel ;
+  3) test iPhone/PWA + session expirée en préversion ; 4) application Access + DNS « Proxied » ; 5) test en fenêtre privée sur
+  finance.hubperso.com puis sur l'adresse `*.vercel.app` (API 401 ; la page de production est redirigée) ; 6) ENFIN retirer `CF_ACCESS_REQUIRED`.**
+  À mesurer en préversion (impossible d'ici) : la réécriture Vercel → fonction, 302 vs 401 sur `fetch`, et l'hôte transmis par Cloudflare (boucle de redirection).
+  La redirection ne vise que l'alias de PRODUCTION (`finance-ai[-mokarades-projects].vercel.app` — noms à confirmer dans Vercel) : les préversions ne sont pas redirigées, le mur de l'API les protège.
   0. **Avant tout : test iPhone/PWA** (condition pole-securite). Si FinanceAI est installée sur l'écran d'accueil de ton
      iPhone, iOS garde des cookies séparés de Safari : la connexion Access peut s'ouvrir hors de l'app. À tester EN PREMIER
      (sans code) ; si ça ne marche pas, le plan change — préviens-moi.

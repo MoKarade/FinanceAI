@@ -113,8 +113,10 @@ export async function proxyYahooHistorique(request: Request, opts: ProxyOptions 
     const u = new URL(request.url);
     // [À MESURER en prévisualisation] Selon la version du runtime, `request.url` porte l'URL réécrite (`?symbol=`) ou l'URL
     // d'origine (`/api/history/yahoo/<symbole>`) : les deux formes sont lues, la requête d'abord.
-    const brut = unique(u, 'symbol') ?? symboleDuChemin(u.pathname);
-    const symbole = brut ?? '';
+    // Paramètre répété (null) = REFUS, jamais un repli silencieux sur le chemin d'origine.
+    const param = unique(u, 'symbol');
+    if (param === null) return erreur(400, 'Symbole ambigu.');
+    const symbole = param ?? symboleDuChemin(u.pathname) ?? '';
     if (!SYMBOLE.test(symbole) || /^\.+$/.test(symbole)) return erreur(400, 'Symbole invalide.');
     const q = new URLSearchParams();
     for (const [cle, motif] of [['range', RANGE], ['interval', INTERVAL], ['period1', ENTIER], ['period2', ENTIER]] as const) {
@@ -153,7 +155,9 @@ export async function proxyFintable(request: Request, opts: ProxyOptions = {}): 
     const refus = await garder(request, opts);
     if (refus) return refus;
     const u = new URL(request.url);
-    const chemin = unique(u, 'path') ?? cheminFintableDuChemin(u.pathname) ?? '';
+    const param = unique(u, 'path');
+    if (param === null) return erreur(400, 'Chemin ambigu.');
+    const chemin = param ?? cheminFintableDuChemin(u.pathname) ?? '';
     // Aucun segment « .. » ou « . » : le chemin reste SOUS /api/v2 (pas de remontée vers d'autres routes de l'hôte amont).
     if (!CHEMIN_FINTABLE.test(chemin) || chemin.split('/').some((s) => s === '.' || s === '..')) {
         return erreur(400, 'Chemin invalide.');

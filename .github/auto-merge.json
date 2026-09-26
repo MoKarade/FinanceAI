@@ -11,7 +11,8 @@
   "controles_non_bloquants": [],
   "chemins_interdits": [
     "**/.env*",
-    "**/*.pem"
+    "**/*.pem",
+    "passerelle/tunnel.yml"
   ],
   "chemins_label_validation": [
     "api/**",

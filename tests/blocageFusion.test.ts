@@ -148,6 +148,34 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
         }
     });
 
+    // La liste FIXE d'avant le resync (.github/scripts/auto-merge/chemins-interdits.json, 894324cd), figée ICI comme donnée : chaque motif doit
+    // rester couvert par base ∪ config. Un motif qui disparaît sans être couvert (cas de passerelle/tunnel.yml, absent de la base 1.6.0) fait
+    // échouer ce test ; un écart voulu se DÉCLARE dans COPIES.md ET se code ici.
+    const ANCIENNE_LISTE_FIXE = [
+        'scripts/hooks/**', '.github/**', '**/commit-gate*', '**/commit-gate*/**', 'passerelle/tunnel.yml', '.claude/**', '.husky/**', 'CODEOWNERS',
+        '**/CODEOWNERS', '.github/CODEOWNERS', 'modeles/**', 'auto-merge.json', '**/auto-merge.json', 'chemins-interdits.json',
+        '**/chemins-interdits.json', '.gitattributes', '**/settings*.json',
+    ];
+    const exempleDe = (motif: string) => motif.replace(/\*\*\//g, 'x/y/').replace(/\/\*\*/g, '/x/y/z.ext').replace(/\*/g, 'x');
+
+    it('aucun chemin de l\'ancienne liste fixe ne perd sa protection (base ∪ config) : un exemple de CHAQUE motif reste non armable', () => {
+        expect(ANCIENNE_LISTE_FIXE).toHaveLength(17);
+        for (const motif of ANCIENNE_LISTE_FIXE) {
+            const d = peutArmer(pr([exempleDe(motif)]), config);
+            expect(d.armer, `motif de l'ancienne liste devenu armable : ${motif} (${exempleDe(motif)})`).toBe(false);
+        }
+        // anti-vacuité : le même exemple hors liste EST armable (le test ne passe pas parce que tout est bloqué)
+        expect(peutArmer(pr(['services/a.ts']), config).armer).toBe(true);
+    });
+
+    it('passerelle/tunnel.yml (tunnel qui expose le MCP) : chemin interdit NON attestable — même une revue valide ne le lève pas', () => {
+        expect(config.chemins_interdits).toContain('passerelle/tunnel.yml');
+        const cfg = { ...config, securite_login: 'compte-securite' };
+        const d = peutArmer(pr(['passerelle/tunnel.yml'], { reviews: [revue()] }), cfg);
+        expect(d.armer).toBe(false);
+        expect(d.raison).toContain('chemin interdit par auto-merge.json');
+    });
+
     it('aucune attestation configurée : securite_login et securite_user_id sont ABSENTS (échec fermé, chemins sensibles bloqués)', () => {
         expect(config).not.toHaveProperty('securite_login');
         expect(config).not.toHaveProperty('securite_user_id');

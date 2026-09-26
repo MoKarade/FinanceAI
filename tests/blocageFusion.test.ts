@@ -166,7 +166,7 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
         '**/CODEOWNERS', '.github/CODEOWNERS', 'modeles/**', 'auto-merge.json', '**/auto-merge.json', 'chemins-interdits.json',
         '**/chemins-interdits.json', '.gitattributes', '**/settings*.json',
     ];
-    const exempleDe = (motif: string) => motif.replace(/\*\*\//g, 'x/y/').replace(/\/\*\*/g, '/x/y/z.ext').replace(/\*/g, 'x');
+    const exempleDe = (motif: string) => motif.split('**/').join('x/y/').split('/**').join('/x/y/z.ext').split('*').join('x');
 
     it('aucun chemin de l\'ancienne liste fixe ne perd sa protection (base ∪ config) : un exemple de CHAQUE motif reste non armable', () => {
         expect(ANCIENNE_LISTE_FIXE).toHaveLength(17);

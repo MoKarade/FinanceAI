@@ -1,0 +1,13 @@
+# Fins de ligne : LF partout dans le depot ET dans les copies de travail (Windows compris).
+# Sans cela, core.autocrlf=true (defaut Git for Windows) extrait en CRLF et les tests-gardes
+# qui scannent les sources (regex, egalite de lignes) echouent en local alors qu ils passent en CI Linux.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

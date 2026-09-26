@@ -15,9 +15,10 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { toPosix } from '../helpers/toPosix';
 import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
-const RACINE = join(__dirname, '..', '..');
+const RACINE = toPosix(join(__dirname, '..', '..'));
 const IGNORES = new Set(['node_modules', '.git', 'dist', 'coverage', '.vercel', 'e2e-results', 'playwright-report']);
 
 /**
@@ -49,8 +50,8 @@ const MOTIFS_DE_DECOMMENTEUR = [
 
 function fichiersSource(dir: string, acc: string[] = []): string[] {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
-        if (e.isDirectory()) { if (!IGNORES.has(e.name)) fichiersSource(join(dir, e.name), acc); }
-        else if (/\.(ts|tsx)$/.test(e.name)) acc.push(join(dir, e.name));
+        if (e.isDirectory()) { if (!IGNORES.has(e.name)) fichiersSource(toPosix(join(dir, e.name)), acc); }
+        else if (/\.(ts|tsx)$/.test(e.name)) acc.push(toPosix(join(dir, e.name)));
     }
     return acc;
 }

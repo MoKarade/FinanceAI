@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-26 — Les tests de garde passent aussi sous Windows
+
+- Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes
+  échouaient à cause des fins de ligne et des `\` de Windows, alors qu'ils passaient sur GitHub).
+  Ajout de `.gitattributes` (fins de ligne uniformes) et d'un petit utilitaire de chemins pour les tests.
+
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 
 - Quand tu ajoutes un titre à la main (ou que la source de cours ne dit pas sa devise), le champ

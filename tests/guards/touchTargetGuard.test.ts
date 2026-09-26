@@ -18,6 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = resolve(process.cwd(), 'components');
@@ -36,7 +37,7 @@ const EXCLUSIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -180,7 +181,7 @@ function boutonsIconeSeule(): Bouton[] {
             const cls = bloc.match(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{"([^"]*)"\})/);
             const classes = cls ? (cls[1] ?? cls[2] ?? cls[3] ?? '') : '';
             out.push({
-                chemin: chemin.replace(`${process.cwd()}/`, ''),
+                chemin: chemin.replace(`${cwdPosix()}/`, ''),
                 ligne,
                 classes,
                 nomme: /aria-label|title=/.test(bloc),

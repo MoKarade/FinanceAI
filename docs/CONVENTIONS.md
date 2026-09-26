@@ -17145,3 +17145,15 @@ dépassement de tampon d'`execSync` perdait tout).
   complète : la logique pure est testable (`tests/gateCommitAnalyse.test.ts`), le défaut reste le cas sûr.
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
 - Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).
+
+## `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS` (2026-09-26, `[WIN-GARDES]`)
+
+Une trentaine de tests-gardes (scan de source) échouaient sur le PC de Marc et passaient en CI Linux, ce qui
+bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dans le code de production :
+- **Fins de ligne** : sans `.gitattributes`, `core.autocrlf=true` (défaut Git for Windows) extrait en CRLF ; un
+  `lignes[0] === "import '…';"` reçoit `…;\r`. Correctif de fond : `.gitattributes` `* text=auto eol=lf`.
+  ⚠️ Il agit à l'extraction : une copie déjà extraite reste CRLF jusqu'à `git rm --cached -r . && git reset --hard`.
+- **Séparateurs** : `path.join/resolve/relative` rendent `\` ; les gardes comparent à `/fichier.tsx` ou à
+  `process.cwd() + '/'`. Correctif : `tests/helpers/toPosix.ts` (`toPosix`, `cwdPosix`) appliqué À LA SORTIE des
+  marcheurs de fichiers, jamais en assouplissant une assertion (une garde qui ne voit rien doit rester rouge).
+- Règle : tout nouveau marcheur de fichiers d'une garde passe son résultat par `toPosix`.

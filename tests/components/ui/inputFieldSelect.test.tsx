@@ -14,7 +14,7 @@ describe('[DETTE-UI-PRIMITIVES] Input', () => {
     it('variant compact + accent = exactement les classes historiques d\'AdvancedProjectionParams', () => {
         const { container } = render(<Input accent="warning" type="number" aria-label="x" />);
         expect(classes(container.querySelector('input'))).toEqual(new Set(
-            'w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white'.split(' '),
+            'w-full bg-dark border border-warning-500/20 rounded-sm px-2 py-1 text-meta text-white' /* [S5-TAILWIND4] rounded → rounded-sm (même 0,25rem) */.split(' '),
         ));
     });
 
@@ -38,7 +38,7 @@ describe('[DETTE-UI-PRIMITIVES] Select', () => {
     it('reproduit les classes historiques du select de ProjectionControls', () => {
         const { container } = render(<Select aria-label="x"><option value="a">A</option></Select>);
         expect(classes(container.querySelector('select'))).toEqual(new Set(
-            'bg-dark border border-border rounded px-2 py-1 text-meta text-ink-100'.split(' '),
+            'bg-dark border border-border rounded-sm px-2 py-1 text-meta text-ink-100' /* [S5-TAILWIND4] rounded → rounded-sm */.split(' '),
         ));
         expect(container.querySelectorAll('option')).toHaveLength(1);
     });

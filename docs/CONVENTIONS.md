@@ -17146,6 +17146,41 @@ dépassement de tampon d'`execSync` perdait tout).
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
 - Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).
 
+---
+
+### `UNE-LISTE-DE-CHEMINS-COPIEE-D-UNE-AUTRE-APP-SUR-BLOQUE-CE-QUI-N-EST-PAS-A-ELLE` — 2026-09-25
+
+Lot `[GARDE]`. Le modèle d'auto-fusion de l'Atelier interdit `hooks/**` et `**/settings*` — pensés pour les hooks de l'agence et
+les réglages de Claude. Dans FinanceAI, `hooks/` est le dossier des hooks REACT et `components/settings/**` l'écran Réglages :
+~35 fichiers d'interface auraient exigé Marc à chaque PR. Le test qui a le premier révélé le faux positif est la table
+« le code ordinaire reste automatique » de `tests/blocageFusion.test.ts`.
+
+- Copier une liste de sécurité d'une autre app : la RE-LIRE contre l'arborescence locale (`git ls-files` + la liste) avant de
+  la déclarer bonne. Un test de sur-blocage est aussi nécessaire qu'un test de blocage.
+- Une copie ADAPTÉE se documente dans la copie (`_note`) ET dans la liste jointe (`COPIES.md`), sinon la prochaine
+  re-synchronisation efface l'adaptation en silence.
+- Un hook de commit qui ne sait pas décider (`git checkout-index` inconnu) ne doit pas déclencher 5 minutes de suite complète :
+  l'incertain doit porter sur ce qui peut vraiment être un commit (alias, enveloppes), pas sur toute commande git peu courante.
+
+## `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS` (2026-09-26, `[WIN-GARDES]`)
+
+Une trentaine de tests-gardes (scan de source) échouaient sur le PC de Marc et passaient en CI Linux, ce qui
+bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dans le code de production :
+- **Fins de ligne** : sans `.gitattributes`, `core.autocrlf=true` (défaut Git for Windows) extrait en CRLF ; un
+  `lignes[0] === "import '…';"` reçoit `…;\r`. Correctif de fond : `.gitattributes` `* text=auto eol=lf`.
+  ⚠️ Il agit à l'extraction : une copie déjà extraite reste CRLF jusqu'à `git rm --cached -r . && git reset --hard`.
+- **Séparateurs** : `path.join/resolve/relative` rendent `\` ; les gardes comparent à `/fichier.tsx` ou à
+  `process.cwd() + '/'`. Correctif : `tests/helpers/toPosix.ts` (`toPosix`, `cwdPosix`) appliqué À LA SORTIE des
+  marcheurs de fichiers, jamais en assouplissant une assertion (une garde qui ne voit rien doit rester rouge).
+- Règle : tout nouveau marcheur de fichiers d'une garde passe son résultat par `toPosix`.
+- **Récidive (2026-09-28, `[WIN-GARDES-A11Y-FUTUREPROJECTION]`)** : `tests/components/chartAlternativeTexteGuard.test.ts` (écrit après ce
+  balayage) utilisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` — une clé de DICTIONNAIRE, pas un message d'erreur — sans `toPosix`,
+  contrairement aux deux autres usages du même fichier. Sous Windows la clé ne matchait jamais, l'exemption « graphe interactif » ne
+  s'appliquait pas, et la garde réclamait `role="img"` sur un composant qui avait déjà le bon attribut (`role="group"`, à raison : des
+  pastilles focusables vivent dedans, y mettre `role="img"` aurait cassé la protection nested-interactive WCAG 4.1.2). La règle ci-dessus ne
+  suffit donc pas seule : un `grep -rn "path.relative(" tests/` après le lot n'aurait pas suffi non plus, puisque ce fichier n'existait pas
+  encore — la règle doit être réappliquée à CHAQUE nouveau marcheur de fichiers, pas seulement balayée une fois.
+
 ### `UNE-CONFIRMATION-QUE-L-APPELANT-S-ACCORDE-N-EST-PAS-UNE-CONFIRMATION` — 2026-09-26
 
 Lot `[MCP-CONFIRM-TOKEN]`. Les outils d'écriture MCP se protégeaient par un booléen `confirm:true` passé par le MODÈLE ; les `apply_*` n'avaient rien. Un document piégé fait envoyer le booléen au premier appel.
@@ -17154,3 +17189,36 @@ Lot `[MCP-CONFIRM-TOKEN]`. Les outils d'écriture MCP se protégeaient par un bo
 - Un point d'enregistrement unique (`registerWriteTool`) + un test qui interdit `runApply` dans les `*.tool.ts` : impossible d'ajouter un outil d'écriture sans la porte.
 - Dire la limite : le jeton ne prouve pas qu'un humain a lu ; l'approbation par appel du client reste la barrière (annotations MCP).
 - Journal d'audit d'écriture : outil, phase, nombre, code de résultat ; jamais de montant ni de nom.
+
+## `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` (2026-09-28, `[KIT-191]`)
+
+Resynchronisation du kit d'auto-merge 1.9.0 → 1.9.1 (2 fichiers sur 10 changés : `verifier-copies.mjs`, `LISEZMOI.md`).
+Après avoir relancé `node modeles/auto-merge/verifier-copies.mjs --ecrire-copies .` pour régénérer le tableau des
+empreintes, `git diff -- COPIES.md` a montré la suppression silencieuse des sections `## Source et méthode` et
+`## Écarts FinanceAI` : elles avaient été ajoutées À LA MAIN après le premier `--ecrire-copies` (commit `[KIT-190]`),
+mais `formaterCopies()` (côté Atelier) n'écrit QUE l'en-tête + le tableau et `writeFileSync` remplace tout le fichier —
+il ne fusionne rien avec ce qui existe déjà.
+
+- `--ecrire-copies` n'est PAS idempotent sur un `COPIES.md` enrichi à la main : toute section ajoutée après le tableau
+  doit être sauvegardée avant de relancer la commande, puis réinjectée (et mise à jour : versions, hash de tag) après.
+- Un `git diff --stat` après `--ecrire-copies` qui montre plus de suppressions que de lignes de tableau changées est le
+  signal : comparer au contenu d'avant plutôt que de committer tel quel.
+- Ce comportement n'est pas propre à FinanceAI : toute app qui a documenté ses écarts dans `COPIES.md` (au lieu d'un
+  fichier séparé) doit refaire ce geste à chaque bump de version. Piste pour l'Atelier (non faite ici, hors périmètre du
+  lot) : `formaterCopies()` pourrait préserver tout ce qui suit le tableau au lieu de l'écraser.
+
+## `UN-DOC-ECRIT-SUR-UNE-BRANCHE-NON-FUSIONNEE-PEUT-DEJA-ETRE-FAUX` (2026-09-28, `[DOCS-PROTECTION]` v3)
+
+En reconstruisant la couche « documents protégés » sur `main` à jour (après avoir regardé une branche v2 périmée, base
+d'avant les resyncs kit-190/191 et l'attestation réelle #1086), l'ADR 0024 de la v2 affirmait, dans sa section
+« Conséquences », que cocher une case de `BACKLOG.md` exigeait l'attestation de pole-securite. Faux : le code
+(`docsAjoutsSeulement.mjs`) et la config (`chemins_contenu_surveille`) de la MÊME v2 classaient `BACKLOG.md` en
+« contenu surveillé » (souple : cocher/archiver admis seul), pas en « ajouts seulement » (strict). L'incohérence
+n'a été vue qu'en reconstruisant le document depuis zéro, comparé ligne à ligne au code qu'il décrit.
+
+- Un ADR ou une doc écrite sur une branche jamais fusionnée n'a jamais été relue contre le code final : elle peut
+  contenir une affirmation qui contredit le comportement réel dès le premier commit, sans que rien ne l'ait signalé.
+- Porter un document d'une branche à une autre n'est pas une copie : c'est l'occasion de le revérifier contre le code
+  qu'il prétend décrire, pas seulement contre les numéros de version.
+- Piste : un test qui dérive automatiquement la liste « strict vs souple » d'un ADR depuis `auto-merge.json`
+  éviterait qu'un texte descriptif diverge silencieusement de la configuration qu'il documente.

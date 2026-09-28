@@ -74,6 +74,8 @@ describe('[PRIVACY-CONTEXTE-IA] le bouton « Diagnostic » de l’onglet Budget 
     it('mode discret : un toast explique, le modal ne s’ouvre pas', () => {
         setDiscret(true);
         render(<Budget {...props} />);
+        // [S5-REFONTE-BUDGET] « Diagnostic » vit, replié, dans « Outils du budget ».
+        fireEvent.click(screen.getByRole('button', { name: /Outils du budget/ }));
         fireEvent.click(screen.getByRole('button', { name: 'Diagnostic' }));
         expect(showToast).toHaveBeenCalledWith(MESSAGE_DIAGNOSTIC_MODE_DISCRET, 'info');
         expect(screen.queryByText('Diagnostic IA du Budget')).toBeNull();
@@ -82,6 +84,8 @@ describe('[PRIVACY-CONTEXTE-IA] le bouton « Diagnostic » de l’onglet Budget 
 
     it('contrôle — mode normal : le modal s’ouvre', async () => {
         render(<Budget {...props} />);
+        // [S5-REFONTE-BUDGET] « Diagnostic » vit, replié, dans « Outils du budget ».
+        fireEvent.click(screen.getByRole('button', { name: /Outils du budget/ }));
         fireEvent.click(screen.getByRole('button', { name: 'Diagnostic' }));
         await waitFor(() => expect(screen.getByText('Diagnostic IA du Budget')).toBeTruthy());
         expect(showToast).not.toHaveBeenCalledWith(MESSAGE_DIAGNOSTIC_MODE_DISCRET, 'info');

@@ -49,7 +49,7 @@ describe('FutureHealthSummary — état AVEC données', () => {
 
     it('affiche le score condensé « Santé financière : N/100 »', () => {
         render(<FutureHealthSummary />);
-        expect(screen.getByText(/Santé financière/i)).toBeInTheDocument();
+        expect(screen.getByText(/Santé/i)).toBeInTheDocument(); // [S5-REFONTE-FUTUR] pastille « Santé N/100 »
         expect(screen.getByText(/\/100/)).toBeInTheDocument();
     });
 

@@ -52,7 +52,7 @@ export const SectionVariationJour: React.FC<{ variation: DayVariationResult }> =
                                     type="button"
                                     onClick={basculerVariation}
                                     aria-expanded={variationOuverte}
-                                    className="w-full flex items-baseline justify-between gap-2 text-left focus-ring rounded"
+                                    className="w-full flex items-baseline justify-between gap-2 text-left focus-ring rounded-sm"
                                 >
                                     {/* Titre AUTONOME : le montant est lisible sans déplier. */}
                                     <span className="text-tiny uppercase tracking-widest text-ink-400 font-bold">

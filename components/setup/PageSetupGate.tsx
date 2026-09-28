@@ -12,7 +12,6 @@ const PayslipUploadCard = lazyWithRetry(
     () => import('../settings/PayslipUploadCard').then((m) => ({ default: m.PayslipUploadCard })),
     'PayslipUploadCard',
 );
-import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
 import { REQUIREMENTS, type Requirement, type RequirementId, type RequirementField, type ImportKind } from './requirements';
 
 /**
@@ -118,7 +117,7 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
     },
     [Tab.INVESTMENTS]: {
         mode: 'hard',
-        title: 'Investissements',
+        title: 'Placements',
         intro:
             'Ajoute au moins un placement (action, ETF, crypto…) — manuellement ou via un import ' +
             'courtier — pour suivre et projeter ton portefeuille.',
@@ -215,7 +214,7 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
             <div className="flex items-start gap-3">
                 <span
                     className={`shrink-0 w-9 h-9 rounded-card flex items-center justify-center ${
-                        met ? 'bg-success-500/15 text-success-400' : 'bg-white/[0.08] text-ink-300'
+                        met ? 'bg-success-500/15 text-success-400' : 'bg-white/8 text-ink-300'
                     }`}
                     aria-hidden="true"
                 >
@@ -244,7 +243,7 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
                                         placeholder={f.placeholder ?? '0'}
                                         onChange={(e) => setVals((p) => ({ ...p, [f.id]: e.target.value }))}
                                         aria-label={f.label}
-                                        className="flex-1 min-w-0 bg-transparent py-2 text-body text-ink-50 outline-none font-mono"
+                                        className="flex-1 min-w-0 bg-transparent py-2 text-body text-ink-50 outline-hidden font-mono"
                                     />
                                     {f.unit && <span className="text-meta text-ink-400 shrink-0">{f.unit}</span>}
                                 </div>
@@ -306,7 +305,9 @@ const FullSetupScreen: React.FC<{
     const total = requirements.length;
     const done = useFinanceStore((s) => requirements.filter((r) => r.isMet(s)).length);
 
-    const loadTestData = () => {
+    // [S5-REFONTE-PERF] Personas chargés au clic : ~25 Ko de données fictives hors du démarrage.
+    const loadTestData = async () => {
+        const { getPersonaOrDefault, DEFAULT_PERSONA_ID } = await import('../../services/testFixtures');
         const persona = getPersonaOrDefault(DEFAULT_PERSONA_ID);
         enableTestMode(persona.build(), persona.id);
     };
@@ -324,7 +325,7 @@ const FullSetupScreen: React.FC<{
             role="region"
             aria-labelledby="page-setup-title"
         >
-            <div className="rounded-2xl border border-warning-500/25 bg-gradient-to-b from-warning-500/[0.06] to-transparent p-6">
+            <div className="rounded-2xl border border-warning-500/25 bg-linear-to-b/srgb from-warning-500/6 to-transparent p-6">
                 <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
                     <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>
@@ -342,7 +343,7 @@ const FullSetupScreen: React.FC<{
                         aria-valuemax={total}
                         aria-label={`Configuration : ${done} sur ${total} prérequis prêts`}
                     >
-                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[10rem]">
+                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-40">
                             <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
                         </div>
                         {/* [A11Y-CHART-HINT-HIDDEN] Masqué À BON DROIT : le `role="progressbar"`
@@ -363,7 +364,7 @@ const FullSetupScreen: React.FC<{
                     )}
                     <button
                         type="button"
-                        onClick={loadTestData}
+                        onClick={() => { void loadTestData(); }}
                         className="inline-flex items-center gap-2 min-h-[44px] px-3 py-1.5 rounded-card border border-white/15 bg-white/5 text-meta font-medium text-ink-200 hover:bg-white/10 hover:text-ink-50 transition-colors focus-ring"
                     >
                         <Icon name="flask" size={14} /> Données de test
@@ -394,7 +395,7 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; cu
 
     return (
         <div className="mb-6">
-            <div className="rounded-2xl border border-warning-500/25 bg-warning-500/[0.06] p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="rounded-2xl border border-warning-500/25 bg-warning-500/6 p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-meta text-warning-400">
                     <Icon name="alert" size={16} className="shrink-0" />
                     <span>{missing} donnée{missing > 1 ? 's' : ''} recommandée{missing > 1 ? 's' : ''} pour enrichir « {title} ».</span>
@@ -418,7 +419,11 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; cu
 };
 
 // ────────────────────────────────────────────────────────────── Gate ───────
-export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = ({ tab, children }) => {
+/**
+ * `verrouille` : écran propre à la page, rendu À LA PLACE de l'écran générique tant que les
+ * prérequis manquent ([S5-REFONTE-ASSISTANT] l'Assistant montre un aperçu + sa carte d'activation).
+ */
+export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode; verrouille?: React.ReactNode }> = ({ tab, children, verrouille }) => {
     const config = PAGE_SETUP[tab];
     const requirements = useMemo(
         () => (config ? config.requirementIds.map((id) => REQUIREMENTS[id]) : []),
@@ -439,6 +444,7 @@ export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode }> = 
     }
 
     if (allMet || optedOut || forceShow) return <>{children}</>;
+    if (verrouille) return <>{verrouille}</>;
 
     return (
         <FullSetupScreen

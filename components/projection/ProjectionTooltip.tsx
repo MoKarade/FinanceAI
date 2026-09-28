@@ -171,8 +171,8 @@ export const TodayValueBadge = (props: { cx?: number; cy?: number; value?: strin
 // centré qui passe par-dessus les aires et devient illisible). Ligne horizontale
 // (Objectif FIRE) → pill en haut à droite ; ligne verticale (Aujourd'hui) → pill
 // en haut, décalée à droite du trait pour ne pas chevaucher l'axe Y.
-export const RefLineLabel = (props: { viewBox?: { x?: number; y?: number; width?: number; height?: number }; value?: string | number; color?: string }) => {
-    const { viewBox, value, color = '#ffffff' } = props;
+export const RefLineLabel = (props: { viewBox?: { x?: number; y?: number; width?: number; height?: number }; value?: string | number; color?: string; jalon?: boolean }) => {
+    const { viewBox, value, color = '#ffffff', jalon = false } = props;
     if (!viewBox) return null;
     const { x = 0, y = 0, width = 0, height = 0 } = viewBox;
     const h = 18;
@@ -182,6 +182,11 @@ export const RefLineLabel = (props: { viewBox?: { x?: number; y?: number; width?
     // AVANT le rendu — `Pill` la recalcule à l'identique, aucune divergence possible (même formule,
     // mêmes paramètres).
     const w = Math.round(text.length * 11 * 0.58 + 16);
+    // [S5-REFONTE-FUTUR] Jalon (FIRE, retraite — maquette F-bureau) : pastille CENTRÉE sur le trait,
+    // posée au-dessus du tracé (la marge haute du graphe lui réserve la place).
+    if (jalon && !isHorizontal) {
+        return <Pill x={x - w / 2} y={y - h - 8} text={text} color={color} fontSize={11} height={h + 4} widthPad={18} fillOpacity={0.95} rx={11} />;
+    }
     const rectX = isHorizontal ? x + width - w - 6 : x + 6;
     const rectY = isHorizontal ? y - h - 3 : y + 3;
     return <Pill x={rectX} y={rectY} text={text} color={color} fontSize={11} height={h} widthPad={16} fillOpacity={0.88} rx={9} />;

@@ -4,6 +4,78 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-28 — **`[DOCS-PROTECTION]` (v3) : couche « documents des agents protégés » reconstruite sur main (kit 1.9.1 + attestation réelle)**
+> Reconstruit PAR-DESSUS main (contient déjà `[KIT-191]` + `[#1086]` + le correctif a11y `#1087` fusionnés) : `modeles/auto-merge/armer-docs.mjs`
+> (point d'entrée du workflow, AVANT l'`armer.mjs` du modèle, copie exacte intacte), `docsAjoutsSeulement.mjs` (décision pure, statique),
+> `LISEZMOI-docs.md`, ADR 0024. Deux niveaux : `chemins_ajouts_seulement` (STRICT — `docs/claude/lecons.md`, `docs/CONVENTIONS.md` : aucune ligne
+> existante ne change) et `chemins_contenu_surveille` (SOUPLE — `BACKLOG.md`, `HANDOVER.md`, `CHANGELOG.md` : cocher/archiver admis, mêmes
+> contrôles sur les lignes AJOUTÉES). `CLAUDE.md` + les 13 `docs/claude/*.md` (sauf `lecons.md`) passent sous attestation
+> (`chemins_label_validation`). Workflow `armement-auto-merge.yml` ADAPTÉ d'UNE ligne (`armer.mjs` → `armer-docs.mjs`), sorti du tableau
+> `COPIES.md` (9 fichiers exacts restants), les deux empreintes déclarées + un test qui vérifie que c'est la SEULE différence.
+> `securite_login`/`securite_user_id` sont RÉELS depuis #1086 : les tests d'attestation utilisent le VRAI `attestationValide`, plus de fixture
+> de substitution.
+> ⚠️ Repris d'une branche v2 périmée (base d'avant kit-190/191 et #1086) : le travail non commité réutilisable (bloc ESLint nominatif pour
+> les `.mjs` propres à FinanceAI, dead-code) a été porté ; le fix `exempleDe` split/join était déjà sur main via une autre branche (`resync`),
+> pas reporté (redondant). Bug trouvé en portant l'ADR : la v2 disait que cocher une case de `BACKLOG.md` exigeait l'attestation — faux, le
+> module l'admet SEUL (contenu surveillé) ; corrigé dans l'ADR ici. Le test a11y `chartAlternativeTexteGuard.test.ts`, trouvé rouge en cours de
+> route (préexistant, pas causé par ce lot), a été DIAGNOSTIQUÉ à tort comme « role="img" manquant sur FutureProjection.tsx » puis correctement
+> identifié comme un bug du TEST lui-même (Windows, voir session suivante) et corrigé en PR séparée #1087 AVANT de continuer ce lot (base à jour).
+> PR brouillon, `validation-marc`, **NON armée** (chemins sensibles ; attend la relecture ligne à ligne de pole-securite).
+>
+> ## 🟩 Session 2026-09-28 — **`[WIN-GARDES-A11Y-FUTUREPROJECTION]` : la garde a11y des graphes était rouge sous Windows, pas le composant**
+> `tests/components/chartAlternativeTexteGuard.test.ts` ligne 83 lisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` SANS `toPosix()` :
+> sous Windows, `path.relative` rend `components\FutureProjection.tsx` (antislash), qui ne matchait jamais la clé `components/FutureProjection.tsx`
+> (slash) → le graphe interactif (pastilles de jalons focusables, #599) était vu comme non-interactif, et le test exigeait `role="img"` au lieu
+> du `role="group"` déjà présent (ligne 1860) et correct. **Le composant n'a pas changé** : y ajouter `role="img"` aurait dégradé la protection
+> nested-interactive (WCAG 4.1.2) que le code commente explicitement. Correctif : `toPosix(path.relative(...))`, comme les deux autres usages du
+> même fichier (déjà corrects). Même classe de bug que `[WIN-GARDES]` (2026-09-26) — ce fichier de garde n'avait pas été balayé. Piste notée au
+> BACKLOG (`[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`) : auditer les autres `path.relative()` de `tests/**`, non faite ici (hors périmètre, cosmétique
+> ailleurs). PR normale (non sensible), armée après gate vert (#1087).
+>
+> ## 🟦 Session 2026-09-28 — **`[KIT-191]` : le kit d'auto-merge de l'Atelier passe en 1.9.1 (tag `kit-1.9.1`) — delta isolé pour relecture sécurité**
+> Resynchro depuis `[KIT-190]` (commit `00512380`, déjà revu par pole-securite sur le fond) : sur les 10 fichiers copiables
+> attestés par `COPIES.md`, seuls `verifier-copies.mjs` (+128/-…) et `LISEZMOI.md` (+9, nouvelle section « Profils du kit »)
+> changent d'empreinte ; les 8 autres (`autoMerge.mjs`, `armer.mjs`, `fusionner.mjs`, `codes-raison.mjs`…) sont inchangés
+> depuis 1.9.0. Nouveauté 1.9.1 côté Atelier : profils `--profil prive/complet` (un dépôt privé sans protection de branche
+> peut retirer `armement-auto-merge.yml`) — **non adoptée ici**, FinanceAI reste au profil `complet` (armement natif conservé).
+> `COPIES.md` régénéré puis les sections « Source et méthode » / « Écarts FinanceAI » restaurées à la main (`--ecrire-copies`
+> les efface, voir `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` dans `docs/CONVENTIONS.md`). `tests/blocageFusion.test.ts`
+> mis à jour (1.9.0/`kit-1.9.0`/`a17b41d` → 1.9.1/`kit-1.9.1`/`df55f4c`). Commit séparé (`ba609fab`) pour une relecture du
+> delta seul par pole-securite ; PR brouillon, étiquette `validation-marc`, **NON armée** (chemins sensibles, pas d'attestation
+> possible avant `securite_login`).
+>
+> ## 🟦 Session 2026-09-27 — **`[KIT-190]` : le kit d'auto-merge de l'Atelier passe en 1.9.0 (tag `kit-1.9.0`) — Dependabot re-fusionné**
+> Copies exactes du tag `kit-1.9.0` (commit `a17b41d`) dans `modeles/auto-merge/` (+ `codes-raison.mjs`), `COPIES.md` refait (écarts un à un). NOUVEAU workflow
+> `.github/workflows/auto-merge.yml` (gabarit événementiel, adapté de deux valeurs : `workflows: [CI]` et `node-version-file: .nvmrc`) : il fusionne Dependabot après `carence_dependabot_jours` = 3.
+> `securite_login`/`securite_user_id` toujours ABSENTS (PR de 2 lignes de pole-securite ensuite : App `<slug>[bot]` + identifiant numérique). `commit-gate`
+> hors lot. Tests : `tests/blocageFusion.test.ts` (Dependabot éligible fusionné / sensible refusé / carence, attestation App sur fixture, workflow lu comme donnée).
+>
+> ## 🟦 Session 2026-09-26 — **`[GARDE-RESYNC]` : le mécanisme de fusion auto = le modèle Atelier 1.6.0 (copies exactes)**
+> Autorisé par Marc. `modeles/auto-merge/*` (copies exactes du commit `f8e2177` d'atelier, empreintes dans `COPIES.md` racine, écarts
+> FinanceAI déclarés un à un), `.github/workflows/armement-auto-merge.yml` (gabarit tel quel) ; SUPPRIMÉS : `.github/workflows/fusion-auto.yml` et
+> `.github/scripts/auto-merge/`. `validation-marc` devient INFORMATIF ; sans `securite_login` (absent) aucune attestation n'est possible : les chemins
+> sensibles restent bloqués. ⚠️ Le modèle DÉSARME les PR Dependabot (« traitées par le workflow de fusion ») : plus d'armement automatique de Dependabot
+> tant que le gabarit de fusion événementiel n'est pas adopté. `commit-gate` hors lot. ESLint ignore `modeles/auto-merge/**`. Tests : `tests/blocageFusion.test.ts`
+> (modèle exécuté dans Node : `tests/helpers/peutArmerNode.mjs`).
+>
+> ## 🟥 Session 2026-09-25 — **`[GARDE]` : la fusion auto ne s'arme plus sur les chemins sensibles**
+> Demande pole-architecture/pole-securite. **Workflow `fusion-auto.yml` refait** sur le modèle de l'Atelier (identique à
+> BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la
+> BASE, la PR n'est lue que par l'API ; `armer.mjs` appelle `peutArmer` : brouillon, fork, label `validation-marc`/`do-not-merge`
+> ou fichier sensible ⇒ PAS armée (et désarmée si elle l'était). Sensibles : `scripts/hooks/**`, `.github/**`, `.claude/**`,
+> `**/settings*.json`, `**/commit-gate*`, `CODEOWNERS`, `modeles/**`, `.gitattributes`, + FinanceAI : `api/**` (entier), `mcp/**`, `services/secureKeyStore.ts`, `vite.config.ts`, `index.html`,
+> `vercel.json` (label `validation-marc` posé). ⚠️ ADAPTATION : `hooks/**` et
+> `**/settings*` du modèle sont RETIRÉS ici — `hooks/` = hooks REACT, `components/settings/**` = écran Réglages (~35 fichiers d'UI
+> bloqués à tort) ; à refaire à chaque re-synchronisation (`.github/scripts/auto-merge/chemins-interdits.json`, `_note`).
+> Copies de modèles et leurs empreintes : `.github/scripts/auto-merge/COPIES.md`. Tests : `tests/blocageFusion.test.ts` (table
+> d'attaque + grille A1-A9 du workflow lue comme donnée). ⚠️ Les contrôles obligatoires de la PR ne suffisent plus à fusionner :
+> une PR sensible reste à fusionner À LA MAIN par Marc.
+> 🔧 Aussi : `.gitattributes` (`* text=auto eol=lf`, l'index était déjà LF : aucun changement de contenu) ; test
+> `gateTestsHomonymes` réparé (séparateurs Windows + câblage sur la forme actuelle du hook) ; hook : limites connues documentées
+> et figées en test, sous-commandes git intégrées sans rapport avec un commit ne déclenchent plus le gate, commit non-TS sans
+> configuration globale = gardes-scan + typecheck + build (la suite complète reste celle de la CI). Le commit-gate « commun » de
+> `atelier/modeles/qualite/` n'existe pas encore : on reste sur celui de #1071.
+>
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
 > fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur
@@ -150,6 +222,12 @@
 > garde ne les voyait pas (elle cherche des FORMES, pas des valeurs). **Retirées du fichier courant** sur décision
 > de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
+>
+> ## 🟦 Session 2026-09-26 — **`[WIN-GARDES]` : `npm test` passe en local Windows**
+> 33 tests-gardes échouaient sous Windows (CRLF de `core.autocrlf` + `\` de `path.join/relative`) et bloquaient le
+> hook commit-gate. Ajout `.gitattributes` (`eol=lf`) + `tests/helpers/toPosix.ts` appliqué dans 14 gardes ; aucun seuil
+> ni assertion assouplis, aucun code de production touché. Suite : 6832/6832. ⚠️ Une copie déjà extraite reste CRLF
+> tant qu'on ne la ré-extrait pas. Leçon : `docs/CONVENTIONS.md` `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS`.
 >
 > ## 🟦 Session 2026-09-26 — **`[MCP-CONFIRM-TOKEN]` : les écritures du connecteur claude.ai exigent un aperçu puis un jeton serveur**
 > Audit sécurité P3-P6 (findings élevés 1-2) : `apply_*` écrivaient sans confirmation et `confirm:true` était fourni par le modèle.

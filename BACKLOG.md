@@ -17,6 +17,14 @@
 
 ---
 
+## 🐛 Découverte en chemin (2026-09-28)
+- [x] 🔧 [A11Y-FUTUREPROJECTION-ROLE-IMG] `tests/components/chartAlternativeTexteGuard.test.ts` rouge sur `components/FutureProjection.tsx` (« manque role="img" ») — préexistant, non causé par `[DOCS-PROTECTION]`. Diagnostic affiné : PAS un manque dans le composant (déjà `role="group"` correct, graphe interactif #599) — le TEST lisait `path.relative()` sans `toPosix()` (bug Windows, même classe que `[WIN-GARDES]`). Corrigé en PR séparée et isolée #1087 (armée, gate vert 6963 tests). Piste notée : `[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`.
+- [ ] 🔧 [WIN-GARDES-PATH-RELATIVE-BALAYAGE] (S) Auditer `grep -rn "path.relative(" tests/` (au moins `amountPrivacyScan.test.ts`, `chartPrivacyScan.test.ts`, `couplePredicatSourceUnique.test.ts`) : `chartAlternativeTexteGuard.test.ts` ligne 83 utilisait `path.relative()` SANS `toPosix()` comme clé d'un dictionnaire à clés `/` — faux négatif sous Windows (corrigé, PR #1087). Les autres usages trouvés ne sont QUE pour l'affichage d'un message d'erreur (cosmétique, pas de bug de logique) mais mériteraient un test-garde permanent (`path.relative` non enveloppé de `toPosix` interdit dans `tests/**` quand il sert de CLÉ de comparaison) — pas fait ici (pas rapide, à part).
+
+## 🔒 Garde de la fusion auto — suites (2026-09-25)
+- [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
+- [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
+
 ## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
 
 - [ ] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils d'écriture : livré en PR brouillon (validation-marc, non armée) ; à archiver quand fusionnée. Suite non faite : rate limit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ; longueur minimale de `FINANCEAI_ACCESS_KEY` (audit findings moyenne 6 et 8).

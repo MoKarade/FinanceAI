@@ -90,7 +90,7 @@ async function afficherEtCapturer(isPrivacyMode: boolean) {
     });
     render(<Harness />);
     fireEvent.click(screen.getByText(/Appliquer \(mock\)/i));
-    await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTitle(/Recomposer tes leviers/i)).toBeInTheDocument());
     return badgeValues;
 }
 

@@ -101,6 +101,25 @@ const yahooProxy = {
   },
 };
 
+// [S5-REFONTE-PERF] Graphe STATIQUE de l'entrée (index.tsx) : les modules chargés au démarrage quoi
+// qu'il arrive. Calculé une fois par build, au premier appel de `manualChunks`.
+type InfoModule = { importedIds: readonly string[] } | null;
+let grapheDemarrageCache: Set<string> | null = null;
+function grapheDemarrage(getModuleInfo: (id: string) => InfoModule): Set<string> {
+  if (grapheDemarrageCache) return grapheDemarrageCache;
+  const entree = path.resolve(__dirname, 'index.tsx');
+  const vus = new Set<string>();
+  const pile = [entree];
+  while (pile.length) {
+    const id = pile.pop()!;
+    if (vus.has(id)) continue;
+    vus.add(id);
+    for (const dep of getModuleInfo(id)?.importedIds ?? []) if (!vus.has(dep)) pile.push(dep);
+  }
+  grapheDemarrageCache = vus;
+  return vus;
+}
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -142,25 +161,42 @@ export default defineConfig(({ mode }) => {
         // nativement modulepreload, le polyfill est inutile pour notre cible.
         modulePreload: { polyfill: false },
         rollupOptions: {
-          // Vite 8 = Rolldown : `external` est une option de TOP-NIVEAU (plus sous `output`),
-          // et `manualChunks` doit être une FONCTION (la forme objet n'est plus supportée).
+          // Vite 8 = Rolldown : `external` est une option de TOP-NIVEAU (plus sous `output`).
           external: ['html2canvas'],
           output: {
-            manualChunks: (id) => {
-              if (!id.includes('node_modules/')) return undefined;
-              if (/[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) return 'react-vendor';
-              if (/[\\/]node_modules[\\/](recharts|victory-vendor|d3-[^/]+|internmap)[\\/]/.test(id)) return 'recharts';
-              // [PERF-SDK-BOOT-PRELOAD] La règle `@anthropic-ai/ → 'ai-vendor'` est RETIRÉE : un
-              // manualChunk dont le contenu n'est atteint QUE par import() devient EAGER (le chunk
-              // manuel casse la frontière asynchrone — l'entry l'importait STATIQUEMENT et le SDK
-              // ~126 Ko était modulepreload au BOOT, mesuré, alors qu'aucune chaîne statique source
-              // n'existe). Sans la règle, Rolldown range le SDK dans le chunk async naturel de
-              // claude.ts — téléchargé au PREMIER usage IA seulement (mesuré sur dist/index.html).
-              // Même retrait pour `jspdf → 'pdf-vendor'` : dès que la règle SDK est partie, le
-              // reshuffle a fait apparaître pdf-vendor dans le preload de boot (MÊME piège manualChunk
-              // eager) — jspdf n'est atteint que par import() (pdfReport), il n'a rien à faire au boot.
-              return undefined;
+            // [S5-REFONTE-PERF] `codeSplitting` (API Rolldown) plutôt que `manualChunks` : les
+            // groupes y ont une PRIORITÉ — React et recharts sont capturés AVANT le noyau, sans quoi
+            // la capture récursive des dépendances du noyau y aspirait React (mesuré : un seul
+            // chunk de 205 Ko gzip, React invalidé à chaque déploiement).
+            codeSplitting: {
+              groups: [
+                { name: 'react-vendor', test: /[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/, priority: 3 },
+                // [PERF-SDK-BOOT-PRELOAD] recharts n'est atteint que par des pages chargées à la
+                // demande : son groupe reste hors du démarrage (vérifié sur dist/index.html).
+                { name: 'recharts', test: /[\\/]node_modules[\\/](recharts|victory-vendor|d3-[^/]+|internmap)[\\/]/, priority: 2 },
+                // Tout ce que l'entrée importe STATIQUEMENT (donc chargé au démarrage quoi qu'il
+                // arrive) va dans UN chunk « noyau ». Sans ce groupe, chaque module partagé avec une
+                // page chargée à la demande devenait son propre petit chunk : ~15 requêtes au
+                // démarrage, que le Lighthouse mobile simule en HTTP/1.1 (6 connexions, allers-retours
+                // lents) — mesuré : FCP 3,0 → 2,6 s, score mobile 0,88 → 0,92 en les regroupant.
+                // ⚠️ Ne casse AUCUNE frontière asynchrone (le piège de [PERF-SDK-BOOT-PRELOAD]
+                // ci-dessous) : seul le graphe STATIQUE de l'entrée est concerné, un module atteint
+                // seulement par import() n'y est jamais.
+                {
+                  name: (id, ctx) => (!id.includes('node_modules/') && grapheDemarrage((m) => ctx.getModuleInfo(m)).has(id) ? 'noyau' : null),
+                  priority: 1,
+                },
+              ],
             },
+            // [PERF-SDK-BOOT-PRELOAD] La règle `@anthropic-ai/ → 'ai-vendor'` est RETIRÉE : un
+            // chunk manuel dont le contenu n'est atteint QUE par import() devient EAGER (le chunk
+            // manuel casse la frontière asynchrone — l'entry l'importait STATIQUEMENT et le SDK
+            // ~126 Ko était modulepreload au BOOT, mesuré, alors qu'aucune chaîne statique source
+            // n'existe). Sans la règle, Rolldown range le SDK dans le chunk async naturel de
+            // claude.ts — téléchargé au PREMIER usage IA seulement (mesuré sur dist/index.html).
+            // Même retrait pour `jspdf → 'pdf-vendor'` : dès que la règle SDK est partie, le
+            // reshuffle a fait apparaître pdf-vendor dans le preload de boot (MÊME piège manualChunk
+            // eager) — jspdf n'est atteint que par import() (pdfReport), il n'a rien à faire au boot.
           },
         },
       },

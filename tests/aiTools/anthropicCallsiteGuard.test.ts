@@ -22,6 +22,7 @@ import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import { readCodeOnly, stripComments } from '../helpers/source';
+import { toPosix } from '../helpers/toPosix';
 import { readFileSync } from 'node:fs';
 
 const ROOT = process.cwd();
@@ -41,7 +42,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const FILES = SCAN_DIRS.flatMap((d) => walk(resolve(ROOT, d)));
-const rel = (f: string) => relative(ROOT, f);
+const rel = (f: string) => toPosix(relative(ROOT, f));
 
 describe('[AITOOLS-CALLSITE-UNIQUE-GARDE] un seul endroit déclare des tools au SDK Anthropic', () => {
     it('le balayage couvre un volume PROUVÉ de fichiers de production', () => {

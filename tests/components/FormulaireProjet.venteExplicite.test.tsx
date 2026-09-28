@@ -9,20 +9,11 @@
  *
  * Ces tests visent donc ce que le formulaire ÉCRIT — la seule chose qui manquait.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
-import { LifeEvents } from '../../components/LifeEvents';
+import { FormulaireProjet } from '../../components/vie/FormulaireProjet';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { LifeEvent } from '../../types';
-
-vi.mock('recharts', async () => {
-    const React = await import('react');
-    const P = ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children);
-    return {
-        ResponsiveContainer: P, PieChart: P, Pie: () => null, Cell: () => null,
-        Legend: () => null, Tooltip: () => null,
-    };
-});
 
 /** Deux biens ACTIFS : la case doit apparaître, et le sélecteur de bien avec (seuil ≥ 2). */
 const BIENS = [
@@ -32,22 +23,22 @@ const BIENS = [
 
 function monter() {
     const ecrits: LifeEvent[][] = [];
+    // [S5-REFONTE-PROJETS] Le formulaire vit désormais seul (components/vie/FormulaireProjet), ouvert par
+    // « Nouveau projet » de la page Projets de vie : on le monte directement.
     render(
-        <LifeEvents
-            events={[]}
-            setEvents={(e) => { ecrits.push(e); }}
-            travelGoals={[]}
-            setTravelGoals={() => {}}
-            netWorth={500_000}
-            returnRate={6}
+        <FormulaireProjet
+            evenements={[]}
+            setEvenements={(e: LifeEvent[]) => { ecrits.push(e); }}
+            voyages={[]}
+            setVoyages={() => {}}
+            onFermer={() => {}}
         />,
     );
     return ecrits;
 }
 
-/** Ouvre le formulaire, puis bascule sur l'onglet « Aléas & Projets » (il s'ouvre sur Voyage). */
+/** Bascule sur « Aléas & Projets » (le formulaire s'ouvre sur Voyage). */
 function ouvrirFormulaireEvenement() {
-    fireEvent.click(screen.getAllByRole('button', { name: /Ajouter un Événement/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Aléas & Projets/i }));
 }
 

@@ -52,7 +52,7 @@ const petites = (o: Partial<Limites> = {}): Limites => ({ ...LIMITES_PAR_DEFAUT,
 describe('débit par IP et par empreinte de clé', () => {
     it('au-delà du plafond par IP : 429 en enveloppe Anthropic + retry-after, et plus aucun appel amont', async () => {
         const limites = petites({ parIp: 3 });
-        const envoie = () => relayClaude(mk({ headers: { 'x-forwarded-for': '203.0.113.7' } }), { env: () => undefined, iaLocale: null, limites });
+        const envoie = () => relayClaude(mk({ headers: { 'x-forwarded-for': '203.0.113.7' } }), { access: null, env: () => undefined, iaLocale: null, limites });
         for (let i = 0; i < 3; i++) expect((await envoie()).status).toBe(200);
         const r = await envoie();
         expect(r.status).toBe(429);
@@ -63,7 +63,7 @@ describe('débit par IP et par empreinte de clé', () => {
 
     it('les IP sont indépendantes (premier saut de x-forwarded-for)', async () => {
         const limites = petites({ parIp: 1 });
-        const depuis = (ip: string) => relayClaude(mk({ headers: { 'x-forwarded-for': `${ip}, 10.0.0.1` } }), { env: () => undefined, iaLocale: null, limites });
+        const depuis = (ip: string) => relayClaude(mk({ headers: { 'x-forwarded-for': `${ip}, 10.0.0.1` } }), { access: null, env: () => undefined, iaLocale: null, limites });
         expect((await depuis('203.0.113.1')).status).toBe(200);
         expect((await depuis('203.0.113.2')).status).toBe(200);
         expect((await depuis('203.0.113.1')).status).toBe(429);
@@ -72,7 +72,7 @@ describe('débit par IP et par empreinte de clé', () => {
     it('plafond par empreinte de clé : deux IP différentes, même clé → 429 ; une autre clé passe', async () => {
         const limites = petites({ parCle: 2 });
         const avec = (ip: string, cle: string) => relayClaude(
-            mk({ headers: { 'x-forwarded-for': ip, authorization: `Bearer ${cle}` } }), { env: () => undefined, iaLocale: null, limites });
+            mk({ headers: { 'x-forwarded-for': ip, authorization: `Bearer ${cle}` } }), { access: null, env: () => undefined, iaLocale: null, limites });
         expect((await avec('203.0.113.1', 'sk-ant-A')).status).toBe(200);
         expect((await avec('203.0.113.2', 'sk-ant-A')).status).toBe(200);
         expect((await avec('203.0.113.3', 'sk-ant-A')).status).toBe(429);
@@ -99,7 +99,7 @@ describe('débit par IP et par empreinte de clé', () => {
 describe('plafond de corps (~200 Ko)', () => {
     it('Content-Length annoncé trop grand → 413 sans rien lire ni appeler', async () => {
         const gros = JSON.stringify(corps({ system: 'x'.repeat(CORPS_MAX_OCTETS + 10) }));
-        const r = await relayClaude(mk({ body: gros }), { env: () => undefined, iaLocale: null });
+        const r = await relayClaude(mk({ body: gros }), { access: null, env: () => undefined, iaLocale: null });
         expect(r.status).toBe(413);
         expect(fetchSpy).not.toHaveBeenCalled();
     });
@@ -116,14 +116,14 @@ describe('plafond de corps (~200 Ko)', () => {
     });
 
     it('un corps de taille normale passe', async () => {
-        const r = await relayClaude(mk(), { env: () => undefined, iaLocale: null });
+        const r = await relayClaude(mk(), { access: null, env: () => undefined, iaLocale: null });
         expect(r.status).toBe(200);
     });
 });
 
 describe('max_tokens et passerelle locale', () => {
     const local = (json: Record<string, unknown>, ia: IaLocaleConfig = IA) =>
-        relayClaude(mk({ json }), { env: () => undefined, iaLocale: ia, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
+        relayClaude(mk({ json }), { access: null, env: () => undefined, iaLocale: ia, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
 
     it('sous le plafond local : servi localement', async () => {
         await local(corps({ max_tokens: 8_000 }));
@@ -145,19 +145,19 @@ describe('max_tokens et passerelle locale', () => {
 
 describe('allowlists (routes, modèles, version)', () => {
     it('modèle hors allowlist → 400, aucun appel', async () => {
-        const r = await relayClaude(mk({ json: corps({ model: 'claude-inconnu' }) }), { env: () => undefined, iaLocale: null });
+        const r = await relayClaude(mk({ json: corps({ model: 'claude-inconnu' }) }), { access: null, env: () => undefined, iaLocale: null });
         expect(r.status).toBe(400);
         expect(fetchSpy).not.toHaveBeenCalled();
     });
     it('toute autre route ou méthode → 404', async () => {
         for (const [m, path] of [['POST', '/api/claude/v1/complete'], ['POST', '/api/claude/v1/messages/batches'], ['GET', '/api/claude/v1/messages'], ['DELETE', '/api/claude/v1/messages']]) {
-            const r = await relayClaude(new Request(`http://localhost${path}`, { method: m, headers: { origin: 'http://localhost:5173' }, body: m === 'POST' ? '{}' : undefined }), { env: () => undefined });
+            const r = await relayClaude(new Request(`http://localhost${path}`, { method: m, headers: { origin: 'http://localhost:5173' }, body: m === 'POST' ? '{}' : undefined }), { access: null, env: () => undefined });
             expect(r.status, `${m} ${path}`).toBe(404);
         }
     });
     it('anthropic-version : seule la forme AAAA-MM-JJ est recopiée vers l\'amont', async () => {
-        await relayClaude(mk({ headers: { 'anthropic-version': '2023-06-01; X-Injecte: 1' } }), { env: () => undefined, iaLocale: null });
-        await relayClaude(mk({ headers: { 'anthropic-version': '2024-10-22' } }), { env: () => undefined, iaLocale: null });
+        await relayClaude(mk({ headers: { 'anthropic-version': '2023-06-01; X-Injecte: 1' } }), { access: null, env: () => undefined, iaLocale: null });
+        await relayClaude(mk({ headers: { 'anthropic-version': '2024-10-22' } }), { access: null, env: () => undefined, iaLocale: null });
         const versions = (fetchSpy.mock.calls as [string, { headers: Record<string, string> }][]).map(([, i]) => i.headers['anthropic-version']);
         expect(versions).toEqual(['2023-06-01', '2024-10-22']);
     });
@@ -215,7 +215,7 @@ describe('budget de vérification de clé par IP', () => {
     it('au-delà de verifParIp clés INCONNUES par minute : plus de count_tokens, plus de local, l\'appel part chez Anthropic', async () => {
         const limites = petites({ verifParIp: 2 });
         const essai = (cle: string) => relayClaude(
-            mk({ headers: { 'x-forwarded-for': '203.0.113.9', authorization: `Bearer ${cle}` } }), { env: () => undefined, iaLocale: IA, limites });
+            mk({ headers: { 'x-forwarded-for': '203.0.113.9', authorization: `Bearer ${cle}` } }), { access: null, env: () => undefined, iaLocale: IA, limites });
         await essai('sk-1'); await essai('sk-2');
         expect(urls().filter((u) => u === COUNT)).toHaveLength(2);
         fetchSpy.mockClear();
@@ -239,16 +239,16 @@ describe('journal : jamais de clé, de corps, d\'IP ni de jeton', () => {
         const h = { 'x-forwarded-for': ip, authorization: `Bearer ${CLE}` };
         const json = corps({ messages: [{ role: 'user', content: SECRET_CORPS }] });
         // limite de débit
-        for (let i = 0; i < 3; i++) await relayClaude(mk({ headers: h, json }), { env: () => undefined, iaLocale: null, limites: petites({ parIp: 1 }) });
+        for (let i = 0; i < 3; i++) await relayClaude(mk({ headers: h, json }), { access: null, env: () => undefined, iaLocale: null, limites: petites({ parIp: 1 }) });
         // origine refusée
-        await relayClaude(mk({ headers: { ...h, origin: 'https://evil.example' }, json }), { env: () => undefined });
+        await relayClaude(mk({ headers: { ...h, origin: 'https://evil.example' }, json }), { access: null, env: () => undefined });
         // panne amont
         reinitialiserLimites();
         fetchSpy.mockImplementation(async () => { throw new TypeError(`fetch failed ${CLE} ${SECRET_CORPS}`); });
-        await relayClaude(mk({ headers: h, json }), { env: () => undefined, iaLocale: null });
+        await relayClaude(mk({ headers: h, json }), { access: null, env: () => undefined, iaLocale: null });
         // passerelle locale en panne (bascule)
         reinitialiserLimites();
-        await relayClaude(mk({ headers: h, json }), { env: () => undefined, iaLocale: IA, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
+        await relayClaude(mk({ headers: h, json }), { access: null, env: () => undefined, iaLocale: IA, verifierCle: async () => ({ valide: true, orgId: 'org-marc' }) });
         const tout = JSON.stringify(sonde.flatMap((s) => s.mock.calls));
         for (const interdit of [CLE, SECRET_CORPS, ip]) expect(tout).not.toContain(interdit);
     });
@@ -265,7 +265,7 @@ describe('routage local réservé à la clé de Marc (échec fermé)', () => {
         return new Response('{"id":"msg_a"}', { status: 200, headers: { 'content-type': 'application/json' } });
     });
     const appel = (ia: IaLocaleConfig, cle = 'sk-ant-quelconque') =>
-        relayClaude(mk({ headers: { authorization: `Bearer ${cle}` } }), { env: () => undefined, iaLocale: ia });
+        relayClaude(mk({ headers: { authorization: `Bearer ${cle}` } }), { access: null, env: () => undefined, iaLocale: ia });
 
     it('organisation de Marc → servi en local', async () => {
         reponduParOrg('org-marc');
@@ -306,7 +306,7 @@ describe('routage local réservé à la clé de Marc (échec fermé)', () => {
         expect(iaLocaleDepuisEnv((k) => base[k])).toBeNull();
         expect(iaLocaleDepuisEnv((k) => ({ ...base, RELAIS_ORG_LOCALE: '  ' } as Record<string, string>)[k])).toBeNull();
         expect(iaLocaleDepuisEnv((k) => ({ ...base, RELAIS_CLES_LOCALES: ' , ' } as Record<string, string>)[k])).toBeNull();
-        const r = await relayClaude(mk(), { env: (k) => base[k] });
+        const r = await relayClaude(mk(), { access: null, env: (k) => base[k] });
         expect(r.status).toBe(200);
         expect(urls()).toEqual([ANTHROPIC]);
     });
@@ -373,7 +373,7 @@ describe('IP du client : la plateforme d\'abord', () => {
     it('tourner la valeur de x-forwarded-for ne contourne pas le plafond quand la plateforme donne l\'IP', async () => {
         const limites = petites({ parIp: 2 });
         const essai = (xff: string) => relayClaude(
-            mk({ headers: { 'x-forwarded-for': xff, 'x-vercel-forwarded-for': '203.0.113.60' } }), { env: () => undefined, iaLocale: null, limites });
+            mk({ headers: { 'x-forwarded-for': xff, 'x-vercel-forwarded-for': '203.0.113.60' } }), { access: null, env: () => undefined, iaLocale: null, limites });
         expect((await essai('9.9.9.1')).status).toBe(200);
         expect((await essai('9.9.9.2')).status).toBe(200);
         expect((await essai('9.9.9.3')).status).toBe(429);

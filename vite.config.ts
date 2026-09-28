@@ -28,7 +28,9 @@ const claudeRelayDevPlugin = (env: Record<string, string>): Plugin => ({
                     signal: ctrl.signal,
                 });
                 const response = await relayClaude(request, {
-                    env: (k) => env[k] || undefined,
+                    // [CF-ACCESS] En dev local : ni Cloudflare ni jeton → observation par défaut (« 0 »). Une valeur
+                    // posée dans .env.local reste prioritaire (pour essayer le mur en local).
+                    env: (k) => (k === 'CF_ACCESS_REQUIRED' ? (env[k] ?? '0') : env[k]) || undefined,
                     // [IA-LOCALE] Même lecture qu'en prod, depuis .env.local (IA_LOCALE_URL / _CLE / …).
                     iaLocale: iaLocaleDepuisEnv((k) => env[k] || undefined),
                 });

@@ -17,6 +17,19 @@
 
 ---
 
+## 🔒 Relais IA — suites du durcissement (2026-09-25)
+- [ ] 👤 [CF-ACCESS-MISE-EN-SERVICE] (S) Poser l'application Cloudflare Access + les variables Vercel, passer de l'observation à « exiger » :
+  procédure pas à pas dans `A_FAIRE_MOI` (code livré : PR `[CF-ACCESS]`, ADR 0022).
+- [ ] 🧭 [CF-ACCESS-VERIF-PROD] (S) Après mise en service, mesurer ce qu'on ne peut pas voir d'ici : Access répond-il 401 (pas 302) aux `fetch` ?
+  le rewrite vers une fonction garde-t-il la chaîne de requête d'origine ? `cf-connecting-ip` arrive-t-elle ? Retirer ensuite la variable `CF_ACCESS_REQUIRED`.
+- [ ] 🧭 [CF-ACCESS-GATE-GOOGLE] (S) Retirer le « gate Google » in-app devenu redondant (décision de Marc ; OAuth Drive/sync inchangé).
+- [ ] 🧭 [RELAIS-CLE-SERVEUR] (L, OPTION — pas recommandé maintenant) Lot B : clé Anthropic côté serveur pour qu'elle ne soit plus dans le navigateur.
+  Résidu actuel : la clé BYOK (IndexedDB chiffré) est lisible par un XSS. Coût ~18-20 h et nouvelle exposition (clé payante serveur) : exige un plafond de
+  dépense dur chez Anthropic. Derrière Access + contrôle du jeton, le relais est authentifié : le lot B n'est plus nécessaire pour l'accès.
+- [ ] 🧭 [DURCISSEMENT-RELAIS-DEBIT-PARTAGE] (M) Limite de débit PARTAGÉE entre instances Vercel : seulement si un stockage
+  gratuit est confirmé et qu'il échoue FERMÉ ; sinon on garde le frein en mémoire (faible mais utile). Décision à part.
+- [ ] 👤 [DURCISSEMENT-RELAIS-ENV] (S) Retirer `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel (cf. `A_FAIRE_MOI` O4).
+
 ## 🐛 Découverte en chemin (2026-09-28)
 - [x] 🔧 [A11Y-FUTUREPROJECTION-ROLE-IMG] `tests/components/chartAlternativeTexteGuard.test.ts` rouge sur `components/FutureProjection.tsx` (« manque role="img" ») — préexistant, non causé par `[DOCS-PROTECTION]`. Diagnostic affiné : PAS un manque dans le composant (déjà `role="group"` correct, graphe interactif #599) — le TEST lisait `path.relative()` sans `toPosix()` (bug Windows, même classe que `[WIN-GARDES]`). Corrigé en PR séparée et isolée #1087 (armée, gate vert 6963 tests). Piste notée : `[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`.
 - [ ] 🔧 [WIN-GARDES-PATH-RELATIVE-BALAYAGE] (S) Auditer `grep -rn "path.relative(" tests/` (au moins `amountPrivacyScan.test.ts`, `chartPrivacyScan.test.ts`, `couplePredicatSourceUnique.test.ts`) : `chartAlternativeTexteGuard.test.ts` ligne 83 utilisait `path.relative()` SANS `toPosix()` comme clé d'un dictionnaire à clés `/` — faux négatif sous Windows (corrigé, PR #1087). Les autres usages trouvés ne sont QUE pour l'affichage d'un message d'erreur (cosmétique, pas de bug de logique) mais mériteraient un test-garde permanent (`path.relative` non enveloppé de `toPosix` interdit dans `tests/**` quand il sert de CLÉ de comparaison) — pas fait ici (pas rapide, à part).
@@ -26,11 +39,6 @@
 - [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
 
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
-
-## 🔒 Relais IA — suites du durcissement (2026-09-25)
-- [ ] 🧭 [DURCISSEMENT-RELAIS-DEBIT-PARTAGE] (M) Limite de débit PARTAGÉE entre instances Vercel : seulement si un stockage
-  gratuit est confirmé et qu'il échoue FERMÉ ; sinon on garde le frein en mémoire (faible mais utile). Décision à part.
-- [ ] 👤 [DURCISSEMENT-RELAIS-ENV] (S) Retirer `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel (cf. `A_FAIRE_MOI` O4).
 
 ## 💼 Portefeuille courtier — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 

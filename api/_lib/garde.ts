@@ -74,7 +74,14 @@ export function tailleCompteurs(): number {
  * falsifiables par l'appelant), enfin le PREMIER saut de `x-forwarded-for` (Vercel l'écrase par l'IP réelle ; hors
  * Vercel — dev, autre hébergeur — il est falsifiable, d'où sa place en dernier). Absente → 'inconnue'.
  */
-export function ipClient(headers: Headers): string {
+export function ipClient(headers: Headers, jetonAccessValide = false): string {
+    // [CF-ACCESS] Derrière Cloudflare, `x-vercel-forwarded-for` = IP de l'edge Cloudflare : tous les clients partageraient
+    // le même compteur. `cf-connecting-ip` donne la vraie IP, mais n'importe qui peut l'écrire hors Cloudflare : elle
+    // n'est crue QUE si l'appel porte un jeton Access VÉRIFIÉ (donc passé par Cloudflare). Jamais de confiance en cf-* sans jeton.
+    if (jetonAccessValide) {
+        const cf = headers.get('cf-connecting-ip')?.trim();
+        if (cf) return cf.slice(0, 64);
+    }
     const candidats = [
         headers.get('x-vercel-forwarded-for'),
         headers.get('x-real-ip'),

@@ -49,6 +49,7 @@ import {
     CorpsTropGros, LIMITES_PAR_DEFAUT, essayerDebit, ipClient, lireCorpsBorne, origineAutorisee,
     type Limites,
 } from './garde.js';
+import { controlerAcces, type OptionsAcces } from './accessJwt.js';
 
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
 const ALLOWED_PATH = '/v1/messages';
@@ -108,6 +109,8 @@ export interface RelayOptions {
     iaLocale?: IaLocaleConfig | null;
     /** [S5-RELAIS-CLE] Injecté par les tests ; `undefined` = vérification réelle (count_tokens). */
     verifierCle?: (cle: string, modele: string, signal: AbortSignal) => Promise<VerdictCle>;
+    /** [CF-ACCESS] Options du contrôle du jeton (clés publiques, horloge : tests) ; `null` = AUCUN contrôle (tests uniquement). */
+    access?: OptionsAcces | null;
 }
 
 /** Config IA locale depuis l'env serveur, ou `null` (routage coupé) si incomplète/invalide. */
@@ -340,7 +343,15 @@ export async function relayClaude(request: Request, opts?: RelayOptions): Promis
     if (!origineAutorisee(request.headers.get('origin'), env)) {
         return anthropicError(403, 'permission_error', 'Origine non autorisée.');
     }
-    const ip = ipClient(request.headers);
+    // [CF-ACCESS] Le vrai mur : jeton Cloudflare Access vérifié (défaut : exigé ; observation seulement si
+    // CF_ACCESS_REQUIRED vaut exactement « 0 » ; `access: null` = contrôle absent, tests uniquement).
+    const acces = opts?.access === null
+        ? { autorise: true, jetonValide: false, observation: false }
+        : await controlerAcces(request.headers, env, opts?.access);
+    if (!acces.autorise) {
+        return anthropicError(401, 'authentication_error', 'Accès refusé : session Cloudflare Access absente ou invalide.');
+    }
+    const ip = ipClient(request.headers, acces.jetonValide);
     const trop = (r: { ok: false; retryApresSec: number }) => {
         // Journal SANS contenu : ni IP, ni clé, ni corps — seulement qu'un plafond a joué.
         console.warn('[relay] limite de débit atteinte');

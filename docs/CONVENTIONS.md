@@ -17173,3 +17173,20 @@ bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dan
   `process.cwd() + '/'`. Correctif : `tests/helpers/toPosix.ts` (`toPosix`, `cwdPosix`) appliqué À LA SORTIE des
   marcheurs de fichiers, jamais en assouplissant une assertion (une garde qui ne voit rien doit rester rouge).
 - Règle : tout nouveau marcheur de fichiers d'une garde passe son résultat par `toPosix`.
+
+## `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` (2026-09-28, `[KIT-191]`)
+
+Resynchronisation du kit d'auto-merge 1.9.0 → 1.9.1 (2 fichiers sur 10 changés : `verifier-copies.mjs`, `LISEZMOI.md`).
+Après avoir relancé `node modeles/auto-merge/verifier-copies.mjs --ecrire-copies .` pour régénérer le tableau des
+empreintes, `git diff -- COPIES.md` a montré la suppression silencieuse des sections `## Source et méthode` et
+`## Écarts FinanceAI` : elles avaient été ajoutées À LA MAIN après le premier `--ecrire-copies` (commit `[KIT-190]`),
+mais `formaterCopies()` (côté Atelier) n'écrit QUE l'en-tête + le tableau et `writeFileSync` remplace tout le fichier —
+il ne fusionne rien avec ce qui existe déjà.
+
+- `--ecrire-copies` n'est PAS idempotent sur un `COPIES.md` enrichi à la main : toute section ajoutée après le tableau
+  doit être sauvegardée avant de relancer la commande, puis réinjectée (et mise à jour : versions, hash de tag) après.
+- Un `git diff --stat` après `--ecrire-copies` qui montre plus de suppressions que de lignes de tableau changées est le
+  signal : comparer au contenu d'avant plutôt que de committer tel quel.
+- Ce comportement n'est pas propre à FinanceAI : toute app qui a documenté ses écarts dans `COPIES.md` (au lieu d'un
+  fichier séparé) doit refaire ce geste à chaque bump de version. Piste pour l'Atelier (non faite ici, hors périmètre du
+  lot) : `formaterCopies()` pourrait préserver tout ce qui suit le tableau au lieu de l'écraser.

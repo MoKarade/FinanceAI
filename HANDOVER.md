@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-28 (suite) — **`[STRUCTURE-COMMUNE]` : docs/ETAT.md + ignoreCommand Vercel (structure commune aux 7 apps, spec pole-architecture)**
+> Vague 3 de l'alignement structurel : `docs/ETAT.md` créé (seul `docs/ARCHITECTURE.md` existait), même patron que BatchChef
+> (photographie datée, sourcée, pointeurs vers `HANDOVER.md`/`BACKLOG.md`/`docs/A_FAIRE_MOI.md`). `vercel.json` gagne un
+> `ignoreCommand` : saute la préversion Vercel quand la PR ne touche QUE `*.md`/`docs/**`/`.github/**` (échec fermé — tout
+> doute construit). ⚠️ `mcp/**` volontairement HORS de la liste ignorable, malgré le déploiement séparé du MCP sur Cloud Run :
+> `hooks/useFinancialSignals.ts` importe `mcp/financialSignals.ts`, un module RÉELLEMENT inclus dans le bundle web — l'exclure
+> aurait pu laisser une préversion stale sur un changement qui compte. Le script `qualite/portes.mjs` avait DÉJÀ une entrée npm
+> (`portes`/`portes:maj`) — vérifié avant de recréer quoi que ce soit, rien à faire de ce côté. Aucun code métier. PR brouillon,
+> chemin sensible (`vercel.json`), attend la relecture de pole-securite.
+>
 > ## 🟥 Session 2026-09-25 (suite) — **`[CF-ACCESS]` : le mur Cloudflare Access, vérifié côté API**
 > Marc a dit OUI (Access remplace la passkey ; ADR `0022`). **Code livré, sans effet tant que Marc n'a pas posé le mur**
 > (`A_FAIRE_MOI` → `[CF-ACCESS-MISE-EN-SERVICE]`, dans l'ordre : test iPhone → application Access → variables Vercel AVEC

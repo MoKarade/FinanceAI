@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 — Certaines préversions inutiles ne se construisent plus sur Vercel
+
+- Aucun changement visible dans l'app. Une PR qui ne touche que la documentation n'ouvre plus de préversion Vercel
+  (moins de minutes de build consommées) ; toute autre modification continue de construire normalement, y compris un
+  simple doute sur ce qui a changé.
+
 ## 2026-09-28 — Les documents que les sessions relisent au démarrage sont mieux protégés
 
 - Aucun changement visible dans l'app. Les fichiers que les sessions Claude relisent (règles, leçons, état du projet) sont

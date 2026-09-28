@@ -23,5 +23,7 @@
     "vercel.json",
     "**/settings*.json"
   ],
+  "securite_login": "atelier-securite-marc[bot]",
+  "securite_user_id": 334232309,
   "carence_dependabot_jours": 3
 }

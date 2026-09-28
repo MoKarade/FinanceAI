@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-28 — Mise à jour de routine du mécanisme de fusion automatique
+
+- Aucun changement dans l'app. Le kit de fusion automatique de l'Atelier passe en version 1.9.1 (seuls l'outil de
+  vérification des copies et sa documentation changent). La PR reste en attente de l'accord de l'équipe sécurité
+  avant toute fusion automatique.
+
+## 2026-09-27 — Les mises à jour Dependabot se fusionnent de nouveau toutes seules
+
+- Le kit de fusion automatique de l'Atelier passe en version 1.9.0. Les mises à jour de dépendances (Dependabot) sont de nouveau fusionnées
+  automatiquement, après 3 jours d'attente et si tous les contrôles sont verts ; celles qui touchent un fichier sensible restent pour toi.
+  Aucun changement dans l'app.
+
 ## 2026-09-26 — Fusion automatique : on adopte le modèle commun de l'Atelier
 
 - Aucun changement dans l'app. Le mécanisme qui décide si une PR peut se fusionner toute seule est maintenant la copie exacte du modèle

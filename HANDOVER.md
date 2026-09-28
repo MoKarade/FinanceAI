@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-28 — **`[KIT-191]` : le kit d'auto-merge de l'Atelier passe en 1.9.1 (tag `kit-1.9.1`) — delta isolé pour relecture sécurité**
+> Resynchro depuis `[KIT-190]` (commit `00512380`, déjà revu par pole-securite sur le fond) : sur les 10 fichiers copiables
+> attestés par `COPIES.md`, seuls `verifier-copies.mjs` (+128/-…) et `LISEZMOI.md` (+9, nouvelle section « Profils du kit »)
+> changent d'empreinte ; les 8 autres (`autoMerge.mjs`, `armer.mjs`, `fusionner.mjs`, `codes-raison.mjs`…) sont inchangés
+> depuis 1.9.0. Nouveauté 1.9.1 côté Atelier : profils `--profil prive/complet` (un dépôt privé sans protection de branche
+> peut retirer `armement-auto-merge.yml`) — **non adoptée ici**, FinanceAI reste au profil `complet` (armement natif conservé).
+> `COPIES.md` régénéré puis les sections « Source et méthode » / « Écarts FinanceAI » restaurées à la main (`--ecrire-copies`
+> les efface, voir `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` dans `docs/CONVENTIONS.md`). `tests/blocageFusion.test.ts`
+> mis à jour (1.9.0/`kit-1.9.0`/`a17b41d` → 1.9.1/`kit-1.9.1`/`df55f4c`). Commit séparé (`ba609fab`) pour une relecture du
+> delta seul par pole-securite ; PR brouillon, étiquette `validation-marc`, **NON armée** (chemins sensibles, pas d'attestation
+> possible avant `securite_login`).
+>
+> ## 🟦 Session 2026-09-27 — **`[KIT-190]` : le kit d'auto-merge de l'Atelier passe en 1.9.0 (tag `kit-1.9.0`) — Dependabot re-fusionné**
+> Copies exactes du tag `kit-1.9.0` (commit `a17b41d`) dans `modeles/auto-merge/` (+ `codes-raison.mjs`), `COPIES.md` refait (écarts un à un). NOUVEAU workflow
+> `.github/workflows/auto-merge.yml` (gabarit événementiel, adapté de deux valeurs : `workflows: [CI]` et `node-version-file: .nvmrc`) : il fusionne Dependabot après `carence_dependabot_jours` = 3.
+> `securite_login`/`securite_user_id` toujours ABSENTS (PR de 2 lignes de pole-securite ensuite : App `<slug>[bot]` + identifiant numérique). `commit-gate`
+> hors lot. Tests : `tests/blocageFusion.test.ts` (Dependabot éligible fusionné / sensible refusé / carence, attestation App sur fixture, workflow lu comme donnée).
+>
 > ## 🟦 Session 2026-09-26 — **`[GARDE-RESYNC]` : le mécanisme de fusion auto = le modèle Atelier 1.6.0 (copies exactes)**
 > Autorisé par Marc. `modeles/auto-merge/*` (copies exactes du commit `f8e2177` d'atelier, empreintes dans `COPIES.md` racine, écarts
 > FinanceAI déclarés un à un), `.github/workflows/armement-auto-merge.yml` (gabarit tel quel) ; SUPPRIMÉS : `.github/workflows/fusion-auto.yml` et

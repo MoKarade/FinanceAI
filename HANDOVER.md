@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟩 Session 2026-09-28 — **`[WIN-GARDES-A11Y-FUTUREPROJECTION]` : la garde a11y des graphes était rouge sous Windows, pas le composant**
+> `tests/components/chartAlternativeTexteGuard.test.ts` ligne 83 lisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` SANS `toPosix()` :
+> sous Windows, `path.relative` rend `components\FutureProjection.tsx` (antislash), qui ne matchait jamais la clé `components/FutureProjection.tsx`
+> (slash) → le graphe interactif (pastilles de jalons focusables, #599) était vu comme non-interactif, et le test exigeait `role="img"` au lieu
+> du `role="group"` déjà présent (ligne 1860) et correct. **Le composant n'a pas changé** : y ajouter `role="img"` aurait dégradé la protection
+> nested-interactive (WCAG 4.1.2) que le code commente explicitement. Correctif : `toPosix(path.relative(...))`, comme les deux autres usages du
+> même fichier (déjà corrects). Même classe de bug que `[WIN-GARDES]` (2026-09-26) — ce fichier de garde n'avait pas été balayé. Piste notée au
+> BACKLOG (`[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`) : auditer les autres `path.relative()` de `tests/**`, non faite ici (hors périmètre, cosmétique
+> ailleurs). PR normale (non sensible), armée après gate vert.
+>
 > ## 🟦 Session 2026-09-28 — **`[KIT-191]` : le kit d'auto-merge de l'Atelier passe en 1.9.1 (tag `kit-1.9.1`) — delta isolé pour relecture sécurité**
 > Resynchro depuis `[KIT-190]` (commit `00512380`, déjà revu par pole-securite sur le fond) : sur les 10 fichiers copiables
 > attestés par `COPIES.md`, seuls `verifier-copies.mjs` (+128/-…) et `LISEZMOI.md` (+9, nouvelle section « Profils du kit »)

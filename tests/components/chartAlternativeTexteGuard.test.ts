@@ -80,7 +80,7 @@ describe('[A11Y] aucun graphe sans alternative textuelle', () => {
         for (const file of fichiersAvecGraphe) {
             const src = stripCommentsJsx(readFileSync(file, 'utf8'));
             const manque: string[] = [];
-            const interactif = Boolean(GRAPHES_INTERACTIFS[path.relative(ROOT, file)]);
+            const interactif = Boolean(GRAPHES_INTERACTIFS[toPosix(path.relative(ROOT, file))]);
             if (!(interactif ? ROLE_GROUPE : ROLE_IMG).test(src)) manque.push(interactif ? 'role="group"' : 'role="img"');
             if (!/ChartDataTable/.test(src)) manque.push('ChartDataTable');
             if (manque.length) offenders.push(`${toPosix(path.relative(ROOT, file))} — manque ${manque.join(' et ')}`);

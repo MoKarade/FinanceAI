@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟥 Session 2026-09-28 (suite) — **`[GARDE-JQ-AUTO-MERGE-LENGTH]` : `main` bloquait toute PR sur une garde anti-fuite**
+> `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows) ne connaissait pas
+> `gh pr list --json number --jq 'length'` de `.github/workflows/auto-merge.yml:77` (compte de PR ouvertes,
+> jamais de contenu) — introduit par `[KIT-191]`/#1085 sans mise à jour de la garde, découvert en fusionnant
+> #1076. `main` lui-même était rouge sur cette porte : **toute PR en échouait**, sans rapport avec son propre
+> contenu. Corrigé : `'auto-merge.yml': ['length']` ajouté à `PROGRAMMES_JQ_AUTORISES`, aucun changement au
+> workflow. PR isolée et minimale, pas de chemin sensible (`tests/**` seul), armable dès portes vertes.
+>
 > ## 🟦 Session 2026-09-28 (suite) — **`[STRUCTURE-COMMUNE]` : docs/ETAT.md + ignoreCommand Vercel (structure commune aux 7 apps, spec pole-architecture)**
 > Vague 3 de l'alignement structurel : `docs/ETAT.md` créé (seul `docs/ARCHITECTURE.md` existait), même patron que BatchChef
 > (photographie datée, sourcée, pointeurs vers `HANDOVER.md`/`BACKLOG.md`/`docs/A_FAIRE_MOI.md`). `vercel.json` gagne un

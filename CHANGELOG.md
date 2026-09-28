@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 — Correctif technique : un contrôle interne bloquait toutes les PR
+
+- Aucun changement dans l'app. Un contrôle qui vérifie qu'aucun journal public ne publie de données ne connaissait
+  pas un petit compteur ajouté récemment dans le mécanisme de fusion automatique (il compte des PR ouvertes,
+  jamais leur contenu) : toute nouvelle PR était bloquée par erreur. Corrigé côté contrôle seulement.
+
 ## 2026-09-28 — Certaines préversions inutiles ne se construisent plus sur Vercel
 
 - Aucun changement visible dans l'app. Une PR qui ne touche que la documentation n'ouvre plus de préversion Vercel

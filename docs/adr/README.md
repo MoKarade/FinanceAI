@@ -33,6 +33,7 @@ conservés en 0001 et 0002.
 | [`0019-decisions-refonte-portefeuille.md`](0019-decisions-refonte-portefeuille.md) | ADR — Refonte du portefeuille : les décisions de cadrage du Lot 0 (Marc, 2026-09-24) |
 | [`0020-grand-livre-courtier.md`](0020-grand-livre-courtier.md) | ADR — Grand livre courtier et référentiel d'instruments : forme persistée (Lot 1a, 2026-09-24) |
 | [`0021-relais-sans-jeton-public.md`](0021-relais-sans-jeton-public.md) | ADR — Relais IA : le jeton public est supprimé, remplacé par des freins honnêtes (2026-09-25) |
+| [`0024-documents-des-agents-proteges.md`](0024-documents-des-agents-proteges.md) | ADR — Les documents relus par les agents (CLAUDE.md, docs/claude, leçons, HANDOVER…) sont protégés contre l'injection persistante (pole-securite, 2026-09-26) |
 
 Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
 un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

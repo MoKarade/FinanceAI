@@ -42,8 +42,9 @@ describe('kpiPatrimoine', () => {
     it('est bien la source de la tuile du Futur', () => {
         const src = readFileSync('components/FutureProjection.tsx', 'utf8');
         expect(src).toContain('kpiPatrimoine(results, isPrivacyMode)');
-        expect(src).toContain('value={patrimoineKpi.value}');
-        expect(src).toContain('tooltip={patrimoineKpi.tooltip}');
+        // [S5-REFONTE-FUTUR] La tuile est devenue la stat « À l'horizon » de la carte de la courbe.
+        expect(src).toContain('<PrivateAmount>{patrimoineKpi.value}</PrivateAmount>');
+        expect(src).toContain('title={patrimoineKpi.tooltip}');
         expect(src).not.toMatch(/value=\{formatCompactCAD\(\(results\?\.estateNetWorth/);
     });
 });

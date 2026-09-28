@@ -189,7 +189,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
+            <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-linear-to-r/srgb from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
                 <div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">Charges Fixes & Abonnements</h2>
                     <p className="text-ink-300 text-body mt-1">Abonnements & Factures Récurrentes.</p>
@@ -206,7 +206,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                 son total a baissé. Le refus est durable, pas irréversible. */}
             {dismissedSubs.length > 0 && (
                 <details className="mb-3 text-tiny text-ink-400">
-                    <summary className="cursor-pointer touch-target focus-ring rounded inline-flex items-center">
+                    <summary className="cursor-pointer touch-target focus-ring rounded-sm inline-flex items-center">
                         {dismissedSubs.length} marchand(s) écarté(s) — « pas un abonnement »
                     </summary>
                     <ul className="mt-2 space-y-1">
@@ -220,7 +220,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                                 <button
                                     onClick={() => handleRestoreSub(key)}
                                     aria-label={`Réafficher ${maskPayee(key, isPrivacyMode)} dans les abonnements détectés`}
-                                    className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded focus-ring"
+                                    className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded-sm focus-ring"
                                 >Réafficher</button>
                             </li>
                         ))}
@@ -230,7 +230,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Abonnements & Récurrents" action={
-                        <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-primary text-dark px-2 py-1 rounded font-bold hover:bg-white disabled:opacity-50">{isAnalyzing ? '...' : 'IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded text-ink-300">Reset</button>)}</div>
+                        <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-primary text-dark px-2 py-1 rounded-sm font-bold hover:bg-white disabled:opacity-50">{isAnalyzing ? '...' : 'IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded-sm text-ink-300">Reset</button>)}</div>
                     }>
                         {subscriptionAlerts.length > 0 && (
                             <ul className="space-y-2 mb-3">
@@ -266,27 +266,27 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                             {activeSubs.map((sub, idx) => (
                                 <div key={subscriptionKey(sub) || idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
                                         <div className="min-w-0"><PrivateText as="div" className="font-bold text-white text-body truncate">{sub.payee}</PrivateText><div className="text-tiny text-ink-400">{subscriptionDueLabel(sub)}</div></div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         {/* [PH4-F] épingler = persister l'abo (survit au reload sans re-détection IA) */}
                                         {isPinned(pinnedSubs, sub) ? (
-                                            <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded transition-colors">Épinglé</button>
+                                            <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded-sm transition-colors">Épinglé</button>
                                         ) : (
-                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">Épingler</button>
+                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded-sm transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">Épingler</button>
                                         )}
                                         {/* [SUBS-TAB] Refuser un faux positif — sinon il revient à CHAQUE actualisation.
                                             HORS du ternaire épinglé/non : refuser vaut dans les deux états (le handler
                                             désépingle en même temps, pour ne pas laisser deux vérités contradictoires). */}
-                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${maskPayee(sub.payee, isPrivacyMode)} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
+                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${maskPayee(sub.payee, isPrivacyMode)} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded-sm transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
                                         <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-400">/mois</div></div>
                                     </div>
                                 </div>
                             ))}
                             {activeSubs.length === 0 && <div className="text-center text-ink-400 py-10">Aucun abonnement détecté.</div>}
                         </div>
-                        <div className="mt-4 bg-gradient-to-br from-red-900/20 to-black border border-danger-500/20 p-3 rounded-xl">
+                        <div className="mt-4 bg-linear-to-br/srgb from-red-900/20 to-black border border-danger-500/20 p-3 rounded-xl">
                             <div className="text-tiny text-red-300 uppercase font-bold mb-2">Le "Latte Factor"</div>
                             <div className="text-tiny text-ink-300 mb-2">
                                 Impact à long terme de ces {activeSubs.length} abonnements si l'argent était plutôt investi.
@@ -298,9 +298,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Calendrier des Factures">
                         <div className="flex justify-between items-center mb-4 bg-white/5 p-2 rounded-lg">
-                            <button onClick={() => changeMonth(-1)} aria-label="Mois précédent" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-ink-300 focus-ring">◀</button>
+                            <button onClick={() => changeMonth(-1)} aria-label="Mois précédent" className="touch-target flex items-center justify-center hover:bg-white/10 rounded-sm text-ink-300 focus-ring">◀</button>
                             <h2 className="text-body font-bold text-white capitalize">{currentDate.toLocaleString('fr-CA', { month: 'long', year: 'numeric' })}</h2>
-                            <button onClick={() => changeMonth(1)} aria-label="Mois suivant" className="touch-target flex items-center justify-center hover:bg-white/10 rounded text-ink-300 focus-ring">▶</button>
+                            <button onClick={() => changeMonth(1)} aria-label="Mois suivant" className="touch-target flex items-center justify-center hover:bg-white/10 rounded-sm text-ink-300 focus-ring">▶</button>
                         </div>
                         <div className="grid grid-cols-7 gap-1">
                             {/* [PLANNING-CALENDAR-KEY-DOUBLON] La clé est le nom COMPLET, pas la lettre

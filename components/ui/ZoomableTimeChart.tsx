@@ -292,7 +292,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                 </button>
             )}
             {!isZoomed && data.length > 1 && (
-                <div className="absolute bottom-2 right-2 text-tiny text-ink-400 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded">
+                <div className="absolute bottom-2 right-2 text-tiny text-ink-400 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded-sm">
                     Molette ou pincement = zoom · double-clic = reset
                 </div>
             )}

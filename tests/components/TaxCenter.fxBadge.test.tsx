@@ -50,19 +50,19 @@ describe('[FX-BADGE-SURFACES-RESTANTES] TaxCenter — le taux de change estimé 
     it('avoir NON-ENREG en USD + taux estimé (repli) → badge dans la carte « Revenus & Déductions »', () => {
         monte([nonReg('USD')], { lastFetched: 0 });
         // La carte doit exister (sinon le badge serait absent pour une AUTRE raison — anti-vacuité).
-        expect(screen.getByText('Invest. Non-Enregistrés')).toBeInTheDocument();
+        expect(screen.getByText(/Placements non enregistrés/)).toBeInTheDocument();
         expect(screen.getByText(BADGE)).toBeInTheDocument();
     });
 
     it('contrôle : avoir en CAD seulement → carte présente, AUCUN badge (rien à convertir)', () => {
         monte([nonReg('CAD')], { lastFetched: 0 });
-        expect(screen.getByText('Invest. Non-Enregistrés')).toBeInTheDocument();
+        expect(screen.getByText(/Placements non enregistrés/)).toBeInTheDocument();
         expect(screen.queryByText(BADGE)).toBeNull();
     });
 
     it('contrôle : avoir en USD mais taux RÉEL (lastFetched > 0, pas de repli) → aucun badge', () => {
         monte([nonReg('USD')], { lastFetched: 1_700_000_000, estimated: false });
-        expect(screen.getByText('Invest. Non-Enregistrés')).toBeInTheDocument();
+        expect(screen.getByText(/Placements non enregistrés/)).toBeInTheDocument();
         expect(screen.queryByText(BADGE)).toBeNull();
     });
 });

@@ -2,7 +2,7 @@
  * [PROFIL-SOUS-ONGLETS] L'onglet Profil passe de CINQ groupes empilés à QUATRE sous-onglets.
  *
  * Découpage choisi par Marc (`docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md` 2026-08-17) : Identité · Revenus · Profils
- * enregistrés — plus un 4e (« Retraite & enfants ») que j'ai ajouté parce que ses trois bacs ne
+ * enregistrés — plus un 4e (« Retraite et enfants ») que j'ai ajouté parce que ses trois bacs ne
  * couvraient pas ces deux groupes, et que les rétrograder sous « Revenus » aurait été faux.
  *
  * ⚠️ CE QUE CES TESTS PROTÈGENT VRAIMENT. Le risque d'un découpage n'est pas l'esthétique : c'est
@@ -54,7 +54,7 @@ const TOUS_LES_GROUPES = [
     'MARQUEUR-profils-enregistres',
 ] as const;
 
-const ONGLETS = ['Identité', 'Revenus', 'Retraite & enfants', 'Profils enregistrés'] as const;
+const ONGLETS = ['Identité', 'Revenus', 'Retraite et enfants', 'Profils enregistrés'] as const;
 
 const marqueursVisibles = (): string[] =>
     TOUS_LES_GROUPES.filter((m) => screen.queryByText(m) !== null);
@@ -109,7 +109,7 @@ describe('[PROFIL-SOUS-ONGLETS] routage onglet → contenu', () => {
     it.each([
         ['Identité', ['MARQUEUR-identite']],
         ['Revenus', ['MARQUEUR-champs-salary', 'MARQUEUR-champs-fiscal', 'MARQUEUR-repartition', 'MARQUEUR-champs-detailed']],
-        ['Retraite & enfants', ['MARQUEUR-retraite-params', 'MARQUEUR-retraite-revenu', 'MARQUEUR-champs-children']],
+        ['Retraite et enfants', ['MARQUEUR-retraite-params', 'MARQUEUR-retraite-revenu', 'MARQUEUR-champs-children']],
         ['Profils enregistrés', ['MARQUEUR-profils-enregistres']],
     ])('l’onglet « %s » rend exactement son contenu', async (onglet, attendus) => {
         render(<Profile />);

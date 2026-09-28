@@ -17,6 +17,16 @@
 
 ---
 
+## 🐛 Découverte en chemin (2026-09-28)
+- [x] 🔧 [A11Y-FUTUREPROJECTION-ROLE-IMG] `tests/components/chartAlternativeTexteGuard.test.ts` rouge sur `components/FutureProjection.tsx` (« manque role="img" ») — préexistant, non causé par `[DOCS-PROTECTION]`. Diagnostic affiné : PAS un manque dans le composant (déjà `role="group"` correct, graphe interactif #599) — le TEST lisait `path.relative()` sans `toPosix()` (bug Windows, même classe que `[WIN-GARDES]`). Corrigé en PR séparée et isolée #1087 (armée, gate vert 6963 tests). Piste notée : `[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`.
+- [ ] 🔧 [WIN-GARDES-PATH-RELATIVE-BALAYAGE] (S) Auditer `grep -rn "path.relative(" tests/` (au moins `amountPrivacyScan.test.ts`, `chartPrivacyScan.test.ts`, `couplePredicatSourceUnique.test.ts`) : `chartAlternativeTexteGuard.test.ts` ligne 83 utilisait `path.relative()` SANS `toPosix()` comme clé d'un dictionnaire à clés `/` — faux négatif sous Windows (corrigé, PR #1087). Les autres usages trouvés ne sont QUE pour l'affichage d'un message d'erreur (cosmétique, pas de bug de logique) mais mériteraient un test-garde permanent (`path.relative` non enveloppé de `toPosix` interdit dans `tests/**` quand il sert de CLÉ de comparaison) — pas fait ici (pas rapide, à part).
+
+## 🔒 Garde de la fusion auto — suites (2026-09-25)
+- [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
+- [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
+
+## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
+
 ## 🔒 Relais IA — suites du durcissement (2026-09-25)
 - [ ] 🧭 [DURCISSEMENT-RELAIS-DEBIT-PARTAGE] (M) Limite de débit PARTAGÉE entre instances Vercel : seulement si un stockage
   gratuit est confirmé et qu'il échoue FERMÉ ; sinon on garde le frein en mémoire (faible mais utile). Décision à part.

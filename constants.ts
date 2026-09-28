@@ -8,19 +8,19 @@ export const TAB_LABELS: Record<Tab, string> = {
     [Tab.TRANSACTIONS]: 'Transactions',
     [Tab.BUDGET]: 'Budget',
     [Tab.DEBT]: 'Dettes',
-    [Tab.INVESTMENTS]: 'Investissements',
+    [Tab.INVESTMENTS]: 'Placements',
     [Tab.FUTURE]: 'Futur',
     [Tab.REAL_ESTATE]: 'Immobilier',
     [Tab.REAL_ESTATE_PROJECTS]: 'Projets immo',
-    [Tab.CHILD]: 'Enfant',
+    [Tab.CHILD]: 'Enfants',
     [Tab.TRAVEL]: 'Voyages',
     [Tab.LIFE_EVENTS]: 'Parcours de Vie',
     [Tab.LIFE_PROJECTS]: 'Projets de vie',
     [Tab.RETIREMENT]: 'Retraite',
-    [Tab.TAX]: 'Impôts & Docs',
-    [Tab.SETTINGS]: 'Paramètres',
+    [Tab.TAX]: 'Impôts',
+    [Tab.SETTINGS]: 'Réglages', // [S5-REFONTE] libellés de navigation des maquettes
     [Tab.PROFILE]: 'Profil',
-    [Tab.ASSISTANT]: 'Assistant IA',
+    [Tab.ASSISTANT]: 'Assistant',
 };
 
 // ============================================================

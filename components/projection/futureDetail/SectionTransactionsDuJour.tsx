@@ -87,7 +87,7 @@ export const SectionTransactionsDuJour: React.FC<{
                                                 token-vs-token, aveugle aux classes `opacity-*`. Le `line-through` suffit
                                                 à dire « exclu » ; l'atténuation porte sur le FOND, qui n'a pas de texte. */}
                                             {txnsDuJour.excluded.map(({ txn, reason }) => (
-                                                <tr key={`e-${txn.id}`} className="border-t border-white/5 bg-white/[0.02]">
+                                                <tr key={`e-${txn.id}`} className="border-t border-white/5 bg-white/2">
                                                     <td className="px-2.5 py-1.5 text-ink-300 align-top">
                                                         <span className="line-through"><PrivateText>{txn.payee}</PrivateText></span>
                                                         {txn.accountName && <span className="text-tiny text-ink-400"> · {txn.accountName}</span>}

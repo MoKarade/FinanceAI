@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-09-28 — Les documents que les sessions relisent au démarrage sont mieux protégés
+
+- Aucun changement visible dans l'app. Les fichiers que les sessions Claude relisent (règles, leçons, état du projet) sont
+  maintenant protégés contre une modification silencieuse glissée dans une PR fusionnée automatiquement : certains exigent
+  ton accord pour tout changement de ligne existante, d'autres l'exigent seulement si une ligne ajoutée contient un lien ou
+  une commande suspecte. La PR reste en attente de l'accord de l'équipe sécurité avant toute fusion automatique.
+
+## 2026-09-28 — Correctif technique : un test interne se trompait de Windows
+
+- Aucun changement dans l'app ni dans l'accessibilité (déjà correcte). Un test qui vérifie l'accessibilité des graphiques
+  se trompait sous Windows et pensait qu'un attribut manquait alors qu'il était bien là. Corrigé côté test seulement.
+
+## 2026-09-28 — Mise à jour de routine du mécanisme de fusion automatique
+
+- Aucun changement dans l'app. Le kit de fusion automatique de l'Atelier passe en version 1.9.1 (seuls l'outil de
+  vérification des copies et sa documentation changent). La PR reste en attente de l'accord de l'équipe sécurité
+  avant toute fusion automatique.
+
+## 2026-09-27 — Les mises à jour Dependabot se fusionnent de nouveau toutes seules
+
+- Le kit de fusion automatique de l'Atelier passe en version 1.9.0. Les mises à jour de dépendances (Dependabot) sont de nouveau fusionnées
+  automatiquement, après 3 jours d'attente et si tous les contrôles sont verts ; celles qui touchent un fichier sensible restent pour toi.
+  Aucun changement dans l'app.
+
+## 2026-09-26 — Fusion automatique : on adopte le modèle commun de l'Atelier
+
+- Aucun changement dans l'app. Le mécanisme qui décide si une PR peut se fusionner toute seule est maintenant la copie exacte du modèle
+  commun (version 1.6.0) ; les écarts propres à FinanceAI sont listés dans `COPIES.md`. Les PR Dependabot ne sont plus armées automatiquement
+  pour l'instant. Le label `validation-marc` ne bloque plus : seul un OK de l'équipe sécurité (pas encore configuré) débloquerait un chemin sensible.
+
+## 2026-09-26 — Les tests de garde passent aussi sous Windows
+
+- Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes
+  échouaient à cause des fins de ligne et des `\` de Windows, alors qu'ils passaient sur GitHub).
+  Ajout de `.gitattributes` (fins de ligne uniformes) et d'un petit utilitaire de chemins pour les tests.
+## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
+
+- Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus
+  fusionnée toute seule : elle reste en attente de toi, même si tous les contrôles sont verts.
+- Les fichiers du dépôt sont maintenant toujours en fins de ligne LF, ce qui rend les tests fiables aussi sur ton PC.
+
 ## 2026-09-25 — Sécurité du relais IA : plus de jeton public, des freins honnêtes
 
 - Le jeton de relais était visible dans le code servi au public : il est supprimé (il ne protégeait rien).

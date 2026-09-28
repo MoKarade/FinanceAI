@@ -1,0 +1,52 @@
+{
+  "branche_base": "main",
+  "controles_requis": [
+    "Lint / Typecheck / Tests / Build",
+    "E2E (Playwright / Chromium)",
+    "Analyze (javascript-typescript)",
+    "Qualité (lint · couverture · code mort · architecture)",
+    "Sécurité (secrets · analyse statique)",
+    "Lighthouse Audit"
+  ],
+  "controles_non_bloquants": [],
+  "chemins_interdits": [
+    "**/.env*",
+    "**/*.pem",
+    "passerelle/tunnel.yml"
+  ],
+  "chemins_label_validation": [
+    "api/**",
+    "mcp/**",
+    "services/secureKeyStore.ts",
+    "vite.config.ts",
+    "index.html",
+    "vercel.json",
+    "**/settings*.json",
+    "CLAUDE.md",
+    "docs/claude/agents.md",
+    "docs/claude/chemins-sensibles.md",
+    "docs/claude/ci.md",
+    "docs/claude/commandes.md",
+    "docs/claude/conventions-code.md",
+    "docs/claude/deploiement.md",
+    "docs/claude/documentation.md",
+    "docs/claude/entete.md",
+    "docs/claude/hub.md",
+    "docs/claude/principes.md",
+    "docs/claude/style.md",
+    "docs/claude/verifications.md",
+    "docs/claude/workflow-git.md"
+  ],
+  "securite_login": "atelier-securite-marc[bot]",
+  "securite_user_id": 334232309,
+  "carence_dependabot_jours": 3,
+  "chemins_ajouts_seulement": [
+    "docs/claude/lecons.md",
+    "docs/CONVENTIONS.md"
+  ],
+  "chemins_contenu_surveille": [
+    "BACKLOG.md",
+    "HANDOVER.md",
+    "CHANGELOG.md"
+  ]
+}

@@ -141,7 +141,7 @@ export const GuidedTour: React.FC = () => {
   const bubbleStyle = anchored ? computeBubbleStyle(rect!) : BUBBLE_CENTERED;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9990]" role="dialog" aria-modal="true" aria-label="Tutoriel guidé">
+    <div className="fixed inset-0 z-9990" role="dialog" aria-modal="true" aria-label="Tutoriel guidé">
       {/* Dim : spotlight (box-shadow géant) si ancré, sinon backdrop plein. */}
       {anchored ? (
         <div
@@ -171,7 +171,7 @@ export const GuidedTour: React.FC = () => {
           <button
             type="button"
             onClick={finish}
-            className="text-tiny text-ink-400 hover:text-ink-100 focus-ring rounded px-1"
+            className="text-tiny text-ink-400 hover:text-ink-100 focus-ring rounded-sm px-1"
           >
             Passer
           </button>
@@ -183,7 +183,7 @@ export const GuidedTour: React.FC = () => {
         {/* Barre de progression */}
         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-4" aria-hidden="true">
           <div
-            className="h-full bg-gradient-to-r from-primary to-success-400 transition-all duration-300"
+            className="h-full bg-linear-to-r/srgb from-primary to-success-400 transition-all duration-300"
             style={{ width: `${((idx + 1) / total) * 100}%` }}
           />
         </div>

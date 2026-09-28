@@ -28,6 +28,9 @@ interface Props {
     /** Nombre de transactions actuellement marquées — pour proposer l'annulation. */
     markedCount: number;
     onUnmarkAll: () => void;
+    /** [S5-REFONTE-TRANSACTIONS] Rendu DANS le panneau d'outil de la page (qui porte titre et
+     *  fermeture) : ouvert d'emblée, sans son propre en-tête ni cadre. */
+    integre?: boolean;
 }
 
 const TOLERANCES: Array<{ value: number; label: string }> = [
@@ -53,9 +56,9 @@ const LIBELLE_TOLERANCE_PAR_DEFAUT =
     TOLERANCES.find((t) => t.value === TOLERANCE_PAR_DEFAUT)?.label ?? `± ${TOLERANCE_PAR_DEFAUT} jour(s)`;
 
 export const DuplicatesPanel: React.FC<Props> = ({
-    transactions, onMarkDuplicates, markedCount, onUnmarkAll,
+    transactions, onMarkDuplicates, markedCount, onUnmarkAll, integre = false,
 }) => {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(integre);
     const [tolerance, setTolerance] = useState(TOLERANCE_PAR_DEFAUT);
     /** Ids cochés pour marquage. Pré-remplis avec la suggestion, modifiables. */
     const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -114,8 +117,8 @@ export const DuplicatesPanel: React.FC<Props> = ({
     // `warning-900` serait une classe MORTE, générée nulle part et sans erreur de build
     // (piège FIX-INK600-TOKEN, déjà récidivé une fois). D'où les shades 500 ci-dessous.
     return (
-        <div className="rounded-xl border border-warning-500/20 bg-warning-500/5">
-            <button
+        <div className={integre ? '' : 'rounded-xl border border-warning-500/20 bg-warning-500/5'}>
+            {!integre && <button
                 onClick={() => { setOpen((p) => !p); setDirty(false); }}
                 aria-expanded={open}
                 className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-ink-200 hover:text-ink-50 transition-colors"
@@ -138,10 +141,10 @@ export const DuplicatesPanel: React.FC<Props> = ({
                     )}
                 </span>
                 <span className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
-            </button>
+            </button>}
 
             {open && (
-                <div className="px-4 pb-4 space-y-3">
+                <div className={integre ? 'space-y-3' : 'px-4 pb-4 space-y-3'}>
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-meta text-ink-400">Écart de date toléré :</span>
                         {TOLERANCES.map((t) => (

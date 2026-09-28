@@ -26,7 +26,7 @@ async function ouvrirFuturEtReveler(page: Page) {
     const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
     await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
     if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-    await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
 }
 
 async function ouvrirHypotheses(page: Page) {
@@ -108,6 +108,6 @@ test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
         // [FUTUR-NAV-TIROIRS] La courbe n'était jamais cachée (elle est TOUJOURS affichée derrière
         // le tiroir) : le clic n'a donc plus besoin de « revenir » nulle part, seulement de refermer.
         await expect(page.getByRole('dialog', { name: 'Modifier les hypothèses' })).toBeHidden();
-        await expect(page.getByRole('img', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByRole('group', { name: /Courbe de vie/ })).toBeVisible({ timeout: 20_000 });
     });
 });

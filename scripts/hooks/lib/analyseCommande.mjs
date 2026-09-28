@@ -26,6 +26,19 @@ const COMMIT_COURT_AVEC_VALEUR = 'mFCct';
 // Options de `git` (avant la sous-commande) qui consomment le mot suivant.
 const GIT_OPTION_AVEC_VALEUR = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path']);
 
+// Outils qui EXÉCUTENT une autre commande (enveloppes, interpréteurs) : on ne voit pas ce qu'ils lancent.
+const ENVELOPPES = new Set(['env', 'eval', 'bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'source', '.', 'cmd', 'powershell', 'pwsh',
+  'xargs', 'sudo', 'doas', 'nice', 'nohup', 'timeout', 'watch', 'find', 'setsid', 'stdbuf', 'ionice', 'busybox', 'script',
+  'python', 'python3', 'node', 'perl', 'ruby', 'php', 'deno', 'bun', 'npx']);
+const INTERPRETEURS_DE_SHELL = new Set(['eval', 'bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'source', '.']);
+// Sous-commandes git connues et sans lien avec l'index : toute autre (alias possible : `git ci`) → incertain.
+const GIT_SOUS_INOFFENSIVES = new Set(['status', 'diff', 'log', 'show', 'branch', 'fetch', 'remote', 'push', 'tag', 'config', 'rev-parse',
+  'ls-files', 'ls-remote', 'ls-tree', 'blame', 'describe', 'worktree', 'reflog', 'shortlog', 'grep', 'rev-list', 'diff-tree', 'cat-file',
+  'show-ref', 'for-each-ref', 'symbolic-ref', 'merge-base', 'name-rev', 'gc', 'init', 'clone', 'version', 'help', 'check-ignore',
+  'submodule', 'bisect', 'notes', 'archive', 'count-objects', 'fsck', 'maintenance', 'sparse-checkout', 'whatchanged', 'range-diff']);
+// Un chemin venu du texte de la commande ne doit contenir aucun caractère de contrôle ni de métacaractère shell.
+const CHEMIN_HOSTILE = /[\x00-\x1f\x7f&|<>^%!`$;'"]|^-/;
+
 class Incertain extends Error {}
 
 /** Lit une liste de commandes jusqu'à `fermeur` (')' pour `$(…)`, '`' pour un backtick, ou fin de chaîne). */
@@ -37,7 +50,12 @@ function lireListe(s, debut, fermeur) {
   let heredocs = []; // délimiteurs à consommer au prochain retour ligne
   let i = debut;
 
-  const finMot = () => { if (motOuvert) { mots.push(mot); mot = ''; motOuvert = false; } };
+  let cibleARejeter = false; // le mot qui suit un opérateur de redirection est un fichier, pas un argument
+  const finMot = () => {
+    if (!motOuvert) return;
+    if (cibleARejeter) cibleARejeter = false; else mots.push(mot);
+    mot = ''; motOuvert = false;
+  };
   const finSegment = () => { finMot(); if (mots.length) segments.push(mots); mots = []; };
   const ajoute = (c) => { mot += c; motOuvert = true; };
 
@@ -70,6 +88,14 @@ function lireListe(s, debut, fermeur) {
       if (!m) throw new Incertain('heredoc illisible');
       heredocs.push({ mot: m[1] ?? m[2] ?? m[3], tiret: s[i + 2] === '-' });
       i += m[0].length; continue;
+    }
+    if (c === '>' || (c === '<' && s[i + 1] !== '<')) {
+      // Redirection (`> f`, `>> f`, `2>&1`, `2>/dev/null`, `< f`) : ni le descripteur ni la cible ne sont des arguments.
+      if (motOuvert && /^[0-9]+$/.test(mot)) { mot = ''; motOuvert = false; } else finMot();
+      i++;
+      while (s[i] === '>' || s[i] === '|') i++;
+      if (s[i] === '&') { i++; while (i < s.length && /[0-9-]/.test(s[i])) i++; } else cibleARejeter = true;
+      continue;
     }
     if (c === '&' && s[i + 1] === '&') { finSegment(); i += 2; continue; }
     if (c === '|' && s[i + 1] === '|') { finSegment(); i += 2; continue; }
@@ -135,8 +161,14 @@ function commande(mots) {
 /** @returns {AnalyseCommande} */
 export function analyseCommande(cmd) {
   const vide = { estCommit: false, incertain: false, index: false, chemins: [], tousChangements: false, suivisSeulement: false, commitTout: false, amend: false };
-  if (typeof cmd !== 'string' || !/commit/.test(cmd)) return vide;
-  const mentionne = /\bgit\b[\s\S]*\bcommit\b/.test(cmd);
+  // Entrée non textuelle : on ne sait pas → fail-closed (suite complète), jamais « pas un commit ».
+  if (typeof cmd !== 'string') return { ...vide, estCommit: true, incertain: true, raison: 'commande non textuelle', index: true };
+  // Préfiltre sur le texte NORMALISÉ (guillemets et antislash retirés : `g"i"t com\mit` = `git commit`).
+  const normalise = (t) => t.replace(/['"\\]/g, '');
+  const evoqueGit = /git/i.test(normalise(cmd));
+  if (!evoqueGit) return vide;
+  const evoqueCommit = /commit/i.test(normalise(cmd));
+  const mentionne = evoqueCommit;
 
   let segments;
   try { segments = lireListe(cmd, 0, null).segments; }
@@ -153,8 +185,19 @@ export function analyseCommande(cmd) {
     const c = commande(seg);
     if (c.length === 0) continue;
     const outil = c[0];
+    const nomOutil = outil.replace(/^.*[\\/]/, '').toLowerCase().replace(/\.exe$/, '');
     if (outil === 'cd' || outil === 'pushd' || outil === 'popd') { if (!r.estCommit) r.aChangeDeDossier = true; continue; }
-    if (outil !== 'git') continue;
+    const texteSegment = seg.join(' ');
+    // Outil issu d'une expansion (`$G commit`) : impossible de savoir ce qu'il lance.
+    if (/[$`]/.test(outil) && evoqueCommit) { r.suspect = 'outil issu d’une expansion'; continue; }
+    if (ENVELOPPES.has(nomOutil)) {
+      const norm = normalise(texteSegment);
+      if ((/git/i.test(norm) && /commit/i.test(norm)) || (INTERPRETEURS_DE_SHELL.has(nomOutil) && /[$`]/.test(texteSegment)) || nomOutil === 'eval') {
+        if (/git/i.test(norm) || evoqueCommit) r.suspect = `enveloppe « ${nomOutil} » qui peut lancer git commit`;
+      }
+      continue;
+    }
+    if (nomOutil !== 'git') continue;
 
     // Options globales de git, puis sous-commande.
     let k = 1;
@@ -164,6 +207,8 @@ export function analyseCommande(cmd) {
     }
     const sous = c[k];
     const args = c.slice(k + 1);
+    if (sous === undefined || /[$`]/.test(sous)) { if (evoqueCommit) r.suspect = 'sous-commande git issue d’une expansion'; continue; }
+    if (c.slice(1, k).some(o => /alias\./i.test(o))) r.suspect = 'alias git défini en ligne';
 
     if (sous === 'add') {
       for (let a = 0; a < args.length; a++) {
@@ -202,12 +247,15 @@ export function analyseCommande(cmd) {
       if (r.aChangeDeDossier) incertain('cd avant le commit');
       continue;
     }
-    if (GIT_MUTE_INDEX.has(sous) && !r.estCommit) incertain(`git ${sous} avant le commit`);
+    if (GIT_MUTE_INDEX.has(sous)) { if (!r.estCommit) incertain(`git ${sous} avant le commit`); continue; }
+    if (!GIT_SOUS_INOFFENSIVES.has(sous)) r.suspect = `sous-commande git inconnue « ${sous} » (alias ?)`;
   }
   delete r.aChangeDeDossier;
 
   // `cd` avant un commit rencontré plus tard ; et texte évoquant un commit que l'analyse n'a pas retrouvé
   // dans un segment exécuté = faux positif assumé (echo, heredoc, rapport…) → rien à garder.
+  if (r.suspect) { r.estCommit = true; incertain(r.suspect); }
+  delete r.suspect;
   if (!r.estCommit) return { ...vide };
   if (r.incertain) r.index = true;
   return r;
@@ -215,6 +263,7 @@ export function analyseCommande(cmd) {
 
 function ajouteChemin(r, p) {
   if (p === '.' || p === './') { r.tousChangements = true; return; }
+  if (CHEMIN_HOSTILE.test(p)) { r.suspect = 'chemin avec caractère de contrôle ou métacaractère'; return; }
   r.chemins.push(p);
 }
 
@@ -237,3 +286,32 @@ export function fichiersAttendus(analyse, git) {
   } catch { return null; }
   return [...out];
 }
+
+/**
+ * Fichiers qui ne peuvent PAS affecter typecheck/tests/build : la documentation seule.
+ * ⚠️ Liste BLANCHE : tout le reste (package.json, lockfile, tsconfig*, configs vite/vitest, .css, scripts .mjs,
+ * workflows…) est du source pour le gate. Le défaut est « ça compte ».
+ */
+export const estSansEffetSurLeGate = (f) => /\.md$/i.test(f) || /^docs\//.test(f.replace(/\\/g, '/'));
+
+/** `true` si au moins un fichier attendu peut changer le résultat du gate (ou si la liste est vide = inconnu). */
+export const toucheLeGate = (fichiers) => fichiers.length === 0 || fichiers.some(f => !estSansEffetSurLeGate(f));
+
+const MAX_LIGNES = 200;
+const MAX_OCTETS = 20 * 1024;
+/** Fin d'une sortie d'erreur, plafonnée (200 dernières lignes, 20 ko) : jamais tout un journal, jamais l'environnement. */
+export const finDeSortie = (t) => {
+  let out = String(t).split('\n').slice(-MAX_LIGNES).join('\n');
+  if (out.length > MAX_OCTETS) out = out.slice(-MAX_OCTETS);
+  return out;
+};
+
+/**
+ * Fichiers de CONFIGURATION GLOBALE : ils changent le comportement de tout le typecheck/lint/build/tests, que
+ * le graphe d'imports ne peut pas cibler → suite complète. (Les autres non-TS — scripts .mjs, workflows —
+ * passent le gate mais restent ciblables : `vitest related` suit aussi les imports des .mjs.)
+ */
+export const estConfigGlobale = (f) => {
+  const n = f.replace(/\\/g, '/');
+  return /^(package(-lock)?\.json|tsconfig[^/]*\.json|vite[^/]*\.[cm]?[jt]s|vitest[^/]*\.[cm]?[jt]s|tailwind[^/]*|postcss[^/]*|eslint[^/]*|index\.html|\.npmrc|\.nvmrc)$/.test(n) || /\.css$/i.test(n);
+};

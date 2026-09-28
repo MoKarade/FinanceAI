@@ -110,7 +110,7 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
     it('gelé (badge « Pas à jour ») + dette LIVE augmentée → le NetWorth du passé BAISSE, pas figé à l\'ancienne dette', async () => {
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument());
 
         const netWorthCell = () => {
             const table = document.querySelector('table.sr-only') as HTMLTableElement;
@@ -133,7 +133,7 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
             });
         });
         expect(screen.getByText(/Pas à jour/i)).toBeInTheDocument();          // futur bien gelé
-        expect(screen.getByText(/La Courbe de Vie - STRAT-A/i)).toBeInTheDocument(); // courbe FUTURE figée (STRAT-A)
+        expect(screen.getByText(/Stratégie : STRAT-A/i)).toBeInTheDocument(); // courbe FUTURE figée (STRAT-A)
 
         // Discriminant : sur l'ANCIEN code, currentDebtNonImmo venait de `results` (figé sur STRAT-A,
         // dette=0) → le NetWorth du passé resterait IDENTIQUE à avant. Avec le FIX (lu depuis
@@ -166,7 +166,7 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
         render(<Harness />);
         // Le blob figé (restauré depuis l'IDB mocké) doit s'afficher — la garde `results !== null`
         // couvre cette branche (curveRestoring seulement si AUCUN résultat, ni live ni figé).
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-FROZEN/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-FROZEN/i)).toBeInTheDocument());
         expect(screen.getByText(/Pas à jour/i)).toBeInTheDocument();
 
         const table = document.querySelector('table.sr-only') as HTMLTableElement;
@@ -201,7 +201,7 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
         });
         render(<Harness />);
         fireEvent.click(revealBtn());
-        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-GATING/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/Stratégie : STRAT-GATING/i)).toBeInTheDocument());
 
         const table = document.querySelector('table.sr-only') as HTMLTableElement;
         // Recherche par LIBELLÉ DE DATE (colonne "Date", `dateLabel` = `YYYY-MM`), jamais par position :

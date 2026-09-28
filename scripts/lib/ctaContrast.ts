@@ -17,7 +17,7 @@ import twConfig from '../../tailwind.config.js';
 // est lue depuis le paquet lui-même (`tailwindcss/colors`, source unique de ces hex) — 539 occurrences dans
 // 70 fichiers de `components/` n'étaient vues par AUCUNE passe : le résolveur ne connaissait que les tokens
 // du projet, donc un bouton `bg-green-600 text-white` (3,30) n'était jamais une « paire ».
-import twColors from 'tailwindcss/colors';
+import twColors from '../../tailwind.palette-v3.js'; // [S5-TAILWIND4] la palette réellement servie (v3 figée)
 
 /** WCAG AA — texte normal (< 18px, ou < 14px bold). */
 export const SEUIL_AA_NORMAL = 4.5;

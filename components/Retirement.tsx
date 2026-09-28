@@ -1,29 +1,24 @@
 import React, { useMemo, useState } from 'react';
-import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
-import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
-import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
-import { Icon, type IconName } from './ui/Icon';
+import { type IconName } from './ui/Icon';
 import { SubTabs, TabPanel } from './ui/SubTabs';
-import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
-import { maskedTick } from '../utils/chartPrivacy';
 import { VieCurveLink } from './vie/VieCurveLink';
 import { TAB_LABELS } from '../constants';
 import { DEFAULT_LIFE_EXPECTANCY } from '../services/projection/modelAssumptions';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Tab } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
-import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
+import { useViewportBelowLg } from '../hooks/useViewportBelowLg';
 import { buildLockedByMonth, pointStackedCapital } from '../utils/lockedCurveOverlay';
-import { ZoomContainer } from './ui/ZoomContainer';
-import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
-import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
+import { AccumulationDecaissement, type PointAnnuel } from './retirement/AccumulationDecaissement';
+import { FluxRetraite } from './retirement/FluxRetraite';
 import { ageOptsForSalaryInversion, calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD, formatSigned, formatCompactCAD } from '../utils/format';
@@ -33,10 +28,6 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps de la projection).
 const EMPTY_ARRAY: never[] = [];
-
-// [REFONTE-NAV-L4] Sous-titre harmonisé de la famille « Vie » (ce que je PRÉVOIS) :
-// chaque page annonce son rôle vis-à-vis de la courbe Future.
-const RETIREMENT_SUBTITLE = "Ton plan de retraite déforme ta courbe Future — mêmes chiffres que l'onglet Futur.";
 
 // [REFONTE-NAV-L4] + [UI-TABS-RICH] — la page empilait 4 outils dans une colonne :
 // sous-onglets légers (idiome BudgetWorkspace) SANS déplacer de logique. « Projection »
@@ -227,9 +218,9 @@ export const Retirement: React.FC<RetirementProps> = ({
     }, [isPrivacyMode]);
 
     // G7c — zoom molette / pan sur les deux graphes Retraite (x = âge).
-    type YearlyPoint = ProjectionChartPoint & { TotalCapital: number };
-    const zoomAccum = useTimeChartZoom<YearlyPoint>(lifeExpectancyData as YearlyPoint[]);
-    const zoomCashflow = useTimeChartZoom<YearlyPoint>(retirementData as YearlyPoint[]);
+    const zoomAccum = useTimeChartZoom<PointAnnuel>(lifeExpectancyData as PointAnnuel[]);
+    const zoomCashflow = useTimeChartZoom<PointAnnuel>(retirementData as PointAnnuel[]);
+    const etroit = useViewportBelowLg();
     const bankruptcyAge = bankruptcyPoint?.age;
 
     // [REFONTE-NAV-L4] sous-onglet actif (idiome BudgetWorkspace, aucun état persisté).
@@ -238,58 +229,62 @@ export const Retirement: React.FC<RetirementProps> = ({
     // Mode strict : pas de projection = pas de données. Aucune invention.
     if (!hasProjection) {
         return (
-            <div className="space-y-6 stagger-in pb-20">
-                <PageHeader
-                    icon={<Icon name="retirement" size={28} />}
-                    title={TAB_LABELS[Tab.RETIREMENT]}
-                    subtitle={RETIREMENT_SUBTITLE}
-                    actions={<VieCurveLink />}
-                />
+            <div className="space-y-5 stagger-in pb-10">
+                <PageHeader title={TAB_LABELS[Tab.RETIREMENT]} actions={<VieCurveLink />} />
                 <ProjectionRequired feature="La simulation de retraite" />
             </div>
         );
     }
 
+    // [S5-REFONTE-RETRAITE] En-tête des maquettes : onglets à côté du titre, puis le scénario et la
+    // pastille « Tient jusqu'à N ans » (ou « Épuisé à N ans ») ; sur mobile, la pastille seule à droite
+    // du titre, le scénario en petite ligne sous les onglets, le lien courbe en bas de page.
+    const pastilleStatut = bankruptcyAge
+        ? 'bg-danger-500/10 border-danger-400/30 text-danger-400'
+        : 'bg-success-500/10 border-success-400/30 text-success-400';
+    const statut = (
+        <span className={`h-[30px] lg:h-9 px-2.5 lg:px-3.5 rounded-full border text-meta lg:text-[13px] font-semibold flex items-center whitespace-nowrap ${pastilleStatut}`}>
+            {bankruptcyAge ? `Épuisé à ${bankruptcyAge} ans` : `Tient jusqu'à ${lifeExpectancy} ans`}
+        </span>
+    );
+    const etiquette = 'text-meta xl:text-[11px] xl:font-semibold xl:tracking-[0.06em] xl:uppercase text-ink-400';
+    const tuile = 'rounded-2xl bg-surface border border-white/6 p-3.5 xl:px-[18px] xl:py-4 flex flex-col gap-1 min-w-0';
+    const valeur = 'font-mono xl:font-sans text-[18px] xl:text-[26px] font-bold xl:font-extrabold';
+    const capitaux = [
+        { libelle: 'REER', montant: liveCSVBalances.REER, couleur: 'text-[#7c93f2]' },
+        { libelle: 'CELI', montant: liveCSVBalances.CELI, couleur: 'text-[#34b39a]' },
+        { libelle: 'Non-enr.', montant: liveCSVBalances.NON_ENREG, couleur: 'text-[#d4a24c]' },
+    ];
+
     return (
-        <div className="space-y-6 stagger-in pb-20">
+        <div className="space-y-5 stagger-in pb-10">
             {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
             <ProjectionStaleBanner />
-            {/* [REFONTE-NAV-L4] header harmonisé famille « Vie » : titre = TAB_LABELS, sous-titre
-                = rôle vis-à-vis de la courbe, lien courbe en action. Le scénario actif (ex-sous-titre)
-                devient un badge — même registre que l'indicateur succès/épuisement. */}
             <PageHeader
-                icon={<Icon name="retirement" size={28} />}
                 title={TAB_LABELS[Tab.RETIREMENT]}
-                subtitle={RETIREMENT_SUBTITLE}
-                badge={
-                    <div className="flex flex-wrap items-center gap-2">
-                        {activeScenarioName && (
-                            <Badge variant="info" size="md">Scénario : {activeScenarioName}</Badge>
-                        )}
-                        <Badge variant={bankruptcyAge ? 'danger' : 'success'} size="md">
-                            {bankruptcyAge ? `Capital épuisé à ${bankruptcyAge} ans` : `Succès jusqu'à ${lifeExpectancy} ans`}
-                        </Badge>
-                    </div>
+                nav={
+                    <SubTabs<RetirementSubTab>
+                        idPrefix="retraite"
+                        label="Sections Retraite"
+                        tabs={RETIREMENT_SUB_TABS}
+                        active={subTab}
+                        onSelect={setSubTab}
+                    />
                 }
-                actions={<VieCurveLink />}
+                actions={etroit ? statut : (
+                    <span className="flex items-center gap-3">
+                        {activeScenarioName && (
+                            <span className="h-9 px-3.5 rounded-full bg-surface border border-white/8 text-ink-200 text-[13px] flex items-center whitespace-nowrap">Scénario : {activeScenarioName}</span>
+                        )}
+                        {statut}
+                        <VieCurveLink />
+                    </span>
+                )}
             />
+            {etroit && activeScenarioName && <p className="-mt-2 text-meta text-ink-400">Scénario : {activeScenarioName}</p>}
 
-            {/* PH3 — TOUS les éditeurs de profil/retraite (paramètres, revenu-retraite, profil détaillé)
-                ont migré dans l'onglet Profil unifié. Retraite = résultats & analyses uniquement. */}
-            <ProfileFieldsMoved what="Tes paramètres de retraite, ton revenu-retraite et ton profil détaillé" />
-
-            {/* [REFONTE-NAV-L4] + [UI-TABS-RICH] — sous-onglets légers : la colonne de 4 outils
-                empilés devient « Outils d'optimisation », la courbe garde toute la place. */}
-            <SubTabs<RetirementSubTab>
-                idPrefix="retraite"
-                label="Sections Retraite"
-                tabs={RETIREMENT_SUB_TABS}
-                active={subTab}
-                onSelect={setSubTab}
-            />
-
-            <TabPanel idPrefix="retraite" tab="outils" when={subTab === 'outils'}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <TabPanel idPrefix="retraite" tab="outils" when={subTab === 'outils'} className="space-y-5 focus-ring rounded-card">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
                     {/* W1.5 — Goal Seeking + W2.6 Drawdown (extrait dans GoalSeekerCard) */}
                     <GoalSeekerCard
                         paramsBuilder={() => ({
@@ -318,140 +313,57 @@ export const Retirement: React.FC<RetirementProps> = ({
                 </div>
             </TabPanel>
 
-            <TabPanel idPrefix="retraite" tab="projection" when={subTab === 'projection'}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-
-                    {/* Phase F.5 — extraction Card "Capitaux Actuels" en sous-composant */}
-                    <CurrentCapitalCard
-                        balances={{ REER: liveCSVBalances.REER, CELI: liveCSVBalances.CELI, NON_ENREG: liveCSVBalances.NON_ENREG }}
-                        targetAge={goal.targetAge}
-                        lifeExpectancy={lifeExpectancy}
-                        retirementNetWorth={retirementNetWorth}
-                        peakNetWorth={peakNetWorth}
-                        finalNetWorth={finalNetWorth}
-                    />
-                </div>
-
-                <div className="lg:col-span-2 space-y-6">
-                    {/* [REFONTE-NAV-L4] l'ancien ternaire chartData.length === 0 ici était MORT :
-                        la garde hasProjection plus haut retourne déjà <ProjectionRequired>. */}
-                    <>
-                            <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">
-                                <div
-                                    role="img"
-                                    aria-label="Graphique d'accumulation et d'épuisement — évolution du capital placé (par compte) et du patrimoine net selon l'âge, de maintenant jusqu'à l'espérance de vie."
-                                >
-                                <ZoomContainer zoom={zoomAccum} className="h-[420px] w-full" style={{ minHeight: '420px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={zoomAccum.visibleData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="retGradREER" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#5b82bf" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#5b82bf" stopOpacity={0.05} />
-                                                </linearGradient>
-                                                <linearGradient id="retGradCELI" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#4f9d86" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#4f9d86" stopOpacity={0.05} />
-                                                </linearGradient>
-                                                <linearGradient id="retGradCELIAPP" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#2dd4bf" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#2dd4bf" stopOpacity={0.05} />
-                                                </linearGradient>
-                                                <linearGradient id="retGradNonReg" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#c2974f" stopOpacity={0.75} />
-                                                    <stop offset="95%" stopColor="#c2974f" stopOpacity={0.05} />
-                                                </linearGradient>
-                                                <linearGradient id="retGradLiq" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#9b8fcf" stopOpacity={0.5} />
-                                                    <stop offset="95%" stopColor="#9b8fcf" stopOpacity={0.02} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-                                            <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickMargin={10} tickFormatter={(val) => `${val} ans`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCompactCAD(val))} width={55} />
-                                            <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
-                                            <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
-                                            <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a)`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
-                                            <Area type="monotone" dataKey="Liquidites" stackId="1" fill="url(#retGradLiq)" stroke="#9b8fcf" strokeWidth={1} name="Liquidites" fillOpacity={1} />
-                                            <Area type="monotone" dataKey="NonReg" stackId="1" fill="url(#retGradNonReg)" stroke="#c2974f" strokeWidth={1} name="Non-Enreg." fillOpacity={1} />
-                                            <Area type="monotone" dataKey="CELI" stackId="1" fill="url(#retGradCELI)" stroke="#4f9d86" strokeWidth={1.5} name="CELI" fillOpacity={1} />
-                                            {/* [PH2-d-3] — CELIAPP manquait du stack (TotalCapital l'inclut depuis toujours).
-                                                Revue #245 (a11y S1) : stroke TIRETÉ = distinction non-couleur vs CELI (teal voisin). */}
-                                            <Area type="monotone" dataKey="CELIAPP" stackId="1" fill="url(#retGradCELIAPP)" stroke="#2dd4bf" strokeWidth={1.5} strokeDasharray="4 2" name="CELIAPP" fillOpacity={1} />
-                                            <Area type="monotone" dataKey="REER" stackId="1" fill="url(#retGradREER)" stroke="#5b82bf" strokeWidth={1.5} name="REER" fillOpacity={1} />
-                                            {/* PH2-d — capital VERROUILLÉ (référence figée), superposé à l'aperçu live. */}
-                                            {lockedCapitalByMonth && <Line type="monotone" dataKey="lockedTotalCapital" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Verrouillée 🔒" isAnimationActive={false} />}
-                                        </ComposedChart>
-                                    </ResponsiveContainer>
-                                </ZoomContainer>
+            <TabPanel idPrefix="retraite" tab="projection" when={subTab === 'projection'} className="space-y-5 focus-ring rounded-card">
+                <section aria-label="Résumé" className="grid grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_1.4fr] gap-2.5 xl:gap-3.5">
+                    <div className={`${tuile} col-span-2 xl:col-span-1`}>
+                        <span className={etiquette}>Capital à la retraite ({goal.targetAge} ans)</span>
+                        <PrivateAmount as="div" className={`${valeur} text-success-400 xl:text-ink-50`}>{formatCompactCAD(retirementNetWorth)}</PrivateAmount>
+                    </div>
+                    <div className={tuile}>
+                        <span className={etiquette}>Pic du patrimoine</span>
+                        <PrivateAmount as="div" className={`${valeur} text-ink-50`}>{formatCompactCAD(peakNetWorth)}</PrivateAmount>
+                    </div>
+                    <div className={tuile}>
+                        <span className={etiquette}>Héritage ({lifeExpectancy} ans)</span>
+                        {finalNetWorth > 0
+                            ? <PrivateAmount as="div" className={`${valeur} text-ink-50`}>{formatCompactCAD(finalNetWorth)}</PrivateAmount>
+                            : <div className={`${valeur} text-danger-400`}>Épuisé</div>}
+                    </div>
+                    <div className="col-span-2 xl:col-span-1 rounded-2xl bg-surface border border-white/6 p-4 xl:px-[18px] flex flex-col gap-3 xl:gap-2 min-w-0">
+                        <span className="text-[11px] font-semibold tracking-[0.08em] xl:tracking-[0.06em] uppercase text-ink-400">Capitaux actuels</span>
+                        <dl className="grid grid-cols-3 gap-2">
+                            {capitaux.map((c) => (
+                                <div key={c.libelle} className="flex flex-col gap-0.5 min-w-0">
+                                    <dt className="text-meta text-ink-400">{c.libelle}</dt>
+                                    <dd><PrivateAmount className={`font-mono text-[14px] font-semibold xl:font-bold ${c.couleur} xl:text-ink-50`}>{formatCAD(c.montant)}</PrivateAmount></dd>
                                 </div>
-                                {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe d'accumulation :
-                                    mêmes données en table accessible, masquage privacy aligné sur les PrivateAmount. */}
-                                <ChartDataTable
-                                    caption="Capital placé et patrimoine net par âge (accumulation puis épuisement)"
-                                    columns={accumColumns}
-                                    rows={lifeExpectancyData}
-                                />
+                            ))}
+                        </dl>
+                    </div>
+                </section>
 
-                                <div className="grid grid-cols-3 gap-4 mt-6">
-                                    <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-tiny text-ink-400 uppercase tracking-widest font-bold">Capital a la Retraite</div>
-                                        <PrivateAmount as="div" className="text-2xl font-black text-info-400 mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
-                                            {formatCompactCAD(retirementNetWorth)}
-                                        </PrivateAmount>
-                                    </div>
-                                    <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-tiny text-ink-400 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
-                                        <PrivateAmount as="div" className="text-2xl font-black text-success-400 mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                                            {formatCompactCAD(peakNetWorth)}
-                                        </PrivateAmount>
-                                    </div>
-                                    <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-tiny text-ink-400 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
-                                        <PrivateAmount as="div" className={`text-2xl font-black mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
-                                            {finalNetWorth > 0 ? formatCompactCAD(finalNetWorth) : 'Épuisé'}
-                                        </PrivateAmount>
-                                    </div>
-                                </div>
-                            </Card>
+                <AccumulationDecaissement
+                    donnees={lifeExpectancyData as PointAnnuel[]}
+                    zoom={zoomAccum}
+                    ageRetraite={goal.targetAge}
+                    verrouillee={!!lockedCapitalByMonth}
+                    colonnes={accumColumns}
+                    isPrivacyMode={isPrivacyMode}
+                    etroit={etroit}
+                    infobulle={<RetirementTooltip />}
+                />
 
-                            <Card icon={<Icon name="debt" size={18} />} title="Flux à la retraite">
-                                <div
-                                    role="img"
-                                    aria-label="Graphique des flux à la retraite — revenu total, rente gouvernementale + PSV et besoin mensuel (ajusté à l'inflation) selon l'âge, de la retraite jusqu'à l'espérance de vie."
-                                >
-                                <ZoomContainer zoom={zoomCashflow} className="h-[280px] w-full" style={{ minHeight: '280px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
-                                            <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCompactCAD(val))} />
-                                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number | string, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), name]} />
-                                            <Legend iconType="circle" />
-                                            <Area type="monotone" dataKey="IncomeRetirement" fill="#5b82bf20" stroke="#5b82bf" strokeWidth={2} name="Rente Gouv. + PSV" />
-                                            <Area type="monotone" dataKey="Income" fill="#4f9d8615" stroke="#4f9d86" strokeWidth={2} name="Revenu Total" />
-                                            <Line type="monotone" dataKey="Expenses" stroke="#ef4444" strokeWidth={3} dot={false} name="Besoin (Infl.)" style={{ filter: 'drop-shadow(0px 2px 6px rgba(239,68,68,0.5))' }} />
-                                        </ComposedChart>
-                                    </ResponsiveContainer>
-                                </ZoomContainer>
-                                </div>
-                                {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au graphe « Flux à la
-                                    retraite » : mêmes flux (rente, revenu, besoin) par âge en table accessible,
-                                    masquage privacy aligné sur le reste de l'onglet. */}
-                                <ChartDataTable
-                                    caption="Flux à la retraite par âge — rente gouvernementale, revenu total et besoin mensuel"
-                                    columns={cashflowColumns}
-                                    rows={retirementData}
-                                />
-                                <div className="mt-4 text-meta text-ink-300 text-center bg-white/5 p-3 rounded-lg border border-white/10">
-                                    La ligne rouge represente votre besoin mensuel ({goal.targetMonthlyIncome}$/mois), ajuste a l'inflation ({projection.inflationRate ?? 2}%) au fil du temps.
-                                </div>
-                            </Card>
-                        </>
-                </div>
-            </div>
+                <FluxRetraite
+                    donnees={retirementData as PointAnnuel[]}
+                    zoom={zoomCashflow}
+                    colonnes={cashflowColumns}
+                    isPrivacyMode={isPrivacyMode}
+                    etroit={etroit}
+                />
             </TabPanel>
+
+            {/* Mobile : le lien vers la courbe ferme la page, en pleine largeur (maquette M-retraite). */}
+            {etroit && <div className="[&>button]:w-full"><VieCurveLink /></div>}
         </div>
     );
 };
@@ -468,9 +380,9 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
     const isRetired = (data.age ?? 0) >= (data.RetirementAge ?? 65);
 
     return (
-        <div className="bg-dark/95 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-2xl max-w-[280px] z-50">
+        <div className="bg-surface border border-white/10 p-4 rounded-xl shadow-2xl max-w-[280px] z-50">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
-                <span className="text-lg font-black text-white">Age: {data.age} ans</span>
+                <span className="text-body font-bold text-ink-50">{data.age} ans</span>
                 <span className={`text-meta font-bold px-2 py-1 rounded-md ${isRetired ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-info-500/10 text-info-400 border border-info-500/20'}`}>
                     {isRetired ? 'En retraite' : 'Accumulation'}
                 </span>
@@ -479,7 +391,7 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
             <div className="mb-4 space-y-2">
                 <div className="flex justify-between items-center">
                     <span className="text-tiny font-bold text-ink-300 uppercase tracking-widest">Patrimoine Net</span>
-                    <PrivateAmount className="text-body font-black text-success-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]">{formatCAD(data.NetWorth)}</PrivateAmount>
+                    <PrivateAmount className="text-body font-black text-success-400">{formatCAD(data.NetWorth)}</PrivateAmount>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">

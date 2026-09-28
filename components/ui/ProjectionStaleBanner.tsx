@@ -15,7 +15,7 @@ export const ProjectionStaleBanner: React.FC<{ className?: string }> = ({ classN
     return (
         <div role="status">
             {hasError && (
-                <div className={`flex items-center gap-2 rounded-card border border-warning-500/25 bg-warning-500/[0.08] px-3 py-2 text-meta text-warning-400 ${className}`}>
+                <div className={`flex items-center gap-2 rounded-card border border-warning-500/25 bg-warning-500/8 px-3 py-2 text-meta text-warning-400 ${className}`}>
                     <Icon name="alert" size={14} className="shrink-0" aria-hidden="true" />
                     <span>
                         Le dernier recalcul de la projection a échoué — les chiffres projetés affichés datent du

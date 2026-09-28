@@ -31,10 +31,13 @@ interface Props {
     transactions: Transaction[];
     /** Marque les ids comme virement interne (exclus du budget, réversible ligne par ligne). */
     onMarkTransfers: (ids: number[]) => void;
+    /** [S5-REFONTE-TRANSACTIONS] Rendu DANS le panneau d'outil de la page (qui porte titre et
+     *  fermeture) : ouvert d'emblée, sans son propre en-tête ni cadre. */
+    integre?: boolean;
 }
 
-export const TransfersPanel: React.FC<Props> = ({ transactions, onMarkTransfers }) => {
-    const [open, setOpen] = useState(false);
+export const TransfersPanel: React.FC<Props> = ({ transactions, onMarkTransfers, integre = false }) => {
+    const [open, setOpen] = useState(integre);
 
     // Ne calcule que si le panneau est ouvert : l'appariement parcourt tout l'historique.
     const detection = useMemo(
@@ -60,8 +63,8 @@ export const TransfersPanel: React.FC<Props> = ({ transactions, onMarkTransfers 
     };
 
     return (
-        <div className="rounded-xl border border-info-500/20 bg-info-500/5">
-            <button
+        <div className={integre ? '' : 'rounded-xl border border-info-500/20 bg-info-500/5'}>
+            {!integre && <button
                 onClick={() => setOpen((p) => !p)}
                 aria-expanded={open}
                 className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-ink-200 hover:text-ink-50 transition-colors"
@@ -76,10 +79,10 @@ export const TransfersPanel: React.FC<Props> = ({ transactions, onMarkTransfers 
                     )}
                 </span>
                 <span className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
-            </button>
+            </button>}
 
             {open && report && (
-                <div className="px-4 pb-4 space-y-3">
+                <div className={integre ? 'space-y-3' : 'px-4 pb-4 space-y-3'}>
                     <p className="text-meta text-ink-300">
                         Un virement entre tes comptes n&apos;est pas une dépense. Reconnu par deux montants
                         exactement opposés, à quelques jours d&apos;écart, sur deux comptes différents.{' '}

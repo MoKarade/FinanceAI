@@ -37,7 +37,7 @@ export const RetirementSettingsCard: React.FC = () => {
                             max={75}
                             value={retirementGoal?.targetAge ?? 65}
                             onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), targetAge: Number(e.target.value) || 65 } })}
-                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                         />
                     </div>
                     <div data-focus-section="profile-lifeExpectancy">
@@ -51,7 +51,7 @@ export const RetirementSettingsCard: React.FC = () => {
                             max={105}
                             value={retirementGoal?.lifeExpectancy ?? DEFAULT_LIFE_EXPECTANCY}
                             onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), lifeExpectancy: Number(e.target.value) || DEFAULT_LIFE_EXPECTANCY } })}
-                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                         />
                     </div>
                     <div data-focus-section="profile-retirementIncome">
@@ -62,7 +62,7 @@ export const RetirementSettingsCard: React.FC = () => {
                             step={100}
                             value={retirementGoal?.targetMonthlyIncome ?? 4000}
                             onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), targetMonthlyIncome: Number(e.target.value) || 0 } })}
-                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                         />
                     </div>
                 </div>
@@ -81,7 +81,7 @@ export const RetirementSettingsCard: React.FC = () => {
                             max={72}
                             value={retirementGoal?.rrqStartAge ?? defaultRrqStart}
                             onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), rrqStartAge: Math.min(72, Math.max(60, Number(e.target.value) || 65)) } })}
-                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                         />
                     </div>
                     <div>
@@ -95,7 +95,7 @@ export const RetirementSettingsCard: React.FC = () => {
                             max={70}
                             value={retirementGoal?.psvStartAge ?? defaultPsvStart}
                             onChange={(e) => setAppState({ retirementGoal: { ...(retirementGoal as RetirementGoal), psvStartAge: Math.min(70, Math.max(65, Number(e.target.value) || 65)) } })}
-                            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                         />
                     </div>
                 </div>

@@ -69,6 +69,10 @@ export const PROGRAMMES_JQ_AUTORISES: Record<string, string[]> = {
         + 'fx: {ecriture: (.fx.ecriture | code(["taux","diagnostic","aucune","echec"])), '
         + 'cause: (.fx.cause | code(["ok","partiel","perimee","reseau","http","reponse-illisible","manuel","jamais-tente"]))}}',
     ],
+    // `gh pr list --json number --jq 'length'` : compte le nombre de PR ouvertes (0 ou 1, --limit 1) pour
+    // décider si le workflow continue. `--json number` ne demande QUE le numéro (jamais titre/branche/corps),
+    // et `length` ne renvoie que la TAILLE du tableau — jamais un numéro de PR ni un contenu. Aucune donnée.
+    'auto-merge.yml': ['length'],
 };
 
 /** Ce qui, dans un workflow, n'est pas un programme jq autorisé (commentaires YAML exclus). */

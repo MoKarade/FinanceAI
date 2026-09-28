@@ -15,6 +15,24 @@ export default [
     ignores: ['dist/**', 'dist-mcp/**', 'dist-ssr/**', 'node_modules/**', '**/*.d.ts', 'public/**', ...COPIES_MODELE_ATELIER],
   },
   {
+    // Fichiers .mjs PROPRES à FinanceAI (la couche « documents protégés », ADR 0024, et les aides de test qui l'exécutent dans Node) : linés.
+    // Les copies du modèle Atelier, elles, sont ignorées plus haut (COPIES_MODELE_ATELIER). Règles volontairement sobres : pas d'erreur nouvelle,
+    // seulement des avertissements (sauf no-undef/no-var : des fautes réelles dans un script Node exécuté en CI).
+    files: ['modeles/auto-merge/armer-docs.mjs', 'modeles/auto-merge/docsAjoutsSeulement.mjs', 'tests/helpers/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { process: 'readonly', console: 'readonly', setTimeout: 'readonly' },
+    },
+    rules: {
+      'no-undef': 'error',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'prefer-const': 'warn',
+      'no-var': 'error',
+      eqeqeq: ['warn', 'always'],
+    },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsparser,

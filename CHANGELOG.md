@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-28 — Les documents que les sessions relisent au démarrage sont mieux protégés
+
+- Aucun changement visible dans l'app. Les fichiers que les sessions Claude relisent (règles, leçons, état du projet) sont
+  maintenant protégés contre une modification silencieuse glissée dans une PR fusionnée automatiquement : certains exigent
+  ton accord pour tout changement de ligne existante, d'autres l'exigent seulement si une ligne ajoutée contient un lien ou
+  une commande suspecte. La PR reste en attente de l'accord de l'équipe sécurité avant toute fusion automatique.
+
 ## 2026-09-28 — Correctif technique : un test interne se trompait de Windows
 
 - Aucun changement dans l'app ni dans l'accessibilité (déjà correcte). Un test qui vérifie l'accessibilité des graphiques

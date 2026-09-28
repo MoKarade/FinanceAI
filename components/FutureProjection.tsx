@@ -1837,9 +1837,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* [PASSE-REEL-2] L'écart se lit JUSTE SOUS sa référence : affiché ailleurs, il ne
                     serait pas interprétable. Rend `null` si la comparaison n'a pas de sens. */}
                 <ForecastAccuracyBadge accuracy={forecastAccuracy} />
-                {/* [PASSE-REEL-2] L'écart se lit JUSTE SOUS sa référence : affiché ailleurs, il ne
-                    serait pas interprétable. Rend `null` si la comparaison n'a pas de sens. */}
-                <ForecastAccuracyBadge accuracy={forecastAccuracy} />
                 {/* Hauteur : 55dvh (≥ 380 px) au téléphone, 500 px tablette, 650 px bureau. [S5-REFONTE-FUTUR]
                     Plus haute que les maquettes, VOLONTAIREMENT : « le graphe GARDE sa taille » est un
                     choix de Marc ([FUTUR-PANNEAU-FIXE]) — la page défile, la courbe ne rétrécit pas.

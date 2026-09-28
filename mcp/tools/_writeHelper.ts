@@ -22,7 +22,7 @@ export const MAX_CHANGES_PER_CALL = 500;
  *  la session, à l'outil, aux arguments exacts et aux changements) puis brûlé, et seulement alors on écrit.
  *  Un `confirm:true` du modèle n'existe plus : il n'a aucun effet. In-app, la confirmation passe par le
  *  modal `writeExecutor` (qui n'appelle PAS runApply) : chaque surface garde sa confirmation native. */
-export interface WriteGuard {
+interface WriteGuard {
     vault: ConfirmVault;
     scope: string;
     tool: string;

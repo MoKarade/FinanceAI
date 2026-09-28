@@ -21,8 +21,9 @@ import { runApply, auditWrite, scopeTag, MAX_CHANGES_PER_CALL } from './_writeHe
 import { createConfirmVault, digest, type ConfirmVault } from './confirmVault';
 import { errorContent } from './_dataAware';
 
-/** Plafond d'éléments d'entrée (lignes de relevé, positions…) par appel, avant tout calcul. */
-export const MAX_INPUT_ITEMS_PER_CALL = MAX_CHANGES_PER_CALL;
+/** Plafond d'éléments d'entrée (lignes de relevé, positions…) par appel, avant tout calcul.
+ *  Usage interne seulement (countItems ci-dessous) : pas exporté, aucun autre fichier n'en a besoin. */
+const MAX_INPUT_ITEMS_PER_CALL = MAX_CHANGES_PER_CALL;
 
 export const PROTOCOLE_ECRITURE =
     " ⚠️ PROTOCOLE D'ÉCRITURE À DEUX TEMPS (imposé par le serveur) : le 1er appel renvoie un APERÇU et un " +

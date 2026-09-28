@@ -25,7 +25,9 @@
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
-export const CONFIRM_TTL_MS = 5 * 60 * 1000;
+// Usage interne seulement (défaut de `createConfirmVault` ci-dessous) : pas exporté, aucun autre
+// fichier n'en a besoin (la durée effective se lit dans `expiresInSec` renvoyé par `issue`).
+const CONFIRM_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING = 100;
 
 /** Sérialisation canonique (clés triées, récursif) : même empreinte quel que soit l'ordre des clés. */
@@ -42,8 +44,9 @@ export function canonicalJson(v: unknown): string {
 
 export const digest = (v: unknown): string => createHash('sha256').update(canonicalJson(v)).digest('hex');
 
-/** Ce à quoi un jeton est lié. */
-export interface ConfirmBinding {
+/** Ce à quoi un jeton est lié. Usage interne (construit par valeur dans _writeHelper.ts par typage
+ *  structurel) : pas exporté, aucun autre fichier ne l'importe par son nom. */
+interface ConfirmBinding {
     scope: string;        // identifiant de session MCP (ou « local » en stdio)
     tool: string;
     argsHash: string;     // empreinte des arguments SANS le jeton

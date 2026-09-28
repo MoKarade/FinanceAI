@@ -4,10 +4,12 @@
 // headers minimaux (pas de fuite du jeton de relais vers Anthropic), no-store, passthrough statut,
 // annulation chaînée. Le handler tourne tel quel en Edge Vercel ET en dev Vite.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { relayClaude } from '../../api/_lib/relay';
+import { relayClaude, reinitialiserClesValidees } from '../../api/_lib/relay';
+import { reinitialiserLimites } from '../../api/_lib/garde';
 
 const RELAY_URL = 'http://localhost/api/claude/v1/messages';
-const TOKEN = 'tok-test';
+// [DURCISSEMENT-RELAIS] Plus de jeton de relais : l'Origin (navigateur) est le frein, la clé BYOK le reste.
+const ORIGINE = 'http://localhost:5173';
 
 const mkRequest = (over: {
     url?: string; method?: string; headers?: Record<string, string>; body?: string;
@@ -15,7 +17,7 @@ const mkRequest = (over: {
 } = {}): Request => new Request(over.url ?? RELAY_URL, {
     method: over.method ?? 'POST',
     headers: {
-        'x-financeai-proxy': TOKEN,
+        'origin': ORIGINE,
         'authorization': 'Bearer sk-ant-test-123',
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
@@ -31,13 +33,14 @@ const upstreamOk = () => new Response(JSON.stringify({ id: 'msg_1' }), {
 
 let fetchSpy: ReturnType<typeof vi.fn>;
 beforeEach(() => {
+    reinitialiserLimites();
+    reinitialiserClesValidees();
     fetchSpy = vi.fn(async () => upstreamOk());
     vi.stubGlobal('fetch', fetchSpy);
 });
 afterEach(() => vi.unstubAllGlobals());
 
-const call = (req: Request, accessToken: string | undefined = TOKEN) =>
-    relayClaude(req, { accessToken });
+const call = (req: Request) => relayClaude(req, { env: () => undefined });
 
 describe('relayClaude — contrat sécurité', () => {
     it('rejette toute route hors POST /v1/messages (404, fetch amont JAMAIS appelé)', async () => {
@@ -50,20 +53,32 @@ describe('relayClaude — contrat sécurité', () => {
         expect((await r1.json() as { type: string }).type).toBe('error');
     });
 
-    it('503 si le relais n\'est pas configuré (aucun jeton serveur)', async () => {
-        // Chemin RÉEL de prod (pas d'opts) : configuredToken() lit l'env — stub à vide.
-        // NB : `call(req, undefined)` serait un piège (paramètre par défaut ⇒ jeton fourni).
-        vi.stubEnv('PROXY_ACCESS_TOKEN', '');
-        const r = await relayClaude(mkRequest());
-        vi.unstubAllEnvs();
-        expect(r.status).toBe(503);
+    it('403 si l\'Origin manque, est étrangère ou usurpe le nom (fetch amont JAMAIS appelé)', async () => {
+        for (const origin of [undefined, 'https://evil.example', 'https://finance.hubperso.com.evil.example', 'null', 'pas-une-url']) {
+            const req = new Request(RELAY_URL, {
+                method: 'POST',
+                headers: { authorization: 'Bearer sk-ant-test-123', 'content-type': 'application/json', ...(origin === undefined ? {} : { origin }) },
+                body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [] }),
+            });
+            const r = await call(req);
+            expect(r.status, String(origin)).toBe(403);
+        }
         expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it('401 si le jeton de relais est absent ou faux', async () => {
-        const r = await call(mkRequest({ headers: { 'x-financeai-proxy': 'mauvais' } }));
-        expect(r.status).toBe(401);
-        expect(fetchSpy).not.toHaveBeenCalled();
+    it('Origin acceptée : prod, localhost (dev), URL du déploiement (VERCEL_URL), RELAIS_ORIGINES', async () => {
+        const env = (k: string) => ({ VERCEL_URL: 'financeai-abc.vercel.app', RELAIS_ORIGINES: 'https://autre.example, https://encore.example' } as Record<string, string>)[k];
+        for (const origin of ['https://finance.hubperso.com', 'http://localhost:3000', 'http://127.0.0.1:5173', 'https://financeai-abc.vercel.app', 'https://encore.example']) {
+            const r = await relayClaude(mkRequest({ headers: { origin } }), { env });
+            expect(r.status, origin).toBe(200);
+        }
+    });
+
+    it('le vieux jeton x-financeai-proxy n\'est plus exigé NI transmis (il était public dans le bundle)', async () => {
+        const r = await call(mkRequest({ headers: { 'x-financeai-proxy': 'quelconque' } }));
+        expect(r.status).toBe(200);
+        const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }];
+        expect(JSON.stringify(init.headers)).not.toContain('quelconque');
     });
 
     it('401 si la clé BYOK (Authorization: Bearer) manque', async () => {
@@ -97,7 +112,7 @@ describe('relayClaude — contrat sécurité', () => {
         expect(url).toBe('https://api.anthropic.com/v1/messages');           // URL CONSTANTE (anti-SSRF)
         expect(init.headers['x-api-key']).toBe('sk-ant-test-123');           // clé BYOK re-mappée
         expect(init.headers['anthropic-version']).toBe('2023-06-01');
-        expect('x-financeai-proxy' in init.headers).toBe(false);             // jeton de relais JAMAIS forwardé
+        expect('x-financeai-proxy' in init.headers).toBe(false);             // en-têtes minimaux : rien du client sauf la clé
         expect('authorization' in init.headers).toBe(false);
         const body = JSON.parse(init.body as string) as { max_tokens: number };
         expect(body.max_tokens).toBe(16_000);                                // clamp serveur

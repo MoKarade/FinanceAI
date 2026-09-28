@@ -186,9 +186,9 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
         expect(d.raison).toContain('chemin interdit par auto-merge.json');
     });
 
-    it('aucune attestation configurée : securite_login et securite_user_id sont ABSENTS (échec fermé, chemins sensibles bloqués)', () => {
-        expect(config).not.toHaveProperty('securite_login');
-        expect(config).not.toHaveProperty('securite_user_id');
+    it('securite_login est configuré via une GitHub App (login en [bot] ET identifiant numérique obligatoire) ; chemins_attestables absent', () => {
+        expect(config.securite_login).toMatch(/^[A-Za-z0-9-]+\[bot\]$/);
+        expect(Number.isInteger(config.securite_user_id) && config.securite_user_id > 0).toBe(true);
         expect(config).not.toHaveProperty('chemins_attestables');
     });
 
@@ -203,7 +203,9 @@ describe('liste de chemins : les hooks React ne sont PAS interdits, ceux de l\'a
     });
 
     it('avec un compte configuré (variante de test, PAS la config réelle) : la revue lève un chemin sensible ; ancien SHA, autre compte, revue non approuvée, aucune revue : refus', () => {
-        const cfg = { ...config, securite_login: 'compte-securite' };
+        // securite_user_id explicitement effacé : la config réelle en porte un (App [bot]) qui ne doit PAS interférer
+        // avec ce scénario indépendant (compte simple, sans identifiant numérique exigé).
+        const cfg = { ...config, securite_login: 'compte-securite', securite_user_id: undefined };
         expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue()] }), cfg).armer).toBe(true);
         expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue({ commit_id: 'b'.repeat(40) })] }), cfg).armer).toBe(false);
         expect(peutArmer(pr(['api/_lib/relay.ts'], { reviews: [revue({ user: { login: 'autre', id: 2 } })] }), cfg).armer).toBe(false);
@@ -380,9 +382,9 @@ describe('attestation par une GitHub App (securite_login « <slug>[bot] » + sec
         expect(att(null)).toBe(false);
         expect(att([revue()], { userId: undefined })).toBe(false);
     });
-    it('la config réelle n\'a toujours ni securite_login ni securite_user_id (PR de 2 lignes de pole-securite ensuite)', () => {
-        expect(config).not.toHaveProperty('securite_login');
-        expect(config).not.toHaveProperty('securite_user_id');
+    it('la config réelle porte securite_login/securite_user_id, exactement le compte simulé dans ce fichier', () => {
+        expect(config.securite_login).toBe(LOGIN_BOT);
+        expect(config.securite_user_id).toBe(ID_BOT);
     });
 });
 

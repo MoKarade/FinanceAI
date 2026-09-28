@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-28 — **`[DOCS-PROTECTION]` (v3) : couche « documents des agents protégés » reconstruite sur main (kit 1.9.1 + attestation réelle)**
+> Reconstruit PAR-DESSUS main (contient déjà `[KIT-191]` + `[#1086]` + le correctif a11y `#1087` fusionnés) : `modeles/auto-merge/armer-docs.mjs`
+> (point d'entrée du workflow, AVANT l'`armer.mjs` du modèle, copie exacte intacte), `docsAjoutsSeulement.mjs` (décision pure, statique),
+> `LISEZMOI-docs.md`, ADR 0024. Deux niveaux : `chemins_ajouts_seulement` (STRICT — `docs/claude/lecons.md`, `docs/CONVENTIONS.md` : aucune ligne
+> existante ne change) et `chemins_contenu_surveille` (SOUPLE — `BACKLOG.md`, `HANDOVER.md`, `CHANGELOG.md` : cocher/archiver admis, mêmes
+> contrôles sur les lignes AJOUTÉES). `CLAUDE.md` + les 13 `docs/claude/*.md` (sauf `lecons.md`) passent sous attestation
+> (`chemins_label_validation`). Workflow `armement-auto-merge.yml` ADAPTÉ d'UNE ligne (`armer.mjs` → `armer-docs.mjs`), sorti du tableau
+> `COPIES.md` (9 fichiers exacts restants), les deux empreintes déclarées + un test qui vérifie que c'est la SEULE différence.
+> `securite_login`/`securite_user_id` sont RÉELS depuis #1086 : les tests d'attestation utilisent le VRAI `attestationValide`, plus de fixture
+> de substitution.
+> ⚠️ Repris d'une branche v2 périmée (base d'avant kit-190/191 et #1086) : le travail non commité réutilisable (bloc ESLint nominatif pour
+> les `.mjs` propres à FinanceAI, dead-code) a été porté ; le fix `exempleDe` split/join était déjà sur main via une autre branche (`resync`),
+> pas reporté (redondant). Bug trouvé en portant l'ADR : la v2 disait que cocher une case de `BACKLOG.md` exigeait l'attestation — faux, le
+> module l'admet SEUL (contenu surveillé) ; corrigé dans l'ADR ici. Le test a11y `chartAlternativeTexteGuard.test.ts`, trouvé rouge en cours de
+> route (préexistant, pas causé par ce lot), a été DIAGNOSTIQUÉ à tort comme « role="img" manquant sur FutureProjection.tsx » puis correctement
+> identifié comme un bug du TEST lui-même (Windows, voir session suivante) et corrigé en PR séparée #1087 AVANT de continuer ce lot (base à jour).
+> PR brouillon, `validation-marc`, **NON armée** (chemins sensibles ; attend la relecture ligne à ligne de pole-securite).
+>
 > ## 🟩 Session 2026-09-28 — **`[WIN-GARDES-A11Y-FUTUREPROJECTION]` : la garde a11y des graphes était rouge sous Windows, pas le composant**
 > `tests/components/chartAlternativeTexteGuard.test.ts` ligne 83 lisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` SANS `toPosix()` :
 > sous Windows, `path.relative` rend `components\FutureProjection.tsx` (antislash), qui ne matchait jamais la clé `components/FutureProjection.tsx`
@@ -12,7 +30,7 @@
 > nested-interactive (WCAG 4.1.2) que le code commente explicitement. Correctif : `toPosix(path.relative(...))`, comme les deux autres usages du
 > même fichier (déjà corrects). Même classe de bug que `[WIN-GARDES]` (2026-09-26) — ce fichier de garde n'avait pas été balayé. Piste notée au
 > BACKLOG (`[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`) : auditer les autres `path.relative()` de `tests/**`, non faite ici (hors périmètre, cosmétique
-> ailleurs). PR normale (non sensible), armée après gate vert.
+> ailleurs). PR normale (non sensible), armée après gate vert (#1087).
 >
 > ## 🟦 Session 2026-09-28 — **`[KIT-191]` : le kit d'auto-merge de l'Atelier passe en 1.9.1 (tag `kit-1.9.1`) — delta isolé pour relecture sécurité**
 > Resynchro depuis `[KIT-190]` (commit `00512380`, déjà revu par pole-securite sur le fond) : sur les 10 fichiers copiables

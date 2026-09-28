@@ -228,7 +228,7 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
         expect([...code.matchAll(/^\s*\S+:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}/gm)]).toHaveLength(1);
         expect(code).toMatch(/^\s+SHA:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\}\}/m);
         expect(code).toContain('persist-credentials: false');
-        expect(code).toContain('node modeles/auto-merge/armer.mjs');
+        expect(code).toContain('node modeles/auto-merge/armer-docs.mjs');
     });
     it('A3 pas de fork', () => {
         expect(code).toContain("github.event.pull_request.head.repo.full_name == github.repository");
@@ -288,9 +288,9 @@ describe('copies du kit 1.9.1 (tag kit-1.9.1, resynchronisé depuis 1.9.0) : COP
     const ATTENDUS = [
         'modeles/auto-merge/autoMerge.mjs', 'modeles/auto-merge/autoMerge.d.mts', 'modeles/auto-merge/chemins-interdits-base.json',
         'modeles/auto-merge/fusionner.mjs', 'modeles/auto-merge/armer.mjs', 'modeles/auto-merge/verifier-copies.mjs',
-        'modeles/auto-merge/surblocage.mjs', 'modeles/auto-merge/codes-raison.mjs', '.github/workflows/armement-auto-merge.yml', 'modeles/auto-merge/LISEZMOI.md',
+        'modeles/auto-merge/surblocage.mjs', 'modeles/auto-merge/codes-raison.mjs', 'modeles/auto-merge/LISEZMOI.md',
     ];
-    it('anti-vacuité : COPIES.md liste exactement les 10 fichiers du lot, tous en 1.9.1', () => {
+    it('anti-vacuité : COPIES.md liste exactement les 9 fichiers du lot, tous en 1.9.1 (armement-auto-merge.yml en est sorti : adapté, écart 5)', () => {
         expect(lignes.map((l) => l.chemin).sort()).toEqual([...ATTENDUS].sort());
         for (const l of lignes) expect(l.version, l.chemin).toBe('1.9.1');
     });
@@ -302,9 +302,28 @@ describe('copies du kit 1.9.1 (tag kit-1.9.1, resynchronisé depuis 1.9.0) : COP
     it('la source (tag kit-1.9.1, commit df55f4c) et chaque écart FinanceAI sont déclarés', () => {
         expect(liste).toContain('kit-1.9.1');
         expect(liste).toContain('df55f4c');
-        for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'securite_user_id', 'passerelle/tunnel.yml', 'workflows: [CI]', 'auto-merge.yml', 'carence_dependabot_jours', 'dependabot.yml']) {
+        for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'securite_user_id', 'passerelle/tunnel.yml', 'workflows: [CI]', 'auto-merge.yml', 'carence_dependabot_jours', 'dependabot.yml', 'armer-docs.mjs', 'docsAjoutsSeulement.mjs', 'ADR 0024', 'chemins_ajouts_seulement', 'chemins_contenu_surveille']) {
             expect(liste, `écart non déclaré : ${mot}`).toContain(mot);
         }
+    });
+});
+
+// ── workflow d'armement (gabarit adapté d'UNE ligne : armer-docs.mjs avant armer.mjs), lu comme donnée ────────────────────────────────────
+describe('workflow armement-auto-merge.yml (gabarit adapté : armer-docs.mjs) — la SEULE adaptation, empreintes déclarées', () => {
+    const yml = lit('.github/workflows/armement-auto-merge.yml');
+
+    it('l\'UNIQUE adaptation : armer-docs.mjs (couche documents protégés) à la place de armer.mjs', () => {
+        expect(yml).toContain('run: node modeles/auto-merge/armer-docs.mjs');
+        expect(yml).not.toContain('run: node modeles/auto-merge/armer.mjs');
+        expect(existsSync(resolve(RACINE, 'modeles/auto-merge/armer-docs.mjs'))).toBe(true);
+    });
+    it('COPIES.md déclare les deux empreintes (gabarit du kit et adapté) et l\'adaptation est la SEULE ligne qui diffère', () => {
+        const copies = lit('COPIES.md');
+        const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
+        expect(copies).toContain(sha(yml));
+        expect(copies).toContain('455d424b79b2');
+        const modele = yml.replace('run: node modeles/auto-merge/armer-docs.mjs', 'run: node modeles/auto-merge/armer.mjs');
+        expect(sha(modele).startsWith('455d424b79b2')).toBe(true);
     });
 });
 

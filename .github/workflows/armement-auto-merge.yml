@@ -66,7 +66,7 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha }}
           ACTION: ${{ github.event.action || github.event_name }}
           AUTOMERGE_OFF: ${{ vars.AUTOMERGE_OFF }}
-        run: node modeles/auto-merge/armer.mjs
+        run: node modeles/auto-merge/armer-docs.mjs
       - name: Échec fermé, désarmer par précaution
         if: failure()
         shell: bash

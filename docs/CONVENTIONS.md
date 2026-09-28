@@ -17197,3 +17197,19 @@ il ne fusionne rien avec ce qui existe déjà.
 - Ce comportement n'est pas propre à FinanceAI : toute app qui a documenté ses écarts dans `COPIES.md` (au lieu d'un
   fichier séparé) doit refaire ce geste à chaque bump de version. Piste pour l'Atelier (non faite ici, hors périmètre du
   lot) : `formaterCopies()` pourrait préserver tout ce qui suit le tableau au lieu de l'écraser.
+
+## `UN-DOC-ECRIT-SUR-UNE-BRANCHE-NON-FUSIONNEE-PEUT-DEJA-ETRE-FAUX` (2026-09-28, `[DOCS-PROTECTION]` v3)
+
+En reconstruisant la couche « documents protégés » sur `main` à jour (après avoir regardé une branche v2 périmée, base
+d'avant les resyncs kit-190/191 et l'attestation réelle #1086), l'ADR 0024 de la v2 affirmait, dans sa section
+« Conséquences », que cocher une case de `BACKLOG.md` exigeait l'attestation de pole-securite. Faux : le code
+(`docsAjoutsSeulement.mjs`) et la config (`chemins_contenu_surveille`) de la MÊME v2 classaient `BACKLOG.md` en
+« contenu surveillé » (souple : cocher/archiver admis seul), pas en « ajouts seulement » (strict). L'incohérence
+n'a été vue qu'en reconstruisant le document depuis zéro, comparé ligne à ligne au code qu'il décrit.
+
+- Un ADR ou une doc écrite sur une branche jamais fusionnée n'a jamais été relue contre le code final : elle peut
+  contenir une affirmation qui contredit le comportement réel dès le premier commit, sans que rien ne l'ait signalé.
+- Porter un document d'une branche à une autre n'est pas une copie : c'est l'occasion de le revérifier contre le code
+  qu'il prétend décrire, pas seulement contre les numéros de version.
+- Piste : un test qui dérive automatiquement la liste « strict vs souple » d'un ADR depuis `auto-merge.json`
+  éviterait qu'un texte descriptif diverge silencieusement de la configuration qu'il documente.

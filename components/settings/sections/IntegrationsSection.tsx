@@ -24,7 +24,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
             type="password"
             value={apiKeys?.anthropic || ''}
             onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
-            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
             placeholder="sk-ant-..."
             aria-describedby="apikey-anthropic-format"
           />
@@ -32,7 +32,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
             <div id="apikey-anthropic-format" className="text-meta mt-1" role="status" aria-live="polite">
               {apiKeys.anthropic.startsWith('sk-ant-') && apiKeys.anthropic.length >= 20
                 ? <span className="text-green-400">Format valide</span>
-                : <span className="text-yellow-400">Format inattendu (devrait commencer par <code className="bg-white/10 px-1 rounded">sk-ant-</code>)</span>
+                : <span className="text-yellow-400">Format inattendu (devrait commencer par <code className="bg-white/10 px-1 rounded-sm">sk-ant-</code>)</span>
               }
             </div>
           )}
@@ -45,7 +45,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
             type="password"
             value={apiKeys?.finnhub || ''}
             onChange={(e) => setApiKeys({ ...apiKeys, finnhub: e.target.value })}
-            className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+            className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
             placeholder="d12abc..."
             aria-describedby="apikey-finnhub-format"
           />
@@ -63,7 +63,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
             Optionnel : sans clé, fallback sur le Google Sheet legacy.
           </p>
         </div>
-        <div className="p-3 bg-info-bg rounded border border-info-border mt-4">
+        <div className="p-3 bg-info-bg rounded-sm border border-info-border mt-4">
           <div className="text-meta text-info-400 font-bold mb-1">ℹ️ Source de données actives</div>
           <p className="text-tiny text-ink-300">
             {apiKeys?.finnhub

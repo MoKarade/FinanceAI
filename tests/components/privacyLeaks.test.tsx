@@ -20,7 +20,7 @@ import { TaxBracketViz } from '../../components/TaxBracketViz';
 import { FED_BRACKETS } from '../../utils/tax';
 import { TransfersPanel } from '../../components/transactions/TransfersPanel';
 import { Budget } from '../../components/Budget';
-import { LifeEvents } from '../../components/LifeEvents';
+import { LifeProjects } from '../../components/LifeProjects';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { BudgetConfig, Debt, Transaction, User } from '../../types';
 
@@ -263,9 +263,15 @@ describe('[A11Y-PRIVACY-BUDGET-COUPLE] Santé financière du couple', () => {
     // Vue par défaut = MOIS : la carte affiche le brut MENSUEL du couple (6 113 + 3 887).
     const MONTHLY_GROSS = '10000';
 
-    const renderBudget = () => render(
-        <Budget transactions={[]} config={config} budgetItems={[]} setBudgetItems={vi.fn()} apiKey="" />,
-    );
+    const renderBudget = () => {
+        const r = render(
+            <Budget transactions={[]} config={config} budgetItems={[]} setBudgetItems={vi.fn()} apiKey="" />,
+        );
+        // [S5-REFONTE-BUDGET] Le partage par conjoint (et ses `title` chiffrés) est replié sous
+        // « Détail par personne » : déplié, sinon la garde des attributs passerait à vide.
+        fireEvent.click(r.getByRole('button', { name: /Détail par personne/ }));
+        return r;
+    };
     /** Texte de TOUS les attributs `title` de l'écran, espaces retirées. */
     const titles = (container: HTMLElement) =>
         [...container.querySelectorAll('[title]')]
@@ -306,22 +312,21 @@ describe('[A11Y-PRIVACY-BUDGET-COUPLE] Santé financière du couple', () => {
 // ── [A11Y-PRIVACY-LIFEEVENTS] (revue #608, 3e tour) ──────────────────────────
 // `isPrivacyMode` n'alimentait que la table sr-only et l'infobulle du donut : le coût de chaque
 // pastille de la frise (attribut `title`) restait en clair.
-describe('[A11Y-PRIVACY-LIFEEVENTS] frise des projets de vie', () => {
+// [S5-REFONTE-PROJETS] La frise affiche désormais le coût EN TEXTE sur chaque étiquette (maquettes) :
+// la garde porte sur le texte ET les attributs `title` de toute la page.
+describe('[A11Y-PRIVACY-LIFEEVENTS] frise et liste des projets de vie', () => {
     const events = [
-        { id: 'e1', name: 'Van aménagé', type: 'ACHAT_IMPORTANT', date: '2027-06-01', impactAmount: 63241, icon: 'car' },
+        { id: 'e1', name: 'Van aménagé', type: 'GROS_ACHAT', date: '2027-06-01', impactAmount: 63241 },
     ] as never;
-    const COST = '63241';
 
-    const titles = (container: HTMLElement) =>
-        [...container.querySelectorAll('[title]')]
-            .map((el) => el.getAttribute('title') ?? '')
-            .join(' ')
-            .replace(/[\s  ]/g, '');
+    const visible = (container: HTMLElement) =>
+        (container.textContent ?? '') + [...container.querySelectorAll('[title]')].map((el) => el.getAttribute('title') ?? '').join(' ');
+    const chiffres = (t: string) => t.replace(/[\s\u00a0\u202f]/g, '');
 
     const renderLife = () => render(
-        <LifeEvents
-            events={events}
-            setEvents={vi.fn()}
+        <LifeProjects
+            lifeEvents={events}
+            setLifeEvents={vi.fn()}
             travelGoals={[]}
             setTravelGoals={vi.fn()}
             netWorth={250000}
@@ -329,14 +334,17 @@ describe('[A11Y-PRIVACY-LIFEEVENTS] frise des projets de vie', () => {
         />,
     );
 
-    it('mode discret INACTIF : le coût est dans le title de la pastille (le test discrimine)', () => {
+    it('mode discret INACTIF : le coût est affiché (le test discrimine)', () => {
         const { container } = renderLife();
-        expect(titles(container)).toContain(COST);
+        expect(chiffres(visible(container))).toContain('63241');
+        expect(chiffres(visible(container))).toContain('63,2k$');
     });
 
-    it('mode discret ACTIF : le title de la pastille ne porte plus le coût', () => {
+    it('mode discret ACTIF : ni la frise ni la liste ni l\'impact ne portent le coût', () => {
         setPrivacy(true);
         const { container } = renderLife();
-        expect(titles(container), 'le title de la pastille de frise fuyait le coût').not.toContain(COST);
+        const t = chiffres(visible(container));
+        expect(t, 'un montant de projet fuyait en mode discret').not.toContain('63241');
+        expect(t).not.toContain('63,2k$');
     });
 });

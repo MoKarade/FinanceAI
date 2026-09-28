@@ -340,7 +340,7 @@ export const FintableSyncCard: React.FC = () => {
                         value={token}
                         onChange={(e) => saveToken(e.target.value)}
                         onBlur={() => { void persistToken(); }}
-                        className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
+                        className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                         placeholder="ft_..."
                         aria-describedby="fintable-token-help"
                     />
@@ -522,7 +522,7 @@ export const FintableSyncCard: React.FC = () => {
                             {accounts.map((a) => {
                                 const role = roleOf(fintableRoles, a.id);
                                 return (
-                                    <li key={a.id} className="p-2 bg-white/[0.02] border border-white/5 rounded-card">
+                                    <li key={a.id} className="p-2 bg-white/2 border border-white/5 rounded-card">
                                         <div className="flex flex-wrap items-center gap-2 justify-between">
                                             <div className="min-w-0">
                                                 <div className="text-body text-ink-200 truncate">{a.label}</div>
@@ -550,7 +550,7 @@ export const FintableSyncCard: React.FC = () => {
                                                         if (kind === 'investment') return setRole(a.id, { kind: 'investment', taxRegime: DEFAULT_REGIME });
                                                         return setRole(a.id, { kind });
                                                     }}
-                                                    className="bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
+                                                    className="bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white focus:border-primary outline-hidden"
                                                 >
                                                     <option value="">— à déclarer —</option>
                                                     {(Object.keys(ROLE_LABELS) as RoleKind[]).map((k) => (
@@ -589,7 +589,7 @@ export const FintableSyncCard: React.FC = () => {
                                                             id={`debtname-${a.id}`}
                                                             value={role.debtName}
                                                             onChange={(e) => setRole(a.id, { kind: 'debt', debtName: e.target.value })}
-                                                            className="w-full bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
+                                                            className="w-full bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white focus:border-primary outline-hidden"
                                                         >
                                                             {/* [FINTABLE-CARTE-SANS-DETTE] L'option vide est un CHOIX nommé,
                                                                 pas un « tu n'as pas fini » : elle importe les transactions
@@ -643,7 +643,7 @@ export const FintableSyncCard: React.FC = () => {
                                                             ? { kind: 'investment' }
                                                             : { kind: 'investment', taxRegime: v as 'CELI' | 'REER' | 'NON-ENREG' });
                                                     }}
-                                                    className="bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
+                                                    className="bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white focus:border-primary outline-hidden"
                                                 >
                                                     <option value="">— non déclaré —</option>
                                                     <option value="NON-ENREG">Non enregistré</option>
@@ -690,7 +690,7 @@ export const FintableSyncCard: React.FC = () => {
                             se règlera au prochain essai : pour certaines institutions, Fintable ne
                             rend JAMAIS les positions (`FINTABLE-POSITIONS`, limite mesurée). */}
                         {(report.comptesSansPositions?.length ?? 0) > 0 && (
-                            <div className="mt-2 rounded border border-amber-400/30 bg-amber-400/5 p-2">
+                            <div className="mt-2 rounded-sm border border-amber-400/30 bg-amber-400/5 p-2">
                                 <span className="block font-bold text-amber-300/90">
                                     Positions non fournies pour {report.comptesSansPositions!.length} compte(s)
                                 </span>

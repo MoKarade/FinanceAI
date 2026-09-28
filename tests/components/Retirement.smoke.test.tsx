@@ -70,15 +70,20 @@ describe('Retirement — smoke (CA-04) + header/sous-onglets (REFONTE-NAV-L4)', 
         const tabs = screen.getAllByRole('tab');
         expect(tabs.map(t => t.textContent)).toEqual(['Projection', "Outils d'optimisation"]);
         // Défaut = Projection : graphes visibles, outils absents.
-        expect(screen.getByText('Accumulation & épuisement')).toBeTruthy();
+        expect(screen.getByText('Accumulation puis décaissement')).toBeTruthy();
         expect(screen.queryByText(/Projection inverse|Goal/i)).toBeFalsy();
+        // [S5-REFONTE-RETRAITE] Tuiles des maquettes + deuxième graphe.
+        expect(screen.getByText('Capital à la retraite (65 ans)')).toBeTruthy();
+        expect(screen.getByText('Capitaux actuels')).toBeTruthy();
+        expect(screen.getByText('Flux à la retraite, par mois')).toBeTruthy();
+        expect(screen.getByText(/Tient jusqu'à \d+ ans|Épuisé à \d+ ans/)).toBeTruthy();
     });
 
     it("avec projection : le sous-onglet Outils affiche les optimiseurs et masque les graphes", () => {
         useFinanceStore.setState({ lastProjection: { chartData } as never });
         renderPage();
         fireEvent.click(screen.getByRole('tab', { name: /Outils d'optimisation/ }));
-        expect(screen.queryByText('Accumulation & épuisement')).toBeFalsy();
+        expect(screen.queryByText('Accumulation puis décaissement')).toBeFalsy();
         // Les outils rendus (titres de leurs Cards).
         expect(screen.getByText('Projection inverse (Goal seeker)')).toBeTruthy();
         expect(screen.getByText('Asset Location Optimizer')).toBeTruthy();

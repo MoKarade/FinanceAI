@@ -21,10 +21,11 @@
 // ⚠️ Ne PAS fusionner les deux en une courbe « tout ce que je dois » : additionner un dû certain et
 // un impôt conditionnel donne un nombre que rien ne décrit.
 
-/** Couleur de l'aire de dette. ORANGE-600 — choisi pour ne se confondre ni avec `NonReg`
- *  (`#f59e0b`, ambre) ni avec l'objectif FIRE (`#f97316`, orange-500 POINTILLÉ), les deux autres
- *  oranges du graphe. C'est la seule aire PLEINE sous zéro : sa position suffit déjà à la désigner. */
-export const COULEUR_DETTE = '#ea580c';
+/** Couleur de l'aire de dette. ORANGE brûlé (`#e0703a`, palette des maquettes S5) — choisi pour ne
+ *  se confondre ni avec `NonReg` (`#d4a24c`, ambre) ni avec l'objectif FIRE (`#fbbf24`, jaune
+ *  POINTILLÉ), les deux autres teintes chaudes du graphe. C'est la seule aire PLEINE sous zéro : sa
+ *  position suffit déjà à la désigner. */
+export const COULEUR_DETTE = '#e0703a';
 
 /**
  * La valeur à tracer pour un point de la courbe : la dette, en NÉGATIF.
@@ -65,8 +66,9 @@ export function detteSousZero(point: unknown): number | null {
 // `AdvancedProjectionParams`) — le lien entre le bouton et la courbe se voit sans être expliqué.
 // N'ancrer que la couleur laisserait un lot futur les refondre par la forme, et l'inverse aussi.
 
-/** Couleur de la courbe « dont levier Smith ». INDIGO-500 — la couleur du bouton qui l'active. */
-export const COULEUR_LEVIER = '#6366f1';
+/** Couleur de la courbe « dont levier Smith ». INDIGO-400 (`#818cf8`, palette des maquettes S5) —
+ *  la famille de couleur du bouton qui l'active. */
+export const COULEUR_LEVIER = '#818cf8';
 
 /**
  * Le LIBELLÉ de cette part, source unique.

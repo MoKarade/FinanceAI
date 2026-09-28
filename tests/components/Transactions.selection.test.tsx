@@ -46,7 +46,7 @@ const TXS: Transaction[] = [
 ];
 
 function renderTransactions() {
-    return render(
+    const r = render(
         <Transactions
             transactions={TXS}
             setTransactions={vi.fn()}
@@ -54,6 +54,9 @@ function renderTransactions() {
             budgetItems={[]}
         />,
     );
+    // [S5-REFONTE-TRANSACTIONS] Les cases de sélection n'apparaissent qu'en mode sélection (outil).
+    fireEvent.click(r.getByRole('button', { name: 'Sélectionner des lignes' }));
+    return r;
 }
 
 /** Récupère la checkbox de ligne DANS le tableau desktop (pas la carte mobile). */

@@ -11,7 +11,7 @@ vi.mock('recharts', async () => {
     const React = await import('react');
     const P = ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children);
     return {
-        ResponsiveContainer: P, AreaChart: P, Area: () => null,
+        ResponsiveContainer: P, AreaChart: P, ComposedChart: P, Area: () => null, Line: () => null,
         XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
     };
 });
@@ -29,7 +29,7 @@ describe('DebtManager — smoke (CA-04)', () => {
         render(<DebtManager debts={debts} setDebts={vi.fn()} />);
         expect(screen.getByText(/Carte Visa/)).toBeTruthy();
         // [A11Y-SLIDERS] le slider de paiement supplémentaire porte un nom accessible.
-        expect(screen.getByRole('slider', { name: 'Paiement Mensuel Supplémentaire' })).toBeInTheDocument();
+        expect(screen.getByRole('slider', { name: 'Paiement supplémentaire' })).toBeInTheDocument();
     });
 
     // [FMT-CURRENCY-UNIFY] garde : aucun montant rendu en float brut « 1100$ » (sans

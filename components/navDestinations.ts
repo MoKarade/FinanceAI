@@ -2,48 +2,77 @@ import { Tab } from '../types';
 import type { IconName } from './ui/Icon';
 
 /**
- * [REFONTE-NAV Lot 1] Source UNIQUE de la navigation — 6 destinations (GO Marc 2026-08-12) :
- * tout tourne autour de la courbe Future. Sidebar desktop, barre mobile et drawer « Plus »
- * dérivent tous de cette table (aucune copie locale de la structure).
+ * [S5-REFONTE-R1] Source UNIQUE de la navigation — refonte validée par Marc (maquettes du
+ * 2026-09-25, « fusion Nocturne × Cockpit ») : barre latérale TEXTE en trois groupes
+ * (Vue / Planifier / Outils), carte Profil en pied de barre ; sur mobile, barre du bas
+ * (Futur, Transactions, Assistant, Plus) et menu « Plus » pour le reste.
  *
- * - Le PREMIER tab d'une destination est sa page d'atterrissage.
- * - Une destination à tab unique se rend comme bouton direct (pas d'accordéon).
- * - `Tab.DASHBOARD` n'apparaît PLUS : l'Accueil est retiré (deep-link #DASHBOARD → #FUTURE,
- *   App.tsx). `Tab.TRAVEL`/`Tab.LIFE_EVENTS` restent des alias legacy de LIFE_PROJECTS
- *   (redirigés par TabRouter), donc absents ici aussi.
+ * - Immobilier réunit les biens détenus ET les projets d'achat : un seul item de nav, actif sur
+ *   les deux onglets (`alsoActiveFor`) ; la page porte les deux sous-onglets.
+ * - `Tab.DASHBOARD`, `Tab.TRAVEL`, `Tab.LIFE_EVENTS` restent hors nav (redirigés par App/TabRouter).
+ * - Remplace les « 6 destinations » de [REFONTE-NAV Lot 1] (Futur, Configurations, Vie,
+ *   Transactions, Assistant, Réglages).
  */
-interface NavDestination {
-    id: 'FUTUR' | 'CONFIG' | 'VIE' | 'TRANSACTIONS' | 'ASSISTANT' | 'REGLAGES';
+export interface NavItem {
+    tab: Tab;
+    /** Libellé COURT de la nav (maquettes) — le titre de page vit dans TAB_LABELS. */
     label: string;
     icon: IconName;
-    tabs: Tab[];
+    /** Autres onglets pour lesquels cet item est « la page courante ». */
+    alsoActiveFor?: Tab[];
 }
 
-export const NAV_DESTINATIONS: NavDestination[] = [
-    // La courbe Future = cœur de l'app (page d'ouverture).
-    { id: 'FUTUR', label: 'Futur', icon: 'future', tabs: [Tab.FUTURE] },
+export interface NavGroup {
+    id: 'VUE' | 'PLANIFIER' | 'OUTILS';
+    label: string;
+    items: NavItem[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
     {
-        id: 'CONFIG',
-        label: 'Configurations',
-        icon: 'group-money',
-        // « Ce que j'AI » : les entrées du moteur. L'immobilier ACTUEL vit ici — les PROJETS
-        // immo futurs vivent dans Vie (Tab.REAL_ESTATE_PROJECTS, split [REFONTE-NAV-L3]).
-        tabs: [Tab.PROFILE, Tab.INVESTMENTS, Tab.REAL_ESTATE, Tab.DEBT, Tab.TAX],
+        id: 'VUE',
+        label: 'Vue',
+        items: [
+            { tab: Tab.FUTURE, label: 'Futur', icon: 'future' },
+            { tab: Tab.TRANSACTIONS, label: 'Transactions', icon: 'transactions' },
+            { tab: Tab.BUDGET, label: 'Budget', icon: 'budget' },
+            { tab: Tab.DEBT, label: 'Dettes', icon: 'debt' },
+            { tab: Tab.INVESTMENTS, label: 'Placements', icon: 'investments' },
+        ],
     },
     {
-        id: 'VIE',
-        label: 'Vie',
-        icon: 'group-goals',
-        // « Ce que je PRÉVOIS » : les plans qui déforment la courbe.
-        tabs: [Tab.RETIREMENT, Tab.CHILD, Tab.LIFE_PROJECTS, Tab.REAL_ESTATE_PROJECTS],
+        id: 'PLANIFIER',
+        label: 'Planifier',
+        items: [
+            { tab: Tab.RETIREMENT, label: 'Retraite', icon: 'retirement' },
+            { tab: Tab.REAL_ESTATE, label: 'Immobilier', icon: 'real-estate', alsoActiveFor: [Tab.REAL_ESTATE_PROJECTS] },
+            { tab: Tab.CHILD, label: 'Enfants', icon: 'child' },
+            { tab: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: 'life-projects' },
+        ],
     },
-    { id: 'TRANSACTIONS', label: 'Transactions', icon: 'transactions', tabs: [Tab.TRANSACTIONS, Tab.BUDGET] },
-    { id: 'ASSISTANT', label: 'Assistant', icon: 'bot', tabs: [Tab.ASSISTANT] },
-    { id: 'REGLAGES', label: 'Réglages', icon: 'settings', tabs: [Tab.SETTINGS] },
+    {
+        id: 'OUTILS',
+        label: 'Outils',
+        items: [
+            { tab: Tab.TAX, label: 'Impôts', icon: 'tax' },
+            { tab: Tab.ASSISTANT, label: 'Assistant', icon: 'bot' },
+            { tab: Tab.SETTINGS, label: 'Réglages', icon: 'settings' },
+        ],
+    },
 ];
+
+/** Le Profil s'ouvre depuis la carte en pied de barre (bureau) ou en tête du menu « Plus » (mobile). */
+export const PROFILE_TAB = Tab.PROFILE;
 
 /** Onglets épinglés dans la barre mobile (le reste passe par « Plus »). */
 export const MOBILE_BAR_TABS: Tab[] = [Tab.FUTURE, Tab.TRANSACTIONS, Tab.ASSISTANT];
 
-export const destinationOfTab = (tab: Tab): NavDestination | undefined =>
-    NAV_DESTINATIONS.find((d) => d.tabs.includes(tab));
+/** L'item de nav qui représente cet onglet (y compris les onglets rattachés, ex. projets immo). */
+export const navItemOfTab = (tab: Tab): NavItem | undefined =>
+    NAV_GROUPS.flatMap((g) => g.items).find((it) => it.tab === tab || it.alsoActiveFor?.includes(tab));
+
+/** Tous les onglets atteignables depuis la nav (items, onglets rattachés, Profil). */
+export const NAV_TABS_ATTEIGNABLES: Tab[] = [
+    ...NAV_GROUPS.flatMap((g) => g.items.flatMap((it) => [it.tab, ...(it.alsoActiveFor ?? [])])),
+    PROFILE_TAB,
+];

@@ -134,7 +134,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
                         type="button"
                         aria-pressed={mode === 'PRICE'}
                         onClick={() => chooseMode('PRICE')}
-                        className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PRICE' ? 'bg-info-600 text-white shadow' : 'text-ink-300 hover:text-white'}`}
+                        className={`px-3 py-1 text-tiny font-bold rounded-sm transition-colors ${mode === 'PRICE' ? 'bg-info-600 text-white shadow-sm' : 'text-ink-300 hover:text-white'}`}
                     >
                         Prix ($)
                     </button>
@@ -142,7 +142,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
                         type="button"
                         aria-pressed={mode === 'PERFORMANCE'}
                         onClick={() => chooseMode('PERFORMANCE')}
-                        className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PERFORMANCE' ? 'bg-purple-600 text-white shadow' : 'text-ink-300 hover:text-white'}`}
+                        className={`px-3 py-1 text-tiny font-bold rounded-sm transition-colors ${mode === 'PERFORMANCE' ? 'bg-purple-600 text-white shadow-sm' : 'text-ink-300 hover:text-white'}`}
                     >
                         Base 100 (%)
                     </button>

@@ -114,11 +114,11 @@ export const SavedProfilesCard: React.FC<SavedProfilesCardProps> = ({ config, se
                 {savedProfiles.length === 0 && <span className="text-meta text-ink-400 italic">Aucun profil enregistré.</span>}
                 {savedProfiles.map((p) => (
                     <div key={p} className="flex items-center bg-primary/15 text-info-400 text-meta px-3 py-1.5 rounded-full border border-primary/25">
-                        <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
+                        <button type="button" className="font-bold cursor-pointer hover:underline rounded-sm focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
                         <button
                             type="button"
                             onClick={() => deleteProfile(p)}
-                            className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-danger-600 text-white' : 'text-white/50 hover:text-danger-400'}`}
+                            className={`ml-2 font-bold px-1.5 rounded-sm ${profileToDelete === p ? 'bg-danger-600 text-white' : 'text-white/50 hover:text-danger-400'}`}
                             title={profileToDelete === p ? 'Clique encore pour confirmer' : 'Supprimer'}
                             aria-label={profileToDelete === p ? 'Confirmer la suppression' : `Supprimer le profil ${p}`}
                         >
@@ -134,9 +134,9 @@ export const SavedProfilesCard: React.FC<SavedProfilesCardProps> = ({ config, se
                     placeholder="Nom du profil (ex: Marc & Anna 2026)"
                     value={newProfileName}
                     onChange={(e) => setNewProfileName(e.target.value)}
-                    className="flex-1 bg-white/5 border border-border rounded px-3 py-1.5 text-body text-white"
+                    className="flex-1 bg-white/5 border border-border rounded-sm px-3 py-1.5 text-body text-white"
                 />
-                <button type="button" onClick={saveProfile} className="bg-primary text-dark px-4 py-1.5 rounded text-body font-bold hover:brightness-110 focus-ring">
+                <button type="button" onClick={saveProfile} className="bg-primary text-dark px-4 py-1.5 rounded-sm text-body font-bold hover:brightness-110 focus-ring">
                     Sauvegarder
                 </button>
             </div>

@@ -22,7 +22,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     return (
         <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${className}`}>
             <div className="flex items-start sm:items-center gap-3 min-w-0">
-                {icon && <span className="flex-shrink-0 text-h1" aria-hidden="true">{icon}</span>}
+                {icon && <span className="shrink-0 text-h1" aria-hidden="true">{icon}</span>}
                 <div className="min-w-0">
                     <h2 className={`${LEVEL_CLASSES[level]} tracking-tight truncate`}>{title}</h2>
                     {subtitle && (
@@ -30,7 +30,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
                     )}
                 </div>
             </div>
-            {action && <div className="flex-shrink-0 flex items-center gap-2">{action}</div>}
+            {action && <div className="shrink-0 flex items-center gap-2">{action}</div>}
         </div>
     );
 };

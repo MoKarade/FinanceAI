@@ -370,13 +370,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             role="combobox"
                             aria-expanded={showSuggestions && suggestions.length > 0}
                             aria-controls="symbol-suggestions"
-                            className="flex-1 bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none uppercase font-mono"
+                            className="flex-1 bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden uppercase font-mono"
                         />
                         {validatedSymbol || manualMode ? (
                             <button
                                 type="button"
                                 onClick={() => { setValidatedSymbol(null); setCurrentPrice(null); setManualMode(false); setManualPrice(''); setNotice(null); }}
-                                className="px-3 py-2 bg-white/10 text-white rounded font-bold text-body hover:bg-white/15"
+                                className="px-3 py-2 bg-white/10 text-white rounded-sm font-bold text-body hover:bg-white/15"
                             >
                                 Changer
                             </button>
@@ -386,7 +386,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     type="button"
                                     onClick={() => validateSymbol()}
                                     disabled={!symbol.trim() || isValidating}
-                                    className="px-3 py-2 bg-primary text-dark rounded font-bold text-body hover:bg-primary/80 disabled:opacity-50"
+                                    className="px-3 py-2 bg-primary text-dark rounded-sm font-bold text-body hover:bg-primary/80 disabled:opacity-50"
                                 >
                                     {isValidating ? '⏳' : 'Valider'}
                                 </button>
@@ -395,7 +395,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     onClick={enterManualMode}
                                     disabled={!symbol.trim()}
                                     title="Ajouter sans validation en ligne (Finnhub non requis)"
-                                    className="px-3 py-2 bg-white/10 text-white rounded font-bold text-body hover:bg-white/15 disabled:opacity-50"
+                                    className="px-3 py-2 bg-white/10 text-white rounded-sm font-bold text-body hover:bg-white/15 disabled:opacity-50"
                                 >
                                     À la main
                                 </button>
@@ -425,7 +425,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                         type="button"
                                         onMouseDown={(e) => e.preventDefault() /* garde le focus le temps du clic */}
                                         onClick={() => selectSuggestion(r)}
-                                        className="w-full text-left px-3 py-2 hover:bg-white/10 focus:bg-white/10 outline-none flex items-center gap-2 min-h-[44px]"
+                                        className="w-full text-left px-3 py-2 hover:bg-white/10 focus:bg-white/10 outline-hidden flex items-center gap-2 min-h-[44px]"
                                     >
                                         <span className="font-mono font-bold text-white shrink-0">{r.displaySymbol || r.symbol}</span>
                                         <span className="text-meta text-ink-300 truncate flex-1">{r.description}</span>
@@ -450,13 +450,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 min={0}
                                 step={0.01}
                                 placeholder="ex: 152.30"
-                                className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
+                                className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden font-mono"
                             />
                             <p className="text-tiny text-ink-400 mt-1">Sans Finnhub : entre le prix actuel toi-même (modifiable plus tard).</p>
                         </div>
                     )}
                     {validatedSymbol && currentPrice !== null && (
-                        <div className="mt-2 p-2 bg-success-500/10 border border-success-500/30 rounded text-meta text-emerald-300 flex justify-between">
+                        <div className="mt-2 p-2 bg-success-500/10 border border-success-500/30 rounded-sm text-meta text-emerald-300 flex justify-between">
                             <span>Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
                             {/* [ADDSTOCK-CAD-NATIF] même défaut que le récapitulatif : `currentPrice`
                                 vient de getQuote (devise NATIVE du titre), pas de CAD — c'est LUI qui
@@ -478,7 +478,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     value={dateBought}
                                     onChange={(e) => setDateBought(e.target.value)}
                                     max={new Date().toISOString().split('T')[0]}
-                                    className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none"
+                                    className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                                 />
                             </div>
                             <div>
@@ -491,7 +491,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     min={0}
                                     step={0.01}
                                     placeholder="10"
-                                    className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
+                                    className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden font-mono"
                                 />
                             </div>
                         </div>
@@ -517,7 +517,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 min={0}
                                 step={0.01}
                                 placeholder="150.00"
-                                className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
+                                className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden font-mono"
                             />
                             <p className="text-tiny text-ink-400 mt-1">Override possible si le prix suggéré ne correspond pas à ta transaction réelle.</p>
                         </div>
@@ -528,7 +528,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     id="stock-account-type"
                                     value={accountType}
                                     onChange={(e) => setAccountType(e.target.value as Asset['accountType'])}
-                                    className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none"
+                                    className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                                 >
                                     <option value="NON-ENREG">Non-enregistré</option>
                                     <option value="CELI">CELI</option>
@@ -544,7 +544,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     value={currency}
                                     onChange={(e) => setCurrency(e.target.value as 'USD' | 'CAD' | 'EUR' | '')}
                                     aria-invalid={currency === '' ? true : undefined}
-                                    className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none"
+                                    className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white focus:border-primary outline-hidden"
                                 >
                                     <option value="" disabled>— choisir —</option>
                                     <option value="USD">USD</option>
@@ -559,7 +559,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
 
                         {/* Récapitulatif */}
                         {quantity && buyPrice && (
-                            <div className="p-3 bg-info-500/10 border border-info-500/30 rounded">
+                            <div className="p-3 bg-info-500/10 border border-info-500/30 rounded-sm">
                                 <div className="text-tiny text-info-400 uppercase font-bold mb-1">Récapitulatif</div>
                                 <div className="text-meta text-ink-100">
                                     {/* [ADDSTOCK-CAD-NATIF] quantity × buyPrice est en devise NATIVE
@@ -581,13 +581,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 )}
 
                 {notice && (
-                    <div className="p-2 bg-info-500/10 border border-info-500/30 rounded text-meta text-info-400" role="status">
+                    <div className="p-2 bg-info-500/10 border border-info-500/30 rounded-sm text-meta text-info-400" role="status">
                         {notice}
                     </div>
                 )}
 
                 {error && (
-                    <div className="p-2 bg-danger-500/10 border border-danger-500/30 rounded text-meta text-red-300" role="alert">
+                    <div className="p-2 bg-danger-500/10 border border-danger-500/30 rounded-sm text-meta text-red-300" role="alert">
                         {error}
                     </div>
                 )}
@@ -608,7 +608,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     <button
                         type="button"
                         onClick={handleClose}
-                        className="px-4 py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded font-bold text-body transition-colors"
+                        className="px-4 py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded-sm font-bold text-body transition-colors"
                     >
                         Annuler
                     </button>
@@ -616,7 +616,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         type="button"
                         onClick={handleSubmit}
                         disabled={!ready || !quantity || !buyPrice || (manualMode && !manualPrice) || !currency}
-                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded font-bold text-body transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded-sm font-bold text-body transition-colors disabled:opacity-50"
                     >
                         Ajouter au portefeuille
                     </button>

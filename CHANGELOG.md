@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-28 — Correctif technique : un test interne se trompait de Windows
+
+- Aucun changement dans l'app ni dans l'accessibilité (déjà correcte). Un test qui vérifie l'accessibilité des graphiques
+  se trompait sous Windows et pensait qu'un attribut manquait alors qu'il était bien là. Corrigé côté test seulement.
+
 ## 2026-09-28 — Mise à jour de routine du mécanisme de fusion automatique
 
 - Aucun changement dans l'app. Le kit de fusion automatique de l'Atelier passe en version 1.9.1 (seuls l'outil de

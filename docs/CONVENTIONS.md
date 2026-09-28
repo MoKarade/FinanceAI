@@ -17173,6 +17173,13 @@ bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dan
   `process.cwd() + '/'`. Correctif : `tests/helpers/toPosix.ts` (`toPosix`, `cwdPosix`) appliqué À LA SORTIE des
   marcheurs de fichiers, jamais en assouplissant une assertion (une garde qui ne voit rien doit rester rouge).
 - Règle : tout nouveau marcheur de fichiers d'une garde passe son résultat par `toPosix`.
+- **Récidive (2026-09-28, `[WIN-GARDES-A11Y-FUTUREPROJECTION]`)** : `tests/components/chartAlternativeTexteGuard.test.ts` (écrit après ce
+  balayage) utilisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` — une clé de DICTIONNAIRE, pas un message d'erreur — sans `toPosix`,
+  contrairement aux deux autres usages du même fichier. Sous Windows la clé ne matchait jamais, l'exemption « graphe interactif » ne
+  s'appliquait pas, et la garde réclamait `role="img"` sur un composant qui avait déjà le bon attribut (`role="group"`, à raison : des
+  pastilles focusables vivent dedans, y mettre `role="img"` aurait cassé la protection nested-interactive WCAG 4.1.2). La règle ci-dessus ne
+  suffit donc pas seule : un `grep -rn "path.relative(" tests/` après le lot n'aurait pas suffi non plus, puisque ce fichier n'existait pas
+  encore — la règle doit être réappliquée à CHAQUE nouveau marcheur de fichiers, pas seulement balayée une fois.
 
 ## `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` (2026-09-28, `[KIT-191]`)
 

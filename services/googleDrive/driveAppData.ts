@@ -303,13 +303,19 @@ export async function updateSyncFile(
     );
 }
 
-/** Supprime le fichier de sync de l'appDataFolder. Idempotent : un 404 (déjà absent) = succès. */
-export async function deleteSyncFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
+/** Supprime un fichier d'appDataFolder par son id. Idempotent : un 404 (déjà absent) = succès. Base
+ *  commune de `deleteSyncFile` pour tout autre petit fichier (ex. nettoyage des anciennes sauvegardes). */
+export async function deleteAppDataFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
     const f = resolveFetch(fetchFn);
     await withDriveTimeout(f, `${DRIVE_FILES}/${fileId}`, { method: 'DELETE', headers: authHeader(token) }, async (res) => {
         // 204 No Content = succès ; 404 = fichier déjà supprimé → on tolère (idempotent).
         if (!res.ok && res.status !== 404) await failFromResponse(res);
     });
+}
+
+/** Supprime le fichier de sync de l'appDataFolder. Idempotent : un 404 (déjà absent) = succès. */
+export async function deleteSyncFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
+    return deleteAppDataFile(token, fileId, fetchFn);
 }
 
 /**

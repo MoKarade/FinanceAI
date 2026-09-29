@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
+
+- Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois
+  activée, ta sauvegarde Drive devient illisible sans cette phrase — même pour Google. Écran en 3
+  étapes : choix de la phrase, avertissement clair (« si elle est perdue, tes données deviennent
+  irrécupérables ») avec une carte à imprimer ou télécharger, puis confirmation.
+- Sur les appareils qui le permettent (empreinte digitale, reconnaissance faciale, Windows Hello), tu
+  peux choisir de mémoriser la phrase : elle ne sera plus redemandée sur CET appareil, mais un
+  déverrouillage biométrique est exigé à chaque fois (un appareil volé mais déjà déverrouillé par
+  quelqu'un d'autre reste protégé). En cas de perte/vol, changer la phrase depuis un autre appareil
+  coupe la mémorisation de tous les autres d'un coup.
+- Nouveau bouton « Nettoyer les anciennes sauvegardes non chiffrées » : affiche d'abord le nombre de
+  fichiers concernés, ne supprime qu'après ta confirmation.
+- Le comportement PAR DÉFAUT ne change pas : rien n'est chiffré tant que tu n'actives rien toi-même.
+
 ## 2026-09-29 — Réglages : un nouveau bouton pour autoriser temporairement les écritures de claude.ai
 
 - Nouvelle carte « Écritures MCP » dans Réglages. Par défaut, claude.ai ne peut RIEN écrire dans tes

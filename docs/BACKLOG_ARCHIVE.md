@@ -10,6 +10,14 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-29 — Verrou d'écriture MCP hors du chat (Étape 2)
+
+- [x] 🔧 **`[VERROU-ECRITURE]`** (M) — verrou d'écriture désactivé par défaut, activable UNIQUEMENT
+  depuis l'app web (Réglages → Écritures MCP), jamais depuis la conversation claude.ai : défense en
+  profondeur par-dessus le jeton de `[MCP-CONFIRM-TOKEN]` contre l'injection de consigne. PR #1093
+  fusionnée le 29/09/2026 (mergedAt 02:41:50Z), OK sécurité pole-securite (2 relectures, dont
+  recommandation non bloquante `isDrive` sur `/health`), gate vert. ADR 0025.
+
 ## 2026-09-29 — Confirmation à deux temps des écritures MCP (audit P3-P6)
 
 - [x] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils

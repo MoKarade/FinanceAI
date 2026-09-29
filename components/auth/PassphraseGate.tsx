@@ -5,7 +5,7 @@
 // « premier message » demandé : on déverrouille avant d'entrer dans l'app. Aucune donnée locale n'est
 // touchée tant qu'on n'a pas la bonne passphrase (zéro perte).
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { showToast } from '../ui/Toast';
 import {
     setSyncPassphrase,
@@ -14,11 +14,27 @@ import {
     MIN_PASSPHRASE_LENGTH,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
+import { tryUnlockRememberedPassphrase } from '../../services/deviceKeyStore';
 
 export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => {
     const [value, setValue] = useState('');
     const [busy, setBusy] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
+    // [CHIFFREMENT-PHASE1, C4] Tenté UNE fois au montage : verrou WebAuthn + déchiffrement local
+    // (aucun réseau). Échec (rien de mémorisé, verrou refusé, appareil non reconnu) → formulaire
+    // normal ci-dessous, aucune dégradation visible. Succès → `needsPassphrase` repasse à false via
+    // `setSyncPassphrase`, ce gate se démonte tout seul (le parent arrête de le rendre).
+    const [autoTente, setAutoTente] = useState(false);
+    useEffect(() => {
+        let annule = false;
+        void (async () => {
+            const remembered = await tryUnlockRememberedPassphrase();
+            if (annule) return;
+            if (remembered) await setSyncPassphrase(remembered);
+            if (!annule) setAutoTente(true);
+        })();
+        return () => { annule = true; };
+    }, []);
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,6 +67,18 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
     };
 
     const titreId = React.useId();
+
+    // [CHIFFREMENT-PHASE1, C4] Tant que la tentative automatique (verrou WebAuthn + déchiffrement
+    // local) n'a pas résolu, on n'affiche PAS le formulaire : sur un appareil mémorisé, elle finit en
+    // général en un instant (aucun réseau) — inutile de faire clignoter un champ de saisie qu'on
+    // n'aura peut-être pas besoin de remplir.
+    if (!autoTente) {
+        return (
+            <div className="fixed inset-0 z-100 flex items-center justify-center bg-dark/95 backdrop-blur-xs p-4">
+                <p className="text-body text-ink-300">Déverrouillage…</p>
+            </div>
+        );
+    }
 
     return (
         // [A11Y-MODAL-GUIDE-NODIALOG] Ce gate recouvre l'app sans être une `<Modal>`, et c'est

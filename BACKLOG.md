@@ -691,6 +691,11 @@ désinfecte le snapshot avant de le restaurer.
   changer qu'à une synchro en arrière-plan. L'annoncer interromprait la frappe pour un contenu
   descriptif. Le `role="status"` du refus de saisie, lui, réagit DIRECTEMENT à l'utilisateur : c'est
   ça, un message de statut au sens WCAG 4.1.3.
+- [ ] 🔧 **`[A11Y-DETTE-FOCUS-RETOUR]`** (S) — à « Enregistrer » ou « Annuler » du formulaire de dette,
+  le panneau d'édition est démonté et le focus retombe sur `body` au lieu de revenir au bouton
+  « Modifier » de la ligne (WCAG 2.4.3). Pré-existant, repéré à la revue a11y de `[A11Y-DETTE]`, non
+  corrigé (hors périmètre). Piste : mémoriser `document.activeElement` dans `startEdit`, le refocaliser à la
+  fermeture ; le test interroge `document.activeElement`.
 
 ---
 

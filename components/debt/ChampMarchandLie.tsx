@@ -138,7 +138,7 @@ export const ChampMarchandLie: React.FC<Props> = ({ lie, marchands, onChoisir, i
                 placeholder="Cherche un marchand : toyota, hydro…"
                 value={requete}
                 onChange={e => setRequete(e.target.value)}
-                className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
+                className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target"
             />
             <ul
                 id={idListe}

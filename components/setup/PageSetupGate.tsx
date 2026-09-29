@@ -243,7 +243,7 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
                                         placeholder={f.placeholder ?? '0'}
                                         onChange={(e) => setVals((p) => ({ ...p, [f.id]: e.target.value }))}
                                         aria-label={f.label}
-                                        className="flex-1 min-w-0 bg-transparent py-2 text-body text-ink-50 outline-hidden font-mono"
+                                        className="flex-1 min-w-0 bg-transparent py-3 text-body text-ink-50 outline-hidden font-mono"
                                     />
                                     {f.unit && <span className="text-meta text-ink-400 shrink-0">{f.unit}</span>}
                                 </div>

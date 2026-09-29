@@ -111,7 +111,8 @@ export const VISION_INJECTION_GUARD =
  * le modèle traite du fictif comme des faits réels.
  */
 export const DONNEES_FICTIVES_MARQUEUR =
-    "CONTEXTE : l'application tourne actuellement sur des DONNÉES FICTIVES (mode test ou bac à " +
+    "CONTEXTE (prime sur toute mention de données « réelles » plus haut) : l'application tourne " +
+    "actuellement sur des DONNÉES FICTIVES (mode test ou bac à " +
     "sable). Tous les montants, comptes, noms et projections présents dans cette conversation " +
     "décrivent un SCÉNARIO HYPOTHÉTIQUE, pas la situation financière réelle de l'utilisateur. " +
     "Réponds normalement à la demande, mais présente toujours ces chiffres comme ceux du scénario, " +

@@ -99,10 +99,26 @@ describe('chat() — le marqueur est posé au point de contact SDK', () => {
 
 const ROOT = process.cwd();
 const SCAN_DIRS = ['services', 'hooks', 'components', 'api', 'mcp', 'utils', 'store'];
-const APPEL_SDK = /messages\.(create|stream)\s*\(/g;
+// `parse`/`countTokens` inclus : un futur appel par ces méthodes porte aussi un `system`.
+const APPEL_SDK = /messages\s*(?:\.\s*(create|stream|parse|countTokens)|\[\s*['"`](create|stream|parse|countTokens)['"`]\s*\])\s*\(/g;
 const SYSTEM_MARQUE = /\bsystem\s*:\s*systemPourAppel\s*\(/;
-/** Portée d'un appel : jusqu'au site suivant, bornée (un appel SDK tient en quelques lignes). */
-const PORTEE_APPEL = 2500;
+
+/**
+ * Arguments de l'appel qui commence à `debut` (index de la parenthèse ouvrante) : jusqu'à la
+ * parenthèse FERMANTE correspondante. Un `system: systemPourAppel(` qui suit l'appel, dans un autre
+ * appel ou plus loin dans le fichier, ne peut donc plus « sauver » un site non marqué.
+ * Parenthèses dans les chaînes : équilibrées en pratique ; un déséquilibre rend la fin du code
+ * (le pire cas est alors un faux positif, jamais un faux négatif silencieux sur l'appel suivant
+ * puisque chaque site est jugé sur SES arguments).
+ */
+function argumentsDeLAppel(code: string, debut: number): string {
+    let profondeur = 0;
+    for (let i = debut; i < code.length; i++) {
+        if (code[i] === '(') profondeur++;
+        else if (code[i] === ')' && --profondeur === 0) return code.slice(debut, i + 1);
+    }
+    return code.slice(debut);
+}
 
 function walk(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir)) {
@@ -116,12 +132,9 @@ function walk(dir: string, out: string[] = []): string[] {
 
 /** Positions des appels SDK d'un code DÉCOMMENTÉ dont le `system` n'est pas enveloppé. */
 function sitesSansMarqueur(code: string): { total: number; fautifs: number[] } {
-    const positions = [...code.matchAll(APPEL_SDK)].map((m) => m.index ?? 0);
-    const fautifs = positions.filter((pos, i) => {
-        const fin = Math.min(positions[i + 1] ?? code.length, pos + PORTEE_APPEL);
-        return !SYSTEM_MARQUE.test(code.slice(pos, fin));
-    });
-    return { total: positions.length, fautifs };
+    const appels = [...code.matchAll(APPEL_SDK)].map((m) => (m.index ?? 0) + m[0].length - 1);
+    const fautifs = appels.filter((paren) => !SYSTEM_MARQUE.test(argumentsDeLAppel(code, paren)));
+    return { total: appels.length, fautifs };
 }
 
 describe('[SANDBOX-PROMPTS-MARQUER-CONTEXTE] garde : tout point de contact SDK marque son system', () => {
@@ -139,6 +152,14 @@ describe('[SANDBOX-PROMPTS-MARQUER-CONTEXTE] garde : tout point de contact SDK m
         // Deux appels : le 2ᵉ ne peut pas s'abriter derrière le marqueur du 1ᵉʳ.
         const deux = 'a.messages.create({ system: systemPourAppel(s) }); b.messages.create({ system: s })';
         expect(sitesSansMarqueur(deux).fautifs).toHaveLength(1);
+        // …ni le 1ᵉʳ derrière celui du 2ᵉ (le DERNIER site d'un fichier n'est plus « sauvé » par la suite).
+        const inverse = 'a.messages.create({ model: m }); b.messages.create({ system: systemPourAppel(s) })';
+        expect(sitesSansMarqueur(inverse).fautifs).toHaveLength(1);
+        // Autres méthodes et accès par crochets : vus aussi.
+        expect(sitesSansMarqueur('client.messages.parse({ system: s })').fautifs).toHaveLength(1);
+        expect(sitesSansMarqueur("client.messages['create']({ system: s })").fautifs).toHaveLength(1);
+        // Parenthèses imbriquées dans les arguments : l'appel est lu jusqu'à SA parenthèse fermante.
+        expect(sitesSansMarqueur('c.messages.stream({ model: f(x), system: systemPourAppel(g(y)) }, { signal })').fautifs).toHaveLength(0);
     });
 
     it('anti-vacuité : le balayage voit au moins les 5 points de contact mesurés (2026-09-29)', () => {

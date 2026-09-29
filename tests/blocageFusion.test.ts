@@ -3,7 +3,7 @@
 // [GARDE-BLOCAGE-FUSION] Le workflow « Fusion automatique » ne doit JAMAIS armer l'auto-fusion d'une PR qui touche un
 // chemin sensible (hooks de l'agence, .github, réglages, commit-gate, .claude, CODEOWNERS, modeles/, et — pour FinanceAI
 // — le relais IA, l'authentification, vercel.json), ni d'une PR étiquetée validation-marc ou en brouillon.
-// La décision est celle du kit de l'Atelier 1.9.1, tag kit-1.9.1 (`peutArmer`, `decision`, inchangés depuis 1.9.0), copiée dans modeles/auto-merge/ ; le workflow
+// La décision est celle du kit de l'Atelier 1.10.0, origin/main au commit 245364a (`peutArmer`, `decision`, inchangés côté FinanceAI : pas de frein visuel activé), copiée dans modeles/auto-merge/ ; le workflow
 // est un `pull_request_target` (lu sur `main`, jamais dans la PR). Ce fichier fige les deux : la décision (table
 // d'attaque) et le gabarit du workflow (grille de relecture sécurité A1-A9, lue comme DONNÉE).
 import { describe, it, expect } from 'vitest';
@@ -281,27 +281,30 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
     });
 });
 
-describe('copies du kit 1.9.1 (tag kit-1.9.1, resynchronisé depuis 1.9.0) : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
+describe('copies du kit 1.10.0 (origin/main de l\'Atelier, resynchronisé depuis 1.9.1) : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
     const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
     const liste = lit('COPIES.md');
     const lignes = [...liste.matchAll(/^\| (\S+) \| ([0-9a-f]{64}) \| (\S+) \|$/gm)].map((m) => ({ chemin: m[1], sha: m[2], version: m[3] }));
     const ATTENDUS = [
         'modeles/auto-merge/autoMerge.mjs', 'modeles/auto-merge/autoMerge.d.mts', 'modeles/auto-merge/chemins-interdits-base.json',
-        'modeles/auto-merge/fusionner.mjs', 'modeles/auto-merge/armer.mjs', 'modeles/auto-merge/verifier-copies.mjs',
+        'modeles/auto-merge/fusionner.mjs', 'modeles/auto-merge/armer.mjs', 'modeles/auto-merge/labels.mjs', 'modeles/auto-merge/verifier-copies.mjs',
         'modeles/auto-merge/surblocage.mjs', 'modeles/auto-merge/codes-raison.mjs', 'modeles/auto-merge/LISEZMOI.md',
     ];
-    it('anti-vacuité : COPIES.md liste exactement les 9 fichiers du lot, tous en 1.9.1 (armement-auto-merge.yml en est sorti : adapté, écart 5)', () => {
+    it('anti-vacuité : COPIES.md liste exactement les 10 fichiers du lot, tous en 1.10.0 (armement-auto-merge.yml en est sorti : adapté, écart 5)', () => {
         expect(lignes.map((l) => l.chemin).sort()).toEqual([...ATTENDUS].sort());
-        for (const l of lignes) expect(l.version, l.chemin).toBe('1.9.1');
+        for (const l of lignes) expect(l.version, l.chemin).toBe('1.10.0');
     });
     it.each(ATTENDUS)('%s : l\'empreinte de COPIES.md est celle du fichier (copie non retouchée)', (chemin) => {
         const l = lignes.find((x) => x.chemin === chemin);
         expect(l, chemin).toBeDefined();
         expect(sha(lit(chemin)), chemin).toBe(l!.sha);
     });
-    it('la source (tag kit-1.9.1, commit df55f4c) et chaque écart FinanceAI sont déclarés', () => {
-        expect(liste).toContain('kit-1.9.1');
-        expect(liste).toContain('df55f4c');
+    it('la source (kit 1.10.0, commit 245364a de l\'Atelier), le frein visuel non activé et chaque écart FinanceAI sont déclarés', () => {
+        expect(liste).toContain('1.10.0');
+        expect(liste).toContain('245364a');
+        expect(liste).toContain('NON ACTIVÉ');
+        // Frein visuel : décision de Marc en attente, la clé ne doit pas apparaître dans la config tant qu'elle n'est pas prise.
+        expect(lit('.github/auto-merge.json')).not.toContain('chemins_validation_visuelle');
         for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'securite_user_id', 'passerelle/tunnel.yml', 'workflows: [CI]', 'auto-merge.yml', 'carence_dependabot_jours', 'dependabot.yml', 'armer-docs.mjs', 'docsAjoutsSeulement.mjs', 'ADR 0024', 'chemins_ajouts_seulement', 'chemins_contenu_surveille']) {
             expect(liste, `écart non déclaré : ${mot}`).toContain(mot);
         }

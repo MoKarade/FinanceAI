@@ -124,6 +124,7 @@ export function validerConfig(config) {
   if (!listeDeTextes(config.controles_requis) || config.controles_requis.length === 0) erreurs.push("controles_requis : liste non vide de noms de checks");
   if (!listeDeTextes(config.chemins_interdits)) erreurs.push("chemins_interdits : liste de motifs");
   if (!listeDeTextes(config.chemins_label_validation)) erreurs.push("chemins_label_validation : liste de motifs");
+  if (config.chemins_validation_visuelle !== undefined && !listeDeTextes(config.chemins_validation_visuelle)) erreurs.push("chemins_validation_visuelle : liste de motifs (chemins dont la modification demande la validation visuelle de Marc)");
   if (!listeDeTextes(config.controles_non_bloquants)) erreurs.push("controles_non_bloquants : liste de noms de checks");
   if (!Number.isInteger(config.carence_dependabot_jours) || config.carence_dependabot_jours < 0 || config.carence_dependabot_jours > 60) {
     erreurs.push("carence_dependabot_jours : entier de 0 à 60");
@@ -304,7 +305,7 @@ export function codeRaison(d) {
   const r = String(d.raison || "");
   if (r.startsWith("attestation de pole-securite requise")) return "attestation_requise";
   if (r === "brouillon" || r.startsWith("brouillon")) return "brouillon";
-  if (r === `label ${LABEL_FREIN}`) return "do_not_merge";
+  if (r === `label ${LABEL_FREIN}` || r.startsWith("validation visuelle requise")) return "do_not_merge";
   if (r.startsWith("le SHA de la PR a changé")) return "sha_change";
   if (r.startsWith("état de fusion")) return "etat_fusion";
   if (r.startsWith("aucun check") || r.startsWith("contrôle requis absent")) return "controle_en_cours";
@@ -339,6 +340,17 @@ function examinerFichiers(pr, config) {
     const app = correspond(c, config.chemins_interdits);
     if (app && !correspond(c, attestables)) return refus(`chemin interdit par auto-merge.json : ${c}`);
     if (correspond(c, JAMAIS_ATTESTABLES)) return refus(`chemin jamais attestable (secret, clé) : ${c}`);
+  }
+  // Frein VISUEL (chemins_validation_visuelle) : NON attestable (une attestation de sécurité ne remplace pas le regard de Marc sur le rendu) et évalué ICI, dans la même fonction pure
+  // que les autres chemins, donc à CHAQUE passage (workflow_run, status, check_run, cron) : un fichier visuel ajouté par un commit ultérieur reçoit le label lui aussi.
+  // Le label posé est `do-not-merge` (le frein DUR) : le kit ne le retire jamais (aucun `--remove-label` dans le kit), seul un retrait manuel rouvre la fusion.
+  // La raison dit QUEL motif a touché QUEL fichier : elle ne ressemble jamais à un do-not-merge posé à la main pour une faille de sécurité.
+  for (const motif of config.chemins_validation_visuelle || []) {
+    const fichier = touches.find((c) => correspond(c, [motif]));
+    if (fichier) {
+      return refus(`validation visuelle requise : le motif « ${court(motif)} » de chemins_validation_visuelle touche ${court(fichier)} ; label ${LABEL_FREIN} posé, à retirer À LA MAIN par Marc après validation`,
+        { etiqueter: [LABEL_FREIN], motif: "do_not_merge" });
+    }
   }
   const attestable = [];
   const fixe = touches.find((c) => correspond(c, CHEMINS_INTERDITS));

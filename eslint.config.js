@@ -2,9 +2,9 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import reactHooks from 'eslint-plugin-react-hooks';
 
-// Copies EXACTES du kit d'auto-merge de l'Atelier (tag kit-1.9.0) : empreintes épinglées dans COPIES.md, jamais retouchées, donc jamais linées.
+// Copies EXACTES du kit d'auto-merge de l'Atelier (kit 1.10.0, origin/main de l'Atelier) : empreintes épinglées dans COPIES.md, jamais retouchées, donc jamais linées.
 // Liste NOMINATIVE (pas le glob modeles/auto-merge/**) : un fichier propre à FinanceAI ajouté dans ce dossier reste lint.
-const COPIES_MODELE_ATELIER = ['autoMerge.mjs', 'autoMerge.d.mts', 'fusionner.mjs', 'armer.mjs', 'codes-raison.mjs', 'verifier-copies.mjs', 'surblocage.mjs'].map((f) => `modeles/auto-merge/${f}`);
+const COPIES_MODELE_ATELIER = ['autoMerge.mjs', 'autoMerge.d.mts', 'fusionner.mjs', 'armer.mjs', 'labels.mjs', 'codes-raison.mjs', 'verifier-copies.mjs', 'surblocage.mjs'].map((f) => `modeles/auto-merge/${f}`);
 
 export default [
   {

@@ -69,6 +69,15 @@ export interface WritableStateSource extends StateSource {
      * de la MÊME lecture (pas de capture séparée racée sous lectures concurrentes).
      */
     loadRawVersioned?(): Promise<{ raw: string; version: StateVersion }>;
+    /**
+     * [VERROU-ECRITURE] Étape 2 — le verrou d'écriture MCP est-il actuellement OUVERT ? Optionnel :
+     * seule `DriveStateSource` l'implémente (le mécanisme est propre à Drive `appDataFolder`, cf
+     * `mcp/drive/writeLockStore.ts`) ; une source sans ce mécanisme (fichier local, dev/tests) n'est
+     * PAS un cas de « fail-open » — le verrou n'est simplement pas applicable à cette forme de
+     * déploiement (jamais celle exposée au connecteur claude.ai). `StateStore.checkWriteLock()` gère
+     * ce repli (voir stateStore.ts).
+     */
+    checkWriteLock?(): Promise<boolean>;
 }
 
 /** Garde de type : la source sait-elle écrire ? */

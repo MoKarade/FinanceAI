@@ -17251,3 +17251,25 @@ n'a été vue qu'en reconstruisant le document depuis zéro, comparé ligne à l
   qu'il prétend décrire, pas seulement contre les numéros de version.
 - Piste : un test qui dérive automatiquement la liste « strict vs souple » d'un ADR depuis `auto-merge.json`
   éviterait qu'un texte descriptif diverge silencieusement de la configuration qu'il documente.
+
+## `UN-MECANISME-DE-SECURITE-PROPRE-A-UNE-SOURCE-N-A-PAS-DE-SEMANTIQUE-AILLEURS` (2026-09-29, `[VERROU-ECRITURE]`)
+
+Le verrou d'écriture MCP (ADR 0025) vit dans un fichier Drive, lu par `DriveStateSource.checkWriteLock()`.
+`StateStore.checkWriteLock()` (méthode optionnelle, comme `loadRawVersioned`) délègue à la source si elle
+l'implémente, sinon renvoie `true` (ouvert). Une lecture rapide pourrait crier au fail-open : « une erreur
+de sécurité doit toujours échouer fermé ». Ce n'en est pas un.
+
+- Distinction cruciale : **absence de mécanisme** (source ≠ Drive, ex. fichier local dev/tests) ≠
+  **échec d'une lecture** (Drive configuré mais le fichier de verrou est illisible). Le premier cas
+  renvoie `true` par construction (le verrou n'est pas applicable à cette forme de déploiement,
+  jamais exposée à un document tiers) ; le second échoue TOUJOURS fermé, à l'intérieur même de
+  `creerVerificateurVerrou` (`mcp/drive/writeLockStore.ts`), avant même d'atteindre ce point.
+- Ce choix a évité de casser ~6 fichiers de tests préexistants (`setCash.test.ts`,
+  `applyDebt.test.ts`, etc.) qui construisent un `StateStore` réel via `makeStateStore(new
+  FileStateSource(...))` sans rien savoir du verrou — les rendre tous fail-closed aurait exigé de
+  les modifier un par un pour un mécanisme hors de leur scope, en plus de casser silencieusement
+  tout usage local/stdio légitime (le vrai déploiement exposé au risque est TOUJOURS Drive-backé).
+- Règle générale : avant d'étendre une interface partagée (`StateStore`, `WritableStateSource`) avec
+  un contrôle de sécurité propre à UNE implémentation, vérifier ce que fait CHAQUE autre
+  implémentation existante en l'absence du mécanisme — une valeur de repli n'est un fail-open que si
+  le scénario de menace visé peut RÉELLEMENT atteindre ce chemin-là.

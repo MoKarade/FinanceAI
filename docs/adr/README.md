@@ -36,6 +36,7 @@ conservés en 0001 et 0002.
 | [`0022-cloudflare-access-mur-api.md`](0022-cloudflare-access-mur-api.md) | ADR — Cloudflare Access devant finance.hubperso.com, jeton vérifié par l'API (2026-09-25) |
 | [`0023-confirmation-ecriture-mcp-par-jeton.md`](0023-confirmation-ecriture-mcp-par-jeton.md) | ADR — Écriture MCP : confirmation à deux temps liée côté serveur, jeton à usage unique (2026-09-26) |
 | [`0024-documents-des-agents-proteges.md`](0024-documents-des-agents-proteges.md) | ADR — Les documents relus par les agents (CLAUDE.md, docs/claude, leçons, HANDOVER…) sont protégés contre l'injection persistante (pole-securite, 2026-09-26) |
+| [`0025-verrou-ecriture-mcp-hors-chat.md`](0025-verrou-ecriture-mcp-hors-chat.md) | ADR — Verrou d'écriture MCP : autorisation hors du chat, jamais atteignable par le modèle (pole-securite, 2026-09-29) |
 
 Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
 un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

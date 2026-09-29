@@ -51,11 +51,42 @@ const REFUS: Record<Exclude<ConfirmVerdict, 'ok'>, string> = {
     different: "confirmToken refusé : arguments, session ou état différents de l'aperçu. Rien n'a été écrit. Refais un aperçu (appel SANS confirmToken) et montre-le à l'utilisateur.",
 };
 
+/** [VERROU-ECRITURE] Message de refus fixe : jamais de détail sur l'état du verrou (durée restante,
+ *  etc.) — juste où agir. Le modèle ne peut RIEN faire de plus utile qu'informer Marc. */
+const MESSAGE_VERROU_FERME =
+    "Écritures verrouillées. Depuis l'app FinanceAI (PAS depuis cette conversation) : Réglages → " +
+    'Écritures MCP → « Autoriser les écritures » pendant quelques minutes, puis redemande.';
+
 export async function runApply(store: StateStore, doc: DocumentPayload, opts?: RunApplyOptions): Promise<ToolTextResult> {
     if (!store.canWrite) {
         return errorContent(
             'État en lecture seule : configure une source inscriptible (fichier $FINANCEAI_STATE_FILE, ou Drive via npm run mcp:auth).',
         );
+    }
+    // [VERROU-ECRITURE] Étape 2 — vérifié EN PREMIER, AVANT la logique d'aperçu/jeton de #1076 (C1 du
+    // plan) : un verrou fermé referme le canal PAR-DESSUS le jeton, même avec un confirmToken valide
+    // d'un tour précédent. Jamais de calcul de changements ni d'émission de jeton avant ce contrôle.
+    if (opts?.guard) {
+        const g = opts.guard;
+        let ouvert = true;
+        if (store.checkWriteLock) {
+            try {
+                ouvert = await store.checkWriteLock();
+            } catch (err) {
+                // [VERROU-ECRITURE] Échec fermé même sur une exception INATTENDUE ici (en pratique
+                // creerVerificateurVerrou n'en laisse jamais échapper — ceinture, pas la barrière).
+                logError({
+                    source: 'storage', severity: 'warning',
+                    message: 'checkWriteLock() a levé une exception inattendue — traité comme fermé.',
+                    error: err instanceof Error ? err : new Error(String(err)),
+                });
+                ouvert = false;
+            }
+        }
+        if (!ouvert) {
+            auditWrite(g.tool, 'refus', 0, 'verrou_ferme', scopeTag(g.scope));
+            return errorContent(MESSAGE_VERROU_FERME);
+        }
     }
     let state, version;
     try {

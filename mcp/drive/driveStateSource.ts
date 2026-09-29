@@ -32,6 +32,7 @@ import type { WritableStateSource, StateVersion } from '../state/loadAppState';
 import type { SaveResult } from '../state/writeAppState';
 import { setStateFreshness } from '../state/freshness';
 import { logError } from '../../services/errorLogger';
+import { creerVerificateurVerrou } from './writeLockStore';
 
 /** Fournit un jeton d'accès Drive valide (OAuth local, Lot 3b). */
 export type TokenProvider = () => Promise<string>;
@@ -88,13 +89,25 @@ export class DriveStateSource implements WritableStateSource {
      *  garde évaluée sur un état en plein milieu d'un autre write). */
     private _saveQueue: Promise<unknown> = Promise.resolve();
 
+    /** [VERROU-ECRITURE] Une seule instance par `DriveStateSource` (donc par processus serveur) :
+     *  porte le cache court (≤ 10 s) du verrou, cf `writeLockStore.ts`. */
+    private readonly verifierVerrou: () => Promise<boolean>;
+
     constructor(
         private readonly getToken: TokenProvider,
         private readonly fetchFn?: FetchLike,
-    ) {}
+    ) {
+        this.verifierVerrou = creerVerificateurVerrou(getToken, fetchFn);
+    }
 
     get description(): string {
         return 'Google Drive (appDataFolder/financeai-sync.json)';
+    }
+
+    /** [VERROU-ECRITURE] Le verrou vit dans un AUTRE fichier (financeai-write-lock.json), lu seul —
+     *  jamais écrit ici (voir writeLockStore.ts : aucune fonction d'écriture n'y existe). */
+    async checkWriteLock(): Promise<boolean> {
+        return this.verifierVerrou();
     }
 
     async loadRaw(): Promise<string> {

@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 — **`[VERROU-ECRITURE]` : Étape 2, verrou d'écriture MCP hors du chat**
+> Suite de `[MCP-CONFIRM-TOKEN]` (#1076, fusionnée) : le jeton d'aperçu empêche une écriture en UN
+> appel mais pas l'injection de consigne (aperçu+confirme enchaînés par un modèle piégé). Verrou
+> **désactivé par défaut**, activable UNIQUEMENT depuis l'app web (Réglages → Écritures MCP, nouvelle
+> `WriteLockCard`), jamais depuis claude.ai. État dans `financeai-write-lock.json` (appDataFolder,
+> même dossier que `financeai-sync.json`, aucun nouveau scope OAuth). **Lecture SEULE côté MCP**
+> (`mcp/drive/writeLockStore.ts` — n'expose AUCUNE fonction d'écriture, vérifié par test structurel) ;
+> **écriture SEULE côté app web** (`services/googleDrive/writeLock.ts`). Vérifié dans `runApply`
+> AVANT la logique d'aperçu/jeton de #1076 (les deux se cumulent, défense en profondeur) : un verrou
+> refermé refuse même un `confirmToken` valide émis pendant une fenêtre désormais close. Échec fermé
+> partout (réseau, fichier absent, JSON invalide, exception) — jamais un repli ouvert ; une source
+> d'état SANS Drive (fichier local, tests) n'implémente pas le mécanisme, ce n'est PAS un fail-open
+> (le verrou ne s'applique qu'aux déploiements Drive-backed, la seule forme exposée à un document
+> tiers). ADR 0025. Tests : `tests/mcp/verrouEcriture.test.ts`,
+> `tests/mcp/verrouEcritureIntegration.test.ts` (matrice 8 outils + structurel), `tests/services/writeLock.test.ts`.
+> ⚠️ PR sensible (`mcp/**`, `services/googleDrive/**`, `components/settings/**`) : brouillon, non
+> armée, relecture ligne à ligne de pole-securite obligatoire avant tout armement.
+>
 > ## 🟥 Session 2026-09-28 (suite) — **`[GARDE-JQ-AUTO-MERGE-LENGTH]` : `main` bloquait toute PR sur une garde anti-fuite**
 > `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows) ne connaissait pas
 > `gh pr list --json number --jq 'length'` de `.github/workflows/auto-merge.yml:77` (compte de PR ouvertes,

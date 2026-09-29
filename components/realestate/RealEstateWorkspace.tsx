@@ -381,6 +381,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const tuile = 'rounded-2xl bg-surface border border-white/6 px-4 py-3.5 lg:px-[18px] flex flex-col gap-0.5 min-w-0';
     const etiquette = 'text-meta xl:text-[11px] xl:font-semibold xl:tracking-[0.06em] xl:uppercase text-ink-400';
     const montant = 'font-mono text-[18px] xl:text-[20px] font-bold text-ink-50';
+    // NOMBRE-NON-MONETAIRE : pourcentages d'hypothèse de marché (rendement, appréciation), pas un montant.
     const pctTexte = (v: number) => formatNumber(v, { decimals: Number.isInteger(v) ? 0 : 1 });
 
     return (

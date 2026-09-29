@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 (lot 3) — **code mort + garde vie privée `formatNumber`**
+> `[CSV-EXPORTS-MORTS-SANS-GARDE]` : `exportHoldingsCSV`/`exportBudgetCSV` retirés (aucun appelant).
+> `[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]` : variable morte retirée de `FutureDetailModal.tsx`.
+> `[PRIVACY-SCAN-ALIAS-FORMATNUMBER]` : `amountPrivacyScan` voit les alias de `formatNumber` ; nouveau jeton
+> `NOMBRE-NON-MONETAIRE` (définition d'alias seulement, jamais pour un alias de `formatCAD`). Les appels
+> DIRECTS restent hors garde : 6 sites mesurés, à trier → `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`.
 > ## 🟦 Session 2026-09-29 (suite) — **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]` + `[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`**
 > **Retrait** (OK de Marc) : `useTheoretical`/`theoreticalIncome`/`theoreticalExpenses` NEUTRALISÉS dans le
 > moteur (3 sites : `computeIncomeBaseline` perd son paramètre `projection`, base de dépenses

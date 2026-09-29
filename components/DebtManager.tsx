@@ -476,7 +476,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                                     <XAxis dataKey="month" tick={<TickMois />} tickLine={false} axisLine={false} ticks={reperesMois} interval={0} />
                                     <YAxis orientation={etroit ? 'left' : 'right'} ticks={reperesMontants} domain={[0, 'dataMax']} stroke="#8896a8" tick={{ fontSize: etroit ? 10 : 11, fontFamily: 'JetBrains Mono' }} tickLine={false} axisLine={false} width={etroit ? 40 : 48} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCompactCAD(val))} />
-                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelFormatter={(m: number) => (m === 0 ? "Aujourd'hui" : `Dans ${m} mois`)} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelFormatter={(m: number) => (m === 0 ? "Aujourd'hui" : isPrivacyMode ? MASKED_AMOUNT_LABEL : `Dans ${m} mois`)} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
                                     <Area type="monotone" dataKey="balance" stroke="#e0703a" fill="#e0703a" fillOpacity={0.35} name="Solde restant" strokeWidth={2} />
                                     <Line type="monotone" dataKey="interestAccumulated" stroke="#fbbf24" strokeWidth={2} dot={false} name="Intérêts cumulés" />
                                 </ComposedChart>

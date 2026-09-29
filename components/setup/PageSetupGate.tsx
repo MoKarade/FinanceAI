@@ -325,7 +325,7 @@ const FullSetupScreen: React.FC<{
             role="region"
             aria-labelledby="page-setup-title"
         >
-            <div className="rounded-2xl border border-warning-500/25 bg-linear-to-b/srgb from-warning-500/6 to-transparent p-6">
+            <div className="rounded-2xl border border-warning-500/25 bg-surface p-6">
                 <div className="flex items-center gap-2 text-tiny uppercase tracking-widest text-warning-400 mb-2">
                     <Icon name="lock" size={14} /> Page verrouillée — configuration requise
                 </div>

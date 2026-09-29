@@ -17210,6 +17210,15 @@ bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dan
   suffit donc pas seule : un `grep -rn "path.relative(" tests/` après le lot n'aurait pas suffi non plus, puisque ce fichier n'existait pas
   encore — la règle doit être réappliquée à CHAQUE nouveau marcheur de fichiers, pas seulement balayée une fois.
 
+### `UNE-CONFIRMATION-QUE-L-APPELANT-S-ACCORDE-N-EST-PAS-UNE-CONFIRMATION` — 2026-09-26
+
+Lot `[MCP-CONFIRM-TOKEN]`. Les outils d'écriture MCP se protégeaient par un booléen `confirm:true` passé par le MODÈLE ; les `apply_*` n'avaient rien. Un document piégé fait envoyer le booléen au premier appel.
+
+- Une porte de confirmation doit être un SECRET émis par le serveur en réponse à l'aperçu, à usage unique, court, lié à la session, à l'outil, aux arguments exacts et aux changements calculés. Jamais un flag que le demandeur remplit.
+- Un point d'enregistrement unique (`registerWriteTool`) + un test qui interdit `runApply` dans les `*.tool.ts` : impossible d'ajouter un outil d'écriture sans la porte.
+- Dire la limite : le jeton ne prouve pas qu'un humain a lu ; l'approbation par appel du client reste la barrière (annotations MCP).
+- Journal d'audit d'écriture : outil, phase, nombre, code de résultat ; jamais de montant ni de nom.
+
 ## `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` (2026-09-28, `[KIT-191]`)
 
 Resynchronisation du kit d'auto-merge 1.9.0 → 1.9.1 (2 fichiers sur 10 changés : `verifier-copies.mjs`, `LISEZMOI.md`).

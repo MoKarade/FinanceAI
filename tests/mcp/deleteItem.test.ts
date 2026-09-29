@@ -13,6 +13,7 @@ import { FileStateSource, buildDefaultAppState, loadAppStateFromSource } from '.
 import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerDeleteItem } from '../../mcp/tools/deleteItem.tool';
 import type { AppState, Asset, Debt } from '../../types';
+import { confirmer } from './_ecritureMcp';
 
 const baseState = (): AppState => buildDefaultAppState();
 
@@ -127,7 +128,7 @@ describe('scrub des textes d\'écriture — la prose de sécurité SURVIT au ret
 type Handler = (a: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
 function capture(store: StateStore): Handler {
     let cap: Handler | null = null;
-    const fake = { tool: (_n: string, _d: string, _s: unknown, cb: Handler) => { cap = cb; } } as unknown as McpServer;
+    const fake = { tool: (..._a: unknown[]) => { cap = _a[_a.length - 1] as Handler; } } as unknown as McpServer;
     registerDeleteItem(fake, store);
     if (!cap) throw new Error('aucun handler capturé');
     return cap;
@@ -152,7 +153,7 @@ describe('delete_item — tool bout en bout', () => {
         expect(preview.applied).toBe(false);
         expect(preview.preview).toBe(true);
         expect((await loadAppStateFromSource(new FileStateSource(file))).debts).toHaveLength(1); // rien supprimé
-        const out = JSON.parse((await h({ entity: 'debt', name: 'Prêt auto Honda', confirm: true })).content[0].text);
+        const out = JSON.parse((await confirmer(h, { entity: 'debt', name: 'Prêt auto Honda' })).content[0].text);
         expect(out.applied).toBe(true);
         expect(out.backupPath).toBeTruthy();
         expect((await loadAppStateFromSource(new FileStateSource(file))).debts).toHaveLength(0);
@@ -160,7 +161,7 @@ describe('delete_item — tool bout en bout', () => {
 
     it('ambiguïté d\'actif au niveau tool → erreur claire (isError), rien supprimé', async () => {
         const store = makeStateStore(new FileStateSource(file), { ttlMs: 0 });
-        const res = await capture(store)({ entity: 'asset', name: 'VFV.TO', confirm: true });
+        const res = await confirmer(capture(store), { entity: 'asset', name: 'VFV.TO' });
         expect(res.isError).toBe(true);
         expect((await loadAppStateFromSource(new FileStateSource(file))).assets).toHaveLength(3);
     });

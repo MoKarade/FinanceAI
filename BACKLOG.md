@@ -39,6 +39,10 @@
 - [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
 - [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
 
+## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
+
+- [ ] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils d'écriture : livré en PR brouillon (validation-marc, non armée) ; à archiver quand fusionnée. Suite non faite : rate limit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ; longueur minimale de `FINANCEAI_ACCESS_KEY` (audit findings moyenne 6 et 8).
+
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 
 ## 💼 Portefeuille courtier — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)

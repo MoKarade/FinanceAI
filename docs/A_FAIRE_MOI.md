@@ -5,6 +5,8 @@
 > décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
 > une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
 
+- [ ] 👤 **[MCP-CONFIRM-TOKEN]** (2026-09-26) — **ne jamais activer « Toujours autoriser » sur les outils d'écriture du connecteur FinanceAI dans claude.ai** (apply_payslip, apply_bank_statement, apply_broker_statement, apply_tax_slip, apply_debt, set_cash, set_budget_item, delete_item). Laisse claude.ai te demander l'approbation à CHAQUE appel : c'est ta seule barrière humaine ; le jeton du serveur empêche l'écriture en un appel, le rejeu et le changement d'arguments, mais pas un modèle qui rappelle aussitôt. Détail : `docs/adr/0023-confirmation-ecriture-mcp-par-jeton.md`.
+
 - [ ] 👤 **[CF-ACCESS-MISE-EN-SERVICE]** (2026-09-25, décision Marc : Cloudflare Access remplace la passkey) — **mettre un mur
   « code par e-mail » devant finance.hubperso.com**. Le code (PR `[CF-ACCESS]`) vérifie le jeton d'Access côté API ; rien ne
   change tant que tu n'as pas fait les étapes 3 à 5. **L'ORDRE COMPTE.** Aucune valeur ci-dessous n'est un secret

@@ -7,7 +7,6 @@ import { Badge } from '../ui/Badge';
 import { ProjectionConfig, RealEstateGoal } from '../../types';
 import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
 import { ReturnRateField } from './ReturnRateField';
-import { FluxMensuelsFields } from './macroFields/FluxMensuelsFields';
 import { ValeurMaxMaisonField } from './macroFields/ValeurMaxMaisonField';
 import { STOCHASTIC_TOGGLES, INFLATION_CATEGORIES, REPLAY_OPTIONS } from './ProjectionControls';
 
@@ -17,7 +16,8 @@ import { STOCHASTIC_TOGGLES, INFLATION_CATEGORIES, REPLAY_OPTIONS } from './Proj
  * par poste, risques, rejeu krach, avancés). Le desktop garde sa grille en 4 colonnes dans
  * `ProjectionControls.tsx`, ENTIÈREMENT séparée de ce fichier — aucune des deux vues n'importe le
  * JSX de l'autre, seulement les tableaux de config partagés (`STOCHASTIC_TOGGLES` etc.) et les deux
- * fragments à rendu VERBATIM (`FluxMensuelsFields`, `ValeurMaxMaisonField`).
+ * fragments à rendu VERBATIM (`ValeurMaxMaisonField` ; `FluxMensuelsFields` retiré au lot
+ * [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] avec les curseurs Revenus/Dépenses théoriques).
  *
  * Bornes des curseurs COPIÉES depuis `ProjectionControls.tsx` (desktop) pour les champs qui y ont déjà
  * un curseur ; crypto/cash n'avaient qu'un champ numérique NON BORNÉ dans `AdvancedProjectionParams`
@@ -66,7 +66,6 @@ export const ProjectionControlsMobile: React.FC<ProjectionControlsMobileProps> =
             defaultOpen={true}
         >
             <div className="space-y-5">
-                <FluxMensuelsFields projection={projection} updateProj={updateProj} useTheoretical={!!projection.useTheoretical} isPrivacyMode={isPrivacyMode} />
                 <div className="space-y-4">
                     <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
                     {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : jusqu'à l'espérance de vie (Retraite). */}

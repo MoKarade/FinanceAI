@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
+
+- L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs
+  « Revenus (Net) » / « Dépenses » de la section Hypothèses. Ils remplaçaient tes vrais revenus et
+  dépenses par des valeurs inventées (et répartissaient le revenu 55/45 entre deux personnes, même
+  seul). La projection se fait désormais TOUJOURS sur tes vraies données. Un dossier resté en
+  « Bac à sable » revient automatiquement au réel, sans rien à faire. Le vrai bac à sable (une copie
+  complète de ton dossier) reviendra dans un lot suivant.
+- Quand l'app tourne sur des données fictives (mode test), l'assistant IA est prévenu que les
+  chiffres sont un scénario hypothétique : il répond normalement, mais ne les présente plus comme
+  tes finances réelles. Rien n'est refusé.
+
 ## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
 
 - Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois

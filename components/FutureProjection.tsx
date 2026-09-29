@@ -21,7 +21,6 @@ import { ouvrirPaletteCommandes } from './ui/commandPaletteActions';
 import type { VarianteBandeau } from './FutureKpiStrip';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
-import { Pill } from './ui/Pill';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceArea, Line, ComposedChart, Bar, ReferenceDot } from 'recharts';
 import { BudgetConfig, BudgetCategory, RealEstateGoal, RetirementGoal, Transaction, ProjectionConfig } from '../types';
 import { ProjectionResult, ProjectionChartPoint } from '../services/projection/types';
@@ -1596,21 +1595,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </Badge>
         </div>
     ) : undefined;
-    // [S5-REFONTE-FUTUR] Commutateur « Données réelles / Bac à sable » (maquettes) : pleine largeur
-    // sous le titre au téléphone, à droite de la recherche au bureau.
-    const dataModePill = (
-        <Pill
-            aria-label="Mode de données"
-            fullWidth={etroit}
-            value={projection.useTheoretical ? 'sandbox' : 'real'}
-            onChange={(v) => updateProj('useTheoretical', v === 'sandbox')}
-            className="*:min-h-11 lg:*:min-h-8"
-            options={[
-                { value: 'real', label: 'Données réelles' },
-                { value: 'sandbox', label: 'Bac à sable', title: 'Bac à sable : projection sur des données théoriques, sans toucher aux tiennes' },
-            ]}
-        />
-    );
+    // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Le commutateur « Données réelles / Bac à sable » (refonte
+    // S5) pilotait `useTheoretical`, désormais NEUTRALISÉ dans le moteur : gardé, il aurait affiché
+    // « Bac à sable » sur une projection réelle. Retiré (OK du chef de projet, 2026-09-29) ; le vrai
+    // bac à sable (copie du dossier via le mode test) reviendra avec [SANDBOX-MODE-TEST-GENERALISE].
     const rechercheBouton = (
         <button
             type="button"
@@ -1668,11 +1656,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             <PageHeader
                 title="Projection"
                 badge={insolvencyBadge}
-                nav={etroit ? dataModePill : undefined}
                 actions={
                     <>
                         {!etroit && rechercheBouton}
-                        {!etroit && dataModePill}
                         <FutureHealthSummary />
                     </>
                 }

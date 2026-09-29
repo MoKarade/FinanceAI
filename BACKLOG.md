@@ -324,7 +324,10 @@ désinfecte le snapshot avant de le restaurer.
   propre, sinon le bandeau (qui le LIT) annonce un persona vide ; bandeau adapté pour distinguer
   « persona de démo » de « bac à sable sur TA copie ».
 
-- [ ] 🔒 **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`** (S, **OK de Marc**) — retirer les deux curseurs
+- [x] 🔒 **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`** — ✅ **livré 2026-09-29** (branche
+  `agence/financeai-code/sandbox-curseurs-marqueur`, PR à venir ; à archiver au merge). Le commutateur
+  « Données réelles / Bac à sable » de `FutureProjection.tsx` est retiré AUSSI (il ne pilotait que
+  `useTheoretical`). (S, **OK de Marc**) — retirer les deux curseurs
   `theoreticalIncome`/`theoreticalExpenses` **ET neutraliser `useTheoretical` dans le moteur**. La
   PAIRE est obligatoire : un dossier déjà persisté à `useTheoretical: true` resterait sur des
   revenus splittés 55/45 **sans plus aucun bouton pour revenir** — l'interface qui le permettait
@@ -334,7 +337,8 @@ désinfecte le snapshot avant de le restaurer.
   d'épargne). Les trois champs restent `@deprecated` dans le type : les supprimer exigerait une
   migration du schéma persisté, soit un risque sur les données pour un gain nul.
 
-- [ ] 🔒 **`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`** (S, **décision de Marc le 2026-09-22**, contre
+- [x] 🔒 **`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`** — ✅ **livré 2026-09-29** (même branche ;
+  `systemPourAppel`, garde `tests/services/promptMarqueurFictif.test.ts` ; à archiver au merge). (S, **décision de Marc le 2026-09-22**, contre
   l'option « refuser ») — quand l'app tourne sur des données fictives, le `system` envoyé au modèle
   DIT que les chiffres sont un scénario hypothétique. Rien n'est refusé : demander conseil **sur**
   un scénario est l'usage même du bac à sable ; ce qu'on corrige est que le modèle traite du fictif
@@ -371,7 +375,9 @@ désinfecte le snapshot avant de le restaurer.
   résumé du **hub n'est PAS atteint** — `mcp/hubSummary.ts:140` passe par `computeFinancialSignals`
   → `buildFinancialOverview` + `computeBaseGrossAnnual`, qui lisent `users` et les avoirs, jamais
   `projection`. Publier « le hub montre des chiffres inventés » serait faux : c'est le chemin MCP,
-  et lui seul.
+  et lui seul. ⚠️ **2026-09-29** : `[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]` neutralise les trois champs
+  dans le moteur — un `useTheoretical: true` persisté ne change plus la projection servie au MCP. Reste
+  à vérifier si l'item garde un objet (ex. le futur bac à sable par copie) avant de le clore.
 
 - [ ] 🟠 **`[SANDBOX-LASTPROJECTION-SANS-GARDE]`** (S, money-critical) — `ProjectionEngine.tsx:142`
   fait `setLastProjection(results)` **sans condition sur `useTheoretical`**. Or `lastProjection` est

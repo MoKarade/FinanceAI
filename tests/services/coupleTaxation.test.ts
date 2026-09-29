@@ -30,7 +30,7 @@ import type { BudgetConfig, User } from '../../types';
 
 describe('computeIncomeBaseline — brut MENSUEL → annuel (× 12)', () => {
     it('annualise grossSalary (5000 $/mois → 60 000 $/an)', () => {
-        const r = computeIncomeBaseline({}, [
+        const r = computeIncomeBaseline([
             { grossSalary: 5000, netSalary: 3700 },
             { grossSalary: 4000, netSalary: 2900 },
         ]);
@@ -44,7 +44,7 @@ describe('computeIncomeBaseline — brut MENSUEL → annuel (× 12)', () => {
     it('DÉDUIT le brut du net par inversion fiscale quand grossSalary est absent', () => {
         // [MIGRATE-GROSS-135] — RE-BASÉ le 2026-08-20. Ancre AVANT : 64 800 $ (= 4 000 × 12 × 1,35).
         // Ancre APRÈS : 66 553,71 $. Δ = +1 754 $ de brut annuel, à 48 000 $ de net.
-        const r = computeIncomeBaseline({}, [{ netSalary: 4000 }, undefined]);
+        const r = computeIncomeBaseline([{ netSalary: 4000 }, undefined]);
         // L'intention d'origine du test — « pas de division/multiplication parasite », le net
         // mensuel est bien annualisé — est CONSERVÉE, mais vérifiée par la propriété qui compte :
         // le brut déduit doit redonner exactement le net annuel visé (4 000 × 12).
@@ -56,7 +56,7 @@ describe('computeIncomeBaseline — brut MENSUEL → annuel (× 12)', () => {
     });
 
     it('un solo à 10 000 $/mois est vu comme 120 k$/an (pas 10 k$ — le bug)', () => {
-        const r = computeIncomeBaseline({}, [{ grossSalary: 10000, netSalary: 7000 }]);
+        const r = computeIncomeBaseline([{ grossSalary: 10000, netSalary: 7000 }]);
         expect(r.grossMarcBaseAnnual).toBe(120000);
         expect(r.grossMarcBaseAnnual).toBeGreaterThan(100000); // garde anti-régression explicite
     });

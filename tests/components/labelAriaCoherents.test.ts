@@ -93,9 +93,12 @@ describe('[A11Y-LABELS-REDONDANTS-NON-ASSOCIES] un libellé visible et son aria-
         // inchangé (24), la famille des trois fichiers en porte désormais 12 (9 + 2 + 1). Un compte
         // borné à UN SEUL fichier romprait à chaque extraction légitime ; la famille est ce que la
         // phrase « les sliders de ProjectionControls sont le gros du contingent » décrit réellement.
+        //
+        // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Re-mesuré le 2026-09-29 : 9 dans la famille après le
+        // retrait de `FluxMensuelsFields.tsx` (curseurs Revenus / Dépenses théoriques). Plancher 8.
         const familleHypotheses = paires.filter((p) => p.fichier.startsWith('projection/ProjectionControls') || p.fichier.startsWith('projection/macroFields/'));
         expect(paires.length).toBeGreaterThanOrEqual(20);
-        expect(familleHypotheses.length, 'les sliders de l\'onglet Hypothèses (ProjectionControls + macroFields) sont le gros du contingent').toBeGreaterThanOrEqual(10);
+        expect(familleHypotheses.length, 'les sliders de l\'onglet Hypothèses (ProjectionControls + macroFields) sont le gros du contingent').toBeGreaterThanOrEqual(8);
         expect(paires.some((p) => p.libelle.includes('Part actions US')), 'témoin : le libellé à emoji doit être vu ET normalisé').toBe(true);
         expect(nonComparables, 'libellés dynamiques non comparables (mesuré : 1, la boucle INFLATION_CATEGORIES)').toBeLessThanOrEqual(3);
     });

@@ -9,6 +9,10 @@
 > investi → `<PrivateAmount>` (test de rendu dans `tests/components/investments/AddStockForm.test.tsx`).
 > `amountPrivacyScan` relève maintenant les appels DIRECTS à `formatNumber(` ; un site non monétaire le
 > déclare par `NOMBRE-NON-MONETAIRE` (±2 lignes, jamais sur une ligne qui porte aussi un montant CAD).
+> Élargi sur décision de Marc : quantité et gain % du récapitulatif masqués, et total du jour du calendrier
+> des factures (`Planning.tsx`) masqué — la garde ne le voyait pas (alibi d'une autre marque sur la même
+> ligne → `[PRIVACY-SCAN-ALIBI-MEME-LIGNE]`). Ratios et durées perso partout : lot à part
+> `[PRIVACY-RATIOS-DUREES-UNIFORMES]` (il inversera les jetons de `DebtManager` et `BudgetGroupTable`).
 >
 > ## 🟦 Session 2026-09-29 (lot 3) — **code mort + garde vie privée `formatNumber`**
 > `[CSV-EXPORTS-MORTS-SANS-GARDE]` : `exportHoldingsCSV`/`exportBudgetCSV` retirés (aucun appelant).

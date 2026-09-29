@@ -572,12 +572,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                         devise explicite, comme la ligne du prix unitaire. */}
                                     {/* [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Prix d'achat et montant investi masqués en
                                         mode discret, comme la saisie du prix juste au-dessus (PrivateNumberInput). */}
-                                    <strong className="font-mono">{quantity}</strong> × <strong className="font-mono"><PrivateAmount>{formatNumber(parseFloat(buyPrice) || 0, { decimals: 2 })}</PrivateAmount></strong> {currency}
+                                    <strong className="font-mono"><PrivateAmount>{quantity}</PrivateAmount></strong> × <strong className="font-mono"><PrivateAmount>{formatNumber(parseFloat(buyPrice) || 0, { decimals: 2 })}</PrivateAmount></strong> {currency}
                                     {' '}= <strong className="font-mono"><PrivateAmount>{formatNumber((parseFloat(quantity) || 0) * (parseFloat(buyPrice) || 0), { decimals: 2 })}</PrivateAmount></strong> {currency} investi le {new Date(dateBought).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </div>
                                 {currentPrice && parseFloat(buyPrice) > 0 && (
                                     <div className={`text-tiny mt-1 font-mono ${currentPrice >= parseFloat(buyPrice) ? 'text-emerald-300' : 'text-red-300'}`}>
-                                        Gain non-réalisé : {currentPrice >= parseFloat(buyPrice) ? '+' : ''}{(((currentPrice - parseFloat(buyPrice)) / parseFloat(buyPrice)) * 100).toFixed(2)}%
+                                        {/* Masqué (décision de Marc, 2026-09-29) : avec la cotation publique, le gain % redonne le prix d'achat. */}
+                                        Gain non-réalisé : <PrivateAmount>{currentPrice >= parseFloat(buyPrice) ? '+' : ''}{(((currentPrice - parseFloat(buyPrice)) / parseFloat(buyPrice)) * 100).toFixed(2)}%</PrivateAmount>
                                     </div>
                                 )}
                             </div>

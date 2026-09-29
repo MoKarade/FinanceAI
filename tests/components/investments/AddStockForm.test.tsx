@@ -393,4 +393,26 @@ describe('AddStockForm — récapitulatif en mode discret', () => {
         // Le récapitulatif reste lisible (devise) : seuls les montants sont masqués.
         expect(recap()).toMatch(/CAD/);
     });
+
+    it('la quantité et le gain en % sont masqués aussi (décision de Marc, 2026-09-29)', async () => {
+        // Avec la cotation publique affichée, quantité et gain % redonnaient le prix d'achat et le montant investi.
+        // Le gain % n'existe que pour un titre VALIDÉ par cotation (prix actuel connu).
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'XEQT.TO', price: 100, currency: 'CAD' } } as never);
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'xeqt.to' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        await screen.findByText(/Prix actuel/i);
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '7' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '80' } });
+
+        const recap = () => screen.getByText('Récapitulatif').parentElement!.textContent ?? '';
+        // Témoin : hors mode discret, quantité (7) et gain (+25,00 %) sont visibles.
+        expect(recap()).toMatch(/7\s*×/);
+        expect(recap()).toMatch(/25\.00%|25,00/);
+
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        expect(recap()).not.toMatch(/7\s*×/);
+        expect(recap()).not.toMatch(/25\.00%|25,00/);
+    });
 });

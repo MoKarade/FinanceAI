@@ -151,7 +151,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                                 </div>
                                 <div>
                                     <label htmlFor="app-divorceAlimonyMonthly" className="text-tiny text-ink-300">Pension alimentaire $/mois</label>
-                                    <PrivateNumberInput type="number" id="app-divorceAlimonyMonthly" value={projection.divorceAlimonyMonthly ?? 0} onChange={e => updateProj('divorceAlimonyMonthly', Number(e.target.value))} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <PrivateNumberInput type="number" id="app-divorceAlimonyMonthly" value={projection.divorceAlimonyMonthly ?? 0} onChange={e => updateProj('divorceAlimonyMonthly', Number(e.target.value))} className="w-full bg-dark border border-rose-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                                 </div>
                             </>}
                             {projection.ltdEnabled && <>
@@ -175,17 +175,17 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                                 </div>
                                 <div>
                                     <label htmlFor="app-ciPayoutAmount" className="text-tiny text-ink-300">Capital forfaitaire reçu $</label>
-                                    <PrivateNumberInput type="number" id="app-ciPayoutAmount" value={projection.ciPayoutAmount ?? 0} onChange={e => updateProj('ciPayoutAmount', Number(e.target.value))} className="w-full bg-dark border border-pink-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <PrivateNumberInput type="number" id="app-ciPayoutAmount" value={projection.ciPayoutAmount ?? 0} onChange={e => updateProj('ciPayoutAmount', Number(e.target.value))} className="w-full bg-dark border border-pink-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
                                     <label htmlFor="app-ciExtraMonthlyExpense" className="text-tiny text-ink-300">Dépenses additionnelles $/mois</label>
-                                    <PrivateNumberInput type="number" id="app-ciExtraMonthlyExpense" value={projection.ciExtraMonthlyExpense ?? 0} onChange={e => updateProj('ciExtraMonthlyExpense', Number(e.target.value))} className="w-full bg-dark border border-pink-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <PrivateNumberInput type="number" id="app-ciExtraMonthlyExpense" value={projection.ciExtraMonthlyExpense ?? 0} onChange={e => updateProj('ciExtraMonthlyExpense', Number(e.target.value))} className="w-full bg-dark border border-pink-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                                 </div>
                             </>}
                             {projection.inheritanceEnabled && <>
                                 <div>
                                     <label htmlFor="app-inheritanceExpectedAmount" className="text-tiny text-ink-300">Héritage attendu $</label>
-                                    <PrivateNumberInput type="number" id="app-inheritanceExpectedAmount" value={projection.inheritanceExpectedAmount ?? 0} onChange={e => updateProj('inheritanceExpectedAmount', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <PrivateNumberInput type="number" id="app-inheritanceExpectedAmount" value={projection.inheritanceExpectedAmount ?? 0} onChange={e => updateProj('inheritanceExpectedAmount', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
                                     <label htmlFor="app-inheritanceExpectedAtAge" className="text-tiny text-ink-300">À l'âge</label>
@@ -235,7 +235,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </div>
                             <div>
                                 <label htmlFor="app-snowbirdExtraMonthlyCost" className="text-tiny text-ink-300">Surcoût mensuel ($)</label>
-                                <PrivateNumberInput type="number" id="app-snowbirdExtraMonthlyCost" value={projection.snowbirdExtraMonthlyCost ?? 1500} onChange={e => updateProj('snowbirdExtraMonthlyCost', Number(e.target.value))} className="w-full bg-dark border border-cyan-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-snowbirdExtraMonthlyCost" value={projection.snowbirdExtraMonthlyCost ?? 1500} onChange={e => updateProj('snowbirdExtraMonthlyCost', Number(e.target.value))} className="w-full bg-dark border border-cyan-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                         </div>
                     )}
@@ -251,7 +251,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <div>
                             <label htmlFor="app-boomerangSupportMonthly" className="text-tiny text-emerald-300">Boomerang $/mois</label>
-                            <PrivateNumberInput type="number" id="app-boomerangSupportMonthly" value={projection.boomerangSupportMonthly ?? 0} onChange={e => updateProj('boomerangSupportMonthly', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <PrivateNumberInput type="number" id="app-boomerangSupportMonthly" value={projection.boomerangSupportMonthly ?? 0} onChange={e => updateProj('boomerangSupportMonthly', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
                             <label htmlFor="app-boomerangStartAge" className="text-tiny text-emerald-300">Début (âge user)</label>
@@ -263,7 +263,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         </div>
                         <div>
                             <label htmlFor="app-caregivingMonthly" className="text-tiny text-emerald-300">Caregiving $/mois</label>
-                            <PrivateNumberInput type="number" id="app-caregivingMonthly" value={projection.caregivingMonthly ?? 0} onChange={e => updateProj('caregivingMonthly', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <PrivateNumberInput type="number" id="app-caregivingMonthly" value={projection.caregivingMonthly ?? 0} onChange={e => updateProj('caregivingMonthly', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
                             <label htmlFor="app-caregivingStartAge" className="text-tiny text-emerald-300">Début (âge user)</label>
@@ -289,31 +289,31 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <div>
                                 <label htmlFor="app-manualCELI" className="text-tiny text-ink-300">CELI $</label>
-                                <PrivateNumberInput type="number" id="app-manualCELI" value={projection.manualCELI ?? 0} onChange={e => updateProj('manualCELI', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualCELI" value={projection.manualCELI ?? 0} onChange={e => updateProj('manualCELI', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-manualREER" className="text-tiny text-ink-300">REER $</label>
-                                <PrivateNumberInput type="number" id="app-manualREER" value={projection.manualREER ?? 0} onChange={e => updateProj('manualREER', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualREER" value={projection.manualREER ?? 0} onChange={e => updateProj('manualREER', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-manualNonReg" className="text-tiny text-ink-300">Non-Enreg $</label>
-                                <PrivateNumberInput type="number" id="app-manualNonReg" value={projection.manualNonReg ?? 0} onChange={e => updateProj('manualNonReg', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualNonReg" value={projection.manualNonReg ?? 0} onChange={e => updateProj('manualNonReg', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-manualCash" className="text-tiny text-ink-300">Cash $</label>
-                                <PrivateNumberInput type="number" id="app-manualCash" value={projection.manualCash ?? 0} onChange={e => updateProj('manualCash', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualCash" value={projection.manualCash ?? 0} onChange={e => updateProj('manualCash', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-manualCrypto" className="text-tiny text-ink-300">Crypto $</label>
-                                <PrivateNumberInput type="number" id="app-manualCrypto" value={projection.manualCrypto ?? 0} onChange={e => updateProj('manualCrypto', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualCrypto" value={projection.manualCrypto ?? 0} onChange={e => updateProj('manualCrypto', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-manualCELIRoom" className="text-tiny text-ink-300">CELI room restant $</label>
-                                <PrivateNumberInput type="number" id="app-manualCELIRoom" value={projection.manualCELIRoom ?? 0} onChange={e => updateProj('manualCELIRoom', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualCELIRoom" value={projection.manualCELIRoom ?? 0} onChange={e => updateProj('manualCELIRoom', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-manualREERRoom" className="text-tiny text-ink-300">REER room restant $</label>
-                                <PrivateNumberInput type="number" id="app-manualREERRoom" value={projection.manualREERRoom ?? 0} onChange={e => updateProj('manualREERRoom', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <PrivateNumberInput type="number" id="app-manualREERRoom" value={projection.manualREERRoom ?? 0} onChange={e => updateProj('manualREERRoom', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                         </div>
                     )}

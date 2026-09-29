@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = resolve(process.cwd(), 'components');
@@ -23,7 +24,7 @@ const PRIMITIVE = 'components/ui/Modal.tsx';
 const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string }> = [
     {
         fichier: 'Onboarding.tsx',
-        jeton: 'z-[9999] bg-[#080b10]',
+        jeton: 'z-9999 bg-[#080b10]', // [S5-TAILWIND4] z-[9999] → z-9999
         raison: 'ce n\'est pas un dialogue mais une PRISE DE CONTRÔLE de l\'écran : rien ne subsiste '
             + 'derrière, il n\'y a donc aucun contenu à rendre inerte. Un `aria-modal` y affirmerait '
             + 'qu\'on masque quelque chose — c\'est le contraire d\'une information utile.',
@@ -31,7 +32,7 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
     {
         fichier: 'Layout.tsx',
         jeton: 'role="navigation"',
-        raison: 'tiroir de navigation mobile, pas un dialogue : il porte `role="navigation"` et son '
+        raison: 'menu « Plus » (mobile), pas un dialogue : il porte `role="navigation"` et son '
             + 'libellé. Le motif « menu » n\'exige pas `aria-modal` — le contenu derrière reste une '
             + 'destination légitime, c\'est même le but du tiroir.',
     },
@@ -39,7 +40,7 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -58,8 +59,8 @@ function surfacesRecouvrantes(): Surface[] {
         if (brut.trim() !== '' && partDeCodeRestante(brut, code) < 0.05) {
             throw new Error(`${chemin} : décommentage suspect — la garde lirait un fichier vidé`);
         }
-        if (!/fixed inset-0/.test(code)) continue;
-        out.push({ chemin: chemin.replace(`${process.cwd()}/`, ''), code });
+        if (!/fixed inset-(?:0|x-0)\b/.test(code)) continue; // [S5-REFONTE-R1] menu « Plus » : inset-x-0 + top/bottom
+        out.push({ chemin: chemin.replace(`${cwdPosix()}/`, ''), code });
     }
     return out;
 }

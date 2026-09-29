@@ -234,7 +234,7 @@ export const FxRatesCard: React.FC = () => {
                 {/* ⚠️ Conteneur monté EN PERMANENCE, texte VIDÉ — une région live insérée au moment
                     où elle doit parler rate la PREMIÈRE annonce, la seule qui compte
                     (`UNE-REGION-LIVE-MONTEE-CONDITIONNELLEMENT-N-ANNONCE-PAS`). */}
-                <p role="status" aria-live="polite" className="text-meta text-ink-100 min-h-[1rem]">
+                <p role="status" aria-live="polite" className="text-meta text-ink-100 min-h-4">
                     {annonce}
                 </p>
             </div>

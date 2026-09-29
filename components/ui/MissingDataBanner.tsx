@@ -228,7 +228,7 @@ export const MissingDataChecklist: React.FC<{ className?: string }> = ({ classNa
             </div>
             <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden mb-4 border border-white/5">
                 <div
-                    className={`h-full rounded-full transition-all duration-700 ${completedPct === 100 ? 'bg-success-500' : 'bg-gradient-to-r from-warning-400 to-success-400'}`}
+                    className={`h-full rounded-full transition-all duration-700 ${completedPct === 100 ? 'bg-success-500' : 'bg-linear-to-r/srgb from-warning-400 to-success-400'}`}
                     style={{ width: `${completedPct}%` }}
                     aria-hidden="true"
                 />

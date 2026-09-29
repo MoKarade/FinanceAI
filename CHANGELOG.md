@@ -1,5 +1,109 @@
 # Changelog
 
+## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
+
+- Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois
+  activée, ta sauvegarde Drive devient illisible sans cette phrase — même pour Google. Écran en 3
+  étapes : choix de la phrase, avertissement clair (« si elle est perdue, tes données deviennent
+  irrécupérables ») avec une carte à imprimer ou télécharger, puis confirmation.
+- Sur les appareils qui le permettent (empreinte digitale, reconnaissance faciale, Windows Hello), tu
+  peux choisir de mémoriser la phrase : elle ne sera plus redemandée sur CET appareil, mais un
+  déverrouillage biométrique est exigé à chaque fois (un appareil volé mais déjà déverrouillé par
+  quelqu'un d'autre reste protégé). En cas de perte/vol, changer la phrase depuis un autre appareil
+  coupe la mémorisation de tous les autres d'un coup.
+- Nouveau bouton « Nettoyer les anciennes sauvegardes non chiffrées » : affiche d'abord le nombre de
+  fichiers concernés, ne supprime qu'après ta confirmation.
+- Le comportement PAR DÉFAUT ne change pas : rien n'est chiffré tant que tu n'actives rien toi-même.
+
+## 2026-09-29 — Réglages : un nouveau bouton pour autoriser temporairement les écritures de claude.ai
+
+- Nouvelle carte « Écritures MCP » dans Réglages. Par défaut, claude.ai ne peut RIEN écrire dans tes
+  finances, même si tu le lui demandes dans la conversation — il faut d'abord cliquer « Autoriser »
+  ici, pour une durée courte (15, 30 ou 60 minutes), avant de lui demander d'importer un document. Un
+  bouton « Verrouiller maintenant » referme avant l'échéance. Rien à faire si tu ne veux que discuter
+  ou consulter tes chiffres.
+
+## 2026-09-28 — Correctif technique : un contrôle interne bloquait toutes les PR
+
+- Aucun changement dans l'app. Un contrôle qui vérifie qu'aucun journal public ne publie de données ne connaissait
+  pas un petit compteur ajouté récemment dans le mécanisme de fusion automatique (il compte des PR ouvertes,
+  jamais leur contenu) : toute nouvelle PR était bloquée par erreur. Corrigé côté contrôle seulement.
+
+## 2026-09-28 — Certaines préversions inutiles ne se construisent plus sur Vercel
+
+- Aucun changement visible dans l'app. Une PR qui ne touche que la documentation n'ouvre plus de préversion Vercel
+  (moins de minutes de build consommées) ; toute autre modification continue de construire normalement, y compris un
+  simple doute sur ce qui a changé.
+
+## 2026-09-28 — Les documents que les sessions relisent au démarrage sont mieux protégés
+
+- Aucun changement visible dans l'app. Les fichiers que les sessions Claude relisent (règles, leçons, état du projet) sont
+  maintenant protégés contre une modification silencieuse glissée dans une PR fusionnée automatiquement : certains exigent
+  ton accord pour tout changement de ligne existante, d'autres l'exigent seulement si une ligne ajoutée contient un lien ou
+  une commande suspecte. La PR reste en attente de l'accord de l'équipe sécurité avant toute fusion automatique.
+
+## 2026-09-28 — Correctif technique : un test interne se trompait de Windows
+
+- Aucun changement dans l'app ni dans l'accessibilité (déjà correcte). Un test qui vérifie l'accessibilité des graphiques
+  se trompait sous Windows et pensait qu'un attribut manquait alors qu'il était bien là. Corrigé côté test seulement.
+
+## 2026-09-28 — Mise à jour de routine du mécanisme de fusion automatique
+
+- Aucun changement dans l'app. Le kit de fusion automatique de l'Atelier passe en version 1.9.1 (seuls l'outil de
+  vérification des copies et sa documentation changent). La PR reste en attente de l'accord de l'équipe sécurité
+  avant toute fusion automatique.
+
+## 2026-09-27 — Les mises à jour Dependabot se fusionnent de nouveau toutes seules
+
+- Le kit de fusion automatique de l'Atelier passe en version 1.9.0. Les mises à jour de dépendances (Dependabot) sont de nouveau fusionnées
+  automatiquement, après 3 jours d'attente et si tous les contrôles sont verts ; celles qui touchent un fichier sensible restent pour toi.
+  Aucun changement dans l'app.
+
+## 2026-09-26 — Fusion automatique : on adopte le modèle commun de l'Atelier
+
+- Aucun changement dans l'app. Le mécanisme qui décide si une PR peut se fusionner toute seule est maintenant la copie exacte du modèle
+  commun (version 1.6.0) ; les écarts propres à FinanceAI sont listés dans `COPIES.md`. Les PR Dependabot ne sont plus armées automatiquement
+  pour l'instant. Le label `validation-marc` ne bloque plus : seul un OK de l'équipe sécurité (pas encore configuré) débloquerait un chemin sensible.
+
+## 2026-09-26 — Les tests de garde passent aussi sous Windows
+
+- Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes
+  échouaient à cause des fins de ligne et des `\` de Windows, alors qu'ils passaient sur GitHub).
+  Ajout de `.gitattributes` (fins de ligne uniformes) et d'un petit utilitaire de chemins pour les tests.
+
+## 2026-09-26 — Connecteur claude.ai : toute écriture demande maintenant un aperçu puis une confirmation
+
+- Quand claude.ai modifie tes finances (paie, relevé, dette, solde, budget, suppression), il doit d'abord te
+  montrer un aperçu ; l'écriture n'a lieu qu'au second appel, avec un jeton que seul le serveur peut émettre
+  (usage unique, 5 min, lié à ces changements exacts). Avant, cinq de ces gestes écrivaient directement.
+- Un document piégé ne peut donc plus faire écrire ton état en un seul appel. Limite : c'est toujours à toi
+  d'approuver l'appel dans claude.ai ; la sauvegarde horodatée reste annulable.
+
+## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
+
+- Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus
+  fusionnée toute seule : elle reste en attente de toi, même si tous les contrôles sont verts.
+- Les fichiers du dépôt sont maintenant toujours en fins de ligne LF, ce qui rend les tests fiables aussi sur ton PC.
+
+## 2026-09-25 — Un mur « code par e-mail » devant l'app (Cloudflare Access), vérifié aussi côté API
+
+- Le code est prêt ; il ne change rien tant que tu n'as pas posé le mur (procédure dans « À faire — Marc »).
+- Le relais IA et les proxys de cours/comptes refusent tout appel sans preuve de connexion valide (jeton signé par Cloudflare, à ton e-mail),
+  même par l'adresse `*.vercel.app`, qui redirige désormais vers finance.hubperso.com.
+- Si ta session expire, l'app se recharge sur l'écran de connexion au lieu d'afficher des erreurs de chargement.
+- L'app installée ne garde jamais en mémoire une page de connexion à la place de l'app.
+
+## 2026-09-25 — Sécurité du relais IA : plus de jeton public, des freins honnêtes
+
+- Le jeton de relais était visible dans le code servi au public : il est supprimé (il ne protégeait rien).
+- Le relais vérifie maintenant d'où vient l'appel (Origin), limite le débit par IP et par clé, plafonne la taille des
+  requêtes (200 Ko) et la longueur des réponses servies par l'IA locale (8192), et se souvient plus finement des clés
+  déjà vérifiées (refus mémorisé 60 s, éviction par ancienneté, empreinte salée).
+- Un test construit l'app avec une valeur piège et échoue si elle réapparaît dans le code public.
+- L'IA locale (ton PC) n'est plus servie qu'à TA clé Anthropic (organisation ou empreinte que tu poses toi-même sur
+  Vercel) ; sans ce réglage, tout part chez Anthropic. Attention : nettoyer les documents ne change pas l'historique
+  public du dépôt, où d'anciennes valeurs restent lisibles.
+
 ## 2026-09-26 — Le rappel « leçon » pointe vers le bon fichier
 
 - Aucun changement dans l'app : le rappel avant chaque push, l'agent de documentation et trois commandes
@@ -89,13 +193,13 @@
 
 ## 2026-09-24 — Portefeuille, lot 1f2 : FinanceAI sait lire le PDF du relevé
 
-- Le relevé Disnat peut maintenant être lu directement depuis son PDF, dans ton navigateur : le
+- Le relevé courtier peut maintenant être lu directement depuis son PDF, dans ton navigateur : le
   fichier ne part nulle part. Le lecteur PDF n'est chargé que quand tu en as besoin, pour ne pas
   alourdir l'ouverture de l'app. Il n'est pas encore branché à l'écran (ce sera le lot suivant).
 
-## 2026-09-24 — Portefeuille, lot 1f : FinanceAI sait lire un relevé Disnat
+## 2026-09-24 — Portefeuille, lot 1f : FinanceAI sait lire un relevé courtier
 
-- Le lecteur de relevé Disnat est prêt (pas encore branché à l'écran). Contrairement à l'ancien, il
+- Le lecteur de relevé courtier est prêt (pas encore branché à l'écran). Contrairement à l'ancien, il
   ne perd plus de lignes : il vérifie que la somme des opérations retombe sur la variation de
   l'encaisse, que la ligne « Encaisse » retombe sur le solde, et que chaque coût se recoupe. Essayé
   sur tes trois vrais relevés, sur l'ordinateur seulement : aucune ligne perdue, et toutes les positions
@@ -103,7 +207,7 @@
 
 ## 2026-09-24 — Portefeuille : les opérations de courtier que le journal ne savait pas écrire
 
-- Tes quatre choix sont en place. Une ligne **annulée** par Disnat reste visible et cesse de compter
+- Tes quatre choix sont en place. Une ligne **annulée** par le courtier reste visible et cesse de compter
   à partir de la date de l'annulation. Un **regroupement qui change le code du titre** déplace toute
   la position vers le nouveau titre. Le **coût total** d'un transfert est gardé tel qu'imprimé (aucun
   cent perdu). Une **conversion USD↔CAD** ou un **virement entre tes comptes** est une seule
@@ -158,7 +262,7 @@
 
 ## 2026-09-24 — Portefeuille : audit complet, et tes données restent privées
 
-- **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés Disnat, écran par
+- **Audit de tes titres** : chaque chiffre du portefeuille a été comparé à tes relevés courtier, écran par
   écran (app, assistant, hub). Le rapport et le plan de refonte t'ont été remis à part : ils contiennent
   tes montants, et ce dépôt est public.
 - **Protection** : un contrôle automatique refuse désormais qu'un fichier de vérification de ton
@@ -674,7 +778,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-09-17 (ton compte en dollars US rentre enfin dans le total)
 
 - **Le blocage était dans la conversion, et il était figé.** Ton solde courtier était converti en
-  dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte Disnat en USD a
+  dollars canadiens **au moment de la synchro**, puis enregistré tel quel. Ton compte courtier en USD a
   été synchronisé pendant que les taux étaient au repli : il a donc été mis de côté « faute de taux
   fiable », et il le restait **jusqu'à la synchro suivante**, même une fois les vrais taux obtenus.
   Résultat : **un compte entier** hors du panier, et le total de ton courtier refusé en entier.
@@ -692,7 +796,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-09-17 (tes trois montants ne parlaient pas des mêmes titres)
 
 - **Tu avais raison sur les trois écrans.** Mesuré sur tes captures : l'Accueil dit un montant,
-  ton courtier Fintable un autre (une fois le compte Disnat converti — il est en **dollars US**,
+  ton courtier Fintable un autre (une fois le compte courtier converti — il est en **dollars US**,
   Fintable écrit `$` et non `C$`), l'onglet Futur un troisième, et hubperso un quatrième. Quatre
   chiffres pour une seule question.
 - **Le bon chiffre est celui de l'Accueil** : il tombe à 1,4 % du total réel de ton courtier. Les
@@ -734,7 +838,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   carte « Taux de change » affiche en plus **la date de l'observation** d'où viennent tes taux —
   c'est ce chiffre qui manquait pour que le problème se voie.
 - ⚠️ **Ce qui va changer ENSUITE, et pas au moment que tu crois.** Dès que tes taux seront réels,
-  ton compte Disnat en USD cessera d'être « écarté faute de taux » : il sera converti, il rentrera
+  ton compte courtier en USD cessera d'être « écarté faute de taux » : il sera converti, il rentrera
   dans le total qui fait autorité, et **le point de départ de ta projection changera**. Mais le
   déclencheur n'est pas le déploiement — c'est ta **prochaine synchro Fintable** : la conversion est
   faite au moment de la synchro et le résultat est enregistré tel quel. Tant que tu n'as pas
@@ -756,7 +860,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   écrits en dur dans le code (« approximation Q1 2026 »), pas ceux de la Banque du Canada. Et tes
   positions sont en USD ou en EUR, aucune en CAD : la totalité de la valeur de tes
   placements reposait sur un chiffre inventé. C'était aussi la vraie raison pour laquelle ton compte
-  Disnat en USD n'était pas converti hier.
+  courtier en USD n'était pas converti hier.
 - **Ce qui change — un RECOURS, là où il n'y en avait aucun.** Réglages → Système & diagnostics :
   un bouton **« Réessayer maintenant »**, un diagnostic qui nomme la cause de l'échec (réseau,
   erreur du serveur, série absente…), et un champ pour **saisir le taux toi-même**. Un taux que tu
@@ -797,9 +901,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-09-16 (ton compte Disnat en USD réapparaît dans tes placements)
+## [unreleased] — 2026-09-16 (ton compte courtier en USD réapparaît dans tes placements)
 
-- **Le problème que tu ne pouvais pas voir** : « Disnat » est en USD, et son montant était
+- **Le problème que tu ne pouvais pas voir** : le compte courtier est en USD, et son montant était
   ignoré à chaque synchro. L'avertissement existait — mais dans *Système & diagnostics*, pas sur
   l'écran **Investissements** ni sur l'**Accueil**. Là où tu regardes tes placements, le compte
   n'était ni réconcilié ni signalé : simplement **absent**, ce qui ressemble à un compte qui
@@ -4716,7 +4820,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Transactions
 - **`[TX-TRANSFERS]` — détection des virements internes, sur TOUT l'historique** (bug Marc : « ça
   détecte mal mes transferts entre comptes »). Un virement entre ton compte courant, ton épargne, ta
-  Mastercard ou tes placements n'est pas une dépense : ses deux côtés sont importés, et sans marquage
+  carte de crédit ou tes placements n'est pas une dépense : ses deux côtés sont importés, et sans marquage
   il était compté deux fois par le Budget. L'appariement (montants exactement opposés, à quelques jours
   d'écart, sur deux comptes différents, un pour un) ne vivait que côté Fintable — il s'applique
   désormais à l'import CSV et aux relevés, donc à l'historique complet.
@@ -6761,7 +6865,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   relevé), convention de signe explicite (incluant les cartes de crédit), normalisation
   des montants FR/CAD (« 1 234,56 $ » → 1234.56), complétude multi-pages, exclusion
   soldes/totaux/reports/en-têtes.
-- **Détection de transfert corrigée** (validée sur un vrai relevé Desjardins, signes
+- **Détection de transfert corrigée** (validée sur un vrai relevé bancaire, signes
   réconciliés à la cenne contre la colonne Solde) : un **Interac e-Transfer** (vers/depuis
   une personne) et « money/funds transfer » ne sont **plus** marqués « transfert » — seuls
   les vrais transferts internes (« virement/transfert », AccèsD entre comptes propres) le
@@ -7414,7 +7518,7 @@ Lot de 4 merges (`3167a55`, `20abca8`, `4af08b2`, `6042fe9`) partis de `f257efb`
 
 ### Ajouté
 - **Copilote — finitions** : import de positions courtier en lot (CSV Wealthsimple /
-  Questrade / Disnat…) via `parseBrokerCsv` (pur, 11 tests) + modal `ImportBrokerPositions`
+  Questrade / courtier…) via `parseBrokerCsv` (pur, 11 tests) + modal `ImportBrokerPositions`
   dans Investissements (dédup par symbole) ; cache de prix Finnhub persisté en IndexedDB
   (`persistentCache.ts`, TTL history 1h → 24h — prix passés quasi-immuables). « Appliquer
   le gagnant » de l'optimiseur était déjà en place.

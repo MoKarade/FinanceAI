@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-29 — Verrou d'écriture MCP hors du chat (Étape 2)
+
+- [x] 🔧 **`[VERROU-ECRITURE]`** (M) — verrou d'écriture désactivé par défaut, activable UNIQUEMENT
+  depuis l'app web (Réglages → Écritures MCP), jamais depuis la conversation claude.ai : défense en
+  profondeur par-dessus le jeton de `[MCP-CONFIRM-TOKEN]` contre l'injection de consigne. PR #1093
+  fusionnée le 29/09/2026 (mergedAt 02:41:50Z), OK sécurité pole-securite (2 relectures, dont
+  recommandation non bloquante `isDrive` sur `/health`), gate vert. ADR 0025.
+
+## 2026-09-29 — Confirmation à deux temps des écritures MCP (audit P3-P6)
+
+- [x] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils
+  d'écriture MCP (aperçu + jeton à usage unique, `confirm:true` retiré du schéma). PR #1076 fusionnée
+  le 29/09/2026 (mergedAt 01:03:03Z), OK sécurité pole-securite, gate vert (typecheck/lint/7217
+  tests/build). ADR 0023. Suite non faite, reste au BACKLOG courant sous un autre ID : rate limit sur
+  `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ; longueur minimale de
+  `FINANCEAI_ACCESS_KEY` (audit findings moyenne 6 et 8).
+
 ## 2026-09-25 — Lot L2 de l'audit sur les 7 autres dépôts (case restée ouverte sept jours)
 
 - [x] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S) — ✅ livré le
@@ -129,7 +146,7 @@ Déménagé au lot suivant (1e, étape 1).
   fictif imprimé dans un vrai PDF (jsPDF) puis relu par pdfjs rend le MÊME relevé que le texte.
   ⚠️ Rien n'importe encore ce module depuis l'app : le chunk n'apparaît au build qu'avec 1g.
 
-## 2026-09-24 — Portefeuille, lot 1f : parseur Disnat, partie texte (PR #1051)
+## 2026-09-24 — Portefeuille, lot 1f : parseur courtier, partie texte (PR #1051)
 
 Déménagé au lot suivant (1f2).
 
@@ -158,7 +175,7 @@ Déménagé au lot suivant (1f).
 
 - [x] 🔧 **`[PTF-L1A-SORTES-A-TRANCHER]`** (S, décision Marc) — la liste des onze sortes d'événements
   est « demandée, sans ajout » ; la revue du lot 1a a relevé ce qu'elle ne sait pas écrire, à trancher
-  AVANT le parseur Disnat (1f) : annulation ou correction d'une ligne du courtier (montants toujours
+  AVANT le parseur courtier (1f) : annulation ou correction d'une ligne du courtier (montants toujours
   positifs, aucune sorte ne défait), regroupement qui change d'ISIN ou espèces versées pour une
   fraction (le fractionnement n'a qu'un ISIN et interdit tout montant), valeur comptable TOTALE
   imprimée à un transfert entrant (seul un coût unitaire est accepté, donc une division à l'import).
@@ -255,7 +272,7 @@ la PR suivante ». Aucun déploiement à vérifier pour ces lots côté Vercel :
 l'app sert, hormis `mcp/refreshPrices.ts`, qui attend le redéploiement du serveur MCP (paramètres GCP).
 
 - [x] 🔧 **`[PTF-L05-GARDE-FUITE]`** (S) — garde `tests/confidentialitePortefeuille.test.ts` : aucun
-  fichier suivi ne porte une clé du fichier de vérification ni un code de compte après « Disnat »
+  fichier suivi ne porte une clé du fichier de vérification ni un code de compte après « courtier »
   (perturbation faite : le test de catégorisation d'avant ce lot est détecté, le fichier de
   vérification aussi). Le seul code de sous-compte publié (dans un test de catégorisation) est
   anonymisé, SANS réécrire l'historique git (le commit d'origine le porte encore : décision Marc).
@@ -1672,7 +1689,7 @@ compris dans le solde enregistré.
   instantané Drive) : une position en USD convertie au facteur **1,4000** pile ; une position
   en EUR au facteur **1,4700** pile, soit `DEFAULT_FX_RATES` au caractère près. Ses
   positions sont **toutes** en USD ou EUR, **aucune** en CAD ⇒ 100 % des placements affichés reposaient
-  sur un chiffre inventé, et c'était la vraie cause du Disnat USD non converti la veille.
+  sur un chiffre inventé, et c'était la vraie cause du courtier USD non converti la veille.
   **Livré** : provenance à trois états (`api` / `manuel` / `repli`), bouton « Réessayer maintenant »
   (avec `force` — sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
   diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, condition d'écriture du
@@ -1710,7 +1727,7 @@ compris dans le solde enregistré.
   pour empêcher. Perturbation dédiée, 1 rouge.
   **19 gardes** (14 → 19), **3 perturbations aux signatures distinctes** : retour au `continue` →
   4 rouges ; ordre des gardes inversé → 1 ; taux aberrant appliqué → 1. Contrôle négatif (compte déjà
-  en CAD, avec et sans taux : sorties identiques) vert partout. Contexte d'origine : — le compte courtier « Disnat ([code de compte retiré]) » est en **USD** et le mapper ne sait pas
+  en CAD, avec et sans taux : sorties identiques) vert partout. Contexte d'origine : — le compte courtier « courtier ([code de compte retiré]) » est en **USD** et le mapper ne sait pas
   convertir : son montant est **IGNORÉ à chaque passe** (avertissement publié, donc pas silencieux
   — mais faux par omission). Les titres saisis à la main servent de repli. ⚠️ Le remède se mesure
   comme le défaut : `assetValueCad` porte déjà la conversion (source unique, garde
@@ -1731,7 +1748,7 @@ compris dans le solde enregistré.
   qu'« un compte écarté ne disparaisse JAMAIS en silence » (son commentaire cite le finding
   silent-failure-hunter de la PR #534). **Elle recense deux des trois causes d'écartement et ignore
   la troisième** — `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`. Conséquence : sur l'écran
-  Investissements ET sur l'Accueil, Disnat n'apparaît ni réconcilié, ni signalé — il est **absent**.
+  Investissements ET sur l'Accueil, courtier n'apparaît ni réconcilié, ni signalé — il est **absent**.
   L'avertissement existe, mais dans `report.warnings`, c'est-à-dire **Système & diagnostics** — pas
   là où Marc regarde ses placements (`UN-SIGNAL-ECARTE-DU-CRITERE-DOIT-QUAND-MEME-CLASSER-LE-RESULTAT`,
   corollaire « une détection non ANNONCÉE là où l'utilisateur regarde n'existe pas pour lui »).
@@ -3771,7 +3788,7 @@ ensuite.
 - **`undefined` et non `[]` quand il n'y a rien à signaler** : les deux se lisent pareil à l'écran,
   mais `undefined` garde le rapport persisté identique à celui d'avant ce lot dans le cas nominal.
 - **Le message ne promet pas de guérison** : pour certaines institutions Fintable ne rend JAMAIS les
-  positions (`FINTABLE-POSITIONS`, Disnat hors SnapTrade), donc « réessaie plus tard » serait une
+  positions (`FINTABLE-POSITIONS`, courtier hors SnapTrade), donc « réessaie plus tard » serait une
   affirmation FAUSSE sur l'avenir. Il dit où est la réparation — chez Fintable, pas dans l'app.
   ⚠️ Et **aucun montant** dans le bloc : un « 0 $ » y serait crédible et faux, le solde total peut
   exister et c'est le DÉTAIL qui manque. Une garde interdit tout formateur monétaire dans ce bloc.
@@ -9888,7 +9905,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   dette en mise à jour de SOLDE seulement (ni taux ni paiement minimum inventés → elle doit préexister).
   Aperçu via `npm run fintable:dry -- --roles <fichier.json> --after YYYY-MM-DD` (+ `--show-ids`
   pour construire le fichier ; `.fintable-roles.json` est gitignoré — il contient des ids de comptes).
-  16 tests dédiés, dont le scénario réel à 6 comptes. **Volet positions ABANDONNÉ** : Disnat n'est pas
+  16 tests dédiés, dont le scénario réel à plusieurs comptes. **Volet positions ABANDONNÉ** : courtier n'est pas
   couvert par SnapTrade chez Fintable (mesuré sur l'annuaire public) — les soldes des comptes de
   placement servent de valeur de RÉFÉRENCE du courtier, jamais de source d'actifs.
 - [x] **`[TX-DUPLICATES]` Détection de doublons (demande Marc « enlève les transactions en double »)** (M)
@@ -9936,7 +9953,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   (Fintable synchronise déjà le quotidien), **ouverte automatiquement** à l'onboarding (0 transaction, D2 —
   l'écran vide reste jamais une impasse). L'instance de Réglages → Comptes (`AccountsSection.tsx`) était déjà
   hors du flux principal, INCHANGÉE. Le formulaire de courtage (`ImportBrokerPositions`, `Investments.tsx`)
-  reste au premier plan — c'est le SEUL chemin pour les positions (FINTABLE-POSITIONS : Disnat hors SnapTrade).
+  reste au premier plan — c'est le SEUL chemin pour les positions (FINTABLE-POSITIONS : courtier hors SnapTrade).
   Panel ciblé de 3 agents (code-reviewer, a11y-auditor, silent-failure-hunter — pur diff UI, pas de calcul $) :
   ZÉRO finding bloquant. Confirmé empiriquement : `aria-expanded` retiré n'est pas une régression (le rôle
   natif `<details>/<summary>` expose déjà l'état à l'arbre d'a11y) ; `text-ink-300` du summary passe AA/AAA
@@ -10126,10 +10143,10 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   montré que les 6 comptes arrivent par **UNE SEULE connexion Desjardins via PLAID**, sans aucune
   connexion SNAPTRADE (plan et santé hors de cause). L'annuaire PUBLIC a ensuite tranché : SnapTrade
   au Canada chez Fintable = **exactement 3 courtiers** (Webull Canada, Questrade, Wealthsimple Trade) ;
-  `q=disnat` → **0 résultat**, et « Desjardins Online Solutions » est `supported: false`. Ce n'est donc
+  `q=<courtier>` → **0 résultat**, et « l'institution » est `supported: false`. Ce n'est donc
   pas un problème de configuration mais une **limite du produit** : les positions détaillées sont hors
   de portée via Fintable, quoi que Marc fasse. Décision : volet abandonné ; les positions continuent
-  de passer par `apply_broker_statement` (dépôt d'un relevé Disnat dans le chat), qui fonctionne déjà.
+  de passer par `apply_broker_statement` (dépôt d'un relevé courtier dans le chat), qui fonctionne déjà.
   À rouvrir seulement si Marc change de courtier ou si Fintable élargit sa couverture SnapTrade.
 - [x] **`[FINTABLE-PLAN]` ✅ Marc paie (décision 2026-07-29)** — l'essai expirait le 2026-08-01 et le
   palier gratuit a `can_sync: false` (arrêt TOTAL des syncs, pas de dégradation). Après avoir vu que

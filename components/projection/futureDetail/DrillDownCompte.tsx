@@ -43,7 +43,7 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
                 <div className="space-y-1">
                     <div className="text-tiny uppercase tracking-wide text-ink-400 font-bold">Ce mois</div>
                     {reasons.map((r, i) => (
-                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded font-mono ${REASON_TONE_CLASS[r.tone]}`}>
+                        <div key={i} className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded-sm font-mono ${REASON_TONE_CLASS[r.tone]}`}>
                             <Icon name={r.icon} size={12} />{r.libelle}{' '}
                             <PrivateAmount>{formatSigned(r.montant, { withCurrency: true })}</PrivateAmount>
                         </div>
@@ -152,7 +152,7 @@ export const DrillDownCompte: React.FC<DrillDownCompteProps> = ({
                         <button
                             type="button"
                             onClick={onRetour}
-                            className="text-tiny font-bold text-ink-300 hover:text-white mb-3 focus-ring rounded"
+                            className="text-tiny font-bold text-ink-300 hover:text-white mb-3 focus-ring rounded-sm"
                         >
                             ‹ Retour aux comptes
                         </button>
@@ -171,7 +171,7 @@ export const DrillDownCompte: React.FC<DrillDownCompteProps> = ({
                                         key={y}
                                         type="button"
                                         onClick={() => zoom.showRange(0, idxForYears(y))}
-                                        className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
+                                        className={`px-2 py-0.5 text-tiny font-bold rounded-sm transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                                     >
                                         {y} ans
                                     </button>
@@ -180,7 +180,7 @@ export const DrillDownCompte: React.FC<DrillDownCompteProps> = ({
                             <button
                                 type="button"
                                 onClick={zoom.reset}
-                                className={`px-2 py-0.5 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
+                                className={`px-2 py-0.5 text-tiny font-bold rounded-sm transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                             >
                                 Tout
                             </button>
@@ -251,7 +251,7 @@ export const DrillDownCompte: React.FC<DrillDownCompteProps> = ({
                                     {keyMoments.map((d) => {
                                         const reasons = explainMovement(d);
                                         return (
-                                            <li key={d.monthIndex} className="bg-white/[0.03] rounded-lg p-2.5">
+                                            <li key={d.monthIndex} className="bg-white/3 rounded-lg p-2.5">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
                                                     <span className="text-meta font-bold text-white">{d.dateLabel || d.year}</span>
                                                     <PrivateAmount className={`font-mono text-meta font-bold ${d.delta >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
@@ -261,7 +261,7 @@ export const DrillDownCompte: React.FC<DrillDownCompteProps> = ({
                                                 {reasons.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {reasons.map((r, i) => (
-                                                            <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-mono ${REASON_TONE_CLASS[r.tone]}`}>
+                                                            <span key={i} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-tiny font-mono ${REASON_TONE_CLASS[r.tone]}`}>
                                                                 <Icon name={r.icon} size={11} />{r.libelle}{' '}
                                                                 <PrivateAmount>{formatSigned(r.montant, { withCurrency: true })}</PrivateAmount>
                                                             </span>

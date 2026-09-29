@@ -36,7 +36,7 @@ export const RepartitionField: React.FC<{ className?: string }> = ({ className =
                 aria-label="Mode de répartition des dépenses communes"
                 value={config.splitMode}
                 onChange={(e) => setAppState({ config: { ...config, splitMode: e.target.value as typeof config.splitMode } })}
-                className="w-full bg-dark border border-border rounded px-3 py-2 text-white"
+                className="w-full bg-dark border border-border rounded-sm px-3 py-2 text-white"
             >
                 <option value="prorata">Prorata des Salaires Nets</option>
                 <option value="50/50">50 / 50</option>
@@ -96,7 +96,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                                 setGrossAnnualDraft((d) => ({ ...d, [idx]: raw }));
                                                 patch(idx, { grossSalary: annualSalaryToMonthly(parseFloat(raw) || 0) });
                                             }}
-                                            className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
+                                            className="w-full bg-dark border border-border rounded-sm px-2 py-1 text-body text-white font-mono"
                                         />
                                     </div>
                                     <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
@@ -106,7 +106,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             type="number"
                                             value={user.netSalary || user.salary || 0}
                                             onChange={(e) => patch(idx, { netSalary: parseFloat(e.target.value) || 0 })}
-                                            className="w-full bg-dark border border-border rounded px-2 py-1 text-body text-white font-mono"
+                                            className="w-full bg-dark border border-border rounded-sm px-2 py-1 text-body text-white font-mono"
                                         />
                                     </div>
                                     {/* [MIGRATE-GROSS-PROPOSER] Décision de Marc (2026-09-03) : détecter la signature du
@@ -123,7 +123,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             config.users.filter((x) => (x?.netSalary || 0) > 0 || (x?.grossSalary || 0) > 0).length || 1,
                                         );
                                         return (
-                                            <div role="note" className="col-span-2 bg-warning-500/10 border border-warning-500/30 rounded p-2 space-y-1">
+                                            <div role="note" className="col-span-2 bg-warning-500/10 border border-warning-500/30 rounded-sm p-2 space-y-1">
                                                 <p className="text-tiny text-warning-300">
                                                     Ce brut ressemble à une valeur fabriquée automatiquement par une ancienne
                                                     version de l'app (1,35 × le net), pas à une saisie. Le vrai brut est
@@ -132,7 +132,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                                 <div className="flex flex-wrap gap-2">
                                                     <button
                                                         type="button"
-                                                        className="text-tiny px-2 py-1 rounded bg-info-500/20 text-info-300 border border-info-500/40 hover:bg-info-500/30"
+                                                        className="text-tiny px-2 py-1 rounded-sm bg-info-500/20 text-info-300 border border-info-500/40 hover:bg-info-500/30"
                                                         onClick={() => {
                                                             setGrossAnnualDraft((d) => ({ ...d, [idx]: String(propose * 12) }));
                                                             patch(idx, { grossSalary: propose, grossSalaryConfirmed: true });
@@ -142,7 +142,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        className="text-tiny px-2 py-1 rounded bg-white/5 text-ink-300 border border-border hover:bg-white/10"
+                                                        className="text-tiny px-2 py-1 rounded-sm bg-white/5 text-ink-300 border border-border hover:bg-white/10"
                                                         onClick={() => patch(idx, { grossSalaryConfirmed: true })}
                                                     >
                                                         C'est bien mon brut
@@ -161,7 +161,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             type="checkbox"
                                             checked={!user.hasOwnedPropertyLast4Years}
                                             onChange={(e) => patch(idx, { hasOwnedPropertyLast4Years: !e.target.checked })}
-                                            className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
+                                            className="w-3 h-3 rounded-sm border-white/10 bg-black text-info-500 focus:ring-info-500/50"
                                         />
                                         <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Premier Acheteur (CELIAPP)</span>
                                     </label>
@@ -173,11 +173,11 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             type="checkbox"
                                             checked={!!user.hasPrivateDrugInsurance}
                                             onChange={(e) => patch(idx, { hasPrivateDrugInsurance: e.target.checked })}
-                                            className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
+                                            className="w-3 h-3 rounded-sm border-white/10 bg-black text-info-500 focus:ring-info-500/50"
                                         />
                                         <span className="text-tiny text-ink-300 group-hover:text-info-400 transition-colors">Assurance médicaments privée (exempt de la prime RAMQ)</span>
                                     </label>
-                                    <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
+                                    <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded-sm border border-white/5">
                                         <span className="text-tiny text-ink-300 uppercase font-black shrink-0 inline-flex items-center gap-1">FE <Icon name="budget" size={11} /></span>
                                         {/* Le FE est un MONTANT ($ de la case 52 du T4) : il chiffre la valeur du régime de
                                             retraite de l'employeur. Masqué au même titre que le salaire. */}
@@ -200,7 +200,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             type="checkbox"
                                             checked={user.hasChildren}
                                             onChange={(e) => patch(idx, { hasChildren: e.target.checked })}
-                                            className="w-3 h-3 rounded border-white/10 bg-black text-info-500 focus:ring-info-500/50"
+                                            className="w-3 h-3 rounded-sm border-white/10 bg-black text-info-500 focus:ring-info-500/50"
                                         />
                                         <span className="text-tiny text-ink-300 group-hover:text-pink-400 transition-colors">A des enfants (REEE)</span>
                                     </label>
@@ -210,7 +210,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             aria-label="Nombre d'enfants"
                                             value={user.childCount || 1}
                                             onChange={(e) => patch(idx, { childCount: parseInt(e.target.value) || 1 })}
-                                            className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-tiny text-white font-mono text-center"
+                                            className="w-12 bg-black/40 border border-white/10 rounded-sm px-1.5 py-0.5 text-tiny text-white font-mono text-center"
                                             min={1} max={10}
                                         />
                                     )}
@@ -228,10 +228,10 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             eux, sont des $/an : masqués. */}
                                         <input aria-label="Bonus en % du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
                                             onChange={e => patch(idx, { bonusPctOfGross: Number(e.target.value) || undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                                            className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                                         <PrivateNumberInput aria-label="RSU vesting annuel" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
                                             onChange={e => patch(idx, { rsuVestingPerYear: Number(e.target.value) || undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                                            className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                                         {/* [PH3-c-bis] Durée du vesting RSU — le moteur la LIT depuis toujours
                                             (`activeIncome.ts` : `(rsuYearsRemaining ?? 99) > yearsElapsed`) mais AUCUN
                                             champ ne l'écrivait : le repli à 99 ans faisait couler les RSU sur tout
@@ -242,10 +242,10 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             sur les montants, et son voisin `rsuVestingPerYear` est déjà masqué). */}
                                         <input aria-label="Années de vesting RSU restantes" type="number" min={0} placeholder="RSU ans" value={user.rsuYearsRemaining ?? ''}
                                             onChange={e => patch(idx, { rsuYearsRemaining: Number(e.target.value) || undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                                            className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                                         <PrivateNumberInput aria-label="Revenus secondaires annuels" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
                                             onChange={e => patch(idx, { sideIncomeAnnual: Number(e.target.value) || undefined })}
-                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                                            className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                                     </div>
                                 </div>
                             )}

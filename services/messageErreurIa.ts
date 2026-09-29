@@ -30,6 +30,7 @@ export const MESSAGE_IA_MODE_DISCRET =
 type CauseErreurIa =
     | 'cle-absente'      // aucune clé configurée : l'appel n'a même pas été tenté
     | 'cle-refusee'      // 401 / 403 : la clé existe et le service la rejette
+    | 'session-access'   // 401 du MUR (Cloudflare Access) : la session de connexion a expiré, la clé n'y est pour rien
     | 'quota'            // 429 : trop de requêtes, ou crédit épuisé
     | 'reseau'           // aucun statut HTTP : coupure, DNS, timeout client
     | 'service'          // 5xx : c'est Anthropic qui est en panne, pas nous
@@ -38,9 +39,17 @@ type CauseErreurIa =
     | 'reponse-invalide' // réponse reçue (200) mais inexploitable : JSON cassé, refus du classificateur
     | 'annule';          // AbortError : l'utilisateur a fermé — ce n'est PAS une erreur
 
+/**
+ * [CF-ACCESS] Texte porté par le 401 du relais quand le jeton Cloudflare Access manque ou expire (api/_lib/relay.ts, proxys).
+ * Sans cette distinction, une session expirée s'affichait « Clé Anthropic refusée » et poussait à supprimer une clé valide.
+ * Un test verrouille que le relais émet bien ce marqueur.
+ */
+export const MARQUEUR_SESSION_ACCESS = 'Cloudflare Access';
+
 const MESSAGES: Record<CauseErreurIa, string> = {
     'cle-absente': 'Aucune clé Anthropic configurée. Ajoute-la dans Configuration pour utiliser l\'IA.',
     'cle-refusee': 'Clé Anthropic refusée par le service. Vérifie-la dans Configuration.',
+    'session-access': 'Ta session de connexion a expiré (Cloudflare Access). Recharge la page pour te reconnecter — ta clé Anthropic n\'est pas en cause.',
     quota: 'Quota Anthropic atteint (trop de requêtes ou crédit épuisé). Réessaie dans quelques minutes.',
     reseau: 'Connexion au service interrompue. Vérifie ton accès Internet, puis réessaie.',
     service: 'Le service Anthropic est momentanément indisponible. Réessaie dans quelques minutes.',
@@ -72,6 +81,7 @@ export function causeErreurIa(err: unknown, opts: { cleAbsente?: boolean } = {})
     // ⚠️ `undefined` veut dire « pas de réponse HTTP du tout » — donc réseau. Le confondre avec un
     // 4xx enverrait vérifier une clé alors que rien n'a quitté la machine.
     if (status === undefined) return 'reseau';
+    if (status === 401 && String((err as { message?: unknown } | null)?.message ?? '').includes(MARQUEUR_SESSION_ACCESS)) return 'session-access';
     if (status === 401 || status === 403) return 'cle-refusee';
     if (status === 429) return 'quota';
     if (status === 408) return 'reseau';

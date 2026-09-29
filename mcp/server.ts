@@ -37,6 +37,7 @@ import { registerConnectDrive } from './tools/connectDrive.tool';
 import type { StateProvider } from './tools/_dataAware';
 import type { StateStore } from './state/stateStore';
 import { MCP_INSTRUCTIONS } from './instructions';
+import { createConfirmVault } from './tools/confirmVault';
 
 export interface CreateServerOptions {
     /**
@@ -51,6 +52,8 @@ export interface CreateServerOptions {
      * Absent => aucun tool d'ecriture (le connecteur reste en lecture seule).
      */
     store?: StateStore;
+    /** [MCP-ACCESS-KEY-MIN] Clé d'accès faible : signalée par `ping` (jamais la clé, ni sa longueur). */
+    cleAccesFaible?: boolean;
 }
 
 export const createServer = (options: CreateServerOptions = {}): McpServer => {
@@ -64,7 +67,7 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     });
 
     // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.
-    registerPingTool(server);
+    registerPingTool(server, { cleAccesFaible: options.cleAccesFaible });
     registerGetTaxRoom(server);
     registerCalculateRealEstate(server);
     registerRunProjection(server);
@@ -93,14 +96,16 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     // Tools d'ECRITURE (Lot 2) — uniquement si un magasin inscriptible est fourni.
     // Le tool verifie lui-meme canWrite et renvoie une erreur claire si lecture seule.
     if (options.store) {
-        registerApplyPayslip(server, options.store);
-        registerApplyBankStatement(server, options.store);
-        registerApplyBrokerStatement(server, options.store);
-        registerApplyTaxSlip(server, options.store);
-        registerApplyDebt(server, options.store);
-        registerSetCash(server, options.store);
-        registerSetBudgetItem(server, options.store);
-        registerDeleteItem(server, options.store);
+        // [MCP-CONFIRM-TOKEN] UN coffre de jetons par serveur = par SESSION MCP (createServer est appele par session).
+        const confirmVault = createConfirmVault();
+        registerApplyPayslip(server, options.store, confirmVault);
+        registerApplyBankStatement(server, options.store, confirmVault);
+        registerApplyBrokerStatement(server, options.store, confirmVault);
+        registerApplyTaxSlip(server, options.store, confirmVault);
+        registerApplyDebt(server, options.store, confirmVault);
+        registerSetCash(server, options.store, confirmVault);
+        registerSetBudgetItem(server, options.store, confirmVault);
+        registerDeleteItem(server, options.store, confirmVault);
     }
 
     return server;

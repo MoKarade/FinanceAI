@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
-import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -13,15 +12,15 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { StatementReminder } from './StatementReminder';
 import { Icon } from './ui/Icon';
-import { Pill } from './ui/Pill';
-import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { formatCAD, formatSigned } from '../utils/format';
+import { formatCAD, formatSigned, formatNumber } from '../utils/format';
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
 import type { BudgetViewDetail } from '../services/aiChat/viewContext';
 import { computeBudgetParity, matchTransactionToCategory, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
 import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, computeAvgByItem } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
+import { useBudgetPilotage, ChoixPeriode, NavigateurPeriode, ChoixPersonne, toLocalDateStr, type BudgetPilotage } from './budget/pilotage';
+import { CollapsibleSection } from './ui/CollapsibleSection';
 import { calculateFiscalReport } from '../utils/tax';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { isCoupleMode } from '../services/couple/netWorthByOwner';
@@ -32,9 +31,10 @@ interface BudgetProps {
     budgetItems: BudgetCategory[];
     setBudgetItems: (items: BudgetCategory[]) => void;
     apiKey: string;
+    /** [S5-REFONTE-BUDGET] Pilotage (période, personne) porté par l'en-tête de l'espace Budget ;
+     *  absent → <Budget> crée le sien et affiche lui-même les contrôles. */
+    pilotage?: BudgetPilotage;
 }
-
-type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 
 // [BUDGET-TX-CATEGORIES] Flag MODULE (survit aux démontages) : les RETRAITS de postes ne
 // s'appliquent qu'à la PREMIÈRE sync par CHARGEMENT D'APP. Un ref composant se ré-armait à
@@ -49,12 +49,6 @@ let _budgetFullSyncDoneThisLoad = false;
 // TROP), et minuit local peut basculer sur la VEILLE sous un fuseau positif. Fonctions MODULE
 // (pas des closures du composant) : utilisées dès l'initialisation de `useState` (lignes
 // `customStart`/`customEnd`), avant que le corps du composant ait fini de s'exécuter.
-function toLocalDateStr(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-}
 
 // `new Date('YYYY-MM-DD')` (les bornes CUSTOM saisies par l'utilisateur) ancre à UTC minuit — sous
 // un fuseau négatif, le jour LOCAL correspondant est la veille (mesuré, `TZ=America/Toronto` :
@@ -86,7 +80,7 @@ function parseLocalDateStr(s: string): Date {
 // consomment, deux copies divergeraient.
 const EFFORT_BASE_LABEL = 'de la paie déclarée';
 const EFFORT_BASE_TITLE = 'Part de la paie déclarée (le net saisi au Profil) qui part en dépenses, commun + perso. '
-    + 'Ce pourcentage ne se calcule PAS sur le « Revenu Net Disponible » ci-dessus, qui est un calcul fiscal.';
+    + 'Ce pourcentage ne se calcule PAS sur le « Revenu net disponible » ci-dessus, qui est un calcul fiscal.';
 
 function civilDaysBetween(a: Date, b: Date): number {
     const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
@@ -94,15 +88,13 @@ function civilDaysBetween(a: Date, b: Date): number {
     return Math.round(Math.abs(utcB - utcA) / (1000 * 60 * 60 * 24));
 }
 
-export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItems, setBudgetItems, apiKey }) => {
-    const [timeView, setTimeView] = useState<TimeView>('MONTH');
+export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItems, setBudgetItems, apiKey, pilotage }) => {
+    const pilotageInterne = useBudgetPilotage();
+    const p = pilotage ?? pilotageInterne;
+    const { timeView, periodOffset, personFilter, customStart, customEnd } = p;
     const [inflationSim, setInflationSim] = useState(0);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // Pour le modal
-    // Phase D'.6 — navigation périodes : 0 = courante, -1 = mois/trim/année précédent, etc.
-    const [periodOffset, setPeriodOffset] = useState(0);
-    // Phase D'.4 — filtre personne en mode couple (null = tout combiné)
-    const [personFilter, setPersonFilter] = useState<0 | 1 | null>(null);
 
     const [showAiModal, setShowAiModal] = useState(false);
 
@@ -208,8 +200,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // 1er du mois à minuit LOCAL peut reculer d'un jour en UTC — le champ « Date de début » se
     // pré-remplirait avec le dernier jour du mois précédent (finding code-reviewer #751 : site le
     // plus visible, une valeur affichée directement dans le formulaire, pas juste une borne interne).
-    const [customStart, setCustomStart] = useState(toLocalDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
-    const [customEnd, setCustomEnd] = useState(toLocalDateStr(new Date()));
 
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -926,8 +916,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         avgRealIncomeDisplay, projectedTotalDisplay, projectionSummary, alerts]);
     useViewContextPublisher('budget', chatViewDetail);
 
+    // [S5-REFONTE-BUDGET] Contrôles de période/personne : dans l'en-tête de page quand l'espace Budget
+    // les porte (`pilotage` fourni), sinon ici (Budget rendu seul).
+    const nomsCouple: [string, string] | null = coupleAnalysis.user2
+        ? [coupleAnalysis.user1?.name || 'P1', coupleAnalysis.user2?.name || 'P2']
+        : null;
+    const excedent = avgRealIncomeDisplay - totalBudgetDisplay;
+
     return (
-        <div className="space-y-6 stagger-in pb-20">
+        <div className="space-y-5 stagger-in pb-10">
             <ConfirmModal
                 isOpen={!!confirmDeleteId}
                 onConfirm={doConfirmDelete}
@@ -942,141 +939,47 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             />
             {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
             <ProjectionStaleBanner />
-            {/* [REFONTE-NAV-L5] L'en-tête de PAGE (h1 « Budget » = TAB_LABELS) vit dans
-                BudgetWorkspace, commun aux quatre sous-onglets — un seul h1 par destination.
-                Ici : la barre de pilotage (badge + vision + période + filtres), sans titre. */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-section">
-                <div className="flex flex-wrap items-center gap-3 min-w-0">
-                    <Badge variant={avgRealIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
-                        {avgRealIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
-                        <PrivateAmount className="ml-1 tabular-nums">{formatCAD(avgRealIncomeDisplay - totalBudgetDisplay)}</PrivateAmount>
-                    </Badge>
-                    <p className="text-body text-ink-300">
-                        {timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
-                            timeView === 'QUARTER' ? 'Vision trimestrielle (Objectifs ×3)' :
-                                timeView === 'YEAR' ? 'Vision stratégique (Objectifs ×12)' :
-                                    'Période personnalisée'}
-                    </p>
+            {!pilotage && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <ChoixPeriode p={p} />
+                    <NavigateurPeriode p={p} />
+                    {nomsCouple && <ChoixPersonne p={p} noms={nomsCouple} />}
                 </div>
-                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 w-full md:w-auto">
-                        <Button onClick={handleAiDiagnosis} variant="primary" size="sm">
-                            Diagnostic
-                        </Button>
-                        <Pill
-                            aria-label="Période"
-                            size="sm"
-                            value={timeView}
-                            onChange={(v) => { setTimeView(v as TimeView); setPeriodOffset(0); }}
-                            options={[
-                                { value: 'MONTH', label: 'Mois' },
-                                { value: 'QUARTER', label: 'Trim.' },
-                                { value: 'YEAR', label: 'Année' },
-                                { value: 'CUSTOM', label: 'Custom' },
-                            ]}
-                        />
-                        {/* Phase D'.6 — navigation rapide périodes adjacentes */}
-                        {timeView !== 'CUSTOM' && (
-                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-0.5 border border-white/10">
-                                <button
-                                    type="button"
-                                    onClick={() => setPeriodOffset(o => o - 1)}
-                                    title="Période précédente"
-                                    aria-label="Période précédente"
-                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
-                                >
-                                    <Icon name="chevron-left" size={15} />
-                                </button>
-                                <span className="px-2 text-tiny text-ink-300 font-mono min-w-[80px] text-center">
-                                    {(() => {
-                                        const { start } = getDateRange();
-                                        if (timeView === 'MONTH') return start.toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' });
-                                        if (timeView === 'QUARTER') {
-                                            const q = Math.floor(start.getMonth() / 3) + 1;
-                                            return `T${q} ${start.getFullYear()}`;
-                                        }
-                                        return String(start.getFullYear());
-                                    })()}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => setPeriodOffset(o => Math.min(0, o + 1))}
-                                    disabled={periodOffset >= 0}
-                                    title={periodOffset >= 0 ? 'Période actuelle' : 'Période suivante'}
-                                    aria-label="Période suivante"
-                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                                >
-                                    <Icon name="chevron-right" size={15} />
-                                </button>
-                                {periodOffset !== 0 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setPeriodOffset(0)}
-                                        title="Revenir à la période actuelle"
-                                        className="px-2 py-1 text-tiny text-info-400 hover:underline focus-ring rounded"
-                                    >
-                                        Auj.
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                        {timeView === 'CUSTOM' && (
-                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10 focus-within:border-primary/50 transition-colors">
-                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de début" />
-                                <span className="text-ink-400">-</span>
-                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de fin" />
-                            </div>
-                        )}
-                        {/* Phase D'.4 — filtre personne en mode couple */}
-                        {coupleAnalysis.user2 && (
-                            <Pill
-                                aria-label="Filtre personne"
-                                size="sm"
-                                value={personFilter === null ? 'all' : (personFilter === 0 ? 'user1' : 'user2')}
-                                onChange={(v) => setPersonFilter(v === 'all' ? null : v === 'user1' ? 0 : 1)}
-                                options={[
-                                    { value: 'all', label: 'Couple' },
-                                    { value: 'user1', label: coupleAnalysis.user1?.name?.split(' ')[0] || 'P1' },
-                                    { value: 'user2', label: coupleAnalysis.user2?.name?.split(' ')[0] || 'P2' },
-                                ]}
-                            />
-                        )}
-                </div>
-            </div>
+            )}
 
             {/* [UX-STATEMENT-REMINDER] rappel proactif « relevé du mois manquant » (le filet d'import
                 mensuel qui a manqué quand la fuite persona est restée invisible des semaines). */}
             <StatementReminder />
 
-            {/* [BUDGET-PAST-AVG] Tuiles dédupliquées (« Budget » et « Dépenses » affichaient les
-                MÊMES chiffres — demande Marc). Le « prévu » des dépenses = MOYENNE DE TOUT LE
-                PASSÉ (mois pleins), pas la somme des cibles : c'est le budget du mois en cours. */}
-            <div className={`grid grid-cols-2 gap-4 ${timeView === 'MONTH' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+            {/* [BUDGET-PAST-AVG] Tuiles dédupliquées (« Budget » et « Dépenses » affichaient les MÊMES
+                chiffres — demande Marc). Le « prévu » des dépenses = MOYENNE DE TOUT LE PASSÉ (mois
+                pleins), pas la somme des cibles : c'est le budget du mois en cours.
+                [S5-REFONTE-BUDGET] Tuiles des maquettes : écart en %, réel, barre, prévu et objectif. */}
+            <div className={`grid grid-cols-2 gap-2.5 lg:gap-3.5 ${timeView === 'MONTH' && periodOffset === 0 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
                 <DualKPIStat
                     label="Revenus"
-                    icon={<Icon name="money" size={16} />}
                     prevu={pastAverages.incomeAvg * getMultiplier()}
                     reel={totalActualIncomeDisplay}
                     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Revenus = salaire NET déclaré au
-                    // profil (fiscalBreakdown.netDisplay, même source que la carte fiscale plus bas —
-                    // "salaire déclaré", distinct du réel transactionnel par design de cet écran).
+                    // profil (fiscalBreakdown.netDisplay, même source que la carte fiscale).
                     objectif={incomeObjectifDisplay}
+                    titrePrevu="Moyenne des revenus des mois complets passés"
                     // [BUDGET-INCOME-REAL] Ventilation demandée par Marc : salaire (paie) vs revenus divers,
-                    // depuis les vraies transactions de la période. Remplace « moy. passée » peu informatif.
-                    sublabel={<>Salaire <PrivateAmount>{formatCAD(incomeBreakdown.salary)}</PrivateAmount> · Divers <PrivateAmount>{formatCAD(incomeBreakdown.other)}</PrivateAmount></>}
-                    variant="success"
+                    // depuis les vraies transactions de la période — montrée seulement s'il y a des divers.
+                    note={incomeBreakdown.other > 0 ? <>Salaire <PrivateAmount>{formatCAD(incomeBreakdown.salary)}</PrivateAmount> · Divers <PrivateAmount>{formatCAD(incomeBreakdown.other)}</PrivateAmount></> : undefined}
+                    barre="succes"
                 />
                 <DualKPIStat
                     label="Dépenses"
-                    icon={<Icon name="debt" size={16} />}
                     prevu={prevuDepensesDisplay}
                     reel={totalSpentDisplay}
                     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif = somme des cibles de dépense par
                     // catégorie, hors ÉPARGNE et hors simulateur d'inflation (cf. sa définition).
                     objectif={totalSpendObjectifDisplay}
-                    sublabel={<>Budget = moy. passée ({pastAverages.fullMonths} mois) · hors impôts{horsComparaisonDisplay > 0 && <> (exclus : <PrivateAmount>{formatCAD(horsComparaisonDisplay)}</PrivateAmount>)</>}</>}
-                    // Aucun mois complet → comparaison NON pertinente : neutre, jamais « danger »
-                    // sur un prévu=0 (finding panel : badge rouge + écart 0,0 % contradictoires).
-                    variant={pastAverages.fullMonths > 0 && totalSpentDisplay > prevuDepensesDisplay ? 'danger' : 'info'}
+                    titrePrevu={`Budget = moyenne des ${pastAverages.fullMonths} mois complets passés, hors impôts`}
+                    // [BUDGET-IMPOTS-HORS-COMPARAISON] (décision Marc 2026-09-05, 3a) : les impôts sortent
+                    // du réel ET la tuile le dit, montant à l'appui, dès qu'il y en a.
+                    note={horsComparaisonDisplay > 0 ? <>hors impôts (exclus : <PrivateAmount>{formatCAD(horsComparaisonDisplay)}</PrivateAmount>)</> : undefined}
                     invertGoodBad
                 />
                 {/* Vue MOIS + mois EN COURS seulement : hors MONTH ou sur un mois passé,
@@ -1085,79 +988,24 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 {timeView === 'MONTH' && periodOffset === 0 && (
                     <DualKPIStat
                         label="Fin de mois (projection)"
-                        icon={<Icon name="goal" size={16} />}
                         prevu={prevuDepensesDisplay}
                         reel={projectedTotalDisplay}
                         objectif={totalSpendObjectifDisplay}
-                        sublabel="Dépenses au rythme actuel (hors impôts)"
-                        variant={pastAverages.fullMonths > 0 && projectedTotalDisplay > prevuDepensesDisplay ? 'danger' : 'info'}
+                        titrePrevu="Dépenses au rythme actuel du mois (hors impôts)"
                         invertGoodBad
                     />
                 )}
                 <DualKPIStat
                     label="Restant"
-                    icon={<Icon name="status" size={16} />}
                     prevu={(pastAverages.incomeAvg - pastAverages.expenseAvgHorsComparaison) * getMultiplier()}
                     reel={totalActualIncomeDisplay - totalSpentDisplay}
                     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Restant = objectif Revenus −
-                    // objectif Dépenses (les deux MÊMES sources que les tuiles ci-dessus, donc
-                    // l'identité affichée tient). Objectif Revenus absent ⇒ pas d'objectif de reste.
+                    // objectif Dépenses. Objectif Revenus absent ⇒ pas d'objectif de reste.
                     objectif={incomeObjectifDisplay === undefined ? undefined : incomeObjectifDisplay - totalSpendObjectifDisplay}
-                    sublabel="Revenus − dépenses (réels, hors impôts)"
-                    variant={totalActualIncomeDisplay - totalSpentDisplay < 0 ? 'danger' : 'success'}
+                    titrePrevu="Revenus − dépenses (réels, hors impôts)"
+                    barre="neutre"
                 />
             </div>
-
-            {/* Simulateur d'inflation — toggle inline (avant: caché en hover sur Card 1) */}
-            <details className="bg-surface/40 rounded-card border border-white/5 group">
-                <summary className="cursor-pointer px-4 py-2 text-meta text-ink-300 hover:text-ink-50 transition-colors flex items-center justify-between focus-ring">
-                    <span>Simulateur d'inflation {inflationSim > 0 && <Badge variant="warning" size="sm" className="ml-2">+{inflationSim}%</Badge>}</span>
-                    <span className="text-ink-400 group-open:rotate-180 transition-transform" aria-hidden="true">▾</span>
-                </summary>
-                <div className="px-4 pb-4 pt-2 border-t border-white/5">
-                    <label className="flex justify-between text-meta text-ink-300 mb-2">
-                        <span>Hausse des dépenses simulée</span>
-                        <span className="text-warning-400 font-bold">+{inflationSim}%</span>
-                    </label>
-                    <input
-                        type="range" min="0" max="20" step="1"
-                        value={inflationSim} onChange={e => setInflationSim(Number(e.target.value))}
-                        className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
-                        aria-label="Simulateur d'inflation"
-                    />
-                    <p className="text-tiny text-ink-400 mt-2">Applique un multiplicateur sur les cibles non-Épargne pour estimer l'impact de l'inflation.</p>
-                </div>
-            </details>
-
-            {/* PROJECTION LINK (Wiring 2026-05) — mode strict */}
-            {!projectionSummary && (
-                <ProjectionRequired feature="L'impact à long terme du budget" />
-            )}
-            {projectionSummary && (
-                <button
-                    type="button"
-                    onClick={() => navigateWithFocus(TabEnum.FUTURE)}
-                    className="bg-white/[0.03] border border-white/40 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/[0.05] transition-colors focus-ring"
-                    title="Ouvrir FutureProjection"
-                >
-                    <div>
-                        <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">Impact à long terme →</div>
-                        <PrivateAmount as="div" className="text-2xl font-black text-white">
-                            {formatCAD(projectionSummary.estateNetWorth)}
-                        </PrivateAmount>
-                        <div className="text-tiny text-ink-400 mt-1">
-                            Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
-                        </div>
-                        {projectionSummary.savingsSensitivity && (
-                            <PrivateAmount as="div" className="text-tiny text-ink-300 mt-2">
-                                Sensibilité : {formatCAD(projectionSummary.savingsSensitivity.extraMonthlySavings)}/mois d'épargne en plus donnerait{' '}
-                                <span className="font-bold text-info-300">{formatSigned(projectionSummary.savingsSensitivity.deltaEstateNetWorth, { withCurrency: true })}</span>
-                                {' '}à la fin — calculé par la projection, pas par une formule.
-                            </PrivateAmount>
-                        )}
-                    </div>
-                </button>
-            )}
 
             {/* ALERTS BANNER */}
             {timeView === 'MONTH' && alerts.length > 0 && (
@@ -1177,167 +1025,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* LEFT COLUMN: VISUALS */}
-                <div className="lg:col-span-1 space-y-6">
-
-                    {/* SAVINGS CAPACITY CARD & EXPENSE BREAKDOWN */}
-                    <Card title={coupleAnalysis.isSolo ? "Santé Financière" : "Santé Financière du Couple"} className="bg-gradient-to-br from-[#1e1e1e] to-blue-900/10 border-info-500/20">
-                        <div className="space-y-6">
-
-                            {/* Phase D'.3 — Visualisation fiscale détaillée (fed + QC + RRQ + AE + RQAP)
-                                au lieu de la simple soustraction Brut − Net. */}
-                            <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
-                                <div className="flex justify-between items-center text-tiny text-ink-300">
-                                    <span>Revenus Bruts Totaux <span className="text-ink-400">(salaire déclaré)</span></span>
-                                    <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</PrivateAmount>
-                                </div>
-                                {/* Barre stackée multi-couleurs des déductions */}
-                                {/* Garde /0 : sans salaire brut déclaré, `x/0` rendrait width:NaN%/Infinity% (finding audit). */}
-                                <div className="w-full bg-surfaceHighlight h-2 rounded-full overflow-hidden flex">
-                                    <div
-                                        className="h-full bg-danger-500/80"
-                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`Fédéral : ${maskedAttr(fiscalBreakdown.fedTaxDisplay)}`}
-                                    />
-                                    <div
-                                        className="h-full bg-rose-600/80"
-                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.qcTaxDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`Québec : ${maskedAttr(fiscalBreakdown.qcTaxDisplay)}`}
-                                    />
-                                    <div
-                                        className="h-full bg-warning-500/80"
-                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`RRQ : ${maskedAttr(fiscalBreakdown.rrqDisplay)}`}
-                                    />
-                                    <div
-                                        className="h-full bg-yellow-400/80"
-                                        style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.aeRqapDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`AE + RQAP : ${maskedAttr(fiscalBreakdown.aeRqapDisplay)}`}
-                                    />
-                                </div>
-                                {/* Legend détaillé */}
-                                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-tiny">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1 text-red-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-danger-500/80 rounded-sm" />
-                                            Impôt fédéral
-                                        </span>
-                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</PrivateAmount>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1 text-rose-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-rose-600/80 rounded-sm" />
-                                            Impôt QC
-                                        </span>
-                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.qcTaxDisplay)}</PrivateAmount>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1 text-amber-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-warning-500/80 rounded-sm" />
-                                            RRQ
-                                        </span>
-                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</PrivateAmount>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1 text-yellow-300">
-                                            <span aria-hidden="true" className="w-2 h-2 bg-yellow-400/80 rounded-sm" />
-                                            AE + RQAP
-                                        </span>
-                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</PrivateAmount>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center text-tiny text-ink-400 pt-1 border-t border-white/5">
-                                    <span>Total déductions (<PrivateAmount>{`${fiscalBreakdown.averageRate.toFixed(1)}%`}</PrivateAmount> moyen)</span>
-                                    <PrivateAmount className="font-mono text-danger-400">{`−${formatCAD(fiscalBreakdown.totalTaxDisplay)}`}</PrivateAmount>
-                                </div>
-                                <div className="flex justify-between items-center font-bold text-white mt-1 pt-1 border-t border-white/5">
-                                    <span>Revenu Net Disponible</span>
-                                    <PrivateAmount className="text-success-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</PrivateAmount>
-                                </div>
-                            </div>
-
-                            {/* User 1 Breakdown */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-body font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
-                                    <div className="flex items-center gap-2">
-                                        {coupleAnalysis.splitMode === 'prorata' && (
-                                            <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
-                                        )}
-                                        <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded" title={EFFORT_BASE_TITLE}>
-                                            Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user1ShareCommon)}`}></div>
-                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user1Personal)}`}></div>
-                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user1Savings)}`}></div>
-                                </div>
-
-                                <div className="flex justify-between text-tiny text-ink-300 px-1">
-                                    <div className="flex flex-col">
-                                        <span>Sorties: <PrivateAmount className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</PrivateAmount></span>
-                                        {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE). Masqué en solo (toujours 0). */}
-                                        {!coupleAnalysis.isSolo && (
-                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <PrivateAmount className="text-white font-semibold">{formatCAD(coupleAnalysis.user1Actual)}</PrivateAmount></span>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span>Épargne: <PrivateAmount className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</PrivateAmount></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* User 2 Breakdown */}
-                            {!coupleAnalysis.isSolo && coupleAnalysis.user2 && (
-                                <div className="space-y-2 pt-2 border-t border-white/5">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-body font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
-                                        <div className="flex items-center gap-2">
-                                            {coupleAnalysis.splitMode === 'prorata' && (
-                                                <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
-                                            )}
-                                            <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded" title={EFFORT_BASE_TITLE}>
-                                                Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user2ShareCommon)}`}></div>
-                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user2Personal)}`}></div>
-                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user2Savings)}`}></div>
-                                    </div>
-
-                                    <div className="flex justify-between text-tiny text-ink-300 px-1">
-                                        <div className="flex flex-col">
-                                            <span>Sorties: <PrivateAmount className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</PrivateAmount></span>
-                                            {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE) */}
-                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <PrivateAmount className="text-white font-semibold">{formatCAD(coupleAnalysis.user2Actual)}</PrivateAmount></span>
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                            <span>Épargne: <PrivateAmount className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</PrivateAmount></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="pt-2 text-center bg-green-500/10 rounded-lg py-2 border border-green-500/20">
-                                <PrivateAmount as="div" className="text-2xl font-bold text-green-400">
-                                    {formatSigned(coupleAnalysis.totalSavings, { withCurrency: true })}
-                                </PrivateAmount>
-                                <div className="text-tiny text-green-200">Potentiel d'épargne combiné (Net)</div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* RIGHT COLUMN: THE TABLE */}
-                <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+                <div className="flex flex-col gap-5 min-w-0">
                     {(['Besoin', 'Envie', 'Epargne'] as const).map(nature => (
                         <BudgetGroupTable
                             key={nature}
@@ -1364,198 +1053,363 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             onViewTransactions={(name) => navigateWithFocus(TabEnum.TRANSACTIONS, `category:${name}`)}
                         />
                     ))}
+                </div>
+
+                <div className="flex flex-col gap-5 min-w-0">
+                    {/* Phase D'.3 — Détail fiscal (fed + QC + RRQ + AE + RQAP) au lieu de la simple
+                        soustraction Brut − Net. [S5-REFONTE-BUDGET] Liste des maquettes. */}
+                    <section aria-labelledby="sante-budget-titre" className="rounded-2xl bg-surface border border-white/6 p-4 lg:p-5 flex flex-col gap-3">
+                        <h2 id="sante-budget-titre" className="text-[17px] font-semibold text-ink-50">{coupleAnalysis.isSolo ? 'Santé financière' : 'Santé financière du couple'}</h2>
+                        <dl className="flex flex-col gap-2 text-body">
+                            <div className="flex justify-between gap-3"><dt className="text-ink-200">Revenus bruts <span className="text-ink-400">(salaire{coupleAnalysis.isSolo ? '' : 's'} déclaré{coupleAnalysis.isSolo ? '' : 's'})</span></dt><dd><PrivateAmount className="font-mono text-ink-50">{formatCAD(fiscalBreakdown.grossDisplay)}</PrivateAmount></dd></div>
+                            <div className="flex justify-between gap-3 text-meta"><dt className="text-ink-400">Impôt fédéral</dt><dd><PrivateAmount className="font-mono text-ink-200">{`−${formatCAD(fiscalBreakdown.fedTaxDisplay)}`}</PrivateAmount></dd></div>
+                            <div className="flex justify-between gap-3 text-meta"><dt className="text-ink-400">Impôt Québec</dt><dd><PrivateAmount className="font-mono text-ink-200">{`−${formatCAD(fiscalBreakdown.qcTaxDisplay)}`}</PrivateAmount></dd></div>
+                            <div className="flex justify-between gap-3 text-meta"><dt className="text-ink-400">RRQ</dt><dd><PrivateAmount className="font-mono text-ink-200">{`−${formatCAD(fiscalBreakdown.rrqDisplay)}`}</PrivateAmount></dd></div>
+                            <div className="flex justify-between gap-3 text-meta"><dt className="text-ink-400">AE + RQAP</dt><dd><PrivateAmount className="font-mono text-ink-200">{`−${formatCAD(fiscalBreakdown.aeRqapDisplay)}`}</PrivateAmount></dd></div>
+                            <div className="flex justify-between gap-3 pt-2 border-t border-white/6 font-semibold"><dt className="text-ink-50">Revenu net disponible</dt><dd><PrivateAmount className="font-mono text-ink-50">{formatCAD(fiscalBreakdown.netDisplay)}</PrivateAmount></dd></div>
+                        </dl>
+                        <p className="text-meta text-ink-400">Déductions : <PrivateAmount>{`${formatNumber(fiscalBreakdown.averageRate, { decimals: 1 })} %`}</PrivateAmount> en moyenne (<PrivateAmount>{`−${formatCAD(fiscalBreakdown.totalTaxDisplay)}`}</PrivateAmount>)</p>
+                    </section>
+
+                    {/* Capacité d'épargne par personne + potentiel combiné. Le détail (effort, parts, sorties,
+                        perso réel), absent des maquettes, reste là, replié. */}
+                    <section aria-labelledby="epargne-possible-titre" className="rounded-2xl bg-surface border border-white/6 p-4 lg:p-5 flex flex-col gap-3">
+                        <h2 id="epargne-possible-titre" className="text-[17px] font-semibold text-ink-50">Épargne possible</h2>
+                        <ul className="flex flex-col gap-2 text-body">
+                            <li className="flex justify-between gap-3"><span className="text-ink-200">{coupleAnalysis.user1.name}</span><PrivateAmount className="font-mono text-success-400">{formatCAD(coupleAnalysis.user1Savings)}</PrivateAmount></li>
+                            {!coupleAnalysis.isSolo && coupleAnalysis.user2 && (
+                                <li className="flex justify-between gap-3"><span className="text-ink-200">{coupleAnalysis.user2.name}</span><PrivateAmount className="font-mono text-success-400">{formatCAD(coupleAnalysis.user2Savings)}</PrivateAmount></li>
+                            )}
+                        </ul>
+                        <div className="flex items-center justify-between gap-3 rounded-xl lg:border border-success-500/25 lg:bg-success-500/8 lg:px-3.5 py-2.5">
+                            <span className="text-body lg:text-meta font-semibold lg:font-normal text-ink-50 lg:text-success-400">Potentiel {coupleAnalysis.isSolo ? '' : 'combiné '}(net)</span>
+                            <PrivateAmount className="font-mono text-[22px] font-bold text-success-400">{formatSigned(coupleAnalysis.totalSavings, { withCurrency: true })}</PrivateAmount>
+                        </div>
+                        <CollapsibleSection title="Détail par personne" variant="lien" headingLevel={3}>
+                            <div className="flex flex-col gap-4">
+                                    {/* User 1 Breakdown */}
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-body font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                {coupleAnalysis.splitMode === 'prorata' && (
+                                                    <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
+                                                )}
+                                                <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded-sm" title={EFFORT_BASE_TITLE}>
+                                                    Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
+                                            <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user1ShareCommon)}`}></div>
+                                            <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user1Personal)}`}></div>
+                                            <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user1Savings)}`}></div>
+                                        </div>
+
+                                        <div className="flex justify-between text-tiny text-ink-300 px-1">
+                                            <div className="flex flex-col">
+                                                <span>Sorties: <PrivateAmount className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</PrivateAmount></span>
+                                                {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE). Masqué en solo (toujours 0). */}
+                                                {!coupleAnalysis.isSolo && (
+                                                    <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <PrivateAmount className="text-white font-semibold">{formatCAD(coupleAnalysis.user1Actual)}</PrivateAmount></span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span>Épargne: <PrivateAmount className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</PrivateAmount></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* User 2 Breakdown */}
+                                    {!coupleAnalysis.isSolo && coupleAnalysis.user2 && (
+                                        <div className="space-y-2 pt-2 border-t border-white/5">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-body font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {coupleAnalysis.splitMode === 'prorata' && (
+                                                        <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
+                                                    )}
+                                                    <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded-sm" title={EFFORT_BASE_TITLE}>
+                                                        Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
+                                                <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user2ShareCommon)}`}></div>
+                                                <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user2Personal)}`}></div>
+                                                <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user2Savings)}`}></div>
+                                            </div>
+
+                                            <div className="flex justify-between text-tiny text-ink-300 px-1">
+                                                <div className="flex flex-col">
+                                                    <span>Sorties: <PrivateAmount className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</PrivateAmount></span>
+                                                    {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE) */}
+                                                    <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <PrivateAmount className="text-white font-semibold">{formatCAD(coupleAnalysis.user2Actual)}</PrivateAmount></span>
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    <span>Épargne: <PrivateAmount className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</PrivateAmount></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                            </div>
+                        </CollapsibleSection>
+                    </section>
 
                     {/* [PH4-A] Parité Budget ↔ Transactions : trous de rapprochement (règle unique
                         `matchTransactionToCategory`). Empty-state honnête si tout est rapproché. */}
                     {(orphanCategories.length > 0 || itemsWithoutTransactions.length > 0) ? (
-                        <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Icon name="transactions" size={16} />
-                                <h2 className="text-h2 font-bold text-white">Parité Budget ↔ Transactions</h2>
-                            </div>
+                        <section aria-labelledby="parite-titre" className="rounded-2xl border border-warning-400/35 bg-warning-500/6 p-4 lg:p-5 flex flex-col gap-2.5">
+                            <h2 id="parite-titre" className="sr-only">Parité Budget ↔ Transactions</h2>
                             {orphanCategories.length > 0 && (
-                                <div className="mb-4">
-                                    <h3 className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">
-                                        Catégories de transactions sans poste ({orphanCategories.length})
+                                <div className="flex flex-col gap-2">
+                                    <h3 className="text-body font-semibold text-warning-400">
+                                        {orphanCategories.length} catégorie{orphanCategories.length > 1 ? 's' : ''} sans poste
                                     </h3>
-                                    <ul className="space-y-1">
+                                    <ul className="flex flex-col gap-1">
                                         {orphanCategories.map((o: OrphanCategory) => (
-                                            <li key={o.category} className="flex items-center justify-between gap-2 text-meta">
-                                                <PrivateText quoi="categorie" className="text-ink-200 truncate">{o.category}</PrivateText>
-                                                <PrivateAmount className="font-mono text-warning-400 shrink-0">{formatCAD(o.total)}</PrivateAmount>
+                                            <li key={o.category} className="flex items-center justify-between gap-2 text-body">
+                                                <PrivateText quoi="categorie" className="text-ink-100 truncate">{o.category}</PrivateText>
+                                                <PrivateAmount className="font-mono text-ink-100 shrink-0">{formatCAD(o.total)}</PrivateAmount>
                                             </li>
                                         ))}
                                     </ul>
-                                    <p className="text-tiny text-ink-400 mt-1.5">Crée un poste du même nom (ou renomme la catégorie) pour suivre ces dépenses.</p>
+                                    <p className="text-meta text-ink-400">Crée un poste du même nom (ou renomme la catégorie) pour suivre ces montants dans le budget.</p>
                                 </div>
                             )}
                             {itemsWithoutTransactions.length > 0 && (
-                                <div>
-                                    <h3 className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1.5">
-                                        Postes jamais rapprochés à une dépense ({itemsWithoutTransactions.length})
+                                <div className={`flex flex-col gap-1.5 ${orphanCategories.length > 0 ? 'pt-2.5 border-t border-warning-400/20' : ''}`}>
+                                    <h3 className="text-body font-semibold text-warning-400">
+                                        {itemsWithoutTransactions.length} poste{itemsWithoutTransactions.length > 1 ? 's' : ''} jamais rapproché{itemsWithoutTransactions.length > 1 ? 's' : ''} à une dépense
                                     </h3>
                                     <ul className="flex flex-wrap gap-1.5">
                                         {itemsWithoutTransactions.map(i => (
-                                            <li key={i.id ?? i.name} className="text-tiny px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-ink-200">{i.name}</li>
+                                            <li key={i.id ?? i.name} className="text-meta px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-ink-200">{i.name}</li>
                                         ))}
                                     </ul>
-                                    <p className="text-tiny text-ink-400 mt-1.5">Aucune transaction (tout l'historique) ne correspond à ce poste — nom différent des catégories de transactions, ou poste inutilisé&nbsp;? (l'épargne par virement n'est pas comptée ici)</p>
+                                    <p className="text-meta text-ink-400">Aucune transaction (tout l'historique) ne correspond à ce poste — nom différent des catégories de transactions, ou poste inutilisé&nbsp;? (l'épargne par virement n'est pas comptée ici)</p>
                                 </div>
                             )}
-                        </div>
+                        </section>
                     ) : budgetItems.length > 0 && (
                         <div className="text-meta text-ink-400 flex items-center gap-2 px-1">
                             <span aria-hidden="true">✓</span>
                             <span>Parité complète : chaque dépense est rapprochée à un poste, et chaque poste a des dépenses.</span>
                         </div>
                     )}
+                </div>
+            </div>
 
-                    {/* [BUDGET-MONTHLY-LEDGER] Grand livre mensuel (12 mois) : RÉEL des revenus ET
-                        des dépenses par mois + solde (demande Marc). Lignes de dépenses =
-                        exactement les catégories des transactions (mêmes que les postes). */}
-                    {(ledger.expenseRows.length > 0 || ledger.incomeRows.length > 0 || ledger.entreesHorsRevenuRows.length > 0) && (
-                        <div className="premium-card rounded-2xl p-4 sm:p-5 border border-white/5">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Icon name="chart" size={16} />
-                                <h2 className="text-h2 font-bold text-white">Réel par mois — revenus et dépenses (12 mois)</h2>
-                            </div>
-                            {/* Région défilante FOCUSABLE (WCAG 2.1.1 — ~14 colonnes, déborde
-                                forcément) + caption programmatique (H39) — findings a11y-auditor. */}
-                            <div
-                                className="overflow-x-auto focus-ring rounded-lg"
-                                tabIndex={0}
-                                role="region"
-                                aria-label="Réel mensuel par catégorie, tableau défilant horizontalement"
-                            >
-                                <table className="w-full text-meta">
-                                    <caption className="sr-only">
-                                        Revenus et dépenses réels par catégorie, 12 derniers mois (dernier mois en cours, partiel).
-                                    </caption>
-                                    <thead>
-                                        <tr className="text-tiny uppercase tracking-widest text-ink-400">
-                                            <th scope="col" className="text-left font-bold py-1.5 pr-2 sticky left-0 bg-surface">Catégorie</th>
-                                            {ledger.months.map((m, i) => (
-                                                <th key={m} scope="col" className="text-right font-bold py-1.5 px-1.5 whitespace-nowrap">
-                                                    {new Date(`${m}-15`).toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' })}
-                                                    {i === ledger.currentMonthIndex && <span className="block font-normal normal-case tracking-normal text-ink-400">(en cours)</span>}
-                                                </th>
-                                            ))}
-                                            {/* Fenêtre 12 mois (≠ cible auto = moyenne de TOUT le passé — libellé explicite, finding panel) */}
-                                            <th scope="col" className="text-right font-bold py-1.5 pl-2">Moy. 12 mois pleins</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {/* — REVENUS — */}
+            {/* [BUDGET-MONTHLY-LEDGER] Grand livre mensuel (12 mois) : RÉEL des revenus ET des dépenses
+                par mois + solde (demande Marc). [S5-REFONTE-BUDGET] Absent des maquettes : gardé, replié. */}
+            {(ledger.expenseRows.length > 0 || ledger.incomeRows.length > 0 || ledger.entreesHorsRevenuRows.length > 0) && (
+                <CollapsibleSection title="Réel par mois — revenus et dépenses (12 mois)" subtitle="Le grand livre : chaque catégorie, mois par mois, et le solde" headingLevel={2}>
+                    {/* Région défilante FOCUSABLE (WCAG 2.1.1 — ~14 colonnes, déborde
+                        forcément) + caption programmatique (H39) — findings a11y-auditor. */}
+                    <div
+                        className="overflow-x-auto focus-ring rounded-lg"
+                        tabIndex={0}
+                        role="region"
+                        aria-label="Réel mensuel par catégorie, tableau défilant horizontalement"
+                    >
+                        <table className="w-full text-meta">
+                            <caption className="sr-only">
+                                Revenus et dépenses réels par catégorie, 12 derniers mois (dernier mois en cours, partiel).
+                            </caption>
+                            <thead>
+                                <tr className="text-tiny uppercase tracking-widest text-ink-400">
+                                    <th scope="col" className="text-left font-bold py-1.5 pr-2 sticky left-0 bg-surface">Catégorie</th>
+                                    {ledger.months.map((m, i) => (
+                                        <th key={m} scope="col" className="text-right font-bold py-1.5 px-1.5 whitespace-nowrap">
+                                            {new Date(`${m}-15`).toLocaleDateString('fr-CA', { month: 'short', year: '2-digit' })}
+                                            {i === ledger.currentMonthIndex && <span className="block font-normal normal-case tracking-normal text-ink-400">(en cours)</span>}
+                                        </th>
+                                    ))}
+                                    {/* Fenêtre 12 mois (≠ cible auto = moyenne de TOUT le passé — libellé explicite, finding panel) */}
+                                    <th scope="col" className="text-right font-bold py-1.5 pl-2">Moy. 12 mois pleins</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {/* — REVENUS — */}
+                                <tr className="border-t border-white/10">
+                                    <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-success-400 font-bold pt-3 pb-1 sticky left-0 bg-surface">Revenus</th>
+                                </tr>
+                                {ledger.incomeRows.map(row => (
+                                    <tr key={`in-${row.category}`} className="border-t border-white/5">
+                                        <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
+                                        {row.byMonth.map((v, i) => (
+                                            <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
+                                                {v > 0
+                                                    ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
+                                                    : <span className="text-ink-400" aria-label="aucun revenu">—</span>}
+                                            </td>
+                                        ))}
+                                        <td className="text-right py-1.5 pl-2 font-mono">
+                                            <PrivateAmount className="text-ink-100 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {ledger.incomeRows.length === 0 && (
+                                    <tr><td colSpan={ledger.months.length + 2} className="text-ink-400 text-meta py-1.5">Aucun revenu dans les transactions sur 12 mois.</td></tr>
+                                )}
+                                {/* — ENTRÉES HORS REVENU — [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] (décision Marc
+                                    2026-09-05, 2b) : exclues du « Total revenus » et du solde, comme du KPI
+                                    Revenus — mais NOMMÉES ici, ligne par ligne, jamais perdues en silence. */}
+                                {ledger.entreesHorsRevenuRows.length > 0 && (
+                                    <>
                                         <tr className="border-t border-white/10">
-                                            <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-success-400 font-bold pt-3 pb-1 sticky left-0 bg-surface">Revenus</th>
+                                            <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-ink-300 font-bold pt-3 pb-1 sticky left-0 bg-surface">Entrées hors revenu (exclues du total et du solde)</th>
                                         </tr>
-                                        {ledger.incomeRows.map(row => (
-                                            <tr key={`in-${row.category}`} className="border-t border-white/5">
-                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
+                                        {ledger.entreesHorsRevenuRows.map(row => (
+                                            <tr key={`hr-${row.category}`} className="border-t border-white/5">
+                                                <th scope="row" className="text-left font-medium text-ink-200 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
                                                 {row.byMonth.map((v, i) => (
                                                     <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
                                                         {v > 0
-                                                            ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
-                                                            : <span className="text-ink-400" aria-label="aucun revenu">—</span>}
+                                                            ? <PrivateAmount className="text-ink-300">{formatCAD(v)}</PrivateAmount>
+                                                            : <span className="text-ink-400" aria-label="aucune entrée">—</span>}
                                                     </td>
                                                 ))}
                                                 <td className="text-right py-1.5 pl-2 font-mono">
-                                                    <PrivateAmount className="text-ink-100 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
+                                                    <PrivateAmount className="text-ink-200 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
                                                 </td>
                                             </tr>
                                         ))}
-                                        {ledger.incomeRows.length === 0 && (
-                                            <tr><td colSpan={ledger.months.length + 2} className="text-ink-400 text-meta py-1.5">Aucun revenu dans les transactions sur 12 mois.</td></tr>
-                                        )}
-                                        {/* — ENTRÉES HORS REVENU — [BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] (décision Marc
-                                            2026-09-05, 2b) : exclues du « Total revenus » et du solde, comme du KPI
-                                            Revenus — mais NOMMÉES ici, ligne par ligne, jamais perdues en silence. */}
-                                        {ledger.entreesHorsRevenuRows.length > 0 && (
-                                            <>
-                                                <tr className="border-t border-white/10">
-                                                    <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-ink-300 font-bold pt-3 pb-1 sticky left-0 bg-surface">Entrées hors revenu (exclues du total et du solde)</th>
-                                                </tr>
-                                                {ledger.entreesHorsRevenuRows.map(row => (
-                                                    <tr key={`hr-${row.category}`} className="border-t border-white/5">
-                                                        <th scope="row" className="text-left font-medium text-ink-200 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
-                                                        {row.byMonth.map((v, i) => (
-                                                            <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
-                                                                {v > 0
-                                                                    ? <PrivateAmount className="text-ink-300">{formatCAD(v)}</PrivateAmount>
-                                                                    : <span className="text-ink-400" aria-label="aucune entrée">—</span>}
-                                                            </td>
-                                                        ))}
-                                                        <td className="text-right py-1.5 pl-2 font-mono">
-                                                            <PrivateAmount className="text-ink-200 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                <tr className="font-medium">
-                                                    <th scope="row" className="text-left text-ink-200 py-1 pr-2 sticky left-0 bg-surface">Total entrées hors revenu</th>
-                                                    {ledger.entreesHorsRevenuByMonth.map((v, i) => (
-                                                        <td key={ledger.months[i]} className="text-right py-1 px-1.5 font-mono">
-                                                            <PrivateAmount className="text-ink-300">{formatCAD(v)}</PrivateAmount>
-                                                        </td>
-                                                    ))}
-                                                    <td className="py-1 pl-2" />
-                                                </tr>
-                                            </>
-                                        )}
-                                        {/* — DÉPENSES — */}
-                                        <tr className="border-t border-white/10">
-                                            <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-warning-400 font-bold pt-3 pb-1 sticky left-0 bg-surface">Dépenses</th>
-                                        </tr>
-                                        {ledger.expenseRows.map(row => (
-                                            <tr key={`out-${row.category}`} className="border-t border-white/5">
-                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
-                                                {row.byMonth.map((v, i) => (
-                                                    <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
-                                                        {v > 0
-                                                            ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
-                                                            : <span className="text-ink-400" aria-label="aucune dépense">—</span>}
-                                                    </td>
-                                                ))}
-                                                <td className="text-right py-1.5 pl-2 font-mono">
-                                                    <PrivateAmount className="text-ink-100 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {/* — TOTAUX + SOLDE — */}
-                                        <tr className="border-t border-white/20 font-bold">
-                                            <th scope="row" className="text-left text-ink-50 py-2 pr-2 sticky left-0 bg-surface">Total revenus</th>
-                                            {ledger.totalIncomeByMonth.map((v, i) => (
-                                                <td key={ledger.months[i]} className="text-right py-2 px-1.5 font-mono">
-                                                    <PrivateAmount className="text-success-400">{formatCAD(v)}</PrivateAmount>
-                                                </td>
-                                            ))}
-                                            <td className="py-2 pl-2" />
-                                        </tr>
-                                        <tr className="font-bold">
-                                            <th scope="row" className="text-left text-ink-50 py-1 pr-2 sticky left-0 bg-surface">Total dépenses</th>
-                                            {ledger.totalExpenseByMonth.map((v, i) => (
+                                        <tr className="font-medium">
+                                            <th scope="row" className="text-left text-ink-200 py-1 pr-2 sticky left-0 bg-surface">Total entrées hors revenu</th>
+                                            {ledger.entreesHorsRevenuByMonth.map((v, i) => (
                                                 <td key={ledger.months[i]} className="text-right py-1 px-1.5 font-mono">
-                                                    <PrivateAmount className="text-warning-400">{formatCAD(v)}</PrivateAmount>
+                                                    <PrivateAmount className="text-ink-300">{formatCAD(v)}</PrivateAmount>
                                                 </td>
                                             ))}
                                             <td className="py-1 pl-2" />
                                         </tr>
-                                        <tr className="font-bold border-t border-white/10">
-                                            <th scope="row" className="text-left text-ink-50 py-2 pr-2 sticky left-0 bg-surface">Solde</th>
-                                            {ledger.netByMonth.map((v, i) => (
-                                                <td key={ledger.months[i]} className="text-right py-2 px-1.5 font-mono">
-                                                    <PrivateAmount className={v >= 0 ? 'text-success-400' : 'text-danger-400'}>{formatSigned(v, { withCurrency: true })}</PrivateAmount>
-                                                </td>
-                                            ))}
-                                            <td className="py-2 pl-2" />
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p className="text-tiny text-ink-400 mt-2">Réel par mois, hors transferts et doublons. Le dernier mois est EN COURS (partiel) — il est exclu des moyennes. Un revenu à « — » sur le mois courant veut souvent dire que le relevé de compte du mois n'est pas encore importé.</p>
+                                    </>
+                                )}
+                                {/* — DÉPENSES — */}
+                                <tr className="border-t border-white/10">
+                                    <th scope="row" colSpan={ledger.months.length + 2} className="text-left text-tiny uppercase tracking-widest text-warning-400 font-bold pt-3 pb-1 sticky left-0 bg-surface">Dépenses</th>
+                                </tr>
+                                {ledger.expenseRows.map(row => (
+                                    <tr key={`out-${row.category}`} className="border-t border-white/5">
+                                        <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
+                                        {row.byMonth.map((v, i) => (
+                                            <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
+                                                {v > 0
+                                                    ? <PrivateAmount className="text-ink-200">{formatCAD(v)}</PrivateAmount>
+                                                    : <span className="text-ink-400" aria-label="aucune dépense">—</span>}
+                                            </td>
+                                        ))}
+                                        <td className="text-right py-1.5 pl-2 font-mono">
+                                            <PrivateAmount className="text-ink-100 font-bold">{formatCAD(row.monthlyAverage)}</PrivateAmount>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {/* — TOTAUX + SOLDE — */}
+                                <tr className="border-t border-white/20 font-bold">
+                                    <th scope="row" className="text-left text-ink-50 py-2 pr-2 sticky left-0 bg-surface">Total revenus</th>
+                                    {ledger.totalIncomeByMonth.map((v, i) => (
+                                        <td key={ledger.months[i]} className="text-right py-2 px-1.5 font-mono">
+                                            <PrivateAmount className="text-success-400">{formatCAD(v)}</PrivateAmount>
+                                        </td>
+                                    ))}
+                                    <td className="py-2 pl-2" />
+                                </tr>
+                                <tr className="font-bold">
+                                    <th scope="row" className="text-left text-ink-50 py-1 pr-2 sticky left-0 bg-surface">Total dépenses</th>
+                                    {ledger.totalExpenseByMonth.map((v, i) => (
+                                        <td key={ledger.months[i]} className="text-right py-1 px-1.5 font-mono">
+                                            <PrivateAmount className="text-warning-400">{formatCAD(v)}</PrivateAmount>
+                                        </td>
+                                    ))}
+                                    <td className="py-1 pl-2" />
+                                </tr>
+                                <tr className="font-bold border-t border-white/10">
+                                    <th scope="row" className="text-left text-ink-50 py-2 pr-2 sticky left-0 bg-surface">Solde</th>
+                                    {ledger.netByMonth.map((v, i) => (
+                                        <td key={ledger.months[i]} className="text-right py-2 px-1.5 font-mono">
+                                            <PrivateAmount className={v >= 0 ? 'text-success-400' : 'text-danger-400'}>{formatSigned(v, { withCurrency: true })}</PrivateAmount>
+                                        </td>
+                                    ))}
+                                    <td className="py-2 pl-2" />
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="text-tiny text-ink-400 mt-2">Réel par mois, hors transferts et doublons. Le dernier mois est EN COURS (partiel) — il est exclu des moyennes. Un revenu à « — » sur le mois courant veut souvent dire que le relevé de compte du mois n'est pas encore importé.</p>
+                </CollapsibleSection>
+            )}
+
+            {/* [S5-REFONTE-BUDGET] Outils absents des maquettes, gardés repliés : diagnostic IA, écart
+                budget / revenu moyen, simulateur d'inflation, impact à long terme. */}
+            <CollapsibleSection title="Outils du budget" subtitle="Diagnostic IA, simulateur d'inflation, impact à long terme" headingLevel={2}>
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <button type="button" onClick={handleAiDiagnosis} className="h-10 px-4 rounded-lg bg-primary text-dark text-body font-bold focus-ring">
+                            Diagnostic
+                        </button>
+                        <span className={`h-8 px-3 rounded-full border text-meta font-semibold flex items-center ${excedent >= 0 ? 'border-success-400/30 bg-success-500/10 text-success-400' : 'border-danger-400/30 bg-danger-500/10 text-danger-400'}`}>
+                            {excedent >= 0 ? 'Excédentaire' : 'Déficitaire'}
+                            <PrivateAmount className="ml-1 tabular-nums">{formatCAD(excedent)}</PrivateAmount>
+                        </span>
+                        <span className="text-meta text-ink-400">revenu moyen face au budget prévu, {timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' : timeView === 'QUARTER' ? 'Vision trimestrielle (Objectifs ×3)' : timeView === 'YEAR' ? 'Vision stratégique (Objectifs ×12)' : 'Période personnalisée'}</span>
+                    </div>
+                    {/* Simulateur d'inflation — toggle inline (avant: caché en hover sur Card 1) */}
+                    <details className="bg-surface/40 rounded-card border border-white/5 group">
+                        <summary className="cursor-pointer px-4 py-2 text-meta text-ink-300 hover:text-ink-50 transition-colors flex items-center justify-between focus-ring">
+                            <span>Simulateur d'inflation {inflationSim > 0 && <Badge variant="warning" size="sm" className="ml-2">+{inflationSim}%</Badge>}</span>
+                            <span className="text-ink-400 group-open:rotate-180 transition-transform" aria-hidden="true">▾</span>
+                        </summary>
+                        <div className="px-4 pb-4 pt-2 border-t border-white/5">
+                            <label className="flex justify-between text-meta text-ink-300 mb-2">
+                                <span>Hausse des dépenses simulée</span>
+                                <span className="text-warning-400 font-bold">+{inflationSim}%</span>
+                            </label>
+                            <input
+                                type="range" min="0" max="20" step="1"
+                                value={inflationSim} onChange={e => setInflationSim(Number(e.target.value))}
+                                className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
+                                aria-label="Simulateur d'inflation"
+                            />
+                            <p className="text-tiny text-ink-400 mt-2">Applique un multiplicateur sur les cibles non-Épargne pour estimer l'impact de l'inflation.</p>
                         </div>
+                    </details>
+
+                    {/* PROJECTION LINK (Wiring 2026-05) — mode strict */}
+                    {!projectionSummary && (
+                        <ProjectionRequired feature="L'impact à long terme du budget" />
                     )}
+                    {projectionSummary && (
+                        <button
+                            type="button"
+                            onClick={() => navigateWithFocus(TabEnum.FUTURE)}
+                            className="bg-white/3 border border-white/40 rounded-card p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full text-left hover:bg-white/5 transition-colors focus-ring"
+                            title="Ouvrir FutureProjection"
+                        >
+                            <div>
+                                <div className="text-tiny uppercase font-bold text-info-400 tracking-widest mb-1">Impact à long terme →</div>
+                                <PrivateAmount as="div" className="text-2xl font-black text-white">
+                                    {formatCAD(projectionSummary.estateNetWorth)}
+                                </PrivateAmount>
+                                <div className="text-tiny text-ink-400 mt-1">
+                                    Patrimoine successoral projeté, avec rentes RRQ/PSV, en {projectionSummary.finalYear} (FutureProjection actif).
+                                </div>
+                                {projectionSummary.savingsSensitivity && (
+                                    <PrivateAmount as="div" className="text-tiny text-ink-300 mt-2">
+                                        Sensibilité : {formatCAD(projectionSummary.savingsSensitivity.extraMonthlySavings)}/mois d'épargne en plus donnerait{' '}
+                                        <span className="font-bold text-info-300">{formatSigned(projectionSummary.savingsSensitivity.deltaEstateNetWorth, { withCurrency: true })}</span>
+                                        {' '}à la fin — calculé par la projection, pas par une formule.
+                                    </PrivateAmount>
+                                )}
+                            </div>
+                        </button>
+                    )}
+
                 </div>
-            </div>
+            </CollapsibleSection>
 
             {showAiModal && (
                 <BudgetAiModal

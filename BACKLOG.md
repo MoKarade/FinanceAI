@@ -47,13 +47,21 @@
 - [ ] 🧭 [MCP-RATE-LIMIT] (M) Limite de débit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` (audit finding moyenne 6, suite de `[MCP-CONFIRM-TOKEN]` #1076 fusionnée le 29/09).
 - [ ] 🔧 [MCP-ACCESS-KEY-LONGUEUR-MIN] (S) Longueur minimale de `FINANCEAI_ACCESS_KEY` (audit finding moyenne 8).
 
-## 🔒 Verrou d'écriture MCP — Étape 2 (plan validé Marc, 28/09/2026)
+## 🔒 Chiffrement de la sauvegarde Drive — Phase 1 app web (plan validé Marc, 28/09/2026)
 
-- [ ] 🔧 **`[VERROU-ECRITURE]`** (M) — verrou d'écriture désactivé par défaut, activable UNIQUEMENT
-  depuis l'app web (Réglages → Écritures MCP), jamais depuis la conversation claude.ai : défense en
-  profondeur par-dessus le jeton de `[MCP-CONFIRM-TOKEN]` contre l'injection de consigne. Livré en PR
-  brouillon (chemins sensibles `mcp/**`, `services/googleDrive/**`, `components/settings/**`), relecture
-  pole-securite ligne à ligne avant armement. ADR 0025. À archiver quand fusionnée.
+- [ ] 🔧 **`[CHIFFREMENT-PHASE1]`** (M) — écran de création d'une passphrase (rétabli, retiré en
+  juin) : force minimale, confirmation, avertissement + carte imprimable/téléchargeable, case
+  « copie hors ligne » obligatoire. Mémorisation par appareil (clé AES non extractible IndexedDB)
+  verrouillée par WebAuthn biométrique à CHAQUE usage (authentificateur de plateforme,
+  `userVerification: required`, condition bloquante pole-securite) ; échec fermé partout, filet
+  d'expiration 30j non bloquant, rotation de la phrase = révocation de tous les appareils. Nettoyage
+  des anciennes sauvegardes Drive en clair (`.bak.json`) sur confirmation explicite. ADR 0026. À
+  archiver quand fusionnée.
+- [ ] 🧭 [CHIFFREMENT-PHASE2-INFISICAL] (bloqué) — le connecteur MCP lit la phrase depuis Infisical
+  (décision Marc 28/09) ; bloqué tant qu'Infisical n'existe pas pour l'agence (prérequis externe,
+  hors du périmètre de ce dépôt).
+- [ ] 🧭 [CHIFFREMENT-PHASE3-DEFAUT] (bloqué, dépend de Phase 2) — bascule du défaut sur chiffré pour
+  les NOUVEAUX comptes seulement, après N jours (à fixer avec Marc) de Phase 2 stable en production.
 
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 

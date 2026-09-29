@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 — **`[CHIFFREMENT-PHASE1]` : création de passphrase + mémorisation WebAuthn**
+> Phase 1 (app web seule, aucune dépendance Infisical) du plan de chiffrement par défaut. Le chemin de
+> CRÉATION d'une passphrase (retiré en juin) est RÉTABLI : `components/settings/PassphraseCreate.tsx`
+> (3 étapes — saisie/confirmation, avertissement + carte imprimable/téléchargeable en Blob local sans
+> réseau, case « copie hors ligne » obligatoire avant le bouton Activer). Mémorisation par appareil
+> (`services/deviceKeyStore.ts`) : clé AES-256-GCM non extractible en IndexedDB, verrouillée par
+> **WebAuthn biométrique à CHAQUE usage** (authentificateur de PLATEFORME, `userVerification:
+> "required"` — condition BLOQUANTE de pole-securite donnée AVANT tout code, 28/09) ; échec fermé
+> partout (plateforme indisponible/refusée, IndexedDB absent, blob altéré → phrase complète
+> redemandée, jamais un repli plus faible). Filet non bloquant : expiration 30j d'inactivité. Pas de
+> révocation à distance par construction : l'outil de Marc en cas de vol est de CHANGER LA PHRASE
+> depuis un autre appareil (coupe tous les appareils mémorisés d'un coup — copie explicite à l'écran).
+> `PassphraseGate.tsx` tente le déverrouillage automatique au montage (verrou WebAuthn + déchiffrement
+> local, aucun réseau) avant d'afficher le formulaire. `services/googleDrive/backupCleanup.ts` :
+> nettoyage des anciens `.bak.json` en clair, compte AVANT, supprime SEULEMENT sur confirmation
+> explicite ; un backup illisible n'est ni compté ni supprimé (prudence). ADR 0026. Tests :
+> `tests/services/passphraseCreate.test.ts`, `tests/services/deviceKeyStore.test.ts` (15 cas),
+> `tests/services/cloudBackup.migration.test.ts`.
+> ⚠️ Aucun chemin de la config `chemins_label_validation` actuelle n'est touché (vérifié), mais la
+> règle GLOBALE de l'Atelier (jamais armer une PR touchant la sécurité sans OK pole-securite)
+> s'applique : PR ouverte, **non armée**, attend confirmation que les 3 conditions pole-securite (verrou
+> WebAuthn bloquant, filet 30j, copie rotation=révocation) sont bien implémentées telles que décrites.
+> Hors périmètre : Phase 2 (MCP+Infisical, bloquée) et Phase 3 (bascule du défaut), toutes deux plus tard.
+>
 > ## 🟦 Session 2026-09-29 — **`[VERROU-ECRITURE]` : Étape 2, verrou d'écriture MCP hors du chat**
 > Suite de `[MCP-CONFIRM-TOKEN]` (#1076, fusionnée) : le jeton d'aperçu empêche une écriture en UN
 > appel mais pas l'injection de consigne (aperçu+confirme enchaînés par un modèle piégé). Verrou

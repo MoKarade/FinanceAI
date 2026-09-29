@@ -147,7 +147,9 @@ function sitesNonMasquesDans(brut: string, fichier: string): Site[] {
             if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && (MONEY_BASE.test(l) || nombre)) return;
             const fenetre = lines.slice(Math.max(0, i - W), i + W + 1).join('\n');
             const fenetreBrute = lignesBrutes.slice(Math.max(0, i - W), i + W + 1).join('\n');
-            if (!monetaire && NOMBRE_NON_MONETAIRE.test(fenetreBrute)) return;
+            // Le jeton ne regarde QUE vers le haut (ligne courante + 2 au-dessus) : posé pour un site,
+            // il ne doit pas excuser un `formatNumber(` situé AU-DESSUS de lui (revue lot 4).
+            if (!monetaire && NOMBRE_NON_MONETAIRE.test(lignesBrutes.slice(Math.max(0, i - W), i + 1).join('\n'))) return;
             if (LIGNE_ATTRIBUT.test(l)) { if (PRIVACY.test(l)) return; }
             else if (PRIVACY.test(fenetre)) return;
             if (PUBLIC_OK.test(fenetreBrute) || HORS_ECRAN.test(fenetreBrute)
@@ -236,6 +238,9 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         // Le jeton n'excuse PAS un formateur CAD sur la même ligne.
         const mixte = '{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} % de {formatCAD(total)}</span>';
         expect(sitesNonMasquesDans(mixte, 'synthese.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Le jeton d'un site du DESSOUS n'excuse pas un montant du dessus.
+        const dessus = '<b>{formatNumber(total)}</b>\n{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} %</span>';
+        expect(sitesNonMasquesDans(dessus, 'synthese.tsx').map((s) => s.ligne)).toEqual([1]);
     });
 
     it('le jeton de dette `MONTANT-CHAINE-A-DECOUPER` a bien disparu du dépôt', () => {

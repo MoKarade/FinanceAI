@@ -449,7 +449,15 @@ désinfecte le snapshot avant de le restaurer.
   `<PrivateAmount>`, test de rendu rouge avant correctif) ; **4 non concernés, prouvés** : `DebtManager`
   (durée en années), `BudgetGroupTable` (ratio en %) → `NOMBRE-NON-MONETAIRE` ; `AddStockForm:464`
   (cotation de marché) → `MONTANT-PUBLIC` ; `AiChatConfirmModal` (modale non rendue en mode discret)
-  → `MONTANT-MASQUE-AILLEURS`. La garde relève désormais les appels directs. (S) — suite MESURÉE de l'item ci-dessous :
+  → `MONTANT-MASQUE-AILLEURS`. La garde relève désormais les appels directs. (S) —
+
+- [ ] 🔧 **`[ADDSTOCK-RECAP-FUITES-INDIRECTES]`** (XS, **décision de Marc requise**) — relevé par la
+  revue du lot 4, NON corrigé (hors des 6 sites). Dans le récapitulatif d'`AddStockForm`, la
+  **quantité** et le **« Gain non-réalisé : +x,xx % »** restent en clair en mode discret ; combinés à la
+  cotation publique affichée plus haut, ils permettent de retrouver le prix d'achat et le montant
+  investi. Question de fond à trancher UNE fois pour tous les écrans : un ratio ou une durée dérivés
+  de données perso (part du budget %, « Liberté dans X ans », gain %) doivent-ils être masqués ? Le
+  dépôt n'est pas uniforme (`Budget.tsx` masque déjà un taux moyen d'imposition). suite MESURÉE de l'item ci-dessous :
   les appels DIRECTS à `formatNumber(` dans `components/` ne sont pas relevés par `amountPrivacyScan`
   (ils mêlent pourcentages et montants). Mesuré le 2026-09-29 en les ajoutant à titre d'essai :
   6 sites sans marque de mode discret dans la fenêtre — `DebtManager.tsx:449`,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { Card } from './ui/Card';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -162,6 +162,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
 
     const handleDelete = (id: string) => { setConfirmDeleteId(id); };
 
+    // [A11Y-DETTE-FOCUS-EDITION] Le panneau d'édition apparaît sans que le focus y aille : un utilisateur clavier
+    // ou de lecteur d'écran manquerait la phrase de statut du solde. Le conteneur est focalisable par
+    // programme (`tabIndex={-1}`) : sur un <div> non focalisable, `focus()` est un no-op silencieux.
+    const panneauEditionRef = useRef<HTMLDivElement>(null);
+    useEffect(() => { if (editingId) panneauEditionRef.current?.focus(); }, [editingId]);
     // Le refus est un ÉTAT (pas dérivé du brouillon) : il se REMET À ZÉRO à chaque changement de
     // formulaire, sinon un message d'ajout périmé s'afficherait sur une dette saine ouverte en édition
     // (revue du lot 213).
@@ -329,25 +334,25 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                     <section aria-label="Tes dettes" className="flex flex-col gap-2.5 lg:gap-0 lg:rounded-2xl lg:bg-surface lg:border lg:border-white/6 lg:overflow-hidden">
                         {isAdding && (
                             <div className="p-4 lg:px-5 rounded-2xl lg:rounded-none bg-surface border border-white/6 lg:border-x-0 lg:border-t-0 lg:border-white/5 space-y-2">
-                                <input aria-label="Nom de la dette" type="text" placeholder="Nom (ex: Visa)" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.name} onChange={e => setNewDebt({...newDebt, name: e.target.value})} />
+                                <input aria-label="Nom de la dette" type="text" placeholder="Nom (ex: Visa)" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.name} onChange={e => setNewDebt({...newDebt, name: e.target.value})} />
                                 <div className="grid grid-cols-2 gap-2">
-                                    <input aria-label="Solde de la dette (dollars)" type="number" placeholder="Solde $" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.balance || ''} onChange={e => setNewDebt({...newDebt, balance: parseFloat(e.target.value)})} />
-                                    <input aria-label="Taux d'intérêt (pourcentage)" type="number" placeholder="Taux %" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.interestRate || ''} onChange={e => setNewDebt({...newDebt, interestRate: parseFloat(e.target.value)})} />
+                                    <input aria-label="Solde de la dette (dollars)" type="number" placeholder="Solde $" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.balance || ''} onChange={e => setNewDebt({...newDebt, balance: parseFloat(e.target.value)})} />
+                                    <input aria-label="Taux d'intérêt (pourcentage)" type="number" placeholder="Taux %" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.interestRate || ''} onChange={e => setNewDebt({...newDebt, interestRate: parseFloat(e.target.value)})} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <input aria-label="Paiement minimum mensuel (dollars)" type="number" placeholder="Min. Payment $" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.minimumPayment || ''} onChange={e => setNewDebt({...newDebt, minimumPayment: parseFloat(e.target.value)})} />
-                                    <select aria-label="Catégorie de la dette" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.category} onChange={e => setNewDebt({...newDebt, category: e.target.value as Debt['category']})}><option value="CreditCard">Carte Crédit</option><option value="Car">Auto</option><option value="Student">Étudiant</option><option value="Personal">Personnel</option></select>
+                                    <input aria-label="Paiement minimum mensuel (dollars)" type="number" placeholder="Min. Payment $" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.minimumPayment || ''} onChange={e => setNewDebt({...newDebt, minimumPayment: parseFloat(e.target.value)})} />
+                                    <select aria-label="Catégorie de la dette" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.category} onChange={e => setNewDebt({...newDebt, category: e.target.value as Debt['category']})}><option value="CreditCard">Carte Crédit</option><option value="Car">Auto</option><option value="Student">Étudiant</option><option value="Personal">Personnel</option></select>
                                 </div>
                                 {/* [DETTE-DATES] Début et fin de terme. Les deux sont FACULTATIFS :
                                     une dette sans dates se comporte exactement comme avant. */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <label className="flex flex-col gap-1 text-tiny text-ink-400">
                                         Début du prêt / bail
-                                        <input aria-label="Date de début du prêt ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.startDate ?? ''} onChange={e => setNewDebt({...newDebt, startDate: e.target.value || undefined})} />
+                                        <input aria-label="Date de début du prêt ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.startDate ?? ''} onChange={e => setNewDebt({...newDebt, startDate: e.target.value || undefined})} />
                                     </label>
                                     <label className="flex flex-col gap-1 text-tiny text-ink-400">
                                         Fin du terme
-                                        <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={newDebt.termEndDate ?? ''} onChange={e => setNewDebt({...newDebt, termEndDate: e.target.value || undefined})} />
+                                        <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={newDebt.termEndDate ?? ''} onChange={e => setNewDebt({...newDebt, termEndDate: e.target.value || undefined})} />
                                     </label>
                                 </div>
                                 <DebtKindFields valeur={newDebt} onChange={patch => setNewDebt({ ...newDebt, ...patch })} idSuffixe="ajout" marchands={marchandsLibres} />
@@ -357,38 +362,38 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     solde, il est signalé au lieu d'être effacé.
                                 </p>
                                 <p role="status" className="text-tiny text-danger-400 empty:hidden">{refusSaisie ?? ''}</p>
-                                <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-700 text-white text-meta font-bold py-2 rounded-sm">Enregistrer</button>
+                                <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-700 text-white text-meta font-bold py-2 rounded-sm touch-target">Enregistrer</button>
                             </div>
                         )}
                             {debts.map(d => (
                                 <div key={d.id} className="p-4 lg:px-5 rounded-2xl lg:rounded-none bg-surface lg:bg-transparent border border-white/6 border-l-[3px] border-l-[#e0703a] lg:border-x-0 lg:border-t-0 lg:border-white/5 lg:last:border-b-0">
                                     {editingId === d.id ? (
-                                        <div className="space-y-2">
-                                            <input aria-label="Nom de la dette" type="text" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.name ?? ''} onChange={e => setDraft({ ...draft, name: e.target.value })} />
+                                        <div ref={panneauEditionRef} tabIndex={-1} role="group" aria-label={`Modifier la dette ${d.name}`} className="space-y-2 focus:outline-none">
+                                            <input aria-label="Nom de la dette" type="text" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={draft.name ?? ''} onChange={e => setDraft({ ...draft, name: e.target.value })} />
                                             <div className="grid grid-cols-2 gap-2">
-                                                <input aria-label="Solde de la dette (dollars)" type="number" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.balance ?? ''} onChange={e => setDraft({ ...draft, balance: parseFloat(e.target.value) })} />
-                                                <input aria-label="Taux d'intérêt (pourcentage)" type="number" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.interestRate ?? ''} onChange={e => setDraft({ ...draft, interestRate: parseFloat(e.target.value) })} />
+                                                <input aria-label="Solde de la dette (dollars)" type="number" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={draft.balance ?? ''} onChange={e => setDraft({ ...draft, balance: parseFloat(e.target.value) })} />
+                                                <input aria-label="Taux d'intérêt (pourcentage)" type="number" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={draft.interestRate ?? ''} onChange={e => setDraft({ ...draft, interestRate: parseFloat(e.target.value) })} />
                                             </div>
                                             {(() => {
                                                 const { texte, alerte } = phraseStatutSolde(statutSoldeDette(d, todayIso, transactions));
                                                 return <p className={`text-tiny ${alerte ? 'text-amber-400' : 'text-ink-400'}`}>{texte}</p>;
                                             })()}
-                                            <input aria-label="Paiement minimum mensuel (dollars)" type="number" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.minimumPayment ?? ''} onChange={e => setDraft({ ...draft, minimumPayment: parseFloat(e.target.value) })} />
+                                            <input aria-label="Paiement minimum mensuel (dollars)" type="number" className="w-full bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={draft.minimumPayment ?? ''} onChange={e => setDraft({ ...draft, minimumPayment: parseFloat(e.target.value) })} />
                                             <div className="grid grid-cols-2 gap-2">
                                                 <label className="flex flex-col gap-1 text-tiny text-ink-400">
                                                     Début du prêt / bail
-                                                    <input aria-label="Date de début du prêt ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.startDate ?? ''} onChange={e => setDraft({ ...draft, startDate: e.target.value || undefined })} />
+                                                    <input aria-label="Date de début du prêt ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={draft.startDate ?? ''} onChange={e => setDraft({ ...draft, startDate: e.target.value || undefined })} />
                                                 </label>
                                                 <label className="flex flex-col gap-1 text-tiny text-ink-400">
                                                     Fin du terme
-                                                    <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white" value={draft.termEndDate ?? ''} onChange={e => setDraft({ ...draft, termEndDate: e.target.value || undefined })} />
+                                                    <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white touch-target" value={draft.termEndDate ?? ''} onChange={e => setDraft({ ...draft, termEndDate: e.target.value || undefined })} />
                                                 </label>
                                             </div>
                                             <DebtKindFields valeur={draft} onChange={patch => setDraft({ ...draft, ...patch })} idSuffixe={`edit-${d.id}`} marchands={marchandsLibres} />
                                             <p role="status" className="text-tiny text-danger-400 empty:hidden">{refusSaisie ?? ''}</p>
                                             <div className="flex gap-2">
-                                                <button onClick={saveEdit} className="flex-1 bg-green-700 hover:bg-green-800 text-white text-meta font-bold py-1.5 rounded-sm focus-ring">Enregistrer</button>
-                                                <button onClick={cancelEdit} className="flex-1 bg-white/10 hover:bg-white/20 text-white text-meta py-1.5 rounded-sm focus-ring">Annuler</button>
+                                                <button onClick={saveEdit} className="flex-1 bg-green-700 hover:bg-green-800 text-white text-meta font-bold py-1.5 rounded-sm focus-ring touch-target">Enregistrer</button>
+                                                <button onClick={cancelEdit} className="flex-1 bg-white/10 hover:bg-white/20 text-white text-meta py-1.5 rounded-sm focus-ring touch-target">Annuler</button>
                                             </div>
                                         </div>
                                     ) : (

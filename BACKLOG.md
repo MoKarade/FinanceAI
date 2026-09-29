@@ -326,7 +326,7 @@ désinfecte le snapshot avant de le restaurer.
   propre, sinon le bandeau (qui le LIT) annonce un persona vide ; bandeau adapté pour distinguer
   « persona de démo » de « bac à sable sur TA copie ».
 
-- [x] 🔒 **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`** — ✅ **livré 2026-09-29** (branche
+- [ ] 🔒 **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`** — ✅ **livré 2026-09-29** (à cocher au merge) (branche
   `agence/financeai-code/sandbox-curseurs-marqueur`, PR à venir ; à archiver au merge). Le commutateur
   « Données réelles / Bac à sable » de `FutureProjection.tsx` est retiré AUSSI (il ne pilotait que
   `useTheoretical`). (S, **OK de Marc**) — retirer les deux curseurs
@@ -339,7 +339,7 @@ désinfecte le snapshot avant de le restaurer.
   d'épargne). Les trois champs restent `@deprecated` dans le type : les supprimer exigerait une
   migration du schéma persisté, soit un risque sur les données pour un gain nul.
 
-- [x] 🔒 **`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`** — ✅ **livré 2026-09-29** (même branche ;
+- [ ] 🔒 **`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`** — ✅ **livré 2026-09-29** (à cocher au merge) (même branche ;
   `systemPourAppel`, garde `tests/services/promptMarqueurFictif.test.ts` ; à archiver au merge). (S, **décision de Marc le 2026-09-22**, contre
   l'option « refuser ») — quand l'app tourne sur des données fictives, le `system` envoyé au modèle
   DIT que les chiffres sont un scénario hypothétique. Rien n'est refusé : demander conseil **sur**

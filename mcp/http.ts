@@ -35,10 +35,12 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, buildSha, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
-import { makeAttemptLimiter } from './auth/rateLimit';
+import { makeAddressAttemptLimiter, type AddressAttemptLimiter } from './auth/rateLimit';
+import { makeRouteGuard, adresseClient, type LimitedRoute, type RouteGuard } from './auth/routeRateLimit';
+import { HUB_TOKEN_HEADER } from '@mokarade/hub-contract/endpoint';
 import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { parseRolesJson } from '../services/fintable/rolesConfig';
-import { BodyTooLargeError, readBody, sendJson, sendRpcError } from './http/plomberie';
+import { BodyTooLargeError, hubTokensMatch, readBody, sendJson, sendRpcError } from './http/plomberie';
 import { handleOAuth } from './http/oauth';
 import { handleFintableSync, handleHubSummary, handleRefresh, handleVehiculeBail } from './http/routesPlanifiees';
 
@@ -90,7 +92,34 @@ export interface HttpServerOptions {
      *  Absent = sélection par kind/catégorie, et refus 409 si elle est ambiguë. */
     vehiculeNomDette?: string;
     fintableRoles?: FintableMappingConfig['roles'];
+    /** [MCP-RATE-LIMIT] Garde de débit des routes (injectable pour les tests ; défaut : plafonds de `routeRateLimit.ts`). */
+    rateGuard?: RouteGuard;
+    /** [MCP-RATE-LIMIT] Limiteur d'échecs de /oauth/authorize (injectable pour les tests ; défaut : 8 par adresse, 200 global). */
+    authorizeLimiter?: AddressAttemptLimiter;
+    /** [MCP-ACCESS-KEY-MIN] La clé d'accès est faible (< 32 car.) : exposé par l'outil `ping` (derrière l'OAuth), jamais sur /health. */
+    cleAccesFaible?: boolean;
+    /** [MCP-ACCESS-KEY-MIN] STRICT + clé faible : `/oauth/authorize` (la porte que cette clé garde) répond 503 ; le reste du serveur (routes à secret propre, /mcp déjà autorisé) continue. */
+    autorisationBloquee?: boolean;
 }
+
+/** [MCP-ACCESS-KEY-MIN] Longueur minimale de FINANCEAI_ACCESS_KEY (refus de démarrer en dessous). */
+export const MIN_ACCESS_KEY_LENGTH = 32;
+export const cleAccesTropCourte = (cle: string | undefined): boolean => cle !== undefined && cle.length < MIN_ACCESS_KEY_LENGTH;
+
+/** [MCP-ACCESS-KEY-MIN] Verdict sur la clé d'accès : `faible` = alerte + état visible ; `refuser` = SEULEMENT si STRICT=1. */
+/** Message d'alerte au journal (SANS la clé ni sa longueur). STRICT ne coupe PAS le serveur : seule /oauth/authorize répond
+ *  503 ; les routes à secret propre (hub, véhicule, refresh, sync) et les sessions /mcp déjà autorisées continuent.
+ *  `null` = clé conforme. */
+export const alerteCleAcces = (v: { faible: boolean; refuser: boolean }): string | null => {
+    if (v.refuser) return "[FinanceAI MCP http] ⚠️ STRICT : clé d'accès faible — /oauth/authorize répond 503 tant qu'elle n'est pas régénérée.";
+    if (v.faible) return "[FinanceAI MCP http] ⚠️ ALERTE : clé d'accès faible. Régénère-la (64 caractères hex) puis active FINANCEAI_ACCESS_KEY_STRICT=1 (docs/A_FAIRE_MOI.md).";
+    return null;
+};
+
+export const evaluerCleAcces =(cle: string | undefined, strict: string | undefined): { faible: boolean; refuser: boolean } => {
+    const faible = cleAccesTropCourte(cle);
+    return { faible, refuser: faible && strict === '1' };
+};
 
 export interface RunningHttpServer {
     server: Server;
@@ -215,7 +244,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         };
         // Un McpServer PAR session (registre de tools léger) ; le STORE d'état est
         // PARTAGÉ (cache unique, mêmes données — app solo, aucune donnée par-session).
-        const mcpServer = createMcpServer({ getState: state.store.get, store: state.store });
+        const mcpServer = createMcpServer({ getState: state.store.get, store: state.store, cleAccesFaible: options.cleAccesFaible });
         try {
             await mcpServer.connect(transport);
             await transport.handleRequest(req, res, parsed);
@@ -231,7 +260,31 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     // ── [MCP-CLOUDRUN-B] endpoints OAuth 2.1 (si auth configurée) ────────────
     // [MCP-CLOUDRUN-AUTH-HARDENING] UN limiteur par serveur (pas par requête) : sa mémoire EST la
     // protection. En construire un à chaque appel remettrait le compteur à zéro à chaque tentative.
-    const authorizeLimiter = makeAttemptLimiter();
+    const authorizeLimiter = options.authorizeLimiter ?? makeAddressAttemptLimiter({ globalMax: options.cleAccesFaible ? undefined : null });
+    // [MCP-RATE-LIMIT] UN garde de débit par serveur (mêmes raisons : sa mémoire EST la protection).
+    const rateGuard = options.rateGuard ?? makeRouteGuard();
+
+    /** Le secret de la requête est-il VALIDE pour cette route ? (mêmes comparaisons en temps constant que les handlers ;
+     *  ne modifie rien, ne répond pas.) `/mcp` sans OAuth configuré (loopback local) : tout appel est « authentifié ». */
+    const secretValide = (route: LimitedRoute, req: IncomingMessage): boolean => {
+        const h = req.headers.authorization;
+        const bearer = typeof h === 'string' && h.startsWith('Bearer ') ? h.slice(7) : '';
+        const egal = (fourni: string, attendu: string | undefined): boolean =>
+            fourni !== '' && attendu !== undefined && hubTokensMatch(fourni, attendu);
+        switch (route) {
+            case '/mcp': {
+                if (!options.auth) return true;
+                try { options.auth.verifyAccessToken(h); return true; } catch { return false; }
+            }
+            case '/hub/summary': {
+                const j = req.headers[HUB_TOKEN_HEADER];
+                return egal(typeof j === 'string' ? j : '', options.hubToken);
+            }
+            case '/refresh': return egal(bearer, options.refreshSecret);
+            case '/fintable-sync': return egal(bearer, options.fintableSyncSecret);
+            case '/vehicule/bail': return egal(bearer, options.vehiculeSecret);
+        }
+    };
 
     const knownEndpoints = [
         '/mcp',
@@ -254,6 +307,26 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
             sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION, sha: buildSha() });
             return;
         }
+        // [MCP-RATE-LIMIT] Débit + échecs d'authentification, AVANT tout traitement de la route.
+        const routeLimitee: LimitedRoute | null =
+            url === '/mcp' || (url === '/hub/summary' && options.hubToken) || (url === '/refresh' && options.refreshSecret)
+            || (url === '/fintable-sync' && options.fintableSyncSecret) || (url === '/vehicule/bail' && options.vehiculeSecret)
+                ? (url as LimitedRoute) : null;
+        if (routeLimitee) {
+            // VÉRIFIER D'ABORD, REFUSER APRÈS : un secret valide n'est jamais bloqué par un compteur d'échecs, et une
+            // requête sans secret valide ne consomme pas le budget de volume (voir routeRateLimit.ts).
+            const entree = rateGuard.enter(routeLimitee, {
+                authentifie: secretValide(routeLimitee, req),
+                adresse: adresseClient(req.headers['x-forwarded-for'], req.socket.remoteAddress),
+            });
+            if (!entree.ok) {
+                console.error(`[FinanceAI MCP http] ${routeLimitee} : 429 (${entree.reason === 'echecs' ? 'echecs authentification repetes' : 'plafond de debit'}).`);
+                res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(entree.retryAfterSeconds), 'Cache-Control': 'no-store' });
+                res.end(JSON.stringify({ error: 'Trop de requêtes.' }));
+                return;
+            }
+            res.once('finish', () => entree.done(res.statusCode));
+        }
         if (url === '/hub/summary' && options.hubToken) {
             handleHubSummary(req, res, state.store, options.hubToken);
             return;
@@ -268,6 +341,11 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         }
         if (url === '/vehicule/bail' && options.vehiculeSecret) {
             handleVehiculeBail(req, res, state.store, options.vehiculeSecret, options.vehiculeNomDette);
+            return;
+        }
+        if (options.autorisationBloquee && url === '/oauth/authorize') {
+            console.error("[FinanceAI MCP http] /oauth/authorize : 503, clé d'accès non conforme (FINANCEAI_ACCESS_KEY_STRICT=1).");
+            sendJson(res, 503, { error: 'server_error', error_description: "Clé d'accès non conforme : autorisation indisponible." });
             return;
         }
         if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
@@ -374,6 +452,14 @@ if (isDirectRun) {
         const accessKey = process.env.FINANCEAI_ACCESS_KEY;
         const publicUrl = process.env.FINANCEAI_PUBLIC_URL?.replace(/\/$/, '');
         let auth: OAuthProvider | undefined;
+        // [MCP-ACCESS-KEY-MIN] la clé d'accès est la SEULE porte devinable (saisie à la main sur /oauth/authorize).
+        // Trop courte : par DÉFAUT le serveur démarre quand même (un refus couperait le connecteur claude.ai) mais
+        // alerte au journal et l'état « clé faible » est visible de Marc via l'outil `ping` (derrière l'OAuth).
+        // Refus de démarrer seulement avec FINANCEAI_ACCESS_KEY_STRICT=1. Aucun message ne contient la valeur,
+        // ni sa longueur exacte.
+        const cleAcces = evaluerCleAcces(accessKey, process.env.FINANCEAI_ACCESS_KEY_STRICT);
+        const alerteCle = alerteCleAcces(cleAcces);
+        if (alerteCle) console.error(alerteCle);
         if (signingKey && accessKey) {
             auth = makeOAuthProvider({
                 signingKey, accessKey,
@@ -458,6 +544,7 @@ if (isDirectRun) {
         const running = await startHttpServer({
             port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken, refreshSecret, finnhubKey,
             fintableSyncSecret, fintableToken, fintableRoles, vehiculeSecret, vehiculeNomDette,
+            cleAccesFaible: cleAcces.faible, autorisationBloquee: cleAcces.refuser,
         });
 
         console.error(`[FinanceAI MCP http] v${MCP_SERVER_VERSION} — écoute http://${host}:${running.port}/mcp (santé : /health)`);

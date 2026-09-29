@@ -118,9 +118,10 @@ export function parseRawToAppState(raw: string, sourceDescription: string): AppS
     let parsed: unknown;
     try {
         parsed = JSON.parse(raw);
-    } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-        throw new Error(`JSON invalide depuis ${sourceDescription} : ${reason}.`);
+    } catch {
+        // [MCP-ERREUR-SANS-EXTRAIT] MESSAGE FIXE : l'erreur de JSON.parse de Node cite un morceau du texte fautif (ici
+        // l'état financier) ; elle finirait en réponse 503, en journal Cloud Run et, via les crons, en journal public.
+        throw new Error(`JSON invalide depuis ${sourceDescription} (contenu non affiché).`);
     }
     // Tolère une enveloppe { payload: AppState } (format blob Drive) OU l'état nu.
     const candidate =

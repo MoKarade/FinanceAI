@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-29 — Futur : boutons du panneau du jour plus lisibles, et une journée calme le dit
+
+- Les contours de « ← Veille », « Lendemain → », « Revenir à aujourd'hui » et « Détail complet → » sont
+  plus marqués : on distingue enfin les boutons du fond, même avec une vue fatiguée.
+- Un jour sans revenu ni dépense affiche « Aucun revenu ni dépense » au lieu d'une colonne vide, qui se
+  lisait comme une donnée manquante.
+
 ## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
 
 - Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois

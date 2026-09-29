@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 (design) — **`[A11Y-PANNEAU]` : bordures des boutons fantômes >= 3:1 + colonne « flux » explicite**
+> Bordures du `PanneauJour` : `border-white/20` -> `/40` (Veille, Lendemain, Revenir à aujourd'hui),
+> `border-primary/30` -> `/45` (Détail complet), choisies par calcul de contraste composé sur les fonds du
+> panneau (3,76 à 3,95:1 ; WCAG 1.4.11). `tests/components/panneauJourLot3.test.tsx` lit les tokens de
+> `tailwind.config.js` et mesure. `SectionFlux` dit « Aucun revenu ni dépense » (mêmes prédicats que les
+> 8 lignes). ⚠️ `npm run check-contrast` ne mesure toujours que les CTA pleins (trou d'outillage connu,
+> non corrigé) ; hover et contraste du texte de ces boutons non mesurés.
+>
 > ## 🟦 Session 2026-09-29 — **`[CHIFFREMENT-PHASE1]` : création de passphrase + mémorisation WebAuthn**
 > Phase 1 (app web seule, aucune dépendance Infisical) du plan de chiffrement par défaut. Le chemin de
 > CRÉATION d'une passphrase (retiré en juin) est RÉTABLI : `components/settings/PassphraseCreate.tsx`

@@ -17,7 +17,7 @@ describe('Planning — rendu de base (Charges fixes & Abonnements)', () => {
     it('se rend sans crash, sans transactions', () => {
         const { container } = render(<Planning transactions={[]} />);
         expect(container.firstChild).toBeTruthy();
-        expect(screen.getByText('Charges Fixes & Abonnements')).toBeInTheDocument();
+        expect(screen.getByText('Charges fixes et abonnements')).toBeInTheDocument();
         expect(screen.getByText(/Abonnements & Récurrents/)).toBeInTheDocument();
         expect(screen.getByText(/Calendrier des Factures/)).toBeInTheDocument();
         expect(screen.getByText(/Aucun abonnement détecté/)).toBeInTheDocument();

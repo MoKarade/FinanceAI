@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { PrivateNumberInput } from '../ui/PrivateNumberInput';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { getQuoteDetaille, getHistoryDetaille, searchSymbolsDetaille, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
 import { messageEchecMarche } from '../../services/marketData/messageEchec';
 import { formatNumber } from '../../utils/format';
@@ -460,7 +461,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             <span>Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
                             {/* [ADDSTOCK-CAD-NATIF] même défaut que le récapitulatif : `currentPrice`
                                 vient de getQuote (devise NATIVE du titre), pas de CAD — c'est LUI qui
-                                pré-remplit buyPrice (revue #686, code-reviewer ÉLEVÉ, mesuré). */}
+                                pré-remplit buyPrice (revue #686, code-reviewer ÉLEVÉ, mesuré).
+                                MONTANT-PUBLIC : cotation de marché du titre (getQuote), identique pour
+                                tout le monde — pas un montant de l'utilisateur. */}
                             <span className="font-mono">Prix actuel : {formatNumber(currentPrice, { decimals: 2 })} {currency}</span>
                         </div>
                     )}
@@ -567,8 +570,10 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                         affichait "$ CA" sur un montant USD/EUR (§1, garde
                                         assetFxGuard). formatNumber (sans symbole) + le code de
                                         devise explicite, comme la ligne du prix unitaire. */}
-                                    <strong className="font-mono">{quantity}</strong> × <strong className="font-mono">{formatNumber(parseFloat(buyPrice) || 0, { decimals: 2 })}</strong> {currency}
-                                    {' '}= <strong className="font-mono">{formatNumber((parseFloat(quantity) || 0) * (parseFloat(buyPrice) || 0), { decimals: 2 })}</strong> {currency} investi le {new Date(dateBought).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {/* [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Prix d'achat et montant investi masqués en
+                                        mode discret, comme la saisie du prix juste au-dessus (PrivateNumberInput). */}
+                                    <strong className="font-mono">{quantity}</strong> × <strong className="font-mono"><PrivateAmount>{formatNumber(parseFloat(buyPrice) || 0, { decimals: 2 })}</PrivateAmount></strong> {currency}
+                                    {' '}= <strong className="font-mono"><PrivateAmount>{formatNumber((parseFloat(quantity) || 0) * (parseFloat(buyPrice) || 0), { decimals: 2 })}</PrivateAmount></strong> {currency} investi le {new Date(dateBought).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </div>
                                 {currentPrice && parseFloat(buyPrice) > 0 && (
                                     <div className={`text-tiny mt-1 font-mono ${currentPrice >= parseFloat(buyPrice) ? 'text-emerald-300' : 'text-red-300'}`}>

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
+
+- Dans la fenêtre « Ajouter un placement », le récapitulatif (« 5 × … = … investi le… ») affichait en
+  clair le prix d'achat et le montant investi même en mode discret. Ils sont maintenant masqués,
+  comme le champ de saisie du prix juste au-dessus.
+
 ## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
 
 - Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois

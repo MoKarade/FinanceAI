@@ -351,7 +351,7 @@ désinfecte le snapshot avant de le restaurer.
   Garde : une 6ᵉ surface SDK sans marqueur doit rougir (l'inventaire se dérive du grep, pas d'une
   liste écrite à la main).
 
-- [x] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** — ✅ **livré 2026-09-29** : les deux exports RETIRÉS
+- [ ] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) : les deux exports RETIRÉS
   (décision du chef de projet), avec leurs tests (branche `agence/financeai-code/lot3-code-mort-privacy`,
   à archiver au merge). (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
   (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
@@ -437,13 +437,19 @@ désinfecte le snapshot avant de le restaurer.
   (« Point mensuel — pas de détail au jour », « Aucun mouvement · marché seul »…).
   ⚠️ L'exposition a changé avec le panneau : la colonne est là en permanence.
 
-- [x] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** — ✅ **livré 2026-09-29** (même branche, à archiver
+- [ ] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (même branche, à archiver
   au merge). (XS) — `FutureDetailModal.tsx` calcule
   `shownAssetsSum` et ne la lit **jamais** (une seule occurrence dans tout le dépôt). Elle porte en
   plus le `Number(...) || 0` que `[INFOBULLE-DETTE-NW-NON-FINI]` vient de condamner : la laisser,
   c'est garder un exemple du motif corrigé à trois lignes du correctif.
 
-- [ ] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** (S, à trier) — suite MESURÉE de l'item ci-dessous :
+- [ ] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (branche
+  `agence/financeai-code/lot4-formatnumber-direct`, empilée sur le lot 3 ; à archiver au merge). Tri :
+  **2 fuites réelles corrigées** (`AddStockForm` récapitulatif : prix d'achat et montant investi →
+  `<PrivateAmount>`, test de rendu rouge avant correctif) ; **4 non concernés, prouvés** : `DebtManager`
+  (durée en années), `BudgetGroupTable` (ratio en %) → `NOMBRE-NON-MONETAIRE` ; `AddStockForm:464`
+  (cotation de marché) → `MONTANT-PUBLIC` ; `AiChatConfirmModal` (modale non rendue en mode discret)
+  → `MONTANT-MASQUE-AILLEURS`. La garde relève désormais les appels directs. (S) — suite MESURÉE de l'item ci-dessous :
   les appels DIRECTS à `formatNumber(` dans `components/` ne sont pas relevés par `amountPrivacyScan`
   (ils mêlent pourcentages et montants). Mesuré le 2026-09-29 en les ajoutant à titre d'essai :
   6 sites sans marque de mode discret dans la fenêtre — `DebtManager.tsx:449`,
@@ -452,7 +458,7 @@ désinfecte le snapshot avant de le restaurer.
   peuvent être masqués plus haut ou être non personnels. Trier site par site (envelopper,
   `MONTANT-PUBLIC`, ou `MONTANT-MASQUE-AILLEURS`) PUIS étendre `MONEY_BASE` — sinon la garde rougit.
 
-- [x] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** — ✅ **livré 2026-09-29** : alias de `formatNumber`
+- [ ] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) : alias de `formatNumber`
   reconnus (monétaires par défaut, jeton `NOMBRE-NON-MONETAIRE` sur la définition pour un
   pourcentage : posé sur `pctTexte`, `RealEstateWorkspace.tsx`) ; témoin réel `fmtNu`. Même branche,
   à archiver au merge. (S) — `amountPrivacyScan` ne connaît que

@@ -445,6 +445,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             </div>
                             <div className="grid grid-cols-2 gap-2.5">
                                 <div className="px-3 lg:px-3.5 py-3 rounded-xl bg-dark lg:bg-surface lg:border lg:border-white/6">
+                                    {/* NOMBRE-NON-MONETAIRE : une DURÉE en années (mois / 12), pas un montant. */}
                                     <div className="text-meta text-ink-400">Liberté dans</div>
                                     <div className="font-mono lg:font-sans text-[20px] lg:text-[22px] font-bold text-success-400">{simulation.valide ? `${formatNumber(simulation.months / 12, { decimals: 1 })} ans` : '—'}</div>
                                 </div>

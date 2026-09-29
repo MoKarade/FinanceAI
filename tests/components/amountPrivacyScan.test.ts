@@ -104,7 +104,9 @@ export function aliasMonetaires(src: string, brut?: string): string[] {
     const lignesBrutes = brut?.split('\n');
     return [...src.matchAll(/const\s+(\w+)\s*[:=][^\n]*=>\s*[^\n]*\b(formatCAD|formatCompactCAD|formatNumber)\s*\(/g)]
         .filter((m) => {
-            if (m[2] !== 'formatNumber' || !lignesBrutes) return true;
+            // `[^\n]*` est glouton : `m[2]` est le DERNIER formateur de la ligne. Une définition qui
+            // contient AUSSI un formateur CAD reste monétaire, jeton ou pas.
+            if (m[2] !== 'formatNumber' || /\bformat(CAD|CompactCAD)\s*\(/.test(m[0]) || !lignesBrutes) return true;
             const ligne = src.slice(0, m.index).split('\n').length - 1;
             return !NOMBRE_NON_MONETAIRE.test(lignesBrutes.slice(Math.max(0, ligne - 1), ligne + 1).join('\n'));
         })
@@ -166,6 +168,12 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         // et le jeton ne blanchit JAMAIS un alias de formatCAD.
         const cad = '// NOMBRE-NON-MONETAIRE\nconst fmt = (v: number) => formatCAD(v);';
         expect(aliasMonetaires(cad, cad)).toEqual(['fmt']);
+        // …ni une définition qui mêle formatCAD PUIS formatNumber (le dernier formateur n'y suffit pas).
+        const mixte = '// NOMBRE-NON-MONETAIRE\nconst m = (v: number) => `${formatCAD(v)} (${formatNumber(v)})`;';
+        expect(aliasMonetaires(mixte, mixte)).toEqual(['m']);
+        // …et le jeton d'un alias voisin (ligne du DESSOUS) n'exclut pas l'alias du dessus.
+        const voisins = 'const a = (v: number) => formatNumber(v);\n// NOMBRE-NON-MONETAIRE\nconst b = (v: number) => formatNumber(v);';
+        expect(aliasMonetaires(voisins, voisins)).toEqual(['a']);
     });
 
     it('le décommentage laisse du code à scanner (anti-vacuité, AGRÉGÉE)', () => {

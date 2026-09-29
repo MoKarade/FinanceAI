@@ -228,7 +228,8 @@ export type RememberResult = 'remembered' | 'unavailable';
  * IndexedDB/Web Crypto sont absents, OU si aucun authentificateur de plateforme n'est disponible, OU
  * si sa création est refusée — jamais de repli plus faible (§3, condition bloquante pole-securite).
  */
-export async function rememberPassphraseOnDevice(passphrase: string): Promise<RememberResult> {
+export async function rememberPassphraseOnDevice(passphrase: string, opts?: { now?: () => number }): Promise<RememberResult> {
+    const now = opts?.now ?? (() => Date.now());
     if (!isStorageSupported()) return 'unavailable';
     const plateformeOk = await isPlatformAuthenticatorAvailable();
     if (!plateformeOk) return 'unavailable';
@@ -239,7 +240,7 @@ export async function rememberPassphraseOnDevice(passphrase: string): Promise<Re
         const blob = await encryptString(key, passphrase);
         localStorage.setItem(LS_BLOB_KEY, blob);
         localStorage.setItem(LS_CREDENTIAL_KEY, toBase64(new Uint8Array(rawId)));
-        localStorage.setItem(LS_LAST_USED_KEY, String(Date.now()));
+        localStorage.setItem(LS_LAST_USED_KEY, String(now()));
         return 'remembered';
     } catch {
         return 'unavailable';
@@ -258,14 +259,15 @@ export async function isDeviceRemembered(): Promise<boolean> {
  * mémorisé, verrou refusé, IndexedDB/blob indisponible ou altéré) — jamais une exception, jamais un
  * repli plus faible ; l'appelant redemande alors la phrase complète.
  */
-export async function tryUnlockRememberedPassphrase(): Promise<string | null> {
+export async function tryUnlockRememberedPassphrase(opts?: { now?: () => number }): Promise<string | null> {
+    const now = opts?.now ?? (() => Date.now());
     try {
         if (!isStorageSupported()) return null;
         const blob = localStorage.getItem(LS_BLOB_KEY);
         const credB64 = localStorage.getItem(LS_CREDENTIAL_KEY);
         if (!blob || !credB64) return null;
         const lastUsed = Number(localStorage.getItem(LS_LAST_USED_KEY) ?? '0');
-        if (!lastUsed || Date.now() - lastUsed > EXPIRATION_INACTIVITE_MS) return null; // filet hygiène, non bloquant
+        if (!lastUsed || now() - lastUsed > EXPIRATION_INACTIVITE_MS) return null; // filet hygiène, non bloquant
         const rawId = fromBase64(credB64).buffer;
         const verifie = await verifierPresenceUtilisateur(rawId);
         if (!verifie) return null; // ÉCHEC FERMÉ : jamais déchiffrer sans le verrou
@@ -278,7 +280,7 @@ export async function tryUnlockRememberedPassphrase(): Promise<string | null> {
         }
         if (!key) return null;
         const passphrase = await decryptString(key, blob);
-        localStorage.setItem(LS_LAST_USED_KEY, String(Date.now()));
+        localStorage.setItem(LS_LAST_USED_KEY, String(now()));
         return passphrase;
     } catch {
         return null;

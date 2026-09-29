@@ -195,6 +195,29 @@ describe('[CHIFFREMENT-PHASE1] deviceKeyStore — tryUnlockRememberedPassphrase 
         expect(await tryUnlockRememberedPassphrase()).toBe('ma-phrase-de-test-tres-longue');
     });
 
+    // ── Filet non bloquant (§3 du plan) : expiration par INACTIVITÉ à ~30 jours sur la mémorisation
+    // elle-même — hygiène, pas une protection contre un vol le jour même. Horloge INJECTÉE (`now`),
+    // jamais Date.now() réel, pour un test déterministe. ─────────────────────────────────────────
+    it('filet 30j : lastUsed à 31 jours d\'inactivité → null (mémorisation traitée comme expirée)', async () => {
+        stubWebAuthn({ plateformeDisponible: true, createReussit: true, getReussit: true });
+        const { rememberPassphraseOnDevice, tryUnlockRememberedPassphrase } = await import('../../services/deviceKeyStore');
+        let t = 1_000_000_000_000;
+        await rememberPassphraseOnDevice('ma-phrase-de-test-tres-longue', { now: () => t });
+        const UN_JOUR_MS = 24 * 60 * 60 * 1000;
+        t += 31 * UN_JOUR_MS;
+        expect(await tryUnlockRememberedPassphrase({ now: () => t })).toBeNull();
+    });
+
+    it('filet 30j : lastUsed à 29 jours d\'inactivité → déverrouille normalement (pas encore expiré)', async () => {
+        stubWebAuthn({ plateformeDisponible: true, createReussit: true, getReussit: true });
+        const { rememberPassphraseOnDevice, tryUnlockRememberedPassphrase } = await import('../../services/deviceKeyStore');
+        let t = 1_000_000_000_000;
+        await rememberPassphraseOnDevice('ma-phrase-de-test-tres-longue', { now: () => t });
+        const UN_JOUR_MS = 24 * 60 * 60 * 1000;
+        t += 29 * UN_JOUR_MS;
+        expect(await tryUnlockRememberedPassphrase({ now: () => t })).toBe('ma-phrase-de-test-tres-longue');
+    });
+
     it('rien de mémorisé (jamais activé) : null, sans même solliciter WebAuthn', async () => {
         stubWebAuthn({ plateformeDisponible: true, createReussit: true, getReussit: true });
         const mod = await import('../../services/deviceKeyStore');

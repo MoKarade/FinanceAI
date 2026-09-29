@@ -96,7 +96,7 @@ export function makeAttemptLimiter(opts: {
 
 export const AUTHORIZE_MAX_FAILURES_PAR_ADRESSE = 8;
 export const AUTHORIZE_MAX_FAILURES_GLOBAL = 200;
-export const AUTHORIZE_MAX_ADRESSES = 2000;
+const AUTHORIZE_MAX_ADRESSES = 2000;
 
 export interface AddressAttemptLimiter {
     /** `true` si cette adresse OU le plafond global est bloqué — à appeler AVANT de vérifier la clé. */

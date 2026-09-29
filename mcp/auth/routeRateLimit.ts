@@ -42,13 +42,13 @@ export const ROUTE_LIMITS: Record<LimitedRoute, RouteLimit> = {
 /** Échecs d'authentification tolérés PAR ADRESSE et par fenêtre (seuil haut : un humain ou un cron mal réglé ne
  *  l'atteint pas ; un scanneur oui). */
 export const AUTH_FAILURE_MAX_PAR_ADRESSE = 100;
-export const AUTH_FAILURE_WINDOW_MS = 15 * MINUTE;
+const AUTH_FAILURE_WINDOW_MS = 15 * MINUTE;
 /** Adresses suivies en mémoire (au-delà, les plus anciennes sont oubliées). */
-export const MAX_ADRESSES = 2000;
+const MAX_ADRESSES = 2000;
 
-export type RefusReason = 'echecs' | 'debit';
+type RefusReason = 'echecs' | 'debit';
 
-export type RouteEntry =
+type RouteEntry =
     | { ok: true; /** À appeler à la FIN de la réponse avec son code HTTP. */ done: (status: number) => void }
     | { ok: false; reason: RefusReason; retryAfterSeconds: number };
 

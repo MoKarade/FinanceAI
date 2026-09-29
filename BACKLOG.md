@@ -43,6 +43,7 @@
 ## 🔒 Garde de la fusion auto — suites (2026-09-25)
 - [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
 - [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
+- [ ] 🟡 [CI-GITLEAKS-8-30-1] (S, 29/09/2026) Monter gitleaks 8.28.0 → 8.30.1 dans `.github/workflows/ci.yml` (lignes 186-187 : URL de l'archive + empreinte SHA-256), pour CVE-2026-63728 (injection de modèle de rapport). Exposition NULLE ici : la CI n'utilise ni `--report-template` ni `--report`. Nouvelle empreinte linux_x64 vérifiée sur 2 sources officielles de la release v8.30.1 : `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`. À faire par un chemin validé d'avance (Dependabot `github-actions`, ou le futur circuit « droits proposés ») : l'édition à la main de `.github/**` a été refusée par le contrôle de permissions de la session. PR non armée, attestation pole-securite (atelier #205).
 
 ## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
 

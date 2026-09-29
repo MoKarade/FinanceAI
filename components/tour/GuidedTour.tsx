@@ -162,7 +162,7 @@ export const GuidedTour: React.FC = () => {
       {/* Bulle */}
       <div
         style={bubbleStyle}
-        className="bg-[#0F1116] border border-white/10 rounded-card shadow-2xl p-5 animate-fade-in"
+        className="bg-surface border border-white/10 rounded-card p-5 animate-fade-in"
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-tiny font-bold text-primary uppercase tracking-widest" aria-live="polite">
@@ -183,7 +183,7 @@ export const GuidedTour: React.FC = () => {
         {/* Barre de progression */}
         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-4" aria-hidden="true">
           <div
-            className="h-full bg-linear-to-r/srgb from-primary to-success-400 transition-all duration-300"
+            className="h-full bg-primary transition-all duration-300"
             style={{ width: `${((idx + 1) / total) * 100}%` }}
           />
         </div>

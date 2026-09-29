@@ -83,9 +83,31 @@ const files = readdirSync(path.join(ROOT, 'components'), { recursive: true, enco
     .filter((f) => f.endsWith('.tsx'))
     .map((f) => path.join(ROOT, 'components', f));
 
-/** Alias LOCAUX d'un formateur monétaire, déclarés dans le fichier. */
-export function aliasMonetaires(src: string): string[] {
-    return [...src.matchAll(/const\s+(\w+)\s*[:=][^\n]*=>\s*[^\n]*\b(formatCAD|formatCompactCAD)\s*\(/g)]
+/**
+ * Jeton posé sur la DÉFINITION d'un alias de `formatNumber` (sur sa ligne ou celle du dessus) qui
+ * formate un nombre qui n'est PAS un montant de l'utilisateur (pourcentage d'hypothèse, durée…).
+ * Honoré pour `formatNumber` SEULEMENT : un alias de `formatCAD` est un montant par construction.
+ */
+const NOMBRE_NON_MONETAIRE = /NOMBRE-NON-MONETAIRE/;
+
+/**
+ * Alias LOCAUX d'un formateur monétaire, déclarés dans le fichier.
+ *
+ * [PRIVACY-SCAN-ALIAS-FORMATNUMBER] `formatNumber` (sans symbole de devise) en fait partie : un
+ * `const fmtNu = (n) => formatNumber(...)` qui rend un gain en dollars était structurellement
+ * invisible (`panneauJour/sections.tsx`). Ses alias sont donc traités comme monétaires PAR DÉFAUT,
+ * sauf déclaration explicite `NOMBRE-NON-MONETAIRE` sur leur définition (lue dans `brut`).
+ * ⚠️ Les appels DIRECTS à `formatNumber(` ne sont PAS relevés : mesuré le 2026-09-29, ils mêlent
+ * pourcentages et prix unitaires (6 sites à trier, BACKLOG `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`).
+ */
+export function aliasMonetaires(src: string, brut?: string): string[] {
+    const lignesBrutes = brut?.split('\n');
+    return [...src.matchAll(/const\s+(\w+)\s*[:=][^\n]*=>\s*[^\n]*\b(formatCAD|formatCompactCAD|formatNumber)\s*\(/g)]
+        .filter((m) => {
+            if (m[2] !== 'formatNumber' || !lignesBrutes) return true;
+            const ligne = src.slice(0, m.index).split('\n').length - 1;
+            return !NOMBRE_NON_MONETAIRE.test(lignesBrutes.slice(Math.max(0, ligne - 1), ligne + 1).join('\n'));
+        })
         .map((m) => m[1]);
 }
 
@@ -100,7 +122,7 @@ function sitesNonMasques(): Site[] {
         const src = stripCommentsJsx(brut);
         const lines = src.split('\n');
         const lignesBrutes = brut.split('\n');
-        const alias = aliasMonetaires(src);
+        const alias = aliasMonetaires(src, brut);
         const ALIAS = alias.length ? new RegExp(`\\b(${alias.join('|')})\\s*\\(`) : null;
         lines.forEach((l, i) => {
             if (!(MONEY_BASE.test(l) || (ALIAS && ALIAS.test(l)))) return;
@@ -129,6 +151,21 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         // dise. Témoin nommé plutôt que compte : un compte se rebase, un nom se vérifie.
         const src = readFileSync(path.join(ROOT, 'components/realestate/RealEstateWorkspace.tsx'), 'utf8');
         expect(aliasMonetaires(src)).toContain('formatCurrency');
+    });
+
+    it('[PRIVACY-SCAN-ALIAS-FORMATNUMBER] voit les alias de formatNumber (témoin réel + synthèse)', () => {
+        // Témoin RÉEL : le gain affiché sous la valeur d'un compte, qui a motivé le ticket.
+        const brut = readFileSync(path.join(ROOT, 'components/projection/panneauJour/sections.tsx'), 'utf8');
+        expect(aliasMonetaires(stripCommentsJsx(brut), brut)).toContain('fmtNu');
+        // Synthèse : un alias de formatNumber est monétaire par défaut…
+        const nu = 'const fmtNu = (n: number) => formatNumber(Math.round(n));';
+        expect(aliasMonetaires(nu, nu)).toEqual(['fmtNu']);
+        // …sauf déclaration explicite sur sa définition ;
+        const pct = '// NOMBRE-NON-MONETAIRE : pourcentage\nconst pct = (v: number) => formatNumber(v);';
+        expect(aliasMonetaires(pct, pct)).toEqual([]);
+        // et le jeton ne blanchit JAMAIS un alias de formatCAD.
+        const cad = '// NOMBRE-NON-MONETAIRE\nconst fmt = (v: number) => formatCAD(v);';
+        expect(aliasMonetaires(cad, cad)).toEqual(['fmt']);
     });
 
     it('le décommentage laisse du code à scanner (anti-vacuité, AGRÉGÉE)', () => {

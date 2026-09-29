@@ -351,7 +351,9 @@ désinfecte le snapshot avant de le restaurer.
   Garde : une 6ᵉ surface SDK sans marqueur doit rougir (l'inventaire se dérive du grep, pas d'une
   liste écrite à la main).
 
-- [ ] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
+- [x] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** — ✅ **livré 2026-09-29** : les deux exports RETIRÉS
+  (décision du chef de projet), avec leurs tests (branche `agence/financeai-code/lot3-code-mort-privacy`,
+  à archiver au merge). (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
   (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
   `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi
   (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). ⚠️ **Mesuré avant d'écrire « fuite »** : les deux
@@ -435,12 +437,25 @@ désinfecte le snapshot avant de le restaurer.
   (« Point mensuel — pas de détail au jour », « Aucun mouvement · marché seul »…).
   ⚠️ L'exposition a changé avec le panneau : la colonne est là en permanence.
 
-- [ ] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** (XS) — `FutureDetailModal.tsx` calcule
+- [x] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** — ✅ **livré 2026-09-29** (même branche, à archiver
+  au merge). (XS) — `FutureDetailModal.tsx` calcule
   `shownAssetsSum` et ne la lit **jamais** (une seule occurrence dans tout le dépôt). Elle porte en
   plus le `Number(...) || 0` que `[INFOBULLE-DETTE-NW-NON-FINI]` vient de condamner : la laisser,
   c'est garder un exemple du motif corrigé à trois lignes du correctif.
 
-- [ ] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** (S) — `amountPrivacyScan` ne connaît que
+- [ ] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** (S, à trier) — suite MESURÉE de l'item ci-dessous :
+  les appels DIRECTS à `formatNumber(` dans `components/` ne sont pas relevés par `amountPrivacyScan`
+  (ils mêlent pourcentages et montants). Mesuré le 2026-09-29 en les ajoutant à titre d'essai :
+  6 sites sans marque de mode discret dans la fenêtre — `DebtManager.tsx:449`,
+  `aiChat/AiChatConfirmModal.tsx:35`, `budget/BudgetGroupTable.tsx:402` (pourcentage),
+  `investments/AddStockForm.tsx:464,570,571` (prix / total d'achat). ⚠️ Non vérifié à l'œil : certains
+  peuvent être masqués plus haut ou être non personnels. Trier site par site (envelopper,
+  `MONTANT-PUBLIC`, ou `MONTANT-MASQUE-AILLEURS`) PUIS étendre `MONEY_BASE` — sinon la garde rougit.
+
+- [x] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** — ✅ **livré 2026-09-29** : alias de `formatNumber`
+  reconnus (monétaires par défaut, jeton `NOMBRE-NON-MONETAIRE` sur la définition pour un
+  pourcentage : posé sur `pctTexte`, `RealEstateWorkspace.tsx`) ; témoin réel `fmtNu`. Même branche,
+  à archiver au merge. (S) — `amountPrivacyScan` ne connaît que
   `formatCAD` / `formatCompactCAD` / `formatSigned(withCurrency)` et leurs alias : un
   `const fmtNu = (n) => formatNumber(...)` lui est **structurellement invisible**. Le site réel
   (`panneauJour/sections.tsx`, le gain affiché sous la valeur d'un compte) EST correctement

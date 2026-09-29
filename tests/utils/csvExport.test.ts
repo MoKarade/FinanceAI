@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { escapeCsvField, toCSV, exportTransactionsCSV, exportHoldingsCSV, exportBudgetCSV, downloadCSV, dateForFilename } from '../../utils/csvExport';
-import type { Transaction, Asset, BudgetCategory } from '../../types';
+import { escapeCsvField, toCSV, exportTransactionsCSV, downloadCSV, dateForFilename } from '../../utils/csvExport';
+import type { Transaction } from '../../types';
 
 describe('escapeCsvField', () => {
     it('pass through simple strings', () => {
@@ -99,43 +99,6 @@ describe('exportTransactionsCSV', () => {
         ];
         const csv = exportTransactionsCSV(txs);
         expect(csv).toContain('"Maxi, Montréal"');
-    });
-});
-
-describe('exportHoldingsCSV', () => {
-    it('exports holdings with computed value', () => {
-        const assets: Asset[] = [
-            { symbol: 'AAPL', name: 'Apple', quantity: 10, currency: 'USD', currentPrice: 200, performance: 33, dateBought: '2024-01-01', buyPrice: 150, accountType: 'CELI' },
-        ];
-        const csv = exportHoldingsCSV(assets);
-        const lines = csv.split('\r\n');
-        expect(lines[0]).toContain('Symbol');
-        expect(lines[0]).toContain('Value');
-        expect(lines[1]).toContain('AAPL');
-        expect(lines[1]).toContain('2000'); // 10 × 200
-    });
-
-    it('exports holdings with empty buyPrice / accountType', () => {
-        const assets: Asset[] = [
-            { symbol: 'TSLA', name: '', quantity: 5, currency: 'USD', currentPrice: 100, performance: 0, dateBought: '' },
-        ];
-        const csv = exportHoldingsCSV(assets);
-        expect(csv).toContain('TSLA');
-    });
-});
-
-describe('exportBudgetCSV', () => {
-    it('exports budget items', () => {
-        const budget: BudgetCategory[] = [
-            { id: 'c1', name: 'Loyer', target: 1500, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
-        ];
-        const csv = exportBudgetCSV(budget);
-        const lines = csv.split('\r\n');
-        expect(lines[0]).toContain('Name');
-        expect(lines[0]).toContain('Target');
-        expect(lines[1]).toContain('Loyer');
-        expect(lines[1]).toContain('1500');
-        expect(lines[1]).toContain('Besoin');
     });
 });
 

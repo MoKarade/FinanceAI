@@ -31,9 +31,8 @@ afterEach(() => {
 });
 
 describe('claude.ts — transport direct vs proxy (P0-PROXY)', () => {
-    it('proxy : chat() cible <origine>/api/claude/v1/messages avec Bearer + jeton de relais', async () => {
+    it('proxy : chat() cible <origine>/api/claude/v1/messages avec Bearer, SANS jeton de relais', async () => {
         vi.stubEnv('VITE_CLAUDE_TRANSPORT', 'proxy');
-        vi.stubEnv('VITE_PROXY_ACCESS_TOKEN', 'tok-front');
         const out = await chat([{ role: 'user', content: 'salut' }], 'sk-ant-perso');
         expect(out).toBe('ok');
         expect(fetchSpy).toHaveBeenCalled();
@@ -41,7 +40,7 @@ describe('claude.ts — transport direct vs proxy (P0-PROXY)', () => {
         expect(targetOf(call)).toBe(`${window.location.origin}/api/claude/v1/messages`);
         const h = headersOf(call);
         expect(h.get('authorization')).toBe('Bearer sk-ant-perso');   // clé BYOK en authToken
-        expect(h.get('x-financeai-proxy')).toBe('tok-front');         // jeton de relais joint
+        expect(h.get('x-financeai-proxy')).toBeNull();                // plus de jeton : il était public dans le bundle
         expect(h.get('x-api-key')).toBeNull();                        // PAS de x-api-key côté client en mode proxy
     });
 

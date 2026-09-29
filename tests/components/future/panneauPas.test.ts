@@ -37,6 +37,22 @@ describe('[FUTUR-PANNEAU-FIXE] indexAujourdhui — l’ancre du panneau', () => 
     it('série vide : −1, jamais un index inventé', () => {
         expect(indexAujourdhui([])).toBe(-1);
     });
+
+    it('[FUTUR-ANCRE-AUJOURDHUI] courbe au jour : l’ancre est le JOUR MÊME, pas le 1er du mois', () => {
+        // Deux mois de jours à partir de l'abscisse 0 (le 1er du mois courant) ; aujourd'hui = 25e jour.
+        const serie = serieJours(0, 2);
+        const xAujourdhui = 24 / 30;
+        const i = indexAujourdhui(serie, xAujourdhui);
+        expect(i).toBe(24);
+        // Anti-régression : l'ancienne règle (premier point ≥ 0) rendait le 1er du mois.
+        expect(indexAujourdhui(serie)).toBe(0);
+        expect(i).not.toBe(indexAujourdhui(serie));
+    });
+
+    it('[FUTUR-ANCRE-AUJOURDHUI] tolérance d’arrondi : un point à 1e-12 sous l’abscisse du jour reste le jour', () => {
+        const serie = [{ monthIndex: 0.5 }, { monthIndex: 0.8 - 1e-12 }, { monthIndex: 0.84 }];
+        expect(indexAujourdhui(serie, 0.8)).toBe(1);
+    });
 });
 
 describe('[FUTUR-PANNEAU-FIXE] indexApresPas — un pas est un DÉPLACEMENT, jamais un no-op', () => {

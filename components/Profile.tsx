@@ -17,8 +17,10 @@
 // les trois écrans, pas en divergeant ici : `[A11Y-SUBTABS-TABPANEL]`.
 import React, { useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { Tab } from '../types';
+import { usePendingFocus } from '../utils/usePendingFocus';
 import { PageHeader } from './ui/PageHeader';
-import { Icon, type IconName } from './ui/Icon';
+import type { IconName } from './ui/Icon';
 import { SubTabs, TabPanel } from './ui/SubTabs';
 import { UsersCard } from './settings/sections/UsersCard';
 import { SavedProfilesCard } from './profile/SavedProfilesCard';
@@ -31,9 +33,22 @@ type ProfileSubTab = 'identite' | 'revenus' | 'retraite' | 'profils';
 const PROFILE_SUB_TABS: ReadonlyArray<{ id: ProfileSubTab; label: string; icon: IconName }> = [
     { id: 'identite', label: 'Identité', icon: 'users' },
     { id: 'revenus', label: 'Revenus', icon: 'cash' },
-    { id: 'retraite', label: 'Retraite & enfants', icon: 'retirement' },
+    { id: 'retraite', label: 'Retraite et enfants', icon: 'retirement' },
     { id: 'profils', label: 'Profils enregistrés', icon: 'settings' },
 ];
+
+/**
+ * [BANDEAUX-VERS-PROFIL] Sous-onglet qui porte une section de deep-link (`data-focus-section`) :
+ * il doit être OUVERT au montage, sinon le champ visé n'est pas dans le DOM et le défilement ne
+ * trouve rien. `null` : section inconnue → l'onglet par défaut.
+ */
+function sousOngletPourSection(section: string | null | undefined): ProfileSubTab | null {
+    if (!section) return null;
+    if (/^profile-user\d-(card|name|age)$/.test(section)) return 'identite';
+    if (/^profile-user\d-(grossSalary|netSalary)$/.test(section)) return 'revenus';
+    if (/^profile-(retirementAge|lifeExpectancy|retirementIncome)$/.test(section)) return 'retraite';
+    return null;
+}
 
 /** Petit intertitre de regroupement (les sous-composants rendent déjà leurs propres Cards). */
 const GroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -43,23 +58,35 @@ const GroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 export const Profile: React.FC = () => {
     const config = useFinanceStore((s) => s.config);
     const setConfig = (c: typeof config) => useFinanceStore.getState().setAppState({ config: c });
-    const [subTab, setSubTab] = useState<ProfileSubTab>('identite');
+    const pendingFocus = useFinanceStore((s) => s.pendingFocus);
+    // Deep-link (bandeaux « donnée manquante », prérequis de page) : on démarre sur le sous-onglet
+    // qui porte le champ, pour qu'il soit monté quand `usePendingFocus` le cherche.
+    const [subTab, setSubTab] = useState<ProfileSubTab>(() => {
+        if (pendingFocus && pendingFocus.tab === Tab.PROFILE && Date.now() <= pendingFocus.expiresAt) {
+            return sousOngletPourSection(pendingFocus.section) ?? 'identite';
+        }
+        return 'identite';
+    });
+    usePendingFocus(Tab.PROFILE);
 
     return (
         <div className="space-y-6 stagger-in pb-20">
+            {/* [S5-REFONTE-PROFIL] Maquettes : sous-onglets dans l'en-tête, phrase d'intro sous le filet. */}
             <PageHeader
-                icon={<Icon name="settings" size={28} />}
                 title="Profil"
-                subtitle="Toutes tes infos personnelles en un seul endroit — elles alimentent Impôts, Retraite, Futur et le reste."
+                nav={
+                    <SubTabs<ProfileSubTab>
+                        idPrefix="profil"
+                        label="Sections Profil"
+                        tabs={PROFILE_SUB_TABS}
+                        active={subTab}
+                        onSelect={setSubTab}
+                    />
+                }
             />
-
-            <SubTabs<ProfileSubTab>
-                idPrefix="profil"
-                label="Sections Profil"
-                tabs={PROFILE_SUB_TABS}
-                active={subTab}
-                onSelect={setSubTab}
-            />
+            <p className="text-body text-ink-200">
+                Toutes tes infos personnelles en un seul endroit : elles alimentent Impôts, Retraite, Futur et le reste.
+            </p>
 
             {/* [IA-DEDUP-COMPLETUDE] La complétude (SetupHub) vit UNIQUEMENT dans Configuration
                 (audit UX 2026-06-17 : doublon Profil+Config). Ici = uniquement les champs à remplir. */}

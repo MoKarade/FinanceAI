@@ -197,12 +197,16 @@ export async function createAppDataFile(
     );
 }
 
-/** Cherche le fichier de sync dans appDataFolder. Retourne sa réf ou null s'il n'existe pas. */
-export async function findSyncFile(token: string, fetchFn?: FetchLike): Promise<DriveFileRef | null> {
+/**
+ * Cherche un fichier d'appDataFolder par NOM EXACT (`name='...'`, pas `contains`). Base commune de
+ * `findSyncFile` (ci-dessous) et de tout autre petit fichier d'état (ex. verrou d'écriture MCP) — un
+ * seul patron de requête Drive, pas dupliqué.
+ */
+export async function findAppDataFileByName(token: string, name: string, fetchFn?: FetchLike): Promise<DriveFileRef | null> {
     const f = resolveFetch(fetchFn);
     const params = new URLSearchParams({
         spaces: 'appDataFolder',
-        q: `name='${SYNC_FILE_NAME}'`,
+        q: `name='${name}'`,
         fields: 'files(id,modifiedTime)',
         pageSize: '1',
     });
@@ -212,6 +216,43 @@ export async function findSyncFile(token: string, fetchFn?: FetchLike): Promise<
         const file = data.files?.[0];
         return file ? { id: file.id, modifiedTime: file.modifiedTime } : null;
     });
+}
+
+/** Lit et parse le contenu JSON BRUT (non typé) d'un fichier d'appDataFolder par son id. Base commune
+ *  de `readSyncFile` (typé SyncEnvelope) pour tout autre petit fichier d'état générique. */
+export async function readAppDataFile<T = unknown>(token: string, fileId: string, fetchFn?: FetchLike): Promise<T> {
+    const f = resolveFetch(fetchFn);
+    return withDriveTimeout(f, `${DRIVE_FILES}/${fileId}?alt=media`, { headers: authHeader(token) }, async (res) => {
+        if (!res.ok) await failFromResponse(res);
+        try {
+            return (await res.json()) as T;
+        } catch {
+            throw new DriveError('Contenu du fichier illisible (JSON invalide)');
+        }
+    });
+}
+
+/** Remplace le contenu (media) d'un fichier d'appDataFolder par son id. Base commune de
+ *  `updateSyncFile` pour tout autre petit fichier d'état générique. */
+export async function updateAppDataFile(token: string, fileId: string, content: unknown, fetchFn?: FetchLike): Promise<void> {
+    const f = resolveFetch(fetchFn);
+    await withDriveTimeout(
+        f,
+        `${DRIVE_UPLOAD}/${fileId}?uploadType=media`,
+        {
+            method: 'PATCH',
+            headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+            body: JSON.stringify(content),
+        },
+        async (res) => {
+            if (!res.ok) await failFromResponse(res);
+        },
+    );
+}
+
+/** Cherche le fichier de sync dans appDataFolder. Retourne sa réf ou null s'il n'existe pas. */
+export async function findSyncFile(token: string, fetchFn?: FetchLike): Promise<DriveFileRef | null> {
+    return findAppDataFileByName(token, SYNC_FILE_NAME, fetchFn);
 }
 
 /** Crée le fichier de sync (multipart : métadonnées + contenu). Retourne l'id créé. */
@@ -262,13 +303,19 @@ export async function updateSyncFile(
     );
 }
 
-/** Supprime le fichier de sync de l'appDataFolder. Idempotent : un 404 (déjà absent) = succès. */
-export async function deleteSyncFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
+/** Supprime un fichier d'appDataFolder par son id. Idempotent : un 404 (déjà absent) = succès. Base
+ *  commune de `deleteSyncFile` pour tout autre petit fichier (ex. nettoyage des anciennes sauvegardes). */
+export async function deleteAppDataFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
     const f = resolveFetch(fetchFn);
     await withDriveTimeout(f, `${DRIVE_FILES}/${fileId}`, { method: 'DELETE', headers: authHeader(token) }, async (res) => {
         // 204 No Content = succès ; 404 = fichier déjà supprimé → on tolère (idempotent).
         if (!res.ok && res.status !== 404) await failFromResponse(res);
     });
+}
+
+/** Supprime le fichier de sync de l'appDataFolder. Idempotent : un 404 (déjà absent) = succès. */
+export async function deleteSyncFile(token: string, fileId: string, fetchFn?: FetchLike): Promise<void> {
+    return deleteAppDataFile(token, fileId, fetchFn);
 }
 
 /**

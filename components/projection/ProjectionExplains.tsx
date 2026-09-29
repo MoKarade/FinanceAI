@@ -212,7 +212,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
           onChange={e => setQuery(e.target.value)}
           placeholder="Rechercher dans tes prévisions…"
           aria-label="Rechercher dans les explications"
-          className="w-full bg-dark border border-border rounded-card px-3 py-2 text-ink-50 text-body focus:border-primary outline-none"
+          className="w-full bg-dark border border-border rounded-card px-3 py-2 text-ink-50 text-body focus:border-primary outline-hidden"
         />
         {q && (
           <p className="text-tiny text-ink-400 mt-2" aria-live="polite">

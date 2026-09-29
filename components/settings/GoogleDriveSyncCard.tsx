@@ -13,6 +13,11 @@ import {
     removeSyncPassphrase,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
+import { getPassphrase } from '../../services/sync/passphraseStore';
+import { getValidAccessToken, isGoogleAuthConfigured as isDriveConfigured } from '../../services/googleDrive/gisAuth';
+import { countPlaintextBackups, deletePlaintextBackups } from '../../services/googleDrive/backupCleanup';
+import { isDeviceRemembered, forgetDevice } from '../../services/deviceKeyStore';
+import { PassphraseCreate, telechargerCarte } from './PassphraseCreate';
 
 /**
  * Carte de synchronisation Google Drive (Réglages → Système).
@@ -38,15 +43,26 @@ function formatWhen(ts: number): string {
 }
 
 /**
- * Bloc passphrase — RÉDUIT à la seule action « retirer » (choix Marc : plus aucune option pour EN
- * créer une). Ne s'affiche QUE si une passphrase est encore active, pour permettre de revenir à
- * « juste mon compte Google » : `removeSyncPassphrase` re-publie le Drive EN CLAIR. Sinon → rien.
- * (Le déverrouillage d'un coffre chiffré existant est géré en plein écran par PassphraseGate.)
+ * [CHIFFREMENT-PHASE1] Bloc passphrase — RÉTABLIT le chemin de création (§4) retiré en juin, en plus
+ * de « retirer » (déjà là). Inactive → bouton « Créer une phrase secrète » (ouvre le modal 3 étapes).
+ * Active → rappel permanent (C-fin §4), état de mémorisation par appareil (§3, « Oublier cet
+ * appareil »), lien pour revoir la carte de récupération, et le nettoyage des anciennes sauvegardes
+ * en clair (§5.5) — ce dernier visible dans LES DEUX cas (des `.bak.json` en clair peuvent exister
+ * même avant la toute première activation).
  */
 const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
     const [busy, setBusy] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [remembered, setRemembered] = useState(false);
+    const [cleanup, setCleanup] = useState<{ count: number | null; confirming: boolean; busy: boolean }>({
+        count: null,
+        confirming: false,
+        busy: false,
+    });
 
-    if (!status.passphraseActive) return null; // aucune option pour activer une passphrase
+    useEffect(() => {
+        void isDeviceRemembered().then(setRemembered);
+    }, [status.passphraseActive]);
 
     const onClear = async () => {
         setBusy(true);
@@ -72,6 +88,100 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
         }
     };
 
+    const onVoirCarte = () => {
+        const phrase = getPassphrase();
+        if (!phrase) { showToast('Passphrase indisponible dans cette session.', 'error'); return; }
+        telechargerCarte(phrase);
+    };
+
+    const onOublierAppareil = async () => {
+        await forgetDevice();
+        setRemembered(false);
+        showToast('Appareil oublié — la phrase sera redemandée ici la prochaine fois.', 'info');
+    };
+
+    const onCompterBackups = async () => {
+        if (!isDriveConfigured()) return;
+        setCleanup((c) => ({ ...c, busy: true }));
+        try {
+            const token = await getValidAccessToken();
+            const n = await countPlaintextBackups(token);
+            setCleanup({ count: n, confirming: n > 0, busy: false });
+            if (n === 0) showToast('Aucune ancienne sauvegarde en clair trouvée.', 'info');
+        } catch {
+            showToast('Impossible de vérifier les anciennes sauvegardes (connecte Google Drive).', 'error');
+            setCleanup({ count: null, confirming: false, busy: false });
+        }
+    };
+
+    const onSupprimerBackups = async () => {
+        setCleanup((c) => ({ ...c, busy: true }));
+        try {
+            const token = await getValidAccessToken();
+            const n = await deletePlaintextBackups(token);
+            showToast(`${n} ancienne(s) sauvegarde(s) en clair supprimée(s) de Google Drive.`, 'success');
+        } catch {
+            showToast('Suppression impossible.', 'error');
+        } finally {
+            setCleanup({ count: null, confirming: false, busy: false });
+        }
+    };
+
+    const cleanupBlock = (
+        <div className="pt-2 border-t border-white/10 space-y-2">
+            {!cleanup.confirming ? (
+                <button
+                    onClick={onCompterBackups}
+                    disabled={cleanup.busy}
+                    className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 disabled:opacity-50"
+                >
+                    {cleanup.busy ? '…' : 'Nettoyer les anciennes sauvegardes non chiffrées'}
+                </button>
+            ) : (
+                <div className="p-2 rounded-card bg-rose-500/10 border border-rose-500/30 space-y-2">
+                    <p className="text-tiny text-ink-200">
+                        {cleanup.count} fichier(s) de sauvegarde EN CLAIR trouvé(s) dans ton Google Drive
+                        (antérieurs au chiffrement). Les supprimer ?
+                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={onSupprimerBackups}
+                            disabled={cleanup.busy}
+                            className="px-3 py-1.5 rounded-card bg-rose-500/20 border border-rose-500/40 text-rose-200 text-tiny font-medium hover:bg-rose-500/30 disabled:opacity-50"
+                        >
+                            {cleanup.busy ? '…' : `Oui, supprimer les ${cleanup.count}`}
+                        </button>
+                        <button
+                            onClick={() => setCleanup({ count: null, confirming: false, busy: false })}
+                            className="px-3 py-1.5 rounded-card bg-white/5 border border-white/40 text-ink-200 text-tiny font-medium hover:bg-white/10"
+                        >
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    if (!status.passphraseActive) {
+        return (
+            <div className="p-3 rounded-card border border-white/10 bg-black/20 space-y-2">
+                <p className="text-tiny text-ink-300 leading-snug">
+                    Par défaut, ta sauvegarde Drive n'est PAS chiffrée applicativement. Crée une phrase secrète
+                    pour activer un chiffrement zéro-connaissance (illisible même par Google).
+                </p>
+                <button
+                    onClick={() => setCreateOpen(true)}
+                    className="px-3 py-1.5 rounded-card bg-primary/15 border border-primary/40 text-primary text-meta font-medium hover:bg-primary/25"
+                >
+                    Créer une phrase secrète
+                </button>
+                {cleanupBlock}
+                <PassphraseCreate isOpen={createOpen} onClose={() => setCreateOpen(false)} onActivated={() => setCreateOpen(false)} />
+            </div>
+        );
+    }
+
     return (
         <div className="p-3 rounded-card bg-success-500/10 border border-success-500/30 space-y-2">
             <div className="text-meta font-semibold text-emerald-300">Chiffrement par passphrase actif</div>
@@ -79,13 +189,35 @@ const PassphraseSection: React.FC<{ status: SyncStatus }> = ({ status }) => {
                 Tes sauvegardes Drive sont chiffrées avec ta passphrase. Pour revenir à « juste mon compte
                 Google » (sans passphrase), retire-la : ta sauvegarde Drive repassera en clair.
             </p>
-            <button
-                onClick={onClear}
-                disabled={status.busy || busy}
-                className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 disabled:opacity-50"
-            >
-                {busy ? '…' : 'Effacer la passphrase (repasser en clair)'}
-            </button>
+            <p className="text-tiny text-ink-400">
+                {remembered
+                    ? 'Mémorisée sur cet appareil (déverrouillage biométrique requis à chaque usage).'
+                    : 'Non mémorisée sur cet appareil : redemandée à chaque session.'}
+            </p>
+            <div className="flex flex-wrap gap-3">
+                <button
+                    onClick={onVoirCarte}
+                    className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200"
+                >
+                    Voir la carte de récupération
+                </button>
+                {remembered && (
+                    <button
+                        onClick={() => void onOublierAppareil()}
+                        className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200"
+                    >
+                        Oublier cet appareil
+                    </button>
+                )}
+                <button
+                    onClick={onClear}
+                    disabled={status.busy || busy}
+                    className="text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-200 disabled:opacity-50"
+                >
+                    {busy ? '…' : 'Effacer la passphrase (repasser en clair)'}
+                </button>
+            </div>
+            {cleanupBlock}
         </div>
     );
 };

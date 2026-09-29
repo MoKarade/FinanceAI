@@ -79,19 +79,19 @@ export const AuditLogViewer: React.FC = () => {
                 </p>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-white/5 rounded p-2 border border-white/10">
+                    <div className="bg-white/5 rounded-sm p-2 border border-white/10">
                         <div className="text-tiny text-ink-400 uppercase">Total</div>
                         <div className="text-base font-bold text-white">{stats.total}</div>
                     </div>
-                    <div className="bg-white/5 rounded p-2 border border-white/10">
+                    <div className="bg-white/5 rounded-sm p-2 border border-white/10">
                         <div className="text-tiny text-ink-400 uppercase">24h</div>
                         <div className="text-base font-bold text-white">{stats.last24h}</div>
                     </div>
-                    <div className="bg-success-500/10 rounded p-2 border border-success-500/30">
+                    <div className="bg-success-500/10 rounded-sm p-2 border border-success-500/30">
                         <div className="text-tiny text-success-400 uppercase">Adds</div>
                         <div className="text-base font-bold text-emerald-300">{stats.byOperation.add ?? 0}</div>
                     </div>
-                    <div className="bg-danger-500/10 rounded p-2 border border-danger-500/30">
+                    <div className="bg-danger-500/10 rounded-sm p-2 border border-danger-500/30">
                         <div className="text-tiny text-danger-400 uppercase">Removes</div>
                         <div className="text-base font-bold text-red-300">{stats.byOperation.remove ?? 0}</div>
                     </div>
@@ -103,7 +103,7 @@ export const AuditLogViewer: React.FC = () => {
                         aria-label="Filtrer par champ modifié"
                         value={fieldFilter}
                         onChange={e => setFieldFilter(e.target.value)}
-                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                        className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
                     >
                         <option value="all">Tous</option>
                         {allFields.map(f => <option key={f} value={f}>{f}</option>)}
@@ -113,7 +113,7 @@ export const AuditLogViewer: React.FC = () => {
                         aria-label="Filtrer par type d'opération"
                         value={opFilter}
                         onChange={e => setOpFilter(e.target.value as AuditEntry['operation'] | 'all')}
-                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                        className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
                     >
                         <option value="all">Toutes</option>
                         <option value="add">add</option>
@@ -122,9 +122,9 @@ export const AuditLogViewer: React.FC = () => {
                         <option value="replace">replace</option>
                     </select>
                     <div className="ml-auto flex gap-2">
-                        <button type="button" onClick={() => setRefreshKey(k => k + 1)} className="px-3 py-1 text-tiny bg-white/5 hover:bg-white/10 rounded text-ink-300 focus-ring">↻ Rafraîchir</button>
-                        <button type="button" onClick={handleExport} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-400 focus-ring disabled:opacity-50">Exporter</button>
-                        <button type="button" onClick={() => setConfirmClear(true)} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded text-red-300 focus-ring disabled:opacity-50">Vider</button>
+                        <button type="button" onClick={() => setRefreshKey(k => k + 1)} className="px-3 py-1 text-tiny bg-white/5 hover:bg-white/10 rounded-sm text-ink-300 focus-ring">↻ Rafraîchir</button>
+                        <button type="button" onClick={handleExport} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-sm text-info-400 focus-ring disabled:opacity-50">Exporter</button>
+                        <button type="button" onClick={() => setConfirmClear(true)} disabled={entries.length === 0} className="px-3 py-1 text-tiny bg-danger-500/15 hover:bg-danger-500/25 border border-danger-500/30 rounded-sm text-red-300 focus-ring disabled:opacity-50">Vider</button>
                     </div>
                 </div>
 
@@ -140,7 +140,7 @@ export const AuditLogViewer: React.FC = () => {
                             const colors = OP_COLORS[e.operation];
                             const date = new Date(e.timestamp).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'medium' });
                             return (
-                                <div key={e.id} className={`text-tiny rounded border px-3 py-2 ${colors}`}>
+                                <div key={e.id} className={`text-tiny rounded-sm border px-3 py-2 ${colors}`}>
                                     <div className="flex items-center gap-2">
                                         <Icon name={OP_ICONS[e.operation]} size={13} />
                                         <span className="font-mono opacity-60 shrink-0">{date}</span>

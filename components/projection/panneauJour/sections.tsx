@@ -115,7 +115,7 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
 
     return (
         <div className="space-y-2.5">
-            <div className="rounded-xl bg-white/[0.05] border border-white/15 p-2.5">
+            <div className="rounded-xl bg-white/5 border border-white/15 p-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
                     {hasDiffNW && (
@@ -123,7 +123,7 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
                            libellé : en mode discret, ce badge affichait la variation en clair juste à
                            côté d'une valeur nette masquée — la donnée la plus regardée échappait au
                            seul mécanisme prévu pour elle. */
-                        <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
+                        <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded-sm ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
                             Variation {isDailyPoint ? 'du jour ' : ''}
                             <PrivateAmount>{diffNW > 0 ? '+' : ''}{fmt(diffNW)}</PrivateAmount>
                         </span>
@@ -135,10 +135,10 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
             {/* [PH2-d-2] — référence VERROUILLÉE (présente seulement sous verrou) : valeur figée +
                 écart vs l'aperçu live. */}
             {typeof locked === 'number' && (
-                <div className="rounded-xl bg-amber-500/[0.08] border border-amber-500/25 p-2.5">
+                <div className="rounded-xl bg-amber-500/8 border border-amber-500/25 p-2.5">
                     <div className="flex items-center justify-between gap-2">
                         <span className="text-tiny uppercase tracking-widest text-amber-300 font-bold">🔒 Verrouillée</span>
-                        <PrivateAmount className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${(data.NetWorth || 0) - locked >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`} title="Écart entre l'aperçu live et la référence verrouillée">
+                        <PrivateAmount className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded-sm ${(data.NetWorth || 0) - locked >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`} title="Écart entre l'aperçu live et la référence verrouillée">
                             Live {(data.NetWorth || 0) - locked >= 0 ? '+' : ''}{fmt((data.NetWorth || 0) - locked)}
                         </PrivateAmount>
                     </div>
@@ -149,10 +149,10 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
             {/* Pourquoi ça a bougé : dépôts (ce que tu ajoutes) vs rendement (marché). */}
             {(totalFlow !== 0 || totalGain !== 0) && (
                 <div className="flex items-center gap-2 text-tiny font-mono">
-                    <PrivateAmount className={`flex-1 text-center px-1.5 py-1 rounded ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`} title="Argent que tu ajoutes toi-même (dépôts − retraits)">
+                    <PrivateAmount className={`flex-1 text-center px-1.5 py-1 rounded-sm ${totalFlow >= 0 ? 'text-sky-300 bg-sky-500/10' : 'text-orange-300 bg-orange-500/10'}`} title="Argent que tu ajoutes toi-même (dépôts − retraits)">
                         Dépôts {totalFlow > 0 ? '+' : ''}{fmt(totalFlow)}
                     </PrivateAmount>
-                    <PrivateAmount className={`flex-1 text-center px-1.5 py-1 rounded ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`} title="Ce que tes placements rapportent (rendement du marché)">
+                    <PrivateAmount className={`flex-1 text-center px-1.5 py-1 rounded-sm ${totalGain >= 0 ? 'text-green-300 bg-green-500/10' : 'text-red-300 bg-danger-500/10'}`} title="Ce que tes placements rapportent (rendement du marché)">
                         Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}
                     </PrivateAmount>
                 </div>

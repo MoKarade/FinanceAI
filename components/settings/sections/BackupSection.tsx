@@ -8,6 +8,7 @@ import React from 'react';
 import { BackupPanel } from '../BackupPanel';
 import { AutoBackupPanel } from '../AutoBackupPanel';
 import { GoogleDriveSyncCard } from '../GoogleDriveSyncCard';
+import { WriteLockCard } from '../WriteLockCard';
 
 // CFG-SAUVE (retour Marc) : « Connecter à Claude » déplacé vers Clés API & Services
 // (intégration) et « Mode test » vers Système & diagnostics (outil dev). Cet onglet ne
@@ -20,6 +21,9 @@ export const BackupSection: React.FC = () => {
       <AutoBackupPanel />
       {/* Sync Google Drive (masquée si VITE_GOOGLE_CLIENT_ID non configuré) */}
       <GoogleDriveSyncCard />
+      {/* [VERROU-ECRITURE] Écritures MCP : verrou d'écriture pour le connecteur claude.ai (masquée
+          dans les mêmes conditions que GoogleDriveSyncCard). */}
+      <WriteLockCard />
     </div>
   );
 };

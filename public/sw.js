@@ -10,8 +10,15 @@
 //
 // Note : ce SW est uniquement chargé en PROD (vite import.meta.env.PROD).
 
-const CACHE_NAME = 'financeai-v3';
+const CACHE_NAME = 'financeai-v4'; // v4 : Cloudflare Access — plus aucune réponse redirigée/opaque en cache (purge des caches v3)
 const PRECACHE_URLS = ['/', '/manifest.json', '/icon.svg'];
+
+// [CF-ACCESS] Une réponse mettable en cache doit être une réponse DIRECTE de notre origine : ni redirigée (session
+// Access expirée = 302 vers la page de connexion Cloudflare, dont le HTML en 200 serait sinon mémorisé À LA PLACE de
+// l'app — le bug de juin 2026), ni opaque, ni d'un autre type que « basic ».
+function cacheable(res) {
+    return !!res && res.status === 200 && res.type === 'basic' && !res.redirected;
+}
 
 // P2.9 fix : précache individuel (vs cache.addAll qui échoue all-or-nothing).
 // Sur Vercel, '/index.html' peut 404 (rewrite vers '/'), ce qui
@@ -21,7 +28,7 @@ async function precacheIndividually(cache) {
     await Promise.all(PRECACHE_URLS.map(async (url) => {
         try {
             const res = await fetch(url, { cache: 'reload' });
-            if (res.ok) await cache.put(url, res);
+            if (res.ok && cacheable(res)) await cache.put(url, res);
         } catch {
             // silent : la resource manquante ne bloque pas le SW
         }
@@ -54,6 +61,9 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return; // pas de cache pour Era / Finnhub / Anthropic
 
+    // [CF-ACCESS] /api/* : jamais mis en cache ni servi par le SW (réponses du relais/proxys : données, 401 d'accès expiré).
+    if (url.pathname.startsWith('/api/')) return;
+
     // Cache-first pour /assets/* (chunks Vite hashés, immutable)
     // + portfolio-history.csv (historique immuable côté serveur, peut être
     // grand ~50KB, vaut le coup d'éviter le re-fetch à chaque load).
@@ -64,7 +74,7 @@ self.addEventListener('fetch', (event) => {
             caches.match(req).then((hit) => {
                 if (hit) return hit;
                 return fetch(req).then((res) => {
-                    if (!res || res.status !== 200) return res;
+                    if (!cacheable(res)) return res;
                     const clone = res.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
                     return res;
@@ -84,7 +94,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(req, fetchOpts)
             .then((res) => {
-                if (!res || res.status !== 200) return res;
+                if (!cacheable(res)) return res;
                 const clone = res.clone();
                 caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
                 return res;

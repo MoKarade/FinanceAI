@@ -8,7 +8,7 @@ Application personnelle de planification financière complète : suivi en temps 
 
 ## 🚀 Lancer localement
 
-**Prérequis** : Node.js ≥ 18
+**Prérequis** : Node.js 24.x (champ `engines` de `package.json`)
 
 ```bash
 npm install
@@ -83,8 +83,9 @@ relu ment en silence. Un compteur se lit dans la CI.)*
 
 L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Résumé :
 
-- Pas de backend. L'app vit côté navigateur, persiste localement (localStorage + IndexedDB chiffré), et appelle Anthropic, Finnhub et CoinGecko directement depuis le client.
-- Le moteur de projection (`services/projection.ts` + `services/projection/` — 57 sous-modules, mesuré le 2026-09-07) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
+- L'app vit côté navigateur et persiste localement (localStorage + IndexedDB chiffré). Elle n'a pas de backend de données, mais deux petits services serveur l'accompagnent : `api/` (relais Vercel pour les appels Claude) et `mcp/` (serveur MCP). Finnhub et CoinGecko sont appelés depuis le client.
+- `api/` : `api/_lib/relay.ts` et `api/claude/v1/messages.ts` (chemin statique, requis par Vercel). Le relais garde la clé Anthropic de l'utilisateur (BYOK) et peut router les appels texte ou à outils « custom » Haiku/Sonnet vers la passerelle IA locale (Ollama via l'Atelier), avec bascule automatique sur Anthropic. Décision : [`docs/adr/0018-ia-locale-via-relais.md`](docs/adr/0018-ia-locale-via-relais.md).
+- Le moteur de projection (`services/projection.ts` + `services/projection/` — une soixantaine de fichiers) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
 - Le state global est Zustand v5 + persist (schema v7 avec migrations v1→v7).
 - `services/eraContext.ts` est dormant (MCP-only) — l'UI Era a été retirée.
 
@@ -102,7 +103,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 - **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
 - **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
-- **Tests** : Vitest 4 + @testing-library/react + axe-core (5 747 tests, 584 fichiers — compte tenu à jour dans `CLAUDE.md`, mesuré le 2026-09-07)
+- **Tests** : Vitest 4 + @testing-library/react + axe-core (compte : voir `CLAUDE.md`, source unique)
 - **Validation** : Zod 3
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)

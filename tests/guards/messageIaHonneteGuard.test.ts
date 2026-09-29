@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = resolve(process.cwd(), 'components');
@@ -30,18 +31,11 @@ const SOURCE_DES_MESSAGES = 'services/messageErreurIa.ts';
 const ACCUSE_LA_CLE = /(Vérifie|vérifie|Configure|configure)[^<>{}\n]{0,60}cl[ée][^<>{}\n]{0,20}Anthropic/;
 
 const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string }> = [
-    {
-        fichier: 'CoupleOptimizationCard.tsx',
-        jeton: 'Configure ta clé Anthropic dans Configuration pour activer l\'IA',
-        raison: 'ce n\'est PAS un message d\'erreur : c\'est l\'état « aucune clé configurée », affiché '
-            + 'À LA PLACE du bouton, avant tout appel. Il ne peut donc rien accuser à tort — la clé '
-            + 'est réellement absente, l\'app le sait sans avoir rien tenté.',
-    },
 ];
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -61,7 +55,7 @@ function mentionsDeLaCle(): Ligne[] {
             throw new Error(`${chemin} : décommentage suspect — la garde lirait un fichier vidé`);
         }
         code.split('\n').forEach((texte, i) => {
-            if (ACCUSE_LA_CLE.test(texte)) out.push({ chemin: chemin.replace(`${process.cwd()}/`, ''), ligne: i + 1, texte: texte.trim() });
+            if (ACCUSE_LA_CLE.test(texte)) out.push({ chemin: chemin.replace(`${cwdPosix()}/`, ''), ligne: i + 1, texte: texte.trim() });
         });
     }
     return out;

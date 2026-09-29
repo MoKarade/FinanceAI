@@ -6,6 +6,12 @@
   clair le prix d'achat et le montant investi même en mode discret. Ils sont maintenant masqués,
   comme le champ de saisie du prix juste au-dessus.
 
+## 2026-09-29 — Téléphone : les boutons et champs sont plus faciles à toucher
+
+- Le lien « ‹ Plus », les champs de la page verrouillée (salaire, âge de retraite…), les boutons « Revoir le
+  tutoriel » et « Choisir un persona », « Retirer le conjoint » et la ligne des interrupteurs du Profil font
+  maintenant au moins 44 px de haut (norme d'accessibilité). L'apparence ne change presque pas.
+
 ## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
 
 - Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois

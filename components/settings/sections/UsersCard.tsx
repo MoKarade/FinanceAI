@@ -161,7 +161,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   <span className="text-[18px] font-semibold text-ink-50 truncate">{user.name || '—'}</span>
                 </div>
                 {idx === 1 && (
-                  <button type="button" onClick={retirerConjoint} className="text-meta text-ink-300 underline underline-offset-2 hover:text-danger-400 focus-ring rounded-sm">
+                  <button type="button" onClick={retirerConjoint} className="min-h-11 px-2 -mr-2 inline-flex items-center text-meta text-ink-300 underline underline-offset-2 hover:text-danger-400 focus-ring rounded-sm">
                     Retirer le conjoint
                   </button>
                 )}
@@ -177,7 +177,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                 </div>
               </div>
               <div className="rounded-[10px] bg-surface border border-white/6 p-3.5 flex flex-col gap-2.5">
-                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                <label className="flex items-center justify-between gap-3 cursor-pointer min-h-11">
                   <span className="flex flex-col gap-0.5">
                     <span className="text-body text-ink-100">Immigré au Canada</span>
                     <span className="text-meta text-ink-400">Coché : demande l’année de résidence fiscale au Canada</span>

@@ -189,9 +189,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-linear-to-r/srgb from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-surface p-5 md:p-6 rounded-card border border-white/6">
                 <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Charges Fixes & Abonnements</h2>
+                    <h2 className="text-[17px] lg:text-[18px] font-semibold text-ink-50">Charges fixes et abonnements</h2>
                     <p className="text-ink-300 text-body mt-1">Abonnements & Factures Récurrentes.</p>
                 </div>
                 <div className="flex gap-4">
@@ -286,7 +286,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                             ))}
                             {activeSubs.length === 0 && <div className="text-center text-ink-400 py-10">Aucun abonnement détecté.</div>}
                         </div>
-                        <div className="mt-4 bg-linear-to-br/srgb from-red-900/20 to-black border border-danger-500/20 p-3 rounded-xl">
+                        <div className="mt-4 bg-danger-500/10 border border-danger-500/20 p-3 rounded-xl">
                             <div className="text-tiny text-red-300 uppercase font-bold mb-2">Le "Latte Factor"</div>
                             <div className="text-tiny text-ink-300 mb-2">
                                 Impact à long terme de ces {activeSubs.length} abonnements si l'argent était plutôt investi.

@@ -145,7 +145,7 @@ export const Settings: React.FC<SettingsProps> = ({
     <PageHeader
       title="Réglages"
       actions={
-        <button type="button" onClick={startGuidedTour} className="h-10 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring">
+        <button type="button" onClick={startGuidedTour} className="h-11 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring">
           Revoir le tutoriel
         </button>
       }

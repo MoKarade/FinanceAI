@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-29 — Dettes : champs plus faciles à toucher, et le formulaire d'édition te guide au clavier
+
+- Tous les champs et boutons du formulaire de dette (ajout et modification) font maintenant au moins
+  44 px de haut, la taille tactile recommandée (avant : environ 26 px). Le formulaire est un peu plus
+  haut, surtout sur téléphone.
+- Quand tu ouvres « Modifier » sur une dette, le focus va directement sur le panneau d'édition : au
+  clavier ou avec un lecteur d'écran, tu n'as plus à chercher l'alerte sur le solde de la dette.
+
 ## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
 
 - Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois

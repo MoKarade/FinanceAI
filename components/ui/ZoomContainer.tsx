@@ -36,13 +36,13 @@ export const ZoomContainer: React.FC<ZoomContainerProps> = ({ zoom, className = 
                 <button
                     type="button"
                     onClick={zoom.reset}
-                    className="absolute top-1 right-1 z-10 px-2 py-0.5 text-tiny bg-white/10 hover:bg-white/20 border border-white/15 rounded text-ink-200 font-medium transition-colors focus-ring"
+                    className="absolute top-1 right-1 z-10 px-2 py-0.5 text-tiny bg-white/10 hover:bg-white/20 border border-white/15 rounded-sm text-ink-200 font-medium transition-colors focus-ring"
                     title="Réinitialiser la vue (double-clic aussi)"
                 >
                     ↺ Vue complète
                 </button>
             ) : hint ? (
-                <div className="absolute bottom-1 right-1 text-tiny text-ink-400 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded">
+                <div className="absolute bottom-1 right-1 text-tiny text-ink-400 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded-sm">
                     Molette ou pincement = zoom
                 </div>
             ) : null}

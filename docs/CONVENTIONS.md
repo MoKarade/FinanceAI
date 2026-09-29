@@ -2340,7 +2340,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   dans le fichier. Une erreur *identique au caractère près* après un fix est bien plus souvent un code non
   rapatrié qu'un diagnostic erroné (un mauvais fix produit en général une erreur DIFFÉRENTE).
   (3) **Un agrégat VIDE sans erreur ne se débugge pas dans les données mais dans l'ÉTAT DU COMPTE** (leçon
-  FINTABLE-DOCTOR) : 3 comptes de placement ont rendu 0 position avec des appels qui RÉUSSISSENT — rien à
+  FINTABLE-DOCTOR) : des comptes de placement ont rendu 0 position avec des appels qui RÉUSSISSENT — rien à
   tracer côté skips. Le bon outil n'est pas un log de plus sur le chemin de données, c'est un **docteur** qui
   lit les endpoints d'ÉTAT (droits du plan, santé/historique de sync des connexions, intégrations) et porte le
   raisonnement dans une fonction PURE (`explainMissingData`, testable sans réseau). Ses décodeurs prennent des
@@ -2368,7 +2368,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - ⚠️ **Une intégration tierce peut être IMPOSSIBLE — le mesurer AVANT de coder l'aval, et le dire** (leçon
   FINTABLE-POSITIONS 2026-07-29) : la moitié « investissements temps réel » du chantier était irréalisable —
   l'annuaire PUBLIC de Fintable rend **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple) et
-  Disnat n'y est pas. Ce n'était pas une config à corriger mais une limite produit. Réflexe : quand une donnée
+  courtier n'y est pas. Ce n'était pas une config à corriger mais une limite produit. Réflexe : quand une donnée
   attendue n'arrive pas, chercher la **table de couverture du fournisseur** avant de débugger son propre code
   — et quand le cœur d'une demande tombe, le DIRE franchement plutôt que livrer le reste comme si de rien
   n'était (« ce qui reste est une proposition beaucoup plus petite que celle achetée mentalement au départ »).
@@ -13346,7 +13346,7 @@ d'une autre zone qui porte le même attribut par coïncidence).
 
 **Le symptôme rapporté** : Marc, 2026-09-14 — « on dirait que je reçois pas les transactions de carte
 de crédit avec Fintable ». Son dry-run prouve pourtant que Fintable en LIVRE plusieurs centaines pour la
-Mastercard (fenêtre 2026-06-16 → 2026-09-10). Le blocage est donc en aval, chez nous.
+carte de crédit (fenêtre 2026-06-16 → 2026-09-10). Le blocage est donc en aval, chez nous.
 
 **Le mécanisme.** La sync Fintable se protège des doublons par une **bascule** : seules les
 transactions STRICTEMENT postérieures à `transactionsAfter` sont importées. Cette bascule est dérivée
@@ -13404,7 +13404,7 @@ est un appariement déguisé en formulaire.**
 ⚠️ Deux pièges du remède, tous deux money-critical :
 1. **Une suggestion hardie écrit le solde sur la MAUVAISE dette.** D'où un matcher délibérément
    timide : mots passe-partout d'un libellé bancaire écartés (« carte », « crédit », « compte » —
-   sans eux, « Carte de crédit Visa BNC » et « Carte de crédit Amex » s'apparient sur rien de
+   sans eux, « Carte de crédit A » et « Carte de crédit B » s'apparient sur rien de
    discriminant), et **égalité de score ⇒ `null`** : ambigu n'est pas probable.
 2. **La valeur rendue doit être le nom d'ORIGINE, jamais sa forme normalisée.** Le matcher CHERCHE
    sans accents ; `applyDebt` VÉRIFIE avec. Rendre « hypotheque condo » reconstruirait le défaut
@@ -14339,7 +14339,7 @@ de son sens.
 dont le taux manque, dont le solde est illisible ou dont le régime n'est pas déclaré — trois listes
 existent pour qu'aucun ne disparaisse en silence. Mais `brokerTotalCad` est alors la somme des SEULS
 comptes retenus, et `appliquerAutoriteCourtier` ne voyait pas ces listes. Mesuré sur la chaîne
-réelle : le compte Disnat CAD retenu + le compte Disnat USD écarté faute de taux — **exactement l'état de
+réelle : le compte courtier CAD retenu + le compte courtier USD écarté faute de taux — **exactement l'état de
 Marc tant que ses taux viennent du repli** — donnait un mois 0 amputé de **la majeure partie des placements**.
 La garde d'identité que j'avais écrite ne tenait que dans le cas TOUT-ou-RIEN ; le cas partiel, le
 plus probable, passait. **Un total partiel n'est pas une autorité dégradée, c'est un faux.**
@@ -14465,7 +14465,7 @@ fenêtre glissante sans jamais lire l'inventaire. La dépendance a donc été re
 placée AVANT les paramètres à défaut — optionnelle, la production aurait pu l'oublier et reprendre
 la version muette en silence ; requise, le compilateur énumère les sites (4 ici).
 
-⚠️ **Découverte de chemin, pas du lot** : le compte courtier Disnat est libellé **en USD** dans Fintable (`$`
+⚠️ **Découverte de chemin, pas du lot** : le compte courtier est libellé **en USD** dans Fintable (`$`
 contre `C$` pour les comptes canadiens) — le compte que le code nomme déjà en commentaire
 (« N USD deviendraient N CAD, faux d'environ 30 % »). Comme la dernière synchro Fintable
 précédait le correctif des taux, il a été écarté faute de taux fiable, le panier NON-ENREG s'est
@@ -16140,7 +16140,7 @@ chercher un bug de calcul. Il n'y en avait pas.
 | terme | montant | cause |
 |---|---|---|
 | bail Toyota | **l'essentiel de l'écart** | Fintable ne connaît aucune dette |
-| Mastercard | **un petit montant** | Fintable la compte en **ACTIF**, l'app en dette |
+| Carte de crédit | **un petit montant** | Fintable la compte en **ACTIF**, l'app en dette |
 | placements | **quelques dollars** | écart d'arrondi entre les deux sources |
 | liquidités | **moins de 100 $** | idem |
 | **total** | **l'écart entier** | à 1 $ d'arrondi près |
@@ -16153,7 +16153,7 @@ dollar : tant qu'un terme manque, on n'a pas compris.
 
 ⚠️ **Refaire la somme de l'écran de l'autre outil est la mesure la plus rentable du lot.** Les six
 comptes Fintable additionnés BRUT donnent un total nettement inférieur à celui affiché. L'écart divisé par
-le solde du compte Disnat (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
+le solde du compte courtier (affiché avec un `$` NU, pas `C$`) donne **1,4000** pile :
 Fintable convertit l'USD à un taux ROND. Une seule division a identifié la devise, le taux et le
 compte concernés — ce qu'aucune lecture de notre code ne pouvait donner.
 
@@ -17045,7 +17045,7 @@ même jour rapportaient l'une ou l'autre selon le tableau.
   Deux annulations au même `id` faisaient tomber deux lignes réelles ; elles sont désormais refusées
   toutes les deux, sans deviner laquelle était la bonne.
 
-## `UNE-FIXTURE-ECRITE-DE-MEMOIRE-PERD-CE-QUE-L-ORIGINAL-PORTE` (2026-09-24, parseur Disnat)
+## `UNE-FIXTURE-ECRITE-DE-MEMOIRE-PERD-CE-QUE-L-ORIGINAL-PORTE` (2026-09-24, parseur courtier)
 
 Le relevé de test du parseur était écrit d'après la FORME des vrais relevés, pour ne rien publier
 d'eux. Il était vert, chaque test prouvé par une panne volontaire — et le premier passage sur les
@@ -17062,7 +17062,7 @@ notée au Lot 0 et oubliée en écrivant la fixture).
 - La forme découverte entre ensuite DANS la fixture fictive, avec son recoupement : la prochaine
   régression se verra en CI, pas seulement sur la machine de celui qui a les relevés.
 
-## `UN-RECOUPEMENT-NE-PROTEGE-QUE-LES-CHAMPS-QU-IL-ADDITIONNE` (2026-09-24, parseur Disnat, revue)
+## `UN-RECOUPEMENT-NE-PROTEGE-QUE-LES-CHAMPS-QU-IL-ADDITIONNE` (2026-09-24, parseur courtier, revue)
 
 Le parseur lisait les nombres GLOUTONS en commentant « c'est le recoupement de l'encaisse qui juge si
 un chiffre de la description a été avalé ». Vrai du MONTANT, qui entre dans la somme. Faux du PRIX,
@@ -17129,6 +17129,13 @@ activé ». Le test accusait une zone morte du graphe alors que le clic n'atteig
 
 ---
 
+### `UN-JOURNAL-PUBLIC-IMPRIME-UN-MODELE-FIXE-PAS-UN-MESSAGE-D-ERREUR` — 2026-09-26
+
+Lot `[PTF-JOURNAL-PUBLIC-ERREURS]`. Un message d'exception est du texte libre : `JSON.parse` de Node y reproduit un morceau de l'entrée, une erreur réseau cite une URL. Dans un dépôt PUBLIC, tout ce qu'un workflow imprime est public.
+
+- Imprimer des booléens et des codes énumérés (`erreur_signalee: (.error != null)`), jamais `.error`, `.body`, `.message`, `.detail`, `.stack`, `.erreur`.
+- Chaque valeur imprimée est normalisée : booléen, nombre ou code d'une liste fermée (sinon « autre »). La garde est une LISTE BLANCHE des programmes `jq` (`tests/journauxCiSansDonnees.test.ts`) : un détecteur de noms de champs se contourne (`jq .`, `..`, `to_entries`, `@json`), une égalité exacte non.
+
 ### `UN-HOOK-DE-COMMIT-LIT-LA-COMMANDE-PAS-LE-TEXTE-NI-L-INDEX-D-AVANT` — 2026-09-25
 
 Lot `[GATE-COMMIT-ANALYSE]`. Trois défauts mesurés dans `scripts/hooks/commit-gate.mjs` : (1) il réagissait à
@@ -17154,3 +17161,93 @@ Lot `[MCP-DURCISSEMENT]`. Le premier jet bloquait globalement après 20 échecs 
 - Le budget de volume ne compte que les appels authentifiés : une requête sans secret valide ne le consomme pas, même en flot concurrent (un remboursement après coup ne suffit pas).
 - Les échecs se comptent PAR ADRESSE (dernier élément de `X-Forwarded-For` derrière Cloud Run : les précédents sont forgeables), seuil haut, table bornée ; en mémoire, limite assumée.
 - Un message d'erreur de parse ne cite jamais l'entrée. Durcir une longueur de secret ne doit pas couper le service : alerte + état visible par défaut, refus seulement sur réglage explicite (STRICT) et limité à la porte concernée.
+---
+
+### `UN-SECRET-LIVRE-AU-NAVIGATEUR-N-EST-PAS-UN-SECRET` — 2026-09-25
+
+Lot `[DURCISSEMENT-RELAIS]`. Le « jeton de relais » vivait dans `VITE_PROXY_ACCESS_TOKEN` : tout ce qui est préfixé
+`VITE_` est recopié en clair dans le JavaScript public. Il dissuadait le scraping en théorie et n'a jamais protégé rien.
+
+- Un contrôle d'accès dont la clé part dans le bundle est de la décoration : le retirer et le DIRE vaut mieux que le garder.
+- Ce qui protège vraiment : une preuve que l'appelant possède une ressource (ici la clé Anthropic, vérifiée) et des
+  freins bornés (Origin, débit, taille) dont on écrit l'honnêteté dans le code — Vercel est sans état, l'Origin est
+  falsifiable hors navigateur.
+- La garde qui empêche le retour : un test qui CONSTRUIT avec une valeur canari dans la variable et fouille la sortie
+  (sans jamais l'afficher). Vérifié en remettant l'ancien en-tête : le test devient rouge.
+- Un mémo de sécurité borné vide-t-il tout à saturation (`clear()`) ? Alors il se rejoue : éviction par ancienneté.
+
+### `UNE-REDIRECTION-N-EST-PAS-UNE-AUTHENTIFICATION` — 2026-09-25
+
+Un mur posé devant l'app (Cloudflare Access) ne protège l'API que si l'API vérifie elle-même la preuve : l'alias `*.vercel.app` contourne le mur. Vérifier le
+jeton signé côté serveur (bibliothèque éprouvée, `alg` figé à RS256, `iss`/`aud`/`exp` exigés), et faire de l'ABSENCE d'un réglage un refus (`CF_ACCESS_REQUIRED` absent = exiger).
+Côté client et service worker : une session expirée répond par une REDIRECTION vers une autre origine ; ne jamais mettre en cache une réponse redirigée ou opaque
+(le HTML de connexion remplacerait l'app) et sonder avec `redirect: 'manual'`. Les attrape-tout `api/[...x]` ne sont pas routés sur ce projet : un proxy = un chemin statique
++ une réécriture `vercel.json`.
+
+---
+
+### `UNE-LISTE-DE-CHEMINS-COPIEE-D-UNE-AUTRE-APP-SUR-BLOQUE-CE-QUI-N-EST-PAS-A-ELLE` — 2026-09-25
+
+Lot `[GARDE]`. Le modèle d'auto-fusion de l'Atelier interdit `hooks/**` et `**/settings*` — pensés pour les hooks de l'agence et
+les réglages de Claude. Dans FinanceAI, `hooks/` est le dossier des hooks REACT et `components/settings/**` l'écran Réglages :
+~35 fichiers d'interface auraient exigé Marc à chaque PR. Le test qui a le premier révélé le faux positif est la table
+« le code ordinaire reste automatique » de `tests/blocageFusion.test.ts`.
+
+- Copier une liste de sécurité d'une autre app : la RE-LIRE contre l'arborescence locale (`git ls-files` + la liste) avant de
+  la déclarer bonne. Un test de sur-blocage est aussi nécessaire qu'un test de blocage.
+- Une copie ADAPTÉE se documente dans la copie (`_note`) ET dans la liste jointe (`COPIES.md`), sinon la prochaine
+  re-synchronisation efface l'adaptation en silence.
+- Un hook de commit qui ne sait pas décider (`git checkout-index` inconnu) ne doit pas déclencher 5 minutes de suite complète :
+  l'incertain doit porter sur ce qui peut vraiment être un commit (alias, enveloppes), pas sur toute commande git peu courante.
+
+## `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS` (2026-09-26, `[WIN-GARDES]`)
+
+Une trentaine de tests-gardes (scan de source) échouaient sur le PC de Marc et passaient en CI Linux, ce qui
+bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dans le code de production :
+- **Fins de ligne** : sans `.gitattributes`, `core.autocrlf=true` (défaut Git for Windows) extrait en CRLF ; un
+  `lignes[0] === "import '…';"` reçoit `…;\r`. Correctif de fond : `.gitattributes` `* text=auto eol=lf`.
+  ⚠️ Il agit à l'extraction : une copie déjà extraite reste CRLF jusqu'à `git rm --cached -r . && git reset --hard`.
+- **Séparateurs** : `path.join/resolve/relative` rendent `\` ; les gardes comparent à `/fichier.tsx` ou à
+  `process.cwd() + '/'`. Correctif : `tests/helpers/toPosix.ts` (`toPosix`, `cwdPosix`) appliqué À LA SORTIE des
+  marcheurs de fichiers, jamais en assouplissant une assertion (une garde qui ne voit rien doit rester rouge).
+- Règle : tout nouveau marcheur de fichiers d'une garde passe son résultat par `toPosix`.
+- **Récidive (2026-09-28, `[WIN-GARDES-A11Y-FUTUREPROJECTION]`)** : `tests/components/chartAlternativeTexteGuard.test.ts` (écrit après ce
+  balayage) utilisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` — une clé de DICTIONNAIRE, pas un message d'erreur — sans `toPosix`,
+  contrairement aux deux autres usages du même fichier. Sous Windows la clé ne matchait jamais, l'exemption « graphe interactif » ne
+  s'appliquait pas, et la garde réclamait `role="img"` sur un composant qui avait déjà le bon attribut (`role="group"`, à raison : des
+  pastilles focusables vivent dedans, y mettre `role="img"` aurait cassé la protection nested-interactive WCAG 4.1.2). La règle ci-dessus ne
+  suffit donc pas seule : un `grep -rn "path.relative(" tests/` après le lot n'aurait pas suffi non plus, puisque ce fichier n'existait pas
+  encore — la règle doit être réappliquée à CHAQUE nouveau marcheur de fichiers, pas seulement balayée une fois.
+
+## `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` (2026-09-28, `[KIT-191]`)
+
+Resynchronisation du kit d'auto-merge 1.9.0 → 1.9.1 (2 fichiers sur 10 changés : `verifier-copies.mjs`, `LISEZMOI.md`).
+Après avoir relancé `node modeles/auto-merge/verifier-copies.mjs --ecrire-copies .` pour régénérer le tableau des
+empreintes, `git diff -- COPIES.md` a montré la suppression silencieuse des sections `## Source et méthode` et
+`## Écarts FinanceAI` : elles avaient été ajoutées À LA MAIN après le premier `--ecrire-copies` (commit `[KIT-190]`),
+mais `formaterCopies()` (côté Atelier) n'écrit QUE l'en-tête + le tableau et `writeFileSync` remplace tout le fichier —
+il ne fusionne rien avec ce qui existe déjà.
+
+- `--ecrire-copies` n'est PAS idempotent sur un `COPIES.md` enrichi à la main : toute section ajoutée après le tableau
+  doit être sauvegardée avant de relancer la commande, puis réinjectée (et mise à jour : versions, hash de tag) après.
+- Un `git diff --stat` après `--ecrire-copies` qui montre plus de suppressions que de lignes de tableau changées est le
+  signal : comparer au contenu d'avant plutôt que de committer tel quel.
+- Ce comportement n'est pas propre à FinanceAI : toute app qui a documenté ses écarts dans `COPIES.md` (au lieu d'un
+  fichier séparé) doit refaire ce geste à chaque bump de version. Piste pour l'Atelier (non faite ici, hors périmètre du
+  lot) : `formaterCopies()` pourrait préserver tout ce qui suit le tableau au lieu de l'écraser.
+
+## `UN-DOC-ECRIT-SUR-UNE-BRANCHE-NON-FUSIONNEE-PEUT-DEJA-ETRE-FAUX` (2026-09-28, `[DOCS-PROTECTION]` v3)
+
+En reconstruisant la couche « documents protégés » sur `main` à jour (après avoir regardé une branche v2 périmée, base
+d'avant les resyncs kit-190/191 et l'attestation réelle #1086), l'ADR 0024 de la v2 affirmait, dans sa section
+« Conséquences », que cocher une case de `BACKLOG.md` exigeait l'attestation de pole-securite. Faux : le code
+(`docsAjoutsSeulement.mjs`) et la config (`chemins_contenu_surveille`) de la MÊME v2 classaient `BACKLOG.md` en
+« contenu surveillé » (souple : cocher/archiver admis seul), pas en « ajouts seulement » (strict). L'incohérence
+n'a été vue qu'en reconstruisant le document depuis zéro, comparé ligne à ligne au code qu'il décrit.
+
+- Un ADR ou une doc écrite sur une branche jamais fusionnée n'a jamais été relue contre le code final : elle peut
+  contenir une affirmation qui contredit le comportement réel dès le premier commit, sans que rien ne l'ait signalé.
+- Porter un document d'une branche à une autre n'est pas une copie : c'est l'occasion de le revérifier contre le code
+  qu'il prétend décrire, pas seulement contre les numéros de version.
+- Piste : un test qui dérive automatiquement la liste « strict vs souple » d'un ADR depuis `auto-merge.json`
+  éviterait qu'un texte descriptif diverge silencieusement de la configuration qu'il documente.

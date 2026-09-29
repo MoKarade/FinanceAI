@@ -13,16 +13,17 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix } from '../helpers/toPosix';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
-const racine = process.cwd();
+const racine = toPosix(process.cwd());
 const REGISTRE = 'utils/storageKeys.ts';
 
 function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
         if (nom === 'node_modules' || nom === 'dist' || nom.startsWith('.')) return [];
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return sources(chemin);
         return /\.(ts|tsx)$/.test(chemin) ? [chemin] : [];
     });

@@ -56,7 +56,7 @@ export const ReturnRateField: React.FC<ReturnRateFieldProps> = ({
                             if (e.target.value === '') return; // laisse taper sans imposer 0 en cours de frappe
                             onChange(clamp(Number(e.target.value)));
                         }}
-                        className={`w-16 min-h-[44px] text-right bg-black/30 border border-white/10 rounded px-1.5 text-meta font-bold focus-ring ${colorClassName}`}
+                        className={`w-16 min-h-[44px] text-right bg-black/30 border border-white/10 rounded-sm px-1.5 text-meta font-bold focus-ring ${colorClassName}`}
                     />
                     {unit && <span className="text-tiny text-ink-400">{unit}</span>}
                 </span>

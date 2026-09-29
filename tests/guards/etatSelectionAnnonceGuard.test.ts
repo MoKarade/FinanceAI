@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
 import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
 
 const racine = resolve(process.cwd(), 'components');
@@ -41,7 +42,7 @@ const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string
 
 function fichiersTsx(dir: string): string[] {
     return readdirSync(dir).flatMap((nom) => {
-        const chemin = join(dir, nom);
+        const chemin = toPosix(join(dir, nom));
         if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
         return chemin.endsWith('.tsx') ? [chemin] : [];
     });
@@ -93,7 +94,7 @@ function basculesPeintes(): Bascule[] {
             const classes = ouvrante.match(/className=\{`([\s\S]*?)`\}/);
             if (!classes) continue;
             if (!/\?/.test(classes[1]) || !/===|!==/.test(classes[1])) continue;
-            out.push({ chemin: chemin.replace(`${process.cwd()}/`, ''), ligne: code.slice(0, m.index ?? 0).split('\n').length, ouvrante });
+            out.push({ chemin: chemin.replace(`${cwdPosix()}/`, ''), ligne: code.slice(0, m.index ?? 0).split('\n').length, ouvrante });
         }
     }
     return out;
@@ -121,12 +122,15 @@ describe('[A11Y-TABSTATE-TAXCENTER] l\'option active d\'une bascule est ANNONCÉ
         // sur une ligne, sur plusieurs, `key=` en tête) — c'est exactement ce qui a fait échouer la
         // garde du lot précédent, aveugle à la forme qu'elle n'avait pas croisée.
         const vus = basculesPeintes();
-        for (const fichier of ['ChildPlanning.tsx', 'LifeEvents.tsx', 'TaxCenter.tsx']) {
+        // [S5-REFONTE-ENFANTS] Les cinq groupes « choix de vie » de `ChildPlanning` passent désormais
+        // par UN bouton commun (`child/ChoixDeVie.tsx`) : un seul site porte l'état des cinq groupes
+        // (le test de rendu ChildPlanning.smoke le vérifie groupe par groupe). `ChildPlanning` garde
+        // ses onglets d'enfants.
+        // [S5-REFONTE-PROJETS] `LifeEvents.tsx` a fondu dans la page `LifeProjects` (liste, filtres) et
+        // `vie/FormulaireProjet` (bascule Voyage / Aléas & Projets).
+        for (const fichier of ['ChildPlanning.tsx', 'ChoixDeVie.tsx', 'LifeProjects.tsx', 'FormulaireProjet.tsx', 'TaxCenter.tsx']) {
             expect(vus.some((b) => b.chemin.endsWith(`/${fichier}`)), `témoin absent du scan : ${fichier}`).toBe(true);
         }
-        // `ChildPlanning` en porte CINQ : un scan qui n'en verrait qu'un couvrirait un cinquième
-        // du fichier en croyant l'avoir traité.
-        expect(vus.filter((b) => b.chemin.endsWith('/ChildPlanning.tsx')).length).toBeGreaterThanOrEqual(5);
     });
 
     it('chaque exemption est RÉELLE — une exemption périmée se retire', () => {

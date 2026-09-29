@@ -116,22 +116,22 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
 
                 {/* Score d'efficacité + synthèse comptes */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="bg-black/30 rounded p-3 border border-white/5 col-span-1 text-center">
+                    <div className="bg-black/30 rounded-sm p-3 border border-white/5 col-span-1 text-center">
                         <div className="text-tiny text-ink-300 uppercase tracking-wide mb-1">Efficacité fiscale</div>
                         <div className={`text-2xl font-black ${scoreColor} tabular-nums`}>{efficiencyScore}</div>
                         <div className="text-tiny text-ink-400">/ 100</div>
                     </div>
-                    <div className="bg-success-500/10 rounded p-3 border border-success-500/20">
+                    <div className="bg-success-500/10 rounded-sm p-3 border border-success-500/20">
                         <div className="text-tiny text-success-400 uppercase tracking-wide mb-1">CELI</div>
                         <PrivateAmount as="div" className="text-base font-bold text-emerald-200 font-mono">{formatCAD(accountTotals.totals.CELI)}</PrivateAmount>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
-                    <div className="bg-info-500/10 rounded p-3 border border-info-500/20">
+                    <div className="bg-info-500/10 rounded-sm p-3 border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase tracking-wide mb-1">REER</div>
                         <PrivateAmount as="div" className="text-base font-bold text-info-400 font-mono">{formatCAD(accountTotals.totals.REER)}</PrivateAmount>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
-                    <div className="bg-warning-500/10 rounded p-3 border border-warning-500/20">
+                    <div className="bg-warning-500/10 rounded-sm p-3 border border-warning-500/20">
                         <div className="text-tiny text-warning-400 uppercase tracking-wide mb-1">Non-Enreg.</div>
                         <PrivateAmount as="div" className="text-base font-bold text-amber-200 font-mono">{formatCAD(accountTotals.totals.NonReg)}</PrivateAmount>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
@@ -140,7 +140,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
 
                 {/* Perte annuelle si inchangé */}
                 {analysis && analysis.totalAnnualLoss > 0 && (
-                    <div className="p-3 bg-danger-500/10 border border-danger-500/30 rounded">
+                    <div className="p-3 bg-danger-500/10 border border-danger-500/30 rounded-sm">
                         <div className="flex items-center justify-between">
                             <span className="text-tiny text-red-300 font-bold uppercase">Manque à gagner annuel si inchangé</span>
                             <PrivateAmount className="text-base font-bold text-danger-400 font-mono">{formatCAD(analysis.totalAnnualLoss)}/an</PrivateAmount>
@@ -157,7 +157,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             <button
                                 type="button"
                                 onClick={() => setHoldings(initialHoldings)}
-                                className="text-tiny px-2 py-1 bg-white/5 hover:bg-white/10 rounded text-ink-300 transition-colors"
+                                className="text-tiny px-2 py-1 bg-white/5 hover:bg-white/10 rounded-sm text-ink-300 transition-colors"
                                 title="Réinitialiser depuis le portefeuille actuel"
                             >
                                 ↺ Depuis portefeuille
@@ -165,7 +165,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             <button
                                 type="button"
                                 onClick={() => setHoldings([...holdings, { assetClass: 'us-equity', amount: 10000, currentAccount: 'CELI' }])}
-                                className="text-tiny px-2 py-1 bg-success-500/15 hover:bg-success-500/25 rounded text-emerald-300 transition-colors"
+                                className="text-tiny px-2 py-1 bg-success-500/15 hover:bg-success-500/25 rounded-sm text-emerald-300 transition-colors"
                             >
                                 + Ligne
                             </button>
@@ -179,12 +179,12 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                         « ↺ Depuis portefeuille » recharge tes vrais avoirs.
                     </p>
                     {holdings.map((h, i) => (
-                        <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white/[0.02] rounded p-2">
+                        <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white/2 rounded-sm p-2">
                             <select
                                 aria-label={`Classe d'actif ${i + 1}`}
                                 value={h.assetClass}
                                 onChange={e => { const next = [...holdings]; next[i] = { ...h, assetClass: e.target.value as AssetClass }; setHoldings(next); }}
-                                className="col-span-4 bg-dark border border-border rounded px-2 py-1 text-meta text-white"
+                                className="col-span-4 bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white"
                             >
                                 {(Object.keys(ASSET_CLASS_LABELS) as AssetClass[]).map(ac => (
                                     <option key={ac} value={ac}>{ASSET_CLASS_LABELS[ac]}</option>
@@ -194,13 +194,13 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                 type="number" value={h.amount}
                                 aria-label={`Montant ${ASSET_CLASS_LABELS[h.assetClass]}`}
                                 onChange={e => { const next = [...holdings]; next[i] = { ...h, amount: Number(e.target.value) || 0 }; setHoldings(next); }}
-                                className="col-span-4 bg-dark border border-border rounded px-2 py-1 text-meta text-white font-mono"
+                                className="col-span-4 bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white font-mono"
                             />
                             <select
                                 aria-label={`Compte de ${ASSET_CLASS_LABELS[h.assetClass]}`}
                                 value={h.currentAccount}
                                 onChange={e => { const next = [...holdings]; next[i] = { ...h, currentAccount: e.target.value as AccountType }; setHoldings(next); }}
-                                className="col-span-3 bg-dark border border-border rounded px-2 py-1 text-meta text-white"
+                                className="col-span-3 bg-dark border border-border rounded-sm px-2 py-1 text-meta text-white"
                             >
                                 <option value="CELI">CELI</option>
                                 <option value="REER">REER</option>
@@ -223,7 +223,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     <div className="p-3 bg-emerald-900/30 border border-success-500/30 rounded-lg space-y-2">
                         <p className="text-meta text-emerald-200 font-medium">{analysis.summary}</p>
                         {analysis.recommendations.map((r, i) => (
-                            <div key={i} className="text-tiny p-2 bg-black/40 rounded space-y-1">
+                            <div key={i} className="text-tiny p-2 bg-black/40 rounded-sm space-y-1">
                                 <div className="flex justify-between gap-2">
                                     <span className="flex-1 min-w-0">
                                         <strong className="text-white">{ASSET_CLASS_LABELS[r.assetClass]}</strong>
@@ -241,7 +241,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                 )}
 
                 {analysis && analysis.recommendations.length === 0 && (
-                    <div className="p-3 bg-success-500/10 border border-success-500/30 rounded text-emerald-300 text-meta font-medium text-center">
+                    <div className="p-3 bg-success-500/10 border border-success-500/30 rounded-sm text-emerald-300 text-meta font-medium text-center">
                         Allocation déjà optimale — aucun déplacement à faire.
                     </div>
                 )}

@@ -49,6 +49,8 @@ function renderTransactions(setTransactions = vi.fn()) {
     const utils = render(
         <Transactions transactions={TXS} setTransactions={setTransactions} apiKey="" budgetItems={[]} />,
     );
+    // [S5-REFONTE-TRANSACTIONS] Les cases de sélection n'apparaissent qu'en mode sélection (outil).
+    fireEvent.click(utils.getByRole('button', { name: 'Sélectionner des lignes' }));
     return { ...utils, setTransactions };
 }
 

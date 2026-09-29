@@ -7,6 +7,125 @@
 > ## 🟦 Session 2026-09-26 — **`[MCP-DURCISSEMENT]` : limites de débit du MCP, message de parse sans extrait, clé d'accès faible signalée**
 > Audit P3-P6 (moyennes 5, 6, 8). (1) `parseRawToAppState` : message fixe (« contenu non affiché »), plus l'extrait de `JSON.parse`. (2) `mcp/auth/routeRateLimit.ts` : `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail`. RÈGLE : on VÉRIFIE D'ABORD le secret (mêmes comparaisons en temps constant que les handlers), on refuse après. Appels AUTHENTIFIÉS : plafond de volume (300/min, 12/h, 12/h, 120/h, 60/h) ; un appel non authentifié ne touche jamais ce budget. Appels NON authentifiés : compteur d'échecs PAR ADRESSE (dernier élément de `X-Forwarded-For`, seuil 100 par 15 min, table bornée) → 429 ; un secret valide n'est JAMAIS bloqué. Pas de blocage global (ce serait un déni de service ouvert à Internet). `/oauth/authorize` : même logique, compteur PAR ADRESSE (8 par 15 min) + plafond global de sécurité (200) appliqué SEULEMENT si la clé d'accès est faible (< 32) ; le blocage précède la comparaison de la clé (même pour la bonne clé depuis une adresse bloquée : sinon la clé se devinerait à la vitesse de la ligne) ; à vérifier en production que le dernier élément de `X-Forwarded-For` est l'adresse client (`docs/A_FAIRE_MOI.md`). (3) `FINANCEAI_ACCESS_KEY` < 32 caractères : le serveur DÉMARRE, alerte au journal (sans la clé ni sa longueur) et l'outil `ping` (derrière l'OAuth, donc visible de Marc seulement) ajoute « clé d'accès faible » ; `/health` ne dit rien. Avec `FINANCEAI_ACCESS_KEY_STRICT=1`, seule `/oauth/authorize` répond 503 (nouvelles autorisations) ; hub, véhicule, refresh, sync et les sessions déjà autorisées continuent.
 > Marc : régénère la clé (64 caractères hex) quand tu veux, puis pose la variable GitHub `MCP_ACCESS_KEY_STRICT=1` (câblée par `mcp/deploy.sh` et `deploy-mcp.yml` vers `FINANCEAI_ACCESS_KEY_STRICT=1`) (`docs/A_FAIRE_MOI.md`). Chiffres de débit = estimation de l'usage (`ROUTE_LIMITS`), cadence réelle du hub à confirmer.
+> ## 🟥 Session 2026-09-28 (suite) — **`[GARDE-JQ-AUTO-MERGE-LENGTH]` : `main` bloquait toute PR sur une garde anti-fuite**
+> `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows) ne connaissait pas
+> `gh pr list --json number --jq 'length'` de `.github/workflows/auto-merge.yml:77` (compte de PR ouvertes,
+> jamais de contenu) — introduit par `[KIT-191]`/#1085 sans mise à jour de la garde, découvert en fusionnant
+> #1076. `main` lui-même était rouge sur cette porte : **toute PR en échouait**, sans rapport avec son propre
+> contenu. Corrigé : `'auto-merge.yml': ['length']` ajouté à `PROGRAMMES_JQ_AUTORISES`, aucun changement au
+> workflow. PR isolée et minimale, pas de chemin sensible (`tests/**` seul), armable dès portes vertes.
+>
+> ## 🟦 Session 2026-09-28 (suite) — **`[STRUCTURE-COMMUNE]` : docs/ETAT.md + ignoreCommand Vercel (structure commune aux 7 apps, spec pole-architecture)**
+> Vague 3 de l'alignement structurel : `docs/ETAT.md` créé (seul `docs/ARCHITECTURE.md` existait), même patron que BatchChef
+> (photographie datée, sourcée, pointeurs vers `HANDOVER.md`/`BACKLOG.md`/`docs/A_FAIRE_MOI.md`). `vercel.json` gagne un
+> `ignoreCommand` : saute la préversion Vercel quand la PR ne touche QUE `*.md`/`docs/**`/`.github/**` (échec fermé — tout
+> doute construit). ⚠️ `mcp/**` volontairement HORS de la liste ignorable, malgré le déploiement séparé du MCP sur Cloud Run :
+> `hooks/useFinancialSignals.ts` importe `mcp/financialSignals.ts`, un module RÉELLEMENT inclus dans le bundle web — l'exclure
+> aurait pu laisser une préversion stale sur un changement qui compte. Le script `qualite/portes.mjs` avait DÉJÀ une entrée npm
+> (`portes`/`portes:maj`) — vérifié avant de recréer quoi que ce soit, rien à faire de ce côté. Aucun code métier. PR brouillon,
+> chemin sensible (`vercel.json`), attend la relecture de pole-securite.
+>
+> ## 🟥 Session 2026-09-25 (suite) — **`[CF-ACCESS]` : le mur Cloudflare Access, vérifié côté API**
+> Marc a dit OUI (Access remplace la passkey ; ADR `0022`). **Code livré, sans effet tant que Marc n'a pas posé le mur**
+> (`A_FAIRE_MOI` → `[CF-ACCESS-MISE-EN-SERVICE]`, dans l'ordre : test iPhone → application Access → variables Vercel AVEC
+> `CF_ACCESS_REQUIRED=0` → DNS proxifié → vérifs → suppression de la variable = exiger). `api/_lib/accessJwt.ts` (jose 6.2.3 : RS256, iss/aud/exp/nbf,
+> `kid`, e-mail) ; relais Claude → 401 enveloppe Anthropic ; proxys Yahoo/Fintable = fonctions gardées (`api/yahoo/*`, `api/proxy/fintable.ts`,
+> réécritures `vercel.json`) ; `ipClient(headers, jetonValide)` ; redirection `*.vercel.app` → prod ; SW : jamais de réponse redirigée/opaque/`/api/*` en
+> cache (cache v4) ; `utils/sessionAccess.ts` (session expirée → rechargement) ; manifest `use-credentials`.
+> ⚠️ Valeur ABSENTE de `CF_ACCESS_REQUIRED` = EXIGER (sans config Access : tout refusé, échec fermé). ⚠️ Base = branche `durcissement` (#1072) : PR empilée, pas de CI
+> ⚠️ Changements de comportement : le service worker ne sert plus `/api/*` hors ligne (plus de cours Yahoo périmés) ; une session expirée affiche « Ta session de connexion a expiré » (cause `session-access`, `messageErreurIa`) et non « clé refusée » ; la sonde de session ne couvre que le retour dans l'onglet (≥ 1 min) / le retour du réseau. [À MESURER en prévisualisation] : que la réécriture vers une fonction conserve la requête d'origine (les proxys lisent aussi le chemin d'origine) ; Access 302 ou 401 sur `fetch` ; Host `*.vercel.app` jamais transmis par Cloudflare (sinon boucle de redirection).
+> tant que #1072 n'est pas fusionnée. Lot B (clé serveur) : BACKLOG, option non recommandée. Tests : `accessJwt`, `relaisAccess`, `accessConfigFichiers`, `sessionAccess`.
+>
+> ## 🟦 Session 2026-09-28 — **`[DOCS-PROTECTION]` (v3) : couche « documents des agents protégés » reconstruite sur main (kit 1.9.1 + attestation réelle)**
+> Reconstruit PAR-DESSUS main (contient déjà `[KIT-191]` + `[#1086]` + le correctif a11y `#1087` fusionnés) : `modeles/auto-merge/armer-docs.mjs`
+> (point d'entrée du workflow, AVANT l'`armer.mjs` du modèle, copie exacte intacte), `docsAjoutsSeulement.mjs` (décision pure, statique),
+> `LISEZMOI-docs.md`, ADR 0024. Deux niveaux : `chemins_ajouts_seulement` (STRICT — `docs/claude/lecons.md`, `docs/CONVENTIONS.md` : aucune ligne
+> existante ne change) et `chemins_contenu_surveille` (SOUPLE — `BACKLOG.md`, `HANDOVER.md`, `CHANGELOG.md` : cocher/archiver admis, mêmes
+> contrôles sur les lignes AJOUTÉES). `CLAUDE.md` + les 13 `docs/claude/*.md` (sauf `lecons.md`) passent sous attestation
+> (`chemins_label_validation`). Workflow `armement-auto-merge.yml` ADAPTÉ d'UNE ligne (`armer.mjs` → `armer-docs.mjs`), sorti du tableau
+> `COPIES.md` (9 fichiers exacts restants), les deux empreintes déclarées + un test qui vérifie que c'est la SEULE différence.
+> `securite_login`/`securite_user_id` sont RÉELS depuis #1086 : les tests d'attestation utilisent le VRAI `attestationValide`, plus de fixture
+> de substitution.
+> ⚠️ Repris d'une branche v2 périmée (base d'avant kit-190/191 et #1086) : le travail non commité réutilisable (bloc ESLint nominatif pour
+> les `.mjs` propres à FinanceAI, dead-code) a été porté ; le fix `exempleDe` split/join était déjà sur main via une autre branche (`resync`),
+> pas reporté (redondant). Bug trouvé en portant l'ADR : la v2 disait que cocher une case de `BACKLOG.md` exigeait l'attestation — faux, le
+> module l'admet SEUL (contenu surveillé) ; corrigé dans l'ADR ici. Le test a11y `chartAlternativeTexteGuard.test.ts`, trouvé rouge en cours de
+> route (préexistant, pas causé par ce lot), a été DIAGNOSTIQUÉ à tort comme « role="img" manquant sur FutureProjection.tsx » puis correctement
+> identifié comme un bug du TEST lui-même (Windows, voir session suivante) et corrigé en PR séparée #1087 AVANT de continuer ce lot (base à jour).
+> PR brouillon, `validation-marc`, **NON armée** (chemins sensibles ; attend la relecture ligne à ligne de pole-securite).
+>
+> ## 🟩 Session 2026-09-28 — **`[WIN-GARDES-A11Y-FUTUREPROJECTION]` : la garde a11y des graphes était rouge sous Windows, pas le composant**
+> `tests/components/chartAlternativeTexteGuard.test.ts` ligne 83 lisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` SANS `toPosix()` :
+> sous Windows, `path.relative` rend `components\FutureProjection.tsx` (antislash), qui ne matchait jamais la clé `components/FutureProjection.tsx`
+> (slash) → le graphe interactif (pastilles de jalons focusables, #599) était vu comme non-interactif, et le test exigeait `role="img"` au lieu
+> du `role="group"` déjà présent (ligne 1860) et correct. **Le composant n'a pas changé** : y ajouter `role="img"` aurait dégradé la protection
+> nested-interactive (WCAG 4.1.2) que le code commente explicitement. Correctif : `toPosix(path.relative(...))`, comme les deux autres usages du
+> même fichier (déjà corrects). Même classe de bug que `[WIN-GARDES]` (2026-09-26) — ce fichier de garde n'avait pas été balayé. Piste notée au
+> BACKLOG (`[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`) : auditer les autres `path.relative()` de `tests/**`, non faite ici (hors périmètre, cosmétique
+> ailleurs). PR normale (non sensible), armée après gate vert (#1087).
+>
+> ## 🟦 Session 2026-09-28 — **`[KIT-191]` : le kit d'auto-merge de l'Atelier passe en 1.9.1 (tag `kit-1.9.1`) — delta isolé pour relecture sécurité**
+> Resynchro depuis `[KIT-190]` (commit `00512380`, déjà revu par pole-securite sur le fond) : sur les 10 fichiers copiables
+> attestés par `COPIES.md`, seuls `verifier-copies.mjs` (+128/-…) et `LISEZMOI.md` (+9, nouvelle section « Profils du kit »)
+> changent d'empreinte ; les 8 autres (`autoMerge.mjs`, `armer.mjs`, `fusionner.mjs`, `codes-raison.mjs`…) sont inchangés
+> depuis 1.9.0. Nouveauté 1.9.1 côté Atelier : profils `--profil prive/complet` (un dépôt privé sans protection de branche
+> peut retirer `armement-auto-merge.yml`) — **non adoptée ici**, FinanceAI reste au profil `complet` (armement natif conservé).
+> `COPIES.md` régénéré puis les sections « Source et méthode » / « Écarts FinanceAI » restaurées à la main (`--ecrire-copies`
+> les efface, voir `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` dans `docs/CONVENTIONS.md`). `tests/blocageFusion.test.ts`
+> mis à jour (1.9.0/`kit-1.9.0`/`a17b41d` → 1.9.1/`kit-1.9.1`/`df55f4c`). Commit séparé (`ba609fab`) pour une relecture du
+> delta seul par pole-securite ; PR brouillon, étiquette `validation-marc`, **NON armée** (chemins sensibles, pas d'attestation
+> possible avant `securite_login`).
+>
+> ## 🟦 Session 2026-09-27 — **`[KIT-190]` : le kit d'auto-merge de l'Atelier passe en 1.9.0 (tag `kit-1.9.0`) — Dependabot re-fusionné**
+> Copies exactes du tag `kit-1.9.0` (commit `a17b41d`) dans `modeles/auto-merge/` (+ `codes-raison.mjs`), `COPIES.md` refait (écarts un à un). NOUVEAU workflow
+> `.github/workflows/auto-merge.yml` (gabarit événementiel, adapté de deux valeurs : `workflows: [CI]` et `node-version-file: .nvmrc`) : il fusionne Dependabot après `carence_dependabot_jours` = 3.
+> `securite_login`/`securite_user_id` toujours ABSENTS (PR de 2 lignes de pole-securite ensuite : App `<slug>[bot]` + identifiant numérique). `commit-gate`
+> hors lot. Tests : `tests/blocageFusion.test.ts` (Dependabot éligible fusionné / sensible refusé / carence, attestation App sur fixture, workflow lu comme donnée).
+>
+> ## 🟦 Session 2026-09-26 — **`[GARDE-RESYNC]` : le mécanisme de fusion auto = le modèle Atelier 1.6.0 (copies exactes)**
+> Autorisé par Marc. `modeles/auto-merge/*` (copies exactes du commit `f8e2177` d'atelier, empreintes dans `COPIES.md` racine, écarts
+> FinanceAI déclarés un à un), `.github/workflows/armement-auto-merge.yml` (gabarit tel quel) ; SUPPRIMÉS : `.github/workflows/fusion-auto.yml` et
+> `.github/scripts/auto-merge/`. `validation-marc` devient INFORMATIF ; sans `securite_login` (absent) aucune attestation n'est possible : les chemins
+> sensibles restent bloqués. ⚠️ Le modèle DÉSARME les PR Dependabot (« traitées par le workflow de fusion ») : plus d'armement automatique de Dependabot
+> tant que le gabarit de fusion événementiel n'est pas adopté. `commit-gate` hors lot. ESLint ignore `modeles/auto-merge/**`. Tests : `tests/blocageFusion.test.ts`
+> (modèle exécuté dans Node : `tests/helpers/peutArmerNode.mjs`).
+>
+> ## 🟥 Session 2026-09-25 — **`[GARDE]` : la fusion auto ne s'arme plus sur les chemins sensibles**
+> Demande pole-architecture/pole-securite. **Workflow `fusion-auto.yml` refait** sur le modèle de l'Atelier (identique à
+> BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la
+> BASE, la PR n'est lue que par l'API ; `armer.mjs` appelle `peutArmer` : brouillon, fork, label `validation-marc`/`do-not-merge`
+> ou fichier sensible ⇒ PAS armée (et désarmée si elle l'était). Sensibles : `scripts/hooks/**`, `.github/**`, `.claude/**`,
+> `**/settings*.json`, `**/commit-gate*`, `CODEOWNERS`, `modeles/**`, `.gitattributes`, + FinanceAI : `api/**` (entier), `mcp/**`, `services/secureKeyStore.ts`, `vite.config.ts`, `index.html`,
+> `vercel.json` (label `validation-marc` posé). ⚠️ ADAPTATION : `hooks/**` et
+> `**/settings*` du modèle sont RETIRÉS ici — `hooks/` = hooks REACT, `components/settings/**` = écran Réglages (~35 fichiers d'UI
+> bloqués à tort) ; à refaire à chaque re-synchronisation (`.github/scripts/auto-merge/chemins-interdits.json`, `_note`).
+> Copies de modèles et leurs empreintes : `.github/scripts/auto-merge/COPIES.md`. Tests : `tests/blocageFusion.test.ts` (table
+> d'attaque + grille A1-A9 du workflow lue comme donnée). ⚠️ Les contrôles obligatoires de la PR ne suffisent plus à fusionner :
+> une PR sensible reste à fusionner À LA MAIN par Marc.
+> 🔧 Aussi : `.gitattributes` (`* text=auto eol=lf`, l'index était déjà LF : aucun changement de contenu) ; test
+> `gateTestsHomonymes` réparé (séparateurs Windows + câblage sur la forme actuelle du hook) ; hook : limites connues documentées
+> et figées en test, sous-commandes git intégrées sans rapport avec un commit ne déclenchent plus le gate, commit non-TS sans
+> configuration globale = gardes-scan + typecheck + build (la suite complète reste celle de la CI). Le commit-gate « commun » de
+> `atelier/modeles/qualite/` n'existe pas encore : on reste sur celui de #1071.
+>
+> ## 🟥 Session 2026-09-25 — **`[DURCISSEMENT-RELAIS]` : le jeton de relais public disparaît, des freins honnêtes le remplacent**
+> 🔎 Audit sécurité (pole-securite, décision de Marc) : `VITE_PROXY_ACCESS_TOKEN` était recopié dans le bundle public ;
+> n'importe qui le lisait, il n'a jamais rien protégé. **Supprimé** (client + relais). À la place, dans `api/_lib/` :
+> Origin (finance.hubperso.com, `RELAIS_ORIGINES`, `VERCEL_URL`, localhost — falsifiable hors navigateur : un frein),
+> débit par IP (120/min) et par empreinte de clé (60/min) et budget de vérification de clé (10/min/IP) — en mémoire,
+> donc frein FAIBLE sur Vercel sans état (aucun stockage partagé, décision à part), corps ≤ 200 Ko (413),
+> `max_tokens` local ≤ 8192 (au-delà : Claude, jamais tronqué), `anthropic-version` en forme stricte.
+> Mémo de vérification de clé (S5) : négatif court (refus 60 s, panne 15 s), 200 entrées, éviction par ancienneté
+> (avant : vidage total à 50), empreinte SALÉE (`RELAIS_SEL_EMPREINTE`, sinon sel aléatoire par instance).
+> 🧪 `tests/api/relaisDurcissement.test.ts` + `tests/api/jetonAbsentDuBundle.test.ts` (construit avec une valeur canari dans
+> `VITE_PROXY_ACCESS_TOKEN`, échoue si elle ou le nom de l'en-tête est dans le bundle ; vérifié en le rendant rouge).
+> ⚠️ Action Marc (`docs/A_FAIRE_MOI.md` O4) : RETIRER `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel s'ils
+> sont posés (inutiles, la première est même une valeur sensible à faire tourner par prudence). Décision : ADR 0021.
+> 🔐 **Routage local réservé à la clé de Marc** : `RELAIS_ORG_LOCALE` (organisation renvoyée par count_tokens) et/ou
+> `RELAIS_CLES_LOCALES` (empreintes salées, `scripts/empreinteCleRelais.mjs`, lancé par Marc) ; aucune des deux → routage
+> local désactivé (échec fermé). IP client : `x-vercel-forwarded-for`, puis `x-real-ip`, puis 1er saut de `x-forwarded-for`.
+> ⚠️ Le nettoyage de données d'identification (docs actuelles) NE change PAS l'historique git : les anciennes valeurs
+> restent lisibles tant que le dépôt est public et non réécrit. Rien n'est « réglé » de ce côté.
 >
 > ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
 > `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
@@ -84,7 +203,7 @@
 > avec le lot) : ré-installé à la main depuis le lock. ⏭️ Suite : `[PTF-L1E-PASSERELLE]` — l'import
 > (1g) attend la recherche EODHD de la tâche serveur 1c-2 (les relevés n'impriment aucun ISIN ; choix de Marc).
 >
-> ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur Disnat (partie texte)**
+> ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur courtier (partie texte)**
 > Livré `[PTF-L1F-PARSEUR-DISNAT]` : `services/import/disnat/lireReleveDisnat.ts` (texte → relevé, trois
 > recoupements du découpage) et `versEvenements.ts` (relevé → événements ; ISIN, devise de cotation et
 > position d'avant en ARGUMENTS). Relevé de test ENTIÈREMENT fictif ; essai local sur les 3 vrais relevés
@@ -95,14 +214,14 @@
 > (`cancelsId`, la ligne reste et cesse de compter à la date de l'annulation), `echange` (`toIsin`),
 > `cost` (coût total imprimé), `conversion` / `virement-interne` (`toAccountId`, un seul événement).
 > `etatDuLivreAu` et `variationEntre` les lisent (échange suivi, fractionnement annulé DÉFAIT). Trois clés
-> textuelles neuves dans `CHAMPS_TEXTE`. ⏭️ Suite : 1f (parseur Disnat), qui peut maintenant tout écrire.
+> textuelles neuves dans `CHAMPS_TEXTE`. ⏭️ Suite : 1f (parseur courtier), qui peut maintenant tout écrire.
 >
 > ## 🟩 Session 2026-09-24 (fin, suite 3) — **Lot 1d : moteur de valorisation pur**
 > Livré `[PTF-L1D-VALORISATION]` : `services/valorisation/valoriser.ts` (`valoriserAu`, `variationEntre`), PUR, non
 > branché. Total `null` + `manquants` dès qu'il manque un cours, un taux ou que le livre porte une anomalie (un total
 > amputé est un faux) ; aucun arrondi ; zéro artefact (jour sans mouvement → effets 0 exactement ; fractionnement
 > ré-exprimé). ⚠️ Porte « code mort » (knip 6, plafond 40) : seuls les symboles importés hors de leur fichier sont
-> exportés ; chaque lot ré-exporte ce qu'il consomme. ⏭️ Suite : 1f (parseur Disnat), puis 1e.
+> exportés ; chaque lot ré-exporte ce qu'il consomme. ⏭️ Suite : 1f (parseur courtier), puis 1e.
 >
 > ## 🟩 Session 2026-09-24 (fin, suite 2) — **Lot 1c-1 : format du magasin de marché, clients purs**
 > Livré `[PTF-L1C1-MAGASIN-FORMAT]` : `services/marche/magasinMarche.ts` (format v1, validation qui refuse,
@@ -138,22 +257,28 @@
 > de toute la doc (fichiers courants ; historique git non réécrit).
 > ⏭️ **Suite** : Lot 1 (`[PTF-L1A-SCHEMA-LIVRE]`) — plan approuvé par les réponses ; attendre le feu vert explicite.
 >
-> ## 🟩 Session 2026-09-24 — **Portefeuille Disnat : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
+> ## 🟩 Session 2026-09-24 — **Portefeuille courtier : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
 > 🔎 Marc : « faut tout checker pour avoir un vrai rapport détaillé », puis un cahier des charges (« PROMPT v2 »)
 > et un fichier de vérification. Trois analyses (38 agents) + relecture adverse → rapport, audit, plan des lots
 > 0.5 à 4 et questions, remis à Marc **HORS dépôt** (ses montants réels ; dépôt PUBLIC). Feu vert : **Lot 0.5 seul**.
 > 🔧 **Livré** : garde `tests/confidentialitePortefeuille.test.ts` (clés du fichier de vérification + code de
-> compte après « Disnat ») ; code de sous-compte anonymisé dans `tests/services/categoryRules.test.ts` (historique
+> compte après « courtier ») ; code de sous-compte anonymisé dans `tests/services/categoryRules.test.ts` (historique
 > git NON réécrit) ; `.gitignore` (`prive/`, fichiers de vérification, relevés) ; workflow MANUEL
 > `mesure-sources.yml` + `scripts/mesureSources.mjs` (verdicts par rang seulement, journal public) ; section
-> « 💼 Portefeuille Disnat » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
+> « 💼 Portefeuille courtier » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
 > ✅ **Mesure des sources faite** (`[PTF-L05B-MESURE-SOURCES]`) : EODHD gratuit sert 12/12 lignes à 0,00 %
 > des ancres indépendantes, Yahoo 11/12 (et rend un prix AJUSTÉ avant fractionnement), Valet exact. Rien de payant.
 > ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`), puis Lot 1.
 > ⚠️ Le BACKLOG publiait en clair des données réelles du portefeuille (composition, quantités, montants) : la
 > garde ne les voyait pas (elle cherche des FORMES, pas des valeurs). **Retirées du fichier courant** sur décision
-> de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé Disnat par `apply_broker_statement` :
+> de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé courtier par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
+>
+> ## 🟦 Session 2026-09-26 — **`[WIN-GARDES]` : `npm test` passe en local Windows**
+> 33 tests-gardes échouaient sous Windows (CRLF de `core.autocrlf` + `\` de `path.join/relative`) et bloquaient le
+> hook commit-gate. Ajout `.gitattributes` (`eol=lf`) + `tests/helpers/toPosix.ts` appliqué dans 14 gardes ; aucun seuil
+> ni assertion assouplis, aucun code de production touché. Suite : 6832/6832. ⚠️ Une copie déjà extraite reste CRLF
+> tant qu'on ne la ré-extrait pas. Leçon : `docs/CONVENTIONS.md` `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS`.
 >
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
@@ -163,6 +288,9 @@
 > ⚠️ Après un rollback, Vercel coupe l'auto-assignation du domaine de prod : le prochain déploiement doit être
 > **promu** (Vercel → Deployments → Promote) — sinon finance.hubperso.com reste sur l'ancien.
 > Leçon : `docs/CONVENTIONS.md` `UN-RELAIS-NON-TESTE-EN-PROD-N-EST-PAS-UN-RELAIS`.
+>
+> ## 🟦 Session 2026-09-26 — **`[PTF-JOURNAL-PUBLIC-ERREURS]` : le journal PUBLIC des crons n'imprime plus le texte des erreurs**
+> Audit P3-P6 (moyenne 5) : `fintable-sync.yml` imprimait `error` du serveur, `refresh-prices.yml` `error` et `fx.erreur` — des messages d'exception libres (l'erreur de `JSON.parse` cite un extrait du texte fautif). Désormais modèle fixe : `erreur_signalee` (booléen) ; `ok`, `conflict`, `saved` normalisés en booléens ; `sautes`, `fx.ecriture`, `fx.cause` en codes d'une liste fermée (sinon « autre »). Garde : LISTE BLANCHE des programmes jq (`tests/journauxCiSansDonnees.test.ts`). Filtre exécuté sous jq réel sur 3 entrées piégées (texte libre partout) : rien de libre ne sort. Reste (hors lot) : le message de `parseRawToAppState` (`mcp/state/loadAppState.ts`) cite toujours le texte de `JSON.parse` côté serveur.
 >
 > ## 🟦 Session 2026-09-23 — **`[IA-LOCALE]` : le relais route un maximum d'appels Claude vers l'IA locale de Marc**
 > 🔎 Marc : « continue avec financeai … faire passer un max par ollama ». L'Atelier (dépôt MoKarade/atelier)
@@ -657,7 +785,7 @@ de dev).
 > L'écart des TOTAUX (Fintable ≈ 20 % au-dessus de l'app) se décompose EXACTEMENT :
 > **+ la dette du bail** (que Fintable ignore) **+ le solde de la carte** (compté en ACTIF par Fintable)
 > **− quelques dizaines de dollars** (placements, liquidités) = l'écart total, à 1 $ d'arrondi près.
-> ⚠️ Fintable convertit le compte Disnat **USD** (`$` nu, pas `C$`) à **1,4000** pile.
+> ⚠️ Fintable convertit le compte courtier **USD** (`$` nu, pas `C$`) à **1,4000** pile.
 > ⚠️ Le jour ÉPINGLÉ (20/09) est autre chose : un Non-Enreg ≈ 3,7 % sous la valeur des
 > titres aujourd'hui — sous-évalués par des **prix vieux de 59 jours**, parce que
 > **plus de la moitié** du portefeuille est coté en Europe. → `[COTATIONS-EUROPE-PERIMEES]`.
@@ -1206,7 +1334,7 @@ de dev).
 > soit la valeur Fintable, car la plus fiable ». Plan complet dans `BACKLOG.md` (5 étapes).
 > ✅ **Étape 0** : le montant NATIF (`amountNative` + `currency`) est persisté à côté de son reflet
 > converti, et `relireSoldeCourtier` reconvertit **au taux du jour**. Avant, la conversion était
-> faite À L'ÉCRITURE et figée : le compte Disnat en USD, synchronisé pendant le repli des taux,
+> faite À L'ÉCRITURE et figée : le compte courtier en USD, synchronisé pendant le repli des taux,
 > restait écarté jusqu'à la synchro suivante — **une grosse part du portefeuille** hors du panier NON-ENREG, donc
 > autorité courtier refusée en entier.
 > ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le natif gagne sur un `missingRate` PERSISTÉ (qui décrit
@@ -1237,7 +1365,7 @@ de dev).
 > valeur nette − liquidités + dette = **placements de l'Accueil** ≠ total du hub.
 > ⚠️ **Effet visible à surveiller** : tant qu'un titre manque, la carte du hub perd ses trois lignes
 > de placements (arbitrage des trois autres refus : publier MOINS, jamais autre chose).
-> 🔎 **Découverte de chemin** : le compte Disnat est en **USD** chez Fintable (`$` vs `C$`) — le compte
+> 🔎 **Découverte de chemin** : le compte courtier est en **USD** chez Fintable (`$` vs `C$`) — le compte
 > nommé en commentaire dans `brokerBalances.ts`. Écarté faute de taux à la dernière synchro (antérieure
 > au correctif FX) ⇒ panier NON-ENREG amputé ⇒ autorité courtier NON appliquée.
 > ⚠️⚠️ **2ᵉ passe — le panel a battu le gate ET la CI, 6ᵉ lot d'affilée.** (a) Mon inventaire couvrait
@@ -1314,7 +1442,7 @@ de dev).
 > Marc : « faut bien convertir en cad ce qui est en usd ». Mesuré sur son état RÉEL via le MCP :
 > **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au caractère près — et ses
 > positions sont en USD ou EUR, **aucune** en CAD. 100 % du montant affiché reposaient sur un
-> chiffre en dur, et c'était la vraie cause du Disnat USD non converti du lot précédent.
+> chiffre en dur, et c'était la vraie cause du courtier USD non converti du lot précédent.
 > ✅ **Lot A** — provenance à 3 états (`api`/`manuel`/`repli`), bouton « Réessayer maintenant »
 > (avec `force` : sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
 > diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, et la condition d'écriture
@@ -1822,7 +1950,7 @@ de dev).
 > encore **un seul chiffre** : le paiement minimum.
 
 > ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
-> Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la Mastercard
+> Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la carte de crédit
 > (fenêtre 2026-06-16 → 2026-09-10) : le blocage est chez nous, en aval. **Cause** : la bascule
 > anti-doublon (`deriveCutoverDate`) est GLOBALE — « la transaction la plus récente, tous comptes
 > confondus ». Le compte chèque poste le jour même et avance la bascule chaque jour ; la carte poste
@@ -3303,7 +3431,7 @@ de dev).
 >   `FintableSyncReport.warnings` existe et est persisté, mais il aplatit en chaînes — un champ dédié
 >   (avec l'identité du compte) est nécessaire, ajouté AVEC son consommateur d'écran (leçon lot 95).
 > - ⚠️ `types.ts` documente déjà que Fintable ne rend JAMAIS les positions de certains comptes
->   (`FINTABLE-POSITIONS`, Disnat hors SnapTrade) : le cas est STRUCTUREL, pas seulement accidentel.
+>   (`FINTABLE-POSITIONS`, courtier hors SnapTrade) : le cas est STRUCTUREL, pas seulement accidentel.
 
 > ## 🟦 Session 2026-09-03 — Lot 97 : la marche du raccord expliquée sur la vue par DÉFAUT
 > `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — ferme ce que le lot 96 avait routé.
@@ -8810,7 +8938,7 @@ de dev).
 > (Fintable synchronise déjà le quotidien), **ouverte automatiquement** à l'onboarding (0 transaction, D2 —
 > l'écran vide ne doit jamais être une impasse). L'instance de Réglages → Comptes était déjà hors du flux
 > principal, inchangée. L'import de courtage (`Investments.tsx`) reste au premier plan — seul chemin pour
-> les positions (FINTABLE-POSITIONS : Disnat hors SnapTrade). 3 tests mis à jour, discriminant sur l'attribut
+> les positions (FINTABLE-POSITIONS : courtier hors SnapTrade). 3 tests mis à jour, discriminant sur l'attribut
 > `open` (jsdom ne cache pas le contenu d'un `<details>` fermé). Découverte en chemin : `text-info-300`
 > (token Tailwind inexistant, ~12 sites) → `[A11Y-INFO300-SWEEP]` au BACKLOG (1 site corrigé ici).
 > **Chantier Fintable CLOS côté code** (`[FINTABLE-0]`→`[FINTABLE-4]`, #521→ce jour) — ce qui reste est
@@ -8866,7 +8994,7 @@ de dev).
 > **🔵 Durcissement CLI** : `fintable:dry` REJETTE désormais une option inconnue. Un binaire pré-Lot-2
 > ignorait `--roles`/`--after`/`--show-ids` en silence et rendait une sortie normale → Marc a cru la feature
 > cassée alors que son clone n'était pas à jour (2ᵉ occurrence de « mergé ≠ déployé chez l'utilisateur »).
-> **Comptes de Marc mappés** (ids obtenus via `--show-ids`) : les comptes courants = `cash` · Mastercard = `debt` ·
+> **Comptes de Marc mappés** (ids obtenus via `--show-ids`) : les comptes courants = `cash` · carte de crédit = `debt` ·
 > les comptes de placement = `investment`. Date de bascule retenue : **2026-06-29** (à confirmer contre la dernière
 > transaction RÉELLE de l'app, pas la date d'import).
 > **Suite** : `[FINTABLE-3]` cron Cloud Run + écriture via `runApply` (OCC + backup) — PREMIÈRE écriture
@@ -8875,8 +9003,8 @@ de dev).
 >
 > ## 🟢 Session 2026-07-29 (suite 5) — Lot 2 LIVRÉ (mapper pur) · positions IMPOSSIBLES, clos · Marc paie
 > **❌ `[FINTABLE-POSITIONS]` CLOS — impossible, mesuré.** L'annuaire PUBLIC de Fintable rend
-> **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=disnat` → 0 résultat,
-> « Desjardins Online Solutions » = `supported: false`. Limite PRODUIT, pas une config. Les positions
+> **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=<courtier>` → 0 résultat,
+> « l'institution » = `supported: false`. Limite PRODUIT, pas une config. Les positions
 > restent sur `apply_broker_statement` (relevé déposé dans le chat), qui marche déjà.
 > **✅ `[FINTABLE-PLAN]`** : Marc prend un plan payant — CONTRE ma reco (j'ai conseillé d'arrêter, le
 > cœur de la demande étant impossible). Arbitrage assumé, tracé ADR + BACKLOG.
@@ -8894,17 +9022,17 @@ de dev).
 > SOLDE seulement (ni taux ni paiement minimum inventés → elle doit préexister).
 > Aperçu : `npm run fintable:dry -- --roles <f.json> --after YYYY-MM-DD` (`--show-ids` pour construire le
 > fichier ; `.fintable-roles.json` gitignoré = ids de comptes bancaires).
-> **Suite — 3 actions Marc (routées `A_FAIRE_MOI.md`)** : créer la dette Mastercard une fois (avec son
+> **Suite — 3 actions Marc (routées `A_FAIRE_MOI.md`)** : créer la dette de carte de crédit une fois (avec son
 > VRAI taux), donner la date de bascule, construire le fichier de rôles puis me coller l'aperçu. Ensuite
 > `[FINTABLE-3]` (cron Cloud Run + écriture via `runApply`) et `[FINTABLE-4]` (import manuel masqué).
 >
 > ## 🟠 Session 2026-07-29 (suite 4) — docteur lancé : cause des positions TROUVÉE + essai qui expire le 01-08
-> **Le docteur a désigné la bonne cause du premier coup** : les 6 comptes de Marc arrivent par **UNE
-> SEULE connexion, Desjardins via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
+> **Le docteur a désigné la bonne cause du premier coup** : les comptes de Marc arrivent par **UNE
+> SEULE connexion, une institution via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
 > courtage passe par SnapTrade → un compte de placement lié via un lien bancaire expose son solde sans
 > ses positions. Plan et santé des connexions HORS DE CAUSE (`can_sync: true`, sync réussie le jour même).
-> **Action Marc** : vérifier la couverture Disnat via l'annuaire PUBLIC (`GET /institutions?q=disnat&provider=SNAPTRADE`,
-> sans jeton) puis créer la connexion. Si Disnat n'est pas couvert par SnapTrade → « investissements
+> **Action Marc** : vérifier la couverture courtier via l'annuaire PUBLIC (`GET /institutions?q=<courtier>&provider=SNAPTRADE`,
+> sans jeton) puis créer la connexion. Si le courtier n'est pas couvert par SnapTrade → « investissements
 > temps réel » impossible via Fintable, rouvrir le cadrage.
 > **🔴 `[FINTABLE-PLAN]` NOUVEAU BLOCAGE, échéance dure** : l'essai de Marc **expire le 2026-08-01**, et
 > le palier **gratuit a `can_sync: false`** → à l'expiration plus AUCUNE sync ne tourne (arrêt total, pas
@@ -8914,13 +9042,13 @@ de dev).
 > documenté à l'ADR n'a JAMAIS existé en pratique, ce qui conforte le choix de l'API directe.
 >
 > ## 🟠 Session 2026-07-29 (suite 3) — 1ᵉʳ dry-run RÉEL : Lot 5 tranché, positions BLOQUÉES, docteur livré
-> **Le dry-run passe** (6 comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
+> **Le dry-run passe** (plusieurs comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
 > ⚠️ Piège rencontré : le 422 est revenu VERBATIM après le merge — pas un mauvais diagnostic, le clone de
 > Marc était sur un `main` périmé. Une erreur identique au caractère près après un fix = code non rapatrié.
 > **🔵 `[FINTABLE-5]` TRANCHÉ — ON GARDE les 18 mois d'historique manuel** : 90 jours demandés, **30 rendus**
 > (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc (« supprimer l'historique, que Plaid », Q8) était
 > sincère et FAUSSE → l'appliquer coûtait ~17 mois. C'est exactement pourquoi ce lot était gaté par une MESURE.
-> **🔴 `[FINTABLE-POSITIONS]` BLOQUANT** : 3 comptes de placement (chez son courtier), **0 position**, et les
+> **🔴 `[FINTABLE-POSITIONS]` BLOQUANT** : des comptes de placement (chez son courtier), **0 position**, et les
 > appels `/holdings` RÉUSSISSENT en rendant des listes vides (aucun skip à tracer). Marc confirme que ces
 > comptes contiennent des titres → c'est la moitié de la demande initiale qui ne marche pas.
 > **🔵 `[FINTABLE-1b]` docteur livré** (cette PR) : `readDiagnostics.ts` (`/me` droits du plan, `/connections`
@@ -8928,8 +9056,8 @@ de dev).
 > + `npm run fintable:doctor`. Décodeurs à défauts PRUDENTS (`can_sync`/`healthy` absents → `false`). Piste
 > n°1 encodée : chez Fintable le **courtage passe par SnapTrade** — un compte de placement lié via un provider
 > bancaire expose son solde sans ses positions. 16 tests (66 au total sur `services/fintable/`).
-> **Décisions de mapping tranchées par Marc** (AskUserQuestion) : les 2 Disnat = **non-enregistrés** ; la
-> Mastercard Desjardins alimente une **dette**, pas les liquidités (90/121 tx en viennent). Simplification
+> **Décisions de mapping tranchées par Marc** (AskUserQuestion) : les comptes de courtier = **régime choisi par Marc** ; la
+> carte de crédit alimente une **dette**, pas les liquidités (90/121 tx en viennent). Simplification
 > mesurée : **0 catégorie Fintable**, 121 tx non catégorisées → aucun conflit de taxonomie, `ruleCategorize` prend le relais.
 > **Suite** : Marc lance `npm run fintable:doctor` (routé `A_FAIRE_MOI.md`). Le `[FINTABLE-2]` est SCINDÉ —
 > volet transactions/liquidités/dette exerçable (121 tx réelles), volet **positions GELÉ** tant qu'aucune
@@ -9280,7 +9408,7 @@ de dev).
 > ## 🔴 Session 2026-07-15 (suite) — Incident « fausses transactions » : purge persona + chantier transactions/catégories/Budget
 > **Incident** : Marc a trouvé des FAUSSES transactions dans ses vraies données (« je veux plus que ça arrive jamais »).
 > Diagnostic (MCP + code) : ~600 transactions du persona de test « Karim » (`persona-tx-*`, activé ~06-07) + son objectif
-> `kar-fg1` (« Indépendance financière 1 M$ ») mélangés aux ~200 vraies transactions Desjardins ; [Probable] budgets `kar-b*`
+> `kar-fg1` (« Indépendance financière 1 M$ ») mélangés aux ~200 vraies transactions bancaires ; [Probable] budgets `kar-b*`
 > aussi (expliquerait « catégories très mal réglées »). Fuite antérieure aux gardes actuelles, chemin exact inconnu
 > (`[PERSONA-LEAK-ROOTCAUSE]` LOW au BACKLOG).
 > **✅ LIVRÉ `[PERSONA-PURGE]`** : registre d'ids (`testPersonas/artifactIds.ts`, parité test-scan) + sanitizer pur
@@ -10385,7 +10513,7 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 ## 9. Contact / contexte user
 
 - **GitHub** : MoKarade
-- **Email** : marc.richard4@gmail.com
+- **Email** : (retiré)
 - **Localisation** : Québec, Canada (l'app cible fiscalité QC/CA)
 - **Langue** : français (FR uniquement depuis le cycle A — EN retiré)
 - **Style** : direct, méthodique, valide en prod après merge, merge rapide

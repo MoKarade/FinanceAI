@@ -22,9 +22,11 @@ import { loadLockedProjection } from '../services/lockedProjectionStore';
 import { initSync, runBootSync, schedulePush, flushPush, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout, subscribeSyncNotice } from '../services/sync/syncOrchestrator';
 import { maybeRunDailyFintableSync } from '../services/fintable/autoSync';
 import { fetchFxRates } from '../services/finance';
+import { apresPremierAffichage } from '../utils/apresPremierAffichage';
 import { requestPersistentStorage } from '../services/storagePersistence';
 import { ecritureFxSelonLecture } from '../services/fx/ecritureFx';
 import { modeDonneesFictives } from '../store/modeTestActif';
+import { surveillerSessionAccess } from '../utils/sessionAccess';
 
 /** Tous les effets de boot d'App : handlers d'erreur, courbe verrouillée, service worker, purge
  *  persona, init sync Drive, filets migration/hydratation, provider marché, clés API chiffrées,
@@ -86,6 +88,10 @@ export function useAppBootEffects(): void {
                 window.addEventListener('load', registerSW, { once: true });
             }
         }
+
+        // [CF-ACCESS] Session Cloudflare Access expirée (302 vers la page de connexion) → recharger pour se reconnecter.
+        // PROD seulement ; sans Access la sonde répond 200 et rien ne se passe.
+        const stopSessionAccess = import.meta.env.PROD ? surveillerSessionAccess() : () => {};
 
         // [PERSONA-PURGE] Self-heal AVANT l'init sync : si des artefacts de persona de test ont
         // fui dans les données réelles (incident 2026-07-15 : ~600 transactions « Karim » chez
@@ -158,6 +164,7 @@ export function useAppBootEffects(): void {
 
         return () => {
             clearTimeout(timer);
+            stopSessionAccess();
             clearTimeout(syncTimer);
             unsubSync();
             unsubNotice();
@@ -330,7 +337,9 @@ export function useAppBootEffects(): void {
                 logError({ source: 'network', severity: 'warning', message: 'Mise à jour des taux FX impossible (taux de repli utilisés)', error: e });
             }
         };
-        doUpdateFxRates();
+        // [S5-REFONTE-PERF] Après le premier affichage : les taux de repli servent déjà, la lecture
+        // fraîche n'a pas à entrer dans le chemin critique du démarrage (utils/apresPremierAffichage).
+        return apresPremierAffichage(() => { void doUpdateFxRates(); });
     // Effet run-once au boot : fetch FX rates une seule fois, sans re-run réactif sur state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

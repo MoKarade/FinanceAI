@@ -52,7 +52,8 @@ describe('RealEstateProjects — vue Vie (projets FUTURS seulement)', () => {
         expect(screen.getByText(/Aucun projet d'achat futur/)).toBeInTheDocument();
         // Le bien détenu n'est pas rendu ici, mais le lien croisé vers Config le signale.
         expect(screen.queryByText(/Maison Détenue 2019/)).toBeNull();
-        expect(screen.getByText(/1 bien détenu → Configurations · Immobilier/)).toBeInTheDocument();
+        // [S5-REFONTE-IMMOBILIER] L'autre moitié du split est à un onglet d'en-tête (« Biens détenus · N »).
+        expect(screen.getByRole('button', { name: 'Biens détenus · 1' })).toBeInTheDocument();
     });
 });
 
@@ -67,16 +68,18 @@ describe('RealEstateProjects — harmonisation famille Vie (REFONTE-NAV-L4)', ()
         useFinanceStore.setState({ navigateWithFocus: navSpy as never });
     });
 
-    it('avec projets : titre = TAB_LABELS + idiome « déforme ta courbe Future »', () => {
+    // [S5-REFONTE-IMMOBILIER] Maquettes : UNE page « Immobilier » (titre = TAB_LABELS[REAL_ESTATE]) dont
+    // les deux moitiés sont des onglets d'en-tête ; plus de sous-titre-idiome (la maquette n'en a pas).
+    it('avec projets : titre « Immobilier », onglet « Projets d\'achat » courant', () => {
         render(<RealEstateProjects availableCash={50_000} goals={[owned, project]} setGoals={vi.fn()} />);
-        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE_PROJECTS] })).toBeInTheDocument();
-        expect(screen.getByText(/déforme ta courbe Future/)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE] })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: "Projets d'achat · 1" })).toHaveAttribute('aria-current', 'page');
     });
 
-    it('vue vide : le MÊME header harmonisé (titre + idiome + lien courbe)', () => {
+    it('vue vide : le MÊME en-tête (titre + onglets + lien courbe)', () => {
         render(<RealEstateProjects availableCash={50_000} goals={[owned]} setGoals={vi.fn()} />);
-        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE_PROJECTS] })).toBeInTheDocument();
-        expect(screen.getByText(/déforme ta courbe Future/)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE] })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: "Projets d'achat · 0" })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('button', { name: /Voir l'effet sur ma courbe/ })).toBeInTheDocument();
     });
 
@@ -86,10 +89,10 @@ describe('RealEstateProjects — harmonisation famille Vie (REFONTE-NAV-L4)', ()
         expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
     });
 
-    it('la page Immobilier (Configurations) n\'est PAS une page Vie : ni idiome, ni lien courbe', () => {
+    it('les biens détenus ne sont PAS un plan : pas de lien courbe', () => {
         render(<RealEstate availableCash={50_000} goals={[owned, project]} setGoals={vi.fn()} />);
         expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE] })).toBeInTheDocument();
-        expect(screen.queryByText(/déforme ta courbe Future/)).toBeNull();
+        expect(screen.getByRole('button', { name: 'Biens détenus · 1' })).toHaveAttribute('aria-current', 'page');
         expect(screen.queryByRole('button', { name: /Voir l'effet sur ma courbe/ })).toBeNull();
     });
 });

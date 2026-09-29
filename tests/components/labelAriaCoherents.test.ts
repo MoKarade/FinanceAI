@@ -22,13 +22,14 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { toPosix } from '../helpers/toPosix';
 import { stripCommentsJsx } from '../../utils/stripComments';
 
 interface Paire { fichier: string; ligne: number; libelle: string; aria: string }
 
 const marcher = (dir: string, out: string[] = []): string[] => {
     for (const nom of readdirSync(dir)) {
-        const p = join(dir, nom);
+        const p = toPosix(join(dir, nom));
         if (statSync(p).isDirectory()) marcher(p, out);
         else if (p.endsWith('.tsx')) out.push(p);
     }

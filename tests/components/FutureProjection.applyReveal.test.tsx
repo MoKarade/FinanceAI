@@ -102,14 +102,14 @@ describe('FutureProjection — applyAndReveal (PH4-FUT-TEST)', () => {
 
         // Départ : écran d'amorçage « leviers-d'abord » (jamais calculé → revealedSig null).
         expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Ré-optimiser/i)).not.toBeInTheDocument();
+        expect(screen.queryByTitle(/Recomposer tes leviers/i)).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByText(/Appliquer la stratégie \(mock\)/i));
 
-        // Après application : la courbe est RÉVÉLÉE (bouton « Ré-optimiser » présent, strip KPI affiché)
+        // Après application : la courbe est RÉVÉLÉE (bouton « Trouver la meilleure stratégie » présent, strip KPI affiché)
         // et l'amorçage a disparu. Surtout : AUCUN écran « Paramètres modifiés » (= isStale resté faux,
         // preuve que les 2 setAppState ont été vus dans la même signature).
-        await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByTitle(/Recomposer tes leviers/i)).toBeInTheDocument());
         expect(screen.queryByText(/Compose tes leviers/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Paramètres modifiés/i)).not.toBeInTheDocument();
         // Le strip KPI révélé (caché tant que la courbe n'est pas calculée).
@@ -128,11 +128,11 @@ describe('FutureProjection — applyAndReveal (PH4-FUT-TEST)', () => {
     it('ré-optimiser ramène à l\'écran d\'amorçage (la courbe se re-cache sur demande)', async () => {
         render(<Harness />);
         fireEvent.click(screen.getByText(/Appliquer la stratégie \(mock\)/i));
-        await waitFor(() => expect(screen.getByText(/Ré-optimiser/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByTitle(/Recomposer tes leviers/i)).toBeInTheDocument());
 
-        fireEvent.click(screen.getByText(/Ré-optimiser/i));
+        fireEvent.click(screen.getByTitle(/Recomposer tes leviers/i));
 
         await waitFor(() => expect(screen.getByText(/Compose tes leviers/i)).toBeInTheDocument());
-        expect(screen.queryByText(/Ré-optimiser/i)).not.toBeInTheDocument();
+        expect(screen.queryByTitle(/Recomposer tes leviers/i)).not.toBeInTheDocument();
     });
 });

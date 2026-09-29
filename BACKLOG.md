@@ -43,6 +43,7 @@
 ## 🔒 Garde de la fusion auto — suites (2026-09-25)
 - [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
 - [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
+- [ ] 🔧 [GARDE-BRANCHE-A-JOUR-AVANT-FUSION] (M, chemin sensible : réglages de fusion / kit d'auto-merge) Exiger qu'une PR soit à jour avec `main` (CI relancée sur la base actuelle) avant de fusionner. Mesuré le 2026-09-29 : #1096 (garde « frein visuel absent ») et #1095 (frein activé) étaient VERTES chacune de leur côté — la CI de #1095 avait tourné avant l'arrivée de la garde — et leur combinaison a rendu `main` rouge pour toutes les PR (correctif : #1105). Le test tournait déjà en CI obligatoire : ce qui manque, c'est la base à jour. Remonté à pole-architecture pour le kit commun (toutes les apps).
 
 ## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
 

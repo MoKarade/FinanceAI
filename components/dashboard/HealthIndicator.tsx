@@ -116,7 +116,8 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     // Géométrie du donut SVG (rayon 56, stroke 8)
     const RADIUS = 56;
     const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-    const dashOffset = totalScore === null ? CIRCUMFERENCE : CIRCUMFERENCE * (1 - totalScore / 100); // null → anneau VIDE
+    // Mode discret : anneau vide (sa longueur trahit le score).
+    const dashOffset = totalScore === null || isPrivacyMode ? CIRCUMFERENCE : CIRCUMFERENCE * (1 - totalScore / 100); // null → anneau VIDE
 
     return (
         <div className={`rounded-card border border-white/10 bg-white/5 p-4 ${className}`}>
@@ -163,7 +164,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <div className={`text-2xl font-black ${colors.text} tabular-nums`}>{totalScore ?? '—'}</div>
+                        <div className={`text-2xl font-black ${colors.text} tabular-nums`}>{totalScore == null ? '—' : <PrivateAmount>{totalScore}</PrivateAmount>}</div>
                         <div className="text-tiny text-ink-400">/ 100</div>
                     </div>
                 </div>
@@ -188,13 +189,13 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                         className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`}
                                         aria-label={m.available ? undefined : `${m.label} : ${healthRawText(m.raw, isPrivacyMode)}`}
                                         aria-describedby={`${detailIdPrefix}-${m.id}`}
-                                    >{m.available ? Math.round(m.value) : '—'}</span>
+                                    >{m.available ? <PrivateAmount>{Math.round(m.value)}</PrivateAmount> : '—'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <div className="flex-1 h-1 bg-black/40 rounded-full overflow-hidden">
                                         <div
                                             className={`h-full transition-all duration-500 ${m.value >= 70 ? 'bg-success-400' : m.value >= 40 ? 'bg-warning-400' : 'bg-danger-400'}`}
-                                            style={{ width: `${m.available ? m.value : 0}%` }}
+                                            style={{ width: `${m.available && !isPrivacyMode ? m.value : 0}%` }}
                                         />
                                     </div>
                                     <span className="text-tiny text-ink-400 font-mono shrink-0 tabular-nums">{weights[m.id]}%</span>
@@ -212,7 +213,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                         pas une chaîne : les deux montants (cible FIRE, coût mensuel des
                                         abonnements) restent des nœuds, donc `PrivateAmount` peut les
                                         masquer. Une chaîne interpolée ne se masque pas. */}
-                                    {m.raw.map((part, i) => (part.type === 'montant'
+                                    {m.raw.map((part, i) => (part.type !== 'texte'
                                         ? <PrivateAmount key={i}>{part.texte}</PrivateAmount>
                                         : <React.Fragment key={i}>{part.texte}</React.Fragment>
                                     ))}<span className="sr-only"> — {m.help}</span>

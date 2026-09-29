@@ -73,13 +73,22 @@ function sanitizeNonFinite(rows: HealthMetricRow[]): HealthMetricRow[] {
  * chaîne « déjà masquée », qui dupliquerait chaque gabarit et divergerait.
  */
 export type HealthRawPart =
-    /** Texte affiché tel quel (pourcentage, libellé, décompte) — jamais masqué. */
+    /** Texte affiché tel quel (libellé, décompte) — jamais masqué. */
     | { readonly type: 'texte'; readonly texte: string }
+    /**
+     * [PRIVACY-RATIOS-DUREES-UNIFORMES] Ratio ou durée DÉRIVÉ du dossier (taux d'épargne, mois de coussin,
+     * dette/actifs, progression FIRE, poids des abonnements), déjà formaté — masqué en mode discret
+     * comme un montant (décision de Marc, 2026-09-29).
+     */
+    | { readonly type: 'ratio'; readonly texte: string }
     /** Montant en dollars, DÉJÀ formaté par `formatCAD` — masqué en mode discret. */
     | { readonly type: 'montant'; readonly texte: string };
 
 /** Segment de texte simple. */
 const txt = (texte: string): HealthRawPart => ({ type: 'texte', texte });
+
+/** Segment de RATIO ou de DURÉE perso (masqué en mode discret). */
+const rat = (texte: string): HealthRawPart => ({ type: 'ratio', texte });
 
 /**
  * Segment de MONTANT. Le formatage passe obligatoirement par `formatCAD` (non négociable
@@ -97,7 +106,7 @@ const mnt = (valeur: number): HealthRawPart => ({ type: 'montant', texte: format
  * wording pour l'œil et pour le lecteur d'écran.
  */
 export function healthRawText(parts: readonly HealthRawPart[], masquer: boolean): string {
-    return parts.map((p) => (masquer && p.type === 'montant' ? MASKED_AMOUNT_LABEL : p.texte)).join('');
+    return parts.map((p) => (masquer && p.type !== 'texte' ? MASKED_AMOUNT_LABEL : p.texte)).join('');
 }
 
 export interface HealthMetricRow {
@@ -244,7 +253,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'savingsRate' as const,
             label: "Taux d'épargne",
             value: savingsRateScore,
-            raw: [txt(`${formatPercent(savingsRateRaw, 1)} (revenus − dépenses)`)],
+            raw: [rat(formatPercent(savingsRateRaw, 1)), txt(' (revenus − dépenses)')],
             help: "Cible 20%+ : marge mensuelle confortable.",
             available: true,
         },
@@ -252,7 +261,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'emergencyFund' as const,
             label: 'Coussin d\'urgence',
             value: emergencyScore,
-            raw: [txt(`${formatNumber(emergencyMonths, { decimals: 2 })} mois`)],
+            raw: [rat(formatNumber(emergencyMonths, { decimals: 2 })), txt(' mois')],
             help: "Cible 6 mois : suffisant pour absorber une perte d'emploi.",
             available: true,
         },
@@ -260,7 +269,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             id: 'debtRatio' as const,
             label: 'Ratio dette/actif',
             value: debtScore,
-            raw: [txt(formatPercent(debtAssetsRatio, 1))],
+            raw: [rat(formatPercent(debtAssetsRatio, 1))],
             help: "Cible 0% : pas de dette. >50% : zone critique.",
             available: true,
         },
@@ -273,7 +282,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             // non-négociable « Formatage $ » interdit. Seule différence de rendu, MESURÉE :
             // l'espace avant le « $ » devient insécable (U+00A0 au lieu de U+0020) — invisible.
             raw: fireProgressPct != null
-                ? [txt(`${formatPercent(fireProgressPct, 1)} (cible Future : `), mnt(fireTarget ?? 0), txt(')')]
+                ? [rat(formatPercent(fireProgressPct, 1)), txt(' (cible Future : '), mnt(fireTarget ?? 0), txt(')')]
                 : [txt('Projection requise — ouvrir Future')],
             help: fireProgressPct != null
                 ? "Cible 100% : indépendance financière atteinte (règle des 4%)."
@@ -299,7 +308,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             label: 'Poids des abonnements',
             value: subscriptionLoadScore ?? 0,
             raw: subscriptionLoadScore != null
-                ? [mnt(subMonthly), txt(`/mois (${formatPercent(subLoadPct, 1)} du revenu net)`)]
+                ? [mnt(subMonthly), txt('/mois ('), rat(formatPercent(subLoadPct, 1)), txt(' du revenu net)')]
                 : subscriptions.length === 0
                     ? [txt('Aucun abonnement épinglé')]
                     : subsDiscarded > 0

@@ -71,6 +71,9 @@ describe('[A11Y-PRIVACY-INVESTMENTS-DETAIL] garde de source : aucun montant en c
         const trop: string[] = [];
         lignes.forEach((ligne, i) => {
             if (!/<PrivateAmount/.test(ligne)) return;
+            // [PRIVACY-RATIOS-DUREES-UNIFORMES] Un PrivateAmount OUVERT ET FERMÉ sur la même ligne (ex. un
+            // ratio `…toFixed(1)}%</PrivateAmount>`) ne couvre rien plus bas : hors sujet pour cette limite.
+            if (/<PrivateAmount[^>]*>.*<\/PrivateAmount>/.test(ligne) && !/<PrivateAmount[^>]*>[^<]*formatCAD\(/.test(ligne)) return;
             const fin = lignes.slice(i, i + 6).join('\n');
             const idx = fin.indexOf('formatCAD(');
             if (idx < 0) return;                       // PrivateAmount sans formatCAD : hors sujet

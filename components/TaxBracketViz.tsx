@@ -107,6 +107,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     <PrivateBlock as="span" className="text-tiny font-mono" title="Impôt net (crédits inclus)">
                         <span className="text-danger-400">{formatCAD(netTax)}</span>
                         <span className="text-ink-400 mx-1">·</span>
+                        {/* MONTANT-MASQUE-AILLEURS : tout le bloc est dans le <PrivateBlock> ouvert plus haut. */}
                         <span className="text-warning-400">{formatPercent(netRate(netTax) * 100, 2)} effectif</span>
                         <span className="text-ink-400 mx-1">·</span>
                         <span className="text-info-400">{formatPercent(breakdown.marginalRate * 100, 0)} marginal</span>
@@ -140,6 +141,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                                 /* MONTANT-PUBLIC — bornes du palier (loi), pas une donnée de l'utilisateur. */
                                 title={`Tranche ${(b.rate * 100).toFixed(1)}% : ${formatCAD(min)} → ${b.upTo === Infinity ? '∞' : formatCAD(b.upTo)}`}
                             >
+                                {/* MONTANT-PUBLIC : taux légal de la tranche (barème), pas un ratio de l'utilisateur. */}
                                 <span className="text-tiny text-white font-mono">{(b.rate * 100).toFixed(0)}%</span>
                             </div>
                         );

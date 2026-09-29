@@ -866,7 +866,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const etroit = isBelowSidebarBreakpoint;
     // Au téléphone (maquette F-mobile), pastille courte « FIRE ≈ 2036 » et pas d'étiquette sur le
     // trait de la retraite : deux pastilles longues s'y chevauchaient (mesuré à 390 px).
-    const libelleJalonFire = jalonFire?.year != null
+    // [PRIVACY-RATIOS-DUREES-UNIFORMES] Année et âge FIRE = dérivés du dossier : absents de la pastille en mode discret.
+    const libelleJalonFire = !isPrivacyMode && jalonFire?.year != null
         ? `FIRE ≈ ${jalonFire.year}${!etroit && jalonFire.age != null ? ` · ${Math.floor(jalonFire.age)} ans` : ''}`
         : 'FIRE';
     const selection = useSelectionJour<ProjectionChartPoint>({
@@ -1491,12 +1492,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <dt className="text-meta text-ink-400">Objectif FIRE</dt>
                 <dd className="mt-0.5 flex items-baseline gap-1.5 flex-wrap" title="Règle des 4 %">
                     <PrivateAmount className="text-[20px] font-bold text-ink-50">{formatCompactCAD(fireNumber)}</PrivateAmount>
-                    {jalonFire?.year != null && <span className="text-meta font-semibold text-warning-400">vers {jalonFire.year}</span>}
+                    {jalonFire?.year != null && <span className="text-meta font-semibold text-warning-400">vers <PrivateAmount>{jalonFire.year}</PrivateAmount></span>}
                 </dd>
             </div>
             <div className="min-w-0">
                 <dt className="text-meta text-ink-400">Succès (Monte-Carlo)</dt>
-                <dd className={`mt-0.5 text-[20px] font-bold ${tonSucces}`} title={titreSucces}>{valeurSucces}</dd>
+                <dd className={`mt-0.5 text-[20px] font-bold ${tonSucces}`} title={titreSucces}><PrivateAmount>{valeurSucces}</PrivateAmount></dd>
             </div>
             <div className="min-w-0">
                 {/* [HORIZON-ESPERANCE-DE-VIE] L'horizon court jusqu'à l'espérance de vie de la personne 1. */}
@@ -1510,7 +1511,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </div>
             <div className="min-w-0">
                 <dt className="text-meta text-ink-400">Vitalité</dt>
-                <dd className="mt-0.5 text-[20px] font-bold text-ink-50" title={titreVitalite}>{valeurVitalite}</dd>
+                <dd className="mt-0.5 text-[20px] font-bold text-ink-50" title={titreVitalite}><PrivateAmount>{valeurVitalite}</PrivateAmount></dd>
             </div>
         </dl>
     );
@@ -1525,7 +1526,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </div>
             <div className={tuile} title={titreSucces}>
                 <p className="text-meta text-ink-400">Succès</p>
-                <p className={`text-[17px] font-bold leading-snug ${tonSucces}`}>{valeurSucces}</p>
+                <p className={`text-[17px] font-bold leading-snug ${tonSucces}`}><PrivateAmount>{valeurSucces}</PrivateAmount></p>
             </div>
         </>
     );
@@ -1546,8 +1547,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             cle: 'fire',
             libelle: jalonFire ? 'Objectif FIRE atteint' : 'Objectif FIRE (non atteint)',
             libelleCourt: 'Objectif FIRE',
-            annee: jalonFire?.year != null ? `≈ ${jalonFire.year}` : '—',
-            age: ageDe(jalonFire?.age),
+            annee: jalonFire?.year != null ? <PrivateAmount>{`≈ ${jalonFire.year}`}</PrivateAmount> : '—',
+            age: jalonFire?.age != null ? <PrivateAmount>{ageDe(jalonFire.age)}</PrivateAmount> : '—',
             montant: <PrivateAmount>{formatCompactCAD(fireNumber)}</PrivateAmount>,
             ton: 'fire',
         },
@@ -1591,7 +1592,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         <div role="status">
             <Badge variant="danger" size="md">
                 {insolvency.age != null
-                    ? `Plan insoutenable — capital épuisé vers ${insolvency.age} ans`
+                    ? <>Plan insoutenable — capital épuisé vers <PrivateAmount>{insolvency.age}</PrivateAmount> ans</>
                     : 'Plan insoutenable — capital épuisé'}
             </Badge>
         </div>

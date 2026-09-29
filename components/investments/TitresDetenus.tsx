@@ -49,7 +49,7 @@ export const TitresDetenus: React.FC<{ lignes: LigneTitre[]; couple: boolean; et
                                 </span>
                                 <span className="flex flex-col items-end shrink-0">
                                     <PrivateAmount className="font-mono font-bold text-ink-50">{formatCAD(l.valeur)}</PrivateAmount>
-                                    <span className="font-mono text-meta text-ink-400">{poidsTexte(l.poids)}</span>
+                                    <span className="font-mono text-meta text-ink-400"><PrivateAmount>{poidsTexte(l.poids)}</PrivateAmount></span>
                                 </span>
                             </li>
                         );
@@ -84,7 +84,7 @@ export const TitresDetenus: React.FC<{ lignes: LigneTitre[]; couple: boolean; et
                                 </td>
                                 {couple && <td className="px-3 text-ink-300">{l.proprietaire}</td>}
                                 <td className="px-3 text-right"><PrivateAmount className="font-mono text-ink-50">{formatCAD(l.valeur)}</PrivateAmount></td>
-                                <td className="px-5 text-right font-mono text-ink-300">{poidsTexte(l.poids)}</td>
+                                <td className="px-5 text-right font-mono text-ink-300"><PrivateAmount>{poidsTexte(l.poids)}</PrivateAmount></td>
                             </tr>
                         );
                     })}

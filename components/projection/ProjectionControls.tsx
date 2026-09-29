@@ -1,6 +1,7 @@
 import React from 'react';
 import { Select } from '../ui/Select';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { Button } from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
@@ -262,7 +263,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                     title="Appliquer le rendement composé observé sur ton historique. ⚠️ Il inclut tes APPORTS (pas seulement la croissance des titres) → il SURESTIME le rendement pur, surtout sur un historique court (fiable à partir de ~3 ans)."
                                     className="px-2! py-0.5! text-tiny!"
                                 >
-                                    Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)
+                                    Auto (<PrivateAmount>{liveCSVBalances.historicalRate.toFixed(1)}%</PrivateAmount>)
                                 </Button>
                             )}
                         </h4>
@@ -327,6 +328,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                     <div key={item.key}>
                                         <label className="flex justify-between text-meta text-ink-300 mb-1">
                                             <span>{item.label} ({item.weight}%)</span>
+                                            {/* NOMBRE-NON-MONETAIRE : hypothèse d'inflation saisie (réglage), pas un ratio du dossier. */}
                                             <span className="text-warning-400 font-bold">{((projAsMap[item.key] as number | undefined) ?? item.def).toFixed(1)}%</span>
                                         </label>
                                         <input
@@ -374,6 +376,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                         <div>
                             <label className="flex justify-between text-meta text-ink-300 mb-1">
                                 <span>Rendement dividende US (%)</span>
+                                {/* NOMBRE-NON-MONETAIRE : hypothèse de rendement saisie (réglage). */}
                                 <span className="text-info-400 font-bold">{(projection.usEquityDividendYield ?? 1.5).toFixed(1)}%</span>
                             </label>
                             <input

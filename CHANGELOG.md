@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-29 — Mode discret : les pourcentages, durées et scores tirés de tes données sont masqués aussi
+
+- En mode discret, l'app masquait tes montants mais laissait voir des chiffres qui permettaient de les
+  deviner. Sont maintenant masqués : les variations et poids de ton portefeuille, la répartition par
+  compte, par région et par secteur, l'écart réel/prévu du Budget et la part de chaque poste, le
+  prorata et l'effort de chaque conjoint, le taux de succès et l'année FIRE du Futur, l'âge
+  d'épuisement du capital, l'âge de retraite calculé, les scores de santé et de stratégie, ton taux
+  marginal, les taux d'intérêt de tes dettes, la durée avant d'être libéré des dettes, les ratios
+  immobiliers et la hausse de prix d'un abonnement. Les barres qui dessinaient ces ratios sont vides.
+- Restent visibles : les hypothèses que tu saisis (inflation, rendements), les barèmes d'impôt et les
+  variations de prix des titres en bourse.
+
 ## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
 
 - Dans la fenêtre « Ajouter un placement », le récapitulatif (« 5 × … = … investi le… ») affichait en

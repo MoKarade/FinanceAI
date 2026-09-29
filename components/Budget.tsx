@@ -1093,18 +1093,21 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                             <span className="text-body font-bold text-indigo-400">{coupleAnalysis.user1.name}</span>
                                             <div className="flex items-center gap-2">
                                                 {coupleAnalysis.splitMode === 'prorata' && (
-                                                    <span className="text-tiny text-ink-400">{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}% (Net)</span>
+                                                    <span className="text-tiny text-ink-400"><PrivateAmount>{(coupleAnalysis.splitRatio1 * 100).toFixed(0)}%</PrivateAmount> (Net)</span>
                                                 )}
                                                 <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded-sm" title={EFFORT_BASE_TITLE}>
-                                                    Effort: {coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
+                                                    Effort: <PrivateAmount>{coupleAnalysis.user1Income > 0 ? ((coupleAnalysis.user1Contribution / coupleAnalysis.user1Income) * 100).toFixed(0) : 0}%</PrivateAmount> {EFFORT_BASE_LABEL}
                                                 </span>
                                             </div>
                                         </div>
 
                                         <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
+                                            {/* [PRIVACY-RATIOS-DUREES-UNIFORMES] Les largeurs trahissent les ratios commun/perso/épargne : barre neutre en mode discret. */}
+                                            {isPrivacyMode ? <div className="h-full w-full bg-white/10" /> : (<>
                                             <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user1ShareCommon)}`}></div>
                                             <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user1Personal)}`}></div>
                                             <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user1Savings)}`}></div>
+                                            </>)}
                                         </div>
 
                                         <div className="flex justify-between text-tiny text-ink-300 px-1">
@@ -1128,18 +1131,21 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                 <span className="text-body font-bold text-pink-400">{coupleAnalysis.user2.name}</span>
                                                 <div className="flex items-center gap-2">
                                                     {coupleAnalysis.splitMode === 'prorata' && (
-                                                        <span className="text-tiny text-ink-400">{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}% (Net)</span>
+                                                        <span className="text-tiny text-ink-400"><PrivateAmount>{((1 - coupleAnalysis.splitRatio1) * 100).toFixed(0)}%</PrivateAmount> (Net)</span>
                                                     )}
                                                     <span className="text-meta text-ink-400 bg-white/5 px-2 py-0.5 rounded-sm" title={EFFORT_BASE_TITLE}>
-                                                        Effort: {coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}% {EFFORT_BASE_LABEL}
+                                                        Effort: <PrivateAmount>{coupleAnalysis.user2Income > 0 ? ((coupleAnalysis.user2Contribution / coupleAnalysis.user2Income) * 100).toFixed(0) : 0}%</PrivateAmount> {EFFORT_BASE_LABEL}
                                                     </span>
                                                 </div>
                                             </div>
 
                                             <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
+                                                {/* [PRIVACY-RATIOS-DUREES-UNIFORMES] Les largeurs trahissent les ratios commun/perso/épargne : barre neutre en mode discret. */}
+                                                {isPrivacyMode ? <div className="h-full w-full bg-white/10" /> : (<>
                                                 <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user2ShareCommon)}`}></div>
                                                 <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user2Personal)}`}></div>
                                                 <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user2Savings)}`}></div>
+                                                </>)}
                                             </div>
 
                                             <div className="flex justify-between text-tiny text-ink-300 px-1">

@@ -273,7 +273,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
         const ancre = index === 0 ? 'start' : index === visibleTicksCount - 1 ? 'end' : 'middle';
         return (
             <text x={x} y={y + 12} textAnchor={ancre} fill="#8896a8" fontSize={etroit ? 10 : 11} fontFamily="JetBrains Mono">
-                {m === 0 ? (etroit ? 'auj.' : "aujourd'hui") : `${m} mois`}
+                {m === 0 ? (etroit ? 'auj.' : "aujourd'hui") : isPrivacyMode ? '' : `${m} mois`}
             </text>
         );
     };
@@ -292,11 +292,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // [A11Y-CHARTS] — colonnes de la table sr-only (alternative texte à l'AreaChart d'extinction,
     // opaque aux lecteurs d'écran). Mois (axe X) + solde restant + intérêts cumulés. Mode privé
-    // masque les MONTANTS (pas le numéro de mois).
+    // masque les MONTANTS ET le numéro de mois ([PRIVACY-RATIOS-DUREES-UNIFORMES] : le dernier mois = la durée d'extinction).
     const debtColumns = useMemo<ChartDataColumn[]>(() => {
         const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
         return [
-            { key: 'month', label: 'Mois', format: (v) => `Mois ${v ?? 0}` },
+            { key: 'month', label: 'Mois', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : `Mois ${v ?? 0}` },
             { key: 'balance', label: 'Solde restant', format: money },
             { key: 'interestAccumulated', label: 'Intérêts cumulés', format: money },
         ];
@@ -399,12 +399,12 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                             </div>
                                             {/* Mobile : taux en orange, minimum à droite. */}
                                             <div className="flex lg:hidden justify-between items-center gap-3 text-[13px]">
-                                                <span className="font-mono text-[#e0703a]">{d.interestRate.toLocaleString('fr-CA')} %</span>
+                                                <span className="font-mono text-[#e0703a]"><PrivateAmount>{d.interestRate.toLocaleString('fr-CA')} %</PrivateAmount></span>
                                                 <span className="text-ink-300">minimum <PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount>/mois</span>
                                             </div>
                                             {/* Bureau : pastilles ; un taux élevé (≥ 8 %, seuil du signal « dette à taux élevé ») en rouge. */}
                                             <div className="hidden lg:flex flex-wrap gap-2">
-                                                <span className={`h-6 px-2.5 rounded-full text-meta flex items-center ${d.interestRate >= 8 ? 'bg-danger-500/10 border border-danger-500/30 text-danger-400' : 'bg-surfaceHighlight text-ink-200'}`}>{d.interestRate.toLocaleString('fr-CA')} %</span>
+                                                <span className={`h-6 px-2.5 rounded-full text-meta flex items-center ${d.interestRate >= 8 ? 'bg-danger-500/10 border border-danger-500/30 text-danger-400' : 'bg-surfaceHighlight text-ink-200'}`}><PrivateAmount>{d.interestRate.toLocaleString('fr-CA')} %</PrivateAmount></span>
                                                 <span className="h-6 px-2.5 rounded-full bg-surfaceHighlight text-ink-300 text-meta flex items-center">minimum&nbsp;<PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount>/mois</span>
                                             </div>
                                             {/* [DETTE-DATES] Les dates ne sont pas des montants : elles restent visibles en
@@ -445,9 +445,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             </div>
                             <div className="grid grid-cols-2 gap-2.5">
                                 <div className="px-3 lg:px-3.5 py-3 rounded-xl bg-dark lg:bg-surface lg:border lg:border-white/6">
-                                    {/* NOMBRE-NON-MONETAIRE : une DURÉE en années (mois / 12), pas un montant. */}
                                     <div className="text-meta text-ink-400">Liberté dans</div>
-                                    <div className="font-mono lg:font-sans text-[20px] lg:text-[22px] font-bold text-success-400">{simulation.valide ? `${formatNumber(simulation.months / 12, { decimals: 1 })} ans` : '—'}</div>
+                                    <div className="font-mono lg:font-sans text-[20px] lg:text-[22px] font-bold text-success-400">{simulation.valide ? <><PrivateAmount>{formatNumber(simulation.months / 12, { decimals: 1 })}</PrivateAmount> ans</> : '—'}</div>
                                 </div>
                                 {/* [S5-REFONTE-DETTES] « Intérêts évités : Calculé vs Min. » n'affichait AUCUN chiffre :
                                     remplacé par les intérêts réellement payés d'ici l'extinction (même simulation que la courbe). */}

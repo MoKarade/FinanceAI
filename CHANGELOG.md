@@ -47,6 +47,15 @@
 - Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes
   échouaient à cause des fins de ligne et des `\` de Windows, alors qu'ils passaient sur GitHub).
   Ajout de `.gitattributes` (fins de ligne uniformes) et d'un petit utilitaire de chemins pour les tests.
+
+## 2026-09-26 — Connecteur claude.ai : toute écriture demande maintenant un aperçu puis une confirmation
+
+- Quand claude.ai modifie tes finances (paie, relevé, dette, solde, budget, suppression), il doit d'abord te
+  montrer un aperçu ; l'écriture n'a lieu qu'au second appel, avec un jeton que seul le serveur peut émettre
+  (usage unique, 5 min, lié à ces changements exacts). Avant, cinq de ces gestes écrivaient directement.
+- Un document piégé ne peut donc plus faire écrire ton état en un seul appel. Limite : c'est toujours à toi
+  d'approuver l'appel dans claude.ai ; la sauvegarde horodatée reste annulable.
+
 ## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
 
 - Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus

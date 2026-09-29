@@ -18,6 +18,7 @@ import { computeStartingCash } from '../../services/projection/buildSimulationPa
 import { FileStateSource, buildDefaultAppState, loadAppStateFromSource } from '../../mcp/state/loadAppState';
 import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerSetCash } from '../../mcp/tools/setCash.tool';
+import { confirmer } from './_ecritureMcp';
 import type { AppState, Transaction } from '../../types';
 
 const baseState = (): AppState => buildDefaultAppState();
@@ -155,7 +156,7 @@ describe('applyCashBalance — bornes anti-injection + gardes non-fini (throw, r
 type Handler = (a: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
 function captureSetCash(store: StateStore): Handler {
     let cap: Handler | null = null;
-    const fake = { tool: (_n: string, _d: string, _s: unknown, cb: Handler) => { cap = cb; } } as unknown as McpServer;
+    const fake = { tool: (..._a: unknown[]) => { cap = _a[_a.length - 1] as Handler; } } as unknown as McpServer;
     registerSetCash(fake, store);
     if (!cap) throw new Error('aucun handler capturé');
     return cap;
@@ -187,7 +188,7 @@ describe('set_cash — tool bout en bout + confirmation à 2 temps', () => {
 
     it('2ᵉ appel AVEC confirm:true → écrit (applied:true, backupPath), la relecture du FICHIER le voit', async () => {
         const store = makeStateStore(new FileStateSource(file), { ttlMs: 0 });
-        const out = JSON.parse((await captureSetCash(store)({ targetCad: 50000, confirm: true })).content[0].text);
+        const out = JSON.parse((await confirmer(captureSetCash(store), { targetCad: 50000 })).content[0].text);
         expect(out.applied).toBe(true);
         expect(out.backupPath).toBeTruthy();
         const reloaded = await loadAppStateFromSource(new FileStateSource(file));
@@ -196,13 +197,13 @@ describe('set_cash — tool bout en bout + confirmation à 2 temps', () => {
 
     it('cible déjà atteinte + confirm:true → applied:false (idempotent au niveau tool)', async () => {
         const store = makeStateStore(new FileStateSource(file), { ttlMs: 0 });
-        await captureSetCash(store)({ targetCad: 50000, confirm: true });
-        const out = JSON.parse((await captureSetCash(store)({ targetCad: 50000, confirm: true })).content[0].text);
+        await confirmer(captureSetCash(store), { targetCad: 50000 });
+        const out = JSON.parse((await confirmer(captureSetCash(store), { targetCad: 50000 })).content[0].text);
         expect(out.applied).toBe(false);
     });
 
     it('source non inscriptible → erreur claire, pas de crash', async () => {
-        const res = await captureSetCash(makeStateStore(null))({ targetCad: 50000, confirm: true });
+        const res = await confirmer(captureSetCash(makeStateStore(null)), { targetCad: 50000 });
         expect(res.isError).toBe(true);
     });
 });

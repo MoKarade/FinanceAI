@@ -304,7 +304,11 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
             // ressemble à une réponse (2026-09-21, mesuré ; cf. le commentaire de `buildSha`).
             // ⚠️ `null` = « ce serveur ne sait pas quel code il porte », et c'est une réponse
             // utile — jamais un repli crédible qui masquerait le trou (`no-fake-data`).
-            sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION, sha: buildSha() });
+            // [VERROU-ECRITURE] `isDrive` expose si le verrou d'écriture est APPLICABLE (recommandation
+            // pole-securite, PR #1093) : une dégradation Drive→fichier local en production éteindrait
+            // silencieusement le verrou (mécanisme non applicable hors Drive, ADR 0025) sans que rien ne
+            // le signale ailleurs. Visible ici = la sonde de santé le montre plutôt que rester muet.
+            sendJson(res, 200, { status: 'ok', version: MCP_SERVER_VERSION, sha: buildSha(), isDrive: state.isDrive });
             return;
         }
         // [MCP-RATE-LIMIT] Débit + échecs d'authentification, AVANT tout traitement de la route.

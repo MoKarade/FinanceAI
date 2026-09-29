@@ -44,7 +44,16 @@
 
 ## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
 
-- [ ] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils d'écriture : livré en PR brouillon (validation-marc, non armée) ; à archiver quand fusionnée. Suite non faite : rate limit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ; longueur minimale de `FINANCEAI_ACCESS_KEY` (audit findings moyenne 6 et 8).
+- [ ] 🧭 [MCP-RATE-LIMIT] (M) Limite de débit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` (audit finding moyenne 6, suite de `[MCP-CONFIRM-TOKEN]` #1076 fusionnée le 29/09).
+- [ ] 🔧 [MCP-ACCESS-KEY-LONGUEUR-MIN] (S) Longueur minimale de `FINANCEAI_ACCESS_KEY` (audit finding moyenne 8).
+
+## 🔒 Verrou d'écriture MCP — Étape 2 (plan validé Marc, 28/09/2026)
+
+- [ ] 🔧 **`[VERROU-ECRITURE]`** (M) — verrou d'écriture désactivé par défaut, activable UNIQUEMENT
+  depuis l'app web (Réglages → Écritures MCP), jamais depuis la conversation claude.ai : défense en
+  profondeur par-dessus le jeton de `[MCP-CONFIRM-TOKEN]` contre l'injection de consigne. Livré en PR
+  brouillon (chemins sensibles `mcp/**`, `services/googleDrive/**`, `components/settings/**`), relecture
+  pole-securite ligne à ligne avant armement. ADR 0025. À archiver quand fusionnée.
 
 ## 💼 Portefeuille Disnat — refonte (cahier des charges de Marc, Lot 0 fait le 2026-09-24)
 

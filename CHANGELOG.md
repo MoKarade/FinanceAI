@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-29 — Réglages : un nouveau bouton pour autoriser temporairement les écritures de claude.ai
+
+- Nouvelle carte « Écritures MCP » dans Réglages. Par défaut, claude.ai ne peut RIEN écrire dans tes
+  finances, même si tu le lui demandes dans la conversation — il faut d'abord cliquer « Autoriser »
+  ici, pour une durée courte (15, 30 ou 60 minutes), avant de lui demander d'importer un document. Un
+  bouton « Verrouiller maintenant » referme avant l'échéance. Rien à faire si tu ne veux que discuter
+  ou consulter tes chiffres.
+
 ## 2026-09-28 — Correctif technique : un contrôle interne bloquait toutes les PR
 
 - Aucun changement dans l'app. Un contrôle qui vérifie qu'aucun journal public ne publie de données ne connaissait

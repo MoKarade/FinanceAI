@@ -4,9 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 — **`[VERROU-ECRITURE]` : Étape 2, verrou d'écriture MCP hors du chat**
+> Suite de `[MCP-CONFIRM-TOKEN]` (#1076, fusionnée) : le jeton d'aperçu empêche une écriture en UN
+> appel mais pas l'injection de consigne (aperçu+confirme enchaînés par un modèle piégé). Verrou
+> **désactivé par défaut**, activable UNIQUEMENT depuis l'app web (Réglages → Écritures MCP, nouvelle
+> `WriteLockCard`), jamais depuis claude.ai. État dans `financeai-write-lock.json` (appDataFolder,
+> même dossier que `financeai-sync.json`, aucun nouveau scope OAuth). **Lecture SEULE côté MCP**
+> (`mcp/drive/writeLockStore.ts` — n'expose AUCUNE fonction d'écriture, vérifié par test structurel) ;
+> **écriture SEULE côté app web** (`services/googleDrive/writeLock.ts`). Vérifié dans `runApply`
+> AVANT la logique d'aperçu/jeton de #1076 (les deux se cumulent, défense en profondeur) : un verrou
+> refermé refuse même un `confirmToken` valide émis pendant une fenêtre désormais close. Échec fermé
+> partout (réseau, fichier absent, JSON invalide, exception) — jamais un repli ouvert ; une source
+> d'état SANS Drive (fichier local, tests) n'implémente pas le mécanisme, ce n'est PAS un fail-open
+> (le verrou ne s'applique qu'aux déploiements Drive-backed, la seule forme exposée à un document
+> tiers). ADR 0025. Tests : `tests/mcp/verrouEcriture.test.ts`,
+> `tests/mcp/verrouEcritureIntegration.test.ts` (matrice 8 outils + structurel), `tests/services/writeLock.test.ts`.
+> ⚠️ PR sensible (`mcp/**`, `services/googleDrive/**`, `components/settings/**`) : brouillon, non
+> armée, relecture ligne à ligne de pole-securite obligatoire avant tout armement.
+>
 > ## 🟦 Session 2026-09-26 — **`[MCP-DURCISSEMENT]` : limites de débit du MCP, message de parse sans extrait, clé d'accès faible signalée**
 > Audit P3-P6 (moyennes 5, 6, 8). (1) `parseRawToAppState` : message fixe (« contenu non affiché »), plus l'extrait de `JSON.parse`. (2) `mcp/auth/routeRateLimit.ts` : `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail`. RÈGLE : on VÉRIFIE D'ABORD le secret (mêmes comparaisons en temps constant que les handlers), on refuse après. Appels AUTHENTIFIÉS : plafond de volume (300/min, 12/h, 12/h, 120/h, 60/h) ; un appel non authentifié ne touche jamais ce budget. Appels NON authentifiés : compteur d'échecs PAR ADRESSE (dernier élément de `X-Forwarded-For`, seuil 100 par 15 min, table bornée) → 429 ; un secret valide n'est JAMAIS bloqué. Pas de blocage global (ce serait un déni de service ouvert à Internet). `/oauth/authorize` : même logique, compteur PAR ADRESSE (8 par 15 min) + plafond global de sécurité (200) appliqué SEULEMENT si la clé d'accès est faible (< 32) ; le blocage précède la comparaison de la clé (même pour la bonne clé depuis une adresse bloquée : sinon la clé se devinerait à la vitesse de la ligne) ; à vérifier en production que le dernier élément de `X-Forwarded-For` est l'adresse client (`docs/A_FAIRE_MOI.md`). (3) `FINANCEAI_ACCESS_KEY` < 32 caractères : le serveur DÉMARRE, alerte au journal (sans la clé ni sa longueur) et l'outil `ping` (derrière l'OAuth, donc visible de Marc seulement) ajoute « clé d'accès faible » ; `/health` ne dit rien. Avec `FINANCEAI_ACCESS_KEY_STRICT=1`, seule `/oauth/authorize` répond 503 (nouvelles autorisations) ; hub, véhicule, refresh, sync et les sessions déjà autorisées continuent.
 > Marc : régénère la clé (64 caractères hex) quand tu veux, puis pose la variable GitHub `MCP_ACCESS_KEY_STRICT=1` (câblée par `mcp/deploy.sh` et `deploy-mcp.yml` vers `FINANCEAI_ACCESS_KEY_STRICT=1`) (`docs/A_FAIRE_MOI.md`). Chiffres de débit = estimation de l'usage (`ROUTE_LIMITS`), cadence réelle du hub à confirmer.
+>
 > ## 🟥 Session 2026-09-28 (suite) — **`[GARDE-JQ-AUTO-MERGE-LENGTH]` : `main` bloquait toute PR sur une garde anti-fuite**
 > `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows) ne connaissait pas
 > `gh pr list --json number --jq 'length'` de `.github/workflows/auto-merge.yml:77` (compte de PR ouvertes,

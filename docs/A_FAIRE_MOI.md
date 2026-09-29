@@ -13,6 +13,8 @@
   - ⚠️ **Ordre pour la clé** : d'abord régénérer la clé (64 caractères hex) dans Secret Manager et redéployer, ENSUITE poser `MCP_ACCESS_KEY_STRICT=1` (sinon, avec l'ancienne clé faible, STRICT ferme `/oauth/authorize`).
 - [ ] 👤 **[MCP-CONFIRM-TOKEN]** (2026-09-26) — **ne jamais activer « Toujours autoriser » sur les outils d'écriture du connecteur FinanceAI dans claude.ai** (apply_payslip, apply_bank_statement, apply_broker_statement, apply_tax_slip, apply_debt, set_cash, set_budget_item, delete_item). Laisse claude.ai te demander l'approbation à CHAQUE appel : c'est ta seule barrière humaine ; le jeton du serveur empêche l'écriture en un appel, le rejeu et le changement d'arguments, mais pas un modèle qui rappelle aussitôt. Détail : `docs/adr/0023-confirmation-ecriture-mcp-par-jeton.md`.
 
+- [ ] 👤 **[VERROU-ECRITURE]** (2026-09-29, une fois la PR fusionnée et déployée MCP+Vercel) — **avant de demander à claude.ai d'importer un document (relevé, feuillet…) : ouvre FinanceAI → Réglages → « Écritures MCP » → clique « Autoriser 15/30/60 min »**. Par défaut, TOUTES les écritures sont refusées même si tu le demandes dans la conversation — c'est voulu (défense contre un document piégé). Un bouton « Verrouiller maintenant » referme avant l'échéance. Rien à faire pour lire/discuter. Détail : `docs/adr/0025-verrou-ecriture-mcp-hors-chat.md`.
+
 - [ ] 👤 **[CF-ACCESS-MISE-EN-SERVICE]** (2026-09-25, décision Marc : Cloudflare Access remplace la passkey) — **mettre un mur
   « code par e-mail » devant finance.hubperso.com**. Le code (PR `[CF-ACCESS]`) vérifie le jeton d'Access côté API ; rien ne
   change tant que tu n'as pas fait les étapes 3 à 5. **L'ORDRE COMPTE.** Aucune valeur ci-dessous n'est un secret

@@ -3,7 +3,7 @@
 // [GARDE-BLOCAGE-FUSION] Le workflow « Fusion automatique » ne doit JAMAIS armer l'auto-fusion d'une PR qui touche un
 // chemin sensible (hooks de l'agence, .github, réglages, commit-gate, .claude, CODEOWNERS, modeles/, et — pour FinanceAI
 // — le relais IA, l'authentification, vercel.json), ni d'une PR étiquetée validation-marc ou en brouillon.
-// La décision est celle du kit de l'Atelier 1.10.0, origin/main au commit 245364a (`peutArmer`, `decision`, inchangés côté FinanceAI : pas de frein visuel activé), copiée dans modeles/auto-merge/ ; le workflow
+// La décision est celle du kit de l'Atelier 1.10.0, origin/main au commit 245364a (`peutArmer`, `decision`, inchangés côté FinanceAI ; frein visuel ACTIVÉ par #1095), copiée dans modeles/auto-merge/ ; le workflow
 // est un `pull_request_target` (lu sur `main`, jamais dans la PR). Ce fichier fige les deux : la décision (table
 // d'attaque) et le gabarit du workflow (grille de relecture sécurité A1-A9, lue comme DONNÉE).
 import { describe, it, expect } from 'vitest';
@@ -299,12 +299,21 @@ describe('copies du kit 1.10.0 (origin/main de l\'Atelier, resynchronisé depuis
         expect(l, chemin).toBeDefined();
         expect(sha(lit(chemin)), chemin).toBe(l!.sha);
     });
-    it('la source (kit 1.10.0, commit 245364a de l\'Atelier), le frein visuel non activé et chaque écart FinanceAI sont déclarés', () => {
+    it('la source (kit 1.10.0, commit 245364a de l\'Atelier), le frein visuel ACTIVÉ et chaque écart FinanceAI sont déclarés', () => {
         expect(liste).toContain('1.10.0');
         expect(liste).toContain('245364a');
-        expect(liste).toContain('NON ACTIVÉ');
-        // Frein visuel : décision de Marc en attente, la clé ne doit pas apparaître dans la config tant qu'elle n'est pas prise.
-        expect(lit('.github/auto-merge.json')).not.toContain('chemins_validation_visuelle');
+        // [GARDE-FREIN-VISUEL] Frein visuel ACTIVÉ par décision de Marc (#1095, 2026-09-29). La garde est RETOURNÉE,
+        // pas retirée : la clé doit exister ET porter exactement les chemins décidés — ni retrait silencieux du
+        // frein, ni chemin ajouté ou perdu sans passer par ce test.
+        expect(liste).toContain('ACTIVÉ (#1095)');
+        expect(config.chemins_validation_visuelle, 'frein visuel absent de .github/auto-merge.json').toEqual([
+            'components/ui/**',
+            'components/Layout.tsx',
+            'components/TabRouter.tsx',
+            '**/*.css',
+            'tailwind.config.js',
+            'tailwind.palette-v3.js',
+        ]);
         for (const mot of ['commit-gate.mjs', 'analyseCommande.mjs', '**/settings*.json', 'securite_login', 'securite_user_id', 'passerelle/tunnel.yml', 'workflows: [CI]', 'auto-merge.yml', 'carence_dependabot_jours', 'dependabot.yml', 'armer-docs.mjs', 'docsAjoutsSeulement.mjs', 'ADR 0024', 'chemins_ajouts_seulement', 'chemins_contenu_surveille']) {
             expect(liste, `écart non déclaré : ${mot}`).toContain(mot);
         }

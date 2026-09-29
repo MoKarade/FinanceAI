@@ -17,6 +17,9 @@
 
 ---
 
+## 🔐 Sécurité MCP — durcissement (audit P3-P6, 26/09/2026)
+
+- [ ] 🔧 **`[MCP-DURCISSEMENT]`** (M) — limites de débit des routes MCP, message de parse sans extrait, clé d'accès faible signalée (STRICT optionnel) : livré en PR brouillon (validation-marc, non armée). Reste : Dependabot cooldown, CSP (`img-src`, `form-action`), service worker (attend #1074).
 ## 🔒 Relais IA — suites du durcissement (2026-09-25)
 - [ ] 👤 [CF-ACCESS-MISE-EN-SERVICE] (S) Poser l'application Cloudflare Access + les variables Vercel, passer de l'observation à « exiger » :
   procédure pas à pas dans `A_FAIRE_MOI` (code livré : PR `[CF-ACCESS]`, ADR 0022).

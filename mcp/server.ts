@@ -52,6 +52,8 @@ export interface CreateServerOptions {
      * Absent => aucun tool d'ecriture (le connecteur reste en lecture seule).
      */
     store?: StateStore;
+    /** [MCP-ACCESS-KEY-MIN] Clé d'accès faible : signalée par `ping` (jamais la clé, ni sa longueur). */
+    cleAccesFaible?: boolean;
 }
 
 export const createServer = (options: CreateServerOptions = {}): McpServer => {
@@ -65,7 +67,7 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
     });
 
     // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.
-    registerPingTool(server);
+    registerPingTool(server, { cleAccesFaible: options.cleAccesFaible });
     registerGetTaxRoom(server);
     registerCalculateRealEstate(server);
     registerRunProjection(server);

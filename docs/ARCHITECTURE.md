@@ -87,6 +87,10 @@ Règles structurelles :
   rapport PDF) LISENT le store via `useFinanceStore.getState()` — c'est assumé et **inventorié**
   dans `tests/services/storeCouplingBoundary.test.ts` : tout nouvel importeur du store dans
   `services/` est une décision d'architecture (à documenter ici, puis à ajouter à l'inventaire).
+  2026-09-29 (`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`) : `services/claude.ts` rejoint l'inventaire —
+  il lit `modeDonneesFictives()` au point de contact SDK (`systemPourAppel`) pour dire au modèle
+  que les chiffres sont un scénario hypothétique ; un marquage chez les appelants dépendrait de la
+  mémoire de chaque appelant futur.
   ⚠️ Jamais de `getState() as unknown as …` : `FinanceState extends AppState`, l'assignation
   directe est déjà typée — un cast désactive tsc exactement là où l'IA écrit (garde dédiée).
 

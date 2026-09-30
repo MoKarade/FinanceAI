@@ -17282,3 +17282,15 @@ de sécurité doit toujours échouer fermé ». Ce n'en est pas un.
   un contrôle de sécurité propre à UNE implémentation, vérifier ce que fait CHAQUE autre
   implémentation existante en l'absence du mécanisme — une valeur de repli n'est un fail-open que si
   le scénario de menace visé peut RÉELLEMENT atteindre ce chemin-là.
+
+## `UNE-SURFACE-QUI-RECOUVRE-UNE-CIBLE-PEUT-ETRE-TEMPORAIRE` (2026-09-29, `[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]`)
+
+Le 25/09, `[FUTUR-CLICK-ANYWHERE]` a été réparé pour un bandeau FIXE qui recouvrait le haut du
+graphe. Il a récidivé pour une autre surface : le toast « Persona … chargé », qui ne vit que 4 s.
+Un recouvrement temporaire se reconnaît à sa signature : il touche les runs les PLUS RAPIDES (le
+graphe est prêt avant la fin de la minuterie) et reste invisible si on lance le test seul.
+- Avant de cliquer à une coordonnée, fermer (ou attendre) les surfaces temporaires comme on écarte
+  le rail (`ecarterLeRail`) : `fermerLesNotifications` le fait dans `activateTestMode`.
+- Un diagnostic doit viser le rôle ACTUEL du conteneur : `closest('[role="img"]')` répondait
+  « NON » depuis la refonte S5 (`role="group"`), ce qui aurait pu égarer l'enquête.
+- Corréler durée du run et échec : les journaux CI suffisent (`gh run view --job <id> --log`).

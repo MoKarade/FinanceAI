@@ -1,11 +1,15 @@
 #!/usr/bin/env node
-// PreToolUse (Bash) : sur un `git push`, RAPPELLE de capturer la leçon dans CLAUDE.md
+// PreToolUse (Bash) : sur un `git push`, RAPPELLE de capturer la leçon dans le fichier des leçons (défaut docs/claude/lecons.md)
 // ET de mettre à jour un agent `.claude/agents/` si besoin.
 // NON-BLOQUANT (exit 0 toujours) — injecte juste un rappel via additionalContext.
-// Applique les règles Marc « CLAUDE.md s'améliore À CHAQUE PUSH » + « les agents s'améliorent à
-// chaque push » (cf CLAUDE.md, sections Workflow + Agents) : un fichier ne force rien, mais ce
+// Applique les règles Marc « les leçons s'améliorent À CHAQUE PUSH » + « les agents s'améliorent à
+// chaque push » (cf docs/claude/lecons.md et docs/workflow.md) : un fichier ne force rien, mais ce
 // rappel apparaît au bon moment (juste avant le push).
 import { readFileSync } from 'node:fs';
+import { lireCheminLecons } from './lib/leconsFichier.mjs';
+
+// Fichier des leçons : hooks.config.json (`leconsFichier`), défaut docs/claude/lecons.md.
+const LECONS = lireCheminLecons();
 
 let cmd = '';
 try { cmd = (JSON.parse(readFileSync(0, 'utf8')).tool_input?.command) || ''; } catch { process.exit(0); }
@@ -20,9 +24,9 @@ const scan = cmd.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
 if (!/(^|\s)git\s+(?:-[cC]\s+\S+\s+|-{1,2}\S+\s+)*push(?:\s|$)/.test(scan)) process.exit(0);
 
 const reminder =
-  'Rappel (règles « CLAUDE.md/agents/docs s\'améliorent à chaque push ») : AVANT ce push — ' +
+  'Rappel (règles « leçons/agents/docs s\'améliorent à chaque push ») : AVANT ce push — ' +
   '(1) Qu\'as-tu appris (bug d\'infra, convention, leçon, décision, piège) ? Si oui -> delta ciblé ' +
-  'dans CLAUDE.md (section pertinente), MÊME PR ; si non -> dire « push sans leçon » au point de contrôle. ' +
+  'dans ' + LECONS + ' (section pertinente), MÊME PR ; si non -> dire « push sans leçon » au point de contrôle. ' +
   '(2) Un agent .claude/agents/ a-t-il produit du bruit, raté un angle mort, ou une convention a-t-elle ' +
   'changé ? Si oui -> mettre à jour le fichier de l\'agent (et docs/agents.md si le rôle bouge), MÊME PR. ' +
   '(3) TOUS les docs touchés sont-ils à jour dans CETTE PR ? `HANDOVER.md` (état + bandeau de ' +

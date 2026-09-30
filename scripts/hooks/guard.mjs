@@ -2,7 +2,7 @@
 // PreToolUse (Bash) : bloque le vraiment dangereux. exit 2 = bloque.
 //
 // NOTE (2026-06) : le `git push` est AUTORISÉ. Claude gère le cycle complet
-// commit (gated) -> push -> PR -> merge lui-même (cf CLAUDE.md, choix de Marc).
+// commit (gated) -> push -> PR -> merge lui-même (cf docs/claude/lecons.md, choix de Marc).
 // Le garde-fou qualité reste `commit-gate.mjs` (typecheck+test+build avant commit).
 import { readFileSync } from 'node:fs';
 

@@ -334,6 +334,11 @@
 > de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé courtier par `apply_broker_statement` :
 > simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
 >
+> ## 🟦 Session 2026-09-26 — **`[HOOKS-LECONS]` : hooks/agents/commandes pointent vers `docs/claude/lecons.md`**
+> `learn-on-push.mjs`, `guard.mjs`, `documentation-manager`, 3 commandes : plus de renvoi à `CLAUDE.md`. Le chemin est lu
+> dans `scripts/hooks/hooks.config.json` (`leconsFichier`, validé : relatif simple, sinon défaut). PR brouillon, chemins
+> sensibles (validation-marc, pole-securite). Test : `tests/learnOnPushLecons.test.ts`.
+>
 > ## 🟦 Session 2026-09-26 — **`[WIN-GARDES]` : `npm test` passe en local Windows**
 > 33 tests-gardes échouaient sous Windows (CRLF de `core.autocrlf` + `\` de `path.join/relative`) et bloquaient le
 > hook commit-gate. Ajout `.gitattributes` (`eol=lf`) + `tests/helpers/toPosix.ts` appliqué dans 14 gardes ; aucun seuil

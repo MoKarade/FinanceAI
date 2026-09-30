@@ -25,7 +25,8 @@
   à tort depuis la refonte S5).
 - [x] 🟡 **`[E2E-RAPIDE]`** (S) — ✅ 2026-09-29 : `workers` 1 → 2 en CI (`playwright.config.ts`).
   Local, même machine : 6,5 min → 3,1 min, 62/62 verts sur 3 suites complètes, et 30/30 sur
-  `futureDailySelect` répété 5 fois à 2 workers.
+  `futureDailySelect` répété 5 fois à 2 workers. En CI (PR #1111) : 62/62 en 4,6 min contre
+  6,2-6,7 min sur les 39 runs verts précédents.
 
 ## 2026-09-29 — Verrou d'écriture MCP hors du chat (Étape 2)
 

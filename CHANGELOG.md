@@ -3,7 +3,7 @@
 ## 2026-09-29 — Tests automatiques du navigateur : plus rapides et un faux rouge en moins
 
 - Rien ne change dans l'app. Les tests qui cliquent dans l'app (E2E) tournent maintenant sur deux
-  navigateurs en parallèle dans GitHub : ~3 min au lieu de ~6,5 min.
+  navigateurs en parallèle dans GitHub : 4,6 min au lieu de ~6,4 min (premier run mesuré).
 - Le test « clic partout sur la courbe du Futur » ne rougit plus au hasard : la notification
   « Persona chargé » recouvrait le bas du graphe pendant 4 s. Les tests la ferment avant de cliquer.
 

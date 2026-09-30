@@ -110,8 +110,14 @@ export async function fermerLesNotifications(page: Page): Promise<void> {
   await toasts.first().waitFor({ state: 'visible', timeout: 2_000 }).catch(() => {});
   const fermer = zone.getByRole('button', { name: 'Fermer la notification' });
   // Borne dure : jamais de boucle infinie si un toast réapparaissait en continu.
+  // ⚠️ Chaque clic a SON délai (1 s). Sans lui, un toast qui expire tout seul entre `count()` et
+  // `click()` laisse le clic attendre un bouton qui ne reviendra jamais, jusqu'au plafond du test :
+  // MESURÉ en CI sur la 1re version de ce helper (PR #1111), 3 specs expirées à 2-3 min, alors
+  // que le même code passait 62/62 en local, où le clic gagne toujours la course.
   for (let i = 0; i < 5 && (await fermer.count()) > 0; i++) {
-    await fermer.first().click().catch(() => {});
+    await fermer.first().click({ timeout: 1_000 }).catch(() => {});
   }
-  await toasts.first().waitFor({ state: 'detached', timeout: 2_000 });
+  // Filet : si un clic a raté (toast déjà en sortie, élément instable), le toast expire de toute
+  // façon en 4 s + 0,2 s d'animation. 6 s couvrent ce cas ; au-delà, c'est une vraie anomalie.
+  await toasts.first().waitFor({ state: 'detached', timeout: 6_000 });
 }
